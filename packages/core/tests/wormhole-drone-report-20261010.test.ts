@@ -93,13 +93,13 @@ describe('虫洞全队无人机战损报告', () => {
     expect(state.battleReport!.dronesGone).toBe(6)
   })
 
-  it('三舰各损坏1架仍各自回收0，不因全队汇总重新取整多回收1架', () => {
+  it('三舰各损坏1架逐舰向上取整回收，汇总只相加不再取整', () => {
     const { state, fleet, battle } = world(Array.from({ length: 3 }, () => ({ 'drone-scout': 1 })))
     for (const tag of ['player', 'ally-1', 'ally-2']) loss(state, battle, tag, 'drone-scout', 1)
     finish(state)
-    expect(state.droneLossReport).toMatchObject({ total: 3, recovered: 0, gone: 3 })
-    for (const uid of fleet) expect(state.fleet[uid]!.droneLoad?.['drone-scout'] ?? 0).toBe(0)
-    expect(state.battleReport!.dronesGone).toBe(3)
+    expect(state.droneLossReport).toMatchObject({ total: 3, recovered: 3, gone: 0 })
+    for (const uid of fleet) expect(state.fleet[uid]!.droneLoad?.['drone-scout'] ?? 0).toBe(1)
+    expect(state.battleReport!.dronesGone).toBe(0)
   })
 
   it('僚舰备用复位后再次损坏，重载与不中断收场的报告及库存一致', () => {
@@ -111,10 +111,10 @@ describe('虫洞全队无人机战损报告', () => {
     const loaded = loadSaveFile(serializeSaveFile(state, 0)).state
     for (const current of [state, loaded]) {
       finish(current)
-      expect(current.droneLossReport).toMatchObject({ total: 2, recovered: 0, gone: 2, revived: 1 })
-      expect(current.battleReport!.dronesGone).toBe(2)
+      expect(current.droneLossReport).toMatchObject({ total: 2, recovered: 1, gone: 1, revived: 1 })
+      expect(current.battleReport!.dronesGone).toBe(1)
       expect(current.fleet[fleet[1]!]!.droneLoad).toEqual({ 'drone-scout': 1 })
-      expect(current.wormhole.run!.supplies!.items['drone-scout'] ?? 0).toBe(0)
+      expect(current.wormhole.run!.supplies!.items['drone-scout'] ?? 0).toBe(1)
       expect(current.warehouse.items['drone-scout']).toBe(98)
     }
     expect(loaded.droneLossReport).toEqual(state.droneLossReport)

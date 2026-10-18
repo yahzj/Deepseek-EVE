@@ -16,6 +16,7 @@
  *   概率按分钟缩放，命中 = 连续 2 循环 ×3 的红利窗口，窗口内不再掷点）；
  * - 日志克制：只在 开始/停止/满舱转返航/卸货完成/富矿脉/换驾驶善后 时写。
  */
+import { ceilFinalQuantity } from './quantity'
 import { tuningMul } from './tuning'
 import { addLog, HOME_GALAXY_ID, miningHalt } from './state'
 import { applyActivityGate } from './activityGate'
@@ -128,7 +129,7 @@ export function getMiningParams(
    */
   const unitsPerCycle = Math.max(
     1,
-    Math.floor(
+    ceilFinalQuantity(
       (ship.oreUnitsPerCycle * prodMult * (1 + minerBonus) * tuningMul(state, 'miningYield')) /
         Math.max(0.01, ore.unitM3 ?? 1),
     ),

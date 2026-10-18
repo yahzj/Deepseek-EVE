@@ -26,6 +26,7 @@
  * 不掷单发命中；打不过就绕开或撤离。之所以敢这么简化：自动探索的既定红线是**绝不丢船**
  * （`WORMHOLE_AUTO_HULL_FLOOR` 与损伤公式在 `wormholeAuto.ts` 里照旧）。
  */
+import { ceilFinalQuantity } from './quantity'
 import {
   HEX_DIRS,
   gridCellAt,
@@ -328,7 +329,7 @@ export function wormholeAutoDescend(opts: {
         if (turns < 1 || (holdUsed >= holdCapThisLayer && target.place !== 'ruins')) break
         turns -= 1
         if (target.place === 'vein') {
-          const units = Math.max(1, Math.round(WORMHOLE_PILE_UNITS_BASE * mul * (0.8 + rng() * 0.4) * tech.ore))
+          const units = Math.max(1, ceilFinalQuantity(WORMHOLE_PILE_UNITS_BASE * mul * (0.8 + rng() * 0.4) * tech.ore))
           out.oreUnits += units
           holdUsed += units * 0.5 // 母矿单位→m³ 的量级换算（与货舱页同量级）
         } else if (target.place === 'graveyard') {
@@ -385,8 +386,8 @@ export function wormholeAutoDescend(opts: {
     fightsWon: out.fightsWon,
     fightsAvoided: out.fightsAvoided,
     /** 收成打 8 折（船长令）：走法与掉落不变，只把"带回来的东西"按折扣收口 */
-    wreckM3: Math.round(out.wreckM3 * WORMHOLE_AUTO_SIM_YIELD_MUL),
-    oreUnits: Math.round(out.oreUnits * WORMHOLE_AUTO_SIM_YIELD_MUL),
+    wreckM3: ceilFinalQuantity(out.wreckM3 * WORMHOLE_AUTO_SIM_YIELD_MUL),
+    oreUnits: ceilFinalQuantity(out.oreUnits * WORMHOLE_AUTO_SIM_YIELD_MUL),
     rareItems: out.rareItems * WORMHOLE_AUTO_SIM_YIELD_MUL,
     relicBoxes: out.relicBoxes * WORMHOLE_AUTO_SIM_YIELD_MUL,
     /** 谜质装置台数同样打 8 折（小数部分由调用方掷一次取整，与稀有残骸/货柜同一套写法） */
@@ -400,7 +401,7 @@ export function wormholeAutoDescend(opts: {
 
 /** 普通残骸一堆的 m³（与旧口径同一个基准 + 层收益 + 0.8~1.2 抖动 + 残骸线科技） */
 function pileM3(mul: number, rng: () => number, techWreck: number): number {
-  return Math.round(WORMHOLE_WRECK_PILE_M3_BASE * mul * techWreck * (0.8 + rng() * 0.4))
+  return ceilFinalQuantity(WORMHOLE_WRECK_PILE_M3_BASE * mul * techWreck * (0.8 + rng() * 0.4))
 }
 
 /** 快速对判：**打不过就不上**（只看 DPS × 有效血量的期望比；不做单发掷骰） */
@@ -414,7 +415,7 @@ function canWin(me: WormholeAutoPower, foe: WormholeAutoPower): boolean {
 /** 回合预算（与手动的 `wormholeTurnBudget` 同式；这里只吃质量，科技由调用方加进 `turnsBase`） */
 function turnBudgetOf(totalMass: number, techTurnBonus: number): number {
   const ratio = Math.max(0, Math.min(1, totalMass / WORMHOLE_TOTAL_MASS_CAP))
-  return Math.floor(WORMHOLE_TURN_BASE * (1 - ratio * WORMHOLE_TURN_MASS_COEF)) + Math.max(0, Math.floor(techTurnBonus))
+  return ceilFinalQuantity(WORMHOLE_TURN_BASE * (1 - ratio * WORMHOLE_TURN_MASS_COEF) + Math.max(0, techTurnBonus))
 }
 
 /**

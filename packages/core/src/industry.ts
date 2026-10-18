@@ -19,6 +19,7 @@
  *   与旧版空间站收购价一致（波动来自池淤积与冲击动量）；
  * - 舰船购买（V9）：市场有现货立即购得；无现货自动挂收购单（市场有货时自动成交）。
  */
+import { ceilFinalQuantity } from './quantity'
 import { matterTechUnboxCut, matterTechVoidRefineCut, matterTechVoidYield, matterTechWreckYield } from './matterTech'
 /** 虚空母矿的物品 id（精炼提速只作用于它这一支）——与 `wormhole.ts` 同值，用常量不写字面量 */
 import { WORMHOLE_ORE_ITEM_ID } from './wormhole'
@@ -126,7 +127,7 @@ export function refineBatchOutputOf(
     const mineral = ctx.items.get(row.mineralId)
     if (!mineral || mineral.kind !== 'mineral') continue
     const rowMul = row.mineralId === 'min-voidcrystal' ? 1 + matterTechVoidYield(state, ctx) : 1
-    const units = Math.floor(perBatchUnits * row.perOre * rate * rowMul)
+    const units = ceilFinalQuantity(perBatchUnits * row.perOre * rate * rowMul)
     if (units > 0) out.push({ mineralId: row.mineralId, units })
   }
   return out
@@ -156,7 +157,7 @@ const FALLBACK_CYCLE_MS = 6_000
  */
 export function refineBaseParamsOf(def: ItemDef): { batchUnits: number; cycleMs: number } {
   const batchUnits =
-    def.refineBatchUnits !== undefined && def.refineBatchUnits > 0 ? Math.floor(def.refineBatchUnits) : FALLBACK_BATCH_UNITS
+    def.refineBatchUnits !== undefined && def.refineBatchUnits > 0 ? ceilFinalQuantity(def.refineBatchUnits) : FALLBACK_BATCH_UNITS
   const cycleMs =
     def.refineCycleMs !== undefined && def.refineCycleMs > 0 ? Math.floor(def.refineCycleMs) : FALLBACK_CYCLE_MS
   return { batchUnits, cycleMs }
@@ -370,7 +371,7 @@ export function startRefineRun(
   const expReLv = Math.min(5, state.skills.trained['furnace-reconfiguration'] ?? 0)
   const expReMul = 1 + 0.02 * expReLv
   if (expLv > 0 || expUpLv > 0 || expReLv > 0) {
-    batchEff = Math.max(1, Math.round(batchUnits * expMul * expUpMul * expReMul))
+    batchEff = Math.max(1, ceilFinalQuantity(batchUnits * expMul * expUpMul * expReMul))
   }
   // 产线节拍学（原"工业自动化"，id industrial-automation；2026-09-08 船长定：手动与 AI 核心驱动同享）：
   // 精炼炉作业每级再 −5% 周期（下限护栏已于同日移除，乘算本身有界）
@@ -1069,7 +1070,7 @@ export function advanceRefining(
         // 谜质科技「残骸解析技术」：抬**保底原材料**产出（船长 2026-09-19；概率彩头/碎片/高级箱一律不动）
         const guaranteeMul = 1 + matterTechWreckYield(state, ctx)
         const outRaw = rollRecycleGuarantee(state, ctx, profile, volumeM3)
-        const out = guaranteeMul > 1 ? outRaw.map((r) => ({ ...r, units: Math.round(r.units * guaranteeMul) })) : outRaw
+        const out = guaranteeMul > 1 ? outRaw.map((r) => ({ ...r, units: ceilFinalQuantity(r.units * guaranteeMul) })) : outRaw
         for (const row of out) addWare(state, row.mineralId, row.units)
         batchIncome += out.reduce((s, row) => s + row.units * (ctx.items.get(row.mineralId)?.baseSellPriceIsk ?? 0), 0)
         // 稀有残骸专属：累计已烧体积跨过 `RARE_UNIT_M3`（30 m³）的每一个整数倍，都**必给**一次彩头
@@ -1408,10 +1409,10 @@ export function buyShip(state: GameState, shipId: string, ctx: SimContext): Comm
 /** 舰船收购估价：簿上有价用簿价 ×1.02；否则按均衡供应价 */
 function estimateShipBid(state: GameState, ctx: SimContext, goodKey: string): number {
   const quote = marketQuote(state, ctx, goodKey)
-  if (quote.sell !== undefined) return Math.round(quote.sell * 1.02)
+  if (quote.sell !== undefined) return ceilFinalQuantity(quote.sell * 1.02)
   const def = ctx.marketGoods.get(goodKey)
   if (!def) return Math.round(1e9)
-  return Math.round(def.basePrice * 1.06 * 1.02)
+  return ceilFinalQuantity(def.basePrice * 1.06 * 1.02)
 }
 
 /** 兼容旧导出名：旧版单源卖（全部从货仓卖） */

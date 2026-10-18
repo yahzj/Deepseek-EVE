@@ -1,3 +1,4 @@
+import { ceilFinalQuantity } from './quantity'
 import type { BattleState } from './state'
 import type { UnitSpec } from './combat'
 import type { ModuleDef } from './types'
@@ -52,8 +53,8 @@ export function playerGravekeeperSpecOf(b: BattleState, spec: UnitSpec, display 
       // 炮台家族，不扩展到导弹、激光、基础炮或机群。
       if (effect && w.src === 'turret') {
         out.maxRangeM = Math.round(w.maxRangeM * effect.rangeMul)
-        if (w.shotsByType) out.shotsByType = Object.fromEntries(Object.entries(w.shotsByType).map(([t, n]) => [t, Math.round(n! * effect.damageMul)]))
-        if (w.shotDmg !== undefined) out.shotDmg = Math.round(w.shotDmg * effect.damageMul)
+        if (w.shotsByType) out.shotsByType = Object.fromEntries(Object.entries(w.shotsByType).map(([t, n]) => [t, ceilFinalQuantity(n! * effect.damageMul)]))
+        if (w.shotDmg !== undefined) out.shotDmg = ceilFinalQuantity(w.shotDmg * effect.damageMul)
       }
       if (effect && w.src === 'drone') out.reloadMs = Math.max(1, Math.round(w.reloadMs * effect.droneCycleMul))
       if (w.railCharge) {

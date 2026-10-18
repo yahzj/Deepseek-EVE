@@ -16,6 +16,7 @@
  *
  * 配方数据在 `packages/data/src/labRecipes.ts`（`ctx.labRecipes`）。
  */
+import { ceilFinalQuantity } from './quantity'
 import type { GameState, LabRunState } from './state'
 import type { SimContext, LabRecipeDef, AiCoreType } from './types'
 import type { CommandResult } from './engine'
@@ -185,7 +186,7 @@ function spendBatchMaterials(
 ): { itemId: string; count: number }[] | null {
   const taken: { itemId: string; count: number }[] = []
   for (const m of recipe.materials) {
-    const units = Math.max(1, Math.floor(m.units))
+    const units = Math.max(1, ceilFinalQuantity(m.units))
     if (!removeWare(state, m.itemId, units)) {
       for (const t of taken) addWare(state, t.itemId, t.count)
       return null
@@ -200,7 +201,7 @@ export function labAffordableBatches(state: GameState, recipe: LabRecipeDef): nu
   if (recipe.materials.length === 0) return 0
   let min = Number.POSITIVE_INFINITY
   for (const m of recipe.materials) {
-    const per = Math.max(1, Math.floor(m.units))
+    const per = Math.max(1, ceilFinalQuantity(m.units))
     min = Math.min(min, Math.floor(labMaterialAvailable(state, m.itemId) / per))
   }
   return Number.isFinite(min) ? Math.max(0, min) : 0
@@ -241,14 +242,14 @@ export function labCycleMsOf(state: GameState, ctx: SimContext, recipe: LabRecip
 }
 
 /**
- * **单批产物单位**（基准值 × `LAB_YIELD_SKILLS` 乘区；向下取整到 1 单位）。
+ * **单批产物单位**（基准值 × `LAB_YIELD_SKILLS` 乘区；最终向上取整到 1 单位）。
  *
  * **对外公开的单点**（**2026-10-01 船长裁**：卡面那个「×N」必须读这里）——原先界面读的是
  * `recipe.outputUnits`（**基础值**）⇒ 收率工艺学的效果在卡面看不见，同一张卡上"批产"与"速率"
  * 两个口径。产出封顶（`labOutputCapped`）与实际交付（`advanceLab`）走的也都是它。
  */
 export function labBatchUnitsOf(state: GameState, recipe: LabRecipeDef): number {
-  return Math.max(1, Math.floor(recipe.outputUnits * labYieldMulOf(state, recipe)))
+  return Math.max(1, ceilFinalQuantity(recipe.outputUnits * labYieldMulOf(state, recipe)))
 }
 
 /**

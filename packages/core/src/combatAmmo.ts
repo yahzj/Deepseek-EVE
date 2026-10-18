@@ -5,6 +5,7 @@
  * 只依赖 state 类型 / types / inventory / playerSpec（规格里的弹种偏好）。`combat.ts` 原样再导出
  * （先例：fitted.ts），既有引用零改动。
  */
+import { ceilFinalQuantity } from './quantity'
 import type { BattleState, GameState } from './state'
 import type { BattleBalance, DamageType, SimContext } from './types'
 import type { UnitSpec, WeaponSpec } from './combat'
@@ -342,7 +343,7 @@ export function settleWormholeBattleAmmo(state: GameState, battle: BattleState, 
   if (!ledger || !ammo) return
   for (const [id, loaded] of Object.entries(ammo.loaded)) {
     const left = ammo.stock[id] ?? 0
-    const back = Math.round(Math.max(0, loaded - left) * Math.max(0, Math.min(1, recoveryPct)))
+    const back = ceilFinalQuantity(Math.max(0, loaded - left) * Math.max(0, Math.min(1, recoveryPct)))
     const consumed = (ledger.consumed[id] ?? 0) + Math.max(0, loaded - left)
     if (consumed > 0) ledger.consumed[id] = consumed
     if (left > 0) ledger.items[id] = (ledger.items[id] ?? 0) + left

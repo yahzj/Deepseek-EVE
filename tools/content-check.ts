@@ -90,6 +90,7 @@ import {
   // 2026-09-30 文案审核批：开发侧残留契约要逐条扫公告正文（此前本文件没读过公告表）
   ANNOUNCEMENTS,
 } from '@whale/data'
+import { enumerateShipUnits } from '../packages/core/src/foeCard'
 import staticShips from '../packages/data/src/static/ships.json'
 import staticModules from '../packages/data/src/static/modules.json'
 import staticPlugs from '../packages/data/src/static/plugs.json'
@@ -4418,11 +4419,14 @@ for (const m of MODULES) {
          * ⑦ **支援舰船召唤装置归属**（2026-09-25 船长令「给入侵母舰添加类似D族挂载件的独立挂载件，
          *    只不过改为复活被摧毁的友军……」）：这件是**通用件**，但**只允许**挂在
          *    已确认的入侵旗舰条目上，旧墨潮定额与永陵全部复活各自校验——
-         *    ① 舰级一概不许挂（写舰级会波及同舰级的其它卡）；
+         *    ① 永陵按2026-10-18船长令自带重构，其余舰级维持原归属；
          *    ② 其余任何卡的条目也不许挂（免得普通悬赏莫名其妙开始复活）。
          */
         for (const s of FOE_SHIPS) {
-          if (resolveFoeMounts(s.mounts).foeReviveEscort !== undefined && s.id !== 'foe-alien-broodmother') {
+          const revive = resolveFoeMounts(s.mounts).foeReviveEscort
+          const eternal = s.id === 'foe-d-invasion-eternal-tomb' && s.mounts?.includes(FOE_MOUNT_IDS.dReconstruction)
+            && revive?.all === true && revive.everyMs === 60000 && revive.count === undefined
+          if (revive !== undefined && s.id !== 'foe-alien-broodmother' && !eternal) {
             bad.push(`舰级 ${s.name}（${s.id}）挂了支援舰船召唤装置——该件只允许写在 ink-flagship 的母舰条目上`)
           }
         }
@@ -4446,7 +4450,7 @@ for (const m of MODULES) {
             const validInk = a.id === 'ink-flagship' && sl.ship.id === 'foe-h-ink-flagship' && eff.foeReviveEscort.all === undefined
             const validEternal = a.id === 'gravekeeper-flagship' && sl.ship.id === 'foe-d-invasion-eternal-tomb' &&
               eff.foeReviveEscort.all === true && eff.foeReviveEscort.everyMs === 60000 && eff.foeReviveEscort.count === undefined &&
-              (sl.mounts ?? []).includes(FOE_MOUNT_IDS.dReconstruction)
+              (sl.mounts ?? sl.ship.mounts ?? []).includes(FOE_MOUNT_IDS.dReconstruction)
             if (!validInk && !validEternal) {
               bad.push(
                 `卡 ${a.id} 的条目 ${sl.ship.name}（${sl.ship.id}）挂了支援舰船召唤装置——` +
@@ -4611,7 +4615,14 @@ for (const m of MODULES) {
             `机群与防空契约：${def.name} 写了总火力锚点 ⇒ 实收总单发须等于锚点合计（实际 ${withShare} vs 锚点 ${anchorSum}）`,
           )
         } else {
-          const without = sumShots(stripShare(def) as typeof def)
+          const withoutCard = stripShare(def) as typeof def
+          const withoutSpecs = createFoeSpecs(withoutCard, shareCtx.balance.battle)
+          const activeAnchors = enumerateShipUnits(def, 0).filter(unit => unit.slot.firepowerAnchor !== undefined)
+          const anchoredTags = new Set(activeAnchors.map(unit => unit.tag))
+          const activeAnchorSum = [...new Set(activeAnchors.map(unit => unit.slot))].reduce((sum, slot) => sum + (slot.firepowerAnchor ?? 0), 0)
+          // 部分条目有固定锚点时，该条目按锚点守恒，其余按未拆分实际总量守恒。
+          const without = withoutSpecs.filter(unit => !anchoredTags.has(unit.tag)).reduce((sum, unit) => sum +
+            unit.weapons.reduce((n, weapon) => n + (weapon.reserve ? 0 : weapon.shotDmg ?? 0), 0), activeAnchorSum)
           check(
             withShare === without,
             `机群与防空契约：${def.name} 写了机群火力占比后**总单发不守恒**（${withShare} vs 去掉比例 ${without}）——` +

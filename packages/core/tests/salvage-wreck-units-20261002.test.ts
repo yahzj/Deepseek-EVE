@@ -64,13 +64,13 @@ function fitSalvager(s: GameState): void {
 }
 
 describe('① 入舱件数：出了量就至少 1 件（2026-10-02 船长令「按你推荐」）', () => {
-  it('`wreckUnitsOf` 单点：0 / 负数 ⇒ 0；0.6 ⇒ **1**；3.2 ⇒ 3（floor 不变）', () => {
+  it('`wreckUnitsOf` 单点：0 / 负数 ⇒ 0；正数最终件数统一向上取整', () => {
     expect(wreckUnitsOf(0)).toBe(0)
     expect(wreckUnitsOf(-1)).toBe(0)
     expect(wreckUnitsOf(0.6), '不足 1 m³ ⇒ 保底 1 件（改前 floor ⇒ 0）').toBe(1)
     expect(wreckUnitsOf(1)).toBe(1)
-    expect(wreckUnitsOf(3.2), '正常轮照旧 floor（不多给）').toBe(3)
-    expect(wreckUnitsOf(95.04)).toBe(95)
+    expect(wreckUnitsOf(3.2), '正常轮也按最终件数向上取整').toBe(4)
+    expect(wreckUnitsOf(95.04)).toBe(96)
   })
 
   it('**真作业**：池子只剩 0.6 m³ 的那一轮 ⇒ 舱里真多 1 件（改前 = 0），池子照旧扣光', () => {

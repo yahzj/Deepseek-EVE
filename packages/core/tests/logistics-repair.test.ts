@@ -243,7 +243,7 @@ describe('后勤舰 · 敌方（50% 自身 DPS → 修理值）', () => {
     const otherBefore = { ...otherRt.hp }
     const ledger = { nextPulseAtMs: REPAIR_PULSE_MS, pulses: 0, healed: 0 }
     pulseFoeRepair(battle, specs, ledger)
-    const expectHeal = (foeNominalDpsOf(tender) * 0.5 * REPAIR_PULSE_MS) / 1000
+    const expectHeal = Math.ceil((foeNominalDpsOf(tender) * 0.5 * REPAIR_PULSE_MS) / 1000)
     expect(ledger.healed).toBeCloseTo(expectHeal, 3)
     // 普通舰被修（甲优先，上限 = 缺口）
     expect(battle.units[other.tag]!.hp.a).toBeGreaterThan(otherBefore.a)

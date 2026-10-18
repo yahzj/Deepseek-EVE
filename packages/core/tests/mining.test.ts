@@ -65,11 +65,11 @@ describe('采矿作业', () => {
     expect(view.percent).toBeCloseTo(50, 0)
   })
 
-  it('采矿技术等级加成产量：Lv2 时每循环 11 单位', () => {
+  it('采矿技术等级加成产量：Lv2时11.2单位向上取整为12', () => {
     state.skills.trained['mining'] = 2 // balance.yieldSkillId = 'mining'
     startMining(state, 'belt-a', ctx)
     advanceGame(state, 12_000, ctx)
-    expect(countItem(state, 'ore-a')).toBe(11) // floor(10 × 1.12)
+    expect(countItem(state, 'ore-a')).toBe(12)
   })
 
   it('采集器入门学（原采矿护卫舰操作）缩短循环：Lv5 时循环 10.2 秒', () => {

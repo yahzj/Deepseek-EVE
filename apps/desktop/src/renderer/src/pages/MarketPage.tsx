@@ -17,7 +17,7 @@
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { askLineOf, buyLineOf, bmGateNote, marketLockNote, goodName, marketHistory, marketQuote, marketTrend, naturalHoldings, PRICE_SAMPLE_MS, salesTaxRate, shipStoredCount } from '@whale/core'
+import { askLineOf, buyLineOf, ceilFinalQuantity, bmGateNote, marketLockNote, goodName, marketHistory, marketQuote, marketTrend, naturalHoldings, PRICE_SAMPLE_MS, salesTaxRate, shipStoredCount } from '@whale/core'
 import type { GameState, MarketGoodDef } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { MarketGoodHover, marketGoodDisplayName as goodDisplayName } from '../ui/marketGoodHover'
@@ -685,7 +685,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
   }
   function doPlace(): void {
     const n = Math.max(1, Math.floor(qty || 1))
-    const p = Math.max(1, Math.floor(price || 1))
+    const p = Math.max(1, ceilFinalQuantity(price || 1))
     if (tab === 'buy') {
       // 2026-09-08（船长反馈）：声望不足等门槛原因要明示，不再笼统报"价格或数量无效"。
       // 2026-09-11（预扣冻结）：余额不足同样明示（core 单点口径：挂 1 件需预扣多少、钱包多少）
@@ -881,7 +881,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
           {/* 价格指引（2026-09-08 船长定：不向玩家披露站内吸收/巡游通道——只保留普通撮合语义的指导文案） */}
           <div className="app-dim app-sr-eta">
             {(() => {
-              const p = Math.max(1, Math.floor(price || 1))
+              const p = Math.max(1, ceilFinalQuantity(price || 1))
               if (tab === 'sell') {
                 const bid = buyLineOf(state, engine.ctx, good.key)
                 if (p > bid) {

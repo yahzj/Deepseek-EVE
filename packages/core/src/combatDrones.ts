@@ -5,6 +5,7 @@
  * 只依赖 state 类型 / types / rng / combatFx / combatMath。`combat.ts` 原样再导出（先例：fitted.ts），
  * 既有引用零改动。
  */
+import { ceilFinalQuantity } from './quantity'
 import type { GameState } from './state'
 import type { BattleBalance, DamageType, FoeFamily, SimContext } from './types'
 import type { UnitSpec } from './combat'
@@ -106,9 +107,9 @@ export function buildDronePoolsFor(
     const d = ctx.items.get(w.artId)?.defense
     // ⚠ 合并（2026-09-27）：本行同时吃两批改动 —— ①护盾投射仪给放飞机群加**护盾层**
     //   ②「无人机储备甲板」要记满血三层值。⇒ 护盾加成**并进 `sMax`**，再统一用 `s: sMax` 赋值。
-    const sMax = Math.max(1, Math.round((d?.shieldHp ?? 1) * durMul * (1 + (spec.droneShieldBonusPct ?? 0))))
-    const aMax = Math.max(1, Math.round((d?.armorHp ?? 1) * durMul))
-    const hMax = Math.max(1, Math.round((d?.hullHp ?? 1) * durMul * (1 + (spec.droneHullBonusPct ?? 0))))
+    const sMax = Math.max(1, ceilFinalQuantity((d?.shieldHp ?? 1) * durMul * (1 + (spec.droneShieldBonusPct ?? 0))))
+    const aMax = Math.max(1, ceilFinalQuantity((d?.armorHp ?? 1) * durMul))
+    const hMax = Math.max(1, ceilFinalQuantity((d?.hullHp ?? 1) * durMul * (1 + (spec.droneHullBonusPct ?? 0))))
     pools[dronePoolKey(tag, i)] = {
       owner: tag,
       s: sMax,

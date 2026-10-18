@@ -13,6 +13,7 @@
  * - income：预估收入（ISK）——资源/矿物按站内收价（baseSellPriceIsk）、装备与舰船按市场
  *   基准价（basePrice）粗估；残骸与蓝图碎片不计（不可直接变现）。
  */
+import { ceilFinalQuantity } from './quantity'
 import type { AiCoreType } from './types'
 
 export interface CoreSettleStats {
@@ -85,5 +86,5 @@ export function addAiShipDone(stats: SettleStats | undefined, type: AiCoreType):
 export function addAiIncome(stats: SettleStats | undefined, type: AiCoreType, isk: number): void {
   const s = rec(stats, type)
   if (!s) return
-  s.income += Math.max(0, Math.round(isk))
+  s.income += Math.max(0, ceilFinalQuantity(isk))
 }

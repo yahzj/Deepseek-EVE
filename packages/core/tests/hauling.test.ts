@@ -198,7 +198,7 @@ describe('长途运输（2026-09-09）', () => {
     // 2026-09-12 新口径：基准 = 货仓 × 0.6 × 锚定标称(10) × (有效距离 ÷ 锚定有效距离(7.75))^1.5
     const bal = ctx.balance.haul
     expect(base).toBe(
-      Math.floor(cap * HAUL_RATE_PER_M3_MIN * bal.anchorNominalMinutes * Math.pow(effMinutes(ctx) / bal.anchorEffectiveMinutes, bal.distExp)),
+      Math.ceil(cap * HAUL_RATE_PER_M3_MIN * bal.anchorNominalMinutes * Math.pow(effMinutes(ctx) / bal.anchorEffectiveMinutes, bal.distExp)),
     )
     const range = haulRewardRange(ctx, cap, effMinutes(ctx))
     expect(range).toEqual({ min: base * 5, max: base * 10 })

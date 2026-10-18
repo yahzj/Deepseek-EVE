@@ -16,6 +16,7 @@
  *   失利扣耐久并按弃船骰判定（规则与主控一致）；耐久 ≤30% 自动维修（钱包付费）；
  * - 核心是空间站资产：任务结束/取消/弃船中断时自动归还核心库。
  */
+import { ceilFinalQuantity } from './quantity'
 import { addLog } from './state'
 import type { AiAssignment, GameState } from './state'
 import type { AiCoreType, SimContext } from './types'
@@ -1181,7 +1182,7 @@ function resolveAiBattleOutcome(state: GameState, shipId: string, assignment: Ai
     const jitter = ctx.balance.rewardJitter
     const reward = Math.max(
       0,
-      Math.round(anomaly.rewardIsk * (1 - jitter + 2 * jitter * nextRandom(state.rng)) * bountyRewardFactor(state)),
+      ceilFinalQuantity(anomaly.rewardIsk * (1 - jitter + 2 * jitter * nextRandom(state.rng)) * bountyRewardFactor(state)),
     )
     state.wallet.isk += reward
     // B3 击杀注入（2026-09-10 船长定）：AI 远征胜利与主控同源——体量（`wreckThreat` ?? 威胁）
@@ -1192,7 +1193,7 @@ function resolveAiBattleOutcome(state: GameState, shipId: string, assignment: Ai
     const lootText: string[] = []
     const lootMul = lootFactor(state)
     for (const row of anomaly.loot) {
-      const units = Math.max(1, Math.round(row.units * lootMul))
+      const units = Math.max(1, ceilFinalQuantity(row.units * lootMul))
       addWare(state, row.itemId, units)
       lootText.push(`${ctx.items.get(row.itemId)?.name ?? row.itemId}×${units}`)
     }
@@ -1261,7 +1262,7 @@ function resolveAiBattleOutcome(state: GameState, shipId: string, assignment: Ai
       })
       return
     }
-    const repair = Math.min(state.wallet.isk, Math.floor(anomaly.rewardIsk * bal.defeatCostRatio))
+    const repair = Math.min(state.wallet.isk, ceilFinalQuantity(anomaly.rewardIsk * bal.defeatCostRatio))
     state.wallet.isk -= repair
     const dur = Math.round((state.fleet[shipId]?.durability ?? 0) * 100)
     const aiRepairUse = repairUsageText(battle, ctx)

@@ -18,6 +18,7 @@
  * **存档与迁移**：等级存在 `state.research.levels`（`Record<节点 id, 等级>`）；老档没有该字段 ⇒
  * `MIGRATIONS[28]`（v28→v29）补空树，读档即"一级未点"，**零行为变化**。
  */
+import { ceilFinalQuantity } from './quantity'
 import { addLog } from './state'
 import type { GameState } from './state'
 import { addWare, countWare, removeWare } from './inventory'
@@ -69,7 +70,7 @@ export function matterTechCostAt(
   const i = Math.max(0, Math.floor(level))
   const pick = (arr: readonly number[]): number =>
     arr.length === 0 ? 0 : (arr[Math.min(i, arr.length - 1)] ?? 0)
-  return { essence: pick(node.essence), isk: pick(node.isk) }
+  return { essence: ceilFinalQuantity(pick(node.essence)), isk: ceilFinalQuantity(pick(node.isk)) }
 }
 
 /** **前置缺口**（返回缺口描述；空数组 = 前置已满） */

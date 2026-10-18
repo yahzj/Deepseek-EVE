@@ -12,6 +12,7 @@ import { FOE_MOUNTS, FOE_MOUNT_IDS } from '../src/foeMounts'
 import { wormholeExpeditionCard } from '../src/wormholeExpeditionFoes'
 import { alienFixture } from '../../../tools/alien-invasion-fixture'
 import type { AnomalyDef, FoeShipDef } from '../src/types'
+import { ceilFinalQuantity } from '../src/quantity'
 
 const ctx = buildSimContext()
 const bal = ctx.balance.battle
@@ -31,25 +32,27 @@ describe('C族最终血量与机型独立判定', () => {
     const card = cardOf(ship)
     const before = createFoeSpecs(cardOf({ ...ship, family: 'A' }), bal)[0]!
     const after = createFoeSpecs(card, bal)[0]!
-    for (const layer of ['s', 'a', 'h'] as const) expect(after.hp[layer]).toBeCloseTo(before.hp[layer] * 1.3, 9)
+    for (const layer of ['s', 'a', 'h'] as const) expect(after.hp[layer]).toBe(ceilFinalQuantity(ship.hp * 2.5 * ship.split[layer] * 1.5 * 1.3))
     expect(after.evasion).toBe(evasion)
     expect(after.signatureM).toBe(before.signatureM)
     expect(after.resists).toEqual(before.resists)
     expect(after.weapons).toEqual(before.weapons)
     expect(createFoeSpecs(card, bal)[0]).toEqual(after)
-    expect(ship.hp).toBeCloseTo(hpOf(before) / 2.5 / 1.5)
+    expect(hpOf(before)).toBeGreaterThanOrEqual(ship.hp * 2.5 * 1.5)
+    expect(hpOf(before) - ship.hp * 2.5 * 1.5).toBeLessThan(3)
   })
 
   it('混编按单位family加血，不给非C舰体加血；旧威胁路径C也生效', () => {
     const c = ctx.foeShips!.get('foe-alien-starcore-adult')!
     const a = ctx.foeShips!.get('foe-pirate-skiff')!
     const specs = createFoeSpecs({ ...shell, ships: [{ ship: c }, { ship: a }] }, bal)
-    expect(hpOf(specs[0]!)).toBeCloseTo(c.hp * 1.3 * 1.5)
-    expect(hpOf(specs[1]!)).toBeCloseTo(a.hp * 1.5)
+    expect(specs[0]!.hp).toEqual(Object.fromEntries(Object.entries(c.split).map(([layer, share]) => [layer, ceilFinalQuantity(c.hp * share * 1.3 * 1.5)])))
+    expect(specs[1]!.hp).toEqual(Object.fromEntries(Object.entries(a.split).map(([layer, share]) => [layer, ceilFinalQuantity(a.hp * share * 1.5)])))
     const legacy: AnomalyDef = { ...shell, ships: undefined, waves: undefined }
     const base = createFoeSpecs({ ...legacy, foeFamily: 'A' }, bal)[0]!
     const alien = createFoeSpecs(legacy, bal)[0]!
-    expect(hpOf(alien)).toBeCloseTo(hpOf(base) * 1.3)
+    const precise = createFoeSpecs(legacy, bal, { beforeHpUplift: true })[0]!
+    for (const layer of ['s','a','h'] as const) expect(alien.hp[layer]).toBe(ceilFinalQuantity(precise.hp[layer] * 1.5))
     expect(alien.signatureM).toBe(base.signatureM)
   })
 
@@ -62,9 +65,9 @@ describe('C族最终血量与机型独立判定', () => {
     initFoeDronePools(battle, foes)
     const pool = battle.foeDronePools![foes[0]!.tag]![0]!
     const defense = ship.drones![0]!.drone.defense
-    expect(pool.s).toBeCloseTo(defense.shieldHp * 1.3)
-    expect(pool.a).toBeCloseTo(defense.armorHp * 1.3)
-    expect(pool.h).toBeCloseTo(defense.hullHp * 1.3)
+    expect(pool.s).toBe(ceilFinalQuantity(defense.shieldHp * 1.3))
+    expect(pool.a).toBe(ceilFinalQuantity(defense.armorHp * 1.3))
+    expect(pool.h).toBe(ceilFinalQuantity(defense.hullHp * 1.3))
     const full = { s: pool.s, a: pool.a, h: pool.h }
     pool.alive = false; pool.s = pool.a = pool.h = 0
     const carriers = [{ tag: foes[0]!.tag, foeHatchery: { cycleMs: 20000, stock: 32, fleet: true as const } }]
@@ -90,7 +93,7 @@ describe('C族最终血量与机型独立判定', () => {
       const { state } = alienFixture(ctx)
       const battle = createBattleState(createPlayerSpec(state, ctx, state.shipId)!, foes, 0, 10000)
       initFoeDronePools(battle, foes)
-      expect(battle.foeDronePools![foes[0]!.tag]![0]!.h).toBe(drone.defense.hullHp * multiplier)
+      expect(battle.foeDronePools![foes[0]!.tag]![0]!.h).toBe(ceilFinalQuantity(drone.defense.hullHp * multiplier))
     }
   })
 
@@ -120,7 +123,7 @@ describe('C族最终血量与机型独立判定', () => {
     expect(pool.alive).toBe(false)
     advanceFoeHatcheries(battle, foes, oldCycle + 101 + cycle)
     expect(pool.alive).toBe(true)
-    expect(pool.h).toBe(ship.drones![0]!.drone.defense.hullHp * 1.3)
+    expect(pool.h).toBe(ceilFinalQuantity(ship.drones![0]!.drone.defense.hullHp * 1.3))
   })
 
   it.each([150000, 1000])('共享池%s不吃族格，反复覆盖和保存仍保持绝对血量', bossHp => {
@@ -134,7 +137,8 @@ describe('C族最终血量与机型独立判定', () => {
     expect(hpOf(mother)).toBeCloseTo(bossHp, 8)
     for (const layer of ['s', 'a', 'h'] as const) expect(mother.hp[layer]).toBeCloseTo(layers[layer], 8)
     const escort = foes.find(unit => unit.foeShipId === 'foe-alien-hiveback')!
-    expect(hpOf(escort)).toBeCloseTo(2080 * 1.739 * 1.3 * 1.5, 8)
+    const escortShip = card.ships!.find(slot => slot.ship.id === 'foe-alien-hiveback')!.ship
+    expect(escort.hp).toEqual(Object.fromEntries(Object.entries(escortShip.split).map(([layer, share]) => [layer, ceilFinalQuantity(2080 * 1.739 * share * 1.3 * 1.5)])))
     const { state } = alienFixture(ctx)
     const battle = createBattleState(createPlayerSpec(state, ctx, state.shipId)!, foes, 0, 10000)
     battle.distanceM = 10000
@@ -164,7 +168,9 @@ describe('C族最终加血不被探索预算抵消', () => {
     const after = createFoeSpecs(wormholeDerivedAnomaly(ctx, card, { depth, kind: 'node', waves: 1 }), bal)
     expect(after).toHaveLength(before.length)
     for (let i = 0; i < after.length; i++) {
-      expect(hpOf(after[i]!)).toBeCloseTo(hpOf(before[i]!) * 1.3, 7)
+      const derived = wormholeDerivedAnomaly(ctx, card, { depth, kind: 'node', waves: 1 })
+      const precise = createFoeSpecs(derived, bal, { beforeHpUplift: true })[i]!
+      for (const layer of ['s','a','h'] as const) expect(after[i]!.hp[layer]).toBe(ceilFinalQuantity(precise.hp[layer] * 1.5))
       expect(after[i]!.weapons).toEqual(before[i]!.weapons)
       expect(after[i]!.signatureM).toBe(before[i]!.signatureM)
     }
@@ -173,13 +179,16 @@ describe('C族最终加血不被探索预算抵消', () => {
   it('新虫洞分配使用族格前比例，最终血量30%且没有额外输出加成', () => {
     const local = { ...ctx, anomalies: new Map([...ctx.anomalies].map(([id, card]) => [id, {
       ...card, ships: card.ships?.map(slot => ({ ...slot, ship: { ...slot.ship, family: slot.ship.family === 'C' ? 'A' as const : slot.ship.family } })),
-    }])), foeShips: new Map(ctx.foeShips) }
+    }])), foeShips: new Map([...ctx.foeShips!].map(([id, ship]) => [id, { ...ship, family: ship.family === 'C' ? 'A' as const : ship.family }])) }
     for (const depth of [1, 10]) {
       const before = wormholeExpeditionCard(local, 'C', depth, 'ordinary')
       const after = wormholeExpeditionCard(ctx, 'C', depth, 'ordinary')
-      expect(after.expeditionFoe.strength.hp).toBeCloseTo(before.expeditionFoe.strength.hp * 1.3, 7)
+      expect(after.expeditionFoe.strength.hp).toBeGreaterThanOrEqual(after.expeditionFoe.budget.hp)
+      expect(after.expeditionFoe.strength.hp - after.expeditionFoe.budget.hp).toBeLessThan(createFoeSpecs(after,bal).length * 3)
       expect(after.expeditionFoe.strength.dps).toBe(before.expeditionFoe.strength.dps)
-      expect(after.expeditionFoe.budget.hp).toBeCloseTo(before.expeditionFoe.strength.hp * 1.3, 7)
+      // 用途族仍为C，预算乘区由卡family决定；只替换舰级族的对照不改变预算。
+      expect(after.expeditionFoe.budget.hp).toBeCloseTo(before.expeditionFoe.budget.hp, 7)
+      expect(after.expeditionFoe.strength.hp / before.expeditionFoe.strength.hp).toBeCloseTo(1.3, 2)
     }
   })
 })
@@ -219,14 +228,14 @@ describe('真实手册回避率和说明同源', () => {
     expect(createFoeSpecs(cardOf(ship), bal)[0]!.evasion).toBe(rate)
   })
 
-  it('新中文说明不含炮伤惩罚、无英文草稿，英文显示只回退中文', () => {
+  it('已批准中英说明都不含炮伤惩罚，英文使用现有覆盖', () => {
     const en = handbookRenderer('en')
     const text = ui.mountEffectText(FOE_MOUNT_IDS.broodControl)
     expect(text).toBe('本舰无人机伤害增加50%，射程增加50%。')
-    expect(en.mountEffectText(FOE_MOUNT_IDS.broodControl)).toBe(text)
+    expect(en.mountEffectText(FOE_MOUNT_IDS.broodControl)).toBe(L10N['ui.alien.008']!.en.replace('{p1}', '50').replace('{p2}', '50'))
     expect(ui.mountEffectText(FOE_MOUNT_IDS.hivebackHatchery)).toContain('20秒')
     expect(ui.mountEffectText(FOE_MOUNT_IDS.broodmotherHatchery)).toContain('15秒')
-    for (const id of ['ui.alien.008', 'ui.alien.009']) expect(L10N[id]).toMatchObject({ en: '', enDeferred: true })
+    for (const id of ['ui.alien.008', 'ui.alien.009']) { expect(L10N[id]!.en).not.toBe(''); expect(L10N[id]!.enDeferred).toBeUndefined() }
     expect(L10N['ui.alien.002']!.en).toContain('gun damage')
   })
 })

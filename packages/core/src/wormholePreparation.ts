@@ -1,3 +1,4 @@
+import { ceilFinalQuantity } from './quantity'
 import type { GameState } from './state'
 import type { SimContext } from './types'
 import { addWare, cargoCapacityM3Of, cargoHoldForbidden } from './inventory'
@@ -164,11 +165,11 @@ export function wormholeSupplyPackageOf(
   }
   const pack: Record<string, number> = {}
   for (const [id, count] of Object.entries(nominal)) {
-    const n = Math.min(Math.floor((plan.items[id] ?? 0) * 0.25), count)
+    const n = Math.min(ceilFinalQuantity((plan.items[id] ?? 0) * 0.25), count)
     if (n > 0) pack[id] = n
   }
   for (const [id, count] of Object.entries(plan.deployedDrones)) {
-    const n = Math.floor(count * 0.25)
+    const n = ceilFinalQuantity(count * 0.25)
     if (n > 0) pack[id] = n
   }
   pack['repairkit-mil'] = 20

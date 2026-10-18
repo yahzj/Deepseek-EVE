@@ -1,7 +1,7 @@
 /**
  * 页面公共：Toast 回调类型与通用展示小件。
  */
-import { marketQuote, wreckGroupOfItemId } from '@whale/core'
+import { ceilFinalQuantity, marketQuote, wreckGroupOfItemId } from '@whale/core'
 import type { SimContext } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import { tr } from '../i18n/locale'
@@ -17,7 +17,7 @@ export interface PageProps {
 
 /** 千分位 信用点 显示 */
 export function isk(n: number): string {
-  return n.toLocaleString('zh-CN')
+  return ceilFinalQuantity(n).toLocaleString('zh-CN')
 }
 
 /**

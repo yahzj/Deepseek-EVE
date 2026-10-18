@@ -11,6 +11,7 @@
  * - back：finishAtGameMs = 到家时刻（去程并入返航），到点 active=false；
  *   胜利返航不可召回（召回入口拒绝），失利/撤退返航可召回（即时回港）
  */
+import { ceilFinalQuantity } from './quantity'
 import type { CoreBlockReason } from './engine'
 import { weekendApplyBattleOutcome, weekendBattleInvolvedOf } from './weekendBattle'
 import { weekendFoeCardOf } from './weekendEvent'
@@ -402,7 +403,7 @@ function applyTravelEvent(state: GameState, ctx: SimContext, eventDef: TravelEve
   }
   if (effect.kind === 'isk') {
     const span = Math.max(0, effect.max - effect.min)
-    const amount = effect.min + nextInt(state.rng, span + 1)
+    const amount = ceilFinalQuantity(effect.min + nextInt(state.rng, span + 1))
     state.wallet.isk += amount
     addLog(state, 'trade', `${eventDef.text}（+${amount.toLocaleString('zh-CN')} 信用点）`, 'core.expedition.038', {
       p1: eventDef.text,
@@ -416,11 +417,12 @@ function applyTravelEvent(state: GameState, ctx: SimContext, eventDef: TravelEve
       addLog(state, 'warn', '途中事件出了岔子，本次事件落空。', 'core.expedition.025')
       return
     }
-    addItem(state, effect.itemId, effect.units)
-    addLog(state, 'event', `${eventDef.text}（获得 ${def.name}×${effect.units}）`, 'core.expedition.039', {
+    const units = ceilFinalQuantity(effect.units)
+    addItem(state, effect.itemId, units)
+    addLog(state, 'event', `${eventDef.text}（获得 ${def.name}×${units}）`, 'core.expedition.039', {
       p1: eventDef.text,
       p2: def.name,
-      p3: effect.units,
+      p3: units,
     })
   }
 }
@@ -537,7 +539,7 @@ export function startExpedition(
    * 缺省清掉（老路径逐字不变）。
    */
   if (opts?.rewardIskOverride !== undefined && Number.isFinite(opts.rewardIskOverride)) {
-    exp.rewardIskOverride = Math.max(0, Math.round(opts.rewardIskOverride))
+    exp.rewardIskOverride = Math.max(0, ceilFinalQuantity(opts.rewardIskOverride))
   } else delete exp.rewardIskOverride
   exp.phase = 'out' // 占位：本函数内随即转入 battle（去程取消：开战时刻 = 现在）
   exp.battle = null
@@ -772,7 +774,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
            */
           (exp.rewardIskOverride ?? anomaly.rewardIsk)
   // 限时倍率（2026-09-15）：`rewardIsk` 乘在悬赏结算基底上（窝点/派系/普通三支共用这一处）
-  const baseRewardIsk = Math.max(0, Math.round(baseRewardIskRaw * rewardMulOf(state)))
+  const baseRewardIsk = Math.max(0, ceilFinalQuantity(baseRewardIskRaw * rewardMulOf(state)))
   // 机群战损（2026-09-10 船长「无人机可被击落」+ 永久损失制）：胜负/撤退一律照扣，
   // 且要在战报文案之前落账（战报要引用损失摘要）
   const droneLostText = settleDroneLosses(state, ctx, state.shipId, battle)
@@ -829,7 +831,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     // 保留本式以便将来需要时一行调回（唯一随机奖励 = 情报彩蛋 +10%，会在日志里说明）
     const jitter = ctx.balance.rewardJitter
     const roll = 1 - jitter + 2 * jitter * nextRandom(state.rng)
-    let reward = Math.max(0, Math.round(baseRewardIsk * roll * bountyRewardFactor(state)))
+    let reward = Math.max(0, ceilFinalQuantity(baseRewardIsk * roll * bountyRewardFactor(state)))
     if (nextRandom(state.rng) < 0.15) {
       /** 三句彩头各挂 id（中文原串照写；`p1Id` 让英文侧也按语言出词） */
       const texts = [
@@ -839,7 +841,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
       ] as const
       const picked = pickOne(state.rng, texts)!
       const text = picked.text
-      const bonus = Math.round(reward * 0.1)
+      const bonus = ceilFinalQuantity(reward * 0.1)
       reward += bonus
       addLog(state, 'trade', `◆ ${text}（+${bonus.toLocaleString('zh-CN')} 信用点）`, 'core.expedition.047', {
         p1: text,
@@ -850,7 +852,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     const lootText: string[] = []
     const lootMul = lootFactor(state)
     for (const row of anomaly.loot) {
-      const units = Math.max(1, Math.round(row.units * lootMul))
+      const units = Math.max(1, ceilFinalQuantity(row.units * lootMul))
       addItem(state, row.itemId, units)
       lootText.push(`${ctx.items.get(row.itemId)?.name ?? row.itemId}×${units}`)
     }
@@ -1064,7 +1066,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
       fleetShip.durability = Math.max(0, Math.round((fleetShip.durability - loss) * 1000) / 1000)
     }
     // 维修费按本场目标强度计（窝点 = 强化后奖金 × 比例）：越硬的窝点打输越贵，与"酬金跟强度"同口径
-    const repair = Math.min(state.wallet.isk, Math.floor(baseRewardIsk * bal.defeatCostRatio))
+    const repair = Math.min(state.wallet.isk, ceilFinalQuantity(baseRewardIsk * bal.defeatCostRatio))
     state.wallet.isk -= repair
     const shipName = shipDisplayName(state, ctx, state.shipId)
     const dronePartLose = droneLostText ? ` 机群战损 ${droneLostText}（永久损失）。` : ''

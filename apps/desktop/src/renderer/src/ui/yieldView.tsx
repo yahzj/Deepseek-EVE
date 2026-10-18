@@ -14,7 +14,7 @@
  *
  * ⚠ **直接产信用点的活动不适用本模块**（悬赏奖金 / 运输报酬这类"到手就是 ISK"的读数照旧保留 ISK/h）。
  */
-import { marketGoodOf, marketHistory, marketQuote } from '@whale/core'
+import { ceilFinalQuantity, marketGoodOf, marketHistory, marketQuote } from '@whale/core'
 import type { GameState, SimContext } from '@whale/core'
 import { tr } from '../i18n/locale'
 import { fmtDuration } from '../i18n/fmt'
@@ -103,7 +103,7 @@ const num = (v: number): string => v.toLocaleString('zh-CN')
  */
 export function marginPctOf(price: number | null, costIsk: number, unitsPerRun = 1): number | null {
   if (price === null || costIsk <= 0) return null
-  const revenue = price * Math.max(1, unitsPerRun)
+  const revenue = price * Math.max(1, ceilFinalQuantity(unitsPerRun))
   return Math.round(((revenue - costIsk) / costIsk) * 100)
 }
 
@@ -125,7 +125,7 @@ export function GoodsLine({
   /** 一次制造产出件数（缺省 1 ⇒ 不显示「整批」那一段，装备/舰船卡逐字不变） */
   unitsPerRun?: number
 }) {
-  const units = Math.max(1, Math.floor(unitsPerRun))
+  const units = Math.max(1, ceilFinalQuantity(unitsPerRun))
   return (
     <div className="app-belt-econ-val">
       {name} · {tr('ui.Yield.003')} {price !== null ? num(price) : '—'}

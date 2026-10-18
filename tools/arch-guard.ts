@@ -258,6 +258,7 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
   { concept: '渲染层引擎（ctx 的产地，页面取数都从它来）', symbol: 'GameEngine', file: 'apps/desktop/src/renderer/src/game/engine.ts', exported: true },
   { concept: '玩家可见文案唯一表（id → 各语言）', symbol: 'L10N', file: 'packages/data/src/l10n/table.ts', exported: true },
   { concept: '已登记待译条目的中文回退', symbol: 'l10nEntryText', file: 'packages/data/src/l10n/table.ts', exported: true },
+  { concept: '最终整数数量向上取整与浮点整数邻域', symbol: 'ceilFinalQuantity', file: 'packages/core/src/quantity.ts', exported: true },
   { concept: '标签取词单点（槽类/槽位/舰级/地点/机型…）', symbol: 'kindText', file: 'apps/desktop/src/renderer/src/ui/labelsText.ts', exported: true },
   { concept: '舰船子类取词', symbol: 'shipSubClassText', file: 'apps/desktop/src/renderer/src/ui/labelsText.ts', exported: true },
   { concept: '次数链名称取词（任务与成就共用）', symbol: 'firstChainText', file: 'packages/data/src/l10n.ts', exported: true },

@@ -10,6 +10,7 @@
  *   卸货按 id 分流：模块回 moduleBay（装备库）、其余回 warehouse.items；
  * - 船在 data 缺失或弃船瞬间 fleet 条目会短暂为空：所有辅助函数都做容错（按空处理）。
  */
+import { ceilFinalQuantity } from './quantity'
 import type { FleetShipState, GameState } from './state'
 import { shipDamageEffects } from './shipDamage'
 import type { ItemDef, SimContext } from './types'
@@ -110,7 +111,7 @@ export function addItem(state: GameState, itemId: string, units: number): boolea
    */
   const cargo = currentShipState(state)?.cargo
   if (cargo === undefined || Object.isFrozen(cargo)) return addWare(state, itemId, units)
-  cargo[itemId] = (cargo[itemId] ?? 0) + Math.floor(units)
+  cargo[itemId] = (cargo[itemId] ?? 0) + ceilFinalQuantity(units)
   // 黑匣入库 ⇒ 置位「见过黑匣」（**唯一置位点**；见 `blackbox.ts` 的口径）
   if (isBlackboxItem(itemId)) noteBlackboxObtained(state)
   return true
@@ -119,7 +120,7 @@ export function addItem(state: GameState, itemId: string, units: number): boolea
 /** 当前船货仓出库；数量不足返回 false */
 export function removeItem(state: GameState, itemId: string, units: number): boolean {
   const cargo = cargoItemsOf(state)
-  const need = Math.floor(units)
+  const need = ceilFinalQuantity(units)
   if (!Number.isFinite(need) || need <= 0) return false
   const current = cargo[itemId] ?? 0
   if (current < need) return false
@@ -141,7 +142,7 @@ export function countWare(state: GameState, itemId: string): number {
  */
 export function addWare(state: GameState, itemId: string, units: number): boolean {
   if (!Number.isFinite(units) || units <= 0) return false
-  state.warehouse.items[itemId] = (state.warehouse.items[itemId] ?? 0) + Math.floor(units)
+  state.warehouse.items[itemId] = (state.warehouse.items[itemId] ?? 0) + ceilFinalQuantity(units)
   // 黑匣入库 ⇒ 置位「见过黑匣」（**唯一置位点**；见 `blackbox.ts` 的口径）
   if (isBlackboxItem(itemId)) noteBlackboxObtained(state)
   return true
@@ -149,7 +150,7 @@ export function addWare(state: GameState, itemId: string, units: number): boolea
 
 /** 仓库出库；数量不足返回 false */
 export function removeWare(state: GameState, itemId: string, units: number): boolean {
-  const need = Math.floor(units)
+  const need = ceilFinalQuantity(units)
   if (!Number.isFinite(need) || need <= 0) return false
   const current = state.warehouse.items[itemId] ?? 0
   if (current < need) return false
@@ -200,7 +201,7 @@ export function cargoCapacityM3Of(state: GameState, ctx: SimContext, shipId: str
     const haulerLv = Math.min(5, state.skills.trained['hauler-ops'] ?? 0)
     if (haulerLv > 0) capMult *= 1 + 0.05 * haulerLv
   }
-  return Math.round(ship.cargoM3 * (1 + bonus) * capMult * shipDamageEffects(state.fleet[shipId]?.damagePlugs).cargo)
+  return ceilFinalQuantity(ship.cargoM3 * (1 + bonus) * capMult * shipDamageEffects(state.fleet[shipId]?.damagePlugs).cargo)
 }
 
 /** 当前驾驶船货仓已占用体积（m³） */

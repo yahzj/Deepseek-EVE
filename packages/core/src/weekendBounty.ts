@@ -13,6 +13,7 @@
  * ⚠ 派生卡**不进** `completedBounties` 台账（首胜台账只认原卡 id）⇒ 派生的 id 统一加前缀
  * `wk-`，界面/引擎拿到的派生卡天然与原卡区分开。
  */
+import { ceilFinalQuantity } from './quantity'
 import type { AnomalyDef, SimContext } from './types'
 import type { GameState } from './state'
 import {
@@ -281,8 +282,8 @@ export function weekendAssaultDrawOf(
   const base = [...ctx.anomalies.values()].find((a) => !a.hidden && a.galaxyId === galaxyId)
   const rewardIsk =
     base !== undefined
-      ? Math.max(1, Math.round((base.rewardIsk ?? 0) * WEEKEND_BOUNTY_REWARD_MUL))
-      : Math.max(1, Math.round(drawn?.rewardIsk ?? 1))
+      ? Math.max(1, ceilFinalQuantity((base.rewardIsk ?? 0) * WEEKEND_BOUNTY_REWARD_MUL))
+      : Math.max(1, ceilFinalQuantity(drawn?.rewardIsk ?? 1))
   return { cardId, rewardIsk }
 }
 

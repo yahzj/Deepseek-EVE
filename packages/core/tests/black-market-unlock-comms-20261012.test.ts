@@ -126,12 +126,12 @@ describe('黑市开放一次性通讯', () => {
     expect(message.body).toEqual([2, 3, 4].map(n => L10N[`ui.commsBlackMarket.${String(n).padStart(3, '0')}`]!.zh))
   })
 
-  it('新标题正文与提示仅登记待译，不生成英文；市场页仍有黑市入口', () => {
-    const pending = readFileSync(new URL('../../../docs/l10n-pending.md', import.meta.url), 'utf8')
+  it('已完成英文覆盖且保留中文稿；市场页仍有黑市入口', () => {
     for (let n = 1; n <= 5; n++) {
       const id = `ui.commsBlackMarket.${String(n).padStart(3, '0')}`
-      expect(L10N[id]).toMatchObject({ en: '', enDeferred: true })
-      expect(pending).toContain(`| \`${id}\` |`)
+      expect(L10N[id]!.enDeferred).toBeUndefined()
+      expect(L10N[id]!.en).not.toMatch(/[\u3400-\u9fff]/)
+      expect(L10N[id]!.en.length).toBeGreaterThan(0)
     }
     const market = readFileSync(new URL('../../../apps/desktop/src/renderer/src/pages/MarketPage.tsx', import.meta.url), 'utf8')
     expect(market).toContain('blackMarketUnlocked(state)')

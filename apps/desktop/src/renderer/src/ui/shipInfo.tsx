@@ -14,7 +14,7 @@
  * - 无人机生存包等未落地内容仍标注"契约"。
  */
 import type { ElementType, ReactNode } from 'react'
-import { battleSpeedBonusOf } from '@whale/core'
+import { battleSpeedBonusOf, ceilFinalQuantity } from '@whale/core'
 import type { AnomalyDef, BattleBalance, DamageResists, ItemDef, ModuleDef, ModuleSlot, ShipDef, DamageType, UnitSpec } from '@whale/core'
 import { DEFAULT_BALANCE, DC_LOCK_MS, FOE_RANGE_DEBUFF_FLOOR_M, foeDamageComposition, MODULE_SLOTS, MY_WEB_RANGE_M, rackOf, shipSlotsOf, shipCategoryKeyOf, stackingOf, beamPowerFactor, thrusterCycleNote, thrusterCycleOfModule, thrusterCycleSeconds, SHIELD_PULSE_MS, repairStatsFor, fittedRepairModules, fittedEffectParamsOf, WEB_BREAK_DIST_M, equipmentCycleMsOf } from '@whale/core'
 import { HIGH_SEC_PENALTY, JUMP_FUEL_SPEED_MUL, SHIELD_FIELD_COST_PCT, SYNAPTIC_ACCELERANT_MS, SYNAPTIC_ACCELERANT_MUL, wormholeIsShapedItem, wormholeShapeOf, invasionBeaconTypeOf } from '@whale/core'
@@ -1669,7 +1669,7 @@ export function ShipHover({
           ship,
           spec
             ? {
-                hp: { s: Math.round(spec.hp.s), a: Math.round(spec.hp.a), h: Math.round(spec.hp.h) },
+                hp: { s: ceilFinalQuantity(spec.hp.s), a: ceilFinalQuantity(spec.hp.a), h: ceilFinalQuantity(spec.hp.h) },
                 resists: spec.resists,
               }
             : undefined,

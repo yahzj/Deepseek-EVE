@@ -38,7 +38,7 @@ describe('颚钳战斗机确认值与范围守恒', () => {
     expect(item.maxRangeM).toBeGreaterThanOrEqual(DRONE_ROLE_SPECS.combat.rangeM[0])
     expect(item.maxRangeM).toBeLessThanOrEqual(DRONE_ROLE_SPECS.combat.rangeM[1])
     expect(item.description).toBe(l10nEntryText(L10N['item.jawclaw.002']!, locale))
-    expect(item.description).toContain('动能战斗无人机')
+    expect(item.description).toContain(locale === 'zh' ? '动能战斗无人机' : 'kinetic combat drone')
   })
 
   it('静态源仅两行确认字段变化，市场/其他机型/图纸价格与料单不变', () => {
@@ -97,14 +97,14 @@ describe('颚钳战斗机确认值与范围守恒', () => {
     battle.distanceM = 5000
     initFoeDronePools(battle, foes)
     const pool = battle.foeDronePools![carrier.tag]![0]!
-    expect(pool).toMatchObject({ s: 12 * 1.3, a: 30 * 1.3, h: 48 * 1.3, evasion: .25 })
+    expect(pool).toMatchObject({ s: 16, a: 39, h: 63, evasion: .25 })
     const weapon = carrier.weapons.find(w => w.artId === oldDrone.id)!
     expect(foeDroneRangeOf(battle, weapon)).toBe(7500)
     pool.alive = false; pool.s = pool.a = pool.h = 0
     advanceFoeHatcheries(battle, [carrier], 0)
     const loaded = cleanBattle(JSON.parse(JSON.stringify(battle)))!
     advanceFoeHatcheries(loaded, [carrier], carrier.foeHatchery!.cycleMs)
-    expect(loaded.foeDronePools![carrier.tag]![0]).toMatchObject({ s: 12 * 1.3, a: 30 * 1.3, h: 48 * 1.3, alive: true })
+    expect(loaded.foeDronePools![carrier.tag]![0]).toMatchObject({ s: 16, a: 39, h: 63, alive: true })
   })
 
   it('旧50m³装载10架保留，仅可出击5架，超限提示依据和卸回库存守恒', () => {

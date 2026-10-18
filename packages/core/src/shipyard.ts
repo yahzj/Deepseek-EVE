@@ -4,6 +4,7 @@
  * v17（T5-B）：fleet 键 = 实例 uid——同型可多艘（第 1 艘 = 船型 id，
  * 第 2 艘起 = `船型id#N`，固定不回收）；条目带 defId/customName。
  */
+import { ceilFinalQuantity } from './quantity'
 import { bumpFirst } from './firstTasks'
 import { addLog, DEFAULT_START_SHIP_ID, shipLockedReason } from './state'
 import { cannotInterruptReason } from './activityGate'
@@ -478,7 +479,7 @@ function kitHealFor(
   const skill = quickRepairFactor(state, ctx)
   const aMult = caps && caps.baseA > 0 ? caps.capA / caps.baseA : 1
   const hMult = caps && caps.baseH > 0 ? caps.capH / caps.baseH : 1
-  return { a: Math.max(1, Math.round(baseHp * aMult * skill)), h: Math.max(1, Math.round(baseHp * hMult * skill)) }
+  return { a: Math.max(1, ceilFinalQuantity(baseHp * aMult * skill)), h: Math.max(1, ceilFinalQuantity(baseHp * hMult * skill)) }
 }
 
 /** 维修某艘拥有船的费用（ISK；维修工程学 −10%/级 × 空间站协议学 −5%/级乘算；

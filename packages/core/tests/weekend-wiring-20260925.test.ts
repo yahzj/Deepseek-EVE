@@ -475,18 +475,18 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
      * —— 本场景玩家推了 90% ＋ 54h 铺底 ⇒ **已夺回**；旧口径下它挂在战斗结算那一拍，这里恒为 0。
      *
      * 🔴 **2026-09-29 船长令（乙案）**：金额再按"玩家在该处的投入比例"缩水 —— 本处投入 0.9
-     * ⇒ 残骸 `8 × 0.9 = 7.2` 件**四舍五入 = 7 件 = 210 m³**、ISK `200 万 × 0.9 = 180 万`
+     * ⇒ 残骸 `8 × 0.9` 件按2026-10-18确认的最终整数规则向上取整，ISK同口径。
      * （核心没夺回 ⇒ 不发全清；见 `weekendReclaimAwardOf`）。
      */
     expect(r1!.isk, '结算 = 贡献奖 2M（C 档）＋ 夺回 180 万（0.9 比例）＋ 进度收入').toBe(
       2_000_000 + Math.round(WEEKEND_RECLAIM_ISK * 0.9) + 90 * WEEKEND_PROGRESS_ISK_PER_PCT,
     )
-    expect(r1!.wreck, 'C 档 ×4 件 ＋ 夺回 7 件（= 210 m³）= 330 m³').toBe(
-      weekendRareWreckUnits(4 + Math.round(WEEKEND_RECLAIM_WRECK * 0.9)),
+    expect(r1!.wreck, 'C档4件加按贡献取整后的夺回奖励').toBe(
+      weekendRareWreckUnits(4 + Math.ceil(WEEKEND_RECLAIM_WRECK * 0.9)),
     )
     const row1 = onTime.weekendLastResult!.galaxies.find((g) => g.galaxyId === gid)
-    expect(row1?.wreck, '面板那一列读台账 ⇒ 也是缩水后的 210 m³').toBe(
-      weekendRareWreckUnits(Math.round(WEEKEND_RECLAIM_WRECK * 0.9)),
+    expect(row1?.wreck, '面板那一列与实际奖励同口径').toBe(
+      weekendRareWreckUnits(Math.ceil(WEEKEND_RECLAIM_WRECK * 0.9)),
     )
     expect(row1?.isk, '面板那一列 ISK 同样缩水').toBe(Math.round(WEEKEND_RECLAIM_ISK * 0.9))
     /** 离线五天后再上线补结（引擎每拍补发那条路径的形状）：读数必须与结束时**逐值一致** */
@@ -1217,7 +1217,7 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     const r = weekendSettleAndGrant(s, ctx, now)
     expect(r, '结束结算').not.toBeNull()
     expect(s.weekendEvent!.reclaimPaid, '该处已被结算拍记上夺回奖').toEqual([GID])
-    const wantWreck = weekendRareWreckUnits(Math.round(WEEKEND_RECLAIM_WRECK * 0.9))
+    const wantWreck = weekendRareWreckUnits(Math.ceil(WEEKEND_RECLAIM_WRECK * 0.9))
     const wantIsk = Math.round(WEEKEND_RECLAIM_ISK * 0.9)
     expect(r!.wreck, '夺回 ×7 件 = 210 m³ 并入结算').toBeGreaterThanOrEqual(wantWreck)
     expect(heldOf(s, 'wreck-rare-h-hi') - wrecks0, '残骸真到手').toBe(r!.wreck)
@@ -1225,7 +1225,7 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     /** 结算面板那一列：该处要显示"残骸 210 m³ · 180 万"，不再是「—」 */
     const row = s.weekendLastResult!.galaxies.find((g) => g.galaxyId === GID)
     expect(row?.reclaimed, '该处已夺回').toBe(true)
-    expect(row?.wreck, '面板那格 = 缩水后的实发（0.9 比例 ⇒ 7 件）').toBe(wantWreck)
+    expect(row?.wreck, '面板那格 = 按贡献比例向上取整后的实发').toBe(wantWreck)
     expect(row?.isk, '面板那格 ISK = 缩水后的实发').toBe(wantIsk)
   })
 

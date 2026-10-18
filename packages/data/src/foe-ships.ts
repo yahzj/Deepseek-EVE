@@ -920,7 +920,7 @@ export const FOE_D_INVASION_ETERNAL_TOMB: FoeShipDef = {
   rangeMinM: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-eternal-tomb', 'rangeMinM'), rangeMaxM: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-eternal-tomb', 'rangeMaxM'),
   falloff: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-eternal-tomb', 'falloff'), blindDmgMul: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-eternal-tomb', 'blindDmgMul'),
   dmgMix: { plasma: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-eternal-tomb', 'dmgMix_plasma'), kinetic: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-eternal-tomb', 'dmgMix_kinetic') }, energyForm: 'beam', tactic: 'orbit',
-  mounts: [FOE_MOUNT_IDS.dCoatingArmor, FOE_MOUNT_IDS.dShieldCapacitor],
+  mounts: [FOE_MOUNT_IDS.dCoatingArmor, FOE_MOUNT_IDS.dShieldCapacitor, FOE_MOUNT_IDS.dReconstruction],
 }
 
 /** E 族 · 四档「**导弹残段**」——**长臂导弹平台**（2026-09-15 船长：「**E族添加巡洋级导弹残骸段，

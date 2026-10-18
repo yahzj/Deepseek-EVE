@@ -5,11 +5,11 @@
  * 确认后弹出二次警告，告诉玩家当前舰船能回收多少材料并且无法回收蓝图（回收材料占比为制造材料的50%）。
  * 回收后，当前舰船的装备全部拆卸入库，将舰船转化成材料，舰船插件也入库。**」
  *
- * 三条追问的裁定（船长当日确认）：货**一并入物品仓库** · 50% **逐项向下取整** ·
+ * 三条追问的原裁定：货**一并入物品仓库** · 50%逐项取整（2026-10-18改为向上取整）·
  * 船上无人机**一并入装备库** · 入口**只做在插件槽区**。
  *
  * 口径：
- * - **回收材料 = 该舰船蓝图料单 × 50%，每种向下取整**；取整后为 0 的项不发放也不列出；
+ * - **回收材料 = 该舰船蓝图料单 × 50%，每种向上取整**；取整后为 0 的项不发放也不列出；
  * - **蓝图书不返还**（界面二次警告里明写）；
  * - 高/中/低槽的**装备全部卸下进装备库**（`moduleBay`）· **插件进装备库** · **船上无人机进装备库**（`addWare` 的无人机物品）·
  *   **货舱货物进物品仓库**（复用 `unloadCargoOfShipToWarehouse` 单点）；
@@ -19,6 +19,7 @@
  * ⚠ **不是战损那条路**：本模块**不调** `shipyard.loseShip`（那条会留残骸快照、记战损），
  * 回收是"玩家主动把船化成料"⇒ 只摘 `state.fleet` 条目 ＋ 发料 ＋ 记一条 `trade` 日志。
  */
+import { ceilFinalQuantity } from './quantity'
 import type { GameState } from './state'
 import { addLog, shipLockedReason } from './state'
 import type { SimContext } from './types'
@@ -29,14 +30,14 @@ import { plugModulesOf, plugsOf } from './plugs'
 /** **回收材料占比**（船长：「**回收材料占比为制造材料的50%**」） */
 export const SHIP_SCRAP_MATERIAL_SHARE = 0.5
 
-/** 可回收材料预览（界面二次警告用；逐项向下取整后仍 > 0 的才列） */
+/** 可回收材料预览（界面二次警告用；逐项向上取整后仍 > 0 的才列） */
 export interface ShipScrapPreview {
   /** 能不能回收（false ⇒ 看 `block` 的文案） */
   ok: boolean
   /** 不许回收的原因（本地化 id ＋ 中文原文） */
   blockId?: string
   block?: string
-  /** 逐项可回收材料（数量已按 50% 向下取整） */
+  /** 逐项可回收材料（数量已按 50% 向上取整） */
   materials: Array<{ itemId: string; count: number }>
   /** 随船一并入库的件数：装备（高/中/低槽）· 插件 · 无人机架数 · 货舱物品种类 */
   moduleCount: number
@@ -82,7 +83,7 @@ export function shipScrapPreviewOf(state: GameState, ctx: SimContext, shipId: st
   const ship = state.fleet[shipId]
   const defId = ship?.defId ?? ''
   const materials = shipBlueprintMaterialsOf(ctx, defId)
-    .map((m) => ({ itemId: m.itemId, count: Math.floor(m.count * SHIP_SCRAP_MATERIAL_SHARE) }))
+    .map((m) => ({ itemId: m.itemId, count: ceilFinalQuantity(m.count * SHIP_SCRAP_MATERIAL_SHARE) }))
     .filter((m) => m.count > 0)
   const fitted = ship?.fitted
   const moduleCount = fitted === undefined ? 0 : [...fitted.high, ...fitted.mid, ...fitted.low].filter((x) => x !== null).length

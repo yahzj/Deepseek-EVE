@@ -1,3 +1,4 @@
+import { ceilFinalQuantity } from './quantity'
 import type { AnomalyDef, BattleBalance, FoeShipDef, FoeShipSlot, FoeSupportBranch, SimContext } from './types'
 import type { WormholeFamily } from './state'
 import type { UnitSpec } from './combat'
@@ -277,6 +278,8 @@ export function wormholeExpeditionCard(
   for (const slot of card.ships!) slot.hpMul = (slot.hpMul ?? 1) * budgetHp / hpNow
   fitDps(card, ctx.balance.battle, budgetDps)
   equalizeSupport(card, ctx.balance.battle)
+  // 支援等量化也会改变整波越线折扣；最终配置再按同一预算求解。
+  if (wormholeSkippedBranch(card) !== null) fitDps(card, ctx.balance.battle, budgetDps)
   if (disabledSupport) disableSupport(card, family, ctx.balance.battle)
   // 依据 §16.2：近防资格按用途/层预告，不由重新定价的展示标签过线。
   const pd = representative && d >= 4
@@ -330,7 +333,7 @@ export function wormholeExpeditionModifyCard(
   for (const slot of card.ships!) {
     slot.hpMul = (slot.hpMul ?? 1) * mul
     slot.dmgMul = (slot.dmgMul ?? 1) * mul
-    if (slot.firepowerAnchor !== undefined) slot.firepowerAnchor = Math.max(1, Math.round(slot.firepowerAnchor * mul))
+    if (slot.firepowerAnchor !== undefined) slot.firepowerAnchor = Math.max(1, ceilFinalQuantity(slot.firepowerAnchor * mul))
     if (hitDown > 0) {
       slot.hitRate = Math.max(0, (slot.hitRate ?? slot.ship.hitRate) - hitDown)
     }
@@ -340,6 +343,7 @@ export function wormholeExpeditionModifyCard(
     // 判据：沿用整卡越线折扣，但属性倍率不因跨折扣线而多算一遍。
     fitDps(card, bal, source.expeditionFoe.strength.dps * mul)
     equalizeSupport(card, bal)
+    if (wormholeSkippedBranch(card) !== null) fitDps(card, bal, source.expeditionFoe.strength.dps * mul)
   }
   const strength = wormholeExpeditionStrengthOf(card, bal)
   card.threat = foeThreatRatingOf(strength.x, WORMHOLE_FOE_BASE_STRENGTH_MUL, bal)

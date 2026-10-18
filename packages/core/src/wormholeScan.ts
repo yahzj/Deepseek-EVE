@@ -17,6 +17,7 @@
  *   （`reconcileWormholeScanWelcome`，逐 tick 幂等、老档补发、**只送一次**，且**不提示"已预置"**）。
  * - 施工期铁律：本模块不产生玩家可见文案里的"虫洞"以外新术语；入口只在调试模式下出现。
  */
+import { ceilFinalQuantity } from './quantity'
 import { activePromoGifts, promoScanMul, tuningMul } from './tuning'
 import type { GameState, WormholeArchetype, WormholeFamily,  WormholeStockItem } from './state'
 import { matterTechScanCut } from './matterTech'
@@ -373,7 +374,7 @@ export function wormholeStockPush(state: GameState, ctx: SimContext): WormholeSt
  * 返回实际发放处数。
  */
 export function grantWormholeStock(state: GameState, ctx: SimContext, count: number): number {
-  const n = Math.max(0, Math.floor(count))
+  const n = Math.max(0, ceilFinalQuantity(count))
   if (n <= 0) return 0
   for (let i = 0; i < n; i++) stockPushUncapped(state, ctx)
   addLog(

@@ -49,9 +49,9 @@ const PD = ['mod-pd-e', 'mod-pd-e-2', 'mod-pd-e-3'] as const
 const GUN = ['mod-turret-kin-1', 'mod-turret-kin-2', 'mod-turret-kin-3'] as const
 
 describe('近防炮攻击口径（船长 2026-09-12 裁定「丙」：短射程 ⇒ 威力更高）', () => {
-  it('三档单发与名义 DPS 取新值（10 / 16 / 17 单发；6.67 / 11.43 / 13.08 DPS）', () => {
-    const per = [10, 16, 17]
-    const dps = [6.67, 11.43, 13.08]
+  it('三档单发与名义DPS按最终整数向上取整', () => {
+    const per = [10, 16, 18]
+    const dps = [6.67, 11.43, 13.85]
     PD.forEach((id, i) => {
       const w = weaponOf(id)
       expect(w.per, `${id} 单发`).toBe(per[i])
@@ -59,12 +59,16 @@ describe('近防炮攻击口径（船长 2026-09-12 裁定「丙」：短射程 
     })
   })
 
-  it('短射程补偿：对舰名义 DPS 反超同档炮台 1.2~1.3 倍（射程只有其 1/1.3~1/3）', () => {
+  it('短射程补偿：最终取整后的DPS强弱关系与射程不退让', () => {
     for (let i = 0; i < 3; i++) {
       const pd = weaponOf(PD[i]!)
       const gun = weaponOf(GUN[i]!)
       const ratio = pd.dps / gun.dps
-      expect(ratio, `第 ${i + 1} 档 DPS 比`).toBeGreaterThanOrEqual(1.2)
+      expect(gun.per).toBe([8, 23, 31][i])
+      const expected = ([10, 16, 18][i]! / real.modules.get(PD[i]!)!.reloadMs!) /
+        ([8, 23, 31][i]! / real.modules.get(GUN[i]!)!.reloadMs!)
+      expect(ratio).toBeCloseTo(expected, 12)
+      expect(ratio, `第 ${i + 1} 档 DPS 比`).toBeGreaterThanOrEqual(1.18)
       expect(ratio, `第 ${i + 1} 档 DPS 比`).toBeLessThanOrEqual(1.35)
       // 射程仍是短的那一档（远距离打不到 —— 这就是它换来高威力的代价）
       expect(pd.maxRangeM).toBe(2500)
@@ -85,7 +89,7 @@ describe('近防炮攻击口径（船长 2026-09-12 裁定「丙」：短射程 
 
   it('旧口径已作废：单发不再「同档主炮的 ~40%」，MK1 单发已高于同档炮台', () => {
     expect(weaponOf('mod-pd-e').per).toBeGreaterThan(weaponOf('mod-turret-kin-1').per)
-    expect(weaponOf('mod-pd-e-3').per).toBe(17)
+    expect(weaponOf('mod-pd-e-3').per).toBe(18)
     // 仍**不是**主炮的上位替代：MK2/MK3 的单发明显低于同档炮台（靠射速与近距离换 DPS）
     expect(weaponOf('mod-pd-e-2').per).toBeLessThan(weaponOf('mod-turret-kin-2').per)
     expect(weaponOf('mod-pd-e-3').per).toBeLessThan(weaponOf('mod-turret-kin-3').per)

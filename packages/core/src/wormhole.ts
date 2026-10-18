@@ -10,6 +10,7 @@
  *
  * 本模块**只放纯逻辑**（数值换算与校验），不持状态、不碰存档；副本状态机在 C 批另开。
  */
+import { ceilFinalQuantity } from './quantity'
 import { bumpFirst, peakFirst } from './firstTasks'
 import { busyLabel, type BusyLabel } from './busyLabels'
 import type { GameState, BattleState, WormholeArchetype, WormholeFamily } from './state'
@@ -117,9 +118,9 @@ export const WORMHOLE_TURN_MASS_COEF = 0.53
 
 /**
  * **总质量 → 可探索回合数**（越重、时间越短）：
- * `floor(80 × (1 − 总质量 ÷ 16,000 × 0.53)) + 科技加成`（基础沿革 55 → 60（2026-09-14）→ 100（2026-09-15）
+ * `ceil(80 × (1 − 总质量 ÷ 16,000 × 0.53)) + 科技加成`（基础沿革 55 → 60（2026-09-14）→ 100（2026-09-15）
  * → **80**（2026-09-19 船长「谜质科技树」批：「**加入科技后，初始回合数削减到80回合**」））。
- * 设计稿 §4.3 的实测表逐格复现 ⇒ 改基数后整体下调：4×T3 `53 → 42`、空载 `100 → 80`（读数已写回设计稿）。
+ * 2026-10-18：最终回合预算向上取整；质量比与科技倍率仍保留精度。
  *
  * @param techTurnBonus **谜质科技**给的「**最大回合数**」永久加成（`mt-explore-turn` 每级 +10；
  *   船长：「探索回合增加是增加**最大回合数**（不是本趟回合）」）——与**本趟**的装置
@@ -127,7 +128,7 @@ export const WORMHOLE_TURN_MASS_COEF = 0.53
  */
 export function wormholeTurnBudget(totalMass: number, techTurnBonus = 0): number {
   const ratio = Math.max(0, Math.min(1, totalMass / WORMHOLE_TOTAL_MASS_CAP))
-  return Math.floor(WORMHOLE_TURN_BASE * (1 - ratio * WORMHOLE_TURN_MASS_COEF)) + Math.max(0, Math.floor(techTurnBonus))
+  return ceilFinalQuantity(WORMHOLE_TURN_BASE * (1 - ratio * WORMHOLE_TURN_MASS_COEF) + Math.max(0, techTurnBonus))
 }
 
 /** 回合消耗口径（船长 2026-09-12 定）——每节点 1、每多打一波 +1、每捡一堆 +1 */
@@ -1578,7 +1579,7 @@ export function wormholeNodePiles(seed: number, depth: number, index: number, co
     const jitter = 0.8 + (h % 41) / 100 // 0.80 ~ 1.20
     out.push({
       itemId: WORMHOLE_ORE_ITEM_ID,
-      units: Math.max(1, Math.round(WORMHOLE_PILE_UNITS_BASE * mul * jitter)),
+      units: Math.max(1, ceilFinalQuantity(WORMHOLE_PILE_UNITS_BASE * mul * jitter)),
     })
   }
   return out

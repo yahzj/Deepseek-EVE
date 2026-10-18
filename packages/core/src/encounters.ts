@@ -40,6 +40,7 @@
  *   伏击敌群残骸可打捞回收；
  * - 首次进入低安弹提示并写日志（lowSecNotified 一次性标记），规则入手册「航行须知」。
  */
+import { ceilFinalQuantity } from './quantity'
 import { addLog, shipLockedInWormhole } from './state'
 import type { GameState } from './state'
 import type { CommandResult } from './engine'
@@ -264,7 +265,7 @@ function lootOf(state: GameState, ctx: SimContext, seizeF: number): number {
   if (weekendInvolvedAt(state, ctx)) return 0
   const foe = foeOf(state, ctx)
   const base = foe ? Math.max(0, foe.rewardIsk) : Math.max(1, Math.round(state.encounter.threat))
-  return Math.max(1, Math.round(base * ctx.balance.encounter.lootFracOfBounty * seizeF))
+  return Math.max(1, ceilFinalQuantity(base * ctx.balance.encounter.lootFracOfBounty * seizeF))
 }
 
 /** 这一场遭遇是不是"入侵相关"（占领区的伏击或旗舰挑战）——赏金与残骸归属的分流判据 */
@@ -502,7 +503,7 @@ function resolveTextual(state: GameState, ctx: SimContext, viaFlee: boolean): vo
     let takenUnits = 0
     if (fleetShip) {
       const total = Object.values(fleetShip.cargo).reduce((a, b) => a + b, 0)
-      const take = Math.floor(total * bal.lootTakenMaxPct * survF * nextRandom(state.rng))
+      const take = Math.min(total, ceilFinalQuantity(total * bal.lootTakenMaxPct * survF * nextRandom(state.rng)))
       let rest = take
       for (const key of Object.keys(fleetShip.cargo)) {
         if (rest <= 0) break
@@ -713,7 +714,7 @@ function settleFight(state: GameState, ctx: SimContext): void {
     let takenUnits = 0
     if (fleetShip && nextRandom(state.rng) < 0.5) {
       const total = Object.values(fleetShip.cargo).reduce((a, b) => a + b, 0)
-      const take = Math.floor(
+      const take = ceilFinalQuantity(
         total * bal.lootTakenMaxPct * (0.5 + nextRandom(state.rng) * 0.5) * (1 - 0.12 * Math.min(5, state.skills.trained['lowsec-survival'] ?? 0)),
       )
       let rest = take

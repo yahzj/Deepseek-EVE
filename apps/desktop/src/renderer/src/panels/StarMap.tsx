@@ -41,6 +41,7 @@ import {
   bestAiCoreOf,
   bountyCooldownRemainingMs,
   bountyRewardFactor,
+  ceilFinalQuantity,
   expeditionStatus,
   factionGalaxyId,
   fleetDefOf,
@@ -2291,7 +2292,7 @@ export function GalaxyActions({
               <span className="app-ga-main">
                 <span className="app-ico"><Glyph name="nav-bounty" size={13} color={NAV_TONES["nav-bounty"]} /></span>{a.name}
                 <span className="app-dim app-ga-desc">
-                  {tr("ui.Expedition.089")} {a.threat}{tr('ui.Expedition.369')}{Math.round(a.rewardIsk * bountyRewardFactor(state)).toLocaleString('zh-CN')} {tr("ui.FirstTasks.003")}
+                  {tr("ui.Expedition.089")} {a.threat}{tr('ui.Expedition.369')}{ceilFinalQuantity(a.rewardIsk * bountyRewardFactor(state)).toLocaleString('zh-CN')} {tr("ui.FirstTasks.003")}
                   {state.completedBounties.includes(a.id) ? tr("ui.Expedition.354") : ''}
                   {/* 行内状态字（原先这些卡被过滤掉了，现在补上状态让玩家看得懂为什么按钮灰着） */}
                   {cdRemain > 0 ? ` · ${tr("ui.Expedition.037")} ${Math.max(1, Math.ceil(cdRemain / 1000))}${tr('ui.Expedition.418')}` : ''}

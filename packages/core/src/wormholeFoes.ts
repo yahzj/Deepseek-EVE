@@ -8,6 +8,7 @@
  * 口径：设计稿 `docs/design/wormhole-extraction-endgame-20260912.md`
  * §3（节点/层末 BOSS 表）· §4（威胁与收益曲线）· §九 Q11（收益涨得比难度快）。
  */
+import { ceilFinalQuantity } from './quantity'
 import type { AnomalyDef, DamageType, DefProfile, FoeShipSlot, FoeSupportBranch, FoeTargetingMode, SimContext } from './types'
 import type { WormholeFamily } from './state'
 import { resolveFoeMounts } from './foeMounts'
@@ -743,7 +744,7 @@ export function wormholeAnomalyOf(
             hpMul: (slot.hpMul ?? 1) * scaleHp * per,
             dmgMul: (slot.dmgMul ?? 1) * scaleDmg * per,
             ...(slot.firepowerAnchor !== undefined
-              ? { firepowerAnchor: Math.max(1, Math.round(slot.firepowerAnchor * scaleDmg * per)) }
+              ? { firepowerAnchor: Math.max(1, ceilFinalQuantity(slot.firepowerAnchor * scaleDmg * per)) }
               : {}),
           })),
         )

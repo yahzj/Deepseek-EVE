@@ -8,6 +8,7 @@
  *
  * 口径：奖励只在任务**首次完成**那一次发放（去重键 = `importantTasks[id].done`，由调用方保证）。
  */
+import { ceilFinalQuantity } from './quantity'
 import type { GameState } from './state'
 import type { SimContext } from './types'
 import type { FirstReward, FirstTaskDef } from './firstTasks'
@@ -54,33 +55,39 @@ export function grantFirstPocket(
   const granted: string[] = []
 
   for (const b of r.blueprints ?? []) {
-    state.blueprintStock[b.blueprintId] = (state.blueprintStock[b.blueprintId] ?? 0) + b.units
-    granted.push(`${nameOf('blueprint', b.blueprintId)} ×${b.units}`)
+    const units = ceilFinalQuantity(b.units)
+    state.blueprintStock[b.blueprintId] = (state.blueprintStock[b.blueprintId] ?? 0) + units
+    granted.push(`${nameOf('blueprint', b.blueprintId)} ×${units}`)
   }
   for (const w of r.ware ?? []) {
-    addWare(state, w.itemId, w.units)
-    granted.push(`${nameOf('ware', w.itemId)} ×${w.units}`)
+    const units = ceilFinalQuantity(w.units)
+    addWare(state, w.itemId, units)
+    granted.push(`${nameOf('ware', w.itemId)} ×${units}`)
   }
   for (const m of r.modules ?? []) {
-    state.moduleBay[m.moduleId] = (state.moduleBay[m.moduleId] ?? 0) + m.units
-    granted.push(`${nameOf('module', m.moduleId)} ×${m.units}`)
+    const units = ceilFinalQuantity(m.units)
+    state.moduleBay[m.moduleId] = (state.moduleBay[m.moduleId] ?? 0) + units
+    granted.push(`${nameOf('module', m.moduleId)} ×${units}`)
   }
   for (const s of r.ships ?? []) {
-    for (let i = 0; i < s.units; i++) addShipToFleet(state, s.defId)
-    granted.push(`${nameOf('ship', s.defId)} ×${s.units}`)
+    const units = ceilFinalQuantity(s.units)
+    for (let i = 0; i < units; i++) addShipToFleet(state, s.defId)
+    granted.push(`${nameOf('ship', s.defId)} ×${units}`)
   }
   for (const c of r.aiCores ?? []) {
     // 与 `ai.gainAiCore` 同口径（**核心不进仓库**，直接进账本）；此处就地写以避开反向依赖
-    state.aiCores[c.type] = (state.aiCores[c.type] ?? 0) + c.units
-    granted.push(`基础 AI 核心 ×${c.units}`)
+    const units = ceilFinalQuantity(c.units)
+    state.aiCores[c.type] = (state.aiCores[c.type] ?? 0) + units
+    granted.push(`基础 AI 核心 ×${units}`)
   }
   if (r.wormholeStock !== undefined && r.wormholeStock > 0) {
     const n = grantWormholeStock(state, ctx, r.wormholeStock)
     granted.push(`未探索虫洞 ×${n}`)
   }
   if (r.isk !== undefined && r.isk > 0) {
-    state.wallet.isk += r.isk
-    granted.push(`${r.isk.toLocaleString('zh-CN')} 信用点`)
+    const isk = ceilFinalQuantity(r.isk)
+    state.wallet.isk += isk
+    granted.push(`${isk.toLocaleString('zh-CN')} 信用点`)
   }
 
   if (granted.length > 0) {

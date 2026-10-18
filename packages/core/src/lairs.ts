@@ -17,6 +17,7 @@
  * 数值（威胁系数、波次占比、僚机增量、酬金比例、稀有残骸件数）都是**可调常量**，
  * 集中在文件顶部，等船长定数后改这里一处即可。
  */
+import { ceilFinalQuantity } from './quantity'
 import type { AnomalyDef, DamageType, FoeFamily } from './types'
 import type { GameState } from './state'
 /**
@@ -177,7 +178,7 @@ export function factionAnomalyOf(anomaly: AnomalyDef): AnomalyDef {
 
 /** 派系活跃目标的基础奖金 = 主题悬赏奖金 ×1.1（胜利结算沿用既有浮动与技能系数） */
 export function factionBaseRewardIsk(anomaly: AnomalyDef): number {
-  return Math.round(anomaly.rewardIsk * FACTION_BOUNTY_REWARD_MUL)
+  return ceilFinalQuantity(anomaly.rewardIsk * FACTION_BOUNTY_REWARD_MUL)
 }
 
 /* ═══════════ 名称（船长 2026-09-10 词表定稿） ═══════════ */
@@ -316,12 +317,12 @@ export function lairTiersOf(anomaly: AnomalyDef): LairTier[] {
 
 /** 窝点基础奖金 = 主题悬赏奖金 ×**赏金倍率**（2/4/8；胜利结算沿用既有浮动与技能系数） */
 export function lairBaseRewardIsk(anomaly: AnomalyDef, tier: LairTier): number {
-  return Math.round(anomaly.rewardIsk * LAIR_REWARD_MUL[tier])
+  return ceilFinalQuantity(anomaly.rewardIsk * LAIR_REWARD_MUL[tier])
 }
 
 /** 赏金任务酬金（刷出时锁定）= 窝点基础奖金 × 档位酬金比例 */
 export function lairTaskRewardIsk(anomaly: AnomalyDef, tier: LairTier): number {
-  return Math.round(lairBaseRewardIsk(anomaly, tier) * LAIR_TASK_REWARD_MUL[tier])
+  return ceilFinalQuantity(lairBaseRewardIsk(anomaly, tier) * LAIR_TASK_REWARD_MUL[tier])
 }
 
 /**

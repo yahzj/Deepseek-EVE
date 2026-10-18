@@ -248,8 +248,8 @@ describe('实际承伤的真引擎路径', () => {
       return b.meVolleyDmg!.player!
     })
     expect(rows[0]).toBeCloseTo(993.5, 6)
-    expect(rows[1]).toBeCloseTo(1678.9, 6)
-    expect(rows[2]).toBeCloseTo(3688.6, 6)
+    expect(rows[1]).toBeCloseTo(1679, 6)
+    expect(rows[2]).toBeCloseTo(3688.7, 6)
     expect(rows[3]).toBeCloseTo(8000, 6)
   })
 })

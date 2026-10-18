@@ -2226,3 +2226,4 @@ export { createFittingRange, advanceFittingRange, fittingRangeStats, RANGE_CARD_
 export type { FittingRange, RangeLayer } from './fittingRange'
 
 
+export { ceilFinalQuantity } from './quantity'

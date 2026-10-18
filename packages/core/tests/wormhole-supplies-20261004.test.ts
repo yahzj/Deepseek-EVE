@@ -441,7 +441,7 @@ describe('虫洞有限物资 · 弹药与结算', () => {
 })
 
 describe('虫洞有限物资 · 维修与兼容', () => {
-  it('原机与备用机均损毁且回收为0，新趟不再留出不存在的机体', () => {
+  it('原机与备用机均损毁后，最终回收向上取整且只归还实际件数', () => {
     const { state, fleet } = setup(1)
     state.fleet[fleet[0]!]!.fitted.high = ['mod-drone-deck-3']
     state.fleet[fleet[0]!]!.droneLoad = { 'drone-scout': 1 }
@@ -456,8 +456,8 @@ describe('虫洞有限物资 · 维修与兼容', () => {
     expect(battle.droneRevive!.player!.v['drone-scout']).toBe(1)
     expect(battle.dronePools![key]!.alive).toBe(false)
     finish(state, true)
-    expect(state.fleet[fleet[0]!]!.droneLoad?.['drone-scout'] ?? 0).toBe(0)
-    expect(state.droneLossReport).toMatchObject({ total: 2, recovered: 0, gone: 2, revived: 1, survivors: 0 })
+    expect(state.fleet[fleet[0]!]!.droneLoad?.['drone-scout'] ?? 0).toBe(1)
+    expect(state.droneLossReport).toMatchObject({ total: 2, recovered: 1, gone: 1, revived: 1, survivors: 1 })
     expect(state.warehouse.items['drone-scout']).toBe(99)
   })
 
@@ -479,7 +479,7 @@ describe('虫洞有限物资 · 维修与兼容', () => {
     }
     if (lastLoss) loseDrone(state, battle, key, reserve * 10_000)
     const killed = reserve + Number(lastLoss)
-    const back = Math.round(killed * droneRecoveryRate(state))
+    const back = Math.ceil(killed * droneRecoveryRate(state))
     const alive = Number(!lastLoss)
     finish(state, true)
     expect(droneTotal(state, 'drone-scout')).toBe(before - killed + back)
@@ -596,10 +596,10 @@ describe('虫洞有限物资 · 维修与兼容', () => {
     for (const key of Object.keys(battle.dronePools!)) loseDrone(state, battle, key, 0)
     const before = droneTotal(state, 'drone-scout')
     finish(state, true)
-    expect(droneTotal(state, 'drone-scout')).toBe(before - 4)
-    expect(fleet.map((uid) => state.fleet[uid]!.droneLoad?.['drone-scout'] ?? 0)).toEqual([1, 0, 0, 0])
-    expect(run.supplies!.items['drone-scout']).toBeUndefined()
-    expect(run.supplies!.deployed['drone-scout']).toBe(1)
+    expect(droneTotal(state, 'drone-scout')).toBe(before)
+    expect(fleet.map((uid) => state.fleet[uid]!.droneLoad?.['drone-scout'] ?? 0)).toEqual([1, 1, 1, 1])
+    expect(run.supplies!.items['drone-scout']).toBe(1)
+    expect(run.supplies!.deployed['drone-scout']).toBeUndefined() // 回收机归舰，未动用备用库存。
     const prior = structuredClone(run.supplies)
     for (const entry of battle.myFleet!) settleDroneLosses(state, ctx, entry.shipId, battle, 0, entry.tag)
     expect(run.supplies).toEqual(prior)

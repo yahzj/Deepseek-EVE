@@ -5,6 +5,7 @@
  * 届时它从本文件借回这些件）。全部**纯读数/纯计算**（只依赖 state 类型 / types / combatMath /
  * equipment），无战斗引擎内部件。`combat.ts` 原样再导出（先例：fitted.ts），既有引用零改动。
  */
+import { ceilFinalQuantity } from './quantity'
 import type { GameState } from './state'
 import type { DamageResists, DamageType, ModuleDef, SimContext } from './types'
 import { clamp, RESIST_FLOOR } from './combatMath'
@@ -254,9 +255,9 @@ export function createPlayerSpec(
     h: (ship.hullHp ?? 0) + plugHpAdd.h,
   }
   const hp: Hp3 = {
-    s: baseHp.s * Math.max(1, shieldHpMult) * (1 + 0.04 * shOpLv) * (1 + 0.03 * battleshipOpsLv) * damage.shield,
-    a: baseHp.a * Math.max(1, armorHpMult) * hullSkillMult * damage.armor,
-    h: baseHp.h * Math.max(1, hullHpMult) * hullSkillMult * damage.hull,
+    s: ceilFinalQuantity(baseHp.s * Math.max(1, shieldHpMult) * (1 + 0.04 * shOpLv) * (1 + 0.03 * battleshipOpsLv) * damage.shield),
+    a: ceilFinalQuantity(baseHp.a * Math.max(1, armorHpMult) * hullSkillMult * damage.armor),
+    h: ceilFinalQuantity(baseHp.h * Math.max(1, hullHpMult) * hullSkillMult * damage.hull),
   }
   const shieldRes = mergeResist(ship.shieldResist, undefined)
   for (const m of shieldDefs) applyAdds(shieldRes, m.shieldResistAdd)
@@ -457,7 +458,7 @@ export function createPlayerSpec(
       kind: 'fixed',
       src: 'base',
       fixedType: 'kinetic',
-      shotDmg: Math.round(8 * dmgScale),
+      shotDmg: ceilFinalQuantity(8 * dmgScale),
       maxRangeM: 2500,
       minRangeM: 0,
       hitRate: 0.5,
@@ -499,7 +500,7 @@ export function createPlayerSpec(
     // 船体武器族加成（2026-09-09 船长拍板：四族巡洋分型 EVE 式族加成）——按本武器固定弹型乘入，
     // 装别族武器 = 无加成（仍可用）；无人机与基础舰炮不在此链上，天然豁免
     const shipFam = ship.weaponFamilyBonus?.[type] ?? 0
-    const perShot = Math.round(
+    const perShot = ceilFinalQuantity(
       (ammoDef?.dmg ?? 0) * mult * dmgScale * famMult * (1 + dmgBonus[type]) * (1 + shipFam) * (1 + dmgFlat),
     )
     // 第二批技能（2026-09-05）：火控阵列学 命中 +3%/级（仅非必中 gun）；武器装填技术 −4%/级（≥60%，gun/beam 共用装填）
@@ -667,7 +668,7 @@ export function createPlayerSpec(
       // **无人机打击学（drone-strike）+4%/级**（2026-09-10 船长：高阶伤害技能）；三者乘算；
       // 2026-09-10 船长：再加船体无人机专属加成（ship.droneDmgBonus，王鲭 +12%/梭鱼 +8%）
       // 2026-09-10 船长：单发 ×2 与装填 ×2 同步（每轮更重、节奏更舒缓，净 DPS 不变）
-      const shot = Math.round(
+      const shot = ceilFinalQuantity(
         (def.dmg ?? 0) *
           2 *
           (1 + droneDmgBonus) *

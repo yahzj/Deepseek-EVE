@@ -879,6 +879,8 @@ describe('虫洞 · 遗迹收尾战与专属掉落（概率口径的边界）', 
         run.depth = 2
         const cell = standOn(state, 'ruins')
         wormholeEnsureSalvagePiles(state, cell)
+        // 留足堆数，隔离效率额外回收一堆；本例只验证首次打捞的守卫时机。
+        cell.piles!.push({ ...cell.piles![0]! }, { ...cell.piles![0]! })
         const r = wormholeSalvageAt(state, ctx)
         expect(r.finished).toBe(false) // 首捞（1 台 ⇒ 还有堆）
         if (r.effect?.kind === 'ruinsBattle') {

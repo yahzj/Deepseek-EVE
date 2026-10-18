@@ -18,6 +18,7 @@
  *   对齐（超长尾件退库、短位补空）+ 旧 -h 弹药并入（migrateDeprecatedAmmo）；
  * - 加成查询 = 按家族求和（复数矿枪/货舱扩展线性叠加；AI/采矿/货舱同源单点）。
  */
+import { ceilFinalQuantity } from './quantity'
 import { addLog, shipLockedReason } from './state'
 import { shipOperationBlockReason } from './shipActionPolicy'
 import type { CommandResult, CoreBlockReason } from './engine'
@@ -41,7 +42,7 @@ export { MODULE_SLOTS } from './labels'
 export function effectiveCpu(state: GameState, ctx: SimContext, def: { cpu?: number } | undefined): number {
   const bal = ctx.balance.battle
   const lv = Math.min(5, state.skills.trained[bal.cpuSkillId] ?? 0)
-  return Math.round((def?.cpu ?? 0) * (1 + bal.cpuPerLevel * lv))
+  return ceilFinalQuantity((def?.cpu ?? 0) * (1 + bal.cpuPerLevel * lv))
 }
 
 /**
@@ -155,8 +156,8 @@ export function ownedModuleCount(state: GameState, moduleId: string): number {
 
 /** 装备入库（制造完成/卸下） */
 export function addModule(state: GameState, moduleId: string, count = 1): void {
-  if (count <= 0) return
-  state.moduleBay[moduleId] = countModule(state, moduleId) + count
+  if (!Number.isFinite(count) || count <= 0) return
+  state.moduleBay[moduleId] = countModule(state, moduleId) + ceilFinalQuantity(count)
 }
 
 /**
@@ -174,8 +175,9 @@ export function ownedItemCount(state: GameState, itemId: string): number {
 
 /** 装备出库（装配/取出），数量不足返回 false */
 export function removeModule(state: GameState, moduleId: string, count = 1): boolean {
+  count = ceilFinalQuantity(count)
   const current = countModule(state, moduleId)
-  if (count <= 0 || current < count) return false
+  if (!Number.isFinite(count) || count <= 0 || current < count) return false
   const rest = current - count
   if (rest === 0) delete state.moduleBay[moduleId]
   else state.moduleBay[moduleId] = rest

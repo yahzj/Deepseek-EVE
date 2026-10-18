@@ -91,7 +91,8 @@ describe('守墓入侵隔离调参', () => {
       const f = createFoeSpecs(card, bal)[0]!
       expect(f.speedMps).toBe(Math.round(bal.hullClassBaseSpeedMps[ship.hullClassTier] * ship.speedRatio))
       expect(f.resists.shield).toEqual(ship.shieldResist)
-      expect(f.foeReviveEscort).toBeUndefined()
+      if (ship.id === 'foe-d-invasion-eternal-tomb') expect(f.foeReviveEscort).toEqual({ everyMs: 60000, all: true })
+      else expect(f.foeReviveEscort).toBeUndefined()
     }
     const ship = { ...FOE_SHIPS.find(s => s.id === 'foe-d-longship')!, shieldResist: { kinetic: .1, plasma: .2 } }
     const card: AnomalyDef = { ...ctx.anomalies.get('gravekeeper-drift')!, ships: [{ ship, shieldResist: { kinetic: .3 } }], waves: undefined }
@@ -313,7 +314,7 @@ describe('重构挂载说明与编辑器', () => {
     expect(preview.references.some(r => r.id === 'gravekeeper-flagship')).toBe(true)
   })
 
-  it('战斗/手册共用的说明按参数展示全体复活，英文回退中文，不冒称墨潮两艘规则', () => {
+  it('战斗/手册共用的说明按参数展示全体复活，英文覆盖不误写墨潮两艘规则', () => {
     const root = new URL('../../../', import.meta.url)
     const source = readFileSync(new URL('apps/desktop/src/renderer/src/ui/foeBrief.ts', root), 'utf8')
     const scope = { exports: {} as { mountEffectText: (id: string) => string; briefShipsOf: (card: AnomalyDef) => Array<{ id: string; mounts: Array<{ name: string; effect: string }> }> },
@@ -323,15 +324,14 @@ describe('重构挂载说明与编辑器', () => {
       } }
     runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, scope)
     const text = scope.exports.mountEffectText(FOE_MOUNT_IDS.dReconstruction)
-    expect(text).toContain('定期重构本波已阵亡的友方舰船。')
-    expect(text).toContain('60秒')
-    expect(text).toContain('全部已阵亡友舰')
-    expect(text).not.toContain('干扰舰')
+    expect(text).toBe(L10N['ui.gravekeeperRetune.001']!.en.replace('{p1}', '60'))
+    expect(text).toContain('all destroyed allies at full health')
+    expect(text).toContain('Every 60 seconds')
+    expect(text).not.toContain('jammer')
     const card = ctx.anomalies.get('gravekeeper-flagship')!, snapshot = structuredClone(card)
     const brief = scope.exports.briefShipsOf(card).find(f => f.id === 'foe-d-invasion-eternal-tomb')!
-    expect(brief.mounts.some(m => m.name === '陵寝重构协议' && m.effect === text)).toBe(true)
+    expect(brief.mounts.some(m => m.name === 'Mausoleum Reconstruction Protocol' && m.effect === text)).toBe(true)
     expect(card).toEqual(snapshot)
-    expect(L10N['ui.gravekeeperRetune.001']).toMatchObject({ en: '', enDeferred: true })
-    expect(readFileSync(new URL('docs/l10n-pending.md', root), 'utf8')).toContain('ui.gravekeeperRetune.001')
+    expect(L10N['ui.gravekeeperRetune.001']!.enDeferred).toBeUndefined()
   })
 })

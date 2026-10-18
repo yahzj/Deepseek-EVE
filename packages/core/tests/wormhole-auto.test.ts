@@ -538,10 +538,10 @@ describe('虫洞 · 自动探索吃谜质科技（船长 2026-09-19 甲案）', 
     expect(ships).toHaveLength(WORMHOLE_AUTO_MAX_SHIPS)
     fullTech(state)
     const f = wormholeAutoTechFactors(state, ctx, ships)
-    // 4×长尾鲨 = 14,000 折合质量 ⇒ 基础回合 42（不含科技那一份）；货仓 4×2,600 m³ ÷ 500 = 20 格
-    expect(f.baseTurns).toBe(42)
+    // 基础回合按编队质量向上取整，货仓按最多能容纳的完整格数计算。
+    expect(f.baseTurns).toBe(43)
     expect(f.baseHold).toBe(20)
-    expect(f.turnMul).toBeCloseTo(1 + 100 / 42, 6) // 时序锚定器 10 级 × +10
+    expect(f.turnMul).toBeCloseTo(1 + 100 / 43, 6) // 时序锚定器10级，每级+10；基础预算向上取整。
     expect(f.holdMul).toBeCloseTo(1 + 12 / 20, 6) // 折叠货舱 3 级 × +4 格
     expect(f.total).toBeCloseTo(f.turnMul * f.holdMul, 6)
     expect(f.salvageEff).toBeCloseTo(0.6, 6) // 引力吊臂 3 级 × 20%

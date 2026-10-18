@@ -24,6 +24,7 @@
  *   开关打开后新开的线自动继承（判定实时读卡片配置）；标记 = state.manufacturingLoops[blueprintId]。
  *   逐线旧字段（autoRepeat/repeatGoal/produced）停用，仅读老档时归并（见 save.ts）。
  */
+import { ceilFinalQuantity } from './quantity'
 import { addLog, haltActivityForSwitch, refundMaterialsToWarehouse, refundOneTimeBookOf } from './state'
 import { applyActivityGate, logAutoHalt } from './activityGate'
 import type { CommandResult } from './engine'
@@ -68,7 +69,7 @@ export function findBuildable(
   const bp = ctx.blueprints.get(blueprintId)
   if (bp) {
     if (bp.itemId !== undefined) {
-      return { kind: 'item', spec: bp, itemId: bp.itemId, outputUnits: bp.outputUnits ?? 1 }
+      return { kind: 'item', spec: bp, itemId: bp.itemId, outputUnits: ceilFinalQuantity(bp.outputUnits ?? 1) }
     }
     return { kind: 'module', spec: bp, moduleId: bp.moduleId }
   }
@@ -259,7 +260,7 @@ export function materialFactor(state: GameState): number {
 /** 实际材料需求（探测机专属折扣与通用折扣相乘后统一取整；预览/扣料/退款同源） */
 export function matNeedCount(state: GameState, count: number, blueprintId?: string): number {
   const probeFactor = blueprintId === DEEP_SPACE_PROBE_BLUEPRINT_ID ? probeMaterialFactor(state) : 1
-  return Math.max(1, Math.floor(count * materialFactor(state) * probeFactor))
+  return Math.max(1, ceilFinalQuantity(count * materialFactor(state) * probeFactor))
 }
 
 /**

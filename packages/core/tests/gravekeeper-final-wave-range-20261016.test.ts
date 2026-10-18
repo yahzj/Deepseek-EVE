@@ -43,8 +43,8 @@ describe('守墓旗舰末波与新舰100米近界', () => {
     }
     expect(card.threat).toBe(191)
     expect(foeThreatOfAnomaly(card, 10, bal)).toBe(191)
-    expect(foeStrengthOf(card, bal).hp).toBeCloseTo(134283.819, 6)
-    expect(foeStrengthOf(card, bal).dps).toBeCloseTo(542.2878787878788, 8)
+    expect(foeStrengthOf(card, bal).hp).toBe(134297)
+    expect(foeStrengthOf(card, bal).dps).toBeCloseTo(543.0909090909091, 8)
   })
 
   it.each(cardIds)('%s新舰所有波次均为100米，旧长舰/静滞/王座近界不改', id => {
@@ -87,7 +87,10 @@ describe('守墓旗舰末波与新舰100米近界', () => {
     }
     const full = damage(100)
     expect(full).toBeGreaterThan(0)
-    expect(damage(99)).toBeCloseTo(Math.round(full * .3), 6)
+    const weapon = activeFoeSpecsOf(card, bal, 0)[0]!.weapons[0]!
+    const group = weapon.shotDmg!
+    const penalizedGroup = Math.ceil(group * .3)
+    expect(damage(99)).toBeCloseTo(penalizedGroup, 8)
   })
 
   it('真实旗舰入口读191和新末波，共享池仍绝对30万，残池分层不变', () => {

@@ -14,6 +14,7 @@
  * - 工作位守卫：与采矿/远征/扫描/待命/返航/主控精炼互斥（入口拒绝）；
  * - 出发要求：船上装有 ≥1 台打捞器（slot='salvager'）。
  */
+import { ceilFinalQuantity } from './quantity'
 import { tuningMul } from './tuning'
 import { addLog, HOME_GALAXY_ID, salvageHalt } from './state'
 import { applyActivityGate, pilotUnavailableReason } from './activityGate'
@@ -233,13 +234,13 @@ function autoTargetPickOf(
  * **向下取整**（`inventory.addItem` 的 `Math.floor`）⇒ 0.6 m³ 的那一轮：**池子扣光了、货舱一件没多**
  * （探针读数：`池 0.60 → 0.00 · 到手 0 → 0`）⇒ 玩家体感就是「打捞照跑、数字一动不动、什么都捞不上来」。
  *
- * 口径（船长选「甲」）：**这一轮真出了量（`volumeM3 > 0`）⇒ 至少入舱 1 件**，否则按 `floor` 取整。
+ * 原口径（船长选「甲」）：真出了量至少入舱1件；2026-10-18按最终整数数量统一向上取整。
  * **池子仍按实际出的 m³ 扣**（"标称多少最多就捞多少"一字未改）——代价只有"不足 1 m³ 的那一轮多给
  * 不到 1 件"，换来**永远不再出现"捞了等于没捞"**。
  */
 export function wreckUnitsOf(volumeM3: number): number {
   if (!(volumeM3 > 0)) return 0
-  return Math.max(1, Math.floor(volumeM3))
+  return Math.max(1, ceilFinalQuantity(volumeM3))
 }
 
 /**

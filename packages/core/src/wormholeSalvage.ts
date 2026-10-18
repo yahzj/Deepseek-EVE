@@ -20,6 +20,7 @@
  * salvaging, equipment }`；**`wormhole.ts` 不许 import 本文件**（它被 `state.ts` 顶层引用，
  * 而本文件经 `salvaging` 回头吃 `state` ⇒ 会成环，与 D/F 批两次踩过的坑同款）。
  */
+import { ceilFinalQuantity } from './quantity'
 import type { CommandResult } from './engine'
 import { rareDropRateMulOf, tuningMul } from './tuning'
 import type { GameState, RngState } from './state'
@@ -763,7 +764,7 @@ export function wormholeEnsureSalvagePiles(state: GameState, cell: WormholeGridC
       if (rng() < Math.min(1, WORMHOLE_RARE_JUDGE_CHANCE * rareDropRateMulOf(state))) piles.push({ itemId: rare, units: RARE_WRECK_VOLUME_M3 * tuningMul(state, 'rareWreckVolume') })
     }
     for (let i = 0; i < commons; i++) {
-      piles.push({ itemId: common, units: Math.max(1, Math.round(WORMHOLE_WRECK_PILE_M3_BASE * mul * (0.8 + rng() * 0.4))) })
+      piles.push({ itemId: common, units: Math.max(1, ceilFinalQuantity(WORMHOLE_WRECK_PILE_M3_BASE * mul * (0.8 + rng() * 0.4))) })
     }
   } else {
     const span = WORMHOLE_RUINS_RARES_MAX - WORMHOLE_RUINS_RARES_MIN + 1
@@ -2334,7 +2335,7 @@ export function wormholeDeliverRelics(
       state.blueprintStock[id] = (state.blueprintStock[id] ?? 0) + 1
       done.push(ctx.blueprints.get(id)?.name ?? ctx.shipBlueprints.get(id)?.name ?? id)
     } else if (ctx.items.has(id)) {
-      const units = Math.max(1, Math.floor(unitsOf?.[id] ?? wormholePoolGrantUnitsOf(id)))
+      const units = Math.max(1, ceilFinalQuantity(unitsOf?.[id] ?? wormholePoolGrantUnitsOf(id)))
       addWare(state, id, units)
       done.push(`${ctx.items.get(id)?.name ?? id}×${units}`)
     }
@@ -2414,7 +2415,7 @@ export function wormholeGrantShipSpoils(
     )
   }
   for (let i = 0; i < commons; i++) {
-    spoils.push({ itemId: wreckItemIdOf(group.key), units: Math.max(1, Math.round(WORMHOLE_WRECK_PILE_M3_BASE * mul * (0.8 + rng() * 0.4))) })
+    spoils.push({ itemId: wreckItemIdOf(group.key), units: Math.max(1, ceilFinalQuantity(WORMHOLE_WRECK_PILE_M3_BASE * mul * (0.8 + rng() * 0.4))) })
   }
   for (let i = 0; i < row.rares; i++) spoils.push({ itemId: rareWreckItemIdOf(group.key), units: RARE_WRECK_VOLUME_M3 })
   let bagged = 0
@@ -2490,7 +2491,7 @@ export function wormholeEnsureVeinPiles(state: GameState, cell: WormholeGridCell
    * ⚠ **有意只吃装置**（2026-09-19）：矿脉富集倍率没有对应的科技 `effect`；日后若加，这里要补科技袋。
    */
   const mul = wormholeMatterBuffs(run.hold).oreYieldMul
-  const original = mul === 1 ? piles : piles.map((p) => ({ ...p, units: Math.max(1, Math.round(p.units * mul)) }))
+  const original = mul === 1 ? piles : piles.map((p) => ({ ...p, units: Math.max(1, ceilFinalQuantity(p.units * mul)) }))
   cell.piles = [...original, ...(cell.piles ?? [])]
   if (run.expeditionRules === undefined) cell.resourcePilesGenerated = true
 }

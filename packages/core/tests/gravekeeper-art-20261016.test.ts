@@ -32,7 +32,7 @@ it('四舰独立线稿、坐标边界与发动机/炮口挂点齐备，特殊机
       expect(point.y).toBeGreaterThanOrEqual(0);expect(point.y).toBeLessThanOrEqual(110)
     }
     expect(row.effects.length).toBeGreaterThan(0)
-    expect(row.effects.every(s=>s.startsWith('ui.gravekeeper.') || s === 'ui.foeIntro.108')).toBe(true)
+    expect(row.effects.every(s=>s.startsWith('ui.gravekeeper.') || s === 'ui.gravekeeperRetune.001' || s === 'ui.foeIntro.108')).toBe(true)
     shapes.push(row.svg)
   }
   expect(new Set(shapes).size).toBe(4)

@@ -8,6 +8,7 @@
  * `Cannot access 'HOME_GALAXY_ID' before initialization`）。依赖方向因此固定为：
  * `state → wormhole → wormholeFoes`、`wormholeBattle → {wormhole, combat, shipyard}`（单向）。
  */
+import { ceilFinalQuantity } from './quantity'
 import type { CommandResult } from './engine'
 import type { BattleState, DroneLossReport, GameState } from './state'
 import { addLog } from './state'
@@ -655,9 +656,9 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
       pla: Math.max(0, battle.ammoLoaded.pla - battle.ammo.pla),
     }
     const back = {
-      kin: Math.round(fired.kin * matterBuffs.ammoRefundPct),
-      exp: Math.round(fired.exp * matterBuffs.ammoRefundPct),
-      pla: Math.round(fired.pla * matterBuffs.ammoRefundPct),
+      kin: ceilFinalQuantity(fired.kin * matterBuffs.ammoRefundPct),
+      exp: ceilFinalQuantity(fired.exp * matterBuffs.ammoRefundPct),
+      pla: ceilFinalQuantity(fired.pla * matterBuffs.ammoRefundPct),
     }
     const n = back.kin + back.exp + back.pla
     if (n > 0) {

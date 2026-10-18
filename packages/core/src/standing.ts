@@ -6,6 +6,7 @@
  * （只读 state 的 `standings` / `standingsEarned` 两本账）⇒ 拆到本件后，weekendBattle / weekendEvent 等
  * 都从这里读，环断（行为逐字不变）。`expedition.ts` 原样再导出，其余 40 余处门槛的既有引用零改动。
  */
+import { ceilFinalQuantity } from './quantity'
 import type { GameState } from './state'
 
 /** 主要势力 id（声望绑定方） */
@@ -39,7 +40,7 @@ export function spendableStandingOf(state: GameState, factionId: string): number
  * （`weekendBattle.weekendSettleAndGrant`）。v ≤ 0 时只保证累计那本不回退（幂等补账用）。
  */
 export function noteStandingEarned(state: GameState, factionId: string, v: number): void {
-  const add = Math.max(0, Math.round(v))
+  const add = Math.max(0, ceilFinalQuantity(v))
   state.standings[factionId] = Math.max(0, (state.standings[factionId] ?? 0) + add)
   state.standingsEarned = state.standingsEarned ?? {}
   state.standingsEarned[factionId] = Math.max(0, (state.standingsEarned[factionId] ?? 0) + add)
@@ -51,7 +52,7 @@ export function noteStandingEarned(state: GameState, factionId: string, v: numbe
  * 不够扣 ⇒ 返回 false、两本账都不动。
  */
 export function spendStanding(state: GameState, factionId: string, v: number): boolean {
-  const need = Math.max(0, Math.round(v))
+  const need = Math.max(0, ceilFinalQuantity(v))
   const have = state.standings[factionId] ?? 0
   if (have < need) return false
   state.standings[factionId] = have - need

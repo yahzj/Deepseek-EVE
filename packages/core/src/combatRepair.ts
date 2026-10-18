@@ -6,6 +6,7 @@
  * equipment / inventory / instances / playerSpec / repair）。`combat.ts` 原样再导出（先例：fitted.ts），
  * 既有引用零改动。`REPAIR_PULSE_MS` 随之迁来（combat 借回 + 再导出）。
  */
+import { ceilFinalQuantity } from './quantity'
 import type { GameState } from './state'
 import type { ModuleDef, SimContext } from './types'
 import { isAlive } from './combatMath'
@@ -89,8 +90,8 @@ function perPulseRepairUnits(
       moduleId: d.id,
       kitId: isFree ? '' : (d.repairKit ?? 'repairkit-civ'),
       free: isFree,
-      armorPerPulse: Math.max(0, Math.round(decayA * skill * (flat ? 1 : amp.a))),
-      hullPerPulse: Math.max(0, Math.round(decayH * skill * (flat ? 1 : amp.h))),
+      armorPerPulse: Math.max(0, ceilFinalQuantity(decayA * skill * (flat ? 1 : amp.a))),
+      hullPerPulse: Math.max(0, ceilFinalQuantity(decayH * skill * (flat ? 1 : amp.h))),
     }
   })
 }
@@ -487,8 +488,8 @@ export function pulseShieldFieldFor(
   // 施放者满盾：容量优先、缺 `hpMax` 才回落规格（与全仓「满血/上限」读法同一把尺）
   const casterRt = b.units[caster.tag]
   const casterCapS = Math.max(0, casterRt?.hpMax?.s ?? caster.hp.s)
-  const amount = casterCapS * gain
-  const cost = casterCapS * SHIELD_FIELD_COST_PCT
+  const amount = ceilFinalQuantity(casterCapS * gain)
+  const cost = ceilFinalQuantity(casterCapS * SHIELD_FIELD_COST_PCT)
   if (!casterRt || !Number.isFinite(amount) || amount <= 0 || casterRt.hp.s < cost) return
   const targets: Array<{ rt: (typeof b.units)[string]; capS: number }> = []
   for (const u of myUnits) {
@@ -528,7 +529,7 @@ export function pulseShieldChargeFor(
   const capS = Math.max(0, rt.hpMax?.s ?? spec.hp.s)
   if (capS <= 0) return
   const pct = stream ? stream.pct : sc.streams.reduce((n, s) => n + s.pct, 0)
-  const gain = capS * Math.max(0, pct)
+  const gain = ceilFinalQuantity(capS * Math.max(0, pct))
   if (gain > 0) rt.hp.s = Math.min(capS, rt.hp.s + gain)
 }
 

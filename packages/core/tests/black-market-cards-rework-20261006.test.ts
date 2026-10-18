@@ -67,7 +67,7 @@ describe('黑市详情复用仓库真实参数', () => {
     const tr = (id: string, params?: Record<string, unknown>) => (L10N[id]?.[locale] ?? id)
       .replace(/\{(\w+)\}/g, (m, key: string) => String(params?.[key] ?? m))
     const scope = { ...core, React: { createElement: (type: string, props: unknown, ...children: unknown[]) => ({ type, props, children }) }, tr,
-      kindTextOfItem: (item: { kind: string }) => item.kind, slotText: String, rackText: String, shipRoleText: String, shipTierText: String,
+      kindTextOfItem: (item: { kind: string }) => item.kind, slotText: String, rackText: String, shipRoleText: String, shipSubClassText: String, shipTierText: String,
       MODULE_SUBS: [], moduleSubKeyOf: () => '', subText: String, fmtDuration: String,
       itemGlyphName: (_id: string, kind: string) => kind, inventoryItemTone: () => 'currentColor', toneOf: () => 'currentColor',
       crestFamOf: () => undefined, rackDimKeyOf: () => 'high' }

@@ -188,7 +188,9 @@ describe('敌方换算与距离战术', () => {
     expect(foes).toHaveLength(3)
     const totalHp = foes.reduce((s, f) => s + f.hp.s + f.hp.a + f.hp.h, 0)
     // C4 血量曲线：总血 = foeHpOfThreat(threat)（时长预期反推），与僚机数量无关
-    expect(totalHp).toBeCloseTo(foeHpOfThreat(90, bal) * 1.5, 0)
+    const total = foeHpOfThreat(90, bal) * 1.5
+    const shares = [90 / 2.2, 90 / 2.2 * .6, 90 / 2.2 * .6].map(t => t / 90)
+    expect(totalHp).toBe(shares.reduce((sum, share) => sum + [.2,.55,.25].reduce((n, split) => n + Math.ceil(total * share * split), 0), 0))
   })
 
   it('悬赏级 foeHpOverride 优先于威胁曲线（P1 战斗引入单；无覆写时回落曲线值）', () => {
@@ -196,9 +198,10 @@ describe('敌方换算与距离战术', () => {
     const base = anomaly('ano-x', 'galaxy-hub', { threat: 10 })
     const totalOf = (a: Parameters<typeof createFoeSpecs>[0]): number =>
       createFoeSpecs(a, bal).reduce((s, f) => s + f.hp.s + f.hp.a + f.hp.h, 0)
-    expect(totalOf(base)).toBeCloseTo(foeHpOfThreat(10, bal) * 1.5, 0)
+    const hp = foeHpOfThreat(10, bal) * 1.5
+    expect(totalOf(base)).toBe([.5,.25,.25].reduce((n, share) => n + Math.ceil(hp * share), 0))
     const overridden: Parameters<typeof createFoeSpecs>[0] = { ...base, foeHpOverride: 110 }
-    expect(totalOf(overridden)).toBeCloseTo(110 * 1.5, 0)
+    expect(totalOf(overridden)).toBe(167)
   })
 
   it('开战距离在最远射程之外；中距/风筝/贴脸期望单调', () => {

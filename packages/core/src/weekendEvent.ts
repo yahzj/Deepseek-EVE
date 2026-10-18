@@ -11,6 +11,7 @@
  * 2. **随机全走独立子流**（`hash32(存档种子, 入侵编号)`）⇒ **不消费主随机序列**，老档读数一字不动；
  * 3. **一切判据纯函数**（给 `nowWallMs` 就出结果）⇒ 用例可对任意时刻断言，不依赖 tick。
  */
+import { ceilFinalQuantity } from './quantity'
 import type { AnomalyDef, FoeShipSlot, SimContext } from './types'
 import type { GameState, WormholeFamily } from './state'
 import { securityZoneOf } from './securityZone'
@@ -108,10 +109,10 @@ export const WEEKEND_STANDING_BEACON = 5
 /**
  * **这一场结算该发多少协会声望**（唯一判据 · 发与写快照同源）：
  * - 玩家用信号发射器点起来的（`ev.beaconLit`）⇒ **固定 `WEEKEND_STANDING_BEACON`**；
- * - 每周自己爆发的那场 ⇒ 按贡献占比 `round(占比 × WEEKEND_STANDING_MAX)`（单场 0~15 点）。
+ * - 每周自己爆发的那场 ⇒ 按贡献占比最终向上取整（单场0~15点）。
  */
 export function weekendStandingGainOf(ev: Pick<WeekendEventState, 'beaconLit'>, share: number): number {
-  return ev.beaconLit === true ? WEEKEND_STANDING_BEACON : Math.round(share * WEEKEND_STANDING_MAX)
+  return ev.beaconLit === true ? WEEKEND_STANDING_BEACON : ceilFinalQuantity(share * WEEKEND_STANDING_MAX)
 }
 /**
  * 协会（DSI）声望取数。
@@ -403,7 +404,7 @@ export function weekendIsFlagshipShipId(shipId: string): boolean {
  */
 export function weekendFlagshipHpRemaining(ev: WeekendEventState | undefined): number {
   if (!ev || !weekendIsBossFamily(ev)) return WEEKEND_FLAGSHIP_POOL_HP
-  return Math.max(1, Math.round(flagshipRawLeftOf(ev)))
+  return Math.max(1, ceilFinalQuantity(flagshipRawLeftOf(ev)))
 }
 
 /**
@@ -1507,7 +1508,7 @@ export const WEEKEND_PROGRESS_ISK_PER_PCT = 200_000
 
 /** 本场活动的进度收入合计（ISK） = 玩家投入进度（1 = 100%）× 100 × 单价 */
 export function weekendProgressIncomeIsk(ev: WeekendEventState): number {
-  return Math.round(weekendPlayerContribution(ev) * 100 * WEEKEND_PROGRESS_ISK_PER_PCT)
+  return ceilFinalQuantity(weekendPlayerContribution(ev) * 100 * WEEKEND_PROGRESS_ISK_PER_PCT)
 }
 
 /**
@@ -2018,7 +2019,7 @@ export function weekendNoteFlagshipDamage(
   runId?: number,
 ): boolean {
   if (!weekendIsBossFamily(ev) || ev.flagshipDown !== undefined) return false
-  const dmg = Math.max(0, Math.round(rawDmg))
+  const dmg = Math.max(0, ceilFinalQuantity(rawDmg))
   const sameRun = runId !== undefined && ev.flagshipRunId === runId
   if (sameRun) return weekendFlagshipDefeated(ev) // 同一场的重复结算 ⇒ 已记过，不再叠加
   if (runId !== undefined) ev.flagshipRunId = runId

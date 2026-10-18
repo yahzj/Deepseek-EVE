@@ -444,15 +444,15 @@ describe('虫洞 · 血条上限恒为满值（2026-09-14 船长报障修复）'
     expect(rt.hpMax).toEqual({ s: full.hp.s, a: full.hp.a, h: full.hp.h })
     // ② 当前值吃那份折扣（护盾不吃：每场满值重建）
     expect(rt.hp.s).toBeCloseTo(full.hp.s, 6)
-    expect(rt.hp.a).toBeCloseTo(full.hp.a * 0.5, 6)
-    expect(rt.hp.h).toBeCloseTo(full.hp.h * 0.4, 6)
+    expect(rt.hp.a).toBe(Math.ceil(full.hp.a * 0.5))
+    expect(rt.hp.h).toBe(Math.ceil(full.hp.h * 0.4))
     expect(rt.hp.a).toBeLessThan(rt.hpMax!.a) // 血条开局就该**不是**满格
     // ③ 视图上限 = 运行时上限（修前洞内这两者不等 —— 舰船卡片上的分母取自 hpMax）
     const arcs = battleArcsFor(state, ctx, { battle, anomaly: ctx.anomalies.get(CARD)!, leaderShipId: leader })!
     expect(arcs.maxHp.me).toEqual(battle.units['player']!.hpMax)
     const viewAlly = arcs.myUnits.find((u) => u.tag === 'ally-1')!
     expect(viewAlly.hpMax).toEqual(rt.hpMax)
-    expect(viewAlly.hp.a).toBeCloseTo(full.hp.a * 0.5, 6)
+    expect(viewAlly.hp.a).toBe(Math.ceil(full.hp.a * 0.5))
   })
 
   it('单船路径同款：主控带伤入场时上限仍是满值（与洞外读数一致）', () => {
@@ -465,8 +465,8 @@ describe('虫洞 · 血条上限恒为满值（2026-09-14 船长报障修复）'
     const battle = startBattleFor(state, ctx, uid, CARD, 0)!
     const rt = battle.units['player']!
     expect(rt.hpMax).toEqual({ s: full.hp.s, a: full.hp.a, h: full.hp.h })
-    expect(rt.hp.a).toBeCloseTo(full.hp.a * 0.6, 6)
-    expect(rt.hp.h).toBeCloseTo(full.hp.h * 0.3, 6)
+    expect(rt.hp.a).toBe(Math.ceil(full.hp.a * 0.6))
+    expect(rt.hp.h).toBe(Math.ceil(full.hp.h * 0.3))
   })
 
   it('满血船零变化：上限 = 当前值（旧档与既有标定读数不受影响）', () => {

@@ -78,6 +78,8 @@ function runBattle(
   const ano = endlessFoe()
   const c = { ...ctx, anomalies: new Map([...ctx.anomalies, [ano.id, ano]]) }
   const battle = startBattleFor(state, c, state.shipId, ano.id, 0)!
+  battle.units.player!.hp = { s: 1e9, a: 1e9, h: 1e9 }
+  battle.units.player!.hpMax = { s: 1e9, a: 1e9, h: 1e9 }
   const loaded = battle.ammo.kin + battle.ammo.exp + battle.ammo.pla
   state.gameMs = c.balance.battle.maxBattleMs + 5_000
   advanceBattleFor(state, c, battle, state.shipId, ano.id)
@@ -143,7 +145,8 @@ describe('弹药齐射扣弹（2026-09-11 修复）', () => {
     const rBare = runBattle(bare.state, bare.ctx)
     expect(rArmed.loaded).toBe(3) // 预载受库存上限约束
     expect(rArmed.consumed).toBe(0) // 一发未耗（不打半个齐射）
-    expect(rArmed.foeHpLeft).toBe(rBare.foeHpLeft) // 该炮台零伤害 → 战果等同无炮
+    expect(rArmed.foeHpLeft).toBe(1_500_000_000) // 有高槽时基础炮禁用，本场不耗弹即零输出。
+    expect(rBare.foeHpLeft).toBeLessThan(rArmed.foeHpLeft) // 空高槽仍有基础炮，不是零伤害基线。
   })
 })
 

@@ -26,6 +26,7 @@ import {
   countWare,
   cpuBudgetOf,
   cpuUseOf,
+  ceilFinalQuantity,
   createPlayerSpec,
   /** 2026-09-26 船长令：装配页插件槽只读区（core 单点给槽位上限 + 已装清单） */
   plugInfoOf,
@@ -225,7 +226,7 @@ function diffSegs(
   for (const k of ['s', 'a', 'h'] as const) {
     const c = cur.hp[k]
     const n = next.hp[k]
-    if (n !== c) hpPairs.push({ lab: HP_KEY_LABEL[k], c: Math.round(c), n: Math.round(n) })
+    if (n !== c) hpPairs.push({ lab: HP_KEY_LABEL[k], c: ceilFinalQuantity(c), n: ceilFinalQuantity(n) })
   }
   hpPairs.sort((x, y) => Math.abs(y.n - y.c) - Math.abs(x.n - x.c))
   for (const p of hpPairs.slice(0, 2)) add(`${p.lab} ${fmt(p.c)}→${fmt(p.n)}`, dir(p.n - p.c))
@@ -787,7 +788,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                 {combatBadges(
                   shipDef,
                   spec
-                    ? { hp: { s: Math.round(spec.hp.s), a: Math.round(spec.hp.a), h: Math.round(spec.hp.h) }, resists: spec.resists }
+                    ? { hp: { s: ceilFinalQuantity(spec.hp.s), a: ceilFinalQuantity(spec.hp.a), h: ceilFinalQuantity(spec.hp.h) }, resists: spec.resists }
                     : undefined,
                 )}
               </span>

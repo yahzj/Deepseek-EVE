@@ -13,6 +13,7 @@
  * - 弹药：我方炮台开火即时消耗 1 发（弹型 = 剩余最多型，平局 kin→exp→pla）；
  *   战斗结束剩余退回仓库（V18 口径取消：单档通用弹，无轻/重之分）。
  */
+import { ceilFinalQuantity } from './quantity'
 import type { GameState } from './state'
 import { addLog } from './state'
 import type {
@@ -890,9 +891,9 @@ export function carryVolleyOverflow(
  */
 export function foeRepairDiscountedShot(f: UnitSpec, dmg: number): number {
   const pct = f.repairPct ?? 0
-  const afterRepair = pct > 0 ? Math.max(1, Math.round(dmg * (1 - pct))) : dmg
+  const afterRepair = pct > 0 ? Math.max(1, ceilFinalQuantity(dmg * (1 - pct))) : dmg
   const ov = f.foeOverlayDrive?.dmgMul
-  return ov !== undefined && ov >= 0 ? Math.max(1, Math.round(afterRepair * ov)) : afterRepair
+  return ov !== undefined && ov >= 0 ? Math.max(1, ceilFinalQuantity(afterRepair * ov)) : afterRepair
 }
 
 /**
@@ -935,7 +936,7 @@ export function pulseFoeRepair(
   const donors = foeSpecs.filter((s) => (s.repairPct ?? 0) > 0 && isAlive(b, s.tag))
   if (donors.length === 0) return
   const perSecond = donors.reduce((sum, s) => sum + foeNominalDpsOf(s) * (s.repairPct ?? 0), 0)
-  const amount = (perSecond * REPAIR_PULSE_MS) / 1000
+  const amount = ceilFinalQuantity((perSecond * REPAIR_PULSE_MS) / 1000)
   ledger.pulses += 1
   if (amount <= 0) return
   // 选靶：非后勤 + 甲/结构未满 + 三层比例最低（并列取 spec 顺序靠前）
@@ -998,8 +999,8 @@ export function pulseFoeMountRepair(
   if (!rt) return
   const capA = Math.max(0, spec.hp.a)
   const capH = Math.max(0, spec.hp.h)
-  const healA = Math.min(Math.max(0, Math.round(rp.armor * rp.k)), Math.max(0, capA - rt.hp.a))
-  const healH = Math.min(Math.max(0, Math.round(rp.hull * rp.k)), Math.max(0, capH - rt.hp.h))
+  const healA = Math.min(Math.max(0, ceilFinalQuantity(rp.armor * rp.k)), Math.max(0, capA - rt.hp.a))
+  const healH = Math.min(Math.max(0, ceilFinalQuantity(rp.hull * rp.k)), Math.max(0, capH - rt.hp.h))
   if (healA <= 0 && healH <= 0) return
   rt.hp.a += healA
   rt.hp.h += healH
@@ -2170,8 +2171,8 @@ export function startBattleFor(
   if (fleetShip) {
     const armorMul = Math.min(1, Math.max(0, fleetShip.armorPct ?? 1))
     const hullMul = Math.min(1, Math.max(0, fleetShip.durability ?? 1))
-    me.hp.a = Math.max(0, me.hp.a * armorMul)
-    me.hp.h = Math.max(0, me.hp.h * hullMul)
+    me.hp.a = Math.max(0, ceilFinalQuantity(me.hp.a * armorMul))
+    me.hp.h = Math.max(0, ceilFinalQuantity(me.hp.h * hullMul))
   }
   // 照会战加成（开战规格重建处也注入，命中/回避影响后续弹道与 UI 读到的克制无涉）
   if (isFirstBountyBattle(state, anomalyId, shipId)) applyFirstBountyBuff(me)
@@ -2574,8 +2575,8 @@ export function startFleetBattleFor(
     if (fleetShip) {
       const armorMul = Math.min(1, Math.max(0, fleetShip.armorPct ?? 1))
       const hullMul = Math.min(1, Math.max(0, fleetShip.durability ?? 1))
-      spec.hp.a = Math.max(0, spec.hp.a * armorMul)
-      spec.hp.h = Math.max(0, spec.hp.h * hullMul)
+      spec.hp.a = Math.max(0, ceilFinalQuantity(spec.hp.a * armorMul))
+      spec.hp.h = Math.max(0, ceilFinalQuantity(spec.hp.h * hullMul))
     }
     specs.push(spec)
     specOf.set(sid, spec)
@@ -3462,8 +3463,8 @@ export function settleDroneLosses(
   }
   if (total <= 0) return null
 
-  // ── ② 余数名额按价值从高到低补满（总回收数 = round(总损坏 × 回收率)，与旧口径一致）──
-  let rest = Math.max(0, Math.round(total * rate) - rows.reduce((s, r) => s + r.back, 0))
+  // 余数名额按价值从高到低补满，总回收数按最终整数规则向上取整，不能超过损坏数。
+  let rest = Math.max(0, ceilFinalQuantity(total * rate) - rows.reduce((s, r) => s + r.back, 0))
   const byValue = [...rows].sort((a, b) => b.value - a.value || a.id.localeCompare(b.id))
   for (const r of byValue) {
     if (rest <= 0) break
@@ -4959,7 +4960,7 @@ function stepBattle(
           continue
         }
         type = 'plasma'
-        dmg = Math.max(1, Math.round((w.shotDmg ?? 0) * beamPowerVsTargetOf(b.distanceM, w, droneHit !== null)))
+        dmg = Math.max(1, ceilFinalQuantity((w.shotDmg ?? 0) * beamPowerVsTargetOf(b.distanceM, w, droneHit !== null)))
         // **装填计时**：激光这一路同样走合并入口（三连射 / 叠光自加速 / 老路径三合一）
         meRt.weapons[wi] = meBurstReloadOf(unit, unit.tag, wi, b, dtMs, w.reloadMs)
         autoHit = true
@@ -4974,7 +4975,7 @@ function stepBattle(
       // **对舰伤害一字不动**——`tests/pd-damage-ladder.test.ts` 的对舰单发定值就是这条的守卫。
       // 倍率来自装备表（`ModuleDef.antiDroneDmgMul` → `WeaponSpec.antiDroneMul`），缺省 = 1 ⇒ 不乘。
       if (droneHit && (w.antiDroneMul ?? 1) !== 1)
-        dmg = Math.round(dmg * (w.antiDroneMul ?? 1))
+        dmg = ceilFinalQuantity(dmg * (w.antiDroneMul ?? 1))
       const gunCount = volleyGunCountOf(w)
       const volleyDmg = dmg
       const rawBeam = w.kind === 'beam' ? w.shotDmg ?? 0 : dmg
@@ -4993,11 +4994,11 @@ function stepBattle(
           if (!foeTarget) break
         }
         const targetVolleyDmg = w.kind === 'beam'
-          ? Math.round(Math.max(1, Math.round(rawBeam * beamPowerVsTargetOf(b.distanceM, w, droneHit !== null))) * (droneHit ? w.antiDroneMul ?? 1 : 1))
+          ? ceilFinalQuantity(Math.max(1, ceilFinalQuantity(rawBeam * beamPowerVsTargetOf(b.distanceM, w, droneHit !== null))) * (droneHit ? w.antiDroneMul ?? 1 : 1))
           : droneHit ? volleyDmg : (w.kind === 'gun' ? w.shotsByType?.[type] ?? 0 : w.shotDmg ?? 0)
         dmg = volleyDamageShareOf(targetVolleyDmg, gunCount, gun)
         const blindMul = playerBlindDamageMul(b.distanceM, w, droneHit !== null)
-        dmg = Math.round(dmg * blindMul)
+        dmg = ceilFinalQuantity(dmg * blindMul)
         b.stats.meShots += 1;
         // **隐秘行动：开火即现形**（2026-09-15 船长 Q1 甲）——本舰任一门武器打出第一发时窗口清空；
         // 同一拍稍后的敌方开火段因此已经"看得见"它（现实语义亦然：枪口一闪就暴露了）。
@@ -5083,8 +5084,8 @@ function stepBattle(
             const rt = b.units[foeTarget!.tag]!;
             const hpBefore = { ...rt.hp }
             // 锁定装置：被锁目标受本舰伤害加深（对锁定目标的任意命中都乘入；2026-09-09）
-            const volleyLocked = unit.lockedDmgBonus ? Math.round(targetVolleyDmg * (1 + unit.lockedDmgBonus)) : targetVolleyDmg
-            const dmgLocked = Math.round(volleyDamageShareOf(volleyLocked, gunCount, gun) * blindMul)
+            const volleyLocked = unit.lockedDmgBonus ? ceilFinalQuantity(targetVolleyDmg * (1 + unit.lockedDmgBonus)) : targetVolleyDmg
+            const dmgLocked = ceilFinalQuantity(volleyDamageShareOf(volleyLocked, gunCount, gun) * blindMul)
             /** 主段：走**敌舰伤害唯一收口**（血写回 ＋ 死亡观测；算术与消费顺序一字不变） */
             const r = applyFoeUnitDamage(b, foeTarget!, dmgLocked, type, b.lastTickGameMs + dtMs)
             b.stats.meDmg += r.dealt
@@ -5109,7 +5110,7 @@ function stepBattle(
             const secPct = w.secondaryDamagePct ?? 0
             if (secPct > 0 && rt.hp.s + rt.hp.a + rt.hp.h > 0) {
               const secType = w.secondaryDamageType ?? 'kinetic'
-              const secDmg = Math.round(volleyDamageShareOf(Math.max(1, Math.round(volleyLocked * secPct)), gunCount, gun) * blindMul)
+              const secDmg = ceilFinalQuantity(volleyDamageShareOf(Math.max(1, ceilFinalQuantity(volleyLocked * secPct)), gunCount, gun) * blindMul)
               /** 附伤段：同走唯一收口（它也可能就是打沉那一发） */
               const r2 = applyFoeUnitDamage(b, foeTarget!, secDmg, secType, b.lastTickGameMs + dtMs)
               b.stats.meDmg += r2.dealt
@@ -5201,7 +5202,7 @@ function stepBattle(
               const secPctAll = w.secondaryDamagePct ?? 0
               if (secPctAll > 0 && ort.hp.s + ort.hp.a + ort.hp.h > 0) {
                 const secTypeAll = w.secondaryDamageType ?? 'kinetic'
-                const secDmgAll = Math.round(volleyDamageShareOf(Math.max(1, Math.round(targetVolleyDmg * secPctAll)), gunCount, gun) * blindMul)
+                const secDmgAll = ceilFinalQuantity(volleyDamageShareOf(Math.max(1, ceilFinalQuantity(targetVolleyDmg * secPctAll)), gunCount, gun) * blindMul)
                 /** 全体攻击附伤段：同走唯一收口 */
                 const rAll2 = applyFoeUnitDamage(b, other, secDmgAll, secTypeAll, b.lastTickGameMs + dtMs)
                 b.stats.meDmg += rAll2.dealt
@@ -5510,7 +5511,7 @@ function stepBattle(
       if (w.kind === 'beam') {
         // **炮台受击增程感知的折减**（船长选乙：原射程内读数一字不变，延长段同斜率外推）
         const pow = b.distanceM < w.minRangeM ? w.blindDmgMul ?? 0.3 : foeGunPowerFactorOf(b, f, wShot, b.distanceM)
-        const dmg = volleyDamageShareOf(foeRepairDiscountedShot(f, Math.max(1, Math.round((w.shotDmg ?? 0) * pow * capacitorDamageMul))), gunCount, gun)
+        const dmg = volleyDamageShareOf(foeRepairDiscountedShot(f, Math.max(1, ceilFinalQuantity((w.shotDmg ?? 0) * pow * capacitorDamageMul))), gunCount, gun)
         // 冲锋解除（船长 2026-09-14）：光束必中 ⇒ 本发即"自身炮台命中我方"
         releaseFoeChargeOnHit(b, f.tag, bal, f.foeChargeCooldownMs)
         b.stats.foeHits += 1
@@ -5535,8 +5536,8 @@ function stepBattle(
         }      continue
       }
       const blindMul = b.distanceM < w.minRangeM ? (w.blindDmgMul ?? 0.3) : 1
-      const shotDmgRaw = blindMul < 1 ? Math.max(1, Math.round((w.shotDmg ?? 0) * blindMul)) : (w.shotDmg ?? 0)
-      const shotDmg = volleyDamageShareOf(foeRepairDiscountedShot(f, Math.round(shotDmgRaw * capacitorDamageMul)), gunCount, gun)
+      const shotDmgRaw = blindMul < 1 ? Math.max(1, ceilFinalQuantity((w.shotDmg ?? 0) * blindMul)) : (w.shotDmg ?? 0)
+      const shotDmg = volleyDamageShareOf(foeRepairDiscountedShot(f, ceilFinalQuantity(shotDmgRaw * capacitorDamageMul)), gunCount, gun)
       // AI favor：敌方命中被优势压制，且始终保留 97% 命中上限（3% miss 底线不变）
       // ⚠ 距离折减传**增程感知**的 `foeGunPowerFactorOf`（原射程内与原公式逐字一致；延长段同斜率外推）
       const foeHit = hitChance(w, f, gtgt.spec, b.distanceM, bal, foeGunPowerFactorOf(b, f, wShot, b.distanceM))
@@ -6021,7 +6022,7 @@ function steadyPreview(
     const hit = isBeam ? 1 : hitChance(w, f, me, steady, bal)
     if (hit <= 0) continue
     const power = isBeam ? (steady < w.minRangeM ? w.blindDmgMul ?? 0.3 : beamPowerFactor(steady, w)) : steady < w.minRangeM ? w.blindDmgMul ?? 0.3 : 1
-    const shot = Math.max(1, Math.round((w.shotDmg ?? 0) * power))
+    const shot = Math.max(1, ceilFinalQuantity((w.shotDmg ?? 0) * power))
     const mult = foeCompWeighted(w.fixedType ?? 'kinetic')
     /**
      * ⚠ **连发按"一轮 `shots` 发 ÷ 同一个装填周期"计入**（**2026-10-02 加**）：

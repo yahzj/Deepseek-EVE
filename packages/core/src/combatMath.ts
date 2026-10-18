@@ -213,8 +213,8 @@ export function applyDamage(
     /** 本层"在原始伤害尺度上"能吃掉多少：层血量 ÷ 系数 ÷(1−抗性)（系数与抗性都折算回原始尺度） */
     const layerDamage = next[layerKey[i]!] / Math.max(1e-9, layerCoef * (1 - clamp(RESIST_FLOOR, 0.9, res)))
     const absorbedRaw = Math.min(rest, layerDamage)
-    // 新乘区结算的全层原伤已消费完时明确归零，避免浮点残血让损管漏判；默认路径不改。
-    next[layerKey[i]!] = shieldDamageMul !== 1 && absorbedRaw >= layerDamage ? 0
+    // 抗性与混伤逐层消费仍为中间精度；原伤已耗尽本层时直接归零，避免浮点残血。
+    next[layerKey[i]!] = absorbedRaw >= layerDamage ? 0
       : next[layerKey[i]!] - Math.min(next[layerKey[i]!], absorbedRaw * layerCoef * (1 - clamp(RESIST_FLOOR, 0.9, res)))
     rest -= absorbedRaw
   }

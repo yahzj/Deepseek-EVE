@@ -15,6 +15,7 @@
  * - 事件日志统一加 "✦ " 前缀（桌面端据此弹小卡）；
  * - 零物品表依赖；存档只新增 events.nextAtGameMs 一个字段（v11）。
  */
+import { ceilFinalQuantity } from './quantity'
 import { addLog } from './state'
 import type { GameState } from './state'
 import type { MarketGoodDef, SimContext } from './types'
@@ -158,7 +159,7 @@ function rollGapMs(state: GameState, ctx: SimContext): number {
 
 function clampPrice(ctx: SimContext, def: MarketGoodDef, raw: number): number {
   const bal = ctx.balance.market
-  return Math.round(Math.min(def.basePrice * bal.maxPriceRatio, Math.max(def.basePrice * bal.minPriceRatio, raw)))
+  return ceilFinalQuantity(Math.min(def.basePrice * bal.maxPriceRatio, Math.max(def.basePrice * bal.minPriceRatio, raw)))
 }
 
 /** 日志里统一写事件文本（金额自动附注）。
@@ -234,8 +235,8 @@ export function fireFlavor(state: GameState, ctx: SimContext, table: readonly Fl
     const divLv = Math.min(5, state.skills.trained['event-dividend'] ?? 0)
     let raw = entry.iskMin + nextInt(state.rng, entry.iskMax - entry.iskMin + 1)
     // 已探索星系加成（船长 2026-09-10：×1 + 每星系 +10%，封顶 ×2——星图走得越远，奇遇越值钱）
-    raw = Math.round(raw * exploredRewardMul(state, ctx.balance.events))
-    amount = divLv > 0 ? Math.round(raw * (1 + 0.15 * divLv)) : raw
+    raw = ceilFinalQuantity(raw * exploredRewardMul(state, ctx.balance.events))
+    amount = divLv > 0 ? ceilFinalQuantity(raw * (1 + 0.15 * divLv)) : raw
     if (!offline) state.wallet.isk += amount
   }
   // 静默模式：掷骰照旧（上面），但**不写日志、不发钱** —— 离线只用一条汇总交代
@@ -294,16 +295,16 @@ export function fireMarketShockEvent(state: GameState, ctx: SimContext, offline 
   } else {
     const def = goods[nextInt(state.rng, goods.length)]!
     const flow = def.supplyFlow ?? Math.max(1, Math.round(def.poolTarget! / 120))
-    const qty = Math.max(10, Math.round(flow * (30 + nextRandom(state.rng) * 30)))
+    const qty = Math.max(10, ceilFinalQuantity(flow * (30 + nextRandom(state.rng) * 30)))
     const level = levelOf(state, ctx, def.key)
     const buy = nextInt(state.rng, 2) === 0
     if (buy) {
-      const price = clampPrice(ctx, def, Math.round(level * (0.99 + nextRandom(state.rng) * 0.02)))
+      const price = clampPrice(ctx, def, ceilFinalQuantity(level * (0.99 + nextRandom(state.rng) * 0.02)))
       if (offline) return
       mk.npcBuy[def.key]!.push({ price, qty, expiresAtGameMs: state.gameMs + bal.orderLifeMs.common })
       logEvent(state, `突现大宗收购：有人以 ${price.toLocaleString('zh-CN')} 信用点/单位求购「${goodName(ctx, def.key)}」×${qty.toLocaleString('zh-CN')}（20 分钟内有效）。`, undefined, 'core.events.087', { p1p1: price.toLocaleString('zh-CN'), p1p2: goodName(ctx, def.key), p1p3: qty.toLocaleString('zh-CN') })
     } else {
-      const price = clampPrice(ctx, def, Math.max(Math.round(level * (1.05 + nextRandom(state.rng) * 0.02)), level + 1))
+      const price = clampPrice(ctx, def, Math.max(ceilFinalQuantity(level * (1.05 + nextRandom(state.rng) * 0.02)), level + 1))
       if (offline) return
       mk.npcSell[def.key]!.push({ price, qty, expiresAtGameMs: state.gameMs + bal.orderLifeMs.common })
       logEvent(state, `突现大宗抛售：有人以 ${price.toLocaleString('zh-CN')} 信用点/单位放出「${goodName(ctx, def.key)}」×${qty.toLocaleString('zh-CN')}（20 分钟内有效）。`, undefined, 'core.events.088', { p1p1: price.toLocaleString('zh-CN'), p1p2: goodName(ctx, def.key), p1p3: qty.toLocaleString('zh-CN') })
@@ -347,7 +348,7 @@ export function fireMarketOrderEvent(state: GameState, ctx: SimContext, offline 
   if (wantsSupply && def.playerBuyable !== false && standingOf(state, DSI_FACTION_ID) >= BLACK_MARKET_STANDING_REQ) {
     // 变体 0：黑市溢价现货——价格 ≈行情价 ×1.8~2.0（高溢价应急渠道），仅存 8 分钟
     const mul = 1.8 + nextRandom(state.rng) * 0.2
-    const price = clampPrice(ctx, def, Math.round(level * mul))
+    const price = clampPrice(ctx, def, ceilFinalQuantity(level * mul))
     if (offline) return // 静默模式：掷骰已走完，只挡"建单 + 写日志"
     mk.npcSell[def.key]!.push({ price, qty: 1, expiresAtGameMs: state.gameMs + BLACK_MARKET_LIFE_MS })
     logEvent(
@@ -359,7 +360,7 @@ export function fireMarketOrderEvent(state: GameState, ctx: SimContext, offline 
     )
   } else {
     const lifeMs = ctx.balance.market.orderLifeMs[def.rarity]
-    const price = clampPrice(ctx, def, Math.round(level * (1.0 + nextRandom(state.rng) * 0.35)))
+    const price = clampPrice(ctx, def, ceilFinalQuantity(level * (1.0 + nextRandom(state.rng) * 0.35)))
     if (offline) return // 静默模式：同上
     mk.npcBuy[def.key]!.push({ price, qty: 1, expiresAtGameMs: state.gameMs + lifeMs })
     logEvent(

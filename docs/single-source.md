@@ -16,6 +16,8 @@
 
 ## 一、core 引擎层（`packages/core/src`）
 
+最终整数数量：`ceilFinalQuantity`（`quantity.ts`）统一向上取整，只在最终HP/单发/离散脉冲/产物/材料/收支/报价落地时调用；比例、倍率、持续累计、可装上限和分摊余数不调用。极小浮点整数邻域归一由单点处理；专项保护真实小数与守恒。
+
 信号发射器：`invasionBeaconTypeOf`（`consumables.ts`）认物品与固定势力；`availableInvasionBeacons`从同表筛选有库存选项。使用命令、物品按钮与星图下拉共用，不在页面另造势力映射；护栏为专属发射器专项与F2/F3。
 
 目标舰操作：`shipActuallyDocked` / `shipOperationBlockReason`（`shipActionPolicy.ts`）纯状态派生真实停靠与配置许可；远程管理不读主控忙态，船上物资只在目标舰停靠时可取。`stationActivityStartBlockReason`（`location.ts`）只读预检现有切换再检查基地；页面不自算野外置灰。工业原料由`industryAvailable`（`industry.ts`）提供同源可取量。护栏：停靠统一专项、失败资源守恒与页面同源检查，F2/F3/F9。

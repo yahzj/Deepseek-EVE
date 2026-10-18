@@ -5,6 +5,7 @@
  */
 import type { ReactNode } from 'react'
 import type { DamageType } from '@whale/core'
+import { ceilFinalQuantity } from '@whale/core'
 import { tr } from '../i18n/locale'
 import { DMG_LABEL } from '../ui/shipInfo'
 /** 伤害类型 → 颜色（动能金 / 高爆橙 / 能量青；弹道、命中与射程弧共用）
@@ -538,12 +539,12 @@ function HpTri({ hp, max, label }: { hp: { s: number; a: number; h: number }; ma
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--wui-sp-2)', width: '100%' }}>
       {label ? <span style={{ fontSize: 'var(--wui-fs-2xsd)', color: 'rgb(var(--wui-dim))', lineHeight: 1.2 }}>{label}</span> : null}
       {layers.map((ly) => {
-        const cur = Math.max(0, Math.round(hp[ly.k]))
+        const cur = Math.max(0, ceilFinalQuantity(hp[ly.k]))
         const full = max?.[ly.k] ?? 0
         const ratio = full > 0 ? Math.min(100, Math.max(0, (cur / full) * 100)) : 0
         const color = HP_LAYER_COLOR[ly.k]
         return (
-          <div key={ly.k} title={`${ly.zh} ${cur}/${Math.round(full)}`} style={{ display: 'flex', alignItems: 'center', gap: 'var(--wui-sp-4)', height: 10 }}>
+          <div key={ly.k} title={`${ly.zh} ${cur}/${ceilFinalQuantity(full)}`} style={{ display: 'flex', alignItems: 'center', gap: 'var(--wui-sp-4)', height: 10 }}>
             <span style={{ flex: '0 0 24px', fontSize: 'var(--wui-fs-2xsc)', color: 'rgb(var(--wui-dim))', textAlign: 'right' }}>{ly.zh}</span>
             <span style={{ flex: 1, height: '100%', background: 'rgb(var(--wui-well) / 0.45)', borderRadius: 'var(--wui-sp-2)', overflow: 'hidden' }}>
               <i style={{ display: 'block', height: '100%', width: `${ratio}%`, background: color, boxShadow: `0 0 4px ${color}`, transition: 'width .4s' }} />

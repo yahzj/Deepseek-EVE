@@ -27,6 +27,7 @@
  * - 互斥：任务中驾驶船忙碌（等同远征），各出港/站内手动作业入口拒绝；换驾驶 = 立即终止
  *   （虚拟货无残留、无惩罚）；AI 副船本版不支持。
  */
+import { ceilFinalQuantity } from './quantity'
 import { addLog, HOME_GALAXY_ID, haulingHalt } from './state'
 import { applyActivityGate } from './activityGate'
 import { stationActivityStartBlockReason, stationActivityStartState } from './location'
@@ -103,7 +104,7 @@ function effectiveMinutesBetween(ctx: SimContext, aId: string | null, bId: strin
 
 /**
  * 单段**基准**报酬 = 货仓 × `HAUL_RATE_PER_M3_MIN` × 锚定航线标称分钟 × (有效距离 ÷ 锚定有效距离)^距离指数
- * （不含行情倍率；floor 取整）。
+ * （不含行情倍率；最终向上取整）。
  *
  * 等价于旧式「货仓 × 0.6 × 本段标称分钟 × 形状因子 G」（G = (D/D锚)^p × (标称锚/标称)）——
  * **标称分钟被锚定常数吸收** ⇒ **单段总报酬只取决有效距离**（时间不进报酬）。这正是"1+1<2"的来源：
@@ -114,18 +115,18 @@ export function haulBaseReward(ctx: SimContext, capacityM3: number, effectiveMin
   const bal = ctx.balance.haul
   if (!(effectiveMinutes > 0) || !(bal.anchorEffectiveMinutes > 0)) return 0
   const shape = Math.pow(effectiveMinutes / bal.anchorEffectiveMinutes, bal.distExp)
-  return Math.floor(capacityM3 * HAUL_RATE_PER_M3_MIN * bal.anchorNominalMinutes * shape)
+  return ceilFinalQuantity(capacityM3 * HAUL_RATE_PER_M3_MIN * bal.anchorNominalMinutes * shape)
 }
 
-/** 单段实付报酬 = 基准 × 本趟行情倍率（每趟一个倍率、两段同价；floor 取整） */
+/** 单段实付报酬 = 基准 × 本趟行情倍率（每趟一个倍率、两段同价；最终向上取整） */
 export function haulLegReward(ctx: SimContext, capacityM3: number, effectiveMinutes: number, tripMul: number): number {
-  return Math.floor(haulBaseReward(ctx, capacityM3, effectiveMinutes) * tripMul)
+  return ceilFinalQuantity(haulBaseReward(ctx, capacityM3, effectiveMinutes) * tripMul)
 }
 
 /** 单段报酬**区间**（面板只显示这个，不预告本趟实际掷值——船长 2026-09-11：「只显示区间」） */
 export function haulRewardRange(ctx: SimContext, capacityM3: number, effectiveMinutes: number): { min: number; max: number } {
   const base = haulBaseReward(ctx, capacityM3, effectiveMinutes)
-  return { min: Math.floor(base * HAUL_TRIP_MUL_MIN), max: Math.floor(base * HAUL_TRIP_MUL_MAX) }
+  return { min: ceilFinalQuantity(base * HAUL_TRIP_MUL_MIN), max: ceilFinalQuantity(base * HAUL_TRIP_MUL_MAX) }
 }
 
 /** 掷一次行情倍率（均匀 [5,10]，保留 1 位小数便于日志阅读）；消耗一次 rng（存档可复现） */

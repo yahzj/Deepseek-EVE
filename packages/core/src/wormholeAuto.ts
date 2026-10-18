@@ -22,6 +22,7 @@
  * ⚠ 本模块**不碰** `wormholeEnter` 的副本状态机：自动探索是"抽象的一趟"（不建网格、不打战斗），
  * 产出按手动期望折算 —— 这是船长对"收益不确定 + 绝不丢船"的取舍，实现上必须与真副本解耦。
  */
+import { ceilFinalQuantity } from './quantity'
 import type { CoreBlockReason } from './engine'
 import { AI_CORE_IDS } from './aiCores'
 import { tuningMul } from './tuning'
@@ -1078,6 +1079,7 @@ function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): voi
 
   // 入仓库（船长：「收益进仓库」）
   for (const g of gains) {
+    g.units = ceilFinalQuantity(g.units)
     state.warehouse.items[g.itemId] = (state.warehouse.items[g.itemId] ?? 0) + g.units
   }
 

@@ -31,6 +31,7 @@ import {
   bountyCooldownRemainingMs,
   bountyDamageForecast,
   bountyRewardFactor,
+  ceilFinalQuantity,
   bountyWinPercentGuarded,
   calcPower,
   factionAnomalyOf,
@@ -125,7 +126,7 @@ export function AnomalyCard({
   const retMins = localTarget ? NaN : shortestTravelMinutes(engine.ctx, retBase, anomaly.galaxyId)
   const retMs = localTarget ? 120_000 : Number.isFinite(retMins) ? travelLegMs(state, engine.ctx, retMins) * RETURN_LEG_MUL : 0
   const roundTripMs = Math.max(1, combatMs + retMs)
-  const grossIsk = (factionHit ? factionBaseRewardIsk(anomaly) : anomaly.rewardIsk) * bountyRewardFactor(state)
+  const grossIsk = ceilFinalQuantity((factionHit ? factionBaseRewardIsk(anomaly) : anomaly.rewardIsk) * bountyRewardFactor(state))
   const iskPerHour = roundTripMs > 0 ? grossIsk / (roundTripMs / 3_600_000) : 0
   const iskPerHourTxt =
     iskPerHour >= 1000
@@ -375,7 +376,7 @@ export function AnomalyCard({
           <>{reclaimedHere ? tr('ui.weekend.116') : tr('ui.weekend.096')}</>
         ) : (
           <>
-            {tr("ui.Expedition.099")} {Math.round((factionHit ? factionBaseRewardIsk(anomaly) : anomaly.rewardIsk) * bountyRewardFactor(state)).toLocaleString('zh-CN')} {tr("ui.FirstTasks.003")}
+            {tr("ui.Expedition.099")} {grossIsk.toLocaleString('zh-CN')} {tr("ui.FirstTasks.003")}
             {factionHit ? <span className="app-dim" title={tr("ui.Expedition.220", { p1: anomaly.rewardIsk.toLocaleString('zh-CN') })}>{tr("ui.Expedition.321")}</span> : null}
             {anomaly.loot.length > 0 ? ` + ${lootText}` : ''}{tr('ui.Expedition.368')}{anomaly.standingGain}
           </>
@@ -1070,7 +1071,7 @@ export function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToa
           const chanceTone = chance >= 70 ? tr("ui.Expedition.318") : chance >= 40 ? tr("ui.Expedition.035") : tr("ui.Expedition.036")
           // 赏金 = 窝点奖金 + 任务酬金（胜利时**一起到账**）：2026-09-10 船长定——两张卡别写两个数，
           // 合并成一条「赏金」。窝点奖金含赏金猎手学系数（展示=到账），任务酬金为刷出时锁定值。
-          const lairRewardIsk = base ? Math.round(lairBaseRewardIsk(base, tier) * bountyRewardFactor(state)) : 0
+          const lairRewardIsk = base ? ceilFinalQuantity(lairBaseRewardIsk(base, tier) * bountyRewardFactor(state)) : 0
           const totalIsk = lairRewardIsk + t.rewardIsk
           const inFlightSelf = state.expedition.active && state.expedition.anomalyId === t.anomalyId
           const inFlightOther = state.expedition.active && !inFlightSelf

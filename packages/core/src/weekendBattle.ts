@@ -10,6 +10,7 @@
  * 2. **外围/核心主动出击 = 单舰**（Q1 裁定）⇒ `squadSize = 1`；**只有旗舰是 4 波 4 艘小队战**（口径定稿 #8）；
  * 3. **伏击 = 主动 ×0.5**（Q2）⇒ 伏击 spec 走单舰 + 半威胁；**失败只受损**（第 5 条）⇒ `loss` 不改任何进度。
  */
+import { ceilFinalQuantity } from './quantity'
 import type { SimContext } from './types'
 import type { GameState } from './state'
 import { addWare } from './inventory'
@@ -22,6 +23,7 @@ import {
   weekendGarrisonFoeCardId,
   weekendCoreProgressAt,
   weekendFlagshipDefeated,
+  weekendBossPoolView,
   weekendIsBossFamily,
   weekendFlagshipSlotOf,
   weekendNoteContribution,
@@ -106,7 +108,7 @@ export const WEEKEND_FLAGSHIP_WRECK = 3
  * （与仓库计数、回收炉批数同一个数）。
  */
 export function weekendRareWreckUnits(pieces: number): number {
-  return Math.max(0, Math.round(pieces)) * RARE_WRECK_VOLUME_M3
+  return Math.max(0, ceilFinalQuantity(pieces)) * RARE_WRECK_VOLUME_M3
 }
 
 /**
@@ -135,7 +137,7 @@ export function weekendReclaimAwardOf(ev: WeekendEventState, galaxyId: string): 
   const ratio = Number.isFinite(put) ? Math.min(1, Math.max(0, put)) : 0
   return {
     wreck: weekendRareWreckUnits(WEEKEND_RECLAIM_WRECK * ratio),
-    isk: Math.round(WEEKEND_RECLAIM_ISK * ratio),
+    isk: ceilFinalQuantity(WEEKEND_RECLAIM_ISK * ratio),
   }
 }
 
@@ -149,7 +151,7 @@ export function weekendAllClearAwardOf(ev: WeekendEventState): number {
   if (ids.length === 0) return 0
   const total = weekendPlayerContribution(ev)
   if (!Number.isFinite(total) || total <= 0) return 0
-  return Math.round(WEEKEND_ALL_CLEAR_ISK * Math.min(1, total / ids.length))
+  return ceilFinalQuantity(WEEKEND_ALL_CLEAR_ISK * Math.min(1, total / ids.length))
 }
 
 export const WEEKEND_FLAGSHIP_REWARD_MUL = 3
@@ -463,9 +465,9 @@ export function noteReward(
   add: { isk?: number; wreck?: number; blackBox?: number },
 ): void {
   const led = (ev.rewardLedger ??= { isk: 0, wreck: 0, blackBox: 0, byGalaxy: {} })
-  const isk = Math.max(0, Math.round(add.isk ?? 0))
-  const wreck = Math.max(0, Math.round(add.wreck ?? 0))
-  const blackBox = Math.max(0, Math.round(add.blackBox ?? 0))
+  const isk = Math.max(0, ceilFinalQuantity(add.isk ?? 0))
+  const wreck = Math.max(0, ceilFinalQuantity(add.wreck ?? 0))
+  const blackBox = Math.max(0, ceilFinalQuantity(add.blackBox ?? 0))
   led.isk += isk
   led.wreck += wreck
   led.blackBox += blackBox
@@ -482,8 +484,8 @@ export function noteReward(
  */
 function noteReclaimPending(ev: WeekendEventState, add: { isk?: number; wreck?: number }): void {
   const cur = (ev.reclaimPending ??= { isk: 0, wreck: 0 })
-  cur.isk += Math.max(0, Math.round(add.isk ?? 0))
-  cur.wreck += Math.max(0, Math.round(add.wreck ?? 0))
+  cur.isk += Math.max(0, ceilFinalQuantity(add.isk ?? 0))
+  cur.wreck += Math.max(0, ceilFinalQuantity(add.wreck ?? 0))
 }
 
 /**
@@ -816,8 +818,8 @@ export function weekendGrantRewards(
   state: GameState,
   reward: { isk?: number; wreck?: number; blackBox?: boolean; wreckItemId?: string; blackBoxItemId?: string },
 ): { isk: number; wreck: number; blackBox: number } {
-  const isk = Math.max(0, Math.round(reward.isk ?? 0))
-  const wreckWant = Math.max(0, Math.round(reward.wreck ?? 0))
+  const isk = Math.max(0, ceilFinalQuantity(reward.isk ?? 0))
+  const wreckWant = Math.max(0, ceilFinalQuantity(reward.wreck ?? 0))
   if (isk > 0) state.wallet.isk += isk
   /** 稀有残骸：解析不到物品 id（契约破损）⇒ **不发也不记账**，并留一条 warn（原先静默吞掉） */
   let wreck = 0
@@ -1051,6 +1053,15 @@ export function weekendApplyBattleOutcome(
     if (battle) {
       const led = flagshipBattleLedger(battle, flagshipIds)
       flagshipDmg = led.rawDmg
+      // 兼容旧战斗的四舍五入入场HP及读档削血取整；只补已确认击沉后至多1HP的尾差。
+      const poolLeft = weekendBossPoolView(state, state.weekendEvent)?.hpLeft ?? 0
+      const roundingGap = poolLeft - flagshipDmg
+      const killedBoss = battle.bossDownAtMs !== undefined && battle.foeOverride?.bossShipId === flagship?.ship.id
+        && Object.values(battle.units).some(unit => unit.side === 'foe' && unit.foeShipId === flagship?.ship.id
+          && unit.hp.s + unit.hp.a + unit.hp.h <= 0)
+      if (led.flagshipSeq === 1 && killedBoss && roundingGap > 0 && roundingGap <= 1) flagshipDmg += 1
+      // 入场HP及伤害取整不能代替击沉观测；仍存活时至少保留共享池最后一格。
+      if (!killedBoss && poolLeft > 0) flagshipDmg = Math.min(flagshipDmg, Math.max(0, ceilFinalQuantity(poolLeft) - 1))
     }
   }
   /**

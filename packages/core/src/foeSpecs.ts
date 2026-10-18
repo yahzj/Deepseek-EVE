@@ -6,6 +6,7 @@
  * rng / labels / instances / inventory / equipment / tuning / foeCard / foePower / wormholeFoes /
  * foeRange / combatMath / combatFx。`combat.ts` 原样再导出（先例：fitted.ts），既有引用零改动。
  */
+import { ceilFinalQuantity } from './quantity'
 
 /* 以下为 2026-10-02 批次 4l 从 combat.ts 切接过来的整簇（敌方编队头注 ~ seedUnit）。 */
 import type { GameState } from './state'
@@ -139,10 +140,10 @@ function droneFireSplitOf(
     const unitCount = idxs.length
     const nDrones = unitCount * perUnitDrones
     const mul = slot.dmgMul ?? 1
-    const gunOld = Math.max(1, Math.round(slot.ship.shotDmg * mul * comp))
+    const gunOld = Math.max(1, ceilFinalQuantity(slot.ship.shotDmg * mul * comp))
     const droneOld = droneSlots.flatMap((ds) =>
       Array.from({ length: Math.max(0, Math.round(ds.count)) }, () =>
-        Math.max(1, Math.round(ds.drone.dmg * mul)),
+        Math.max(1, ceilFinalQuantity(ds.drone.dmg * mul)),
       ),
     )
     const droneOldSum = droneOld.reduce((a, b) => a + b, 0)
@@ -197,7 +198,7 @@ function droneFireSplitOf(
  * ⚠ 折扣率 0 **不会**退回旧硬钳制语义）。
  */
 function foeHullDpsOf(ship: FoeShipDef, dmgMul: number, comp: number, bal: BattleBalance): number {
-  const per = Math.max(1, Math.round(ship.shotDmg * dmgMul * comp))
+  const per = Math.max(1, ceilFinalQuantity(ship.shotDmg * dmgMul * comp))
   return (per * 1000) / Math.max(1, ship.reloadMs)
 }
 
@@ -269,17 +270,18 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
     // 同一条舰级在不同卡上可按卡面 `defProfile` 建档（A 族鱼龙混杂 ⇒ 什么血型都有，无族级约束）。
     const split = u.slot.split ?? ship.split
     const hpMul = opts.beforeHpUplift ? foeFamilyHpMulOf(ship.family) : foeShipHpMulOf(ship.family)
+    const hpValue = opts.beforeHpUplift ? (value: number) => value : ceilFinalQuantity
     const hp: Hp3 = u.slot.hpOverride ? { ...u.slot.hpOverride } : {
-      s: totalHp * split.s * hpMul,
-      a: totalHp * split.a * hpMul * (mount.foeMausoleumArmor?.hpMul ?? 1),
-      h: totalHp * split.h * hpMul * (mount.foeMausoleumArmor?.hpMul ?? 1),
+      s: hpValue(totalHp * split.s * hpMul),
+      a: hpValue(totalHp * split.a * hpMul * (mount.foeMausoleumArmor?.hpMul ?? 1)),
+      h: hpValue(totalHp * split.h * hpMul * (mount.foeMausoleumArmor?.hpMul ?? 1)),
     }
     // 炮台单发：写了比例 ⇒ 取拆分后的 G 摊分结果（Σ 与旧口径守恒），否则逐字沿用旧算法；
     // 之后再乘**舰体火力越线折扣**（越线才 <1；`fireSplit` 非空的条目缩放 = 1，见 `foeDpsCapScaleOf`）
     const rawShotDmg = sp
       ? sp.gun
-      : Math.max(1, Math.round(ship.shotDmg * (u.slot.dmgMul ?? 1) * comp * (dpsCapScale.get(u.slot) ?? 1)))
-    const shotDmg = ship.acidBurst ? 0 : mount.broodControl ? Math.max(1, Math.round(rawShotDmg * mount.broodControl.gunDmgMul)) : rawShotDmg
+      : Math.max(1, ceilFinalQuantity(ship.shotDmg * (u.slot.dmgMul ?? 1) * comp * (dpsCapScale.get(u.slot) ?? 1)))
+    const shotDmg = ship.acidBurst ? 0 : mount.broodControl ? Math.max(1, ceilFinalQuantity(rawShotDmg * mount.broodControl.gunDmgMul)) : rawShotDmg
     const shotSplit = splitShotByComposition(shotDmg, compositionOfMix(mix))
     const multiShots: Partial<Record<DamageType, number>> | undefined =
       shotSplit.length > 1
@@ -326,7 +328,7 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
         artId: ds.drone.id,
         fixedType: ds.drone.damageType,
         // 机群单发：写了比例 ⇒ 取拆分后的 D 摊分结果（逐架、余数补前面的架次），否则沿用旧算法
-        shotDmg: Math.max(1, Math.round((sp ? sp.drones[dIdx++]! : Math.max(1, Math.round(ds.drone.dmg * (u.slot.dmgMul ?? 1)))) * (mount.broodControl?.droneDmgMul ?? 1))),
+        shotDmg: Math.max(1, ceilFinalQuantity((sp ? sp.drones[dIdx++]! : Math.max(1, ceilFinalQuantity(ds.drone.dmg * (u.slot.dmgMul ?? 1)))) * (mount.broodControl?.droneDmgMul ?? 1))),
         ...(mount.broodControl ? { foeDroneRangeBonusPct: mount.broodControl.droneRangeBonusPct } : {}),
         maxRangeM: Math.max(2, ds.drone.maxRangeM),
         minRangeM: 1, // 机群无近盲带（贴脸也打）
@@ -349,7 +351,7 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
           artId: reserveModel.id,
           reserve: true, // **账目标记**：备用机（库存深度）——总火力/守恒核对排除它
           fixedType: reserveModel.damageType,
-          shotDmg: sp ? sp.drones[sp.drones.length - 1]! : Math.max(1, Math.round(reserveModel.dmg * (u.slot.dmgMul ?? 1))),
+          shotDmg: sp ? sp.drones[sp.drones.length - 1]! : Math.max(1, ceilFinalQuantity(reserveModel.dmg * (u.slot.dmgMul ?? 1))),
           maxRangeM: Math.max(2, reserveModel.maxRangeM),
           minRangeM: 1,
           hitRate: reserveModel.hitRate,
@@ -360,7 +362,7 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
     }
     return {
       tag: u.tag,
-      ...(ship.acidBurst ? { acidBurst: { ...ship.acidBurst, ...(ship.acidBurst.damage !== undefined ? { damage: Math.round(ship.acidBurst.damage * (u.slot.dmgMul ?? 1) * comp) } : {}), ...(mount.acidShieldDamageMul !== undefined ? { shieldDamageMul: mount.acidShieldDamageMul } : {}) } } : {}),
+      ...(ship.acidBurst ? { acidBurst: { ...ship.acidBurst, ...(ship.acidBurst.damage !== undefined ? { damage: ceilFinalQuantity(ship.acidBurst.damage * (u.slot.dmgMul ?? 1) * comp) } : {}), ...(mount.acidShieldDamageMul !== undefined ? { shieldDamageMul: mount.acidShieldDamageMul } : {}) } } : {}),
       ...(mount.hatchery ? { foeHatchery: { ...mount.hatchery } } : {}),
       ...(mount.fleetSpeedRamp ? { foeFleetSpeedRamp: { ...mount.fleetSpeedRamp } } : {}),
       name,
@@ -1040,7 +1042,7 @@ export function flagshipBattleLedger(
     maxHp += maxSum
     seq++
   }
-  return { rawDmg: Math.round(rawDmg), flagshipMaxHp: Math.round(maxHp), flagshipSeq: seq }
+  return { rawDmg: ceilFinalQuantity(rawDmg), flagshipMaxHp: ceilFinalQuantity(maxHp), flagshipSeq: seq }
 }
 export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance, opts: FoeSpecOpts = {}): UnitSpec[] {
   // 2026-09-11 舰级路径（船长定案「敌舰配置表」）：写了 ships 的卡按**舰级绝对值**建档；
@@ -1094,7 +1096,8 @@ export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance, opts: Fo
     const unitHp = (baseHp * uThreat) / Math.max(1, anomaly.threat)
     const totalHp = unitHp
     const hpMul = opts.beforeHpUplift ? foeFamilyHpMulOf(anomaly.foeFamily) : foeShipHpMulOf(anomaly.foeFamily)
-    const hp: Hp3 = { s: totalHp * split.s * hpMul, a: totalHp * split.a * hpMul, h: totalHp * split.h * hpMul }
+    const hpValue = opts.beforeHpUplift ? (value: number) => value : ceilFinalQuantity
+    const hp: Hp3 = { s: hpValue(totalHp * split.s * hpMul), a: hpValue(totalHp * split.a * hpMul), h: hpValue(totalHp * split.h * hpMul) }
     const dps = uThreat * bal.foeDpsPerThreat
     // 2026-09-08（船长定：能量=光束必中；动能/爆炸普遍高命中 0.85 + 逐卡低命中特例）：
     // 非能量单发 = DPS×装填 ÷ 有效命中 × foeHitCompMul（回避>0 期望上升的等效补偿，方案 A）；
@@ -1109,7 +1112,7 @@ export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance, opts: Fo
       anomaly.foeShotDmg ??
       Math.max(
         1,
-        Math.round(((dps * bal.foeReloadMs) / 1000) * (effHit < 1 ? bal.foeHitCompMul / effHit : 1)),
+        ceilFinalQuantity(((dps * bal.foeReloadMs) / 1000) * (effHit < 1 ? bal.foeHitCompMul / effHit : 1)),
       )
     // 2026-09-10 船长（窝点混伤）：按火力构成拆成逐系单发（Σ = 总单发，敌总伤不变）。
     // 纯系卡只有一条 → 与旧行为完全一致；混伤卡 = 主 60% / 副 40% 两键。
@@ -1743,7 +1746,7 @@ export function initFoeDronePools(
         ...(d.armorResist ? { armor: d.armorResist } : {}),
         ...(d.hullResist ? { hull: d.hullResist } : {}),
       }
-      const hpOf = (value: number): number => hpMul === 1 ? Math.max(1, Math.round(value)) : Math.max(1, value * hpMul)
+      const hpOf = (value: number): number => Math.max(1, ceilFinalQuantity(value * hpMul))
       const s = hpOf(d.shieldHp)
       const a = hpOf(d.armorHp)
       const h = hpOf(d.hullHp)
