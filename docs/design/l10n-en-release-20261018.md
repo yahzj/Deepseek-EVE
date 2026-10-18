@@ -10,7 +10,7 @@
 - 为`ann-signal-beacons-exploration-20261018`及四族专属信号发射器、MK1、扫描科技补齐英文覆盖。
 - 为守墓入侵、守墓装备、守墓舰船及相关界面词条补齐英文覆盖，保持中文参数槽与英文参数槽一致。
 - 复核同批已有英文：`EN_SHIPS`、`EN_ITEMS_ALL`、`EN_MATTER_TECH`、公告和扫描相关说明；只修正确有语义、术语或规格错误的条目。
-- 更新`docs/l10n-pending.md`，清除全部已完成待译条目；中文仍待审的`ui.fragmentRedeem.004`不属于英文待译，未擅自翻译。
+- 更新`docs/l10n-pending.md`，清除全部已完成待译条目；`ui.fragmentRedeem.004`已有英文覆盖，原记录属于中文方案待审，已从英文清单移除。
 
 ## 依据
 
@@ -44,5 +44,5 @@
 - `npm run l10n:params`：模板、core日志和列表槽全部通过。
 - `npm run test -w @whale/core -- l10n-overlay l10n-deferred-20260930 synaptic-copy-20260930 gravekeeper-scan-fuel-20261017 faction-beacons-lab-20261017`：48项通过。
 - `npm run typecheck`：core/data/ui/desktop四包通过。
-- 全仓检查仍报告15条渲染层中文源码字面量和169条`l10n-keep`记录；它们是类型联合键、形状槽键、调试探针和本地化实现内部文本，不是玩家英文覆盖缺口，按规则保留。
+- 全仓检查仍报告15条渲染层中文源码字面量和169条`l10n-keep`记录；它们是类型联合键、形状槽键、调试探针和本地化实现内部文本，不是玩家英文覆盖缺口，按规则保留。`ui.fragmentRedeem.004`的英文现行覆盖已存在，旧中文待审记录已纠正。
 - 本批提交`verify`分支，未合并主树、未推送；其他仍待中文审定或未获本批英文范围的历史内容不再存在于延期表中，后续若要重写已有英文需另开审校批次。
