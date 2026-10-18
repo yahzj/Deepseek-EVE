@@ -7078,7 +7078,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Wormhole.316": { zh: "战斗线完成度 {p1}%：损伤 ×{p2}", en: "Combat line {p1}% complete: wear ×{p2}" },
   "ui.Wormhole.317": { zh: "所选编队的打捞器台数：墓场与遗迹每次打捞按台数回收若干堆；0 台 ⇒ 打捞格干不了活。打捞效率 {p1}%：每满 100% 必多捞 1 堆，余数按概率（民用 0 / MK1 20% / MK2 40% / MK3 60% / 异星 80%，谜质科技「引力吊臂」每级 +20%）", en: "Salvagers in the chosen formation: graveyards and ruins recover a number of piles per salvage based on how many are aboard; 0 units means the salvage tiles can do no work. Salvage efficiency {p1}%: every full 100% guarantees one extra pile, and the remainder is a chance (civilian 0 / MK1 20% / MK2 40% / MK3 60% / alien 80%, plus 20% per level of the Enigma tech Gravity Boom)" },
   "ui.Wormhole.318": { zh: "所选编队的采集器台数：矿脉每次采集按台数回收若干堆；0 台 ⇒ 一堆虚空母矿也挖不动。采集效率 {p1}%：每满 100% 必多采 1 堆，余数按概率（民用 0 / MK1 20% / MK2 40% / MK3 60% / 异星 80%，谜质科技「富集钻头」每级 +20%）", en: "Miners in the chosen formation: veins recover a number of piles per mining run based on how many are aboard; 0 units means not even one pile of void motherlode can be worked. Mining efficiency {p1}%: every full 100% guarantees one extra pile, and the remainder is a chance (civilian 0 / MK1 20% / MK2 40% / MK3 60% / alien 80%, plus 20% per level of the Enigma tech Enrichment Drill)" },
-  "ui.Wormhole.319": { zh: "本队入洞后的扫描范围：基础 1 圈 ＋ 编队里侦察舰/电子舰的加成（编入队伍即生效、可叠加）；洞内捞到的谜质装置「测绘仪」还能再 +圈", en: "The team's scan radius after entering: a base of 1 ring plus bonuses from scout and electronics ships in the formation (they apply as soon as the ship joins and they stack); the Enigma device Surveyor recovered inside adds one more ring" },
+  // ⟪文案调整 2026-10-18⟫ 扫描舰船同类取最高，两类相加；共享入口与现行信号空间提示同步。
+  "ui.Wormhole.319": { zh: "本队入洞后的扫描范围：基础 1 圈 ＋ 编队里侦察舰/电子舰的加成；同类舰船取最高，侦察舰与电子舰可相加；洞内捞到的谜质装置「测绘仪」还能再 +圈", en: "The team's scan radius after entering: a base of 1 ring plus bonuses from scout and EW ships in the formation; only the highest bonus in each ship class applies, and scout and EW bonuses add together; the Enigma device Surveyor recovered inside adds one more ring" },
   "ui.Wormhole.320": { zh: "· {p1}{count}：{p4}", en: "· {p1}{count}: {p4}" },
   "ui.Wormhole.321": { zh: " ⇒ 按行价约 {p1} 信用点", en: " ⇒ about {p1} credits at listed prices" },
   "ui.Wormhole.322": { zh: "枚（谜质装置析出 · 可投入「谜质科技」研究）", en: "cores (shed by Enigma devices · can be spent on Enigma tech research)" },
@@ -7533,7 +7534,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.signalSpace.066": {"zh":"信号空间 · 第 {p1} 层","en":"Signal Space · depth {p1}"},
   "ui.signalSpace.067": {"zh":"信号空间内被击沉","en":"Sunk inside a Signal Space"},
   "ui.signalSpace.068": {"zh":"信号空间内整队失联","en":"Fleet lost inside a Signal Space"},
-  "ui.signalSpace.069": {"zh":"信号空间扫描范围 +{p1} 圈（编入队伍即生效、可叠加）","en":"Signal Space scan range +{p1} rings (applies as soon as it joins the fleet, and stacks)"},
+  // ⟪文案调整 2026-10-18⟫ 舰船富文本真实映射目标沿用已确认的同类不叠加规则。
+  "ui.signalSpace.069": {"zh":"信号空间扫描范围 +{p1} 圈；同类舰船取最高，侦察舰与电子舰可相加","en":"Signal Space scan range +{p1} rings; only the highest bonus in each ship class applies, and scout and EW bonuses add together"},
   "ui.signalSpace.070": {"zh":"交火中不能离开信号空间：打完这一场。","en":"Cannot leave the Signal Space during an engagement: finish this fight."},
   "ui.signalSpace.071": {"zh":"人在空间内 · 离开即暂停（进度保存）","en":"Inside the Signal Space · leaving pauses it (progress saved)"},
   "ui.signalSpace.072": {"zh":"从「扫描信号空间」页选一处进入信号空间 · 关掉面板即暂停（进度保存）","en":"Pick one under Scan Signal Space to go in · closing the panel pauses it (progress saved)"},
@@ -7561,7 +7563,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.signalSpace.094": {"zh":" —— 取回后装进货仓生效（占 2×2 = 4 格，腾不出会先进临时空间），离开信号空间即失效。","en":" — it takes effect once loaded into the hold (2×2 = 4 slots; without 2×2 free it goes into temporary space first) and lapses when you leave the Signal Space."},
   "ui.signalSpace.095": {"zh":"谜质科技（信号空间探索 / 信号空间战斗线 · 已点）：","en":"Enigma tech (Signal Space exploration / Signal Space combat line · researched):"},
   "ui.signalSpace.096": {"zh":"暂时回不到信号空间。","en":"Cannot get back to the Signal Space for now."},
-  "ui.signalSpace.097": {"zh":"本队进入信号空间后的扫描范围：基础 1 圈 ＋ 编队里侦察舰/电子舰的加成（编入队伍即生效、可叠加）；空间内捞到的谜质装置「测绘仪」还能再 +圈","en":"The team's scan radius after entering: a base of 1 ring plus bonuses from scout and electronics ships in the formation (they apply as soon as the ship joins and they stack); the Enigma device Surveyor recovered inside adds one more ring"},
+  // ⟪文案调整 2026-10-18⟫ 队伍扫描提示不再宣称同类舰船加成可叠加。
+  "ui.signalSpace.097": {"zh":"本队进入信号空间后的扫描范围：基础 1 圈 ＋ 编队里侦察舰/电子舰的加成；同类舰船取最高，侦察舰与电子舰可相加；空间内捞到的谜质装置「测绘仪」还能再 +圈","en":"The team's scan radius after entering: a base of 1 ring plus bonuses from scout and EW ships in the formation; only the highest bonus in each ship class applies, and scout and EW bonuses add together; the Enigma device Surveyor recovered inside adds one more ring"},
   "ui.signalSpace.098": {"zh":"真进入信号空间跑一趟捡到的，直入仓库；结构/装甲受损但绝不丢船）。","en":"what one real descent brings back, straight into storage; hull and armour take wear but no ship is ever lost)."},
   "ui.signalSpace.099": {"zh":"打开后空间内不再获得普通残骸：打捞只收稀有残骸，战斗战果里的普通残骸也不再产生；稀有残骸、货柜与虚空母矿不受影响。","en":"With this on, common wrecks are no longer gained in the Signal Space: salvage takes rare wrecks only, and combat spoils no longer produce common wrecks. Rare wrecks, containers and Voidmother Ore are unaffected."},
   "ui.signalSpace.100": {"zh":"消耗信号谜质与信用点研究科技：主要作用于空间内探索与战斗，另含部分空间外工业科技（不消耗时间）","en":"Spend Signal Enigma and credits on technology: it mostly serves exploration and combat inside the Signal Space, plus a few industry technologies outside (takes no time)"},
