@@ -28,6 +28,7 @@ import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
 import {
   WEEKEND_FLAGSHIP_POOL_HP,
+  endWeekendEvent,
   weekendCoreCandidates,
   weekendNoteFlagshipKilled,
   weekendTick,
@@ -44,12 +45,12 @@ const NOW = T0 + H
 const DARK = WEEKEND_MAKEUP_FIRST_WALL_MS + 16 * H
 
 /**
- * 造一档：调试模式（结束 +1h 就能再开场 ⇒ 被测的那道闸才是唯一挡住它的东西）＋ 一场**核心已满**的
+ * 造一档：正常周窗口（调试自动开场已暂停）＋ 一场**核心已满**的
  * 光环入侵（旗舰已在场、池子只剩 400）。
  */
 function world(): GameState {
   const s = createInitialState({ nowWallMs: 0, seed: 20261002 })
-  s.debugQuick = true
+  s.debugQuick = false
   s.exploredGalaxies = [...ctx.galaxies.keys()]
   s.standingsEarned = { ...(s.standingsEarned ?? {}), dsi: 100 }
   s.standings = { ...s.standings, dsi: 100 }
@@ -104,7 +105,9 @@ describe('硬闸：还有没打完的旗舰战 ⇒ 不开新场（2026-10-02 补
   it('② 同一拍把闸放开 ⇒ 照开（挡住它的正是这道闸，不是别的门）', () => {
     const s = world()
     intoFlagshipBattle(s)
-    weekendNoteFlagshipKilled(s, NOW)
+    // 非玩家击杀收场，不触发本期封盘；先确认战斗门禁确实挡住，然后同刻放行。
+    endWeekendEvent(s, NOW)
+    expect(weekendTick(s, ctx, NOW + H + 1, NOW, true).started).toBe(false)
     const r = weekendTick(s, ctx, NOW + H + 1, NOW, false)
     expect(r.started, '闸一放开 ⇒ 照常开新场').toBe(true)
     expect(s.weekendEvent!.seq, '新场 = 下一号').toBe(2)
@@ -128,7 +131,7 @@ describe('硬闸：还有没打完的旗舰战 ⇒ 不开新场（2026-10-02 补
   it('④ 战斗一收场（遭遇槽清空）⇒ 下一拍照常开，不漏场', () => {
     const s = world()
     intoFlagshipBattle(s)
-    weekendNoteFlagshipKilled(s, NOW)
+    endWeekendEvent(s, NOW)
     expect(weekendTick(s, ctx, NOW + H + 1, NOW, true).started, '还在打 ⇒ 不开').toBe(false)
     /** 战斗收场：遭遇槽清空（真引擎走 `settleFight` 的 `clearEncounter`） */
     s.encounter = { ...s.encounter, active: false, battle: null }

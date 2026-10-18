@@ -81,13 +81,13 @@ describe('本地调试模式必出守墓入侵', () => {
     }
   })
 
-  it.each(['R', 'C'])('④ 旧%s调试场就地换D但保留台账和池，普通历史场不追改', (family) => {
+  it.each(['R', 'C'])('④ 自动开场暂停后旧%s调试场不追改，台账和池保留', (family) => {
     const now = new Date(2026, 9, 6, 20).getTime()
     const dbg = fresh(true)
     const rolled = weekendRollOccupation(fresh(false), ctx, 81, family)!
     dbg.weekendEvent = { ...rolled, seq: 81, startedAtWallMs: now, contributed: { [rolled.coreId]: .3 }, flagshipHpMax: 150000, flagshipHpDone: 12345 }
     expect(ensureWeekendEvent(dbg, ctx, now + 1000)).toBe(false)
-    expect(dbg.weekendEvent).toMatchObject({ family: 'D', seq: 81, contributed: { [rolled.coreId]: .3 }, flagshipHpMax: 150000, flagshipHpDone: 12345 })
+    expect(dbg.weekendEvent).toMatchObject({ family, seq: 81, contributed: { [rolled.coreId]: .3 }, flagshipHpMax: 150000, flagshipHpDone: 12345 })
     const live = fresh(false)
     live.standings.dsi = 100
     live.weekendEvent = { ...rolled, seq: 81, startedAtWallMs: now, contributed: {} }

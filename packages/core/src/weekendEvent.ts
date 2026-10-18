@@ -506,6 +506,8 @@ export const WEEKEND_FIRST_T0_WALL_MS: number | null = new Date(2026, 8, 25, 22,
 
 /** 调试模式（`debugQuick`）：上一场结束 + 1 小时刷新（第 15 条）· NPC 时间轴 ÷60（Q6）· 关掉离线保护（Q7） */
 export const WEEKEND_DEBUG_RESTART_MS = 3_600_000
+/** 船长2026-10-18要求暂时关闭调试档无条件入侵；不影响手动发射器或已有场次结算。 */
+export const WEEKEND_DEBUG_AUTO_START_ENABLED = false
 export const WEEKEND_DEBUG_TIME_DIVISOR = 60
 
 /* ─────────────── 存档结构（`state.weekendEvent`，可选 ⇒ 零迁移） ─────────────── */
@@ -1606,10 +1608,11 @@ export function weekendPeriodSealedByKill(
 /**
  * **确保当前时刻有一场该有的入侵**（幂等）：
  * - 正常模式：窗口（周五 20:00 ~ +96h）内若 `startedAtWallMs` 不是本周 T0 ⇒ 开新一场（编号 +1）；
- * - 调试模式：上一场结束 + 1h 后刷新（无历史 ⇒ 首次调用即开）；
+ * - 调试模式：自动开场开关开启时，上一场结束 + 1h 后刷新（无历史 ⇒ 首次调用即开）；
  * - 返回是否发生了变化（供调用方决定是否落盘/记日志）。
  */
 export function ensureWeekendEvent(state: GameState, ctx: SimContext, nowWallMs: number): boolean {
+  if (weekendDebugOn(state) && !WEEKEND_DEBUG_AUTO_START_ENABLED) return false
   const ev = state.weekendEvent
   /**
    * **首场一次性 T0**（**船长 2026-09-25 令**：「**现在可以解除限制，并在一会 22 点开始第一次入侵
