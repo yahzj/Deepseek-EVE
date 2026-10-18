@@ -241,6 +241,8 @@ export const EN_MODULES: EnTable = {
   'mod-gravekeeper-rebirth': { name: l10nEntryText(L10N['mod.gravekeeperGear.001']!, 'en'), description: l10nEntryText(L10N['mod.gravekeeperGear.002']!, 'en') },
   'mod-gravekeeper-crisis': { name: l10nEntryText(L10N['mod.gravekeeperGear.003']!, 'en'), description: l10nEntryText(L10N['mod.gravekeeperGear.004']!, 'en') },
   'mod-gravekeeper-rail': { name: l10nEntryText(L10N['mod.gravekeeperGear.005']!, 'en'), description: l10nEntryText(L10N['mod.gravekeeperGear.006']!, 'en') },
+  'mod-alien-acid-launcher': { name: l10nEntryText(L10N['mod.alienLoot.001']!, 'en'), description: l10nEntryText(L10N['mod.alienLoot.002']!, 'en') },
+  'mod-alien-pressure-chamber': { name: l10nEntryText(L10N['mod.alienLoot.003']!, 'en'), description: l10nEntryText(L10N['mod.alienLoot.004']!, 'en') },
   'mod-drone-launch-1': { name: l10nEntryText(L10N['mod.launchCalibration.001']!, 'en'), description: l10nEntryText(L10N['mod.launchCalibration.006']!, 'en') },
   'mod-drone-launch-2': { name: l10nEntryText(L10N['mod.launchCalibration.002']!, 'en'), description: l10nEntryText(L10N['mod.launchCalibration.006']!, 'en') },
   'mod-drone-launch-3': { name: l10nEntryText(L10N['mod.launchCalibration.003']!, 'en'), description: l10nEntryText(L10N['mod.launchCalibration.006']!, 'en') },

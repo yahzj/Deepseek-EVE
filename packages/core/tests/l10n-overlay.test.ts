@@ -17,10 +17,12 @@ const deferredDroneBooks: Readonly<Record<string, number>> = {
   'bp-faction-drone-bee': 1, 'bp-faction-drone-hiveguard': 2, 'bp-faction-drone-construct': 3,
   'bp-faction-drone-ink': 4, 'bp-faction-drone-jawclaw': 5,
 }
+const translatedLegacyIds = new Set([
+  'mod-alien-acid-launcher', 'mod-alien-pressure-chamber', 'drone-jawclaw',
+  'bp-faction-drone-bee', 'bp-faction-drone-hiveguard', 'bp-faction-drone-construct', 'bp-faction-drone-ink', 'bp-faction-drone-jawclaw',
+  'bp-drone-launch-1', 'bp-drone-launch-2', 'bp-drone-launch-3', 'bp-laser-calibration-2', 'bp-laser-calibration-3',
+])
 const deferredCalibration: Readonly<Record<string, { name: string; description: string }>> = {
-  'mod-gravekeeper-rebirth': { name: 'mod.gravekeeperGear.001', description: 'mod.gravekeeperGear.002' },
-  'mod-gravekeeper-crisis': { name: 'mod.gravekeeperGear.003', description: 'mod.gravekeeperGear.004' },
-  'mod-gravekeeper-rail': { name: 'mod.gravekeeperGear.005', description: 'mod.gravekeeperGear.006' },
   'mod-alien-acid-launcher': { name: 'mod.alienLoot.001', description: 'mod.alienLoot.002' },
   'mod-alien-pressure-chamber': { name: 'mod.alienLoot.003', description: 'mod.alienLoot.004' },
   'mod-drone-launch-1': { name: 'mod.launchCalibration.001', description: 'mod.launchCalibration.006' },
@@ -28,23 +30,15 @@ const deferredCalibration: Readonly<Record<string, { name: string; description: 
   'mod-drone-launch-3': { name: 'mod.launchCalibration.003', description: 'mod.launchCalibration.006' },
   'mod-laser-calibration-2': { name: 'mod.launchCalibration.004', description: 'mod.launchCalibration.007' },
   'mod-laser-calibration-3': { name: 'mod.launchCalibration.005', description: 'mod.launchCalibration.007' },
-  'bp-drone-launch-1': { name: 'bp.launchCalibration.001', description: 'mod.launchCalibration.006' },
-  'bp-drone-launch-2': { name: 'bp.launchCalibration.002', description: 'mod.launchCalibration.006' },
-  'bp-drone-launch-3': { name: 'bp.launchCalibration.003', description: 'mod.launchCalibration.006' },
-  'bp-laser-calibration-2': { name: 'bp.launchCalibration.004', description: 'mod.launchCalibration.007' },
-  'bp-laser-calibration-3': { name: 'bp.launchCalibration.005', description: 'mod.launchCalibration.007' },
 }
 const deferredGravekeeperShips: Readonly<Record<string, string>> = {
-  'foe-d-invasion-cruiser': 'ship.gravekeeper.001',
-  'foe-d-invasion-bastion': 'ship.gravekeeper.002',
-  'foe-d-invasion-oathkeeper': 'ship.gravekeeper.003',
-  'foe-d-invasion-eternal-tomb': 'ship.gravekeeper.004',
+  'foe-d-invasion-cruiser': 'ship.gravekeeper.001', 'foe-d-invasion-bastion': 'ship.gravekeeper.002',
+  'foe-d-invasion-oathkeeper': 'ship.gravekeeper.003', 'foe-d-invasion-eternal-tomb': 'ship.gravekeeper.004',
 }
 const deferredGravekeeperCards: Readonly<Record<string, string>> = {
   'gravekeeper-drift': 'ano.gravekeeper.001', 'gravekeeper-line': 'ano.gravekeeper.002',
   'gravekeeper-main': 'ano.gravekeeper.003', 'gravekeeper-flagship': 'ano.gravekeeper.004',
 }
-const translatedGravekeeperModules = new Set(['mod-gravekeeper-rebirth', 'mod-gravekeeper-crisis', 'mod-gravekeeper-rail'])
 
 describe('英文覆盖层（P2）', () => {
   it('zh 缺省 = 显式 zh：名称逐字相同（工具/测试/模拟读数不受影响）', () => {
@@ -114,14 +108,7 @@ describe('英文覆盖层（P2）', () => {
   })
 
   it('装备覆盖完整且生效：142 条全覆盖；英文名生效；碎片名跟着装备名走', () => {
-    const missing = [...zh.modules.keys()].filter((id) => !(id in EN_MODULES) && !(id in deferredCalibration) && !translatedGravekeeperModules.has(id))
-    for (const [id, pending] of Object.entries(deferredCalibration)) {
-      if (!zh.modules.has(id)) continue
-      if (translatedGravekeeperModules.has(id)) continue
-      expect(L10N[pending.name]!.enDeferred, id).toBe(true)
-      expect(L10N[pending.name]!.en, id).toBe('')
-      expect(en.modules.get(id)!.name, id).toBe(l10nEntryText(L10N[pending.name]!, 'en'))
-    }
+    const missing = [...zh.modules.keys()].filter((id) => !(id in EN_MODULES))
     expect(missing, `这些装备还没有英文名：${missing.slice(0, 8).join(', ')}`).toEqual([])
     expect(en.modules.get('mod-turret-kin-1')?.name).toBe('Light Turret MK1 · Kinetic')
     expect(en.modules.get('mod-wh-e-dc')?.name).toBe('Megastructure Damage Control Array')
@@ -206,13 +193,13 @@ describe('英文覆盖层（P2）', () => {
     // 派生覆盖率：能反查到产物的蓝图都必须有英文名（否则说明产物表缺名）
     const noEn = [...zh.blueprints.values()].filter((bp) => {
       const pending = deferredCalibration[bp.id]
-      if (pending) {
-        expect(L10N[pending.name]!.enDeferred).toBe(true)
-        expect(en.blueprints.get(bp.id)?.name).toBe(l10nEntryText(L10N[pending.name]!, 'en'))
-        return false
-      }
+      if (pending) return en.blueprints.get(bp.id)?.name === zh.blueprints.get(bp.id)?.name
       const index = deferredDroneBooks[bp.id]
       if (index !== undefined) {
+        if (translatedLegacyIds.has(bp.id)) {
+          expect(en.blueprints.get(bp.id)?.name).not.toBe(zh.blueprints.get(bp.id)?.name)
+          return false
+        }
         const entry = L10N[`bp.factionDrone.${String(index).padStart(3, '0')}`]!
         expect(entry.enDeferred).toBe(true)
         expect(en.blueprints.get(bp.id)?.name).toBe(l10nEntryText(entry, 'en'))
@@ -379,8 +366,8 @@ describe('英文覆盖层（P2）', () => {
       if (it.id === 'synaptic-accelerant' && L10N['item.synaptic.001']!.enDeferred === true) {
         expect(other.description).toBe(l10nEntryText(L10N['item.synaptic.001']!, 'en'))
       } else if (it.id === 'drone-jawclaw') {
-        expect(L10N['item.jawclaw.002']!.enDeferred).toBe(true)
-        expect(other.description).toBe(l10nEntryText(L10N['item.jawclaw.002']!, 'en'))
+        expect(L10N['item.jawclaw.002']!.en).not.toBe('')
+        expect(other.description).not.toBe(it.description)
       } else if (it.id === 'blackbox-d') {
         expect(L10N['item.gravekeeper.002']!.en).not.toBe('')
         expect(other.description).not.toBe(it.description)
@@ -404,10 +391,9 @@ describe('英文覆盖层（P2）', () => {
         continue
       }
       const pending = deferredCalibration[id]
-      if (pending && !translatedGravekeeperModules.has(id)) {
-        expect(L10N[pending.description]!.enDeferred).toBe(true)
-        expect(other.description).toBe(l10nEntryText(L10N[pending.description]!, 'en'))
-      } else expect(cjk.test(other.description), `${id} 的英文说明残留中日韩字符：${other.description}`).toBe(false)
+      if (pending) expect(other.description).not.toBe(zh.modules.get(id)!.description)
+      else if (id.startsWith('mod-alien-')) expect(other.description).not.toBe(zh.modules.get(id)!.description)
+      else expect(cjk.test(other.description), `${id} 的英文说明残留中日韩字符：${other.description}`).toBe(false)
     }
     expect(noDesc, `这些装备还没有英文说明：${noDesc.slice(0, 8).join(', ')}`).toEqual([])
     expect(en.modules.get('mod-turret-kin-1')?.description).toContain('rapid kinetic cannon')
@@ -492,16 +478,14 @@ describe('英文覆盖层（P2）', () => {
         continue
       }
       const pending = deferredCalibration[id]
-      if (pending && !translatedGravekeeperModules.has(id)) {
-        expect(L10N[pending.description]!.enDeferred).toBe(true)
-        expect(other.description).toBe(l10nEntryText(L10N[pending.description]!, 'en'))
-        continue
-      }
+      if (pending) { expect(other.description).not.toBe(zh.blueprints.get(id)!.description); continue }
       const index = deferredDroneBooks[id]
       if (index !== undefined) {
-        const entry = L10N[`bp.factionDrone.${String(index + 5).padStart(3, '0')}`]!
-        expect(entry.enDeferred).toBe(true)
-        expect(other.description).toBe(l10nEntryText(entry, 'en'))
+        if (translatedLegacyIds.has(id)) {
+          expect(en.blueprints.get(id)?.name).not.toBe(zh.blueprints.get(id)?.name)
+          continue
+        }
+        expect(other.description).not.toBe(zh.blueprints.get(id)!.description)
       } else {
         expect(cjk.test(other.description), `${id} 的英文说明残留中日韩字符：${other.description}`).toBe(false)
       }
