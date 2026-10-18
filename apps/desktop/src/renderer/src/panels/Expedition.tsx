@@ -168,11 +168,11 @@ export function ExpeditionPanel({
 type TaskSort = 'danger' | 'distance' | 'galaxy' | 'reward' | 'standing'
 const TASK_SORT_KEY = 'whale-idle:task-sort'
 const TASK_SORT_LABEL: Record<TaskSort, string> = {
-  danger: tr("ui.MapPage.008"),
-  distance: tr("ui.Expedition.248"),
-  galaxy: tr("ui.MapPage.009"),
-  reward: tr("ui.Expedition.072"),
-  standing: tr("ui.Expedition.073"),
+  get danger() { return tr("ui.MapPage.008") },
+  get distance() { return tr("ui.Expedition.248") },
+  get galaxy() { return tr("ui.MapPage.009") },
+  get reward() { return tr("ui.Expedition.072") },
+  get standing() { return tr("ui.Expedition.073") },
 }
 
 /* 选项卡分类（船长优化）：重要 / 资源（建站） / 快递——任务可属于多类（如建站=重要+资源） */
@@ -181,12 +181,12 @@ const TASK_SORT_LABEL: Record<TaskSort, string> = {
 /* 2026-09-09：长途运输已从任务中心独立为星图「长途运输」标签（残骸打捞之后，见 HaulingPanel；建成副站解锁） */
 type TaskTabKey = 'important' | 'milestone' | 'resource' | 'courier' | 'bounty'
 const TASK_TABS: Array<{ key: TaskTabKey; label: string }> = [
-  { key: 'important', label: tr("ui.Expedition.302") },
+  { key: 'important', get label() { return tr("ui.Expedition.302") } },
   /* 2026-09-20 船长（玩家反馈）：完成「第一次」后的里程碑（次数）链单开一页装 */
-  { key: 'milestone', label: tr('ui.Expedition.424') },
-  { key: 'resource', label: tr("ui.Expedition.249") },
-  { key: 'courier', label: tr("ui.Expedition.128") },
-  { key: 'bounty', label: tr("ui.Expedition.250") },
+  { key: 'milestone', get label() { return tr('ui.Expedition.424') } },
+  { key: 'resource', get label() { return tr("ui.Expedition.249") } },
+  { key: 'courier', get label() { return tr("ui.Expedition.128") } },
+  { key: 'bounty', get label() { return tr("ui.Expedition.250") } },
 ]
 /**
  * 任务中心内层标签的记忆键 —— **2026-09-26 船长令改会话制**。

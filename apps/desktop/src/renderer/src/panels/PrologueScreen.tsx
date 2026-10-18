@@ -13,7 +13,7 @@ type Phase = 'wake' | 'boot' | 'diag' | 'mode' | 'name' | 'open'
 type LineKind = 'ok' | 'warn' | 'fail'
 
 /** 自检滚动条目（system：模块名） */
-const CHECK_LINES: ReadonlyArray<readonly [string, LineKind, string]> = [
+const checkLinesOf = (): ReadonlyArray<readonly [string, LineKind, string]> => [
   [tr("ui.PrologueScreen.001"), 'ok', tr("ui.PrologueScreen.002")],
   [tr("ui.PrologueScreen.003"), 'warn', tr("ui.PrologueScreen.004")],
   [tr("ui.PrologueScreen.005"), 'fail', tr("ui.PrologueScreen.006")],
@@ -24,7 +24,7 @@ const CHECK_LINES: ReadonlyArray<readonly [string, LineKind, string]> = [
   [tr("ui.PrologueScreen.015"), 'warn', tr("ui.PrologueScreen.016")],
 ]
 
-const DIAG_LINES: ReadonlyArray<readonly [string, string]> = [
+const diagLinesOf = (): ReadonlyArray<readonly [string, string]> => [
   [tr("ui.PrologueScreen.017"), tr("ui.PrologueScreen.018")],
   [tr("ui.PrologueScreen.019"), tr("ui.PrologueScreen.020")],
   [tr("ui.PrologueScreen.021"), tr("ui.PrologueScreen.022")],
@@ -36,6 +36,8 @@ const LINE_MS = 130
 const FADE_MS = 220
 
 export function PrologueScreen({ engine }: { engine: GameEngine }) {
+  const CHECK_LINES = checkLinesOf()
+  const DIAG_LINES = diagLinesOf()
   const [phase, setPhase] = useState<Phase>('wake')
   const [shown, setShown] = useState(0) // boot 已显示条数
   const [name, setName] = useState('PRTS')

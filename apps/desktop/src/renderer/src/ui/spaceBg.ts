@@ -40,10 +40,10 @@ const TILE_URLS: readonly string[] = TILE_KEYS.map((k) => TILES[k]!).filter(
 
 /** 玩家向的短名（设置面板里显示"当前是哪张"）：蓝星云 03 / 星野 04 … */
 const TILE_SETS: ReadonlyArray<{ prefix: string; text: string }> = [
-  { prefix: 'nebula-blue', text: tr("ui.spaceBg.001") },
-  { prefix: 'nebula-green', text: tr("ui.spaceBg.002") },
-  { prefix: 'nebula-purple', text: tr("ui.spaceBg.003") },
-  { prefix: 'starfield', text: tr("ui.spaceBg.004") },
+  { prefix: 'nebula-blue', get text() { return tr("ui.spaceBg.001") } },
+  { prefix: 'nebula-green', get text() { return tr("ui.spaceBg.002") } },
+  { prefix: 'nebula-purple', get text() { return tr("ui.spaceBg.003") } },
+  { prefix: 'starfield', get text() { return tr("ui.spaceBg.004") } },
 ]
 
 function shortNameOf(key: string, index: number): string {

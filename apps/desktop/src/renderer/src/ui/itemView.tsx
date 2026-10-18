@@ -212,7 +212,7 @@ export function ItemGlyphGrid({ cells, onPick }: { cells: ItemGridCell[]; onPick
             ) : null}
             {/* 稀有度小标签（2026-09-20 船长）：钉在格子右上角；查不到档就不渲染 */}
             {c.rarity !== undefined ? (
-              <span className={`app-hand-cell-rarity is-r${c.rarity}`} aria-label={`稀有度 R${c.rarity}`}>
+              <span className={`app-hand-cell-rarity is-r${c.rarity}`} aria-label={tr('ui.itemView.001', { p1: c.rarity })}>
                 R{c.rarity}
               </span>
             ) : null}

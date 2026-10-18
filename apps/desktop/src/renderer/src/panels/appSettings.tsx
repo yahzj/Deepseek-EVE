@@ -43,34 +43,34 @@ export function kindOf(k: LogKind): LogKind {
   return k === 'queue' ? 'levelup' : k
 }
 export const KIND_LABEL: Record<LogKind, string> = {
-  system: tr("ui.App.029"),
-  info: tr("ui.App.030"),
-  queue: tr("ui.App.027"), // 老日志兼容（新日志不再写 queue；见 state.LogKind 注释）
-  levelup: tr("ui.App.031"),
-  warn: tr("ui.App.032"),
-  trade: tr("ui.App.033"),
-  event: tr("ui.App.034"),
+  get system() { return tr("ui.App.029") },
+  get info() { return tr("ui.App.030") },
+  get queue() { return tr("ui.App.027") }, // 老日志兼容（新日志不再写 queue；见 state.LogKind 注释）
+  get levelup() { return tr("ui.App.031") },
+  get warn() { return tr("ui.App.032") },
+  get trade() { return tr("ui.App.033") },
+  get event() { return tr("ui.App.034") },
   // 2026-09-26 船长令新增四类
-  combat: tr("ui.App.154"),
-  industry: tr("ui.App.155"),
-  fleet: tr("ui.App.156"),
-  salvage: tr("ui.App.157"),
+  get combat() { return tr("ui.App.154") },
+  get industry() { return tr("ui.App.155") },
+  get fleet() { return tr("ui.App.156") },
+  get salvage() { return tr("ui.App.157") },
 }
 
 /** 分类语义（T6：与 ui index.css 的 wui-log-* 色值保持同步） */
 export const KIND_DESC: Record<LogKind, string> = {
-  system: tr("ui.App.035"),
-  info: tr("ui.App.036"),
-  queue: tr("ui.App.037"),
-  levelup: tr("ui.App.038"),
-  warn: tr("ui.App.039"),
-  trade: tr("ui.App.040"),
-  event: tr("ui.App.041"),
+  get system() { return tr("ui.App.035") },
+  get info() { return tr("ui.App.036") },
+  get queue() { return tr("ui.App.037") },
+  get levelup() { return tr("ui.App.038") },
+  get warn() { return tr("ui.App.039") },
+  get trade() { return tr("ui.App.040") },
+  get event() { return tr("ui.App.041") },
   // 2026-09-26 船长令新增四类
-  combat: tr("ui.App.159"),
-  industry: tr("ui.App.160"),
-  fleet: tr("ui.App.161"),
-  salvage: tr("ui.App.162"),
+  get combat() { return tr("ui.App.159") },
+  get industry() { return tr("ui.App.160") },
+  get fleet() { return tr("ui.App.161") },
+  get salvage() { return tr("ui.App.162") },
 }
 
 /** 开关色点（图例）：与 `ui/index.css` 的 `--wui-log-*` 同一批 token（2026-09-22 起不再各写一份色值） */
@@ -404,7 +404,7 @@ export function SettingsPanel({
           <div className="app-settings-row">
             <div className="app-settings-head">
               <span className="app-settings-label">{t('ui.App.016')}</span>
-              <span className="app-settings-val">{bg ? bg.label : t('ui.App.017')}</span>
+              <span className="app-settings-val">{bg ? currentSpaceBg()?.label : t('ui.App.017')}</span>
             </div>
             <div className="app-settings-btns">
               <button

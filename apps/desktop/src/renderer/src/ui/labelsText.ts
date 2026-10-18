@@ -14,7 +14,7 @@
  * 表中的**大多数**条目其实是**复用既有 id**（`ui.IndustryPage.005` 原矿 / `ui.Handbook.004` 无人机 …），
  * 只有 core 独有的少数几个（零件 / 蓝图碎片 / 无人机机型 / AI 核心四档 / 键值连接符）才新登记。
  */
-import type { AiCoreType, DroneClass, ItemKind, ModuleSlot, ShipRole, WormholeArchetype, WormholePlace } from '@whale/core'
+import type { AiCoreType, DroneClass, ItemKind, ModuleSlot, ShipDef, ShipRole, WormholeArchetype, WormholePlace } from '@whale/core'
 // 两张「名字 → id」表挪进了 core（2026-10-02：日志也要按语言出词 ⇒ core 与界面共用一份，避免各写一份漂掉）
 import { AI_CORE_IDS, WORMHOLE_ARCHETYPE_IDS } from '@whale/core'
 import { FACTION_CODEX, factionOfExclusive } from '@whale/data'
@@ -90,6 +90,25 @@ export function kindTextOfItem(item: { kind: ItemKind; droneClass?: DroneClass }
 export function shipRoleText(role: ShipRole): string {
   const id = ROLE_ID[role]
   return id !== undefined ? tr(id) : role
+}
+
+// l10n-keep-start：舰种子类是冻结数据键，显示时必须按 id 取词。
+const SHIP_SUBCLASS_ID: Record<NonNullable<ShipDef['subClass']>, string> = {
+  '电子舰': 'ui.shipSubClass.001',
+  '炮舰': 'ui.shipSubClass.002',
+  '重型突击巡洋舰': 'ui.shipSubClass.003',
+  '截击舰': 'ui.shipSubClass.004',
+  '指挥舰': 'ui.shipSubClass.005',
+  '鱼雷舰': 'ui.shipSubClass.006',
+  '无人机作战舰': 'ui.shipSubClass.007',
+  '侦察舰': 'ui.shipSubClass.008',
+  '后勤舰': 'ui.shipSubClass.009',
+  '武装货舰': 'ui.shipSubClass.010',
+}
+// l10n-keep-end
+
+export function shipSubClassText(subClass: NonNullable<ShipDef['subClass']>): string {
+  return tr(SHIP_SUBCLASS_ID[subClass])
 }
 
 /**

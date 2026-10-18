@@ -31,9 +31,9 @@ import { UI_TONES } from '../ui/tones'
 
 /** 三条线（顺序 = 界面上从左到右；与数据表的 branch 值一一对应） */
 const BRANCHES: ReadonlyArray<{ key: MatterTechBranch; label: string; icon: string; tone: string }> = [
-  { key: 'explore', label: tr("ui.MatterTechTab.001"), icon: 'target-lock', tone: UI_TONES.matExplore },
-  { key: 'battle', label: tr("ui.MatterTechTab.002"), icon: 'turret', tone: UI_TONES.matBattle },
-  { key: 'industry', label: tr("ui.MatterTechTab.003"), icon: 'industrial', tone: UI_TONES.matIndustry },
+  { key: 'explore', get label() { return tr("ui.MatterTechTab.001") }, icon: 'target-lock', tone: UI_TONES.matExplore },
+  { key: 'battle', get label() { return tr("ui.MatterTechTab.002") }, icon: 'turret', tone: UI_TONES.matBattle },
+  { key: 'industry', get label() { return tr("ui.MatterTechTab.003") }, icon: 'industrial', tone: UI_TONES.matIndustry },
 ]
 
 export function MatterTechTab({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {

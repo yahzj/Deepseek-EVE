@@ -13,9 +13,9 @@
  * P2 后续批次追加（`localizeCtx` 里没登记的目录 ⇒ 原样中文）。
  * ⚠ 覆盖表里的 id 必须真实存在于内容表 —— `packages/core/tests/l10n-overlay.test.ts` 钉住这条。
  */
-import type { FoeMountId, MatterTechNodeDef, SimContext, StationSiteDef, TravelEventDef } from '@whale/core'
+import type { AchievementDef, FoeMountId, MatterTechNodeDef, SimContext, StationSiteDef, TravelEventDef } from '@whale/core'
 // 2026-09-26：残骸英文区名改读组表（`wreckGroupOfItemId` ⇒ `region`），不再按 id 后缀解
-import { WRECK_GROUPS, resolveFoeMounts, wreckGroupOfItemId } from '@whale/core'
+import { FIRST_TASKS, firstTaskText, WRECK_GROUPS, resolveFoeMounts, wreckGroupOfItemId } from '@whale/core'
 import { BLUEPRINTS } from './blueprints'
 import { SHIP_BLUEPRINTS } from './shipBlueprints'
 import { L10N, l10nEntryText } from './l10n/table'
@@ -862,6 +862,13 @@ const WRECK_GROUP_NOTE_EN: Readonly<Record<string, string>> = {
   'e-lo': 'Starcore Crystal and Isotope Polycrystal from megastructure fragments',
   'g-lo': 'Mostly Darkiron Alloy and Isotope Polycrystal, with structure and armour stock',
   'h-hi': 'Mostly Starcore Crystal and Heavy Tungsten Alloy, with structure stock',
+  'a-wh': 'Mostly Heavy Tungsten Alloy armour and Starcore Crystal marrow, with Isotope Polycrystal',
+  'c-wh': 'Mostly Starcore Crystal marrow, with Isotope Polycrystal and Heavy Tungsten Alloy',
+  'd-wh': 'Mostly Darkiron Alloy fragments and Heavy Tungsten Alloy armour, with Starcore Crystal marrow',
+  'e-wh': 'Mostly Isotope Polycrystal, with Darkiron Alloy and Starcore Crystal marrow',
+  'g-wh': 'Mostly Darkiron Alloy and Isotope Polycrystal, with Crystalline Colloid',
+  'c-inv': 'Mostly Starcore Crystal and Heavy Tungsten Alloy, with structure stock',
+  'd-inv': 'Mostly Starcore Crystal and Heavy Tungsten Alloy, with structure stock',
   // R 族（光环 · 2026-10-01）：与 H 族同池同价位（组池 = D 高安组那套：钛钢 40 · 星髓晶 34 · 重钨合金 26）
   'r-inv': 'Mostly Starcore Crystal and Heavy Tungsten Alloy, with structure stock',
 }
@@ -1975,6 +1982,81 @@ function overlayTravelEvents(
   return out ?? src
 }
 
+/** 次数链名按链 id 取词；中文仍由首任务表提供，避免改变核心展示与日志。 */
+const FIRST_CHAIN_TEXT_IDS: Readonly<Record<string, { name: string; profession: string }>> = {
+  explorer: { name: 'ui.chainName.001', profession: 'ui.achievementProfession.001' },
+  digger: { name: 'ui.chainName.002', profession: 'ui.achievementProfession.002' },
+  scavenger: { name: 'ui.chainName.003', profession: 'ui.achievementProfession.003' },
+  mechanic: { name: 'ui.chainName.004', profession: 'ui.achievementProfession.004' },
+  hunter: { name: 'ui.chainName.005', profession: 'ui.achievementProfession.005' },
+  refiner: { name: 'ui.chainName.006', profession: 'ui.achievementProfession.006' },
+  lineboss: { name: 'ui.chainName.007', profession: 'ui.achievementProfession.007' },
+  marketeer: { name: 'ui.chainName.008', profession: 'ui.achievementProfession.008' },
+  shipwright: { name: 'ui.chainName.009', profession: 'ui.achievementProfession.009' },
+  scholar: { name: 'ui.chainName.010', profession: 'ui.achievementProfession.010' },
+  dispatch: { name: 'ui.chainName.011', profession: 'ui.achievementProfession.011' },
+  freight: { name: 'ui.chainName.012', profession: 'ui.achievementProfession.012' },
+  abyss: { name: 'ui.chainName.013', profession: 'ui.achievementProfession.013' },
+}
+const ACHIEVEMENT_NAME_IDS: Readonly<Record<string, string>> = {
+  'ach-mile-wh-depth-2': 'ui.achievementName.001',
+  'ach-mile-wh-depth-3': 'ui.achievementName.002',
+  'ach-mile-wh-depth-4': 'ui.achievementName.003',
+  'ach-mile-wh-depth-5': 'ui.achievementName.004',
+  'ach-mile-wh-boss-2': 'ui.achievementName.005',
+  'ach-mile-wh-boss-4': 'ui.achievementName.006',
+  'ach-mile-box-1': 'ui.achievementName.007',
+  'ach-mile-box-5': 'ui.achievementName.008',
+  'ach-mile-box-20': 'ui.achievementName.009',
+  'ach-mile-box-60': 'ui.achievementName.010',
+  'ach-mile-box-150': 'ui.achievementName.011',
+  'ach-mile-core-1': 'ui.achievementName.012',
+  'ach-mile-core-2': 'ui.achievementName.013',
+  'ach-mile-core-3': 'ui.achievementName.014',
+  'ach-mile-core-4': 'ui.achievementName.015',
+  'ach-mile-site-1': 'ui.achievementName.016',
+  'ach-mile-site-2': 'ui.achievementName.017',
+  'ach-mile-tech-tree': 'ui.achievementName.018',
+  'ach-ironman': 'ui.achievementName.019',
+  'ach-ironman-closed': 'ui.achievementName.020',
+}
+const ACHIEVEMENT_STAT_NOTE_IDS: Readonly<Record<string, string>> = {
+  whMaxDepth: 'ui.achievementNote.001', whBossClears: 'ui.achievementNote.002',
+  rareBoxes: 'ui.achievementNote.003', aiCoreKinds: 'ui.achievementNote.004',
+  sitesBuilt: 'ui.achievementNote.005', matterTechMaxed: 'ui.achievementNote.006',
+}
+const ACHIEVEMENT_RANK_IDS = ['ui.achievementRank.001', 'ui.achievementRank.002', 'ui.achievementRank.003', 'ui.achievementRank.004'] as const
+
+export function firstChainText(chainId: string, locale: Locale): string {
+  const chain = FIRST_TASKS.find(task => task.chain?.id === chainId)?.chain
+  if (!chain) return chainId
+  return locale === 'en' ? L10N[FIRST_CHAIN_TEXT_IDS[chainId]?.name ?? '']?.en ?? chain.name : chain.name
+}
+
+function achievementEnText(def: AchievementDef): Pick<AchievementDef, 'name' | 'note'> {
+  const text = (id: string, params: Record<string, string | number> = {}): string =>
+    (L10N[id]?.en ?? id).replace(/\{(\w+)\}/g, (slot, key: string) => String(params[key] ?? slot))
+  const source = def.source
+  if (source.kind === 'task') {
+    const task = FIRST_TASKS.find(task => task.id === source.taskId)
+    const name = task ? firstTaskText(task, 'en', 'title') : def.name
+    return { name, note: text('ui.achievementTask.001', { p1: name }) }
+  }
+  if (source.kind === 'chain') {
+    const rank = source.chainId === 'explorer' ? (source.level === 5 ? 4 : 1)
+      : ({ 1: 1, 4: 2, 7: 3, 10: 4 } as Record<number, number>)[source.level] ?? 1
+    return {
+      name: `${text(ACHIEVEMENT_RANK_IDS[rank - 1]!)} ${text(FIRST_CHAIN_TEXT_IDS[source.chainId]?.profession ?? '')}`,
+      note: text('ui.achievementChain.001', { p1: firstChainText(source.chainId, 'en'), p2: source.level }),
+    }
+  }
+  return {
+    name: text(ACHIEVEMENT_NAME_IDS[def.id] ?? def.name),
+    note: source.kind === 'milestone' ? text(ACHIEVEMENT_STAT_NOTE_IDS[source.stat] ?? def.note, { p1: source.target })
+      : text(source.kind === 'ironman' ? 'ui.achievementNote.007' : 'ui.achievementNote.008'),
+  }
+}
+
 export function localizeCtx(ctx: SimContext, locale: Locale): SimContext {
   if (locale === 'zh') return ctx
   return {
@@ -1982,8 +2064,9 @@ export function localizeCtx(ctx: SimContext, locale: Locale): SimContext {
     ships: overlayMap(ctx.ships, EN_SHIPS, locale),
     modules: overlayMap(ctx.modules, EN_MODULES, locale),
     items: overlayMap(ctx.items, EN_ITEMS_ALL, locale),
+    ...(ctx.achievements ? { achievements: ctx.achievements.map(def => ({ ...def, ...achievementEnText(def) })) } : {}),
     labRecipes: new Map([...ctx.labRecipes].map(([id, recipe]) => {
-      const name = recipe.category === 'beacon' || recipe.category === 'accelerant' ? EN_ITEMS_ALL[recipe.outputItemId]?.name : undefined
+      const name = recipe.id === 'jump-fuel-dense' ? L10N['ui.lab.040']!.en : EN_ITEMS_ALL[recipe.outputItemId]?.name
       return [id, name ? { ...recipe, name } : recipe]
     })),
     skills: overlayMap(ctx.skills, EN_SKILLS, locale),

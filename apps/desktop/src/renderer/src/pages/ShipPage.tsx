@@ -80,7 +80,7 @@ import { isk } from './common'
 import { tr, cmdText } from '../i18n/locale'
 /** 金额 + 单位（按语言；2026-09-29 批 0：出售确认那句原先是中文字面量拼 `isk()`） */
 import { fmtCredits } from '../i18n/fmt'
-import { aiCoreText, shipRoleText } from '../ui/labelsText'
+import { aiCoreText, shipRoleText, shipSubClassText } from '../ui/labelsText'
 
 // ── 舰队卡片左侧舰影（2026-09-10 船长：每艘船的舰船形象放在对应卡片最左侧展示；
 //    屏幕宽度不足时隐藏舰船图形）──
@@ -153,16 +153,16 @@ const CRAFT_GROUPS: ReadonlyArray<{ key: CraftOption['group']; id: string }> = [
   { key: '消耗品蓝图', id: 'ui.ShipPage.114' }, // l10n-keep
 ]
 const SHIP_TABS: Array<{ key: ShipTab; label: string; icon: string; title?: string }> = [
-  { key: 'fleet', label: tr("ui.ShipPage.001"), icon: 'nav-ship' },
-  { key: 'ai', label: tr("ui.ShipPage.057"), icon: 'nav-ai', title: tr("ui.ShipPage.120") },
+  { key: 'fleet', get label() { return tr("ui.ShipPage.001") }, icon: 'nav-ship' },
+  { key: 'ai', get label() { return tr("ui.ShipPage.057") }, icon: 'nav-ai', get title() { return tr("ui.ShipPage.120") } },
   // 2026-09-14 船长：「舰船市场」→「舰船仓库」（图标沿用物品仓库那只箱子，语义 = 存放）
-  { key: 'store', label: tr("ui.ShipPage.036"), icon: 'nav-items', title: tr("ui.ShipPage.121") },
+  { key: 'store', get label() { return tr("ui.ShipPage.036") }, icon: 'nav-items', get title() { return tr("ui.ShipPage.121") } },
   /**
    * **跃迁燃料**（**2026-09-29 船长令**：「舰船页面内添加新的子页面：跃迁燃料。玩家可以在这个页面内
    * 查看剩余燃料具体数值和设置哪些活动使用燃料。并能直接从这边跳转到工业的'实验室'页面」）。
    * ⚠ **门槛后才有这一档**（首座空间站建成 ⇒ `labUnlocked`）：门槛前不渲染（不是灰掉）。
    */
-  { key: 'fuel', label: tr('ui.jumpFuel.010'), icon: 'nav-items', title: tr('ui.jumpFuel.011') },
+  { key: 'fuel', get label() { return tr('ui.jumpFuel.010') }, icon: 'nav-items', get title() { return tr('ui.jumpFuel.011') } },
 ]
 
 /** 舰船仓库「拥有」筛选（2026-09-14 船长裁定**乙**：只看**仓库库存**——
@@ -824,7 +824,7 @@ export function ShipPage({
                   <span className="app-ship-name">
                     {displayName}
                     {/* 2026-09-13 船长：子分类徽标（只有虫洞族专属舰船有 `subClass`）；样式复用同级角色 chip */}
-                    {def.subClass ? <em className={`app-chip app-role-chip is-${def.role}`}>{def.subClass}</em> : null}
+                    {def.subClass ? <em className={`app-chip app-role-chip is-${def.role}`}>{shipSubClassText(def.subClass)}</em> : null}
                     <em className={`app-chip app-role-chip is-${shipCategoryKeyOf(def)}`}>{shipRoleText(shipCategoryKeyOf(def))}</em>
                     {def.priceIsk <= 0 && def.id !== 'sandcat' ? <em className="app-belt-flag">{tr("ui.ShipPage.007")}</em> : null}
                     {isLockedShip ? (
@@ -1144,7 +1144,7 @@ export function ShipPage({
                           <span className="app-ship-name">
                             {def.name}
                             {/* 2026-09-13 船长：子分类徽标（市场/图纸列同样显示） */}
-                            {def.subClass ? <em className={`app-chip app-role-chip is-${def.role}`}>{def.subClass}</em> : null}
+                            {def.subClass ? <em className={`app-chip app-role-chip is-${def.role}`}>{shipSubClassText(def.subClass)}</em> : null}
                             <em className={`app-chip app-role-chip is-${shipCategoryKeyOf(def)}`}>{shipRoleText(shipCategoryKeyOf(def))}</em>
                             {stored <= 0 ? (
                               <em className="app-chip app-lock-chip" title={tr("ui.ShipPage.040")}>

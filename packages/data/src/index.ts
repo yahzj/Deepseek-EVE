@@ -122,6 +122,7 @@ export { L10N, l10nEntryText, type L10nEntry } from './l10n/table'
 // 2026-09-19 英语本地化（船长令）：按 id 索引的英文覆盖层 + 语言类型（口径见 docs/glossary-en.md）
 export {
   localizeCtx,
+  firstChainText,
   overlayMap,
   overlayList,
   EN_SHIPS,

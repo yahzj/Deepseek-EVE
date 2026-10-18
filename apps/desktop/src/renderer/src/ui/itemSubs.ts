@@ -129,14 +129,14 @@ export const CONSUMABLE_SUB_PREFIX = 'consume-item-'
 
 /** 道具逐件档（顺序 = 渲染顺序；新增道具时在**数据**与**本表**各加一行，契约会盯着） */
 export const CONSUMABLE_ITEM_SUBS: SubOption[] = [
-  { key: `${CONSUMABLE_SUB_PREFIX}deep-space-probe`, itemId: 'deep-space-probe', label: tr('ui.stellar.001') },
+  { key: `${CONSUMABLE_SUB_PREFIX}deep-space-probe`, itemId: 'deep-space-probe', get label() { return tr('ui.stellar.001') } },
   { key: `${CONSUMABLE_SUB_PREFIX}jump-fuel`, itemId: 'jump-fuel', label: '超空间折跃燃料' },
   { key: `${CONSUMABLE_SUB_PREFIX}invasion-beacon`, itemId: 'invasion-beacon', label: '信号发射器' },
-  { key: `${CONSUMABLE_SUB_PREFIX}synaptic-accelerant`, itemId: 'synaptic-accelerant', label: tr('item.factionBeacon.009') },
-  { key: `${CONSUMABLE_SUB_PREFIX}invasion-beacon-r`, itemId: 'invasion-beacon-r', label: tr('item.factionBeacon.001') },
-  { key: `${CONSUMABLE_SUB_PREFIX}invasion-beacon-c`, itemId: 'invasion-beacon-c', label: tr('item.factionBeacon.003') },
-  { key: `${CONSUMABLE_SUB_PREFIX}invasion-beacon-h`, itemId: 'invasion-beacon-h', label: tr('item.factionBeacon.005') },
-  { key: `${CONSUMABLE_SUB_PREFIX}invasion-beacon-d`, itemId: 'invasion-beacon-d', label: tr('item.factionBeacon.007') },
+  { key: `${CONSUMABLE_SUB_PREFIX}synaptic-accelerant`, itemId: 'synaptic-accelerant', get label() { return tr('item.factionBeacon.009') } },
+  { key: `${CONSUMABLE_SUB_PREFIX}invasion-beacon-r`, itemId: 'invasion-beacon-r', get label() { return tr('item.factionBeacon.001') } },
+  { key: `${CONSUMABLE_SUB_PREFIX}invasion-beacon-c`, itemId: 'invasion-beacon-c', get label() { return tr('item.factionBeacon.003') } },
+  { key: `${CONSUMABLE_SUB_PREFIX}invasion-beacon-h`, itemId: 'invasion-beacon-h', get label() { return tr('item.factionBeacon.005') } },
+  { key: `${CONSUMABLE_SUB_PREFIX}invasion-beacon-d`, itemId: 'invasion-beacon-d', get label() { return tr('item.factionBeacon.007') } },
 ]
 
 /** **「消耗品」桶的全部二级档** = 三个消耗品大类 ＋ 逐件道具档（市场/仓库/货仓/手册四处读它） */
@@ -426,15 +426,15 @@ export type RackKind = (typeof RACK_KIND_KEYS)[number]
  *  市场页「类型」下拉的三项（`module-high/mid/low`）、手册「装备图鉴」主筛选、
  *  手册「蓝图图鉴」装备蓝图的子筛选、物品页仓库的装备二级筛选，全部读这里。 */
 export const RACK_LABELS: Record<string, string> = {
-  high: tr("ui.itemSubs.025"),
-  mid: tr("ui.itemSubs.026"),
-  low: tr("ui.itemSubs.027"),
+  get high() { return tr("ui.itemSubs.025") },
+  get mid() { return tr("ui.itemSubs.026") },
+  get low() { return tr("ui.itemSubs.027") },
   /**
    * 舰船插件（2026-09-26 船长令）：与高/中/低槽**同级**的一档。
    * ⚠ 文案**不要**再挂 `ui.labelsText.069`（那是「黑匣」——2026-09-27 船长报障的串档就是它）；
    * 插件这一档的标签单点 = `ui.itemSubs.042`（与装备功能子类的插件档共用同一条 id）。
    */
-  plug: tr("ui.itemSubs.042"),
+  get plug() { return tr("ui.itemSubs.042") },
 }
 
 /**
@@ -845,19 +845,19 @@ export const ITEM_SPACE_BUCKETS: readonly string[] = ['item', 'container', 'cons
 /** **我的舰队「状态」维度**（并列属性行，第一行）：全部 / 驾驶中 / AI 执勤 / 空闲 / 待维修。
  *  「全部」键 = `SUB_ALL`（基线②：下级/维度选择器一律用它；`'all'` 只留给一级选择器）。 */
 export const FLEET_STATE_TABS: SubOption[] = [
-  { key: SUB_ALL, label: tr("ui.IndustryPage.001") },
-  { key: 'pilot', label: tr("ui.ShipPage.010") },
-  { key: 'ai', label: tr("ui.ShipPage.118") },
-  { key: 'idle', label: tr("ui.ShipPage.117") },
-  { key: 'damaged', label: tr("ui.ShipPage.119") },
+  { key: SUB_ALL, get label() { return tr("ui.IndustryPage.001") } },
+  { key: 'pilot', get label() { return tr("ui.ShipPage.010") } },
+  { key: 'ai', get label() { return tr("ui.ShipPage.118") } },
+  { key: 'idle', get label() { return tr("ui.ShipPage.117") } },
+  { key: 'damaged', get label() { return tr("ui.ShipPage.119") } },
 ]
 
 /** **舰船仓库「拥有」维度**（并列属性行，第一行）：全部 / 已拥有 / 未拥有。
  *  判据口径见 2026-09-14 船长裁定「乙」：**只看仓库库存**（在役舰队里的同型不算"已拥有"）。 */
 export const STORE_OWN_TABS: SubOption[] = [
-  { key: SUB_ALL, label: tr("ui.IndustryPage.001") },
-  { key: 'owned', label: tr("ui.ShipPage.122") },
-  { key: 'unowned', label: tr("ui.ShipPage.041") },
+  { key: SUB_ALL, get label() { return tr("ui.IndustryPage.001") } },
+  { key: 'owned', get label() { return tr("ui.ShipPage.122") } },
+  { key: 'unowned', get label() { return tr("ui.ShipPage.041") } },
 ]
 
 /** 舰船定义的最小形状（类别判据只需要 role + 盾/甲结构值） */

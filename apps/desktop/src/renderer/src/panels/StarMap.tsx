@@ -134,9 +134,9 @@ type LabelMode = 'name' | 'sec' | 'faction'
 /** 本地记忆键（与其它星图偏好同前缀） */
 const LABEL_KEY = 'whale-idle:starmap-label'
 const LABEL_MODES: ReadonlyArray<{ key: LabelMode; label: string; tip: string }> = [
-  { key: 'name', label: tr("ui.MapPage.001"), tip: tr("ui.Expedition.190") },
-  { key: 'sec', label: tr("ui.Handbook.065"), tip: tr("ui.Expedition.191") },
-  { key: 'faction', label: tr("ui.Expedition.192"), tip: tr("ui.Expedition.193") },
+  { key: 'name', get label() { return tr("ui.MapPage.001") }, get tip() { return tr("ui.Expedition.190") } },
+  { key: 'sec', get label() { return tr("ui.Handbook.065") }, get tip() { return tr("ui.Expedition.191") } },
+  { key: 'faction', get label() { return tr("ui.Expedition.192") }, get tip() { return tr("ui.Expedition.193") } },
 ]
 
 function readLabelMode(): LabelMode {
@@ -2514,9 +2514,9 @@ export function GalaxyActions({
  * 威胁数字是强度刻度、战术决定"哪种装配吃瘪"——kite 卡专治短程，光看威胁会误判。
  */
 export const FOE_TACTIC_HINTS: Record<string, string> = {
-  brawl: tr("ui.Expedition.268"),
-  orbit: tr("ui.Expedition.269"),
-  kite: tr("ui.Expedition.317"),
+  get brawl() { return tr("ui.Expedition.268") },
+  get orbit() { return tr("ui.Expedition.269") },
+  get kite() { return tr("ui.Expedition.317") },
 }
 
 /* ─────────── 野外应急修理（修理系统 2026-09-05：驾驶船停留本星系时的手动组件入口） ───────────

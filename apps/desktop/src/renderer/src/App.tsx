@@ -1596,6 +1596,7 @@ async function applyLayoutAndReload(): Promise<void> {
             <div className="app-dim app-log-empty">{tr("ui.App.072")}</div>
             ) : (
             <LogList
+              emptyText={tr('ui.App.176')}
             logs={visibleLogs.map((l) => ({ id: l.id, kind: kindOf(l.kind), text: logText(l), timeLabel: gameClock(l.atGameMs) }))}
             limit={220}
             />

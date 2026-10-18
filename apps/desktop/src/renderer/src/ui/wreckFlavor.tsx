@@ -52,9 +52,9 @@ function fragNeed(tier: 2 | 3): number {
 
 function fragClause(threat: number): string | null {
   if (threat >= FRAG_THREAT[3]) {
-    return `高威胁另有蓝图碎片（MK2 集 ${fragNeed(2)} 片 / MK3 集 ${fragNeed(3)} 片）`
+    return tr('ui.wreckFlavor.004', { p1: fragNeed(2), p2: fragNeed(3) })
   }
-  if (threat >= FRAG_THREAT[2]) return `高威胁另有蓝图碎片（MK2 集 ${fragNeed(2)} 片）`
+  if (threat >= FRAG_THREAT[2]) return tr('ui.wreckFlavor.005', { p1: fragNeed(2) })
   return null
 }
 
@@ -71,7 +71,7 @@ export function recycleFeatureOf(src: RecycleFeatureSrc, maps: NameMaps): Recycl
   if (gear.length > 0) {
     const names = gear.map((id) => {
       const item = maps.items?.get(id)
-      const suffix = item?.kind === 'drone' && maps.droneUnits ? ` ×${maps.droneUnits} 架` : ''
+      const suffix = item?.kind === 'drone' && maps.droneUnits ? tr('ui.wreckFlavor.006', { p1: maps.droneUnits }) : ''
       return `${moduleName(id)}${suffix}`
     })
     // 2026-09-11 船长：「掉落说明中『必定掉落 / 不重复』会误导玩家，建议删除，只显示掉落列表」

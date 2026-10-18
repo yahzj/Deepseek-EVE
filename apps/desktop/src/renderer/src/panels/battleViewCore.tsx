@@ -6,10 +6,10 @@
 import type { ReactNode } from 'react'
 import type { DamageType } from '@whale/core'
 import { tr } from '../i18n/locale'
+import { DMG_LABEL } from '../ui/shipInfo'
 /** 伤害类型 → 颜色（动能金 / 高爆橙 / 能量青；弹道、命中与射程弧共用）
  *  ⚠ 2026-09-22 起走 `ui/tones.ts`（`var(--wui-tone-*)`）⇒ 随主题切换 */
 import { DMG_COLOR, ROLE_ACCENT, UI_TONES } from '../ui/tones'
-const DMG_LABEL: Record<DamageType, string> = { kinetic: tr("ui.BattleScreen.002"), explosive: tr("ui.battleViewCore.001"), plasma: tr("ui.battleViewCore.002") }
 const DMG_ORDER: DamageType[] = ['kinetic', 'explosive', 'plasma']
 
 /* 画面几何常量（px）

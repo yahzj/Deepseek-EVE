@@ -271,15 +271,15 @@ export function foeShipArtOf(
  * 「海盗舰系 / 异形生物 / 守墓古舰 / 泰坦巨构 / 鱿鱼亡军」）。
  */
 export const FOE_FAMILY_LABEL: Record<string, string> = {
-  A: tr("ui.shipArt.001"),
-  B: tr("ui.shipArt.002"),
-  C: tr("ui.shipArt.003"),
-  D: tr("ui.shipArt.004"),
-  E: tr("ui.shipArt.005"),
-  F: tr("ui.shipArt.006"), // 已废弃·留档（F 族并入 A 族；仅防旧数据带 'F' 时无标签可显示）
-  G: tr("ui.shipArt.007"),
+  get A() { return tr("ui.shipArt.001") },
+  get B() { return tr("ui.shipArt.002") },
+  get C() { return tr("ui.shipArt.003") },
+  get D() { return tr("ui.shipArt.004") },
+  get E() { return tr("ui.shipArt.005") },
+  get F() { return tr("ui.shipArt.006") }, // 已废弃·留档（F 族并入 A 族；仅防旧数据带 'F' 时无标签可显示）
+  get G() { return tr("ui.shipArt.007") },
   // H 族（墨潮帮 · The Ink Tide · 2026-09-24 船长定名）：A 族海盗的变种/叛出分支 —— 短名取两字「墨潮」
-  H: tr("ui.shipArt.008"),
+  get H() { return tr("ui.shipArt.008") },
   // R 族（光环 · Corona Systems · 2026-10-01 船长令「是新势力：余晖」）：全无人 AI 舰队残余 —— 短名取两字「光环」
-  R: tr("ui.shipArt.009"),
+  get R() { return tr("ui.shipArt.009") },
 }

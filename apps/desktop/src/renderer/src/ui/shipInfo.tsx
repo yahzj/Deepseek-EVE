@@ -26,13 +26,18 @@ import { tr } from '../i18n/locale'
 // ⚠ 槽类名（高/中/低槽）与舰船类别/舰级名**一律走这三个本地化单点**（2026-09-26 船长报障
 // 「部分遗漏未本地化的文本（舰船类型，高中低槽位数量的文本）」）：core 的同名表/函数是纯中文
 // （`RACK_LABELS` / `shipCategoryLabelOf` / `shipSizeLabel`）⇒ 直读它们英文界面下就漏中文。
-import { kindTextOfItem, rackText, shipRoleText, shipTierText, slotText } from '../ui/labelsText'
+import { kindTextOfItem, rackText, shipRoleText, shipSubClassText, shipTierText, slotText } from '../ui/labelsText'
 // 支援件的功能子类名（2026-09-26 船长令：「装备的『槽位 / 类型』这个也要更新」）——
 // 「槽位 / 类型」那一行对支援件改报 战斗支援件 / 辅助支援件 / 修理装置（见 `moduleInfoLines`）
 import { MODULE_SUBS, moduleSubKeyOf, subText } from './itemSubs'
 
 /** 伤害类型中文名 */
-export const DMG_LABEL: Record<DamageType, string> = { kinetic: tr("ui.BattleScreen.002"), explosive: tr("ui.battleViewCore.001"), plasma: tr("ui.battleViewCore.002") }
+// 保留标签表访问方式，但读取时取词，避免缓存模块初始语言。
+export const DMG_LABEL: Record<DamageType, string> = {
+  get kinetic() { return tr("ui.BattleScreen.002") },
+  get explosive() { return tr("ui.battleViewCore.001") },
+  get plasma() { return tr("ui.battleViewCore.002") },
+}
 
 /**
  * **另有一处同值展示**、不要再重复输出的基础行（`ui:attr-check` 按「不重名」体检）。
@@ -45,7 +50,7 @@ export const DMG_LABEL: Record<DamageType, string> = { kinetic: tr("ui.BattleScr
  * - 图鉴档案窗 / 舰船蓝图产物（`panels/Handbook.tsx`）：上方静态行已报机动速度（船体基础值）、
  *   顶部徽章已报三层血量，`无人机舱 = 无` 对无机舱的船只是白占一行。
  */
-export const FIT_MAIN_HIDDEN_KEYS: readonly string[] = [
+export const FIT_MAIN_HIDDEN_KEYS = (): readonly string[] => [
   tr("ui.FitPage.010"), // 无人机舱：装配页右栏有舱容条 + 合计行；图鉴上方静态行已有
   tr("ui.FitPage.049"), // 机动速度：装配页另有装后口径行；图鉴上方静态行已有（船体基础值）
 ]
@@ -55,7 +60,7 @@ export const FIT_MAIN_HIDDEN_KEYS: readonly string[] = [
  * 火力加成例外——船长 2026-09-05：不入血量徽章组，作为下方属性行展示，故不在本表内。
  * 2026-09-26 从 `FitPage.tsx` 挪到此处：与 `FIT_MAIN_HIDDEN_KEYS` 同源，供 `npm run ui:attr-check` 体检。
  */
-export const COMBAT_BASE_KEYS: ReadonlySet<string> = new Set([
+export const COMBAT_BASE_KEYS = (): ReadonlySet<string> => new Set([
   tr("ui.FitPage.001"),
   tr("ui.FitPage.002"),
   tr("ui.FitPage.003"),
@@ -173,7 +178,7 @@ export function shipCurrentLines(
     const hit = replaced.get(line.k)
     // 有装后行 ⇒ 用装后行顶替；给了机舱合计 ⇒ 基础机舱行让位；其余原样保留
     if (hit) out.push(hit)
-    else if (FIT_MAIN_HIDDEN_KEYS.includes(line.k)) continue
+    else if (FIT_MAIN_HIDDEN_KEYS().includes(line.k)) continue
     else out.push(line)
   }
   return out
@@ -206,7 +211,7 @@ export function shipCurrentLayout(
   const hidden: string[] = []
   for (const line of shipInfoLines(ship)) {
     if (replaced.has(line.k)) keys.push(line.k)
-    else if (FIT_MAIN_HIDDEN_KEYS.includes(line.k)) hidden.push(line.k)
+    else if (FIT_MAIN_HIDDEN_KEYS().includes(line.k)) hidden.push(line.k)
     else keys.push(line.k)
   }
   return { replaced: [...replaced], hidden, keys }
@@ -824,7 +829,7 @@ export function shipInfoLines(ship: ShipDef): InfoLine[] {
       // 2026-09-16 船长：类别名走 `shipCategoryKeyOf` + 本地化单点 `shipRoleText`
       // （装甲线 = `role: armored` 或武装舰里装甲占比 > 护盾占比）；舰级名同理走 `shipTierText`
       // （2026-09-26 报障修：原直读 core 的 `shipCategoryLabelOf` / `shipSizeLabel` ⇒ 英文界面下这行漏中文）
-      v: `${ship.subClass ? `${ship.subClass} · ` : ''}${shipRoleText(shipCategoryKeyOf(ship))} · ${shipTierText(ship.tier)}`,
+      v: `${ship.subClass ? `${shipSubClassText(ship.subClass)} · ` : ''}${shipRoleText(shipCategoryKeyOf(ship))} · ${shipTierText(ship.tier)}`,
     },
     // 2026-09-13 船长点名的三条**船体固有新机制**（只虫洞族专属舰船有；没有就不占行）
     ...(() => {

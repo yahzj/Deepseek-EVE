@@ -98,6 +98,10 @@ async function child() {
   const readings = []
   const check = async label => {
     await sleep(150)
+    // 隐藏窗口首张抓图可能仍是上一帧；先触发抓帧，再等待绘制提交后取证。
+    await win.webContents.capturePage(undefined, { stayHidden: true })
+    await page.js('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))')
+    await sleep(100)
     const reading = await page.js(visibleTextScript())
     readings.push({ label, ...reading })
     console.log(`${process.env.WH_L10N_LAYOUT}/${label}：疑似遗漏${reading.findings.length}处`)
@@ -109,6 +113,36 @@ async function child() {
     await page.tap('[data-l10n-nav]')
   }
   const pages = ['ui.App.001', 'ui.App.002', 'ui.App.003', 'ui.App.004', 'ui.App.005', 'ui.App.006', 'ui.App.007', 'ui.App.008', 'ui.App.119', 'ui.App.009']
+  const subTabs = async (phase, id) => {
+    if (!['ui.App.001','ui.App.002','ui.App.004','ui.App.006','ui.App.008'].includes(id)) return
+    const selectors = id === 'ui.App.008' ? ['.app-task-tabs > button[role=tab]'] : [
+      '.app-page-content > .page-stack > .app-subtabs > button[role=tab]',
+      '.app-page-content .app-subtabs:first-of-type > button[role=tab]',
+    ]
+    const tabSelector = await page.js(`(${JSON.stringify(selectors)}).find(s=>document.querySelectorAll(s).length>0)??null`)
+    assert.ok(tabSelector, `${id}应存在子页签`)
+    const count = await page.js(`document.querySelectorAll(${JSON.stringify(tabSelector)}).length`)
+    for (let index = 0; index < count; index++) {
+      const label = await page.js(`(()=>{const b=document.querySelectorAll(${JSON.stringify(tabSelector)})[${index}];if(!b||b.disabled||b.getAttribute('aria-disabled')==='true')return null;b.setAttribute('data-l10n-tab','1');return b.textContent.trim()})()`)
+      if (!label) continue
+      await page.tap('[data-l10n-tab]')
+      await page.js(`document.querySelector('[data-l10n-tab]')?.removeAttribute('data-l10n-tab')`)
+      await check(`${phase}/${id}/tab-${index}:${label}`)
+    }
+  }
+  const handbook = async phase => {
+    await page.text('.app-header', en('ui.App.028'))
+    await page.wait('!!document.querySelector(".app-hand-modal")')
+    const count = await page.js('document.querySelectorAll(".app-hand-nav button").length')
+    for (let i = 0; i < count; i++) {
+      await page.js(`document.querySelectorAll('.app-hand-nav button')[${i}].setAttribute('data-l10n-hand','1')`)
+      await page.tap('[data-l10n-hand]')
+      await page.js(`document.querySelector('[data-l10n-hand]').removeAttribute('data-l10n-hand')`)
+      await check(`${phase}/handbook-${i}`)
+    }
+    await page.text('.app-hand-modal .app-modal-head', en('ui.App.086'))
+    await page.wait('!document.querySelector(".app-hand-modal")')
+  }
 
   // 真实打开设置并点击 English，不通过 localStorage 直接切换。
   await page.text('.app-header', zh('ui.App.010'))
@@ -124,7 +158,9 @@ async function child() {
   for (const id of pages) {
     await nav(id)
     await check(`hot/${id}`)
+    await subTabs('hot', id)
   }
+  await handbook('hot')
   await page.js('window.__whalePlanetaryTest.persist()')
   await page.reload()
   await page.wait('document.documentElement.dataset.locale==="en"')
@@ -132,27 +168,16 @@ async function child() {
   for (const id of pages) {
     await nav(id)
     await check(`cold/${id}`)
-    if (['ui.App.001','ui.App.002','ui.App.004','ui.App.006','ui.App.008'].includes(id)) {
-      const selector = '.app-page-content > .page-stack > .app-subtabs > button[role=tab]'
-      // 只走页面内现有一级功能页签，不点击生产/购买等命令。
-      const fallback = '.app-page-content .app-subtabs:first-of-type > button[role=tab]'
-      const tabSelector = await page.js(`document.querySelectorAll(${JSON.stringify(selector)}).length>0`) ? selector : fallback
-      const count = await page.js(`document.querySelectorAll(${JSON.stringify(tabSelector)}).length`)
-      for (let index = 0; index < Math.min(count, 6); index++) {
-        const label = await page.js(`(()=>{const b=document.querySelectorAll(${JSON.stringify(tabSelector)})[${index}];if(!b||b.disabled||b.getAttribute('aria-disabled')==='true')return null;b.setAttribute('data-l10n-tab','1');return b.textContent.trim()})()`)
-        if (!label) continue
-        await page.tap('[data-l10n-tab]')
-        await page.js(`document.querySelector('[data-l10n-tab]')?.removeAttribute('data-l10n-tab')`)
-        await check(`cold/${id}/tab-${index}:${label}`)
-      }
-    }
+    await subTabs('cold', id)
   }
+  await handbook('cold')
   const report = { layout: process.env.WH_L10N_LAYOUT, pid: process.pid, settingsClicked: true, locale: await page.js("localStorage.getItem('whale-idle:locale')"), reloadRetained: true, readings, errors }
   report.localizationComplete = !readings.some(r => r.findings.length)
-  assert.equal(errors.length, 0)
   await fs.writeFile(path.join(OUT, `${process.env.WH_L10N_LAYOUT}.json`), JSON.stringify(report, null, 2), 'utf8')
   await fs.writeFile(path.join(OUT, `${process.env.WH_L10N_LAYOUT}.png`), (await win.webContents.capturePage(undefined, { stayHidden: true })).toPNG())
   console.log(`${process.env.WH_L10N_LAYOUT}：设置真实切换English及重载、${readings.length}处巡检已落盘；本地化完整=${report.localizationComplete}`)
+  assert.equal(errors.length, 0, '出现运行异常，报告已落盘')
+  assert.equal(report.localizationComplete, true, '仍有本地化遗漏，报告已落盘')
   app.exit(0)
 }
 

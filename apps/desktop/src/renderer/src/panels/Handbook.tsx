@@ -257,37 +257,37 @@ function collectFoeShips(engine: GameEngine): Map<string, FoeShipDef> {
 
 /** 左侧导航（顺序即展示顺序） */
 const NAV: Array<{ key: Tab; label: string }> = [
-  { key: 'guide', label: tr("ui.Handbook.186") },
-  { key: 'rules', label: tr("ui.Handbook.187") },
-  { key: 'items', label: tr("ui.Handbook.188") },
-  { key: 'modules', label: tr("ui.Handbook.254") },
-  { key: 'ships', label: tr("ui.Handbook.189") },
-  { key: 'blueprints', label: tr("ui.Handbook.255") },
+  { key: 'guide', get label() { return tr("ui.Handbook.186") } },
+  { key: 'rules', get label() { return tr("ui.Handbook.187") } },
+  { key: 'items', get label() { return tr("ui.Handbook.188") } },
+  { key: 'modules', get label() { return tr("ui.Handbook.254") } },
+  { key: 'ships', get label() { return tr("ui.Handbook.189") } },
+  { key: 'blueprints', get label() { return tr("ui.Handbook.255") } },
   // 2026-09-26 船长：「敌族图鉴单独列出吧，放在蓝图图鉴下方，叫『势力图鉴』」
-  { key: 'factions', label: tr("ui.codex.001") },
-  { key: 'skills', label: tr("ui.Handbook.124") },
+  { key: 'factions', get label() { return tr("ui.codex.001") } },
+  { key: 'skills', get label() { return tr("ui.Handbook.124") } },
 ]
 /** 各页搜索框占位词（按当前页给出，玩家一眼知道搜的是哪一页） */
 const SEARCH_PLACEHOLDER: Record<Tab, string> = {
-  guide: tr("ui.Handbook.125"),
-  rules: tr("ui.Handbook.126"),
-  items: tr("ui.Handbook.127"),
-  modules: tr("ui.Handbook.128"),
-  ships: tr("ui.Handbook.129"),
-  blueprints: tr("ui.Handbook.130"),
-  factions: tr("ui.codex.002"),
-  skills: tr("ui.Handbook.131"),
+  get guide() { return tr("ui.Handbook.125") },
+  get rules() { return tr("ui.Handbook.126") },
+  get items() { return tr("ui.Handbook.127") },
+  get modules() { return tr("ui.Handbook.128") },
+  get ships() { return tr("ui.Handbook.129") },
+  get blueprints() { return tr("ui.Handbook.130") },
+  get factions() { return tr("ui.codex.002") },
+  get skills() { return tr("ui.Handbook.131") },
 }
 /** 分组计数量词（与仓库「N 种」同款） */
 const COUNT_UNIT: Record<Tab, string> = {
-  guide: tr("ui.Handbook.190"),
-  rules: tr("ui.Handbook.190"),
-  items: tr("ui.Handbook.191"),
-  modules: tr("ui.MarketPage.117"),
-  ships: tr("ui.MarketPage.116"),
-  blueprints: tr("ui.Handbook.017"),
-  factions: tr("ui.Handbook.190"), // 「条」（与说明类同单位：每张卡 = 一个势力）
-  skills: tr("ui.Handbook.256"),
+  get guide() { return tr("ui.Handbook.190") },
+  get rules() { return tr("ui.Handbook.190") },
+  get items() { return tr("ui.Handbook.191") },
+  get modules() { return tr("ui.MarketPage.117") },
+  get ships() { return tr("ui.MarketPage.116") },
+  get blueprints() { return tr("ui.Handbook.017") },
+  get factions() { return tr("ui.Handbook.190") }, // 「条」（与说明类同单位：每张卡 = 一个势力）
+  get skills() { return tr("ui.Handbook.256") },
 }
 const VIEW_KEY = 'whale-idle:handbook-view'
 
@@ -295,24 +295,24 @@ const VIEW_KEY = 'whale-idle:handbook-view'
  *  有 `itemId` = 消耗品蓝图、其余 = 装备蓝图）。2026-09-20 船长裁定「零件蓝图归到该组」：
  *  有 `itemId` 且**产物是零件**的另立「零件蓝图」门类（此前落进消耗品蓝图那门）。 */
 const BP_MAIN: SubOption[] = [
-  { key: 'equip', label: tr("ui.ShipPage.115") },
-  { key: 'ship', label: tr("ui.ShipPage.116") },
-  { key: 'consume', label: tr("ui.ShipPage.114") },
+  { key: 'equip', get label() { return tr("ui.ShipPage.115") } },
+  { key: 'ship', get label() { return tr("ui.ShipPage.116") } },
+  { key: 'consume', get label() { return tr("ui.ShipPage.114") } },
   // ⚠ `equip` / `ship` / `consume` 各自**只许出现一次**——2026-09-26 修：原先这表里前三个键各重复一次
   // （合并残留），React 渲染出两颗同名胶囊（`key={o.key}` 撞 key）⇒ 玩家点第二颗时高亮落在第一颗上、
   // 观感是「蓝图图鉴的筛选不消失」（船长报障）。护栏 = `npm run ui:subs-check`（挂在 `ui:rot-check` 链上）。
-  { key: 'part', label: tr("ui.Handbook.265") },  // 2026-09-20 船长裁定：产物是零件的另立「零件蓝图」门类
+  { key: 'part', get label() { return tr("ui.Handbook.265") } },  // 2026-09-20 船长裁定：产物是零件的另立「零件蓝图」门类
 ]
 /** 各图鉴筛选行的灰字前缀（同「我的舰队」那套「类别：」「级别：」写法，避免多个「全部」混淆） */
 const FILTER_LABEL: Record<Tab, string> = {
   guide: '',
   rules: '',
-  items: tr("ui.Handbook.003"),
-  modules: tr("ui.Handbook.192"),
-  ships: tr("ui.Handbook.193"),
-  blueprints: tr("ui.Handbook.257"),
+  get items() { return tr("ui.Handbook.003") },
+  get modules() { return tr("ui.Handbook.192") },
+  get ships() { return tr("ui.Handbook.193") },
+  get blueprints() { return tr("ui.Handbook.257") },
   factions: '',
-  skills: tr("ui.Handbook.132"),
+  get skills() { return tr("ui.Handbook.132") },
 }
 
 function readView(): ViewMode {
@@ -534,7 +534,7 @@ function guideGroupsOf(): HandGroup[] { return [
 
 /** 「小贴士」子页的 key（它不是词条，单独占一页） */
 const TIPS_KEY = '__tips'
-const GUIDE_NOTES: string[] = [
+const guideNotesOf = (): string[] => [
   tr("ui.Handbook.164"),
   tr("ui.Handbook.219"),
   tr("ui.Handbook.220"),
@@ -542,19 +542,19 @@ const GUIDE_NOTES: string[] = [
 
 /* ═══════════ 航行须知（2026-09-14 船长：同「玩法速览」，按词条分页 + 正文拆段） ═══════════ */
 
-const RULE_SECTS: HandGroup[] = [
+const ruleGroupsOf = (): HandGroup[] => [
   {
-    title: tr("ui.Handbook.064"),
+    get title() { return tr("ui.Handbook.064") },
     entries: [
       {
-        title: tr("ui.Handbook.065"),
+        get title() { return tr("ui.Handbook.065") },
         paras: [
           [tr("ui.Handbook.221"), tr("ui.Handbook.222")],
           [tr("ui.Handbook.066"), tr("ui.Handbook.165")],
         ],
       },
       {
-        title: tr("ui.Handbook.067"),
+        get title() { return tr("ui.Handbook.067") },
         paras: [
           [tr("ui.Handbook.068"), tr("ui.Handbook.069")],
           [tr("ui.MapPage.006"), tr("ui.Handbook.280")],
@@ -562,32 +562,32 @@ const RULE_SECTS: HandGroup[] = [
         ],
       },
       {
-        title: tr("ui.Handbook.166"),
+        get title() { return tr("ui.Handbook.166") },
         paras: [
           [tr("ui.Handbook.281"), tr("ui.Handbook.167")],
         ],
       },
       {
-        title: tr("ui.Handbook.282"),
+        get title() { return tr("ui.Handbook.282") },
         paras: [
           [tr("ui.Handbook.071"), tr("ui.Handbook.283")],
           [tr("ui.Handbook.072"), tr("ui.Handbook.284")],
         ],
       },
       {
-        title: tr("ui.Handbook.073"),
+        get title() { return tr("ui.Handbook.073") },
         paras: [
           [tr("ui.Handbook.223"), tr("ui.Handbook.285")],
         ],
       },
       {
-        title: tr("ui.Handbook.224"),
+        get title() { return tr("ui.Handbook.224") },
         paras: [
           [tr("ui.Handbook.225"), tr("ui.Handbook.226")],
         ],
       },
       {
-        title: tr("ui.Handbook.227"),
+        get title() { return tr("ui.Handbook.227") },
         paras: [
           [tr("ui.Handbook.074"), tr("ui.Handbook.075")],
           [tr("ui.Handbook.076"), tr("ui.Handbook.168")],
@@ -595,14 +595,14 @@ const RULE_SECTS: HandGroup[] = [
         ],
       },
       {
-        title: tr("ui.Handbook.169"),
+        get title() { return tr("ui.Handbook.169") },
         paras: [
           [tr("ui.Handbook.077"), tr("ui.Handbook.288")],
           [tr("ui.Handbook.078"), tr("ui.Handbook.228")],
         ],
       },
       {
-        title: tr("ui.Handbook.289"),
+        get title() { return tr("ui.Handbook.289") },
         paras: [
           [tr("ui.Handbook.290"), tr("ui.Handbook.079")],
         ],
@@ -610,50 +610,50 @@ const RULE_SECTS: HandGroup[] = [
     ],
   },
   {
-    title: tr("ui.Handbook.291"),
+    get title() { return tr("ui.Handbook.291") },
     entries: [
       {
-        title: tr("ui.Handbook.292"),
+        get title() { return tr("ui.Handbook.292") },
         paras: [
           [tr("ui.Handbook.080"), tr("ui.Handbook.293")],
           [tr("ui.Handbook.014"), tr("ui.Handbook.081")],
         ],
       },
       {
-        title: tr("ui.Handbook.294"),
+        get title() { return tr("ui.Handbook.294") },
         paras: [
           [tr("ui.Handbook.018"), tr("ui.Handbook.229")],
           [tr("ui.Handbook.082"), tr("ui.Handbook.295")],
         ],
       },
       {
-        title: tr("ui.Handbook.083"),
+        get title() { return tr("ui.Handbook.083") },
         paras: [
           [tr("ui.Handbook.084"), tr("ui.Handbook.085")],
         ],
       },
       {
-        title: tr("ui.Handbook.296"),
+        get title() { return tr("ui.Handbook.296") },
         paras: [
           [tr("ui.Handbook.297"), tr("ui.Handbook.298")],
         ],
       },
       {
-        title: tr("ui.Handbook.299"),
+        get title() { return tr("ui.Handbook.299") },
         paras: [
           [tr("ui.Handbook.086"), tr("ui.Handbook.170")],
           [tr("ui.ShipPage.013"), tr("ui.Handbook.171")],
         ],
       },
       {
-        title: tr("ui.Handbook.300"),
+        get title() { return tr("ui.Handbook.300") },
         paras: [
           [tr("ui.Handbook.087"), tr("ui.Handbook.088")],
           [tr("ui.Handbook.301"), tr("ui.Handbook.172")],
         ],
       },
       {
-        title: tr("ui.Handbook.230"),
+        get title() { return tr("ui.Handbook.230") },
         paras: [
           [tr("ui.Handbook.057"), tr("ui.Handbook.231")],
           [tr("ui.Handbook.089"), tr("ui.Handbook.173")],
@@ -661,7 +661,7 @@ const RULE_SECTS: HandGroup[] = [
         ],
       },
       {
-        title: tr("ui.Handbook.233"),
+        get title() { return tr("ui.Handbook.233") },
         paras: [
           [tr("ui.Handbook.090"), tr("ui.Handbook.234")],
         ],
@@ -669,16 +669,16 @@ const RULE_SECTS: HandGroup[] = [
     ],
   },
   {
-    title: tr("ui.Handbook.091"),
+    get title() { return tr("ui.Handbook.091") },
     entries: [
       {
-        title: tr("ui.Handbook.303"),
+        get title() { return tr("ui.Handbook.303") },
         paras: [
           [tr("ui.Handbook.092"), tr("ui.Handbook.235")],
         ],
       },
       {
-        title: tr("ui.Handbook.093"),
+        get title() { return tr("ui.Handbook.093") },
         paras: [
           [tr("ui.BattleScreen.002"), tr("ui.Handbook.174")],
           [tr("ui.battleViewCore.001"), tr("ui.Handbook.236")],
@@ -687,7 +687,7 @@ const RULE_SECTS: HandGroup[] = [
         ],
       },
       {
-        title: tr("ui.Handbook.176"),
+        get title() { return tr("ui.Handbook.176") },
         paras: [
           [tr("ui.Handbook.304"), tr("ui.Handbook.177")],
           [tr("ui.Handbook.094"), tr("ui.Handbook.239")],
@@ -696,17 +696,17 @@ const RULE_SECTS: HandGroup[] = [
     ],
   },
   {
-    title: tr("ui.MatterTechTab.001"),
+    get title() { return tr("ui.MatterTechTab.001") },
     entries: [
       {
-        title: tr("ui.Handbook.305"),
+        get title() { return tr("ui.Handbook.305") },
         paras: [
           [tr("ui.Handbook.095"), tr("ui.Handbook.306")],
           [tr("ui.Handbook.096"), tr("ui.Handbook.097")],
         ],
       },
       {
-        title: tr("ui.Handbook.098"),
+        get title() { return tr("ui.Handbook.098") },
         paras: [
           [tr("ui.Handbook.099"), tr("ui.Handbook.178")],
           [tr("ui.Handbook.307"), tr("ui.Handbook.240")],
@@ -715,14 +715,14 @@ const RULE_SECTS: HandGroup[] = [
         ],
       },
       {
-        title: tr("ui.Handbook.100"),
+        get title() { return tr("ui.Handbook.100") },
         paras: [
           [tr("ui.Handbook.198"), tr("ui.Handbook.311")],
           [tr("ui.Handbook.312"), tr("ui.Handbook.313")],
         ],
       },
       {
-        title: tr("ui.Handbook.314"),
+        get title() { return tr("ui.Handbook.314") },
         paras: [
           [tr("ui.Handbook.101"), tr("ui.Handbook.241")],
           [tr("ui.Handbook.179"), tr("ui.Handbook.242")],
@@ -731,10 +731,10 @@ const RULE_SECTS: HandGroup[] = [
     ],
   },
   {
-    title: tr("ui.Handbook.243"),
+    get title() { return tr("ui.Handbook.243") },
     entries: [
       {
-        title: tr("ui.Handbook.102"),
+        get title() { return tr("ui.Handbook.102") },
         paras: [
           [tr("ui.Handbook.103"), tr("ui.Handbook.104")],
           [tr("ui.Handbook.244"), tr("ui.Handbook.245")],
@@ -943,7 +943,7 @@ function IconGrid({ cells, onPick, selectedKey }: { cells: GridCell[]; onPick: (
             ) : null}
             {/* 稀有度小标签（2026-09-20 船长）：与仓库/货仓图标模式同一语言 */}
             {c.rarity !== undefined ? (
-              <span className={`app-hand-cell-rarity is-r${c.rarity}`} aria-label={`稀有度 R${c.rarity}`}>
+              <span className={`app-hand-cell-rarity is-r${c.rarity}`} aria-label={tr('ui.itemView.001', { p1: c.rarity })}>
                 R{c.rarity}
               </span>
             ) : null}
@@ -1035,6 +1035,8 @@ export function Handbook({
   /* 说明类（玩法速览 / 航行须知）：搜索作用于**整章**（跨子页命中，见 handEntryHits）。
      `cur` 是当前该显示的**一页**：玩家点的子页；点的那条被关键词滤掉时自动落到第一条命中的（搜索即跳页）。 */
   const guideGroups = guideGroupsOf()
+  const RULE_SECTS = ruleGroupsOf()
+  const guideNotes = guideNotesOf()
   const sects: HandGroup[] = tab === 'guide' ? guideGroups : tab === 'rules' ? RULE_SECTS : []
   const flat = sects.flatMap((g) => g.entries.map((e) => ({ g, e })))
   const matched = flat.filter((x) => handEntryHits(x.e, q) > 0)
@@ -1042,7 +1044,7 @@ export function Handbook({
   const cur = onTips ? null : (matched.find((x) => x.e.title === pageKey) ?? matched[0] ?? null)
   /* 翻页序列（2026-09-14 船长追加：页底「上一条 / 下一条」）：按当前章的**阅读顺序**连续走，跨组不打断；
      搜索时只在命中项之间走（与"搜索即跳页"同一套口径）。「小贴士」排在「玩法速览」最后一条之后。 */
-  const tipsHit = q === '' || GUIDE_NOTES.some((n) => n.toLowerCase().includes(q))
+  const tipsHit = q === '' || guideNotes.some((n) => n.toLowerCase().includes(q))
   const pageSeq: Array<{ key: string; label: string }> = [
     ...matched.map((x) => ({ key: x.e.title, label: x.e.title })),
     ...(tab === 'guide' && tipsHit ? [{ key: TIPS_KEY, label: tr("ui.Handbook.114") }] : []),
@@ -1536,7 +1538,7 @@ export function Handbook({
           <div className="app-hand-sect">
             <div className="app-bay-title">{tr("ui.Handbook.114")}</div>
             <ul className="app-hand-notes">
-              {GUIDE_NOTES.filter((n) => q === '' || n.toLowerCase().includes(q)).map((n) => (
+              {guideNotes.filter((n) => q === '' || n.toLowerCase().includes(q)).map((n) => (
                 <li key={n}>{n}</li>
               ))}
             </ul>

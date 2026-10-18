@@ -159,7 +159,7 @@ type BoardKind = 'hold' | 'temp'
  * 页签文案。⚠ **玩家可见一律叫「货仓」，不叫「背包」**（船长 2026-09-15：「不应该直接叫背包，
  * 展示给玩家看的叫货仓」）——内部标识符仍是 `bag` / `run.bag`（不动存档与代码键名）。
  */
-const TAB_LABEL: Record<WhTab, string> = { prep: tr("ui.Wormhole.063"), map: tr("ui.Wormhole.123"), bag: tr("ui.CargoPage.004") }
+const TAB_LABEL: Record<WhTab, string> = { get prep() { return tr("ui.Wormhole.063") }, get map() { return tr("ui.Wormhole.123") }, get bag() { return tr("ui.CargoPage.004") } }
 
 /* ── 探索页动效时长（船长 2026-09-13 拍板：「入场动画时长可以拉长到 1 秒」）──
    飞入 1000ms（进场与到达新层）· 飞出 600ms（深入下一层前先飞走）· 扫描波 900ms ·
@@ -2388,7 +2388,7 @@ export function WormholePanel({
  * 并**跨两列独占一行**（4 格是偶数，第 5 格落单会难看）；它是唯一不进「到手合计」的一格。
  */
 /** 核心账本键 → 短名（结算单里那行小字用；全称见 core 的 `aiCoreName`） */
-const CORE_LABEL: Readonly<Record<'gamma' | 'beta' | 'alpha', string>> = { gamma: tr("ui.Wormhole.042"), beta: tr("ui.Wormhole.215"), alpha: tr("ui.Wormhole.266") }
+const CORE_LABEL: Readonly<Record<'gamma' | 'beta' | 'alpha', string>> = { get gamma() { return tr("ui.Wormhole.042") }, get beta() { return tr("ui.Wormhole.215") }, get alpha() { return tr("ui.Wormhole.266") } }
 
 function SettleView({ engine, settle, onConfirm }: { engine: GameEngine; settle: WormholeSettleRecord; onConfirm: () => void }) {
   const tr = settle.expeditionProgress !== undefined ? futureTr : signalTr
@@ -2906,11 +2906,11 @@ function WhNebulaGlyph() {
 
 /** 信号名（图例与悬浮提示共用；与 `WORMHOLE_PLACE_TEXT` 分开：信号 ≠ 地点真相） */
 const SIGNAL_TEXT: Readonly<Record<WormholeSignal, string>> = {
-  wreck: tr("ui.Wormhole.165"),
-  ship: tr("ui.Wormhole.221"),
-  resource: tr("ui.Wormhole.222"),
-  radar: tr("ui.Wormhole.271"),
-  beacon: tr("ui.Wormhole.047"),
+  get wreck() { return tr("ui.Wormhole.165") },
+  get ship() { return tr("ui.Wormhole.221") },
+  get resource() { return tr("ui.Wormhole.222") },
+  get radar() { return tr("ui.Wormhole.271") },
+  get beacon() { return tr("ui.Wormhole.047") },
 }
 
 /** 地图图例（与格内符号共用同一个 `WhGlyph` ⇒ 图例与看板永远一致） */
@@ -2924,15 +2924,15 @@ const GRID_LEGEND: ReadonlyArray<{
   /** 「星云」那一档：画星云线稿（船长 2026-09-13 星云机制） */
   nebula?: boolean
 }> = [
-  { key: 'unknown', text: tr("ui.Wormhole.166"), signal: null, none: true },
-  { key: 'nebula', text: tr("ui.Wormhole.167"), signal: null, none: true, nebula: true },
-  { key: 'visited', text: tr("ui.Wormhole.119"), signal: null, none: true, done: true },
-  { key: 'wreck', text: SIGNAL_TEXT.wreck, signal: 'wreck' },
-  { key: 'ship', text: SIGNAL_TEXT.ship, signal: 'ship' },
-  { key: 'resource', text: SIGNAL_TEXT.resource, signal: 'resource' },
-  { key: 'radar', text: SIGNAL_TEXT.radar, signal: 'radar' },
-  { key: 'beacon', text: SIGNAL_TEXT.beacon, signal: 'beacon' },
-  { key: 'blank', text: tr("ui.Wormhole.223"), signal: null },
+  { key: 'unknown', get text() { return tr("ui.Wormhole.166") }, signal: null, none: true },
+  { key: 'nebula', get text() { return tr("ui.Wormhole.167") }, signal: null, none: true, nebula: true },
+  { key: 'visited', get text() { return tr("ui.Wormhole.119") }, signal: null, none: true, done: true },
+  { key: 'wreck', get text() { return SIGNAL_TEXT.wreck }, signal: 'wreck' },
+  { key: 'ship', get text() { return SIGNAL_TEXT.ship }, signal: 'ship' },
+  { key: 'resource', get text() { return SIGNAL_TEXT.resource }, signal: 'resource' },
+  { key: 'radar', get text() { return SIGNAL_TEXT.radar }, signal: 'radar' },
+  { key: 'beacon', get text() { return SIGNAL_TEXT.beacon }, signal: 'beacon' },
+  { key: 'blank', get text() { return tr("ui.Wormhole.223") }, signal: null },
 ]
 
 /** 地点说明（看板一处说清"这里有什么/能干什么"；数字口径与 core 常量同源） */

@@ -87,9 +87,9 @@ import { FittingRange } from '../panels/FittingRange'
  *  2026-09-11 协处理器 = 低槽 CPU 预算扩容件）
  *  2026-09-14 船长「改回高槽」：采集器 / 打捞器回到高槽组（作业装备不再走低槽） */
 const RACK_FAMILIES: Record<RackSlot, string> = {
-  high: tr("ui.FitPage.011"),
-  mid: tr("ui.FitPage.012"),
-  low: tr("ui.FitPage.013"),
+  get high() { return tr("ui.FitPage.011") },
+  get mid() { return tr("ui.FitPage.012") },
+  get low() { return tr("ui.FitPage.013") },
 }
 
 /** 数字千分位 */
@@ -117,8 +117,16 @@ interface FitSeg {
   c: 'up' | 'down' | 'info' | 'none'
 }
 
-const HP_KEY_LABEL: Record<'s' | 'a' | 'h', string> = { s: tr("ui.FitPage.014"), a: tr("ui.FitPage.015"), h: tr("ui.ShipPage.023") }
-const TYPE_SN: Record<string, string> = { kinetic: tr("ui.FitPage.016"), explosive: tr("ui.FitPage.017"), plasma: tr("ui.FitPage.018") }
+const HP_KEY_LABEL: Record<'s' | 'a' | 'h', string> = {
+  get s() { return tr("ui.FitPage.014") },
+  get a() { return tr("ui.FitPage.015") },
+  get h() { return tr("ui.ShipPage.023") },
+}
+const TYPE_SN: Record<string, string> = {
+  get kinetic() { return tr("ui.FitPage.016") },
+  get explosive() { return tr("ui.FitPage.017") },
+  get plasma() { return tr("ui.FitPage.018") },
+}
 
 /** 负数按本仓文案惯例用真减号 U+2212 显示（CPU 剩 −12 而非 -12） */
 function minus(n: number): string {
@@ -795,8 +803,8 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                     // 2026-09-26 船长：「无人机舱有2个重复的」＋「用机动速度替换所有动力的位置」
                     // ⇒ 这两条基础行让位给下面的合计行 / 装后口径行（登记表见 `shipInfo.tsx`
                     // `FIT_MAIN_HIDDEN_KEYS`，`npm run ui:attr-check` 按「不重名」体检）
-                    !FIT_MAIN_HIDDEN_KEYS.includes(l.k) &&
-                    !COMBAT_BASE_KEYS.has(l.k),
+                    !FIT_MAIN_HIDDEN_KEYS().includes(l.k) &&
+                    !COMBAT_BASE_KEYS().has(l.k),
                 ),
                 // 机动速度（2026-09-11 船长：「推进器现在有持续时间和冷却时间，这点希望在推进器的
                 // 说明内讲清」）：推进器周期化（2026-09-10）后 `spec.speedMps` **已不含**推进器加成

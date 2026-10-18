@@ -20,13 +20,13 @@ describe('综合公告短句与英文显式延期', () => {
     expect(brief.id).toBe('ann-balance-mechanics-summary-20261008')
     expect(brief.date).toBe('2026-10-09')
   })
-  it('全部新正文只记待译，不准备英文，不用中文或占位伪填英文列', () => {
+  it('船长批准本地化后，38条公告完成英文，中文仍逐字保护', () => {
     expect(deferredL10nIssues(L10N, backlog)).toEqual([])
-    expect(Object.entries(L10N).filter(([id, entry]) => id.startsWith('ano.mechanicsBrief.') && entry.enDeferred === true)).toHaveLength(38)
+    expect(Object.entries(L10N).filter(([id, entry]) => id.startsWith('ano.mechanicsBrief.') && entry.enDeferred === true)).toHaveLength(0)
     for (const id of brief.bulletIds!) {
-      expect(L10N[id]).toMatchObject({ en: '', enDeferred: true })
-      expect(backlog).toContain(`| \`${id}\` |`)
-      expect(l10nEntryText(L10N[id]!, 'en')).toBe(L10N[id]!.zh)
+      expect(L10N[id]).toEqual(approvedMk1CopyDelta(id, { zh: L10N[id]!.zh, en: '', enDeferred: true }))
+      expect(L10N[id]!.en).not.toMatch(/[\u3400-\u9fff]|\{(?:TODO|pending)\}/)
+      expect(l10nEntryText(L10N[id]!, 'en')).toBe(L10N[id]!.en)
     }
   })
   it('非待译与异形既有文本和全部已有英文逐字不变', () => {
@@ -65,11 +65,11 @@ describe('综合公告短句与英文显式延期', () => {
     } }).outputText, { exports, require: (id: string) => mocks[id],
       localStorage: { getItem: () => 'en' }, navigator: { language: 'en' } })
     const module = exports
-    expect(module.textOf(brief.bulletIds![0]!, 'en')).toBe(brief.bullets[0])
+    expect(module.textOf(brief.bulletIds![0]!, 'en')).toBe(L10N[brief.bulletIds![0]!]!.en)
     expect(module.textOf('not-found', 'en')).toBe('not-found')
     const fixture: L10nEntry = { zh: '测试{p1}', en: '', enDeferred: true }
     expect(l10nEntryText(fixture, 'en').replace('{p1}', '3')).toBe('测试3')
-    expect(module.futureTr(brief.bulletIds![13]!)).toBe(brief.bullets[13])
+    expect(module.futureTr(brief.bulletIds![13]!)).toBe(L10N[brief.bulletIds![13]!]!.en)
     expect(module.futureTr('ui.deferredProbe.001', { p1: 3 })).toBe('数量3')
     expect(module.logText({ text: '', textId: 'core.events.001', textParams: {
       p1: '', p2: '', p1Id: 'ui.deferredProbe.001', p1p1: 7,

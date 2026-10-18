@@ -232,13 +232,13 @@ describe('出击加速、激光校准与协处理器5%', () => {
     expect(copy).toEqual(expectedModules)
   })
 
-  it('实际舰体特性显示读取30%参数；所有新条目待译登记与中文回退', () => {
+  it('实际舰体特性显示读取30%参数；已完成英文覆盖且无过期待译登记', () => {
     const path = new URL('apps/desktop/src/renderer/src/ui/shipInfo.tsx', root)
     const source = ts.createSourceFile('shipInfo.tsx', readFileSync(path, 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
     const fn = source.statements.find(n => ts.isFunctionDeclaration(n) && n.name?.text === 'shipInfoLines')!
     const scope = { exports: {} as { shipInfoLines: (ship: unknown) => Array<{ k: string; v: string }> },
       tr: (id: string, p?: Record<string, unknown>) => l10nEntryText(L10N[id]!, 'zh').replace(/\{(\w+)\}/g, (m,k) => String(p?.[k] ?? m)),
-      fmt: String, shipRoleText: () => '', shipCategoryKeyOf: () => '', shipTierText: () => '', DMG_LABEL: {}, shipSlotsOf: (ship: any) => ship.slots,
+      fmt: String, shipRoleText: () => '', shipSubClassText: (value: string) => value, shipCategoryKeyOf: () => '', shipTierText: () => '', DMG_LABEL: {}, shipSlotsOf: (ship: any) => ship.slots,
       pct: (v: number) => `${Math.round(v * 100)}%`, resistsText: () => '', shipCategoryLabelOf: () => '', slotListText: () => '' }
     runInNewContext(ts.transpileModule(fn.getText(source), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React }, fileName: 'shipInfo.tsx' }).outputText, scope)
     for (const id of droneHulls) {
@@ -247,6 +247,7 @@ describe('出击加速、激光校准与协处理器5%', () => {
       expect(rows.some(row => row.v.includes('首次出击')), id).toBe(false)
     }
     expect(deferredL10nIssues(L10N, readFileSync(new URL('docs/l10n-pending.md', root), 'utf8'))).toEqual([])
-    for (const row of cases) expect(buildSimContext('en').modules.get(row.id)!.name).toBe(ctx.modules.get(row.id)!.name)
+    const translatedNames = ['Drone Launch Accelerator MK1', 'Drone Launch Accelerator MK2', 'Drone Launch Accelerator MK3', 'Laser Calibration Array MK2', 'Laser Calibration Array MK3']
+    for (const [index, row] of cases.entries()) expect(buildSimContext('en').modules.get(row.id)!.name).toBe(translatedNames[index])
   })
 })

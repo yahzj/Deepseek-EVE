@@ -181,8 +181,9 @@ describe('真实参数行承接说明数字', () => {
         expect(speed, module.id).toHaveLength(0)
         const ramp = rows.find(row => row.k === l10nEntryText(L10N['ui.alienLoot.003']!, locale))!
         expect(ramp).toBeDefined()
-        expect(textOf(ramp.v)).toContain('+5% → +35%，60秒达到峰值')
-        expect(display.moduleShortEffect(module)).toContain('+5% → +35%，60秒达到峰值')
+        const expectedRamp = locale === 'zh' ? '+5% → +35%，60秒达到峰值' : '+5% → +35%, reaches peak in 60 s'
+        expect(textOf(ramp.v)).toContain(expectedRamp)
+        expect(display.moduleShortEffect(module)).toContain(expectedRamp)
         expect(rows.map(row => textOf(row.v)).join('|')).not.toMatch(/点火|冷却|burning|cooldown/i)
         expect(display.moduleShortEffect(module)).not.toMatch(/点火|冷却|burning|cooldown/i)
         continue

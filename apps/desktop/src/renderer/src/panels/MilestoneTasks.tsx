@@ -12,25 +12,26 @@
  * 本面板只渲染，不自己算。
  */
 import { milestoneBoard } from '@whale/core'
+import { firstChainText } from '@whale/data'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
-import { tr } from '../i18n/locale'
+import { currentLocale, tr } from '../i18n/locale'
 
 /** 链进度的计数单位（**纯显示用**，与 core 的阈值表同源；`tierKey` 缺项 ⇒ 不写单位） */
 const CHAIN_UNITS: Record<string, string> = {
-  scan: tr('ui.FirstTasks.004'),
-  mineUnits: tr('ui.FirstTasks.005'),
-  salvageRuns: tr('ui.FirstTasks.006'),
-  bountyWins: tr('ui.FirstTasks.007'),
-  repairs: tr('ui.FirstTasks.006'),
-  refineBatches: tr('ui.FirstTasks.008'),
-  produceUnits: tr('ui.MarketPage.117'),
-  marketIncome: tr('ui.FirstTasks.003'),
-  ships: tr('ui.MarketPage.116'),
-  aiAssigns: tr('ui.FirstTasks.006'),
-  haulTrips: tr('ui.FirstTasks.009'),
-  wormholeRuns: tr('ui.FirstTasks.009'),
-  skills: tr('ui.FirstTasks.010'),
+  get scan() { return tr('ui.FirstTasks.004') },
+  get mineUnits() { return tr('ui.FirstTasks.005') },
+  get salvageRuns() { return tr('ui.FirstTasks.006') },
+  get bountyWins() { return tr('ui.FirstTasks.007') },
+  get repairs() { return tr('ui.FirstTasks.006') },
+  get refineBatches() { return tr('ui.FirstTasks.008') },
+  get produceUnits() { return tr('ui.MarketPage.117') },
+  get marketIncome() { return tr('ui.FirstTasks.003') },
+  get ships() { return tr('ui.MarketPage.116') },
+  get aiAssigns() { return tr('ui.FirstTasks.006') },
+  get haulTrips() { return tr('ui.FirstTasks.009') },
+  get wormholeRuns() { return tr('ui.FirstTasks.009') },
+  get skills() { return tr('ui.FirstTasks.010') },
 }
 
 /** 链 id → 计数单位键（与 `CHAIN_TIERS` 的 tierKey 同名；这里显式列一次，免得面板再引 core 的阈值表） */
@@ -73,7 +74,7 @@ export function MilestoneTasks({ engine, onToast }: { engine: GameEngine; onToas
             <div key={r.chainId} className="app-station-card">
               <div className="app-station-head">
                 <span className="app-station-name">
-                  {r.name}
+                  {firstChainText(r.chainId, currentLocale())}
                   {claimableNow ? <em className="app-chip">{tr('ui.FirstTasks.015')}</em> : null}
                 </span>
                 <span className="app-dim">

@@ -16,10 +16,11 @@ interface LogListProps {
   logs: LogItem[]
   /** 最多显示多少条（从最新往旧取），默认 120 */
   limit?: number
+  emptyText: string
 }
 
-export function LogList({ logs, limit = 120 }: LogListProps) {
-  if (logs.length === 0) return <div className="wui-log-empty">（暂无事件，航线静悄悄）</div>
+export function LogList({ logs, limit = 120, emptyText }: LogListProps) {
+  if (logs.length === 0) return <div className="wui-log-empty">{emptyText}</div>
   const shown = logs.slice(-limit).reverse()
   return (
     <ul className="wui-log-list">

@@ -101,16 +101,20 @@ import { tr } from '../i18n/locale'
  */
 type FurnaceTab = 'all' | 'ore' | 'wreck' | 'box'
 const FURNACE_TABS: Array<{ key: FurnaceTab; label: string }> = [
-  { key: 'all', label: tr("ui.IndustryPage.001") },
-  { key: 'ore', label: tr("ui.IndustryPage.002") },
-  { key: 'wreck', label: tr("ui.IndustryPage.003") },
-  { key: 'box', label: tr("ui.IndustryPage.004") },
+  { key: 'all', get label() { return tr("ui.IndustryPage.001") } },
+  { key: 'ore', get label() { return tr("ui.IndustryPage.002") } },
+  { key: 'wreck', get label() { return tr("ui.IndustryPage.003") } },
+  { key: 'box', get label() { return tr("ui.IndustryPage.004") } },
 ]
 
 /** 二级子筛选的候选（键 = 子筛选键，`''` = 全部子类，与组装机同款口径） */
 type SubOpt = { key: string; label: string }
 /** 可精炼资源按**资源大类**（只列实际存在的档；`ItemDef.kind` 单点） */
-const ORE_KIND_LABEL: Record<string, string> = { ore: tr("ui.IndustryPage.005"), gas: tr("ui.IndustryPage.006"), ice: tr("ui.IndustryPage.007") }
+const ORE_KIND_LABEL: Record<string, string> = {
+  get ore() { return tr("ui.IndustryPage.005") },
+  get gas() { return tr("ui.IndustryPage.006") },
+  get ice() { return tr("ui.IndustryPage.007") },
+}
 /* 残骸回收按**档位**（普通 / 稀有）——2026-09-14 船长选甲；档名 2026-09-16 收口为「稀有残骸」。
  * 2026-09-19 乙组：表已按基线⑤收编到 `ui/itemSubs.ts`（`WRECK_SUBS`），物品页仓库 /
  * 手册物品图鉴 / 市场 三处读的是同一张表 ⇒ 本文件不再自带该表（标签仍走唯一表 id）。 */

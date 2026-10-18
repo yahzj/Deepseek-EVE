@@ -62,7 +62,7 @@ const TABLE_START = /^[ \t]*(?:export\s+)?const\s+([A-Za-z0-9_]+)\s*(?::[^=\n]+)
 /** 元素里的字面量字段（`key: 'x'` / `label: tr("id")` 两种写法都收） */
 const KEY_FIELD = /\bkey:\s*['"]([^'"]+)['"]/g
 const LABEL_LITERAL = /\blabel:\s*['"]([^'"]+)['"]/g
-const LABEL_ID = /\blabel:\s*tr\(\s*['"]([^'"]+)['"]/g
+const LABEL_ID = /(?:\blabel:\s*|\bget\s+label\(\)\s*\{\s*return\s+)tr\(\s*['"]([^'"]+)['"]/g
 const ID_FIELD = /\bid:\s*['"]([^'"]+)['"]/g
 
 type Problem = { file: string; line: number; table: string; kind: string; detail: string }
@@ -307,8 +307,8 @@ for (const root of ROOTS) {
         const rest = body.slice(from)
         const nextKey = rest.slice(1).search(/\bkey:\s*['"]/)
         const seg = nextKey < 0 ? rest : rest.slice(0, nextKey + 1)
-        const lit = seg.match(LABEL_LITERAL)
-        const id = seg.match(LABEL_ID)
+        const lit = seg.match(new RegExp(LABEL_LITERAL.source))
+        const id = seg.match(new RegExp(LABEL_ID.source))
         /** ⚠ 一律走 `String(...)` 兜底：正则半截匹配（如模板串里的 `${…}`）可能给出非字符串 */
         const show = String(lit ? zhOf('literal', lit[1]!) : id ? zhOf('id', id[1]!) : '')
         const raw = lit ? lit[1]! : id ? id[1]! : ''

@@ -129,7 +129,7 @@ for (const ship of SHIPS) {
   const fitMain = [
     ...shipInfoLines(ship)
       // ⚠ 装配页**原地**过滤的那几条基础行走它自己的单点（2026-10-02 起；此前本工具与页面各按各的判据）
-      .filter((l) => !fitHiddenBaseKeys().includes(l.k) && !FIT_MAIN_HIDDEN_KEYS.includes(l.k) && !COMBAT_BASE_KEYS.has(l.k))
+      .filter((l) => !fitHiddenBaseKeys().includes(l.k) && !FIT_MAIN_HIDDEN_KEYS().includes(l.k) && !COMBAT_BASE_KEYS().has(l.k))
       .map((l) => l.k),
     ...FIT_APPENDED_KEYS,
   ]

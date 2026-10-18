@@ -2,7 +2,7 @@
 
 ## 英文设置切换巡检（2026-10-18）
 
-- `node tools/l10n-en-native-check.cjs [--layout=classic|modern]`：先`npm run build`；使用本树真实App、独立合成档和隐藏Electron，中文启动后真实打开设置点击English。扫描两布局10个一级页面及主要子页签，比较直接切换与英文重载，记录文本/悬停/辅助标签中的中文、未解析ID和参数槽。输出`tools/_ui-artifacts/l10n-en-native-20261018/`；`localizationComplete=false`表示发现遗漏，不将工具正常结束视为英文完整。不读取个人档，不代表实体手机或所有游戏状态验收。
+- `node tools/l10n-en-native-check.cjs [--layout=classic|modern]`：先`npm run build`；使用本树真实App、独立合成档和隐藏Electron，中文启动后真实打开设置点击English。扫描两布局10个一级页面、主要子页签（含任务5页）和手册8页，热切/重载各查，记录文本/悬停/辅助标签中的中文、未解析ID和参数槽。输出`tools/_ui-artifacts/l10n-en-native-20261018/`；先落盘报告再断言，无遗漏且无运行异常才退出0。`localizationComplete`只表示本轮检查通过，不代表实体手机或所有游戏状态验收。不读取个人档。
 
 ## 信号发射器与扫描调整验收（2026-10-18）
 

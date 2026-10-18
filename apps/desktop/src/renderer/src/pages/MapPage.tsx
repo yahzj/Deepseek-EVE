@@ -81,15 +81,15 @@ export interface MapGotoTarget {
  */
 export type { TaskFocusTarget } from './TaskCenterPage'
 export const MAP_TABS: Array<{ key: MapTab; label: string; icon: string }> = [
-  { key: 'star', label: tr("ui.MapPage.002"), icon: 'nav-map' },
-  { key: 'mine', label: tr("ui.MapPage.003"), icon: 'nav-mine' },
-  { key: 'bounty', label: tr("ui.MapPage.004"), icon: 'nav-bounty' },
-  { key: 'salvage', label: tr("ui.MapPage.005"), icon: 'nav-salvage' },
+  { key: 'star', get label() { return tr("ui.MapPage.002") }, icon: 'nav-map' },
+  { key: 'mine', get label() { return tr("ui.MapPage.003") }, icon: 'nav-mine' },
+  { key: 'bounty', get label() { return tr("ui.MapPage.004") }, icon: 'nav-bounty' },
+  { key: 'salvage', get label() { return tr("ui.MapPage.005") }, icon: 'nav-salvage' },
   /* 长途运输（2026-09-09 船长：独立出任务中心、置于残骸打捞之后；至少建成一座副空间站解锁） */
-  { key: 'haul', label: tr("ui.MapPage.006"), icon: 'nav-haul' },
+  { key: 'haul', get label() { return tr("ui.MapPage.006") }, icon: 'nav-haul' },
   /* 任务中心 2026-09-14 已搬成左侧导航的独立一级页（船长：移出星图、放在通讯上方）⇒ 本页不再有该选项卡 */
   /* 扫描虫洞（2026-09-14 船长：放进「出港界面的选项卡内」）：✅ 同日解除不可见 ⇒ **常驻标签**（解锁门槛在页内：协会声望 ≥ 40） */
-  { key: 'whscan', label: tr("ui.MapPage.007"), icon: 'nav-wormhole' },
+  { key: 'whscan', get label() { return tr("ui.MapPage.007") }, icon: 'nav-wormhole' },
 ]
 
 /**
@@ -114,18 +114,18 @@ export const TAB_UNLOCK_KEY: Partial<Record<MapTab, string>> = {
 type BeltSortKey = 'danger' | 'galaxy' | 'value' | 'name'
 const BELT_SORT_KEY = 'whale-idle:mine-sort'
 const BELT_SORT_LABEL: Record<BeltSortKey, string> = {
-  danger: tr("ui.MapPage.008"),
-  galaxy: tr("ui.MapPage.009"),
-  value: tr("ui.MapPage.010"),
-  name: tr("ui.MapPage.011"),
+  get danger() { return tr("ui.MapPage.008") },
+  get galaxy() { return tr("ui.MapPage.009") },
+  get value() { return tr("ui.MapPage.010") },
+  get name() { return tr("ui.MapPage.011") },
 }
 type WreckSortKey = 'danger' | 'galaxy' | 'density' | 'name'
 const WRECK_SORT_KEY = 'whale-idle:salvage-sort'
 const WRECK_SORT_LABEL: Record<WreckSortKey, string> = {
-  danger: tr("ui.MapPage.008"),
-  galaxy: tr("ui.MapPage.009"),
-  density: tr("ui.MapPage.012"),
-  name: tr("ui.MapPage.001"),
+  get danger() { return tr("ui.MapPage.008") },
+  get galaxy() { return tr("ui.MapPage.009") },
+  get density() { return tr("ui.MapPage.012") },
+  get name() { return tr("ui.MapPage.001") },
 }
 
 export function MapPage({ engine, onToast, mapTab = 'star', onMapTab, mapGoto = null, onOpenWormhole, onExploreWormhole, onAutoExploreWormhole, onGotoFit, bountyShopSeq = 0 }: PageProps & {

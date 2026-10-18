@@ -88,8 +88,8 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
       if (!Number.isFinite(minutes) || minutes <= 0) continue
       routes.push({
         key: `${a.siteId ?? 'home'}<>${b.siteId ?? 'home'}`,
-        aName: a.name,
-        bName: b.name,
+        aName: a.siteId === null ? tr('ui.Expedition.007') : a.name,
+        bName: b.siteId === null ? tr('ui.Expedition.007') : b.name,
         aId: a.siteId,
         bId: b.siteId,
         aGalaxyId: a.galaxyId,
