@@ -3082,8 +3082,13 @@ export interface AchievementDef {
 export interface StationTierDef {
   /** 档位名（如 奠基/完善/建成） */
   name: string
-  /** 2026-09-09（船长定）本档材料单：物品 × 数量，逐项交齐才升档（建材 = 精炼矿物，排除原矿） */
+  /** 本档材料单：精炼矿物/零件 × 数量，逐项交齐才升档，不含原矿。 */
   bill: ReadonlyArray<{ itemId: string; count: number }>
+  /** 旧已交、现档不再收取的材料按原单价抵扣；当前材料价格由内容目录派生。 */
+  legacyDeliveredCredit?: {
+    previousUnitValues: Readonly<Record<string, number>>
+    currentUnitValues: Readonly<Record<string, number>>
+  }
   /** 本档交付完成后解锁的能力描述（展示 + 语义见 core station.ts） */
   unlockDesc?: string
 }

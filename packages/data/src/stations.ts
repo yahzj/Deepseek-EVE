@@ -1,13 +1,30 @@
 /**
  * T9 副空间站建站点（内容层）。
  * 位置：红环航道（galaxy-redring）、烬火星区（galaxy-cinder）。
- * 2026-09-09（船长定）：建站改为**逐档材料单**——每档一张"物品 × 数量"清单，逐项交齐才升档；
- * 建材只收精炼矿物（钛钢合金/银纹超金属等），**排除原矿**；烬火为二阶段目标站，总量约为旧口径 ×2，
- * 钛钢合金"大单"与红环错档（红环 = 完善档、烬火 = 奠基档）。
+ * 船长2026-10-18确认：大宗钛钢保留，其余直接建材改为基础零件；分档交付，排除原矿。
+ * 钛钢与红环/烬火施工档的错位保持；具体价值目标由专项测试和工具核验。
  * 2026-09-08（船长定）：建成前不视为任何站点——不停靠、不提供任何站内功能；
  * 全部档位完成（建成）后一次性并入空间站网络并开放全部功能。
  */
-import type { StationSiteDef } from '@whale/core'
+import type { StationSiteDef, StationTierDef } from '@whale/core'
+import { ITEMS } from './items'
+
+const itemValues = new Map(ITEMS.map(item => [item.id, item.baseSellPriceIsk ?? 0]))
+
+function stationTier(
+  name: string,
+  bill: StationTierDef['bill'],
+  unlockDesc: string,
+  previousUnitValues: Readonly<Record<string, number>>,
+): StationTierDef {
+  return {
+    name, bill, unlockDesc,
+    legacyDeliveredCredit: {
+      previousUnitValues,
+      currentUnitValues: Object.fromEntries(bill.map(row => [row.itemId, itemValues.get(row.itemId) ?? 0])),
+    },
+  }
+}
 
 /** 全量建站点（顺序即任务中心展示顺序） */
 export const STATION_SITES: readonly StationSiteDef[] = [
@@ -17,33 +34,29 @@ export const STATION_SITES: readonly StationSiteDef[] = [
     galaxyId: 'galaxy-redring',
     standingReq: 0,
     tiers: [
-      {
-        name: '奠基',
-        bill: [
-          { itemId: 'min-pyerite', count: 1_500 },
-          { itemId: 'min-mexallon', count: 442 }, // 2026-09-20 零件体系：−58 件（1,160 信用点）↔ part-frame ×8 等值替换
-          { itemId: 'part-frame', count: 8 },
-        ],
-        unlockDesc: '施工推进：地基与主体框架搭建（站内功能统一在建成后开放）',
-      },
-      {
-        name: '完善',
-        bill: [
-          { itemId: 'min-tritanium', count: 5_000 },
-          { itemId: 'min-nocxium', count: 710 }, // 2026-09-20 零件体系：−290 件（26,100 信用点）↔ part-frame ×180 等值替换
-          { itemId: 'part-frame', count: 180 },
-        ],
-        unlockDesc: '施工推进：设备安装与系统调试（站内功能统一在建成后开放）',
-      },
-      {
-        name: '建成',
-        bill: [
-          { itemId: 'min-isotope', count: 1_200 },
-          { itemId: 'min-starcore', count: 510 }, // 2026-09-20 零件体系：−290 件（71,050 信用点）↔ part-frame ×490 等值替换
-          { itemId: 'part-frame', count: 490 },
-        ],
-        unlockDesc: '副站建成：并入空间站网络，开放泊位/卸货/维修/补给/换驾驶及全部站内功能',
-      },
+      stationTier('奠基', [
+        { itemId: 'part-frame', count: 8_000 },
+        { itemId: 'part-armor-plate', count: 3_360 },
+      ], '施工推进：地基与主体框架搭建（站内功能统一在建成后开放）', {
+        'min-pyerite': 12, 'min-mexallon': 20,
+      }),
+      stationTier('完善', [
+        { itemId: 'min-tritanium', count: 200_000 },
+        { itemId: 'part-armor-plate', count: 1_080 },
+        { itemId: 'part-cable', count: 6_000 },
+      ], '施工推进：设备安装与系统调试（站内功能统一在建成后开放）', {
+        'min-nocxium': 90, 'part-frame': 145,
+      }),
+      stationTier('建成', [
+        { itemId: 'part-frame', count: 4_000 },
+        { itemId: 'part-armor-plate', count: 3_000 },
+        { itemId: 'part-circuit', count: 6_000 },
+        { itemId: 'part-coolant', count: 6_000 },
+        { itemId: 'part-gyro', count: 1_000 },
+        { itemId: 'part-lens', count: 1_000 },
+      ], '副站建成：并入空间站网络，开放泊位/卸货/维修/补给/换驾驶及全部站内功能', {
+        'min-isotope': 55, 'min-starcore': 245,
+      }),
     ],
     introDialogueId: 'dlg-redring-intro',
     doneDialogueId: 'dlg-redring-done',
@@ -56,34 +69,30 @@ export const STATION_SITES: readonly StationSiteDef[] = [
     galaxyId: 'galaxy-cinder',
     standingReq: 0,
     tiers: [
-      {
-        name: '奠基',
-        bill: [
-          { itemId: 'min-tritanium', count: 1_750 }, // 2026-09-20 零件体系：−7,250 件（58,000 信用点）↔ part-frame ×400 等值替换
-          { itemId: 'min-pyerite', count: 1_000 },
-          { itemId: 'part-frame', count: 400 },
-        ],
-        unlockDesc: '施工推进：地基与主体框架搭建（站内功能统一在建成后开放）',
-      },
-      {
-        name: '完善',
-        bill: [
-          { itemId: 'min-nocxium', count: 1_550 }, // 2026-09-20 零件体系：−1,450 件（130,500 信用点）↔ part-frame ×900 等值替换
-          { itemId: 'min-mexallon', count: 2_000 },
-          { itemId: 'min-isotope', count: 1_000 },
-          { itemId: 'part-frame', count: 900 },
-        ],
-        unlockDesc: '施工推进：设备安装与系统调试（站内功能统一在建成后开放）',
-      },
-      {
-        name: '建成',
-        bill: [
-          { itemId: 'min-starcore', count: 2_000 },
-          { itemId: 'min-darkiron', count: 1_797 }, // 2026-09-20 零件体系：−203 件（158,340 信用点）↔ part-frame ×1,092 等值替换
-          { itemId: 'part-frame', count: 1_092 },
-        ],
-        unlockDesc: '副站建成：并入空间站网络，开放泊位/卸货/维修/补给/换驾驶及全部站内功能',
-      },
+      stationTier('奠基', [
+        { itemId: 'min-tritanium', count: 1_000_000 },
+        { itemId: 'part-frame', count: 10_000 },
+        { itemId: 'part-armor-plate', count: 2_200 },
+      ], '施工推进：地基与主体框架搭建（站内功能统一在建成后开放）', {
+        'min-pyerite': 12,
+      }),
+      stationTier('完善', [
+        { itemId: 'part-frame', count: 30_000 },
+        { itemId: 'part-armor-plate', count: 20_000 },
+        { itemId: 'part-cable', count: 30_000 },
+      ], '施工推进：设备安装与系统调试（站内功能统一在建成后开放）', {
+        'min-nocxium': 90, 'min-mexallon': 20, 'min-isotope': 55,
+      }),
+      stationTier('建成', [
+        { itemId: 'part-frame', count: 20_000 },
+        { itemId: 'part-armor-plate', count: 15_000 },
+        { itemId: 'part-circuit', count: 30_000 },
+        { itemId: 'part-coolant', count: 30_000 },
+        { itemId: 'part-gyro', count: 5_000 },
+        { itemId: 'part-lens', count: 5_000 },
+      ], '副站建成：并入空间站网络，开放泊位/卸货/维修/补给/换驾驶及全部站内功能', {
+        'min-starcore': 245, 'min-darkiron': 780,
+      }),
     ],
     introDialogueId: 'dlg-cinder-intro',
     doneDialogueId: 'dlg-cinder-done',

@@ -42,6 +42,7 @@
 | **接手第三方审查报告 / 按报告分批修复** | `docs/review/`（报告原文）＋ 入库工作文档（`docs/design/*-intake-*.md`：复核读数/冲突/待裁）→ 逐条在新基线上复现 → 再按 §2 四步闸门动工 |
 | 查历史决策与旧口径 | `docs/roadmap.md` 底部封存卷索引 → `docs/archive/roadmap-<日期>.md` → `git log -S "<关键词>"` |
 | 交付可测存档 | §八 ＋ `docs/test-saves/` ＋ `tools/make-test-save.ts` |
+| 第二阶段人类复苏 / 玩家空间站 / 舰员养成设计续接 | `docs/design/human-revival-station.md`看既有框架 → `docs/design/human-revival-station-research-20261018.md`看最新确认及待审项；第二十一节已确认，第二十二节运输中升技能的锁料时点调整待审；玩家站仍仅设计，旧副站料单已有独立实现 |
 
 ## 三、检索与查证顺序（先查、后精读）
 

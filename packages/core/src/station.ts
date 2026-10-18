@@ -2,7 +2,7 @@
  * T9 副空间站引擎：建造进度、资源交付（分档施工；2026-09-08 船长定：功能统一在"建成"档后开放——
  * 未建成不视为任何站点，不提供停靠）、"抵达站点星系"挂点（野外工地现场 + 通讯剧本自动触发）。
  * 2026-09-09（船长定）：各档改为**逐档材料单**（tier.bill = 物品×数量，逐项交齐才升档；
- * 建材仅精炼矿物，不含原矿）。
+ * 建材为精炼矿物与零件，不含原矿）。
  */
 import { addLog, HOME_GALAXY_ID, isSiteBuilt, siteProgress } from './state'
 import type { GameState, StationSiteProgress } from './state'
@@ -42,9 +42,32 @@ function engFactor(state: GameState): number {
 
 /** 某档某材料的实际需求（逐档材料单逐项换算） */
 export function billNeedOf(state: GameState, site: StationSiteDef, tierIndex: number, itemId: string): number {
-  const item = tierBillOf(site, tierIndex).find((b) => b.itemId === itemId)
+  const bill = tierBillOf(site, tierIndex)
+  const item = bill.find((b) => b.itemId === itemId)
   if (!item) return 0
-  return Math.max(1, Math.ceil(item.count * engFactor(state)))
+  const factor = engFactor(state)
+  const baseNeed = Math.max(1, Math.ceil(item.count * factor))
+  const credit = site.tiers[tierIndex]?.legacyDeliveredCredit
+  const prog = siteProgress(state, site.id)
+  if (!credit || prog.stage !== tierIndex) return baseNeed
+
+  // 旧交付记录保持随档；只将本档已移除材料折入需求，不接触仓库或在途货物。
+  let value = 0
+  for (const [id, unitValue] of Object.entries(credit.previousUnitValues)) {
+    if (bill.some(row => row.itemId === id) || !Number.isFinite(unitValue) || unitValue <= 0) continue
+    const delivered = prog.delivered[id] ?? 0
+    if (Number.isSafeInteger(delivered) && delivered > 0) value += delivered * unitValue
+  }
+  if (!Number.isSafeInteger(value) || value <= 0) return baseNeed
+  for (const row of bill) {
+    const need = Math.max(1, Math.ceil(row.count * factor))
+    const missing = Math.max(0, need - (prog.delivered[row.itemId] ?? 0))
+    const unitValue = credit.currentUnitValues[row.itemId] ?? 0
+    const covered = unitValue > 0 && Number.isFinite(unitValue) ? Math.min(missing, Math.ceil(value / unitValue)) : 0
+    if (row.itemId === itemId) return need - covered
+    value = Math.max(0, value - covered * unitValue)
+  }
+  return baseNeed
 }
 
 /** 某档建材总需求（材料单各项合计；兼容旧调用口径） */

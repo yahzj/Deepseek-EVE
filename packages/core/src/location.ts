@@ -21,7 +21,7 @@ import type { GameState } from './state'
 import type { CommandResult } from './engine'
 import type { AiCoreType, SimContext, StationSiteDef } from './types'
 import { shortestTravelMinutes, travelLegMs } from './travel'
-import { deliverStationResources, noteStationSiteAt, tierRemaining, stationBillView, stationBillText, billNeedOf } from './station'
+import { deliverStationResources, noteStationSiteAt, tierRemaining, stationBillView, stationBillText, billNeedOf, billRemainingOf } from './station'
 import { siteProgress } from './state'
 import { cargoCapacityM3Of, cargoOfShip, cargoUsedM3Of, unloadCargoOfShipToWarehouse } from './inventory'
 
@@ -348,7 +348,7 @@ export function advanceTransit(state: GameState, ctx: SimContext): void {
  * 出发装载（2026-09-08 船长定：出发时把货仓装满建材，到点清空货仓——不再到点从仓库扣缴，
  * 途中任何仓库变动都不会造成白跑；2026-09-09 逐档材料单版）：
  * - 可装范围 = **当前档 + 后续各档材料单里的同名材料**（同材料跨档连缴不空转；材料单外物品不装）；
- * - 单材料上限 = 该材料在当前档的剩余 + 后续各档的全部需求（当前档已缴部分扣除）；
+ * - 当前档优先；本档缺口能随本趟全部交齐，才用余舱装后续档，缺料时不为后档单独空运；
  * - 保留船上原有货物；返回本次装载明细（空对象 = 无货可装）。
  */
 function loadDeliverCargo(state: GameState, ctx: SimContext, site: StationSiteDef): Record<string, number> {
@@ -358,44 +358,50 @@ function loadDeliverCargo(state: GameState, ctx: SimContext, site: StationSiteDe
   if (freeM3 <= 0) return {}
   const prog = siteProgress(state, site.id)
   if (prog.stage >= site.tiers.length) return {}
-  // 各材料的跨档合计剩余（当前档扣已缴；后续档全量）
-  const remainMap: Record<string, number> = {}
-  for (let k = prog.stage; k < site.tiers.length; k += 1) {
-    const tier = site.tiers[k]!
-    for (const item of tier.bill) {
-      let rem = remainMap[item.itemId] ?? 0
-      rem += billNeedOf(state, site, k, item.itemId)
-      if (k === prog.stage) rem -= prog.delivered[item.itemId] ?? 0
-      remainMap[item.itemId] = Math.max(0, rem)
-    }
-  }
   const ware = state.warehouse.items
   const cargo = cargoOfShip(state, state.shipId)
   const loaded: Record<string, number> = {}
-  for (const [id, rem] of Object.entries(remainMap)) {
-    if (freeM3 <= 0 || rem <= 0) continue
-    const unitM3 = Math.max(0.01, ctx.items.get(id)?.unitM3 ?? 1)
-    const take = Math.max(0, Math.min(ware[id] ?? 0, Math.floor(freeM3 / unitM3), rem))
-    if (take <= 0) continue
-    ware[id] = (ware[id] ?? 0) - take
-    if (ware[id] <= 0) delete ware[id]
-    cargo[id] = (cargo[id] ?? 0) + take
-    loaded[id] = take
-    freeM3 -= Math.round(take * unitM3)
+  // 先备齐本档再带后档，避免后档同名大单挤占本档其他材料，返航后反复空运。
+  for (let k = prog.stage; k < site.tiers.length; k += 1) {
+    const tier = site.tiers[k]!
+    let tierLoaded = true
+    for (const item of tier.bill) {
+      const id = item.itemId
+      const rem = k === prog.stage
+        ? billRemainingOf(state, site, k, item.itemId)
+        : billNeedOf(state, site, k, item.itemId)
+      if (rem <= 0) continue
+      const unitM3 = Math.max(0.01, ctx.items.get(id)?.unitM3 ?? 1)
+      const take = Math.max(0, Math.min(ware[id] ?? 0, Math.floor(freeM3 / unitM3), rem))
+      if (take < rem) tierLoaded = false
+      if (take <= 0) continue
+      ware[id] = (ware[id] ?? 0) - take
+      if (ware[id] <= 0) delete ware[id]
+      cargo[id] = (cargo[id] ?? 0) + take
+      loaded[id] = (loaded[id] ?? 0) + take
+      freeM3 -= Math.round(take * unitM3)
+    }
+    if (!tierLoaded || freeM3 <= 0) break
   }
   return loaded
 }
 
 /**
  * **仓库里有没有"这一趟装得上的"建材**（只读判据，给 `startSiteDeliverTrip` 的早期拒绝用）：
- * 未完成档位的用料清单里，只要仓库里**还有任意一种** ⇒ true（真正能装多少由 `loadDeliverCargo` 现算）。
+ * 第一个仍缺料的档位有库存才发船，不只为运送后档暂时不能交付的材料空转。
  */
 function hasLoadableDeliverWare(state: GameState, ctx: SimContext, site: StationSiteDef): boolean {
   const prog = siteProgress(state, site.id)
   for (let k = prog.stage; k < site.tiers.length; k += 1) {
+    let missing = false
     for (const item of site.tiers[k]!.bill) {
-      if ((state.warehouse.items[item.itemId] ?? 0) > 0) return true
+      const remaining = k === prog.stage
+        ? billRemainingOf(state, site, k, item.itemId)
+        : billNeedOf(state, site, k, item.itemId)
+      if (remaining > 0 && (state.warehouse.items[item.itemId] ?? 0) > 0) return true
+      if (remaining > 0) missing = true
     }
+    if (missing) return false
   }
   return false
 }
@@ -616,7 +622,10 @@ function arriveDeliverSite(
     let any = false
     for (const row of rows) {
       if (row.remaining <= 0) continue
-      const onHand = Math.max(0, Math.min(ledger[row.itemId] ?? 0, cargo[row.itemId] ?? 0, row.remaining))
+      const onHand = Math.max(0, Math.min(
+        ledger[row.itemId] ?? 0, cargo[row.itemId] ?? 0,
+        billRemainingOf(state, site, siteProgress(state, site.id).stage, row.itemId),
+      ))
       if (onHand <= 0) continue
       const r = deliverStationResources(state, ctx, site.id, row.itemId, onHand, { cargoOnly: true })
       if (r.ok) {
