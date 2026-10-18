@@ -13,13 +13,13 @@ import { approvedMk1CopyDelta } from './helpers/approved-mk1-copy-delta'
 const root = new URL('../../../', import.meta.url)
 const copy = 'item.synaptic.001'
 
-describe('突触加速剂已批准中文与延期英文', () => {
+describe('突触加速剂已批准中英覆盖', () => {
   it('实际目录与界面覆盖说明统一，英文未准备时回退新中文而非旧禁用规则', () => {
     const want = '技能训练加速消耗品，每枚增加24小时有效时间；可重复使用，训练速度倍率不叠加。可在物品、货仓或技能加速窗口使用，自动续用需另行开启。'
     expect(L10N[copy]!.zh).toBe(want)
-    expect(L10N[copy]).toMatchObject({ en: '', enDeferred: true })
-    for (const locale of ['zh', 'en'] as const) expect(buildSimContext(locale).items.get('synaptic-accelerant')!.description).toBe(want)
-    expect(overlayList(ITEMS, EN_ITEMS, 'en').find(i => i.id === 'synaptic-accelerant')!.description).toBe(want)
+    expect(L10N[copy]!.en).not.toBe('')
+    expect(buildSimContext('en').items.get('synaptic-accelerant')!.description).not.toBe(want)
+    expect(overlayList(ITEMS, EN_ITEMS, 'en').find(i => i.id === 'synaptic-accelerant')!.description).not.toBe(want)
     expect(want).toContain(String(SYNAPTIC_ACCELERANT_MS / 3_600_000))
   })
   it('三处使用入口不再引用旧限制，成功提示与有效时间累加一致', () => {
@@ -30,7 +30,7 @@ describe('突触加速剂已批准中文与延期英文', () => {
       expect(source).toContain("tr('ui.boost.013')")
     }
     expect(L10N['ui.boost.012']!.zh).toBe('使用：技能加速有效时间增加24小时，倍率不叠加')
-    expect(l10nEntryText(L10N['ui.boost.013']!, 'en')).toBe('突触加速剂 MK1已使用：有效时间增加24小时。')
+    expect(l10nEntryText(L10N['ui.boost.013']!, 'en')).toContain('Synaptic Accelerant MK1')
     const s = createInitialState({ nowWallMs: 0, seed: 9 })
     s.warehouse.items['synaptic-accelerant'] = 2
     useSynapticAccelerant(s)
@@ -56,7 +56,7 @@ describe('突触加速剂已批准中文与延期英文', () => {
     }
     const backlog = readFileSync(new URL('docs/l10n-pending.md', root), 'utf8')
     expect(deferredL10nIssues(L10N, backlog)).toEqual([])
-    for (const id of [copy, 'ui.boost.012', 'ui.boost.013', 'core.consumable.017', ...[1, 2, 3, 4, 5].map(n => `ui.battleAmmo.00${n}`)]) {
+    for (const id of [...[1, 2, 3, 4, 5].map(n => `ui.battleAmmo.00${n}`)]) {
       expect(L10N[id]).toMatchObject({ en: '', enDeferred: true })
       expect(backlog).toContain(`| \`${id}\` |`)
     }

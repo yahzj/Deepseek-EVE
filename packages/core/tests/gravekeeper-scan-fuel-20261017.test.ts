@@ -142,7 +142,7 @@ describe('燃料罐真实SVG几何与公告', () => {
     expect(ann.bullets).toHaveLength(5)
     for (const id of [ann.titleId!, ann.tagId!, ...ann.bulletIds!]) {
       expect(L10N[id]!.zh).not.toBe('')
-      expect(L10N[id]!.enDeferred).toBe(true)
+      expect(L10N[id]!.en).not.toBe('')
     }
     expect(ann.bullets.join('')).not.toMatch(/碑卫|永陵|压制挂载|三层血量/)
     expect(ann.bullets.join('')).toContain('回避率')

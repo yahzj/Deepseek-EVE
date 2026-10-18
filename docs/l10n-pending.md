@@ -2,77 +2,19 @@
 
 ## 信号发射器、探索与舰船合并公告（2026-10-18）
 
-船长批准合并扫描、回避率与燃料修复公告，并要求不提敌方入侵数值；完成实机复测后明确“进行推送”。`ano.signalRelease.001`至`.007`为标题、分类和五条已审中文正文，随`ann-signal-beacons-exploration-20261018`发布。英文未获明确准备指令，登记待译、使用`enDeferred`与共享中文回退，不以推送许可代替翻译许可。
-
-| ID | 中文依据 | 状态 |
-|---|---|---|
-| `ano.signalRelease.001` | 信号发射器、探索与舰船调整 | 待本地化 |
-| `ano.signalRelease.002` | 内容、数值与修复 | 待本地化 |
-| `ano.signalRelease.003` | 专属发射器与星系选择 | 待本地化 |
-| `ano.signalRelease.004` | 实验室筛选与突触加速剂MK1 | 待本地化 |
-| `ano.signalRelease.005` | 扫描舰船特性与两项科技 | 待本地化 |
-| `ano.signalRelease.006` | 玩家三舰回避率 | 待本地化 |
-| `ano.signalRelease.007` | 燃料罐显示修复 | 待本地化 |
+三号工作区本地化授权于2026-10-18明确开始。`ano.signalRelease.001`至`.007`已补英文并通过参数/本地化检查，移出待译清单。
 
 ## 守墓入侵调参与装备（2026-10-17归档）
 
-现行中文结论见`docs/design/weekend-invasion.md`§十二；船长未授权开始英文。`ui.gravekeeperRetune.001`为陵寝重构的已确认定性说明与读取参数的复活间隔/范围，`FOE_MOUNTS.foe-mount-d-reconstruction`为新挂载名「陵寝重构协议」；两处均待本地化，英文回退中文，不修改旧英文。
-
-| ID / 范围 | 中文依据 | 状态 |
-|---|---|---|
-| `ui.gravekeeperRetune.001` | 陵寝重构协议说明与复活间隔/范围 | 待本地化 |
-| 挂载目录名称 foe-mount-d-reconstruction | 陵寝重构协议 | 待本地化 |
+现行中文结论见`docs/design/weekend-invasion.md`§十二；英文准备已获授权。`ui.gravekeeperRetune.001`与`foe-mount-d-reconstruction`英文已补，移出待译清单。
 
 ## 守墓入侵掉落装备（2026-10-17）
 
-船长逐条裁定三件效果并要求「开始实现」，未授权准备英文。现行中文结论见`docs/design/weekend-invasion.md`§十二；`mod.gravekeeperGear.001`至`.006`为三件名称/定性说明，`ui.gravekeeperGear.001`至`.009`为苏生、危机炮台/无人机分支与磁轨叠层规格/当前层数，均登记待本地化、唯一表使用`enDeferred`，英文覆盖走中文回退，不修改旧英文。
-
-| ID | 中文依据 | 状态 |
-|---|---|---|
-| `mod.gravekeeperGear.001` | 苏生损管装置 | 待本地化 |
-| `mod.gravekeeperGear.002` | 苏生定性说明 | 待本地化 |
-| `mod.gravekeeperGear.003` | 危机超载协议 | 待本地化 |
-| `mod.gravekeeperGear.004` | 危机定性说明 | 待本地化 |
-| `mod.gravekeeperGear.005` | 磁轨蓄能炮 | 待本地化 |
-| `mod.gravekeeperGear.006` | 磁轨定性说明 | 待本地化 |
-| `ui.gravekeeperGear.001` | 苏生维修标签 | 待本地化 |
-| `ui.gravekeeperGear.002` | 苏生维修规格 | 待本地化 |
-| `ui.gravekeeperGear.003` | 危机超载标签 | 待本地化 |
-| `ui.gravekeeperGear.004` | 空盾/炮台/速度规格 | 待本地化 |
-| `ui.gravekeeperGear.005` | 无人机超载标签 | 待本地化 |
-| `ui.gravekeeperGear.006` | 无人机时间规格 | 待本地化 |
-| `ui.gravekeeperGear.007` | 磁轨蓄能标签 | 待本地化 |
-| `ui.gravekeeperGear.008` | 附伤与装填叠层规格 | 待本地化 |
-| `ui.gravekeeperGear.009` | 当前蓄能层与附伤比例 | 待本地化 |
+船长逐条裁定三件效果并要求「开始实现」；英文准备已获授权。`mod.gravekeeperGear.001`至`.006`与`ui.gravekeeperGear.001`至`.009`已补英文，移出待译清单。
 
 ## 守墓者入侵（2026-10-17归档）
 
-来源：船长确认守墓者入侵方案并要求「开始实现」，2026-10-17完成归档合入。现行结论见`docs/design/weekend-invasion.md`§十二；过程由实现提交历史保留。未授权准备英文，以下新增条目仅登记待译；内容覆盖调用共享中文回退，不写新英文。
-
-| id / 范围 | 中文依据 | 状态 |
-|---|---|---|
-| `ship.gravekeeper.001` | 巡陵级 | 待本地化 |
-| `ship.gravekeeper.002` | 碑卫级 | 待本地化 |
-| `ship.gravekeeper.003` | 守誓级 | 待本地化 |
-| `ship.gravekeeper.004` | 永陵级 | 待本地化 |
-| `ano.gravekeeper.001` | 巡哨舰队 | 待本地化 |
-| `ano.gravekeeper.002` | 碑卫舰队 | 待本地化 |
-| `ano.gravekeeper.003` | 守誓舰队 | 待本地化 |
-| `ano.gravekeeper.004` | 永陵舰队 | 待本地化 |
-| `ano.gravekeeper.005` | 入侵卡说明 | 待本地化 |
-| `item.gravekeeper.001` | 旗舰黑匣名称 | 待本地化 |
-| `item.gravekeeper.002` | 旗舰黑匣说明 | 待本地化 |
-| `ui.gravekeeper.001` | 苏生协议规格 | 待本地化 |
-| `ui.gravekeeper.002` | 陵墓装甲规格 | 待本地化 |
-| `ui.gravekeeper.003` | 守墓镀层装甲规格 | 待本地化 |
-| `ui.gravekeeper.004` | 护盾蓄能装置规格 | 待本地化 |
-| `ui.gravekeeper.005` | 苏生就绪/使用与两段剩余时间 | 待本地化 |
-| `ui.gravekeeper.006` | 镀层层数 | 待本地化 |
-| `ui.gravekeeper.007` | 蓄能主炮累计攻击与倍率 | 待本地化 |
-| `ui.gravekeeper.008` | 已启动状态 | 待本地化 |
-| `ui.gravekeeper.009` | 协议已使用状态 | 待本地化 |
-| `core.weekend.026` | 入侵族名守墓者 | 待本地化 |
-| `FOE_MOUNTS`四件新挂载名称、`d-inv`残骸说明 | 采用船长指定件名与现有族称，英文暂回退中文 | 待本地化 |
+来源：船长确认守墓者入侵方案并要求「开始实现」，2026-10-17完成归档合入。现行结论见`docs/design/weekend-invasion.md`§十二；英文准备已获授权，本批已完成舰船、卡名、黑匣、守墓挂载说明英文。
 
 ## 舰船血量与作业优化公告（2026-10-13确认）
 
@@ -262,10 +204,6 @@
 
 | id | 中文依据 | 状态 |
 |---|---|---|
-| `item.synaptic.001` | 每枚增加24小时，可重复续时，速度倍率不叠加 | 待本地化 |
-| `ui.boost.012` | 使用悬停：有效时间增加24小时，倍率不叠加 | 待本地化 |
-| `ui.boost.013` | 使用成功：有效时间增加24小时 | 待本地化 |
-| `core.consumable.017` | 使用日志：有效时间增加{p1}小时 | 待本地化 |
 | `ui.battleAmmo.001` | 弹药预载不足，二次点击仍可出战 | 待本地化 |
 | `ui.battleAmmo.002` | 逐舰弹药可装/需量/缺额 | 待本地化 |
 | `ui.battleAmmo.003` | 预警取用来源：物品仓库 | 待本地化 |

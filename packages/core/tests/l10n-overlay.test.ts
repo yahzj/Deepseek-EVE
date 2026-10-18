@@ -44,6 +44,7 @@ const deferredGravekeeperCards: Readonly<Record<string, string>> = {
   'gravekeeper-drift': 'ano.gravekeeper.001', 'gravekeeper-line': 'ano.gravekeeper.002',
   'gravekeeper-main': 'ano.gravekeeper.003', 'gravekeeper-flagship': 'ano.gravekeeper.004',
 }
+const translatedGravekeeperModules = new Set(['mod-gravekeeper-rebirth', 'mod-gravekeeper-crisis', 'mod-gravekeeper-rail'])
 
 describe('英文覆盖层（P2）', () => {
   it('zh 缺省 = 显式 zh：名称逐字相同（工具/测试/模拟读数不受影响）', () => {
@@ -113,9 +114,10 @@ describe('英文覆盖层（P2）', () => {
   })
 
   it('装备覆盖完整且生效：142 条全覆盖；英文名生效；碎片名跟着装备名走', () => {
-    const missing = [...zh.modules.keys()].filter((id) => !(id in EN_MODULES) && !(id in deferredCalibration))
+    const missing = [...zh.modules.keys()].filter((id) => !(id in EN_MODULES) && !(id in deferredCalibration) && !translatedGravekeeperModules.has(id))
     for (const [id, pending] of Object.entries(deferredCalibration)) {
       if (!zh.modules.has(id)) continue
+      if (translatedGravekeeperModules.has(id)) continue
       expect(L10N[pending.name]!.enDeferred, id).toBe(true)
       expect(L10N[pending.name]!.en, id).toBe('')
       expect(en.modules.get(id)!.name, id).toBe(l10nEntryText(L10N[pending.name]!, 'en'))
@@ -167,11 +169,7 @@ describe('英文覆盖层（P2）', () => {
     expect(missing, `这些异常点还没有英文名：${missing.slice(0, 8).join(', ')}`).toEqual([])
     expect(en.anomalies.get('ano-maw-hunt')?.name).toBe('Maw Hunt Order')
     expect(en.anomalies.get('enc-pirate-4')?.name).toBe('Deepspace Butcher Fleet')
-    for (const [id, nameId] of Object.entries(deferredGravekeeperCards)) {
-      expect(L10N[nameId]!.enDeferred, id).toBe(true)
-      expect(L10N[nameId]!.en, id).toBe('')
-      expect(en.anomalies.get(id)!.name, id).toBe(l10nEntryText(L10N[nameId]!, 'en'))
-    }
+    for (const [id] of Object.entries(deferredGravekeeperCards)) expect(en.anomalies.get(id)!.name, id).not.toBe(zh.anomalies.get(id)!.name)
     // 深比时**排除 ships**——卡片内嵌敌舰名本就该换（由上面那条"嵌套覆盖"用例单独逐字段核对）
     const strip = (d: object): string => {
       const rest: Record<string, unknown> = { ...(d as Record<string, unknown>) }
@@ -251,11 +249,8 @@ describe('英文覆盖层（P2）', () => {
         expect(b.dmgMul, `${id} 第 ${i} 位伤害倍率`).toBe(a.dmgMul)
         expect(b.wave, `${id} 第 ${i} 位波次`).toBe(a.wave)
         const pending = deferredGravekeeperShips[a.ship.id]
-        if (pending) {
-          expect(L10N[pending]!.enDeferred, a.ship.id).toBe(true)
-          expect(L10N[pending]!.en, a.ship.id).toBe('')
-          expect(b.ship.name).toBe(l10nEntryText(L10N[pending]!, 'en'))
-        } else expect(b.ship.name, `${id} 第 ${i} 位敌舰名`).not.toBe(a.ship.name)
+        if (pending) expect(b.ship.name, a.ship.id).not.toBe(a.ship.name)
+        else expect(b.ship.name, `${id} 第 ${i} 位敌舰名`).not.toBe(a.ship.name)
       }
     }
   })
@@ -387,9 +382,8 @@ describe('英文覆盖层（P2）', () => {
         expect(L10N['item.jawclaw.002']!.enDeferred).toBe(true)
         expect(other.description).toBe(l10nEntryText(L10N['item.jawclaw.002']!, 'en'))
       } else if (it.id === 'blackbox-d') {
-        expect(L10N['item.gravekeeper.002']!.enDeferred).toBe(true)
-        expect(L10N['item.gravekeeper.002']!.en).toBe('')
-        expect(other.description).toBe(l10nEntryText(L10N['item.gravekeeper.002']!, 'en'))
+        expect(L10N['item.gravekeeper.002']!.en).not.toBe('')
+        expect(other.description).not.toBe(it.description)
       } else {
         expect(cjk.test(other.description), `${it.id} 的英文说明残留中日韩字符：${other.description}`).toBe(false)
       }
@@ -410,7 +404,7 @@ describe('英文覆盖层（P2）', () => {
         continue
       }
       const pending = deferredCalibration[id]
-      if (pending) {
+      if (pending && !translatedGravekeeperModules.has(id)) {
         expect(L10N[pending.description]!.enDeferred).toBe(true)
         expect(other.description).toBe(l10nEntryText(L10N[pending.description]!, 'en'))
       } else expect(cjk.test(other.description), `${id} 的英文说明残留中日韩字符：${other.description}`).toBe(false)
@@ -449,9 +443,8 @@ describe('英文覆盖层（P2）', () => {
         continue
       }
       if (deferredGravekeeperCards[id]) {
-        expect(L10N['ano.gravekeeper.005']!.enDeferred, id).toBe(true)
-        expect(L10N['ano.gravekeeper.005']!.en, id).toBe('')
-        expect(other.description).toBe(l10nEntryText(L10N['ano.gravekeeper.005']!, 'en'))
+        expect(L10N['ano.gravekeeper.005']!.en).not.toBe('')
+        expect(other.description).not.toBe(zh.anomalies.get(id)!.description)
         continue
       }
       expect(cjk.test(other.description), `${id} 的英文说明残留中日韩字符：${other.description}`).toBe(false)
@@ -499,7 +492,7 @@ describe('英文覆盖层（P2）', () => {
         continue
       }
       const pending = deferredCalibration[id]
-      if (pending) {
+      if (pending && !translatedGravekeeperModules.has(id)) {
         expect(L10N[pending.description]!.enDeferred).toBe(true)
         expect(other.description).toBe(l10nEntryText(L10N[pending.description]!, 'en'))
         continue
