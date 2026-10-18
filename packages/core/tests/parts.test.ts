@@ -5,7 +5,7 @@
  * ① 基础零件 = 隐式蓝图（learnless）：无需学习即可开工；蓝图书架不列、学会维度视为已学会；
  * ② 高级零件 = 正常蓝图：未学会不能开工；
  * ③ 两个零件技能：零件成型工艺学（基础 −8%/级）· 精密装配学（高级 −8%/级）——制造时间吃技能；
- * ④ 配方改造：专属装备/舰船材料总价 +50%（按基础收价口径）；皇带鱼等值替换总价不变；空间站各档等值替换总价不变。
+ * ④ 配方改造：专属装备/舰船材料总价 +50%；皇带鱼等值替换；空间站按船长2026-10-18确认的新料单。
  */
 import { describe, expect, it } from 'vitest'
 import { BLUEPRINTS,  SHIP_BLUEPRINTS, STATION_SITES, buildSimContext } from '@whale/data'
@@ -271,20 +271,19 @@ describe('零件体系：配方改造（2026-09-20）', () => {
     }
     expect(used.has('min-voidcrystal')).toBe(false) // 虚空晶按船长排除（虫洞特产）
   })
-  it('⑦ 空间站 6 档：零件等值替换 ⇒ 每档总价不变', () => {
+  it('⑦ 空间站6档：基础零件化料单达到已确认价值目标', () => {
     for (const site of STATION_SITES) {
       for (const tier of site.tiers) {
         const total = matValue(tier.bill)
         const hasPart = tier.bill.some((m) => ctx.items.get(m.itemId)?.kind === 'part')
         expect(hasPart).toBe(true)
-        // 原档总价（替换前）：红环 奠基 28,000 / 完善 130,000 / 建成 262,000；烬火 奠基 84,000 / 完善 365,000 / 建成 2,050,000
         const expected: Record<string, number> = {
-          'site-redring:奠基': 28_000,
-          'site-redring:完善': 130_000,
-          'site-redring:建成': 262_000,
-          'site-cinder:奠基': 84_000,
-          'site-cinder:完善': 365_000,
-          'site-cinder:建成': 2_050_000,
+          'site-redring:奠基': 2_000_000,
+          'site-redring:完善': 2_800_000,
+          'site-redring:建成': 3_200_000,
+          'site-cinder:奠基': 10_000_000,
+          'site-cinder:完善': 14_000_000,
+          'site-cinder:建成': 16_000_000,
         }
         expect(total, `${site.id} ${tier.name} 档总价漂了`).toBe(expected[`${site.id}:${tier.name}`])
       }
