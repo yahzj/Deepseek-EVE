@@ -1,5 +1,9 @@
 # 工具区台账（tools/）
 
+## 英文设置切换巡检（2026-10-18）
+
+- `node tools/l10n-en-native-check.cjs [--layout=classic|modern]`：先`npm run build`；使用本树真实App、独立合成档和隐藏Electron，中文启动后真实打开设置点击English。扫描两布局10个一级页面及主要子页签，比较直接切换与英文重载，记录文本/悬停/辅助标签中的中文、未解析ID和参数槽。输出`tools/_ui-artifacts/l10n-en-native-20261018/`；`localizationComplete=false`表示发现遗漏，不将工具正常结束视为英文完整。不读取个人档，不代表实体手机或所有游戏状态验收。
+
 ## 信号发射器与扫描调整验收（2026-10-18）
 
 - `node tools/faction-beacons-ui-check.cjs [--layout=classic|modern]`：先构建；隐藏隔离Electron加载真实App，经典/现代×桌面/手机仿真分别验证R/C/H/D专属发射器生产、退料、交付、选择、点火和IPC重载，另验MK1、两套实验室筛选和T1/T4扫描科技研究。真实引擎推进工期，不改产线秒数；只用合成档，输出`tools/_ui-artifacts/faction-beacons-20261017/`。
