@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **479** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **8030** KB · **61667** 行
-- 状态分布：**未标注** 255 · **已确认/已实现** 160 · **进行中** 43 · **待裁定** 20 · **历史留档** 1
-- 孤儿文档（0 引用）**94** 份 · 状态未标注 **255** 份
+- 文档总数 **480** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **8035** KB · **61715** 行
+- 状态分布：**未标注** 256 · **已确认/已实现** 160 · **进行中** 43 · **待裁定** 20 · **历史留档** 1
+- 孤儿文档（0 引用）**95** 份 · 状态未标注 **256** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**13** 份
-- 三、现行设计稿（design）：**307** 份
+- 三、现行设计稿（design）：**308** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**37** 份
 - 二、其它（docs 根目录）：**6** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -36,7 +36,7 @@
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 304 KB / 316 行 | 18 / 3 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 95 KB / 927 行 | 96 / 5 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 522 KB / 1112 行 | 226 / 22 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 85 KB / 477 行 | 380 / 28 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 86 KB / 479 行 | 380 / 28 |
 
 ## 七、评审与体检（review） —— 13 份
 
@@ -56,10 +56,11 @@
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 | `docs/review/guoqing-audit-followup.md` | 国庆节审查当前跟进 | 未标注（跟进入口） | — | 2 KB / 21 行 | 3 / 0 |
 
-## 三、现行设计稿（design） —— 307 份
+## 三、现行设计稿（design） —— 308 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
+| `docs/design/signal-beacon-siege-torpedo-20261019.md` | 信标围剿核查与鱼雷舰加成调整 | 未标注（实现完成） | 2026-10-19 | 4 KB / 40 行 | 0 / 0 |
 | `docs/design/debug-invasion-autostart-pause-20261018.md` | 暂停调试入侵自动开场 | 已确认/已实现（已实现并自检） | 2026-10-18 | 2 KB / 20 行 | 0 / 0 |
 | `docs/design/final-quantity-ceiling-20261018.md` | 最终整数数量统一向上取整 | 已确认/已实现（已确认） | 2026-10-18 | 7 KB / 69 行 | 0 / 0 |
 | `docs/design/gravekeeper-flagship-finish-20261018.md` | 永陵舰级挂载与旗舰残余血池核查 | 未标注（已复现并修复） | 2026-10-18 | 3 KB / 28 行 | 1 / 0 |
@@ -186,7 +187,7 @@
 | `docs/design/shield-field-cpu-20260924.md` | 护盾充能力场装置 MK2 / MK3 的 CPU 占用上调（2026-09-24） | 进行中（进行中 —— 改动已落码） | 2026-09-24 | 3 KB / 45 行 | 3 / 0 |
 | `docs/design/weekend-invasion-m2-20260924.md` | 周末入侵 M2 · 三族入侵者与各自 T5 旗舰（2026-09-24 · 进行中） | 进行中（进行中 —— 逐族落地） | 2026-09-24 | 26 KB / 274 行 | 0 / 1 |
 | `docs/design/skills-merge-20260923.md` | 技能页合并（旧目录 → 科技树页）· 2026-09-23 | 未标注（已落码） | 2026-09-23 | 8 KB / 78 行 | 0 / 0 |
-| `docs/design/wh-spawn-layer7-20260923.md` | 虫洞：强度增幅上调 ＋ 第 7 层起「逐回合刷怪」（2026-09-23） | 进行中（进行中 —— ①数值回调已确认并落码） | 2026-09-23 | 10 KB / 98 行 | 2 / 1 |
+| `docs/design/wh-spawn-layer7-20260923.md` | 虫洞：强度增幅上调 ＋ 第 7 层起「逐回合刷怪」（2026-09-23） | 进行中（进行中 —— ①数值回调已确认并落码） | 2026-09-23 | 10 KB / 98 行 | 3 / 1 |
 | `docs/design/archived-window-embed-20260922.md` | 归档备用：窗口化 / 嵌入主区 这一整套界面改动（2026-09-22） | 未标注（已封存 · 备用） | 2026-09-22 | 9 KB / 104 行 | 1 / 11 |
 | `docs/design/hold-ux-20260922.md` | 洞内货仓操作体验四条（2026-09-22） | 未标注（四条已全部落码） | 2026-09-22 | 9 KB / 98 行 | 0 / 1 |
 | `docs/design/import-save-edge-20260922.md` | 网页版导入存档"没反应"：取消判定竞态（2026-09-22） | 进行中（进行中） | 2026-09-22 | 3 KB / 39 行 | 1 / 0 |
@@ -363,7 +364,7 @@
 | `docs/design/v18b-missiles.md` | V18B-1 设计总结：导弹架武器族（爆炸系武器形态 · 已确认实施） | 已确认/已实现（已确认） | — | 5 KB / 77 行 | 5 / 0 |
 | `docs/design/v18b2-lasers.md` | V18B-2 设计总结：激光炮武器族（能量系形态 · 已确认实施） | 已确认/已实现（已确认） | — | 5 KB / 80 行 | 6 / 0 |
 | `docs/design/v7-design.md` | V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版 | 未标注 | — | 7 KB / 117 行 | 0 / 0 |
-| `docs/design/v9-market.md` | V9 设计：市场系统（已实现） | 未标注 | — | 21 KB / 192 行 | 17 / 0 |
+| `docs/design/v9-market.md` | V9 设计：市场系统（已实现） | 未标注 | — | 21 KB / 198 行 | 18 / 0 |
 | `docs/design/weapon-skill-batch.md` | 战斗线技能填充提案（一号域：技能数据/文案；触点接续见 §四） | 未标注 | — | 8 KB / 100 行 | 4 / 0 |
 | `docs/design/weekend-invasion.md` | 周末入侵活动（常设设计） | 未标注 | — | 70 KB / 478 行 | 32 / 14 |
 | `docs/design/win-estimate-mc.md` | 悬赏胜率预估改蒙特卡洛推演(设计定稿,2026-09-09 船长拍板) | 已确认/已实现（已确认） | — | 5 KB / 56 行 | 5 / 0 |
@@ -549,10 +550,11 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 17 KB / 195 行 | 66 / 14 |
 
-## 附：孤儿文档（0 引用，94 份）
+## 附：孤儿文档（0 引用，95 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
+- `docs/design/signal-beacon-siege-torpedo-20261019.md`（2026-10-19 · 4 KB）—— 信标围剿核查与鱼雷舰加成调整
 - `docs/design/debug-invasion-autostart-pause-20261018.md`（2026-10-18 · 2 KB）—— 暂停调试入侵自动开场
 - `docs/design/final-quantity-ceiling-20261018.md`（2026-10-18 · 7 KB）—— 最终整数数量统一向上取整
 - `docs/design/l10n-en-release-20261018.md`（2026-10-18 · 5 KB）—— 英文本地化批次：发射器、信号空间与守墓内容
@@ -648,8 +650,9 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（255 份，待补一行 `状态：…`）
+## 附：状态未标注（256 份，待补一行 `状态：…`）
 
+- `docs/design/signal-beacon-siege-torpedo-20261019.md`（2026-10-19）—— 信标围剿核查与鱼雷舰加成调整
 - `docs/design/gravekeeper-flagship-finish-20261018.md`（2026-10-18）—— 永陵舰级挂载与旗舰残余血池核查
 - `docs/design/l10n-en-release-20261018.md`（2026-10-18）—— 英文本地化批次：发射器、信号空间与守墓内容
 - `docs/design/l10n-settings-native-audit-20261018.md`（2026-10-18）—— 设置切换英文实机巡检
