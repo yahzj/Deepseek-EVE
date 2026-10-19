@@ -10,6 +10,7 @@ import { shieldChargeStreamsOf, shieldFieldStreamsOf, SHIELD_FIELD_COST_PCT, SHI
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { battleDeviceCyclesOf } from '../src/battleDeviceView'
 import type { BattleShieldChargeLedger } from '../src/state'
+import { applyApprovedEquipmentRetune } from './helpers/approved-equipment-retune-20261019'
 
 const ctx = buildSimContext()
 
@@ -47,6 +48,7 @@ describe('护盾直接调参的数据与公式契约', () => {
       expected.groups[key].push(...rows)
     }
     expect(Object.values(expected.groups).flat().filter(row => additions.includes(row.id)).map(row => row.id)).toEqual(additions)
+    applyApprovedEquipmentRetune(expected)
     expect(modules).toEqual(expected)
     expect(SHIELD_FIELD_COST_PCT).toBe(.067)
     expect(ctx.balance.battle.shieldRegenPerSec).toBe(.012)

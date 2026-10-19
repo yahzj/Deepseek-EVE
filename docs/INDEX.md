@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **475** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **8007** KB · **61482** 行
-- 状态分布：**未标注** 253 · **已确认/已实现** 158 · **进行中** 43 · **待裁定** 20 · **历史留档** 1
-- 孤儿文档（0 引用）**91** 份 · 状态未标注 **253** 份
+- 文档总数 **481** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **8034** KB · **61726** 行
+- 状态分布：**未标注** 255 · **已确认/已实现** 161 · **进行中** 43 · **待裁定** 21 · **历史留档** 1
+- 孤儿文档（0 引用）**94** 份 · 状态未标注 **255** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**13** 份
-- 三、现行设计稿（design）：**303** 份
+- 三、现行设计稿（design）：**309** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**37** 份
 - 二、其它（docs 根目录）：**6** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -35,8 +35,8 @@
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 9 KB / 125 行 | 2 / 2 |
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 304 KB / 316 行 | 18 / 3 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 95 KB / 927 行 | 96 / 5 |
-| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 522 KB / 1108 行 | 226 / 22 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 83 KB / 473 行 | 380 / 28 |
+| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 522 KB / 1112 行 | 226 / 22 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 84 KB / 475 行 | 380 / 28 |
 
 ## 七、评审与体检（review） —— 13 份
 
@@ -56,13 +56,19 @@
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 | `docs/review/guoqing-audit-followup.md` | 国庆节审查当前跟进 | 未标注（跟进入口） | — | 2 KB / 21 行 | 3 / 0 |
 
-## 三、现行设计稿（design） —— 303 份
+## 三、现行设计稿（design） —— 309 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
+| `docs/design/announcement-draft-depth-equipment-20261019.md` | 信号空间与装备调整公告待审 | 待裁定（待船长审核） | 2026-10-19 | 2 KB / 28 行 | 1 / 0 |
+| `docs/design/merge-release-20261019.md` | 三号两批合入与发布验收 | 已确认/已实现（代码已合入） | 2026-10-19 | 3 KB / 33 行 | 5 / 0 |
+| `docs/design/debug-invasion-autostart-pause-20261018.md` | 暂停调试入侵自动开场 | 已确认/已实现（已实现并自检） | 2026-10-18 | 2 KB / 20 行 | 0 / 0 |
+| `docs/design/final-quantity-ceiling-20261018.md` | 最终整数数量统一向上取整 | 已确认/已实现（已确认） | 2026-10-18 | 7 KB / 69 行 | 0 / 0 |
+| `docs/design/gravekeeper-flagship-finish-20261018.md` | 永陵舰级挂载与旗舰残余血池核查 | 未标注（已复现并修复） | 2026-10-18 | 3 KB / 28 行 | 1 / 0 |
 | `docs/design/human-revival-station-research-20261018.md` | 第二阶段空间站：科研持续运行方案 | 已确认/已实现（工程投料/退料/减料范围已确认） | 2026-10-18 | 120 KB / 972 行 | 4 / 1 |
 | `docs/design/l10n-en-release-20261018.md` | 英文本地化批次：发射器、信号空间与守墓内容 | 未标注（完成） | 2026-10-18 | 5 KB / 49 行 | 0 / 0 |
 | `docs/design/l10n-settings-native-audit-20261018.md` | 设置切换英文实机巡检 | 未标注（修复完成） | 2026-10-18 | 11 KB / 96 行 | 0 / 0 |
+| `docs/design/scan-stacking-richtext-20261018.md` | 扫描加成富文本同步 | 未标注（修复完成） | 2026-10-18 | 3 KB / 26 行 | 0 / 0 |
 | `docs/design/handoff-human-revival-station-20261017.md` | 人类复苏与玩家空间站：设计讨论接续卡 | 待裁定（待审接续） | 2026-10-17 | 4 KB / 42 行 | 3 / 0 |
 | `docs/design/black-market-bulk-resource-fix-20261013.md` | 黑市单个矿石上架修复 | 已确认/已实现（已实现） | 2026-10-13 | 4 KB / 41 行 | 0 / 0 |
 | `docs/design/unbox-result-ledger-20261013.md` | 货柜拆解上一批产物记录 | 已确认/已实现（已实现） | 2026-10-13 | 5 KB / 48 行 | 0 / 0 |
@@ -170,7 +176,7 @@
 | `docs/design/ecm-stacking-copy-20260926.md` | 报障修正：墨潮电子舱卡面「全额叠加」＋ 缺最短射程 3,000 m（2026-09-26 · 二号 · d2） | 待裁定（已实现 · 待船长验收） | 2026-09-26 | 4 KB / 48 行 | 2 / 0 |
 | `docs/design/industry-ui-opt-20260926.md` | 工业界面优化批 ＋ 组装机/造船厂筛选合并（2026-09-26 · 二号 · d2） | 已确认/已实现（已实现并合入的界面规则保留为现行入口） | 2026-09-26 | 9 KB / 95 行 | 2 / 0 |
 | `docs/design/plug-cargo-and-fit-slot-20260926.md` | 报障两条：插件装货仓再卸货「不见了」＋ 所有船的插件显示成同一套（2026-09-26 · 二号 · d2） | 待裁定（已实现 · 待船长验收） | 2026-09-26 | 5 KB / 65 行 | 2 / 0 |
-| `docs/design/ship-plug-20260926.md` | 舰船插件（2026-09-26） | 已确认/已实现（已实现并合入） | 2026-09-26 | 10 KB / 117 行 | 6 / 11 |
+| `docs/design/ship-plug-20260926.md` | 舰船插件（2026-09-26） | 已确认/已实现（已实现并合入） | 2026-09-26 | 11 KB / 119 行 | 7 / 11 |
 | `docs/design/ship-wreck-20260926.md` | 玩家舰船残骸（含加固结构插件回收接口）（2026-09-26） | 已确认/已实现（已实现并合入） | 2026-09-26 | 11 KB / 138 行 | 4 / 4 |
 | `docs/design/standing-clawback-blackbox-20260926.md` | 声望账本回正 ＋ 入侵黑匣补发（2026-09-26 晚 · 二号 · d2） | 待裁定（已实现 · 待船长验收） | 2026-09-26 | 9 KB / 121 行 | 2 / 0 |
 | `docs/design/spore-allfoes-gate-20260925.md` | 孢子导弹巢「全体攻击」：主目标未命中不再阻断副目标（2026-09-25） | 进行中（进行中 —— 改动已落码、六道闸门待） | 2026-09-25 | 4 KB / 67 行 | 0 / 0 |
@@ -238,7 +244,7 @@
 | `docs/design/wormhole-ships-review-20260913.md` | 虫洞专属舰船 · 数值审查表（15 艘） | 未标注（数据上桌） | 2026-09-13 | 18 KB / 162 行 | 1 / 2 |
 | `docs/design/haul-security-and-ambush-repair-20260912.md` | 低安运输批：长途运输报酬重标 + 遇袭后自动维修（2026-09-12 · 二号） | 已确认/已实现（已确认并实现） | 2026-09-12 | 10 KB / 124 行 | 4 / 0 |
 | `docs/design/p0-ai-cargo-capacity-20260912.md` | P0 结案：采矿船「货仓没满就返航」——AI 副船满舱判定的漏技能副本（2026-09-12 · 二号） | 已确认/已实现（已确认） | 2026-09-12 | 5 KB / 60 行 | 1 / 0 |
-| `docs/design/wormhole-extraction-endgame-20260912.md` | 终局玩法「虫洞」（搜打撤底层）· 设计稿 | 未标注 | 2026-09-12 | 197 KB / 1918 行 | 36 / 7 |
+| `docs/design/wormhole-extraction-endgame-20260912.md` | 终局玩法「虫洞」（搜打撤底层）· 设计稿 | 未标注 | 2026-09-12 | 198 KB / 1926 行 | 37 / 7 |
 | `docs/design/comms-20260911.md` | 通讯（通讯录）系统 · 设计稿（2026-09-11） | 已确认/已实现（已确认） | 2026-09-11 | 66 KB / 668 行 | 13 / 4 |
 | `docs/design/cpu-coprocessor-20260911.md` | 协处理器（低槽 CPU 预算扩容件）· 2026-09-11 | 已确认/已实现（已确认并已实现） | 2026-09-11 | 10 KB / 121 行 | 4 / 0 |
 | `docs/design/foe-baseline-audit-20260911.md` | 敌人数值复核：多装配对照 + 标准复核配置集（2026-09-11 · 已确认口径） | 未标注（纯测量批 · 未改任何数值） | 2026-09-11 | 16 KB / 205 行 | 17 / 3 |
@@ -355,13 +361,13 @@
 | `docs/design/v17-modules.md` | V17/V17.1 设计：装备参数结构化（EVE 式"参数进公式"· 定稿） | 已确认/已实现（V17.1 定稿已实现） | — | 8 KB / 123 行 | 4 / 0 |
 | `docs/design/v17b-weapons.md` | V17.2 设计：武器改造（口径适配 · 炮型绑定弹种 · 分系炮族） | 未标注 | — | 9 KB / 115 行 | 7 / 0 |
 | `docs/design/v18-slots.md` | V18 设计总结：EVE 式高/中/低槽（复数安装 · 数量制 · 槽位映射 · 布局草案） | 已确认/已实现（已确认） | — | 15 KB / 197 行 | 13 / 2 |
-| `docs/design/v18.1-support.md` | V18.1 设计总结：支援装备 + 叠加收敛（取消同类唯一 · 已确认实施） | 已确认/已实现（已确认） | — | 6 KB / 93 行 | 5 / 0 |
+| `docs/design/v18.1-support.md` | V18.1 设计总结：支援装备 + 叠加收敛（取消同类唯一 · 已确认实施） | 已确认/已实现（已确认） | — | 9 KB / 103 行 | 6 / 0 |
 | `docs/design/v18b-missiles.md` | V18B-1 设计总结：导弹架武器族（爆炸系武器形态 · 已确认实施） | 已确认/已实现（已确认） | — | 5 KB / 77 行 | 5 / 0 |
 | `docs/design/v18b2-lasers.md` | V18B-2 设计总结：激光炮武器族（能量系形态 · 已确认实施） | 已确认/已实现（已确认） | — | 5 KB / 80 行 | 6 / 0 |
 | `docs/design/v7-design.md` | V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版 | 未标注 | — | 7 KB / 117 行 | 0 / 0 |
 | `docs/design/v9-market.md` | V9 设计：市场系统（已实现） | 未标注 | — | 21 KB / 192 行 | 17 / 0 |
 | `docs/design/weapon-skill-batch.md` | 战斗线技能填充提案（一号域：技能数据/文案；触点接续见 §四） | 未标注 | — | 8 KB / 100 行 | 4 / 0 |
-| `docs/design/weekend-invasion.md` | 周末入侵活动（常设设计） | 未标注 | — | 70 KB / 474 行 | 32 / 14 |
+| `docs/design/weekend-invasion.md` | 周末入侵活动（常设设计） | 未标注 | — | 70 KB / 478 行 | 33 / 14 |
 | `docs/design/win-estimate-mc.md` | 悬赏胜率预估改蒙特卡洛推演(设计定稿,2026-09-09 船长拍板) | 已确认/已实现（已确认） | — | 5 KB / 56 行 | 5 / 0 |
 
 ## 九、封存卷（archive · 冻结件，只读不改） —— 37 份
@@ -413,9 +419,9 @@
 | `docs/data-editor.md` | 大鲸鱼数据编辑器 | 未标注 | — | 9 KB / 67 行 | 8 / 0 |
 | `docs/data-map.md` | 数据速查页（改数值时该动哪几处） | 未标注 | — | 6 KB / 85 行 | 8 / 0 |
 | `docs/git-gate-approval.md` | Git提交审批放行 | 未标注 | — | 2 KB / 28 行 | 2 / 0 |
-| `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 47 KB / 814 行 | 27 / 18 |
-| `docs/l10n-pending.md` | 待英文本地化记录 | 未标注 | — | 1 KB / 11 行 | 13 / 12 |
-| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 28 KB / 172 行 | 23 / 7 |
+| `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 48 KB / 820 行 | 27 / 18 |
+| `docs/l10n-pending.md` | 待英文本地化记录 | 未标注 | — | 1 KB / 11 行 | 13 / 10 |
+| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 28 KB / 176 行 | 23 / 7 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -545,12 +551,15 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 17 KB / 195 行 | 66 / 14 |
 
-## 附：孤儿文档（0 引用，91 份）
+## 附：孤儿文档（0 引用，94 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
+- `docs/design/debug-invasion-autostart-pause-20261018.md`（2026-10-18 · 2 KB）—— 暂停调试入侵自动开场
+- `docs/design/final-quantity-ceiling-20261018.md`（2026-10-18 · 7 KB）—— 最终整数数量统一向上取整
 - `docs/design/l10n-en-release-20261018.md`（2026-10-18 · 5 KB）—— 英文本地化批次：发射器、信号空间与守墓内容
 - `docs/design/l10n-settings-native-audit-20261018.md`（2026-10-18 · 11 KB）—— 设置切换英文实机巡检
+- `docs/design/scan-stacking-richtext-20261018.md`（2026-10-18 · 3 KB）—— 扫描加成富文本同步
 - `docs/design/black-market-bulk-resource-fix-20261013.md`（2026-10-13 · 4 KB）—— 黑市单个矿石上架修复
 - `docs/design/unbox-result-ledger-20261013.md`（2026-10-13 · 5 KB）—— 货柜拆解上一批产物记录
 - `docs/design/planetary-wheel-traits-20261011.md`（2026-10-11 · 6 KB）—— 地表建筑配色与轮盘交互、特性标签
@@ -641,10 +650,12 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（253 份，待补一行 `状态：…`）
+## 附：状态未标注（255 份，待补一行 `状态：…`）
 
+- `docs/design/gravekeeper-flagship-finish-20261018.md`（2026-10-18）—— 永陵舰级挂载与旗舰残余血池核查
 - `docs/design/l10n-en-release-20261018.md`（2026-10-18）—— 英文本地化批次：发射器、信号空间与守墓内容
 - `docs/design/l10n-settings-native-audit-20261018.md`（2026-10-18）—— 设置切换英文实机巡检
+- `docs/design/scan-stacking-richtext-20261018.md`（2026-10-18）—— 扫描加成富文本同步
 - `docs/test-saves/station-action-20261013.md`（2026-10-13）—— 停靠与远程管理验收档
 - `docs/design/workspace-release-20261011.md`（2026-10-11）—— 多工作区合并与推送
 - `docs/design/drone-hull-start-fix-20261009.md`（2026-10-09）—— 无人机舰固有启动时间补齐

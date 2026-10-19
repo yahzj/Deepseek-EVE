@@ -3,22 +3,28 @@ import { execFileSync } from 'node:child_process'
 import { runInNewContext } from 'node:vm'
 import ts from 'typescript'
 
-let translatedSnapshot: Record<string, L10nEntry> | undefined
-function approvedTranslation(id: string): L10nEntry {
-  if (!translatedSnapshot) {
+const snapshots = new Map<string, Record<string, L10nEntry>>()
+function approvedTranslation(id: string, ref = 'af94a6af'): L10nEntry {
+  if (!snapshots.has(ref)) {
     const scope = { exports: {} as { L10N: Record<string, L10nEntry> } }
-    const source = execFileSync('git', ['show', 'af94a6af:packages/data/src/l10n/table.ts'], {
+    const source = execFileSync('git', ['show', `${ref}:packages/data/src/l10n/table.ts`], {
       encoding: 'utf8', windowsHide: true, maxBuffer: 8_000_000,
     })
     runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, scope)
-    translatedSnapshot = scope.exports.L10N
+    snapshots.set(ref, scope.exports.L10N)
   }
-  if (!translatedSnapshot[id]) throw new Error(`已批准翻译快照缺少${id}`)
-  return translatedSnapshot[id]!
+  const snapshot = snapshots.get(ref)!
+  if (!snapshot[id]) throw new Error(`已批准翻译快照缺少${id}`)
+  return snapshot[id]!
 }
 
 /** 船长确认MK1改名及扫描叠加规则后，历史词条守恒只放行这些精确变化。 */
 export function approvedMk1CopyDelta(id: string, entry: L10nEntry): L10nEntry {
+  // 2026-10-19装备说明及百分号调整，仅放行已提交的十条精确文本。
+  if (['mod.copy.054', 'mod.gravekeeperGear.006', 'ui.gravekeeperGear.008', 'ui.gravekeeper.003',
+    'ui.alienLoot.002', 'ui.alienArmor.001', 'ui.alienArmor.002', 'ui.foeIntro.106', 'ui.shipInfo.047', 'ui.shipInfo.166'].includes(id)) {
+    return approvedTranslation(id, '7c43bc2d')
+  }
   // 2026-10-18 船长报障：扫描提示同步同类不叠加，仅放行这三条精确变化。
   if (id === 'ui.signalSpace.069') return {
     zh: '信号空间扫描范围 +{p1} 圈；同类舰船取最高，侦察舰与电子舰可相加',

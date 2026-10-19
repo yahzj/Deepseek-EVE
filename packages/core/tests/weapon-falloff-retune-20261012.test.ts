@@ -9,6 +9,7 @@ import { createPlayerSpec } from '../src/playerSpec'
 import { distFactor, droneHitChance, hitChance } from '../src/combatMath'
 import { createFoeSpecs } from '../src/foeSpecs'
 import modules from '../../data/src/static/modules.json'
+import { applyApprovedEquipmentRetune } from './helpers/approved-equipment-retune-20261019'
 
 const ctx = buildSimContext()
 const root = new URL('../../../', import.meta.url)
@@ -50,6 +51,7 @@ describe('玩家动能武器远端命中倍率调整', () => {
     const gravekeeper = JSON.parse(execFileSync('git', ['show', '0b17e83e:packages/data/src/static/modules.json'], { cwd: root, encoding: 'utf8' })) as typeof modules
     expected.groups.MODULES_0.push(...gravekeeper.groups.MODULES_0.filter(row =>
       ['mod-gravekeeper-rebirth', 'mod-gravekeeper-crisis', 'mod-gravekeeper-rail'].includes(row.id)))
+    applyApprovedEquipmentRetune(expected)
     expect(modules).toEqual(expected)
     expect([...ctx.modules.values()].filter(mod => mod.damageType === 'kinetic' && mod.falloff === .5)).toEqual([])
   })
@@ -97,6 +99,9 @@ describe('玩家动能武器远端命中倍率调整', () => {
     if (path.endsWith('/foeMounts.json')) expected.groups.parameters.splice(
       expected.groups.parameters.findIndex((row: { id: string }) => row.id === 'foe-mount-ink-range-debuff') + 1, 0,
       { id: 'foe-mount-d-range-debuff', rangeDebuff_pct: .15 })
+    if (path.endsWith('/foeMounts.json')) Object.assign(
+      expected.groups.parameters.find((row: { id: string }) => row.id === 'foe-mount-d-shield-capacitor'),
+      { shieldCapacitor_damageMul: 1.25 })
     if (path.endsWith('/items.json')) for (const family of ['r', 'c', 'h', 'd']) expected.groups.CONSUMABLES_0.push({
       id: `invasion-beacon-${family}`, kind: 'consumable', unitM3: .01, baseSellPriceIsk: 480000000 })
     expect(JSON.parse(readFileSync(new URL(path, root), 'utf8'))).toEqual(expected)

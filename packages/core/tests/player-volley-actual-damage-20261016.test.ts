@@ -4,7 +4,10 @@ import { createInitialState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
 import { applyDamage } from '../src/combatMath'
 import type { Hp3 } from '../src/combatMath'
-import { activeFoeSpecsOf, advanceBattleFor, applyFoeShot, applyPlayerUnitDamage, createBattleState, createPlayerSpec, startBattleFor } from '../src/combat'
+import { activeFoeSpecsOf, advanceBattleFor, applyFoeShot, applyPlayerUnitDamage, createBattleState, createPlayerSpec, foeRepairDiscountedShot, startBattleFor } from '../src/combat'
+import { foeGunPowerFactorOf } from '../src/foeRange'
+import { ceilFinalQuantity } from '../src/quantity'
+import { volleyDamageShareOf, volleyGunCountOf } from '../src/combatVolley'
 import type { UnitSpec, WeaponSpec } from '../src/combat'
 import type { AnomalyDef, FoeShipDef, SimContext } from '../src/types'
 import { FOE_MOUNT_IDS } from '../src/foeMounts'
@@ -231,7 +234,7 @@ describe('实际承伤的真引擎路径', () => {
     const card: AnomalyDef = { ...base, id: 'eternal-actual-cap', waves: undefined, ships: [{ ...slot, wave: 0 }] }
     const hull = { ...ctx.ships.get('sh-thresher')!, shieldHp: 0, armorHp: 0, hullHp: 10000, hullResist: { plasma: .9, kinetic: .9 } }
     const context: SimContext = { ...ctx, anomalies: new Map(ctx.anomalies).set(card.id, card), ships: new Map(ctx.ships).set(hull.id, hull) }
-    const rows = [10, 12, 15, 20].map(n => {
+    const rows = [10, 12, 15, 20, 25].map(n => {
       const state = createInitialState({ nowWallMs: 0, seed: 11 })
       state.shipId = addShipToFleet(state, hull.id)
       const b = startBattleFor(state, context, state.shipId, card.id, 0, 5000)!
@@ -241,15 +244,21 @@ describe('实际承伤的真引擎路径', () => {
       b.units[f.tag]!.weapons[0] = 0
       b.foeShieldCapacitorActive = { [f.tag]: true }
       b.foeShieldCapacitorAttacks = { [`${f.tag}#0`]: n }
+      const spec = createPlayerSpec(state, context, state.shipId)!
+      const weapon = f.weapons[0]!, before = { ...b.units.player!.hp }
+      const raw = foeRepairDiscountedShot(f, ceilFinalQuantity(weapon.shotDmg! * foeGunPowerFactorOf(b, f, weapon, 5000) * 1.25 ** n))
+      const guns = volleyGunCountOf(weapon)
+      let expected = before
+      for (let gun = 0; gun < guns; gun++) expected = applyFoeShot(expected, spec.resists, weapon, volleyDamageShareOf(raw, guns, gun), weapon.fixedType ?? 'kinetic')
+      const damage = Math.min(sum(before) * .8, sum(before) - sum(expected))
       state.gameMs = 10
       advanceBattleFor(state, context, b, state.shipId, card.id, null, undefined, undefined, { simulation: { distanceM: 5000, layer: 'h' } })
       expect(b.foeShieldCapacitorAttacks![`${f.tag}#0`]).toBe(n + 1)
       expect(b.stats.foeShots).toBe(8)
+      expect(b.meVolleyDmg!.player!).toBeCloseTo(damage, 6)
       return b.meVolleyDmg!.player!
     })
-    expect(rows[0]).toBeCloseTo(993.5, 6)
-    expect(rows[1]).toBeCloseTo(1679, 6)
-    expect(rows[2]).toBeCloseTo(3688.7, 6)
-    expect(rows[3]).toBeCloseTo(8000, 6)
+    for (let i = 1; i < rows.length; i++) expect(rows[i]).toBeGreaterThan(rows[i - 1]!)
+    expect(rows[4]).toBeCloseTo(8000, 6)
   })
 })
