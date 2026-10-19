@@ -4,16 +4,6 @@
   "table": "market",
   "groups": {
     "MARKET_GOODS_RAW_0": [
-      { "key": "mod-drone-launch-1", "kind": "module", "refId": "mod-drone-launch-1", "rarity": "common", "basePrice": 18000, "demandMultiplier": 0.6 },
-      { "key": "mod-drone-launch-2", "kind": "module", "refId": "mod-drone-launch-2", "rarity": "rare", "basePrice": 455000, "demandMultiplier": 0.65 },
-      { "key": "mod-drone-launch-3", "kind": "module", "refId": "mod-drone-launch-3", "rarity": "exotic", "basePrice": 2040000, "demandMultiplier": 0.65 },
-      { "key": "mod-laser-calibration-2", "kind": "module", "refId": "mod-laser-calibration-2", "rarity": "rare", "basePrice": 481000, "demandMultiplier": 0.65 },
-      { "key": "mod-laser-calibration-3", "kind": "module", "refId": "mod-laser-calibration-3", "rarity": "exotic", "basePrice": 2360000, "demandMultiplier": 0.65 },
-      { "key": "bp-drone-launch-1", "kind": "blueprint", "refId": "bp-drone-launch-1", "rarity": "common", "basePrice": 36000, "demandMultiplier": 0.6 },
-      { "key": "bp-drone-launch-2", "kind": "blueprint", "refId": "bp-drone-launch-2", "rarity": "rare", "basePrice": 1137500, "demandMultiplier": 0.65 },
-      { "key": "bp-drone-launch-3", "kind": "blueprint", "refId": "bp-drone-launch-3", "rarity": "exotic", "basePrice": 8160000, "demandMultiplier": 0.65, "standingReq": 4 },
-      { "key": "bp-laser-calibration-2", "kind": "blueprint", "refId": "bp-laser-calibration-2", "rarity": "rare", "basePrice": 1202500, "demandMultiplier": 0.65 },
-      { "key": "bp-laser-calibration-3", "kind": "blueprint", "refId": "bp-laser-calibration-3", "rarity": "exotic", "basePrice": 9440000, "demandMultiplier": 0.65, "standingReq": 4 },
       {
         "key": "ore-veldspar",
         "kind": "item",
@@ -1181,6 +1171,7 @@
         "basePrice": 18000,
         "demandMultiplier": 0.6
       },
+      { "key": "mod-drone-launch-1", "kind": "module", "refId": "mod-drone-launch-1", "rarity": "common", "basePrice": 18000, "demandMultiplier": 0.6 },
       {
         "key": "mod-drone-relay-1",
         "kind": "module",
@@ -1737,6 +1728,7 @@
         "basePrice": 455000,
         "demandMultiplier": 0.65
       },
+      { "key": "mod-drone-launch-2", "kind": "module", "refId": "mod-drone-launch-2", "rarity": "rare", "basePrice": 455000, "demandMultiplier": 0.65 },
       {
         "key": "mod-drone-relay-2",
         "kind": "module",
@@ -1929,6 +1921,7 @@
         "basePrice": 2040000,
         "demandMultiplier": 0.65
       },
+      { "key": "mod-drone-launch-3", "kind": "module", "refId": "mod-drone-launch-3", "rarity": "exotic", "basePrice": 2040000, "demandMultiplier": 0.65 },
       {
         "key": "mod-drone-relay-3",
         "kind": "module",
@@ -2041,6 +2034,7 @@
         "basePrice": 481000,
         "demandMultiplier": 0.65
       },
+      { "key": "mod-laser-calibration-2", "kind": "module", "refId": "mod-laser-calibration-2", "rarity": "rare", "basePrice": 481000, "demandMultiplier": 0.65 },
       {
         "key": "mod-rof-2",
         "kind": "module",
@@ -2089,6 +2083,7 @@
         "basePrice": 2360000,
         "demandMultiplier": 0.65
       },
+      { "key": "mod-laser-calibration-3", "kind": "module", "refId": "mod-laser-calibration-3", "rarity": "exotic", "basePrice": 2360000, "demandMultiplier": 0.65 },
       {
         "key": "mod-rof-3",
         "kind": "module",
@@ -2344,6 +2339,7 @@
         "demandMultiplier": 0.65,
         "standingReq": 4
       },
+      { "key": "bp-drone-launch-1", "kind": "blueprint", "refId": "bp-drone-launch-1", "rarity": "common", "basePrice": 36000, "demandMultiplier": 0.6 },
       {
         "key": "bp-drone-relay-1",
         "kind": "blueprint",
@@ -2360,6 +2356,7 @@
         "basePrice": 44000,
         "demandMultiplier": 0.6
       },
+      { "key": "bp-drone-launch-2", "kind": "blueprint", "refId": "bp-drone-launch-2", "rarity": "rare", "basePrice": 1137500, "demandMultiplier": 0.65 },
       {
         "key": "bp-drone-relay-2",
         "kind": "blueprint",
@@ -2376,6 +2373,7 @@
         "basePrice": 1300000,
         "demandMultiplier": 0.65
       },
+      { "key": "bp-drone-launch-3", "kind": "blueprint", "refId": "bp-drone-launch-3", "rarity": "exotic", "basePrice": 8160000, "demandMultiplier": 0.65, "standingReq": 4 },
       {
         "key": "bp-drone-relay-3",
         "kind": "blueprint",
@@ -2686,6 +2684,8 @@
         "demandMultiplier": 0.65,
         "standingReq": 4
       },
+      { "key": "bp-laser-calibration-2", "kind": "blueprint", "refId": "bp-laser-calibration-2", "rarity": "rare", "basePrice": 1202500, "demandMultiplier": 0.65 },
+      { "key": "bp-laser-calibration-3", "kind": "blueprint", "refId": "bp-laser-calibration-3", "rarity": "exotic", "basePrice": 9440000, "demandMultiplier": 0.65, "standingReq": 4 },
       {
         "key": "bp-rof-2",
         "kind": "blueprint",
