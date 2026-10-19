@@ -208,7 +208,7 @@ function FleetShipHover({
       current={{
         spec,
         battle: engine.ctx.balance.battle,
-        droneBayTotal: droneBayTotalM3(ship, engine.state.fleet[uid]?.fitted, engine.ctx),
+        droneBayTotal: droneBayTotalM3(ship, engine.state.fleet[uid]?.fitted, engine.ctx, engine.state.fleet[uid]?.plugs),
       }}
     >
       {children}

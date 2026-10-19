@@ -17,6 +17,7 @@ import type { ElementType, ReactNode } from 'react'
 import { battleSpeedBonusOf, ceilFinalQuantity } from '@whale/core'
 import type { AnomalyDef, BattleBalance, DamageResists, ItemDef, ModuleDef, ModuleSlot, ShipDef, DamageType, UnitSpec } from '@whale/core'
 import { DEFAULT_BALANCE, DC_LOCK_MS, FOE_RANGE_DEBUFF_FLOOR_M, foeDamageComposition, MODULE_SLOTS, MY_WEB_RANGE_M, rackOf, shipSlotsOf, shipCategoryKeyOf, stackingOf, beamPowerFactor, thrusterCycleNote, thrusterCycleOfModule, thrusterCycleSeconds, SHIELD_PULSE_MS, repairStatsFor, fittedRepairModules, fittedEffectParamsOf, WEB_BREAK_DIST_M, equipmentCycleMsOf } from '@whale/core'
+import { droneReviveCycleMsOf } from '@whale/core'
 import { HIGH_SEC_PENALTY, JUMP_FUEL_SPEED_MUL, SHIELD_FIELD_COST_PCT, SYNAPTIC_ACCELERANT_MS, SYNAPTIC_ACCELERANT_MUL, wormholeIsShapedItem, wormholeShapeOf, invasionBeaconTypeOf } from '@whale/core'
 /** 引擎类型（"装上船之后的实修值"那一行要现算 —— 2026-09-29 船长令） */
 import type { GameEngine } from '../game/engine'
@@ -680,6 +681,15 @@ export function moduleShortEffect(mod: ModuleDef): string {
        * ⚠ 装配页卡片**必须非空**：`content:check` 的「短效说明为空」契约会红。
        */
       const bits: string[] = []
+      if (mod.stealthWithPropulsion) bits.push(tr('ui.factionPlug.001'))
+      if (mod.shieldArmorConversionPct !== undefined) bits.push(tr('ui.factionPlug.002', { p1: pct(mod.shieldArmorConversionPct) }))
+      if (mod.shieldPassiveBonusPct !== undefined) bits.push(tr('ui.factionPlug.003', { p1: pct(mod.shieldPassiveBonusPct) }))
+      if (mod.cargoCapacityBonusPct !== undefined) bits.push(tr('ui.factionPlug.004', { p1: pct(mod.cargoCapacityBonusPct) }))
+      if (mod.cpuPenalty !== undefined) bits.push(tr('ui.factionPlug.005', { p1: fmt(mod.cpuPenalty) }))
+      if (mod.dronePrinting) bits.push(tr('ui.factionPlug.006', {
+        hp: pct(1 - mod.dronePrinting.hpMul), damage: pct(1 - mod.dronePrinting.damageMul),
+        launch: pct(1 - mod.dronePrinting.launchMul), deck: pct(1 - mod.dronePrinting.deckCycleMul),
+      }))
       if (mod.shieldHpAdd !== undefined) bits.push(tr('ui.shipInfo.187', { p1: fmt(mod.shieldHpAdd) }))
       if (mod.armorHpAdd !== undefined) bits.push(tr('ui.shipInfo.188', { p1: fmt(mod.armorHpAdd) }))
       if (mod.hullHpAdd !== undefined) bits.push(tr('ui.shipInfo.189', { p1: fmt(mod.hullHpAdd) }))
@@ -1504,7 +1514,9 @@ export function moduleInfoLines(mod: ModuleDef, engine?: GameEngine, shipId?: st
   // 2026-09-11 船长定精简：只留结论一句（机制解释在手册「装配」条目里）
   const st = stackingOf(mod)
   // ⟪文案调整 2026-10-19⟫ 安装限制和独立运作不是加算收益，单独说明。
-  if (mod.unique === true) {
+  if (mod.plugNonStacking) {
+    lines.push({ k: tr('ui.shipInfo.076'), v: tr('ui.factionPlug.007') })
+  } else if (mod.unique === true) {
     lines.push({ k: tr('ui.shipInfo.076'), v: tr('ui.shipInfo.252') })
   } else if (mod.slot === 'plug' && ((mod.midSlotsAdd ?? 0) > 0 || (mod.lowSlotsAdd ?? 0) > 0)) {
     lines.push({ k: tr('ui.shipInfo.076'), v: tr('ui.shipInfo.255') })
@@ -1572,7 +1584,9 @@ export function moduleInfoLines(mod: ModuleDef, engine?: GameEngine, shipId?: st
       ((mod.repairArmorHp ?? 0) > 0 || (mod.repairHullHp ?? 0) > 0 ? mod.repairIntervalMs ?? 5000 : undefined) ??
       mod.captureWebCycleMs ?? mod.droneReviveCycleMs
     if (baseCycle !== undefined) lines.push({ k: tr('ui.equipmentPenalty.001'), v: tr('ui.equipmentPenalty.002', {
-      p1: equipmentCycleMsOf(engine.state, engine.ctx, shipId, baseCycle) / 1000, p2: baseCycle / 1000,
+      p1: (mod.droneReviveCycleMs !== undefined
+        ? droneReviveCycleMsOf(engine.state, engine.ctx, shipId, baseCycle)
+        : equipmentCycleMsOf(engine.state, engine.ctx, shipId, baseCycle)) / 1000, p2: baseCycle / 1000,
     }) })
   }
   return lines

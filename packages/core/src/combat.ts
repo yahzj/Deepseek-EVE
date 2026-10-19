@@ -14,6 +14,8 @@
  *   战斗结束剩余退回仓库（V18 口径取消：单档通用弹，无轻/重之分）。
  */
 import { ceilFinalQuantity } from './quantity'
+import { healArmorHp } from './combatMath'
+import { plugModulesOf } from './plugs'
 import type { GameState } from './state'
 import { addLog } from './state'
 import type {
@@ -253,6 +255,10 @@ export function beamPowerVsTargetOf(
 
 /** 静态单位卡（构建后不进存档） */
 export interface UnitSpec {
+  /** 每场重建的镀膜装甲，仅用于开场残余与跨场损伤结算。 */
+  shieldArmorHp?: number
+  shieldPassiveBonusPct?: number
+  droneHpMul?: number
   rebirthRepair?: import('./types').ModuleDef['rebirthRepair']
   crisisOverload?: { rangeMul: number; damageMul: number; speedMul: number; droneInitialMul: number; droneCycleMul: number }
   speedBonusModules?: Array<Pick<import('./types').ModuleDef, 'speedBonusPct' | 'speedRamp'>>
@@ -966,7 +972,7 @@ export function pulseFoeRepair(
   const capH = Math.max(0, target.hp.h)
   let left = amount
   const healA = Math.min(left, Math.max(0, capA - rt.hp.a))
-  rt.hp.a += healA
+  healArmorHp(rt.hp, healA)
   left -= healA
   const healH = Math.min(left, Math.max(0, capH - rt.hp.h))
   rt.hp.h += healH
@@ -1002,7 +1008,7 @@ export function pulseFoeMountRepair(
   const healA = Math.min(Math.max(0, ceilFinalQuantity(rp.armor * rp.k)), Math.max(0, capA - rt.hp.a))
   const healH = Math.min(Math.max(0, ceilFinalQuantity(rp.hull * rp.k)), Math.max(0, capH - rt.hp.h))
   if (healA <= 0 && healH <= 0) return
-  rt.hp.a += healA
+  healArmorHp(rt.hp, healA)
   rt.hp.h += healH
   ledger.healed += healA + healH
 }
@@ -1063,12 +1069,13 @@ export function applyPlayerUnitDamage(
   const amount = Math.min(total, playerVolleyDamageRoomOf(b, tag, spec))
   // 在已结算的掉血上按层截取，不重新计算原伤落点，避免限额反过来改变克制系数。
   const apply = (damage: number): Hp3 => {
-    const hp = { ...before }
+    const hp = { ...before, ...(before.coating ? { coating: { ...before.coating } } : {}) }
     for (const key of ['s', 'a', 'h'] as const) {
       const take = Math.min(loss[key], damage)
       hp[key] -= take
       damage -= take
     }
+    if (hp.coating) hp.coating.armor = Math.min(hp.coating.armor, hp.a)
     return hp
   }
   const guarded = applyDcGuard(state, b, tag, spec, before, amount, type, apply)
@@ -2171,7 +2178,8 @@ export function startBattleFor(
   if (fleetShip) {
     const armorMul = Math.min(1, Math.max(0, fleetShip.armorPct ?? 1))
     const hullMul = Math.min(1, Math.max(0, fleetShip.durability ?? 1))
-    me.hp.a = Math.max(0, ceilFinalQuantity(me.hp.a * armorMul))
+    me.hp.a = Math.max(0, ceilFinalQuantity((me.hp.a - (me.shieldArmorHp ?? 0)) * armorMul)) + (me.shieldArmorHp ?? 0)
+    if (me.shieldArmorHp !== undefined) me.hp.coating = { armor: me.hp.a - me.shieldArmorHp, maxArmor: meFullHp.a - me.shieldArmorHp }
     me.hp.h = Math.max(0, ceilFinalQuantity(me.hp.h * hullMul))
   }
   // 照会战加成（开战规格重建处也注入，命中/回避影响后续弹道与 UI 读到的克制无涉）
@@ -2575,7 +2583,8 @@ export function startFleetBattleFor(
     if (fleetShip) {
       const armorMul = Math.min(1, Math.max(0, fleetShip.armorPct ?? 1))
       const hullMul = Math.min(1, Math.max(0, fleetShip.durability ?? 1))
-      spec.hp.a = Math.max(0, ceilFinalQuantity(spec.hp.a * armorMul))
+      spec.hp.a = Math.max(0, ceilFinalQuantity((spec.hp.a - (spec.shieldArmorHp ?? 0)) * armorMul)) + (spec.shieldArmorHp ?? 0)
+      if (spec.shieldArmorHp !== undefined) spec.hp.coating = { armor: spec.hp.a - spec.shieldArmorHp, maxArmor: fullHpOf.get(spec.tag)!.a - spec.shieldArmorHp }
       spec.hp.h = Math.max(0, ceilFinalQuantity(spec.hp.h * hullMul))
     }
     specs.push(spec)
@@ -3394,7 +3403,11 @@ export function persistFleetHullDamage(
   const cap = createPlayerSpec(state, ctx, shipId)
   if (!cap) return
   const clamp01 = (v: number): number => Math.min(1, Math.max(0, v))
-  fleetShip.armorPct = cap.hp.a > 0 ? clamp01(unit.hp.a / cap.hp.a) : 1
+  const originalArmor = cap.hp.a - (cap.shieldArmorHp ?? 0)
+  // 临时镀膜先承伤；不能将尚存临时甲回写为原甲修复。
+  const originalAtStart = Math.ceil(originalArmor * clamp01(fleetShip.armorPct ?? 1))
+  const remainingArmor = unit.hp.coating?.armor ?? (cap.shieldArmorHp !== undefined ? Math.min(unit.hp.a, originalAtStart) : unit.hp.a)
+  fleetShip.armorPct = originalArmor > 0 ? clamp01(remainingArmor / originalArmor) : 1
   fleetShip.durability = cap.hp.h > 0 ? clamp01(unit.hp.h / cap.hp.h) : 0
 }
 
@@ -3433,6 +3446,24 @@ export function settleDroneLosses(
   if (!lost) return null
   const fleetShip = state.fleet[shipId]
   if (!fleetShip) return null
+  const printing = plugModulesOf(state, ctx, shipId).some(p => p.dronePrinting)
+  const unit = battle?.units?.[ownerTag]
+  if (printing && unit && unit.hp.h > 0) {
+    // 只恢复原编制：打印复位无实物扣账，不能按复位次数生成仓库库存。
+    const start = battle?.droneLoadAtStartBy?.[ownerTag] ?? (ownerTag === 'player' ? battle?.droneLoadAtStart : undefined)
+    if (start) fleetShip.droneLoad = { ...start }
+    if (battle!.droneLostBy) delete battle!.droneLostBy[ownerTag]
+    battle!.droneLost = battle!.droneLostBy
+      ? Object.values(battle!.droneLostBy).reduce<Record<string, number>>((all, rows) => {
+          for (const [id, n] of Object.entries(rows)) all[id] = (all[id] ?? 0) + n
+          return all
+        }, {}) : undefined
+    const total = Object.values(fleetShip.droneLoad ?? {}).reduce((n, v) => n + v, 0)
+    const report = { battleStartedAtGameMs: battle!.startedAtGameMs, rate: 1, total: 0, recovered: 0, gone: 0, survivors: total, rows: [] }
+    if (ownerTag === 'player') state.droneLossReport = report
+    onReport?.(report)
+    return null
+  }
   const rate = droneRecoveryRateWithBonus(state, recoveryBonus)
   const load: Record<string, number> = { ...(fleetShip.droneLoad ?? {}) }
   const supply = wormholeSupplyForBattle(state, battle)
@@ -3546,6 +3577,7 @@ export function settleDroneLosses(
    */
   const revivedShort: string[] = []
   for (const [id, n] of Object.entries(revivedMap)) {
+    if (battle?.droneRevive?.[ownerTag]?.printing) continue
     for (let i = 0; i < n; i++) {
       if (takeDroneUnit(state, shipId, id) === null) {
         revivedShort.push(`${ctx.items.get(id)?.name ?? id} 缺 ${n - i} 架`)
@@ -5588,8 +5620,10 @@ function stepBattle(
       // ⚠ 满盾优先取战斗单位的 `hpMax.s`；老档/异常缺省时回退到该单位的 `spec.hp.s`（= 满盾口径）
       const sMax = urt.hpMax?.s ?? unit.hp.s
       if (urt.hp.s >= sMax || (urt.hp.a <= 0 && urt.hp.h <= 0)) continue
+      // 后续被动恢复来源同区加算，不为各个来源另开乘区。
+      const regenMul = 1 + (unit.shieldPassiveBonusPct ?? 0)
       const floor = sMax * SHIELD_REGEN_FLOOR_PCT
-      const rate = urt.hp.s > 0 ? Math.max(urt.hp.s * bal.shieldRegenPerSec, floor) : 0
+      const rate = urt.hp.s > 0 ? Math.max(urt.hp.s * bal.shieldRegenPerSec, floor) * regenMul : 0
       const regen = rate * dtSec
       if (regen > 0) urt.hp.s = Math.min(sMax, urt.hp.s + regen)
     }
@@ -6052,9 +6086,10 @@ function steadyPreview(
   //     · `sX ≥ s > 0`：**恒速段**（净掉率 = D − sCap；`D ≤ sCap` ⇒ 恒速回充，永远打不穿）
   //     · `s = 0`：破盾，回充归 0（不变）
   const foeDpsNet = foeDps * foeMul
-  const k = bal.shieldRegenPerSec
+  const regenMul = 1 + (me.shieldPassiveBonusPct ?? 0)
+  const k = bal.shieldRegenPerSec * regenMul
   const s0 = Math.max(0, me.hp.s)
-  const sCap = s0 * SHIELD_REGEN_FLOOR_PCT
+  const sCap = s0 * SHIELD_REGEN_FLOOR_PCT * regenMul
   const sX = k > 0 ? sCap / k : Number.POSITIVE_INFINITY
   /**
    * **每秒回盾量 = Σ 逐路「本路比例 × 满盾 ÷ 本路间隔」**（**2026-09-21 逐型号独立回转**后：

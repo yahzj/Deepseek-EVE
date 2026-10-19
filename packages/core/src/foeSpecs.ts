@@ -1585,7 +1585,7 @@ export function createBattleState(
       tag: spec.tag,
       side: spec.side,
       name: spec.name,
-      hp: { s: spec.hp.s, a: spec.hp.a, h: spec.hp.h },
+      hp: { ...spec.hp },
       hpMax: { s: spec.hp.s, a: spec.hp.a, h: spec.hp.h },
       // **舰级 id**（2026-09-24）：首波内联播种同样要带上（`flagshipBattleLedger` 认母舰靠它）
       ...(spec.foeShipId !== undefined ? { foeShipId: spec.foeShipId } : {}),
@@ -1705,7 +1705,7 @@ export function seedUnit(
     tag: spec.tag,
     side: spec.side,
     name: spec.name,
-    hp: { s: spec.hp.s, a: spec.hp.a, h: spec.hp.h },
+    hp: { ...spec.hp },
     hpMax: { s: spec.hp.s, a: spec.hp.a, h: spec.hp.h },
     ...(spec.foeShipId !== undefined ? { foeShipId: spec.foeShipId } : {}),
     weapons: opts.enterReload

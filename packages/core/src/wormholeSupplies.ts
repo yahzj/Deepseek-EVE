@@ -70,6 +70,7 @@ export function settleWormholeDroneRevives(state: GameState, battle: BattleState
   const ammo = battle.expeditionAmmo
   if (!supply || !ammo || ammo.revivesSettled) return
   for (const book of Object.values(battle.droneRevive ?? {})) {
+    if (book.printing) continue
     for (const [id, n] of Object.entries(book.v)) deployWormholeSupply(supply, id, n)
   }
   ammo.revivesSettled = true

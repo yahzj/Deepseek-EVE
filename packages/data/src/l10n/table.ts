@@ -24,6 +24,19 @@ export function l10nEntryText(entry: L10nEntry, locale: 'zh' | 'en'): string {
 }
 
 export const L10N: Readonly<Record<string, L10nEntry>> = {
+  'bp.factionPlug.001': { zh: '舰船插件制造图纸，须先取得任意黑匣。', en: 'Ship plug blueprint: requires any black box.' },
+  'mod.factionPlug.001': { zh: '允许隐秘行动装置与推进器共同运作，降低最大速度。', en: 'Allows covert devices to operate alongside thrusters, at the cost of maximum speed.' },
+  'mod.factionPlug.002': { zh: '开战时将最终护盾容量转为部分装甲，护盾容量归零。转换装甲每场重建，原装甲损伤保留。', en: 'Converts final shield capacity into partial armor at battle start, leaving no shield capacity. Converted armor refreshes each battle; damage to original armor persists.' },
+  'mod.factionPlug.003': { zh: '增强本舰护盾的被动恢复。', en: 'Improves this ship\'s passive shield regeneration.' },
+  'mod.factionPlug.004': { zh: '扩展货仓与无人机舱，降低CPU上限与最大速度。', en: 'Expands cargo and drone bays, at the cost of CPU capacity and maximum speed.' },
+  'mod.factionPlug.005': { zh: '无人机更快出击，机体与火力减弱。本舰存活时，战后恢复全部无人机；储备甲板加速重建原机体，不消耗备用机。', en: 'Drones launch faster but have weaker defenses and firepower. If the carrier survives, all drones return after combat; reserve decks rebuild original drones faster without consuming spare drones.' },
+  'ui.factionPlug.001': { zh: '解除隐秘行动与推进器冲突', en: 'Covert devices compatible with thrusters' },
+  'ui.factionPlug.002': { zh: '开战护盾上限归零，最终护盾的{p1}转为装甲', en: 'No shield capacity in combat; converts {p1} of final shields to armor' },
+  'ui.factionPlug.003': { zh: '护盾被动恢复 +{p1}', en: 'Passive shield regeneration +{p1}' },
+  'ui.factionPlug.004': { zh: '货仓容量 +{p1}', en: 'Cargo capacity +{p1}' },
+  'ui.factionPlug.005': { zh: 'CPU上限 −{p1}', en: 'CPU capacity −{p1}' },
+  'ui.factionPlug.006': { zh: '本舰存活则无人机战后全返还；无人机血量 −{hp}、伤害 −{damage}、首批启动时间 −{launch}；储备甲板周期 −{deck}', en: 'All drones return after battle if the carrier survives; drone HP −{hp}, damage −{damage}, initial launch delay −{launch}; reserve deck cycle −{deck}' },
+  'ui.factionPlug.007': { zh: '同型效果不叠加', en: 'Same-type effects do not stack' },
   'ano.depthRetune.001': { zh: '信号空间资源与战损调整', en: 'Signal Space Resources and Damage Mods' },
   'ano.depthRetune.002': { zh: '数值', en: 'Balance' },
   'ano.depthRetune.003': { zh: '玩家探索信号空间时，每深入一层，矿脉与墓场普通残骸各增加一堆。', en: 'Each deeper Signal Space layer adds one pile to each ore vein and one common wreck pile to each graveyard.' },

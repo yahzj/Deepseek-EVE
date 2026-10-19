@@ -98,7 +98,7 @@ describe('黑匣独立成类（船长报障：入侵获得的黑匣在仓库内�
 describe('装备归属档新增「舰船插件」（船长令：和高中低槽同级）', () => {
   it('插件是独立槽位的装备，数据里声明的 `rack` 仍是 low（故必须走归属档单点）', () => {
     const plugs = MODULES.filter((m) => m.slot === 'plug')
-    expect(plugs.length).toBe(12)
+    expect(plugs.length).toBe(17)
     for (const p of plugs) expect(p.rack, `${p.id} 的 raw rack（历史声明，勿直接拿来筛选）`).toBe('low')
   })
 

@@ -693,7 +693,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
   // 无人机舱总量（船体 + 已装「甲板扩展」= 清单容量上限；装入入口在低槽组下方无人机舱区——
   // 2026-09-08 无人机舱大改：只放飞已装入清单，仓库余量不自动出战）
   // 2026-09-26：求和改用 core 单点 `droneBayTotalM3`（舰队页悬停卡同源，防两处口径漂移）
-  const droneBayTotal = droneBayTotalM3(shipDef, fitted, engine.ctx)
+  const droneBayTotal = droneBayTotalM3(shipDef, fitted, engine.ctx, engine.state.fleet[effectiveTarget]?.plugs)
 
   /**
    * **当前（装后）货舱容量**（m³）——core 单点：船体 ×（1 + 货舱扩展件）× 深空物流学 × 货舱管理学 ×（货舰）货舰操作。
@@ -1694,7 +1694,7 @@ function DroneBaySection({
   const load = entry?.droneLoad ?? {}
   const configurationBlock = shipOperationBlockReason(state, ctx, target, 'configure')
   // 舱上限 = 船体 droneBayM3 + 已装甲板扩展（rack 高槽件）
-  const cap = droneBayTotalM3(shipDef, fitted, ctx)
+  const cap = droneBayTotalM3(shipDef, fitted, ctx, entry?.plugs)
   if (cap <= 0 && Object.keys(load).length === 0) return null // 无舱不显示（与机舱平衡表一致）
   const droneTypes = [...ctx.items.values()].filter((d) => d.kind === 'drone')
   const usedM3 = droneLoadM3(load, ctx)

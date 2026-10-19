@@ -2197,6 +2197,7 @@ export {
  * 装配校验与装配页格数共用同一把尺；`installPlug` 里同步就地补齐位数组。
  */
 export { plugSlotAddsOf, shipSlotsWithPlugsOf } from './plugs'
+export { droneReviveCycleMsOf } from './droneRevive'
 export { wormholePreparationPlan, wormholePreparationFillPlan, wormholeEnterPrepared } from './wormholePreparation'
 export { PREPARATION_SQUAD_KINDS, cleanPreparationSquads, preparationSquadOf, notePreparationSquad } from './preparationSquads'
 export type { PreparationSquadKind, PreparationSquads } from './preparationSquads'

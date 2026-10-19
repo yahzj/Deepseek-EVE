@@ -1760,6 +1760,7 @@ export const MARKET_GOODS: readonly MarketGoodDef[] = [
   ...([
     'plug-shield-plate', 'plug-armor-plate', 'plug-hull-plate', 'plug-mid-bay', 'plug-low-bay', 'plug-cpu-core',
     'plug-firepower', 'plug-sight', 'plug-thruster', 'plug-rangefinder', 'plug-target-beacon', 'plug-concealment',
+    'plug-pirate-raider', 'plug-alien-shield-coating', 'plug-gravekeeper-capacitor', 'plug-titan-compression', 'plug-deadarmy-printing',
   ] as const).map((id) => ({
     key: id,
     kind: 'module' as const,
@@ -1773,7 +1774,8 @@ export const MARKET_GOODS: readonly MarketGoodDef[] = [
   ...([
     'bp-plug-shield-plate', 'bp-plug-armor-plate', 'bp-plug-hull-plate', 'bp-plug-mid-bay', 'bp-plug-low-bay',
     'bp-plug-cpu-core', 'bp-plug-firepower', 'bp-plug-sight', 'bp-plug-thruster', 'bp-plug-rangefinder',
-    'bp-plug-target-beacon', 'bp-plug-concealment'
+    'bp-plug-target-beacon', 'bp-plug-concealment',
+    'bp-plug-pirate-raider', 'bp-plug-alien-shield-coating', 'bp-plug-gravekeeper-capacitor', 'bp-plug-titan-compression', 'bp-plug-deadarmy-printing',
   ] as const).map((id) => ({
     key: id,
     kind: 'blueprint' as const,

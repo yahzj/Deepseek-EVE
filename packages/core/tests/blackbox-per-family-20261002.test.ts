@@ -305,9 +305,9 @@ describe('⑨ 装配侧：光环匣同样顶料 · 同样解锁插件门类', ()
 })
 
 describe('⑩ 文案：黑匣不再是"墨潮专属"', () => {
-  it('12 张插件图纸说明 = 「须先取得任意黑匣」（中英同步）', () => {
+  it('插件图纸说明均为「须先取得任意黑匣」（中英同步）', () => {
     const plugs = BLUEPRINTS.filter((b) => b.id.startsWith('bp-plug-'))
-    expect(plugs.length, '12 张').toBe(12)
+    expect(plugs.length).toBe(17)
     for (const bp of plugs) {
       expect(bp.description, `${bp.id} 中文说明`).toContain('须先取得任意黑匣')
       expect(bp.description.includes('墨潮'), `${bp.id} 不再点名墨潮`).toBe(false)

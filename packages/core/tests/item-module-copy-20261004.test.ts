@@ -48,7 +48,7 @@ describe('物品装备说明双语与数据守恒', () => {
     expect(ITEMS.filter(item => added.has(item.id)).map(item => item.id).sort()).toEqual([...added].sort())
     expect(strip(ITEMS.filter(item => !added.has(item.id)))).toEqual(strip(adjusted))
   })
-  it('旧装备字段仅按已确认值调整，新增十件另由装备专项约束', () => {
+  it('旧装备字段仅按已确认值调整，新增装备与五族插件另由专项约束', () => {
     const plugs = historical<typeof MODULES>('packages/data/src/plugs.ts', 'SHIP_PLUGS')
     const before = historical<typeof MODULES>('packages/data/src/modules.ts', 'MODULES', { SHIP_PLUGS: plugs })
     const strip = (entries: typeof MODULES) => entries.map(({ description: _description, ...rest }) => rest)
@@ -75,8 +75,9 @@ describe('物品装备说明双语与数据守恒', () => {
       return mod.id === 'mod-wh-a-hangar' ? { ...mod, droneCycleCutPct: .2 } : mod
     })
     const newIds = new Set(['mod-drone-launch-1', 'mod-drone-launch-2', 'mod-drone-launch-3', 'mod-laser-calibration-2', 'mod-laser-calibration-3', 'mod-alien-acid-launcher', 'mod-alien-pressure-chamber',
-      'mod-gravekeeper-rebirth', 'mod-gravekeeper-crisis', 'mod-gravekeeper-rail'])
-    expect(MODULES.filter(mod => newIds.has(mod.id))).toHaveLength(10)
+      'mod-gravekeeper-rebirth', 'mod-gravekeeper-crisis', 'mod-gravekeeper-rail',
+      'plug-pirate-raider', 'plug-alien-shield-coating', 'plug-gravekeeper-capacitor', 'plug-titan-compression', 'plug-deadarmy-printing'])
+    expect(MODULES.filter(mod => newIds.has(mod.id))).toHaveLength(15)
     const current = strip(MODULES.filter(mod => !newIds.has(mod.id)))
     expect(current.map(mod => mod.id)).toEqual(adjusted.map(mod => mod.id))
     for (const expected of strip(adjusted)) expect(current.find(mod => mod.id === expected.id), expected.id).toEqual(expected)

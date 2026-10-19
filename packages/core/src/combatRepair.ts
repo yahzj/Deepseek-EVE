@@ -9,7 +9,7 @@
 import { ceilFinalQuantity } from './quantity'
 import type { GameState } from './state'
 import type { ModuleDef, SimContext } from './types'
-import { isAlive } from './combatMath'
+import { isAlive, healArmorHp } from './combatMath'
 import { allFittedModules, pulseStreamOf, stackWeight, equipmentCycleMsOf } from './equipment'
 import { fleetDefOf } from './instances'
 import { moduleAllowedOnShip } from './shipFitting'
@@ -655,7 +655,7 @@ export function pulseRepairsFor(
       if (ag0 < u.armorPerPulse && hg0 < dh0) hg0 += Math.min(u.armorPerPulse - ag0, dh0 - hg0)
       if (hg0 < u.hullPerPulse && ag0 < da0) ag0 += Math.min(u.hullPerPulse - hg0, da0 - ag0)
       if (ag0 <= 0 && hg0 <= 0) continue
-      hp.a += ag0
+      healArmorHp(hp, ag0)
       hp.h += hg0
       continue
     }
@@ -694,7 +694,7 @@ export function pulseRepairsFor(
           : shipUid !== undefined && removeCargoOfShip(state, shipUid, u.kitId, 1) > 0
       if (!ok) continue
     }
-    hp.a += ag
+    healArmorHp(hp, ag)
     hp.h += hg
     if (legacyLedger) r.kits[u.kitId] = preloadLeft - 1
     r.kitsUsed += 1

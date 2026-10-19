@@ -30,7 +30,8 @@ import { currentShipState, addWare, countWare, removeWare } from './inventory'
 import { fleetDefOf } from './instances'
 import { moduleAllowedOnShip } from './shipFitting'
 import { ammoTiersOf } from './ammoTiers'
-import { plugModulesOf, shipSlotsWithPlugsOf } from './plugs'
+import { shipSlotsWithPlugsOf } from './plugs'
+import * as cpu from './equipmentCpu'
 
 /** 槽位顺序（界面展示用；V18 保留家族序供清单/徽标） */
 export { MODULE_SLOTS } from './labels'
@@ -40,9 +41,7 @@ export { MODULE_SLOTS } from './labels'
  * **本函数 = 船体预算（不含协处理器加成）**；装配/无人机/界面要看"总额"请用 `cpuBudgetOf`。
  */
 export function effectiveCpu(state: GameState, ctx: SimContext, def: { cpu?: number } | undefined): number {
-  const bal = ctx.balance.battle
-  const lv = Math.min(5, state.skills.trained[bal.cpuSkillId] ?? 0)
-  return ceilFinalQuantity((def?.cpu ?? 0) * (1 + bal.cpuPerLevel * lv))
+  return cpu.effectiveCpu(state, ctx, def)
 }
 
 /**
@@ -59,27 +58,8 @@ export function cpuBudgetOf(
   shipId: string,
   fittedOverride?: FittedModules | null,
 ): number {
-  const shipDef = fleetDefOf(state, ctx, shipId)
-  const base = effectiveCpu(state, ctx, shipDef)
-  const fitted = fittedOverride === undefined ? state.fleet[shipId]?.fitted : fittedOverride
-  let bonus = 0
-  if (fitted) {
-    for (const m of allFittedModules(fitted, ctx)) bonus += m.cpuBonus ?? 0
-  }
-  /**
-   * 🔴 **舰船插件也要算进预算**（**2026-09-27 玩家报障修复**：「CPU上限的插件装上后无效」）。
-   *
-   * 根因：插件**不在 `fitted` 里**（走 `FleetShipState.plugs` 的独立插件槽，见 `plugs.ts` 头注
-   * 「`allFittedModules`（只扫 `fitted`）看不见插件，插件效果由战斗建档侧单独一段累加」）——
-   * 而**本函数没有那一段** ⇒ 数据侧的「协处理插件 `cpuBonus: 80`」装上后预算纹丝不动
-   * （装配页 CPU 条、`cpuOverloadText` 的判据、战斗建档 `cpuLeft` 全跟着错）。
-   *
-   * 为什么放在这里而不是战斗侧：`cpuBudgetOf` 是**CPU 预算的全仓单点**（装配校验 / 装配页 /
-   * 战斗建档 / 工具全走它）⇒ 补这一处即全线一致。插件**不可拆、不可替换**、恒随船
-   * ⇒ 预演 `fittedOverride` 时它们照样在，不需要替身位（与"预算随件走"的防套利口径无关）。
-   */
-  for (const p of plugModulesOf(state, ctx, shipId)) bonus += p.cpuBonus ?? 0
-  return base + bonus
+  // 公开入口保留；纯预算与插件候选预演共用equipmentCpu，避免安装模块反向依赖装备命令。
+  return cpu.cpuBudgetOf(state, ctx, shipId, fittedOverride)
 }
 
 /**
@@ -538,10 +518,7 @@ export function sameKindCount(fitted: FittedModules, ctx: SimContext, def: Modul
  * 其余件、其余船一律返回原值（`ship` 缺省 ⇒ 原值）。**
  */
 export function cpuUseOf(def: ModuleDef, ship?: { stealthCpuMul?: number }): number {
-  const raw = def.cpuUse ?? 0
-  const mul = ship?.stealthCpuMul
-  if (def.stealthMs !== undefined && mul !== undefined && mul !== 1) return Math.ceil(raw * mul)
-  return raw
+  return cpu.cpuUseOf(def, ship)
 }
 
 /** 全位 CPU 占用合计（与无人机放飞共用池；装配校验/战斗余量同源）。
@@ -551,21 +528,12 @@ export function fittedCpuUsed(
   ctx: SimContext,
   ship?: { stealthCpuMul?: number },
 ): number {
-  let used = 0
-  for (const def of allFittedModules(fitted, ctx)) used += cpuUseOf(def, ship)
-  return used
+  return cpu.fittedCpuUsed(fitted, ctx, ship)
 }
 
 /** 2026-09-08 无人机舱大改：装载清单的 CPU 占用（与装配共用池；UI 预算/装配校验/战斗装载同源） */
 export function droneCpuUsed(droneLoad: Record<string, number> | undefined, ctx: SimContext): number {
-  if (!droneLoad) return 0
-  let used = 0
-  for (const [id, n] of Object.entries(droneLoad)) {
-    if (n <= 0) continue
-    const d = ctx.items.get(id)
-    if (d?.kind === 'drone') used += (d.cpuUse ?? 0) * n
-  }
-  return used
+  return cpu.droneCpuUsed(droneLoad, ctx)
 }
 
 /** 2026-09-08：装载清单占用的机舱体积（m³ = Σ 架数×unitM3；装配页容量条用） */
@@ -802,7 +770,7 @@ export function unfitAt(
  * 2026-09-26 从两处私有实现（本文件的 `droneBayCapOf` 与装配页的内联求和）合并为**唯一单点**——
  * 舰船悬停卡（舰队页「当前属性」）与装配页主表都用它，避免两处口径漂移。
  */
-export function droneBayTotalM3(ship: { droneBayM3?: number; civilianFittingOnly?: boolean } | undefined, fitted: FittedModules | undefined, ctx: SimContext): number {
+export function droneBayTotalM3(ship: { droneBayM3?: number; civilianFittingOnly?: boolean } | undefined, fitted: FittedModules | undefined, ctx: SimContext, plugs: readonly string[] = []): number {
   if (ship?.civilianFittingOnly === true) return 0
   let cap = ship?.droneBayM3 ?? 0
   if (fitted) {
@@ -811,12 +779,16 @@ export function droneBayTotalM3(ship: { droneBayM3?: number; civilianFittingOnly
       cap += m?.droneBayBonusM3 ?? 0
     }
   }
+  for (const id of plugs) {
+    const p = ctx.modules.get(id)
+    if (p?.slot === 'plug') cap += p.droneBayBonusM3 ?? 0
+  }
   return cap
 }
 
 /** 某船无人机舱总容量（船体 droneBayM3 + 已装甲板扩展 bonus） */
 function droneBayCapOf(state: GameState, ctx: SimContext, shipId: string): number {
-  return droneBayTotalM3(fleetDefOf(state, ctx, shipId), state.fleet[shipId]?.fitted, ctx)
+  return droneBayTotalM3(fleetDefOf(state, ctx, shipId), state.fleet[shipId]?.fitted, ctx, state.fleet[shipId]?.plugs)
 }
 
 /**

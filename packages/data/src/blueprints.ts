@@ -15,6 +15,7 @@
 
 import type { BlueprintDef, MarketRarity } from '@whale/core'
 import { L10N } from './l10n/table'
+import { SHIP_PLUGS } from './plugs'
 
 /**
  * 装备/物品蓝图的**档位系数**（2026-09-11 船长裁决「甲」+ 同日复核补正）：
@@ -3292,6 +3293,11 @@ const BLUEPRINT_NAME_TEXT_BINDINGS = {
 } as const
 export const BLUEPRINTS: readonly BlueprintDef[] = [
   ...BASE_BLUEPRINTS,
+  ...SHIP_PLUGS.filter(mod => mod.id.startsWith('plug-pirate-') || mod.id.startsWith('plug-alien-') ||
+    mod.id.startsWith('plug-gravekeeper-') || mod.id.startsWith('plug-titan-') || mod.id.startsWith('plug-deadarmy-')).map(mod => ({
+    ...BASE_BLUEPRINTS.find(bp => bp.id === 'bp-plug-shield-plate')!,
+    id: `bp-${mod.id}`, moduleId: mod.id, name: `${mod.name}图纸`, description: L10N['bp.factionPlug.001']!.zh,
+  })),
   ...[
     ['bp-drone-launch-1', 'mod-drone-launch-1', 'bp-drone-tac-1', 'bp.launchCalibration.001'],
     ['bp-drone-launch-2', 'mod-drone-launch-2', 'bp-drone-tac-2', 'bp.launchCalibration.002'],

@@ -50,7 +50,8 @@ describe('全舰容量与直接恢复参数', () => {
     Object.assign(rows.find(r => r.id === 'plug-shield-plate')!, { shieldHpAdd: 120 })
     Object.assign(rows.find(r => r.id === 'plug-armor-plate')!, { armorHpAdd: 210 })
     Object.assign(rows.find(r => r.id === 'plug-hull-plate')!, { hullHpAdd: 120 })
-    expect(plugs).toEqual(expectedPlugs)
+    const originalIds = new Set(rows.map(row => row.id))
+    expect({ ...plugs, groups: { ...plugs.groups, SHIP_PLUGS_0: plugs.groups.SHIP_PLUGS_0.filter(row => originalIds.has(row.id)) } }).toEqual(expectedPlugs)
   })
 
   it.each(oldRows.map(row => row.id))('%s只建当前容量，不再派生旧恢复基准', id => {

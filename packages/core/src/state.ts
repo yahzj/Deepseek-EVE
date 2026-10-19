@@ -772,7 +772,7 @@ export interface BattleUnitRt {
   side: 'me' | 'foe'
   name: string
   /** 三层当前血量（盾/甲/结构） */
-  hp: { s: number; a: number; h: number }
+  hp: import('./combatMath').Hp3
   /** 三层满血量（血条分母；2026-09-09 多波起写——波次/读档单位 UI 血条以本字段为准，旧档缺省由 UI 兜底） */
   hpMax?: { s: number; a: number; h: number }
   /**
@@ -1547,7 +1547,7 @@ export interface BattleState {
    */
   droneRevive?: Record<
     string,
-    { q: string[]; t: Array<number | undefined>; c: number[]; v: Record<string, number>; shipId: string }
+    { q: string[]; t: Array<number | undefined>; c: number[]; v: Record<string, number>; shipId: string; printing?: boolean }
   >
   /**
    * **开战库存快照 ＝ 复活预算**（**船长 2026-09-27 令**：「战斗中损失的无人机是在战斗结束后一次性

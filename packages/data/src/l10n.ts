@@ -262,6 +262,11 @@ export const EN_MODULES: EnTable = {
   'plug-rangefinder': { name: 'Range Plug', description: L10N['mod.copy.105']!.en },
   'plug-target-beacon': { name: 'Target Beacon Plug', description: L10N['mod.copy.107']!.en },
   'plug-concealment': { name: 'Concealment Plug', description: L10N['mod.copy.108']!.en },
+  'plug-pirate-raider': { name: 'Raider Plug', description: L10N['mod.factionPlug.001']!.en },
+  'plug-alien-shield-coating': { name: 'Shield Coating Plug', description: L10N['mod.factionPlug.002']!.en },
+  'plug-gravekeeper-capacitor': { name: 'Shield Capacitor Plug', description: L10N['mod.factionPlug.003']!.en },
+  'plug-titan-compression': { name: 'Spatial Compression Plug', description: L10N['mod.factionPlug.004']!.en },
+  'plug-deadarmy-printing': { name: 'Low-Cost Printing Plug', description: L10N['mod.factionPlug.005']!.en },
 
   /* 损伤管制装置线（2026-09-25 船长令：低槽 · 结构三系减伤 +30/40/50 ＋ 每场一次"结构锁定 1 秒"）
      ⚠ 模块英文必须写在本表（`EN_MODULES`）——写进 `EN_ITEMS` 的话覆盖层查不到（`l10n-overlay` 用例会红）。 */
@@ -1421,6 +1426,11 @@ const BP_DESC_EN: Readonly<Record<string, string>> = {
   'bp-plug-rangefinder': 'Ship plug blueprint: requires any black box.',
   'bp-plug-target-beacon': 'Ship plug blueprint: requires any black box.',
   'bp-plug-concealment': 'Ship plug blueprint: requires any black box.',
+  'bp-plug-pirate-raider': 'Ship plug blueprint: requires any black box.',
+  'bp-plug-alien-shield-coating': 'Ship plug blueprint: requires any black box.',
+  'bp-plug-gravekeeper-capacitor': 'Ship plug blueprint: requires any black box.',
+  'bp-plug-titan-compression': 'Ship plug blueprint: requires any black box.',
+  'bp-plug-deadarmy-printing': 'Ship plug blueprint: requires any black box.',
 }
 
 export const EN_BLUEPRINTS: EnTable = (() => {

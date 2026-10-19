@@ -12,6 +12,10 @@ import { ENEMY_FILES, isEnemyTable, enemyRowsOf, enemyDocumentIssues } from './d
 export const BASE_TABLES = ['ships', 'modules', 'plugs', 'items', 'market'] as const
 export const TABLE_FILES: Record<DataTable, string> = { ...Object.fromEntries(BASE_TABLES.map(table => [table, `packages/data/src/static/${table}.json`])), ...ENEMY_FILES } as Record<DataTable, string>
 const TITLES: Record<string, string> = {
+  cpuPenalty: 'CPU上限降低', cargoCapacityBonusPct: '货仓加成', droneBayBonusM3: '无人机舱增加',
+  shieldArmorConversionPct: '最终护盾转甲比例', shieldPassiveBonusPct: '被动护盾恢复加成',
+  'dronePrinting.hpMul': '打印机群血量倍率', 'dronePrinting.damageMul': '打印机群伤害倍率',
+  'dronePrinting.launchMul': '打印首发间隔倍率', 'dronePrinting.deckCycleMul': '打印补机周期倍率',
   tier: '舰船级别', cargoM3: '货仓容量', cycleSeconds: '采集周期', oreUnitsPerCycle: '每周期产量', priceIsk: '定义价格', agility: '动力',
   powerBonus: '武器伤害加成', shieldHp: '护盾', armorHp: '装甲', hullHp: '结构', cpu: 'CPU总量', cpuUse: 'CPU占用',
   'slots.high': '高槽', 'slots.mid': '中槽', 'slots.low': '低槽', droneBayM3: '无人机舱', maxSpeedMps: '最高速度', warpSpeedAus: '跃迁速度',

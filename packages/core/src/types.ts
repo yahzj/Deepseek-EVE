@@ -1693,6 +1693,15 @@ export interface ModuleDef {
   speedAddMps?: number
   /** **固定值减速度**（装甲强化插板 −20 m/s）：绝对值；与百分比版 `speedPenaltyPct` 并列、互不替代 */
   speedPenaltyMps?: number
+  /** 势力船插：整件效果只计一次，仍可重复安装占格。 */
+  plugNonStacking?: boolean
+  stealthWithPropulsion?: boolean
+  shieldArmorConversionPct?: number
+  shieldPassiveBonusPct?: number
+  cargoCapacityBonusPct?: number
+  cpuPenalty?: number
+  /** 打印机体仅回收原编制，不生成永久库存。 */
+  dronePrinting?: { hpMul: number; damageMul: number; launchMul: number; deckCycleMul: number }
   /** **插件加中槽**（中层舱段插件 +1）：多件加算；插件槽专属，普通装备不写本字段 */
   midSlotsAdd?: number
   /** **插件加低槽**（下层舱段插件 +1）：多件加算；插件槽专属 */

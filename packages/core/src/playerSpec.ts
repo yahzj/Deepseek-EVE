@@ -10,11 +10,11 @@ import type { GameState } from './state'
 import type { DamageResists, DamageType, ModuleDef, SimContext } from './types'
 import { clamp, RESIST_FLOOR } from './combatMath'
 import type { Hp3 } from './combatMath'
-import { allFittedModules, cpuBudgetOf, curveMult, familyModules, fittedCpuUsed, gapCombine, weightedSum, equipmentPenaltiesOf, laserFalloffOf } from './equipment'
+import { allFittedModules, cpuBudgetOf, curveMult, familyModules, fittedCpuUsed, gapCombine, weightedSum, equipmentPenaltiesOf, laserFalloffOf, droneBayTotalM3 } from './equipment'
 import { moduleAllowedOnShip } from './shipFitting'
 import { fleetDefOf } from './instances'
 import { shipCategoryKeyOf } from './labels'
-import { plugModulesOf } from './plugs'
+import { plugEffectsOf } from './plugs'
 import { shipDamageEffects } from './shipDamage'
 import type { UnitSpec, WeaponSpec } from './combat'
 import { droneLaunchGapMsOf } from './droneLaunch'
@@ -126,6 +126,8 @@ export function createPlayerSpec(
   const ship = fleetDefOf(state, ctx, shipId)
   const fleet = state.fleet[shipId]
   if (!ship || !fleet) return null
+  const plugDefs = plugEffectsOf(state, ctx, shipId)
+  const printing = plugDefs.find(p => p.dronePrinting)?.dronePrinting
   const bal = ctx.balance.battle
   const fitted = ship.civilianFittingOnly === true
     ? Object.fromEntries((['high', 'mid', 'low'] as const).map((rack) => [rack, fleet.fitted[rack].map((id) => {
@@ -164,7 +166,7 @@ export function createPlayerSpec(
    * 不在引擎里硬判子分类。
    */
   const stealthMs =
-    propDefs.length > 0 && ship.stealthIgnoresPropulsion !== true
+    propDefs.length > 0 && ship.stealthIgnoresPropulsion !== true && !plugDefs.some(p => p.stealthWithPropulsion)
       ? 0
       : allFittedModules(fitted, ctx).reduce((m, d) => Math.max(m, d.stealthMs ?? 0), 0)
   /**
@@ -239,7 +241,6 @@ export function createPlayerSpec(
    * **全仓没有任何消费点**（`grep plugShieldAdd` 只有"声明 ＋ 累加"两行）⇒ 插件加血**一点都没生效**；
    * 速度那两格同理。本段把它们提到基线处，旧的死累加随之删除。
    */
-  const plugDefs = plugModulesOf(state, ctx, shipId)
   const damage = shipDamageEffects(fleet.damagePlugs)
   const plugHpAdd = {
     s: plugDefs.reduce((n, p) => n + (p.shieldHpAdd ?? 0), 0),
@@ -258,6 +259,12 @@ export function createPlayerSpec(
     s: ceilFinalQuantity(baseHp.s * Math.max(1, shieldHpMult) * (1 + 0.04 * shOpLv) * (1 + 0.03 * battleshipOpsLv) * damage.shield),
     a: ceilFinalQuantity(baseHp.a * Math.max(1, armorHpMult) * hullSkillMult * damage.armor),
     h: ceilFinalQuantity(baseHp.h * Math.max(1, hullHpMult) * hullSkillMult * damage.hull),
+  }
+  const coatingPct = Math.max(0, ...plugDefs.map(p => p.shieldArmorConversionPct ?? 0))
+  const shieldArmorHp = coatingPct > 0 ? ceilFinalQuantity(hp.s * coatingPct) : 0
+  if (coatingPct > 0) {
+    hp.a += shieldArmorHp
+    hp.s = 0
   }
   const shieldRes = mergeResist(ship.shieldResist, undefined)
   for (const m of shieldDefs) applyAdds(shieldRes, m.shieldResistAdd)
@@ -607,7 +614,7 @@ export function createPlayerSpec(
   // 无人机装载（2026-09-08 无人机舱大改：只放飞该船 droneLoad 清单——不再从仓库/货仓自动贪心；
   // 甲板扩展 +bay、战术导控 +dmg 不变。装入时 CPU 已在装配预算内预占（UI 钳制），此处为防御：
   // 装配变化导致舱容/CPU 不足时按清单顺序整型裁到装得下，装不下的类型跳过）
-  let bayLimit = ship.droneBayM3 ?? 0
+  const bayLimit = droneBayTotalM3(ship, fitted, ctx, fleet.plugs)
   let droneDmgBonus = 0
   /**
    * 无人机中继天线（2026-09-10 船长：百分比制乘入机型基础射程）。
@@ -619,7 +626,6 @@ export function createPlayerSpec(
    */
   const droneRangePcts: number[] = []
   for (const g of droneGear) {
-    bayLimit += g.droneBayBonusM3 ?? 0
     droneDmgBonus += g.droneDmgBonus ?? 0
     if ((g.droneRangeBonusPct ?? 0) > 0) droneRangePcts.push(g.droneRangeBonusPct!)
   }
@@ -688,7 +694,7 @@ export function createPlayerSpec(
           src: 'drone',
           artId: droneId,
           fixedType: def.damageType ?? 'kinetic',
-          shotDmg: shot,
+          shotDmg: printing ? ceilFinalQuantity(shot * printing.damageMul) : shot,
           // 射程 = 机型基础 × 中继乘数（2026-09-10 船长：蜂鸟 2500/赤鸢 3000/猎鹰 3500/
           // 雷鸥哨戒 5000；旧值 2600 兜底；中继天线百分比乘入）
           maxRangeM: Math.round((def.maxRangeM ?? 2600) * droneRangeMult),
@@ -741,6 +747,10 @@ export function createPlayerSpec(
     ...(dcDevice?.rebirthRepair ? { rebirthRepair: dcDevice.rebirthRepair } : {}),
     ...(crisisOverload ? { crisisOverload } : {}),
     hp,
+    ...(coatingPct > 0 ? { shieldArmorHp } : {}),
+    ...(plugDefs.some(p => (p.shieldPassiveBonusPct ?? 0) > 0)
+      ? { shieldPassiveBonusPct: plugDefs.reduce((n, p) => n + (p.shieldPassiveBonusPct ?? 0), 0) } : {}),
+    ...(printing ? { droneHpMul: printing.hpMul } : {}),
     resists,
     // 本舰无人机结构层加成（模块求和；2026-09-13 船长：鱿蜂结构层「提高无人机 80% 的结构」）
     droneHullBonusPct: allDefs.reduce((s, m) => s + (m.droneHullHpBonusPct ?? 0), 0),
@@ -789,7 +799,7 @@ export function createPlayerSpec(
     })(),
     agility: ship.agility,
     weapons,
-    droneLaunchGapMs: droneLaunchGapMsOf(allFittedModules(fitted, ctx), ship.droneLaunchCutPct),
+    droneLaunchGapMs: Math.max(10, Math.round(droneLaunchGapMsOf(allFittedModules(fitted, ctx), ship.droneLaunchCutPct) * (printing?.launchMul ?? 1))),
     droneReviveGapMs: droneLaunchGapMsOf(allFittedModules(fitted, ctx), 0, true),
     // 锁定装置（2026-09-09）：被锁目标受击加深等效比例（>0 同时开启集火模式）
     ...(lockEq > 1 ? { lockedDmgBonus: lockEq - 1 } : {}),

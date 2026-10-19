@@ -32,6 +32,11 @@ import type { DataDocument } from '../../../tools/data-editor-contract'
 import { staticDataGroup } from './staticData'
 
 const SHIP_PLUGS_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
+  'plug-pirate-raider': { name: '袭击者插件', description: L10N['mod.factionPlug.001']!.zh },
+  'plug-alien-shield-coating': { name: '护盾镀膜插件', description: L10N['mod.factionPlug.002']!.zh },
+  'plug-gravekeeper-capacitor': { name: '护盾蓄能插件', description: L10N['mod.factionPlug.003']!.zh },
+  'plug-titan-compression': { name: '空间压缩插件', description: L10N['mod.factionPlug.004']!.zh },
+  'plug-deadarmy-printing': { name: '廉价打印插件', description: L10N['mod.factionPlug.005']!.zh },
   "plug-shield-plate": {
     name: '护盾强化插板',
     description: L10N['mod.copy.097']!.zh,
@@ -100,6 +105,11 @@ export const PLUG_IDS = {
   rangefinder: 'plug-rangefinder',
   targetBeacon: 'plug-target-beacon',
   concealment: 'plug-concealment',
+  pirateRaider: 'plug-pirate-raider',
+  alienShieldCoating: 'plug-alien-shield-coating',
+  gravekeeperCapacitor: 'plug-gravekeeper-capacitor',
+  titanCompression: 'plug-titan-compression',
+  deadarmyPrinting: 'plug-deadarmy-printing',
 } as const
 
 /**

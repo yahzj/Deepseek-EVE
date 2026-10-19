@@ -11,6 +11,8 @@ import type { BattleState, GameState } from './state'
 
 /** 三层血量形状 */
 export interface Hp3 {
+  /** 镀膜场内原装甲账；不计入三层血总和。 */
+  coating?: { armor: number; maxArmor: number }
   s: number
   a: number
   h: number
@@ -160,9 +162,9 @@ export function applyDamage(
   type: DamageType,
   shieldDamageMul = 1,
 ): { hp: Hp3; dealt: number } {
-  const next = { s: hp.s, a: hp.a, h: hp.h }
+  const next: Hp3 = { ...hp, ...(hp.coating ? { coating: { ...hp.coating } } : {}) }
   const rest0 = Math.max(0, dmg)
-  const layerKey: Array<keyof Hp3> = ['s', 'a', 'h']
+  const layerKey: Array<'s' | 'a' | 'h'> = ['s', 'a', 'h']
   const layerName: Array<'shield' | 'armor' | 'hull'> = ['shield', 'armor', 'hull']
   const before = hp.s + hp.a + hp.h
 
@@ -219,7 +221,14 @@ export function applyDamage(
     rest -= absorbedRaw
   }
   const after = next.s + next.a + next.h
+  if (next.coating) next.coating.armor = Math.min(next.coating.armor, next.a)
   return { hp: next, dealt: Math.max(0, before - after) }
+}
+
+/** 修复先补原装甲，剩余修复量可补临时镀膜；损伤与修复均保留独立原甲账。 */
+export function healArmorHp(hp: Hp3, amount: number): void {
+  hp.a += amount
+  if (hp.coating) hp.coating.armor = Math.min(hp.coating.maxArmor, hp.coating.armor + amount)
 }
 
 /** 单位存活判据（三层血任一 > 0）（2026-10-02 批次 4h 从 combat.ts 迁来：combat 与 combatRepair 共用） */

@@ -201,6 +201,10 @@ export function cargoCapacityM3Of(state: GameState, ctx: SimContext, shipId: str
     const haulerLv = Math.min(5, state.skills.trained['hauler-ops'] ?? 0)
     if (haulerLv > 0) capMult *= 1 + 0.05 * haulerLv
   }
+  for (const id of state.fleet[shipId]?.plugs ?? []) {
+    const p = ctx.modules.get(id)
+    if (p?.slot === 'plug') bonus += p.cargoCapacityBonusPct ?? 0
+  }
   return ceilFinalQuantity(ship.cargoM3 * (1 + bonus) * capMult * shipDamageEffects(state.fleet[shipId]?.damagePlugs).cargo)
 }
 

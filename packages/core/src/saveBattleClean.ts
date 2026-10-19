@@ -281,6 +281,9 @@ export function cleanBattle(raw: unknown): BattleState | null {
           s: Math.max(0, numf(hpRaw.s, 0)),
           a: Math.max(0, numf(hpRaw.a, 0)),
           h: Math.max(0, numf(hpRaw.h, 0)),
+          ...(typeof asRaw(hpRaw.coating).armor === 'number' && typeof asRaw(hpRaw.coating).maxArmor === 'number'
+            ? { coating: { armor: Math.min(numf(hpRaw.a, 0), Math.max(0, numf(asRaw(hpRaw.coating).armor, 0))),
+                maxArmor: Math.max(0, numf(asRaw(hpRaw.coating).maxArmor, 0)) } } : {}),
         },
         ...(hpMaxOk
           ? {
@@ -432,7 +435,7 @@ export function cleanBattle(raw: unknown): BattleState | null {
       return typeof x === 'number' && Number.isFinite(x) && x >= 0 ? x : undefined
     })
     const v = cleanCountMap(r.v) ?? {}
-    return { q, t, c, v, shipId }
+    return { q, t, c, v, shipId, ...(r.printing === true ? { printing: true } : {}) }
   })
   /** **复活总预算**（开战库存快照，全队一本）：机型 → 剩余可补架数（坏值整条丢） */
   const droneReviveStock = cleanCountMap(b.droneReviveStock)

@@ -8652,6 +8652,8 @@ checkFactionCodexArchive()
  *    找到读取点（登记了却没人读 ⇒ 红 —— 正是 CPU / 扩槽那两次的形态）。
  */
 const PLUG_EFFECT_FIELDS: readonly string[] = [
+  'plugNonStacking', 'stealthWithPropulsion', 'shieldArmorConversionPct', 'shieldPassiveBonusPct',
+  'cargoCapacityBonusPct', 'droneBayBonusM3', 'cpuPenalty', 'dronePrinting',
   'shieldHpAdd',
   'armorHpAdd',
   'hullHpAdd', // 三层血固定值

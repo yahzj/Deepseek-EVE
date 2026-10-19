@@ -3,6 +3,7 @@ import type { BattleState } from './state'
 import type { UnitSpec } from './combat'
 import type { ModuleDef } from './types'
 import { stackWeight } from './equipment'
+import { healArmorHp } from './combatMath'
 
 /** 同件正负效果同权重，全部乘数从原件重算，不逐拍累乘。 */
 export function crisisEffectsOf(modules: readonly ModuleDef[]): UnitSpec['crisisOverload'] {
@@ -87,7 +88,7 @@ export function advancePlayerRebirth(b: BattleState, spec: UnitSpec, nowMs: numb
   const max = rt.hpMax ?? spec.hp
   const armor = Math.min(Math.max(0, max.a - rt.hp.a), max.a * protocol.armorTotalPct * dt / protocol.repairMs)
   const hull = Math.min(Math.max(0, max.h - rt.hp.h), max.h * protocol.hullTotalPct * dt / protocol.repairMs)
-  rt.hp.a += armor
+  healArmorHp(rt.hp, armor)
   rt.hp.h += hull
   ledger.armorHealed += armor
   ledger.hullHealed += hull

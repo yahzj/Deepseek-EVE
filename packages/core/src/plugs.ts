@@ -28,6 +28,7 @@ import { addWare } from './inventory'
 import { shipSlotsOf } from './labels'
 import { fleetDefOf } from './instances'
 import { moduleAllowedOnShip } from './shipFitting'
+import { cpuBudgetOf, fittedCpuUsed, droneCpuUsed } from './equipmentCpu'
 // ⚠ 本模块被 `combat.ts`（建档）· `shipyard.ts` / `market.ts`（入仓与挂卖的闸门）反向引用
 //   ⇒ 依赖方向要保守：**只依赖 `state` / `types`**。原先还 import 了 `equipment.countModule`，
 //   但那只是一行取表（`state.moduleBay[id] ?? 0`），为省掉 `equipment → labels → …` 这条可能成环的
@@ -59,6 +60,16 @@ export function plugModulesOf(state: GameState, ctx: SimContext, shipId: string)
     if (def && isPlugOf(def)) out.push(def)
   }
   return out
+}
+
+/** 效果去重不改变实际安装列表与已占槽数。 */
+export function plugEffectsOf(state: GameState, ctx: SimContext, shipId: string): ModuleDef[] {
+  const seen = new Set<string>()
+  return plugModulesOf(state, ctx, shipId).filter(def => {
+    if (def.plugNonStacking && seen.has(def.id)) return false
+    seen.add(def.id)
+    return true
+  })
 }
 
 /** 插件扩槽类型：中槽扩展与低槽扩展各自只允许一件；其它插件不受此限制。 */
@@ -204,6 +215,11 @@ export function installPlug(
   }
   if ((state.moduleBay[moduleId] ?? 0) < 1) {
     return { ok: false, error: `装备库里没有「${def.name}」，先去组装机造一件。`, errorId: 'core.equipment.002', errorParams: { p1: def.name } }
+  }
+  if ((def.cpuPenalty ?? 0) > 0) {
+    const budget = cpuBudgetOf(state, ctx, shipId, undefined, [...have, moduleId])
+    const used = fittedCpuUsed(ship.fitted, ctx, fleetDefOf(state, ctx, shipId)) + droneCpuUsed(ship.droneLoad, ctx)
+    if (used > budget) return { ok: false, errorId: 'core.equipment.032', errorParams: { p1: used, p2: budget } }
   }
   // 扣库 + 装入（复用装备库的扣减单点口径：够就减 1）
   const rest = (state.moduleBay[moduleId] ?? 0) - 1

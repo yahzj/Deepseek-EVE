@@ -66,7 +66,7 @@ export function wormholePreparationPlan(
     const ship = state.fleet[uid]
     if (!ship) { invalid.push(uid); continue }
     const def = fleetDefOf(state, ctx, uid)
-    if (cpuOverloadText(state, ctx, uid) || droneLoadM3(ship.droneLoad, ctx) > droneBayTotalM3(def, ship.fitted, ctx)) {
+    if (cpuOverloadText(state, ctx, uid) || droneLoadM3(ship.droneLoad, ctx) > droneBayTotalM3(def, ship.fitted, ctx, ship.plugs)) {
       invalid.push(uid)
     }
     for (const [id, n] of Object.entries(ship.droneLoad ?? {})) {
