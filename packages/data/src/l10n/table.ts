@@ -107,7 +107,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'mod.gravekeeperGear.003': { zh: '危机超载协议', en: 'Crisis Overload Protocol' },
   'mod.gravekeeperGear.004': { zh: '护盾耗尽后提高本舰炮台射程与伤害，缩短无人机出击等待与攻击周期，同时降低战斗移动速度；多件安装效果递减。', en: 'After the shield is depleted, raises this ship’s turret range and damage, shortens drone launch delay and attack cycle, and reduces combat movement speed. Multiple fittings have diminishing returns.' },
   'mod.gravekeeperGear.005': { zh: '磁轨蓄能炮', en: 'Railgun Charge Cannon' },
-  'mod.gravekeeperGear.006': { zh: '发射动能弹药，并在连续开火后逐步增加额外能量伤害、延长装填间隔，最多累积五层。', en: 'Fires kinetic ammunition. Consecutive shots build bonus energy damage while lengthening the reload interval, up to five stacks.' },
+  // ⟪文案调整 2026-10-19⟫ 磁轨蓄能明确按单发伤害比例附加能量伤害。
+  'mod.gravekeeperGear.006': { zh: '发射动能弹药，并按本炮单发伤害的一定比例附加能量伤害；连续开火逐步提高附伤比例并延长装填间隔。', en: 'Fires kinetic ammunition and adds energy damage as a proportion of this cannon’s damage per shot. Consecutive shots increase that proportion and lengthen the reload interval.' },
   'ui.gravekeeperGear.001': { zh: '苏生维修', en: 'Rebirth Repair' },
   'ui.gravekeeperGear.002': { zh: '损管触发后{p1}秒内恢复最大装甲{p2}%、最大结构{p3}%；不恢复护盾。', en: 'After damage control triggers, restores {p2}% of maximum armor and {p3}% of maximum hull over {p1} seconds. Does not restore shields.' },
   'ui.gravekeeperGear.003': { zh: '危机超载', en: 'Crisis Overload' },
@@ -115,7 +116,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ui.gravekeeperGear.005': { zh: '无人机超载', en: 'Drone Overload' },
   'ui.gravekeeperGear.006': { zh: '首次出击时间×{p1}%，攻击周期×{p2}%；不增加机群射程或单发伤害。', en: 'First launch time ×{p1}%, attack cycle ×{p2}%. Does not increase drone swarm range or single-shot damage.' },
   'ui.gravekeeperGear.007': { zh: '磁轨蓄能', en: 'Railgun Charge' },
-  'ui.gravekeeperGear.008': { zh: '每次开火后能量附伤+{p1}个百分点、装填间隔+{p2}%；最多{p3}层，加法累计；跨波保留。', en: 'Each shot adds {p1} percentage points of bonus energy damage and {p2}% reload interval; up to {p3} stacks, added together and retained between waves.' },
+  // ⟪文案调整 2026-10-19⟫ 比例基于本炮单发伤害，叠层加法累计。
+  'ui.gravekeeperGear.008': { zh: '攻击附加按本炮单发伤害计算的能量伤害。每次开火后能量伤害比例+{p1}%、装填间隔+{p2}%；最多{p3}层，加法累计；跨波保留。', en: 'Attacks add energy damage based on this cannon’s damage per shot. After each shot, the energy-damage ratio increases by {p1}% and the reload interval by {p2}%; up to {p3} stacks, added together and retained between waves.' },
   'ui.gravekeeperGear.009': { zh: '蓄能{p1}层；额外能量伤害{p2}%', en: '{p1} charge stacks; bonus energy damage {p2}%' },
   'ship.gravekeeper.001': { zh: '巡陵级', en: 'Patrol Tomb-class' },
   'ship.gravekeeper.002': { zh: '碑卫级', en: 'Bastion-class' },
@@ -131,7 +133,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'item.gravekeeper.002': { zh: '守墓者入侵旗舰的记录匣，封存古舰协议与航迹；可用于舰船插件制造或出售。', en: 'A record box from a Gravekeeper invasion flagship, containing ancient fleet protocols and flight paths. Can be used to manufacture ship plugs or sold.' },
   'ui.gravekeeper.001': { zh: '首次受到致命攻击时，结构最低保留1点，并在1秒内维持结构底线；同时在{p1}秒内持续恢复最大装甲与最大结构各{p2}，不恢复护盾。每场每舰一次。', en: 'When first hit by a lethal attack, hull is held at 1 HP for 1 second; over the next {p1} seconds, restores {p2} of maximum armor and hull. Does not restore shields. Once per ship per battle.' },
   'ui.gravekeeper.002': { zh: '装甲与结构获得{p1}全抗性，最大装甲与最大结构各乘{p2}；护盾不变。', en: 'Armor and hull gain {p1} all-resistance; maximum armor and hull are multiplied by {p2}. Shields are unchanged.' },
-  'ui.gravekeeper.003': { zh: '每次实际装甲损失后，装甲全抗性提高{p1}个百分点；每层独立持续{p2}秒，最终装甲抗性最高{p3}。', en: 'Each actual armor loss raises armor all-resistance by {p1} percentage points. Stacks expire independently after {p2} seconds; final armor resistance caps at {p3}.' },
+  // ⟪文案调整 2026-10-19⟫ 当前抗性叠层改用%，保留加法含义。
+  'ui.gravekeeper.003': { zh: '每次实际装甲损失后，装甲全抗性+{p1}%，加法叠加；每层独立持续{p2}秒，最终装甲抗性最高{p3}。', en: 'Each actual armor loss adds {p1}% to armor all-resistance, stacking additively. Stacks expire independently after {p2} seconds; final armor resistance caps at {p3}.' },
   'ui.gravekeeper.004': { zh: '本场首次空盾后永久蓄能，全部武器射程提高{p1}；每次成功攻击后，该武器攻击间隔乘{p2}、伤害乘{p3}，无叠加上限。', en: 'After the first shield depletion in this battle, charge persists and all weapon range increases by {p1}. Each successful attack multiplies that weapon’s interval by {p2} and damage by {p3}, with no stack cap.' },
   'ui.gravekeeper.005': { zh: '{p1} · 苏生协议{p2} · 结构保底剩余{p3}秒 · 维修剩余{p4}秒', en: '{p1} · Rebirth Protocol {p2} · hull floor in {p3} s · repair remaining {p4} s' },
   'ui.gravekeeper.006': { zh: '{p1} · 守墓镀层装甲{p2}层', en: '{p1} · Gravekeeper Armor Coating {p2} stacks' },
@@ -165,7 +168,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'mod.alienLoot.003': { zh: '增压加速腔', en: "Pressure Acceleration Chamber",},
   'mod.alienLoot.004': { zh: '提高机动速度，进入战斗后加成逐渐提高，达到峰值后保持。多装递减。不可制造。', en: "Increases movement speed; the bonus grows after entering combat and remains at its peak. Multiple fittings have diminishing returns. Cannot be manufactured.",},
   'ui.alienLoot.001': { zh: '酸蚀', en: "Acid Corrosion",},
-  'ui.alienLoot.002': { zh: '装甲全抗性 −{p1}个百分点，每层{p2}秒，独立到期', en: "Armor all-resistance −{p1} percentage points; {p2} s per stack, expires independently",},
+  // ⟪文案调整 2026-10-19⟫ 酸蚀使用%，保留加法叠加与独立到期。
+  'ui.alienLoot.002': { zh: '每层装甲全抗性 −{p1}%，持续{p2}秒；加法叠加，独立到期', en: "Armor all-resistance −{p1}% per stack for {p2} s; stacks additively, expires independently",},
   'ui.alienLoot.003': { zh: '渐增机动', en: "Escalating Mobility",},
   'ui.alienLoot.004': { zh: '+{p1}% → +{p2}%，{p3}秒达到峰值', en: "+{p1}% → +{p2}%, reaches peak in {p3} s",},
   'ui.alienLoot.005': { zh: '{p1}：{p2}层，下一层{p3}秒后消退', en: "{p1}: {p2} stacks; next stack expires in {p3} s",},
@@ -708,8 +712,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ui.alien.003': { zh: '无人机战损后，等待{p1}秒满血补回本波存活舰船损失的机位；本场储备{p2}架，用完或载体被击毁后停止。', en: 'After drone losses, waits {p1} seconds before restoring lost slots of surviving ships in this wave at full health. Has {p2} reserve drones for this battle; stops when reserves run out or the carrier is destroyed.' },
   'ui.alien.004': { zh: '腐蚀：装甲和结构全抗性 −{p1}个百分点', en: 'Corrosion: armor and hull resistances −{p1} percentage points' },
   // ⟪文案调整 2026-10-09⟫ 装甲限定说明另取ID，既有英文与历史公告不追改。
-  'ui.alienArmor.001': { zh: '在{p1}米内攻击并自毁，在{p2}米内被击杀也会爆发；对一艘舰船造成基础{p4}点动能伤害，基础命中{p5}%。每次爆发使玩家全队装甲全抗性降低{p3}个百分点，可叠加，抗性可降至负数；未命中仍施加腐蚀。', en: "The Acid Burster explodes when it attacks within {p1} m or is killed within {p2} m; it deals {p4} base kinetic damage with {p5}% base hit chance. Each blast reduces the fleet's all-resistance to armor damage by {p3} percentage points. The effect stacks and can drive resistance below zero; a miss still applies corrosion.",},
-  'ui.alienArmor.002': { zh: '腐蚀：装甲全抗性 −{p1}个百分点', en: "Corrosion: armor all-resistance −{p1} percentage points",},
+  // ⟪文案调整 2026-10-19⟫ 当前腐蚀提示改用%，保留加法叠加。
+  'ui.alienArmor.001': { zh: '在{p1}米内攻击并自毁，在{p2}米内被击杀也会爆发；对一艘舰船造成基础{p4}点动能伤害，基础命中{p5}%。每次爆发使玩家全队装甲全抗性降低{p3}%，加法叠加，抗性可降至负数；未命中仍施加腐蚀。', en: "The Acid Burster explodes when it attacks within {p1} m or is killed within {p2} m; it deals {p4} base kinetic damage with {p5}% base hit chance. Each blast subtracts {p3}% from the fleet's armor all-resistance. The effect stacks additively and can drive resistance below zero; a miss still applies corrosion.",},
+  'ui.alienArmor.002': { zh: '腐蚀：装甲全抗性 −{p1}%', en: "Corrosion: armor all-resistance −{p1}%",},
   'ui.alien.005': { zh: '孵化储备剩余：{p1}；已补回：{p2}', en: 'Hatchery reserves remaining: {p1}; replacements deployed: {p2}' },
   'ui.alien.006': { zh: '无限', en: 'Unlimited' },
   // ⟪文案调整 2026-10-08⟫ 船长确认巢母改为召唤成虫，满编不召唤。
@@ -991,7 +996,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "mod.copy.051": { zh: "强化货舱隔段，同时增加货舱与装甲容量。", en: "Reinforced cargo partitions increasing both hold and armor capacity." },
   "mod.copy.052": { zh: "生体装甲件，提高装甲各系抗性，交火中周期自修装甲，不消耗组件。", en: "Living armor increasing resistance to all damage types and periodically restoring armor in combat without kits." },
   "mod.copy.053": { zh: "生体结构修复件，提高结构各系抗性，交火中周期自修结构，不消耗组件。", en: "A living structure repair unit increasing resistance to all damage types and periodically restoring structure in combat without kits." },
-  "mod.copy.054": { zh: "近程能量喷吐武器，必中且无近盲，单发伤害高、装填慢；威力随距离衰减。", en: "A short-range energy sprayer with heavy shots and slow reloads; always hits, with no blind zone and power falloff at range." },
+  // ⟪文案调整 2026-10-19⟫ 喷吐器复用装甲酸蚀机制，保留必中、无近盲与距离衰减。
+  "mod.copy.054": { zh: "近程能量喷吐武器，必中且无近盲，单发伤害高、装填慢；威力随距离衰减，命中后暂时削减目标装甲抗性，酸蚀可叠加、独立到期。", en: "A short-range energy sprayer with heavy shots and slow reloads; always hits, with no blind zone and power falloff at range. Hits temporarily lower the target's armor resistance; acid stacks and expires independently." },
   "mod.copy.055": { zh: "护盾防护阵列，提高护盾对各伤害类型的抗性。", en: "A shield defense array increasing resistance to each damage type." },
   "mod.copy.056": { zh: "远程动能重炮，基础命中高、单发伤害高、装填慢；仍受目标闪避和距离衰减影响。", en: "A long-range kinetic cannon with high base accuracy, heavy shots and slow reloads; still affected by evasion and range falloff." },
   // ⟪文案调整 2026-10-08⟫ 装备代价逐件累计，负面沿用收益递减。
@@ -3726,7 +3732,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   // ⟪文案调整 2026-10-08⟫ 手册漏挂载修复，同步墨潮现有两艘与干扰舰优先规则。
   "ui.foeIntro.104": { zh: "每 {p1} 秒满血召回最多 {p2} 艘本波已被击毁的友舰，优先召回墨潮干扰舰，不超过本波原编制", en: "every {p1} s recalls up to {p2} destroyed allies from this wave at full health, prioritizing the Ink Tide Jammer within the original formation limit" },
   "ui.foeIntro.105": { zh: "每 {p1} 秒恢复 {p2} 装甲/结构", en: "every {p1} s restores {p2} armour/hull" },
-  "ui.foeIntro.106": { zh: "闪避 +{p1} 个百分点", en: "evasion +{p1} points" },
+  // ⟪文案调整 2026-10-19⟫ 当前战斗增益改用百分号。
+  "ui.foeIntro.106": { zh: "闪避 +{p1}%", en: "evasion +{p1}%" },
   "ui.foeIntro.107": { zh: "受击后冲锋：速度 ×{p1}，冷却 {p2} 秒", en: "when hit, charges: speed ×{p1}, {p2} s cooldown" },
   /* 2026-09-26 补：**射程压制阵列**（H 族墨潮干扰阵列）此前没有效果说明 ⇒ 战斗画面悬停只能显示装置名
      （船长报障「不应该复读一遍相同的文字」）。与其余八条同款：触发/持续条件 ＋ 效果。 */
@@ -4526,6 +4533,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.FitPage.141": { zh: "{base} ← 同类第 {p2} 件：只削剩余缺口（收益递减）", en: "{base} ← same kind #{p2}: trims the remaining gap only (diminishing returns)" },
   "ui.FitPage.142": { zh: "查看 / 套用 / 重命名 / 删除本船型的装配方案（最多 {FIT_PRESET_MAX} 套）；每套可展开「明细」看逐位装了什么", en: "View, apply, rename or delete fitting presets for this hull (up to {FIT_PRESET_MAX}); expand Details on any preset to see what is fitted slot by slot" },
   "ui.FitPage.143": { zh: "{droneBayTotal} m³ · 战斗只放飞下方清单中已装入的无人机", en: "{droneBayTotal} m³ · only the drones loaded into the list below launch in combat" },
+  // ⟪文案调整 2026-10-19⟫ 跃迁、捕获网与唯一装备各用实际规则。
+  "ui.FitPage.193": { zh: "{base} ← 同类第 {p2} 件：取跃迁距离最大、同距冷却最短的一件（不叠加）", en: "{base} ← same kind #{p2}: longest jump only; shortest cooldown on a tie (no stacking)" },
+  "ui.FitPage.194": { zh: "{base}（同舰仅限一件）", en: "{base} (one per ship)" },
+  "ui.FitPage.195": { zh: "{base} ← 同类第 {p2} 件：取最快一台（不叠加）", en: "{base} ← same kind #{p2}: fastest unit only (no stacking)" },
   "ui.FitPage.144": { zh: "{p1}：每 {p2} 秒修甲 {p3} / 结构 {p4}", en: "{p1}: repairs {p3} armor / {p4} structure every {p2} seconds" },
   "ui.FitPage.145": { zh: "（加力推进点火期 {p1} m/s；{p2}）", en: "(afterburner burn {p1} m/s; {p2})" },
   "ui.FitPage.146": { zh: "（装备 +{p1}%）", en: " (modules +{p1}%)" },
@@ -6318,7 +6329,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipInfo.044": { zh: "单发伤害", en: "Damage per shot" },
   "ui.shipInfo.045": { zh: "弹头", en: "Warhead" },
   "ui.shipInfo.046": { zh: "弹道特性", en: "Trajectory profile" },
-  "ui.shipInfo.047": { zh: "近盲（太近会炸到自己）· 命中不随距离衰减", en: "Close-range blind spot (too close and it damages itself) · accuracy does not fall off with distance" },
+  // ⟪文案调整 2026-10-19⟫ 近盲不再附自伤解释，机制不变。
+  "ui.shipInfo.047": { zh: "近盲 · 命中不随距离衰减", en: "Close-range blind spot · accuracy does not fall off with distance" },
   "ui.shipInfo.048": { zh: "追踪命中", en: "Tracking accuracy" },
   "ui.shipInfo.049": { zh: "弹种", en: "Ammo type" },
   "ui.shipInfo.050": { zh: "消耗：", en: "Consumes:" },
@@ -6355,6 +6367,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipInfo.076": { zh: "叠加方式", en: "Stacking" },
   "ui.shipInfo.077": { zh: "全额叠加", en: "Full stacking" },
   "ui.shipInfo.078": { zh: "取最长一件（不叠加）", en: "Longest item only (no stacking)" },
+  // ⟪文案调整 2026-10-19⟫ 特殊装备叠加标签与实际算法一致。
+  "ui.shipInfo.251": { zh: "取跃迁距离最大、同距冷却最短的一件（不叠加）", en: "Longest jump only; shortest cooldown on a tie (no stacking)" },
+  "ui.shipInfo.252": { zh: "同舰仅限一件", en: "One per ship" },
+  "ui.shipInfo.253": { zh: "各件独立运作", en: "Each module operates independently" },
+  "ui.shipInfo.254": { zh: "乘法叠加", en: "Multiplicative stacking" },
+  "ui.shipInfo.255": { zh: "同类型扩槽插件仅限一件", en: "One slot-expansion plug per type" },
   "ui.shipInfo.079": { zh: "多装递减", en: "Diminishing returns when stacked" },
   "ui.shipInfo.080": { zh: "放飞 CPU", en: "Launch CPU" },
   "ui.shipInfo.081": { zh: "占用舱容", en: "Cargo space used" },
@@ -6450,7 +6468,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipInfo.163": { zh: "{p1}射程", en: "{p1} range" },
   "ui.shipInfo.164": { zh: "全部武器单发 +{p1}（只进炮台与光束）", en: "All weapons per shot +{p1} (turrets and beams only)" },
   "ui.shipInfo.165": { zh: "武器装填及战斗主动装置周期 +{p1}；多件代价相乘，负面随收益递减", en: "Weapon reload intervals and active combat cycles +{p1}; penalties multiply and follow the module's diminishing returns" },
-  "ui.shipInfo.166": { zh: "护盾、装甲、结构各系抗性减{p1}个百分点；多件负面随收益递减，可降至负值", en: "Shield, armor and hull resistances each −{p1} percentage points; penalties follow diminishing returns and can cause negative resistance" },
+  // ⟪文案调整 2026-10-19⟫ 抗性代价改用%，仍逐件相减。
+  "ui.shipInfo.166": { zh: "护盾、装甲、结构各系抗性 −{p1}%；逐件相减，负面随收益递减，可降至负值", en: "Shield, armor and hull resistances each −{p1}%; subtracts per module, with penalties following diminishing returns and allowing negative resistance" },
   "ui.equipmentPenalty.001": { zh: "装后周期", en: "Fitted cycle" },
   "ui.equipmentPenalty.002": { zh: "{p1}秒，原周期{p2}秒", en: "{p1}s, base cycle {p2}s" },
   // ⟪文案调整 2026-10-09⟫

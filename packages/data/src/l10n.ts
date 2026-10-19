@@ -406,7 +406,8 @@ export const EN_MODULES: EnTable = {
   'mod-lair-web-h': { name: 'Ink Tide Capture Web', description: L10N['mod.copy.064']!.en },
   // **R 族（光环）势力特色装备**（船长 2026-10-01 令）：叠光激光炮 + 跃迁规避装置；⟪2026-10-02⟫ 再加 三叉戟光束炮（Trident Beam Cannon）+ PD激光（PD Laser）—— **四件**同出「光环稀有残骸的高级箱专属池」（与 AI 核心同一个池子）。
   'mod-lair-laser-r': { name: 'Overlay Laser Cannon', description: L10N['mod.copy.065']!.en },
-  'mod-lair-blink-r': { name: 'Blink Evasion Drive', description: L10N['mod.copy.066']!.en },
+  // ⟪文案调整 2026-10-19⟫ 与短距离跃迁装置成对定名。
+  'mod-lair-blink-r': { name: 'Short-Range Warp Device', description: L10N['mod.copy.066']!.en },
   'mod-lair-beam-r': { name: 'Trident Beam Cannon', description: L10N['mod.copy.067']!.en },
   'mod-lair-pd-r': { name: 'PD Laser', description: L10N['mod.copy.068']!.en },
   // 虫洞族专属（mod-wh-*）

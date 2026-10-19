@@ -1773,11 +1773,10 @@ export interface ModuleDef {
   burst?: { shots: number; gapMs: number }
   /**
    * **【我方】闪现跃迁**（**船长 2026-10-01 令**：「**和R族同款，挨打触发闪现。但是冷却时间延长到12秒**」）——
-   * R 族势力特色**中槽**件（`mod-lair-blink-r`）专属。
+   * R族势力特色**中槽战斗支援件**（`mod-lair-blink-r`）专属。
    *
-   * 口径：**本舰被敌方舰炮命中**时（打我方无人机不算、未命中不算）把交战距离**拉开 `distanceM`**
-   * （朝远离敌人一侧），随后进入 `cooldownMs` 冷却（**船长定 12 秒**；⚠ 敌方那件 **2026-10-03 起
-   * 也改成 12 秒**——原先"比敌方的 5 秒更长"的对比已不成立，两侧现在同长）。
+   * 口径：**本舰被敌方舰炮命中**时（打我方无人机不算、未命中不算）朝自身期望交距跃迁，
+   * 单次最多 `distanceM`，随后进入装备规定的 `cooldownMs` 冷却；敌方挂载件独立取参。
    * 冷却态记在 `BattleState.meBlinks`（`kind: 'runtime'`）。
    */
   blink?: { distanceM: number; cooldownMs: number }

@@ -671,16 +671,19 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
   /** 空位候选下拉文案：V18.1 收敛件标注"第 N 件衰减"（避免玩家误以为全效线性叠加） */
   function fitOptionLabel(m: ModuleDef): string {
     const base = `${m.name}（×${countModule(state, m.id)} · ${moduleShortEffect(m)}）${stealthTraitNote(m)}`
+    // ⟪文案调整 2026-10-19⟫ 唯一限制与收益递减分开显示，不改叠加算法。
+    if (m.unique === true) return tr("ui.FitPage.194", { base })
     if (!fitted) return base
     const st = stackingOf(m)
     // `flat` = 加算不收敛 ⇒ 不挂"第 N 件衰减"尾注；
     // ⚠ **2026-09-29 起墨潮电子舱改归 `fleetDecay`（全队折权缺口乘法）** ⇒ 它**会**挂尾注
     //   （旧 `sum` 组"同舰加和、上限内不打折"已作废——那条不衰减，故当时被排除在外）。
     if (st.group === 'flat') return base
-    const n = sameKindCount(fitted, engine.ctx, m)
+    const remaining = pickBay ? { ...fitted, [pickBay.rack]: fitted[pickBay.rack].filter((_, i) => i !== pickBay.index) } : fitted
+    const n = sameKindCount(remaining, engine.ctx, m)
     if (n === 0) return base
     // 2026-09-15 隐秘行动装置（`max` 组）：多件**取最长一件**——明说"不叠加"，免得玩家以为能叠到 50 秒
-    if (st.group === 'max') return tr("ui.FitPage.139", { base: base, p2: n + 1 })
+    if (st.group === 'max') return tr(st.kind === 'blink' ? "ui.FitPage.193" : st.kind === 'capture-web' ? "ui.FitPage.195" : "ui.FitPage.139", { base: base, p2: n + 1 })
     if (st.group === 'curve' || st.group === 'weighted' || st.group === 'fleetDecay') { // 折权加算 / EVE 曲线 / 全队折权缺口乘法同文案：写明第 N 件按权重百分比生效
       return tr("ui.FitPage.140", { base: base, p2: n + 1, p3: Math.round(stackWeight(n + 1) * 100) })
     }

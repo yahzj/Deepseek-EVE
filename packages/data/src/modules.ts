@@ -591,7 +591,8 @@ const MODULES_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
       L10N['mod.copy.065']!.zh,
   },
   "mod-lair-blink-r": {
-    name: '跃迁规避装置',
+    // ⟪文案调整 2026-10-19⟫ 船长定名短距离跃迁装置。
+    name: '短距离跃迁装置',
     description: L10N['mod.copy.066']!.zh,
   },
   "mod-lair-beam-r": {

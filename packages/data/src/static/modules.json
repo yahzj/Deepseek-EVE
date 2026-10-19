@@ -1058,12 +1058,13 @@
         "rack": "high",
         "damageType": "plasma",
         "ammoPerEngagement": 24,
-        "maxRangeM": 2800,
+        "maxRangeM": 2500,
         "minRangeM": 0,
         "hitRate": 1,
         "falloff": 0.35,
-        "reloadMs": 2800,
+        "reloadMs": 3800,
         "dmgMult": 4.4,
+        "acidOnHit": { "cutPct": 0.05, "durationMs": 15000 },
         "cpuUse": 34
       },
       {
@@ -1179,7 +1180,7 @@
       },
       {
         "id": "mod-lair-blink-r",
-        "slot": "propulsion",
+        "slot": "support",
         "rack": "mid",
         "blink": {
           "distanceM": 2000,
@@ -1274,7 +1275,7 @@
         "rack": "mid",
         "shieldHpBonus": 0.8,
         "rangeCutPct": 0.25,
-        "cpuUse": 46
+        "cpuUse": 36
       },
       {
         "id": "mod-wh-c-laser",

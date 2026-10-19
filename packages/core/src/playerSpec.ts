@@ -543,6 +543,7 @@ export function createPlayerSpec(
         hitRate: 1,
         falloff: laserFalloffOf(turret.falloff ?? 0.3, allFittedModules(fitted, ctx)),
         reloadMs: reload,
+        ...(turret.acidOnHit ? { acidOnHit: turret.acidOnHit } : {}),
         // **叠光同款 · 装填自加速**（船长 2026-10-01 令）：只有带该字段的件（R 族叠光激光炮）才写
         ...(turret.overlayDrive !== undefined ? { overlayDrive: {
           stepMs: turret.overlayDrive.stepMs * penalties.reload,
@@ -777,12 +778,7 @@ export function createPlayerSpec(
     ...(allDefs.some(mod => mod.speedRamp) ? { speedBonusModules: allDefs.filter(mod => (mod.speedBonusPct ?? 0) > 0) } : {}),
     // 本单位自己的点火周期（只在有覆盖件时写；没写 = 全局 60/60，见 `unitThrusterCycle`）
     ...(cycleOverridden ? { thrusterBoostMs: propCycle!.boostMs, thrusterCooldownMs: propCycle!.cooldownMs } : {}),
-    /**
-     * **跃迁规避装置**（**船长 2026-10-01 令**：「闪现装置为中槽，和R族同款，挨打触发闪现。
-     * 但是冷却时间延长到12秒。」）—— 中槽件里带 `blink` 的那件（R 族 `mod-lair-blink-r`）。
-     * 多件装 ⇒ 取**拉开距离最大、同距取冷却最短**那一件（与推进器周期同一把"挑最有利的一件"的尺）。
-     * 没装 ⇒ 不写字段 ⇒ 零行为变化。
-     */
+    // 船长2026-10-19：短距离跃迁改归支援；多件取距离最大、同距冷却最短者，参数读取装备。
     ...(() => {
       const blinks = allFittedModules(fitted, ctx).filter((m) => m.blink !== undefined)
       if (blinks.length === 0) return {}

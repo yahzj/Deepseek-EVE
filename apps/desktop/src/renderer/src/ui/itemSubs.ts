@@ -282,6 +282,7 @@ export const SUPPORT_MODULE_KEYS: Record<string, readonly string[]> = {
     'mod-wh-g-ballistic', // 幽灵弹道校正器（动能单发 + 射程）
     'mod-lair-web-h', // 墨潮捕获网（战斗中钉住敌舰）
     'mod-lair-ecm-h', // 墨潮电子舱（压制敌方武器射程）
+    'mod-lair-blink-r', // 短距离跃迁装置（受击单次跃迁，取一件）
     'mod-stealth-2', 'mod-stealth-3', // 隐秘行动装置：**开战保护**，属战斗侧（不是航行/后勤）
   ],
   /** 辅助支援件：航行、后勤与作业面（不直接改变交火读数） */

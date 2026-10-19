@@ -575,20 +575,6 @@ export function moduleShortEffect(mod: ModuleDef): string {
       if (mod.speedBonusPct !== undefined)
         parts.push(tr("ui.shipInfo.107", { p1: pct(mod.speedBonusPct), p2: thrusterCycleShort(mod) }))
       if (mod.hitPenalty !== undefined && mod.hitPenalty > 0) parts.push(tr("ui.shipInfo.108", { p1: (1 - mod.hitPenalty).toFixed(2) }))
-      /**
-       * **R 族「跃迁规避装置」的短行**（**船长 2026-10-01 令**：「闪现装置为中槽，和R族同款，挨打触发闪现。
-       * 但是冷却时间延长到12秒」）——本件**没有速度加成**（不是提速推进器），所以上面那一段拼出来是空串；
-       * 这里补它自己那一段（拉开距离 + 冷却），否则短行一句话都没有（`content:check` 的短效说明契约会判红）。
-       */
-      if (mod.blink) {
-        // ⟪文案调整 2026-10-08⟫ 玩家朝期望交距闪现，参数仍从本件读取。
-        parts.push(
-          tr("ui.shipInfo.247", {
-            p1: (mod.blink.distanceM / 1000).toFixed(mod.blink.distanceM % 1000 === 0 ? 0 : 1),
-            p2: Math.round(mod.blink.cooldownMs / 1000),
-          }),
-        )
-      }
       body = parts.join(' · ')
       break
     }
@@ -625,7 +611,13 @@ export function moduleShortEffect(mod: ModuleDef): string {
     case 'support': {
       // V18.1 支援件：效果字段判别（稳定器按系可多件 → 逐系列出）
       const dmg = mod.damageTypeBonusPct
-      if (mod.rebirthRepair) {
+      if (mod.blink) {
+        // ⟪文案调整 2026-10-19⟫ 短距跃迁改归战斗支援，沿用受击触发短行。
+        body = tr('ui.shipInfo.247', {
+          p1: (mod.blink.distanceM / 1000).toFixed(mod.blink.distanceM % 1000 === 0 ? 0 : 1),
+          p2: Math.round(mod.blink.cooldownMs / 1000),
+        })
+      } else if (mod.rebirthRepair) {
         const d = mod.rebirthRepair
         body = tr('ui.gravekeeperGear.002', { p1: d.repairMs / 1000, p2: d.armorTotalPct * 100, p3: d.hullTotalPct * 100 })
       } else if (mod.crisisOverload) {
@@ -717,7 +709,7 @@ export function moduleShortEffect(mod: ModuleDef): string {
   // ⚠ **2026-09-29**：墨潮电子舱改归 `fleetDecay`（全队折权缺口乘法）⇒ 它**开始**挂"多装递减"
   //   （旧 `sum` 组"同舰加和、上限内不打折"已作废，当时正因不衰减而排除在外）。
   const stShort = stackingOf(mod).group
-  return body + (stShort === 'flat' || stShort === 'max' ? '' : tr('ui.shipInfo.179'))
+  return body + (mod.unique === true || stShort === 'flat' || stShort === 'max' ? '' : tr('ui.shipInfo.179'))
 }
 
 /** 三系抗性紧凑文本（整数主抗制简化后只列非零项；全零 = "无"） */
@@ -1301,6 +1293,9 @@ export function moduleInfoLines(mod: ModuleDef, engine?: GameEngine, shipId?: st
     if (mod.evasionGapPct !== undefined) {
       lines.push({ k: tr("ui.shipInfo.034"), v: tr("ui.shipInfo.142", { p1: (1 - (mod.evasionGapPct ?? 0)).toFixed(2) }) })
     }
+    if (mod.blink) {
+      lines.push({ k: tr('ui.moduleSpecs.005'), v: tr('ui.moduleSpecs.006', { p1: mod.blink.distanceM, p2: mod.blink.cooldownMs / 1000 }) })
+    }
     // 隐秘行动装置（2026-09-15 船长：高槽 · 自身武器开火前隐身 20/30 秒 · 不被锁定不被攻击）
     if (mod.stealthMs !== undefined) {
       lines.push({
@@ -1500,9 +1495,6 @@ export function moduleInfoLines(mod: ModuleDef, engine?: GameEngine, shipId?: st
   if (mod.railCharge) lines.push({ k: tr('ui.gravekeeperGear.007'), v: tr('ui.gravekeeperGear.008', {
     p1: mod.railCharge.damageStepPct * 100, p2: mod.railCharge.reloadStepPct * 100, p3: mod.railCharge.maxStacks,
   }) })
-  if (mod.blink) {
-    lines.push({ k: tr('ui.moduleSpecs.005'), v: tr('ui.moduleSpecs.006', { p1: mod.blink.distanceM, p2: mod.blink.cooldownMs / 1000 }) })
-  }
   if (mod.burst) {
     lines.push({ k: tr('ui.moduleSpecs.007'), v: tr('ui.moduleSpecs.008', { p1: mod.burst.shots, p2: mod.burst.gapMs / 1000 }) })
   }
@@ -1511,16 +1503,25 @@ export function moduleInfoLines(mod: ModuleDef, engine?: GameEngine, shipId?: st
   // 2026-09-15 隐秘行动装置 = **取最长一件、不叠加**——`max` 组单列一档，不谎报"全额叠加"）
   // 2026-09-11 船长定精简：只留结论一句（机制解释在手册「装配」条目里）
   const st = stackingOf(mod)
-  if (st.group === 'flat') {
+  // ⟪文案调整 2026-10-19⟫ 安装限制和独立运作不是加算收益，单独说明。
+  if (mod.unique === true) {
+    lines.push({ k: tr('ui.shipInfo.076'), v: tr('ui.shipInfo.252') })
+  } else if (mod.slot === 'plug' && ((mod.midSlotsAdd ?? 0) > 0 || (mod.lowSlotsAdd ?? 0) > 0)) {
+    lines.push({ k: tr('ui.shipInfo.076'), v: tr('ui.shipInfo.255') })
+  } else if (mod.targetWeightMul !== undefined) {
+    lines.push({ k: tr('ui.shipInfo.076'), v: tr('ui.shipInfo.254') })
+  } else if (['turret', 'laser', 'missile', 'drone-deck'].includes(mod.slot)) {
+    lines.push({ k: tr('ui.shipInfo.076'), v: tr('ui.shipInfo.253') })
+  } else if (st.group === 'flat') {
     lines.push({ k: tr("ui.shipInfo.076"), v: tr("ui.shipInfo.077") })
   } else if (st.group === 'max') {
     /**
-     * ⚠ **`max` 组里有两类，措辞要分开**（**2026-09-29 补**）：
+     * `max`组分别标明最长隐身、最快捕获网或最优短距跃迁，不共用方向含混的标签。
      * - 隐秘行动装置 = **取最长一件**（最长隐身窗口说了算）；
      * - 捕获网（`kind: 'capture-web'`）= **取最快一台**（实现里 `webCycleMs` 用 `Math.min`，
      *   更快的那台说了算）——拿"取最长"去说"取最短"就是谎报方向。
      */
-    lines.push({ k: tr("ui.shipInfo.076"), v: st.kind === 'capture-web' ? tr("ui.shipInfo.243") : tr("ui.shipInfo.078") })
+    lines.push({ k: tr("ui.shipInfo.076"), v: st.kind === 'capture-web' ? tr("ui.shipInfo.243") : st.kind === 'blink' ? tr("ui.shipInfo.251") : tr("ui.shipInfo.078") })
   } else if (st.group === 'fleetDecay') {
     /**
      * **全队多件递减（乘法叠加）**（**2026-09-29 船长令**：原话「这类全队型的效果，能否做全队多装递减，
@@ -1528,7 +1529,7 @@ export function moduleInfoLines(mod: ModuleDef, engine?: GameEngine, shipId?: st
      *
      * 旧口径（2026-09-26 立的 `sum` 档）写的是「同舰多件加和（上限 90%）· 多舰乘法叠加」——
      * 那条下 4 舰各 3 件就到 90.8%、把敌人射程一路压到地板 3,000 m（玩家报障）。
-     * 现口径 = 整队所有来源拉平进一个池、按 EVE 曲线逐件递减再乘法 ⇒ 渐近上限 ≈ 36.7%。
+     * 现口径由core的weightedGapFleet判定：舰内逐件递减，舰间乘法合成并限制整队上限。
      */
     // ⟪文案调整 2026-10-09⟫ 启动加速仅本舰递减，不能套用电子压制60%封顶说明。
     lines.push({ k: tr("ui.shipInfo.076"), v: tr(st.kind === 'drone-launch' ? 'ui.shipInfo.079' : 'ui.shipInfo.201') })

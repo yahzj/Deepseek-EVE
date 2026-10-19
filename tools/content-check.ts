@@ -2764,21 +2764,7 @@ for (const m of MODULES) {
     }
   } else if (m.slot === 'propulsion') {
     // 2026-09-08 船长：取消 speedBonusPct ≤0.9 上限护栏（推进器提速档位改由设计定；命中代价 hitPenalty 仍受检）
-    /**
-     * ⚠ **2026-10-01 开一个口子：带 `blink` 的推进器豁免"必须有速度加成"** ——
-     * R 族「跃迁规避装置」（中槽）不是提速件：它给的是**挨打时拉开交战距离**（闪现），
-     * 没有 `speedBonusPct`。豁免只认 `blink` 这一个字段（别的推进器照旧必须有正的速度加成）。
-     */
-    if (m.blink === undefined) {
-      check(m.speedBonusPct !== undefined && m.speedBonusPct > 0, `推进器 ${m.id} speedBonusPct 非法（需为正）`)
-    }
-    // 闪现件自己的值域：距离 > 0、冷却 > 0（缺省/非正即红）
-    if (m.blink !== undefined) {
-      check(
-        m.blink.distanceM > 0 && m.blink.cooldownMs > 0,
-        `闪现件 ${m.id} blink 非法（距离与冷却都需为正）`,
-      )
-    }
+    check(m.speedBonusPct !== undefined && m.speedBonusPct > 0, `推进器 ${m.id} speedBonusPct 非法（需为正）`)
     check(m.hitPenalty === undefined || (m.hitPenalty >= 0 && m.hitPenalty <= 0.5), `推进器 ${m.id} hitPenalty 非法（需 [0, 0.5]，V17.1 命中代价）`)
   } else if (m.slot === 'missile') {
     // V18B-1 导弹架：爆炸系武器形态——追踪命中（不随距离衰减）+ 近盲安全射距（防自爆）
@@ -2825,6 +2811,7 @@ for (const m of MODULES) {
     const hasEcm = m.foeRangeDebuffPct !== undefined
     const hasWeb = m.captureWebCycleMs !== undefined
     const hasRepair = (m.repairArmorHp ?? 0) > 0 || (m.repairHullHp ?? 0) > 0
+    const hasBlink = m.blink !== undefined
     /**
      * **2026-09-26 新增第十类：损管（`hullSaveKit`）**——损伤管制装置 MK1~MK3（低槽支援件：
      * 结构层三系减伤 ＋ 每场一次"结构锁定 1 秒"）。船长同日令「**损管装置和修理装置是同一类型装备分类**」
@@ -2833,8 +2820,8 @@ for (const m of MODULES) {
      */
     const hasDc = m.hullSaveKit !== undefined
     const kinds =
-      (stabKeys > 0 ? 1 : 0) + (hasRof ? 1 : 0) + (hasHit ? 1 : 0) + (hasEva ? 1 : 0) + (hasRepair ? 1 : 0) + (hasWarp ? 1 : 0) + (hasStealth ? 1 : 0) + (hasEcm ? 1 : 0) + (hasWeb ? 1 : 0) + (hasDc ? 1 : 0) + (hasCalibration ? 1 : 0) + (hasSpeedRamp ? 1 : 0) + (m.crisisOverload ? 1 : 0)
-    check(kinds === 1, `支援件 ${m.id} 必须且只能给一类效果（伤害系/射速/命中/闪避/修复/跃迁/隐身/射程压制/捕获网/损管）`)
+      (stabKeys > 0 ? 1 : 0) + (hasRof ? 1 : 0) + (hasHit ? 1 : 0) + (hasEva ? 1 : 0) + (hasRepair ? 1 : 0) + (hasWarp ? 1 : 0) + (hasStealth ? 1 : 0) + (hasEcm ? 1 : 0) + (hasWeb ? 1 : 0) + (hasDc ? 1 : 0) + (hasCalibration ? 1 : 0) + (hasSpeedRamp ? 1 : 0) + (m.crisisOverload ? 1 : 0) + (hasBlink ? 1 : 0)
+    check(kinds === 1, `支援件 ${m.id} 必须且只能给一类效果（伤害系/射速/命中/闪避/修复/跃迁/隐身/射程压制/捕获网/损管/短距离跃迁）`)
     if (hasRepair) {
       // 修复系：装甲/结构修复值 ∈ [1, 100]、周期缺省 5 秒（2000~60_000 毫秒）、必须指明消耗的修理组件
       check((m.repairArmorHp ?? 0) >= 0 && (m.repairArmorHp ?? 0) <= 100 && (m.repairHullHp ?? 0) >= 0 && (m.repairHullHp ?? 0) <= 100,
@@ -2871,12 +2858,14 @@ for (const m of MODULES) {
         const cyc = m.captureWebCycleMs ?? 0
         check(Number.isInteger(cyc) && cyc >= 5_000 && cyc <= 120_000, `支援件 ${m.id} captureWebCycleMs 非法（需 5000~120000 毫秒的整数）`)
       }
+      if (hasBlink) check(Number.isInteger(m.blink!.distanceM) && m.blink!.distanceM > 0 && Number.isInteger(m.blink!.cooldownMs) && m.blink!.cooldownMs > 0, `支援件 ${m.id} blink 参数非法`)
       // 归槽语义：伤害/射速/**跃迁** = 低槽；命中/闪避 = 中槽；**隐身 = 高槽**（数据显式 rack，rackOf 已校验一致）
       if (stabKeys > 0 || hasRof || hasWarp) check(m.rack === 'low', `支援件 ${m.id}（伤害/射速/跃迁）应为低槽，实际 ${m.rack}`)
       if (hasHit || hasEva) check(m.rack === 'mid', `支援件 ${m.id}（命中/闪避）应为中槽，实际 ${m.rack}`)
       if (hasStealth) check(m.rack === 'high', `支援件 ${m.id}（隐身）应为高槽，实际 ${m.rack}`)
       // 2026-09-26：射程压制与捕获网都是**高槽**（船长：「分别占据高槽，高槽」）
       if (hasEcm || hasWeb) check(m.rack === 'high', `支援件 ${m.id}（射程压制/捕获网）应为高槽，实际 ${m.rack}`)
+      if (hasBlink) check(m.rack === 'mid', `支援件 ${m.id}（短距离跃迁）应为中槽，实际 ${m.rack}`)
     }
     check(m.bonus === undefined, `支援件 ${m.id} 不应携带工业 bonus`)
     check(m.maxRangeM === undefined && m.damageType === undefined, `支援件 ${m.id} 不应携带炮台武器参数`)

@@ -272,6 +272,7 @@ export function stackingOf(def: ModuleDef): { group: StackGroup; kind: string } 
   // 收敛池 = 同 kind（MK2 与 MK3 混装时按单件效果从强到弱排位）。
   if (def.warpSpeedBonusPct !== undefined) return { group: 'curve', kind: 'warp' }
   if (def.lockDmgBonus !== undefined) return { group: 'curve', kind: 'lock' }
+  if (def.blink !== undefined) return { group: 'max', kind: 'blink' }
   /**
    * **隐秘行动装置（`stealthMs`，2026-09-15 船长）**：隐身窗口 = **多件取最长那一件**（不叠加）——
    * 两档 20/30 秒，装两件也只有最长的那一段。UI 据此标「取最长（不叠加）」，
@@ -518,13 +519,13 @@ export function weightedGap(bonuses: number[]): number {
  */
 export const WEIGHTED_GAP_FLEET_CAP = 0.6
 
-/** 已装模块中与目标件同收敛键（kind）的件数（含目标件本身则 +1 由调用方处理） */
+/** 候选装配前，同收敛键已装件数；包含同型号，候选本身尚未计入。 */
 export function sameKindCount(fitted: FittedModules, ctx: SimContext, def: ModuleDef): number {
   const kind = stackingOf(def).kind
   let n = 0
   for (const id of allFittedIds(fitted)) {
     const d = ctx.modules.get(id)
-    if (d && d.id !== def.id && stackingOf(d).kind === kind) n++
+    if (d && stackingOf(d).kind === kind) n++
   }
   return n
 }
