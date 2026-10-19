@@ -81,12 +81,13 @@ describe('战损并列卡格', () => {
     const result = nodes(view.render({ ids }))
     expect(view.hookCount()).toBe(hooks)
     const cards = result.filter(node => node.props['data-damage-kind'])
-    expect(cards.map(card => card.props['data-damage-kind'])).toEqual(['shield', 'cargo', 'range'])
+    expect(cards.map(card => card.props['data-damage-kind'])).toEqual(['shield', 'cargo', 'range', 'shield'])
+    expect(new Set(cards.map(card => card.props.key)).size).toBe(4)
     expect(cards.every(card => card.type === 'button' && card.props['aria-haspopup'] === 'dialog')).toBe(true)
-    expect(cards.every(card => card.props['aria-label'].includes(view.tr('ui.shipDamage.013')) && text(card).includes('-15%'))).toBe(true)
+    expect(cards.every(card => card.props['aria-label'].includes(view.tr('ui.shipDamage.013')) && text(card).includes('-5%'))).toBe(true)
     for (const card of cards) {
       expect(nodes(card).some(node => node.type === 'Glyph' && node.props.name === 'ico-hint')).toBe(true)
-      expect(text(card.props.richTip)).toContain('15%')
+      expect(text(card.props.richTip)).toContain('5%')
       expect(text(card.props.richTip)).toContain(view.tr('ui.shipDamage.014'))
       expect(card.props.title).toBeUndefined()
     }
@@ -148,6 +149,16 @@ describe('战损并列卡格', () => {
     expect(trigger.focus).toHaveBeenCalledTimes(5)
   })
 
+  it('重复战损卡独立选中，不会让同种两张卡同时展开', () => {
+    const view = component('ui/ShipDamageMods.tsx', 'ShipDamageMods')
+    const props = { ids: ['shield', 'shield', 'armor', 'shield'] }
+    const cards = () => nodes(view.render(props)).filter(node => node.props['data-damage-kind'])
+    cards()[1]!.props.onClick({ currentTarget: { focus: vi.fn(), isConnected: true } })
+    expect(cards().map(card => card.props['aria-expanded'])).toEqual([false, true, false, false])
+    expect(nodes(view.render(props)).filter(node => node.props.role === 'dialog')).toHaveLength(1)
+    view.unmount()
+  })
+
   it.each(['zh', 'en'] as const)('%s装配网格：满槽加3战损、零槽及普通计数仍独立', locale => {
     const view = component('pages/FitPage.tsx', 'PluginSlotsSection', locale)
     const engine = fixture(locale, 2, ['plug-cpu-core', 'plug-cpu-core'], ['shield', 'cargo', 'range'])
@@ -197,8 +208,8 @@ describe('战损并列卡格', () => {
     expect(view.render({ engine, uid: 'target' })).toBeNull()
     engine.state.fleet.target!.damagePlugs = ['ghost', 'cargo', 'cargo'] as never
     const cleaned = nodes(view.render({ engine, uid: 'target' }))
-    expect(cleaned.find(node => node.type === 'ShipDamageMods')!.props.ids).toEqual(['cargo'])
-    expect(text(cleaned)).toContain(`${view.tr('ui.shipDamage.013')} 1`)
+    expect(cleaned.find(node => node.type === 'ShipDamageMods')!.props.ids).toEqual(['cargo', 'cargo'])
+    expect(text(cleaned)).toContain(`${view.tr('ui.shipDamage.013')} 2`)
     expect(view.render({ engine, uid: 'missing' })).toBeNull()
   })
 

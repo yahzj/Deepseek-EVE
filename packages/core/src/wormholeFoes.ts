@@ -81,30 +81,31 @@ export function wormholeDisplayThreat(threat: number): number {
  * - ⚠ 上面那批读数出自**「血量预算」旧口径**；2026-09-16「威胁预算 = 血 × 火力」（`d1ba834d`）
  *   与 09-19 谜质/支援批都在其后，`tools/wormhole-econ.ts` 的参考编队（4×T3 巡 · 技能 Lv3 · 无谜质）
  *   自 2026-09-13 起未再复核 ⇒ **同威胁数字下的实际体量已明显变硬**，本档的成败要等尺子重定后复核。
- * - 基准层 1 = 45 **不动**；收益曲线（`WORMHOLE_REWARD_GROWTH` = 0.20）**不动** ⇒ 0.12 < 0.20，
- *   「单位威胁收益逐层严格上升」（船长 2026-09-13）**仍然成立**，用例 `wormhole-run.test.ts` 照旧守着。
+ * - 2026-10-19：威胁不改，信号空间资源点改为堆数与单堆收益共同增长。
  */
 export const WORMHOLE_THREAT_GROWTH = 0.12
-/** 每层**收益**增幅（等比 ×1.2）。**必须大于威胁增幅** —— 船长 2026-09-13：
- *  「深层收益应该比难度曲线要更高」⇒ 用等比而非加法，才能让"单位威胁收益"**逐层严格上升**
- *  （若威胁用 +9 加法，层 1→2 的威胁增幅恰好 20%、与收益打平，头两层看不出"更赚"）。
- *  2026-09-15 威胁增幅降到 0.10 后，这条不等式更宽松（收益 0.20 > 威胁 0.10）。 */
-export const WORMHOLE_REWARD_GROWTH = 0.2
+/** 2026-10-19确认：单堆层增幅下调，另由signalSpaceResourcePileBonus增加资源堆数。 */
+export const WORMHOLE_REWARD_GROWTH = 0.08
 /** 兼容取整：每层威胁的**名义**增量（= 45×0.12 = 5.4 ≈ **5**；2026-09-15 由 7 降到 5，
  *  2026-09-23 增幅上调到 0.12 后取整仍为 5；供文档/读数引用） */
 export const WORMHOLE_THREAT_PER_LAYER = Math.round(WORMHOLE_THREAT_BASE * WORMHOLE_THREAT_GROWTH)
 
-/** 第 `depth` 层的威胁（层 1 = 45，每层 ×1.10，取整） */
+/** 第depth层威胁：基准值乘现行威胁增长率，不受资源调整影响。 */
 export function wormholeLayerThreat(depth: number): number {
   const d = Math.max(1, Math.floor(depth))
   return Math.round(WORMHOLE_THREAT_BASE * Math.pow(1 + WORMHOLE_THREAT_GROWTH, d - 1))
 }
 
-/** 第 `depth` 层的收益系数（层 1 = 1.0，每层 ×1.2）——**涨得比威胁快** */
+/** 信号空间单堆层收益每层×1.08，实验虫洞保留原线性增长。 */
 export function wormholeLayerRewardMul(depth: number, expeditionRules?: number): number {
   const d = Math.max(1, Math.floor(depth))
   if (expeditionRules === 2) return 1 + 0.08 * (d - 1)
   return Math.pow(1 + WORMHOLE_REWARD_GROWTH, d - 1)
+}
+
+/** 2026-10-19确认：信号空间每深入一层多一堆矿脉/普通残骸，不扩增实验虫洞。 */
+export function signalSpaceResourcePileBonus(depth: number, expeditionRules?: number): number {
+  return expeditionRules === undefined ? Math.max(0, Math.floor(depth) - 1) : 0
 }
 
 /** 每层节点数（船长定：2~3 个；层 1~2 取 2、层 3 起取 3——越深越长，与收益曲线同向） */

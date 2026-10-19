@@ -111,7 +111,7 @@ export { DEEP_SPACE_PROBE_BLUEPRINT_ID, DEEP_SPACE_SKILL_IDS, PROBE_MATERIAL_PER
 export { planetNeighborIndices, planetConstructionCheck, planetClearanceCheck, planetBuildingOperational, planetAdjacencyOf, planetBuildingOutputMul } from './planetGrid'
 export type { PlanetConstructionCheck } from './planetGrid'
 export type { ShipFitPreset } from './state'
-export { SHIP_DAMAGE_DEFS, SHIP_DAMAGE_MAX, SHIP_DAMAGE_CHANCE, SHIP_DAMAGE_PENALTY, cleanShipDamage, shipDamageEffects, rollShipDamage } from './shipDamage'
+export { SHIP_DAMAGE_DEFS, SHIP_DAMAGE_CHANCE, SHIP_DAMAGE_PENALTY, cleanShipDamage, shipDamageEffects, rollShipDamage } from './shipDamage'
 export type { ShipDamageKind } from './shipDamage'
 export { ammoTiersOf } from './ammoTiers'
 export { battleAmmoPreloadPlan } from './battleAmmoPreflight'

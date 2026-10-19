@@ -115,12 +115,12 @@ describe('守墓入侵隔离调参', () => {
     expect(w.boss.hp).toEqual({ s: 90000, a: 120000, h: 90000 })
   })
 
-  it('蓄能按1.3乘算，非加法；装填仍1.1，武器分账不改', () => {
+  it('蓄能按1.25乘算，非加法；装填仍1.1，武器分账不改', () => {
     const { b, boss } = fixture()
     b.foeShieldCapacitorActive = { [boss.tag]: true }
     for (let n = 0; n < 8; n++) noteFoeCapacitorAttack(b, boss, 0)
-    expect(foeCapacitorMultiplierOf(b, boss, 0, 'damageMul')).toBeCloseTo(1.3 ** 8, 8)
-    expect(foeCapacitorMultiplierOf(b, boss, 0, 'damageMul')).not.toBeCloseTo(1 + .3 * 8, 5)
+    expect(foeCapacitorMultiplierOf(b, boss, 0, 'damageMul')).toBeCloseTo(1.25 ** 8, 8)
+    expect(foeCapacitorMultiplierOf(b, boss, 0, 'damageMul')).not.toBeCloseTo(1 + .25 * 8, 5)
     expect(foeCapacitorMultiplierOf(b, boss, 0, 'reloadMul')).toBeCloseTo(1.1 ** 8, 8)
     expect(foeCapacitorMultiplierOf(b, boss, 'pd', 'damageMul')).toBe(1)
   })

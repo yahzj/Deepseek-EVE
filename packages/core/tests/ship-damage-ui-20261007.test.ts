@@ -12,7 +12,7 @@ const nodes = (v: unknown): Node[] => Array.isArray(v) ? v.flatMap(nodes) : v &&
   ? [v as Node, ...(v as Node).children.flatMap(nodes)] : []
 
 describe('战损详情真实组件', () => {
-  it.each(['zh', 'en'] as const)('%s详情可展开、重复和非法值不占位，清单与富卡同源', locale => {
+  it.each(['zh', 'en'] as const)('%s详情保留重复战损、过滤非法值，清单与富卡同源', locale => {
     const ast = ts.createSourceFile('ShipDamageMods.tsx', readFileSync(resolve(ROOT, 'apps/desktop/src/renderer/src/ui/ShipDamageMods.tsx'), 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
     const fn = ast.statements.find(n => ts.isFunctionDeclaration(n) && n.name?.text === 'ShipDamageMods')!
     const createElement = (type: string, props: object | null, ...children: unknown[]) => ({ type, props: props ?? {}, children })
@@ -27,9 +27,9 @@ describe('战损详情真实组件', () => {
     const component = scope.result as unknown as (p: unknown) => unknown
     expect(component({ ids: [] })).toBeNull()
     const content = nodes(component({ ids: ['shield', 'cargo', 'range', 'ghost', 'shield'] }))
-    expect(content.filter(n => n.props['data-damage-kind'])).toHaveLength(3)
-    expect(content.filter(n => n.props['data-damage-kind']).map(n => n.props['data-damage-kind'])).toEqual(['shield','cargo','range'])
-    expect(content.filter(n => n.type === 'InfoCard').every(n => n.children.some(v => typeof v === 'string' && v.includes('15%')))).toBe(true)
+    expect(content.filter(n => n.props['data-damage-kind'])).toHaveLength(4)
+    expect(content.filter(n => n.props['data-damage-kind']).map(n => n.props['data-damage-kind'])).toEqual(['shield','cargo','range','shield'])
+    expect(content.filter(n => n.props['data-damage-kind']).every(n => n.props['aria-label'].includes('-5%'))).toBe(true)
     expect(content.filter(n => n.type === 'InfoCard').every(n => n.children.includes(tr('ui.shipDamage.014')))).toBe(true)
     expect(content.filter(n => n.props['data-damage-kind']).every(n => n.props.richTip)).toBe(true)
   })

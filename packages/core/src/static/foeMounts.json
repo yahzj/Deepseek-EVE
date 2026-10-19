@@ -164,7 +164,7 @@
         "id": "foe-mount-d-shield-capacitor",
         "shieldCapacitor_rangeMul": 1.5,
         "shieldCapacitor_reloadMul": 1.1,
-        "shieldCapacitor_damageMul": 1.3
+        "shieldCapacitor_damageMul": 1.25
       },
       {
         "id": "foe-mount-d-reconstruction",

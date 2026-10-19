@@ -20,6 +20,7 @@ import { scrapShip } from '../src/scrap'
 import { assignAiSalvage, advanceAi } from '../src/ai'
 import { advanceGame } from '../src/engine'
 import { injectShipRecoveryTestState } from '../../../tools/ship-recovery-test-fixture'
+import { ceilFinalQuantity } from '../src/quantity'
 
 const ctx = buildSimContext()
 const gun = 'mod-turret-kin-1'
@@ -213,7 +214,24 @@ describe('回收入队：装备、正常插件及资源守恒', () => {
 })
 
 describe('战损插件', () => {
-  it.each(SHIP_DAMAGE_DEFS.map(d => d.id))('%s只降低对应最终属性15%，已装加成仍参与计算', kind => {
+  it('真实整船回收在六种旧战损后仍可新增重复件，恢复入队和读档不截断', () => {
+    const previous = SHIP_DAMAGE_DEFS.map(def => def.id)
+    let checked = false
+    for (let seed = 1; seed <= 80 && !checked; seed++) {
+      const state = world(seed)
+      wreck(state, { damagePlugs: previous, reinforceChance: .9 })
+      const result = trySalvagePlayerWreckOf(state, ctx, gal)
+      if (result.kind !== 'ship' || result.damagePlugs?.length !== 7) continue
+      expect(result.defId).toBe('sh-hammerhead')
+      const restored = restoreShipFromWreck(state, { ...result, defId: result.defId! })
+      expect(state.fleet[restored]!.damagePlugs!.slice(0, 6)).toEqual(previous)
+      expect(new Set(state.fleet[restored]!.damagePlugs).size).toBe(6)
+      expect(loadSaveFile(serializeSaveFile(state)).state.fleet[restored]!.damagePlugs).toEqual(result.damagePlugs)
+      checked = true
+    }
+    expect(checked).toBe(true)
+  })
+  it.each(SHIP_DAMAGE_DEFS.map(d => d.id))('%s只降低对应最终属性5%，已装加成仍参与计算', kind => {
     const state = world(), uid = addShipToFleet(state, 'sh-hammerhead')
     state.fleet[uid]!.fitted = { high: [gun], mid: [shield], low: [] }
     state.fleet[uid]!.droneLoad = { 'drone-scout': 1 }
@@ -221,27 +239,28 @@ describe('战损插件', () => {
     const base = createPlayerSpec(state, ctx, uid)!, cargo = cargoCapacityM3Of(state, ctx, uid)
     state.fleet[uid]!.damagePlugs = [kind]
     const next = createPlayerSpec(state, ctx, uid)!
-    expect(next.hp.s).toBeCloseTo(base.hp.s * (kind === 'shield' ? 0.85 : 1))
-    expect(next.hp.a).toBeCloseTo(base.hp.a * (kind === 'armor' ? 0.85 : 1))
-    expect(next.hp.h).toBeCloseTo(base.hp.h * (kind === 'hull' ? 0.85 : 1))
-    expect(next.speedMps).toBeCloseTo(base.speedMps! * (kind === 'speed' ? 0.85 : 1))
-    expect(cargoCapacityM3Of(state, ctx, uid)).toBe(kind === 'cargo' ? Math.round(cargo * 0.85) : cargo)
-    next.weapons.forEach((w, i) => expect(w.maxRangeM).toBe(kind === 'range' ? Math.round(base.weapons[i]!.maxRangeM * 0.85) : base.weapons[i]!.maxRangeM))
+    expect(next.hp.s).toBe(ceilFinalQuantity(base.hp.s * (kind === 'shield' ? 0.95 : 1)))
+    expect(next.hp.a).toBe(ceilFinalQuantity(base.hp.a * (kind === 'armor' ? 0.95 : 1)))
+    expect(next.hp.h).toBe(ceilFinalQuantity(base.hp.h * (kind === 'hull' ? 0.95 : 1)))
+    expect(next.speedMps).toBeCloseTo(base.speedMps! * (kind === 'speed' ? 0.95 : 1))
+    expect(cargoCapacityM3Of(state, ctx, uid)).toBe(kind === 'cargo' ? ceilFinalQuantity(cargo * 0.95) : cargo)
+    next.weapons.forEach((w, i) => expect(w.maxRangeM).toBe(kind === 'range' ? Math.round(base.weapons[i]!.maxRangeM * 0.95) : base.weapons[i]!.maxRangeM))
     expect(state.fleet[uid]!.plugs).toHaveLength(2)
   })
-  it('50%新增、去重上限3、不占插件槽、已满不掷；清洗拒绝未知项', () => {
+  it('50%新增且可重复，不占插件槽，清洗仅拒绝未知项', () => {
     let added = 0
     for (let seed = 1; seed <= 2000; seed++) {
       const state = world(seed)
       const damage = rollShipDamage(state, ['shield', 'armor'])
       if (damage.length === 3) added++
-      expect(new Set(damage).size).toBe(damage.length)
       const before = state.rng.count
-      if (damage.length === 3) { expect(rollShipDamage(state, damage)).toEqual(damage); expect(state.rng.count).toBe(before) }
+      const next = rollShipDamage(state, damage)
+      expect(next.slice(0, damage.length)).toEqual(damage)
+      expect(state.rng.count).toBeGreaterThan(before)
     }
     expect(added / 2000).toBeGreaterThan(0.45); expect(added / 2000).toBeLessThan(0.55)
-    expect(cleanShipDamage(['shield','shield','ghost','range','cargo','speed'])).toEqual(['shield','range','cargo'])
-    expect(shipDamageEffects(['shield', 'shield'])).toMatchObject({ shield: 0.85, armor: 1 })
+    expect(cleanShipDamage(['shield','shield','ghost','range','cargo','speed'])).toEqual(['shield','shield','range','cargo','speed'])
+    expect(shipDamageEffects(['shield', 'shield'])).toMatchObject({ shield: .95 ** 2, armor: 1 })
   })
   it('射程战损与干扰相乘，带射程加成的舰炮和无人机共用各自基准账', () => {
     const state = world(), uid = addShipToFleet(state, 'sh-hammerhead')
@@ -255,12 +274,12 @@ describe('战损插件', () => {
     const after = createPlayerSpec(state, ctx, uid, undefined, afterRefs)!
     expect(afterRefs.weaponRanges).toHaveLength(after.weapons.length)
     afterRefs.weaponRanges.forEach((r, i) => {
-      expect(r.baseM).toBeCloseTo(beforeRefs.weaponRanges[i]!.baseM * 0.85)
+      expect(r.baseM).toBeCloseTo(beforeRefs.weaponRanges[i]!.baseM * 0.95)
       expect(r.bonusMul).toBe(beforeRefs.weaponRanges[i]!.bonusMul)
     })
     applyMeJammerDebuff(before, 0.35, beforeRefs.weaponRanges)
     applyMeJammerDebuff(after, 0.35, afterRefs.weaponRanges)
-    after.weapons.forEach((w, i) => expect(Math.abs(w.maxRangeM - Math.round(before.weapons[i]!.maxRangeM * 0.85))).toBeLessThanOrEqual(1))
+    after.weapons.forEach((w, i) => expect(Math.abs(w.maxRangeM - Math.round(before.weapons[i]!.maxRangeM * 0.95))).toBeLessThanOrEqual(1))
   })
   it('修理/换装不清除、不入方案/黑匣/库存，入仓和出售阻止洗白', () => {
     const state = world(), uid = restoreShipFromWreck(state, { defId: 'sh-hammerhead', recoveryRules: 2, damagePlugs: ['cargo'],

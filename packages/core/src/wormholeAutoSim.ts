@@ -43,8 +43,9 @@ import {
 } from './wormholeGrid'
 import { WORMHOLE_TURN_PER_MOVE, WORMHOLE_TURN_PER_SCAN } from './wormholeGrid'
 import { WORMHOLE_PILE_UNITS_BASE } from './wormhole'
-import { WORMHOLE_WRECK_PILE_M3_BASE, wormholeRelicChanceOf } from './wormholeSalvage'
-import { wormholeLayerRewardMul } from './wormholeFoes'
+import { WORMHOLE_WRECK_PILE_M3_BASE, WORMHOLE_GRAVEYARD_COMMONS_MIN, WORMHOLE_GRAVEYARD_COMMONS_MAX,
+  WORMHOLE_VEIN_PILES_MIN, WORMHOLE_VEIN_PILES_MAX, wormholeRelicChanceOf } from './wormholeSalvage'
+import { signalSpaceResourcePileBonus, wormholeLayerRewardMul } from './wormholeFoes'
 import { WORMHOLE_TURN_BASE, WORMHOLE_TURN_MASS_COEF, wormholeStepCost, WORMHOLE_TOTAL_MASS_CAP } from './wormhole'
 
 /**
@@ -55,7 +56,7 @@ import { WORMHOLE_TURN_BASE, WORMHOLE_TURN_MASS_COEF, wormholeStepCost, WORMHOLE
  */
 const STEP_COST = WORMHOLE_TURN_PER_MOVE
 
-/** **浅层留手比例**：本层最多捡到 `货舱 × 本值` 就转去下潜（深层收益 ×1.2/层，早下潜更划算） */
+/** 浅层留手比例：达到货舱本比例后转去下潜，保留原有取舍。 */
 export const WORMHOLE_AUTO_DESCEND_HOLD_SHARE = 0.25
 /**
  * **收成折扣 = 0.8**（2026-09-26 船长令：「收益按照80%折扣」）。
@@ -320,32 +321,37 @@ export function wormholeAutoDescend(opts: {
         continue
       }
 
-      // ③ 到格干活：每动作 1 回合，回收 = 台数 堆（取"该地点该有的堆数"上限 2 堆，与节点口径一致）
-      const piles = 2
+      // 矿脉和墓场普通堆数随层增长；遗迹沿用原自动探索的两次翻检口径。
+      const extra = signalSpaceResourcePileBonus(depth)
+      const piles = target.place === 'vein'
+        ? WORMHOLE_VEIN_PILES_MIN + Math.floor(rng() * (WORMHOLE_VEIN_PILES_MAX - WORMHOLE_VEIN_PILES_MIN + 1)) + extra
+        : target.place === 'graveyard'
+          ? WORMHOLE_GRAVEYARD_COMMONS_MIN + Math.floor(rng() * (WORMHOLE_GRAVEYARD_COMMONS_MAX - WORMHOLE_GRAVEYARD_COMMONS_MIN + 1)) + extra
+          : 2
       const rigs = target.place === 'vein' ? Math.max(1, miners) : Math.max(1, salvagers)
       const trips = Math.max(1, Math.ceil(piles / rigs))
       for (let t = 0; t < trips; t++) {
         // 遗迹不看留手额度（它不占货舱），只看回合
         if (turns < 1 || (holdUsed >= holdCapThisLayer && target.place !== 'ruins')) break
         turns -= 1
-        if (target.place === 'vein') {
-          const units = Math.max(1, ceilFinalQuantity(WORMHOLE_PILE_UNITS_BASE * mul * (0.8 + rng() * 0.4) * tech.ore))
-          out.oreUnits += units
-          holdUsed += units * 0.5 // 母矿单位→m³ 的量级换算（与货舱页同量级）
-        } else if (target.place === 'graveyard') {
-          const m3 = pileM3(mul, rng, tech.wreck)
-          out.wreckM3 += m3
-          holdUsed += WORMHOLE_WRECK_PILE_M3_BASE
-        } else {
-          /**
-           * 遗迹：一次作业**必出**一件东西 —— 要么稀有残骸、要么安全货柜（深层两样都更容易）。
-           * 口径：先掷稀有（`wormholeRelicChanceOf(depth)`，与手动同一张表），没中就掷货柜（层 2 起）。
-           * ⚠ 与手动的差别（有意）：手动是"探索遗迹格"分多次动作，这里一次作业算一次完整翻检 ⇒ 必出 1 件。
-           * 为什么这么定：实测"按概率各掷一次"在 200 颗种子下 **恒为 0**（遗迹格本来就少、还要走得过去），
-           * 等于把稀有残骸与安全货柜两条线在新口径里废掉了 —— 那不是"优化"，是丢功能。
-           */
-          if (rng() < wormholeRelicChanceOf(depth)) out.rareItems += 1
-          else if (depth >= 2) out.relicBoxes += 1
+        // 每次作业按台数收堆，末批不得把不足台数的堆补满；遗迹维持一次动作一次翻检。
+        const batch = target.place === 'ruins' ? 1 : Math.min(rigs, piles - t * rigs)
+        for (let p = 0; p < batch; p++) {
+          if (target.place !== 'ruins' && holdUsed >= Math.min(holdM3, holdCapThisLayer)) break
+          if (target.place === 'vein') {
+            const units = Math.min(Math.floor(Math.max(0, holdM3 - holdUsed) / .5),
+              Math.max(1, ceilFinalQuantity(WORMHOLE_PILE_UNITS_BASE * mul * (0.8 + rng() * 0.4) * tech.ore)))
+            out.oreUnits += units
+            holdUsed += units * 0.5 // 母矿单位→m³ 的量级换算（与货舱页同量级）
+          } else if (target.place === 'graveyard') {
+            const m3 = Math.min(Math.floor(Math.max(0, holdM3 - holdUsed)), pileM3(mul, rng, tech.wreck))
+            out.wreckM3 += m3
+            holdUsed += m3
+          } else {
+            // 遗迹保留一次动作一次翻检：先判稀有，未中且层数足够时给货柜。
+            if (rng() < wormholeRelicChanceOf(depth)) out.rareItems += 1
+            else if (depth >= 2) out.relicBoxes += 1
+          }
         }
       }
     }

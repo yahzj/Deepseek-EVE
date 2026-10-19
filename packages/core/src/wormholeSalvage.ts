@@ -21,6 +21,7 @@
  * 而本文件经 `salvaging` 回头吃 `state` ⇒ 会成环，与 D/F 批两次踩过的坑同款）。
  */
 import { ceilFinalQuantity } from './quantity'
+import { signalSpaceResourcePileBonus } from './wormholeFoes'
 import type { CommandResult } from './engine'
 import { rareDropRateMulOf, tuningMul } from './tuning'
 import type { GameState, RngState } from './state'
@@ -756,9 +757,10 @@ export function wormholeEnsureSalvagePiles(state: GameState, cell: WormholeGridC
   const piles: WormholeCellPile[] = []
   if (cell.place === 'graveyard') {
     const span = WORMHOLE_GRAVEYARD_COMMONS_MAX - WORMHOLE_GRAVEYARD_COMMONS_MIN + 1
-    const commons = WORMHOLE_GRAVEYARD_COMMONS_MIN + Math.floor(rng() * span)
+    const baseCommons = WORMHOLE_GRAVEYARD_COMMONS_MIN + Math.floor(rng() * span)
+    const commons = baseCommons + signalSpaceResourcePileBonus(run.depth, run.expeditionRules)
     // **每 3 堆普通判一次稀有**（船长口径）⇒ 上限 = ⌊普通 ÷ 3⌋
-    const rolls = Math.floor(commons / WORMHOLE_RARE_JUDGE_PER_COMMONS)
+    const rolls = Math.floor(baseCommons / WORMHOLE_RARE_JUDGE_PER_COMMONS)
     for (let i = 0; i < rolls; i++) {
       // 限时倍率（2026-09-15）：`rareWreckRate` 乘判定概率、`rareWreckVolume` 乘每件单位数
       if (rng() < Math.min(1, WORMHOLE_RARE_JUDGE_CHANCE * rareDropRateMulOf(state))) piles.push({ itemId: rare, units: RARE_WRECK_VOLUME_M3 * tuningMul(state, 'rareWreckVolume') })
@@ -2482,7 +2484,7 @@ export function wormholeEnsureVeinPiles(state: GameState, cell: WormholeGridCell
   if (grid.activated.includes(cell.key)) return
   const rng = wormholeStream(runSeedOf(state) * 97 + run.depth * 577 + (cell.q * 89 + cell.r * 71) * 19)
   const span = WORMHOLE_VEIN_PILES_MAX - WORMHOLE_VEIN_PILES_MIN + 1
-  const count = WORMHOLE_VEIN_PILES_MIN + Math.floor(rng() * span)
+  const count = WORMHOLE_VEIN_PILES_MIN + Math.floor(rng() * span) + signalSpaceResourcePileBonus(run.depth, run.expeditionRules)
   const piles = wormholeNodePilesFor(state, cell, count)
   /**
    * 谜质「母矿富集器」：**铺堆那一刻**按倍率放大（+25%/台）。

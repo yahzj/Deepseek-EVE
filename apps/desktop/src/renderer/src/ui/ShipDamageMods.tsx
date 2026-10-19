@@ -10,18 +10,18 @@ import '../styles-ship-damage.css'
 
 /** 船长 2026-10-07 确认：战损与普通插件同格展示，详情沿用富卡及弹层。 */
 export function ShipDamageMods({ ids }: { ids?: readonly ShipDamageKind[] }) {
-  const [picked, setPicked] = useState<ShipDamageKind | null>(null)
+  const [picked, setPicked] = useState<string | null>(null)
   const modal = useRef<HTMLDivElement>(null)
   const trigger = useRef<HTMLButtonElement | null>(null)
   const dialogId = useId()
   const damage = cleanShipDamage(ids)
   const pct = `${Math.round(SHIP_DAMAGE_PENALTY * 100)}%`
-  const cards = (damage ?? []).map(id => {
+  const cards = (damage ?? []).map((id, index) => {
     const def = SHIP_DAMAGE_DEFS.find(row => row.id === id)!
     const name = tr(def.nameId)
-    return { id, name, content: infoCardContent(name, [], tr(def.descriptionId, { pct }), tr('ui.shipDamage.014')) }
+    return { id, key: `${id}-${index}`, name, content: infoCardContent(name, [], tr(def.descriptionId, { pct }), tr('ui.shipDamage.014')) }
   })
-  const selected = cards.find(card => card.id === picked)
+  const selected = cards.find(card => card.key === picked)
   useEffect(() => {
     if (!selected) {
       if (picked !== null) setPicked(null)
@@ -38,16 +38,16 @@ export function ShipDamageMods({ ids }: { ids?: readonly ShipDamageKind[] }) {
       document.removeEventListener('focusin', keepFocus)
       if (previous?.isConnected) previous.focus()
     }
-  }, [picked, selected?.id])
+  }, [picked, selected?.key])
   if (!damage) return null
   return <>
-    {cards.map(({ id, name, content }) => {
+    {cards.map(({ id, key, name, content }) => {
       const tip = hoverTipProps(content)
-      return <button key={id} type="button"
+      return <button key={key} type="button"
         className="app-fit-slot-icon is-filled app-ship-damage-card" data-ship-damage data-damage-kind={id}
         aria-label={`${tr('ui.shipDamage.013')}: ${name}; -${pct}`} aria-haspopup="dialog"
-        aria-expanded={selected?.id === id} aria-controls={selected?.id === id ? dialogId : undefined}
-        {...tip} onClick={event => { tip.onMouseLeave(); hideTip(); trigger.current = event.currentTarget; setPicked(id) }}>
+        aria-expanded={selected?.key === key} aria-controls={selected?.key === key ? dialogId : undefined}
+        {...tip} onClick={event => { tip.onMouseLeave(); hideTip(); trigger.current = event.currentTarget; setPicked(key) }}>
         <span className="app-fit-slot-icon-glyph" aria-hidden="true"><Glyph name="plug" size={22} /><Glyph name="ico-hint" size={16} /></span>
         <span className="app-fit-slot-icon-name">{name}</span>
         <span className="app-fit-slot-icon-sub">-{pct}</span>
