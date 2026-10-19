@@ -7,6 +7,7 @@ import { advanceWormhole, wormholeActivateAt, wormholeTravelTo } from '../src/wo
 import { hasLiveFoe, spawnTargetsOf } from '../src/wormholeGrid'
 import { wormholeSpawnAfterTurns } from '../src/wormholeSpawn'
 import { makeHoldState } from '../src/wormholeHold'
+import { wormholeCollectOreAt, wormholeEnsureArrivalPiles, wormholeSalvageAt } from '../src/wormholeSalvage'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import type { WormholeGridCell } from '../src/wormholeGrid'
 
@@ -29,6 +30,28 @@ function world(depth: number) {
     cells: [{ key: '0,0', q: 0, r: 0, place: 'empty' }, beacon, { key: '2,0', q: 2, r: 0, place: 'empty' }],
   }
   return { state, run, beacon }
+}
+
+function worldWithPlace(place: WormholeGridCell['place']) {
+  const made = world(7)
+  made.beacon.place = place
+  made.state.wormhole.noCommonWreckSalvage = false
+  made.state.fleet[made.state.shipId]!.fitted = { high: ['mod-miner-1', 'mod-salvager-1'], mid: [], low: [] }
+  wormholeEnsureArrivalPiles(made.state, ctx)
+  return made
+}
+
+function winCoveredCell(state: ReturnType<typeof world>['state'], run: ReturnType<typeof world>['run']) {
+  const travel = wormholeTravelTo(state, ctx, { q: 1, r: 0 }, { confirmIntercept: true })
+  expect(travel.ok, travel.error).toBe(true)
+  const battle = run.battle!
+  for (const unit of Object.values(battle.units)) if (unit.side === 'foe') unit.hp = { s: 0, a: 0, h: 0 }
+  battle.ended = 'me'
+  run.attending = true
+  state.gameMs = battle.lastTickGameMs + ctx.balance.battle.killcamMs + 1
+  advanceWormhole(state, ctx)
+  expect(run.battle).toBeFalsy()
+  run.tempGrid = makeHoldState(4)
 }
 
 describe('信标围剿收口与不重刷', () => {
@@ -66,5 +89,22 @@ describe('信标围剿收口与不重刷', () => {
     expect(result.spawned).toBe(0)
     expect(result.ambush).toBe(false)
     expect(hasLiveFoe(beacon)).toBe(false)
+  })
+
+  it.each(['vein', 'graveyard', 'ruins', 'matter', 'ship', 'empty'] as const)('其他原地点%s不复现信标死锁', place => {
+    const { state, run, beacon } = worldWithPlace(place)
+    winCoveredCell(state, run)
+    expect(hasLiveFoe(beacon)).toBe(false)
+    if (place === 'vein') {
+      expect(wormholeCollectOreAt(state, ctx).ok).toBe(true)
+    } else if (place === 'graveyard' || place === 'ruins') {
+      expect(wormholeSalvageAt(state, ctx).ok).toBe(true)
+    } else if (place === 'matter') {
+      expect(wormholeActivateAt(state, ctx).ok).toBe(true)
+    } else if (place === 'ship') {
+      expect(wormholeActivateAt(state, ctx)).toMatchObject({ ok: true, started: 'node' })
+    } else {
+      expect(wormholeActivateAt(state, ctx)).toMatchObject({ ok: false })
+    }
   })
 })
