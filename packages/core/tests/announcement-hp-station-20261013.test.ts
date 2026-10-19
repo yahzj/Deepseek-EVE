@@ -21,13 +21,14 @@ describe('船长批准的血量与作业公告', () => {
     expect(new Set(ANNOUNCEMENTS.map(entry => entry.id)).size).toBe(ANNOUNCEMENTS.length)
   })
 
-  it('唯一表接线，未授权英文只登记并回退中文', () => {
+  it('唯一表接线，英文已完成且不再回退中文', () => {
     const row = ANNOUNCEMENTS.find(row => row.id === 'ann-ship-hp-station-20261013')!
     const ids = [row.titleId!, row.tagId!, ...row.bulletIds!]
     expect(ids.map(id => L10N[id]!.zh)).toEqual([row.title, row.tag, ...approved])
     for (const id of ids) {
-      expect(L10N[id]).toMatchObject({ en: '', enDeferred: true })
-      expect(l10nEntryText(L10N[id]!, 'en')).toBe(L10N[id]!.zh)
+      expect(L10N[id]!.enDeferred).not.toBe(true)
+      expect(L10N[id]!.en).toMatch(/[A-Za-z]/)
+      expect(l10nEntryText(L10N[id]!, 'en')).toBe(L10N[id]!.en)
     }
   })
 

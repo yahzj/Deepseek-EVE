@@ -146,7 +146,12 @@ describe('货柜拆解会话账本与实际结算', () => {
     const engine = readFileSync(new URL('apps/desktop/src/renderer/src/game/engine.ts', root), 'utf8')
     expect(engine).toContain('onUnboxResult: this.onUnboxResult')
     expect(text).toContain('engine.unboxLedgerOf(def.id) !== undefined')
-    for (let n = 148; n <= 151; n++) expect(L10N[`ui.IndustryPage.${n}`]).toMatchObject({ en: '', enDeferred: true })
+    for (let n = 148; n <= 151; n++) {
+      const row = L10N[`ui.IndustryPage.${n}`]!
+      expect(row.enDeferred).not.toBe(true)
+      expect(row.en).toMatch(/[A-Za-z]/)
+      expect(row.en).not.toMatch(/[\u3400-\u9fff]/)
+    }
   })
 })
 

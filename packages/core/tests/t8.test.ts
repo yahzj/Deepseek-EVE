@@ -27,7 +27,7 @@ import { setStanding } from './helpers'
 function worldWithFarBounty() {
   const ctx: SimContext = makeTestCtx({
     ships: [ship('sh-falconet', { cargo: 120 })],
-    anomalies: [anomaly('ano-far-easy', 'galaxy-far', { threat: 1, reward: 2_000, combatSeconds: 2, loot: [{ itemId: 'ore-a', units: 5 }] })],
+    anomalies: [{ ...anomaly('ano-far-easy', 'galaxy-far', { threat: 1, reward: 2_000, combatSeconds: 2, loot: [{ itemId: 'ore-a', units: 5 }] }), foeShotDmg: 0 }],
     quietEvents: true,
   })
   const state: GameState = createInitialState({ nowWallMs: 0, seed: 3 })

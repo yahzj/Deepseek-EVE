@@ -6,6 +6,7 @@ import { ENEMY_FILES, ENEMY_TABLES, ENEMY_FIELDS } from '../../../tools/data-edi
 import { planDocuments, rowsOf, validateDocument } from '../../../tools/data-editor-schema'
 import { enemyEnginePreview } from '../../../tools/data-editor-enemy-preview'
 import type { DataDocument, DataTable, EnemyPreviewRequest } from '../../../tools/data-editor-contract'
+import { roundedFoeHp } from './helpers/rounded-foe-hp'
 
 const docs = Object.fromEntries(ENEMY_TABLES.map(table => [table, JSON.parse(readFileSync(new URL(`../../../${ENEMY_FILES[table]}`, import.meta.url), 'utf8'))])) as Record<DataTable, DataDocument>
 const request = (table: EnemyPreviewRequest['table'], id: string, mode: EnemyPreviewRequest['mode'] = 'base'): EnemyPreviewRequest => ({ table, id, mode, depth: 1, role: 'ordinary' })
@@ -33,7 +34,10 @@ describe('敌人编辑契约与真实引擎', () => {
   it('入侵遇袭与旗舰血池读数使用当前引擎覆写', () => {
     const base = enemyEnginePreview(request('invasionFleets', 'corona-nexus'))
     const ambush = enemyEnginePreview(request('invasionFleets', 'corona-nexus', 'ambush'))
-    expect(ambush.rows.reduce((n, row) => n + row.hp, 0)).toBeCloseTo(base.rows.reduce((n, row) => n + row.hp, 0) * 0.75)
+    const card = ANOMALIES.find(row => row.id === 'corona-nexus')!
+    const hpSum = (strength: number) => card.ships!.reduce((n, slot) => { const h = roundedFoeHp(slot, strength); return n + (h.s + h.a + h.h) * (slot.count ?? 1) }, 0)
+    expect(base.rows.reduce((n, row) => n + row.hp, 0)).toBe(hpSum(1))
+    expect(ambush.rows.reduce((n, row) => n + row.hp, 0)).toBe(hpSum(.75))
     const flagship = enemyEnginePreview(request('invasionFleets', 'corona-nexus', 'flagship'))
     expect(flagship.rows.some(row => row.hp === 300000)).toBe(true)
     expect(flagship.rows.some(row => row.wave === 4)).toBe(true)

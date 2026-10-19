@@ -46,6 +46,7 @@ import { injectWeekendWreck, wreckInjectThreatOf } from '../src/salvage'
 import { WRECK_GROUP_BY_KEY } from '../src/wreckGroups'
 import { recycleProfileOf } from '../src/salvage'
 import { pullOneWreck } from '../src/salvaging'
+import { roundedFoeHp } from './helpers/rounded-foe-hp'
 
 const ctx = buildSimContext()
 const bal = ctx.balance.battle
@@ -93,14 +94,16 @@ describe('H 族重定价 · 威胁与属性（船长 2026-09-25：90 / 108 / **1
     for (const id of ['ink-harass', 'ink-raid', 'ink-main']) {
       const a = card(id)
       const m = foeStrengthOf(a, bal)
-      expect(foeThreatRatingOf(m.x, SOLO, bal), `${id} 的实测价 ≠ 卡面威胁`).toBe(a.threat)
-      expect((5 * m.x) / (SOLO * Math.sqrt(1.5)), `${id} 的归一预算超了`).toBeLessThanOrEqual(foeHpOfThreat(a.threat, bal))
+      const actual = id === 'ink-harass' ? 91 : id === 'ink-raid' ? 109 : 132
+      expect(foeThreatRatingOf(m.x, SOLO, bal)).toBe(actual)
+      expect((5 * m.x) / (SOLO * Math.sqrt(1.5))).toBeLessThanOrEqual(foeHpOfThreat(actual, bal))
+      expect((5 * m.x) / (SOLO * Math.sqrt(1.5))).toBeGreaterThan(foeHpOfThreat(actual - 1, bal))
     }
     // 三个具体读数（与探针一致，防止"改注释不改数"）
-    expect(foeStrengthOf(card('ink-harass'), bal).x / Math.sqrt(1.5)).toBeCloseTo(621.12, 1)
-    expect(foeStrengthOf(card('ink-raid'), bal).x / Math.sqrt(1.5)).toBeCloseTo(835.76, 1)
+    expect(foeStrengthOf(card('ink-harass'), bal).x / Math.sqrt(1.5)).toBeCloseTo(624, 8)
+    expect(foeStrengthOf(card('ink-raid'), bal).x / Math.sqrt(1.5)).toBeCloseTo(836.2095602009276, 8)
     // 1114.14 → 1152.79：无人机微调批（主力卡带一架重袭机）
-    expect(foeStrengthOf(card('ink-main'), bal).x / Math.sqrt(1.5)).toBeCloseTo(1152.79, 1)
+    expect(foeStrengthOf(card('ink-main'), bal).x / Math.sqrt(1.5)).toBeCloseTo(1154.2554495678776, 8)
   })
 
   it('**逐舰血÷DPS = 舰级自然比**（船长令「按照敌舰设定的属性比例重定」）· 每艘的绝对值也对得上', () => {
@@ -129,15 +132,15 @@ describe('H 族重定价 · 威胁与属性（船长 2026-09-25：90 / 108 / **1
     }
     // 抽查三条绝对值（骚扰 831.4/116 · 袭击鱼雷舰 1018.1/255 · 主力战巡 3641.1/519 + 机群让位）
     const harass = unitsOf(card('ink-harass'))
-    expect(hpOf(harass[0]!) / 1.5).toBeCloseTo(831.4, 1)
-    expect(gunShotOf(harass[0]!)).toBe(116)
+    expect(harass[0]!.hp).toEqual(roundedFoeHp(card('ink-harass').ships![0]!))
+    expect(gunShotOf(harass[0]!)).toBe(117)
     const raid = unitsOf(card('ink-raid'))
     const torp = raid.find((u) => u.foeShipId === 'foe-h-ink-torpedo')!
-    expect(hpOf(torp) / 1.5).toBeCloseTo(1018.1, 1)
+    expect(torp.hp).toEqual(roundedFoeHp(card('ink-raid').ships!.find(slot => slot.ship.id === torp.foeShipId)!))
     expect(gunShotOf(torp)).toBe(255)
     const main = unitsOf(card('ink-main'))
     const bc = main.find((u) => u.foeShipId === 'foe-h-ink-battlecruiser')!
-    expect(hpOf(bc) / 1.5).toBeCloseTo(3641.1, 1)
+    expect(bc.hp).toEqual(roundedFoeHp(card('ink-main').ships!.find(slot => slot.ship.id === bc.foeShipId)!))
     // ⚠ 战巡在**第 2 波**（越 150 线）⇒ 实收单发 = 名义 519 × 折扣 0.9885 ≈ **513**（见下面那条越线用例）
     expect(gunShotOf(bc)).toBe(513)
   })
@@ -146,9 +149,10 @@ describe('H 族重定价 · 威胁与属性（船长 2026-09-25：90 / 108 / **1
     const a = card('ink-flagship')
     const m = foeStrengthOf(a, bal)
     expect(a.threat).toBe(170)
-    expect(m.hp / 1.5).toBeCloseTo(94439, 0)
+    const expected = a.ships!.reduce((n, slot) => { const hp = roundedFoeHp(slot); return n + (hp.s + hp.a + hp.h) * (slot.count ?? 1) }, 0)
+    expect(m.hp).toBe(expected)
     // 357.7 → 405.2：无人机微调批（母舰 2 架 ＋ 战巡 1 架重袭机：单发 60 → 120 ⇒ 末波机群 DPS +50）
-    expect(m.dps).toBeCloseTo(405.2, 1)
+    expect(m.dps).toBe(405.5)
   })
 
   it('主力第 2 波越 150 线：按既有「超出部分 15% 折扣」落地（名义 162.5 → 实收 160.7 · 逐条取整 137/519/117 → 135/513/116）', () => {

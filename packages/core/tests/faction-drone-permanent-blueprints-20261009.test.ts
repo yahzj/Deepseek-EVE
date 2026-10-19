@@ -193,12 +193,12 @@ describe('五种势力无人机永久图纸', () => {
     expect(Object.values(loaded.expedition.battle!.dronePools ?? {}).filter(pool => pool.artId === item.id)).toHaveLength(5)
   })
 
-  it.each(['zh', 'en'] as const)('%s新名称/说明严格回退已批准中文，旧英文保留、待译登记完整', locale => {
+  it.each(['zh', 'en'] as const)('%s新名称/说明读取已完成的中英文，不回退或残留待译', locale => {
     const localized = buildSimContext(locale)
     for (const row of cases) {
       const prefix = `bp.factionDrone.${String(row.index).padStart(3, '0')}`
-      expect(localized.blueprints.get(row.id)!.name).toBe(L10N[prefix]!.zh)
-      expect(localized.blueprints.get(row.id)!.description).toBe(L10N[`bp.factionDrone.${String(row.index + 5).padStart(3, '0')}`]!.zh)
+      expect(localized.blueprints.get(row.id)!.name).toBe(l10nEntryText(L10N[prefix]!, locale))
+      expect(localized.blueprints.get(row.id)!.description).toBe(l10nEntryText(L10N[`bp.factionDrone.${String(row.index + 5).padStart(3, '0')}`]!, locale))
     }
     expect(localized.items.get('drone-jawclaw')!.name).toBe(l10nEntryText(L10N['item.jawclaw.001']!, locale))
     const backlog = readFileSync(new URL('docs/l10n-pending.md', root), 'utf8')

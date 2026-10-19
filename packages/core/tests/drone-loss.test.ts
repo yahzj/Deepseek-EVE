@@ -377,7 +377,7 @@ describe('战斗结束立刻补足机群（2026-09-20 船长）', () => {
     expect(state.fleet[state.shipId]!.droneLoad).toEqual({ 'drone-heavy': 6 })
     const out = droneBattleOutcome(state, battle)
     expect(out.before).toBe(6)
-    expect(out.after).toBe(1) // 净损失 5（回收 1）⇒ 补货前只剩 1 架
+    expect(out.after).toBe(Math.ceil(6 * .2)) // 回收20%向上取整，仍是补货前架数
     expect(out.attrition).toBe(true)
     // 配对保护：换一场编号对不上的战斗 ⇒ 读不到本场报告时回落"出发 − 净损失"，不会张冠李戴
     const other = { ...battle, startedAtGameMs: 12345 } as unknown as BattleState

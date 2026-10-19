@@ -268,7 +268,7 @@ describe('远征 V12：两阶段', () => {
   it('声望仅首胜发放：同一目标重复完成不再涨声望（防低威胁目标无限白刷）', () => {
     // 自定义母港目标：声望 +2/次
     const firstCtx = makeTestCtx({
-      anomalies: [anomaly('ano-first', 'galaxy-hub', { threat: 1, reward: 1_000, standingGain: 2 })],
+      anomalies: [{ ...anomaly('ano-first', 'galaxy-hub', { threat: 1, reward: 1_000, standingGain: 2 }), foeShotDmg: 0 }],
     })
     expect(startExpedition(state, 'ano-first', firstCtx).ok).toBe(true)
     advanceGame(state, 10 * 60_000, firstCtx) // 打赢（结算在 chunk 末尾）
@@ -285,7 +285,7 @@ describe('远征 V12：两阶段', () => {
     expect(state.standings['dsi']).toBe(2) // 未再涨
     expect(state.completedBounties).toEqual(['ano-first']) // 清单不重复
     expect(state.wallet.isk).toBeGreaterThan(walletAfterFirst) // 钱照给
-    expect(state.logs.some((l) => l.text.includes('无额外声望'))).toBe(true)
+    expect(state.battleReport?.summary).toContain('本次无额外声望')
   })
 })
 
@@ -475,7 +475,7 @@ describe('敌方能量=光束必中 + 普遍高命中/低命中特例（2026-09-
     }
     const wk = createFoeSpecs(kinetic, bal)[0]!.weapons[0]!
     expect(wk.hitRate).toBe(bal.foeHitRate)
-    expect(wk.shotDmg).toBe(Math.round(dps * (bal.foeReloadMs / 1000) * (bal.foeHitCompMul / bal.foeHitRate)))
+    expect(wk.shotDmg).toBe(Math.ceil(dps * (bal.foeReloadMs / 1000) * (bal.foeHitCompMul / bal.foeHitRate)))
   })
 })
 

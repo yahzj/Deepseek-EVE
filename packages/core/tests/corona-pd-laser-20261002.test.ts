@@ -147,9 +147,9 @@ describe('PD激光：建档（必中 + 打机群 + 零行为变化）', () => {
     const kin = spec2.weapons.find((w) => w.label.includes('近防炮'))!
     expect(kin.kind, '动能近防炮是掷命中（gun）').toBe('gun')
     expect(kin.canHitDrones, '它同样带防空属性').toBe(true)
-    expect(kin.shotsByType!.kinetic, 'MK3 同舰真实单发 = 21').toBe(Math.round(6 * 2.85 * (1 + powerBonus)))
+    expect(kin.shotsByType!.kinetic).toBe(Math.ceil(6 * 2.85 * (1 + powerBonus)))
     const sameShipRatio = (pd!.shotDmg! / 1.8) / ((kin.shotsByType!.kinetic! / 1.3) * 0.92)
-    expect(sameShipRatio, `同舰有效 DPS 比 ${sameShipRatio.toFixed(3)}`).toBeCloseTo(1.16, 2)
+    expect(sameShipRatio).toBeCloseTo((Math.ceil(9 * 2.75 * (1 + powerBonus)) / 1.8) / (Math.ceil(6 * 2.85 * (1 + powerBonus)) / 1.3 * .92), 10)
     console.log(
       `  [读数] 建档：PD激光 kind=${pd!.kind}（必中）· 对机群 ×${pd!.antiDroneMul} · ${pd!.maxRangeM}m/${pd!.reloadMs}ms ·` +
         ` 真实单发 ${pd!.shotDmg}（MK3 同舰 ${kin.shotsByType!.kinetic}，单发 ${(pd!.shotDmg! / kin.shotsByType!.kinetic!).toFixed(2)} 倍` +

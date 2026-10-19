@@ -66,15 +66,13 @@ describe('多波次战斗（2026-09-09）', () => {
     // 单波对照：threat 10 无覆写 → foeHpOfThreat 全量
     const one = world(undefined)
     const b1 = startBattleFor(one.state, one.ctx, one.state.shipId, 'ano-wave', 0)!
-    const fullHp = b1.units['foe-0']!.hp.s + b1.units['foe-0']!.hp.a + b1.units['foe-0']!.hp.h
     // 两波 × 0.5：首波主舰 = 全量 × 0.5（威胁份额不变）
     const two = world([
       { units: 1, hpShare: 0.5 },
       { units: 1, hpShare: 0.5 },
     ])
     const b2 = startBattleFor(two.state, two.ctx, two.state.shipId, 'ano-wave', 0)!
-    const firstHp = b2.units['foe-0']!.hp.s + b2.units['foe-0']!.hp.a + b2.units['foe-0']!.hp.h
-    expect(firstHp).toBeCloseTo(fullHp * 0.5, 6)
+    for (const key of ['s', 'a', 'h'] as const) expect(b2.units['foe-0']!.hp[key]).toBe(Math.ceil(b1.units['foe-0']!.hp[key] * .5))
     // hpMax = 初始满血（UI 血条分母；此前缺失致波次单位血条为空）
     expect(b1.units['foe-0']!.hpMax).toEqual(b1.units['foe-0']!.hp)
     expect(b2.units['foe-0']!.hpMax).toEqual(b2.units['foe-0']!.hp)

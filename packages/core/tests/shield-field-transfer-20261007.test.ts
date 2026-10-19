@@ -115,7 +115,7 @@ describe('力场真实排程与读档', () => {
       const streams = w.battle.shieldFieldBy!.player!.streams
       for (const stream of streams) stream.nextPulseAtMs = 100
       w.state.gameMs = 100
-      const expected = streams.reduce((sum, stream) => sum + 1000 * stream.pct, 0)
+      const expected = streams.reduce((sum, stream) => sum + Math.ceil(1000 * stream.pct), 0)
       advanceBattleFor(w.state, w.local, w.battle, w.state.shipId, 'ano-training')
       expect(w.hp(0).s).toBeCloseTo(600 - streams.length * 67, 6)
       expect(w.hp(1).s).toBeCloseTo(expected, 6)

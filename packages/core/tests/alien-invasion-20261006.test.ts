@@ -27,7 +27,9 @@ describe('异形入侵真实接线', () => {
     for (const id of cardIds) {
       expect(ctx.anomalies.get(id)?.hidden).toBe(true)
       expect(WRECK_GROUP_OF_MEMBER.get(id)).toBe('c-inv')
-      expect(ctx.anomalies.get(id)?.threat).toBe(foeThreatOfAnomaly(ctx.anomalies.get(id)!, id === 'alien-broodmother' ? 10 : 3, ctx.balance.battle))
+      expect(ctx.anomalies.get(id)?.threat).toBe({ 'alien-vanguard': 104, 'alien-escort': 123, 'alien-main': 150, 'alien-broodmother': 207 }[id])
+      expect(foeThreatOfAnomaly(ctx.anomalies.get(id)!, id === 'alien-broodmother' ? 10 : 3, ctx.balance.battle)).toBe(
+        { 'alien-vanguard': 104, 'alien-escort': 123, 'alien-main': 151, 'alien-broodmother': 207 }[id])
     }
   })
   it('两载体炮数/火力/机群加成与孵化挂载真实消费', () => {

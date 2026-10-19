@@ -85,7 +85,8 @@ describe('信号空间内容 · 固定来源与纯文案边界', () => {
     const visit = (node: ts.Node): void => {
       if (ts.isElementAccessExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'L10N') {
         const id = node.argumentExpression
-        expect(ts.isStringLiteral(id), node.getText(ast)).toBe(true)
+        // 新成就/次数链表按映射动态取ID；只约束静态Signal Space说明，不误拦无关模板。
+        if (!ts.isStringLiteral(id)) expect(["FIRST_CHAIN_TEXT_IDS[chainId]?.name ?? ''", 'id']).toContain(id.getText(ast))
         if (ts.isStringLiteral(id)) {
           if (SIGNAL_SPACE_TEXT_IDS[id.text]) oldIds.push(id.text)
           if (targets.has(id.text)) {
@@ -201,10 +202,10 @@ describe('信号空间内容 · 固定来源与纯文案边界', () => {
       if (addedItems.has(id)) continue
       expect(text.name, id).toBe(id === 'mat-wh-essence' ? 'Signal Enigma' : id === 'synaptic-accelerant' ? 'Synaptic Accelerant MK1' : baseEn.EN_ITEMS[id]!.name)
     }
-    const approvedNewModules = new Set(['mod-drone-launch-1', 'mod-drone-launch-2', 'mod-drone-launch-3', 'mod-laser-calibration-2', 'mod-laser-calibration-3', 'mod-gravekeeper-rebirth', 'mod-gravekeeper-crisis', 'mod-gravekeeper-rail'])
+    const approvedNewModules = new Set(['mod-drone-launch-1', 'mod-drone-launch-2', 'mod-drone-launch-3', 'mod-laser-calibration-2', 'mod-laser-calibration-3', 'mod-gravekeeper-rebirth', 'mod-gravekeeper-crisis', 'mod-gravekeeper-rail', 'mod-alien-acid-launcher', 'mod-alien-pressure-chamber'])
     for (const [id, text] of Object.entries(EN_MODULES)) {
       if (approvedNewModules.has(id)) continue
-      expect(text.name, id).toBe(baseEn.EN_MODULES[id]!.name)
+      expect(text.name, id).toBe(id === 'mod-lair-blink-r' ? 'Short-Range Warp Device' : baseEn.EN_MODULES[id]!.name)
     }
     for (const id of ['mod.copy.001', 'mod.copy.002', 'mod.copy.044', 'item.copy.008']) {
       expect(L10N[id]!.en).toMatch(/wormhole/i)

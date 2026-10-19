@@ -31,6 +31,7 @@ import {
   wormholeSkippedBranch,
 } from '../src/wormhole'
 import { advanceBattleFor, createFoeSpecs, foeHpOfThreat, startBattleFor, wormholeDerivedAnomaly } from '../src/combat'
+import { ceilFinalQuantity } from '../src/quantity'
 
 const CARD = 'wh-grave-throne'
 const ctx = buildSimContext()
@@ -200,8 +201,18 @@ describe('支援呼叫装置 · 派生（实际威胁 ×1.1 与互斥分支记�
       const dpsRatio = dpsOf(us) / ctrlDps
       expect(hpRatio, `${br} 支到场血量比`).toBeGreaterThan(1.14)
       expect(hpRatio, `${br} 支到场血量比`).toBeLessThan(1.18)
-      expect(dpsRatio, `${br} 支到场火力比`).toBeGreaterThan(1.14)
-      expect(dpsRatio, `${br} 支到场火力比`).toBeLessThan(1.18)
+      // 两张派生卡都重新计算越线折扣，最终整数火力不保证精确同比；独立公式守住实际单发。
+      const expectedDps = (card: AnomalyDef, branch: 'inside' | 'outside') => {
+        const slots = card.ships!.flatMap(slot => Array.from({ length: slot.count ?? 1 }, () => slot))
+        const comp = 2 * slots.length / (slots.length + 1)
+        const rawDps = slots.reduce((n, slot) => n + ceilFinalQuantity(slot.ship.shotDmg * (slot.dmgMul ?? 1) * comp) * 1000 / slot.ship.reloadMs, 0)
+        const cap = bal.foeDpsCap!, discount = bal.foeDpsOverCapDiscount!
+        const scale = rawDps > cap ? (cap + (rawDps - cap) * (1 - discount)) / rawDps : 1
+        return slots.filter(slot => slot.enterBranch === undefined || slot.enterBranch === branch).reduce((n, slot) =>
+          n + ceilFinalQuantity(slot.ship.shotDmg * (slot.dmgMul ?? 1) * comp * scale) * 1000 / slot.ship.reloadMs, 0)
+      }
+      expect(dpsOf(us)).toBeCloseTo(expectedDps(dTest, br), 9)
+      expect(dpsRatio).toBeCloseTo(expectedDps(dTest, br) / expectedDps(dCtrl, 'inside'), 9)
       // 份额：王座 68% 血 / 72% 火力（开战即在的那一份）
       const throne = us.filter((f) => f.foeReinforceBranch === undefined)
       expect(hpOf(throne) / hpOf(us)).toBeCloseTo(0.68, 2)

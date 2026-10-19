@@ -215,7 +215,7 @@ describe('敌舰体火力越线折扣（2026-09-12「DPS 上限 150」→ 2026-0
 
   it('阈值以下零变化：未越线的卡逐字不动（66.5 DPS 不受影响）', () => {
     const base = shipCard('ano-overcap-base', [{ ship: GUNSHIP, count: 2 }])
-    expect(hullDps(base, bal)).toBeCloseTo(66.5, 6)
+    expect(hullDps(base, bal)).toBe(2 * Math.ceil(100 * 4 / 3) / 4)
     expect(hullDps(base, bal)).toBeCloseTo(hullDps(base, OFF_BOTH), 9)
   })
 

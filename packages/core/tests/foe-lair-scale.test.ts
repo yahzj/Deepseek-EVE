@@ -81,14 +81,14 @@ describe('窝点派生：舰级路径按「派生威胁 ÷ 原威胁」缩放血
     const lair = lairAnomalyOf(base, 3, bal)
     const specs = createFoeSpecs(lair, bal)
     expect(specs).toHaveLength(4) // 头目 ×1 + 杂鱼 ×3
-    const hp = specs.map((u) => u.hp.s + u.hp.a + u.hp.h)
-    expect(hp[0]! / hp.reduce((a, b) => a + b, 0)).toBeCloseTo(0.6, 6) // 头目 60% 血占比不变
+    const raw = createFoeSpecs(lair, bal, { beforeHpUplift: true })
+    expect((raw[0]!.hp.s + raw[0]!.hp.a + raw[0]!.hp.h) / raw.reduce((n, u) => n + u.hp.s + u.hp.a + u.hp.h, 0)).toBeCloseTo(.6, 6)
+    for (const [i, u] of specs.entries()) for (const key of ['s', 'a', 'h'] as const) expect(u.hp[key]).toBe(Math.ceil(raw[i]!.hp[key] * 1.5))
     expect(specs.map((u) => u.foeTactic)).toEqual(['kite', 'kite', 'kite', 'kite']) // 战术继承
     expect(specs[0]!.weapons[0]!.minRangeM).toBe(base.ships![0]!.rangeMinM) // 射程覆写继承
     expect(specs[0]!.weapons[0]!.maxRangeM).toBe(base.ships![0]!.rangeMaxM)
     // 头目血型仍随卡走（护盾 0.5/0.25/0.25 → 缩放不改比例）
-    const bossHp = specs[0]!.hp
-    expect(bossHp.s / (bossHp.s + bossHp.a + bossHp.h)).toBeCloseTo(0.5, 9)
+    expect(raw[0]!.hp.s / (raw[0]!.hp.s + raw[0]!.hp.a + raw[0]!.hp.h)).toBeCloseTo(.5, 9)
   })
 })
 

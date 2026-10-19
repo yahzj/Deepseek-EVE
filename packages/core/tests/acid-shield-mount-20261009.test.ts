@@ -125,15 +125,15 @@ describe('酸液破盾腔独立乘区', () => {
     }
     expect(misses).toBeGreaterThan(0)
   })
-  it('真实挂载说明与名称可从图鉴和战斗反查，中文回退且待译登记完整', () => {
+  it('真实挂载说明与名称可从图鉴和战斗反查，已完成英文并清除待译', () => {
     const source = readFileSync(new URL('apps/desktop/src/renderer/src/ui/foeBrief.ts', root), 'utf8')
     const scope = { exports: {} as { mountEffectText: (id: string) => string; mountEffectTextByName: (name: string) => string },
       require: (id: string) => id === '@whale/core' ? { FOE_MOUNTS } : { tr: (id: string) => l10nEntryText(L10N[id]!, 'en') } }
     runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, scope)
-    expect(scope.exports.mountEffectText(FOE_MOUNT_IDS.acidShield)).toBe('自爆对护盾造成的伤害翻倍。')
-    expect(scope.exports.mountEffectTextByName('酸液破盾腔')).toBe('自爆对护盾造成的伤害翻倍。')
+    expect(scope.exports.mountEffectText(FOE_MOUNT_IDS.acidShield)).toBe('The self-destruct deals double damage to shields.')
+    expect(scope.exports.mountEffectTextByName('酸液破盾腔')).toBe('The self-destruct deals double damage to shields.')
     const backlog = readFileSync(new URL('docs/l10n-pending.md', root), 'utf8')
     expect(deferredL10nIssues(L10N, backlog)).toEqual([])
-    expect(backlog).toContain('foe-mount-c-acid-shield')
+    expect(backlog).not.toContain('foe-mount-c-acid-shield')
   })
 })

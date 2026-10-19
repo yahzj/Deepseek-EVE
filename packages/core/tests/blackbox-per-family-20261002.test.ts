@@ -120,7 +120,10 @@ function killFlagship(family: 'H' | 'R'): GameState {
   )
   expect(u, `${family} 族母舰在第 4 波压轴`).toBeTruthy()
   /** 扣掉最后那点血（台账量的是"单位 hpMax − hp" ⇒ 与真实开火同一条量法） */
-  u!.hp = { ...u!.hp, h: 0 }
+  u!.hp = { s: 0, a: 0, h: 0 }
+  // 合成击杀需补齐真实伤害入口的击沉观测，不能只靠池子取整宣称击沉。
+  battle.bossDownAtMs = s.gameMs
+  expect(battle.foeOverride?.bossShipId).toBe(mother)
   weekendApplyBattleOutcome(s, ctx, spec.cardId, true, NOW, battle, { galaxyId: core, kind: 'flagship' })
   return s
 }

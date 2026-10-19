@@ -13,6 +13,7 @@ import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { alienFixture } from '../../../tools/alien-invasion-fixture'
 import type { BattleState } from '../src/state'
 import type { AnomalyDef, FoeShipDef } from '../src/types'
+import { roundedFoeHp } from './helpers/rounded-foe-hp'
 
 const ctx = buildSimContext()
 const card = ctx.anomalies.get('alien-broodmother')!
@@ -101,7 +102,7 @@ describe('巢母主动召唤星髓成虫', () => {
     const fresh = foesWithSupport(w.battle, w.foes).filter(f => f.tag.startsWith('sup'))
     for (const spec of fresh) {
       expect(spec.hp).toEqual(original.hp)
-      expect(spec.hp.s + spec.hp.a + spec.hp.h).toBeCloseTo(2116.0152 * strength)
+      expect(spec.hp).toEqual(roundedFoeHp(derived.ships!.find(slot => slot.ship.id === ADULT)!))
       expect(spec.weapons).toEqual(original.weapons)
       expect(spec.speedMps).toBe(398)
       expect(spec.foeChargeMul).toBe(2)

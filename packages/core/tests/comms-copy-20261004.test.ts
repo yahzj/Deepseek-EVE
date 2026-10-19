@@ -85,9 +85,9 @@ describe('其余通讯整批中英接线与行为守恒', () => {
     const body = commsBodyText(message.id, message.body)
     expect(body).toHaveLength(message.body.length)
     if (message.id === 'msg-black-market-unlock') {
-      expect(body).toEqual(message.body)
-      expect(commsSubjectText(message.id, message.subject)).toBe(message.subject)
-      expect(commsHintText(message.hint!.text)).toBe(L10N['ui.commsBlackMarket.005']!.zh)
+      expect(body.join('')).not.toMatch(/[\u4e00-\u9fff]/)
+      expect(commsSubjectText(message.id, message.subject)).toBe(L10N['ui.commsBlackMarket.001']!.en)
+      expect(commsHintText(message.hint!.text)).toBe(L10N['ui.commsBlackMarket.005']!.en)
       return
     }
     expect(body.join('')).not.toMatch(/[\u4e00-\u9fff]/)

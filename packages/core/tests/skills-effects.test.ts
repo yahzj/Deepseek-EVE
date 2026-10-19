@@ -49,18 +49,18 @@ describe('技能补全：舰船操控学（航行时间每级 −2%）', () => {
 })
 
 describe('技能补全：材料学（制造消耗每级 −1.5%，2026-09-08 技能加成下调约 20%）', () => {
-  it('满级 matNeedCount = ×0.925 向下取整（至少 1）；缺口预览同口径', () => {
+  it('满级matNeedCount按×0.925向上取整，缺口预览同口径', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 2 })
     const ctx = makeTestCtx()
     expect(matNeedCount(state, 100)).toBe(100) // 零级
     state.skills.trained['materials'] = 5
-    expect(matNeedCount(state, 100)).toBe(92) // floor(100 × 0.925)
+    expect(matNeedCount(state, 100)).toBe(93)
     expect(matNeedCount(state, 1)).toBe(1) // 保底 1
-    // 缺料预览：100 → 折扣后 92，仓库 92 够、91 差 1
+    // 缺料预览与最终向上取整的料单一致。
     const spec = { materials: [{ itemId: 'ore-a', count: 100 }], buildSeconds: 60, buildCostIsk: 1000 } as const
-    state.warehouse.items['ore-a'] = 92
+    state.warehouse.items['ore-a'] = 93
     expect(missingMaterials(state, ctx, spec)).toEqual([])
-    state.warehouse.items['ore-a'] = 91
+    state.warehouse.items['ore-a'] = 92
     const miss = missingMaterials(state, ctx, spec)
     expect(miss.length).toBe(1)
     expect(miss[0]).toContain('还差 1')
@@ -97,7 +97,7 @@ describe('技能补全：深空采集学（气体/冰矿产量每级 +5%）', ()
     const p0 = getMiningParams(a.state, a.ctx, { shipId: a.state.shipId, beltId: 'belt-g' })!
     const p5 = getMiningParams(b.state, b.ctx, { shipId: b.state.shipId, beltId: 'belt-g' })!
     expect(p0.unitsPerCycle).toBeGreaterThan(0)
-    expect(p5.unitsPerCycle).toBe(Math.max(1, Math.floor(p0.unitsPerCycle * 1.25)))
+    expect(p5.unitsPerCycle).toBe(Math.max(1, Math.ceil(p0.unitsPerCycle * 1.25)))
     // 普通矿石带不受影响（默认 ctx 的 belt-fortune 类由 helpers 提供 ore belt 场景用 ore-a）
     const c = mk()
     c.state.skills.trained['deep-space-harvesting'] = 5
@@ -198,11 +198,11 @@ describe('技能补全 P1：矿业三技（星质地质学/深井爆破学/富�
       return getMiningParams(state, ctx, { shipId: state.shipId, beltId: `belt-${ore.id}` })!.unitsPerCycle
     }
     // 星质 5 级：×1.2（高低品都生效）
-    expect(run(low, { 'astro-geology': 5 })).toBe(Math.max(1, Math.floor(base * 1.2)))
-    expect(run(high, { 'astro-geology': 5 })).toBe(Math.max(1, Math.floor(base * 1.2)))
+    expect(run(low, { 'astro-geology': 5 })).toBe(Math.max(1, Math.ceil(base * 1.2)))
+    expect(run(high, { 'astro-geology': 5 })).toBe(Math.max(1, Math.ceil(base * 1.2)))
     // 深井 5 级：低品 ×1.3 再叠；高品无效
     expect(run(low, { 'astro-geology': 5, 'deep-hole-blasting': 5 })).toBe(
-      Math.max(1, Math.floor(base * 1.2 * 1.3)),
+      Math.max(1, Math.ceil(base * 1.2 * 1.3)),
     )
     expect(run(high, { 'deep-hole-blasting': 5 })).toBe(Math.max(1, Math.floor(base)))
     // 富矿系数：满级 ×2（基础 3%/分钟 → 6%/分钟，卷B2⑥）
@@ -543,7 +543,7 @@ describe('2026-09-22 技能批：炉温精调学 / 零件流水线 / 舰种操�
     s1.skills.trained['furnace-amplification'] = 5 // ×1.20（本批 2%→4%）
     s1.skills.trained['furnace-reconfiguration'] = 5 // ×1.10（新）
     expect(startRefineRun(s1, 'ore-a', 'pilot', ctx).ok).toBe(true)
-    expect(s1.refineRuns[0]!.batchUnits).toBe(Math.round(baseBatch * 1.3 * 1.2 * 1.1))
+    expect(s1.refineRuns[0]!.batchUnits).toBe(Math.ceil(baseBatch * 1.3 * 1.2 * 1.1))
     stopRefineRun(s1, ctx, s1.refineRuns[0]!.id)
     // ② 工业自动化统合（新 R5）：工业专用工位 +2/级（满级再 +10）⇒ 与基础 5 + 自动化 10 合计 25
     const s2 = createInitialState({ nowWallMs: 0, seed: 42 })
@@ -619,7 +619,7 @@ describe('2026-09-22 技能批：炉温精调学 / 零件流水线 / 舰种操�
     const spec3 = createPlayerSpec(t3.state, realCtx, t3.uid)!
     const specBase = createPlayerSpec(base3.state, realCtx, base3.uid)!
     expect(specBase.weapons[0]!.shotDmg).toBe(8)
-    expect(spec3.weapons[0]!.shotDmg).toBe(9) // round(8×1.15)
+    expect(spec3.weapons[0]!.shotDmg).toBe(Math.ceil(8 * 1.15))
     expect(armorRes(specBase).kinetic).toBeCloseTo(0.35, 6)
     expect(armorRes(spec3).kinetic).toBeCloseTo(0.385, 6) // ×1.1
     expect(armorRes(spec3).plasma).toBeCloseTo(0.385, 6)
@@ -637,9 +637,9 @@ describe('2026-09-22 技能批：炉温精调学 / 零件流水线 / 舰种操�
     const base4 = withShip('sh-xuanwu')
     const spec4 = createPlayerSpec(t4.state, realCtx, t4.uid)!
     const specBase = createPlayerSpec(base4.state, realCtx, base4.uid)!
-    expect(spec4.hp.s).toBeCloseTo(specBase.hp.s * 1.15, 4)
-    expect(spec4.hp.a).toBeCloseTo(specBase.hp.a * 1.15, 4)
-    expect(spec4.hp.h).toBeCloseTo(specBase.hp.h * 1.15, 4)
+    expect(spec4.hp.s).toBe(Math.ceil(specBase.hp.s * 1.15))
+    expect(spec4.hp.a).toBe(Math.ceil(specBase.hp.a * 1.15))
+    expect(spec4.hp.h).toBe(Math.ceil(specBase.hp.h * 1.15))
     expect(armorRes(spec4).kinetic).toBeCloseTo(0.385, 6)
     expect(armorRes(spec4).explosive).toBeCloseTo(0.275, 6) // 0.25×1.1
     // T3 巡洋舰（玳瑁级）点战列操作：不吃

@@ -273,7 +273,7 @@ describe('护盾充能力场装置：战斗行为', () => {
       pulseShieldFieldFor(b, specs, { pct: 0.1 }, specs[0]!)
       const why = `（施放者满盾 ${c.main} · 僚舰满盾 ${c.ally}）`
       expect(b.units[ta]!.hp.s, `僚舰${why}`).toBeCloseTo(c.want, 6)
-      expect(b.units[tm]!.hp.s, `施放者支付${why}`).toBeCloseTo(c.main * .933, 6)
+      expect(b.units[tm]!.hp.s, `施放者支付${why}`).toBe(c.main - Math.ceil(c.main * .067))
     }
   })
 

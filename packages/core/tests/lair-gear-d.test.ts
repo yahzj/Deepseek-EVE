@@ -112,7 +112,7 @@ describe('D 族守墓古舰专属装备（2026-09-10 船长）', () => {
     const plain = createPlayerSpec(makeState(), ctx, SHIP)!
     const withArmor = createPlayerSpec(makeState([], [], ['mod-lair-armor-d']), ctx, SHIP)!
     expect(ctx.modules.get('mod-lair-armor-d')!.armorHpBonus).toBe(1.1)
-    expect(withArmor.hp.a / plain.hp.a).toBeCloseTo(2.1, 6)
+    expect(withArmor.hp.a).toBe(Math.ceil(ctx.ships.get(SHIP)!.armorHp! * 2.1))
     expect(withArmor.hp.s).toBeCloseTo(plain.hp.s, 6)
     expect(withArmor.hp.h).toBeCloseTo(plain.hp.h, 6)
     // 比装甲增厚板 MK3（+80%）更厚

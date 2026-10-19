@@ -14,20 +14,21 @@ describe('酸液仅装甲减抗现行说明接线', () => {
       const row = L10N[id]!
       expect(row.zh).toContain('装甲')
       expect(row.zh).not.toContain('结构')
-      expect(row.en).toBe('')
-      expect(row.enDeferred).toBe(true)
+      expect(row.en).toMatch(/armor/i)
+      expect(row.en).not.toMatch(/hull|[\u3400-\u9fff]/)
+      expect(row.enDeferred).not.toBe(true)
     }
     expect(text('apps/desktop/src/renderer/src/ui/foeBrief.ts')).toContain("tr('ui.alienArmor.001'")
     expect(text('apps/desktop/src/renderer/src/panels/BattleScreen.tsx')).toContain("tr('ui.alienArmor.002'")
     expect(text('apps/desktop/src/renderer/src/ui/shipInfo.tsx')).toContain("tr('ui.alienLoot.002'")
   })
 
-  it('旧英文和历史公告不追改，新说明登记待译', () => {
+  it('旧英文和历史公告不追改，现行说明已完成英文并清除待译', () => {
     expect(L10N['ui.alien.001']!.en).toContain('armor and hull')
     expect(L10N['ui.alien.004']!.en).toContain('armor and hull')
     expect(L10N['ano.incursionRelease.004']!.zh).toContain('装甲、结构')
     expect(L10N['ano.incursionBrief.001']!.zh).toContain('装甲与结构')
     const pending = text('docs/l10n-pending.md')
-    for (const id of ['ui.alienArmor.001', 'ui.alienArmor.002']) expect(pending).toContain(id)
+    for (const id of ['ui.alienArmor.001', 'ui.alienArmor.002']) expect(pending).not.toContain(id)
   })
 })

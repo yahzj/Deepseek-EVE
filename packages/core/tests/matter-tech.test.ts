@@ -159,7 +159,7 @@ describe('谜质科技树 · 效果聚合与四条机制读数', () => {
     expect(wormholeTurnBudget(0, bonus)).toBe(110)
     // 入场裁定把它算进去（4×T1 = 2,000 质量 ⇒ 74 + 30）
     // 4× 长尾鲨(T3 · 3,500 质量) = 14,000 ⇒ 基础 42 + 科技 30
-    expect(wormholeAdmission(ctx, ['sh-thresher', 'sh-thresher', 'sh-thresher', 'sh-thresher'], bonus).turnBudget).toBe(72)
+    expect(wormholeAdmission(ctx, ['sh-thresher', 'sh-thresher', 'sh-thresher', 'sh-thresher'], bonus).turnBudget).toBe(73)
   })
 
   it('入洞后再点「时序锚定器」⇒ 本趟上限立刻 +10/级（永久加成，与装置同一套夹紧、幂等）', () => {
@@ -195,20 +195,20 @@ describe('谜质科技树 · 效果聚合与四条机制读数', () => {
     const entered = wormholeEnter(state, ctx, fleet, 4242)
     expect(entered.ok, entered.error ?? '').toBe(true)
     const run = state.wormhole.run!
-    expect(run.turnsTotal).toBe(72) // 42 + 30
-    expect(run.turnsBase).toBe(42)
+    expect(run.turnsTotal).toBe(73)
+    expect(run.turnsBase).toBe(43)
     expect(run.turnsTechBonus).toBe(30)
     // 模拟"拾取一台「时序核心」入货仓" ⇒ 触发同步
     run.hold = { placements: [{ id: 'x', kind: 'box', itemId: 'mat-chrono', x: 0, y: 0, w: 2, h: 2 }], cols: 8 }
     wormholeSyncMatterTurns(state, ctx)
-    expect(run.turnsTotal, '科技那 30 回合不该被同步吃掉').toBe(82) // 42 + 10 + 30
-    expect(run.turnsLeft).toBe(82)
+    expect(run.turnsTotal, '科技那30回合不该被同步吃掉').toBe(83)
+    expect(run.turnsLeft).toBe(83)
     // 幂等：再同步不变；丢掉装置 ⇒ 回到 72（只掉装置那 10）
     wormholeSyncMatterTurns(state, ctx)
-    expect(run.turnsTotal).toBe(82)
+    expect(run.turnsTotal).toBe(83)
     run.hold = { placements: [], cols: 8 }
     wormholeSyncMatterTurns(state, ctx)
-    expect(run.turnsTotal).toBe(72)
+    expect(run.turnsTotal).toBe(73)
   })
 
   it('报障修复（老档）：没有 `turnsBase` 的在途趟带科技时，首次同步不吃回合', () => {

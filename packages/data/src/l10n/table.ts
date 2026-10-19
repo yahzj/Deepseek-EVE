@@ -24,6 +24,18 @@ export function l10nEntryText(entry: L10nEntry, locale: 'zh' | 'en'): string {
 }
 
 export const L10N: Readonly<Record<string, L10nEntry>> = {
+  'ano.depthRetune.001': { zh: '信号空间资源与战损调整', en: 'Signal Space Resources and Damage Mods' },
+  'ano.depthRetune.002': { zh: '数值', en: 'Balance' },
+  'ano.depthRetune.003': { zh: '玩家探索信号空间时，每深入一层，矿脉与墓场普通残骸各增加一堆。', en: 'Each deeper Signal Space layer adds one pile to each ore vein and one common wreck pile to each graveyard.' },
+  'ano.depthRetune.004': { zh: '信号空间单堆资源仍随层数增加，每层增幅由20%降至8%；自动探索同步调整。', en: 'Resource amounts per pile still increase with depth, with growth reduced from 20% to 8% per layer. Automated exploration follows the same adjustment.' },
+  'ano.depthRetune.005': { zh: '舰船战损插件每件属性减幅由15%降至5%，允许同种重复获得，按剩余属性乘算叠加，不设件数上限。', en: 'Each ship Damage Mod now reduces its affected attribute by 5% instead of 15%. Repeated types are allowed, stack multiplicatively on the remaining attribute, and have no count limit.' },
+  'ano.equipmentRetune.001': { zh: '装备与说明调整', en: 'Equipment and Description Updates' },
+  'ano.equipmentRetune.002': { zh: '数值', en: 'Balance' },
+  'ano.equipmentRetune.003': { zh: '跃迁规避装置更名为短距离跃迁装置，调整为中槽战斗支援件，不再触发推进器对隐秘行动的限制；多件安装仍只采用一件效果。', en: 'The Blink Evasion Drive is renamed Short-Range Warp Device and reclassified as a mid-slot combat support module. It no longer triggers the thruster restriction on covert operations; fitting several still applies only one module’s effect.' },
+  'ano.equipmentRetune.004': { zh: '掠袭者护盾笼CPU占用由46降至36。', en: 'Raider Shield Cage CPU usage is reduced from 46 to 36.' },
+  'ano.equipmentRetune.005': { zh: '酸液喷吐器射程调整为2500米、装填间隔为3.8秒；命中后每层降低目标装甲全抗性5%，持续15秒，加法叠加、独立到期。', en: 'The Acid Sprayer now has a range of 2,500 m and a reload interval of 3.8 seconds. Each hit adds a stack reducing the target’s armor all-resistance by 5% for 15 seconds. Stacks additively; each stack expires independently.' },
+  'ano.equipmentRetune.006': { zh: '磁轨蓄能说明明确为按本炮单发伤害附加能量伤害；每次开火后比例+30%、装填间隔+10%，最多5层，加法累计。', en: 'Railgun Charge now explicitly describes bonus energy damage based on this cannon’s damage per shot. After each shot, the ratio increases by 30% and the reload interval by 10%, stacking additively up to five times.' },
+  'ano.equipmentRetune.007': { zh: '装备叠加说明按实际规则修正，部分当前战斗提示改用%，近盲说明移除自伤备注。', en: 'Equipment stacking descriptions now reflect the actual rules. Some current combat tooltips use %, and close-range blind spot descriptions no longer include the self-damage remark.' },
   // ⟪文案调整 2026-10-18⟫ 设置切英文实机漏译修复；保留中文及原有规格。
   'ui.App.176': { zh: '（暂无事件，航线静悄悄）', en: '(No events; the route is quiet.)' },
   'ui.itemView.001': { zh: '稀有度 R{p1}', en: 'Rarity R{p1}' },
