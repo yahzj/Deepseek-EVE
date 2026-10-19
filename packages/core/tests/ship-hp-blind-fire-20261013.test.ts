@@ -19,6 +19,7 @@ import { volleyDamageShareOf } from '../src/combatVolley'
 import { beginBattleAt } from '../src/expedition'
 import type { AnomalyDef, ModuleDef } from '../src/types'
 import { applyApprovedScanShipDelta } from './helpers/approved-scan-ship-delta'
+import { applyApprovedTorpedoShipDelta } from './helpers/approved-torpedo-ship-delta-20261019'
 import { ceilFinalQuantity } from '../src/quantity'
 import { activeFoeSpecsOf, foeStrengthOf } from '../src/foeSpecs'
 
@@ -42,6 +43,7 @@ describe('全舰容量与直接恢复参数', () => {
       for (const field of ['shieldHp', 'armorHp', 'hullHp'] as const) row[field] = Math.round(row[field] * SHIP_HP_UPLIFT_MUL)
     }
     applyApprovedScanShipDelta(expected)
+    applyApprovedTorpedoShipDelta(Object.values(expected.groups).flat())
     expect(ships).toEqual(expected)
     const expectedPlugs = structuredClone(oldPlugs)
     const rows = Object.values(expectedPlugs.groups).flat()

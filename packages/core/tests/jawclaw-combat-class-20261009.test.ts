@@ -63,7 +63,11 @@ describe('颚钳战斗机确认值与范围守恒', () => {
       const newIds = [...beaconIds, 'blackbox-d', 'mod-gravekeeper-rebirth', 'mod-gravekeeper-crisis', 'mod-gravekeeper-rail']
       for (let i = rows.length - 1; i >= 0; i--) if (newIds.includes(rows[i]!.key)) rows.splice(i, 1)
     }
-    expect(withoutBeaconMarket).toEqual(baseline('packages/data/src/static/market.json'))
+    // 市场目录已批准重排，逐键核对所有字段；显示顺序由市场排序专项独立守护。
+    const byKey = (data: typeof marketData) => ({ ...data, groups: Object.fromEntries(
+      Object.entries(data.groups).map(([group, rows]) => [group, [...rows].sort((a, b) => a.key.localeCompare(b.key))]),
+    ) })
+    expect(byKey(withoutBeaconMarket)).toEqual(byKey(baseline('packages/data/src/static/market.json')))
     expect(ctx.marketGoods.get(id)!.basePrice).toBe(24000)
     expect(ctx.marketGoods.get('bp-faction-drone-jawclaw')!.basePrice).toBe(2400000)
     const book = ctx.blueprints.get('bp-faction-drone-jawclaw')!

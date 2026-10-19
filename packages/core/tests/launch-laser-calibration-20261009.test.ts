@@ -20,6 +20,7 @@ import { deferredL10nIssues } from '../../../tools/l10n-deferred-check'
 import ships from '../../data/src/static/ships.json'
 import modules from '../../data/src/static/modules.json'
 import { applyApprovedScanShipDelta } from './helpers/approved-scan-ship-delta'
+import { applyApprovedTorpedoShipDelta } from './helpers/approved-torpedo-ship-delta-20261019'
 import { applyApprovedEquipmentRetune } from './helpers/approved-equipment-retune-20261019'
 
 const ctx = buildSimContext(), root = new URL('../../../', import.meta.url)
@@ -210,6 +211,7 @@ describe('出击加速、激光校准与协处理器5%', () => {
       for (const field of ['shieldHp', 'armorHp', 'hullHp']) hull[field] = Math.round(hull[field]! * 1.5)
     }
     applyApprovedScanShipDelta(expectedShips)
+    applyApprovedTorpedoShipDelta(Object.values(expectedShips.groups).flat() as Array<{ id: string }>)
     expect(ships).toEqual(expectedShips)
     const expectedModules = old('packages/data/src/static/modules.json')
     ;(Object.values(expectedModules.groups).flat().find((mod: any) => mod.id === 'mod-wh-e-cpu') as any).reloadPenaltyPct = .05

@@ -4,6 +4,7 @@ import { posix } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { runInNewContext } from 'node:vm'
 import ts from 'typescript'
+import { applyApprovedTorpedoShipDelta } from './helpers/approved-torpedo-ship-delta-20261019'
 import { describe, expect, it } from 'vitest'
 import {
   buildSimContext, EN_ANOMALIES, EN_ITEMS, EN_MATTER_TECH_NOTES, EN_MODULES, EN_SHIPS, EN_SKILLS,
@@ -135,6 +136,7 @@ describe('信号空间内容 · 固定来源与纯文案边界', () => {
       ...(['sh-nautilus', 'sh-wh-g-frigate'].includes(row.id) ? { wormholeScanRadiusBonus: 2 } : {}),
       ...(['sh-shrike', 'sh-tigershark', 'sh-wh-d-frigate'].includes(row.id) ? { evasion: Number(((row.evasion ?? 0) + .1).toFixed(3)) } : {}),
     }))
+    applyApprovedTorpedoShipDelta(expectedShips)
     sameData(SHIPS, expectedShips, ['description'])
     expect(SHIPS.filter((row, i) => row.description !== baseShips[i]!.description).map((row) => row.id)).toEqual(shipIds)
     for (const id of shipIds) {
