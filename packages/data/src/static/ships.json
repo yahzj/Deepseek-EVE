@@ -1339,7 +1339,7 @@
         "agility": 0.7,
         "evasion": 0.105,
         "hitBonus": 0.17,
-        "powerBonus": 0.35,
+        "powerBonus": 0.25,
         "shieldHp": 90,
         "armorHp": 173,
         "armorResist": {
@@ -1359,7 +1359,7 @@
           "plasma": 0.25
         },
         "weaponFamilyBonus": {
-          "explosive": 0.2
+          "explosive": 0.3
         }
       },
       {
@@ -1521,7 +1521,7 @@
         "agility": 0.493,
         "evasion": 0.005,
         "hitBonus": 0.11,
-        "powerBonus": 0.45,
+        "powerBonus": 0.25,
         "shieldHp": 518,
         "armorHp": 278,
         "hullHp": 338,
@@ -1535,7 +1535,7 @@
         "signatureM": 101,
         "scanResMm": 580,
         "weaponFamilyBonus": {
-          "explosive": 0.2
+          "explosive": 0.4
         }
       }
     ]

@@ -270,7 +270,13 @@ describe('信号空间被占矿点：覆盖和地点完成不能混用', () => {
     arrive(covered.state)
     expect(covered.run.grid!.activated).not.toContain(covered.vein.key)
     settleWin(covered.state)
-    expect(covered.run.grid!.activated).not.toContain(covered.vein.key)
+    if (place === 'beacon') {
+      expect(covered.run.grid!.activated).toContain(covered.vein.key)
+      expect(covered.run.grid!.exitKnown).toBe(true)
+      const reloaded = loadSaveFile(serializeSaveFile(covered.state)).state.wormhole.run!.grid!
+      expect(reloaded.activated).toContain(covered.vein.key)
+      expect(reloaded.exitKnown).toBe(true)
+    } else expect(covered.run.grid!.activated).not.toContain(covered.vein.key)
     expect(covered.vein.place).toBe(place)
   })
 

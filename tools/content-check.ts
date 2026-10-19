@@ -6853,7 +6853,7 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
    *   则改为同等数值的无人机伤害加成。移除每条船的50动能抗性**」＋
    * 「**装甲舰T~T5获得装甲的动能和能量抗性加成，分别为30/30/35/35/35。移除之前获得的单发伤害加成。
    *   （这里所有的移除都不会影响舰船子类型和种族给予的额外属性。）**」＋（同日追加）
-   * 「**所有炮舰伤害倍率额外+0.15。鱼雷舰获得伤害倍率+0.2。**」
+   * 「**所有炮舰伤害倍率额外+0.15。鱼雷舰获得伤害倍率+0.2。**」；2026-10-19鱼雷舰加成改为通用火力25%，差额转爆炸伤害族。
    *
    * 契约五条：
    * ① **武装舰**：`powerBonus`（无人机船看 `droneDmgBonus`）= 档位阶梯 0.15/0.20/0.25/0.35/0.50
@@ -6873,6 +6873,7 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
     const ARMED_DMG: Record<number, number> = { 1: 0.15, 2: 0.2, 3: 0.25, 4: 0.35, 5: 0.5 }
     const ARMOR_RES: Record<number, number> = { 1: 0.3, 2: 0.3, 3: 0.35, 4: 0.35, 5: 0.35 }
     const SUBCLASS_DMG: Record<string, number> = { 炮舰: 0.15, 鱼雷舰: 0.2 }
+    const TORPEDO_POWER = new Set(['sh-wh-e-frigate', 'sh-wh-g-cruiser'])
     const FLOAT = 0.05
     /** 装甲舰甲层能量抗被船长点名移除的两艘（C 族截击舰） */
     const NO_ARMOR_PLASMA = new Set(['sh-wh-c-frigate', 'sh-wh-c-destroyer'])
@@ -6885,12 +6886,12 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
         armedN++
         const droneShip = s.powerBonus === undefined && s.droneDmgBonus !== undefined
         const v = droneShip ? s.droneDmgBonus! : (s.powerBonus ?? NaN)
-        const want = (ARMED_DMG[s.tier] ?? NaN) + subExtra
+        const want = TORPEDO_POWER.has(s.id) ? .25 : (ARMED_DMG[s.tier] ?? NaN) + subExtra
         if (ARMED_DMG[s.tier] === undefined) bad.push(`${s.name}（${s.id}）档位 T${s.tier} 不在阶梯表里`)
         else if (!(Math.abs(v - want) <= FLOAT + 1e-9))
           bad.push(
             `${s.name}（${s.id}）${droneShip ? '无人机伤害' : '单发'}加成 ${v} ∉ ${want}±${FLOAT}` +
-              `（T${s.tier} 档位 ${ARMED_DMG[s.tier]}${subExtra > 0 ? ` ＋ 子分类 ${s.subClass} ${subExtra}` : ''}）`,
+              `（${TORPEDO_POWER.has(s.id) ? '2026-10-19鱼雷舰通用火力25%' : `T${s.tier} 档位 ${ARMED_DMG[s.tier]}${subExtra > 0 ? ` ＋ 子分类 ${s.subClass} ${subExtra}` : ''}`}）`,
           )
         if (droneShip && s.powerBonus !== undefined) bad.push(`${s.name}（${s.id}）是无人机船却又带 powerBonus（应改给 droneDmgBonus）`)
       } else if (cat === 'armored') {
@@ -6910,7 +6911,7 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
          * （T1 ⇒ 0.15 ＋ 0.2 = 0.35）。其余装甲舰照旧只允许子分类那笔。
          */
         const torpedo = s.subClass === '鱼雷舰'
-        const allowed = torpedo ? (ARMED_DMG[s.tier] ?? 0) + subExtra : subExtra
+        const allowed = torpedo ? .25 : subExtra
         const got = s.powerBonus ?? 0
         if (Math.abs(got - allowed) > 1e-9)
           bad.push(
@@ -6918,6 +6919,11 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
               torpedo ? `鱼雷舰口径 ${allowed}（档位 ＋ 子分类）` : `子分类给的 ${allowed}`
             }（现 ${s.powerBonus ?? '无'}）`,
           )
+      }
+      if (TORPEDO_POWER.has(s.id)) {
+        const explosive = s.weaponFamilyBonus?.explosive
+        const expectedExplosive = s.id === 'sh-wh-e-frigate' ? .3 : .4
+        if (explosive !== expectedExplosive) bad.push(`${s.name}（${s.id}）爆炸伤害族加成 ${explosive ?? '未写'} 应为 ${expectedExplosive}`)
       }
       for (const [layer, r] of [['盾', s.shieldResist], ['甲', s.armorResist], ['壳', s.hullResist]] as const) {
         if (r?.kinetic === 0.5) bad.push(`${s.name}（${s.id}）${layer}层仍有 50 动能抗（船长：「移除每条船的 50 动能抗性」）`)

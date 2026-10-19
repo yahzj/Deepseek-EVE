@@ -29,7 +29,7 @@ import {
 } from './wormhole'
 import type { WormholeFoeKind } from './wormholeFoes'
 import { wormholeCardIdForRun } from './wormholeFoes'
-import { gridCellAt, gridContentIndex, hasLiveFoe, isExitCell } from './wormholeGrid'
+import { gridCellAt, gridContentIndex, hasLiveFoe, isExitCell, triggerBeaconEffect } from './wormholeGrid'
 // 「欠着一场战斗」的拒因单点（2026-09-20：打捞这一口也要过它，见 `wormholeActivateAt` 头注）
 import { wormholePendingBattleReason } from './wormhole'
 // 2026-09-25：第三个战斗宿主（入侵旗舰战 · 编队战承载在遭遇槽）的判据单点
@@ -878,6 +878,7 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
       const cell = gridCellAt(run.grid, run.grid.pos)
       if (cell?.foe) cell.foe = { ...cell.foe, cleared: true }
       if (cell?.foe?.patrolId !== undefined) wormholePatrolDefeated(run, cell.foe.patrolId)
+      if (cell?.place === 'beacon') triggerBeaconEffect(run.grid, cell)
       wormholeGrantShipSpoils(state, ctx, 'spawn')
     }
     if (run.turnsLeft <= 0) addLog(state, 'combat', `🕳 回合已耗尽：只能撤离。`, 'core.wormholeBattle.019')

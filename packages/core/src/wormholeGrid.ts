@@ -677,6 +677,22 @@ export function revealNearestMatterCell(
   return { cell: best, nebulaDispersed }
 }
 
+/** 清除覆盖后补执行信标效果；与到达分支共用入口/谜质揭示和星云穿透规则。 */
+export function triggerBeaconEffect(
+  grid: WormholeGridState,
+  cell: WormholeGridCell,
+): { kind: 'exit' } | { kind: 'matter'; cell: WormholeGridCell; nebulaDispersed: boolean } | { kind: 'empty' } {
+  if (cell.place !== 'beacon' || grid.activated.includes(cell.key)) return { kind: 'empty' }
+  const beaconNo = grid.activated.filter(key => grid.cells.find(c => c.key === key)?.place === 'beacon').length + 1
+  grid.activated.push(cell.key)
+  if (beaconNo <= 1) {
+    markExitKnown(grid)
+    return { kind: 'exit' }
+  }
+  const reveal = revealNearestMatterCell(grid, cell)
+  return reveal ? { kind: 'matter', ...reveal } : { kind: 'empty' }
+}
+
 /* ═══════════ 三之二之二、围剿者（2026-09-23 船长新机制：7 层起逐回合刷怪） ═══════════ */
 
 /**
@@ -719,6 +735,7 @@ export function spawnTargetsOf(grid: WormholeGridState): WormholeGridCell[] {
     if (c.key === exitKey) return false
     if (hasLiveFoe(c)) return false
     if (c.place === 'ship' && !grid.activated.includes(c.key)) return false
+    if (c.foe?.cleared === true) return false
     return true
   })
 }
