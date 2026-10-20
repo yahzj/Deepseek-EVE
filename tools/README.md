@@ -1,5 +1,10 @@
 # 工具区台账（tools/）
 
+## 五族势力船插验收（2026-10-20）
+
+- `npx tsx tools/make-test-save.ts faction-ship-plugs`：复用`faction-ship-plug-fixture.ts`，全新v31合成档，正式装配入口生成六艘对照舰；输出带时间戳的新文件，说明见`docs/test-saves/faction-ship-plugs-20261019.md`。图纸暂不提供正常获取，测试备件不代表玩家供给。
+- 构建后`node tools/faction-ship-plug-native-check.cjs`：隐藏Electron、隔离userData，中文桌面/英文手机仿真核对五件船插及储备甲板富卡、8.4秒有效周期和IPC保存重载；检查运行异常，不读取个人档，不作为实体手机或观感验收。只清理工具自建且核对路径的临时profile。
+
 ## 英文设置切换巡检（2026-10-18）
 
 - `node tools/l10n-en-native-check.cjs [--layout=classic|modern]`：先`npm run build`；使用本树真实App、独立合成档和隐藏Electron，中文启动后真实打开设置点击English。扫描两布局10个一级页面、主要子页签（含任务5页）和手册8页，热切/重载各查，记录文本/悬停/辅助标签中的中文、未解析ID和参数槽。输出`tools/_ui-artifacts/l10n-en-native-20261018/`；先落盘报告再断言，无遗漏且无运行异常才退出0。`localizationComplete`只表示本轮检查通过，不代表实体手机或所有游戏状态验收。不读取个人档。

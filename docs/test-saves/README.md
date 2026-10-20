@@ -1,5 +1,10 @@
 # 测试门槛存档（Test Saves）
 
+## 五族势力船插
+
+- `npx tsx tools/make-test-save.ts faction-ship-plugs`生成全新合成档，五艘单件对照舰与五件组合舰、插件备件和材料齐备，不读取或覆盖个人档；现有文件及步骤见`faction-ship-plugs-20261019.md`。
+- 势力图纸暂不进声望商店、不提供获取途径，不能用验收档的测试资产代表正常获取。核对装配富卡、镀膜跨场、打印返还和CPU拒装；原生检查用`node tools/faction-ship-plug-native-check.cjs`，中文桌面/英文手机仿真，不作实体手机或观感结论。
+
 ## 专属信号发射器与实验室筛选
 
 - `npx tsx tools/make-test-save.ts faction-beacons`：全新合成档，不读取或覆盖个人档，输出`test-save-faction-beacons-<生成时间>.json`。
