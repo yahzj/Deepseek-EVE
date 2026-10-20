@@ -1702,6 +1702,8 @@ export interface ModuleDef {
   cpuPenalty?: number
   /** 打印机体仅回收原编制，不生成永久库存。 */
   dronePrinting?: { hpMul: number; damageMul: number; launchMul: number; deckCycleMul: number }
+  /** 临时内容门禁：图纸定义保留，但不进入势力声望兑换。 */
+  blueprintExchangeDisabled?: boolean
   /** **插件加中槽**（中层舱段插件 +1）：多件加算；插件槽专属，普通装备不写本字段 */
   midSlotsAdd?: number
   /** **插件加低槽**（下层舱段插件 +1）：多件加算；插件槽专属 */

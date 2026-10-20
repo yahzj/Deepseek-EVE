@@ -3467,6 +3467,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.plug.013": { zh: "声望不够：通用黑匣 ×{p1} 要 {p2}，你手上有 {p3} 可以花。", en: "Not enough standing: {p1} Universal Black Box(es) cost {p2}, and you have {p3} spendable." },
   "core.plug.014": { zh: "同类型扩槽插件每舰只能安装一件。", en: "Only one slot-expanding plug of each type can be installed per ship." },
   "core.plug.015": { zh: "插件整理：同类型扩槽插件超出限制，已免费退回装备库 {p1} 件。", en: "Plug cleanup: {p1} extra same-type slot-expanding plug(s) were returned to the module bay for free." },
+  "core.plug.016": { zh: "该势力插件图纸暂不可获得。", en: "This faction ship plug blueprint is not currently obtainable." },
   "core.scrap.001": { zh: "拆船回收：{p1} 已拆解，回收材料 {p2} 种（制造料单的 50%），装备 ×{p3} 已入装备库。", en: "Ship recycling: {p1} was dismantled; {p2} material types recovered (50% of the build bill), {p3} fitted modules returned to the equipment bay." },
   "core.scrap.002": { zh: "这艘舰船现在不能回收。", en: "This ship cannot be recycled right now." },
   "ui.battleViewCore.001": { zh: "高爆", en: "High explosive" },

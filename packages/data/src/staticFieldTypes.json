@@ -179,6 +179,7 @@
   "plugs": {
     "": "object",
     "plugNonStacking": "boolean",
+    "blueprintExchangeDisabled": "boolean",
     "stealthWithPropulsion": "boolean",
     "shieldArmorConversionPct": "number",
     "shieldPassiveBonusPct": "number",

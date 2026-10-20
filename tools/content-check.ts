@@ -8669,7 +8669,7 @@ const PLUG_EFFECT_FIELDS: readonly string[] = [
 ]
 
 /** 数据侧插件的**非效果**字段（结构 / 成本 / 文案）——不参与"core 里谁读它"的接线检查 */
-const PLUG_PLAIN_FIELDS = new Set(['id', 'name', 'slot', 'rack', 'cpuUse', 'description'])
+const PLUG_PLAIN_FIELDS = new Set(['id', 'name', 'slot', 'rack', 'cpuUse', 'description', 'blueprintExchangeDisabled'])
 
 function checkPlugEffectWiring(): void {
   const used = new Set<string>()

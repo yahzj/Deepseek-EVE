@@ -4,11 +4,11 @@
   "table": "plugs",
   "groups": {
     "SHIP_PLUGS_0": [
-      { "id": "plug-pirate-raider", "slot": "plug", "rack": "low", "cpuUse": 0, "plugNonStacking": true, "stealthWithPropulsion": true, "speedPenaltyMps": 20 },
-      { "id": "plug-alien-shield-coating", "slot": "plug", "rack": "low", "cpuUse": 0, "plugNonStacking": true, "shieldArmorConversionPct": 0.5 },
-      { "id": "plug-gravekeeper-capacitor", "slot": "plug", "rack": "low", "cpuUse": 0, "plugNonStacking": true, "shieldPassiveBonusPct": 0.5 },
-      { "id": "plug-titan-compression", "slot": "plug", "rack": "low", "cpuUse": 0, "cargoCapacityBonusPct": 0.25, "droneBayBonusM3": 120, "cpuPenalty": 20, "speedPenaltyMps": 20 },
-      { "id": "plug-deadarmy-printing", "slot": "plug", "rack": "low", "cpuUse": 0, "plugNonStacking": true, "dronePrinting": { "hpMul": 0.5, "damageMul": 0.75, "launchMul": 0.75, "deckCycleMul": 0.6 } },
+      { "id": "plug-pirate-raider", "slot": "plug", "rack": "low", "cpuUse": 0, "plugNonStacking": true, "blueprintExchangeDisabled": true, "stealthWithPropulsion": true, "speedPenaltyMps": 20 },
+      { "id": "plug-alien-shield-coating", "slot": "plug", "rack": "low", "cpuUse": 0, "plugNonStacking": true, "blueprintExchangeDisabled": true, "shieldArmorConversionPct": 0.5 },
+      { "id": "plug-gravekeeper-capacitor", "slot": "plug", "rack": "low", "cpuUse": 0, "plugNonStacking": true, "blueprintExchangeDisabled": true, "shieldPassiveBonusPct": 0.5 },
+      { "id": "plug-titan-compression", "slot": "plug", "rack": "low", "cpuUse": 0, "blueprintExchangeDisabled": true, "cargoCapacityBonusPct": 0.25, "droneBayBonusM3": 120, "cpuPenalty": 20, "speedPenaltyMps": 20 },
+      { "id": "plug-deadarmy-printing", "slot": "plug", "rack": "low", "cpuUse": 0, "plugNonStacking": true, "blueprintExchangeDisabled": true, "dronePrinting": { "hpMul": 0.5, "damageMul": 0.75, "launchMul": 0.75, "deckCycleMul": 0.6 } },
       {
         "id": "plug-shield-plate",
         "slot": "plug",

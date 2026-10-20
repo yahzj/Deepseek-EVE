@@ -376,8 +376,11 @@ export function exchangePlugBlueprint(
   moduleId: string,
 ): { ok: true; blueprintId: string } | { ok: false; errorId: string; error: string; errorParams?: Readonly<Record<string, string | number>> } {
   const def = ctx.modules.get(moduleId)
-  if (!isPlugOf(def)) {
+  if (!def || !isPlugOf(def)) {
     return { ok: false, errorId: 'core.plug.002', error: `「${moduleId}」不是舰船插件。`, errorParams: { p1: moduleId } }
+  }
+  if (def.blueprintExchangeDisabled === true) {
+    return { ok: false, errorId: 'core.plug.016', error: '该势力插件图纸暂不可获得。' }
   }
   const bpId = plugBlueprintIdOf(moduleId)
   const bp = ctx.blueprints.get(bpId)
@@ -434,12 +437,12 @@ export interface PlugExchangeRow {
   affordable: boolean
 }
 
-/** **兑换窗口的 12 行**（顺序 = `ctx.modules` 里插件的登记顺序；只列真的是插件的那些） */
+/** **兑换窗口的可获取行**（暂不可获取的势力插件不出现在这里）。 */
 export function plugExchangeRowsOf(state: GameState, ctx: SimContext): PlugExchangeRow[] {
   const have = spendableStandingOf(state)
   const rows: PlugExchangeRow[] = []
   for (const def of ctx.modules.values()) {
-    if (!isPlugOf(def)) continue
+    if (!isPlugOf(def) || def.blueprintExchangeDisabled === true) continue
     const blueprintId = plugBlueprintIdOf(def.id)
     const bp = ctx.blueprints.get(blueprintId)
     if (!bp) continue

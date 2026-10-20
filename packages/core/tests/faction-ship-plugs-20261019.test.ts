@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import { addShipToFleet } from '../src/fleetBook'
-import { installPlug, exchangePlugBlueprint, plugInfoOf, plugEffectsOf } from '../src/plugs'
+import { installPlug, exchangePlugBlueprint, plugExchangeRowsOf, plugInfoOf, plugEffectsOf } from '../src/plugs'
 import { createPlayerSpec, startBattleFor, startFleetBattleFor, advanceBattleFor, applyPlayerUnitDamage, persistFleetHullDamage, settleDroneLosses } from '../src/combat'
 import { cpuBudgetOf, droneBayTotalM3, adjustDroneLoad } from '../src/equipment'
 import { cargoCapacityM3Of } from '../src/inventory'
@@ -34,7 +34,7 @@ describe('五族船插确认参数与真实接线', () => {
     expect(ctx.modules.get(ids[3]!)).toMatchObject({ cargoCapacityBonusPct: .25, droneBayBonusM3: 120, cpuPenalty: 20, speedPenaltyMps: 20 })
     expect(ctx.modules.get(ids[4]!)).toMatchObject({ plugNonStacking: true, dronePrinting: { hpMul: .5, damageMul: .75, launchMul: .75, deckCycleMul: .6 } })
   })
-  it.each(ids)('%s可兑换永久蓝图，料单工时同普通插件，中英均有名称', id => {
+  it.each(ids)('%s图纸暂不出现在声望商店且直接兑换被拒，定义与制造链保留', id => {
     const mod = ctx.modules.get(id)
     expect(mod, id).toBeDefined()
     expect(mod!.slot).toBe('plug')
@@ -44,11 +44,15 @@ describe('五族船插确认参数与真实接线', () => {
     expect(bp.singleUse).not.toBe(true)
     const state = createInitialState({ nowWallMs: 0, seed: 19 })
     state.standings.dsi = 100
-    expect(exchangePlugBlueprint(state, ctx, id).ok).toBe(true)
-    expect(state.learnedRecipes).toContain(bp.id)
+    const beforeStanding = state.standings.dsi
+    expect(plugExchangeRowsOf(state, ctx).some(row => row.moduleId === id)).toBe(false)
+    expect(plugExchangeRowsOf(state, ctx)).toHaveLength(12)
+    expect(exchangePlugBlueprint(state, ctx, id)).toMatchObject({ ok: false, errorId: 'core.plug.016' })
+    expect(state.standings.dsi).toBe(beforeStanding)
     expect(buildSimContext('en').modules.get(id)!.name).not.toBe(mod!.name)
     expect(ctx.marketGoods.has(id)).toBe(false)
     for (const mat of bp.materials) state.warehouse.items[mat.itemId] = mat.count
+    state.learnedRecipes.push(bp.id)
     expect(startManufacturing(state, bp.id, 'pilot', ctx).ok).toBe(true)
     state.gameMs = state.manufacturingRuns.find(run => run.active && run.blueprintId === bp.id)!.finishAtGameMs
     advanceManufacturing(state, ctx)
