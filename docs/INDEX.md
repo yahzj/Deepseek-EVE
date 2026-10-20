@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **483** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **8050** KB · **61840** 行
-- 状态分布：**未标注** 257 · **已确认/已实现** 161 · **进行中** 44 · **待裁定** 20 · **历史留档** 1
-- 孤儿文档（0 引用）**96** 份 · 状态未标注 **257** 份
+- 文档总数 **482** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **8048** KB · **61817** 行
+- 状态分布：**未标注** 257 · **已确认/已实现** 161 · **进行中** 43 · **待裁定** 20 · **历史留档** 1
+- 孤儿文档（0 引用）**95** 份 · 状态未标注 **257** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**14** 份
-- 三、现行设计稿（design）：**309** 份
+- 三、现行设计稿（design）：**308** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**37** 份
 - 二、其它（docs 根目录）：**6** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -36,7 +36,7 @@
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 304 KB / 316 行 | 18 / 3 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 95 KB / 927 行 | 96 / 5 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 523 KB / 1116 行 | 226 / 22 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 87 KB / 481 行 | 380 / 28 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 88 KB / 483 行 | 380 / 28 |
 
 ## 七、评审与体检（review） —— 14 份
 
@@ -57,11 +57,10 @@
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 | `docs/review/guoqing-audit-followup.md` | 国庆节审查当前跟进 | 未标注（跟进入口） | — | 2 KB / 21 行 | 3 / 0 |
 
-## 三、现行设计稿（design） —— 309 份
+## 三、现行设计稿（design） —— 308 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/design/untracked-closeout-20261020.md` | 遗留未跟踪文件接手收尾 | 进行中（进行中） | 2026-10-20 | 3 KB / 25 行 | 0 / 0 |
 | `docs/design/signal-beacon-siege-torpedo-20261019.md` | 信标围剿核查与鱼雷舰加成调整 | 未标注（实现完成） | 2026-10-19 | 4 KB / 40 行 | 0 / 0 |
 | `docs/design/debug-invasion-autostart-pause-20261018.md` | 暂停调试入侵自动开场 | 已确认/已实现（已实现并自检） | 2026-10-18 | 2 KB / 20 行 | 0 / 0 |
 | `docs/design/final-quantity-ceiling-20261018.md` | 最终整数数量统一向上取整 | 已确认/已实现（已确认） | 2026-10-18 | 7 KB / 69 行 | 0 / 0 |
@@ -553,11 +552,10 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 17 KB / 195 行 | 66 / 14 |
 
-## 附：孤儿文档（0 引用，96 份）
+## 附：孤儿文档（0 引用，95 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
-- `docs/design/untracked-closeout-20261020.md`（2026-10-20 · 3 KB）—— 遗留未跟踪文件接手收尾
 - `docs/design/signal-beacon-siege-torpedo-20261019.md`（2026-10-19 · 4 KB）—— 信标围剿核查与鱼雷舰加成调整
 - `docs/design/debug-invasion-autostart-pause-20261018.md`（2026-10-18 · 2 KB）—— 暂停调试入侵自动开场
 - `docs/design/final-quantity-ceiling-20261018.md`（2026-10-18 · 7 KB）—— 最终整数数量统一向上取整
