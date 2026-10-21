@@ -234,6 +234,7 @@ describe('虫洞 · 自动探索（批次 3）', () => {
       const stockId = stockOne(state)
       const before = { ...state.warehouse.items }
       const ships = wormholeAutoDefaultShips(state, ctx)
+      for (const uid of ships) state.fleet[uid]!.fitted.high = ['mod-laser-1', 'mod-miner-1', 'mod-salvager-1']
       const cargoBefore = ships.map((id) => JSON.stringify(state.fleet[id]!.cargo ?? {}))
       expect(wormholeAutoStart(state, ctx, stockId, ships).ok).toBe(true)
       state.gameMs = WORMHOLE_AUTO_DURATION_MS + 1
@@ -574,6 +575,8 @@ describe('虫洞 · 自动探索吃谜质科技（船长 2026-09-19 甲案）', 
     const stockB = stockOne(teched)
     const shipsA = wormholeAutoDefaultShips(plain, ctx)
     const shipsB = wormholeAutoDefaultShips(teched, ctx)
+    for (const uid of shipsA) plain.fleet[uid]!.fitted.high = ['mod-laser-1', 'mod-miner-1', 'mod-salvager-1']
+    for (const uid of shipsB) teched.fleet[uid]!.fitted.high = ['mod-laser-1', 'mod-miner-1', 'mod-salvager-1']
     expect(wormholeAutoStart(plain, ctx, stockA, shipsA).ok).toBe(true)
     expect(wormholeAutoStart(teched, ctx, stockB, shipsB).ok).toBe(true)
     plain.gameMs = WORMHOLE_AUTO_DURATION_MS + 1

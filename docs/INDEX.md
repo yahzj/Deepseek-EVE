@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **484** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **8057** KB · **61894** 行
-- 状态分布：**未标注** 258 · **已确认/已实现** 162 · **进行中** 43 · **待裁定** 20 · **历史留档** 1
-- 孤儿文档（0 引用）**96** 份 · 状态未标注 **258** 份
+- 文档总数 **485** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **8066** KB · **61972** 行
+- 状态分布：**未标注** 258 · **已确认/已实现** 163 · **进行中** 43 · **待裁定** 20 · **历史留档** 1
+- 孤儿文档（0 引用）**97** 份 · 状态未标注 **258** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**14** 份
-- 三、现行设计稿（design）：**309** 份
+- 三、现行设计稿（design）：**310** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**37** 份
 - 二、其它（docs 根目录）：**6** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -57,11 +57,12 @@
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 | `docs/review/guoqing-audit-followup.md` | 国庆节审查当前跟进 | 未标注（跟进入口） | — | 2 KB / 21 行 | 3 / 0 |
 
-## 三、现行设计稿（design） —— 309 份
+## 三、现行设计稿（design） —— 310 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
 | `docs/design/battle-card-range-memory-20261021.md` | 按卡距离记忆与射程变化确认 | 已确认/已实现（已实现） | 2026-10-21 | 7 KB / 60 行 | 0 / 0 |
+| `docs/design/signal-auto-ore-audit-20261021.md` | 自动探索母矿缺失核查 | 已确认/已实现（已实现） | 2026-10-21 | 9 KB / 78 行 | 0 / 0 |
 | `docs/design/signal-beacon-siege-torpedo-20261019.md` | 信标围剿核查与鱼雷舰加成调整 | 未标注（实现完成） | 2026-10-19 | 4 KB / 40 行 | 0 / 0 |
 | `docs/design/debug-invasion-autostart-pause-20261018.md` | 暂停调试入侵自动开场 | 已确认/已实现（已实现并自检） | 2026-10-18 | 2 KB / 20 行 | 0 / 0 |
 | `docs/design/final-quantity-ceiling-20261018.md` | 最终整数数量统一向上取整 | 已确认/已实现（已确认） | 2026-10-18 | 7 KB / 69 行 | 0 / 0 |
@@ -554,11 +555,12 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 17 KB / 195 行 | 66 / 14 |
 
-## 附：孤儿文档（0 引用，96 份）
+## 附：孤儿文档（0 引用，97 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
 - `docs/design/battle-card-range-memory-20261021.md`（2026-10-21 · 7 KB）—— 按卡距离记忆与射程变化确认
+- `docs/design/signal-auto-ore-audit-20261021.md`（2026-10-21 · 9 KB）—— 自动探索母矿缺失核查
 - `docs/design/signal-beacon-siege-torpedo-20261019.md`（2026-10-19 · 4 KB）—— 信标围剿核查与鱼雷舰加成调整
 - `docs/design/debug-invasion-autostart-pause-20261018.md`（2026-10-18 · 2 KB）—— 暂停调试入侵自动开场
 - `docs/design/final-quantity-ceiling-20261018.md`（2026-10-18 · 7 KB）—— 最终整数数量统一向上取整

@@ -2,6 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as grids from '../src/wormholeGrid'
 import { wormholeAutoDescend } from '../src/wormholeAutoSim'
 import { WORMHOLE_PILE_UNITS_BASE } from '../src/wormhole'
+import { buildSimContext } from '@whale/data'
+
+const oreUnitM3 = buildSimContext().items.get('ore-voidmother')!.unitM3
 
 const makeGrid = grids.wormholeMakeGrid
 function run(place: 'vein' | 'graveyard', rigs: number, holdM3 = 1e9) {
@@ -13,7 +16,7 @@ function run(place: 'vein' | 'graveyard', rigs: number, holdM3 = 1e9) {
     target.place = place
     return grid
   })
-  return wormholeAutoDescend({ seed: 71, startDepth: 9, totalMass: 0, holdM3,
+  return wormholeAutoDescend({ seed: 71, startDepth: 9, totalMass: 0, holdM3, oreUnitM3,
     miners: rigs, salvagers: rigs, scanRadius: 100, power: { dps: 1, ehp: 1 },
     guardPowerOf: () => ({ dps: 1e12, ehp: 1e12 }), tech: { ore: 1, wreck: 1 } })
 }
@@ -35,6 +38,6 @@ describe('自动探索深层堆数与真实批量', () => {
   it.each(['vein', 'graveyard'] as const)('%s深层大批次仍受实际货舱约束', place => {
     const result = run(place, 100, 10)
     expect(result.holdFull).toBe(true)
-    expect(result.oreUnits * .5 + result.wreckM3).toBeLessThanOrEqual(10)
+    expect(result.oreUnits * oreUnitM3 + result.wreckM3).toBeLessThanOrEqual(10)
   })
 })

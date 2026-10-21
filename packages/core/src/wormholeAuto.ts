@@ -43,7 +43,7 @@ import {
 } from './wormhole'
 import { matterTechLevel, matterTechNodes, matterTechWhBuffs, matterTechWorkEffBonus } from './matterTech'
 import { RARE_WRECK_VOLUME_M3, rareWreckItemIdOf, wreckGroupOfCard, wreckItemIdOf } from './salvage'
-import { wormholeRollRelicBoxKind, WORMHOLE_CORE_WEIGHTS, WORMHOLE_ESSENCE_ITEM_ID } from './wormholeSalvage'
+import { wormholeRollRelicBoxKind, WORMHOLE_CORE_WEIGHTS, WORMHOLE_ESSENCE_ITEM_ID, wormholeMinersInFleet, wormholeSalvagersInFleet } from './wormholeSalvage'
 import { wormholeCardIdOfFamily, wormholeFamilyOfSeed, wormholeLayerThreat } from './wormholeFoes'
 import { WORMHOLE_ARCHETYPE_IDS, WORMHOLE_ARCHETYPE_LABELS, wormholeArchetypeOf } from './wormholeGrid'
 import { wormholeStockOf, wormholeStockTake } from './wormholeScan'
@@ -62,22 +62,6 @@ import { repairCivilianFittings } from './equipment'
 
 /** 货舱**每格**折合多少 m³（自动探索的"装得下多少"用；量级与货舱页的格位口径一致） */
 export const WORMHOLE_AUTO_HOLD_M3_PER_CELL = 50
-
-/** 编队里装了几台某类作业件（高槽：采集器 / 打捞器）—— 决定"每动作回收几堆" */
-function countFittedBySlot(state: GameState, ctx: SimContext, shipIds: readonly string[], kind: 'miner' | 'salvager'): number {
-  let n = 0
-  for (const id of shipIds) {
-    const ship = state.fleet[id]
-    for (const modId of ship?.fitted?.high ?? []) {
-      if (!modId) continue
-      const def = ctx.modules.get(modId)
-      if (def?.slot !== 'turret') continue
-      const marker = `${def.id} ${def.name ?? ''}`
-      if (kind === 'miner' ? /miner|mine|采集/.test(marker) : /salvag|打捞/.test(marker)) n += 1
-    }
-  }
-  return n
-}
 
 /**
  * 编队战力（**快速对判**用：只比"DPS × 有效血量"的期望，不逐帧跑战斗、不掷单发）。
@@ -994,8 +978,9 @@ function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): voi
     startDepth: Math.max(1, Math.min(9, run.depth)),
     totalMass: adm.totalMass,
     holdM3: wormholeAutoHoldM3Of(tf),
-    miners: countFittedBySlot(state, ctx, run.shipIds, 'miner'),
-    salvagers: countFittedBySlot(state, ctx, run.shipIds, 'salvager'),
+    oreUnitM3: ctx.items.get(WORMHOLE_ORE_ITEM_ID)?.unitM3 ?? 1,
+    miners: wormholeMinersInFleet(state, ctx, run.shipIds),
+    salvagers: wormholeSalvagersInFleet(state, ctx, run.shipIds),
     power: fleetPowerOf(state, ctx, run.shipIds),
     // 舰船同类取最高，科技另行相加；与手动扫描同源。
     scanRadius: 1 + wormholeScanBonusOf(ctx, run.shipIds) + matterTechWhBuffs(state, ctx).scanRadius,

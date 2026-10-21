@@ -56,8 +56,6 @@ import { WORMHOLE_TURN_BASE, WORMHOLE_TURN_MASS_COEF, wormholeStepCost, WORMHOLE
  */
 const STEP_COST = WORMHOLE_TURN_PER_MOVE
 
-/** 浅层留手比例：达到货舱本比例后转去下潜，保留原有取舍。 */
-export const WORMHOLE_AUTO_DESCEND_HOLD_SHARE = 0.25
 /**
  * **收成折扣 = 0.8**（2026-09-26 船长令：「收益按照80%折扣」）。
  *
@@ -123,8 +121,8 @@ export interface WormholeAutoPower {
  *    优先级 = 遗迹与谜质**同档**（按远近）＞ 舰船信号 ＞ 矿脉与坟场（同档，按远近）；
  *    ⚠ 谜质格 **2026-09-27 才进白名单**——此前整趟都不去，玩家报障「自动探索不给谜质」；
  * 3. 到格就干活：母矿按 `采集器台数` 堆/动作、坟场按 `打捞器台数` 堆/动作，各 1 回合一堆；
- * 4. 层末入口的守卫**打得过就打**（它是门，不打上不去；深层收益 ×1.2/层）；打不过就**留在本层继续捞**；
- * 5. 本层捡到 `货舱 × WORMHOLE_AUTO_DESCEND_HOLD_SHARE`（现行 **0.25**）就转去下潜（给深层留货舱）；
+ * 4. 层末入口的守卫**打得过就打**（它是门，不打上不去），沿用原安全取舍；
+ * 5. 普通资源由实际剩余货舱约束，不再共享跨层25%软额度；无对应设备不选择作业地点；
  * 6. 收工条件：货舱满 / 回合见底 / 没有可达的产出格。
  */
 export function wormholeAutoDescend(opts: {
@@ -135,6 +133,8 @@ export function wormholeAutoDescend(opts: {
   totalMass: number
   /** 本趟货舱可装 m³（`wormholeBagSlotsOfFleet` 口径的近似：采集器/打捞器算进去） */
   holdM3: number
+  /** 母矿每单位体积，由调用方读取物品定义，避免容量换算漂移。 */
+  oreUnitM3: number
   /** 采集器台数（每动作回收几堆母矿） */
   miners: number
   /** 打捞器台数（每动作回收几堆残骸） */
@@ -162,7 +162,7 @@ export function wormholeAutoDescend(opts: {
    */
   blankShareFactor?: number
 }): WormholeAutoDescend {
-  const { seed, startDepth, totalMass, holdM3, miners, salvagers, power, guardPowerOf, tech, scanRadius,
+  const { seed, startDepth, totalMass, holdM3, oreUnitM3, miners, salvagers, power, guardPowerOf, tech, scanRadius,
     blankShareFactor = 1 } = opts
   const rng = mulberry(seed * 6364136223846793005 + 1442695040888963407)
   let turns = turnBudgetOf(totalMass, opts.techTurnBonus ?? 0)
@@ -188,7 +188,6 @@ export function wormholeAutoDescend(opts: {
     const grid = wormholeMakeGrid(seed * 31 + depth * 7919, depth, 0, blankShareFactor)
     const mul = wormholeLayerRewardMul(depth)
     const radius = wormholeGridRadiusFor(depth)
-    const holdCapThisLayer = holdM3 * WORMHOLE_AUTO_DESCEND_HOLD_SHARE
 
     /**
      * 本层有哪些"值得去"的位置：**直接读真网格的 `place`**（`wormholeMakeGrid` 已经按层把
@@ -206,6 +205,8 @@ export function wormholeAutoDescend(opts: {
       if (!g) continue
       if (isExitCell(grid, cell)) continue
       const place = g.place
+      if (place === 'vein' && miners <= 0) continue
+      if ((place === 'graveyard' || place === 'ruins') && salvagers <= 0) continue
       if (place === 'vein' || place === 'graveyard' || place === 'ruins' || place === 'ship' || place === 'matter') {
         worth.push({ cell, place })
       }
@@ -232,14 +233,7 @@ export function wormholeAutoDescend(opts: {
     out.turnsOnScan += scanCost
 
     while (turns > EXTRACT_RESERVE_TURNS) {
-      /**
-       * ⚠ **留手额度只管"占货舱的东西"（矿脉 / 坟场）**：遗迹出的是稀有残骸与安全货柜，
-       * **不占货舱 m³**（`wormholeIsShapedItem` 那类走拾取装备格）⇒ 不该被额度挡住。
-       * 本模块第一版让"额度一满就整层收工"，于是**遗迹还没轮到就下潜/撤离了** ——
-       * 实测满科技档 200 颗种子下稀有/货柜**恒为 0**，而真实网格层 4 有 2.6 个、层 8 有 6.5 个遗迹格。
-       */
-      const ruinsLeft = worth.some((w) => w.place === 'ruins')
-      if (holdUsed >= holdCapThisLayer && !ruinsLeft) break
+      // 遗迹/谜质沿用独立产出规则；普通货物装不下时不再为其消耗移动或作业回合。
       // ① 最近目标（贪心；**遗迹优先**——它出稀有残骸与安全货柜，是这趟最值钱的一条线；
       //    实测"纯最近优先"会在回合用尽前根本轮不到遗迹 ⇒ 稀有/货柜两条线恒为 0）
       /**
@@ -259,6 +253,7 @@ export function wormholeAutoDescend(opts: {
       let bestRank = -1
       for (let i = 0; i < worth.length; i++) {
         const w = worth[i]!
+        if (holdUsed >= holdM3 && w.place !== 'ruins' && w.place !== 'matter') continue
         const rank = w.place === 'ruins' || w.place === 'matter' ? 2 : w.place === 'ship' ? 1 : 0
         const d = hexDistance(pos, w.cell)
         if (rank > bestRank || (rank === bestRank && d < bestD)) {
@@ -293,8 +288,9 @@ export function wormholeAutoDescend(opts: {
         if (turns - need - cost - revealCost < EXTRACT_RESERVE_TURNS) break
         turns -= need + cost
         out.fightsWon += 1
-        out.wreckM3 += pileM3(mul, rng, tech.wreck)
-        holdUsed += WORMHOLE_WRECK_PILE_M3_BASE
+        const wreck = Math.min(Math.floor(Math.max(0, holdM3 - holdUsed)), pileM3(mul, rng, tech.wreck))
+        out.wreckM3 += wreck
+        holdUsed += wreck
         pos = target.cell
         out.cellsExplored += 1
         worth.splice(bestIdx, 1)
@@ -328,21 +324,20 @@ export function wormholeAutoDescend(opts: {
         : target.place === 'graveyard'
           ? WORMHOLE_GRAVEYARD_COMMONS_MIN + Math.floor(rng() * (WORMHOLE_GRAVEYARD_COMMONS_MAX - WORMHOLE_GRAVEYARD_COMMONS_MIN + 1)) + extra
           : 2
-      const rigs = target.place === 'vein' ? Math.max(1, miners) : Math.max(1, salvagers)
+      const rigs = target.place === 'vein' ? miners : target.place === 'graveyard' ? salvagers : 1
       const trips = Math.max(1, Math.ceil(piles / rigs))
       for (let t = 0; t < trips; t++) {
-        // 遗迹不看留手额度（它不占货舱），只看回合
-        if (turns < 1 || (holdUsed >= holdCapThisLayer && target.place !== 'ruins')) break
+        if (turns <= EXTRACT_RESERVE_TURNS || (holdUsed >= holdM3 && target.place !== 'ruins')) break
         turns -= 1
         // 每次作业按台数收堆，末批不得把不足台数的堆补满；遗迹维持一次动作一次翻检。
         const batch = target.place === 'ruins' ? 1 : Math.min(rigs, piles - t * rigs)
         for (let p = 0; p < batch; p++) {
-          if (target.place !== 'ruins' && holdUsed >= Math.min(holdM3, holdCapThisLayer)) break
+          if (target.place !== 'ruins' && holdUsed >= holdM3) break
           if (target.place === 'vein') {
-            const units = Math.min(Math.floor(Math.max(0, holdM3 - holdUsed) / .5),
+            const units = Math.min(Math.floor(Math.max(0, holdM3 - holdUsed) / oreUnitM3),
               Math.max(1, ceilFinalQuantity(WORMHOLE_PILE_UNITS_BASE * mul * (0.8 + rng() * 0.4) * tech.ore)))
             out.oreUnits += units
-            holdUsed += units * 0.5 // 母矿单位→m³ 的量级换算（与货舱页同量级）
+            holdUsed += units * oreUnitM3
           } else if (target.place === 'graveyard') {
             const m3 = Math.min(Math.floor(Math.max(0, holdM3 - holdUsed)), pileM3(mul, rng, tech.wreck))
             out.wreckM3 += m3
@@ -382,8 +377,9 @@ export function wormholeAutoDescend(opts: {
     out.fightsWon += 1
     out.depthReached = depth + 1
     // 层末守卫的战利品
-    out.wreckM3 += pileM3(mul, rng, tech.wreck)
-    holdUsed += WORMHOLE_WRECK_PILE_M3_BASE
+    const wreck = Math.min(Math.floor(Math.max(0, holdM3 - holdUsed)), pileM3(mul, rng, tech.wreck))
+    out.wreckM3 += wreck
+    holdUsed += wreck
   }
 
   return {
