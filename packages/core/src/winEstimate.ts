@@ -102,10 +102,7 @@ export function buildEvalState(state: GameState, shipId: string): { ev: GameStat
   provisionEvalSupplies(ev, f)
   ev.skills.trained = { ...state.skills.trained }
   ev.skills.queue = []
-  // 每星系目标距离（2026-09-11 船长）：预估的每局战斗必须按**该星系**的设定打，故原样带进快照
-  if (state.expedition.desirePrefByGalaxy !== undefined) {
-    ev.expedition.desirePrefByGalaxy = { ...state.expedition.desirePrefByGalaxy }
-  }
+  if (state.battleRangeByCard) ev.battleRangeByCard = structuredClone(state.battleRangeByCard)
   // 照会战加成判定（演习场 + 主控 + 「第一次完成悬赏」未完成）——复制任务状态使评估与实战一致
   const fb = state.importantTasks['first-bounty']
   if (fb !== undefined) ev.importantTasks['first-bounty'] = { ...fb }

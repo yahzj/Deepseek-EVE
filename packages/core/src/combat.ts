@@ -14,6 +14,7 @@
  *   战斗结束剩余退回仓库（V18 口径取消：单档通用弹，无轻/重之分）。
  */
 import { ceilFinalQuantity } from './quantity'
+import { battleCardRangeOf, battleRangeSnapshot, confirmedBattleDesire } from './battleRangeMemory'
 import { healArmorHp } from './combatMath'
 import { plugModulesOf } from './plugs'
 import type { GameState } from './state'
@@ -2190,16 +2191,14 @@ export function startBattleFor(
     ? createFoeSpecs(anomaly, bal, { units: waves[0]!.units, hpShare: waves[0]!.hpShare })
     : createFoeSpecs(anomaly, bal)
   const openM = battleOpenM(me, foes, bal)
-  // 期望距离：显式传入（出发时的偏好/战术）优先；`null` = 强制默认档（AI 副船）；否则用
-  // **该星系的目标距离**；该星系没设过 → **默认档 = 主武器射程带 0.8 处**（2026-09-15 船长裁定，
-  // 旧"射程中段"作废：远程武器默认要站远端，见 `balance.battle.desireBandMid`；星图与洞内同值）。
+  // 船长2026-10-21：显式距离/战前确认 → 实际卡记忆 → 主武器默认档；null为自动距离。
   // 普通战斗将记忆钳到本次开战距离；入侵保留跨波目标，实际距离仍受逐拍上限约束。
   const rawDesire =
     desireM === null
       ? desiredRangeFor(me, 'mid', bal)
       : desireM !== undefined && desireM > 0
         ? Math.round(desireM)
-        : (desirePrefOf(state, anomaly.galaxyId) ?? desiredRangeFor(me, 'mid', bal))
+        : (confirmedBattleDesire(state, anomalyId) ?? battleCardRangeOf(state, anomalyId)?.desireM ?? desiredRangeFor(me, 'mid', bal))
   const desire = Math.max(bal.minDistanceM, preserveDesire ? rawDesire : Math.min(openM, rawDesire))
   /**
    * 🔴 **R 族族格：以"玩家的射程盲区"为期望距离**（**船长 2026-10-01 三次澄清 · 正解**，原话照抄）：
@@ -2346,6 +2345,7 @@ export function startBattleFor(
     for (const s of shieldField.streams) s.nextPulseAtMs = battle.startedAtGameMs + s.ms
     battle.shieldFieldBy = { [me.tag ?? 'player']: shieldField }
   }
+  if (desireM !== null) battle.rangeMemory = battleRangeSnapshot(anomalyId, [me], Math.max(bal.minDistanceM, rawDesire), battleMaxDistanceM(battle, me, foes, bal), bal.minDistanceM)
   return battle
 }
 
@@ -2612,7 +2612,7 @@ export function startFleetBattleFor(
     ? createFoeSpecs(anomaly, bal, { units: waves[0]!.units, hpShare: waves[0]!.hpShare })
     : createFoeSpecs(anomaly, bal)
   const openM = battleOpenM(me, foes, bal)
-  // 期望距离：`null` = 强制默认档（洞内编队默认走这条）；显式值优先；否则该星系偏好 → 默认档。
+  // 船长2026-10-21：编队手动战同样按卡读取，自动探索传null不采用玩家记录。
   // ⚠ **2026-09-15 船长裁定：星图与洞内同一个默认档**（`desireBandMid` = 射程带 0.8 高位；
   // 当天先落成"星图 0.8 / 洞内 0.5"分档，船长更正「这个是我口误，可以回滚那句」⇒ 取消分档）。
   const rawDesire =
@@ -2620,7 +2620,7 @@ export function startFleetBattleFor(
       ? desiredRangeFor(me, 'mid', bal)
       : desireM !== undefined && desireM > 0
         ? Math.round(desireM)
-        : (desirePrefOf(state, anomaly.galaxyId) ?? desiredRangeFor(me, 'mid', bal))
+        : (confirmedBattleDesire(state, anomalyId) ?? battleCardRangeOf(state, anomalyId)?.desireM ?? desiredRangeFor(me, 'mid', bal))
   const desire = Math.max(bal.minDistanceM, preserveDesire ? rawDesire : Math.min(openM, rawDesire))
   const battle = createBattleState(me, foes, atGameMs, desire, specs.slice(1))
   // **敌群覆写照原样存下**（2026-09-25 修）：后续波由 `advanceBattleFor` 从 `ctx` 重建敌卡，不存就只有第 0 波吃到覆写
@@ -2822,6 +2822,7 @@ export function startFleetBattleFor(
     }
   }
   // ⚠ **刻意不写 `battle.hullEscapeFrac`**：副本内无"结构过半自动脱离"保险（冲突 2 · 船长裁定）。
+  if (desireM !== null) battle.rangeMemory = battleRangeSnapshot(anomalyId, specs, Math.max(bal.minDistanceM, rawDesire), battleMaxDistanceM(battle, me, foes, bal, specs) * (wormhole?.desireRangeMul ?? 1), bal.minDistanceM)
   return battle
 }
 
@@ -5989,8 +5990,8 @@ function steadyPreview(
     ? shipWaveBuilds.reduce((best, b) => (b.dps > best.dps ? b : best), shipWaveBuilds[0]!).specs
     : foes
   // 距离口径（船长 2026-09-11：「预估胜率的战斗按照那个距离决定，如果没有，采用射程中段距离」）：
-  // 该星系设过目标距离 → 用它（钳到本次开战距离内）；没设过 → 双方期望距离中点（旧口径）。
-  const steadyPref = desirePrefOf(state, anomaly.galaxyId)
+  // 按卡记忆取距；没有记录时保留解析预估原有默认模型。
+  const steadyPref = battleCardRangeOf(state, anomaly.id)?.desireM ?? null
   const steady =
     steadyPref !== null
       ? clamp(bal.minDistanceM, battleOpenM(me, foes, bal), steadyPref)

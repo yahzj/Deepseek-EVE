@@ -730,17 +730,10 @@ export interface ExpeditionState {
   returnAtGameMs?: number
   /** 实时战斗状态（phase='battle' 时非空；只存动态量，静态由 ship/anomaly 定义重建） */
   battle: BattleState | null
-  /**
-   * **每个星系各自的玩家目标距离**（米；2026-09-11 船长：「玩家每个星系设定的目标距离独立保存，
-   * 预估胜率的战斗按照那个距离决定。如果没有，采用射程中段距离」）。
-   * 键 = 星系 id，值 = 该星系的目标距离；战斗内拖距离条/点战术按钮写入**当时所在星系**。
-   * 未设该星系 → 回落**默认档**：**星图 = 主武器射程带 0.8 处**、洞内 = 中段 0.5
-   * （2026-09-15 船长裁定，见 `balance.battle.desireBand*`；旧"射程中点"是星图旧口径，已作废）。
-   * 取代旧的单一全局值 `desirePrefM`（旧档该值不再沿用，一律按新口径回落默认档）。
-   */
+  /** 2026-10-21起仅保留旧星系记录，不供新战斗读取、不猜测迁移到卡ID。 */
   desirePrefByGalaxy?: Record<string, number>
   /** ⚠ 遗留字段（2026-09-11 起不再使用，仅存档兼容占位）：原"全局期望距离偏好"。
-   *  现行口径见 `desirePrefByGalaxy`；读档时不回填、不回读。 */
+   *  现行口径见 `GameState.battleRangeByCard`；读档时不回填、不回读。 */
   desirePrefM?: number
   /** 赏金任务·窝点档位（2026-09-10 兼容字段）：非空 = 本次远征打的是派生窝点
    *  （威胁/波次/僚机按档位强化，奖金与稀有残骸按窝点口径结算）；旧档与普通悬赏 = 未设 */
@@ -951,6 +944,8 @@ export interface BlinkSeg {
 
 /** V12 实时战斗持久状态（确定性事件步进；只存动态量） */
 export interface BattleState {
+  /** 本场入场配置快照；供玩家按卡记忆，自动模拟不写。 */
+  rangeMemory?: import('./battleRangeMemory').BattleRangeSnapshot
   foeAcidLayers?: Record<string, Array<{ cutPct: number; untilMs: number }>>
   /** 守墓族苏生协议：一次性触发与已分配维修量，跨战中读档保留。 */
   foeRebirths?: Record<string, { lockUntilMs: number; startedAtMs: number; repairUntilMs: number; lastRepairAtMs: number; armorHealed: number; hullHealed: number }>
@@ -3028,6 +3023,9 @@ export interface BlackMarketState {
 }
 
 export type GameState = GameStateV31 & {
+  /** 船长2026-10-21确认：真实敌卡的距离及上次参战射程；旧星系偏好不迁移。 */
+  battleRangeByCard?: Record<string, import('./battleRangeMemory').BattleRangeRecord>
+  pendingBattleRange?: import('./battleRangeMemory').PendingBattleRange
   /** 船长2026-10-13批准：单条到港接续待办；老档缺省无待办，不预扣材料。 */
   pendingStationActivity?: import('./stationActivityPending').PendingStationActivity
   /** 星球规则原型，缺省不生成星球；首次显式发现才写入，老档零迁移。 */

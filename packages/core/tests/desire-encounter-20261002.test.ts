@@ -1,4 +1,5 @@
 /**
+ * 2026-10-21船长确认按实际卡ID，以下原报障说明留历史，断言已采用新键。
  * **遭遇战（含入侵伏击）里选的目标距离也要记住**（**2026-10-02 船长报障**：
  * 「**入侵战斗中，我方选择的期望距离不会保存**」）。
  *
@@ -19,7 +20,8 @@ import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
-import { desirePrefOf, setDesirePrefOf } from '../src/combat'
+import { battleCardRangeOf } from '../src/battleRangeMemory'
+import { setCardDistance } from './helpers/battle-card-memory'
 import { fightEncounter } from '../src/encounters'
 import { setBattleDesire } from '../src/expedition'
 
@@ -35,7 +37,7 @@ const PLAYER_DESIRE = 2_500
  */
 function world(desirePref?: number): GameState {
   const s = createInitialState({ nowWallMs: 0, seed: 21 })
-  if (desirePref !== undefined) setDesirePrefOf(s, GALAXY, desirePref)
+  if (desirePref !== undefined) setCardDistance(s, ctx, CARD, desirePref)
   s.encounter = {
     active: true,
     shipId: s.shipId,
@@ -60,7 +62,7 @@ describe('遭遇战 · 期望距离的写入与记忆（2026-10-02 报障）', (
     const r = setBattleDesire(s, PLAYER_DESIRE, ctx)
     expect(r.ok, r.ok ? '' : `被拒了：${String(r.errorId ?? '')}`).toBe(true)
     expect(s.encounter.battle!.myDesireM, '本场期望距离真的改了').toBe(PLAYER_DESIRE)
-    expect(desirePrefOf(s, GALAXY), '偏好写**本场所在星系**（与读取端同源）').toBe(PLAYER_DESIRE)
+    expect(battleCardRangeOf(s, CARD)?.desireM, '2026-10-21按实际卡ID记忆').toBe(PLAYER_DESIRE)
   })
 
   it('② 写下的偏好在下一场同星系遭遇里被读回（记忆闭环）', () => {

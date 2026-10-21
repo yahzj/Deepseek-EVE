@@ -27,6 +27,7 @@ import { factionGalaxyId, isFactionBounty, sideTaskBoard } from '../src/sideTask
 // 期望距离（2026-09-25 修：旗舰战也要认这个宿主）
 import { setBattleDesire } from '../src/expedition'
 import { desirePrefOf } from '../src/combat'
+import { battleCardRangeOf } from '../src/battleRangeMemory'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { WEEKEND_COMMS_SETTLE_ID, WEEKEND_COMMS_WARN_ID, weekendSyncComms } from '../src/weekendComms'
 import { weekendAssaultDrawOf, weekendNoteAssaultDispatch } from '../src/weekendBounty'
@@ -846,15 +847,14 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
    * **船长 2026-09-25 报障**：「可以斩杀敌方母舰的战斗进入后，**无法改变距离**，改变时显示"不在交火中"」。
    * 病根同"撤退"那一处：`setBattleDesire` 只认远征与虫洞两个宿主，不认**旗舰战（遭遇槽）**。
    */
-  it('㉑ 旗舰战里也能改期望距离（距离条/战术按钮不再报"不在交火中"）· 偏好写本场核心星系', () => {
-    const core = 'galaxy-kor'
+  it('㉑ 旗舰战里也能改期望距离，按实际旗舰卡记忆', () => {
     const { s, battle } = flagshipWorld()
     const before = battle.myDesireM
     const r = setBattleDesire(s, 2_200, ctx)
     expect(r.ok, '交火中 ⇒ 允许改').toBe(true)
     expect(battle.myDesireM, '期望距离真的落到本场战斗上').toBe(2_200)
     expect(battle.myDesireM).not.toBe(before)
-    expect(desirePrefOf(s, core), '偏好记在本场核心星系（下次该星系开战沿用）').toBe(2_200)
+    expect(battleCardRangeOf(s, 'ink-flagship')?.desireM, '按旗舰卡ID记忆').toBe(2_200)
     /** ⚠ 不能写到旗舰卡自带的母港去（隐藏卡的 `galaxyId` = `galaxy-hub`，与这一场无关） */
     expect(desirePrefOf(s, 'galaxy-hub'), '没有污染母港的偏好').toBeNull()
     /** 收场后 ⇒ 照旧拒绝（老口径不变） */

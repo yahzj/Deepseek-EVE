@@ -1,4 +1,5 @@
 import type { GameState } from './state'
+import { withBattleRangeCheck } from './battleRangeMemory'
 import type { SimContext } from './types'
 import { gridCellAt, hasLiveFoe, wormholeStream, type WormholeEventKey, type WormholeEventInstance } from './wormholeGrid'
 import { wormholeRelicBoxPoolOf } from './wormholeSalvage'
@@ -109,6 +110,10 @@ function revealClue(state: GameState, key: string | undefined): void {
 }
 
 export function wormholeResolveEvent(state: GameState, ctx: SimContext, action: WormholeEventAction, expected?: WormholeEventPreview): WormholeEventPreview {
+  return withBattleRangeCheck(state, { kind: 'wormhole-event', action, expected }, staged => wormholeResolveEventMutable(staged, ctx, action, expected))
+}
+
+function wormholeResolveEventMutable(state: GameState, ctx: SimContext, action: WormholeEventAction, expected?: WormholeEventPreview): WormholeEventPreview {
   const plan = wormholeEventPreview(state, ctx, action)
   if (!plan.ok) return plan
   if (expected && (expected.action !== action || expected.fingerprint !== plan.fingerprint || expected.cellKey !== plan.cellKey)) return { ...plan, ok: false, error: 'stale-plan' }

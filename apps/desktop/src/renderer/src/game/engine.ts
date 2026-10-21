@@ -134,6 +134,9 @@ import {
   storeShip,
   unstoreShip,
   setBattleDesire,
+  pendingBattleRangeView,
+  confirmBattleRange,
+  cancelBattleRange,
   setMiningAutoCycle,
   setMiningStopAfterTrip,
   simulateOffline,
@@ -819,12 +822,17 @@ export class GameEngine {
 
   /** 手动开战软确认；首次不动活动/库存，同一缺口再次点击才继续，自动core路径不弹窗。 */
   private withBattleAmmoWarning(key: string, ships: readonly string[], run: () => CommandResult, supplies?: Readonly<Record<string, number>>, preflight?: (snapshot: GameState) => CommandResult, inWormhole = false): CommandResult {
+    const finish = () => {
+      const result = run()
+      if (this.state.pendingBattleRange) { this.notify(); void this.persist() }
+      return result
+    }
     const plan = battleAmmoPreloadPlan(this.state, this.ctx, ships, supplies, inWormhole)
     const short = plan.rows.filter(row => row.missing > 0)
-    if (!short.length) { this.ammoAsk = null; return run() }
+    if (!short.length) { this.ammoAsk = null; return finish() }
     if (preflight) {
       const checked = preflight(structuredClone(this.state))
-      if (!checked.ok && checked.errorId !== ACTIVITY_CONFIRM_ID) { this.ammoAsk = null; return run() }
+      if (!checked.ok && checked.errorId !== ACTIVITY_CONFIRM_ID) { this.ammoAsk = null; return finish() }
     }
     const ammoStock = (stock: Readonly<Record<string, number>>) => Object.entries(stock)
       .filter(([id]) => this.ctx.items.get(id)?.kind === 'ammo').sort(([a], [b]) => a.localeCompare(b))
@@ -837,7 +845,7 @@ export class GameEngine {
     }), this.state.skills.trained, inWormhole ? this.state.wormhole.run?.hold : null])
     const now = Date.now()
     if (this.ammoAsk?.state === this.state && this.ammoAsk.signature === signature && now >= this.ammoAsk.at && now - this.ammoAsk.at <= 30_000) {
-      const result = run()
+      const result = finish()
       if (result.errorId !== ACTIVITY_CONFIRM_ID) this.ammoAsk = null
       return result
     }
@@ -850,7 +858,7 @@ export class GameEngine {
   }
 
   /** 活动切换的两段确认外包装（见 `switchAsk` 的说明）；`key` = 发起切换的那颗按钮 */
-  private withActivitySwitch(key: string, run: () => CommandResult): CommandResult {
+  private withActivitySwitch(key: string, run: (confirmed?: boolean) => CommandResult): CommandResult {
     const first = run()
     if (first.ok || first.errorId !== ACTIVITY_CONFIRM_ID) return first
     const now = Date.now()
@@ -860,6 +868,7 @@ export class GameEngine {
       return first // 首击：把警告交给调用点照旧 toast 出来
     }
     this.switchAsk = null
+    if (key === 'expedition') return run(true)
     if (haltCurrentActivity(this.state) !== null) {
       void this.persist()
       this.notify()
@@ -1526,14 +1535,14 @@ export class GameEngine {
       const wasActive = this.state.expedition.active
       const reason = advanceAutoLoopBounty(this.state, this.ctx)
       if (!wasActive && this.state.expedition.active) this.autoSortie = true // 本次由讨伐自动发起
-      if (reason !== null || (!wasActive && this.state.expedition.active)) this.notify()
+      if (reason !== null || (!wasActive && this.state.expedition.active) || this.state.pendingBattleRange) this.notify()
     }
     // 入侵「重复出击」（2026-09-25 船长令）：同一拍推进；出发走手动出击那条路（每场重抽 ＋ 星系覆写）
     if (autoLoopInvasionGalaxy(this.state) !== null) {
       const wasActive = this.state.expedition.active
       const reason = advanceAutoLoopInvasion(this.state, this.ctx, this.wallNowOf())
       if (!wasActive && this.state.expedition.active) this.autoSortie = true
-      if (reason !== null || (!wasActive && this.state.expedition.active)) this.notify()
+      if (reason !== null || (!wasActive && this.state.expedition.active) || this.state.pendingBattleRange) this.notify()
     }
     // 讨伐远征结束后复位标记（下一场手动出击照常自动弹战场）
     if (this.autoSortie && !this.state.expedition.active) this.autoSortie = false
@@ -2913,12 +2922,13 @@ export class GameEngine {
   }
 
   private startExpeditionReady(anomalyId: string, foeGalaxyId?: string): CommandResult {
-    return this.withActivitySwitch('expedition', () => {
+    return this.withActivitySwitch('expedition', confirmed => {
       const galaxyId = this.foeGalaxyOf(anomalyId, foeGalaxyId)
       const dispatch = this.weekendDispatchOf(anomalyId, foeGalaxyId)
       const result = startExpedition(this.state, dispatch.cardId, this.ctx, {
         ...(galaxyId !== undefined ? { foeGalaxyId: galaxyId } : {}),
         ...(dispatch.rewardIskOverride !== undefined ? { rewardIskOverride: dispatch.rewardIskOverride } : {}),
+        ...(confirmed ? { confirmActivitySwitch: true } : {}),
       })
       if (result.ok) {
         /** 抽过才计数（`weekendDispatchOf` 是纯的、不改计数）⇒ 下一次出击换一支 */
@@ -2955,10 +2965,10 @@ export class GameEngine {
   }
 
   private startLairExpeditionReady(anomalyId: string, lairTier: LairTier, fromMining = false): CommandResult {
-    return this.withActivitySwitch('expedition', () => {
+    return this.withActivitySwitch('expedition', confirmed => {
       const result = fromMining
         ? startExpeditionFromMining(this.state, anomalyId, this.ctx, { lairTier, foeGalaxyId: this.foeGalaxyOf(anomalyId) })
-        : startExpedition(this.state, anomalyId, this.ctx, { lairTier, foeGalaxyId: this.foeGalaxyOf(anomalyId) })
+        : startExpedition(this.state, anomalyId, this.ctx, { lairTier, foeGalaxyId: this.foeGalaxyOf(anomalyId), ...(confirmed ? { confirmActivitySwitch: true } : {}) })
       if (result.ok) {
         void this.persist()
         this.notify()
@@ -3170,6 +3180,7 @@ export class GameEngine {
 
   wormholeResolveEvent(action: import('@whale/core').WormholeEventAction, expected?: import('@whale/core').WormholeEventPreview): import('@whale/core').WormholeEventPreview {
     const result = wormholeResolveEvent(this.state, this.ctx, action, expected)
+    if (this.state.pendingBattleRange) { this.notify(); void this.persist() }
     if (result.ok) { void this.persist(); this.notify() }
     return result
   }
@@ -3531,6 +3542,7 @@ export class GameEngine {
       { q, r },
       { confirmUnknown, confirmIntercept, deferAmbush: true, confirmLeaveCargo },
     )
+    if (this.state.pendingBattleRange) { this.notify(); void this.persist() }
     if (res.ok) {
       this.wormholeTickNow()
       void this.persist()
@@ -3566,6 +3578,7 @@ export class GameEngine {
   private wormholeActivateReady(): CommandResult {
     // 遗迹收尾战**先提示、玩家确认后再开打**（船长 2026-09-13）⇒ 界面这条走 defer
     const r = wormholeActivateAt(this.state, this.ctx, undefined, { deferRuinsBattle: true })
+    if (this.state.pendingBattleRange) { this.notify(); void this.persist() }
     if (r.ok) {
       this.wormholeTickNow()
       void this.persist()
@@ -3967,6 +3980,19 @@ export class GameEngine {
       this.notify()
     }
     return result
+  }
+
+  battleRangePending() { return pendingBattleRangeView(this.state, this.ctx) }
+  confirmBattleRange(desireM: number): CommandResult {
+    const result = confirmBattleRange(this.state, this.ctx, desireM, this.wallNowOf())
+    this.notify()
+    void this.persist()
+    return result
+  }
+  cancelBattleRange(): void {
+    cancelBattleRange(this.state)
+    this.notify()
+    void this.persist()
   }
 
   /** 切换到船坞里的另一艘船 */

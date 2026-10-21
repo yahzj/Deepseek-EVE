@@ -12,6 +12,7 @@
  *   胜利返航不可召回（召回入口拒绝），失利/撤退返航可召回（即时回港）
  */
 import { ceilFinalQuantity } from './quantity'
+import { battleCardKey, battleCardRangeOf, withBattleRangeCheck } from './battleRangeMemory'
 import type { CoreBlockReason } from './engine'
 import { weekendApplyBattleOutcome, weekendBattleInvolvedOf } from './weekendBattle'
 import { weekendFoeCardOf } from './weekendEvent'
@@ -23,7 +24,7 @@ import { weekendWreckPenaltyFracOf, weekendProgressAt, weekendClockOf } from './
 import { rewardMulOf } from './tuning'
 import { bumpFirst } from './firstTasks'
 import { addLog, HOME_GALAXY_ID, shipLockedInWormhole } from './state'
-import { applyActivityGate, manualSlotOf } from './activityGate'
+import { applyActivityGate, haltCurrentActivity, manualSlotOf } from './activityGate'
 import type { CommandResult } from './engine'
 import type { GameState, BattleState } from './state'
 import type { AnomalyDef, SimContext, TravelEventDef } from './types'
@@ -56,8 +57,6 @@ import {
   refundRepairKitsAll,
   repairUsageText,
   dcUsageText,
-  setDesirePrefOf,
-  desirePrefOf,
   settleDroneLosses,
   startBattleFor,
   // 战报改造（2026-09-14 船长定）：结构化战报的唯一构造点
@@ -274,40 +273,16 @@ export function battleTacticDesire(
 ): number {
   const whRun = state.wormhole.run
   const whBattle = whRun?.battle ?? null
-  const cardId = anomalyId ?? (whBattle ? (whBattle.wormhole?.cardId ?? null) : state.expedition.anomalyId)
+  const encounterBattle = state.encounter.active ? state.encounter.battle : null
+  const cardId = anomalyId ?? (whBattle ? (whBattle.wormhole?.cardId ?? null) : encounterBattle ? state.encounter.anomalyId : state.expedition.anomalyId)
   const anomaly = cardId ? ctx.anomalies.get(cardId) : undefined
-  const anchorShipId = whBattle ? (whRun?.fleet[0] ?? state.shipId) : state.shipId
+  const anchorShipId = whBattle ? (whRun?.fleet[0] ?? state.shipId) : encounterBattle ? (encounterBattle.myFleet?.[0]?.shipId ?? state.encounter.shipId ?? state.shipId) : state.shipId
   const me = createPlayerSpec(state, ctx, anchorShipId)
   if (!anomaly || !me) return 0
   return desiredRangeFor(me, tactic, ctx.balance.battle)
 }
 
-/**
- * 玩家指令：战斗中调整期望距离（手动拖距离条/战术切换共用）。
- * **按星系记忆**（船长 2026-09-11：「玩家每个星系设定的目标距离独立保存」）——
- * 写入的是**本场战斗所在星系**（= 远征目标卡的星系）的目标距离；下次在该星系开战、
- * 以及该星系的胜率预估都会沿用它。
- *
- * ⚠ **洞内战（2026-09-13 修）**：洞内战斗宿主在 `run.battle`（不占 `expedition.battle`），
- * 首版这里只认远征 ⇒ 洞内拖距离条会被拒（「当前不在交火中」）＝**看着像"距离被锁死"**。
- * 现在两条路都认：洞内用**编队首舰**当主视角、敌卡走引擎同源的 `wormholeDerivedAnomaly`
- * （开战距离上限与开战那一刻同一把尺），偏好**记在本趟 `run.desireM`**（后续节点沿用）——
- * **不写星系偏好**：虫洞不属于任何星系，写进去会污染那个星系的设定。
- *
- * ⚠ **入侵旗舰战（2026-09-25 修 · 船长报障「可以斩杀敌方母舰的战斗进入后，无法改变距离，
- * 改变时显示'不在交火中'」）**：它是**第三个宿主**（编队战 · 承载在遭遇槽 `state.encounter.battle`），
- * 前两版判据都不认它 ⇒ 距离条与战术按钮在这里被拒。现在一并认：
- * - 主视角 / 敌卡 = 遭遇槽那条（`enc.anomalyId` = 该族旗舰卡，**不做派生**）；
- * - 偏好写**该场战斗所在星系**（`enc.galaxyId` = 本场核心）——⚠ **不能**写 `anomaly.galaxyId`：
- *   旗舰卡是隐藏卡、它自带的母港是 `galaxy-hub`，照抄会把偏好写到母港去。
- *
- * ⚠ **普通遭遇战也认（2026-10-02 修 · 船长报障「入侵战斗中，我方选择的期望距离不会保存」）**：
- * 原判据只认**旗舰战**（`weekendFlagshipEncounterOf`）⇒ **入侵伏击这类普通遭遇战**里拖距离条
- * 一律被拒（`core.expedition.001`「当前不在交火中」）——**选择既不生效、也不落偏好**。
- * 现放宽为「**遭遇槽里任意正在打的遭遇战**」；偏好仍写**该场所在星系**（`enc.galaxyId`，
- * 旗舰战那条的写入口径不变）。遭遇战存的 `anomalyId` 是**去掉入侵派生前缀的原卡 id**
- * （见 `encounters.ts` 收卡那处）⇒ `ctx.anomalies.get` 一定解析得到。
- */
+/** 玩家选距：三种战斗宿主共用，按实际卡ID写回；旧在途场次不编造入场射程。 */
 export function setBattleDesire(state: GameState, desireM: number, ctx: SimContext): CommandResult {
   const whRun = state.wormhole.run
   const whBattle = whRun?.battle ?? null
@@ -348,24 +323,16 @@ export function setBattleDesire(state: GameState, desireM: number, ctx: SimConte
   const minD = ctx.balance.battle.minDistanceM
   const clamped = Math.round(Math.min(maxD, Math.max(minD, desireM)))
   battle.myDesireM = clamped
-  // 记忆：远征收口写"该星系的目标距离"（跨会话沿用）；**洞内写在本趟上**、**遭遇战写本场所在星系**（见函数头注释）
-  if (whBattle) {
-    if (whRun) whRun.desireM = clamped
-  } else if (wkBattle) {
-    const gid = state.encounter.galaxyId
-    if (gid !== null && gid.length > 0) setDesirePrefOf(state, gid, clamped)
-  } else {
-    /**
-     * 🔴 **写入键 = 本场实际作战星系**（**2026-10-02 船长报障修**：「**在打入侵时，玩家设置的目标距离
-     * 并不会保存**」）——`exp.foeGalaxyId` 由出征时落（2026-09-25 加，正是为"卡自带星系 ≠ 实际作战
-     * 星系"这件事）；没有它时回落卡自带星系 ⇒ **普通远征逐字不变**。
-     *
-     * ⚠ **为什么不能再用 `anomaly.galaxyId` 当键**（探针实测，2026-10-02）：入侵池卡在数据里写死
-     * `galaxyId: 'galaxy-hub'`（`ink-harass` / `ink-raid` …，它们本就不属于任何被占星系）⇒ 旧写法把
-     * 玩家的设定**记到母港头上**：① 被占星系一份都没记（= 船长报的"不保存"）② **母港那份设定被入侵
-     * 悄悄改掉**（更严重，报障里没提到）。
-     */
-    setDesirePrefOf(state, state.expedition.foeGalaxyId ?? anomaly.galaxyId, clamped)
+  if (battle.rangeMemory) {
+    battle.rangeMemory.desireM = clamped
+    const key = battle.rangeMemory.cardId
+    const previous = battleCardRangeOf(state, key) ?? { maxRangeM: battle.rangeMemory.maxRangeM }
+    state.battleRangeByCard = { ...state.battleRangeByCard, [key]: { ...previous, desireM: clamped } }
+  }
+  // 已在途旧战斗没有入场射程证据，只补距离；下一次真正入场再建立射程记录。
+  if (!battle.rangeMemory && cardId) {
+    const old = battleCardRangeOf(state, cardId)
+    if (!whRun?.automaticBattleRanges) state.battleRangeByCard = { ...state.battleRangeByCard, [battleCardKey(cardId)]: { ...old, desireM: clamped } }
   }
   return { ok: true }
 }
@@ -482,8 +449,14 @@ export function startExpedition(
   state: GameState,
   anomalyId: string,
   ctx: SimContext,
-  opts?: { desireM?: number; lairTier?: LairTier; foeGalaxyId?: string; rewardIskOverride?: number },
+  opts?: { desireM?: number; lairTier?: LairTier; foeGalaxyId?: string; rewardIskOverride?: number; confirmActivitySwitch?: boolean },
 ): CommandResult {
+  const invasionSeq = opts?.foeGalaxyId && weekendZoneLiveAt(state, opts.foeGalaxyId, weekendClockOf(state)) ? state.weekendEvent?.seq : undefined
+  return withBattleRangeCheck(state, { kind: 'expedition', cardId: anomalyId, options: opts, invasionSeq }, staged => startExpeditionMutable(staged, anomalyId, ctx, opts))
+}
+
+function startExpeditionMutable(state: GameState, anomalyId: string, ctx: SimContext,
+  opts?: { desireM?: number; lairTier?: LairTier; foeGalaxyId?: string; rewardIskOverride?: number; confirmActivitySwitch?: boolean }): CommandResult {
   const pre = expeditionPreflight(state, ctx, anomalyId, opts?.foeGalaxyId)
   if (!pre.ok) return pre
   const anomaly = ctx.anomalies.get(anomalyId)!
@@ -507,6 +480,7 @@ export function startExpedition(
    * 那一档先警告；远征/快递/战斗中/洞里/返航途中一律拒）——原先这里散着 6 条硬拒，现已收进
    * `activityGate.applyActivityGate`。⚠ 放在**本入口自己的前置校验之后**（目标/声望/探索/冷却）。
    */
+  if (opts?.confirmActivitySwitch) haltCurrentActivity(state, ctx)
   const gateSkip = applyActivityGate(state, 'expedition', ctx)
   if (gateSkip) return gateSkip
   /**
@@ -553,11 +527,7 @@ export function startExpedition(
   exp.returnReason = undefined
   exp.lairTier = opts?.lairTier // 赏金任务·窝点档位（普通悬赏 = undefined）
   exp.factionActive = factionHit // 派系活跃目标（当日选中星系的常驻悬赏 = true）
-  // 目标距离：本次显式传入 → 写进**目标星系**的设定；否则开战时读该星系的已有设定，
-  // 该星系没设过则回落"主武器有效射程中点"（船长 2026-09-11：「如果没有，采用射程中段距离」）
-  if (opts?.desireM !== undefined) {
-    setDesirePrefOf(state, targetGalaxy, Math.max(ctx.balance.battle.minDistanceM, Math.round(opts.desireM)))
-  }
+  // 显式距离仅随本次开战记录到实际卡ID，不再改写星系偏好。
   const shipName = shipDisplayName(state, ctx, state.shipId)
   const outName = opts?.lairTier ? lairNameOf(anomaly, opts.lairTier) : anomaly.name
   addLog(
@@ -570,7 +540,7 @@ export function startExpedition(
   // 途中事件（若有）在出发瞬间触发一次（不再有去程中段等待）
   if (exp.eventId) maybeFireTravelEvent(state, ctx)
   // 去程取消：立即开战（beginBattleAt 会点亮目标星系并写"进入交火"日志）
-  const opened = beginBattleAt(state, ctx, anomalyId, state.shipId, now)
+  const opened = beginBattleAt(state, ctx, anomalyId, state.shipId, now, opts?.desireM)
   if (!opened) {
     exp.active = false
     exp.anomalyId = null
@@ -594,6 +564,12 @@ export function startExpeditionFromMining(
   ctx: SimContext,
   opts?: { desireM?: number; lairTier?: LairTier; foeGalaxyId?: string; rewardIskOverride?: number },
 ): CommandResult {
+  const invasionSeq = opts?.foeGalaxyId && weekendZoneLiveAt(state, opts.foeGalaxyId, weekendClockOf(state)) ? state.weekendEvent?.seq : undefined
+  return withBattleRangeCheck(state, { kind: 'expedition', cardId: anomalyId, fromMining: true, options: opts, invasionSeq }, staged => startExpeditionFromMiningMutable(staged, anomalyId, ctx, opts))
+}
+
+function startExpeditionFromMiningMutable(state: GameState, anomalyId: string, ctx: SimContext,
+  opts?: { desireM?: number; lairTier?: LairTier; foeGalaxyId?: string; rewardIskOverride?: number }): CommandResult {
   const pre = expeditionPreflight(state, ctx, anomalyId)
   if (!pre.ok) return pre
   if (state.expedition.active) return { ok: false, error: '远征进行中，等战报回来再说吧。', errorId: 'core.expedition.011' }
@@ -637,9 +613,14 @@ export function startExpeditionFromMining(
   return startExpedition(state, anomalyId, ctx, opts)
 }
 
-/** 到港开战（主控）：开战时刻 = 到港时刻；目标距离 = **该星系**的设定，没设过则射程中段
- *  （2026-09-11 船长：按星系独立保存；`startBattleFor` 内单点解析，此处不再传全局偏好） */
-export function beginBattleAt(state: GameState, ctx: SimContext, anomalyId: string, shipId: string, arrivalGameMs: number): boolean {
+/** 到港开战：距离由实际敌卡记忆决定；旧在途开战同样经过射程变化门禁。 */
+export function beginBattleAt(state: GameState, ctx: SimContext, anomalyId: string, shipId: string, arrivalGameMs: number, desireM?: number): boolean {
+  return withBattleRangeCheck(state, { kind: 'expedition-arrival', cardId: anomalyId, shipId }, staged => ({
+    ok: beginBattleAtMutable(staged, ctx, anomalyId, shipId, arrivalGameMs, desireM),
+  })).ok
+}
+
+function beginBattleAtMutable(state: GameState, ctx: SimContext, anomalyId: string, shipId: string, arrivalGameMs: number, desireM?: number): boolean {
   /**
    * **周末入侵**：被占星系的悬赏战要打**入侵强度** ⇒ 用覆写口传进去。
    * ⚠ H 族（独立卡）**不传**：它的卡面威胁就是实测价（90 / 108 / 129），覆写 78/120 只会把标签写假
@@ -651,34 +632,14 @@ export function beginBattleAt(state: GameState, ctx: SimContext, anomalyId: stri
     weekendAssault && weekendEv && !weekendFoeCardsSelfPriced(weekendEv.family)
       ? weekendAssaultThreatOf(weekendEv, weekendAssault.galaxyId)
       : undefined
-  /**
-   * 🔴 **开战读哪把键 —— 必须与写入端同源**（**2026-10-02 船长报障修**：「**在打入侵时，玩家设置的
-   * 目标距离并不会保存**」）。
-   *
-   * 旧写法在这里传 `undefined`，指望 `startBattleFor` 自己回落 `desirePrefOf(state, anomaly.galaxyId)`；
-   * **而入侵池卡在数据里写死 `galaxyId: 'galaxy-hub'`**（`ink-harass` / `ink-raid` …，见 `packages/data`）
-   * ⇒ 那条回落读的是**母港**那把键。⚠ 旧注释那句「远征/入侵主动出击的目标卡**自带被占星系**」
-   * **与数据不符、是错的**（旗舰战那条注释反倒说对了：隐藏卡的 `galaxyId` 就是母港）。
-   *
-   * ⇒ 现在**显式**按**本场实际作战星系**读：`exp.foeGalaxyId`（出征时落的那个，2026-09-25 加），
-   * 与 `setBattleDesire` 的写入键**逐字同源**；没有 `foeGalaxyId` 时回落卡自带星系
-   * ⇒ **普通远征/普通悬赏逐字不变**。
-   *
-   * ⚠ 没设过时传下来的是 **`null`**（= 引擎的"强制默认档"出口）而**不是 `undefined`**：
-   * `undefined` 会掉回上面那个"按卡星系读"的回落、又读回母港。`desirePrefOf` 未命中本来就返回 `null`
-   * ⇒ 直传即可。⚠ 旗舰战那条同理（`weekendLaunch.weekendStartFlagshipBattle` 显式传核心星系那一份）。
-   */
-  const desirePref = desirePrefOf(
-    state,
-    state.expedition.foeGalaxyId ?? ctx.anomalies.get(anomalyId)?.galaxyId,
-  )
+  // 实际anomalyId已由出发时抽卡锁定，不再以卡自带母港或作战星系取距离。
   const battle = startBattleFor(
     state,
     ctx,
     shipId,
     anomalyId,
     arrivalGameMs,
-    desirePref,
+    desireM,
     weekendThreat !== undefined ? { threat: weekendThreat } : undefined,
     weekendAssault !== undefined,
   )
@@ -1324,6 +1285,7 @@ export function advanceExpedition(state: GameState, ctx: SimContext, freezeBattl
       if (state.gameMs < exp.finishAtGameMs) return
       const ok = beginBattleAt(state, ctx, exp.anomalyId ?? '', state.shipId, exp.finishAtGameMs)
       if (!ok) {
+        if (state.pendingBattleRange) return
         exp.active = false
         exp.anomalyId = null
         exp.battle = null
@@ -1339,6 +1301,7 @@ export function advanceExpedition(state: GameState, ctx: SimContext, freezeBattl
         // 防御：存档里 battle 丢失 → 用当前时刻开战
         const ok = beginBattleAt(state, ctx, exp.anomalyId ?? '', state.shipId, state.gameMs)
         if (!ok) {
+          if (state.pendingBattleRange) return
           exp.active = false
           exp.anomalyId = null
           exp.lairTier = undefined
@@ -1610,6 +1573,7 @@ function stopAutoLoopReason(state: GameState, reason: string, droneFloor: number
  * 失败即按既有口径**停环**（带日志与在线弹窗），所以这行不需要为它显示"等待"。
  */
 export function autoLoopWaitLabel(state: GameState): string | null {
+  if (state.pendingBattleRange) return '战前准备'
   if (state.expedition.active) return '本次出击'
   if (state.mining.active) return '采矿'
   if (state.salvaging.active) return '残骸打捞'
@@ -1663,14 +1627,14 @@ export function advanceAutoLoopBounty(state: GameState, ctx: SimContext): string
     const def = ctx.items.get(row.itemId)
     return sum + row.units * (def ? cargoUnitM3(state, def) : 0)
   }, 0)
-  const pre = autoLoopPreflight(state, ctx, anomaly.name, lootM3)
-  if (pre !== null) {
-    stopAutoLoopReason(state, pre.notice)
-    return pre.reason
-  }
   // 出发（内部含声望/冷却/探索/位置全部校验）
-  const r = startExpedition(state, id, ctx)
+  const r = startLoopBattle(state, id, ctx, lootM3)
+  if (r.loopBlock) {
+    stopAutoLoopReason(state, r.loopBlock.notice)
+    return r.loopBlock.reason
+  }
   if (!r.ok) {
+    if (r.rangeConfirmation) return null
     stopAutoLoopReason(state, r.error ?? '无法再出发。')
     return r.error ?? '无法再出发'
   }
@@ -1723,6 +1687,21 @@ function autoLoopPreflight(
     }
   }
   return null
+}
+
+/** 自动修补与开战同一事务，射程待确认时不提前消耗修理组件。 */
+interface LoopBattleResult extends CommandResult { loopBlock?: NonNullable<ReturnType<typeof autoLoopPreflight>> }
+export function startLoopBattle(state: GameState, cardId: string, ctx: SimContext, lootM3?: number,
+  options?: { foeGalaxyId?: string; rewardIskOverride?: number }): LoopBattleResult {
+  const invasionSeq = options?.foeGalaxyId && weekendZoneLiveAt(state, options.foeGalaxyId, weekendClockOf(state)) ? state.weekendEvent?.seq : undefined
+  return withBattleRangeCheck(state, { kind: 'expedition', cardId, autoRepair: true, options, invasionSeq }, staged => {
+    const card = ctx.anomalies.get(cardId)
+    if (!card) return { ok: false }
+    const volume = lootM3 ?? card.loot.reduce((sum, row) => sum + row.units * (ctx.items.get(row.itemId) ? cargoUnitM3(staged, ctx.items.get(row.itemId)!) : 0), 0)
+    const pre = autoLoopPreflight(staged, ctx, card.name, volume)
+    if (pre) return { ok: false, loopBlock: pre }
+    return startExpedition(staged, cardId, ctx, options)
+  })
 }
 
 /* ─────────────── 入侵「重复出击」（2026-09-25 船长令） ───────────────
@@ -1886,17 +1865,18 @@ export function advanceAutoLoopInvasion(state: GameState, ctx: SimContext, nowWa
     const def = ctx.items.get(row.itemId)
     return sum + row.units * (def ? cargoUnitM3(state, def) : 0)
   }, 0)
-  const pre = autoLoopPreflight(state, ctx, drawn?.name ?? galaxyId, lootM3)
-  if (pre !== null) {
-    stopAutoLoopInvasion(state, pre.notice, pre.noticeId, pre.noticeParams)
-    return pre.reason
-  }
   // 出发：星系覆写（与 `engine.startExpeditionAt` 同一条路；卡已在上面的 `dispatch` 抽定）
-  const r = startExpedition(state, dispatch.cardId, ctx, {
+  const r = startLoopBattle(state, dispatch.cardId, ctx, lootM3, {
     foeGalaxyId: galaxyId,
     ...(dispatch.rewardIsk > 0 ? { rewardIskOverride: dispatch.rewardIsk } : {}),
   })
+  if (r.loopBlock) {
+    const pre = r.loopBlock
+    stopAutoLoopInvasion(state, pre.notice, pre.noticeId, pre.noticeParams)
+    return pre.reason
+  }
   if (!r.ok) {
+    if (r.rangeConfirmation) return null
     /**
      * **冷却类失败也当「等」**（双保险，不引入新错误码）：`startExpedition` 内部那道冷却判据与这里
      * 同源、只是取值时刻不同 ⇒ 失败时再查一次冷却：仍 >0 就等，**绝不因为"差几秒"把整条循环杀掉**。

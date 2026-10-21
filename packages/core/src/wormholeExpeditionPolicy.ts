@@ -108,6 +108,7 @@ export function wormholeGuardRiskPreview(state: GameState, ctx: SimContext): { a
   let wins = 0
   for (let sample = 0; sample < 3; sample++) {
     const staged = structuredClone(state)
+    if (staged.wormhole.run) staged.wormhole.run.automaticBattleRanges = true
     staged.rng.seed = wormholeHash32((run.seed ?? 1) ^ Math.imul(run.depth, 7919) ^ Math.imul(sample + 1, 104729)) || 1
     if (!wormholeStartBattle(staged, ctx, 'boss').ok) continue
     for (let step = 0; staged.wormhole.run?.battle && step < 9000; step++) { staged.gameMs += 100; advanceWormhole(staged, ctx) }
@@ -122,6 +123,7 @@ export function wormholeRunExpeditionPolicy(
   opts?: { maxDepth?: number; policy?: 'deep' | 'recovery'; checkpoint?: (state: GameState) => GameState },
 ): WormholePolicyResult {
   let state = initial
+  if (state.wormhole.run) state.wormhole.run.automaticBattleRanges = true
   const out: WormholePolicyResult = { state, reachedDepth: state.wormhole.run?.depth ?? 0, guardClearedDepth: 0, extracted: false, battles: 0, steps: 0, layers: [] }
   const maxDepth = Math.max(1, Math.min(10, Math.floor(opts?.maxDepth ?? 10)))
   const entered = new Set<number>()

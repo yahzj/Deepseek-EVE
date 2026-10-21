@@ -115,6 +115,8 @@ export { SHIP_DAMAGE_DEFS, SHIP_DAMAGE_CHANCE, SHIP_DAMAGE_PENALTY, cleanShipDam
 export type { ShipDamageKind } from './shipDamage'
 export { ammoTiersOf } from './ammoTiers'
 export { battleAmmoPreloadPlan } from './battleAmmoPreflight'
+export { battleCardRangeOf, pendingBattleRangeView, cancelBattleRange } from './battleRangeMemory'
+export { confirmBattleRange } from './battleRangeConfirm'
 export type { BattleAmmoPreloadRow, BattleAmmoPreloadPlan } from './battleAmmoPreflight'
 export { marketTradingGoods } from './market'
 export { volleyGunCountOf, volleyDamageShareOf } from './combatVolley'

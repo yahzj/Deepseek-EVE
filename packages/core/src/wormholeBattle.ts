@@ -9,6 +9,7 @@
  * `state → wormhole → wormholeFoes`、`wormholeBattle → {wormhole, combat, shipyard}`（单向）。
  */
 import { ceilFinalQuantity } from './quantity'
+import { withBattleRangeCheck } from './battleRangeMemory'
 import type { CommandResult } from './engine'
 import type { BattleState, DroneLossReport, GameState } from './state'
 import { addLog } from './state'
@@ -82,6 +83,11 @@ export function wormholeStartBattle(
    */
   opts?: { strengthMul?: number },
 ): CommandResult {
+  return withBattleRangeCheck(state, { kind: 'wormhole-fight', battleKind: kind, atGameMs, strengthMul: opts?.strengthMul }, staged => wormholeStartBattleMutable(staged, ctx, kind, atGameMs, opts))
+}
+
+function wormholeStartBattleMutable(state: GameState, ctx: SimContext, kind: Exclude<WormholeFoeKind, 'extract'>,
+  atGameMs: number, opts?: { strengthMul?: number }): CommandResult {
   const run = state.wormhole.run
   if (!run) return { ok: false, error: '不在虫洞内。', errorId: 'core.wormholeBattle.001' }
   if (run.expeditionRules !== undefined && run.expeditionRules !== 2) return { ok: false, code: 'unsupported-rules' }
@@ -176,8 +182,8 @@ export function wormholeStartBattle(
           kind: battleKind,
           nodeIndex: grid ? gridContentIndex(grid, grid.pos) : run.nodeIndex,
         })
-  // **本趟期望交距沿用**（玩家在上一场洞内战里拖过距离条；没拖过 = null ⇒ 走默认口径）
-  const battle = startFleetBattleFor(state, ctx, run.fleet, cardId, atGameMs, run.desireM ?? null, {
+  // 手动按真实卡记忆；自动探索每场由引擎计算，不读取玩家记录。
+  const battle = startFleetBattleFor(state, ctx, run.fleet, cardId, atGameMs, run.automaticBattleRanges ? null : undefined, {
     depth: run.depth,
     kind: battleKind,
     waves,
@@ -235,6 +241,10 @@ export function wormholeActivateAt(
   taken?: number
   code?: 'unsupported-rules'
 } {
+  return withBattleRangeCheck(state, { kind: 'wormhole-activate', atGameMs, options: opts }, staged => wormholeActivateAtMutable(staged, ctx, atGameMs, opts))
+}
+
+function wormholeActivateAtMutable(state: GameState, ctx: SimContext, atGameMs?: number, opts?: { deferRuinsBattle?: boolean }): ReturnType<typeof wormholeActivateAt> {
   const run = state.wormhole.run
   if (run?.expeditionRules !== undefined && run.expeditionRules !== 2) return { ok: false, code: 'unsupported-rules' }
   const turnsBefore = run?.turnsLeft ?? 0
@@ -371,11 +381,13 @@ export function wormholeTravelTo(
   opts?: { confirmUnknown?: boolean; confirmIntercept?: boolean; deferAmbush?: boolean; confirmLeaveCargo?: boolean },
   atGameMs?: number,
 ): ReturnType<typeof wormholeTravelToMutable> {
-  if (state.wormhole.run?.expeditionRules !== 2) return wormholeTravelToMutable(state, ctx, target, opts, atGameMs)
-  const staged = structuredClone(state)
-  const result = wormholeTravelToMutable(staged, ctx, target, opts, atGameMs)
-  if (result.ok) Object.assign(state, staged)
-  return result
+  return withBattleRangeCheck(state, { kind: 'wormhole-travel', target, options: opts, atGameMs }, original => {
+    if (original.wormhole.run?.expeditionRules !== 2) return wormholeTravelToMutable(original, ctx, target, opts, atGameMs)
+    const staged = structuredClone(original)
+    const result = wormholeTravelToMutable(staged, ctx, target, opts, atGameMs)
+    if (result.ok) Object.assign(original, staged)
+    return result
+  })
 }
 
 function wormholeTravelToMutable(

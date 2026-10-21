@@ -1,5 +1,10 @@
 # 工具区台账（tools/）
 
+## 按卡距离与射程变化（2026-10-21）
+
+- `npx tsx tools/make-test-save.ts battle-card-range`：调用`battle-card-range-fixture.ts`生成全新合成档，短射程记录后换装，保存待确认状态；不读取个人档。加载说明见`docs/test-saves/battle-card-range-20261021.md`。
+- 构建后`node tools/battle-card-range-native-check.cjs [--electron=本机Electron绝对路径]`：隐藏Electron、临时userData、经典中文桌面/现代英文手机仿真，实际取消、输入距离、确认迎战与IPC重载。输出`tools/_ui-artifacts/battle-card-range/`，只清理自建且核验过路径的profile；不作实体手机或观感结论。
+
 ## 五族势力船插验收（2026-10-20）
 
 - `npx tsx tools/make-test-save.ts faction-ship-plugs`：复用`faction-ship-plug-fixture.ts`，全新v31合成档，正式装配入口生成六艘对照舰；输出带时间戳的新文件，说明见`docs/test-saves/faction-ship-plugs-20261019.md`。图纸暂不提供正常获取，测试备件不代表玩家供给。

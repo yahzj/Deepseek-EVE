@@ -10,6 +10,7 @@
 /* 以下为 2026-10-02 批次 4m 从 save.ts 切接过来的整簇（asRaw ~ cleanFx）。 */
 import type { RawState } from './save'
 import type { BattleFx, BattleShieldFieldLedger, BattleShieldFieldStream, BattleState } from './state'
+import { cleanBattleRangeSnapshot } from './battleRangeMemory'
 
 /** 把未知值安全转成普通对象（非对象一律当空对象） */
 export function asRaw(value: unknown): RawState {
@@ -30,6 +31,7 @@ export function asRaw(value: unknown): RawState {
 type BattleFieldSpec = { kind: 'persist' } | { kind: 'runtime'; why: string }
 
 const BATTLE_FIELDS = {
+  rangeMemory: { kind: 'persist' },
   foeAcidLayers: { kind: 'persist' },
   foeRebirths: { kind: 'persist' },
   meRebirths: { kind: 'persist' },
@@ -537,6 +539,7 @@ export function cleanBattle(raw: unknown): BattleState | null {
     lastTickGameMs: Math.max(0, Math.floor(numf(b.lastTickGameMs, 0))),
     distanceM: Math.max(0, distance),
     myDesireM: Math.max(0, numf(b.myDesireM, distance)),
+    ...(cleanBattleRangeSnapshot(b.rangeMemory) ? { rangeMemory: cleanBattleRangeSnapshot(b.rangeMemory) } : {}),
     units,
     ammo: {
       kin: numi(ammoRaw.kin, 0),

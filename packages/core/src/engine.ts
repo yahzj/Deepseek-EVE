@@ -87,6 +87,7 @@ export interface CoreBlockReason {
 /** 指令执行结果：界面按钮点完拿这个决定是提示错误还是无事发生 */
 export interface CommandResult {
   ok: boolean
+  rangeConfirmation?: boolean
   /** 已接受但需等待真实返航，到港后重验启动；不是已经开工。 */
   queued?: boolean
   /**

@@ -1,5 +1,10 @@
 # 测试门槛存档（Test Saves）
 
+## 按卡距离与射程确认
+
+- `npx tsx tools/make-test-save.ts battle-card-range`生成全新合成档，不读取或覆盖个人档。初始即停在换装后的射程确认，旧距离2500米；取消不进入战斗，重新导入可改距后确认迎战。
+- 先通过游戏内存档管理备份当前进度；完整步骤见`battle-card-range-20261021.md`。隔离操作检查为`node tools/battle-card-range-native-check.cjs`，需要先构建，不代表实体手机或观感验收。
+
 ## 五族势力船插
 
 - `npx tsx tools/make-test-save.ts faction-ship-plugs`生成全新合成档，五艘单件对照舰与五件组合舰、插件备件和材料齐备，不读取或覆盖个人档；现有文件及步骤见`faction-ship-plugs-20261019.md`。

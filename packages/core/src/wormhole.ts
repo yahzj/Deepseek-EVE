@@ -498,12 +498,10 @@ export interface WormholeRunState {
    * 冻结就白做了。随档保存（离线离开同样适用）。
    */
   leftAtGameMs?: number
-  /**
-   * **本趟的期望交距偏好**（玩家在洞内战里拖距离条选的；setBattleDesire 写入）。
-   * 用途：本趟**后续每一场**洞内战斗开战都沿用它（否则每个节点都要重拖一次）。
-   * 注意：**不写星系偏好**——虫洞不属于任何星系（远征那条路才写星系）。
-   */
+  /** 历史整趟距离保留兼容，新手动战读取GameState.battleRangeByCard。 */
   desireM?: number
+  /** 自动探索独立快照：使用自动距离，不读写玩家的按卡记忆。 */
+  automaticBattleRanges?: true
   /**
    * **本层的网格探索状态**（F3a · 2026-09-13 船长确认「探索采用网格地图的形式，整体网格地图呈现圆型」）。
    * 可选字段：老档没有 = 该层走旧口径（零迁移）；新开层由 wormholeMakeGrid(seed, depth) 生成。

@@ -60,6 +60,7 @@ import { SaveReconnect } from './panels/SaveReconnect'
 import type { ReconnectChoice } from './game/saveReconnect'
 import { Handbook } from './panels/Handbook'
 import { BattleScreen } from './panels/BattleScreen'
+import { BattleRangeConfirm } from './panels/BattleRangeConfirm'
 import { debugEnabled as readDebugEnabled } from './panels/DebugPanel'
 import { WormholePanel } from './panels/Wormhole'
 import { SignalSpacePanel } from './panels/SignalSpace'
@@ -1843,6 +1844,7 @@ async function applyLayoutAndReload(): Promise<void> {
         </div>
       ) : null}
       {/* 战前准备弹层：从上面那枚弹窗直达（组件自包含；活动框与星系详细里各挂一份自己的） */}
+      {state.pendingBattleRange ? <BattleRangeConfirm key={state.pendingBattleRange.signature} engine={engine} /> : null}
       {prepOpen ? <WeekendFlagshipPrepModal engine={engine} onClose={() => setPrepOpen(false)} /> : null}
       {/**
        * **入侵结算面板**（船长 2026-09-25 令：「玩家点击下方的跳转时应该直接弹出结算公告」）：

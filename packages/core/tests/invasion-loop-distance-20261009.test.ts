@@ -8,6 +8,8 @@ import { advanceBattleFor, battleArcsFor, createPlayerSpec, desirePrefOf, setDes
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { weekendStartFlagshipBattle } from '../src/weekendLaunch'
 import type { GameState } from '../src/state'
+import { battleCardRangeOf } from '../src/battleRangeMemory'
+import { setCardDistance } from './helpers/battle-card-memory'
 
 const ctx = buildSimContext()
 const NOW = new Date(2026, 9, 9, 20).getTime()
@@ -46,7 +48,7 @@ describe('入侵目标距离不因首波量程缩小', () => {
     expect(chosen).toBeGreaterThan(firstMax)
     expect(setBattleDesire(state, chosen, ctx).ok).toBe(true)
     expect(first.myDesireM).toBe(chosen)
-    expect(desirePrefOf(state, CORE)).toBe(chosen)
+    expect(battleCardRangeOf(state, cardId)?.desireM).toBe(chosen)
     idle(state)
     const loaded = loadSaveFile(serializeSaveFile(state, NOW)).state
     for (const current of [state, loaded]) {
@@ -59,24 +61,24 @@ describe('入侵目标距离不因首波量程缩小', () => {
         advanceBattleFor(current, ctx, battle, current.shipId, cardId)
         expect(battle.distanceM).toBeLessThanOrEqual(battleArcsFor(current, ctx)!.maxM)
         expect(battle.myDesireM).toBe(chosen)
-        expect(desirePrefOf(current, CORE)).toBe(chosen)
+        expect(battleCardRangeOf(current, cardId)?.desireM).toBe(chosen)
         idle(current)
       }
     }
   })
 
-  it('循环抽到不同卡仍保留本星系目标，自动转场读各星系自己的偏好', () => {
+  it('循环抽到不同卡读取各自目标，同卡跨星系沿用，不污染母港旧值', () => {
     const state = world()
-    setDesirePrefOf(state, PER, 8250)
-    setDesirePrefOf(state, CORE, 7000)
+    setCardDistance(state, ctx, 'alien-harass', 8250)
+    setCardDistance(state, ctx, 'alien-escort', 7000)
+    setCardDistance(state, ctx, 'alien-main', 6500)
     setDesirePrefOf(state, 'galaxy-hub', 3000)
     expect(setAutoLoopInvasion(state, ctx, PER, NOW).ok).toBe(true)
     const cards = new Set<string>()
     for (let i = 0; i < 12; i++) {
       advanceAutoLoopInvasion(state, ctx, NOW)
       expect(state.expedition.foeGalaxyId).toBe(PER)
-      expect(state.expedition.battle!.myDesireM).toBe(8250)
-      expect(desirePrefOf(state, PER)).toBe(8250)
+      expect(state.expedition.battle!.myDesireM).toBe(battleCardRangeOf(state, state.expedition.anomalyId!)!.desireM)
       cards.add(state.expedition.anomalyId!)
       idle(state)
     }
@@ -84,14 +86,14 @@ describe('入侵目标距离不因首波量程缩小', () => {
     state.weekendEvent!.contributed[PER] = 1
     advanceAutoLoopInvasion(state, ctx, NOW)
     expect(state.expedition.foeGalaxyId).toBe(CORE)
-    expect(state.expedition.battle!.myDesireM).toBe(7000)
-    expect(desirePrefOf(state, PER)).toBe(8250)
+    expect(state.expedition.battle!.myDesireM).toBe(battleCardRangeOf(state, state.expedition.anomalyId!)!.desireM)
+    expect(battleCardRangeOf(state, 'alien-harass')?.desireM).toBe(8250)
     expect(desirePrefOf(state, 'galaxy-hub')).toBe(3000)
   })
 
   it('真实换波与在途整档重载不重置目标，也不扩大当前波实际距离上限', () => {
     const state = world()
-    setDesirePrefOf(state, CORE, 8250)
+    setCardDistance(state, ctx, 'alien-main', 8250)
     startExpedition(state, 'alien-main', ctx, { foeGalaxyId: CORE })
     const battle = state.expedition.battle!
     for (const unit of Object.values(battle.units)) if (unit.side === 'foe') unit.hp = { s: 0, a: 0, h: 0 }
@@ -112,7 +114,7 @@ describe('入侵目标距离不因首波量程缩小', () => {
   it('旗舰首波不压小核心目标，普通单舰/编队及虫洞仍按原上限钳制', () => {
     const state = world()
     state.weekendEvent!.contributed = { [CORE]: 1, [PER]: 1 }
-    setDesirePrefOf(state, CORE, 20000)
+    setCardDistance(state, ctx, 'alien-broodmother', 20000)
     const flagship = weekendStartFlagshipBattle(state, ctx, NOW, [state.shipId])!
     expect(flagship).not.toBeNull()
     expect(flagship.distanceM).toBeLessThan(20000)
@@ -139,7 +141,7 @@ describe('入侵目标距离不因首波量程缩小', () => {
     const maxM = battleArcsFor(state, ctx)!.maxM
     setBattleDesire(state, maxM + 50000, ctx)
     expect(state.expedition.battle!.myDesireM).toBe(maxM)
-    expect(desirePrefOf(state, PER)).toBe(maxM)
+    expect(battleCardRangeOf(state, 'alien-escort')?.desireM).toBe(maxM)
   })
 
   it('战场目标数字显示原目标，滑条图形仍按当前量程钳制', () => {

@@ -491,6 +491,7 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       '本次出击': 'core.busy.013', '采矿': 'core.busy.002', '残骸打捞': 'core.busy.005',
       '航行': 'ui.invasionLoop.006', '亲自开炉': 'core.activity.002', '亲自开线': 'core.activity.003',
       '实验室作业': 'core.busy.030',
+      '战前准备': 'ui.weekend.062',
     }
     out.push({
       // ⟪文案调整 2026-10-08⟫ 入侵类型交由标题前标签显示，不重复堆词。

@@ -9,7 +9,8 @@
  */
 import type { GameState } from './state'
 import type { AnomalyDef, SimContext } from './types'
-import { startFleetBattleFor, desirePrefOf } from './combat'
+import { startFleetBattleFor } from './combat'
+import { withBattleRangeCheck } from './battleRangeMemory'
 import { shipHasWeapon } from './equipment'
 import { weekendFlagshipEncounterOf, weekendFlagshipSpecOf } from './weekendBattle'
 import {
@@ -224,6 +225,14 @@ export function weekendStartFlagshipBattle(
   nowWallMs: number,
   squad?: readonly string[],
 ): ReturnType<typeof startFleetBattleFor> {
+  const result = withBattleRangeCheck(state, { kind: 'flagship', squad, eventSeq: state.weekendEvent?.seq }, staged => {
+    const battle = weekendStartFlagshipBattleMutable(staged, ctx, nowWallMs, squad)
+    return { ok: battle !== null, battle }
+  })
+  return result.battle ?? null
+}
+
+function weekendStartFlagshipBattleMutable(state: GameState, ctx: SimContext, nowWallMs: number, squad?: readonly string[]): ReturnType<typeof startFleetBattleFor> {
   const spec = weekendFlagshipSpecOf(state, ctx, nowWallMs)
   if (!spec) return null
   const clean = squad !== undefined ? weekendSanitizeFlagshipSquad(state, squad) : []
@@ -265,18 +274,8 @@ export function weekendStartFlagshipBattle(
     bossMaxLayers: cap,
     bossShipId: bossSlot?.ship.id ?? WEEKEND_FLAGSHIP_SHIP_ID,
   }
-  /**
-   * **该星系记住的期望距离**（**2026-09-28 玩家报障**：「**入侵和旗舰战，并不会记忆玩家选择的
-   * 期望距离**」）——写入端 2026-09-25 就补过（`setBattleDesire` 把旗舰战那一支写成
-   * `setDesirePrefOf(state, state.encounter.galaxyId)`），**开战这一处漏读** ⇒ 每场都回默认档。
-   * ⚠ 星系取 **`ev.coreId`**，与写入端逐字同源（`state.encounter.galaxyId` 正是开战时由 `ev.coreId`
-   * 填进去的）。**不能**指望引擎那层层回落：它按**卡自带星系**读，而旗舰卡是隐藏卡、母港是
-   * `galaxy-hub` ⇒ 会读到"母港那份悬赏偏好"这种**不相干**的值。
-   * ⚠ 所以没设过时传的是 **`null`**（= 引擎的"**强制默认档**"出口）而**不是** `undefined`：
-   * `undefined` 会掉回上面那个"按卡星系读"的回落（`desirePrefOf` 未命中本来就返回 `null` ⇒ 直传即可）。
-   */
-  const desire = desirePrefOf(state, state.weekendEvent?.coreId)
-  return startFleetBattleFor(state, ctx, use, spec.cardId, state.gameMs, desire, undefined, override, true)
+  // 船长2026-10-21：旗舰同样按实际卡ID记忆，核心星系不再决定距离。
+  return startFleetBattleFor(state, ctx, use, spec.cardId, state.gameMs, undefined, undefined, override, true)
 }
 
 /* ═══════════════ 旗舰战的"战斗宿主"解析（界面侧） ═══════════════

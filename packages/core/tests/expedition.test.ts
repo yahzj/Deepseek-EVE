@@ -190,15 +190,14 @@ describe('远征 V12：两阶段', () => {
     expect(report?.text ?? '').toMatch(/船体维修装置消耗 民用修理组件 ×\d+/)
   })
 
-  it('battleTacticDesire / setBattleDesire：战斗中可调期望距离并钳制；**按星系**记忆且出发时沿用', () => {
+  it('battleTacticDesire / setBattleDesire：可调期望距离并钳制，按实际卡记忆', () => {
     expect(startExpedition(state, 'ano-a', ctx).ok).toBe(true)
     advanceGame(state, 5_000, ctx) // 到港开战
-    const galaxy = ctx.anomalies.get('ano-a')!.galaxyId
     const desire = battleTacticDesire(state, ctx, 'kite')
     expect(desire).toBeGreaterThan(0)
     expect(setBattleDesire(state, desire, ctx).ok).toBe(true)
     expect(state.expedition.battle!.myDesireM).toBe(desire)
-    expect(state.expedition.desirePrefByGalaxy?.[galaxy]).toBe(desire) // 记忆 = 该星系的目标距离
+    expect(state.battleRangeByCard?.['ano-a']?.desireM).toBe(desire)
     // 巨大值被钳制到开战距离内
     expect(setBattleDesire(state, 1_000_000_000, ctx).ok).toBe(true)
     expect(state.expedition.battle!.myDesireM).toBeLessThan(1_000_000_000)
@@ -208,7 +207,7 @@ describe('远征 V12：两阶段', () => {
     expect(startExpedition(s2, 'ano-a', ctx, { desireM: 2_000 }).ok).toBe(true)
     advanceGame(s2, 5_000, ctx)
     expect(s2.expedition.battle!.myDesireM).toBe(2_000)
-    expect(s2.expedition.desirePrefByGalaxy?.[galaxy]).toBe(2_000)
+    expect(s2.battleRangeByCard?.['ano-a']?.desireM).toBe(2_000)
   })
 
   it('battleWinPreview 可用；远征面板：下达即交火（combat），交火中不展示预估胜率', () => {

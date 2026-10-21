@@ -12,16 +12,16 @@
 
 ## 统计
 
-- 文档总数 **482** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **8048** KB · **61817** 行
-- 状态分布：**未标注** 257 · **已确认/已实现** 161 · **进行中** 43 · **待裁定** 20 · **历史留档** 1
-- 孤儿文档（0 引用）**95** 份 · 状态未标注 **257** 份
+- 文档总数 **484** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **8057** KB · **61893** 行
+- 状态分布：**未标注** 258 · **已确认/已实现** 162 · **进行中** 43 · **待裁定** 20 · **历史留档** 1
+- 孤儿文档（0 引用）**96** 份 · 状态未标注 **258** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**14** 份
-- 三、现行设计稿（design）：**308** 份
+- 三、现行设计稿（design）：**309** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**37** 份
 - 二、其它（docs 根目录）：**6** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
-- 八、测试档说明（test-saves）：**18** 份
+- 八、测试档说明（test-saves）：**19** 份
 - 六、专题：舰船美术（design/ship-battle-art）：**7** 份
 - 四、已归档设计稿（design/archive）：**83** 份
 
@@ -57,10 +57,11 @@
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 | `docs/review/guoqing-audit-followup.md` | 国庆节审查当前跟进 | 未标注（跟进入口） | — | 2 KB / 21 行 | 3 / 0 |
 
-## 三、现行设计稿（design） —— 308 份
+## 三、现行设计稿（design） —— 309 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
+| `docs/design/battle-card-range-memory-20261021.md` | 按卡距离记忆与射程变化确认 | 已确认/已实现（已实现） | 2026-10-21 | 7 KB / 59 行 | 0 / 0 |
 | `docs/design/signal-beacon-siege-torpedo-20261019.md` | 信标围剿核查与鱼雷舰加成调整 | 未标注（实现完成） | 2026-10-19 | 4 KB / 40 行 | 0 / 0 |
 | `docs/design/debug-invasion-autostart-pause-20261018.md` | 暂停调试入侵自动开场 | 已确认/已实现（已实现并自检） | 2026-10-18 | 2 KB / 20 行 | 0 / 0 |
 | `docs/design/final-quantity-ceiling-20261018.md` | 最终整数数量统一向上取整 | 已确认/已实现（已确认） | 2026-10-18 | 7 KB / 69 行 | 0 / 0 |
@@ -421,7 +422,7 @@
 | `docs/git-gate-approval.md` | Git提交审批放行 | 未标注 | — | 2 KB / 28 行 | 2 / 0 |
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 48 KB / 820 行 | 27 / 18 |
 | `docs/l10n-pending.md` | 待英文本地化记录 | 未标注 | — | 1 KB / 11 行 | 13 / 10 |
-| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 29 KB / 179 行 | 23 / 7 |
+| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 29 KB / 180 行 | 23 / 7 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -429,10 +430,11 @@
 |---|---|---|---|---|---|
 | `docs/design/battle-data/p41-drone-readings-20260912.md` | P-41 机群批标定轮 · 读数（2026-09-12 · 二号 d2） | 未标注 | 2026-09-12 | 7 KB / 88 行 | 3 / 0 |
 
-## 八、测试档说明（test-saves） —— 18 份
+## 八、测试档说明（test-saves） —— 19 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
+| `docs/test-saves/battle-card-range-20261021.md` | 按卡距离与射程变化确认验收档 | 未标注（实现自测） | 2026-10-21 | 1 KB / 11 行 | 2 / 0 |
 | `docs/test-saves/faction-ship-plugs-20261019.md` | 五件势力船插验收档 | 未标注（船长批准本地合入主树） | 2026-10-19 | 2 KB / 30 行 | 2 / 0 |
 | `docs/test-saves/ship-hp-blind-20261013.md` | 舰船血量与近盲开火验收 | 已确认/已实现（规则、直接恢复参数及公告已确认并本地） | 2026-10-13 | 2 KB / 20 行 | 2 / 0 |
 | `docs/test-saves/station-action-20261013.md` | 停靠与远程管理验收档 | 未标注 | 2026-10-13 | 2 KB / 27 行 | 2 / 0 |
@@ -450,7 +452,7 @@
 | `docs/test-saves/black-market-20261004.md` | 黑市页面验收档 | 待裁定（随功能待船长验收） | 2026-10-04 | 1 KB / 15 行 | 1 / 0 |
 | `docs/test-saves/hauler-20261004.md` | 纯货舰修订验收档 | 未标注（已验收） | 2026-10-04 | 2 KB / 25 行 | 3 / 0 |
 | `docs/test-saves/whexpedition-20261004.md` | 虫洞第一批合成测试档 | 未标注（未来虫洞整备/事件/警戒的隔离验收材） | 2026-10-04 | 10 KB / 78 行 | 2 / 0 |
-| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 79 KB / 796 行 | 66 / 14 |
+| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 80 KB / 801 行 | 66 / 14 |
 
 ## 六、专题：舰船美术（design/ship-battle-art） —— 7 份
 
@@ -552,10 +554,11 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 17 KB / 195 行 | 66 / 14 |
 
-## 附：孤儿文档（0 引用，95 份）
+## 附：孤儿文档（0 引用，96 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
+- `docs/design/battle-card-range-memory-20261021.md`（2026-10-21 · 7 KB）—— 按卡距离记忆与射程变化确认
 - `docs/design/signal-beacon-siege-torpedo-20261019.md`（2026-10-19 · 4 KB）—— 信标围剿核查与鱼雷舰加成调整
 - `docs/design/debug-invasion-autostart-pause-20261018.md`（2026-10-18 · 2 KB）—— 暂停调试入侵自动开场
 - `docs/design/final-quantity-ceiling-20261018.md`（2026-10-18 · 7 KB）—— 最终整数数量统一向上取整
@@ -652,8 +655,9 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（257 份，待补一行 `状态：…`）
+## 附：状态未标注（258 份，待补一行 `状态：…`）
 
+- `docs/test-saves/battle-card-range-20261021.md`（2026-10-21）—— 按卡距离与射程变化确认验收档
 - `docs/design/signal-beacon-siege-torpedo-20261019.md`（2026-10-19）—— 信标围剿核查与鱼雷舰加成调整
 - `docs/test-saves/faction-ship-plugs-20261019.md`（2026-10-19）—— 五件势力船插验收档
 - `docs/design/gravekeeper-flagship-finish-20261018.md`（2026-10-18）—— 永陵舰级挂载与旗舰残余血池核查

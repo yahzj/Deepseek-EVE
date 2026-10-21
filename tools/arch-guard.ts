@@ -132,6 +132,10 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
   { concept: '战斗渐增速度同池折权', symbol: 'battleSpeedBonusOf', file: 'packages/core/src/alienEquipment.ts', exported: true },
   { concept: '激光校准远端保留合成', symbol: 'laserFalloffOf', file: 'packages/core/src/equipment.ts', exported: true },
   { concept: '战前逐舰实际预载缺口', symbol: 'battleAmmoPreloadPlan', file: 'packages/core/src/battleAmmoPreflight.ts', exported: true },
+  { concept: '真实敌卡距离与射程记忆', symbol: 'battleCardRangeOf', file: 'packages/core/src/battleRangeMemory.ts', exported: true },
+  { concept: '战前全舰最大有效射程', symbol: 'playerFleetMaxRangeOf', file: 'packages/core/src/battleRangeMemory.ts', exported: true },
+  { concept: '射程变化确认事务门禁', symbol: 'withBattleRangeCheck', file: 'packages/core/src/battleRangeMemory.ts', exported: true },
+  { concept: '射程变化待确认视图', symbol: 'pendingBattleRangeView', file: 'packages/core/src/battleRangeMemory.ts', exported: true },
   { concept: '技能训练工作量与实时进度换算', symbol: 'trainingLevelProgress', file: 'packages/core/src/training.ts', exported: true },
   { concept: '旧技能进度一次性工作量兼容', symbol: 'normalizeTrainingProgress', file: 'packages/core/src/training.ts', exported: true },
   { concept: '敌方族格最终血量倍率', symbol: 'foeFamilyHpMulOf', file: 'packages/core/src/foePower.ts', exported: true },
@@ -644,6 +648,7 @@ for (const file of rendererFiles) {
 
   const GATE_CALL = /(applyActivityGate|applyActivityHandoff|gateMainActivity|gateMainActivityHandoff)\s*\(/
   const fns = new Map<string, { file: string; gate: boolean; calls: string[] }>()
+  const localFns = new Map<string, { file: string; gate: boolean; calls: string[] }>()
   for (const [file, text] of coreSrc) {
     for (const m of text.matchAll(/export (?:async )?function ([A-Za-z0-9_]+)\s*\(/g)) {
       const body = fnBodyOf(text, m.index ?? 0)
@@ -654,15 +659,22 @@ for (const file of rendererFiles) {
         calls: [...body.matchAll(/\b([A-Za-z_][A-Za-z0-9_]*)\s*\(/g)].map((x) => x[1]!),
       })
     }
+    for (const m of text.matchAll(/(?<!export )(?<!async )\bfunction ([A-Za-z0-9_]+)\s*\(/g)) {
+      const body = fnBodyOf(text, m.index ?? 0)
+      if (body === null) continue
+      localFns.set(`${file}:${m[1]}`, { file, gate: GATE_CALL.test(body),
+        calls: [...body.matchAll(/\b([A-Za-z_][A-Za-z0-9_]*)\s*\(/g)].map(x => x[1]!) })
+    }
   }
   /** 这一条入口最终会不会走到门禁（直接调，或沿委托链 ≤4 层走到一个调了的） */
-  const reachesGate = (name: string, depth = 0, seen = new Set<string>()): boolean => {
-    const f = fns.get(name)
+  const reachesGate = (name: string, depth = 0, seen = new Set<string>(), file?: string): boolean => {
+    const localKey = file ? `${file}:${name}` : name
+    const f = localFns.get(localKey) ?? fns.get(name)
     if (f === undefined) return false
     if (f.gate) return true
-    if (depth >= 4 || seen.has(name)) return false
-    seen.add(name)
-    return f.calls.some((c) => reachesGate(c, depth + 1, seen))
+    if (depth >= 4 || seen.has(localKey)) return false
+    seen.add(localKey)
+    return f.calls.some((c) => reachesGate(c, depth + 1, seen, f.file))
   }
   const lineOfFn = (file: string, name: string): number => {
     const t = coreSrc.get(file) ?? ''

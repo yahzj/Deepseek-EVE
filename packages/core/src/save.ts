@@ -17,6 +17,7 @@ import {
   HOME_GALAXY_ID,
   MAX_SKILL_LEVEL,
 } from './state'
+import { cleanBattleRangeRecords, cleanPendingBattleRange } from './battleRangeMemory'
 import type { BattleState, GameState,     LogEntry, LogKind, MarksState, SideTask, WormholeArchetype, WormholeFamily } from './state'
 import type { AchievementEarned } from './state'
 import { CHAIN_TIERS, CHAIN_TIERS_LEGACY_ORDERS, FIRST_TASKS } from './firstTasks'
@@ -3205,6 +3206,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
             ...(Math.floor(num(rRaw.leftAtGameMs)) > 0 ? { leftAtGameMs: Math.floor(num(rRaw.leftAtGameMs)) } : {}),
             // 本趟期望交距偏好（洞内拖距离条选的；0/坏值不写）
             ...(num(rRaw.desireM) > 0 ? { desireM: Math.round(num(rRaw.desireM)) } : {}),
+            ...(rRaw.automaticBattleRanges === true ? { automaticBattleRanges: true as const } : {}),
             // 本趟确定性种子（F3b：层内产出的生成按它散列；坏值/缺省 ⇒ 不写，退回全局种子）
             ...(Math.floor(num(rRaw.seed)) !== 0 ? { seed: Math.floor(num(rRaw.seed)) } : {}),
             /**
@@ -3381,7 +3383,11 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     catch { throw new SaveError('VERSION', '存档中的星球运行规则高于当前支持范围，请升级游戏。') }
   })()
   const pendingStationActivity = cleanPendingStationActivity(src.pendingStationActivity)
+  const battleRangeByCard = cleanBattleRangeRecords(src.battleRangeByCard)
+  const pendingBattleRange = cleanPendingBattleRange(src.pendingBattleRange)
   const normalized: GameState = {
+    ...(battleRangeByCard ? { battleRangeByCard } : {}),
+    ...(pendingBattleRange ? { pendingBattleRange } : {}),
     ...(pendingStationActivity && fleet[pendingStationActivity.shipId] ? { pendingStationActivity } : {}),
     ...(planetary ? { planetary } : {}),
     version: CURRENT_STATE_VERSION,

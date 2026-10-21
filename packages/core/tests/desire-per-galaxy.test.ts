@@ -1,4 +1,5 @@
 /**
+ * 2026-10-21船长改按卡ID，保留本文件名及旧存档往返回归；现行断言以卡为单位。
  * 目标距离**按星系独立保存**（船长 2026-09-11）：
  * 「玩家每个星系设定的目标距离独立保存，预估胜率的战斗按照那个距离决定。如果没有，采用射程中段距离。」
  *
@@ -30,10 +31,11 @@ import {
   type SimContext,
 } from '@whale/core'
 import { createPlayerSpec, startBattleFor } from '../src/combat'
+import { setCardDistance } from './helpers/battle-card-memory'
 import { makeTestCtx, anomaly, moduleDef, ship } from './helpers'
 import { setStanding } from './helpers'
 
-describe('目标距离按星系独立保存（船长 2026-09-11）', () => {
+describe('目标距离按卡保存，旧星系字段兼容留存', () => {
   const ctx = buildSimContext()
   const CARDS = [...ctx.anomalies.values()].filter(
     (a) => a.hidden !== true && a.rewardIsk > 0 && a.threat > 0 && a.threat <= 40,
@@ -68,8 +70,8 @@ describe('目标距离按星系独立保存（船长 2026-09-11）', () => {
   it('两个星系各自独立：给 A 设 1,500 只影响 A，B 仍回落默认档', () => {
     const state = fresh()
     const defB = evalDesire(state, B.id)
-    setDesirePrefOf(state, A.galaxyId, 1_500)
-    expect(desirePrefOf(state, A.galaxyId)).toBe(1_500)
+    setCardDistance(state, ctx, A.id, 1_500)
+    expect(state.battleRangeByCard?.[A.id]?.desireM).toBe(1_500)
     expect(desirePrefOf(state, B.galaxyId)).toBeNull() // 独立保存：B 没设过
     expect(evalDesire(state, A.id)).toBe(1_500) // A 的模拟按 1,500 打
     expect(evalDesire(state, B.id)).toBe(defB) // B 不受影响
@@ -77,9 +79,9 @@ describe('目标距离按星系独立保存（船长 2026-09-11）', () => {
 
   it('胜率预估的战斗按该星系设定：设定随估价快照进入每一局模拟', () => {
     const state = fresh()
-    setDesirePrefOf(state, A.galaxyId, 1_200)
+    setCardDistance(state, ctx, A.id, 1_200)
     const snap = buildEvalState(state, state.shipId)!
-    expect(snap.ev.expedition.desirePrefByGalaxy?.[A.galaxyId]).toBe(1_200)
+    expect(snap.ev.battleRangeByCard?.[A.id]?.desireM).toBe(1_200)
     expect(startBattleFor(snap.ev, ctx, snap.uid, A.id, 0)!.myDesireM).toBe(1_200)
     expect(BOUNTY_MC_RUNS).toBe(10) // 2026-09-24 船长：「三点各 10 局就够了」
     // 同一张卡、同一装配：只有"该星系设定"不同 ⇒ 预估里的开战距离不同
@@ -89,14 +91,14 @@ describe('目标距离按星系独立保存（船长 2026-09-11）', () => {
 
   it('远征实跑：设过该星系距离后开战即用它', () => {
     const state = fresh()
-    setDesirePrefOf(state, A.galaxyId, 1_500)
+    setCardDistance(state, ctx, A.id, 1_500)
     expect(startExpedition(state, A.id, ctx).ok).toBe(true)
     expect(state.expedition.battle?.myDesireM).toBe(1_500)
   })
 
   it('AI 副船不吃该星系设定（船长 2026-09-11：「只有主控吃」）', () => {
     const state = fresh()
-    setDesirePrefOf(state, A.galaxyId, 1_200)
+    setCardDistance(state, ctx, A.id, 1_200)
     const snap = buildEvalState(state, state.shipId)!
     const me = createPlayerSpec(snap.ev, ctx, snap.uid)!
     const def = desiredRangeFor(me, 'mid', ctx.balance.battle, ctx.balance.battle.desireBandMid)
@@ -158,13 +160,13 @@ describe('稳态解析预估（派系/窝点卡）同口径：设定距离真的
     const midLoss = bountyDamageForecast(state, ctx, card)
     expect(midLoss.armorLoss).toBeGreaterThan(0) // 非饱和：中段会掉甲
     expect(midLoss.armorLoss).toBeLessThan(1)
-    setDesirePrefOf(state, 'galaxy-hub', 400) // 贴近打：命中更高 → 打得更快 → 承伤更少
+    setCardDistance(state, ctx, card.id, 400)
     const closeLoss = bountyDamageForecast(state, ctx, card)
     expect(closeLoss.armorLoss).toBeLessThan(midLoss.armorLoss)
     expect(closeLoss.rawWin).toBeGreaterThan(midLoss.rawWin)
     // 删掉该星系的设定 → 读数回到"没设过"的原值（证明读数只由该星系的设定决定；
     // 注：解析口径"没设过"时沿用模型基准「双方期望距离中点」，不是射程中段——中段是**战斗**的回落口径）
-    state.expedition.desirePrefByGalaxy = {}
+    state.battleRangeByCard = {}
     expect(bountyDamageForecast(state, ctx, card).armorLoss).toBeCloseTo(midLoss.armorLoss, 6)
   })
 })

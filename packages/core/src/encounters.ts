@@ -46,9 +46,9 @@ import type { GameState } from './state'
 import type { CommandResult } from './engine'
 import type { AnomalyDef, SimContext } from './types'
 import { nextRandom, pickOne } from './rng'
+import { withBattleRangeCheck } from './battleRangeMemory'
 import {
   advanceBattleFor,
-  desirePrefOf,
   persistFleetHullDamage,
   refundAmmo,
   refundRepairKitsAll,
@@ -847,6 +847,7 @@ export function advanceEncounterWatch(state: GameState, ctx: SimContext, _deltaM
       return
     }
     // 待决邀约：超时自动按文字结算（离线大步长会立刻超时 → 与"离线只文字"一致）
+    if (state.pendingBattleRange?.intent.kind === 'encounter' && state.pendingBattleRange.intent.invitedAtGameMs === enc.invitedAtGameMs) return
     if (state.gameMs >= enc.deadlineGameMs) {
       resolveTextual(state, ctx, false)
     }
@@ -979,6 +980,10 @@ function foeKeyOf(enc: GameState['encounter']): string {
 
 /** 玩家指令：迎战（进入 V12 实时战斗，自动打完出战报） */
 export function fightEncounter(state: GameState, ctx: SimContext): CommandResult {
+  return withBattleRangeCheck(state, { kind: 'encounter', invitedAtGameMs: state.encounter.invitedAtGameMs }, staged => fightEncounterMutable(staged, ctx))
+}
+
+function fightEncounterMutable(state: GameState, ctx: SimContext): CommandResult {
   const enc = state.encounter
   if (!enc.active || enc.battle) return { ok: false, error: '当前没有可应战的遭遇。', errorId: 'core.encounters.003' }
   // **洞内战斗时洞外可以开新战斗**（船长 2026-09-13），但**锚点船不能被锁在洞里**：
@@ -986,8 +991,7 @@ export function fightEncounter(state: GameState, ctx: SimContext): CommandResult
   if (shipLockedInWormhole(state, enc.shipId ?? state.shipId)) {
     return { ok: false, error: '这艘船在虫洞里（已锁定）：换一艘应战，或先撤离本趟。', errorId: 'core.encounters.004' }
   }
-  // 目标距离（2026-09-11 船长：按星系独立保存）：遭遇所在星系设过就用它，没设过由 startBattleFor
-  // 回落射程中段（遭遇模板自带的 galaxyId 是模板产地，不是玩家所在星系，故这里显式传入）
+  // 船长2026-10-21：遭遇同样按实际敌卡读取，不回落模板母港的旧星系设置。
   /**
    * **周末入侵**：占领区的遇袭要打**缩放后的入侵强度**（`enc.foeStrengthMul`，2026-09-25 起 ×0.75），
    * 敌卡自带原强度 ⇒ 用覆写口把 `threat`（标签）与 `strengthMul`（真强度）一起传给战斗层；
@@ -1000,7 +1004,7 @@ export function fightEncounter(state: GameState, ctx: SimContext): CommandResult
     enc.shipId ?? state.shipId,
     foeKeyOf(enc),
     state.gameMs,
-    desirePrefOf(state, enc.galaxyId) ?? undefined,
+    undefined,
     weekendFoe
       ? { threat: enc.threat, ...(enc.foeStrengthMul !== undefined ? { strengthMul: enc.foeStrengthMul } : {}) }
       : undefined,
