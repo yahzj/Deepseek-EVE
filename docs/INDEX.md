@@ -12,7 +12,7 @@
 
 ## 统计
 
-- 文档总数 **485** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **8066** KB · **61972** 行
+- 文档总数 **485** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **8072** KB · **61992** 行
 - 状态分布：**未标注** 258 · **已确认/已实现** 163 · **进行中** 43 · **待裁定** 20 · **历史留档** 1
 - 孤儿文档（0 引用）**97** 份 · 状态未标注 **258** 份
 - 一、权威文档（开工必读）：**8** 份
@@ -36,7 +36,7 @@
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 304 KB / 316 行 | 18 / 3 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 95 KB / 927 行 | 96 / 5 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 523 KB / 1116 行 | 226 / 22 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 88 KB / 483 行 | 380 / 28 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 89 KB / 485 行 | 380 / 28 |
 
 ## 七、评审与体检（review） —— 14 份
 
@@ -151,7 +151,7 @@
 | `docs/design/drone-hit-gap-20260929.md` | 巨构导控塔效果改判：对方对机群的命中收窄 5%（2026-09-29） | 进行中（进行中） | 2026-09-29 | 6 KB / 101 行 | 0 / 2 |
 | `docs/design/ecm-fleet-decay-20260929.md` | 墨潮电子舱 · 全队递减乘法（2026-09-29） | 已确认/已实现（已实现待验收） | 2026-09-29 | 5 KB / 74 行 | 0 / 1 |
 | `docs/design/escort-drone-anchor-20260929.md` | 僚舰无人机锚点修复（2026-09-29） | 进行中（进行中） | 2026-09-29 | 8 KB / 117 行 | 0 / 0 |
-| `docs/design/jump-fuel-20260929.md` | 跃迁燃料链（新精炼材料 · 实验室 · 返航加速）（2026-09-29） | 未标注 | 2026-09-29 | 9 KB / 104 行 | 4 / 0 |
+| `docs/design/jump-fuel-20260929.md` | 跃迁燃料链（新精炼材料 · 实验室 · 返航加速）（2026-09-29） | 未标注 | 2026-09-29 | 13 KB / 120 行 | 5 / 0 |
 | `docs/design/reclaim-share-20260929.md` | 夺回奖按投入比例结算（2026-09-29） | 未标注 | 2026-09-29 | 7 KB / 76 行 | 0 / 0 |
 | `docs/design/t4-combat-price-20260929.md` | T4 战斗船价目对齐巨齿鲨（2026-09-29） | 进行中（进行中） | 2026-09-29 | 7 KB / 98 行 | 2 / 1 |
 | `docs/design/whale-king-price-20260929.md` | 鲸王级价目对齐（2026-09-29） | 已确认/已实现（已实现待验收） | 2026-09-29 | 4 KB / 58 行 | 0 / 0 |
@@ -423,7 +423,7 @@
 | `docs/git-gate-approval.md` | Git提交审批放行 | 未标注 | — | 2 KB / 28 行 | 2 / 0 |
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 48 KB / 820 行 | 27 / 18 |
 | `docs/l10n-pending.md` | 待英文本地化记录 | 未标注 | — | 1 KB / 11 行 | 13 / 10 |
-| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 29 KB / 180 行 | 23 / 7 |
+| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 30 KB / 182 行 | 23 / 7 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
