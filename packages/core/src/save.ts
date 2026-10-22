@@ -2153,6 +2153,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
       } catch { return undefined }
     })()
     wormholeAuto.push({
+      ...(typeof o.yieldMul === 'number' && [0.6, 0.7, 0.8].includes(o.yieldMul) ? { yieldMul: o.yieldMul } : {}),
       ...(o.haulerFittingVersion === 1 ? { haulerFittingVersion: 1 as const } : {}),
       id,
       stockId,
@@ -2211,12 +2212,8 @@ for (const [key, value] of Object.entries(licensesRaw)) {
       depth: Number.isFinite(depth) ? o.expeditionRules === 2 ? Math.max(1, depth) : Math.min(9, Math.max(1, depth)) : 1,
       finishedAtGameMs: Number.isFinite(num(o.finishedAtGameMs)) ? Math.max(0, Math.floor(num(o.finishedAtGameMs))) : 0,
       shipIds,
-      /**
-       * 返航释放的核心数：**恒为 1**（2026-09-26 船长令「整队一趟只占 1 枚」）。
-       * 旧档该字段存的是"参与舰数"（旧口径每舰 1 枚）——读档**按新口径重算**，不做数值迁移
-       * （它只是报告里的一行读数，不参与占用计算；占用直接数在跑的趟数）。
-       */
-      coresReleased: 1,
+      // 该值仅供报告显示；信号空间已无核心占用，实验任务保持原读数，不补发实体核心。
+      coresReleased: o.expeditionRules === undefined ? 0 : 1,
       gains,
       damage,
       confirmed: o.confirmed === true,

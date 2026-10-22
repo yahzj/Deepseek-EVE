@@ -20,6 +20,7 @@
  * ⚠ 费用随层单调上升由体检契约守（T1 `2·4·6` / T2 `5·10·15` / T3 `10·20·30` / T4 `30·60`）。
  */
 import type { MatterTechNodeDef } from '@whale/core'
+import { L10N } from './l10n/table'
 
 export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
   /* ══════════════ A 虫洞探索线（6） ══════════════ */
@@ -104,6 +105,19 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     essence: [20],
     isk: [3_000_000],
     note: '提高信号空间扫描范围 1 圈。',
+  },
+  {
+    id: 'mt-explore-signal-auto-t3',
+    name: L10N['ui.signalAuto.001']!.zh,
+    branch: 'explore',
+    tier: 3,
+    effect: 'signalAutoYield',
+    per: 0.1,
+    maxLevel: 3,
+    essence: [10, 20, 30],
+    isk: [10_000_000, 20_000_000, 30_000_000],
+    prereq: { 'mt-explore-signal-radius-t1': 1 },
+    note: L10N['ui.signalAuto.002']!.zh,
   },
   {
     id: 'mt-explore-speed',

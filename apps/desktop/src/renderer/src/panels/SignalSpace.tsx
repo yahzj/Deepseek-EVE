@@ -103,6 +103,7 @@ import {
   // 2026-09-19：入洞读数要单独列科技来源（袋子里只剩合流后的标量）⇒ 需要逐节点读等级
   matterTechNodes,
   matterTechLevel,
+  matterTechSignalAutoYield,
   // 2026-09-19 甲案：自动探索的科技系数（与结算同一个函数 ⇒ 准备页读数即返航时生效的那个数）
   wormholeAutoTechFactors,
   wormholeAutoTechIsNeutral,
@@ -332,7 +333,6 @@ export function SignalSpacePanel({
     auto && autoHandover?.reason !== undefined
       ? { error: autoHandover.reason, errorId: autoHandover.reasonId, errorParams: autoHandover.reasonParams }
       : null
-  const autoCores = auto ? engine.wormholeAutoCores() : null
   /**
    * 整队能不能派（core 同一把尺）。主控在队里时按"允许随队"校验（`mainMayJoin`）——
    * 主控那一道闸由 `autoMainReason` 单独说话（换不了就是换不了，理由更具体）。
@@ -1523,14 +1523,7 @@ export function SignalSpacePanel({
               ) : null}
               <div className="app-dim app-note">
                 {auto ? (
-                  <>
-                    {tr("ui.Wormhole.002")}<b>{tr("ui.Wormhole.016")}</b>{tr('ui.Wormhole.365', { p1: WORMHOLE_AUTO_MAX_SHIPS })}{' '}
-                    <b>{tr("ui.Wormhole.017")}</b>{tr("ui.Wormhole.246")}{' '}
-                    {Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)} {tr("ui.Wormhole.088")}{' '}
-                    <b>{tr("ui.Wormhole.133")}</b>
-                    {tr('ui.Wormhole.367', { p1: Math.round(WORMHOLE_AUTO_DAMAGE_MIN * 100), p2: Math.round(WORMHOLE_AUTO_DAMAGE_MAX * 100), p3: tr('ui.Wormhole.368') })}
-                    <b>{tr("ui.Wormhole.198")}</b>{tr('ui.Wormhole.363')}<b>{tr("ui.Wormhole.018")}</b>{tr("ui.Wormhole.019")}
-                  </>
+                  tr('ui.signalAuto.004', { p1: WORMHOLE_AUTO_MAX_SHIPS, p2: Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000) })
                 ) : (
                   <>
                     {tr("ui.Wormhole.089")}{' '}
@@ -1725,13 +1718,14 @@ export function SignalSpacePanel({
               {auto ? (
                 <div className="app-wh-triad">
                   <span className="app-wh-cell">
-                    {tr("ui.Wormhole.027")} <b>{picked.length}</b> {tr("ui.Wormhole.028")} <b>{autoCores?.free ?? 0}</b>{tr("ui.Wormhole.250")} {autoCores?.cap ?? 0}）
+                    {tr('ui.signalAuto.003', { p1: picked.length })}
                   </span>
                   <span className="app-wh-cell">
                     {tr("ui.Wormhole.138")} <b>{Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)}</b> {tr("ui.DebugPanel.007")}
                   </span>
                   <span className="app-wh-cell">
-                    {tr("ui.Wormhole.139")}<b>{tr("ui.Wormhole.370")}</b>{tr("ui.Wormhole.251")}
+                    {/* ⟪文案调整 2026-10-22⟫ 收益只显示科技对应的百分比，移除过程说明与尾注。 */}
+                    {tr("ui.Wormhole.139")}<b>{Math.round(matterTechSignalAutoYield(state, ctx) * 100)}%</b>
                   </span>
                   <span
                     className="app-wh-cell"

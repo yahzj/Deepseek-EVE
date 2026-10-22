@@ -261,7 +261,7 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       kind: 'whauto',
       label: '自动探索',
       labelId: run.expeditionRules === 2 ? 'ui.explorationName.011' : 'ui.explorationName.010',
-      subId: 'ui.explorationName.012',
+      subId: run.expeditionRules === undefined ? 'ui.signalAuto.003' : 'ui.explorationName.012',
       subParams: { p1: run.shipIds.length },
       /**
        * ⚠ **⟪文案调整 2026-10-01⟫（船长报障）**（原话：「自动探索虫洞的活动栏，还是显示各占一个 AI 核心
@@ -270,7 +270,7 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
        * 只有这句副标题还停在旧口径上 ⇒ 改成「整队占 1 枚」（只派 1 条舰时不必说"整队"）。
        */
       sub:
-        run.shipIds.length > 1
+        run.expeditionRules === undefined ? `${run.shipIds.length} 条舰` : run.shipIds.length > 1
           ? `${run.shipIds.length} 条舰 · 整队占 1 枚 AI 核心`
           : `${run.shipIds.length} 条舰 · 占 1 枚 AI 核心`,
       percent: Math.max(0, Math.min(100, Math.round((done / span) * 100))),

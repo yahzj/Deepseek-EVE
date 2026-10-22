@@ -1951,6 +1951,11 @@ function overlayMatterTech(
   if (locale === 'zh') return src
   let out: Map<string, MatterTechNodeDef> | null = null
   for (const [key, def] of src) {
+    if (def.id === 'mt-explore-signal-auto-t3') {
+      out ??= new Map(src)
+      out.set(key, { ...def, name: l10nEntryText(L10N['ui.signalAuto.001']!, locale), note: l10nEntryText(L10N['ui.signalAuto.002']!, locale) })
+      continue
+    }
     const name = en[def.id]?.name
     const note = notes[def.id]
     if (name === undefined && note === undefined) continue

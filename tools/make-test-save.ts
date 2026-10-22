@@ -7,6 +7,7 @@
  *  - 产物落 docs/test-saves/test-save-<feature>-<stamp>.json，加载方法见 docs/test-saves/README.md。
  *
  * 功能 case 注册制（扩展在此追加）：
+ *  - signal-auto-tech 信号空间T3科技：前置齐备但未研究，零AI技能，独立合成不读取个人档。
  *  - battle-card-range 按卡距离与射程确认：独立合成，换装后待确认，不读取个人档。
  *  - faction-ship-plugs 五件势力船插：六艘合法对照舰、兑换与制造材料，独立合成，不读个人档。
  *  - faction-beacons 专属信号发射器与实验室筛选：独立合成档，五种库存与配方材料，不读取个人档。
@@ -145,6 +146,7 @@ import { injectGravekeeperFixture } from './gravekeeper-invasion-check'
 import { injectGravekeeperGearFixture } from './gravekeeper-gear-fixture'
 import { injectFactionShipPlugFixture } from './faction-ship-plug-fixture'
 import { injectBattleCardRangeFixture } from './battle-card-range-fixture'
+import { injectSignalAutoTechFixture } from './signal-auto-tech-fixture'
 // 满池常量（旗舰 BOSS 血池；`@whale/core` 未转出 ⇒ 走深路径，与本文件既有做法一致）
 import { WEEKEND_FLAGSHIP_POOL_HP } from '../packages/core/src/weekendEvent'
 import { FACTION_CODEX_ORDER, FOE_SHIPS, GALAXIES, ITEMS, MODULES, SHIPS, SHIP_BLUEPRINTS, buildSimContext } from '@whale/data'
@@ -3639,6 +3641,7 @@ const INJECTORS: Record<string, (state: GameState) => string[]> = {
   'gravekeeper-gear': injectGravekeeperGearFixture,
   'faction-ship-plugs': injectFactionShipPlugFixture,
   'battle-card-range': injectBattleCardRangeFixture,
+  'signal-auto-tech': injectSignalAutoTechFixture,
   gravekeeper: injectGravekeeperFixture,
   'station-action': injectStationActionFixture,
   'ship-hp-blind': injectShipHpBlindFixture,
@@ -3871,7 +3874,7 @@ function main(): void {
     for (const note of notes) console.log(note)
     return
   }
-  if (feature === 'faction-ship-plugs' || feature === 'battle-card-range') {
+  if (feature === 'faction-ship-plugs' || feature === 'battle-card-range' || feature === 'signal-auto-tech') {
     const state = createInitialState({ nowWallMs: Date.now() })
     const notes = INJECTORS[feature]!(state)
     mkdirSync(OUT_DIR, { recursive: true })

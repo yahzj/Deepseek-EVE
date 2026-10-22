@@ -11,6 +11,7 @@ import { wormholePreparationPlan } from '../src/wormholePreparation'
 const ctx = buildSimContext()
 function world() {
   const state = createInitialState({ nowWallMs: 0, seed: 19 })
+  state.research!.levels['mt-explore-signal-auto-t3'] = 3
   const ships = Array.from({ length: 5 }, () => addShipToFleet(state, 'sh-thresher'))
   state.skills.trained['ai-expert'] = 2
   state.wormholeStock = [{ id: 'auto-memory', seed: 19, depth: 1, family: 'A', archetype: 'balanced', foundAtGameMs: 0 }]

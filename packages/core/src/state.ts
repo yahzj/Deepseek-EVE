@@ -389,6 +389,8 @@ export interface WormholeStockItem {
  * 到点结算「手动期望 × 40%」的收益与 −40%~−80% 的损伤（绝不丢船）。
  */
 export interface WormholeAutoRun {
+  /** 信号空间新任务出发时锁定的收益系数；旧任务缺省仍为80%。 */
+  yieldMul?: number
   /** 显式测试新模式；缺省旧自动，未知版本不降级结算。 */
   expeditionRules?: number
   expeditionSnapshot?: string
@@ -405,7 +407,7 @@ export interface WormholeAutoRun {
   family?: WormholeFamily
   /** 该处的内容原型（丙 · 内容原型；缺省按 `seed` 现算 ⇒ 零迁移） */
   archetype?: WormholeArchetype
-  /** 参与舰（**整队一趟占 1 枚 AI 核心**，2026-09-26 船长令；任务期间锁定） */
+  /** 参与舰任务期间锁定；信号空间不占核心，实验规则另行计数。 */
   shipIds: string[]
   startedAtGameMs: number
   finishAtGameMs: number
@@ -2756,8 +2758,8 @@ export type GameStateV18 = Omit<GameStateV16, 'version'> & {
   wormholeStock?: WormholeStockItem[]
   /**
    * **在跑的自动探索**（船长 2026-09-14 定案 · 确认稿 §六「自动探索」）。
-   * 兼容字段（可选）：旧档没有 ⇒ 没有在跑的趟，零迁移。参与舰按"每条占 1 枚 AI 核心"并入
-   * `aiCoreShipUsed` 的同一本账，并在 `shipLockedReason` 里锁定到返航。
+   * 兼容字段（可选）：旧档没有 ⇒ 没有在跑的趟。信号空间不占AI名额，实验任务沿原规则计数；
+   * 参与舰在 `shipLockedReason` 里锁定到返航。
    */
   wormholeAuto?: WormholeAutoRun[]
   /**

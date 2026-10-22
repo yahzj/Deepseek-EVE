@@ -1,5 +1,10 @@
 # 测试门槛存档（Test Saves）
 
+## 信号空间T3自动探索科技
+
+- `npx tsx tools/make-test-save.ts signal-auto-tech`生成全新合成档，T3未研究、T1前置齐备；3处库存、4艘作业副船、100谜质和1亿信用点，AI技能0级，不读取个人档。
+- 先点击灰色自动探索核对研究提示，再到谜质科技探索线T3依次研究，核对60/70/80%与无AI占用；步骤及文件见`signal-auto-tech-20261022.md`。原生工具`signal-auto-tech-native-check.cjs`检查两布局0～3级和真实研究/IPC，不作实体手机或观感结论。
+
 ## 按卡距离与射程确认
 
 - `npx tsx tools/make-test-save.ts battle-card-range`生成全新合成档，不读取或覆盖个人档。初始即停在换装后的射程确认，旧距离2500米；取消不进入战斗，重新导入可改距后确认迎战。

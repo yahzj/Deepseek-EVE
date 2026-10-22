@@ -103,15 +103,19 @@ describe('信号空间 · 旧面板来源与隔离', () => {
     }
   })
 
-  it('只调用来源的 legacy 命令，不引入整备、有限物资、事件、目标或精英分支，不新增文案 ID', () => {
-    expect(engineCalls(ast)).toEqual(engineCalls(originalAst))
+  it('保留legacy命令及玩法隔离，只移除核心读数并替换获批的自动探索文案', () => {
+    expect(engineCalls(ast)).toEqual(engineCalls(originalAst).filter(name => name !== 'wormholeAutoCores'))
     expect(engineCalls(ast)).toContain('wormholeEnterFromStock')
     expect(engineCalls(ast)).toContain('wormholeAutoStart')
     const forbidden = /^(preparedEntry|newRun|debugEnabled|WhPreparation|WhSupplies|WhAlert|WhGroundList|WhExtraction|WhEventChoices|WhEncounterIntel|WhObjectiveProgress|WhGoals|WORMHOLE_EVENT_IDS|wormholeGroundBoard|WormholePreparationPlan|expeditionRules|supplyVersion|expeditionGoal|pendingEvent|eventKey|elite)$/
     expect(collect(ast, ts.isIdentifier).map((node) => node.text).filter((name) => forbidden.test(name))).toEqual([])
     expect(ast.statements.filter(ts.isImportDeclaration).map((node) => (node.moduleSpecifier as ts.StringLiteral).text))
       .not.toContain('./WormholeExpedition')
-    expect(translationIds(ast)).toEqual(translationIds(originalAst))
+    expect(translationIds(ast)).toEqual(translationIds(originalAst).filter(id => ![
+      'ui.Wormhole.028', 'ui.Wormhole.250', 'ui.Wormhole.370', 'ui.Wormhole.251', 'ui.Wormhole.016', 'ui.Wormhole.365',
+      'ui.Wormhole.017', 'ui.Wormhole.246', 'ui.Wormhole.088', 'ui.Wormhole.133', 'ui.Wormhole.367', 'ui.Wormhole.368',
+      'ui.Wormhole.002', 'ui.Wormhole.018', 'ui.Wormhole.019', 'ui.Wormhole.198',
+    ].includes(id)).concat('ui.signalAuto.003', 'ui.signalAuto.004').sort())
   })
 
   it('旧准备、地图动作、敌人渲染、tempGrid 货仓和结算实现与固定来源一致', () => {
@@ -186,6 +190,7 @@ describe('信号空间 · 旧面板来源与隔离', () => {
 const ctx = buildSimContext()
 function legacyFleet() {
   const state = createInitialState({ nowWallMs: 0, seed: 19 })
+  state.research!.levels['mt-explore-signal-auto-t3'] = 3
   const fleet = Array.from({ length: 2 }, () => addShipToFleet(state, 'sh-thresher'))
   state.warehouse.items['repairkit-mil'] = 200
   state.skills.trained['ai-expert'] = 2
@@ -236,13 +241,13 @@ describe('信号空间 · legacy 核心集成', () => {
     expect(restored.warehouse.items['ai-core-gamma'] ?? 0).toBe(0)
   })
 
-  it('旧自动按原时长与一队一核结算，不扣携入物资、保留不丢船保险且不重复入账', () => {
+  it('信号自动按原时长但不占核心，不扣携入物资、保留不丢船保险且不重复入账', () => {
     const { state, fleet } = legacyFleet()
     state.wormholeStock = [{ id: 'legacy-signal', seed: 19, depth: 1, family: 'A', archetype: 'balanced', foundAtGameMs: 0 }]
     const used = aiCoreUsed(state)
     const cargo = fleet.map((id) => structuredClone(state.fleet[id]!.cargo))
     expect(wormholeAutoStart(state, ctx, 'legacy-signal', fleet).ok).toBe(true)
-    expect(aiCoreUsed(state)).toBe(used + 1)
+    expect(aiCoreUsed(state)).toBe(used)
     expect(state.wormholeAuto![0]!.expeditionRules).toBeUndefined()
     expect(state.wormholeAuto![0]!.expeditionSnapshot).toBeUndefined()
     expect(state.warehouse.items['repairkit-mil']).toBe(200)

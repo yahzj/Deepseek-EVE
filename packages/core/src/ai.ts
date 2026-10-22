@@ -118,19 +118,11 @@ export function aiCoreCap(state: GameState, ctx: SimContext): number {
   return cap
 }
 
-/** AI 副船任务占用的启用数（占「共用上限」名额）。
- *
- * ⚠ **两段口径不同，别合并**：
- * - **AI 副船任务**（`aiAssignments`）：**每条船各占 1 枚**；
- * - **虫洞自动探索**（`state.wormholeAuto`）：**每一趟占 1 枚**（与派几条船无关）。
- *   2026-09-26 船长令：「玩家翻译自动探索虫洞要占用4个核心，且收益太低了，我打算降低为只占用1个核心」
- *   ＋选定口径「**整队一趟只占 1 枚**（参与舰仍可派 1~4 条）」。
- *   改前按 `Σ shipIds.length` 计 ⇒ 满编一趟吃 4 枚，核心少的玩家连编队都凑不齐
- *   （编队规模另被"可派核心数"卡住，见 `wormholeAutoCandidates`）——两点本批一并修正。
- *
- * 这里直接读 `state.wormholeAuto`，不反向 import 自动探索模块（避免模块环）。 */
+/** AI副船每任务占一枚；信号空间自动队不占名额，实验/未知规则自动队保留每趟一枚。
+ * 直接读state，不反向import自动探索模块，以免形成运行期环。 */
 export function aiCoreShipUsed(state: GameState): number {
-  const autoRuns = (state.wormholeAuto ?? []).length
+  // 信号空间已改为科技解锁；只保留实验及未知规则任务的原AI占用。
+  const autoRuns = (state.wormholeAuto ?? []).filter(run => run.expeditionRules !== undefined).length
   return Object.keys(state.aiAssignments).length + autoRuns
 }
 

@@ -42,6 +42,7 @@ const SEEDS = 200
 /** 跑一趟自动探索，返回报告 + 结算后的档（夹具与 `wormhole-core-drop.test.ts` 一致） */
 function runOnce(seed: number) {
   const state = createInitialState({ nowWallMs: 0, seed })
+  state.research!.levels['mt-explore-signal-auto-t3'] = 3
   const uids = [0, 1, 2, 3].map(() => addShipToFleet(state, T3))
   state.skills.trained['ai-expert'] = 6
   state.wormholeStock = []

@@ -50,6 +50,7 @@ const T3 = 'sh-thresher'
 
 function fresh(seed = 4242): GameState {
   const state = createInitialState({ nowWallMs: 0, seed })
+  state.research!.levels['mt-explore-signal-auto-t3'] = 3
   setStanding(state, 'dsi', WORMHOLE_SCAN_UNLOCK_STANDING) // 扫描解锁门槛（另见 wormhole-unlock.test.ts）
   return state
 }

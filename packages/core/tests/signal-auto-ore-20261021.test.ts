@@ -127,7 +127,7 @@ describe('真实派队取数与返航入库', () => {
     expect(ore).toBeGreaterThan(0)
     expect(state.warehouse.items['ore-voidmother']).toBe(ore)
     expect(state.wormholeAuto).toHaveLength(0)
-    expect(report.coresReleased).toBe(1)
+    expect(report.coresReleased).toBe(0)
     for (const uid of fleet) expect(state.fleet[uid]!.durability).toBeGreaterThanOrEqual(.1)
   })
   it('在途档重载和一次离线大推进的结算与在线分步一致，不重复发货', () => {

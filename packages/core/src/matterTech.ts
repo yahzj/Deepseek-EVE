@@ -246,6 +246,13 @@ export function matterTechScanCut(state: GameState, ctx: SimContext): number {
   return Math.min(0.9, matterTechSum(state, ctx, 'whScanCut'))
 }
 
+/** 未研究为0（不可派队），三级分别60%/70%/80%；与原收益科技乘区独立。 */
+export function matterTechSignalAutoYield(state: GameState, ctx: SimContext): number {
+  const bonus = matterTechNodes(ctx).filter(n => n.effect === 'signalAutoYield')
+    .reduce((sum, n) => sum + Math.max(0, Math.min(n.maxLevel, Math.floor(matterTechLevel(state, n.id)))) * n.per, 0)
+  return bonus > 0 ? Math.min(80, Math.round(50 + bonus * 100)) / 100 : 0
+}
+
 /** **货柜拆解周期削减**（0.25/级 ⇒ 满级 0.75；加法口径） */
 export function matterTechUnboxCut(state: GameState, ctx: SimContext): number {
   return Math.min(0.9, matterTechSum(state, ctx, 'unboxTimeCut'))

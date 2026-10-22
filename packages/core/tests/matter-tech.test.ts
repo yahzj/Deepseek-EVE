@@ -47,12 +47,12 @@ function world(): ReturnType<typeof createInitialState> {
 describe('谜质科技树 · 节点表与货币', () => {
   it('30 个节点、id 唯一、效果关键字非空；研究货币 = 虫洞谜质', () => {
     const nodes = matterTechNodes(ctx)
-    expect(nodes.length).toBe(30)
-    expect(new Set(nodes.map((n) => n.id)).size).toBe(30)
+    expect(nodes.length).toBe(31)
+    expect(new Set(nodes.map((n) => n.id)).size).toBe(31)
     expect(nodes.every((n) => n.effect.length > 0 && n.maxLevel >= 1)).toBe(true)
     // 三条线的节点数：探索 6 / 战斗 14 / 工业 8（2026-09-30 船长令追加工业两支精炼提速 ＋ T5 两条）
     const byBranch = (b: string): number => nodes.filter((n) => n.branch === b).length
-    expect([byBranch('explore'), byBranch('battle'), byBranch('industry')]).toEqual([8, 14, 8])
+    expect([byBranch('explore'), byBranch('battle'), byBranch('industry')]).toEqual([9, 14, 8])
     // 货币常量与产出侧同源（本模块写的是字面量，防漂）
     expect(MATTER_TECH_ESSENCE_ITEM_ID).toBe(WORMHOLE_ESSENCE_ITEM_ID)
     // 虚空母矿 id 同源（涓流按它入库；同样是字面量防漂）

@@ -9,12 +9,10 @@
  *
  * 口径：
  * - **每处虫洞一个「自动探索」**：界面**自动配置**参与舰（最多 4 条非主控船，可手动改）；不满 4 条也能跑。
- * - **整队一趟占 1 枚 AI 核心**（**2026-09-26 船长令**「整队一趟只占 1 枚」，与派几条船无关；
- *   与副船 AI 任务**同一本账**，见 `ai.ts` 的 `aiCoreShipUsed`）。
- *   ⚠ 旧口径「每条参与舰各占 1 枚」**已作废**（2026-10-01 船长又报障：活动栏还按旧口径写"各占 1 枚"，已改）。
+ * - 信号空间按T3科技解锁，不占AI名额；未来实验自动队维持原每趟一枚规则。
  * - **时长 = 5 分钟**；按 `state.gameMs` 推进 ⇒ **离线照算**（与 AI 副船任务同口径）。
  * - **完成后停止**（不自动接下一个）：参与舰与 AI 名额届时释放，**该处虫洞被消耗**。
- * - **产出 = 手动一趟的期望 × 40%**（不保底），**直入站内仓库**（不占货舱、不会"装不下"）。
+ * - 信号空间按实际模拟收成的60/70/80%入库，比例出发锁定；旧趟缺省80%。
  * - **损伤**：每舰**结构 / 装甲各掷一次 −40%~−80%**，结构保底 `WORMHOLE_AUTO_HULL_FLOOR` ⇒ **绝不丢船**。
  * - **参与舰任务期间锁定**（驾驶/出击/别的 AI 任务全拒），返航解锁。
  * - **结算**：一条**日志** ＋ 一份**需要确认的报告**（显示在「扫描虫洞」页；船长：允许出现虫洞字样）。
@@ -28,7 +26,6 @@ import { AI_CORE_IDS } from './aiCores'
 import { tuningMul } from './tuning'
 import type { GameState, WormholeArchetype, WormholeAutoReport, WormholeAutoRun, WormholeFamily, WormholeStockItem } from './state'
 import { addLog, createInitialState, shipLockedInWormhole, wormholeAutoRunsOf } from './state'
-import { signalSpaceTextId } from './explorationText'
 // 再导出：index 与既有引用照旧从本模块读（单向边，不成环）
 export { wormholeAutoRunsOf } from './state'
 import type { SimContext } from './types'
@@ -41,7 +38,7 @@ import {
   wormholeBagSlotsOfFleet,
   wormholeScanBonusOf,
 } from './wormhole'
-import { matterTechLevel, matterTechNodes, matterTechWhBuffs, matterTechWorkEffBonus } from './matterTech'
+import { matterTechLevel, matterTechNodes, matterTechWhBuffs, matterTechWorkEffBonus, matterTechSignalAutoYield } from './matterTech'
 import { RARE_WRECK_VOLUME_M3, rareWreckItemIdOf, wreckGroupOfCard, wreckItemIdOf } from './salvage'
 import { wormholeRollRelicBoxKind, WORMHOLE_CORE_WEIGHTS, WORMHOLE_ESSENCE_ITEM_ID, wormholeMinersInFleet, wormholeSalvagersInFleet } from './wormholeSalvage'
 import { wormholeCardIdOfFamily, wormholeFamilyOfSeed, wormholeLayerThreat } from './wormholeFoes'
@@ -55,7 +52,7 @@ import type { WormholePreparationPlan } from './wormholePreparation'
 import { wormholeExtractionPlan, wormholeConfirmExtraction } from './wormholeExtraction'
 import { wormholeRunExpeditionPolicy } from './wormholeExpeditionPolicy'
 import { shipBusyLabel } from './activity'
-import { wormholeAutoDescend, type WormholeAutoPower } from './wormholeAutoSim'
+import { WORMHOLE_AUTO_SIM_YIELD_MUL, wormholeAutoDescend, type WormholeAutoPower } from './wormholeAutoSim'
 import { LEGACY_HAULER_STATS, moduleAllowedOnShip } from './shipFitting'
 import { fleetDefOf } from './instances'
 import { repairCivilianFittings } from './equipment'
@@ -493,7 +490,7 @@ export function wormholeAutoFreeCores(state: GameState, ctx: SimContext): number
   return Math.max(0, cap - aiCoreShipUsed(state) - indOnShared)
 }
 
-/** 自动配置的默认参与舰（最多 4 条，且不超过当前可派的核心数） */
+/** 自动配置的默认参与舰（最多4条，沿真实质量及单舰忙态筛选） */
 export function wormholeAutoDefaultShips(state: GameState, ctx: SimContext): string[] {
   return wormholeAutoCandidates(state, ctx)
     .filter((c) => c.picked)
@@ -537,6 +534,13 @@ export function wormholeAutoCoreBlock(state: GameState, ctx: SimContext, need: n
   return null
 }
 
+/** 入口与派队命令同源；信号空间只要求研究，不要求AI技能或库存。 */
+export function signalAutoResearchBlock(state: GameState, ctx: SimContext): CoreBlockReason | null {
+  return matterTechSignalAutoYield(state, ctx) > 0 ? null : {
+    error: '请前往「谜质科技」，研究T3「信号空间探索」后解锁自动探索。', errorId: 'core.signalAuto.001',
+  }
+}
+
 /* ═══════════ 三、开始 / 中止 ═══════════ */
 
 /**
@@ -549,12 +553,17 @@ export function wormholeAutoBlockReason(
   ctx: SimContext,
   stockId: string,
   shipIds?: readonly string[],
-  opts?: { mainMayJoin?: boolean },
+  opts?: { mainMayJoin?: boolean; prepared?: boolean },
 ): CoreBlockReason | null {
   // 先看"是不是已经派出去了"：开始时库存项即被消耗 ⇒ 先查在跑的趟，理由才说得清
   if (wormholeAutoRunOfStock(state, stockId)) return { error: '这一处已经在自动探索中。', errorId: 'core.wormholeAuto.011' }
   const item = wormholeStockOf(state).find((x) => x.id === stockId)
   if (!item) return { error: '这处虫洞不在了（可能已经探索过）。', errorId: 'core.wormholeAuto.012' }
+  const signal = item.expeditionRules === undefined && opts?.prepared !== true
+  if (signal) {
+    const researchBlock = signalAutoResearchBlock(state, ctx)
+    if (researchBlock) return researchBlock
+  }
   const pool = shipIds ?? wormholeAutoDefaultShips(state, ctx)
   if (pool.length === 0)
     return { error: '没有可派出的副船：自动探索不派主控船，先备至少 1 条空闲副船。', errorId: 'core.wormholeAuto.013' }
@@ -582,7 +591,7 @@ export function wormholeAutoBlockReason(
   const admission = wormholeAdmission(ctx, pool)
   // 与手动入场同源；整队拒因不能套用需要舰船名参数的单舰模板。
   if (!admission.ok) return { error: WORMHOLE_ADMISSION_TEXT[admission.code] }
-  return wormholeAutoCoreBlock(state, ctx, 1)
+  return signal ? null : wormholeAutoCoreBlock(state, ctx, 1)
 }
 
 /**
@@ -661,8 +670,7 @@ export function wormholeAutoMainHandover(
 
 /**
  * **开始自动探索**（一处虫洞一趟；不满 4 条也能跑）。
- * 成功 ⇒ **消耗该处库存**、**整队占 1 枚 AI 核心**（2026-09-26 船长令；旧写法"按参与舰数占名额"已作废）、
- * 参与舰锁定到返航。
+ * 成功消耗该处库存，信号空间锁定科技收益但不占核心；参与舰锁定到返航。
  *
  * ⚠ **主控在队里**（船长 2026-09-14：「如果选择了主控船，就将主控换到其他船上」）：先按
  * `wormholeAutoMainHandover` 读一次口径（主控忙/在洞里/没有接任船 ⇒ 直接拒绝），
@@ -687,6 +695,7 @@ export function wormholeAutoStart(state: GameState, ctx: SimContext, stockId: st
   wormholeStockTake(state, stockId)
   const run: WormholeAutoRun = {
     haulerFittingVersion: 1,
+    yieldMul: matterTechSignalAutoYield(state, ctx),
     id: `wha-${state.gameMs.toString(36)}-${wormholeAutoRunsOf(state).length.toString(36)}`,
     stockId,
     seed: item.seed,
@@ -715,8 +724,8 @@ export function wormholeAutoStart(state: GameState, ctx: SimContext, stockId: st
     state,
     'fleet',
     `🛰 自动探索队出发：${WORMHOLE_ARCHETYPE_LABELS[arch]} · ${picked.length} 条舰（${roster.join('、')}）` +
-      `——约 ${Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)} 分钟后返航（每次自动探索占 1 枚 AI 核心）。`,
-    'core.wormholeAuto.020',
+      `——约 ${Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)} 分钟后返航。`,
+    'core.signalAuto.002',
     logParams({
       p1: WORMHOLE_ARCHETYPE_LABELS[arch],
       p1Id: WORMHOLE_ARCHETYPE_IDS[arch],
@@ -737,7 +746,7 @@ function startPreparedAuto(
   if (opts.confirmLossRisk !== true || new Set(ships).size !== ships.length) return { ok: false }
   const handover = wormholeAutoMainHandover(state, ctx, ships)
   if (handover.reason) return { ok: false, errorId: handover.reasonId }
-  const blocked = wormholeAutoBlockReason(state, ctx, stockId, ships, { mainMayJoin: handover.needed })
+  const blocked = wormholeAutoBlockReason(state, ctx, stockId, ships, { mainMayJoin: handover.needed, prepared: true })
   if (blocked) return { ok: false, ...blocked }
   const current = wormholePreparationPlan(state, ctx, ships, opts.prepared.request, { automatic: opts.prepared.automatic })
   if (!current.ok || current.fingerprint !== opts.prepared.fingerprint) return { ok: false }
@@ -974,6 +983,7 @@ function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): voi
    */
   const adm = wormholeAdmission(ctx, run.shipIds)
   const descend = wormholeAutoDescend({
+    yieldMul: run.yieldMul ?? WORMHOLE_AUTO_SIM_YIELD_MUL,
     seed: run.seed,
     startDepth: Math.max(1, Math.min(9, run.depth)),
     totalMass: adm.totalMass,
@@ -1107,8 +1117,7 @@ function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): voi
     depth: run.depth,
     finishedAtGameMs: state.gameMs,
     shipIds: [...run.shipIds],
-    /** 返航释放的核心数 = **1**（2026-09-26 船长令：整队一趟占 1 枚，与派几条船无关） */
-    coresReleased: 1,
+    coresReleased: 0,
     gains,
     ...(coresGained !== null ? { cores: [coresGained] } : {}),
     damage,
@@ -1136,10 +1145,11 @@ function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): voi
     state,
     'fleet',
     `🛰 自动探索队返航：带回 ${gainText}（已入仓库）${coreText}；损伤：${dmgText}。${techText}` +
-      `${run.shipIds.length} 条舰全部安全返航，1 枚 AI 核心已释放（每次自动探索占 1 枚）——报告在「扫描虫洞」页等你确认。`,
-    signalSpaceTextId('core.wormholeAuto.021'),
+      `${run.shipIds.length} 条舰全部安全返航——报告在「扫描信号空间」页等你确认。`,
+    'core.signalAuto.003',
     logParams({
       p1: gainText,
+      p5: run.shipIds.length,
       ...(gains.length > 0
         ? {
             p1List: gains.map((g) => itemNameOf(ctx, g.itemId)),

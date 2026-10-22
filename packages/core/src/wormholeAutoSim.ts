@@ -154,6 +154,8 @@ export function wormholeAutoDescend(opts: {
   techTurnBonus?: number
   /** 谜质科技系数（与旧口径同一套：残骸线 / 采集线） */
   tech: { wreck: number; ore: number }
+  /** 本趟出发锁定的科技收益；缺省兼容旧80%任务及纯模拟调用。 */
+  yieldMul?: number
   /**
    * **事件玄学（`event-dividend`）给的"空白地点占比系数"** = `blankShareFactorOf(state)`
    * （0 级 = 1 ⇒ 一字不变；满级 5 = 0.8）。**缺省 1**：不传就与本次改动前完全一致。
@@ -165,6 +167,7 @@ export function wormholeAutoDescend(opts: {
   const { seed, startDepth, totalMass, holdM3, oreUnitM3, miners, salvagers, power, guardPowerOf, tech, scanRadius,
     blankShareFactor = 1 } = opts
   const rng = mulberry(seed * 6364136223846793005 + 1442695040888963407)
+  const yieldMul = opts.yieldMul ?? WORMHOLE_AUTO_SIM_YIELD_MUL
   let turns = turnBudgetOf(totalMass, opts.techTurnBonus ?? 0)
 
   const out: WormholeAutoDescend = {
@@ -387,13 +390,13 @@ export function wormholeAutoDescend(opts: {
     cellsExplored: out.cellsExplored,
     fightsWon: out.fightsWon,
     fightsAvoided: out.fightsAvoided,
-    /** 收成打 8 折（船长令）：走法与掉落不变，只把"带回来的东西"按折扣收口 */
-    wreckM3: ceilFinalQuantity(out.wreckM3 * WORMHOLE_AUTO_SIM_YIELD_MUL),
-    oreUnits: ceilFinalQuantity(out.oreUnits * WORMHOLE_AUTO_SIM_YIELD_MUL),
-    rareItems: out.rareItems * WORMHOLE_AUTO_SIM_YIELD_MUL,
-    relicBoxes: out.relicBoxes * WORMHOLE_AUTO_SIM_YIELD_MUL,
+    /** 收益系数只在收尾应用一次，不改变路线、回合或货舱约束。 */
+    wreckM3: ceilFinalQuantity(out.wreckM3 * yieldMul),
+    oreUnits: ceilFinalQuantity(out.oreUnits * yieldMul),
+    rareItems: out.rareItems * yieldMul,
+    relicBoxes: out.relicBoxes * yieldMul,
     /** 谜质装置台数同样打 8 折（小数部分由调用方掷一次取整，与稀有残骸/货柜同一套写法） */
-    matterDevices: out.matterDevices * WORMHOLE_AUTO_SIM_YIELD_MUL,
+    matterDevices: out.matterDevices * yieldMul,
     holdFull: out.holdFull,
     outOfTurns: out.outOfTurns,
     turnsOnScan: out.turnsOnScan,

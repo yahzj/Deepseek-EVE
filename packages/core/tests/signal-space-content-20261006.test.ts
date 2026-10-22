@@ -150,7 +150,7 @@ describe('信号空间内容 · 固定来源与纯文案边界', () => {
   })
 
   it('谜质科技全部标识、效果、费用与前置不变，共享说明不伪限定为旧玩法', () => {
-    const existing = MATTER_TECH_NODES.filter(node => !node.id.startsWith('mt-explore-signal-radius-'))
+    const existing = MATTER_TECH_NODES.filter(node => !node.id.startsWith('mt-explore-signal-radius-') && node.id !== 'mt-explore-signal-auto-t3')
     sameData(existing, baseTech, ['note'])
     for (const node of existing) {
       const before = baseTech.find((row) => row.id === node.id)!

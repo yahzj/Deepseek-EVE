@@ -2969,6 +2969,8 @@ export type MatterTechEffect =
   | 'whScanCut'
   /** 信号空间扫描半径 +v 圈/级。 */
   | 'whScanRadius'
+  /** 信号空间自动探索解锁；收益在50%基础上每级增加v，三级最高80%。 */
+  | 'signalAutoYield'
   /** **洞内战斗倍速**：v = 每级**倍率底数**（2 ⇒ 1 级 ×2、2 级 ×4）——⚠ 全表**唯一按乘法**算的效果，
    *  取 `v^级`，**不走** `Σ 等级 × v`（见 `matterTechBattleSpeed` 与 `combat` 的倍速时间轴） */
   | 'whBattleSpeed'

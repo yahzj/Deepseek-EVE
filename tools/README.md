@@ -1,5 +1,10 @@
 # 工具区台账（tools/）
 
+## 信号空间T3自动探索科技（2026-10-22）
+
+- `npx tsx tools/make-test-save.ts signal-auto-tech`：通过`signal-auto-tech-fixture.ts`生成全新合成档，未研究T3但已满足T1前置，0级AI技能、空核心库及研究材料齐备；不读取个人档，加载步骤见`docs/test-saves/signal-auto-tech-20261022.md`。
+- 构建后`node tools/signal-auto-tech-native-check.cjs [--electron=本机Electron绝对路径]`：隐藏Electron及临时userData，经典桌面/现代手机仿真×0～3级，验证灰色按钮可点击提示、60/70/80%读数、无核心占用、真实派队及IPC重载。产物`tools/_ui-artifacts/signal-auto-tech/`，不作实体手机或观感验收；仅清理自建且已校验路径的临时profile。
+
 ## 自动探索母矿核查（2026-10-21）
 
 - `node tools/signal-auto-ore-audit.cjs [--matrix]`：用全新合成状态、正式装配/派队/返航结算，比较当前实现、修前`5685ed39`及资源调整前`51092180^`的自动算法；混合墓场/矿脉与参数扫描分开报告，逐种子断言母矿报告与仓库一致。仅读本地Git历史和代码，不读个人档、不改玩法；输出`tools/_ui-artifacts/signal-auto-ore-audit-20261021/`。矩阵为隔离实验，不代表玩家总体掉率，完整结论见`docs/design/signal-auto-ore-audit-20261021.md`。

@@ -24,6 +24,13 @@ export function l10nEntryText(entry: L10nEntry, locale: 'zh' | 'en'): string {
 }
 
 export const L10N: Readonly<Record<string, L10nEntry>> = {
+  'ui.signalAuto.001': { zh: '信号空间探索', en: '', enDeferred: true },
+  'ui.signalAuto.002': { zh: '解锁信号空间自动探索。1级收益为60%，每级提高10个百分点（满级80%）。', en: '', enDeferred: true },
+  'ui.signalAuto.003': { zh: '{p1} 条舰', en: '', enDeferred: true },
+  'ui.signalAuto.004': { zh: '自动派最多 {p1} 条船探索（约 {p2} 分钟）', en: '', enDeferred: true },
+  'core.signalAuto.001': { zh: '请前往「谜质科技」，研究T3「信号空间探索」后解锁自动探索。', en: '', enDeferred: true },
+  'core.signalAuto.002': { zh: '🛰 自动探索队出发：{p1} · {p2} 条舰（{p3}）——约 {p4} 分钟后返航。', en: '', enDeferred: true },
+  'core.signalAuto.003': { zh: '🛰 自动探索队返航：带回 {p1}（已入仓库）{p2}；损伤：{p3}。{p4}{p5} 条舰全部安全返航——报告在「扫描信号空间」页等你确认。', en: '', enDeferred: true },
   'bp.factionPlug.001': { zh: '舰船插件制造图纸，须先取得任意黑匣。', en: 'Ship plug blueprint: requires any black box.' },
   'mod.factionPlug.001': { zh: '允许隐秘行动装置与推进器共同运作，降低最大速度。', en: 'Allows covert devices to operate alongside thrusters, at the cost of maximum speed.' },
   'mod.factionPlug.002': { zh: '开战时将最终护盾容量转为部分装甲，护盾容量归零。转换装甲每场重建，原装甲损伤保留。', en: 'Converts final shield capacity into partial armor at battle start, leaving no shield capacity. Converted armor refreshes each battle; damage to original armor persists.' },

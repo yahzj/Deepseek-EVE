@@ -65,6 +65,7 @@ describe('自动新模式 · 出发快照与旧模式隔离', () => {
     expect(wormholeAutoStop(state, runId, ctx).ok).toBe(false)
     expect(state.warehouse.items['repairkit-mil']).toBe(200)
     const old = setup()
+    old.state.research!.levels['mt-explore-signal-auto-t3'] = 3
     expect(wormholeAutoStart(old.state, ctx, 'auto-expedition', old.fleet).ok).toBe(true)
     expect(old.state.wormholeAuto![0]!.expeditionRules).toBeUndefined()
     expect(old.state.wormholeAuto![0]!.expeditionSnapshot).toBeUndefined()
