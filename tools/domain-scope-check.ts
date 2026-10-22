@@ -75,7 +75,7 @@ const DOMAINS: readonly Domain[] = [
   },
   {
     name: '虫洞',
-    globs: ['packages/core/src/wormhole*.ts', 'packages/core/src/matterTech.ts', 'packages/data/src/wormholeFoes.ts', 'packages/data/src/matterTech.ts', 'apps/desktop/src/renderer/src/panels/Wormhole*.tsx', 'apps/desktop/src/renderer/src/panels/MatterTechTab.tsx', 'apps/desktop/src/renderer/src/panels/wormholeMapGeom.ts', 'apps/desktop/src/renderer/src/ui/wormholeIntel.ts'],
+    globs: ['packages/core/src/wormhole*.ts', 'packages/core/src/matterTech.ts', 'packages/data/src/wormholeFoes.ts', 'packages/data/src/matterTech.ts', 'apps/desktop/src/renderer/src/panels/Wormhole*.tsx', 'apps/desktop/src/renderer/src/panels/SignalSpace.tsx', 'apps/desktop/src/renderer/src/panels/MatterTechTab.tsx', 'apps/desktop/src/renderer/src/panels/wormholeMapGeom.ts', 'apps/desktop/src/renderer/src/ui/wormholeIntel.ts'],
   },
   {
     name: '战斗',
