@@ -33,7 +33,7 @@ import { bountyEnemyCount, bountyWreckInjection, injectWreckDensity, wreckDensit
 import { travelLegMs } from './travel'
 import { scaledReturnMs } from './trips'
 import { beginJumpFuelLeg } from './jumpFuel'
-import { legMsFor, outboundLegMsFor } from './salvaging'
+import { legMsFor } from './salvaging'
 import { actionBlockReason, markExplored } from './explore'
 import { nearestStationGalaxyId } from './location'
 import {
@@ -852,7 +852,7 @@ function advanceAiMining(
       if (task.kind === 'mining') {
         const stGalAi = beltDef?.galaxyId ? nearestStationGalaxyId(state, ctx, beltDef.galaxyId) : HOME_GALAXY_ID
         const baseAi = scaledReturnMs(
-          oneLegMs(state, ctx, task.beltId, shipId, stGalAi) + oneOutboundLegMs(state, ctx, task.beltId, shipId, stGalAi),
+          oneLegMs(state, ctx, task.beltId, shipId, stGalAi),
           state,
           ctx,
           shipId,
@@ -1044,10 +1044,10 @@ function advanceAiSalvage(
         if (wreckUnitsOf(pulled.volumeM3) > freeM3) {
           task.phase = 'returning'
           task.phaseAccMs = 0
-          /** 跃迁燃料（同采矿那一支；`'ai'` 一个开关管全部副船）。AI 打捞的去程并入返航。 */
+          /** 副船去程独立推进；扣料只取本船实际返航单程，与推进及读数同源。 */
           if (task.kind === 'salvage') {
             const baseAi = scaledReturnMs(
-              legMsFor(state, ctx, task.galaxyId) + outboundLegMsFor(state, ctx, task.galaxyId),
+              legMsFor(state, ctx, task.galaxyId, shipId),
               state,
               ctx,
               shipId,

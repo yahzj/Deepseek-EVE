@@ -14,6 +14,7 @@ import { recallExpedition, startMining } from '../src/mining'
 import { advanceSalvageOp, legMsFor, outboundLegMsFor, startSalvageOp } from '../src/salvaging'
 import { makeTestCtx, moduleDef, skill } from './helpers'
 import { setStanding } from './helpers'
+import { scaledReturnMs } from '../src/trips'
 
 describe('T1 统一停止指令', () => {
   let state: GameState
@@ -172,7 +173,9 @@ describe('T1 activityOverview 视图', () => {
     expect(v.remainingMs).toBe(outLeg - Math.round(outLeg / 2))
     // 返航：行程进度（去程并入返航）+ 精确剩余
     st.salvaging.phase = 'returning'
-    const retLeg = legMsFor(st, ct, 'galaxy-far') + outboundLegMsFor(st, ct, 'galaxy-far')
+    // 半程按引擎真实货仓占比航程计算，不再用未装货的满载航程作分母。
+    st.fleet[st.shipId]!.cargo['ore-a'] = 400
+    const retLeg = scaledReturnMs(legMsFor(st, ct, 'galaxy-far') + outboundLegMsFor(st, ct, 'galaxy-far'), st, ct, st.shipId)
     st.salvaging.phaseAccMs = Math.round(retLeg / 2)
     v = activityOverview(st, ct).find((a) => a.kind === 'salvage')!
     expect(v.sub).toBe('返航卸货')

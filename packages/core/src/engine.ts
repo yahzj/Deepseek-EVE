@@ -218,8 +218,8 @@ function resolveActivityReturn(state: GameState, ctx: SimContext): void {
   const pending = state.pendingActivityReturn
   if (!pending) return
   state.pendingActivityReturn = null
-  if (pending.kind === 'mining') retireMiningShip(state, ctx, { beltId: pending.id, preserveExisting: true })
-  else retireSalvageShip(state, ctx, { galaxyId: pending.id, preserveExisting: true })
+  if (pending.kind === 'mining') retireMiningShip(state, ctx, { beltId: pending.id, preserveExisting: true, progress: pending.progress })
+  else retireSalvageShip(state, ctx, { galaxyId: pending.id, preserveExisting: true, progress: pending.progress })
 }
 
 /** 清待办后只尝试一次，复用真实命令重新验证，不无限重试或停止后来安排的作业。 */

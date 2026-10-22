@@ -292,6 +292,14 @@ export interface ShipReturnState {
   reason?: 'mining' | 'expedition' | 'salvage' | 'salvageStop' | 'miningStop'
 }
 
+/** 作业停机前的航段快照；保留已点火返航的进度，延迟善后时不能再扣料。 */
+export interface WorkReturnProgress {
+  phase: 'mining' | 'salvaging' | 'outbound' | 'returning'
+  phaseAccMs: number
+  fuelMul?: number
+  originGalaxy?: string | null
+}
+
 /**
  * T8 显式"返航空间站"行程（野外停留 → 空间站；出发锁定总时长）。
  * 2026-09-08（船长定）：扩展为"建站交付航线"——主船从停靠空间站出发、按真实航程驶往
@@ -2292,7 +2300,7 @@ export type GameStateV16 = Omit<GameStateV15, 'version'> & {
    * 为什么绕这一道：本文件**不能** import `mining` / `salvaging`（会成环 ⇒ 游戏启动即崩，
    * 见文件顶部那条注释）；而 `retireXxxShip` 住在作业模块里，且要读**清状态之前**的 phase/矿带。
    */
-  pendingActivityReturn?: { kind: 'mining' | 'salvaging'; id: string } | null
+  pendingActivityReturn?: { kind: 'mining' | 'salvaging'; id: string; progress?: WorkReturnProgress } | null
   /** T9 建站进度：站点 id -> 进度（档位 stage 从 0 起；delivered 已缴物品单位） */
   stationSites: Record<string, StationSiteProgress>
   /** T9 当前停靠的副站 id（null = 母港；awayGalaxy=null 且有值时表示停副站） */
@@ -3478,10 +3486,11 @@ export function wormholeScanHalt(state: GameState): number | null {
  * 与 `wormholeScanHalt` 同款理由（不 import 各活动模块，以免给 `state → …` 添环）；
  * 日志由调用方写（手动写"已停止…"、进洞写"进洞前自动停掉…"）。
  */
-export function miningHalt(state: GameState): { tripUnits: number; beltId: string | null; phase: MiningState['phase'] } | null {
+export function miningHalt(state: GameState): (WorkReturnProgress & { tripUnits: number; beltId: string | null }) | null {
   const m = state.mining
   if (m.active !== true) return null
-  const info = { tripUnits: m.tripUnits, beltId: m.beltId, phase: m.phase }
+  const info = { tripUnits: m.tripUnits, beltId: m.beltId, phase: m.phase, phaseAccMs: m.phaseAccMs,
+    ...(m.fuelMul !== undefined ? { fuelMul: m.fuelMul } : {}), originGalaxy: m.originGalaxy }
   m.active = false
   m.beltId = null
   m.phase = 'mining'
@@ -3490,6 +3499,7 @@ export function miningHalt(state: GameState): { tripUnits: number; beltId: strin
   m.tripUnits = 0
   m.originGalaxy = null
   m.rvLeft = 0 // 停止开采：红利窗口随之清零（窗口绑定矿带）
+  delete m.fuelMul
   return info
 }
 
@@ -3499,10 +3509,11 @@ export function miningHalt(state: GameState): { tripUnits: number; beltId: strin
  */
 export function salvageHalt(
   state: GameState,
-): { tripM3: number; galaxyId: string | null; phase: SalvageOpState['phase'] } | null {
+): (WorkReturnProgress & { tripM3: number; galaxyId: string | null }) | null {
   const s = state.salvaging
   if (s.active !== true) return null
-  const info = { tripM3: s.tripM3, galaxyId: s.galaxyId, phase: s.phase }
+  const info = { tripM3: s.tripM3, galaxyId: s.galaxyId, phase: s.phase, phaseAccMs: s.phaseAccMs,
+    ...(s.fuelMul !== undefined ? { fuelMul: s.fuelMul } : {}) }
   s.active = false
   s.galaxyId = null
   s.phase = 'salvaging'
@@ -3510,6 +3521,7 @@ export function salvageHalt(
   s.cycleAccMs = 0
   s.tripM3 = 0
   s.deviceAccMs = {}
+  delete s.fuelMul
   return info
 }
 
@@ -3640,7 +3652,11 @@ export function haltActivityForSwitch(state: GameState, kind: string): void {
           phaseAccMs: 0,
           reason: 'miningStop',
         }
-        state.pendingActivityReturn = { kind: 'mining', id: state.mining.beltId }
+        const m = state.mining
+        state.pendingActivityReturn = { kind: 'mining', id: m.beltId!, progress: {
+          phase: m.phase, phaseAccMs: m.phaseAccMs, originGalaxy: m.originGalaxy,
+          ...(m.phase === 'returning' && (m.fuelMul ?? 1) > 1 ? { fuelMul: m.fuelMul } : {}),
+        } }
         state.haltedBySwitch = { kind: 'mining' }
         /** 日志与真实腿长由**引擎下一拍**补（那里有 ctx，能读船名与真实秒数） */
       }
@@ -3655,7 +3671,11 @@ export function haltActivityForSwitch(state: GameState, kind: string): void {
           phaseAccMs: 0,
           reason: 'salvageStop',
         }
-        state.pendingActivityReturn = { kind: 'salvaging', id: state.salvaging.galaxyId }
+        const s = state.salvaging
+        state.pendingActivityReturn = { kind: 'salvaging', id: s.galaxyId!, progress: {
+          phase: s.phase, phaseAccMs: s.phaseAccMs,
+          ...(s.phase === 'returning' && (s.fuelMul ?? 1) > 1 ? { fuelMul: s.fuelMul } : {}),
+        } }
         state.haltedBySwitch = { kind: 'salvaging' }
         /** 日志与真实腿长由**引擎下一拍**补（同 mining 那档） */
       }

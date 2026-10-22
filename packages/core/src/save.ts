@@ -19,7 +19,7 @@ import {
 } from './state'
 import { cleanBattleRangeRecords, cleanPendingBattleRange } from './battleRangeMemory'
 import type { BattleState, GameState,     LogEntry, LogKind, MarksState, SideTask, WormholeArchetype, WormholeFamily } from './state'
-import type { AchievementEarned } from './state'
+import type { AchievementEarned, WorkReturnProgress } from './state'
 import { CHAIN_TIERS, CHAIN_TIERS_LEGACY_ORDERS, FIRST_TASKS } from './firstTasks'
 import type { CommsInstanceEntry, CommsJumpPage, CommsKind, CommsRewardLine, FittedModules, RackSlot } from './types'
 import type { ShipFitPreset } from './state'
@@ -1325,6 +1325,8 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     })(),
     // 2026-09-06 兼容字段：胜利自动返航（不可召回）/失利/撤退；仅 back 相位有效，其余清空
     returnReason: expReturnReason,
+    ...(typeof expRaw.returnAtGameMs === 'number' && Number.isFinite(expRaw.returnAtGameMs)
+      ? { returnAtGameMs: Math.max(0, Math.floor(expRaw.returnAtGameMs)) } : {}),
     /**
      * **本场远征打的是哪个星系**（2026-09-25 周末入侵接线）：
      * ⚠ 这一行原先**漏了**（只写了 `state.ts` 的类型与写入点）⇒ **读档即丢**，"战后归属/残骸注入不再落母港"
@@ -1631,18 +1633,28 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     typeof src.autoLoopAnomalyId === 'string' && src.autoLoopAnomalyId.length > 0
       ? src.autoLoopAnomalyId
       : null
-  /**
-   * **切活动停机标记**（**2026-10-02 加**，见 `GameState.haltedBySwitch` 头注）——
-   * 它是一条**瞬态信号**（`haltActivityForSwitch` 抛给"紧接着那次开工"看的，活不过同一拍）
-   * ⇒ **有意不入档**，读档一律清空（老档缺省也走这条）。字段可选、值恒为 `null` ⇒ 往返一致。
-   */
-  const pendingActivityReturn: { kind: 'mining' | 'salvaging'; id: string } | null =
-    (asRaw(src.pendingActivityReturn).kind === 'mining' || asRaw(src.pendingActivityReturn).kind === 'salvaging') &&
-    typeof asRaw(src.pendingActivityReturn).id === 'string' &&
-    (asRaw(src.pendingActivityReturn).id as string).length > 0
+  // 首拍前保存也保留作业航段快照，避免已点火的返航重载后再次扣料或丢掉倍率。
+  const pendingReturnRaw = asRaw(src.pendingActivityReturn)
+  const progressRaw = asRaw(pendingReturnRaw.progress)
+  const progressPhase = progressRaw.phase
+  const progressFuel = fuelMulOf(progressRaw.fuelMul)
+  const progress: WorkReturnProgress | undefined =
+    progressPhase === 'mining' || progressPhase === 'salvaging' || progressPhase === 'outbound' || progressPhase === 'returning'
       ? {
-          kind: asRaw(src.pendingActivityReturn).kind as 'mining' | 'salvaging',
-          id: asRaw(src.pendingActivityReturn).id as string,
+          phase: progressPhase,
+          phaseAccMs: typeof progressRaw.phaseAccMs === 'number' && Number.isFinite(progressRaw.phaseAccMs)
+            ? Math.max(0, Math.floor(progressRaw.phaseAccMs)) : 0,
+          ...(progressFuel !== undefined ? { fuelMul: progressFuel } : {}),
+          ...(progressRaw.originGalaxy === null || typeof progressRaw.originGalaxy === 'string' && progressRaw.originGalaxy.length > 0
+            ? { originGalaxy: progressRaw.originGalaxy as string | null } : {}),
+        } : undefined
+  const pendingActivityReturn: GameState['pendingActivityReturn'] =
+    (pendingReturnRaw.kind === 'mining' || pendingReturnRaw.kind === 'salvaging') &&
+    typeof pendingReturnRaw.id === 'string' && pendingReturnRaw.id.length > 0
+      ? {
+          kind: pendingReturnRaw.kind,
+          id: pendingReturnRaw.id,
+          ...(progress !== undefined ? { progress } : {}),
         }
       : null
   const haltedBySwitch: { kind: 'mining' | 'salvaging' } | null =

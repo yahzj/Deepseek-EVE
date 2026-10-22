@@ -179,8 +179,12 @@ describe('真实开战外壳软确认', () => {
   it('与活动切换两段确认叠加只需依次确认，不重复弹药警告', () => {
     const p = warningProbe()
     p.state.mining.active = true
-    const command = () => p.state.mining.active ? { ok: false, errorId: 'confirm-activity' } : { ok: true }
-    const switchActivity = p.methods.withActivitySwitch as (key: string, run: () => CommandResult) => CommandResult
+    // 远征确认已改为将确认事实传入命令事务，不由外壳提前停掉活动。
+    const command = (confirmed?: boolean) => {
+      if (confirmed) p.state.mining.active = false
+      return p.state.mining.active ? { ok: false, errorId: 'confirm-activity' } : { ok: true }
+    }
+    const switchActivity = p.methods.withActivitySwitch as (key: string, run: (confirmed?: boolean) => CommandResult) => CommandResult
     const run = () => switchActivity.call(p.methods, 'expedition', command)
     expect(p.warn('fight', p.fleet, run).errorId).toBe('ui.battleAmmo.001')
     expect(p.warn('fight', p.fleet, run).errorId).toBe('confirm-activity')

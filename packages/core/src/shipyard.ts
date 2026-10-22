@@ -189,8 +189,8 @@ export function changeShip(state: GameState, shipId: string, ctx: SimContext): C
   if (state.shipReturns[state.shipId]) {
     // 首拍前的占位返航要在旧船归属下兑现，不能交给下一拍的新驾驶船处理。
     const pending = state.pendingActivityReturn
-    if (pending?.kind === 'mining') retireMiningShip(state, ctx, { beltId: pending.id, preserveExisting: true })
-    else if (pending?.kind === 'salvaging') retireSalvageShip(state, ctx, { galaxyId: pending.id, preserveExisting: true })
+    if (pending?.kind === 'mining') retireMiningShip(state, ctx, { beltId: pending.id, preserveExisting: true, progress: pending.progress })
+    else if (pending?.kind === 'salvaging') retireSalvageShip(state, ctx, { galaxyId: pending.id, preserveExisting: true, progress: pending.progress })
     state.pendingActivityReturn = null
     state.haltedBySwitch = null
     state.awayGalaxy = null

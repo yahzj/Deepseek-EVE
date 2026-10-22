@@ -19,7 +19,7 @@ import {
   marketQuote,
   miningStatus,
   salvagerCyclesOf,
-  legMsFor,
+  salvageReturnMs,
   outboundLegMsFor,
   shipDisplayName,
   wreckDensityOf,
@@ -1002,7 +1002,7 @@ function salvageProgressOf(engine: GameEngine): { percent: number; label: string
   }
   if (s.phase === 'returning') {
     // 返航腿 = 满载返航 + 空船去程（去程并入返航）
-    const leg = Math.max(1, legMsFor(state, ctx, s.galaxyId) + outboundLegMsFor(state, ctx, s.galaxyId))
+    const leg = salvageReturnMs(state, ctx, s.galaxyId)
     return { percent: Math.min(100, Math.round((s.phaseAccMs / leg) * 100)), label: tr("ui.MapPage.057"), travel: true }
   }
   const cycles = salvagerCyclesOf(state, ctx, state.shipId)

@@ -101,8 +101,8 @@ describe('T4 换驾驶善后（原"换船重采"取消）', () => {
       originGalaxy: null,
     }
     expect(changeShip(state, 'sh-falconet', ctx).ok).toBe(true)
-    // 返航腿按货仓占比缩放（70/800 m³ → ≈10.5s），已走 15s 折算后封顶=腿长
-    const expLeg2 = scaledReturnMs(miningReturnLegMs(state, ctx, 'belt-a'), state, ctx, 'sandcat')
+    // 已开始的返航接续原合并航段，不能因换船改成更短的单程。
+    const expLeg2 = scaledReturnMs(oneLegMs(state, ctx, 'belt-a', 'sandcat') + oneOutboundLegMs(state, ctx, 'belt-a', 'sandcat'), state, ctx, 'sandcat')
     expect(state.shipReturns['sandcat']).toEqual({ beltId: 'belt-a', legMs: expLeg2, phaseAccMs: Math.min(15_000, expLeg2), reason: 'miningStop' })
     advanceGame(state, 105_000, ctx)
     expect(countWare(state, 'ore-a')).toBe(70)

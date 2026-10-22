@@ -57,7 +57,8 @@ describe('真实错误入口不漏模板参数', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 7 })
     state.moduleBay = {}
     const gun = [...ctx.modules.values()].find((m) => m.slot === 'turret')!
-    const plug = [...ctx.modules.values()].find((m) => m.slot === 'plug')!
+    // 参数提示专项固定可兑换的通用插件；五件新势力插件另有暂不可获得的门禁。
+    const plug = ctx.modules.get('plug-shield-plate')!
     const unseen = [...ctx.galaxies.keys()].find((id) => !state.exploredGalaxies.includes(id))!
     const r = renderer(locale)
     const fixtures: Array<[string, () => any]> = [

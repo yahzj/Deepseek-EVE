@@ -24,6 +24,7 @@ import type { AnomalyDef, FoeShipDef, ShipDef } from '../src/types'
 import type { GameState } from '../src/state'
 import { bountyDamageForecast } from '../src/combat'
 import { anomaly } from './helpers'
+import { setCardDistance } from './helpers/battle-card-memory'
 
 const ctx = buildSimContext()
 const SHIP: ShipDef['id'] = 'sh-whiteshark'
@@ -53,14 +54,15 @@ function world(): GameState {
   const s = createInitialState({ nowWallMs: 0, seed: 3 })
   const u = addShipToFleet(s, SHIP)
   s.shipId = u
-  s.expedition.desirePrefByGalaxy = { 'galaxy-hub': 1000 }
   s.fleet[u]!.fitted = { high: ['mod-turret-kin-3'], mid: [], low: [] }
   addWare(s, 'ammo-kinetic-l', 5_000)
   return s
 }
 
 const lossSum = (card: AnomalyDef): number => {
-  const f = bountyDamageForecast(world(), ctx, card, SHIP)
+  const state = world()
+  setCardDistance(state, ctx, card.id, 1000)
+  const f = bountyDamageForecast(state, ctx, card, state.shipId)
   return f.armorLoss + f.hullLoss
 }
 

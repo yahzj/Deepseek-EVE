@@ -962,7 +962,10 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     const endAt = Math.max(battle.startedAtGameMs, battle.lastTickGameMs)
     exp.returnAtGameMs = endAt
     exp.finishAtGameMs = endAt + backMs
-    if (ret.base === targetGalaxy || targetGalaxy === HOME_GALAXY_ID) {
+    if ((ret.base === targetGalaxy || targetGalaxy === HOME_GALAXY_ID) && backMs !== LOCAL_RETURN_MS) {
+      // ⟪文案调整 2026-10-22⟫ 加速/调试本地返航复用无固定报时日志，实际秒数由既有点火日志提供。
+      addLog(state, 'fleet', '舰队开始返航（去程时间并入返航）。', 'core.expedition.027')
+    } else if (ret.base === targetGalaxy || targetGalaxy === HOME_GALAXY_ID) {
       // 本地悬赏（2026-09-08 船长定）：目标星系即返航基准 → 固定返港段 120s，防零航程白刷
       addLog(
         state,

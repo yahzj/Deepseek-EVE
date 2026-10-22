@@ -19,7 +19,7 @@ import { tuningMul } from './tuning'
 import { addLog, HOME_GALAXY_ID, salvageHalt } from './state'
 import { applyActivityGate, pilotUnavailableReason } from './activityGate'
 import type { CommandResult } from './engine'
-import type { GameState } from './state'
+import type { GameState, WorkReturnProgress } from './state'
 import type { SimContext } from './types'
 import { addItem, addWare, freeCargoM3, unloadCargoOfShipToWarehouse } from './inventory'
 import { shortestTravelMinutes, travelLegMs } from './travel'
@@ -58,7 +58,7 @@ import {
   wreckGroupStockOf,
   wreckGroupStocksOf,
 } from './salvage'
-import { scaledReturnMs } from './trips'
+import { scaledReturnMs, workReturnLeg } from './trips'
 import { beginJumpFuelLeg, jumpFuelLegMsOf } from './jumpFuel'
 
 /** 出航/返航共用腿（星系航程）：进出港基准（同采矿 localLegMs）+ 星系间航程（按船速换算） */
@@ -73,6 +73,11 @@ export function legMsFor(state: GameState, ctx: SimContext, galaxyId: string, sh
 export function outboundLegMsFor(state: GameState, ctx: SimContext, galaxyId: string, shipId?: string): number {
   if (state.debugQuick) return 1000
   return Math.max(1, Math.round(legMsFor(state, ctx, galaxyId, shipId) / 2))
+}
+
+/** 主控打捞返航真实时长：引擎与活动栏、星图页共用，展示时不点火扣料。 */
+export function salvageReturnMs(state: GameState, ctx: SimContext, galaxyId: string, fuelMul = state.salvaging.fuelMul ?? 1): number {
+  return scaledReturnMs(legMsFor(state, ctx, galaxyId) + outboundLegMsFor(state, ctx, galaxyId), state, ctx, state.shipId, fuelMul)
 }
 
 /** 该船装配的打捞器周期表（每台周期毫秒；无打捞器 = 空表）。
@@ -384,6 +389,7 @@ export function startSalvageOp(
   s.active = true
   s.galaxyId = galaxyId
   s.phase = 'salvaging' // 去程取消：指令即视为已抵达，立即开始打捞
+  delete s.fuelMul
   s.phaseAccMs = 0
   s.cycleAccMs = 0
   s.tripM3 = 0
@@ -460,22 +466,13 @@ function armReturnLeg(
   state: GameState,
   ctx: SimContext,
   galaxyId: string,
-  phase: 'outbound' | 'salvaging' | 'returning',
+  progress: WorkReturnProgress,
 ): number | null {
   const ship = state.fleet[state.shipId]
   if (!ship) return null
-  const outFull = outboundLegMsFor(state, ctx, galaxyId)
-  const fullLeg = legMsFor(state, ctx, galaxyId) + outFull
-  const legMs = Math.max(1, scaledReturnMs(fullLeg, state, ctx, state.shipId))
-  /**
-   * ⚠ **`salvageHalt` 已经把 `phaseAccMs` 清零了**（它要复位作业态）⇒ 返航进度只能由调用方从**相位**推：
-   * - `returning`：本就在返航路上 ⇒ 接续剩余（`legMs` 是全腿长，`advanceShipReturns` 按剩余推）；
-   *   这里给 0 是**取最坏**（宁可多飞一段，也不凭空瞬移回港）；
-   * - `outbound` / `salvaging`：还没上路 ⇒ 0（从头飞）。
-   */
-  void phase
-  state.shipReturns[state.shipId] = { beltId: null, legMs, phaseAccMs: 0, reason: 'salvageStop' }
-  return Math.max(0, Math.round(legMs / 1000))
+  const leg = workReturnLeg(state, 'salvage', salvageReturnMs(state, ctx, galaxyId, 1), progress)
+  state.shipReturns[state.shipId] = { beltId: null, ...leg, reason: 'salvageStop' }
+  return Math.max(0, Math.round((leg.legMs - leg.phaseAccMs) / 1000))
 }
 
 /** 手动停止（任何阶段；未返航的货物留在船上） */
@@ -496,7 +493,7 @@ export function stopSalvageOp(state: GameState, ctx: SimContext): boolean {
    * 现在建返航账本 ⇒ 与换船善后同链：飞回来、到港整仓卸货、写「已随打捞善后返航到港」日志。
    * ⚠ `tripM3` 归零（同旧行为）：它已被下面那条日志消费过了。
    */
-  const remainSec = info.galaxyId === null ? null : armReturnLeg(state, ctx, info.galaxyId, info.phase)
+  const remainSec = info.galaxyId === null ? null : armReturnLeg(state, ctx, info.galaxyId, info)
   state.salvaging.tripM3 = 0
   addLog(
     state,
@@ -546,10 +543,12 @@ export function retireSalvageShip(
    * - `preserveExisting`：该船**已经在返航账本里** ⇒ 只**修正腿长与日志**、**保留已走相位**
    *   （账本那份是 `state.haltActivityForSwitch` 建的**占位**：腿长按相位粗估、日志没船名没秒数）。
    */
-  opts?: { galaxyId?: string; preserveExisting?: boolean; fallbackLegMs?: number },
+  opts?: { galaxyId?: string; preserveExisting?: boolean; fallbackLegMs?: number; progress?: WorkReturnProgress },
 ): boolean {
   const s = state.salvaging
   const galaxyId = opts?.galaxyId ?? s.galaxyId
+  const snapshot = opts?.progress ?? (opts?.galaxyId ? state.pendingActivityReturn?.progress : undefined)
+  const progress = snapshot ?? s
   if (!galaxyId) return false
   /** 已在返航中（换船善后/手动停止已建过账本）⇒ 只结束作业，别覆盖进度 */
   if (opts?.preserveExisting === true && state.shipId in state.shipReturns) {
@@ -558,11 +557,10 @@ export function retireSalvageShip(
      * "腿长靠相位估"的占位（它不能 import 本模块），这里用 `ctx` 算出真实腿长补上，
      * 并写下**带船名与真实秒数**的那条日志（这一刻作业态还在，ctx 也读得到名字）。
      */
-    const fullLegFix = legMsFor(state, ctx, galaxyId) + outboundLegMsFor(state, ctx, galaxyId)
-    const legMsFix = Math.max(1, scaledReturnMs(fullLegFix, state, ctx, state.shipId))
     const retFix = state.shipReturns[state.shipId]!
-    retFix.legMs = legMsFix
-    retFix.phaseAccMs = Math.min(legMsFix, Math.max(0, retFix.phaseAccMs))
+    const leg = workReturnLeg(state, 'salvage', salvageReturnMs(state, ctx, galaxyId, 1), progress)
+    retFix.legMs = leg.legMs
+    retFix.phaseAccMs = snapshot ? leg.phaseAccMs : Math.min(leg.legMs, Math.max(retFix.phaseAccMs, leg.phaseAccMs))
     const galaxyNameFix = ctx.galaxies.get(galaxyId)?.name ?? galaxyId
     const shipNameFix = shipDisplayName(state, ctx, state.shipId)
     const shipFix = state.fleet[state.shipId]
@@ -590,13 +588,8 @@ export function retireSalvageShip(
   // 打捞返航腿 = 满载返航 + 空船去程（去程并入返航，与 advanceSalvageOp 返航腿同口径）
   const fullLeg = legMsFor(state, ctx, galaxyId) + outboundLegMsFor(state, ctx, galaxyId)
   /** ⚠ allbackLegMs：调用方（state.haltActivityForSwitch，不能 import 本模块）给的兜底腿长 */
-  const legMs = opts?.fallbackLegMs !== undefined ? Math.max(1, Math.round(opts.fallbackLegMs)) : scaledReturnMs(fullLeg, state, ctx, state.shipId)
-  const phaseAccMs =
-    s.phase === 'outbound'
-      ? Math.min(legMs, s.phaseAccMs * 2) // 旧档遗留出航腿为空船半程：折返按 2×折算已走（同采矿）
-      : s.phase === 'returning'
-        ? s.phaseAccMs
-        : 0
+  const baseMs = opts?.fallbackLegMs !== undefined ? Math.max(1, Math.round(opts.fallbackLegMs)) : scaledReturnMs(fullLeg, state, ctx, state.shipId)
+  const { legMs, phaseAccMs } = workReturnLeg(state, 'salvage', baseMs, progress)
   const oldShip = state.fleet[state.shipId]
   const haveCargo = oldShip ? Object.keys(oldShip.cargo).some((k) => (oldShip.cargo[k] ?? 0) > 0) : false
   state.shipReturns[state.shipId] = {
@@ -962,7 +955,7 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
       const leg =
         s.phase === 'outbound'
           ? outFull
-          : scaledReturnMs(legMsFor(state, ctx, galaxyId) + outFull, state, ctx, state.shipId, s.fuelMul)
+          : salvageReturnMs(state, ctx, galaxyId)
       const need = leg - s.phaseAccMs
       if (remaining < need) {
         s.phaseAccMs += remaining
@@ -997,6 +990,7 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
         s.cycleAccMs = 0
         s.tripM3 = 0
         s.deviceAccMs = {}
+        delete s.fuelMul
         continue
       }
       // 旧档遗留的出航相位到点：抵达目标星系（点亮探索）后直接打捞
@@ -1052,12 +1046,7 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
           s.phase = 'returning'
           s.phaseAccMs = 0
           /** 燃料：**原返航时长**（不含燃料）按秒扣料，本趟倍率存进 `s.fuelMul`（见 `jumpFuel`） */
-          const baseMs = scaledReturnMs(
-            legMsFor(state, ctx, galaxyId) + outboundLegMsFor(state, ctx, galaxyId),
-            state,
-            ctx,
-            state.shipId,
-          )
+          const baseMs = salvageReturnMs(state, ctx, galaxyId, 1)
           s.fuelMul = beginJumpFuelLeg(state, 'salvage', baseMs)
           const mergedSec = Math.round(jumpFuelLegMsOf(baseMs, s.fuelMul) / 1000)
           addLog(
@@ -1098,4 +1087,5 @@ function resetOp(state: GameState): void {
   s.tripM3 = 0
   s.deviceAccMs = {}
   s.targetGroup = undefined
+  delete s.fuelMul
 }

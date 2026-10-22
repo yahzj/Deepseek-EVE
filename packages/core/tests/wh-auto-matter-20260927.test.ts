@@ -75,9 +75,9 @@ describe('自动探索的谜质线（2026-09-27 玩家报障修复 · 船长甲 
       0,
     )
     const avg = total / SEEDS
-    /** 实测 1.91 枚/趟；带子给宽（1.0~3.5）只为兜"整条线又没了"或"数量级写错" */
-    expect(avg, '平均枚数/趟').toBeGreaterThanOrEqual(1.0)
-    expect(avg, '平均枚数/趟').toBeLessThanOrEqual(3.5)
+    // 7f2e89b2起无设备队跳过资源点，回合留给遗迹/谜质；固定200种子不再沿用旧走法的宽区间。
+    expect(total, '无设备队固定200种子总谜质').toBe(878)
+    expect(avg, '平均枚数/趟').toBe(4.39)
   })
 
   it('③ 进的是仓库，且 id 与「谜质科技」的研究货币是同一个', () => {

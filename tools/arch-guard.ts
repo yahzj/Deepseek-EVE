@@ -254,6 +254,8 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
   { concept: '网页重连存档进度摘要', symbol: 'reconnectProgress', file: 'apps/desktop/src/renderer/src/game/saveReconnect.ts', exported: true },
   { concept: '网页重连有效状态内容比较', symbol: 'sameReconnectProgress', file: 'apps/desktop/src/renderer/src/game/saveReconnect.ts', exported: true },
   { concept: '入侵残骸每族余额与箱子读数', symbol: 'weekendWreckPoolsOf', file: 'packages/core/src/salvage.ts', exported: true },
+  { concept: '打捞实际返航时长（引擎与两处进度读数）', symbol: 'salvageReturnMs', file: 'packages/core/src/salvaging.ts', exported: true },
+  { concept: '采矿打捞返航点火及已走航段接续', symbol: 'workReturnLeg', file: 'packages/core/src/trips.ts', exported: true },
   { concept: '入侵残骸旧账迁移与新桶归一', symbol: 'normalizeWeekendWreckRecord', file: 'packages/core/src/weekendWreckLedger.ts', exported: true },
   { concept: '聚焦阵列波内修正率（射程与防空同源）', symbol: 'coronaFocusBonusOf', file: 'packages/core/src/coronaFocus.ts', exported: true },
   { concept: '聚焦阵列全队射程与来源存活', symbol: 'coronaFleetRangeBonusOf', file: 'packages/core/src/coronaFocus.ts', exported: true },
