@@ -25,6 +25,16 @@ import { deliverStationResources, noteStationSiteAt, tierRemaining, stationBillV
 import { siteProgress } from './state'
 import { cargoCapacityM3Of, cargoOfShip, cargoUsedM3Of, unloadCargoOfShipToWarehouse } from './inventory'
 
+const LOCATION_LOG_IDS = new Set([
+  'core.location.035',
+  'core.location.042',
+  'core.location.043',
+  'core.location.055',
+  'core.location.056',
+  'core.station.010',
+  'core.station.011',
+])
+
 /** 进港卸货附注（2026-09-08 船长定：任何进港时刻自动整仓卸货；返回 >0 单位的附注文本） */
 function dockUnloadNote(state: GameState, ctx: SimContext, shipId: string): { text: string; id?: string; unit?: string } {
   const moved = unloadCargoOfShipToWarehouse(state, ctx, shipId)
@@ -838,29 +848,54 @@ export function goStandbyAt(state: GameState, galaxyId: string, ctx: SimContext)
   return { ok: true }
 }
 
-/** 引擎内部：收尾掩护巡逻状态。新指令即时就位（active=false，无需处理）；
- * 仅旧档/遗留的去程状态（finishAt 在未来）到此仍需等待到点再留守，并兼容清理异常残留。 */
+/** 引擎内部：召回旧主控巡逻去程；巡逻到达日志仍指向当前位置时也自动返航。 */
 export function advanceStandby(state: GameState, ctx: SimContext): void {
   const s = state.standby
-  if (!s.active) return
-  if (state.gameMs < s.finishAtGameMs) return // 旧档/遗留：去程仍在路上 → 到点再留守
-  const galaxyId = s.galaxyId
-  s.active = false
-  s.galaxyId = null
-  s.finishAtGameMs = 0
-  s.legMs = 0
-  if (galaxyId === null) return
-  if (state.awayGalaxy === galaxyId) return // 已即时就位（不重复写到达日志）
-  const name = ctx.galaxies.get(galaxyId)?.name ?? galaxyId
-  state.awayGalaxy = galaxyId // 目标星系野外停留（低安遭遇暴露即生效）
-  noteStationSiteAt(state, ctx, galaxyId) // 2026-09-06：建站叙事入口改挂掩护巡逻到位
-  addLog(
-    state,
-    'fleet',
-    `⚐ 已抵达「${name}」，掩护巡逻就位：留守该星系（可采矿/出击/返航空间站；低安星系留意巡逻与伏击）。`,
-    'core.location.043',
-    { p1: name },
-  )
+  if (s.active) {
+    if (cancelStandby(state, ctx).ok) state.dockedSite = null
+    return
+  }
+  if (!isLegacyPatrolStay(state, ctx)) return
+  startTransitHome(state, ctx)
+}
+
+function isLegacyPatrolStay(state: GameState, ctx: SimContext): boolean {
+  const galaxyId = state.awayGalaxy
+  if (
+    galaxyId === null ||
+    state.transit.active ||
+    state.expedition.active ||
+    state.mining.active ||
+    state.salvaging.active ||
+    state.hauling.active ||
+    state.sideTasks.deliver !== null ||
+    state.encounter.active ||
+    state.wormhole.run !== null ||
+    state.wormholeScan?.active === true ||
+    stationActivityWaitsForReturn(state)
+  ) {
+    return false
+  }
+
+  const galaxyName = ctx.galaxies.get(galaxyId)?.name ?? galaxyId
+  let lastLocationLog: (typeof state.logs)[number] | undefined
+  for (let i = state.logs.length - 1; i >= 0; i -= 1) {
+    const log = state.logs[i]!
+    if (
+      LOCATION_LOG_IDS.has(log.textId ?? '') ||
+      (log.textId === undefined && log.text.includes('已抵达') && log.text.includes('掩护巡逻'))
+    ) {
+      lastLocationLog = log
+      break
+    }
+  }
+  if (!lastLocationLog) return false
+  const patrolArrival = lastLocationLog.textId === 'core.location.042' ||
+    lastLocationLog.textId === 'core.location.043' ||
+    (lastLocationLog.textId === undefined && lastLocationLog.text.includes('掩护巡逻') && lastLocationLog.text.includes('已抵达'))
+  if (!patrolArrival) return false
+  const loggedGalaxy = lastLocationLog.textParams?.p1
+  return loggedGalaxy === galaxyName || lastLocationLog.text.includes(`「${galaxyName}」`)
 }
 
 /** 玩家指令：取消旧的掩护巡逻去程（仅旧档在途状态有意义；召回口径：立即回到母港/空间站，无耗时） */

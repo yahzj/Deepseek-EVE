@@ -24,10 +24,10 @@ import { briefsOfPool, briefShipsOf, mountLabelText } from '../ui/foeBrief'
 import type { FoeBriefLine } from '../ui/foeBrief'
 import { hoverTipProps } from '../ui/Tooltip'
 import { ShipSprite } from '../ui/ShipSprite'
-import { aiCoreText, shipRoleText } from '../ui/labelsText'
+import { shipRoleText } from '../ui/labelsText'
 import { FoeDamageMix, ProfileChip } from '../ui/shipInfo'
 import { foeCardShipIdOf as coreFoeCardShipIdOf } from '@whale/core'
-import type { AiCoreType, AnomalyDef, GalaxyDef, SideTask } from '@whale/core'
+import type { AnomalyDef, GalaxyDef, SideTask } from '@whale/core'
 import {
   DSI_FACTION_ID,
   HIGH_SEC_PENALTY,
@@ -38,7 +38,6 @@ import {
   autoLoopReopenBlockReason,
   beaconLaunchHighSecOf,
   beaconTargetBlocked,
-  bestAiCoreOf,
   bountyCooldownRemainingMs,
   bountyRewardFactor,
   ceilFinalQuantity,
@@ -47,7 +46,6 @@ import {
   fleetDefOf,
   foeLayerSplit,
   frontierGalaxyIds,
-  idleAiShipIds,
   isExplored,
   scanStatus,
   scanWindowMsFor,
@@ -60,7 +58,6 @@ import {
   stationActivityStartBlockReason,
   siteDeliverFreeCargoM3,
   travelMinutesEff,
-  usableAiCoresOf,
   weekendBossPoolView,
   weekendCoreGateView,
   weekendFamilyNameId,
@@ -1733,48 +1730,6 @@ export function GalaxyActions({
   const bountyRowCount =
     invadedHere !== null ? 1 : engine.anomalies.filter((a) => a.galaxyId === galaxy.id).length
 
-  // —— 主控掩护巡逻（原"待命"） ——
-  const inFlight = state.standby.active && state.standby.galaxyId === galaxy.id
-  const alreadyHere =
-    state.awayGalaxy === galaxy.id && !state.transit.active && !state.expedition.active && !state.mining.active
-  /**
-   * ⚠ **2026-09-21 船长令改口径**：`state.mining.active` **从这条里删掉**（原先采矿中 ⇒ 巡逻按钮直接置灰）——
-   * 采矿属"可自动停"那一档，点下去会先停采（统一日志）再转场；留着它就把统一口径又堵回去了。
-   * 仍留在里面的：远征（统一判据拒）、换港返航（锁定态）、别处的掩护巡逻（同一项，由 core 自己判）。
-   */
-  const pilotBusy = state.expedition.active || state.transit.active || (state.standby.active && !inFlight)
-  const standbyDisabled = inFlight || alreadyHere || pilotBusy || state.awayGalaxy === galaxy.id
-  const standbyTitle = inFlight
-    ? tr("ui.Expedition.205")
-    : alreadyHere
-      ? tr("ui.Expedition.258", { p1: galaxy.name })
-      : pilotBusy
-        ? tr("ui.Expedition.142")
-        : undefined
-  function handleStandby(): void {
-    const r = engine.goStandbyAt(galaxy.id)
-    if (!r.ok) onToast(cmdText(r) || tr('ui.Expedition.384'), true)
-    else onToast(tr("ui.Expedition.143", { p1: galaxy.name }))
-  }
-
-  // —— 副船掩护巡逻 ——
-  const idleShips = idleAiShipIds(state)
-  const [aiShip, setAiShip] = useState('')
-  const [aiCore, setAiCore] = useState<AiCoreType>(() => bestAiCoreOf(state) ?? 'basic')
-  // 2026-09-08 紧急修复：核心下拉与提交类型脱节（basic 无库存时仍按 basic 提交被拒）
-  const usableCores = usableAiCoresOf(state)
-  const effCore = usableCores.includes(aiCore) ? aiCore : (usableCores[usableCores.length - 1] ?? 'basic')
-  const aiCoreAvailable = usableCores.length > 0
-  function handleAiStandby(): void {
-    if (!aiShip) {
-      onToast(tr("ui.MapPage.102"), true)
-      return
-    }
-    const r = engine.assignAiStandbyAt(aiShip, effCore, galaxy.id)
-    if (!r.ok) onToast(cmdText(r) || tr('ui.Expedition.385'), true)
-    else onToast(tr("ui.Expedition.082"))
-  }
-
   // —— 该星系矿带 ——
   const belts = engine.belts.filter(
     (b) => b.galaxyId === galaxy.id || (galaxy.id === 'galaxy-hub' && !b.galaxyId),
@@ -1990,76 +1945,6 @@ export function GalaxyActions({
       {state.awayGalaxy === galaxy.id ? (
         <FieldKitRepair engine={engine} onToast={onToast} />
       ) : null}
-      {/* ① 前往掩护巡逻 */}
-      <div className="app-ga-row">
-        <span className="app-ga-main">
-          <span className="app-ico"><Glyph name="ico-flag" size={13} color={ICO_TONES["ico-flag"]} /></span>{tr("ui.Expedition.084")}
-          <span className="app-dim app-ga-desc">{tr("ui.Expedition.085")}</span>
-        </span>
-        <button
-          className="app-btn is-small is-primary"
-          disabled={standbyDisabled}
-          title={standbyDisabled ? standbyTitle : tr("ui.Expedition.086", { p1: galaxy.name })}
-          onClick={handleStandby}
-        >
-          {inFlight ? tr("ui.Expedition.087") : alreadyHere || state.awayGalaxy === galaxy.id ? tr("ui.Expedition.088") : tr("ui.Expedition.084")}
-        </button>
-      </div>
-      {/* ② 副船掩护巡逻 */}
-      <div className="app-ga-row app-ga-ai">
-        <select
-          className="app-select"
-          value={aiShip}
-          onChange={(e) => setAiShip(e.target.value)}
-          title={tr("ui.Expedition.261")}
-          disabled={idleShips.length === 0}
-        >
-          <option value="">{idleShips.length === 0 ? tr("ui.Expedition.206") : tr("ui.Expedition.022")}</option>
-          {idleShips.map((id) => (
-            <option key={id} value={id}>
-              {shipDisplayName(state, ctx, id)}
-            </option>
-          ))}
-        </select>
-        {/* 核心下拉常驻：无可用核心时置灰并在控件里直接写明（船长 2026-09-10） */}
-        <select
-          className="app-select"
-          value={usableCores.length === 0 ? '' : effCore}
-          onChange={(e) => setAiCore(e.target.value as AiCoreType)}
-          disabled={!aiCoreAvailable}
-          title={
-            aiCoreAvailable
-              ? tr("ui.Expedition.023")
-              : tr("ui.Expedition.207")
-          }
-        >
-          {usableCores.length === 0 ? (
-            <option value="">{tr("ui.ShipPage.070")}</option>
-          ) : (
-            usableCores.map((t) => (
-              <option key={t} value={t}>
-                {aiCoreText(t)}
-              </option>
-            ))
-          )}
-        </select>
-        <button
-          className="app-btn is-small"
-          disabled={!aiShip || !aiCoreAvailable}
-          onClick={handleAiStandby}
-          title={
-            !aiShip
-              ? idleShips.length === 0
-                ? tr("ui.Expedition.208")
-                : tr("ui.Expedition.024")
-              : !aiCoreAvailable
-                ? tr("ui.Expedition.209")
-                : undefined
-          }
-        >
-          {tr("ui.Expedition.210")}
-        </button>
-      </div>
       {/* ③ 矿带 */}
       <div className="app-bay-title app-ga-sub">{tr("ui.Expedition.262")}{belts.length}）</div>
       {belts.length === 0 ? (
@@ -2470,7 +2355,7 @@ export function GalaxyActions({
           ? tr("ui.Expedition.029")
           : state.awayGalaxy !== null
             ? tr("ui.Expedition.266")
-            : pilotBusy || state.standby.active || state.transit.active
+            : state.expedition.active || state.standby.active || state.transit.active
               ? tr("ui.Expedition.316")
               : freeM3 <= 0
                 ? tr("ui.Expedition.267")

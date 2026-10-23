@@ -52,7 +52,7 @@ import { durabilityOf, loseShip, repairShip } from './shipyard'
 import { fleetDefOf, shipDisplayName } from './instances'
 import { addAiIncome, addAiMiningTrip, addAiSalvageDone, type SettleStats } from './settleStats'
 // 核心账本四件从 aiCores 借入（2026-10-02 拆出：破 ai↔shipyard 环）；再导出让存量引用零改动
-import { AI_CORE_ORDER, aiCoreName, countAiCore, gainAiCore, spendAiCore } from './aiCores'
+import { AI_CORE_ORDER, aiCoreName, cancelAiTask, countAiCore, gainAiCore, spendAiCore } from './aiCores'
 export { AI_CORE_IDS, AI_CORE_ORDER, aiCoreName, countAiCore, gainAiCore, cancelAiTask } from './aiCores'
 
 /** 效率（速度系数：1 = 玩家手操速度；只影响速度不影响奖励）。
@@ -696,34 +696,18 @@ export function advanceAi(state: GameState, deltaMs: number, ctx: SimContext, st
       )
       continue
     }
+    if (assignment.task.kind === 'standby') {
+      cancelAiTask(state, shipId, ctx)
+      continue
+    }
     if (assignment.task.kind === 'mining') {
       advanceAiMining(state, shipId, assignment, deltaMs, ctx, stats)
     } else if (assignment.task.kind === 'salvage') {
       advanceAiSalvage(state, shipId, assignment, deltaMs, ctx, stats)
     } else if (assignment.task.kind === 'expedition') {
       advanceAiExpedition(state, shipId, assignment, ctx)
-    } else {
-      advanceAiStandby(state, shipId, assignment, ctx)
     }
   }
-}
-
-/** AI 掩护巡逻任务推进：去程计时到点 → 驻留（stand；驻留期间无事可做，占名额守在该星系） */
-function advanceAiStandby(state: GameState, shipId: string, assignment: AiAssignment, ctx: SimContext): void {
-  const task = assignment.task as AiStandbyTaskState
-  if (task.phase !== 'out') return // 驻留中：等待取消/后续指令
-  if (state.gameMs < task.finishAtGameMs) return
-  task.phase = 'stand'
-  const galaxy = ctx.galaxies.get(task.galaxyId)
-  markExplored(state, task.galaxyId) // 副船实际抵达 → 点亮（同 AI 采矿到达语义）
-  const shipName = shipDisplayName(state, ctx, shipId)
-  addLog(
-    state,
-    'fleet',
-    `[AI·${shipName}] 已抵达「${galaxy?.name ?? task.galaxyId}」掩护巡逻——取消任务可召回；低安星系留意巡逻与伏击。`,
-    'core.ai.018',
-    { p1: shipName, p2: galaxy?.name ?? task.galaxyId },
-  )
 }
 
 /** AI 采矿任务推进（真实毫秒口径；循环/周转周期按效率拉长） */
@@ -1306,8 +1290,6 @@ function aiAbandonChance(state: GameState, ctx: SimContext, shipId: string, thre
 }
 
 type AiExpeditionTaskState = Extract<GameState['aiAssignments'][string]['task'], { kind: 'expedition' }>
-type AiStandbyTaskState = Extract<GameState['aiAssignments'][string]['task'], { kind: 'standby' }>
-
 /** 远征胜利后的 AI 核心掉落（按威胁取最高档，逐条掷骰），返回掉落文本（可为空串） */
 function rollAiCoreDrop(state: GameState, threat: number, ctx: SimContext): string {
   const drops = ctx.balance.aiCore.drops

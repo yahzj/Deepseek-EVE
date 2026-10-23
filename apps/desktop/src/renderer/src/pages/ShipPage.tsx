@@ -134,9 +134,9 @@ export type ShipTab = 'fleet' | 'ai' | 'store' | 'fuel'
  *  类别/级别判据也改读那里的唯一入口（`shipRolePasses` / `shipTierPasses`）。 */
 
 /** AI 指挥中心可指派的任务类型（2026-09-10 船长：统一全部 AI 可执行活动）——
- *  副船三类：采矿/打捞/掩护巡逻；站内工业两类：精炼炉与回收炉/组装机制造。
+ *  副船两类：采矿/打捞；站内工业两类：精炼炉与回收炉/组装机制造。
  *  远征不在其列（引擎软下线，一律拒绝受理）。 */
-type AiAssignMode = 'mining' | 'salvage' | 'standby' | 'refine' | 'craft'
+type AiAssignMode = 'mining' | 'salvage' | 'refine' | 'craft'
 /** 站内制造线可选的已学会蓝图（含材料单，供缺料判定与提示） */
 // l10n-keep-start：本段的中文全是**联合类型 key / 分组 key**（显示时走 CRAFT_GROUPS 的 id 取词），不是文案
 interface CraftOption {
@@ -1268,7 +1268,6 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
   const [mode, setMode] = useState<AiAssignMode>('mining')
   const [beltId, setBeltId] = useState(engine.belts[0]?.id ?? '')
   const [salvageGalaxyId, setSalvageGalaxyId] = useState('')
-  const [standbyGalaxyId, setStandbyGalaxyId] = useState('')
   const [refineItemId, setRefineItemId] = useState('')
   const [craftBpId, setCraftBpId] = useState('')
   // 2026-09-08 紧急修复（玩家反馈"无法用伽马 AI 核心采矿"）：核心下拉只列有库存类型，
@@ -1353,9 +1352,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
           : tr("ui.ShipPage.132")
         : effMode === 'salvage' && !salvageGalaxyId
           ? tr("ui.ShipPage.133")
-          : effMode === 'standby' && !standbyGalaxyId
-            ? tr("ui.ShipPage.134")
-            : effMode === 'refine' && !effRefineId
+          : effMode === 'refine' && !effRefineId
               ? tr("ui.ShipPage.135")
               : effMode === 'refine' && refineHave <= 0
                 ? tr("ui.ShipPage.169", { p1: selRefine?.name ?? '' })
@@ -1410,12 +1407,9 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
       onToast(tr("ui.ShipPage.175"), true)
       return
     }
-    const r =
-      effMode === 'mining'
-        ? engine.assignAiMiningAt(shipId, effCore, beltId)
-        : effMode === 'salvage'
-          ? engine.assignAiSalvageAt(shipId, effCore, salvageGalaxyId)
-          : engine.assignAiStandbyAt(shipId, effCore, standbyGalaxyId)
+    const r = effMode === 'mining'
+      ? engine.assignAiMiningAt(shipId, effCore, beltId)
+      : engine.assignAiSalvageAt(shipId, effCore, salvageGalaxyId)
     if (!r.ok) onToast(cmdText(r) || tr('ui.ShipPage.196'), true)
     else onToast(tr("ui.ShipPage.176"))
   }
@@ -1512,9 +1506,6 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
             <option value="salvage" disabled={!shipTasksOk}>
               {tr("ui.ShipPage.074")}{shipTasksOk ? '' : tr("ui.ShipPage.073")}
             </option>
-            <option value="standby" disabled={!shipTasksOk}>
-              {tr("ui.ShipPage.075")}{shipTasksOk ? '' : tr("ui.ShipPage.073")}
-            </option>
             <option value="refine">{tr("ui.ShipPage.076")}</option>
             <option value="craft">{tr("ui.ShipPage.077")}</option>
           </select>
@@ -1541,22 +1532,6 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
               <option value="">{tr("ui.ShipPage.078")}</option>
               {[...engine.ctx.galaxies.values()]
                 .filter((g) => isExplored(state, g.id) && engine.anomalies.some((a) => a.galaxyId === g.id))
-                .map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.name}
-                  </option>
-                ))}
-            </select>
-          ) : effMode === 'standby' ? (
-            <select
-              className="app-select"
-              value={standbyGalaxyId}
-              onChange={(e) => setStandbyGalaxyId(e.target.value)}
-              title={tr("ui.ShipPage.079")}
-            >
-              <option value="">{tr("ui.ShipPage.080")}</option>
-              {[...engine.ctx.galaxies.values()]
-                .filter((g) => isExplored(state, g.id))
                 .map((g) => (
                   <option key={g.id} value={g.id}>
                     {g.name}

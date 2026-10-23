@@ -629,7 +629,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     }
   }
 
-  // --- AI 副船任务（v8）：条目或字段非法则丢弃（核心归还由引擎推进时保证一致性） ---
+  // --- AI 副船任务（v8）：非法任务丢弃；旧巡逻任务归还核心并移除 ---
   const aiAssignmentsRaw = asRaw(src.aiAssignments)
   const aiAssignments: Record<string, unknown> = {}
   /**
@@ -678,27 +678,8 @@ for (const [key, value] of Object.entries(licensesRaw)) {
         },
       }
     } else if (taskRaw.kind === 'standby') {
-      const galaxyId = typeof taskRaw.galaxyId === 'string' ? taskRaw.galaxyId : ''
-      if (!galaxyId) continue
-      const phaseRaw = taskRaw.phase
-      const phase: 'out' | 'stand' = phaseRaw === 'stand' ? 'stand' : 'out'
-      aiAssignments[shipKey] = {
-        coreType: a.coreType,
-        startedAtGameMs: startedAt,
-        task: {
-          kind: 'standby',
-          galaxyId,
-          finishAtGameMs:
-            typeof taskRaw.finishAtGameMs === 'number' && Number.isFinite(taskRaw.finishAtGameMs)
-              ? Math.max(0, Math.floor(taskRaw.finishAtGameMs))
-              : 0,
-          outMs:
-            typeof taskRaw.outMs === 'number' && Number.isFinite(taskRaw.outMs)
-              ? Math.max(0, Math.floor(taskRaw.outMs))
-              : 0,
-          phase,
-        },
-      }
+      aiCores[a.coreType] += 1
+      continue
     } else if (taskRaw.kind === 'expedition') {
       const anomalyId = typeof taskRaw.anomalyId === 'string' ? taskRaw.anomalyId : ''
       if (!anomalyId) continue
