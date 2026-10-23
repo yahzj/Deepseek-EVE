@@ -136,6 +136,7 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
   { concept: '战前全舰最大有效射程', symbol: 'playerFleetMaxRangeOf', file: 'packages/core/src/battleRangeMemory.ts', exported: true },
   { concept: '射程变化确认事务门禁', symbol: 'withBattleRangeCheck', file: 'packages/core/src/battleRangeMemory.ts', exported: true },
   { concept: '射程变化待确认视图', symbol: 'pendingBattleRangeView', file: 'packages/core/src/battleRangeMemory.ts', exported: true },
+  { concept: '按卡参战舰船名单差异说明', symbol: 'sameShipRoster', file: 'packages/core/src/battleRangeMemory.ts', exported: false },
   { concept: '技能训练工作量与实时进度换算', symbol: 'trainingLevelProgress', file: 'packages/core/src/training.ts', exported: true },
   { concept: '旧技能进度一次性工作量兼容', symbol: 'normalizeTrainingProgress', file: 'packages/core/src/training.ts', exported: true },
   { concept: '敌方族格最终血量倍率', symbol: 'foeFamilyHpMulOf', file: 'packages/core/src/foePower.ts', exported: true },

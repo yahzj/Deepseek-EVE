@@ -5,7 +5,7 @@ import type { LairTier } from './lairs'
 import type { WormholeFoeKind } from './wormholeFoes'
 import type { WormholeEventAction, WormholeEventPreview } from './wormholeExpedition'
 
-export interface BattleRangeRecord { desireM: number; maxRangeM?: number }
+export interface BattleRangeRecord { desireM: number; maxRangeM?: number; shipIds?: string[] }
 export interface BattleRangeSnapshot extends BattleRangeRecord { cardId: string; signature: string; minM: number; limitM: number; maxRangeM: number }
 export type BattleRangeIntent =
   | { kind: 'expedition'; cardId: string; fromMining?: boolean; autoRepair?: boolean; invasionSeq?: number; options?: { desireM?: number; lairTier?: LairTier; foeGalaxyId?: string; rewardIskOverride?: number; confirmActivitySwitch?: boolean } }
@@ -16,7 +16,7 @@ export type BattleRangeIntent =
   | { kind: 'wormhole-travel'; target: { q: number; r: number }; options?: { confirmUnknown?: boolean; confirmIntercept?: boolean; deferAmbush?: boolean; confirmLeaveCargo?: boolean }; atGameMs?: number }
   | { kind: 'wormhole-activate'; atGameMs?: number; options?: { deferRuinsBattle?: boolean } }
   | { kind: 'wormhole-event'; action: WormholeEventAction; expected?: WormholeEventPreview }
-export interface PendingBattleRange extends BattleRangeSnapshot { previousRangeM: number; intent: BattleRangeIntent }
+export interface PendingBattleRange extends BattleRangeSnapshot { previousRangeM: number; previousShipIds?: string[]; fleetChanged?: boolean; intent: BattleRangeIntent }
 
 function intentKey(i: BattleRangeIntent): unknown {
   switch (i.kind) {
@@ -48,10 +48,23 @@ export function playerFleetMaxRangeOf(units: readonly UnitSpec[]): number {
 }
 export function battleRangeSnapshot(cardId: string, units: readonly UnitSpec[], desireM: number, limitM: number, minM: number): BattleRangeSnapshot {
   return { cardId: battleCardKey(cardId), desireM, maxRangeM: playerFleetMaxRangeOf(units), minM, limitM,
+    ...(units.length > 0 && units.every(unit => typeof unit.shipId === 'string' && unit.shipId.length > 0) ? { shipIds: units.map(unit => unit.shipId!) } : {}),
     signature: JSON.stringify(units.map(unit => [unit.shipId, unit.tag, unit.weapons.map(w => [w.moduleId, w.src, w.disabled, w.minRangeM, w.maxRangeM])])) }
 }
+function cleanShipIds(value: unknown): string[] | undefined {
+  if (!Array.isArray(value) || value.length < 1 || value.length > 4
+    || value.some(id => typeof id !== 'string' || id.length === 0 || id.length > 120)) return undefined
+  return value as string[]
+}
+function sameShipRoster(previous: readonly string[], current: readonly string[]): boolean {
+  if (previous.length !== current.length) return false
+  const left = [...previous].sort()
+  const right = [...current].sort()
+  return left.every((id, index) => id === right[index])
+}
 export function rememberBattleRange(state: GameState, snapshot: BattleRangeSnapshot): void {
-  state.battleRangeByCard = { ...state.battleRangeByCard, [snapshot.cardId]: { desireM: snapshot.desireM, maxRangeM: snapshot.maxRangeM } }
+  state.battleRangeByCard = { ...state.battleRangeByCard, [snapshot.cardId]: { desireM: snapshot.desireM, maxRangeM: snapshot.maxRangeM,
+    ...(snapshot.shipIds ? { shipIds: [...snapshot.shipIds] } : {}) } }
 }
 
 let transactionDepth = 0
@@ -95,7 +108,9 @@ export function withBattleRangeCheck<T extends { ok: boolean }>(state: GameState
     const confirmation = confirmations.get(state)
     const accepted = confirmation?.cardId === snapshot.cardId && confirmation.signature === snapshot.signature && confirmation.maxRangeM === snapshot.maxRangeM
     if (old?.maxRangeM !== undefined && !accepted && (old.maxRangeM !== snapshot.maxRangeM || consent)) {
-      state.pendingBattleRange = { ...snapshot, desireM: old.desireM, previousRangeM: old.maxRangeM, intent }
+      const fleetChanged = !!old.shipIds && !!snapshot.shipIds && !sameShipRoster(old.shipIds, snapshot.shipIds)
+      state.pendingBattleRange = { ...snapshot, desireM: old.desireM, previousRangeM: old.maxRangeM,
+        ...(old.shipIds ? { previousShipIds: [...old.shipIds] } : {}), ...(fleetChanged ? { fleetChanged: true } : {}), intent }
       return { ok: false, rangeConfirmation: true } as unknown as T
     }
     if (accepted) {
@@ -161,7 +176,9 @@ export function cleanBattleRangeRecords(value: unknown): GameState['battleRangeB
     if (r.maxRangeM !== undefined && (!Number.isFinite(r.maxRangeM) || r.maxRangeM < 0)) continue
     const card = battleCardKey(key)
     if (!card || ['__proto__', 'constructor', 'prototype'].includes(card)) continue
-    rows[card] = { desireM: Math.round(r.desireM), ...(r.maxRangeM !== undefined ? { maxRangeM: Math.round(r.maxRangeM) } : {}) }
+    const shipIds = cleanShipIds(r.shipIds)
+    rows[card] = { desireM: Math.round(r.desireM), ...(r.maxRangeM !== undefined ? { maxRangeM: Math.round(r.maxRangeM) } : {}),
+      ...(shipIds ? { shipIds } : {}) }
   }
   return Object.keys(rows).length ? rows : undefined
 }
@@ -172,7 +189,9 @@ export function cleanBattleRangeSnapshot(value: unknown): BattleRangeSnapshot | 
   if (typeof r.cardId !== 'string' || !r.cardId || typeof r.signature !== 'string'
     || !Number.isFinite(r.desireM) || r.desireM <= 0 || !Number.isFinite(r.maxRangeM) || r.maxRangeM < 0
     || !Number.isFinite(r.minM) || r.minM < 0 || !Number.isFinite(r.limitM) || r.limitM < r.minM) return undefined
-  return { cardId: battleCardKey(r.cardId), signature: r.signature, desireM: Math.round(r.desireM), maxRangeM: Math.round(r.maxRangeM), minM: r.minM, limitM: r.limitM }
+  const shipIds = cleanShipIds(r.shipIds)
+  return { cardId: battleCardKey(r.cardId), signature: r.signature, desireM: Math.round(r.desireM), maxRangeM: Math.round(r.maxRangeM), minM: r.minM, limitM: r.limitM,
+    ...(shipIds ? { shipIds } : {}) }
 }
 
 export function cleanPendingBattleRange(value: unknown): PendingBattleRange | undefined {
@@ -222,5 +241,8 @@ export function cleanPendingBattleRange(value: unknown): PendingBattleRange | un
       intent = { kind: i.kind, action: i.action, ...(i.expected && typeof i.expected.fingerprint === 'string' ? { expected: i.expected } : {}) }; break
     default: return undefined
   }
-  return { ...snapshot, previousRangeM: Math.round(r.previousRangeM), intent }
+  const previousShipIds = cleanShipIds(r.previousShipIds)
+  const fleetChanged = !!previousShipIds && !!snapshot.shipIds && !sameShipRoster(previousShipIds, snapshot.shipIds)
+  return { ...snapshot, previousRangeM: Math.round(r.previousRangeM), ...(previousShipIds ? { previousShipIds } : {}),
+    ...(fleetChanged ? { fleetChanged: true } : {}), intent }
 }

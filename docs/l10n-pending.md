@@ -1,5 +1,17 @@
 # 待英文本地化记录
 
+## 射程确认提示（2026-10-23）
+
+- 来源：船长确认的`docs/design/battle-range-confirm-clarity-20261023.md`，未授权准备英文。
+- `ui.battleRangeConfirm.001`：射程变化且能确认舰船名单不同时，提示本次参战舰队与上次不同。
+- `ui.battleRangeConfirm.002`：提示上次与本次最大射程，含 `{p1}`、`{p2}`。
+- 两项均以`en: ''`、`enDeferred: true`登记；英文界面按本地化规则回退中文。
+
+| ID | 中文依据与范围 | 状态 |
+| --- | --- | --- |
+| `ui.battleRangeConfirm.001` | 本次参战舰队与上次不同 | 待本地化 |
+| `ui.battleRangeConfirm.002` | 最大射程变化：`{p1}` m → `{p2}` m | 待本地化 |
+
 ## 信号空间自动探索科技（2026-10-22）
 
 - 来源：船长已确认的`docs/design/signal-auto-tech-20261022.md`，未授权准备英文。

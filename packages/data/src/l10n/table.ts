@@ -3692,6 +3692,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.weekend.060": { zh: "发现敌方旗舰", en: "Enemy flagship detected" },
   "ui.weekend.061": { zh: "{p1}的旗舰停在「{p2}」，派一支小队过去清剿", en: "The {p1} flagship is holding at “{p2}”; send a squad to clear it out" },
   "ui.weekend.062": { zh: "战前准备", en: "Prepare" },
+  "ui.battleRangeConfirm.001": { zh: "本次参战舰队与上次不同。", en: "", enDeferred: true },
+  "ui.battleRangeConfirm.002": { zh: "最大射程变化：{p1} m → {p2} m", en: "", enDeferred: true },
   "ui.weekend.063": { zh: "旗舰战 · 战前准备", en: "Flagship battle · preparation" },
   "ui.weekend.064": { zh: "{p1}旗舰 · 威胁 {p2} · {p3} 波小队战", en: "{p1} flagship · threat {p2} · {p3}-wave squad battle" },
   "ui.weekend.065": { zh: "敌方编成", en: "Enemy composition" },

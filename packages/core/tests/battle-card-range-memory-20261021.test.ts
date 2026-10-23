@@ -67,6 +67,7 @@ describe('按实际卡ID记忆距离并确认射程变化', () => {
     const before = structuredClone(state)
     expect(startExpedition(state, 'ink-harass', ctx).rangeConfirmation).toBe(true)
     expect(state.pendingBattleRange!.previousRangeM).toBe(record!['ink-harass']!.maxRangeM)
+    expect(state.pendingBattleRange!.fleetChanged).toBeUndefined()
     const { pendingBattleRange, ...after } = state
     expect(pendingBattleRange).toBeDefined()
     expect(after).toEqual(before)
@@ -82,12 +83,48 @@ describe('按实际卡ID记忆距离并确认射程变化', () => {
     expect(confirmBattleRange(state, ctx, 1700, NOW).ok).toBe(true)
     expect(state.pendingBattleRange).toBeUndefined()
     expect(state.expedition.battle!.myDesireM).toBe(1700)
-    expect(battleCardRangeOf(state, 'ink-harass')).toEqual({ desireM: 1700, maxRangeM: playerFleetMaxRangeOf([createPlayerSpec(state, ctx, state.shipId)!]) })
+    expect(battleCardRangeOf(state, 'ink-harass')).toEqual({ desireM: 1700, maxRangeM: playerFleetMaxRangeOf([createPlayerSpec(state, ctx, state.shipId)!]), shipIds: [state.shipId] })
     idle(state)
     expect(startExpedition(state, 'ink-harass', ctx).ok).toBe(true)
     idle(state)
     state.fleet[state.shipId]!.fitted.high = ['mod-laser-1']
     expect(startExpedition(state, 'ink-harass', ctx).rangeConfirmation).toBe(true)
+  })
+  it('同射程更换出击舰船不弹确认，并更新该卡最近参战名单', () => {
+    const state = world()
+    first(state)
+    const previousShipId = state.shipId
+    const nextShipId = addShipToFleet(state, 'sh-megalodon')
+    state.fleet[nextShipId]!.fitted = structuredClone(state.fleet[previousShipId]!.fitted)
+    state.shipId = nextShipId
+
+    expect(startExpedition(state, 'ink-harass', ctx).ok).toBe(true)
+    expect(state.pendingBattleRange).toBeUndefined()
+    expect(battleCardRangeOf(state, 'ink-harass')!.shipIds).toEqual([nextShipId])
+  })
+  it('更换出击舰船且最大射程变化时，待确认信息标记舰队变化', () => {
+    const state = world()
+    first(state)
+    const previousShipId = state.shipId
+    const nextShipId = addShipToFleet(state, 'sh-megalodon')
+    state.fleet[nextShipId]!.fitted.high = ['mod-laser-2']
+    state.shipId = nextShipId
+
+    expect(startExpedition(state, 'ink-harass', ctx).rangeConfirmation).toBe(true)
+    expect(state.pendingBattleRange!.fleetChanged).toBe(true)
+    expect(state.pendingBattleRange!.shipIds).toEqual([nextShipId])
+    expect(state.pendingBattleRange!.previousShipIds).toEqual([previousShipId])
+  })
+  it('旧射程记录没有参战名单时不猜测舰队变化', () => {
+    const state = world()
+    first(state)
+    const nextShipId = addShipToFleet(state, 'sh-megalodon')
+    state.fleet[nextShipId]!.fitted.high = ['mod-laser-2']
+    state.shipId = nextShipId
+    delete state.battleRangeByCard!['ink-harass']!.shipIds
+
+    expect(startExpedition(state, 'ink-harass', ctx).rangeConfirmation).toBe(true)
+    expect(state.pendingBattleRange!.fleetChanged).toBeUndefined()
   })
   it('确认期间配置再次变化必须重新确认，读档保留待办与按卡记录', () => {
     const state = world()
@@ -96,7 +133,9 @@ describe('按实际卡ID记忆距离并确认射程变化', () => {
     startExpedition(state, 'ink-harass', ctx)
     const loaded = loadSaveFile(serializeSaveFile(state, NOW)).state
     expect(loaded.pendingBattleRange).toEqual(state.pendingBattleRange)
+    expect(loaded.pendingBattleRange!.previousShipIds).toEqual(state.battleRangeByCard!['ink-harass']!.shipIds)
     expect(loaded.battleRangeByCard).toEqual(state.battleRangeByCard)
+    expect(loaded.pendingBattleRange!.fleetChanged).toBeUndefined()
     loaded.fleet[loaded.shipId]!.fitted.high = ['mod-laser-3']
     expect(confirmBattleRange(loaded, ctx, 2500, NOW).rangeConfirmation).toBe(true)
     expect(loaded.expedition.battle).toBeNull()
@@ -241,12 +280,24 @@ describe('按实际卡ID记忆距离并确认射程变化', () => {
     expect(loaded.battleRangeByCard).toEqual({ valid: { desireM: 2300, maxRangeM: 4600 } })
     expect(loaded.pendingBattleRange).toBeUndefined()
   })
+  it('待确认舰队差异从存档名单重算，不采信损坏的标记布尔值', () => {
+    const state = world()
+    first(state)
+    const nextShipId = addShipToFleet(state, 'sh-megalodon')
+    state.fleet[nextShipId]!.fitted.high = ['mod-laser-2']
+    state.shipId = nextShipId
+    startExpedition(state, 'ink-harass', ctx)
+    const raw = JSON.parse(serializeSaveFile(state, NOW))
+    raw.state.pendingBattleRange.fleetChanged = false
+    const loaded = loadSaveFile(JSON.stringify(raw)).state
+    expect(loaded.pendingBattleRange!.fleetChanged).toBe(true)
+  })
   it('较早的同卡战斗改距不覆盖后来入场记录的最大射程', () => {
     const state = world()
     startExpedition(state, 'ink-harass', ctx)
     state.battleRangeByCard!['ink-harass']!.maxRangeM = 20000
     setBattleDesire(state, 2300, ctx)
-    expect(battleCardRangeOf(state, 'ink-harass')).toEqual({ desireM: 2300, maxRangeM: 20000 })
+    expect(battleCardRangeOf(state, 'ink-harass')).toEqual({ desireM: 2300, maxRangeM: 20000, shipIds: [state.shipId] })
   })
 })
 
