@@ -398,9 +398,15 @@ function fittedDecayLine(engine: GameEngine, shipId: string, mod: ModuleDef, ord
   const params = fittedEffectParamsOf(engine.state, engine.ctx, shipId, mod, ordinal)
   if (params.length === 0) return null
   const isGap = stackingOf(mod).group === 'gap'
+  // ⟪文案调整 2026-10-23⟫ 支援件按效果显示，插件固定量保留对应单位。
   const parts = params.map((p) => {
-    const name = tr(EFF_PARAM_LABEL[p.key] ?? 'ui.shipInfo.218')
+    const name = p.key.startsWith('damage:') || p.key.startsWith('range:')
+      ? `${DMG_LABEL[p.key.split(':')[1] as DamageType]} ${tr(p.key.startsWith('damage:') ? 'ui.shipInfo.071' : 'ui.shipInfo.082')}`
+      : tr(EFF_PARAM_LABEL[p.key] ?? 'ui.shipInfo.218')
     const value = (v: number) => p.key === 'laserFalloff' ? `+${Number(v.toFixed(3))}`
+      : ['speedAddMps', 'speedPenaltyMps'].includes(p.key) ? `${fmt(Number((p.key === 'speedPenaltyMps' ? -v : v).toFixed(2)))} m/s`
+        : p.key === 'droneBayBonusM3' ? `${fmt(Number(v.toFixed(2)))} m³`
+          : ['shieldHpAdd', 'armorHpAdd', 'hullHpAdd', 'cpuPenalty'].includes(p.key) ? fmt(Number((p.key === 'cpuPenalty' ? -v : v).toFixed(2)))
       : p.key === 'shieldPulse' || p.key === 'shieldField' ? recoveryPct(v) : pct(v)
     const eff = value(p.eff)
     const raw = isGap && !p.key.endsWith('Penalty') ? tr('ui.shipInfo.220', { p1: value(p.raw) }) : tr('ui.shipInfo.221', { p1: value(p.raw) })
@@ -411,6 +417,18 @@ function fittedDecayLine(engine: GameEngine, shipId: string, mod: ModuleDef, ord
 
 /** 效果字段 → 行内短名（`fittedDecayLine` 用；缺省走 `ui.shipInfo.218`「效果」） */
 const EFF_PARAM_LABEL: Record<string, string> = {
+  reload: 'ui.shipInfo.043',
+  shieldHpAdd: 'ui.FitPage.001',
+  armorHpAdd: 'ui.FitPage.003',
+  hullHpAdd: 'ui.shipInfo.066',
+  damageBonusPct: 'ui.shipInfo.071',
+  hitBonusPct: 'ui.shipInfo.227',
+  plugRangeBonusPct: 'ui.shipInfo.082',
+  speedAddMps: 'ui.shipInfo.223',
+  speedPenaltyMps: 'ui.shipInfo.017',
+  cargoCapacityBonusPct: 'ui.Handbook.010',
+  droneBayBonusM3: 'ui.FitPage.010',
+  cpuPenalty: 'ui.Handbook.030',
   speed: 'ui.shipInfo.223',
   droneRange: 'ui.shipInfo.224',
   droneLaunch: 'ui.launchCalibration.004',

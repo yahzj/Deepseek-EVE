@@ -4,7 +4,7 @@ import { createInitialState } from '../src/state'
 import { addShipToFleet } from '../src/fleetBook'
 import { installPlug, exchangePlugBlueprint, plugExchangeRowsOf, plugInfoOf, plugEffectsOf } from '../src/plugs'
 import { createPlayerSpec, startBattleFor, startFleetBattleFor, advanceBattleFor, applyPlayerUnitDamage, persistFleetHullDamage, settleDroneLosses } from '../src/combat'
-import { cpuBudgetOf, droneBayTotalM3, adjustDroneLoad } from '../src/equipment'
+import { cpuBudgetOf, droneBayTotalM3, adjustDroneLoad, stackWeight } from '../src/equipment'
 import { cargoCapacityM3Of } from '../src/inventory'
 import { droneReviveCyclesOf, droneReviveNoteLoss, resolveDroneRevive } from '../src/droneRevive'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
@@ -73,13 +73,14 @@ describe('五族船插确认参数与真实接线', () => {
     expect(createPlayerSpec(w.state, ctx, w.uid)!.stealthMs).toBeUndefined()
   })
 
-  it('空间压缩两件扩舱240，CPU扣40，货仓同池加50%，速度扣40', () => {
+  it('空间压缩两件按同一件权重折算容量、CPU代价与速度代价', () => {
     const a = world(), b = world('sh-wh-e-destroyer', [ids[3]!, ids[3]!])
-    expect(cpuBudgetOf(b.state, ctx, b.uid)).toBe(cpuBudgetOf(a.state, ctx, a.uid) - 40)
-    expect(droneBayTotalM3(ctx.ships.get('sh-wh-e-destroyer'), b.state.fleet[b.uid]!.fitted, ctx, b.state.fleet[b.uid]!.plugs)).toBe(
-      droneBayTotalM3(ctx.ships.get('sh-wh-e-destroyer'), a.state.fleet[a.uid]!.fitted, ctx) + 240)
-    expect(cargoCapacityM3Of(b.state, ctx, b.uid)).toBe(Math.ceil(cargoCapacityM3Of(a.state, ctx, a.uid) * 1.5))
-    expect(a.spec.speedMps - b.spec.speedMps).toBe(40)
+    const w2 = stackWeight(2)
+    expect(cpuBudgetOf(b.state, ctx, b.uid)).toBeCloseTo(cpuBudgetOf(a.state, ctx, a.uid) - 20 * (1 + w2), 9)
+    expect(droneBayTotalM3(ctx.ships.get('sh-wh-e-destroyer'), b.state.fleet[b.uid]!.fitted, ctx, b.state.fleet[b.uid]!.plugs)).toBeCloseTo(
+      droneBayTotalM3(ctx.ships.get('sh-wh-e-destroyer'), a.state.fleet[a.uid]!.fitted, ctx) + 120 * (1 + w2), 9)
+    expect(cargoCapacityM3Of(b.state, ctx, b.uid)).toBe(Math.ceil(cargoCapacityM3Of(a.state, ctx, a.uid) * (1 + .25 * (1 + w2))))
+    expect(a.spec.speedMps - b.spec.speedMps).toBeCloseTo(20 * (1 + w2), 9)
   })
 
   it('CPU不足拒装空间压缩，不扣库存、不改插件或装配', () => {

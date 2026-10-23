@@ -66,6 +66,8 @@
 | 武器齐射整数扣弹与预付余额 | `battleWeaponAmmoCost()` · `combatAmmo.ts` | 半发不跨舰／组／弹种、读档不断额度、整数弹库存守恒 |
 | 首次无人机出击间隔 | `droneLaunchGapMsOf()` · `droneLaunch.ts` | 每舰500毫秒、掠袭机库逐件缩短、复活重排、旧档续战；队列专项 |
 | 船插安装列表与不叠加效果投影 | `plugModulesOf()` / `plugEffectsOf()` · `plugs.ts` | 安装件占格/回收与实际效果分离，重复安装不叠加仍占格；五族专项 |
+| 支援件按伤害/装填/射程分池折权 | `supportEffectPartsOf()` / `stackWeight()` · `stacking.ts` | 跨型号同效果同池、强件优先；支援与插件惩罚专项 |
+| 插件独立收益池及同件代价折权 | `plugEffectPartsOf()` / `plugStackingKindOf()` · `plugEffects.ts` | 战斗/CPU/货仓/机舱共用；协处理、选靶、扩槽和四件不叠势力插件例外 |
 | CPU纯计算及船插候选预算 | `cpuBudgetOf()` / `fittedCpuUsed()` / `droneCpuUsed()` · `equipmentCpu.ts`，原`equipment.ts`公开入口委托 | 空间压缩超载原子拒装、原协处理预算及多舰装配回归 |
 | 储备甲板实际补机周期 | `droneReviveCycleMsOf()` · `droneRevive.ts` | 甲板账本与本舰富卡同源，打印独立周期减免/中途重载专项 |
 | 扩槽插件同类型限制 | `plugSlotExpansionKindOf()` / `plugSlotExpansionBlockedOf()` / `normalizePlugSlotExpansions()` · `plugs.ts`；`repairSlotExpansionPlugs()` · `equipment.ts` | 中低两类分别限一件、普通重复件保留、免费退库与幂等；F2/F3 |

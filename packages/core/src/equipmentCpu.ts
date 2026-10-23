@@ -3,6 +3,7 @@ import type { FittedModules, ModuleDef, SimContext } from './types'
 import { allFittedModules } from './fitted'
 import { fleetDefOf } from './instances'
 import { ceilFinalQuantity } from './quantity'
+import { plugEffectPartsOf } from './plugEffects'
 
 export function effectiveCpu(state: GameState, ctx: SimContext, def: { cpu?: number } | undefined): number {
   const bal = ctx.balance.battle
@@ -33,9 +34,8 @@ export function cpuBudgetOf(state: GameState, ctx: SimContext, shipId: string,
   const fitted = fittedOverride === undefined ? state.fleet[shipId]?.fitted : fittedOverride
   let budget = effectiveCpu(state, ctx, fleetDefOf(state, ctx, shipId))
   for (const m of fitted ? allFittedModules(fitted, ctx) : []) budget += m.cpuBonus ?? 0
-  for (const id of plugIds) {
-    const p = ctx.modules.get(id)
-    if (p?.slot === 'plug') budget += (p.cpuBonus ?? 0) - (p.cpuPenalty ?? 0)
+  for (const { effective: p } of plugEffectPartsOf(plugIds, ctx)) {
+    budget += (p.cpuBonus ?? 0) - (p.cpuPenalty ?? 0)
   }
   return Math.max(0, budget)
 }

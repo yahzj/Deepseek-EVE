@@ -679,6 +679,8 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
     // ⚠ **2026-09-29 起墨潮电子舱改归 `fleetDecay`（全队折权缺口乘法）** ⇒ 它**会**挂尾注
     //   （旧 `sum` 组"同舰加和、上限内不打折"已作废——那条不衰减，故当时被排除在外）。
     if (st.group === 'flat') return base
+    // 按属性分别排强弱，双属性件没有统一的“第几件”权重；最终属性预览仍由 core 计算。
+    if (st.kind === 'support-damage' || st.kind === 'reload') return base
     const remaining = pickBay ? { ...fitted, [pickBay.rack]: fitted[pickBay.rack].filter((_, i) => i !== pickBay.index) } : fitted
     const n = sameKindCount(remaining, engine.ctx, m)
     if (n === 0) return base
@@ -1554,7 +1556,8 @@ function PluginSlotsSection({ engine, target }: { engine: PageProps['engine']; t
               className="app-fit-slot-icon is-filled is-readonly"
               {...hoverTipProps(
                 /* 插件槽（只读展示）：同批 —— 也给本舰上下文（插件里的维修类效果按同一把尺显示） */
-                moduleHoverContent(def, tr('ui.Expedition.443'), engine, target),
+                moduleHoverContent(def, tr('ui.Expedition.443'), engine, target,
+                  installed.slice(0, i + 1).filter(p => p.id === def.id).length),
               )}
             >
               <span className="app-fit-slot-icon-glyph">

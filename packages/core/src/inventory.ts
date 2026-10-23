@@ -18,6 +18,7 @@ import { fleetDefOf } from './instances'
 import { shipLockedReason } from './state'
 import { shipOperationBlockReason } from './shipActionPolicy'
 import { familyModules } from './fitted'
+import { plugEffectPartsOf } from './plugEffects'
 // ⚠ 依赖方向：`blackbox.ts` 只依赖 `state` / `plugs`，**不引 inventory** ⇒ 这边引它不成环
 import { isBlackboxItem, noteBlackboxObtained } from './blackbox'
 
@@ -201,9 +202,8 @@ export function cargoCapacityM3Of(state: GameState, ctx: SimContext, shipId: str
     const haulerLv = Math.min(5, state.skills.trained['hauler-ops'] ?? 0)
     if (haulerLv > 0) capMult *= 1 + 0.05 * haulerLv
   }
-  for (const id of state.fleet[shipId]?.plugs ?? []) {
-    const p = ctx.modules.get(id)
-    if (p?.slot === 'plug') bonus += p.cargoCapacityBonusPct ?? 0
+  for (const { effective: p } of plugEffectPartsOf(state.fleet[shipId]?.plugs ?? [], ctx)) {
+    bonus += p.cargoCapacityBonusPct ?? 0
   }
   return ceilFinalQuantity(ship.cargoM3 * (1 + bonus) * capMult * shipDamageEffects(state.fleet[shipId]?.damagePlugs).cargo)
 }

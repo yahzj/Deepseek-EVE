@@ -129,8 +129,8 @@ describe('墨潮电子舱（射程压制 · 高槽 · CPU 150）', () => {
   it('报障回归：叠加分组单列 fleetDecay，说明保留射程压制与下限限制', () => {
     const m = MODULES.find((x) => x.id === 'mod-lair-ecm-h')!
     expect(stackingOf(m)).toEqual({ group: 'fleetDecay', kind: 'ecm' })
-    // 对照：普通加算件仍是 flat（本档只服务这一件，不是新兜底）
-    expect(stackingOf(MODULES.find((x) => x.id === 'mod-stab-kin-3')!).group, '稳定器仍是 flat').toBe('flat')
+    // 对照：本批指定的普通稳定器已进入多件惩罚池
+    expect(stackingOf(MODULES.find((x) => x.id === 'mod-stab-kin-3')!).group, '稳定器应进入 weighted').toBe('weighted')
     expect(m.description).toContain('压制敌方武器射程')
     expect(m.description).toContain('压制下限')
     expect(m.foeRangeDebuffPct).toBe(0.15)

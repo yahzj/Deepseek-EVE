@@ -159,6 +159,34 @@ function textOf(value: unknown): string {
   return typeof value === 'string' || typeof value === 'number' ? String(value) : ''
 }
 describe('真实参数行承接说明数字', () => {
+  it.each(['zh', 'en'] as const)('%s 支援件与插件递减卡面读取真实折权值，例外保持原标签', locale => {
+    language.value = locale
+    const ctx = buildSimContext(), state = core.createInitialState({ nowWallMs: 0 })
+    const uid = state.shipId
+    state.fleet[uid]!.fitted = { high: [], mid: [], low: ['mod-wh-g-ballistic', 'mod-wh-g-ballistic'] }
+    state.fleet[uid]!.plugs = ['plug-titan-compression', 'plug-titan-compression']
+    const engine = { state, ctx }
+    const stack = (id: string) => textOf(display.moduleInfoLines(ctx.modules.get(id)!).find(row => row.k === L10N['ui.shipInfo.076']![locale])!.v)
+    for (const id of ['mod-stab-kin-3', 'mod-rof-3', 'mod-wh-d-loader', 'mod-wh-d-steady', 'mod-wh-g-ballistic',
+      'plug-shield-plate', 'plug-armor-plate', 'plug-hull-plate', 'plug-firepower', 'plug-sight', 'plug-rangefinder', 'plug-thruster', 'plug-titan-compression']) {
+      expect(stack(id), id).toBe(L10N['ui.shipInfo.079']![locale])
+      expect(display.moduleShortEffect(ctx.modules.get(id)!), id).toContain(L10N['ui.shipInfo.179']![locale])
+    }
+    expect(stack('plug-cpu-core')).toBe(L10N['ui.shipInfo.077']![locale])
+    for (const id of ['plug-target-beacon', 'plug-concealment']) expect(stack(id)).toBe(L10N['ui.shipInfo.254']![locale])
+    const fitted = (id: string) => textOf(display.moduleInfoLines(ctx.modules.get(id)!, engine, uid, 2)
+      .find(row => row.k === L10N['ui.shipInfo.222']![locale])!.v)
+    const ballistic = fitted('mod-wh-g-ballistic')
+    expect(ballistic).toContain(L10N['ui.shipInfo.071']![locale])
+    expect(ballistic).toContain(L10N['ui.shipInfo.082']![locale])
+    expect(ballistic).not.toContain(L10N['ui.shipInfo.069']![locale])
+    const compression = fitted('plug-titan-compression')
+    expect(compression).toContain(L10N['ui.Handbook.010']![locale])
+    expect(compression).toContain(L10N['ui.Handbook.030']![locale])
+    expect(compression).toContain('m³')
+    expect(compression).toContain('m/s')
+    expect(compression).not.toMatch(/ui\.[a-zA-Z]|\{p\d+\}/)
+  })
   it('真实候选提示同型号不漏计，替换时排除原槽，捕获网不误写最长', () => {
     language.value = 'zh'
     const file = 'FitPage.tsx'

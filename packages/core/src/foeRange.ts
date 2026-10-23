@@ -18,6 +18,8 @@ import { moduleAllowedOnShip } from './shipFitting'
 import { fleetDefOf } from './instances'
 import { pushBattleNotice } from './combatFx'
 import { foeCapacitorRangeBonusOf } from './gravekeeperCombat'
+import { supportEffectPartsOf } from './stacking'
+import { plugEffectPartsOf } from './plugEffects'
 
 /** **敌机有效射程**（单一真相源）＝机型绝对射程 × **全敌队的受击增程倍率**（未触发 = ×1）－ **我方电子舰削减**。
  *
@@ -80,8 +82,32 @@ export function fittedEffectParamsOf(
   ordinal = 1,
 ): Array<{ key: string; raw: number; eff: number }> {
   const out: Array<{ key: string; raw: number; eff: number }> = []
+  if (mod.slot === 'plug') {
+    const part = plugEffectPartsOf(state.fleet[shipId]?.plugs ?? [], ctx)
+      .filter(p => p.mod.id === mod.id)[Math.max(0, ordinal - 1)]
+    if (!part || part.kind === null) return out
+    for (const key of ['shieldHpAdd', 'armorHpAdd', 'hullHpAdd', 'damageBonusPct', 'hitBonusPct',
+      'plugRangeBonusPct', 'speedAddMps', 'cargoCapacityBonusPct', 'droneBayBonusM3', 'cpuPenalty', 'speedPenaltyMps'] as const) {
+      const raw = mod[key]
+      if (raw !== undefined && raw !== 0) out.push({ key, raw, eff: part.effective[key] ?? raw })
+    }
+    return out
+  }
   const group = stackingOf(mod).group
-  const part = fittedPenaltyPartsOf(state, ctx, shipId).find(p => p.mod.id === mod.id && p.ordinal === ordinal)
+  const parts = fittedPenaltyPartsOf(state, ctx, shipId)
+  const part = parts.find(p => p.mod.id === mod.id && p.ordinal === ordinal)
+  if (mod.slot === 'support' && part) {
+    const defs = parts.map(p => p.mod)
+    for (const type of ['kinetic', 'explosive', 'plasma'] as const) {
+      for (const family of ['damage', 'range'] as const) {
+        const effect = `${family}:${type}` as const
+        const entry = supportEffectPartsOf(defs, effect)[part.index]!
+        if (entry.value > 0) out.push({ key: effect, raw: entry.value, eff: entry.value * entry.weight })
+      }
+    }
+    const reload = supportEffectPartsOf(defs, 'reload')[part.index]!
+    if (reload.value > 0) out.push({ key: 'reload', raw: reload.value, eff: reload.value * reload.weight })
+  }
   const sortedBenefit = group === 'curve' || ['speed', 'drone-relay', 'drone-launch', 'laser-calibration'].includes(stackingOf(mod).kind)
   const w = sortedBenefit && part ? part.weight : group === 'flat' || group === 'max' ? 1 : stackWeight(Math.max(1, ordinal))
   /** 折权族：本件自己那一份（`raw × 曲线权重`） */

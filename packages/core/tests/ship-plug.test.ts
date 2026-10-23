@@ -28,7 +28,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
-import { addModule, countModule } from '../src/equipment'
+import { addModule, countModule, stackingOf } from '../src/equipment'
 import { countWare, loadWarehouseToCargoFit, repairMisplacedWarehouseModules, unloadCargoToWarehouse } from '../src/inventory'
 import { shipSellable } from '../src/market'
 import { loseShip, shipStorable } from '../src/shipyard'
@@ -65,6 +65,16 @@ const PLUG_ARMOR = 'plug-armor-plate'
 const T1 = 'sandcat'
 const T1B = 'sh-falconet'
 const GAL = 'galaxy-grave'
+
+describe('插件多件惩罚分组', () => {
+  it('协处理、靶标、隐匿和势力插件保持全额；普通属性插件进入 weighted', () => {
+    expect(stackingOf(ctx.modules.get('plug-cpu-core')!)).toEqual({ group: 'flat', kind: 'plug' })
+    expect(stackingOf(ctx.modules.get('plug-target-beacon')!)).toEqual({ group: 'flat', kind: 'plug' })
+    expect(stackingOf(ctx.modules.get('plug-concealment')!)).toEqual({ group: 'flat', kind: 'plug' })
+    expect(stackingOf(ctx.modules.get('plug-shield-plate')!)).toEqual({ group: 'weighted', kind: 'plug-shield' })
+    expect(stackingOf(ctx.modules.get('plug-pirate-raider')!)).toEqual({ group: 'flat', kind: 'plug' })
+  })
+})
 
 function world(seed = 5): GameState {
   return createInitialState({ nowWallMs: 0, seed })

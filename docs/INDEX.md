@@ -12,16 +12,16 @@
 
 ## 统计
 
-- 文档总数 **488** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **8091** KB · **62168** 行
-- 状态分布：**未标注** 259 · **已确认/已实现** 165 · **进行中** 43 · **待裁定** 20 · **历史留档** 1
-- 孤儿文档（0 引用）**97** 份 · 状态未标注 **259** 份
+- 文档总数 **490** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **8098** KB · **62240** 行
+- 状态分布：**未标注** 260 · **已确认/已实现** 166 · **进行中** 43 · **待裁定** 20 · **历史留档** 1
+- 孤儿文档（0 引用）**98** 份 · 状态未标注 **260** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**14** 份
-- 三、现行设计稿（design）：**312** 份
+- 三、现行设计稿（design）：**313** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**37** 份
 - 二、其它（docs 根目录）：**6** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
-- 八、测试档说明（test-saves）：**20** 份
+- 八、测试档说明（test-saves）：**21** 份
 - 六、专题：舰船美术（design/ship-battle-art）：**7** 份
 - 四、已归档设计稿（design/archive）：**83** 份
 
@@ -57,11 +57,12 @@
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 | `docs/review/guoqing-audit-followup.md` | 国庆节审查当前跟进 | 未标注（跟进入口） | — | 2 KB / 21 行 | 3 / 0 |
 
-## 三、现行设计稿（design） —— 312 份
+## 三、现行设计稿（design） —— 313 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
 | `docs/design/battle-range-confirm-clarity-20261023.md` | 射程确认原因与距离滑条 | 已确认/已实现（已确认） | 2026-10-23 | 3 KB / 32 行 | 1 / 0 |
+| `docs/design/support-and-plug-stacking-20261023.md` | 支援件与舰船插件多件惩罚 | 已确认/已实现（已确认） | 2026-10-23 | 5 KB / 55 行 | 0 / 0 |
 | `docs/design/signal-auto-tech-20261022.md` | 信号空间自动探索科技与收益读数（2026-10-22） | 未标注（已本地合入主树） | 2026-10-22 | 13 KB / 98 行 | 2 / 0 |
 | `docs/design/battle-card-range-memory-20261021.md` | 按卡距离记忆与射程变化确认 | 已确认/已实现（已实现） | 2026-10-21 | 7 KB / 60 行 | 0 / 0 |
 | `docs/design/signal-auto-ore-audit-20261021.md` | 自动探索母矿缺失核查 | 已确认/已实现（已实现） | 2026-10-21 | 9 KB / 78 行 | 0 / 0 |
@@ -425,7 +426,7 @@
 | `docs/git-gate-approval.md` | Git提交审批放行 | 未标注 | — | 2 KB / 28 行 | 2 / 0 |
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 48 KB / 820 行 | 27 / 18 |
 | `docs/l10n-pending.md` | 待英文本地化记录 | 未标注 | — | 3 KB / 41 行 | 14 / 10 |
-| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 30 KB / 182 行 | 24 / 7 |
+| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 30 KB / 184 行 | 24 / 7 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -433,10 +434,11 @@
 |---|---|---|---|---|---|
 | `docs/design/battle-data/p41-drone-readings-20260912.md` | P-41 机群批标定轮 · 读数（2026-09-12 · 二号 d2） | 未标注 | 2026-09-12 | 7 KB / 88 行 | 3 / 0 |
 
-## 八、测试档说明（test-saves） —— 20 份
+## 八、测试档说明（test-saves） —— 21 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
+| `docs/test-saves/support-plug-stacking-20261023.md` | 支援件与舰船插件多件惩罚验收 | 未标注 | 2026-10-23 | 1 KB / 10 行 | 2 / 0 |
 | `docs/test-saves/signal-auto-tech-20261022.md` | 信号空间T3自动探索科技验收档 | 已确认/已实现（已实现自测） | 2026-10-22 | 1 KB / 11 行 | 2 / 0 |
 | `docs/test-saves/battle-card-range-20261021.md` | 按卡距离与射程变化确认验收档 | 未标注（实现自测） | 2026-10-21 | 1 KB / 11 行 | 2 / 0 |
 | `docs/test-saves/faction-ship-plugs-20261019.md` | 五件势力船插验收档 | 未标注（船长批准本地合入主树） | 2026-10-19 | 2 KB / 30 行 | 2 / 0 |
@@ -456,7 +458,7 @@
 | `docs/test-saves/black-market-20261004.md` | 黑市页面验收档 | 待裁定（随功能待船长验收） | 2026-10-04 | 1 KB / 15 行 | 1 / 0 |
 | `docs/test-saves/hauler-20261004.md` | 纯货舰修订验收档 | 未标注（已验收） | 2026-10-04 | 2 KB / 25 行 | 3 / 0 |
 | `docs/test-saves/whexpedition-20261004.md` | 虫洞第一批合成测试档 | 未标注（未来虫洞整备/事件/警戒的隔离验收材） | 2026-10-04 | 10 KB / 78 行 | 2 / 0 |
-| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 80 KB / 806 行 | 66 / 14 |
+| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 81 KB / 811 行 | 66 / 14 |
 
 ## 六、专题：舰船美术（design/ship-battle-art） —— 7 份
 
@@ -558,10 +560,11 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 17 KB / 195 行 | 66 / 14 |
 
-## 附：孤儿文档（0 引用，97 份）
+## 附：孤儿文档（0 引用，98 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
+- `docs/design/support-and-plug-stacking-20261023.md`（2026-10-23 · 5 KB）—— 支援件与舰船插件多件惩罚
 - `docs/design/battle-card-range-memory-20261021.md`（2026-10-21 · 7 KB）—— 按卡距离记忆与射程变化确认
 - `docs/design/signal-auto-ore-audit-20261021.md`（2026-10-21 · 9 KB）—— 自动探索母矿缺失核查
 - `docs/design/signal-beacon-siege-torpedo-20261019.md`（2026-10-19 · 4 KB）—— 信标围剿核查与鱼雷舰加成调整
@@ -660,8 +663,9 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（259 份，待补一行 `状态：…`）
+## 附：状态未标注（260 份，待补一行 `状态：…`）
 
+- `docs/test-saves/support-plug-stacking-20261023.md`（2026-10-23）—— 支援件与舰船插件多件惩罚验收
 - `docs/design/signal-auto-tech-20261022.md`（2026-10-22）—— 信号空间自动探索科技与收益读数（2026-10-22）
 - `docs/test-saves/battle-card-range-20261021.md`（2026-10-21）—— 按卡距离与射程变化确认验收档
 - `docs/design/signal-beacon-siege-torpedo-20261019.md`（2026-10-19）—— 信标围剿核查与鱼雷舰加成调整

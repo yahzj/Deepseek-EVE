@@ -19,6 +19,7 @@ import { shipDamageEffects } from './shipDamage'
 import type { UnitSpec, WeaponSpec } from './combat'
 import { droneLaunchGapMsOf } from './droneLaunch'
 import { crisisEffectsOf } from './gravekeeperGear'
+import { supportEffectPartsOf } from './stacking'
 
 /**
  * **捕获网的断开距离（敌我通用）**（**船长 2026-09-26**：「**将断开距离提高到4500米，
@@ -307,18 +308,20 @@ export function createPlayerSpec(
   const dcKit = dcDevice?.hullSaveKit
 
   // V18.1 支援件合成：
-  // - 伤害稳定器（按系加算）+ 射速计算机（装填缩短加算）只进炮台条目；
+  // - 伤害稳定器（按系折权加算）+ 射速计算机（装填缩短折权加算）只进炮台条目；
   // - 索敌阵列 = EVE 曲线命中乘子（只进炮台条目 eqHitMul）；
   // - 姿态陀螺 = 缺口复合回避（全船，含船体基础）。
   const dmgBonus: Record<DamageType, number> = { kinetic: 0, explosive: 0, plasma: 0 }
-  let rofCut = 0
   const hitEqs: number[] = []
   const evadeGaps: number[] = []
   for (const m of supportDefs) {
-    for (const [t, v] of Object.entries(m.damageTypeBonusPct ?? {})) dmgBonus[t as DamageType] += v ?? 0
-    rofCut += m.reloadCutPct ?? 0
     if (m.hitBonusPct !== undefined) hitEqs.push(m.hitBonusPct)
   }
+  for (const type of ['kinetic', 'explosive', 'plasma'] as const) {
+    dmgBonus[type] = supportEffectPartsOf(supportDefs, `damage:${type}`).reduce((sum, part) => sum + part.value * part.weight, 0)
+  }
+  let rofCut = supportEffectPartsOf(supportDefs, 'reload').reduce((sum, part) => sum + part.value * part.weight, 0)
+  for (const mod of supportDefs) if (mod.speedBonusPct !== undefined) rofCut += mod.reloadCutPct ?? 0
   /**
    * **闪避缺口：全件扫描**（2026-09-17 · 与甲容量同一批修，由玩家报障「赃物强化舱的护甲增加效果无效」引出）。
    *
@@ -342,15 +345,14 @@ export function createPlayerSpec(
    * ═══ **舰船插件**（**2026-09-26 船长令**，设计稿 `docs/design/ship-plug-20260926.md`）═══
    *
    * 插件**不在 `fitted` 里**（走 `FleetShipState.plugs` 的独立插件槽）⇒ `allDefs` 扫不到它们，
-   * 本段**单独累加**。累加口径 = 船长裁决「**③不吃**」：**多件全额、不进 `stackingOf` 的收敛池**
-   * （加算/乘算直接叠加，与"命中/速度走 EVE 曲线"那几支无关）。
+   * 本段**单独处理**。插件按效果池折权，协处理/选靶和不叠加势力插件保留独立例外。
    *
    * 已接的效果：三层血固定值 · 速度固定值加减 · 单发伤害 · 命中 · 射程 · CPU 预算 ·
-   * **选靶权重**（靶标 ×2 / 隐匿 ×0.4，消费在 `pickMyUnitTarget`）。
+   * 选靶权重保持原有乘算，消费在 `pickMyUnitTarget`。
    */
   let plugDmg = 0
   let plugHitMul = 1
-  /** **射程加成**（2026-09-27 起走正向字段 `plugRangeBonusPct`；多件加算、不吃递减） */
+  /** 射程加成沿用正向字段；插件效果投影已在独立池折权，此处不再折一次。 */
   let plugRangeBonus = 0
   /** **被选中权重**（船长：靶标插件 ×3 / 隐匿插件 ×0.7）——多件相乘、缺省 1 */
   let plugTargetWeight = 1
@@ -364,8 +366,9 @@ export function createPlayerSpec(
   const resistPen = penalties.resist
   /** 按系射程加成（幽灵弹道校正器「动能武器射程 +22%」）：按系加算 */
   const rangeBonus: Record<DamageType, number> = { kinetic: 0, explosive: 0, plasma: 0 }
-  for (const m of allDefs) {
-    for (const [rt, v] of Object.entries(m.rangeTypeBonusPct ?? {})) rangeBonus[rt as DamageType] += v ?? 0
+  for (const type of ['kinetic', 'explosive', 'plasma'] as const) {
+    rangeBonus[type] = supportEffectPartsOf(allDefs, `range:${type}`).reduce((sum, part) => sum + part.value * part.weight, 0)
+    for (const m of allDefs) if (m.slot !== 'support') rangeBonus[type] += m.rangeTypeBonusPct?.[type] ?? 0
   }
   // **船体固有按系射程加成**（2026-09-13 船长：炮艇「动能武器射程 +30%」）——与模块同链加算
   for (const [rt, v] of Object.entries(ship.weaponRangeBonusPct ?? {})) rangeBonus[rt as DamageType] += v ?? 0
@@ -377,7 +380,7 @@ export function createPlayerSpec(
    * 🔴 **射程插件的 +25% 并进"战前射程加成池"**（**2026-09-26 船长令**：「**射程插件和增加射程的装备，
    * 应该提高的是战斗前的数据，电子舰和战斗中触发的射程增加减少是独立的加减算法的乘区**」）。
    *
-   * 落法 = 与装备的按系射程加成**同池加算**（三系各 +25%，多件全额），**不是**在外面再乘一层。
+   * 插件与装备分别在各自惩罚池折权，折权后的数值并入战前射程加成，不额外乘一层。
    * 为什么必须这样：干扰压制那条链（`meRangeMulOf` / `applyMeJammerDebuff`）要吃"**该件的射程加成**"
    * 来按加法口径反解（`(1 + bonus − 净削减) ÷ (1 + bonus)`）——若插件只在外层乘，`refs.weaponRanges`
    * 记下的 `bonusMul` 就漏掉它 ⇒ 带插件的武器会被**多压**。并进池后：
@@ -392,8 +395,7 @@ export function createPlayerSpec(
   /** 武器实际射程 = 基准 × (1+该系加成)（按系加成 = 模块 + 船体固有 + **射程插件**，加算后一次乘） */
   const rangeOf = (base: number, type: DamageType): number =>
     Math.max(500, Math.round(rangeBase(base) * (1 + rangeBonus[type])))
-  /** 通用单发伤害加成（亡军火控「伤害 +6%」）：与按系稳定器同链、加算、只进炮台/光束。
-   *  ⚠ **插件并进同一个加算池**（火力强化插件 +12%；多件全额、不吃递减 —— 它本就不在 `allDefs` 里）。 */
+  /** 通用单发伤害与已折权的火力插件相加，保留原伤害乘区。 */
   const dmgFlat = allDefs.reduce((s, m) => s + (m.damageBonusPct ?? 0), 0) + plugDmg
   // 全层抗性削减：三层同时扣、**下限 RESIST_FLOOR（可成负数＝易伤）**——放在抗性合成与调谐之后 ⇒ 作用于最终值
   if (resistPen > 0) {

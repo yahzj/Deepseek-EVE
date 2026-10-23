@@ -32,6 +32,9 @@ import { moduleAllowedOnShip } from './shipFitting'
 import { ammoTiersOf } from './ammoTiers'
 import { shipSlotsWithPlugsOf } from './plugs'
 import * as cpu from './equipmentCpu'
+import { stackWeight } from './stacking'
+import { plugEffectPartsOf, plugStackingKindOf } from './plugEffects'
+export { stackWeight } from './stacking'
 
 /** 槽位顺序（界面展示用；V18 保留家族序供清单/徽标） */
 export { MODULE_SLOTS } from './labels'
@@ -208,7 +211,8 @@ export type StackGroup = 'gap' | 'curve' | 'weighted' | 'max' | 'fleetDecay' | '
  * - **速度（推进器族）→ weighted（折权加算 Σpᵢ·wᵢ，2026-09-20 船长「基础改为加算，但是依旧有多件衰减」）**；
  * - **全队型削减类效果（墨潮电子舱）→ fleetDecay（折权缺口乘法，2026-09-29 船长「这类全队型的效果……
  *   做全队多装递减，并且效果也是乘法」）——**旧口径 `sum`（同舰加和上限 90% ＋ 跨舰乘法）已作废**；
- * - 伤害%/射速/容量%/矿枪/货舱/导控/炮台实体 → flat（加算线性，不额外收敛）。
+ * - 指定伤害/射速支援件及属性插件 → weighted；伤害与射程的实际权重按各效果池计算。
+ * - 容量%/矿枪/货舱/导控/炮台实体 → flat（加算线性，不额外收敛）。
  * UI 用 group 出"多装递减 / 可多装·全额叠加"标签；装配数件数用 kind 提示第 N 件。
  *
  * ⚠ **`kind` 是"衰减池键"**（同键同池、跨型号合并）——**2026-09-21 船长令**起它与
@@ -216,6 +220,14 @@ export type StackGroup = 'gap' | 'curve' | 'weighted' | 'max' | 'fleetDecay' | '
  * 却按**型号**各走各的冷却。
  */
 export function stackingOf(def: ModuleDef): { group: StackGroup; kind: string } {
+  if (def.slot === 'plug') {
+    const kind = plugStackingKindOf(def)
+    return { group: kind === null ? 'flat' : 'weighted', kind: kind ?? 'plug' }
+  }
+  if (def.slot === 'support') {
+    if (def.reloadCutPct !== undefined && def.speedBonusPct === undefined) return { group: 'weighted', kind: 'reload' }
+    if (Object.keys(def.damageTypeBonusPct ?? {}).length) return { group: 'weighted', kind: 'support-damage' }
+  }
   if (def.crisisOverload) return { group: 'curve', kind: 'crisis-overload' }
   if (def.droneLaunchCutPct !== undefined) return { group: 'fleetDecay', kind: 'drone-launch' }
   if (def.laserFalloffBonus !== undefined) return { group: 'weighted', kind: 'laser-calibration' }
@@ -353,12 +365,6 @@ export function pulseStreamOf(def: ModuleDef): { kind: string; modelId: string }
   return null
 }
 
-/** EVE 叠加曲线第 n 件权重（n 从 1 起）：e^−((n−1)/2.67)² ≈ 100% / 87% / 57% / 28% / 11%… */
-export function stackWeight(n: number): number {
-  const k = Math.max(0, n - 1) / 2.67
-  return Math.exp(-(k * k))
-}
-
 /** 按正向收益排位；负面沿用同件权重，缺口族按先前装备剩余缺口折减。 */
 export function fittedPenaltyPartsOf(state: GameState, ctx: SimContext, shipId: string, fittedOverride?: FittedModules) {
   const hull = fleetDefOf(state, ctx, shipId)
@@ -380,6 +386,7 @@ export function fittedPenaltyPartsOf(state: GameState, ctx: SimContext, shipId: 
     if (kind === 'shield-field') return d.shieldFieldPct ?? 0
     if (kind === 'shield-charge') return d.shieldPulsePct ?? 0
     if (kind === 'repair') return (d.repairArmorHp ?? 0) + (d.repairHullHp ?? 0)
+    if (kind === 'reload') return d.reloadCutPct ?? 0
     for (const [prefix, values] of [['shield-', d.shieldResistAdd], ['armor-', d.armorResistAdd], ['hull-', d.hullResistAdd]] as const) {
       if (kind.startsWith(prefix)) return values?.[kind.slice(prefix.length) as DamageType] ?? 0
     }
@@ -779,9 +786,8 @@ export function droneBayTotalM3(ship: { droneBayM3?: number; civilianFittingOnly
       cap += m?.droneBayBonusM3 ?? 0
     }
   }
-  for (const id of plugs) {
-    const p = ctx.modules.get(id)
-    if (p?.slot === 'plug') cap += p.droneBayBonusM3 ?? 0
+  for (const { effective: p } of plugEffectPartsOf(plugs, ctx)) {
+    cap += p.droneBayBonusM3 ?? 0
   }
   return cap
 }

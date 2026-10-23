@@ -1,5 +1,10 @@
 # 测试门槛存档（Test Saves）
 
+## 支援件与插件多件惩罚
+
+- `npx tsx tools/make-test-save.ts support-plug-stacking`：全新合成档，玄武级支援混装与十一艘双插件对照舰，不读取个人档。
+- 装配页查看第二件实际效果及单件原值；协处理、靶标、隐匿保持全额。加载与复核见 `support-plug-stacking-20261023.md`。
+
 ## 信号空间T3自动探索科技
 
 - `npx tsx tools/make-test-save.ts signal-auto-tech`生成全新合成档，T3未研究、T1前置齐备；3处库存、4艘作业副船、100谜质和1亿信用点，AI技能0级，不读取个人档。

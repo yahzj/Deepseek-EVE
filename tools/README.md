@@ -1,5 +1,10 @@
 # 工具区台账（tools/）
 
+## 支援件与插件多件惩罚（2026-10-23）
+
+- `npx tsx tools/make-test-save.ts support-plug-stacking`：独立合成混装舰和双插件对照，夹具 `support-plug-stacking-fixture.ts`，不读取个人档。
+- 构建后 `node tools/support-plug-stacking-native-check.cjs [--electron=本机Electron绝对路径]`：隐藏隔离Electron，中英两布局/桌面手机仿真核对第二件富卡、折权单位和真实保存重载；结果 `tools/_ui-artifacts/support-plug-stacking/`，不是观感或实体手机结论。
+
 ## 信号空间T3自动探索科技（2026-10-22）
 
 - `npx tsx tools/make-test-save.ts signal-auto-tech`：通过`signal-auto-tech-fixture.ts`生成全新合成档，未研究T3但已满足T1前置，0级AI技能、空核心库及研究材料齐备；不读取个人档，加载步骤见`docs/test-saves/signal-auto-tech-20261022.md`。

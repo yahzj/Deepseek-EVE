@@ -17,8 +17,8 @@
  * ## 与既有装备的关系
  * 插件**共用 `ModuleDef`**（船长：「**是一种类似装备的东西**」），但**不走高/中/低槽位数组** ——
  * 它有自己的槽位（`ShipDef.plugSlots`，按船型档 T1=5 / T2=4 / T3=3 / T4=2 / T5=1）。
- * 因此 `allFittedModules`（只扫 `fitted`）**看不见插件**，插件效果由战斗建档侧单独一段累加
- * （⇒ 天然**不吃多件递减**，与船长「**③不吃**」一致）。
+ * 因此 `allFittedModules`（只扫 `fitted`）**看不见插件**，效果由 `plugEffectsOf` 投影。
+ * 2026-10-23 船长确认指定八件插件按效果独立折权；协处理/选靶及原不叠加规则不变。
  */
 import type { GameState } from './state'
 import type { ModuleDef, ShipSlots, SimContext } from './types'
@@ -29,6 +29,7 @@ import { shipSlotsOf } from './labels'
 import { fleetDefOf } from './instances'
 import { moduleAllowedOnShip } from './shipFitting'
 import { cpuBudgetOf, fittedCpuUsed, droneCpuUsed } from './equipmentCpu'
+import { plugEffectPartsOf } from './plugEffects'
 // ⚠ 本模块被 `combat.ts`（建档）· `shipyard.ts` / `market.ts`（入仓与挂卖的闸门）反向引用
 //   ⇒ 依赖方向要保守：**只依赖 `state` / `types`**。原先还 import 了 `equipment.countModule`，
 //   但那只是一行取表（`state.moduleBay[id] ?? 0`），为省掉 `equipment → labels → …` 这条可能成环的
@@ -62,14 +63,9 @@ export function plugModulesOf(state: GameState, ctx: SimContext, shipId: string)
   return out
 }
 
-/** 效果去重不改变实际安装列表与已占槽数。 */
+/** 效果去重与折权不改变实际安装列表与已占槽数。 */
 export function plugEffectsOf(state: GameState, ctx: SimContext, shipId: string): ModuleDef[] {
-  const seen = new Set<string>()
-  return plugModulesOf(state, ctx, shipId).filter(def => {
-    if (def.plugNonStacking && seen.has(def.id)) return false
-    seen.add(def.id)
-    return true
-  })
+  return plugEffectPartsOf(plugsOf(state, shipId), ctx).map(part => part.effective)
 }
 
 /** 插件扩槽类型：中槽扩展与低槽扩展各自只允许一件；其它插件不受此限制。 */
