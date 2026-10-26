@@ -3984,7 +3984,10 @@ export class GameEngine {
 
   battleRangePending() { return pendingBattleRangeView(this.state, this.ctx) }
   confirmBattleRange(desireM: number): CommandResult {
+    const intent = this.state.pendingBattleRange?.intent
     const result = confirmBattleRange(this.state, this.ctx, desireM, this.wallNowOf())
+    // 确认重放不经过自动出击心跳；成功后在通知界面前恢复本场来源。
+    if (result.ok && intent?.kind === 'expedition') this.autoSortie = intent.autoRepair === true
     this.notify()
     void this.persist()
     return result

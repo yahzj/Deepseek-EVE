@@ -830,12 +830,12 @@ async function applyLayoutAndReload(): Promise<void> {
   const [battleMounted, setBattleMounted] = useState(false)
   const prevInBattleRef = useRef(false)
   const battleWatchedRef = useRef(false)
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (inBattle && !prevInBattleRef.current) {
       setBattleMounted(true)
       battleWatchedRef.current = false
-      // 优化：重复清剿自动发起的远征默认最小化战斗界面（仍可用「⚔ 战斗中」主动进入）
-      if (!engine.autoSortieNow()) setBattleOpen(true)
+      // 新场绘制前设置显隐，连续出击不能继承上一场的展开状态。
+      setBattleOpen(!engine.autoSortieNow())
     }
     prevInBattleRef.current = inBattle
   }, [inBattle])
