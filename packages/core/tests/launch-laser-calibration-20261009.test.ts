@@ -237,7 +237,7 @@ describe('出击加速、激光校准与协处理器5%', () => {
   })
 
   it('实际舰体特性显示读取30%参数；已完成英文覆盖且无过期待译登记', () => {
-    const path = new URL('apps/desktop/src/renderer/src/ui/shipInfo.tsx', root)
+    const path = new URL('apps/desktop/src/renderer/src/features/ships/info/shipLines.tsx', root)
     const source = ts.createSourceFile('shipInfo.tsx', readFileSync(path, 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
     const fn = source.statements.find(n => ts.isFunctionDeclaration(n) && n.name?.text === 'shipInfoLines')!
     const scope = { exports: {} as { shipInfoLines: (ship: unknown) => Array<{ k: string; v: string }> },

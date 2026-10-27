@@ -16,6 +16,7 @@
  * 用法：npm run content:check（或 npx tsx tools/content-check.ts）
  */
 
+import { readImplementation } from './source-implementation'
 import {
   PLANET_DEFS, PLANET_TRAITS, PLANET_BUILDINGS, buildPlanetCatalog,
   BLUEPRINTS,
@@ -1311,7 +1312,7 @@ for (const sbp of SHIP_BLUEPRINTS) {
     let text = srcCache.get(rel)
     if (text === undefined) {
       try {
-        text = readFileSync(join(root, rel), 'utf8')
+        text = readImplementation(join(root, rel))
       } catch {
         return
       }
@@ -1503,7 +1504,7 @@ for (const m of MODULES) {
         const t = l.trim()
         return !(t.startsWith('*') || t.startsWith('//') || t.startsWith('/*'))
       })
-  const bsPath = 'apps/desktop/src/renderer/src/panels/BattleScreen.tsx'
+    const bsPath = 'apps/desktop/src/renderer/src/features/combat/resolveBattleHost.tsx'
   const bsLines = stripComments(readSrc(bsPath))
   const badAnomaly = bsLines.filter((l) => l.includes('expedition.anomalyId')).length
   check(
@@ -1533,7 +1534,7 @@ for (const m of MODULES) {
    * 本契约挡"日后被简化掉"：四处必须保留旗舰战分支（判据 = core `weekendFlagshipBattleActive`）。
    */
   for (const [rel, needle] of [
-    ['apps/desktop/src/renderer/src/panels/BattleScreen.tsx', 'weekendFlagshipBattleViewOf'],
+    ['apps/desktop/src/renderer/src/features/combat/resolveBattleHost.tsx', 'weekendFlagshipBattleViewOf'],
     ['apps/desktop/src/renderer/src/App.tsx', 'weekendFlagshipBattleActive'],
     ['apps/desktop/src/renderer/src/game/engine.ts', 'weekendFlagshipBattleActive'],
     ['apps/desktop/src/renderer/src/ui/ShipStatusWin.tsx', 'weekendFlagshipBattleActive'],
@@ -1590,15 +1591,15 @@ for (const m of MODULES) {
     return out.join('\n')
   }
   check(
-    bodyOf(readSource('packages/core/src/combatReport.ts'), 'export function sunkShipIdsOfBattle').includes('myFleet'),
+    bodyOf(readSource('packages/core/src/combat/combatReport.ts'), 'export function sunkShipIdsOfBattle').includes('myFleet'),
     '结算口径契约：`combatReport.sunkShipIdsOfBattle`（沉船判据单点）不见了或不再看编队 —— 三套宿主会各判各的',
   )
   /** 我方"船真会沉"的编队战收场路径：每条都必须判沉船（单点本身，或包着它的助手） */
   for (const [rel, head, why] of [
-    ['packages/core/src/wormholeBattle.ts', 'function settleWormholeBattle', '洞内收口（沉了就真丢 ＋ 插件折黑匣）'],
-    ['packages/core/src/encounters.ts', 'function loseSunkShipsOfBattle', '遭遇槽的沉船助手（它必须调判据单点）'],
-    ['packages/core/src/encounters.ts', 'function settleEscape', '遭遇槽 · 撤退 / 自动脱离'],
-    ['packages/core/src/encounters.ts', 'function settleFight', '遭遇槽 · 分胜负'],
+    ['packages/core/src/wormhole/battle/outcome.ts', 'function settleWormholeBattle', '洞内收口（沉了就真丢 ＋ 插件折黑匣）'],
+    ['packages/core/src/encounters/outcome.ts', 'function loseSunkShipsOfBattle', '遭遇槽的沉船助手（它必须调判据单点）'],
+    ['packages/core/src/encounters/outcome.ts', 'function settleEscape', '遭遇槽 · 撤退 / 自动脱离'],
+    ['packages/core/src/encounters/outcome.ts', 'function settleFight', '遭遇槽 · 分胜负'],
   ] as const) {
     const body = bodyOf(readSource(rel), head)
     /**
@@ -1613,7 +1614,7 @@ for (const m of MODULES) {
     )
   }
   check(
-    bodyOf(readSource('packages/core/src/expedition.ts'), 'export function resolveBattleOutcome').includes('abandoned = true'),
+    bodyOf(readSource('packages/core/src/expedition/outcome.ts'), 'export function resolveBattleOutcome').includes('abandoned = true'),
     '结算口径契约：远征 / 入侵主动出击那条路的「耐久归零 ⇒ 必弃船」不见了 —— ' +
       '那是它那套损失模型（弃船骰）的底线，删了等于"输了也不丢船"',
   )
@@ -1636,7 +1637,7 @@ for (const m of MODULES) {
    * ③ **不许**再出现 `droneHomeStation(dm, …)`（把机型模型直接喂"主控布局"的旧写法）。
    */
   {
-    const uiSrc = readFileSync(join(process.cwd(), 'apps/desktop/src/renderer/src/panels/BattleScreen.tsx'), 'utf8')
+    const uiSrc = readFileSync(join(process.cwd(), 'apps/desktop/src/renderer/src/features/combat/consumeBattleEvents.tsx'), 'utf8')
     /**
      * ⚠ **必须先剥注释**（口径同上面那条「战斗宿主双口径契约」）：本批的修复说明里就**原样引用了**
      * 旧写法 `droneHomeStation(dm, …)`——不剥注释的话，契约会被自己的解释文字绊倒（实测踩过一次）。
@@ -1759,7 +1760,9 @@ for (const m of MODULES) {
    */
   {
     const wePath = 'packages/core/src/weekendEvent.ts'
-    const weSrc = readSrc(wePath)
+    const weSrc = readSrc('packages/core/src/invasion/event/constants.ts') + '\n'
+      + readSrc('packages/core/src/invasion/event/occupation.ts') + '\n'
+      + readSrc('packages/core/src/invasion/event/lifecycle.ts')
     check(
       /export const WEEKEND_MIN_STANDING = 40/.test(weSrc),
       `入侵声望前提契约：${wePath} 必须定义 \`WEEKEND_MIN_STANDING = 40\`（船长令的"至少 40 声望"）`,
@@ -1845,7 +1848,7 @@ for (const m of MODULES) {
    * 现在还关着 ⇒ 只打印一行状态（不拦），提醒这份稿子还在等着。
    */
   {
-    const weSrc = readSrc('packages/core/src/weekendEvent.ts')
+    const weSrc = readSrc('packages/core/src/invasion/event/constants.ts')
     const invasionOpen = /export const WEEKEND_DEBUG_ONLY = false/.test(weSrc)
     if (invasionOpen) {
       const annSrc = readSrc('packages/data/src/announcements.ts')
@@ -1873,12 +1876,12 @@ for (const m of MODULES) {
    * 契约（源码级扫描）：`combat.ts` 的引擎取数行必须是**当前波**，且净削减函数必须滤掉已阵亡者。
    */
   {
-    const combatPath = 'packages/core/src/combat.ts'
-    const combatSrc = readSrc(combatPath)
+    const combatPath = 'packages/core/src/combat/advance.ts'
+    const combatSrc = readSrc(combatPath) + '\n' + readSrc('packages/core/src/combat/arcs.ts')
     // 2026-10-02 批次 4g：createPlayerSpec 迁到 playerSpec.ts ⇒ 基准账入账点随它搬家，契约改扫新家
-    const playerSpecSrc = readSrc('packages/core/src/playerSpec.ts')
+    const playerSpecSrc = readSrc('packages/core/src/combat/player/create.ts')
     // 2026-10-02 批次 4k：meJammerNetOf / applyMeJammerDebuff 迁到 foeRange.ts ⇒ 这两条契约改扫新家
-    const foeRangeSrc = readSrc('packages/core/src/foeRange.ts')
+    const foeRangeSrc = readSrc('packages/core/src/combat/foeRange.ts')
     const debuffLines = combatSrc.split('\n').filter((l) => l.includes('const foesForDebuff ='))
     check(
       debuffLines.length === 1 && debuffLines[0]!.includes('activeFoeSpecsOf(anomaly, bal, battle.waveIdx)'),
@@ -1932,7 +1935,7 @@ for (const m of MODULES) {
       `波次取数契约：${combatPath} 的 \`foeDesire\` / \`desireCapM\` 初值必须取**当前波**（\`curFoes\`）——` +
         `取第 0 波会让第 2 波起敌人按上一波的期望距离机动（界面读数与实际行为对不上）`,
     )
-    const expeditionPath = 'packages/core/src/expedition.ts'
+    const expeditionPath = 'packages/core/src/expedition/tactics.ts'
     const expeditionSrc = readSrc(expeditionPath)
     check(
       expeditionSrc.includes('activeFoeSpecsOf(anomaly, ctx.balance.battle, battle.waveIdx)') &&
@@ -8671,12 +8674,12 @@ function checkPlugEffectWiring(): void {
   const stripComments = (s: string): string =>
     s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')
   const dir = join(process.cwd(), 'packages/core/src')
-  const coreText = stripComments(
-    readdirSync(dir)
-      .filter((f) => f.endsWith('.ts') && f !== 'types.ts')
-      .map((f) => readFileSync(join(dir, f), 'utf8'))
-      .join('\n'),
-  )
+  const sourceTexts = (folder: string): string[] => readdirSync(folder, { withFileTypes: true }).flatMap(entry => {
+    const file = join(folder, entry.name)
+    if (entry.isDirectory()) return sourceTexts(file)
+    return entry.name.endsWith('.ts') && entry.name !== 'types.ts' ? [readFileSync(file, 'utf8')] : []
+  })
+  const coreText = stripComments(sourceTexts(dir).join('\n'))
   const dead = PLUG_EFFECT_FIELDS.filter((f) => !coreText.includes(f))
   check(
     dead.length === 0,

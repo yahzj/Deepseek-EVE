@@ -11,7 +11,7 @@ let render: (kind: 'burst' | 'impact' | 'coating') => string
 beforeAll(async () => {
   const result = await build({
     stdin: { contents: `import React from 'react'; import {renderToStaticMarkup} from 'react-dom/server';
-      import {AcidEffect} from './apps/desktop/src/renderer/src/panels/battleAcidFx';
+      import {AcidEffect} from './apps/desktop/src/renderer/src/features/combat/battleAcidFx';
       export const render=kind=>renderToStaticMarkup(React.createElement(AcidEffect,{effect:{key:1,tag:'foe-2',kind,x:400,y:100,size:110,born:0,delay:0}}));`,
       resolveDir: fileURLToPath(root), loader: 'tsx' },
     bundle: true, write: false, platform: 'node', format: 'cjs', external: ['react', 'react-dom/server'],
@@ -34,7 +34,8 @@ describe('爆虫专属SVG动画契约', () => {
   })
 
   it('专属事件在通用弹道之前独立消费，死亡爆炸不重复', () => {
-    const text = readFileSync(new URL('apps/desktop/src/renderer/src/panels/BattleScreen.tsx', root), 'utf8')
+    const text = readFileSync(new URL('apps/desktop/src/renderer/src/features/combat/consumeBattleEvents.tsx', root), 'utf8')
+      + readFileSync(new URL('apps/desktop/src/renderer/src/features/combat/buildEnemyLayers.tsx', root), 'utf8')
     const special = text.slice(text.indexOf('if (fx.acidBurst)'), text.indexOf('if (fx.blink)'))
     expect(special).toContain('continue')
     expect(special).toContain('resolveBoltAnchors')

@@ -134,9 +134,11 @@ describe('物品装备说明双语与数据守恒', () => {
 
 type Row = { k: string; v: unknown }
 const language = { value: 'zh' as 'zh' | 'en' }
-const file = new URL('../../../apps/desktop/src/renderer/src/ui/shipInfo.tsx', import.meta.url)
-const source = ts.createSourceFile('shipInfo.tsx', readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
-const code = source.statements.filter((node) => !ts.isImportDeclaration(node)).map((node) => node.getText(source)).join('\n')
+const code = ['primitives', 'shipLines', 'moduleEffects', 'moduleLines', 'cards'].map(name => {
+  const file = new URL(`../../../apps/desktop/src/renderer/src/features/ships/info/${name}.tsx`, import.meta.url)
+  const source = ts.createSourceFile(name + '.tsx', readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+  return source.statements.filter(node => !ts.isImportDeclaration(node) && !ts.isExportDeclaration(node)).map(node => node.getText(source)).join('\n')
+}).join('\n')
 const bindings = {
   ...core, exports: {},
   React: { createElement: (type: string, props: object, ...children: unknown[]) => ({ type, props, children }) },

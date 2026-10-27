@@ -18,9 +18,9 @@ describe('酸液仅装甲减抗现行说明接线', () => {
       expect(row.en).not.toMatch(/hull|[\u3400-\u9fff]/)
       expect(row.enDeferred).not.toBe(true)
     }
-    expect(text('apps/desktop/src/renderer/src/ui/foeBrief.ts')).toContain("tr('ui.alienArmor.001'")
-    expect(text('apps/desktop/src/renderer/src/panels/BattleScreen.tsx')).toContain("tr('ui.alienArmor.002'")
-    expect(text('apps/desktop/src/renderer/src/ui/shipInfo.tsx')).toContain("tr('ui.alienLoot.002'")
+    expect(text('apps/desktop/src/renderer/src/features/combat/foeBrief.ts')).toContain("tr('ui.alienArmor.001'")
+    expect(text('apps/desktop/src/renderer/src/features/combat/BattleScreen.tsx')).toContain("tr('ui.alienArmor.002'")
+    expect(text('apps/desktop/src/renderer/src/features/ships/info/moduleLines.tsx')).toContain("tr('ui.alienLoot.002'")
   })
 
   it('旧英文和历史公告不追改，现行说明已完成英文并清除待译', () => {

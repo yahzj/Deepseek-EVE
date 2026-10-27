@@ -11,7 +11,7 @@ let render: (props: { shipId: string; acceleration?: 'boost' | 'charge'; engine?
 beforeAll(async () => {
   const result = await build({
     stdin: { contents: `import React from 'react';import{renderToStaticMarkup}from'react-dom/server';
-      import{BattleShipSprite}from'./apps/desktop/src/renderer/src/panels/battleShipFx';
+      import{BattleShipSprite}from'./apps/desktop/src/renderer/src/features/combat/battleShipFx';
       export const render=props=>renderToStaticMarkup(React.createElement(BattleShipSprite,{size:170,...props}));`,
       resolveDir: fileURLToPath(root), loader: 'tsx' },
     bundle: true, write: false, platform: 'node', format: 'cjs', external: ['react', 'react-dom/server'],
@@ -56,7 +56,8 @@ describe('战斗专用加速舰影', () => {
   })
 
   it('三处战斗舰影都取视图单点，减少动态保留静态图形', () => {
-    const screen = readFileSync(new URL('apps/desktop/src/renderer/src/panels/BattleScreen.tsx', root), 'utf8')
+    const screen = readFileSync(new URL('apps/desktop/src/renderer/src/features/combat/renderBattleScene.tsx', root), 'utf8')
+      + readFileSync(new URL('apps/desktop/src/renderer/src/features/combat/buildEnemyLayers.tsx', root), 'utf8')
     expect(screen.match(/<BattleShipSprite\b/g)).toHaveLength(3)
     expect(screen).toContain("acceleration={u.boosting ? 'boost'")
     expect(screen).toContain('arcs.foeChargingTags.includes(tag)')

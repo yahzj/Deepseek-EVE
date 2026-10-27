@@ -376,7 +376,24 @@ export class DataEditorRepository implements Pick<DataEditorApi, 'openProject' |
     const enemyCount = ENEMY_TABLES.filter(table => documents[table]).length
     if (enemyCount && enemyCount !== ENEMY_TABLES.length) issues.push({ message: '敌人参数六张表须完整迁移，不接受部分接入' })
     if (enemyCount) {
-      for (const file of ['packages/data/src/static/enemyFields.json', 'packages/data/src/foe-ships.ts', 'packages/data/src/foe-drones.ts', 'packages/data/src/anomalies.ts', 'packages/data/src/wormholeFoes.ts', 'packages/core/src/foeMounts.ts', 'packages/core/src/enemyParameters.ts']) raw.set(file, await read(identity.root, file))
+      const readEnemySource = async (file: string): Promise<void> => {
+        if (raw.has(file)) return
+        const bytes = await read(identity.root, file)
+        raw.set(file, bytes)
+        if (!/\.tsx?$/.test(file)) return
+        const ast = ts.createSourceFile(file, bytes.toString('utf8'), ts.ScriptTarget.Latest, true)
+        const facade = ast.statements.length > 0 && ast.statements.every(ts.isExportDeclaration)
+        for (const n of ast.statements) {
+          if (!ts.isExportDeclaration(n) && !ts.isImportDeclaration(n)) continue
+          if (!n.moduleSpecifier || !ts.isStringLiteral(n.moduleSpecifier) || !n.moduleSpecifier.text.startsWith('.')) continue
+          if (n.moduleSpecifier.text.endsWith('.json')) continue
+          const target = relative(identity.root, resolve(identity.root, dirname(file), n.moduleSpecifier.text + '.ts')).replace(/\\/g, '/')
+          if (!target.startsWith('packages/core/src/') && !target.startsWith('packages/data/src/')) throw new Error('敌人源码转导出路径越界')
+          if (!facade && !/^packages\/(core|data)\/src\/(combat|invasion|wormhole)\//.test(target)) continue
+          await readEnemySource(target)
+        }
+      }
+      for (const file of ['packages/data/src/static/enemyFields.json', 'packages/data/src/foe-ships.ts', 'packages/data/src/foe-drones.ts', 'packages/data/src/anomalies.ts', 'packages/data/src/wormholeFoes.ts', 'packages/core/src/foeMounts.ts', 'packages/core/src/enemyParameters.ts']) await readEnemySource(file)
       const metadata = json(raw.get('packages/data/src/static/enemyFields.json')!, 'enemyFields.json') as typeof ENEMY_FIELDS
       for (const table of ENEMY_TABLES) {
         if (!Array.isArray(metadata?.[table]) || JSON.stringify(metadata[table].map(row => [row.id, row.fields])) !== JSON.stringify(ENEMY_FIELDS[table].map(row => [row.id, row.fields]))) issues.push({ table, message: '敌人字段来源契约与此编辑器不匹配，请更新编辑器；不会忽略未知字段' })

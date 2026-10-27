@@ -17,7 +17,7 @@ function renderer(locale: 'zh' | 'en') {
   runInNewContext(ts.transpileModule(source, { fileName: 'locale.tsx', compilerOptions: {
     module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.React,
   } }).outputText, { exports, require: (id: string) => mocks[id], localStorage: { getItem: () => locale }, navigator: { language: locale } })
-  const ast = ts.createSourceFile('shipInfo.tsx', readFileSync(resolve(ROOT, 'apps/desktop/src/renderer/src/ui/shipInfo.tsx'), 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+  const ast = ts.createSourceFile('shipInfo.tsx', readFileSync(resolve(ROOT, 'apps/desktop/src/renderer/src/features/ships/info/shipLines.tsx'), 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
   const fn = ast.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === 'shipInfoLines')!
   const scope = { exports: {} as { shipInfoLines: (ship: ShipDef) => Array<{ k: string; v: string }> },
     tr: exports.tr, fmt: String, pct: (value: number) => `${Math.round(value * 100)}%`,

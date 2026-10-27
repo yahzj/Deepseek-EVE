@@ -17,7 +17,7 @@ const root = new URL('../../../', import.meta.url)
 let compiled = ''
 beforeAll(async () => {
   const result = await build({
-    entryPoints: [fileURLToPath(new URL('apps/desktop/src/renderer/src/panels/BattleScreen.tsx', root))],
+    entryPoints: [fileURLToPath(new URL('apps/desktop/src/renderer/src/features/combat/BattleScreen.tsx', root))],
     bundle: true, write: false, platform: 'node', format: 'cjs', jsx: 'transform',
     tsconfigRaw: { compilerOptions: { jsx: 'react' } },
     banner: { js: "var React = require('react');" }, external: ['react', 'lucide-react', '@whale/core', '@whale/data'],
@@ -26,7 +26,7 @@ beforeAll(async () => {
         'export const tr=globalThis.__tr; export const futureTr=tr; export const isEn=()=>false; export const cmdText=()=>""; export const mountNamesTextOf=(x)=>x??[]; export const logText=(x)=>x.text??"";' }))
       builder.onLoad({ filter: /[\\/]ui[\\/]Tooltip\.tsx$/ }, () => ({ loader: 'js', contents:
         'export const hoverTipProps=()=>({}); export const TIP_DELAY_MS=500;' }))
-      builder.onLoad({ filter: /[\\/]ui[\\/]battleFit\.ts$/ }, () => ({ loader: 'js', contents: 'export const useBattleFit=()=>{};' }))
+      builder.onLoad({ filter: /[\\/]features[\\/]combat[\\/]battleFit\.ts$/ }, () => ({ loader: 'js', contents: 'export const useBattleFit=()=>{};' }))
       builder.onLoad({ filter: /\.css$/ }, () => ({ loader: 'js', contents: '' }))
     } }],
   })
@@ -116,7 +116,7 @@ describe('实际战场渲染链换场与读档', () => {
     expect(battleArcsFor(h.engine.state, h.ctx)!.myUnits[0]!.drones[0]!.deployed).toBe(2)
   })
   it('紧凑界面保持同源演出单点，复位在舰位计算之前', () => {
-    const source = readFileSync(new URL('apps/desktop/src/renderer/src/panels/BattleScreen.tsx', root), 'utf8')
+    const source = readFileSync(new URL('apps/desktop/src/renderer/src/features/combat/BattleScreen.tsx', root), 'utf8')
     expect(source.indexOf('battleFxArrivals(fxCursorRef.current, battle)')).toBeLessThan(source.indexOf('const foeAliveTags'))
     expect(source).toContain('droneSortieRef.current.clear()')
     expect(source).toContain('blinkRef.current.clear()')

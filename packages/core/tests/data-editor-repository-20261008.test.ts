@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process'
 import * as fs from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { isAbsolute, join, relative, sep } from 'node:path'
+import { isAbsolute, join, posix, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BLUEPRINTS, SHIP_BLUEPRINTS } from '@whale/data'
@@ -10,6 +10,7 @@ import { TABLE_FILES } from '../../../tools/data-editor-schema'
 import type { DataDocument, DataRow, DataTable, NumericEdit } from '../../../tools/data-editor-contract'
 import fieldTypes from '../../data/src/staticFieldTypes.json'
 import { ENEMY_TABLES, ENEMY_FILES } from '../../../tools/data-editor-enemy-schema'
+import ts from 'typescript'
 
 vi.setConfig({ testTimeout: 30_000, hookTimeout: 30_000 })
 
@@ -580,11 +581,37 @@ describe('JSON仓库服务 · 崩溃恢复与生产限制', () => {
 })
 
 async function enemyFixture(): Promise<void> {
-  for (const file of [...Object.values(ENEMY_FILES), 'packages/data/src/static/enemyFields.json', 'packages/data/src/foe-ships.ts', 'packages/data/src/foe-drones.ts', 'packages/data/src/anomalies.ts', 'packages/data/src/wormholeFoes.ts', 'packages/core/src/foeMounts.ts', 'packages/core/src/enemyParameters.ts']) {
-    await write(root, file, await fs.readFile(new URL(`../../../${file}`, import.meta.url)))
+  const seen = new Set<string>()
+  const copySource = async (file: string): Promise<void> => {
+    if (seen.has(file)) return
+    seen.add(file)
+    const source = await fs.readFile(new URL(`../../../${file}`, import.meta.url))
+    await write(root, file, source)
+    if (!file.endsWith('.ts')) return
+    const ast = ts.createSourceFile(file, source.toString('utf8'), ts.ScriptTarget.Latest, true)
+    const facade = ast.statements.length > 0 && ast.statements.every(ts.isExportDeclaration)
+    for (const n of ast.statements) {
+      if (!ts.isExportDeclaration(n) && !ts.isImportDeclaration(n)) continue
+      if (!n.moduleSpecifier || !ts.isStringLiteral(n.moduleSpecifier) || !n.moduleSpecifier.text.startsWith('.')) continue
+      if (n.moduleSpecifier.text.endsWith('.json')) continue
+      const target = posix.normalize(posix.join(posix.dirname(file), n.moduleSpecifier.text + '.ts'))
+      if (facade || /^packages\/(core|data)\/src\/(combat|invasion|wormhole)\//.test(target)) await copySource(target)
+    }
   }
+  for (const file of [...Object.values(ENEMY_FILES), 'packages/data/src/static/enemyFields.json', 'packages/data/src/foe-ships.ts', 'packages/data/src/foe-drones.ts', 'packages/data/src/anomalies.ts', 'packages/data/src/wormholeFoes.ts', 'packages/core/src/foeMounts.ts', 'packages/core/src/enemyParameters.ts']) await copySource(file)
 }
 describe('六类敌人参数 · 事务范围', () => {
+  it('敌舰分目录后实现源码仍进入指纹，改实现即拒绝旧计划且JSON不变', async () => {
+    await enemyFixture()
+    const project = await repo.openProject(root)
+    const originals = await Promise.all(ENEMY_TABLES.map(table => bytes(table)))
+    const implementation = 'packages/data/src/combat/ships/alien.ts'
+    await write(root, implementation, Buffer.concat([await fs.readFile(join(root, implementation)), Buffer.from('\n// fingerprint probe\n')]))
+    const row = project.rows.find(row => row.table === 'foeShips' && row.fields.some(field => field.writable && field.path === 'hp'))!
+    expect((await repo.openProject(root)).fingerprint).not.toBe(project.fingerprint)
+    await expect(repo.preview(root, project.fingerprint, [{ table: 'foeShips', id: row.id, path: 'hp', value: Number(row.values.hp) + 1 }])).rejects.toThrow('外部修改')
+    expect(await Promise.all(ENEMY_TABLES.map(table => bytes(table)))).toEqual(originals)
+  })
   it('读取全部敌人表与具名编队；六表一次保存、原文备份与恢复，core挂载文件同受保护', async () => {
     await enemyFixture()
     const project = await repo.openProject(root)

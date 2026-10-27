@@ -185,3 +185,54 @@
 
 _建表：2026-09-27（三号 · verify）· 首批条目取自 2026-09-24~27 各批归档结论与本次全仓取证；_
 _条目增删随代码走；规则变更仍按开发约定的工作文档与归档流程处理。_
+
+## 2026-10-27 分目录实现落点
+
+| 符号 | 唯一实现 |
+|---|---|
+| `fittingRangeStats` | `packages/core/src/combat/fittingRange.ts` |
+| `acidResistsOf` | `packages/core/src/combat/alienEquipment.ts` |
+| `foeAcidRowsOf` | `packages/core/src/combat/alienEquipment.ts` |
+| `battleSpeedBonusOf` | `packages/core/src/combat/alienEquipment.ts` |
+| `laserFalloffOf` | `packages/core/src/ships/fitting/effects.ts` |
+| `battleAmmoPreloadPlan` | `packages/core/src/combat/battleAmmoPreflight.ts` |
+| `battleCardRangeOf` | `packages/core/src/combat/battleRangeMemory.ts` |
+| `playerFleetMaxRangeOf` | `packages/core/src/combat/battleRangeMemory.ts` |
+| `withBattleRangeCheck` | `packages/core/src/combat/battleRangeMemory.ts` |
+| `pendingBattleRangeView` | `packages/core/src/combat/battleRangeMemory.ts` |
+| `sameShipRoster` | `packages/core/src/combat/battleRangeMemory.ts` |
+| `foeFamilyHpMulOf` | `packages/core/src/combat/foePower.ts` |
+| `SHIP_HP_UPLIFT_MUL` | `packages/core/src/combat/combatMath.ts` |
+| `crisisEffectsOf` | `packages/core/src/combat/gravekeeperGear.ts` |
+| `playerGravekeeperSpecOf` | `packages/core/src/combat/gravekeeperGear.ts` |
+| `noteRailAttack` | `packages/core/src/combat/gravekeeperGear.ts` |
+| `applyPlayerUnitDamage` | `packages/core/src/combat/damage.ts` |
+| `foeShipHpMulOf` | `packages/core/src/combat/foePower.ts` |
+| `playerWeaponInRange` | `packages/core/src/combat/combatMath.ts` |
+| `playerBlindDamageMul` | `packages/core/src/combat/combatMath.ts` |
+| `BountyWinCache` | `apps/desktop/src/renderer/src/features/combat/estimate/bountyWinCache.ts` |
+| `enemyParameterOf` | `packages/core/src/combat/enemyParameters.ts` |
+| `battleFxArrivals` | `apps/desktop/src/renderer/src/features/combat/battleFxCursor.ts` |
+| `battleWeaponAmmoCost` | `packages/core/src/combat/combatAmmo.ts` |
+| `droneLaunchGapMsOf` | `packages/core/src/combat/droneLaunch.ts` |
+| `repairSlotExpansionPlugs` | `packages/core/src/ships/fitting/repair.ts` |
+| `autoLoopInvasionPlanOf` | `packages/core/src/expedition/invasionLoop.ts` |
+| `battleWeaponCyclesOf` | `packages/core/src/combat/battleWeaponView.ts` |
+| `battleDeviceCyclesOf` | `packages/core/src/combat/battleDeviceView.ts` |
+| `fittedPenaltyPartsOf` | `packages/core/src/ships/fitting/effects.ts` |
+| `equipmentPenaltiesOf` | `packages/core/src/ships/fitting/effects.ts` |
+| `equipmentCycleMsOf` | `packages/core/src/ships/fitting/effects.ts` |
+| `announceFoeGunRangeBuff` | `packages/core/src/combat/foeRange.ts` |
+| `SHIELD_FIELD_COST_PCT` | `packages/core/src/combat/combatRepair.ts` |
+| `pulseShieldFieldFor` | `packages/core/src/combat/combatRepair.ts` |
+| `battleArcsFor` | `packages/core/src/combat/arcs.ts` |
+| `triggerAcidBurst` | `packages/core/src/combat/alienCombat.ts` |
+| `applyAlienCorrosion` | `packages/core/src/combat/alienCombat.ts` |
+| `advanceFoeHatcheries` | `packages/core/src/combat/alienCombat.ts` |
+| `advanceFoeAbilityClocks` | `packages/core/src/combat/alienCombat.ts` |
+| `foeFleetSpeedMulOf` | `packages/core/src/combat/alienCombat.ts` |
+| `volleyGunCountOf` | `packages/core/src/combat/combatVolley.ts` |
+| `volleyDamageShareOf` | `packages/core/src/combat/combatVolley.ts` |
+| `coronaFocusBonusOf` | `packages/core/src/combat/coronaFocus.ts` |
+| `coronaFleetRangeBonusOf` | `packages/core/src/combat/coronaFocus.ts` |
+| `supportFoeModelTagOf` | `packages/core/src/combat/foeCard.ts` |

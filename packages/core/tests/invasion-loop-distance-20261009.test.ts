@@ -145,8 +145,9 @@ describe('入侵目标距离不因首波量程缩小', () => {
   })
 
   it('战场目标数字显示原目标，滑条图形仍按当前量程钳制', () => {
-    const source = readFileSync(new URL('../../../apps/desktop/src/renderer/src/panels/BattleScreen.tsx', import.meta.url), 'utf8')
+    const source = readFileSync(new URL('../../../apps/desktop/src/renderer/src/features/combat/BattleScreen.tsx', import.meta.url), 'utf8')
     expect(source).toContain('const desireM = Math.min(farM, Math.max(nearM, combat.myDesireM))')
-    expect(source).toContain("dragV === null ? Math.round(combat.myDesireM) : sliderToDesire(sliderV)")
+    const scene = readFileSync(new URL('../../../apps/desktop/src/renderer/src/features/combat/renderBattleScene.tsx', import.meta.url), 'utf8')
+    expect(scene).toContain("dragV === null ? Math.round(combat.myDesireM) : sliderToDesire(sliderV)")
   })
 })

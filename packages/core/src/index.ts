@@ -19,6 +19,7 @@ export type { PendingStationActivity, StationAction } from './stationActivityPen
 export type { BattleWeaponCycleView } from './battleWeaponView'
 export { battleDeviceCyclesOf } from './battleDeviceView'
 export type { BattleDeviceCycleView } from './battleDeviceView'
+export type { BattleState, BattleRepairLedger } from './state'
 
 export type {
   SkillDef,

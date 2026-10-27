@@ -35,7 +35,7 @@ function renderer(locale: 'zh' | 'en') {
   const localize = scope.exports
   scope.tr = localize.tr
   scope.isEn = localize.isEn
-  execute(sourceOf('apps/desktop/src/renderer/src/ui/foeBrief.ts'))
+  execute(sourceOf('apps/desktop/src/renderer/src/features/combat/foeBrief.ts'))
   return { ...localize, ...scope.exports } as {
     logText: (notice: NonNullable<BattleState['notices']>[number]) => string
     mountEffectText: (id: string) => string
@@ -153,7 +153,7 @@ describe('导弹残段独立观瞄显示', () => {
     expect(battle.notices).toHaveLength(3)
     expect(battle.notices!.find(n => n.textId === 'core.combat.012')!.textParams).toEqual({ p1: 80 })
     expect(renderer('en').logText(battle.notices!.find(n => n.text === 'legacy')!)).toBe('legacy')
-    const screen = readFileSync(new URL('../../../apps/desktop/src/renderer/src/panels/BattleScreen.tsx', import.meta.url), 'utf8')
+    const screen = readFileSync(new URL('../../../apps/desktop/src/renderer/src/features/combat/BattleScreen.tsx', import.meta.url), 'utf8')
     expect(screen).toContain('text: logText(n)')
   })
 })
