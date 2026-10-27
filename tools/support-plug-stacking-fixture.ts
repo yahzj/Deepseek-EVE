@@ -12,7 +12,6 @@ export function injectSupportPlugStackingFixture(state: GameState): string[] {
   state.wallet.isk = 1e9
   state.standings.dsi = 60
   state.standingsEarned = { dsi: 0 }
-  state.standingClawbackDone = true
   state.exploredGalaxies = [...ctx.galaxies.keys()]
   for (const task of FIRST_TASKS) state.importantTasks[task.id] = { done: true }
   for (const id of ctx.commsMessages.keys()) { state.commsDelivered![id] = 0; state.commsRead![id] = true }

@@ -410,21 +410,6 @@ export {
 } from './weekendEvent'
 export type { WeekendAmbushPick, WeekendBossPoolView, WeekendEventState, WeekendFlagshipView, WeekendTickResult } from './weekendEvent'
 
-/* 2026-10-02 船长令：入侵补偿批（"这一期还是墨潮帮"的档开一场光环补场 · 其余玩家发 1 枚信号发射器）
-   —— 判定双判据 / 判一次落盘 / 暗期开一场，全部在 `weekendCompensation.ts`（工具与用例都读它） */
-export {
-  WEEKEND_COMPENSATION_T0_WALL_MS,
-  WEEKEND_MAKEUP_FAMILY,
-  WEEKEND_MAKEUP_FIRST_WALL_MS,
-  WEEKEND_MAKEUP_FIRST_END_WALL_MS,
-  weekendMakeupWindowOf,
-  weekendCompensationTrackOf,
-  /** 船长 2026-10-02 令「乙」：开补场前回头看的唯一判据（本期已真出过光环 ⇒ 跳过补场、改发 1 枚道具） */
-  weekendCompensationGotRThisPeriod,
-  applyWeekendCompensation,
-  openWeekendMakeupIfDue,
-} from './weekendCompensation'
-
 /* 2026-09-23 周末入侵 · 战斗与结算（M1-b） */
 export {
   WEEKEND_ALL_CLEAR_ISK,
@@ -468,11 +453,6 @@ export {
   WEEKEND_COMMS_FACTION_ID,
   WEEKEND_COMMS_SETTLE_ID,
   WEEKEND_COMMS_WARN_ID,
-  // 2026-09-26 船长令：给"推送前打完入侵却没拿到黑匣"的档补发 1 枚（判据见函数头注）
-  WEEKEND_BOX_COMPENSATION_CUTOFF_WALL_MS,
-  compensateMissingWeekendBlackBox,
-  // 2026-09-28 船长令「采用工具线上补发」：逐 tick 对账，补"记录在案的规则本该必爆却漏发"的场次
-  reconcileWeekendBlackBox,
   weekendFamilyNameId,
   weekendFamilyNameZh,
   weekendRewardLinesOf,
@@ -952,8 +932,6 @@ export {
   spendableStandingOf,
   noteStandingEarned,
   spendStanding,
-  // 2026-09-26 船长裁定：按悬赏进度削减被抬高过的累计声望（读档后一次性、只降不升）
-  repairStandingFromBountyProgress,
   INITIAL_STANDING,
   bountyRewardFactor,
   calcPower,
@@ -1142,7 +1120,6 @@ export {
   wreckGroupKeyOfAnomaly,
   wreckGroupOfAnomaly,
   wreckGroupOfItemId,
-  migratedWreckItemId,
 } from './wreckGroups'
 export type { WreckGroupDef, WreckRegion } from './wreckGroups'
 export { advanceSalvageOp, startSalvageOp, stopSalvageOp, retireSalvageShip, setSalvageAutoCycle, setSalvageStopAfterTrip, salvagerCyclesOf, pullOneWreck, wreckUnitsOf, legMsFor, outboundLegMsFor, salvageReturnMs, setSalvageTarget, wreckTargetsOf } from './salvaging'
@@ -1496,7 +1473,7 @@ export {
   SaveError,
   serializeSaveFile,
   loadSaveFile,
-  MIN_MIGRATABLE_VERSION,
+  MIN_SUPPORTED_SAVE_VERSION,
 } from './save'
 
 export {
@@ -2040,8 +2017,6 @@ export {
   wormholeStockPush,
   wormholeStockTake,
   advanceWormholeScan,
-  // 2026-09-16 限时促销「虫洞大量生成」：逐 tick 幂等的一次性赠送（只发一次、只给已解锁者）
-  reconcileWormholePromoGift,
 } from './wormholeScan'
 export type { WormholeScanState, WormholeStockItem, WormholeArchetype, WormholeFamily } from './state'
 // 限时倍率表（2026-09-15 船长：「允许我快速设置在指定的现实日期之前，给特定数值调整一个倍率」）：
@@ -2054,10 +2029,9 @@ export {
   ruleActiveAt,
   tuningMul,
   tuningMulAt,
-  // 促销层（2026-09-16「虫洞大量生成」）：一条促销 = 扫描倍率 ＋ 一次性赠送 ＋ 合并展示文案
+  // 促销层：一条促销 = 扫描倍率 ＋ 合并展示文案
   PROMOS,
   activePromos,
-  activePromoGifts,
   promoActiveAt,
   promoScanMul,
   promoScanMulAt,

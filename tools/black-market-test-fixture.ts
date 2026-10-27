@@ -13,7 +13,6 @@ export function blackMarketTestSave(now = Date.now(), standing = 100): string {
   state.wallet.isk = 1000000000000
   state.standingsEarned = { dsi: standing }
   state.standings.dsi = 0
-  state.standingClawbackDone = true
   state.exploredGalaxies = [...ctx.galaxies.keys()]
   for (const task of FIRST_TASKS) state.importantTasks[task.id] = { done: true }
   advanceGame(state, 1, ctx, { nowWallMs: now })

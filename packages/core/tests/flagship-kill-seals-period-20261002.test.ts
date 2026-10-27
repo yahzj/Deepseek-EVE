@@ -15,11 +15,11 @@
  *
  * - **只有"玩家击杀旗舰"这一种结束方式封盘**；章鱼人得手（`'octopus'`）与到点收场（`'window'`）**照旧可连开**；
  * - **封盘只封本期**：下一期 T0 一到照常开新场；
- * - ⚠ **不封**玩家召唤场（信号发射器点火）与**不封**补偿补场（`weekendCompensation` 那一场光环）。
+ * - ⚠ **不封**玩家召唤场（信号发射器点火）。
  *
- * 本文件锁六件事：① 真结算链打空池子 ⇒ 留档 `player` ⇒ **封盘**（不再开新场）；
+ * 本文件锁五件事：① 真结算链打空池子 ⇒ 留档 `player` ⇒ **封盘**（不再开新场）；
  * ② 本期内**反复调**都不开（幂等）；③ 下一期 T0 到 ⇒ **解封**；④ 章鱼人得手 ⇒ **不封盘**；
- * ⑤ 到点收场 ⇒ 不封盘；⑥ 封盘期间**信号发射器照旧能点火**、**补偿补场照旧能开**。
+ * ⑤ 到点收场 ⇒ 不封盘；⑥ 封盘期间**信号发射器照旧能点火**。
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
@@ -40,7 +40,6 @@ import {
 import type { WeekendEventState } from '../src/weekendEvent'
 import { weekendFlagshipSpecOf, weekendResolveBattle, weekendSettleAndGrant } from '../src/weekendBattle'
 import { weekendFlagshipPrepView } from '../src/weekendLaunch'
-import { openWeekendMakeupIfDue } from '../src/weekendCompensation'
 
 const ctx = buildSimContext()
 const H = 3_600_000
@@ -142,7 +141,7 @@ describe('本期击杀旗舰 ⇒ 本期封盘（船长 2026-10-02 令「甲」�
     expect(weekendTick(s, ctx, NOW + 1000, NOW, false).started).toBe(true)
   })
 
-  it('⑥ 封盘期间：**信号发射器照旧能点火** · **补偿补场照旧能开**（两条都不在治理范围内）', () => {
+  it('⑥ 封盘期间：玩家主动使用信号发射器照旧能点火', () => {
     const s = base()
     bossEvent(s)
     killFlagship(s)
@@ -154,16 +153,6 @@ describe('本期击杀旗舰 ⇒ 本期封盘（船长 2026-10-02 令「甲」�
     expect(s.weekendEvent?.endedAtWallMs, '点出一场新场（未结束）').toBeUndefined()
     /** 发射器点出来的族是**随机**的（R/H，2026-10-02 另一条船长令）——这里只断言"确实是一支合法的入侵族" */
     expect(['R', 'C', 'H']).toContain(s.weekendEvent?.family)
-    /** 受影响档的补偿补场：与本期封盘互不干涉（那条路是承诺，不是自动连开） */
-    const c = base()
-    bossEvent(c)
-    killFlagship(c)
-    c.weekendCompensation = { track: 'makeup', decidedAtWallMs: NOW }
-    /** 补场窗口 = 周三 20:00 ~ 周五 20:00（本批取 2026-10-07 20:00 那一格） */
-    const WED = new Date(2026, 9, 7, 20, 0, 0, 0).getTime()
-    expect(weekendPeriodSealedByKill(c, T0), '这一档本期确实封盘').toBe(true)
-    expect(openWeekendMakeupIfDue(c, ctx, WED), '补场照旧开（不受封盘影响）').toBe(true)
-    expect(c.weekendEvent?.family, '补场族 = 光环科技').toBe('R')
   })
 
   /**

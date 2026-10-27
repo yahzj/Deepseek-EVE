@@ -3,7 +3,7 @@
  *
  * 覆盖：① 节点表与货币常量的一致性 · ② 研究判据（谜质/信用点/前置/满级）与扣款 ·
  * ③ 按 `effect` 关键字聚合 · ④ 四条机制读数（最大回合数 · 洞内倍速 · 扫描间隔 · 效率加成 · 工业三件）·
- * ⑤ 存档迁移 v28 → v29 与读档往返。
+ * ⑤ v31 当前结构的研究字段清洗与读档往返。
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
@@ -434,15 +434,13 @@ describe('谜质科技树 · 2026-09-30 新增四条（精炼提速 · 涓流 ·
   })
 })
 
-describe('谜质科技树 · 存档（v28 → v29）', () => {
-  it('老档补空树（零行为变化）；新档往返不丢等级', () => {
+describe('谜质科技树 · v31 存档清洗', () => {
+  it('当前版本缺少研究字段时补空树；正常往返保留等级', () => {
     const state = world()
     researchMatterTech(state, ctx, 'mt-battle-hit')
     const text = serializeSaveFile(state)
-    // 造一份"v28 老档"：删掉 research、版本降回 28
+    // 保持 v31 文件头，只删结构字段，验证 normalizeState 的坏/缺字段容错。
     const raw = JSON.parse(text) as { version: number; state: Record<string, unknown> }
-    raw.version = 28
-    raw.state.version = 28
     delete raw.state.research
     const { state: loaded } = loadSaveFile(JSON.stringify(raw))
     expect(loaded.version).toBe(CURRENT_STATE_VERSION)

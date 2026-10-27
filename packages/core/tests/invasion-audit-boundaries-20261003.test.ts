@@ -5,7 +5,6 @@ import type { GameState } from '../src/state'
 import { addWare } from '../src/inventory'
 import { consumableStockOf, INVASION_BEACON_ITEM_ID, useInvasionBeacon } from '../src/consumables'
 import { weekendSettleAndGrant } from '../src/weekendBattle'
-import { openWeekendMakeupIfDue, WEEKEND_MAKEUP_FIRST_WALL_MS } from '../src/weekendCompensation'
 import { injectWeekendRareWreck, injectWeekendWreck } from '../src/salvage'
 import { invasionWreckRowsOf, wreckAiHostOf, wreckCardSequenceOf } from '../../../apps/desktop/src/renderer/src/pages/wreckCards'
 
@@ -69,19 +68,6 @@ describe('信号发射器边界与连续换场', () => {
     expect(s).toEqual(after)
   })
 
-  it('补偿补场替换本拍刚结束的旧场前，先发完旧场奖励并留快照', () => {
-    const s = ready()
-    s.standingsEarned = { dsi: 100 }
-    s.weekendCompensation = { track: 'makeup', decidedAtWallMs: now }
-    s.weekendEvent = { seq: 1, startedAtWallMs: now, endedAtWallMs: WEEKEND_MAKEUP_FIRST_WALL_MS,
-      coreId: GID, peripheryIds: ['galaxy-redring'], family: 'H', contributed: { 'galaxy-redring': 1 } }
-    const control = structuredClone(s)
-    weekendSettleAndGrant(control, ctx, WEEKEND_MAKEUP_FIRST_WALL_MS)
-    expect(openWeekendMakeupIfDue(s, ctx, WEEKEND_MAKEUP_FIRST_WALL_MS)).toBe(true)
-    expect(s.weekendEvent?.family).toBe('R')
-    expect(s.wallet).toEqual(control.wallet)
-    expect(s.weekendLastResult).toEqual(control.weekendLastResult)
-  })
 })
 
 it('族卡与详情同源：名称各自对应物品，存量降序，稀有空量卡仍在', () => {

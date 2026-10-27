@@ -59,7 +59,7 @@ export function achievementReached(state: GameState, source: AchievementSource):
  * **某条链已达成到第几级**（0 = 一级未达）。
  *
  * ⚠ 与 `advanceFirstChains` 的记账**同一把尺**：它写 `importantTasks['chain-<id>'].delivered`，
- * 本函数读同一个键。老档缺这个键 ⇒ 读作 0（链从 0 起算；补发逻辑见 `save.ts` 的 `MIGRATIONS[29]`）。
+ * 本函数读同一个键。缺键读作 0，达标徽章由 `advanceAchievements` 正常追溯。
  */
 export function chainProgress(state: GameState, chainId: string): number {
   return state.importantTasks[`chain-${chainId}`]?.delivered ?? 0
@@ -69,7 +69,7 @@ export function chainProgress(state: GameState, chainId: string): number {
  * **补发 + 每拍判定**（引擎每拍调用）：把"已达成但账上没有"的徽章补进 `earned`，
  * 返回**本次新到手**的徽章定义列表（调用方据此发通讯/日志；不发任何奖励）。
  *
- * 为什么用"现算补发"而不是"只在事件点发"：老档（迁移时补发）与**任何漏发场景**
+ * 为什么用"现算补发"而不是"只在事件点发"：已有进度与**任何漏发场景**
  * （读档、异常中断、以后新增判定支线）都靠这条自愈 —— 判定是幂等的，多发不了。
  */
 export function advanceAchievements(

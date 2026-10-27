@@ -89,7 +89,6 @@
     "weekend:board": "tsx tools/weekend-board-inspect.ts",
     "weekend:sim": "tsx tools/weekend-flagship-sim.ts",
     "weekend:gain": "tsx tools/weekend-gain-impact.ts",
-    "weekend:compensation": "tsx tools/weekend-compensation.ts",
     "save:webfile-check": "tsx tools/web-savefile-check.ts",
     "save:reconnect-check": "tsx tools/save-reconnect-browser-check.ts",
     "ui:contrast": "tsx tools/ui-contrast.ts",

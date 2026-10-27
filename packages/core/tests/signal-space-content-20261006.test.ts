@@ -13,12 +13,12 @@ import {
 import { L10N } from '../../data/src/l10n/table'
 import { signalSpaceTextId, SIGNAL_SPACE_TEXT_IDS } from '../src/explorationText'
 import { resolveFoeMounts } from '../src/foeMounts'
-import { loadSaveFile, serializeSaveFile } from '../src/save'
+import { loadSaveFile, SaveError, serializeSaveFile } from '../src/save'
 import { createInitialState } from '../src/state'
 import { wormholeScanBonusOf } from '../src/wormhole'
 import { wormholeExpeditionCard } from '../src/wormholeExpeditionFoes'
 import {
-  migratedWreckItemId, wreckGroupOfItemId, WRECK_FAMILY_NAMES, WRECK_GROUPS, WRECK_REGION_LABELS, WRECK_YIELD_TIER_MUL,
+  wreckGroupOfItemId, WRECK_FAMILY_NAMES, WRECK_GROUPS, WRECK_REGION_LABELS, WRECK_YIELD_TIER_MUL,
 } from '../src/wreckGroups'
 
 // 船长指定旧玩法来源；只读固定提交，不读取主树或物化另一份工作区。
@@ -190,7 +190,7 @@ describe('信号空间内容 · 固定来源与纯文案边界', () => {
       }
       for (const member of row.members) {
         expect(wreckGroupOfItemId(`wreck-${member}`)!.key).toBe(row.key)
-        expect(migratedWreckItemId(`wreck-rare-${member}`)).toBe(`wreck-rare-${row.key}`)
+        expect(wreckGroupOfItemId(`wreck-rare-${member}`)!.key).toBe(row.key)
       }
     }
   })
@@ -257,7 +257,7 @@ describe('信号空间内容 · 固定来源与纯文案边界', () => {
     }
   })
 
-  it('v27每卡残骸仍迁移到同一组并合并数量，谜质装置与析出物不换标识', () => {
+  it('v27 每卡残骸档明确拒读，不再自动合并库存', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 19 })
     const cargo = state.fleet[state.shipId]!.cargo
     const legacy: Record<string, number> = { 'mat-wh-essence': 7, 'mat-surveyor': 2 }
@@ -272,18 +272,12 @@ describe('信号空间内容 · 固定来源与纯文案边界', () => {
     const file = JSON.parse(serializeSaveFile(state, 0))
     file.version = 27
     file.state.version = 27
-    const loaded = loadSaveFile(JSON.stringify(file)).state
-    for (const pocket of [loaded.warehouse.items, loaded.fleet[loaded.shipId]!.cargo]) {
-      expect(pocket['mat-wh-essence']).toBe(7)
-      expect(pocket['mat-surveyor']).toBe(2)
-      for (const row of WRECK_GROUPS.filter((group) => group.region === 'wh')) {
-        expect(pocket[`wreck-${row.key}`], row.key).toBe(60)
-        expect(pocket[`wreck-rare-${row.key}`], row.key).toBe(90)
-        for (const member of row.members) {
-          expect(pocket[`wreck-${member}`]).toBeUndefined()
-          expect(pocket[`wreck-rare-${member}`]).toBeUndefined()
-        }
-      }
+    try {
+      loadSaveFile(JSON.stringify(file))
+      expect.unreachable('v27 档不再允许迁移')
+    } catch (error) {
+      expect(error).toBeInstanceOf(SaveError)
+      expect((error as SaveError).code).toBe('VERSION')
     }
   })
 })

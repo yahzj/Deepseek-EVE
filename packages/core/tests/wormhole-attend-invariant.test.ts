@@ -17,8 +17,6 @@
  * ⚠ 本文件不产生任何玩家可见文案。
  */
 import { describe, expect, it } from 'vitest'
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
@@ -136,65 +134,4 @@ describe('虫洞存档不变量：在途战斗 ⇔ 人在洞里', () => {
     expect(second.state.wormhole.run?.battle?.lastTickGameMs).toBe(first.state.wormhole.run?.battle?.lastTickGameMs)
   })
 
-  /**
-   * **真实档形状的端到端**：拿仓里**真·v25 档**（`attending` 进格式之前写下的，测试存档仓的产物）
-   * 造出"该字段诞生前 + 正在打洞内战斗"的档，走完整迁移链 v25→v30 再读——
-   * 这条覆盖的是 `packages/core/tests` 手工拼 JSON 之外的那半条路：**迁移表本身不补 `attending`**，
-   * 全靠清洗层的缺省判据兜住。
-   */
-  it('④ 真·v25 档 + 在途战斗（走 v25→v30 完整迁移链）⇒ 读档后 attending=true 且还能打', () => {
-    const v25Path = join(process.cwd(), '..', '..', 'docs', 'test-saves', 'test-save-wh-layer4-20260914-145911.json')
-    let base: ReturnType<typeof loadSaveFile>
-    try {
-      base = loadSaveFile(readFileSync(v25Path, 'utf8'))
-    } catch (e) {
-      // 档不在（只读/剔除）⇒ 明确报出，不静默跳过
-      throw new Error(`基线 v25 档读不到：${v25Path}（${(e as Error).message}）`)
-    }
-    expect(base.state.wormhole.run, '基线档必须是一趟进行中的虫洞').toBeTruthy()
-
-    // 用真引擎在真档里开一场真战斗，取出它的战斗对象
-    const run = base.state.wormhole.run!
-    const g = run.grid!
-    const cell = g.cells.find((c) => c.key === `${g.pos.q},${g.pos.r}`)
-    expect(cell, '当前格必须在网格里').toBeTruthy()
-    cell!.place = 'ship'
-    g.activated = g.activated.filter((k) => k !== cell!.key)
-    run.attending = true
-    expect(wormholeStartBattle(base.state, ctx, 'node').ok, '真档里必须开得起战斗').toBe(true)
-    const battle = run.battle!
-
-    /**
-     * 组装"v25 形状"的档：**从真档 JSON 上来**（保住全部真字段），只做三件必要的手脚——
-     * ① `version` 回写 25（让它真走一遍 v25→v30 迁移链）；
-     * ② 换上刚开的这场战斗；
-     * ③ **抹掉 `attending`**（= 该字段还没进格式时的档长什么样）。
-     */
-    const raw = JSON.parse(serializeSaveFile(base.state, 0)) as {
-      version: number
-      state: { wormhole: { run: Record<string, unknown> } }
-    }
-    raw.version = 25
-    raw.state.wormhole.run.battle = battle
-    delete raw.state.wormhole.run.attending
-
-    const back = loadSaveFile(JSON.stringify(raw))
-    const r2 = back.state.wormhole.run!
-    expect(r2.battle, '在途战斗必须穿过整条迁移链活下来').toBeTruthy()
-    expect(r2.attending, 'v25 档缺 attending ⇒ 必须按"有在途战斗"补成 true').toBe(true)
-
-    // 推进判据：时钟要走、要开火（改前这条会是 tick 恒 0、射击 0/0）
-    const b = r2.battle!
-    const tick0 = b.lastTickGameMs
-    for (let i = 0; i < 50; i++) {
-      back.state.gameMs += 100
-      advanceWormhole(back.state, ctx)
-      if (!back.state.wormhole.run?.battle) break
-    }
-    const live = back.state.wormhole.run?.battle
-    if (live) {
-      expect(live.lastTickGameMs).toBeGreaterThan(tick0)
-      expect(live.stats.meShots + live.stats.foeShots).toBeGreaterThan(0)
-    }
-  })
 })

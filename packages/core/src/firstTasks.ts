@@ -200,12 +200,6 @@ export const CHAIN_TIERS: Readonly<Record<string, readonly number[]>> = {
 }
 
 /**
- * **旧「挂单张数」阈值表**（2026-09-18 换口径前用的那张）——**只给老档一次性折算读**，
- * 新逻辑一律走 `CHAIN_TIERS.marketIncome`（留在这里是为了折算规则可复现、可测）。
- */
-export const CHAIN_TIERS_LEGACY_ORDERS: readonly number[] = [1, 3, 8, 20, 50, 120, 300, 700, 1500, 3000]
-
-/**
  * **链奖金基准与"第 N 级奖金"**（2026-09-18 船长：「每级的信用点奖励有些过于少，建议按照级别的 5 次方给予奖励」）。
  *
  * 口径（⟪2026-09-23 船长令⟫「L1 依旧是 2500，但是 L10 奖金降低至 2500 万」）：**第 N 级奖金 = 基准 × N⁴**
@@ -649,8 +643,7 @@ export function chainProgressOf(
  * - 顺序段：数组序里第一条 `done !== true` 的；它的 `judge ≥ 1` ⇒ 可完成（否则返回空）；
  * - 末段并列批：那两条各自独立判 ⇒ **可能同时返回两条**（船长同日第三道令）。
  *
- * 调用方（引擎）用它做两件事：① 写一条「已达成，回任务中心点完成」的日志（用 `state.firstTaskReadyId`
- * 去重）② 老档一次性收口（`state.firstTaskAutoClaim`，见 `save.ts` v30→v31 迁移）。
+ * 调用方（引擎）用它写一条「已达成，回任务中心点完成」的日志（用 `state.firstTaskReadyId` 去重）。
  */
 export function claimableFirstTasks(state: GameState, ctx: SimContext): FirstTaskDef[] {
   const current = FIRST_TASKS.find((d) => !isParallelTail(d.id) && state.importantTasks[d.id]?.done !== true)

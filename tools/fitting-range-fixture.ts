@@ -5,14 +5,13 @@
 import assert from 'node:assert/strict'
 import { writeFileSync } from 'node:fs'
 import { isAbsolute } from 'node:path'
-import { addShipToFleet, applyWeekendCompensation, createInitialState, FIRST_TASKS, fitModule, repairDeprecatedModules, serializeSaveFile } from '@whale/core'
+import { addShipToFleet, createInitialState, FIRST_TASKS, fitModule, repairDeprecatedModules, serializeSaveFile } from '@whale/core'
 import { buildSimContext } from '@whale/data'
 
 export function fittingRangeFixture(now = Date.now()) {
   const ctx = buildSimContext(), state = createInitialState({ nowWallMs: now, seed: 20261009 })
   state.modeChosen = true
   state.character.name = '靶场验收'
-  state.standingClawbackDone = true
   state.wallet.isk = 1e7
   for (const task of FIRST_TASKS) state.importantTasks[task.id] = { done: true }
   const uid = addShipToFleet(state, 'sh-wh-e-carrier')
@@ -27,7 +26,6 @@ export function fittingRangeFixture(now = Date.now()) {
   for (const id of ctx.commsMessages.keys()) { state.commsDelivered![id] = 0; state.commsRead![id] = true }
   state.commsPopups = []
   repairDeprecatedModules(state, ctx)
-  applyWeekendCompensation(state, now)
   return serializeSaveFile(state, now)
 }
 if (process.argv[1]?.endsWith('fitting-range-fixture.ts')) {

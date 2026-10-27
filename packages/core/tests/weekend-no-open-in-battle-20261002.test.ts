@@ -11,16 +11,13 @@
  *   旗舰战的战斗画面里**（遭遇槽里那场 `battle` 还在）⇒ 旧代码在**同一拍/下一拍**就给他开一场新的：
  *   新场随即拿到**旧战斗的结算**（伤害记进新场的池子、`flagshipKilled` 让新场当场封盘、黑匣/残骸
  *   算到新场头上）——正是报障那类「打完了入侵却还在 / 旗舰血条不对」的温床；
- * - 补偿补场的开局器（`openWeekendMakeupIfDue`）同样只看"手上那场结束了没有"⇒ 同一道缺口。
  *
  * 修法 = **开局侧也过同一把闸**：判据一律走单点 `weekendFlagshipBattleActive`（与战斗界面、
  * 章鱼削血闸同源，**不新造第二份判据**）：
  * - `weekendTick(..., flagshipBattleActive = true)` ⇒ 本拍**不开新场**（战斗收场后下一拍照常开）；
- * - `openWeekendMakeupIfDue` ⇒ 有旗舰战在地时**本拍不开**。
  *
- * 本文件钉四件事：① 战斗在地时 `weekendTick` 不开新场（且场次号不动）；② 同一拍把闸放开 ⇒ 照开
- * （证明挡住它的正是这道闸，不是别的门）；③ 补场开局器同样被闸住、收场后照开；④ 战斗一收场
- * （遭遇槽清空）⇒ 下一拍照常开（延迟 ≤ 一拍，不漏场）。
+ * 本文件钉三件事：① 战斗在地时 `weekendTick` 不开新场（且场次号不动）；② 同一拍把闸放开 ⇒ 照开
+ * （证明挡住它的正是这道闸，不是别的门）；③ 战斗一收场（遭遇槽清空）⇒ 下一拍照常开（延迟 ≤ 一拍，不漏场）。
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
@@ -35,14 +32,11 @@ import {
 } from '../src/weekendEvent'
 import { weekendFlagshipSpecOf } from '../src/weekendBattle'
 import { weekendFlagshipBattleActive, weekendStartFlagshipBattle } from '../src/weekendLaunch'
-import { openWeekendMakeupIfDue, WEEKEND_MAKEUP_FIRST_WALL_MS } from '../src/weekendCompensation'
 
 const ctx = buildSimContext()
 const H = 3_600_000
 const T0 = new Date(2026, 9, 2, 20, 0, 0, 0).getTime()
 const NOW = T0 + H
-/** 补场暗期里的一个时刻（周三 20:00 开、周五 20:00 收 ⇒ 取周四中午） */
-const DARK = WEEKEND_MAKEUP_FIRST_WALL_MS + 16 * H
 
 /**
  * 造一档：正常周窗口（调试自动开场已暂停）＋ 一场**核心已满**的
@@ -111,21 +105,6 @@ describe('硬闸：还有没打完的旗舰战 ⇒ 不开新场（2026-10-02 补
     const r = weekendTick(s, ctx, NOW + H + 1, NOW, false)
     expect(r.started, '闸一放开 ⇒ 照常开新场').toBe(true)
     expect(s.weekendEvent!.seq, '新场 = 下一号').toBe(2)
-  })
-
-  it('③ 补场开局器：有旗舰战在地 ⇒ 不开；收场后 ⇒ 照开（对照）', () => {
-    const s = world()
-    intoFlagshipBattle(s)
-    weekendNoteFlagshipKilled(s, NOW)
-    /** 判成"受影响"那条路（补场），且本期没出过光环 */
-    s.weekendCompensation = { track: 'makeup', decidedAtWallMs: NOW }
-    expect(openWeekendMakeupIfDue(s, ctx, DARK), '**人在战斗里 ⇒ 不开补场**（改前这里 = true）').toBe(false)
-    expect(s.weekendCompensation.makeupServedAtWallMs, '没落"已开"标记 ⇒ 之后还能补开').toBeUndefined()
-    /** 对照：战斗收场（遭遇槽清空）⇒ 同一时刻照开 —— 证明挡住它的正是这道闸，不是别的门 */
-    s.encounter = { ...s.encounter, active: false, battle: null }
-    expect(openWeekendMakeupIfDue(s, ctx, DARK), '收场后 ⇒ 照开').toBe(true)
-    expect(s.weekendEvent?.family, '补场 = 光环科技（R）').toBe('R')
-    expect(s.weekendCompensation.makeupServedAtWallMs, '落"已开"标记').toBe(DARK)
   })
 
   it('④ 战斗一收场（遭遇槽清空）⇒ 下一拍照常开，不漏场', () => {

@@ -4,7 +4,7 @@
  * 锁住三组口径：
  * ① 副本推进（层 / 节点 / 回合）与两条硬约束——**战斗没结束不能撤**、**回合耗尽只能撤离**；
  * ② 层曲线取向：**收益涨得比威胁快**（船长 2026-09-13：「深层收益应该比难度曲线要更高」）；
- * ③ **v25 存档**：字段纯新增、老档迁移补空状态、往返不丢（含进行中的副本状态）。
+ * ③ **v31 存档**：虫洞状态正常往返；低版本旧档由存档版本门拒绝。
  *
  * ✅ 2026-09-14 船长解除不可见（入口常驻、数据全部上线、公开就叫「虫洞」）；
  * 本文件不产生任何玩家可见文案。
@@ -846,25 +846,27 @@ describe('信号空间 · 堆数与单堆层曲线', () => {
   })
 })
 
-describe('虫洞 · v25 存档（纯新增字段 + 零迁移）', () => {
-  // ⚠ 版本号随存档结构演进往上抬：v26 = 「第一次」老档一次性判定；v27 = 市场链换口径的一次性折算；
-  // v28 = 残骸合并（旧"每卡一种"残骸 id → 「族 × 地区」13 组的同组累加折算，2026-09-19）；
-  // v29 = 谜质科技树（2026-09-19）；v30 = 成就徽章（2026-09-20）
-  it('新档带空虫洞状态；当前存档版本 = 30（v30 = 成就徽章，v29 = 谜质科技树）', () => {
+describe('虫洞 · v31 存档', () => {
+  it('新档带空虫洞状态；版本等于当前结构版本', () => {
     expect(CURRENT_STATE_VERSION).toBe(31)
     const s = createInitialState({ nowWallMs: 0, seed: 1 })
     expect(s.version).toBe(31)
     expect(s.wormhole).toEqual({ run: null, lastFleetLost: 0 })
   })
 
-  it('老档（缺 wormhole 字段）读档 ⇒ 补空状态，不报错', () => {
+  it('当前文件缺 wormhole 字段 ⇒ 归一化补空状态', () => {
     const s = createInitialState({ nowWallMs: 0, seed: 1 })
     const raw = JSON.parse(serializeSaveFile(s, 0)) as { version: number; state: Record<string, unknown> }
     delete raw.state.wormhole
-    raw.version = 24
-    raw.state.version = 24
     const loaded = loadSaveFile(JSON.stringify(raw))
     expect(loaded.state.wormhole).toEqual({ run: null, lastFleetLost: 0 })
+  })
+
+  it('v24 旧档不再迁移到当前版本', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 1 })
+    const raw = JSON.parse(serializeSaveFile(state, 0)) as { version: number }
+    raw.version = 24
+    expect(() => loadSaveFile(JSON.stringify(raw))).toThrowError(/早于可读取下限/)
   })
 
   it('进行中的副本状态随档往返不丢（层/回合/背包/待处理节点）', () => {

@@ -35,7 +35,7 @@ import { ensureBlackMarket } from './blackMarket'
 import { repairSlotExpansionPlugs } from './equipment'
 import { advanceEncounterWatch } from './encounters'
 import { advanceScanning, ensureTransitExplored } from './explore'
-import { advanceWormholeScan, reconcileWormholePromoGift, reconcileWormholeScanWelcome } from './wormholeScan'
+import { advanceWormholeScan, reconcileWormholeScanWelcome } from './wormholeScan'
 import { advanceWormholeAuto } from './wormholeAuto'
 import { advanceHauling, startHauling } from './hauling'
 import { advanceWreckDrift } from './salvage'
@@ -46,11 +46,9 @@ import { advanceComms } from './comms'
 import {  advanceFirstChains, claimableFirstTasks, peakFirst } from './firstTasks'
 import { advanceAchievements } from './achievements'
 import { advanceMatterOreDrip, matterTechNodes } from './matterTech'
-import { claimFirstTask, grantStartRewardsForCurrent } from './firstRewards'
 import { advanceSideTasks } from './sideTasks'
 import { weekendTickBoss } from './weekendEvent'
 import { weekendFlagshipBattleActive } from './weekendLaunch'
-import { reconcileWeekendBlackBox } from './weekendComms'
 
 /**
  * **我方此刻是否在战斗中**（周末入侵的章鱼人削血要按它暂停）：远征战斗 / 虫洞战斗 / 低安遭遇战
@@ -319,11 +317,6 @@ function advanceGameStep(state: GameState, deltaMs: number, ctx: SimContext, opt
   // 主控活动「扫描虫洞」（2026-09-14）：进度按游戏时刻累计，满一个窗口发现一处（遇袭不清零）
   // 解锁当次：把进度预置成满窗口（船长 2026-09-14「甲」：点扫描第一拍即得一处；只送一次、不额外提示）
   reconcileWormholeScanWelcome(state)
-  // 限时促销赠送（2026-09-16「虫洞大量生成」）：逐 tick 幂等、只发一次、只给已解锁者（见该函数头注）
-  reconcileWormholePromoGift(state, ctx)
-  // 入侵旗舰黑匣**对账补发**（2026-09-28 船长令「采用工具线上补发」）：逐 tick 幂等，
-  // 只补「玩家亲手击沉 ＋ 输出占比过半（这一档必爆）却没落地」的场次（判据见该函数头注）
-  reconcileWeekendBlackBox(state)
   advanceWormholeScan(state, ctx, d)
   // 自动探索（2026-09-14 批次 3）：到点即结算（收益入仓库 + 损伤 + 待确认报告）；离线大步长同样适用
   advanceWormholeAuto(state, ctx)
@@ -351,10 +344,8 @@ function advanceGameStep(state: GameState, deltaMs: number, ctx: SimContext, opt
    * 船长原话：「**第一次任务不要自动完成。要让玩家回到任务中心点击完成才开始下一步，这样给予任务开始前
    * 道具的时间点就很明确**」⇒ 这里**只判不写**：`claimableFirstTasks` 只回答"现在能不能完成"，
    * 完成的推进（写 `done` → 发完成奖励 → 发下一条的起手道具）全在 `firstRewards.claimFirstTask`，
-   * 由玩家在任务中心点「完成」触发。本处只做两件事：
-   * ① **播报一次**「已达成，回任务中心点完成」（`state.firstTaskReadyId` 去重，免得每拍刷屏）；
-   * ② **老档一次性收口**（v30→v31 迁移打的 `firstTaskAutoClaim`）：把读档时"判据已满足却没点过"的积压
-   *    按点击同款走完（发奖/发信/进下一条），跑完即删键 —— 新档不带这个键 ⇒ 一律走手动流程。
+   * 由玩家在任务中心点「完成」触发。本处只播报一次「已达成，回任务中心点完成」，
+   * `state.firstTaskReadyId` 去重，不自动完成任务或补发起手道具。
    */
   const readyNow = claimableFirstTasks(state, ctx)
   if (readyNow.length > 0) {
@@ -363,28 +354,6 @@ function advanceGameStep(state: GameState, deltaMs: number, ctx: SimContext, opt
       state.firstTaskReadyId = first.id
       addLog(state, 'levelup', `◆ 任务已达成：「${first.title}」——回「任务中心」点「完成」继续下一步。`, 'core.firstTasks.001', { p1: first.title })
     }
-  }
-  if (state.firstTaskAutoClaim === true) {
-    /**
-     * **先补发"当前那条的起手道具"**（**2026-09-22 船长裁决「甲」**）：
-     * 起手道具只在"某一条**轮到**时"发（`claimFirstTask` 收尾那一次点击），而**收口只补"已满足却没点过"
-     * 的那几条**——若老档正卡在**带起手道具的那六条**之一、且它自己的判据还没满足（收口循环一条都不走），
-     * 那一条的起手道具就**永远拿不到**了：采集原矿→强化采集器 MK1 · 打捞残骸→打捞器 MK1 ·
-     * 指派 AI 副船→基础 AI 核心 · 生产→150 三钛＋50 类铁 · 第一条船→磷虾级蓝图 · 虫洞→采集器＋打捞器各一台。
-     *
-     * ⇒ 在读档收口这一段**先补发一次当前那条的**（`grantStartRewardsForCurrent` 自带 `started` 去重，
-     * 重复调用不叠加），再跑下面的"已满足 ⇒ 照点击走完"循环。**零新增存档字段、零版本变更**
-     * （复用 v30→v31 打的那一次性标记；已经在旧代码下升过 v31 的档救不回来——那批档的起手道具
-     * 只能自购：采集器市场有售、`bp-miner-1` 可造，船长已知情并选定此口径）。
-     */
-    grantStartRewardsForCurrent(state, ctx)
-    // 上限 20 只是护栏（13 条一轮足够）；每轮都重新取"当前可完成"，天然按顺序推进
-    for (let guard = 0; guard < 20; guard += 1) {
-      const c = claimableFirstTasks(state, ctx)[0]
-      if (!c) break
-      claimFirstTask(state, ctx, c.id)
-    }
-    if (claimableFirstTasks(state, ctx).length === 0) delete state.firstTaskAutoClaim
   }
   // 后续次数链的升级记账（每拍）：只在 importantTasks 上记 level；**不在这里发 ISK** ——
   // 发奖改到任务中心领奖那一刻（claimChainReward），避免离线结算/用例里钱包被悄悄加钱。

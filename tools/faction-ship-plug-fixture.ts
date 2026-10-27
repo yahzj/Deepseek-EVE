@@ -14,7 +14,6 @@ export function injectFactionShipPlugFixture(state: GameState): string[] {
   state.wallet.isk = 1e9
   state.standings.dsi = 300
   state.standingsEarned = { dsi: 0 }
-  state.standingClawbackDone = true
   state.blackboxSeen = true
   state.exploredGalaxies = [...ctx.galaxies.keys()]
   for (const task of FIRST_TASKS) state.importantTasks[task.id] = { done: true }

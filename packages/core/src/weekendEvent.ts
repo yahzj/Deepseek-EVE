@@ -66,13 +66,8 @@ export function weekendLastHitByPlayer(ev: WeekendEventState | undefined): boole
  * **本场黑匣结清了没有** —— `ev.flagshipBlackBox` 自 2026-09-28 起的**新语义**：
  * `true` = 这一枚**已经落到玩家手里并记了账**；缺省 / `false` = **还没结清**。
  *
- * 四个写入口（都在"真发出去"之后才写）：击沉那一刻（`weekendApplyBattleOutcome`）·
- * 结算时迟到补发（`weekendSettleAndGrant`）· 逐 tick 对账补发（`reconcileWeekendBlackBox`）·
- * 推送前一次性补偿（`compensateMissingWeekendBlackBox`）。
+ * 结清标记由正常击沉发奖路径写入；旧场次不再由后续登录追补。
  *
- * ⚠ **与旧语义的区别**（同一个字段、含义换了）：旧的是**掷骰结果**（"爆了没有"），随爆率表一起作废。
- * 老档兼容**零迁移**：老档 `true` ⇒ 新语义下正好是"已结清"；老档 `false` ⇒ "未结清"，
- * 于是会被补发工具按「有留档就补」捞回来（2026-09-28 船长选的口径）。
  */
 export function weekendBlackBoxSettledOf(ev: WeekendEventState | undefined): boolean {
   return ev?.flagshipBlackBox === true
@@ -1589,8 +1584,7 @@ function clamp01(v: number): number {
  * - **封盘只封本期**：下一期 T0 一到，照常开新场（判据拿"本期 T0"比）；
  * - ⚠ **不封玩家召唤场**：信号发射器点火走的是 `useInvasionBeacon`（不经本函数）——玩家自己花道具
  *   点的入侵是**主动选择**，不在"自动连开"的治理范围内；
- * - ⚠ **不封补偿补场**：`weekendCompensation.openWeekendMakeupIfDue` 是另一条路（承诺给受影响档的
- *   一场光环），与本期封盘互不干涉。
+ * - 玩家召唤场由玩家使用信号发射器主动开启，本期封盘不拦截。
  *
  * ## 判据（**不新增存档字段**）
  *
@@ -1782,7 +1776,7 @@ export interface WeekendTickResult {
  * 旗舰战的战斗画面里，旧代码会在**同一拍**给他开一场新的：新场拿到的是**旧战斗的结算**
  * （伤害 / 击沉 / 封盘全落到新场头上）——正是报障那类"打完了入侵却还在 / 旗舰血条不对"的温床。
  * 现在：`flagshipBattleActive` 为真 ⇒ **本拍不开新场**；战斗一收场，下一拍照常开（延迟 ≤ 一拍）。
- * 同一道闸也补进了补偿补场的开局器（`weekendCompensation.openWeekendMakeupIfDue`）。
+ * 同一道闸只适用于普通周排期开局。
  *
  * ⚠ 纯函数（除改 `state.weekendEvent` 的落盘字段外不碰别处）⇒ 用例可对任意时刻断言。
  *
@@ -2160,7 +2154,7 @@ export function weekendClaimOctopus(state: GameState, ev: WeekendEventState, now
    * （它现在的含义是"已结清"）。
    *
    * ⚠ 与玩家的击杀**不冲突**：玩家若在别处已经把母舰打爆（留档 `flagshipPlayerKill`），
-   * 那一枚在黑匣的**唯一发放口**（`weekendApplyBattleOutcome` 的击沉分支 / 结算 / 补发工具）就给过了。
+   * 那一枚已由 `weekendApplyBattleOutcome` 的正常击沉分支发放。
    */
   ev.flagshipDown = 'octopus'
   endWeekendEvent(state, nowWallMs)

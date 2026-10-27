@@ -35,8 +35,7 @@ import { signalSpaceTextId } from './explorationText'
  * `dsi` 同时写入 `40`（两条账各 40，理由写的是"开局能换 5 张图纸"）——船长否掉了那条口径：
  * 他从没说过"开局能换 5 张"，**初始赠送一律清理**。现两条账都由空表起步（全按 0 读），
  * 声望只能靠悬赏首胜与入侵贡献挣。
- * 存量档（含被那条赠送/回填抬过的档）由 `expedition.repairStandingFromBountyProgress` 在
- * 读档后一次性削减回"悬赏进度算得的值"。
+ * v31 档保持已有声望账面值；低版本存档不再迁移。
  */
 export const INITIAL_STANDING = 0
 
@@ -2106,15 +2105,6 @@ export interface GameStateV7 {
    */
   standingsEarned?: Record<string, number>
   /**
-   * **"按悬赏进度回正累计声望"这一趟已经走过没有**（**2026-09-26 船长令**：
-   * 「**只生效一次，已经削过的玩家不再削**」）。
-   *
-   * `true` = 这份档已经过账 ⇒ `expedition.repairStandingFromBountyProgress` 直接返回、**永不再削**；
-   * 缺省（老档 / 新档）= 还没走过 ⇒ 下一次读档走一趟并把本键置 `true`（无论那一趟有没有真削到）。
-   * 兼容字段无版本号（可选）⇒ 零迁移。
-   */
-  standingClawbackDone?: boolean
-  /**
    * **见过黑匣没有**（**2026-09-26 船长令**：「**玩家获取第一个黑匣后，才解锁组装机的插件选项，
    * 并且弹出相关通讯**」）。
    *
@@ -2437,37 +2427,6 @@ export type GameStateV16 = Omit<GameStateV15, 'version'> & {
    * 可选字段、零迁移：老档缺省 = 0（从零开始攒）。
    */
   rareWreckDryStreak?: number
-  /**
-   * **入侵补偿批：判定与落地标记**（**船长 2026-10-02 令**，原话与四问口径见
-   * `docs/glossary.md`「入侵补偿批」词条 ＋ `docs/roadmap.md` 2026-10-02 条；工作文档已按 §八归档删除）。
-   *
-   * 只判一次（`weekendCompensation.ts` 是**唯一判定与落地处**）：
-   * - `track: 'makeup'` ⇒ 该档"这一期还是墨潮帮"，在**周三 20:00~周五 20:00 的暗期**里开**一场光环**（
-   *   开出那一刻记 `makeupServedAtWallMs`）；
-   * - `track: 'beacon'` ⇒ 其余玩家，当场入仓 **1 枚信号发射器**（`beaconGrantedAtWallMs`）。
-   * **一人一条路**；可选字段 ⇒ **老档零迁移**（缺省 = 还没判过）。
-   */
-  weekendCompensation?: WeekendCompensationState
-}
-
-/**
- * **入侵补偿批的标记**（**船长 2026-10-02 令**；读写白名单见 `save.ts`）——
- * 判成哪条路 + 两条路各自的落地时刻（**"已落地"就是幂等钥匙**）。
- */
-export interface WeekendCompensationState {
-  /** 判定结论：`'makeup'` = 开一场光环补场 · `'beacon'` = 发 1 枚信号发射器 */
-  track: 'makeup' | 'beacon'
-  /** 判定那一刻（墙钟） */
-  decidedAtWallMs: number
-  /** 信号发射器已入仓的那一刻（只有 `track === 'beacon'` 会写） */
-  beaconGrantedAtWallMs?: number
-  /** 补场已开出的那一刻（只有 `track === 'makeup'` 会写） */
-  makeupServedAtWallMs?: number
-  /**
-   * **跳过补场的那一刻**（**船长 2026-10-02 令「乙」**）：该档"本期已经真出过光环"⇒ 不再叠加一场，
-   * 按"其余玩家"口径**改发 1 枚信号发射器**（与 `beaconGrantedAtWallMs` 同时写）。
-   */
-  makeupSkippedAtWallMs?: number
 }
 
 /** 玩家标记（收藏）五类界面：market 市场商品行 / refine 精炼炉与残骸回收卡 /
@@ -2767,14 +2726,6 @@ export type GameStateV18 = Omit<GameStateV16, 'version'> & {
    * 兼容字段（可选）：旧档没有 ⇒ 空队列，零迁移。
    */
   wormholeAutoReports?: WormholeAutoReport[]
-  /**
-   * **限时促销的一次性领取记录**（2026-09-16 船长：限时活动「虫洞大量生成」——每人**只发一次**
-   * 5 处虫洞，**只给已解锁者**）。键 = `PROMOS[].id`，值恒 `true`。
-   *
-   * 兼容字段（可选，**零迁移**）：老档缺席 = 未领取 ⇒ 达标后下一次心跳由
-   * `reconcileWormholePromoGift` 自动补发一次；促销表里删行不影响本记录（留着无害）。
-   */
-  promoClaimed?: Record<string, true>
   /** 精炼炉运转（2026-09-04 工业细化：单工位循环运转；兼容字段无版本号，旧档载入 = 空态） */
   refineRun: RefineRunState
   /** B3 打捞作业（采矿式自动循环，2026-09-09 起默认循环；autoCycle/stopAfterTrip 偏好字段零迁移，旧档载入 = 空态） */
@@ -2921,7 +2872,7 @@ export type GameStateV27 = Omit<GameStateV26, 'version'> & {
  *
  * 「残骸按来源种族 × 来源地区合并」把"每卡一种"的 79 种残骸并为 **13 组**（26 种物品）——
  * **结构本身一个字没变**（物品 id 就是字符串键），升版只为让 v27→v28 那段
- * "旧残骸 id → 组 id"的**同组累加折算只跑一次**（见 `save.ts` 的 `MIGRATIONS[27]`）。
+ * "旧残骸 id → 组 id"的同组累加折算只跑一次；该迁移现已退役。
  */
 export type GameStateV28 = Omit<GameStateV27, 'version'> & {
   version: 28
@@ -2930,7 +2881,7 @@ export type GameStateV28 = Omit<GameStateV27, 'version'> & {
  * 第二十九版存档结构（v29 = v28 + **谜质科技树等级**，2026-09-19 船长）。
  *
  * 「消耗谜质升级的研究科技树」：等级存 `research.levels`（键 = 节点 id、值 = 已研究等级）。
- * 老档迁移补 `{ levels: {} }`（一级未点）⇒ **零行为变化**（见 `save.ts` 的 `MIGRATIONS[28]`）。
+ * 当前版本读档对缺失等级表补空树；v28 旧档不再载入。
  */
 export type GameStateV29 = Omit<GameStateV28, 'version'> & {
   version: 29
@@ -2947,7 +2898,7 @@ export type GameStateV29 = Omit<GameStateV28, 'version'> & {
  *
  * 徽章表见 `data/src/achievements.ts`（第一批 63 枚），发放与判定见 `core/achievements.ts`。
  * 只存"哪几枚到手了 ＋ 到手时刻"——图案/名称/说明一律现算（改内容即热更，不必迁移）。
- * 老档迁移补 `{ earned: {} }` **并补发**已达成者的徽章（见 `save.ts` 的 `MIGRATIONS[29]`）。
+ * 当前版本缺失账本时补空账，达标徽章由引擎正常追溯；v29 旧档不再载入。
  */
 export type GameStateV30 = Omit<GameStateV29, 'version'> & {
   version: 30  /**
@@ -2962,10 +2913,8 @@ export type GameStateV30 = Omit<GameStateV29, 'version'> & {
 /**
  * 第三十一版存档结构：**v31 = v30 + 「第一次」任务改成"玩家点「完成」才推进"**（2026-09-21 船长令）。
  *
- * 结构上只多两个**可选**字段（都没写 ⇒ 与 v30 快照逐字一致）：
+ * 结构上增加任务达成播报字段：
  * - `firstTaskReadyId?`：已经播报过"这条已达成"的那一条（播报去重，免得每拍刷屏）；
- * - `firstTaskAutoClaim?`：**老档一次性收口标记**（`save.ts` 的 v30→v31 迁移给老档写上）——读档后第一拍把
- *   "判据已满足却没点过"的积压任务按点击同款走完（发奖/发信/进下一条），随后删键；**新档不带它**。
  */
 export type GameStateV31 = Omit<GameStateV30, 'version'> & {
   version: 31
@@ -2977,14 +2926,6 @@ export type GameStateV31 = Omit<GameStateV30, 'version'> & {
    * 可选字段、**零迁移**（老档没有它 ⇒ 下一拍按现状播报一次）；**没播报过就不写这个键**。
    */
   firstTaskReadyId?: string
-  /**
-   * **老档一次性收口标记**（**2026-09-21 船长令**「老档直接完成」；由 `save.ts` 的 v30→v31 迁移写上）。
-   *
-   * 语义：**读档后的第一拍**把"判据已满足、但玩家还没点完成"的积压任务**按点击同款一次走完**
-   * （发奖、发信、进下一条，直到当前那条不再满足为止，最多 13 条），随后**删掉这个键**。
-   * 新档不带它 ⇒ 一律走"玩家点「完成」"的手动流程。可选字段 ⇒ 新档快照不含它（零迁移）。
-   */
-  firstTaskAutoClaim?: boolean
   /**
    * **铁人模式**（**2026-09-23 船长令**：「**和玩家讨论了下，发现好像搞一个铁人模式更受欢迎**」＋
    * 「玩家的导出的存档会带版本号。如果导入一个铁人存档的版本号比当前存档的版本号更靠前则会导入失败。
@@ -4072,8 +4013,8 @@ export function createInitialState(opts?: {
     // 老档/新档快照因此逐字一致（真零迁移）；读侧一律按缺省 0（`firstStatOf`）。
     sideTasks: { seq: 1, window: 0, resource: [], courier: [], bounty: [], faction: null, bountyWindow: 0, deliver: null }, // v24：任务中心·时效任务板（资源/快递 20 分钟整点开刷；赏金每天本地 0 点开板；faction = 当日派系活跃；deliver = 快递投送在途挂账，缺省 null）
     wormhole: { ...EMPTY_WORMHOLE_STATE }, // v25：虫洞副本（施工期对玩家不可见；见 wormhole.ts 头注释）
-    research: { levels: {} }, // v29：谜质科技树（2026-09-19 船长批；老档迁移补空树）
-    achievements: { earned: {} }, // v30：成就徽章（2026-09-20 船长批；老档迁移补空账并补发）
+    research: { levels: {} },
+    achievements: { earned: {} },
     logs: [],
   }
   if (prologue) {

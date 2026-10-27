@@ -15,8 +15,7 @@
  * 3. **洞外工业三件**：`matterTechUnboxCut` / `matterTechVoidYield` / `matterTechWreckYield` 由 `industry.ts`
  *    的三处挂点消费。
  *
- * **存档与迁移**：等级存在 `state.research.levels`（`Record<节点 id, 等级>`）；老档没有该字段 ⇒
- * `MIGRATIONS[28]`（v28→v29）补空树，读档即"一级未点"，**零行为变化**。
+ * **存档**：等级存在 `state.research.levels`（`Record<节点 id, 等级>`）；当前版本缺字段时补空树。
  */
 import { ceilFinalQuantity } from './quantity'
 import { addLog } from './state'

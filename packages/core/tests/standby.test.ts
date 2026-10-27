@@ -11,7 +11,7 @@ import { goStandbyAt, cancelStandby } from '../src/location'
 import { assignAiStandby, idleAiShipIds } from '../src/ai'
 import { startExpedition } from '../src/expedition'
 import { changeShip } from '../src/shipyard'
-import { loadSaveFile, MIN_MIGRATABLE_VERSION, SAVE_FORMAT, serializeSaveFile } from '../src/save'
+import { loadSaveFile, MIN_SUPPORTED_SAVE_VERSION, SAVE_FORMAT, serializeSaveFile } from '../src/save'
 import { makeTestCtx, ship, skipFirstSkillReward } from './helpers'
 
 function world() {
@@ -210,7 +210,7 @@ describe('掩护巡逻派遣关闭与存量遣返', () => {
     expect(loaded.aiCores.basic).toBe(2)
     // 旧形状兜底
     const legacy = loadSaveFile(
-      JSON.stringify({ format: SAVE_FORMAT, version: MIN_MIGRATABLE_VERSION, savedAtWallMs: 0, state: { skills: {} } }),
+      JSON.stringify({ format: SAVE_FORMAT, version: MIN_SUPPORTED_SAVE_VERSION, savedAtWallMs: 0, state: { skills: {} } }),
     ).state
     expect(legacy.standby.active).toBe(false)
     void ctx

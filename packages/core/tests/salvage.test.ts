@@ -28,7 +28,7 @@ import {
   wreckItemIdOf,
   wreckGroupKeyOfItemId,
 } from '../src/salvage'
-import { WRECK_GROUPS, WRECK_GROUP_BY_KEY, migratedWreckItemId } from '../src/wreckGroups'
+import { WRECK_GROUPS, WRECK_GROUP_BY_KEY } from '../src/wreckGroups'
 
 /** 带 security 的测试星系（hub=母港高安 1.0 / kor=中安 0.5 / grave=低安 −1.0 / abyss −0.7） */
 function ctxOf() {
@@ -170,13 +170,13 @@ describe('残骸物品（按「族 × 地区」组注册；乙案：计数 = 体
     expect(WRECK_GROUPS.filter((g) => g.region === 'wh').length).toBe(5) // 2026-09-25：6 → **5**（H 族改洞外 h-hi）
   })
 
-  it('存档迁移映射：旧 id → 组 id（普通与稀有）· 未知 id 原样不动', () => {
-    expect(migratedWreckItemId('wreck-ano-gravekeeper')).toBe('wreck-d-lo')
-    expect(migratedWreckItemId('wreck-rare-ano-harbor-escort')).toBe('wreck-rare-b-hi')
-    expect(migratedWreckItemId('wreck-rare-wh-alien-hive')).toBe('wreck-rare-c-wh')
-    expect(migratedWreckItemId('wreck-a-hi')).toBeNull() // 新 id 不是旧键 ⇒ 幂等
-    expect(migratedWreckItemId('wreck-ano-unknown')).toBeNull()
-    expect(migratedWreckItemId('ore-a')).toBeNull()
+  it('已有残骸物品仍可识别所属组，不转换库存标识', () => {
+    expect(wreckGroupKeyOfItemId('wreck-ano-gravekeeper')).toBe('d-lo')
+    expect(wreckGroupKeyOfItemId('wreck-rare-ano-harbor-escort')).toBe('b-hi')
+    expect(wreckGroupKeyOfItemId('wreck-rare-wh-alien-hive')).toBe('c-wh')
+    expect(wreckGroupKeyOfItemId('wreck-a-hi')).toBe('a-hi')
+    expect(wreckGroupKeyOfItemId('wreck-ano-unknown')).toBeNull()
+    expect(wreckGroupKeyOfItemId('ore-a')).toBeNull()
   })
 })
 

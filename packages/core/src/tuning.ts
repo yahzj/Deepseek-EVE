@@ -18,9 +18,8 @@
  * ⚠ **不落存档生效状态**：命中与否现算 ⇒ 活动结束**无需回收、无需迁移**。
  * 例：`wreckDensity` 只乘**读取值**，不改已存 `state.wreckDensity` / 盘面 ⇒ 到期自动回落。
  *
- * **2026-09-16 新增「促销（promo）」一层**（船长：限时活动「虫洞大量生成」——扫描虫洞时间 ×0.25
- * ＋ 每人一次 5 处虫洞，**合并展示**并润色成游戏内说法）：
- * `PROMOS` 一行同时决定**三项同源**——扫描倍率 / 赠送数量 / 玩家可见文案，到期一起失效；
+ * **2026-09-16 新增「促销（promo）」一层**（扫描周期倍率与活动文案合并展示）：
+ * `PROMOS` 一行同时决定扫描倍率与玩家可见文案，到期一起失效；
  * 被促销 `claims` 认领的倍率键在活动栏**不再单列徽标**（同一件事不显示两遍）。
  * 促销与 `TUNING_RULES` **共用同一套日期判据**（`dayWindowActiveAt` / `dayWindowEndMs`）。
  */
@@ -105,25 +104,17 @@ export interface TuningRule {
 export const TUNING_RULES: readonly TuningRule[] = []
 
 /**
- * **促销（限时活动）表** —— 2026-09-16 船长：限时活动「虫洞大量生成」。
+ * **促销（限时活动）表**；活动过期后从规则表移除。
  *
- * 船长原话：「**将扫描虫洞所需时间*0.25，持续到9月20号，并给予所有玩家5个虫洞**（同样持续到
- * 20号为止，到20号之后提醒我清理这个过期的赠送）」＋ 四答：**每人只发一次 5 个** ·
- * **只给已解锁者**（协会声望 ≥ 40）· 到期**只停止赠送**（不回收已发出）· 展示**与扫描加速合并**、
- * 润色成「虫洞大量生成」这类游戏内说法。
- *
- * 一条促销 = **三项同源**（同一行决定，不会各写各的）：
+ * 一条促销 = **两项同源**（同一行决定，不会各写各的）：
  * - `scanMul`：虫洞扫描周期倍率（读点 `wormholeScanWindowMs`，与 `TUNING_RULES` 相乘）；
- * - `giftWormholes`：**一次性**赠送的未探索虫洞处数（逐 tick `reconcileWormholePromoGift` 发放，
- *   靠 `state.promoClaimed[id]` 保证"每人只发一次"，**只发给已解锁者**）；
  * - `label` / `detail`：活动栏徽标与悬停说明的**玩家可见文案**（游戏内说法，禁开发语）。
  *
  * 日期口径与 `TuningRule` **完全一致**（本地时区 · `from` 含当日 00:00 · `until` 当天整天有效、
- * 次日 00:00 失效）。⚠ 到期**不回收**已发出的虫洞、不改任何已存状态 ⇒ 收口 = 从本表删行
- * （`npm run tuning:expired` 会列出生效期已过、仍留在表里的条目）。
+ * 次日 00:00 失效）。
  */
 export interface PromoRule {
-  /** 促销 id（稳定标识：写进 `state.promoClaimed` 的一次性领取记录，**改 id 等于让老档重领一次**） */
+  /** 促销 id（稳定标识） */
   id: string
   /** 玩家可见名（活动栏徽标那行字；游戏内说法） */
   label: string
@@ -135,8 +126,6 @@ export interface PromoRule {
   until: string
   /** 虫洞扫描周期倍率（不写 = 1；**×0.25 = 快四倍**） */
   scanMul?: number
-  /** 一次性赠送的未探索虫洞处数（不写 / 0 = 不赠送） */
-  giftWormholes?: number
   /** 本促销"认领"的限时倍率开关：这些键的**单独徽标会被并购进本促销**，避免同一件事显示两遍 */
   claims?: readonly TunableKey[]
   /**
@@ -156,22 +145,7 @@ export type PromoOpenTarget = 'wormhole-scan'
  * ⚠ **只写给玩家看得懂的活动**：`label` / `detail` 是玩家可见文案（游戏内说法），
  * 开发/验收话语（日期、口径、倍率算式）一律不进——数值解释放注释或 `note`。
  */
-export const PROMOS: readonly PromoRule[] = [
-  {
-    id: 'wh-bloom-20260916',
-    label: '虫洞大量生成',
-    detail:
-      '深空虫洞活动异常活跃：扫描阵列的捕获效率大幅提升，协会测绘处已为你标记 5 处虫洞坐标。\n' +
-      '（未探索的虫洞可在「扫描虫洞」页查看；进洞前记得带采集器与打捞器。）',
-    from: '2026-09-16',
-    until: '2026-09-20',
-    scanMul: 0.25,
-    giftWormholes: 5,
-    claims: ['wormholeScanMs'],
-    // 点徽标 ⇒ 星图页的「扫描虫洞」选项卡（船长 2026-09-16：「点击后，不会跳转扫描虫洞界面」）
-    open: 'wormhole-scan',
-  },
-]
+export const PROMOS: readonly PromoRule[] = []
 
 /** `YYYY-MM-DD` → 当地 00:00 的毫秒（非法日期返回 null，调用方按"不生效"处理） */
 export function localDayStartMs(day: string): number | null {
@@ -299,8 +273,6 @@ export interface ActivePromo {
   untilMs: number
   /** 虫洞扫描周期倍率（未写 = 1） */
   scanMul: number
-  /** 一次性赠送的虫洞处数（未写 = 0） */
-  giftWormholes: number
   /** 本促销认领的限时倍率键（这些键的单独徽标要隐藏，见活动栏） */
   claims: readonly TunableKey[]
   /** 点击徽标的去向（不写 = 星图页「星图」选项卡；见 `PromoRule.open`） */
@@ -325,8 +297,6 @@ export function activePromos(nowMs: number | null | undefined): ActivePromo[] {
       detail: p.detail,
       untilMs,
       scanMul: p.scanMul !== undefined && p.scanMul > 0 ? p.scanMul : 1,
-      giftWormholes:
-        p.giftWormholes !== undefined && p.giftWormholes > 0 ? Math.floor(p.giftWormholes) : 0,
       claims: p.claims ?? [],
       ...(p.open !== undefined ? { open: p.open } : {}),
     })
@@ -344,16 +314,4 @@ export function promoScanMulAt(nowMs: number | null | undefined): number {
 /** 引擎/界面统一入口（读 `state.wallMs`；未设 ⇒ 1×） */
 export function promoScanMul(state: Pick<GameState, 'wallMs'> | null | undefined): number {
   return promoScanMulAt(state?.wallMs ?? null)
-}
-
-/**
- * **当前待发放的一次性赠送**（`reconcileWormholePromoGift` 用；未命中 ⇒ 空数组）。
- * 每项 = `{ id, count }`：`id` 写进 `state.promoClaimed` 保证**每人只发一次**。
- */
-export function activePromoGifts(
-  nowMs: number | null | undefined,
-): Array<{ id: string; count: number }> {
-  return activePromos(nowMs)
-    .filter((p) => p.giftWormholes > 0)
-    .map((p) => ({ id: p.id, count: p.giftWormholes }))
 }

@@ -50,7 +50,6 @@ import {
   weekendBattleInvolvedOf,
   weekendSettleAndGrant,
   weekendSettlePlanOf,
-  weekendSyncReclaimRewards,
   /** 2026-09-25 船长令：稀有残骸「件 → 单位(m³)」换算（1 件 = 30 单位） */
   weekendRareWreckUnits,
 } from '../src/weekendBattle'
@@ -1229,14 +1228,7 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     expect(row?.isk, '面板那格 ISK = 缩水后的实发').toBe(wantIsk)
   })
 
-  /**
-   * 🔴 **迟到补发**（**船长报障那一场**的形态：本场已结算过，夺回奖却从没记上）。
-   *
-   * 引擎每拍都调 `weekendSettleAndGrant`（幂等靠 `prizePaidAtWallMs`）⇒ 现在它在 early-return
-   * **之前**先跑一次夺回奖同步，发现「已夺回 ∧ 未记账」就补记并**当场补发**；
-   * `reclaimPaid` 标记保证只补一次。⇒ 老档进游戏即自动补齐，不需要一次性补丁脚本。
-   */
-  it('⑭ 迟到补发：已结算过的场次被查出"已夺回却漏记" ⇒ 补发一次且不重复', () => {
+  it('⑭ 已结算场次不追发后来发现的夺回奖励', () => {
     const now = Date.now()
     const s = invaded(GID)
     s.debugQuick = false
@@ -1252,47 +1244,41 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     const wrecks1 = heldOf(s, 'wreck-rare-h-hi')
     const again = weekendSettleAndGrant(s, ctx, now)
     expect(again, '已结算过 ⇒ 不再走正常结算').toBeNull()
-    expect(s.wallet.isk - isk1, '补发 ISK = 夺回那一份').toBe(WEEKEND_RECLAIM_ISK)
-    expect(heldOf(s, 'wreck-rare-h-hi') - wrecks1, '补发残骸 = 夺回那一份').toBe(
-      weekendRareWreckUnits(WEEKEND_RECLAIM_WRECK),
-    )
-    expect(s.weekendEvent!.reclaimPaid, '补记后打上标记').toEqual([GID])
-    /** 再调一拍：不重复补 */
-    const isk2 = s.wallet.isk
-    const wrecks2 = heldOf(s, 'wreck-rare-h-hi')
-    weekendSettleAndGrant(s, ctx, now)
-    expect(s.wallet.isk, '不重复补 ISK').toBe(isk2)
-    expect(heldOf(s, 'wreck-rare-h-hi'), '不重复补残骸').toBe(wrecks2)
+    expect(s.wallet.isk, '已结算后不再补发 ISK').toBe(isk1)
+    expect(heldOf(s, 'wreck-rare-h-hi'), '已结算后不再补发残骸').toBe(wrecks1)
+    expect(s.weekendEvent!.reclaimPaid, '已结算的账本保持原样').toBeUndefined()
+    const saved = loadSaveFile(serializeSaveFile(s, now)).state
+    const wallet = saved.wallet.isk
+    const wrecks = heldOf(saved, 'wreck-rare-h-hi')
+    weekendSettleAndGrant(saved, ctx, now + 1000)
+    expect(saved.wallet.isk, '重载后也不追补 ISK').toBe(wallet)
+    expect(heldOf(saved, 'wreck-rare-h-hi'), '重载后也不追补残骸').toBe(wrecks)
   })
 
-  /**
-   * 🔴 **夺回奖的两本账必须随档**（**2026-09-27 修漏**）。
-   *
-   * 原先 `reclaimPaid`（防重复标记）与 `reclaimPending`（待到账）**都没写进存档清洗** ⇒
-   * 前者不随档 = **读一次档就把"已发过奖"忘掉** ⇒ 下一次同步再发一遍（刷档即可无限刷夺回奖）；
-   * 后者不随档 = 夺回后读档那笔待到账**直接丢**（活动结束结算时少发）。
-   * 本用例把"夺回了、活动还没结束、玩家读了一次档"这条路走完，并**反证**读档后不会重复记。
-   */
-  it('⑮ 夺回奖的两本账随档：读档后标记与待到账都还在，且不会因读档而重复记', () => {
+  it('⑮ 首次结算发清夺回奖励，读档保留账本且不重发', () => {
     const now = Date.now()
     const s = invaded(GID)
     s.debugQuick = false
     s.weekendEvent!.startedAtWallMs = now - 54 * 3_600_000
     /** 满额参与（乙案下金额 = 全额 × 投入比例；取 1 便于两本账的断言与改前逐值可比） */
     weekendNoteContribution(s.weekendEvent!, GID, 1)
-    weekendSyncReclaimRewards(s, s.weekendEvent!, now)
+    endWeekendEvent(s, now)
+    expect(weekendSettleAndGrant(s, ctx, now)).not.toBeNull()
     expect(s.weekendEvent!.reclaimPaid, '该处已记过奖').toEqual([GID])
     const pending0 = { ...(s.weekendEvent!.reclaimPending ?? { isk: 0, wreck: 0 }) }
-    expect(pending0.wreck, '夺回奖已记进待到账').toBe(weekendRareWreckUnits(WEEKEND_RECLAIM_WRECK))
+    expect(pending0, '结算后待到账清零').toEqual({ isk: 0, wreck: 0 })
+    expect(s.weekendEvent!.rewardLedger?.byGalaxy[GID]?.wreck).toBe(weekendRareWreckUnits(WEEKEND_RECLAIM_WRECK))
 
     const back = loadSaveFile(serializeSaveFile(s, now)).state
     expect(back.weekendEvent!.reclaimPaid, '防重复标记随档').toEqual([GID])
-    expect(back.weekendEvent!.reclaimPending, '待到账随档').toEqual(pending0)
+    expect(back.weekendEvent!.reclaimPending ?? { isk: 0, wreck: 0 }, '空账不落键，读侧视为已结清').toEqual(pending0)
 
-    /** **反证**：读档后再同步一次 ⇒ 不该再记一遍（这正是"刷档无限刷奖"的入口） */
-    const before = { ...(back.weekendEvent!.reclaimPending ?? { isk: 0, wreck: 0 }) }
-    weekendSyncReclaimRewards(back, back.weekendEvent!, now)
-    expect(back.weekendEvent!.reclaimPending, '读档不导致重复记账').toEqual(before)
+    expect(back.weekendEvent!.prizePaidAtWallMs).toBe(now)
+    const wallet = back.wallet.isk
+    const wreck = heldOf(back, 'wreck-rare-h-hi')
+    expect(weekendSettleAndGrant(back, ctx, now + 1000)).toBeNull()
+    expect(back.wallet.isk).toBe(wallet)
+    expect(heldOf(back, 'wreck-rare-h-hi')).toBe(wreck)
   })
 })
 

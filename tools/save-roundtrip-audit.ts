@@ -19,7 +19,7 @@
  */
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { loadSaveFile, serializeSaveFile } from '../packages/core/src/save'
+import { loadSaveFile, MIN_SUPPORTED_SAVE_VERSION, SaveError, serializeSaveFile } from '../packages/core/src/save'
 
 /** 真档目录（与 `npm run save:migrate` 同一份） */
 const DIR = 'docs/test-saves'
@@ -45,10 +45,15 @@ const lost = new Map<string, number>()
 const typed = new Map<string, number>()
 let ok = 0
 let failed = 0
+let rejected = 0
 
 for (const f of files) {
+  let version: unknown
   try {
-    const first = loadSaveFile(readFileSync(join(DIR, f), 'utf8')).state
+    const text = readFileSync(join(DIR, f), 'utf8')
+    const raw = JSON.parse(text) as { version?: unknown } | null
+    version = raw?.version
+    const first = loadSaveFile(text).state
     const second = loadSaveFile(serializeSaveFile(first, 0)).state
     const a = new Map<string, string>()
     const b = new Map<string, string>()
@@ -60,18 +65,24 @@ for (const f of files) {
     }
     ok += 1
   } catch (e) {
+    if (e instanceof SaveError && e.code === 'VERSION' && typeof version === 'number'
+      && version < MIN_SUPPORTED_SAVE_VERSION) {
+      rejected += 1
+      continue
+    }
     failed += 1
     console.log(`✗ ${f}：${(e as Error).message}`)
   }
 }
 
-console.log(`\n往返过的档：${ok} 份成功 / ${failed} 份失败（共 ${files.length} 份）`)
+console.log(`\n往返过的档：${ok} 份成功 / ${failed} 份失败 / ${rejected} 份旧版按预期拒读（共 ${files.length} 份）`)
 console.log(`\n【第二轮丢掉的键】${lost.size} 个`)
 for (const [k, n] of [...lost].sort((x, y) => y[1] - x[1])) console.log(`  ${k}  （${n} 份档丢）`)
 console.log(`\n【类型变了的键】${typed.size} 个`)
 for (const [k, n] of [...typed].sort((x, y) => y[1] - x[1])) console.log(`  ${k}  （${n} 份档）`)
 console.log(
-  lost.size === 0 && typed.size === 0
+  failed === 0 && lost.size === 0 && typed.size === 0
     ? '\n✅ 存档往返体检通过：这些真档读回来一个键都不少、类型不变。'
     : '\n❌ 有键在往返里丢了/变形了——逐条查 `save.ts` 的 `normalizeState`（多半是手工白名单漏了这个字段）。',
 )
+process.exitCode = failed === 0 && lost.size === 0 && typed.size === 0 ? 0 : 1

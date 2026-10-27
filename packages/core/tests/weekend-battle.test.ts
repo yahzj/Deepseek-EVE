@@ -15,6 +15,7 @@ import {
   WEEKEND_RECLAIM_ISK,
   WEEKEND_RECLAIM_WRECK,
   weekendAmbushSpecOf,
+  weekendApplyBattleOutcome,
   weekendAssaultSpecOf,
   weekendFlagshipSpecOf,
   weekendResolveBattle,
@@ -34,6 +35,7 @@ import {
   weekendNoteContribution,
   weekendCoreGateView,
   weekendCoreProgressAt,
+  weekendNoteFlagshipDamage,
 } from '../src/weekendEvent'
 import * as weekendEventNS from '../src/weekendEvent'
 import { weekendGrantRewards, weekendRareWreckIdFor, weekendSettleAndGrant } from '../src/weekendBattle'
@@ -228,12 +230,17 @@ describe('周末入侵 · 黑匣改「击杀必给」（2026-09-28 船长令）'
     const { s, ev } = setup()
     ev.family = 'H' // BOSS 族（有共享血池）
     ev.flagshipHpMax = POOL
-    ev.flagshipHpDone = 1 // 只补了最后一刀（旧口径下这种只有 10%）
-    ev.flagshipPlayerKill = { atWallMs: 1, runId: 1, downAtGameMs: 1 }
+    ev.flagshipHpDone = 0
+    ev.octopusHpDone = POOL - 1
+    for (const id of [...ev.peripheryIds, ev.coreId]) weekendNoteContribution(ev, id, 1)
+    weekendNoteFlagshipDamage(ev, 1, 1)
+    expect(weekendApplyBattleOutcome(s, ctx, 'ink-flagship', true, 1_000_000, null, {
+      galaxyId: ev.coreId, kind: 'flagship',
+    })).not.toBeNull()
+    expect(countWare(s, 'blackbox-h'), '击沉当场入库').toBe(1)
     expect(weekendLastHitByPlayer(ev), '有留档 ⇒ 击杀成立').toBe(true)
     expect(weekendSettlePlanOf(s, ev, 0).blackBoxToPlayer, '结算计划：黑匣归玩家').toBe(true)
-    ev.endedAtWallMs = 1_000_000
-    expect(weekendSettleAndGrant(s, ctx, 1_000_000), '结束结算要发').not.toBeNull()
+    expect(weekendSettleAndGrant(s, ctx, 1_000_000), '结束结算仍正常发贡献奖').not.toBeNull()
     expect(countWare(s, 'blackbox-h'), '必给 1 枚（入物品仓库）').toBe(1)
     expect(s.weekendLastResult?.blackBox, '快照里的黑匣数 = 实发').toBe(1)
     expect(weekendBlackBoxSettledOf(ev), '写"已结清"').toBe(true)
@@ -253,19 +260,20 @@ describe('周末入侵 · 黑匣改「击杀必给」（2026-09-28 船长令）'
     expect(s.weekendLastResult?.blackBox).toBe(0)
   })
 
-  it('结算迟到补发：**击杀了却还没结清** ⇒ 结算补上（且只补一枚）', () => {
+  it('首次结算不补未结清的历史黑匣；已结算场次也不追补', () => {
     const { s, ev } = setup()
     ev.family = 'H'
     ev.flagshipHpMax = POOL
     ev.flagshipHpDone = 10
-    ev.flagshipDown = 'player' // 归属判给玩家、但没走"击沉那一刻"的即时发放
+    ev.flagshipDown = 'player'
     ev.endedAtWallMs = 1_000_000
     expect(weekendSettleAndGrant(s, ctx, 1_000_000)).not.toBeNull()
-    expect(countWare(s, 'blackbox-h'), '补 1 枚').toBe(1)
-    expect(weekendBlackBoxSettledOf(ev), '结清').toBe(true)
-    /** 再结一次（幂等口 = `prizePaidAtWallMs`）⇒ 不会第二枚 */
-    weekendSettleAndGrant(s, ctx, 1_000_000)
-    expect(countWare(s, 'blackbox-h'), '还是 1 枚').toBe(1)
+    expect(countWare(s, 'blackbox-h'), '未在击沉发奖路径结清的旧场不追补').toBe(0)
+    expect(weekendBlackBoxSettledOf(ev), '未结清状态只留在本场记录，不触发追补').toBe(false)
+    ev.prizePaidAtWallMs = 1_000_000
+    ev.flagshipPlayerKill = { atWallMs: 1, runId: 1, downAtGameMs: 1 }
+    expect(weekendSettleAndGrant(s, ctx, 2_000_000)).toBeNull()
+    expect(countWare(s, 'blackbox-h'), '已经结算的场次不补发').toBe(0)
   })
 
   it('爆率表与掷骰子流**已整套删除**（按模块导出面查，不受注释影响）', () => {

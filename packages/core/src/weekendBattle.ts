@@ -41,7 +41,6 @@ import {
   weekendWinGainOf,
   /** 2026-09-28 船长令「击杀BOSS就能获得黑匣」：击杀判据（**留档优先**的单点）＋ 结清标记 */
   weekendLastHitByPlayer,
-  weekendBlackBoxSettledOf,
   /** 2026-09-27 船长令：占比按**玩家优先**口径取（玩家允许挤掉章鱼人的输出） */
   weekendFlagshipSharesOf,
   /** 2026-09-27 整理：归属判据收口（**留档优先**）——结算快照与引擎结束日志共用同一个它 */
@@ -455,9 +454,7 @@ export interface WeekendSettleGrant {
  * 用途 = 结算面板与结算通讯里的奖励清单**不再另算一遍**（说的与发的逐值一致）。
  * `galaxyId` 给了才记逐星系那一栏（旗舰掉落与贡献奖是全局的）。
  *
- * ⚠ **对外导出只为补发工具**（`weekendComms.reconcileWeekendBlackBox`，2026-09-28 船长令）：
- * 它补的黑匣同样要进这本台账，否则结算面板又会显示玩家手里没有/少一件的东西（账实分离）。
- * 游戏内其余入账一律走本文件内的调用点，别在外面新开入口。
+ * 游戏内奖励入账统一走本文件内的调用点，别在外面新开入口。
  */
 export function noteReward(
   ev: WeekendEventState,
@@ -488,32 +485,8 @@ function noteReclaimPending(ev: WeekendEventState, add: { isk?: number; wreck?: 
   cur.wreck += Math.max(0, ceilFinalQuantity(add.wreck ?? 0))
 }
 
-/**
- * 🔴 **夺回奖的逐拍同步**（**2026-09-27 玩家报障修复** · 船长令「按你推荐来」）。
- *
- * 病根：夺回奖原先只在 `weekendApplyBattleOutcome` 里记（`if (r.reclaimed !== undefined)`）——
- * 可"夺回"在本作里是**按进度判**的（`weekendReclaimedAt` = 进度 ≥ 1），多数场次是**逐拍推满**
- * （NPC 铺底 ＋ 玩家投入）、根本没经过"战斗结算"那一拍 ⇒ 那段代码从未执行 ⇒
- * 面板每处都显示「—」、`reclaimPending` 也是空的 ⇒ **4/4 夺回却 32 件残骸 ＋ 1,300 万一分没发**
- * （船长截图实测：稀有残骸 450 = 360 贡献奖 ＋ 90 旗舰，夺回的 960 m³ 不在内；
- *  8,800 万 = 800 万贡献奖 ＋ 8,000 万进度收入，夺回 800 万与全清 500 万不在内）。
- *
- * 修法：**唯一判据** = 「已夺回 ∧ 不在 `ev.reclaimPaid`」⇒ 记台账 ＋ 记待到账 ＋ 打标记。
- * - 幂等：标记随档落盘 ⇒ 重复调用不会重复记；老档（已夺回却没记过）进来即被补齐（**补发靠这条判据，
- *   不需要一次性补丁脚本、不碰存档**）；
- * - 全清那 5M 用 `reclaimPaid.length === 总处数` 判 ⇒ 首达那一刻记一次，天然不重复；
- * - 战斗结算路径也调它（见 `weekendApplyBattleOutcome`）⇒ 全仓**只有一份**夺回奖口径。
- *
- * 🔴 **2026-09-29 船长令（乙案）改口径：金额按"玩家在该处的投入比例"缩水** —— 见
- * `weekendReclaimAwardOf` / `weekendAllClearAwardOf`。三条随之而来的变化：
- * 1. **调用点只剩一个** = 结算那一拍（`weekendSettleAndGrant` 的幂等早退**之前**，传 `ev.endedAtWallMs`）
- *    —— 战斗那一拍**不再调它**（那时算不出"最终投入比例"，见 `weekendReclaimAwardOf` 的 ⚠）；
- * 2. **比例的时间基准 = 结算时刻**：传进来的 `nowWallMs` 只用来判"哪几处已夺回"（进度 ≥ 1），
- *    而比例一律读 `contributed` 台账（随档、封顶 1）⇒ 与出手顺序无关；
- * 3. **0 贡献照样"记账"但数额是 0**：标记照打（幂等靠它），台账/待到账两笔都记 0
- *    ⇒ 面板那处显示 0，而不是显示"应得 240 m³"。
- */
-export function weekendSyncReclaimRewards(
+/** 结算时按最终投入比例同步本场已夺回奖励，只在首次结算前调用。 */
+function weekendSyncReclaimRewards(
   state: GameState,
   ev: WeekendEventState,
   nowWallMs: number,
@@ -661,42 +634,8 @@ export function weekendSettleAndGrant(
 ): WeekendSettleGrant | null {
   const ev = state.weekendEvent
   if (!ev || ev.endedAtWallMs === undefined) return null
-  /**
-   * **先做一次夺回奖同步**（2026-09-27 修）：本函数**引擎每拍都会调**（幂等靠 `prizePaidAtWallMs`）
-   * ⇒ 把同步放在 early-return **之前**，「已夺回却漏记」的场次（含已结算过的老档，如船长报障的第 1 场）
-   * 会在下一次调用时被补记，再由下面的迟到补发真正入账。
-   *
-   * 🔴 **2026-09-29 船长令（乙案）后，这里成了全仓唯一的夺回奖记账点**：金额 = 全额 × 玩家在**该处**的
-   * **最终**投入比例（`weekendReclaimAwardOf`），而"最终"只有结算拍才知道 ⇒ 战斗那一拍不再记账。
-   * 传 `ev.endedAtWallMs` 保证比例取的是**结束时刻**的台账（与贡献占比/进度收入同一把尺）。
-   */
+  if (ev.prizePaidAtWallMs !== undefined) return null
   weekendSyncReclaimRewards(state, ev, ev.endedAtWallMs)
-  if (ev.prizePaidAtWallMs !== undefined) {
-    /**
-     * **迟到补发**（幂等）：本场已经结算过，但上面那次同步又补记出了新的待到账（老档/报障场次）
-     * ⇒ 立刻发掉并清零，玩家下次进游戏自动补齐。已记过标记的场次 `lateSync` 为空 ⇒ 直接返回。
-     */
-    const latePending = ev.reclaimPending ?? { isk: 0, wreck: 0 }
-    if (latePending.isk > 0 || latePending.wreck > 0) {
-      const wreckItemId = weekendRareWreckIdFor(weekendFoeCardOf(ev.family, 'flagship'), ctx)
-      weekendGrantRewards(state, {
-        isk: latePending.isk,
-        wreck: latePending.wreck,
-        ...(wreckItemId !== undefined ? { wreckItemId } : {}),
-      })
-      ev.reclaimPending = { isk: 0, wreck: 0 }
-      state.weekendLastResult = weekendResultSnapshotOf(
-        state,
-        ctx,
-        ev,
-        ev.endedAtWallMs,
-        weekendSettlePlanOf(state, ev, ev.endedAtWallMs),
-        wreckItemId,
-        weekendBlackBoxItemIdOf(ev, ctx),
-      )
-    }
-    return null
-  }
   const plan = weekendSettlePlanOf(state, ev, ev.endedAtWallMs)
   const wreckItemId = weekendRareWreckIdFor(weekendFoeCardOf(ev.family, 'flagship'), ctx)
   /**
@@ -705,24 +644,8 @@ export function weekendSettleAndGrant(
    * 否则总数会被算两遍；`reclaimPending` 发完清零。
    */
   const pending = ev.reclaimPending ?? { isk: 0, wreck: 0 }
-  /**
-   * **结算时的"迟到补发"**（**2026-09-28 船长令改口径**）：本场**玩家已经击杀 BOSS**
-   * （判据 = 单点 `weekendLastHitByPlayer`，留档优先）却**还没结清** ⇒ 在这里补上那一枚。
-   * 之所以可能"击杀却没结清"：击沉那一刻的入账走 `weekendApplyBattleOutcome`，
-   * 而活动可能在别的路径上先结束（章鱼人收尾 / 窗口到点）⇒ 结算这条路兜住它。
-   * ⚠ 只走一遍：`prizePaidAtWallMs` 保证结算只发生一次。
-   * ⚠ 旧判据是「台账里没有黑匣 ∧ 掷骰掷中了」——它依赖台账随档（2026-09-28 甲案才修好）；
-   * 新判据只看**击杀 ＋ 未结清**，不再依赖台账，也就没有了"读档双发"那条老账。
-   */
-  const boxAtSettle = weekendLastHitByPlayer(ev) && !weekendBlackBoxSettledOf(ev)
-  /** **这一场该发哪一件匣**（按族 · 2026-10-02 船长令「甲」）：补发与快照共用同一个 id */
+  /** **这一场该显示哪一件匣**（按族 · 2026-10-02 船长令「甲」）。 */
   const boxItemId = weekendBlackBoxItemIdOf(ev, ctx)
-  /** 补发也取**实际入账**结果（契约破损没落地 ⇒ 0，见 `weekendGrantRewards` 的 ⚠） */
-  const boxGranted = boxAtSettle
-    ? weekendGrantRewards(state, { blackBox: true, blackBoxItemId: boxItemId }).blackBox
-    : 0
-  /** 真发出去了才写"已结清"（`flagshipBlackBox` 的新语义，见 `weekendBlackBoxSettledOf`） */
-  if (boxGranted > 0) ev.flagshipBlackBox = true
   /**
    * **这一笔发三样**：贡献四档奖（`plan`）＋ 待到账的夺回奖励（`pending`）＋ **进度收入**（`plan.progressIsk`，
    * 船长 2026-09-25「按进度获取收入」）。
@@ -753,7 +676,6 @@ export function weekendSettleAndGrant(
   noteReward(ev, undefined, {
     isk: plan.isk + plan.progressIsk,
     wreck: Math.max(0, granted.wreck - pending.wreck),
-    ...(boxGranted > 0 ? { blackBox: boxGranted } : {}),
   })
   state.weekendLastResult = weekendResultSnapshotOf(state, ctx, ev, ev.endedAtWallMs, plan, wreckItemId, boxItemId)
   return { share: plan.share, tier: plan.tier, isk: granted.isk, wreck: granted.wreck, progressIsk: plan.progressIsk }
@@ -776,7 +698,7 @@ export const WEEKEND_BLACKBOX_ITEM_ID = 'blackbox-h'
 /**
  * **本场入侵该发哪一件黑匣**（族 → `blackbox-<族小写>`；**2026-10-02 船长令「甲」**）。
  *
- * 三个发放点（击沉那一拍 · 结算补发 · 对账补发）都从这里取，**不再各自写死 id**。
+ * 击沉发奖与结算快照都从这里取，不各自写死 id。
  * `ev` 缺省（没有入侵事件）⇒ 落款黑匣 —— 这条路的调用方本来就只在入侵里发匣。
  */
 function weekendBlackBoxItemIdOf(ev: WeekendEventState | undefined, ctx: SimContext): string {
@@ -1172,7 +1094,7 @@ export function weekendApplyBattleOutcome(
        * 否则结算面板/结算通讯又会显示玩家手里没有的东西（账实分离）。
        */
       noteReward(evNow, undefined, { wreck: granted.wreck, blackBox: granted.blackBox })
-      /** 真发出去了 ⇒ 写"已结清"（`flagshipBlackBox` 的新语义；结算与补发工具都靠它幂等） */
+      /** 真发出去了才写已结清，未到账不能计作已获得。 */
       if (granted.blackBox > 0) evNow.flagshipBlackBox = true
     }
   }

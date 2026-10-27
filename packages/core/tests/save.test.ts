@@ -1,12 +1,12 @@
 /**
- * 存档系统（读写 / 迁移 / 容错）的单元测试（M1：v1 → v2 迁移链）。
+ * 当前版本存档读写、版本门与字段清洗测试。
  */
 import { haltCurrentActivity } from '../src/activityGate'
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { addLog, createInitialState, CURRENT_STATE_VERSION } from '../src/state'
 import type { ImportantTaskState } from '../src/state'
-import { loadSaveFile, MIN_MIGRATABLE_VERSION, SaveError, SAVE_FORMAT, serializeSaveFile } from '../src/save'
+import { loadSaveFile, MIN_SUPPORTED_SAVE_VERSION, SaveError, SAVE_FORMAT, serializeSaveFile } from '../src/save'
 import { addShipToFleet } from '../src/shipyard'
 import { wormholeEnter } from '../src/wormhole'
 import { wormholeMakeGrid } from '../src/wormholeGrid'
@@ -332,13 +332,10 @@ describe('坏档处理', () => {
   })
 
   it('个别字段缺失/异常 → 容错补默认值，尽量把档救回来', () => {
-    /**
-     * ⚠ 2026-09-19：fixture 版本由 v2 抬到**可迁移下限 v24**（船长裁「删除过旧的版本迁移」）——
-     * 本用例验的是**归一化兜底**（缺字段/坏值 ⇒ 补默认），与「逐级迁移」无关，故保住覆盖。
-     */
+    // 当前版本也要保留缺字段、坏值的清洗能力。
     const text = JSON.stringify({
       format: SAVE_FORMAT,
-      version: MIN_MIGRATABLE_VERSION,
+      version: MIN_SUPPORTED_SAVE_VERSION,
       savedAtWallMs: 1,
       state: {
         wallet: { isk: -5 },
@@ -409,11 +406,6 @@ describe('日志文案 id 的读写（甲案）', () => {
 })
 
 /**
- * **迁移链下限的两条钉子**（船长 2026-09-19：「删除过旧的版本迁移，仅保留虫洞之后的」）：
- * ① **下限那一版（v24）仍能升上来**；② **更早的档一律拒载入**（`SaveError('VERSION')`）——
- * 玩家侧由 `engine.start()` 开新档并写日志（本文件只管核心侧的错误码与文案）。
- */
-/**
  * **墙钟账只许前进不许回退**（2026-09-25 修 · 与"调试快进"配套）：
  * 快进把 `state.savedAtWallMs` 推到未来（它消费的就是那段未来时间）；写盘若一律盖成 `Date.now()`，
  * 下次读档就把账拽回来 ⇒ ① 快进推进过的入侵时间线要重来；② 再快进一次会把同一段未来算两遍
@@ -436,27 +428,61 @@ describe('存档墙钟账：只许前进、不许回退', () => {
   })
 })
 
-describe('存档迁移下限（v24 起）', () => {  const atVersion = (version: number): string => {
+describe('存档版本门（仅接受 v31）', () => {
+  const atVersion = (version: number): string => {
     const state = createInitialState({ nowWallMs: 0, seed: 21 })
     const file = JSON.parse(serializeSaveFile(state, 0)) as { version: number }
     file.version = version
     return JSON.stringify(file)
   }
 
-  it('下限 v24 的档仍能读到当前版本（虫洞那一跳还在）', () => {
-    const loaded = loadSaveFile(atVersion(MIN_MIGRATABLE_VERSION))
+  it('当前版本 v31 可以正常读写', () => {
+    const loaded = loadSaveFile(atVersion(MIN_SUPPORTED_SAVE_VERSION))
     expect(loaded.state.version).toBe(CURRENT_STATE_VERSION)
-    expect(loaded.state.wormhole.run).toBeNull() // v24→v25 迁移的产物
+    expect(MIN_SUPPORTED_SAVE_VERSION).toBe(CURRENT_STATE_VERSION)
   })
 
-  it('比下限更早的档（v23）⇒ 拒载入：VERSION 错误 + 提示新开存档', () => {
+  it.each(Array.from({ length: CURRENT_STATE_VERSION }, (_, version) => version))('旧版本 v%s ⇒ 拒载入：VERSION 错误 + 提示新开存档', (version) => {
     try {
-      loadSaveFile(atVersion(MIN_MIGRATABLE_VERSION - 1))
-      expect.unreachable('v23 档不该被读进来')
+      loadSaveFile(atVersion(version))
+      expect.unreachable(`v${version} 档不该被读进来`)
     } catch (e) {
       expect((e as SaveError).code).toBe('VERSION')
-      expect((e as SaveError).message).toContain('早于可迁移下限')
+      expect((e as SaveError).message).toContain('早于可读取下限')
       expect((e as SaveError).message).toContain('请新开存档')
     }
+  })
+
+  it('未来版本仍拒绝并提示升级', () => {
+    expect(() => loadSaveFile(atVersion(CURRENT_STATE_VERSION + 1))).toThrowError(/高于当前支持/)
+  })
+
+  it('非整数版本不能取整后冒充当前版本', () => {
+    expect(() => loadSaveFile(atVersion(CURRENT_STATE_VERSION + 0.5))).toThrowError(/高于当前支持/)
+  })
+
+  it('退役补偿字段被丢弃，当前资产、声望与任务进度不回收、不改写', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 21 })
+    state.wallet.isk = 123_456
+    state.standings = { dsi: 41 }
+    state.standingsEarned = { dsi: 56 }
+    state.warehouse.items['invasion-beacon'] = 2
+    state.warehouse.items['blackbox-r'] = 3
+    state.importantTasks['first-scan'] = { done: true }
+    const file = JSON.parse(serializeSaveFile(state, 0))
+    const retired = {
+      firstTaskAutoClaim: true,
+      standingClawbackDone: true,
+      weekendCompensation: { track: 'makeup', decidedAtWallMs: 1 },
+      promoClaimed: { 'wh-bloom-20260916': true },
+    }
+    Object.assign(file.state, retired)
+    const back = loadSaveFile(JSON.stringify(file)).state
+    for (const key of Object.keys(retired)) expect(back).not.toHaveProperty(key)
+    expect(back.wallet).toEqual(state.wallet)
+    expect(back.standings).toEqual(state.standings)
+    expect(back.standingsEarned).toEqual(state.standingsEarned)
+    expect(back.warehouse).toEqual(state.warehouse)
+    expect(back.importantTasks).toEqual(state.importantTasks)
   })
 })

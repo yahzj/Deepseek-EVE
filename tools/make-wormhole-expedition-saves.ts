@@ -23,7 +23,6 @@ ready.onboarding.step = -1
 ready.modeChosen = true
 ready.standingsEarned = { dsi: 60 }
 ready.standings = { dsi: 60 }
-ready.standingClawbackDone = true
 for (const task of FIRST_TASKS) ready.importantTasks[task.id] = { done: true }
 ready.commsDelivered ??= {}
 ready.commsRead ??= {}

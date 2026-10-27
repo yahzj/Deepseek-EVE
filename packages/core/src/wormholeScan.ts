@@ -18,7 +18,7 @@
  * - 施工期铁律：本模块不产生玩家可见文案里的"虫洞"以外新术语；入口只在调试模式下出现。
  */
 import { ceilFinalQuantity } from './quantity'
-import { activePromoGifts, promoScanMul, tuningMul } from './tuning'
+import { promoScanMul, tuningMul } from './tuning'
 import type { GameState, WormholeArchetype, WormholeFamily,  WormholeStockItem } from './state'
 import { matterTechScanCut } from './matterTech'
 import { addLog, wormholeScanHalt } from './state'
@@ -344,7 +344,6 @@ export function wormholeStockMeta(item: WormholeStockItem): {
 /**
  * **造一处并入列——不看上限**（上限判定在调用方）：
  * - 扫描产出走 `wormholeStockPush`（满 ⇒ 不发 + 不写日志）；
- * - 限时促销赠送走 `reconcileWormholePromoGift`（**允许暂时超上限**，见那里的注释）。
  */
 function stockPushUncapped(state: GameState, ctx: SimContext): WormholeStockItem {
   const item = rollStockItem(state, ctx)
@@ -369,8 +368,7 @@ export function wormholeStockPush(state: GameState, ctx: SimContext): WormholeSt
 /**
  * **任务奖励：标记 N 处未探索虫洞进库存**（2026-09-18 船长：「第一次虫洞给予玩家两次虫洞探索」）。
  *
- * 口径与限时促销赠送**逐条一致**（见 `reconcileWormholePromoGift` 的注释）：一次性奖励不该被库存上限吃掉
- * ⇒ 走 `stockPushUncapped`（**允许暂时超上限**）；超上限期间扫描照旧停机，玩家用掉降到上限以下即恢复。
+ * 允许超过库存上限；超上限期间扫描照旧停机，玩家用掉降到上限以下即恢复。
  * 返回实际发放处数。
  */
 export function grantWormholeStock(state: GameState, ctx: SimContext, count: number): number {
@@ -385,44 +383,6 @@ export function grantWormholeStock(state: GameState, ctx: SimContext, count: num
     { p1: n },
   )
   return n
-}
-
-/**
- * **限时促销的一次性赠送**（2026-09-16 船长四条口径：「**每人只发一次 5 个**」「**只给已解锁者**」
- * 「到期**只停止赠送**（不回收）」＋ 展示与扫描加速合并）。
- *
- * 口径：
- * - **逐 tick 幂等**（照 `reconcileWormholeScanWelcome` 范式）：靠 `state.promoClaimed[promoId]` 记一次
- *   ⇒ **每人每促销只发一次**；老档缺席该字段 = 未领取 ⇒ 下一次心跳自动补发；促销表删行后该记录留着无害；
- * - **只给已解锁者**（协会声望 ≥ `WORMHOLE_SCAN_UNLOCK_STANDING`）：未解锁不发、也不写记录
- *   ⇒ 他在活动期内达标后，下一次心跳自然能领到（**活动到期后不再发**）；
- * - **允许暂时超过库存上限**（船长确认）：若玩家手里已有 3 处，送 5 处应得 8 处——不这么做，
- *   赠送会被上限"吃掉"2 处。⚠ 放宽**只作用于这条赠送路径**：扫描产出与"满则停机"仍严守上限；
- *   超上限期间扫描照旧停机，玩家用掉降到上限以下即恢复；
- * - **到期只停止赠送**：已发出的虫洞**不回收**（不改任何已存状态 ⇒ 零迁移、零回收代码）。
- */
-export function reconcileWormholePromoGift(state: GameState, ctx: SimContext): boolean {
-  const gifts = activePromoGifts(state.wallMs)
-  if (gifts.length === 0) return false
-  // 只给已解锁者（协会声望 ≥ 40）；未达标 ⇒ 这次不发、也不记领取（达标后仍可领到）
-  if (!wormholeScanUnlocked(state)) return false
-  const claimed = state.promoClaimed ?? {}
-  let changed = false
-  for (const g of gifts) {
-    if (claimed[g.id] === true) continue
-    for (let i = 0; i < g.count; i++) stockPushUncapped(state, ctx)
-    state.promoClaimed = { ...claimed, [g.id]: true }
-    claimed[g.id] = true
-    changed = true
-    addLog(
-      state,
-      'fleet',
-      `测绘处标记了${g.count}处信号空间，当前共${wormholeStockOf(state).length}处。`,
-      'core.explorationStatus.002',
-      { p1: g.count, p2: wormholeStockOf(state).length },
-    )
-  }
-  return changed
 }
 
 /** 取走一处（进洞时消耗） */

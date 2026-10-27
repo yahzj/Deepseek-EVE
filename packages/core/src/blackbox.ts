@@ -31,7 +31,7 @@ export const PLUG_BLACKBOX_ITEM_ID = 'blackbox-h'
  *
  * 起因 = 玩家报障「**光环入侵结束给的黑匣还是墨潮的**」：原先 `weekendBattle.weekendGrantRewards`
  * **写死**发 `blackbox-h` ⇒ R 族（光环科技）玩家打完自家旗舰拿到的却是墨潮那件（名字、卖价、料值
- * 全是 H 的）。现在**按族取**：发放侧（击沉那一拍 / 结算补发 / 对账补发）与结算快照、结算信
+ * 全是 H 的）。现在按族取：击沉发奖与结算快照、结算信
  * 都读这一个函数，**不再各自拼 id**。
  *
  * ⚠ 与 `data/items.ts` 的登记**成对**：每个 BOSS 族都必须有 `blackbox-<族小写>` 这件物品 ——
@@ -46,8 +46,7 @@ export function blackBoxItemIdOfFamily(family: string): string {
  *
  * `hasItem` 给了（发放侧手上有 `ctx.items`）⇒ 先探一下该族那件**在不在内容表里**：
  * 不在（内容包破损 / 新族还没配匣）就退回落款 `blackbox-h` —— 宁可发一件**同价同用途**的族匣，
- * 也不让这一枚发不出去（发不出去 ⇒ `weekendGrantRewards` 返回 0 ⇒「已结清」永远置不上，
- * 结算/对账两条入口会一拍一拍地重试）。
+ * 也不让这一枚发不出去；`weekendGrantRewards` 返回实发数，发放失败不写已结清。
  *
  * ⚠ 正常路径**永远走族匣**：契约（上一条注释）保证每族都有；回落只兜内容破损。
  */

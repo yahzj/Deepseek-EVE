@@ -3833,14 +3833,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   /* 2026-09-26 船长令：「关于入侵的结算界面和结束通讯处，需要提及玩家获得了多少声望」——
      结算信追加的那一段（{p4} = 本期按贡献获得的协会声望点数；只在 >0 时追加）。 */
   "core.weekend.037": { zh: "本次入侵按你在清缴行动中的贡献，协会为你记入「深空工业协会」声望 +{p4}。", en: "For your contribution to this sweep the Association has credited you +{p4} Deepspace Industry Association standing." },
-  /* 2026-09-26 船长令：「给所有打完入侵但是没有获取黑匣的玩家补发一个黑匣（必须是推送之前打完，
-     同时也要检查玩家是否已经将黑匣制作成舰船插件）」⇒ 补发入仓时的那条系统日志（不发信）。 */
-  "core.weekend.040": { zh: "入侵补偿：补发旗舰黑匣 ×1（已存入物品仓库）。", en: "Invasion compensation: 1 flagship black box issued (stored in item storage)." },
-  /* 2026-09-28 船长令「不需要给本地存档补发，采用工具线上补发」⇒ 逐 tick 对账补发出手时的那条
-     系统日志（`weekendComms.reconcileWeekendBlackBox`）。{p1} = 补发枚数。
-     ⟪文案调整 2026-09-28⟫ 船长令「让玩家击杀BOSS就能获得黑匣，取消之前的复杂判定」：
-     原「…（你亲手击沉母舰、输出占比 {p2}% ⇒ 必定爆出）…」⇒ 去掉爆率口径（不再谈"爆出"）。 */
-  "core.weekend.039": { zh: "📦 补发：旗舰黑匣 ×{p1}（你在本场入侵中亲手击沉了旗舰）——已存入物品仓库。", en: "📦 Compensation: flagship black box ×{p1} (you personally sank the flagship in this invasion) — stored in your item warehouse." },
   /* 2026-09-27 那条「旗舰击沉归属出现两处不同记录」的诊断行 `core.weekend.041` 已**作废删除**：
      2026-09-28 起「留档 ＋ flagshipDown = octopus」是**正常组合**（玩家打爆母舰、章鱼人稍后收尾），
      不再是两条判据互相矛盾 ⇒ warn 与其文案一并撤掉。 */
@@ -3848,8 +3840,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.weekend.042": { zh: "你在本期的旗舰战中亲手击沉了入侵旗舰。", en: "You personally sank the invasion flagship in this invasion's flagship battle." },
   /* 2026-09-27 船长令：主力舰队打赢 ⇒ 往该星系入侵残骸场里放一件稀有残骸（打捞时稀有池优先） */
   "core.weekend.043": { zh: "✦ 击退「{p1}」的入侵舰队：残骸场里留下 {p2} 具稀有残骸 —— 可前往该星系打捞（回站用回收炉解体可得额外战利品）。", en: "✦ Invasion fleet repelled at “{p1}”: {p2} rare wreck(s) left in the debris field — salvage there (recycle back at the station for extra spoils)." },
-  /* 2026-10-02 船长令「其余玩家发放一个信号发射器」——补偿批的发放日志（`weekendCompensation.ts`） */
-  "core.weekend.045": { zh: "入侵补偿：信号发射器 ×1（已存入物品仓库）。", en: "Invasion compensation: 1 Signal Beacon issued (stored in item storage)." },
   /* ── 2026-09-23 围剿批（第 7 层起逐回合刷怪）：core 侧新增的日志与拒因 ── */
   "core.wormholeSpawn.001": { zh: "🕳 围剿者扑到你所在的位置：先确认，再迎战。", en: "🕳 A sweep ship has pounced on your position: confirm, then engage." },
   "core.wormholeBattle.032": { zh: "围剿战只在网格层成立。", en: "Sweep battles only happen on the grid." },

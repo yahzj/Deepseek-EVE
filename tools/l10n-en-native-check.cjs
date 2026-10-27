@@ -46,7 +46,6 @@ async function parent() {
     state.exploredGalaxies = [...ctx.galaxies.keys()]
     state.standings.dsi = 100
     state.standingsEarned = { dsi: 100 }
-    state.standingClawbackDone = true
     for (const item of ctx.items.values()) state.warehouse.items[item.id] = 5
     for (const mod of ctx.modules.values()) state.moduleBay[mod.id] = 2
     for (const def of ctx.stations.values()) if (def.galaxyId !== 'galaxy-vault') state.stationSites[def.id] = { stage: def.tiers.length, delivered: {} }
