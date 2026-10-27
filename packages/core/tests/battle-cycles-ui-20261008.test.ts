@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 import { L10N } from '@whale/data'
 import { ROOT } from './helpers/save-shell'
 
-const source = readFileSync(resolve(ROOT, 'apps/desktop/src/renderer/src/panels/BattleCycles.tsx'), 'utf8')
+const source = readFileSync(resolve(ROOT, 'apps/desktop/src/renderer/src/features/combat/BattleCycles.tsx'), 'utf8')
 const css = readFileSync(resolve(ROOT, 'apps/desktop/src/renderer/src/styles-battle-cycles.css'), 'utf8')
 const tooltip = ts.createSourceFile('Tooltip.tsx', readFileSync(resolve(ROOT, 'apps/desktop/src/renderer/src/ui/Tooltip.tsx'), 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
 let delay = 0
@@ -109,9 +109,9 @@ function harness(locale: 'zh' | 'en' = 'zh') {
     require: (id: string) => {
       if (id === 'react') return react
       if (id === 'lucide-react') return { List: 'List', Pin: 'Pin', ChevronDown: 'ChevronDown' }
-      if (id === '../i18n/locale') return { tr }
-      if (id === '../ui/Tooltip') return { TIP_DELAY_MS: delay }
-      if (id === '../ui/tones') return { DMG_COLOR: { kinetic: 'gold', explosive: 'red', plasma: 'cyan' } }
+      if (id === '../../i18n/locale') return { tr }
+      if (id === '../../ui/Tooltip') return { TIP_DELAY_MS: delay }
+      if (id === '../../ui/tones') return { DMG_COLOR: { kinetic: 'gold', explosive: 'red', plasma: 'cyan' } }
       if (id.endsWith('.css')) return {}
       throw new Error(`未声明依赖：${id}`)
     },

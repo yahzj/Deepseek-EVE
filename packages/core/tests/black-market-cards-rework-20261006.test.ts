@@ -71,7 +71,10 @@ describe('黑市详情复用仓库真实参数', () => {
       MODULE_SUBS: [], moduleSubKeyOf: () => '', subText: String, fmtDuration: String,
       itemGlyphName: (_id: string, kind: string) => kind, inventoryItemTone: () => 'currentColor', toneOf: () => 'currentColor',
       crestFamOf: () => undefined, rackDimKeyOf: () => 'high' }
-    const display = moduleExports('ui/shipInfo.tsx', scope)
+    const display: Record<string, (...args: any[]) => any> = {}
+    for (const file of ['primitives', 'moduleEffects', 'moduleLines', 'shipLines', 'cards']) {
+      Object.assign(display, moduleExports(`features/ships/info/${file}.tsx`, { ...scope, ...display }))
+    }
     const market = moduleExports('ui/marketGoodHover.tsx', { ...scope, ...display })
     for (const good of core.blackMarketCandidateGoods(ctx)) {
       const visible = market.marketGoodInfo!(ctx, good) as Info

@@ -126,7 +126,7 @@ describe('酸液破盾腔独立乘区', () => {
     expect(misses).toBeGreaterThan(0)
   })
   it('真实挂载说明与名称可从图鉴和战斗反查，已完成英文并清除待译', () => {
-    const source = readFileSync(new URL('apps/desktop/src/renderer/src/ui/foeBrief.ts', root), 'utf8')
+    const source = readFileSync(new URL('apps/desktop/src/renderer/src/features/combat/foeBrief.ts', root), 'utf8')
     const scope = { exports: {} as { mountEffectText: (id: string) => string; mountEffectTextByName: (name: string) => string },
       require: (id: string) => id === '@whale/core' ? { FOE_MOUNTS } : { tr: (id: string) => l10nEntryText(L10N[id]!, 'en') } }
     runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, scope)

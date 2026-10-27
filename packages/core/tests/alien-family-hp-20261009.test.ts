@@ -211,7 +211,7 @@ function handbookRenderer(locale: 'zh' | 'en') {
   }
   execute('apps/desktop/src/renderer/src/i18n/locale.tsx')
   Object.assign(scope, { tr: scope.exports.tr, isEn: scope.exports.isEn })
-  execute('apps/desktop/src/renderer/src/ui/foeBrief.ts')
+  execute('apps/desktop/src/renderer/src/features/combat/foeBrief.ts')
   Object.assign(scope, { foeBriefLinesOfShip: scope.exports.foeBriefLinesOfShip, mountLabelText: scope.exports.mountLabelText })
   execute('apps/desktop/src/renderer/src/panels/handbookDetail.tsx', 'FoeBody')
   return scope.exports

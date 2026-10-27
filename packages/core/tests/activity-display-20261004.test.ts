@@ -86,7 +86,7 @@ const STOP_METHODS: Record<ActivityStopKind, { method: string; args: unknown[] }
 describe('两套活动栏停止动作逐项一致', () => {
   for (const layout of ['ActivityBar', 'ActivityBarClassic']) {
     const stop = productionFunction<(view: ActivityView, engine: object, toast: (message: string, warn?: boolean) => void) => void>(
-      `apps/desktop/src/renderer/src/panels/${layout}.tsx`, ['doStop'], {
+      'apps/desktop/src/renderer/src/panels/activityStopLabel.ts', ['doStop'], {
         tr: (id: string) => id, cmdText: (result: { error?: string }) => result.error,
       })
     it(`${layout} 全部停止入口和参数契约`, () => {

@@ -316,7 +316,7 @@ describe('重构挂载说明与编辑器', () => {
 
   it('战斗/手册共用的说明按参数展示全体复活，英文覆盖不误写墨潮两艘规则', () => {
     const root = new URL('../../../', import.meta.url)
-    const source = readFileSync(new URL('apps/desktop/src/renderer/src/ui/foeBrief.ts', root), 'utf8')
+    const source = readFileSync(new URL('apps/desktop/src/renderer/src/features/combat/foeBrief.ts', root), 'utf8')
     const scope = { exports: {} as { mountEffectText: (id: string) => string; briefShipsOf: (card: AnomalyDef) => Array<{ id: string; mounts: Array<{ name: string; effect: string }> }> },
       require: (id: string) => id === '@whale/core' ? { FOE_MOUNTS } : {
         isEn: () => true,

@@ -24,9 +24,9 @@ function rowRenderer(layout: string, locale: 'zh' | 'en') {
   const src = sourceOf(`panels/${layout}.tsx`)
   const component = src.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === layout) as ts.FunctionDeclaration
   const row = component.body!.statements.filter(ts.isVariableStatement).flatMap(node => [...node.declarationList.declarations]).find(node => node.name.getText(src) === 'renderItem')!
-  const stop = src.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === 'doStop')!
   const icons = src.statements.filter(ts.isVariableStatement).find(node => node.declarationList.declarations.some(node => node.name.getText(src) === 'KIND_ICON'))!
   const labels = sourceOf('panels/activityStopLabel.ts')
+  const stop = labels.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === 'doStop')!
   const labelFn = labels.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === 'stopLabel')!
   const routes = sourceOf('ui/activityGo.ts')
   const routeFn = routes.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === 'goFor')!
@@ -37,7 +37,7 @@ function rowRenderer(layout: string, locale: 'zh' | 'en') {
     tr, cmdText: () => '', engine, onToast, onGoPage, onOpenWormhole: undefined,
     Glyph: 'Glyph', NAV_TONES: {}, ICO_TONES: {}, fmtDuration: (ms: number) => `${Math.ceil(ms / 1000)}s`,
     haulAsk: false, retreatAsk: false, setHaulAsk: () => {}, setRetreatAsk: () => {} }
-  const code = [icons.getText(src), stop.getText(src), labelFn.getText(labels).replace(/^export\s+/, ''), routeFn.getText(routes).replace(/^export\s+/, ''), `const ${row.getText(src)};`, 'globalThis.result=renderItem'].join('\n')
+  const code = [icons.getText(src), stop.getText(labels).replace(/^export\s+/, ''), labelFn.getText(labels).replace(/^export\s+/, ''), routeFn.getText(routes).replace(/^export\s+/, ''), `const ${row.getText(src)};`, 'globalThis.result=renderItem'].join('\n')
   runInNewContext(ts.transpileModule(code, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React } }).outputText, scope)
   const localize = (view: ActivityView): ActivityView => ({ ...view, label: view.labelId ? tr(view.labelId, view.labelParams) : view.label,
     sub: view.subId ? tr(view.subId, { ...view.subParams, ...(view.subParams?.p2Id ? { p2: tr(String(view.subParams.p2Id)) } : {}) }) : view.sub })

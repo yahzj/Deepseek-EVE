@@ -22,7 +22,7 @@ function renderer(locale: 'zh' | 'en') {
   const localize = scope.exports as Record<string, unknown>
   scope.tr = localize.tr
   scope.isEn = localize.isEn
-  execute('apps/desktop/src/renderer/src/ui/foeBrief.ts')
+  execute('apps/desktop/src/renderer/src/features/combat/foeBrief.ts')
   return scope.exports as {
     mountEffectText: (id: string) => string | null
     mountEffectTextByName: (name: string) => string | null

@@ -47,7 +47,7 @@ function renderer(locale: 'zh' | 'en') {
   }).outputText, scope) }
   execute(bodyOf('apps/desktop/src/renderer/src/i18n/locale.tsx'))
   scope.tr = scope.exports.tr; scope.isEn = scope.exports.isEn
-  execute(bodyOf('apps/desktop/src/renderer/src/ui/foeBrief.ts'))
+  execute(bodyOf('apps/desktop/src/renderer/src/features/combat/foeBrief.ts'))
   const handbook = ts.createSourceFile('handbook.tsx', sourceOf('apps/desktop/src/renderer/src/panels/Handbook.tsx'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
   const collector = handbook.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === 'collectFoeShips')!
   execute(`${collector.getText(handbook)}\nexports.collect = collectFoeShips`)

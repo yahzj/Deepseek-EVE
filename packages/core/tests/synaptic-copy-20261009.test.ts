@@ -54,6 +54,11 @@ describe('突触加速剂已批准中英覆盖', () => {
       'ui.shipInfo.167': '无人机启动时间 −{p1}',
     }
     for (const [id, row] of Object.entries(scope.exports.L10N)) {
+      // 7eae8c916 按批准范围退役历史补偿；其余旧词条仍逐字保护。
+      if (['core.weekend.039', 'core.weekend.040', 'core.weekend.045'].includes(id)) {
+        expect(L10N[id], id).toBeUndefined()
+        continue
+      }
       expect(L10N[id], id).toEqual(approvedMk1CopyDelta(id, { ...row, zh: renamed[id] ?? row.zh }))
     }
     const backlog = readFileSync(new URL('docs/l10n-pending.md', root), 'utf8')
