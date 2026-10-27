@@ -1,5 +1,12 @@
 # 工具区台账（tools/）
 
+## 存档兼容检查（2026-10-27 · v31）
+
+- `npm run save:migrate`：只读遍历`docs/test-saves/*.json`，当前v31须可读、低版本须以VERSION错误拒读；同时核对钱包、基础核心、指定弹药蓝图库存和首次任务完成状态不变。二号120份样本为44可读、76预期拒读；主树目录136份为59可读、77预期拒读，额外样本不因此入库，不代表所有个人档已检查。
+- `npm run save:roundtrip-audit`：只对支持档执行读档→内存序列化→再读档，检查第二轮缺键与类型变化；低版本预期拒读单列，异常与结构变化返回失败。不逐值比较全部资产、不写原样本或个人档。
+- 已删除历史专用工具`weekend-compensation.ts`及其命令、`save-enable-ironman.ts`；通用手动管理工具`save-grant-ships.ts`保留，仅船长明确下令才运行。本轮未运行任何补偿写档工具。
+- 构建后可用`node tools/black-market-desktop-smoke.cjs`检查真实IPC保存和重载，使用合成档、隐藏自建Electron和独立临时userData。二号缺少二进制时可通过`ELECTRON_OVERRIDE_DIST_PATH`临时引用已核实的本机运行时，不修改依赖或个人目录。
+
 ## 支援件与插件多件惩罚（2026-10-23）
 
 - `npx tsx tools/make-test-save.ts support-plug-stacking`：独立合成混装舰和双插件对照，夹具 `support-plug-stacking-fixture.ts`，不读取个人档。
