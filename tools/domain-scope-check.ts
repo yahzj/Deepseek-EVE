@@ -45,6 +45,7 @@ type Domain = { name: string; globs: readonly string[] }
  * ⚠ 表里**不放共享底层**：那些走 `SHARED`（§十八 第 3 条：改共享底层不算跨模块）。
  */
 const DOMAINS: readonly Domain[] = [
+  { name: '战斗', globs: ['apps/desktop/src/renderer/src/panels/FittingRange.tsx', 'packages/core/src/alienCombat.ts', 'packages/core/src/alienEquipment.ts', 'packages/core/src/battleAmmoPreflight.ts', 'packages/core/src/coronaFocus.ts', 'packages/core/src/droneLaunch.ts', 'packages/core/src/enemyParameters.ts', 'packages/core/src/fittingRange.ts', 'packages/core/src/gravekeeperCombat.ts', 'packages/core/src/gravekeeperGear.ts'] },
   { name: '战斗', globs: ["packages/core/src/combat/**","packages/data/src/combat/**","apps/desktop/src/renderer/src/features/combat/**"] },
   { name: '远征与赏金', globs: ["packages/core/src/expedition/**","apps/desktop/src/renderer/src/features/expedition/**"] },
   { name: '低安遭遇', globs: ["packages/core/src/encounters/**"] },
