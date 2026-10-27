@@ -673,7 +673,7 @@ function rarePoolStats(state: GameState, ctx: SimContext): { unlockedN: number; 
 /** 本抽取窗 rare 供给张数 N：浮动百分比 × 已解锁件数（船长 2026-09-06 定：基数=已解锁件数、
  * 删除旧 4~9 张/批加成；加新商品自动按比例扩），现货抢购学放大；池内有货时至少抽 1 张。
  * **铁人福利 B**（2026-09-23 船长令「稀有订单出现权重 +100%」）⇒ 张数 ×2（非铁人 ×1，逐字不变）。 */
-function rareDrawCount(state: GameState, ctx: SimContext, stat: { unlockedN: number; lockedN: number }): number {
+function rareDrawCount(state: GameState, stat: { unlockedN: number; lockedN: number }): number {
   if (stat.unlockedN + stat.lockedN <= 0) return 0
   const r = RARE_PCT_MIN + (RARE_PCT_MAX - RARE_PCT_MIN) * nextRandom(state.rng)
   return Math.max(1, ceilFinalQuantity(r * stat.unlockedN * sweepMul(state) * ironmanRareWeightMul(state)))
@@ -827,7 +827,7 @@ function spawnExoticSupply(state: GameState, ctx: SimContext, def: MarketGoodDef
 export function slowSupplyDraw(state: GameState, ctx: SimContext, now: number): void {
   const stat = rarePoolStats(state, ctx)
   // ── rare：N 张加权有放回抽取（同窗可重复抽中同一类型）──
-  const n = rareDrawCount(state, ctx, stat)
+  const n = rareDrawCount(state, stat)
   if (n > 0) {
     const defs: MarketGoodDef[] = []
     let totalW = 0
@@ -2380,7 +2380,3 @@ export function buyBasicAiCore(state: GameState, ctx: SimContext): CommandResult
   )
   return { ok: true }
 }
-
-
-
-

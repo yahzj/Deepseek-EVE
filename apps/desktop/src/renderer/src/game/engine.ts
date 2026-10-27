@@ -41,12 +41,10 @@ import {
   fleeEncounter,
   itemReleased, // 2026-09-13 施工期闸门：未上线内容不进"给玩家看的"目录枚举
   assignAiExpedition,
-  assignAiStandby,
   assignAiMining,
   assignAiSalvage,
   buyAtMarket,
   buyBasicAiCore,
-  buyShip,
   cancelAiTask,
   cancelManufacturing,
   cancelOrder,
@@ -54,7 +52,6 @@ import {
   claimFirstTask,
   cancelStandby,
   changeShip,
-  clearSkillQueue,
   noteLabOpened as markLabOpened,
   createInitialState,
   buySkillLicense,
@@ -174,8 +171,6 @@ import {
   // 导航「任务中心」的推进提醒（2026-09-20 船长令）：判定与记账单点都在 core
   firstTaskNotice,
   firstTasksMarkSeen,
-  courierTaskUnlocked,
-  courierDelivering,
   startCourierDelivery,
   // 主控活动切换的单点判据（2026-09-21 船长令；见 `withActivitySwitch`）
   ACTIVITY_CONFIRM_ID,
@@ -190,7 +185,6 @@ import {
   autoLoopInvasionGalaxy,
   setAutoLoopInvasion,
   advanceAutoLoopInvasion,
-  unfitSlot,
   unfitAt,
   // 2026-09-11 协处理器：CPU 预算总额（含扩容）/ 超载预演 / 原子换装
   cpuOverloadText,
@@ -264,7 +258,6 @@ import {
   wormholeHoldCapacityOf,
   wormholeTempUsage,
   wormholeTempStowPiece,
-  wormholeTempDiscardPiece,
   wormholeTempStowAll,
   wormholeTempDiscardAll,
   wormholeTempPending,
@@ -312,7 +305,6 @@ import {
   holdCompact,
   holdDropWithGrab,
   holdSwap,
-  holdMove,
   wormholeGridScan,
   wormholeScanBonusOf,
   wormholeTravelTo,
@@ -349,7 +341,6 @@ import type {
   GameState,
   LairTier,
   MarkKind,
-  ModuleSlot,
   RackSlot,
   RefineRunView,
   UnboxResultRow,
@@ -1033,10 +1024,6 @@ export class GameEngine {
     return matterTechBattleSpeedTiers(this.state, this.ctx)
   }
 
-  /** 本会话玩家选的档位（`0` = 还没选过） */
-  wormholeSpeedPickValue(): number {
-    return this.wormholeSpeedPick
-  }
 
   /**
    * **本拍实际生效的档位**（界面高亮同一把尺）：玩家选过且仍解锁 ⇒ 用选的；否则 = 已解锁最高档；
@@ -2185,15 +2172,6 @@ export class GameEngine {
     return ok
   }
 
-  /** 清空训练队列 */
-  clearQueue(): number {
-    const count = clearSkillQueue(this.state)
-    if (count > 0) {
-      void this.persist()
-      this.notify()
-    }
-    return count
-  }
 
   /**
    * **记下"第一次进实验室页面"**（**2026-09-30 船长令**：第一次进实验室给玩家发一封黑市通讯）。
@@ -2438,15 +2416,6 @@ export class GameEngine {
     return this.sellCargo(itemId)
   }
 
-  /** 购买新舰船 */
-  buyShipAt(shipId: string): CommandResult {
-    const result = buyShip(this.state, shipId, this.ctx)
-    if (result.ok) {
-      void this.persist()
-      this.notify()
-    }
-    return result
-  }
 
   /** 学习蓝图书（消耗一本 → 永久学会配方） */
   learnBlueprintAt(blueprintId: string): CommandResult {
@@ -2686,25 +2655,7 @@ export class GameEngine {
     })
   }
 
-  /** 把装备库里的装备装到对应槽位 */
-  fitModuleAt(moduleId: string): CommandResult {
-    const result = fitModule(this.state, moduleId, this.ctx)
-    if (result.ok) {
-      void this.persist()
-      this.notify()
-    }
-    return result
-  }
 
-  /** 卸下某槽位的装备（放回装备库；旧六槽语义的兼容入口） */
-  unfitSlotAt(slot: ModuleSlot): boolean {
-    const ok = unfitSlot(this.state, slot)
-    if (ok) {
-      void this.persist()
-      this.notify()
-    }
-    return ok
-  }
 
   /** V18：把装备装到 指定槽类+位序（shipId 缺省 = 当前驾驶船；2026-09-05 装配页可装配非驾驶船） */
   fitModuleTo(moduleId: string, rack: RackSlot, index: number, shipId?: string): CommandResult {
@@ -3561,17 +3512,6 @@ export class GameEngine {
     return { ok: true, error: r.unplaced.length > 0 ? tr("ui.engine.040", { p1: r.unplaced.length }) : undefined }
   }
 
-  /** 虫洞：**移动一件形状件**（拖拽落点；非法落点 ⇒ 拒绝、位置不变） */
-  wormholeHoldMove(id: string, x: number, y: number): CommandResult {
-    const run = this.state.wormhole.run
-    if (!run?.hold) return { ok: false, error: tr("ui.engine.039") }
-    const r = holdMove(run.hold, id, x, y, wormholeHoldCapacityOf(this.state, this.ctx))
-    if (r.ok) {
-      void this.persist()
-      this.notify()
-    }
-    return { ok: r.ok, error: r.error }
-  }
 
   /**
    * 虫洞：**按抓取偏移落件**（界面拖拽的真正入口）。
@@ -3691,15 +3631,6 @@ export class GameEngine {
     return { ok: r.ok, error: r.error }
   }
 
-  /** 虫洞：**丢弃临时空间里的一件**（手动；与货仓抛货同一把尺） */
-  wormholeTempDiscard(id: string): CommandResult {
-    const r = wormholeTempDiscardPiece(this.state, this.ctx, id)
-    if (r.ok) {
-      void this.persist()
-      this.notify()
-    }
-    return { ok: r.ok, error: r.error }
-  }
 
   /** 虫洞：**临时空间全部放回货仓**（逐件尝试 ⇒ 报告放不下的那几件） */
   wormholeTempStowAll(): { ok: boolean; moved: number; stuck: string[] } {
@@ -4055,15 +3986,6 @@ export class GameEngine {
     return result
   }
 
-  /** B1.5：指派副船前往星系掩护巡逻（占名额，可取消召回） */
-  assignAiStandbyAt(shipId: string, coreType: string, galaxyId: string): CommandResult {
-    const result = assignAiStandby(this.state, shipId, coreType as never, galaxyId, this.ctx)
-    if (result.ok) {
-      void this.persist()
-      this.notify()
-    }
-    return result
-  }
   /** B1 低安遭遇：迎战（进入实时战斗，自动打完） */
   fightEncounterNow(): CommandResult {
     return this.withBattleAmmoWarning(`encounter:${this.state.encounter.invitedAtGameMs}`, [this.state.encounter.shipId ?? this.state.shipId], () => this.fightEncounterReady(), undefined,
@@ -4267,10 +4189,6 @@ export class GameEngine {
     firstTasksMarkSeen(this.state)
   }
 
-  /** 快递任务当前是否解锁（已建成任一副空间站——stage ≥ 档位数） */
-  courierTasksUnlocked(): boolean {
-    return courierTaskUnlocked(this.state, this.ctx)
-  }
 
   /**
    * **领取次数链奖金**（任务中心「第一次」卡片上的领奖；2026-09-17 教程重做批）。
@@ -4336,10 +4254,6 @@ export class GameEngine {
     return result
   }
 
-  /** 是否正在快递投送（在途；其余出航作业在此期间被拒绝） */
-  isCourierDelivering(): boolean {
-    return courierDelivering(this.state)
-  }
 
   /**
    * 2026-09-10 修复（船长定位：重复清剿中"退出战场"会打断连击）：

@@ -15,11 +15,11 @@ import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { AiWorkFx } from '../ui/aiWorkFx'
-import { tr, cmdText } from '../i18n/locale'
+import { tr } from '../i18n/locale'
 // 活动行「点击去哪」的跳转单点（2026-09-27 建：原先两套外壳各一份，快递那档跳到了已删除的星图页签 ⇒ 空白页）
 import { goFor } from '../ui/activityGo'
 // 活动栏「停止/取消」按钮文案 = 单点（两套外壳共用，见文件头注）
-import { stopLabel } from './activityStopLabel'
+import { stopLabel, doStop } from './activityStopLabel'
 import { fmtDuration } from '../i18n/fmt'
 import { explorationActivityText } from '../ui/explorationActivityText'
 import '../styles-activity-invasion.css'
@@ -53,71 +53,6 @@ const KIND_ICON: Record<string, string> = {
   lab: 'nav-industry',
 }
 
-function doStop(v: ActivityView, engine: GameEngine, onToast: ToastFn): void {
-  const run = (r: { ok: boolean; error?: string; errorId?: string; errorParams?: Record<string, string | number> } | boolean, okText: string): void => {
-    const ok = typeof r === 'boolean' ? r : r.ok
-    // 甲案：错误串优先按 id 取当前语言（`cmdText` 没 id 时回退中文原串）
-    if (!ok) onToast((typeof r === 'object' && (cmdText(r) || r.error)) || tr('ui.ActivityBar.061'), true)
-    else onToast(okText)
-  }
-  switch (v.stop) {
-    case 'cancel-station-pending':
-      run(engine.cancelPendingStationActivityNow(), tr('ui.ActivityBar.004'))
-      break
-    case 'remove-training':
-      run(engine.dequeueAt(0), tr("ui.ActivityBar.038"))
-      break
-    case 'stop-mining':
-      run(engine.stopMiningNow(), tr("ui.MapPage.080"))
-      break
-    case 'stop-scan':
-      run(engine.stopScanNow(), tr("ui.ActivityBar.039"))
-      break
-    case 'stop-whscan':
-      run(engine.wormholeScanStop(), tr("ui.ActivityBar.040"))
-      break
-    case 'stop-whauto':
-      if (v.stopParam) run(engine.wormholeAutoStop(v.stopParam), tr("ui.ActivityBar.041"))
-      break
-    case 'stop-salvage':
-      run(engine.stopSalvageOpNow(), tr("ui.ActivityBar.042"))
-      break
-    case 'cancel-manufacture':
-      if (v.stopParam) run(engine.cancelManufacturingAt(v.stopParam), tr("ui.ActivityBar.043"))
-      break
-    case 'stop-refine':
-      if (v.stopParam) run(engine.stopRefineRunAt(v.stopParam), tr("ui.ActivityBar.044"))
-      break
-    /** 停一条实验线（2026-10-01 接入）：与工业页实验室卡片的停止按钮同一个引擎方法 */
-    case 'stop-lab':
-      if (v.stopParam) run(engine.stopLabRunAt(v.stopParam), tr("ui.ActivityBar.068"))
-      break
-    case 'recall-expedition':
-      run(engine.recallExpeditionNow(), tr("ui.ActivityBar.045"))
-      break
-    case 'recall-standby':
-      run(engine.recallStandbyNow(), tr("ui.ActivityBar.046"))
-      break
-    case 'retreat-battle':
-      run(engine.retreatNow(), tr("ui.ActivityBar.047"))
-      break
-    case 'cancel-ai':
-      if (v.stopParam) run(engine.cancelAiTaskAt(v.stopParam), tr("ui.ShipPage.177"))
-      break
-    case 'cancel-deliver-trip':
-      run(engine.cancelDeliverTripNow(), tr("ui.ActivityBar.048"))
-      break
-    case 'stop-loop':
-      run(engine.bountyLoopAt(null), tr("ui.ActivityBar.049"))
-      break
-    case 'stop-invasion-loop':
-      run(engine.invasionLoopAt(null), tr('core.weekend.034'))
-      break
-    case 'stop-hauling':
-      run(engine.stopHaulingNow(), tr("ui.ActivityBar.050"))
-      break
-  }
-}
 
 /**
  * 活动项 → 跳转目标页面（可带星图二级标签）——船长 2026-09-05 点击跳转。

@@ -935,8 +935,6 @@ export {
   INITIAL_STANDING,
   bountyRewardFactor,
   calcPower,
-  winChance,
-  calcExpeditionDurationMs,
   startExpedition,
   startExpeditionFromMining,
   advanceExpedition,
@@ -946,7 +944,6 @@ export {
   battleTacticDesire,
   resolveBattleOutcome,
   expeditionStatus,
-  expeditionFeasibility,
   retreatBattle,
 } from './expedition'
 export type { ExpeditionView, BattleTacticChoice } from './expedition'
@@ -1309,7 +1306,6 @@ export {
   BATTLE_ARRIVAL_STAGGER_MS,
   // 机群战损（2026-09-10 船长「无人机可被击落」+ 永久损失制）
   pdEnabledFor,
-  droneLostCount,
   settleDroneLosses,
   // 战报改造（2026-09-14 船长定）：唯一构造点 + 四档判定纯函数
   captureBattleReport,

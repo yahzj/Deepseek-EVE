@@ -128,10 +128,3 @@ export function noteSaveWriteFailed(): void {
   warnedWriteFailed = true
   emit(tr('ui.saveGuard.009'))
 }
-
-/** 单测/探针用：清掉"每局一次"的标记（生产路径不调） */
-export function resetSaveGuardForTest(): void {
-  warnedUnavailable = false
-  warnedWriteFailed = false
-  probe = null
-}

@@ -400,7 +400,7 @@ function loadDeliverCargo(state: GameState, ctx: SimContext, site: StationSiteDe
  * **仓库里有没有"这一趟装得上的"建材**（只读判据，给 `startSiteDeliverTrip` 的早期拒绝用）：
  * 第一个仍缺料的档位有库存才发船，不只为运送后档暂时不能交付的材料空转。
  */
-function hasLoadableDeliverWare(state: GameState, ctx: SimContext, site: StationSiteDef): boolean {
+function hasLoadableDeliverWare(state: GameState, site: StationSiteDef): boolean {
   const prog = siteProgress(state, site.id)
   for (let k = prog.stage; k < site.tiers.length; k += 1) {
     let missing = false
@@ -443,7 +443,7 @@ export function startSiteDeliverTrip(state: GameState, ctx: SimContext, siteId: 
   // 旧材料视图会补空进度账；预检隔离该写入，失败不改原档。
   const preflight = { ...state, stationSites: { ...state.stationSites } }
   const billNow = stationBillText(preflight, ctx, site)
-  if (!hasLoadableDeliverWare(preflight, ctx, site)) {
+  if (!hasLoadableDeliverWare(preflight, site)) {
     return {
       ok: false,
       error: `仓库没有可装载的建材（当前档需要：${billNow}）——备料后再一键出发。`,

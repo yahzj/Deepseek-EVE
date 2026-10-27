@@ -31,7 +31,7 @@ function ctxOf(cargo = 800) {
   })
 }
 
-function fittedState(seed: number, cargoM3 = 800) {
+function fittedState(seed: number) {
   const state = createInitialState({ nowWallMs: 0, seed })
   state.debugQuick = true // 调试模式：行程腿固定 1 秒
   state.exploredGalaxies.push('galaxy-scrap')

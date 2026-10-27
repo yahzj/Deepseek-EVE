@@ -27,7 +27,7 @@ import { addLog, HOME_GALAXY_ID, shipLockedInWormhole } from './state'
 import { applyActivityGate, haltCurrentActivity, manualSlotOf } from './activityGate'
 import type { CommandResult } from './engine'
 import type { GameState, BattleState } from './state'
-import type { AnomalyDef, SimContext, TravelEventDef } from './types'
+import type { SimContext, TravelEventDef } from './types'
 import { nextInt, nextRandom, pickOne, pickWeighted } from './rng'
 import { addItem, cargoUnitM3, freeCargoM3, unloadCargoOfShipToWarehouse } from './inventory'
 import { applyArmorFirstDamage, firepowerHitHp, hitDamageText, type HullHit } from './hullDamage'
@@ -146,23 +146,7 @@ export function calcPower(state: GameState, ctx: SimContext, shipId: string = st
   return Math.round(base * (1 + (shipDef?.powerBonus ?? 0)))
 }
 
-/**
- * 胜率（旧口径保留：仅展示兼容；预估请用 battleWinPreview / 带伤预警口径 bountyWinPercentGuarded）。
- * 新口径下 AI 门槛与远征面板一律使用 battleWinPreview。
- */
-export function winChance(power: number, threat: number, ctx: SimContext): number {
-  const bal = ctx.balance.combat
-  if (threat <= 0) return bal.maxWinChance
-  const raw = power / (power + threat)
-  return Math.min(bal.maxWinChance, Math.max(bal.minWinChance, raw))
-}
 
-/** 远征去程耗时估算（展示用；T8：按当前位置出发的单程 + 参考交火时长；完成后停留，返航另计） */
-export function calcExpeditionDurationMs(state: GameState, ctx: SimContext, anomaly: AnomalyDef): number {
-  const outMinutes = shortestTravelMinutes(ctx, originGalaxyOf(state, ctx), anomaly.galaxyId)
-  if (!Number.isFinite(outMinutes)) return 0
-  return travelLegMs(state, ctx, outMinutes) + anomaly.combatSeconds * 1000
-}
 
 /** 玩家战术选择 */
 export type BattleTacticChoice = 'assault' | 'mid' | 'kite'
@@ -1946,19 +1930,4 @@ export function expeditionStatus(state: GameState, ctx: SimContext): ExpeditionV
     combat,
     lairTier: exp.lairTier ?? null,
   }
-}
-
-/** 目标可否出发的说明（界面禁用提示用；V13 含探索封锁） */
-export function expeditionFeasibility(state: GameState, anomaly: AnomalyDef, ctx: SimContext): { ok: boolean; reason: string } {
-  if (state.mining.active) return { ok: false, reason: '采矿中' }
-  if (state.salvaging.active) return { ok: false, reason: '打捞中' }
-  if (state.expedition.active) return { ok: false, reason: '远征中' }
-  if (state.sideTasks.deliver !== null) return { ok: false, reason: '快递投送中' }
-  const standing = standingOf(state, DSI_FACTION_ID)
-  if (standing < anomaly.standingReq) return { ok: false, reason: `需声望 ${anomaly.standingReq}` }
-  const block = actionBlockReason(state, anomaly.galaxyId)
-  if (block) return { ok: false, reason: '星系未探索' }
-  const minutes = shortestTravelMinutes(ctx, HOME_GALAXY_ID, anomaly.galaxyId)
-  if (!Number.isFinite(minutes)) return { ok: false, reason: '无航路' }
-  return { ok: true, reason: `去程即时 · 失利返航约 ${minutes * 2} 分钟` }
 }

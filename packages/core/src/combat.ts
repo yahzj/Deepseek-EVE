@@ -87,7 +87,7 @@ import { AMMO_IDS, createPlayerSpec, DRONE_SKILL, droneSkillLv, WEB_BREAK_DIST_M
 export { DRONE_SKILL, MY_WEB_RANGE_M, WEB_BREAK_DIST_M, createPlayerSpec, damageUpgradeMult, droneReloadUpgradeMult, familyUpgradeMult, familyUpgradeSkillIdOf, hitUpgradeMult, mergeResist, playerAmmoType, reloadUpgradeMult } from './playerSpec'
 // 维修与护盾脉冲（2026-10-02 批次 4h 拆到 combatRepair.ts）；本文件借回使用并再导出
 import { preloadRepairFor, preloadShieldChargeFor, preloadShieldFieldFor, pulseRepairsFor, pulseShieldChargeFor, pulseShieldFieldFor, REPAIR_PULSE_MS, repairLedgersOf, SHIELD_REGEN_FLOOR_PCT, shieldChargeLedgersOf, shieldChargeStreamsOf, shieldFieldStreamsOf } from './combatRepair'
-export { REPAIR_PULSE_MS, SHIELD_PULSE_MS, SHIELD_FIELD_COST_PCT, SHIELD_REGEN_FLOOR_PCT, fittedRepairModules, preloadRepairFor, preloadShieldChargeFor, preloadShieldFieldFor, pulseShieldCharge, pulseShieldChargeFor, pulseShieldFieldFor, refundRepairKits, refundRepairKitsAll, repairKitAvailableOf, repairLedgersOf, repairStatsFor, repairStreamsOf, repairUsageText, shieldChargeLedgersOf, shieldChargeStreamsOf, shieldFieldOf, shieldFieldStreamsOf, shieldPulsePctOf } from './combatRepair'
+export { REPAIR_PULSE_MS, SHIELD_PULSE_MS, SHIELD_FIELD_COST_PCT, SHIELD_REGEN_FLOOR_PCT, fittedRepairModules, preloadRepairFor, preloadShieldChargeFor, preloadShieldFieldFor, pulseShieldChargeFor, pulseShieldFieldFor, refundRepairKits, refundRepairKitsAll, repairKitAvailableOf, repairLedgersOf, repairStatsFor, repairStreamsOf, repairUsageText, shieldChargeLedgersOf, shieldChargeStreamsOf, shieldFieldOf, shieldFieldStreamsOf, shieldPulsePctOf } from './combatRepair'
 // 战斗弹药装载（2026-10-02 批次 4i 拆到 combatAmmo.ts）；本文件借回使用并再导出
 import { ammoKeyOf, ammoLoadTotals, ammoTierFallbackLog, loadAmmoTier, battleAmmoIdsFor, battleAmmoAvailable, battleWeaponAmmoCost, consumeBattleWeaponAmmo, loadWormholeBattleAmmo, wormholeAmmoIdsForSpec } from './combatAmmo'
 import { deployWormholeSupply, returnWormholeDroneSupply, settleWormholeDroneRevives, takeWormholeSupply, wormholeSupplyForBattle } from './wormholeSupplies'
@@ -96,7 +96,7 @@ export type { AmmoKey } from './combatAmmo'
 // 机群池与近防炮（2026-10-02 批次 4j 拆到 combatDrones.ts）；本文件借回使用并再导出
 import { buildDronePoolsFor, dronePoolKey, dronePoolOwner, isFoeEngageable, pickFoeDroneTarget, resolvePointDefense } from './combatDrones'
 import { initDroneLaunch, releaseDroneLaunch } from './droneLaunch'
-export { droneLostCount, dronePoolKey, dronePoolOwner, pdPriorityOf, pdShotOf, pickFoeDroneTarget } from './combatDrones'
+export { dronePoolKey, dronePoolOwner, pdPriorityOf, pdShotOf, pickFoeDroneTarget } from './combatDrones'
 import { applyFoeRangeDebuff, applyMeJammerDebuff, foeDroneRangeOf, foeGunMaxRangeOf, foeGunPowerFactorOf, markFoeDroneRangeBuff, announceFoeGunRangeBuff, meFoeRangeDebuffOf, meJammerNetOf } from './foeRange'
 import { coronaFocusFalloffOf, syncCoronaFleetFocus } from './coronaFocus'
 export { coronaFocusFalloffOf } from './coronaFocus'
@@ -3104,7 +3104,7 @@ export function battleArcsFor(
     })
     meReload.push(rem)
   })
-  meArcs.forEach((a, i) => {
+  meArcs.forEach((a) => {
     const n = droneN[droneAt.get(a.artId ?? '') ?? -1]
     if (a.src === 'drone' && n !== undefined) {
       a.count = n
@@ -4229,11 +4229,6 @@ export function advanceBattleFor(
   rebaseAxis()
 }
 
-/** 推进当前主控远征的战斗（到耗尽时间或分出胜负） */
-export function advanceBattle(state: GameState, ctx: SimContext): void {
-  const battle = state.expedition.battle
-  if (battle) advanceBattleFor(state, ctx, battle, state.shipId, state.expedition.anomalyId)
-}
 
 /* ══════════ 机群战损（2026-09-10 船长拍板「无人机可被击落」，永久损失制） ══════════ */
 

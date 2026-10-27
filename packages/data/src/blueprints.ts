@@ -3304,7 +3304,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ['bp-drone-launch-3', 'mod-drone-launch-3', 'bp-drone-tac-3', 'bp.launchCalibration.003'],
     ['bp-laser-calibration-2', 'mod-laser-calibration-2', 'bp-stab-pla-2', 'bp.launchCalibration.004'],
     ['bp-laser-calibration-3', 'mod-laser-calibration-3', 'bp-stab-pla-3', 'bp.launchCalibration.005'],
-  ].map(([id, moduleId, sourceId, nameId]) => {
+  ].map(([id, moduleId, sourceId]) => {
     const source = BASE_BLUEPRINTS.find(bp => bp.id === sourceId)!
     const priceIsk = id === 'bp-drone-launch-3' ? 8_160_000 : id === 'bp-laser-calibration-3' ? 9_440_000 : source.priceIsk
     return { ...source, id: id!, moduleId: moduleId!, name: BLUEPRINT_NAME_TEXT_BINDINGS[id as keyof typeof BLUEPRINT_NAME_TEXT_BINDINGS].name, priceIsk,

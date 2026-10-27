@@ -71,6 +71,7 @@ import { Glyph, NAV_TONES, ICO_TONES } from './ui/Glyphs'
 import { ActivityScreen, activityKindOf } from './ui/ActivityScreen'
 import { AppShell } from './ui/AppShell'
 import type { LayoutKind } from './ui/AppShell'
+import { LAYOUT_KEY, LAYOUT_SET_KEY, readLayoutPref } from './ui/layoutPreference'
 import { setSessionPick, sessionPick } from './ui/sessionView'
 import { cmdText, logText, tr } from './i18n/locale'
 import { fmtDuration } from './i18n/fmt'
@@ -558,17 +559,6 @@ export function App({ engine }: { engine: GameEngine }) {
  * 而这张卡挂上来的时机常常正好是"玩家刚点完战场 / 刚在别处点过一下"⇒ 不设防就会一挂上就被点掉。
  */
 const POPUP_ARM_MS = 450
-const LAYOUT_KEY = 'whale-idle:layout'
-const LAYOUT_SET_KEY = 'whale-idle:layout-set'
-
-function readLayoutPref(): LayoutKind {
-  try {
-    if (localStorage.getItem(LAYOUT_SET_KEY) !== '1') return 'classic'
-    return localStorage.getItem(LAYOUT_KEY) === 'modern' ? 'modern' : 'classic'
-  } catch {
-    return 'classic'
-  }
-}
 const [layoutKind] = useState<LayoutKind>(readLayoutPref)
 /** 玩家已点选、但**还没重启**的布局（null = 没有待应用项）—— 弹框问过之后才写盘并关游戏 */
 const [layoutPending, setLayoutPending] = useState<LayoutKind | null>(null)

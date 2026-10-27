@@ -92,7 +92,7 @@ export function weekendRewardLinesOf(snapshot: WeekendResultSnapshot): CommsRewa
  * ⇒ 读档、离线跨场、每拍补发都走同一份数据，这里**不另判一次**位置或安等。
  */
 export function weekendWarnCommsOf(
-  state: GameState,
+  _state: GameState,
   ctx: SimContext,
   ev: WeekendEventState,
 ): CommsInstanceEntry {
@@ -140,7 +140,7 @@ export function weekendWarnCommsOf(
  * 零贡献（`rewards` 为空）⇒ 走船长定的变体句。
  */
 export function weekendSettleCommsOf(
-  state: GameState,
+  _state: GameState,
   ctx: SimContext,
   snapshot: WeekendResultSnapshot,
 ): CommsInstanceEntry {

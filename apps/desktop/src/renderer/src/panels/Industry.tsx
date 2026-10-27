@@ -551,8 +551,6 @@ export const BlueprintCard = memo(function BlueprintCard({
   kindLabel,
   productGlyph,
   productTone,
-  productBase,
-  /** 产物引用（2026-09-23 船长令：装备/舰船改显示"市场当前价格" ⇒ 卡面要能按 id 取行情） */
   productRef,
   /** 一次制造产出件数（利润率按整批算；缺省 1） */
   productUnits,
@@ -565,7 +563,6 @@ export const BlueprintCard = memo(function BlueprintCard({
   onGotoShelf,
   highlighted,
   learnless,
-  liveKey,
 }: {
   engine: GameEngine
   onToast: ToastFn
@@ -1822,4 +1819,3 @@ export function ManufacturingPanel({
     </Panel>
   )
 }
-

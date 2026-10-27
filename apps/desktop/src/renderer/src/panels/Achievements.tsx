@@ -121,11 +121,3 @@ export function Achievements({ engine }: { engine: GameEngine }) {
     </Panel>
   )
 }
-
-/** 侧栏导航项与页面头共用的读数（只报数，不自己渲染） */
-export function achievementOwnedOf(engine: GameEngine): { owned: number; total: number } {
-  return {
-    owned: achievementCount(engine.state),
-    total: engine.ctx.achievements?.length ?? 0,
-  }
-}

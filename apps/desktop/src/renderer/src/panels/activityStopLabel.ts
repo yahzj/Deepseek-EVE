@@ -6,12 +6,77 @@
  * `tr()` id 集合**逐字相同**（12 个 id、顺序一致，实测见 `docs/review/arch-guard-baseline-20260927.md` A1）。
  * 后果 = 活动栏文案要改就得改两处，漏一处两套界面就说法不一。
  *
- * 口径：两套外壳的**其它部分差异很大、各自冻结**，本文件只收"活动类型 → 按钮文案"这一件事。
- * 收口后两处都 import 本文件；改文案只改这里一处。
+ * 两套外壳保留各自结构；相同的停止文案和命令分派在这里共用。
  * 关联护栏：`npm run arch:guard` 的 F2（已登记单点被别处再写一份即报红）。
  */
 import type { ActivityView } from '@whale/core'
-import { tr } from '../i18n/locale'
+import { tr, cmdText } from '../i18n/locale'
+import type { GameEngine } from '../game/engine'
+import type { ToastFn } from '../pages/common'
+
+export function doStop(v: ActivityView, engine: GameEngine, onToast: ToastFn): void {
+  const run = (r: { ok: boolean; error?: string; errorId?: string; errorParams?: Record<string, string | number> } | boolean, okText: string): void => {
+    const ok = typeof r === 'boolean' ? r : r.ok
+    if (!ok) onToast((typeof r === 'object' && (cmdText(r) || r.error)) || tr('ui.ActivityBar.061'), true)
+    else onToast(okText)
+  }
+  switch (v.stop) {
+    case 'cancel-station-pending':
+      run(engine.cancelPendingStationActivityNow(), tr('ui.ActivityBar.004'))
+      break
+    case 'remove-training':
+      run(engine.dequeueAt(0), tr("ui.ActivityBar.038"))
+      break
+    case 'stop-mining':
+      run(engine.stopMiningNow(), tr("ui.MapPage.080"))
+      break
+    case 'stop-scan':
+      run(engine.stopScanNow(), tr("ui.ActivityBar.039"))
+      break
+    case 'stop-whscan':
+      run(engine.wormholeScanStop(), tr("ui.ActivityBar.040"))
+      break
+    case 'stop-whauto':
+      if (v.stopParam) run(engine.wormholeAutoStop(v.stopParam), tr("ui.ActivityBar.041"))
+      break
+    case 'stop-salvage':
+      run(engine.stopSalvageOpNow(), tr("ui.ActivityBar.042"))
+      break
+    case 'cancel-manufacture':
+      if (v.stopParam) run(engine.cancelManufacturingAt(v.stopParam), tr("ui.ActivityBar.043"))
+      break
+    case 'stop-refine':
+      if (v.stopParam) run(engine.stopRefineRunAt(v.stopParam), tr("ui.ActivityBar.044"))
+      break
+    case 'stop-lab':
+      if (v.stopParam) run(engine.stopLabRunAt(v.stopParam), tr("ui.ActivityBar.068"))
+      break
+    case 'recall-expedition':
+      run(engine.recallExpeditionNow(), tr("ui.ActivityBar.045"))
+      break
+    case 'recall-standby':
+      run(engine.recallStandbyNow(), tr("ui.ActivityBar.046"))
+      break
+    case 'retreat-battle':
+      run(engine.retreatNow(), tr("ui.ActivityBar.047"))
+      break
+    case 'cancel-ai':
+      if (v.stopParam) run(engine.cancelAiTaskAt(v.stopParam), tr("ui.ShipPage.177"))
+      break
+    case 'cancel-deliver-trip':
+      run(engine.cancelDeliverTripNow(), tr("ui.ActivityBar.048"))
+      break
+    case 'stop-loop':
+      run(engine.bountyLoopAt(null), tr("ui.ActivityBar.049"))
+      break
+    case 'stop-invasion-loop':
+      run(engine.invasionLoopAt(null), tr('core.weekend.034'))
+      break
+    case 'stop-hauling':
+      run(engine.stopHaulingNow(), tr("ui.ActivityBar.050"))
+      break
+  }
+}
 
 /** 活动行右侧「停止 / 取消 / 召回 / 撤退」按钮的文案（按 `ActivityView.stop` 分派） */
 export function stopLabel(v: ActivityView): string {

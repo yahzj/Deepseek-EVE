@@ -1630,7 +1630,6 @@ export function GalaxyActions({
   engine,
   galaxy,
   onToast,
-  onOpenWormhole,
 }: {
   engine: GameEngine
   galaxy: GalaxyDef

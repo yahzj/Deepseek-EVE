@@ -577,7 +577,7 @@ describe('虫洞 · 拖拽落点带抓取偏移（船长 2026-09-14 二次报障
   }
 
   /** 现场：2×2 货柜在**第一排**（y=0），右侧 (5,0) 起是空的（容量 40 = 5 行） */
-  function holdWithBoxAtTop(capacity = 40): WormholeHoldState {
+  function holdWithBoxAtTop(): WormholeHoldState {
     const hold = makeHoldState()
     hold.placements.push({ id: 'b1', itemId: BOX, kind: 'box', x: 0, y: 0, w: 2, h: 2 })
     return hold
@@ -585,7 +585,7 @@ describe('虫洞 · 拖拽落点带抓取偏移（船长 2026-09-14 二次报障
 
   it('件在**第一排**、抓**右下角**那格、光标落在**第一排**的空格 ⇒ 夹回网格内（旧口径直接报"放不下"）', () => {
     const capacity = 40
-    const hold = holdWithBoxAtTop(capacity)
+    const hold = holdWithBoxAtTop()
     // 光标落在 (6,0)（第一排的空格）⇒ 理想左上角 = (6-1, 0-1) = (5,-1) —— 第 −1 行，越界
     const r = holdDropWithGrab(hold, 'b1', 6, 0, capacity, { dx: 1, dy: 1 })
     expect(r.ok).toBe(true)
@@ -593,13 +593,13 @@ describe('虫洞 · 拖拽落点带抓取偏移（船长 2026-09-14 二次报障
     expect(hold.placements[0]).toMatchObject({ x: 5, y: 0 })
     expect(overlapPairs(hold)).toEqual([])
     // **负向**：旧口径（`holdMove` 直接用理想左上角）必然拒 —— 这就是船长看到的那句"这里放不下"
-    const raw = holdWithBoxAtTop(capacity)
+    const raw = holdWithBoxAtTop()
     expect(holdMove(raw, 'b1', 5, -1, capacity).ok).toBe(false)
   })
 
   it('件在第一排、抓右下角、光标落在**第二排** ⇒ 精确落点就在界内，不夹（位置 = 光标 − 抓取偏移）', () => {
     const capacity = 40
-    const hold = holdWithBoxAtTop(capacity)
+    const hold = holdWithBoxAtTop()
     const r = holdDropWithGrab(hold, 'b1', 6, 1, capacity, { dx: 1, dy: 1 })
     expect(r.ok).toBe(true)
     expect({ x: r.x, y: r.y }).toEqual({ x: 5, y: 0 })
@@ -607,7 +607,7 @@ describe('虫洞 · 拖拽落点带抓取偏移（船长 2026-09-14 二次报障
 
   it('抓左上角（偏移 0,0）⇒ 光标格就是左上角（与旧观感一致）', () => {
     const capacity = 40
-    const hold = holdWithBoxAtTop(capacity)
+    const hold = holdWithBoxAtTop()
     const r = holdDropWithGrab(hold, 'b1', 4, 3, capacity, { dx: 0, dy: 0 })
     expect(r.ok).toBe(true)
     expect({ x: r.x, y: r.y }).toEqual({ x: 4, y: 3 })
@@ -615,7 +615,7 @@ describe('虫洞 · 拖拽落点带抓取偏移（船长 2026-09-14 二次报障
 
   it('**界内**的落点被占 ⇒ 照旧拒绝（不猜位置、不悄悄挪去别处）', () => {
     const capacity = 40
-    const hold = holdWithBoxAtTop(capacity)
+    const hold = holdWithBoxAtTop()
     hold.placements.push({ id: 'b2', itemId: BOX, kind: 'box', x: 4, y: 1, w: 2, h: 2 })
     // 光标落在 (5,2)：理想左上角 = (4,1) = b2 占着 ⇒ 拒（且两件位置都不动）
     const r = holdDropWithGrab(hold, 'b1', 5, 2, capacity, { dx: 1, dy: 1 })
@@ -627,7 +627,7 @@ describe('虫洞 · 拖拽落点带抓取偏移（船长 2026-09-14 二次报障
 
   it('**右边越界**同理：抓右下角把件拖到最右列 ⇒ 夹回可用宽度内', () => {
     const capacity = 40
-    const hold = holdWithBoxAtTop(capacity)
+    const hold = holdWithBoxAtTop()
     // 光标落在 (7,3)：理想左上角 = (6,2)（界内 ⇒ 精确落点，因为 6+2 ≤ 8）
     const a = holdDropWithGrab(hold, 'b1', 7, 3, capacity, { dx: 1, dy: 1 })
     expect(a.ok).toBe(true)
@@ -640,7 +640,7 @@ describe('虫洞 · 拖拽落点带抓取偏移（船长 2026-09-14 二次报障
 
   it('真没地方（夹回后仍被占）⇒ 才报"放不下"，且位置不动', () => {
     const capacity = 40
-    const hold = holdWithBoxAtTop(capacity)
+    const hold = holdWithBoxAtTop()
     // 把第一排右侧与第二排右侧都占满 ⇒ 夹回第一排也放不下
     hold.placements.push({ id: 'b2', itemId: BOX, kind: 'box', x: 5, y: 0, w: 2, h: 2 })
     const r = holdDropWithGrab(hold, 'b1', 6, 0, capacity, { dx: 1, dy: 1 })

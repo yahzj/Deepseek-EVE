@@ -368,7 +368,7 @@ function drawDistinctGoods(state: GameState, pool: MarketGoodDef[], count: numbe
  * - 矿物（精炼产物）：18,000 × **无门槛矿带的最优精炼产率**（有门槛的矿带不算，避免超出进度）；
  * - 其他（弹药/修理组件/无人机等 NPC 直供品）：按市场池量换算（池量 × 1%/小时）。
  */
-export function hourlySupplyOf(state: GameState, ctx: SimContext, itemId: string): number {
+export function hourlySupplyOf(_state: GameState, ctx: SimContext, itemId: string): number {
   const ORE_PER_HOUR = 18_000
   const item = ctx.items.get(itemId)
   if (!item) return 1_000

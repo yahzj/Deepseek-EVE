@@ -197,7 +197,7 @@ function droneFireSplitOf(
  * `foeDpsCap` 或 `foeDpsOverCapDiscount` **任一未写 / 非正 ⇒ 返回空表**（不缩放，零行为变化；
  * ⚠ 折扣率 0 **不会**退回旧硬钳制语义）。
  */
-function foeHullDpsOf(ship: FoeShipDef, dmgMul: number, comp: number, bal: BattleBalance): number {
+function foeHullDpsOf(ship: FoeShipDef, dmgMul: number, comp: number): number {
   const per = Math.max(1, ceilFinalQuantity(ship.shotDmg * dmgMul * comp))
   return (per * 1000) / Math.max(1, ship.reloadMs)
 }
@@ -226,7 +226,7 @@ function foeDpsCapScaleOf(
     // 被占比/锚点拆分的条目跳过（自带总火力锚定；钳制会让锚点失准）
     if (idxs.some((i) => splitIdx[i] !== null)) continue
     seen.add(slot)
-    total += idxs.length * foeHullDpsOf(slot.ship, slot.dmgMul ?? 1, comp, bal)
+    total += idxs.length * foeHullDpsOf(slot.ship, slot.dmgMul ?? 1, comp)
   }
   if (total <= cap) return out
   // 越线**只对超出部分**打折（2026-09-15 船长：「不是钳制到150，而是超过150的部分进行一个约15%的折扣」）：

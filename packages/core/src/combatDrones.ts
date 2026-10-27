@@ -139,10 +139,6 @@ export function buildDronePoolsFor(
   })
 }
 
-/** 本场已击落架数 */
-export function droneLostCount(b: import('./state').BattleState): number {
-  return Object.values(b.droneLost ?? {}).reduce((s, n) => s + n, 0)
-}
 
 /** 近防炮选靶优先级（2026-09-12 船长：「**优先攻击哨戒和攻坚无人机**」「侦查和普通战机相同权重抽取」）：
  *  `0` = 最高（哨戒机）· `1`（攻坚机）· `2` = 其余（侦察机 / 战斗机 / 专属机等，**彼此等权**）。

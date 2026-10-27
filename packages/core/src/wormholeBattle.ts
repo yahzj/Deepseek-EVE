@@ -481,7 +481,7 @@ function wormholeTravelToMutable(
 }
 
 /** 本场战斗的**编队残血比例**（我方三层血合计 ÷ 满值合计；用于战报与结算读数） */
-function fleetHpFrac(run: WormholeRunState, battle: BattleState): number {
+function fleetHpFrac(battle: BattleState): number {
   let cur = 0
   let max = 0
   for (const entry of battle.myFleet ?? []) {
@@ -505,7 +505,7 @@ function wormholeBattleReport(
 ): { text: string; textId: string; textParams: Record<string, string | number> } {
   const sec = Math.max(0, Math.round((battle.lastTickGameMs - battle.startedAtGameMs) / 1000))
   const s = battle.stats
-  const frac = Math.round(fleetHpFrac(run, battle) * 100)
+  const frac = Math.round(fleetHpFrac(battle) * 100)
   // 对手称呼（「第 N 层守卫」等）自带中文词 + 数字 ⇒ 两步渲染：给它一个 id，外层拿译文当参数
   const what = kind === 'boss'
     ? `第 ${run.depth} 层守卫`
@@ -1367,4 +1367,3 @@ function reconcileWormholeFleet(state: GameState, ctx: SimContext, run: Wormhole
     `🕳 编队核对：${names.join('、')} 已不在舰队（${ghosts.length} 艘）——已从本趟编队里摘掉，剩余 ${run.fleet.length} 艘。`,
   )
 }
-

@@ -927,7 +927,7 @@ export function weekendDrawFoeCardId(
  * 按 `(存档种子, 本场入侵编号 seq, 星系在占领区里的位序)` 抽定 ⇒ **一场之内稳定**、读档/换窗口不变。
  */
 export function weekendGarrisonFoeCardId(
-  state: Pick<GameState, 'rng'>,
+  _state: Pick<GameState, 'rng'>,
   ev: WeekendEventState,
   galaxyId: string,
 ): string {
@@ -1253,7 +1253,7 @@ export const WEEKEND_CARD_PREFIX = 'wk-'
  * ⚠ 观感随之：100% 的星系照旧发光、进度条满格挂着，直到活动结束（同日三答之甲）。
  * ⚠ 名字一并改：语义已经不是"被占"（含已夺回）⇒ 叫 `weekendZoneLiveAt` 会撒谎。
  */
-export function weekendZoneLiveAt(state: GameState, galaxyId: string, nowWallMs: number): boolean {
+export function weekendZoneLiveAt(state: GameState, galaxyId: string, _nowWallMs: number): boolean {
   const ev = state.weekendEvent
   if (!ev || ev.endedAtWallMs !== undefined) return false
   return galaxyId === ev.coreId || ev.peripheryIds.includes(galaxyId)

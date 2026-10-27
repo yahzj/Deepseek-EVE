@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **491** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **8105** KB · **62304** 行
-- 状态分布：**未标注** 257 · **已确认/已实现** 166 · **进行中** 42 · **待裁定** 19 · **历史留档** 7
-- 孤儿文档（0 引用）**99** 份 · 状态未标注 **257** 份
+- 文档总数 **493** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **8120** KB · **62366** 行
+- 状态分布：**未标注** 257 · **已确认/已实现** 166 · **进行中** 42 · **待裁定** 21 · **历史留档** 7
+- 孤儿文档（0 引用）**101** 份 · 状态未标注 **257** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**14** 份
-- 三、现行设计稿（design）：**314** 份
+- 三、现行设计稿（design）：**316** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**37** 份
 - 二、其它（docs 根目录）：**6** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -29,12 +29,12 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定 | 未标注 | — | 8 KB / 97 行 | 213 / 10 |
+| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定 | 未标注 | — | 13 KB / 98 行 | 215 / 10 |
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 30 KB / 259 行 | 39 / 2 |
 | `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 7 KB / 66 行 | 35 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 9 KB / 125 行 | 2 / 2 |
-| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 304 KB / 316 行 | 18 / 3 |
-| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 95 KB / 927 行 | 96 / 5 |
+| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 305 KB / 317 行 | 18 / 3 |
+| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 93 KB / 897 行 | 96 / 5 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 521 KB / 1121 行 | 226 / 19 |
 | `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 90 KB / 487 行 | 378 / 26 |
 
@@ -57,10 +57,12 @@
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 | `docs/review/guoqing-audit-followup.md` | 国庆节审查当前跟进 | 未标注（跟进入口） | — | 2 KB / 21 行 | 3 / 0 |
 
-## 三、现行设计稿（design） —— 314 份
+## 三、现行设计稿（design） —— 316 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
+| `docs/design/agent-rules-audit-20261027.md` | 仓库规则现状核对 | 待裁定（待船长验收） | 2026-10-27 | 5 KB / 41 行 | 0 / 0 |
+| `docs/design/code-cleanup-20261027.md` | 死代码与重复逻辑清理 | 待裁定（待船长验收） | 2026-10-27 | 5 KB / 45 行 | 0 / 0 |
 | `docs/design/loop-range-confirm-minimize-20261026.md` | 连续战斗确认距离后默认最小化 | 已确认/已实现（已确认） | 2026-10-26 | 4 KB / 33 行 | 0 / 0 |
 | `docs/design/battle-range-confirm-clarity-20261023.md` | 射程确认原因与距离滑条 | 已确认/已实现（已确认） | 2026-10-23 | 3 KB / 32 行 | 1 / 0 |
 | `docs/design/support-and-plug-stacking-20261023.md` | 支援件与舰船插件多件惩罚 | 已确认/已实现（已确认） | 2026-10-23 | 5 KB / 56 行 | 0 / 0 |
@@ -426,8 +428,8 @@
 | `docs/data-map.md` | 数据速查页（改数值时该动哪几处） | 未标注 | — | 6 KB / 85 行 | 8 / 0 |
 | `docs/git-gate-approval.md` | Git提交审批放行 | 未标注 | — | 2 KB / 28 行 | 2 / 0 |
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 48 KB / 820 行 | 27 / 18 |
-| `docs/l10n-pending.md` | 待英文本地化记录 | 未标注 | — | 3 KB / 41 行 | 14 / 10 |
-| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 30 KB / 184 行 | 24 / 7 |
+| `docs/l10n-pending.md` | 待英文本地化记录 | 未标注 | — | 3 KB / 41 行 | 15 / 10 |
+| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 31 KB / 188 行 | 24 / 7 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -561,10 +563,12 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 17 KB / 195 行 | 68 / 14 |
 
-## 附：孤儿文档（0 引用，99 份）
+## 附：孤儿文档（0 引用，101 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
+- `docs/design/agent-rules-audit-20261027.md`（2026-10-27 · 5 KB）—— 仓库规则现状核对
+- `docs/design/code-cleanup-20261027.md`（2026-10-27 · 5 KB）—— 死代码与重复逻辑清理
 - `docs/design/loop-range-confirm-minimize-20261026.md`（2026-10-26 · 4 KB）—— 连续战斗确认距离后默认最小化
 - `docs/design/support-and-plug-stacking-20261023.md`（2026-10-23 · 5 KB）—— 支援件与舰船插件多件惩罚
 - `docs/design/battle-card-range-memory-20261021.md`（2026-10-21 · 7 KB）—— 按卡距离记忆与射程变化确认

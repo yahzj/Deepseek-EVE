@@ -92,7 +92,6 @@ const FIRST_GOAL_IDS: Record<string, string> = {
 export function FirstTasks({
   engine,
   onToast,
-  onOpenComms,
   onJump,
 }: {
   engine: GameEngine

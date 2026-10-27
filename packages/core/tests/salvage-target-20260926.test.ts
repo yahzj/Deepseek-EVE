@@ -150,9 +150,6 @@ describe('打捞对象 · 分组记账（船长 2026-09-26 令）', () => {
     // 只给这一组一点点（注入到该组、其余组为 0）
     const s2 = fresh(19)
     injectWreckDensity(s2, ctx, GAL, 200)
-    const cards = [...ctx.anomalies.values()].filter((a) => !a.hidden && a.galaxyId === GAL)
-    const card = cards.find((a) => residentWreckGroupsOf(GAL, ctx).includes(pick))!
-    void card
     s.salvaging.active = true
     s.salvaging.galaxyId = GAL
     s.salvaging.phase = 'salvaging'

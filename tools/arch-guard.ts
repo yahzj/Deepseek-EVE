@@ -27,7 +27,7 @@
  *   F5 **跳转目标契约**：活动栏跳转表指向的页/页签必须真实存在。
  *   F6 **日期格式化本地化**（**2026-09-29 加**）：渲染层不许写死 `toLocaleDateString('zh-CN')` 这类
  *      **把语言焊死**的调用 —— 英文界面下它的输出顺序仍是中文的。走 `i18n/fmt.ts` 的
- *      `fmtDate` / `fmtDateTime`（内部取 `localeTag()`）。
+ *      `fmtDate`（内部取 `localeTag()`）。
  *      ⚠ **只管日期/时间**：`toLocaleString('zh-CN')` 用于**数字千分位**时在 zh/en 下逐位同值
  *      （`i18n/fmt.ts` 头注已写明）⇒ 那 ~180 处不在本检查范围内（避免大批无收益改动）。
  *   F7 **落盘心跳单点**（**2026-09-29 加**）：自动存盘的间隔**只许有一个出处**
@@ -110,6 +110,18 @@ const DATA_TABLES: readonly string[] = [
  * 其余文件出现同名定义照样按 F2 报红。
  */
 const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; exported: boolean }[] = [
+  { concept: '启动与界面共用布局偏好', symbol: 'readLayoutPref', file: 'apps/desktop/src/renderer/src/ui/layoutPreference.ts', exported: true },
+  { concept: '双布局活动停止命令', symbol: 'doStop', file: 'apps/desktop/src/renderer/src/panels/activityStopLabel.ts', exported: true },
+  { concept: '手动自动探索回合预算', symbol: 'wormholeTurnBudget', file: 'packages/core/src/wormhole.ts', exported: true },
+  { concept: '装配快照槽位清洗', symbol: 'cleanRack', file: 'packages/core/src/save.ts', exported: false },
+  { concept: '双语时间单位分解', symbol: 'durationParts', file: 'packages/core/src/time.ts', exported: false },
+  { concept: '探索货仓取色', symbol: 'holdTone', file: 'apps/desktop/src/renderer/src/panels/explorationShared.tsx', exported: true },
+  { concept: '探索六边形动画圈距', symbol: 'hexRingOf', file: 'apps/desktop/src/renderer/src/panels/explorationShared.tsx', exported: true },
+  { concept: '探索整数展示', symbol: 'explorationNumber', file: 'apps/desktop/src/renderer/src/panels/explorationShared.tsx', exported: true },
+  { concept: '探索结算跳数', symbol: 'useCountUp', file: 'apps/desktop/src/renderer/src/panels/explorationShared.tsx', exported: true },
+  { concept: '探索货仓抓取偏移', symbol: 'grabOffsetOf', file: 'apps/desktop/src/renderer/src/panels/explorationShared.tsx', exported: true },
+  { concept: '探索信号图形', symbol: 'WhGlyph', file: 'apps/desktop/src/renderer/src/panels/explorationShared.tsx', exported: true },
+  { concept: '探索星云图形', symbol: 'WhNebulaGlyph', file: 'apps/desktop/src/renderer/src/panels/explorationShared.tsx', exported: true },
   { concept: '信号发射器物品与势力映射', symbol: 'invasionBeaconTypeOf', file: 'packages/core/src/consumables.ts', exported: true },
   { concept: '有库存的信号发射器选项', symbol: 'availableInvasionBeacons', file: 'packages/core/src/consumables.ts', exported: true },
   { concept: '黑市排除大宗原料的类型判据', symbol: 'isBlackMarketBulkResource', file: 'packages/core/src/blackMarket.ts', exported: true },
@@ -553,7 +565,7 @@ for (const file of rendererFiles) {
 
 /* ═══════════ F6 · 日期格式化本地化：渲染层不许把语言焊死 ═══════════
  * 起因（**2026-09-29 船长令**：英文界面残留中文清理 · 甲案）：`toLocaleDateString('zh-CN')` 这类写法
- * 在英文界面下照样按中文顺序出日期。走 `i18n/fmt.ts` 的 `fmtDate` / `fmtDateTime` 即可。
+ * 在英文界面下照样按中文顺序出日期。走 `i18n/fmt.ts` 的 `fmtDate` 即可。
  * ⚠ 只管**日期/时间**：`toLocaleString('zh-CN')` 用于数字千分位时 zh/en 逐位同值 ⇒ 不报。
  */
 {
@@ -570,7 +582,7 @@ for (const file of rendererFiles) {
         file: rel,
         line: i + 1,
         detail: '把语言焊死的日期格式化（`toLocaleDateString(\'zh-CN\')`）',
-        fix: '改走 `i18n/fmt.ts` 的 `fmtDate` / `fmtDateTime`（内部取 `localeTag()`）',
+        fix: '改走 `i18n/fmt.ts` 的 `fmtDate`（内部取 `localeTag()`）',
       })
     })
   }

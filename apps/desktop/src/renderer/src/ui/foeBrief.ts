@@ -290,7 +290,7 @@ function toLine(ship: FoeShipDef, count: number): FoeBriefLine {
  *
  * 与悬赏卡悬停**同一份内容、同一个出口**（`bitsOf` / `toLine`）——图鉴里那一行与悬停里那行**逐字同源**，
  * 不另写一套文案。`count` 传 `0` = "该族有这型舰、但不在某张卡的编成里"（图鉴就是这个语义）。
- * ⚠ **只读出口**：不改悬停的任何行为（`foeShipBriefOf` 仍走 `lineText(toLine(ship, 1))`）。
+ * ⚠ **只读出口**：与卡片简报共用 `toLine`，不改变悬停行为。
  */
 export function foeBriefLinesOfShip(ship: FoeShipDef | null | undefined): FoeBriefLine | null {
   if (!ship) return null
@@ -330,42 +330,4 @@ export function briefsOfPool(anomalies: ReadonlyMap<string, AnomalyDef>, poolIds
   const list = [...acc.values()]
   list.sort((a, b) => b.count - a.count || b.bits.length - a.bits.length || a.id.localeCompare(b.id))
   return list
-}
-
-/** 卡级：**逐种**给一句话（旗舰那种 5 种舰的编成 ⇒ 5 行） */
-export function foeBriefsOfCard(anomaly: AnomalyDef | null | undefined): string[] {
-  return briefShipsOf(anomaly).map((l) => lineText(l))
-}
-
-/** 一行拼成字符串（非染色场景用；染色场景直接读 `FoeBriefLine` 的分段） */
-export function lineText(l: FoeBriefLine): string {
-  const en = isEn()
-  const head = en ? `${l.name} (${l.hull})` : `${l.name}（${l.hull}）`
-  const body = [...l.bits]
-  // 特殊装置并进同一行（字符串版没有"逐件成行"这回事）：装置名：效果，件间顿号
-  if (l.mounts !== undefined && l.mounts.length > 0) {
-    body.push(l.mounts.map((m) => (m.name !== '' ? `${m.name}${en ? ': ' : '：'}${m.effect}` : m.effect)).join(en ? ', ' : '、'))
-  }
-  return body.length > 0 ? `${head}${en ? ': ' : '：'}${body.join(en ? ', ' : '，')}${en ? '.' : '。'}` : `${head}${en ? '.' : '。'}`
-}
-
-/** 取该卡里"最该介绍的那条舰"——单条用途（如卡面内嵌一行） */
-export function briefShipOf(anomaly: AnomalyDef | null | undefined): FoeShipDef | null {
-  const slots = anomaly?.ships ?? []
-  return slots.find((s) => s?.ship)?.ship ?? null
-}
-
-/**
- * **一句话介绍**（单条字符串版；纯函数：同一个 `FoeShipDef` ⇒ 同一句话）。
- * ⚠ 判据走共用的 `bitsOf()` —— 分段版（`FoeBriefLine`，界面染色用）与这里**必须是同一套口径**，
- * 否则"悬停染色版"和"字符串版"会各说各的。
- */
-export function foeShipBriefOf(ship: FoeShipDef | null | undefined): string | null {
-  if (!ship) return null
-  return lineText(toLine(ship, 1))
-}
-
-/** 卡级便捷入口（单条）：取代表舰 + 组句 */
-export function foeBriefOfCard(anomaly: AnomalyDef | null | undefined): string | null {
-  return foeShipBriefOf(briefShipOf(anomaly))
 }

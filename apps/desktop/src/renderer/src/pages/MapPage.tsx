@@ -1030,7 +1030,6 @@ function WreckCard({
   onStop,
   onAiAssign,
   onAiCancel,
-  onToast,
   groupRows = [],
   shipWrecks = [],
   invasionPool,
@@ -1288,4 +1287,3 @@ function WreckCard({
     </div>
   )
 }
-

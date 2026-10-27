@@ -81,6 +81,15 @@ export const MIN_SUPPORTED_SAVE_VERSION = CURRENT_STATE_VERSION
 import { asRaw, cleanAmmoIdMap, cleanBattle, cleanPlugIds, RACK_MAX } from './saveBattleClean'
 export { BATTLE_PERSIST_KEYS } from './saveBattleClean'
 
+/** 方案与残骸快照共用：保留槽序，净化后仅裁尾部空位。 */
+function cleanRack(v: unknown): Array<string | null> {
+  if (!Array.isArray(v)) return []
+  const out: Array<string | null> = []
+  for (const x of v.slice(0, RACK_MAX)) out.push(typeof x === 'string' && x.length > 0 ? x : null)
+  while (out.length > 0 && out[out.length - 1] === null) out.pop()
+  return out
+}
+
 /**
  * 把一份任意来源的原始存档数据"整容"成合法、完整的当前版本状态。
  * 原则：能修则修（类型不对丢弃、范围越界截断、缺字段补默认值），尽量不丢档。
@@ -565,13 +574,6 @@ for (const [key, value] of Object.entries(licensesRaw)) {
       const name = typeof item.name === 'string' ? item.name.trim().slice(0, FIT_PRESET_NAME_MAX) : ''
       if (name.length === 0) continue
       const fitRaw = asRaw(item.fitted)
-      const cleanRack = (v: unknown): Array<string | null> => {
-        if (!Array.isArray(v)) return []
-        const out: Array<string | null> = []
-        for (const x of v.slice(0, RACK_MAX)) out.push(typeof x === 'string' && x.length > 0 ? x : null)
-        while (out.length > 0 && out[out.length - 1] === null) out.pop()
-        return out
-      }
       const fitted = { high: cleanRack(fitRaw.high), mid: cleanRack(fitRaw.mid), low: cleanRack(fitRaw.low) }
       const plugs = cleanPlugIds(item.plugs)
       const droneLoad: Record<string, number> = {}
@@ -1413,18 +1415,11 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     if (typeof accRaw !== 'number' || !Number.isFinite(accRaw) || accRaw < 0) continue
     if (!Number.isFinite(density) || density <= 0) continue
     /** 装配快照：逐位净化（非空字符串留下、空位记 null、裁掉尾部空位；与 `fitPresets` 同一手法） */
-    const wreckRack = (v: unknown): Array<string | null> => {
-      if (!Array.isArray(v)) return []
-      const out: Array<string | null> = []
-      for (const x of v.slice(0, RACK_MAX)) out.push(typeof x === 'string' && x.length > 0 ? x : null)
-      while (out.length > 0 && out[out.length - 1] === null) out.pop()
-      return out
-    }
     const fitRaw = asRaw(r.fitted)
     const fitted: FittedModules = {
-      high: wreckRack(fitRaw.high),
-      mid: wreckRack(fitRaw.mid),
-      low: wreckRack(fitRaw.low),
+      high: cleanRack(fitRaw.high),
+      mid: cleanRack(fitRaw.mid),
+      low: cleanRack(fitRaw.low),
     }
     const droneLoad: Record<string, number> = {}
     for (const [droneId, n] of Object.entries(asRaw(r.droneLoad))) {
@@ -1577,13 +1572,6 @@ for (const [key, value] of Object.entries(licensesRaw)) {
    * （与 `shipWrecks` 同手法）。
    * ⚠ **漏登记就是"读档即丢"**（本文件头注那条老坑）⇒ 收发两处都要写。
    */
-  const wreckLogCleanRack = (v: unknown): Array<string | null> => {
-    if (!Array.isArray(v)) return []
-    const out: Array<string | null> = []
-    for (const x of v.slice(0, RACK_MAX)) out.push(typeof x === 'string' && x.length > 0 ? x : null)
-    while (out.length > 0 && out[out.length - 1] === null) out.pop()
-    return out
-  }
   const wreckLog: NonNullable<GameState['wreckLog']> = []
   for (const raw of Array.isArray(src.wreckLog) ? src.wreckLog : []) {
     if (wreckLog.length >= WRECK_LOG_MAX) break
@@ -1606,9 +1594,9 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     if (!Number.isFinite(atGameMs) || atGameMs < 0) continue
     const fitRaw = asRaw(r.fitted)
     const fitted: FittedModules = {
-      high: wreckLogCleanRack(fitRaw.high),
-      mid: wreckLogCleanRack(fitRaw.mid),
-      low: wreckLogCleanRack(fitRaw.low),
+      high: cleanRack(fitRaw.high),
+      mid: cleanRack(fitRaw.mid),
+      low: cleanRack(fitRaw.low),
     }
     const droneLoad: Record<string, number> = {}
     for (const [droneId, n] of Object.entries(asRaw(r.droneLoad))) {

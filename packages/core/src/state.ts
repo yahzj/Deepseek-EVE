@@ -3330,7 +3330,7 @@ export type GameStateV24 = Omit<GameStateV23, 'version'> & {
  *
  * 用途（船长 2026-09-13 两条裁定合起来）：①「已经进洞的船将被锁定」；
  * ②「**洞内战斗时，洞外可以开新战斗**」——两场战斗**锚点必须各在各边**：
- * 洞内锚点 = `run.fleet[0]`（见 `advanceWormhole`）、洞外锚点 = `state.shipId`（见 `advanceBattle`）。
+ * 洞内锚点 = `run.fleet[0]`（见 `advanceWormhole`）、洞外锚点 = `state.shipId`（见 `advanceExpedition`）。
  * 于是"拿洞里的船去外面开战"要拒掉，否则同一艘船会被两场战斗同时读写（承伤/弹药/丢船互相串台）。
  *
  * ⚠ 放在 `state.ts` 而不是 `wormhole.ts`：`wormhole.ts` 已经反向依赖 `activity`，

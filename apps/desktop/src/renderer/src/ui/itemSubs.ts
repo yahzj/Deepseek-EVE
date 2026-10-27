@@ -728,11 +728,6 @@ export function rackPasses(ctx: SimContext, refId: string, key: string): boolean
   return mod !== undefined && rackDimKeyOf(mod) === key
 }
 
-/** 子分类中文名（查不到时回退原键） */
-export function subLabelOf(kind: string, key: string): string {
-  const list = SUBS_OF_KIND[kind] ?? []
-  return list.find((s) => s.key === key)?.label ?? key
-}
 
 /**
  * **子分类/筛选档的显示文案**（单点；2026-09-21 船长报障：「各个子标签页和筛选似乎并没有本地化」）。

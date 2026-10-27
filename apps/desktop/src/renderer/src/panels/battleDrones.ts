@@ -1,10 +1,9 @@
 /**
  * 战斗界面 · 无人机几何域（2026-10-02 从 `panels/BattleScreen.tsx` 拆出 · 批次 4u · 零行为变化）。
  *
- * 本文件 = 敌我无人机与挂载件悬停文案的**纯几何/文案件**：挂载件悬停明文（foeMountsTipOf）、
- * 我方机群姿态（droneHomeStation/dronePoseAt）、击落爆炸点（oneThirdToward ＋ 冻结时长）、
+ * 本文件 = 敌我无人机的纯几何件：我方机群姿态（droneHomeStation/dronePoseAt）、击落爆炸点（oneThirdToward ＋ 冻结时长）、
  * 敌方机群镜像（foeDroneStation/foePoseAt，含受击增程外推）。`BattleScreen.tsx` 借回使用；
- * 只依赖 droneArt/foeBrief/battleViewCore（纯类型边）与 i18n ⇒ 运行期零回边。
+ * 只依赖 droneArt 与 battleViewCore（纯类型边）⇒ 运行期零回边。
  */
 import type { DroneModel, DroneSortie } from '../ui/droneArt'
 import {
@@ -19,35 +18,7 @@ import {
   dronePathPos,
 } from '../ui/droneArt'
 import type { Anchor } from './battleViewCore'
-import { mountEffectTextByName } from '../ui/foeBrief'
-import { tr, mountNamesTextOf } from '../i18n/locale'
 
-/**
- * **敌方挂载件的悬停明文**（**2026-09-26 船长报障**：「**战斗画面，玩家鼠标悬停敌方挂载件时，
- * 不应该复读一遍相同的文字，应该进行挂载件的大致效果说明**」）。
- *
- * 病根：芯片上**已经印着装置名**（`mountNamesTextOf(...)` 那一段就是可见正文），
- * 而原来的 `title` 又把同一串名字拼一遍 ⇒ 悬停等于什么都没说。
- *
- * 现口径：**逐件「装置名 ＋ 该件的明文效果」**（效果文案复用势力图鉴那套 `ui.foeIntro.10x`，
- * 由 `foeBrief.mountEffectText*` 从 `FOE_MOUNTS` 的**效果字段现算** ⇒ 与战斗里真正生效的是同一件事）；
- * 某件确实只有名字、没有任何机制（`mountEffectText` 返回 null）⇒ **只显示名字**（不复读效果，也不留空）。
- *
- * ⚠ 语言：效果文案走 `tr(id)`（随语言切），装置名走既有的 `mountNamesTextOf`（core 的双语名对）。
- */
-export function foeMountsTipOf(
-  names: readonly string[],
-  pairs?: ReadonlyArray<readonly [string, string]>,
-): string {
-  const shown = mountNamesTextOf(names, pairs)
-  return names
-    .map((n, i) => {
-      const eff = mountEffectTextByName(n)
-      const label = shown[i] ?? n
-      return eff === null || eff.length === 0 ? label : `${label} — ${eff}`
-    })
-    .join(tr('ui.MatterTechTab.017'))
-}
 
 /**
  * 无人机阵位（绝对画面 px；2026-09-10 船长二次定）：
@@ -142,7 +113,7 @@ export function foeDroneStation(
  * 触发后阵位由 `foeDroneStation` 外推 ⇒ **机体明显后撤、出击/攻击线拉长**（机群视觉上"改打远距"）。
  */
 export function foePoseAt(
-  model: DroneModel,
+  _model: DroneModel,
   lane: number,
   st: DroneSortie | undefined,
   lay: { me: Anchor; foe: Anchor[] },

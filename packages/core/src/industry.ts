@@ -656,7 +656,6 @@ interface YieldNote {
 }
 
 function yieldNoteFor(
-  state: GameState,
   ctx: SimContext,
   rec: {
     min: Record<string, number>
@@ -787,7 +786,7 @@ export function stopRefineRun(state: GameState, ctx: SimContext, runId: number):
   if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
   const coreNote = r.worker !== 'pilot' ? '；AI 核心已归还核心库' : ''
   const isRecycle = r.recipe === 'recycle'
-  const accNote = r.recAcc ? yieldNoteFor(state, ctx, r.recAcc, isRecycle ? 'recycle' : 'refine') : null
+  const accNote = r.recAcc ? yieldNoteFor(ctx, r.recAcc, isRecycle ? 'recycle' : 'refine') : null
   const refundName = def?.name ?? r.itemId ?? '未知资源'
   const refundedTxt = `${Math.round(refunded * 100) / 100}`
   const lead = `${isRecycle ? '残骸回收炉' : '精炼炉'}已停：${refundName}（已完成 ${r.batchesDone} 批）`
@@ -887,7 +886,7 @@ export function advanceRefining(
         refundClaimedUnits(state, r) // 私有料账残余退回仓库（正常走完 = 0，无副作用）
         if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
         const wasCore = r.worker !== 'pilot'
-        const accNote = r.recAcc ? yieldNoteFor(state, ctx, r.recAcc, isRecycle ? 'recycle' : 'refine') : null
+        const accNote = r.recAcc ? yieldNoteFor(ctx, r.recAcc, isRecycle ? 'recycle' : 'refine') : null
         state.refineRuns.splice(i, 1)
         /**
          * **停机标题与原因按产线分岔**（2026-09-15 船长报障「精炼炉拆解货柜的文字显示不对」）：
@@ -942,7 +941,7 @@ export function advanceRefining(
         refundClaimedUnits(state, r) // 私有料账残余退回仓库（正常走完 = 0，无副作用）
         if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
         const wasCore = r.worker !== 'pilot'
-        const accNote = r.recAcc ? yieldNoteFor(state, ctx, r.recAcc, isRecycle ? 'recycle' : 'refine') : null
+        const accNote = r.recAcc ? yieldNoteFor(ctx, r.recAcc, isRecycle ? 'recycle' : 'refine') : null
         const remainTxt = isRecycle ? `${Math.round(avail * 100) / 100} m³` : `${avail} 单位`
         const unitTxt = isRecycle ? 'm³' : '单位'
         state.refineRuns.splice(i, 1)

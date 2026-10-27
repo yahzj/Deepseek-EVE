@@ -26,8 +26,7 @@ export type DurationLang = 'zh' | 'en'
 /** 各语言的分隔：中文连写（`4天21小时`），英文空格（`4d 21h`） */
 const JOIN: Record<DurationLang, string> = { zh: '', en: ' ' }
 
-/** 把毫秒时长格式化成中文（例如 2 天 3 小时 4 分 5 秒）。零值单位省略；不足 1 秒显示 "0 秒"。 */
-export function formatDurationMs(ms: number, lang: DurationLang = 'zh'): string {
+function durationParts(ms: number, lang: DurationLang): string[] {
   const totalSec = Math.max(0, Math.floor(ms / 1000))
   const days = Math.floor(totalSec / 86400)
   const hours = Math.floor((totalSec % 86400) / 3600)
@@ -39,7 +38,12 @@ export function formatDurationMs(ms: number, lang: DurationLang = 'zh'): string 
   if (hours > 0) parts.push(`${hours}${u.hour}`)
   if (minutes > 0) parts.push(`${minutes}${u.minute}`)
   if (seconds > 0 || parts.length === 0) parts.push(`${seconds}${u.second}`)
-  return parts.join(JOIN[lang])
+  return parts
+}
+
+/** 把毫秒时长格式化成中文（例如 2 天 3 小时 4 分 5 秒）。零值单位省略；不足 1 秒显示 "0 秒"。 */
+export function formatDurationMs(ms: number, lang: DurationLang = 'zh'): string {
+  return durationParts(ms, lang).join(JOIN[lang])
 }
 
 /**
@@ -53,16 +57,5 @@ export function formatDurationMs(ms: number, lang: DurationLang = 'zh'): string 
  * 悬停 tip 里仍用全量 `formatDurationMs`。
  */
 export function formatDurationShort(ms: number, lang: DurationLang = 'zh'): string {
-  const totalSec = Math.max(0, Math.floor(ms / 1000))
-  const days = Math.floor(totalSec / 86400)
-  const hours = Math.floor((totalSec % 86400) / 3600)
-  const minutes = Math.floor((totalSec % 3600) / 60)
-  const seconds = totalSec % 60
-  const u = UNITS[lang]
-  const parts: string[] = []
-  if (days > 0) parts.push(`${days}${u.day}`)
-  if (hours > 0) parts.push(`${hours}${u.hour}`)
-  if (minutes > 0) parts.push(`${minutes}${u.minute}`)
-  if (seconds > 0 || parts.length === 0) parts.push(`${seconds}${u.second}`)
-  return parts.slice(0, 2).join(JOIN[lang])
+  return durationParts(ms, lang).slice(0, 2).join(JOIN[lang])
 }

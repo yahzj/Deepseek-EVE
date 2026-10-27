@@ -218,10 +218,6 @@ export function shipCurrentLayout(
   return { replaced: [...replaced], hidden, keys }
 }
 
-/** 当前属性卡的最终行 key 序列（`shipCurrentLayout().keys` 的便捷读法） */
-export function shipCurrentRowKeys(ship: ShipDef, hasDroneBayTotal: boolean): string[] {
-  return shipCurrentLayout(ship, hasDroneBayTotal).keys
-}
 
 /**
  * 伤害类型色 chip（V17.2 快速辨识）：颜色 = 我方三层血量色——
@@ -1919,4 +1915,3 @@ export function ItemHover({
     </InfoHover>
   )
 }
-

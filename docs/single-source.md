@@ -16,6 +16,10 @@
 
 ## 一、core 引擎层（`packages/core/src`）
 
+2026-10-27纯清理收口：双语时长分解归 `time.ts:durationParts`；方案/残骸/沉船记录槽位净化归 `save.ts:cleanRack`；手动与自动探索回合预算归 `wormhole.ts:wormholeTurnBudget`，不改变结果或档结构。
+
+双布局偏好归 `ui/layoutPreference.ts:readLayoutPref` 与同文件存储键；双活动栏停止命令归 `panels/activityStopLabel.ts:doStop`。新旧探索纯表现辅助归 `panels/explorationShared.tsx` 的 `holdTone`、`hexRingOf`、`explorationNumber`、`useCountUp`、`grabOffsetOf`、`WhGlyph`、`WhNebulaGlyph`；事件闭包、扫描和新旧玩法规则仍由各面板维护。以上登记 F2/F3，并以清理等价性专项核对旧实现。
+
 最终整数数量：`ceilFinalQuantity`（`quantity.ts`）统一向上取整，只在最终HP/单发/离散脉冲/产物/材料/收支/报价落地时调用；比例、倍率、持续累计、可装上限和分摊余数不调用。极小浮点整数邻域归一由单点处理；专项保护真实小数与守恒。
 
 信号空间层深额外资源堆数：`signalSpaceResourcePileBonus`（`wormholeFoes.ts`）；矿脉、墓场普通残骸及自动探索共用，新虫洞实验规则不增加；稀有判定只读基础堆数。

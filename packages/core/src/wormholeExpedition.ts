@@ -43,7 +43,7 @@ function currentEvent(state: GameState) {
   return { run, cell, key: cell.eventKey }
 }
 
-function instanceOf(state: GameState, ctx: SimContext, hit: NonNullable<ReturnType<typeof currentEvent>>): WormholeEventInstance {
+function instanceOf(ctx: SimContext, hit: NonNullable<ReturnType<typeof currentEvent>>): WormholeEventInstance {
   const { run, cell, key } = hit
   const rng = wormholeStream((run.seed ?? 0) * 31 + run.depth * 7919 + cell.q * 131 + cell.r * 151)
   const pool = wormholeRelicBoxPoolOf(ctx, run.depth, run.family ?? wormholeFamilyOfSeed(run.seed ?? 0))
@@ -59,7 +59,7 @@ export function wormholeFreezeEvents(state: GameState, ctx: SimContext): void {
   const run = state.wormhole.run
   if (run?.expeditionRules !== 2 || !run.grid) return
   for (const cell of run.grid.cells) {
-    if (cell.eventKey) cell.event = instanceOf(state, ctx, { run, cell, key: cell.eventKey })
+    if (cell.eventKey) cell.event = instanceOf(ctx, { run, cell, key: cell.eventKey })
   }
 }
 
@@ -75,7 +75,7 @@ export function wormholeEventPreview(state: GameState, ctx: SimContext, action: 
   const { run, cell, key } = hit
   if (run.phase !== 'inside' || run.attending !== true || run.battle || run.pendingNodeBattle || run.pendingRuinsBattle || hasLiveFoe(cell) || cell.eventResolved || cell.event?.battle === 'pending') return { ...plan, resolved: cell.eventResolved === true, error: 'not-ready' }
   if (!ACTIONS[key].includes(action)) return { ...plan, error: 'invalid-action' }
-  const event = instanceOf(state, ctx, hit)
+  const event = instanceOf(ctx, hit)
   const free = action === 'bypass' || action === 'reject'
   plan.turns = free || (key === 'relay' && action === 'force') ? 0 : action === 'search' || action === 'wait' || (key === 'controller' && action === 'investigate') ? 2 : 1
   if (key === 'maintenance' && action === 'repair') plan.supply = { 'repairkit-mil': 20 }
@@ -120,7 +120,7 @@ function wormholeResolveEventMutable(state: GameState, ctx: SimContext, action: 
   const staged = structuredClone(state)
   const hit = currentEvent(staged)!
   const { run, cell, key } = hit
-  const event = cell.event = instanceOf(staged, ctx, hit)
+  const event = cell.event = instanceOf(ctx, hit)
   if (action === 'bypass' || action === 'reject') {
     delete run.pendingEvent
     Object.assign(state, staged)

@@ -472,7 +472,6 @@ export function hullLayerCaps(
 function kitHealFor(
   state: GameState,
   ctx: SimContext,
-  shipId: string,
   baseHp: number,
   caps: { capA: number; capH: number; baseA: number; baseH: number } | null,
 ): { a: number; h: number } {
@@ -613,7 +612,7 @@ export function repairWithKitsFor(
     const kitId = takeRepairKit(state, ctx, shipId, source, kitIds)
     if (kitId === null) break
     const def = ctx.items.get(kitId)!
-    const heal = kitHealFor(state, ctx, shipId, def.repairRestore!, caps)
+    const heal = kitHealFor(state, ctx, def.repairRestore!, caps)
     // 「第一次维修舰船」与「维修技师」链：自动修理**每消耗一枚组件记一次**（与手动用组件同口径）
     bumpFirst(state, 'repairs')
     if (caps) {
@@ -715,7 +714,7 @@ export function useOneRepairKit(state: GameState, ctx: SimContext): CommandResul
     return { ok: false, error: '修理组件异常。', errorId: 'core.shipyard.010' }
   }
   const caps = layerCaps(state, ctx, state.shipId)
-  const heal = kitHealFor(state, ctx, state.shipId, def.repairRestore, caps)
+  const heal = kitHealFor(state, ctx, def.repairRestore, caps)
   const left = fleetShip.cargo[kitId]!
   if (left <= 1) delete fleetShip.cargo[kitId]
   else fleetShip.cargo[kitId] = left - 1
@@ -875,4 +874,3 @@ export function unstoreShip(state: GameState, defId: string, ctx: SimContext): C
   })
   return { ok: true }
 }
-

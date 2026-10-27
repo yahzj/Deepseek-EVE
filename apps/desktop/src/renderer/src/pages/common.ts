@@ -32,22 +32,7 @@ export function m3(n: number): string {
   return `${Math.floor(n).toLocaleString('zh-CN')} m³`
 }
 
-/** 货仓/仓库里按物品表汇总体积（供没有 SimContext 处调用——页面用 engine.ctx） */
-export function sumVolume(
-  engine: GameEngine,
-  items: Record<string, number>,
-): number {
-  let total = 0
-  for (const [id, units] of Object.entries(items)) {
-    total += units * (engine.ctx.items.get(id)?.unitM3 ?? 0)
-  }
-  return total
-}
 
-/** 船状态卡里的货仓占用（m³） */
-export function cargoVolumeOf(engine: GameEngine, cargo: Record<string, number>): number {
-  return sumVolume(engine, cargo)
-}
 
 /** 某物品当前市场收购价（NPC 收玩家价）；不在市场目录/簿为空时返回 undefined */
 export function itemBuyQuote(engine: GameEngine, itemId: string): number | undefined {

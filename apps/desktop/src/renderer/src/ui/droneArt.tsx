@@ -310,10 +310,6 @@ export function droneModelOf(artId: string | null | undefined): DroneModel | und
 
 /** 机型显示上限（超出以 ×N 徽标表达；2026-09-10 船长定 6 架） */
 export const DRONE_SHOW_MAX = 6
-/** 放飞后无开火的回巢阈值（ms；2026-09-10 船长定 1.2s） */
-export const DRONE_BACK_MS = 1200
-/** 回巢动画时长（ms；与 styles.css 的 keyframes 时长一致） */
-export const DRONE_BACK_ANIM_MS = 420
 
 /**
  * 演出制式（2026-09-10 船长二次定："放出无人机靠近敌人攻击后返回"）：
@@ -390,23 +386,6 @@ export function dronePathPos(
   return { x: u * u * from.x + 2 * u * e * cx + e * e * to.x, y: u * u * from.y + 2 * u * e * cy + e * e * to.y }
 }
 
-/**
- * 出击制攻击阵位（绝对画面 px；2026-09-10 船长三次定："只去固定地点会大量重叠"）：
- * 以目标舰为圆心做**新月形分层**——中间道最贴近敌舰、外侧道后退并上下拉开，
- * 6 架在 y 上相隔 20px、x 上再分三档，保证彼此不压在一起。
- */
-export function droneSortieStation(
-  lane: number,
-  foe: { x: number; y: number },
-  dir: number,
-  foeNose: number,
-): { x: number; y: number } {
-  const k = lane - (DRONE_SHOW_MAX - 1) / 2 // −2.5 .. 2.5
-  return {
-    x: foe.x - dir * (foeNose + 42 + Math.abs(k) * 11 + (lane % 2) * 15),
-    y: foe.y + k * 20,
-  }
-}
 
 /** 出击航路弧高（px；每道不同 → 曲线互相错开，不再叠成一团） */
 export function droneArcHeight(lane: number): number {
@@ -421,16 +400,3 @@ export function droneArcHeight(lane: number): number {
 export function droneTakeoff(lane: number): { x: number; y: number } {
   return { x: (lane % 3) * 6 - 6, y: -10 + (lane % 2) * 5 }
 }
-
-/** 缓动（去程 ease-out / 返程 ease-in；与逐帧插值配套） */
-export function droneEaseOut(t: number): number {
-  return 1 - Math.pow(1 - t, 3)
-}
-export function droneEaseIn(t: number): number {
-  return t * t * t
-}
-
-/**
- * 出击制航路位置（绝对画面 px）——给定时刻沿**上凸弧线**去、沿**下凸弧线**回
- * （与上方同名函数重复的历史实现已合并，仅保留前一份定义）。
- */

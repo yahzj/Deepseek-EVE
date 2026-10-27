@@ -62,10 +62,6 @@ export function fmtDate(wallMs: number): string {
   return new Date(wallMs).toLocaleDateString(localeTag())
 }
 
-/** **日期 + 时间（按当前语言）**：中文 `2026/9/29 13:05:00` · 英文 `9/29/2026, 1:05:00 PM`。 */
-export function fmtDateTime(wallMs: number): string {
-  return new Date(wallMs).toLocaleString(localeTag())
-}
 
 /** mm:ss（向上取整到秒；与市场页下次补给同口径）
  * （2026-10-02 批次 4p 从 panels/Expedition.tsx 迁来：StarMap 与 Expedition 共用） */

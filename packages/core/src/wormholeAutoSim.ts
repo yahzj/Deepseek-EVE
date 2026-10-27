@@ -46,7 +46,7 @@ import { WORMHOLE_PILE_UNITS_BASE } from './wormhole'
 import { WORMHOLE_WRECK_PILE_M3_BASE, WORMHOLE_GRAVEYARD_COMMONS_MIN, WORMHOLE_GRAVEYARD_COMMONS_MAX,
   WORMHOLE_VEIN_PILES_MIN, WORMHOLE_VEIN_PILES_MAX, wormholeRelicChanceOf } from './wormholeSalvage'
 import { signalSpaceResourcePileBonus, wormholeLayerRewardMul } from './wormholeFoes'
-import { WORMHOLE_TURN_BASE, WORMHOLE_TURN_MASS_COEF, wormholeStepCost, WORMHOLE_TOTAL_MASS_CAP } from './wormhole'
+import { wormholeTurnBudget, wormholeStepCost } from './wormhole'
 
 /**
  * **一"步"的回合开销 = 移动 1 回合**。
@@ -168,7 +168,7 @@ export function wormholeAutoDescend(opts: {
     blankShareFactor = 1 } = opts
   const rng = mulberry(seed * 6364136223846793005 + 1442695040888963407)
   const yieldMul = opts.yieldMul ?? WORMHOLE_AUTO_SIM_YIELD_MUL
-  let turns = turnBudgetOf(totalMass, opts.techTurnBonus ?? 0)
+  let turns = wormholeTurnBudget(totalMass, opts.techTurnBonus ?? 0)
 
   const out: WormholeAutoDescend = {
     depthReached: Math.max(1, Math.min(9, startDepth)),
@@ -415,12 +415,6 @@ function canWin(me: WormholeAutoPower, foe: WormholeAutoPower): boolean {
   const his = foe.dps * foe.ehp
   if (his <= 0) return true
   return mine / his >= 1.15 // 留 15% 余量：赢得难看也算输，绝不丢船
-}
-
-/** 回合预算（与手动的 `wormholeTurnBudget` 同式；这里只吃质量，科技由调用方加进 `turnsBase`） */
-function turnBudgetOf(totalMass: number, techTurnBonus: number): number {
-  const ratio = Math.max(0, Math.min(1, totalMass / WORMHOLE_TOTAL_MASS_CAP))
-  return ceilFinalQuantity(WORMHOLE_TURN_BASE * (1 - ratio * WORMHOLE_TURN_MASS_COEF) + Math.max(0, techTurnBonus))
 }
 
 /**

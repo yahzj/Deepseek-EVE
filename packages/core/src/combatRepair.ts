@@ -533,15 +533,6 @@ export function pulseShieldChargeFor(
   if (gain > 0) rt.hp.s = Math.min(capS, rt.hp.s + gain)
 }
 
-/**
- * @deprecated 逐舰化之前的入口（只作用于主控）；保留仅为**老用例/外部读法**兼容，
- * 生产路径请用 `pulseShieldChargeFor`（逐舰）＋ `shieldChargeLedgersOf`。等价于"只给主控跳一次"。
- */
-export function pulseShieldCharge(b: import('./state').BattleState, me: UnitSpec): void {
-  const sc = b.shieldCharge
-  if (!sc) return
-  pulseShieldChargeFor(b, { ...me, tag: 'player' }, sc)
-}
 
 /**
  * **单次维修脉冲（逐舰 · 2026-09-16 船长「甲」）**：对**指定那艘船**的账本跑一跳——

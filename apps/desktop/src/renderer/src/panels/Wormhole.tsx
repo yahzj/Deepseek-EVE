@@ -12,13 +12,14 @@
  * 未扫描的格子在图上用**蓝灰虚线边框**区分，且不按信号上色（免得漏真相）。
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { holdTone, hexRingOf, explorationNumber as n, useCountUp, grabOffsetOf, WhGlyph, WhNebulaGlyph } from './explorationShared'
 // 洞内底图固定（船长 2026-09-13）：进洞时把当前那张无缝星云图钉住，本趟不随全站换图而变
 import { currentSpaceBg, spaceBgUrlAt } from '../ui/spaceBg'
 import { HintIcon } from '../ui/Hint'
 import { pinMarked } from '../ui/marks'
 import { wormholeIntelLine, wormholeIntelTip } from '../ui/wormholeIntel'
 // 物品图标（F3c · 船长：「货仓内物品采用图标而不是纯文字」）：安全货柜按族分色、谜质每台一枚专属线稿
-import { Glyph, itemIconOf, itemToneOf, RARE_WRECK_TONE } from '../ui/Glyphs'
+import { Glyph, itemIconOf } from '../ui/Glyphs'
 // 围剿者（2026-09-23）：族徽取色与族→卡表（按格上那张围剿卡反查族，不新增 props）
 import { FOE_ACCENT } from '../ui/tones'
 // ⚠ 地点名走本地化单点（2026-09-26 乙批）——core 的 `WORMHOLE_PLACE_TEXT` 是纯中文表
@@ -111,7 +112,7 @@ import type { GameEngine } from '../game/engine'
 import { ShipSprite, ShipSpriteShape } from '../ui/ShipSprite'
 import { usePreparationSquad } from '../ui/usePreparationSquad'
 import type { ToastFn } from '../pages/common'
-import { SHIP_DOMAIN_SUBS, SHIP_TIER_SUBS, SUB_ALL, shipRolePasses, shipTierPasses, subText, wreckTierOf } from '../ui/itemSubs'
+import { SHIP_DOMAIN_SUBS, SHIP_TIER_SUBS, SUB_ALL, shipRolePasses, shipTierPasses, subText } from '../ui/itemSubs'
 import { futureTr, futureCmdText, tr as signalTr, cmdText as signalCmdText } from '../i18n/locale'
 import { futureWormholeEnabled } from '../game/debugFlag'
 import { WhPreparation, WhSupplies, WhGroundList, WhExtraction, WhItemCounts, WhEventChoices, WhAlert, WhEncounterIntel, WhObjectiveProgress, manifestDraftKey, readManifestDraft, writeManifestDraft } from './WormholeExpedition'
@@ -138,19 +139,6 @@ import {
 type WhTab = 'prep' | 'map' | 'bag'
 const tr = futureTr
 
-/**
- * **洞内货仓取色**（船长 2026-09-22 ①：「**货舱内，残骸和稀有残骸按照手册内的颜色做出区分**」）。
- *
- * 在既有单点 `itemToneOf`（**物品 id 优先** ⇒ 安全货柜按族分色、谜质按台分色）之上，只叠一层
- * **残骸档位**：稀有残骸走既有「稀有金」（`RARE_WRECK_TONE`，与手册图鉴的「稀有」徽标、
- * `.app-chip.is-rare` 同一支色阶），普通残骸保持旧黄铜 —— **不新造色、不另立判据**
- * （档位判据 = `wreckTierOf` = core `isRareWreck`，全仓唯一前缀判定）。
- *
- * 谁用它：格区里的物品块（块的描边/底色由 CSS 取 `currentColor` ⇒ 跟着这个色走）与下方的件清单行图标。
- */
-function holdTone(itemId: string, iconKey: string): string {
-  return wreckTierOf(itemId) === 'rare' ? RARE_WRECK_TONE : itemToneOf(itemId, iconKey)
-}
 
 /** 两块格板：货仓（8 列）/ **临时空间**（4 列 × 8 行 = 32 格 · 船长 2026-09-14） */
 type BoardKind = 'hold' | 'temp'
@@ -193,40 +181,8 @@ function scanFxSeq(): number {
   return scanFxSeqCounter
 }
 
-/** 六边形"第几圈"（`(dq,dr)` 的立方距离）——逐格延迟与扩散波共用这一把尺 */
-function hexRingOf(dq: number, dr: number): number {
-  return Math.max(0, Math.round((Math.abs(dq) + Math.abs(dr) + Math.abs(dq + dr)) / 2))
-}
 
-/** 千分位 */
-function n(v: number): string {
-  return Math.round(v).toLocaleString('zh-CN')
-}
 
-/**
- * **数字跳数**（船长 2026-09-13 拍板「⑦要」）：结算单里的 信用点 合计从 0 滚到目标值，
- * 220ms 一跳、共 `ms` 毫秒；纯前端表现，不碰任何数据。
- */
-function useCountUp(value: number, ms = 320): number {
-  const [shown, setShown] = useState(value)
-  useEffect(() => {
-    if (!Number.isFinite(value) || value === 0) {
-      setShown(value)
-      return
-    }
-    const t0 = performance.now()
-    let raf = 0
-    const step = (t: number): void => {
-      const k = Math.min(1, (t - t0) / ms)
-      // 末段减速（ease-out），停下来的那一下才落在真值上
-      setShown(Math.round(value * (1 - Math.pow(1 - k, 3))))
-      if (k < 1) raf = window.requestAnimationFrame(step)
-    }
-    raf = window.requestAnimationFrame(step)
-    return () => window.cancelAnimationFrame(raf)
-  }, [value, ms])
-  return shown
-}
 
 /**
  * ⚠ **本组件不再承载洞内战斗**（2026-09-22 船长令「界面回滚，战斗界面回滚到全屏显示」）。
@@ -1686,7 +1642,7 @@ export function WormholePanel({
                 </div>
               </div>
               <ul className="app-wh-cards">
-                {whShown.map(({ uid, name, tier, ok, on, busy, armor, dur }) => {
+                {whShown.map(({ uid, tier, ok, on, busy, armor, dur }) => {
                   const damaged = armor < 1 || dur < 1
                   const def = ctx.ships.get(state.fleet[uid]!.defId ?? uid)
                   const canPick = ok && !busy
@@ -2859,50 +2815,7 @@ function WhGridMap({
   )
 }
 
-/**
- * 格内符号（**一律 SVG 线稿**，以格心为原点、半径约 7~8）。
- * `exit` = 下一层入口（箭头）；`signal === null` = 空信息地点（一个小空心点）；
- * `beacon` = 漂浮信标（灯塔塔身 + 两道扫描光）。
- */
-function WhGlyph({ signal, exit }: { signal: WormholeSignal | null; exit?: boolean }) {
-  if (exit) return <path d="M-7,0 L6,0 M1,-5 L7,0 L1,5" />
-  if (signal === 'wreck') return <path d="M-8,3 L-4,-3 L0,2 L4,-4 L8,3" />
-  if (signal === 'ship') return <path d="M-7,-5 L8,0 L-7,5 Z" />
-  if (signal === 'resource') return <path d="M0,-7 L7,0 L0,7 L-7,0 Z" />
-  if (signal === 'radar')
-    return (
-      <>
-        <path d="M-7,4 A7,7 0 0 1 7,4" />
-        <path d="M-3.4,4 A3.4,3.4 0 0 1 3.4,4" />
-        <circle cx={0} cy={4} r={1.4} />
-      </>
-    )
-  if (signal === 'beacon')
-    return (
-      <>
-        <path d="M-3.6,7 L-1.8,-2 L1.8,-2 L3.6,7 Z" />
-        <path d="M-7,-5 L-2.6,-3.4 M7,-5 L2.6,-3.4" />
-        <path d="M-1.8,-2 L1.8,-2" />
-      </>
-    )
-  return <circle cx={0} cy={0} r={2.2} />
-}
 
-/**
- * **星云图标**（船长 2026-09-13 星云机制）：被星云遮住的格画一团云——**SVG 线稿**（约定 §九：
- * 图形一律线稿、禁 CSS 拼形状），由三条疏密不同的弧线叠出"云团"轮廓 + 两颗小星点（说明这是"星云"、
- * 不是"什么都没扫到"）。与 `WhGlyph` 同一套 `currentColor` / 描边语言，故格子配色一变它自动跟随。
- */
-function WhNebulaGlyph() {
-  return (
-    <g className="app-wh-nebula">
-      <path d="M-7,2.4 A3.2,3.2 0 0 1 -2.6,-2.4 A3.6,3.6 0 0 1 3,-1.4 A3,3 0 0 1 7,2.4 Z" />
-      <path d="M-5.6,4.6 A2.4,2.4 0 0 1 -1.6,1.6 A2.6,2.6 0 0 1 3.2,2.2 A2.6,2.6 0 0 1 5.6,4.6" />
-      <circle cx={-3.4} cy={-4.4} r={0.9} />
-      <circle cx={4.2} cy={-3.2} r={0.7} />
-    </g>
-  )
-}
 
 /** 信号名（图例与悬浮提示共用；与 `WORMHOLE_PLACE_TEXT` 分开：信号 ≠ 地点真相） */
 const SIGNAL_TEXT: Readonly<Record<WormholeSignal, string>> = {
@@ -2944,34 +2857,6 @@ const PLACE_NOTE: Readonly<Record<WormholePlace, string>> = {
   vein: "ui.Wormhole.168",
   matter: "ui.Wormhole.227",
   beacon: "ui.Wormhole.169",
-}
-/**
- * **货仓页 = 形状网格**（F4b · 船长 2026-09-13：「类似背包英雄那种需要管理的背包格（没有背包，
- * 货仓直接代表背包大小）」；F5 补一条：「散货也在货仓背包内，并允许玩家拖拽移动」）。
- *
- * 画法（与 core 同一套几何，`wormholeHold`）：
- * - **8 列**、行数 = ⌈可用格数 ÷ 8⌉；超出可用格数的显示位 = **锁定格**（虚线、不可放）；
- * - **一切占格的东西都在 `run.hold.placements` 里**（F5 起散货也是**真摆放件**，不再是画面上临时填的散格）：
- *   **形状件**（安全货柜 2×2 · 图纸货柜 2×1）与**散货条**（一种货一条 1×N 横条，放不下自动改 N×1 竖条）
- *   都按自己的坐标画成整块、**都能拖拽**（落点非法 ⇒ 拒绝并提示）；
- * - 散货条由 core `wormholeHoldSyncCargo` 与 `run.bag` 对齐（数量变了就重放，**先试原位**保住玩家摆好的位置）；
- * - 超载（沉船后格数变小）⇒ 顶部红条 + 「一键抛到容量内」；抛弃**永远手动**（船长裁定 8）。
- */
-/**
- * **抓取偏移**：玩家是抓住块内**第几格**开始拖的（列 dx / 行 dy）。
- *
- * 为什么必须有它（船长 2026-09-13 报障「如果不是拖拽左上角会提示[这里放不下]」）：
- * 拖拽落点事件给的是**鼠标压着的那一格**；件的新左上角 = 落点 − 抓取偏移。
- * 少了这一步，抓右下角拖一个 2×2 货柜就会按"左上角落在右下角那格"去判 —— 必然越界。
- */
-function grabOffsetOf(el: HTMLElement, w: number, h: number, clientX: number, clientY: number): { dx: number; dy: number } {
-  const r = el.getBoundingClientRect()
-  if (r.width <= 0 || r.height <= 0) return { dx: 0, dy: 0 }
-  const clamp = (v: number, max: number): number => Math.min(max, Math.max(0, v))
-  return {
-    dx: clamp(Math.floor(((clientX - r.left) / r.width) * w), w - 1),
-    dy: clamp(Math.floor(((clientY - r.top) / r.height) * h), h - 1),
-  }
 }
 
 function WhHold({
