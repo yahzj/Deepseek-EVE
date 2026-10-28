@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **494** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **8131** KB · **62482** 行
-- 状态分布：**未标注** 258 · **已确认/已实现** 166 · **进行中** 42 · **待裁定** 21 · **历史留档** 7
-- 孤儿文档（0 引用）**102** 份 · 状态未标注 **258** 份
+- 文档总数 **496** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **8135** KB · **62533** 行
+- 状态分布：**未标注** 258 · **已确认/已实现** 168 · **进行中** 42 · **待裁定** 21 · **历史留档** 7
+- 孤儿文档（0 引用）**104** 份 · 状态未标注 **258** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**14** 份
-- 三、现行设计稿（design）：**317** 份
+- 三、现行设计稿（design）：**319** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**37** 份
 - 二、其它（docs 根目录）：**6** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -57,13 +57,15 @@
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 | `docs/review/guoqing-audit-followup.md` | 国庆节审查当前跟进 | 未标注（跟进入口） | — | 2 KB / 21 行 | 3 / 0 |
 
-## 三、现行设计稿（design） —— 317 份
+## 三、现行设计稿（design） —— 319 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
+| `docs/design/black-market-learned-blueprint-20261028.md` | 黑市蓝图已学习标记 | 已确认/已实现（已实现） | 2026-10-28 | 1 KB / 19 行 | 0 / 0 |
 | `docs/design/agent-rules-audit-20261027.md` | 仓库规则现状核对 | 待裁定（待船长验收） | 2026-10-27 | 5 KB / 41 行 | 0 / 0 |
 | `docs/design/code-cleanup-20261027.md` | 死代码与重复逻辑清理 | 待裁定（待船长验收） | 2026-10-27 | 5 KB / 45 行 | 0 / 0 |
 | `docs/design/domain-folders-20261027.md` | 功能域分目录与战斗拆分 | 未标注（第一阶段通过发布检查） | 2026-10-27 | 8 KB / 65 行 | 0 / 0 |
+| `docs/design/gravekeeper-blackbox-plug-crafting-20261027.md` | 守墓旗舰黑匣参与舰船插件制造 | 已确认/已实现（已实现） | 2026-10-27 | 3 KB / 32 行 | 0 / 0 |
 | `docs/design/loop-range-confirm-minimize-20261026.md` | 连续战斗确认距离后默认最小化 | 已确认/已实现（已确认） | 2026-10-26 | 4 KB / 33 行 | 0 / 0 |
 | `docs/design/battle-range-confirm-clarity-20261023.md` | 射程确认原因与距离滑条 | 已确认/已实现（已确认） | 2026-10-23 | 3 KB / 32 行 | 1 / 0 |
 | `docs/design/support-and-plug-stacking-20261023.md` | 支援件与舰船插件多件惩罚 | 已确认/已实现（已确认） | 2026-10-23 | 5 KB / 56 行 | 0 / 0 |
@@ -564,13 +566,15 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 17 KB / 195 行 | 68 / 14 |
 
-## 附：孤儿文档（0 引用，102 份）
+## 附：孤儿文档（0 引用，104 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
+- `docs/design/black-market-learned-blueprint-20261028.md`（2026-10-28 · 1 KB）—— 黑市蓝图已学习标记
 - `docs/design/agent-rules-audit-20261027.md`（2026-10-27 · 5 KB）—— 仓库规则现状核对
 - `docs/design/code-cleanup-20261027.md`（2026-10-27 · 5 KB）—— 死代码与重复逻辑清理
 - `docs/design/domain-folders-20261027.md`（2026-10-27 · 8 KB）—— 功能域分目录与战斗拆分
+- `docs/design/gravekeeper-blackbox-plug-crafting-20261027.md`（2026-10-27 · 3 KB）—— 守墓旗舰黑匣参与舰船插件制造
 - `docs/design/loop-range-confirm-minimize-20261026.md`（2026-10-26 · 4 KB）—— 连续战斗确认距离后默认最小化
 - `docs/design/support-and-plug-stacking-20261023.md`（2026-10-23 · 5 KB）—— 支援件与舰船插件多件惩罚
 - `docs/design/battle-card-range-memory-20261021.md`（2026-10-21 · 7 KB）—— 按卡距离记忆与射程变化确认

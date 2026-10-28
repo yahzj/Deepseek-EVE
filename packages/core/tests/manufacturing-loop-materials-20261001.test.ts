@@ -51,6 +51,24 @@ describe('组装机 · 循环续做的扣料（2026-10-01 收口）', () => {
     expect(countWare(state, 'blackbox-h'), '墨潮黑匣一枚都不该被扣（玩家没有）').toBe(0)
   })
 
+  it('守墓旗舰黑匣可用于开工和循环续做，取消只退当前在跑那件', () => {
+    const { state, ctx } = world()
+    state.warehouse.items['blackbox-d'] = 3
+    expect(startManufacturing(state, 'bp-bb', 'pilot', ctx).ok).toBe(true)
+    expect(countWare(state, 'blackbox-d')).toBe(2)
+    expect(state.manufacturingRuns[0]!.spentMaterials).toEqual([{ itemId: 'blackbox-d', count: 1 }])
+    expect(setManufacturingLoop(state, 'bp-bb', true, null).ok).toBe(true)
+
+    advanceGame(state, 60_000, ctx)
+
+    expect(countWare(state, 'blackbox-d'), '首件交付后续做仍从D匣组内扣料').toBe(1)
+    expect(countModule(state, 'mod-a')).toBe(1)
+    expect(state.manufacturingRuns[0]!.spentMaterials).toEqual([{ itemId: 'blackbox-d', count: 1 }])
+    expect(cancelManufacturing(state, ctx, state.manufacturingRuns[0]!.id).ok).toBe(true)
+    expect(countWare(state, 'blackbox-d'), '退回本线实际扣下的D匣').toBe(2)
+    expect(countWare(state, 'blackbox-h')).toBe(0)
+  })
+
   it('**退料账 = 在跑那一件**：取消时退的正好是当前那件已扣的料（不多退也不少退）', () => {
     const { state, ctx } = world()
     state.warehouse.items['blackbox-universal'] = 5

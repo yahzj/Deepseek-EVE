@@ -13316,7 +13316,9 @@ input.app-wh-template-name { min-height: 36px; padding: var(--wui-sp-6) var(--wu
 .app-bm-card-identity > svg { grid-row: 1 / 3; }
 .app-bm-card-meta { display: flex; align-items: center; justify-content: space-between; gap: 3px; min-width: 0; }
 .app-bm-card-meta > .app-hand-cell-rarity { position: static; flex: 0 0 auto; }
-.app-bm-category { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.app-bm-category-line { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.app-bm-category { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.app-bm-learned { flex: 0 0 auto; white-space: nowrap; padding: 0 4px; font-size: 9px; line-height: 14px; }
 .app-bm-crest { position: absolute; top: 0; left: 0; line-height: 0; pointer-events: none; }
 .app-bm-card .app-bm-note { font-size: 11px; line-height: 14px; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .app-bm-price { display: flex; flex-direction: column; font-size: 11px; line-height: 13px; min-width: 0; }

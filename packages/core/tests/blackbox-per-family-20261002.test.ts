@@ -46,7 +46,7 @@ import {
 } from '../src/blackbox'
 import { loadSaveFile, marketGoodOf, serializeSaveFile } from '../src/index'
 import { addWare, countWare } from '../src/inventory'
-import { materialGroupIdsOf, missingMaterials, startManufacturing } from '../src/manufacturing'
+import { cancelManufacturing, materialDisplayIdOf, materialGroupIdsOf, missingMaterials, startManufacturing } from '../src/manufacturing'
 import { WEEKEND_FLAGSHIP_POOL_HP, weekendCoreCandidates, weekendFlagshipView } from '../src/weekendEvent'
 import { weekendApplyBattleOutcome, weekendFlagshipSpecOf, weekendSettleAndGrant } from '../src/weekendBattle'
 import { weekendStartFlagshipBattle } from '../src/weekendLaunch'
@@ -256,9 +256,34 @@ describe('⑨ 装配侧：光环匣同样顶料 · 同样解锁插件门类', ()
     addWare(s, 'blackbox-r', 1)
     expect(missingMaterials(s, ctx, spec), '给一枚光环匣 ⇒ 不缺料').toEqual([])
     expect(materialGroupIdsOf('blackbox-h'), '同一等价组（组序仍是通用最先）').toContain('blackbox-r')
+    expect(materialGroupIdsOf('blackbox-h').at(-1), '守墓黑匣加入组尾，不改变既有扣料次序').toBe('blackbox-d')
     const start = startManufacturing(s, BP, 'pilot', ctx)
     expect(start.ok, `开工成功（错误：${start.ok ? '' : start.error}）`).toBe(true)
     expect(countWare(s, 'blackbox-r'), '真扣掉那一枚光环匣').toBe(0)
+  })
+
+  it('守墓旗舰黑匣也能顶插件图纸黑匣料，显示/扣料/取消退料均保留 D 匣', () => {
+    const s = createInitialState({ nowWallMs: 0, seed: 20261027 })
+    s.debugQuick = true
+    s.learnedRecipes.push(BP)
+    const bp = ctx.blueprints.get(BP)!
+    for (const m of bp.materials) {
+      if (m.itemId === 'blackbox-h') continue
+      addWare(s, m.itemId, m.count * 2)
+    }
+    const spec = { materials: bp.materials, buildSeconds: bp.buildSeconds, buildCostIsk: bp.buildCostIsk }
+    expect(materialGroupIdsOf('blackbox-h')).toContain('blackbox-d')
+    addWare(s, 'blackbox-d', 1)
+    expect(materialDisplayIdOf(s, 'blackbox-h')).toBe('blackbox-d')
+    expect(missingMaterials(s, ctx, spec)).toEqual([])
+    const started = startManufacturing(s, BP, 'pilot', ctx)
+    expect(started.ok).toBe(true)
+    const run = s.manufacturingRuns.at(-1)!
+    expect(run.spentMaterials).toContainEqual({ itemId: 'blackbox-d', count: 1 })
+    expect(countWare(s, 'blackbox-d')).toBe(0)
+    expect(cancelManufacturing(s, ctx, run.id).ok).toBe(true)
+    expect(countWare(s, 'blackbox-d')).toBe(1)
+    expect(countWare(s, 'blackbox-h')).toBe(0)
   })
 
   it('光环匣入库即解锁"舰船插件"门类；锁着时的拒因文案已泛化', () => {

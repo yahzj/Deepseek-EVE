@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
 import { buildSimContext, L10N } from '@whale/data'
 import { createInitialState } from '../src/state'
 import { blackMarketBuy, blackMarketUnlocked, blackMarketNextRefresh, ensureBlackMarket, blackMarketOfferQuantity, isBlackMarketBulkResource } from '../src/blackMarket'
+import { ownsBlueprint } from '../src/manufacturing'
 import { ROOT } from './helpers/save-shell'
 import { resolve } from 'node:path'
 
@@ -152,6 +153,7 @@ describe('黑市监视器与入口真实组件行为', () => {
     const scope = { React: jsx, exports: {}, tr, useL10n: () => {}, useEffect: () => {}, useRef: () => ({ current: null }),
       useState: (initial: unknown) => { const at = cursor++; if (!(at in values)) values[at] = initial; return [values[at], (v: unknown) => values[at] = v] },
       blackMarketUnlocked, blackMarketNextRefresh, blackMarketOfferQuantity, isBlackMarketBulkResource, fmtDuration: String, isk: String, cmdText: () => '',
+      ownsBlueprint,
       marketGoodDisplayName: (_ctx: unknown, key: string) => key,
       marketGoodInfo: (_ctx: unknown, good: { key: string }) => ({ title: good.key, lines: [], note: '说明', category: '类别', glyph: 'blueprint', tone: 'currentColor' }),
       infoCardContent: () => null, crestLabelOf: String, FOE_ACCENT: {},
@@ -179,6 +181,37 @@ describe('黑市监视器与入口真实组件行为', () => {
     expect(render().find(n => n.type === 'MerchantMonitor')!.props.mood).toBe('deal')
     expect(merchantChildren()).toEqual(['app-bm-sign', 'MerchantMonitor', 'app-bm-speech'])
     expect(render().filter(n => n.type === 'article' && n.props.className.includes('is-sold'))).toHaveLength(1)
+  })
+
+  it.each(['zh', 'en'] as const)('%s黑市蓝图卡只在配方已学会时显示通用已学习标记', locale => {
+    const ctx = buildSimContext(locale), now = Date.now()
+    const state = createInitialState({ nowWallMs: now, seed: 7 })
+    state.standingsEarned = { dsi: 100 }
+    const good = ctx.marketGoods.get('bp-miner-1')!
+    expect(good.kind).toBe('blueprint')
+    state.learnedRecipes.push(good.refId)
+    ensureBlackMarket(state, ctx, now)
+    state.blackMarket!.offers = [{ goodKey: good.key, basePrice: good.basePrice, multiplier: 30, price: good.basePrice * 30, sold: false }]
+    const values: unknown[] = []
+    let cursor = 0
+    const trLocal = (id: string) => L10N[id]?.[locale] ?? id
+    const scope = { React: jsx, exports: {}, tr: trLocal, useL10n: () => {}, useEffect: () => {}, useRef: () => ({ current: null }),
+      useState: (initial: unknown) => { const at = cursor++; if (!(at in values)) values[at] = initial; return [values[at], (v: unknown) => values[at] = v] },
+      blackMarketUnlocked, blackMarketNextRefresh, blackMarketOfferQuantity, isBlackMarketBulkResource, ownsBlueprint,
+      fmtDuration: String, isk: String, cmdText: () => '', marketGoodDisplayName: () => ctx.blueprints.get(good.refId)!.name,
+      marketGoodInfo: () => ({ title: ctx.blueprints.get(good.refId)!.name, lines: [], note: '', category: locale === 'zh' ? '蓝图' : 'Blueprint', glyph: 'blueprint', tone: 'currentColor' }),
+      infoCardContent: () => null, crestLabelOf: String, FOE_ACCENT: {}, Glyph: 'Glyph', MerchantMonitor: 'MerchantMonitor',
+      MarketGoodHover: 'MarketGoodHover', result: undefined }
+    const page = component('pages/BlackMarketPage.tsx', 'BlackMarketPage', scope)
+    const render = () => { cursor = 0; return nodes(page({ engine: { state, ctx }, onToast: () => {}, onBack: () => {} })) }
+    const learned = (): Node | undefined => {
+      const card = render().find(n => n.type === 'article')!
+      const identity = nodes(card.children).find(n => n.props.className === 'app-bm-card-identity')
+      return identity ? nodes(identity.children).find(n => n.props.className === 'app-chip is-learned app-bm-learned') : undefined
+    }
+    expect(learned()?.children).toEqual([trLocal('ui.MarketPage.025')])
+    state.learnedRecipes = []
+    expect(learned()).toBeUndefined()
   })
 
   it.each(['zh', 'en'] as const)('%s组数量在卡面和确认显示，取消不扣款，整组购买后售罄', locale => {

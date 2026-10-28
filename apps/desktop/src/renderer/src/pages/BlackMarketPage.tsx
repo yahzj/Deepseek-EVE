@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { blackMarketNextRefresh, blackMarketUnlocked, blackMarketOfferQuantity, isBlackMarketBulkResource } from '@whale/core'
+import { blackMarketNextRefresh, blackMarketUnlocked, blackMarketOfferQuantity, isBlackMarketBulkResource, ownsBlueprint } from '@whale/core'
 import type { BlackMarketOffer } from '@whale/core'
 import { Glyph } from '../ui/Glyphs'
 import { MarketGoodHover, marketGoodDisplayName, marketGoodInfo } from '../ui/marketGoodHover'
@@ -74,6 +74,7 @@ export function BlackMarketPage({ engine, onToast, onBack }: PageProps & { onBac
             if (!g) return null
             const info = marketGoodInfo(engine.ctx, g, true)
             const quantity = blackMarketOfferQuantity(o)
+            const learnedBlueprint = g.kind === 'blueprint' && ownsBlueprint(engine.state, g.refId)
             return <MarketGoodHover key={o.goodKey} ctx={engine.ctx} good={g} hidePrices>
               <article style={{ '--bm-good-tone': info.tone } as CSSProperties} className={`app-bm-card${selected === o.goodKey ? ' is-selected' : ''}${o.sold ? ' is-sold' : ''}`}>
                 <div className="app-bm-card-identity">
@@ -83,7 +84,12 @@ export function BlackMarketPage({ engine, onToast, onBack }: PageProps & { onBac
                   </span> : null}
                   {/* ⟪文案调整 2026-10-06⟫ 数量读锁定货架，旧单件与新组货分别显示。 */}
                   <div className="app-bm-card-meta"><span className={`app-hand-cell-rarity is-r${g.rarityTier}`}>R{g.rarityTier}</span><span className="app-dim">{o.sold ? tr('ui.blackMarket.008') : quantity > 1 ? tr('ui.blackMarket.025', { p1: quantity }) : tr('ui.blackMarket.007')}</span></div>
-                  <span className="app-bm-category app-dim">{info.category}</span>
+                  <div className="app-bm-category-line">
+                    <span className="app-bm-category app-dim">{info.category}</span>
+                    {learnedBlueprint ? <span className="app-chip is-learned app-bm-learned" title={tr('ui.MarketPage.024')}>
+                      {tr('ui.MarketPage.025')}
+                    </span> : null}
+                  </div>
                 </div>
                 <button className="app-bm-select" aria-pressed={selected === o.goodKey} onClick={() => { setSelected(o.goodKey); setDeal(false) }}>
                   <span className="app-bm-name">{info.title}</span>
