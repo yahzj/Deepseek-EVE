@@ -210,6 +210,7 @@ describe('黑市监视器与入口真实组件行为', () => {
       return identity ? nodes(identity.children).find(n => n.props.className === 'app-chip is-learned app-bm-learned') : undefined
     }
     expect(learned()?.children).toEqual([trLocal('ui.MarketPage.025')])
+    expect(learned()?.props['aria-label']).toBe(trLocal('ui.MarketPage.024'))
     state.learnedRecipes = []
     expect(learned()).toBeUndefined()
   })

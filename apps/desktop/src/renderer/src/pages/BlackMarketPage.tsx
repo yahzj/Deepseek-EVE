@@ -86,7 +86,7 @@ export function BlackMarketPage({ engine, onToast, onBack }: PageProps & { onBac
                   <div className="app-bm-card-meta"><span className={`app-hand-cell-rarity is-r${g.rarityTier}`}>R{g.rarityTier}</span><span className="app-dim">{o.sold ? tr('ui.blackMarket.008') : quantity > 1 ? tr('ui.blackMarket.025', { p1: quantity }) : tr('ui.blackMarket.007')}</span></div>
                   <div className="app-bm-category-line">
                     <span className="app-bm-category app-dim">{info.category}</span>
-                    {learnedBlueprint ? <span className="app-chip is-learned app-bm-learned" title={tr('ui.MarketPage.024')}>
+                    {learnedBlueprint ? <span className="app-chip is-learned app-bm-learned" aria-label={tr('ui.MarketPage.024')}>
                       {tr('ui.MarketPage.025')}
                     </span> : null}
                   </div>
