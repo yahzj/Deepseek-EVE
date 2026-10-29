@@ -51,12 +51,14 @@ import { isExplored } from './explore'
 import { countWare, removeWare, cargoCapacityM3Of, unloadCargoOfShipToWarehouse } from './inventory'
 import { shortestTravelMinutes, travelLegMs, travelMinutesEff, warpSpeedAus } from './travel'
 import { isAtHome, originGalaxyOf } from './location'
-import { factionBaseRewardIsk,  isLairCandidate, lairLevelOf, lairNameOf, lairTaskRewardIsk } from './lairs'
+import { factionBaseRewardIsk, isLairCandidate, lairNameOf, lairTaskRewardIsk } from './lairs'
 import type { LairTier } from './lairs'
+import { rollBountyBoard, bountyTaskStandingGain } from './bountyBoard'
+import { noteStandingEarned, DSI_FACTION_ID } from './standing'
+export { BOUNTY_ZONE_PLAN, BOUNTY_TASKS_PER_ROUND } from './bountyBoard'
 import type { AnomalyDef } from './types'
 // 安全分区（2026-10-02 拆到 securityZone.ts，破 hauling→sideTasks 边）；本文件借回使用
 import { securityZoneOf } from './securityZone'
-import type { SecurityZone } from './securityZone'
 
 /**
  * **任务级别 1~5**（船长 2026-09-18：「任务将划分级别，级别越高的任务收购的数量/所需的货仓容量越多。
@@ -174,10 +176,6 @@ export const SPAWN_SHOCK_STEP = 0.05
  * 若不降比例，一轮就有 8＋ 种商品被抽走近半挂单）。同一商品每轮**只被抽一次**（见 refreshBoard）。
  */
 export const SPAWN_SUPPLY_CUT = 0.25
-
-/** 每日赏金席位总数（2026-09-10 船长定：中安 2 + 低安 3 = 5 个地点/天，档位铺成外围 1·核心 2·深层 2）
- *  ——实际张数受各区候选限制（抽不满就少发），故界面显示以当日实际板为准。 */
-export const BOUNTY_TASKS_PER_ROUND = 5
 
 /** 本板刷新周期毫秒 = 市场「补给刷新」节奏（与常驻订单寿命一致，默认 20 分钟） */
 function boardPeriodMs(ctx: SimContext): number {
@@ -628,82 +626,10 @@ function rollLevels(state: GameState, count: number): SideTaskLevel[] {
   return out
 }
 
-/* ═══════════ 赏金日板席位（2026-09-10 船长定：按安全等级抽地点、三档必现） ═══════════ */
-
-/**
- * 每日席位表（船长 2026-09-10 定）：
- * - **高安不派发**（排除后按候选数比例分：中安 2 席、低安 3 席，共 5 个地点）；
- * - 各区**独立抽**（抽不满就少发，不跨区补位）；同一天不重复星系。
- * 档位不再由声望封顶（旧规则已退役）：接取门槛只看卡自身的声望要求。
- */
-export const BOUNTY_ZONE_PLAN: ReadonlyArray<{ zone: SecurityZone; count: number }> = [
-  { zone: '中安', count: 2 },
-  { zone: '低安', count: 3 },
-]
-
-/**
- * 当日档位分配（船长 2026-09-10 定：**由该地点地图级别封顶，逐卡独立掷，取消三档保底**）：
- * - 档位 = 在该卡 `[1..lairLevelOf(卡)]` 内均匀随机（硬封顶）：1 级图只出外围、2 级图到核心、3 级图全档；
- * - **不再保证"每天三档各至少一张"**（旧 rollLairTiers 的三档保底与洗牌随本改动退役）：
- *   当天候选全是低级图时，就可能一天都没有深层席——这是船长明确选择的取舍；
- * - 旧实现还要"再洗一次牌让档位与地点解耦"，本改动正是要建立"地点级别 → 档位上限"的关联，故一并去掉。
- */
-function rollLairTierFor(state: GameState, anomaly: AnomalyDef): LairTier {
-  const max = lairLevelOf(anomaly)
-  return (1 + nextInt(state.rng, max)) as LairTier
-}
-
-/**
- * 赏金任务刷出（2026-09-10 船长定；当日修订②③④，同日晚些按船长新口径再改档位规则）：
- * 候选 = 已探索星系里「主题悬赏可作窝点（有核心词、非隐藏、奖金 > 0、**非 B 族**）」的卡
- * ——**声望不是刷出条件**，门槛只作**接取条件**（不够也能看见，出发被拒，见 expedition 前置检查）。
- * ① 按 `BOUNTY_ZONE_PLAN` 逐区抽地点（各区独立、抽不满少发）；同星系只留一张代表卡，
- *    **代表卡取该星系级别最高的一张**（并列取奖金最高）——否则"同星系两张卡谁进池"会由数据顺序决定，
- *    档位上限跟着随机漂移；
- * ② 档位 = 该地点**地图级别封顶**后逐卡独立掷（`rollLairTierFor`），**不再有三档保底**；
- * ③ 酬金与显示名随档位一并锁定（酬金 = 窝点奖金 × 档位比例）。
- * 与资源/快递不同：赏金任务不触碰市场（不产生刷单影响）。
- */
+/** 赏金按合法候选与三档保底落板，名称/酬金随档位锁定，不触碰市场。 */
 function spawnBountyTasks(state: GameState, ctx: SimContext): void {
   const board = state.sideTasks
-  // 每区候选：可作窝点 + 星系已探索 + 同区不重复星系（每个星系留级别最高的那张代表卡）
-  const poolByZone = new Map<SecurityZone, AnomalyDef[]>()
-  /** 同星系**已见过的卡数**（蓄水池抽样的分母；2026-09-12 代表位改随机后需要） */
-  const repSeen = new Map<string, number>()
-  for (const a of ctx.anomalies.values()) {
-    if (!isLairCandidate(a)) continue
-    if (!state.exploredGalaxies.includes(a.galaxyId)) continue
-    const zone = securityZoneOf(ctx, a.galaxyId)
-    const list = poolByZone.get(zone) ?? []
-    const idx = list.findIndex((x) => x.galaxyId === a.galaxyId)
-    if (idx < 0) {
-      list.push(a)
-      repSeen.set(a.galaxyId, 1)
-    } else {
-      // **代表位 = 随机抽取**（船长 2026-09-12：「**派发代表位改为随机抽取**」）——
-      // 旧口径 = 级别最高、并列取奖金最高（⇒ 同星系低级别卡**永不入板**、由数据顺序外的规则定死）。
-      // 现口径 = 同星系每张卡**等概率**上位：标准**蓄水池抽样**（第 n 张以 1/n 概率替换当前代表）。
-      const n = (repSeen.get(a.galaxyId) ?? 1) + 1
-      repSeen.set(a.galaxyId, n)
-      if (nextInt(state.rng, n) === 0) list[idx] = a
-    }
-    poolByZone.set(zone, list)
-  }
-  // ① 抽地点（逐区、各区独立抽）；派系活跃星系的席位已让给派系那条 → 从池里剔除
-  const factionGid = factionGalaxyId(state)
-  const picks: AnomalyDef[] = []
-  for (const plan of BOUNTY_ZONE_PLAN) {
-    const candidates = [...(poolByZone.get(plan.zone) ?? [])].filter((a) => a.galaxyId !== factionGid)
-    const slots = Math.min(plan.count, candidates.length)
-    for (let i = 0; i < slots; i += 1) {
-      picks.push(candidates.splice(nextInt(state.rng, candidates.length), 1)[0]!)
-    }
-  }
-  if (picks.length === 0) return
-  // ② 档位 = 该地点地图级别封顶（逐卡独立掷，无三档保底）
-  // ③ 落板
-  for (const pick of picks) {
-    const tier = rollLairTierFor(state, pick)
+  for (const { card: pick, tier } of rollBountyBoard(state, ctx, factionGalaxyId(state))) {
     board.seq += 1
     board.bounty.push({
       id: board.seq,
@@ -1131,20 +1057,24 @@ export function sideTasksMarkBountySeen(state: GameState): boolean {
  * 未命中 = 无事发生（普通常驻悬赏/别的目标）。
  *
  * 稀有残骸的**投放**不在这里：由出击侧（expedition）按本场实际档位统一投放——这样即使任务
- * 已过期下板，玩家照样打完窝点、照样能捞到稀有残骸；本函数只负责酬金与文案。
+ * 已过期下板，玩家照样打完窝点、照样能捞到稀有残骸；本函数只负责酬金、任务声望与文案。
  */
 export function settleBountyTaskVictory(
   state: GameState,
   ctx: SimContext,
   anomalyId: string,
   rareGain: number,
+  completedTier?: LairTier,
 ): void {
   const board = state.sideTasks
-  const idx = (board.bounty ?? []).findIndex((t) => t.anomalyId === anomalyId)
+  const idx = (board.bounty ?? []).findIndex(t => t.anomalyId === anomalyId &&
+    (completedTier === undefined || (t.lairTier ?? 1) === completedTier))
   if (idx < 0) return
   const task = board.bounty[idx]!
   board.bounty.splice(idx, 1)
   state.wallet.isk += task.rewardIsk
+  const standingGain = bountyTaskStandingGain(task.lairTier ?? 1)
+  if (standingGain > 0) noteStandingEarned(state, DSI_FACTION_ID, standingGain)
   const galaxyId = task.galaxyId ?? ctx.anomalies.get(anomalyId)?.galaxyId ?? ''
   const galaxyName = ctx.galaxies.get(galaxyId)?.name ?? galaxyId
   addLog(

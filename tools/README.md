@@ -139,6 +139,8 @@
 | `alien-invasion-check.ts` / `alien-invasion-fixture.ts` | `npx tsx tools/alien-invasion-check.ts --seeds=8`，`--save`生成合成档，`--audit`导出逐舰输出 | v31；新波次/爆虫一次性动能/巢母无限补机与指挥校准，标准A0~A3及高阶合法配装、三族对照；审核分别列循环射击、爆发、护理与后备；无个人档，不改正式数值；审核模式不覆盖校准报告 |
 | `alien-invasion-ui-check.cjs` | 构建后`node tools/alien-invasion-ui-check.cjs` | v31；自建隐藏Electron和隔离userData，合成末波检查两布局/两视口；不当观感验收，关闭自有PID |
 | `guoqing-audit-recheck.ts` | 直接 `tsx tools/guoqing-audit-recheck.ts` | 国庆C01～C10指定合成路径断言；C05按现行整数政策，全部边界另见专项，不读个人档 |
+| `bounty-standing-check.ts` | `npx tsx tools/bounty-standing-check.ts` | 真实地图下按探索级别生成200组确定日板，报告三档构成及0/1/2分档声望；假设当板全部完成，不估算实战胜率/耗时，不读个人档 |
+| `bounty-standing-native-check.cjs` | 构建后`node tools/bounty-standing-native-check.cjs` | 隐藏独立Electron，双布局桌面/模拟手机核对0/1/2声望与收益行溢出；输出截图及JSON，只用合成任务，不作观感验收 |
 | `guoqing-save-native-check.cjs` | 构建后 `node tools/guoqing-save-native-check.cjs` | 隐藏独立Electron、合成档与真实IPC；导出同快照、立即导入、备份恢复及旧代次启动拒绝，不替代手机分享验证 |
 | `save-roundtrip-compare.ts` | 由 `save:roundtrip-audit` 调用 | 全数组元素、长度、类型与实际值比较；仓内第二轮幂等及当代合成领域首读保真，不把非法旧字段首读清洗当成保真失败 |
 | `save-reconnect-browser-check.ts` | `npm run save:reconnect-check`（先构建 web） | C02 真实 Web Locks/OPFS/IndexedDB/UI 回归；自建服务与隔离 Edge，模拟权限/选择器，无个人档，端口占用则失败；v31，2026-10-04 |

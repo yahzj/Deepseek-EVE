@@ -1544,6 +1544,7 @@ export {
   // 赏金新板提示（船长 2026-09-14：换板未看 ⇒ 导航徽标；进任务中心即记账）
   sideTasksMarkBountySeen,
 } from './sideTasks'
+export { bountyTaskStandingGain } from './bountyBoard'
 /* 「第一次」任务系列（2026-09-17 教程重做批 · 阶段②）：13 条任务 + 13 条次数链 + 终身计数 */
 export {
   FIRST_TASKS,

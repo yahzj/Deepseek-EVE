@@ -1,7 +1,7 @@
 /** 功能域职责拆分，保持原计算与顺序。 */
 import type { GameEngine } from '../../game/engine'
 import { type ToastFn, MONEY_GLYPH } from '../../pages/common'
-import { standingOf, DSI_FACTION_ID, type SideTask, factionAnomalyOf, bountyDamageForecast, bountyWinPercentGuarded, factionBaseRewardIsk, isExplored, bountyCooldownRemainingMs, calcPower, factionRareDropChanceOf, FACTION_RARE_DROP_COUNT, lairAnomalyOf, LAIR_RARE_WRECK_GAIN, ceilFinalQuantity, lairBaseRewardIsk, bountyRewardFactor, isLairCandidate, lairLevelOf } from '@whale/core'
+import { standingOf, DSI_FACTION_ID, type SideTask, factionAnomalyOf, bountyDamageForecast, bountyWinPercentGuarded, factionBaseRewardIsk, isExplored, bountyCooldownRemainingMs, calcPower, factionRareDropChanceOf, FACTION_RARE_DROP_COUNT, lairAnomalyOf, LAIR_RARE_WRECK_GAIN, ceilFinalQuantity, lairBaseRewardIsk, bountyRewardFactor, isLairCandidate, lairLevelOf, bountyTaskStandingGain } from '@whale/core'
 import { useState, useRef } from 'react'
 import { useFoeArtFit, FoeArt, foeCardShipIdOf, secTone, secText } from '../../panels/StarMap'
 import { cmdText, tr } from '../../i18n/locale'
@@ -13,8 +13,8 @@ import { Glyph, ICO_TONES } from '../../ui/Glyphs'
 
 /**
  * 赏金任务区（2026-09-10 船长定）：任务中心第四个子页——临时战斗任务，目标 = 「敌人窝点」。
- * - 与资源/快递同周期（20 分钟整点）整板刷新，每轮 2 张，过期作废无惩罚；
- * - 窝点 = 该星系主题悬赏按档位派生（档位上限由协会声望决定）：威胁更高、加僚机与波次；
+ * - 每天本地0点刷新，中安2席、低安3席，候选不足少发；
+ * - 窝点 = 该星系主题悬赏按档位派生，地图级别封顶，候选允许时三档各保底一条；
  * - 必须亲自出击（AI 不能代劳）；打赢 → 窝点奖金 + 赏金任务酬金入账，并在该星系留下
  *   稀有残骸 ×档位件数（打捞必得，回站精炼炉「残骸回收」当高级箱开）；
  * - 卡片结构与资源/快递卡同族（app-station-card 家族），只多一行窝点情报与档位徽标。
@@ -44,7 +44,7 @@ export function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToa
     else onToast(tr("ui.Expedition.285"))
   }
 
-  // 当日席位构成（档位随机发放，但保证每天三档各至少一张）：按实际板统计，供头部摘要
+  // 当前剩余席位按实际板统计；候选与分区配额允许时，初始板三档各保底一条。
   const tierCount = (lv: 1 | 2 | 3): number => tasks.filter((t) => (t.lairTier ?? 1) === lv).length
   const tierSummary = tr("ui.Expedition.232", { p1: tasks.length, p2: lairTierText(1), p3: tierCount(1), p4: lairTierText(2), p5: tierCount(2), p6: lairTierText(3), p7: tierCount(3) })
   // 敌对派系活跃（2026-09-10 船长定：置顶那一条）——目标 = 当日选中星系的**常驻悬赏**（不是窝点）
@@ -399,6 +399,7 @@ export function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToa
                 </span>
                 {' · '}
                 <span className="app-lair-key">{tr("ui.IndustryPage.009")}</span> ×{rareGain}
+                {tr('ui.Expedition.368')}{bountyTaskStandingGain(t.lairTier ?? 1)}
               </div>
               <div className="app-ano-desc">
                 {tr("ui.Expedition.299")}

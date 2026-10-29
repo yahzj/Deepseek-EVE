@@ -14,6 +14,7 @@ import { bumpFirst } from '../firstTasks'
 import { weekendWreckInjectionOf, bountyWreckInjection, wreckInjectThreatOf, bountyEnemyCount, injectWeekendWreck, asFoeFamily, injectWreckDensity, weekendWreckDensityOf, wreckDensityOf, injectRareWreck } from '../salvage'
 import { weekendWreckPenaltyFracOf } from '../weekendEvent'
 import { noteStandingEarned, DSI_FACTION_ID } from '../standing'
+import { bountyTaskStandingGain } from '../bountyBoard'
 import { settleBountyTaskVictory } from '../sideTasks'
 import { setBountyCooldown } from './cooldown'
 import { returnBackMs, LOCAL_RETURN_MS } from './travel'
@@ -216,7 +217,11 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     }
     const stats = `交火 ${durTxt}（开火 ${battle.stats.meShots} 命中 ${battle.stats.meHits}，我方护盾余 ${Math.round(battle.units['player']?.hp.s ?? 0)}/甲 ${Math.round(battle.units['player']?.hp.a ?? 0)}/结构 ${Math.round(battle.units['player']?.hp.h ?? 0)}）`
     const lootPart = lootText.length > 0 ? `，缴获 ${lootText.join('、')}` : ''
-    const standPart = firstBlood ? `协会声望 +${anomaly.standingGain}` : '该悬赏已首胜过：本次无额外声望'
+    const dailyStanding = lairTier && state.sideTasks.bounty.some(t => t.anomalyId === anomaly.id && (t.lairTier ?? 1) === lairTier)
+      ? bountyTaskStandingGain(lairTier) : 0
+    // ⟪文案调整 2026-10-30⟫ 沿既有战报句式，声望数字包含本次每日任务实发，避免到账后仍报无收益。
+    const standPart = firstBlood || dailyStanding > 0
+      ? `协会声望 +${(firstBlood ? anomaly.standingGain : 0) + dailyStanding}` : '该悬赏已首胜过：本次无额外声望'
     const dronePart = droneLostText ? `，机群战损 ${droneLostText}` : ''
     // 船体维修装置：消耗数只进战报（2026-09-11 船长：不单独显示日志）
     const repairPart = (() => {
@@ -248,7 +253,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     // 投放不依赖任务是否还在板上：任务已过期也照样算窝点战果（打都打了，战利品不能吞）。
     if (lairTier) {
       injectRareWreck(state, anomaly.galaxyId, anomaly.id, LAIR_RARE_WRECK_GAIN[lairTier])
-      settleBountyTaskVictory(state, ctx, anomaly.id, LAIR_RARE_WRECK_GAIN[lairTier])
+      settleBountyTaskVictory(state, ctx, anomaly.id, LAIR_RARE_WRECK_GAIN[lairTier], lairTier)
     }
     // 敌对派系活跃（2026-09-10 船长定）：胜利后**按概率**掉稀有残骸（该星系残骸场、打捞必得）。
     // 这条**不因打赢而下板**（当天可反复刷），故只在命中时写一条日志说明掉了几件。

@@ -14,6 +14,8 @@
 
 ## 一、core 引擎层（`packages/core/src`）
 
+每日赏金：`bountyBoard.ts:rollBountyBoard`统一候选、分区席位、地图上限与三档匹配；`bountyTaskStandingGain`提供完成和收益展示共用的分档声望。护栏为赏金生成/结算专项及F2/F3检查。
+
 `lab.ts:labOutputCapped`按产物聚合有效线锁定的`batchUnits`，起线、续做与燃料供应读数共用；交付按真实余量整批入库，仓满保留原线/退款账与`deliveryBlocked`随档标记。`marketHistory.ts:PRICE_HISTORY_LIMIT`为行情采样和存档清洗共用窗口常量，不导入运行层。护栏为国庆专项及F2/F3检查。
 
 双语时长分解归 `time.ts:durationParts`；方案/残骸/沉船记录槽位净化归 `save.ts:cleanRack`；手动与自动探索回合预算归 `wormhole.ts:wormholeTurnBudget`。

@@ -36,8 +36,8 @@ export function spendableStandingOf(state: GameState, factionId: string): number
  * - 可支配那本 +v（日后能被兑换扣掉）；
  * - 累计那本 +v（**只增不减**，所有门槛读它）。
  *
- * 调用点两处：完成远征/悬赏卡（`anomaly.standingGain`）与**入侵结束按贡献占比**
- * （`weekendBattle.weekendSettleAndGrant`）。v ≤ 0 时只保证累计那本不回退（幂等补账用）。
+ * 来源：悬赏卡首胜、每日赏金分档奖励及入侵结束结算。
+ * v ≤ 0 时不增加声望（幂等补账用）。
  */
 export function noteStandingEarned(state: GameState, factionId: string, v: number): void {
   const add = Math.max(0, ceilFinalQuantity(v))

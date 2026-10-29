@@ -152,6 +152,8 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
   { concept: '技能训练工作量与实时进度换算', symbol: 'trainingLevelProgress', file: 'packages/core/src/training.ts', exported: true },
   { concept: '实验室同产物在产预留与可开工容量', symbol: 'labOutputCapped', file: 'packages/core/src/lab.ts', exported: true },
   { concept: '行情运行与存档共用历史窗口', symbol: 'PRICE_HISTORY_LIMIT', file: 'packages/core/src/marketHistory.ts', exported: true },
+  { concept: '每日赏金合法候选与三档保底', symbol: 'rollBountyBoard', file: 'packages/core/src/bountyBoard.ts', exported: true },
+  { concept: '每日赏金分档声望奖励', symbol: 'bountyTaskStandingGain', file: 'packages/core/src/bountyBoard.ts', exported: true },
   { concept: '旧技能进度一次性工作量兼容', symbol: 'normalizeTrainingProgress', file: 'packages/core/src/training.ts', exported: true },
   { concept: '敌方族格最终血量倍率', symbol: 'foeFamilyHpMulOf', file: 'packages/core/src/combat/foePower.ts', exported: true },
   { concept: '全舰血量提升倍率', symbol: 'SHIP_HP_UPLIFT_MUL', file: 'packages/core/src/combat/combatMath.ts', exported: true },
