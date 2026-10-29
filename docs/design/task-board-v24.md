@@ -2,7 +2,7 @@
 
 > 状态：**已收尾**（2026-09-08 船长确认）。实施记录：a1ed9a9（v24 上板，core 415）→
 > fb8e6db（船长 2026-09-05 两轮口径修正，core 430）→ 2026-09-06 导航语义联动（任务完成即返航）
-> 与 2026-09-08 快递"保持现状"复核。相关：docs/design/t10-task-center.md（任务中心族框架）、
+> 与 2026-09-08 快递"保持现状"复核。相关：docs/archive/retired-docs-20261029/t10-task-center.md（任务中心族框架）、
 > docs/design/t9-substations.md（建站 = 快递解锁门槛）、docs/glossary.md（术语三词登记）。
 
 ## 定位

@@ -1,0 +1,125 @@
+{
+  "baseline": "32951a8973d5e6df170731a1ee588bb40326ed18",
+  "rule": "无船长明确查阅要求，禁止阅读、检索或自动载入正文。",
+  "entries": [
+    {
+      "file": "AGENTS.md",
+      "source": "AGENTS.md",
+      "bytes": 13175,
+      "sha256": "61c5897a0060aab6cd22af4e582cf47819592ead1837496dc1638f952b949988",
+      "baselineTextEqual": true
+    },
+    {
+      "file": "architecture.md",
+      "source": "docs/architecture.md",
+      "bytes": 30586,
+      "sha256": "cf649316d4fc8d8d515594866e5862d992adda9cd98b53a857628b96e870f586",
+      "baselineTextEqual": true
+    },
+    {
+      "file": "content-workbench.md",
+      "source": "docs/content-workbench.md",
+      "bytes": 8992,
+      "sha256": "a4a5408f1ceb5835edf6e22e07b553c0b0a237a90367ed8da7c7d3cb951b0dc6",
+      "baselineTextEqual": true
+    },
+    {
+      "file": "data-editor.md",
+      "source": "docs/data-editor.md",
+      "bytes": 9759,
+      "sha256": "6f6890167960b094839f536c2dd8a1c9e254fdafecebf5cbe3fdaae8f010439c",
+      "baselineTextEqual": true
+    },
+    {
+      "file": "data-map.md",
+      "source": "docs/data-map.md",
+      "bytes": 6420,
+      "sha256": "3d338526be3f899a4ec9aeb2d461537c0ee971a285b9655ed62bdbe12793be7d",
+      "baselineTextEqual": true
+    },
+    {
+      "file": "development-conventions-changelog.md",
+      "source": "docs/development-conventions-changelog.md",
+      "bytes": 312151,
+      "sha256": "9ddd8105b54d8c424bfddb41ad40e42be7719db5fab5f5554d500d0374e07261",
+      "baselineTextEqual": true
+    },
+    {
+      "file": "development-conventions.md",
+      "source": "docs/development-conventions.md",
+      "bytes": 96411,
+      "sha256": "2737ca854ffa8f131181a7843ed588f1fa54935b76dd1d3727d6caded262fc56",
+      "baselineTextEqual": true
+    },
+    {
+      "file": "docs-index.ts.txt",
+      "source": "tools/docs-index.ts",
+      "bytes": 14586,
+      "sha256": "857b196a80afea59187ba67f5574ea8f065530ebf9a44415a5469c08e789bbae",
+      "baselineTextEqual": true
+    },
+    {
+      "file": "docs-seal.ts.txt",
+      "source": "tools/docs-seal.ts",
+      "bytes": 19539,
+      "sha256": "f2f9533c6751de98ceb16435c6633de7d1e584f11d3f7fb1f41e144553af4499",
+      "baselineTextEqual": true
+    },
+    {
+      "file": "docs__archive__README.md",
+      "source": "docs/archive/README.md",
+      "bytes": 3465,
+      "sha256": "7573a7f8db81f881063c6c0f7b6b66d153f7950f5269f79feaf89a965ccd7e2d",
+      "baselineTextEqual": true
+    },
+    {
+      "file": "docs__design__archive__README.md",
+      "source": "docs/design/archive/README.md",
+      "bytes": 17657,
+      "sha256": "2851bee15e1770dca95fe944f674fd2b2d06217021e49fbc2f57b98a2b82750d",
+      "baselineTextEqual": true
+    },
+    {
+      "file": "glossary-en.md",
+      "source": "docs/glossary-en.md",
+      "bytes": 49583,
+      "sha256": "4821ec373252ec260644a64ae8c127711152032249e7c6590d53b27021398c56",
+      "baselineTextEqual": true
+    },
+    {
+      "file": "glossary.md",
+      "source": "docs/glossary.md",
+      "bytes": 534433,
+      "sha256": "be05aadbfdabfb5bd6a5a5eb7de0a3a2f268909a4aab16b04282fec897dcc68c",
+      "baselineTextEqual": true
+    },
+    {
+      "file": "README.md",
+      "source": "README.md",
+      "bytes": 6740,
+      "sha256": "30a0c0d68043850bdc626dd5e82378c17369aa962c7f10561da7b267382c6dd8",
+      "baselineTextEqual": true
+    },
+    {
+      "file": "roadmap.md",
+      "source": "docs/roadmap.md",
+      "bytes": 92968,
+      "sha256": "a108f0e8a2e346b71e549091f6b18b69b0f1795a0eb9ee57b844902c9cc97647",
+      "baselineTextEqual": true
+    },
+    {
+      "file": "single-source.md",
+      "source": "docs/single-source.md",
+      "bytes": 35069,
+      "sha256": "eda06fa767dc234bd96ed22a930d90fccfe0ffccb2f74440091279b2701e1ccb",
+      "baselineTextEqual": true
+    },
+    {
+      "file": "guoqing-audit-followup.md",
+      "source": "docs/review/guoqing-audit-followup.md",
+      "bytes": 2420,
+      "sha256": "d0044209930a89a75082a79ad8a333e1620b59bb8ea2c581ebcae8fe5c97def9",
+      "baselineTextEqual": true
+    }
+  ]
+}
