@@ -14,9 +14,11 @@ import { countItem, countWare, removeItem, removeWare } from './inventory'
 import { HOME_GALAXY_ID, addLog } from './state'
 import { SYNAPTIC_ACCELERANT_MS, normalizeTrainingProgress, trainingLevelProgress } from './training'
 import { securityZoneOf } from './securityZone'
-import { DSI_FACTION_ID, spendableStandingOf } from './expedition'
+import { DSI_FACTION_ID, spendableStandingOf, standingOf } from './standing'
 import {
   WEEKEND_FINISHED_FAMILIES,
+  WEEKEND_MIN_STANDING,
+  weekendInvasionAllowedFor,
   weekendFamilyNameId,
   weekendHasBuiltStation,
   weekendPeripheryOf,
@@ -61,7 +63,7 @@ export function beaconLaunchHighSecOf(ctx: SimContext, targetGalaxyId?: string):
 }
 
 /**
- * **指定星系那条路的唯一禁令**（**2026-09-30 船长令**：「**主动对某个星系使用，只有"不能对有空间站的
+ * **指定星系的空间站限制**（**2026-09-30 船长令**：「**主动对某个星系使用，只有"不能对有空间站的
  * 星系使用"这一条禁令**」）：目标星系**有空间站**（母港所在星系 或 任何**已建成**副站）⇒ 不能点火
  * （提示语由船长逐字给定：「该星系信号被压制，无法使用信号发射器。」）。
  * ⚠ **不再**要求"已探索 / 非高安 / 无副站"那一套（那是**随机那条路**的候选集口径）；
@@ -264,7 +266,7 @@ export const INVASION_BEACON_FAMILIES: readonly { readonly id: string; readonly 
  *   目标必须存在且没有空间站；高安目标按既有规则支付声望，外围走 `weekendPeripheryOf`。
  *
  * 其余口径照 2026-09-29 六答：`startedAtWallMs` 设为**现在**（这一场按既有规则活满 96 小时窗口）·
- * **不判声望、不判窗口、不判周排期**；只在**已有一场未结束的入侵**时拒绝。
+ * 与自然入侵共用累计声望门槛（调试豁免），不判窗口或周排期；已有未结束入侵时拒绝。
  * ⚠ **抽不到 / 选不到目标星系时都不扣料**（避免白扔 10,000 虚空晶）。
  */
 export function useInvasionBeacon(
@@ -297,12 +299,7 @@ export function useInvasionBeacon(
   if (gate.action === 'reject') {
     return { ok: false, error: gate.message, errorId: gate.messageId, errorParams: gate.messageParams }
   }
-  /**
-   * **新的限制**（**2026-09-30 船长令**：「**新的限制，信号发射器不可以在有空间站的地方使用。**」）：
-   * 判据 = `location.isAtHomeLike`（母港 或 **已建成**副站；在建工地不算）⇒ 那时**拒绝启动**。
-   * ⚠ 排在"已有入侵"之后：两者同时成立时，"等这场打完"是更贴切的那句。
-   */
-  /* 指定星系那条路：**唯一禁令 = 目标星系不能有空间站**（船长 2026-09-30 令） */
+  // 指定目标不能有空间站；玩家所在地不参与这个判据。
   if (galaxyId !== undefined && beaconTargetBlocked(state, ctx, galaxyId)) {
     return { ok: false, error: '该星系信号被压制，无法使用信号发射器。', errorId: 'core.consumable.010' }
   }
@@ -333,6 +330,14 @@ export function useInvasionBeacon(
       error: `在高安启动信号发射器要付 ${HIGH_SEC_PENALTY} 点声望：当前可支配声望不够。`,
       errorId: 'core.consumable.011',
       errorParams: { p1: HIGH_SEC_PENALTY },
+    }
+  }
+  if (!weekendInvasionAllowedFor(state)) {
+    return {
+      ok: false,
+      error: `需「深空工业协会」声望 ${WEEKEND_MIN_STANDING}（累计 ${standingOf(state, DSI_FACTION_ID)}）`,
+      errorId: 'core.market.039',
+      errorParams: { p1: WEEKEND_MIN_STANDING, p2: standingOf(state, DSI_FACTION_ID) },
     }
   }
   const seq = (ev?.seq ?? 0) + 1
@@ -379,8 +384,7 @@ export function useInvasionBeacon(
     ...rolled,
     family: familyIdOfEvent,
     contributed: {},
-    /* 点火来源留痕（2026-10-01 船长令）：① 高安那场预警信要怀疑玩家并说清扣了声望
-       ② 玩家自己点起来的入侵，结算协会声望固定 5 点（不再按贡献 0~15） */
+    /* 高安来源供预警信取用；召唤来源决定固定声望奖励。 */
     ...(highSec ? { beaconHighSec: true } : {}),
     beaconLit: true,
   }

@@ -5,6 +5,7 @@ import type { GameState } from '../src/state'
 import { addWare } from '../src/inventory'
 import { consumableStockOf, INVASION_BEACON_ITEM_ID, useInvasionBeacon } from '../src/consumables'
 import { weekendSettleAndGrant } from '../src/weekendBattle'
+import { setStanding } from './helpers'
 import { injectWeekendRareWreck, injectWeekendWreck } from '../src/salvage'
 import { invasionWreckRowsOf, wreckAiHostOf, wreckCardSequenceOf } from '../../../apps/desktop/src/renderer/src/pages/wreckCards'
 
@@ -14,6 +15,7 @@ const now = new Date(2026, 9, 3, 20).getTime()
 function ready() {
   const s = createInitialState({ nowWallMs: now, seed: 11 })
   s.exploredGalaxies = [...ctx.galaxies.keys()]
+  setStanding(s, 'dsi', 100)
   addWare(s, INVASION_BEACON_ITEM_ID, 2)
   return s
 }

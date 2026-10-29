@@ -7,7 +7,7 @@
  * - `standings` = **可支配**（只有「章鱼人兑换」扣它）⇒ 只用来回答"还买得起几张图纸"。
  *
  * 本文件逐条钉住"哪些门槛"——船长原话是"**所有**"，所以凡界面上会拦人的声望闸都要在这里出现一次：
- * 虫洞扫描解锁 · 矿带 / 商品购买门槛 · 暗市闸 · 周末入侵 · 通讯 `standing` 触发器 · 卖价声望加成。
+ * 信号空间扫描解锁 · 矿带 / 商品购买门槛 · 暗市闸 · 周末入侵 · 通讯 `standing` 触发器 · 卖价声望加成。
  * 反面同样钉住：**可支配再高也不能顶替累计**（否则花掉声望就能反向锁人）。
  *
  * ⚠ 改前只有「虫洞闸（`comms.ts` 那条触发器）」与「矿带命令侧」读累计，其余各处直读 `standings`
@@ -29,7 +29,7 @@ const ctx = buildSimContext()
 
 function fresh(seed = 7): GameState {
   const s = createInitialState({ nowWallMs: 0, seed })
-  clearInitialStanding(s) // 新档初始 40 ⇒ 本组用例自己设值
+  clearInitialStanding(s) // 本组用例自己设两本账。
   return s
 }
 
@@ -55,7 +55,7 @@ describe('两条账的分工：累计只增、可支配可被兑换扣', () => {
   })
 })
 
-describe('虫洞扫描解锁：按累计判', () => {
+describe('信号空间扫描解锁：按累计判', () => {
   it('累计达标即可、花掉声望不会把已解锁的锁回去', () => {
     const s = fresh()
     setStanding(s, 'dsi', WORMHOLE_SCAN_UNLOCK_STANDING)

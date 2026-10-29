@@ -27,7 +27,7 @@ describe('旗舰黑匣价值与旧报价边界', () => {
     expect(ctx.marketGoods.get(id)!.basePrice).toBe(price)
     expect(ctx.marketGoods.get(id)!.playerBuyable).toBe(false)
     expect(core.blackMarketCandidateGoods(ctx).some(g => g.key === id)).toBe(true)
-    expect(core.UNIVERSAL_BLACKBOX_COST).toBe(30)
+    expect(core.UNIVERSAL_BLACKBOX_COST).toBe(60)
   })
 
   it('普通市场无压力/冲击/噪声时，两种旗舰匣的当前收购线同步为1000万', () => {

@@ -13,7 +13,7 @@ function fresh() {
   const state = createInitialState({ nowWallMs: t0, seed: 20261009 })
   state.debugQuick = false
   state.exploredGalaxies = [...ctx.galaxies.keys()]
-  setStanding(state, 'dsi', 60)
+  setStanding(state, 'dsi', 100)
   return state
 }
 

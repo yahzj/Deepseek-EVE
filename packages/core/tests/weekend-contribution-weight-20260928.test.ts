@@ -84,7 +84,7 @@ describe('贡献占比 · BOSS 权重 60%（2026-09-28 船长令）', () => {
     expect(weekendContributionShareAt(s, ev, 0), '仍是 0.6×0.7').toBeCloseTo(0.42, 6)
   })
 
-  it('⑤ 三处同源：结算计划的占比 = 快照的占比，声望按同一个数算（round(占比×15)）', () => {
+  it('⑤ 三处同源：结算计划的占比 = 快照的占比，声望按同一个数算', () => {
     const { s, ev } = invaded({ done: WEEKEND_FLAGSHIP_POOL_HP })
     ev.contributed[GID] = 1 // clear = 1 ⇒ share = 0.6 + 0.4 = 1.0
     const share = weekendContributionShareAt(s, ev, 0)
@@ -95,6 +95,6 @@ describe('贡献占比 · BOSS 权重 60%（2026-09-28 船长令）', () => {
     expect(weekendSettleAndGrant(s, ctx, 1_000_000)).not.toBeNull()
     const snap = s.weekendLastResult!
     expect(snap.share, '快照的占比 = 同一个数').toBe(share)
-    expect(snap.standing, '声望 = round(占比 × 15)').toBe(Math.round(share * 15))
+    expect(snap.standing, '满贡献声望 = 30').toBe(30)
   })
 })

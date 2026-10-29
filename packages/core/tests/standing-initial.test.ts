@@ -21,7 +21,7 @@ describe('当前声望默认值与正常门槛', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 7 })
     expect(wormholeScanUnlocked(state)).toBe(false)
     expect(weekendInvasionAllowedFor(state)).toBe(false)
-    expect(WEEKEND_MIN_STANDING).toBe(40)
+    expect(WEEKEND_MIN_STANDING).toBe(80)
     expect(WORMHOLE_SCAN_UNLOCK_STANDING).toBe(40)
     const rows = plugExchangeRowsOf(state, ctx)
     expect(rows.length).toBeGreaterThan(0)

@@ -1,5 +1,5 @@
 /** 功能域职责拆分，保持原计算与顺序。 */
-import { type AnomalyDef, foeDamageComposition, type DamageResists, type ShipDef, type ItemDef, type UnitSpec, type BattleBalance, ceilFinalQuantity, DEFAULT_BALANCE, type ModuleDef, wormholeIsShapedItem, wormholeShapeOf, SYNAPTIC_ACCELERANT_MS, SYNAPTIC_ACCELERANT_MUL, JUMP_FUEL_SPEED_MUL, invasionBeaconTypeOf, HIGH_SEC_PENALTY, DC_LOCK_MS } from '@whale/core'
+import { type AnomalyDef, foeDamageComposition, type DamageResists, type ShipDef, type ItemDef, type UnitSpec, type BattleBalance, ceilFinalQuantity, DEFAULT_BALANCE, type ModuleDef, wormholeIsShapedItem, wormholeShapeOf, SYNAPTIC_ACCELERANT_MS, SYNAPTIC_ACCELERANT_MUL, JUMP_FUEL_SPEED_MUL, invasionBeaconTypeOf, HIGH_SEC_PENALTY, WEEKEND_MIN_STANDING, DC_LOCK_MS } from '@whale/core'
 import type { ReactNode, ElementType } from 'react'
 import { DmgChip, resistsText, fmt, type InfoLine, pct } from './primitives'
 import { tr } from '../../../i18n/locale'
@@ -342,6 +342,7 @@ export function itemInfoLines(item: ItemDef, nameOf?: (id: string) => string | u
     lines.push({ k: tr('ui.itemSpecs.006'), v: `×${JUMP_FUEL_SPEED_MUL}` })
     lines.push({ k: tr('ui.itemSpecs.007'), v: tr('ui.itemSpecs.008') })
   } else if (invasionBeaconTypeOf(item.id)) {
+    lines.push({ k: tr('ui.Expedition.068'), v: WEEKEND_MIN_STANDING })
     lines.push({ k: tr('ui.itemSpecs.009'), v: tr('ui.itemSpecs.010', { p1: HIGH_SEC_PENALTY }) })
   } else if (item.id === 'repairkit-dc') {
     lines.push({ k: tr('ui.itemSpecs.013'), v: tr('ui.shipInfo.207', { p1: DC_LOCK_MS / 1000 }) })

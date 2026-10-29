@@ -275,7 +275,7 @@ export function weekendResultSnapshotOf(
   void ctx // 目前不需要 ctx（星系名由界面现查）；保留参数位以免将来解析物品时改签名
   /**
    * **本期入侵按贡献获得的协会声望**（**2026-09-26 船长令**：「关于入侵的结算界面和结束通讯处，
-   * 需要提及玩家获得了多少声望」）——**与实发同源**：同一条公式 `round(占比 × 15)`，
+   * 需要提及玩家获得了多少声望」）——**与实发同源**：`weekendStandingGainOf`，
    * 结算那一拍（`weekendSettleAndGrant`）用它发、快照用它写 ⇒ 面板与信件上的数 = 真正加进账的数。
    */
   const standingGain = weekendStandingGainOf(ev, plan.share)
@@ -357,7 +357,7 @@ export function weekendSettleAndGrant(
   /**
    * **按贡献占比发协会声望**（**2026-09-26 船长令**：「**玩家完成入侵后根据贡献获得一定量声望**」）。
    *
-   * 口径 = `round(占比 × 15)`（单场 **0~15 点**）：占比 100% ⇒ 15 · 83% ⇒ 12 · 50% ⇒ 8 · 10% ⇒ 2 · 0% ⇒ 0。
+   * 自然场按贡献，召唤场固定奖励，统一由`weekendStandingGainOf`取值。
    * 走 `noteStandingEarned` 唯一入口 ⇒ **两条账同时加**（可支配 ＋ 累计）。
    * ⚠ 与"贡献四档奖"同在一处（`prizePaidAtWallMs` 保证只走一遍）⇒ 声望也跟着**只发一次**。
    */

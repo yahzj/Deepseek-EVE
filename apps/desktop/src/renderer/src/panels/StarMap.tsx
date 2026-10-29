@@ -31,6 +31,8 @@ import type { AnomalyDef, GalaxyDef, SideTask } from '@whale/core'
 import {
   DSI_FACTION_ID,
   HIGH_SEC_PENALTY,
+  WEEKEND_MIN_STANDING,
+  weekendInvasionAllowedFor,
   INVASION_BEACON_ITEM_ID,
   availableInvasionBeacons,
   RARE_WRECK_VOLUME_M3,
@@ -1771,9 +1773,10 @@ export function GalaxyActions({
   const [beaconPick, setBeaconPick] = useState(INVASION_BEACON_ITEM_ID)
   const beaconItemId = beacons.some(row => row.itemId === beaconPick) ? beaconPick : (beacons[0]?.itemId ?? '')
   const beaconStock = beacons.reduce((sum, row) => sum + row.units, 0)
-  /** **指定星系那条路的唯一禁令**（船长 2026-09-30 令）：「该星系有空间站」⇒ 不能点火（信号被压制）。
-   *  ⚠ 不判"已探索/非高安/无副站"（那是**随机那条路**的候选集口径），也不判玩家在哪。 */
+  /** 指定目标有空间站时信号被压制；已探索/非高安属于随机候选规则，玩家所在地不参与判定。 */
   const beaconBlocked = beaconTargetBlocked(state, ctx, galaxy.id)
+  const beaconStandingMet = weekendInvasionAllowedFor(state)
+  const beaconStandingNote = tr('core.market.039', { p1: WEEKEND_MIN_STANDING, p2: standingOf(state, DSI_FACTION_ID) })
   /** 玩家位置**不判**（2026-09-30 船长报障：不该要求玩家先离开自己的空间站）；「不允许在空间站使用」
    *  指的是**目标星系**不能有空间站 ⇒ 由 `!beaconBlocked`（候选资格）管，就地提示走 `ui.beacon.005`。 */
   /** **玩家选定的目标星系属高安 ⇒ 二次警告 + 扣声望**（**2026-10-03 船长裁「乙」**：判据 = **目标星系**，
@@ -1919,13 +1922,17 @@ export function GalaxyActions({
           ) : (
             <button
               className="app-btn is-small is-warn"
-              aria-disabled={!beaconBlocked ? undefined : 'true'}
-              title={!beaconBlocked ? tr('ui.beacon.003', { p1: galaxy.name }) : tr('ui.beacon.005')}
+              aria-disabled={!beaconBlocked && beaconStandingMet ? undefined : 'true'}
+              title={beaconBlocked ? tr('ui.beacon.005') : !beaconStandingMet ? beaconStandingNote : tr('ui.beacon.003', { p1: galaxy.name })}
               onClick={() => {
                 /* 目标不合格（含"该星系有空间站"）⇒ 就地说明；合格 ⇒ 高安给二次警告、否则就地确认。
                    ⚠ **不判玩家在哪**（船长 2026-09-30 报障：不该要求先离开自己的空间站）。 */
                 if (!!beaconBlocked) {
                   onToast(tr('ui.beacon.005'), true)
+                  return
+                }
+                if (!beaconStandingMet) {
+                  onToast(beaconStandingNote, true)
                   return
                 }
                 if (beaconHighSec) {

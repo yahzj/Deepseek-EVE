@@ -52,6 +52,6 @@ describe('已确认战斗域目录与边界', () => {
     expect(original).not.toContain('function createPlayerSpec')
     expect(implementation).toContain('function createPlayerSpec')
     expect(implementation).toContain('refs?.weaponRanges?.push')
-    expect(readImplementation(resolve(ROOT, 'packages/core/src/weekendEvent.ts'))).toContain('export const WEEKEND_MIN_STANDING = 40')
+    expect(readImplementation(resolve(ROOT, 'packages/core/src/weekendEvent.ts'))).toContain('export const WEEKEND_MIN_STANDING = 80')
   })
 })

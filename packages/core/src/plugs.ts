@@ -299,20 +299,16 @@ export function plugsToBlackBoxesOf(plugIds: readonly string[]): number {
   return Math.max(0, plugIds.filter((id) => id.length > 0).length)
 }
 
-/* ═══════════ 章鱼人兑换（**2026-09-26 船长令**）═══════════
- * 船长原话：「**找章鱼人用声望兑换**」＋「**声望真扣**」
- * ⇒ 单张图纸 **8 点声望**、**真扣**（只扣可支配那本；累计那本不动 ⇒ 门槛不会被扣回去）。
- * ⚠ **2026-09-26 晚船长改判**：「**我从来没有说过"开局能换 5 张"，所以要清理，并且还要削减累计声望**」
- * ⇒ 新档**不再赠送初始声望**（两条账都从 0 起步）⇒ 第一张图纸要自己攒到 8 点；单张 8 点的价目不变。 */
+/* 章鱼人兑换：只扣可支配声望，累计获得不回退；新档不赠送声望。 */
 
-/** 单张插件图纸的声望价（**8 点**；真扣可支配那本，累计那本不动） */
-export const PLUG_BLUEPRINT_COST = 8
+/** 单张插件图纸的可支配声望价。 */
+export const PLUG_BLUEPRINT_COST = 20
 
 /**
- * **通用黑匣的声望价**（**2026-09-27 船长令**：「**玩家可以用30声望换一个通用黑匣**」）——
+ * 通用黑匣的声望价。
  * 与图纸同口径：**只扣可支配那本**、门槛仍读累计；**可无限次兑换**（不像图纸会"已学会即隐藏"）。
  */
-export const UNIVERSAL_BLACKBOX_COST = 30
+export const UNIVERSAL_BLACKBOX_COST = 60
 
 /** 通用黑匣的物品 id（**2026-09-27 船长令**；与 `blackbox-h` 互为制造替代料，见 `manufacturing.MATERIAL_GROUPS`） */
 export const UNIVERSAL_BLACKBOX_ITEM_ID = 'blackbox-universal'
@@ -320,7 +316,7 @@ export const UNIVERSAL_BLACKBOX_ITEM_ID = 'blackbox-universal'
 /**
  * **用声望换一枚通用黑匣**（唯一入口；兑换窗口那张卡调它）。
  *
- * 三道校验：① 可支配声望够不够（不够则一点不动）⇒ ② 扣 30 点 ⇒ ③ **入物品仓库**
+ * 三道校验：① 可支配声望够不够（不够则一点不动）⇒ ② 按价扣款 ⇒ ③ **入物品仓库**
  * （`addWare`；与"黑匣入库"同口径 —— 玩家在「物品」页就能看到，不进驾驶船货舱）。
  * ⚠ 与图纸那支**不是一回事**：图纸是"兑换即学会"（消耗品性质），本件是**实物**（进仓库的制造料）。
  */
@@ -363,7 +359,7 @@ export function plugBlueprintIdOf(moduleId: string): string {
  *
  * 四道校验：① 是插件吗 ⇒ ② 图纸在不在目录里 ⇒ ③ **已经学会了吗**（学会了就不该再花声望）
  * ⇒ ④ **可支配声望够不够**（不够则两本账都不动）。
- * 成功 = 扣 8 点可支配声望 ＋ **图纸直接学会**（`learnedRecipes`，2026-09-26 船长令「兑换即学会」）
+ * 成功 = 按价扣可支配声望 ＋ **图纸直接学会**（`learnedRecipes`，2026-09-26 船长令「兑换即学会」）
  * ＋ 一条 `trade` 日志。⚠ 不再发"蓝图书"⇒ 蓝图书架上不会出现插件图纸。
  */
 export function exchangePlugBlueprint(

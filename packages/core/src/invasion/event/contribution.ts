@@ -57,7 +57,7 @@ export function weekendBlackBoxSettledOf(ev: WeekendEventState | undefined): boo
 /**
  * **这一场结算该发多少协会声望**（唯一判据 · 发与写快照同源）：
  * - 玩家用信号发射器点起来的（`ev.beaconLit`）⇒ **固定 `WEEKEND_STANDING_BEACON`**；
- * - 每周自己爆发的那场 ⇒ 按贡献占比最终向上取整（单场0~15点）。
+ * - 自然入侵 ⇒ 按贡献占比乘声望上限，最终向上取整。
  */
 export function weekendStandingGainOf(ev: Pick<WeekendEventState, 'beaconLit'>, share: number): number {
   return ev.beaconLit === true ? WEEKEND_STANDING_BEACON : ceilFinalQuantity(share * WEEKEND_STANDING_MAX)
@@ -91,7 +91,7 @@ export function weekendProgressIncomeIsk(ev: WeekendEventState): number {
  * - **没打 BOSS**（或本族没有共享池）⇒ `boss = 0` ⇒ 占比**上限 0.4**（最高 B 档）。
  *   船长原话：「**三、不管ACG族，因为之后入侵的不一定是他们**」⇒ **不为占位族开特例分支**；
  * - 「BOSS 输出」按**实际输出占比**算（打了 93% 就是 0.93），**不是**"击杀了就算满"；
- * - 三处下游**同源**（贡献四档奖 · 结算声望 `round(share×15)` · 快照/面板显示的占比）；
+ * - 三处下游**同源**（贡献四档奖 · 结算声望 · 快照/面板显示的占比）；
  *   **进度收入与夺回奖不受影响**（前者按进度台账算、后者按星系算）。
  * ⚠ NPC 铺底总量按"结算时刻各占领区的铺底之和"计 ⇒ 抢得越多、清缴那份占比越高。
  */

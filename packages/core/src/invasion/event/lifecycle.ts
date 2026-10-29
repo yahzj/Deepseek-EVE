@@ -75,8 +75,7 @@ export function ensureWeekendEvent(state: GameState, ctx: SimContext, nowWallMs:
   const t0 = weekendT0Of(nowWallMs)
   if (!weekendWindowOpen(nowWallMs, t0)) return false // 窗口外：入侵不存在
   /**
-   * **声望前提**（**船长 2026-09-25 令**：「给入侵触发加一个前提，需要拥有至少40声望，才会触发入侵。」
-   * ＋ 四答：只在开新场那一刻判 · 不足静默不开 · 调试模式不受限）。
+   * 累计声望只在开新场时检查，不足静默不开；进行中场次不受门槛调整影响。
    * 位置刻意留在**调试分支之后**：调试模式走上面那条路、压根到不了这里。
    */
   if (!weekendInvasionAllowedFor(state)) return false

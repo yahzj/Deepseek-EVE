@@ -24,9 +24,8 @@ export interface WeekendEventState {
    */
   beaconHighSec?: boolean
   /**
-   * **这一场是玩家用信号发射器点起来的**（**2026-10-01 船长令**：「**玩家用信号发射器召唤的入侵，
-   * 每次完成只给 5 声望。**」）——**任何**点火路径（仓库直用 / 星图指定）都记它；
-   * 结算时的声望按 `weekendStandingGainOf` 取（点火场固定 5 点）。
+   * 这一场由信号发射器召唤；任何点火路径（仓库直用 / 星图指定）均记录。
+   * 固定奖励由`weekendStandingGainOf`取值。
    * ⚠ 缺键 = 每周那场自己爆发的入侵（不受影响）。
    */
   beaconLit?: boolean
@@ -203,7 +202,7 @@ export interface WeekendResultSnapshot {
    * **本期入侵按贡献获得的「深空工业协会」声望**（**2026-09-26 船长令**：「**关于入侵的结算界面和
    * 结束通讯处，需要提及玩家获得了多少声望**」）。
    *
-   * 口径 = 结算那一拍现算的 `round(占比 × WEEKEND_STANDING_MAX(15))`（见 `weekendBattle` 的
+   * 口径 = 结算那一拍由`weekendStandingGainOf`现算（见 `weekendBattle` 的
    * `weekendSettleAndGrant`）；**缺省 = 这一栏之前结束的活动**（老快照）⇒ 界面与通讯按缺省不显示该行。
    */
   standing?: number

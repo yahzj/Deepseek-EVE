@@ -399,7 +399,7 @@ describe('随档往返（两处清洗器都要登记）', () => {
  * 老档兼容 = 先前换到的书照旧躺在书架上，玩家自己点「学会」。
  */
 describe('章鱼人兑换 · 兑换即学会（船长 2026-09-26 令）', () => {
-  it('兑换一张 ⇒ 声望扣 8 · 直接进已学 · **不发书**', () => {
+  it('兑换一张 ⇒ 声望按现价扣除 · 直接进已学 · **不发书**', () => {
     const state = world(917)
     const bpId = plugBlueprintIdOf(PLUG_SHIELD)
     state.standings[DSI_FACTION_ID] = PLUG_BLUEPRINT_COST + 5

@@ -268,14 +268,14 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
      * **快照与结算信都要写明本期拿到的协会声望**（**2026-09-26 船长令**：「**关于入侵的结算界面和
      * 结束通讯处，需要提及玩家获得了多少声望**」）。
      *
-     * 口径：`round(占比 × WEEKEND_STANDING_MAX(15))`，与实发同一条公式 ⇒ 面板/信上的数 = 真加进账的数。
-     * 本处占比 0.4 ⇒ **6 点**，且信里多出 `core.weekend.037` 那一段（参数 `p4` = 点数）。
+     * 口径：向上取整(占比 × WEEKEND_STANDING_MAX)，与实发同一条公式 ⇒ 面板/信上的数 = 真加进账的数。
+     * 本处占比 0.4 ⇒ **12 点**，且信里多出 `core.weekend.037` 那一段（参数 `p4` = 点数）。
      */
-    expect(s.weekendLastResult?.standing, '快照带出本期声望（面板读它）').toBe(6)
+    expect(s.weekendLastResult?.standing, '快照带出本期声望（面板读它）').toBe(12)
     const settleMail = weekendSettleCommsOf(s, ctx, s.weekendLastResult!)
     expect(settleMail.bodyIds ?? [], '结算信正文追加声望那一段').toContain('core.weekend.037')
-    expect(settleMail.params?.['p4'], '参数 = 本期点数').toBe('6')
-    expect((settleMail.paragraphs ?? []).some((t) => t.includes('声望 +6')), '纯文本兜底段落也写了').toBe(true)
+    expect(settleMail.params?.['p4'], '参数 = 本期点数').toBe('12')
+    expect((settleMail.paragraphs ?? []).some((t) => t.includes('声望 +12')), '纯文本兜底段落也写了').toBe(true)
     expect(s.weekendEvent!.prizePaidAtWallMs, '随档幂等标记').toBe(now)
     /** 幂等：同一刻再调、以及**过一周再调**（离线补结的口径）都不再发 */
     expect(weekendSettleAndGrant(s, ctx, now)).toBeNull()
@@ -528,11 +528,11 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     expect(settle?.subjectId).toBe('core.weekend.013')
     /**
      * 有奖那一版正文 ＋ **声望那一段**（2026-09-26 船长令：结束通讯要写明拿到多少声望）——
-     * ⚠ 2026-09-28 起占比 = `0.6×BOSS输出 ＋ 0.4×清缴`，本场没打 BOSS ⇒ 0.4 ⇒ **6 点** > 0 ⇒ 仍追加
+     * ⚠ 2026-09-28 起占比 = `0.6×BOSS输出 ＋ 0.4×清缴`，本场没打 BOSS ⇒ 0.4 ⇒ **12 点** > 0 ⇒ 仍追加
      * `core.weekend.037`。
      */
     expect(settle?.bodyIds, '有奖那一版正文（＋声望段）').toEqual(['core.weekend.014', 'core.weekend.037'])
-    expect(settle?.textParams?.['p4'], '声望段的参数 = 本期点数').toBe('6')
+    expect(settle?.textParams?.['p4'], '声望段的参数 = 本期点数').toBe('12')
     expect(settle?.action, '结算信的跳转是"弹面板"').toBe('weekendSummary')
     expect(settle?.rewards?.length, '奖励清单结构化随信（残骸 ＋ 信用点）').toBe(2)
 

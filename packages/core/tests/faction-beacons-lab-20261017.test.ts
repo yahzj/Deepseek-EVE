@@ -15,6 +15,7 @@ function ready() {
   const state = createInitialState({ nowWallMs: 0, seed: 41 })
   state.exploredGalaxies = [...ctx.galaxies.keys()]
   state.standings.dsi = 100
+  state.standingsEarned = { dsi: 100 }
   state.weekendEvent = undefined
   for (const row of INVASION_BEACON_TYPES) state.warehouse.items[row.itemId] = 2
   return state
