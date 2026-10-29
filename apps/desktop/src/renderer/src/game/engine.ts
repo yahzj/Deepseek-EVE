@@ -1107,6 +1107,7 @@ export class GameEngine {
     this.stopped = false
     this.winCache.reset()
     let lastSavedWall: number | null = null
+    let rescued = false
     /** 甲：启动体检结果（`main.tsx` 在 start 之前 await 过一次）——不通 ⇒ 本局所有写入直接短路 */
     const guard = saveStorageProbe()
     this.saveUnavailable = guard !== null && !guard.ok
@@ -1114,12 +1115,18 @@ export class GameEngine {
       const raw = await saveBridge.load()
       if (raw !== null) {
         const parsed = loadSaveFile(raw)
-        this.state = parsed.state
-        // V18 口径取消：旧重型弹 1:1 并入通用弹（含挂单撤销）；见 core/equipment.migrateDeprecatedAmmo
-        migrateDeprecatedAmmo(this.state)
-        // 临时空间换账本（2026-09-14）：老档 `run.temp`（一种物品一条的列表）→ `run.tempGrid`（4×8 格子）
-        wormholeNormalizeLegacyTemp(this.state, this.ctx)
-        lastSavedWall = parsed.savedAtWallMs
+        const gate = await this.ironmanLoadCheck(raw, parsed.savedAtWallMs, false)
+        if (!gate.ok) {
+          this.savePaused = true
+          addLog(this.state, 'warn', gate.error)
+        } else {
+          if (ironmanOn(parsed.state)) await this.syncIronmanHead(parsed.state)
+          this.state = parsed.state
+          migrateDeprecatedAmmo(this.state)
+          wormholeNormalizeLegacyTemp(this.state, this.ctx)
+          lastSavedWall = parsed.savedAtWallMs
+          rescued = gate.rescue
+        }
       }
     } catch (err) {
       console.error(tr("ui.engine.019"), err)
@@ -1190,7 +1197,8 @@ export class GameEngine {
      */
     if (this.saveWriteState() === 'ok') this.ensureSaveInterval()
 
-    await this.persist()
+    const saved = await this.persist()
+    if (saved && rescued) await saveBridge.ironmanNoteRescue().catch(() => {})
     this.notify()
     this.installWormholeTestApi()
     this.installPlanetaryTestApi()
@@ -1504,15 +1512,29 @@ export class GameEngine {
     return (await this.persistSnapshot()) !== null
   }
 
-  /** 只序列化一次；成功后把本次确切文本交给备份，避免后一次保存偷换快照。 */
-  private async persistSnapshot(): Promise<string | null> {
-    if (this.saveWriteState() !== 'ok') return null
+  private saveSequence = 0
+
+  /** 预留并发请求的代次，失败不改变当前游戏的已提交代次。 */
+  private createSaveSnapshot(state: GameState = this.state): { state: GameState; text: string; seq: number } {
+    const out = { ...state, logs: [], ...(state.ironman ? { ironman: { ...state.ironman } } : {}) }
+    if (out.ironman?.on) {
+      out.ironman.seq = Math.max(this.saveSequence ?? 0, out.ironman.seq)
+      this.saveSequence = bumpIronmanSeq(out)
+    }
+    return { state, text: serializeSaveFile(out), seq: out.ironman?.seq ?? 0 }
+  }
+
+  /** 成功后返回本次确切文本；旧请求回执不能降低后续已提交代次。 */
+  private async persistSnapshot(snapshot?: { state: GameState; text: string; seq: number }, loading = false): Promise<string | null> {
+    if (loading ? !canWriteSave() || this.saveUnavailable || this.savePaused : this.saveWriteState() !== 'ok') return null
     try {
-      bumpIronmanSeq(this.state) // 铁人档：每次落盘代次 +1（普通档/已关闭 ⇒ 冻结）
-      const out: GameState = this.state.logs.length > 0 ? { ...this.state, logs: [] } : this.state
-      const text = serializeSaveFile(out)
+      const prepared = snapshot ?? this.createSaveSnapshot()
+      const { text, state, seq } = prepared
       const ok = await saveBridge.save(text)
-      if (ok) void requestPersistentStorage()
+      if (ok) {
+        if (state.ironman?.on) state.ironman.seq = Math.max(state.ironman.seq, seq)
+        void requestPersistentStorage()
+      }
       else noteSaveWriteFailed()
       return ok ? text : null
     } catch (err) {
@@ -1520,6 +1542,22 @@ export class GameEngine {
       noteSaveWriteFailed()
       return null
     }
+  }
+
+  /** 复用重连提交锁：候选写入期间不推进旧状态或追加旧快照。 */
+  private async commitLoadedSave(candidate: GameState, report: OfflineReport | null, rescue: boolean): Promise<boolean> {
+    if (this.saveWriteState() !== 'ok') return false
+    this.reconnectResolving = true
+    try {
+      if (await this.persistSnapshot(this.createSaveSnapshot(candidate), true) === null) return false
+      this.state = candidate
+      this.offlineReport = report
+      this.lastRealMs = Date.now()
+      this.pendingMs = 0
+      if (rescue) await saveBridge.ironmanNoteRescue().catch(() => {})
+      this.notify()
+      return true
+    } finally { this.reconnectResolving = false }
   }
 
   /* ─────────────── 存档备份 / 恢复（B5） ─────────────── */
@@ -1872,33 +1910,12 @@ export class GameEngine {
       } catch (err) {
         return { ok: false, error: tr("ui.engine.026", { p1: err instanceof Error ? err.message : String(err) }) }
       }
-      const gate = await this.ironmanLoadCheck(read.text, parsed.savedAtWallMs)
+      const gate = await this.ironmanLoadCheck(read.text, parsed.savedAtWallMs, false)
       if (!gate.ok) return { ok: false, error: gate.error }
       await this.syncIronmanHead(parsed.state)
-      const restore = await saveBridge.restore(name)
-      if (!restore.ok) return { ok: false, error: restore.error ?? tr('ui.engine.050') }
-      // 2026-09-09（船长定）：恢复备份与导入/启动同口径——按"档内保存墙钟 → 现在"补算离线进度
-      // （≥60 秒且简报非空则弹出离线简报卡；墙钟在未来则跳过）。日志仍会话级不落盘。
-      const now = Date.now()
-      const wallFrom = parsed.savedAtWallMs
-      if (wallFrom > 0 && now > wallFrom) {
-        const before = snapshotBasics(parsed.state)
-        const stats = newSettleStats()
-        const { overflowMs } = offlineSplit(now - wallFrom, offlineCapMsOf(parsed.state))
-        simulateOffline(parsed.state, wallFrom, now, this.ctx, undefined, { stats })
-        this.offlineReport = buildOfflineReport(before, parsed.state, this.ctx, now - wallFrom, overflowMs, stats)
-        if (this.offlineReport !== null) {
-          addLog(parsed.state, 'system', offlineReportLogText(this.offlineReport))
-        }
-      } else {
-        this.offlineReport = null
-      }
-      this.state = parsed.state
-      // 2026-09-08 船长定：日志会话级（写盘剥离）——恢复备份不做强制清空，本局日志接续显示
-      const saved = await this.persist() // 落盘（墙钟锚 = 现在 → 下次启动不会重复结算）
-      if (!saved) return { ok: false, error: tr("ui.engine.027") }
-      this.notify()
-      return { ok: true }
+      const report = this.prepareImportedState(parsed.state, parsed.savedAtWallMs)
+      return await this.commitLoadedSave(parsed.state, report, gate.rescue)
+        ? { ok: true } : { ok: false, error: tr('ui.engine.027') }
     } catch (err) {
       return { ok: false, error: String(err) }
     }
@@ -2009,6 +2026,9 @@ export class GameEngine {
   private prepareImportedState(imported: GameState, wallFrom: number): OfflineReport | null {
     repairDeprecatedModules(imported, this.ctx)
     migrateDeprecatedAmmo(imported)
+    wormholeNormalizeLegacyTemp(imported, this.ctx)
+    repairMisplacedWarehouseModules(imported, this.ctx)
+    repairHoldForbiddenCargo(imported, this.ctx)
     imported.logs = []
     const now = Date.now()
     if (wallFrom <= 0 || now <= wallFrom) return null
@@ -2026,8 +2046,11 @@ export class GameEngine {
    *  若先 `await persist()` 再调桥，iOS Safari 会因"已不是用户手势"静默拦掉（表现为点了没反应）。 */
   async exportSaveToFile(): Promise<{ ok: boolean; path?: string; shared?: boolean; canceled?: boolean; error?: string }> {
     try {
-      const r = await saveBridge.exportSaveToFile(this.currentSaveText())
-      void this.persist() // 落盘最新进度（与备份同口径）；不阻塞导出
+      if (this.saveWriteState() !== 'ok') return await saveBridge.exportSaveToFile(this.currentSaveText())
+      const snapshot = this.createSaveSnapshot()
+      // 同步发起分享/下载保留用户手势；主档立即入队，导出完成后不再创建更高代次。
+      const exported = saveBridge.exportSaveToFile(snapshot.text)
+      const [r] = await Promise.all([exported, this.persistSnapshot(snapshot)])
       return r
     } catch (err) {
       return { ok: false, error: String(err) }
@@ -2065,15 +2088,12 @@ export class GameEngine {
        * 要留退路请在导入前点「备份当前档」——手动备份与备份列表功能照旧。
        */
       // 铁人档：装载闸门（见 `ironmanLoadCheck`）
-      const gate = await this.ironmanLoadCheck(text, parsed.savedAtWallMs)
+      const gate = await this.ironmanLoadCheck(text, parsed.savedAtWallMs, false)
       if (!gate.ok) return { ok: false, error: gate.error }
       await this.syncIronmanHead(imported)
-      this.offlineReport = this.prepareImportedState(imported, parsed.savedAtWallMs)
-      this.state = imported
-      const saved = await this.persist() // 落盘（写盘剥离日志；墙钟锚 = 现在 → 下次启动不会重复结算）
-      if (!saved) return { ok: false, error: tr("ui.engine.027") }
-      this.notify()
-      return { ok: true }
+      const report = this.prepareImportedState(imported, parsed.savedAtWallMs)
+      return await this.commitLoadedSave(imported, report, gate.rescue)
+        ? { ok: true } : { ok: false, error: tr('ui.engine.027') }
     } catch (err) {
       return { ok: false, error: String(err) }
     }

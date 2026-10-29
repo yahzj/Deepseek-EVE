@@ -13,7 +13,7 @@ describe('旧版本拒读后的外壳保存保护', () => {
     const save = vi.fn(async (text: string) => { stored = text; return true })
     const ensureSaveInterval = vi.fn()
     const error = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const probe = gameSaveMethods(['start', 'saveWriteState', 'persist', 'persistSnapshot', 'allowSaveAfterLoadError'], {
+    const probe = gameSaveMethods(['start', 'saveWriteState', 'persist', 'createSaveSnapshot', 'persistSnapshot', 'allowSaveAfterLoadError'], {
       createInitialState, loadSaveFile, SaveError, serializeSaveFile, bumpIronmanSeq,
       saveStorageProbe: () => ({ ok: true }), canWriteSave: () => true,
       saveBridge: { load: async () => stored, save },

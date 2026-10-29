@@ -52,6 +52,7 @@ import { normalizeWeekendWreckRecord } from './weekendWreckLedger'
 import { cleanPlanetaryState } from './planetSave'
 import { normalizeTrainingProgress } from './training'
 import { cleanPendingStationActivity } from './stationActivityPending'
+import { PRICE_HISTORY_LIMIT } from './marketHistory'
 
 /** 存档文件格式标识（防止拿别的游戏的 JSON 硬读） */
 export const SAVE_FORMAT = 'whale-idle-save'
@@ -186,7 +187,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     const t = v.trim()
     const chars = [...t]
     if (chars.length === 0) return null
-    return chars.slice(0, 10).join('')
+    return chars.slice(0, 10).join('').trimEnd()
   }
   const freshShip = (
     defId: string,
@@ -684,7 +685,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     for (const v of value) {
       if (typeof v === 'number' && Number.isFinite(v) && v > 0) cleaned.push(Math.round(v))
     }
-    if (cleaned.length > 0) histories[key] = cleaned.slice(-24)
+    if (cleaned.length > 0) histories[key] = cleaned.slice(-PRICE_HISTORY_LIMIT)
   }
   // --- 我的挂单自增号不能低于现有订单 id（防未来挂单撞号） ---
   let maxOrderId = 0
@@ -1920,6 +1921,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
       worker,
       recipeId,
       batchUnits: Math.max(1, Math.floor(num(r.batchUnits) || 0)),
+      ...(r.deliveryBlocked === true ? { deliveryBlocked: true } : {}),
       cycleMs: Math.max(1, Math.floor(num(r.cycleMs) || 0)),
       finishAtGameMs: Math.max(0, Math.floor(num(r.finishAtGameMs) || 0)),
       /**

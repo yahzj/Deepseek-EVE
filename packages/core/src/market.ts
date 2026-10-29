@@ -28,6 +28,7 @@
  *   （参考 EVE 的销售税；取消经纪人费/挂单费）。
  */
 import { ceilFinalQuantity } from './quantity'
+import { PRICE_HISTORY_LIMIT } from './marketHistory'
 import type { CoreBlockReason } from './engine'
 import { bumpFirst } from './firstTasks'
 import { addLog, shipLockedReason } from './state'
@@ -678,11 +679,6 @@ function rareDrawCount(state: GameState, stat: { unlockedN: number; lockedN: num
   const r = RARE_PCT_MIN + (RARE_PCT_MAX - RARE_PCT_MIN) * nextRandom(state.rng)
   return Math.max(1, ceilFinalQuantity(r * stat.unlockedN * sweepMul(state) * ironmanRareWeightMul(state)))
 }
-
-/** 价格小史保留窗数（每窗 = balance.market.tickMs，默认 30 分钟）。
- * 2026-09-08 船长：24 → 48（≈ 24 小时），配合市场详情折线的"分段查看" */
-/** 价格史上限：**48 点 × 30 分钟 = 24 小时**（与 PRICE_SAMPLE_MS 配套；改一处必改另一处） */
-const PRICE_HISTORY_LIMIT = 48
 
 /** 单个窗口：过期清理 → 池回归/冲击衰减 → 内部消化 → 刷单 → 撮合 → 小史/冲击结算 */
 function processWindow(state: GameState, ctx: SimContext): void {

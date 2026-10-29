@@ -62,7 +62,7 @@ export function jumpFuelSupplyOf(state: GameState, ctx: SimContext): JumpFuelSup
   let perHour = 0
   for (const r of recipes) perHour += labOutputPerHourOf(state, ctx, r.id)
   /** 封顶：任一张**已解锁**的配方放不下下一批就算满（两张同产物、同一个上限，判一张即可） */
-  const full = unlocked && recipes.some((r) => labRecipeUnlocked(state, ctx, r) && labOutputCapped(state, r))
+  const full = unlocked && recipes.some((r) => labRecipeUnlocked(state, ctx, r) && labOutputCapped(state, r, ctx))
   const anyUnlocked = recipes.some((r) => labRecipeUnlocked(state, ctx, r))
   const status: JumpFuelFlowStatus = !unlocked || (recipes.length > 0 && !anyUnlocked) ? 'locked' : full ? 'full' : perHour > 0 ? 'flowing' : 'idle'
   return { ware, cap, headroom: jumpFuelHeadroomOf(state), perHour, status }

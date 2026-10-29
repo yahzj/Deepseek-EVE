@@ -150,6 +150,8 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
   { concept: '射程变化待确认视图', symbol: 'pendingBattleRangeView', file: 'packages/core/src/combat/battleRangeMemory.ts', exported: true },
   { concept: '按卡参战舰船名单差异说明', symbol: 'sameShipRoster', file: 'packages/core/src/combat/battleRangeMemory.ts', exported: false },
   { concept: '技能训练工作量与实时进度换算', symbol: 'trainingLevelProgress', file: 'packages/core/src/training.ts', exported: true },
+  { concept: '实验室同产物在产预留与可开工容量', symbol: 'labOutputCapped', file: 'packages/core/src/lab.ts', exported: true },
+  { concept: '行情运行与存档共用历史窗口', symbol: 'PRICE_HISTORY_LIMIT', file: 'packages/core/src/marketHistory.ts', exported: true },
   { concept: '旧技能进度一次性工作量兼容', symbol: 'normalizeTrainingProgress', file: 'packages/core/src/training.ts', exported: true },
   { concept: '敌方族格最终血量倍率', symbol: 'foeFamilyHpMulOf', file: 'packages/core/src/combat/foePower.ts', exported: true },
   { concept: '全舰血量提升倍率', symbol: 'SHIP_HP_UPLIFT_MUL', file: 'packages/core/src/combat/combatMath.ts', exported: true },

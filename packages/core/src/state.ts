@@ -634,6 +634,8 @@ export interface LabRunState {
   cycleMs: number
   /** 当前批到点时刻（游戏内毫秒） */
   finishAtGameMs: number
+  /** 已完成但仓库暂时放不下；交付后从实际释放空间时刻安排下一批。 */
+  deliveryBlocked?: boolean
   /**
    * **本批已扣的料**（退料账 · **与组装机同一本账的语义**）：停机/换线/取消时**按实际扣的那种退**；
    * 一批交付时结清（置空）。`state.ts` 的停机单点没有 `ctx` ⇒ 退料必须靠这本账。
