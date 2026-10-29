@@ -63,7 +63,7 @@
 |---|---|---|
 | 战前各舰实际预载与补给缺口 | `battleAmmoPreloadPlan()` · `battleAmmoPreflight.ts`，沿用实际选档/装弹顺序 | 预警与实际开战比对；首次不改状态、二次确认回归；`arch:guard` F2/F3 |
 | 按卡距离与战前射程变化确认 | `battleCardRangeOf()` / `playerFleetMaxRangeOf()` / `withBattleRangeCheck()` / `pendingBattleRangeView()` / `sameShipRoster()` · `battleRangeMemory.ts` | 实际卡、全队有效射程、参战名单差异说明、待办落盘、配置重验及自动探索隔离专项；F2/F3 |
-| 技能工作量、倍率切换与旧进度兼容 | `trainingLevelProgress()` / `normalizeTrainingProgress()` · `training.ts`；技能时点推进在 `skillQueue.ts` | 技能加速/离线专项、存档往返；`arch:guard` F2/F3 |
+| 技能工作量、倍率切换与旧进度兼容 | `trainingLevelProgress()` / `normalizeTrainingProgress()` · `skills/training.ts`；技能时点推进在`skills/queue.ts` | 技能加速/离线专项、存档往返；`arch:guard` F2/F3 |
 | 武器齐射整数扣弹与预付余额 | `battleWeaponAmmoCost()` · `combatAmmo.ts` | 半发不跨舰／组／弹种、读档不断额度、整数弹库存守恒 |
 | 首次无人机出击间隔 | `droneLaunchGapMsOf()` · `droneLaunch.ts` | 每舰500毫秒、掠袭机库逐件缩短、复活重排、旧档续战；队列专项 |
 | 船插安装列表与不叠加效果投影 | `plugModulesOf()` / `plugEffectsOf()` · `plugs.ts` | 安装件占格/回收与实际效果分离，重复安装不叠加仍占格；五族专项 |
@@ -108,7 +108,7 @@
 | 聚焦阵列波内射程/防空加算修正率 | `coronaFocusBonusOf()` · `coronaFocus.ts` | `corona-balance-20261003.test.ts`：时点/换波/加算抵消/真实近防入口 |
 | 聚焦阵列全队射程与来源存活 | `coronaFleetRangeBonusOf()` · `coronaFocus.ts` | `corona-reinforcement-20261008.test.ts`：同进度/新支援/死亡失效/多源取最高 |
 | 固定支援舰真实型号标识 | `supportFoeModelTagOf()` · `foeCard.ts` | `corona-reinforcement-20261008.test.ts`：型号/空槽分离、名称/舰影/规格同源 |
-| 技能取消的"连带失效"基线（只报/只删因本次取消才失效的项） | `preexistingUnmet()` · `skillQueue.ts` | core 用例 `skill-cancel-baseline-20260926.test.ts` |
+| 技能取消的"连带失效"基线（只报/只删因本次取消才失效的项） | `preexistingUnmet()` · `skills/queue.ts` | core 用例 `skill-cancel-baseline-20260926.test.ts` |
 | 存档清洗白名单（新增随档字段必须"写入点 ＋ 白名单"两处落笔） | `normalizeState()` · `save.ts` | `packages/core/tests/save.test.ts` 类型穷尽 ＋ `save:roundtrip-audit` |
 | 伤害类型配色（动能/爆破/能量 同族同色） | 伤害配色契约（token 单点） | `npm run ui:theme-check` 的 `dmg-color-check` |
 | 装备归属档（高/中/低/**舰船插件**四档） | `rackDimKeyOf()`（渲染层）＋ core `rackOf` | `content:check` 归属档契约 |

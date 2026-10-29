@@ -25,8 +25,8 @@ describe('突触加速剂已批准中英覆盖', () => {
     expect(want).toContain(String(SYNAPTIC_ACCELERANT_MS / 3_600_000))
   })
   it('三处使用入口不再引用旧限制，成功提示与有效时间累加一致', () => {
-    for (const page of ['ItemsPage', 'CargoPage', 'SkillsTreePage']) {
-      const source = readFileSync(new URL(`apps/desktop/src/renderer/src/pages/${page}.tsx`, root), 'utf8')
+    for (const page of ['pages/ItemsPage', 'pages/CargoPage', 'features/skills/SkillBoostBlock']) {
+      const source = readFileSync(new URL(`apps/desktop/src/renderer/src/${page}.tsx`, root), 'utf8')
       expect(source).not.toMatch(/tr\(['"]ui\.ItemsPage\.05[45]['"]\)/)
       expect(source).toContain("tr('ui.boost.012')")
       expect(source).toContain("tr('ui.boost.013')")

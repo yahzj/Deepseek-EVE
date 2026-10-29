@@ -451,7 +451,7 @@ function reconcileMilestoneStats(state: GameState, ctx: SimContext): void {
 }
 
 /** 技能训练队列（2026-10-02 批次 4n 拆到 skillQueue.ts；本文件借回 + 再导出） */
-import { advanceSkillQueue } from './skillQueue'
+import { advanceSkillQueue } from './skills/queue'
 export {
   HIDDEN_SKILL_IDS,
   PREREQ_MIN_LEVEL,
@@ -466,6 +466,6 @@ export {
   skillCancelImpact,
   skillLockMissing,
   skillLockMissingAtQueue,
-} from './skillQueue'
-export type { HeadTrainingInfo, QueueMovePlan, QueueView, SkillPrereqGap } from './skillQueue'
+} from './skills/queue'
+export type { HeadTrainingInfo, QueueMovePlan, QueueView, SkillPrereqGap } from './skills/queue'
 

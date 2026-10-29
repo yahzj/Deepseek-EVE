@@ -19,7 +19,7 @@ import {
   WRECK_GROUPS,
 } from '@whale/core'
 import type { SimContext } from '@whale/core'
-import { buildSkillCatalog } from './skills'
+import { buildSkillCatalog } from './skills/catalog'
 import { buildItemCatalog } from './items'
 import { buildBeltCatalog } from './belts'
 import { buildShipCatalog } from './ships'

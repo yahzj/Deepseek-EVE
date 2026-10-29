@@ -103,7 +103,13 @@ export const normalizeHead = (head: string): string => HEAD_ALIASES[head.trim()]
 export const TABLES: readonly TableSpec[] = [
   {
     name: 'skills',
-    files: ['packages/data/src/skills.ts'],
+    files: [
+      'packages/data/src/skills/shipOperations.ts',
+      'packages/data/src/skills/industry.ts',
+      'packages/data/src/skills/combat.ts',
+      'packages/data/src/skills/engineering.ts',
+      'packages/data/src/skills/tradeExplorationLogistics.ts',
+    ],
     idProp: 'id',
     cols: [
       col('id', 'id', 'id'),

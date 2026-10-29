@@ -85,7 +85,7 @@ const DOMAINS: readonly Domain[] = [
   },
   {
     name: '技能',
-    globs: ['packages/core/src/training.ts', 'packages/core/src/skillLicense.ts', 'packages/core/src/skillQueue.ts', 'packages/data/src/skills.ts', 'packages/data/src/skillTreePositions.ts', 'apps/desktop/src/renderer/src/pages/SkillsTreePage*', 'apps/desktop/src/renderer/src/pages/skillShared*', 'apps/desktop/src/renderer/src/ui/skillText.ts', 'apps/desktop/src/renderer/src/ui/skillTreeLayout.ts'],
+    globs: ['packages/core/src/skills/**', 'packages/data/src/skills/**', 'apps/desktop/src/renderer/src/features/skills/**', 'packages/core/src/training.ts', 'packages/core/src/skillLicense.ts', 'packages/core/src/skillQueue.ts', 'packages/data/src/skills.ts', 'packages/data/src/skillTreePositions.ts', 'apps/desktop/src/renderer/src/pages/SkillsTreePage*', 'apps/desktop/src/renderer/src/pages/skillShared*', 'apps/desktop/src/renderer/src/ui/skillText.ts', 'apps/desktop/src/renderer/src/ui/skillTreeLayout.ts'],
   },
   {
     name: '虫洞',

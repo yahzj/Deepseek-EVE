@@ -10,7 +10,7 @@
  *    ⚠ **多前置合流豁免**（船长 2026-09-22 选「乙」）：同一节点有 ≥2 个同书前置时，它只能承**一个**父列，
  *    "两个父都挂得住"结构上不可能 ⇒ 子全是共享子的父跳过这两条，但**整族必须有一条向下生长的边**。
  *
- * 口径来源：`apps/desktop/src/renderer/src/ui/skillTreeLayout.ts`（**排布算法只有那一份**，
+ * 口径来源：`apps/desktop/src/renderer/src/features/skills/layout.ts`（**排布算法只有那一份**，
  * 本工具只读它算出来的坐标，不重写一遍）。这是**读数**，不是观感结论（观感审查权在船长）。
  *
  * 用法：`npm run skilltree:layout-check`
@@ -18,7 +18,7 @@
  * **版本自检**：游戏版本 v0.1.0 · 存档结构 **v31** · 最后核对 2026-09-22 · 最后跑过 2026-09-22
  */
 import { SKILLS, SKILL_BRANCHES, SKILL_TREE_POSITIONS } from '@whale/data'
-import { GAP_X, HEX_H, HEX_W, layoutBook } from '../apps/desktop/src/renderer/src/ui/skillTreeLayout'
+import { GAP_X, HEX_H, HEX_W, layoutBook } from '../apps/desktop/src/renderer/src/features/skills/layout'
 
 let bad = 0
 const fail = (msg: string): void => {
