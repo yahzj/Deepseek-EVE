@@ -125,7 +125,7 @@ const DOMAINS: readonly Domain[] = [
   },
   {
     name: '成就',
-    globs: ['packages/core/src/achievements.ts', 'packages/data/src/achievements.ts', 'apps/desktop/src/renderer/src/pages/AchievementsPage*', 'apps/desktop/src/renderer/src/panels/Achievements.tsx'],
+    globs: ['packages/core/src/achievements.ts', 'packages/core/src/achievements/**', 'packages/data/src/achievements.ts', 'packages/data/src/achievements/**', 'apps/desktop/src/renderer/src/features/achievements/**', 'apps/desktop/src/renderer/src/pages/AchievementsPage*', 'apps/desktop/src/renderer/src/panels/Achievements.tsx'],
   },
   {
     name: 'AI 核心',

@@ -186,6 +186,8 @@ _条目增删随代码走；规则变更仍按开发约定的工作文档与归�
 
 | 符号 | 唯一实现 |
 |---|---|
+| `achievementReached`、`chainProgress`、`advanceAchievements`、`achievementOverview`、`achievementCount` | `packages/core/src/achievements/rules.ts`；原`achievements.ts`仅具名转导出，成就/铁人专项验证 |
+| `ACHIEVEMENTS`、`achievementOf`、`achievementsOfChain` | `packages/data/src/achievements/catalog.ts`；数据、上下文与成就页面共用原目录顺序 |
 | `fittingRangeStats` | `packages/core/src/combat/fittingRange.ts` |
 | `acidResistsOf` | `packages/core/src/combat/alienEquipment.ts` |
 | `foeAcidRowsOf` | `packages/core/src/combat/alienEquipment.ts` |
