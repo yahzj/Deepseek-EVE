@@ -171,7 +171,7 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
   { concept: '到港待启动目标活动视图', symbol: 'pendingStationActivityView', file: 'packages/core/src/stationActivityPending.ts', exported: true },
   { concept: '交付安排可用货仓空间', symbol: 'siteDeliverFreeCargoM3', file: 'packages/core/src/location.ts', exported: true },
   { concept: '站内接续返航基地落点', symbol: 'stationActivityReturnSite', file: 'packages/core/src/location.ts', exported: true },
-  { concept: '工业合法公共原料', symbol: 'industryAvailable', file: 'packages/core/src/industry.ts', exported: true },
+  { concept: '工业合法公共原料', symbol: 'industryAvailable', file: 'packages/core/src/industry/refining/params.ts', exported: true },
   { concept: '玩家手动目标舰卸货', symbol: 'unloadShipCargo', file: 'packages/core/src/inventory.ts', exported: true },
   { concept: '悬赏后台预热任务与缓存代次', symbol: 'BountyWinCache', file: 'apps/desktop/src/renderer/src/features/combat/estimate/bountyWinCache.ts', exported: true },
   { concept: '敌人源数字参数读取', symbol: 'enemyParameterOf', file: 'packages/core/src/combat/enemyParameters.ts', exported: true },

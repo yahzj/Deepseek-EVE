@@ -24,7 +24,7 @@
 
 信号发射器：`invasionBeaconTypeOf`（`consumables.ts`）认物品与固定势力；`availableInvasionBeacons`从同表筛选有库存选项。使用命令、物品按钮与星图下拉共用，不在页面另造势力映射；护栏为专属发射器专项与F2/F3。
 
-目标舰操作：`shipActuallyDocked` / `shipOperationBlockReason`（`shipActionPolicy.ts`）纯状态派生真实停靠与配置许可；远程管理不读主控忙态，船上物资只在目标舰停靠时可取。`stationActivityStartBlockReason`（`location.ts`）只读预检现有切换再检查基地；页面不自算野外置灰。工业原料由`industryAvailable`（`industry.ts`）提供同源可取量。护栏：停靠统一专项、失败资源守恒与页面同源检查，F2/F3/F9。
+目标舰操作：`shipActuallyDocked` / `shipOperationBlockReason`（`shipActionPolicy.ts`）纯状态派生真实停靠与配置许可；远程管理不读主控忙态，船上物资只在目标舰停靠时可取。`stationActivityStartBlockReason`（`location.ts`）只读预检现有切换再检查基地；页面不自算野外置灰。工业原料由`industryAvailable`（`industry/refining/params.ts`）提供同源可取量。护栏：停靠统一专项、失败资源守恒与页面同源检查，F2/F3/F9。
 
 玩家手动卸货：`unloadShipCargo`（`inventory.ts`）检查目标舰货仓许可后逐项分流入库；`unloadCargoToWarehouse`只转发当前舰。`unloadCargoOfShipToWarehouse`保留为自动到港和其他已校验内部结算，界面不直接调用。
 
@@ -112,7 +112,7 @@
 | 存档清洗白名单（新增随档字段必须"写入点 ＋ 白名单"两处落笔） | `normalizeState()` · `save.ts` | `packages/core/tests/save.test.ts` 类型穷尽 ＋ `save:roundtrip-audit` |
 | 伤害类型配色（动能/爆破/能量 同族同色） | 伤害配色契约（token 单点） | `npm run ui:theme-check` 的 `dmg-color-check` |
 | 装备归属档（高/中/低/**舰船插件**四档） | `rackDimKeyOf()`（渲染层）＋ core `rackOf` | `content:check` 归属档契约 |
-| 回收/打捞产出与价值读数 | core `industry.ts` / `salvaging.ts` 的产出单点 | `npm run salvage:econ` · `recycle:compare` |
+| 回收/打捞产出与价值读数 | core `industry/refining/params.ts` / `salvaging.ts` 的产出单点 | `npm run salvage:econ` · `recycle:compare` |
 | 主控打捞真实返航时长（引擎/活动栏/星图同源） | `salvageReturnMs()` · `salvaging.ts` | `fuel-return-paths-20261022.test.ts`：半仓燃料返航、真实星图函数与活动栏50% |
 | 采矿打捞停止/切换的新返航点火及已走航段接续 | `workReturnLeg()` · `trips.ts` | `fuel-return-paths-20261022.test.ts`：三入口、倍率/进度、读档、首拍换船及一次扣料 |
 | 矿带每小时产出与行情产值 | `beltYieldRows()` / `beltValuePerHour()` · `mining.ts`，排序与卡面共用 | `belt-sort-value-20260930.test.ts` · `arch:guard` F2/F3 |
