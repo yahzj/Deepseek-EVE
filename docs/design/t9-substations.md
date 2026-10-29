@@ -5,7 +5,7 @@
 > 🔁 2026-09-06（随"任务完成即返航"）：悬赏胜利/扫描完成不再停留 → `explore.ts/expedition.ts`
 > 的 onArriveAtGalaxy 挂点退役；到站叙事改由 **掩护巡逻到位**（`location.ts` 调 station.noteStationSiteAt：
 > 建站星系挂介绍通讯、提示可「返航空间站」停靠）+ 手动返航停靠（工地 stage≥1 即停靠）承接。
-> 关联：docs/design/t8-galaxy-stay.md（station seam）、t10-task-center.md（建站族承接）。
+> 关联：docs/archive/retired-docs-20261029/t8-galaxy-stay.md（station seam）、t10-task-center.md（建站族承接）。
 
 ## 确认口径
 - Q1甲 建成后副站能力 = 卸货入仓库 / 维修 / 补给（弹药、修理组件）/ 换驾驶；星图迷雾视角与

@@ -1,11 +1,9 @@
-# 单点索引（谁有权算、谁只能读）· 2026-09-27 建
+# 单点索引（谁有权算、谁只能读）
 
 > **这份是什么**：全仓「**这件事归谁管**」的索引。接活第一步查这里——同一个数字/同一句话，
 > **只许一个地方算它**，页面/工具只许调用。
 >
-> **为什么要有它**：船长 2026-09-27 原话（照抄）：「**现在的开发流程挺混乱的，各种代码都是地方单独调用，
-> 我们能否商量下，进行开发流程规范？**」——规矩写进了 `docs/development-conventions.md`「取数与派生纪律」，
-> **本文件是那张规矩的落地索引**，护栏 = `npm run arch:guard`（`tools/arch-guard.ts`）。
+> 原因：页面与工具复用规则所有者，避免重复计算；护栏为`npm run arch:guard`。过程记录已封存，未经船长明确要求禁止读取旧记录。
 >
 > **怎么用**：
 > 1. 要动某个数值/文案/派生显示 → **先在本表找它归谁**；找到就调用，找不到就**先在本表登记**再写码。
@@ -16,9 +14,9 @@
 
 ## 一、core 引擎层（`packages/core/src`）
 
-国庆遗留修复：`lab.ts:labOutputCapped`按产物聚合有效线锁定的`batchUnits`，起线、续做与燃料供应读数共用；交付按真实余量整批入库，仓满保留原线/退款账与`deliveryBlocked`随档标记。`marketHistory.ts:PRICE_HISTORY_LIMIT`为行情采样和存档清洗共用窗口常量，不导入运行层。对应2026-10-29国庆专项及F2/F3检查。
+`lab.ts:labOutputCapped`按产物聚合有效线锁定的`batchUnits`，起线、续做与燃料供应读数共用；交付按真实余量整批入库，仓满保留原线/退款账与`deliveryBlocked`随档标记。`marketHistory.ts:PRICE_HISTORY_LIMIT`为行情采样和存档清洗共用窗口常量，不导入运行层。护栏为国庆专项及F2/F3检查。
 
-2026-10-27纯清理收口：双语时长分解归 `time.ts:durationParts`；方案/残骸/沉船记录槽位净化归 `save.ts:cleanRack`；手动与自动探索回合预算归 `wormhole.ts:wormholeTurnBudget`，不改变结果或档结构。
+双语时长分解归 `time.ts:durationParts`；方案/残骸/沉船记录槽位净化归 `save.ts:cleanRack`；手动与自动探索回合预算归 `wormhole.ts:wormholeTurnBudget`。
 
 双布局偏好归 `ui/layoutPreference.ts:readLayoutPref` 与同文件存储键；双活动栏停止命令归 `panels/activityStopLabel.ts:doStop`。新旧探索纯表现辅助归 `panels/explorationShared.tsx` 的 `holdTone`、`hexRingOf`、`explorationNumber`、`useCountUp`、`grabOffsetOf`、`WhGlyph`、`WhNebulaGlyph`；事件闭包、扫描和新旧玩法规则仍由各面板维护。以上登记 F2/F3，并以清理等价性专项核对旧实现。
 
@@ -60,7 +58,6 @@
 | 守墓装备危机倍率、动态规格与磁轨射后叠层 | `crisisEffectsOf()` / `playerGravekeeperSpecOf()` / `noteRailAttack()` · `gravekeeperGear.ts` | 同件正负同权重、炮台/机群隔离、战斗/视图同源、同型齐射一次叠层与读档续算专项；F2/F3 |
 | 玩家实际承伤与齐射保护 | `applyPlayerUnitDamage()` · `combat.ts` | 层位/抗性/混伤/破盾后按实际掉血限制80%，损管保底后记账，100ms窗口及逐舰隔离专项；F2/F3 |
 | 玩家舰载近盲开火与伤害 | `playerWeaponInRange()` / `playerBlindDamageMul()` · `combatMath.ts` | 最大射程内放行、近盲0.3、无人机原规则、近防打机群豁免、连发/逐炮/副段与预估专项 |
-| 护盾恢复比例与扣盾比例展示 | `shieldRecoveryRatio()` · `combatMath.ts` | 运行规格旧恢复基准/新容量；未装配按全局倍率折算；力场/充能详情、有效值和周期视图同源 |
 | 悬赏后台预热任务与缓存代次 | `BountyWinCache` · `game/bountyWinCache.ts`；真实评估仍为core `estimateBountyWinOn` | 单worker/每卡30局、失效取消/战斗让路、结果等价与双端真实worker响应专项 |
 | 敌舰/机群/挂载/编队源数字参数读取 | `enemyParameterOf()` · `packages/core/src/enemyParameters.ts` | 六表字段契约、迁移前完整目录逐值相等及真实引擎预览专项；公式与引用留TS |
 | 战斗演出跨场与读档续播 | `battleFxArrivals()` · `apps/desktop/src/renderer/src/ui/battleFxCursor.ts` | 绑定战斗对象、序号回退、陈旧事件与连续战斗专项 |
@@ -120,8 +117,8 @@
 | 回收/打捞产出与价值读数 | core `industry.ts` / `salvaging.ts` 的产出单点 | `npm run salvage:econ` · `recycle:compare` |
 | 主控打捞真实返航时长（引擎/活动栏/星图同源） | `salvageReturnMs()` · `salvaging.ts` | `fuel-return-paths-20261022.test.ts`：半仓燃料返航、真实星图函数与活动栏50% |
 | 采矿打捞停止/切换的新返航点火及已走航段接续 | `workReturnLeg()` · `trips.ts` | `fuel-return-paths-20261022.test.ts`：三入口、倍率/进度、读档、首拍换船及一次扣料 |
-| 矿带每小时产出与**行情产值**（排序档「行情产值最高」与矿带卡面共用） | `beltYieldRows()` / `beltValuePerHour()` · `mining.ts`（**2026-09-30 建**：原先渲染层写了两份，排序那份还停在基准价口径 ⇒ 船长报障「原矿价值最高的排序已经落后」） | core 用例 `belt-sort-value-20260930.test.ts` · `arch:guard` F2/F3 |
-| 手动工作位被谁占着（精炼炉/回收炉/拆解台/制造线/实验室共用的那一个名额；AI 核心驱动不算） | `manualSlotOf()` · `activityGate.ts`（**2026-10-01 建**：船长令「新的工业 UI 要改成和旧的工业一样，主控正在活动时禁止按钮」⇒ 界面得先问出"被谁占着"；原先这条判据在 `lab.ts`/`industry.ts`/`manufacturing.ts` 各写一份） | core 用例 `activity-lab-20261001.test.ts` 的「手动工作位判定」组 · `arch:guard` F2/F3 |
+| 矿带每小时产出与行情产值 | `beltYieldRows()` / `beltValuePerHour()` · `mining.ts`，排序与卡面共用 | `belt-sort-value-20260930.test.ts` · `arch:guard` F2/F3 |
+| 手动工作位占用，AI核心驱动不占主控 | `manualSlotOf()` · `activityGate.ts`，全部亲自工业共用 | `activity-lab-20261001.test.ts` · `arch:guard` F2/F3 |
 
 ## 二、data 表面（`packages/data/src`）
 
@@ -154,15 +151,15 @@
 | 标签取词（槽类/槽位/舰级/地点/机型/物品大类…） | `labelsText.ts`（`kindText` 一族） | `ui:subs-check` 的「本地化直读契约」 |
 | 舰船子类取词 | `ui/labelsText.ts` 的 `shipSubClassText`，舰队卡与详情共用 | `Record<ShipSubClass, string>`穷尽、英文实机巡检 |
 | 次数链名称取词 | `data/src/l10n.ts` 的 `firstChainText`，里程碑任务与成就说明共用 | 本地化专项测试、英文实机巡检 |
-| 族徽判据收窄（判"有没有族"只走它）＋ 族徽可读名（`aria-label` 取势力全称） | `crestFamOf()` / `crestLabelOf()` · `ui/labelsText.ts`（**2026-09-27 从 `panels/Handbook.tsx` 迁出**：图鉴 `IconGrid` 与物品页仓库/货仓的 `ItemGlyphGrid` 共用一份） | `ui:attr-check` 的「族徽判据契约」（改查单点文件 ＋ 两处网格的 `!= null` 兜底） |
-| 图鉴卡片构造（装备/舰船/物品/蓝图/势力同源） | `itemCellOf()` 等共用 builder · `panels/handbookDetail.tsx`（**2026-10-02 从 `panels/Handbook.tsx` 拆出**） | `ui:attr-check` ＋ `arch:guard` F2 |
+| 族徽判据与势力可访问全称 | `crestFamOf()` / `crestLabelOf()` · `ui/labelsText.ts`，图鉴与物品网格共用 | `ui:attr-check`族徽判据契约 |
+| 图鉴卡片构造（装备/舰船/物品/蓝图/势力同源） | `itemCellOf()`等builder · `panels/handbookDetail.tsx` | `ui:attr-check` ＋ `arch:guard` F2 |
 | 取色跨表兜底 | `toneOfAny()` · `ui/tones.ts` | 人工核（约定 §九） |
 | 悬停提示接管层（全站唯一延迟 500ms 与"内层优先"） | `ui/Tooltip.tsx`（`TIP_DELAY_MS`） | `ui:tip-check` ＋ `ui:rot-check` |
 | 悬浮窗逻辑空间限宽与边缘定位 | `tooltipLayout()` · `ui/tooltipGeometry.ts` | 首帧/实测共用，桌面560/旋转600上限与可用区约束，窄窗/四角专项 |
 | 悬停富卡皮肤（模块/物品/舰船参数表） | `ui/shipInfo.tsx`（`infoCardContent` 一族） | 约定 §九之七（人工核） |
 | 视口懒挂载（大列表流式加载） | `ui/LazyMount.tsx` | `industry:lag` 读数 ＋ 人工核 |
-| 活动栏「停止/取消」按钮文案（新版与旧版两套外壳共用） | `panels/activityStopLabel.ts` 的 `stopLabel()` | `arch:guard` F2（2026-09-27 收口 A1：原先两份逐字相同） |
-| 活动栏行「点击去哪」的跳转表（两套外壳共用） | `ui/activityGo.ts` 的 `goFor()` | `arch:guard` **F5 跳转目标契约**（2026-09-27 建：原先两份重复，快递那档跳到已删除的星图页签 ⇒ **空白页**） |
+| 活动栏「停止/取消」按钮文案（两套外壳共用） | `panels/activityStopLabel.ts`的`stopLabel()` | `arch:guard` F2 |
+| 活动栏行跳转表（两套外壳共用） | `ui/activityGo.ts`的`goFor()` | `arch:guard` F5跳转目标契约 |
 | 入侵循环下一目标与实际抽卡冷却（在线/离线与活动栏同源） | `autoLoopInvasionPlanOf()` · `core/expedition.ts` | 入侵路线专项：外围顺序、核心后置、只读抽签、等待与进度一致；`arch:guard` F2/F3 |
 | 属性表拼装（装配页/图鉴/蓝图产物/舰队悬停四处） | `ui/shipInfo.tsx` 的行工厂 | `ui:attr-check` 的「同名两行」体检 |
 
@@ -172,8 +169,8 @@
 |---|---|---|
 | 正式工具与临时探针的区分与收尾 | 约定 §十（`tools/xxx.ts` vs `tools/_*.ts`） | `npm run tools:audit` |
 | 提交钩子B类审批范围与暂存内容绑定 | `tools/git-gate-approval.cjs`；本工作树Git目录审批记录，`.githooks/pre-commit` / `post-commit`调用 | `git-gate-approval-20261004.test.ts`：精确批准、变更失效、技术失败拒绝与成功消费 |
-| 文档索引（全仓清册） | `docs/INDEX.md`（仅由 `npm run docs:index` 生成） | `docs:index --check` |
-| roadmap 滚动窗口与封存卷 | `npm run docs:seal` | 工具自带守恒校验 |
+| 非归档文档索引 | `docs/INDEX.md`（仅由 `npm run docs:index` 生成） | `docs:index --check`；读取前跳过archive目录 |
+| 过程归档与历史禁读 | 开发约定§十五、`AGENTS.md` | 当前结论与未决摘要人工核对，归档原文按字节校验 |
 | 工作文档 → 归档三步 | 约定 §十五 | 人工核（本批列出） |
 | 本索引自身与护栏注册表的同步关系 | 本文件（人读索引）＋ `tools/arch-guard.ts` 的 `SINGLE_SOURCE`（机器执行源） | `arch:guard` F3 只核对机器执行源的源码落点；两份文字表同步由人工维护 |
 
@@ -185,10 +182,9 @@
 
 ---
 
-_建表：2026-09-27（三号 · verify）· 首批条目取自 2026-09-24~27 各批归档结论与本次全仓取证；_
 _条目增删随代码走；规则变更仍按开发约定的工作文档与归档流程处理。_
 
-## 2026-10-27 分目录实现落点
+## 分目录实现落点
 
 | 符号 | 唯一实现 |
 |---|---|
