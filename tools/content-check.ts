@@ -2044,7 +2044,7 @@ for (const m of MODULES) {
    * 口径依据：货柜（`container`）自本批起与「残骸」（2026-09-08 独立）、「消耗品」（2026-09-11 独立）同级；
    * 奢侈品（`luxury`）作为「货物」的**二级子分类**（不是一级类型）。 */
   {
-    const mpPath = 'apps/desktop/src/renderer/src/pages/MarketPage.tsx'
+    const mpPath = 'apps/desktop/src/renderer/src/features/market/MarketPage.tsx'
     const mpSrc = stripComments(readSrc(mpPath)).join('\n')
     /**
      * 取「某键的文案」：本地化后合法写法有两种——中文源串（未接线）或 `tr('ui.x.001')`（已接线）。

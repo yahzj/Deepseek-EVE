@@ -35,7 +35,7 @@ function component(path: string, name: string, scope: Record<string, any>, text?
 
 describe('黑市监视器与入口真实组件行为', () => {
   it.each([99, 100])('累计声望%s的入口在限定奇货之后，搜索激活仍可进入', (standing) => {
-    const ast = source('pages/MarketPage.tsx')
+    const ast = source('features/market/MarketPage.tsx')
     let navigation: ts.JsxElement | undefined
     const visit = (node: ts.Node) => {
       if (ts.isJsxElement(node) && node.openingElement.getText(ast).includes('app-subtabs app-mkt-tabs')) navigation = node
@@ -61,7 +61,7 @@ describe('黑市监视器与入口真实组件行为', () => {
   })
 
   it('切换普通市场标签真实执行清搜索/恢复全部分类，不把筛选结果留在标签下面', () => {
-    const ast = source('pages/MarketPage.tsx')
+    const ast = source('features/market/MarketPage.tsx')
     let callback: ts.ArrowFunction | undefined
     const visit = (node: ts.Node) => {
       if (ts.isVariableDeclaration(node) && node.name.getText(ast) === 'changeMarketTab') callback = node.initializer as ts.ArrowFunction

@@ -242,7 +242,7 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
   { concept: '黑市新货架商品组数量', symbol: 'blackMarketLotQuantity', file: 'packages/core/src/blackMarket.ts', exported: true },
   { concept: '黑市锁定交付数量与旧货架兼容', symbol: 'blackMarketOfferQuantity', file: 'packages/core/src/blackMarket.ts', exported: true },
   { concept: '可选弹药档位与同族合法性', symbol: 'ammoTiersOf', file: 'packages/core/src/ammoTiers.ts', exported: true },
-  { concept: '普通市场可流通商品目录', symbol: 'marketTradingGoods', file: 'packages/core/src/market.ts', exported: true },
+  { concept: '普通市场可流通商品目录', symbol: 'marketTradingGoods', file: 'packages/core/src/market/access.ts', exported: true },
   { concept: '沉船快照保存装配方案', symbol: 'saveWreckFitPreset', file: 'packages/core/src/fitPresets.ts', exported: true },
   { concept: '沉船逐位装备与重复扩槽明细', symbol: 'wreckFitDetailOf', file: 'packages/core/src/fitPresets.ts', exported: true },
   { concept: '市场商品可读名称', symbol: 'marketGoodDisplayName', file: 'apps/desktop/src/renderer/src/ui/marketGoodHover.tsx', exported: true },

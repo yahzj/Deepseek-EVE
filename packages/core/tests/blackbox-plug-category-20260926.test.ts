@@ -81,7 +81,7 @@ describe('黑匣独立成类（船长报障：入侵获得的黑匣在仓库内�
      * 对着一个已不存在的手写表报红（本批实测：就是这一条）。**契约意图一字未改**：市场一级类型里
      * 必须有 blackbox 这一档（船长令：黑匣单独一个分类，不挪进「货物」）。
      */
-    const market = read('apps/desktop/src/renderer/src/pages/MarketPage.tsx')
+    const market = read('apps/desktop/src/renderer/src/features/market/MarketPage.tsx')
     expect(market, '市场页的类型下拉读的是一级领域单点').toContain('MARKET_DOMAIN_TABS')
     const subs = read('apps/desktop/src/renderer/src/ui/itemSubs.ts')
     expect(subs, '物品领域二级单点里有 blackbox 档').toContain("key: 'blackbox'")

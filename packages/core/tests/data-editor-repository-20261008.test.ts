@@ -91,7 +91,7 @@ beforeEach(async () => {
   for (const table of tables) {
     const document: DataDocument = { format: 'whale-static-data', version: 1, table, groups: { test: rows[table]! } }
     await write(primary, TABLE_FILES[table], JSON.stringify(document, null, 2) + '\n')
-    const text = table === 'market' ? 'marketCatalog' : table
+    const text = table === 'market' ? 'market/bindings' : table
     await write(primary, `packages/data/src/${text}.ts`, `export const ${table.toUpperCase()}_TEXT_BINDINGS = { '${rows[table]![0].id ?? rows[table]![0].key}': { name: '测试${table}' } } as const\n`)
   }
   await write(primary, 'packages/core/src/wip.ts', 'export const original = 1\n')
@@ -206,7 +206,7 @@ describe('JSON仓库服务 · 身份与计划', () => {
     const doc = JSON.parse((await bytes('market')).toString())
     doc.groups.test[0].key = 'good-ship-a'
     await fs.writeFile(join(root, TABLE_FILES.market), JSON.stringify(doc))
-    await write(root, 'packages/data/src/marketCatalog.ts', 'const MARKET_TEXT_BINDINGS = {}\n')
+    await write(root, 'packages/data/src/market/bindings.ts', 'const MARKET_TEXT_BINDINGS = {}\n')
     const project = await repo.openProject(root)
     expect(project.rows.find(row => row.table === 'market')!.name).toBe('测试ships')
     const plan = await repo.preview(root, project.fingerprint, [{ table: 'market', id: 'good-ship-a', path: 'basePrice', value: 130 }])
@@ -270,7 +270,7 @@ describe('JSON仓库服务 · 身份与计划', () => {
       const path = `packages/data/src/${file}`
       await write(root, path, await source(path))
     }
-    await write(root, 'packages/data/src/marketCatalog.ts', 'const MARKET_TEXT_BINDINGS = {}\n')
+    await write(root, 'packages/data/src/market/bindings.ts', 'const MARKET_TEXT_BINDINGS = {}\n')
     const expected = new Map([...BLUEPRINTS, ...SHIP_BLUEPRINTS].map(row => [row.id, row.name]))
     const project = await repo.openProject(root)
     const blueprints = project.rows.filter(row => row.table === 'market' && row.category === 'blueprint')
@@ -318,7 +318,7 @@ describe('JSON仓库服务 · 身份与计划', () => {
   })
 
   it('TS字面量和二元算术仅安全解读为只读展示值，调用表达式不执行也不物化JSON', async () => {
-    await write(root, 'packages/data/src/marketCatalog.ts', `
+    await write(root, 'packages/data/src/market/bindings.ts', `
       const MARKET_TEXT_BINDINGS = {
         'ship-a': { name: '安全表达式', limitedSupplyEveryMs: 6 * 60_000, multiplier: (2 + 3) / 2,
           negative: -(2 ** 3), nested: { ratio: 10 % 3 }, invalid: 1 / 0,

@@ -126,7 +126,7 @@ describe.skipIf(process.env.DATA_MIGRATION_VERIFY !== '1')('迁移专用验收�
 })
 
 function sourceFile(name: keyof typeof raw): string {
-  return `packages/data/src/${name === 'market' ? 'marketCatalog' : name}.ts`
+  return `packages/data/src/${name === 'market' ? 'market/bindings' : name}.ts`
 }
 
 function staticSource(name: keyof typeof raw): string {

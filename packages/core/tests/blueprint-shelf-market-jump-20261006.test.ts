@@ -192,7 +192,10 @@ describe('蓝图书架市场入口', () => {
       taxTipText: () => '', fmtClock: String, nextSupplyIn: () => 0, goodDisplayName: (ctx: core.SimContext, key: string) => core.goodName(ctx, key),
       MarketColumn: 'MarketColumn', MarketDetail: 'MarketDetail', MyOrders: 'MyOrders', BlackMarketPage: 'BlackMarketPage', isk: String,
     }
-    evaluate(codeOf('apps/desktop/src/renderer/src/pages/MarketPage.tsx', ['KIND_OPTIONS', 'stockedFirst', 'MarketPage']), scope)
+    evaluate(codeOf('apps/desktop/src/renderer/src/features/market/filters.tsx', ['KIND_OPTIONS']), scope)
+    Object.assign(scope, scope.exports)
+    evaluate(codeOf('apps/desktop/src/renderer/src/features/market/sorting.tsx', ['stockedFirst']), scope)
+    evaluate(codeOf('apps/desktop/src/renderer/src/features/market/MarketPage.tsx', ['MarketPage']), scope)
     const component = (scope.exports as { MarketPage: (props: object) => unknown }).MarketPage
     let used = 0
     const props = { engine: view.engine, onToast: () => {}, focusKey: good.key, focusSeq: 1, onFocusUsed: () => { used++ } }
