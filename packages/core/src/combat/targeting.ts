@@ -6,6 +6,9 @@ import type { ShipRole, FoeTargetingMode } from '../types'
 import type { GameState } from '../state'
 import { pickWeighted, nextRandom, nextInt } from '../rng'
 import { isFoeEngageable } from './combatDrones'
+import targeting from './targeting.json'
+
+const SHIP_TIER_TARGET_WEIGHTS: Readonly<Record<number, number>> = targeting.shipTierWeights
 
 /** 敌舰是否"可被我方选中"（2026-10-02 批次 4j 迁到 combatDrones.ts，本文件借回） */
 
@@ -60,20 +63,20 @@ export function isNonCombatShipRole(role: ShipRole | undefined): boolean {
   return role === 'industrial' || role === 'hauler'
 }
 
+/** 舰级基础权重与插件相乘；异常字段回落基础值，不形成免选靶或无穷权重。 */
+export function playerTargetWeightOf(unit: Pick<UnitSpec, 'shipTier' | 'targetWeightMul'>): number {
+  const base = unit.shipTier !== undefined && Number.isInteger(unit.shipTier)
+    ? SHIP_TIER_TARGET_WEIGHTS[unit.shipTier] ?? SHIP_TIER_TARGET_WEIGHTS[1]!
+    : SHIP_TIER_TARGET_WEIGHTS[1]!
+  const mod = unit.targetWeightMul
+  const weight = base * (mod !== undefined && Number.isFinite(mod) && mod > 0 ? mod : 1)
+  return Number.isFinite(weight) && weight > 0 ? weight : base
+}
+
 /**
- * **敌方选靶**（虫洞 D 批 · 船长 2026-09-13 定的五种模式；见 `FoeTargetingMode`）：
- * 从**存活我方单位**里挑一个目标。并列（同输出 / 同档 / 多艘非战斗船）一律**按被选中权重抽取**
- * （缺省权重都是 1 ⇒ 等权随机，也就是改动前的口径）。
- *
- * ⚠⚠ **只剩一艘我方单位时直接返回、一次随机数都不消费** —— 这条是单船路径零漂移的命门：
- * 既有 27 张悬赏卡 / 低安遭遇 / AI 副船的战斗里，敌方开火从不掷"选靶骰"，本函数在那些
- * 场次里也不会多消耗一个 `nextRandom`（否则整批标定读数会漂移）。
- * ⚠ `noncombat` 模式下编队里**没有**非战斗船 ⇒ **退回随机**（船长口径）。
- * ⚠ 模式只由**虫洞内敌卡**（`AnomalyDef.foeTargeting`）写；不写 = `random`。
- *
- * **倾向概率**（船长 2026-09-14：「虫洞敌人的攻击倾向，加一个概率」→「目前先挨个定为60%」）：
- * `chance` = 该模式下**每发开火前**按这个概率生效一次，没掷中 ⇒ **这一发乱了（退回随机抽取）**。
- * `chance >= 1`（缺省）或模式本来就是 `random` ⇒ **连一次骰都不掷** ⇒ 旧场次的随机数消费顺序逐字节不变。
+ * 敌方先按敌卡倾向筛候选，再按舰级基础权重×插件乘数抽取。
+ * 倾向未生效或无非战斗船时对全体合法目标加权，概率仍读敌卡，不覆盖其配置。
+ * 唯一可选目标不新增随机数；隐身和多舰阵亡目标仍排除。
  */
 export function pickMyUnitTarget(
   state: GameState,
@@ -100,21 +103,9 @@ export function pickMyUnitTarget(
   const alive = aliveMyUnits(b, myUnits).filter((u) => isMyUnitTargetable(b, u.tag))
   if (alive.length === 0) return null
   if (alive.length === 1) return alive[0]!
-  /**
-   * **按"被选中权重"加权抽取**——走仓内单点 `pickWeighted`（`bound: 'lt'`，与原先的
-   * `nextInt(rng, n) = ⌊u × n⌋` 同边界），**恰好消费一次 `nextRandom`**。
-   *
-   * ⚠⚠ **零漂移命门（2026-09-26 插件批的等价性证明）**：全部权重都等于 1 时，
-   * `roll = u × n` 落在第 k 段 ⇔ `⌊u × n⌋ = k`（仅在 `u × n` 精确等于整数 k 的边界上两者都取 k）
-   * ⇒ 与改动前的 `nextInt(state.rng, cands.length)` **恒等**，随机数消费次数也一致。
-   * 没装靶标/隐匿插件的全部既有场次（含 27 张悬赏卡与标定读数）**逐位不变**。
-   */
-  const weightOf = (u: UnitSpec): number => {
-    const w = u.targetWeightMul
-    return w !== undefined && Number.isFinite(w) && w > 0 ? w : 1
-  }
+  // 只在抽取时合成舰级权重，不回写规格或战斗账本，避免每拍重建重复相乘。
   const randomOf = (cands: UnitSpec[]): UnitSpec =>
-    pickWeighted(state.rng, cands, weightOf) ?? cands[cands.length - 1]!
+    pickWeighted(state.rng, cands, playerTargetWeightOf) ?? cands[cands.length - 1]!
   /**
    * **倾向概率的掷骰点**（2026-09-14 船长）：**每发开火前各掷一次**，没掷中 ⇒ 这一发乱了。
    * 位置刻意放在两个早退**之后** —— 单船 / 只剩一艘时恒返回、不掷骰（洞外零漂移的命门）。

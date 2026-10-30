@@ -337,7 +337,7 @@ describe('选靶权重：靶标 ×3 / 隐匿 ×0.7（只改选靶，不改命中
     const { aHits, bHits } = tallyTargets(state, beacon, conceal)
     expect(aHits + bHits).toBe(600)
     expect(aHits / (aHits + bHits), '靶标那一艘应占明显多数').toBeGreaterThan(0.7)
-    console.log(`  [读数] 靶标 ${aHits} : 隐匿 ${bHits}（权重 2 : 0.4 = 5 : 1 ⇒ 理论 83.3%）`)
+    console.log(`  [读数] 靶标 ${aHits} : 隐匿 ${bHits}（同级权重 3 : 0.7，理论约81.1%）`)
   })
 
   it('对照组：两艘都没插件 ⇒ 各约一半（等权随机没被本批改写）', () => {

@@ -630,11 +630,7 @@ export function createPlayerSpec(
     // 单船路径不读这两项 ⇒ 只多两个字段，零行为变化。
     shipTier: ship.tier,
     shipRole: ship.role,
-    /**
-     * **被选中权重**（**2026-09-26 船长令**：靶标插件「**增加被选中的权重**」×2 · 隐匿插件
-     * 「**减少被攻击的权重**」×0.4）。消费点 = `pickMyUnitTarget` 的加权抽取；
-     * 缺省 1 ⇒ 没装插件时与改动前**逐位等价**（见该函数的加权说明）。
-     */
+    // 仅插件乘数；舰级基础权重由选靶单点合成，建规格时不重复乘。
     ...(plugTargetWeight !== 1 ? { targetWeightMul: plugTargetWeight } : {}),
     // 2026-09-16 船长：后勤舰的维修装置改修队友（**数据字段驱动**，见 `ShipDef.repairPulseTargetsFleet`；
     // 同日追批「并添加到船体特性属性中」⇒ 判据从 `subClass === '后勤舰'` 改为读字段，界面「船体特性」栏同源）

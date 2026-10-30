@@ -161,6 +161,7 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
   { concept: '玩家守墓装备动态规格', symbol: 'playerGravekeeperSpecOf', file: 'packages/core/src/combat/gravekeeperGear.ts', exported: true },
   { concept: '磁轨齐射叠层与装填', symbol: 'noteRailAttack', file: 'packages/core/src/combat/gravekeeperGear.ts', exported: true },
   { concept: '玩家实际承伤与齐射保护', symbol: 'applyPlayerUnitDamage', file: 'packages/core/src/combat/damage.ts', exported: true },
+  { concept: '敌方选择玩家舰船的舰级与插件合成权重', symbol: 'playerTargetWeightOf', file: 'packages/core/src/combat/targeting.ts', exported: true },
   { concept: '敌舰最终容量倍率', symbol: 'foeShipHpMulOf', file: 'packages/core/src/combat/foePower.ts', exported: true },
   { concept: '玩家舰载武器近盲开火', symbol: 'playerWeaponInRange', file: 'packages/core/src/combat/combatMath.ts', exported: true },
   { concept: '玩家舰载武器近盲伤害倍率', symbol: 'playerBlindDamageMul', file: 'packages/core/src/combat/combatMath.ts', exported: true },

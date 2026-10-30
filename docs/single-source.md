@@ -59,6 +59,7 @@
 | 全舰容量提升及敌舰最终倍率 | `SHIP_HP_UPLIFT_MUL` · `combatMath.ts`；`foeShipHpMulOf()` · `foePower.ts` | 玩家舰体/插件1.5、敌舰最终1.5且保留族格、预算和火力不变、无人机排除、共享池绝对覆盖专项 |
 | 守墓装备危机倍率、动态规格与磁轨射后叠层 | `crisisEffectsOf()` / `playerGravekeeperSpecOf()` / `noteRailAttack()` · `gravekeeperGear.ts` | 同件正负同权重、炮台/机群隔离、战斗/视图同源、同型齐射一次叠层与读档续算专项；F2/F3 |
 | 玩家实际承伤与齐射保护 | `applyPlayerUnitDamage()` · `combat.ts` | 层位/抗性/混伤/破盾后按实际掉血限制80%，损管保底后记账，100ms窗口及逐舰隔离专项；F2/F3 |
+| 敌方选择玩家舰船的舰级与插件合成权重 | `playerTargetWeightOf()` · `combat/targeting.ts`；舰级基础值读同域`targeting.json` | 护卫至泰坦1/2/3/4/5、插件相乘、倾向先筛候选、单舰随机数、隐身/阵亡、真实敌炮敌机及读档专项；F2/F3 |
 | 玩家舰载近盲开火与伤害 | `playerWeaponInRange()` / `playerBlindDamageMul()` · `combatMath.ts` | 最大射程内放行、近盲0.3、无人机原规则、近防打机群豁免、连发/逐炮/副段与预估专项 |
 | 悬赏后台预热任务与缓存代次 | `BountyWinCache` · `game/bountyWinCache.ts`；真实评估仍为core `estimateBountyWinOn` | 单worker/每卡30局、失效取消/战斗让路、结果等价与双端真实worker响应专项 |
 | 敌舰/机群/挂载/编队源数字参数读取 | `enemyParameterOf()` · `packages/core/src/enemyParameters.ts` | 六表字段契约、迁移前完整目录逐值相等及真实引擎预览专项；公式与引用留TS |

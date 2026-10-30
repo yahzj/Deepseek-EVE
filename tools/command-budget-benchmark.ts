@@ -1,5 +1,5 @@
 /** 指挥成本设计读数，不改变任何生产规则。
- * npx tsx tools/command-budget-benchmark.ts [--seeds=12] [--roles | --budgets]
+ * npx tsx tools/command-budget-benchmark.ts [--seeds=12] [--roles | --budgets] [--out=目录]
  * 真实舰船/装备目录，正式装配入口和多舰战斗引擎；独立合成状态，不读个人档。
  * 默认输出tools/_ui-artifacts/command-budget-20261030/report.json。
  * --roles另测全部战斗舰、专用机群模板和辅助特性A/B，独立输出roster子目录。
@@ -17,6 +17,7 @@ import { createPlayerSpec, startFleetBattleFor, advanceBattleFor, waveGapTotalMs
 import { desiredRangeFor } from '../packages/core/src/combat/foes/tactics'
 import { volleyGunCountOf, volleyDamageShareOf } from '../packages/core/src/combat/combatVolley'
 import { fleetDamageAuraOf } from '../packages/core/src/combat/fleetSpecs'
+import { playerTargetWeightOf } from '../packages/core/src/combat/targeting'
 import type { WeaponSpec } from '../packages/core/src/combat/model'
 import { shipSlotsOf } from '../packages/core/src/labels'
 import { totalTimeToLevel, trainingTimeFactor } from '../packages/core/src/skills/training'
@@ -26,7 +27,8 @@ const ctx = buildSimContext()
 const roleMode = process.argv.includes('--roles')
 const budgetMode = process.argv.includes('--budgets')
 assert(!(roleMode && budgetMode), '--roles和--budgets须分别运行')
-const out = resolve('tools/_ui-artifacts/command-budget-20261030', budgetMode ? 'budgets' : roleMode ? 'roster' : '.')
+const outputArg = process.argv.find(arg => arg.startsWith('--out='))?.slice(6)
+const out = outputArg ? resolve(outputArg) : resolve('tools/_ui-artifacts/command-budget-20261030', budgetMode ? 'budgets' : roleMode ? 'roster' : '.')
 const seedArg = process.argv.find(arg => arg.startsWith('--seeds='))
 const seeds = seedArg ? Number(seedArg.split('=')[1]) : 12
 assert(Number.isInteger(seeds) && seeds >= 1 && seeds <= 100)
@@ -285,6 +287,7 @@ function reading(state: GameState, uid: string) {
     cpuBudget: cpuBudgetOf(state, ctx, uid),
     speed: spec.speedMps, evasion: spec.evasion, hitBonus: spec.hitBonus,
     slots: shipSlotsOf(def), fitted: structuredClone(ship.fitted), resists: spec.resists,
+    targetWeight: playerTargetWeightOf(spec),
     ...(roleMode ? { traits: { fleetDamage: def.fleetDamageBonusPct ?? 0, foeRangeDebuff: def.foeRangeDebuffPct ?? 0,
       repairTargetsFleet: def.repairPulseTargetsFleet === true, droneLaunchCut: def.droneLaunchCutPct ?? 0,
       droneDmgBonus: def.droneDmgBonus ?? 0, weaponFamilyBonus: def.weaponFamilyBonus ?? {},
@@ -433,7 +436,8 @@ if (roleMode) {
   }
 }
 const report = { assumptions: {
-  syntheticOnly: true, productionChanged: false, skillLevels: [0, 3], allKnownSkillsSameLevel: true,
+  syntheticOnly: true, toolMutatesProductionRules: false, skillLevels: [0, 3], allKnownSkillsSameLevel: true,
+  targeting: '现行playerTargetWeightOf舰级权重×插件乘数；先筛特殊倾向。不能把此报告当成旧等权基线。',
   commonKit: ['mod-prop-2', 'mod-shield-kin-2', 'mod-armor-plate-2'],
   fitting: '先固定通用防御，再填合法高槽；spare-slots模板用余中低槽和CPU加护盾扩展/动能稳定器，最后余CPU及原生机舱装侦察无人机；不装插件、专属件或扩容件，不是优化配装',
   battle: '所有方案使用同一多舰引擎，单舰同样走此入口；无普通遭遇结构自动撤退，仅比较战斗至胜负/时限，不含任务奖励/返航',
