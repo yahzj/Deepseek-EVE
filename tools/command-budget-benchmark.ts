@@ -1,12 +1,13 @@
 /** 指挥成本设计读数，不改变任何生产规则。
- * npx tsx tools/command-budget-benchmark.ts [--seeds=12] [--roles]
+ * npx tsx tools/command-budget-benchmark.ts [--seeds=12] [--roles | --budgets]
  * 真实舰船/装备目录，正式装配入口和多舰战斗引擎；独立合成状态，不读个人档。
  * 默认输出tools/_ui-artifacts/command-budget-20261030/report.json。
  * --roles另测全部战斗舰、专用机群模板和辅助特性A/B，独立输出roster子目录。
+ * --budgets从本批设计稿读取候选成本，测同预算组合并用现行训练公式计算容量候选。
  * 固定模板不是最优配装；名义DPS不是命中后DPS，实战仅覆盖所列敌卡与配置。
  */
 import assert from 'node:assert/strict'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { buildSimContext } from '@whale/data'
 import { createInitialState, type GameState } from '../packages/core/src/state'
@@ -15,13 +16,17 @@ import { fitModule, adjustDroneLoad, cpuBudgetOf, fittedCpuUsed, droneCpuUsed } 
 import { createPlayerSpec, startFleetBattleFor, advanceBattleFor, waveGapTotalMs } from '../packages/core/src/combat'
 import { desiredRangeFor } from '../packages/core/src/combat/foes/tactics'
 import { volleyGunCountOf, volleyDamageShareOf } from '../packages/core/src/combat/combatVolley'
+import { fleetDamageAuraOf } from '../packages/core/src/combat/fleetSpecs'
 import type { WeaponSpec } from '../packages/core/src/combat/model'
 import { shipSlotsOf } from '../packages/core/src/labels'
+import { totalTimeToLevel, trainingTimeFactor } from '../packages/core/src/skills/training'
 import type { ShipDef } from '../packages/core/src/types'
 
 const ctx = buildSimContext()
 const roleMode = process.argv.includes('--roles')
-const out = resolve('tools/_ui-artifacts/command-budget-20261030', roleMode ? 'roster' : '.')
+const budgetMode = process.argv.includes('--budgets')
+assert(!(roleMode && budgetMode), '--roles和--budgets须分别运行')
+const out = resolve('tools/_ui-artifacts/command-budget-20261030', budgetMode ? 'budgets' : roleMode ? 'roster' : '.')
 const seedArg = process.argv.find(arg => arg.startsWith('--seeds='))
 const seeds = seedArg ? Number(seedArg.split('=')[1]) : 12
 assert(Number.isInteger(seeds) && seeds >= 1 && seeds <= 100)
@@ -55,6 +60,127 @@ const carrierTemplates: Template[] = ['drone-scout', 'drone-heavy'].map(carrier 
 }))
 const repairTemplate: Template = { id: 'repair-mk2', weapon: 'mod-turret-kin-2', slots: 'two', support: true, drones: true, repairs: true, tactic: 'mid' }
 const roleTemplates = [familyTemplate, ...carrierTemplates, repairTemplate]
+
+type Member = { defId: string; template: Template }
+type FleetPlan = {
+  id: string
+  defs: string[]
+  members?: Member[]
+  budget?: number
+  scenario?: 'fresh' | 'damaged'
+  tactic?: Template['tactic']
+}
+
+// 仅接受本批现行候选表；格式、重复或目录不符即停，不从旧稿或生产表猜价格。
+function discussionCosts(): Map<string, number> {
+  const doc = readFileSync(resolve('docs/design/combat-command-budget-20261030.md'), 'utf8')
+  const section = doc.split('## 逐船成本第一轮候选')[1]?.split('### 作业与运输船登记')[0]
+  assert(section, '缺少逐船候选表')
+  const prices = new Map<string, number>()
+  const seen = new Set<string>()
+  for (const line of section.split(/\r?\n/)) {
+    if (!line.startsWith('| `sh-')) continue
+    const columns = line.split('|').map(value => value.trim())
+    assert.equal(columns.length, 7, `候选行格式错误: ${line}`)
+    const id = columns[1]!.slice(1, -1)
+    assert(ctx.ships.has(id) && !seen.has(id), `未知或重复舰型: ${id}`)
+    seen.add(id)
+    if (columns[3] === '待定') continue
+    const price = Number(columns[3])
+    assert(Number.isInteger(price) && price > 0, `非法候选成本: ${id}`)
+    prices.set(id, price)
+  }
+  const combat = [...ctx.ships.values()].filter(ship => ship.role === 'armed' || ship.role === 'armored')
+  assert.equal(seen.size, combat.length)
+  assert(combat.every(ship => seen.has(ship.id)), '候选表漏舰')
+  return prices
+}
+
+const budgetCosts = budgetMode ? discussionCosts() : new Map<string, number>()
+const member = (defId: string, template = familyTemplate): Member => ({ defId, template })
+const repeat = (defId: string, count: number, template = familyTemplate): Member[] => Array.from({ length: count }, () => member(defId, template))
+const budgetPlans: FleetPlan[] = []
+function plan(id: string, budget: number, members: Member[], scenario: FleetPlan['scenario'] = 'fresh', tactic?: Template['tactic']): void {
+  if (!budgetMode) return
+  const sum = members.reduce((total, row) => {
+    const cost = budgetCosts.get(row.defId)
+    assert(cost, `未定价舰型不能进入预算对照: ${row.defId}`)
+    return total + cost
+  }, 0)
+  assert(sum <= budget && members.length <= 4, `${id}: 超出候选预算/4舰测量边界`)
+  budgetPlans.push({ id, budget, members, defs: members.map(row => row.defId), scenario, tactic })
+}
+plan('shrike-2', 20, repeat('sh-shrike', 2))
+plan('hammer-1', 20, repeat('sh-hammerhead', 1))
+plan('tiger-2', 24, repeat('sh-tigershark', 2))
+plan('sentinel-scout-1', 24, repeat('sh-sentinel', 1, carrierTemplates[0]!))
+plan('sentinel-heavy-1', 24, repeat('sh-sentinel', 1, carrierTemplates[1]!))
+plan('a-cruiser-1', 24, repeat('sh-wh-a-cruiser', 1))
+plan('e-torpedo-2', 28, repeat('sh-wh-e-frigate', 2))
+plan('e-carrier-scout-1', 28, repeat('sh-wh-e-carrier', 1, carrierTemplates[0]!))
+plan('e-carrier-heavy-1', 28, repeat('sh-wh-e-carrier', 1, carrierTemplates[1]!))
+plan('tortoise-2', 28, repeat('sh-tortoise', 2))
+plan('xuanwu-1', 28, repeat('sh-xuanwu', 1))
+plan('mako-2', 30, repeat('sh-mako', 2))
+plan('mega-1', 30, repeat('sh-megalodon', 1))
+plan('white-2', 36, repeat('sh-whiteshark', 2))
+plan('hammer-mako', 36, [member('sh-hammerhead'), member('sh-mako')])
+plan('hammer-command', 38, [member('sh-hammerhead'), member('sh-wh-d-destroyer')])
+plan('hammer-white', 38, [member('sh-hammerhead'), member('sh-whiteshark')])
+plan('hammer-logistics', 38, [member('sh-hammerhead'), member('sh-wh-g-destroyer', repairTemplate)])
+plan('hammer-2', 40, repeat('sh-hammerhead', 2))
+plan('shrike-4', 40, repeat('sh-shrike', 4))
+plan('tiger-hawksbill', 32, [member('sh-tigershark'), member('sh-hawksbill')])
+plan('hawksbill-tiger', 32, [member('sh-hawksbill'), member('sh-tigershark')])
+plan('hammer-tiger', 32, [member('sh-hammerhead'), member('sh-tigershark')])
+plan('hammer-orca', 52, [member('sh-hammerhead'), member('sh-orca')])
+plan('hammer-2-tiger', 52, [...repeat('sh-hammerhead', 2), member('sh-tigershark')])
+plan('hammer-2-d-electronic', 52, [...repeat('sh-hammerhead', 2), member('sh-wh-d-frigate')])
+plan('hammer-2-a-electronic', 53, [...repeat('sh-hammerhead', 2), member('sh-wh-a-frigate')])
+plan('mega-2', 60, repeat('sh-megalodon', 2))
+plan('hammer-3', 60, repeat('sh-hammerhead', 3))
+plan('hammer-4', 80, repeat('sh-hammerhead', 4))
+plan('hammer-3-command', 80, [...repeat('sh-hammerhead', 3), member('sh-wh-d-destroyer')])
+plan('hammer-2-command-2', 76, [...repeat('sh-hammerhead', 2), ...repeat('sh-wh-d-destroyer', 2)])
+plan('hammer-2-white-2', 76, [...repeat('sh-hammerhead', 2), ...repeat('sh-whiteshark', 2)])
+plan('hammer-3-orca', 92, [...repeat('sh-hammerhead', 3), member('sh-orca')])
+plan('mega-3', 92, repeat('sh-megalodon', 3))
+plan('mega-4', 120, repeat('sh-megalodon', 4))
+plan('mega-3-orca', 125, [...repeat('sh-megalodon', 3), member('sh-orca')])
+plan('orca-4', 128, repeat('sh-orca', 4))
+plan('damaged-hammer-command', 38, [member('sh-hammerhead'), member('sh-wh-d-destroyer')], 'damaged')
+plan('damaged-hammer-white', 38, [member('sh-hammerhead'), member('sh-whiteshark')], 'damaged')
+plan('damaged-hammer-logistics', 38, [member('sh-hammerhead'), member('sh-wh-g-destroyer', repairTemplate)], 'damaged')
+plan('hammer-2-repair', 40, repeat('sh-hammerhead', 2, repairTemplate), 'damaged')
+
+function capacityReadings() {
+  const tiers = [{ rank: 2, perLevel: 5 }, { rank: 4, perLevel: 7 }, { rank: 5, perLevel: 8 }]
+  const baseCapacity = 25
+  const prototype = ctx.skills.get('spaceship-command')!
+  const learning = fresh(0, 1)
+  learning.skills.trained['accelerated-learning'] = 5
+  const learnedFactor = trainingTimeFactor(learning)
+  learning.skillBoostUntilMs = 1
+  const boostedFactor = trainingTimeFactor(learning)
+  const allocations: { levels: number[]; capacity: number; trainHours: number }[] = []
+  for (let first = 0; first <= 5; first++) for (let second = 0; second <= 5; second++) for (let third = 0; third <= 5; third++) {
+    if ((second > 0 && first < 3) || (third > 0 && second < 3)) continue
+    const levels = [first, second, third]
+    const capacity = baseCapacity + tiers.reduce((sum, row, index) => sum + row.perLevel * levels[index]!, 0)
+    const trainMs = tiers.reduce((sum, row, index) => sum + totalTimeToLevel({ ...prototype, rank: row.rank }, 0, levels[index]!), 0)
+    allocations.push({ levels, capacity, trainHours: trainMs / 3_600_000 })
+  }
+  assert.equal(allocations.length, 66)
+  const milestones = [25, 30, 35, 40, 45, 50, 60, 70, 80, 90, 100, 110, 120, 122, 125].map(required => {
+    const fastest = allocations.filter(row => row.capacity >= required).sort((a, b) => a.trainHours - b.trainHours)[0]!
+    assert(fastest && fastest.capacity >= required)
+    return { required, ...fastest, learnedHours: fastest.trainHours * learnedFactor, boostedHours: fastest.trainHours * boostedFactor }
+  })
+  return { baseCapacity, tiers, prerequisiteLevel: 3, maxCapacity: Math.max(...allocations.map(row => row.capacity)),
+    normalOnly: true, learnedFactor, boostedFactor,
+    tierHours: tiers.map(row => ({ ...row, cumulativeHours: [1, 2, 3, 4, 5].map(level => totalTimeToLevel({ ...prototype, rank: row.rank }, 0, level) / 3_600_000) })),
+    milestones, allocations }
+}
 
 function templateFor(def: ShipDef, template: Template): Template {
   if (template.id !== familyTemplate.id) return template
@@ -181,17 +307,18 @@ const hullMedians = [1, 2, 3, 4, 5].map(tier => {
     high: median(rows.map(ship => ship.slots.high)), speed: median(rows.map(ship => ship.speed)), evasion: median(rows.map(ship => ship.evasion)) }
 })
 const fitted = []
-for (const level of [0, 3, 5]) for (const template of roleMode ? roleTemplates : templates) for (const def of measured) {
+for (const level of budgetMode ? [] : [0, 3, 5]) for (const template of roleMode ? roleTemplates : templates) for (const def of measured) {
   if (template.carrier && (def.droneBayM3 ?? 0) < 100) continue
   const state = fresh(level, 1)
   const uid = fitShip(state, def, template)
   fitted.push({ skillLevel: level, template: template.id, ...reading(state, uid) })
 }
 mkdirSync(out, { recursive: true })
-writeFileSync(resolve(out, 'fits.json'), JSON.stringify({ hulls, hullMedians, fitted }, null, 2), 'utf8')
-console.log(JSON.stringify({ phase: '合法配装读数完成', hullMedians, fits: fitted.length }))
+if (!budgetMode) writeFileSync(resolve(out, 'fits.json'), JSON.stringify({ hulls, hullMedians, fitted }, null, 2), 'utf8')
+console.log(JSON.stringify(budgetMode ? { phase: '预算方案校验完成', plans: budgetPlans.length, seeds }
+  : { phase: '合法配装读数完成', hullMedians, fits: fitted.length }))
 
-const fleets = roleMode ? measured.map(def => ({ id: def.id, defs: [def.id] })) : [
+const fleets: FleetPlan[] = budgetMode ? budgetPlans : roleMode ? measured.map(def => ({ id: def.id, defs: [def.id] })) : [
   { id: 'tiger-1', defs: ['sh-tigershark'] },
   { id: 'mako-1', defs: ['sh-mako'] },
   { id: 'white-1', defs: ['sh-whiteshark'] },
@@ -200,20 +327,30 @@ const fleets = roleMode ? measured.map(def => ({ id: def.id, defs: [def.id] })) 
   { id: 'mako-2', defs: ['sh-mako', 'sh-mako'] },
 ]
 const targets = ['ano-redring-raiders', 'ano-shard-bandits', 'ano-echo-haunt', 'ano-cinder-siege', 'ano-starcore-boss', 'ano-gravekeeper']
+if (budgetMode) targets.push('ano-vault-sentinel', 'ano-core-section', 'ano-maw-hunt')
 const battles = []
-for (const skillLevel of [0, 3]) for (const template of roleMode ? [familyTemplate, ...carrierTemplates] : templates.filter(row => row.support)) {
+for (const skillLevel of [0, 3]) for (const template of budgetMode ? [familyTemplate] : roleMode ? [familyTemplate, ...carrierTemplates] : templates.filter(row => row.support)) {
   for (const fleet of fleets) {
     if (roleMode && template.carrier && (ctx.ships.get(fleet.id)?.droneBayM3 ?? 0) < 100) continue
     const base = fresh(skillLevel, 1)
-    const ids = fleet.defs.map(id => fitShip(base, ctx.ships.get(id)!, template))
+    const ids = fleet.members
+      ? fleet.members.map(row => fitShip(base, ctx.ships.get(row.defId)!, row.template))
+      : fleet.defs.map(id => fitShip(base, ctx.ships.get(id)!, template))
     const specs = ids.map(uid => reading(base, uid))
     const squadHp = specs.reduce((sum, row) => sum + row.hp, 0)
+    const hullAura = fleetDamageAuraOf(base, ctx, ids)
+    if (budgetMode) fitted.push({ skillLevel, fleet: fleet.id, members: fleet.members, specs })
+    if (fleet.scenario === 'damaged') for (const id of ids) {
+      base.fleet[id]!.armorPct = 0.35
+      base.fleet[id]!.durability = 0.7
+    }
     for (const target of targets) {
       const results = []
       for (let seed = 1; seed <= seeds; seed++) {
         const state = structuredClone(base)
         state.rng = { seed, count: 0 }
-        const tactic = templateFor(ctx.ships.get(fleet.defs[0]!)!, template).tactic
+        const leaderTemplate = fleet.members?.[0]?.template ?? template
+        const tactic = fleet.tactic ?? templateFor(ctx.ships.get(fleet.defs[0]!)!, leaderTemplate).tactic
         const desire = desiredRangeFor(createPlayerSpec(state, ctx, ids[0]!)!, tactic, ctx.balance.battle)
         const battle = startFleetBattleFor(state, ctx, ids, target, 0, desire)
         assert(battle)
@@ -232,11 +369,18 @@ for (const skillLevel of [0, 3]) for (const template of roleMode ? [familyTempla
           sum + Math.max(0, loaded - (battle.ammo[key as keyof typeof battle.ammo] ?? 0)), 0)
         results.push({ seed, won: battle.ended === 'me', durationSeconds: (battle.lastTickGameMs - battle.startedAtGameMs) / 1000,
           alive: alive.length, hpLeftPct: hpLeft / squadHp * 100, ammoUsed,
+          ...(budgetMode ? { kitsUsed: Object.values(battle.repairBy ?? {}).reduce((sum, ledger) => sum + ledger.kitsUsed, 0),
+            fleetDamageAura: hullAura,
+            members: (battle.myFleet ?? []).map(entry => ({ defId: state.fleet[entry.shipId]!.defId, tag: entry.tag,
+              hp: battle.units[entry.tag]!.hp, kitsUsed: battle.repairBy?.[entry.tag]?.kitsUsed ?? 0 })) } : {}),
           droneLost: Object.values(battle.droneLost ?? {}).reduce((sum, count) => sum + (count ?? 0), 0) })
       }
       const wins = results.filter(result => result.won)
       const mean = (values: number[]) => values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null
       battles.push({ skillLevel, template: template.id, fleet: fleet.id,
+        ...(budgetMode ? { budget: fleet.budget, cost: fleet.defs.reduce((sum, id) => sum + budgetCosts.get(id)!, 0),
+          defs: fleet.defs, scenario: fleet.scenario, members: fleet.members,
+          nominalDpsWithHullAura: specs.reduce((sum, row) => sum + row.nominalDps, 0) * (1 + hullAura) } : {}),
         squadHp, nominalDps: specs.reduce((sum, row) => sum + row.nominalDps, 0), target, targetName: ctx.anomalies.get(target)!.name,
         trials: seeds, wins: wins.length, winPercent: wins.length / seeds * 100,
         meanWinSeconds: mean(wins.map(result => result.durationSeconds)), meanHpLeftPct: mean(results.map(result => result.hpLeftPct)),
@@ -293,11 +437,28 @@ const report = { assumptions: {
   commonKit: ['mod-prop-2', 'mod-shield-kin-2', 'mod-armor-plate-2'],
   fitting: '先固定通用防御，再填合法高槽；spare-slots模板用余中低槽和CPU加护盾扩展/动能稳定器，最后余CPU及原生机舱装侦察无人机；不装插件、专属件或扩容件，不是优化配装',
   battle: '所有方案使用同一多舰引擎，单舰同样走此入口；无普通遭遇结构自动撤退，仅比较战斗至胜负/时限，不含任务奖励/返航',
-  limits: '固定模板与6张常驻卡，不代表舰种全部潜力或最新远行星号数值；未按拟议指挥点实际限制生产入口',
+  limits: `固定模板与${targets.length}张常驻卡，不代表舰种全部潜力或最新远行星号数值；未按拟议指挥点实际限制生产入口`,
   ...(roleMode ? { mode: 'roles', baseAnchorsForDiscussion: { frigate: 10, destroyer: 15, cruiser: 20, battleship: 30 },
     roleFits: 'family模板按本舰最高武器族加成选武器；carrier用导控/中继/出击加速与原生机舱，repair模板装通用维修件',
     supportAB: '相同锤头鲨主战队与辅助船/配装/种子，仅在隔离上下文关闭该辅助船的船体光环/射程压制/队友维修，保持其他字段不动；不是移除舰船，也不代表按等成本交换已平衡',
   } : {}),
-}, hulls, hullMedians, fitted, battles, ...(roleMode ? { supportBattles } : {}) }
+  ...(budgetMode ? { mode: 'budgets', pricesFrom: 'docs/design/combat-command-budget-20261030.md:逐船成本第一轮候选',
+    candidateCosts: Object.fromEntries(budgetCosts), plans: budgetPlans,
+    budgetLimits: '预算只是候选分组，不改生产门槛；余量不虚填舰船。2种技能档，9张卡；主控居首，战术取主控模板，不宣称各队最优距离。受损组为合成甲35%/结构70%，护盾满，不是连续作战模拟。',
+    nominalDps: 'nominalDps为装配规格、未加队伍光环；nominalDpsWithHullAura另乘正式fleetDamageAuraOf，仍非实战命中后DPS。',
+  } : {}),
+}, hulls, hullMedians, fitted, battles, ...(roleMode ? { supportBattles } : {}), ...(budgetMode ? { capacity: capacityReadings() } : {}) }
+if (budgetMode) {
+  assert.equal(battles.length, budgetPlans.length * 2 * targets.length)
+  assert.equal(fitted.length, budgetPlans.length * 2)
+  for (const cell of battles) {
+    assert.equal(cell.results.length, seeds)
+    assert.equal(new Set(cell.results.map(row => row.seed)).size, seeds)
+    assert.equal(cell.wins, cell.results.filter(row => row.won).length)
+    assert(cell.cost! <= cell.budget!)
+    assert(cell.results.every(row => Number.isFinite(row.hpLeftPct) && row.alive <= cell.defs!.length))
+  }
+}
+if (budgetMode) writeFileSync(resolve(out, 'fits.json'), JSON.stringify({ fitted }, null, 2), 'utf8')
 writeFileSync(resolve(out, 'report.json'), JSON.stringify(report, null, 2), 'utf8')
 console.log(JSON.stringify({ ok: true, trials: (battles.length + supportBattles.length) * seeds, cells: battles.length, supportCells: supportBattles.length, out }))
