@@ -1751,7 +1751,7 @@ for (const m of MODULES) {
 
   /* ── 入侵声望前提契约（2026-10-30船长确认提高门槛）──
    *
-   * 协会累计声望 ≥ 80 · 只在开新场时检查 · 自然场不足静默不开 · 调试豁免。
+   * 协会累计声望 ≥ 60 · 只在开新场时检查 · 自然场不足静默不开 · 调试豁免。
    *
    * 专项覆盖真实边界，本契约另核查门槛、判据接线和调试分支位置，防止入口旁路。
    */
@@ -1761,8 +1761,8 @@ for (const m of MODULES) {
       + readSrc('packages/core/src/invasion/event/occupation.ts') + '\n'
       + readSrc('packages/core/src/invasion/event/lifecycle.ts')
     check(
-      /export const WEEKEND_MIN_STANDING = 80/.test(weSrc),
-      `入侵声望前提契约：${wePath} 必须定义 \`WEEKEND_MIN_STANDING = 80\``,
+      /export const WEEKEND_MIN_STANDING = 60/.test(weSrc),
+      `入侵声望前提契约：${wePath} 必须定义 \`WEEKEND_MIN_STANDING = 60\``,
     )
     const fn = weSrc.slice(weSrc.indexOf('export function ensureWeekendEvent'))
     check(
@@ -1794,7 +1794,7 @@ for (const m of MODULES) {
     )
     check(readSrc('packages/core/src/consumables.ts').includes('if (!weekendInvasionAllowedFor(state))'),
       '发射器使用必须复用入侵累计声望判据')
-    console.log('· 入侵声望前提契约：累计声望 ≥ 80，自然排期/发射器共用，调试豁免')
+    console.log('· 入侵声望前提契约：累计声望 ≥ 60，自然排期/发射器共用，调试豁免')
   }
 
   /* ── 入侵标记悬停可达契约（2026-09-25 船长令「② 修」）──

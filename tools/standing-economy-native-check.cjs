@@ -1,5 +1,5 @@
 /** 入侵/声望商店验收：构建后node tools/standing-economy-native-check.cjs。
- * 独立合成79/80声望档、隐藏Electron、双布局桌面/模拟手机，检查参数、确认和真实扣款。
+ * 独立合成59/60声望档、隐藏Electron、双布局桌面/模拟手机，检查参数、确认和真实扣款。
  * WHALE_ELECTRON_EXE可借用本机运行时；输出门槛档/截图/读数至_ui-artifacts，不读个人档。
  */
 const assert = require('node:assert/strict')
@@ -18,7 +18,7 @@ async function parent() {
   const { ANNOUNCEMENTS } = require('../packages/data/src/announcements.ts')
   const ctx = buildSimContext(), reports = []
   await fs.mkdir(OUT, { recursive: true })
-  for (const earned of [79, 80]) {
+  for (const earned of [59, 60]) {
     const now = Date.now()
     const state = core.createInitialState({ nowWallMs: now, seed: 30 })
     state.modeChosen = true
@@ -114,7 +114,7 @@ async function child() {
     await page.tap('[data-standing-check="item"]')
     await page.wait('!!document.querySelector(".app-itempick-name")')
     const spec = await page.js(`document.querySelector('.app-itempick-name').closest('.app-fit-modal').innerText`)
-    assert.match(spec, /声望\s*80/)
+    assert.match(spec, /声望\s*60/)
     await tapFixed('.app-fit-modal-head button')
     await nav('点击 出港')
     await page.text('.page-stack > .app-subtabs', '星图·远征')
@@ -123,10 +123,10 @@ async function child() {
     await page.tap('[data-standing-check="galaxy"]')
     await page.wait('!!document.querySelector(".app-ga-beacon .is-warn")')
     const gate = await page.js(`(()=>{const el=document.querySelector('.app-ga-beacon .is-warn');return {disabled:el.getAttribute('aria-disabled'),title:el.getAttribute('title'),html:el.outerHTML}})()`)
-    assert.equal(gate.disabled === 'true', earned < 80)
-    if (earned < 80) assert.match(gate.title ?? gate.html, /80.*79/)
+    assert.equal(gate.disabled === 'true', earned < 60)
+    if (earned < 60) assert.match(gate.title ?? gate.html, /60.*59/)
     // 达标时走到二次确认，取消以便后续商店检查保持原库存。
-    if (earned >= 80) {
+    if (earned >= 60) {
       await tapFixed('.app-ga-beacon .is-warn')
       await page.wait('!!document.querySelector(".app-ga-beacon .is-danger")')
       await tapFixed('.app-ga-beacon button:not(.is-danger)')
@@ -138,13 +138,18 @@ async function child() {
     const prices = await page.js(`Array.from(document.querySelectorAll('.app-shelf-card .app-chip.is-exotic'),e=>Number(e.textContent.trim()))`)
     assert.equal(prices[0], 60)
     assert(prices.slice(1).every(price => price === 20))
-    await page.tap('.app-shelf-card:first-child button')
-    const boxConfirm = await page.js(`document.querySelector('.app-mkt-confirm-note').innerText`)
-    assert.match(boxConfirm, /60/)
-    assert.match(boxConfirm, new RegExp(String(earned - 60)))
-    await tapFixed('.app-mkt-confirm-btns button:not(.is-primary)')
+    let boxConfirm = null, bpConfirm = null
+    if (earned >= 60) {
+      await page.tap('.app-shelf-card:first-child button')
+      boxConfirm = await page.js(`document.querySelector('.app-mkt-confirm-note').innerText`)
+      assert.match(boxConfirm, /60/)
+      assert.match(boxConfirm, new RegExp(String(earned - 60)))
+      await tapFixed('.app-mkt-confirm-btns button:not(.is-primary)')
+    } else {
+      assert.equal(await page.js(`document.querySelector('.app-shelf-card:first-child button').disabled`), true)
+    }
     await page.tap('.app-shelf-card:nth-child(2) button')
-    const bpConfirm = await page.js(`document.querySelector('.app-mkt-confirm-note').innerText`)
+    bpConfirm = await page.js(`document.querySelector('.app-mkt-confirm-note').innerText`)
     assert.match(bpConfirm, /20/)
     assert.match(bpConfirm, new RegExp(String(earned - 20)))
     await tapFixed('.app-mkt-confirm-btns button:not(.is-primary)')
@@ -154,7 +159,7 @@ async function child() {
     assert(!image.isEmpty())
     await fs.writeFile(path.join(OUT, `${earned}-${layout}-${mobile ? 'mobile' : 'desktop'}.png`), image.toPNG())
     rows.push({ mobile, gate, prices, boxConfirm, bpConfirm, geometry })
-    if (mobile) {
+    if (mobile && earned >= 60) {
       await page.tap('.app-shelf-card:first-child button')
       await tapFixed('.app-mkt-confirm-btns .is-primary')
       await page.wait(`document.querySelector('.app-shelf-card:first-child button')?.disabled===true`)

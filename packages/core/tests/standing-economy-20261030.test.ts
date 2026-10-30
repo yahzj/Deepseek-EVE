@@ -23,7 +23,7 @@ const ctx = buildSimContext()
 const now = new Date(2026, 9, 30, 20).getTime()
 const target = 'galaxy-vault'
 
-function ready(earned = 80, spendable = 0) {
+function ready(earned = 60, spendable = 0) {
   const state = createInitialState({ nowWallMs: now, seed: 30 })
   state.exploredGalaxies = [...ctx.galaxies.keys()]
   setStanding(state, 'dsi', earned)
@@ -38,14 +38,14 @@ function event(): WeekendEventState {
 }
 
 describe('声望经济 · 入侵累计门槛', () => {
-  it('本批数值80/30/10/20/60；信号空间扫描仍为40', () => {
+  it('本批数值60/30/10/20/60；信号空间扫描仍为40', () => {
     expect([WEEKEND_MIN_STANDING, WEEKEND_STANDING_MAX, WEEKEND_STANDING_BEACON,
-      PLUG_BLUEPRINT_COST, UNIVERSAL_BLACKBOX_COST]).toEqual([80, 30, 10, 20, 60])
+      PLUG_BLUEPRINT_COST, UNIVERSAL_BLACKBOX_COST]).toEqual([60, 30, 10, 20, 60])
     expect(WORMHOLE_SCAN_UNLOCK_STANDING).toBe(40)
   })
 
-  it('自然入侵79不开、80即开，余额为零也能开；不足不取消已有局面', () => {
-    const low = ready(79)
+  it('自然入侵59不开、60即开，余额为零也能开；不足不取消已有局面', () => {
+    const low = ready(59)
     expect(ensureWeekendEvent(low, ctx, now)).toBe(false)
     expect(low.weekendEvent).toBeUndefined()
     const met = ready()
@@ -59,17 +59,17 @@ describe('声望经济 · 入侵累计门槛', () => {
   })
 
   for (const { itemId, familyId } of INVASION_BEACON_TYPES) {
-    it.each([undefined, target])(`${itemId}，目标%s：79拒绝且旧账/库存/随机状态不动，80余额零成功`, galaxyId => {
-      const low = ready(79)
+    it.each([undefined, target])(`${itemId}，目标%s：59拒绝且旧账/库存/随机状态不动，60余额零成功`, galaxyId => {
+      const low = ready(59)
       low.weekendEvent = { ...event(), endedAtWallMs: now }
       const before = structuredClone(low)
       expect(useInvasionBeacon(low, ctx, { itemId, galaxyId })).toMatchObject({ ok: false,
-        errorId: 'core.market.039', errorParams: { p1: 80, p2: 79 } })
+        errorId: 'core.market.039', errorParams: { p1: 60, p2: 59 } })
       expect(low).toEqual(before)
       const met = ready()
       expect(useInvasionBeacon(met, ctx, { itemId, galaxyId }).ok).toBe(true)
       expect(countWare(met, itemId)).toBe(0)
-      expect(standingOf(met, 'dsi')).toBe(80)
+      expect(standingOf(met, 'dsi')).toBe(60)
       expect(spendableStandingOf(met, 'dsi')).toBe(0)
       expect(met.weekendEvent?.beaconLit).toBe(true)
       if (galaxyId) expect(met.weekendEvent?.coreId).toBe(galaxyId)
@@ -87,16 +87,16 @@ describe('声望经济 · 入侵累计门槛', () => {
   it('高安仍需可支配10：9拒绝、10成功，结束奖10使余额复原而累计增10', () => {
     const galaxyId = [...ctx.galaxies.keys()].find(id => id !== HOME_GALAXY_ID && securityZoneOf(ctx, id) === '高安')!
     expect(galaxyId).toBeTruthy()
-    const state = ready(80, 9)
+    const state = ready(60, 9)
     const before = structuredClone(state)
     expect(useInvasionBeacon(state, ctx, { galaxyId })).toMatchObject({ ok: false, errorId: 'core.consumable.011' })
     expect(state).toEqual(before)
     state.standings.dsi = HIGH_SEC_PENALTY
     expect(useInvasionBeacon(state, ctx, { galaxyId }).ok).toBe(true)
-    expect([spendableStandingOf(state, 'dsi'), standingOf(state, 'dsi')]).toEqual([0, 80])
+    expect([spendableStandingOf(state, 'dsi'), standingOf(state, 'dsi')]).toEqual([0, 60])
     state.weekendEvent!.endedAtWallMs = now
     expect(weekendSettleAndGrant(state, ctx, now)).not.toBeNull()
-    expect([spendableStandingOf(state, 'dsi'), standingOf(state, 'dsi')]).toEqual([10, 90])
+    expect([spendableStandingOf(state, 'dsi'), standingOf(state, 'dsi')]).toEqual([10, 70])
   })
 })
 
@@ -111,7 +111,7 @@ describe('声望经济 · 发奖与兑换', () => {
     const reward = beaconLit ? 10 : 30
     state.weekendEvent = { ...event(), beaconLit, endedAtWallMs: now }
     expect(weekendSettleAndGrant(state, ctx, now)).not.toBeNull()
-    expect([spendableStandingOf(state, 'dsi'), standingOf(state, 'dsi')]).toEqual([reward, 80 + reward])
+    expect([spendableStandingOf(state, 'dsi'), standingOf(state, 'dsi')]).toEqual([reward, 60 + reward])
     expect(state.weekendLastResult?.standing).toBe(reward)
     expect(weekendSettleCommsOf(state, ctx, state.weekendLastResult!).params?.p4).toBe(String(reward))
     const before = structuredClone(state)
@@ -126,11 +126,11 @@ describe('声望经济 · 发奖与兑换', () => {
     const old = loadSaveFile(serializeSaveFile(back, now)).state
     expect(weekendSettleAndGrant(old, ctx, now + 3)).toBeNull()
     expect(old.weekendLastResult?.standing).toBe(15)
-    expect(standingOf(old, 'dsi')).toBe(80 + reward)
+    expect(standingOf(old, 'dsi')).toBe(60 + reward)
   })
 
   it('插件图纸19拒绝、20兑换即学会；展示价与命令同源，累计与既有物品保留', () => {
-    const state = ready(80, 19)
+    const state = ready(60, 19)
     const row = plugExchangeRowsOf(state, ctx).find(row => !row.learned)!
     expect(row).toMatchObject({ cost: 20, affordable: false })
     const before = structuredClone(state)
@@ -142,7 +142,7 @@ describe('声望经济 · 发奖与兑换', () => {
     expect(exchangePlugBlueprint(state, ctx, row.moduleId).ok).toBe(true)
     expect(state.learnedRecipes).toContain(row.blueprintId)
     expect(state.warehouse).toEqual(inventory)
-    expect([spendableStandingOf(state, 'dsi'), standingOf(state, 'dsi')]).toEqual([0, 80])
+    expect([spendableStandingOf(state, 'dsi'), standingOf(state, 'dsi')]).toEqual([0, 60])
     const learned = structuredClone(state)
     expect(exchangePlugBlueprint(state, ctx, row.moduleId).ok).toBe(false)
     expect(state).toEqual(learned)

@@ -17,7 +17,7 @@ export const WEEKEND_CORE_THREAT = 120
  * - ✅ **2026-09-25 船长已解除"仅调试模式可见"** ⇒ 这段**现在真的走得到**了：正常模式（非调试档）
  *   照周排期开局，本常量从此生效（开局那一刻判协会声望）。
  */
-export const WEEKEND_MIN_STANDING = 80
+export const WEEKEND_MIN_STANDING = 60
 
 /**
  * **单场入侵的声望上限**（**2026-09-26 船长令**：「**玩家完成入侵后根据贡献获得一定量声望**」）。
