@@ -18,9 +18,8 @@ import { manualSlotOf } from '../src/activityGate'
 
 const ctx = buildSimContext()
 const root = new URL('../../../', import.meta.url)
-const path = 'apps/desktop/src/renderer/src/pages/IndustryPage.tsx'
-const text = readFileSync(new URL(path, root), 'utf8')
-const source = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+const path = 'apps/desktop/src/renderer/src/features/industry/'
+const text = readFileSync(new URL(path + 'IndustryPage.tsx', root), 'utf8')
 const tr = (id: string) => l10nEntryText(L10N[id]!, 'zh')
 
 describe('货柜拆解会话账本与实际结算', () => {
@@ -161,8 +160,9 @@ const nodes = (value: unknown): UiNode[] => Array.isArray(value) ? value.flatMap
   : value && typeof value === 'object' && 'children' in value ? [value as UiNode, ...(value as UiNode).children.flatMap(nodes)] : []
 
 function component(name: string, bindings: Record<string, unknown>) {
+  const source = ts.createSourceFile(name + '.tsx', readFileSync(new URL(path + name + '.tsx', root), 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
   const fn = source.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === name)!
-  const scope = { React: jsx, tr, fmtInt: (n: number) => n.toLocaleString('zh-CN'), ...bindings, result: undefined as any }
+  const scope = { exports: {}, React: jsx, tr, fmtInt: (n: number) => n.toLocaleString('zh-CN'), ...bindings, result: undefined as any }
   runInNewContext(ts.transpileModule(fn.getText(source) + `\nglobalThis.result = ${name}`, {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React },
   }).outputText, scope)

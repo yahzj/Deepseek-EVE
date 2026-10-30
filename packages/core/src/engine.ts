@@ -22,8 +22,12 @@ import { shipActuallyDocked } from './shipActionPolicy'
 import { mainActivityOf, manualSlotOf } from './activityGate'
 import type { StationAction } from './stationActivityPending'
 import { reconcilePilotShip } from './shipyard'
-import { advanceManufacturing, startManufacturing } from './manufacturing'
-import { advanceRefining, startRefineRun, startRecycleRun, startUnboxRun, type UnboxResultRow } from './industry'
+import { advanceManufacturing } from './industry/manufacturing/advance'
+import { startManufacturing } from './industry/manufacturing/start'
+import { advanceRefining, type UnboxResultRow } from './industry/refining/advance'
+import { startRefineRun } from './industry/refining/start'
+import { startRecycleRun } from './industry/refining/recycle'
+import { startUnboxRun } from './industry/refining/unbox'
 import { advanceLab, startLabRun } from './lab'
 import { advancePlanetary, reconcilePlanetHome } from './planetRuntime'
 import { advanceExpedition } from './expedition'
@@ -44,7 +48,7 @@ import { advanceSalvageOp, retireSalvageShip } from './salvaging'
 import { advanceFindHumans, publishFindHumansWhenReady } from './onboarding'
 import { advanceComms } from './comms'
 import {  advanceFirstChains, claimableFirstTasks, peakFirst } from './firstTasks'
-import { advanceAchievements } from './achievements'
+import { advanceAchievements } from './achievements/rules'
 import { advanceMatterOreDrip, matterTechNodes } from './matterTech'
 import { advanceSideTasks } from './sideTasks'
 import { weekendTickBoss } from './weekendEvent'
@@ -451,7 +455,7 @@ function reconcileMilestoneStats(state: GameState, ctx: SimContext): void {
 }
 
 /** 技能训练队列（2026-10-02 批次 4n 拆到 skillQueue.ts；本文件借回 + 再导出） */
-import { advanceSkillQueue } from './skillQueue'
+import { advanceSkillQueue } from './skills/queue'
 export {
   HIDDEN_SKILL_IDS,
   PREREQ_MIN_LEVEL,
@@ -466,6 +470,6 @@ export {
   skillCancelImpact,
   skillLockMissing,
   skillLockMissingAtQueue,
-} from './skillQueue'
-export type { HeadTrainingInfo, QueueMovePlan, QueueView, SkillPrereqGap } from './skillQueue'
+} from './skills/queue'
+export type { HeadTrainingInfo, QueueMovePlan, QueueView, SkillPrereqGap } from './skills/queue'
 

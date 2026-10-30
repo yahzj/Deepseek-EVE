@@ -80,7 +80,8 @@ function shelf(locale: Locale, navigation = true) {
   state.learnedRecipes = blueprints.filter((bp, i) => i % 2 === 0 && !bp.singleUse).map(bp => bp.id)
   const jumps: string[] = [], crafts: string[] = [], sales: string[] = []
   const ui = renderer(locale)
-  evaluate(codeOf('apps/desktop/src/renderer/src/panels/Industry.tsx', ['bpGoodKey', 'BlueprintShelfPanel']), ui.bindings)
+  evaluate(codeOf('apps/desktop/src/renderer/src/features/industry/blueprintValue.tsx', ['bpGoodKey']), ui.bindings)
+  evaluate(codeOf('apps/desktop/src/renderer/src/features/industry/BlueprintShelfPanel.tsx', ['BlueprintShelfPanel']), ui.bindings)
   const component = (ui.bindings.exports as { BlueprintShelfPanel: (props: object) => unknown }).BlueprintShelfPanel
   const engine = {
     ctx, state, allBlueprints: [...ctx.blueprints.values()], allShipBlueprints: [...ctx.shipBlueprints.values()],
@@ -151,7 +152,7 @@ describe('蓝图书架市场入口', () => {
   })
 
   it('工业页透传到App现有市场聚焦桥，不调用出售命令', () => {
-    const page = source('apps/desktop/src/renderer/src/pages/IndustryPage.tsx')
+    const page = source('apps/desktop/src/renderer/src/features/industry/IndustryPage.tsx')
     let passed: ts.JsxAttribute | undefined
     const findShelf = (node: ts.Node): void => {
       if (ts.isJsxSelfClosingElement(node) && node.tagName.getText(page) === 'BlueprintShelfPanel') {

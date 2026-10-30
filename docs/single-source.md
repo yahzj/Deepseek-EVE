@@ -28,7 +28,7 @@
 
 信号发射器：`invasionBeaconTypeOf`（`consumables.ts`）认物品与固定势力；`availableInvasionBeacons`从同表筛选有库存选项。使用命令、物品按钮与星图下拉共用，不在页面另造势力映射；护栏为专属发射器专项与F2/F3。
 
-目标舰操作：`shipActuallyDocked` / `shipOperationBlockReason`（`shipActionPolicy.ts`）纯状态派生真实停靠与配置许可；远程管理不读主控忙态，船上物资只在目标舰停靠时可取。`stationActivityStartBlockReason`（`location.ts`）只读预检现有切换再检查基地；页面不自算野外置灰。工业原料由`industryAvailable`（`industry.ts`）提供同源可取量。护栏：停靠统一专项、失败资源守恒与页面同源检查，F2/F3/F9。
+目标舰操作：`shipActuallyDocked` / `shipOperationBlockReason`（`shipActionPolicy.ts`）纯状态派生真实停靠与配置许可；远程管理不读主控忙态，船上物资只在目标舰停靠时可取。`stationActivityStartBlockReason`（`location.ts`）只读预检现有切换再检查基地；页面不自算野外置灰。工业原料由`industryAvailable`（`industry/refining/params.ts`）提供同源可取量。护栏：停靠统一专项、失败资源守恒与页面同源检查，F2/F3/F9。
 
 玩家手动卸货：`unloadShipCargo`（`inventory.ts`）检查目标舰货仓许可后逐项分流入库；`unloadCargoToWarehouse`只转发当前舰。`unloadCargoOfShipToWarehouse`保留为自动到港和其他已校验内部结算，界面不直接调用。
 
@@ -67,7 +67,7 @@
 |---|---|---|
 | 战前各舰实际预载与补给缺口 | `battleAmmoPreloadPlan()` · `battleAmmoPreflight.ts`，沿用实际选档/装弹顺序 | 预警与实际开战比对；首次不改状态、二次确认回归；`arch:guard` F2/F3 |
 | 按卡距离与战前射程变化确认 | `battleCardRangeOf()` / `playerFleetMaxRangeOf()` / `withBattleRangeCheck()` / `pendingBattleRangeView()` / `sameShipRoster()` · `battleRangeMemory.ts` | 实际卡、全队有效射程、参战名单差异说明、待办落盘、配置重验及自动探索隔离专项；F2/F3 |
-| 技能工作量、倍率切换与旧进度兼容 | `trainingLevelProgress()` / `normalizeTrainingProgress()` · `training.ts`；技能时点推进在 `skillQueue.ts` | 技能加速/离线专项、存档往返；`arch:guard` F2/F3 |
+| 技能工作量、倍率切换与旧进度兼容 | `trainingLevelProgress()` / `normalizeTrainingProgress()` · `skills/training.ts`；技能时点推进在`skills/queue.ts` | 技能加速/离线专项、存档往返；`arch:guard` F2/F3 |
 | 武器齐射整数扣弹与预付余额 | `battleWeaponAmmoCost()` · `combatAmmo.ts` | 半发不跨舰／组／弹种、读档不断额度、整数弹库存守恒 |
 | 首次无人机出击间隔 | `droneLaunchGapMsOf()` · `droneLaunch.ts` | 每舰500毫秒、掠袭机库逐件缩短、复活重排、旧档续战；队列专项 |
 | 船插安装列表与不叠加效果投影 | `plugModulesOf()` / `plugEffectsOf()` · `plugs.ts` | 安装件占格/回收与实际效果分离，重复安装不叠加仍占格；五族专项 |
@@ -112,11 +112,11 @@
 | 聚焦阵列波内射程/防空加算修正率 | `coronaFocusBonusOf()` · `coronaFocus.ts` | `corona-balance-20261003.test.ts`：时点/换波/加算抵消/真实近防入口 |
 | 聚焦阵列全队射程与来源存活 | `coronaFleetRangeBonusOf()` · `coronaFocus.ts` | `corona-reinforcement-20261008.test.ts`：同进度/新支援/死亡失效/多源取最高 |
 | 固定支援舰真实型号标识 | `supportFoeModelTagOf()` · `foeCard.ts` | `corona-reinforcement-20261008.test.ts`：型号/空槽分离、名称/舰影/规格同源 |
-| 技能取消的"连带失效"基线（只报/只删因本次取消才失效的项） | `preexistingUnmet()` · `skillQueue.ts` | core 用例 `skill-cancel-baseline-20260926.test.ts` |
+| 技能取消的"连带失效"基线（只报/只删因本次取消才失效的项） | `preexistingUnmet()` · `skills/queue.ts` | core 用例 `skill-cancel-baseline-20260926.test.ts` |
 | 存档清洗白名单（新增随档字段必须"写入点 ＋ 白名单"两处落笔） | `normalizeState()` · `save.ts` | `packages/core/tests/save.test.ts` 类型穷尽 ＋ `save:roundtrip-audit` |
 | 伤害类型配色（动能/爆破/能量 同族同色） | 伤害配色契约（token 单点） | `npm run ui:theme-check` 的 `dmg-color-check` |
 | 装备归属档（高/中/低/**舰船插件**四档） | `rackDimKeyOf()`（渲染层）＋ core `rackOf` | `content:check` 归属档契约 |
-| 回收/打捞产出与价值读数 | core `industry.ts` / `salvaging.ts` 的产出单点 | `npm run salvage:econ` · `recycle:compare` |
+| 回收/打捞产出与价值读数 | core `industry/refining/params.ts` / `salvaging.ts` 的产出单点 | `npm run salvage:econ` · `recycle:compare` |
 | 主控打捞真实返航时长（引擎/活动栏/星图同源） | `salvageReturnMs()` · `salvaging.ts` | `fuel-return-paths-20261022.test.ts`：半仓燃料返航、真实星图函数与活动栏50% |
 | 采矿打捞停止/切换的新返航点火及已走航段接续 | `workReturnLeg()` · `trips.ts` | `fuel-return-paths-20261022.test.ts`：三入口、倍率/进度、读档、首拍换船及一次扣料 |
 | 矿带每小时产出与行情产值 | `beltYieldRows()` / `beltValuePerHour()` · `mining.ts`，排序与卡面共用 | `belt-sort-value-20260930.test.ts` · `arch:guard` F2/F3 |
@@ -190,6 +190,8 @@ _条目增删随代码走；规则变更仍按开发约定的工作文档与归�
 
 | 符号 | 唯一实现 |
 |---|---|
+| `achievementReached`、`chainProgress`、`advanceAchievements`、`achievementOverview`、`achievementCount` | `packages/core/src/achievements/rules.ts`；原`achievements.ts`仅具名转导出，成就/铁人专项验证 |
+| `ACHIEVEMENTS`、`achievementOf`、`achievementsOfChain` | `packages/data/src/achievements/catalog.ts`；数据、上下文与成就页面共用原目录顺序 |
 | `fittingRangeStats` | `packages/core/src/combat/fittingRange.ts` |
 | `acidResistsOf` | `packages/core/src/combat/alienEquipment.ts` |
 | `foeAcidRowsOf` | `packages/core/src/combat/alienEquipment.ts` |

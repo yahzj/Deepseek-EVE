@@ -12,7 +12,7 @@
  * 改完**说一声**，我按 id 回写 `packages/data/src/skillTreePositions.ts`（没改的节点不写 ⇒ 继续走算法自动排），
  * 再跑 `npm run skilltree:layout-check`（不越界 / 同行不重叠 / 子在前置正下方）把冲突点出来。
  *
- * ⚠ **坐标来源 = 页面用的那同一份算法**（`apps/desktop/src/renderer/src/ui/skillTreeLayout.ts`）＋ 现有覆盖表
+ * ⚠ **坐标来源 = 页面用的那同一份算法**（`apps/desktop/src/renderer/src/features/skills/layout.ts`）＋ 现有覆盖表
  *   ⇒ 表里的数就是**你现在页面上看到的位置**，不是另算一套。
  *
  * **版本自检**：游戏版本 v0.1.0 · 存档结构 **v31** · 最后核对 2026-09-22 · 最后跑过 2026-09-22
@@ -27,7 +27,7 @@ import {
   ORIGIN_X,
   ORIGIN_Y,
   layoutBook,
-} from '../apps/desktop/src/renderer/src/ui/skillTreeLayout'
+} from '../apps/desktop/src/renderer/src/features/skills/layout'
 
 const outDir = process.argv[2] ?? 'content-csv'
 mkdirSync(outDir, { recursive: true })
@@ -134,11 +134,11 @@ const helpSheet: Sheet = {
   name: '说明',
   head: ['项', '内容'],
   data: [
-    ['本表是什么', '技能页（导航「技能」= 技能科技树）上每一格节点的坐标——82 个技能逐行列出，坐标与页面同源（同一份排布算法）。'],
+    ['本表是什么', `技能页（导航「技能」= 技能科技树）上每一格节点的坐标——${SKILLS.length} 个技能逐行列出，坐标与页面同源（同一份排布算法）。`],
     [
       '**哪些列可以改**',
-      '**可改 ①（写进 `packages/data/src/skills.ts`）：名称 · rank · 前置 · 技能书 · 大类**；' +
-        '**可改 ②（写进坐标覆盖表 `packages/data/src/skillTreePositions.ts`）：x / y**。' +
+      '**可改 ①（按 id 写进 `packages/data/src/skills/` 内对应定义文件）：名称 · rank · 前置 · 技能书 · 大类**；' +
+        '**可改 ②（写进坐标覆盖表 `packages/data/src/skills/positions.ts`）：x / y**。' +
         '其余列（序号 / 技能 id / 行 / 列 / 链 / 备注）是**读数**，改了不起作用。' +
         '⚠ **上一次就是「前置」列被当成读数、漏采用了一整轮**（2026-09-22）⇒ 现在表头都标了"可改"。',
     ],

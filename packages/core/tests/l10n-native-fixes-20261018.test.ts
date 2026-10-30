@@ -73,7 +73,7 @@ describe('设置英文实机遗漏回归', () => {
       'pages/MapPage.tsx': ['MAP_TABS', 'BELT_SORT_LABEL', 'WRECK_SORT_LABEL'],
       'pages/ShipPage.tsx': ['SHIP_TABS'],
       'pages/FitPage.tsx': ['RACK_FAMILIES', 'HP_KEY_LABEL', 'TYPE_SN'],
-      'pages/IndustryPage.tsx': ['FURNACE_TABS', 'ORE_KIND_LABEL'],
+      'features/industry/classicFilters.tsx': ['FURNACE_TABS', 'ORE_KIND_LABEL'],
       'panels/StarMap.tsx': ['LABEL_MODES'],
       'panels/Expedition.tsx': ['TASK_TABS', 'TASK_SORT_LABEL'],
       'panels/appSettings.tsx': ['KIND_LABEL', 'KIND_DESC'],

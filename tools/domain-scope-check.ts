@@ -81,11 +81,11 @@ const DOMAINS: readonly Domain[] = [
   },
   {
     name: '工业（炉/组装机/造船/实验室）',
-    globs: ['packages/core/src/industry.ts', 'packages/core/src/manufacturing.ts', 'packages/core/src/probeManufacturing.ts', 'packages/core/src/lab.ts', 'packages/core/src/plugs.ts', 'packages/core/src/scrap.ts', 'packages/core/src/consumables.ts', 'packages/core/src/blackbox.ts', 'packages/data/src/labRecipes.ts', 'packages/data/src/blueprints.ts', 'packages/data/src/plugs.ts', 'apps/desktop/src/renderer/src/pages/IndustryPage*', 'apps/desktop/src/renderer/src/pages/IndustryHudPage*', 'apps/desktop/src/renderer/src/panels/Industry.tsx', 'apps/desktop/src/renderer/src/panels/PlugExchange.tsx', 'apps/desktop/src/renderer/src/ui/fragmentRedeem.tsx', 'apps/desktop/src/renderer/src/ui/hud.tsx', 'apps/desktop/src/renderer/src/ui/aiSlots.tsx', 'apps/desktop/src/renderer/src/ui/aiWorkFx.tsx', 'apps/desktop/src/renderer/src/ui/aiCoreSelect.tsx', 'apps/desktop/src/renderer/src/ui/aiProgress.tsx', 'apps/desktop/src/renderer/src/ui/useLoopGoalDraft.ts'],
+    globs: ['packages/core/src/industry/**', 'apps/desktop/src/renderer/src/features/industry/**', 'packages/core/src/industry.ts', 'packages/core/src/manufacturing.ts', 'packages/core/src/probeManufacturing.ts', 'packages/core/src/lab.ts', 'packages/core/src/plugs.ts', 'packages/core/src/scrap.ts', 'packages/core/src/consumables.ts', 'packages/core/src/blackbox.ts', 'packages/data/src/labRecipes.ts', 'packages/data/src/blueprints.ts', 'packages/data/src/plugs.ts', 'apps/desktop/src/renderer/src/pages/IndustryPage*', 'apps/desktop/src/renderer/src/pages/IndustryHudPage*', 'apps/desktop/src/renderer/src/panels/Industry.tsx', 'apps/desktop/src/renderer/src/panels/PlugExchange.tsx', 'apps/desktop/src/renderer/src/ui/fragmentRedeem.tsx', 'apps/desktop/src/renderer/src/ui/hud.tsx', 'apps/desktop/src/renderer/src/ui/aiSlots.tsx', 'apps/desktop/src/renderer/src/ui/aiWorkFx.tsx', 'apps/desktop/src/renderer/src/ui/aiCoreSelect.tsx', 'apps/desktop/src/renderer/src/ui/aiProgress.tsx', 'apps/desktop/src/renderer/src/ui/useLoopGoalDraft.ts'],
   },
   {
     name: '技能',
-    globs: ['packages/core/src/training.ts', 'packages/core/src/skillLicense.ts', 'packages/core/src/skillQueue.ts', 'packages/data/src/skills.ts', 'packages/data/src/skillTreePositions.ts', 'apps/desktop/src/renderer/src/pages/SkillsTreePage*', 'apps/desktop/src/renderer/src/pages/skillShared*', 'apps/desktop/src/renderer/src/ui/skillText.ts', 'apps/desktop/src/renderer/src/ui/skillTreeLayout.ts'],
+    globs: ['packages/core/src/skills/**', 'packages/data/src/skills/**', 'apps/desktop/src/renderer/src/features/skills/**', 'packages/core/src/training.ts', 'packages/core/src/skillLicense.ts', 'packages/core/src/skillQueue.ts', 'packages/data/src/skills.ts', 'packages/data/src/skillTreePositions.ts', 'apps/desktop/src/renderer/src/pages/SkillsTreePage*', 'apps/desktop/src/renderer/src/pages/skillShared*', 'apps/desktop/src/renderer/src/ui/skillText.ts', 'apps/desktop/src/renderer/src/ui/skillTreeLayout.ts'],
   },
   {
     name: '虫洞',
@@ -125,7 +125,7 @@ const DOMAINS: readonly Domain[] = [
   },
   {
     name: '成就',
-    globs: ['packages/core/src/achievements.ts', 'packages/data/src/achievements.ts', 'apps/desktop/src/renderer/src/pages/AchievementsPage*', 'apps/desktop/src/renderer/src/panels/Achievements.tsx'],
+    globs: ['packages/core/src/achievements.ts', 'packages/core/src/achievements/**', 'packages/data/src/achievements.ts', 'packages/data/src/achievements/**', 'apps/desktop/src/renderer/src/features/achievements/**', 'apps/desktop/src/renderer/src/pages/AchievementsPage*', 'apps/desktop/src/renderer/src/panels/Achievements.tsx'],
   },
   {
     name: 'AI 核心',
