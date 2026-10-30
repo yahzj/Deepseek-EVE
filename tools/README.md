@@ -1,5 +1,9 @@
 # 工具区台账（tools/）
 
+## 12舰实施前基线（2026-10-30）
+
+- `npx tsx tools/battle-twelve-baseline.ts`：独立合成1/4/12舰对等敌舰、机群开关和3种子，共18个30秒逐拍压力场景；正式装配/战斗入口，不读个人档。输出`tools/_ui-artifacts/battle-twelve-20261030/before.json`，包括Node推进耗时分位数和现行纯函数布局越界。12巡洋仅作压力夹具，不冒称合法预算编队；不代表原生窗口帧率、交互或已完成12舰功能。严格类型检查需同时包含`apps/desktop/src/renderer/src/env.d.ts`及DOM库。
+
 ## 指挥成本舰种对照（2026-10-30）
 
 - `npx tsx tools/command-budget-benchmark.ts [--seeds=12]`：从当前目录读取官方武装/装甲舰，通过正式装配入口建立合法模板，再以现有多舰引擎测单舰、2舰和4舰对照。报告写`tools/_ui-artifacts/command-budget-20261030/`，含逐种子胜负/时间/存活/弹药与全部配装。只建独立合成状态，不读个人档、不修改生产规则；不是最优配装、整库回归或精确总体胜率，假设与限制见报告及`docs/design/combat-command-budget-20261030.md`。
