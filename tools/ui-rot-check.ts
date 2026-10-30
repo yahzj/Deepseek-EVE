@@ -236,7 +236,7 @@ function main(): void {
   if (mktCssBreak === null) {
     errors.push('窄屏断点同源：`styles.css` 里找不到 `.app-mkt-split` 的单栏媒体查询（口径搬家或改名？）')
   } else {
-    const mktTsx = readFileSync(join(process.cwd(), 'apps', 'desktop', 'src', 'renderer', 'src', 'pages', 'MarketPage.tsx'), 'utf8')
+    const mktTsx = readFileSync(join(process.cwd(), 'apps', 'desktop', 'src', 'renderer', 'src', 'features', 'market', 'MarketPage.tsx'), 'utf8')
     const jsBreaks = [...mktTsx.matchAll(/matchMedia\(\s*'\(max-width:\s*(\d+)px\)'\s*\)/g)].map((m) => Number(m[1]))
     if (jsBreaks.length === 0) {
       errors.push('窄屏断点同源：`MarketPage.tsx` 里找不到 `matchMedia(\'(max-width: Npx)\')`（窄屏判定去哪了？）')

@@ -1,8 +1,8 @@
-import type { GameState } from './state'
-import type { AnomalyDef, SimContext } from './types'
-import { isLairCandidate, lairLevelOf, type LairTier } from './lairs'
-import { nextInt } from './rng'
-import { securityZoneOf, type SecurityZone } from './securityZone'
+import type { GameState } from '../state'
+import type { AnomalyDef, SimContext } from '../types'
+import { isLairCandidate, lairLevelOf, type LairTier } from '../lairs'
+import { nextInt } from '../rng'
+import { securityZoneOf, type SecurityZone } from '../securityZone'
 
 export const BOUNTY_ZONE_PLAN: ReadonlyArray<{ zone: SecurityZone; count: number }> = [
   { zone: '中安', count: 2 },

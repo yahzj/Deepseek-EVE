@@ -52,7 +52,7 @@ import { normalizeWeekendWreckRecord } from './weekendWreckLedger'
 import { cleanPlanetaryState } from './planetSave'
 import { normalizeTrainingProgress } from './training'
 import { cleanPendingStationActivity } from './stationActivityPending'
-import { PRICE_HISTORY_LIMIT } from './marketHistory'
+import { PRICE_HISTORY_LIMIT } from './market/constants'
 
 /** 存档文件格式标识（防止拿别的游戏的 JSON 硬读） */
 export const SAVE_FORMAT = 'whale-idle-save'

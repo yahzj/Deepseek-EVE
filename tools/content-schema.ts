@@ -355,7 +355,7 @@ export const TABLES: readonly TableSpec[] = [
   },
   {
     name: 'market',
-    files: ['packages/data/src/marketCatalog.ts'],
+    files: ['packages/data/src/market/bindings.ts'],
     idProp: 'key',
     cols: [
       col('key(=refId；与其它表id对应)', 'key', 'id'),

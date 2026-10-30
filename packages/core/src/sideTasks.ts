@@ -53,9 +53,9 @@ import { shortestTravelMinutes, travelLegMs, travelMinutesEff, warpSpeedAus } fr
 import { isAtHome, originGalaxyOf } from './location'
 import { factionBaseRewardIsk, isLairCandidate, lairNameOf, lairTaskRewardIsk } from './lairs'
 import type { LairTier } from './lairs'
-import { rollBountyBoard, bountyTaskStandingGain } from './bountyBoard'
+import { rollBountyBoard, bountyTaskStandingGain } from './expedition/bountyBoard'
 import { noteStandingEarned, DSI_FACTION_ID } from './standing'
-export { BOUNTY_ZONE_PLAN, BOUNTY_TASKS_PER_ROUND } from './bountyBoard'
+export { BOUNTY_ZONE_PLAN, BOUNTY_TASKS_PER_ROUND } from './expedition/bountyBoard'
 import type { AnomalyDef } from './types'
 // 安全分区（2026-10-02 拆到 securityZone.ts，破 hauling→sideTasks 边）；本文件借回使用
 import { securityZoneOf } from './securityZone'

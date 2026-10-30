@@ -133,7 +133,7 @@ describe('黑市开放一次性通讯', () => {
       expect(L10N[id]!.en).not.toMatch(/[\u3400-\u9fff]/)
       expect(L10N[id]!.en.length).toBeGreaterThan(0)
     }
-    const market = readFileSync(new URL('../../../apps/desktop/src/renderer/src/pages/MarketPage.tsx', import.meta.url), 'utf8')
+    const market = readFileSync(new URL('../../../apps/desktop/src/renderer/src/features/market/MarketPage.tsx', import.meta.url), 'utf8')
     expect(market).toContain('blackMarketUnlocked(state)')
     expect(market).toContain('engine.openBlackMarketAt()')
   })

@@ -77,7 +77,7 @@ const DOMAINS: readonly Domain[] = [
   },
   {
     name: '市场与经济',
-    globs: ['packages/core/src/market.ts', 'packages/core/src/marketHistory.ts', 'packages/core/src/marketLimitedSupply.ts', 'packages/core/src/money.ts', 'packages/data/src/marketCatalog.ts', 'apps/desktop/src/renderer/src/pages/MarketPage*', 'apps/desktop/src/renderer/src/ui/SellQtyModal.tsx', 'apps/desktop/src/renderer/src/ui/marketJump.ts', 'apps/desktop/src/renderer/src/ui/MoneyFit.tsx', 'apps/desktop/src/renderer/src/ui/yieldView.tsx'],
+    globs: ['packages/core/src/market/**', 'packages/data/src/market/**', 'apps/desktop/src/renderer/src/features/market/**', 'packages/core/src/market.ts', 'packages/core/src/marketLimitedSupply.ts', 'packages/core/src/money.ts', 'packages/data/src/marketCatalog.ts', 'apps/desktop/src/renderer/src/pages/MarketPage*', 'apps/desktop/src/renderer/src/ui/SellQtyModal.tsx', 'apps/desktop/src/renderer/src/ui/marketJump.ts', 'apps/desktop/src/renderer/src/ui/MoneyFit.tsx', 'apps/desktop/src/renderer/src/ui/yieldView.tsx'],
   },
   {
     name: '工业（炉/组装机/造船/实验室）',
@@ -101,7 +101,7 @@ const DOMAINS: readonly Domain[] = [
   },
   {
     name: '远征与赏金',
-    globs: ['packages/core/src/expedition.ts', 'packages/core/src/lairs.ts', 'packages/data/src/retiredLairCards.ts', 'apps/desktop/src/renderer/src/panels/bountySort.ts'],
+    globs: ['packages/core/src/expedition/**', 'apps/desktop/src/renderer/src/features/expedition/**', 'packages/core/src/expedition.ts', 'packages/core/src/lairs.ts', 'packages/data/src/retiredLairCards.ts', 'apps/desktop/src/renderer/src/panels/bountySort.ts'],
   },
   {
     name: '运输与时效任务',

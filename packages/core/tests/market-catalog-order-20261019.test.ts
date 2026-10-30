@@ -22,7 +22,7 @@ function functionsOf(path: string, names: string[]): string {
 const scope = { exports: {} as { stockedFirst: Order; rareOrderRows: Order }, marketQuote, markedIds }
 runInNewContext(ts.transpileModule([
   functionsOf('apps/desktop/src/renderer/src/ui/marks.tsx', ['pinMarked']),
-  functionsOf('apps/desktop/src/renderer/src/pages/MarketPage.tsx', ['stockedFirst', 'rareOrderRows']),
+  functionsOf('apps/desktop/src/renderer/src/features/market/sorting.tsx', ['stockedFirst', 'rareOrderRows']),
   'exports.stockedFirst = stockedFirst; exports.rareOrderRows = rareOrderRows;',
 ].join('\n'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText, scope)
 const { stockedFirst, rareOrderRows } = scope.exports

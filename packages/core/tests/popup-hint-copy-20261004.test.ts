@@ -157,7 +157,7 @@ describe('提示文案与实际显示上下文', () => {
     expect(L10N['ui.itemView.003']!.zh).toContain('已学会对应蓝图')
   })
   it.each(['zh','en'] as const)('%s 实际市场标题保留搜索、领域、类别、槽位、功能全部条件', (locale) => {
-    const text = readFileSync(new URL('../../../apps/desktop/src/renderer/src/pages/MarketPage.tsx', import.meta.url), 'utf8')
+    const text = readFileSync(new URL('../../../apps/desktop/src/renderer/src/features/market/MarketPage.tsx', import.meta.url), 'utf8')
     const ast = ts.createSourceFile('MarketPage.tsx', text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
     let expression: ts.Expression | undefined
     function visit(n: ts.Node): void {

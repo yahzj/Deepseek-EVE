@@ -18,7 +18,7 @@ const gitExec = promisify(execFile)
 const TABLES: DataTable[] = [...BASE_TABLES, ...ENEMY_TABLES]
 const TEXT_FILES: Record<BaseDataTable, string> = {
   ships: 'packages/data/src/ships.ts', modules: 'packages/data/src/modules.ts', plugs: 'packages/data/src/plugs.ts',
-  items: 'packages/data/src/items.ts', market: 'packages/data/src/marketCatalog.ts',
+  items: 'packages/data/src/items.ts', market: 'packages/data/src/market/bindings.ts',
 }
 const BLUEPRINT_TEXT_FILES = ['packages/data/src/blueprints.ts', 'packages/data/src/shipBlueprints.ts'] as const
 const TRUSTED_REPOSITORY = 'H:/大鲸鱼/Deepseek-EVE-zero'

@@ -14,9 +14,9 @@
 
 ## 一、core 引擎层（`packages/core/src`）
 
-每日赏金：`bountyBoard.ts:rollBountyBoard`统一候选、分区席位、地图上限与三档匹配；`bountyTaskStandingGain`提供完成和收益展示共用的分档声望。护栏为赏金生成/结算专项及F2/F3检查。
+每日赏金：`expedition/bountyBoard.ts:rollBountyBoard`统一候选、分区席位、地图上限与三档匹配；`bountyTaskStandingGain`提供完成和收益展示共用的分档声望。护栏为赏金生成/结算专项及F2/F3检查。
 
-`lab.ts:labOutputCapped`按产物聚合有效线锁定的`batchUnits`，起线、续做与燃料供应读数共用；交付按真实余量整批入库，仓满保留原线/退款账与`deliveryBlocked`随档标记。`marketHistory.ts:PRICE_HISTORY_LIMIT`为行情采样和存档清洗共用窗口常量，不导入运行层。护栏为国庆专项及F2/F3检查。
+`lab.ts:labOutputCapped`按产物聚合有效线锁定的`batchUnits`，起线、续做与燃料供应读数共用；交付按真实余量整批入库，仓满保留原线/退款账与`deliveryBlocked`随档标记。`market/constants.ts:PRICE_HISTORY_LIMIT`为行情采样和存档清洗共用窗口常量，不导入运行层。护栏为国庆专项及F2/F3检查。
 
 双语时长分解归 `time.ts:durationParts`；方案/残骸/沉船记录槽位净化归 `save.ts:cleanRack`；手动与自动探索回合预算归 `wormhole.ts:wormholeTurnBudget`。
 
@@ -90,12 +90,12 @@
 | 星球生成、勘探、环境、四向相邻、建设校验与存档 | `generatePlanet()` · `planetGeneration.ts`；`planetEnvironmentOf()` · `planetRules.ts`；`planetSurveyView()` · `planetSurvey.ts`；`planetAdjacencyOf()` / `planetConstructionCheck()` · `planetGrid.ts`；`cleanPlanetaryState()` · `planetSave.ts` | 独立种子、未知信息隔离、互斥、相邻封顶／断电与存档往返专项；`arch:guard` F2/F3 |
 | 玩家整船回收/装备保全与战损插件 | `hullRecoveryChanceOf()` / `wreckEquipmentRecoveryChanceOf()` · `shipWrecks.ts`；`shipDamageEffects()` / `rollShipDamage()` · `shipDamage.ts` | 工程技能加算、首次判定/往返不重掷、六类最终属性及普通插件隔离；旧残骸规则兼容 |
 | 爆虫触发、本场腐蚀、全队孵化与巢母加速 | `triggerAcidBurst()` / `applyAlienCorrosion()` / `advanceFoeHatcheries()` / `advanceFoeAbilityClocks()` / `foeFleetSpeedMulOf()` · `alienCombat.ts` | 异形入侵专项：距离边界、伤害顺序、死亡去重、随档、有限/无限额度、多载体去重、有效时长与死亡解除；`arch:guard` F2/F3 |
-| 限额慢补货：配置判据、初始化、周期进度、余额与统一核销 | `hasLimitedSupply()` / `ensureLimitedSupply()` / `advanceLimitedSupply()` / `limitedSupplyAvailable()` / `consumeLimitedSupply()` · `marketLimitedSupply.ts`；价格分档在 `market.ts:refreshLimitedSupplyBook()` | 市场限额专项、存档往返；`arch:guard` F2/F3；`content:check` 配置合法性 |
+| 限额慢补货：配置判据、初始化、周期进度、余额与统一核销 | `hasLimitedSupply()` / `ensureLimitedSupply()` / `advanceLimitedSupply()` / `limitedSupplyAvailable()` / `consumeLimitedSupply()` · `marketLimitedSupply.ts`；价格分档在`market/supply.ts:refreshLimitedSupplyBook()` | 市场限额专项、存档往返；`arch:guard` F2/F3；`content:check` 配置合法性 |
 | 武器组炮数与逐炮守恒分摊 | `volleyGunCountOf()` / `volleyDamageShareOf()` · `combatVolley.ts` | 逐炮齐射专项；`arch:guard` F2/F3 |
 | 黑市入口、候选资格、本地日界与下次刷新 | `blackMarketUnlocked()` / `blackMarketCandidateGoods()` / `blackMarketDayStart()` / `blackMarketNextRefresh()` · `blackMarket.ts` | `black-market-page-20261004.test.ts` · `arch:guard` F2/F3 |
 | 黑市大宗原料排除 | `isBlackMarketBulkResource()` · `blackMarket.ts`，候选/购买和旧货架视图共用真实物品类型 | 原矿/原材料/气体/冰矿候选不进入、旧条目隐藏且拒买、不补抽/不改锁价、普通市场与无人机组货保持专项 |
 | 黑市新货架组数量、锁定交付数与老货架单件兼容 | `blackMarketLotQuantity()` / `blackMarketOfferQuantity()` · `blackMarket.ts` | `black-market-drone-lots-20261006.test.ts`：四机型、总价/库存/售罄守恒、旧报价和读档 |
-| 弹药可选档与设置合法性、普通市场可流通目录 | `ammoTiersOf()` · `ammoTiers.ts`；`marketTradingGoods()` · `market.ts` | MK3三系、设置/装配同源、黑市图纸渠道隔离回归 |
+| 弹药可选档与设置合法性、普通市场可流通目录 | `ammoTiersOf()` · `ammoTiers.ts`；`marketTradingGoods()` · `market/access.ts` | MK3三系、设置/装配同源、黑市图纸渠道隔离回归 |
 | 沉船快照保存方案、重复插件参考及覆盖确认 | `saveWreckFitPreset()` / `wreckFitDetailOf()` · `fitPresets.ts`；明细沿用`fitPresetDetailOf()`，插件参考不参与自动安装 | 重复插件/第九格/沉船记录读档、保存纯副作用及套用守恒回归 |
 | 虫洞整备库存/容量预览、补给占格与撤离核对 | `wormholePreparationPlan()` · `wormholePreparation.ts`；`wormholeSupplyCells()` · `wormholeSupplies.ts`；`wormholeExtractionPlan()` · `wormholeExtraction.ts` | `wormhole-supplies-20261004.test.ts` / `wormhole-cargo-flow-20261004.test.ts`；`arch:guard` F2/F3 |
 | 虫洞当前地点实物格板（不建立免费随行空间） | `wormholeGroundBoard()` · `wormholeGround.ts` | `wormhole-cargo-flow-20261004.test.ts`：地点隔离、往返不复制、深入确认与数量守恒 |

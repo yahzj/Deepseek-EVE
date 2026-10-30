@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bountyTaskStandingGain, rollBountyBoard } from '../src/bountyBoard'
+import { bountyTaskStandingGain, rollBountyBoard } from '../src/expedition/bountyBoard'
 import { lairLevelOf, type LairTier } from '../src/lairs'
 import { advanceSideTasks, settleBountyTaskVictory } from '../src/sideTasks'
 import { createInitialState, type SideTask } from '../src/state'
