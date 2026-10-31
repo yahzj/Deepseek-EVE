@@ -1,7 +1,7 @@
 /** 统一编队原生压力验收。先npm run build，再node tools/battle-command-native-check.cjs。
  * 独立合成合法12护卫编队；敌方用现有机群卡及其支援规格扩至12舰，仅夹具加血延长压力。
  * 隐藏自建Electron、独立临时userData；不读取个人档或历史报告。输出本批截图/帧率/几何JSON。
- * COMMAND_UI_ONLY=1只跑四组准备交互；WHALE_ELECTRON_EXE可指定已有Electron。
+ * COMMAND_UI_ONLY=1只跑四组准备交互；默认使用本工作树Electron，WHALE_ELECTRON_EXE可显式指定。
  */
 const assert = require('node:assert/strict')
 const fs = require('node:fs/promises')
@@ -82,7 +82,7 @@ async function parent() {
     server = hosted.server
     const env = { ...process.env, WHALE_PERF_USERDATA: profile, WHALE_AUTOPERF: '1', ELECTRON_RENDERER_URL: hosted.url }
     delete env.ELECTRON_RUN_AS_NODE
-    const executable = process.env.WHALE_ELECTRON_EXE ?? path.resolve(ROOT, '../Deepseek-EVE/node_modules/electron/dist/electron.exe')
+    const executable = process.env.WHALE_ELECTRON_EXE ?? require('electron')
     await fs.access(executable)
     child = spawn(executable, [__filename, '--child'], { cwd: ROOT, env, windowsHide: true, stdio: 'inherit' })
     console.log(`编队压力隔离窗口 PID=${child.pid}`)
