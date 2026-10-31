@@ -342,11 +342,49 @@ function composeParts(
    * ⚠ 取的是**原始入参**（不是上面收窄过的 `all`）：`parts` 是数组，收窄时已被滤掉。
    */
   const rawParts = entry.textParams?.parts
-  const parts = Array.isArray(rawParts) ? rawParts.filter((x): x is string => typeof x === 'string' && x !== '').slice(0, 7) : []
+  const savedCount = all.segCount
+  const parts = Array.isArray(rawParts)
+    ? rawParts.filter((x): x is string => typeof x === 'string' && x !== '').slice(0, 7)
+    : typeof savedCount === 'number' && Number.isSafeInteger(savedCount) && savedCount > 0
+      ? Array.from({ length: Math.min(savedCount, 7) }, (_, index) => all[`seg${index + 2}Id`])
+        .filter((id): id is string => typeof id === 'string' && id !== '')
+      : []
+  // 只对带显式子段标记的新日志递归；未带标记的旧日志保留原参数路径。
+  const renderSegment = (id: string, prefix: string, depth = 0): string => {
+    const tpl = L10N[id]
+    if (!tpl || depth > 8) return String(all[prefix] ?? '')
+    const params: Record<string, string | number> = {}
+    for (const match of tpl.zh.matchAll(/\{(\w+)\}/g)) {
+      const name = match[1]!
+      const key = `${prefix}${name}`
+      const value = all[key]
+      if (value !== undefined) params[name] = value
+      const slotId = all[`${key}Id`]
+      if (typeof slotId === 'string' && L10N[slotId]) params[name] = renderSegment(slotId, key, depth + 1)
+      const list = listTextOf(key)
+      if (list !== undefined) params[name] = list
+    }
+    const count = all[`${prefix}Subs`]
+    if (typeof count !== 'number' || !Number.isSafeInteger(count) || count <= 0) return text(id, params)
+    const children: string[] = []
+    for (let index = 1; index <= Math.min(count, 32); index++) {
+      const childPrefix = `${prefix}p${index}`
+      const childId = all[`${childPrefix}Id`]
+      if (typeof childId === 'string' && L10N[childId]) children.push(renderSegment(childId, childPrefix, depth + 1))
+    }
+    if (!children.length) return text(id, params)
+    const joined = children.join(activeLocale === 'en' ? '; ' : '；')
+    return tpl.zh.includes('{p1}') ? text(id, { ...params, p1: joined }) : text(id, params) + joined
+  }
   let out = ''
   if (parts.length === 0) return text(entry.textId, paramsFor(0))
   out += text(entry.textId, paramsFor(0))
-  for (let i = 0; i < parts.length; i++) out += text(parts[i]!, paramsFor(i + 1))
+  for (let i = 0; i < parts.length; i++) {
+    const prefix = `seg${i + 2}`
+    out += typeof all[`${prefix}Subs`] === 'number'
+      ? renderSegment(parts[i]!, prefix)
+      : text(parts[i]!, paramsFor(i + 1))
+  }
   return out
 }
 

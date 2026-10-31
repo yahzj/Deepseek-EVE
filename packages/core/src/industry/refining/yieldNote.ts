@@ -52,25 +52,17 @@ export function yieldNoteFor(
   const parts: YieldNote['parts'] = []
   const isRecycle = kind === 'recycle'
   /**
-   * 一类产物 = **一个段**：段文本 `装备 A×1、B×2 等7种`；
-   * 段 id（`.057/.058/…`）是**标签 + 清单**，清单自己那层模板是 `.044`（`{p1}{p2}`）。
-   *
-   * ⚠ 段内参数按 `LogSeg` 头注的**有序三段式**写（值 → 它的内部值 → 那层模板的 id）：
-   * - `p1` ＝ 清单（段 id 的 `{p1}`）、`p1p1` ＝ 同一个清单（`.044` 的 `{p1}`）、`p1Id` ＝ `.044`；
-   * - `p2` ＝ 「等 N 种」尾巴、`p2p1` ＝ 种数、`p2Id` ＝ `.048`
-   *   （**没截断时 `p2` 传空串**：`.044`/`.058` 的 `{p2}` 槽恒在，不喂就漏一个 `{p2}` 给玩家）。
+   * 类目模板已经包含清单与尾注两个槽，不在清单上再套一次同款模板。
+   * 未折叠时显式传空尾注；只有折叠时才挂「等N种」模板及其种数。
    */
   const typeSeg = (label: string, labelId: string, m: { list: string; capped: boolean; total: number }): LogSeg => {
     const capTxt = m.capped ? ` 等${m.total}种` : ''
     const text = `${label}${m.list}${capTxt}`
     const params: Record<string, string | number> = {
       p1: m.list,
-      p1p1: m.list,
-      p1Id: 'core.industry.044',
       p2: capTxt,
-      p2Id: 'core.industry.048',
+      ...(m.capped ? { p2p1: m.total, p2Id: 'core.industry.048' } : {}),
     }
-    if (m.capped) params.p2p1 = m.total
     return {
       text,
       id: labelId,
