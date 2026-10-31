@@ -7,6 +7,7 @@
  */
 import type { GameState, TrainingItem } from './state'
 import { busyLabel, type BusyLabel } from './busyLabels'
+import { commandShipDeployed } from './combat/command/locks'
 import type { SimContext, SkillCatalog } from './types'
 import { trainingLevelProgress } from './training'
 import type { HeadTrainingInfo, QueueView } from './engine'
@@ -681,6 +682,8 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
  * 制造与技能训练不绑船，不算忙。UI 的货仓页船徽标与以后复用都走这里。
  */
 export function shipBusyLabel(state: GameState, ctx: SimContext, shipId: string): BusyLabel | null {
+  if (shipId !== state.shipId && commandShipDeployed(state, shipId)) return busyLabel('expedition')
+  if ((state.wormholeAuto ?? []).some(run => run.shipIds.includes(shipId))) return busyLabel('wormhole')
   if ((state.planetary?.deliveries ?? []).some(d => d.shipUid === shipId)) return busyLabel('planetDelivery')
   // **虫洞锁定**（船长 2026-09-13：「已经进洞的船将被锁定（包括货仓）」）——
   // 放在最前面：进了洞的船对外一律算"忙"（包括主控自己），于是 AI 指派、换驾驶、入洞门槛

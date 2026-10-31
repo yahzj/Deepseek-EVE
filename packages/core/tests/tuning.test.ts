@@ -10,7 +10,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { addShipToFleet } from '../src/shipyard'
-import { createInitialState } from '../src/state'
+import { createCommandReadyState as createInitialState } from './helpers/command-ready'
 import type { GameState } from '../src/state'
 import { PROMOS, TUNING_RULES, activePromos, activeTunings, localDayStartMs, promoScanMulAt, ruleActiveAt, tuningMul, tuningMulAt } from '../src/tuning'
 import type { TunableKey, TuningRule } from '../src/tuning'

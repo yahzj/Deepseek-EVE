@@ -36,7 +36,7 @@ starField: { cfg: { cls: string; n: number; mult: number; rMin: number; rMax: nu
 starLayerRefs: import('react').MutableRefObject<(HTMLDivElement | null)[]>
 dims: import('./battleViewCore').Dims
 meGunX: number
-lay: { meLeft: number; foeLeft: number; me: import('./battleViewCore').Anchor; my: import('./battleViewCore').Anchor[]; foe: import('./battleViewCore').Anchor[]; sizes: number[]; foeBottom: number; formation: import('./battleViewCore').FoeFormation; usable: number; myBarW?: number; }
+lay: ReturnType<typeof import('./battleViewCore').layout>
 meArcEls: import('react').JSX.Element[]
 foeGunX: number
 foeInBand: boolean
@@ -77,7 +77,7 @@ muzzleEls: import('react').JSX.Element[]
 boltEls: import('react').JSX.Element[]
 acidFxRef: import('react').MutableRefObject<import('./battleAcidFx').AcidFx[]>
 meAnchorByTag: Map<string, import('./battleViewCore').Anchor>
-layFx: { meLeft: number; foeLeft: number; me: import('./battleViewCore').Anchor; my: import('./battleViewCore').Anchor[]; foe: import('./battleViewCore').Anchor[]; sizes: number[]; foeBottom: number; formation: import('./battleViewCore').FoeFormation; usable: number; myBarW?: number; }
+layFx: ReturnType<typeof import('./battleViewCore').layout>
 popupEls: import('react').JSX.Element[]
 farM: number
 nearM: number

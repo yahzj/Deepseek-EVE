@@ -1,3 +1,4 @@
+import { combatRosterOf, encounterCombatRosterOf } from '@whale/core'
 /**
  * 界面侧引擎封装（胶水层）——M1 版。
  *
@@ -226,7 +227,6 @@ import {
   weekendNoteAssaultDispatch,
   weekendZoneLiveAt,
   weekendFlagshipSpecOf,
-  weekendFlagshipSquadOf,
   weekendStartFlagshipBattle,
   weekendFlagshipPrepView,
   /** 2026-09-25：旗舰战的战斗宿主（心跳变速 / 分桶 / 撤退分流 / 战斗屏都用它） */
@@ -875,7 +875,7 @@ export class GameEngine {
     const tr = st.skills.trained
     let sk = ''
     for (const k of Object.keys(tr).sort()) sk += `${k}:${tr[k]};`
-    return `${uid}|${f?.defId}|${f?.armorPct ?? 1}|${f?.durability ?? 1}|${JSON.stringify(f?.fitted ?? {})}|${JSON.stringify(f?.droneLoad ?? null)}|${JSON.stringify(f?.ammoPref ?? null)}|${st.resupplyFromWarehouse !== false ? 1 : 0}|${JSON.stringify(st.winRecord ?? null)}|${st.expedition.lairTier ?? 0}|${st.expedition.factionActive === true ? 1 : 0}|${sk}`
+    return `${uid}|${f?.defId}|${JSON.stringify(combatRosterOf(st).map(id => [id, st.fleet[id]]))}|${st.resupplyFromWarehouse !== false ? 1 : 0}|${JSON.stringify(st.winRecord ?? null)}|${st.expedition.lairTier ?? 0}|${st.expedition.factionActive === true ? 1 : 0}|${sk}`
   }
 
   /** 每个空闲心跳只派发一张卡，完整推演由后台执行，主线程不作同步回退。 */
@@ -1858,7 +1858,7 @@ export class GameEngine {
     const ev = this.state.weekendEvent!
     this.state.encounter = {
       active: true,
-      shipId: weekendFlagshipSquadOf(this.state)[0] ?? this.state.shipId,
+      shipId: battle.myFleet?.[0]?.shipId ?? this.state.shipId,
       galaxyId: ev.coreId,
       name: spec.name,
       threat: spec.threat,
@@ -2845,7 +2845,7 @@ export class GameEngine {
    * `foeGalaxyId` = **界面上被点的那一行的星系**（常驻悬赏/星图列表都要传；不传 = 老口径按卡 id 反查）。
    */
   startExpeditionAt(anomalyId: string, foeGalaxyId?: string): CommandResult {
-    return this.withBattleAmmoWarning(`expedition:${anomalyId}:${foeGalaxyId ?? ''}`, [this.state.shipId], () => this.startExpeditionReady(anomalyId, foeGalaxyId), undefined,
+    return this.withBattleAmmoWarning(`expedition:${anomalyId}:${foeGalaxyId ?? ''}`, combatRosterOf(this.state), () => this.startExpeditionReady(anomalyId, foeGalaxyId), undefined,
       snapshot => startExpedition(snapshot, this.weekendDispatchOf(anomalyId, foeGalaxyId).cardId, this.ctx, { foeGalaxyId: this.foeGalaxyOf(anomalyId, foeGalaxyId) }))
   }
 
@@ -2870,7 +2870,7 @@ export class GameEngine {
 
   /** T4 延后项：采矿中直接转战悬赏（UI 两步确认后调用；采矿终止、货随船、从矿带星系出发） */
   startExpeditionFromMiningAt(anomalyId: string, foeGalaxyId?: string): CommandResult {
-    return this.withBattleAmmoWarning(`mining-expedition:${anomalyId}:${foeGalaxyId ?? ''}`, [this.state.shipId], () => this.startExpeditionFromMiningReady(anomalyId, foeGalaxyId), undefined,
+    return this.withBattleAmmoWarning(`mining-expedition:${anomalyId}:${foeGalaxyId ?? ''}`, combatRosterOf(this.state), () => this.startExpeditionFromMiningReady(anomalyId, foeGalaxyId), undefined,
       snapshot => startExpeditionFromMining(snapshot, anomalyId, this.ctx, { foeGalaxyId: this.foeGalaxyOf(anomalyId, foeGalaxyId) }))
   }
 
@@ -2888,7 +2888,7 @@ export class GameEngine {
   /** 赏金任务·窝点出击（2026-09-10 船长定）：目标 = 派生窝点，档位随任务锁定
    *  （威胁/波次/僚机按档位强化、胜利后按窝点口径结算酬金与稀有残骸）。 */
   startLairExpeditionAt(anomalyId: string, lairTier: LairTier, fromMining = false): CommandResult {
-    return this.withBattleAmmoWarning(`lair:${anomalyId}:${lairTier}:${fromMining}`, [this.state.shipId], () => this.startLairExpeditionReady(anomalyId, lairTier, fromMining), undefined,
+    return this.withBattleAmmoWarning(`lair:${anomalyId}:${lairTier}:${fromMining}`, combatRosterOf(this.state), () => this.startLairExpeditionReady(anomalyId, lairTier, fromMining), undefined,
       snapshot => (fromMining ? startExpeditionFromMining : startExpedition)(snapshot, anomalyId, this.ctx, { lairTier, foeGalaxyId: this.foeGalaxyOf(anomalyId) }))
   }
 
@@ -3060,7 +3060,7 @@ export class GameEngine {
   }
 
   rememberPreparationSquad(kind: import('@whale/core').PreparationSquadKind, squad: readonly string[]): void {
-    if (notePreparationSquad(this.state, kind, squad)) void this.persist()
+    if (notePreparationSquad(this.state, kind, squad)) { this.notify(); void this.persist() }
   }
 
   wormholePrepareFromTemplate(shipIds: readonly string[], request: WormholePreparationRequest, id: string) {
@@ -4008,7 +4008,7 @@ export class GameEngine {
 
   /** B1 低安遭遇：迎战（进入实时战斗，自动打完） */
   fightEncounterNow(): CommandResult {
-    return this.withBattleAmmoWarning(`encounter:${this.state.encounter.invitedAtGameMs}`, [this.state.encounter.shipId ?? this.state.shipId], () => this.fightEncounterReady(), undefined,
+    return this.withBattleAmmoWarning(`encounter:${this.state.encounter.invitedAtGameMs}`, encounterCombatRosterOf(this.state), () => this.fightEncounterReady(), undefined,
       snapshot => fightEncounter(snapshot, this.ctx))
   }
 
@@ -4051,7 +4051,7 @@ export class GameEngine {
   /** T8：悬赏重复清剿开关（落档）；null = 停止 */
   bountyLoopAt(anomalyId: string | null): CommandResult {
     if (anomalyId === null) return this.bountyLoopReady(null)
-    return this.withBattleAmmoWarning(`bounty-loop:${anomalyId}`, [this.state.shipId], () => this.bountyLoopReady(anomalyId), undefined,
+    return this.withBattleAmmoWarning(`bounty-loop:${anomalyId}`, combatRosterOf(this.state), () => this.bountyLoopReady(anomalyId), undefined,
       snapshot => setAutoLoopBounty(snapshot, this.ctx, anomalyId))
   }
 
@@ -4070,7 +4070,7 @@ export class GameEngine {
    */
   invasionLoopAt(galaxyId: string | null): CommandResult {
     if (galaxyId === null) return this.invasionLoopReady(null)
-    return this.withBattleAmmoWarning(`invasion-loop:${galaxyId}`, [this.state.shipId], () => this.invasionLoopReady(galaxyId), undefined,
+    return this.withBattleAmmoWarning(`invasion-loop:${galaxyId}`, combatRosterOf(this.state), () => this.invasionLoopReady(galaxyId), undefined,
       snapshot => setAutoLoopInvasion(snapshot, this.ctx, galaxyId, this.wallNowOf()))
   }
 

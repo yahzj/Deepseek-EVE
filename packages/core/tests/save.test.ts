@@ -297,6 +297,8 @@ describe('存档往返：引擎跑过的档不许丢键（自动护栏）', () =
     expect(startManufacturing(state, 'sbp-sandcat', 'pilot', simCtx).ok).toBe(true)
     const good = [...simCtx.marketGoods.values()].find((g) => g.key === BELT_ORE)
     expect(placeBuyOrder(state, simCtx, good!.key, Math.max(1, Math.round(good!.basePrice ?? 1)), 10)).not.toBeNull()
+    // 已被产业切换安排的旧船返航必须先走完，不能同一艘船同时进洞。
+    advanceGame(state, 3_600_000, simCtx)
     expect(wormholeEnter(state, simCtx, [uid], 4242).ok).toBe(true)
 
     const back = loadSaveFile(serializeSaveFile(state, 0)).state

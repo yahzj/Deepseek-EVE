@@ -6,14 +6,13 @@ import { uidDefId } from '../../labels'
 import { PLUG_BLACKBOX_ITEM_ID } from '../../blackbox'
 import { addWare } from '../../inventory'
 import { type WormholeRunState, wormholeAdvanceNode } from '../../wormhole'
-import { sunkShipIdsOfBattle, persistFleetHullDamage, refundAmmo, refundRepairKitsAll, settleDroneLosses, captureBattleReport } from '../../combat'
+import { sunkShipIdsOfBattle, persistFleetHullDamage, refundBattleAmmo, refundRepairKitsAll, settleDroneLosses, captureBattleReport } from '../../combat'
 import { wormholeSupplyForBattle, settleWormholeDroneRevives } from '../../wormholeSupplies'
 import { wormholeMatterBuffs } from '../../wormholeMatter'
 import { matterTechWhBuffs } from '../../matterTech'
 import { settleWormholeBattleAmmo } from '../../combatAmmo'
 import { loseShip } from '../../shipyard'
 import { wormholeHoldUsage, wormholeGrantShipSpoils } from '../../wormholeSalvage'
-import { ceilFinalQuantity } from '../../quantity'
 import { wormholeBattleReport } from './report'
 import { bagValueIsk, deliverExtraction } from './extraction'
 import { repairCivilianFittings } from '../../equipment'
@@ -105,7 +104,8 @@ export function settleWormholeBattle(state: GameState, ctx: SimContext, run: Wor
   // 后果是**连打第二场起全队哑火**（仓库被上一场抽干）：整趟模拟里表现为"节点战轻松赢、
   // 撤离战却 74 秒全灭、我开火 61/命中 17"（探针实测），把小费当成了难度。
   if (!supply) {
-    refundAmmo(state, battle.ammo, battle.ammoIds)
+    const n = refundBattleAmmo(state, battle, matterBuffs.ammoRefundPct)
+    if (n > 0) addLog(state, 'combat', '', 'core.wormholeBattle.016', { p1: n, p2: Math.round(matterBuffs.ammoRefundPct * 100) })
     refundRepairKitsAll(state, battle)
   }
   /**
@@ -117,29 +117,6 @@ export function settleWormholeBattle(state: GameState, ctx: SimContext, run: Wor
    * ② **机群回收网**：回收率加成本（在 `settleDroneLosses` 里夹在 100% 以内）；
    * ③ **战地维修单元**：每场交火后自动修补**装甲与结构**（船长：「同时修复护甲」），不耗货仓组件。
    */
-  if (!supply && matterBuffs.ammoRefundPct > 0 && battle.ammoLoaded) {
-    const fired = {
-      kin: Math.max(0, battle.ammoLoaded.kin - battle.ammo.kin),
-      exp: Math.max(0, battle.ammoLoaded.exp - battle.ammo.exp),
-      pla: Math.max(0, battle.ammoLoaded.pla - battle.ammo.pla),
-    }
-    const back = {
-      kin: ceilFinalQuantity(fired.kin * matterBuffs.ammoRefundPct),
-      exp: ceilFinalQuantity(fired.exp * matterBuffs.ammoRefundPct),
-      pla: ceilFinalQuantity(fired.pla * matterBuffs.ammoRefundPct),
-    }
-    const n = back.kin + back.exp + back.pla
-    if (n > 0) {
-      refundAmmo(state, back, battle.ammoIds)
-      addLog(
-        state,
-        'combat',
-        `🕳 弹药回收装置：这一场打出去的弹药回收了 ${n} 发（${Math.round(matterBuffs.ammoRefundPct * 100)}%）。`,
-        'core.wormholeBattle.016',
-        { p1: n, p2: Math.round(matterBuffs.ammoRefundPct * 100) },
-      )
-    }
-  }
   // **机群战损**（与远征 `resolveBattleOutcome` / 遭遇战同款 · 2026-09-13 修）：洞内的无人机照样会被
   // 点防打下来（`battle.droneLost` 在涨），首版漏了这一步 ⇒ 洞内无人机**打不死**（清单不减、也没有
   // 战损日志），是最便宜的一种白嫖。**2026-09-14 船长「逐舰机群」**：改为**逐舰结算**——每艘编队舰

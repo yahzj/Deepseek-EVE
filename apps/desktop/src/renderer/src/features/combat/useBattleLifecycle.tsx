@@ -9,13 +9,13 @@ import type { GameEngine } from '../../game/engine'
 import { planBlinkPillars, syncBlinkPillarDom } from './battleBlink'
 import type { BlinkPillarFx } from './battleBlink'
 
-import type { DroneModel, DroneSortie } from './droneArt'
 import { STAR_LAYERS, clamp01, layout } from './battleViewCore'
 import type { Dims, Stage, OutroSnap } from './battleViewCore'
 
 import type { AcidFx } from './battleAcidFx'
 
 import { dronePoseAt, foePoseAt } from './battleDrones'
+import type { DroneDriveState } from './droneDriveTypes'
 
 type BattleHandle = {
   startedAtGameMs: number
@@ -80,7 +80,7 @@ thrusterCycleRef: import('react').MutableRefObject<{ boostMs: number; cooldownMs
 thrusterBoostRef: import('react').MutableRefObject<number>
 starOffRef: import('react').MutableRefObject<number[]>
 starLayerRefs: import('react').MutableRefObject<(HTMLDivElement | null)[]>
-droneDriveRef: import('react').MutableRefObject<{ foeSizes: number[]; meSize: number; farM: number; nearM: number; wings: Array<{ key?: string; owner?: string; artId: string; model: DroneModel; show: number; st?: DroneSortie; deck: boolean; foe?: string; rangeBuff?: boolean; }>; meAnchors: Map<string, { x: number; y: number; }>; }>
+droneDriveRef: import('react').MutableRefObject<DroneDriveState>
 droneBoxRef: import('react').RefObject<HTMLDivElement>
 droneWritesRef: import('react').MutableRefObject<Map<string, string>>
 droneElsRef: import('react').MutableRefObject<Map<string, HTMLSpanElement>>
@@ -347,7 +347,7 @@ mapRef: import('react').MutableRefObject<{ farM: number; nearM: number; }>
       if (!alive) return
       const d = droneDriveRef.current
       if (!pausedRef.current && d.wings.length > 0) {
-        const layLoop = layout(dimsRef.current, d.foeSizes, visDistRef.current, d.farM, d.nearM, d.meSize)
+        const layLoop = layout(dimsRef.current, d.foeSizes, visDistRef.current, d.farM, d.nearM, d.meSize, d.mySizes)
         const box = droneBoxRef.current
         const w0 = droneWritesRef.current
         if (box) {
@@ -375,7 +375,7 @@ mapRef: import('react').MutableRefObject<{ farM: number; nearM: number; }>
             const el = droneElsRef.current.get(key)
             if (!el) continue
             const pose = w.foe
-              ? foePoseAt(w.model, i, w.st, layLoop, elapsed, w.rangeBuff === true)
+              ? foePoseAt(w.model, i, w.st, { me: layLoop.me, foe: [layLoop.foe[d.foeTags?.indexOf(w.foe) ?? 0] ?? layLoop.foe[0] ?? layLoop.me] }, elapsed, w.rangeBuff === true)
               : dronePoseAt(w.model, i, w.st, layW, elapsed)
             const t = `translate3d(${(pose.x - layLoop.me.x).toFixed(1)}px, ${(pose.y - layLoop.me.y).toFixed(1)}px, 0) translate(-50%, -50%) scaleX(${pose.heading})`
             if (w0.get(key) !== t) {

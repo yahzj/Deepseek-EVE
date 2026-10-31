@@ -17,7 +17,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
-import { createInitialState } from '../src/state'
+import { createCommandReadyState as createInitialState } from './helpers/command-ready'
 import type { GameState } from '../src/state'
 import { addShipToFleet, loseShip } from '../src/shipyard'
 import { pilotUnavailableReason } from '../src/activityGate'

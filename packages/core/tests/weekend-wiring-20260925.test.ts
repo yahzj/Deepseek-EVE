@@ -637,7 +637,7 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     const s = ready()
     const view = weekendFlagshipPrepView(s, ctx, now)
     expect(view, '核心条满 ⇒ 出准备视图').not.toBeNull()
-    expect(view!.maxShips, '上限 4（旗舰战 = 4 艘小队战）').toBe(4)
+    expect(view!.maxShips, '旗舰战沿统一12舰上限，出发仍受指挥预算约束').toBe(12)
     expect(view!.waves).toBeGreaterThan(0)
     expect(view!.candidates.length, '候选 = 舰队在编的全部船').toBe(Object.keys(s.fleet).length)
     expect(view!.pool.hpMax, '血池读数随视图给出').toBeGreaterThan(0)
@@ -646,13 +646,13 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     const early = invaded(gid)
     expect(weekendFlagshipPrepView(early, ctx, now), '核心没满 ⇒ 不出现').toBeNull()
 
-    /** 编队净化：不在编的 id 丢掉、去重、截 4 艘 */
+    /** 编队净化：不在编的 id 丢掉、去重、截12艘 */
     const all = Object.keys(s.fleet)
     const sanitized = weekendSanitizeFlagshipSquad(s, [all[0]!, all[0]!, 'ghost-ship', ...all, all[0]!])
     expect(sanitized[0]).toBe(all[0])
     expect(sanitized.filter((x) => x === all[0]).length, '去重').toBe(1)
     expect(sanitized).not.toContain('ghost-ship')
-    expect(sanitized.length).toBeLessThanOrEqual(4)
+    expect(sanitized.length).toBeLessThanOrEqual(12)
 
     /** 落盘：记住编队 ⇒ 下次默认就是它；落盘里的船退役后自动回落 */
     weekendNoteFlagshipSquad(s, sanitized)
@@ -663,9 +663,9 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     expect(weekendPrepSquadOf(s).length, '落盘全失效 ⇒ 回落自动编队').toBeGreaterThan(0)
     expect(weekendPrepSquadOf(s)).not.toContain('ghost-ship')
 
-    /** 按战力自动选：候选里战力最高的至多 4 艘、只含在编船 */
+    /** 按战力自动选：只含在编船且不超过统一数量上限。 */
     const best = weekendBestFlagshipSquad(s, ctx)
-    expect(best.length).toBeLessThanOrEqual(4)
+    expect(best.length).toBeLessThanOrEqual(12)
     expect(best.every((id) => s.fleet[id] !== undefined)).toBe(true)
 
     /** 缺口标记：新档自带的船没装武器 ⇒ 至少标一个缺口；装甲/结构满 ⇒ 不标那两条 */

@@ -74,14 +74,19 @@ function ctxVariant(
 function battleOf(card: string, ships: number, useCtx: SimContext = ctx) {
   const state = createInitialState({ nowWallMs: 0, seed: 11 })
   const ids: string[] = []
-  for (let i = 0; i < ships; i++) ids.push(addShipToFleet(state, 'sh-thresher'))
+  for (let i = 0; i < Math.min(12, ships); i++) ids.push(addShipToFleet(state, 'sh-thresher'))
   state.shipId = ids[0]!
-  for (const id of ids) state.fleet[id]!.fitted = { high: ['mod-laser-3'], mid: [], low: [] }
+  // 超量旧夹具的总炮数保留在最多12舰的合法高槽内，维持末波观察火力。
+  for (const [index, id] of ids.entries()) state.fleet[id]!.fitted = {
+    high: Array.from({ length: Math.floor(ships / ids.length) + Number(index < ships % ids.length) }, () => 'mod-laser-3'), mid: [], low: [],
+  }
   state.moduleBay['mod-laser-3'] = 1
   for (const a of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) state.warehouse.items[a] = 90_000
   const battle = startFleetBattleFor(state, useCtx, ids, card, 0, null, undefined, undefined)
   expect(battle, '开战应成功').toBeTruthy()
   const b = battle!
+  // 原超量编队只用于延长观察，现用12舰加血压力夹具替代。
+  if (ships > 12) for (const unit of Object.values(b.units)) if (unit.side === 'me') { unit.hp = { s: 1e8, a: 1e8, h: 1e8 }; unit.hpMax = { ...unit.hp } }
   return {
     b,
     tick: (toMs: number) => {
@@ -433,7 +438,7 @@ describe('聚焦阵列：远端衰减爬到 1.0（随波重置）', () => {
       `第三个窗口（衰减已爬到 0.8）：带件那场应明显更高（实测 ${(withFocus.win[2]! / without.win[2]!).toFixed(2)}×）`,
     ).toBeGreaterThan(1.15)
     console.log(
-      `  [读数] 聚焦阵列 A/B（32 舰 · corona-nexus）：换波锚点 ${JSON.stringify(anchors)}；` +
+      `  [读数] 聚焦阵列 A/B（12舰加血压力夹具 · corona-nexus）：换波锚点 ${JSON.stringify(anchors)}；` +
         `中枢自身飘字伤害（+0~20s / +20~40s / +40~60s）：带件 ${withFocus.win.map((x) => x.toFixed(0)).join(' / ')}` +
         ` · 对照 ${without.win.map((x) => x.toFixed(0)).join(' / ')}` +
         ` ⇒ 第三窗口 带件/对照 = ${(withFocus.win[2]! / without.win[2]!).toFixed(3)}（第一窗口 ${(withFocus.win[0]! / without.win[0]!).toFixed(3)}）`,

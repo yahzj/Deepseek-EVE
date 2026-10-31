@@ -14,7 +14,6 @@ import { UI_TONES } from '../../ui/tones'
 import { Glyph, ICO_TONES } from '../../ui/Glyphs'
 
 import { LAY, foeHangarByTag, foeHangarTotal, foeRowBoxesOf, BOOM_LIFE, clamp01, HpTri } from './battleViewCore'
-import type { Anchor } from './battleViewCore'
 
 import { hoverTipProps } from '../../ui/Tooltip'
 
@@ -29,7 +28,7 @@ foeRowTags: string[]
 isFoeMainTag: (tag: string) => boolean
 battle: import('@whale/core').BattleState
 tr: (id: string, params?: Record<string, string | number>) => string
-lay: { meLeft: number; foeLeft: number; me: Anchor; my: Anchor[]; foe: Anchor[]; sizes: number[]; foeBottom: number; formation: import('./battleViewCore').FoeFormation; usable: number; myBarW?: number; }
+lay: ReturnType<typeof import('./battleViewCore').layout>
 foeFormation: import('./battleViewCore').FoeFormation
 foeBarGeoms: import('./battleViewCore').BarGeom[]
 foeAnomaly: import('@whale/core').AnomalyDef | undefined
@@ -101,7 +100,7 @@ foeNameOf: (tag: string) => string
     /** 该舰机位（2026-09-12 斜向菱形：第 2/4/6… 艘在第二排＝右移半格 + 下移一个舰高） */
     const slot = foeFormation.slots[rowIdx] ?? { col: 0, row: 0 as const, dx: 0, raise: 0 }
     /** 第二排：舰名改由血条标签承载（浮空舰名会压在**第一排**的舰体上） */
-    const isRank2 = slot.row === 1
+    const isRank2 = !lay.dense && slot.row === 1
     /** 该舰血条几何（2026-09-11 船长③：血条跟着各舰走——贴各自舰下，拥挤时该排内竖排） */
     const bar = foeBarGeoms[rowIdx] ?? { width: 185, dx: 0, dy: 0 }
     /** 该舰**舰级 id**（2026-09-26：逐舰线稿按舰级 id 取形——30 条敌舰各画各的，
@@ -156,6 +155,8 @@ foeNameOf: (tag: string) => string
            `flexShrink: 0`：盒宽即列宽，绝不许被压窄（压窄就等于又跟锚点错位）。 */
         style={{
           width: foeFormation.colW[slot.col] ?? size,
+          ...(lay.dense ? { position: 'absolute' as const, left: lay.foe[rowIdx]!.x - lay.foeLeft - size / 2,
+            top: lay.foe[rowIdx]!.y - LAY.TOP - size * .23, width: size } : {}),
           justifyContent: 'center',
           flexShrink: 0,
           ...(arriving
@@ -197,7 +198,7 @@ foeNameOf: (tag: string) => string
         {/* 舰名：**第一排**浮在舰体上方（与改动前一致）；**第二排**（其上方是第一排的舰体）改由该舰血条标签承载
             机库备用机（图标 ×N）跟在**各自的名字右边**（2026-09-12 船长） */}
         {!isRank2 ? (
-          <span className="app-bts-name" style={{ color: isMain ? UI_TONES.foeNameMain : UI_TONES.foeName }}>
+          <span className="app-bts-name" title={foeNameOf(tag)} style={{ color: isMain ? UI_TONES.foeNameMain : UI_TONES.foeName }}>
             {locked ? `◈ ${foeNameOf(tag)}` : foeNameOf(tag)}
             {hangarBadgeOf(tag)}
           </span>
@@ -211,7 +212,7 @@ foeNameOf: (tag: string) => string
         {!corpseOn ? (
           <span
             className="app-bts-hpWrap is-unitBar"
-            style={{ width: bar.width, marginLeft: bar.dx, marginTop: bar.dy + 2 }}
+            style={lay.dense ? { width: Math.min(112, foeFormation.colW[slot.col]! - 8), marginTop: 2 } : { width: bar.width, marginLeft: bar.dx, marginTop: bar.dy + 2 }}
           >
             <HpTri
               hp={combat.foeHp[tag]!}
@@ -248,7 +249,7 @@ foeNameOf: (tag: string) => string
    * ⚠ 盒宽即列宽 ⇒ `flexShrink: 0`（不许被压窄）。
    */
   const foeRowBoxes = (row: 0 | 1): ReactNode[] =>
-    foeRowBoxesOf(foeFormation, row, foeRowTags.length).map((b) => (
+    lay.dense ? (row === 0 ? foeUnitEls : []) : foeRowBoxesOf(foeFormation, row, foeRowTags.length).map((b) => (
       <div
         key={b.col}
         style={{ width: b.width, display: 'flex', justifyContent: 'center', alignItems: 'flex-end', flexShrink: 0 }}

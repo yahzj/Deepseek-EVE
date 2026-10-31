@@ -57,7 +57,8 @@
     "hullResist.kinetic": "number",
     "hullResist.explosive": "number",
     "interceptorImmuneToWeb": "boolean",
-    "repairPulseTargetsFleet": "boolean"
+    "repairPulseTargetsFleet": "boolean",
+    "commandCost": "number"
   },
   "modules": {
     "rebirthRepair": "object",

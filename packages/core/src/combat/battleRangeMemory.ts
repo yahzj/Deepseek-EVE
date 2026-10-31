@@ -52,7 +52,7 @@ export function battleRangeSnapshot(cardId: string, units: readonly UnitSpec[], 
     signature: JSON.stringify(units.map(unit => [unit.shipId, unit.tag, unit.weapons.map(w => [w.moduleId, w.src, w.disabled, w.minRangeM, w.maxRangeM])])) }
 }
 function cleanShipIds(value: unknown): string[] | undefined {
-  if (!Array.isArray(value) || value.length < 1 || value.length > 4
+  if (!Array.isArray(value) || value.length < 1 || value.length > 12
     || value.some(id => typeof id !== 'string' || id.length === 0 || id.length > 120)) return undefined
   return value as string[]
 }
@@ -153,6 +153,7 @@ export function cancelBattleRange(state: GameState): void {
     if (state.weekendEvent) delete state.weekendEvent.autoLoopGalaxyId
   }
   if (intent?.kind === 'expedition-arrival') {
+    delete state.expedition.sortie
     state.expedition.active = false
     state.expedition.battle = null
     state.expedition.anomalyId = null
@@ -222,7 +223,7 @@ export function cleanPendingBattleRange(value: unknown): PendingBattleRange | un
       if (typeof i.cardId !== 'string' || battleCardKey(i.cardId) !== snapshot.cardId || typeof i.shipId !== 'string') return undefined
       intent = { kind: i.kind, cardId: i.cardId, shipId: i.shipId }; break
     case 'flagship':
-      intent = { kind: i.kind, ...(number(i.eventSeq) ? { eventSeq: i.eventSeq } : {}), ...(Array.isArray(i.squad) ? { squad: i.squad.filter((v): v is string => typeof v === 'string').slice(0, 4) } : {}) }; break
+      intent = { kind: i.kind, ...(number(i.eventSeq) ? { eventSeq: i.eventSeq } : {}), ...(Array.isArray(i.squad) ? { squad: i.squad.filter((v): v is string => typeof v === 'string').slice(0, 12) } : {}) }; break
     case 'wormhole-fight':
       if (!['node', 'boss', 'ruins', 'spawn'].includes(i.battleKind)) return undefined
       intent = { kind: i.kind, battleKind: i.battleKind, ...(number(i.atGameMs) ? { atGameMs: i.atGameMs } : {}), ...(number(i.strengthMul) ? { strengthMul: i.strengthMul } : {}) }; break

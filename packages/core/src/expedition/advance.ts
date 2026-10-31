@@ -8,10 +8,19 @@ import { settleBattleRetreat } from './retreat'
 import { weekendApplyBattleOutcome } from '../weekendBattle'
 import { resolveBattleOutcome } from './outcome'
 import { unloadCargoOfShipToWarehouse } from '../inventory'
+import { settleCommandEscortsAtPort } from '../combat/command/return'
 
 /** 引擎内部：按阶段推进远征（时间已由 gameMs 表达；同帧内阶段可连续跨越，离线大推进亦然） */
 export function advanceExpedition(state: GameState, ctx: SimContext, freezeBattle = false): void {
   const exp = state.expedition
+  settleCommandEscortsAtPort(state, ctx)
+  // 换驾驶后旧主舰沿既有善后账本返航；僚舰保持原出勤锁到同一到港时刻。
+  if (!exp.active && exp.sortie) {
+    if (state.shipReturns[exp.sortie.leaderShipId]) return
+    const ids = exp.sortie.shipIds
+    delete exp.sortie
+    for (const id of ids) if (state.fleet[id]) unloadCargoOfShipToWarehouse(state, ctx, id)
+  }
   for (let guard = 0; guard < 6; guard++) {
     if (!exp.active) return
     if (exp.phase === 'out') {
@@ -21,10 +30,11 @@ export function advanceExpedition(state: GameState, ctx: SimContext, freezeBattl
       if (!ok) {
         if (state.pendingBattleRange) return
         exp.active = false
+        delete exp.sortie
         exp.anomalyId = null
         exp.battle = null
         exp.lairTier = undefined
-    exp.factionActive = undefined
+        exp.factionActive = undefined
         addLog(state, 'warn', '远征目标已不存在，舰队无功而返（异常）。', 'core.expedition.030')
         return
       }
@@ -37,9 +47,10 @@ export function advanceExpedition(state: GameState, ctx: SimContext, freezeBattl
         if (!ok) {
           if (state.pendingBattleRange) return
           exp.active = false
+          delete exp.sortie
           exp.anomalyId = null
           exp.lairTier = undefined
-    exp.factionActive = undefined
+          exp.factionActive = undefined
           addLog(state, 'warn', '远征目标已不存在，舰队无功而返（异常）。', 'core.expedition.030')
           return
         }
@@ -99,8 +110,11 @@ export function advanceExpedition(state: GameState, ctx: SimContext, freezeBattl
     const targetGal = exp.foeGalaxyId ?? (exp.anomalyId ? ctx.anomalies.get(exp.anomalyId)?.galaxyId ?? null : null)
     const base = targetGal !== null ? returnBaseGalaxy(state, ctx, targetGal) : HOME_GALAXY_ID
     landAtReturnBase(state, ctx, base)
-    const moved = unloadCargoOfShipToWarehouse(state, ctx, state.shipId) // 进港自动卸货（战利品/残货）
+    const returnShips = exp.sortie?.shipIds ?? [state.shipId]
+    delete exp.sortie
+    delete state.combatEscort
     exp.active = false
+    const moved = returnShips.reduce((sum, id) => sum + (state.fleet[id] ? unloadCargoOfShipToWarehouse(state, ctx, id) : 0), 0)
     exp.anomalyId = null
     exp.battle = null
     exp.phase = 'out'

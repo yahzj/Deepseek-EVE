@@ -4,6 +4,7 @@
  * 组件编排/状态机/渲染留在 BattleScreen。给未来 rAF/表现类改动一块独立地基。
  */
 import type { ReactNode } from 'react'
+import { denseBattleLayout } from './battleDenseGeometry'
 import type { DamageType } from '@whale/core'
 import { ceilFinalQuantity } from '@whale/core'
 import { tr } from '../../i18n/locale'
@@ -186,7 +187,7 @@ interface FoeSlot {
   /** 列号（同排内从左到右） */
   col: number
   /** 排号：0 = 第一排（原位）；1 = 第二排（右移半格 + 下移一个舰高 + 一条血条带） */
-  row: 0 | 1
+  row: number
   /** 抬升量（px；**负 = 下移**）——＝ 第二排下移量 `drop` 的反号（第一排 = 0） */
   raise: number
 }
@@ -202,7 +203,7 @@ interface FoeFormation {
   /** 单排行高（px）＝最高舰高 */
   rowH: number
   /** 排数（1 舰 = 1 排；≥2 舰 = 2 排） */
-  rows: 1 | 2
+  rows: number
   /** 编队总宽（px；＝两排里更宽的那排） */
   rowW: number
 }
@@ -363,6 +364,8 @@ function layout(
   mySizes: readonly number[] = [meSize],
 ): {
   meLeft: number
+  dense?: boolean
+  mySizes?: number[]
   foeLeft: number
   me: Anchor
   /** **我方逐舰锚点**（2026-09-13 船长「按照敌人阵型那样镜像排列」）：单舰时 = `[me]`（逐像素同旧） */
@@ -383,6 +386,7 @@ function layout(
   myBarW?: number
 } {
   const nFoe = foeSizes.length
+  if (Math.max(nFoe, mySizes.length) > 4) return denseBattleLayout(d, foeSizes, mySizes, visM, openM, nearM)
   /**
    * 锚点槽位宽 = **逐舰实际体积**（渲染、弹道、血条、无人机阵位同一份坐标，天然自洽）。
    * 溢出保险（仅**启用舰种阶梯**时）：体积放大后编队可能宽过本窗口能给敌列的空间 → 等比收缩；

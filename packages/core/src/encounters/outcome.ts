@@ -1,10 +1,10 @@
 /** 功能域职责拆分，保持原计算与顺序。 */
-import { repairUsageText, persistFleetHullDamage, sunkShipIdsOfBattle, settleDroneLosses, refundAmmo, refundRepairKitsAll, captureBattleReport } from '../combat'
+import { repairUsageText, persistFleetHullDamage, sunkShipIdsOfBattle, settleDroneLosses, refundBattleAmmo, refundRepairKitsAll, captureBattleReport } from '../combat'
 import type { SimContext } from '../types'
 import { type GameState, addLog } from '../state'
 import { shipDisplayName } from '../instances'
 import { loseShip } from '../shipyard'
-import { markAmbushRetreat, clearEncounter, settleEncounterTail, weekendKindOfEncounter } from './return'
+import { markAmbushRetreat, clearEncounter, settleEncounterFleetTail, weekendKindOfEncounter } from './return'
 import { lootOf, dropWrecks, ambushHitHp } from './loot'
 import { weekendInvolvedAt } from './presence'
 import { weekendWreckDensityOf, wreckDensityOf } from '../salvage'
@@ -12,6 +12,7 @@ import { applyArmorFirstDamage, pctOf as pct } from '../hullDamage'
 import { nextRandom } from '../rng'
 import { ceilFinalQuantity } from '../quantity'
 import { weekendApplyBattleOutcome } from '../weekendBattle'
+import { settleCommandFleet, prepareCommandPilotAfterLoss } from '../combat/command/settlement'
 
 /**
  * 战报尾巴：船体维修装置本场消耗（2026-09-11 船长「不单独显示日志，只把消耗组件数量
@@ -64,6 +65,8 @@ export function loseSunkShipsOfBattle(state: GameState, ctx: SimContext, shipId:
   const enc = state.encounter
   const battle = enc.battle
   const sunk = sunkShipIdsOfBattle(battle, shipId)
+  if (battle?.myFleet) prepareCommandPilotAfterLoss(state, ctx, sunk, battle)
+  sunk.sort((a, b) => Number(a === state.shipId) - Number(b === state.shipId))
   if (sunk.length === 0) return 0
   const galaxyName = ctx.galaxies.get(enc.galaxyId ?? '')?.name ?? enc.galaxyId ?? ''
   for (const uid of sunk) {
@@ -90,7 +93,7 @@ export function settleBattleDroneLosses(
 ): void {
   const fleet = battle?.myFleet
   if (fleet && fleet.length > 0) {
-    for (const e of fleet) settleDroneLosses(state, ctx, e.shipId, battle, 0, e.tag)
+    settleCommandFleet(state, ctx, battle!)
     return
   }
   settleDroneLosses(state, ctx, shipId, battle)
@@ -113,7 +116,7 @@ export function settleEscape(state: GameState, ctx: SimContext, mode: 'hull' | '
   const battle = enc.battle
   if (battle) {
     settleBattleDroneLosses(state, ctx, shipId, battle)
-    refundAmmo(state, battle.ammo, battle.ammoIds)
+    refundBattleAmmo(state, battle)
     refundRepairKitsAll(state, battle)
     persistBattleDamage(state, ctx, shipId, battle)
   }
@@ -144,7 +147,7 @@ export function settleEscape(state: GameState, ctx: SimContext, mode: 'hull' | '
   loseSunkShipsOfBattle(state, ctx, shipId)
   clearEncounter(state)
   // 收场尾巴（2026-09-12 船长定：先修后判；自动脱离时结构已 <50%，修不动才返港）
-  settleEncounterTail(state, ctx, shipId)
+  settleEncounterFleetTail(state, ctx, shipId, battle)
 }
 
 /** 遭遇战（玩家应战后）推进与结算：胜 → 缴获；败 → 受损 + 大概率被抢 */
@@ -161,7 +164,7 @@ export function settleFight(state: GameState, ctx: SimContext): void {
     // （2026-09-25：多舰场次逐舰结算，见 `settleBattleDroneLosses`）
     settleBattleDroneLosses(state, ctx, shipId, battle)
     // 退还剩余弹药（与远征/撤退同一口径；弹药 MK2 按实装弹 id 退回）
-    refundAmmo(state, battle.ammo, battle.ammoIds)
+    refundBattleAmmo(state, battle)
     refundRepairKitsAll(state, battle) // 船体维修装置（2026-09-09）：未用修理组件退回仓库
     // P0 承伤持久化：遭遇战同样保留装甲/结构残余（结构=耐久）；失利附加扣损在后
     persistBattleDamage(state, ctx, shipId, battle)
@@ -230,7 +233,7 @@ export function settleFight(state: GameState, ctx: SimContext): void {
   loseSunkShipsOfBattle(state, ctx, shipId)
   clearEncounter(state)
   // 收场尾巴（2026-09-12 船长定：先修后判）——应战胜、败两路共用
-  settleEncounterTail(state, ctx, shipId)
+  settleEncounterFleetTail(state, ctx, shipId, battle)
 }
 
 /**

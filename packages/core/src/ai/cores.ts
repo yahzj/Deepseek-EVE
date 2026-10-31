@@ -5,6 +5,8 @@ import { AI_CORE_ORDER, countAiCore, spendAiCore, gainAiCore, aiCoreName } from 
 import { matterTechSum } from '../matterTech'
 import type { CoreBlockReason, CommandResult } from '../engine'
 import { shipInReturn } from '../mining'
+import { commandShipDeployed } from '../combat/command/locks'
+import { busyLabel } from '../busyLabels'
 
 /** 效率（速度系数：1 = 玩家手操速度；只影响速度不影响奖励）。
  *  卷B3⑩（2026-09-08 船长定）：「AI 核心调度学」在核心档位之上每级 +2 个百分点累加
@@ -190,13 +192,15 @@ export function idleAiShipIds(state: GameState): string[] {
   const inHole = state.wormhole.run?.fleet ?? []
   return Object.keys(state.fleet).filter(
     (id) =>
-      id !== state.shipId && !inHole.includes(id) && !(id in state.aiAssignments) && !shipInReturn(state, id)
+      id !== state.shipId && !inHole.includes(id) && !(id in state.aiAssignments) && !shipInReturn(state, id) && !commandShipDeployed(state, id)
+      && !(state.wormholeAuto ?? []).some(run => run.shipIds.includes(id))
       && !(state.planetary?.deliveries ?? []).some(d => d.shipUid === id),
   )
 }
 
 /** 共同校验：船、名额、核心、空闲 */
 export function checkAssignable(state: GameState, shipId: string, coreType: AiCoreType, ctx: SimContext): CommandResult {
+  if (commandShipDeployed(state, shipId)) return { ok: false, ...busyLabel('expedition') }
   if ((state.planetary?.deliveries ?? []).some(d => d.shipUid === shipId)) return { ok: false, error: '星球物资运输中', errorId: 'core.busy.031' }
   if (shipId === state.shipId) return { ok: false, error: '主控船由你亲自驾驶，不能指派 AI。', errorId: 'core.ai.003' }
   if (!state.fleet[shipId]) return { ok: false, error: '舰队里没有这艘船。', errorId: 'core.ai.004' }

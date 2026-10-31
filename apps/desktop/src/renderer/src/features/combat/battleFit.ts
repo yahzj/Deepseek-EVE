@@ -71,7 +71,13 @@ export function useBattleFit(refs: BattleFitRefs): void {
     const keepFlex = lane.style.flex
     lane.style.minHeight = '0px'
     lane.style.flex = '0 0 auto'
-    const laneNeed = lane.scrollHeight
+    const dense = screen.classList.contains('is-command-dense')
+    const laneNeed = dense ? Math.max(320, ...Array.from(lane.querySelectorAll<HTMLElement>('.app-bts-col.is-me,.app-bts-unit'), unit => {
+      let top = 0
+      for (let node: HTMLElement | null = unit; node && node !== lane; node = node.offsetParent as HTMLElement | null) top += node.offsetTop
+      const bar = unit.querySelector<HTMLElement>('.app-bts-hpWrap')
+      return top + Math.max(unit.offsetHeight, bar ? bar.offsetTop + bar.offsetHeight : 0) + 12
+    })) : lane.scrollHeight
     lane.style.minHeight = keepMin
     lane.style.flex = keepFlex
     // 车道拿到「自己声明的高度」⇒ 不再裁自己的两排血条（桌面本来比内容高，这里不改变观感）

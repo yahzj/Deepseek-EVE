@@ -28,7 +28,7 @@ export { foeHpOfThreat, foeJudgedThreatOf, foeRefSpeedMps, foeThreatRatingOf } f
 export { foeLayerSplit, foeMainDamageType, splitShotByComposition } from './wormholeFoes'
 export { DRONE_SKILL, MY_WEB_RANGE_M, WEB_BREAK_DIST_M, createPlayerSpec, damageUpgradeMult, droneReloadUpgradeMult, familyUpgradeMult, familyUpgradeSkillIdOf, hitUpgradeMult, mergeResist, playerAmmoType, reloadUpgradeMult } from './playerSpec'
 export { REPAIR_PULSE_MS, SHIELD_PULSE_MS, SHIELD_FIELD_COST_PCT, SHIELD_REGEN_FLOOR_PCT, fittedRepairModules, preloadRepairFor, preloadShieldChargeFor, preloadShieldFieldFor, pulseShieldChargeFor, pulseShieldFieldFor, refundRepairKits, refundRepairKitsAll, repairKitAvailableOf, repairLedgersOf, repairStatsFor, repairStreamsOf, repairUsageText, shieldChargeLedgersOf, shieldChargeStreamsOf, shieldFieldOf, shieldFieldStreamsOf, shieldPulsePctOf } from './combatRepair'
-export { ammoKeyOf, ammoLoadTotals, loadAmmo, loadAmmoTier, nextAmmoType, refundAmmo, resolveAmmoTier } from './combatAmmo'
+export { ammoKeyOf, ammoLoadTotals, loadAmmo, loadAmmoTier, nextAmmoType, refundAmmo, refundBattleAmmo, resolveAmmoTier } from './combatAmmo'
 export type { AmmoKey } from './combatAmmo'
 export { dronePoolKey, dronePoolOwner, pdPriorityOf, pdShotOf, pickFoeDroneTarget } from './combatDrones'
 export { coronaFocusFalloffOf } from './coronaFocus'

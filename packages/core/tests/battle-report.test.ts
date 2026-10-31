@@ -187,6 +187,8 @@ describe('战报 · 结构化记录（captureBattleReport 唯一构造点）', (
    */
   it('洞内战斗结算时真的写了战报，且正文是洞内那句原文', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 21 })
+    state.standingsEarned = { dsi: 20 }
+    state.skills.trained['fleet-command-basic'] = 3
     const a = addShipToFleet(state, 'sh-thresher')
     const b = addShipToFleet(state, 'sh-thresher')
     state.shipId = a

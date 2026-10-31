@@ -19,6 +19,7 @@ export const SKILL_BRANCHES: readonly { readonly id: string; readonly group: str
   { id: 'b-ammo', group: '战斗' },
   { id: 'b-drone', group: '战斗' },
   { id: 'b-warship', group: '战斗' },
+  { id: 'b-command', group: '战斗' },
   { id: 'b-protect', group: '工程' },
   { id: 'b-repair', group: '工程' },
   { id: 'b-ship-recovery', group: '工程' },

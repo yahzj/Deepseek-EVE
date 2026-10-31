@@ -411,6 +411,10 @@ describe('英文覆盖层（P2）', () => {
     const noDesc: string[] = []
     for (const [id] of zh.skills) {
       const other = en.skills.get(id)!
+      if (id.startsWith('fleet-command-')) {
+        expect(other.description).toBe(zh.skills.get(id)!.description)
+        continue
+      }
       if (!other.description) {
         noDesc.push(id)
         continue

@@ -12,7 +12,8 @@
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
-import { addShipToFleet, createInitialState, createPlayerSpec, wormholeEnter, wormholeStartBattle, advanceWormhole, wormholeFamilyOfSeed } from '../src/index'
+import { addShipToFleet, createPlayerSpec, wormholeEnter, wormholeStartBattle, advanceWormhole, wormholeFamilyOfSeed } from '../src/index'
+import { createCommandReadyState as createInitialState } from './helpers/command-ready'
 import { createFoeSpecs, wormholeDerivedAnomaly } from '../src/combat'
 
 const ctx = buildSimContext()

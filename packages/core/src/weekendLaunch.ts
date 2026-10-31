@@ -28,9 +28,11 @@ import type { FoeOverride } from './combat'
 import { shipDisplayName } from './instances'
 import { calcPower } from './expedition'
 import { preparationSquadOf, notePreparationSquad } from './preparationSquads'
+import { combatShipLimit, commandBudgetOf } from './combat/command/rules'
+import { shipOperationBlockReason } from './shipActionPolicy'
 
 /** 参战舰船**上限**（旗舰战 = 4 艘小队战；语义是上限、不是"必须带满"——与虫洞 `WORMHOLE_MAX_SHIPS` 同款口径） */
-export const WEEKEND_FLAGSHIP_MAX_SHIPS = 4
+export const WEEKEND_FLAGSHIP_MAX_SHIPS = combatShipLimit(true)
 /** 装甲 / 结构"偏低"的告警线（与既有文案「出征前把装甲与结构补到六成」同口径） */
 export const WEEKEND_PREP_LOW_HULL_FRAC = 0.6
 
@@ -188,11 +190,14 @@ export function weekendSanitizeFlagshipSquad(state: GameState, squad: readonly s
 
 /** **按战力自动选**（准备界面那颗按钮）：候选里战力最高的至多 4 艘（并列按舰队顺序，稳定） */
 export function weekendBestFlagshipSquad(state: GameState, ctx: SimContext): string[] {
-  return Object.keys(state.fleet)
+  const pool = Object.keys(state.fleet)
     .map((shipId) => ({ shipId, power: calcPower(state, ctx, shipId) }))
     .sort((a, b) => b.power - a.power)
     .slice(0, WEEKEND_FLAGSHIP_MAX_SHIPS)
     .map((c) => c.shipId)
+  const chosen: string[] = []
+  for (const id of pool) if (commandBudgetOf(state, ctx, [...chosen, id], true).ok) chosen.push(id)
+  return chosen
 }
 
 /** 旗舰的 4 波（每波 4 艘、各占 1/4 总血） */
@@ -206,7 +211,7 @@ export function weekendFlagshipSquadOf(state: GameState): string[] {
   for (const id of [state.shipId, ...Object.keys(state.fleet)]) {
     if (typeof id === 'string' && id.length > 0 && !ids.includes(id)) ids.push(id)
   }
-  return ids.slice(0, 4)
+  return ids.slice(0, WEEKEND_FLAGSHIP_MAX_SHIPS)
 }
 
 /**
@@ -236,9 +241,11 @@ function weekendStartFlagshipBattleMutable(state: GameState, ctx: SimContext, no
   const spec = weekendFlagshipSpecOf(state, ctx, nowWallMs)
   if (!spec) return null
   const clean = squad !== undefined ? weekendSanitizeFlagshipSquad(state, squad) : []
-  if (clean.length > 0) weekendNoteFlagshipSquad(state, clean)
   const use = clean.length > 0 ? clean : weekendPrepSquadOf(state)
   if (use.length === 0) return null
+  if (!commandBudgetOf(state, ctx, squad ?? use, true).ok) return null
+  if (use.some(id => shipOperationBlockReason(state, ctx, id, 'configure') !== null)) return null
+  if (clean.length > 0) weekendNoteFlagshipSquad(state, clean)
   /**
    * **母舰血条 = 池子剩余**（船长 2026-09-25 选「甲」）：开战这一刻把 `weekendFlagshipHpRemaining(ev)`
    * 传进覆写口 ⇒ 战斗里母舰的满血就是池子剩余（单场不死名副其实；打空即击沉）。

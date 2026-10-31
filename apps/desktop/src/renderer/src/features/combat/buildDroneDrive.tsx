@@ -16,14 +16,17 @@
 
 
 import { DRONE_DWELL_MS, DRONE_SHOW_MAX, DRONE_SORTIE_BACK_MS, DRONE_SORTIE_OUT_MS, droneModelOrFallback, droneRandomOffsets } from './droneArt'
+import type { DroneDriveState } from './droneDriveTypes'
 
 
 
 
 
 
-export function buildDroneDrive({ arcs, droneSortieRef, now, dronePrevShowRef, visDistRef, visM, droneDriveRef, meAnchorByTag, foeSortieRef, foeSizes, meSize, farM, nearM }: {
+export function buildDroneDrive({ arcs, droneSortieRef, now, dronePrevShowRef, visDistRef, visM, droneDriveRef, meAnchorByTag, foeSortieRef, foeSizes, foeTags, meSize, mySizes, farM, nearM }: {
 foeSizes: number[]
+foeTags: string[]
+mySizes?: number[]
 meSize: number
 farM: number
 nearM: number
@@ -33,7 +36,7 @@ now: number
 dronePrevShowRef: import('react').MutableRefObject<Map<string, number>>
 visDistRef: import('react').MutableRefObject<number>
 visM: number
-droneDriveRef: import('react').MutableRefObject<{ foeSizes: number[]; meSize: number; farM: number; nearM: number; wings: Array<{ key?: string; owner?: string; artId: string; model: import('../../ui/droneArt').DroneModel; show: number; st?: import('../../ui/droneArt').DroneSortie; deck: boolean; foe?: string; rangeBuff?: boolean; }>; meAnchors: Map<string, { x: number; y: number; }>; }>
+droneDriveRef: import('react').MutableRefObject<DroneDriveState>
 meAnchorByTag: Map<string, import('../../panels/battleViewCore').Anchor>
 foeSortieRef: import('react').MutableRefObject<Map<string, import('../../ui/droneArt').DroneSortie>>
 }) {
@@ -83,6 +86,8 @@ foeSortieRef: import('react').MutableRefObject<Map<string, import('../../ui/dron
   visDistRef.current = visM
   droneDriveRef.current = {
     foeSizes,
+    foeTags,
+    mySizes,
     meSize,
     farM,
     nearM,

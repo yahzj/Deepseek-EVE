@@ -17,7 +17,6 @@ import { buildSimContext } from '@whale/data'
 import {
   addShipToFleet,
   advanceWormhole,
-  createInitialState,
   FOE_MOUNTS,
   FOE_MOUNT_IDS,
   FOE_REPAIR_THREAT_REF,
@@ -29,6 +28,7 @@ import {
   type GameState,
   type WormholeRunState,
 } from '../src/index'
+import { createCommandReadyState as createInitialState } from './helpers/command-ready'
 import { createBattleState, createFoeSpecs, hitChance, wormholeDerivedAnomaly } from '../src/combat'
 
 const ctx = buildSimContext()

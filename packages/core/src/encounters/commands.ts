@@ -8,6 +8,9 @@ import { startBattleFor } from '../combat'
 import { foeKeyOf } from './presence'
 import { weekendKindOfEncounter } from './return'
 import { settleEscape } from './outcome'
+import { commandBudgetOf } from '../combat/command/rules'
+import { startFleetBattleFor } from '../combat/startFleet'
+import { combatEscortBlock, encounterCombatRosterOf } from '../combat/command/locks'
 
 /** 玩家指令：迎战（进入 V12 实时战斗，自动打完出战报） */
 export function fightEncounter(state: GameState, ctx: SimContext): CommandResult {
@@ -29,7 +32,13 @@ export function fightEncounterMutable(state: GameState, ctx: SimContext): Comman
    * 非入侵遭遇不传 ⇒ 行为一字不变。
    */
   const weekendFoe = weekendBattleInvolvedOf(state, ctx, enc.anomalyId ?? null, Date.now())
-  const battle = startBattleFor(
+  const squad = encounterCombatRosterOf(state)
+  const budget = commandBudgetOf(state, ctx, squad)
+  if (!budget.ok) return budget
+  const blocked = combatEscortBlock(state, squad)
+  if (blocked) return { ok: false, ...blocked }
+  const battle = squad.length > 1 ? startFleetBattleFor(state, ctx, squad, foeKeyOf(enc), state.gameMs, undefined, undefined,
+    weekendFoe ? { threat: enc.threat, ...(enc.foeStrengthMul !== undefined ? { strengthMul: enc.foeStrengthMul } : {}) } : undefined) : startBattleFor(
     state,
     ctx,
     enc.shipId ?? state.shipId,

@@ -5,7 +5,7 @@ import type { CommandResult } from '../engine'
 import { lairAnomalyOf, lairNameOf } from '../lairs'
 import { weekendFoeCardOf } from '../weekendEvent'
 import { weekendApplyBattleOutcome } from '../weekendBattle'
-import { settleDroneLosses, refundAmmo, refundRepairKitsAll, persistFleetHullDamage, createPlayerSpec, createFoeSpecs, foeDesiredRange, meFoeRangeDebuffOf, captureBattleReport } from '../combat'
+import { settleDroneLosses, refundBattleAmmo, refundRepairKitsAll, persistFleetHullDamage, createPlayerSpec, createFoeSpecs, foeDesiredRange, meFoeRangeDebuffOf, captureBattleReport } from '../combat'
 import { formatDurationMs } from '../time'
 import { type HullHit, applyArmorFirstDamage, firepowerHitHp, hitDamageText } from '../hullDamage'
 import { nextRandom } from '../rng'
@@ -14,6 +14,8 @@ import { autoLoopInvasionGalaxy, stopAutoLoopInvasion } from './loopState'
 import { returnBackMs } from './travel'
 import { RETURN_LEG_MUL } from '../balance'
 import { beginJumpFuelLeg, jumpFuelLegMsOf } from '../jumpFuel'
+import { settleCommandFleet, loseCommandSunkShips } from '../combat/command/settlement'
+import { finishDestroyedSortie } from '../combat/command/return'
 
 /**
  * 玩家指令：战斗中主动撤退（Q1乙 轻损：只损失少量舰船耐久、无弃船骰；**维修费已于 2026-09-15 按船长「删除撤离费」整条删除**）；
@@ -79,11 +81,13 @@ export function settleBattleRetreat(
     }
   }
   // 机群战损（2026-09-10 船长「无人机可被击落」）：撤退也照扣——被打掉的飞机不会飞回来
-  settleDroneLosses(state, ctx, state.shipId, battle)
-  refundAmmo(state, battle.ammo, battle.ammoIds) // 弹药 MK2：按本场实装弹 id 退回
+  const multi = (battle.myFleet?.length ?? 0) > 1
+  if (multi) settleCommandFleet(state, ctx, battle)
+  else settleDroneLosses(state, ctx, state.shipId, battle)
+  refundBattleAmmo(state, battle)
   refundRepairKitsAll(state, battle) // 船体维修装置（2026-09-09）：未用修理组件退回仓库
   // P0 承伤持久化：撤退也保留本场已损装甲/结构（脱身那一口在其后叠加）
-  persistFleetHullDamage(state, ctx, state.shipId, battle)
+  if (!multi) persistFleetHullDamage(state, ctx, state.shipId, battle)
   const durTxt = formatDurationMs(battle.lastTickGameMs - battle.startedAtGameMs)
   // 「无法交战」战报要用的两个数字（**与引擎同源、不手写**）：我方主武器最远射程 + 敌编队典型交距
   const meSpec = createPlayerSpec(state, ctx, state.shipId)
@@ -108,7 +112,8 @@ export function settleBattleRetreat(
   const threat = threatCard ? Math.max(1, threatCard.threat) : 0
   let hit: HullHit | null = null
   let legacyLossPct = 0
-  if (threat > 0) {
+  const leaderAlive = !multi || (battle.units.player?.hp.h ?? 0) > 0
+  if (threat > 0 && leaderAlive) {
     hit = applyArmorFirstDamage(state, ctx, state.shipId, firepowerHitHp(ctx, threat, bal.retreatHitFirepowerSec))
     if (hit?.floored) {
       addLog(
@@ -122,7 +127,7 @@ export function settleBattleRetreat(
         mode === 'timeout' ? 'core.expedition.054' : mode === 'auto' ? 'core.expedition.055' : 'core.expedition.056',
       )
     }
-  } else {
+  } else if (leaderAlive) {
     const fleetShipLegacy = state.fleet[state.shipId]
     const baseLoss = bal.durabilityLossMin + (bal.durabilityLossMax - bal.durabilityLossMin) * nextRandom(state.rng)
     const loss = Math.max(0.01, Math.round(baseLoss * 500) / 1000)
@@ -170,6 +175,8 @@ export function settleBattleRetreat(
     breakReason: mode === 'timeout' ? 'timeout' : mode === 'cannot-engage' ? 'cannot-engage' : mode === 'auto' ? 'hull' : 'manual',
     summary: retreatText,
   })
+  if (multi) loseCommandSunkShips(state, ctx, battle, exp.foeGalaxyId ?? anomaly?.galaxyId ?? HOME_GALAXY_ID)
+  if (multi && finishDestroyedSortie(state, battle)) return
   // 收手 → 停清剿（若有；手动撤退与自动撤退都会终止重复清剿）
   if (state.autoLoopAnomalyId !== null && state.autoLoopAnomalyId === exp.anomalyId) {
     state.autoLoopAnomalyId = null
@@ -193,7 +200,7 @@ export function settleBattleRetreat(
   // 转返航（2026-09-08：基准 = 目标星系最近已建成站；本地 = 固定 120s；沿用失利返回流程）
   exp.battle = null
   exp.lairTier = undefined
-    exp.factionActive = undefined // 撤退/自动撤退：本场作废，窝点档位不带到下一场
+  exp.factionActive = undefined // 撤退/自动撤退：本场作废，窝点档位不带到下一场
   exp.phase = 'back'
   exp.returnReason = 'retreat'
   // 返航计时起点 = 战斗停表时刻（2026-09-09 修复：自动撤退由大步长推进触发时,离线剩余时间

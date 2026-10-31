@@ -212,6 +212,29 @@ export function refundAmmo(
   }
 }
 
+/** 新编队逐弹型退还；旧在途没有明细账时仍按原三族账本结算。 */
+export function refundBattleAmmo(state: GameState, battle: BattleState, recoveryPct = 0): number {
+  const rate = Math.max(0, Math.min(1, recoveryPct))
+  const ledger = battle.expeditionAmmo
+  if (ledger) {
+    let recovered = 0
+    for (const [id, loaded] of Object.entries(ledger.loaded)) {
+      const left = ledger.stock[id] ?? 0
+      const back = ceilFinalQuantity(Math.max(0, loaded - left) * rate)
+      if (left + back > 0) addWare(state, id, left + back)
+      recovered += back
+    }
+    ledger.stock = {}
+    ledger.loaded = {}
+    return recovered
+  }
+  refundAmmo(state, battle.ammo, battle.ammoIds)
+  const back = { kin: 0, exp: 0, pla: 0 }
+  for (const key of ['kin', 'exp', 'pla'] as const) back[key] = ceilFinalQuantity(Math.max(0, (battle.ammoLoaded?.[key] ?? battle.ammo[key]) - battle.ammo[key]) * rate)
+  refundAmmo(state, back, battle.ammoIds)
+  return back.kin + back.exp + back.pla
+}
+
 /**
  * 开火弹型 = 剩余最多（平局 kin→exp→pla）；全空 null。
  *

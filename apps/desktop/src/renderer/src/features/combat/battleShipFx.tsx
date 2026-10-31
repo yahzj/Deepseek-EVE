@@ -1,9 +1,9 @@
-import type { ComponentProps } from 'react'
+import { memo, type ComponentProps } from 'react'
 import { ShipSprite } from '../../ui/ShipSprite'
 import { mountsOf } from '../../ui/shipMounts'
 
 /** 战斗专用舰影；缺省不加速，非战斗组件保持原样。 */
-export function BattleShipSprite({ acceleration, ...props }: ComponentProps<typeof ShipSprite> & {
+export const BattleShipSprite = memo(function BattleShipSprite({ acceleration, ...props }: ComponentProps<typeof ShipSprite> & {
   acceleration?: 'boost' | 'charge'
 }) {
   const size = props.size ?? 150
@@ -38,4 +38,4 @@ export function BattleShipSprite({ acceleration, ...props }: ComponentProps<type
       ) : null}
     </span>
   )
-}
+})

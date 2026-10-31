@@ -22,6 +22,8 @@ import { pdEnabledFor } from './droneWindow'
 import { foeJudgedThreatOf } from './foePower'
 import { preloadRepairFor, REPAIR_PULSE_MS, preloadShieldChargeFor, preloadShieldFieldFor } from './combatRepair'
 import { equipmentCycleMsOf } from '../equipment'
+import { COMBAT_MAX_SHIPS } from './command/rules'
+import { isFirstBountyBattle, applyFirstBountyBuff } from '../firstTasks'
 
 /**
  * **多舰编队开战**（虫洞 D 批 · 船长 2026-09-13：「4 艘同时参战」）——与 `startBattleFor` 并列的
@@ -30,11 +32,9 @@ import { equipmentCycleMsOf } from '../equipment'
  * 口径（逐条见设计稿 §二 冲突 1 的 D 批落地表）：
  * - **主控 = `state.shipId`**（若在编队里，否则编队第一艘）；tag 恒为 `'player'`，僚舰 `'ally-1'..`；
  * - **逐船**按自己的装配/技能建三层血，并按自己的**场间残余**（`armorPct`/`durability`）开局；
- * - **弹药整队共用一个池，但池 = 每艘船各自装载量之和**（各船按自己的装配档与货仓装载、
- *   **照付成本**）；⚠ 多船混装**不同弹种档位**时，`battle.ammoIds` 与退还都按**主控优先**
- *   的档口（共用池记不住两套档位——已知简化，F 批可细化）；
+ * - 弹药逐舰选档、逐弹药ID建账；同档共享存量，不同档不转换，三族总数只供汇总显示；
  * - **不挂 `hullEscapeFrac`** ⇒ 副本内没有"结构过半自动脱离"保险（冲突 2 · 船长裁定「关闭」）；
- * - 僚舰的**无人机机群 / 近防炮 / 修理包不参战**（D 批边界；机群与点防的多单位化留 F 批）。
+ * - 机群、近防与维修按参战舰逐舰建档与结算。
  */
 export function startFleetBattleFor(
   state: GameState,
@@ -77,9 +77,9 @@ export function startFleetBattleFor(
   /** 入侵旗舰沿用核心星系目标，不因首波射程而缩小。 */
   preserveDesire = false,
 ): import('../state').BattleState | null {
-  if (!anomalyId || shipIds.length === 0) return null
+  if (!anomalyId || shipIds.length === 0 || shipIds.length > COMBAT_MAX_SHIPS || new Set(shipIds).size !== shipIds.length || shipIds.some(id => !state.fleet[id])) return null
   // 虫洞内的敌卡取**原卡**（不套窝点派生/派系活跃——那是悬赏线的口径），再按层派生
-  const baseCard = battleAnomalyOf(ctx, anomalyId)
+  const baseCard = battleAnomalyOf(ctx, anomalyId, wormhole ? undefined : state.expedition.lairTier, wormhole ? undefined : state.expedition.factionActive)
   // **记下这一场的敌方舰级**（用**原卡**，两处派生之前；船长 2026-09-16）
   if (baseCard) noteFoeShipsSeen(state, baseCard)
   if (!baseCard) return null
@@ -151,6 +151,7 @@ export function startFleetBattleFor(
       if (spec.shieldArmorHp !== undefined) spec.hp.coating = { armor: spec.hp.a - spec.shieldArmorHp, maxArmor: fullHpOf.get(spec.tag)!.a - spec.shieldArmorHp }
       spec.hp.h = Math.max(0, ceilFinalQuantity(spec.hp.h * hullMul))
     }
+    if (i === 0 && isFirstBountyBattle(state, anomalyId, sid)) applyFirstBountyBuff(spec)
     specs.push(spec)
     specOf.set(sid, spec)
     fleet.push({ tag: spec.tag, shipId: sid })
@@ -252,11 +253,13 @@ export function startFleetBattleFor(
   battle.myFleet = fleet
   if (wormhole) battle.wormhole = { cardId: anomalyId, ...wormhole }
   if (wormhole?.desireRangeMul) battle.myDesireM = Math.min(battle.myDesireM, openM * wormhole.desireRangeMul)
-  // 弹药：**逐船装载、汇入同一个池**（成本按各船各付；档口按主控优先）
+  // 弹药逐舰选档，按实装ID汇总；同档共享，不同档不相互转换。
   // **取档口径 2026-09-16 船长改判**：同族取"能装得最多"的那一档、允许装不满（细则见 `loadAmmoTier`）
   const ammoIds: Partial<Record<DamageType, string>> = {}
+  const ammoLedger: NonNullable<import('../state').BattleState['expeditionAmmo']> = { stock: {}, loaded: {}, idsByTag: {} }
   if (!loadWormholeBattleAmmo(state, ctx, battle, specOf)) for (const entry of fleet) {
     const spec = specOf.get(entry.shipId)!
+    const ids: Partial<Record<DamageType, string>> = {}
     const totals = ammoLoadTotals(spec, bal, state)
     for (const [t, n] of Object.entries(totals)) {
       const type = t as DamageType
@@ -264,13 +267,17 @@ export function startFleetBattleFor(
       // 同上（批次 4i 类型微调）：n 运行期恒为数字键的值
       const res = loadAmmoTier(state, ctx, entry.shipId, type, n ?? 0)
       battle.ammo[key] += res.loaded
+      ids[type] = res.id
+      if (res.loaded > 0) ammoLedger.stock[res.id] = (ammoLedger.stock[res.id] ?? 0) + res.loaded
       // ⚠ 只要有实装就记实际档（含"实际 = 基础弹"）：推进重建与退还都按它走，漏记会串档
       if (res.loaded > 0 && ammoIds[type] === undefined) ammoIds[type] = res.id
       if (res.fellBack && res.loaded > 0) {
         addLog(state, 'warn', ammoTierFallbackLog(state, ctx, entry.shipId, type, res.id, res.loaded))
       }
     }
+    ammoLedger.idsByTag[entry.tag] = ids
   }
+  if (!battle.expeditionAmmo) battle.expeditionAmmo = { ...ammoLedger, loaded: { ...ammoLedger.stock } }
   if (Object.keys(ammoIds).length > 0) battle.ammoIds = ammoIds
   // **开战预载量**（F3c B2 · 谜质「弹药回收装置」）：记一份，战后按「预载 − 余额」算这一场打出去多少
   battle.ammoLoaded = { ...battle.ammo }

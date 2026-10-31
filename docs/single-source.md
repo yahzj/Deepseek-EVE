@@ -14,11 +14,17 @@
 
 ## 一、core 引擎层（`packages/core/src`）
 
+统一指挥预算：`combat/command/rules.ts`的`commandCapacityOf`、`shipCommandCostOf`、`commandBudgetOf`分别负责容量、船型成本和入口校验；常驻战斗名单归`combat/command/roster.ts:combatRosterOf`，出勤快照清洗归同域。旧4舰规则只经独立配置恢复，不另抄预算算法。
+
 每日赏金：`expedition/bountyBoard.ts:rollBountyBoard`统一候选、分区席位、地图上限与三档匹配；`bountyTaskStandingGain`提供完成和收益展示共用的分档声望。护栏为赏金生成/结算专项及F2/F3检查。
 
 `lab.ts:labOutputCapped`按产物聚合有效线锁定的`batchUnits`，起线、续做与燃料供应读数共用；交付按真实余量整批入库，仓满保留原线/退款账与`deliveryBlocked`随档标记。`market/constants.ts:PRICE_HISTORY_LIMIT`为行情采样和存档清洗共用窗口常量，不导入运行层。护栏为国庆专项及F2/F3检查。
 
-双语时长分解归 `time.ts:durationParts`；方案/残骸/沉船记录槽位净化归 `save.ts:cleanRack`；手动与自动探索回合预算归 `wormhole.ts:wormholeTurnBudget`。
+双语时长分解归 `time.ts:durationParts`；方案/残骸/沉船记录槽位净化归 `save.ts:cleanRack`；手动与自动探索回合预算归 `wormhole/fleet/admission.ts:wormholeTurnBudget`。
+
+编队实体出勤锁归`combat/command/locks.ts:commandShipDeployed`，随行舰预检归同文件`combatEscortBlock`；敌方在场空位归`combat/foes/capacity.ts:enemyFleetRoom`；逐弹药ID退款归`combat/combatAmmo.ts:refundBattleAmmo`。
+实际随行名单由`combat/command/locks.ts:deployedCombatEscorts`读取出发快照；旧在途无快照时不补入基地舰船。
+遭遇战开战与缺弹预警均调用同文件`encounterCombatRosterOf`，不拿基地意向名单代替实际随行舰。
 
 双布局偏好归 `ui/layoutPreference.ts:readLayoutPref` 与同文件存储键；双活动栏停止命令归 `panels/activityStopLabel.ts:doStop`。新旧探索纯表现辅助归 `panels/explorationShared.tsx` 的 `holdTone`、`hexRingOf`、`explorationNumber`、`useCountUp`、`grabOffsetOf`、`WhGlyph`、`WhNebulaGlyph`；事件闭包、扫描和新旧玩法规则仍由各面板维护。以上登记 F2/F3，并以清理等价性专项核对旧实现。
 

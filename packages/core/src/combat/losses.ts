@@ -68,6 +68,7 @@ export function settleDroneLosses(
   ownerTag = 'player',
   /** 虫洞逐舰收口收集本次结果；不改变扣账或普通战斗的报告写入条件。 */
   onReport?: (report: import('../state').DroneLossReport) => void,
+  reviveDebitDone = false,
 ): string | null {
   const byOwner = battle?.droneLostBy
   const lost = byOwner ? byOwner[ownerTag] : ownerTag === 'player' ? battle?.droneLost : undefined
@@ -205,6 +206,7 @@ export function settleDroneLosses(
    */
   const revivedShort: string[] = []
   for (const [id, n] of Object.entries(revivedMap)) {
+    if (reviveDebitDone) continue
     if (battle?.droneRevive?.[ownerTag]?.printing) continue
     for (let i = 0; i < n; i++) {
       if (takeDroneUnit(state, shipId, id) === null) {
@@ -247,7 +249,8 @@ export function settleDroneLosses(
    */
   const legacyStartLoad = battle?.droneLoadAtStartBy?.[ownerTag] ??
     (ownerTag === 'player' ? battle?.droneLoadAtStart : undefined) ?? {}
-  const refill = refillDroneLoadTo(state, ctx, shipId, legacyStartLoad)
+  const refill = refillDroneLoadTo(state, ctx, shipId, legacyStartLoad,
+    unit && unit.hp.s + unit.hp.a + unit.hp.h <= 0 ? () => null : undefined)
   const refillRows = Object.entries(refill.added)
   const refillTxt = refillRows
     .map(([id, n]) => {

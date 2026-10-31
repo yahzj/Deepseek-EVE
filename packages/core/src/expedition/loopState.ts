@@ -1,6 +1,7 @@
 /** 战斗域职责拆分，保持原计算与顺序。 */
 import { type GameState, type BattleState, addLog } from '../state'
 import type { CoreBlockReason } from '../engine'
+import { combatRosterOf } from '../combat/command/roster'
 
 /**
  * **本场机群战损读数**（单点；永久损失制安全阀：2026-09-10 船长拍板「战损过半自动停环提示补货」）。
@@ -17,7 +18,11 @@ export function droneBattleOutcome(
   state: GameState,
   battle: BattleState,
 ): { before: number; after: number; attrition: boolean } {
-  const before = Object.values(battle.droneLoadAtStart ?? {}).reduce((s, n) => s + n, 0)
+  const before = Object.values(battle.droneLoadAtStartBy
+    ? Object.values(battle.droneLoadAtStartBy).reduce<Record<string, number>>((all, load) => {
+      for (const [id, n] of Object.entries(load)) all[id] = (all[id] ?? 0) + n
+      return all
+    }, {}) : battle.droneLoadAtStart ?? {}).reduce((s, n) => s + n, 0)
   const rep =
     state.droneLossReport && state.droneLossReport.battleStartedAtGameMs === battle.startedAtGameMs
       ? state.droneLossReport
@@ -39,7 +44,7 @@ export function autoLoopDroneShortfall(
 ): { now: number; floor: number; need: number } | null {
   const floor = state.autoLoopDroneFloor
   if (typeof floor !== 'number') return null
-  const now = Object.values(state.fleet[shipId]?.droneLoad ?? {}).reduce((s, n) => s + n, 0)
+  const now = combatRosterOf(state, shipId).reduce((sum, id) => sum + Object.values(state.fleet[id]?.droneLoad ?? {}).reduce((s, n) => s + n, 0), 0)
   return now <= floor ? { now, floor, need: floor + 1 } : null
 }
 

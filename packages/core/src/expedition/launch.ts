@@ -4,6 +4,10 @@ import type { SimContext } from '../types'
 import type { CommandResult } from '../engine'
 import { pilotUnavailableReason, haltCurrentActivity, applyActivityGate } from '../activityGate'
 import { standingOf, DSI_FACTION_ID } from '../standing'
+import { commandBudgetOf } from '../combat/command/rules'
+import { combatRosterOf, makeCombatSortie } from '../combat/command/roster'
+import { combatEscortBlock } from '../combat/command/locks'
+import { startFleetBattleFor } from '../combat/startFleet'
 import { actionBlockReason, markExplored } from '../explore'
 import { bountyCooldownRemainingMs } from './cooldown'
 import { type LairTier, isLairCandidate, lairNameOf } from '../lairs'
@@ -27,6 +31,7 @@ import { autoLoopInvasionGalaxy } from './loopState'
  * 不含"采矿/远征进行中"互斥（由各入口自己裁决）与起点可达性（由各入口按自身起点检查）。
  */
 export function expeditionPreflight(state: GameState, ctx: SimContext, anomalyId: string, galaxyId?: string): CommandResult {
+  if (!state.expedition.active && state.expedition.sortie) return { ok: false, error: '远征进行中，等战报回来再说吧。', errorId: 'core.expedition.011' }
   const anomaly = ctx.anomalies.get(anomalyId)
   if (!anomaly) return { ok: false, error: `未知目标：${anomalyId}。`, errorId: 'core.expedition.003', errorParams: { p1: anomalyId } }
   /** ⚠ `wormholePilotHoldReason` 已撤（2026-09-21 统一批）：扫描虫洞 = 可自动停、人在洞里 = 拒，都归 `activityGate` */
@@ -74,6 +79,11 @@ export function startExpeditionMutable(state: GameState, anomalyId: string, ctx:
   opts?: { desireM?: number; lairTier?: LairTier; foeGalaxyId?: string; rewardIskOverride?: number; confirmActivitySwitch?: boolean }): CommandResult {
   const pre = expeditionPreflight(state, ctx, anomalyId, opts?.foeGalaxyId)
   if (!pre.ok) return pre
+  const squad = combatRosterOf(state)
+  const budget = commandBudgetOf(state, ctx, squad)
+  if (!budget.ok) return budget
+  const blocked = combatEscortBlock(state, squad)
+  if (blocked) return { ok: false, ...blocked }
   const anomaly = ctx.anomalies.get(anomalyId)!
   // 窝点校验：目标必须可作窝点（有核心词、非隐藏、非 B 族）。
   // 2026-09-10 船长定：档位不再由声望封顶（改由日板席位决定），接取门槛只看卡自身声望要求
@@ -115,6 +125,7 @@ export function startExpeditionMutable(state: GameState, anomalyId: string, ctx:
   const now = state.gameMs
   const exp = state.expedition
   exp.active = true
+  exp.sortie = makeCombatSortie(squad, state.shipId)
   exp.anomalyId = anomalyId
   /**
    * **本场远征实际打的是哪个星系**（2026-09-25：周末入侵接线）——只在调用方显式给出时写，
@@ -157,6 +168,7 @@ export function startExpeditionMutable(state: GameState, anomalyId: string, ctx:
   // 去程取消：立即开战（beginBattleAt 会点亮目标星系并写"进入交火"日志）
   const opened = beginBattleAt(state, ctx, anomalyId, state.shipId, now, opts?.desireM)
   if (!opened) {
+    delete exp.sortie
     exp.active = false
     exp.anomalyId = null
     exp.battle = null
@@ -248,7 +260,9 @@ export function beginBattleAtMutable(state: GameState, ctx: SimContext, anomalyI
       ? weekendAssaultThreatOf(weekendEv, weekendAssault.galaxyId)
       : undefined
   // 实际anomalyId已由出发时抽卡锁定，不再以卡自带母港或作战星系取距离。
-  const battle = startBattleFor(
+  const squad = state.expedition.sortie?.shipIds ?? [shipId]
+  const battle = squad.length > 1 ? startFleetBattleFor(state, ctx, squad, anomalyId, arrivalGameMs, desireM,
+    undefined, weekendThreat !== undefined ? { threat: weekendThreat } : undefined, weekendAssault !== undefined) : startBattleFor(
     state,
     ctx,
     shipId,

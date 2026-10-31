@@ -34,6 +34,8 @@ function idle(state: GameState) {
   state.expedition.active = false
   state.expedition.battle = null
   state.expedition.anomalyId = null
+  delete state.expedition.sortie
+  delete state.combatEscort
   state.bountyCooldowns = {}
 }
 

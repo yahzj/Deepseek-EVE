@@ -13,15 +13,15 @@
 
 ## 统计
 
-- 非归档文档 **313** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **3736** KB · **41936** 行
-- 状态分布：**未标注** 136 · **已确认/已实现** 121 · **进行中** 38 · **待裁定** 17 · **历史留档** 1
+- 非归档文档 **314** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **3751** KB · **42077** 行
+- 状态分布：**未标注** 136 · **已确认/已实现** 122 · **进行中** 38 · **待裁定** 17 · **历史留档** 1
 - 孤儿文档（0 引用）**173** 份 · 状态未标注 **136** 份
 - 一、常用文档（按任务查阅）：**11** 份
 - 七、评审与体检（review）：**4** 份
 - 三、设计与工作文档（需核实状态）：**266** 份
 - 二、其它（docs 根目录）：**3** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
-- 八、测试档说明（test-saves）：**21** 份
+- 八、测试档说明（test-saves）：**22** 份
 - 六、专题：舰船美术（design/ship-battle-art）：**7** 份
 
 ## 一、常用文档（按任务查阅） —— 11 份
@@ -36,9 +36,9 @@
 | `docs/data-map.md` | 数据速查页 | 未标注 | — | 3 KB / 38 行 | 4 |
 | `docs/development-conventions.md` | 开发约定 | 未标注 | — | 22 KB / 165 行 | 15 |
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（现行译名表） | — | 46 KB / 810 行 | 9 |
-| `docs/glossary.md` | 术语词典 | 未标注 | — | 19 KB / 186 行 | 59 |
+| `docs/glossary.md` | 术语词典 | 未标注 | — | 20 KB / 188 行 | 59 |
 | `docs/roadmap.md` | 当前待办与实施边界 | 未标注 | — | 6 KB / 63 行 | 61 |
-| `docs/single-source.md` | 单点索引（谁有权算、谁只能读） | 未标注 | — | 34 KB / 242 行 | 20 |
+| `docs/single-source.md` | 单点索引（谁有权算、谁只能读） | 未标注 | — | 35 KB / 248 行 | 20 |
 
 ## 七、评审与体检（review） —— 4 份
 
@@ -55,7 +55,7 @@
 |---|---|---|---|---|---|
 | `docs/design/bounty-standing-20261030.md` | 每日赏金分档声望与三档保底 | 已确认/已实现（已实现） | 2026-10-30 | 11 KB / 75 行 | 1 |
 | `docs/design/combat-command-budget-20261030.md` | 常态多舰编队与指挥成本 | 已确认/已实现（舰级选靶权重已实现待验收） | 2026-10-30 | 45 KB / 409 行 | 3 |
-| `docs/design/combat-command-implementation-20261030.md` | 统一指挥预算与12舰战斗实施 | 未标注（已获功能范围授权） | 2026-10-30 | 8 KB / 69 行 | 2 |
+| `docs/design/combat-command-implementation-20261030.md` | 统一指挥预算与12舰战斗实施 | 未标注（实现与本地专项验证完成） | 2026-10-30 | 17 KB / 148 行 | 2 |
 | `docs/design/d2-integration-20261030.md` | 二号修复与声望调整合入 | 未标注（已本地合入主树） | 2026-10-30 | 4 KB / 31 行 | 2 |
 | `docs/design/industry-domain-folders-20261030.md` | 工业功能域分目录与拆分 | 未标注（实施与专项完成） | 2026-10-30 | 5 KB / 36 行 | 1 |
 | `docs/design/market-domain-folders-20261030.md` | 市场功能域分目录与拆分 | 未标注（实施与专项完成） | 2026-10-30 | 5 KB / 35 行 | 1 |
@@ -326,7 +326,7 @@
 |---|---|---|---|---|---|
 | `docs/development-conventions-changelog.md` | 开发约定维护记录 | 未标注 | — | 1 KB / 13 行 | 6 |
 | `docs/git-gate-approval.md` | Git提交审批放行 | 未标注 | — | 2 KB / 28 行 | 1 |
-| `docs/l10n-pending.md` | 待英文本地化记录 | 未标注 | — | 3 KB / 41 行 | 15 |
+| `docs/l10n-pending.md` | 待英文本地化记录 | 未标注 | — | 4 KB / 64 行 | 15 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -334,10 +334,11 @@
 |---|---|---|---|---|---|
 | `docs/design/battle-data/p41-drone-readings-20260912.md` | P-41 机群批标定轮 · 读数（2026-09-12 · 二号 d2） | 未标注 | 2026-09-12 | 7 KB / 88 行 | 1 |
 
-## 八、测试档说明（test-saves） —— 21 份
+## 八、测试档说明（test-saves） —— 22 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档） |
 |---|---|---|---|---|---|
+| `docs/test-saves/command-fleet-20261030.md` | 指挥编队门槛档 | 已确认/已实现（已实现） | 2026-10-30 | 2 KB / 26 行 | 2 |
 | `docs/test-saves/support-plug-stacking-20261023.md` | 支援件与舰船插件多件惩罚验收 | 未标注 | 2026-10-23 | 1 KB / 10 行 | 2 |
 | `docs/test-saves/signal-auto-tech-20261022.md` | 信号空间T3自动探索科技验收档 | 已确认/已实现（已实现自测） | 2026-10-22 | 1 KB / 11 行 | 2 |
 | `docs/test-saves/battle-card-range-20261021.md` | 按卡距离与射程变化确认验收档 | 未标注（实现自测） | 2026-10-21 | 1 KB / 11 行 | 2 |
@@ -358,7 +359,7 @@
 | `docs/test-saves/black-market-20261004.md` | 黑市页面验收档 | 待裁定（随功能待船长验收） | 2026-10-04 | 1 KB / 15 行 | 1 |
 | `docs/test-saves/hauler-20261004.md` | 纯货舰修订验收档 | 未标注（已验收） | 2026-10-04 | 2 KB / 25 行 | 2 |
 | `docs/test-saves/whexpedition-20261004.md` | 虫洞第一批合成测试档 | 未标注（未来虫洞整备/事件/警戒的隔离验收材） | 2026-10-04 | 10 KB / 78 行 | 1 |
-| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 81 KB / 815 行 | 20 |
+| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 82 KB / 820 行 | 20 |
 
 ## 六、专题：舰船美术（design/ship-battle-art） —— 7 份
 

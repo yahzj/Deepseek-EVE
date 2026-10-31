@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
-import { createInitialState } from '../src/state'
+import { createCommandReadyState as createInitialState } from './helpers/command-ready'
 import { addShipToFleet } from '../src/fleetBook'
 import { startExpedition, setBattleDesire, advanceAutoLoopBounty, advanceAutoLoopInvasion } from '../src/expedition'
 import { createPlayerSpec, desiredRangeFor, startBattleFor } from '../src/combat'
@@ -34,6 +34,8 @@ function idle(state: ReturnType<typeof world>) {
   state.expedition.active = false
   state.expedition.battle = null
   state.expedition.anomalyId = null
+  delete state.expedition.sortie
+  delete state.combatEscort
   state.bountyCooldowns = {}
 }
 function first(state: ReturnType<typeof world>, card = 'ink-harass') {

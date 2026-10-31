@@ -40,7 +40,11 @@ const FREE_DC = 'mod-lair-dc-c'
 const shipOf = (id: string) => FOE_SHIPS.find((s) => s.id === id)!
 
 function fresh(seed = 5): GameState {
-  return createInitialState({ nowWallMs: 0, seed })
+  const state = createInitialState({ nowWallMs: 0, seed })
+  state.standingsEarned = { dsi: 20 }
+  state.skills.trained['fleet-command-basic'] = 5
+  state.skills.trained['fleet-command-coordination'] = 2
+  return state
 }
 
 /** 起一趟 2×T3 编队（主控 = 第一艘；僚舰 = 第二艘） */

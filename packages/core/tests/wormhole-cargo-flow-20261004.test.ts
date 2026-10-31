@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
-import { createInitialState } from '../src/state'
+import { createCommandReadyState as createInitialState } from './helpers/command-ready'
 import { addShipToFleet } from '../src/shipyard'
 import { wormholePreparationPlan, wormholeEnterPrepared } from '../src/wormholePreparation'
 import { wormholeDescend, wormholeEnter, wormholeExtract, wormholeGridScan, wormholeLeave, wormholeResume } from '../src/wormhole'

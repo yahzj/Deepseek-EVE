@@ -10,6 +10,8 @@ import { shipLockedReason } from '../src/state'
 const ctx = buildSimContext()
 function setup() {
   const state = createInitialState({ nowWallMs: 0, seed: 19 })
+  state.standingsEarned = { dsi: 20 }
+  state.skills.trained['fleet-command-basic'] = 3
   const fleet = [addShipToFleet(state, 'sh-thresher'), addShipToFleet(state, 'sh-thresher')]
   state.skills.trained['ai-expert'] = 2
   state.wormholeStock = [{ id: 'auto-expedition', seed: 19, depth: 1, family: 'A', archetype: 'balanced', foundAtGameMs: 0 }]

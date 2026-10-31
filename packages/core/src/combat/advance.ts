@@ -9,7 +9,7 @@ import { applyFoeOverride, battleAnomalyOf, wormholeDerivedAnomaly } from './car
 import { activeFoeSpecsOf, createFoeSpecs } from './foes/catalog'
 import { battleOpenM, foeDesiredRange } from './foes/tactics'
 import { seedUnit, initFoeDronePools, initFoeRepairPulses } from './foes/state'
-import { foesWithSupport, resolveReinforcements, resolveFoeRevive, resolveFoeSummon } from './foes/reinforcements'
+import { foesWithSupport, resolveReinforcements, resolveFoeRevive, resolveFoeSummon, reinforceTriggered, resolveSupportBranch } from './foes/reinforcements'
 import { applyFoeRangeDebuff } from './foeRange'
 import { buildMyUnitSpecs } from './fleetSpecs'
 import { pdEnabledFor } from './droneWindow'
@@ -25,6 +25,7 @@ import { stepBattle } from './step'
 import { equipmentCycleMsOf } from '../equipment'
 import { pulseFoeRepair, pulseFoeMountRepair } from './repairFoes'
 import { advanceFoeRebirthRepair } from './gravekeeperCombat'
+import { pendingEnemyFormation } from './foes/capacity'
 
 /** 多波演出窗口总时长（2026-09-09）：单次大预算推进（胜率 MC/校准工具）把 state.gameMs * 一次设到 maxBattleMs+余量——若波次间隙（waveEnterGapMs，战斗时钟冻结）吃掉余量，末段
  * 跨窗口会提前耗尽预算判负。调用方应在预算外加本值（无 waves = 0）。
@@ -101,7 +102,7 @@ export function advanceBattleFor(
    * ⚠ `foes`（下面 `foeDesire` / `openM` 用的那份）**照旧取第 0 波**：那是"开战距离"的既有口径，
    * 本次只动干扰压制这一件事，不顺手改距离账。
    */
-  const foesForDebuff = activeFoeSpecsOf(anomaly, bal, battle.waveIdx)
+  const foesForDebuff = activeFoeSpecsOf(anomaly, bal, battle.waveIdx).filter(foe => battle.units[foe.tag] !== undefined)
   /**
    * **电子舰 · 压制敌舰射程**（2026-09-18）：**每拍重算**（运行态、不随档 ⇒ 换编队/读档都不陈旧）。
    * 编队口径 = `battle.myFleet`（单船路径取本条 `shipId`）。
@@ -135,6 +136,9 @@ export function advanceBattleFor(
   const specsOf = (wi: number): UnitSpec[] => activeFoeSpecsOf(anomaly, bal, wi)
   let waveIdx = Math.min(battle.waveIdx ?? 0, lastIdx)
   let curFoes = specsOf(waveIdx)
+  const pendingFoes = (): boolean => pendingEnemyFormation(battle, curFoes) || curFoes.some(foe =>
+    !battle.units[foe.tag] && foe.foeReinforceAt !== undefined && reinforceTriggered(foe.foeReinforceAt, battle, curFoes)
+    && (foe.foeReinforceBranch === undefined || foe.foeReinforceBranch === resolveSupportBranch(battle, curFoes)))
   // 近防冷却是运行态，读档后按当前波补建；门槛与新开战斗同源，不重置机群血量。
   if (battle.pdCd === undefined && pdEnabledFor(foeJudgedThreatOf(anomaly), bal) && Object.keys(battle.dronePools ?? {}).length > 0) {
     battle.pdCd = curFoes.map(() => Math.max(100, Math.round(bal.pdJudgementMs)))
@@ -169,11 +173,21 @@ export function advanceBattleFor(
     // 读档中断补缺 = 视为"增援入场" ⇒ 同样盖入场窗口（时刻取**全局时钟**，理由同转场那一处）
     seedUnit(battle, f, { enterReload: true, arrivedAtMs: nowMs() })
   }
+  initFoeDronePools(battle, curFoes)
+  initFoeRepairPulses(battle, curFoes.filter(foe => battle.units[foe.tag] !== undefined))
   syncCoronaFleetFocus(battle, foesWithSupport(battle, curFoes))
   let guard = 0
   while (nowMs() > battle.lastTickGameMs && !battle.ended && guard < BATTLE_MAX_STEPS) {
     guard++
     restoreFoeWebSpecs(curFoes)
+    for (const foe of curFoes) {
+      if (foe.foeReinforceAt || battle.units[foe.tag]) continue
+      seedUnit(battle, foe, { enterReload: true, arrivedAtMs: battle.lastTickGameMs })
+      if (battle.units[foe.tag]) {
+        initFoeDronePools(battle, [foe])
+        initFoeRepairPulses(battle, [foe])
+      }
+    }
     // 切波：当前波全灭且还有后续波 → 先走演出窗口（爆炸/残骸播完），窗口结束才续刷下一波。
     // 窗口语义（2026-09-09 船长反馈"切换突兀/爆炸未播完就刷下一波"）：
     // - 清空瞬间记 waveClearAt = 战斗时钟 + waveEnterGapMs；窗口内本拍只停表等待
@@ -183,6 +197,7 @@ export function advanceBattleFor(
     if (
       waves &&
       waveIdx < lastIdx &&
+      !pendingFoes() &&
       // 参战敌阵含**已入场的支援舰**（`sup{n}-`）：它们还活着就不算本波清空（否则"复活出来的船
       // 还在场，下一波却已经刷出来"，两份编队同时在打）
       !foesWithSupport(battle, curFoes).some((f) => isAlive(battle, f.tag))
@@ -307,6 +322,7 @@ export function advanceBattleFor(
      * **本拍参战敌阵**（编成 ＋ 已入场支援舰）——**必须在 `resolveFoeRevive` 之后取**：
      * 本拍刚召唤入场的支援舰这一拍就进开火循环/选靶池（支援舰与编成的关系见 `foesWithSupport`）。
      */
+    // 近防调度按编成下标记账；候补保留原槽位，由存活判据排除未入场单位。
     const liveFoes = foesWithSupport(battle, curFoes)
     if (!battle.foeRepair && liveFoes.some(f => (f.repairPct ?? 0) > 0)) {
       battle.foeRepair = { nextPulseAtMs: battle.lastTickGameMs + REPAIR_PULSE_MS, pulses: 0, healed: 0 }
@@ -322,7 +338,7 @@ export function advanceBattleFor(
       bal,
       dt,
       favor,
-      waves ? waveIdx < lastIdx : false,
+      (waves ? waveIdx < lastIdx : false) || pendingFoes(),
       // 敌方选靶模式（虫洞内敌卡专属；缺省 random）——单船路径不消费选靶随机数，见 pickMyUnitTarget
       anomaly.foeTargeting ?? 'random',
       // 倾向概率（2026-09-14 船长定 0.6；缺省 1 = 铁律 ⇒ 洞外场次连一次骰都不掷）
@@ -330,11 +346,17 @@ export function advanceBattleFor(
       opts?.simulation,
     )
     battle.lastTickGameMs += dt
+    // 最后一发可能刚触发候补增援；不能把它当作整波已清。
+    if (battle.ended === 'me' && pendingFoes()) battle.ended = null
     // 连续作战保险（2026-09-08 船长定，仅巡回场次 battle.hullEscapeFrac 有值）：
     // 本场结构损失过半（剩余 < 满值结构 × 阈值）→ 中止步进并请求自动撤退，绝不拖到弃船
     if (!battle.autoEscaped && battle.hullEscapeFrac !== undefined) {
       const pl = battle.units['player']
-      if (pl && pl.hp.h < me.hp.h * battle.hullEscapeFrac) {
+      const fleetHullLow = battle.myFleet && battle.myFleet.length > 1 && battle.myFleet.some(entry => {
+        const unit = battle.units[entry.tag]
+        return unit && unit.hp.h < (unit.hpMax?.h ?? unit.hp.h) * battle.hullEscapeFrac!
+      })
+      if (fleetHullLow || pl && pl.hp.h < me.hp.h * battle.hullEscapeFrac) {
         battle.autoEscaped = true
         battle.escapeReason = 'hull'
         break
@@ -431,7 +453,7 @@ export function advanceBattleFor(
      * 账本由开战/换波建档时按"真有单位挂了这件"建（缺省 ⇒ 本块直接跳过 ⇒ 零开销、零行为变化）。
      */
     if (!battle.ended && battle.foeRepairPulses) {
-      for (const f of foes) {
+      for (const f of liveFoes) {
         if (battle.ended) break
         if (f.foeRepairPulse === undefined) continue
         const ledger = battle.foeRepairPulses[f.tag]
@@ -450,7 +472,7 @@ export function advanceBattleFor(
       }
     }
     if (!battle.ended && battle.foeRebirths) {
-      for (const f of foes) {
+      for (const f of liveFoes) {
         if (battle.ended || f.foeRebirthProtocol === undefined) continue
         const record = battle.foeRebirths[f.tag]
         if (!record || record.startedAtMs === undefined) continue

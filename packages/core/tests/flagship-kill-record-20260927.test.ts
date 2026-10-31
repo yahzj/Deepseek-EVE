@@ -18,7 +18,8 @@
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
-import { addModule, addShipToFleet, addWare, countWare, createInitialState, fitModule } from '../src/index'
+import { addModule, addShipToFleet, addWare, countWare, fitModule } from '../src/index'
+import { createCommandReadyState as createInitialState } from './helpers/command-ready'
 import { advanceGame } from '../src/engine'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import {

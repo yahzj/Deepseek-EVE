@@ -11,6 +11,8 @@ const ctx = buildSimContext()
 const TECH = 'mt-explore-signal-auto-t3'
 function world(level = 0, seed = 19) {
   const state = core.createInitialState({ nowWallMs: 0, seed })
+  state.standingsEarned = { dsi: 100 }
+  for (const id of ['fleet-command-basic', 'fleet-command-coordination', 'fleet-command-integration']) state.skills.trained[id] = 5
   state.research!.levels[TECH] = level
   const ships = Array.from({ length: 8 }, () => core.addShipToFleet(state, 'sh-nautilus'))
   for (const id of ships) state.fleet[id]!.fitted = { high: ['mod-laser-3', 'mod-miner-3', 'mod-salvager-3'], mid: [], low: [] }

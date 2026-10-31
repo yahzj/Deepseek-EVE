@@ -137,6 +137,7 @@ describe('MK3三系定稿数据和黑市唯一供货', () => {
   })
   it('有限趟MK3/MK2逐舰分档、耗弹及余弹结算不借母港库存', () => {
     const state = world(), a = addShipToFleet(state, 'sh-thresher'), b = addShipToFleet(state, 'sh-thresher')
+    state.skills.trained['fleet-command-basic'] = 3
     state.shipId = a
     for (const uid of [a, b]) state.fleet[uid]!.fitted = { high: ['mod-turret-kin-1'], mid: [], low: [] }
     state.fleet[a]!.ammoPref = { kinetic: 'ammo-kinetic-3' }

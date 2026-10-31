@@ -7,7 +7,8 @@
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
-import { addWare, countWare, createInitialState, researchMatterTech, matterTechCanResearch, startLabRun, startRefineRun, stopRefineRun } from '../src/index'
+import { addWare, countWare, researchMatterTech, matterTechCanResearch, startLabRun, startRefineRun, stopRefineRun } from '../src/index'
+import { createCommandReadyState as createInitialState } from './helpers/command-ready'
 import {
   MATTER_TECH_ESSENCE_ITEM_ID,
   MATTER_TECH_VOID_ORE_ITEM_ID,

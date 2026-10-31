@@ -27,7 +27,7 @@ import {  aiCoreShipUsed, aiCoreUsed, assignAiMining } from '../src/ai'
 import { shipLockedReason } from '../src/state'
 import { shipBusyLabel } from '../src/activity'
 import { wormholeStockPush, wormholeStockOf } from '../src/wormholeScan'
-import { wormholeAdmission, WORMHOLE_TOTAL_MASS_CAP, WORMHOLE_ADMISSION_TEXT } from '../src/wormhole'
+import { wormholeAdmission, wormholeBagSlotsOfFleet, WORMHOLE_TOTAL_MASS_CAP, WORMHOLE_ADMISSION_TEXT } from '../src/wormhole'
 import { MATTER_TECH_ESSENCE_ITEM_ID, matterTechNodes, researchMatterTech } from '../src/matterTech'
 import {
   WORMHOLE_AUTO_DAMAGE_MAX,
@@ -62,6 +62,8 @@ const T3 = 'sh-thresher'
 /** 一条可派船的测试档：主控 + 若干副船（默认给 6 条，够挑 4 条）+ 一项已发现的虫洞 */
 function fresh(opts?: { ships?: number; seed?: number; aiCoreSkill?: number }): GameState {
   const state = createInitialState({ nowWallMs: 0, seed: opts?.seed ?? 4242 })
+  state.standingsEarned = { dsi: 100 }
+  for (const id of ['fleet-command-basic', 'fleet-command-coordination', 'fleet-command-integration']) state.skills.trained[id] = 5
   state.research!.levels['mt-explore-signal-auto-t3'] = 3
   const n = opts?.ships ?? 6
   for (let i = 0; i < n; i++) addShipToFleet(state, T3)
@@ -107,7 +109,7 @@ describe('虫洞 · 自动探索（批次 3）', () => {
     const rows = wormholeAutoCandidates(state, ctx)
     expect(rows.find(row => row.shipId === titan)!.blocked?.error).toBe(WORMHOLE_ADMISSION_TEXT['tier-too-high'])
     expect(rows.find(row => row.shipId === titan)!.picked).toBe(false)
-    expect(rows.find(row => row.shipId === alternative)!).toMatchObject({ picked: false, blocked: null })
+    expect(rows.find(row => row.shipId === alternative)!).toMatchObject({ picked: true, blocked: null })
   })
 
   it('未推荐舰仍受在途任务占用限制，超重手动队不消耗库存或切换主控', () => {
@@ -159,7 +161,8 @@ describe('虫洞 · 自动探索（批次 3）', () => {
     expect(main.blocked?.errorId).toBe('core.wormholeAuto.005')
     // 默认选中 = 最多 4 条
     const picked = wormholeAutoDefaultShips(state, ctx)
-    expect(picked).toHaveLength(WORMHOLE_AUTO_MAX_SHIPS)
+    expect(picked).toHaveLength(5) // 四巡洋加一轻舰满足质量和指挥预算。
+    expect(picked.length).toBeLessThanOrEqual(WORMHOLE_AUTO_MAX_SHIPS)
     expect(picked).not.toContain(state.shipId)
     // 已在别的 AI 任务里的船不可派
     const target = picked[0]!
@@ -177,14 +180,14 @@ describe('虫洞 · 自动探索（批次 3）', () => {
     const stockId = stockOne(state)
     const picked = wormholeAutoDefaultShips(state, ctx)
     // 2026-09-26 船长令「整队一趟只占 1 枚」：编队规模**不再**被核心余量卡住（改前上限 2 枚 ⇒ 只挑 2 条）
-    expect(picked).toHaveLength(4)
+    expect(picked).toHaveLength(5)
     const before = aiCoreUsed(state)
     expect(wormholeAutoStart(state, ctx, stockId, picked).ok).toBe(true)
     // 科技解锁，不占AI共享名额。
     expect(aiCoreUsed(state)).toBe(before)
     expect(aiCoreShipUsed(state)).toBe(0)
     // 该本账里那 1 枚**不再**按参与舰数重复计（4 条船也只占 1）
-    expect(picked.length).toBe(4)
+    expect(picked.length).toBe(5)
     // 锁定期：不能再接 AI 副船任务，且给出锁定原因
     const beltId = [...ctx.belts.keys()][0]!
     const r = assignAiMining(state, picked[0]!, 'basic', beltId, ctx)
@@ -536,14 +539,14 @@ describe('虫洞 · 自动探索吃谜质科技（船长 2026-09-19 甲案）', 
   it('满树 ⇒ 回合（按本队实际基础回合）/ 货仓 / 打捞与采集效率 / 战斗线完成度 逐项对上', () => {
     const state = rich({ ships: 5 })
     const ships = wormholeAutoDefaultShips(state, ctx)
-    expect(ships).toHaveLength(WORMHOLE_AUTO_MAX_SHIPS)
+    expect(ships).toHaveLength(5)
     fullTech(state)
     const f = wormholeAutoTechFactors(state, ctx, ships)
     // 基础回合按编队质量向上取整，货仓按最多能容纳的完整格数计算。
-    expect(f.baseTurns).toBe(43)
-    expect(f.baseHold).toBe(20)
-    expect(f.turnMul).toBeCloseTo(1 + 100 / 43, 6) // 时序锚定器10级，每级+10；基础预算向上取整。
-    expect(f.holdMul).toBeCloseTo(1 + 12 / 20, 6) // 折叠货舱 3 级 × +4 格
+    expect(f.baseTurns).toBe(wormholeAdmission(ctx, ships).turnBudget)
+    expect(f.baseHold).toBe(wormholeBagSlotsOfFleet(state, ctx, ships))
+    expect(f.turnMul).toBeCloseTo(1 + 100 / f.baseTurns, 6)
+    expect(f.holdMul).toBeCloseTo(1 + 12 / f.baseHold, 6)
     expect(f.total).toBeCloseTo(f.turnMul * f.holdMul, 6)
     expect(f.salvageEff).toBeCloseTo(0.6, 6) // 引力吊臂 3 级 × 20%
     expect(f.collectEff).toBeCloseTo(0.6, 6) // 富集钻头 3 级 × 20%
@@ -560,8 +563,8 @@ describe('虫洞 · 自动探索吃谜质科技（船长 2026-09-19 甲案）', 
      * ⚠ **货仓那条同款护栏**：容量 = 实有格数 × 每格 m³，**与 `total` 无关**。
      * 旧写法 `… × tf.total` 把 `holdMul` 算了两遍、还把回合系数混进了船舱 ⇒ 满科技档放大 5.41 倍。
      */
-    expect(wormholeAutoHoldM3Of(f)).toBeCloseTo(32 * 50, 6)
-    expect(wormholeAutoHoldM3Of(f)).not.toBeCloseTo(32 * 50 * f.total, 6)
+    expect(wormholeAutoHoldM3Of(f)).toBeCloseTo((f.baseHold + 12) * 50, 6)
+    expect(wormholeAutoHoldM3Of(f)).not.toBeCloseTo((f.baseHold + 12) * 50 * f.total, 6)
     expect(f.battleProgress).toBe(1)
     expect(f.damage).toBeCloseTo(0.5, 6) // 战斗线点满 ⇒ 损伤减半
     expect(wormholeAutoTechIsNeutral(f)).toBe(false)

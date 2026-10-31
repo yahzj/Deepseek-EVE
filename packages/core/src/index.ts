@@ -2204,3 +2204,6 @@ export type { FittingRange, RangeLayer } from './fittingRange'
 
 
 export { ceilFinalQuantity } from './quantity'
+export { commandBudgetOf, commandCapacityOf, shipCommandCostOf, combatShipLimit, COMBAT_MAX_SHIPS, COMMAND_SKILLS } from './combat/command/rules'
+export { combatRosterOf } from './combat/command/roster'
+export { encounterCombatRosterOf } from './combat/command/locks'

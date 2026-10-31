@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
-import { createInitialState } from '../src/state'
+import { createCommandReadyState as createInitialState } from './helpers/command-ready'
 import type { BattleState, GameState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
 import { wormholePreparationPlan, wormholePreparationFillPlan, wormholeEnterPrepared } from '../src/wormholePreparation'
@@ -814,13 +814,14 @@ describe('虫洞有限物资 · 维修与兼容', () => {
     expect(state.warehouse.items['repairkit-mil']).toBe(499)
   })
 
-  it('旧入口不写新标记，原仓库取用不变', () => {
+  it('旧入口不写有限供给标记，逐弹型账本仍从原仓库取用并退还', () => {
     const { state, fleet, need } = setup(1)
     state.warehouse.items[BASE] = need
     expect(wormholeEnter(state, ctx, fleet, 7).ok).toBe(true)
     const battle = start(state)
     expect(state.wormhole.run!.supplyVersion).toBeUndefined()
-    expect(battle.expeditionAmmo).toBeUndefined()
+    expect(battle.expeditionAmmo!.stock[BASE]).toBe(need)
+    expect(battle.expeditionAmmo!.idsByTag.player!.kinetic).toBe(BASE)
     finish(state, true)
     expect(state.warehouse.items[BASE]).toBe(need)
   })

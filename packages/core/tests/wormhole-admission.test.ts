@@ -75,7 +75,8 @@ describe('虫洞 · 入场校验（档位 / 质量 / 艘数）', () => {
 
   it('艘数上限与空编队', () => {
     expect(wormholeAdmission(ctx, []).code).toBe('no-ship')
-    expect(wormholeAdmission(ctx, [T1, T1, T1, T1, T1]).code).toBe('too-many-ships')
+    expect(wormholeAdmission(ctx, Array(12).fill(T1)).code).toBe('ok')
+    expect(wormholeAdmission(ctx, Array(13).fill(T1)).code).toBe('too-many-ships')
     expect(wormholeAdmission(ctx, ['sh-not-exist']).code).toBe('unknown-ship')
   })
 

@@ -78,6 +78,7 @@ import {
 import type { PageProps } from './common'
 import { isk } from './common'
 import { tr, cmdText } from '../i18n/locale'
+import { CombatSquadControl } from '../features/combat/CommandBudget'
 /** 金额 + 单位（按语言；2026-09-29 批 0：出售确认那句原先是中文字面量拼 `isk()`） */
 import { fmtCredits } from '../i18n/fmt'
 import { aiCoreText, shipRoleText, shipSubClassText } from '../ui/labelsText'
@@ -683,6 +684,7 @@ export function ShipPage({
 
       {activeTab === 'fleet' ? (
         <>
+      <CombatSquadControl engine={engine} />
       {/* ───── 我的舰队 ───── */}
       <Panel
         className="is-fill app-fleet-panel"

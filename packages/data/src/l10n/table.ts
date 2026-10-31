@@ -24,6 +24,22 @@ export function l10nEntryText(entry: L10nEntry, locale: 'zh' | 'en'): string {
 }
 
 export const L10N: Readonly<Record<string, L10nEntry>> = {
+  'skill.command.001': { zh: '编队指挥基础', en: '', enDeferred: true },
+  'skill.command.002': { zh: '每级增加⟦5⟧点指挥容量。', en: '', enDeferred: true },
+  'skill.command.003': { zh: '编队协同指挥', en: '', enDeferred: true },
+  'skill.command.004': { zh: '每级增加⟦7⟧点指挥容量。', en: '', enDeferred: true },
+  'skill.command.005': { zh: '编队统合指挥', en: '', enDeferred: true },
+  'skill.command.006': { zh: '每级增加⟦8⟧点指挥容量。', en: '', enDeferred: true },
+  'ui.command.001': { zh: '战斗编队', en: '', enDeferred: true },
+  'ui.command.002': { zh: '指挥成本 {p1} / {p2} · 舰船 {p3} / {p4}', en: '', enDeferred: true },
+  'ui.command.003': { zh: '指挥成本', en: '', enDeferred: true },
+  'ui.command.004': { zh: '编队出勤中，返港后可调整。', en: '', enDeferred: true },
+  'ui.command.005': { zh: '编队指挥', en: '', enDeferred: true },
+  'core.command.001': { zh: '至少选择一艘舰船。', en: '', enDeferred: true },
+  'core.command.002': { zh: '编队包含重复或不存在的舰船。', en: '', enDeferred: true },
+  'core.command.003': { zh: '编队最多{p1}艘。', en: '', enDeferred: true },
+  'core.command.004': { zh: '累计协会声望达到{p1}后可指挥多舰。', en: '', enDeferred: true },
+  'core.command.005': { zh: '指挥成本{p1}超过容量{p2}。', en: '', enDeferred: true },
   'ui.signalAuto.001': { zh: '信号空间探索', en: '', enDeferred: true },
   'ui.signalAuto.002': { zh: '解锁信号空间自动探索。1级收益为60%，每级提高10个百分点（满级80%）。', en: '', enDeferred: true },
   'ui.signalAuto.003': { zh: '{p1} 条舰', en: '', enDeferred: true },

@@ -12,6 +12,10 @@ const ctx = buildSimContext()
 
 function world(loads: Array<Record<string, number>>, reserve: Record<string, number> = {}, deck = false, legacy = false) {
   const state = createInitialState({ nowWallMs: 0, seed: 7 })
+  state.standingsEarned = { dsi: 20 }
+  state.skills.trained['fleet-command-basic'] = 5
+  state.skills.trained['fleet-command-coordination'] = 5
+  state.skills.trained['fleet-command-integration'] = 5
   const fleet = loads.map(() => addShipToFleet(state, 'sh-thresher'))
   state.shipId = fleet[0]!
   for (const [i, uid] of fleet.entries()) {

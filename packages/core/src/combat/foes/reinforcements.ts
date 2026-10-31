@@ -140,7 +140,7 @@ export function resolveFoeRevive(
   b.foeReviveAtMs = clock + everyMs
   if (summon) {
     const alive = foesWithSupport(b, curFoes).filter(foe => isAlive(b, foe.tag)).length
-    const quota = Math.min(Math.max(1, Math.round(summon.count)), Math.max(0, curFoes.length - alive))
+    const quota = Math.min(enemyFleetRoom(b), Math.max(1, Math.round(summon.count)), Math.max(0, curFoes.length - alive))
     for (let i = 0; i < quota; i++) {
       const n = (b.foeReviveCount ?? 0) + 1
       b.foeReviveCount = n
@@ -199,7 +199,7 @@ export function resolveFoeRevive(
    */
   const want = revive.all === true ? dead.length : Math.max(1, Math.round(revive.count ?? 1))
   const room = curFoes.length - aliveSlots.size
-  const quota = Math.min(want, room, dead.length)
+  const quota = Math.min(want, room, dead.length, enemyFleetRoom(b))
   if (quota <= 0) return
   const priorityIds = revive.priorityShipIds ?? []
   const picks: UnitSpec[] = []
@@ -290,6 +290,7 @@ export function resolveFoeSummon(
 ): void {
   if (bal.foeReviveEnabled !== true || b.ended !== null) return
   for (const summoner of curFoes) {
+    if (enemyFleetRoom(b) <= 0) break
     const config = summoner.foeSummonEscort
     if (!config?.formationSlots || !isAlive(b, summoner.tag)) continue
     const model = curFoes.find(foe => foe.foeShipId === config.shipId)
@@ -340,6 +341,7 @@ export function resolveReinforcements(
   const arrived: UnitSpec[] = []
   let arriveIdx = 0
   for (const spec of curFoes) {
+    if (enemyFleetRoom(b) <= 0) break
     if (b.units[spec.tag]) continue // 已入场（含已阵亡的尸体）
     // 分支闸门：不属本场判定出来的那一支 ⇒ 本场不再考虑（未判出 = null ⇒ 分支条目一律等待）
     if (spec.foeReinforceBranch !== undefined && spec.foeReinforceBranch !== supportBranch) continue
@@ -357,6 +359,8 @@ export function resolveReinforcements(
     arrived.push(spec)
   }
   if (arrived.length === 0) return
+  initFoeDronePools(b, arrived)
+  initFoeRepairPulses(b, arrived)
   // **到场提示**（船长 2026-09-19：支援呼叫装置那一批「开战提示 + 到场提示」）——画面顶部提示位，
   // 与"受击增程"同一处；按名归并计数（同一支里同名多艘写成 ×N）
   const byName = new Map<string, number>()
@@ -387,3 +391,4 @@ export function resolveReinforcements(
       `${reopen > 0 ? "，重新接近中。" : "。"}`,
   )
 }
+import { enemyFleetRoom } from './capacity'

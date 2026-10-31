@@ -5,7 +5,7 @@ import { lairAnomalyOf, factionAnomalyOf, lairBaseRewardIsk, factionBaseRewardIs
 import { weekendBattleInvolvedOf } from '../weekendBattle'
 import { ceilFinalQuantity } from '../quantity'
 import { rewardMulOf } from '../tuning'
-import { settleDroneLosses, refundAmmo, refundRepairKitsAll, persistFleetHullDamage, repairUsageText, dcUsageText, captureBattleReport } from '../combat'
+import { settleDroneLosses, refundBattleAmmo, refundRepairKitsAll, persistFleetHullDamage, repairUsageText, dcUsageText, captureBattleReport, sunkShipIdsOfBattle } from '../combat'
 import { droneBattleOutcome, stopAutoLoopReason, autoLoopInvasionGalaxy, stopAutoLoopInvasion } from './loopState'
 import { formatDurationMs } from '../time'
 import { nextRandom, pickOne } from '../rng'
@@ -23,6 +23,9 @@ import { beginJumpFuelLeg, jumpFuelLegMsOf } from '../jumpFuel'
 import { abandonChance } from './tactics'
 import { loseShip } from '../shipyard'
 import { shipDisplayName } from '../instances'
+import { settleCommandFleet, loseCommandSunkShips, prepareCommandPilotAfterLoss } from '../combat/command/settlement'
+import { combatRosterOf } from '../combat/command/roster'
+import { finishDestroyedSortie } from '../combat/command/return'
 
 /** 漂流物打捞学（salvage-diving）：远征缴获物资数量系数，每级 +12%（主控与 AI 同享） */
 export function lootFactor(state: GameState): number {
@@ -42,6 +45,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
   const battle = exp.battle
   const anomaly = exp.anomalyId ? ctx.anomalies.get(exp.anomalyId) : undefined
   if (!battle || !anomaly) {
+    delete exp.sortie
     exp.active = false
     exp.battle = null
     exp.lairTier = undefined
@@ -85,7 +89,8 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
   const baseRewardIsk = Math.max(0, ceilFinalQuantity(baseRewardIskRaw * rewardMulOf(state)))
   // 机群战损（2026-09-10 船长「无人机可被击落」+ 永久损失制）：胜负/撤退一律照扣，
   // 且要在战报文案之前落账（战报要引用损失摘要）
-  const droneLostText = settleDroneLosses(state, ctx, state.shipId, battle)
+  const multi = (battle.myFleet?.length ?? 0) > 1
+  const droneLostText = multi ? settleCommandFleet(state, ctx, battle) : settleDroneLosses(state, ctx, state.shipId, battle)
   // 机群战损过大 → 停重复清剿（永久损失制安全阀：2026-09-10 船长拍板）；读数与判定走单点（见下）
   const {
     before: droneBefore,
@@ -95,7 +100,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
   const droneAttrition = droneAttritionRaw && state.autoLoopAnomalyId === exp.anomalyId
   if (droneAttrition) {
     /** 补货**之后**的实载（用于文案：自动补足了没有；货源不足时差多少） */
-    const droneNow = Object.values(state.fleet[state.shipId]?.droneLoad ?? {}).reduce((s, n) => s + n, 0)
+    const droneNow = combatRosterOf(state).reduce((sum, id) => sum + Object.values(state.fleet[id]?.droneLoad ?? {}).reduce((s, n) => s + n, 0), 0)
     stopAutoLoopReason(
       state,
       droneNow >= droneBefore
@@ -104,13 +109,14 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
       droneAfter, // 记下停环时的机群架数（**补货前**）⇒ 再开前必须"确实补过货"（船长 2026-09-18）
     )
   }
-  refundAmmo(state, battle.ammo, battle.ammoIds) // 弹药 MK2：按本场实装弹 id 退回
+  refundBattleAmmo(state, battle)
   refundRepairKitsAll(state, battle) // 船体维修装置（2026-09-09）：未用修理组件退回仓库
   // P0 承伤持久化：先落装甲/结构残余（结构=耐久），失利附加扣损在其后叠加
-  persistFleetHullDamage(state, ctx, state.shipId, battle)
+  if (!multi) persistFleetHullDamage(state, ctx, state.shipId, battle)
   const durTxt = formatDurationMs(battle.lastTickGameMs - battle.startedAtGameMs)
 
   if (won) {
+    if (multi) prepareCommandPilotAfterLoss(state, ctx, sunkShipIdsOfBattle(battle, state.shipId), battle)
     /**
      * **实战胜利记录**（2026-09-24 船长令：「**③按敌卡。记录残血最多的一次，如果都是满血则不覆盖。
      * 夹回当前射程内。**」）——胜率预估"打过的卡按打过的距离算"那一支的**唯一写入点**：
@@ -165,7 +171,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
       lootText.push(`${ctx.items.get(row.itemId)?.name ?? row.itemId}×${units}`)
     }
     state.wallet.isk += reward
-  bumpFirst(state, 'bountyWins') // 第一次任务/链：讨伐胜场
+    bumpFirst(state, 'bountyWins') // 第一次任务/链：讨伐胜场
     // B3 击杀注入（2026-09-10 船长定）：注入口径体量（`wreckThreat` ?? 威胁）×0.4 × (1 + 0.2×敌人数)，
     //   无上限（窝点按强化后威胁算）；**体量走 `wreckInjectThreatOf`** ⇒ 2026-09-25「冻结残骸经济」后
     //   改 `threat` 不再牵动回收线（见 `AnomalyDef.wreckThreat`）
@@ -248,6 +254,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
         `。战场残骸密度 ${wreckNow.toFixed(1)}（本场 +${(battleCard.threat * 0.4).toFixed(1)}）`
     addLog(state, 'combat', winText)
     captureBattleReport(state, battle, { source: 'expedition', outcome: 'win', summary: winText })
+    if (multi) loseCommandSunkShips(state, ctx, battle, exp.foeGalaxyId ?? anomaly.galaxyId)
     // 赏金任务·窝点结算（2026-09-10 船长定，排在战报之后）：①稀有残骸投放该星系残骸场
     // （按敌群记账、打捞必得）②命中本板该条赏金任务 → 酬金入账 + 下板 + 引导文案。
     // 投放不依赖任务是否还在板上：任务已过期也照样算窝点战果（打都打了，战利品不能吞）。
@@ -291,6 +298,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     }
     // T8 悬赏冷却：结算时刻开始计时（与自动返航并行）
     setBountyCooldown(state, ctx, anomaly.id)
+    if (multi && finishDestroyedSortie(state, battle)) return
     exp.battle = null
     exp.lairTier = undefined
     exp.factionActive = undefined // 窝点一次性：结算完清档位，重复清剿回到主题悬赏（否则会无限复打窝点）
@@ -343,26 +351,35 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
       stopAutoLoopInvasion(state, '本次出击失利，舰队自动返航。', 'core.invasionLoop.004')
     }
     const bal = ctx.balance.combat
-    const loss = bal.durabilityLossMin + (bal.durabilityLossMax - bal.durabilityLossMin) * nextRandom(state.rng)
+    const leaderAlive = !multi || (battle.units.player?.hp.h ?? 0) > 0
+    const loss = leaderAlive ? bal.durabilityLossMin + (bal.durabilityLossMax - bal.durabilityLossMin) * nextRandom(state.rng) : 0
     const fleetShip = state.fleet[state.shipId]
     const durabilityAfter = fleetShip ? fleetShip.durability - loss : 1
     let abandoned = false
-    if (durabilityAfter <= 0) {
+    if (leaderAlive && durabilityAfter <= 0) {
       abandoned = true
-    } else if (nextRandom(state.rng) < abandonChance(state, battleCard.threat, ctx)) {
+    } else if (leaderAlive && nextRandom(state.rng) < abandonChance(state, battleCard.threat, ctx)) {
       abandoned = true
     }
     if (abandoned) {
+      const abandonedId = state.shipId
       // 弃船：无维修费，船+货仓+装备全损
       const abandonRepair = repairUsageText(battle, ctx)
       const abandonDc = dcUsageText(battle, ctx)
       const abandonText = `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：遭重创（交火 ${durTxt}${abandonRepair.length > 0 ? `，船体维修装置${abandonRepair}` : ''}${abandonDc.length > 0 ? `，${abandonDc}` : ''}）……`
       addLog(state, 'combat', abandonText)
       // 战报（2026-09-14）：弃船 = 我方全灭那一档 ⇒ `lose`；沉船名单走推导（三层血已归零）
-      captureBattleReport(state, battle, { source: 'expedition', outcome: 'lose', summary: abandonText })
+      captureBattleReport(state, battle, { source: 'expedition', outcome: 'lose', summary: abandonText,
+        ...(multi ? { shipsLost: [...battle.myFleet!.filter(row => {
+          const hp = battle.units[row.tag]?.hp
+          return row.shipId === abandonedId || hp !== undefined && hp.s + hp.a + hp.h <= 0
+        }).map(row => battle.units[row.tag]!.name)] } : {}),
+      })
+      if (multi) loseCommandSunkShips(state, ctx, battle, exp.foeGalaxyId ?? anomaly.galaxyId)
+      if (multi) prepareCommandPilotAfterLoss(state, ctx, [abandonedId], battle)
       loseShip(
         state,
-        state.shipId,
+        abandonedId,
         ctx,
         `远征失利（${galaxy?.name ?? ''}·${displayName}）后遭追击`,
         // 2026-09-26：正常星系损毁 ⇒ 在这一格留「<船名>的残骸」（`foeGalaxyId` 优先 =
@@ -370,11 +387,18 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
         exp.foeGalaxyId ?? anomaly.galaxyId,
         { cause: 'expedition-lost' },
       )
-      exp.active = false
+      if (multi && finishDestroyedSortie(state, battle)) return
+      exp.active = multi
+      if (!multi) delete exp.sortie
       exp.battle = null
-      exp.anomalyId = null
+      if (!multi) exp.anomalyId = null
       exp.lairTier = undefined
-    exp.factionActive = undefined
+      exp.factionActive = undefined
+      if (multi) {
+        exp.phase = 'back'
+        exp.returnReason = 'defeat'
+        exp.finishAtGameMs = state.gameMs + returnBackMs(state, ctx, exp.foeGalaxyId ?? anomaly.galaxyId).ms
+      }
       return
     }
     if (fleetShip && loss > 0) {
@@ -391,11 +415,13 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     addLog(state, 'combat', loseText)
     // 战报（2026-09-14）：走到这里就是"打输了、船没沉"⇒ `lose`（沉船那一支在上面 return 了）
     captureBattleReport(state, battle, { source: 'expedition', outcome: 'lose', summary: loseText })
+    if (multi) loseCommandSunkShips(state, ctx, battle, exp.foeGalaxyId ?? anomaly.galaxyId)
+    if (multi && finishDestroyedSortie(state, battle)) return
   }
   // 转返航（2026-09-08：基准 = 目标星系最近已建成站；本地 = 固定 120s；失利返航可召回）
   exp.battle = null
   exp.lairTier = undefined
-    exp.factionActive = undefined // 窝点档位随本场结束作废（含失利；任务仍在板上可再打一次）
+  exp.factionActive = undefined // 窝点档位随本场结束作废（含失利；任务仍在板上可再打一次）
   exp.phase = 'back'
   exp.returnReason = 'defeat'
   // 返航计时起点 = 战斗停表时刻（2026-09-09 修复：同胜利路径——离线大步长下不让离线剩余浪费）

@@ -25,6 +25,9 @@ import type { CoreBlockReason } from './engine'
 import type { GameState } from './state'
 import type { SimContext } from './types'
 import { addLog, haltActivityForSwitch } from './state'
+import { combatEscortBlock } from './combat/command/locks'
+import { combatRosterOf, makeCombatSortie } from './combat/command/roster'
+import { commandBudgetOf } from './combat/command/rules'
 
 /** 主控活动（10 项；与活动栏、`pilotUnavailableReason`、各 `start*` 入口一一对应） */
 export type MainActivityKind =
@@ -430,13 +433,22 @@ function skipOf(v: GateVerdict): ActivityGateSkip {
  */
 export function applyActivityGate(state: GameState, next: MainActivityKind, ctx?: SimContext): ActivityGateSkip | null {
   const v = gateMainActivity(state, next)
+  if (ctx && (v.action === 'ok' || v.action === 'halt') && ['mining', 'salvaging', 'hauling', 'standby', 'deliver', 'siteDeliver'].includes(next)) {
+    const squad = combatRosterOf(state)
+    const budget = commandBudgetOf(state, ctx, squad)
+    if (!budget.ok) return { ok: false, error: budget.error!, errorId: budget.errorId, errorParams: budget.errorParams }
+    const blocked = combatEscortBlock(state, squad)
+    if (blocked) return { ok: false, ...blocked }
+  }
   if (v.action === 'ok') {
     delete state.pendingStationActivity
+    if (ctx && ['mining', 'salvaging', 'hauling', 'standby', 'deliver', 'siteDeliver'].includes(next)) state.combatEscort = makeCombatSortie(combatRosterOf(state), state.shipId)
     return null
   }
   if (v.action === 'halt') {
     delete state.pendingStationActivity
     if (v.current !== undefined) haltAndLog(state, ctx, v.current)
+    if (ctx && ['mining', 'salvaging', 'hauling', 'standby', 'deliver', 'siteDeliver'].includes(next)) state.combatEscort = makeCombatSortie(combatRosterOf(state), state.shipId)
     return null
   }
   return skipOf(v)

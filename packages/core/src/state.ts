@@ -1,4 +1,5 @@
 import type { BattleState } from './combat/state/battle'
+import { commandShipDeployed } from './combat/command/locks'
 import type { DroneLossReport, BattleReportRecord } from './combat/state/report'
 /**
  * 游戏状态：一份存档里保存的全部内容。
@@ -713,70 +714,8 @@ export const EMPTY_SALVAGE_OP: SalvageOpState = {
   stopAfterTrip: false,
 }
 
-/** 远征作业状态（去程取消 → 交火 battle → 返航 back；battle 为实时状态机；返航 = 2×单程） */
-export interface ExpeditionState {
-  active: boolean
-  /** 目标异常点 id */
-  anomalyId: string | null
-  /** 当前阶段结束的游戏内时刻（毫秒）——V12 起语义随 phase：开战/战斗结束/返航到家 */
-  finishAtGameMs: number
-  /** 本次作业总耗时（毫秒，出发时锁定；展示用） */
-  durationMs: number
-  /** 单程航程耗时（毫秒，锁定；返航腿并入后按 ×2 计） */
-  outMs: number
-  /** 交火参考耗时（毫秒，展示用；实际由战斗推演决定） */
-  combatMs: number
-  /** 出发时火力（锁定；展示/旧式兼容） */
-  power: number
-  /** 出发时抽中的途中事件 id（null = 本次平安无事；去程取消后在出发瞬间触发） */
-  eventId: string | null
-  /** 途中事件是否已触发 */
-  eventFired: boolean
-  /* ═══ V12：阶段与战斗状态 ═══ */
-  /** 当前阶段：去程（旧档兼容）/ 交火 / 返航（未出航时 = 'out'） */
-  phase: 'out' | 'battle' | 'back'
-  /** 返航来源（2026-09-06 兼容字段）：victory=悬赏胜利自动返航（不可召回）；
-   *  defeat/retreat=失利/撤退返航（可召回）；旧档在途 back 无此字段 = 按失利口径 */
-  returnReason?: 'victory' | 'defeat' | 'retreat'
-  /** 返航段起点（2026-09-08 兼容字段）：转入 back 的游戏时刻——进度条分母 =
-   *  finishAtGameMs − 本值（本地 120s/异星系 2×单程均正确）；旧档在途 back 缺省 → 回退旧口径 */
-  returnAtGameMs?: number
-  /** 实时战斗状态（phase='battle' 时非空；只存动态量，静态由 ship/anomaly 定义重建） */
-  battle: BattleState | null
-  /** 2026-10-21起仅保留旧星系记录，不供新战斗读取、不猜测迁移到卡ID。 */
-  desirePrefByGalaxy?: Record<string, number>
-  /** ⚠ 遗留字段（2026-09-11 起不再使用，仅存档兼容占位）：原"全局期望距离偏好"。
-   *  现行口径见 `GameState.battleRangeByCard`；读档时不回填、不回读。 */
-  desirePrefM?: number
-  /** 赏金任务·窝点档位（2026-09-10 兼容字段）：非空 = 本次远征打的是派生窝点
-   *  （威胁/波次/僚机按档位强化，奖金与稀有残骸按窝点口径结算）；旧档与普通悬赏 = 未设 */
-  lairTier?: 1 | 2 | 3
-  /** 敌对派系活跃（2026-09-10 兼容字段）：true = 本次远征打的是当日派系活跃星系的**常驻悬赏**
-   *  （威胁 ×1.1、奖金 ×1.1、胜利有概率掉稀有残骸）；与 lairTier 互斥（派系只针对普通悬赏） */
-  factionActive?: boolean
-  /**
-   * **这一场实际打的是哪个星系**（2026-09-25 加：周末入侵接线）：
-   * H 族入侵独立卡自带母港 `galaxyId` ⇒ 战后归属/残骸注入若只看卡就会算到母港（把残骸注错星系）。
-   * 引擎在出发那一刻把**界面上那张卡**的星系写进来（被占星系的入侵替换卡带的是**被占星系**），
-   * `weekendBattleInvolvedOf` 优先读它。缺省 / 非法 ⇒ 回落老口径（只看卡的 `galaxyId`）⇒ 零迁移、零行为变化。
-   */
-  foeGalaxyId?: string
-  /**
-   * **奖励基底覆写**（2026-09-25 加 · 周末入侵"主动出击每场重抽"配套）：入侵的敌舰每场重抽，
-   * 但奖励恒 = **该星系原卡 ×1.4** ⇒ 出发时算好写进来，结算时用它替代 `anomaly.rewardIsk`。
-   * 可选字段 ⇒ 零迁移（老路径不写它，逐字不变）。
-   */
-  rewardIskOverride?: number
-  /** 本次返航的跃迁燃料倍率（同 `MiningState.fuelMul`；1/缺省 = 没吃燃料） */
-  fuelMul?: number
-}
-
-
-
-
-
-
-
+import type { ExpeditionState } from './expedition/types'
+export type { ExpeditionState } from './expedition/types'
 
 /**
  * **闪现演出的一段**（**敌我同构**；语义与时序见 `BattleState.foeBlinkQueue` 头注）。
@@ -953,8 +892,10 @@ export interface GameStateV9 extends Omit<GameStateV8, 'version' | 'blueprints'>
   fitPresets?: Record<string, ShipFitPreset[]>
   /** 虫洞整备多模板随角色保存；老档缺省为空，不写空字段。 */
   wormholePreparationTemplates?: import('./wormholePreparationTemplates').WormholePreparationTemplate[]
-  /** 五类准备界面分别记忆实例与顺序；空数组是玩家明确清空，缺省才走默认。 */
+  /** 各准备界面分别记忆实例与顺序；空数组是玩家明确清空，缺省才走默认。 */
   preparationSquads?: import('./preparationSquads').PreparationSquads
+  /** 主控出发作业时锁定的实际护航舰名单；旧在途缺省不临时召来基地舰。 */
+  combatEscort?: import('./combat/command/types').CombatSortie
 }
 
 /** 一套装配方案（存"哪一位装什么 + 无人机舱装载"；套用时按目标船槽位布局对齐，超出位丢弃） */
@@ -2323,6 +2264,7 @@ export type GameStateV24 = Omit<GameStateV23, 'version'> & {
  * 空 = 可以操作。文案统一说明"为什么"与"怎么解"。
  */
 export function shipLockedReason(state: GameState, shipId: string, what = '操作这艘船'): string | null {
+  if (commandShipDeployed(state, shipId)) return `该舰正在随编队出勤，返港后才能${what}。`
   if ((state.planetary?.deliveries ?? []).some(d => d.shipUid === shipId)) return '该舰正在运送星球物资，抵达前不能改装或转派。'
   if (shipLockedInWormhole(state, shipId)) {
     return `该舰在虫洞里（已锁定）：${what}要等它出洞——先撤离或结算本趟。`

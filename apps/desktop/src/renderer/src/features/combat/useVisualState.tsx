@@ -175,6 +175,7 @@ const meSpeedRef = useRef(200)
   const droneDriveRef = useRef<{
     /** 逐舰体积（px；2026-09-11 舰种体积，见上 `foeSizesFor`） */
     foeSizes: number[]
+    mySizes?: number[]
     /** 玩家舰体积（px；无人机阵位/弹道起点按它定标） */
     meSize: number
     farM: number

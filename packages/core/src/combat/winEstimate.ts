@@ -33,6 +33,8 @@ import { createPlayerSpec } from './player/create'
 import { desiredRangeFor, mainWeaponOf } from './foes/tactics'
 import { startBattleFor } from './startSingle'
 import { waveGapTotalMs } from './combatMath'
+import { combatRosterOf } from './command/roster'
+import { startFleetBattleFor } from './startFleet'
 
 /** **每个距离点的局数**（2026-09-24 船长：「三点各 10 局就够了」） */
 export const BOUNTY_MC_RUNS = 10
@@ -85,6 +87,8 @@ export function buildEvalState(state: GameState, shipId: string): { ev: GameStat
   const defId = real?.defId
   if (!real || !defId) return null
   const ev = createInitialState({ nowWallMs: 0, seed: 1 })
+  ev.fleet = {}
+  ev.resupplyFromWarehouse = state.resupplyFromWarehouse !== false
   const uid = addShipToFleet(ev, defId)
   const f = ev.fleet[uid]!
   f.fitted = JSON.parse(JSON.stringify(real.fitted ?? {})) as FittedModules
@@ -92,6 +96,18 @@ export function buildEvalState(state: GameState, shipId: string): { ev: GameStat
   f.armorPct = real.armorPct ?? 1
   f.durability = real.durability ?? 1
   f.customName = real.customName
+  if (real.plugs) f.plugs = [...real.plugs]
+  if (real.damagePlugs) f.damagePlugs = [...real.damagePlugs]
+  const squad = [uid]
+  for (const id of combatRosterOf(state, shipId).filter(id => id !== shipId)) {
+    const member = state.fleet[id]
+    if (!member?.defId) continue
+    const copyId = addShipToFleet(ev, member.defId)
+    ev.fleet[copyId] = structuredClone(member)
+    squad.push(copyId)
+    provisionEvalSupplies(ev, ev.fleet[copyId])
+  }
+  if (squad.length > 1) ev.preparationSquads = { combat: squad }
   /**
    * **弹药档位**（**2026-09-24 船长**：「弹药采用玩家当前选择弹药」）：旧版不复制 `ammoPref`
    * ⇒ 评估固定吃脚本塞的基础弹，与实战（MK2/MK3）不是同一场仗。
@@ -121,8 +137,8 @@ export function buildEvalState(state: GameState, shipId: string): { ev: GameStat
  * **评估用补给补足**（2026-09-23 开关配套）：把"弹药 + 修理组件足量"放进**开关真正会读的那个池**——
  * 开（缺省）= 母港仓库；关 = 该舰货仓。评估本身是"不计补给耗尽"的口径（船长 2026-09-24 确认）。
  */
-function provisionEvalSupplies(ev: GameState, f: { cargo?: Record<string, number> } | undefined): void {
-  const ids = [...AMMO_ITEM_IDS, 'repairkit-civ', 'repairkit-mil']
+function provisionEvalSupplies(ev: GameState, f: { cargo?: Record<string, number>; ammoPref?: Partial<Record<string, string>> } | undefined): void {
+  const ids = [...AMMO_ITEM_IDS, ...Object.values(f?.ammoPref ?? {}).filter((id): id is string => typeof id === 'string'), 'repairkit-civ', 'repairkit-mil']
   if (ev.resupplyFromWarehouse !== false) {
     for (const id of ids) ev.warehouse.items[id] = 1_000_000
     return
@@ -143,7 +159,7 @@ function shipFingerprintOf(ev: GameState, uid: string): string {
     .sort()
     .map((k) => `${k}:${tr[k]}`)
     .join(',')
-  return `${f?.defId ?? ''}|${JSON.stringify(f?.fitted ?? {})}|${JSON.stringify(f?.droneLoad ?? null)}|${f?.armorPct ?? 1}|${f?.durability ?? 1}|${JSON.stringify(f?.ammoPref ?? null)}|${sk}`
+  return `${f?.defId ?? ''}|${JSON.stringify(combatRosterOf(ev).map(id => ev.fleet[id]))}|${sk}`
 }
 
 /**
@@ -209,11 +225,12 @@ export function estimateBountyWinOn(
   let armorLeftSum = 0
   let hullLeftSum = 0
   const points: { desireM: number; winRate: number; runs: number }[] = []
+  const fingerprint = shipFingerprintOf(ev, uid)
   for (const p of plan) {
     let pWins = 0
     for (let i = 0; i < p.runs; i += 1) {
       // **去种子化**：按"卡 + 船的装配/技能指纹 + 距离点 + 局号"散列派生 ⇒ 不同卡/不同点互不相关
-      ev.rng = { seed: seedOf([anomalyId, shipFingerprintOf(ev, uid), p.tag, p.desireM, i]), count: 0 }
+      ev.rng = { seed: seedOf([anomalyId, fingerprint, p.tag, p.desireM, i]), count: 0 }
       const f = ev.fleet[uid]
       if (f) {
         const ap = f.armorPct ?? 1
@@ -222,7 +239,10 @@ export function estimateBountyWinOn(
       }
       ev.gameMs = 0
       // **与实战同一入口**（`expedition` 的悬赏战即 `startBattleFor`）；`desireM` 走第 6 参
-      const battle = startBattleFor(ev, ctx, uid, anomalyId, 0, p.desireM > 0 ? p.desireM : undefined)
+      for (const id of combatRosterOf(ev)) provisionEvalSupplies(ev, ev.fleet[id])
+      const roster = combatRosterOf(ev)
+      const battle = roster.length > 1 ? startFleetBattleFor(ev, ctx, roster, anomalyId, 0, p.desireM > 0 ? p.desireM : undefined)
+        : startBattleFor(ev, ctx, uid, anomalyId, 0, p.desireM > 0 ? p.desireM : undefined)
       if (!battle) continue
       const pl0 = battle.units['player']
       if (!pl0) continue

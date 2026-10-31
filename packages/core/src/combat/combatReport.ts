@@ -110,7 +110,7 @@ export function captureBattleReport(
     : { kin: 0, exp: 0, pla: 0 }
   const dr = state.droneLossReport
   const dronesGone = dr && dr.battleStartedAtGameMs === battle.startedAtGameMs ? Math.max(0, dr.gone) : 0
-  const shipsLost = [...new Set((opts.shipsLost ?? derivedLost).filter((n) => n.length > 0))]
+  const shipsLost = (opts.shipsLost ?? derivedLost).filter((n) => n.length > 0)
   const rec: BattleReportRecord = {
     battleStartedAtGameMs: battle.startedAtGameMs,
     source: opts.source,

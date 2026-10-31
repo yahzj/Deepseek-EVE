@@ -12,7 +12,7 @@
  */
 import { ceilFinalQuantity } from './quantity'
 import { bumpFirst, peakFirst } from './firstTasks'
-import { busyLabel, type BusyLabel } from './busyLabels'
+import { type BusyLabel } from './busyLabels'
 import type { GameState, BattleState, WormholeArchetype, WormholeFamily } from './state'
 // 甲案（本地化批二 · 2026-09-27）：闸门拒因改走结构化（`{ error, errorId, errorParams }`）
 import type { CommandResult, CoreBlockReason } from './engine'
@@ -25,7 +25,7 @@ import {
   mainActivityOf,
   type MainActivityKind,
 } from './activityGate'
-import type {  ShipDef, SimContext } from './types'
+import type { SimContext } from './types'
 import { uidDefId } from './labels'
 import { cargoCapacityM3Of } from './inventory'
 import { WORMHOLE_SLOT_M3 } from './wormholeHold'
@@ -65,161 +65,11 @@ import { wormholeSpawnAfterTurns } from './wormholeSpawn'
 // 谜质科技树（2026-09-19 船长批）：「最大回合数」永久加成在**入场裁定**时并入回合预算
 import { matterTechWhBuffs } from './matterTech'
 import { wormholePatrolAfterAction, wormholePatrolLayerReset } from './wormholePatrol'
+import { commandBudgetOf } from './combat/command/rules'
 
-/* ═══════════ 一、质量压塌（船长 2026-09-12 定） ═══════════ */
-
-/** 舰种档 → 折算质量（**按级别，不用真实质量**；船长定的表） */
-export const WORMHOLE_MASS_BY_TIER: Record<1 | 2 | 3 | 4 | 5, number> = {
-  1: 500, // 护卫舰
-  2: 1_500, // 驱逐舰
-  3: 3_500, // 巡洋舰
-  4: 7_000, // 战列舰
-  5: 0, // 旗舰：严禁入场（见入场上限）
-}
-
-/** **入场上限档 = 战列舰（T4）**：旗舰（T5）进不去（"压塌虫洞入口"） */
-export const WORMHOLE_MAX_TIER = 4
-
-/** **编队总质量上限**（船长 2026-09-12 定）：超过无法跃入 */
-export const WORMHOLE_TOTAL_MASS_CAP = 16_000
-
-/** 编队可选舰船数上限（船长：「玩家需要准备 4 艘船」） */
-export const WORMHOLE_MAX_SHIPS = 4
-
-/** 一艘船能否编入虫洞队（档位不超 T4） */
-export function wormholeShipAllowed(ship: ShipDef): boolean {
-  return ship.tier <= WORMHOLE_MAX_TIER
-}
-
-/** 该船的折算质量（T5 = 0，但**禁止入场**由 `wormholeShipAllowed` 单独把关） */
-export function wormholeShipMass(ship: ShipDef): number {
-  return WORMHOLE_MASS_BY_TIER[ship.tier as 1 | 2 | 3 | 4 | 5] ?? 0
-}
-
-/* ═══════════ 二、回合预算（船长 2026-09-12 定：基础 55 · 系数 0.53；2026-09-14 基础 → 60；2026-09-15 基础 → 100） ═══════════ */
-
-/**
- * 回合公式常数（船长定值）：`floor(基础 × (1 − 总质量 ÷ 上限 × 系数))`。
- *
- * 沿革（两次都是改基础、系数 0.53 一律不动）：
- * - 2026-09-12 定：基础 **55** · 系数 0.53；
- * - ⚠ **2026-09-14 船长：「虫洞基础回合数提高到60回合」** ⇒ 基础 **55 → 60**；
- * - ⚠ **2026-09-15 船长：「虫洞基础回合数提高到100」** ⇒ 基础 **60 → 100**（现行）。
- *
- * 现行连带读数（同表逐格复算，见设计稿 §4.3）：4×T1 **56→93** · 3×T1+1×T2 **54→90** ·
- * 4×T2 **48→80** · 2×T3+2×T2 **40→66** · 3×T3+1×T1 **38→63** · **4×T3 32→53** ·
- * 2×T4 32→**53** · 2×T4+1×T2 **29→48**；空载 60→**100** · 满载 28→**47**。
- * **轻编队多 37 回合、最重可行编成多 19 回合**（越重吃到的绝对增量越小，因为增量 = 40 × 剩余系数）；
- * 轻重差幅 1.93 倍 → **1.94 倍** ⇒「越重时间越短」的强度不变。
- * 谜质「时序核心」仍 **+10 回合/台**（其相对价值由 4×T3 的 31.3% 降到 18.9%，属已登记的连带）。
- */
-export const WORMHOLE_TURN_BASE = 80
-export const WORMHOLE_TURN_MASS_COEF = 0.53
-
-/**
- * **总质量 → 可探索回合数**（越重、时间越短）：
- * `ceil(80 × (1 − 总质量 ÷ 16,000 × 0.53)) + 科技加成`（基础沿革 55 → 60（2026-09-14）→ 100（2026-09-15）
- * → **80**（2026-09-19 船长「谜质科技树」批：「**加入科技后，初始回合数削减到80回合**」））。
- * 2026-10-18：最终回合预算向上取整；质量比与科技倍率仍保留精度。
- *
- * @param techTurnBonus **谜质科技**给的「**最大回合数**」永久加成（`mt-explore-turn` 每级 +10；
- *   船长：「探索回合增加是增加**最大回合数**（不是本趟回合）」）——与**本趟**的装置
- *   「时序核心 +10/台」**分开相加**（后者由 `wormholeSyncMatterTurns` 在趟内同步）。
- */
-export function wormholeTurnBudget(totalMass: number, techTurnBonus = 0): number {
-  const ratio = Math.max(0, Math.min(1, totalMass / WORMHOLE_TOTAL_MASS_CAP))
-  return ceilFinalQuantity(WORMHOLE_TURN_BASE * (1 - ratio * WORMHOLE_TURN_MASS_COEF) + Math.max(0, techTurnBonus))
-}
-
-/** 回合消耗口径（船长 2026-09-12 定）——每节点 1、每多打一波 +1、每捡一堆 +1 */
-export const WORMHOLE_TURN_PER_NODE = 1
-export const WORMHOLE_TURN_PER_EXTRA_WAVE = 1
-export const WORMHOLE_TURN_PER_PICKUP = 1
-
-/** 一次节点推进的回合开销（`waves` = 该节点打了 1 + 额外波数；`pickups` = 该节点捡了几堆） */
-export function wormholeStepCost(waves: number, pickups: number): number {
-  const extraWaves = Math.max(0, Math.floor(waves) - 1)
-  return (
-    WORMHOLE_TURN_PER_NODE +
-    extraWaves * WORMHOLE_TURN_PER_EXTRA_WAVE +
-    Math.max(0, Math.floor(pickups)) * WORMHOLE_TURN_PER_PICKUP
-  )
-}
-
-/* ═══════════ 三、入场校验（质量 / 档位 / 艘数） ═══════════ */
-
-/** 入场校验失败的原因码（界面文案由 E 批按此渲染） */
-export type WormholeAdmissionCode =
-  | 'ok'
-  | 'too-many-ships'
-  | 'tier-too-high'
-  | 'no-ship'
-  | 'mass-over-cap'
-  | 'unknown-ship'
-
-export interface WormholeAdmission {
-  ok: boolean
-  code: WormholeAdmissionCode
-  /** 折合总质量（只看能入场的船） */
-  totalMass: number
-  /** 质量占比（0~1） */
-  massRatio: number
-  /** 可探索回合预算 */
-  turnBudget: number
-}
-
-/** 旗舰 / 超重编成的拒因文案（施工期仅调试面板可见） */
-export const WORMHOLE_ADMISSION_TEXT: Record<WormholeAdmissionCode, string> = {
-  ok: '',
-  'too-many-ships': `最多只能带 ${WORMHOLE_MAX_SHIPS} 艘船`,
-  // ⟪文案调整 2026-10-04⟫ T5分类改名，入场判据不变。
-  'tier-too-high': `泰坦过重，会压塌虫洞入口（最多带到 T${WORMHOLE_MAX_TIER} 战列舰）`,
-  'no-ship': '至少要带一艘船',
-  'mass-over-cap': `编队总质量超过 ${WORMHOLE_TOTAL_MASS_CAP.toLocaleString('zh-CN')}，无法跃入`,
-  'unknown-ship': '编队里有无法识别的船型',
-}
-
-/**
- * **入场校验**（纯函数）：给定船型 id 列表 ⇒ 能否入场 + 总质量 + 回合预算。
- * 口径顺序：艘数 → 船型可识别 → **档位（T5 禁入）** → 总质量上限。
- * 注意：**T5 的折算质量按 0 计**，但它在"档位"这一步就被拦下（不会因为"质量为 0"而漏过）。
- *
- * ⚠ **id 口径（2026-09-13 D 批修正）**：入参是**舰队实例 uid**（`state.fleet` 的键）——
- * 首艘同型实例的 uid 就等于船型 id，但第 2 艘起是 `船型id#2` ⇒ 直接 `ctx.ships.get(id)`
- * 会在"带两艘同型船"时误判 `unknown-ship`。故按 `uidDefId` 剥掉 `#N` 再查表。
- */
-export function wormholeAdmission(
-  ctx: SimContext,
-  shipIds: readonly string[],
-  /** **谜质科技**的「最大回合数」永久加成（`matterTechWhBuffs(state, ctx).turnBonus`；缺省 0 = 零变化） */
-  techTurnBonus = 0,
-): WormholeAdmission {
-  const none = (code: WormholeAdmissionCode, totalMass = 0): WormholeAdmission => ({
-    ok: false,
-    code,
-    totalMass,
-    massRatio: totalMass / WORMHOLE_TOTAL_MASS_CAP,
-    turnBudget: wormholeTurnBudget(totalMass, techTurnBonus),
-  })
-  if (shipIds.length === 0) return none('no-ship')
-  if (shipIds.length > WORMHOLE_MAX_SHIPS) return none('too-many-ships')
-  const ships: ShipDef[] = []
-  for (const id of shipIds) {
-    const ship = ctx.ships.get(uidDefId(id))
-    if (!ship) return none('unknown-ship')
-    ships.push(ship)
-  }
-  if (ships.some((s) => !wormholeShipAllowed(s))) return none('tier-too-high')
-  const totalMass = ships.reduce((sum, s) => sum + wormholeShipMass(s), 0)
-  if (totalMass > WORMHOLE_TOTAL_MASS_CAP) return none('mass-over-cap', totalMass)
-  return {
-    ok: true,
-    code: 'ok',
-    totalMass,
-    massRatio: totalMass / WORMHOLE_TOTAL_MASS_CAP,
-    turnBudget: wormholeTurnBudget(totalMass, techTurnBonus),
-  }
-}
+import { wormholeStepCost, WORMHOLE_ADMISSION_TEXT, wormholeAdmission } from './wormhole/fleet/admission'
+export { WORMHOLE_MASS_BY_TIER, WORMHOLE_MAX_TIER, WORMHOLE_TOTAL_MASS_CAP, WORMHOLE_MAX_SHIPS, wormholeShipAllowed, wormholeShipMass, WORMHOLE_TURN_BASE, WORMHOLE_TURN_MASS_COEF, wormholeTurnBudget, WORMHOLE_TURN_PER_NODE, WORMHOLE_TURN_PER_EXTRA_WAVE, WORMHOLE_TURN_PER_PICKUP, wormholeStepCost, WORMHOLE_ADMISSION_TEXT, wormholeAdmission } from './wormhole/fleet/admission'
+export type { WormholeAdmission, WormholeAdmissionCode } from './wormhole/fleet/admission'
 
 /* ═══════════ 四、背包格模型（船长 2026-09-12 定：每格 500 m³） ═══════════ */
 
@@ -1621,68 +1471,8 @@ export function mergeIntoBag(bag: readonly WormholeBagSlot[], pile: WormholePile
   return out
 }
 
-/**
- * **某艘船此刻的忙态**（进洞门槛用；`null` = 空闲）。
- *
- * ⚠ **为什么在 `wormhole.ts` 里重写一份、而不是 import `activity.shipBusyLabel`**（2026-09-13 实测）：
- * `wormhole.ts` 被 `state.ts` 顶层引用，一旦它 import `activity`，就形成
- * `state → wormhole → activity → expedition → state` 的环 —— 而 `expedition.ts` 顶层读
- * `HOME_GALAXY_ID`，首跑即 `Cannot access 'HOME_GALAXY_ID' before initialization`
- * （与 D 批 `wormhole → shipyard → hauling` 同款；两回都真踩到了）。
- * 故这里只读 `state` 上的普通字段，**不 import 任何重模块**。
- *
- * 口径与 `activity.shipBusyLabel` **一致**（那边是"给玩家看的忙态徽标"，判据同一批字段）；
- * 两边的**一致性由用例 `wormhole-entry-gate.test.ts` 钉住**（同一现场两边必须同时"忙/闲"）。
- * 已知差异（有意）：这里**不覆盖** `shipInReturn`（换船善后返航，需 import `mining`）——
- * 那一档由界面侧的 `shipBusyLabel` 拦（准备页按它置灰），core 这层只保底。
- */
-export function shipBusyForWormhole(state: GameState, shipId: string): BusyLabel | null {
-  if ((state.wormhole.run?.fleet ?? []).includes(shipId)) return busyLabel('wormhole')
-  return shipActivityBusy(state, shipId)
-}
-
-/**
- * **该船此刻手上有别的"活动"吗**（**不含虫洞本身**）——"进洞门槛"与"返回虫洞"共用这一把尺。
- * 口径同 `activity.shipBusyLabel`，差别只在：这里**不**把"在洞里"当忙（返回虫洞时要排除自己）。
- *
- * ⚠ **2026-09-14 补齐五档**（船长报障：「进入虫洞时必须无活动。好像失效了？」）：原实现只认
- * 采矿 / 快递 / 巡逻 / 扫描星系 / 远征，**漏了后来上线的四个活动** —— **打捞**（`state.salvaging`）、
- * **长途运输**（`state.hauling`）、**扫描虫洞**（`state.wormholeScan`）与**亲自主持的炉线**
- * （`refineRuns` / `manufacturingRuns` 里 `worker === 'pilot'` 且 `active`）⇒ 那些活动在跑时主控照样能进洞。
- * 由 `tests/wormhole-activity-lock.test.ts` 逐档钉住（含与 `shipBusyLabel` 的一致性）。
- */
-export function shipActivityBusy(state: GameState, shipId: string): BusyLabel | null {
-  if ((state.planetary?.deliveries ?? []).some(d => d.shipUid === shipId)) return busyLabel('planetDelivery')
-  if (shipId !== state.shipId) {
-    const task = state.aiAssignments[shipId]?.task
-    if (!task) return null
-    // 用词与 `shipBusyLabel` 对齐（玩家在提示里看到的是这一串）
-    if (task.kind === 'mining') return busyLabel('aiMining')
-    if (task.kind === 'standby') return busyLabel('aiPatrol')
-    return busyLabel('aiExpedition')
-  }
-  if (state.mining.active) return busyLabel('mining')
-  if (state.salvaging.active) return busyLabel('salvage')
-  if (state.hauling.active) return busyLabel('hauling')
-  if (state.sideTasks.deliver !== null) return busyLabel('courier')
-  if (state.standby.active) return busyLabel('patrol')
-  if (state.wormholeScan?.active === true) return busyLabel('whscan')
-  if (state.expedition.active) return busyLabel('expedition')
-  if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) return busyLabel('refine')
-  if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) return busyLabel('manufacture')
-  /**
-   * **实验室**（**2026-10-01 接入**）：主控亲自运转的那条线同样算"手上有活"——漏了它，实验室在跑时
-   * 主控照样能进洞（进洞 = 主控的另一个活动 ⇒ 又是双占）。判据与 `activity.shipBusyLabel`、
-   * `activityGate.mainActivityOf` 三处同源。
-   */
-  if ((state.labRuns ?? []).some((r) => r.active && r.worker === 'pilot')) return busyLabel('lab')
-  /**
-   * **建站交付**（2026-09-22 船长令纳入主控活动表）：占的是 `transit` 槽，靠 `delivery` 批次区分于
-   * "换港返航"；用词与 `activity.shipBusyLabel` 对齐（两处必须成对，见 `activity-gate` / 本函数注释）。
-   */
-  if (state.transit.active && state.transit.delivery !== null) return busyLabel('deliver')
-  return null
-}
+import { shipBusyForWormhole, shipActivityBusy } from './wormhole/fleet/busy'
+export { shipBusyForWormhole, shipActivityBusy } from './wormhole/fleet/busy'
 
 /**
  * **临时离开虫洞**（关掉虫洞界面；船长 2026-09-13 批准实行）：`attending = false` ⇒
@@ -2016,6 +1806,8 @@ export function wormholeEnter(
   origin?: { depth?: number; archetype?: WormholeArchetype; family?: WormholeFamily; expeditionRules?: number },
 ): WormholeStartResult {
   if (state.wormhole.run) return { ok: false, error: '已经在虫洞里了：先撤离或结算本趟。', errorId: 'core.wormhole.026' }
+  const budget = commandBudgetOf(state, ctx, shipIds, true)
+  if (!budget.ok) return budget
   const blocked = wormholeEntryBlockReason(state, ctx, shipIds)
     if (blocked) return { ok: false, error: blocked }
   /**

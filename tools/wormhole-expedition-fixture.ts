@@ -37,6 +37,8 @@ export function makeExpeditionFixture(family: WormholeFamily, seed: number, kind
   const ctx = expeditionContext
   const state = createInitialState({ nowWallMs: 0, seed })
   state.wallet.isk = 1e12
+  state.standingsEarned = { ...state.standingsEarned, dsi: 20 }
+  for (const id of ['fleet-command-basic', 'fleet-command-coordination', 'fleet-command-integration']) train(state, id, 5)
   state.warehouse.items[MATTER_TECH_ESSENCE_ITEM_ID] = 1_000_000
   const wanted = [...SKILLS, ctx.balance.battle.cpuSkillId, ctx.balance.battle.evasionSkillId, ctx.balance.battle.hitSkillId, ctx.balance.battle.speedSkillId]
   for (const id of new Set(wanted)) train(state, id, baseline ? 3 : 5)
@@ -85,6 +87,7 @@ export function makeExpeditionFixture(family: WormholeFamily, seed: number, kind
   const plan = wormholePreparationPlan(state, ctx, fleet, { targets: manifest, unload: [] })
   assert(plan.ok, `preparation:${JSON.stringify(plan.invalid)}:${plan.cells}/${plan.capacity}`)
   const before = structuredClone(state)
-  assert(wormholeEnterPrepared(state, ctx, fleet, seed, plan, 'journey', { expeditionRules: 2, goal: 'deep' }).ok)
+  const entered = wormholeEnterPrepared(state, ctx, fleet, seed, plan, 'journey', { expeditionRules: 2, goal: 'deep' })
+  assert(entered.ok, `entry:${entered.error}`)
   return { state, before, fleet, manifest, definitions, skills: { ...state.skills.trained }, research: { ...state.research?.levels } }
 }

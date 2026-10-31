@@ -38,6 +38,27 @@ export function settleEncounterTail(state: GameState, ctx: SimContext, shipId: s
   else if (hullLow) retreatEncounterShip(state, ctx, shipId, 'hull')
 }
 
+/** 随行队逐舰先修后判；任一舰修不动时由当前驾驶舰带整队收手。 */
+export function settleEncounterFleetTail(state: GameState, ctx: SimContext, shipId: string, battle: GameState['encounter']['battle']): void {
+  const members = battle?.myFleet
+  if (!members || members.length < 2) { settleEncounterTail(state, ctx, shipId); return }
+  let mustReturn = false
+  for (const row of members) {
+    const ship = state.fleet[row.shipId]
+    if (!ship) continue
+    const low = ship.durability < ctx.balance.encounter.retreatHullFrac || (ship.armorPct ?? 1) < ctx.balance.encounter.retreatHullFrac
+    if (!low) continue
+    const projected = { ...state, combatEscort: undefined }
+    const repair = repairWithKitsFor(projected, ctx, row.shipId, ctx.balance.encounter.repairTargetFrac, 'cargo+warehouse')
+    if (repair.outOfKits || ship.durability < ctx.balance.encounter.retreatHullFrac) mustReturn = true
+  }
+  if (state.combatEscort?.leaderShipId === shipId && state.shipId !== shipId) {
+    state.combatEscort = { ...state.combatEscort, leaderShipId: state.shipId,
+      shipIds: state.combatEscort.shipIds.filter(id => state.fleet[id] !== undefined) }
+  }
+  if (mustReturn && members.some(row => row.shipId === state.shipId)) retreatEncounterShip(state, ctx, state.shipId, 'hull')
+}
+
 /**
  * 记一次「因低安袭击自动撤离」（一次性标记；新通讯 `msg-ambush-retreat` 的触发面，船长 2026-09-14 定）。
  *

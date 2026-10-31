@@ -11,7 +11,8 @@
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
-import { createInitialState, CURRENT_STATE_VERSION, wormholePilotHoldReason } from '../src/state'
+import { CURRENT_STATE_VERSION, wormholePilotHoldReason } from '../src/state'
+import { createCommandReadyState as createInitialState } from './helpers/command-ready'
 import type { GameState } from '../src/state'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { idleAiShipIds } from '../src/ai'

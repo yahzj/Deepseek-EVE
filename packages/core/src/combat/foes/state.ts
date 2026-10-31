@@ -5,6 +5,7 @@ import { pushBattleNotice, BATTLE_ARRIVAL_FLY_MS } from '../combatFx'
 import { foeFamilyHpMulOf } from '../foePower'
 import { ceilFinalQuantity } from '../../quantity'
 import { clamp } from '../combatMath'
+import { enemyFleetRoom } from './capacity'
 
 /** （2026-10-02 批次 4h：船体维修装置/护盾脉冲整簇迁到 combatRepair.ts，本文件借回 + 再导出） */
 
@@ -36,6 +37,7 @@ export function createBattleState(
     // 单波次内增援（2026-09-11 船长裁决：机制实现、不启用）：**带入场触发的单位不进开战编队**，
     // 由 `advanceBattleFor` 每拍按条件补入。开关关闭时建档期根本不写 `foeReinforceAt` → 本行永不命中。
     if (spec.foeReinforceAt) continue
+    if (spec.side === 'foe' && enemyFleetRoom({ units } as import('../../state').BattleState) <= 0) continue
     if (spec.side === 'foe') {
       const names = spec.foeMountNames ?? []
       const pairs = spec.foeMountNamePairs ?? []
@@ -143,6 +145,7 @@ export function seedUnit(
   opts: { enterReload?: boolean; arrivedAtMs?: number; foePhaseMs?: number } = {},
 ): void {
   if (b.units[spec.tag]) return
+  if (spec.side === 'foe' && enemyFleetRoom(b) <= 0) return
   // **本场敌方挂载件名**（2026-09-16 船长「要：敌舰悬停/战报展示挂载件」）：所有单位都经这里入场
   // （开战首波 / 波次转场 / 增援）⇒ 累积一份"本场出现过"的清单给战报用（运行期字段、不入档）。
   // ⚠ **2026-09-24 起同一份清单带「双语名对」**（键同为中文名 ⇒ 两条数组**下标恒对齐**，
@@ -196,6 +199,7 @@ export function initFoeDronePools(
 ): void {
   const pools: Record<string, import('../../state').DronePoolEntry[]> = {}
   for (const f of foes) {
+    if (!b.units[f.tag] || b.foeDronePools?.[f.tag]) continue
     const slots = f.foeDrones
     if (!slots || slots.length === 0) continue
     const list: import('../../state').DronePoolEntry[] = []
@@ -241,7 +245,7 @@ export function initFoeDronePools(
         list.push(mk(reserveModel, reserveModel.id, true))
     if (list.length > 0) pools[f.tag] = list
   }
-  if (Object.keys(pools).length > 0) b.foeDronePools = pools
+  if (Object.keys(pools).length > 0) b.foeDronePools = { ...b.foeDronePools, ...pools }
 }
 
 /**
@@ -261,9 +265,10 @@ export function initFoeRepairPulses(
   const ledgers = b.foeRepairPulses ?? {}
   let added = false
   for (const f of need) {
+    if (!b.units[f.tag]) continue
     if (ledgers[f.tag]) continue
     ledgers[f.tag] = {
-      nextPulseAtMs: b.startedAtGameMs + Math.max(1, Math.round(f.foeRepairPulse!.everyMs)),
+      nextPulseAtMs: (b.units[f.tag]!.enteredAtMs ?? b.startedAtGameMs) + Math.max(1, Math.round(f.foeRepairPulse!.everyMs)),
       pulses: 0,
       healed: 0,
     }

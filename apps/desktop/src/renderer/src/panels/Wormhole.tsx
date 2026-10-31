@@ -1,3 +1,5 @@
+import { PreparationFleetCards } from '../features/combat/PreparationFleetCards'
+import { commandBudgetOf } from '@whale/core'
 /**
  * 终局玩法「虫洞」· 界面（E 批 2026-09-13 起 · F3a-2 层内网格 2026-09-13）。
  *
@@ -25,7 +27,6 @@ import { FOE_ACCENT } from '../ui/tones'
 // ⚠ 地点名走本地化单点（2026-09-26 乙批）——core 的 `WORMHOLE_PLACE_TEXT` 是纯中文表
 import { placeText } from '../ui/labelsText'
 // ⚠ 舰级名走本地化单点（2026-09-26 船长报障「舰船类型文本漏中文」）——core 的 `shipSizeLabel` 是纯中文表
-import { shipTierText } from '../ui/labelsText'
 import { FOE_FAMILY_LABEL } from '../ui/shipArt'
 import { WORMHOLE_FAMILY_CARDS } from '@whale/core'
 import {
@@ -39,7 +40,6 @@ import {
   wormholeIsShapedItem,
   WORMHOLE_SLOT_M3,
   WORMHOLE_TOTAL_MASS_CAP,
-  cargoCapacityM3Of,
   isExitCell,
   shipDisplayName,
   wormholeAdmission,
@@ -104,12 +104,11 @@ import {
   // 2026-09-19 甲案：自动探索的科技系数（与结算同一个函数 ⇒ 准备页读数即返航时生效的那个数）
   wormholeAutoTechFactors,
   wormholeAutoTechIsNeutral,
-  wormholeShipMass,
   wormholeUnitsPerSlot,
 } from '@whale/core'
 import type { WormholeGridState, WormholeHoldPlacement, WormholeHoldState, WormholePlace, WormholeSettleRecord, WormholeSignal } from '@whale/core'
 import type { GameEngine } from '../game/engine'
-import { ShipSprite, ShipSpriteShape } from '../ui/ShipSprite'
+import { ShipSpriteShape } from '../ui/ShipSprite'
 import { usePreparationSquad } from '../ui/usePreparationSquad'
 import type { ToastFn } from '../pages/common'
 import { SHIP_DOMAIN_SUBS, SHIP_TIER_SUBS, SUB_ALL, shipRolePasses, shipTierPasses, subText } from '../ui/itemSubs'
@@ -496,7 +495,8 @@ export function WormholePanel({
    * **进洞门槛**（核心同一把尺 `wormholeEntryBlockReason`）——**不再用界面徽标 `shipBusyLabel` 自己判**：
    * 两者对「扫描虫洞」口径不同（徽标报"忙"，门槛放行 ⇒ 进洞那一步自动停扫，船长 2026-09-14「进洞自动停止」）。
    */
-  const entryGate = auto || run ? null : engine.wormholeEntryGate(picked)
+  const commandBudget = commandBudgetOf(state, ctx, picked, true)
+  const entryGate = auto || run ? null : !commandBudget.ok ? cmdText(commandBudget) : engine.wormholeEntryGate(picked)
   /** 进洞会先自动停掉的那个活动（目前只有「扫描虫洞」；null = 没有） */
   const autoStopText = auto || run ? null : engine.wormholeEntryAutoStopText()
   /** 带 `warn` 的（长途运输）要单独摆成**警告条**——船长 2026-09-14：「长途运输发出警告」 */
@@ -1641,74 +1641,8 @@ export function WormholePanel({
                   </span>
                 </div>
               </div>
-              <ul className="app-wh-cards">
-                {whShown.map(({ uid, tier, ok, on, busy, armor, dur }) => {
-                  const damaged = armor < 1 || dur < 1
-                  const def = ctx.ships.get(state.fleet[uid]!.defId ?? uid)
-                  const canPick = ok && !busy
-                  const title = !ok
-                    ? auto
-                      ? (busy ?? tr('ui.Wormhole.309'))
-                      : tr("ui.Wormhole.201")
-                    : auto
-                      ? busy
-                        ? busy
-                        : uid === state.shipId
-                          ? (autoHandover?.toName
-                              ? tr("ui.Wormhole.202", { p1: autoHandover.toName })
-                              : tr("ui.Wormhole.135"))
-                          : on
-                            ? tr("ui.Wormhole.024")
-                            : tr("ui.Wormhole.136")
-                      : busy
-                        ? tr("ui.Wormhole.025", { busy })
-                        : on
-                          ? tr("ui.Wormhole.024")
-                          : tr("ui.Wormhole.137")
-                  return (
-                    <li key={uid}>
-                      <button
-                        type="button"
-                        data-wh-pick={uid}
-                        className={`app-wh-card${on ? ' is-picked' : ''}${canPick ? '' : ' is-locked'}`}
-                        disabled={!canPick && !on}
-                        onClick={() => togglePick(uid)}
-                        title={title}
-                      >
-                        <span className="app-wh-card-art" aria-hidden>
-                          {/* ⚠ 不传 name（见上：会把舰名压在卡片文本上） */}
-                          <ShipSprite shipId={state.fleet[uid]!.defId ?? uid} size={132} />
-                        </span>
-                        <span className="app-wh-card-name">{shipDisplayName(state, ctx, uid)}</span>
-                        <span className="app-wh-card-sub">
-                          {shipTierText(tier)}
-                          {busy ? <span className="app-chip is-dim"> {busy}</span> : null}
-                        </span>
-                        <span className="app-wh-card-sub">
-                          {tr("ui.Handbook.159")} {def ? n(wormholeShipMass(def)) : '—'}{tr('ui.Wormhole.280')}{n(cargoCapacityM3Of(state, ctx, uid))} m³
-                        </span>
-                        <span className="app-wh-card-tags">
-                          <span className={`app-wh-card-tag${on ? ' is-on' : ''}`}>
-                            {on ? tr("ui.Wormhole.091") : !ok ? tr("ui.Wormhole.203") : busy ? tr("ui.Wormhole.092") : tr("ui.Wormhole.204")}
-                          </span>
-                          {/* **损伤提示标签**（船长 2026-09-13：「如果舰船有损伤，那么在编入的标签旁新增一个标签
-                              提示玩家，防止不小心损坏的船带入虫洞」）：判据与舰队页「待维修」同一把尺
-                              （`armorPct < 1 || durability < 1`；护盾不持久、不计损伤）。 */}
-                          {damaged ? (
-                            <span
-                              className="app-wh-card-tag is-warn"
-                              title={tr("ui.Wormhole.249", { p1: armor < 1 ? tr("ui.Wormhole.205", { p1: Math.round(armor * 100) }) : '', p2: armor < 1 && dur < 1 ? ' · ' : '', p3: dur < 1 ? tr("ui.Wormhole.206", { p1: Math.round(dur * 100) }) : '' })}
-                            >
-                              {tr("ui.Wormhole.093")}{armor < 1 ? tr('ui.Wormhole.310', { p1: Math.round(armor * 100) }) : ''}
-                              {dur < 1 ? tr('ui.Wormhole.311', { p1: Math.round(dur * 100) }) : ''}
-                            </span>
-                          ) : null}
-                        </span>
-                      </button>
-                    </li>
-                  )
-                })}
-              </ul>
+              <CommandBudget engine={engine} ships={picked} special />
+              <PreparationFleetCards engine={engine} rows={whShown} auto={auto} handoverName={autoHandover?.toName} togglePick={togglePick} />
 
               {/**
                * **读数条**（同一处位置、同一套样式，两种模式两套内容）：
@@ -3632,3 +3566,4 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
     </div>
   )
 }
+import { CommandBudget } from '../features/combat/CommandBudget'

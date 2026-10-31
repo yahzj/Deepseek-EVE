@@ -33,6 +33,7 @@ import { foeFamilyOf } from '../../ui/shipArt'
 
 
 import { BOLT_LOOK, DMG_COLOR, DMG_ORDER, LAY, sizeOfUnit, noseOf, foeBarGeom, FLY_MS, BOLT_LIFE, FLASH_LIFE, BOOM_LIFE, DRONE_DOWN_LIFE, POPUP_LIFE, approachOf, layout, fanPath, ringPath } from './battleViewCore'
+import { visibleEnemyTags } from './battleVisibleFleet'
 
 import { ACID_FX_LIFE_MS } from './battleAcidFx'
 
@@ -83,7 +84,7 @@ export function BattleScreen({
   simulationPaused?: boolean
 }) {
   const pausedRef = useRef(simulationPaused)
-  pausedRef.current = simulationPaused
+  pausedRef.current = simulationPaused || !visible
   const state = engine.state
   const tr = state.wormhole.run?.expeditionRules === 2 ? futureTr : normalTr
   const { combatView, inWormhole, arcs, battle, sceneName, speedOptions, speedActive } = resolveBattleHost({ state, engine, tr })
@@ -188,7 +189,7 @@ export function BattleScreen({
   const farM = arcs.maxM
   const nearM = arcs.nearM
 
-  const meShip = fleetDefOf(state, engine.ctx, state.shipId)
+  const meShip = fleetDefOf(state, engine.ctx, battle.myFleet?.[0]?.shipId ?? state.shipId)
   const meRole: ShipRole = meShip?.role ?? 'industrial'
   const foeTags = Object.keys(combat.foeHp)
   /** 存活敌舰（血条/命中对象用；与视觉行 foeRowTags 不同——视觉行含演出期尸骸占位） */
@@ -254,7 +255,7 @@ export function BattleScreen({
     return drop
   }
   const dropNow = scanDroppable()
-  const rowFxTags = foeTags.filter((t) => !deadRef.current.has(t) || !dropNow.has(t))
+  const rowFxTags = visibleEnemyTags(battle, foeTags, deadRef.current, dropNow)
   /* ── 我方逐舰几何（**必须先于弹道几何算**：2026-09-13 起弹道按发射舰取锚点，见下方 `meAnchorByTag`） ──
      · `multiMe`：单船路径 = false（观感与旧版逐像素一致）；多舰路径 = true（洞内 4 舰）。
      · `mySizes`：逐舰落画体积（阵位序 = core 给的顺序，**主控在前**）。 */
@@ -277,7 +278,7 @@ export function BattleScreen({
     arcs.myUnits.forEach((u, slot) => {
       const a = layFx.my[slot]
       if (a) meAnchorByTag.set(u.tag, a)
-      const sz = mySizes[slot]
+      const sz = layFx.mySizes?.[slot] ?? mySizes[slot]
       if (sz !== undefined) meSizeByTag.set(u.tag, sz)
     })
   }
@@ -437,7 +438,7 @@ export function BattleScreen({
   // 撤出即清演出登记：跨波之后该尸骸永不回队占位（波次尸骸不得挤占新波队列）。
   const dropFinal = scanDroppable()
   for (const tag of dropFinal) corpseAtRef.current.delete(tag)
-  const foeRowTags = foeTags.filter((t) => !deadRef.current.has(t) || !dropFinal.has(t))
+  const foeRowTags = visibleEnemyTags(battle, foeTags, deadRef.current, dropFinal)
   const foeSizes = foeSizesFor(foeRowTags) // 逐舰体积（px；含"全灭保留 1 槽"兜底，与改造前 foeN 同语义）
   /* ═══ 我方舰列：单船 / 4 舰同屏（虫洞 F2b，2026-09-13 船长「我方4条舰船需要同时显示」＋
      「按照敌人阵型那样**镜像排列**」）═══
@@ -561,7 +562,7 @@ export function BattleScreen({
        gunBasePx = (foeGunX − meGunX) − (visM − nearM)×sPxPerM   （几何常数，随窗口/列宽自动成立）
      于是 弧半径(射程) = gunBasePx + (射程 − nearM)×sPxPerM，当 射程 == 当前距离 时弧端恰好触到敌方枪口；
      弧端到敌枪口的像素缺口正比于"射程 − 当前距离"。 */
-  const meGunX = lay.me.x + noseOf(meSize)
+  const meGunX = lay.me.x + noseOf(lay.mySizes?.[0] ?? meSize)
   const foeGunX = (lay.foe[0]?.x ?? lay.me.x) - noseOf(lay.sizes[0] ?? LAY.MAIN)
   const sPxPerM = lay.usable / Math.max(1, farM - nearM) // 与舰列位移同尺（px/m）
   const gunBasePx = Math.max(40, foeGunX - meGunX - (visM - nearM) * sPxPerM)
@@ -705,7 +706,7 @@ export function BattleScreen({
      数据源 = 射程弧里已合并的「机型 ×N」无人机条目（src='drone'）；渲染按单位锚点定位，
      未来副本机制的多船舰队只要把友军单位的机群也喂进这一层即可（接口已按单位设计）。
      单轮时序（与弹道同源）：放出 →（去程 0.56s）→ 到阵位即开火 → 立刻掉头返航（0.62s）→ 收舱待命。 */
-  const { droneWings, foeWings } = buildDroneDrive({ arcs, droneSortieRef, now, dronePrevShowRef, visDistRef, visM, droneDriveRef, meAnchorByTag, foeSortieRef, foeSizes, meSize, farM, nearM })
+  const { droneWings, foeWings } = buildDroneDrive({ arcs, droneSortieRef, now, dronePrevShowRef, visDistRef, visM, droneDriveRef, meAnchorByTag, foeSortieRef, foeSizes, foeTags: foeRowTags, meSize, mySizes, farM, nearM })
 
   const { foeRowBoxes } = buildEnemyLayers({
     arcs, foeRowTags, isFoeMainTag, battle, tr, lay,

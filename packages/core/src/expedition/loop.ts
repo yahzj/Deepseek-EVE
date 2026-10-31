@@ -6,7 +6,8 @@ import { autoLoopReopenBlockReason, autoLoopWaitLabel, stopAutoLoopReason } from
 import { actionBlockReason } from '../explore'
 import { bountyCooldownRemainingMs } from './cooldown'
 import { cargoUnitM3, freeCargoM3 } from '../inventory'
-import { repairWithKits } from '../shipyard'
+import { repairWithKits, repairWithKitsFor } from '../shipyard'
+import { combatRosterOf } from '../combat/command/roster'
 import { weekendZoneLiveAt } from '../weekendBounty'
 import { weekendClockOf } from '../weekendEvent'
 import { withBattleRangeCheck } from '../battleRangeMemory'
@@ -99,6 +100,14 @@ export function autoLoopPreflight(
   cardName: string,
   lootM3: number,
 ): { notice: string; reason: string; noticeId?: string; noticeParams?: Record<string, string | number> } | null {
+  for (const id of combatRosterOf(state).filter(id => id !== state.shipId)) {
+    const ship = state.fleet[id]
+    if (!ship) return { notice: '编队舰船已不存在，请重新调整编队。', reason: '编队舰船已不存在' }
+    if ((ship.armorPct ?? 1) < .5 || ship.durability < .5) {
+      repairWithKitsFor(state, ctx, id, .6, 'cargo')
+      if ((ship.armorPct ?? 1) < .5 || ship.durability < .5) return { notice: '编队中有舰船损伤过重，请先维修。', reason: '编队舰船耐久不足' }
+    }
+  }
   const fleetShip = state.fleet[state.shipId]
   if (!fleetShip) return { notice: '舰队里找不到当前舰船。', reason: '舰队里找不到当前舰船', noticeId: 'core.shipyard.007' }
   if ((fleetShip.armorPct ?? 1) < 0.5 || fleetShip.durability < 0.5) {

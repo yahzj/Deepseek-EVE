@@ -2,6 +2,7 @@ import type { SkillDef } from '@whale/core'
 import { SHIP_OPERATION_SKILLS } from './shipOperations'
 import { INDUSTRY_SKILLS } from './industry'
 import { COMBAT_SKILLS } from './combat'
+import { COMMAND_SKILL_DEFS } from './command'
 import { ENGINEERING_SKILLS } from './engineering'
 import { TRADE_EXPLORATION_LOGISTICS_SKILLS } from './tradeExplorationLogistics'
 
@@ -9,6 +10,7 @@ export const SKILLS: readonly SkillDef[] = [
   ...SHIP_OPERATION_SKILLS,
   ...INDUSTRY_SKILLS,
   ...COMBAT_SKILLS,
+  ...COMMAND_SKILL_DEFS,
   ...ENGINEERING_SKILLS,
   ...TRADE_EXPLORATION_LOGISTICS_SKILLS,
 ]

@@ -13,12 +13,18 @@ import { wormholeStartBattle } from '../src/wormholeBattle'
 import { wormholeHoldStow } from '../src/wormholeSalvage'
 import { gameSaveMethods, ROOT } from './helpers/save-shell'
 import type { CommandResult } from '../src/engine'
+import { combatRosterOf } from '../src/combat/command/roster'
+import { encounterCombatRosterOf } from '../src/combat/command/locks'
 
 const ctx = buildSimContext()
 const BASE = 'ammo-kinetic-l'
 const MK2 = 'ammo-kinetic-2'
 function setup(count = 2) {
   const state = createInitialState({ nowWallMs: 0, seed: 7, prologue: true })
+  state.standingsEarned = { dsi: 20 }
+  state.skills.trained['fleet-command-basic'] = 5
+  state.skills.trained['fleet-command-coordination'] = 5
+  state.skills.trained['fleet-command-integration'] = 5
   const fleet = Array.from({ length: count }, () => addShipToFleet(state, 'sh-thresher'))
   state.shipId = fleet[0]!
   for (const uid of fleet) state.fleet[uid]!.fitted = { high: ['mod-turret-kin-1'], mid: [], low: [] }
@@ -223,7 +229,7 @@ describe('真实开战外壳软确认', () => {
   it('所有手动战斗入口复用同一警告；关闭重复作战不被缺弹拦住', () => {
     const names = ['startExpeditionAt', 'startExpeditionFromMiningAt', 'startLairExpeditionAt', 'challengeWeekendFlagship', 'fightEncounterNow',
       'bountyLoopAt', 'invasionLoopAt', 'assignAiExpeditionAt', 'wormholeFight', 'wormholeTravel', 'wormholeActivate']
-    const methods = gameSaveMethods(names, { weekendSanitizeFlagshipSquad: () => ['chosen'], weekendPrepSquadOf: () => ['default'],
+    const methods = gameSaveMethods(names, { combatRosterOf, encounterCombatRosterOf, weekendSanitizeFlagshipSquad: () => ['chosen'], weekendPrepSquadOf: () => ['default'],
       Date: { now: () => 1 }, wormholeTravelTo: (s: GameState) => { s.wormhole.run!.battle = {} as never; return { ok: true } },
       wormholeActivateAt: (s: GameState) => { s.wormhole.run!.battle = {} as never; return { ok: true } }, structuredClone })
     const state = setup(1).state

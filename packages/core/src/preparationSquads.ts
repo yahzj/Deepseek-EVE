@@ -1,6 +1,6 @@
 import type { GameState } from './state'
 
-export const PREPARATION_SQUAD_KINDS = ['signal-manual', 'signal-auto', 'wormhole-manual', 'wormhole-auto', 'weekend'] as const
+export const PREPARATION_SQUAD_KINDS = ['signal-manual', 'signal-auto', 'wormhole-manual', 'wormhole-auto', 'weekend', 'combat'] as const
 export type PreparationSquadKind = (typeof PREPARATION_SQUAD_KINDS)[number]
 export type PreparationSquads = Partial<Record<PreparationSquadKind, string[]>>
 
@@ -9,7 +9,7 @@ function cleanSquad(value: readonly unknown[]): string[] {
   for (const id of value) {
     if (typeof id !== 'string' || id.length === 0 || id.length > 128 || result.includes(id)) continue
     result.push(id)
-    if (result.length === 4) break
+    if (result.length === 12) break
   }
   return result
 }
@@ -35,6 +35,7 @@ export function preparationSquadOf(state: GameState, kind: PreparationSquadKind,
 
 /** 只改偏好，保留显式空；不换主控、不停活动或启动任务。 */
 export function notePreparationSquad(state: GameState, kind: PreparationSquadKind, squad: readonly string[]): boolean {
+  if (kind === 'combat' && (state.expedition.active || state.encounter.active || state.awayGalaxy !== null || state.mining.active || state.salvaging.active || state.hauling.active || state.transit.active || state.standby.active || state.sideTasks.deliver !== null)) return false
   const clean = cleanSquad(squad).filter(id => state.fleet[id] !== undefined)
   const previous = state.preparationSquads?.[kind]
   if (previous && previous.length === clean.length && previous.every((id, index) => id === clean[index])) return false

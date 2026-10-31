@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
-import { advanceBattleFor, ammoLoadTotals, battleArcsFor, createPlayerSpec, refundAmmo, startBattleFor, startFleetBattleFor } from '../src/combat'
+import { advanceBattleFor, ammoLoadTotals, battleArcsFor, createPlayerSpec, refundAmmo, refundBattleAmmo, startBattleFor, startFleetBattleFor } from '../src/combat'
 import { battleAmmoIdsFor, consumeBattleAmmo, loadAmmoTier, resolveAmmoTier } from '../src/combatAmmo'
 import { cleanBattle } from '../src/saveBattleClean'
 import { anomaly, makeTestCtx, moduleDef, ship } from './helpers'
@@ -250,8 +250,8 @@ describe('正常回落与现行设计对照', () => {
   })
 })
 
-describe('普通编队混档的已知简化，不冒称新回归', () => {
-  it('两舰各扣基础/MK2，合池后全队按主控基础伤害，未用MK2按基础退回', () => {
+describe('普通编队混档逐舰取数与逐档退款', () => {
+  it('两舰各扣基础/MK2，僚舰保持MK2伤害，未用弹药按原档退回', () => {
     const { state, ctx, uid, need, bed, weapon, foe } = world()
     const other = addShipToFleet(state, bed.id)
     state.fleet[other]!.fitted = { high: [weapon.id], mid: [], low: [] }
@@ -262,12 +262,13 @@ describe('普通编队混档的已知简化，不冒称新回归', () => {
     expect(state.warehouse.items[baseId('kinetic')]).toBe(before[baseId('kinetic')]! - need)
     expect(state.warehouse.items[tierId('kinetic')]).toBe(before[tierId('kinetic')]! - need)
     expect(battle.ammo.kin).toBe(need * 2)
-    expect(battleAmmoIdsFor(battle, 'ally-1')!.kinetic).toBe(baseId('kinetic'))
+    expect(battleAmmoIdsFor(battle, 'ally-1')!.kinetic).toBe(tierId('kinetic'))
     const actual = createPlayerSpec(state, ctx, other, battleAmmoIdsFor(battle, 'ally-1'))!.weapons.find(w => w.kind === 'gun')!.shotsByType!.kinetic!
     const preferred = createPlayerSpec(state, ctx, other)!.weapons.find(w => w.kind === 'gun')!.shotsByType!.kinetic!
-    expect(actual).toBeLessThan(preferred)
-    refundAmmo(state, battle.ammo, battle.ammoIds)
-    expect(state.warehouse.items[baseId('kinetic')]).toBe(before[baseId('kinetic')]! + need)
-    expect(state.warehouse.items[tierId('kinetic')]).toBe(before[tierId('kinetic')]! - need)
+    expect(actual).toBe(preferred)
+    refundBattleAmmo(state, battle)
+    expect(state.warehouse.items).toEqual(before)
+    refundBattleAmmo(state, battle)
+    expect(state.warehouse.items).toEqual(before)
   })
 })

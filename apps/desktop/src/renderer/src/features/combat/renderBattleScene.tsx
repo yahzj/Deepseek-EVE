@@ -17,6 +17,7 @@ import { hoverTipProps } from '../../ui/Tooltip'
 import { DRONE_DOWN_FREEZE_MS } from './battleDrones'
 import { BattleMountLines } from './battleMounts'
 import { BattleCycles } from './BattleCycles'
+import './commandBattle.css'
 
 export function renderBattleScene({
     rangeMode, screenRef, stage, onClose, tr, inWormhole,
@@ -45,7 +46,7 @@ return (
      * 已封存到分支 `archive/window-embed-20260922`，说明见 `docs/design/archived-window-embed-20260922.md`。
      * ⚠ 保留：慢镜/战报的挂载语义（`App.tsx` 里"打完但战报还没弹"的窗口期必须继续挂着）。
      */
-    <div className={`app-battle-screen${rangeMode ? ' is-fitting-range' : ''}`} ref={screenRef}>
+    <div className={`app-battle-screen${rangeMode ? ' is-fitting-range' : ''}${lay.dense ? ' is-command-dense' : ''}`} ref={screenRef}>
       {/**
        * **装不下就等比缩放**（2026-09-25 船长令 · 方案甲；**2026-09-26 改成只缩战场**）：
        * 顶栏／战场／底栏三段现在各自独立——**只有战场**（距离尺 ＋ 车道）按剩余高度缩放
@@ -298,7 +299,7 @@ return (
             ? myDrawOrder.map(({ u, slot }, drawIdx) => {
                 const def = fleetDefOf(state, engine.ctx, u.shipId)
                 const role: ShipRole = def?.role ?? 'industrial'
-                const spriteSize = sizeOfUnit(def?.tier, false)
+                const spriteSize = lay.mySizes?.[slot] ?? sizeOfUnit(def?.tier, false)
                 // **镜像斜向菱形**：锚点 = `lay.my[slot]`（主控那条恒等于 `me`，故距离尺/弹道不偏）
                 const anchor = lay.my[slot] ?? lay.me
                 const left = Math.round(anchor.x - spriteSize / 2)
@@ -324,7 +325,7 @@ return (
                         : { left, top, ...bk.style }
                     }
                   >
-                    <span className="app-bts-name">
+                    <span className="app-bts-name" title={u.name}>
                       {u.name}
                       {u.leader ? <i className="app-bts-fleet-lead">{tr("ui.BattleScreen.031")}</i> : null}
                     </span>
@@ -371,7 +372,7 @@ return (
                 }
               >
                 <span className="app-bts-name">{meShip?.name}</span>
-                <BattleShipSprite shipId={meShip?.id} role={meRole} accent={ROLE_ACCENT[meRole]} size={meSize} flip={meFlip} acceleration={arcs.myUnits[0]?.boosting ? 'boost' : undefined} />
+                <BattleShipSprite shipId={meShip?.id} role={meRole} accent={ROLE_ACCENT[meRole]} size={lay.mySizes?.[0] ?? meSize} flip={meFlip} acceleration={arcs.myUnits[0]?.boosting ? 'boost' : undefined} />
                 <div className="app-bts-hpWrap">
                   <HpTri hp={combat.meHp} max={arcs.maxHp.me} />
                 </div>
@@ -583,7 +584,8 @@ return (
 
           {/* 敌方舰列（2026-09-11 船长③：血条跟着各舰走——已随各舰渲染，列底不再竖排血条；
               尸骸原位占槽演出见 foeUnitEls） */}
-          <div className="app-bts-col is-foe" ref={foeColRef} style={{ left: lay.foeLeft, ...(foeAnomaly?.foeFamily === 'C' && foeAnomaly.region === 'inv' ? { width: foeFormation.rowW, maxWidth: 'none' } : {}) }}>
+          <div className="app-bts-col is-foe" ref={foeColRef} style={{ left: lay.foeLeft, ...(lay.dense || foeAnomaly?.foeFamily === 'C' && foeAnomaly.region === 'inv' ? { width: foeFormation.rowW, maxWidth: 'none' } : {}) }}>
+            {lay.dense ? foeRowBoxes(0) : <>
             {/* 整行 `margin-top` = 下沉补偿（抬升超出上方留白时才非 0，现值 0）——与 layout 的基线同源 */}
             {/* **敌列阵形：斜向菱形**（2026-09-12 船长「2×2 菱形 → 斜向菱形、第二排向右偏移」选丙②）：
                 两排各若干舰，**第二排右移半格 + 下移一个舰高**（`layout` 的阵形几何是唯一出处）；
@@ -614,6 +616,7 @@ return (
                 </div>
               ) : null}
             </div>
+            </>}
             {/* **机库余量**（2026-09-12 船长：由"敌舰列下方一行 chip"改为**跟着各舰名字**显示
                 「图标 ×N」——见 `hangarBadgeOf`）：此处不再单独出一行。 */}
           </div>

@@ -1165,6 +1165,7 @@ for (const sbp of SHIP_BLUEPRINTS) {
       if (v && typeof v === 'object') collect(v, path ? `${path}.${k}` : k)
   }
   collect(DEFAULT_BALANCE, 'balance');
+  for (const skill of COMMAND_SKILLS) pairs.push({ skill: skill.id, per: skill.perLevel, from: 'combat/command/config.json' })
   // ② 引擎导出的无人机技能参数
   pairs.push(
     { skill: WRECK_RECOVERY_SKILL.hullSkillId, per: WRECK_RECOVERY_SKILL.hullPerLevel, from: 'shipWrecks.WRECK_RECOVERY_SKILL.hullPerLevel' },
@@ -8765,3 +8766,4 @@ if (errors.length > 0) {
   process.exit(1)
 }
 console.log('\n✅ 内容体检通过：全部交叉引用可解析，无死物品。')
+import { COMMAND_SKILLS } from '../packages/core/src/combat/command/rules'

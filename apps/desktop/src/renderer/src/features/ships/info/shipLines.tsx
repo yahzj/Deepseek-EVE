@@ -203,6 +203,7 @@ export function shipCodexBaseLines(ship: ShipDef): ReturnType<typeof shipInfoLin
 /** 舰船统一信息行：基础 + V10.5b 面板分组（护盾/装甲/结构区块各自血量与三系抗性；CPU/无人机舱） */
 export function shipInfoLines(ship: ShipDef): InfoLine[] {
   const lines: InfoLine[] = [
+    { k: tr('ui.command.003'), v: String(shipCommandCostOf(ship)) },
     {
       k: tr("ui.Handbook.009"),
       // 2026-09-13 船长：**舰种子分类进界面**（只有虫洞族专属舰船写 `subClass`）
@@ -320,3 +321,4 @@ export function shipIndirectLines(ship: ShipDef, effWarp?: { aus: number; bonusP
   if (charge !== null) lines.push({ k: tr("ui.shipInfo.015"), v: `${charge}%` })
   return lines
 }
+import { shipCommandCostOf } from '@whale/core'
