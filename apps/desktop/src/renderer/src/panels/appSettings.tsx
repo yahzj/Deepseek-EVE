@@ -7,7 +7,7 @@
  */
 import { useEffect, useReducer, useState } from 'react'
 import type { RefObject } from 'react'
-import { flushSync } from 'react-dom'
+import { createPortal, flushSync } from 'react-dom'
 import type { LogKind } from '@whale/core'
 import { perfHub } from '../game/perf'
 import type { SaveStorageProbe } from '../game/saveGuard'
@@ -748,8 +748,13 @@ export function SettingsPanel({
             </button>
           </span>
         </div>
-        {/* 本机音效台（2026-11-02）：仅本机调试门禁放行时才有入口（`debugAllowed()`），发布版不渲染 */}
-        {sfxConsoleOpen ? <SfxConsole onClose={() => setSfxConsoleOpen(false)} /> : null}
+        {/**
+         * 本机音效台（2026-11-02）：仅本机调试门禁放行时才有入口（`debugAllowed()`），发布版不渲染。
+         * ⚠ **必须用 Portal 挂到 `document.body`**：设置弹窗在「科幻未来 / 宇宙」布局下有 `clip-path`
+         * （见 `styles.css` 的 `.app-root.is-layout-modern .app-settings-modal`），嵌套的 fixed 弹层
+         * 会被父级裁掉 ⇒ 同款问题另一批的许可全文弹窗已踩过（`appSettings.css` 头注）。
+         */}
+        {sfxConsoleOpen ? createPortal(<SfxConsole onClose={() => setSfxConsoleOpen(false)} />, document.body) : null}
       </div>
       {/**
        * 许可与授权全文弹窗（2026-11-02 船长令）：渲染在设置弹窗**之外的兄弟层**（仍在本遮罩内），
