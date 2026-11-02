@@ -13532,3 +13532,1384 @@ body.no-fx .app-root.is-layout-classic:not(.is-mobile-layout) .app-log-side { tr
 @media (prefers-reduced-motion: reduce) {
   .app-root.is-layout-classic:not(.is-mobile-layout) .app-log-side { transition: none; }
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * 新版（modern）星际科幻航电 HUD 全局视觉重塑（oil-ui 标准 · 彻底蜕变版）
+ * 涵盖：全息机库战装配台、战术星图与出港卡片、底栏主控台、顶栏仪表盘
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* 全局背景氛围：深空钛黑 + 战术微网格 + 冷天青微光晕 */
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * 0. 规范化太空航电设计系统（Design System Tokens · ai-ui-design 标准）
+ * 包含：语义配色体系、表面进深、4px间距标尺、无障碍焦点环、标准表单输入
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+.app-root.is-layout-modern {
+  /* ── 语义色彩体系 (Color Palette & Semantic Tokens) ── */
+  --hud-primary: #38bdf8;
+  --hud-primary-rgb: 56, 189, 248;
+  --hud-primary-hover: #0ea5e9;
+  --hud-primary-active: #0284c7;
+  --hud-success: #10b981;
+  --hud-success-rgb: 16, 185, 129;
+  --hud-warning: #f59e0b;
+  --hud-warning-rgb: 245, 158, 11;
+  --hud-danger: #ef4444;
+  --hud-danger-rgb: 239, 68, 68;
+  --hud-accent: #a855f7;
+  --hud-text-main: #f0f9ff;
+  --hud-text-muted: #94a3b8;
+  --hud-text-dim: #64748b;
+
+  /* ── 表面进深与背景层级 (Surface & Elevation) ── */
+  --hud-bg-base: #060910;
+  --hud-bg-surface: rgba(11, 16, 26, 0.88);
+  --hud-bg-surface-raised: rgba(14, 20, 32, 0.96);
+  --hud-bg-surface-glass: rgba(10, 14, 23, 0.75);
+
+  /* ── 边框与微光 (Borders & Glows) ── */
+  --hud-border-dim: rgba(var(--hud-primary-rgb), 0.12);
+  --hud-border-mid: rgba(var(--hud-primary-rgb), 0.25);
+  --hud-border-bright: rgba(var(--hud-primary-rgb), 0.55);
+  --hud-glow-soft: 0 0 12px rgba(var(--hud-primary-rgb), 0.2);
+  --hud-glow-strong: 0 0 20px rgba(var(--hud-primary-rgb), 0.45);
+
+  /* ── 4px 网格间距标尺 (Spacing Scale) ── */
+  --hud-space-1: 4px;
+  --hud-space-2: 8px;
+  --hud-space-3: 12px;
+  --hud-space-4: 16px;
+  --hud-space-5: 20px;
+  --hud-space-6: 24px;
+  --hud-space-8: 32px;
+
+  /* ── 形状与圆角标尺 (Border Radius Scale) ── */
+  --hud-radius-sm: 0px;
+  --hud-radius-md: 0px;
+  --hud-radius-lg: 0px;
+
+  /* ── 动效曲线与时长 (Transitions & Motion) ── */
+  --hud-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --hud-duration-fast: 150ms;
+  --hud-duration-normal: 200ms;
+
+  background:
+    radial-gradient(1200px 700px at 50% -10%, rgba(56, 189, 248, 0.12), transparent 70%),
+    radial-gradient(900px 600px at 85% 105%, rgba(14, 165, 233, 0.08), transparent 60%),
+    linear-gradient(rgba(56, 189, 248, 0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56, 189, 248, 0.015) 1px, transparent 1px),
+    rgb(var(--wui-bg-deep));
+  background-size: 100% 100%, 100% 100%, 36px 36px, 36px 36px, auto;
+}
+
+/* 顶栏科幻仪表盘 */
+.app-root.is-layout-modern .app-header {
+  border-bottom: 1px solid rgba(56, 189, 248, 0.25);
+  background: linear-gradient(180deg, rgba(14, 20, 32, 0.98), rgba(7, 10, 18, 0.98));
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6), inset 0 -1px 0 rgba(56, 189, 248, 0.1);
+}
+.app-root.is-layout-modern .app-pilot {
+  padding: 3px 10px;
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  border-radius: 0;
+  color: #38bdf8;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
+}
+.app-root.is-layout-modern .app-wallet,
+.app-root.is-layout-modern .app-standing {
+  background: rgba(11, 16, 26, 0.85);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  padding: 3px 10px;
+  border-radius: 0;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* 底部主导航栏 */
+.app-root.is-layout-modern nav.app-nav-side {
+  border-top: 1px solid rgba(56, 189, 248, 0.3);
+  background: linear-gradient(0deg, rgba(5, 7, 13, 0.98), rgba(12, 17, 28, 0.96));
+  box-shadow: 0 -6px 25px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+.app-root.is-layout-modern .app-nav-item {
+  border-radius: 0;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+}
+.app-root.is-layout-modern .app-nav-item:hover {
+  background: rgba(56, 189, 248, 0.1);
+  border-color: rgba(56, 189, 248, 0.4);
+  transform: translateY(-1px);
+}
+.app-root.is-layout-modern .app-nav-item:active {
+  transform: scale(0.96);
+}
+.app-root.is-layout-modern .app-nav-item.is-active {
+  background: rgba(56, 189, 248, 0.16);
+  border-color: rgba(56, 189, 248, 0.6);
+  box-shadow: inset 0 -3px 0 #38bdf8, 0 0 20px rgba(56, 189, 248, 0.35);
+  color: #f0f9ff;
+}
+.app-root.is-layout-modern .app-nav-item.is-featured {
+  background: linear-gradient(180deg, rgba(14, 165, 233, 0.3), rgba(2, 132, 199, 0.18));
+  border: 1px solid rgba(56, 189, 248, 0.7);
+  box-shadow: 0 0 24px rgba(56, 189, 248, 0.3), inset 0 0 14px rgba(56, 189, 248, 0.25);
+}
+.app-root.is-layout-modern .app-nav-item.is-featured:hover {
+  background: linear-gradient(180deg, rgba(14, 165, 233, 0.42), rgba(2, 132, 199, 0.3));
+  box-shadow: 0 0 32px rgba(56, 189, 248, 0.5), inset 0 0 18px rgba(56, 189, 248, 0.35);
+  transform: translateY(-2px);
+}
+
+/* ═════ C 模块 · 战舰装配台（FitPage）全息战术机库 ═════ */
+.app-root.is-layout-modern .app-fit-target {
+  background: linear-gradient(180deg, rgba(14, 20, 32, 0.95), rgba(9, 13, 22, 0.95));
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 0;
+  padding: 10px 14px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+.app-root.is-layout-modern .app-fit-target-ship {
+  color: #38bdf8;
+  font-size: 1.15em;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-shadow: 0 0 10px rgba(56, 189, 248, 0.35);
+}
+
+/* 全息机库舞台 */
+.app-root.is-layout-modern .app-fit-stage {
+  position: relative;
+  background:
+    radial-gradient(800px 500px at 50% 50%, rgba(56, 189, 248, 0.08), transparent 70%),
+    linear-gradient(rgba(56, 189, 248, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56, 189, 248, 0.04) 1px, transparent 1px),
+    rgba(6, 9, 16, 0.96);
+  background-size: 100% 100%, 36px 36px, 36px 36px, auto;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: 0;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6), inset 0 0 40px rgba(0, 0, 0, 0.7);
+}
+.app-root.is-layout-modern .app-fit-stage::before {
+  content: 'HANGAR BAY // TACTICAL VIEW';
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  color: rgba(56, 189, 248, 0.45);
+  font-family: monospace;
+}
+
+/* 舰船属性仪表舱 */
+.app-root.is-layout-modern .app-fit-shipinfo {
+  border: 1px solid rgba(56, 189, 248, 0.22);
+  border-radius: 0;
+  background: linear-gradient(180deg, rgba(14, 20, 32, 0.95), rgba(7, 10, 18, 0.98));
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+/* 高/中/低槽位机架 */
+.app-root.is-layout-modern .app-fit-rack {
+  background: linear-gradient(180deg, rgba(14, 20, 32, 0.95), rgba(9, 13, 22, 0.92));
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: 0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+.app-root.is-layout-modern .app-fit-rack-title {
+  color: #38bdf8;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* 真正的装配槽位卡片 (.app-fit-slot-icon) */
+.app-root.is-layout-modern .app-fit-slot-icon {
+  border-radius: 0;
+  transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+/* 空槽：微弱天青虚线与半透明瞄准准星加号 */
+.app-root.is-layout-modern .app-fit-slot-icon.is-empty {
+  border: 1px dashed rgba(56, 189, 248, 0.35);
+  background: rgba(9, 13, 22, 0.6);
+}
+.app-root.is-layout-modern .app-fit-slot-icon.is-empty:hover {
+  border-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.1);
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.25);
+  transform: translateY(-1px);
+}
+/* 已装槽：钛金高光边框 + 微光悬浮 */
+.app-root.is-layout-modern .app-fit-slot-icon.is-filled {
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  background: linear-gradient(180deg, rgba(20, 29, 46, 0.9), rgba(11, 16, 26, 0.95));
+}
+.app-root.is-layout-modern .app-fit-slot-icon.is-filled:hover {
+  border-color: #38bdf8;
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.35), 0 4px 12px rgba(0, 0, 0, 0.5);
+  transform: translateY(-2px);
+}
+.app-root.is-layout-modern .app-fit-slot-icon:active {
+  transform: scale(0.97);
+}
+
+/* ═════ B 模块 · 星图出港（MapPage & 悬赏/矿带）战术雷达 ═════ */
+.app-root.is-layout-modern .app-subtabs {
+  border-bottom: 1px solid rgba(56, 189, 248, 0.25);
+  background: rgba(14, 20, 32, 0.4);
+}
+.app-root.is-layout-modern .app-subtab {
+  font-family: monospace;
+  letter-spacing: 0.08em;
+  transition: all 0.16s ease;
+}
+.app-root.is-layout-modern .app-subtab.is-active {
+  background: rgba(56, 189, 248, 0.14);
+  border-color: rgba(56, 189, 248, 0.5);
+  box-shadow: inset 0 -2px 0 #38bdf8, 0 0 12px rgba(56, 189, 248, 0.2);
+  color: #f0f9ff;
+}
+
+/* 悬赏卡片（.app-ano-card）军事战术简报感 */
+.app-root.is-layout-modern .app-ano-card {
+  position: relative;
+  background: linear-gradient(180deg, rgba(14, 20, 32, 0.96), rgba(8, 11, 19, 0.96));
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-left: 3px solid #38bdf8;
+  border-radius: 0;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.app-root.is-layout-modern .app-ano-card:hover {
+  border-color: rgba(56, 189, 248, 0.5);
+  border-left-color: #38bdf8;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6), 0 0 16px rgba(56, 189, 248, 0.2);
+  transform: translateY(-1px);
+}
+.app-root.is-layout-modern .app-ano-name {
+  color: #f0f9ff;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+/* 矿带卡片网格 */
+.app-root.is-layout-modern .app-belt-head {
+  background: linear-gradient(180deg, rgba(14, 20, 32, 0.95), rgba(8, 11, 19, 0.95));
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: 0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+.app-root.is-layout-modern .app-belt-name {
+  color: #38bdf8;
+  font-weight: 600;
+}
+
+/* 关特效与减弱动画 */
+body.no-fx .app-root.is-layout-modern .app-nav-item,
+body.no-fx .app-root.is-layout-modern .app-ano-card,
+body.no-fx .app-root.is-layout-modern .app-fit-slot-icon {
+  transition: none;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-root.is-layout-modern .app-nav-item,
+  .app-root.is-layout-modern .app-ano-card,
+  .app-root.is-layout-modern .app-fit-slot-icon {
+    transition: none;
+    transform: none;
+  }
+}
+
+/* ═════ 装配台深入 · 战术数据仪表与全息扫描线 ═════ */
+.app-root.is-layout-modern .app-fit-shipinfo table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 3px;
+  font-variant-numeric: tabular-nums;
+}
+.app-root.is-layout-modern .app-fit-shipinfo td {
+  padding: 4px 8px;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.08);
+}
+.app-root.is-layout-modern .app-fit-shipinfo tr:hover td {
+  background: rgba(56, 189, 248, 0.06);
+}
+.app-root.is-layout-modern .app-fit-stage svg {
+  filter: drop-shadow(0 0 12px rgba(56, 189, 248, 0.35));
+}
+
+/* ═════ 星图与出港雷达深入 ═════ */
+.app-root.is-layout-modern .app-ano-list {
+  display: grid;
+  gap: 10px;
+}
+.app-root.is-layout-modern .app-ano-card.is-dangerous {
+  border-left-color: #f59e0b;
+}
+.app-root.is-layout-modern .app-ano-card.is-deadly {
+  border-left-color: #ef4444;
+}
+
+/* ═════ 侧边活动栏（Activity Bar） ═════ */
+.app-root.is-layout-modern aside.app-activitybar {
+  background: rgba(5, 8, 14, 0.95);
+  border-right: 1px solid rgba(56, 189, 248, 0.25);
+  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.5);
+}
+.app-root.is-layout-modern .app-activitybar-item {
+  transition: all 0.16s ease;
+  border-radius: 0;
+}
+.app-root.is-layout-modern .app-activitybar-item:hover {
+  background: rgba(56, 189, 248, 0.12);
+  color: #38bdf8;
+}
+.app-root.is-layout-modern .app-activitybar-item.is-active {
+  background: rgba(56, 189, 248, 0.2);
+  color: #f0f9ff;
+  box-shadow: inset 2px 0 0 #38bdf8;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * EVE / Homeworld / Star Citizen 风格现代星际航电 HUD 深度系统
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* 1. 战术超细全息滚动条 */
+.app-root.is-layout-modern ::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.app-root.is-layout-modern ::-webkit-scrollbar-track {
+  background: rgba(7, 10, 18, 0.65);
+}
+.app-root.is-layout-modern ::-webkit-scrollbar-thumb {
+  background: rgba(56, 189, 248, 0.28);
+  border-radius: 0;
+}
+.app-root.is-layout-modern ::-webkit-scrollbar-thumb:hover {
+  background: rgba(56, 189, 248, 0.55);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
+}
+
+/* 2. 全息弹窗与抽屉（Modals & Overlays） */
+.app-root.is-layout-modern .app-modal,
+.app-root.is-layout-cosmic .app-modal,
+.app-root.is-layout-modern .app-mkt-confirm,
+.app-root.is-layout-modern .app-shipwin {
+  background: linear-gradient(180deg, rgba(14, 20, 32, 0.98), rgba(7, 11, 19, 0.98));
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.75), 0 0 24px rgba(56, 189, 248, 0.15);
+  border-radius: 0;
+  backdrop-filter: blur(16px);
+}
+.app-root.is-layout-modern .app-modal-head,
+.app-root.is-layout-modern .app-mkt-confirm-title {
+  border-bottom: 1px solid rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+/* 3. 战术通用按钮微交互（.app-btn） */
+.app-root.is-layout-modern .app-btn,
+.app-root.is-layout-cosmic .app-btn {
+  border-radius: 0;
+  transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+  letter-spacing: 0.04em;
+}
+.app-root.is-layout-modern .app-btn:hover:not(:disabled),
+.app-root.is-layout-cosmic .app-btn:hover:not(:disabled) {
+  border-color: rgba(56, 189, 248, 0.6);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+  transform: translateY(-1px);
+}
+.app-root.is-layout-modern .app-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.app-root.is-layout-modern .app-btn.is-primary,
+.app-root.is-layout-cosmic .app-btn.is-primary {
+  background: linear-gradient(180deg, rgba(14, 165, 233, 0.3), rgba(2, 132, 199, 0.2));
+  border-color: rgba(56, 189, 248, 0.8);
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.3), inset 0 0 8px rgba(56, 189, 248, 0.2);
+}
+.app-root.is-layout-modern .app-btn.is-primary:hover:not(:disabled),
+.app-root.is-layout-cosmic .app-btn.is-primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, rgba(14, 165, 233, 0.45), rgba(2, 132, 199, 0.35));
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.5), inset 0 0 12px rgba(56, 189, 248, 0.3);
+}
+
+/* 4. 战舰装配台（FitPage）高/中/低槽位航电色标与全息刻度 */
+.app-root.is-layout-modern .app-fit-rack[data-slot-kind="high"] .app-fit-rack-title {
+  color: #fb923c;
+  text-shadow: 0 0 10px rgba(251, 146, 60, 0.35);
+}
+.app-root.is-layout-modern .app-fit-rack[data-slot-kind="mid"] .app-fit-rack-title {
+  color: #38bdf8;
+  text-shadow: 0 0 10px rgba(56, 189, 248, 0.35);
+}
+.app-root.is-layout-modern .app-fit-rack[data-slot-kind="low"] .app-fit-rack-title {
+  color: #facc15;
+  text-shadow: 0 0 10px rgba(250, 204, 21, 0.35);
+}
+
+/* 装配卡片全息角标与质感 */
+.app-root.is-layout-modern .app-fit-slot-icon {
+  position: relative;
+  overflow: hidden;
+}
+.app-root.is-layout-modern .app-fit-slot-icon::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.6), transparent);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.app-root.is-layout-modern .app-fit-slot-icon:hover::after {
+  opacity: 1;
+}
+
+/* 5. 战术星图态势卡片与出港跃迁 */
+.app-root.is-layout-modern .app-map-overview {
+  background: linear-gradient(180deg, rgba(14, 20, 32, 0.95), rgba(7, 10, 18, 0.95));
+  border: 1px solid rgba(56, 189, 248, 0.22);
+  border-radius: 0;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+}
+.app-root.is-layout-modern .app-map-sec-title {
+  color: #38bdf8;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+}
+
+/* 6. 日志坞浮层（Log Dock）全息通讯黑匣子风格 */
+.app-root.is-layout-modern .app-log-dock {
+  background: linear-gradient(180deg, rgba(9, 13, 22, 0.96), rgba(5, 7, 13, 0.98));
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), 0 0 16px rgba(56, 189, 248, 0.15);
+  backdrop-filter: blur(12px);
+  border-radius: 0;
+}
+.app-root.is-layout-modern .app-log-head {
+  border-bottom: 1px solid rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
+  font-family: monospace;
+  letter-spacing: 0.08em;
+}
+
+/* 7. 无特效与弱动效退化模式安全兼容 */
+body.no-fx .app-root.is-layout-modern .app-btn,
+body.no-fx .app-root.is-layout-modern .app-fit-slot-icon::after {
+  transition: none;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-root.is-layout-modern .app-btn,
+  .app-root.is-layout-modern .app-fit-slot-icon::after {
+    transition: none;
+    transform: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * 8. EVE 风格空间站市场终端（MarketPage）
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+.app-root.is-layout-modern .app-mkt-row {
+  border-bottom: 1px solid rgba(56, 189, 248, 0.08);
+  transition: all 0.16s ease;
+  position: relative;
+}
+.app-root.is-layout-modern .app-mkt-row:hover {
+  background: rgba(56, 189, 248, 0.06);
+  border-bottom-color: rgba(56, 189, 248, 0.3);
+  box-shadow: inset 2px 0 0 #38bdf8;
+}
+.app-root.is-layout-modern .app-mkt-quote {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+.app-root.is-layout-modern .app-trend-up {
+  color: #10b981;
+  text-shadow: 0 0 6px rgba(16, 185, 129, 0.4);
+}
+.app-root.is-layout-modern .app-trend-down {
+  color: #f59e0b;
+  text-shadow: 0 0 6px rgba(245, 158, 11, 0.4);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * 9. 模块化货舱与仓库（ItemsPage & Cargo）
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+.app-root.is-layout-modern .app-tasktab {
+  font-family: monospace;
+  letter-spacing: 0.06em;
+  border-radius: 0;
+  transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.app-root.is-layout-modern .app-tasktab:hover {
+  background: rgba(56, 189, 248, 0.1);
+  color: #38bdf8;
+}
+.app-root.is-layout-modern .app-tasktab.is-active {
+  background: rgba(56, 189, 248, 0.18);
+  border-color: rgba(56, 189, 248, 0.5);
+  box-shadow: inset 0 -2px 0 #38bdf8, 0 0 14px rgba(56, 189, 248, 0.25);
+  color: #f0f9ff;
+}
+.app-root.is-layout-modern .app-inv-row {
+  border: 1px solid rgba(56, 189, 248, 0.12);
+  border-radius: 0;
+  background: rgba(11, 16, 26, 0.7);
+  transition: all 0.16s ease;
+}
+.app-root.is-layout-modern .app-inv-row:hover {
+  border-color: rgba(56, 189, 248, 0.35);
+  background: rgba(14, 20, 32, 0.85);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), 0 0 10px rgba(56, 189, 248, 0.15);
+  transform: translateY(-1px);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * 10. Homeworld 风格战术星图态势感知（StarMap SVG）
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+.app-root.is-layout-modern .app-starmap-wrap {
+  background: radial-gradient(circle at 50% 50%, rgba(14, 165, 233, 0.05), transparent 70%), rgb(var(--wui-bg-deep));
+}
+.app-root.is-layout-modern .app-map-node {
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), filter 0.2s ease;
+}
+.app-root.is-layout-modern .app-map-node:hover circle {
+  filter: drop-shadow(0 0 8px #38bdf8);
+}
+.app-root.is-layout-modern .app-map-edge {
+  stroke: rgba(56, 189, 248, 0.3);
+  stroke-dasharray: 4 2;
+  transition: stroke 0.2s ease;
+}
+.app-root.is-layout-modern .app-map-edge:hover {
+  stroke: #38bdf8;
+  filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.8));
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * 11. 能量流动与战术微动效
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+.app-root.is-layout-modern .app-fit-cpustrip-track i {
+  background: linear-gradient(90deg, #38bdf8, #0ea5e9, #38bdf8);
+  background-size: 200% 100%;
+  animation: hud-energy-flow 4s linear infinite;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.5);
+}
+@keyframes hud-energy-flow {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 200% 0%; }
+}
+
+/* 减弱动画无障碍退化 */
+body.no-fx .app-root.is-layout-modern .app-inv-row,
+body.no-fx .app-root.is-layout-modern .app-fit-cpustrip-track i {
+  transition: none;
+  transform: none;
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-root.is-layout-modern .app-inv-row,
+  .app-root.is-layout-modern .app-fit-cpustrip-track i {
+    transition: none;
+    transform: none;
+    animation: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * 12. Star Citizen / EVE 风格太空战役火控 HUD（BattleScreen）
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+.app-root.is-layout-modern .app-battle-screen {
+  background: radial-gradient(circle at 50% 50%, rgba(14, 165, 233, 0.06), transparent 75%), #05070c;
+}
+.app-root.is-layout-modern .app-battle-screen-top {
+  background: linear-gradient(180deg, rgba(14, 20, 32, 0.98), rgba(7, 10, 18, 0.96));
+  border-bottom: 1px solid rgba(56, 189, 248, 0.3);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6), inset 0 -1px 0 rgba(56, 189, 248, 0.15);
+  backdrop-filter: blur(12px);
+}
+.app-root.is-layout-modern .app-bts-chip {
+  background: rgba(11, 16, 26, 0.85);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 0;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+.app-root.is-layout-modern .app-bts-ammo {
+  font-variant-numeric: tabular-nums;
+}
+.app-root.is-layout-modern .app-bts-repair {
+  background: rgba(11, 16, 26, 0.85);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 0;
+}
+.app-root.is-layout-modern .app-bts-repair i {
+  box-shadow: 0 0 8px #10b981;
+}
+.app-root.is-layout-modern .app-bts-repair.is-down i {
+  box-shadow: 0 0 8px #ef4444;
+}
+
+/* 战术火控距离标尺控制台 */
+.app-root.is-layout-modern .app-bts-axisTrack {
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 0;
+  background: rgba(8, 11, 19, 0.9);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+.app-root.is-layout-modern .app-bts-cur-chip {
+  background: rgba(56, 189, 248, 0.95);
+  color: #030712;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+  border-radius: 0;
+}
+.app-root.is-layout-modern .app-battle-tacs .app-btn {
+  border-radius: 0;
+  font-family: monospace;
+  letter-spacing: 0.05em;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * 13. 我的舰队与星舰机库（ShipPage & Fleet Cards）
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+.app-root.is-layout-modern .app-ship-card.is-fleet {
+  background: linear-gradient(180deg, rgba(14, 20, 32, 0.95), rgba(8, 11, 19, 0.95));
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-left: 3px solid #38bdf8;
+  border-radius: 0;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.app-root.is-layout-modern .app-ship-card.is-fleet:hover {
+  border-color: rgba(56, 189, 248, 0.45);
+  border-left-color: #38bdf8;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6), 0 0 16px rgba(56, 189, 248, 0.2);
+  transform: translateY(-1px);
+}
+.app-root.is-layout-modern .app-ship-card.is-fleet.is-piloted {
+  border-left-color: #10b981;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), inset 0 0 16px rgba(16, 185, 129, 0.06);
+}
+.app-root.is-layout-modern .app-ship-card-name {
+  color: #f0f9ff;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * 14. 神经科技树与技能训练（SkillsTreePage）
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+.app-root.is-layout-modern .app-skill-tree-canvas {
+  background:
+    radial-gradient(1000px 600px at 50% 50%, rgba(56, 189, 248, 0.04), transparent 75%),
+    linear-gradient(rgba(56, 189, 248, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56, 189, 248, 0.02) 1px, transparent 1px);
+  background-size: 100% 100%, 32px 32px, 32px 32px;
+}
+.app-root.is-layout-modern .app-skill-hex.is-training polygon {
+  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.8));
+  animation: skill-training-glow 3s ease-in-out infinite alternate;
+}
+@keyframes skill-training-glow {
+  0% { filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.5)); }
+  100% { filter: drop-shadow(0 0 12px rgba(56, 189, 248, 0.9)); }
+}
+.app-root.is-layout-modern .app-skill-hex.is-max polygon {
+  filter: drop-shadow(0 0 6px rgba(250, 204, 21, 0.5));
+}
+.app-root.is-layout-modern .app-queue-block {
+  background: linear-gradient(180deg, rgba(14, 20, 32, 0.95), rgba(7, 10, 18, 0.95));
+  border: 1px solid rgba(56, 189, 248, 0.22);
+  border-radius: 0;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+}
+
+/* 动效退化模式安全兼容 */
+body.no-fx .app-root.is-layout-modern .app-ship-card.is-fleet,
+body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
+  transition: none;
+  transform: none;
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-root.is-layout-modern .app-ship-card.is-fleet,
+  .app-root.is-layout-modern .app-skill-hex.is-training polygon {
+    transition: none;
+    transform: none;
+    animation: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * 15. ai-ui-design 无障碍设计（a11y）与统一表单控件模式
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── 无障碍焦点环规范 (WCAG AA Focus Ring) ── */
+.app-root.is-layout-modern :focus-visible {
+  outline: 2px solid var(--hud-primary) !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 10px rgba(var(--hud-primary-rgb), 0.6) !important;
+}
+
+/* ── 规范化表单输入控件 (Inputs & Selects) ── */
+.app-root.is-layout-modern input[type="text"],
+.app-root.is-layout-modern input[type="number"],
+.app-root.is-layout-modern input[type="search"],
+.app-root.is-layout-modern select {
+  background: rgba(9, 13, 22, 0.85);
+  border: 1px solid var(--hud-border-mid);
+  border-radius: var(--hud-radius-sm);
+  color: var(--hud-text-main);
+  padding: var(--hud-space-1) var(--hud-space-2);
+  font-family: inherit;
+  font-size: 0.9em;
+  transition: all var(--hud-duration-fast) var(--hud-ease);
+}
+.app-root.is-layout-modern input[type="text"]:hover,
+.app-root.is-layout-modern input[type="number"]:hover,
+.app-root.is-layout-modern select:hover {
+  border-color: var(--hud-border-bright);
+}
+.app-root.is-layout-modern input[type="text"]:focus,
+.app-root.is-layout-modern input[type="number"]:focus,
+.app-root.is-layout-modern select:focus {
+  border-color: var(--hud-primary);
+  box-shadow: var(--hud-glow-soft);
+  outline: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * 新版（现代太空航电 / 科幻未来 HUD · 纯硬朗零圆角）
+ * 船长令（2026-11-02）：科幻未来不能有圆角的任何 UI 元素，所有构件均为锐角或 45° 战术切角
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── 强制全量消除圆角（Zero Border Radius 铁律） ── */
+.app-root.is-layout-modern,
+.app-root.is-layout-modern *,
+.app-root.is-layout-modern *::before,
+.app-root.is-layout-modern *::after {
+  border-radius: 0 !important;
+}
+
+/* ── 顶栏与外壳仪表舱 ── */
+.app-root.is-layout-modern .app-pilot {
+  padding: 3px 10px;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%);
+  color: #38bdf8;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
+}
+.app-root.is-layout-modern .app-wallet,
+.app-root.is-layout-modern .app-standing {
+  background: rgba(11, 16, 26, 0.88);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  padding: 3px 10px;
+  clip-path: polygon(6px 0, 100% 0, 100% 100%, 0 100%, 0 6px);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* ── 底部战术主导航栏 ── */
+.app-root.is-layout-modern nav.app-nav-side {
+  border-top: 1px solid rgba(56, 189, 248, 0.35);
+  background: linear-gradient(0deg, rgba(5, 7, 13, 0.98), rgba(12, 17, 28, 0.97));
+  box-shadow: 0 -6px 25px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(56, 189, 248, 0.15);
+}
+.app-root.is-layout-modern .app-nav-item {
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px)) !important;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+}
+.app-root.is-layout-modern .app-nav-item:hover {
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.45);
+  transform: translateY(-1px);
+}
+.app-root.is-layout-modern .app-nav-item:active {
+  transform: scale(0.96);
+}
+.app-root.is-layout-modern .app-nav-item.is-active {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: rgba(56, 189, 248, 0.7);
+  box-shadow: inset 0 -3px 0 #38bdf8, 0 0 20px rgba(56, 189, 248, 0.38);
+  color: #f0f9ff;
+}
+.app-root.is-layout-modern .app-nav-item.is-featured {
+  background: linear-gradient(180deg, rgba(14, 165, 233, 0.35), rgba(2, 132, 199, 0.22));
+  border: 1px solid rgba(56, 189, 248, 0.85);
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px)) !important;
+  box-shadow: 0 0 24px rgba(56, 189, 248, 0.35), inset 0 0 14px rgba(56, 189, 248, 0.28);
+}
+
+/* ── 左侧活动运转栏 ── */
+.app-root.is-layout-modern aside.app-activitybar {
+  border-right: 1px solid rgba(56, 189, 248, 0.25);
+  background: rgba(8, 12, 20, 0.95);
+  box-shadow: 2px 0 15px rgba(0, 0, 0, 0.5);
+}
+.app-root.is-layout-modern .app-activitybar-item {
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px)) !important;
+  border: 1px solid rgba(56, 189, 248, 0.18);
+  background: rgba(14, 20, 32, 0.75);
+}
+.app-root.is-layout-modern .app-activitybar-item:hover {
+  border-color: rgba(56, 189, 248, 0.45);
+  background: rgba(56, 189, 248, 0.12);
+}
+.app-root.is-layout-modern .app-activitybar-item.is-active {
+  border-left: 3px solid #38bdf8;
+  background: rgba(56, 189, 248, 0.18);
+  box-shadow: inset 0 0 10px rgba(56, 189, 248, 0.15);
+}
+
+/* ── 面板容器（.wui-panel）：克制耐看型 8px 对角微切角 ── */
+.app-root.is-layout-modern .wui-panel {
+  clip-path: polygon(
+    0 0,
+    calc(100% - 8px) 0,
+    100% 8px,
+    100% 100%,
+    8px 100%,
+    0 calc(100% - 8px)
+  );
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  background: rgba(10, 16, 26, 0.94);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(56, 189, 248, 0.08);
+  position: relative;
+}
+.app-root.is-layout-modern .wui-panel-head {
+  border-bottom: 1px solid rgba(56, 189, 248, 0.22);
+  background: linear-gradient(90deg, rgba(56, 189, 248, 0.12) 0%, transparent 80%);
+  border-left: 3px solid #38bdf8;
+  padding-left: 8px;
+}
+
+/* ── 弹窗与设置界面（战术切角，消除圆弧） ── */
+.app-root.is-layout-modern .app-modal,
+.app-root.is-layout-modern .app-settings-modal,
+.app-root.is-layout-cosmic .app-settings-modal {
+  clip-path: polygon(
+    0 0,
+    calc(100% - 10px) 0,
+    100% 10px,
+    100% 100%,
+    10px 100%,
+    0 calc(100% - 10px)
+  );
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.85), 0 0 24px rgba(56, 189, 248, 0.15), inset 0 0 0 1px rgba(56, 189, 248, 0.1);
+  background: linear-gradient(180deg, rgba(14, 20, 32, 0.98), rgba(7, 10, 18, 0.98));
+}
+.app-root.is-layout-modern .app-modal-head {
+  border-bottom: 1px solid rgba(56, 189, 248, 0.3);
+  background: linear-gradient(90deg, rgba(56, 189, 248, 0.14) 0%, transparent 80%);
+  border-left: 3px solid #38bdf8;
+}
+.app-root.is-layout-modern .app-settings-row,
+.app-root.is-layout-cosmic .app-settings-row {
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  background: rgba(10, 16, 26, 0.8);
+  box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.05);
+}
+.app-root.is-layout-modern .app-settings-val,
+.app-root.is-layout-cosmic .app-settings-val {
+  clip-path: polygon(
+    0 0,
+    calc(100% - 6px) 0,
+    100% 6px,
+    100% 100%,
+    6px 100%,
+    0 calc(100% - 6px)
+  );
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  background: rgba(56, 189, 248, 0.12);
+  color: #38bdf8;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+/* ── 范围滑块（消除原生圆形 Thumb，改为锐利战术方块） ── */
+.app-root.is-layout-modern input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+}
+.app-root.is-layout-modern input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 20px;
+  margin-top: -6px;
+  background: #38bdf8;
+  border: 1px solid #ffffff;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+  cursor: pointer;
+  border-radius: 0;
+}
+.app-root.is-layout-modern input[type="range"]::-webkit-slider-runnable-track {
+  height: 8px;
+  background: rgba(14, 23, 38, 0.95);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 0;
+}
+.app-root.is-layout-modern input[type="range"]::-moz-range-thumb {
+  width: 12px;
+  height: 20px;
+  background: #38bdf8;
+  border: 1px solid #ffffff;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+  cursor: pointer;
+  border-radius: 0;
+}
+.app-root.is-layout-modern input[type="range"]::-moz-range-track {
+  height: 8px;
+  background: rgba(14, 23, 38, 0.95);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 0;
+}
+
+/* ── 全局统一按钮战术切角体系（45° Polygon Clip-Path 铁律） ── */
+/* 船长令（2026-11-02）：战术切角（45° Polygon Clip-Path）：按钮，应该所有的按钮都是一样的 */
+.app-root.is-layout-modern button,
+.app-root.is-layout-modern .app-btn,
+.app-root.is-layout-modern input[type="button"],
+.app-root.is-layout-modern input[type="submit"],
+.app-root.is-layout-modern .app-nav-item,
+.app-root.is-layout-modern .app-activitybar-item,
+.app-root.is-layout-modern .app-tasktab,
+.app-root.is-layout-modern .app-subtab,
+.app-root.is-layout-modern .hud-chip,
+.app-root.is-layout-modern .hud-tab,
+.app-root.is-layout-modern .app-fit-ammotier-opt,
+.app-root.is-layout-modern .app-fit-pick-item,
+.app-root.is-layout-modern .app-log-filter,
+.app-root.is-layout-modern .hud-resupply-toggle,
+.app-root.is-layout-modern .app-settings-btns button,
+.app-root.is-layout-modern .app-settings-foot button,
+.app-root.is-layout-modern .app-modal-foot button,
+.app-root.is-layout-modern .app-pro-wake-btn,
+.app-root.is-layout-modern .app-hand-pager-btn,
+.app-root.is-layout-modern .app-map-zoom-btn {
+  clip-path: polygon(
+    0 0,
+    calc(100% - 6px) 0,
+    100% 6px,
+    100% 100%,
+    6px 100%,
+    0 calc(100% - 6px)
+  ) !important;
+  border-radius: 0 !important;
+}
+
+.app-root.is-layout-modern button:not(.app-nav-item):not(.app-activitybar-item):not(.app-fit-slot-icon):not(.app-battle-float),
+.app-root.is-layout-modern .app-btn {
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: rgba(14, 20, 32, 0.88);
+  color: #e0f2fe;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+}
+
+.app-root.is-layout-modern button:not(.app-nav-item):not(.app-activitybar-item):not(.app-fit-slot-icon):hover:not(:disabled),
+.app-root.is-layout-modern .app-btn:hover:not(:disabled) {
+  border-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.2);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.35);
+  color: #ffffff;
+}
+
+.app-root.is-layout-modern button:active:not(:disabled),
+.app-root.is-layout-modern .app-btn:active:not(:disabled),
+.app-root.is-layout-cosmic .app-btn:active {
+  transform: scale(0.97);
+}
+
+.app-root.is-layout-modern button.is-primary,
+.app-root.is-layout-modern .app-btn.is-primary,
+.app-root.is-layout-modern button.is-active,
+.app-root.is-layout-modern .app-btn.is-active,
+.app-root.is-layout-modern button[aria-pressed="true"],
+.app-root.is-layout-modern button[aria-selected="true"],
+.app-root.is-layout-modern .app-fit-ammotier-opt.is-active {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.35) 0%, rgba(14, 165, 233, 0.55) 100%) !important;
+  border-color: #38bdf8 !important;
+  color: #ffffff !important;
+  text-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.32), inset 0 0 8px rgba(56, 189, 248, 0.2);
+}
+
+.app-root.is-layout-modern button.is-primary:hover:not(:disabled),
+.app-root.is-layout-modern .app-btn.is-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.55) 0%, rgba(14, 165, 233, 0.75) 100%) !important;
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.5);
+}
+/* ── 浮窗与卡片 ── */
+.app-root.is-layout-modern .app-winbox {
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 20px rgba(56, 189, 248, 0.15);
+}
+.app-root.is-layout-modern .app-ship-card.is-fleet {
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  background: rgba(11, 16, 26, 0.9);
+}
+.app-root.is-layout-modern .app-ship-card.is-fleet:hover {
+  border-color: rgba(56, 189, 248, 0.6);
+  box-shadow: 0 0 15px rgba(56, 189, 248, 0.25);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * 16. 深空数据看板与复杂后台监控大屏（DataDog / Mixpanel 风格体系）
+ * 船长令（2026-11-02）：在有限空间内，优雅、清晰地呈现大量图表和高密度数据表格
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── 全局/舰船总览 KPI 指标大屏条（Telemetry Summary Banner） ── */
+.app-root.is-layout-modern .hud-kpi-banner,
+.app-root.is-layout-cosmic .hud-kpi-banner {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 10px;
+  width: 100%;
+}
+.app-root.is-layout-modern .hud-kpi-card,
+.app-root.is-layout-cosmic .hud-kpi-card {
+  background: rgba(10, 16, 26, 0.88);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-left: 3px solid #38bdf8;
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+  padding: 6px 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(56, 189, 248, 0.05);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.app-root.is-layout-modern .hud-kpi-label,
+.app-root.is-layout-cosmic .hud-kpi-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: rgba(56, 189, 248, 0.75);
+  text-transform: uppercase;
+}
+.app-root.is-layout-modern .hud-kpi-val,
+.app-root.is-layout-cosmic .hud-kpi-val {
+  font-size: 17px;
+  font-weight: 700;
+  font-family: monospace, var(--wui-mono);
+  font-variant-numeric: tabular-nums;
+  color: #f0f9ff;
+  letter-spacing: 0.03em;
+  line-height: 1.25;
+  margin: 2px 0;
+}
+.app-root.is-layout-modern .hud-kpi-val.is-warn,
+.app-root.is-layout-cosmic .hud-kpi-val.is-warn {
+  color: #f59e0b;
+}
+.app-root.is-layout-modern .hud-kpi-unit,
+.app-root.is-layout-cosmic .hud-kpi-unit {
+  font-size: 11px;
+  font-weight: normal;
+  color: #94a3b8;
+  margin-left: 3px;
+}
+.app-root.is-layout-modern .hud-kpi-sep,
+.app-root.is-layout-cosmic .hud-kpi-sep {
+  font-size: 12px;
+  color: rgba(56, 189, 248, 0.4);
+  margin: 0 3px;
+}
+.app-root.is-layout-modern .hud-kpi-sub,
+.app-root.is-layout-cosmic .hud-kpi-sub {
+  font-size: 10.5px;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.app-root.is-layout-modern .hud-kpi-tag,
+.app-root.is-layout-cosmic .hud-kpi-tag {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: rgba(56, 189, 248, 0.6);
+  font-family: monospace, var(--wui-mono);
+}
+
+/* 战术微型状态方块（零圆角指示灯） */
+.app-root.is-layout-modern .hud-status-dot,
+.app-root.is-layout-cosmic .hud-status-dot {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  background: #38bdf8;
+  box-shadow: 0 0 6px #38bdf8;
+}
+.app-root.is-layout-modern .hud-status-dot.is-live,
+.app-root.is-layout-cosmic .hud-status-dot.is-live {
+  background: #10b981;
+  box-shadow: 0 0 6px #10b981;
+}
+
+/* 战术微型指标条 */
+.app-root.is-layout-modern .hud-mini-progress,
+.app-root.is-layout-cosmic .hud-mini-progress {
+  width: 100%;
+  height: 4px;
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  overflow: hidden;
+}
+.app-root.is-layout-modern .hud-mini-fill,
+.app-root.is-layout-cosmic .hud-mini-fill {
+  height: 100%;
+  background: #38bdf8;
+  box-shadow: 0 0 6px rgba(56, 189, 248, 0.6);
+}
+
+/* ── 舰船列表（我的舰队）：高密度遥测监控行 ── */
+.app-root.is-layout-modern .app-ship-card.is-fleet,
+.app-root.is-layout-cosmic .app-ship-card.is-fleet {
+  padding: 6px 12px;
+  margin-bottom: 6px;
+  min-height: 48px;
+  background: rgba(11, 16, 26, 0.92);
+  border: 1px solid rgba(56, 189, 248, 0.22);
+  border-left: 3px solid rgba(56, 189, 248, 0.4);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.4);
+  transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.app-root.is-layout-modern .app-ship-card.is-fleet:hover,
+.app-root.is-layout-cosmic .app-ship-card.is-fleet:hover {
+  border-color: rgba(56, 189, 248, 0.55);
+  border-left-color: #38bdf8;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 0 12px rgba(56, 189, 248, 0.18);
+  transform: translateY(-1px);
+}
+.app-root.is-layout-modern .app-ship-card.is-fleet.is-current,
+.app-root.is-layout-cosmic .app-ship-card.is-fleet.is-current {
+  border-left: 3px solid #38bdf8;
+  background: linear-gradient(90deg, rgba(56, 189, 248, 0.08) 0%, rgba(11, 16, 26, 0.94) 100%);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), inset 0 0 16px rgba(56, 189, 248, 0.05);
+}
+
+/* 舰船名称行与角标 */
+.app-root.is-layout-modern .app-ship-card.is-fleet .app-ship-name,
+.app-root.is-layout-cosmic .app-ship-card.is-fleet .app-ship-name {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #f0f9ff;
+}
+.app-root.is-layout-modern .app-ship-card.is-fleet .app-chip,
+.app-root.is-layout-cosmic .app-ship-card.is-fleet .app-chip {
+  padding: 1px 6px;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+/* 数据规格指标：等宽数字 + 高对比度 */
+.app-root.is-layout-modern .app-ship-card.is-fleet .app-ship-spec,
+.app-root.is-layout-cosmic .app-ship-card.is-fleet .app-ship-spec {
+  font-family: monospace, var(--wui-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  color: #94a3b8;
+  margin: 3px 0;
+  letter-spacing: 0.02em;
+}
+
+/* 战术细长耐久刻度条 */
+.app-root.is-layout-modern .app-ship-card.is-fleet .app-dur-row,
+.app-root.is-layout-cosmic .app-ship-card.is-fleet .app-dur-row {
+  margin: 3px 0;
+}
+.app-root.is-layout-modern .app-ship-card.is-fleet .app-dur-track,
+.app-root.is-layout-cosmic .app-ship-card.is-fleet .app-dur-track {
+  height: 4px;
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+}
+.app-root.is-layout-modern .app-ship-card.is-fleet .app-dur-fill,
+.app-root.is-layout-cosmic .app-ship-card.is-fleet .app-dur-fill {
+  background: #38bdf8;
+  box-shadow: 0 0 6px #38bdf8;
+}
+.app-root.is-layout-modern .app-ship-card.is-fleet .app-dur-text,
+.app-root.is-layout-cosmic .app-ship-card.is-fleet .app-dur-text {
+  font-family: monospace, var(--wui-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+/* 底部操作与折叠细线 */
+.app-root.is-layout-modern .app-ship-card.is-fleet .app-ship-bottom,
+.app-root.is-layout-cosmic .app-ship-card.is-fleet .app-ship-bottom {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(56, 189, 248, 0.1);
+}
+
+/* ── 舰船唯一实例呼号（Callsign Tag） ── */
+.app-root.is-layout-modern .app-ship-callsign,
+.app-root.is-layout-cosmic .app-ship-callsign {
+  display: inline-block;
+  padding: 1px 5px;
+  margin-left: 6px;
+  font-family: monospace, var(--wui-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  clip-path: polygon(0 0, calc(100% - 4px) 0, 100% 4px, 100% 100%, 4px 100%, 0 calc(100% - 4px));
+  vertical-align: middle;
+}
+
+/* ── 装配台：目标舰船就地换船选择器 ── */
+.app-root.is-layout-modern .app-fit-target,
+.app-root.is-layout-cosmic .app-fit-target {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 6px 12px;
+  background: rgba(10, 16, 26, 0.9);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-left: 3px solid #38bdf8;
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+  margin-bottom: 8px;
+}
+.app-root.is-layout-modern .app-fit-target-select,
+.app-root.is-layout-cosmic .app-fit-target-select {
+  background: rgba(14, 20, 32, 0.95);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  color: #f0f9ff;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 10px;
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+  cursor: pointer;
+  outline: none;
+  transition: all 0.18s ease;
+}
+.app-root.is-layout-modern .app-fit-target-select:hover,
+.app-root.is-layout-cosmic .app-fit-target-select:hover {
+  border-color: #38bdf8;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.35);
+}
+
+/* ── 装配台 DataDog 看板双卡条（火力与综合承伤） ── */
+.app-root.is-layout-modern .hud-fit-summary-strip,
+.app-root.is-layout-cosmic .hud-fit-summary-strip {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+  width: 100%;
+}
+.app-root.is-layout-modern .hud-fit-kpi,
+.app-root.is-layout-cosmic .hud-fit-kpi {
+  background: rgba(10, 16, 26, 0.92);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+  padding: 6px 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.4);
+}
+.app-root.is-layout-modern .hud-fit-kpi.is-dps,
+.app-root.is-layout-cosmic .hud-fit-kpi.is-dps {
+  border-left: 3px solid #f43f5e;
+}
+.app-root.is-layout-modern .hud-fit-kpi.is-ehp,
+.app-root.is-layout-cosmic .hud-fit-kpi.is-ehp {
+  border-left: 3px solid #0ea5e9;
+}
+.app-root.is-layout-modern .hud-fit-kpi-header,
+.app-root.is-layout-cosmic .hud-fit-kpi-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+}
+.app-root.is-layout-modern .hud-fit-kpi-tag,
+.app-root.is-layout-cosmic .hud-fit-kpi-tag {
+  font-family: monospace, var(--wui-mono);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #38bdf8;
+  text-transform: uppercase;
+}
+.app-root.is-layout-modern .hud-fit-kpi.is-dps .hud-fit-kpi-tag,
+.app-root.is-layout-cosmic .hud-fit-kpi.is-dps .hud-fit-kpi-tag {
+  color: #fb7185;
+}
+.app-root.is-layout-modern .hud-fit-kpi-sub,
+.app-root.is-layout-cosmic .hud-fit-kpi-sub {
+  color: #94a3b8;
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.app-root.is-layout-modern .hud-fit-kpi-body,
+.app-root.is-layout-cosmic .hud-fit-kpi-body {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-top: 3px;
+}
+.app-root.is-layout-modern .hud-fit-kpi-val,
+.app-root.is-layout-cosmic .hud-fit-kpi-val {
+  font-family: monospace, var(--wui-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 19px;
+  font-weight: 700;
+  color: #f8fafc;
+  line-height: 1;
+}
+.app-root.is-layout-modern .hud-fit-kpi-unit,
+.app-root.is-layout-cosmic .hud-fit-kpi-unit {
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  letter-spacing: 0.05em;
+}
+
+/* ── 弹药补给来源快捷微标 ── */
+.app-root.is-layout-modern .hud-resupply-toggle,
+.app-root.is-layout-cosmic .hud-resupply-toggle {
+  font-size: 11px;
+  padding: 2px 8px;
+  letter-spacing: 0.04em;
+  border-color: rgba(56, 189, 248, 0.4);
+}

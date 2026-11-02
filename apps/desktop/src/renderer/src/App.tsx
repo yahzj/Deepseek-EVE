@@ -517,7 +517,7 @@ export function App({ engine }: { engine: GameEngine }) {
     setWhOpen(true)
   }
   useEffect(() => {
-    if (page !== 'fit') setFitShipId(null)
+    // 保持 fitShipId 的会话记忆（2026-11-02 优化）：离开装配页采购配件再回，不强行重置为旗舰
     // 页面切换时隐藏残留悬停浮层（卸载不会触发 hover leave；如舰队卡 hover 中点「装配」跳转后悬浮窗残留）
     hideTip()
   }, [page])
@@ -1430,14 +1430,14 @@ async function applyLayoutAndReload(): Promise<void> {
             />
             ) : null}
             {page === 'industryHud' ? (
-            /* **工业 HUD 页（调试）**（2026-09-30 船长令）：另起一页，现有工业页一字不动 */
-            <IndustryHudPage
-            {...pageProps}
-            onGotoMarket={(goodKey) => {
-            setMktFocus((p) => ({ key: goodKey, seq: (p?.seq ?? 0) + 1 }))
-            changePage('market')
-            }}
-            />
+              /* **工业 HUD 页（调试）**（2026-09-30 船长令）：另起一页，现有工业页一字不动 */
+              <IndustryHudPage
+                {...pageProps}
+                onGotoMarket={(goodKey) => {
+                  setMktFocus((p) => ({ key: goodKey, seq: (p?.seq ?? 0) + 1 }))
+                  changePage('market')
+                }}
+              />
             ) : null}
             {page === 'industry' ? (
             <IndustryPage
