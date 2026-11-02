@@ -102,3 +102,15 @@ Windows：`%APPDATA%\whale-idle\save.json`（卸载重装游戏也不丢）。
 | 架构与模块边界 | [`docs/architecture.md`](docs/architecture.md) |
 | 开发/协作/验证/公告纪律 | [`AGENTS.md`](AGENTS.md) + [`docs/development-conventions.md`](docs/development-conventions.md) |
 | 可复现测试存档 | [`docs/test-saves/`](docs/test-saves/)（配合 `tools/make-test-save.ts`） |
+
+
+## 授权协议与商业使用 (License)
+
+本项目遵循 **双重授权模式 (Dual-Licensing Model)**，详情参见根目录 [`LICENSE`](LICENSE)：
+
+1. **开源学习与社区使用 (GNU AGPLv3)**：
+   遵循 [GNU Affero General Public License v3.0](LICENSE)。如果您在公开网络环境托管、分发或修改本游戏，**必须全量开源您的全部代码与修改内容**，并保留原作者署名与版权标识。
+2. **商业运营与闭源免除 (Commercial License)**：
+   严禁未经授权将本项目用于任何形式的商业盈利行为（包括但不限于商业化运营、私服收费、内置广告、售卖游戏道具、打包离线版商业分发等）。如需进行商业合作、闭源部署或获取免除 AGPL 限制的商业特许，请联系作者：
+   - GitHub: [https://github.com/yahzj](https://github.com/yahzj)
+   - 仓库地址: [https://github.com/yahzj/Deepseek-EVE](https://github.com/yahzj/Deepseek-EVE)
