@@ -262,3 +262,24 @@
   分钟读数 11px（渲染 ≈21.5px）、徽标 12px；截图 `tools/_ui-artifacts/fixprobe/map-1-default.png`。
 - `typecheck` / desktop 构建通过；`ui:rot-check` 通过。
 - 待船长看观感：若「2号」指别的量级（如 +/- 4px），只需改这 4 条 CSS + `HUB_DOT_R` 一处。
+
+---
+
+## 十一、界面配色精简与文案两字化（2026-11-02 追加）
+
+> 船长原话（照抄）：「设置里的“界面配色”中的跟随系统选项不要了。还有亮白太丑了，这个亮色模式还不如不做，真的丑的不要不要的，”暖色护眼“和“色盲友好”的文案不对，尽量改成两个字」
+
+### 调整项
+1. **移除「跟随系统」选项**：从 `THEME_CHOICES` 移除 `'auto'`，不再向玩家提供系统跟随。若本地偏好为 `auto` 则平滑回落默认 `deepspace`。
+2. **移除「亮白」选项**：从 `THEME_CHOICES` 移除 `'daylight'`。若本地偏好为 `daylight` 自动回落 `deepspace`。
+3. **文案两字化**：
+   - 「暖色护眼」精简为：**「暖色」**（`ui.App.134`）。
+   - 「色盲友好」精简为：**「色盲」**（`ui.App.136`）。
+4. **说明文案同步**：更新 `ui.App.132`，消除已废除的“亮白”与“跟随系统”描述，同步新的两字名称。
+
+### 验证
+- `npm run typecheck`：通过。
+- `npm run content:check`：通过。
+- `npm run ui:theme-check`：通过。
+- `npm run ui:rot-check`：通过。
+
