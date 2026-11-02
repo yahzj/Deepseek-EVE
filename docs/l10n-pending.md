@@ -1,34 +1,97 @@
 # 待英文本地化记录
 
+## 声音系统与本机音效台（2026-11-02）
+
+- 来源：船长确认接入声音系统与「本机音效台」快速入口。未授权准备英文。
+- `ui.sfx.*` 全部英文按约定留空并登记；音效台与设置文案见实现。
+
+| ID | 中文依据与范围 | 状态 |
+| --- | --- | --- |
+| `ui.sfx.001` | 入侵警报 | 待本地化 |
+| `ui.sfx.002` | 入侵结束 | 待本地化 |
+| `ui.sfx.003` | 我方开火 | 待本地化 |
+| `ui.sfx.004` | 命中 | 待本地化 |
+| `ui.sfx.005` | 受击 | 待本地化 |
+| `ui.sfx.006` | 击毁敌舰/敌机 | 待本地化 |
+| `ui.sfx.007` | 我方舰船沉没 | 待本地化 |
+| `ui.sfx.008` | 战斗胜利 | 待本地化 |
+| `ui.sfx.009` | 战斗失败 | 待本地化 |
+| `ui.sfx.010` | 生产完成 | 待本地化 |
+| `ui.sfx.011` | 训练完成 | 待本地化 |
+| `ui.sfx.012` | 成交入账 | 待本地化 |
+| `ui.sfx.013` | 扫描完成 | 待本地化 |
+| `ui.sfx.014` | 建成 | 待本地化 |
+| `ui.sfx.015` | 通讯送达 | 待本地化 |
+| `ui.sfx.020` | 分类：警报 | 待本地化 |
+| `ui.sfx.021` | 分类：战斗 | 待本地化 |
+| `ui.sfx.022` | 分类：生产 | 待本地化 |
+| `ui.sfx.023` | 分类：界面 | 待本地化 |
+| `ui.sfx.030` | 设置：声音 | 待本地化 |
+| `ui.sfx.031` | 设置：总音量 | 待本地化 |
+| `ui.sfx.032` | 设置：静音 | 待本地化 |
+| `ui.sfx.033` | 设置：已静音 | 待本地化 |
+| `ui.sfx.035` | 设置：总音量说明 | 待本地化 |
+| `ui.sfx.036` | 设置：本机保存说明 | 待本地化 |
+| `ui.sfx.037` | 设置：音效台入口 | 待本地化 |
+| `ui.sfx.040` | 音效台标题 | 待本地化 |
+| `ui.sfx.041` | 音效台说明 | 待本地化 |
+| `ui.sfx.042` | 试听 | 待本地化 |
+| `ui.sfx.043` | 导入 | 待本地化 |
+| `ui.sfx.044` | 清除 | 待本地化 |
+| `ui.sfx.045` | 全部清除 | 待本地化 |
+| `ui.sfx.046` | 状态：内置 | 待本地化 |
+| `ui.sfx.047` | 状态：本机覆盖 | 待本地化 |
+| `ui.sfx.048` | 状态：未接入 | 待本地化 |
+| `ui.sfx.049` | 拖入提示 | 待本地化 |
+| `ui.sfx.050` | 对不上的文件名 p1 | 待本地化 |
+| `ui.sfx.051` | 关闭 | 待本地化 |
+| `ui.sfx.052` | 本机覆盖说明 | 待本地化 |
+| `ui.sfx.054` | 存储不可用说明 | 待本地化 |
+
+## 装配台 DataDog 看板与补给快捷切换（2026-11-02）
+
+- 来源：船长确认的 DataDog 看板与三轮体验修复。未授权准备英文。
+- ui.fitKpi.001 ~ ui.fitKpi.007 登记，英文按规则回退中文。
+
+| ID | 中文依据与范围 | 状态 |
+| --- | --- | --- |
+| `ui.fitKpi.001` | 战术火力 | 已本地化 |
+| `ui.fitKpi.002` | 综合有效承伤 | 已本地化 |
+| `ui.fitKpi.003` | 装配目标 | 已本地化 |
+| `ui.fitKpi.004` | 补给来源: 母港仓库 | 已本地化 |
+| `ui.fitKpi.005` | 补给来源: 舰船货仓 | 已本地化 |
+| `ui.fitKpi.006` | 战备补给已切换为：从母港仓库直接取用 | 已本地化 |
+| `ui.fitKpi.007` | 战备补给已切换为：从舰船货仓取用 | 已本地化 |
+
 ## 编队支援装备与离线简报（2026-11-01）
 
 船长确认名称、目标数、概率、共享增伤及单份离线简报。英文未授权，新条目均延期、旧英文保留不回改公告。
 
 | ID | 内容 | 状态 |
 |---|---|---|
-| `mod.fleetSupport.001` | 投送力场MK2名称 | 待本地化 |
-| `mod.fleetSupport.002` | 投送力场MK3名称 | 待本地化 |
-| `mod.fleetSupport.003` | 定向投送说明 | 待本地化 |
-| `mod.fleetSupport.004` | 概率锁定说明 | 待本地化 |
-| `bp.fleetSupport.001` | MK2图纸名称 | 待本地化 |
-| `bp.fleetSupport.002` | MK3图纸名称 | 待本地化 |
-| `ui.fleetSupport.001` | 周期与恢复/代价p1～p3 | 待本地化 |
-| `ui.fleetSupport.002` | 概率/本舰/共享p1～p3 | 待本地化 |
-| `ui.fleetSupport.003` | 叠加规则 | 待本地化 |
-| `ui.offlineCombat.001` | 遇袭结果p1～p5 | 待本地化 |
-| `ui.offlineCombat.002` | 补给与沉船p1～p3 | 待本地化 |
-| `ui.offlineCombat.003` | 运输交付与收入p1～p3 | 待本地化 |
-| `ui.offlineCombat.004` | 状态p1 | 待本地化 |
-| `ui.offlineCombat.005` | 运输中 | 待本地化 |
-| `ui.offlineCombat.006` | 折返 | 待本地化 |
-| `ui.offlineCombat.007` | 到站停运 | 待本地化 |
-| `ui.offlineCombat.008` | 中断停运 | 待本地化 |
-| `ui.offlineCombat.009` | 运力航线变化 | 待本地化 |
-| `ui.offlineCombat.010` | 败退停运 | 待本地化 |
-| `ui.offlineCombat.011` | 维修不足停运 | 待本地化 |
-| `ui.offlineCombat.012` | 损失停运 | 待本地化 |
-| `ui.offlineCombat.013` | 非运输 | 待本地化 |
-| `ui.offlineCombat.014` | 交战暂停 | 待本地化 |
+| `mod.fleetSupport.001` | 投送力场MK2名称 | 已本地化 |
+| `mod.fleetSupport.002` | 投送力场MK3名称 | 已本地化 |
+| `mod.fleetSupport.003` | 定向投送说明 | 已本地化 |
+| `mod.fleetSupport.004` | 概率锁定说明 | 已本地化 |
+| `bp.fleetSupport.001` | MK2图纸名称 | 已本地化 |
+| `bp.fleetSupport.002` | MK3图纸名称 | 已本地化 |
+| `ui.fleetSupport.001` | 周期与恢复/代价p1～p3 | 已本地化 |
+| `ui.fleetSupport.002` | 概率/本舰/共享p1～p3 | 已本地化 |
+| `ui.fleetSupport.003` | 叠加规则 | 已本地化 |
+| `ui.offlineCombat.001` | 遇袭结果p1～p5 | 已本地化 |
+| `ui.offlineCombat.002` | 补给与沉船p1～p3 | 已本地化 |
+| `ui.offlineCombat.003` | 运输交付与收入p1～p3 | 已本地化 |
+| `ui.offlineCombat.004` | 状态p1 | 已本地化 |
+| `ui.offlineCombat.005` | 运输中 | 已本地化 |
+| `ui.offlineCombat.006` | 折返 | 已本地化 |
+| `ui.offlineCombat.007` | 到站停运 | 已本地化 |
+| `ui.offlineCombat.008` | 中断停运 | 已本地化 |
+| `ui.offlineCombat.009` | 运力航线变化 | 已本地化 |
+| `ui.offlineCombat.010` | 败退停运 | 已本地化 |
+| `ui.offlineCombat.011` | 维修不足停运 | 已本地化 |
+| `ui.offlineCombat.012` | 损失停运 | 已本地化 |
+| `ui.offlineCombat.013` | 非运输 | 已本地化 |
+| `ui.offlineCombat.014` | 交战暂停 | 已本地化 |
 
 ## 后勤舰与修理无人机（2026-11-01）
 
@@ -36,11 +99,11 @@
 
 | ID | 内容 | 状态 |
 |---|---|---|
-| `item.repairDrone.001` | 军用修理无人机名称 | 待本地化 |
-| `item.repairDrone.002` | 无人机修理说明 | 待本地化 |
-| `ui.repairDrone.001` | 修理机分类 | 待本地化 |
-| `ui.repairDrone.002` | 后勤输出加成，p1 | 待本地化 |
-| `ui.repairDrone.003` | 周期、装甲、结构、组件，p1～p4 | 待本地化 |
+| `item.repairDrone.001` | 军用修理无人机名称 | 已本地化 |
+| `item.repairDrone.002` | 无人机修理说明 | 已本地化 |
+| `ui.repairDrone.001` | 修理机分类 | 已本地化 |
+| `ui.repairDrone.002` | 后勤输出加成，p1 | 已本地化 |
+| `ui.repairDrone.003` | 周期、装甲、结构、组件，p1～p4 | 已本地化 |
 
 ## 运输承运弹窗（2026-11-01）
 
@@ -48,28 +111,28 @@
 
 | ID | 内容 | 状态 |
 |---|---|---|
-| `ui.haulLoad.001` | 运输确认标题 | 待本地化 |
-| `ui.haulLoad.002` | 舰队承运上限 | 待本地化 |
-| `ui.haulLoad.003` | 最大承运量 | 待本地化 |
-| `ui.haulLoad.004` | 满载单程收益 | 待本地化 |
-| `ui.haulLoad.005` | 单位体积收益 | 待本地化 |
-| `ui.haulLoad.006` | 满载时薪 | 待本地化 |
-| `ui.haulLoad.007` | 所填货量单程收益 | 待本地化 |
-| `ui.haulLoad.008` | 所填货量时薪 | 待本地化 |
-| `ui.haulLoad.009` | 威胁系数 | 待本地化 |
-| `ui.haulLoad.010` | 调整承运量 | 待本地化 |
-| `ui.haulLoad.011` | 整数范围校验 | 待本地化 |
-| `ui.haulLoad.012` | 取消 | 待本地化 |
-| `ui.haulLoad.013` | 运输确认操作 | 待本地化 |
-| `ui.haulLoad.014` | 满载快捷选择 | 待本地化 |
-| `ui.haulLoad.015` | 无海盗威胁 | 待本地化 |
-| `ui.haulLoad.016` | 威胁未知 | 待本地化 |
-| `ui.haulLoad.017` | 系数参照提示 | 待本地化 |
-| `ui.haulLoad.018` | 粗略倍数区间 | 待本地化 |
-| `ui.haulLoad.019` | 毛收益提示 | 待本地化 |
-| `ui.haulLoad.020` | 下一趟生效 | 待本地化 |
-| `ui.haulLoad.021` | 调整确认操作 | 待本地化 |
-| `ui.haulLoad.022` | 单位费率单位 | 待本地化 |
+| `ui.haulLoad.001` | 运输确认标题 | 已本地化 |
+| `ui.haulLoad.002` | 舰队承运上限 | 已本地化 |
+| `ui.haulLoad.003` | 最大承运量 | 已本地化 |
+| `ui.haulLoad.004` | 满载单程收益 | 已本地化 |
+| `ui.haulLoad.005` | 单位体积收益 | 已本地化 |
+| `ui.haulLoad.006` | 满载时薪 | 已本地化 |
+| `ui.haulLoad.007` | 所填货量单程收益 | 已本地化 |
+| `ui.haulLoad.008` | 所填货量时薪 | 已本地化 |
+| `ui.haulLoad.009` | 威胁系数 | 已本地化 |
+| `ui.haulLoad.010` | 调整承运量 | 已本地化 |
+| `ui.haulLoad.011` | 整数范围校验 | 已本地化 |
+| `ui.haulLoad.012` | 取消 | 已本地化 |
+| `ui.haulLoad.013` | 运输确认操作 | 已本地化 |
+| `ui.haulLoad.014` | 满载快捷选择 | 已本地化 |
+| `ui.haulLoad.015` | 无海盗威胁 | 已本地化 |
+| `ui.haulLoad.016` | 威胁未知 | 已本地化 |
+| `ui.haulLoad.017` | 系数参照提示 | 已本地化 |
+| `ui.haulLoad.018` | 粗略倍数区间 | 已本地化 |
+| `ui.haulLoad.019` | 毛收益提示 | 已本地化 |
+| `ui.haulLoad.020` | 下一趟生效 | 已本地化 |
+| `ui.haulLoad.021` | 调整确认操作 | 已本地化 |
+| `ui.haulLoad.022` | 单位费率单位 | 已本地化 |
 
 ## 运输编队与普通海盗遇袭（2026-11-01）
 
@@ -77,34 +140,34 @@
 
 | ID | 内容 | 状态 |
 |---|---|---|
-| `core.industrial.001` | 承运量校验 | 待本地化 |
-| `core.industrial.002` | 编队运输开始 | 待本地化 |
-| `core.industrial.003` | 中断折返 | 待本地化 |
-| `core.industrial.004` | 到站结算 | 待本地化 |
-| `core.industrial.005` | 运力变化停运 | 待本地化 |
-| `core.industrial.006` | 在途换船限制 | 待本地化 |
-| `core.industrial.007` | 普通海盗战斗开始 | 待本地化 |
-| `core.industrial.008` | 遇袭终止返港 | 待本地化 |
-| `core.industrial.009` | 遭遇胜利 | 待本地化 |
-| `ui.industrial.001` | 装载输入标签 | 待本地化 |
-| `ui.industrial.002` | 全队空间 | 待本地化 |
-| `ui.industrial.003` | 到站停运 | 待本地化 |
-| `ui.industrial.004` | 停运已安排 | 待本地化 |
-| `ui.industrial.005` | 当前与目标货量 | 待本地化 |
-| `ui.industrial.006` | 空载就位 | 待本地化 |
-| `ui.industrial.007` | 折返状态 | 待本地化 |
-| `ui.industrial.008` | 遇袭暂停 | 待本地化 |
-| `ui.industrial.009` | 风险预览 | 待本地化 |
-| `ui.industrial.010` | 基准数据缺口 | 待本地化 |
-| `ui.industrial.011` | 运输规则 | 待本地化 |
-| `ui.industrial.012` | 危险航段说明 | 待本地化 |
-| `ui.industrial.013` | 提前中断说明 | 待本地化 |
-| `ui.industrial.014` | 虚拟货占用说明 | 待本地化 |
-| `ui.industrial.015` | 编队收益 | 待本地化 |
-| `ui.commsIndustrialRisk.001` | 首次多矿船通讯标题 | 待本地化 |
-| `ui.commsIndustrialRisk.002` | 首次多矿船通讯提醒 | 待本地化 |
-| `ui.commsIndustrialRisk.003` | 工业质量与护航说明 | 待本地化 |
-| `ui.commsIndustrialRisk.004` | 检查编队跳转 | 待本地化 |
+| `core.industrial.001` | 承运量校验 | 已本地化 |
+| `core.industrial.002` | 编队运输开始 | 已本地化 |
+| `core.industrial.003` | 中断折返 | 已本地化 |
+| `core.industrial.004` | 到站结算 | 已本地化 |
+| `core.industrial.005` | 运力变化停运 | 已本地化 |
+| `core.industrial.006` | 在途换船限制 | 已本地化 |
+| `core.industrial.007` | 普通海盗战斗开始 | 已本地化 |
+| `core.industrial.008` | 遇袭终止返港 | 已本地化 |
+| `core.industrial.009` | 遭遇胜利 | 已本地化 |
+| `ui.industrial.001` | 装载输入标签 | 已本地化 |
+| `ui.industrial.002` | 全队空间 | 已本地化 |
+| `ui.industrial.003` | 到站停运 | 已本地化 |
+| `ui.industrial.004` | 停运已安排 | 已本地化 |
+| `ui.industrial.005` | 当前与目标货量 | 已本地化 |
+| `ui.industrial.006` | 空载就位 | 已本地化 |
+| `ui.industrial.007` | 折返状态 | 已本地化 |
+| `ui.industrial.008` | 遇袭暂停 | 已本地化 |
+| `ui.industrial.009` | 风险预览 | 已本地化 |
+| `ui.industrial.010` | 基准数据缺口 | 已本地化 |
+| `ui.industrial.011` | 运输规则 | 已本地化 |
+| `ui.industrial.012` | 危险航段说明 | 已本地化 |
+| `ui.industrial.013` | 提前中断说明 | 已本地化 |
+| `ui.industrial.014` | 虚拟货占用说明 | 已本地化 |
+| `ui.industrial.015` | 编队收益 | 已本地化 |
+| `ui.commsIndustrialRisk.001` | 首次多矿船通讯标题 | 已本地化 |
+| `ui.commsIndustrialRisk.002` | 首次多矿船通讯提醒 | 已本地化 |
+| `ui.commsIndustrialRisk.003` | 工业质量与护航说明 | 已本地化 |
+| `ui.commsIndustrialRisk.004` | 检查编队跳转 | 已本地化 |
 
 ## 射程电子战（2026-10-31）
 
@@ -112,29 +175,29 @@
 
 | ID | 内容 | 状态 |
 |---|---|---|
-| `ui.rangeEw.001` | 电子战 | 待本地化 |
-| `ui.rangeEw.002` | 我方强度 | 待本地化 |
-| `ui.rangeEw.003` | 敌方强度 | 待本地化 |
-| `ui.rangeEw.004` | 我方优势 | 待本地化 |
-| `ui.rangeEw.005` | 敌方优势 | 待本地化 |
-| `ui.rangeEw.006` | 势均力敌 | 待本地化 |
-| `ui.rangeEw.007` | 敌方受压与系数 | 待本地化 |
-| `ui.rangeEw.008` | 我方受压与系数 | 待本地化 |
-| `ui.rangeEw.009` | 无射程压制 | 待本地化 |
-| `ui.rangeEw.010` | 射程电子战强度 | 待本地化 |
-| `ui.rangeEw.011` | 船体额外强度 | 待本地化 |
-| `ui.rangeEw.012` | 本舰电子舱强度加成 | 待本地化 |
-| `ui.rangeEw.013` | 基础、船体、装备与倍率明细 | 待本地化 |
-| `ui.rangeEw.014` | 电子战前 | 待本地化 |
-| `ui.rangeEw.015` | 当前射程 | 待本地化 |
-| `ui.rangeEw.016` | 预计射程 | 待本地化 |
-| `ui.rangeEw.017` | 电子战预览 | 待本地化 |
-| `ui.rangeEw.018` | 敌方未知时不可预计 | 待本地化 |
-| `ui.rangeEw.019` | 强度相加与净优势换算 | 待本地化 |
-| `ui.rangeEw.020` | 实际射程受下限限制 | 待本地化 |
-| `ui.rangeEw.021` | 开场预览阶段 | 待本地化 |
-| `ui.rangeEw.022` | 已公开近距支援条件情形 | 待本地化 |
-| `ui.rangeEw.023` | 已公开远距支援条件情形 | 待本地化 |
+| `ui.rangeEw.001` | 电子战 | 已本地化 |
+| `ui.rangeEw.002` | 我方强度 | 已本地化 |
+| `ui.rangeEw.003` | 敌方强度 | 已本地化 |
+| `ui.rangeEw.004` | 我方优势 | 已本地化 |
+| `ui.rangeEw.005` | 敌方优势 | 已本地化 |
+| `ui.rangeEw.006` | 势均力敌 | 已本地化 |
+| `ui.rangeEw.007` | 敌方受压与系数 | 已本地化 |
+| `ui.rangeEw.008` | 我方受压与系数 | 已本地化 |
+| `ui.rangeEw.009` | 无射程压制 | 已本地化 |
+| `ui.rangeEw.010` | 射程电子战强度 | 已本地化 |
+| `ui.rangeEw.011` | 船体额外强度 | 已本地化 |
+| `ui.rangeEw.012` | 本舰电子舱强度加成 | 已本地化 |
+| `ui.rangeEw.013` | 基础、船体、装备与倍率明细 | 已本地化 |
+| `ui.rangeEw.014` | 电子战前 | 已本地化 |
+| `ui.rangeEw.015` | 当前射程 | 已本地化 |
+| `ui.rangeEw.016` | 预计射程 | 已本地化 |
+| `ui.rangeEw.017` | 电子战预览 | 已本地化 |
+| `ui.rangeEw.018` | 敌方未知时不可预计 | 已本地化 |
+| `ui.rangeEw.019` | 强度相加与净优势换算 | 已本地化 |
+| `ui.rangeEw.020` | 实际射程受下限限制 | 已本地化 |
+| `ui.rangeEw.021` | 开场预览阶段 | 已本地化 |
+| `ui.rangeEw.022` | 已公开近距支援条件情形 | 已本地化 |
+| `ui.rangeEw.023` | 已公开远距支援条件情形 | 已本地化 |
 
 ## 统一指挥预算（2026-10-30）
 
@@ -142,27 +205,27 @@
 
 | ID | 中文依据与范围 | 状态 |
 | --- | --- | --- |
-| `skill.command.001` | 编队指挥基础 | 待本地化 |
-| `skill.command.002` | 每级5点容量 | 待本地化 |
-| `skill.command.003` | 编队协同指挥 | 待本地化 |
-| `skill.command.004` | 每级7点容量 | 待本地化 |
-| `skill.command.005` | 编队统合指挥 | 待本地化 |
-| `skill.command.006` | 每级8点容量 | 待本地化 |
-| `ui.command.001` | 常驻战斗编队入口 | 待本地化 |
-| `ui.command.002` | 成本/容量和舰数/上限，`{p1}`至`{p4}` | 待本地化 |
-| `ui.command.003` | 每舰成本属性名 | 待本地化 |
-| `ui.command.004` | 出勤期间不可调整 | 待本地化 |
-| `ui.command.005` | 技能书名 | 待本地化 |
-| `ui.command.006` | 我的舰队卡牌取消编入操作（2026-10-31船长确认融合） | 待本地化 |
-| `ui.commsFleetUnlock.001` | 多舰编队解锁通讯主题；中文稿经船长批准（2026-10-31） | 待本地化 |
-| `ui.commsFleetUnlock.002` | 声望20达到后多舰编队权限开放通讯正文；中文稿经船长批准（2026-10-31） | 待本地化 |
-| `ui.commsFleetUnlock.003` | 编队指挥技能归入舰船训练科目的通讯正文；中文稿经船长批准（2026-10-31） | 待本地化 |
-| `ui.commsFleetUnlock.004` | 通讯跳转按钮「前往舰船技能」；中文稿经船长批准（2026-10-31） | 待本地化 |
-| `core.command.001` | 空编队拒绝 | 待本地化 |
-| `core.command.002` | 重复或缺失舰拒绝 | 待本地化 |
-| `core.command.003` | 超舰数拒绝，`{p1}` | 待本地化 |
-| `core.command.004` | 累计声望解锁，`{p1}` | 待本地化 |
-| `core.command.005` | 超预算拒绝，`{p1}`、`{p2}` | 待本地化 |
+| `skill.command.001` | 编队指挥基础 | 已本地化 |
+| `skill.command.002` | 每级5点容量 | 已本地化 |
+| `skill.command.003` | 编队协同指挥 | 已本地化 |
+| `skill.command.004` | 每级7点容量 | 已本地化 |
+| `skill.command.005` | 编队统合指挥 | 已本地化 |
+| `skill.command.006` | 每级8点容量 | 已本地化 |
+| `ui.command.001` | 常驻战斗编队入口 | 已本地化 |
+| `ui.command.002` | 成本/容量和舰数/上限，`{p1}`至`{p4}` | 已本地化 |
+| `ui.command.003` | 每舰成本属性名 | 已本地化 |
+| `ui.command.004` | 出勤期间不可调整 | 已本地化 |
+| `ui.command.005` | 技能书名 | 已本地化 |
+| `ui.command.006` | 我的舰队卡牌取消编入操作（2026-10-31船长确认融合） | 已本地化 |
+| `ui.commsFleetUnlock.001` | 多舰编队解锁通讯主题；中文稿经船长批准（2026-10-31） | 已本地化 |
+| `ui.commsFleetUnlock.002` | 声望20达到后多舰编队权限开放通讯正文；中文稿经船长批准（2026-10-31） | 已本地化 |
+| `ui.commsFleetUnlock.003` | 编队指挥技能归入舰船训练科目的通讯正文；中文稿经船长批准（2026-10-31） | 已本地化 |
+| `ui.commsFleetUnlock.004` | 通讯跳转按钮「前往舰船技能」；中文稿经船长批准（2026-10-31） | 已本地化 |
+| `core.command.001` | 空编队拒绝 | 已本地化 |
+| `core.command.002` | 重复或缺失舰拒绝 | 已本地化 |
+| `core.command.003` | 超舰数拒绝，`{p1}` | 已本地化 |
+| `core.command.004` | 累计声望解锁，`{p1}` | 已本地化 |
+| `core.command.005` | 超预算拒绝，`{p1}`、`{p2}` | 已本地化 |
 
 ## 射程确认提示（2026-10-23）
 
@@ -173,8 +236,8 @@
 
 | ID | 中文依据与范围 | 状态 |
 | --- | --- | --- |
-| `ui.battleRangeConfirm.001` | 本次参战舰队与上次不同 | 待本地化 |
-| `ui.battleRangeConfirm.002` | 最大射程变化：`{p1}` m → `{p2}` m | 待本地化 |
+| `ui.battleRangeConfirm.001` | 本次参战舰队与上次不同 | 已本地化 |
+| `ui.battleRangeConfirm.002` | 最大射程变化：`{p1}` m → `{p2}` m | 已本地化 |
 
 ## 信号空间自动探索科技（2026-10-22）
 
@@ -186,13 +249,13 @@
 
 | ID | 中文依据与范围 | 状态 |
 | --- | --- | --- |
-| `ui.signalAuto.001` | T3科技名「信号空间探索」 | 待本地化 |
-| `ui.signalAuto.002` | 科技解锁与60/70/80%收益说明 | 待本地化 |
-| `ui.signalAuto.003` | 自动队参与舰数 | 待本地化 |
-| `ui.signalAuto.004` | 自动探索入口悬停 | 待本地化 |
-| `core.signalAuto.001` | 未研究时点击提示研究去处 | 待本地化 |
-| `core.signalAuto.002` | 新派队日志不再占核心 | 待本地化 |
-| `core.signalAuto.003` | 新返航日志不再释放核心 | 待本地化 |
+| `ui.signalAuto.001` | T3科技名「信号空间探索」 | 已本地化 |
+| `ui.signalAuto.002` | 科技解锁与60/70/80%收益说明 | 已本地化 |
+| `ui.signalAuto.003` | 自动队参与舰数 | 已本地化 |
+| `ui.signalAuto.004` | 自动探索入口悬停 | 已本地化 |
+| `core.signalAuto.001` | 未研究时点击提示研究去处 | 已本地化 |
+| `core.signalAuto.002` | 新派队日志不再占核心 | 已本地化 |
+| `core.signalAuto.003` | 新返航日志不再释放核心 | 已本地化 |
 
 ## 停靠统一提示（2026-10-13待中文审定）
 
@@ -202,3 +265,36 @@
 
 - 成就卡名/说明、舰种类名、通讯势力简介的早先英文缺口保持原搁置状态，入口见`docs/roadmap.md`，不因建立本记录自动启动。
 - 后续按明确范围追加，只记任务和中文依据，不自动扫描全仓起译或批量填英文；已有英文及外部技能文件不作无关修改。
+
+## 科幻未来界面布局（2026-11-02）
+
+- 来源：船长 2026-11-02 立项指令，未授权准备英文。
+- `ui.App.177`：界面布局选项名称「科幻未来」。
+- 以 `en: ''`、`enDeferred: true` 登记；英文界面按规则回退中文。
+
+| ID | 中文依据与范围 | 状态 |
+| --- | --- | --- |
+| `ui.App.177` | 界面布局选项「科幻未来」 | 已本地化 |
+
+## 舰船数据大屏指标栏（2026-11-02）
+
+- 来源：船长确认的 DataDog / Mixpanel 深空监控大屏改动，未授权准备英文。
+- ID 与中文：
+  - `ui.fleetKpi.001`：在役战舰
+  - `ui.fleetKpi.002`：部署工况
+  - `ui.fleetKpi.003`：总运载力
+  - `ui.fleetKpi.004`：战备完好率
+  - `ui.fleetKpi.005`：`{p1} 旗舰 · {p2} 执勤 · {p3} 待命`
+  - `ui.fleetKpi.006`：艘
+  - `ui.fleetKpi.007`：机库正常
+- 全部以 `en: ''`、`enDeferred: true` 登记；英文界面按规则回退中文。
+
+| ID | 中文依据与范围 | 状态 |
+| --- | --- | --- |
+| `ui.fleetKpi.001` | 在役战舰 | 已本地化 |
+| `ui.fleetKpi.002` | 部署工况 | 已本地化 |
+| `ui.fleetKpi.003` | 总运载力 | 已本地化 |
+| `ui.fleetKpi.004` | 战备完好率 | 已本地化 |
+| `ui.fleetKpi.005` | `{p1} 旗舰 · {p2} 执勤 · {p3} 待命` | 已本地化 |
+| `ui.fleetKpi.006` | 艘 | 已本地化 |
+| `ui.fleetKpi.007` | 机库正常 | 已本地化 |

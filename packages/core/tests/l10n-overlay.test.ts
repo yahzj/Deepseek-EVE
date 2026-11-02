@@ -39,7 +39,7 @@ const deferredGravekeeperCards: Readonly<Record<string, string>> = {
   'gravekeeper-drift': 'ano.gravekeeper.001', 'gravekeeper-line': 'ano.gravekeeper.002',
   'gravekeeper-main': 'ano.gravekeeper.003', 'gravekeeper-flagship': 'ano.gravekeeper.004',
 }
-const deferredSupport: Readonly<Record<string, { name?: string; description: string }>> = {
+const mappedSupport: Readonly<Record<string, { name?: string; description: string }>> = {
   'mod-shieldfield-2': { name: 'mod.fleetSupport.001', description: 'mod.fleetSupport.003' },
   'mod-shieldfield-3': { name: 'mod.fleetSupport.002', description: 'mod.fleetSupport.003' },
   'mod-lock-1': { description: 'mod.fleetSupport.004' },
@@ -50,11 +50,12 @@ const deferredSupport: Readonly<Record<string, { name?: string; description: str
   'bp-shieldfield-2': { name: 'bp.fleetSupport.001', description: 'mod.fleetSupport.003' },
   'bp-shieldfield-3': { name: 'bp.fleetSupport.002', description: 'mod.fleetSupport.003' },
 }
-function expectDeferred(value: string | undefined, textId: string): void {
+function expectMappedEnglish(value: string | undefined, textId: string): void {
   const entry = L10N[textId]!
   expect(entry, textId).toBeDefined()
-  expect(entry.enDeferred, textId).toBe(true)
-  expect(entry.en, textId).toBe('')
+  expect(entry.enDeferred, textId).toBeUndefined()
+  expect(entry.en, textId).not.toBe('')
+  expect(entry.en, textId).not.toMatch(/[\u3400-\u9fff]/)
   expect(value, textId).toBe(l10nEntryText(entry, 'en'))
 }
 
@@ -211,9 +212,9 @@ describe('英文覆盖层（P2）', () => {
     expect(en.shipBlueprints.get('sbp-pioneer')?.name).toBe('Narwhal-class Blueprint')
     // 派生覆盖率：能反查到产物的蓝图都必须有英文名（否则说明产物表缺名）
     const noEn = [...zh.blueprints.values()].filter((bp) => {
-      const support = deferredSupport[bp.id]
+      const support = mappedSupport[bp.id]
       if (support?.name) {
-        expectDeferred(en.blueprints.get(bp.id)?.name, support.name)
+        expectMappedEnglish(en.blueprints.get(bp.id)?.name, support.name)
         return false
       }
       const pending = deferredCalibration[bp.id]
@@ -316,15 +317,15 @@ describe('英文覆盖层（P2）', () => {
   it('旅行事件 + 谜质科技：全覆盖 + 英文名/正文生效 + 数值深比一字不动', () => {
     const missEv = zh.travelEvents.filter((e) => !(e.id in EN_TRAVEL_EVENTS)).map((e) => e.id)
     expect(missEv, `这些旅行事件还没英文名：${missEv.join(', ')}`).toEqual([])
-    const deferredAuto = (id: string) => id === 'mt-explore-signal-auto-t3' && L10N['ui.signalAuto.001']!.enDeferred === true && L10N['ui.signalAuto.002']!.enDeferred === true
-    const missMt = [...(zh.matterTech ?? new Map()).keys()].filter((id) => !(id in EN_MATTER_TECH) && !deferredAuto(id))
+    const mappedAuto = (id: string) => id === 'mt-explore-signal-auto-t3'
+    const missMt = [...(zh.matterTech ?? new Map()).keys()].filter((id) => !(id in EN_MATTER_TECH) && !mappedAuto(id))
     expect(missMt, `这些谜质科技还没英文名：${missMt.join(', ')}`).toEqual([])
     /**
      * **节点说明（`note`）也必须全部有英文**（2026-09-26 三号补 · roadmap 交接项 L1）：
      * 说明字段叫 `note`（不是 `description`）⇒ `overlayMap` 覆盖不到，此前英文界面下一直是中文。
      * 这条断言就是那个缺口的护栏：将来**新增节点漏登记说明** ⇒ 这里当场红。
      */
-    const missNote = [...(zh.matterTech ?? new Map()).keys()].filter((id) => !(id in EN_MATTER_TECH_NOTES) && !deferredAuto(id))
+    const missNote = [...(zh.matterTech ?? new Map()).keys()].filter((id) => !(id in EN_MATTER_TECH_NOTES) && !mappedAuto(id))
     expect(missNote, `这些谜质科技还没英文说明：${missNote.join(', ')}`).toEqual([])
     /**
      * **事件正文（`text`）也必须全部有英文**（**2026-10-02 三号补 · 远征批**）：
@@ -341,9 +342,9 @@ describe('英文覆盖层（P2）', () => {
     const cjkMt = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/
     for (const [id, def] of zh.matterTech ?? new Map()) {
       const other = en.matterTech!.get(id)!
-      if (deferredAuto(id)) {
-        expect(other.name).toBe(l10nEntryText(L10N['ui.signalAuto.001']!, 'en'))
-        expect(other.note).toBe(l10nEntryText(L10N['ui.signalAuto.002']!, 'en'))
+      if (mappedAuto(id)) {
+        expectMappedEnglish(other.name, 'ui.signalAuto.001')
+        expectMappedEnglish(other.note, 'ui.signalAuto.002')
         continue
       }
       expect(other.note, `${id} 的英文说明应来自原文且有内容`).not.toBe(def.note)
@@ -393,9 +394,9 @@ describe('英文覆盖层（P2）', () => {
         noDesc.push(it.id)
         continue
       }
-      if (deferredSupport[it.id]) {
-        expectDeferred(other.description, deferredSupport[it.id]!.description)
-        expectDeferred(other.name, deferredSupport[it.id]!.name!)
+      if (mappedSupport[it.id]) {
+        expectMappedEnglish(other.description, mappedSupport[it.id]!.description)
+        expectMappedEnglish(other.name, mappedSupport[it.id]!.name!)
       } else if (it.id === 'synaptic-accelerant' && L10N['item.synaptic.001']!.enDeferred === true) {
         expect(other.description).toBe(l10nEntryText(L10N['item.synaptic.001']!, 'en'))
       } else if (it.id === 'drone-jawclaw') {
@@ -424,10 +425,10 @@ describe('英文覆盖层（P2）', () => {
         continue
       }
       const pending = deferredCalibration[id]
-      const support = deferredSupport[id]
+      const support = mappedSupport[id]
       if (support) {
-        expectDeferred(other.description, support.description)
-        if (support.name) expectDeferred(other.name, support.name)
+        expectMappedEnglish(other.description, support.description)
+        if (support.name) expectMappedEnglish(other.name, support.name)
         else expect(other.name).not.toBe(zh.modules.get(id)!.name)
       } else if (pending) expect(other.description).not.toBe(zh.modules.get(id)!.description)
       else if (id.startsWith('mod-alien-')) expect(other.description).not.toBe(zh.modules.get(id)!.description)
@@ -443,10 +444,6 @@ describe('英文覆盖层（P2）', () => {
     const noDesc: string[] = []
     for (const [id] of zh.skills) {
       const other = en.skills.get(id)!
-      if (id.startsWith('fleet-command-')) {
-        expect(other.description).toBe(zh.skills.get(id)!.description)
-        continue
-      }
       if (!other.description) {
         noDesc.push(id)
         continue
@@ -520,9 +517,9 @@ describe('英文覆盖层（P2）', () => {
         continue
       }
       const pending = deferredCalibration[id]
-      const support = deferredSupport[id]
+      const support = mappedSupport[id]
       if (support) {
-        expectDeferred(other.description, support.description)
+        expectMappedEnglish(other.description, support.description)
         continue
       }
       if (pending) { expect(other.description).not.toBe(zh.blueprints.get(id)!.description); continue }

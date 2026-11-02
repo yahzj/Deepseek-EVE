@@ -212,8 +212,9 @@ describe('信号空间内容 · 固定来源与纯文案边界', () => {
       if (approvedNewModules.has(id)) continue
       if (/^mod-shieldfield-[23]$/.test(id)) {
         const entry = L10N[`mod.fleetSupport.00${id.endsWith('2') ? 1 : 2}`]!
-        expect(entry).toMatchObject({ en: '', enDeferred: true })
-        expect(text.name).toBe(entry.zh)
+        expect(entry.enDeferred).toBeUndefined()
+        expect(entry.en).not.toBe('')
+        expect(text.name).toBe(entry.en)
         continue
       }
       expect(text.name, id).toBe(id === 'mod-lair-blink-r' ? 'Short-Range Warp Device' : baseEn.EN_MODULES[id]!.name)

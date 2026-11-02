@@ -75,9 +75,9 @@ describe('三封已审通讯的中英接线', () => {
     expect(message.hint).toEqual({ text: L10N['ui.commsFleetUnlock.004']!.zh, page: 'skills', tab: '舰船', skillBranch: 'b-command' })
     expect(message.popup).toBe(true)
     language.en = true
-    expect(commsSubjectText(message.id, message.subject)).toBe(message.subject)
-    expect(commsBodyText(message.id, message.body)).toEqual(message.body)
-    expect(commsHintText(message.hint!.text)).toBe(message.hint!.text)
+    expect(commsSubjectText(message.id, message.subject)).toBe(L10N['ui.commsFleetUnlock.001']!.en)
+    expect(commsBodyText(message.id, message.body)).toEqual(['ui.commsFleetUnlock.002', 'ui.commsFleetUnlock.003'].map(id => L10N[id]!.en))
+    expect(commsHintText(message.hint!.text)).toBe(L10N['ui.commsFleetUnlock.004']!.en)
   })
 
   it('管制与工会的触发及跳转不随重写改变', () => {
@@ -103,14 +103,16 @@ describe('其余通讯整批中英接线与行为守恒', () => {
       return
     }
     if (message.id === 'msg-fleet-command-unlock') {
-      expect(body).toEqual(message.body)
-      expect(commsSubjectText(message.id, message.subject)).toBe(message.subject)
-      expect(commsHintText(message.hint!.text)).toBe(message.hint!.text)
+      expect(body).toEqual(['ui.commsFleetUnlock.002', 'ui.commsFleetUnlock.003'].map(id => L10N[id]!.en))
+      expect(commsSubjectText(message.id, message.subject)).toBe(L10N['ui.commsFleetUnlock.001']!.en)
+      expect(commsHintText(message.hint!.text)).toBe(L10N['ui.commsFleetUnlock.004']!.en)
       return
     }
     if (message.id === 'msg-industrial-fleet-risk') {
       for (const id of ['ui.commsIndustrialRisk.001', 'ui.commsIndustrialRisk.002', 'ui.commsIndustrialRisk.003', 'ui.commsIndustrialRisk.004']) {
-        expect(L10N[id]).toMatchObject({ en: '', enDeferred: true })
+        expect(L10N[id]!.enDeferred).toBeUndefined()
+        expect(L10N[id]!.en).not.toBe('')
+        expect(L10N[id]!.en).not.toMatch(/[\u3400-\u9fff]/)
       }
       expect(body).toEqual(['ui.commsIndustrialRisk.002', 'ui.commsIndustrialRisk.003'].map(id => l10nEntryText(L10N[id]!, 'en')))
       expect(commsSubjectText(message.id, message.subject)).toBe(l10nEntryText(L10N['ui.commsIndustrialRisk.001']!, 'en'))

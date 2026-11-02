@@ -321,18 +321,19 @@ export function SettingsPanel({
               </button>
             </div>
             <div className="app-settings-desc">{t('ui.App.026')}</div>
-          {/* 界面布局（2026-09-25 船长令：新旧两套界面允许玩家在设置内切换）：本机偏好、即时生效、不进存档 */}
+          </div>
+          {/* 界面布局（2026-09-25 船长令；2026-11-02 优化：新版全面升级为科幻未来）：本机偏好、即时生效、不进存档 */}
           <div className="app-settings-row">
             <div className="app-settings-head">
               <span className="app-settings-label">{t('ui.App.146')}</span>
-              <span className="app-settings-val">{layoutKind === 'classic' ? tr('ui.App.148') : tr('ui.App.147')}</span>
+              <span className="app-settings-val">{layoutKind === 'classic' ? tr('ui.App.148') : tr('ui.App.177')}</span>
             </div>
             <div className="app-settings-btns">
               <button
-                className={`app-btn is-small${layoutKind === 'modern' ? ' is-primary' : ''}`}
+                className={`app-btn is-small${layoutKind === 'modern' || layoutKind === 'cosmic' ? ' is-primary' : ''}`}
                 onClick={() => onLayoutChange('modern')}
               >
-                {`${tr('ui.App.147')}${tr('ui.App.153')}`}
+                {tr('ui.App.177')}
               </button>
               <button
                 className={`app-btn is-small${layoutKind === 'classic' ? ' is-primary' : ''}`}
@@ -342,7 +343,6 @@ export function SettingsPanel({
               </button>
             </div>
             <div className="app-settings-desc">{t('ui.App.149')}</div>
-          </div>
           </div>
           {/* 弹药 / 修理组件取用来源（2026-09-23 船长令）：随档开关，洞内同理 */}
           <div className="app-settings-row">

@@ -76,8 +76,11 @@
   min-height: 0;
   height: 100%;
   background:
-    radial-gradient(1100px 620px at 78% -12%, rgb(var(--wui-accent) / 0.10), transparent 62%),
+    radial-gradient(1100px 620px at 78% -12%, rgb(var(--wui-accent) / 0.12), transparent 65%),
+    linear-gradient(rgba(56, 189, 248, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56, 189, 248, 0.02) 1px, transparent 1px),
     var(--hud-bg);
+  background-size: 100% 100%, 32px 32px, 32px 32px, auto;
   color: var(--hud-fg);
   font-family: var(--hud-mono);
   font-size: 13px;
@@ -123,7 +126,7 @@
   color: var(--hud-fg);
   background: var(--hud-card);
   border-color: var(--hud-line);
-  box-shadow: inset 0 2px 0 var(--hud-accent);
+  box-shadow: inset 0 2px 0 var(--hud-accent), 0 0 14px rgba(56, 189, 248, 0.22);
 }
 .hud-tab:focus-visible, .hud-btn:focus-visible, .hud-select:focus-visible,
 .hud-card:focus-visible, .hud-chip:focus-visible, .hud-sw:focus-visible {
@@ -169,10 +172,12 @@
 /* ── 面板：角标 ＋ 发丝描边 ── */
 .hud-panel {
   position: relative;
-  background: linear-gradient(180deg, rgba(14, 20, 32, 0.97), rgba(14, 20, 32, 0.88));
+  background: linear-gradient(180deg, rgba(14, 20, 32, 0.98), rgba(9, 13, 22, 0.95));
   border: 1px solid var(--hud-line);
   border-radius: 4px;
   padding: 13px 15px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .hud-panel::before, .hud-panel::after {
   content: '';
@@ -871,3 +876,42 @@ body.no-fx .hud-tank .wave-a, body.no-fx .hud-tank .wave-b, body.no-fx .hud-tank
 }
 body.no-fx .hud-bar.scan::after, body.no-fx .hud-led { animation: none; }
 body.no-fx .hud-bar > i, body.no-fx .hud-range-tick, body.no-fx .hud-ring-seg { transition: none; }
+
+/* ── 科幻控制台微动效与触感增强（oil-ui 触感标准）── */
+.hud-btn:active, .hud-chip:active, .hud-card:active {
+  transform: scale(0.97);
+}
+.hud-card {
+  transition: transform 0.12s ease, background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.hud-card:hover {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), 0 0 10px rgba(56, 189, 248, 0.15);
+}
+.hud-queue-led.is-on {
+  animation: hud-queue-glow 2s infinite ease-in-out;
+}
+@keyframes hud-queue-glow {
+  0%, 100% { opacity: 0.85; transform: scale(1); box-shadow: 0 0 6px var(--hud-ok); }
+  50% { opacity: 1; transform: scale(1.15); box-shadow: 0 0 12px var(--hud-ok); }
+}
+
+/* ── 细导轨深空控制台滚动条 ── */
+.hud-body::-webkit-scrollbar,
+.hud-panel::-webkit-scrollbar,
+.hud-table-wrap::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.hud-body::-webkit-scrollbar-track,
+.hud-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+.hud-body::-webkit-scrollbar-thumb,
+.hud-panel::-webkit-scrollbar-thumb {
+  background: rgb(var(--wui-border) / 0.7);
+  border-radius: 3px;
+}
+.hud-body::-webkit-scrollbar-thumb:hover,
+.hud-panel::-webkit-scrollbar-thumb:hover {
+  background: var(--hud-accent-soft);
+}

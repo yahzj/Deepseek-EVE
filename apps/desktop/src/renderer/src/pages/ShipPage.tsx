@@ -652,6 +652,16 @@ export function ShipPage({
   const fleetTiers = SHIP_TIER_SUBS.filter((s) => fleetEntries.some((e) => shipRolePasses(e.def, fleetRole) && shipTierPasses(e.def, s.key)))
   const storeRoles = SHIP_DOMAIN_SUBS.filter((s) => storeAll.some((def) => shipRolePasses(def, s.key)))
   const storeTiers = SHIP_TIER_SUBS.filter((s) => storeAll.some((def) => shipRolePasses(def, storeRole) && shipTierPasses(def, s.key)))
+    // DataDog / Mixpanel 风格：全舰队遥测核心指标
+  const totalFleetCount = fleetEntries.length
+  const pilotedCount = fleetEntries.filter((e) => e.uid === state.shipId).length
+  const workingCount = fleetEntries.filter((e) => e.uid in state.aiAssignments && e.uid !== state.shipId).length
+  const idleCount = Math.max(0, totalFleetCount - pilotedCount - workingCount)
+  const totalCargoM3 = fleetEntries.reduce((acc, e) => acc + (e.def.cargoM3 || 0), 0)
+  const avgDurabilityPct = totalFleetCount > 0
+    ? Math.round((fleetEntries.reduce((acc, e) => acc + durabilityOf(state, e.uid), 0) / totalFleetCount) * 100)
+    : 100
+
   const fleetRoleMissing = fleetRole !== SUB_ALL && !fleetRoles.some((s) => s.key === fleetRole)
   const fleetTierMissing = fleetTier !== SUB_ALL && !fleetTiers.some((s) => s.key === fleetTier)
   const storeRoleMissing = storeRole !== SUB_ALL && !storeRoles.some((s) => s.key === storeRole)
@@ -814,6 +824,48 @@ export function ShipPage({
             </div>
           </div>
         </div>
+        {/* DataDog / Mixpanel 风格：全舰队实时态势看板 */}
+        <div className="hud-kpi-banner" role="region" aria-label={tr('ui.fleetKpi.002')}>
+          <div className="hud-kpi-card">
+            <div className="hud-kpi-label">{tr('ui.fleetKpi.001')}</div>
+            <div className="hud-kpi-val">
+              {totalFleetCount} <span className="hud-kpi-unit">{tr('ui.fleetKpi.006')}</span>
+            </div>
+            <div className="hud-kpi-sub">
+              <span className="hud-status-dot is-live" />
+              <span>{tr('ui.fleetKpi.007')}</span>
+            </div>
+          </div>
+          <div className="hud-kpi-card">
+            <div className="hud-kpi-label">{tr('ui.fleetKpi.002')}</div>
+            <div className="hud-kpi-val">
+              {pilotedCount} <span className="hud-kpi-sep">/</span> {workingCount} <span className="hud-kpi-sep">/</span> {idleCount}
+            </div>
+            <div className="hud-kpi-sub">
+              {tr('ui.fleetKpi.005', { p1: pilotedCount, p2: workingCount, p3: idleCount })}
+            </div>
+          </div>
+          <div className="hud-kpi-card">
+            <div className="hud-kpi-label">{tr('ui.fleetKpi.003')}</div>
+            <div className="hud-kpi-val">
+              {totalCargoM3.toLocaleString('zh-CN')} <span className="hud-kpi-unit">m³</span>
+            </div>
+            <div className="hud-kpi-sub">
+              <span className="hud-kpi-tag">FLEET CARGO</span>
+            </div>
+          </div>
+          <div className="hud-kpi-card">
+            <div className="hud-kpi-label">{tr('ui.fleetKpi.004')}</div>
+            <div className={`hud-kpi-val${avgDurabilityPct < 80 ? ' is-warn' : ''}`}>
+              {avgDurabilityPct}%
+            </div>
+            <div className="hud-kpi-sub">
+              <div className="hud-mini-progress">
+                <div className="hud-mini-fill" style={{ width: `${avgDurabilityPct}%` }} />
+              </div>
+            </div>
+          </div>
+        </div>
         <div className="app-fleet-scroll" ref={fleetScrollRef}>
         {fleetShown.length === 0 ? (
           <div className="app-dim app-note">
@@ -866,7 +918,7 @@ export function ShipPage({
                 <FleetArt shipId={def.id} />
                 <div className="app-ship-top">
                   <span className="app-ship-name">
-                    {displayName}
+                    {displayName} <span className="app-ship-callsign" title={`呼号 #${uid.slice(-4).toUpperCase()}`}>#{uid.slice(-4).toUpperCase()}</span>
                     {/* 2026-09-13 船长：子分类徽标（只有虫洞族专属舰船有 `subClass`）；样式复用同级角色 chip */}
                     {def.subClass ? <em className={`app-chip app-role-chip is-${def.role}`}>{shipSubClassText(def.subClass)}</em> : null}
                     <em className={`app-chip app-role-chip is-${shipCategoryKeyOf(def)}`}>{shipRoleText(shipCategoryKeyOf(def))}</em>

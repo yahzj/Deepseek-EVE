@@ -111,10 +111,11 @@ describe('多舰编队解锁通讯', () => {
     expect(calls).toEqual([['skill', '工程', undefined], ['page', 'skills']])
   })
 
-  it('批准稿使用本地化ID；英文未获授权时登记延期回退中文', () => {
+  it('批准稿使用本地化ID，同事已完成的英文非空且不再延期', () => {
     for (const id of ['ui.commsFleetUnlock.001', 'ui.commsFleetUnlock.002', 'ui.commsFleetUnlock.003', 'ui.commsFleetUnlock.004']) {
-      expect(L10N[id]!.en).toBe('')
-      expect(L10N[id]!.enDeferred).toBe(true)
+      expect(L10N[id]!.en).not.toBe('')
+      expect(L10N[id]!.en).not.toMatch(/[\u3400-\u9fff]/)
+      expect(L10N[id]!.enDeferred).toBeUndefined()
     }
     expect(message.subject).toBe(L10N['ui.commsFleetUnlock.001']!.zh)
     expect(message.body).toEqual([L10N['ui.commsFleetUnlock.002']!.zh, L10N['ui.commsFleetUnlock.003']!.zh])

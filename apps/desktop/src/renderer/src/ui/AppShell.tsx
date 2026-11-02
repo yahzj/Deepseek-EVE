@@ -45,7 +45,7 @@ import type { PageKey } from '../App'
 import { tr, useL10n } from '../i18n/locale'
 import { fmtDate, fmtDuration, fmtDurationShort } from '../i18n/fmt'
 
-export type LayoutKind = 'modern' | 'classic'
+export type LayoutKind = 'modern' | 'classic' | 'cosmic'
 
 interface ShellNavItem { key: string; label: string; icon: string; onSelect?: () => void }
 
@@ -431,11 +431,11 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
          * 其余 9 项全挤到右组（无头实测：左组 children=1 且是空占位、右组 children=7）。
          * 现改为**把出港单独摘出、其余项按数量对半分成左右两组** ⇒ 与它在数组里的位置无关。
          */
+        /** 稳定槽位分槽：左组固定内政资产，右组固定成长社会，杜绝跨出港瞬移 */
+        const LEFT_KEYS = new Set(['ship', 'fit', 'items', 'market', 'industry', 'industryHud'])
         const feat = shown.find((it) => it.key === 'map') ?? null
-        const others = shown.filter((it) => it.key !== 'map')
-        const half = Math.ceil(others.length / 2)
-        const left = others.slice(0, half)
-        const right = others.slice(half)
+        const left = shown.filter((it) => LEFT_KEYS.has(it.key))
+        const right = shown.filter((it) => it.key !== 'map' && !LEFT_KEYS.has(it.key))
         return (
         <>
         <div className="app-nav-group is-left">

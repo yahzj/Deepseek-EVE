@@ -217,6 +217,7 @@ const COMMS_HINT_ID: Record<string, string> = {
   '工业页的实验室能造这两样。': 'ui.comms.077',
   [L10N['ui.commsBlackMarket.005']!.zh]: 'ui.commsBlackMarket.005',
   [L10N['ui.commsFleetUnlock.004']!.zh]: 'ui.commsFleetUnlock.004',
+  [L10N['ui.commsIndustrialRisk.004']!.zh]: 'ui.commsIndustrialRisk.004',
 }
 // l10n-keep-end
 

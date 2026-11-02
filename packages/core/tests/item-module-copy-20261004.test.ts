@@ -32,7 +32,8 @@ describe('物品装备说明双语与数据守恒', () => {
           const fieldNames: Record<string, string> = { 'mod-shieldfield-2': 'mod.fleetSupport.001', 'mod-shieldfield-3': 'mod.fleetSupport.002' }
           if (fieldNames[field.name.text]) {
             const entry = L10N[fieldNames[field.name.text]!]!
-            expect(entry).toMatchObject({ en: '', enDeferred: true })
+            expect(entry.enDeferred).toBeUndefined()
+            expect(entry.en).not.toBe('')
             expect(live[field.name.text]?.name).toBe(l10nEntryText(entry, 'en'))
             continue
           }
@@ -336,11 +337,12 @@ describe('真实参数行承接说明数字', () => {
         const id = `mod-shieldfield-${tier}`
         const rows = display.moduleInfoLines(MODULES.find(module => module.id === id)!).map(row => textOf(row.v)).join('|')
         expect(rows).toContain(`${(core.SHIELD_FIELD_COST_PCT * 100).toFixed(1)}%`)
-        expect(rows).toContain('最多2艘缺盾队友')
-        expect(rows).toContain('不恢复自身')
+        expect(rows).toContain(locale === 'zh' ? '最多2艘缺盾队友' : 'up to 2 shield-depleted allies')
+        expect(rows).toContain(locale === 'zh' ? '不恢复自身' : 'does not repair self')
         expect(rows).not.toMatch(/\{p\d\}/)
         const bp = `bp-shieldfield-${tier}`
-        expect(L10N['mod.fleetSupport.003']).toMatchObject({ en: '', enDeferred: true })
+        expect(L10N['mod.fleetSupport.003']!.enDeferred).toBeUndefined()
+        expect(L10N['mod.fleetSupport.003']!.en).not.toBe('')
         expect(buildSimContext(locale).blueprints.get(bp)!.description).toBe(l10nEntryText(L10N['mod.fleetSupport.003']!, locale))
         expect(EN_BLUEPRINTS[bp]!.description).toBe(l10nEntryText(L10N['mod.fleetSupport.003']!, 'en'))
       }
