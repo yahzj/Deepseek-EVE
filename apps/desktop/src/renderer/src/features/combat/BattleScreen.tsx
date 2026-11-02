@@ -44,6 +44,7 @@ import { tr as normalTr, futureTr, cmdText, logText } from '../../i18n/locale'
 import { DRONE_DOWN_FREEZE_MS } from './battleDrones'
 
 import { battleFxArrivals } from './battleFxCursor'
+import { useBattleSfx } from './battleSfx'
 
 export function BattleScreen({
   engine,
@@ -129,6 +130,9 @@ export function BattleScreen({
     starOffRef, starLayerRefs, droneDriveRef, droneBoxRef, droneWritesRef, droneElsRef,
     laneRef, setDims, flushTimerRef, dragValRef, mapRef,
   })
+  /** 声音系统（2026-11-02）：战斗演出流 → 音效；**必须在所有早退之前**（hook 顺序纪律）。
+   *  `rangeMode`（装配页射程/DPS 模拟）是 facade 引擎跑的真战斗演算，不是真实战斗 ⇒ 整个关掉。 */
+  useBattleSfx({ battle, visible, enabled: !rangeMode })
 
   /**
    * **上屏开关**（2026-09-22 · 回归修复）：玩家点「← 最小化」⇒ `visible=false` ⇒ **本组件什么都不渲染**

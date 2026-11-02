@@ -22,10 +22,21 @@ export function releaseRightsAssets(dependencyRoot: string): Record<string, stri
     return `===== ${name} ${pkg.version} =====\n\n${readFileSync(join(packageDir, 'LICENSE'), 'utf8')}`
   })
   const pixelLicense = readFileSync(join(ROOT, 'apps/desktop/src/renderer/src/assets/stellar/LICENSE-PixelPlanets.txt'), 'utf8')
+  /**
+   * **内嵌字体许可**（2026-11-02 船长令：把 GNU Unifont 18.0.01 嵌进项目做可选界面字体）：
+   * 字体文件随渲染包分发（`assets/fonts/unifont-18.0.01.otf`）⇒ 第三方许可清单必须收录其授权原文。
+   * 来源与口径：官方 <https://unifoundry.com/LICENSE.txt>（双许可：SIL OFL 1.1 ＋ GPLv2+ 附字体嵌入例外），
+   * 设置面板最下方「许可与授权」弹窗展示的是同一份文本（`assets/licenses/unifont-18.0.01-LICENSE.txt`）。
+   */
+  const unifontLicense = readFileSync(
+    join(ROOT, 'apps/desktop/src/renderer/src/assets/licenses/unifont-18.0.01-LICENSE.txt'),
+    'utf8',
+  )
   const thirdParty = [
-    '第三方许可声明\n\n本文件覆盖当前渲染包的 React、React DOM、Scheduler、Lucide 和 PixelPlanets 素材许可。\n桌面运行时另带的 Electron/Chromium 许可文件仍须保留；本声明不替代这些文件。',
+    '第三方许可声明\n\n本文件覆盖当前渲染包的 React、React DOM、Scheduler、Lucide、PixelPlanets 素材与 GNU Unifont 字体的许可。\n桌面运行时另带的 Electron/Chromium 许可文件仍须保留；本声明不替代这些文件。',
     ...notices,
     `===== PixelPlanets / Deep-Fold =====\n\n${pixelLicense}`,
+    `===== GNU Unifont 18.0.01 =====\n\nCopyright © 1998-2026 Roman Czyborra, Paul Hardy, Qianqian Fang, Andrew Miller, Johnnie Weaver, David Corbett, Ælla Chiana Moskopp, Rebecca Bettencourt, Ho-Seok Ee, et al.\n字体放在 SIL Open Font License 1.1 与 GNU GPL v2 或更高版本（附 GNU 字体嵌入例外）双许可下分发。授权原文如下（取自 https://unifoundry.com/LICENSE.txt）：\n\n${unifontLicense}`,
   ].join('\n\n') + '\n'
   const html = `<!doctype html>
 <html lang="zh-CN">

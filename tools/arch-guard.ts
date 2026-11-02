@@ -353,6 +353,42 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
     file: 'packages/core/src/activityGate.ts',
     exported: true,
   },
+  {
+    concept: '音效语义 id 与默认增益/节流（2026-11-02 声音系统 · 调用点/资源文件名/音效台共用一张清单）',
+    symbol: 'SFX_CUES',
+    file: 'apps/desktop/src/renderer/src/game/audio/cues.ts',
+    exported: true,
+  },
+  {
+    concept: '音效播放唯一出口（音量×分类×增益、节流、并发、本机覆盖优先 · 2026-11-02）',
+    symbol: 'playCue',
+    file: 'apps/desktop/src/renderer/src/game/audio/player.ts',
+    exported: true,
+  },
+  {
+    concept: '日志 → 音效的触发规则与文件名匹配（2026-11-02 声音系统）',
+    symbol: 'matchLogCue',
+    file: 'apps/desktop/src/renderer/src/game/audio/rules.ts',
+    exported: true,
+  },
+  {
+    concept: '音效素材文件名 → 语义 id（音效台导入与构建素材表共用一份匹配 · 2026-11-02）',
+    symbol: 'matchSfxFileName',
+    file: 'apps/desktop/src/renderer/src/game/audio/rules.ts',
+    exported: true,
+  },
+  {
+    concept: 'BGM/环境场景解析（战斗>虫洞>入侵>停靠>太空 · 2026-11-02 追加批）',
+    symbol: 'resolveSfxScene',
+    file: 'apps/desktop/src/renderer/src/game/audio/scene.ts',
+    exported: true,
+  },
+  {
+    concept: '音高随机换速率（音分 → playbackRate · 2026-11-02 追加批）',
+    symbol: 'pitchRateFor',
+    file: 'apps/desktop/src/renderer/src/game/audio/rules.ts',
+    exported: true,
+  },
 ]
 
 /** F4：渲染层一级页/面板不许自己建仿真上下文（那是 `engine.ts` 的活） */

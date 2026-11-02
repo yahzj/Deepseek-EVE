@@ -1,0 +1,130 @@
+/**
+ * 设置面板专属样式（2026-11-02 · 界面字体选择 ＋ 许可与授权全文弹窗）。
+ *
+ * 面板级 CSS 先例：`panels/fittingRange.css`（随组件 import；**不并进** `styles.css` 与
+ * `ui/layout-css/*` 生成件）。本文件只做增量：设置面板既有外观仍由 styles.css / layout-css 提供，
+ * 这里不复制、不改写既有规则。
+ *
+ * ── 一、界面字体（2026-11-02 船长令）──
+ * 字体文件 = `assets/fonts/unifont-18.0.01.otf`（GNU Unifont 18.0.01，像素点阵全字库；
+ * 授权原文见 `assets/licenses/` 与设置最下方「许可与授权」）。Vite 会把 `url()` 里的 otf
+ * 按资源打包，桌面（electron-vite）与网页（web/vite.config.ts）两个入口共用这一份 CSS。
+ *
+ * 覆盖只在 `<html data-ui-font="unifont">` 时命中（由 `ui/fontChoice.ts` 写）：
+ * - 选「默认」时**一条规则都不命中** ⇒ 与改动前逐像素一致（不碰 styles.css 的 body / en 字体栈）；
+ * - 选择器用 `:root[data-ui-font='unifont'] …`（特异度 0,2,1）压过 `html[data-locale='en'] body`
+ *   （0,1,2）与后加载的布局样式表 ⇒ 中英界面都切得动，也不受样式表加载顺序影响；
+ * - 只覆盖 `body` 与表单控件（input 默认不继承 body 字体，要单独给；button 已由
+ *   styles.css 的 `button { font: inherit }` 继承，不在此重复）；
+ * - **`--wui-mono` 一律不覆盖**：像素字体在数字与代码上可读性差，而设置里的百分比读数、
+ *   战斗/工业的等宽数值都靠等宽对齐 —— 这是本批明确的取舍，不把点阵字推到等宽读数上。
+ */
+@font-face {
+  font-family: 'GNU Unifont';
+  src: url('../assets/fonts/unifont-18.0.01.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  /* 换字不拦渲染：先按兜底栈显示，字体到位再换（5MB 字体首次加载不应白屏） */
+  font-display: swap;
+}
+
+:root[data-ui-font='unifont'] body,
+:root[data-ui-font='unifont'] input,
+:root[data-ui-font='unifont'] textarea,
+:root[data-ui-font='unifont'] select {
+  font-family: var(--ui-font, 'GNU Unifont', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans SC', sans-serif);
+}
+
+/* ── 二、许可与授权全文弹窗 ──
+   只读长文本：等宽 + 可滚动；宽度/高度比设置弹窗大，但不超出窗口（小窗口按边距回落）。
+   弹层族沿用现有 `app-modal-mask` / `app-modal` / `app-modal-head` / `app-modal-body`，不另造结构。
+   ⚠ 遮罩层 z-index 高于设置弹窗（120）：本弹窗渲染在设置弹窗**之外**（同层兄弟），
+   避免设置弹窗在「科幻未来」布局下的 `clip-path` 把嵌套弹层裁掉。 */
+.app-license-mask {
+  z-index: 130;
+}
+
+/* 两段式选择器（.app-modal.app-license-modal）压过 `.app-modal` 的默认 460px/640px，且高于布局样式表 */
+.app-modal.app-license-modal {
+  width: min(1040px, calc(100vw - 40px));
+  max-width: calc(100vw - 40px);
+  height: min(86vh, 900px);
+  max-height: calc(100vh - 48px);
+}
+
+.app-license-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  /* 弹窗定了高度 ⇒ 内容区吃掉剩余空间并自己滚（`.app-modal-body` 已给 overflow-y:auto / min-height:0） */
+  flex: 1 1 auto;
+}
+
+.app-license-intro {
+  margin: 0 0 var(--wui-sp-10);
+  color: rgb(var(--wui-text-dim));
+  font-size: var(--wui-fs-s);
+  line-height: 1.7;
+}
+
+.app-license-section {
+  margin: 0;
+  padding-top: var(--wui-sp-12);
+  border-top: 1px solid rgb(var(--wui-border));
+}
+
+/* 第一段紧跟导语，不再画分隔线 */
+.app-license-section:first-of-type {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.app-license-h {
+  margin: 0 0 var(--wui-sp-5);
+  font-size: var(--wui-fs-md);
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: rgb(var(--wui-gold));
+}
+
+.app-license-subh {
+  margin: var(--wui-sp-10) 0 var(--wui-sp-4);
+  font-size: var(--wui-fs-s);
+  font-weight: 600;
+  color: rgb(var(--wui-text));
+}
+
+.app-license-meta {
+  margin: 0 0 var(--wui-sp-6);
+  font-family: var(--wui-mono);
+  font-size: var(--wui-fs-2xse);
+  line-height: 1.75;
+  color: rgb(var(--wui-text-dim));
+  overflow-wrap: anywhere;
+}
+
+/* 授权书正文：照录原文，等宽可读；整段交给 `.app-modal-body` 滚动，不套第二层滚动条 */
+.app-license-pre {
+  margin: 0 0 var(--wui-sp-8);
+  padding: var(--wui-sp-10) var(--wui-sp-12);
+  border: 1px solid rgb(var(--wui-border));
+  border-radius: 4px;
+  background: rgb(var(--wui-bg-field) / 0.55);
+  color: rgb(var(--wui-text));
+  font-family: var(--wui-mono);
+  font-size: var(--wui-fs-xs);
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.app-license-pre:last-child {
+  margin-bottom: 0;
+}
+
+.app-license-note {
+  margin: 0 0 var(--wui-sp-8);
+  font-size: var(--wui-fs-2xsd);
+  line-height: 1.7;
+  color: rgb(var(--wui-text-dim));
+}

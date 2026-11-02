@@ -143,7 +143,7 @@ html[data-locale='en'] body {
   --app-max-w: 1760px;
   /* 标题行的字号旋钮（2026-09-14 船长「不能根据标题高度自适应吗」）：面板/弹层标题行的
      标题 · 行内伴随文字 · 圆形感叹号一律按它算比例 ⇒ 改这一处整行等比跟随。 */
-  --app-head-fs: 13px;
+  --app-head-fs: calc(13px * var(--ui-fs, 1));
 }
 .app-header,
 .app-workspace {
@@ -7800,7 +7800,7 @@ html[data-locale='en'] body {
 
   gap: var(--wui-sp-16);
 
-  font-size: calc(var(--ui-fs, 1) * var(--wui-fs-sm));
+  font-size: var(--wui-fs-sm);
 
 }
 
@@ -7844,7 +7844,7 @@ html[data-locale='en'] body {
 
 .app-hand-card-title {
 
-  font-size: calc(var(--ui-fs, 1) * var(--wui-fs-s));
+  font-size: var(--wui-fs-s);
 
   font-weight: 600;
 
@@ -7854,7 +7854,7 @@ html[data-locale='en'] body {
 
 .app-hand-card-body {
 
-  font-size: calc(var(--ui-fs, 1) * var(--wui-fs-sm));
+  font-size: var(--wui-fs-sm);
 
   line-height: 1.75;
 
@@ -7908,7 +7908,7 @@ html[data-locale='en'] body {
 /* 正文的段：一行短小标题 + 正文；段间 7px、段内 2px（比"一整段"好扫读） */
 .app-hand-para { display: flex; flex-direction: column; gap: var(--wui-sp-2); }
 .app-hand-para + .app-hand-para { margin-top: var(--wui-sp-7); }
-.app-hand-para-head { font-size: calc(var(--ui-fs, 1) * var(--wui-fs-xsb)); font-weight: 600; letter-spacing: 0.3px; color: rgb(var(--wui-blue-soft)); }
+.app-hand-para-head { font-size: var(--wui-fs-xsb); font-weight: 600; letter-spacing: 0.3px; color: rgb(var(--wui-blue-soft)); }
 /* 页底翻页条（船长 2026-09-14 追加「加「上一条 / 下一条」」）：两端对齐、单侧缺项时留空位（按钮位置不跳） */
 .app-hand-pager { display: flex; align-items: center; justify-content: space-between; gap: var(--wui-sp-8); margin-top: var(--wui-sp-2); }
 .app-hand-pager-btn { max-width: 46%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -8185,7 +8185,7 @@ html[data-locale='en'] body {
   border-radius: var(--wui-sp-4);
   border: 1px solid currentColor;
   font-family: var(--wui-mono);
-  font-size: calc(var(--ui-fs, 1) * var(--wui-fs-2xsb));
+  font-size: var(--wui-fs-2xsb);
   line-height: 1.5;
   letter-spacing: 0.3px;
   pointer-events: none;
@@ -11472,12 +11472,12 @@ html[data-locale='en'] body {
 .app-btn.is-sellall:hover:not(:disabled) { background: rgb(var(--wui-x55) / 0.16); box-shadow: 0 0 10px rgba(255,160,80,.35); }
 
 /* ui font scale overrides (SettingsPanel, captain 2026-09-05) */
-.app-inv-name{font-size:calc(var(--ui-fs, 1) * var(--wui-fs-s))}
-.app-inv-count{font-size:calc(var(--ui-fs, 1) * var(--wui-fs-xs))}
-.app-sr-name{font-size:calc(var(--ui-fs, 1) * var(--wui-fs-s))}
-.app-sr-sub{font-size:calc(var(--ui-fs, 1) * var(--wui-fs-2xsd))}
-.app-chip{font-size:calc(var(--ui-fs, 1) * var(--wui-fs-xs))}
-.app-btn{font-size:calc(var(--ui-fs, 1) * var(--wui-fs-s))}
+.app-inv-name{font-size:var(--wui-fs-s)}
+.app-inv-count{font-size:var(--wui-fs-xs)}
+.app-sr-name{font-size:var(--wui-fs-s)}
+.app-sr-sub{font-size:var(--wui-fs-2xsd)}
+.app-chip{font-size:var(--wui-fs-xs)}
+.app-btn{font-size:var(--wui-fs-s)}
 
 /* settings panel (captain UI polish 2026-09-05)
    ── **2026-09-25 船长反馈：「设置界面显示不全，底部的按钮而且太宽，浪费了很多位置」** ⇒ 三条修正：
@@ -11790,35 +11790,36 @@ html[data-locale='en'] body {
    实测依据（2560×1440 全屏）：屏幕可视高 933px 而内容仅 167px（填充率 17.9%）、正文行长只占屏幕宽 31.4%
    ⇒ 观感"空"来自"框大内容小"。处方 = **丙：大窗口下把屏内文字与下方跳转胶囊一起放大**（布局结构不动、不限宽）。
    断点用 min-width（本页首次；既有 @media 都是 max-width 收窄布局，放大是另一类需求）；
-   字号统一走 `calc(var(--ui-fs, 1) * Npx)`，与"设置→字体大小"叠加而不互相覆盖。
+   字号统一走 `var(--wui-fs-*)`（2026-11-02 起字阶本身已含 `--ui-fs` 系数，调用点不再自己乘），
+   与"设置→字体大小"叠加而不互相覆盖。
    2026-09-11 船长定「乙」后：下檐口那行（前往）走**在流内**排布，高度随内容自然长高，
    故此处不再需要"抬高下内边距"的旧补偿，只放大字号/内边距。
    （2026-09-17 教程重做：消息「自带动作」机制整体退场 ⇒ 动作按钮及其三条样式一并删除。） */
 @media (min-width: 1500px) {
-  .app-btn.app-comms-goto { padding: var(--wui-sp-11) var(--wui-sp-26); font-size: calc(var(--ui-fs, 1) * var(--wui-fs-lg)); gap: var(--wui-sp-14); }
-  .app-comms-goto-text { font-size: calc(var(--ui-fs, 1) * var(--wui-fs-baseb)); }
+  .app-btn.app-comms-goto { padding: var(--wui-sp-11) var(--wui-sp-26); font-size: var(--wui-fs-lg); gap: var(--wui-sp-14); }
+  .app-comms-goto-text { font-size: var(--wui-fs-baseb); }
   .app-comms-screen { padding: var(--wui-sp-18) var(--wui-sp-24) var(--wui-sp-20); gap: var(--wui-sp-10); }
   .app-comms-avatar { width: 66px; height: 66px; }
-  .app-comms-title { font-size: calc(var(--ui-fs, 1) * var(--wui-fs-2xl)); }
-  .app-comms-head-from { font-size: calc(var(--ui-fs, 1) * var(--wui-fs-baseb)); }
-  .app-comms-head-time { font-size: calc(var(--ui-fs, 1) * var(--wui-fs-sm)); }
-  .app-comms-text { font-size: calc(var(--ui-fs, 1) * var(--wui-fs-mdb)); }
+  .app-comms-title { font-size: var(--wui-fs-2xl); }
+  .app-comms-head-from { font-size: var(--wui-fs-baseb); }
+  .app-comms-head-time { font-size: var(--wui-fs-sm); }
+  .app-comms-text { font-size: var(--wui-fs-mdb); }
   .app-comms-lines { gap: var(--wui-sp-10); }
   .app-comms-item { padding: var(--wui-sp-9) var(--wui-sp-12); }
-  .app-comms-from { font-size: calc(var(--ui-fs, 1) * var(--wui-fs-sm)); }
-  .app-comms-subject { font-size: calc(var(--ui-fs, 1) * var(--wui-fs-baseb)); }
-  .app-comms-time { font-size: calc(var(--ui-fs, 1) * var(--wui-fs-xs)); }
-  .app-comms-note { font-size: calc(var(--ui-fs, 1) * var(--wui-fs-baseb)); }
+  .app-comms-from { font-size: var(--wui-fs-sm); }
+  .app-comms-subject { font-size: var(--wui-fs-baseb); }
+  .app-comms-time { font-size: var(--wui-fs-xs); }
+  .app-comms-note { font-size: var(--wui-fs-baseb); }
 }
 @media (min-width: 1900px) {
-  .app-btn.app-comms-goto { padding: var(--wui-sp-14) var(--wui-sp-32); font-size: calc(var(--ui-fs, 1) * var(--wui-fs-lgb)); }
-  .app-comms-goto-text { font-size: calc(var(--ui-fs, 1) * var(--wui-fs-lg)); }
-  .app-comms-text { font-size: calc(var(--ui-fs, 1) * var(--wui-fs-lgb)); }
-  .app-comms-title { font-size: calc(var(--ui-fs, 1) * var(--wui-fs-4xl)); }
+  .app-btn.app-comms-goto { padding: var(--wui-sp-14) var(--wui-sp-32); font-size: var(--wui-fs-lgb); }
+  .app-comms-goto-text { font-size: var(--wui-fs-lg); }
+  .app-comms-text { font-size: var(--wui-fs-lgb); }
+  .app-comms-title { font-size: var(--wui-fs-4xl); }
   .app-comms-avatar { width: 76px; height: 76px; }
   .app-comms-item { padding: var(--wui-sp-11) var(--wui-sp-14); }
-  .app-comms-subject { font-size: calc(var(--ui-fs, 1) * var(--wui-fs-mdb)); }
-  .app-comms-from { font-size: calc(var(--ui-fs, 1) * var(--wui-fs-baseb)); }
+  .app-comms-subject { font-size: var(--wui-fs-mdb); }
+  .app-comms-from { font-size: var(--wui-fs-baseb); }
 }
 
 /* 窄窗口（≤1180px，与仓内既有收窄断点同阈值）：左列让出空间给通讯器。
@@ -13556,33 +13557,29 @@ body.no-fx .app-root.is-layout-classic:not(.is-mobile-layout) .app-log-side { tr
  * ═══════════════════════════════════════════════════════════════════════════════ */
 .app-root.is-layout-modern {
   /* ── 语义色彩体系 (Color Palette & Semantic Tokens) ── */
-  --hud-primary: #38bdf8;
-  --hud-primary-rgb: 56, 189, 248;
-  --hud-primary-hover: #0ea5e9;
-  --hud-primary-active: #0284c7;
-  --hud-success: #10b981;
-  --hud-success-rgb: 16, 185, 129;
-  --hud-warning: #f59e0b;
-  --hud-warning-rgb: 245, 158, 11;
-  --hud-danger: #ef4444;
-  --hud-danger-rgb: 239, 68, 68;
-  --hud-accent: #a855f7;
-  --hud-text-main: #f0f9ff;
-  --hud-text-muted: #94a3b8;
-  --hud-text-dim: #64748b;
+  --hud-primary: rgb(var(--wui-hud-primary));
+  --hud-primary-hover: rgb(var(--wui-hud-primary-hover));
+  --hud-primary-active: rgb(var(--wui-hud-primary-active));
+  --hud-success: rgb(var(--wui-hud-ok));
+  --hud-warning: rgb(var(--wui-hud-warn));
+  --hud-danger: rgb(var(--wui-hud-danger));
+  --hud-accent: rgb(var(--wui-hud-accent));
+  --hud-text-main: rgb(var(--wui-hud-text));
+  --hud-text-muted: rgb(var(--wui-hud-text-muted));
+  --hud-text-dim: rgb(var(--wui-hud-text-dim));
 
   /* ── 表面进深与背景层级 (Surface & Elevation) ── */
-  --hud-bg-base: #060910;
-  --hud-bg-surface: rgba(11, 16, 26, 0.88);
-  --hud-bg-surface-raised: rgba(14, 20, 32, 0.96);
-  --hud-bg-surface-glass: rgba(10, 14, 23, 0.75);
+  --hud-bg-base: rgb(var(--wui-hud-bg-base));
+  --hud-bg-surface: rgb(var(--wui-hud-surface-soft) / 0.88);
+  --hud-bg-surface-raised: rgb(var(--wui-hud-surface) / 0.96);
+  --hud-bg-surface-glass: rgb(var(--wui-hud-surface-soft) / 0.75);
 
   /* ── 边框与微光 (Borders & Glows) ── */
-  --hud-border-dim: rgba(var(--hud-primary-rgb), 0.12);
-  --hud-border-mid: rgba(var(--hud-primary-rgb), 0.25);
-  --hud-border-bright: rgba(var(--hud-primary-rgb), 0.55);
-  --hud-glow-soft: 0 0 12px rgba(var(--hud-primary-rgb), 0.2);
-  --hud-glow-strong: 0 0 20px rgba(var(--hud-primary-rgb), 0.45);
+  --hud-border-dim: rgb(var(--wui-hud-primary) / 0.12);
+  --hud-border-mid: rgb(var(--wui-hud-primary) / 0.25);
+  --hud-border-bright: rgb(var(--wui-hud-primary) / 0.55);
+  --hud-glow-soft: 0 0 12px rgb(var(--wui-hud-primary) / 0.2);
+  --hud-glow-strong: 0 0 20px rgb(var(--wui-hud-primary) / 0.45);
 
   /* ── 4px 网格间距标尺 (Spacing Scale) ── */
   --hud-space-1: 4px;
@@ -13603,35 +13600,59 @@ body.no-fx .app-root.is-layout-classic:not(.is-mobile-layout) .app-log-side { tr
   --hud-duration-fast: 150ms;
   --hud-duration-normal: 200ms;
 
-  background:
-    radial-gradient(1200px 700px at 50% -10%, rgba(56, 189, 248, 0.12), transparent 70%),
-    radial-gradient(900px 600px at 85% 105%, rgba(14, 165, 233, 0.08), transparent 60%),
-    linear-gradient(rgba(56, 189, 248, 0.015) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(56, 189, 248, 0.015) 1px, transparent 1px),
-    rgb(var(--wui-bg-deep));
-  background-size: 100% 100%, 100% 100%, 36px 36px, 36px 36px, auto;
+  /* ── **宇宙背景必须透出来**（2026-11-02 船长报障：「界面布局是科幻未来的情况下，宇宙背景看不见了」）──
+     病根：这一条 `background:` 简写把 `.app-root` 的星图底 `var(--space-bg)` **整层覆盖**掉了
+     （简写会重置 background-image），只剩不透明的深空底色 ⇒ 玩家设置的宇宙背景在这个布局下完全消失。
+     口径：与基础 `.app-root` 同构——**最底层铺 `var(--space-bg)`（512px 无缝平铺）**，其上压
+     `--wui-scrim` 55% 蒙层与 HUD 微光/网格（第一层在最上面）。亮白配色不铺照片，另有
+     `[data-theme='daylight'] .app-root.is-layout-modern` 覆盖块（见下方）。 */
+  background-color: rgb(var(--wui-scrim));
+  background-image:
+    linear-gradient(rgb(var(--wui-scrim) / 0.55), rgb(var(--wui-scrim) / 0.55)),
+    radial-gradient(1200px 700px at 50% -10%, rgb(var(--wui-hud-primary) / 0.12), transparent 70%),
+    radial-gradient(900px 600px at 85% 105%, rgb(var(--wui-hud-primary-hover) / 0.08), transparent 60%),
+    linear-gradient(rgb(var(--wui-hud-primary) / 0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(var(--wui-hud-primary) / 0.015) 1px, transparent 1px),
+    var(--space-bg, none);
+  background-repeat: no-repeat, no-repeat, no-repeat, repeat, repeat, repeat;
+  background-position: center center, center center, 85% 105%, center center, center center, center center;
+  background-size: cover, 100% 100%, 100% 100%, 36px 36px, 36px 36px, 512px 512px;
+}
+
+/* 亮白配色不铺星云照片（船长 2026-09-22 选定「甲案」），科幻未来布局下同样适用：
+   特异性 (0,3,0) 高于上面 (0,2,0)，且必须排在这条之后。 */
+[data-theme='daylight'] .app-root.is-layout-modern {
+  background-color: rgb(var(--wui-bg-deep));
+  background-image:
+    radial-gradient(1200px 700px at 50% -10%, rgb(var(--wui-hud-primary) / 0.06), transparent 70%),
+    linear-gradient(rgb(var(--wui-hud-primary) / 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(var(--wui-hud-primary) / 0.02) 1px, transparent 1px),
+    linear-gradient(180deg, rgb(var(--wui-bg-panel)), rgb(var(--wui-bg-deep)));
+  background-repeat: no-repeat, repeat, repeat, no-repeat;
+  background-position: center center, center center, center center, center center;
+  background-size: 100% 100%, 36px 36px, 36px 36px, cover;
 }
 
 /* 顶栏科幻仪表盘 */
 .app-root.is-layout-modern .app-header {
-  border-bottom: 1px solid rgba(56, 189, 248, 0.25);
-  background: linear-gradient(180deg, rgba(14, 20, 32, 0.98), rgba(7, 10, 18, 0.98));
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6), inset 0 -1px 0 rgba(56, 189, 248, 0.1);
+  border-bottom: 1px solid rgb(var(--wui-hud-primary) / 0.25);
+  background: linear-gradient(180deg, rgb(var(--wui-hud-surface) / 0.98), rgb(var(--wui-hud-surface-deep) / 0.98));
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6), inset 0 -1px 0 rgb(var(--wui-hud-primary) / 0.1);
 }
 .app-root.is-layout-modern .app-pilot {
   padding: 3px 10px;
-  background: rgba(56, 189, 248, 0.1);
-  border: 1px solid rgba(56, 189, 248, 0.4);
+  background: rgb(var(--wui-hud-primary) / 0.1);
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.4);
   border-radius: 0;
-  color: #38bdf8;
+  color: rgb(var(--wui-hud-primary));
   font-weight: 600;
   letter-spacing: 0.08em;
-  text-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
+  text-shadow: 0 0 8px rgb(var(--wui-hud-primary) / 0.4);
 }
 .app-root.is-layout-modern .app-wallet,
 .app-root.is-layout-modern .app-standing {
-  background: rgba(11, 16, 26, 0.85);
-  border: 1px solid rgba(56, 189, 248, 0.2);
+  background: rgb(var(--wui-hud-surface-soft) / 0.85);
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.2);
   padding: 3px 10px;
   border-radius: 0;
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
@@ -13639,9 +13660,9 @@ body.no-fx .app-root.is-layout-classic:not(.is-mobile-layout) .app-log-side { tr
 
 /* 底部主导航栏 */
 .app-root.is-layout-modern nav.app-nav-side {
-  border-top: 1px solid rgba(56, 189, 248, 0.3);
-  background: linear-gradient(0deg, rgba(5, 7, 13, 0.98), rgba(12, 17, 28, 0.96));
-  box-shadow: 0 -6px 25px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  border-top: 1px solid rgb(var(--wui-hud-primary) / 0.3);
+  background: linear-gradient(0deg, rgb(var(--wui-hud-surface-deep) / 0.98), rgb(var(--wui-hud-surface-soft) / 0.96));
+  box-shadow: 0 -6px 25px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgb(var(--wui-hud-ink) / 0.06);
 }
 .app-root.is-layout-modern .app-nav-item {
   border-radius: 0;
@@ -13649,56 +13670,56 @@ body.no-fx .app-root.is-layout-classic:not(.is-mobile-layout) .app-log-side { tr
   position: relative;
 }
 .app-root.is-layout-modern .app-nav-item:hover {
-  background: rgba(56, 189, 248, 0.1);
-  border-color: rgba(56, 189, 248, 0.4);
+  background: rgb(var(--wui-hud-primary) / 0.1);
+  border-color: rgb(var(--wui-hud-primary) / 0.4);
   transform: translateY(-1px);
 }
 .app-root.is-layout-modern .app-nav-item:active {
   transform: scale(0.96);
 }
 .app-root.is-layout-modern .app-nav-item.is-active {
-  background: rgba(56, 189, 248, 0.16);
-  border-color: rgba(56, 189, 248, 0.6);
-  box-shadow: inset 0 -3px 0 #38bdf8, 0 0 20px rgba(56, 189, 248, 0.35);
-  color: #f0f9ff;
+  background: rgb(var(--wui-hud-primary) / 0.16);
+  border-color: rgb(var(--wui-hud-primary) / 0.6);
+  box-shadow: inset 0 -3px 0 rgb(var(--wui-hud-primary)), 0 0 20px rgb(var(--wui-hud-primary) / 0.35);
+  color: rgb(var(--wui-hud-text));
 }
 .app-root.is-layout-modern .app-nav-item.is-featured {
-  background: linear-gradient(180deg, rgba(14, 165, 233, 0.3), rgba(2, 132, 199, 0.18));
-  border: 1px solid rgba(56, 189, 248, 0.7);
-  box-shadow: 0 0 24px rgba(56, 189, 248, 0.3), inset 0 0 14px rgba(56, 189, 248, 0.25);
+  background: linear-gradient(180deg, rgb(var(--wui-hud-primary-hover) / 0.3), rgb(var(--wui-hud-primary-active) / 0.18));
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.7);
+  box-shadow: 0 0 24px rgb(var(--wui-hud-primary) / 0.3), inset 0 0 14px rgb(var(--wui-hud-primary) / 0.25);
 }
 .app-root.is-layout-modern .app-nav-item.is-featured:hover {
-  background: linear-gradient(180deg, rgba(14, 165, 233, 0.42), rgba(2, 132, 199, 0.3));
-  box-shadow: 0 0 32px rgba(56, 189, 248, 0.5), inset 0 0 18px rgba(56, 189, 248, 0.35);
+  background: linear-gradient(180deg, rgb(var(--wui-hud-primary-hover) / 0.42), rgb(var(--wui-hud-primary-active) / 0.3));
+  box-shadow: 0 0 32px rgb(var(--wui-hud-primary) / 0.5), inset 0 0 18px rgb(var(--wui-hud-primary) / 0.35);
   transform: translateY(-2px);
 }
 
 /* ═════ C 模块 · 战舰装配台（FitPage）全息战术机库 ═════ */
 .app-root.is-layout-modern .app-fit-target {
-  background: linear-gradient(180deg, rgba(14, 20, 32, 0.95), rgba(9, 13, 22, 0.95));
-  border: 1px solid rgba(56, 189, 248, 0.25);
+  background: linear-gradient(180deg, rgb(var(--wui-hud-surface) / 0.95), rgb(var(--wui-hud-surface-soft) / 0.95));
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.25);
   border-radius: 0;
   padding: 10px 14px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 .app-root.is-layout-modern .app-fit-target-ship {
-  color: #38bdf8;
+  color: rgb(var(--wui-hud-primary));
   font-size: 1.15em;
   font-weight: 700;
   letter-spacing: 0.06em;
-  text-shadow: 0 0 10px rgba(56, 189, 248, 0.35);
+  text-shadow: 0 0 10px rgb(var(--wui-hud-primary) / 0.35);
 }
 
 /* 全息机库舞台 */
 .app-root.is-layout-modern .app-fit-stage {
   position: relative;
   background:
-    radial-gradient(800px 500px at 50% 50%, rgba(56, 189, 248, 0.08), transparent 70%),
-    linear-gradient(rgba(56, 189, 248, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(56, 189, 248, 0.04) 1px, transparent 1px),
-    rgba(6, 9, 16, 0.96);
+    radial-gradient(800px 500px at 50% 50%, rgb(var(--wui-hud-primary) / 0.08), transparent 70%),
+    linear-gradient(rgb(var(--wui-hud-primary) / 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(var(--wui-hud-primary) / 0.04) 1px, transparent 1px),
+    rgb(var(--wui-hud-bg-base) / 0.96);
   background-size: 100% 100%, 36px 36px, 36px 36px, auto;
-  border: 1px solid rgba(56, 189, 248, 0.3);
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.3);
   border-radius: 0;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6), inset 0 0 40px rgba(0, 0, 0, 0.7);
 }
@@ -13707,29 +13728,29 @@ body.no-fx .app-root.is-layout-classic:not(.is-mobile-layout) .app-log-side { tr
   position: absolute;
   top: 8px;
   left: 10px;
-  font-size: 9px;
+  font-size: var(--wui-fs-2xsb);
   letter-spacing: 0.15em;
-  color: rgba(56, 189, 248, 0.45);
+  color: rgb(var(--wui-hud-primary) / 0.45);
   font-family: monospace;
 }
 
 /* 舰船属性仪表舱 */
 .app-root.is-layout-modern .app-fit-shipinfo {
-  border: 1px solid rgba(56, 189, 248, 0.22);
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.22);
   border-radius: 0;
-  background: linear-gradient(180deg, rgba(14, 20, 32, 0.95), rgba(7, 10, 18, 0.98));
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  background: linear-gradient(180deg, rgb(var(--wui-hud-surface) / 0.95), rgb(var(--wui-hud-surface-deep) / 0.98));
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgb(var(--wui-hud-ink) / 0.03);
 }
 
 /* 高/中/低槽位机架 */
 .app-root.is-layout-modern .app-fit-rack {
-  background: linear-gradient(180deg, rgba(14, 20, 32, 0.95), rgba(9, 13, 22, 0.92));
-  border: 1px solid rgba(56, 189, 248, 0.2);
+  background: linear-gradient(180deg, rgb(var(--wui-hud-surface) / 0.95), rgb(var(--wui-hud-surface-soft) / 0.92));
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.2);
   border-radius: 0;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 .app-root.is-layout-modern .app-fit-rack-title {
-  color: #38bdf8;
+  color: rgb(var(--wui-hud-primary));
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -13743,23 +13764,23 @@ body.no-fx .app-root.is-layout-classic:not(.is-mobile-layout) .app-log-side { tr
 }
 /* 空槽：微弱天青虚线与半透明瞄准准星加号 */
 .app-root.is-layout-modern .app-fit-slot-icon.is-empty {
-  border: 1px dashed rgba(56, 189, 248, 0.35);
-  background: rgba(9, 13, 22, 0.6);
+  border: 1px dashed rgb(var(--wui-hud-primary) / 0.35);
+  background: rgb(var(--wui-hud-surface-soft) / 0.6);
 }
 .app-root.is-layout-modern .app-fit-slot-icon.is-empty:hover {
-  border-color: #38bdf8;
-  background: rgba(56, 189, 248, 0.1);
-  box-shadow: 0 0 14px rgba(56, 189, 248, 0.25);
+  border-color: rgb(var(--wui-hud-primary));
+  background: rgb(var(--wui-hud-primary) / 0.1);
+  box-shadow: 0 0 14px rgb(var(--wui-hud-primary) / 0.25);
   transform: translateY(-1px);
 }
 /* 已装槽：钛金高光边框 + 微光悬浮 */
 .app-root.is-layout-modern .app-fit-slot-icon.is-filled {
-  border: 1px solid rgba(56, 189, 248, 0.4);
-  background: linear-gradient(180deg, rgba(20, 29, 46, 0.9), rgba(11, 16, 26, 0.95));
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.4);
+  background: linear-gradient(180deg, rgb(var(--wui-hud-surface-raised) / 0.9), rgb(var(--wui-hud-surface-soft) / 0.95));
 }
 .app-root.is-layout-modern .app-fit-slot-icon.is-filled:hover {
-  border-color: #38bdf8;
-  box-shadow: 0 0 16px rgba(56, 189, 248, 0.35), 0 4px 12px rgba(0, 0, 0, 0.5);
+  border-color: rgb(var(--wui-hud-primary));
+  box-shadow: 0 0 16px rgb(var(--wui-hud-primary) / 0.35), 0 4px 12px rgba(0, 0, 0, 0.5);
   transform: translateY(-2px);
 }
 .app-root.is-layout-modern .app-fit-slot-icon:active {
@@ -13768,8 +13789,8 @@ body.no-fx .app-root.is-layout-classic:not(.is-mobile-layout) .app-log-side { tr
 
 /* ═════ B 模块 · 星图出港（MapPage & 悬赏/矿带）战术雷达 ═════ */
 .app-root.is-layout-modern .app-subtabs {
-  border-bottom: 1px solid rgba(56, 189, 248, 0.25);
-  background: rgba(14, 20, 32, 0.4);
+  border-bottom: 1px solid rgb(var(--wui-hud-primary) / 0.25);
+  background: rgb(var(--wui-hud-surface) / 0.4);
 }
 .app-root.is-layout-modern .app-subtab {
   font-family: monospace;
@@ -13777,43 +13798,43 @@ body.no-fx .app-root.is-layout-classic:not(.is-mobile-layout) .app-log-side { tr
   transition: all 0.16s ease;
 }
 .app-root.is-layout-modern .app-subtab.is-active {
-  background: rgba(56, 189, 248, 0.14);
-  border-color: rgba(56, 189, 248, 0.5);
-  box-shadow: inset 0 -2px 0 #38bdf8, 0 0 12px rgba(56, 189, 248, 0.2);
-  color: #f0f9ff;
+  background: rgb(var(--wui-hud-primary) / 0.14);
+  border-color: rgb(var(--wui-hud-primary) / 0.5);
+  box-shadow: inset 0 -2px 0 rgb(var(--wui-hud-primary)), 0 0 12px rgb(var(--wui-hud-primary) / 0.2);
+  color: rgb(var(--wui-hud-text));
 }
 
 /* 悬赏卡片（.app-ano-card）军事战术简报感 */
 .app-root.is-layout-modern .app-ano-card {
   position: relative;
-  background: linear-gradient(180deg, rgba(14, 20, 32, 0.96), rgba(8, 11, 19, 0.96));
-  border: 1px solid rgba(56, 189, 248, 0.2);
-  border-left: 3px solid #38bdf8;
+  background: linear-gradient(180deg, rgb(var(--wui-hud-surface) / 0.96), rgb(var(--wui-hud-surface-deep) / 0.96));
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.2);
+  border-left: 3px solid rgb(var(--wui-hud-primary));
   border-radius: 0;
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
   transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .app-root.is-layout-modern .app-ano-card:hover {
-  border-color: rgba(56, 189, 248, 0.5);
-  border-left-color: #38bdf8;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6), 0 0 16px rgba(56, 189, 248, 0.2);
+  border-color: rgb(var(--wui-hud-primary) / 0.5);
+  border-left-color: rgb(var(--wui-hud-primary));
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6), 0 0 16px rgb(var(--wui-hud-primary) / 0.2);
   transform: translateY(-1px);
 }
 .app-root.is-layout-modern .app-ano-name {
-  color: #f0f9ff;
+  color: rgb(var(--wui-hud-text));
   font-weight: 600;
   letter-spacing: 0.04em;
 }
 
 /* 矿带卡片网格 */
 .app-root.is-layout-modern .app-belt-head {
-  background: linear-gradient(180deg, rgba(14, 20, 32, 0.95), rgba(8, 11, 19, 0.95));
-  border: 1px solid rgba(56, 189, 248, 0.2);
+  background: linear-gradient(180deg, rgb(var(--wui-hud-surface) / 0.95), rgb(var(--wui-hud-surface-deep) / 0.95));
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.2);
   border-radius: 0;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 .app-root.is-layout-modern .app-belt-name {
-  color: #38bdf8;
+  color: rgb(var(--wui-hud-primary));
   font-weight: 600;
 }
 
@@ -13842,13 +13863,13 @@ body.no-fx .app-root.is-layout-modern .app-fit-slot-icon {
 }
 .app-root.is-layout-modern .app-fit-shipinfo td {
   padding: 4px 8px;
-  border-bottom: 1px solid rgba(56, 189, 248, 0.08);
+  border-bottom: 1px solid rgb(var(--wui-hud-primary) / 0.08);
 }
 .app-root.is-layout-modern .app-fit-shipinfo tr:hover td {
-  background: rgba(56, 189, 248, 0.06);
+  background: rgb(var(--wui-hud-primary) / 0.06);
 }
 .app-root.is-layout-modern .app-fit-stage svg {
-  filter: drop-shadow(0 0 12px rgba(56, 189, 248, 0.35));
+  filter: drop-shadow(0 0 12px rgb(var(--wui-hud-primary) / 0.35));
 }
 
 /* ═════ 星图与出港雷达深入 ═════ */
@@ -13857,16 +13878,16 @@ body.no-fx .app-root.is-layout-modern .app-fit-slot-icon {
   gap: 10px;
 }
 .app-root.is-layout-modern .app-ano-card.is-dangerous {
-  border-left-color: #f59e0b;
+  border-left-color: rgb(var(--wui-hud-warn));
 }
 .app-root.is-layout-modern .app-ano-card.is-deadly {
-  border-left-color: #ef4444;
+  border-left-color: rgb(var(--wui-hud-danger));
 }
 
 /* ═════ 侧边活动栏（Activity Bar） ═════ */
 .app-root.is-layout-modern aside.app-activitybar {
-  background: rgba(5, 8, 14, 0.95);
-  border-right: 1px solid rgba(56, 189, 248, 0.25);
+  background: rgb(var(--wui-hud-surface-deep) / 0.95);
+  border-right: 1px solid rgb(var(--wui-hud-primary) / 0.25);
   box-shadow: 4px 0 20px rgba(0, 0, 0, 0.5);
 }
 .app-root.is-layout-modern .app-activitybar-item {
@@ -13874,13 +13895,13 @@ body.no-fx .app-root.is-layout-modern .app-fit-slot-icon {
   border-radius: 0;
 }
 .app-root.is-layout-modern .app-activitybar-item:hover {
-  background: rgba(56, 189, 248, 0.12);
-  color: #38bdf8;
+  background: rgb(var(--wui-hud-primary) / 0.12);
+  color: rgb(var(--wui-hud-primary));
 }
 .app-root.is-layout-modern .app-activitybar-item.is-active {
-  background: rgba(56, 189, 248, 0.2);
-  color: #f0f9ff;
-  box-shadow: inset 2px 0 0 #38bdf8;
+  background: rgb(var(--wui-hud-primary) / 0.2);
+  color: rgb(var(--wui-hud-text));
+  box-shadow: inset 2px 0 0 rgb(var(--wui-hud-primary));
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
@@ -13893,15 +13914,15 @@ body.no-fx .app-root.is-layout-modern .app-fit-slot-icon {
   height: 5px;
 }
 .app-root.is-layout-modern ::-webkit-scrollbar-track {
-  background: rgba(7, 10, 18, 0.65);
+  background: rgb(var(--wui-hud-surface-deep) / 0.65);
 }
 .app-root.is-layout-modern ::-webkit-scrollbar-thumb {
-  background: rgba(56, 189, 248, 0.28);
+  background: rgb(var(--wui-hud-primary) / 0.28);
   border-radius: 0;
 }
 .app-root.is-layout-modern ::-webkit-scrollbar-thumb:hover {
-  background: rgba(56, 189, 248, 0.55);
-  box-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
+  background: rgb(var(--wui-hud-primary) / 0.55);
+  box-shadow: 0 0 8px rgb(var(--wui-hud-primary) / 0.4);
 }
 
 /* 2. 全息弹窗与抽屉（Modals & Overlays） */
@@ -13909,16 +13930,16 @@ body.no-fx .app-root.is-layout-modern .app-fit-slot-icon {
 .app-root.is-layout-cosmic .app-modal,
 .app-root.is-layout-modern .app-mkt-confirm,
 .app-root.is-layout-modern .app-shipwin {
-  background: linear-gradient(180deg, rgba(14, 20, 32, 0.98), rgba(7, 11, 19, 0.98));
-  border: 1px solid rgba(56, 189, 248, 0.35);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.75), 0 0 24px rgba(56, 189, 248, 0.15);
+  background: linear-gradient(180deg, rgb(var(--wui-hud-surface) / 0.98), rgb(var(--wui-hud-surface-deep) / 0.98));
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.35);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.75), 0 0 24px rgb(var(--wui-hud-primary) / 0.15);
   border-radius: 0;
   backdrop-filter: blur(16px);
 }
 .app-root.is-layout-modern .app-modal-head,
 .app-root.is-layout-modern .app-mkt-confirm-title {
-  border-bottom: 1px solid rgba(56, 189, 248, 0.2);
-  color: #38bdf8;
+  border-bottom: 1px solid rgb(var(--wui-hud-primary) / 0.2);
+  color: rgb(var(--wui-hud-primary));
   font-weight: 700;
   letter-spacing: 0.06em;
 }
@@ -13932,37 +13953,42 @@ body.no-fx .app-root.is-layout-modern .app-fit-slot-icon {
 }
 .app-root.is-layout-modern .app-btn:hover:not(:disabled),
 .app-root.is-layout-cosmic .app-btn:hover:not(:disabled) {
-  border-color: rgba(56, 189, 248, 0.6);
-  box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+  border-color: rgb(var(--wui-hud-primary) / 0.6);
+  box-shadow: 0 0 12px rgb(var(--wui-hud-primary) / 0.25);
   transform: translateY(-1px);
 }
 .app-root.is-layout-modern .app-btn:active:not(:disabled) {
   transform: scale(0.97);
 }
+/* **选中态 = 克制的实色描边 + 淡色底**（2026-11-02 船长报障「选中科幻未来这个按钮会变成彩虹流动的颜色」）：
+   原先选中态是「135° 两段渐变 + 外发光 + 内发光 + 文字光晕」四层叠加，在部分显卡/色彩配置下会渲染色带，
+   且与主题断联。现统一改为**令牌色平涂**（无渐变、无光晕、无文字阴影），六套主题各按自己的主色走。 */
 .app-root.is-layout-modern .app-btn.is-primary,
 .app-root.is-layout-cosmic .app-btn.is-primary {
-  background: linear-gradient(180deg, rgba(14, 165, 233, 0.3), rgba(2, 132, 199, 0.2));
-  border-color: rgba(56, 189, 248, 0.8);
-  box-shadow: 0 0 14px rgba(56, 189, 248, 0.3), inset 0 0 8px rgba(56, 189, 248, 0.2);
+  background: rgb(var(--wui-hud-primary) / 0.16) !important;
+  border-color: rgb(var(--wui-hud-primary) / 0.85) !important;
+  color: rgb(var(--wui-hud-primary)) !important;
+  text-shadow: none;
+  box-shadow: inset 0 0 0 1px rgb(var(--wui-hud-primary) / 0.12);
 }
 .app-root.is-layout-modern .app-btn.is-primary:hover:not(:disabled),
 .app-root.is-layout-cosmic .app-btn.is-primary:hover:not(:disabled) {
-  background: linear-gradient(180deg, rgba(14, 165, 233, 0.45), rgba(2, 132, 199, 0.35));
-  box-shadow: 0 0 20px rgba(56, 189, 248, 0.5), inset 0 0 12px rgba(56, 189, 248, 0.3);
+  background: rgb(var(--wui-hud-primary) / 0.26) !important;
+  box-shadow: inset 0 0 0 1px rgb(var(--wui-hud-primary) / 0.2);
 }
 
 /* 4. 战舰装配台（FitPage）高/中/低槽位航电色标与全息刻度 */
 .app-root.is-layout-modern .app-fit-rack[data-slot-kind="high"] .app-fit-rack-title {
-  color: #fb923c;
-  text-shadow: 0 0 10px rgba(251, 146, 60, 0.35);
+  color: rgb(var(--wui-hud-warn-soft));
+  text-shadow: 0 0 10px rgb(var(--wui-hud-warn-soft) / 0.35);
 }
 .app-root.is-layout-modern .app-fit-rack[data-slot-kind="mid"] .app-fit-rack-title {
-  color: #38bdf8;
-  text-shadow: 0 0 10px rgba(56, 189, 248, 0.35);
+  color: rgb(var(--wui-hud-primary));
+  text-shadow: 0 0 10px rgb(var(--wui-hud-primary) / 0.35);
 }
 .app-root.is-layout-modern .app-fit-rack[data-slot-kind="low"] .app-fit-rack-title {
-  color: #facc15;
-  text-shadow: 0 0 10px rgba(250, 204, 21, 0.35);
+  color: rgb(var(--wui-hud-gold));
+  text-shadow: 0 0 10px rgb(var(--wui-hud-gold) / 0.35);
 }
 
 /* 装配卡片全息角标与质感 */
@@ -13977,7 +14003,7 @@ body.no-fx .app-root.is-layout-modern .app-fit-slot-icon {
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.6), transparent);
+  background: linear-gradient(90deg, transparent, rgb(var(--wui-hud-primary) / 0.6), transparent);
   opacity: 0;
   transition: opacity 0.2s ease;
 }
@@ -13987,29 +14013,29 @@ body.no-fx .app-root.is-layout-modern .app-fit-slot-icon {
 
 /* 5. 战术星图态势卡片与出港跃迁 */
 .app-root.is-layout-modern .app-map-overview {
-  background: linear-gradient(180deg, rgba(14, 20, 32, 0.95), rgba(7, 10, 18, 0.95));
-  border: 1px solid rgba(56, 189, 248, 0.22);
+  background: linear-gradient(180deg, rgb(var(--wui-hud-surface) / 0.95), rgb(var(--wui-hud-surface-deep) / 0.95));
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.22);
   border-radius: 0;
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
 }
 .app-root.is-layout-modern .app-map-sec-title {
-  color: #38bdf8;
+  color: rgb(var(--wui-hud-primary));
   font-weight: 700;
   letter-spacing: 0.05em;
-  text-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+  text-shadow: 0 0 10px rgb(var(--wui-hud-primary) / 0.3);
 }
 
 /* 6. 日志坞浮层（Log Dock）全息通讯黑匣子风格 */
 .app-root.is-layout-modern .app-log-dock {
-  background: linear-gradient(180deg, rgba(9, 13, 22, 0.96), rgba(5, 7, 13, 0.98));
-  border: 1px solid rgba(56, 189, 248, 0.3);
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), 0 0 16px rgba(56, 189, 248, 0.15);
+  background: linear-gradient(180deg, rgb(var(--wui-hud-surface-soft) / 0.96), rgb(var(--wui-hud-surface-deep) / 0.98));
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.3);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), 0 0 16px rgb(var(--wui-hud-primary) / 0.15);
   backdrop-filter: blur(12px);
   border-radius: 0;
 }
 .app-root.is-layout-modern .app-log-head {
-  border-bottom: 1px solid rgba(56, 189, 248, 0.2);
-  color: #38bdf8;
+  border-bottom: 1px solid rgb(var(--wui-hud-primary) / 0.2);
+  color: rgb(var(--wui-hud-primary));
   font-family: monospace;
   letter-spacing: 0.08em;
 }
@@ -14032,26 +14058,26 @@ body.no-fx .app-root.is-layout-modern .app-fit-slot-icon::after {
  * 8. EVE 风格空间站市场终端（MarketPage）
  * ═══════════════════════════════════════════════════════════════════════════════ */
 .app-root.is-layout-modern .app-mkt-row {
-  border-bottom: 1px solid rgba(56, 189, 248, 0.08);
+  border-bottom: 1px solid rgb(var(--wui-hud-primary) / 0.08);
   transition: all 0.16s ease;
   position: relative;
 }
 .app-root.is-layout-modern .app-mkt-row:hover {
-  background: rgba(56, 189, 248, 0.06);
-  border-bottom-color: rgba(56, 189, 248, 0.3);
-  box-shadow: inset 2px 0 0 #38bdf8;
+  background: rgb(var(--wui-hud-primary) / 0.06);
+  border-bottom-color: rgb(var(--wui-hud-primary) / 0.3);
+  box-shadow: inset 2px 0 0 rgb(var(--wui-hud-primary));
 }
 .app-root.is-layout-modern .app-mkt-quote {
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
 }
 .app-root.is-layout-modern .app-trend-up {
-  color: #10b981;
-  text-shadow: 0 0 6px rgba(16, 185, 129, 0.4);
+  color: rgb(var(--wui-hud-ok));
+  text-shadow: 0 0 6px rgb(var(--wui-hud-ok) / 0.4);
 }
 .app-root.is-layout-modern .app-trend-down {
-  color: #f59e0b;
-  text-shadow: 0 0 6px rgba(245, 158, 11, 0.4);
+  color: rgb(var(--wui-hud-warn));
+  text-shadow: 0 0 6px rgb(var(--wui-hud-warn) / 0.4);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
@@ -14064,25 +14090,25 @@ body.no-fx .app-root.is-layout-modern .app-fit-slot-icon::after {
   transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .app-root.is-layout-modern .app-tasktab:hover {
-  background: rgba(56, 189, 248, 0.1);
-  color: #38bdf8;
+  background: rgb(var(--wui-hud-primary) / 0.1);
+  color: rgb(var(--wui-hud-primary));
 }
 .app-root.is-layout-modern .app-tasktab.is-active {
-  background: rgba(56, 189, 248, 0.18);
-  border-color: rgba(56, 189, 248, 0.5);
-  box-shadow: inset 0 -2px 0 #38bdf8, 0 0 14px rgba(56, 189, 248, 0.25);
-  color: #f0f9ff;
+  background: rgb(var(--wui-hud-primary) / 0.18);
+  border-color: rgb(var(--wui-hud-primary) / 0.5);
+  box-shadow: inset 0 -2px 0 rgb(var(--wui-hud-primary)), 0 0 14px rgb(var(--wui-hud-primary) / 0.25);
+  color: rgb(var(--wui-hud-text));
 }
 .app-root.is-layout-modern .app-inv-row {
-  border: 1px solid rgba(56, 189, 248, 0.12);
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.12);
   border-radius: 0;
-  background: rgba(11, 16, 26, 0.7);
+  background: rgb(var(--wui-hud-surface-soft) / 0.7);
   transition: all 0.16s ease;
 }
 .app-root.is-layout-modern .app-inv-row:hover {
-  border-color: rgba(56, 189, 248, 0.35);
-  background: rgba(14, 20, 32, 0.85);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), 0 0 10px rgba(56, 189, 248, 0.15);
+  border-color: rgb(var(--wui-hud-primary) / 0.35);
+  background: rgb(var(--wui-hud-surface) / 0.85);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), 0 0 10px rgb(var(--wui-hud-primary) / 0.15);
   transform: translateY(-1px);
 }
 
@@ -14090,33 +14116,33 @@ body.no-fx .app-root.is-layout-modern .app-fit-slot-icon::after {
  * 10. Homeworld 风格战术星图态势感知（StarMap SVG）
  * ═══════════════════════════════════════════════════════════════════════════════ */
 .app-root.is-layout-modern .app-starmap-wrap {
-  background: radial-gradient(circle at 50% 50%, rgba(14, 165, 233, 0.05), transparent 70%), rgb(var(--wui-bg-deep));
+  background: radial-gradient(circle at 50% 50%, rgb(var(--wui-hud-primary-hover) / 0.05), transparent 70%), rgb(var(--wui-bg-deep));
 }
 .app-root.is-layout-modern .app-map-node {
   cursor: pointer;
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), filter 0.2s ease;
 }
 .app-root.is-layout-modern .app-map-node:hover circle {
-  filter: drop-shadow(0 0 8px #38bdf8);
+  filter: drop-shadow(0 0 8px rgb(var(--wui-hud-primary)));
 }
 .app-root.is-layout-modern .app-map-edge {
-  stroke: rgba(56, 189, 248, 0.3);
+  stroke: rgb(var(--wui-hud-primary) / 0.3);
   stroke-dasharray: 4 2;
   transition: stroke 0.2s ease;
 }
 .app-root.is-layout-modern .app-map-edge:hover {
-  stroke: #38bdf8;
-  filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.8));
+  stroke: rgb(var(--wui-hud-primary));
+  filter: drop-shadow(0 0 4px rgb(var(--wui-hud-primary) / 0.8));
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
  * 11. 能量流动与战术微动效
  * ═══════════════════════════════════════════════════════════════════════════════ */
 .app-root.is-layout-modern .app-fit-cpustrip-track i {
-  background: linear-gradient(90deg, #38bdf8, #0ea5e9, #38bdf8);
+  background: linear-gradient(90deg, rgb(var(--wui-hud-primary)), rgb(var(--wui-hud-primary-hover)), rgb(var(--wui-hud-primary)));
   background-size: 200% 100%;
   animation: hud-energy-flow 4s linear infinite;
-  box-shadow: 0 0 8px rgba(56, 189, 248, 0.5);
+  box-shadow: 0 0 8px rgb(var(--wui-hud-primary) / 0.5);
 }
 @keyframes hud-energy-flow {
   0% { background-position: 0% 0%; }
@@ -14143,17 +14169,17 @@ body.no-fx .app-root.is-layout-modern .app-fit-cpustrip-track i {
  * 12. Star Citizen / EVE 风格太空战役火控 HUD（BattleScreen）
  * ═══════════════════════════════════════════════════════════════════════════════ */
 .app-root.is-layout-modern .app-battle-screen {
-  background: radial-gradient(circle at 50% 50%, rgba(14, 165, 233, 0.06), transparent 75%), #05070c;
+  background: radial-gradient(circle at 50% 50%, rgb(var(--wui-hud-primary-hover) / 0.06), transparent 75%), rgb(var(--wui-hud-surface-deep));
 }
 .app-root.is-layout-modern .app-battle-screen-top {
-  background: linear-gradient(180deg, rgba(14, 20, 32, 0.98), rgba(7, 10, 18, 0.96));
-  border-bottom: 1px solid rgba(56, 189, 248, 0.3);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6), inset 0 -1px 0 rgba(56, 189, 248, 0.15);
+  background: linear-gradient(180deg, rgb(var(--wui-hud-surface) / 0.98), rgb(var(--wui-hud-surface-deep) / 0.96));
+  border-bottom: 1px solid rgb(var(--wui-hud-primary) / 0.3);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6), inset 0 -1px 0 rgb(var(--wui-hud-primary) / 0.15);
   backdrop-filter: blur(12px);
 }
 .app-root.is-layout-modern .app-bts-chip {
-  background: rgba(11, 16, 26, 0.85);
-  border: 1px solid rgba(56, 189, 248, 0.25);
+  background: rgb(var(--wui-hud-surface-soft) / 0.85);
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.25);
   border-radius: 0;
   font-variant-numeric: tabular-nums;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
@@ -14162,30 +14188,30 @@ body.no-fx .app-root.is-layout-modern .app-fit-cpustrip-track i {
   font-variant-numeric: tabular-nums;
 }
 .app-root.is-layout-modern .app-bts-repair {
-  background: rgba(11, 16, 26, 0.85);
-  border: 1px solid rgba(56, 189, 248, 0.25);
+  background: rgb(var(--wui-hud-surface-soft) / 0.85);
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.25);
   border-radius: 0;
 }
 .app-root.is-layout-modern .app-bts-repair i {
-  box-shadow: 0 0 8px #10b981;
+  box-shadow: 0 0 8px rgb(var(--wui-hud-ok));
 }
 .app-root.is-layout-modern .app-bts-repair.is-down i {
-  box-shadow: 0 0 8px #ef4444;
+  box-shadow: 0 0 8px rgb(var(--wui-hud-danger));
 }
 
 /* 战术火控距离标尺控制台 */
 .app-root.is-layout-modern .app-bts-axisTrack {
-  border: 1px solid rgba(56, 189, 248, 0.25);
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.25);
   border-radius: 0;
-  background: rgba(8, 11, 19, 0.9);
+  background: rgb(var(--wui-hud-surface-deep) / 0.9);
   box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.6);
 }
 .app-root.is-layout-modern .app-bts-cur-chip {
-  background: rgba(56, 189, 248, 0.95);
-  color: #030712;
+  background: rgb(var(--wui-hud-primary) / 0.95);
+  color: rgb(var(--wui-hud-surface-deep));
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  box-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+  box-shadow: 0 0 10px rgb(var(--wui-hud-primary) / 0.6);
   border-radius: 0;
 }
 .app-root.is-layout-modern .app-battle-tacs .app-btn {
@@ -14198,28 +14224,28 @@ body.no-fx .app-root.is-layout-modern .app-fit-cpustrip-track i {
  * 13. 我的舰队与星舰机库（ShipPage & Fleet Cards）
  * ═══════════════════════════════════════════════════════════════════════════════ */
 .app-root.is-layout-modern .app-ship-card.is-fleet {
-  background: linear-gradient(180deg, rgba(14, 20, 32, 0.95), rgba(8, 11, 19, 0.95));
-  border: 1px solid rgba(56, 189, 248, 0.2);
-  border-left: 3px solid #38bdf8;
+  background: linear-gradient(180deg, rgb(var(--wui-hud-surface) / 0.95), rgb(var(--wui-hud-surface-deep) / 0.95));
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.2);
+  border-left: 3px solid rgb(var(--wui-hud-primary));
   border-radius: 0;
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
   transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .app-root.is-layout-modern .app-ship-card.is-fleet:hover {
-  border-color: rgba(56, 189, 248, 0.45);
-  border-left-color: #38bdf8;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6), 0 0 16px rgba(56, 189, 248, 0.2);
+  border-color: rgb(var(--wui-hud-primary) / 0.45);
+  border-left-color: rgb(var(--wui-hud-primary));
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6), 0 0 16px rgb(var(--wui-hud-primary) / 0.2);
   transform: translateY(-1px);
 }
 .app-root.is-layout-modern .app-ship-card.is-fleet.is-piloted {
-  border-left-color: #10b981;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), inset 0 0 16px rgba(16, 185, 129, 0.06);
+  border-left-color: rgb(var(--wui-hud-ok));
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), inset 0 0 16px rgb(var(--wui-hud-ok) / 0.06);
 }
 .app-root.is-layout-modern .app-ship-card-name {
-  color: #f0f9ff;
+  color: rgb(var(--wui-hud-text));
   font-weight: 700;
   letter-spacing: 0.04em;
-  text-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+  text-shadow: 0 0 10px rgb(var(--wui-hud-primary) / 0.3);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
@@ -14227,25 +14253,25 @@ body.no-fx .app-root.is-layout-modern .app-fit-cpustrip-track i {
  * ═══════════════════════════════════════════════════════════════════════════════ */
 .app-root.is-layout-modern .app-skill-tree-canvas {
   background:
-    radial-gradient(1000px 600px at 50% 50%, rgba(56, 189, 248, 0.04), transparent 75%),
-    linear-gradient(rgba(56, 189, 248, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(56, 189, 248, 0.02) 1px, transparent 1px);
+    radial-gradient(1000px 600px at 50% 50%, rgb(var(--wui-hud-primary) / 0.04), transparent 75%),
+    linear-gradient(rgb(var(--wui-hud-primary) / 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(var(--wui-hud-primary) / 0.02) 1px, transparent 1px);
   background-size: 100% 100%, 32px 32px, 32px 32px;
 }
 .app-root.is-layout-modern .app-skill-hex.is-training polygon {
-  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.8));
+  filter: drop-shadow(0 0 8px rgb(var(--wui-hud-primary) / 0.8));
   animation: skill-training-glow 3s ease-in-out infinite alternate;
 }
 @keyframes skill-training-glow {
-  0% { filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.5)); }
-  100% { filter: drop-shadow(0 0 12px rgba(56, 189, 248, 0.9)); }
+  0% { filter: drop-shadow(0 0 4px rgb(var(--wui-hud-primary) / 0.5)); }
+  100% { filter: drop-shadow(0 0 12px rgb(var(--wui-hud-primary) / 0.9)); }
 }
 .app-root.is-layout-modern .app-skill-hex.is-max polygon {
-  filter: drop-shadow(0 0 6px rgba(250, 204, 21, 0.5));
+  filter: drop-shadow(0 0 6px rgb(var(--wui-hud-gold) / 0.5));
 }
 .app-root.is-layout-modern .app-queue-block {
-  background: linear-gradient(180deg, rgba(14, 20, 32, 0.95), rgba(7, 10, 18, 0.95));
-  border: 1px solid rgba(56, 189, 248, 0.22);
+  background: linear-gradient(180deg, rgb(var(--wui-hud-surface) / 0.95), rgb(var(--wui-hud-surface-deep) / 0.95));
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.22);
   border-radius: 0;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
 }
@@ -14274,7 +14300,7 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
 .app-root.is-layout-modern :focus-visible {
   outline: 2px solid var(--hud-primary) !important;
   outline-offset: 2px !important;
-  box-shadow: 0 0 10px rgba(var(--hud-primary-rgb), 0.6) !important;
+  box-shadow: 0 0 10px rgb(var(--wui-hud-primary) / 0.6) !important;
 }
 
 /* ── 规范化表单输入控件 (Inputs & Selects) ── */
@@ -14282,7 +14308,7 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
 .app-root.is-layout-modern input[type="number"],
 .app-root.is-layout-modern input[type="search"],
 .app-root.is-layout-modern select {
-  background: rgba(9, 13, 22, 0.85);
+  background: rgb(var(--wui-hud-surface-soft) / 0.85);
   border: 1px solid var(--hud-border-mid);
   border-radius: var(--hud-radius-sm);
   color: var(--hud-text-main);
@@ -14320,18 +14346,18 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
 /* ── 顶栏与外壳仪表舱 ── */
 .app-root.is-layout-modern .app-pilot {
   padding: 3px 10px;
-  background: rgba(56, 189, 248, 0.12);
-  border: 1px solid rgba(56, 189, 248, 0.45);
+  background: rgb(var(--wui-hud-primary) / 0.12);
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.45);
   clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%);
-  color: #38bdf8;
+  color: rgb(var(--wui-hud-primary));
   font-weight: 600;
   letter-spacing: 0.08em;
-  text-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
+  text-shadow: 0 0 8px rgb(var(--wui-hud-primary) / 0.4);
 }
 .app-root.is-layout-modern .app-wallet,
 .app-root.is-layout-modern .app-standing {
-  background: rgba(11, 16, 26, 0.88);
-  border: 1px solid rgba(56, 189, 248, 0.25);
+  background: rgb(var(--wui-hud-surface-soft) / 0.88);
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.25);
   padding: 3px 10px;
   clip-path: polygon(6px 0, 100% 0, 100% 100%, 0 100%, 0 6px);
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
@@ -14339,9 +14365,9 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
 
 /* ── 底部战术主导航栏 ── */
 .app-root.is-layout-modern nav.app-nav-side {
-  border-top: 1px solid rgba(56, 189, 248, 0.35);
-  background: linear-gradient(0deg, rgba(5, 7, 13, 0.98), rgba(12, 17, 28, 0.97));
-  box-shadow: 0 -6px 25px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(56, 189, 248, 0.15);
+  border-top: 1px solid rgb(var(--wui-hud-primary) / 0.35);
+  background: linear-gradient(0deg, rgb(var(--wui-hud-surface-deep) / 0.98), rgb(var(--wui-hud-surface-soft) / 0.97));
+  box-shadow: 0 -6px 25px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgb(var(--wui-hud-primary) / 0.15);
 }
 .app-root.is-layout-modern .app-nav-item {
   clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px)) !important;
@@ -14349,45 +14375,45 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
   position: relative;
 }
 .app-root.is-layout-modern .app-nav-item:hover {
-  background: rgba(56, 189, 248, 0.12);
-  border-color: rgba(56, 189, 248, 0.45);
+  background: rgb(var(--wui-hud-primary) / 0.12);
+  border-color: rgb(var(--wui-hud-primary) / 0.45);
   transform: translateY(-1px);
 }
 .app-root.is-layout-modern .app-nav-item:active {
   transform: scale(0.96);
 }
 .app-root.is-layout-modern .app-nav-item.is-active {
-  background: rgba(56, 189, 248, 0.2);
-  border-color: rgba(56, 189, 248, 0.7);
-  box-shadow: inset 0 -3px 0 #38bdf8, 0 0 20px rgba(56, 189, 248, 0.38);
-  color: #f0f9ff;
+  background: rgb(var(--wui-hud-primary) / 0.2);
+  border-color: rgb(var(--wui-hud-primary) / 0.7);
+  box-shadow: inset 0 -3px 0 rgb(var(--wui-hud-primary)), 0 0 20px rgb(var(--wui-hud-primary) / 0.38);
+  color: rgb(var(--wui-hud-text));
 }
 .app-root.is-layout-modern .app-nav-item.is-featured {
-  background: linear-gradient(180deg, rgba(14, 165, 233, 0.35), rgba(2, 132, 199, 0.22));
-  border: 1px solid rgba(56, 189, 248, 0.85);
+  background: linear-gradient(180deg, rgb(var(--wui-hud-primary-hover) / 0.35), rgb(var(--wui-hud-primary-active) / 0.22));
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.85);
   clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px)) !important;
-  box-shadow: 0 0 24px rgba(56, 189, 248, 0.35), inset 0 0 14px rgba(56, 189, 248, 0.28);
+  box-shadow: 0 0 24px rgb(var(--wui-hud-primary) / 0.35), inset 0 0 14px rgb(var(--wui-hud-primary) / 0.28);
 }
 
 /* ── 左侧活动运转栏 ── */
 .app-root.is-layout-modern aside.app-activitybar {
-  border-right: 1px solid rgba(56, 189, 248, 0.25);
-  background: rgba(8, 12, 20, 0.95);
+  border-right: 1px solid rgb(var(--wui-hud-primary) / 0.25);
+  background: rgb(var(--wui-hud-surface-deep) / 0.95);
   box-shadow: 2px 0 15px rgba(0, 0, 0, 0.5);
 }
 .app-root.is-layout-modern .app-activitybar-item {
   clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px)) !important;
-  border: 1px solid rgba(56, 189, 248, 0.18);
-  background: rgba(14, 20, 32, 0.75);
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.18);
+  background: rgb(var(--wui-hud-surface) / 0.75);
 }
 .app-root.is-layout-modern .app-activitybar-item:hover {
-  border-color: rgba(56, 189, 248, 0.45);
-  background: rgba(56, 189, 248, 0.12);
+  border-color: rgb(var(--wui-hud-primary) / 0.45);
+  background: rgb(var(--wui-hud-primary) / 0.12);
 }
 .app-root.is-layout-modern .app-activitybar-item.is-active {
-  border-left: 3px solid #38bdf8;
-  background: rgba(56, 189, 248, 0.18);
-  box-shadow: inset 0 0 10px rgba(56, 189, 248, 0.15);
+  border-left: 3px solid rgb(var(--wui-hud-primary));
+  background: rgb(var(--wui-hud-primary) / 0.18);
+  box-shadow: inset 0 0 10px rgb(var(--wui-hud-primary) / 0.15);
 }
 
 /* ── 面板容器（.wui-panel）：克制耐看型 8px 对角微切角 ── */
@@ -14400,15 +14426,15 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
     8px 100%,
     0 calc(100% - 8px)
   );
-  border: 1px solid rgba(56, 189, 248, 0.28);
-  background: rgba(10, 16, 26, 0.94);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(56, 189, 248, 0.08);
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.28);
+  background: rgb(var(--wui-hud-surface-soft) / 0.94);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgb(var(--wui-hud-primary) / 0.08);
   position: relative;
 }
 .app-root.is-layout-modern .wui-panel-head {
-  border-bottom: 1px solid rgba(56, 189, 248, 0.22);
-  background: linear-gradient(90deg, rgba(56, 189, 248, 0.12) 0%, transparent 80%);
-  border-left: 3px solid #38bdf8;
+  border-bottom: 1px solid rgb(var(--wui-hud-primary) / 0.22);
+  background: linear-gradient(90deg, rgb(var(--wui-hud-primary) / 0.12) 0%, transparent 80%);
+  border-left: 3px solid rgb(var(--wui-hud-primary));
   padding-left: 8px;
 }
 
@@ -14424,20 +14450,20 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
     10px 100%,
     0 calc(100% - 10px)
   );
-  border: 1px solid rgba(56, 189, 248, 0.45);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.85), 0 0 24px rgba(56, 189, 248, 0.15), inset 0 0 0 1px rgba(56, 189, 248, 0.1);
-  background: linear-gradient(180deg, rgba(14, 20, 32, 0.98), rgba(7, 10, 18, 0.98));
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.45);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.85), 0 0 24px rgb(var(--wui-hud-primary) / 0.15), inset 0 0 0 1px rgb(var(--wui-hud-primary) / 0.1);
+  background: linear-gradient(180deg, rgb(var(--wui-hud-surface) / 0.98), rgb(var(--wui-hud-surface-deep) / 0.98));
 }
 .app-root.is-layout-modern .app-modal-head {
-  border-bottom: 1px solid rgba(56, 189, 248, 0.3);
-  background: linear-gradient(90deg, rgba(56, 189, 248, 0.14) 0%, transparent 80%);
-  border-left: 3px solid #38bdf8;
+  border-bottom: 1px solid rgb(var(--wui-hud-primary) / 0.3);
+  background: linear-gradient(90deg, rgb(var(--wui-hud-primary) / 0.14) 0%, transparent 80%);
+  border-left: 3px solid rgb(var(--wui-hud-primary));
 }
 .app-root.is-layout-modern .app-settings-row,
 .app-root.is-layout-cosmic .app-settings-row {
-  border: 1px solid rgba(56, 189, 248, 0.25);
-  background: rgba(10, 16, 26, 0.8);
-  box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.05);
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.25);
+  background: rgb(var(--wui-hud-surface-soft) / 0.8);
+  box-shadow: inset 0 0 0 1px rgb(var(--wui-hud-primary) / 0.05);
 }
 .app-root.is-layout-modern .app-settings-val,
 .app-root.is-layout-cosmic .app-settings-val {
@@ -14449,9 +14475,9 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
     6px 100%,
     0 calc(100% - 6px)
   );
-  border: 1px solid rgba(56, 189, 248, 0.45);
-  background: rgba(56, 189, 248, 0.12);
-  color: #38bdf8;
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.45);
+  background: rgb(var(--wui-hud-primary) / 0.12);
+  color: rgb(var(--wui-hud-primary));
   font-weight: 600;
   letter-spacing: 0.05em;
 }
@@ -14468,31 +14494,31 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
   width: 12px;
   height: 20px;
   margin-top: -6px;
-  background: #38bdf8;
-  border: 1px solid #ffffff;
-  box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+  background: rgb(var(--wui-hud-primary));
+  border: 1px solid rgb(var(--wui-hud-ink));
+  box-shadow: 0 0 8px rgb(var(--wui-hud-primary) / 0.6);
   cursor: pointer;
   border-radius: 0;
 }
 .app-root.is-layout-modern input[type="range"]::-webkit-slider-runnable-track {
   height: 8px;
-  background: rgba(14, 23, 38, 0.95);
-  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: rgb(var(--wui-hud-surface) / 0.95);
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.35);
   border-radius: 0;
 }
 .app-root.is-layout-modern input[type="range"]::-moz-range-thumb {
   width: 12px;
   height: 20px;
-  background: #38bdf8;
-  border: 1px solid #ffffff;
-  box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+  background: rgb(var(--wui-hud-primary));
+  border: 1px solid rgb(var(--wui-hud-ink));
+  box-shadow: 0 0 8px rgb(var(--wui-hud-primary) / 0.6);
   cursor: pointer;
   border-radius: 0;
 }
 .app-root.is-layout-modern input[type="range"]::-moz-range-track {
   height: 8px;
-  background: rgba(14, 23, 38, 0.95);
-  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: rgb(var(--wui-hud-surface) / 0.95);
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.35);
   border-radius: 0;
 }
 
@@ -14531,9 +14557,9 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
 
 .app-root.is-layout-modern button:not(.app-nav-item):not(.app-activitybar-item):not(.app-fit-slot-icon):not(.app-battle-float),
 .app-root.is-layout-modern .app-btn {
-  border: 1px solid rgba(56, 189, 248, 0.35);
-  background: rgba(14, 20, 32, 0.88);
-  color: #e0f2fe;
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.35);
+  background: rgb(var(--wui-hud-surface) / 0.88);
+  color: rgb(var(--wui-hud-text-soft));
   font-weight: 600;
   letter-spacing: 0.04em;
   transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
@@ -14542,10 +14568,11 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
 
 .app-root.is-layout-modern button:not(.app-nav-item):not(.app-activitybar-item):not(.app-fit-slot-icon):hover:not(:disabled),
 .app-root.is-layout-modern .app-btn:hover:not(:disabled) {
-  border-color: #38bdf8;
-  background: rgba(56, 189, 248, 0.2);
-  box-shadow: 0 0 10px rgba(56, 189, 248, 0.35);
-  color: #ffffff;
+  border-color: rgb(var(--wui-hud-primary));
+  background: rgb(var(--wui-hud-primary) / 0.2);
+  box-shadow: 0 0 10px rgb(var(--wui-hud-primary) / 0.35);
+  /* ⚠ 悬停字色用主题主色而不是白：亮白配色下悬停底是"浅面 + 20% 主色"，白字会看不见 */
+  color: rgb(var(--wui-hud-primary));
 }
 
 .app-root.is-layout-modern button:active:not(:disabled),
@@ -14554,6 +14581,8 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
   transform: scale(0.97);
 }
 
+/* **选中态（全局统一）**：见上方「克制实色描边」注释——无渐变、无光晕，只按主题主色平涂。
+   同一批覆盖 `.is-active` / `aria-pressed` / `aria-selected`（页签、弹药档位、筛选等共用）。 */
 .app-root.is-layout-modern button.is-primary,
 .app-root.is-layout-modern .app-btn.is-primary,
 .app-root.is-layout-modern button.is-active,
@@ -14561,32 +14590,32 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
 .app-root.is-layout-modern button[aria-pressed="true"],
 .app-root.is-layout-modern button[aria-selected="true"],
 .app-root.is-layout-modern .app-fit-ammotier-opt.is-active {
-  background: linear-gradient(135deg, rgba(56, 189, 248, 0.35) 0%, rgba(14, 165, 233, 0.55) 100%) !important;
-  border-color: #38bdf8 !important;
-  color: #ffffff !important;
-  text-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
-  box-shadow: 0 0 12px rgba(56, 189, 248, 0.32), inset 0 0 8px rgba(56, 189, 248, 0.2);
+  background: rgb(var(--wui-hud-primary) / 0.16) !important;
+  border-color: rgb(var(--wui-hud-primary) / 0.85) !important;
+  color: rgb(var(--wui-hud-primary)) !important;
+  text-shadow: none;
+  box-shadow: inset 0 0 0 1px rgb(var(--wui-hud-primary) / 0.12) !important;
 }
 
 .app-root.is-layout-modern button.is-primary:hover:not(:disabled),
 .app-root.is-layout-modern .app-btn.is-primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, rgba(56, 189, 248, 0.55) 0%, rgba(14, 165, 233, 0.75) 100%) !important;
-  box-shadow: 0 0 16px rgba(56, 189, 248, 0.5);
+  background: rgb(var(--wui-hud-primary) / 0.26) !important;
+  box-shadow: inset 0 0 0 1px rgb(var(--wui-hud-primary) / 0.2) !important;
 }
 /* ── 浮窗与卡片 ── */
 .app-root.is-layout-modern .app-winbox {
   clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
-  border: 1px solid rgba(56, 189, 248, 0.45);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 20px rgba(56, 189, 248, 0.15);
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.45);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 20px rgb(var(--wui-hud-primary) / 0.15);
 }
 .app-root.is-layout-modern .app-ship-card.is-fleet {
   clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
-  border: 1px solid rgba(56, 189, 248, 0.25);
-  background: rgba(11, 16, 26, 0.9);
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.25);
+  background: rgb(var(--wui-hud-surface-soft) / 0.9);
 }
 .app-root.is-layout-modern .app-ship-card.is-fleet:hover {
-  border-color: rgba(56, 189, 248, 0.6);
-  box-shadow: 0 0 15px rgba(56, 189, 248, 0.25);
+  border-color: rgb(var(--wui-hud-primary) / 0.6);
+  box-shadow: 0 0 15px rgb(var(--wui-hud-primary) / 0.25);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
@@ -14605,56 +14634,56 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
 }
 .app-root.is-layout-modern .hud-kpi-card,
 .app-root.is-layout-cosmic .hud-kpi-card {
-  background: rgba(10, 16, 26, 0.88);
-  border: 1px solid rgba(56, 189, 248, 0.25);
-  border-left: 3px solid #38bdf8;
+  background: rgb(var(--wui-hud-surface-soft) / 0.88);
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.25);
+  border-left: 3px solid rgb(var(--wui-hud-primary));
   clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
   padding: 6px 10px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(56, 189, 248, 0.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgb(var(--wui-hud-primary) / 0.05);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
 }
 .app-root.is-layout-modern .hud-kpi-label,
 .app-root.is-layout-cosmic .hud-kpi-label {
-  font-size: 10px;
+  font-size: var(--wui-fs-2xsd);
   font-weight: 700;
   letter-spacing: 0.1em;
-  color: rgba(56, 189, 248, 0.75);
+  color: rgb(var(--wui-hud-primary) / 0.75);
   text-transform: uppercase;
 }
 .app-root.is-layout-modern .hud-kpi-val,
 .app-root.is-layout-cosmic .hud-kpi-val {
-  font-size: 17px;
+  font-size: var(--wui-fs-xl);
   font-weight: 700;
   font-family: monospace, var(--wui-mono);
   font-variant-numeric: tabular-nums;
-  color: #f0f9ff;
+  color: rgb(var(--wui-hud-text));
   letter-spacing: 0.03em;
   line-height: 1.25;
   margin: 2px 0;
 }
 .app-root.is-layout-modern .hud-kpi-val.is-warn,
 .app-root.is-layout-cosmic .hud-kpi-val.is-warn {
-  color: #f59e0b;
+  color: rgb(var(--wui-hud-warn));
 }
 .app-root.is-layout-modern .hud-kpi-unit,
 .app-root.is-layout-cosmic .hud-kpi-unit {
-  font-size: 11px;
+  font-size: var(--wui-fs-xs);
   font-weight: normal;
-  color: #94a3b8;
+  color: rgb(var(--wui-hud-text-muted));
   margin-left: 3px;
 }
 .app-root.is-layout-modern .hud-kpi-sep,
 .app-root.is-layout-cosmic .hud-kpi-sep {
-  font-size: 12px;
-  color: rgba(56, 189, 248, 0.4);
+  font-size: var(--wui-fs-s);
+  color: rgb(var(--wui-hud-primary) / 0.4);
   margin: 0 3px;
 }
 .app-root.is-layout-modern .hud-kpi-sub,
 .app-root.is-layout-cosmic .hud-kpi-sub {
-  font-size: 10.5px;
-  color: #94a3b8;
+  font-size: var(--wui-fs-2xse);
+  color: rgb(var(--wui-hud-text-muted));
   display: flex;
   align-items: center;
   gap: 5px;
@@ -14664,9 +14693,9 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
 }
 .app-root.is-layout-modern .hud-kpi-tag,
 .app-root.is-layout-cosmic .hud-kpi-tag {
-  font-size: 9px;
+  font-size: var(--wui-fs-2xsb);
   letter-spacing: 0.08em;
-  color: rgba(56, 189, 248, 0.6);
+  color: rgb(var(--wui-hud-primary) / 0.6);
   font-family: monospace, var(--wui-mono);
 }
 
@@ -14676,13 +14705,13 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
   width: 6px;
   height: 6px;
   flex: 0 0 6px;
-  background: #38bdf8;
-  box-shadow: 0 0 6px #38bdf8;
+  background: rgb(var(--wui-hud-primary));
+  box-shadow: 0 0 6px rgb(var(--wui-hud-primary));
 }
 .app-root.is-layout-modern .hud-status-dot.is-live,
 .app-root.is-layout-cosmic .hud-status-dot.is-live {
-  background: #10b981;
-  box-shadow: 0 0 6px #10b981;
+  background: rgb(var(--wui-hud-ok));
+  box-shadow: 0 0 6px rgb(var(--wui-hud-ok));
 }
 
 /* 战术微型指标条 */
@@ -14690,15 +14719,15 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
 .app-root.is-layout-cosmic .hud-mini-progress {
   width: 100%;
   height: 4px;
-  background: rgba(56, 189, 248, 0.15);
-  border: 1px solid rgba(56, 189, 248, 0.25);
+  background: rgb(var(--wui-hud-primary) / 0.15);
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.25);
   overflow: hidden;
 }
 .app-root.is-layout-modern .hud-mini-fill,
 .app-root.is-layout-cosmic .hud-mini-fill {
   height: 100%;
-  background: #38bdf8;
-  box-shadow: 0 0 6px rgba(56, 189, 248, 0.6);
+  background: rgb(var(--wui-hud-primary));
+  box-shadow: 0 0 6px rgb(var(--wui-hud-primary) / 0.6);
 }
 
 /* ── 舰船列表（我的舰队）：高密度遥测监控行 ── */
@@ -14707,38 +14736,38 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
   padding: 6px 12px;
   margin-bottom: 6px;
   min-height: 48px;
-  background: rgba(11, 16, 26, 0.92);
-  border: 1px solid rgba(56, 189, 248, 0.22);
-  border-left: 3px solid rgba(56, 189, 248, 0.4);
+  background: rgb(var(--wui-hud-surface-soft) / 0.92);
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.22);
+  border-left: 3px solid rgb(var(--wui-hud-primary) / 0.4);
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.4);
   transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .app-root.is-layout-modern .app-ship-card.is-fleet:hover,
 .app-root.is-layout-cosmic .app-ship-card.is-fleet:hover {
-  border-color: rgba(56, 189, 248, 0.55);
-  border-left-color: #38bdf8;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 0 12px rgba(56, 189, 248, 0.18);
+  border-color: rgb(var(--wui-hud-primary) / 0.55);
+  border-left-color: rgb(var(--wui-hud-primary));
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 0 12px rgb(var(--wui-hud-primary) / 0.18);
   transform: translateY(-1px);
 }
 .app-root.is-layout-modern .app-ship-card.is-fleet.is-current,
 .app-root.is-layout-cosmic .app-ship-card.is-fleet.is-current {
-  border-left: 3px solid #38bdf8;
-  background: linear-gradient(90deg, rgba(56, 189, 248, 0.08) 0%, rgba(11, 16, 26, 0.94) 100%);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), inset 0 0 16px rgba(56, 189, 248, 0.05);
+  border-left: 3px solid rgb(var(--wui-hud-primary));
+  background: linear-gradient(90deg, rgb(var(--wui-hud-primary) / 0.08) 0%, rgb(var(--wui-hud-surface-soft) / 0.94) 100%);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), inset 0 0 16px rgb(var(--wui-hud-primary) / 0.05);
 }
 
 /* 舰船名称行与角标 */
 .app-root.is-layout-modern .app-ship-card.is-fleet .app-ship-name,
 .app-root.is-layout-cosmic .app-ship-card.is-fleet .app-ship-name {
-  font-size: 13px;
+  font-size: var(--wui-fs-base);
   font-weight: 700;
   letter-spacing: 0.04em;
-  color: #f0f9ff;
+  color: rgb(var(--wui-hud-text));
 }
 .app-root.is-layout-modern .app-ship-card.is-fleet .app-chip,
 .app-root.is-layout-cosmic .app-ship-card.is-fleet .app-chip {
   padding: 1px 6px;
-  font-size: 10px;
+  font-size: var(--wui-fs-2xsd);
   letter-spacing: 0.04em;
 }
 
@@ -14747,8 +14776,8 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
 .app-root.is-layout-cosmic .app-ship-card.is-fleet .app-ship-spec {
   font-family: monospace, var(--wui-mono);
   font-variant-numeric: tabular-nums;
-  font-size: 11px;
-  color: #94a3b8;
+  font-size: var(--wui-fs-xs);
+  color: rgb(var(--wui-hud-text-muted));
   margin: 3px 0;
   letter-spacing: 0.02em;
 }
@@ -14761,19 +14790,19 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
 .app-root.is-layout-modern .app-ship-card.is-fleet .app-dur-track,
 .app-root.is-layout-cosmic .app-ship-card.is-fleet .app-dur-track {
   height: 4px;
-  background: rgba(56, 189, 248, 0.15);
-  border: 1px solid rgba(56, 189, 248, 0.25);
+  background: rgb(var(--wui-hud-primary) / 0.15);
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.25);
 }
 .app-root.is-layout-modern .app-ship-card.is-fleet .app-dur-fill,
 .app-root.is-layout-cosmic .app-ship-card.is-fleet .app-dur-fill {
-  background: #38bdf8;
-  box-shadow: 0 0 6px #38bdf8;
+  background: rgb(var(--wui-hud-primary));
+  box-shadow: 0 0 6px rgb(var(--wui-hud-primary));
 }
 .app-root.is-layout-modern .app-ship-card.is-fleet .app-dur-text,
 .app-root.is-layout-cosmic .app-ship-card.is-fleet .app-dur-text {
   font-family: monospace, var(--wui-mono);
   font-variant-numeric: tabular-nums;
-  font-size: 11px;
+  font-size: var(--wui-fs-xs);
   letter-spacing: 0.04em;
 }
 
@@ -14782,7 +14811,7 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
 .app-root.is-layout-cosmic .app-ship-card.is-fleet .app-ship-bottom {
   margin-top: 4px;
   padding-top: 4px;
-  border-top: 1px solid rgba(56, 189, 248, 0.1);
+  border-top: 1px solid rgb(var(--wui-hud-primary) / 0.1);
 }
 
 /* ── 舰船唯一实例呼号（Callsign Tag） ── */
@@ -14792,12 +14821,12 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
   padding: 1px 5px;
   margin-left: 6px;
   font-family: monospace, var(--wui-mono);
-  font-size: 10px;
+  font-size: var(--wui-fs-2xsd);
   font-weight: 700;
   letter-spacing: 0.08em;
-  color: #38bdf8;
-  background: rgba(56, 189, 248, 0.12);
-  border: 1px solid rgba(56, 189, 248, 0.45);
+  color: rgb(var(--wui-hud-primary));
+  background: rgb(var(--wui-hud-primary) / 0.12);
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.45);
   clip-path: polygon(0 0, calc(100% - 4px) 0, 100% 4px, 100% 100%, 4px 100%, 0 calc(100% - 4px));
   vertical-align: middle;
 }
@@ -14810,18 +14839,18 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
   gap: 10px;
   flex-wrap: wrap;
   padding: 6px 12px;
-  background: rgba(10, 16, 26, 0.9);
-  border: 1px solid rgba(56, 189, 248, 0.25);
-  border-left: 3px solid #38bdf8;
+  background: rgb(var(--wui-hud-surface-soft) / 0.9);
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.25);
+  border-left: 3px solid rgb(var(--wui-hud-primary));
   clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
   margin-bottom: 8px;
 }
 .app-root.is-layout-modern .app-fit-target-select,
 .app-root.is-layout-cosmic .app-fit-target-select {
-  background: rgba(14, 20, 32, 0.95);
-  border: 1px solid rgba(56, 189, 248, 0.4);
-  color: #f0f9ff;
-  font-size: 13px;
+  background: rgb(var(--wui-hud-surface) / 0.95);
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.4);
+  color: rgb(var(--wui-hud-text));
+  font-size: var(--wui-fs-base);
   font-weight: 600;
   padding: 4px 10px;
   clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
@@ -14831,8 +14860,8 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
 }
 .app-root.is-layout-modern .app-fit-target-select:hover,
 .app-root.is-layout-cosmic .app-fit-target-select:hover {
-  border-color: #38bdf8;
-  box-shadow: 0 0 10px rgba(56, 189, 248, 0.35);
+  border-color: rgb(var(--wui-hud-primary));
+  box-shadow: 0 0 10px rgb(var(--wui-hud-primary) / 0.35);
 }
 
 /* ── 装配台 DataDog 看板双卡条（火力与综合承伤） ── */
@@ -14846,8 +14875,8 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
 }
 .app-root.is-layout-modern .hud-fit-kpi,
 .app-root.is-layout-cosmic .hud-fit-kpi {
-  background: rgba(10, 16, 26, 0.92);
-  border: 1px solid rgba(56, 189, 248, 0.25);
+  background: rgb(var(--wui-hud-surface-soft) / 0.92);
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.25);
   clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
   padding: 6px 10px;
   display: flex;
@@ -14857,11 +14886,11 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
 }
 .app-root.is-layout-modern .hud-fit-kpi.is-dps,
 .app-root.is-layout-cosmic .hud-fit-kpi.is-dps {
-  border-left: 3px solid #f43f5e;
+  border-left: 3px solid rgb(var(--wui-hud-danger));
 }
 .app-root.is-layout-modern .hud-fit-kpi.is-ehp,
 .app-root.is-layout-cosmic .hud-fit-kpi.is-ehp {
-  border-left: 3px solid #0ea5e9;
+  border-left: 3px solid rgb(var(--wui-hud-primary-hover));
 }
 .app-root.is-layout-modern .hud-fit-kpi-header,
 .app-root.is-layout-cosmic .hud-fit-kpi-header {
@@ -14869,24 +14898,24 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
   justify-content: space-between;
   align-items: center;
   gap: 6px;
-  font-size: 10px;
+  font-size: var(--wui-fs-2xsd);
 }
 .app-root.is-layout-modern .hud-fit-kpi-tag,
 .app-root.is-layout-cosmic .hud-fit-kpi-tag {
   font-family: monospace, var(--wui-mono);
   font-weight: 700;
   letter-spacing: 0.08em;
-  color: #38bdf8;
+  color: rgb(var(--wui-hud-primary));
   text-transform: uppercase;
 }
 .app-root.is-layout-modern .hud-fit-kpi.is-dps .hud-fit-kpi-tag,
 .app-root.is-layout-cosmic .hud-fit-kpi.is-dps .hud-fit-kpi-tag {
-  color: #fb7185;
+  color: rgb(var(--wui-hud-danger));
 }
 .app-root.is-layout-modern .hud-fit-kpi-sub,
 .app-root.is-layout-cosmic .hud-fit-kpi-sub {
-  color: #94a3b8;
-  font-size: 10px;
+  color: rgb(var(--wui-hud-text-muted));
+  font-size: var(--wui-fs-2xsd);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -14902,26 +14931,84 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
 .app-root.is-layout-cosmic .hud-fit-kpi-val {
   font-family: monospace, var(--wui-mono);
   font-variant-numeric: tabular-nums;
-  font-size: 19px;
+  font-size: var(--wui-fs-3xl);
   font-weight: 700;
-  color: #f8fafc;
+  color: rgb(var(--wui-hud-text));
   line-height: 1;
 }
 .app-root.is-layout-modern .hud-fit-kpi-unit,
 .app-root.is-layout-cosmic .hud-fit-kpi-unit {
-  font-size: 11px;
+  font-size: var(--wui-fs-xs);
   font-weight: 700;
-  color: #94a3b8;
+  color: rgb(var(--wui-hud-text-muted));
   letter-spacing: 0.05em;
 }
 
 /* ── 弹药补给来源快捷微标 ── */
 .app-root.is-layout-modern .hud-resupply-toggle,
 .app-root.is-layout-cosmic .hud-resupply-toggle {
-  font-size: 11px;
+  font-size: var(--wui-fs-xs);
   padding: 2px 8px;
   letter-spacing: 0.04em;
-  border-color: rgba(56, 189, 248, 0.4);
+  border-color: rgb(var(--wui-hud-primary) / 0.4);
+}
+
+/* ═══════════ 本机音效台（2026-11-02 声音系统 · 仅本机调试可见，发布版不渲染入口） ═══════════ */
+.app-sfx-modal { width: 780px; }
+.app-sfx-body { display: flex; flex-direction: column; gap: var(--wui-sp-8); }
+.app-sfx-drop {
+  border: 1px dashed rgb(var(--wui-accent) / 0.45);
+  border-radius: var(--wui-sp-8);
+  padding: var(--wui-sp-10) var(--wui-sp-12);
+  text-align: center;
+  font-size: var(--wui-fs-s);
+  color: rgb(var(--wui-text-dim));
+  background: rgb(var(--wui-bg-field) / 0.35);
+}
+.app-sfx-drop.is-over {
+  border-color: rgb(var(--wui-accent));
+  background: rgb(var(--wui-accent) / 0.12);
+  color: rgb(var(--wui-flag));
+}
+.app-sfx-warn { font-size: var(--wui-fs-2xsd); color: rgb(var(--wui-log-warn)); }
+.app-sfx-list { display: flex; flex-direction: column; gap: var(--wui-sp-4); }
+.app-sfx-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--wui-sp-8);
+  padding: var(--wui-sp-6) var(--wui-sp-8);
+  border: 1px solid rgb(var(--wui-map-minor) / 0.28);
+  border-radius: var(--wui-sp-6);
+  background: rgb(var(--wui-bg-field) / 0.45);
+}
+.app-sfx-name { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.app-sfx-name .app-dim { font-size: var(--wui-fs-2xsd); }
+.app-sfx-badge {
+  font-size: var(--wui-fs-2xsd);
+  padding: var(--wui-sp-1) var(--wui-sp-6);
+  border: 1px solid rgb(var(--wui-map-minor) / 0.5);
+  border-radius: var(--wui-sp-4);
+  color: rgb(var(--wui-text-dim));
+  white-space: nowrap;
+}
+.app-sfx-badge.is-override { color: rgb(var(--wui-accent)); border-color: rgb(var(--wui-accent) / 0.55); }
+.app-sfx-badge.is-builtin { color: rgb(var(--wui-flag)); border-color: rgb(var(--wui-gold) / 0.4); }
+.app-sfx-badge.is-none { border-style: dashed; }
+.app-sfx-actions { display: flex; gap: var(--wui-sp-4); flex-wrap: wrap; justify-content: flex-end; }
+.app-sfx-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--wui-sp-8);
+  flex-wrap: wrap;
+  margin-top: var(--wui-sp-4);
+  padding-top: var(--wui-sp-8);
+  border-top: 1px dashed rgb(var(--wui-map-minor) / 0.3);
+}
+@media (max-width: 720px) {
+  .app-sfx-row { grid-template-columns: minmax(0, 1fr) auto; row-gap: var(--wui-sp-4); }
+  .app-sfx-actions { grid-column: 1 / -1; justify-content: flex-start; }
 }
 
 

@@ -185,6 +185,11 @@
 | 活动栏行跳转表（两套外壳共用） | `ui/activityGo.ts`的`goFor()` | `arch:guard` F5跳转目标契约 |
 | 入侵循环下一目标与实际抽卡冷却（在线/离线与活动栏同源） | `autoLoopInvasionPlanOf()` · `core/expedition.ts` | 入侵路线专项：外围顺序、核心后置、只读抽签、等待与进度一致；`arch:guard` F2/F3 |
 | 属性表拼装（装配页/图鉴/蓝图产物/舰队悬停四处） | `ui/shipInfo.tsx` 的行工厂 | `ui:attr-check` 的「同名两行」体检 |
+| 音效语义 id 与默认增益/节流（调用点、素材文件名、音效台共用） | `SFX_CUES` · `game/audio/cues.ts` | `npm run audio:check`；`arch:guard` F2/F3 |
+| 音效播放唯一出口（音量、节流、并发、本机覆盖优先） | `playCue` · `game/audio/player.ts` | `npm run audio:check`；`arch:guard` F2/F3 |
+| 日志→音效触发规则与素材文件名匹配 | `matchLogCue` / `matchSfxFileName` · `game/audio/rules.ts` | `npm run audio:check`；`arch:guard` F2/F3 |
+| BGM/环境场景解析（战斗>虫洞>入侵>停靠>太空） | `resolveSfxScene` · `game/audio/scene.ts` | `npm run audio:check`；`arch:guard` F2/F3 |
+| 音高随机换速率（音分 → playbackRate） | `pitchRateFor` · `game/audio/rules.ts` | `npm run audio:check`；`arch:guard` F2/F3 |
 
 ## 四、工具与文档层（`tools/` · `docs/`）
 

@@ -83,7 +83,7 @@
   background-size: 100% 100%, 32px 32px, 32px 32px, auto;
   color: var(--hud-fg);
   font-family: var(--hud-mono);
-  font-size: 13px;
+  font-size: var(--wui-fs-base);
   line-height: 1.55;
 }
 
@@ -101,15 +101,15 @@
   padding: 14px 18px 0;
   border-bottom: 1px solid var(--hud-line);
 }
-.hud-title { letter-spacing: 0.2em; text-transform: uppercase; font-size: 14px; white-space: nowrap; }
-.hud-title .cn { font-size: 16px; letter-spacing: 0.06em; }
-.hud-title .en { color: var(--hud-fg-dim); font-size: 11px; letter-spacing: 0.12em; }
-.hud-readouts { display: flex; flex-wrap: wrap; gap: 18px; color: var(--hud-fg-dim); font-size: 11.5px; padding-bottom: 10px; white-space: nowrap; }
+.hud-title { letter-spacing: 0.2em; text-transform: uppercase; font-size: var(--wui-fs-md); white-space: nowrap; }
+.hud-title .cn { font-size: var(--wui-fs-lgb); letter-spacing: 0.06em; }
+.hud-title .en { color: var(--hud-fg-dim); font-size: var(--wui-fs-xs); letter-spacing: 0.12em; }
+.hud-readouts { display: flex; flex-wrap: wrap; gap: 18px; color: var(--hud-fg-dim); font-size: var(--wui-fs-xsb); padding-bottom: 10px; white-space: nowrap; }
 .hud-readouts b { color: var(--hud-fg); font-variant-numeric: tabular-nums; }
 .hud-tabs { display: flex; flex-wrap: wrap; gap: 2px; }
 .hud-tab {
   font-family: var(--hud-mono);
-  font-size: 12px;
+  font-size: var(--wui-fs-s);
   letter-spacing: 0.12em;
   white-space: nowrap;
   color: var(--hud-fg-dim);
@@ -191,7 +191,7 @@
 .hud-panel::after { right: -1px; bottom: -1px; border-left: 0; border-top: 0; }
 .hud-panel > h3 {
   margin: 0 0 10px;
-  font-size: 11.5px;
+  font-size: var(--wui-fs-xsb);
   font-weight: 500;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -267,7 +267,7 @@ body.no-fx .hud-queue-led { box-shadow: none; }
   color: var(--hud-short);
   font-weight: 600;
   font-family: var(--hud-mono);
-  font-size: 11.5px;
+  font-size: var(--wui-fs-xsb);
   font-variant-numeric: tabular-nums;
 }
 /* 表格行上的缺料标记（船长同日令：不靠悬停也要看得见——触屏没有 hover；**且单独一行**） */
@@ -277,7 +277,7 @@ body.no-fx .hud-queue-led { box-shadow: none; }
   color: var(--hud-short);
   font-weight: 600;
   font-family: var(--hud-mono);
-  font-size: 11.5px;
+  font-size: var(--wui-fs-xsb);
   font-variant-numeric: tabular-nums;
 }
 /* 无动画偏好 / 关特效：**停帧但保留静态线稿**（技能口径 UX「Reduced Motion（High）」） */
@@ -287,8 +287,8 @@ body.no-fx .hud-queue-led { box-shadow: none; }
 }
 body.no-fx .hud-fx-cell .app-inv-fx *,
 body.no-fx .hud-fx-cell .app-inv-fx { animation: none; }
-.hud-sub { color: var(--hud-fg-dim); font-size: 11.5px; }
-.hud-tiny { color: var(--hud-fg-faint); font-size: 11px; letter-spacing: 0.05em; }
+.hud-sub { color: var(--hud-fg-dim); font-size: var(--wui-fs-xsb); }
+.hud-tiny { color: var(--hud-fg-faint); font-size: var(--wui-fs-xs); letter-spacing: 0.05em; }
 
 /* ── 表格：发丝线 ＋ 等宽右对齐数字 ── */
 .hud-table { width: 100%; border-collapse: collapse; }
@@ -296,11 +296,11 @@ body.no-fx .hud-fx-cell .app-inv-fx { animation: none; }
   text-align: left;
   padding: 5px 6px;
   border-bottom: 1px solid rgba(30, 43, 64, 0.7);
-  font-size: 12px;
+  font-size: var(--wui-fs-s);
 }
 .hud-table th {
   color: var(--hud-fg-dim);
-  font-size: 10.5px;
+  font-size: var(--wui-fs-2xse);
   font-weight: 500;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -381,7 +381,7 @@ body.no-fx .hud-fx-cell .app-inv-fx { animation: none; }
 .hud-card:last-child { margin-bottom: 0; }
 .hud-card.is-sel { border-color: var(--hud-accent); box-shadow: 0 0 0 1px rgba(78, 161, 255, 0.32); }
 .hud-card.muted { opacity: 0.62; }
-.hud-card .nm { font-size: 14px; letter-spacing: 0.03em; }
+.hud-card .nm { font-size: var(--wui-fs-md); letter-spacing: 0.03em; }
 .hud-row { display: flex; align-items: center; gap: 10px; }
 .hud-row.between { justify-content: space-between; }
 .hud-row.wrap { flex-wrap: wrap; }
@@ -396,7 +396,7 @@ body.no-fx .hud-fx-cell .app-inv-fx { animation: none; }
   background: transparent;
   border-radius: 2px;
   padding: 2px 7px;
-  font-size: 11px;
+  font-size: var(--wui-fs-xs);
   letter-spacing: 0.06em;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
@@ -417,7 +417,7 @@ button.hud-chip:hover { border-color: var(--hud-accent); color: var(--hud-accent
   border-radius: 3px;
   padding: 14px 12px;
   color: var(--hud-fg-dim);
-  font-size: 12px;
+  font-size: var(--wui-fs-s);
   text-align: center;
 }
 
@@ -579,7 +579,7 @@ body.no-fx .hud-dock-craft, body.no-fx .hud-dock-spark { animation: none; }
 body.no-fx .hud-dock-drone, body.no-fx .hud-dock-drone-turn, body.no-fx .hud-dock-weld,
 body.no-fx .hud-dock-spark-ray, body.no-fx .hud-dock-arm2, body.no-fx .hud-dock-armseg,
 body.no-fx .hud-dock-beacon { animation: none; }
-.hud-cells { display: flex; flex-wrap: wrap; gap: 14px; color: var(--hud-fg-dim); font-size: 12px; font-variant-numeric: tabular-nums; }
+.hud-cells { display: flex; flex-wrap: wrap; gap: 14px; color: var(--hud-fg-dim); font-size: var(--wui-fs-s); font-variant-numeric: tabular-nums; }
 .hud-cells > span { display: inline-flex; align-items: center; gap: 5px; }
 
 /* ── 进度条 / 扫掠 ── */
@@ -626,8 +626,8 @@ body.no-fx .hud-dock-beacon { animation: none; }
 .hud-ring-seg[data-seg='3'], .hud-seg-dot[data-seg='3'] { stroke: rgb(var(--wui-heal)); background: rgb(var(--wui-heal)); }
 .hud-ring-seg[data-seg='4'], .hud-seg-dot[data-seg='4'] { stroke: rgb(var(--wui-danger)); background: rgb(var(--wui-danger)); }
 .hud-ring-seg[data-seg='5'], .hud-seg-dot[data-seg='5'] { stroke: var(--hud-fg-dim); background: var(--hud-fg-dim); }
-.hud-ring-num { fill: var(--hud-fg); font-family: var(--hud-mono); font-size: 17px; font-variant-numeric: tabular-nums; }
-.hud-ring-cap { fill: var(--hud-fg-dim); font-family: var(--hud-mono); font-size: 9px; letter-spacing: 0.08em; }
+.hud-ring-num { fill: var(--hud-fg); font-family: var(--hud-mono); font-size: var(--wui-fs-xl); font-variant-numeric: tabular-nums; }
+.hud-ring-cap { fill: var(--hud-fg-dim); font-family: var(--hud-mono); font-size: var(--wui-fs-2xsb); letter-spacing: 0.08em; }
 .hud-seg-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; flex: none; }
 
 /* ── 搜索框（与 `.hud-select` 同族：同 token、同圆角；不引 `.app-*` 样式）── */
@@ -635,7 +635,7 @@ body.no-fx .hud-dock-beacon { animation: none; }
   width: 100%;
   margin: 4px 0 8px;
   font-family: var(--hud-mono);
-  font-size: 12px;
+  font-size: var(--wui-fs-s);
   background: var(--hud-muted);
   color: var(--hud-fg);
   border: 1px solid var(--hud-line-control);
@@ -652,8 +652,8 @@ body.no-fx .hud-dock-beacon { animation: none; }
 .hud-io { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; margin-top: 4px; }
 .hud-io-col { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .hud-io-col + .hud-io-col { border-left: 1px dashed var(--hud-line-decor); padding-left: 10px; }
-.hud-io-row { display: flex; align-items: center; gap: 5px; font-size: 12px; }
-.hud-io-num { font-family: var(--hud-mono); font-size: 11.5px; color: var(--hud-fg-dim); font-variant-numeric: tabular-nums; }
+.hud-io-row { display: flex; align-items: center; gap: 5px; font-size: var(--wui-fs-s); }
+.hud-io-num { font-family: var(--hud-mono); font-size: var(--wui-fs-xsb); color: var(--hud-fg-dim); font-variant-numeric: tabular-nums; }
 
 /* ── Bullet chart（技能推荐的"效率/产能对比"图形）：区间条 ＋ 目标刻度 ── */
 .hud-bullet { position: relative; display: block; height: 14px; background: var(--hud-muted); border-radius: 2px; overflow: hidden; margin-top: 5px; }
@@ -678,17 +678,17 @@ body.no-fx .hud-dock-beacon { animation: none; }
   display: grid; place-items: center; position: relative;
 }
 .hud-gauge::after { content: ''; position: absolute; inset: 9px; border-radius: 50%; background: var(--hud-card); }
-.hud-gauge span { position: relative; font-size: 16px; font-variant-numeric: tabular-nums; }
+.hud-gauge span { position: relative; font-size: var(--wui-fs-lgb); font-variant-numeric: tabular-nums; }
 
 /* ── 键值行 ── */
-.hud-kv { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; color: var(--hud-fg-dim); font-size: 12px; border-bottom: 1px dashed var(--hud-line-decor); }
+.hud-kv { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; color: var(--hud-fg-dim); font-size: var(--wui-fs-s); border-bottom: 1px dashed var(--hud-line-decor); }
 .hud-kv:last-child { border-bottom: 0; }
 .hud-kv b { color: var(--hud-fg); font-variant-numeric: tabular-nums; }
 
 /* ── 按钮 / 下拉（与 .app-btn 视觉无关，避免误用既有观感）── */
 .hud-btn {
   font-family: var(--hud-mono);
-  font-size: 12px;
+  font-size: var(--wui-fs-s);
   letter-spacing: 0.08em;
   cursor: pointer;
   background: transparent;
@@ -716,7 +716,7 @@ body.no-fx .hud-dock-beacon { animation: none; }
    `.hud-label` = **可见标签**（`ui-ux-pro-max` Forms·Input Labels（High）「Every input needs a
    visible label」）——比 `.hud-tiny` 亮一档（它是控件名，不是脚注），但不抢主读数。 */
 .hud-aipick { margin: 0 0 8px; }
-.hud-label { color: var(--hud-fg-dim); font-size: 12px; letter-spacing: 0.03em; }
+.hud-label { color: var(--hud-fg-dim); font-size: var(--wui-fs-s); letter-spacing: 0.03em; }
 
 /* ── 走马灯读数 ── */
 .hud-ticker {
@@ -724,7 +724,7 @@ body.no-fx .hud-dock-beacon { animation: none; }
   border-top: 1px solid var(--hud-line);
   padding-top: 8px;
   color: var(--hud-fg-dim);
-  font-size: 11px;
+  font-size: var(--wui-fs-xs);
   letter-spacing: 0.06em;
 }
 
@@ -736,12 +736,12 @@ body.no-fx .hud-dock-beacon { animation: none; }
   min-height: 0;
   background: transparent;
   padding: 0;
-  font-size: 12.5px;
+  font-size: var(--wui-fs-sm);
 }
 
 /* 大号燃料读数（图标 ＋ 数字，少字） */
 .hud-fuel-num {
-  font-size: 26px;
+  font-size: calc(26px * var(--ui-fs, 1));
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
 }
