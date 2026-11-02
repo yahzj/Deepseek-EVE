@@ -1,0 +1,13 @@
+# 知识库内部运行数据：还原点、会话归档、挖掘进度、语义索引 —— 本机数据，不入库
+_system/
+
+# 废弃区
+_raw/
+
+# Obsidian 本机配置：只提交 app.json（插件写入的忽略项），工作区布局等不入库
+.obsidian/*
+!.obsidian/app.json
+
+# 导出产物与废纸篓
+wiki-export/
+.trash/
