@@ -33,19 +33,17 @@ export default defineConfig(({ command }) => {
         apply: 'build',
         options: {
           compact: true,
-          controlFlowFlattening: true,
-          controlFlowFlatteningThreshold: 0.15,
-          numbersToExpressions: true,
+          // 放置游戏需要数十小时后台连续挂机，关闭控制流平坦化以确保 JIT 优化与 GC 内存稳定
+          controlFlowFlattening: false,
+          numbersToExpressions: false,
           simplify: true,
+          // 字符串阵列加密：防止明文检索核心配置与字段
           stringArray: true,
-          stringArrayThreshold: 0.7,
+          stringArrayThreshold: 0.5,
           stringArrayRotate: true,
           stringArrayShuffle: true,
-          splitStrings: true,
-          splitStringsChunkLength: 8,
-          selfDefending: true,
-          domainLock: ['yahzj.github.io', 'localhost', '127.0.0.1'],
-          domainLockRedirectUrl: 'about:blank',
+          // 关闭 selfDefending，防止 Safari (JavaScriptCore) 与移动端因函数序列化差异发生误触闪退
+          selfDefending: false,
         },
       }),
     ],
@@ -58,6 +56,19 @@ export default defineConfig(({ command }) => {
       emptyOutDir: true,
       target: 'es2020',
       assetsInlineLimit: 0,
+      rollupOptions: {
+        output: {
+          /**
+           * 标准法律版权声明（保留注释）：明文确立 AGPLv3 与商业许可归属
+           */
+          banner: `/*!
+ * Great Whale Idle / 大鲸鱼-深空放置
+ * Copyright (C) 2026 DanJuan (yahzj) <https://github.com/yahzj/Deepseek-EVE>. All rights reserved.
+ * Licensed under GNU AGPLv3 for open-source use, and commercial licensing for proprietary use.
+ * Unauthorized commercial distribution, offline repackaging, or access-control tampering is prohibited.
+ */\n`,
+        },
+      },
     },
   }
 })
