@@ -13,6 +13,8 @@
   "scripts": {
     "dev": "npm run dev -w @whale/desktop",
     "build": "npm run build -w @whale/desktop",
+    "release:rights:test": "tsx --test tools/release-rights/release-rights.test.ts",
+    "release:rights:check": "tsx tools/release-rights/check.ts",
     "pack": "npm run pack -w @whale/desktop",
     "steam:pack": "tsx tools/steam-pack.ts",
     "steam:upload": "tsx tools/steam-upload.ts",

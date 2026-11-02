@@ -13,12 +13,12 @@
 
 ## 统计
 
-- 非归档文档 **311** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **3682** KB · **41454** 行
-- 状态分布：**未标注** 135 · **已确认/已实现** 120 · **进行中** 38 · **待裁定** 17 · **历史留档** 1
-- 孤儿文档（0 引用）**173** 份 · 状态未标注 **135** 份
+- 非归档文档 **312** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **3690** KB · **41561** 行
+- 状态分布：**未标注** 136 · **已确认/已实现** 120 · **进行中** 38 · **待裁定** 17 · **历史留档** 1
+- 孤儿文档（0 引用）**174** 份 · 状态未标注 **136** 份
 - 一、常用文档（按任务查阅）：**11** 份
 - 七、评审与体检（review）：**4** 份
-- 三、设计与工作文档（需核实状态）：**264** 份
+- 三、设计与工作文档（需核实状态）：**265** 份
 - 二、其它（docs 根目录）：**3** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
 - 八、测试档说明（test-saves）：**21** 份
@@ -28,13 +28,13 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档） |
 |---|---|---|---|---|---|
-| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定 | 未标注 | — | 14 KB / 100 行 | 22 |
+| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定 | 未标注 | — | 14 KB / 105 行 | 23 |
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 6 KB / 75 行 | 9 |
-| `docs/catalog.md` | 文档目录 | 未标注 | — | 3 KB / 40 行 | 5 |
+| `docs/catalog.md` | 文档目录 | 未标注 | — | 3 KB / 41 行 | 5 |
 | `docs/content-workbench.md` | 内容工作台 | 未标注 | — | 3 KB / 35 行 | 2 |
 | `docs/data-editor.md` | 大鲸鱼数据编辑器 | 未标注 | — | 4 KB / 45 行 | 6 |
 | `docs/data-map.md` | 数据速查页 | 未标注 | — | 3 KB / 38 行 | 4 |
-| `docs/development-conventions.md` | 开发约定 | 未标注 | — | 22 KB / 165 行 | 15 |
+| `docs/development-conventions.md` | 开发约定 | 未标注 | — | 22 KB / 167 行 | 15 |
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（现行译名表） | — | 46 KB / 810 行 | 9 |
 | `docs/glossary.md` | 术语词典 | 未标注 | — | 19 KB / 186 行 | 59 |
 | `docs/roadmap.md` | 当前待办与实施边界 | 未标注 | — | 6 KB / 62 行 | 61 |
@@ -49,10 +49,11 @@
 | `docs/review/pending-decisions-20260910.md` | 待船长裁决清单（2026-09-10 · 二号整理，供逐条审核） | 未标注 | 2026-09-10 | 29 KB / 374 行 | 2 |
 | `docs/review/guoqing-audit-followup.md` | 国庆节审查当前跟进 | 未标注（已复核修复） | — | 3 KB / 21 行 | 3 |
 
-## 三、设计与工作文档（需核实状态） —— 264 份
+## 三、设计与工作文档（需核实状态） —— 265 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档） |
 |---|---|---|---|---|---|
+| `docs/design/cloud-server-20261102.md` | 云存档与聊天服务器 · 设计与实现（2026-11-02） | 未标注（P0） | 2026-11-02 | 8 KB / 94 行 | 0 |
 | `docs/design/bounty-standing-20261030.md` | 每日赏金分档声望与三档保底 | 已确认/已实现（已实现） | 2026-10-30 | 11 KB / 75 行 | 1 |
 | `docs/design/d2-integration-20261030.md` | 二号修复与声望调整合入 | 未标注（已本地合入主树） | 2026-10-30 | 4 KB / 31 行 | 2 |
 | `docs/design/industry-domain-folders-20261030.md` | 工业功能域分目录与拆分 | 未标注（实施与专项完成） | 2026-10-30 | 5 KB / 36 行 | 1 |
@@ -286,7 +287,7 @@
 | `docs/design/foe-unit-naming-20260909.md` | 敌舰单位显示名（舰种名 × 规格词缀） | 已确认/已实现（已确认·已实现） | 2026-09-09 | 3 KB / 42 行 | 0 |
 | `docs/design/market-rarity-tier-20260909.md` | 市场数字稀有度（隐藏档 · 稀有订单分层）设计稿 | 已确认/已实现（已确认并落地） | 2026-09-09 | 5 KB / 65 行 | 0 |
 | `docs/design/wave-battles-20260909.md` | 多波次敌人设定(低安顶段悬赏)设计稿(2026-09-09;已确认并实现·待验收/待发布) | 未标注 | 2026-09-09 | 12 KB / 131 行 | 3 |
-| `docs/design/assets/stellar-samples-20261009/README.md` | PixelPlanets 三类天体样片 | 未标注（原静态审查样片保留） | — | 2 KB / 29 行 | 20 |
+| `docs/design/assets/stellar-samples-20261009/README.md` | PixelPlanets 三类天体样片 | 未标注（原静态审查样片保留） | — | 2 KB / 29 行 | 22 |
 | `docs/design/b3-flavor-content.md` | B3.1 星系/敌群特色残骸产出 · 数值表（2026-09-08 已确认，收尾归档） | 已确认/已实现（已收尾归档） | — | 7 KB / 82 行 | 0 |
 | `docs/design/b3-salvage.md` | B3 残骸打捞与回收系统（设计总结 · 已实现，2026-09-05 全链落地） | 未标注 | — | 12 KB / 122 行 | 3 |
 | `docs/design/bounty-insurance.md` | 连续作战保险：带伤预警 + 战内自动撤退（已确认 2026-09-08） | 已确认/已实现（已确认并落地） | — | 5 KB / 65 行 | 0 |
@@ -322,7 +323,7 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档） |
 |---|---|---|---|---|---|
-| `docs/development-conventions-changelog.md` | 开发约定维护记录 | 未标注 | — | 1 KB / 13 行 | 6 |
+| `docs/development-conventions-changelog.md` | 开发约定维护记录 | 未标注 | — | 1 KB / 18 行 | 6 |
 | `docs/git-gate-approval.md` | Git提交审批放行 | 未标注 | — | 2 KB / 28 行 | 1 |
 | `docs/l10n-pending.md` | 待英文本地化记录 | 未标注 | — | 3 KB / 41 行 | 15 |
 
@@ -356,7 +357,7 @@
 | `docs/test-saves/black-market-20261004.md` | 黑市页面验收档 | 待裁定（随功能待船长验收） | 2026-10-04 | 1 KB / 15 行 | 1 |
 | `docs/test-saves/hauler-20261004.md` | 纯货舰修订验收档 | 未标注（已验收） | 2026-10-04 | 2 KB / 25 行 | 2 |
 | `docs/test-saves/whexpedition-20261004.md` | 虫洞第一批合成测试档 | 未标注（未来虫洞整备/事件/警戒的隔离验收材） | 2026-10-04 | 10 KB / 78 行 | 1 |
-| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 81 KB / 815 行 | 20 |
+| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 81 KB / 815 行 | 22 |
 
 ## 六、专题：舰船美术（design/ship-battle-art） —— 7 份
 
@@ -368,12 +369,13 @@
 | `docs/design/ship-battle-art/battle-sprite-tier-20260911.md` | 战斗画面「舰种体积」（舰身大小随舰种档，2026-09-11 船长定；状态：已实现，但按船长裁决暂时关闭 —— 显示还原、系统保留） | 已确认/已实现（已实现） | 2026-09-11 | 14 KB / 177 行 | 4 |
 | `docs/design/ship-battle-art/mounts-20260910.md` | 舰船战斗图形·挂点对齐（引擎喷口 + 真实炮口）2026-09-10 | 已确认/已实现（已确认） | 2026-09-10 | 6 KB / 94 行 | 1 |
 | `docs/design/ship-battle-art/acceptance-visual-20260909.md` | 舰船战斗图形 · 真机目测与细节验收清单（2026-09-09 三号，给船长） | 未标注 | 2026-09-09 | 4 KB / 54 行 | 2 |
-| `docs/design/ship-battle-art/README.md` | 舰船战斗图形重设计(三号 · 样稿阶段,2026-09-09) | 未标注 | — | 8 KB / 87 行 | 20 |
+| `docs/design/ship-battle-art/README.md` | 舰船战斗图形重设计(三号 · 样稿阶段,2026-09-09) | 未标注 | — | 8 KB / 87 行 | 22 |
 
-## 附：孤儿文档（0 引用，173 份）
+## 附：孤儿文档（0 引用，174 份）
 
 > 仅表示没有其他收录文档提到本文件名，不能据此删除、归档或批准阅读历史。
 
+- `docs/design/cloud-server-20261102.md`（2026-11-02 · 8 KB）—— 云存档与聊天服务器 · 设计与实现（2026-11-02）
 - `docs/design/skills-domain-folders-20261030.md`（2026-10-30 · 5 KB）—— 技能功能域分目录与拆分
 - `docs/design/domain-folders-20261027.md`（2026-10-27 · 8 KB）—— 功能域分目录与战斗拆分
 - `docs/design/loop-range-confirm-minimize-20261026.md`（2026-10-26 · 4 KB）—— 连续战斗确认距离后默认最小化
@@ -548,8 +550,9 @@
 - `docs/design/v18.1-support.md`（无日期 · 9 KB）—— V18.1 设计总结：支援装备 + 叠加收敛（取消同类唯一 · 已确认实施）
 - `docs/design/v18b2-lasers.md`（无日期 · 5 KB）—— V18B-2 设计总结：激光炮武器族（能量系形态 · 已确认实施）
 
-## 附：状态未标注（135 份，待补一行 `状态：…`）
+## 附：状态未标注（136 份，待补一行 `状态：…`）
 
+- `docs/design/cloud-server-20261102.md`（2026-11-02）—— 云存档与聊天服务器 · 设计与实现（2026-11-02）
 - `docs/design/d2-integration-20261030.md`（2026-10-30）—— 二号修复与声望调整合入
 - `docs/design/industry-domain-folders-20261030.md`（2026-10-30）—— 工业功能域分目录与拆分
 - `docs/design/market-domain-folders-20261030.md`（2026-10-30）—— 市场功能域分目录与拆分

@@ -15,6 +15,7 @@ import { resolve } from 'node:path'
 import { defineConfig } from 'vite'
 /** 客户端版本三件套（版本号 / 构建 sha / 构建时刻）——与桌面构建**共用同一份**（见该文件头注） */
 import { buildInfoDefine } from '../tools/build-info'
+import { releaseRightsBannerPlugin, releaseRightsPlugin } from '../tools/release-rights'
 
 const alias = {
   '@whale/core': resolve('../packages/core/src/index.ts'),
@@ -24,7 +25,8 @@ const alias = {
 
 export default defineConfig({
   base: './',
-  plugins: [react()],
+  plugins: [react(), releaseRightsPlugin(resolve('.'))],
+  worker: { plugins: () => [releaseRightsBannerPlugin()] },
   // 共享源码位于 web 外，第三方渲染依赖统一从 web 根解析，不借用桌面工作区安装。
   resolve: { alias, dedupe: ['react', 'react-dom', 'lucide-react'] },
   /** **2026-10-02 船长令**（「否则无法判断玩家当前版本」）：构建时把版本注入界面（设置页最上方那一行） */

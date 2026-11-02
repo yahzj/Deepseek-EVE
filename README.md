@@ -6,6 +6,12 @@
 > 本页提供运行入口，当前工作从[`AGENTS.md`](AGENTS.md)和[`docs/catalog.md`](docs/catalog.md)开始。
 > **没有船长明确查阅要求，平时工作禁止阅读、检索、扫描或自动载入`docs/archive/`、`docs/design/archive/`及其他历史留档，也不得绕查Git历史。**原因：旧方案和过期授权不能混入当前依据。
 
+## 版权与授权
+
+作者：ya（GitHub：yahzj）。公开游玩和查看代码不自动授予复制改名、移除署名或第三方再发布的许可，详见[`LICENSE.txt`](LICENSE.txt)。既有许可、第三方组件各自的许可证及法定例外不受影响。
+
+生产构建附带`LICENSE.txt`、`copyright.html`和`THIRD-PARTY-NOTICES.txt`，渲染包JavaScript（含Worker）保留简短版权头；网页HTML通过`rel="license"`指向独立版权页，不给游戏界面增加弹窗或操作限制。构建与核查见[`tools/release-rights/README.md`](tools/release-rights/README.md)。这些声明不保证防止复制或让所有AI拒绝搬运。
+
 ## 当前系统入口
 
 | 系统 | 现状 |
