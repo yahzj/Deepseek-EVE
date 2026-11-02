@@ -1,4 +1,5 @@
 import { PreparationFleetCards } from '../features/combat/PreparationFleetCards'
+import { RangeEwFleet, SignalRangeEwPreview } from '../features/combat/RangeEwPanel'
 import { commandBudgetOf } from '@whale/core'
 /**
  * 信号空间 · 旧玩法界面（船长 2026-10-06：旧玩法从别的工作区拉取）。
@@ -1044,6 +1045,7 @@ export function SignalSpacePanel({
     if (!grid || !hereCell) return null
     return (
       <>
+        <SignalRangeEwPreview state={state} ctx={ctx} />
         <div className="app-wh-node-title">
           {atExit ? tr("ui.Wormhole.007") : placeText(hereCell.place)}
           {/* 地点说明**不进 ⓘ**（2026-09-14 船长裁定：「地点卡的说明不要进 ⓘ」）：它跟着当前格子变，
@@ -1592,6 +1594,7 @@ export function SignalSpacePanel({
                 </div>
               </div>
               <CommandBudget engine={engine} ships={picked} special />
+              <RangeEwFleet state={state} ctx={ctx} ids={picked} />
               <PreparationFleetCards engine={engine} rows={whShown} auto={auto} handoverName={autoHandover?.toName} togglePick={togglePick} />
 
               {/**

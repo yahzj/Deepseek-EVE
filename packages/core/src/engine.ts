@@ -33,11 +33,16 @@ import { advancePlanetary, reconcilePlanetHome } from './planetRuntime'
 import { advanceExpedition } from './expedition'
 import { advanceWormhole } from './wormholeBattle'
 import { advanceAi, AI_CORE_ORDER } from './ai'
-import { advanceEvents } from './events'
+import { advanceEvents, ensureEventSchedule } from './events'
 import { advanceMarket } from './market/advance'
 import { ensureBlackMarket } from './blackMarket'
 import { repairSlotExpansionPlugs } from './equipment'
 import { advanceEncounterWatch } from './encounters'
+import { collectExposures } from './encounters/presence'
+import { advanceIndustrialProtection } from './encounters/industrial'
+import { fightEncounterMutable } from './encounters/commands'
+import { timedRouteExposureOf } from './encounters/travelExposure'
+import { HOME_GALAXY_ID } from './state'
 import { advanceScanning, ensureTransitExplored } from './explore'
 import { advanceWormholeScan, reconcileWormholeScanWelcome } from './wormholeScan'
 import { advanceWormholeAuto } from './wormholeAuto'
@@ -194,9 +199,27 @@ export function advanceGame(
   if (!Number.isFinite(left) || left <= 0) return
   // 深空连续搜索与探测机交付在同一时间轴上结算；无搜索时保留既有整段推进。
   while (left > 0) {
+    ensureEventSchedule(state, ctx)
     resolveActivityReturn(state, ctx)
     advancePendingStationActivity(state, ctx, opts?.onStationActivityStarted)
     let step = left
+    const exposedNow = collectExposures(state, ctx, opts?.nowWallMs ?? state.wallMs ?? Date.now()).length > 0
+    const industrialActive = state.hauling.active || state.encounter.active || state.sideTasks.deliver !== null || exposedNow
+    if (industrialActive) {
+      // 事件、航路小段与战斗必须按实际时刻交替，不在离线末端一起补结。
+      const eventDue = ctx.balance.events.enabled === false ? left : Math.max(1, state.events.nextAtGameMs - state.gameMs)
+      step = Math.min(step, state.encounter.battle ? 1000 : 60_000, eventDue)
+      const fleet = state.hauling.fleetLeg
+      const row = fleet?.path[fleet.pathIndex]
+      if (row && !state.encounter.active) step = Math.min(step, Math.max(1, row.durationMs - row.progressMs))
+      const delivery = state.sideTasks.deliver
+      if (delivery && !state.encounter.active) {
+        const duration = delivery.flightDurationMs ?? delivery.arriveAtGameMs - delivery.departAtGameMs
+        const current = timedRouteExposureOf(ctx, HOME_GALAXY_ID, delivery.galaxyId, duration, duration - (delivery.arriveAtGameMs - state.gameMs))
+        if (current) step = Math.min(step, current.remainingMs)
+        step = Math.min(step, Math.max(1, delivery.arriveAtGameMs - state.gameMs))
+      }
+    }
     const pending = state.pendingStationActivity
     const returning = pending ? state.shipReturns[pending.shipId] : undefined
     if (returning) step = Math.min(step, Math.max(1, Math.ceil(returning.legMs - returning.phaseAccMs)))
@@ -244,7 +267,7 @@ function advancePendingStationActivity(state: GameState, ctx: SimContext, onStar
     case 'unbox': result = startUnboxRun(state, ctx, action.itemId, 'pilot'); break
     case 'manufacturing': result = startManufacturing(state, action.blueprintId, 'pilot', ctx); break
     case 'lab': result = startLabRun(state, ctx, action.recipeId, 'pilot'); break
-    case 'hauling': result = startHauling(state, action.aSiteId, action.bSiteId, ctx); break
+    case 'hauling': result = startHauling(state, action.aSiteId, action.bSiteId, ctx, action.requestedM3); break
     case 'siteDeliver': result = startSiteDeliverTrip(state, ctx, action.siteId); break
   }
   if (!result.ok && result.error) addLog(state, 'warn', result.error, result.errorId, result.errorParams)
@@ -254,7 +277,14 @@ function advancePendingStationActivity(state: GameState, ctx: SimContext, onStar
 function advanceGameStep(state: GameState, deltaMs: number, ctx: SimContext, opts?: Parameters<typeof advanceGame>[3]): void {
   const d = Math.floor(deltaMs)
   if (!Number.isFinite(d) || d <= 0) return
+  advanceIndustrialProtection(state, ctx, d, collectExposures(state, ctx).some(row => row.shipId === state.shipId && row.kind !== '扫描'))
+  const pausedEncounter = (!!state.encounter.pirate || state.encounter.automatic === true) && state.encounter.active
   state.gameMs += d
+  if (pausedEncounter) {
+    if (state.transit.active) state.transit.finishAtGameMs += d
+    if (state.standby.active) state.standby.finishAtGameMs += d
+    if (state.sideTasks.deliver) state.sideTasks.deliver.arriveAtGameMs += d
+  }
   const deferPlanetary = !!state.planetary?.stellar?.search
   if (ctx.planetary && !deferPlanetary) { advancePlanetary(state, d, ctx.planetary, state.gameMs - d); reconcilePlanetHome(state, ctx.planetary) }
   /**
@@ -276,8 +306,8 @@ function advanceGameStep(state: GameState, deltaMs: number, ctx: SimContext, opt
    * ⚠ 标记处理完即清（`pendingActivityReturn`）——它是瞬态信号。
    */
   resolveActivityReturn(state, ctx)
-  advanceMining(state, d, ctx)
-  advanceSalvageOp(state, d, ctx)
+  if (!pausedEncounter) advanceMining(state, d, ctx)
+  if (!pausedEncounter) advanceSalvageOp(state, d, ctx)
   // B3 星系残骸密度：闲置漂移（正在打捞的星系挂起——打捞作业期不结算漂移）
   advanceWreckDrift(state, ctx, d, state.salvaging.active ? state.salvaging.galaxyId : null)
   // T4 换船善后：自动返航中的旧船独立于新作业推进（到港自动卸货）
@@ -332,6 +362,7 @@ function advanceGameStep(state: GameState, deltaMs: number, ctx: SimContext, opt
   repairSlotExpansionPlugs(state, ctx)
   // 随机事件（到达式触发；B1 低安遭遇占用其到点时机的判定入口；先于市场窗口撮合）
   advanceEvents(state, d, ctx, opts?.offline === true)
+  if (state.encounter.automatic && !state.encounter.battle) fightEncounterMutable(state, ctx)
   // 市场按窗口推进（离线大推进同样覆盖：订单过期/池回归/内部消化/补单/挂单撮合）
   advanceMarket(state, d, ctx)
   // 任务中心：资源20分钟、快递120分钟分批刷新；在市场推进后执行，让资源影响作用于当前簿面。

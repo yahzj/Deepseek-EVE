@@ -14,7 +14,7 @@ import { createFoeSpecs } from './foes/catalog'
 import { battleOpenM, desiredRangeFor, rFamilyDesireOf, foeDesiredRange, battleMaxDistanceM } from './foes/tactics'
 import { createBattleState, announceStealthStart, announceSupportCallStart, initFoeDronePools, initFoeRepairPulses } from './foes/state'
 import { confirmedBattleDesire, battleCardRangeOf, battleRangeSnapshot } from './battleRangeMemory'
-import { applyFoeRangeDebuff, meFoeRangeDebuffOf } from './foeRange'
+import { applyFoeRangeDebuff, applyMeJammerDebuff, foeRangeEwSpecsOf } from './foeRange'
 import { buildDronePoolsFor } from './combatDrones'
 import { initDroneLaunch } from './droneLaunch'
 import { initDroneReviveStock, initDroneRevive } from '../droneRevive'
@@ -24,6 +24,7 @@ import { preloadRepairFor, REPAIR_PULSE_MS, preloadShieldChargeFor, preloadShiel
 import { equipmentCycleMsOf } from '../equipment'
 import { COMBAT_MAX_SHIPS } from './command/rules'
 import { isFirstBountyBattle, applyFirstBountyBuff } from '../firstTasks'
+import { syncRangeEw } from './rangeEw'
 
 /**
  * **多舰编队开战**（虫洞 D 批 · 船长 2026-09-13：「4 艘同时参战」）——与 `startBattleFor` 并列的
@@ -76,10 +77,12 @@ export function startFleetBattleFor(
   foeOverride?: FoeOverride,
   /** 入侵旗舰沿用核心星系目标，不因首波射程而缩小。 */
   preserveDesire = false,
+  /** 校准与旧战斗复现用；正常入口始终使用新规则。 */
+  formationVersion: 0 | 1 = 1,
 ): import('../state').BattleState | null {
   if (!anomalyId || shipIds.length === 0 || shipIds.length > COMBAT_MAX_SHIPS || new Set(shipIds).size !== shipIds.length || shipIds.some(id => !state.fleet[id])) return null
   // 虫洞内的敌卡取**原卡**（不套窝点派生/派系活跃——那是悬赏线的口径），再按层派生
-  const baseCard = battleAnomalyOf(ctx, anomalyId, wormhole ? undefined : state.expedition.lairTier, wormhole ? undefined : state.expedition.factionActive)
+  const baseCard = foeOverride?.generatedCard ?? battleAnomalyOf(ctx, anomalyId, wormhole ? undefined : state.expedition.lairTier, wormhole ? undefined : state.expedition.factionActive, formationVersion)
   // **记下这一场的敌方舰级**（用**原卡**，两处派生之前；船长 2026-09-16）
   if (baseCard) noteFoeShipsSeen(state, baseCard)
   if (!baseCard) return null
@@ -105,7 +108,7 @@ export function startFleetBattleFor(
               ...(matterMods.blindReduce > 0 ? { blindReduce: matterMods.blindReduce } : {}),
             }
           : {}),
-      })
+      }, formationVersion)
     : baseCard,
     foeOverride,
   )
@@ -128,9 +131,11 @@ export function startFleetBattleFor(
    * 语义定案：**上限恒为该舰满值**，承伤持久化只打"当前值"。
    */
   const fullHpOf = new Map<string, { s: number; a: number; h: number }>()
+  const rangeRefs = new Map<string, { weaponRanges: Array<{ baseM: number; bonusMul: number }> }>()
   for (let i = 0; i < ordered.length; i++) {
     const sid = ordered[i]!
-    let spec = createPlayerSpec(state, ctx, sid)
+    const refs = { weaponRanges: [] as Array<{ baseM: number; bonusMul: number }> }
+    let spec = createPlayerSpec(state, ctx, sid, undefined, refs)
     // 主力船记录缺失 = 与单船路径同样的"开不了战"（不让它退化成"打头的变成僚舰"）
     if (!spec) {
       if (i === 0) return null
@@ -138,7 +143,8 @@ export function startFleetBattleFor(
     }
     if (wormhole && state.wormhole.run?.supplyVersion === 1) {
       const ids = wormholeAmmoIdsForSpec(state, ctx, sid, spec, state.wormhole.run.supplies?.items ?? {})
-      spec = createPlayerSpec(state, ctx, sid, ids)!
+      refs.weaponRanges = []
+      spec = createPlayerSpec(state, ctx, sid, ids, refs)!
     }
     spec.tag = i === 0 ? 'player' : `ally-${i}`
     fullHpOf.set(spec.tag, { ...spec.hp })
@@ -153,6 +159,7 @@ export function startFleetBattleFor(
     }
     if (i === 0 && isFirstBountyBattle(state, anomalyId, sid)) applyFirstBountyBuff(spec)
     specs.push(spec)
+    rangeRefs.set(spec.tag, refs)
     specOf.set(sid, spec)
     fleet.push({ tag: spec.tag, shipId: sid })
   }
@@ -176,7 +183,12 @@ export function startFleetBattleFor(
   const foes = waves
     ? createFoeSpecs(anomaly, bal, { units: waves[0]!.units, hpShare: waves[0]!.hpShare })
     : createFoeSpecs(anomaly, bal)
-  const openM = battleOpenM(me, foes, bal)
+  const ewTemplate = createBattleState(me, foes, atGameMs, 0, specs.slice(1))
+  ewTemplate.rangeEwVersion = 1
+  ewTemplate.myFleet = fleet
+  syncRangeEw(state, ctx, ewTemplate, foes, ordered[0]!)
+  for (const spec of specs) applyMeJammerDebuff(spec, ewTemplate.rangeEw!.meCut, rangeRefs.get(spec.tag)?.weaponRanges)
+  const openM = battleOpenM(me, foeRangeEwSpecsOf(ewTemplate, foes), bal)
   // 船长2026-10-21：编队手动战同样按卡读取，自动探索传null不采用玩家记录。
   // ⚠ **2026-09-15 船长裁定：星图与洞内同一个默认档**（`desireBandMid` = 射程带 0.8 高位；
   // 当天先落成"星图 0.8 / 洞内 0.5"分档，船长更正「这个是我口误，可以回滚那句」⇒ 取消分档）。
@@ -188,6 +200,12 @@ export function startFleetBattleFor(
         : (confirmedBattleDesire(state, anomalyId) ?? battleCardRangeOf(state, anomalyId)?.desireM ?? desiredRangeFor(me, 'mid', bal))
   const desire = Math.max(bal.minDistanceM, preserveDesire ? rawDesire : Math.min(openM, rawDesire))
   const battle = createBattleState(me, foes, atGameMs, desire, specs.slice(1))
+  if (formationVersion === 1) battle.enemyFormationVersion = 1
+  battle.rangeEwVersion = 1
+  battle.myFleet = fleet
+  battle.rangeEw = ewTemplate.rangeEw
+  if (ewTemplate.meFoeRangeDebuff !== undefined) battle.meFoeRangeDebuff = ewTemplate.meFoeRangeDebuff
+  syncRangeEw(state, ctx, battle, foes, ordered[0]!)
   // **敌群覆写照原样存下**（2026-09-25 修）：后续波由 `advanceBattleFor` 从 `ctx` 重建敌卡，不存就只有第 0 波吃到覆写
   if (foeOverride !== undefined) battle.foeOverride = foeOverride
   /**
@@ -216,7 +234,7 @@ export function startFleetBattleFor(
    * **R 族想站的期望距离**（以"玩家的射程盲区"为目标）——在开战距离的 if/else **之前**先算出来，
    * 因为两条路径都要用它。非 R 族 ⇒ `null`。
    */
-  const rDesire = rFamilyDesireOf(me, foes, bal)
+  const rDesire = rFamilyDesireOf(me, foes, bal, battle)
   if (wormhole) {
     const anyBrawl = foes.some((f) => f.foeTactic === 'brawl')
     // ⚠ 近战怪的开局距离走**独立的洞内档** `wormholeBrawlOpenBand`（0.5 = 中段）——船长选定「乙」：
@@ -224,7 +242,7 @@ export function startFleetBattleFor(
     const want = anyBrawl
       ? desiredRangeFor(me, 'mid', bal, bal.wormholeBrawlOpenBand)
       : // 电子舰削减之后，敌人也**在洞里**主动压近（船长 2026-09-18：「削减射程后，敌人的期望距离也要随之改变」）
-        foeDesiredRange(me, foes, bal, meFoeRangeDebuffOf(state, ctx, ordered))
+        foeDesiredRange(me, foes, bal, battle.meFoeRangeDebuff ?? 0, battle)
     battle.distanceM = Math.max(bal.minDistanceM, Math.min(openM, Math.round(want)))
   } else {
     /**

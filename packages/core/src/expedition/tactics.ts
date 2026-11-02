@@ -2,7 +2,7 @@
 import type { GameState } from '../state'
 import type { SimContext } from '../types'
 import { fleetDefOf } from '../instances'
-import { createPlayerSpec, desiredRangeFor, wormholeDerivedAnomaly, activeFoeSpecsOf, battleMaxDistanceM } from '../combat'
+import { createPlayerSpec, desiredRangeFor, resolvedBattleAnomaly, activeFoeSpecsOf, battleMaxDistanceM } from '../combat'
 import type { CommandResult } from '../engine'
 import { battleCardRangeOf, battleCardKey } from '../battleRangeMemory'
 
@@ -68,10 +68,10 @@ export function setBattleDesire(state: GameState, desireM: number, ctx: SimConte
     : wkBattle
       ? state.encounter.anomalyId
       : state.expedition.anomalyId
-  const baseCard = cardId ? ctx.anomalies.get(cardId) : undefined
-  if (!me || !baseCard) return { ok: false, error: '战斗记录缺失。', errorId: 'core.expedition.002' }
-  const anomaly =
-    whBattle && whBattle.wormhole ? wormholeDerivedAnomaly(ctx, baseCard, whBattle.wormhole) : baseCard
+  const anomaly = resolvedBattleAnomaly(ctx, battle, cardId,
+    !whBattle && !wkBattle ? state.expedition.lairTier : undefined,
+    !whBattle && !wkBattle ? state.expedition.factionActive : undefined)
+  if (!me || !anomaly) return { ok: false, error: '战斗记录缺失。', errorId: 'core.expedition.002' }
   /**
    * **钳制上界 = 界面滑条的那个"远端"**（`battleArcsFor` 的 `maxM` = `battleMaxDistanceM`：
    * 按**当前波**双方有效射程现算、含技能/科技增程与敌方受击增程）⇒ **拖到最远就真的站到最远**，

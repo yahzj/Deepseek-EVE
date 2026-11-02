@@ -21,6 +21,7 @@ import { pinMarked } from '../ui/marks'
 import { usePreparationSquad } from '../ui/usePreparationSquad'
 import { CommandBudget } from '../features/combat/CommandBudget'
 import { commandBudgetOf } from '@whale/core'
+import { RangeEwPreview } from '../features/combat/RangeEwPanel'
 
 /** 缺口标记 → 文案 id（与准备面板同源；加新缺口时两处一起加） */
 const ISSUE_ID: Record<WeekendPrepIssue, string> = {
@@ -99,6 +100,7 @@ export function WeekendFlagshipPrepModal({ engine, onClose }: { engine: GameEngi
         </div>
         <div className="app-modal-body">
           <CommandBudget engine={engine} ships={picked} special />
+          <RangeEwPreview state={engine.state} ctx={engine.ctx} card={engine.ctx.anomalies.get(prep.cardId)} ids={picked} />
           <div className="app-dim app-note">
             {tr('ui.weekend.064', {
               p1: tr(weekendFamilyNameId(engine.state.weekendEvent?.family ?? 'H') ?? 'core.weekend.023'),

@@ -249,6 +249,13 @@ export interface BattleRepairLedger {
   kitsUsedByType?: Record<string, number>
 }
 
+/** 修理无人机逐舰运行账本；组件按有效脉冲即时扣除，战中读档必须保留。 */
+export interface BattleRepairDroneLedger {
+  pulses: number
+  kitsUsed: number
+  kitsUsedByType: Record<string, number>
+}
+
 /**
  * **一条护盾充能账本**（2026-09-16 逐舰化；与维修装置各按各的计时：30 秒 vs 5 秒）。
  *

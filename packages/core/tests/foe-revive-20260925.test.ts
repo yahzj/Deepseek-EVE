@@ -33,7 +33,7 @@ import { makeTestCtx, moduleDef, ship } from './helpers'
 
 const base = buildSimContext()
 /** 真卡：H 族入侵母舰（`ink-flagship` 第 4 波 = 母舰 ＋ 3 艘僚舰） */
-const CARD = base.anomalies.get('ink-flagship')!
+const CARD = base.anomalies.get('ink-flagship')!.foeFormation!.baseline
 /** 第 4 波（母舰所在波；下标 3）的编成 */
 const WAVE = 3
 

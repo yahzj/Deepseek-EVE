@@ -12,6 +12,7 @@ import { ENEMY_FILES, isEnemyTable, enemyRowsOf, enemyDocumentIssues } from './d
 export const BASE_TABLES = ['ships', 'modules', 'plugs', 'items', 'market'] as const
 export const TABLE_FILES: Record<DataTable, string> = { ...Object.fromEntries(BASE_TABLES.map(table => [table, `packages/data/src/static/${table}.json`])), ...ENEMY_FILES } as Record<DataTable, string>
 const TITLES: Record<string, string> = {
+  rangeEwStrength: '射程电子战强度', rangeEwBonus: '额外射程电子战强度', rangeEwEquipmentBonusPct: '电子舱强度加成',
   cpuPenalty: 'CPU上限降低', cargoCapacityBonusPct: '货仓加成', droneBayBonusM3: '无人机舱增加',
   shieldArmorConversionPct: '最终护盾转甲比例', shieldPassiveBonusPct: '被动护盾恢复加成',
   'dronePrinting.hpMul': '打印机群血量倍率', 'dronePrinting.damageMul': '打印机群伤害倍率',
@@ -53,7 +54,7 @@ function numbersOf(row: DataRow, prefix = ''): string[] {
 }
 function fieldOf(table: DataTable, path: string): NumericField {
   const column = TABLES.find(spec => spec.name === table)?.cols.find(col => col.p === path && ['num', 'obj'].includes(col.k))
-  const percent = /Resist|Pct$|Bonus$|(?:^|\.)(?:agility|evasion|hitRate|falloff)$|^bonus$|^workEfficiency$/.test(path) && !/cpuBonus|speedAdd|BonusM3/.test(path)
+  const percent = /Resist|Pct$|Bonus$|(?:^|\.)(?:agility|evasion|hitRate|falloff)$|^bonus$|^workEfficiency$/.test(path) && !/cpuBonus|speedAdd|BonusM3|rangeEwBonus/.test(path)
   const last = path.split('.').at(-1)!
   const unit = percent ? '%' : /Ms$/.test(last) ? 'ms' : /Seconds$/.test(last) ? 's' : /M3$/.test(last) ? 'm3' : /Mps$/.test(last) ? 'm/s' : /Aus$/.test(last) ? 'AU/s' : /Kg$/.test(last) ? 'kg' : /RangeM$|signatureM/.test(last) ? 'm' : /Price|priceIsk|CostIsk/.test(last) ? '信用点' : /Mul|Mult/.test(last) ? 'x' : ''
   const group = /Price|priceIsk|pool|Flow|Supply|Multiplier/.test(path) ? '价格与供应' : /Resist|Hp|evasion/.test(path) ? '防御' : /cpu|slots|Bay|cargo|plugSlots/.test(path) ? '装配与货仓' : /Speed|speed|agility|mass/.test(path) ? '机动' : '效果与作业'

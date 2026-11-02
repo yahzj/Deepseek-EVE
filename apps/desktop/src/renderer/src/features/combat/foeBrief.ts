@@ -109,6 +109,7 @@ export function mountEffectText(id: string): string | null {
     return def.charge.webImmune === true ? `${base}${tr('ui.foeIntro.109')}` : base
   }
   if (def.rangeDebuff) {
+    if (def.rangeDebuff.strength !== undefined) return `${tr('ui.rangeEw.010')} +${def.rangeDebuff.strength}`
     return tr('ui.foeIntro.108', { p1: pct(def.rangeDebuff.pct) })
   }
   /**

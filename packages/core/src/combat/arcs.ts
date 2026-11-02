@@ -1,7 +1,7 @@
 /** 战斗域：arcs，从原引擎按职责迁移，保持结算顺序。 */
 import type { GameState } from '../state'
 import type { SimContext, AnomalyDef, DamageType } from '../types'
-import { battleAnomalyOf } from './cards'
+import { resolvedBattleAnomaly, battleAnomalyOf } from './cards'
 import { createPlayerSpec } from './player/create'
 import { AMMO_IDS } from './player/factors'
 import { createFoeSpecs, activeFoeSpecsOf } from './foes/catalog'
@@ -10,11 +10,10 @@ import { foesWithSupport } from './foes/reinforcements'
 import type { WeaponSrc } from './model'
 import { type BattleWeaponCycleView, battleWeaponCyclesOf } from './battleWeaponView'
 import { type BattleDeviceCycleView, battleDeviceCyclesOf } from './battleDeviceView'
+import { rangeEwBattleView, type RangeEwView } from './rangeEwPreview'
 import { battleAmmoIdsFor, battleAmmoAvailable, battleWeaponAmmoCost, ammoKeyOf } from './combatAmmo'
-import { applyAlienCorrosion } from './alienCombat'
-import { applyMeWebDebuff } from './captureWebs'
 import { syncCoronaFleetFocus } from './coronaFocus'
-import { applyMeJammerDebuff, meJammerNetOf, foeDroneRangeOf, foeGunMaxRangeOf } from './foeRange'
+import { foeDroneRangeOf, foeGunMaxRangeOf, foeRangeEwSpecsOf } from './foeRange'
 import { playerGravekeeperSpecOf } from './gravekeeperGear'
 import { buildMyUnitSpecs } from './fleetSpecs'
 import { uidDefId } from '../labels'
@@ -23,6 +22,7 @@ import { isAlive } from './combatMath'
 import { thrusterPhase, unitThrusterCycle, unitSpeedMulOf } from './movement'
 import { dronePoolOwner } from './combatDrones'
 import { gravekeeperStatusesOf } from './gravekeeperCombat'
+import { syncRangeEw, rangeEwBattleSummaryOf } from './rangeEw'
 
 /** 战斗射程带查询（小剧场距离条用）：返回双方主武器带与开战距离上限；无战斗返回 null */
 export function battleZonesFor(state: GameState, ctx: SimContext): {
@@ -30,7 +30,9 @@ export function battleZonesFor(state: GameState, ctx: SimContext): {
   me: { minM: number; maxM: number; name: string }
   foe: { minM: number; maxM: number }
 } | null {
-  const anomaly = battleAnomalyOf(ctx, state.expedition.anomalyId, state.expedition.lairTier, state.expedition.factionActive)
+  const battle = state.expedition.battle
+  const anomaly = battle ? resolvedBattleAnomaly(ctx, battle, state.expedition.anomalyId, state.expedition.lairTier, state.expedition.factionActive)
+    : battleAnomalyOf(ctx, state.expedition.anomalyId, state.expedition.lairTier, state.expedition.factionActive)
   if (!anomaly) return null
   const bal = ctx.balance.battle
   const me = createPlayerSpec(state, ctx, state.shipId)
@@ -104,6 +106,8 @@ export function battleArcsFor(
   /** 我方各武器当前装填剩余毫秒（与 me 同序；0 = 可开火；战斗单位缺失时为空数组） */
   meReload: number[]
   weapons: BattleWeaponCycleView[]
+  rangeEw?: NonNullable<ReturnType<typeof rangeEwBattleSummaryOf>>
+  rangeEwDetails?: () => RangeEwView | undefined
   devices: BattleDeviceCycleView[]
   /** **我方编队逐舰读数**（F 批「4 条舰影 + 血条」；单船路径 = 一条 = 主控） */
   myUnits: Array<{
@@ -188,25 +192,12 @@ export function battleArcsFor(
     hangar?: number
   }>
 } | null {
-  const anomaly =
-    override?.anomaly ??
-    battleAnomalyOf(ctx, state.expedition.anomalyId, state.expedition.lairTier, state.expedition.factionActive)
   const battle = override?.battle ?? state.expedition.battle
+  const anomaly = override?.anomaly ?? (battle && resolvedBattleAnomaly(ctx, battle, state.expedition.anomalyId, state.expedition.lairTier, state.expedition.factionActive))
   if (!anomaly || !battle) return null
   const bal = ctx.balance.battle
   const leaderShipId = override?.leaderShipId ?? state.shipId
-  /** 干扰压制的基准账（见 `applyMeJammerDebuff`）——视图锚舰同样要吃这份基准 */
   const leaderTag = battle.myFleet?.find((e) => e.shipId === leaderShipId)?.tag ?? 'player'
-  const meRefs = { weaponRanges: [] as Array<{ baseM: number; bonusMul: number }>, legacyWeaponCount: battle.units[leaderTag]?.weapons.length }
-  const me = createPlayerSpec(state, ctx, leaderShipId, battleAmmoIdsFor(battle, leaderTag), meRefs)
-  if (!me) return null
-  me.tag = leaderTag
-  applyAlienCorrosion(me, battle.alienCorrosion ?? 0)
-  // **捕获网**（船长 2026-09-16）：视图锚舰被钉时同样施加四层效果 ⇒ 面板速度/射程带与引擎同尺
-  {
-    const web = battle.meWebDebuffs?.[me.tag]
-    if (web) applyMeWebDebuff(me, web)
-  }
   /**
    * **敌干扰压制**（H 族墨潮干扰舰 · 2026-09-24）：视图锚舰与引擎**同一处口径**——
    * 不然射程弧 / 底部射程标签会拿"没被压过"的射程去画（与引擎实际开火门不一致）。
@@ -214,9 +205,13 @@ export function battleArcsFor(
    * 某一波出场 ⇒ 取第 0 波会漏判。
    */
   const foes = foesWithSupport(battle, activeFoeSpecsOf(anomaly, bal, battle.waveIdx))
+  if (battle.rangeEwVersion === 1) syncRangeEw(state, ctx, battle, foes, leaderShipId)
   syncCoronaFleetFocus(battle, foes)
-  applyMeJammerDebuff(me, meJammerNetOf(battle, foes), meRefs.weaponRanges)
-  Object.assign(me, playerGravekeeperSpecOf(battle, me, true))
+  // 锚舰、逐舰冷却与电子战详情复用引擎规格，含虫洞增程、捕获网和逐武器压制。
+  const mySpecs = new Map(buildMyUnitSpecs(state, ctx, battle, leaderShipId, anomaly.id, foes)
+    .map(spec => [spec.tag, playerGravekeeperSpecOf(battle, spec, true)]))
+  const me = mySpecs.get(leaderTag)
+  if (!me) return null
   /** 我方各武器当前装填剩余（与 units['player'].weapons 同序；单位缺失 = 空） */
   const meRt = battle.units['player']?.weapons ?? []
   /**
@@ -241,7 +236,7 @@ export function battleArcsFor(
   // 主武器（战术距离口径）：与三按钮/射程带/预估同源——弧上米数刻度照它出
   const mainW = mainWeaponOf(me)
   me.weapons.forEach((w, i) => {
-    if (w.disabled) return
+    if (w.disabled || w.repairDrone) return
     // 2026-09-10 船长「无人机可被击落」：被点防打掉的架次不出现在射程弧/机群计数里
     if (w.src === 'drone' && battle.dronePools?.[i]?.alive === false) return
     let type: DamageType | null = null
@@ -366,7 +361,7 @@ export function battleArcsFor(
       ...(b.mounts.size > 0 ? { mounts: [...b.mounts] } : {}),
     }))
     .sort((a, b) => b.maxM - a.maxM || a.minM - b.minM)
-  const openM = battleOpenM(me, foes, bal)
+  const openM = battleOpenM(me, battle.rangeEwVersion === 1 ? foeRangeEwSpecsOf(battle, foes) : foes, bal)
   // 各单位三层满血量（UI 垂直血条按各自满值比例绘制）：以战斗实况单位为准——
   // 2026-09-09 多波修复：foes 仅按"单波默认"重建，波次增援/多小队单位（w{n}-foe-* 等）不在其内，
   // 曾致后续波敌人血条为空（数值正常）；现优先 battle.units[tag].hpMax（引擎生成时写入），
@@ -468,7 +463,6 @@ export function battleArcsFor(
    * **我方编队逐舰读数**（2026-09-13 F 批「4 条舰影 + 血条」的数据源）：
    * 单船路径 = 只有主控一条（`tag='player'`）；多单位路径 = 主控 + 僚舰（各自三层血）。
    */
-  const mySpecs = new Map(buildMyUnitSpecs(state, ctx, battle, leaderShipId, anomaly.id, foes).map(spec => [spec.tag, playerGravekeeperSpecOf(battle, spec, true)]))
   const myUnits = (battle.myFleet && battle.myFleet.length > 0
     ? battle.myFleet
     : [{ tag: 'player', shipId: leaderShipId }]
@@ -523,14 +517,16 @@ export function battleArcsFor(
      * **战场远端（距离上限）**——2026-09-19 船长裁定「甲」后新增：界面那把距离尺/泳道几何按它定"拉开"那一端，
      * 这样敌方挨打增程（或我方科技增程）把战场撑宽时，画面与引擎**同一把尺**（无增程时 = `openM`，逐像素不变）。
      */
-    maxM: battleMaxDistanceM(battle, me, foes, bal),
-    desireMaxM: battleMaxDistanceM(battle, me, foes, bal) * (battle.wormhole?.desireRangeMul ?? 1),
+    maxM: battleMaxDistanceM(battle, me, foes, bal, [...mySpecs.values()]),
+    desireMaxM: battleMaxDistanceM(battle, me, foes, bal, [...mySpecs.values()]) * (battle.wormhole?.desireRangeMul ?? 1),
     foeDesireM: Math.min(openM, foeDesiredRange(me, foes, bal, battle.meFoeRangeDebuff ?? 0, battle)),
     ammo: { kin: battle.ammo.kin, exp: battle.ammo.exp, pla: battle.ammo.pla },
     ...(Object.keys(ammoNames).length > 0 ? { ammoNames } : {}),
     me: meArcs,
     meReload,
     weapons: battleWeaponCyclesOf(battle, cycleUnits, ctx),
+    rangeEw: rangeEwBattleSummaryOf(battle),
+    rangeEwDetails: battle.rangeEwVersion === 1 ? () => rangeEwBattleView(state, ctx, battle, anomaly, leaderShipId) : undefined,
     devices: battleDeviceCyclesOf(state, ctx, battle, cycleUnits,
       spec => thrusterPhase(battle, bal, unitThrusterCycle(spec, bal))),
     myUnits,

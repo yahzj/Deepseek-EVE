@@ -23,6 +23,10 @@ export interface SkillDef {
   readonly group: string
   /** EVE 风格难度系数：数值越大每级学得越慢（常见 1~8） */
   readonly rank: number
+  /** 单技能训练许可定价（信用点）；缺省沿用rank价目表，可为低阶技能显式要求许可。 */
+  readonly licensePriceIsk?: number
+  /** 购买许可的累计协会声望门槛，不消耗声望；已购或已练的许可资格不回收。 */
+  readonly licenseStandingReq?: number
   /** 单独覆盖基础训练时长（毫秒），不填则用引擎默认 60 秒 */
   readonly baseMs?: number
   /** 一句话说明这个技能以后有什么用 */
@@ -196,6 +200,12 @@ export interface ItemDef {
   /** 无人机分类（2026-09-10 船长拍板：显式字段——侦察机/战斗机/攻坚机/哨戒机，与射程分类
    * 一一对应；界面「种类」显示为「无人机 · 侦察机」，未来筛选/排序/掉落复用同一权威来源） */
   droneClass?: DroneClass
+  /** 修理无人机不进入武器序列，战斗中按独立维修脉冲消耗组件。 */
+  repairDrone?: boolean
+  repairArmorHp?: number
+  repairHullHp?: number
+  repairIntervalMs?: number
+  repairKit?: string
   /* ═══ 无人机命中（2026-09-10 船长拍板：命中/衰减下放到机型本体，不再由引擎硬编码） ═══ */
   /** 放飞基础命中率 0~1（命中 = (hitRate + 攻方命中加成) × 距离衰减 − 守方回避）；
    * 侦察/战斗/攻坚三型 = 0.75 且**命中不随距离衰减**（见 falloff）；哨戒 = 1.10（保留衰减） */
@@ -631,6 +641,8 @@ export interface BalanceConfig {
 
 /** B1 低安遭遇 / 伏击：占用随机事件时机；到达缓冲 + 到点遇袭概率（2026-09-04 定稿） */
 export interface EncounterBalance {
+  /** 普通工业出勤公式和海盗生成统一旋钮；入侵不读取。 */
+  industrial: import('./encounters/riskTypes').IndustrialEncounterConfig
   /**
    * **低安上限（含）**：星系安全等级 **≤ 此值** 才掷伏击。
    * 2026-09-12 船长两条裁定（「将伏击掷骰阈值降低为0」＋「0也算低安」）⇒ 现值 **0**：
@@ -807,6 +819,7 @@ export type FittedModules = {
 
 /** 装备定义（造出来装到船上的模块） */
 export interface ModuleDef {
+  rangeEwStrength?: number
   /** 新出击加速器首次等待削减，跨型号折权乘算；旧机库字段保持独立。 */
   droneLaunchCutPct?: number
   /** 激光远端威力保留增量，跨型号折权加算，实际falloff不超过1。 */
@@ -1189,6 +1202,9 @@ export interface ModuleDef {
   /** 锁定加深（0.08 = 被锁定目标受本舰伤害 ×1.08；多件 EVE 曲线收敛见 stackingOf/curveMult；
    *  装上任意一件即触发集火：本舰全部武器不再随机分散，改打存活编队首位（主舰优先、击毁自动接力） */
   lockDmgBonus?: number
+  /** 锁定倾向与共享增伤独立，多件概率取最高、不相加。 */
+  lockTargetChance?: number
+  lockSharedBonus?: number
   /**
    * **隐身窗口时长**（ms；2026-09-15 船长定：「隐秘行动装置」——高槽支援件，两档 MK2/MK3 =
    * **20 / 30 秒**，**极度吃 CPU**）。
@@ -1418,6 +1434,18 @@ export interface LootRow {
 
 
 export interface AnomalyDef {
+  /** 普通海盗本场生成记录，不反向修改共享舰型。旧单波快照缺省。 */
+  pirateGeneration?: { version: 2; statMultiplier: number }
+  /** 本次电子战旗舰增援前的运行卡，只供已开战对象续算。 */
+  rangeEwLegacyCard?: AnomalyDef
+  /** 编队调整的旧卡基线与逐舰固定规格；仅派生目录持有，不写存档。 */
+  foeFormation?: {
+    baseline: AnomalyDef
+    layout: readonly FoeShipSlot[]
+    units: readonly { spec: import('./combat/model').UnitSpec; rawSpec: import('./combat/model').UnitSpec; hpMul: number; dmgMul: number; added: boolean }[]
+  }
+  /** 扩编后仍按旧卡单位数结算普通残骸。 */
+  wreckEnemyCount?: number
   id: string
   name: string
   /** 所在星系 */
@@ -1976,6 +2004,7 @@ export type CommsJumpPage = 'map' | 'ship' | 'fit' | 'items' | 'market' | 'indus
  * 「通讯消息契约」两处必须同步（漏一处体检会报错）。
  */
 export type CommsTrigger =
+  | { kind: 'industrialFleetRisk' }
   | { kind: 'start' }
   /** **「第一次」任务已完成**（2026-09-17 教程重做批）：读 importantTasks[taskId].done */
   | { kind: 'firstTask'; taskId: string }
@@ -2117,9 +2146,9 @@ export interface CommsMessageDef {
   /**
    * 顺带提示（一句提示 + 跳转目标页；裁决③）。`tab` 用于星图页内标签，`shipTab` 用于舰船页内标签，
    * `taskTab` 用于星图「任务中心」的**内层**标签（2026-09-11 船长：步骤 2 跳转必须切到「重要任务」——
-   * 内层标签会记住玩家上次的选择，只切到任务中心不够）。
+   * 内层标签会记住玩家上次的选择，只切到任务中心不够）。`skillBranch`用于技能大类内的技能书定位。
    */
-  hint?: { text: string; page: CommsJumpPage; tab?: string; taskTab?: string; shipTab?: string; action?: string }
+  hint?: { text: string; page: CommsJumpPage; tab?: string; taskTab?: string; shipTab?: string; skillBranch?: string; action?: string }
   /** 预留回复选项（本期不启用） */
   replies?: readonly CommsReplyDef[]
   /**
@@ -2168,10 +2197,10 @@ export interface CommsEntryView {
   /** 是否已读 */
   read: boolean
   /**
-   * 顺带提示 + 跳转目标页（可选；`tab` = 星图页内标签、`taskTab` = 任务中心内层标签、`shipTab` = 舰船页内标签）。
+   * 顺带提示 + 跳转目标页（可选；`tab` = 星图标签或技能大类，`skillBranch` = 技能书，`taskTab`/`shipTab` = 对应内层标签）。
    * ⚠ **实例通讯**可以只给 `action`（点开一个面板、不跳页）⇒ 那种条目 `page` 缺省。
    */
-  hint?: { text: string; page?: CommsJumpPage; tab?: string; taskTab?: string; shipTab?: string }
+  hint?: { text: string; page?: CommsJumpPage; tab?: string; taskTab?: string; shipTab?: string; skillBranch?: string }
   /** 预留回复选项（`COMMS_REPLIES_ENABLED = false` 时界面不渲染） */
   replies?: readonly CommsReplyDef[]
   /* ─── 实例通讯专用（`state.commsInstance`；表消息恒缺省） ─── */

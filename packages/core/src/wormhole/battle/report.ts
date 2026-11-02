@@ -3,7 +3,7 @@ import type { BattleState, GameState } from '../../state'
 import type { WormholeRunState } from '../../wormhole'
 import type { WormholeFoeKind } from '../../wormholeFoes'
 import type { SimContext, AnomalyDef } from '../../types'
-import { repairUsageText, wormholeDerivedAnomaly } from '../../combat'
+import { repairUsageText, resolvedBattleAnomaly, battleAnomalyOf } from '../../combat'
 import { weekendFlagshipEncounterOf } from '../../weekendBattle'
 
 /** 本场战斗的**编队残血比例**（我方三层血合计 ÷ 满值合计；用于战报与结算读数） */
@@ -107,8 +107,7 @@ export function wormholeBattleReport(
 export function battleFoeAnomaly(state: GameState, ctx: SimContext): AnomalyDef | undefined {
   const whBattle = state.wormhole.run?.battle
   if (whBattle?.wormhole) {
-    const base = ctx.anomalies.get(whBattle.wormhole.cardId)
-    if (base) return wormholeDerivedAnomaly(ctx, base, whBattle.wormhole)
+    return resolvedBattleAnomaly(ctx, whBattle, whBattle.wormhole.cardId)
   }
   /**
    * **第三个宿主：入侵旗舰战**（2026-09-25 加；船长报障「旗舰战无法进入战斗画面」）——
@@ -117,10 +116,11 @@ export function battleFoeAnomaly(state: GameState, ctx: SimContext): AnomalyDef 
    * 敌卡 = 该族旗舰卡（遭遇槽里的 `anomalyId` 本就是它，直接取即可）。
    */
   if (weekendFlagshipEncounterOf(state, state.encounter) && state.encounter.battle) {
-    const card = state.encounter.anomalyId !== null ? ctx.anomalies.get(state.encounter.anomalyId) : undefined
-    if (card) return card
+    return resolvedBattleAnomaly(ctx, state.encounter.battle, state.encounter.anomalyId)
   }
-  return state.expedition.anomalyId ? ctx.anomalies.get(state.expedition.anomalyId) : undefined
+  const exp = state.expedition
+  return exp.battle ? resolvedBattleAnomaly(ctx, exp.battle, exp.anomalyId, exp.lairTier, exp.factionActive)
+    : battleAnomalyOf(ctx, exp.anomalyId, exp.lairTier, exp.factionActive)
 }
 
 /**
@@ -157,7 +157,7 @@ export function wormholeBattleViewOf(
   if (!spec || !base) return null
   // 走**引擎同源**那一处（wormholeDerivedAnomaly）：既保证视图与推进同口径，也吃到它的一层记忆
   //（本函数每次重渲染都会被调一次；拖动距离条时高频重渲染 ⇒ 重建整张敌卡会顶出顿挫）
-  const anomaly = wormholeDerivedAnomaly(ctx, base, spec)
+  const anomaly = resolvedBattleAnomaly(ctx, battle, spec.cardId)!
   const leaderShipId = battle.myFleet?.[0]?.shipId ?? state.shipId
   const leaderRt = battle.units[battle.myFleet?.[0]?.tag ?? 'player']
   const foeHp: Record<string, { s: number; a: number; h: number; name: string }> = {}

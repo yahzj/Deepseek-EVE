@@ -23,6 +23,10 @@ export function advanceEncounterWatch(state: GameState, ctx: SimContext, _deltaM
   if (enc.active) {
     if (enc.battle) {
       if (enc.battle.ended) {
+        if ((enc.pirate || enc.automatic) && enc.battle.ended !== 'me' && enc.battle.lastTickGameMs - enc.battle.startedAtGameMs >= ctx.balance.battle.maxBattleMs) {
+          settleEscape(state, ctx)
+          return
+        }
         /** ⚠ 与下面那支**同源**（见 `settleEncounterBattle` 的头注：漏结算 = 旗舰白打） */
         settleEncounterBattle(state, ctx, enc)
         return

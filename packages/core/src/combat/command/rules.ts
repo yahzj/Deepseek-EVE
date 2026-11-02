@@ -7,6 +7,7 @@ import config from './config.json'
 export const COMMAND_SKILLS = config.skills
 export const COMBAT_MAX_SHIPS = config.maxShips
 export const LEGACY_SPECIAL_MAX_SHIPS = config.legacyMaxShips
+export const COMMAND_STANDING_REQUIRED = config.standingRequired
 export function legacySpecialSquads(): boolean { return !config.enabled || config.legacySpecialFourShips }
 export function combatShipLimit(special = false): number { return special && legacySpecialSquads() ? LEGACY_SPECIAL_MAX_SHIPS : COMBAT_MAX_SHIPS }
 export function commandCapacityOf(state: GameState): number {
@@ -40,7 +41,7 @@ export function commandBudgetOf(state: GameState, ctx: SimContext, shipIds: read
   if (new Set(shipIds).size !== shipIds.length || shipIds.some(id => !state.fleet[id] || !fleetDefOf(state, ctx, id))) return reject('编队包含重复或不存在的舰船。', 'core.command.002')
   if (shipIds.length > result.maxShips) return reject(`编队最多${result.maxShips}艘。`, 'core.command.003', { p1: result.maxShips })
   if (!config.enabled || special && legacySpecialSquads() || shipIds.length === 1) return { ...result, ok: true }
-  if (result.standing < config.standingRequired) return reject(`累计协会声望达到${config.standingRequired}后可指挥多舰。`, 'core.command.004', { p1: config.standingRequired })
+  if (result.standing < COMMAND_STANDING_REQUIRED) return reject(`累计协会声望达到${COMMAND_STANDING_REQUIRED}后可指挥多舰。`, 'core.command.004', { p1: COMMAND_STANDING_REQUIRED })
   if (result.cost > result.capacity) return reject(`指挥成本${result.cost}超过容量${result.capacity}。`, 'core.command.005', { p1: result.cost, p2: result.capacity })
   return { ...result, ok: true }
 }

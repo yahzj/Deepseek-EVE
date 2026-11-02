@@ -63,7 +63,8 @@ export function expeditionStatus(state: GameState, ctx: SimContext): ExpeditionV
   if (!exp.active || exp.anomalyId === null) return base
 
   // 窝点（赏金任务目标）：展示名/威胁/胜率估算一律按档位强化后的卡（与战斗、结算同口径）
-  const card = anomaly && exp.lairTier ? lairAnomalyOf(anomaly, exp.lairTier, ctx.balance.battle) : anomaly
+  const source = exp.battle && exp.battle.enemyFormationVersion !== 1 ? anomaly?.foeFormation?.baseline ?? anomaly : anomaly
+  const card = source && exp.lairTier ? lairAnomalyOf(source, exp.lairTier, ctx.balance.battle, exp.battle ? exp.battle.enemyFormationVersion ?? 0 : 1, ctx.foeShips) : source
   const threat = card?.threat ?? 0
   const power = exp.power
   const phase: 'out' | 'combat' | 'back' = exp.phase === 'battle' ? 'combat' : exp.phase

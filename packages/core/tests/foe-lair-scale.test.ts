@@ -18,12 +18,14 @@
 import { describe, expect, it } from 'vitest'
 import { ANOMALIES } from '@whale/data'
 import { createFoeSpecs } from '../src/combat'
-import { LAIR_THREAT_MUL, lairAnomalyOf } from '../src/lairs'
+import { LAIR_THREAT_MUL, lairAnomalyOf as deriveLair } from '../src/lairs'
 import { foeHpOfThreat } from '../src/foePower'
 import type { AnomalyDef } from '../src/types'
 import { makeTestCtx } from './helpers'
 
 const bal = makeTestCtx().balance.battle
+// 旧战斗兼容契约；新扩编由enemy-formation专项覆盖。
+const lairAnomalyOf = (card: AnomalyDef, tier: 1 | 2 | 3, balance: typeof bal) => deriveLair(card, tier, balance, 0)
 const card = (id: string): AnomalyDef => ANOMALIES.find((a) => a.id === id)!
 const hpOf = (c: AnomalyDef): number =>
   (c.ships ?? []).reduce((n, s) => n + s.ship.hp * (s.hpMul ?? 1) * Math.max(1, Math.floor(s.count ?? 1)), 0)

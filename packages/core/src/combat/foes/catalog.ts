@@ -1,12 +1,13 @@
 /** 战斗域职责拆分，保持原计算与顺序。 */
 import type { AnomalyDef, BattleBalance, DamageType } from '../../types'
-import { foeThreatRatingOf, TACTIC_RANGE, foeRefSpeedMps, foeSpeedBase, foeHpOfThreat, foeFamilyHpMulOf, foeShipHpMulOf } from '../foePower'
+import { foeThreatRatingOf, TACTIC_RANGE, foeRefSpeedMps, foeSpeedBase, foeHpOfThreat, foeFamilyHpMulOf, foeShipHpMulOf, hasFixedFoeFormation } from '../foePower'
 import type { UnitSpec } from '../model'
 import { createFoeSpecsFromShips } from './ships'
 import { PROFILE_SPLIT, pickTopType, splitShotByComposition, foeDamageComposition } from '../../wormholeFoes'
 import { ceilFinalQuantity } from '../../quantity'
 import type { Hp3 } from '../combatMath'
 import { foeUnitNameOf } from '../foeCard'
+import { fixedFormationSpecs } from './formation'
 
 /**
  * **敌卡战力实测**（定价式的左半边 · 2026-09-25）：`X = √(全波总血 × 峰值波火力DPS)`。
@@ -57,6 +58,7 @@ export interface FoeSpecOpts {
 }
 
 export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance, opts: FoeSpecOpts = {}): UnitSpec[] {
+  if (hasFixedFoeFormation(anomaly)) return fixedFormationSpecs(anomaly, opts)
   // 2026-09-11 舰级路径（船长定案「敌舰配置表」）：写了 ships 的卡按**舰级绝对值**建档；
   // 未写的卡走下面的旧"威胁推导"路径，行为逐字不变（试点只转 A 族 6 张）。
   if (anomaly.ships && anomaly.ships.length > 0) {

@@ -61,7 +61,9 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
   // 敌对派系活跃（2026-09-10 船长定）：本场打的是当日选中星系的常驻悬赏 → 威胁已 ×1.1（battleAnomalyOf），
   // 这里把奖金也 ×1.1（展示=到账口径），并在胜利后按概率掉稀有残骸。
   const factionActive = exp.factionActive === true
-  const card0 = lairTier ? lairAnomalyOf(anomaly, lairTier, ctx.balance.battle) : anomaly
+  const entryCard = battle.rangeEwVersion === 1 ? anomaly : anomaly.rangeEwLegacyCard ?? anomaly
+  const sourceCard = battle.enemyFormationVersion === 1 ? entryCard : entryCard.foeFormation?.baseline ?? entryCard
+  const card0 = lairTier ? lairAnomalyOf(sourceCard, lairTier, ctx.balance.battle, battle.enemyFormationVersion ?? 0, ctx.foeShips) : sourceCard
   const battleCard = factionActive ? factionAnomalyOf(card0) : card0
   const displayName = battleCard.name
   /**

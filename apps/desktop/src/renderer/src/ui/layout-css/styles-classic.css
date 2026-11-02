@@ -1975,6 +1975,12 @@ html[data-locale='en'] body {
 
 }
 
+.app-ship-card.is-fleet.is-formation-history:not(.is-current) {
+
+  border-left: 2px solid rgb(var(--wui-gold) / 0.72);
+
+}
+
 /* 2026-09-09 切换驾驶脉冲（船长定：无缝切换易误判——成功后新驾驶船卡与「当前驾驶」行各做一次约 0.8 秒青绿高亮，动画后回落常驻金框样式；纯光影不占布局） */
 
 .app-ship-card.is-current.is-switch-pulse {
@@ -2972,6 +2978,15 @@ html[data-locale='en'] body {
 
 .app-skill-row.is-locked { opacity: 0.62; }
 
+.app-skilltree-catalog .app-skill-row { flex-wrap: wrap; }
+.app-skilltree-catalog .app-inv-btns {
+  flex-shrink: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+}
+
 .app-skill-row-desc { font-size: var(--wui-fs-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* 名字当作按钮（点开详情窗）：不描边、不着色，只保留可点的手感 */
@@ -3535,6 +3550,19 @@ html[data-locale='en'] body {
 
 }
 
+/* 单一舰队卡牌网格：编队状态直接属于舰船卡，标题栏只显示合计。 */
+.app-fleet-panel > .wui-panel-head { flex-wrap: wrap; gap: var(--wui-sp-6) var(--wui-sp-10); }
+.app-fleet-panel .wui-panel-right { min-width: 0; max-width: 100%; }
+.app-fleet-head-tools { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: var(--wui-sp-6) var(--wui-sp-10); min-width: 0; }
+.app-fleet-count { overflow-wrap: anywhere; }
+.app-fleet-command-summary { display: inline-flex; align-items: center; flex-wrap: wrap; gap: var(--wui-sp-6); color: rgb(var(--wui-accent)); }
+.app-fleet-command-summary.is-over { color: rgb(var(--wui-danger)); }
+.app-fleet-command-summary > i { display: block; width: 64px; height: 4px; background: rgb(var(--wui-bg-track)); }
+.app-fleet-command-summary > i > b { display: block; height: 100%; background: currentColor; }
+.app-fleet-command-warning { flex: 0 0 auto; padding-bottom: var(--wui-sp-6); }
+.app-fleet-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap: var(--wui-sp-10); align-items: stretch; padding: 2px; }
+.app-fleet-card-grid > * { display: flex; min-width: 0; }
+
 .app-fleet-toolbar {
 
   display: flex;
@@ -3603,12 +3631,83 @@ html[data-locale='en'] body {
 
 }
 
-/* 舰队卡片左侧舰影（2026-09-10 船长：每艘船的舰船形象放对应卡片最左侧；屏幕宽度不足时隐藏图形）：
-   只改舰队卡（.is-fleet）为横排——同页市场页卡片（.app-ship-card 不带 is-fleet）保持原纵向排布；
-   舰影列宽固定（= ShipPage FLEET_ART_W，gap 同 FLEET_ART_GAP），显隐由列表容器实测宽驱动，不留空位 */
-.app-ship-card.is-fleet { display: flex; align-items: center; gap: var(--wui-sp-10); }
-.app-ship-card.is-fleet .app-ship-art { flex: 0 0 auto; line-height: 0; }
-.app-ship-card.is-fleet .app-ship-main { flex: 1 1 auto; min-width: 0; }
+/* 舰影、选择、属性与原操作共用一张纵向卡牌；只作用于我的舰队。 */
+.app-ship-card.is-fleet { display: flex; flex: 1; min-width: 0; min-height: 324px; box-sizing: border-box; }
+.app-ship-card.is-fleet.is-combat-selected:not(.is-current) { border-color: rgb(var(--wui-accent) / 0.65); background: rgb(var(--wui-accent) / 0.055); }
+.app-fleet-card-art { display: grid; place-items: center; height: 100px; min-width: 0; flex: 0 0 auto; border-bottom: 1px solid rgb(var(--wui-border) / 0.6); }
+.app-fleet-card-art .app-sprite { max-width: 100%; }
+.app-fleet-card-pickbar { display: flex; align-items: center; gap: var(--wui-sp-5); min-height: 26px; }
+.app-fleet-card-pickbar > :last-child { margin-left: auto; }
+.app-fleet-card-cost { display: flex; align-items: center; gap: var(--wui-sp-5); color: rgb(var(--wui-dim)); font-size: var(--wui-fs-xs); }
+.app-fleet-card-cost strong { color: rgb(var(--wui-text)); }
+.app-fleet-card-cost > :last-child { margin-left: auto; color: rgb(var(--wui-accent)); }
+.app-ship-card.is-fleet .app-ship-main {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--wui-sp-5);
+  min-width: 0;
+}
+.app-ship-card.is-fleet .app-ship-top {
+  align-items: stretch;
+  flex-direction: column;
+  gap: var(--wui-sp-6);
+}
+.app-ship-card.is-fleet .app-ship-name {
+  display: flex;
+  align-items: center;
+  min-height: 32px;
+  flex-wrap: wrap;
+  min-width: 0;
+  gap: var(--wui-sp-4);
+}
+.app-ship-card.is-fleet .app-ship-top-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: var(--wui-sp-5);
+  min-width: 0;
+}
+.app-ship-card.is-fleet .app-fleet-select-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--wui-sp-3);
+  white-space: nowrap;
+  min-width: 90px;
+}
+.app-ship-card.is-fleet .app-fleet-select-btn.is-selected { color: rgb(var(--wui-accent)); border-color: rgb(var(--wui-accent) / 0.6); background: rgb(var(--wui-accent) / 0.1); }
+.app-ship-card.is-fleet .app-fleet-select-btn:focus-visible { outline: 2px solid rgb(var(--wui-accent)); outline-offset: 2px; }
+.app-ship-card.is-fleet .app-ship-spec {
+  max-width: 100%;
+  margin-top: 0;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.app-ship-card.is-fleet .app-ship-bottom {
+  margin-top: auto;
+  padding-top: var(--wui-sp-6);
+  flex-wrap: wrap;
+  gap: var(--wui-sp-6) var(--wui-sp-10);
+}
+.app-ship-card.is-fleet .app-dur-row {
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.app-ship-card.is-fleet .app-dur-track {
+  flex: 1 1 90px;
+  min-width: 60px;
+}
+.app-ship-card.is-fleet .app-dur-text {
+  flex: 0 1 auto;
+  white-space: normal;
+}
+.app-ship-card.is-fleet .app-ship-bottom-btns {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+.app-ship-card.is-fleet .app-rename-row { flex-wrap: wrap; }
+.app-ship-card.is-fleet .app-rename-input { min-width: 0; max-width: 100%; }
 
 /* 悬赏卡敌族舰影列（2026-09-13 船长：「在常驻悬赏内，将悬赏敌族的舰船 SVG 图形，像我的舰队里的我方舰船那样，
    放入悬赏的最左侧」；同批扩到任务中心「赏金任务」窝点卡与「敌对派系活跃」置顶卡）：

@@ -604,7 +604,20 @@ export function BattleScreen({
 
   /* 船体维修装置状态（2026-09-09；**2026-09-16 逐舰**）：运转中（绿点呼吸）/ 组件耗尽停机（暗红）；徽标在弹药旁。
      逐舰化后徽标是**全队合计**（任何一艘在跑 ⇒ 亮"运转中"），悬停列出逐舰明细（谁在跑、各剩多少组件）。 */
-  const repairLedgers = repairLedgersOf(battle)
+  // 修理机的组件余量共用维修徽标；这里只合成视图，不写回真实账本。
+  const repairLedgers = repairLedgersOf(battle).map(row => ({ ...row, ledger: { ...row.ledger, units: [...row.ledger.units] } }))
+  for (const unit of arcs.myUnits) {
+    const drones = Object.entries(engine.state.fleet[unit.shipId]?.droneLoad ?? {}).flatMap(([id, count]) => {
+      const def = engine.ctx.items.get(id)
+      if (!count || !def?.repairDrone) return []
+      const alive = unit.alive && Object.values(battle.dronePools ?? {}).some(pool => pool.owner === unit.tag && pool.artId === id && pool.alive)
+      return [{ moduleId: id, kitId: def.repairKit ?? 'repairkit-mil', armorPerPulse: 0, hullPerPulse: 0, stopped: !alive }]
+    })
+    if (!drones.length) continue
+    const existing = repairLedgers.find(row => row.tag === unit.tag)
+    if (existing) existing.ledger.units.push(...drones)
+    else repairLedgers.push({ tag: unit.tag, ledger: { units: drones, kits: {}, pulses: 0, kitsUsed: 0 } })
+  }
   /**
    * ⚠ **2026-09-24 玩家报障**（船长转述：「进入战斗后维修组件显示为 0，仓库已经确认还有 400 多个
    * 军用维修组件」）：改"按需取用"之后账本 `kits` **不再预载** ⇒ 原先累加 `ledger.kits` 恒得 0。

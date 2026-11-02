@@ -59,6 +59,7 @@ export function commsSenderText(from: string): string {
 
 /** 消息 id → 主题行的 l10n id（键 = `CommsMessageDef.id`，`ui.comms.014~043`） */
 const COMMS_SUBJECT_ID: Record<string, string> = {
+  'msg-industrial-fleet-risk': 'ui.commsIndustrialRisk.001',
   // ── 「第一次」13 封（`firstTaskMessages.ts`）──
   'first-scan': 'ui.comms.014',
   'first-mine': 'ui.comms.015',
@@ -99,6 +100,7 @@ const COMMS_SUBJECT_ID: Record<string, string> = {
   'msg-blackbox-plug-unlock': 'ui.comms.079', // 首个黑匣解锁插件（2026-09-26 船长令）
   'msg-lab-contraband': 'ui.comms.076', // 首访实验室：黑市的违禁货通讯（2026-09-30 船长令）
   'msg-black-market-unlock': 'ui.commsBlackMarket.001',
+  'msg-fleet-command-unlock': 'ui.commsFleetUnlock.001',
 }
 
 // ⟪文案调整 2026-10-04⟫ 建站弹层和收件箱镜像共用同一组对白 id。
@@ -214,6 +216,7 @@ const COMMS_HINT_ID: Record<string, string> = {
   // 2026-09-30 首访实验室（黑市那封）：跳工业页实验室
   '工业页的实验室能造这两样。': 'ui.comms.077',
   [L10N['ui.commsBlackMarket.005']!.zh]: 'ui.commsBlackMarket.005',
+  [L10N['ui.commsFleetUnlock.004']!.zh]: 'ui.commsFleetUnlock.004',
 }
 // l10n-keep-end
 
@@ -249,11 +252,16 @@ export function commsHintText(text: string): string {
  * ⚠ **行数必须与中文逐行对齐**：`commsBodyText()` 在行数不符时**回落到中文**（宁可整段中文，也不许错行串位）。
  */
 const COMMS_BODY_EN: Record<string, readonly string[]> = {
+  'msg-industrial-fleet-risk': ['ui.commsIndustrialRisk.002', 'ui.commsIndustrialRisk.003'],
   // ⟪文案调整 2026-10-12⟫ 新黑市信英文未准备时使用共享待译回退，不显示空正文。
   'msg-black-market-unlock': [
     l10nEntryText(L10N['ui.commsBlackMarket.002']!, 'en'),
     l10nEntryText(L10N['ui.commsBlackMarket.003']!, 'en'),
     l10nEntryText(L10N['ui.commsBlackMarket.004']!, 'en'),
+  ],
+  'msg-fleet-command-unlock': [
+    l10nEntryText(L10N['ui.commsFleetUnlock.002']!, 'en'),
+    l10nEntryText(L10N['ui.commsFleetUnlock.003']!, 'en'),
   ],
   'first-scan': [
     L10N['ui.firstScan.001']!.en,

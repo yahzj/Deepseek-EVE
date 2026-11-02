@@ -58,6 +58,7 @@ function fightOneInvasion(s: GameState): { cardId: string; cardGalaxy: string | 
   s.expedition.active = false
   s.expedition.battle = null
   s.expedition.anomalyId = null
+  delete s.expedition.sortie
   weekendNoteAssaultDispatch(s) // 记一次出发 ⇒ 下一场换一支
   s.gameMs += 600_000
   return { cardId: dispatch.cardId, cardGalaxy: card?.galaxyId, ok: d.ok }

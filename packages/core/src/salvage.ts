@@ -316,7 +316,9 @@ export function rareStockForTargetOf(
   return n
 }
 
-/** 悬赏敌人总数（主舰+僚机+多波全部单位；无波表 = 1）——2026-09-10 残骸注入按此加成 */export function bountyEnemyCount(anomaly: Pick<AnomalyDef, 'waves'>): number {
+/** 扩编卡保留旧卡回收体量，普通卡仍按既有波表结算。 */
+export function bountyEnemyCount(anomaly: Pick<AnomalyDef, 'waves' | 'wreckEnemyCount'>): number {
+  if (anomaly.wreckEnemyCount !== undefined) return anomaly.wreckEnemyCount
   const w = anomaly.waves
   if (!w || w.length === 0) return 1
   return Math.max(1, w.reduce((s, x) => s + x.units, 0))

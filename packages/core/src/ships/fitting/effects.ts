@@ -27,6 +27,7 @@ export type StackGroup = 'gap' | 'curve' | 'weighted' | 'max' | 'fleetDecay' | '
  * 却按**型号**各走各的冷却。
  */
 export function stackingOf(def: ModuleDef): { group: StackGroup; kind: string } {
+  if (def.rangeEwStrength !== undefined) return { group: 'flat', kind: 'range-ew' }
   if (def.slot === 'plug') {
     const kind = plugStackingKindOf(def)
     return { group: kind === null ? 'flat' : 'weighted', kind: kind ?? 'plug' }

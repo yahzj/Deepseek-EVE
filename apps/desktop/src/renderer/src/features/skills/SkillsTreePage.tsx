@@ -1,6 +1,7 @@
 import { SkillBoostBlock } from './SkillBoostBlock'
 import { SkillTreeCanvas } from './SkillTreeCanvas'
 import { SkillDetailModal } from './SkillDetailModal'
+import { SkillLicenseActions } from './SkillLicenseActions'
 import type { Status } from './types'
 /**
  * **技能页（科技树 · 正式页 · 2026-09-22 船长令）**：
@@ -31,7 +32,7 @@ import {
   MAX_SKILL_LEVEL,
   skillLevelTimeMs,
   skillLicenseMissing,
-  skillLicensePriceOf,
+  skillLicenseStandingBlock,
   skillLockMissing,
   skillQueueStatus,
   trainingTimeFactor,
@@ -73,10 +74,10 @@ export function SkillsTreePage({
   /**
    * **外部定位请求**（**2026-09-24 船长令**：「跳到技能页并自动选中工程」）：
    * 「第一次学习技能」卡片的跳转按钮与那封情报信的「前往」都带 `{ group:'工程', seq }` 进来
-   * ⇒ 切到该大类并**清掉技能书筛选与搜索**（否则上回留下的筛选会把目标技能藏起来）。
+   * ⇒ 切到该大类；指定 branch 时定位技能书，否则清空技能书。搜索和状态筛选一并清空。
    * `seq` 每次请求 +1 ⇒ 人在技能页时再点一次也能重新落位（同 `taskFocus` / `mapGoto` 的套路）。
    */
-  focusGroup?: { group: string; seq: number } | null
+  focusGroup?: { group: string; branch?: string; seq: number } | null
 }) {
   const state = engine.state
   const groups = engine.groups
@@ -161,30 +162,32 @@ export function SkillsTreePage({
   useEffect(() => {
     if (!focusGroup) return
     if (!groups.includes(focusGroup.group)) return
-    /**
-     * ⚠ 这里**有意**清掉技能书与搜索（否则上回留下的筛选会把目标技能藏起来）——按 2026-09-26 的
-     * 会话记忆口径，这次清空**一并写进记忆**：跳转后离开再回来，看到的是玩家最后真正看到的那个视图。
-     */
+    // 外部跳转不沿用可能遮住目标技能的筛选或详情弹层。
     setGroupTab(focusGroup.group)
-    setBranchTab('')
+    setBranchTab(skills.some(skill => skill.group === focusGroup.group && skill.branch === focusGroup.branch) ? focusGroup.branch ?? '' : '')
     setQuery('')
+    setStateTab('')
+    setOpenId(null)
     /** ⚠ 还要**切到树那个子页**（2026-09-30 拆页）：跳转的目的是"去练那门技能"，落在队列页就白跳了 */
     setSec('tree')
   }, [focusGroup?.seq])
   /**
    * **训练许可**（**2026-09-27 船长令**：「我想让学习技能有成本」）：收费档（rank4/5/6，rank6 为
-   * **预留档**）要先买许可才能排训练；rank1~3 免许可、老档「已练到 Lv≥1」视同已购。
+   * **预留档**）与显式定价技能要先买许可才能排训练；已练到 Lv≥1仍视同已购。
    * 判据与 `enqueueSkill` 的拒因**同一把尺**（core `skillLicenseMissing`），界面不自己判。
    */
   const [licenseAsk, setLicenseAsk] = useState<string | null>(null)
   const isk = (n: number): string => n.toLocaleString('zh-CN')
-  const licensePriceOf = (s: SkillDef): number | null => skillLicensePriceOf(s)
   const licenseMissingOf = (s: SkillDef): boolean => skillLicenseMissing(state, s)
   /**
    * **购买训练许可**：**两段确认**（首击只警告、二击才付款）——50 万 / 200 万是大钱，防误点。
    * 判定与扣款全在 core（`buySkillLicense`），这里只负责回话。
    */
   const buyLicense = (skillId: string): void => {
+    const def = engine.ctx.skills.get(skillId)
+    if (!def) return
+    const block = skillLicenseStandingBlock(state, def)
+    if (block) { setLicenseAsk(null); onToast(cmdText(block), true); return }
     if (licenseAsk !== skillId) {
       setLicenseAsk(skillId)
       return
@@ -192,6 +195,7 @@ export function SkillsTreePage({
     const r = engine.purchaseSkillLicense(skillId)
     setLicenseAsk(null)
     setPrereqNote(r.ok ? tr('ui.SkillTree.024', { p1: isk(r.price ?? 0) }) : cmdText(r))
+    if (!r.ok) onToast(cmdText(r), true)
   }
 
   const q = query.trim().toLowerCase()
@@ -514,19 +518,7 @@ export function SkillsTreePage({
                             </button>
                           </>
                         ) : licenseMissingOf(s) ? (
-                          <>
-                            <span className="app-dim">
-                              {tr('ui.SkillTree.025', { p1: isk(licensePriceOf(s) ?? 0) })}
-                            </span>
-                            <button
-                              className={`app-btn is-small${licenseAsk === s.id ? ' is-primary' : ''}`}
-                              onClick={() => buyLicense(s.id)}
-                            >
-                              {licenseAsk === s.id
-                                ? tr('ui.SkillTree.026', { p1: isk(licensePriceOf(s) ?? 0) })
-                                : tr('ui.SkillTree.023', { p1: isk(licensePriceOf(s) ?? 0) })}
-                            </button>
-                          </>
+                          <SkillLicenseActions state={state} def={s} confirming={licenseAsk === s.id} onBuy={buyLicense} />
                         ) : (
                           <>
                             <span className="app-dim">
@@ -575,7 +567,7 @@ export function SkillsTreePage({
       {/* 详情窗（点节点才开。**拆页后它仍留在树那一支之外**：它是"选了节点才开"的浮层，
           与当前在哪个子页无关 —— 关掉子页切换不会让它消失（玩家点开就看着，不会被切页吞掉）。 */}
       {open ? (
-        <SkillDetailModal open={open} state={state} engine={engine} tf={tf} statusOf={statusOf} licenseMissingOf={licenseMissingOf} licensePriceOf={licensePriceOf} licenseAsk={licenseAsk} buyLicense={buyLicense} prereqTextOf={prereqTextOf} addPrereqs={addPrereqs} prereqNote={prereqNote} isk={isk} setOpenId={setOpenId} />
+        <SkillDetailModal open={open} state={state} engine={engine} tf={tf} statusOf={statusOf} licenseMissingOf={licenseMissingOf} licenseAsk={licenseAsk} buyLicense={buyLicense} prereqTextOf={prereqTextOf} addPrereqs={addPrereqs} prereqNote={prereqNote} setOpenId={setOpenId} />
       ) : null}
     </div>
   )

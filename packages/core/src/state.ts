@@ -391,6 +391,9 @@ export interface WormholeStockItem {
  * 到点结算「手动期望 × 40%」的收益与 −40%~−80% 的损伤（绝不丢船）。
  */
 export interface WormholeAutoRun {
+  /** 缺省走原模拟；未知版本或损坏快照不得降级重抽。 */
+  estimateRules?: number
+  estimate?: import('./signalAuto/types').SignalAutoEstimate
   /** 信号空间新任务出发时锁定的收益系数；旧任务缺省仍为80%。 */
   yieldMul?: number
   /** 显式测试新模式；缺省旧自动，未知版本不降级结算。 */
@@ -1376,6 +1379,7 @@ export function emptyMarks(): MarksState {
 /** 长途运输状态（2026-09-09 船长定稿：任意两座已建成站点间真实航程往返循环；当日改：接单不要求停在端点，
  * 先"就位航段"驶往较近端点，再按所选航线两端点循环） */
 export interface HaulingState {
+  fleetLeg?: import('./hauling/types').HaulFleetLeg
   active: boolean
   /** 玩家所选航线的两个端点（null = 母港；否则为已建成副站 id）——循环只在这两点间往返 */
   routeA: string | null
@@ -1420,6 +1424,8 @@ export interface StationSiteProgress {
 
 /** B1 低安遭遇（v17.1 兼容字段）：一次"伏击/巡逻"事件（进行中/待决/战斗中） */
 export interface EncounterState {
+  automatic?: true
+  pirate?: import('./encounters/riskTypes').PirateEncounterSnapshot
   /** 是否有未了结的遭遇 */
   active: boolean
   /** 承担这艘船的 uid（主控或副船） */
@@ -1616,6 +1622,8 @@ export type GameStateV18 = Omit<GameStateV16, 'version'> & {
   version: 18
   /** B1 低安遭遇（进行中/待决/战斗中；无 = inactive 空对象） */
   encounter: EncounterState
+  industrialProtection?: { version: 1; entryRemainingMs: number; dockedMs: number; postBattleUntilMs: number }
+  industrialFleetRiskSeen?: true
   /** B1：是否已提示过"进入低安"（首次进低安弹提示 + 手册留档） */
   lowSecNotified: boolean
   /** B1：星系 id → 该星系遭遇冷却结束时刻（区域事件不叠加） */
@@ -2138,6 +2146,7 @@ export interface SideTask {
  * 兼容字段（v24 无版本号变化）：老档缺省 null，normalize 补默认。
  */
 export interface CourierDeliveryState {
+  flightDurationMs?: number
   /** 所投送任务的稳定 id（整板刷新把原任务换下后，到站仍按原任务 id 结算） */
   taskId: number
   /** 目标物品的市场商品 key（出发时复制；**虚拟货物时代恒为空串**） */

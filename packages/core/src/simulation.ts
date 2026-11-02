@@ -26,6 +26,7 @@ import type { UnboxResultRow } from './industry'
 import type { StationAction } from './stationActivityPending'
 /* 技能加速「自动续用」（2026-10-01 船长令）：离线期间逐枚不写日志，只记账 ⇒ 结算那句汇总交代 */
 import { offlineBoostRenewCount, setOfflineBoostTally } from './consumables'
+import { beginOfflineCombatStats, newOfflineCombatStats } from './offlineCombatStats'
 
 // 兼容历史引用：formatDurationMs 现定义在 time.ts（避免模块循环依赖）
 export { formatDurationMs } from './time'
@@ -145,6 +146,9 @@ export function simulateOffline(
     !opts?.freezeBattle &&
     (state.autoLoopAnomalyId !== null || autoLoopInvasionGalaxy(state) !== null)
   let boostN = 0
+  const combatStats = newOfflineCombatStats()
+  if (opts?.stats) opts.stats.combat = combatStats
+  const endCombatStats = beginOfflineCombatStats(state, combatStats)
   setOfflineBoostTally(true)
   try {
     if (driveLoop) {
@@ -188,6 +192,7 @@ export function simulateOffline(
     }
     boostN = offlineBoostRenewCount()
   } finally {
+    endCombatStats()
     setOfflineBoostTally(false)
   }
   // 事件数 = 总新增 - 1（减去"离线归来"本身）

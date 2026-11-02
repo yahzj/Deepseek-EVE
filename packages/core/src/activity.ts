@@ -207,11 +207,12 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       id: 'hauling',
       kind: 'hauling',
       label: `长途运输 · 往「${haulEndpointName(ctx, hg.toSiteId)}」`,
+      ...(hg.fleetLeg?.returning ? { labelId: 'ui.industrial.007' } : {}),
       sub: `航线 ${haulEndpointName(ctx, hg.routeA)} ⇄ ${haulEndpointName(ctx, hg.routeB)} · 本段实际约 ${Math.max(1, travelMinutesEff(state, ctx, hg.legMinutes))} 分钟`,
       percent: Math.min(100, Math.round((hg.phaseAccMs / leg) * 100)),
       remainingMs: Math.max(0, leg - hg.phaseAccMs),
-      stopable: true,
-      stop: 'stop-hauling',
+      stopable: !hg.fleetLeg?.returning && !hg.fleetLeg?.abortAfterBattle,
+      stop: hg.fleetLeg?.returning || hg.fleetLeg?.abortAfterBattle ? null : 'stop-hauling',
     })
   }
 

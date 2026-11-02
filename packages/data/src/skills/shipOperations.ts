@@ -68,7 +68,7 @@ export const SHIP_OPERATION_SKILLS: readonly SkillDef[] = [
   {
     id: 'armed-ops',
     name: '武装舰操作',
-    group: '战斗',
+    group: '舰船',
     rank: 3,
     branch: 'b-warship',
     description: '武装舰专精驾驶：驾驶武装舰时所有武器（含基础舰炮）单发伤害每级 +⟦3%⟧（满级 +⟦15%⟧；与炮术学、武器类型加成乘算叠加）。',
@@ -77,7 +77,7 @@ export const SHIP_OPERATION_SKILLS: readonly SkillDef[] = [
     id: 'armored-ops',
     // 2026-09-16 船长：「将重装舰类的名称改为装甲舰」⇒ 展示名改「装甲舰操作」（id `armored-ops` 不变，存档零迁移）
     name: '装甲舰操作',
-    group: '战斗',
+    group: '舰船',
     rank: 3,
     branch: 'b-warship',
     description: '装甲舰专精驾驶：驾驶装甲舰时装甲与结构容量每级 +⟦4%⟧（满级 +⟦20%⟧；与船体加固理论、装甲增厚板乘算叠加，护盾不受影响）。容量变厚的同时，修理组件与船体维修装置的修复量按同一比例提高。',
@@ -94,7 +94,7 @@ export const SHIP_OPERATION_SKILLS: readonly SkillDef[] = [
   {
     id: 'frigate-ops',
     name: '护卫舰操作',
-    group: '战斗',
+    group: '舰船',
     rank: 4,
     branch: 'b-warship',
     prereq: ['armed-ops', 'armored-ops'],
@@ -103,7 +103,7 @@ export const SHIP_OPERATION_SKILLS: readonly SkillDef[] = [
   {
     id: 'destroyer-ops',
     name: '驱逐舰操作',
-    group: '战斗',
+    group: '舰船',
     rank: 4,
     branch: 'b-warship',
     prereq: ['armed-ops', 'armored-ops'],
@@ -112,7 +112,7 @@ export const SHIP_OPERATION_SKILLS: readonly SkillDef[] = [
   {
     id: 'cruiser-ops',
     name: '巡洋舰操作',
-    group: '战斗',
+    group: '舰船',
     rank: 5,
     branch: 'b-warship',
     prereq: ['armed-ops', 'armored-ops'],
@@ -121,7 +121,7 @@ export const SHIP_OPERATION_SKILLS: readonly SkillDef[] = [
   {
     id: 'battleship-ops',
     name: '战列操作',
-    group: '战斗',
+    group: '舰船',
     rank: 5,
     branch: 'b-warship',
     prereq: ['armed-ops', 'armored-ops'],

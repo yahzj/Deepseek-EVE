@@ -140,6 +140,16 @@ export function firstAliveFoe(foes: UnitSpec[], b: import('../state').BattleStat
   return null
 }
 
+/** 概率命中首位锁定目标，余下概率只选其他可攻击敌舰；单目标不掷骰。 */
+export function lockAwareFoe(state: GameState, b: import('../state').BattleState, foes: UnitSpec[], unit: UnitSpec): UnitSpec | null {
+  const chance = unit.lockTargetChance ?? ((unit.lockedDmgBonus ?? 0) > 0 ? 1 : 0)
+  if (chance <= 0) return randomAliveFoe(state, b, foes)
+  const alive = foes.filter(f => isFoeEngageable(b, f.tag))
+  if (alive.length < 2) return alive[0] ?? null
+  if (chance >= 1 || nextRandom(state.rng) < chance) return alive[0]!
+  return alive[1 + nextInt(state.rng, alive.length - 1)]!
+}
+
 /**
  * V18B 随机目标（船长 2026-09-05）：从存活敌人中均匀随机抽一个（确定性走 state.rng——
  * 种子固定则每场可复现；每发武器调用一次 = 齐射可分散到不同目标）。

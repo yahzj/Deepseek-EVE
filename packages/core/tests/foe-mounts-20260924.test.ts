@@ -30,6 +30,7 @@ import {
 } from '../src/index'
 import { createCommandReadyState as createInitialState } from './helpers/command-ready'
 import { createBattleState, createFoeSpecs, hitChance, wormholeDerivedAnomaly } from '../src/combat'
+import { foeJudgedThreatOf } from '../src/foePower'
 
 const ctx = buildSimContext()
 const bal = ctx.balance.battle
@@ -175,7 +176,7 @@ describe('船体修理装置（G 族洞内 · 船长 2026-09-24）', () => {
   it('**层越深回得越多**：k = 层威胁 ÷ 45 逐值对账（层 1 = 1.00 · 层 7 ≈ 1.97）', () => {
     const rows = [1, 2, 4, 7, 10].map((depth) => {
       const { derived, specs } = specsAt('wh-exile-blockade', depth)
-      return { depth, threat: derived.threat!, k: specs[0]!.foeRepairPulse!.k }
+      return { depth, threat: foeJudgedThreatOf(derived), k: specs[0]!.foeRepairPulse!.k }
     })
     for (const r of rows) expect(r.k, `层 ${r.depth} 的 k`).toBeCloseTo(r.threat / FOE_REPAIR_THREAT_REF, 10)
     for (let i = 1; i < rows.length; i++) {

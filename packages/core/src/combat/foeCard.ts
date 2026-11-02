@@ -77,23 +77,26 @@ export function enumerateShipUnits(
   const out: Array<{ tag: string; slot: FoeShipSlot; escort: boolean }> = []
   let mainIdx = 0
   let lastMain = 0
+  const escortCounts = new Map<number, number>()
   for (const slot of anomaly.ships ?? []) {
     if ((slot.wave ?? 0) !== waveIdx) continue
     const count = Math.max(1, Math.floor(slot.count ?? 1))
     const isEscort = slot.escort === true
+    const escortOffset = isEscort ? escortCounts.get(lastMain) ?? 0 : 0
     for (let i = 0; i < count; i++) {
       const k = isEscort ? lastMain : mainIdx + i
       const legacySquad = prefix === '' && k === 0
       const squadPrefix = legacySquad ? '' : prefix === '' ? 'w0-' : prefix
       const tag = isEscort
         ? legacySquad
-          ? `foe-${i + 1}`
-          : `${squadPrefix}foe-${k}-e${i + 1}`
+          ? `foe-${escortOffset + i + 1}`
+          : `${squadPrefix}foe-${k}-e${escortOffset + i + 1}`
         : legacySquad
           ? 'foe-0'
           : `${squadPrefix}foe-${k}`
       out.push({ tag, slot, escort: isEscort })
     }
+    if (isEscort) escortCounts.set(lastMain, escortOffset + count)
     if (!isEscort) {
       lastMain = mainIdx + count - 1
       mainIdx += count

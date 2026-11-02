@@ -203,7 +203,7 @@ export function fittedDecayLine(engine: GameEngine, shipId: string, mod: ModuleD
     const value = (v: number) => p.key === 'laserFalloff' ? `+${Number(v.toFixed(3))}`
       : ['speedAddMps', 'speedPenaltyMps'].includes(p.key) ? `${fmt(Number((p.key === 'speedPenaltyMps' ? -v : v).toFixed(2)))} m/s`
         : p.key === 'droneBayBonusM3' ? `${fmt(Number(v.toFixed(2)))} m³`
-          : ['shieldHpAdd', 'armorHpAdd', 'hullHpAdd', 'cpuPenalty'].includes(p.key) ? fmt(Number((p.key === 'cpuPenalty' ? -v : v).toFixed(2)))
+      : ['shieldHpAdd', 'armorHpAdd', 'hullHpAdd', 'cpuPenalty', 'rangeEwStrength'].includes(p.key) ? fmt(Number((p.key === 'cpuPenalty' ? -v : v).toFixed(2)))
       : p.key === 'shieldPulse' || p.key === 'shieldField' ? recoveryPct(v) : pct(v)
     const eff = value(p.eff)
     const raw = isGap && !p.key.endsWith('Penalty') ? tr('ui.shipInfo.220', { p1: value(p.raw) }) : tr('ui.shipInfo.221', { p1: value(p.raw) })
@@ -236,6 +236,7 @@ export const EFF_PARAM_LABEL: Record<string, string> = {
   lock: 'ui.shipInfo.228',
   warp: 'ui.shipInfo.229',
   ecmRangeCut: 'ui.shipInfo.230',
+  rangeEwStrength: 'ui.rangeEw.010',
   reloadPenalty: 'ui.shipInfo.072',
   speedPenalty: 'ui.shipInfo.075',
   rangePenalty: 'ui.shipInfo.070',

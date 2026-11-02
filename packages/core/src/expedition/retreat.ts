@@ -58,7 +58,9 @@ export function settleBattleRetreat(
    * ⚠ **奖赏与命名那条链仍走基础卡 + `exp.lairTier`**（`lairBaseRewardIsk` / `lairNameOf`），
    * 换成派生卡会把档位倍率二次乘上 ⇒ 奖金虚高，务必别顺手改。
    */
-  const threatCard = anomaly && exp.lairTier ? lairAnomalyOf(anomaly, exp.lairTier, ctx.balance.battle) : anomaly
+  const entry = exp.battle?.rangeEwVersion === 1 ? anomaly : anomaly?.rangeEwLegacyCard ?? anomaly
+  const source = exp.battle && exp.battle.enemyFormationVersion !== 1 ? entry?.foeFormation?.baseline ?? entry : entry
+  const threatCard = source && exp.lairTier ? lairAnomalyOf(source, exp.lairTier, ctx.balance.battle, exp.battle ? exp.battle.enemyFormationVersion ?? 0 : 1, ctx.foeShips) : source
   const battle = exp.battle
   if (!battle) return
   /**

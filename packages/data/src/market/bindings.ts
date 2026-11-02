@@ -1,5 +1,6 @@
 
 export const MARKET_GOODS_RAW_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
+  'drone-repair-mil': {},
   'mod-drone-launch-1': {}, 'mod-drone-launch-2': {}, 'mod-drone-launch-3': {},
   'mod-laser-calibration-2': {}, 'mod-laser-calibration-3': {},
   'bp-drone-launch-1': {}, 'bp-drone-launch-2': {}, 'bp-drone-launch-3': {},

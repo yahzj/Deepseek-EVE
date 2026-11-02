@@ -10,6 +10,7 @@ import { foeFamilyOf } from '../../ui/shipArt'
 import { Glyph, ICO_TONES } from '../../ui/Glyphs'
 import { fmtDuration } from '../../i18n/fmt'
 import { FoeDamageMix, ProfileChip } from '../../ui/shipInfo'
+import { RangeEwPreview } from '../combat/RangeEwPanel'
 
 /** 野外应急修理（2026-10-02 批次 4p 随 GalaxyActions 迁到 StarMap.tsx） */
 
@@ -314,6 +315,7 @@ export function AnomalyCard({
         })()}
       </div>
       <div className="app-ano-reward">
+        <RangeEwPreview state={state} ctx={engine.ctx} card={invadedHere ? undefined : shownCard} />
         {invadedHere ? (
           <>{reclaimedHere ? tr('ui.weekend.116') : tr('ui.weekend.096')}</>
         ) : (

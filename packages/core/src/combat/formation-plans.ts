@@ -1,0 +1,47 @@
+import type { EnemyFormationPlan } from './formation'
+
+/** 批准的编成以旧卡槽位为键；属性门槛固定按调整前档位，不随重标再套。 */
+export const ENEMY_FORMATION_PLANS: Readonly<Record<string, EnemyFormationPlan>> = {
+  'ano-redring-raiders': { counts: [1, 4] },
+  'ano-lantern-saboteurs': { counts: [2, 3] },
+  'ano-haze-ambush': { counts: [1, 4] },
+  'ano-shard-bandits': { counts: [2, 3] },
+  'ano-ghost-signal': { counts: [1, 2] },
+  'ano-echo-haunt': { counts: [1, 3] },
+  'ano-auro-raiders': { counts: [1, 3] },
+  'ano-cinder-siege': { counts: [3] },
+  'ano-mirage-hijackers': { counts: [1, 4] },
+  'ano-starcore-boss': { counts: [5, 4, 4] },
+  'ano-chasm-aberrations': { counts: [5, 5] },
+  'ano-gravekeeper': { counts: [3] },
+  'ano-titan-wreck': { extras: [{ wave: 0, shipId: 'foe-auro-hulk', count: 2 }] },
+  'ano-abyss-guard': { counts: [4, 4] },
+  'ano-nadir-static': { counts: [1, 3] },
+  'ano-voidedge-warden': { counts: [4], boostSlots: [0], hpMul: 1.05, dmgMul: 1.03 },
+  'ano-vault-sentinel': { boostSlots: [1], hpMul: 1.05, dmgMul: 1.03, extras: [{ wave: 0, shipId: 'foe-d-ghost', count: 1, share: 0.15 }] },
+  'ano-core-section': { boostSlots: [0], hpMul: 1.05, dmgMul: 1.03, extras: [{ wave: 0, shipId: 'foe-auro-hulk', count: 2 }] },
+  'ano-maw-hunt': { counts: [5, 4, 4, 1], boostSlots: [3], hpMul: 1.05, dmgMul: 1.03 },
+  'ink-harass': { counts: [6] },
+  'ink-raid': { counts: [3, 4] },
+  'ink-main': { counts: [4, 1, 3, 1], boostSlots: [1], hpMul: 1.05, dmgMul: 1.03, extras: [{ wave: 1, shipId: 'foe-h-ink-corvette', count: 2 }] },
+  'ink-flagship': { counts: [6, 4, 1, 2, 1, 1, 1, 1, 2], boostSlots: [3, 5, 7], hpMul: 1.1, dmgMul: 1.05, extras: [{ wave: 1, shipId: 'foe-h-ink-corvette', count: 1 }, { wave: 2, shipId: 'foe-h-ink-corvette', count: 2 }, { wave: 3, shipId: 'foe-h-ink-corvette', count: 1 }] },
+  'corona-drift': { counts: [7] },
+  'corona-split': { counts: [4, 4] },
+  'corona-converge': { counts: [4, 1, 1, 3], boostSlots: [1], hpMul: 1.05, dmgMul: 1.03, extras: [{ wave: 1, shipId: 'foe-r-corona-glint', count: 2 }] },
+  'corona-nexus': { counts: [6, 4, 1, 2, 1, 1, 1, 1, 2], boostSlots: [3, 5, 7], hpMul: 1.1, dmgMul: 1.05, extras: [{ wave: 1, shipId: 'foe-r-corona-glint', count: 1 }, { wave: 2, shipId: 'foe-r-corona-glint', count: 2 }, { wave: 3, shipId: 'foe-r-corona-glint', count: 1 }] },
+  'alien-vanguard': { counts: [5, 7] },
+  'alien-escort': { counts: [4, 2, 1], extras: [{ wave: 1, shipId: 'foe-alien-starcore-adult', count: 4 }] },
+  'alien-main': { counts: [4, 1, 2, 2], boostSlots: [1], hpMul: 1.05, dmgMul: 1.03, extras: [{ wave: 1, shipId: 'foe-alien-starcore-adult', count: 4 }] },
+  'alien-broodmother': { counts: [4, 1, 4, 2, 1, 1, 1, 2], boostSlots: [1, 3, 5, 6], hpMul: 1.1, dmgMul: 1.05, extras: [{ wave: 2, shipId: 'foe-alien-starcore-adult', count: 2 }, { wave: 3, shipId: 'foe-alien-starcore-adult', count: 2 }] },
+  'gravekeeper-drift': { counts: [4, 3] },
+  'gravekeeper-line': { counts: [3, 2, 1], extras: [{ wave: 1, shipId: 'foe-d-invasion-cruiser', count: 2 }] },
+  'gravekeeper-main': { counts: [1, 3, 3, 1, 2], boostSlots: [0, 3], hpMul: 1.05, dmgMul: 1.03, extras: [{ wave: 2, shipId: 'foe-d-invasion-cruiser', count: 1 }] },
+  'gravekeeper-flagship': { counts: [5, 1, 2, 1, 1, 1, 1, 2], boostSlots: [1, 3, 4, 5, 6, 7], hpMul: 1.1, dmgMul: 1.05, extras: [{ wave: 1, shipId: 'foe-d-invasion-cruiser', count: 1 }, { wave: 2, shipId: 'foe-d-invasion-cruiser', count: 2 }, { wave: 3, shipId: 'foe-d-invasion-cruiser', count: 2 }] },
+}
+
+export const SIGNAL_FORMATION_COUNTS: Readonly<Record<string, readonly number[]>> = {
+  'wh-pirate-scout': [3], 'wh-alien-swarm': [4], 'wh-grave-watch': [3], 'wh-exile-blockade': [4], 'wh-titan-echo': [2],
+  'wh-pirate-hunt': [3, 2], 'wh-pirate-warband': [1, 1, 4], 'wh-alien-brood': [1, 4], 'wh-alien-hive': [1, 4],
+  'wh-grave-sentry': [2, 1], 'wh-grave-throne': [1, 3, 3], 'wh-titan-missile': [1], 'wh-titan-hulk': [1],
+  'wh-exile-swarm': [3], 'wh-exile-line': [1],
+}

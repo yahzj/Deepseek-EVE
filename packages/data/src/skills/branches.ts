@@ -4,6 +4,8 @@
  */
 export const SKILL_BRANCHES: readonly { readonly id: string; readonly group: string }[] = [
   { id: 'b-fly', group: '舰船' },
+  { id: 'b-warship', group: '舰船' },
+  { id: 'b-command', group: '舰船' },
   { id: 'b-mine', group: '矿业' },
   { id: 'b-refine', group: '工业' },
   { id: 'b-craft', group: '工业' },
@@ -18,8 +20,6 @@ export const SKILL_BRANCHES: readonly { readonly id: string; readonly group: str
   { id: 'b-aim', group: '战斗' },
   { id: 'b-ammo', group: '战斗' },
   { id: 'b-drone', group: '战斗' },
-  { id: 'b-warship', group: '战斗' },
-  { id: 'b-command', group: '战斗' },
   { id: 'b-protect', group: '工程' },
   { id: 'b-repair', group: '工程' },
   { id: 'b-ship-recovery', group: '工程' },

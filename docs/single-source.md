@@ -14,6 +14,20 @@
 
 ## 一、core 引擎层（`packages/core/src`）
 
+工业遇袭风险归`encounters/risk.ts`：`industrialFleetSnapshotOf`只取真实出勤质量与携货，`industrialThreatOf`以活动参数档输出目标威胁，`industrialFrequencyOf`独立计算提频/护航修正；集中默认值在`encounters/config.ts`并由`DEFAULT_BALANCE.encounter.industrial`注入。普通海盗配置只由`encounters/pirateFormation.ts:pirateFormationOf`按目标威胁和种子生成，不读取活动和玩家战力重复加成。全队运输容量与比例装载归`hauling/load.ts:haulFleetLoadOf`。
+
+普通海盗生成第2版在同一预算内逐波填舰，最多3波、每波12舰，剩余预算允许固定HP/伤害最多2倍增幅；整场强度仍由`foeStrengthOf`与同一定价口径反算，不将各波威胁直接相加。倍率与完整逐舰规格随快照保存，旧单波场次不重抽；特种舰额度按整场计。
+
+运输风险预览归`hauling/preview.ts:haulRiskPreviewOf`，按冻结航路同口径位置调用工业风险单点，不消费随机数。运输航线及费率归`hauling/routes.ts`，`hauling.ts`只保留公共命令和旧在途单段兼容，避免推进与费率模块互相依赖。
+
+敌卡固定规格扩编归`combat/formation.ts:enemyFormationCard`，从旧卡逐波实战规格增加单位并相对重标威胁；建档统一走`combat/foes/formation.ts:fixedFormationSpecs`，新增人数不重算多舰补偿，保留强度与旗舰血池覆写。规则版本随战斗持久化，旧战斗继续旧编成。
+
+射程电子战归`combat/rangeEw.ts`：`rangeEwBaseOf`按舰级取基础，`playerRangeEwOf`按实际名单取船体/装备贡献，`rangeEwContestOf`先抵消强度再调`rangeEwCutOf`换算。目标只读预览归`combat/rangeEwPreview.ts:rangeEwPreviewOf`；战内与战外共用贡献和曲线，不在界面另算。
+
+在途敌卡由`combat/cards.ts:resolvedBattleAnomaly`按战斗版本、窝点、派系活跃、强度覆写及信号用途统一解析，推进、视图和选距共用。
+
+训练许可购买声望归`skills/license.ts:skillLicenseStandingBlock`：购买命令、技能详情及目录列表共用累计协会声望检查；技能定义可选显式价格与声望门槛，既有rank默认定价和已购/已练豁免保留。价格仍由同文件`skillLicensePriceOf`提供，不能在页面另判免许可。
+
 统一指挥预算：`combat/command/rules.ts`的`commandCapacityOf`、`shipCommandCostOf`、`commandBudgetOf`分别负责容量、船型成本和入口校验；常驻战斗名单归`combat/command/roster.ts:combatRosterOf`，出勤快照清洗归同域。旧4舰规则只经独立配置恢复，不另抄预算算法。
 
 每日赏金：`expedition/bountyBoard.ts:rollBountyBoard`统一候选、分区席位、地图上限与三档匹配；`bountyTaskStandingGain`提供完成和收益展示共用的分档声望。护栏为赏金生成/结算专项及F2/F3检查。
@@ -245,3 +259,13 @@ _条目增删随代码走；规则变更仍按开发约定的工作文档与归�
 | `coronaFocusBonusOf` | `packages/core/src/combat/coronaFocus.ts` |
 | `coronaFleetRangeBonusOf` | `packages/core/src/combat/coronaFocus.ts` |
 | `supportFoeModelTagOf` | `packages/core/src/combat/foeCard.ts` |
+| `LOCK_SHARED_SCALE` | `packages/core/src/combat/lockAura.ts` |
+| `LOCK_SHARED_CAP` | `packages/core/src/combat/lockAura.ts` |
+| `applyFleetLockAura` | `packages/core/src/combat/lockAura.ts` |
+| `lockAwareFoe` | `packages/core/src/combat/targeting.ts` |
+| `beginOfflineCombatStats` | `packages/core/src/offlineCombatStats.ts` |
+| `signalAutoEstimateOf` | `packages/core/src/signalAuto/estimate.ts` |
+| `cleanSignalAutoEstimate` | `packages/core/src/signalAuto/save.ts` |
+| `signalAutoCombatRatio` | `packages/core/src/signalAuto/combat.ts` |
+| `SIGNAL_AUTO_COMBAT` | `packages/core/src/signalAuto/combat.ts` |
+| `SIGNAL_AUTO_ESTIMATE_CONFIG` | `packages/core/src/signalAuto/estimate.ts` |

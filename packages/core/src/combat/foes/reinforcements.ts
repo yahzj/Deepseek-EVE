@@ -140,7 +140,9 @@ export function resolveFoeRevive(
   b.foeReviveAtMs = clock + everyMs
   if (summon) {
     const alive = foesWithSupport(b, curFoes).filter(foe => isAlive(b, foe.tag)).length
-    const quota = Math.min(enemyFleetRoom(b), Math.max(1, Math.round(summon.count)), Math.max(0, curFoes.length - alive))
+    const original = curFoes.filter(foe => !foe.foeFormationAdded)
+    const originalAlive = foesWithSupport(b, original).filter(foe => isAlive(b, foe.tag)).length
+    const quota = Math.min(enemyFleetRoom(b), Math.max(1, Math.round(summon.count)), Math.max(0, original.length - originalAlive), Math.max(0, curFoes.length - alive))
     for (let i = 0; i < quota; i++) {
       const n = (b.foeReviveCount ?? 0) + 1
       b.foeReviveCount = n
@@ -180,6 +182,7 @@ export function resolveFoeRevive(
    */
   const dead = curFoes.filter(
     (f) =>
+      f.foeFormationAdded !== true &&
       f.foeReviveEscort === undefined &&
       (revive.allowedShipIds === undefined || revive.allowedShipIds.includes(f.foeShipId ?? '')) &&
       b.units[f.tag] !== undefined &&
@@ -303,7 +306,7 @@ export function resolveFoeSummon(
     // 满员也消耗本次检查，离线按子步推进，不积攒补舰次数。
     ledger[summoner.tag] = nowMs + everyMs
     const occupied = new Set(Object.keys(b.units).filter(tag => isAlive(b, tag)).map(baseFoeTag))
-    const slot = curFoes.find(foe => foe.tag !== summoner.tag && b.units[foe.tag] !== undefined && !occupied.has(foe.tag))
+    const slot = curFoes.find(foe => !foe.foeFormationAdded && foe.tag !== summoner.tag && b.units[foe.tag] !== undefined && !occupied.has(foe.tag))
     if (!slot) continue
     const n = (b.foeReviveCount ?? 0) + 1
     b.foeReviveCount = n

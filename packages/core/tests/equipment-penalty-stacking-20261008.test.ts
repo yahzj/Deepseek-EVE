@@ -137,7 +137,7 @@ describe('全战斗主动周期和在途计时', () => {
     const w = world(['mod-shieldfield-2', 'mod-drone-deck-3'], ['mod-shieldchg-2', 'mod-hullrep-2', 'mod-lair-web-h'], Array(n).fill(CPU))
     const factor = 1.05 ** n
     expect(repairStatsFor(w.state, w.local, w.uid)!.intervalMs).toBe(Math.round(5000 * factor))
-    expect(shieldFieldStreamsOf(w.state, w.local, w.uid)[0]!.ms).toBe(Math.round(10000 * factor))
+    expect(shieldFieldStreamsOf(w.state, w.local, w.uid)[0]!.ms).toBe(Math.round(12000 * factor))
     expect(shieldChargeStreamsOf(w.state, w.local, w.uid)[0]!.ms).toBe(Math.round(SHIELD_PULSE_MS * factor))
     expect(droneReviveCyclesOf(w.state, w.local, w.uid)[0]).toBe(Math.round(9000 * factor))
     expect(w.spec().myCaptureWeb!.cycleMs).toBe(Math.round(ctx.modules.get('mod-lair-web-h')!.captureWebCycleMs! * factor))
@@ -149,7 +149,7 @@ describe('全战斗主动周期和在途计时', () => {
     w.state.fleet[other]!.fitted = { high: ['mod-shieldfield-2'], mid: ['mod-hullrep-2'], low: [] }
     const b = startFleetBattleFor(w.state, w.local, [w.uid, other], 'ano-training', 0, 5000)!
     expect(b.repairBy!.player!.units[0]!.nextPulseAtMs).toBe(5513)
-    expect(b.shieldFieldBy!.player!.streams[0]!.nextPulseAtMs).toBe(11025)
+    expect(b.shieldFieldBy!.player!.streams[0]!.nextPulseAtMs).toBe(13230)
     const allyTag = b.myFleet!.find(e => e.shipId === other)!.tag
     expect(b.repairBy![allyTag]!.units[0]!.nextPulseAtMs).toBe(5000)
     for (const u of Object.values(b.units)) u.weapons = u.weapons.map(() => 100_000)
@@ -164,7 +164,7 @@ describe('全战斗主动周期和在途计时', () => {
     loaded.gameMs = 12_000
     advanceBattleFor(loaded, w.local, bb, w.uid, 'ano-training')
     expect(bb.repairBy!.player!.units[0]!.nextPulseAtMs).toBe(16539)
-    expect(bb.shieldFieldBy!.player!.streams[0]!.ms).toBe(11025)
+    expect(bb.shieldFieldBy!.player!.streams[0]!.ms).toBe(13230)
   })
 
   it('旧在途护盾截止时刻保留，只将后续间隔更新到当前参数', () => {
@@ -176,10 +176,10 @@ describe('全战斗主动周期和在途计时', () => {
     w.state.gameMs = 5000
     advanceBattleFor(w.state, w.local, b, w.uid, 'ano-training')
     expect(stream.nextPulseAtMs).toBe(10000)
-    expect(stream.ms).toBe(10500)
+    expect(stream.ms).toBe(12600)
     w.state.gameMs = 10_000
     advanceBattleFor(w.state, w.local, b, w.uid, 'ano-training')
-    expect(stream.nextPulseAtMs).toBe(20500)
+    expect(stream.nextPulseAtMs).toBe(22600)
   })
 
   it('储备甲板在途周期截止时刻不重置，新周期读当前代价且往返不再放大', () => {

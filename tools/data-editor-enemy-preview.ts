@@ -51,8 +51,9 @@ export function enemyEnginePreview(request: EnemyPreviewRequest): EnemyPreviewRe
       const use = affected.find(card => card.ships?.some(slot => slot.ship.id === ship.id))
       const mountSlot = request.table === 'foeMounts' ? use?.ships?.find(slot => slot.ship.id === ship.id && (slot.mounts ?? slot.ship.mounts)?.some(id => id === request.id)) : undefined
       const card = { ...(use ?? cards[0]!), id: `editor-base-${ship.id}`, ships: [{ ship, ...(mountSlot?.mounts ? { mounts: mountSlot.mounts } : {}) }], waves: undefined }
-      pushSpecs(createFoeSpecs(card, ctx.balance.battle), 1)
-      result.entries!.push({ name: ship.name, source: '舰级基础，单舰无条目覆写', values: `血型 ${JSON.stringify(ship.split)}；挂载 ${resolveFoeMounts(ship.mounts).names.join('、') || '无'}；机群 ${(ship.drones ?? []).map(d => `${d.drone.name} ×${d.count}`).join('、') || '无'}` })
+      const specs = createFoeSpecs(card, ctx.balance.battle)
+      pushSpecs(specs, 1)
+      result.entries!.push({ name: ship.name, source: '舰级基础，单舰无条目覆写', values: `射程电子战：基础${ship.hullClassTier}档；额外${ship.rangeEwBonus ?? 0}；电子舱加成${((ship.rangeEwEquipmentBonusPct ?? 0) * 100).toLocaleString()}%；挂载强度${specs.find(spec => spec.foeShipId === ship.id)?.rangeEwStrength ?? 0}；血型 ${JSON.stringify(ship.split)}；挂载 ${resolveFoeMounts(ship.mounts).names.join('、') || '无'}；机群 ${(ship.drones ?? []).map(d => `${d.drone.name} ×${d.count}`).join('、') || '无'}` })
     }
     if (request.table === 'foeMounts') result.entries!.unshift({ name: FOE_MOUNTS[request.id as keyof typeof FOE_MOUNTS]?.name ?? request.id, source: '挂载件原始参数', values: JSON.stringify(FOE_MOUNTS[request.id as keyof typeof FOE_MOUNTS], (key, value) => ['note', 'en', 'name', 'id'].includes(key) ? undefined : value) })
   } else {
@@ -62,9 +63,10 @@ export function enemyEnginePreview(request: EnemyPreviewRequest): EnemyPreviewRe
       return result
     }
     for (const slot of card.ships ?? []) result.entries!.push({ name: slot.ship.name, source: `波次 ${(slot.wave ?? 0) + 1}；${slot.count ?? 1} 艘；挂载 ${slot.mounts === undefined ? '继承舰级' : '条目替换'}`, values: JSON.stringify(slot, (key, value) => key === 'ship' ? value.id : key === 'foeMountNamePairs' ? undefined : value) })
+    card = ctx.anomalies.get(card.id) ?? card
     if (request.table === 'invasionFleets') {
       if (!['base', 'assault', 'ambush', 'flagship'].includes(request.mode)) throw new Error('入侵编队不支持此预览用途')
-      if (request.mode === 'ambush') card = applyFoeOverride(card, { strengthMul: WEEKEND_AMBUSH_STRENGTH_MUL })
+      if (request.mode === 'ambush') card = applyFoeOverride(card, { strengthMul: WEEKEND_AMBUSH_STRENGTH_MUL, patrolFormation: true })
       if (request.mode === 'flagship') {
         const boss = weekendFlagshipSlotOf(card)
         if (!boss) throw new Error('此编队没有旗舰条目')

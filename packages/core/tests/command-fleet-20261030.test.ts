@@ -182,7 +182,7 @@ describe('统一指挥预算', () => {
     state.skills.trained = {}
     const basic = ctx.skills.get('fleet-command-basic')!, coord = ctx.skills.get('fleet-command-coordination')!
     expect(basic.rank).toBe(2)
-    expect(coord.rank).toBe(4)
+    expect(coord.rank).toBe(3)
     expect(skillLockMissing(state, coord, ctx.skills)[0]!.needLevel).toBe(3)
     state.skills.trained[basic.id] = 3
     expect(skillLockMissing(state, coord, ctx.skills)).toEqual([])
@@ -293,6 +293,10 @@ describe('统一指挥预算', () => {
   })
 
   it('旧4舰配置仍可恢复且不影响普通预算', async () => {
+    const { state: defaultState, ids: defaultIds } = world(5)
+    defaultState.skills.trained = {}
+    defaultState.standingsEarned!.dsi = 0
+    expect(commandBudgetOf(defaultState, ctx, defaultIds.slice(0, 2)).ok).toBe(false)
     vi.resetModules()
     vi.doMock('../src/combat/command/config.json', async () => {
       const actual = await vi.importActual<{ default: Record<string, unknown> }>('../src/combat/command/config.json')

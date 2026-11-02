@@ -425,12 +425,8 @@ export function moduleInfoLines(mod: ModuleDef, engine?: GameEngine, shipId?: st
       }
     }
   } else if (mod.slot === 'target-lock') {
-    // 2026-09-09 目标锁定阵列（高槽 target-lock）：集火 + 目标受击加深
-    // **2026-09-17 船长：增伤与集火都改「全队生效」**（编队取最高一份）
-    lines.push({ k: tr("ui.shipInfo.061"), v: tr("ui.shipInfo.062") })
-    if (mod.lockDmgBonus !== undefined) {
-      lines.push({ k: tr("ui.shipInfo.035"), v: tr("ui.shipInfo.147", { p1: pct(mod.lockDmgBonus) }) })
-    }
+    // 概率、本舰和共享增伤由同一短行展示。
+    lines.push({ k: tr('ui.shipInfo.061'), v: moduleShortEffect(mod) })
   } else if (mod.slot === 'cpu') {
     // 2026-09-11 协处理器（低槽）：装配 CPU 预算扩容；**本件自身不占 CPU**（船长定）——
     // 两行都写清：扩容多少 + 自己不占（否则玩家看到"CPU 占用 0"会以为是坏的）
@@ -516,7 +512,9 @@ export function moduleInfoLines(mod: ModuleDef, engine?: GameEngine, shipId?: st
   // 跨族加成（2026-09-11 修复：槽位族之外的加成原先一律不显示——见 crossFamilyLines 注释）
   lines.push(...crossFamilyLines(mod))
   // ⟪文案调整 2026-10-04⟫ 这些读数原来只在短行或正文，通用详情也应可见。
-  if ((mod.foeRangeDebuffPct ?? 0) > 0) {
+  if (mod.rangeEwStrength !== undefined) {
+    lines.push({ k: tr('ui.rangeEw.010'), v: `+${mod.rangeEwStrength}` })
+  } else if ((mod.foeRangeDebuffPct ?? 0) > 0) {
     lines.push({ k: tr('ui.moduleSpecs.001'), v: tr('ui.shipInfo.185', { p1: pct(mod.foeRangeDebuffPct ?? 0), p2: String(FOE_RANGE_DEBUFF_FLOOR_M) }) })
   }
   if ((mod.shieldPulsePct ?? 0) > 0) {
@@ -524,7 +522,7 @@ export function moduleInfoLines(mod: ModuleDef, engine?: GameEngine, shipId?: st
   }
   if ((mod.shieldFieldPct ?? 0) > 0 && (mod.shieldFieldMs ?? 0) > 0) {
     // ⟪文案调整 2026-10-07⟫ 详情与装配短行共用同一机制模板及代价常量。
-    lines.push({ k: tr('ui.moduleSpecs.003'), v: tr('ui.shipInfo.181', { p1: (mod.shieldFieldMs ?? 0) / 1000, p2: recoveryPct(mod.shieldFieldPct ?? 0), p3: recoveryPct(SHIELD_FIELD_COST_PCT) }) })
+    lines.push({ k: tr('ui.moduleSpecs.003'), v: tr('ui.fleetSupport.001', { p1: (mod.shieldFieldMs ?? 0) / 1000, p2: recoveryPct(mod.shieldFieldPct ?? 0), p3: recoveryPct(SHIELD_FIELD_COST_PCT) }) })
   }
   if (mod.overlayDrive) {
     lines.push({ k: tr('ui.moduleSpecs.004'), v: tr('ui.shipInfo.246', { p1: ((mod.reloadMs ?? 0) / 1000).toFixed(1), p2: (mod.overlayDrive.stepMs / 1000).toFixed(1), p3: (mod.overlayDrive.floorMs / 1000).toFixed(1) }) })
@@ -549,7 +547,11 @@ export function moduleInfoLines(mod: ModuleDef, engine?: GameEngine, shipId?: st
   // 2026-09-11 船长定精简：只留结论一句（机制解释在手册「装配」条目里）
   const st = stackingOf(mod)
   // ⟪文案调整 2026-10-19⟫ 安装限制和独立运作不是加算收益，单独说明。
-  if (mod.plugNonStacking) {
+  if (mod.slot === 'target-lock') {
+    lines.push({ k: tr('ui.shipInfo.076'), v: tr('ui.fleetSupport.003') })
+  } else if (mod.rangeEwStrength !== undefined) {
+    lines.push({ k: tr('ui.shipInfo.076'), v: tr('ui.rangeEw.019') })
+  } else if (mod.plugNonStacking) {
     lines.push({ k: tr('ui.shipInfo.076'), v: tr('ui.factionPlug.007') })
   } else if (mod.unique === true) {
     lines.push({ k: tr('ui.shipInfo.076'), v: tr('ui.shipInfo.252') })

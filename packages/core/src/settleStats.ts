@@ -34,7 +34,7 @@ export interface CoreSettleStats {
 }
 
 /** 核心类型 → 该类型核心的离线作业统计（只统计有活动的类型） */
-export type SettleStats = Partial<Record<AiCoreType, CoreSettleStats>>
+export type SettleStats = Partial<Record<AiCoreType, CoreSettleStats>> & { combat?: import('./offlineCombatStats').OfflineCombatStats }
 
 /** 结算开始前创建空统计（传给 simulateOffline/advanceGame 的 opts） */
 export function newSettleStats(): SettleStats {

@@ -277,7 +277,7 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
     id: FOE_MOUNT_IDS.inkRangeDebuff,
     name: '墨潮干扰阵列',
     en: 'Ink Tide Jammer Array',
-    rangeDebuff: { pct: enemyParameterOf(foeMountsParameters, "foe-mount-ink-range-debuff", "rangeDebuff_pct") },
+    rangeDebuff: { pct: enemyParameterOf(foeMountsParameters, "foe-mount-ink-range-debuff", "rangeDebuff_pct"), strength: enemyParameterOf(foeMountsParameters, 'foe-mount-ink-range-debuff', 'rangeDebuff_strength') },
     note:
       '船长 2026-09-26：「敌人的射程压制挂载件好像也还没有命名？」⇒ 选甲：把 H 族「墨潮干扰舰」' +
       '原先写在舰级字段上的 `foeRangeDebuffPct = 0.5` 迁成具名挂载件（数值一字不变）——' +
@@ -289,7 +289,7 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
     id: FOE_MOUNT_IDS.dRangeDebuff,
     name: '碑卫压制阵列',
     en: 'Bastion Suppression Array',
-    rangeDebuff: { pct: enemyParameterOf(foeMountsParameters, 'foe-mount-d-range-debuff', 'rangeDebuff_pct') },
+    rangeDebuff: { pct: enemyParameterOf(foeMountsParameters, 'foe-mount-d-range-debuff', 'rangeDebuff_pct'), strength: enemyParameterOf(foeMountsParameters, 'foe-mount-d-range-debuff', 'rangeDebuff_strength') },
     note: '压制玩家武器最远射程 15%；多艘按现有射程压制合成规则叠加。',
   },
   [FOE_MOUNT_IDS.coronaBlink]: {
@@ -446,6 +446,7 @@ export interface ResolvedFoeMounts {
    * 与舰级字段 `FoeShipDef.foeRangeDebuffPct` **同源不同入口**：解析后写进**同一个运行时字段**。
    */
   foeRangeDebuffPct?: number
+  rangeEwStrength?: number
   /**
    * **闪现跃迁参数**（原样带给单位；触发/钳制/冷却口径见 `FoeMountDef.blink`）。
    * ⚠ 这是本仓**唯一**会改 `BattleState.distanceM` 的敌方挂载件 —— 消费单点 = `combat` 的受击钩子旁。
@@ -527,7 +528,10 @@ export function resolveFoeMounts(ids: readonly string[] | undefined): ResolvedFo
     if (def.repairPulse) out.foeRepairPulse = { ...def.repairPulse }
     if (def.reviveEscort) out.foeReviveEscort = { ...def.reviveEscort }
     if (def.summonEscort) out.foeSummonEscort = { ...def.summonEscort }
-    if (def.rangeDebuff) out.foeRangeDebuffPct = def.rangeDebuff.pct
+    if (def.rangeDebuff) {
+      out.foeRangeDebuffPct = def.rangeDebuff.pct
+      out.rangeEwStrength = (out.rangeEwStrength ?? 0) + (def.rangeDebuff.strength ?? 0)
+    }
     // 闪现跃迁（2026-10-01）：多件相撞取**最后一件**（与冲锋/射程倍率同款"后写覆盖先写"）
     if (def.blink) out.foeBlink = { ...def.blink }
     // 叠光 / 闪烁过载（2026-10-01）：同款"后写覆盖先写"

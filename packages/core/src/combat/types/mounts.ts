@@ -185,7 +185,7 @@ export interface FoeMountDef {
    * ③ 进 `foe:export` 的「H 族 · 挂载件」表；④ 与我方那件「墨潮电子舱」形成敌我同源的一对。
    * 解析后仍是**同一个运行时字段** `UnitSpec.foeRangeDebuffPct`（消费方 `meJammerNetOf` 一行不改）。
    */
-  rangeDebuff?: { pct: number }
+  rangeDebuff?: { pct: number; strength?: number }
   /**
    * **闪现跃迁**（**船长 2026-10-01 令**：「**激光武器+闪现效果的挂载件**」）—— 给入侵第二族
    * R「光环科技 / Corona Systems」建的族级挂载件；势力图鉴那句「**拥有未知折跃能力的无人舰船**」

@@ -266,6 +266,7 @@ securityZoneOf,
   wormholeAllCardIds,
   wormholeTierOfCard,
   WORMHOLE_SCAN_UNLOCK_STANDING,
+  COMMAND_STANDING_REQUIRED,
   DSI_FACTION_ID,
   // 2026-09-15 虫洞战利品与经济扩充（契约块见文件中部）：谜质 / 奢侈品 / 两个新货柜 / 打捞掷骰
   WORMHOLE_ESSENCE_ITEM_ID,
@@ -370,13 +371,13 @@ const DMG_TYPES = new Set(['kinetic', 'explosive', 'plasma'])
 //   +4（折跃等离子 / 低温跃迁浆 / 曲率凝析物 / 超空间折跃燃料）→ 物品总数 104→**108**、原材料 8→**11**
 // 2026-09-30（实验室后续内容批 · 船长令「信号发射器和技能加速剂」）：+2（信号发射器 / 突触加速剂，
 //   走奇货档 · 施工期 `unreleased`）→ 物品总数 108→**110**
-check(itemDefs.length === 122, `物品总数应为122（含四族专属发射器），实际 ${itemDefs.length}`)
+check(itemDefs.length === 123, `物品总数应为123（含修理无人机），实际 ${itemDefs.length}`)
 check(ores.length === 8, `原矿应为 8 种（含虫洞线的虚空母矿），实际 ${ores.length}`)
 check(minerals.length === 11, `原材料应为 11 种（2026-09-29 跃迁燃料链 +3），实际 ${minerals.length}`)
 check(gases.length === 4, `气体应为 4 种，实际 ${gases.length}`)
 check(ices.length === 3, `冰矿应为 3 种，实际 ${ices.length}`)
 check(ammos.length === 9, `弹药应为 9 种（每族基础弹 + MK2 + MK3），实际 ${ammos.length}`)
-check(drones.length === 9, `无人机应为 9 种（四型制式锚点 + 五种势力机型），实际 ${drones.length}`)
+check(drones.length === 10, `无人机应为10种（四型制式锚点、五种势力机型、修理机），实际 ${drones.length}`)
 
 /* ── 市场目录 ── */
 const goodKeys = new Set<string>()
@@ -1405,6 +1406,13 @@ for (const sbp of SHIP_BLUEPRINTS) {
     let withPre = 0
     let edges = 0
     for (const s of SKILLS) {
+      if (s.licensePriceIsk !== undefined) {
+        check(Number.isSafeInteger(s.licensePriceIsk) && s.licensePriceIsk > 0, `训练许可定价非法：${s.id}`)
+      }
+      if (s.licenseStandingReq !== undefined) {
+        check(Number.isSafeInteger(s.licenseStandingReq) && s.licenseStandingReq >= 0, `训练许可声望门槛非法：${s.id}`)
+        check(s.licensePriceIsk !== undefined || s.rank >= 4, `低阶技能设置许可声望门槛但没有显式定价：${s.id}`)
+      }
       if (s.branch === undefined || s.branch.length === 0) {
         check(false, `技能书契约：技能「${s.name}」(${s.id}) 没有登记 branch（树页会落到"未分类"兜底本）`)
         continue
@@ -2548,6 +2556,12 @@ for (const t of DMG_TYPES) {
 /** 射程豁免机型（船长 2026-09-13「专属无人机开豁免」）——只登记并打印，不参与断言 */
 const exclusiveRangeNotes: string[] = []
 for (const d of drones) {
+  if (d.repairDrone === true) {
+    check(d.droneClass === 'repair' && d.unitM3 === 40 && d.cpuUse === 8, `修理无人机${d.id}装载字段不符`)
+    check(d.repairArmorHp === 10 && d.repairHullHp === 10 && d.repairIntervalMs === 10000 && d.repairKit === 'repairkit-mil', `修理无人机${d.id}维修参数不符`)
+    check(!d.dmg && d.defense !== undefined && droneTotalHp(d) > 0, `修理无人机${d.id}不应有攻击力且必须具备生存池`)
+    continue
+  }
   check(d.damageType !== undefined && DMG_TYPES.has(d.damageType), `无人机 ${d.id} damageType 缺失或非法`)
   check((d.dmg ?? 0) > 0 && Number.isFinite(d.dmg), `无人机 ${d.id} dmg 缺失或非正`)
   check((d.cpuUse ?? 0) > 0 && Number.isInteger(d.cpuUse), `无人机 ${d.id} cpuUse 缺失或非法（V10.5b 放飞占 CPU）`)
@@ -2942,22 +2956,29 @@ for (const m of MODULES) {
     if (!s) continue
     check(s.subClass === '电子舰', `${id} 的子分类应为「电子舰」，实际 ${s.subClass ?? '(无)'}`)
     check(
-      s.foeRangeDebuffPct === 0.15,
-      `${id} 的敌舰射程削减应为 0.15（船长给定「削减敌人15%的武器射程」），实际 ${s.foeRangeDebuffPct}`,
+      s.rangeEwBonus === 40 && s.rangeEwEquipmentBonusPct === .25,
+      `${id} 新电子战特性须为额外40强度、本舰电子舱25%加成`,
     )
+    check(s.rangeEwBonus === 40 && s.rangeEwEquipmentBonusPct === .25,
+      `${id} 新电子战特性须为额外40强度、本舰电子舱25%加成`)
   }
+  const pirateEw = FOE_SHIPS.find(ship => ship.id === 'foe-pirate-raider')
+  const inkEw = FOE_SHIPS.find(ship => ship.id === 'foe-h-ink-jammer')
+  check(pirateEw?.rangeEwBonus === 40 && pirateEw.rangeEwEquipmentBonusPct === .25,
+    '劫掠电子舰需接入额外40强度与本舰装备25%加成')
+  check(inkEw?.rangeEwBonus === 40 && inkEw.rangeEwEquipmentBonusPct === .25,
+    '墨潮干扰舰需接入额外40强度与本舰阵列25%加成')
   const extra = SHIPS.filter(
-    (s) => !(EW_SHIPS as readonly string[]).includes(s.id) && (s.foeRangeDebuffPct ?? 0) > 0,
+    (s) => !(EW_SHIPS as readonly string[]).includes(s.id) && ((s.rangeEwBonus ?? 0) > 0 || (s.rangeEwEquipmentBonusPct ?? 0) > 0),
   )
   check(
     extra.length === 0,
     `只有「电子舰」那两艘能带该特性，实际多出：${extra.map((s) => `${s.name}(${s.id})`).join(' · ')}`,
   )
-  const floorOwner = SHIPS.find((s) => (s.foeRangeDebuffPct ?? 0) > 0)
-  check(floorOwner !== undefined, '电子舰特性契约：没有任何船带 foeRangeDebuffPct（船长给定的特性凭空消失）')
+  const floorOwner = SHIPS.find((s) => (s.rangeEwBonus ?? 0) > 0)
+  check(floorOwner !== undefined, '电子舰特性契约：没有舰船提供额外射程电子战强度')
   console.log(
-    `· 电子舰特性契约：${EW_SHIPS.map((id) => byId.get(id)?.name ?? id).join(' · ')} ⇒ 削减敌舰武器射程 15%` +
-      `（编队乘法叠加：2 艘 27.75% · 与敌方增程做加法 · 基础 <3000m 不削、削后下限 3000m）· 其余 ${SHIPS.length - EW_SHIPS.length} 艘船一律不带`,
+    `· 电子舰特性契约：${EW_SHIPS.map((id) => byId.get(id)?.name ?? id).join(' · ')} ⇒ 额外40强度、本舰电子舱25%加成；旧压制字段仅供旧战斗兼容· 其余 ${SHIPS.length - EW_SHIPS.length} 艘船一律不带专属特性`,
   )
 }
 
@@ -6798,10 +6819,10 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
       `基准速度 ${([1, 2, 3, 4, 5] as const).map((t) => HULL_CLASS_BASE_SPEED[t]).join("/")}` +
       // 后勤舰特性（2026-09-16 船长：进「船体特性」栏）——读数放这儿，日后加第二艘后勤舰一眼能看见
       (() => {
-        const logi = SHIPS.filter((x) => x.repairPulseTargetsFleet === true)
+        const logi = SHIPS.filter((x) => (x.repairOutputBonusPct ?? 0) > 0)
         return logi.length > 0
-          ? ` · 后勤舰特性（维修脉冲修编队最缺血者）${logi.length} 艘（${logi.map((x) => x.name).join('、')}）`
-          : ' · 后勤舰特性（维修脉冲修编队最缺血者）**0 艘**'
+          ? ` · 后勤舰维修输出加成${logi.length}艘（${logi.map((x) => x.name).join('、')}）`
+          : ' · 后勤舰维修输出加成0艘'
       })(),
   )
 }
@@ -7966,6 +7987,7 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
   /** 任务中心内层标签（`hint.taskTab`；与 panels/Expedition.tsx 的 TaskTabKey 同口径） */
   const TASK_TABS = new Set(['important', 'resource', 'courier', 'bounty'])
   const TRIGGER_KINDS = new Set([
+    'industrialFleetRisk',
     'start', 'day', 'explored', 'galaxy', 'skill', 'isk', 'siteBuilt',
     // 2026-09-12 星系机制通讯：低安空域（**低安 = sec ≤ 0，含 0**，与伏击掷骰同源）· 某族敌人所在的星系
     'lowSec', 'foeFamily',
@@ -8154,6 +8176,7 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
         const unlockStanding: Readonly<Record<string, number>> = {
           'msg-wormhole-unlock': WORMHOLE_SCAN_UNLOCK_STANDING,
           'msg-black-market-unlock': BLACK_MARKET_STANDING_REQ,
+          'msg-fleet-command-unlock': COMMAND_STANDING_REQUIRED,
         }
         check(m.trigger.min > 0, `通讯 ${m.id} 的 standing 触发门槛必须为正：${m.trigger.min}`)
         check(
@@ -8230,6 +8253,11 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
       if (m.hint.shipTab !== undefined) {
         check(m.hint.page === 'ship', `通讯 ${m.id} 只有舰船页支持标签跳转，实际页：${m.hint.page}`)
         check(SHIP_TABS.has(m.hint.shipTab), `通讯 ${m.id} 舰船标签非法：${m.hint.shipTab}`)
+      }
+      if (m.hint.skillBranch !== undefined) {
+        const branch = SKILL_BRANCHES.find(row => row.id === m.hint!.skillBranch)
+        check(m.hint.page === 'skills', `通讯 ${m.id} 的技能书跳转必须指向技能页`)
+        check(branch !== undefined && branch.group === m.hint.tab, `通讯 ${m.id} 技能书与目标大类不一致：${m.hint.skillBranch}`)
       }
     }
     for (const p of [m.subject, ...m.body, ...(m.hint ? [m.hint.text] : [])]) {

@@ -94,7 +94,7 @@ function harness(locale: 'zh' | 'en') {
   const entry = load(resolve(renderer, 'pages/SkillsTreePage.tsx'))
   const actual = load(resolve(renderer, 'features/skills/SkillsTreePage.tsx'))
   expect(entry.SkillsTreePage).toBe(actual.SkillsTreePage)
-  let focusGroup: { group: string; seq: number } | null = null
+  let focusGroup: { group: string; branch?: string; seq: number } | null = null
   const render = () => {
     let tree: unknown
     for (let n = 0; n < 3; n++) {
@@ -107,10 +107,82 @@ function harness(locale: 'zh' | 'en') {
   const click = (node: Tree) => (node.props.onClick as (e: unknown) => void)({ stopPropagation() {} })
   const button = (all: Tree[], label: string) => all.find(n => n.type === 'button' && (text(n.children) === label
     || n.props.role === 'tab' && text(n.children).endsWith(label)))!
-  return { state, ctx, calls, render, click, button, format, focus: (group: string) => { focusGroup = { group, seq: (focusGroup?.seq ?? 0) + 1 } } }
+  return { state, ctx, calls, render, click, button, format, focus: (group: string, branch?: string) => { focusGroup = { group, branch, seq: (focusGroup?.seq ?? 0) + 1 } } }
 }
 
 describe('技能域真实组件接线', () => {
+  it.each([
+    ['fleet-command-basic', 20, 50_000],
+    ['fleet-command-coordination', 40, 200_000],
+    ['fleet-command-integration', 60, 2_000_000],
+  ] as const)('%s详情和列表共用声望门槛、二次确认和价格', (id, standing, price) => {
+    const h = harness('zh')
+    const def = h.ctx.skills.get(id)!
+    for (const parent of def.prereq ?? []) h.state.skills.trained[parent] = 3
+    h.state.standingsEarned = { dsi: standing - 1 }
+    h.state.standings.dsi = 999
+    h.focus('舰船', 'b-command')
+    let tree = h.render()
+    h.click(tree.find(n => n.type === 'g' && String(n.props['data-tip']).startsWith(def.name + ' ·'))!)
+    tree = h.render()
+    expect(tree.find(n => n.props['data-skill-license'] === id)!.props.disabled).toBe(true)
+    expect(tree.some(n => text(n.children) === h.format('ui.Expedition.336', { p1: standing, standing: standing - 1 }))).toBe(true)
+    h.click(tree.find(n => n.props['data-skill-license'] === id)!)
+    expect(h.calls.purchase).not.toHaveBeenCalled()
+    h.click(h.button(tree, h.format('ui.App.086')))
+    tree = h.render()
+    h.click(tree.find(n => n.props['data-view-switch'])!)
+    tree = h.render()
+    expect(tree.find(n => n.props['data-skill-license'] === id)!.props.disabled).toBe(true)
+    h.state.standingsEarned.dsi = standing
+    h.state.standings.dsi = 0
+    tree = h.render()
+    const buy = tree.find(n => n.props['data-skill-license'] === id)!
+    expect(buy.props.disabled).toBe(false)
+    expect(text(buy.children)).toBe(h.format('ui.SkillTree.023', { p1: price.toLocaleString('zh-CN') }))
+    h.click(buy)
+    expect(h.calls.purchase).not.toHaveBeenCalled()
+    tree = h.render()
+    expect(text(tree.find(n => n.props['data-skill-license'] === id)!.children)).toBe(h.format('ui.SkillTree.026', { p1: price.toLocaleString('zh-CN') }))
+    h.state.standingsEarned.dsi = standing - 1
+    h.click(tree.find(n => n.props['data-skill-license'] === id)!)
+    expect(h.calls.purchase).not.toHaveBeenCalled()
+    h.state.standingsEarned.dsi = standing
+    tree = h.render()
+    h.click(tree.find(n => n.props['data-skill-license'] === id)!)
+    tree = h.render()
+    h.click(tree.find(n => n.props['data-skill-license'] === id)!)
+    expect(h.calls.purchase).toHaveBeenCalledWith(id)
+    expect(h.state.wallet.isk).toBe(10_000_000 - price)
+    expect(h.state.standingsEarned.dsi).toBe(standing)
+    expect(h.state.standings.dsi).toBe(0)
+    tree = h.render()
+    const row = tree.find(n => String(n.props.className).startsWith('app-skill-row') && text(n.children).includes(def.name))!
+    const train = nodes(row.children).find(n => n.type === 'button' && text(n.children) === h.format('ui.SkillsPage.035', { p1: 1 }))!
+    h.click(train)
+    expect(h.state.skills.queue.some(item => item.skillId === id && item.targetLevel === 1)).toBe(true)
+  })
+
+  it.each(['zh', 'en'] as const)('%s编队通讯定位技能书并清掉搜索和状态筛选', locale => {
+    const h = harness(locale)
+    h.focus('工程')
+    let tree = h.render()
+    h.click(tree.find(n => n.type === 'button' && String(n.props.className).startsWith('app-skilltree-key is-max'))!)
+    ;(tree.find(n => n.type === 'input')!.props.onChange as (event: unknown) => void)({ target: { value: '__no_skill__' } })
+    h.focus('舰船', 'b-command')
+    tree = h.render()
+    expect(tree.find(n => n.type === 'input')!.props.value).toBe('')
+    const nodes = tree.filter(n => n.type === 'g' && n.props.role === 'listitem')
+    expect(nodes).toHaveLength(3)
+    expect(nodes.every(n => !String(n.props.className).includes('is-dimmed'))).toBe(true)
+    for (const id of ['fleet-command-basic', 'fleet-command-coordination', 'fleet-command-integration']) {
+      expect(nodes.some(n => String(n.props['data-tip']).startsWith(h.ctx.skills.get(id)!.name + ' ·'))).toBe(true)
+    }
+    h.focus('舰船')
+    tree = h.render()
+    expect(tree.filter(n => n.type === 'g' && n.props.role === 'listitem')).toHaveLength(16)
+  })
+
   it.each(['zh', 'en'] as const)('%s搜索、状态筛选、图标列表与外部定位保持同一页状态', locale => {
     const h = harness(locale)
     h.focus('工程')

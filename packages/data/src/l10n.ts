@@ -335,8 +335,8 @@ export const EN_MODULES: EnTable = {
   /* 护盾充能力场装置（2026-09-20 船长）：高槽 · 护盾族 —— 与上一条中槽「Shield Recharger」区分开：
      2026-10-07：本件只治其他舰船、按需消耗自身护盾，冷却按件自带。
      ⟪2026-09-25 船长令⟫ 恢复量改按**本舰（装件舰）的护盾量**算（旧 "each ship's max shield" 作废）。 */
-  'mod-shieldfield-2': { name: 'Shield Charge Field MK2', description: L10N['mod.copy.027']!.en },
-  'mod-shieldfield-3': { name: 'Shield Charge Field MK3', description: L10N['mod.copy.027']!.en },
+  'mod-shieldfield-2': { name: l10nEntryText(L10N['mod.fleetSupport.001']!, 'en'), description: l10nEntryText(L10N['mod.fleetSupport.003']!, 'en') },
+  'mod-shieldfield-3': { name: l10nEntryText(L10N['mod.fleetSupport.002']!, 'en'), description: l10nEntryText(L10N['mod.fleetSupport.003']!, 'en') },
   'mod-armor-kin-1': { name: 'Armor Plating MK1 · Kinetic', description: L10N['mod.copy.028']!.en },
   'mod-armor-exp-1': { name: 'Armor Plating MK1 · Explosive', description: L10N['mod.copy.029']!.en },
   'mod-armor-pla-1': { name: 'Armor Plating MK1 · Energy', description: L10N['mod.copy.030']!.en },
@@ -386,9 +386,9 @@ export const EN_MODULES: EnTable = {
   'mod-hullrep-civ': { name: 'Civilian Hull Repair Unit', description: L10N['mod.copy.045']!.en },
   'mod-hullrep-1': { name: 'Hull Repair Unit MK1', description: L10N['mod.copy.046']!.en },
   'mod-hullrep-2': { name: 'Hull Repair Unit MK2', description: L10N['mod.copy.046']!.en },
-  'mod-lock-1': { name: 'Target Lock Array MK1', description: L10N['mod.copy.047']!.en },
-  'mod-lock-2': { name: 'Target Lock Array MK2', description: L10N['mod.copy.047']!.en },
-  'mod-lock-3': { name: 'Target Lock Array MK3', description: L10N['mod.copy.047']!.en },
+  'mod-lock-1': { name: 'Target Lock Array MK1', description: l10nEntryText(L10N['mod.fleetSupport.004']!, 'en') },
+  'mod-lock-2': { name: 'Target Lock Array MK2', description: l10nEntryText(L10N['mod.fleetSupport.004']!, 'en') },
+  'mod-lock-3': { name: 'Target Lock Array MK3', description: l10nEntryText(L10N['mod.fleetSupport.004']!, 'en') },
   'mod-stealth-2': { name: 'Stealth Module MK2', description: L10N['mod.copy.048']!.en },
   'mod-stealth-3': { name: 'Stealth Module MK3', description: L10N['mod.copy.048']!.en },
   // 窝点专属（lair）
@@ -429,7 +429,7 @@ export const EN_MODULES: EnTable = {
   'mod-wh-c-frame': { name: 'Chitin Frame Layer', description: L10N['mod.copy.079']!.en },
   'mod-wh-d-turret': { name: 'Tombwarden Linked Cannon', description: L10N['mod.copy.080']!.en },
   'mod-wh-d-shield': { name: 'Mausoleum Shield Core', description: L10N['mod.copy.081']!.en },
-  'mod-wh-d-lock': { name: 'Gravekeeper Death Knell', description: L10N['mod.copy.082']!.en },
+  'mod-wh-d-lock': { name: 'Gravekeeper Death Knell', description: l10nEntryText(L10N['mod.fleetSupport.004']!, 'en') },
   'mod-wh-d-laser': { name: 'Mausoleum Prism Cannon', description: L10N['mod.copy.083']!.en },
   'mod-wh-d-loader': { name: 'Gravekeeper Rapid Loader', description: L10N['mod.copy.084']!.en },
   'mod-wh-d-steady': { name: 'Mausoleum Ballistic Inscription', description: L10N['mod.copy.085']!.en },
@@ -496,6 +496,7 @@ export const EN_ITEMS: EnTable = {
   'ammo-explosive-3': { name: 'Explosive Ammo MK3', description: L10N['item.ammoMk3.002']!.en },
   'ammo-plasma-3': { name: 'Energy Ammo MK3', description: L10N['item.ammoMk3.003']!.en },
   // 无人机
+  'drone-repair-mil': { name: l10nEntryText(L10N['item.repairDrone.001']!, 'en'), description: l10nEntryText(L10N['item.repairDrone.002']!, 'en') },
   'drone-scout': { name: 'Hummingbird Scout Drone', description: L10N['item.copy.047']!.en },
   'drone-assault': { name: 'Redkite Combat Drone', description: L10N['item.copy.048']!.en },
   'drone-heavy': { name: 'Falcon Siege Drone', description: L10N['item.copy.049']!.en },
@@ -1439,6 +1440,8 @@ const BP_DESC_EN: Readonly<Record<string, string>> = {
 export const EN_BLUEPRINTS: EnTable = (() => {
   // 船长2026-10-09确认中文名称/说明，英文未准备时回退中文，不自动生成新译名。
   const out: Record<string, EnText> = {
+    'bp-shieldfield-2': { name: l10nEntryText(L10N['bp.fleetSupport.001']!, 'en'), description: l10nEntryText(L10N['mod.fleetSupport.003']!, 'en') },
+    'bp-shieldfield-3': { name: l10nEntryText(L10N['bp.fleetSupport.002']!, 'en'), description: l10nEntryText(L10N['mod.fleetSupport.003']!, 'en') },
     'bp-drone-launch-1': { name: l10nEntryText(L10N['bp.launchCalibration.001']!, 'en'), description: l10nEntryText(L10N['mod.launchCalibration.006']!, 'en') },
     'bp-drone-launch-2': { name: l10nEntryText(L10N['bp.launchCalibration.002']!, 'en'), description: l10nEntryText(L10N['mod.launchCalibration.006']!, 'en') },
     'bp-drone-launch-3': { name: l10nEntryText(L10N['bp.launchCalibration.003']!, 'en'), description: l10nEntryText(L10N['mod.launchCalibration.006']!, 'en') },

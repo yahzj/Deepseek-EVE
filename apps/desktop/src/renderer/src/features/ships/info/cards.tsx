@@ -327,6 +327,10 @@ export function itemInfoLines(item: ItemDef, nameOf?: (id: string) => string | u
   if (item.kind === 'ammo' || item.kind === 'drone') {
     for (const l of itemCombatLines(item)) lines.push(l)
   }
+  if (item.repairDrone) lines.push({ k: tr('ui.itemSubs.001'), v: tr('ui.repairDrone.003', {
+    p1: (item.repairIntervalMs ?? 10000) / 1000, p2: item.repairArmorHp ?? 0, p3: item.repairHullHp ?? 0,
+    p4: nameOf?.(item.repairKit ?? '') ?? item.repairKit ?? '',
+  }) })
   if (item.repairRestore !== undefined) {
     lines.push({ k: tr("ui.itemSubs.001"), v: tr("ui.shipInfo.178", { p1: item.repairRestore }) })
   }

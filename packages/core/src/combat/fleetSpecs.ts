@@ -11,6 +11,8 @@ import { applyMeWebDebuff } from './captureWebs'
 import { applyMeJammerDebuff, meJammerNetOf } from './foeRange'
 import { isFirstBountyBattle, applyFirstBountyBuff } from '../firstTasks'
 import { applyAlienCorrosion } from './alienCombat'
+import { applyFleetLockAura } from './lockAura'
+export { applyFleetLockAura } from './lockAura'
 
 /**
  * 把一次开火的总伤害按火力构成**拆成逐系单发**（2026-09-10：窝点混伤）。
@@ -185,7 +187,7 @@ export function buildMyUnitSpecs(
     // **指挥舰全舰单发光环**（2026-09-17 修：原先只在开战那一刻乘 ⇒ 被每拍重建冲掉、从未生效）
     applyFleetDamageAura([me], 1 + fleetDamageAuraOf(state, ctx, [shipId]))
     applyAlienCorrosion(me, battle.alienCorrosion ?? 0)
-    return applyFleetLockAura([me])
+    return applyFleetLockAura([me], battle)
   }
   const out: UnitSpec[] = []
   for (const entry of fleet) {
@@ -207,7 +209,7 @@ export function buildMyUnitSpecs(
   // **指挥舰全舰单发光环**：全队取最高一份、不叠加（同批修：见 `applyFleetDamageAura` 的注释）
   applyFleetDamageAura(out, 1 + fleetDamageAuraOf(state, ctx, fleet.map((e) => e.shipId)))
   for (const spec of out) applyAlienCorrosion(spec, battle.alienCorrosion ?? 0)
-  return applyFleetLockAura(out)
+  return applyFleetLockAura(out, battle)
 }
 
 /**
@@ -224,12 +226,6 @@ export function buildMyUnitSpecs(
  * **零份 ⇒ 一个字段都不写**（没装阵列的编队逐字不变）；**单舰路径取到的就是它自己 ⇒ 逐字等价**
  * （远征单人 / 遭遇战 / 虫洞单舰的读数不受影响）。件数值（8/12/20/30%）一个不动，**零存档迁移**。
  */
-export function applyFleetLockAura(specs: UnitSpec[]): UnitSpec[] {
-  let best = 0
-  for (const s of specs) best = Math.max(best, s.lockedDmgBonus ?? 0)
-  if (best > 0) for (const s of specs) s.lockedDmgBonus = best
-  return specs
-}
 
 /**
  * **指挥舰「全舰单发伤害 ×(1+光环)」光环的取用口径**（原 +15%，2026-09-26 起陵卫/虎鲸两艘都是 +20%）：编队（或单舰）里**取最高一份**、**不叠加**

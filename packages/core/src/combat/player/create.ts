@@ -14,6 +14,9 @@ import { ceilFinalQuantity } from '../../quantity'
 import { supportEffectPartsOf } from '../../stacking'
 import { crisisEffectsOf } from '../gravekeeperGear'
 import { droneLaunchGapMsOf } from '../droneLaunch'
+import { playerRangeEwOf } from '../rangeEw'
+import { quickRepairFactor } from '../../repair'
+import { LOCK_SHARED_SCALE, LOCK_SHARED_CAP } from '../lockAura'
 
 export function createPlayerSpec(
   state: GameState,
@@ -574,6 +577,18 @@ export function createPlayerSpec(
       if (n <= 0) continue
       bayUsed += perM3 * n
       cpuLeft -= perCpu * n
+      if (def.repairDrone === true) {
+        const skill = quickRepairFactor(state, ctx)
+        const output = skill * (1 + Math.max(0, ship.repairOutputBonusPct ?? 0))
+        for (let i = 0; i < n; i++) {
+          refs?.weaponRanges?.push({ baseM: 0, bonusMul: 1 })
+          weapons.push({ label: def.name, kind: 'fixed', src: 'drone', artId: droneId,
+            repairDrone: { armor: ceilFinalQuantity((def.repairArmorHp ?? 0) * output), hull: ceilFinalQuantity((def.repairHullHp ?? 0) * output), kitId: def.repairKit ?? 'repairkit-mil' },
+            shotDmg: 0, maxRangeM: 0, minRangeM: 0, hitRate: 0, falloff: 1,
+            reloadMs: Math.max(1, Math.round((def.repairIntervalMs ?? 10000) * penalties.reload)) })
+        }
+        continue
+      }
       // V18 战术导控阵列 ×(1+Σ导控)（乘算）；无人机作战学（drone-warfare）+5%/级 +
       // **无人机打击学（drone-strike）+4%/级**（2026-09-10 船长：高阶伤害技能）；三者乘算；
       // 2026-09-10 船长：再加船体无人机专属加成（ship.droneDmgBonus，王鲭 +12%/梭鱼 +8%）
@@ -624,6 +639,7 @@ export function createPlayerSpec(
   }
   return {
     tag: 'player',
+    rangeEwStrength: playerRangeEwOf(state, ctx, [shipId])[0]?.total ?? 0,
     name: ship.name,
     side: 'me',
     // 虫洞 D 批（2026-09-13）：我方单位的**档位/定位**——供敌方选靶模式「打最小/最大/打非战斗船」判定。
@@ -632,9 +648,7 @@ export function createPlayerSpec(
     shipRole: ship.role,
     // 仅插件乘数；舰级基础权重由选靶单点合成，建规格时不重复乘。
     ...(plugTargetWeight !== 1 ? { targetWeightMul: plugTargetWeight } : {}),
-    // 2026-09-16 船长：后勤舰的维修装置改修队友（**数据字段驱动**，见 `ShipDef.repairPulseTargetsFleet`；
-    // 同日追批「并添加到船体特性属性中」⇒ 判据从 `subClass === '后勤舰'` 改为读字段，界面「船体特性」栏同源）
-    ...(ship.repairPulseTargetsFleet === true ? { logistics: true } : {}),
+    ...(ship.repairOutputBonusPct !== undefined ? { repairOutputBonusPct: ship.repairOutputBonusPct } : {}),
     /**
      * **截击舰特性 · 不会被网子选为目标**（**2026-09-30 船长令**；数据字段驱动，同上一行「后勤舰」先例）。
      * 只带出这一个旗标，判定在 `fireFoeCaptureWeb`（敌方捕获网的入口守卫）。
@@ -701,7 +715,11 @@ export function createPlayerSpec(
     droneLaunchGapMs: Math.max(10, Math.round(droneLaunchGapMsOf(allFittedModules(fitted, ctx), ship.droneLaunchCutPct) * (printing?.launchMul ?? 1))),
     droneReviveGapMs: droneLaunchGapMsOf(allFittedModules(fitted, ctx), 0, true),
     // 锁定装置（2026-09-09）：被锁目标受击加深等效比例（>0 同时开启集火模式）
-    ...(lockEq > 1 ? { lockedDmgBonus: lockEq - 1 } : {}),
+    ...(lockEq > 1 ? { lockedDmgBonus: lockEq - 1, lockOwnDmgBonus: lockEq - 1,
+      lockTargetChance: Math.max(...targetLockDefs.map(m => m.lockTargetChance ?? 1)),
+      lockOwnTargetChance: Math.max(...targetLockDefs.map(m => m.lockTargetChance ?? 1)),
+      lockSharedBonus: Math.max(Math.min(LOCK_SHARED_CAP, (lockEq - 1) * LOCK_SHARED_SCALE), ...targetLockDefs.map(m => m.lockSharedBonus ?? 0)),
+    } : {}),
     // **隐秘行动装置**（2026-09-15 船长）：隐身窗口取所装件里**最长**的一件；
     // **装了任何推进器 ⇒ 直接解除**（船长同日追加的禁令）⇒ 这里不写字段（= 无隐身）。
     ...(stealthMs > 0 ? { stealthMs } : {}),

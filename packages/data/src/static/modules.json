@@ -513,17 +513,17 @@
         "id": "mod-shieldfield-2",
         "slot": "shield-field",
         "rack": "high",
-        "shieldFieldPct": 0.067,
-        "shieldFieldMs": 10000,
-        "cpuUse": 63
+        "shieldFieldPct": 0.1,
+        "shieldFieldMs": 12000,
+        "cpuUse": 50
       },
       {
         "id": "mod-shieldfield-3",
         "slot": "shield-field",
         "rack": "high",
-        "shieldFieldPct": 0.067,
-        "shieldFieldMs": 8000,
-        "cpuUse": 91
+        "shieldFieldPct": 0.1,
+        "shieldFieldMs": 10000,
+        "cpuUse": 75
       },
       {
         "id": "mod-armor-kin-1",
@@ -955,21 +955,24 @@
         "slot": "target-lock",
         "rack": "high",
         "cpuUse": 6,
-        "lockDmgBonus": 0.08
+        "lockDmgBonus": 0.08,
+        "lockTargetChance": 0.6
       },
       {
         "id": "mod-lock-2",
         "slot": "target-lock",
         "rack": "high",
         "cpuUse": 14,
-        "lockDmgBonus": 0.12
+        "lockDmgBonus": 0.12,
+        "lockTargetChance": 0.7
       },
       {
         "id": "mod-lock-3",
         "slot": "target-lock",
         "rack": "high",
         "cpuUse": 26,
-        "lockDmgBonus": 0.2
+        "lockDmgBonus": 0.2,
+        "lockTargetChance": 0.8
       },
       {
         "id": "mod-stealth-2",
@@ -1145,6 +1148,7 @@
       },
       {
         "id": "mod-lair-ecm-h",
+        "rangeEwStrength": 40,
         "slot": "support",
         "rack": "high",
         "foeRangeDebuffPct": 0.15,
@@ -1361,6 +1365,8 @@
         "slot": "target-lock",
         "rack": "high",
         "lockDmgBonus": 0.3,
+        "lockTargetChance": 0.6,
+        "lockSharedBonus": 0.2,
         "cpuUse": 40
       },
       {

@@ -20,7 +20,7 @@ import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
-import { battleCardRangeOf } from '../src/battleRangeMemory'
+import { battleCardRangeOf, withBattleRangeConsent } from '../src/battleRangeMemory'
 import { setCardDistance } from './helpers/battle-card-memory'
 import { fightEncounter } from '../src/encounters'
 import { setBattleDesire } from '../src/expedition'
@@ -50,7 +50,8 @@ function world(desirePref?: number): GameState {
     deadlineGameMs: s.gameMs + 60_000,
     battle: null,
   }
-  const r = fightEncounter(s, ctx)
+  let r = fightEncounter(s, ctx)
+  if (r.rangeConfirmation && desirePref !== undefined) r = withBattleRangeConsent(s, desirePref, () => fightEncounter(s, ctx))
   expect(r.ok, r.ok ? '' : `应战失败：${String(r.errorId ?? '')}`).toBe(true)
   expect(s.encounter.battle, '战斗已挂进遭遇槽').not.toBeNull()
   return s

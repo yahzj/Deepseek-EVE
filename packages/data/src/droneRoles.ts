@@ -65,6 +65,9 @@ export const DRONE_ROLE_SPECS: Record<DroneClass, DroneRoleSpec> = {
     hitRate: [1, 1.2],
     noFalloff: false,
   },
+  repair: {
+    label: '修理机', evasion: [0, 0.9], totalHp: [1, 500], dmgShare: [0, 0], rangeM: [500, 20000], hitRate: [0, 2], noFalloff: true,
+  },
 }
 
 /** 无人机三层血量合计（生存包契约口径） */
@@ -82,6 +85,7 @@ export const DRONE_ROLE_ANCHORS: Record<DroneClass, string> = {
   combat: 'drone-assault',
   assault: 'drone-heavy',
   sentry: 'drone-sentry',
+  repair: 'drone-repair-mil',
 }
 
 /** 专属强化型的硬边界（豁免区间校验后仍不得越界——防止数据手滑写出荒谬值） */
@@ -132,6 +136,7 @@ export function droneRoleIssues(def: ItemDef, scoutDmg: number): string[] {
   if (!cls) return [`${def.id} 缺少 droneClass（四型定位契约必填）`]
   if (def.exclusive === true) return exclusiveHardBoundIssues(def)
   const spec = DRONE_ROLE_SPECS[cls]
+  if (cls === 'repair') return def.repairDrone === true && (def.repairKit !== undefined) ? [] : [`${def.id} 修理无人机字段不完整`]
   const out: string[] = []
   const evasion = def.defense?.evasion
   if (evasion === undefined) out.push(`${def.id} 缺少 defense.evasion`)

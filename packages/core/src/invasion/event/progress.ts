@@ -45,7 +45,7 @@ export function weekendAmbushPickOf(
   const card = ctx.anomalies.get(cardId)
   const threat =
     card && weekendFoeCardsSelfPriced(ev.family)
-      ? foeThreatOfAnomaly(applyFoeOverride(card, { strengthMul: mul }), FOE_DESIGN_STRENGTH_MUL.solo, ctx.balance.battle)
+      ? foeThreatOfAnomaly(applyFoeOverride(card, { strengthMul: mul, patrolFormation: true }), FOE_DESIGN_STRENGTH_MUL.solo, ctx.balance.battle)
       : Math.max(1, Math.round(weekendAssaultThreatOf(ev, galaxyId) * mul))
   return { cardId, strengthMul: mul, threat }
 }

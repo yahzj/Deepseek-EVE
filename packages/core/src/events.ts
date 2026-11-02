@@ -157,6 +157,11 @@ function rollGapMs(state: GameState, ctx: SimContext): number {
   return Math.max(0, Math.round(raw * eventCadenceFactor(state)))
 }
 
+/** 时间轴切分前播种，在线小步和离线大步共用首个事件时刻。 */
+export function ensureEventSchedule(state: GameState, ctx: SimContext): void {
+  if (ctx.balance.events.enabled !== false && state.events.nextAtGameMs <= 0) state.events.nextAtGameMs = state.gameMs + rollGapMs(state, ctx)
+}
+
 function clampPrice(ctx: SimContext, def: MarketGoodDef, raw: number): number {
   const bal = ctx.balance.market
   return ceilFinalQuantity(Math.min(def.basePrice * bal.maxPriceRatio, Math.max(def.basePrice * bal.minPriceRatio, raw)))

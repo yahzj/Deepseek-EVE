@@ -10,6 +10,7 @@ import { fmtDayClock } from '../../i18n/fmt'
 import { foeFamilyOf } from '../../ui/shipArt'
 import { FoeDamageMix, ProfileChip } from '../../ui/shipInfo'
 import { Glyph, ICO_TONES } from '../../ui/Glyphs'
+import { RangeEwPreview } from '../combat/RangeEwPanel'
 
 /**
  * 赏金任务区（2026-09-10 船长定）：任务中心第四个子页——临时战斗任务，目标 = 「敌人窝点」。
@@ -265,7 +266,7 @@ export function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToa
           {tasks.map((t) => {
           const base = t.anomalyId ? engine.ctx.anomalies.get(t.anomalyId) : undefined
           const tier = (t.lairTier ?? 1) as 1 | 2 | 3
-          const card = base ? lairAnomalyOf(base, tier, engine.ctx.balance.battle) : undefined
+          const card = base ? lairAnomalyOf(base, tier, engine.ctx.balance.battle, 1, engine.ctx.foeShips) : undefined
           const galaxy = engine.ctx.galaxies.get(t.galaxyId ?? '')
           const galaxyName = galaxy?.name ?? t.galaxyId ?? '？'
           const waves = card?.waves?.length ?? 0
@@ -391,6 +392,7 @@ export function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToa
                     })()
                   : null}
               </div>
+              {card ? <RangeEwPreview state={state} ctx={engine.ctx} card={card} /> : null}
               {/* 收益行：赏金 = 窝点奖金 + 任务酬金（合并成一条，避免两个数重复）；稀有残骸为战利品 */}
               <div className="app-ano-reward">
                 <span className="app-lair-key">{tr("ui.Expedition.297")}</span> {MONEY_GLYPH} {totalIsk.toLocaleString('zh-CN')} {tr("ui.FirstTasks.003")}

@@ -3,6 +3,8 @@ import type { ShipCommandDef } from '../combat/command/types'
 
 /** 舰船定义 */
 export interface ShipDef extends ShipCommandDef {
+  rangeEwBonus?: number
+  rangeEwEquipmentBonusPct?: number
   /** 船体固有首次无人机队列等待缩短；不作用于复活入队或攻击装填。 */
   droneLaunchCutPct?: number
   id: string
@@ -116,6 +118,9 @@ export interface ShipDef extends ShipCommandDef {
    * 口径：装了维修装置时，脉冲目标 = **全编队三层剩余比例最低的舰船（含自己）**；缺省 ⇒ 只修自己（旧口径）。
    * 落点：`combat.createPlayerSpec` 写入 `spec.logistics` ⇒ `pulseAllyRepair` 的选靶分支。
    */
+  /** 后勤舰维修输出倍率；作用于船体维修装置、修理无人机与护盾恢复。 */
+  repairOutputBonusPct?: number
+  /** 旧存档/旧测试夹具兼容字段；新数据不再声明，运行时不再提供队友选靶。 */
   repairPulseTargetsFleet?: boolean
   /**
    * **侦察舰特性 · 隐秘行动装置 CPU 减半**（船长 2026-09-16：「**侦查舰添加特性，隐秘行动装置所需

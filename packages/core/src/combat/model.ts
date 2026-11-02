@@ -18,6 +18,8 @@ export interface WeaponSpec {
   foeDroneRangeBonusPct?: number
   /** 运行规格中的装配型号，仅用于逐件列表，不新增随档字段。 */
   moduleId?: string
+  /** 支援无人机复用机群与冷却账本，不执行攻击。 */
+  repairDrone?: { armor: number; hull: number; kitId: string }
   label: string
   /** gun = 我方炮台/导弹架（吃弹药，按 shotsByType 给单发伤害）；beam = 激光炮（必中、
    * 逐发扣能量弹药、威力随距离衰减）；fixed = 固定单发（基础舰炮/无人机/敌方） */
@@ -105,6 +107,8 @@ export interface WeaponSpec {
 
 /** 静态单位卡（构建后不进存档） */
 export interface UnitSpec {
+  /** 本轮新增护航不扩大既有复活/主动召唤可用阵位。 */
+  foeFormationAdded?: boolean
   /** 每场重建的镀膜装甲，仅用于开场残余与跨场损伤结算。 */
   shieldArmorHp?: number
   shieldPassiveBonusPct?: number
@@ -166,6 +170,9 @@ export interface UnitSpec {
    * `createPlayerSpec` 按 `ShipDef.subClass === '后勤舰'` 写入（现在只有「亡军后勤舰」一艘）。
    * 语义 = 本舰的**船体维修装置脉冲改为修队友**（三层剩余比例最低者，含自己）；不写 ⇒ 只修自己（旧口径）。
    */
+  /** 后勤舰维修输出倍率（仅运行规格，不入存档）。 */
+  repairOutputBonusPct?: number
+  /** 旧测试夹具兼容字段；新运行规格不再写入。 */
   logistics?: boolean
   /**
    * **敌方后勤舰：把自身多少比例的名义 DPS 转成修理值**（`FoeShipDef.repairPct` 下发的运行时副本；
@@ -221,6 +228,10 @@ export interface UnitSpec {
   /** 锁定装置（2026-09-09）：被锁定目标受本舰伤害加深等效比例（多件 EVE 曲线收敛）；
    *  >0 同时表示"本场集火模式"——全部武器打存活编队首位（替代每发随机分散） */
   lockedDmgBonus?: number;
+  lockTargetChance?: number
+  lockOwnDmgBonus?: number
+  lockOwnTargetChance?: number
+  lockSharedBonus?: number
   /**
    * **本单位的隐身窗口时长（ms）**（2026-09-15 船长：「隐秘行动装置」——高槽，**自身武器开火前
    * 隐身 20/30 秒**：不被锁定、不被攻击）。
@@ -401,6 +412,9 @@ export interface UnitSpec {
    * 缺省不写 ⇒ 不压制（既有全部敌舰零行为变化）。
    */
   foeRangeDebuffPct?: number
+  rangeEwStrength?: number
+  rangeEwBonus?: number
+  rangeEwEquipmentBonusPct?: number
   /**
    * **姿态陀螺仪的闪避加数**（船长 2026-09-24；见 `FoeMountDef.evasionBonus`）——建档时**已经加进**
    * `evasion` 并夹到 0.9 上限；本字段只是把"这件件给了多少"留在单位上（战报/读数/用例用）。
@@ -443,6 +457,10 @@ export interface UnitSpec {
  * 不覆写就只能打成"原卡强度"。**不传 = 一字不变**（既有调用方与读数不受影响）。
  */
 export interface FoeOverride {
+  /** 普通遇袭的完整冻结配置，推进/观战/重载不依赖临时目录。 */
+  generatedCard?: import('../types').AnomalyDef
+  /** 被动入侵沿用巡游旧编成，独立于强度乘数。 */
+  patrolFormation?: true
   threat?: number
   waves?: ReadonlyArray<{ units: number; hpShare: number }>
   /**

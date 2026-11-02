@@ -68,6 +68,18 @@ describe('三封已审通讯的中英接线', () => {
     expect(message.hint).toEqual({ text: '工业页的实验室能造这两样。', page: 'industry' })
   })
 
+  it('编队解锁通讯的主题、正文和技能页跳转按本地化ID取词', () => {
+    const message = COMMS_MESSAGES.find((m) => m.id === 'msg-fleet-command-unlock')!
+    expect(message.subject).toBe(L10N['ui.commsFleetUnlock.001']!.zh)
+    expect(message.body).toEqual([L10N['ui.commsFleetUnlock.002']!.zh, L10N['ui.commsFleetUnlock.003']!.zh])
+    expect(message.hint).toEqual({ text: L10N['ui.commsFleetUnlock.004']!.zh, page: 'skills', tab: '舰船', skillBranch: 'b-command' })
+    expect(message.popup).toBe(true)
+    language.en = true
+    expect(commsSubjectText(message.id, message.subject)).toBe(message.subject)
+    expect(commsBodyText(message.id, message.body)).toEqual(message.body)
+    expect(commsHintText(message.hint!.text)).toBe(message.hint!.text)
+  })
+
   it('管制与工会的触发及跳转不随重写改变', () => {
     const welcome = COMMS_MESSAGES.find((m) => m.id === 'msg-welcome')!
     const salvage = COMMS_MESSAGES.find((m) => m.id === 'msg-salvage-crew')!
@@ -88,6 +100,12 @@ describe('其余通讯整批中英接线与行为守恒', () => {
       expect(body.join('')).not.toMatch(/[\u4e00-\u9fff]/)
       expect(commsSubjectText(message.id, message.subject)).toBe(L10N['ui.commsBlackMarket.001']!.en)
       expect(commsHintText(message.hint!.text)).toBe(L10N['ui.commsBlackMarket.005']!.en)
+      return
+    }
+    if (message.id === 'msg-fleet-command-unlock') {
+      expect(body).toEqual(message.body)
+      expect(commsSubjectText(message.id, message.subject)).toBe(message.subject)
+      expect(commsHintText(message.hint!.text)).toBe(message.hint!.text)
       return
     }
     expect(body.join('')).not.toMatch(/[\u4e00-\u9fff]/)
@@ -117,8 +135,8 @@ describe('其余通讯整批中英接线与行为守恒', () => {
       })
     }
     const original = bindings.result as unknown as typeof COMMS_MESSAGES
-    expect(COMMS_MESSAGES).toHaveLength(original.length + 1)
-    expect(policy(COMMS_MESSAGES.filter(message => message.id !== 'msg-black-market-unlock'))).toEqual(policy(original))
+    expect(COMMS_MESSAGES).toHaveLength(original.length + 2)
+    expect(policy(COMMS_MESSAGES.filter(message => !['msg-black-market-unlock', 'msg-fleet-command-unlock'].includes(message.id)))).toEqual(policy(original))
     expect(COMMS_MESSAGES.find((message) => message.id === 'msg-wormhole-unlock')!.hint!.text).toBe(L10N['ui.signalSpace.026']!.zh)
   })
   it('建站对白 id、角色、主题、行数与挂靠不变', () => {

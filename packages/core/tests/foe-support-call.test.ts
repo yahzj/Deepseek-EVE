@@ -30,12 +30,14 @@ import {
   wormholeNaturalHp,
   wormholeSkippedBranch,
 } from '../src/wormhole'
-import { advanceBattleFor, createFoeSpecs, foeHpOfThreat, startBattleFor, wormholeDerivedAnomaly } from '../src/combat'
+import { advanceBattleFor, createFoeSpecs, foeHpOfThreat, startBattleFor, wormholeDerivedAnomaly as deriveSignal } from '../src/combat'
 import { ceilFinalQuantity } from '../src/quantity'
 
 const CARD = 'wh-grave-throne'
 const ctx = buildSimContext()
 const bal = ctx.balance.battle
+// 旧规则的延迟预算兼容；当前扩编保留该基线后再增加单位。
+const wormholeDerivedAnomaly: typeof deriveSignal = (ctx, card, spec) => deriveSignal(ctx, card, spec, 0)
 
 /** 世界 = 真数据 + 一条没装武器的船（本文件只验机制；玩家血量会在开战后拉满以免 20 秒内被打死） */
 function world(): { state: GameState; ctx: SimContext } {

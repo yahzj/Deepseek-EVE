@@ -5,12 +5,12 @@ import { matterTechBattleSpeedTiers } from '../matterTech'
 import type { LairTier } from '../lairs'
 import type { BattleSimulationOptions, UnitSpec } from './model'
 import { battleClockNowMs, isAlive } from './combatMath'
-import { applyFoeOverride, battleAnomalyOf, wormholeDerivedAnomaly } from './cards'
+import { resolvedBattleAnomaly } from './cards'
 import { activeFoeSpecsOf, createFoeSpecs } from './foes/catalog'
 import { battleOpenM, foeDesiredRange } from './foes/tactics'
 import { seedUnit, initFoeDronePools, initFoeRepairPulses } from './foes/state'
 import { foesWithSupport, resolveReinforcements, resolveFoeRevive, resolveFoeSummon, reinforceTriggered, resolveSupportBranch } from './foes/reinforcements'
-import { applyFoeRangeDebuff } from './foeRange'
+import { applyFoeRangeDebuff, foeRangeEwSpecsOf } from './foeRange'
 import { buildMyUnitSpecs } from './fleetSpecs'
 import { pdEnabledFor } from './droneWindow'
 import { foeJudgedThreatOf } from './foePower'
@@ -26,6 +26,8 @@ import { equipmentCycleMsOf } from '../equipment'
 import { pulseFoeRepair, pulseFoeMountRepair } from './repairFoes'
 import { advanceFoeRebirthRepair } from './gravekeeperCombat'
 import { pendingEnemyFormation } from './foes/capacity'
+import { syncRangeEw } from './rangeEw'
+import { observeOfflineBattle, noteOfflineEncounter } from '../offlineCombatStats'
 
 /** 多波演出窗口总时长（2026-09-09）：单次大预算推进（胜率 MC/校准工具）把 state.gameMs * 一次设到 maxBattleMs+余量——若波次间隙（waveEnterGapMs，战斗时钟冻结）吃掉余量，末段
  * 跨窗口会提前耗尽预算判负。调用方应在预算外加本值（无 waves = 0）。
@@ -72,6 +74,8 @@ export function advanceBattleFor(
   opts?: { battleSpeedX?: number; simulation?: BattleSimulationOptions },
 ): void {
   if (!battle || battle.ended) return
+  if (state.encounter.battle === battle) noteOfflineEncounter(state, battle)
+  observeOfflineBattle(state, battle)
   // **倍速时间轴**（2026-09-19 · 谜质科技「时间压缩矩阵」）：先解析本拍生效倍速并写进战斗
   //（夹在科技已解锁档位内；洞外战斗恒 1）。写值只为**洞内**战斗——洞外保持"字段不存在"，
   // 演出窗口与界面据此逐字走老路径。
@@ -81,14 +85,11 @@ export function advanceBattleFor(
   const nowMs = (): number => battleClockNowMs(state, battle)
   /** **每拍收尾：刷新倍速锚点**（把"此刻的全局时钟"与"此刻的战斗时钟"重新配对） */
   const rebaseAxis = (): void => {
+    observeOfflineBattle(state, battle)
     battle.speedAxis = { anchor: state.gameMs, clock: battle.lastTickGameMs }
   }
-  const baseAnomaly = applyFoeOverride(battleAnomalyOf(ctx, anomalyId, lairTier, factionActive), battle.foeOverride)
-  if (!baseAnomaly) return
-  // 虫洞战斗（F 批）：**每拍按层重建**派生敌卡（**与开战同源**——同一处 `wormholeDerivedAnomaly`）
-  const anomaly = battle.wormhole
-    ? wormholeDerivedAnomaly(ctx, baseAnomaly, battle.wormhole)
-    : baseAnomaly
+  const anomaly = resolvedBattleAnomaly(ctx, battle, anomalyId, lairTier, factionActive)
+  if (!anomaly) return
   const bal = ctx.balance.battle
   /**
    * **本场的敌阵规格**（2026-09-24 起提前到这里）：只用于算**敌方干扰舰的射程压制率**
@@ -112,12 +113,14 @@ export function advanceBattleFor(
    * 我方规格吃错净削减（船长例①/②/③全走这一减）。
    */
   applyFoeRangeDebuff(state, ctx, battle, battle.myFleet?.map((e) => e.shipId) ?? [shipId])
-  const myUnits = buildMyUnitSpecs(state, ctx, battle, shipId, anomalyId, foesForDebuff)
+  if (battle.rangeEwVersion === 1) syncRangeEw(state, ctx, battle, foesWithSupport(battle, activeFoeSpecsOf(anomaly, bal, battle.waveIdx)), shipId)
+  let myUnits = buildMyUnitSpecs(state, ctx, battle, shipId, anomalyId, foesForDebuff)
   if (myUnits.length === 0) {
     battle.ended = 'foe'
     return
   }
-  const me = myUnits[0]! // 主控：距离 / 期望交距 / favor 等既有口径的锚（单船路径 = 唯一那条）
+  let me = myUnits[0]! // 主控：距离 / 期望交距 / favor 等既有口径的锚（单船路径 = 唯一那条）
+  let ewMyCut = battle.rangeEw?.meCut
   /**
    * **本场开战距离**（= 首波口径）：只服务**转场回拉**（`waveReopenFrac`）与**增援补入**
    * （`resolveReinforcements`）。⚠ 敌方的"期望距离"与它的钳制上界**不用它**——那两个按**当前波**算，
@@ -324,6 +327,16 @@ export function advanceBattleFor(
      */
     // 近防调度按编成下标记账；候补保留原槽位，由存活判据排除未入场单位。
     const liveFoes = foesWithSupport(battle, curFoes)
+    if (battle.rangeEwVersion === 1) {
+      syncRangeEw(state, ctx, battle, liveFoes, shipId)
+      if (ewMyCut !== battle.rangeEw!.meCut) {
+        myUnits = buildMyUnitSpecs(state, ctx, battle, shipId, anomalyId, liveFoes)
+        me = myUnits[0]!
+        ewMyCut = battle.rangeEw!.meCut
+      }
+      foeDesire = foeDesiredRange(me, liveFoes, bal, battle.meFoeRangeDebuff ?? 0, battle)
+      desireCapM = battleOpenM(me, foeRangeEwSpecsOf(battle, liveFoes), bal)
+    }
     if (!battle.foeRepair && liveFoes.some(f => (f.repairPct ?? 0) > 0)) {
       battle.foeRepair = { nextPulseAtMs: battle.lastTickGameMs + REPAIR_PULSE_MS, pulses: 0, healed: 0 }
     }
@@ -566,5 +579,6 @@ export function advanceBattleFor(
     }
   }
   // 本拍收尾：把倍速锚点重新配对（下一拍按新锚点起算增量 ⇒ 切档连续、1× 与老口径逐字一致）
+  if (battle.rangeEwVersion === 1) syncRangeEw(state, ctx, battle, foesWithSupport(battle, curFoes), shipId)
   rebaseAxis()
 }

@@ -106,10 +106,12 @@
       },
       {
         "id": "foe-mount-ink-range-debuff",
+        "rangeDebuff_strength": 120,
         "rangeDebuff_pct": 0.5
       },
       {
         "id": "foe-mount-d-range-debuff",
+        "rangeDebuff_strength": 80,
         "rangeDebuff_pct": 0.15
       },
       {

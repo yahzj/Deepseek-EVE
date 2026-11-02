@@ -33,6 +33,7 @@ function idle(state: ReturnType<typeof createInitialState>) {
   state.expedition.active = false
   state.expedition.battle = null
   state.expedition.anomalyId = null
+  delete state.expedition.sortie
   state.bountyCooldowns = {}
 }
 

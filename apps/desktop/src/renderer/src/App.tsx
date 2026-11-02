@@ -475,7 +475,7 @@ export function App({ engine }: { engine: GameEngine }) {
    * 「第一次学习技能」的跳转按钮与那封情报信的「前往」都落到「技能 · 工程」——
    * 口径同 `taskFocus`：`seq` 变化即应用一次（人已经在技能页时再点一次也能重新落位）。
    */
-  const [skillsFocus, setSkillsFocus] = useState<{ group: string; seq: number } | null>(null)
+  const [skillsFocus, setSkillsFocus] = useState<{ group: string; branch?: string; seq: number } | null>(null)
   /**
    * **虫洞面板**（终局玩法 · ✅ 2026-09-14 已上线：入口常驻，玩家侧门槛 = 协会声望 ≥ 40）：
    * 面板挂在 App 这一层、**不依赖星图选中哪个星系**——原先只挂在星图行动区的入口行里，
@@ -801,7 +801,7 @@ async function applyLayoutAndReload(): Promise<void> {
   const inBattle =
     (state.expedition.active && state.expedition.phase === 'battle') ||
     !!state.wormhole.run?.battle ||
-    weekendFlagshipBattleActive(state)
+    weekendFlagshipBattleActive(state) || !!(state.encounter.active && state.encounter.battle && (state.encounter.pirate || state.encounter.automatic))
 
   /**
    * ── 观战屏：**挂载**与**上屏**是两件事（2026-09-22 回归修复）──
@@ -825,7 +825,7 @@ async function applyLayoutAndReload(): Promise<void> {
       setBattleMounted(true)
       battleWatchedRef.current = false
       // 新场绘制前设置显隐，连续出击不能继承上一场的展开状态。
-      setBattleOpen(!engine.autoSortieNow())
+      setBattleOpen(!engine.autoSortieNow() && !state.encounter.pirate && !state.encounter.automatic)
     }
     prevInBattleRef.current = inBattle
   }, [inBattle])
@@ -969,11 +969,11 @@ async function applyLayoutAndReload(): Promise<void> {
    * **2026-09-24 船长令**：再加一档 `{page:'skills', tab:'工程'}` ⇒ 技能页自动选中该大类
    * （「第一次学习技能」那封信的「前往」直接落在「工程」）。
    */
-  function gotoFromComms(p: string, tab?: string, shipTab?: string, taskTab?: string): void {
+  function gotoFromComms(p: string, tab?: string, shipTab?: string, taskTab?: string, skillBranch?: string): void {
     if (p === 'map' && tab) changeMapTab(tab as MapTab)
     if ((p === 'task' || (p === 'map' && tab === 'task')) && taskTab) focusTaskTab(taskTab)
     if (p === 'ship' && shipTab) changeShipTab(shipTab as ShipTab)
-    if (p === 'skills' && tab) focusSkillGroup(tab)
+    if (p === 'skills' && tab) focusSkillGroup(tab, skillBranch)
     changePage(p as PageKey)
   }
 
@@ -1272,8 +1272,8 @@ async function applyLayoutAndReload(): Promise<void> {
    * **技能页大类定位**（**2026-09-24 船长令**：「跳到技能页并自动选中工程」）：与 `focusTaskTab` 同款
    * ——技能页的大类是页内状态（会记住玩家上次选的），跳转必须显式发一次请求，`seq` 变化才应用。
    */
-  const focusSkillGroup = (group: string): void => {
-    setSkillsFocus((p) => ({ group, seq: (p?.seq ?? 0) + 1 }))
+  const focusSkillGroup = (group: string, branch?: string): void => {
+    setSkillsFocus((p) => ({ group, branch, seq: (p?.seq ?? 0) + 1 }))
   }
   const changeShipTab = (t: ShipTab): void => {
     setShipTab(t)
@@ -1734,6 +1734,7 @@ async function applyLayoutAndReload(): Promise<void> {
                 <div className="app-dim app-report-tail">{tr("ui.App.097")}</div>
               </>
             ) : null}
+            {(offlineReport.combatLines ?? []).map((line, i) => <div key={`combat-${i}`} className="app-report-line">{line}</div>)}
             {offlineReport.highlights.map((h, i) => (
               <div key={i} className={`app-report-highlight is-${h.kind}`}>
                 {h.kind === 'warn' ? '⚠' : '¥'} {h.text}
@@ -1754,9 +1755,9 @@ async function applyLayoutAndReload(): Promise<void> {
               <CommsScreen entry={popupMsg} itemNameOf={(id) => engine.ctx.items.get(id)?.name ?? id} />
               <CommsEave
                 entry={popupMsg}
-                onGoto={(p, tab, shipTab, taskTab) => {
+                onGoto={(p, tab, shipTab, taskTab, skillBranch) => {
                   engine.dismissCommsPopup(popupMsg.id)
-                  gotoFromComms(p, tab, shipTab, taskTab)
+                  gotoFromComms(p, tab, shipTab, taskTab, skillBranch)
                 }}
                 /**
                  * **弹面板的动作**（2026-09-25 · 入侵结算信「查看详细奖励」）——

@@ -14,6 +14,7 @@ import { combatEscortBlock, encounterCombatRosterOf } from '../combat/command/lo
 
 /** 玩家指令：迎战（进入 V12 实时战斗，自动打完出战报） */
 export function fightEncounter(state: GameState, ctx: SimContext): CommandResult {
+  if (state.encounter.pirate && state.encounter.battle) return { ok: true }
   return withBattleRangeCheck(state, { kind: 'encounter', invitedAtGameMs: state.encounter.invitedAtGameMs }, staged => fightEncounterMutable(staged, ctx))
 }
 
@@ -38,7 +39,7 @@ export function fightEncounterMutable(state: GameState, ctx: SimContext): Comman
   const blocked = combatEscortBlock(state, squad)
   if (blocked) return { ok: false, ...blocked }
   const battle = squad.length > 1 ? startFleetBattleFor(state, ctx, squad, foeKeyOf(enc), state.gameMs, undefined, undefined,
-    weekendFoe ? { threat: enc.threat, ...(enc.foeStrengthMul !== undefined ? { strengthMul: enc.foeStrengthMul } : {}) } : undefined) : startBattleFor(
+    weekendFoe ? { threat: enc.threat, patrolFormation: true, ...(enc.foeStrengthMul !== undefined ? { strengthMul: enc.foeStrengthMul } : {}) } : undefined) : startBattleFor(
     state,
     ctx,
     enc.shipId ?? state.shipId,
@@ -46,7 +47,7 @@ export function fightEncounterMutable(state: GameState, ctx: SimContext): Comman
     state.gameMs,
     undefined,
     weekendFoe
-      ? { threat: enc.threat, ...(enc.foeStrengthMul !== undefined ? { strengthMul: enc.foeStrengthMul } : {}) }
+      ? { threat: enc.threat, patrolFormation: true, ...(enc.foeStrengthMul !== undefined ? { strengthMul: enc.foeStrengthMul } : {}) }
       : undefined,
   )
   if (!battle) return { ok: false, error: '遭遇异常，无法开战。', errorId: 'core.encounters.005' }

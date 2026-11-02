@@ -765,6 +765,20 @@
         "exclusive": true
       },
       {
+        "id": "drone-repair-mil",
+        "kind": "drone",
+        "unitM3": 40,
+        "baseSellPriceIsk": 42000,
+        "cpuUse": 8,
+        "droneClass": "repair",
+        "repairDrone": true,
+        "repairArmorHp": 10,
+        "repairHullHp": 10,
+        "repairIntervalMs": 10000,
+        "repairKit": "repairkit-mil",
+        "defense": { "shieldHp": 30, "armorHp": 20, "hullHp": 40, "evasion": 0.2 }
+      },
+      {
         "id": "drone-jawclaw",
         "kind": "drone",
         "unitM3": 10,

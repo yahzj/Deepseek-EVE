@@ -92,7 +92,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
   const used = cargoUsedM3Of(state, engine.ctx, targetId)
   const cap = cargoCapacityM3Of(state, engine.ctx, targetId)
   // 2026-09-09 长途运输：驾驶船货仓被虚拟"运输货物"全部占用（不产生真实物品；显示用）
-  const haulOcc = isPiloted && state.hauling.active ? haulingOccupiedM3(state, engine.ctx) : 0
+  const haulOcc = state.hauling.active ? haulingOccupiedM3(state, engine.ctx, targetId) : 0
   // 2026-09-18 快递改虚拟货物：在途快递按体积占用货舱（与长途运输同款语义）
   const courierOcc = isPiloted ? courierOccupiedM3(state) : 0
   const allRows = Object.entries(cargo).filter(([, n]) => n > 0)
@@ -253,7 +253,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
           />
           {haulOcc > 0 ? (
             <div className="app-dim" style={{ marginTop: 'var(--wui-sp-2)' }}>
-              {tr("ui.CargoPage.041")}
+              {tr('ui.industrial.014')}
             </div>
           ) : null}
           {courierOcc > 0 ? (

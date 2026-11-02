@@ -4,7 +4,8 @@ import type { UnitSpec, BattleSimulationOptions } from './model'
 import type { BattleBalance, DamageType } from '../types'
 import { isAlive, playerWeaponInRange, playerBlindDamageMul, droneHitChance, hitChance, clamp, applyDamage } from './combatMath'
 import { dronePoolKey, pickFoeDroneTarget, isFoeEngageable } from './combatDrones'
-import { isMyUnitStealthed, firstAliveFoe, randomAliveFoe } from './targeting'
+import { isMyUnitStealthed, firstAliveFoe, lockAwareFoe } from './targeting'
+import { applyFleetLockAura } from './lockAura'
 import { releaseDroneLaunch } from './droneLaunch'
 import { consumeBattleWeaponAmmo } from './combatAmmo'
 import { noteRailAttack } from './gravekeeperGear'
@@ -18,9 +19,11 @@ import { applyFoeUnitDamage, carryVolleyOverflow } from './damage'
 import { addFoeAcidLayer } from './alienEquipment'
 import { markFoeDroneRangeBuff, announceFoeGunRangeBuff } from './foeRange'
 import { battleMaxDistanceM } from './foes/tactics'
+import { pulseRepairDroneFor } from './combatRepair'
 
 export function firePlayerPhase(state: GameState, b: import('../state').BattleState, myUnits: readonly UnitSpec[], foes: UnitSpec[], me: UnitSpec, bal: BattleBalance, dtMs: number, favor: { meMul: number; foeMul: number } | null, blinkHold: { me: boolean; foe: boolean }, meAtkOf: (u: UnitSpec) => UnitSpec, awaitingWaveArrival: boolean, simulation?: BattleSimulationOptions): void {
 for (const unit of myUnits) {
+    applyFleetLockAura(myUnits as UnitSpec[], b)
     const meRt = b.units[unit.tag]
     if (!meRt || !isAlive(b, unit.tag)) continue
     // 主控（`player`）——单船路径与多单位路径的首条都走这里
@@ -39,6 +42,14 @@ for (const unit of myUnits) {
         if (!poolEntry || poolEntry.alive === false) continue // 已被点防打掉的架次不再开火（条目保留占位）
       }
       if (awaitingWaveArrival) continue
+      if (w.repairDrone) {
+        const cd = meRt.weapons[wi] ?? 0
+        if (cd > 0) { meRt.weapons[wi] = Math.max(0, cd - dtMs); continue }
+        if (!releaseDroneLaunch(b, unit, wi)) continue
+        pulseRepairDroneFor(state, b, myUnits, unit, w.repairDrone)
+        meRt.weapons[wi] = w.reloadMs
+        continue
+      }
       const cd = meRt.weapons[wi] ?? 0
       if (cd > 0) {
         meRt.weapons[wi] = Math.max(0, cd - dtMs)
@@ -80,9 +91,7 @@ for (const unit of myUnits) {
       // 2026-09-09 锁定装置：装上即切换"集火模式"——全部武器打存活编队首位（主舰优先、击毁接力）。
       let foeTarget = droneHit
         ? null
-        : unit.lockedDmgBonus
-          ? firstAliveFoe(foes, b)
-          : randomAliveFoe(state, b, foes)
+        : lockAwareFoe(state, b, foes, unit)
       if (!foeTarget && !droneHit) continue
       let type: DamageType
       let dmg: number
@@ -137,12 +146,12 @@ for (const unit of myUnits) {
           droneHit = pickFoeDroneTarget(state, b, foes, b.distanceM, w, wi, unit.tag, true)
           if (!droneHit) {
             if (!playerWeaponInRange(b.distanceM, w)) break
-            foeTarget = unit.lockedDmgBonus ? firstAliveFoe(foes, b) : randomAliveFoe(state, b, foes)
+            foeTarget = lockAwareFoe(state, b, foes, unit)
             if (!foeTarget) break
           }
         }
-        if (gun > 0 && !droneHit && !isAlive(b, foeTarget!.tag)) {
-          foeTarget = unit.lockedDmgBonus ? firstAliveFoe(foes, b) : randomAliveFoe(state, b, foes)
+        if (gun > 0 && !droneHit && ((unit.lockTargetChance ?? 0) > 0 || !isAlive(b, foeTarget!.tag))) {
+          foeTarget = lockAwareFoe(state, b, foes, unit)
           if (!foeTarget) break
         }
         const targetVolleyDmg = w.kind === 'beam'
@@ -236,7 +245,8 @@ for (const unit of myUnits) {
             const rt = b.units[foeTarget!.tag]!;
             const hpBefore = { ...rt.hp }
             // 锁定装置：被锁目标受本舰伤害加深（对锁定目标的任意命中都乘入；2026-09-09）
-            const volleyLocked = unit.lockedDmgBonus ? ceilFinalQuantity(targetVolleyDmg * (1 + unit.lockedDmgBonus)) : targetVolleyDmg
+            const volleyLocked = unit.lockedDmgBonus && foeTarget!.tag === firstAliveFoe(foes, b)?.tag
+              ? ceilFinalQuantity(targetVolleyDmg * (1 + unit.lockedDmgBonus)) : targetVolleyDmg
             const dmgLocked = ceilFinalQuantity(volleyDamageShareOf(volleyLocked, gunCount, gun) * blindMul)
             /** 主段：走**敌舰伤害唯一收口**（血写回 ＋ 死亡观测；算术与消费顺序一字不变） */
             const r = applyFoeUnitDamage(b, foeTarget!, dmgLocked, type, b.lastTickGameMs + dtMs)

@@ -15,6 +15,8 @@ import { FOE_DRONE_H_HEAVY } from '../../foe-drones'
  * - 速度 258 × **1.45** = **374 m/s**（对基准船 165.2 的 ≈1.43×，落 H 族族格带 1.0~1.6）；射程带 **1 ~ 4,275**（与突击舰同口径 · 中距）。
  */
 export const FOE_H_INK_JAMMER: FoeShipDef = {
+  rangeEwBonus: enemyParameterOf(foeShipsParameters, 'foe-h-ink-jammer', 'rangeEwBonus'),
+  rangeEwEquipmentBonusPct: enemyParameterOf(foeShipsParameters, 'foe-h-ink-jammer', 'rangeEwEquipmentBonusPct'),
   id: 'foe-h-ink-jammer',
   gunCount: enemyParameterOf(foeShipsParameters, "foe-h-ink-jammer", "gunCount"),
   name: '墨潮干扰舰',

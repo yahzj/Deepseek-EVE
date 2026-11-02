@@ -17,6 +17,9 @@ import {
   wreckItemDefOf,
   wreckItemIdOf,
   WRECK_GROUPS,
+  enemyFormationCard,
+  rangeEwFlagshipCard,
+  ENEMY_FORMATION_PLANS,
 } from '@whale/core'
 import type { SimContext } from '@whale/core'
 import { buildSkillCatalog } from './skills/catalog'
@@ -97,6 +100,10 @@ export function buildSimContext(locale: Locale = 'zh'): SimContext {
     locale,
   )
   // 碎片追加在**覆盖后的**物品表上（`base.items` 已是英文覆盖版；写回原 `items` 会把覆盖丢掉）
+  const formationAnomalies = new Map(base.anomalies)
+  for (const [id, card] of base.anomalies) {
+    if (!id.startsWith('wh-')) formationAnomalies.set(id, rangeEwFlagshipCard(enemyFormationCard(card, base.balance.battle, ENEMY_FORMATION_PLANS[id] ?? {}, base.foeShips), base.balance.battle))
+  }
   const itemsFinal = new Map(base.items)
   let addedFragment = false
   for (const moduleId of Object.keys(FRAGMENT_RECIPES)) {
@@ -108,6 +115,6 @@ export function buildSimContext(locale: Locale = 'zh'): SimContext {
     itemsFinal.set(id, fragmentItemDefOf(moduleId, mod.name, locale === 'en' ? EN_FRAGMENT : undefined))
     addedFragment = true
   }
-  return addedFragment ? { ...base, items: itemsFinal } : base
+  return { ...base, anomalies: formationAnomalies, ...(addedFragment ? { items: itemsFinal } : {}) }
 }
 

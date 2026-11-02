@@ -20,6 +20,8 @@ import { foeStrengthOf, foeThreatOfAnomaly } from '../src/foeSpecs'
 import { foeHpOfThreat } from '../src/foePower'
 
 const ctx = buildSimContext()
+// 保存旧卡数值契约，确保版本缺省的存档继续按旧规格重建。
+ctx.anomalies = new Map([...ctx.anomalies].map(([id, card]) => [id, card.foeFormation?.baseline ?? card]))
 const bal = ctx.balance.battle
 const ship = (suffix: string) => FOE_SHIPS.find(s => s.id === `foe-d-invasion-${suffix}`)!
 function unit(suffix: string) {

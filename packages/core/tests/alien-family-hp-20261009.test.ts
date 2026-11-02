@@ -127,7 +127,7 @@ describe('C族最终血量与机型独立判定', () => {
   })
 
   it.each([150000, 1000])('共享池%s不吃族格，反复覆盖和保存仍保持绝对血量', bossHp => {
-    const card = ctx.anomalies.get('alien-broodmother')!
+    const card = ctx.anomalies.get('alien-broodmother')!.foeFormation!.baseline
     const layers = bossHp === 150000 ? { s: 30000, a: 82500, h: 37500 } : { s: 0, a: 0, h: 1000 }
     const override = { bossShipId: 'foe-alien-broodmother', bossHp, bossHpLayers: layers, bossHpMax: 150000 }
     const once = applyFoeOverride(card, override)
@@ -164,11 +164,11 @@ describe('C族最终加血不被探索预算抵消', () => {
     const card = ctx.anomalies.get('wh-alien-swarm') ?? ctx.anomalies.get('wh-alien-spore')!
     expect(card).toBeDefined()
     const plain = { ...card, id: `${card.id}-without-hp-trait`, ships: card.ships!.map(slot => ({ ...slot, ship: { ...slot.ship, family: 'A' as const } })) }
-    const before = createFoeSpecs(wormholeDerivedAnomaly(ctx, plain, { depth, kind: 'node', waves: 1 }), bal)
-    const after = createFoeSpecs(wormholeDerivedAnomaly(ctx, card, { depth, kind: 'node', waves: 1 }), bal)
+    const before = createFoeSpecs(wormholeDerivedAnomaly(ctx, plain, { depth, kind: 'node', waves: 1 }, 0), bal)
+    const after = createFoeSpecs(wormholeDerivedAnomaly(ctx, card, { depth, kind: 'node', waves: 1 }, 0), bal)
     expect(after).toHaveLength(before.length)
     for (let i = 0; i < after.length; i++) {
-      const derived = wormholeDerivedAnomaly(ctx, card, { depth, kind: 'node', waves: 1 })
+      const derived = wormholeDerivedAnomaly(ctx, card, { depth, kind: 'node', waves: 1 }, 0)
       const precise = createFoeSpecs(derived, bal, { beforeHpUplift: true })[i]!
       for (const layer of ['s','a','h'] as const) expect(after[i]!.hp[layer]).toBe(ceilFinalQuantity(precise.hp[layer] * 1.5))
       expect(after[i]!.weapons).toEqual(before[i]!.weapons)

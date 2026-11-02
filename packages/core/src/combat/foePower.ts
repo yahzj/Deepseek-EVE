@@ -127,18 +127,16 @@ export function foeThreatAtHpBudgetOf(needHp: number, bal: BattleBalance): numbe
   return lo
 }
 
-/**
- * **多舰船补偿系数** `2N/(N+1)`（2026-09-11 船长确认「先按照你的提议实现」；N = 本卡编成单位总数）。
- *
- * 动机（数学）：N 个单位**逐个被击毁**时，敌人整场的累计输出 = 单舰基准 × `(N+1)/(2N)`
- * （单位 1 全场输出、单位 2 输出 (N−1)/N 场 …单位 N 输出 1/N 场，均值 = (N+1)/(2N)），
- * **N=4 时只有 62.5%**；本系数正好抵消这层阶梯衰减（N=4 → ×1.6）。
- *
- * 适用范围（本批口径）：**只在舰级路径**（写了 `anomaly.ships` 的卡）施加；
- * **旧威胁推导路径一律不动**——那里 `N=1`，系数天然为 1、无影响。
- * ⚠ 已知口径不一致：旧路径（未写 `ships` 的卡）**暂未启用**该补偿，待旧卡迁入舰级路径时统一。
- */
+/** spread后改编成的工具或测试不可误用原固定规格；倍率覆写仍允许消费。 */
+export function hasFixedFoeFormation(anomaly: AnomalyDef): boolean {
+  const layout = anomaly.foeFormation?.layout
+  return !!layout && anomaly.ships?.length === layout.length && anomaly.ships.every((slot, i) =>
+    slot.ship === layout[i]!.ship && slot.count === 1 && slot.wave === layout[i]!.wave && slot.escort === layout[i]!.escort)
+}
+
 export function foeMultiShipCompMul(anomaly: AnomalyDef): number {
+  // 新卡已保留原实战单舰规格；旧战斗继续2N/(N+1)，新增舰数不再二次放大火力。
+  if (hasFixedFoeFormation(anomaly)) return 1
   const n = (anomaly.ships ?? []).reduce((s, x) => s + Math.max(1, Math.floor(x.count ?? 1)), 0)
   return n <= 1 ? 1 : (2 * n) / (n + 1)
 }

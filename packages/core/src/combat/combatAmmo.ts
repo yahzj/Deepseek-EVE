@@ -12,6 +12,7 @@ import type { UnitSpec, WeaponSpec } from './model'
 import { AMMO_IDS } from './player/factors'
 import { addWare, cargoOfShip, removeCargoOfShip, removeWare } from '../inventory'
 import { restoreWormholeSupply, wormholeSupplyForBattle } from '../wormholeSupplies'
+import { observeOfflineBattle } from '../offlineCombatStats'
 
 /* 以下为 2026-10-02 批次 4i 从 combat.ts 切接过来的整簇（ammoLoadTotals ~ ammoKeyOf）。 */
 
@@ -214,6 +215,7 @@ export function refundAmmo(
 
 /** 新编队逐弹型退还；旧在途没有明细账时仍按原三族账本结算。 */
 export function refundBattleAmmo(state: GameState, battle: BattleState, recoveryPct = 0): number {
+  observeOfflineBattle(state, battle)
   const rate = Math.max(0, Math.min(1, recoveryPct))
   const ledger = battle.expeditionAmmo
   if (ledger) {

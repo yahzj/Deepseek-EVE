@@ -83,7 +83,7 @@ export function battleDeviceCyclesOf(
           ? percent((1 - remainingMs / cycleMs) * 100) : 0
       out.push({
         id: `${spec.tag}:${kind}:${key}`, ownerTag: spec.tag, shipId, ownerName: name,
-        label: (modelId ? ctx.modules.get(modelId)?.name ?? modelId : undefined) ?? kind,
+        label: (modelId ? ctx.modules.get(modelId)?.name ?? ctx.items.get(modelId)?.name ?? modelId : undefined) ?? kind,
         kind, count: Math.max(1, Math.floor(positive(count))), cycleMs, remainingMs,
         ...extra, percent: down || ended ? 0 : extra.percent ?? progress, state: viewState,
       })
@@ -136,6 +136,19 @@ export function battleDeviceCyclesOf(
     if (repairUnits.length === 0) {
       stats?.units.forEach((unit, index) => add('repair', String(index), unit.moduleId, 1, repairCycle, undefined, 'stopped'))
     }
+
+    spec.weapons.forEach((drone, index) => {
+      if (!drone.repairDrone) return
+      const pool = battle.dronePools?.[`${spec.tag}:${index}`]
+      const cycle = positive(drone.reloadMs)
+      const remaining = positive(rt?.weapons[index])
+      const target = units.some(row => row.spec.tag !== spec.tag && isAlive(battle, row.spec.tag)
+        && (battle.units[row.spec.tag]!.hp.a < (battle.units[row.spec.tag]!.hpMax?.a ?? row.spec.hp.a)
+          || battle.units[row.spec.tag]!.hp.h < (battle.units[row.spec.tag]!.hpMax?.h ?? row.spec.hp.h)))
+      add('repair', `drone-${index}`, drone.artId, 1, cycle, now + remaining,
+        !pool?.alive ? 'down' : kitAvailable(drone.repairDrone.kitId) < 1 ? 'no-stock'
+          : !target ? 'waiting' : remaining > 0 ? 'cooldown' : pool.launched === false ? 'waiting' : 'ready')
+    })
 
     for (const kind of ['shield-charge', 'shield-field'] as const) {
       const current = validFitted ? (kind === 'shield-charge' ? shieldChargeStreamsOf : shieldFieldStreamsOf)(state, ctx, shipId) : []

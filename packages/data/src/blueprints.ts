@@ -2924,7 +2924,7 @@ const BASE_BLUEPRINTS: readonly BlueprintDef[] = [
         材料价 = 产物价 × **45%**（本批按 45% 配平，实测 45.1% / 45.0%）。 ══════════ */
   {
     id: 'bp-shieldfield-2',
-    name: '护盾充能力场装置图纸 MK2（一次性）',
+    name: L10N['bp.fleetSupport.001']!.zh,
     moduleId: 'mod-shieldfield-2',
     singleUse: true,
     materials: [
@@ -2944,11 +2944,11 @@ const BASE_BLUEPRINTS: readonly BlueprintDef[] = [
     buildCostIsk: 0,
     priceIsk: 4_000_000, // 船长定平均价 400 万；**书价 = 产物价**（一次性图既有口径）
     // ⟪文案调整 2026-10-07⟫ 力场图纸沿用产物效果说明，避免旧全队免费恢复口径。
-    description: L10N['mod.copy.027']!.zh,
+    description: L10N['mod.fleetSupport.003']!.zh,
   },
   {
     id: 'bp-shieldfield-3',
-    name: '护盾充能力场装置图纸 MK3（一次性）',
+    name: L10N['bp.fleetSupport.002']!.zh,
     moduleId: 'mod-shieldfield-3',
     singleUse: true,
     materials: [
@@ -2968,7 +2968,7 @@ const BASE_BLUEPRINTS: readonly BlueprintDef[] = [
     buildCostIsk: 0,
     priceIsk: 20_000_000, // 船长定平均价 2000 万；**书价 = 产物价**
     // ⟪文案调整 2026-10-07⟫ 型号周期由产物参数行显示，不再手写机制数值。
-    description: L10N['mod.copy.027']!.zh,
+    description: L10N['mod.fleetSupport.003']!.zh,
   },
   /* ══════════════ 舰船插件蓝图（**2026-09-26 船长令**）══════════════
    * 船长原话（照抄）：「**在工业-组装机的门类筛选中，添加舰船插件的新分类，打算依靠黑匣来生产舰船插件。**」

@@ -30,6 +30,8 @@ import type {
 } from "../src/types";
 
 const base = buildSimContext();
+// 原卡的机群拆分机制基准；新增护航的机群与总量在扩编专项覆盖。
+base.anomalies = new Map([...base.anomalies].map(([id, card]) => [id, card.foeFormation?.baseline ?? card]));
 const bal = base.balance.battle;
 
 /** 试验舰级：母舰**射程 1~10 m**（够不着，用来把"机群的火力"从"母舰的火力"里分出来）。

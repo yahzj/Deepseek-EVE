@@ -208,6 +208,7 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'drone-assault': 1,
   'drone-heavy': 1,
   'drone-scout': 1,
+  'drone-repair-mil': 1,
   'drone-sentry': 1,
   'gamma': 4,
   'gas-aurora': 1,

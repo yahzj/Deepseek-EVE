@@ -122,6 +122,12 @@ export type { BattleAmmoPreloadRow, BattleAmmoPreloadPlan } from './battleAmmoPr
 export { marketTradingGoods } from './market'
 export { volleyGunCountOf, volleyDamageShareOf } from './combatVolley'
 export type { BlackMarketState, BlackMarketOffer } from './state'
+export { enemyFormationCard, rangeEwFlagshipCard } from './combat/formation'
+export { rangeEwBaseOf, rangeEwCutOf, playerRangeEwOf, foeRangeEwOf, rangeEwContestOf, battleRangeEwOf, type RangeEwPart, type RangeEwContest } from './combat/rangeEw'
+export { foeRangeEwSpecsOf } from './combat/foeRange'
+export { rangeEwPreviewOf, rangeEwBattleView, rangeEwSignalTargetOf, type RangeEwView, type RangeEwWeapon } from './combat/rangeEwPreview'
+export { ENEMY_FORMATION_PLANS } from './combat/formation-plans'
+
 export {
   CURRENT_STATE_VERSION,
   MAX_SKILL_LEVEL,
@@ -1248,6 +1254,15 @@ export {
   HAUL_LEG_TIME_MUL,
 } from './hauling'
 export type { HaulEndpoint } from './hauling'
+export { haulFleetLoadOf } from './hauling/load'
+export { haulFleetPathOf } from './hauling/fleet'
+export { haulRiskPreviewOf } from './hauling/preview'
+export { LOCK_SHARED_SCALE, LOCK_SHARED_CAP } from './combat/lockAura'
+export type { OfflineCombatStats, TransportStopReason } from './offlineCombatStats'
+export { haulUnitRewardRange } from './hauling/routes'
+export { industrialThreatOf, industrialFrequencyOf, industrialFleetSnapshotOf, industrialBaseThreatOf } from './encounters/risk'
+export { pirateFormationOf } from './encounters/pirateFormation'
+export { industrialSortieOf } from './encounters/industrial'
 
 export {
   battleWinPreview,
@@ -2157,7 +2172,7 @@ export { isLocalDebugOrigin } from './debugGate'
 
 /**
  * **技能训练许可**（2026-09-27 船长令：「我想让学习技能有成本」）——
- * 收费档 rank4/5/6（rank6 为预留档）要先买许可才能排训练；rank1~3 免许可。
+ * rank默认价目表与单技能显式定价共用许可资格；编队许可另设累计声望购买门槛。
  * 甲案：买许可只解锁**资格**，训练时长与前置链分毫不动。判据与 `enqueueSkill` 共用同一把尺。
  */
 export {
@@ -2165,6 +2180,7 @@ export {
   skillLicensePriceOf,
   hasSkillLicense,
   skillLicenseMissing,
+  skillLicenseStandingBlock,
   buySkillLicense,
 } from './skillLicense'
 
@@ -2204,6 +2220,6 @@ export type { FittingRange, RangeLayer } from './fittingRange'
 
 
 export { ceilFinalQuantity } from './quantity'
-export { commandBudgetOf, commandCapacityOf, shipCommandCostOf, combatShipLimit, COMBAT_MAX_SHIPS, COMMAND_SKILLS } from './combat/command/rules'
+export { commandBudgetOf, commandCapacityOf, shipCommandCostOf, combatShipLimit, COMBAT_MAX_SHIPS, COMMAND_SKILLS, COMMAND_STANDING_REQUIRED } from './combat/command/rules'
 export { combatRosterOf } from './combat/command/roster'
 export { encounterCombatRosterOf } from './combat/command/locks'

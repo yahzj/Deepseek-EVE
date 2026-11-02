@@ -15,6 +15,8 @@ import { cleanBattle } from '../src/saveBattleClean'
 import type { AnomalyDef } from '../src/types'
 
 const ctx = buildSimContext()
+// 原入侵基线的能力与区域接线；扩编规则另有逐卡专项。
+ctx.anomalies = new Map([...ctx.anomalies].map(([id, card]) => [id, card.foeFormation?.baseline ?? card]))
 const now = new Date(2026, 9, 9, 20).getTime()
 const cardIds = ['alien-vanguard', 'alien-escort', 'alien-main', 'alien-broodmother']
 

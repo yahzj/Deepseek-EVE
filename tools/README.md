@@ -1,5 +1,61 @@
 # 工具区台账（tools/）
 
+## 信号空间自动探索估算（2026-11-02）
+
+- `node tools/signal-auto-yield-comparison.cjs`：四舰队×两科技×五族×五原型×256个散布配对种子，对照旧原样、仅阻止守卫绕过的内存诊断和新估算，共51,200组配对/153,600次结算；`--smoke`每格3种子。TypeScript语法树仅在内存追踪逐层收成，校验200个未插桩旧入口控制样本及生产源码SHA-256不变；不读个人档、旧文档或Git历史，不调参数。每次另写`tools/_ui-artifacts/signal-auto-yield-comparison-<时间戳>/report.json`和`paired-samples.jsonl`。同256种子跨条件复用，不冒称独立样本或玩家自然权重。
+- `node tools/signal-auto-yield-report.cjs <对照输出目录>`：只读取上述`report.json`，在该目录另写`comparison.md`，已有文件拒绝覆盖；包含分类均值、分位数、同条件波动和守卫诊断，不开箱或折现金。结果及已知收益目标缺口见`docs/design/signal-auto-yield-comparison-20261102.md`。
+
+- `npx tsx tools/signal-auto-estimate-check.ts`：四种合法合成舰队、两档科技、五族各100种子，共4000组；核对同配置推进固定、普通资源容量、合法奖励、正式派队不提前发货及快照读档。`--smoke`为每格5种子。每次新建`tools/_ui-artifacts/signal-auto-estimate-<时间戳>/readings.json`，分类数量不是信用点收益，不读取个人档；合成逻辑在`signal-auto-estimate-fixture.ts`。
+- `npx tsx tools/make-signal-auto-estimate-save.ts`：独立合成满技能/科技的四舰79/125预算停港档、10处信号，正常速度且未代出发；正式装配及两轮读档、落盘回读，另写唯一`docs/test-saves/test-save-signal-auto-estimate-<上海时间>.json`，拒绝覆盖。加载与备份恢复见`docs/test-saves/signal-auto-estimate-20261102.md`。
+- 先`npm run build`，再`node tools/signal-auto-estimate-native-check.cjs`：最新生产文件、隐藏离屏Electron、独立临时userData，合成已派队任务回拨保存时间6分钟，经真实离线入口核对快照奖励、任务释放、仓库/核心入账与正式存盘。夹具仅关闭无关被动母矿产线，输出新建`tools/_ui-artifacts/signal-auto-native-<时间戳>/`；只关闭自有PID并删除已核验绝对边界的自建目录。不读取个人档，不作为观感或全局经济验收。
+
+## 编队支援与离线简报（2026-11-01）
+
+- `npx tsx tools/make-fleet-support-save.ts`：独立合成五舰90/125预算停港档，后勤预装护盾投送力场MK2、目标锁定阵列MK3及两架修理无人机，其他型号备件在装备库。`fleet-support-fixture.ts`复用正式装配与CPU检查；生成器经两轮正式读档和落盘回读，输出唯一`docs/test-saves/test-save-fleet-support-<上海时间>.json`，拒绝覆盖，不读取个人档。加载步骤见`docs/test-saves/fleet-support-20261101.md`。
+- 先`npm run build`，再`node tools/fleet-support-native-check.cjs`：本树生产文件、隐藏离屏Electron和独立临时userData，验证单份离线简报内容、关闭、无回看入口、无存档统计字段及三种桌面窗口几何。输出`tools/_ui-artifacts/fleet-support-final-20261101/`。合成战斗预置胜利仅验证结算接线，不作战斗胜率结论；只清理核验边界内的自建目录与自有PID，不读取个人档。
+
+## 修理无人机（2026-11-01）
+
+- `npx tsx tools/make-repair-drone-save.ts`：独立合成满技能五舰、预算90/125、后勤装2架修理机的停港档，不代开战；正式装载/CPU校验、两轮读档与落盘回读。输出`docs/test-saves/test-save-repair-drone-<上海时间>.json`，不读个人档，复测与备份恢复见`docs/test-saves/repair-drone-20261101.md`。
+
+## 运输护航（2026-11-01）
+
+- `npx tsx tools/oarfish-support-calibration.ts`：新版力场/阵列/修理机校准，五配置各20种子满载强制遭遇，三配置分25%/皇带鱼满载/混编整队满仓共56组24小时正式离线自然运输。损伤/机群跨场保留、不手动续运、不调生产参数，独立库存及事件账核对离线简报、结束后正式读档。分别记录运费、非运输现金、目录价补给损耗、沉船资产及期末维修负债；插件无公开售价时用现行图纸材料价估算，不计资本成本或残骸回收。每次另建`tools/_ui-artifacts/oarfish-support-<时间戳>/readings.json`，不读取个人档。`--smoke`仅5场战斗和7组6小时运输，不混入正式样本；结果与限制见`docs/design/oarfish-support-calibration-20261101.md`。依赖旧护航工具仅导出合成夹具，导入不启动旧批次取数或覆盖旧报告。
+
+- `npx tsx tools/make-oarfish-escort-save.ts`：独立合成皇带鱼＋两锤头鲨＋亡军后勤＋哨戒电子五舰停港档，配装沿用护航实战读数，成本110/125；正式序列化、两轮读档、落盘回读及副本运输/三波遇袭校验。另写上海时间命名的唯一JSON，不读个人档、不代出发；加载与固定总货量1,527,660m³复测见`docs/test-saves/oarfish-escort-20261101.md`。
+
+- `npx tsx tools/oarfish-escort-readings.ts`：固定皇带鱼原满配和总承运量1,527,660m³，8档单船/炮击/后勤/电子/无人机组合各20种子，正式指挥预算、装配、出勤、三波增幅敌阵与结算；输出`tools/_ui-artifacts/oarfish-escort-20261101/readings.json`，含每波配置、增幅、战损、补给和胜后续运。护航采用MK2基线，电子舰可装势力电子舱；每场重置全修与充足补给，不据此声称持续收益或总体胜率。不读个人档。
+
+- `npx tsx tools/oarfish-transport-readings.ts`：单皇带鱼满级技能、低槽扩展加4原型货舱的合法配装，核对各航线理论毛时薪、货量威胁贡献、128组正常海盗阵容及20场真实遭遇战；另列仅头目舰测试池容量对照，不改生产池或参数、不读取个人档。输出`tools/_ui-artifacts/oarfish-transport-20261101/readings.json`；`--inspect`另打印货舱/插件对照配装。
+
+- `npx tsx tools/industrial-transport-check.ts`：同一合法三舰队伍、25%/满载、6/24小时真实引擎离线试跑，记录交付、运输收入、遇袭、战损及读档保真；单种子功能检查，不自动调参或声称平衡。
+
+- `npx tsx tools/make-industrial-transport-save.ts`：独立合成满技能、全站已建、三舰运输准备档，不代开运输；正式序列化/读档核对，另写`docs/test-saves/test-save-industrial-transport-<时间>.json`，不读取个人档。
+- 构建后运行`node tools/industrial-transport-native-check.cjs`：隐藏离屏Electron、独立临时档，检查1540×940、1100×900、760×700三种窗口的承运弹窗边界；覆盖打开/取消无写入、非法整数范围、收益联动、安全与危险航线模糊威胁、Tab循环、Escape关闭和焦点返回、25%装载、途中无调货入口、安排到站停运、二次确认中断后折返且到港不续运。到港文件状态等待正式60秒自动保存，避免误读旧快照。输出`tools/_ui-artifacts/hauling-stop-lock-20261101/`，保留旧检查目录。只关闭自有PID并删除核验过的自建临时目录，不代表实体手机、观感或平衡验收。
+
+## 敌舰紧凑梯形（2026-11-01）
+
+- 构建后运行`node tools/enemy-compact-native-check.cjs`：本树生产文件、隐藏离屏Electron、独立临时合成档，5/7/9/12敌舰×经典/现代×1540×940、1100×900、760×700，共24组；核对SVG非空、宽窗140像素列距和逐排24像素后移、真实舰体/舰名/血条不互压及不越界。5/7舰用墨潮实际波次，9/12舰通过同波正式支援规格补足，夹具只延后开火用于取证，不作平衡结论。输出`tools/_ui-artifacts/enemy-compact-20261101/report.json`及各组PNG；不读个人档或Git历史，只关闭自有PID并清理核验过边界的自建临时目录。桌面窄窗不等于实体手机、性能或船长观感验收。
+- 加`--players`：玩家人数也按5/7/9/12变化，另存`tools/_ui-artifacts/player-trapezoid-20261101/`。加`--mirror`同样检查双方，但另存`tools/_ui-artifacts/mirror-trapezoid-20261101/`保留前轮证据；同时检查玩家主控与僚舰真实舰体中心、双方紧凑列距、逐排反向后移、舰名/血条边界及两两不重叠，并逐舰断言双方中心横坐标之和等于战场左右边界之和、纵坐标一致。敌我共用140像素列距上限和逐排24像素后移上限，窄窗使用同一套边界适配。
+
+## 射程电子战（2026-11-01）
+
+- `npx tsx tools/range-ew-readings.ts [--save]`：独立合成，普通五巡洋、单电子舰、双电子舰、单电子舰加电子舱四套合法满技能MK2配置，种子1/7/13；两张常驻卡走正式开战、返航、结算和港内维修，两张旗舰按满30万血池规格及第4层信号空间守卫仅测战斗。输出`tools/_ui-artifacts/range-ew/calibration.json`与`calibration.md`，含指挥成本、胜负、战损、开场强度、逐武器射程与补给读数。非等成本或最优配装，三种子不代表总体胜率。`--save`另生成未代开战的满技能全舰船测试档，电子舰合法换装一件电子舱，并通过正式读档复核；不读取个人档或Git历史。
+- 先`npm run build`，再`node tools/range-ew-native-check.cjs`：本树生产文件、隐藏离屏Electron、独立临时合成档，检查战内详情、舰队明细、已知悬赏预览三条路径，覆盖1540×940、1100×900、760×700窗口；验证强度、逐武器详情、点按展开、Escape关闭及焦点返回、遮挡和内部滚动。输出同目录的`report.json`与三组截图；战内夹具延后开火，仅用于界面取证，不作为平衡结论。不读个人档，只关闭自有PID并删除核验过边界的自建临时目录；桌面窄窗不等于实体手机或观感验收。
+
+## 敌方编成调整（2026-10-31）
+
+- `node --import tsx tools/enemy-formation-sustain-check.ts`：五套满技能MK2舰队覆盖23张常驻卡、3种子、每线最多5轮，新旧编成分别测港内全修与正式连续作战；补给库存与损伤跨轮保留，沉船和停环不强制恢复。输出`sustain.json`及`docs/design/enemy-fleet-sustain-20261031.md`，含实际弹药、组件、机群、维修负债和沉船装配估值；`--smoke`仅跑两卡短线、不覆盖正式报告；`--focus`以20种子、每线最多10轮、六套舰队复测穹顶守卫，包含辅助舰空槽加防护对照，独立输出`sustain-focus.json`及`enemy-fleet-vault-focus-20261031.md`；`--render`仅用已有JSON重生成报告，可与`--focus`配合，不重跑战斗或覆盖JSON。`enemy-formation-sustain.ts`为合成与结算夹具，不读取个人档。
+
+- `node --import tsx tools/enemy-formation-report.ts`：将最终328组校准记录与当前建档交叉核对，生成`docs/design/enemy-fleet-comparison-20261031.md`，逐卡列新旧血量、基础峰值DPS、舰数及增幅；王庭按实际互斥分支分别列出，旗舰另附满30万共享血池、被动入侵另列0.75巡游值。只导出报告，不运行实战或修改个人档。
+- `node --import tsx tools/enemy-formation-check.ts [--seeds=3] [--static]`：独立合成，逐卡新旧静态强度对照与固定MK2五阶段三武器战斗。输出`tools/_ui-artifacts/enemy-formation-20261031/report.json`；默认328静态行、5886场战斗。阶段为指定技能与合法容量截面，不表示已验证训练采购；旗舰矩阵为卡面血量，共享池由专项覆盖。
+- `node --import tsx tools/enemy-formation-journey.ts [--save]`：真实前置/许可/训练、单舰首胜声望和3张卡各12种子正式结算/返航/冷却/维修/弹药估值，输出同目录`journey.json`；`--save`另写20声望独立门槛档。资金/探索/货源预置，失败候选单列，不代表零资金养成或完整全域经济验收。加载说明见`docs/test-saves/enemy-formation-20261031.md`。
+
+## 编队解锁通讯（2026-10-31）
+
+- 构建后运行`node tools/fleet-command-unlock-native-check.cjs`：本树生产产物、隐藏Electron、独立20累计声望/0余额合成档，实际检查解锁弹窗和收件箱两条入口均定位技能页“舰船 / 编队指挥”，显示三项技能且无残留搜索、状态压暗或渲染错误。报告输出`tools/_ui-artifacts/fleet-command-unlock/report.json`，不读取个人档；仅关闭自建进程并清理已核验绝对边界的临时目录。此为桌面交互冒烟，不替代船长观感验收。
+- 加`--licenses`：三项编队技能分别加载声望差1/达标的独立合成档，共6组；实际核对详情和列表按钮、T2/T3/T5难度、5万/20万/200万价格、累计声望提示、二次确认和真实IPC保存扣款，并查1100×900窄窗许可操作区不越界。输出同目录`license-report.json`和各组JSON，声望不消耗，未读取个人档；首个失败即停止，不把未跑项记通过。
+
 ## 12舰实施前基线（2026-10-30）
 
 - `npx tsx tools/battle-twelve-baseline.ts`：独立合成1/4/12舰对等敌舰、机群开关和3种子，共18个30秒逐拍压力场景；正式装配/战斗入口，不读个人档。输出`tools/_ui-artifacts/battle-twelve-20261030/before.json`，包括Node推进耗时分位数和现行纯函数布局越界。12巡洋仅作压力夹具，不冒称合法预算编队；不代表原生窗口帧率、交互或已完成12舰功能。严格类型检查需同时包含`apps/desktop/src/renderer/src/env.d.ts`及DOM库。

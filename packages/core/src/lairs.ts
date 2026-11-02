@@ -31,6 +31,7 @@ import { rareDropRateMulOf } from './tuning'
 /** 威胁标签的"相对重锚"要血曲线与它的反解（**2026-10-02 船长令取甲**：只重锚标签、战斗零变化） */
 import { foeHpOfThreat, foeJudgedThreatOf, foeThreatAtHpBudgetOf } from './foePower'
 import type { BattleBalance } from './types'
+import { enemyFormationCard } from './combat/formation'
 
 /** 窝点档位：1 外围 / 2 核心 / 3 深层 */
 export type LairTier = 1 | 2 | 3
@@ -383,7 +384,37 @@ export const FOE_SUB_DMG: Record<FoeFamily, readonly DamageType[]> = {
  * `wave: 0/1` 两波**，其余舰级路径卡仍在 `wave: 0`）⇒ 直接套用会让第 2/3 波
  * **刷出 0 个单位**（探针实测）。故舰级路径的窝点**不套旧波表**（每波 ≥ 1 单位、波次按 `slot.wave` 表达）。
  */
-export function lairAnomalyOf(anomaly: AnomalyDef, tier: LairTier, bal: BattleBalance): AnomalyDef {
+type LairCacheEntry = { catalog?: ReadonlyMap<string, import('./types').FoeShipDef>; card: AnomalyDef }
+const formationLairMemo = new WeakMap<AnomalyDef, WeakMap<BattleBalance, Map<LairTier, LairCacheEntry>>>()
+
+export function lairAnomalyOf(anomaly: AnomalyDef, tier: LairTier, bal: BattleBalance, formationVersion: 0 | 1 = 1, shipCatalog?: ReadonlyMap<string, import('./types').FoeShipDef>): AnomalyDef {
+  if (formationVersion === 1) {
+    const base = anomaly.foeFormation?.baseline ?? anomaly
+    const byBalance = formationLairMemo.get(base) ?? new WeakMap<BattleBalance, Map<LairTier, LairCacheEntry>>()
+    const cache = byBalance.get(bal) ?? new Map<LairTier, LairCacheEntry>()
+    const cached = cache.get(tier)
+    if (cached && cached.catalog === shipCatalog) return cached.card
+    const old = lairAnomalyOf(base, tier, bal, 0)
+    if (!old.ships?.length) return old
+    const counts = old.ships.map(slot => Math.max(1, slot.count ?? 1))
+    const candidates = old.ships.map((slot, index) => ({ slot, index }))
+      .filter(({ slot }) => old.foeFamily !== 'E' && !slot.ship.elite && !slot.enterBranch && !slot.ship.repairPct && slot.ship.id !== 'foe-d-stasis' && !slot.ship.id.includes('spore') && !slot.ship.id.includes('hiveback'))
+      .sort((a, b) => a.slot.ship.hp * (a.slot.hpMul ?? 1) - b.slot.ship.hp * (b.slot.hpMul ?? 1))
+    if (old.threat > 40 && candidates.length) {
+      const amount = Math.min(tier, Math.max(1, Math.floor(counts.reduce((a, b) => a + b, 0) * 0.5)))
+      for (let i = 0; i < amount; i++) counts[candidates[i % candidates.length]!.index]! += 1
+    }
+    const maxHp = Math.max(...old.ships.map(slot => slot.ship.hp * (slot.hpMul ?? 1)))
+    const boosts = tier > 1 && old.threat > 100 ? old.ships.flatMap((slot, i) => slot.ship.hp * (slot.hpMul ?? 1) === maxHp ? [i] : []) : []
+    const strong = old.threat > 140
+    const card = enemyFormationCard(old, bal, { counts, boostSlots: boosts, hpMul: strong ? 1.1 : 1.05, dmgMul: strong ? 1.05 : 1.03,
+      ...(!candidates.length && old.threat > 40 && old.foeFamily === 'E' && shipCatalog?.has('foe-auro-hulk')
+        ? { extras: [{ wave: 0, shipId: 'foe-auro-hulk', count: Math.min(tier, 2), share: 0.4 }] } : {}) }, shipCatalog)
+    cache.set(tier, { catalog: shipCatalog, card })
+    byBalance.set(bal, cache)
+    formationLairMemo.set(base, byBalance)
+    return card
+  }
   const waves = LAIR_WAVES[tier]
   const main = foeMainDamageTypeOf(anomaly)
   const sub = subDamageTypeOf(anomaly, main)

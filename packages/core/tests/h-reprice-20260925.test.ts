@@ -49,6 +49,8 @@ import { pullOneWreck } from '../src/salvaging'
 import { roundedFoeHp } from './helpers/rounded-foe-hp'
 
 const ctx = buildSimContext()
+// 固定迁移前的定价与逐舰比例契约；新编成在enemy-formation专项覆盖。
+ctx.anomalies = new Map([...ctx.anomalies].map(([id, card]) => [id, card.foeFormation?.baseline ?? card]))
 const bal = ctx.balance.battle
 const SOLO = FOE_DESIGN_STRENGTH_MUL.solo
 const card = (id: string): AnomalyDef => ctx.anomalies.get(id)!

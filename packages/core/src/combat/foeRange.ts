@@ -7,7 +7,7 @@
  */
 
 /* 以下为 2026-10-02 批次 4k 从 combat.ts 切接过来的整簇（foeDroneRangeOf ~ markFoeGunRangeBuff）。 */
-import type { GameState } from '../state'
+import type { GameState, BattleState } from '../state'
 import type { DamageType, ModuleDef, SimContext } from '../types'
 import type { UnitSpec, WeaponSpec } from './model'
 import { createPlayerSpec } from './player/create'
@@ -20,6 +20,27 @@ import { pushBattleNotice } from './combatFx'
 import { foeCapacitorRangeBonusOf } from './gravekeeperCombat'
 import { supportEffectPartsOf } from '../stacking'
 import { plugEffectPartsOf } from '../plugEffects'
+
+/** 电子战新规则的战术射程视图，不改真正武器规格；玩家武器调整仍由各自的逐件压制单点处理。 */
+export function foeRangeEwSpecsOf(battle: BattleState, foes: readonly UnitSpec[]): UnitSpec[] {
+  const cut = battle.rangeEwVersion === 1 ? battle.rangeEw?.foeCut ?? 0 : battle.meFoeRangeDebuff ?? 0
+  return foes.filter(foe => battle.units[foe.tag] && !foeUnitDeadOf(battle, foe.tag)).map(foe => ({ ...foe, weapons: foe.weapons.map(weapon => ({ ...weapon,
+    maxRangeM: weapon.src === 'drone' ? foeDroneRangeOf(battle, weapon, foe) : foeGunMaxRangeOf(battle, foe, weapon),
+  })),
+    foeRangeBand: foe.foeRangeBand ? { ...foe.foeRangeBand,
+      max: foeRangeWithDebuff(foe.foeRangeBand.max, 1, cut) } : foe.foeRangeBand,
+    ...(foe.foeDesireRangeM !== undefined ? { foeDesireRangeM: rangeEwDesireRange(foe, cut) } : {}),
+  }))
+}
+
+export function rangeEwDesireRange(foe: UnitSpec, cut: number): number {
+  if (!(cut > 0)) return foe.foeDesireRangeM ?? 0
+  const band = foe.foeRangeBand
+  if (!band) return foe.foeDesireRangeM ?? 0
+  const effectiveMax = foeRangeWithDebuff(band.max, 1, cut)
+  return foe.foeDesireRangeM !== undefined && band.max > 0
+    ? Math.round(foe.foeDesireRangeM * effectiveMax / band.max) : effectiveMax
+}
 
 /** **敌机有效射程**（单一真相源）＝机型绝对射程 × **全敌队的受击增程倍率**（未触发 = ×1）－ **我方电子舰削减**。
  *
@@ -124,7 +145,9 @@ export function fittedEffectParamsOf(
   folded('hit', mod.hitBonusPct)
   folded('lock', mod.lockDmgBonus)
   folded('warp', mod.warpSpeedBonusPct)
-  folded('ecmRangeCut', mod.foeRangeDebuffPct)
+  if (mod.rangeEwStrength !== undefined) out.push({ key: 'rangeEwStrength', raw: mod.rangeEwStrength,
+    eff: mod.rangeEwStrength * (1 + (fleetDefOf(state, ctx, shipId)?.rangeEwEquipmentBonusPct ?? 0)) })
+  else folded('ecmRangeCut', mod.foeRangeDebuffPct)
   for (const [key, raw] of [['reloadPenalty', mod.reloadPenaltyPct], ['speedPenalty', mod.speedPenaltyPct],
     ['rangePenalty', mod.rangeCutPct], ['hitPenalty', mod.hitPenalty], ['resistPenalty', mod.allResistPenaltyPct]] as const) {
     if (raw !== undefined && raw > 0) out.push({ key, raw, eff: raw * (part?.weight ?? w) })
@@ -207,6 +230,7 @@ export function applyFoeRangeDebuff(
   battle: import('../state').BattleState,
   shipIds: readonly string[],
 ): void {
+  if (battle.rangeEwVersion === 1) return
   const r = meFoeRangeDebuffOf(state, ctx, shipIds)
   if (r > 0) battle.meFoeRangeDebuff = r
   else delete battle.meFoeRangeDebuff
@@ -221,7 +245,8 @@ function effectiveFoeRangeM(
   baseRangeM: number,
   buffMul: number,
 ): number {
-  return foeRangeWithDebuff(baseRangeM, buffMul, b.meFoeRangeDebuff ?? 0)
+  const cut = b.rangeEwVersion === 1 ? b.rangeEw?.foeCut ?? 0 : b.meFoeRangeDebuff ?? 0
+  return foeRangeWithDebuff(baseRangeM, buffMul, cut)
 }
 
 /** 上面的纯函数版（不读战斗态）——供"期望距离随削减收缩"复用同一条闸门口径 */
@@ -276,7 +301,8 @@ export function foeJammerCountOf(foes: readonly UnitSpec[]): number {
  */
 export function foeUnitDeadOf(b: import('../state').BattleState, tag: string): boolean {
   const u = b.units[tag]
-  return u !== undefined && u.hp.s <= 0 && u.hp.a <= 0 && u.hp.h <= 0
+  return u !== undefined && (u.hp.s <= 0 && u.hp.a <= 0 && u.hp.h <= 0
+    || u.enteredAtMs !== undefined && u.enteredAtMs > b.lastTickGameMs)
 }
 
 /** 敌阵的合成削减率 `r_e = 1 − Π(1 − vᵢ)`（无干扰舰 ⇒ 0） */
@@ -304,6 +330,7 @@ export function foeRangeDebuffOf(foes: readonly UnitSpec[]): number {
  * ⇒ 这里**先滤掉已阵亡的干扰舰**（{@link foeUnitDeadOf}；未建档 = 视为未死 ⇒ 零行为变化）。
  */
 export function meJammerNetOf(battle: import('../state').BattleState, foes: readonly UnitSpec[]): number {
+  if (battle.rangeEwVersion === 1) return battle.rangeEw?.meCut ?? 0
   const enemy = foeRangeDebuffOf(foes.filter((f) => !foeUnitDeadOf(battle, f.tag)))
   if (enemy <= 0) return 0
   // **净射程削减 = 敌方干扰合成 − 我方电子舰合成**（船长 2026-09-24 三例的口径）：
@@ -437,7 +464,7 @@ export function foeGunPowerFactorOf(
   w: { minRangeM: number; maxRangeM: number; falloff: number },
   dist: number,
 ): number {
-  if (unit.foeFocusArray !== undefined || coronaFleetRangeBonusOf(b) > 0 || unit.tag && foeCapacitorRangeBonusOf(b, unit.tag, unit.foeShieldCapacitor) > 0) {
+  if (b.rangeEwVersion === 1 && (b.rangeEw?.foeCut ?? 0) > 0 || unit.foeFocusArray !== undefined || coronaFleetRangeBonusOf(b) > 0 || unit.tag && foeCapacitorRangeBonusOf(b, unit.tag, unit.foeShieldCapacitor) > 0) {
     return distFactor(dist, { ...w, maxRangeM: foeGunMaxRangeOf(b, unit, w) })
   }
   const base = distFactor(dist, w) // 原区间内 = 原读数（一字不变）

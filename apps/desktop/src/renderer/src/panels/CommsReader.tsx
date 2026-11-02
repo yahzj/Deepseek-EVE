@@ -137,7 +137,7 @@ export function CommsEave({
 }: {
   entry: CommsEntryView
   /** 跳转出口（可带星图标签 `tab`、任务中心内层标签 `taskTab`、舰船标签 `shipTab`） */
-  onGoto: (page: string, tab?: string, shipTab?: string, taskTab?: string) => void
+  onGoto: (page: string, tab?: string, shipTab?: string, taskTab?: string, skillBranch?: string) => void
   /**
    * **弹面板出口**（2026-09-25 加）：实例通讯可以只带 `action`（点开一个面板而不跳页）——
    * 例：周末入侵的结算信「查看详细奖励」⇒ `action: 'weekendSummary'`。
@@ -157,7 +157,7 @@ export function CommsEave({
           className="app-btn is-primary app-comms-goto"
           title={commsHintText(entry.hint.text)}
           onClick={() =>
-            action !== undefined ? onAction!(action) : onGoto(page!, entry.hint!.tab, entry.hint!.shipTab, entry.hint!.taskTab)
+            action !== undefined ? onAction!(action) : onGoto(page!, entry.hint!.tab, entry.hint!.shipTab, entry.hint!.taskTab, entry.hint!.skillBranch)
           }
         >
           <span className="app-comms-goto-text">{commsHintText(entry.hint.text)}</span>

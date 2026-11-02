@@ -57,6 +57,8 @@ import { LEGACY_HAULER_STATS, moduleAllowedOnShip } from './shipFitting'
 import { fleetDefOf } from './instances'
 import { repairCivilianFittings } from './equipment'
 import { combatShipLimit, commandBudgetOf } from './combat/command/rules'
+import { signalAutoEstimateOf } from './signalAuto/estimate'
+import { cleanSignalAutoEstimate } from './signalAuto/save'
 
 /** 货舱**每格**折合多少 m³（自动探索的"装得下多少"用；量级与货舱页的格位口径一致） */
 export const WORMHOLE_AUTO_HOLD_M3_PER_CELL = 50
@@ -589,17 +591,24 @@ export function wormholeAutoStart(state: GameState, ctx: SimContext, stockId: st
     return { ok: false, error: handover.reason, errorId: handover.reasonId, errorParams: handover.reasonParams }
   const blocked = wormholeAutoBlockReason(state, ctx, stockId, shipIds, { mainMayJoin: handover.needed })
   if (blocked) return { ok: false, error: blocked.error, errorId: blocked.errorId, errorParams: blocked.errorParams }
+  const item = wormholeStockOf(state).find((x) => x.id === stockId)!
+  const picked = [...pool]
+  const tech = wormholeAutoTechFactors(state, ctx, picked)
+  const yieldMul = matterTechSignalAutoYield(state, ctx)
+  // 先冻结计算结果，成功后才交接主控和消耗信号，异常不能留下半次出发。
+  const estimate = signalAutoEstimateOf(state, ctx, picked, { seed: item.seed, depth: Math.max(1, Math.min(9, item.depth)),
+    ...wormholeRunMeta(item) }, yieldMul, tech, wormholeAutoHoldM3Of(tech))
   /** 交接：换船在**校验之后**才落（校验不过就一行状态都不动） */
   if (handover.needed && handover.toId) {
     const sw = changeShip(state, handover.toId, ctx)
     if (!sw.ok) return sw
   }
-  const item = wormholeStockOf(state).find((x) => x.id === stockId)!
-  const picked = [...(shipIds ?? wormholeAutoDefaultShips(state, ctx))]
   wormholeStockTake(state, stockId)
   const run: WormholeAutoRun = {
+    estimateRules: 1,
+    estimate,
     haulerFittingVersion: 1,
-    yieldMul: matterTechSignalAutoYield(state, ctx),
+    yieldMul,
     id: `wha-${state.gameMs.toString(36)}-${wormholeAutoRunsOf(state).length.toString(36)}`,
     stockId,
     seed: item.seed,
@@ -817,7 +826,9 @@ let reportSeq = 0
 export function advanceWormholeAuto(state: GameState, ctx: SimContext): void {
   const runs = wormholeAutoRunsOf(state)
   if (runs.length === 0) return
-  const due = runs.filter((r) => state.gameMs >= r.finishAtGameMs && (r.expeditionRules === undefined || (r.expeditionRules === 2 && r.expeditionSnapshot !== undefined)))
+  const due = runs.filter((r) => state.gameMs >= r.finishAtGameMs
+    && (r.expeditionRules === undefined || (r.expeditionRules === 2 && r.expeditionSnapshot !== undefined))
+    && (r.estimateRules === undefined || r.expeditionRules === undefined && r.estimateRules === 1 && cleanSignalAutoEstimate(r.estimate) !== undefined))
   if (due.length === 0) return
   for (const run of due.filter(r => r.expeditionRules === 2)) {
     try {
@@ -873,10 +884,16 @@ function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): voi
    * **谜质科技**（2026-09-19 船长甲案）：`total` 进四条产出线、`wreck`/`ore` 各再管一条线、`damage` 管损伤。
    * 未点科技 ⇒ 全 1（逐字零变化）。
    */
-  const tf = wormholeAutoTechFactors(state, ctx, run.shipIds)
+  const tf = run.estimateRules === 1 ? run.estimate!.tech : wormholeAutoTechFactors(state, ctx, run.shipIds)
   const gains: Array<{ itemId: string; units: number }> = []
   /** 本趟自动探索捞到的 AI 核心（**不入仓库** ⇒ 不能进 `gains`；报告里单列一行） */
   let coresGained: { type: 'gamma' | 'beta' | 'alpha'; n: number } | null = null
+
+  if (run.estimateRules === 1 && run.estimate) {
+    gains.push(...run.estimate.gains.map(gain => ({ ...gain })))
+    for (const core of run.estimate.cores) gainAiCore(state, core.type, core.n)
+    coresGained = run.estimate.cores[0] ? { ...run.estimate.cores[0] } : null
+  } else {
 
   /**
    * **真跑一趟**（2026-09-26 船长令「优化自动探索舰船进入洞后获得的收益逻辑」）。
@@ -975,6 +992,7 @@ function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): voi
   const essenceBase = Math.floor(descend.matterDevices)
   const essenceN = essenceBase + (rng() < descend.matterDevices - essenceBase ? 1 : 0)
   if (essenceN > 0) gains.push({ itemId: WORMHOLE_ESSENCE_ITEM_ID, units: essenceN })
+  }
 
   // 入仓库（船长：「收益进仓库」）
   for (const g of gains) {
@@ -1018,7 +1036,7 @@ function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): voi
   const report: WormholeAutoReport = {
     id: `whar-${state.gameMs.toString(36)}-${reportSeq.toString(36)}`,
     stockId: run.stockId,
-    depth: run.depth,
+    depth: run.estimateRules === 1 ? run.estimate!.depthReached : run.depth,
     finishedAtGameMs: state.gameMs,
     shipIds: [...run.shipIds],
     coresReleased: 0,

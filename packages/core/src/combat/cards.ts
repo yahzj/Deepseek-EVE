@@ -8,6 +8,8 @@ import { type WormholeExpeditionFoeCard, wormholeExpeditionCard, wormholeExpedit
 import { WORMHOLE_TIER_THREAT_MUL, wormholeTierOfCard, wormholeSkippedBranch, wormholeAnomalyOf, wormholeCardThreatOf, WORMHOLE_FOE_BASE_STRENGTH_MUL } from '../wormholeFoes'
 import { createFoeSpecs } from './foes/catalog'
 import { foeHpOfThreat } from './foePower'
+import { enemyFormationCard } from './formation'
+import { SIGNAL_FORMATION_COUNTS } from './formation-plans'
 
 /**
  * 敌冲锋状态机（2026-09-10 定；结束条件 2026-09-11 改判；触发条件 2026-09-14 加"乙"；
@@ -88,17 +90,39 @@ export function battleAnomalyOf(
   anomalyId: string | null | undefined,
   lairTier?: LairTier,
   factionActive?: boolean,
+  formationVersion: 0 | 1 = 1,
+  rangeEwVersion: 0 | 1 = 1,
 ): AnomalyDef | undefined {
-  const base = anomalyId ? ctx.anomalies.get(anomalyId) : undefined
-  if (!base) return undefined
-  const card = lairTier ? lairAnomalyOf(base, lairTier, ctx.balance.battle) : base
+  const entry = anomalyId ? ctx.anomalies.get(anomalyId) : undefined
+  if (!entry) return undefined
+  const current = rangeEwVersion === 0 ? entry.rangeEwLegacyCard ?? entry : entry
+  const base = formationVersion === 0 ? current.foeFormation?.baseline ?? current : current
+  const card = lairTier ? lairAnomalyOf(base, lairTier, ctx.balance.battle, formationVersion, ctx.foeShips) : base
   return factionActive ? factionAnomalyOf(card) : card
+}
+
+/** 在途战斗的规则版本和覆写必须同时用于引擎、视图与选距。 */
+export function resolvedBattleAnomaly(
+  ctx: SimContext,
+  battle: import('../state').BattleState,
+  anomalyId: string | null | undefined,
+  lairTier?: LairTier,
+  factionActive?: boolean,
+): AnomalyDef | undefined {
+  const version = battle.enemyFormationVersion ?? 0
+  const base = battleAnomalyOf(ctx, battle.wormhole?.cardId ?? anomalyId, lairTier, factionActive, version, battle.rangeEwVersion ?? 0)
+  const derived = base && battle.wormhole ? wormholeDerivedAnomaly(ctx, base, battle.wormhole, version) : base
+  return applyFoeOverride(derived, battle.foeOverride)
 }
 
 /** 把覆写应用到派生出来的敌卡上（纯函数；`override` 缺省或字段缺省 ⇒ 原样返回） */
 export function applyFoeOverride<T>(anomaly: T, override?: FoeOverride): T {
+  if (override?.generatedCard) return override.generatedCard as T
   if (!anomaly || !override) return anomaly
   const next = { ...(anomaly as Record<string, unknown>) }
+  if (override.patrolFormation === true && next.region === 'inv' && next.foeFormation) {
+    return applyFoeOverride((next.foeFormation as NonNullable<AnomalyDef['foeFormation']>).baseline as T, override)
+  }
   if (override.threat !== undefined && Number.isFinite(override.threat)) next.threat = Math.max(1, Math.round(override.threat))
   if (override.keepCardWaves !== true && override.waves !== undefined && override.waves.length > 0) next.waves = override.waves
   const strengthMul = override.strengthMul
@@ -161,7 +185,7 @@ export function applyFoeOverride<T>(anomaly: T, override?: FoeOverride): T {
  * `wormholeDerivedAnomaly` 的一层记忆（见该函数注释；键 = 卡 id|层|用途|波数|强度覆写）。
  * 只存最近一份：一局里同时只会有一种用途在场（节点/守卫/撤离），换键即重算。
  */
-export let wormholeDerivedMemo: { key: string; card: AnomalyDef } | null = null
+export let wormholeDerivedMemo: { ctx: SimContext; base: AnomalyDef; key: string; card: AnomalyDef } | null = null
 
 export const expeditionDerivedMemo = new WeakMap<SimContext, Map<string, WormholeExpeditionFoeCard>>()
 
@@ -181,6 +205,7 @@ export function wormholeDerivedAnomaly(
     foeHitDown?: number
     blindReduce?: number
   },
+  formationVersion: 0 | 1 = 1,
 ): AnomalyDef {
   if (spec.expeditionRules !== undefined) {
     if (spec.expeditionRules !== 2) throw new Error('wormhole-expedition-unsupported-rules')
@@ -211,6 +236,9 @@ export function wormholeDerivedAnomaly(
    * 查不到（不是洞内卡）⇒ 1（= 与旧口径逐字一致）。
    */
   const tierThreatMul = WORMHOLE_TIER_THREAT_MUL[wormholeTierOfCard(baseCard.id) ?? 'shallow']
+  const zero = (v: number | undefined): string => (v === undefined || v === 0 ? '' : String(v))
+  const memoKey = `${formationVersion}|${baseCard.id}|${spec.depth}|${spec.kind}|${spec.waves}|${spec.strengthMul ?? ''}|${threatMul}|${tierThreatMul}|${zero(spec.foeHitDown)}|${zero(spec.blindReduce)}`
+  if (wormholeDerivedMemo?.ctx === ctx && wormholeDerivedMemo.base === baseCard && wormholeDerivedMemo.key === memoKey) return wormholeDerivedMemo.card
   /**
    * **该卡的自然总火力**（含机群）——决定它的"自然血/火力比 `r`"（甲案口径：血与火力按 `r` 反算）。
    * 用**未派生**的卡建一遍规格即可（与派生无关，纯卡面事实）；同一张卡只算一次（记忆在派生记忆里）。
@@ -227,9 +255,6 @@ export function wormholeDerivedAnomaly(
     }
     return dps
   })()
-  const zero = (v: number | undefined): string => (v === undefined || v === 0 ? '' : String(v))
-  const memoKey = `${baseCard.id}|${spec.depth}|${spec.kind}|${spec.waves}|${spec.strengthMul ?? ''}|${threatMul}|${tierThreatMul}|${zero(spec.foeHitDown)}|${zero(spec.blindReduce)}`
-  if (wormholeDerivedMemo !== null && wormholeDerivedMemo.key === memoKey) return wormholeDerivedMemo.card
   const derived = wormholeAnomalyOf(baseCard, spec.depth, spec.kind, spec.waves, {
     // **本层本档的"血尺度"**（单船威胁曲线 × **洞内强度系数**——4 舰对 4 舰口径 × **谜质威胁乘数**）；
     // 新口径下它经平方化成"威胁预算 T"，再由卡的自然比拆成血与火力（见 `wormholeAnomalyOf`）。
@@ -250,7 +275,7 @@ export function wormholeDerivedAnomaly(
    */
   const foeHitDown = spec.foeHitDown ?? 0
   const blindReduce = spec.blindReduce ?? 0
-  const card: AnomalyDef =
+  let card: AnomalyDef =
     foeHitDown > 0 || blindReduce > 0
       ? {
           ...derived,
@@ -258,6 +283,26 @@ export function wormholeDerivedAnomaly(
           ...(blindReduce > 0 ? { blindDmgMul: Math.max(0, (derived.blindDmgMul ?? 0.3) - blindReduce) } : {}),
         }
       : derived
-  wormholeDerivedMemo = { key: memoKey, card }
+  if (formationVersion === 1 && SIGNAL_FORMATION_COUNTS[baseCard.id]) {
+    const expanded = spec.depth >= 2
+    const nWaves = Math.max(1, spec.waves)
+    const counts = (card.ships ?? []).map((slot, i) => expanded
+      ? Math.max(slot.count ?? 1, SIGNAL_FORMATION_COUNTS[baseCard.id]![Math.floor(i / nWaves)] ?? 1) : slot.count ?? 1)
+    const extraId = baseCard.foeFamily === 'A' ? 'foe-pirate-skiff' : baseCard.foeFamily === 'C' ? 'foe-alien-starcore-adult'
+      : baseCard.foeFamily === 'D' ? 'foe-d-ghost' : baseCard.foeFamily === 'E' ? 'foe-auro-hulk' : 'foe-g-swarm-skiff'
+    const baseExtras = expanded && baseCard.id === 'wh-titan-missile' ? 1
+      : expanded && (baseCard.id === 'wh-titan-hulk' || baseCard.id === 'wh-exile-line') ? 2 : 0
+    const branchCount = Math.max(0, ...(card.ships ?? []).flatMap((slot, i) => slot.enterBranch === 'outside' ? [counts[i]!] : []))
+    const actual = counts.reduce((a, b) => a + b, 0) - branchCount + baseExtras
+    const stageExtras = spec.depth >= 10 ? 2 : spec.depth >= 7 ? 1 : 0
+    const guardExtras = expanded && (spec.kind === 'boss' || spec.kind === 'ruins') ? 1 : 0
+    const extras = Math.max(0, Math.min(8 - actual, stageExtras + guardExtras)) + baseExtras
+    const maxHp = Math.max(...(card.ships ?? []).filter(slot => !slot.enterBranch).map(slot => slot.ship.hp * (slot.hpMul ?? 1)))
+    const boosts = spec.depth >= 7 ? (card.ships ?? []).flatMap((slot, i) => !slot.enterBranch && slot.ship.hp * (slot.hpMul ?? 1) === maxHp ? [i] : []) : []
+    card = enemyFormationCard(card, ctx.balance.battle, { counts, boostSlots: boosts,
+      hpMul: spec.depth >= 10 ? 1.1 : 1.05, dmgMul: spec.depth >= 10 ? 1.05 : 1.03,
+      ...(extras ? { extras: [{ wave: 0, shipId: extraId, count: extras, share: 0.4 }] } : {}) }, ctx.foeShips)
+  }
+  wormholeDerivedMemo = { ctx, base: baseCard, key: memoKey, card }
   return card
 }

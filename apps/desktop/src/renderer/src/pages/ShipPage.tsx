@@ -1,7 +1,9 @@
 /**
  * 舰船页：我的舰队（耐久/维修/切换驾驶）+ AI 指挥中心 + 空间站商店。
  */
-import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
+import { Check, Plus } from 'lucide-react'
+import { RangeEwFleet } from '../features/combat/RangeEwPanel'
 import type { ReactNode } from 'react'
 import {
   AI_CORE_ORDER,
@@ -39,6 +41,10 @@ import {
   // 2026-09-26 船长令「所有声望门槛改读累计声望」：本页矿带下拉的锁定判据走唯一入口
   standingOf,
   DSI_FACTION_ID,
+  markedIds,
+  commandBudgetOf,
+  combatRosterOf,
+  shipCommandCostOf,
   /** 2026-09-29 跃迁燃料批：活动清单与它们的文案 id（开关行的唯一出处） */
   JUMP_FUEL_ACTIVITY_TEXT_ID,
   type JumpFuelActivity,
@@ -53,7 +59,7 @@ import { FuelTank } from '../ui/FuelTank'
 import '../ui/layout-css/_hud-industry.css'
 // 2026-09-23 船长令：使用 AI 核心时默认选「当前拥有的最高级核心」
 import { bestAiCoreOf } from '@whale/core'
-import type { AiCoreType, FleetShipState, GameState, ShipRole } from '@whale/core'
+import type { AiCoreType, FleetShipState, GameState } from '@whale/core'
 import { durabilityOf, repairCostIsk, shipDisplayName } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { ShipHover } from '../ui/shipInfo'
@@ -66,7 +72,7 @@ import { AiTaskBar } from '../ui/aiProgress'
 import { AiWorkFx, industryWorkKindOf } from '../ui/aiWorkFx'
 import type { AiWorkKind } from '../ui/aiWorkFx'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
-import { MarkStar, pinMarked } from '../ui/marks'
+import { MarkStar } from '../ui/marks'
 import {
   FLEET_STATE_TABS,
   SHIP_DOMAIN_SUBS,
@@ -78,33 +84,14 @@ import {
 import type { PageProps } from './common'
 import { isk } from './common'
 import { tr, cmdText } from '../i18n/locale'
-import { CombatSquadControl } from '../features/combat/CommandBudget'
 /** 金额 + 单位（按语言；2026-09-29 批 0：出售确认那句原先是中文字面量拼 `isk()`） */
 import { fmtCredits } from '../i18n/fmt'
 import { aiCoreText, shipRoleText, shipSubClassText } from '../ui/labelsText'
 
-// ── 舰队卡片左侧舰影（2026-09-10 船长：每艘船的舰船形象放在对应卡片最左侧展示；
-//    屏幕宽度不足时隐藏舰船图形）──
-/** 舰影列宽（固定尺寸，内容变化不引起卡片跳动） */
-const FLEET_ART_W = 132
-/** 舰影列与右侧信息列的间距（与 .app-ship-card.is-fleet 的 gap 保持一致） */
-const FLEET_ART_GAP = 10
-/** 右侧信息列可读下限（名称+徽章行 / 装配工具行 / 耐久与按钮行；再窄就藏舰影） */
-const FLEET_MAIN_MIN = 560
-
-/**
- * 舰队卡片舰影（置卡片最左侧）。
- * memo：引擎每 tick 触发整树重渲染（App 层订阅 force），舰影 props 恒定即整棵 SVG 子树跳过 diff，
- * 不为列表里的每艘船每 tick 重算——图形是纯展示件，与引擎状态无关。
- */
-const FleetArt = memo(function FleetArt({ shipId, role }: { shipId: string; role: ShipRole }) {
-  return (
-    <div className="app-ship-art" aria-hidden="true">
-      <ShipSprite shipId={shipId} role={role} size={FLEET_ART_W} engine={false} />
-    </div>
-  )
+/** 静态舰影不随引擎心跳重绘，卡牌始终保留同样的展示空间。 */
+const FleetArt = memo(function FleetArt({ shipId }: { shipId: string }) {
+  return <div className="app-fleet-card-art" aria-hidden="true"><ShipSprite shipId={shipId} size={192} engine={false} /></div>
 })
-
 function ShipDamageSummary({ engine, uid }: { engine: GameEngine; uid: string }) {
   const damage = cleanShipDamage(engine.state.fleet[uid]?.damagePlugs)
   if (!damage) return null
@@ -454,46 +441,78 @@ export function ShipPage({
   const [fleetTier, setFleetTier] = useState<string>(SUB_ALL)
   const [fleetRole, setFleetRole] = useState<string>(SUB_ALL)
 
-  // ── 舰影列自适应（2026-09-10 船长：每艘船的舰船形象置卡片最左侧；屏幕宽度不足时隐藏图形）──
-  // 判定取舰队列表容器的**实测宽**（clientWidth 已扣竖向滚动条），不用窗口宽猜：
-  // 卡片高由右侧信息列决定（舰影更矮），故舰影显示/隐藏不会反过来改变容器宽，无振荡。
   const fleetScrollRef = useRef<HTMLDivElement | null>(null)
   /**
    * **舰队列表滚动位置 · 会话级记忆**（2026-09-26 船长令：「记住…滚动条位置」，只做主要列表那一条）。
-   * 与上面那支量宽 ref **共用同一个 DOM 节点**（`useSessionScroll` 是"接手"ref、不新建）。
+   * 卡牌网格继续使用原来的舰队滚动容器。
    */
   useSessionScroll('ship.fleet.scroll', fleetScrollRef)
   /** 舰船仓库签的主列表滚动位置（同款记忆；仓库签自带一支容器） */
   const storeScrollRef = useRef<HTMLDivElement | null>(null)
   useSessionScroll('ship.store.scroll', storeScrollRef)
-  const [fleetArt, setFleetArt] = useState(false)
-  useLayoutEffect(() => {
-    const el = fleetScrollRef.current
-    if (!el) return
-    const update = (): void => {
-      const show = el.clientWidth >= FLEET_ART_W + FLEET_ART_GAP + FLEET_MAIN_MIN
-      setFleetArt((old) => (old === show ? old : show))
-    }
-    update() // 首帧先量一次（布局阶段、绘制前，无闪烁）
-    const ro = new ResizeObserver(update)
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [activeTab])
+  /** 编队页签本次打开后的排序快照：历史编队优先，之后只追加新舰，不因点选或状态刷新重排。 */
+  const fleetFormationOrderRef = useRef<string[] | null>(null)
+  const fleetFormationHistoryRef = useRef<Set<string> | null>(null)
 
-  /** 舰队里所有船实例（v17：同型多艘各自成卡；当前驾驶在前） */
+  /** 同型多艘各自成卡，未置顶舰船沿用级别与实例顺序。 */
   const fleetEntries = Object.entries(state.fleet)
     .map(([uid, entry]) => ({ uid, ship: entry, def: ctx.ships.get(entry.defId ?? uid) }))
     .filter((x): x is { uid: string; ship: FleetShipState; def: NonNullable<ReturnType<typeof ctx.ships.get>> } => x.def !== undefined)
-    .sort(
-      (a, b) =>
-        Number(b.uid === state.shipId) - Number(a.uid === state.shipId) ||
-        a.def.tier - b.def.tier ||
-        a.uid.localeCompare(b.uid),
-    )
+    .sort((a, b) => a.def.tier - b.def.tier || a.uid.localeCompare(b.uid))
+
+  const fleetFormationOrder = (() => {
+    const known = new Set(fleetEntries.map(entry => entry.uid))
+    const current = fleetFormationOrderRef.current
+    if (current === null) {
+      const history = state.preparationSquads?.combat ?? []
+      const historySet = new Set(history.filter(uid => known.has(uid)))
+      const favorites = markedIds(state, 'ships')
+      const pilot = state.shipId
+      const seen = new Set<string>()
+      const initialOrder: string[] = []
+      const append = (uid: string): void => {
+        if (known.has(uid) && !seen.has(uid)) {
+          seen.add(uid)
+          initialOrder.push(uid)
+        }
+      }
+      history.forEach(append)
+      append(pilot)
+      favorites.forEach(append)
+      fleetEntries.forEach(entry => append(entry.uid))
+      fleetFormationHistoryRef.current = historySet
+      fleetFormationOrderRef.current = initialOrder
+    } else {
+      const inOrder = new Set(current)
+      for (const entry of fleetEntries) {
+        if (inOrder.has(entry.uid)) continue
+        current.push(entry.uid)
+        inOrder.add(entry.uid)
+      }
+    }
+    return fleetFormationOrderRef.current ?? []
+  })()
+  const fleetBusy = state.awayGalaxy !== null || state.expedition.active || state.encounter.active || state.mining.active || state.salvaging.active || state.hauling.active || state.transit.active || state.standby.active || state.sideTasks.deliver !== null
+  const combatRoster = combatRosterOf(state)
+  const combatRosterSet = new Set(combatRoster)
+  const commandBudget = commandBudgetOf(state, ctx, combatRoster)
+  function toggleCombatShip(uid: string): void {
+    if (fleetBusy || uid === state.shipId) return
+    const roster = combatRosterOf(state)
+    const isSelected = roster.includes(uid)
+    if (!isSelected && shipOperationBlockReason(state, engine.ctx, uid, 'configure')) return
+    const maxShips = commandBudgetOf(state, engine.ctx, roster).maxShips
+    if (!isSelected && roster.length >= maxShips) {
+      onToast(tr('core.command.003', { p1: maxShips }), true)
+      return
+    }
+    const next = isSelected ? roster.filter(id => id !== uid) : [...roster, uid]
+    engine.rememberPreparationSquad('combat', next)
+  }
 
   /** 舰队检索结果（2026-09-10 船长：先按状态/关键词过滤；2026-09-11：叠加**舰船级别**与**类别**；
    *  2026-09-12 船长：**类别与级别对调顺序**（先类别、后级别），**两维各自独立判定、不再级联**；
-   *  顺序恒为机库序 + 收藏置顶） */
+   *  顺序使用本次打开时的历史编队与收藏快照） */
   const fleetTotal = Object.keys(state.fleet).length
   const fq = fleetQ.trim().toLowerCase()
   /** 任一维筛选或搜索词生效（标题行的计数据此在「N 艘 / 匹配 N / 共 M 艘」之间切换） */
@@ -532,8 +551,9 @@ export function ShipPage({
       if (!shipTierPasses(shipDef, fleetTier)) return false
       return true
     })
-    // 2026-09-10 船长定：已标记（收藏）的船置顶（原「默认排序」口径；排序键已退场，恒走这一条）
-    return pinMarked(state, 'ships', list, (x) => x.uid)
+    // 筛选只取快照的子集，点选和收藏变化都不在本次窗口内重排。
+    const rank = new Map(fleetFormationOrder.map((uid, index) => [uid, index]))
+    return list.sort((a, b) => (rank.get(a.uid) ?? Number.MAX_SAFE_INTEGER) - (rank.get(b.uid) ?? Number.MAX_SAFE_INTEGER))
   })()
 
   function handleSwitch(id: string): void {
@@ -684,16 +704,17 @@ export function ShipPage({
 
       {activeTab === 'fleet' ? (
         <>
-      <CombatSquadControl engine={engine} />
       {/* ───── 我的舰队 ───── */}
       <Panel
         className="is-fill app-fleet-panel"
         title={tr("ui.ShipPage.001")}
         right={
-          // 搜索栏进标题行（2026-09-11 船长：「将搜索栏移到标题内，目前不够美观」）——
-          // 复刻仓库页 / 技能目录同一套写法（`.app-head-search-wrap` + `.app-head-search` + 灰字计数），
-          // 计数随筛选切换为「匹配 N / 共 M 艘」，搜索词清空且无筛选时只显示总数
-          <span className="app-head-search-wrap">
+          <span className="app-fleet-head-tools">
+            <span className={`app-fleet-command-summary${commandBudget.ok ? '' : ' is-over'}`} title={fleetBusy ? tr('ui.command.004') : undefined}>
+              <span>{tr('ui.command.002', { p1: commandBudget.cost, p2: commandBudget.capacity, p3: combatRoster.length, p4: commandBudget.maxShips })}</span>
+              <i aria-hidden="true"><b style={{ width: `${Math.min(100, commandBudget.capacity > 0 ? commandBudget.cost / commandBudget.capacity * 100 : 0)}%` }} /></i>
+              {fleetBusy ? <Glyph name="ico-lock" size={12} color={ICO_TONES['ico-lock']} /> : null}
+            </span>
             <input
               className="app-head-search"
               type="text"
@@ -702,7 +723,7 @@ export function ShipPage({
               onChange={(e) => setFleetQ(e.target.value)}
               spellCheck={false}
             />
-            <span className="app-dim">
+            <span className="app-dim app-fleet-count">
               {fleetFiltered ? tr('ui.ShipPage.107', { shown: fleetShown.length, total: fleetTotal }) : tr('ui.ShipPage.108', { total: fleetTotal })}
               {tr('ui.ShipPage.109')}
               <span className={`app-pilot-name${switchFxUid !== null ? ' is-pulse' : ''}`}>
@@ -712,6 +733,9 @@ export function ShipPage({
           </span>
         }
       >
+        {!commandBudget.ok ? <div className="app-warn app-fleet-command-warning">{cmdText(commandBudget)}</div> : null}
+        <RangeEwFleet state={state} ctx={ctx} ids={combatRoster} />
+        {fleetBusy ? <div className="app-dim app-fleet-command-warning">{tr('ui.command.004')}</div> : null}
         {/* 舰队工具条（2026-09-10 船长：搜索/状态筛选；样式与仓库、技能目录同款）——固定在列表上方不随滚动
             2026-09-11 船长：「移除排序选项，改为按照舰船级别划分的子筛选」⇒ 排序下拉退场，
             改挂**舰船级别**子筛选（复用组装机那套 `SHIP_TIER_SUBS` 单点表与次级标签样式）；
@@ -800,7 +824,7 @@ export function ShipPage({
                 })}
           </div>
         ) : (
-        <div className="app-ship-list">
+        <div className="app-ship-list app-fleet-card-grid" data-fleet-card-grid>
           {fleetShown.map(({ uid, ship: shipState, def }) => {
             const dur = durabilityOf(state, uid)
             const armor = shipState.armorPct ?? 1 // P0 承伤持久化：装甲残余（跨场保留）
@@ -814,14 +838,32 @@ export function ShipPage({
             const displayName = shipDisplayName(state, engine.ctx, uid)
             const isRenaming = renameId === uid
             const storable = shipStorable(state, uid) // 入仓逐档判据（core 单点，与引擎同源）
+            const formationOn = combatRosterSet.has(uid)
+            const formationBlocked = isCurrent ? null : shipOperationBlockReason(state, ctx, uid, 'configure')
             return (
               <FleetShipHover key={uid} uid={uid} ship={def} engine={engine} block>
                 <div
-                  className={`app-ship-card is-fleet${isCurrent ? ' is-current' : ''}${switchFxUid === uid ? ' is-switch-pulse' : ''}`}
+                  className={`app-ship-card is-fleet${isCurrent ? ' is-current' : ''}${fleetFormationHistoryRef.current?.has(uid) ? ' is-formation-history' : ''}${combatRosterSet.has(uid) ? ' is-combat-selected' : ''}${switchFxUid === uid ? ' is-switch-pulse' : ''}`}
+                  data-fleet-ship={uid}
                 >
-                {/* 舰影列：固定尺寸、置卡片最左侧；容器过窄时整列不渲染（样式 .app-ship-card.is-fleet） */}
-                {fleetArt ? <FleetArt shipId={def.id} role={def.role} /> : null}
                 <div className="app-ship-main">
+                <div className="app-fleet-card-pickbar">
+                  <button
+                    type="button"
+                    className={`app-btn is-small app-fleet-select-btn${formationOn ? ' is-selected' : ''}`}
+                    disabled={fleetBusy || (!!formationBlocked && !formationOn) || isCurrent}
+                    aria-pressed={formationOn}
+                    data-command-ship={uid}
+                    title={fleetBusy ? tr('ui.command.004') : isCurrent ? tr('ui.ShipPage.010') : formationBlocked && !formationOn ? cmdText(formationBlocked) : formationOn ? tr('ui.Wormhole.024') : tr('ui.Wormhole.137')}
+                    onClick={() => toggleCombatShip(uid)}
+                  >
+                    {formationOn ? <Check size={13} aria-hidden /> : <Plus size={13} aria-hidden />}
+                    <span>{formationOn ? (isCurrent ? tr('ui.Wormhole.091') : tr('ui.command.006')) : tr('ui.Wormhole.204')}</span>
+                  </button>
+                  {isCurrent ? <span className="app-chip">{tr('ui.ShipPage.010')}</span> : isWorking ? <span className="app-chip">{tr('ui.ShipPage.011')}</span> : null}
+                  <MarkStar engine={engine} kind="ships" id={uid} />
+                </div>
+                <FleetArt shipId={def.id} />
                 <div className="app-ship-top">
                   <span className="app-ship-name">
                     {displayName}
@@ -839,12 +881,6 @@ export function ShipPage({
                     ) : null}
                   </span>
                   <span className="app-ship-top-right">
-                    <MarkStar engine={engine} kind="ships" id={uid} />
-                    {isCurrent ? (
-                      <span className="app-chip">{tr("ui.ShipPage.010")}</span>
-                    ) : isWorking ? (
-                      <span className="app-chip">{tr("ui.ShipPage.011")}</span>
-                    ) : null}
                     <button
                       className="app-btn is-small"
                       title={tr("ui.ShipPage.159", { displayName: displayName })}
@@ -913,6 +949,7 @@ export function ShipPage({
                     </button>
                   </div>
                 ) : null}
+                <div className="app-fleet-card-cost"><span>{tr('ui.command.003')}</span><strong>{shipCommandCostOf(def)}</strong><span>T{def.tier}</span></div>
                 <div className="app-ship-spec">
                   {tr("ui.ShipPage.019")} {def.cargoM3.toLocaleString('zh-CN')} {tr("ui.ShipPage.020")} {def.cycleSeconds} {tr("ui.ShipPage.021")} {def.oreUnitsPerCycle} {tr("ui.Handbook.012")} {Math.round(def.agility * 100)}%
                 </div>

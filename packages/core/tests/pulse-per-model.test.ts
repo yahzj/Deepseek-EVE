@@ -66,10 +66,10 @@ describe('逐型号独立回转：装配读数', () => {
     const { state, uid } = world(['mod-shieldfield-2', 'mod-shieldfield-3'], [])
     const s = shieldFieldStreamsOf(state, ctx, uid)
     expect(s.map((x) => x.modelId)).toEqual(['mod-shieldfield-2', 'mod-shieldfield-3'])
-    expect(s.map((x) => x.ms)).toEqual([10_000, 8_000])
+    expect(s.map((x) => x.ms)).toEqual([12_000, 10_000])
     // 衰减仍按全族：第 2 件折到 87%
-    expect(s[0]!.pct).toBeCloseTo(0.067 * stackWeight(1), 10)
-    expect(s[1]!.pct).toBeCloseTo(0.067 * stackWeight(2), 10)
+    expect(s[0]!.pct).toBeCloseTo(0.1 * stackWeight(1), 10)
+    expect(s[1]!.pct).toBeCloseTo(0.1 * stackWeight(2), 10)
   })
 
   it('① 护盾充能两档 ⇒ **两路**（间隔同为 15 秒，各带各的比例）', () => {
@@ -109,14 +109,14 @@ describe('逐型号独立回转：战斗中的计时器', () => {
     const led = b.shieldFieldBy!['player']!
     // **首跳各按各的间隔**（改前：两件并成一路、统一取最短的 8 秒）
     expect(led.streams.map((s) => s.nextPulseAtMs)).toEqual([
+      b.startedAtGameMs + 12_000,
       b.startedAtGameMs + 10_000,
-      b.startedAtGameMs + 8_000,
     ])
-    runUntil(state, b, 10_000)
+    runUntil(state, b, 12_000)
     expect(b.ended, '前提：10 秒时这一场还没打完').toBeFalsy()
     // MK2 跳到 20 秒（自己 10 秒的节奏）；MK3 在 8 秒跳过 ⇒ 排到 16 秒
-    expect(led.streams[0]!.nextPulseAtMs).toBe(20_000)
-    expect(led.streams[1]!.nextPulseAtMs).toBe(16_000)
+    expect(led.streams[0]!.nextPulseAtMs).toBe(24_000)
+    expect(led.streams[1]!.nextPulseAtMs).toBe(20_000)
     expect(led.pulses, '两路各一跳').toBe(2)
   })
 
@@ -201,9 +201,9 @@ describe('逐型号独立回转：战斗中的计时器', () => {
     const b = startBattleFor(state, ctx, uid, 'ano-training', 0)!
     expect(b.shieldFieldBy?.['player'], '单船路径必须建力场账本').toBeTruthy()
     b.units['player']!.hp.s = 0
-    runUntil(state, b, 8_000)
+    runUntil(state, b, 10_000)
     expect(b.units['player']!.hp.s, '没有其他队友，不发动自身力场').toBe(0)
-    expect(b.shieldFieldBy!.player!.streams[0]!.nextPulseAtMs).toBe(16_000)
+    expect(b.shieldFieldBy!.player!.streams[0]!.nextPulseAtMs).toBe(20_000)
   })
 })
 

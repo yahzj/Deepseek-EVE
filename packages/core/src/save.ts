@@ -55,6 +55,9 @@ import { cleanPlanetaryState } from './planetSave'
 import { normalizeTrainingProgress } from './training'
 import { cleanPendingStationActivity } from './stationActivityPending'
 import { PRICE_HISTORY_LIMIT } from './market/constants'
+import { cleanHaulFleetLeg } from './hauling/types'
+import { cleanPirateEncounter } from './encounters/save'
+import { cleanSignalAutoEstimate } from './signalAuto/save'
 
 /** 存档文件格式标识（防止拿别的游戏的 JSON 硬读） */
 export const SAVE_FORMAT = 'whale-idle-save'
@@ -1088,12 +1091,14 @@ for (const [key, value] of Object.entries(licensesRaw)) {
   }
   // --- 长途运输（2026-09-09 两站运输：可选字段、旧档零迁移；active 需目标端点字段可读） ---
   const haulRaw = asRaw(src.hauling)
+  const fleetLeg = cleanHaulFleetLeg(haulRaw.fleetLeg)
   const haulTo = typeof haulRaw.toSiteId === 'string' || haulRaw.toSiteId === null ? haulRaw.toSiteId : null
   const haulFrom = typeof haulRaw.fromSiteId === 'string' || haulRaw.fromSiteId === null ? haulRaw.fromSiteId : null
   const haulA = typeof haulRaw.routeA === 'string' || haulRaw.routeA === null ? haulRaw.routeA : null
   const haulB = typeof haulRaw.routeB === 'string' || haulRaw.routeB === null ? haulRaw.routeB : null
   const hauling = {
-    active: haulRaw.active === true && haulTo !== undefined,
+    ...(fleetLeg ? { fleetLeg } : {}),
+    active: haulRaw.active === true && haulTo !== undefined && (haulRaw.fleetLeg === undefined || fleetLeg !== undefined),
     routeA: haulA ?? null,
     routeB: haulB ?? null,
     fromSiteId: haulFrom ?? null,
@@ -1420,11 +1425,17 @@ for (const [key, value] of Object.entries(licensesRaw)) {
   const encRaw = asRaw(src.encounter)
   const encShipId = typeof encRaw.shipId === 'string' && encRaw.shipId.length > 0 ? encRaw.shipId : null
   const encGalaxy = typeof encRaw.galaxyId === 'string' && encRaw.galaxyId.length > 0 ? encRaw.galaxyId : null
+  const pirateSnapshot = cleanPirateEncounter(encRaw.pirate)
+  const encounterBattle = cleanBattle(encRaw.battle)
+  if (pirateSnapshot && encounterBattle) encounterBattle.foeOverride = { generatedCard: pirateSnapshot.card }
   const encounter: GameState['encounter'] =
-    encRaw.active === true && encShipId !== null && encGalaxy !== null
+    encRaw.active === true && encShipId !== null && encGalaxy !== null && (encRaw.pirate === undefined || !!pirateSnapshot && !!encounterBattle?.foeOverride?.generatedCard)
       ? {
           active: true,
           shipId: encShipId,
+          ...(encRaw.automatic === true ? { automatic: true as const } : {}),
+          ...(pirateSnapshot ? { pirate: pirateSnapshot } : {}),
+          ...(typeof encRaw.foeStrengthMul === 'number' && Number.isFinite(encRaw.foeStrengthMul) && encRaw.foeStrengthMul > 0 ? { foeStrengthMul: encRaw.foeStrengthMul } : {}),
           galaxyId: encGalaxy,
           name: typeof encRaw.name === 'string' && encRaw.name.length > 0 ? encRaw.name : '巡逻队',
           threat: Math.max(1, Math.floor(num(encRaw.threat, 10))),
@@ -1432,7 +1443,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
           origin: typeof encRaw.origin === 'string' ? encRaw.origin : '',
           invitedAtGameMs: Math.max(0, Math.floor(num(encRaw.invitedAtGameMs))),
           deadlineGameMs: Math.max(0, Math.floor(num(encRaw.deadlineGameMs))),
-          battle: cleanBattle(encRaw.battle),
+          battle: encounterBattle,
         }
       : {
           active: false,
@@ -1712,7 +1723,10 @@ for (const [key, value] of Object.entries(licensesRaw)) {
         return JSON.stringify(normalized)
       } catch { return undefined }
     })()
+    const estimate = o.estimateRules === 1 ? cleanSignalAutoEstimate(o.estimate) : undefined
     wormholeAuto.push({
+      ...(o.estimateRules !== undefined ? { estimateRules: typeof o.estimateRules === 'number' && Number.isSafeInteger(o.estimateRules) ? o.estimateRules : -1 } : {}),
+      ...(estimate ? { estimate } : {}),
       ...(typeof o.yieldMul === 'number' && [0.6, 0.7, 0.8].includes(o.yieldMul) ? { yieldMul: o.yieldMul } : {}),
       ...(o.haulerFittingVersion === 1 ? { haulerFittingVersion: 1 as const } : {}),
       id,
@@ -1775,6 +1789,12 @@ for (const [key, value] of Object.entries(licensesRaw)) {
       // 该值仅供报告显示；信号空间已无核心占用，实验任务保持原读数，不补发实体核心。
       coresReleased: o.expeditionRules === undefined ? 0 : 1,
       gains,
+      ...(Array.isArray(o.cores) ? { cores: o.cores.flatMap<{ type: 'gamma' | 'beta' | 'alpha'; n: number }>(value => {
+        const core = asRaw(value)
+        return (core.type === 'gamma' || core.type === 'beta' || core.type === 'alpha')
+          && typeof core.n === 'number' && Number.isSafeInteger(core.n) && core.n > 0
+          ? [{ type: core.type, n: core.n }] : []
+      }).slice(0, 3) } : {}),
       damage,
       confirmed: o.confirmed === true,
       ...(o.expeditionRules === 2 ? {
@@ -2433,6 +2453,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
       galaxyId,
       departAtGameMs: Number.isFinite(departAt) && departAt >= 0 ? departAt : 0,
       arriveAtGameMs: arriveAt,
+      ...(typeof d.flightDurationMs === 'number' && Number.isFinite(d.flightDurationMs) && d.flightDurationMs > 0 ? { flightDurationMs: d.flightDurationMs } : {}),
       rewardIsk: Number.isFinite(rewardIsk) ? Math.max(0, rewardIsk) : 0,
     }
     if (virtual) out.volumeM3 = volumeM3
@@ -3017,6 +3038,13 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     // 非负整数，缺省 0（老档从零攒）
     rareWreckDryStreak: Math.max(0, Math.floor(num(src.rareWreckDryStreak))),
     encounter,
+    ...(src.industrialFleetRiskSeen === true ? { industrialFleetRiskSeen: true as const } : {}),
+    ...(src.industrialProtection && typeof src.industrialProtection === 'object' ? { industrialProtection: {
+      version: 1 as const,
+      entryRemainingMs: Math.max(0, num(asRaw(src.industrialProtection).entryRemainingMs)),
+      dockedMs: Math.max(0, num(asRaw(src.industrialProtection).dockedMs)),
+      postBattleUntilMs: Math.max(0, num(asRaw(src.industrialProtection).postBattleUntilMs)),
+    } } : {}),
     lowSecNotified,
     encounterZoneCooldown,
     lowSecPresence,

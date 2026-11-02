@@ -179,7 +179,7 @@ describe('逐舰装置视图：真实账本和归属', () => {
     expect(field.cycleMs).toBe(shieldFieldStreamsOf(w.state, ctx, w.units[0]!.shipId)[0]!.ms)
     expect(field.cycleMs).toBeGreaterThan(oldMs)
     expect(field.remainingMs).toBe(at)
-    expect(field.effectPct).toBeCloseTo(6.7)
+    expect(field.effectPct).toBeCloseTo(10)
     expect(w.battle.shieldFieldBy!.player!.streams[0]!.pct).toBe(.27)
     expect(w.battle.shieldFieldBy!.player!.streams[0]!.ms).toBe(oldMs)
     expect(w.battle.shieldFieldBy!.player!.streams[0]!.nextPulseAtMs).toBe(at)

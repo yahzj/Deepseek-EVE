@@ -1399,6 +1399,7 @@ export function startCourierDelivery(state: GameState, ctx: SimContext, id: numb
     galaxyId: targetSite.galaxyId,
     departAtGameMs: departAt,
     arriveAtGameMs: arriveAt,
+    flightDurationMs: Math.max(0, arriveAt - departAt),
     rewardIsk: task.rewardIsk,
     volumeM3: vol,
     level: task.level ?? 1,

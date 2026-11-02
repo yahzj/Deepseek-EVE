@@ -13,6 +13,7 @@ import { nextRandom } from '../rng'
 import { ceilFinalQuantity } from '../quantity'
 import { weekendApplyBattleOutcome } from '../weekendBattle'
 import { settleCommandFleet, prepareCommandPilotAfterLoss } from '../combat/command/settlement'
+import { settleIndustrialEncounter } from './settlement'
 
 /**
  * 战报尾巴：船体维修装置本场消耗（2026-09-11 船长「不单独显示日志，只把消耗组件数量
@@ -109,6 +110,7 @@ export function settleBattleDroneLosses(
  * 只换措辞与"因袭击自动撤离"那笔标记，结算内容一模一样。
  */
 export function settleEscape(state: GameState, ctx: SimContext, mode: 'hull' | 'manual' = 'hull'): void {
+  if (state.encounter.pirate || state.encounter.automatic) { settleIndustrialEncounter(state, ctx, { settleBattleDroneLosses, persistBattleDamage, loseSunkShipsOfBattle }, true); return }
   const enc = state.encounter
   const shipId = enc.shipId ?? state.shipId
   const shipName = shipDisplayName(state, ctx, shipId)
@@ -152,6 +154,7 @@ export function settleEscape(state: GameState, ctx: SimContext, mode: 'hull' | '
 
 /** 遭遇战（玩家应战后）推进与结算：胜 → 缴获；败 → 受损 + 大概率被抢 */
 export function settleFight(state: GameState, ctx: SimContext): void {
+  if (state.encounter.pirate || state.encounter.automatic) { settleIndustrialEncounter(state, ctx, { settleBattleDroneLosses, persistBattleDamage, loseSunkShipsOfBattle }); return }
   const enc = state.encounter
   const shipId = enc.shipId ?? state.shipId
   const shipName = shipDisplayName(state, ctx, shipId)

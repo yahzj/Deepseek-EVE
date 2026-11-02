@@ -21,6 +21,8 @@ import type { FoeMountId, FoeSupportBranch } from './mounts'
  * 敌速两种口径混用无人察觉）。
  */
 export interface FoeShipDef {
+  rangeEwBonus?: number
+  rangeEwEquipmentBonusPct?: number
   /** 一次性爆发与腐蚀；不生成常规循环炮台。 */
   acidBurst?: { attackRangeM: number; deathRangeM: number; corrosionPct: number; damage?: number; hitRate?: number }
   /** 舰级 id */

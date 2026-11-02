@@ -24,7 +24,37 @@ import { syncPlayerCrisis } from './gravekeeperGear'
 export const REPAIR_PULSE_MS = 5_000
 
 /** 2026-10-13 船长确认：每路有效力场脉冲消耗施放者最大护盾6.7%。 */
-export const SHIELD_FIELD_COST_PCT = 0.067
+export const SHIELD_FIELD_COST_PCT = 0.1
+export const SHIELD_FIELD_MAX_TARGETS = 2
+
+/** 一架无人机一次有效修理；先选目标再取料，逐架执行避免过量预扣。 */
+export function pulseRepairDroneFor(state: GameState, b: import('../state').BattleState, myUnits: readonly UnitSpec[], owner: UnitSpec, repair: NonNullable<import('./model').WeaponSpec['repairDrone']>): void {
+  if (b.ended || !isAlive(b, owner.tag) || repair.armor + repair.hull <= 0) return
+  let target: { spec: UnitSpec; rt: NonNullable<typeof b.units[string]> } | undefined
+  let best = Number.POSITIVE_INFINITY
+  for (const spec of myUnits) {
+    if (spec.tag === owner.tag || !isAlive(b, spec.tag)) continue
+    const rt = b.units[spec.tag]
+    if (!rt) continue
+    const max = rt.hpMax ?? spec.hp
+    if (rt.hp.a >= max.a && rt.hp.h >= max.h) continue
+    const ratio = (rt.hp.a + rt.hp.h) / Math.max(1, max.a + max.h)
+    if (ratio < best) { best = ratio; target = { spec, rt } }
+  }
+  if (!target) return
+  const kit = repair.kitId
+  const supply = wormholeSupplyForBattle(state, b)
+  const available = supply ? takeWormholeSupply(supply, kit, 1) === 1 : state.resupplyFromWarehouse !== false ? countWare(state, kit) > 0 && (removeWare(state, kit, 1), true) : removeCargoOfShip(state, owner.shipId ?? state.shipId, kit, 1) > 0
+  if (!available) return
+  const max = target.rt.hpMax ?? target.spec.hp
+  healArmorHp(target.rt.hp, Math.min(Math.max(0, max.a - target.rt.hp.a), repair.armor))
+  target.rt.hp.h = Math.min(max.h, target.rt.hp.h + repair.hull)
+  const books = b.repairDroneBy ??= {}
+  const ledger = books[owner.tag] ??= { pulses: 0, kitsUsed: 0, kitsUsedByType: {} }
+  ledger.pulses += 1
+  ledger.kitsUsed += 1
+  ledger.kitsUsedByType[kit] = (ledger.kitsUsedByType[kit] ?? 0) + 1
+}
 
 /* 以下为 2026-10-02 批次 4h 从 combat.ts 切接过来的整簇（layerAmpOf ~ pulseRepairsFor）。 */
 
@@ -47,6 +77,10 @@ function layerAmpOf(state: GameState, ctx: SimContext, shipId: string): { a: num
     a: baseA > 0 ? spec.hp.a / baseA : 1,
     h: baseH > 0 ? spec.hp.h / baseH : 1,
   }
+}
+
+function repairOutputMulOf(state: GameState, ctx: SimContext, shipId: string): number {
+  return 1 + Math.max(0, fleetDefOf(state, ctx, shipId)?.repairOutputBonusPct ?? 0)
 }
 
 /** 当前船已装配的维修装置（带 repairArmorHp/repairHullHp 的装配件，按位序） */
@@ -90,8 +124,8 @@ function perPulseRepairUnits(
       moduleId: d.id,
       kitId: isFree ? '' : (d.repairKit ?? 'repairkit-civ'),
       free: isFree,
-      armorPerPulse: Math.max(0, ceilFinalQuantity(decayA * skill * (flat ? 1 : amp.a))),
-      hullPerPulse: Math.max(0, ceilFinalQuantity(decayH * skill * (flat ? 1 : amp.h))),
+      armorPerPulse: Math.max(0, ceilFinalQuantity(decayA * skill * (flat ? 1 : amp.a) * repairOutputMulOf(state, ctx, shipId))),
+      hullPerPulse: Math.max(0, ceilFinalQuantity(decayH * skill * (flat ? 1 : amp.h) * repairOutputMulOf(state, ctx, shipId))),
     }
   })
 }
@@ -253,7 +287,7 @@ export function refundRepairKitsAll(
  */
 export function repairUsageText(
   battle:
-    | { repair?: import('../state').BattleRepairLedger; repairBy?: Record<string, import('../state').BattleRepairLedger> }
+    | { repair?: import('../state').BattleRepairLedger; repairBy?: Record<string, import('../state').BattleRepairLedger>; repairDroneBy?: import('../state').BattleState['repairDroneBy'] }
     | null
     | undefined,
   ctx: SimContext,
@@ -266,6 +300,10 @@ export function repairUsageText(
     for (const [id, n] of Object.entries(r.kitsUsedByType ?? {})) {
       if (n > 0) byType[id] = (byType[id] ?? 0) + n
     }
+  }
+  for (const ledger of Object.values(battle?.repairDroneBy ?? {})) {
+    total += ledger.kitsUsed
+    for (const [id, n] of Object.entries(ledger.kitsUsedByType)) byType[id] = (byType[id] ?? 0) + n
   }
   if (total <= 0) return ''
   const parts = Object.entries(byType)
@@ -488,7 +526,7 @@ export function pulseShieldFieldFor(
   // 施放者满盾：容量优先、缺 `hpMax` 才回落规格（与全仓「满血/上限」读法同一把尺）
   const casterRt = b.units[caster.tag]
   const casterCapS = Math.max(0, casterRt?.hpMax?.s ?? caster.hp.s)
-  const amount = ceilFinalQuantity(casterCapS * gain)
+  const amount = ceilFinalQuantity(casterCapS * gain * (1 + Math.max(0, caster.repairOutputBonusPct ?? 0)))
   const cost = ceilFinalQuantity(casterCapS * SHIELD_FIELD_COST_PCT)
   if (!casterRt || !Number.isFinite(amount) || amount <= 0 || casterRt.hp.s < cost) return
   const targets: Array<{ rt: (typeof b.units)[string]; capS: number }> = []
@@ -501,9 +539,10 @@ export function pulseShieldFieldFor(
     targets.push({ rt, capS })
   }
   if (targets.length === 0) return
+  targets.sort((a, b) => a.rt.hp.s / a.capS - b.rt.hp.s / b.capS)
   casterRt.hp.s = Math.max(0, casterRt.hp.s - cost)
   syncPlayerCrisis(b, [caster])
-  for (const { rt, capS } of targets) {
+  for (const { rt, capS } of targets.slice(0, SHIELD_FIELD_MAX_TARGETS)) {
     rt.hp.s = Math.min(capS, rt.hp.s + amount)
   }
 }
@@ -529,7 +568,7 @@ export function pulseShieldChargeFor(
   const capS = Math.max(0, rt.hpMax?.s ?? spec.hp.s)
   if (capS <= 0) return
   const pct = stream ? stream.pct : sc.streams.reduce((n, s) => n + s.pct, 0)
-  const gain = ceilFinalQuantity(capS * Math.max(0, pct))
+  const gain = ceilFinalQuantity(capS * Math.max(0, pct) * (1 + Math.max(0, spec.repairOutputBonusPct ?? 0)))
   if (gain > 0) rt.hp.s = Math.min(capS, rt.hp.s + gain)
 }
 
@@ -585,32 +624,6 @@ export function pulseRepairsFor(
    */
   let targetSpec: UnitSpec = spec
   let targetRt = meRt
-  if (spec.logistics && allySpecs && allySpecs.size > 1) {
-    let bestKey: string | undefined
-    let bestRatio = Number.POSITIVE_INFINITY
-    for (const [tag, s] of allySpecs) {
-      const rt = b.units[tag]
-      if (!rt) continue // 已不在场（沉了/被摘）
-      if (!isAlive(b, tag)) continue // 阵亡队友不修（2026-09-19 报障修复：尸体不可复活）
-      const capA0 = Math.max(0, s.hp.a)
-      const capH0 = Math.max(0, s.hp.h)
-      if (rt.hp.a >= capA0 && rt.hp.h >= capH0) continue // 甲+结构 都满 ⇒ 装置无事可做
-      const capAll = capA0 + capH0 + Math.max(0, s.hp.s)
-      const ratio = capAll > 0 ? (rt.hp.s + rt.hp.a + rt.hp.h) / capAll : 1
-      if (ratio < bestRatio) {
-        bestRatio = ratio
-        bestKey = tag
-      }
-    }
-    const pickedSpec = bestKey !== undefined ? allySpecs.get(bestKey) : undefined
-    const pickedRt = bestKey !== undefined ? b.units[bestKey] : undefined
-    if (pickedSpec && pickedRt) {
-      targetSpec = pickedSpec
-      targetRt = pickedRt
-    } else {
-      return true // 全场都修不动（都满血）⇒ 空转：不耗组件、不动计时器之外任何账（本舰也没死）
-    }
-  }
   /**
    * **维修上限 = 容量（不是入场残值）** —— **2026-09-23 玩家报障修复**。
    *

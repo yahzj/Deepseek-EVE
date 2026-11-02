@@ -17,7 +17,8 @@
  * l10n id（`ui.SkillTree.023` 起 / `core.skillLicense.*`）⇒ 将来换词只改 `l10n/table.ts` 两行。
  *
  * **收费档**：rank4 = 50 万 · rank5 = 200 万 · **rank6 = 1000 万（预留档）**。本作数据表现最高 rank5，
- * 将来新增 rank6 技能时按本表**自动生效**、不必再改代码；rank1~3 免许可。
+ * 将来新增 rank6 技能时按本表**自动生效**；未显式定价的rank1~3免许可。
+ * 编队技能可单独配置价格和累计声望门槛，降阶不移除许可要求。
  *
  * **老档零迁移**：判据里"已经练到 Lv≥1"视同已购（见 `hasSkillLicense`）⇒ 不需要任何迁移键、
  * 也不回收玩家已练的等级（与真前置那套 `skillLockMissing` 同一思路）。
@@ -27,11 +28,13 @@ import type { GameState } from '../state'
 import { addLog } from '../state'
 import type { SkillCatalog, SkillDef } from '../types'
 import { DEEP_SPACE_SKILL_IDS, probeManufacturingUnlocked } from '../probeManufacturing'
+import { DSI_FACTION_ID, standingOf } from '../standing'
+import type { CoreBlockReason } from '../engine'
 
 /**
  * **许可价目表**（信用点）——键 = 技能 rank。
  * ⚠ rank6 是**预留档**（船长 2026-09-27：「rank6是预留的」）：当前无 rank6 技能，但表先写好，
- * 以后往 `SKILLS` 里加 rank6 技能即按 100 万收费，不需要改这里之外的任何代码。
+ * 以后往 `SKILLS` 里加 rank6 技能即按 1000 万收费，不需要改这里之外的任何代码。
  */
 export const SKILL_LICENSE_PRICES: Readonly<Record<number, number>> = {
   4: 500_000, // 50 万
@@ -39,14 +42,15 @@ export const SKILL_LICENSE_PRICES: Readonly<Record<number, number>> = {
   6: 10_000_000, // 1000 万（预留档）
 }
 
-/** 该技能的许可价（信用点）；`null` = **免许可**（rank1~3 或数据表里没登记的 rank） */
-export function skillLicensePriceOf(def: Pick<SkillDef, 'rank'>): number | null {
+/** 显式单技能定价优先，其后按rank；null表示免许可，不与0信用点混用。 */
+export function skillLicensePriceOf(def: Pick<SkillDef, 'rank' | 'licensePriceIsk'>): number | null {
+  if (Number.isSafeInteger(def.licensePriceIsk) && def.licensePriceIsk! > 0) return def.licensePriceIsk!
   return SKILL_LICENSE_PRICES[def.rank] ?? null
 }
 
 /**
  * **是否已持有该技能的训练许可**（唯一判据，界面置灰 / 详情窗按钮 / `enqueueSkill` 共用这一把尺）。
- * 三条任一成立即放行：① 免费档（rank1~3）② 已买过 ③ **老档豁免**——已练到 Lv≥1（改动前练的，不再收费）。
+ * 三条任一成立即放行：① 无显式定价的免费档 ② 已买过 ③ **老档豁免**——已练到 Lv≥1（不再收费）。
  * ⚠ `trained[id] >= 1` 这条同时保证"玩家不会为已经练起来的技能白花钱"（买许可的动作里也据此拒绝）。
  */
 export function hasSkillLicense(state: GameState, def: SkillDef): boolean {
@@ -58,6 +62,18 @@ export function hasSkillLicense(state: GameState, def: SkillDef): boolean {
 /** 缺许可（= 需要买、且还没买）；`enqueueSkill` 的拒因与界面的"待购"状态同源 */
 export function skillLicenseMissing(state: GameState, def: SkillDef): boolean {
   return !hasSkillLicense(state, def)
+}
+
+/** 购买命令及界面共用，只读累计声望；已取得的许可资格不因新门槛回收。 */
+export function skillLicenseStandingBlock(state: GameState, def: SkillDef): CoreBlockReason | null {
+  if (hasSkillLicense(state, def)) return null
+  const required = def.licenseStandingReq ?? 0
+  const standing = standingOf(state, DSI_FACTION_ID)
+  return standing < required ? {
+    error: `需协会声望 ${required}（累计 ${standing}）`,
+    errorId: 'ui.Expedition.336',
+    errorParams: { p1: required, standing },
+  } : null
 }
 
 /**
@@ -115,6 +131,8 @@ export function buySkillLicense(
       errorParams: { p1: def.name, p2: trained },
     }
   }
+  const standingBlock = skillLicenseStandingBlock(state, def)
+  if (standingBlock) return { ok: false, ...standingBlock }
   if (state.wallet.isk < price) {
     return {
       ok: false,

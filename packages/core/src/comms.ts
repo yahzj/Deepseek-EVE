@@ -13,6 +13,7 @@ import { ONB_DONE } from './onboarding'
 import { isSiteBuilt } from './state'
 import { blackboxSeenOf } from './blackbox'
 import { addLog } from './state'
+import { noteIndustrialFleetRisk } from './preparationSquads'
 import type { GameState } from './state'
 import type {
   CommsEntryView,
@@ -72,6 +73,7 @@ export function dismissCommsPopup(state: GameState, id: string): boolean {
 /** 单条触发条件是否达成（新增 kind 时须同步 content-check 的「通讯消息契约」） */
 export function commsTriggerMet(state: GameState, ctx: SimContext, trigger: CommsTrigger): boolean {
   switch (trigger.kind) {
+    case 'industrialFleetRisk': return state.industrialFleetRiskSeen === true
     /** **遭遇过某个敌方舰级**（船长 2026-09-16：首次遭遇劫掠电子舰后发一封介绍捕获网的通讯） */
     case 'foeShipSeen':
       return state.foeShipSeen?.[trigger.shipId] === true
@@ -222,6 +224,7 @@ function commsBusy(state: GameState): boolean {
 }
 
 export function advanceComms(state: GameState, ctx: SimContext): void {
+  noteIndustrialFleetRisk(state, ctx)
   if (ctx.commsMessages.size === 0) return
   /**
    * 本拍是否已经用掉那**唯一一个**弹窗名额（船长 2026-09-14：「**同一拍只弹第一封、其余只进收件箱**」）。

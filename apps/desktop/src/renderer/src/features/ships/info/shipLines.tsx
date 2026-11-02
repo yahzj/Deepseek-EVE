@@ -1,6 +1,6 @@
 /** 功能域职责拆分，保持原计算与顺序。 */
 import { tr } from '../../../i18n/locale'
-import { type UnitSpec, type BattleBalance, battleSpeedBonusOf, thrusterCycleNote, type ShipDef, shipCategoryKeyOf, type DamageType } from '@whale/core'
+import { type UnitSpec, type BattleBalance, battleSpeedBonusOf, thrusterCycleNote, type ShipDef, shipCategoryKeyOf, type DamageType, rangeEwBaseOf } from '@whale/core'
 import { type InfoLine, fmt, resistsText, DMG_LABEL, DmgChip, pct, slotListText, warpChargePct } from './primitives'
 import { shipSubClassText, shipRoleText, shipTierText } from '../../../ui/labelsText'
 
@@ -125,6 +125,7 @@ export function shipCurrentLines(
   opts: { battle: BattleBalance; droneBayTotal?: number },
 ): InfoLine[] {
   const replaced = new Map<string, InfoLine>()
+  replaced.set(tr('ui.rangeEw.010'), { k: tr('ui.rangeEw.010'), v: fmt(spec.rangeEwStrength ?? 0) })
   // 装后合成值（键与 `shipInfoLines` 的基础行同 id，逐条顶替）
   replaced.set(tr("ui.FitPage.001"), { k: tr("ui.FitPage.001"), v: fmt(spec.hp.s) })
   replaced.set(tr("ui.FitPage.002"), { k: tr("ui.FitPage.002"), v: resistsText(spec.resists.shield) })
@@ -161,6 +162,7 @@ export function shipCurrentLayout(
   hasDroneBayTotal: boolean,
 ): { replaced: string[]; hidden: string[]; keys: string[] } {
   const replaced = new Set<string>([
+    tr('ui.rangeEw.010'),
     tr("ui.FitPage.001"),
     tr("ui.FitPage.002"),
     tr("ui.FitPage.003"),
@@ -224,7 +226,8 @@ export function shipInfoLines(ship: ShipDef): InfoLine[] {
       if (ship.fleetDamageBonusPct) bits.push(tr("ui.shipInfo.124", { p1: Math.round(ship.fleetDamageBonusPct * 100) }))
       if (ship.wormholeScanRadiusBonus) bits.push(tr("ui.shipInfo.125", { p1: ship.wormholeScanRadiusBonus }))
       // 2026-09-16 船长：后勤舰特性进「船体特性」栏（判据已由 `subClass` 改为数据字段，界面与引擎同源）
-      if (ship.repairPulseTargetsFleet) bits.push(tr("ui.shipInfo.126"))
+      // ⟪文案调整 2026-11-01⟫ 后勤改为输出加成，队友修理由无人机执行。
+      if (ship.repairOutputBonusPct) bits.push(tr('ui.repairDrone.002', { p1: Math.round(ship.repairOutputBonusPct * 100) }))
       // 2026-09-16 船长：**侦察舰特性**（「隐秘行动装置所需CPU降低50%，且移除推进器失效惩罚」）——
       // 同样走数据字段 ⇒ 引擎（`equipment.cpuUseOf` / `combat.createPlayerSpec`）与这里同源
       if (ship.stealthCpuMul !== undefined && ship.stealthCpuMul !== 1) {
@@ -232,17 +235,15 @@ export function shipInfoLines(ship: ShipDef): InfoLine[] {
       }
       if (ship.stealthIgnoresPropulsion === true) bits.push(tr("ui.shipInfo.128"))
       // 2026-09-18 船长：**电子舰特性 · 压制敌舰武器射程**（多艘乘法叠加 · 与敌方增程做加法 · 下限 3000m）
-      if ((ship.foeRangeDebuffPct ?? 0) > 0) {
-        bits.push(
-          tr("ui.shipInfo.129", { p1: Math.round((ship.foeRangeDebuffPct ?? 0) * 100) }),
-        )
-      }
+      if (ship.rangeEwBonus) bits.push(tr('ui.rangeEw.011', { p1: ship.rangeEwBonus }))
+      if (ship.rangeEwEquipmentBonusPct) bits.push(tr('ui.rangeEw.012', { p1: ship.rangeEwEquipmentBonusPct * 100 }))
       // 2026-09-30 船长：**截击舰特性 · 不会被网子选为目标**（数据字段 `ShipDef.interceptorImmuneToWeb`；
       // 引擎消费点 = `combat.fireFoeCaptureWeb`，与这里同源）
       if (ship.interceptorImmuneToWeb === true) bits.push(tr("ui.shipInfo.245"))
       return bits.length > 0 ? [{ k: tr("ui.shipInfo.006"), v: bits.join(' · ') }] : []
     })(),
     { k: tr("ui.Handbook.010"), v: `${fmt(ship.cargoM3)} m³` },
+    { k: tr('ui.rangeEw.010'), v: fmt(rangeEwBaseOf(ship.tier) + (ship.rangeEwBonus ?? 0)) },
     { k: tr("ui.Handbook.011"), v: tr("ui.shipInfo.130", { p1: ship.cycleSeconds, p2: ship.oreUnitsPerCycle }) },
     // 2026-09-26 船长：「动力没必要放入主属性内，用机动速度替换所有动力的位置」⇒ 本行由「动力」
     // （`agility`，已挪到间接属性）改为「机动速度」。无装配上下文（图鉴 / 悬停卡 / 蓝图产物）时

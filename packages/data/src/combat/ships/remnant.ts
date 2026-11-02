@@ -167,6 +167,8 @@ export const FOE_G_REMNANT_TENDER: FoeShipDef = {
  * ⚠ 有效挂载是 `条目 ?? 舰级`（**替换**不是叠加）⇒ 条目必须**两件都写**，只写一件会顶掉另一件。 */
 export const FOE_SHIP_PIRATE_RAIDER: FoeShipDef = {
   id: 'foe-pirate-raider',
+  rangeEwBonus: enemyParameterOf(foeShipsParameters, 'foe-pirate-raider', 'rangeEwBonus'),
+  rangeEwEquipmentBonusPct: enemyParameterOf(foeShipsParameters, 'foe-pirate-raider', 'rangeEwEquipmentBonusPct'),
   gunCount: enemyParameterOf(foeShipsParameters, "foe-pirate-raider", "gunCount"),
   name: '劫掠电子舰',
   family: 'A',

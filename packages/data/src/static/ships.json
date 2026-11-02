@@ -1025,6 +1025,8 @@
           "low": 1
         },
         "foeRangeDebuffPct": 0.15,
+        "rangeEwBonus": 40,
+        "rangeEwEquipmentBonusPct": 0.25,
         "tier": 1,
         "cargoM3": 1260,
         "cycleSeconds": 14,
@@ -1261,6 +1263,8 @@
           "low": 3
         },
         "foeRangeDebuffPct": 0.15,
+        "rangeEwBonus": 40,
+        "rangeEwEquipmentBonusPct": 0.25,
         "tier": 1,
         "cargoM3": 770,
         "cycleSeconds": 14,
@@ -1539,14 +1543,14 @@
         "hullHp": 173,
         "cpu": 260,
         "droneDmgBonus": 0.1,
-        "droneBayM3": 45,
+        "droneBayM3": 80,
+        "repairOutputBonusPct": 0.5,
         "maxSpeedMps": 310,
         "warpSpeedAus": 3.8,
         "massKg": 3400000,
         "lockRangeM": 44000,
         "signatureM": 58,
         "scanResMm": 620,
-        "repairPulseTargetsFleet": true,
         "commandCost": 18
       },
       {

@@ -6,6 +6,7 @@ import { tr } from '../../i18n/locale'
 import { fmtDuration } from '../../i18n/fmt'
 import { SkillDescText } from './skillShared'
 import type { Status } from './types'
+import { SkillLicenseActions } from './SkillLicenseActions'
 
 interface SkillDetailModalProps {
   open: SkillDef
@@ -14,17 +15,15 @@ interface SkillDetailModalProps {
   tf: number
   statusOf: (def: SkillDef) => Status
   licenseMissingOf: (def: SkillDef) => boolean
-  licensePriceOf: (def: SkillDef) => number | null
   licenseAsk: string | null
   buyLicense: (id: string) => void
   prereqTextOf: (gaps: readonly SkillPrereqGap[]) => string
   addPrereqs: (id: string) => void
   prereqNote: string
-  isk: (value: number) => string
   setOpenId: (id: string | null) => void
 }
 
-export function SkillDetailModal({ open, state, engine, tf, statusOf, licenseMissingOf, licensePriceOf, licenseAsk, buyLicense, prereqTextOf, addPrereqs, prereqNote, isk, setOpenId }: SkillDetailModalProps) {
+export function SkillDetailModal({ open, state, engine, tf, statusOf, licenseMissingOf, licenseAsk, buyLicense, prereqTextOf, addPrereqs, prereqNote, setOpenId }: SkillDetailModalProps) {
   return (
     <div className="app-modal-mask" onClick={() => setOpenId(null)}>
       <div className="app-modal app-skilltree-modal" onClick={(e) => e.stopPropagation()}>
@@ -120,19 +119,7 @@ export function SkillDetailModal({ open, state, engine, tf, statusOf, licenseMis
                         : tr('ui.SkillsPage.035', { p1: targetLv })}
                     </button>
                   ) : licenseMissingOf(open) ? (
-                    <>
-                      <span className="app-dim">
-                        {tr('ui.SkillTree.025', { p1: isk(licensePriceOf(open) ?? 0) })}
-                      </span>
-                      <button
-                        className={`app-btn is-small${licenseAsk === open.id ? ' is-primary' : ''}`}
-                        onClick={() => buyLicense(open.id)}
-                      >
-                        {licenseAsk === open.id
-                          ? tr('ui.SkillTree.026', { p1: isk(licensePriceOf(open) ?? 0) })
-                          : tr('ui.SkillTree.023', { p1: isk(licensePriceOf(open) ?? 0) })}
-                      </button>
-                    </>
+                    <SkillLicenseActions state={state} def={open} confirming={licenseAsk === open.id} onBuy={buyLicense} />
                   ) : st.locked.length > 0 ? (
                     <>
                       <span className="app-dim is-locked">{prereqText}</span>

@@ -223,7 +223,7 @@ export function stepBattle(
       const sMax = urt.hpMax?.s ?? unit.hp.s
       if (urt.hp.s >= sMax || (urt.hp.a <= 0 && urt.hp.h <= 0)) continue
       // 后续被动恢复来源同区加算，不为各个来源另开乘区。
-      const regenMul = 1 + (unit.shieldPassiveBonusPct ?? 0)
+      const regenMul = (1 + (unit.shieldPassiveBonusPct ?? 0)) * (1 + Math.max(0, unit.repairOutputBonusPct ?? 0))
       const floor = sMax * SHIELD_REGEN_FLOOR_PCT
       const rate = urt.hp.s > 0 ? Math.max(urt.hp.s * bal.shieldRegenPerSec, floor) * regenMul : 0
       const regen = rate * dtSec

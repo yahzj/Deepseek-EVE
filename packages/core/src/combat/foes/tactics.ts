@@ -126,7 +126,7 @@ export function rFamilyDesireOf(
   let meTop = 0
   let meBlindM = 0
   for (const w of me.weapons) {
-    if (w.disabled) continue
+    if (w.disabled || w.repairDrone) continue
     meTop = Math.max(meTop, w.maxRangeM)
     meBlindM = Math.max(meBlindM, w.minRangeM ?? 0)
   }

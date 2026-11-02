@@ -17,6 +17,7 @@ import { hoverTipProps } from '../../ui/Tooltip'
 import { DRONE_DOWN_FREEZE_MS } from './battleDrones'
 import { BattleMountLines } from './battleMounts'
 import { BattleCycles } from './BattleCycles'
+import { RangeEwPanel } from './RangeEwPanel'
 import './commandBattle.css'
 
 export function renderBattleScene({
@@ -220,6 +221,7 @@ return (
             ) : null}
           </div>}
           <BattleCycles weapons={arcs.weapons} devices={arcs.devices} />
+          {arcs.rangeEw ? <RangeEwPanel view={arcs.rangeEw} loadDetails={arcs.rangeEwDetails} /> : null}
         </div>
       </div>
 
@@ -317,15 +319,17 @@ return (
                         ? ({
                             left,
                             top,
+                            width: lay.dense ? spriteSize : undefined,
                             '--arrive-dx': `${arriveDxMe}px`,
                             '--arrive-ms': `${ARRIVAL_FLY_MS}ms`,
                             '--arrive-delay': `${(u.leader ? 0 : drawIdx + 1) * ARRIVAL_STAGGER_MS}ms`,
                             ...bk.style,
                           } as CSSProperties)
-                        : { left, top, ...bk.style }
+                        : { left, top, width: lay.dense ? spriteSize : undefined, ...bk.style }
                     }
                   >
-                    <span className="app-bts-name" title={u.name}>
+                    <span className="app-bts-name" title={u.name}
+                      style={lay.dense ? { maxWidth: Math.min(110, lay.myBarW ?? 110) } : undefined}>
                       {u.name}
                       {u.leader ? <i className="app-bts-fleet-lead">{tr("ui.BattleScreen.031")}</i> : null}
                     </span>

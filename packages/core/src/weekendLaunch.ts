@@ -9,7 +9,7 @@
  */
 import type { GameState } from './state'
 import type { AnomalyDef, SimContext } from './types'
-import { startFleetBattleFor } from './combat'
+import { startFleetBattleFor, resolvedBattleAnomaly } from './combat'
 import { withBattleRangeCheck } from './battleRangeMemory'
 import { shipHasWeapon } from './equipment'
 import { weekendFlagshipEncounterOf, weekendFlagshipSpecOf } from './weekendBattle'
@@ -334,8 +334,8 @@ export function weekendFlagshipBattleViewOf(state: GameState, ctx: SimContext): 
   const enc = state.encounter
   const battle = enc.battle
   if (!battle || !enc.active) return null
-  if (!weekendFlagshipEncounterOf(state, enc)) return null
-  const anomaly = enc.anomalyId !== null ? ctx.anomalies.get(enc.anomalyId) : undefined
+  if (!weekendFlagshipEncounterOf(state, enc) && !enc.pirate && !enc.automatic) return null
+  const anomaly = resolvedBattleAnomaly(ctx, battle, enc.anomalyId)
   if (!anomaly) return null
   const leaderShipId = battle.myFleet?.[0]?.shipId ?? enc.shipId ?? state.shipId
   const leaderRt = battle.units[battle.myFleet?.[0]?.tag ?? 'player']

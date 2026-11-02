@@ -15,6 +15,9 @@ import type { BattleState } from '../../state'
 export type BattleFieldSpec = { kind: 'persist' } | { kind: 'runtime'; why: string }
 
 export const BATTLE_FIELDS = {
+  rangeEwVersion: { kind: 'persist' },
+  rangeEw: { kind: 'runtime', why: '当前在场存活来源与净优势逐拍重算，不读入旧缓存' },
+  enemyFormationVersion: { kind: 'persist' },
   rangeMemory: { kind: 'persist' },
   foeAcidLayers: { kind: 'persist' },
   foeRebirths: { kind: 'persist' },
@@ -72,6 +75,7 @@ export const BATTLE_FIELDS = {
   // 2026-09-16 船长裁定「甲：逐舰维修」：逐舰账本（键 = 舰 tag）——同 `repair`/`shieldCharge` 的理由，
   // 且**必须随档**：漏了会让僚舰的预载组件与计时在战中重载后凭空消失（与 `myFleet` 漏登记的后果同类）。
   repairBy: { kind: 'persist' },
+  repairDroneBy: { kind: 'persist' },
   shieldChargeBy: { kind: 'persist' },
   // 2026-09-20 船长：护盾充能力场账本（每 N 秒一跳的计时 + 累计跳数）——**必须随档**：
   // 漏了会让战中重载后力场计时重置（= 白赚一跳），与 `shieldCharge` 同理。

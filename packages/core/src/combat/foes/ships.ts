@@ -324,6 +324,9 @@ export function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance,
       ...((mount.foeRangeDebuffPct ?? ship.foeRangeDebuffPct) !== undefined
         ? { foeRangeDebuffPct: mount.foeRangeDebuffPct ?? ship.foeRangeDebuffPct }
         : {}),
+      rangeEwStrength: mount.rangeEwStrength ?? 0,
+      rangeEwBonus: ship.rangeEwBonus ?? 0,
+      rangeEwEquipmentBonusPct: ship.rangeEwEquipmentBonusPct ?? 0,
       hitBonus: 0,
       signatureM: Math.max(45, Math.round(60 + totalHp * 0.5)),
       scanResMm: 450,

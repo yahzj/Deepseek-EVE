@@ -6,6 +6,10 @@ import { weekendFlagshipEncounterOf, weekendBattleInvolvedOf } from '../weekendB
 import { weekendEncounterChanceAt, weekendAmbushPickOf } from '../weekendEvent'
 import { nextRandom, pickOne } from '../rng'
 import { shipDisplayName } from '../instances'
+import { spawnIndustrialEncounter, industrialSortieOf } from './industrial'
+import { industrialFleetSnapshotOf, industrialFrequencyOf } from './risk'
+import { timedRouteExposureOf } from './travelExposure'
+import { HOME_GALAXY_ID } from '../state'
 
 /** 旧档遗留兜底档位（data ANOMALIES hidden 条目）：仅无 anomalyId 的旧遭遇应战/命名用；
  * 新伏击一律抽当地可见悬赏敌群，不再走此表。
@@ -47,6 +51,7 @@ export function localBountyPoolOf(ctx: SimContext, galaxyId: string, state?: Gam
 /** 伏击敌群解析：优先 encounter.anomalyId；旧档遗留按事发星系可见敌群就近威胁兜底（仍无 → null） */
 export function foeOf(state: GameState, ctx: SimContext): AnomalyDef | null {
   const enc = state.encounter
+  if (enc.pirate) return enc.pirate.card
   if (enc.anomalyId) {
     const direct = ctx.anomalies.get(enc.anomalyId)
     if (direct && !direct.hidden) return direct
@@ -67,6 +72,7 @@ export function foeOf(state: GameState, ctx: SimContext): AnomalyDef | null {
 /** 这一场遭遇是不是"入侵相关"（占领区的伏击或旗舰挑战）——赏金与残骸归属的分流判据 */
 export function weekendInvolvedAt(state: GameState, ctx: SimContext): boolean {
   const enc = state.encounter
+  if (enc.pirate) return false
   if (weekendFlagshipEncounterOf(state, enc)) return true
   return weekendBattleInvolvedOf(state, ctx, enc.anomalyId ?? null, Date.now()) !== undefined
 }
@@ -110,6 +116,19 @@ export function collectExposures(state: GameState, ctx: SimContext, includeOccup
     if (!prev || rank(e) > rank(prev)) out.set(e.galaxyId, e)
   }
   const m = state.mining
+  if (state.hauling.active && state.hauling.fleetLeg) {
+    const leg = state.hauling.fleetLeg
+    const current = leg.path[leg.pathIndex]
+    if (current) push({ galaxyId: current.galaxyId, shipId: state.shipId, kind: '停留' })
+    return [...out.values()]
+  }
+  if (state.sideTasks.deliver) {
+    const d = state.sideTasks.deliver
+    const duration = d.flightDurationMs ?? d.arriveAtGameMs - d.departAtGameMs
+    const current = timedRouteExposureOf(ctx, HOME_GALAXY_ID, d.galaxyId, duration, duration - (d.arriveAtGameMs - state.gameMs))
+    if (current) push({ galaxyId: current.galaxyId, shipId: state.shipId, kind: '停留' })
+    return [...out.values()]
+  }
   // 主控：采矿只算"采掘相位"（返航/去程是移动 → 不暴露）
   if (m.active && m.phase === 'mining' && m.beltId) {
     const g = ctx.belts.get(m.beltId)?.galaxyId
@@ -146,18 +165,7 @@ export function collectExposures(state: GameState, ctx: SimContext, includeOccup
   ) {
     push({ galaxyId: state.awayGalaxy, shipId: state.shipId, kind: '停留' })
   }
-  // 副船（采矿采掘中 / 打捞作业中 / 掩护巡逻驻留；移动段与交火不暴露）
-  for (const [sid, a] of Object.entries(state.aiAssignments)) {
-    const t = a.task
-    if (t.kind === 'mining' && t.phase === 'mining') {
-      const g = ctx.belts.get(t.beltId)?.galaxyId
-      if (g) push({ galaxyId: g, shipId: sid, kind: '采矿' })
-    } else if (t.kind === 'salvage' && t.phase === 'salvaging') {
-      push({ galaxyId: t.galaxyId, shipId: sid, kind: '打捞' })
-    } else if (t.kind === 'standby' && t.phase === 'stand') {
-      push({ galaxyId: t.galaxyId, shipId: sid, kind: '停留' }) // 已驻留的副船 = 区域停留船
-    }
-  }
+  // 独立AI不提供被动遇袭暴露，不扫描其任务或增加抽签次数。
   return [...out.values()]
 }
 
@@ -207,7 +215,9 @@ export function rollLowSecAmbush(state: GameState, ctx: SimContext, cadenceScale
     const since = state.lowSecPresence[exp.galaxyId]
     // 扫描即暴露：不受入场缓冲限制（含无在场记录的情形；船长 2026-09-05 定）
     const isScan = exp.kind === '扫描'
-    if (!isScan && !invaded && (since === undefined || state.gameMs - since < bal.entryBufferMs)) continue
+    const protection = state.industrialProtection
+    if (!invaded && protection && (state.gameMs < protection.postBattleUntilMs || !isScan && protection.entryRemainingMs > 0)) continue
+    if (!isScan && !invaded && !protection && (since === undefined || state.gameMs - since < bal.entryBufferMs)) continue
     const cd = state.encounterZoneCooldown[exp.galaxyId] ?? 0
     if (state.gameMs < cd) continue
     const sec = secOf(ctx, exp.galaxyId)
@@ -222,6 +232,8 @@ export function rollLowSecAmbush(state: GameState, ctx: SimContext, cadenceScale
       // sec=0 → 5%（基线）、sec=−1 → 20%（0.05 + 0.15×1），与 balance 段注释的定义一致。
       p = Math.min(0.9, bal.ambushChanceAtZero + bal.ambushChancePerSec * Math.min(1.5, Math.max(0, bal.lowSecMax - sec)))
       if (isScan) p = Math.min(0.9, p * (bal.scanAmbushMul ?? 1)) // 扫描低安：遇袭概率 ×scanAmbushMul
+      const fleet = industrialFleetSnapshotOf(state, ctx, industrialSortieOf(state))
+      p = Math.min(bal.industrial.frequency.maximumChance, p * industrialFrequencyOf(fleet.industrialMassKg, fleet.combatMassKg, bal.industrial.frequency).multiplier)
     }
     // 2026-09-08（星际奇遇学缩短事件间隔）：事件到点更密 → 单次遇袭率 ×cadenceScale，
     // 使"每小时遇袭期望"保持与无技能基线一致（船长定：按期望值不变进行修改）
@@ -236,6 +248,7 @@ export function rollLowSecAmbush(state: GameState, ctx: SimContext, cadenceScale
 /** 命中 → 产生一次遭遇（2026-09-09：伏击敌群 = 事发星系可见悬赏敌群随机抽一个；无池 = 不伏击）。
  * 返回是否真正产生（占用区域冷却与事件时机）。 */
 export function spawnEncounter(state: GameState, ctx: SimContext, exp: Exposure, nowWallMs = Date.now()): boolean {
+  if (!weekendEncounterAllowedIn(state, exp.galaxyId, nowWallMs)) return spawnIndustrialEncounter(state, ctx, exp)
   const bal = ctx.balance.encounter
   const pool = localBountyPoolOf(ctx, exp.galaxyId, state, nowWallMs)
   if (pool.length === 0) return false
@@ -257,6 +270,7 @@ export function spawnEncounter(state: GameState, ctx: SimContext, exp: Exposure,
   const shipName = shipDisplayName(state, ctx, exp.shipId)
   state.encounter = {
     active: true,
+    automatic: true,
     shipId: exp.shipId,
     galaxyId: exp.galaxyId,
     name: foeName,
@@ -268,26 +282,7 @@ export function spawnEncounter(state: GameState, ctx: SimContext, exp: Exposure,
     battle: null,
     ...(ambushPick ? { foeStrengthMul: ambushPick.strengthMul } : {}),
   }
-  const galaxyName = ctx.galaxies.get(exp.galaxyId)?.name ?? exp.galaxyId
-  /**
-   * 文案两支：**占领区**（`ambushPick` 非空 = 活的占领区）说「入侵遭遇」——被占星系可能是中安/高安，
-   * 说"低安"就是错的（这情形由"占领区破例"引入）；其余照旧老文案一字不动。新支走 id 制。
-   */
-  if (ambushPick) {
-    addLog(
-      state,
-      'warn',
-      `⚠ 入侵遭遇（${galaxyName}·「${foe.name}」）：${shipName} 遭该编队伏击——可「迎战」或「快速脱离」；60 秒未处置将自动脱离。`,
-      'core.encounters.008',
-      { p1: galaxyName, p2: foe.name, p3: shipName },
-    )
-  } else {
-    addLog(
-      state,
-      'warn',
-      `⚠ 低安遭遇（${galaxyName}·「${foe.name}」）：${shipName}（${exp.kind}中）遭该编队伏击——可「迎战」或「快速脱离」；60 秒未处置将自动脱离。`,
-    )
-  }
+  addLog(state, 'combat', '', 'core.encounters.006')
   return true
 }
 

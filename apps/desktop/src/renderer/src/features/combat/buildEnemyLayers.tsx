@@ -198,7 +198,8 @@ foeNameOf: (tag: string) => string
         {/* 舰名：**第一排**浮在舰体上方（与改动前一致）；**第二排**（其上方是第一排的舰体）改由该舰血条标签承载
             机库备用机（图标 ×N）跟在**各自的名字右边**（2026-09-12 船长） */}
         {!isRank2 ? (
-          <span className="app-bts-name" title={foeNameOf(tag)} style={{ color: isMain ? UI_TONES.foeNameMain : UI_TONES.foeName }}>
+          <span className="app-bts-name" title={foeNameOf(tag)} style={{ color: isMain ? UI_TONES.foeNameMain : UI_TONES.foeName,
+            ...(lay.dense && foeRowTags.length > 4 ? { maxWidth: Math.min(110, foeFormation.colW[slot.col]! - 8) } : {}) }}>
             {locked ? `◈ ${foeNameOf(tag)}` : foeNameOf(tag)}
             {hangarBadgeOf(tag)}
           </span>

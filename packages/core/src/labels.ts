@@ -188,6 +188,7 @@ export const DRONE_CLASS_LABELS: Record<DroneClass, string> = {
   combat: '战斗机',
   assault: '攻坚机',
   sentry: '哨戒机',
+  repair: '修理机',
 }
 
 /** 「种类」文案单点（2026-09-10 船长：无人机把归类子属性一起显示在种类中）：

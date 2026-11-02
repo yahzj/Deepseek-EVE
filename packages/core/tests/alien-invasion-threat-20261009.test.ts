@@ -8,6 +8,8 @@ import { WRECK_GROUP_BY_KEY } from '../src/wreckGroups'
 import type { AnomalyDef } from '../src/types'
 
 const ctx = buildSimContext()
+// 此文件核对既有5%调整基线，当前扩编及不削弱约束由新专项覆盖。
+ctx.anomalies = new Map([...ctx.anomalies].map(([id, card]) => [id, card.foeFormation?.baseline ?? card]))
 const bal = ctx.balance.battle
 const cases = [
   ['alien-vanguard', 90, 95, 1.19, 1.325],

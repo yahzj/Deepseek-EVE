@@ -1,5 +1,5 @@
 /** 功能域职责拆分，保持原计算与顺序。 */
-import { type ModuleDef, SHIELD_FIELD_COST_PCT, SHIELD_PULSE_MS, type DamageType, FOE_RANGE_DEBUFF_FLOOR_M, MY_WEB_RANGE_M, stackingOf, type ModuleSlot } from '@whale/core'
+import { type ModuleDef, SHIELD_FIELD_COST_PCT, SHIELD_PULSE_MS, LOCK_SHARED_SCALE, LOCK_SHARED_CAP, type DamageType, FOE_RANGE_DEBUFF_FLOOR_M, MY_WEB_RANGE_M, stackingOf, type ModuleSlot } from '@whale/core'
 import { tr } from '../../../i18n/locale'
 import { pctOpt, turretAmmoText, rangeText, recoveryPct, pct, resistGapText, thrusterCycleShort, fmt, salvageCycleSecs, reviveCycleSecs, DMG_LABEL, repairShortText, hullResistShortText } from './primitives'
 
@@ -42,7 +42,7 @@ export function moduleShortEffect(mod: ModuleDef): string {
     }
     case 'shield-field': {
       /**
-       * 护盾充能力场装置（2026-09-20 船长）：**高槽 · 护盾族**。
+       * 护盾投送力场：高槽护盾支援，排除自身。
        * 短行必须自己一支 —— 与中槽 `shield` 那条（「每 N 秒回盾 x（按满盾）」）不同：
        * 本件排除自身、按需扣盾，冷却按件自带（`mod.shieldFieldMs`）。
        */
@@ -50,7 +50,7 @@ export function moduleShortEffect(mod: ModuleDef): string {
       const ms = mod.shieldFieldMs ?? 0
       if ((mod.shieldFieldPct ?? 0) > 0 && ms > 0) {
         // ⟪文案调整 2026-10-07⟫ 力场扣盾代价与结算同源。
-        parts.push(tr("ui.shipInfo.181", { p1: Math.round(ms / 1000), p2: recoveryPct(mod.shieldFieldPct ?? 0), p3: recoveryPct(SHIELD_FIELD_COST_PCT) }))
+        parts.push(tr('ui.fleetSupport.001', { p1: Math.round(ms / 1000), p2: recoveryPct(mod.shieldFieldPct ?? 0), p3: recoveryPct(SHIELD_FIELD_COST_PCT) }))
       }
       body = parts.join(' · ')
       break
@@ -157,6 +157,8 @@ export function moduleShortEffect(mod: ModuleDef): string {
       } else if (mod.stealthMs !== undefined) {
         // 2026-09-15 隐秘行动装置（高槽支援件）：开火前隐身——短行必须写明"开火即现形"与推进器禁令
         body = tr("ui.shipInfo.118", { p1: mod.stealthMs / 1000 })
+      } else if (mod.rangeEwStrength !== undefined) {
+        body = `${tr('ui.rangeEw.010')} +${mod.rangeEwStrength}`
       } else if (mod.foeRangeDebuffPct !== undefined) {
         /**
          * 2026-09-26 墨潮电子舱（H 族势力装备 · 高槽支援件）：敌方武器射程压制。
@@ -181,8 +183,8 @@ export function moduleShortEffect(mod: ModuleDef): string {
       break
     }
     case 'target-lock':
-      // 2026-09-09 目标锁定阵列：集火首位 + 目标受击加深；**2026-09-17 船长：增伤与集火都改「全队生效」**
-      body = tr("ui.shipInfo.119", { p1: pctOpt(mod.lockDmgBonus) })
+      // 本舰与共享增伤分别显示，集火概率读取装备定义。
+      body = tr('ui.fleetSupport.002', { p1: pct(mod.lockTargetChance ?? 1), p2: pctOpt(mod.lockDmgBonus), p3: pct(mod.lockSharedBonus ?? Math.min(LOCK_SHARED_CAP, (mod.lockDmgBonus ?? 0) * LOCK_SHARED_SCALE)) })
       break
     case 'cpu':
       // 2026-09-11 协处理器：装配 CPU 预算扩容（本件自身不占 CPU——说清，否则玩家会以为要占 0 是 bug）

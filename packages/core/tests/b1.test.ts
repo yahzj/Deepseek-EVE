@@ -5,6 +5,7 @@
  * 2026-09-11 追加：受损档改「按敌人火力 + 装甲先吃」、结构 <50% 撤退（见文件末 describe）。
  */
 import { describe, expect, it } from 'vitest'
+import { buildSimContext } from '@whale/data'
 import type { GameState } from '../src/state'
 import type { SimContext } from '../src/types'
 import type { AnomalyDef } from '../src/types'
@@ -14,9 +15,26 @@ import { startMining } from '../src/mining'
 import { fightEncounter, fleeEncounter, rollLowSecAmbush } from '../src/encounters'
 import { hullLayerCaps } from '../src/shipyard'
 import { loadSaveFile, MIN_SUPPORTED_SAVE_VERSION, SAVE_FORMAT, serializeSaveFile } from '../src/save'
-import { makeTestCtx, belt, galaxy, anomaly, ship, moduleDef, fittedOf } from './helpers'
+import { makeTestCtx as legacyTestCtx, belt, galaxy, anomaly, ship, moduleDef, fittedOf } from './helpers'
 import { wreckDensityOf } from '../src/salvage'
 import { addModule, fitModule } from '../src/equipment'
+
+/** 新触发链需要合法质量和海盗目录；旧文字场次仍通过显式旧记录测试。 */
+function makeTestCtx(opts?: Parameters<typeof legacyTestCtx>[0]): SimContext {
+  const ctx = legacyTestCtx(opts)
+  const real = buildSimContext()
+  const ships = new Map(real.ships)
+  for (const [id, def] of ctx.ships) ships.set(id, { ...def, massKg: def.massKg ?? 1_200_000 })
+  const industrial = ctx.balance.encounter.industrial
+  for (const profile of Object.values(industrial.threat.profiles)) {
+    profile.baseThreatOffset = 40
+    profile.industrialThreatWeight = 0
+    profile.cargoThreatWeight = 0
+  }
+  industrial.frequency.industrialChanceMaxBonus = 0
+  industrial.frequency.escortChanceMaxReduction = 0
+  return { ...ctx, ships, foeShips: real.foeShips }
+}
 
 /** 遭遇战模板（与 data 同形，测试 ctx 独立注册） */
 function encTiers(): AnomalyDef[] {
@@ -130,7 +148,7 @@ describe('B1 低安遭遇（事件线融合 + 5 分钟缓冲）', () => {
     expect(rate).toBeLessThan(0.16)
   })
 
-  it('到达缓冲：进低安不足 5 分钟判定必不中；过缓冲后命中 → 邀约 60s 未响应 → 自动文字结算（耐久永不为 0）', () => {
+  it('到达缓冲后命中立即真实战斗，不再等待60秒邀约', () => {
     const { state, ctx } = lowWorld()
     expect(startMining(state, 'belt-f', ctx).ok).toBe(true)
     forceAtBelt(state)
@@ -146,15 +164,9 @@ describe('B1 低安遭遇（事件线融合 + 5 分钟缓冲）', () => {
     expect(enc.active).toBe(true)
     expect(enc.galaxyId).toBe('galaxy-far')
     expect(enc.shipId).toBe(state.shipId) // 主控采矿承担
-    // 未响应：推进超过邀约窗 → 自动结算
-    advanceGame(state, ctx.balance.encounter.inviteWaitMs + 1000, ctx)
-    expect(state.encounter.active).toBe(false)
-    const logText = state.logs
-      .filter((l) => l.text.includes('遭遇'))
-      .map((l) => l.text)
-      .join('|')
-    expect(logText).toContain('低安遭遇')
-    expect(state.fleet[state.shipId]!.durability).toBeGreaterThan(0) // clamp：永不弃船
+    expect(enc.battle).not.toBeNull()
+    expect(enc.pirate).toBeDefined()
+    expect(enc.deadlineGameMs).toBe(enc.invitedAtGameMs)
   })
 
   it('占用随机事件时机：事件到点（已过缓冲）必遇袭，本次时机不再出随机事件', () => {
@@ -176,7 +188,8 @@ describe('B1 低安遭遇（事件线融合 + 5 分钟缓冲）', () => {
     advanceGame(state, 1000, ctx) // 先建立在场记录（自 gameMs≈0 起算缓冲）
     // 越过首个事件到点（600s，且已过 300s 缓冲）→ 遇袭占用本次时机
     advanceGame(state, 620_000, ctx)
-    expect(state.encounter.active).toBe(true)
+    // 新机制可能已在剩余20秒内打完；按开战记录确认事件机会被占用。
+    expect(state.logs.some(row => row.textId === 'core.industrial.007')).toBe(true)
     const starsAfter = state.logs.filter((l) => l.text.startsWith('✦')).length
     expect(starsAfter).toBe(starsBefore) // 本段随机事件未触发（时机被遭遇占用）
   })
@@ -213,7 +226,8 @@ describe('B1 低安遭遇（事件线融合 + 5 分钟缓冲）', () => {
     const { state, ctx } = lowWorld()
     state.awayGalaxy = 'galaxy-far' // 主控驻留低安（掩护巡逻；2026-09-06 胜利不再停留）
     // 注入一艘副船同星系采矿（sandcat 名下直接登记，专注遭遇归属判定）
-    state.aiAssignments['sandcat'] = {
+    state.fleet['ai-independent'] = structuredClone(state.fleet[state.shipId]!)
+    state.aiAssignments['ai-independent'] = {
       coreType: 'basic',
       startedAtGameMs: state.gameMs,
       task: { kind: 'mining', beltId: 'belt-f', phase: 'mining', cycleAccMs: 0, phaseAccMs: 0, tripUnits: 0 },
@@ -331,7 +345,7 @@ describe('B1 低安遭遇（事件线融合 + 5 分钟缓冲）', () => {
     void ctx
   })
 
-  it('伏击敌群 = 当地星系可见悬赏敌群（2026-09-09 船长定）：无悬赏星系不伏击；命中后 threat/名字/anomalyId 即该悬赏卡', () => {
+  it('当地常驻只提供威胁基准，普通遇袭统一生成海盗配置', () => {
     const ghost = { sec: -0.9, base: { ...makeTestCtx().balance.encounter, ambushChanceAtZero: 1, ambushChancePerSec: 0 } }
     const world = (visible: boolean) => {
       const ctx = makeTestCtx({
@@ -363,9 +377,10 @@ describe('B1 低安遭遇（事件线融合 + 5 分钟缓冲）', () => {
     for (let i = 0; i < 20 && !hit; i += 1) hit = rollLowSecAmbush(withFoe.state, withFoe.ctx)
     expect(hit).toBe(true)
     const enc = withFoe.state.encounter
-    expect(enc.anomalyId).toBe('ano-ghost')
-    expect(enc.threat).toBe(55)
-    expect(enc.name).toBe('目标ano-ghost')
+    expect(enc.anomalyId).toBe('enc-pirate-generated')
+    expect(enc.pirate!.targetThreat).toBe(95)
+    expect(enc.pirate!.card.ships!.every(row => row.ship.family === 'A')).toBe(true)
+    expect(enc.battle).not.toBeNull()
   })
 
   it('击退缴获 = 伏击敌群赏金 ×50% 且胜利留残骸（2026-09-09 船长定，只给 ISK 不计首胜）', () => {

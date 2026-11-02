@@ -5,6 +5,8 @@ import type { BlinkSeg, LogParams } from '../../state'
 
 /** V12 实时战斗持久状态（确定性事件步进；只存动态量） */
 export interface BattleState {
+  /** 缺省旧编成；新开战固定使用扩编规则，读档不切换。 */
+  enemyFormationVersion?: 1
   /** 本场入场配置快照；供玩家按卡记忆，自动模拟不写。 */
   rangeMemory?: import('../../battleRangeMemory').BattleRangeSnapshot
   foeAcidLayers?: Record<string, Array<{ cutPct: number; untilMs: number }>>
@@ -46,6 +48,8 @@ export interface BattleState {
    * 战斗推进/视图重建我方规格时以此覆盖装配档位偏好（伤害与实际弹种一致）；
    * 缺省 = 无覆盖（按船装配 ammoPref/基础弹），旧档零迁移 */
   ammoIds?: Partial<Record<DamageType, string>>
+  /** 修理无人机逐舰脉冲账本。 */
+  repairDroneBy?: Record<string, import('./units').BattleRepairDroneLedger>
   /** 新虫洞趟按物品id共用库存，逐舰记录实际档；旧战斗不写。 */
   expeditionAmmo?: {
     stock: Record<string, number>
@@ -77,6 +81,8 @@ export interface BattleState {
    * 缺省 = 无覆写（旧档与既有战斗路径零迁移、零行为变化）。
    */
   foeOverride?: {
+    generatedCard?: import('../../types').AnomalyDef
+    patrolFormation?: true
     threat?: number
     waves?: ReadonlyArray<{ units: number; hpShare: number }>
     keepCardWaves?: boolean
@@ -571,6 +577,9 @@ export interface BattleState {
    * 缺省 = 不削（没带电子舰的编队逐字不变）。
    */
   meFoeRangeDebuff?: number;
+  /** 缺省为旧百分比规则，新开战显式登记；在途战斗不切换。 */
+  rangeEwVersion?: 1
+  rangeEw?: import('../rangeEw').RangeEwContest
   /**
    * **战斗内提示条**（2026-09-11 船长二次裁定：「**日志内不用显示提示，将该提示放入战斗画面内显示**
    * （和**敌方增援**统一下系统，**显示位置改为战斗窗口正上方**）」）。

@@ -934,6 +934,16 @@
         "supplyFlow": 4
       },
       {
+        "key": "drone-repair-mil",
+        "kind": "item",
+        "refId": "drone-repair-mil",
+        "rarity": "common",
+        "basePrice": 42000,
+        "demandMultiplier": 0.6,
+        "poolTarget": 9000,
+        "supplyFlow": 1
+      },
+      {
         "key": "drone-assault",
         "kind": "item",
         "refId": "drone-assault",

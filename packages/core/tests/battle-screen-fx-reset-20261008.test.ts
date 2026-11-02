@@ -7,7 +7,7 @@ import { runInNewContext } from 'node:vm'
 import { buildSimContext, L10N } from '@whale/data'
 import { createInitialState } from '../src/state'
 import { addShipToFleet } from '../src/fleetBook'
-import { startBattleFor, battleArcsFor } from '../src/combat'
+import { startBattleFor, startFleetBattleFor, battleArcsFor } from '../src/combat'
 import { pushBattleFx } from '../src/combatFx'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import * as core from '../src/index'
@@ -44,11 +44,13 @@ function harness() {
   const slots: any[] = []
   let index = 0, now = 1000
   const react = {
+    memo: (component: unknown) => component,
     createElement: (type: unknown, props: Record<string, any> | null, ...children: unknown[]) => ({ type, props: props ?? {}, children }),
     useRef: (value: unknown) => { const at = index++; return slots[at] ??= { current: value } },
     useState: (value: unknown) => { const at = index++; if (!(at in slots)) slots[at] = value; return [slots[at], (v: unknown) => { slots[at] = v }] },
     useMemo: (fn: () => unknown) => { index++; return fn() },
     useEffect: () => { index++ },
+    useLayoutEffect: () => { index++ },
   }
   const module = { exports: {} as { BattleScreen: (props: unknown) => unknown } }
   const realRequire = createRequire(import.meta.url)
@@ -114,6 +116,22 @@ describe('实际战场渲染链换场与读档', () => {
     expect(h.render().filter(n => String(n.props.className ?? '').includes('app-bts-drone-wing'))).toHaveLength(0)
     for (const pool of Object.values(b.dronePools!)) pool.launched = true
     expect(battleArcsFor(h.engine.state, h.ctx)!.myUnits[0]!.drones[0]!.deployed).toBe(2)
+  })
+  it('密集模式玩家容器按舰体定宽，不被更宽血条撑偏锚点', () => {
+    const h = harness(), state = h.engine.state
+    const ids = [state.shipId, ...Array.from({ length: 4 }, () => addShipToFleet(state, 'sh-falconet'))]
+    const battle = startFleetBattleFor(state, h.ctx, ids, 'ano-training')!
+    battle.lastTickGameMs = 1000
+    state.expedition = { ...state.expedition, active: true, phase: 'battle', anomalyId: 'ano-training', battle }
+    const columns = h.render().filter(node => String(node.props.className ?? '').split(' ').includes('is-me')
+      && typeof node.props['data-tag'] === 'string')
+    expect(columns).toHaveLength(ids.length)
+    for (const column of columns) {
+      const sprite = column.children.find(child => child && typeof child === 'object'
+        && 'props' in child && typeof (child as Node).props.size === 'number') as Node
+      expect(sprite).toBeDefined()
+      expect(column.props.style.width).toBe(sprite.props.size)
+    }
   })
   it('紧凑界面保持同源演出单点，复位在舰位计算之前', () => {
     const source = readFileSync(new URL('apps/desktop/src/renderer/src/features/combat/BattleScreen.tsx', root), 'utf8')

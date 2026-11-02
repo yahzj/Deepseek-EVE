@@ -10,7 +10,7 @@ export type StationAction =
   | { kind: 'refine' | 'recycle' | 'unbox'; itemId: string }
   | { kind: 'manufacturing'; blueprintId: string }
   | { kind: 'lab'; recipeId: string }
-  | { kind: 'hauling'; aSiteId: string | null; bSiteId: string | null }
+  | { kind: 'hauling'; aSiteId: string | null; bSiteId: string | null; requestedM3?: number }
   | { kind: 'siteDeliver'; siteId: string }
 
 export interface PendingStationActivity {
@@ -121,6 +121,7 @@ export function cleanPendingStationActivity(raw: unknown): PendingStationActivit
       if (!(action.aSiteId === null || text(action.aSiteId)) || !(action.bSiteId === null || text(action.bSiteId))) return undefined
       if (action.aSiteId === action.bSiteId) return undefined
       clean = { kind: action.kind, aSiteId: action.aSiteId, bSiteId: action.bSiteId }
+      if (typeof action.requestedM3 === 'number' && Number.isSafeInteger(action.requestedM3) && action.requestedM3 > 0) clean.requestedM3 = action.requestedM3
       break
     default: return undefined
   }

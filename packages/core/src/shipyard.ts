@@ -23,6 +23,7 @@ import { cancelHaulingOnSwitch } from './hauling'
 import { cancelAiTask } from './aiCores'
 import { countWare, removeWare } from './inventory'
 import { quickRepairFactor } from './repair'
+import { noteOfflineRepairKits } from './offlineCombatStats'
 import { plugBlockReasonOf } from './plugs'
 import {
   noteShipWreck,
@@ -71,6 +72,7 @@ export function ownsShip(state: GameState, shipId: string): boolean {
 
 /** 换驾驶只读预检；善后与召回只在全部校验通过后执行。 */
 export function changeShipBlockReason(state: GameState, shipId: string, ctx: SimContext): CoreBlockReason | null {
+  if (state.hauling.active && state.hauling.fleetLeg) return { error: 'hauling-return-required', errorId: 'core.industrial.006' }
   // **进洞船只所有行为锁定**（船长 2026-09-13：锁，进洞船只所有行为都锁定。包括维修。）
   const lock = shipLockedReason(state, shipId, '换驾驶到它')
   if (lock) return { error: lock }
@@ -620,6 +622,7 @@ export function repairWithKitsFor(
       fleetShip.armorPct = Math.min(1, Math.round(((fleetShip.armorPct ?? 1) + heal.a / caps.capA) * 1000) / 1000)
     }
     used += 1
+    noteOfflineRepairKits(state, 1)
     usedByType[kitId] = (usedByType[kitId] ?? 0) + 1
   }
   if (used > 0) {

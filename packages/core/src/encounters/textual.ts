@@ -101,6 +101,7 @@ export function resolveTextual(state: GameState, ctx: SimContext, viaFlee: boole
 
 /** 玩家指令：快速脱离（立即按文字三档结算） */
 export function fleeEncounter(state: GameState, ctx: SimContext): CommandResult {
+  if (state.encounter.pirate && state.encounter.battle) return { ok: false, error: 'encounter-in-battle', errorId: 'core.encounters.003' }
   const enc = state.encounter
   if (!enc.active || enc.battle) return { ok: false, error: '当前没有可脱离的遭遇。', errorId: 'core.encounters.007' }
   resolveTextual(state, ctx, true)

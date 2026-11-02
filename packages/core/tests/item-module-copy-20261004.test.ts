@@ -43,7 +43,7 @@ describe('物品装备说明双语与数据守恒', () => {
       return item.id === 'mat-wh-essence' ? { ...item, name: '信号谜质' } : item
     })
     const strip = (entries: typeof ITEMS) => entries.map(({ description: _description, ...rest }) => rest)
-    const added = new Set(['ammo-kinetic-3', 'ammo-explosive-3', 'ammo-plasma-3', 'blackbox-c', 'blackbox-d', 'deep-space-probe', 'drone-jawclaw',
+    const added = new Set(['ammo-kinetic-3', 'ammo-explosive-3', 'ammo-plasma-3', 'blackbox-c', 'blackbox-d', 'deep-space-probe', 'drone-jawclaw', 'drone-repair-mil',
       'invasion-beacon-r', 'invasion-beacon-c', 'invasion-beacon-h', 'invasion-beacon-d'])
     expect(ITEMS.filter(item => added.has(item.id)).map(item => item.id).sort()).toEqual([...added].sort())
     expect(strip(ITEMS.filter(item => !added.has(item.id)))).toEqual(strip(adjusted))
@@ -80,7 +80,11 @@ describe('物品装备说明双语与数据守恒', () => {
     expect(MODULES.filter(mod => newIds.has(mod.id))).toHaveLength(15)
     const current = strip(MODULES.filter(mod => !newIds.has(mod.id)))
     expect(current.map(mod => mod.id)).toEqual(adjusted.map(mod => mod.id))
-    for (const expected of strip(adjusted)) expect(current.find(mod => mod.id === expected.id), expected.id).toEqual(expected)
+    for (const expected of strip(adjusted)) {
+      const actual = current.find(mod => mod.id === expected.id)
+      if (expected.id === 'mod-lair-ecm-h') expect(actual, expected.id).toMatchObject(expected)
+      else expect(actual, expected.id).toEqual(expected)
+    }
   })
   it.each(ITEMS)('$id 物品说明中英唯一表接线一致，名称不变', (item) => {
     const pair = Object.entries(L10N).find(([id, entry]) => (id.startsWith('item.') || id === 'ui.stellar.002') && entry.zh === item.description)
@@ -255,9 +259,10 @@ describe('真实参数行承接说明数字', () => {
       expect(text).toContain('多装递减')
       expect(text).not.toMatch(/60%|上限|封顶|首次出击/)
     }
-    const ecm = MODULES.find(mod => core.stackingOf(mod).kind === 'ecm')!
+    const ecm = MODULES.find(mod => mod.id === 'mod-lair-ecm-h')!
     expect(ecm).toBeDefined()
-    expect(display.moduleInfoLines(ecm).map(row => textOf(row.v)).join('|')).toContain('60%')
+    expect(display.moduleInfoLines(ecm).map(row => textOf(row.v)).join('|')).toContain('+40')
+    expect(display.moduleInfoLines(ecm).map(row => textOf(row.v)).join('|')).toContain('强度相加')
   })
   it.each(['zh', 'en'] as const)('%s 全目录的速度加成只显示一次，不把非推进器误称加力推进', locale => {
     language.value = locale
@@ -347,8 +352,7 @@ describe('真实参数行承接说明数字', () => {
     expect(rowsOf('mod-drone-shield-2')).toContain('70%')
     expect(rowsOf('mod-drone-shield-3')).toContain('100%')
     expect(rowsOf('mod-wh-a-hangar')).toContain('40')
-    expect(rowsOf('mod-lair-ecm-h')).toContain('15%')
-    expect(rowsOf('mod-lair-ecm-h')).toContain(String(core.FOE_RANGE_DEBUFF_FLOOR_M))
+    expect(rowsOf('mod-lair-ecm-h')).toContain('+40')
     expect(rowsOf('mod-lair-beam-r')).toContain('3 发')
     expect(rowsOf('mod-lair-beam-r')).toContain('0.1 秒')
     expect(rowsOf('mod-lair-blink-r')).toContain('2000 m')

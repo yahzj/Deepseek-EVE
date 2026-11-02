@@ -22,7 +22,7 @@ export interface DroneDefense {
 
 /** 无人机分类（2026-09-10 船长拍板；与射程分类一一对应：侦察机 2500 / 战斗机 3000 /
  * 攻坚机 3500 / 哨戒机 5000） */
-export type DroneClass = 'scout' | 'combat' | 'assault' | 'sentry'
+export type DroneClass = 'scout' | 'combat' | 'assault' | 'sentry' | 'repair'
 
 /** 敌方战术性格（V11）：brawl 贴脸近战 / orbit 中距绕圈 / kite 拉远吊打 */
 export type FoeTactic = 'brawl' | 'orbit' | 'kite'

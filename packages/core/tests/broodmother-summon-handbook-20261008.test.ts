@@ -13,7 +13,6 @@ import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { alienFixture } from '../../../tools/alien-invasion-fixture'
 import type { BattleState } from '../src/state'
 import type { AnomalyDef, FoeShipDef } from '../src/types'
-import { roundedFoeHp } from './helpers/rounded-foe-hp'
 
 const ctx = buildSimContext()
 const card = ctx.anomalies.get('alien-broodmother')!
@@ -22,6 +21,7 @@ function world(entry: AnomalyDef = card) {
   const { state } = alienFixture(ctx, 'heavy', 611, 4)
   const foes = activeFoeSpecsOf(entry, ctx.balance.battle, 3)
   const battle = createBattleState(createPlayerSpec(state, ctx, state.shipId)!, foes, 0, 200)
+  battle.enemyFormationVersion = 1
   battle.distanceM = 200
   battle.waveIdx = 3
   const mother = foes.find(f => f.foeSummonEscort)!
@@ -77,15 +77,15 @@ describe('巢母主动召唤星髓成虫', () => {
     expect(supported.every(f => w.battle.units[f.tag]!.weapons.every(ms => ms > 0))).toBe(true)
   })
 
-  it.each([0, 1, 2, 3])('空位%s只补实际空位，活援军计入4艘上限，满编周期不积累', room => {
+  it.each([0, 1, 2, 3])('原编成空位%s只补实际空位，新增护航不扩大召唤额度，满编周期不积累', room => {
     const w = world()
     for (const f of w.foes.slice(1, room + 1)) down(w.battle, f.tag)
     summon(w)
     expect(w.battle.foeReviveCount ?? 0).toBe(room)
-    expect(foesWithSupport(w.battle, w.foes).filter(f => isAlive(w.battle, f.tag))).toHaveLength(4)
+    expect(foesWithSupport(w.battle, w.foes).filter(f => isAlive(w.battle, f.tag))).toHaveLength(6)
     summon(w, 60000)
     expect(w.battle.foeReviveCount ?? 0).toBe(room)
-    const target = foesWithSupport(w.battle, w.foes).find(f => f.tag !== w.mother.tag && isAlive(w.battle, f.tag))!
+    const target = foesWithSupport(w.battle, w.foes).find(f => !f.foeFormationAdded && f.tag !== w.mother.tag && isAlive(w.battle, f.tag))!
     down(w.battle, target.tag)
     summon(w, 60001)
     expect(w.battle.foeReviveCount ?? 0).toBe(room)
@@ -102,7 +102,8 @@ describe('巢母主动召唤星髓成虫', () => {
     const fresh = foesWithSupport(w.battle, w.foes).filter(f => f.tag.startsWith('sup'))
     for (const spec of fresh) {
       expect(spec.hp).toEqual(original.hp)
-      expect(spec.hp).toEqual(roundedFoeHp(derived.ships!.find(slot => slot.ship.id === ADULT)!))
+      const baseHp = activeFoeSpecsOf(card, ctx.balance.battle, 1).find(f => f.foeShipId === ADULT)!.hp
+      expect(spec.hp).toEqual(Object.fromEntries(Object.entries(baseHp).map(([layer, hp]) => [layer, Math.ceil(hp * strength)])))
       expect(spec.weapons).toEqual(original.weapons)
       expect(spec.speedMps).toBe(398)
       expect(spec.foeChargeMul).toBe(2)
@@ -123,7 +124,7 @@ describe('巢母主动召唤星髓成虫', () => {
       expect(w.battle.units[spec.tag]!.foeShipId).toBe(ADULT)
     }
     const arcs = battleArcsFor(w.state, ctx, { battle: w.battle, anomaly: card, leaderShipId: w.state.shipId })!
-    expect(arcs.foeBands.find(band => band.maxM === 2655)?.count).toBe(3)
+    expect(arcs.foeBands.find(band => band.maxM === 2655)?.count).toBe(5)
     expect(arcs.foeMounts).toContain('虫群冲锋器 T2')
     fresh[0]!.weapons[0]!.maxRangeM = 1
     expect(fresh[1]!.weapons[0]!.maxRangeM).toBe(2655)
@@ -160,6 +161,7 @@ describe('巢母主动召唤星髓成虫', () => {
     const def = ctx.ships.get('sh-megalodon')!
     const local = { ...ctx, ships: new Map(ctx.ships).set(def.id, { ...def, shieldHp: 900000, armorHp: 900000, hullHp: 900000 }) }
     w.battle = createBattleState(createPlayerSpec(w.state, local, w.state.shipId)!, w.foes, 0, 200)
+    w.battle.enemyFormationVersion = 1
     w.battle.waveIdx = 3
     w.battle.ammo = loadAmmo(w.state, local, 'kinetic', 1000)
     w.battle.ammoLoaded = { ...w.battle.ammo }

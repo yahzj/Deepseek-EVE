@@ -51,6 +51,7 @@ const DRONE_CLASS_ID: Record<DroneClass, string> = {
   combat: 'ui.labelsText.004', // 战斗机 / Combat
   assault: 'ui.labelsText.005', // 攻坚机 / Assault
   sentry: 'ui.labelsText.006', // 哨戒机 / Sentry
+  repair: 'ui.repairDrone.001',
 }
 
 /** 舰船角色（= `shipCategoryKeyOf` 的取值域）→ id */

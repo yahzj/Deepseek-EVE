@@ -148,15 +148,16 @@ describe('真实派队取数与返航入库', () => {
     expect(loaded.warehouse).toEqual(ware)
     expect(wormholeAutoReportsOf(loaded)).toHaveLength(1)
   })
-  it('统计单点识别独立设备分类，多台数量传入模拟器而非旧兜底1台', () => {
+  it('统计单点识别独立设备分类，新任务锁定设备台数且不调用旧模拟器', () => {
     const { state, fleet, stock } = team()
     const descend = vi.spyOn(sim, 'wormholeAutoDescend')
     expect(wormholeMinersInFleet(state, ctx, fleet)).toBe(4)
     expect(wormholeSalvagersInFleet(state, ctx, fleet)).toBe(4)
     expect(wormholeAutoStart(state, ctx, stock.id, fleet).ok).toBe(true)
+    expect(state.wormholeAuto![0]!.estimate!.capability).toMatchObject({ miners: 4, salvagers: 4 })
     state.gameMs = WORMHOLE_AUTO_DURATION_MS
     advanceWormholeAuto(state, ctx)
-    expect(descend.mock.calls.at(-1)![0]).toMatchObject({ miners: 4, salvagers: 4 })
+    expect(descend).not.toHaveBeenCalled()
   })
   it('混合地点真实派队采到矿后报告、仓库与重载一致，不写参与舰货仓', () => {
     controlled(['graveyard', 'vein'], { startDepth: 1 })
@@ -181,10 +182,11 @@ describe('真实派队取数与返航入库', () => {
     for (const uid of fleet) state.fleet[uid]!.fitted.high = ['mod-laser-3']
     const descend = vi.spyOn(sim, 'wormholeAutoDescend')
     expect(wormholeAutoStart(state, ctx, stock.id, fleet).ok).toBe(true)
+    expect(state.wormholeAuto![0]!.estimate!.capability).toMatchObject({ miners: 0, salvagers: 0 })
     state.gameMs = WORMHOLE_AUTO_DURATION_MS
     advanceWormholeAuto(state, ctx)
-    expect(descend.mock.calls.at(-1)![0]).toMatchObject({ miners: 0, salvagers: 0 })
+    expect(descend).not.toHaveBeenCalled()
     const gains = wormholeAutoReportsOf(state)[0]!.gains
-    expect(gains.some(row => row.itemId === 'ore-voidmother' || row.itemId.startsWith('wreck-') || row.itemId.startsWith('box-'))).toBe(false)
+    expect(gains.some(row => row.itemId === 'ore-voidmother' || row.itemId.startsWith('wreck-rare-') || row.itemId.startsWith('box-'))).toBe(false)
   })
 })

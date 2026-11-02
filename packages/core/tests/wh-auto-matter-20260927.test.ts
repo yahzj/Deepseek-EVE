@@ -50,6 +50,9 @@ function runOnce(seed: number) {
   const stockId = state.wormholeStock![0]!.id
   const started = wormholeAutoStart(state, ctx, stockId, uids)
   if (!started.ok) throw new Error(`派队失败：${started.error}`)
+  // 本组保留旧在途任务的模拟基准；新估算由signal-auto-estimate专项覆盖。
+  delete state.wormholeAuto![0]!.estimateRules
+  delete state.wormholeAuto![0]!.estimate
   state.gameMs += WORMHOLE_AUTO_DURATION_MS + 1
   advanceWormholeAuto(state, ctx)
   const report = wormholeAutoReportsOf(state)[0]

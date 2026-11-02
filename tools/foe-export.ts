@@ -498,7 +498,7 @@ function mountRows(cards: readonly AnomalyDef[]): Array<{ id: string; name: stri
     if (def?.blink !== undefined) nums.push(`闪现跃迁：被命中时把交战距离改到「本场期望距离」· 冷却 ${Math.round(def.blink.cooldownMs / 1000)} 秒（件上的 ${def.blink.distanceM}m 已不参与位移）`)
     if (def?.overlayDrive !== undefined) nums.push(`叠光：每开一火 −${def.overlayDrive.stepMs}ms 装填 · 下限 ${def.overlayDrive.floorMs}ms · 伤害 ×${def.overlayDrive.dmgMul}`)
     if (def?.flashOverload !== undefined) nums.push(`闪烁过载：闪现后护盾回满 · 结构 −上限 ${Math.round(def.flashOverload.hullCostPct * 100)}%（可扣死自毁）`)
-    if (def?.rangeDebuff !== undefined) nums.push(`射程压制：我方武器最远射程 ×${1 - def.rangeDebuff.pct}`)
+    if (def?.rangeDebuff !== undefined) nums.push(`射程电子战强度：${def.rangeDebuff.strength ?? 0}`)
     if (def?.evasionBonus !== undefined) nums.push(`闪避 ＋${Math.round(def.evasionBonus.add * 100)} 个百分点`)
     return { id, name: def?.name ?? id, note: def?.note ?? '', nums: nums.join(' · ') }
   })

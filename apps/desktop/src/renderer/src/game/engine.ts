@@ -400,6 +400,7 @@ type Listener = () => void
 
 /** 离线结算前的快照（只抄需要对比的字段，避免大对象） */
 interface OfflineSnapshot {
+  haulingActive: boolean
   gameMs: number
   isk: number
   trained: Record<string, number>
@@ -415,6 +416,8 @@ interface OfflineSnapshot {
 
 /** 离线简报：启动时若有离线结算则生成一次，展示给玩家看 */
 export interface OfflineReport {
+  /** 本次离线汇总，不保存逐场记录。 */
+  combatLines?: string[]
   /** 真实离开时长（墙钟毫秒） */
   wallAwayMs: number
   /** 本次结算推进的游戏时长（毫秒） */
@@ -446,6 +449,7 @@ export interface OfflineReport {
 function snapshotBasics(state: GameState): OfflineSnapshot {
   const cur = state.fleet[state.shipId]
   return {
+    haulingActive: state.hauling.active,
     gameMs: state.gameMs,
     isk: state.wallet.isk,
     trained: { ...state.skills.trained },
@@ -480,6 +484,25 @@ function buildOfflineReport(
 ): OfflineReport | null {
   const settledMs = state.gameMs - before.gameMs
   if (settledMs < 60_000) return null
+  const combatLines: string[] = []
+  const combat = stats?.combat
+  if (combat) {
+    const fighting = state.encounter.active && !!state.encounter.battle ? 1 : 0
+    if (combat.encounters || fighting) combatLines.push(tr('ui.offlineCombat.001', {
+      p1: combat.encounters, p2: combat.wins, p3: combat.defeats, p4: combat.escapes, p5: fighting,
+    }))
+    if (combat.encounters || combat.ammoUsed || combat.kitsUsed || combat.shipsLost) combatLines.push(tr('ui.offlineCombat.002', {
+      p1: combat.ammoUsed, p2: combat.kitsUsed, p3: combat.shipsLost,
+    }))
+    if (before.haulingActive || state.hauling.active || combat.deliveries || combat.stopReason) {
+      combatLines.push(tr('ui.offlineCombat.003', { p1: combat.deliveries, p2: combat.deliveredM3.toLocaleString('zh-CN'), p3: combat.transportIncome.toLocaleString('zh-CN') }))
+      const reasonIds = { arrival: 'ui.offlineCombat.007', interrupted: 'ui.offlineCombat.008', capacity: 'ui.offlineCombat.009', defeat: 'ui.offlineCombat.010', damage: 'ui.offlineCombat.011', loss: 'ui.offlineCombat.012' } as const
+      const statusId = state.hauling.active
+        ? state.encounter.active ? 'ui.offlineCombat.014' : state.hauling.fleetLeg?.returning ? 'ui.offlineCombat.006' : 'ui.offlineCombat.005'
+        : combat.stopReason ? reasonIds[combat.stopReason] : 'ui.offlineCombat.013'
+      combatLines.push(tr('ui.offlineCombat.004', { p1: tr(statusId) }))
+    }
+  }
 
   const itemDeltas = positiveDeltas(before.warehouse, state.warehouse.items)
   // 当前船货仓也可能有离线进账（远征战利品入舱）
@@ -559,6 +582,7 @@ function buildOfflineReport(
 
   return {
     wallAwayMs,
+    combatLines,
     settledMs,
     overflowMs,
     iskDelta: state.wallet.isk - before.isk,
@@ -594,6 +618,7 @@ function offlineReportLogText(r: OfflineReport): string {
   if (r.skillsUp.length > 0) parts.push(tr("ui.engine.015", { p1: r.skillsUp.join(tr("ui.MatterTechTab.017")) }))
   if (r.learnedIn.length > 0) parts.push(tr("ui.engine.016", { p1: r.learnedIn.join(tr("ui.MatterTechTab.017")) }))
   if (r.coreJobs.length > 0) parts.push(tr("ui.engine.017", { p1: r.coreJobs.join('；') }))
+  parts.push(...(r.combatLines ?? []))
   return tr("ui.engine.018", { p1: parts.join('；') })
 }
 
@@ -3060,7 +3085,7 @@ export class GameEngine {
   }
 
   rememberPreparationSquad(kind: import('@whale/core').PreparationSquadKind, squad: readonly string[]): void {
-    if (notePreparationSquad(this.state, kind, squad)) { this.notify(); void this.persist() }
+    if (notePreparationSquad(this.state, kind, squad, this.ctx)) { this.notify(); void this.persist() }
   }
 
   wormholePrepareFromTemplate(shipIds: readonly string[], request: WormholePreparationRequest, id: string) {
@@ -3917,8 +3942,8 @@ export class GameEngine {
   }
 
   /** 2026-09-09 长途运输：开始（任选一条两端点航线；不要求当前停靠在端点——引擎先飞就位段） */
-  startHaulingAt(aSiteId: string | null, bSiteId: string | null): CommandResult {
-    const result = startHauling(this.state, aSiteId, bSiteId, this.ctx)
+  startHaulingAt(aSiteId: string | null, bSiteId: string | null, requestedM3?: number): CommandResult {
+    const result = startHauling(this.state, aSiteId, bSiteId, this.ctx, requestedM3)
     if (result.ok) {
       void this.persist()
       this.notify()
@@ -3934,6 +3959,14 @@ export class GameEngine {
       this.notify()
     }
     return result
+  }
+
+  stopHaulingAtArrival(): void {
+    if (this.state.hauling.fleetLeg) {
+      this.state.hauling.fleetLeg.stopAtArrival = true
+      void this.persist()
+      this.notify()
+    }
   }
 
   cancelPendingStationActivityNow(): boolean {

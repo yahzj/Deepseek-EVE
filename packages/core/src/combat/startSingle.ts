@@ -11,7 +11,7 @@ import { createFoeSpecs } from './foes/catalog'
 import { battleOpenM, desiredRangeFor, rFamilyDesireOf, battleMaxDistanceM } from './foes/tactics'
 import { createBattleState, announceStealthStart, announceSupportCallStart, initFoeDronePools, initFoeRepairPulses } from './foes/state'
 import { confirmedBattleDesire, battleCardRangeOf, battleRangeSnapshot } from './battleRangeMemory'
-import { applyFoeRangeDebuff } from './foeRange'
+import { applyFoeRangeDebuff, applyMeJammerDebuff, foeRangeEwSpecsOf } from './foeRange'
 import { ammoLoadTotals, ammoKeyOf, loadAmmoTier, ammoTierFallbackLog } from './combatAmmo'
 import { buildDronePoolsFor } from './combatDrones'
 import { initDroneLaunch } from './droneLaunch'
@@ -20,6 +20,7 @@ import { pdEnabledFor } from './droneWindow'
 import { foeJudgedThreatOf } from './foePower'
 import { preloadRepairFor, REPAIR_PULSE_MS, preloadShieldChargeFor, preloadShieldFieldFor } from './combatRepair'
 import { equipmentCycleMsOf } from '../equipment'
+import { syncRangeEw } from './rangeEw'
 
 export function startBattleFor(
   state: GameState,
@@ -43,7 +44,8 @@ export function startBattleFor(
   if (anomaly) noteFoeShipsSeen(state, anomaly)
   if (!anomaly) return null
   const bal = ctx.balance.battle
-  const me = createPlayerSpec(state, ctx, shipId)
+  const refs = { weaponRanges: [] as Array<{ baseM: number; bonusMul: number }> }
+  const me = createPlayerSpec(state, ctx, shipId, undefined, refs)
   if (!me) return null
   /**
    * **满值上限**（血条分母）——必须在**承伤持久化之前**留一份。
@@ -71,7 +73,11 @@ export function startBattleFor(
   const foes = waves
     ? createFoeSpecs(anomaly, bal, { units: waves[0]!.units, hpShare: waves[0]!.hpShare })
     : createFoeSpecs(anomaly, bal)
-  const openM = battleOpenM(me, foes, bal)
+  const rangeTemplate = createBattleState(me, foes, atGameMs, 0)
+  rangeTemplate.rangeEwVersion = 1
+  syncRangeEw(state, ctx, rangeTemplate, foes, shipId)
+  applyMeJammerDebuff(me, rangeTemplate.rangeEw!.meCut, refs.weaponRanges)
+  const openM = battleOpenM(me, foeRangeEwSpecsOf(rangeTemplate, foes), bal)
   // 船长2026-10-21：显式距离/战前确认 → 实际卡记忆 → 主武器默认档；null为自动距离。
   // 普通战斗将记忆钳到本次开战距离；入侵保留跨波目标，实际距离仍受逐拍上限约束。
   const rawDesire =
@@ -90,8 +96,13 @@ export function startBattleFor(
    * 口径与落点见 `rFamilyDesireOf` 的头注；**非 R 族一律不动**（返回 `null`）。返回 `null` ⇒
    * 期望距离与开战距离都逐字走原口径。
    */
-  const rDesire = rFamilyDesireOf(me, foes, bal)
+  const rDesire = rFamilyDesireOf(me, foes, bal, rangeTemplate)
   const battle = createBattleState(me, foes, atGameMs, desire)
+  battle.enemyFormationVersion = 1
+  battle.rangeEwVersion = 1
+  battle.rangeEw = rangeTemplate.rangeEw
+  if (rangeTemplate.meFoeRangeDebuff !== undefined) battle.meFoeRangeDebuff = rangeTemplate.meFoeRangeDebuff
+  syncRangeEw(state, ctx, battle, foes, shipId)
   /**
    * **把本场的敌群覆写照原样存下**（2026-09-25 修）：`advanceBattleFor` 每拍从 `ctx` 重建敌卡，
    * 不存就会**只有第 0 波吃到覆写**——多波卡的后续波会回到满强度（H 族遇袭 ×0.75 的 2 波卡首当其冲）。

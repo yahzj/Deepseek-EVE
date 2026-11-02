@@ -6,6 +6,7 @@ import { cleanFx, cleanDronePools, cleanDroneLaunchBy, cleanFoeDronePools, clean
 import { cleanRepair, cleanShieldCharge, cleanFoeRepairLedger, cleanShieldField } from './repair'
 import { cleanBattleRangeSnapshot } from '../../battleRangeMemory'
 import { BATTLE_PERSIST_KEYS } from './fields'
+import { cleanPirateCard } from '../../encounters/save'
 
 export function cleanBattle(raw: unknown): BattleState | null {
   const b = asRaw(raw)
@@ -99,6 +100,9 @@ export function cleanBattle(raw: unknown): BattleState | null {
   const foeOverride = ((): BattleState['foeOverride'] => {
     if (foeOverrideRaw === null || typeof foeOverrideRaw !== 'object') return undefined
     const out: NonNullable<BattleState['foeOverride']> = {}
+    const generatedCard = cleanPirateCard(foeOverrideRaw.generatedCard)
+    if (generatedCard) out.generatedCard = generatedCard
+    if (foeOverrideRaw.patrolFormation === true) out.patrolFormation = true
     const t = foeOverrideRaw.threat
     if (typeof t === 'number' && Number.isFinite(t)) out.threat = Math.max(1, Math.round(t))
     const s = foeOverrideRaw.strengthMul
@@ -151,6 +155,14 @@ export function cleanBattle(raw: unknown): BattleState | null {
   const shieldCharge = cleanShieldCharge(b.shieldCharge)
   /** 逐舰账本（2026-09-16 逐舰维修）：键 = 舰 tag；坏项丢键、整表空 ⇒ undefined（零迁移） */
   const repairBy = cleanLedgerMap(b.repairBy, cleanRepair)
+  const repairDroneBy = cleanLedgerMap(b.repairDroneBy, raw => {
+    const row = asRaw(raw)
+    const pulses = cleanPosNum(row.pulses), kitsUsed = cleanPosNum(row.kitsUsed)
+    if (pulses === undefined || kitsUsed === undefined || !Number.isSafeInteger(pulses) || !Number.isSafeInteger(kitsUsed)) return undefined
+    const kitsUsedByType = cleanCountMap(row.kitsUsedByType) ?? {}
+    if (Object.values(kitsUsedByType).reduce((sum, n) => sum + n, 0) !== kitsUsed) return undefined
+    return { pulses, kitsUsed, kitsUsedByType }
+  })
   /**
    * **敌方后勤账本**（2026-09-16 船长）：`{ nextPulseAtMs, pulses, healed }`——整块缺/坏 ⇒ undefined
    * （零迁移：老档在途战斗本来就没有敌方后勤舰）。`pulses`/`healed` 取有限非负整数，`nextPulseAtMs` 可缺省。
@@ -286,6 +298,8 @@ export function cleanBattle(raw: unknown): BattleState | null {
   /** **本场 BOSS 阵亡时刻**（2026-09-27 船长令）：只收非负有限数；坏值/缺省 ⇒ 不写（零迁移） */
   const bossDownAtMs = cleanPosNum(b.bossDownAtMs)
   const cleaned: Partial<Record<keyof BattleState, unknown>> = {
+    ...(b.rangeEwVersion === 1 ? { rangeEwVersion: 1 } : {}),
+    ...(b.enemyFormationVersion === 1 ? { enemyFormationVersion: 1 } : {}),
     ...(() => {
       const now = Math.max(0, numf(b.lastTickGameMs, 0))
       const foeAcidLayers = cleanLedgerMap(b.foeAcidLayers, (raw) => {
@@ -396,6 +410,7 @@ export function cleanBattle(raw: unknown): BattleState | null {
   ...(shieldCharge !== undefined ? { shieldCharge } : {}),
     // ── 2026-09-16 逐舰维修（船长裁定「甲」）：逐舰账本同样**必须随档**（丢了 ⇒ 僚舰的组件凭空消失）──
     ...(repairBy !== undefined ? { repairBy } : {}),
+    ...(repairDroneBy !== undefined ? { repairDroneBy } : {}),
     ...(shieldChargeBy !== undefined ? { shieldChargeBy } : {}),
     // 2026-09-20 力场账本（丢了 ⇒ 战中重载后力场计时重置 = 白赚一跳）
     ...(shieldFieldBy !== undefined ? { shieldFieldBy } : {}),

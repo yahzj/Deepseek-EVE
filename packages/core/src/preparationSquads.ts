@@ -1,4 +1,5 @@
 import type { GameState } from './state'
+import type { SimContext } from './types'
 
 export const PREPARATION_SQUAD_KINDS = ['signal-manual', 'signal-auto', 'wormhole-manual', 'wormhole-auto', 'weekend', 'combat'] as const
 export type PreparationSquadKind = (typeof PREPARATION_SQUAD_KINDS)[number]
@@ -34,11 +35,23 @@ export function preparationSquadOf(state: GameState, kind: PreparationSquadKind,
 }
 
 /** 只改偏好，保留显式空；不换主控、不停活动或启动任务。 */
-export function notePreparationSquad(state: GameState, kind: PreparationSquadKind, squad: readonly string[]): boolean {
+export function notePreparationSquad(state: GameState, kind: PreparationSquadKind, squad: readonly string[], ctx?: SimContext): boolean {
   if (kind === 'combat' && (state.expedition.active || state.encounter.active || state.awayGalaxy !== null || state.mining.active || state.salvaging.active || state.hauling.active || state.transit.active || state.standby.active || state.sideTasks.deliver !== null)) return false
   const clean = cleanSquad(squad).filter(id => state.fleet[id] !== undefined)
   const previous = state.preparationSquads?.[kind]
   if (previous && previous.length === clean.length && previous.every((id, index) => id === clean[index])) return false
   state.preparationSquads = { ...state.preparationSquads, [kind]: clean }
+  if (ctx && kind === 'combat') noteIndustrialFleetRisk(state, ctx)
   return true
+}
+
+/** 成功编队即记忆，后来移出也保留首次提示；旧档当前名单可补记一次。 */
+export function noteIndustrialFleetRisk(state: GameState, ctx: SimContext): void {
+  if (state.industrialFleetRiskSeen) return
+  const ids = new Set([state.shipId, ...(state.preparationSquads?.combat ?? [])])
+  const miners = [...ids].filter(id => {
+    const ship = state.fleet[id]
+    return ship && ctx.ships.get(ship.defId ?? id)?.role === 'industrial'
+  })
+  if (miners.length >= 2) state.industrialFleetRiskSeen = true
 }
