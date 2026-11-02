@@ -16,23 +16,44 @@ export interface SfxCategoryVolumes {
   combat: number
   progress: number
   ui: number
+  music: number
+  ambient: number
 }
 
 export interface SfxPrefs {
   muted: boolean
   master: number
   categories: SfxCategoryVolumes
+  /**
+   * 战斗重复音的**音高随机幅度（音分）**：0 = 关；默认 100（= ±1 个半音，船长 2026-11-02 口径
+   * 「1200 音分的单位里上下浮动 100 音分」）。只作用于带 `pitchJitter` 标记的 cue。
+   */
+  pitchJitterCents: number
 }
 
-/** 默认偏好（船长 2026-11-02 确认：总音量 70%、初始不静音） */
+/** 音高随机幅度上限（音分）：= 1 个半音 */
+export const PITCH_JITTER_MAX_CENTS = 100
+
+/** 默认偏好（船长 2026-11-02 确认：总音量 70%、初始不静音；音乐 55% / 环境 45%；战斗音高 ±100 音分） */
 export function defaultSfxPrefs(): SfxPrefs {
-  return { muted: false, master: 0.7, categories: { alarm: 1, combat: 0.6, progress: 0.7, ui: 0.5 } }
+  return {
+    muted: false,
+    master: 0.7,
+    categories: { music: 0.55, ambient: 0.45, alarm: 1, combat: 0.6, progress: 0.7, ui: 0.5 },
+    pitchJitterCents: PITCH_JITTER_MAX_CENTS,
+  }
 }
 
 /** 音量钳制（0～1；非有限数按 0 处理，避免 NaN 静默污染） */
 export function clampVolume(v: number): number {
   if (!Number.isFinite(v)) return 0
   return Math.min(1, Math.max(0, v))
+}
+
+/** 音高抖动幅度钳制（0～100 音分，取整数） */
+export function clampPitchJitter(v: number): number {
+  if (!Number.isFinite(v)) return 0
+  return Math.min(PITCH_JITTER_MAX_CENTS, Math.max(0, Math.round(v)))
 }
 
 /** 宽容读取本机存下的 JSON（坏了按默认；逐字段钳制，不因一个坏字段整份作废） */
@@ -57,6 +78,8 @@ export function parseSfxPrefs(raw: string | null | undefined): SfxPrefs {
     muted: o.muted === true,
     master: typeof o.master === 'number' ? clampVolume(o.master) : def.master,
     categories,
+    pitchJitterCents:
+      typeof o.pitchJitterCents === 'number' ? clampPitchJitter(o.pitchJitterCents) : def.pitchJitterCents,
   }
 }
 
@@ -68,6 +91,19 @@ export function effectiveGain(cueId: SfxCueId, prefs: SfxPrefs): number {
   const cat = clampVolume(prefs.categories[cue.category])
   const master = clampVolume(prefs.master)
   return clampVolume(master * cat * cue.gain)
+}
+
+/**
+ * 播放速率 = 音高随机。`±cents` 音分对应频率比 `2^(±cents/1200)`（1200 音分 = 1 个八度）。
+ * `cents <= 0` 或随机源异常 ⇒ 1（原调）。调用方需同时把 `preservesPitch` 设为 false 才会真的变调
+ * （浏览器默认 true = 只变速不变调，2026-11-02 实测）。
+ */
+export function pitchRateFor(cents: number, random: () => number): number {
+  const limit = clampPitchJitter(cents)
+  if (limit <= 0) return 1
+  const raw = random()
+  const unit = Number.isFinite(raw) ? Math.min(1, Math.max(0, raw)) * 2 - 1 : 0
+  return Math.pow(2, (unit * limit) / 1200)
 }
 
 /** 同一音效的最短间隔判定（上次播放时刻缺省 = 可以播） */
@@ -148,6 +184,13 @@ export const LOG_CUE_RULES: Readonly<Record<string, LogCueRule>> = {
   'core.weekend.001': { cue: 'trade-done' },
   'core.weekend.002': { cue: 'trade-done' },
   'core.weekend.043': { cue: 'trade-done' },
+  // 操作被拒（2026-11-02 追加 · UI 反馈）：只登记**玩家操作被拒**类 warn 日志，不铺全部 warn
+  'core.engine.009': { cue: 'ui-error' },
+  'core.engine.010': { cue: 'ui-error' },
+  'core.skillLicense.005': { cue: 'ui-error' },
+  'core.industry.003': { cue: 'ui-error' },
+  'core.industry.005': { cue: 'ui-error' },
+  'core.manufacturing.001': { cue: 'ui-error' },
 }
 
 /** 日志 → 语义 id；只看精确规则（+ 参数闸）。无匹配返回 null（静默） */

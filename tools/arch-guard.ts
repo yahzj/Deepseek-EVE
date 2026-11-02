@@ -377,6 +377,18 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
     file: 'apps/desktop/src/renderer/src/game/audio/rules.ts',
     exported: true,
   },
+  {
+    concept: 'BGM/环境场景解析（战斗>虫洞>入侵>停靠>太空 · 2026-11-02 追加批）',
+    symbol: 'resolveSfxScene',
+    file: 'apps/desktop/src/renderer/src/game/audio/scene.ts',
+    exported: true,
+  },
+  {
+    concept: '音高随机换速率（音分 → playbackRate · 2026-11-02 追加批）',
+    symbol: 'pitchRateFor',
+    file: 'apps/desktop/src/renderer/src/game/audio/rules.ts',
+    exported: true,
+  },
 ]
 
 /** F4：渲染层一级页/面板不许自己建仿真上下文（那是 `engine.ts` 的活） */

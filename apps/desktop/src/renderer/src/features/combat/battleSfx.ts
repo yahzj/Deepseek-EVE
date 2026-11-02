@@ -41,7 +41,18 @@ function handleFx(fx: BattleFx): void {
     return
   }
   if (fx.pd === true) return
-  if (fx.side === 'me' && fx.src !== 'drone') playCue('combat-fire')
+  if (fx.side === 'me' && fx.src !== 'drone') {
+    // 按弹种分三条（缺文件时播放层回落到旧 combat-fire）；未命中单独一条
+    const byType: Record<BattleFx['type'], 'combat-fire-kinetic' | 'combat-fire-explosive' | 'combat-fire-plasma'> = {
+      kinetic: 'combat-fire-kinetic',
+      explosive: 'combat-fire-explosive',
+      plasma: 'combat-fire-plasma',
+    }
+    playCue(byType[fx.type])
+    if (!fx.hit) playCue('combat-miss')
+  } else if (fx.side === 'foe') {
+    playCue('combat-foe-fire')
+  }
   if (fx.hit) playCue(fx.side === 'me' ? 'combat-hit' : 'combat-hurt')
 }
 

@@ -40,6 +40,11 @@ import { WeekendSummaryView } from './panels/WeekendSummary'
 import { PlugExchangeModal } from './panels/PlugExchange'
 import { InvasionAlarm, InvasionFireworks, ALARM_TOTAL_MS, FIREWORKS_MS } from './panels/InvasionFx'
 import { playSfx } from './game/sfx'
+/**
+ * 场景音频（2026-11-02 追加批）：引擎状态 + 战场是否上屏 → BGM/环境场景。
+ * 挂在 `battleOnStage` 定义之后（该行之上不能有早退分支，本 hook 无条件调用）。
+ */
+import { useSceneAudio } from './game/audio/useSceneAudio'
 import { FitPage } from './pages/FitPage'
 import { ShipPage, type ShipTab } from './pages/ShipPage'
 import { ItemsPage } from './pages/ItemsPage'
@@ -998,6 +1003,8 @@ async function applyLayoutAndReload(): Promise<void> {
   const [prepOpen, setPrepOpen] = useState(false)
   /** 战场是否正盖在界面上（挂载 ≠ 上屏：`battleOpen` 为假时战场什么都不渲染，不算盖着） */
   const battleOnStage = battleMounted && battleOpen
+  /** BGM / 环境音（2026-11-02 追加批）：场景变化才切曲；隐藏/最小化由内部生命周期暂停 */
+  useSceneAudio({ state: engine.state, battleOnStage })
   /**
    * **入侵警报演出**（**船长 2026-09-25 令**：「当入侵发生时，游戏屏幕的正上方和正下方出现警告式的红灯
    * 闪烁……**警告灯闪烁数次后，再弹出通讯**」＋ 同日补定「**开局 ＋ 旗舰现身各闪一次**」）。

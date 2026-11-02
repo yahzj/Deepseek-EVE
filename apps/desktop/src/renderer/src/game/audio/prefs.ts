@@ -66,6 +66,7 @@ export function useSfxPrefs(): {
   setMaster: (v: number) => void
   setMuted: (muted: boolean) => void
   setCategory: (category: SfxCategory, v: number) => void
+  setPitchJitter: (cents: number) => void
   reset: () => void
 } {
   const [prefs, setPrefs] = useState<SfxPrefs>(() => readSfxPrefs())
@@ -85,6 +86,10 @@ export function useSfxPrefs(): {
     const cur = readSfxPrefs()
     writeSfxPrefs({ ...cur, categories: { ...cur.categories, [category]: v } })
   }, [])
+  const setPitchJitter = useCallback((cents: number) => {
+    const cur = readSfxPrefs()
+    writeSfxPrefs({ ...cur, pitchJitterCents: cents })
+  }, [])
   const reset = useCallback(() => resetSfxPrefs(), [])
-  return { prefs, setMaster, setMuted, setCategory, reset }
+  return { prefs, setMaster, setMuted, setCategory, setPitchJitter, reset }
 }

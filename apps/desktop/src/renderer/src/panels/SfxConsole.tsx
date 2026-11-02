@@ -13,7 +13,6 @@
  * 存储不可用时退化为本次会话有效，面板底部会如实标注。
  */
 import { useEffect, useRef, useState } from 'react'
-import { SFX_CATEGORY_NAME_ID, SFX_CUE_IDS } from '../game/audio/cues'
 import type { SfxCueId } from '../game/audio/cues'
 import {
   clearSfxOverrides,
@@ -22,14 +21,22 @@ import {
   sfxOverrideStorageMode,
   subscribeSfxOverrides,
 } from '../game/audio/overrides'
+import {
+  SFX_CATEGORY_NAME_ID,
+  SFX_CONSOLE_GROUPS,
+  SFX_CUES,
+  SFX_CUE_IDS,
+  sfxConsoleGroupOf,
+} from '../game/audio/cues'
 import { isAudioFileName, matchSfxFileName } from '../game/audio/rules'
-import { previewCue, sfxStatusList } from '../game/audio/player'
+import { previewCue, previewLoopCue, sfxStatusList } from '../game/audio/player'
 import type { SfxCueStatus } from '../game/audio/player'
 import { useL10n } from '../i18n/locale'
 
 const SOURCE_LABEL_ID: Record<SfxCueStatus['source'], string> = {
   override: 'ui.sfx.047',
   builtin: 'ui.sfx.046',
+  fallback: 'ui.sfx.046',
   none: 'ui.sfx.048',
 }
 
@@ -63,7 +70,10 @@ export function SfxConsole({ onClose }: { onClose: () => void }) {
     }
     setUnmatched(bad)
     refresh()
-    if (first !== null) previewCue(first)
+    if (first !== null) {
+      if (SFX_CUES[first].loop === true) previewLoopCue(first)
+      else previewCue(first)
+    }
   }
 
   function pickFileFor(cueId: SfxCueId): void {
@@ -104,36 +114,51 @@ export function SfxConsole({ onClose }: { onClose: () => void }) {
             <div className="app-sfx-warn">{t('ui.sfx.050', { p1: unmatched.join('、') })}</div>
           ) : null}
           <div className="app-sfx-list">
-            {rows.map((row) => (
-              <div className="app-sfx-row" key={row.id}>
-                <div className="app-sfx-name">
-                  <span>{t(SFX_CATEGORY_NAME_ID[row.category])} · {t(row.nameId)}</span>
-                  <span className="app-dim">{row.id}</span>
+            {SFX_CONSOLE_GROUPS.map((group) => {
+              const groupRows = rows.filter((r) => sfxConsoleGroupOf(r.category) === group.key)
+              if (groupRows.length === 0) return null
+              return (
+                <div key={group.key}>
+                  <div className="app-dim">{t(group.labelId)}</div>
+                  {groupRows.map((row) => (
+                    <div className="app-sfx-row" key={row.id}>
+                      <div className="app-sfx-name">
+                        <span>
+                          {t(SFX_CATEGORY_NAME_ID[row.category])} · {t(row.nameId)}
+                          {row.pitchCents > 0 ? ` · ${t('ui.sfx.069', { p1: row.pitchCents })}` : ''}
+                        </span>
+                        <span className="app-dim">{row.id}</span>
+                      </div>
+                      <span className={`app-sfx-badge is-${row.source}`}>
+                        {t(SOURCE_LABEL_ID[row.source])}
+                        {row.source === 'builtin' && row.builtinCount > 1 ? ` ×${row.builtinCount}` : ''}
+                      </span>
+                      <div className="app-sfx-actions">
+                        <button
+                          className="app-btn is-small"
+                          disabled={row.source === 'none'}
+                          title={row.source === 'none' ? t('ui.sfx.048') : t('ui.sfx.042')}
+                          onClick={() => {
+                            if (row.loop) previewLoopCue(row.id)
+                            else previewCue(row.id)
+                          }}
+                        >
+                          {t('ui.sfx.042')}
+                        </button>
+                        <button className="app-btn is-small" onClick={() => pickFileFor(row.id)}>
+                          {t('ui.sfx.043')}
+                        </button>
+                        {row.source === 'override' ? (
+                          <button className="app-btn is-small" onClick={() => void deleteSfxOverride(row.id)}>
+                            {t('ui.sfx.044')}
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <span className={`app-sfx-badge is-${row.source}`}>
-                  {t(SOURCE_LABEL_ID[row.source])}
-                  {row.source === 'builtin' && row.builtinCount > 1 ? ` ×${row.builtinCount}` : ''}
-                </span>
-                <div className="app-sfx-actions">
-                  <button
-                    className="app-btn is-small"
-                    disabled={row.source === 'none'}
-                    title={row.source === 'none' ? t('ui.sfx.048') : t('ui.sfx.042')}
-                    onClick={() => previewCue(row.id)}
-                  >
-                    {t('ui.sfx.042')}
-                  </button>
-                  <button className="app-btn is-small" onClick={() => pickFileFor(row.id)}>
-                    {t('ui.sfx.043')}
-                  </button>
-                  {row.source === 'override' ? (
-                    <button className="app-btn is-small" onClick={() => void deleteSfxOverride(row.id)}>
-                      {t('ui.sfx.044')}
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
           <div className="app-sfx-foot">
             <span className="app-dim">

@@ -14,7 +14,7 @@
  * **版本自检**：游戏版本 v0.1.0 · 存档结构 **v31** · 最后核对 2026-11-02 · 最后跑过 2026-11-02
  * 判据：档结构版本跨一个大版本，或本域文案/清单/构建入口改动后必须重跑并更新本行。
  */
-import { readFileSync, readdirSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import {
   SFX_CATEGORIES,
@@ -24,6 +24,8 @@ import {
 } from '../apps/desktop/src/renderer/src/game/audio/cues'
 import {
   LOG_CUE_RULES,
+  PITCH_JITTER_MAX_CENTS,
+  clampPitchJitter,
   clampVolume,
   defaultSfxPrefs,
   effectiveGain,
@@ -32,11 +34,19 @@ import {
   matchSfxFileName,
   parseSfxPrefs,
   pickVariant,
+  pitchRateFor,
   productionCompletedCount,
   productionSnapshot,
   shouldPlay,
   sfxFileBase,
 } from '../apps/desktop/src/renderer/src/game/audio/rules'
+import {
+  AMBIENT_BLIP_IDS,
+  resolveSfxScene,
+  sceneAmbientOf,
+  sceneBgmOf,
+  sceneFlagsFromState,
+} from '../apps/desktop/src/renderer/src/game/audio/scene'
 
 const ROOT = process.cwd()
 const failures: string[] = []
@@ -64,13 +74,30 @@ for (const category of SFX_CATEGORIES) {
 
 /* ═══════════ 二、素材目录 ═══════════ */
 
-const SFX_DIR = join(ROOT, 'apps/desktop/src/renderer/src/assets/sfx')
-const assetFiles = readdirSync(SFX_DIR).filter((name) => isAudioFileName(name))
+const ASSET_ROOT = join(ROOT, 'apps/desktop/src/renderer/src/assets')
+const ASSET_DIRS = ['sfx', 'bgm', 'ambient'].map((dir) => join(ASSET_ROOT, dir))
+const assetFiles: string[] = []
 const covered = new Set<string>()
-for (const fileName of assetFiles) {
-  const cueId = matchSfxFileName(fileName)
-  check(cueId !== null, `素材文件名对不上语义 id（会被忽略）：${fileName}`)
-  if (cueId !== null) covered.add(cueId)
+for (const dir of ASSET_DIRS) {
+  if (!existsSync(dir)) continue
+  for (const fileName of readdirSync(dir).filter((name) => isAudioFileName(name))) {
+    assetFiles.push(fileName)
+    const cueId = matchSfxFileName(fileName)
+    check(cueId !== null, `素材文件名对不上语义 id（会被忽略）：${fileName}`)
+    if (cueId !== null) covered.add(cueId)
+  }
+}
+// BGM/环境 loop 的清单约束：音乐/环境底噪必须 loop，环境点缀必须不是 loop
+for (const id of SFX_CUE_IDS) {
+  const cue = SFX_CUES[id]
+  if (cue.category === 'music') check(cue.loop === true, `BGM 必须 loop：${id}`)
+  if (cue.category === 'ambient' && !AMBIENT_BLIP_IDS.includes(id)) check(cue.loop === true, `环境底噪必须 loop：${id}`)
+  if (AMBIENT_BLIP_IDS.includes(id)) check(cue.loop !== true, `环境点缀不能 loop：${id}`)
+  const fallback = cue.fallback
+  if (fallback !== undefined) {
+    check(fallback in SFX_CUES, `${id}：fallback 指向不存在的语义 id ${fallback}`)
+    check(fallback !== id, `${id}：fallback 不能指向自己`)
+  }
 }
 const missing = SFX_CUE_IDS.filter((id) => !covered.has(id))
 if (missing.length > 0) {
@@ -82,7 +109,10 @@ if (missing.length > 0) {
 /**
  * 起因（2026-11-02 独立审查）：`core.planet.004` 只是通讯正文 id、从没被 `addLog` 写过，
  * 之前当日志规则登记 ⇒ 死规则永远不触发，而单纯"id 在 L10N 表里存在"查不出来。
- * 判据：规则 id 字面量附近（±12 行）必须出现 `addLog(`。够粗但能挡住"只有文案、没有日志"这一类死规则。
+ * 判据（2026-11-02 追加批修正）：规则 id 字面量附近（±12 行）必须出现下面之一：
+ * - `addLog(`：直接写的日志；
+ * - `errorId`：命令失败原因——core 侧 `addLog(state,'warn',result.error,result.errorId,...)` 统一收口写日志
+ *   （操作被拒类 `ui-error` 走的就是这条：规则 id 在源码里只以 `errorId:` 字面量出现，不在 addLog 附近）。
  */
 const CORE_SRC = join(ROOT, 'packages/core/src')
 const coreFileLines = new Map<string, string[]>()
@@ -94,6 +124,7 @@ function walkCore(dir: string): void {
   }
 }
 walkCore(CORE_SRC)
+
 function ruleIdUsedByCoreLog(id: string): boolean {
   const needle = `'${id}'`
   for (const lines of coreFileLines.values()) {
@@ -101,15 +132,17 @@ function ruleIdUsedByCoreLog(id: string): boolean {
       if (!lines[i]!.includes(needle)) continue
       const from = Math.max(0, i - 12)
       const to = Math.min(lines.length - 1, i + 12)
-      for (let j = from; j <= to; j++) if (lines[j]!.includes('addLog(')) return true
+      for (let j = from; j <= to; j++) {
+        if (lines[j]!.includes('addLog(') || lines[j]!.includes('errorId')) return true
+      }
     }
   }
   return false
 }
 for (const id of Object.keys(LOG_CUE_RULES)) {
-  check(ruleIdUsedByCoreLog(id), `日志规则指向的 id 在 core 找不到 addLog 写入点（死规则）：${id}`)
+  check(ruleIdUsedByCoreLog(id), `日志规则指向的 id 在 core 找不到 addLog/errorId 写入点（死规则）：${id}`)
 }
-console.log(`· 日志规则：${Object.keys(LOG_CUE_RULES).length} 条，逐条核对 core 写入点`)
+console.log(`· 日志规则：${Object.keys(LOG_CUE_RULES).length} 条，逐条核对 core 写入点（addLog / 命令 errorId）`)
 
 /* ═══════════ 三、本地化 ═══════════ */
 
@@ -121,6 +154,7 @@ const UI_L10N_IDS = [
   'ui.sfx.030', 'ui.sfx.031', 'ui.sfx.032', 'ui.sfx.033', 'ui.sfx.035', 'ui.sfx.036', 'ui.sfx.037',
   'ui.sfx.040', 'ui.sfx.041', 'ui.sfx.042', 'ui.sfx.043', 'ui.sfx.044', 'ui.sfx.045', 'ui.sfx.046',
   'ui.sfx.047', 'ui.sfx.048', 'ui.sfx.049', 'ui.sfx.050', 'ui.sfx.051', 'ui.sfx.052', 'ui.sfx.054',
+  'ui.sfx.060', 'ui.sfx.061', 'ui.sfx.062', 'ui.sfx.063', 'ui.sfx.065', 'ui.sfx.066', 'ui.sfx.069',
 ]
 const allL10nIds = new Set<string>([...SFX_CUE_IDS.map((id) => SFX_CUES[id].nameId), ...SFX_CATEGORIES.map((c) => SFX_CATEGORY_NAME_ID[c]), ...UI_L10N_IDS])
 
@@ -176,6 +210,40 @@ check(sfxFileBase('A.1.MP3') === 'a.1', '文件名基名去扩展名错误')
 check(pickVariant(['a', 'b'], () => 0) === 'a', '变体随机：0 → 第一份')
 check(pickVariant(['a', 'b'], () => 0.999) === 'b', '变体随机：接近 1 → 最后一份')
 check(pickVariant([], () => 0) === null, '变体随机：空表 → null')
+
+/* 音高随机（船长 2026-11-02：1200 音分八度里上下浮动 100 音分） */
+check(SFX_CATEGORIES.length === 6, `分类应为 6 类，实际 ${SFX_CATEGORIES.length}`)
+check(clampPitchJitter(-5) === 0 && clampPitchJitter(999) === PITCH_JITTER_MAX_CENTS && clampPitchJitter(77.6) === 78, '音高幅度钳制错误')
+check(pitchRateFor(0, () => 0) === 1, '音高：0 音分应原调')
+check(Math.abs(pitchRateFor(100, () => 0) - Math.pow(2, -100 / 1200)) < 1e-12, '音高：-100 音分速率错误')
+check(Math.abs(pitchRateFor(100, () => 1) - Math.pow(2, 100 / 1200)) < 1e-12, '音高：+100 音分速率错误')
+check(pitchRateFor(100, () => 0.5) === 1, '音高：中值随机应原调')
+check(pitchRateFor(100, () => Number.NaN) === 1, '音高：异常随机源应原调')
+check(parseSfxPrefs('{"pitchJitterCents":250}').pitchJitterCents === PITCH_JITTER_MAX_CENTS, '音高偏好：越界应钳到上限')
+check(parseSfxPrefs('{}').pitchJitterCents === 100, '音高偏好：默认 ±100 音分')
+
+/* 场景解析（BGM/环境层） */
+const noScene = { battleOnStage: false, wormholeActive: false, invasionActive: false, docked: false }
+check(resolveSfxScene({ ...noScene, battleOnStage: true, wormholeActive: true, invasionActive: true, docked: true }) === 'battle', '场景优先级：战斗最高')
+check(resolveSfxScene({ ...noScene, wormholeActive: true, invasionActive: true, docked: true }) === 'wormhole', '场景优先级：虫洞第二')
+check(resolveSfxScene({ ...noScene, invasionActive: true, docked: true }) === 'invasion', '场景优先级：入侵第三')
+check(resolveSfxScene({ ...noScene, docked: true }) === 'docked', '场景优先级：停靠第四')
+check(resolveSfxScene(noScene) === 'space', '场景优先级：其余 = 太空')
+check(
+  sceneBgmOf('battle') === 'bgm-battle' && sceneBgmOf('wormhole') === 'bgm-wormhole' && sceneBgmOf('invasion') === 'bgm-invasion' &&
+    sceneBgmOf('docked') === 'bgm-docked' && sceneBgmOf('space') === 'bgm-space',
+  'BGM 场景映射错误',
+)
+check(
+  sceneAmbientOf('docked') === 'ambient-docked' && sceneAmbientOf('battle') === 'ambient-battle' &&
+    sceneAmbientOf('space') === 'ambient-space' && sceneAmbientOf('wormhole') === 'ambient-space' && sceneAmbientOf('invasion') === 'ambient-space',
+  '环境场景映射错误',
+)
+check(AMBIENT_BLIP_IDS.length === 3, `环境点缀应 3 条，实际 ${AMBIENT_BLIP_IDS.length}`)
+check(sceneFlagsFromState({ awayGalaxy: null, wormhole: { run: null }, weekendEvent: undefined }, false).docked === true, '场景投影：awayGalaxy=null = 停靠')
+check(sceneFlagsFromState({ awayGalaxy: 'g1', wormhole: { run: {} } }, false).wormholeActive === true, '场景投影：虫洞进行中')
+check(sceneFlagsFromState({ awayGalaxy: 'g1', weekendEvent: { endedAtWallMs: undefined } }, false).invasionActive === true, '场景投影：入侵进行中')
+check(sceneFlagsFromState({ awayGalaxy: 'g1', weekendEvent: { endedAtWallMs: 1 } }, false).invasionActive === false, '场景投影：入侵已结束')
 
 const prevSnap = productionSnapshot({ refineRuns: [{ id: 1, batchesDone: 2 }], labRuns: [{ id: 5, finishAtGameMs: 1000 }] })
 const nextSnap = productionSnapshot({ refineRuns: [{ id: 1, batchesDone: 3 }], labRuns: [{ id: 5, finishAtGameMs: 1000 }] })

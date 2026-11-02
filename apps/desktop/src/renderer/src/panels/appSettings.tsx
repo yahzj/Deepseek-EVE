@@ -558,6 +558,46 @@ export function SettingsPanel({
               />
             </div>
           ))}
+          {/**
+           * **战斗音效音高随机**（**2026-11-02 追加批 · 船长口径**：「1200 音分的八度里上下浮动 100 音分」）：
+           * 只作用于战斗里重复发生的音效（开火 / 命中 / 受击 / 未命中 / 敌方开火 / 机群击落）；
+           * 一次性重音与 BGM/环境不抖。0 = 关闭，默认 ±100 音分（= ±1 个半音），滑条可调小。
+           */}
+          <div className="app-settings-row">
+            <div className="app-settings-head">
+              <span className="app-settings-label">{t('ui.sfx.060')}</span>
+              <span className="app-settings-val">
+                {sfx.prefs.pitchJitterCents > 0
+                  ? t('ui.sfx.065', { p1: sfx.prefs.pitchJitterCents, p2: (sfx.prefs.pitchJitterCents / 100).toFixed(2) })
+                  : t('ui.sfx.063')}
+              </span>
+            </div>
+            <div className="app-settings-btns">
+              <button
+                className={`app-btn is-small${sfx.prefs.pitchJitterCents > 0 ? ' is-primary' : ''}`}
+                onClick={() => sfx.setPitchJitter(100)}
+              >
+                {t('ui.sfx.062')}
+              </button>
+              <button
+                className={`app-btn is-small${sfx.prefs.pitchJitterCents === 0 ? ' is-primary' : ''}`}
+                onClick={() => sfx.setPitchJitter(0)}
+              >
+                {t('ui.sfx.063')}
+              </button>
+            </div>
+            <input
+              className="app-settings-slider"
+              type="range"
+              min={0}
+              max={100}
+              step={5}
+              value={sfx.prefs.pitchJitterCents}
+              disabled={sfx.prefs.muted}
+              onChange={(e) => sfx.setPitchJitter(Number(e.target.value))}
+            />
+            <div className="app-settings-desc">{t('ui.sfx.061')}</div>
+          </div>
           <div className="app-settings-row">
             <div className="app-settings-head">
               <span className="app-settings-label">{t('ui.App.016')}</span>

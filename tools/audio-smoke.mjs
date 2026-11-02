@@ -197,8 +197,8 @@ async function main() {
     status: window.__whaleSfx ? window.__whaleSfx.status().length : 0
   })`)
   check(api.hasApi === true, '本机调试口 window.__whaleSfx 已挂上')
-  check(api.ids === 15, `语义清单 15 个（实际 ${api.ids}）`)
-  check(api.status === 15, `状态列表 15 条（实际 ${api.status}）`)
+  check(api.ids === 33, `语义清单 33 个（实际 ${api.ids}）`)
+  check(api.status === 33, `状态列表 33 条（实际 ${api.status}）`)
 
   // 记录清除前的来源：仓库里放了内置素材时，"全部清除"应回到「内置」而不是「未接入」
   const before = await evaluate(`({
@@ -243,10 +243,12 @@ async function main() {
   const settings = await evaluate(`({
     modal: !!document.querySelector('.app-settings-modal'),
     sliders: document.querySelectorAll('.app-settings-slider').length,
+    hasPitchRow: [...document.querySelectorAll('.app-settings-label')].some(x => x.textContent.includes('音高随机')),
     hasConsoleBtn: [...document.querySelectorAll('button')].some(x => x.textContent.trim() === '音效台')
   })`)
   check(settings.modal === true, '设置面板已打开')
-  check(settings.sliders >= 7, `设置里滑条 ≥7（缩放/字号/总音量/四类，实际 ${settings.sliders}）`)
+  check(settings.sliders >= 10, `设置里滑条 ≥10（缩放/字号/总音量/6 类分类/音高，实际 ${settings.sliders}）`)
+  check(settings.hasPitchRow === true, '设置里出现「战斗音效音高随机」一行')
   check(settings.hasConsoleBtn === true, '设置内出现「音效台」入口（本机调试门禁放行）')
 
   const openConsole = await evaluate(`(() => {
@@ -260,10 +262,15 @@ async function main() {
   const consoleState = await evaluate(`({
     modal: !!document.querySelector('.app-sfx-modal'),
     rows: document.querySelectorAll('.app-sfx-row').length,
-    hasDrop: !!document.querySelector('.app-sfx-drop')
+    hasDrop: !!document.querySelector('.app-sfx-drop'),
+    groups: (() => {
+      const text = document.querySelector('.app-sfx-list')?.textContent ?? ''
+      return { sfx: text.includes('音效'), music: text.includes('音乐'), ambient: text.includes('环境') }
+    })()
   })`)
   check(consoleState.modal === true, '音效台面板已打开')
-  check(consoleState.rows === 15, `音效台列出 15 个事件（实际 ${consoleState.rows}）`)
+  check(consoleState.rows === 33, `音效台列出 33 个事件（实际 ${consoleState.rows}）`)
+  check(consoleState.groups.sfx && consoleState.groups.music && consoleState.groups.ambient, `音效台分「音效 / 音乐 / 环境」三组（实际 ${JSON.stringify(consoleState.groups)}）`)
   check(consoleState.hasDrop === true, '音效台有拖放区')
 
   // 现代布局下设置弹窗带 clip-path：嵌套弹层会被裁掉 ⇒ 这里查"弹层中心真的能命中自己"

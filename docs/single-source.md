@@ -188,6 +188,8 @@
 | 音效语义 id 与默认增益/节流（调用点、素材文件名、音效台共用） | `SFX_CUES` · `game/audio/cues.ts` | `npm run audio:check`；`arch:guard` F2/F3 |
 | 音效播放唯一出口（音量、节流、并发、本机覆盖优先） | `playCue` · `game/audio/player.ts` | `npm run audio:check`；`arch:guard` F2/F3 |
 | 日志→音效触发规则与素材文件名匹配 | `matchLogCue` / `matchSfxFileName` · `game/audio/rules.ts` | `npm run audio:check`；`arch:guard` F2/F3 |
+| BGM/环境场景解析（战斗>虫洞>入侵>停靠>太空） | `resolveSfxScene` · `game/audio/scene.ts` | `npm run audio:check`；`arch:guard` F2/F3 |
+| 音高随机换速率（音分 → playbackRate） | `pitchRateFor` · `game/audio/rules.ts` | `npm run audio:check`；`arch:guard` F2/F3 |
 
 ## 四、工具与文档层（`tools/` · `docs/`）
 
