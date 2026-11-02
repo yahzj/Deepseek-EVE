@@ -13,12 +13,12 @@
 
 ## 统计
 
-- 非归档文档 **354** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4155** KB · **46348** 行
-- 状态分布：**未标注** 171 · **已确认/已实现** 126 · **进行中** 39 · **待裁定** 17 · **历史留档** 1
-- 孤儿文档（0 引用）**199** 份 · 状态未标注 **171** 份
+- 非归档文档 **357** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4179** KB · **46643** 行
+- 状态分布：**未标注** 173 · **已确认/已实现** 126 · **进行中** 39 · **待裁定** 18 · **历史留档** 1
+- 孤儿文档（0 引用）**202** 份 · 状态未标注 **173** 份
 - 一、常用文档（按任务查阅）：**11** 份
 - 七、评审与体检（review）：**4** 份
-- 三、设计与工作文档（需核实状态）：**299** 份
+- 三、设计与工作文档（需核实状态）：**302** 份
 - 二、其它（docs 根目录）：**3** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
 - 八、测试档说明（test-saves）：**29** 份
@@ -28,7 +28,7 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档） |
 |---|---|---|---|---|---|
-| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定 | 未标注 | — | 14 KB / 105 行 | 25 |
+| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定 | 未标注 | — | 14 KB / 105 行 | 26 |
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 6 KB / 75 行 | 9 |
 | `docs/catalog.md` | 文档目录 | 未标注 | — | 3 KB / 41 行 | 5 |
 | `docs/content-workbench.md` | 内容工作台 | 未标注 | — | 3 KB / 35 行 | 2 |
@@ -49,22 +49,25 @@
 | `docs/review/pending-decisions-20260910.md` | 待船长裁决清单（2026-09-10 · 二号整理，供逐条审核） | 未标注 | 2026-09-10 | 29 KB / 374 行 | 2 |
 | `docs/review/guoqing-audit-followup.md` | 国庆节审查当前跟进 | 未标注（已复核修复） | — | 3 KB / 21 行 | 3 |
 
-## 三、设计与工作文档（需核实状态） —— 299 份
+## 三、设计与工作文档（需核实状态） —— 302 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档） |
 |---|---|---|---|---|---|
+| `docs/design/carbon-icons-modern-layout-20261102.md` | 现代布局 Carbon Icons 升级方案（科幻未来专供 · 2026-11-02） | 未标注（已结合船长两次指令深化） | 2026-11-02 | 7 KB / 88 行 | 0 |
 | `docs/design/cloud-server-20261102.md` | 云存档与聊天服务器 · 设计与实现（2026-11-02） | 未标注（P0） | 2026-11-02 | 9 KB / 104 行 | 0 |
-| `docs/design/cosmic-hud-layout-20261102.md` | 界面外壳：第三套可选布局「深空 HUD / Cosmic」设计方案 | 未标注（船长已裁定并下达优化令） | 2026-11-02 | 10 KB / 156 行 | 0 |
+| `docs/design/cosmic-hud-layout-20261102.md` | 界面外壳：第三套可选布局「深空 HUD / Cosmic」设计方案 | 未标注（船长已裁定并下达优化令） | 2026-11-02 | 10 KB / 155 行 | 0 |
 | `docs/design/d2-main-integration-20261102.md` | 二号与主树整合及上传核验 | 未标注（本地整合与冲突处理完成） | 2026-11-02 | 6 KB / 72 行 | 0 |
 | `docs/design/datadog-dashboard-ui-20261102.md` | 深空数据看板与复杂后台监控大屏（DataDog / Mixpanel 风格）三轮 UX 审查与全量修复落地记录（2026-11-02） | 未标注（待验收） | 2026-11-02 | 8 KB / 84 行 | 0 |
 | `docs/design/manual-publish-20261102.md` | 统一手动发布 | 未标注（实现与本地专项验证完成） | 2026-11-02 | 3 KB / 25 行 | 0 |
 | `docs/design/modern-ui-industry-hud-20261102.md` | 设计工作文档：新版 UI 整体重塑 · 星际飞船控制台与航电 HUD（2026-11-02） | 进行中（进行中 · 船长授权全部实施与整体 ） | 2026-11-02 | 9 KB / 130 行 | 0 |
 | `docs/design/remote-audio-integration-20261102.md` | 远端声音与设置更新集成 | 未标注（合并验证完成） | 2026-11-02 | 3 KB / 39 行 | 0 |
-| `docs/design/settings-fixes-20261102.md` | 设置界面四项报障修复（字号 / 配色 / 宇宙背景 / 选中按钮）· 2026-11-02 | 未标注（施工中） | 2026-11-02 | 12 KB / 154 行 | 1 |
+| `docs/design/settings-fixes-20261102.md` | 设置界面四项报障修复（字号 / 配色 / 宇宙背景 / 选中按钮）· 2026-11-02 | 待裁定（待船长验收） | 2026-11-02 | 21 KB / 265 行 | 1 |
 | `docs/design/signal-auto-estimate-20261102.md` | 信号空间自动探索估算方案 | 未标注（船长2026-11-02回复「按你推） | 2026-11-02 | 11 KB / 105 行 | 1 |
 | `docs/design/signal-auto-yield-comparison-20261102.md` | 信号自动探索新旧收益对照 | 未标注（二号完成正式配对对照） | 2026-11-02 | 9 KB / 83 行 | 0 |
 | `docs/design/sound-layers-20261102.md` | 声音系统追加批：BGM / 环境音 / 战斗细分 / 音高随机 · 2026-11-02 工作文档 | 未标注（实施中） | 2026-11-02 | 7 KB / 94 行 | 1 |
-| `docs/design/sound-system-20261102.md` | 声音系统（本机音效台）· 2026-11-02 工作文档 | 已确认/已实现（已实现 + 独立审查修复完毕） | 2026-11-02 | 14 KB / 132 行 | 2 |
+| `docs/design/sound-system-20261102.md` | 声音系统（本机音效台）· 2026-11-02 工作文档 | 已确认/已实现（已实现 + 独立审查修复完毕） | 2026-11-02 | 14 KB / 131 行 | 2 |
+| `docs/design/ui-activitybar-and-bottom-nav-20261102.md` | 左侧活动栏排版重构与底部导航栏字号优化 · 2026-11-02 | 未标注 | 2026-11-02 | 5 KB / 52 行 | 0 |
+| `docs/design/ui-comms-chamfer-modern-20261102.md` | 通讯界面科幻未来 HUD 缺角风格统一改造 · 2026-11-02 | 未标注 | 2026-11-02 | 3 KB / 42 行 | 0 |
 | `docs/design/enemy-compact-trapezoid-20261101.md` | 敌舰紧凑梯形排列 | 未标注（船长回复「按你推荐来） | 2026-11-01 | 11 KB / 86 行 | 0 |
 | `docs/design/fleet-support-final-20261101.md` | 编队支援装备与离线简报收尾 | 未标注（二号实现与专项自测完成） | 2026-11-01 | 4 KB / 37 行 | 0 |
 | `docs/design/hauling-load-dialog-20261101.md` | 运输承运弹窗与收益去重 | 未标注（船长2026-11-01确认） | 2026-11-01 | 3 KB / 32 行 | 0 |
@@ -359,7 +362,7 @@
 |---|---|---|---|---|---|
 | `docs/development-conventions-changelog.md` | 开发约定维护记录 | 未标注 | — | 1 KB / 18 行 | 6 |
 | `docs/git-gate-approval.md` | Git提交审批放行 | 未标注 | — | 2 KB / 28 行 | 1 |
-| `docs/l10n-pending.md` | 待英文本地化记录 | 未标注 | — | 21 KB / 359 行 | 19 |
+| `docs/l10n-pending.md` | 待英文本地化记录 | 未标注 | — | 21 KB / 363 行 | 20 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -413,10 +416,11 @@
 | `docs/design/ship-battle-art/acceptance-visual-20260909.md` | 舰船战斗图形 · 真机目测与细节验收清单（2026-09-09 三号，给船长） | 未标注 | 2026-09-09 | 4 KB / 54 行 | 2 |
 | `docs/design/ship-battle-art/README.md` | 舰船战斗图形重设计(三号 · 样稿阶段,2026-09-09) | 未标注 | — | 8 KB / 87 行 | 22 |
 
-## 附：孤儿文档（0 引用，199 份）
+## 附：孤儿文档（0 引用，202 份）
 
 > 仅表示没有其他收录文档提到本文件名，不能据此删除、归档或批准阅读历史。
 
+- `docs/design/carbon-icons-modern-layout-20261102.md`（2026-11-02 · 7 KB）—— 现代布局 Carbon Icons 升级方案（科幻未来专供 · 2026-11-02）
 - `docs/design/cloud-server-20261102.md`（2026-11-02 · 9 KB）—— 云存档与聊天服务器 · 设计与实现（2026-11-02）
 - `docs/design/cosmic-hud-layout-20261102.md`（2026-11-02 · 10 KB）—— 界面外壳：第三套可选布局「深空 HUD / Cosmic」设计方案
 - `docs/design/d2-main-integration-20261102.md`（2026-11-02 · 6 KB）—— 二号与主树整合及上传核验
@@ -425,6 +429,8 @@
 - `docs/design/modern-ui-industry-hud-20261102.md`（2026-11-02 · 9 KB）—— 设计工作文档：新版 UI 整体重塑 · 星际飞船控制台与航电 HUD（2026-11-02）
 - `docs/design/remote-audio-integration-20261102.md`（2026-11-02 · 3 KB）—— 远端声音与设置更新集成
 - `docs/design/signal-auto-yield-comparison-20261102.md`（2026-11-02 · 9 KB）—— 信号自动探索新旧收益对照
+- `docs/design/ui-activitybar-and-bottom-nav-20261102.md`（2026-11-02 · 5 KB）—— 左侧活动栏排版重构与底部导航栏字号优化 · 2026-11-02
+- `docs/design/ui-comms-chamfer-modern-20261102.md`（2026-11-02 · 3 KB）—— 通讯界面科幻未来 HUD 缺角风格统一改造 · 2026-11-02
 - `docs/design/enemy-compact-trapezoid-20261101.md`（2026-11-01 · 11 KB）—— 敌舰紧凑梯形排列
 - `docs/design/fleet-support-final-20261101.md`（2026-11-01 · 4 KB）—— 编队支援装备与离线简报收尾
 - `docs/design/hauling-load-dialog-20261101.md`（2026-11-01 · 3 KB）—— 运输承运弹窗与收益去重
@@ -617,18 +623,20 @@
 - `docs/design/v18.1-support.md`（无日期 · 9 KB）—— V18.1 设计总结：支援装备 + 叠加收敛（取消同类唯一 · 已确认实施）
 - `docs/design/v18b2-lasers.md`（无日期 · 5 KB）—— V18B-2 设计总结：激光炮武器族（能量系形态 · 已确认实施）
 
-## 附：状态未标注（171 份，待补一行 `状态：…`）
+## 附：状态未标注（173 份，待补一行 `状态：…`）
 
+- `docs/design/carbon-icons-modern-layout-20261102.md`（2026-11-02）—— 现代布局 Carbon Icons 升级方案（科幻未来专供 · 2026-11-02）
 - `docs/design/cloud-server-20261102.md`（2026-11-02）—— 云存档与聊天服务器 · 设计与实现（2026-11-02）
 - `docs/design/cosmic-hud-layout-20261102.md`（2026-11-02）—— 界面外壳：第三套可选布局「深空 HUD / Cosmic」设计方案
 - `docs/design/d2-main-integration-20261102.md`（2026-11-02）—— 二号与主树整合及上传核验
 - `docs/design/datadog-dashboard-ui-20261102.md`（2026-11-02）—— 深空数据看板与复杂后台监控大屏（DataDog / Mixpanel 风格）三轮 UX 审查与全量修复落地记录（2026-11-02）
 - `docs/design/manual-publish-20261102.md`（2026-11-02）—— 统一手动发布
 - `docs/design/remote-audio-integration-20261102.md`（2026-11-02）—— 远端声音与设置更新集成
-- `docs/design/settings-fixes-20261102.md`（2026-11-02）—— 设置界面四项报障修复（字号 / 配色 / 宇宙背景 / 选中按钮）· 2026-11-02
 - `docs/design/signal-auto-estimate-20261102.md`（2026-11-02）—— 信号空间自动探索估算方案
 - `docs/design/signal-auto-yield-comparison-20261102.md`（2026-11-02）—— 信号自动探索新旧收益对照
 - `docs/design/sound-layers-20261102.md`（2026-11-02）—— 声音系统追加批：BGM / 环境音 / 战斗细分 / 音高随机 · 2026-11-02 工作文档
+- `docs/design/ui-activitybar-and-bottom-nav-20261102.md`（2026-11-02）—— 左侧活动栏排版重构与底部导航栏字号优化 · 2026-11-02
+- `docs/design/ui-comms-chamfer-modern-20261102.md`（2026-11-02）—— 通讯界面科幻未来 HUD 缺角风格统一改造 · 2026-11-02
 - `docs/test-saves/signal-auto-estimate-20261102.md`（2026-11-02）—— 信号空间自动探索估算测试档
 - `docs/design/enemy-compact-trapezoid-20261101.md`（2026-11-01）—— 敌舰紧凑梯形排列
 - `docs/design/fleet-support-final-20261101.md`（2026-11-01）—— 编队支援装备与离线简报收尾

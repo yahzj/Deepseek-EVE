@@ -751,17 +751,25 @@
 :root {
   /* 主题色板 */
   /**
-   * **全站唯一正文字体栈**（2026-11-02 船长报障「UI 上还有别的字体、全局字体应该统一」）。
+   * **全站唯一正文字体栈**（2026-11-02 船长令）。
    *
-   * 病根：中文正文原先由 `styles.css` 的 `body` 直接写死雅黑栈，而**英文界面另有一条
-   * `html[data-locale='en'] body` 换 Segoe 的覆盖**；再叠加新 HUD 块里若干裸 `monospace`
-   * 与 `--wui-mono`（只含 Latin 等宽体）⇒ 中文落到浏览器默认字体（Windows = **宋体**），
-   * 于是同一屏上出现"雅黑 + 宋体 + 等宽"三种字形。
-   * 口径：正文只认这一条 `--wui-font`（中英文同一栈，不再分叉）；等宽 `--wui-mono` 保留给
-   * 数字/代码读数，但**必须带中文兜底**——否则中文落在等宽元素里又回宋体。
+   * 历程：
+   * ① 船长报障「UI 上还有别的字体、全局字体应该统一」⇒ 先统一成系统雅黑栈（中文回落宋体根因见下）；
+   * ② 之后反复试排英文/数字字体（unscii-16 → unscii-8-tall → Oxanium），最终口径：
+   *    **「默认」= 微软雅黑（中文）＋ Oxanium（英文/数字）**；「复古」= GNU Unifont（中文）＋
+   *    Eunomia Bold（英文/数字），复古档由 `ui/fontChoice.ts` 在 `<html data-ui-font="retro">`
+   *    时用 `--ui-font` 覆盖（见 `panels/appSettings.css`）。
+   *
+   * 字形分工（CSS 字体栈逐字符回退的原生行为）：
+   * - 英文 / 数字 / ASCII → `Oxanium`（内嵌可变字重，@font-face 在 `panels/appSettings.css`）；
+   * - 中文 / 其余字符 → 系统微软雅黑栈；
+   * - emoji 等 → 系统字体兜底。
+   * ⚠ 族名依赖渲染层加载的 `@font-face`；`packages/ui` 单独被复用（无渲染层）时会自动落到
+   *   system-ui 等兜底，不会报错。
+   * ⚠ 等宽 `--wui-mono` 同样以 Oxanium 打头（与正文同一套外观），中文回退雅黑，Latin 等宽体兜底。
    */
-  --wui-font: 'Microsoft YaHei', 'PingFang SC', 'Noto Sans SC', 'Segoe UI', system-ui, -apple-system, sans-serif;
-  --wui-mono: 'Cascadia Mono', 'Consolas', 'Courier New', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans SC', monospace;
+  --wui-font: 'Oxanium', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans SC', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --wui-mono: 'Oxanium', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans SC', 'Cascadia Mono', 'Consolas', 'Courier New', monospace;
 
   /* ── **动效单点**（2026-09-25 UI 重置批新增；此前全站 97 处动画的时长/缓动写死在各自规则里，
         想整体调快调慢得改 97 处 —— 这是"动效没有单点"的缺口）。**只加不改**：现有规则仍用原值，

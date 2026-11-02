@@ -7838,11 +7838,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ui.sfx.051': { zh: '关闭', en: '', enDeferred: true },
   'ui.sfx.052': { zh: '本机覆盖只存在这台机器；发布版使用仓库内置音效。', en: '', enDeferred: true },
   'ui.sfx.054': { zh: '存储不可用：本次会话内有效', en: '', enDeferred: true },
-  // ⟪界面字体与许可与授权 2026-11-02⟫ 船长确认新增界面字体选择（内嵌 GNU Unifont）与授权书全文弹窗；
-  // 英文未授权准备，按约定留空并登记待译（docs/l10n-pending.md）。授权书正文是英文原文，照录、不译、不改写。
+  // ⟪界面字体与许可与授权 2026-11-02⟫ 船长最终口径：默认 = 微软雅黑 + Oxanium（英文/数字）；
+  // 复古 = 统一只用 GNU Unifont。英文未授权准备，按约定留空并登记待译
+  // （docs/l10n-pending.md）。授权书正文是英文原文，照录、不译、不改写。
   'ui.App.178': { zh: '界面字体', en: '', enDeferred: true },
   'ui.App.179': { zh: '默认', en: '', enDeferred: true },
-  'ui.App.180': { zh: '默认沿用现有系统字体；GNU Unifont 为像素点阵全字库。即时生效，不写入存档。', en: '', enDeferred: true },
+  'ui.App.180': { zh: '默认提供现代清晰字形，复古提供经典像素点阵。即时生效，不写入存档。', en: '', enDeferred: true },
   'ui.App.181': { zh: '许可与授权', en: '', enDeferred: true },
   'ui.App.182': { zh: '以下为内嵌字体与本项目的授权书完整原文。', en: '', enDeferred: true },
   'ui.App.183': { zh: '关闭', en: '', enDeferred: true },
@@ -7854,6 +7855,11 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ui.App.189': { zh: '版权与授权声明（原文）', en: '', enDeferred: true },
   'ui.App.190': { zh: '双许可与商业使用条款 · GNU AGPLv3（原文）', en: '', enDeferred: true },
   'ui.App.191': { zh: '其他第三方组件（React、React DOM、Scheduler、Lucide、星系素材等）分别遵循各自的许可证。', en: '', enDeferred: true },
+  // ⟪Oxanium 追加 2026-11-02⟫ 默认档英文/数字用 Oxanium（SIL OFL 1.1，见授权小节）。
+  'ui.App.192': { zh: 'Oxanium 字体（默认档英文/数字）', en: '', enDeferred: true },
+  'ui.App.193': { zh: '版本 {p1} · 文件 {p2} · 版权 {p3} · 项目页 {p4} · 授权原文 {p5}', en: '', enDeferred: true },
+  'ui.App.194': { zh: '字体授权与来源说明（原文）', en: '', enDeferred: true },
+  'ui.App.195': { zh: '复古', en: '', enDeferred: true },
   // ⟪声音系统追加批 2026-11-02⟫ BGM / 环境音 / 战斗细分 / UI 反馈 / 音高随机；英文未授权，按约定登记待译。
   'ui.sfx.024': { zh: '音乐', en: '', enDeferred: true },
   'ui.sfx.025': { zh: '环境', en: '', enDeferred: true },

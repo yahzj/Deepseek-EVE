@@ -19,7 +19,7 @@ function componentHarness(file:string,name:string,props:any){
   const module={exports:{} as Record<string,(props:any)=>Node>,require:(id:string):any=>{
     if(id==='react')return {useState:(initial:any)=>{const i=cursor++;if(!(i in values))values[i]=typeof initial==='function'?initial():initial;return [values[i],(next:any)=>values[i]=typeof next==='function'?next(values[i]):next]},useRef:(initial:any)=>refs[refCursor++]??={current:initial},useLayoutEffect:()=>{}}
     if(id==='react/jsx-runtime')return {jsx,jsxs,Fragment}
-    if(id==='lucide-react')return new Proxy({}, {get:(_t,key)=>String(key)})
+    if(id==='lucide-react'||id.endsWith('layoutIcons'))return new Proxy({}, {get:(_t,key)=>String(key)})
     if(id==='./planetWheelGeometry')return {planetWheelPosition}
     if(id==='./planetTraitDetails')return scope.exports
     if(id==='./planetText')return {pt:(key:string)=>l10nEntryText(L10N[PLANET_TEXT_IDS[key]!]!,'zh')}

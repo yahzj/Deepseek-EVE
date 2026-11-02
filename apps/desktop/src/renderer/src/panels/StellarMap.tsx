@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
-import { ZoomIn, ZoomOut, Pause, Play, AlertTriangle } from 'lucide-react'
+import { ZoomIn, ZoomOut, Pause, Play, AlertTriangle } from '../ui/layoutIcons'
 import type { PlanetSize, StellarSystem } from '@whale/core'
 import { tr } from '../i18n/locale'
 import { Glyph } from '../ui/Glyphs'

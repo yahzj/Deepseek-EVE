@@ -53,6 +53,42 @@ const KIND_ICON: Record<string, string> = {
   lab: 'nav-industry',
 }
 
+/**
+ * 待机微面板组件：在 150px 窄列内对待机状态进行结构化展示，
+ * 避免长句在破折号和标点处发生难看生硬的字符折断。
+ */
+function ActivityBarIdle({
+  text,
+  onClick,
+}: {
+  text: string
+  onClick?: () => void
+}) {
+  const clean = text.replace(/。$/, '')
+  const splitIdx = clean.search(/——|—/)
+  let status = clean
+  let tip = ''
+  if (splitIdx !== -1) {
+    status = clean.slice(0, splitIdx).trim()
+    tip = clean.slice(splitIdx).replace(/^(——|—)\s*/, '').trim()
+  }
+
+  return (
+    <div
+      className={`app-activitybar-idle${onClick ? ' is-clickable' : ''}`}
+      title={text}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+    >
+      <div className="app-activitybar-idle-status">
+        <span className="app-activitybar-idle-dot" />
+        <span className="app-activitybar-idle-title">{status}</span>
+      </div>
+      {tip ? <div className="app-activitybar-idle-tip">{tip}</div> : null}
+    </div>
+  )
+}
 
 /**
  * 活动项 → 跳转目标页面（可带星图二级标签）——船长 2026-09-05 点击跳转。
@@ -146,121 +182,149 @@ export function ActivityBar({
     }
     /** 目的地名直接取跳转单点给的 id（原先按 mapTab 反推，嗅探的正是那个已删除的 'task' ⇒ 空白页） */
     const goText = tr(target.labelId)
+    const hasProgress = v.percent !== null
+    const hasTime = v.remainingMs !== null && v.remainingMs > 0
+    const hasAction = Boolean(v.stopable && v.stop)
+
     return (
-    <div
-      key={v.id}
-      className={`app-activitybar-item is-${v.kind}`}
-      title={v.stopReason ?? tr("ui.ActivityBar.052", { goText: goText })}
-      onClick={handleItemClick}
-    >
-      <span className="app-activitybar-icon"><Glyph name={KIND_ICON[v.kind] ?? 'fallback'} size={15} color={NAV_TONES[KIND_ICON[v.kind]] ?? ICO_TONES[KIND_ICON[v.kind]]} /></span>
-      <div className="app-activitybar-main">
-        <div className="app-activitybar-line">
-          <span className={`app-activitybar-label${v.badge === 'invasion' ? ' is-invasion' : ''}`}>
-            {v.badge === 'invasion' ? <span className="app-chip is-danger app-activitybar-badge">{tr('ui.invasionActivity.001')}</span> : null}
-            <span>{v.label}</span>
-          </span>
-          <span className="app-dim app-activitybar-sub">{v.sub}</span>
-          {v.percent !== null ? (
-            <span className="app-activitybar-track">
-              <span className="app-activitybar-fill" style={{ width: `${v.percent}%` }} />
+      <div
+        key={v.id}
+        className={`app-activitybar-item is-${v.kind}`}
+        title={v.stopReason ?? tr("ui.ActivityBar.052", { goText: goText })}
+        onClick={handleItemClick}
+      >
+        {/* 行 1：标题与操作按键同行横向展开，左侧标题、右侧微型操作按钮 */}
+        <div className="app-activitybar-head">
+          <div className="app-activitybar-title-wrap">
+            <span className="app-activitybar-icon">
+              <Glyph name={KIND_ICON[v.kind] ?? 'fallback'} size={14} color={NAV_TONES[KIND_ICON[v.kind]] ?? ICO_TONES[KIND_ICON[v.kind]]} />
             </span>
+            {v.badge === 'invasion' ? <span className="app-chip is-danger app-activitybar-badge">{tr('ui.invasionActivity.001')}</span> : null}
+            <span className="app-activitybar-label-text" title={v.label}>{v.label}</span>
+          </div>
+
+          {hasAction ? (
+            <div className="app-activitybar-act">
+              <button
+                className="app-btn is-small is-warn app-activitybar-action-btn"
+                title={
+                  v.stop === 'cancel-manufacture'
+                    ? tr("ui.ActivityBar.017")
+                    : v.stop === 'stop-refine'
+                      ? tr("ui.ActivityBar.018")
+                      : v.stop === 'stop-lab'
+                        ? tr("ui.ActivityBar.069")
+                        : v.stop === 'recall-expedition'
+                        ? tr("ui.ActivityBar.019")
+                        : v.stop === 'cancel-deliver-trip'
+                          ? tr("ui.ActivityBar.020")
+                          : v.stop === 'stop-whscan'
+                          ? tr("ui.ActivityBar.034")
+                          : v.stop === 'stop-scan'
+                          ? tr("ui.ActivityBar.021")
+                          : v.stop === 'stop-salvage'
+                            ? tr("ui.ActivityBar.035")
+                            : v.stop === 'remove-training'
+                              ? tr("ui.ActivityBar.022")
+                              : v.stop === 'retreat-battle'
+                                ? tr("ui.ActivityBar.023")
+                                : undefined
+                }
+                onClick={(e) => {
+                  e.stopPropagation() // 点击"停止/移除/撤退"不触发行跳转
+                  /**
+                   * **长途运输：先警告、再确认**（船长 2026-09-20）——中断本趟 = 这一趟的报酬拿不到。
+                   * 与下面撤退那支同款两讨伐确认（第一次点只亮警告 + 提示，第二次点才执行）。
+                   */
+                  if (v.stop === 'stop-hauling') {
+                    if (!haulAsk) {
+                      setHaulAsk(true)
+                      onToast(tr('ui.Hauling.033'), true)
+                      return
+                    }
+                    setHaulAsk(false)
+                    doStop(v, engine, onToast)
+                    return
+                  }
+                  if (v.stop !== 'retreat-battle') {
+                    doStop(v, engine, onToast)
+                    return
+                  }
+                  if (!retreatAsk) {
+                    setRetreatAsk(true)
+                    onToast(tr("ui.ActivityBar.053"), true)
+                    return
+                  }
+                  setRetreatAsk(false)
+                  doStop(v, engine, onToast)
+                }}
+              >
+                {v.stop === 'stop-hauling' && haulAsk
+                  ? tr('ui.Hauling.034')
+                  : v.stop === 'retreat-battle' && retreatAsk
+                    ? tr("ui.ActivityBar.024")
+                    : stopLabel(v)}
+              </button>
+            </div>
           ) : null}
-          <span className="app-activitybar-time">
-            {v.percent !== null ? `${Math.round(v.percent)}%` : ''}
-            {v.remainingMs !== null && v.remainingMs > 0 ? v.badge === 'invasion'
-              ? ` · ${tr('ui.boost.005', { p1: fmtDuration(v.remainingMs) })}`
-              : ` · 剩 ${fmtDuration(v.remainingMs)}` : ''}
-          </span>
         </div>
-        {/**
-         * **操作按钮移到卡片底部**（2026-09-25 船长令：「玩家活动的卡牌中，像停止清缴这类按钮
-         * **不应该放在右侧了，应该放卡牌底边附近**」）⇒ 从「与行并列、贴行尾」改为
-         * 「行下方、卡内右下」。这样按钮不再挤占标签/进度/时间的横向空间（窄列里尤其明显）。
-         */}
-        {v.stopable && v.stop ? (
-          <div className="app-activitybar-act">
-            <button
-              className="app-btn is-small is-warn"
-              title={
-            v.stop === 'cancel-manufacture'
-              ? tr("ui.ActivityBar.017")
-              : v.stop === 'stop-refine'
-                ? tr("ui.ActivityBar.018")
-                : v.stop === 'stop-lab'
-                  ? tr("ui.ActivityBar.069")
-                  : v.stop === 'recall-expedition'
-                  ? tr("ui.ActivityBar.019")
-                  : v.stop === 'cancel-deliver-trip'
-                    ? tr("ui.ActivityBar.020")
-                    : v.stop === 'stop-whscan'
-                    ? tr("ui.ActivityBar.034")
-                    : v.stop === 'stop-scan'
-                    ? tr("ui.ActivityBar.021")
-                    : v.stop === 'stop-salvage'
-                      ? tr("ui.ActivityBar.035")
-                      : v.stop === 'remove-training'
-                        ? tr("ui.ActivityBar.022")
-                        : v.stop === 'retreat-battle'
-                          ? tr("ui.ActivityBar.023")
-                          : undefined
-          }
-          onClick={(e) => {
-            e.stopPropagation() // 点击"停止/移除/撤退"不触发行跳转
-            /**
-             * **长途运输：先警告、再确认**（船长 2026-09-20）——中断本趟 = 这一趟的报酬拿不到。
-             * 与下面撤退那支同款两讨伐确认（第一次点只亮警告 + 提示，第二次点才执行）。
-             */
-            if (v.stop === 'stop-hauling') {
-              if (!haulAsk) {
-                setHaulAsk(true)
-                onToast(tr('ui.Hauling.033'), true)
-                return
-              }
-              setHaulAsk(false)
-              doStop(v, engine, onToast)
-              return
-            }
-            if (v.stop !== 'retreat-battle') {
-              doStop(v, engine, onToast)
-              return
-            }
-            if (!retreatAsk) {
-              setRetreatAsk(true)
-              onToast(tr("ui.ActivityBar.053"), true)
-              return
-            }
-            setRetreatAsk(false)
-            doStop(v, engine, onToast)
-          }}
-        >
-          {v.stop === 'stop-hauling' && haulAsk
-            ? tr('ui.Hauling.034')
-            : v.stop === 'retreat-battle' && retreatAsk
-              ? tr("ui.ActivityBar.024")
-              : stopLabel(v)}
-            </button>
+
+        {/* 行 2：说明文案（独占整行满宽横向展示，绝不竖排折断） */}
+        {v.sub ? (
+          <div className="app-activitybar-sub app-dim" title={v.sub}>
+            {v.sub}
+          </div>
+        ) : null}
+
+        {/* 行 3：满宽科技进度条 */}
+        {hasProgress ? (
+          <div className="app-activitybar-progress-row">
+            <span className="app-activitybar-track">
+              <span
+                className="app-activitybar-fill"
+                style={{ width: `${Math.min(100, Math.max(0, v.percent ?? 0))}%` }}
+              />
+            </span>
+          </div>
+        ) : null}
+
+        {/* 行 4：进度与时间读数（独占整行横向展示，绝不被按钮挤压） */}
+        {hasProgress || hasTime ? (
+          <div className="app-activitybar-footer">
+            <div className="app-activitybar-time">
+              {hasProgress ? <span className="app-activitybar-pct">{Math.round(v.percent ?? 0)}%</span> : null}
+              {hasTime ? (
+                <span className="app-activitybar-remain">
+                  {v.badge === 'invasion'
+                    ? ` · ${tr('ui.boost.005', { p1: fmtDuration(v.remainingMs ?? 0) })}`
+                    : ` · 剩 ${fmtDuration(v.remainingMs ?? 0)}`}
+                </span>
+              ) : null}
+            </div>
           </div>
         ) : null}
       </div>
-    </div>
     )
   }
 
   return (
-    <div className="app-activitybar">
+    <aside className="app-activitybar">
       <div className="app-activitybar-group">
         <div className="app-activitybar-gtitle">{tr("ui.ActivityBar.028")}</div>
         {playerItems.length > 0 ? (
           playerItems.map(renderItem)
         ) : (
-          <span className="app-activitybar-idle">{tr("ui.ActivityBar.029")}</span>
+          <ActivityBarIdle
+            text={tr("ui.ActivityBar.029")}
+            onClick={() => onGoPage?.('map', 'star')}
+          />
         )}
       </div>
       {/* **计时中**（2026-09-25 船长令「星系扫描条按甲做」）：扫描条独立成一组、紧接玩家活动之后。
-          原与「活动」标题栏同处一行，标题栏移除后归到这里。 */}
-      <div className="app-activitybar-group">
-        <div className="app-activitybar-gtitle">{tr("ui.ActivityBar.065")}</div>
+          仅在有正在扫描或突触加速剂时展示，避免无活动时悬挂空标题。 */}
+      {scanBar || boostRemainMs > 0 ? (
+        <div className="app-activitybar-group">
+          <div className="app-activitybar-gtitle">{tr("ui.ActivityBar.065")}</div>
           {scanBar ? (
             <button
               className={`app-activitybar-scan${scanBar.done ? ' is-done' : ''}`}
@@ -275,35 +339,45 @@ export function ActivityBar({
                 onGoPage?.('map', 'star')
               }}
             >
-              <span className="app-ico">
-                <Glyph name="ico-scan" size={13} color={ICO_TONES['ico-scan']} />
-              </span>
-              <span className="app-activitybar-scan-name">{scanName(scanBar.galaxyId)}</span>
-              <span className="app-activitybar-track">
-                <span className="app-activitybar-fill" style={{ width: `${Math.min(100, Math.max(0, scanBar.percent))}%` }} />
-              </span>
-              <span className="app-activitybar-scan-time">
-                {scanBar.done ? tr("ui.ActivityBar.036") : `${Math.round(scanBar.percent)}%`}
-              </span>
+              <div className="app-activitybar-scan-head">
+                <span className="app-ico">
+                  <Glyph name="ico-scan" size={13} color={ICO_TONES['ico-scan']} />
+                </span>
+                <span className="app-activitybar-scan-name">{scanName(scanBar.galaxyId)}</span>
+                <span className="app-activitybar-scan-time">
+                  {scanBar.done ? tr("ui.ActivityBar.036") : `${Math.round(scanBar.percent)}%`}
+                </span>
+              </div>
+              <div className="app-activitybar-progress-row">
+                <span className="app-activitybar-track">
+                  <span className="app-activitybar-fill" style={{ width: `${Math.min(100, Math.max(0, scanBar.percent))}%` }} />
+                </span>
+              </div>
             </button>
           ) : null}
           {/* 突触加速剂生效中（**2026-09-30 船长令**）：与扫描条同一套类名（不自造样式），不可点 */}
           {boostRemainMs > 0 ? (
-            <span className="app-activitybar-scan" title={tr('ui.ActivityBar.067', { p1: fmtDuration(boostRemainMs) })}>
-              <span className="app-ico">
-                <Glyph name="ico-eff" size={13} color={ICO_TONES['ico-eff']} />
-              </span>
-              <span className="app-activitybar-scan-name">{tr('ui.ActivityBar.066', { p1: boostMul })}</span>
-              <span className="app-activitybar-scan-time">{fmtDuration(boostRemainMs)}</span>
-            </span>
+            <div className="app-activitybar-scan app-activitybar-boost" title={tr('ui.ActivityBar.067', { p1: fmtDuration(boostRemainMs) })}>
+              <div className="app-activitybar-scan-head">
+                <span className="app-ico">
+                  <Glyph name="ico-eff" size={13} color={ICO_TONES['ico-eff']} />
+                </span>
+                <span className="app-activitybar-scan-name">{tr('ui.ActivityBar.066', { p1: boostMul })}</span>
+                <span className="app-activitybar-scan-time">{fmtDuration(boostRemainMs)}</span>
+              </div>
+            </div>
           ) : null}
-      </div>
+        </div>
+      ) : null}
       <div className="app-activitybar-group">
         <div className="app-activitybar-gtitle">{tr("ui.ActivityBar.030")}</div>
         {trainItems.length > 0 ? (
           trainItems.map(renderItem)
         ) : (
-          <span className="app-activitybar-idle">{tr("ui.ActivityBar.037")}</span>
+          <ActivityBarIdle
+            text={tr("ui.ActivityBar.037")}
+            onClick={() => onGoPage?.('skills')}
+          />
         )}
       </div>
       {/**
@@ -341,9 +415,12 @@ export function ActivityBar({
             ))}
           </div>
         ) : (
-          <span className="app-activitybar-idle">{tr("ui.ActivityBar.063")}</span>
+          <ActivityBarIdle
+            text={tr("ui.ActivityBar.063")}
+            onClick={() => onAiCenter?.()}
+          />
         )}
       </div>
-    </div>
+    </aside>
   )
 }

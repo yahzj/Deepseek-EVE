@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { Users, X } from 'lucide-react'
+import { Users, X } from '../../ui/layoutIcons'
 import { commandBudgetOf, combatRosterOf, fleetDefOf, shipCommandCostOf, shipDisplayName, shipOperationBlockReason } from '@whale/core'
 import type { GameEngine } from '../../game/engine'
 import { cmdText, tr } from '../../i18n/locale'

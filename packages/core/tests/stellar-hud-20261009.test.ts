@@ -24,7 +24,7 @@ function harness(locale: 'zh' | 'en' = 'zh', empty = false) {
     if (id === 'react') return { useState: (initial: any) => { const i = cursor++; if (!(i in values)) values[i] = typeof initial === 'function' ? initial() : initial; return [values[i], (value: any) => { values[i] = typeof value === 'function' ? value(values[i]) : value }] }, useRef: (initial: any) => { const i = refCursor++; return refs[i] ?? (refs[i] = { current: initial }) }, useEffect: () => {} }
     if (id === 'react/jsx-runtime') return { jsx, jsxs, Fragment }
     if (id === '@whale/core') return { ...core, manufacturingRunViews: () => [] }
-    if (id === 'lucide-react') return Object.fromEntries(['Copy', 'Crosshair', 'Play', 'Pause', 'Radar', 'Search', 'Trash2', 'X', 'Factory', 'Globe2'].map(name => [name, name]))
+    if (id === 'lucide-react' || id.endsWith('layoutIcons')) return Object.fromEntries(['Copy', 'Crosshair', 'Play', 'Pause', 'Radar', 'Search', 'Trash2', 'X', 'Factory', 'Globe2'].map(name => [name, name]))
     if (id === '../i18n/locale') return { tr }
     if (id === '../i18n/fmt') return { fmtDuration: String, fmtInt: String }
     if (id === '../ui/planetText') return { pt: (key: string) => tr(core.PLANET_TEXT_IDS[key] ?? key) }

@@ -1,5 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
-import { Radio, ChevronDown } from 'lucide-react'
+import { Radio, ChevronDown } from '../../ui/layoutIcons'
 import { playerRangeEwOf, rangeEwPreviewOf, rangeEwSignalTargetOf, type AnomalyDef, type GameState, type SimContext,
   type BattleState,
   type RangeEwPart, type RangeEwContest, type RangeEwView } from '@whale/core'

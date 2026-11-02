@@ -16,13 +16,16 @@ test('两端取同一授权正文，保留第三方许可和既有授权例外',
   assert.equal(web['LICENSE.txt'], readFileSync(join(ROOT, 'LICENSE.txt'), 'utf8'))
   assert.equal(web['LICENSE.txt'], desktop['LICENSE.txt'])
   assert.match(web['LICENSE.txt']!, /不撤销既有许可证已经授予的权利/)
-  for (const pkg of ['react', 'react-dom', 'scheduler', 'lucide-react', 'PixelPlanets', 'GNU Unifont']) {
+  for (const pkg of ['react', 'react-dom', 'scheduler', 'lucide-react', '@carbon/icons-react', 'PixelPlanets', 'GNU Unifont', 'Oxanium']) {
     assert.ok(web['THIRD-PARTY-NOTICES.txt']!.includes(`===== ${pkg}`))
   }
   assert.match(web['THIRD-PARTY-NOTICES.txt']!, /Copyright \(c\) 2020 Deep-Fold/)
   // 内嵌字体（2026-11-02 船长令）：授权原文必须随包分发，且双许可两个名字都要在
   assert.match(web['THIRD-PARTY-NOTICES.txt']!, /SIL OPEN FONT LICENSE/)
   assert.match(web['THIRD-PARTY-NOTICES.txt']!, /GNU GENERAL PUBLIC LICENSE/)
+  // Oxanium：授权全文（SIL OFL 1.1，版权 2019 The Oxanium Project Authors）要随包分发
+  assert.match(web['THIRD-PARTY-NOTICES.txt']!, /Oxanium Project Authors/)
+  assert.match(web['THIRD-PARTY-NOTICES.txt']!, /SIL OPEN FONT LICENSE Version 1\.1/)
   assert.match(web['copyright.html']!, /<pre>/)
   assert.doesNotMatch(web['copyright.html']!, /<script\b/)
 })

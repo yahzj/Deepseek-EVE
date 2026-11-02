@@ -2,7 +2,7 @@
  * 舰船页：我的舰队（耐久/维修/切换驾驶）+ AI 指挥中心 + 空间站商店。
  */
 import { memo, useEffect, useRef, useState } from 'react'
-import { Check, Plus } from 'lucide-react'
+import { Check, Plus } from '../ui/layoutIcons'
 import { RangeEwFleet } from '../features/combat/RangeEwPanel'
 import type { ReactNode } from 'react'
 import {

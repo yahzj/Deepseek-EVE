@@ -4,7 +4,7 @@ import { pt } from './planetText'
 import { InfoTable, infoCardContent } from './shipInfo'
 import { hoverTipProps } from './Tooltip'
 import { planetTraitDetails } from './planetTraitDetails'
-import { X } from 'lucide-react'
+import { X } from './layoutIcons'
 
 export function PlanetTraitTags({ view, catalog }: { view?: PlanetSurveyView; catalog: PlanetCatalog }) {
   const [selected, setSelected] = useState<string | null>(null)
