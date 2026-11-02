@@ -66,7 +66,10 @@
    * 以后要换色只改这一行。
    */
   --hud-short: rgb(var(--wui-danger-strong));
-  --hud-mono: 'Fira Code', ui-monospace, Consolas, 'Sarasa Mono SC', 'Microsoft YaHei Mono', monospace;
+  /* 业务读数走等宽，但**必须带中文兜底**：2026-11-02 船长报障「UI 上还有别的字体、全局字体应该统一」——
+     Latin 等宽体没有汉字字形，若栈里只剩 `monospace`，中文会落到系统默认（Windows = 宋体）⇒ 同一页
+     出现"等宽数字 + 宋体汉字"。这里按「Latin 等宽 → 中文无衬线」的顺序补齐，字形统一为雅黑系。 */
+  --hud-mono: 'Fira Code', ui-monospace, Consolas, 'Sarasa Mono SC', 'Microsoft YaHei Mono', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans SC', monospace;
 }
 
 .hud {

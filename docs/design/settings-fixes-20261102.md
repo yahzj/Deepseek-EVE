@@ -1,6 +1,6 @@
 # 设置界面四项报障修复（字号 / 配色 / 宇宙背景 / 选中按钮）· 2026-11-02
 
-> 状态：施工中，待船长验收（本地未提交）
+> 状态：**待船长验收**（2026-11-02 已按船长授权整批本地提交 `d47f2f39`，**未推送**）
 > 归档契约：遵守 `AGENTS.md` §8 与开发约定 §十五；船长验收并合入 main 后把关键结论并入现行文档、本文件移入 `docs/design/archive/`。
 
 ---
@@ -151,3 +151,36 @@
   已含 GNU Unifont 18.0.01 授权原文。
 - 后续维护注意：根文件与游戏内副本现在**有意不同**（副本删 3 处）；改根 `LICENSE*` 时需同步核对副本差异，
   避免把发行包口径带进游戏内或反之。
+
+---
+
+## 八、全局字体统一（2026-11-02 追加 · 船长报障）
+
+> 船长原话：「项目UI上我看到还有别的字体，不应该，应该是宋体什么的，全局字体应该统一」
+
+### 病根（实测定位，非猜测）
+用 CDP `CSS.getPlatformFontsForNode` 逐节点读**真实渲染字体**（1600×1000 · 科幻未来布局 · 11 个页面/面板）：
+- 新 HUD 块里有 **5 处裸 `font-family: monospace`**（`.app-subtab` / `.app-tasktab` / `.app-log-head` /
+  `.app-battle-tacs .app-btn` / `.app-fit-stage::before`）落在**中文**元素上；
+- `--wui-mono`（Cascadia Mono/Consolas/Courier New）与 `--hud-mono` 只含 Latin 等宽体，无汉字字形 ⇒
+  中文回落浏览器默认的 **NSimSun（新宋体）**；
+- 全站正文还有**两套栈**：`body` 的雅黑栈 + `html[data-locale='en'] body` 的 Segoe 栈。
+⇒ 同一屏出现「雅黑 + 等宽 + 新宋体」三种字形，船长看到的"宋体"即 NSimSun。
+
+### 处方（单点化）
+1. `packages/ui/src/index.css` 新增 `--wui-font` 作为**全站唯一正文字体栈**（中英同一栈），
+   `--wui-mono` 末尾补中文无衬线兜底（Microsoft YaHei / PingFang SC / Noto Sans SC）；
+2. `styles.css` 的 `body` 与 `html[data-locale='en'] body` 都改引 `var(--wui-font)`（英文不再另起一栈）；
+3. 5 处裸 `monospace`：中文元素改 `inherit`（页签/日志标题/战术键），装饰性英文标签改 `var(--wui-mono)`；
+   7 处 `.is-layout-cosmic` 死规则里的 `monospace, var(--wui-mono)` 一并清成 `var(--wui-mono)`；
+4. `_hud-industry.css` 的 `--hud-mono` 补中文无衬线兜底（该页整页用等宽栈）；
+5. `ui/fontChoice.ts` 的可选 GNU Unifont 机制不动（仍只在玩家显式选择时覆盖 body）。
+
+### 验证
+- 复跑字体审计（同一探针）：「科幻未来 × 深空」11 个页面/面板与「旧版 × 深空」11 个页面/面板，
+  **NSimSun/宋体命中 0**；字体构成 = Microsoft YaHei（正文/中文）+ Consolas（等宽数字读数）+
+  Segoe UI Symbol/Emoji/Cambria Math（符号与数学字符的正常回退）。
+- `ui:theme-check` / `ui:layout-css:check`（已重跑生成件）/ `ui:rot-check` / `typecheck`：全绿；
+  desktop 与网页版构建通过。
+- 取舍：数字/代码读数**仍保留等宽**（表格对齐与刷新不跳动是刻意设计）；若船长要求连数字也统一到雅黑，
+  只需改 `--wui-mono` 一个 token，不必再散改规则。
