@@ -30,7 +30,10 @@ body {
 
   color: rgb(var(--wui-text));
 
-  font-family: 'Microsoft YaHei', 'PingFang SC', 'Noto Sans SC', sans-serif;
+  /* **全站唯一正文字体**（2026-11-02 船长报障「UI 上还有别的字体，全局字体应该统一」）：
+     单一来源 = `packages/ui/src/index.css` 的 `--wui-font`（中英文同一栈）。
+     ⚠ 不要再在这里或别处写第二份字体栈，否则中文/英文/等宽三套字形会再次混排。 */
+  font-family: var(--wui-font, 'Microsoft YaHei', 'PingFang SC', 'Noto Sans SC', sans-serif);
 
   font-size: var(--wui-fs-base);
 
@@ -74,10 +77,11 @@ button {
 
 }
 
-/* 英文界面换 Latin 优先字体栈（2026-09-19 船长令「英语本地化」）：中文栈的 Latin 字形偏窄且字重单薄，
-   英文下改用系统 UI 字体；中文侧一字不动（`html[data-locale='en']` 由 i18n/locale.tsx 挂上）。 */
+/* 英文界面字体（2026-09-19 船长令「英语本地化」时曾单独换 Latin 优先栈；**2026-11-02 船长令改回统一**：
+   「全局字体应该统一」⇒ 英文也不再另起一栈，正文统一走 `--wui-font`（`--wui-font` 里 Latin 顺序已排好）。
+   这条保留为空覆盖位（万一以后要恢复分语言栈，改这里一处即可，不再散落）。 */
 html[data-locale='en'] body {
-  font-family: 'Segoe UI', Inter, 'Helvetica Neue', system-ui, -apple-system, 'Noto Sans', Arial, sans-serif;
+  font-family: var(--wui-font, 'Microsoft YaHei', 'PingFang SC', 'Noto Sans SC', sans-serif);
 }
 
 /* ---------- 启动画面 ---------- */
@@ -13731,7 +13735,7 @@ body.no-fx .app-root.is-layout-classic:not(.is-mobile-layout) .app-log-side { tr
   font-size: var(--wui-fs-2xsb);
   letter-spacing: 0.15em;
   color: rgb(var(--wui-hud-primary) / 0.45);
-  font-family: monospace;
+  font-family: var(--wui-mono);
 }
 
 /* 舰船属性仪表舱 */
@@ -13793,7 +13797,8 @@ body.no-fx .app-root.is-layout-classic:not(.is-mobile-layout) .app-log-side { tr
   background: rgb(var(--wui-hud-surface) / 0.4);
 }
 .app-root.is-layout-modern .app-subtab {
-  font-family: monospace;
+  /* 页签文字是中文 ⇒ 用继承的正文栈（裸 `monospace` 会让中文落到系统默认的宋体） */
+  font-family: inherit;
   letter-spacing: 0.08em;
   transition: all 0.16s ease;
 }
@@ -14036,7 +14041,8 @@ body.no-fx .app-root.is-layout-modern .app-fit-slot-icon {
 .app-root.is-layout-modern .app-log-head {
   border-bottom: 1px solid rgb(var(--wui-hud-primary) / 0.2);
   color: rgb(var(--wui-hud-primary));
-  font-family: monospace;
+  /* 标题是中文（事件日志 / 游戏内时钟）⇒ 继承正文栈，避免中文落宋体 */
+  font-family: inherit;
   letter-spacing: 0.08em;
 }
 
@@ -14084,7 +14090,8 @@ body.no-fx .app-root.is-layout-modern .app-fit-slot-icon::after {
  * 9. 模块化货舱与仓库（ItemsPage & Cargo）
  * ═══════════════════════════════════════════════════════════════════════════════ */
 .app-root.is-layout-modern .app-tasktab {
-  font-family: monospace;
+  /* 货舱页签是中文 ⇒ 继承正文栈 */
+  font-family: inherit;
   letter-spacing: 0.06em;
   border-radius: 0;
   transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
@@ -14216,7 +14223,8 @@ body.no-fx .app-root.is-layout-modern .app-fit-cpustrip-track i {
 }
 .app-root.is-layout-modern .app-battle-tacs .app-btn {
   border-radius: 0;
-  font-family: monospace;
+  /* 战术键文字是中文 ⇒ 继承正文栈（裸 monospace 会让中文落宋体） */
+  font-family: inherit;
   letter-spacing: 0.05em;
 }
 
@@ -14656,7 +14664,7 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
 .app-root.is-layout-cosmic .hud-kpi-val {
   font-size: var(--wui-fs-xl);
   font-weight: 700;
-  font-family: monospace, var(--wui-mono);
+  font-family: var(--wui-mono);
   font-variant-numeric: tabular-nums;
   color: rgb(var(--wui-hud-text));
   letter-spacing: 0.03em;
@@ -14696,7 +14704,7 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
   font-size: var(--wui-fs-2xsb);
   letter-spacing: 0.08em;
   color: rgb(var(--wui-hud-primary) / 0.6);
-  font-family: monospace, var(--wui-mono);
+  font-family: var(--wui-mono);
 }
 
 /* 战术微型状态方块（零圆角指示灯） */
@@ -14774,7 +14782,7 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
 /* 数据规格指标：等宽数字 + 高对比度 */
 .app-root.is-layout-modern .app-ship-card.is-fleet .app-ship-spec,
 .app-root.is-layout-cosmic .app-ship-card.is-fleet .app-ship-spec {
-  font-family: monospace, var(--wui-mono);
+  font-family: var(--wui-mono);
   font-variant-numeric: tabular-nums;
   font-size: var(--wui-fs-xs);
   color: rgb(var(--wui-hud-text-muted));
@@ -14800,7 +14808,7 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
 }
 .app-root.is-layout-modern .app-ship-card.is-fleet .app-dur-text,
 .app-root.is-layout-cosmic .app-ship-card.is-fleet .app-dur-text {
-  font-family: monospace, var(--wui-mono);
+  font-family: var(--wui-mono);
   font-variant-numeric: tabular-nums;
   font-size: var(--wui-fs-xs);
   letter-spacing: 0.04em;
@@ -14820,7 +14828,7 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
   display: inline-block;
   padding: 1px 5px;
   margin-left: 6px;
-  font-family: monospace, var(--wui-mono);
+  font-family: var(--wui-mono);
   font-size: var(--wui-fs-2xsd);
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -14902,7 +14910,7 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
 }
 .app-root.is-layout-modern .hud-fit-kpi-tag,
 .app-root.is-layout-cosmic .hud-fit-kpi-tag {
-  font-family: monospace, var(--wui-mono);
+  font-family: var(--wui-mono);
   font-weight: 700;
   letter-spacing: 0.08em;
   color: rgb(var(--wui-hud-primary));
@@ -14929,7 +14937,7 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
 }
 .app-root.is-layout-modern .hud-fit-kpi-val,
 .app-root.is-layout-cosmic .hud-fit-kpi-val {
-  font-family: monospace, var(--wui-mono);
+  font-family: var(--wui-mono);
   font-variant-numeric: tabular-nums;
   font-size: var(--wui-fs-3xl);
   font-weight: 700;
