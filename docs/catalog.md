@@ -15,6 +15,7 @@
 | 任务 | 当前入口 |
 |---|---|
 | 开工、协作、验证、提交 | `AGENTS.md`、`docs/development-conventions.md` |
+| 版权、AI授权提示与发布声明 | 根目录`LICENSE.txt`、`tools/release-rights/README.md` |
 | 当前待办与续接 | `docs/roadmap.md` |
 | 架构与存档边界 | `docs/architecture.md` |
 | 定位某件事的唯一实现 | `docs/single-source.md`、`tools/arch-guard.ts` |

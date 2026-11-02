@@ -19,6 +19,13 @@ directories:
 files:
   - out/**
 
+# 安装目录也保留可直接查阅的声明；Steam配置继承此项。
+extraFiles:
+  - from: out/renderer/LICENSE.txt
+    to: GAME-LICENSE.txt
+  - from: out/renderer/THIRD-PARTY-NOTICES.txt
+    to: GAME-THIRD-PARTY-NOTICES.txt
+
 asar: true
 npmRebuild: false # 无原生模块，跳过重编译，加快打包
 
