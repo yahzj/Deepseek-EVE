@@ -1,5 +1,10 @@
 # 工具区台账（tools/）
 
+## 统一手动发布（2026-11-02）
+
+- `.github/scripts/release-plan.cjs` 为 `publish.yml` 的版本与产物校验助手：`resolve` 把已推送引用锁定成默认分支内的40位SHA并校验Windows标签/包版本；`manifest` 记录构建源码及产物SHA-256；`verify` 拒绝下载产物版本、校验和或文件清单不符。只由工作流或独立夹具调用，不创建标签、推送或调用线上API。统一操作入口及切换注意事项见 `.github/RELEASING.md`。
+- `npm run test -w @whale/core -- --run tests/manual-publish-20261102.test.ts`：本地独立Git仓库、合成zip/exe和工作流语法树/条件校验，覆盖发布引用消歧、祖先限制、标签/版本、产物篡改和全部所选构建成功才上线；只清理自建且已核验边界的临时目录，不触发实际发布。
+
 ## 信号空间自动探索估算（2026-11-02）
 
 - `node tools/signal-auto-yield-comparison.cjs`：四舰队×两科技×五族×五原型×256个散布配对种子，对照旧原样、仅阻止守卫绕过的内存诊断和新估算，共51,200组配对/153,600次结算；`--smoke`每格3种子。TypeScript语法树仅在内存追踪逐层收成，校验200个未插桩旧入口控制样本及生产源码SHA-256不变；不读个人档、旧文档或Git历史，不调参数。每次另写`tools/_ui-artifacts/signal-auto-yield-comparison-<时间戳>/report.json`和`paired-samples.jsonl`。同256种子跨条件复用，不冒称独立样本或玩家自然权重。

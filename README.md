@@ -24,9 +24,10 @@
 ## 在线网页版（GitHub Pages）
 
 - 同一份代码可构建为纯浏览器可玩的网页版（独立工程 `web/`：`cd web && npm ci && npm run build`，
-  只装 react/vite、不装 Electron），由 GitHub Actions（`.github/workflows/pages.yml`）自动部署；
+  只装 react/vite、不装 Electron），通过统一手动发布入口部署；
 - 网页版存档保存在浏览器 localStorage（自带备份/恢复面板），与桌面版文件存档相互独立；
-- 推送 main 分支即触发部署：仓库 Settings → Pages → Source 选 **GitHub Actions** 即可。
+- 代码和版本标签推送只同步仓库，不部署。上线时进入 Actions → **Publish (Manual)**，选择 `web`、`windows` 或 `both`，填写版本引用；Windows另需同提交的已推送版本标签。
+- 仓库 Settings → Pages → Source 保持 **GitHub Actions**。发布、回退和部分失败处理见[统一发布说明](.github/RELEASING.md)；工作流修改上传默认分支之前，远端旧触发规则仍有效。
 
 ## 环境要求
 
