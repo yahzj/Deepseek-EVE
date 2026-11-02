@@ -17,6 +17,7 @@ interface LogLike {
   id: number
   kind: string
   textId?: string
+  textParams?: Record<string, unknown>
 }
 
 /** 挂上引擎订阅；返回退订函数（页面卸载/测试用） */
@@ -37,7 +38,7 @@ export function attachGameSfx(engine: Pick<GameEngine, 'state' | 'subscribe'>): 
       if (tail < lastLogId) lastLogId = 0
       for (const log of logs) {
         if (log.id <= lastLogId) continue
-        const cue = matchLogCue(log.kind, log.textId)
+        const cue = matchLogCue(log.kind, log.textId, log.textParams)
         if (cue !== null) playCue(cue)
       }
       lastLogId = tail

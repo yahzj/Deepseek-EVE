@@ -151,7 +151,7 @@ export function SfxConsole({ onClose }: { onClose: () => void }) {
         <input
           ref={fileRef}
           type="file"
-          accept=".mp3,.ogg,.wav,.m4a,audio/*"
+          accept=".mp3,.ogg,.wav,.m4a"
           multiple
           style={{ display: 'none' }}
           onChange={onFileInput}

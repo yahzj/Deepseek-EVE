@@ -8,6 +8,7 @@
  * 降级：IndexedDB 不可用（隐私模式/受限环境）⇒ 本次会话内有效（内存），音效台会如实标注。
  * 注意：object URL 只在内存里有，页面刷新后由 `initSfxOverrides()` 从 IndexedDB 重建。
  */
+import { SFX_CUES } from './cues'
 import type { SfxCueId } from './cues'
 
 const DB_NAME = 'whale-idle-sfx'
@@ -125,6 +126,8 @@ export async function initSfxOverrides(): Promise<void> {
     const records = await readAll(db)
     for (const rec of records) {
       if (typeof rec?.cueId !== 'string' || !(rec.blob instanceof Blob)) continue
+      // 旧版本/别的分支留下的未知 id：不装载（否则 object URL 永不释放，且永远播不到）
+      if (!(rec.cueId in SFX_CUES)) continue
       setRuntime(rec.cueId, typeof rec.fileName === 'string' ? rec.fileName : rec.cueId, Number(rec.updatedAt) || 0, rec.blob)
     }
     storageMode = 'indexeddb'
@@ -151,8 +154,9 @@ export function listSfxOverrides(): SfxOverrideInfo[] {
     .sort((a, b) => a.cueId.localeCompare(b.cueId))
 }
 
-/** 写入/替换某个事件的音效（file 来自拖拽或文件选择） */
+/** 写入/替换某个事件的音效（file 来自拖拽或文件选择；未知语义 id 直接拒绝） */
 export async function putSfxOverride(cueId: SfxCueId, file: File): Promise<{ ok: boolean; sessionOnly: boolean }> {
+  if (!(cueId in SFX_CUES)) return { ok: false, sessionOnly: false }
   const updatedAt = Date.now()
   setRuntime(cueId, file.name, updatedAt, file)
   notify()

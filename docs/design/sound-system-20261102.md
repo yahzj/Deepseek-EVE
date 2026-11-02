@@ -1,6 +1,6 @@
 # 声音系统（本机音效台）· 2026-11-02 工作文档
 
-> 状态：**实施中**（待船长验收）。经办：零号（AI）· 分支：`main` · 日期：2026-11-02。
+> 状态：**已实现 + 独立审查修复完毕，待船长验收**（2026-11-02）。经办：零号（AI）· 分支：`main` · 日期：2026-11-02。
 > 本批把 2026-09-25 预留的声效骨架（`apps/desktop/src/renderer/src/game/sfx.ts`，只有接口、没有播放器）补成一套完整声音系统。
 > 结项时有效结论并入现行文档，本文件按约定归档。
 
@@ -29,9 +29,9 @@
 2. **播放层**：`HTMLAudioElement` 池（`file://` 与 https 同款写法，不依赖 `fetch`/解码），总音量 × 分类音量 × 单音效增益，最短间隔与并发上限，绝不抛错；首次播放被自动播放策略拒绝时静默丢弃。
 3. **触发层**：
    - 现有显式调用点（`App.tsx` 入侵警报 / 结束）；
-   - 日志桥：引擎 `state.logs` 增量 → 语义 id（只读日志，不改 core）；
-   - 生产进度桥：只读 `refineRuns[].batchesDone` / `labRuns[].finishAtGameMs` 的增量；
-   - 战斗桥：战斗演出流 `BattleFx` + 现有死亡/终局判据；
+   - 日志桥：引擎 `state.logs` 增量 → 语义 id（**只认精确 id 白名单**，不按 `kind` 兜底；部分停炉规则还带"已完成批数 > 0"的参数闸）；
+   - 生产进度桥：只读 `refineRuns[].batchesDone` / `labRuns[].finishAtGameMs` 的增量——**只覆盖"这一拍仍在的台"**，最后一炉/实验室默认一批一线由日志桥补（见 §四）；
+   - 战斗桥：战斗演出流 `BattleFx` + 现有死亡/终局判据；撤退/超时/够不着自动撤离（core 不写 `battle.ended` 而是直接清空战斗）在战斗对象消失时补一次 `combat-lose`；
    - 通讯送达：弹窗上台时一次。
 
 ### 本机音效台（快速添加入口）
@@ -50,15 +50,15 @@
 | `combat-fire` | 战斗 | 我方开火（不含机群/捕获网/闪现；无人机齐射不响） | 0.5 / 90ms / 3 |
 | `combat-hit` | 战斗 | 我方命中 | 0.45 / 80ms / 3 |
 | `combat-hurt` | 战斗 | 我方被击中 | 0.6 / 120ms / 2 |
-| `combat-foe-down` | 战斗 | 击毁敌舰 / 敌机 | 0.8 / 200ms / 2 |
+| `combat-foe-down` | 战斗 | 击毁敌舰 / **敌机**（`droneDown` 且 `side='foe'`；我方机群被点防击落是 `side='me'` 的同名事件，不响） | 0.8 / 200ms / 2 |
 | `combat-me-down` | 战斗 | 我方舰船沉没 | 1.0 / 600ms / 1 |
-| `combat-win` | 战斗 | 战斗胜利 | 1.0 / 1500ms / 1 |
-| `combat-lose` | 战斗 | 战斗失败 / 撤退 | 1.0 / 1500ms / 1 |
-| `industry-done` | 生产 | 制造完成（`core.manufacturing.014/015`）、精炼/回收批次完成、实验室批次完成 | 0.7 / 300ms / 2 |
+| `combat-win` | 战斗 | 战斗胜利（`battle.ended='me'`） | 1.0 / 1500ms / 1 |
+| `combat-lose` | 战斗 | 战斗失败（`ended='foe'`）/ 撤退、超时、够不着自动撤离（战斗对象被清空且没写过胜负） | 1.0 / 1500ms / 1 |
+| `industry-done` | 生产 | 制造完成（`core.manufacturing.014/015`）、实验室出料（`core.lab.023`，每批一条）、精炼/回收批次的存活台增量、**尾批**停炉日志（`core.industry.072/074/075/076/077/083`，且已完成批数 > 0） | 0.7 / 300ms / 2 |
 | `skill-done` | 生产 | 训练完成（`core.engine.002`） | 0.8 / 500ms / 1 |
-| `trade-done` | 生产 | 成交 / 收益 / 维修付款等 `trade` 类日志 | 0.6 / 300ms / 2 |
+| `trade-done` | 生产 | 成交/入账**白名单**（市价/挂单成交、运输报酬、维修付款、买许可、夺回/击退奖励等 16 条 id；不含挂单/撤单/无现货提示/制造开始/建站并网） | 0.6 / 300ms / 2 |
 | `scan-done` | 生产 | 扫描完成（`core.explore.008/009`）、发现信号空间（`core.explorationStatus.001`） | 0.8 / 500ms / 1 |
-| `build-done` | 生产 | 建站/工程建成（`core.station.014`、`core.location.052`、`core.planet.004`） | 1.0 / 1000ms / 1 |
+| `build-done` | 生产 | 建站建成（`core.station.014`、`core.location.052`）。⚠ 星球环境改造完成只有通讯正文、没有日志 ⇒ 现无此音（只有 `comms-received`），属已知缺口 | 1.0 / 1000ms / 1 |
 | `comms-received` | 界面 | 通讯送达弹窗上台 | 0.6 / 500ms / 1 |
 
 默认音量：总音量 70%、初始不静音；分类 = 警报 100% / 战斗 60% / 生产 70% / 界面 50%。全部存本机 `whale-idle:sfx`，不进存档。
@@ -69,16 +69,22 @@
 - **不做 BGM / 环境音**、不做外部素材目录、不做玩家可见的自定义音效功能（发布版隐藏）。
 - 不做存档内音量：换设备不同步，与语言/缩放/主题同族。
 - 发布版看到的是仓库内置包；本机覆盖只在调试门禁放行的机器上存在。
+- **战斗音效只在战场屏上屏时播放**：最小化观战、自动清剿、海盗自动战斗等后台推进不出声，也没看过的场次不补胜负音（取舍，非缺陷；要"后台也响"另立一批）。
+- 装配页「射程 / DPS 模拟」是 facade 引擎跑的真战斗演算，**不出战斗音**（`rangeMode` 整个关掉）。
+- `trade-done` 是**白名单**：新增成交类日志需要在 `rules.ts` 补 id 才会响；`audio-check` 会扫描"规则 id 是否真有 addLog 写入点"，防死规则。
+- 星球环境改造完成目前没有独立建成音（只有通讯送达音），见 §四 `build-done` 行的已知缺口。
 
 ## 六、已知风险与实测项
 
-1. 桌面打包后 renderer 走 `file://`，CSP 原为 `default-src 'self'`；本批在两个 `index.html` 显式加 `media-src 'self' blob:`（内置素材 + 本机覆盖的 Object URL）。**需构建后实测**：内置音效与拖入覆盖都能出声。
+1. 桌面打包后 renderer 走 `file://`，CSP 原为 `default-src 'self'`；本批在两个 `index.html` 显式加 `media-src 'self' blob:`（内置素材 + 本机覆盖的 Object URL）。**已实测**：`npm run audio:smoke:desktop` 里 `file://` 内置音频与 blob 音频均能起播、无 console error；网页构建的「素材进仓库 → 构建进包 → 可播」也已临时放样例音验证过（验证后已删样例）。
 2. 网页版自动播放策略：首次播放被拒则丢弃该次，不延迟补播。
 3. Safari 不支持 ogg ⇒ 素材以 mp3 为主；`manifest` 仍收 ogg/wav/m4a。
 4. 高频战斗音：并发 + 最短间隔 + 单音效增益控制，避免爆音与性能尖峰。
 5. IndexedDB 在 `file://` 下若不支持：退化为会话内有效（仅打包版可能出现；开发模式 `http://localhost` 正常）。
 
 ## 七、公告待审稿（合入前交船长批准，未批准不写 `announcements.ts`）
+
+> ⚠ 本批仓库里**还没有任何内置音频素材**（15 个语义 id 全部"缺文件=静音"）：公告必须与**首批素材入包**同批发布，否则玩家更新后听不到任何声音。
 
 1. 游戏加入声音系统：入侵警报、战斗、生产完成、通讯等事件可以播放音效。
 2. 设置里新增「声音」：总音量、一键静音与四类音量（警报 / 战斗 / 生产 / 界面），偏好保存在本机。
@@ -89,17 +95,37 @@
 | 检查 | 结果 |
 |---|---|
 | `npm run typecheck`（core/data/ui/desktop） | ✅ 四包通过 |
-| `npm run audio:check`（新增） | ✅ 15 事件 / 4 分类 / 规则确定性用例全过；15 个语义 id 暂无素材（缺 = 静音，工具逐条打印） |
+| `npm run audio:check`（新增） | ✅ 15 事件 / 4 分类 / 31 条日志规则（含"规则 id 必须真有 addLog 写入点"的死规则扫描）/ 规则确定性用例全过；15 个语义 id 暂无素材（缺 = 静音，工具逐条打印） |
 | `npm run l10n:check` | ✅ 40 条待译登记与 `enDeferred` 成对、无死引用 |
 | `npm run content:check` | ✅ 内容体检通过 |
-| `npm run arch:guard` | ✅ F1~F9 全 0（新增 `SFX_CUES` / `playCue` / `matchLogCue` 三条单点登记） |
+| `npm run arch:guard` | ✅ F1~F9 全 0（单点登记 237 条，新增 `SFX_CUES` / `playCue` / `matchLogCue` / `matchSfxFileName` 四条） |
 | `npm run ui:rot-check` | ✅ 通过（UI 契约四件套） |
+| `npm run ui:layout-css:check` | ✅ 两份生成样式与 `styles.css` 一致 |
 | `npm run build`（桌面） | ✅ electron-vite 构建通过 |
 | `npm --prefix web run build`（网页） | ✅ 构建通过 |
-| `npm run audio:smoke`（新增 · 网页构建 + 无头 Chrome） | ✅ 19 项全过：安装口、15 条清单、blob 音频可播、设置 7 条滑条、音效台 15 行、拖入文件按文件名自动配对、IndexedDB 落盘、试听、全部清除、无 console error |
+| `npm run audio:smoke`（新增 · 网页构建 + 无头 Chrome，**强制「科幻未来」布局**） | ✅ 20 项全过：安装口、15 条清单、blob 音频可播、设置 7 条滑条、音效台 15 行、**现代布局下弹层完整可见（726×407，中心命中自身，防 clip-path 裁切回归）**、拖入文件按文件名自动配对、IndexedDB 落盘、试听、全部清除、无 console error |
 | `npm run audio:smoke:desktop`（新增 · Electron `file://` 产物） | ✅ 5 项全过：界面上屏、发布门禁下调试口不暴露、`file://` 内置音频与 blob 音频均可起播（CSP `media-src` 两个来源）、无 console error |
 
 测试档：本批**无随档字段**（音量进本机存储），不需要生成器/门槛档，也不需要存档迁移验证。
 
-**并发工作树记录（必须上报）**：实施期间同一工作树另有「设置/字体」在途批次（未跟踪的 `assets/fonts/`、`ui/fontChoice.ts`、`ui/uiScale.ts`、`panels/appSettings.css`、`docs/design/settings-fixes-20261102.md` 与相关改动），与本批在 `appSettings.tsx` / `styles.css` / `boot.ts` / `packages/data/src/l10n/table.ts` / `docs/l10n-pending.md` 上**重叠**。两边改动目前文本共存；本批**未回滚对方改动、未提交**（提交会把对方在途内容一起带走），待船长协调后再重跑固定检查与构建并提交。
+### 独立审查轮（2026-11-02，子代理只读审查；未改文件/未提交）
+
+审查发现 12 条、无阻断项；逐条核实后处理如下（**都先自己读 core 源码验证过才改**）：
+
+| 审查发现 | 核实 | 处理 |
+|---|---|---|
+| ① 生产"最后一炉"与实验室默认单批不响（进度桥只比"仍在的台"） | 属实：精炼尾批在同一推进里 `batchesDone++` 后立即停炉移除；实验室默认一批一线交付即移除 | 补 `core.lab.023`（每批出料）与 6 条尾批停炉日志规则，停炉规则带"已完成批数 > 0"参数闸；`audio-check` 补尾批/参数闸用例 |
+| ② 音效台在现代/宇宙布局被设置弹窗 `clip-path` 裁掉 | 属实（`styles.css` 对 `.app-settings-modal` 有 clip-path；另一批许可弹窗已因此外移） | 音效台改 `createPortal(document.body)`；`audio:smoke` 改为**强制现代布局**并新增"弹层中心可见性"断言 |
+| ③ 我方无人机被击落会播"击毁敌机" | 属实：core 两侧共用 `droneDown`，我方机损 `side='me'`、击落敌机 `side='foe'` | 只认 `side='foe'` |
+| ④ 装配页射程/DPS 模拟会播真实战斗音 | 属实：`rangeMode` 用 facade 引擎跑真战斗演算 | `useBattleSfx({enabled: !rangeMode})` |
+| ⑤ 撤退/超时/够不着自动撤离永远没有失败音 | 属实：core 这些路径直接清空 `exp.battle`，不写 `battle.ended` | 战斗对象消失/战场卸载时，若本场未写过胜负则补 `combat-lose`（已写 ended 的胜负不重复） |
+| ⑥ `kind='trade'` 兜底过宽（制造开始/挂单/撤单/建站都播"成交"） | 属实（部分 trade 日志无 textId） | 取消按 kind 兜底，改为 16 条成交/入账**白名单**；`audio-check` 补"无 textId 不播""撤单不播"用例 |
+| ⑦ `core.planet.004` 是死规则（只是通讯正文 id，不是日志） | 属实 | 删除该规则并记为已知缺口；`audio-check` 新增"规则 id 附近必须有 core `addLog(`"的死规则扫描（31 条全过） |
+| ⑧ 中途打开战场会补播已阵亡单位 | 属实 | 建桥基线先灌当前已阵亡集合（与 `ended` 同样"只记基线"） |
+| ⑨ 后台/自动战斗无声 | 属设计取舍 | 写入 §五（要"后台也响"另立） |
+| ⑩ 本机覆盖层边缘（未知 id、降级/竞态、DB 失败提示） | 部分属实 | 采纳：未知语义 id 不装载、不接受写入；其余记为已知限制（IndexedDB 失败会在面板标注"会话内有效"） |
+| ⑪ 播放层小坑（预览不登记并发、阈值 0.002、老 Safari `play()` 无 Promise） | 已知限制 | 不改逻辑（影响面极小），写入残留风险清单 |
+| ⑫ 文档单点表写了 `matchSfxFileName` 但 `SINGLE_SOURCE` 未登记 | 属实 | 补登记，F3 现在会核对它 |
+
+**并发工作树记录（必须上报）**：实施期间同一工作树另有「设置/字体」在途批次（未跟踪的 `assets/fonts/`、`ui/fontChoice.ts`、`ui/uiScale.ts`、`panels/appSettings.css`、`docs/design/settings-fixes-20261102.md` 与相关改动），与本批在 `appSettings.tsx` / `styles.css` / `boot.ts` / `packages/data/src/l10n/table.ts` / `docs/l10n-pending.md` 上**重叠**；审查/修复期间对方仍在写 `appSettings.tsx`（18:08 还写过一次，一度造成 tsc 读到半截文件的瞬时报错，随后自愈）。两边改动目前文本共存；本批**未回滚对方改动、未提交**（提交会把对方在途内容一起带走），待船长协调后再重跑固定检查与构建并提交。
 

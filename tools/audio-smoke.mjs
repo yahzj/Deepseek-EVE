@@ -3,7 +3,8 @@
  *
  * 用途：改音效相关代码/素材后，一条命令验证整条链路真的通（不是只看类型）：
  * 安装入口 → 15 条语义清单 → blob 音频可播（CSP `media-src blob:`）→ 设置「声音」分组 →
- * 本机音效台 → 拖入文件按文件名自动配对 → IndexedDB 落盘 → 试听 → 全部清除 → 无 console error。
+ * 本机音效台（**强制「科幻未来」布局**，验证弹层不被设置弹窗 `clip-path` 裁切）→
+ * 拖入文件按文件名自动配对 → IndexedDB 落盘 → 试听 → 全部清除 → 无 console error。
  *
  * 前置：① `npm --prefix web run build`（本工具自起静态服务托管 `web/dist`；
  *          用 `AUDIO_SMOKE_DIST=<相对仓库根的目录>` 可改托管别的构建产物）；
@@ -171,6 +172,10 @@ async function main() {
 
   await send('Runtime.enable')
   await send('Page.enable')
+  /** 强制「科幻未来」布局：设置弹窗在该布局下有 clip-path，音效台必须用 Portal 才能完整显示 */
+  await send('Page.addScriptToEvaluateOnNewDocument', {
+    source: `try { localStorage.setItem('whale-idle:layout-set','1'); localStorage.setItem('whale-idle:layout','modern') } catch (e) {}`,
+  })
   await send('Page.navigate', { url: `http://127.0.0.1:${APP_PORT}${PREFIX}` })
 
   let ready = false
@@ -260,6 +265,16 @@ async function main() {
   check(consoleState.modal === true, '音效台面板已打开')
   check(consoleState.rows === 15, `音效台列出 15 个事件（实际 ${consoleState.rows}）`)
   check(consoleState.hasDrop === true, '音效台有拖放区')
+
+  // 现代布局下设置弹窗带 clip-path：嵌套弹层会被裁掉 ⇒ 这里查"弹层中心真的能命中自己"
+  const visibleCheck = await evaluate(`(() => {
+    const el = document.querySelector('.app-sfx-modal')
+    if (!el) return { ok: false, reason: 'missing' }
+    const r = el.getBoundingClientRect()
+    const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+    return { ok: r.width > 600 && r.height > 300 && !!top && el.contains(top), w: Math.round(r.width), h: Math.round(r.height) }
+  })()`)
+  check(visibleCheck.ok === true, `音效台在现代布局下完整可见（实际 ${JSON.stringify(visibleCheck)}；被 clip-path 裁掉会在这里红）`)
 
   const dropResult = await evaluate(`(async () => {
     ${WAV_FN}

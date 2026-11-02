@@ -84,35 +84,88 @@ export function categoryIds(): readonly SfxCategory[] {
 /* ═══════════════ 触发匹配：日志 ═══════════════ */
 
 /**
- * 日志 → 音效的**精确 id 规则**（2026-11-02 按现实日志核实；只读日志，不改 core）。
- *
- * ⚠ 加规则前先确认这条日志真的会在该事件发生：日志 id 的中文文案见
- * `packages/data/src/l10n/table.ts`，写入点用 `rg "core\.⟨域⟩\.⟨号⟩" packages/core/src` 定位。
+ * 一条日志规则的形状：
+ * - `cue`：命中的语义音效；
+ * - `minParam`：**可选参数闸**——该 `textParams` 键的数值必须 > 0 才播。
+ *   用于"停炉/停工日志"：只有真的做完过批次（p2 / p5 = 已完成批数）才算"生产完成"，
+ *   起炉即停（0 批）不播。
  */
-const LOG_CUE_RULES: Readonly<Record<string, SfxCueId>> = {
-  // 训练完成（core/engine.ts 的训练队列）
-  'core.engine.002': 'skill-done',
-  // 星系扫描完成（首次 / 补扫）与发现信号空间
-  'core.explore.008': 'scan-done',
-  'core.explore.009': 'scan-done',
-  'core.explorationStatus.001': 'scan-done',
-  // 建成：首座空间站并网 / 副站建成档 / 星球环境改造完成
-  'core.station.014': 'build-done',
-  'core.location.052': 'build-done',
-  'core.planet.004': 'build-done',
-  // 制造完成（装备库 / 物品仓库）
-  'core.manufacturing.014': 'industry-done',
-  'core.manufacturing.015': 'industry-done',
+export interface LogCueRule {
+  cue: SfxCueId
+  minParam?: string
 }
 
-/** 日志 → 语义 id；先查精确 id，再按分类兜底（`trade` = 成交/收益类）。无匹配返回 null（静默） */
-export function matchLogCue(kind: string, textId?: string): SfxCueId | null {
-  if (typeof textId === 'string') {
-    const exact = LOG_CUE_RULES[textId]
-    if (exact !== undefined) return exact
+/**
+ * 日志 → 音效的**精确 id 规则**（2026-11-02 按现实日志核实；只读日志，不改 core）。
+ *
+ * 三条纪律：
+ * 1. **不按 kind 兜底**：`trade` 类里混着"制造开始/挂单/撤单/提示"等非成交日志（且有些没 textId），
+ *    按分类兜底会大面积误报 ⇒ 成交类也只认精确 id（下表的 `trade-done` 白名单）；
+ * 2. **加规则前先确认这条日志真的会在该事件发生**：文案见 `packages/data/src/l10n/table.ts`，
+ *    写入点用 `rg "core\.⟨域⟩\.⟨号⟩" packages/core/src` 定位；`npm run audio:check` 会扫
+ *    "规则 id 是否出现在 core 的 addLog 附近"，防再出现「文案表有、日志没写过」的死规则；
+ * 3. **尾批要能从日志补到**：精炼炉/回收炉"最后一炉"在**同一次推进里**完成并移除（进度快照看不到），
+ *    实验室默认"一批一线"交付后也立刻移除 ⇒ 这些用它们的**批产/停炉日志**补，见下。
+ */
+export const LOG_CUE_RULES: Readonly<Record<string, LogCueRule>> = {
+  // 训练完成（core 的训练队列）
+  'core.engine.002': { cue: 'skill-done' },
+  // 星系扫描完成（首次 / 补扫）与发现信号空间
+  'core.explore.008': { cue: 'scan-done' },
+  'core.explore.009': { cue: 'scan-done' },
+  'core.explorationStatus.001': { cue: 'scan-done' },
+  // 建成：首座空间站并网 / 副站交付达成「建成」档
+  // ⚠ 星球环境改造完成（msg-planet-home）只有**通讯正文 id**、不写日志 ⇒ 现没有 build-done 触发，
+  //   属已知缺口（玩家收讯时会有 comms-received）；要补需 core 侧另加日志，本批不碰 core。
+  'core.station.014': { cue: 'build-done' },
+  'core.location.052': { cue: 'build-done' },
+  // 制造完成（装备库 / 物品仓库）
+  'core.manufacturing.014': { cue: 'industry-done' },
+  'core.manufacturing.015': { cue: 'industry-done' },
+  // 实验室出料（每批一条；默认"一批一线"与循环续做都走它 ⇒ 尾批不漏）
+  'core.lab.023': { cue: 'industry-done' },
+  // 精炼炉 / 回收炉 / 拆解台的**尾批**：停炉日志带"已完成批数"（p2 批 / p5 批），>0 才播
+  'core.industry.072': { cue: 'industry-done', minParam: 'p2' },
+  'core.industry.075': { cue: 'industry-done', minParam: 'p2' },
+  'core.industry.076': { cue: 'industry-done', minParam: 'p2' },
+  'core.industry.077': { cue: 'industry-done', minParam: 'p2' },
+  'core.industry.074': { cue: 'industry-done', minParam: 'p5' },
+  'core.industry.083': { cue: 'industry-done', minParam: 'p5' },
+  // 成交/入账白名单（不含挂单、撤单、无现货提示、制造开始、建站并网）
+  'core.ai.009': { cue: 'trade-done' },
+  'core.blackMarket.008': { cue: 'trade-done' },
+  'core.expedition.038': { cue: 'trade-done' },
+  'core.expedition.047': { cue: 'trade-done' },
+  'core.industrial.004': { cue: 'trade-done' },
+  'core.market.022': { cue: 'trade-done' },
+  'core.market.023': { cue: 'trade-done' },
+  'core.market.024': { cue: 'trade-done' },
+  'core.market.027': { cue: 'trade-done' },
+  'core.market.029': { cue: 'trade-done' },
+  'core.market.031': { cue: 'trade-done' },
+  'core.shipyard.025': { cue: 'trade-done' },
+  'core.skillLicense.006': { cue: 'trade-done' },
+  'core.weekend.001': { cue: 'trade-done' },
+  'core.weekend.002': { cue: 'trade-done' },
+  'core.weekend.043': { cue: 'trade-done' },
+}
+
+/** 日志 → 语义 id；只看精确规则（+ 参数闸）。无匹配返回 null（静默） */
+export function matchLogCue(
+  kind: string,
+  textId?: string,
+  textParams?: Readonly<Record<string, unknown>>,
+): SfxCueId | null {
+  void kind // 保留入参：调用方按日志整条传入，规则只认 textId（理由见上"不按 kind 兜底"）
+  if (typeof textId !== 'string') return null
+  const rule = LOG_CUE_RULES[textId]
+  if (rule === undefined) return null
+  if (rule.minParam !== undefined) {
+    const raw = textParams?.[rule.minParam]
+    const value = typeof raw === 'number' ? raw : Number(raw)
+    if (!(Number.isFinite(value) && value > 0)) return null
   }
-  if (kind === 'trade') return 'trade-done'
-  return null
+  return rule.cue
 }
 
 /* ═══════════════ 触发匹配：素材文件名 ═══════════════ */

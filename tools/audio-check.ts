@@ -23,6 +23,7 @@ import {
   SFX_CUE_IDS,
 } from '../apps/desktop/src/renderer/src/game/audio/cues'
 import {
+  LOG_CUE_RULES,
   clampVolume,
   defaultSfxPrefs,
   effectiveGain,
@@ -76,6 +77,40 @@ if (missing.length > 0) {
   console.log(`· 未接入素材的语义 id（缺 = 静音，不算错误）：${missing.join('、')}`)
 }
 
+/* ═══════════ 二·五、日志规则必须指向真实 addLog 写入点 ═══════════ */
+
+/**
+ * 起因（2026-11-02 独立审查）：`core.planet.004` 只是通讯正文 id、从没被 `addLog` 写过，
+ * 之前当日志规则登记 ⇒ 死规则永远不触发，而单纯"id 在 L10N 表里存在"查不出来。
+ * 判据：规则 id 字面量附近（±12 行）必须出现 `addLog(`。够粗但能挡住"只有文案、没有日志"这一类死规则。
+ */
+const CORE_SRC = join(ROOT, 'packages/core/src')
+const coreFileLines = new Map<string, string[]>()
+function walkCore(dir: string): void {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name)
+    if (entry.isDirectory()) walkCore(full)
+    else if (entry.name.endsWith('.ts')) coreFileLines.set(full, readFileSync(full, 'utf8').split('\n'))
+  }
+}
+walkCore(CORE_SRC)
+function ruleIdUsedByCoreLog(id: string): boolean {
+  const needle = `'${id}'`
+  for (const lines of coreFileLines.values()) {
+    for (let i = 0; i < lines.length; i++) {
+      if (!lines[i]!.includes(needle)) continue
+      const from = Math.max(0, i - 12)
+      const to = Math.min(lines.length - 1, i + 12)
+      for (let j = from; j <= to; j++) if (lines[j]!.includes('addLog(')) return true
+    }
+  }
+  return false
+}
+for (const id of Object.keys(LOG_CUE_RULES)) {
+  check(ruleIdUsedByCoreLog(id), `日志规则指向的 id 在 core 找不到 addLog 写入点（死规则）：${id}`)
+}
+console.log(`· 日志规则：${Object.keys(LOG_CUE_RULES).length} 条，逐条核对 core 写入点`)
+
 /* ═══════════ 三、本地化 ═══════════ */
 
 const tableSrc = readFileSync(join(ROOT, 'packages/data/src/l10n/table.ts'), 'utf8')
@@ -119,7 +154,15 @@ check(shouldPlay(900, 1000, 100) === true, '节流：间隔足够应放行')
 
 check(matchLogCue('levelup', 'core.engine.002') === 'skill-done', '日志匹配：训练完成')
 check(matchLogCue('industry', 'core.manufacturing.014') === 'industry-done', '日志匹配：制造完成')
-check(matchLogCue('trade', 'core.market.022') === 'trade-done', '日志匹配：成交类（按分类兜底）')
+check(matchLogCue('industry', 'core.lab.023') === 'industry-done', '日志匹配：实验室每批出料（尾批不漏）')
+check(matchLogCue('industry', 'core.industry.077', { p2: 3 }) === 'industry-done', '日志匹配：精炼尾批（已完成 3 批）')
+check(matchLogCue('industry', 'core.industry.077', { p2: 0 }) === null, '日志匹配：起炉即停（0 批）不播生产完成')
+check(matchLogCue('industry', 'core.industry.077') === null, '日志匹配：缺参数不播（尾批规则必须有 p2）')
+check(matchLogCue('industry', 'core.industry.083', { p5: 2 }) === 'industry-done', '日志匹配：余量不足停炉（p5 批数）')
+check(matchLogCue('trade', 'core.market.022') === 'trade-done', '日志匹配：成交白名单')
+check(matchLogCue('trade', 'core.market.014') === null, '日志匹配：撤单不在成交白名单')
+check(matchLogCue('trade', undefined) === null, '日志匹配：无 textId 不播（制造开始/建站都是这类）')
+check(matchLogCue('trade', 'core.planet.004') === null, '日志匹配：通讯正文 id 不是日志（死规则已删）')
 check(matchLogCue('warn', 'core.combat.003') === null, '日志匹配：警告类不应出声')
 check(matchLogCue('system', 'core.simulation.002') === null, '日志匹配：系统结算不应出声')
 
