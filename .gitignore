@@ -50,3 +50,6 @@ steam/buildoutput/
 # Steam：生成的 vdf 含本机绝对路径（一条命令即可重出）⇒ 只入库 config.json
 steam/app_build_*.vdf
 steam/depot_build_*.vdf
+
+# 云存档服务器：SQLite 数据文件与本地运行产物不入库
+apps/server/data/

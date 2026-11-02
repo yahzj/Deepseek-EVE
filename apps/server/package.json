@@ -1,0 +1,26 @@
+{
+  "name": "@whale/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "author": "大鲸鱼-深空放置 / Great Whale Idle",
+  "description": "云存档与聊天服务器：设备码免登录、REST 云存档（带历史版本）、WebSocket 双频道聊天。可独立部署（不依赖仓库其他 workspace）。",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.0",
+    "@types/ws": "^8.5.12",
+    "tsx": "^4.23.13",
+    "typescript": "^5.5.4"
+  },
+  "scripts": {
+    "start": "tsx src/main.ts",
+    "dev": "tsx watch src/main.ts",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  }
+}
