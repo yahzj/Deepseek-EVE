@@ -138,7 +138,10 @@
     "filters:export": "tsx tools/filters-export.ts",
     "l10n:scan": "tsx tools/l10n-en-scan.ts",
     "l10n:core-zh": "tsx tools/l10n-core-zh-audit.ts",
-    "l10n:params": "tsx tools/param-miss-check.ts"
+    "l10n:params": "tsx tools/param-miss-check.ts",
+    "audio:check": "tsx tools/audio-check.ts",
+    "audio:smoke": "node tools/audio-smoke.mjs",
+    "audio:smoke:desktop": "electron tools/audio-desktop-smoke.cjs"
   },
   "devDependencies": {
     "exceljs": "^4.4.0",

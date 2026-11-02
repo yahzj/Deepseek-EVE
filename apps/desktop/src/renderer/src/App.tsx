@@ -1049,6 +1049,15 @@ async function applyLayoutAndReload(): Promise<void> {
     const t = window.setTimeout(() => setFireworksOn(false), FIREWORKS_MS)
     return () => window.clearTimeout(t)
   }, [fireworksOn])
+  /**
+   * **通讯送达提示音**（2026-11-02 声音系统）：弹窗**真正上台**那一刻播一次
+   * —— 与上面"战场让位 / 离线简报优先 / 警报期间压住弹窗"同一套排队，等它上台再响。
+   */
+  useEffect(() => {
+    if (popupMsg === null) return
+    playSfx('comms-received')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [popupMsg?.id])
   /** 结算面板（弹窗里的「查看详细奖励」**直接弹它**；通讯页那一处入口照旧） */
   const [sumOpen, setSumOpen] = useState(false)
   /**

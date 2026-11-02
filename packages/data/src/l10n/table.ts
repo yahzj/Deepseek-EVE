@@ -7838,5 +7838,21 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ui.sfx.051': { zh: '关闭', en: '', enDeferred: true },
   'ui.sfx.052': { zh: '本机覆盖只存在这台机器；发布版使用仓库内置音效。', en: '', enDeferred: true },
   'ui.sfx.054': { zh: '存储不可用：本次会话内有效', en: '', enDeferred: true },
+  // ⟪界面字体与许可与授权 2026-11-02⟫ 船长确认新增界面字体选择（内嵌 GNU Unifont）与授权书全文弹窗；
+  // 英文未授权准备，按约定留空并登记待译（docs/l10n-pending.md）。授权书正文是英文原文，照录、不译、不改写。
+  'ui.App.178': { zh: '界面字体', en: '', enDeferred: true },
+  'ui.App.179': { zh: '默认', en: '', enDeferred: true },
+  'ui.App.180': { zh: '默认沿用现有系统字体；GNU Unifont 为像素点阵全字库。即时生效，不写入存档。', en: '', enDeferred: true },
+  'ui.App.181': { zh: '许可与授权', en: '', enDeferred: true },
+  'ui.App.182': { zh: '以下为内嵌字体与本项目的授权书完整原文。', en: '', enDeferred: true },
+  'ui.App.183': { zh: '关闭', en: '', enDeferred: true },
+  'ui.App.184': { zh: 'GNU Unifont 字体', en: '', enDeferred: true },
+  'ui.App.185': { zh: '版本 {p1} · 文件 {p2} · 版权 {p3} · 发布页 {p4} · 授权原文 {p5}', en: '', enDeferred: true },
+  'ui.App.186': { zh: '字体文件内嵌的版权与许可声明（原文）', en: '', enDeferred: true },
+  'ui.App.187': { zh: '字体许可全文：GNU 通用公共许可证第 2 版（附 GNU 字体嵌入例外）与 SIL 开放字体许可 1.1（原文）', en: '', enDeferred: true },
+  'ui.App.188': { zh: '本项目版权与授权声明', en: '', enDeferred: true },
+  'ui.App.189': { zh: '版权与授权声明（原文）', en: '', enDeferred: true },
+  'ui.App.190': { zh: '双许可与商业使用条款 · GNU AGPLv3（原文）', en: '', enDeferred: true },
+  'ui.App.191': { zh: '其他第三方组件（React、React DOM、Scheduler、Lucide、星系素材等）分别遵循各自的许可证。', en: '', enDeferred: true },
 }
 
