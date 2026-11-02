@@ -146,6 +146,7 @@ function battleScreenState(automatic: boolean, previouslyOpen: boolean) {
   const view = { open: previouslyOpen, mounted: false, automatic }
   const scope = {
     inBattle: true,
+    state: createInitialState({ nowWallMs: 0, seed: 7 }),
     prevInBattleRef: { current: false }, battleWatchedRef: { current: true },
     engine: { autoSortieNow: () => view.automatic },
     setBattleOpen: (open: boolean) => { view.open = open },

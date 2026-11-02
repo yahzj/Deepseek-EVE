@@ -1025,6 +1025,8 @@ describe('敌对派系活跃（2026-09-10 船长定：每天一个中安/低安�
     for (let i = 0; i < runs; i += 1) {
       state.expedition.active = false
       state.expedition.battle = null
+      delete state.expedition.sortie
+      delete state.combatEscort
       const r = startExpedition(state, card.id, ctx)
       expect(r.ok, r.error ?? '').toBe(true)
       const before = rareWreckCountOf(state, f.galaxyId!)

@@ -3,7 +3,7 @@ import { buildSimContext } from '@whale/data'
 import { createCommandReadyState as createInitialState } from './helpers/command-ready'
 import { addShipToFleet } from '../src/fleetBook'
 import { startExpedition, setBattleDesire, advanceAutoLoopBounty, advanceAutoLoopInvasion } from '../src/expedition'
-import { createPlayerSpec, desiredRangeFor, startBattleFor } from '../src/combat'
+import { createPlayerSpec, startBattleFor } from '../src/combat'
 import { battleCardRangeOf, cancelBattleRange, playerFleetMaxRangeOf } from '../src/battleRangeMemory'
 import { confirmBattleRange } from '../src/battleRangeConfirm'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
@@ -15,6 +15,7 @@ import { wormholeStartBattle, wormholeTravelTo } from '../src/wormholeBattle'
 import { gridCellAt, hexDistance } from '../src/wormholeGrid'
 import { wormholeResolveEvent } from '../src/wormholeExpedition'
 import { simulateOffline } from '../src/simulation'
+import { buildMyUnitSpecs } from '../src/combat/fleetSpecs'
 
 const ctx = buildSimContext()
 const NOW = new Date(2026, 9, 21, 12).getTime()
@@ -49,7 +50,8 @@ describe('按实际卡ID记忆距离并确认射程变化', () => {
   it('同卡跨星系共享，不同卡不共享，旧星系设置不迁移', () => {
     const state = world()
     state.expedition.desirePrefByGalaxy = { 'galaxy-hub': 9999, 'galaxy-redring': 9999 }
-    const defaultM = desiredRangeFor(createPlayerSpec(state, ctx, state.shipId)!, 'mid', ctx.balance.battle)
+    const defaultFor = (cardId: string) => startBattleFor(structuredClone(state), ctx, state.shipId, cardId, state.gameMs, null)!.myDesireM
+    const defaultM = defaultFor('ink-harass')
     expect(startExpedition(state, 'ink-harass', ctx, { foeGalaxyId: 'galaxy-redring' }).ok).toBe(true)
     expect(state.expedition.battle!.myDesireM).toBe(defaultM)
     setBattleDesire(state, 2500, ctx)
@@ -58,7 +60,7 @@ describe('按实际卡ID记忆距离并确认射程变化', () => {
     expect(state.expedition.battle!.myDesireM).toBe(2500)
     idle(state)
     startExpedition(state, 'ink-raid', ctx, { foeGalaxyId: 'galaxy-kor' })
-    expect(state.expedition.battle!.myDesireM).toBe(defaultM)
+    expect(state.expedition.battle!.myDesireM).toBe(defaultFor('ink-raid'))
     expect(state.expedition.desirePrefByGalaxy).toEqual({ 'galaxy-hub': 9999, 'galaxy-redring': 9999 })
   })
   it('首次入场建立射程，增加或缩短均拦截，取消完全不扣料不更新记录', () => {
@@ -85,7 +87,8 @@ describe('按实际卡ID记忆距离并确认射程变化', () => {
     expect(confirmBattleRange(state, ctx, 1700, NOW).ok).toBe(true)
     expect(state.pendingBattleRange).toBeUndefined()
     expect(state.expedition.battle!.myDesireM).toBe(1700)
-    expect(battleCardRangeOf(state, 'ink-harass')).toEqual({ desireM: 1700, maxRangeM: playerFleetMaxRangeOf([createPlayerSpec(state, ctx, state.shipId)!]), shipIds: [state.shipId] })
+    const specs = buildMyUnitSpecs(state, ctx, state.expedition.battle!, state.shipId, 'ink-harass')
+    expect(battleCardRangeOf(state, 'ink-harass')).toEqual({ desireM: 1700, maxRangeM: playerFleetMaxRangeOf(specs), shipIds: [state.shipId] })
     idle(state)
     expect(startExpedition(state, 'ink-harass', ctx).ok).toBe(true)
     idle(state)
@@ -272,6 +275,18 @@ describe('按实际卡ID记忆距离并确认射程变化', () => {
     changeRange(saved)
     expect(startExpedition(saved, 'ink-harass', ctx).ok).toBe(true)
     expect(saved.battleRangeByCard!['ink-harass']!.maxRangeM).toBeGreaterThan(0)
+  })
+  it('仅有距离的旧记录首次入场补齐电子战射程，之后真实换装仍需确认', () => {
+    const state = world()
+    state.battleRangeByCard = { 'ink-harass': { desireM: 2300 } }
+    expect(startExpedition(state, 'ink-harass', ctx).ok).toBe(true)
+    expect(state.pendingBattleRange).toBeUndefined()
+    expect(state.expedition.battle!.myDesireM).toBe(2300)
+    const specs = buildMyUnitSpecs(state, ctx, state.expedition.battle!, state.shipId, 'ink-harass')
+    expect(battleCardRangeOf(state, 'ink-harass')).toEqual({ desireM: 2300, maxRangeM: playerFleetMaxRangeOf(specs), shipIds: [state.shipId] })
+    idle(state)
+    changeRange(state)
+    expect(startExpedition(state, 'ink-harass', ctx).rangeConfirmation).toBe(true)
   })
   it('坏记忆值被清洗且原型键不污染记录', () => {
     const state = world()

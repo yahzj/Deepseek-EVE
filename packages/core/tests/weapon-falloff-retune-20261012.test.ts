@@ -10,6 +10,7 @@ import { distFactor, droneHitChance, hitChance } from '../src/combatMath'
 import { createFoeSpecs } from '../src/foeSpecs'
 import modules from '../../data/src/static/modules.json'
 import { applyApprovedEquipmentRetune } from './helpers/approved-equipment-retune-20261019'
+import { applyApprovedEnemyEwDelta, addApprovedRepairDrone } from './helpers/approved-fleet-delta-20261101'
 
 const ctx = buildSimContext()
 const root = new URL('../../../', import.meta.url)
@@ -104,6 +105,8 @@ describe('玩家动能武器远端命中倍率调整', () => {
       { shieldCapacitor_damageMul: 1.25 })
     if (path.endsWith('/items.json')) for (const family of ['r', 'c', 'h', 'd']) expected.groups.CONSUMABLES_0.push({
       id: `invasion-beacon-${family}`, kind: 'consumable', unitM3: .01, baseSellPriceIsk: 480000000 })
+    if (path.endsWith('/foeShips.json') || path.endsWith('/foeMounts.json')) applyApprovedEnemyEwDelta(expected.groups.parameters)
+    if (path.endsWith('/items.json')) addApprovedRepairDrone(expected.groups.DRONES_0)
     expect(JSON.parse(readFileSync(new URL(path, root), 'utf8'))).toEqual(expected)
   })
 

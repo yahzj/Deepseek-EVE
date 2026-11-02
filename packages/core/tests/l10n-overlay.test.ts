@@ -39,6 +39,33 @@ const deferredGravekeeperCards: Readonly<Record<string, string>> = {
   'gravekeeper-drift': 'ano.gravekeeper.001', 'gravekeeper-line': 'ano.gravekeeper.002',
   'gravekeeper-main': 'ano.gravekeeper.003', 'gravekeeper-flagship': 'ano.gravekeeper.004',
 }
+const deferredSupport: Readonly<Record<string, { name?: string; description: string }>> = {
+  'mod-shieldfield-2': { name: 'mod.fleetSupport.001', description: 'mod.fleetSupport.003' },
+  'mod-shieldfield-3': { name: 'mod.fleetSupport.002', description: 'mod.fleetSupport.003' },
+  'mod-lock-1': { description: 'mod.fleetSupport.004' },
+  'mod-lock-2': { description: 'mod.fleetSupport.004' },
+  'mod-lock-3': { description: 'mod.fleetSupport.004' },
+  'mod-wh-d-lock': { description: 'mod.fleetSupport.004' },
+  'drone-repair-mil': { name: 'item.repairDrone.001', description: 'item.repairDrone.002' },
+  'bp-shieldfield-2': { name: 'bp.fleetSupport.001', description: 'mod.fleetSupport.003' },
+  'bp-shieldfield-3': { name: 'bp.fleetSupport.002', description: 'mod.fleetSupport.003' },
+}
+function expectDeferred(value: string | undefined, textId: string): void {
+  const entry = L10N[textId]!
+  expect(entry, textId).toBeDefined()
+  expect(entry.enDeferred, textId).toBe(true)
+  expect(entry.en, textId).toBe('')
+  expect(value, textId).toBe(l10nEntryText(entry, 'en'))
+}
+
+/** 固定编成也内嵌文案，只排除文本字段，保留所有数值、ID和数组顺序。 */
+function withoutCardText(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(withoutCardText)
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value)
+    .filter(([key]) => !['name', 'description', 'label', 'foeMountNames', 'foeMountNamePairs'].includes(key))
+    .map(([key, item]) => [key, withoutCardText(item)]))
+  return value
+}
 
 describe('英文覆盖层（P2）', () => {
   it('zh 缺省 = 显式 zh：名称逐字相同（工具/测试/模拟读数不受影响）', () => {
@@ -157,15 +184,7 @@ describe('英文覆盖层（P2）', () => {
     expect(en.anomalies.get('ano-maw-hunt')?.name).toBe('Maw Hunt Order')
     expect(en.anomalies.get('enc-pirate-4')?.name).toBe('Deepspace Butcher Fleet')
     for (const [id] of Object.entries(deferredGravekeeperCards)) expect(en.anomalies.get(id)!.name, id).not.toBe(zh.anomalies.get(id)!.name)
-    // 深比时**排除 ships**——卡片内嵌敌舰名本就该换（由上面那条"嵌套覆盖"用例单独逐字段核对）
-    const strip = (d: object): string => {
-      const rest: Record<string, unknown> = { ...(d as Record<string, unknown>) }
-      delete rest.name
-      delete rest.description
-      delete rest.ships
-      return JSON.stringify(rest)
-    }
-    for (const [id, def] of zh.anomalies) expect(strip(en.anomalies.get(id)!), `异常点 ${id} 的数值字段`).toBe(strip(def))
+    for (const [id, def] of zh.anomalies) expect(withoutCardText(en.anomalies.get(id)!), `异常点 ${id} 的非文本字段`).toEqual(withoutCardText(def))
   })
 
   it('物品 / 技能：id 集合一致，除 name/description 外逐字段深比一字不动', () => {
@@ -192,6 +211,11 @@ describe('英文覆盖层（P2）', () => {
     expect(en.shipBlueprints.get('sbp-pioneer')?.name).toBe('Narwhal-class Blueprint')
     // 派生覆盖率：能反查到产物的蓝图都必须有英文名（否则说明产物表缺名）
     const noEn = [...zh.blueprints.values()].filter((bp) => {
+      const support = deferredSupport[bp.id]
+      if (support?.name) {
+        expectDeferred(en.blueprints.get(bp.id)?.name, support.name)
+        return false
+      }
       const pending = deferredCalibration[bp.id]
       if (pending) return en.blueprints.get(bp.id)?.name === zh.blueprints.get(bp.id)?.name
       const index = deferredDroneBooks[bp.id]
@@ -369,7 +393,10 @@ describe('英文覆盖层（P2）', () => {
         noDesc.push(it.id)
         continue
       }
-      if (it.id === 'synaptic-accelerant' && L10N['item.synaptic.001']!.enDeferred === true) {
+      if (deferredSupport[it.id]) {
+        expectDeferred(other.description, deferredSupport[it.id]!.description)
+        expectDeferred(other.name, deferredSupport[it.id]!.name!)
+      } else if (it.id === 'synaptic-accelerant' && L10N['item.synaptic.001']!.enDeferred === true) {
         expect(other.description).toBe(l10nEntryText(L10N['item.synaptic.001']!, 'en'))
       } else if (it.id === 'drone-jawclaw') {
         expect(L10N['item.jawclaw.002']!.en).not.toBe('')
@@ -397,7 +424,12 @@ describe('英文覆盖层（P2）', () => {
         continue
       }
       const pending = deferredCalibration[id]
-      if (pending) expect(other.description).not.toBe(zh.modules.get(id)!.description)
+      const support = deferredSupport[id]
+      if (support) {
+        expectDeferred(other.description, support.description)
+        if (support.name) expectDeferred(other.name, support.name)
+        else expect(other.name).not.toBe(zh.modules.get(id)!.name)
+      } else if (pending) expect(other.description).not.toBe(zh.modules.get(id)!.description)
       else if (id.startsWith('mod-alien-')) expect(other.description).not.toBe(zh.modules.get(id)!.description)
       else expect(cjk.test(other.description), `${id} 的英文说明残留中日韩字符：${other.description}`).toBe(false)
     }
@@ -488,6 +520,11 @@ describe('英文覆盖层（P2）', () => {
         continue
       }
       const pending = deferredCalibration[id]
+      const support = deferredSupport[id]
+      if (support) {
+        expectDeferred(other.description, support.description)
+        continue
+      }
       if (pending) { expect(other.description).not.toBe(zh.blueprints.get(id)!.description); continue }
       const index = deferredDroneBooks[id]
       if (index !== undefined) {

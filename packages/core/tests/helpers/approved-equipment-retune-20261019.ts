@@ -1,4 +1,6 @@
-/** 船长2026-10-19批准的三件装备字段，供历史全值守恒用例叠加；不读取待测数据。 */
+import { applyApprovedFleetModuleDelta } from './approved-fleet-delta-20261101'
+
+/** 后续批准的精确装备字段，供历史全值守恒用例叠加；不读取待测数据。 */
 export function applyApprovedEquipmentRetune(data: { groups: object }): void {
   for (const row of Object.values(data.groups).flat() as Array<Record<string, unknown>>) {
     if (row.id === 'mod-lair-blink-r') row.slot = 'support'
@@ -7,4 +9,5 @@ export function applyApprovedEquipmentRetune(data: { groups: object }): void {
       maxRangeM: 2500, reloadMs: 3800, acidOnHit: { cutPct: .05, durationMs: 15000 },
     })
   }
+  applyApprovedFleetModuleDelta(Object.values(data.groups).flat())
 }

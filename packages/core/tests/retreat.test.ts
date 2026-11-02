@@ -131,6 +131,8 @@ describe('战斗中撤退（按敌方火力扣装甲/结构）', () => {
     // 重新进入未分胜负的战斗并撤退 → 清剿停环
     state.expedition.active = false
     state.expedition.battle = null
+    delete state.expedition.sortie
+    delete state.combatEscort
     state.autoLoopAnomalyId = 'ano-a'
     enterBattle(state, ctx)
     expect(retreatBattle(state, ctx).ok).toBe(true)

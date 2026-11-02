@@ -16,7 +16,7 @@
  * ⑤ **两条时间曲线**（衰减爬到 1.0 且随波重置；三连发 100ms 间隔与轮周期）。
  */
 import { describe, expect, it } from 'vitest'
-import { FOE_SHIPS, buildSimContext } from '@whale/data'
+import { ANOMALIES, FOE_SHIPS, buildSimContext } from '@whale/data'
 import { addShipToFleet, createInitialState, startFleetBattleFor } from '../src/index'
 import {
   activeFoeSpecsOf,
@@ -164,12 +164,9 @@ describe('挂载面（只挂各自主人）', () => {
     expect(nexus!.foeFocusArray, '中枢应带聚焦阵列参数').toEqual({ rampMs: 120_000, rangeBonusPct: 2, antiDroneBonusPct: 2 })
     expect(nexus!.foeStandbyShield, '中枢不得带待机护盾').toBeUndefined()
     expect(nexus!.weapons[0]!.burst, '中枢主武器应带三连发').toEqual({ shots: 3, gapMs: 100 })
-    /**
-     * **每发 −70% 要一路穿过建档管线**（`shotDmg = round(舰级值 × 槽位 dmgMul × 多舰补偿 × 上限缩放)`）：
-     * 拿**同一条卡、只把舰级单发改回 519 且去掉连发**再建一次档 ⇒ 两条单发之比应 = 519 ÷ 156。
-     * （直接断言 156 会被管线缩放挡下——缩放系数是卡与编成的函数，不该在用例里硬编。）
-     */
-    const cardNexus = ctx.anomalies.get(CARD_NEXUS)!
+    // 单发比例在相同原始管线核对，关闭整波越线折扣，避免两组总火力不同改变折扣率。
+    const cardNexus = ANOMALIES.find(card => card.id === CARD_NEXUS)!
+    const ratioBalance = { ...bal, foeDpsOverCapDiscount: 0 }
     const baselineCard = {
       ...cardNexus,
       ships: (cardNexus.ships ?? []).map((s) =>
@@ -178,13 +175,16 @@ describe('挂载面（只挂各自主人）', () => {
           : s,
       ),
     } as NonNullable<ReturnType<typeof ctx.anomalies.get>>
-    const baseline = activeFoeSpecsOf(baselineCard, bal, 3).find((s) => s.foeShipId === 'foe-r-corona-nexus')!
+    const baseline = activeFoeSpecsOf(baselineCard, ratioBalance, 3).find((s) => s.foeShipId === 'foe-r-corona-nexus')!
+    const reduced = activeFoeSpecsOf(cardNexus, ratioBalance, 3).find(s => s.foeShipId === 'foe-r-corona-nexus')!
+    expect(cardNexus.ships!.find(slot => slot.ship.id === 'foe-r-corona-nexus')!.ship.shotDmg).toBe(Math.round(519 * .3))
     expect(baseline.weapons[0]!.burst, '基线：改判前没有连发').toBeUndefined()
+    expect(reduced.weapons[0]!.burst).toEqual(nexus!.weapons[0]!.burst)
     expect(
-      baseline.weapons[0]!.shotDmg! / nexus!.weapons[0]!.shotDmg!,
-      `每发应降到原来的 0.3 倍（基线 ${baseline.weapons[0]!.shotDmg} ⇒ 现在 ${nexus!.weapons[0]!.shotDmg}）`,
+      baseline.weapons[0]!.shotDmg! / reduced.weapons[0]!.shotDmg!,
+      '同一建档管线每发应降到原来的0.3倍',
     ).toBeGreaterThan(3.2)
-    expect(baseline.weapons[0]!.shotDmg! / nexus!.weapons[0]!.shotDmg!).toBeLessThan(3.45)
+    expect(baseline.weapons[0]!.shotDmg! / reduced.weapons[0]!.shotDmg!).toBeLessThan(3.45)
     // 对照：H 族那两张卡两件都不带（零行为变化）
     for (const cardId of ['ink-harass', 'ink-flagship']) {
       const card = ctx.anomalies.get(cardId)

@@ -195,9 +195,10 @@ describe('叠光装置：真实战斗里的装填自加速', () => {
      * （`f` = 已开火发数（**含本发**）、`bs` = 已折算的闪现次数）⇒ 无论从第几发开始采样都成立。
      */
     const seq: Array<{ t: number; r: number; f: number; bs: number }> = []
+    const overlayTag = Object.values(b.units).find(unit => unit.foeShipId === 'foe-r-corona-overlay')!.tag
     for (let t = 250; t <= 400_000 && b.ended === null; t += 250) {
       tick(t)
-      const reg = b.foeOverlayReload?.['w0-foe-4']
+      const reg = b.foeOverlayReload?.[overlayTag]
       if (reg === undefined) continue
       if (seq.length === 0 || seq[seq.length - 1]!.r !== reg.r) seq.push({ t, r: reg.r, f: reg.f, bs: reg.bs })
       if (reg.r <= 500) break // 叠满（夹到下限）⇒ 后面不再变化，停

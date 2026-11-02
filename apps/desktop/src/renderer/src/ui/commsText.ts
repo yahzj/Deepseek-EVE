@@ -252,7 +252,10 @@ export function commsHintText(text: string): string {
  * ⚠ **行数必须与中文逐行对齐**：`commsBodyText()` 在行数不符时**回落到中文**（宁可整段中文，也不许错行串位）。
  */
 const COMMS_BODY_EN: Record<string, readonly string[]> = {
-  'msg-industrial-fleet-risk': ['ui.commsIndustrialRisk.002', 'ui.commsIndustrialRisk.003'],
+  'msg-industrial-fleet-risk': [
+    l10nEntryText(L10N['ui.commsIndustrialRisk.002']!, 'en'),
+    l10nEntryText(L10N['ui.commsIndustrialRisk.003']!, 'en'),
+  ],
   // ⟪文案调整 2026-10-12⟫ 新黑市信英文未准备时使用共享待译回退，不显示空正文。
   'msg-black-market-unlock': [
     l10nEntryText(L10N['ui.commsBlackMarket.002']!, 'en'),

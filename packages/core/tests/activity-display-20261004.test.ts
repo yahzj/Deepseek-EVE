@@ -93,7 +93,7 @@ describe('两套活动栏停止动作逐项一致', () => {
       for (const [action, expected] of Object.entries(STOP_METHODS)) {
         const method = vi.fn(() => ({ ok: true }))
         const toast = vi.fn()
-        stop({ stop: action, stopParam: '7' } as ActivityView, { [expected.method]: method }, toast)
+        stop({ stop: action, stopParam: '7' } as ActivityView, { state: createInitialState({ nowWallMs: 0, seed: 7 }), [expected.method]: method }, toast)
         expect(method, action).toHaveBeenCalledTimes(1)
         expect(method, action).toHaveBeenCalledWith(...expected.args)
         expect(toast).toHaveBeenCalledTimes(1)
@@ -104,6 +104,16 @@ describe('两套活动栏停止动作逐项一致', () => {
       stop({ stop: 'stop-mining' } as ActivityView, { stopMiningNow: () => ({ ok: false, error: 'LOCKED' }) }, toast)
       expect(toast).toHaveBeenCalledTimes(1)
       expect(toast).toHaveBeenCalledWith('LOCKED', true)
+    })
+    it.each([
+      [false, false, 'ui.Hauling.006'],
+      [false, true, 'ui.industrial.007'],
+      [true, false, 'ui.industrial.008'],
+    ] as const)(`${layout} 停运提示区分交战%s与折返%s`, (active, returning, textId) => {
+      const toast = vi.fn()
+      const state = { encounter: { active }, hauling: { fleetLeg: { returning } } }
+      stop({ stop: 'stop-hauling' } as ActivityView, { state, stopHaulingNow: () => ({ ok: true }) }, toast)
+      expect(toast).toHaveBeenCalledWith(textId)
     })
   }
 })

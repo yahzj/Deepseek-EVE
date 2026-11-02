@@ -7,7 +7,7 @@ import { createInitialState } from '../src/state'
 import { gateMainActivity, ACTIVITY_LABEL_ID, HALT_COST_ID } from '../src/activityGate'
 import { fitModule, swapModuleAt } from '../src/equipment'
 import { goStandbyAt, originGalaxyOf } from '../src/location'
-import { installPlug, exchangePlugBlueprint, exchangeUniversalBlackBox } from '../src/plugs'
+import { installPlug, exchangePlugBlueprint, exchangeUniversalBlackBox, UNIVERSAL_BLACKBOX_COST, PLUG_BLUEPRINT_COST } from '../src/plugs'
 import { learnBlueprint, marketSellPreview, marketSellHolding, listSellHolding } from '../src/market'
 import { claimFirstTask } from '../src/firstRewards'
 import { signalSpaceTextId } from '../src/explorationText'
@@ -75,11 +75,11 @@ describe('真实错误入口不漏模板参数', () => {
       [ctx.galaxies.get(originGalaxyOf(state, ctx))!.name, () => goStandbyAt(state, originGalaxyOf(state, ctx), ctx)],
       [gun.name, () => installPlug(state, ctx, gun.id)],
       [plug.name, () => installPlug(state, ctx, plug.id)],
-      ['30', () => exchangeUniversalBlackBox(state)],
+      [String(UNIVERSAL_BLACKBOX_COST), () => exchangeUniversalBlackBox(state)],
     ]
     const bp = BLUEPRINTS.find((b) => b.moduleId === plug.id)!
     const plugCtx = { ...ctx, blueprints: new Map(ctx.blueprints).set(bp.id, bp) }
-    fixtures.push(['8', () => exchangePlugBlueprint(state, plugCtx, plug.id)])
+    fixtures.push([String(PLUG_BLUEPRINT_COST), () => exchangePlugBlueprint(state, plugCtx, plug.id)])
     const accounts = () => JSON.stringify({ wallet: state.wallet, warehouse: state.warehouse, modules: state.moduleBay,
       standings: state.standings, learned: state.learnedRecipes, mining: state.mining, hauling: state.hauling,
       orders: state.orders, plugs: state.fleet[state.shipId]?.plugs })

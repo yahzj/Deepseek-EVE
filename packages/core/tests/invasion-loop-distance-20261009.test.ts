@@ -4,7 +4,8 @@ import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import { addShipToFleet } from '../src/fleetBook'
 import { startExpedition, setBattleDesire, setAutoLoopInvasion, advanceAutoLoopInvasion } from '../src/expedition'
-import { advanceBattleFor, battleArcsFor, createPlayerSpec, desirePrefOf, setDesirePrefOf, startBattleFor, startFleetBattleFor } from '../src/combat'
+import { advanceBattleFor, battleArcsFor, createPlayerSpec, desiredRangeFor, desirePrefOf, setDesirePrefOf, startBattleFor, startFleetBattleFor } from '../src/combat'
+import { buildMyUnitSpecs } from '../src/combat/fleetSpecs'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { weekendStartFlagshipBattle } from '../src/weekendLaunch'
 import type { GameState } from '../src/state'
@@ -130,8 +131,10 @@ describe('入侵目标距离不因首波量程缩小', () => {
       expect(battle.myDesireM).toBe(battle.distanceM)
     }
     // 虫洞派生卡的开局实际距离另有规则；既有目标上限为派生后首波射程。
-    expect(wormhole.myDesireM).toBe(6600)
-    expect(wormhole.distanceM).toBe(2760)
+    expect(wormhole.myDesireM).toBe(wormhole.rangeMemory!.limitM)
+    const me = buildMyUnitSpecs(state, ctx, wormhole, state.shipId, 'alien-main')[0]!
+    expect(wormhole.distanceM).toBe(desiredRangeFor(me, 'mid', ctx.balance.battle, ctx.balance.battle.wormholeBrawlOpenBand))
+    expect(wormhole.distanceM).toBeLessThan(wormhole.myDesireM)
   })
 
   it('无偏好仍为原主武器默认值，新的手动选择仍受当前波上限约束', () => {

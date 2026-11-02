@@ -1,10 +1,8 @@
 import type { GameState } from '../../src/state'
 import type { SimContext } from '../../src/types'
-import { createPlayerSpec } from '../../src/combat'
-import { battleCardKey, playerFleetMaxRangeOf } from '../../src/battleRangeMemory'
+import { battleCardKey } from '../../src/battleRangeMemory'
 
-/** 距离专项只安排已存在的入场记录，射程仍由本次真实规格计算。 */
-export function setCardDistance(state: GameState, ctx: SimContext, cardId: string, desireM: number, ships = [state.shipId]): void {
-  const maxRangeM = playerFleetMaxRangeOf(ships.map(id => createPlayerSpec(state, ctx, id)!))
-  state.battleRangeByCard = { ...state.battleRangeByCard, [battleCardKey(cardId)]: { desireM, maxRangeM } }
+/** 仅注入合法旧距离记录；首次真实入场补齐电子战、旗舰覆写及编队后的射程快照。 */
+export function setCardDistance(state: GameState, _ctx: SimContext, cardId: string, desireM: number, ships = [state.shipId]): void {
+  state.battleRangeByCard = { ...state.battleRangeByCard, [battleCardKey(cardId)]: { desireM, shipIds: [...ships] } }
 }

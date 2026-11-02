@@ -20,7 +20,8 @@ import { buildSimContext } from '@whale/data'
 import { createCommandReadyState as createInitialState } from './helpers/command-ready'
 import type { GameState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
-import { setDesirePrefOf, startBattleFor } from '../src/combat'
+import { setDesirePrefOf, startBattleFor, desiredRangeFor } from '../src/combat'
+import { buildMyUnitSpecs } from '../src/combat/fleetSpecs'
 import { battleCardRangeOf } from '../src/battleRangeMemory'
 import { setCardDistance } from './helpers/battle-card-memory'
 import { weekendStartFlagshipBattle } from '../src/weekendLaunch'
@@ -35,8 +36,9 @@ const ctx = buildSimContext('zh')
 const GID = 'galaxy-alkali'
 const CORE = 'galaxy-kor'
 const NOW = 1_800_000_000_000
-/** 引擎缺省档（主武器射程中点）——本例里第一场开出来的就是它 */
-const DEFAULT_DESIRE = 2_000
+/** 默认距离按本场电子战后的主武器计算，不把旧射程常量当记忆规则。 */
+const defaultDesire = (s: GameState, battle: NonNullable<ReturnType<typeof weekendStartFlagshipBattle>>) =>
+  desiredRangeFor(buildMyUnitSpecs(s, ctx, battle, s.shipId, 'ink-flagship')[0]!, 'mid', ctx.balance.battle)
 /** 玩家在战斗里拖到的目标距离（写入端写的那个值） */
 const PLAYER_DESIRE = 3_000
 
@@ -65,7 +67,7 @@ describe('旧记忆报障回归：现按实际卡ID保存', () => {
     const { s } = bossWorld()
     const first = weekendStartFlagshipBattle(s, ctx, NOW)
     expect(first, '第一场开得起来').not.toBeNull()
-    expect(first!.myDesireM, '头一场没设过 ⇒ 引擎缺省档').toBe(DEFAULT_DESIRE)
+    expect(first!.myDesireM, '头一场没设过 ⇒ 引擎缺省档').toBe(defaultDesire(s, first!))
 
     /** 模拟"玩家在战斗里把距离条拖到 3000"：写入端写的就是**核心星系**这一格 */
     setCardDistance(s, ctx, 'ink-flagship', PLAYER_DESIRE)
@@ -81,7 +83,7 @@ describe('旧记忆报障回归：现按实际卡ID保存', () => {
     /** 只往"卡自带星系"写（旗舰卡的母港 = galaxy-hub）：那一份**不该**影响旗舰战 */
     setDesirePrefOf(s, 'galaxy-hub', PLAYER_DESIRE)
     const b = weekendStartFlagshipBattle(s, ctx, NOW)
-    expect(b!.myDesireM, '核心星系没设过 ⇒ 仍是缺省档').toBe(DEFAULT_DESIRE)
+    expect(b!.myDesireM, '核心星系没设过 ⇒ 仍是缺省档').toBe(defaultDesire(s, b!))
     /** 再写核心星系那一份 ⇒ 立刻按它站 */
     setCardDistance(s, ctx, 'ink-flagship', PLAYER_DESIRE)
     expect(weekendStartFlagshipBattle(s, ctx, NOW)!.myDesireM).toBe(PLAYER_DESIRE)

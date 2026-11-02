@@ -37,8 +37,9 @@ export function makeExpeditionFixture(family: WormholeFamily, seed: number, kind
   const ctx = expeditionContext
   const state = createInitialState({ nowWallMs: 0, seed })
   state.wallet.isk = 1e12
-  state.standingsEarned = { ...state.standingsEarned, dsi: 20 }
-  for (const id of ['fleet-command-basic', 'fleet-command-coordination', 'fleet-command-integration']) train(state, id, 5)
+  const commandSkills = ['fleet-command-basic', 'fleet-command-coordination', 'fleet-command-integration']
+  state.standingsEarned = { ...state.standingsEarned, dsi: Math.max(...commandSkills.map(id => ctx.skills.get(id)!.licenseStandingReq ?? 0)) }
+  for (const id of commandSkills) train(state, id, 5)
   state.warehouse.items[MATTER_TECH_ESSENCE_ITEM_ID] = 1_000_000
   const wanted = [...SKILLS, ctx.balance.battle.cpuSkillId, ctx.balance.battle.evasionSkillId, ctx.balance.battle.hitSkillId, ctx.balance.battle.speedSkillId]
   for (const id of new Set(wanted)) train(state, id, baseline ? 3 : 5)

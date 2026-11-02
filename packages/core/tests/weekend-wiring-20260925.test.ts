@@ -152,10 +152,13 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     expect(['ink-harass', 'ink-raid'], '遭遇卡 ∈ 外围池').toContain(hit.s.encounter.anomalyId)
     expect(hit.s.encounter.foeStrengthMul, '真强度 ×0.75').toBe(0.75)
     expect([76, 91], '标签 = 缩放后实测价').toContain(hit.s.encounter.threat)
-    /** 文案：高安占领区里说「低安遭遇」就是错的 ⇒ 走「入侵遭遇」（id 制，`core.encounters.008`） */
-    const ambushLog = [...hit.s.logs].reverse().find((l) => l.text.includes('遭该编队伏击'))
-    expect(ambushLog?.textId).toBe('core.encounters.008')
-    expect(ambushLog?.text.includes('入侵遭遇'), '高安不写"低安遭遇"').toBe(true)
+    // 占领区仍排入侵遇袭，统一记录已应战；不走普通工业海盗生成路径。
+    const ambushLog = [...hit.s.logs].reverse().find(l => l.textId === 'core.encounters.006')
+    expect(ambushLog).toBeDefined()
+    expect(hit.s.encounter.automatic).toBe(true)
+    expect(hit.s.encounter.battle).toBeNull()
+    expect(hit.s.encounter.pirate).toBeUndefined()
+    expect(ambushLog?.text).not.toContain('低安遭遇')
     /** 破例**不进**"低安在场记录"：中安/高安占领区不记 `lowSecPresence`、也不弹"首次进入低安" */
     maintainPresence(hit.s, ctx)
     expect(Object.keys(hit.s.lowSecPresence).length, '高安占领区不记低安在场').toBe(0)

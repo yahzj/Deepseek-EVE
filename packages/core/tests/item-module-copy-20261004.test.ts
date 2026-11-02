@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
 import { ITEMS, MODULES, L10N, EN_ITEMS_ALL, EN_MODULES, EN_BLUEPRINTS, buildSimContext, l10nEntryText } from '@whale/data'
 import * as core from '../src/index'
 import { idLiteralsIn, stripComments } from '../../../tools/text-scan'
+import { applyApprovedFleetModuleDelta } from './helpers/approved-fleet-delta-20261101'
 
 function historical<T>(file: string, symbol: string, bindings: Record<string, unknown> = {}): T {
   const text = execFileSync('git', ['show', `d2ab64f1:${file}`], { encoding: 'utf8' })
@@ -28,6 +29,13 @@ describe('物品装备说明双语与数据守恒', () => {
         const name = field.initializer.properties.find((p): p is ts.PropertyAssignment => ts.isPropertyAssignment(p) && p.name.getText(ast) === 'name')?.initializer
         if (name && ts.isStringLiteral(name)) {
           const renamed: Record<string, string> = { 'mat-wh-essence': 'Signal Enigma', 'synaptic-accelerant': 'Synaptic Accelerant MK1', 'mod-lair-blink-r': 'Short-Range Warp Device' }
+          const fieldNames: Record<string, string> = { 'mod-shieldfield-2': 'mod.fleetSupport.001', 'mod-shieldfield-3': 'mod.fleetSupport.002' }
+          if (fieldNames[field.name.text]) {
+            const entry = L10N[fieldNames[field.name.text]!]!
+            expect(entry).toMatchObject({ en: '', enDeferred: true })
+            expect(live[field.name.text]?.name).toBe(l10nEntryText(entry, 'en'))
+            continue
+          }
           const expected = renamed[field.name.text] ?? name.text
           expect(live[field.name.text]?.name, field.name.text).toBe(expected)
         }
@@ -61,7 +69,7 @@ describe('物品装备说明双语与数据守恒', () => {
       // 2026-10-13船长确认：护盾直接调参及上一轮固定血量插件增量。
       const shieldChanges: Record<string, number> = { 'mod-shieldchg-1': .08, 'mod-shieldchg-2': .133, 'mod-shieldchg-3': .213 }
       if (shieldChanges[mod.id] !== undefined) return { ...mod, shieldPulsePct: shieldChanges[mod.id] }
-      if (['mod-shieldfield-2', 'mod-shieldfield-3'].includes(mod.id)) return { ...mod, shieldFieldPct: .067 }
+      if (['mod-shieldfield-2', 'mod-shieldfield-3'].includes(mod.id)) return { ...mod, name: `护盾投送力场 MK${mod.id.slice(-1)}` }
       if (mod.id === 'plug-shield-plate') return { ...mod, shieldHpAdd: 120 }
       if (mod.id === 'plug-armor-plate') return { ...mod, armorHpAdd: 210 }
       if (mod.id === 'plug-hull-plate') return { ...mod, hullHpAdd: 120 }
@@ -74,6 +82,7 @@ describe('物品装备说明双语与数据守恒', () => {
       if (mod.id === 'mod-lair-laser-r') return { ...mod, dmgMult: 2.1, maxRangeM: 6000 }
       return mod.id === 'mod-wh-a-hangar' ? { ...mod, droneCycleCutPct: .2 } : mod
     })
+    applyApprovedFleetModuleDelta(adjusted)
     const newIds = new Set(['mod-drone-launch-1', 'mod-drone-launch-2', 'mod-drone-launch-3', 'mod-laser-calibration-2', 'mod-laser-calibration-3', 'mod-alien-acid-launcher', 'mod-alien-pressure-chamber',
       'mod-gravekeeper-rebirth', 'mod-gravekeeper-crisis', 'mod-gravekeeper-rail',
       'plug-pirate-raider', 'plug-alien-shield-coating', 'plug-gravekeeper-capacitor', 'plug-titan-compression', 'plug-deadarmy-printing'])
@@ -310,7 +319,8 @@ describe('真实参数行承接说明数字', () => {
       language.value = locale
       const rows = display.moduleInfoLines(ctx.modules.get('mod-shieldfield-2')!, engine, uid)
       const cycle = rows.find(row => row.k === L10N['ui.equipmentPenalty.001']![locale])!
-      expect(textOf(cycle.v)).toContain('11.025')
+      const mod = ctx.modules.get('mod-shieldfield-2')!
+      expect(textOf(cycle.v)).toContain(String(core.equipmentCycleMsOf(state, ctx, uid, mod.shieldFieldMs!) / 1000))
       for (const [id, ordinal] of [['mod-prop-3', 2], ['mod-wh-a-coat', 2], ['mod-wh-e-cpu', 2]] as const) {
         const values = display.moduleInfoLines(ctx.modules.get(id)!, engine, uid, ordinal).map(row => textOf(row.v)).join('|')
         expect(values).not.toMatch(/\{p\d+\}|只取最重|heaviest of several|下限 0|floor 0/)
@@ -326,11 +336,13 @@ describe('真实参数行承接说明数字', () => {
         const id = `mod-shieldfield-${tier}`
         const rows = display.moduleInfoLines(MODULES.find(module => module.id === id)!).map(row => textOf(row.v)).join('|')
         expect(rows).toContain(`${(core.SHIELD_FIELD_COST_PCT * 100).toFixed(1)}%`)
-        expect(rows).toContain(locale === 'zh' ? '其他存活舰船' : 'other surviving fleet ship')
+        expect(rows).toContain('最多2艘缺盾队友')
+        expect(rows).toContain('不恢复自身')
         expect(rows).not.toMatch(/\{p\d\}/)
         const bp = `bp-shieldfield-${tier}`
-        expect(buildSimContext(locale).blueprints.get(bp)!.description).toBe(L10N['mod.copy.027']![locale])
-        expect(EN_BLUEPRINTS[bp]!.description).toBe(L10N['mod.copy.027']!.en)
+        expect(L10N['mod.fleetSupport.003']).toMatchObject({ en: '', enDeferred: true })
+        expect(buildSimContext(locale).blueprints.get(bp)!.description).toBe(l10nEntryText(L10N['mod.fleetSupport.003']!, locale))
+        expect(EN_BLUEPRINTS[bp]!.description).toBe(l10nEntryText(L10N['mod.fleetSupport.003']!, 'en'))
       }
     }
   })
@@ -359,7 +371,7 @@ describe('真实参数行承接说明数字', () => {
     expect(rowsOf('mod-lair-blink-r')).toContain('16 秒')
     expect(rowsOf('mod-lair-laser-r')).toContain('0.6')
     expect(rowsOf('mod-shieldchg-2')).toContain('13.3%')
-    expect(rowsOf('mod-shieldfield-3')).toContain('8')
+    expect(rowsOf('mod-shieldfield-3')).toContain(String(MODULES.find(mod => mod.id === 'mod-shieldfield-3')!.shieldFieldMs! / 1000))
     expect(rowsOf('plug-rangefinder')).toContain('20%')
   })
   it('充能和力场比例在中英短行及详情中直接显示1位小数，装后不再另行折算', () => {
@@ -373,7 +385,7 @@ describe('真实参数行承接说明数字', () => {
     for (const locale of ['zh', 'en'] as const) {
       language.value = locale
       for (const [id, percentage] of [['mod-shieldchg-1', '8.0%'], ['mod-shieldchg-2', '13.3%'],
-        ['mod-shieldchg-3', '21.3%'], ['mod-shieldfield-2', '6.7%'], ['mod-shieldfield-3', '6.7%']] as const) {
+        ['mod-shieldchg-3', '21.3%'], ['mod-shieldfield-2', '10.0%'], ['mod-shieldfield-3', '10.0%']] as const) {
         const mod = ctx.modules.get(id)!
         const before = structuredClone(state)
         const plain = display.moduleInfoLines(mod).map(row => textOf(row.v)).join('|')
@@ -384,7 +396,7 @@ describe('真实参数行承接说明数字', () => {
         }
         if (mod.shieldFieldPct) {
           const mechanism = display.moduleInfoLines(mod, { state, ctx }, uid).find(row => row.k === L10N['ui.moduleSpecs.003']![locale])!
-          expect(textOf(mechanism.v).match(/6\.7%/g)).toHaveLength(2)
+          expect(textOf(mechanism.v).match(/10\.0%/g)).toHaveLength(2)
         }
         const decayed = display.moduleInfoLines(mod, { state, ctx }, uid, 2).find(row => row.k === L10N['ui.shipInfo.222']![locale])!
         const effective = (core.stackWeight(2) * (mod.shieldPulsePct ?? mod.shieldFieldPct ?? 0) * 100).toFixed(1)

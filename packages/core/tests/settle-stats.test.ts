@@ -10,6 +10,7 @@ import { countAiCore } from '../src/ai'
 import { simulateOffline } from '../src/simulation'
 import { startManufacturing } from '../src/manufacturing'
 import { newSettleStats } from '../src/settleStats'
+import { newOfflineCombatStats } from '../src/offlineCombatStats'
 import { makeTestCtx, skipFirstSkillReward } from './helpers'
 
 describe('离线结算：AI 核心作业统计（settleStats）', () => {
@@ -46,7 +47,9 @@ describe('离线结算：AI 核心作业统计（settleStats）', () => {
     // 主控炉跑了 5 批（6s/批）但统计保持为空
     expect(state.refineRuns[0]?.batchesDone).toBeGreaterThan(0)
     expect(stats['basic']).toBeUndefined()
-    expect(Object.keys(stats).length).toBe(0)
+    const { combat, ...aiStats } = stats
+    expect(aiStats).toEqual({})
+    expect(combat).toEqual(newOfflineCombatStats())
   })
 
   it('结算期结束后统计为空/正常推进不产生统计', () => {

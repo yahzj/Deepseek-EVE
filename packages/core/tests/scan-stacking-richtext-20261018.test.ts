@@ -4,7 +4,7 @@ import { runInNewContext } from 'node:vm'
 import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
 import { buildSimContext, L10N, l10nEntryText } from '@whale/data'
-import { shipSlotsOf, shipCategoryKeyOf, signalSpaceTextId, wormholeScanBonusOf } from '../src/index'
+import { shipSlotsOf, shipCategoryKeyOf, shipCommandCostOf, rangeEwBaseOf, signalSpaceTextId, wormholeScanBonusOf } from '../src/index'
 import type { ShipDef } from '../src/types'
 import { ROOT } from './helpers/save-shell'
 
@@ -22,7 +22,7 @@ function renderer(locale: 'zh' | 'en') {
   const scope = { exports: {} as { shipInfoLines: (ship: ShipDef) => Array<{ k: string; v: string }> },
     tr: exports.tr, fmt: String, pct: (value: number) => `${Math.round(value * 100)}%`,
     shipRoleText: () => '', shipSubClassText: () => '', shipCategoryKeyOf, shipTierText: () => '',
-    DMG_LABEL: {}, shipSlotsOf, resistsText: () => '', slotListText: () => '',
+    DMG_LABEL: {}, shipSlotsOf, shipCommandCostOf, rangeEwBaseOf, resistsText: () => '', slotListText: () => '',
   }
   runInNewContext(ts.transpileModule(fn.getText(ast), { fileName: 'shipInfo.tsx', compilerOptions: {
     module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.React,

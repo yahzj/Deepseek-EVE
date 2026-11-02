@@ -108,6 +108,15 @@ describe('其余通讯整批中英接线与行为守恒', () => {
       expect(commsHintText(message.hint!.text)).toBe(message.hint!.text)
       return
     }
+    if (message.id === 'msg-industrial-fleet-risk') {
+      for (const id of ['ui.commsIndustrialRisk.001', 'ui.commsIndustrialRisk.002', 'ui.commsIndustrialRisk.003', 'ui.commsIndustrialRisk.004']) {
+        expect(L10N[id]).toMatchObject({ en: '', enDeferred: true })
+      }
+      expect(body).toEqual(['ui.commsIndustrialRisk.002', 'ui.commsIndustrialRisk.003'].map(id => l10nEntryText(L10N[id]!, 'en')))
+      expect(commsSubjectText(message.id, message.subject)).toBe(l10nEntryText(L10N['ui.commsIndustrialRisk.001']!, 'en'))
+      expect(commsHintText(message.hint!.text)).toBe(l10nEntryText(L10N['ui.commsIndustrialRisk.004']!, 'en'))
+      return
+    }
     expect(body.join('')).not.toMatch(/[\u4e00-\u9fff]/)
     expect(commsSubjectText(message.id, message.subject)).not.toMatch(/[\u4e00-\u9fff]/)
   })
@@ -135,8 +144,11 @@ describe('其余通讯整批中英接线与行为守恒', () => {
       })
     }
     const original = bindings.result as unknown as typeof COMMS_MESSAGES
-    expect(COMMS_MESSAGES).toHaveLength(original.length + 2)
-    expect(policy(COMMS_MESSAGES.filter(message => !['msg-black-market-unlock', 'msg-fleet-command-unlock'].includes(message.id)))).toEqual(policy(original))
+    expect(COMMS_MESSAGES).toHaveLength(original.length + 3)
+    expect(policy(COMMS_MESSAGES.filter(message => !['msg-black-market-unlock', 'msg-fleet-command-unlock', 'msg-industrial-fleet-risk'].includes(message.id)))).toEqual(policy(original))
+    expect(COMMS_MESSAGES.find(message => message.id === 'msg-industrial-fleet-risk')).toMatchObject({
+      holdWhenBusy: true, hint: { page: 'ship', shipTab: 'fleet' }, trigger: { kind: 'industrialFleetRisk' },
+    })
     expect(COMMS_MESSAGES.find((message) => message.id === 'msg-wormhole-unlock')!.hint!.text).toBe(L10N['ui.signalSpace.026']!.zh)
   })
   it('建站对白 id、角色、主题、行数与挂靠不变', () => {

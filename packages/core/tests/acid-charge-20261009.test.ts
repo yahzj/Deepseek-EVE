@@ -6,6 +6,7 @@ import { addShipToFleet } from '../src/fleetBook'
 import { advanceBattleFor, startBattleFor, createFoeSpecs } from '../src/combat'
 import { FOE_MOUNT_IDS, resolveFoeMounts } from '../src/foeMounts'
 import parameters from '../src/static/foeMounts.json'
+import { applyApprovedEnemyEwDelta } from './helpers/approved-fleet-delta-20261101'
 
 const ctx = buildSimContext()
 function world() {
@@ -30,6 +31,7 @@ describe('爆虫专属冲锋减速', () => {
     const before = JSON.parse(execFileSync('git', ['show', '22edc1ce:packages/core/src/static/foeMounts.json'], { encoding: 'utf8' }))
     before.groups.parameters.find((row: { id: string }) => row.id === FOE_MOUNT_IDS.acidCharge).charge_mul = 2.5
     before.groups.parameters.find((row: { id: string }) => row.id === FOE_MOUNT_IDS.coronaOverlayDrive).overlayDrive_dmgMul = 0.5
+    applyApprovedEnemyEwDelta(before.groups.parameters)
     const after = structuredClone(parameters)
     const approved = new Set(['foe-mount-d-rebirth-protocol', 'foe-mount-d-mausoleum-armor', 'foe-mount-d-coating-armor', 'foe-mount-d-shield-capacitor', 'foe-mount-d-reconstruction', 'foe-mount-d-range-debuff'])
     const added = after.groups.parameters.filter(row => !before.groups.parameters.some((old: { id: string }) => old.id === row.id))

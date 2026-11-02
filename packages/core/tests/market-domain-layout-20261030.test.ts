@@ -30,7 +30,7 @@ describe('市场域目录与兼容契约', () => {
     expect(readImplementation(resolve(ROOT, 'packages/data/src/marketCatalog.ts'))).toContain('function buildMarketGoodsCatalog')
   })
 
-  it('570条绑定精确覆盖JSON分组，原始目录与追加组保持原序', () => {
+  it('绑定精确覆盖JSON分组，新增修理机与原始目录保持原序', () => {
     const raw = document.groups.MARKET_GOODS_RAW_0
     const extra = document.groups.MARKET_GOODS_0
     expect([...Object.keys(bindings.MARKET_GOODS_RAW_0_TEXT_BINDINGS)]).toHaveLength(raw.length)
@@ -38,11 +38,15 @@ describe('市场域目录与兼容契约', () => {
     for (const [rows, map] of [[raw, bindings.MARKET_GOODS_RAW_0_TEXT_BINDINGS], [extra, bindings.MARKET_GOODS_0_TEXT_BINDINGS]] as const) {
       expect(Object.keys(map).sort()).toEqual(rows.map(row => row.key).sort())
     }
-    expect(raw.length + extra.length).toBe(570)
+    expect([...raw, ...extra].filter(row => row.key !== 'drone-repair-mil')).toHaveLength(570)
+    expect([...raw, ...extra].filter(row => row.key === 'drone-repair-mil')).toHaveLength(1)
     expect(catalog.MARKET_GOODS_RAW.map(row => row.key)).toEqual(raw.map(row => row.key))
     const offset = raw.length + publicCatalog.WRECK_BUY_GOODS.length
     expect(catalog.MARKET_GOODS.slice(offset, offset + extra.length).map(row => row.key)).toEqual(extra.map(row => row.key))
-    expect(catalog.MARKET_GOODS).toHaveLength(616)
+    const plugs = catalog.MARKET_GOODS.slice(offset + extra.length)
+    expect(plugs).toHaveLength(34)
+    expect(plugs.every(row => row.unreleased && (row.key.startsWith('plug-') || row.key.startsWith('bp-plug-')))).toBe(true)
+    expect(catalog.MARKET_GOODS).toHaveLength(raw.length + extra.length + publicCatalog.WRECK_BUY_GOODS.length + plugs.length)
   })
 
   it('参数CLI登记实际绑定文件，虚空晶周期仍为代码表达式', () => {

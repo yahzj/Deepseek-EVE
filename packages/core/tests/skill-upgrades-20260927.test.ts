@@ -222,9 +222,11 @@ describe('批二上位技能 · 名单与树契约', () => {
     }
     // 2026-09-29 船长令：本表仍是 2026-09-27 那批的 17 条（新批的 3 条不在 NEW 里）；总数与工业条数随新批更新
     // 2026-09-30 船长令（燃料上限批）：再加 4 条实验室书技能（上限 ×2 / 节拍 / 收率）⇒ 总 108 → 112、工业 34 → 38
-    expect(SKILLS.length).toBe(119)
+    expect(SKILLS.filter(s => !s.id.startsWith('fleet-command-'))).toHaveLength(119)
+    expect(SKILLS.filter(s => s.id.startsWith('fleet-command-'))).toHaveLength(3)
     expect(SKILLS.filter((s) => s.group === '工业').length).toBe(39)
-    expect(SKILLS.filter((s) => s.group === '战斗').length).toBe(27)
+    // 六条战舰操作已归舰船大类，其余战斗技能及本批17条成员仍保留。
+    expect(SKILLS.filter((s) => s.group === '战斗').length).toBe(21)
   })
 
   it('树契约：父 rank ≤ 子 rank，且父技能真实存在', () => {

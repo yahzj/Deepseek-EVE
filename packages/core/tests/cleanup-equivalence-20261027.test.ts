@@ -90,11 +90,11 @@ describe('纯清理等价性', () => {
       ['cancel-deliver-trip', 'cancelDeliverTripNow', [], 'ui.ActivityBar.048'],
       ['stop-loop', 'bountyLoopAt', [null], 'ui.ActivityBar.049'],
       ['stop-invasion-loop', 'invasionLoopAt', [null], 'core.weekend.034'],
-      ['stop-hauling', 'stopHaulingNow', [], 'ui.ActivityBar.050'],
+      ['stop-hauling', 'stopHaulingNow', [], 'ui.Hauling.006'],
     ]
     for (const [stop, method, args, text] of actions) {
       const fn = vi.fn(() => ({ ok: true })), toast = vi.fn()
-      const engine = { [method]: fn } as StopEngine
+      const engine = { state: createInitialState({ nowWallMs: 0, seed: 7 }), [method]: fn } as unknown as StopEngine
       activity.doStop({ stop, stopParam: 'target' } as ActivityView, engine, toast)
       expect(fn).toHaveBeenCalledWith(...args)
       expect(toast).toHaveBeenLastCalledWith(text)

@@ -22,6 +22,8 @@ import modules from '../../data/src/static/modules.json'
 import { applyApprovedScanShipDelta } from './helpers/approved-scan-ship-delta'
 import { applyApprovedTorpedoShipDelta } from './helpers/approved-torpedo-ship-delta-20261019'
 import { applyApprovedEquipmentRetune } from './helpers/approved-equipment-retune-20261019'
+import { applyApprovedFleetShipDelta } from './helpers/approved-fleet-delta-20261101'
+import { shipCommandCostOf, rangeEwBaseOf } from '../src/index'
 
 const ctx = buildSimContext(), root = new URL('../../../', import.meta.url)
 const droneHulls = ['sh-swarm', 'sh-sentinel', 'sh-wh-e-destroyer', 'sh-wh-e-carrier']
@@ -212,6 +214,7 @@ describe('出击加速、激光校准与协处理器5%', () => {
     }
     applyApprovedScanShipDelta(expectedShips)
     applyApprovedTorpedoShipDelta(Object.values(expectedShips.groups).flat() as Array<{ id: string }>)
+    applyApprovedFleetShipDelta(Object.values(expectedShips.groups).flat() as Array<{ id: string }>)
     expect(ships).toEqual(expectedShips)
     const expectedModules = old('packages/data/src/static/modules.json')
     ;(Object.values(expectedModules.groups).flat().find((mod: any) => mod.id === 'mod-wh-e-cpu') as any).reloadPenaltyPct = .05
@@ -243,7 +246,7 @@ describe('出击加速、激光校准与协处理器5%', () => {
     const scope = { exports: {} as { shipInfoLines: (ship: unknown) => Array<{ k: string; v: string }> },
       tr: (id: string, p?: Record<string, unknown>) => l10nEntryText(L10N[id]!, 'zh').replace(/\{(\w+)\}/g, (m,k) => String(p?.[k] ?? m)),
       fmt: String, shipRoleText: () => '', shipSubClassText: (value: string) => value, shipCategoryKeyOf: () => '', shipTierText: () => '', DMG_LABEL: {}, shipSlotsOf: (ship: any) => ship.slots,
-      pct: (v: number) => `${Math.round(v * 100)}%`, resistsText: () => '', shipCategoryLabelOf: () => '', slotListText: () => '' }
+      pct: (v: number) => `${Math.round(v * 100)}%`, resistsText: () => '', shipCategoryLabelOf: () => '', slotListText: () => '', shipCommandCostOf, rangeEwBaseOf }
     runInNewContext(ts.transpileModule(fn.getText(source), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React }, fileName: 'shipInfo.tsx' }).outputText, scope)
     for (const id of droneHulls) {
       const rows = scope.exports.shipInfoLines(ctx.ships.get(id))

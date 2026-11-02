@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { FOE_SHIPS, FOE_DRONES, ANOMALIES } from '@whale/data'
+import { FOE_SHIPS, FOE_DRONES, ANOMALIES, buildSimContext } from '@whale/data'
+import { activeFoeSpecsOf, applyFoeOverride } from '../src/combat'
 import { FOE_MOUNTS, enemyParameterOf } from '../src/index'
 import { ENEMY_FILES, ENEMY_TABLES, ENEMY_FIELDS } from '../../../tools/data-editor-enemy-schema'
 import { planDocuments, rowsOf, validateDocument } from '../../../tools/data-editor-schema'
 import { enemyEnginePreview } from '../../../tools/data-editor-enemy-preview'
 import type { DataDocument, DataTable, EnemyPreviewRequest } from '../../../tools/data-editor-contract'
-import { roundedFoeHp } from './helpers/rounded-foe-hp'
 
 const docs = Object.fromEntries(ENEMY_TABLES.map(table => [table, JSON.parse(readFileSync(new URL(`../../../${ENEMY_FILES[table]}`, import.meta.url), 'utf8'))])) as Record<DataTable, DataDocument>
 const request = (table: EnemyPreviewRequest['table'], id: string, mode: EnemyPreviewRequest['mode'] = 'base'): EnemyPreviewRequest => ({ table, id, mode, depth: 1, role: 'ordinary' })
@@ -34,8 +34,13 @@ describe('敌人编辑契约与真实引擎', () => {
   it('入侵遇袭与旗舰血池读数使用当前引擎覆写', () => {
     const base = enemyEnginePreview(request('invasionFleets', 'corona-nexus'))
     const ambush = enemyEnginePreview(request('invasionFleets', 'corona-nexus', 'ambush'))
-    const card = ANOMALIES.find(row => row.id === 'corona-nexus')!
-    const hpSum = (strength: number) => card.ships!.reduce((n, slot) => { const h = roundedFoeHp(slot, strength); return n + (h.s + h.a + h.h) * (slot.count ?? 1) }, 0)
+    const ctx = buildSimContext()
+    const card = ctx.anomalies.get('corona-nexus')!
+    const hpSum = (strength: number) => {
+      const current = strength === 1 ? card : applyFoeOverride(card, { strengthMul: strength, patrolFormation: true })
+      return current.waves!.reduce((sum, _, wave) => sum + activeFoeSpecsOf(current, ctx.balance.battle, wave)
+        .reduce((n, unit) => n + unit.hp.s + unit.hp.a + unit.hp.h, 0), 0)
+    }
     expect(base.rows.reduce((n, row) => n + row.hp, 0)).toBe(hpSum(1))
     expect(ambush.rows.reduce((n, row) => n + row.hp, 0)).toBe(hpSum(.75))
     const flagship = enemyEnginePreview(request('invasionFleets', 'corona-nexus', 'flagship'))

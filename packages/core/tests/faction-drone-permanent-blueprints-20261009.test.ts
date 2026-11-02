@@ -143,7 +143,9 @@ describe('五种势力无人机永久图纸', () => {
     runInNewContext(ts.transpileModule(source.getText(), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, scope)
     // 后续获批新增不改变本批前已有蓝图，只检查原ID集合与相对顺序。
     const legacyIds = new Set(scope.exports.BLUEPRINTS.map(bp => bp.id))
-    expect(BLUEPRINTS.filter(bp => legacyIds.has(bp.id))).toEqual(scope.exports.BLUEPRINTS)
+    const expected = scope.exports.BLUEPRINTS.map(bp => /^bp-shieldfield-[23]$/.test(bp.id)
+      ? { ...bp, name: `护盾投送力场图纸 MK${bp.id.slice(-1)}（一次性）`, description: L10N['mod.fleetSupport.003']!.zh } : bp)
+    expect(BLUEPRINTS.filter(bp => legacyIds.has(bp.id))).toEqual(expected)
     for (const [file, document] of [['packages/data/src/static/items.json', itemData], ['packages/data/src/static/market.json', marketData]] as const) {
       const legacy = JSON.parse(old(file)) as typeof document
       const copy = structuredClone(document)

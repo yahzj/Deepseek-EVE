@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildSimContext } from '@whale/data'
+import { ANOMALIES, buildSimContext } from '@whale/data'
 import { activeFoeSpecsOf, createBattleState, createFoeSpecs, foesWithSupport, initFoeDronePools, resolveFoeRevive } from '../src/foeSpecs'
 import { advanceFoeAbilityClocks, advanceFoeHatcheries, foeFleetSpeedMulOf, triggerAcidBurst } from '../src/alienCombat'
 import { applyDamage } from '../src/combatMath'
@@ -24,7 +24,7 @@ const lose = (battle: ReturnType<typeof createBattleState>, tag: string, index: 
 }
 
 describe('新波次和全队补损', () => {
-  it('严格按船长波次及数量，不把加号拆成波次', () => {
+  it('基础卡严格保持原波次及数量，派生编成另由编成专项覆盖', () => {
     const expected = [
       ['alien-vanguard', [[['foe-alien-acid-burster', 5]], [['foe-alien-starcore-adult', 5]]]],
       ['alien-escort', [[['foe-alien-acid-burster', 4]], [['foe-alien-spore-hive', 2], ['foe-alien-brood-worker', 1]]]],
@@ -32,7 +32,7 @@ describe('新波次和全队补损', () => {
       ['alien-broodmother', [[['foe-alien-acid-burster', 4]], [['foe-alien-maw', 1], ['foe-alien-starcore-adult', 2]], [['foe-alien-hiveback', 2], ['foe-alien-brood-worker', 1]], [['foe-alien-broodmother', 1], ['foe-alien-hiveback', 1], ['foe-alien-brood-worker', 2]]]],
     ] as const
     for (const [id, waves] of expected) {
-      const entry = ctx.anomalies.get(id)!
+      const entry = ANOMALIES.find(card => card.id === id)!
       expect(entry.waves).toHaveLength(waves.length)
       for (let index = 0; index < waves.length; index++) {
         expect(entry.ships!.filter(slot => (slot.wave ?? 0) === index).map(slot => [slot.ship.id, slot.count])).toEqual(waves[index])
@@ -120,7 +120,8 @@ describe('巢母成虫召唤与渐增机动', () => {
     battle.foeAbilityClocks[foes[0]!.tag] = 120000
     resolveFoeRevive(state, battle, foes, ctx.balance.battle, 999999)
     expect(battle.foeReviveCount).toBe(4)
-    expect(foesWithSupport(battle, foes).filter(f => f.foeShipId === 'foe-alien-starcore-adult' && battle.units[f.tag]!.hp.h > 0)).toHaveLength(3)
+    expect(foesWithSupport(battle, foes).filter(f => f.tag.startsWith('sup') && f.foeShipId === 'foe-alien-starcore-adult' && battle.units[f.tag]!.hp.h > 0)).toHaveLength(3)
+    expect(foes.filter(f => f.foeFormationAdded && f.foeShipId === 'foe-alien-starcore-adult' && battle.units[f.tag]!.hp.h > 0)).toHaveLength(2)
     expect(battle.units[foes[2]!.tag]!.hp.h).toBe(0)
   })
   it('空转不积蓄、巢母死亡不召唤，重载不重置节拍', () => {
