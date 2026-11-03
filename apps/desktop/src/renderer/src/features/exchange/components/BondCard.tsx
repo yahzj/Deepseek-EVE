@@ -6,7 +6,7 @@
  * - 联机模式（传 engine）：债券走**本地存档 ISK + 本地分钟计息**，不上服务器
  *   （船长 2026-11-04 定案：存档币本地为准、作弊不设防）。
  */
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ExchangeClient, ExchangeSnapshot } from '../client'
 import type { ToastFn } from '../../../pages/common'
 import type { GameEngine } from '../../../game/engine'
@@ -34,26 +34,70 @@ export function BondCard({
   engine?: GameEngine
 }) {
   const [amountText, setAmountText] = useState('100000')
+  const [isAccruing, setIsAccruing] = useState(false)
   const local = engine !== undefined
   const bond = local ? localBondHolding() : snap.bonds
   const product = local ? LOCAL_PRODUCT : snap.bondProduct
   const held = bond.principal + bond.accrued
+  const availableIsk = local ? (engine?.state.wallet.isk ?? 0) : snap.account.cash
+
+  // 利息跳动视觉平滑：当已计利息增加时触发脉冲光晕，平滑淡出
+  const prevAccruedRef = useRef(bond.accrued)
+  useEffect(() => {
+    if (bond.accrued > prevAccruedRef.current) {
+      setIsAccruing(true)
+      const timer = setTimeout(() => setIsAccruing(false), 900)
+      prevAccruedRef.current = bond.accrued
+      return () => clearTimeout(timer)
+    }
+    prevAccruedRef.current = bond.accrued
+  }, [bond.accrued])
+
+  // 输入校验与防呆
+  const numericAmount = Math.floor(Number(amountText.replace(/,/g, '')))
+  const isInvalid = !Number.isFinite(numericAmount) || numericAmount <= 0
+  const isOverCash = !isInvalid && numericAmount > availableIsk
+  const canBuy = !isInvalid && !isOverCash && availableIsk > 0
+  const canRedeem = held > 0
+
+  const handleBlur = (): void => {
+    const raw = Number(amountText.replace(/,/g, ''))
+    if (!Number.isFinite(raw) || raw <= 0) {
+      setAmountText(availableIsk > 0 ? String(Math.min(100000, Math.floor(availableIsk))) : '100000')
+      return
+    }
+    setAmountText(String(Math.floor(raw)))
+  }
+
+  const setRatio = (ratio: number): void => {
+    if (availableIsk <= 0) return
+    const target = Math.floor(availableIsk * ratio)
+    setAmountText(String(Math.max(1, target)))
+  }
 
   const buy = (): void => {
-    try {
-      const amount = Number(amountText)
-      if (local) {
-        buyLocalBond(engine, amount)
+    if (!canBuy) {
+      if (isOverCash) {
+        onToast(T.bondNoCashTip, true)
       } else {
-        client.buyBond(amount)
+        onToast(T.cashierInvalidAmount, true)
       }
-      onToast(`${T.toastBondBought} ${money(amount)} ISK`)
+      return
+    }
+    try {
+      if (local) {
+        buyLocalBond(engine, numericAmount)
+      } else {
+        client.buyBond(numericAmount)
+      }
+      onToast(`${T.toastBondBought} ${money(numericAmount)} ISK`)
     } catch (err) {
       onToast(err instanceof Error ? err.message : String(err), true)
     }
   }
+
   const redeem = (): void => {
-    if (held <= 0) {
+    if (!canRedeem) {
       onToast(T.bondEmpty, true)
       return
     }
@@ -78,42 +122,103 @@ export function BondCard({
             {T.bondRateLabel} {pctAbs(product.dailyRate * 100)}
           </span>
         </div>
+
+        {/* 债券资产概览：等宽排版对齐 */}
         <div className="ex-preview-row">
           <span>{T.bondPrincipal}</span>
-          <b className="ex-num">{money(bond.principal)}</b>
+          <b className="ex-num">
+            {money(bond.principal)} <span className="ex-unit">ISK</span>
+          </b>
         </div>
-        <div className="ex-preview-row">
+        <div className="ex-preview-row is-bond-highlight">
           <span>{T.bondAccrued}</span>
-          <b className="ex-num is-up">+{money(bond.accrued)}</b>
+          <b className={`ex-num is-up ex-bond-accrued ${isAccruing ? 'is-pulse' : ''}`}>
+            +{money(bond.accrued)} <span className="ex-unit">ISK</span>
+          </b>
         </div>
         <div className="ex-preview-row">
           <span>{T.bondValue}</span>
-          <b className="ex-num">{money(held)}</b>
+          <b className="ex-num">
+            {money(held)} <span className="ex-unit">ISK</span>
+          </b>
         </div>
-        {local ? (
-          <div className="ex-preview-row">
-            <span>{T.cashierLocalWallet}</span>
-            <b className="ex-num">{money(engine.state.wallet.isk)}</b>
+        <div className="ex-preview-row">
+          <span>{local ? T.cashierLocalWallet : T.strategyAvailCash}</span>
+          <b className="ex-num">
+            {money(availableIsk)} <span className="ex-unit">ISK</span>
+          </b>
+        </div>
+
+        {/* 买入配置与快捷比例 */}
+        <div className="ex-bond-field">
+          <div className="ex-bond-field-head">
+            <label className="ex-label" htmlFor="ex-bond-input">
+              {T.bondBuy}
+            </label>
+            <div className="ex-bond-quick-ratios">
+              <button
+                type="button"
+                className="ex-bond-ratio-btn"
+                disabled={availableIsk <= 0}
+                onClick={() => setRatio(0.25)}
+              >
+                {T.bondPct25}
+              </button>
+              <button
+                type="button"
+                className="ex-bond-ratio-btn"
+                disabled={availableIsk <= 0}
+                onClick={() => setRatio(0.5)}
+              >
+                {T.bondPct50}
+              </button>
+              <button
+                type="button"
+                className="ex-bond-ratio-btn"
+                disabled={availableIsk <= 0}
+                onClick={() => setRatio(1)}
+              >
+                {T.bondBuyMax}
+              </button>
+            </div>
           </div>
-        ) : null}
-        <div className="ex-field">
-          <label className="ex-label" htmlFor="ex-bond-input">
-            {T.bondBuy}
-          </label>
-          <input
-            id="ex-bond-input"
-            className="ex-input ex-num"
-            inputMode="decimal"
-            value={amountText}
-            onChange={(e) => setAmountText(e.target.value)}
-          />
+          <div className="ex-bond-input-box">
+            <input
+              id="ex-bond-input"
+              className="ex-input ex-num"
+              inputMode="decimal"
+              value={amountText}
+              onChange={(e) => setAmountText(e.target.value)}
+              onBlur={handleBlur}
+            />
+            <span className="ex-input-unit">ISK</span>
+          </div>
+          {/* 防呆提示 */}
+          {isOverCash ? (
+            <div className="ex-bond-hint is-warn">{T.bondNoCashTip}</div>
+          ) : isInvalid && amountText.trim() !== '' ? (
+            <div className="ex-bond-hint is-warn">{T.bondAmountInvalid}</div>
+          ) : null}
         </div>
+
+        {/* 操作按钮组：优雅禁用态与防呆提示 */}
         <div className="ex-bond-actions">
-          <button type="button" className="ex-mini-btn is-bond-buy" onClick={buy}>
+          <button
+            type="button"
+            className="ex-mini-btn is-bond-buy"
+            disabled={!canBuy}
+            onClick={buy}
+          >
             {T.bondBuyBtn}
           </button>
-          <button type="button" className="ex-mini-btn is-bond-redeem" onClick={redeem}>
-            {T.bondRedeem}
+          <button
+            type="button"
+            className="ex-mini-btn is-bond-redeem"
+            disabled={!canRedeem}
+            title={!canRedeem ? T.bondHoldingEmptyTip : undefined}
+            onClick={redeem}
+          >
+            {T.bondRedeemAll}
           </button>
         </div>
       </div>

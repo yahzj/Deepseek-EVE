@@ -35,15 +35,34 @@ export function FundCard({
   const [calc, setCalc] = useState(false)
   const [last, setLast] = useState<FundPlayResult | null>(null)
 
-  const play = (): void => {
-    if (calc) return
-    const amount = Math.floor(Number(amountText))
-    if (!(amount > 0) || !Number.isSafeInteger(amount)) {
-      onToast(T.cashierInvalidAmount, true)
+  const availableCash = snap.account.cash
+  const numericAmount = Math.floor(Number(amountText.replace(/,/g, '')))
+  const isInvalid = !Number.isFinite(numericAmount) || numericAmount <= 0
+  const isOverCash = !isInvalid && numericAmount > availableCash
+  const canPlay = !calc && !isInvalid && !isOverCash && availableCash > 0
+
+  const handleBlur = (): void => {
+    const raw = Number(amountText.replace(/,/g, ''))
+    if (!Number.isFinite(raw) || raw <= 0) {
+      setAmountText(availableCash > 0 ? String(Math.min(100000, Math.floor(availableCash))) : '100000')
       return
     }
-    if (amount > snap.account.cash) {
-      onToast(T.fundNoCash, true)
+    setAmountText(String(Math.floor(raw)))
+  }
+
+  const setRatio = (ratio: number): void => {
+    if (availableCash <= 0 || calc) return
+    const target = Math.floor(availableCash * ratio)
+    setAmountText(String(Math.max(1, target)))
+  }
+
+  const play = (): void => {
+    if (!canPlay) {
+      if (isOverCash) {
+        onToast(T.fundNoCash, true)
+      } else {
+        onToast(T.cashierInvalidAmount, true)
+      }
       return
     }
     setCalc(true)
@@ -51,7 +70,7 @@ export function FundCard({
     void (async () => {
       try {
         // 动画与请求并行：至少展示 1.2 秒「计算中…」，避免结果一闪而过。
-        const [result] = await Promise.all([client.playFund(amount, nonce), sleep(CALC_ANIM_MS)])
+        const [result] = await Promise.all([client.playFund(numericAmount, nonce), sleep(CALC_ANIM_MS)])
         setLast(result)
         onToast(
           result.win ? TF.fundWin(money(result.profit)) : TF.fundLose(money(-result.profit)),
@@ -77,36 +96,93 @@ export function FundCard({
           <b>{T.fundName}</b>
         </div>
         <p className="ex-modal-text">{T.fundDesc}</p>
+
+        {/* 账户可用资金展示：等宽排版 */}
+        <div className="ex-preview-row">
+          <span>{T.strategyAvailCash}</span>
+          <b className="ex-num">
+            {money(availableCash)} <span className="ex-unit">ISK</span>
+          </b>
+        </div>
+
+        {/* 上次结算结果：等宽排版与平滑收益高亮 */}
         {last !== null ? (
           <>
-            <div className="ex-preview-row">
+            <div className={`ex-preview-row ${last.win ? 'is-bond-highlight' : ''}`}>
               <span>{last.win ? T.fundResultWin : T.fundResultLose}</span>
-              <b className={`ex-num ${last.win ? 'is-up' : 'is-down'}`}>
+              <b className={`ex-num ${last.win ? 'is-up ex-fund-result-win' : 'is-down ex-fund-result-lose'}`}>
                 {last.win ? '+' : '−'}
-                {money(Math.abs(last.profit))}
+                {money(Math.abs(last.profit))} <span className="ex-unit">ISK</span>
               </b>
             </div>
             <div className="ex-preview-row">
               <span>结算依据</span>
-              <span className="ex-dim">{last.evidence}</span>
+              <span className="ex-dim ex-num">{last.evidence}</span>
             </div>
           </>
         ) : null}
-        <div className="ex-field">
-          <label className="ex-label" htmlFor="ex-fund-input">
-            {T.fundAmount}
-          </label>
-          <input
-            id="ex-fund-input"
-            className="ex-input ex-num"
-            inputMode="numeric"
-            value={amountText}
-            disabled={calc}
-            onChange={(e) => setAmountText(e.target.value)}
-          />
+
+        {/* 投入金额配置与快捷比例 */}
+        <div className="ex-bond-field">
+          <div className="ex-bond-field-head">
+            <label className="ex-label" htmlFor="ex-fund-input">
+              {T.fundAmount}
+            </label>
+            <div className="ex-bond-quick-ratios">
+              <button
+                type="button"
+                className="ex-bond-ratio-btn"
+                disabled={calc || availableCash <= 0}
+                onClick={() => setRatio(0.25)}
+              >
+                {T.bondPct25}
+              </button>
+              <button
+                type="button"
+                className="ex-bond-ratio-btn"
+                disabled={calc || availableCash <= 0}
+                onClick={() => setRatio(0.5)}
+              >
+                {T.bondPct50}
+              </button>
+              <button
+                type="button"
+                className="ex-bond-ratio-btn"
+                disabled={calc || availableCash <= 0}
+                onClick={() => setRatio(1)}
+              >
+                {T.fundAllIn}
+              </button>
+            </div>
+          </div>
+          <div className="ex-bond-input-box">
+            <input
+              id="ex-fund-input"
+              className="ex-input ex-num"
+              inputMode="numeric"
+              value={amountText}
+              disabled={calc}
+              onChange={(e) => setAmountText(e.target.value)}
+              onBlur={handleBlur}
+            />
+            <span className="ex-input-unit">ISK</span>
+          </div>
+          {/* 防呆提示 */}
+          {isOverCash ? (
+            <div className="ex-bond-hint is-warn">{T.fundNoCash}</div>
+          ) : isInvalid && amountText.trim() !== '' ? (
+            <div className="ex-bond-hint is-warn">{T.bondAmountInvalid}</div>
+          ) : null}
         </div>
+
+        {/* 优雅禁用态与操作按钮 */}
         <div className="ex-bond-actions">
-          <button type="button" className="ex-mini-btn is-bond-buy" disabled={calc} onClick={play}>
+          <button
+            type="button"
+            className="ex-mini-btn is-bond-buy"
+            disabled={!canPlay}
+            onClick={play}
+          >
             {calc ? T.fundCalculating : T.fundPlayBtn}
           </button>
         </div>

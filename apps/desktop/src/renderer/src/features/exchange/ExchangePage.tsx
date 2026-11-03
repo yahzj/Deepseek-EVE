@@ -168,7 +168,7 @@ function ExchangeBody({
   return (
     <div className={`page-stack page-fill ex-page ex-mode-${viewMode}`}>
       {/* 财经快讯走马灯 */}
-      <NewsTicker news={snap.news} />
+      <NewsTicker news={snap.news} onSelectCode={selectCode} />
 
       {/* 顶栏 */}
       <header className="ex-topbar">

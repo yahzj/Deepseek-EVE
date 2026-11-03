@@ -197,6 +197,18 @@ export const T = {
   fundRateHint: '盈利 ×3 / 亏损 ×1 债券分钟利息',
   fundNoCash: '交易所可用现金不足',
 
+  bondBuyMax: '全买',
+  bondRedeemAll: '全部赎回',
+  bondPct25: '25%',
+  bondPct50: '50%',
+  bondNoCashTip: '可用资金不足',
+  bondAmountInvalid: '请输入有效金额',
+  bondHoldingEmptyTip: '当前未持有债券',
+  bondHoldingsSub: '持仓本息',
+  fundAllIn: '全投',
+  fundNoCashShort: '现金不足',
+  newsClickToView: '点击切换标的行情',
+
   recordsTitle: '成交与流水',
   recordsOrders: '当前委托',
   recordsTrades: '历史成交',
@@ -378,4 +390,5 @@ export const TF = {
   cashierDepositDone: (v: string) => `已入金 ${v} ISK`,
   cashierWithdrawDone: (v: string) => `出金 ${v} ISK 已受理，到账以服务器结算为准`,
   roundQuota: (used: number, max: number) => `委托 ${used}/${max}`,
+  newsSwitchSymbol: (code: string) => `切换至 ${code} 行情`,
 } as const
