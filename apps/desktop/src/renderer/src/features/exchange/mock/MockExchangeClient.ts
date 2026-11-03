@@ -1424,7 +1424,7 @@ export class MockExchangeClient implements ExchangeClient {
       const upper = Number(params.upperPct ?? 6)
       const grids = Math.round(Number(params.grids ?? 4))
       const qty = Math.round(Number(params.qty ?? 100))
-      if (!(lower < upper) || grids < 2 || grids > 12 || !(qty > 0)) {
+      if (!(lower < upper) || grids < 2 || grids > 50 || !(qty > 0)) {
         throw new ExchangeError('bad_strategy', T.strategyParamsInvalid)
       }
       params.lowerPct = lower
