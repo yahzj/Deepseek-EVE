@@ -13,7 +13,7 @@
 
 ## 统计
 
-- 非归档文档 **377** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4409** KB · **50040** 行
+- 非归档文档 **377** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4410** KB · **50072** 行
 - 状态分布：**未标注** 187 · **已确认/已实现** 130 · **进行中** 39 · **待裁定** 20 · **历史留档** 1
 - 孤儿文档（0 引用）**209** 份 · 状态未标注 **187** 份
 - 一、常用文档（按任务查阅）：**11** 份
@@ -68,7 +68,7 @@
 | `docs/design/stock-exchange-pacing-emotion-20261103.md` | 证券交易所 · 节奏与情绪设计（Tension & Release） | 未标注（设计稿） | 2026-11-03 | 13 KB / 213 行 | 1 |
 | `docs/design/stock-exchange-parallel-20261103.md` | 证券交易所 · 并行化架构决策（交易所计算线独立） | 未标注（实施中　｜　日期：2026-11-0） | 2026-11-03 | 7 KB / 101 行 | 1 |
 | `docs/design/stock-exchange-playtest-20261103.md` | 证券交易所 · 可玩性算法验证（P0：建造前筛参数） | 未标注（设计并实施中　｜　日期：2026-1） | 2026-11-03 | 6 KB / 105 行 | 2 |
-| `docs/design/stock-exchange-playtest-v2-20261103.md` | 证券交易所 · 可玩性验证 v2：赌桌级动力学验证 | 未标注（设计并实施中　｜　日期：2026-1） | 2026-11-03 | 11 KB / 174 行 | 0 |
+| `docs/design/stock-exchange-playtest-v2-20261103.md` | 证券交易所 · 可玩性验证 v2：赌桌级动力学验证 | 未标注（设计并实施中　｜　日期：2026-1） | 2026-11-03 | 12 KB / 206 行 | 0 |
 | `docs/design/stock-exchange-prototype-20261103.md` | 证券交易所 · 可点击原型（F0）工作文档 | 未标注（实施中） | 2026-11-03 | 15 KB / 202 行 | 0 |
 | `docs/design/stock-exchange-server-20261103.md` | 证券交易所（服务端真股市）设计方案 | 待裁定（待裁决） | 2026-11-03 | 43 KB / 615 行 | 5 |
 | `docs/design/stock-market-system-20261103.md` | 证券交易所（股市系统）设计方案与技术架构 | 待裁定（设计方案待裁决） | 2026-11-03 | 13 KB / 198 行 | 4 |
@@ -444,7 +444,7 @@
 - `docs/design/deep-space-exchange-dual-mode-20261103.md`（2026-11-03 · 4 KB）—— 设计文档：深空证券交易所（DSSE）双模式 UI/UX 重构 (2026-11-03)
 - `docs/design/deep-space-exchange-pro-refinement-20261103.md`（2026-11-03 · 14 KB）—— 深空证券交易所 · 专业界面重构与活动栏常驻监控设计（2026-11-03）
 - `docs/design/stock-exchange-go-migration-20261103.md`（2026-11-03 · 5 KB）—— 全量迁 Go · 迁移计划与阶段划分
-- `docs/design/stock-exchange-playtest-v2-20261103.md`（2026-11-03 · 11 KB）—— 证券交易所 · 可玩性验证 v2：赌桌级动力学验证
+- `docs/design/stock-exchange-playtest-v2-20261103.md`（2026-11-03 · 12 KB）—— 证券交易所 · 可玩性验证 v2：赌桌级动力学验证
 - `docs/design/stock-exchange-prototype-20261103.md`（2026-11-03 · 15 KB）—— 证券交易所 · 可点击原型（F0）工作文档
 - `docs/design/ui-scifi-hud-refinement-20261103.md`（2026-11-03 · 3 KB）—— 科幻未来（Modern HUD）UI/UX 全维规范化修复与体验优化 · 2026-11-03
 - `docs/design/ui-ux-ergonomics-audit-20261103.md`（2026-11-03 · 3 KB）—— 设计文档：UI/UX 工效学与视觉硬伤全面修复 (2026-11-03)

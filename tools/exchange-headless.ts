@@ -1,5 +1,8 @@
 /**
- * 交易所 Mock · 无头驱动（AI「低思考档」试玩批次，2026-11-03）
+ * 交易所 Mock · 无头驱动（正式工具，2026-11-03；AI「低思考档」试玩批次产物）
+ *
+ * 运行：`npx tsx tools/exchange-headless.ts --selftest`（其余模式见文件内 CLI 说明）。
+ * 场景/结果文件写在仓库根 `_exchange-*`，已被 .gitignore 忽略。
  *
  * 用途：不启动 Electron / 不接服务器 / 不改 UI，在 Node 里直接驱动
  * `features/exchange/mock/MockExchangeClient.ts`，产出可复现的场景快照与 AI 决策回放。

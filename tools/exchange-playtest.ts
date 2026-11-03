@@ -1,5 +1,8 @@
 /**
- * 证券交易所 · 可玩性算法验证（临时探针，`_` 前缀）
+ * 证券交易所 · 可玩性算法验证工具（正式入库，2026-11-03）
+ *
+ * 运行：`npx tsx tools/exchange-playtest.ts`（报告输出到仓库根 `_exchange-playtest-report.md`，
+ * 该文件已被 .gitignore 的 `/_exchange*` 规则忽略，只作本地产物）。
  *
  * 规格：docs/design/stock-exchange-playtest-20261103.md
  * 数值口径：docs/design/stock-exchange-server-20261103.md §4.4 / §4.10 / §5 / 附录 A.2-A.3

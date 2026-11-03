@@ -50,3 +50,7 @@ steam/buildoutput/
 # Steam：生成的 vdf 含本机绝对路径（一条命令即可重出）⇒ 只入库 config.json
 steam/app_build_*.vdf
 steam/depot_build_*.vdf
+
+# 临时探针（_ 前缀）不入库：验证结束转正式 tools/ 或删除
+/_exchange*
+/tools/_*

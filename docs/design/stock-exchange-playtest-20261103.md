@@ -61,8 +61,8 @@
 
 ## 七、复现
 
-- 脚本：`tools/_exchange-playtest.ts`（临时探针；验证后决定是否转正式入库）
-- 运行：`npx tsx tools/_exchange-playtest.ts`
+- 脚本：`tools/exchange-playtest.ts`（验证工具，已转正式入库）
+- 运行：`npx tsx tools/exchange-playtest.ts`
 - 该仿真**不依赖**原型 UI，与 `features/exchange/mock/` 的规则同口径；参数漂移时以本文件与设计稿为准。
 
 ---
