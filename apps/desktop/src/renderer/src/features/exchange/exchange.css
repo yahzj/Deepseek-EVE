@@ -3299,6 +3299,7 @@
   border: 1px solid rgb(var(--wui-border));
   border-radius: 6px;
   flex-shrink: 0;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .ex-simple-pos-card.is-empty {
@@ -3345,6 +3346,13 @@
   gap: 2px;
 }
 
+.ex-simple-pos-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .ex-simple-pos-title {
   margin: 0;
   font-size: var(--wui-fs-xs);
@@ -3352,10 +3360,25 @@
   color: rgb(var(--wui-text));
 }
 
+.ex-simple-pos-margin-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-family: var(--wui-mono);
+  font-variant-numeric: tabular-nums;
+  color: rgb(var(--wui-text-dim));
+  background: rgb(var(--wui-bg-field));
+  border: 1px solid rgb(var(--wui-border));
+  border-radius: 3px;
+  padding: 1px 5px;
+}
+
 .ex-simple-pos-total-pnl {
   font-size: 11px;
   font-weight: 700;
   font-family: var(--wui-mono);
+  font-variant-numeric: tabular-nums;
 }
 
 .ex-simple-pos-total-pnl.is-up {
@@ -3366,7 +3389,37 @@
   color: rgb(var(--wui-tone-loss));
 }
 
-/* 一键全部平仓大按钮：高层级高光危险操作 */
+.ex-simple-pos-head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 一键全部平仓取消按钮 */
+.ex-simple-close-cancel-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  padding: 0 8px;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 4px;
+  border: 1px solid rgb(var(--wui-border));
+  background: rgb(var(--wui-bg-panel));
+  color: rgb(var(--wui-text-dim));
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.ex-simple-close-cancel-btn:hover {
+  border-color: rgb(var(--wui-border-bright));
+  color: rgb(var(--wui-text));
+  background: rgb(var(--wui-bg-hover));
+}
+
+/* 一键全部平仓大按钮：高层级高光危险操作 + 防误触确认态 */
 .ex-simple-close-all-btn {
   display: inline-flex;
   align-items: center;
@@ -3393,9 +3446,34 @@
   box-shadow: 0 0 10px rgb(var(--wui-tone-loss) / 0.45);
 }
 
+.ex-simple-close-all-btn.is-confirming {
+  border-color: rgb(var(--wui-tone-loss));
+  background: rgb(var(--wui-tone-loss) / 0.3);
+  color: rgb(var(--wui-tone-loss));
+  animation: ex-pulse-danger 1.2s infinite ease-in-out;
+}
+
+.ex-simple-close-all-btn.is-confirming:hover:not(:disabled) {
+  background: rgb(var(--wui-tone-loss));
+  color: rgb(var(--wui-text));
+}
+
 .ex-simple-close-all-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.ex-simple-close-all-btn.is-busy {
+  cursor: wait;
+}
+
+@keyframes ex-pulse-danger {
+  0%, 100% {
+    box-shadow: 0 0 4px rgb(var(--wui-tone-loss) / 0.3);
+  }
+  50% {
+    box-shadow: 0 0 12px rgb(var(--wui-tone-loss) / 0.7);
+  }
 }
 
 .ex-simple-pos-list {
@@ -3432,6 +3510,15 @@
   border-left: 3px solid rgb(var(--wui-tone-gain));
 }
 
+.ex-simple-pos-row.is-liq-danger {
+  border-color: rgb(var(--wui-amber) / 0.5);
+}
+
+.ex-simple-pos-row.is-liq-critical {
+  border-color: rgb(var(--wui-tone-loss) / 0.7);
+  background: rgb(var(--wui-tone-loss) / 0.08);
+}
+
 .ex-simple-pos-row-head {
   display: flex;
   justify-content: space-between;
@@ -3443,6 +3530,8 @@
   font-weight: 700;
   padding: 1px 6px;
   border-radius: 3px;
+  font-family: var(--wui-mono);
+  font-variant-numeric: tabular-nums;
 }
 
 .ex-simple-pos-badge.is-spot {
@@ -3493,6 +3582,16 @@
   cursor: not-allowed;
 }
 
+.ex-simple-sub-close-btn.is-busy {
+  cursor: wait;
+}
+
+.ex-simple-pos-loading {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--wui-mono);
+}
+
 .ex-simple-pos-row-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -3517,6 +3616,7 @@
 
 .ex-simple-pos-item .ex-num {
   font-family: var(--wui-mono);
+  font-variant-numeric: tabular-nums;
   font-size: 11px;
   white-space: nowrap;
 }
@@ -3524,6 +3624,8 @@
 .ex-simple-pos-pnl-val {
   font-size: 11px;
   font-weight: 700;
+  font-family: var(--wui-mono);
+  font-variant-numeric: tabular-nums;
 }
 
 .ex-simple-pos-pnl-val.is-up {
@@ -3534,6 +3636,91 @@
   color: rgb(var(--wui-tone-loss));
 }
 
+/* 强平风险感知与健康度指示条 */
+.ex-simple-pos-risk-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 4px 6px;
+  border-radius: 3px;
+  background: rgb(var(--wui-bg-panel) / 0.7);
+  border: 1px solid rgb(var(--wui-border) / 0.6);
+  transition: all 0.15s ease;
+}
+
+.ex-simple-pos-risk-bar.is-safe {
+  border-color: rgb(var(--wui-tone-gain) / 0.25);
+}
+
+.ex-simple-pos-risk-bar.is-danger {
+  border-color: rgb(var(--wui-amber) / 0.4);
+  background: rgb(var(--wui-amber) / 0.08);
+}
+
+.ex-simple-pos-risk-bar.is-critical {
+  border-color: rgb(var(--wui-tone-loss) / 0.5);
+  background: rgb(var(--wui-tone-loss) / 0.12);
+}
+
+.ex-simple-pos-risk-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+}
+
+.ex-simple-pos-risk-tag {
+  font-weight: 700;
+}
+
+.ex-simple-pos-risk-bar.is-safe .ex-simple-pos-risk-tag {
+  color: rgb(var(--wui-tone-gain));
+}
+
+.ex-simple-pos-risk-bar.is-danger .ex-simple-pos-risk-tag {
+  color: rgb(var(--wui-amber));
+}
+
+.ex-simple-pos-risk-bar.is-critical .ex-simple-pos-risk-tag {
+  color: rgb(var(--wui-tone-loss));
+}
+
+.ex-simple-pos-risk-desc {
+  font-size: 10px;
+  color: rgb(var(--wui-text-dim));
+  font-family: var(--wui-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.ex-simple-pos-risk-gap {
+  margin-left: 5px;
+}
+
+.ex-simple-pos-meter-track {
+  width: 100%;
+  height: 3px;
+  background: rgb(var(--wui-bg-deep));
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.ex-simple-pos-meter-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.ex-simple-pos-meter-fill.is-safe {
+  background: rgb(var(--wui-tone-gain));
+}
+
+.ex-simple-pos-meter-fill.is-danger {
+  background: rgb(var(--wui-amber));
+}
+
+.ex-simple-pos-meter-fill.is-critical {
+  background: rgb(var(--wui-tone-loss));
+}
 
 /* ==========================================================================
    专业模式 (ProExchange) · 星舰战术交易舱重构专属样式 (2026-11-03)
