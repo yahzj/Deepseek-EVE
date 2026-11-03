@@ -57,7 +57,7 @@
 ## 5. 检索、代码与文案
 
 - 文档查询先目录与索引；内容按 id/唯一键定位，小范围修改，不用长文本近似匹配。原因：文案会改版，稳定主键比相似句子更能防止误改条目。
-- **Serena MCP 工具支持**：默认允许使用 `serena` MCP 工具进行符号与文件的增删改查。查定义、查引用（`find_referencing_symbols`）、符号概览（`get_symbols_overview`）和替换极快，代码分析与修改优先使用。原因：专属代码分析 MCP 比手工全文文本检索更精准、省 Token 且效率极高。
+- **Serena 是代码增删改查的默认工具（2026-11-04 船长指令）**：主代理与所有子代理，凡代码符号的查定义、查引用、符号级替换/插入/删除，**默认且优先**使用对应仓库的 Serena MCP 实例；不得一上来就全文 grep 或盲读。仅在 Serena 不可用（项目根不匹配、语言服务缺失、工具报错）时，才可降级 read/grep，且必须明确报告原因与降级范围，不得静默退化。原因：符号级工具更准更省 Token；默认统一才能防止各会话各用一套。
 - **大文件禁止盲目通读**：超过 500 行的文件禁止直接全文盲读；必须用 Serena 查引用和定义快速定位目标区域，按需精准读写，不需要也不允许全读一遍。原因：大文件盲读浪费海量上下文与 Token，且容易在无关细节中迷失；Serena 查定义和引用秒级命中。
 - 术语查 `docs/glossary.md`，新术语先登记；官方命名以代码与船长口径为准，旧称只用于历史/作废语境。原因：跨会话与跨界面必须指向同一个概念。
 - 玩家可见文本符合设定，只写玩家向内容；说明只讲本件是什么、有什么用，不解释设计原因；括号、数值与留痕按正文十三及 `docs/data-map.md` 执行。原因：开发讨论不该泄露给玩家，重复界面读数或跨件比较也容易随调参过期。
@@ -68,9 +68,9 @@
 - **主代理路由与并行干活**：主代理负责需求拆解、架构把关与任务路由，将拆分后的独立子任务派发给子代理并行干活。原因：主代理承担中枢调度，流水线并行能极大提升吞吐并减少等待。
 - **主代理统一验收闭环**：所有子代理完成后，由主代理收拢成果并统一执行验证（运行测试、类型检查、UI/旋转契约校验等），亲自核验结果后向船长汇报验收。原因：子代理负责局部施工，主代理负责全局质量与系统完整性。
 - **底线不变**：子代理同样遵守真档只读保护、同域优先契约，且不得绕过主代理自行对外发布或推送。原因：任务下发不改变数据保护与发布纪律。
-- **子代理默认使用 Serena MCP**（2026-11-03 船长补充）：派工任务书必须写明子代理优先用 `serena` MCP 做符号定位与编辑（`get_symbols_overview` / `find_symbol` / `find_referencing_symbols` / 符号级替换），不得一上来就全文 grep。若 Serena 因环境原因（项目根不匹配、启动参数错误、工具缺失）不可用，子代理必须**明确报告原因**并按正文降级到 read/grep，**不得静默退化**。原因：Serena 的符号级检索更准更省 Token，但其可用性取决于 MCP 启动配置，缺口必须可见而不是被吞掉。
+- **子代理与主代理默认使用 Serena**（2026-11-03 船长补充；2026-11-04 扩为全仓库默认）：派工任务书必须写明目标仓库对应的实例前缀——本仓 `mcp__serena-eve__*`、whale-server `mcp__serena-server__*`、whale-server-go `mcp__serena-go__*`、Border-Pioneer-2 `mcp__serena-border__*`。查符号用 `get_symbols_overview` / `find_symbol` / `find_referencing_symbols`，改代码用符号级替换/插入/删除函数体；非代码文件（JSON/CSV/MD/配置）Serena 不适用，按普通 read/edit 处理。若 Serena 因环境原因（项目根不匹配、语言服务缺失、工具报错）不可用，必须**明确报告原因与降级范围**再降级 read/grep，**不得静默退化**。原因：一仓一实例且前缀不同，不写明会连错项目或悄悄退化；符号级检索更准更省 Token。
 
-> ✓ 已修复（2026-11-03 主代理核实）：DSH home 级配置 `~/.dsh/cordis.patch.yml` 改为**双实例**——`serena` 仍指向 `Border-Pioneer-2`，新增 `serena-eve` 指向本仓 `Deepseek-EVE`（工具前缀 `mcp__serena-eve__*`）。`web` profile 会热重载 patch，**无需重启 DSH**。已实测 `get_symbols_overview` 与 `find_referencing_symbols` 在本仓正常。派工子代理时，本仓任务明确要求使用 `mcp__serena-eve__*` 系列工具。
+> ✓ 现状（2026-11-04 主代理核实）：DSH home 级配置 `~/.dsh/cordis.patch.yml` 为**四实例**——`serena-border`→Border-Pioneer-2（原 `serena` 改名）、`serena-eve`→Deepseek-EVE、`serena-server`→whale-server、`serena-go`→whale-server-go。四个实例均已实测可读各自仓库符号（含 Go 语言服务）。`web` profile 热重载 patch，重启 DSH 后新前缀生效；备份在 `~/.dsh/cordis.patch.yml.bak-20261104-003308`。
 
 
 ## 5.2 新提议与旧规则冲突
