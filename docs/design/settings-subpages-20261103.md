@@ -1,6 +1,6 @@
 # 设置子页面分类（2026-11-03）
 
-> 状态：设置分类已在旧本地提交中合入当时的本地 main；本次 `origin/main` 同步 merge 仍 pending、尚未提交，也未推送。当前合并产物待验收。经办：三号（verify）。
+> 状态：设置分类及第一轮远端同步已包含在本地合并提交 `4e6389fe3`；第二次文档 merge 待提交，尚未推送。当前构建检查与设置冒烟通过，观感待船长验收。经办：三号（verify）。
 
 ## 船长原话
 
@@ -31,15 +31,12 @@
 
 ## 实现与验证
 
-- 本节区分 Git 同步前的旧分类验证与当前 merge 验证；旧 UI 报告不代表当前合并产物的 smoke 通过。当前统一检查结果由主代理提供，本轮仅同步文档，不改设置功能或其他玩家文字。
+- 本节记录当前三号构建的验证，旧本地提交的 UI 报告不作为本次结果依据。
 - 功能域：设置面板；同类参照为现有 `app-subtabs` / `app-subtab`。实现与提交在三号树完成，未改 core 或后端；本地化表及受影响的 UI 检查工具随本批更新。
 - 保留现有控件处理函数、偏好键、默认值和存档操作；仅分类渲染。弹窗高度稳定，内容区域独立滚动，切页回到顶部。
 - 新增 `tools/settings-subpages-smoke.cjs`。用法：先 `npm run build`，再 `node tools/settings-subpages-smoke.cjs`；输入三号桌面构建和自建合成档，输出 `tools/_ui-artifacts/settings-subpages/report.json`。隐藏 Electron，临时用户目录隔离，结束清理自有进程和目录。
-- 以下为设置分类旧本地提交时记录的验证，不代表当前 `origin/main` 合并产物。该旧报告中的隐藏 Electron 检查及 HTTP 预览不能替代本次 smoke。
-- 旧本地提交的隐藏 Electron 检查曾报告通过：classic / modern 两种布局、zh / en 两种界面、1366 / 600 / 375 像素宽度；五类设置分类、右上角客户端版本号、完整版本悬停信息、复制反馈、键盘切换、尺寸稳定、切页不改偏好、静音和补给来源、底栏许可弹窗、发布形态开发者门禁，运行时异常 0。该读数不代替船长观感验收，也不代表当前合并构建。
-- 当前合并的 `npm run build`、`npm run typecheck`、`npm run content:check`、`npm run l10n:check`、`npm run l10n:params`、`npm run ui:rot-check`、`npm run docs:index -- --check` 和完整 core 回归已由主代理报告通过；详细数值及边界见 `main-git-sync-20261103.md`。
-- 当前 merge 的 Electron smoke 未验证：`npm ci --ignore-scripts` 后 Electron binary 不可用。当前产物的设置冒烟仍待 binary 恢复后执行；不可沿用旧本地提交的 smoke 结果。
-- 旧记录：当时沙箱内 tsx 受 `uv_os_get_passwd ENOMEM` 阻挡，获批后在沙箱外运行静态脚本；该记录不是当前 merge 验证的限制或结果。
-- 旧分类实现只同步现有声音、存档和导出/手机检查工具的分类入口，当时做过语法检查、未跑工具完整旅程或完整 core 回归；该旧范围记录不否定当前主代理已完成的 core 全量回归。
-- 历史提交记录：设置提交 `53e28ccb3` 与当时同步主树新增进度后的合并提交 `d52f3c94a`。这些提交属于旧本地历史；本次待处理 merge 尚未提交，不能据此称本次已合入 main。当前最新 fetch 失败，最后可见 `origin/main` 为 `dc98d5ccbe58fc843d2bab48fdc12b14859eaf64`；后续同步由主代理处理。
-- 旧验收预览记录：`http://127.0.0.1:5184/`，当时三号桌面 renderer 构建曾返回 HTTP 200；当时预览自有进程 PID 30084，日志在 `tools/_ui-artifacts/settings-subpages/preview.*.log`。不表示当前服务仍在运行或内容为本次 merge 最新构建。
+- 当前三号构建的设置冒烟已通过：复用主树 `H:\大鲸鱼\Deepseek-EVE` 的 Electron 31.7.7 运行时，隐藏窗口，临时用户目录与合成档隔离，不读取个人真档。classic / modern × zh / en 四组合全通过，runtime errors 为 0。
+- 冒烟覆盖五类设置、右上角版本及复制、键盘切换、1366 / 600 / 375 像素宽度、尺寸稳定、切页不改偏好、静音及补给来源、底栏许可、新字体授权内容、发布形态开发者门禁。这是当前构建的功能与几何结果，不代替观感验收。
+- `npm run build`、`npm run typecheck`、`npm run content:check`、`npm run l10n:check`、`npm run l10n:params`、`npm run ui:rot-check` 及文档索引检查通过；完整 core 回归为 521 个测试文件、7105 passed、9 skipped、0 failed。同步事实见 `main-git-sync-20261103.md`。
+- 第一轮远端合并已提交 `4e6389fe3`，保留设置分类与远端科幻 HUD 更新。当前第二次 `git merge --no-commit origin/main` 合入缓存 `dc98d5ccb` 的 wiki / stock 设计文档，仅索引冲突由生成器解决；本地第二次 merge 待提交，尚未推送。最新 fetch 失败，不能宣称已追平真实远端。
+- 后续账号 / 云存档接入设置的需求仍待范围确认，本批不提前实现。
