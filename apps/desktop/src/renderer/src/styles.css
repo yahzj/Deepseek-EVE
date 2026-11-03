@@ -5222,7 +5222,9 @@ html[data-locale='en'] body {
 
 .app-belt-card.is-goto {
 
-  box-shadow: 0 0 0 2px rgba(79, 216, 196, 0.65);
+  border-color: rgb(var(--wui-accent));
+  box-shadow: 0 0 0 2px rgb(var(--wui-accent) / 0.75), 0 0 14px rgb(var(--wui-accent) / 0.45), inset 0 0 8px rgb(var(--wui-accent) / 0.15);
+  animation: app-mfg-focus-pulse 2.2s infinite ease-in-out;
 
 }
 
@@ -15780,4 +15782,327 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
 .app-root.is-layout-modern .app-tasktab {
   border-radius: 0;
   clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%);
+}
+
+/* -------------------------------------------------------------------------- */
+/* 全局 · 工业制造与研发装配流程样式体系 (.app-mfg-*)                           */
+/* -------------------------------------------------------------------------- */
+
+/* 等宽数字与表格数据对齐 */
+.app-mfg-num {
+  font-family: var(--wui-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* 科技品级与族徽渲染 */
+.app-mfg-badge-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--wui-sp-4);
+  vertical-align: middle;
+}
+
+.app-mfg-crest {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--wui-sp-3);
+  background: rgb(var(--wui-well) / 0.6);
+  border: 1px solid rgb(var(--wui-border) / 0.4);
+  flex-shrink: 0;
+}
+
+.app-mfg-tier {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px var(--wui-sp-4);
+  border-radius: var(--wui-sp-3);
+  font-family: var(--wui-mono);
+  font-size: var(--wui-fs-2xsb);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.4px;
+  border: 1px solid currentColor;
+  text-transform: uppercase;
+}
+.app-mfg-tier.is-t1 { color: rgb(var(--wui-dim)); background: rgb(var(--wui-dim) / 0.12); }
+.app-mfg-tier.is-t2 { color: rgb(var(--wui-cyan-bright)); background: rgb(var(--wui-cyan-bright) / 0.12); }
+.app-mfg-tier.is-t3 { color: rgb(var(--wui-amber-3)); background: rgb(var(--wui-amber-3) / 0.12); }
+.app-mfg-tier.is-t4 { color: rgb(var(--wui-rare)); background: rgb(var(--wui-rare) / 0.15); }
+.app-mfg-tier.is-t5 { color: rgb(var(--wui-exotic)); background: rgb(var(--wui-exotic) / 0.15); }
+
+@keyframes app-mfg-focus-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 2px rgb(var(--wui-accent) / 0.6), 0 0 10px rgb(var(--wui-accent) / 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 2px rgb(var(--wui-accent) / 0.9), 0 0 18px rgb(var(--wui-accent) / 0.6), inset 0 0 10px rgb(var(--wui-accent) / 0.2);
+  }
+}
+
+/* 材料需求明细 */
+.app-mfg-mat-list {
+  list-style: none;
+  margin: var(--wui-sp-6) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--wui-sp-4);
+  font-size: var(--wui-fs-xs);
+}
+
+.app-mfg-mat-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--wui-sp-3) var(--wui-sp-6);
+  border-radius: var(--wui-sp-4);
+  background: rgb(var(--wui-well) / 0.35);
+  border: 1px solid rgb(var(--wui-border) / 0.2);
+  gap: var(--wui-sp-6);
+  min-height: 28px;
+}
+
+.app-mfg-mat-left {
+  display: flex;
+  align-items: center;
+  gap: var(--wui-sp-5);
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.app-mfg-mat-name {
+  color: rgb(var(--wui-text));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+
+.app-mfg-mat-right {
+  display: flex;
+  align-items: center;
+  gap: var(--wui-sp-6);
+  flex-shrink: 0;
+}
+
+.app-mfg-ratio {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--wui-sp-2);
+  padding: 1px var(--wui-sp-5);
+  border-radius: var(--wui-sp-3);
+  font-family: var(--wui-mono);
+  font-size: var(--wui-fs-2xsb);
+  font-variant-numeric: tabular-nums;
+  border: 1px solid transparent;
+}
+
+/* 充足显示温和绿，不足显示警示红 */
+.app-mfg-ratio.is-gain {
+  color: rgb(var(--wui-tone-gain));
+  background: rgb(var(--wui-tone-gain) / 0.1);
+  border-color: rgb(var(--wui-tone-gain) / 0.3);
+}
+
+.app-mfg-ratio.is-loss {
+  color: rgb(var(--wui-tone-loss));
+  background: rgb(var(--wui-tone-loss) / 0.12);
+  border-color: rgb(var(--wui-tone-loss) / 0.35);
+  font-weight: 600;
+}
+
+/* 材料不足时制造主按钮下方清晰提示缺失材料 */
+.app-mfg-short-alert {
+  display: flex;
+  align-items: center;
+  gap: var(--wui-sp-4);
+  margin-top: var(--wui-sp-4);
+  padding: var(--wui-sp-3) var(--wui-sp-6);
+  border-radius: var(--wui-sp-4);
+  background: rgb(var(--wui-tone-loss) / 0.1);
+  border: 1px solid rgb(var(--wui-tone-loss) / 0.3);
+  color: rgb(var(--wui-tone-loss));
+  font-size: var(--wui-fs-2xsb);
+  line-height: 1.4;
+  word-break: break-all;
+}
+
+/* 批量制造步进器与滑块 */
+.app-mfg-batch-box {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--wui-sp-4) var(--wui-sp-8);
+  margin: var(--wui-sp-4) 0;
+  padding: var(--wui-sp-4) var(--wui-sp-6);
+  border-radius: var(--wui-sp-4);
+  background: rgb(var(--wui-well) / 0.4);
+  border: 1px solid rgb(var(--wui-border) / 0.3);
+}
+
+.app-mfg-stepper {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgb(var(--wui-border));
+  border-radius: var(--wui-sp-4);
+  background: rgb(var(--wui-bg-deep));
+  overflow: hidden;
+}
+
+.app-mfg-stepper-btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: rgb(var(--wui-text));
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--wui-mono);
+  font-weight: 700;
+  font-size: var(--wui-fs-s);
+  transition: background-color 0.15s ease;
+}
+.app-mfg-stepper-btn:hover:not(:disabled) {
+  background: rgb(var(--wui-bg-hover));
+  color: rgb(var(--wui-accent));
+}
+.app-mfg-stepper-btn:disabled {
+  color: rgb(var(--wui-dim));
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.app-mfg-stepper-input {
+  width: 44px;
+  height: 24px;
+  border: none;
+  border-left: 1px solid rgb(var(--wui-border) / 0.5);
+  border-right: 1px solid rgb(var(--wui-border) / 0.5);
+  background: transparent;
+  text-align: center;
+  font-family: var(--wui-mono);
+  font-size: var(--wui-fs-xs);
+  color: rgb(var(--wui-text-hi));
+}
+
+.app-mfg-max-btn {
+  padding: 2px var(--wui-sp-5);
+  border-radius: var(--wui-sp-3);
+  font-family: var(--wui-mono);
+  font-size: var(--wui-fs-2xsb);
+  font-weight: 700;
+  border: 1px solid rgb(var(--wui-border));
+  background: rgb(var(--wui-well));
+  color: rgb(var(--wui-text-dim));
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.app-mfg-max-btn:hover:not(:disabled) {
+  border-color: rgb(var(--wui-gold));
+  color: rgb(var(--wui-gold));
+  background: rgb(var(--wui-gold) / 0.1);
+}
+
+.app-mfg-duration-view {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--wui-sp-4);
+  font-size: var(--wui-fs-2xsb);
+  color: rgb(var(--wui-text-dim));
+}
+
+/* 正在制造队列卡片与动态平滑进度条 */
+.app-mfg-run-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--wui-sp-6);
+  padding: var(--wui-sp-4) var(--wui-sp-8);
+  border-radius: var(--wui-sp-4);
+  background: rgb(var(--wui-well) / 0.45);
+  border: 1px solid rgb(var(--wui-border) / 0.4);
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.app-mfg-run-card.is-complete,
+.hud-card.is-complete {
+  border-color: rgb(var(--wui-gold));
+  box-shadow: 0 0 14px rgb(var(--wui-gold) / 0.45), inset 0 0 8px rgb(var(--wui-gold) / 0.2);
+  animation: app-mfg-gold-pulse 1.8s infinite ease-in-out;
+}
+
+@keyframes app-mfg-gold-pulse {
+  0%, 100% {
+    box-shadow: 0 0 8px rgb(var(--wui-gold) / 0.35), inset 0 0 4px rgb(var(--wui-gold) / 0.15);
+  }
+  50% {
+    box-shadow: 0 0 18px rgb(var(--wui-gold) / 0.65), inset 0 0 10px rgb(var(--wui-gold) / 0.3);
+  }
+}
+
+.app-mfg-progress-track {
+  position: relative;
+  height: 6px;
+  border-radius: var(--wui-sp-3);
+  background: rgb(var(--wui-well) / 0.8);
+  overflow: hidden;
+  flex: 1 1 auto;
+  min-width: 60px;
+}
+
+.app-mfg-progress-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  border-radius: var(--wui-sp-3);
+  background: linear-gradient(90deg, rgb(var(--wui-cyan)), rgb(var(--wui-accent)));
+  transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.app-mfg-run-card.is-complete .app-mfg-progress-bar {
+  background: linear-gradient(90deg, rgb(var(--wui-amber-3)), rgb(var(--wui-gold)));
+}
+
+.app-mfg-countdown {
+  font-family: var(--wui-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--wui-fs-2xsb);
+  color: rgb(var(--wui-text-hi));
+  min-width: 54px;
+  text-align: right;
+}
+
+/* 导航 Tab 切换平滑动效 */
+.app-tasktab {
+  transition: color 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+              background-color 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* 滚动容器美化与防截断 */
+.app-belt-grid {
+  padding-bottom: var(--wui-sp-16);
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--wui-border) / 0.6) transparent;
+}
+.app-belt-grid::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.app-belt-grid::-webkit-scrollbar-thumb {
+  background: rgb(var(--wui-border) / 0.6);
+  border-radius: var(--wui-sp-3);
+}
+.app-belt-grid::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--wui-border));
 }
