@@ -13,6 +13,7 @@ import { Bot, ChartCandlestick, Receipt, Target as Crosshair } from '@carbon/ico
 import type { ExchangeClient, ExchangeSnapshot } from '../client'
 import type { ToastFn } from '../../../pages/common'
 import { StockList } from './StockList'
+import { MarketOverview } from './MarketOverview'
 import { Chart } from './Chart'
 import { TradePanel } from './TradePanel'
 import { Positions } from './Positions'
@@ -87,9 +88,10 @@ export function ProExchange({
 
   return (
     <div className="ex-grid ex-pro-grid">
-      {/* 左栏：标的列表 */}
+      {/* 左栏：标的列表与市场战况仪表 */}
       <aside className="ex-col ex-col-left">
         <StockList snap={snap} selected={code} onSelect={onSelectCode} />
+        <MarketOverview snap={snap} />
       </aside>
 
       {/* 中栏：全屏 K 线 + 多空张力能量槽 + 持仓/流水作战席 */}

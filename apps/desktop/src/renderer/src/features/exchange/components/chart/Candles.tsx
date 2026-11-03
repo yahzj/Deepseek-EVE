@@ -76,12 +76,19 @@ export function Candles({
       ) : (
         bars.map((b, i) => {
           const rise = b.c >= b.o
+          const isDoji = b.c === b.o
           const top = geo.yOf(Math.max(b.o, b.c))
           const bottom = geo.yOf(Math.min(b.o, b.c))
           const x = geo.xOf(i)
+          const yHigh = geo.yOf(b.h)
+          const yLow = geo.yOf(b.l)
           return (
-            <g key={`${b.t}-${i}`} className={rise ? 'is-up' : 'is-down'}>
-              <line x1={x} x2={x} y1={geo.yOf(b.h)} y2={geo.yOf(b.l)} className="ex-candle-wick" />
+            <g
+              key={`${b.t}-${i}`}
+              className={`${rise ? 'is-up' : 'is-down'}${isDoji ? ' is-doji' : ''}`}
+            >
+              <line x1={x} x2={x} y1={yHigh} y2={top} className="ex-candle-wick" />
+              <line x1={x} x2={x} y1={bottom} y2={yLow} className="ex-candle-wick" />
               <rect
                 x={x - geo.bodyW / 2}
                 y={top}

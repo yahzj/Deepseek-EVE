@@ -41,3 +41,52 @@
        - 补齐 `.app-activitybar-exch-btn .app-ai-act-sub.is-up`（`--wui-tone-profit`）与 `.is-down`（`--wui-tone-loss`）红绿主题色板规则，修复原样式脱节无色问题；
        - 点击卡片正常激活 `onGoPage('exchange')` 直达股市交易大厅；
      - 现货/多头/空头表单联动与市价全平逻辑严密，无类型或状态竞态。
+
+
+## 三轮色彩语义化落地（2026-11-03 Exchange Button & Feature Color Semantics）
+- **背景**：根据船长显式批准的色彩语义方案，彻底解决深空交易所内各类交互按钮与操作状态缺乏视觉色彩逻辑、对比度弱或信息区分度不足的问题。
+- **落实明细**：
+  1. **分段切换按钮（`.ex-seg-btn`）**：
+     - 现货模式（`.is-spot.is-on`）：深空青蓝边框与微光（`--wui-cyan`），内发光强化定位感；
+     - 做多看涨（`.is-long.is-on`）：做多看涨底色荧光绿（`--wui-tone-gain`），配合深色高对比文字与轻微辉光；
+     - 做空看跌（`.is-short.is-on`）：做空看跌底色激进赤红（`--wui-tone-loss`），配合高亮浅色文字与警示辉光。
+  2. **主下单与保存大按钮（`.ex-primary`）**：
+     - 现货下单（`.is-spot`）：深空青蓝渐变 `linear-gradient(135deg, rgb(var(--wui-cyan)), rgb(var(--wui-blue)))`，高对比深色字；
+     - 做多下单（`.is-long`）：看涨荧光绿渐变 `linear-gradient(135deg, rgb(var(--wui-tone-gain)), rgb(var(--wui-accent)))`，深色文字配合 `--wui-tone-gain` 辉光；
+     - 做空下单（`.is-short`）：看跌赤红渐变 `linear-gradient(135deg, rgb(var(--wui-tone-loss)), rgb(var(--wui-danger-deep)))`，浅色文字配合 `--wui-tone-loss` 辉光；
+     - 算法量化保存（`.is-algo`）：科技紫蓝渐变 `linear-gradient(135deg, rgb(var(--wui-purple)), rgb(var(--wui-cyan)))`，突出量化策略智能质感。
+  3. **次级与状态微按钮（`.ex-mini-btn`）**：
+     - 盘口快捷取价与满仓 MAX（`.is-accent`）：高亮青蓝细边框，字体为 `rgb(var(--wui-cyan))`；
+     - 现货卖出与杠杆平仓（`.is-close`）：结清仓位弱红警示框，悬停时为 `rgb(var(--wui-tone-loss) / 0.15)` 背景与高亮红字；
+     - 撤单操作（`.is-cancel`）：悬停时弱红 `rgb(var(--wui-danger-deep) / 0.15)` 背景，字与垃圾桶图标变红；
+     - 策略恢复/启用（`.is-play`）：活力绿 `rgb(var(--wui-tone-gain) / 0.15)` 背景，字和播放图标为 `rgb(var(--wui-tone-gain))`；
+     - 策略暂停（`.is-pause`）：警示黄 `rgb(var(--wui-amber) / 0.15)` 背景，字和暂停图标为 `rgb(var(--wui-amber))`；
+     - 策略删除（`.is-trash`）：悬停时暗红警示 `rgb(var(--wui-danger-deep) / 0.15)`。
+  4. **稳健理财卡片（`.ex-bond`）**：
+     - 买入理财（`.is-bond-buy`）：金黄高光渐变 `linear-gradient(135deg, rgb(var(--wui-gold)), rgb(var(--wui-amber)))`，深色高对比文字；
+     - 赎回理财（`.is-bond-redeem`）：稳健金色边框，悬停带金色柔和微光。
+- **涉及组件**：
+  - `TradePanel.tsx`（下单模式与主按钮分流）
+  - `Positions.tsx`（平仓、卖出、撤销）
+  - `AutoTrade.tsx`（策略启停、删除、创建保存）
+  - `BondCard.tsx`（债券申购与赎回）
+  - `exchange.css`（色彩与渐变修饰类定义）
+- **核验标准**：严格依循 `--wui-*` 变量三元组与 `rgb(var(...))` 包裹规范，零 Emoji 残留，全量通过类型与主题体检。
+
+## 四轮 K 线图阴阳线标准形态重构（2026-11-03 K-Line Candlestick Visual Standards）
+- **背景**：响应船长关于“K 线图阴阳线标准形态”的审查意见，参考国内外金融权威标准（通达信、同花顺、TradingView Hollow Candles、日本蜡烛图正统规范），彻底纠正此前所有蜡烛无差别涂抹为实心色块的问题。
+- **落实明细**：
+  1. **阳线标准空心化（Hollow Up-Candle）**：
+     - 收盘价高于开盘价（`b.c >= b.o`）：`.ex-chart-svg .is-up .ex-candle-body` 采用标准空心形态，描边为 `currentColor`（`1.2px`），内部注入微弱底色 `rgb(var(--wui-tone-gain) / 0.08)`，既透视底层深空暗色，又强化暗调背景下的实体轮廓；
+     - 影线结构精细化：拆分为从最高价到实体的上影线和从实体到底部的下影线，彻底杜绝一根长线直接横穿空心蜡烛腹部的视觉破绽；
+  2. **阴线标准实心化（Solid Down-Candle）**：
+     - 收盘价低于开盘价（`b.c < b.o`）：`.ex-chart-svg .is-down .ex-candle-body` 维持饱满实心形态（`fill: currentColor; stroke: currentColor;`），与空心阳线形成强烈的虚实多空张力对比；
+  3. **平盘十字星形态强化（Doji）**：
+     - 收盘价等于开盘价（`b.c === b.o`）：打上 `.is-doji` 标记，实体高度保持最小 `1px` 并以实心色块渲染，确保零厚度实体在各种分辨率下均表现为清晰刚劲的水平横档；
+  4. **副图成交量柱虚实呼应（Volume Pane）**：
+     - 阳线成交量（`.ex-vol-bar.is-up`）：采用 `rgb(var(--wui-tone-gain) / 0.25)` 浅充底与 `rgb(var(--wui-tone-gain) / 0.85)` 明晰描边，呈现通透镂空感；
+     - 阴线成交量（`.ex-vol-bar.is-down`）：采用 `rgb(var(--wui-tone-loss) / 0.65)` 实心填充，无描边，与主图阴阳节奏高度统一。
+- **涉及文件**：
+  - `apps/desktop/src/renderer/src/features/exchange/exchange.css`
+  - `apps/desktop/src/renderer/src/features/exchange/components/chart/Candles.tsx`
+  - `docs/design/deep-space-exchange-pro-refinement-20261103.md`

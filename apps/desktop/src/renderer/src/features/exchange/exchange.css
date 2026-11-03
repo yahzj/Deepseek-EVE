@@ -288,93 +288,290 @@
   letter-spacing: 0.5px;
 }
 
-/* ── 左栏：标的列表 ── */
+/* ── 左栏：标的列表与现代双行行情卡片 ── */
 
 .ex-stock-list {
   flex: 1 1 auto;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
-.ex-stock-head,
-.ex-stock-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 66px 70px 66px;
-  gap: 6px;
-  align-items: center;
-}
-
-.ex-stock-head {
-  padding: 4px 10px;
-  border-bottom: 1px dashed rgb(var(--wui-border));
-  color: rgb(var(--wui-text-dim));
-  font-size: var(--wui-fs-2xs);
-}
-
-.ex-stock-rows {
+.ex-stock-cards {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-}
-
-.ex-stock-row {
-  width: 100%;
-  padding: 7px 10px;
-  border: 0;
-  border-bottom: 1px solid rgb(var(--wui-border) / 0.35);
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-align: right;
-  cursor: pointer;
-}
-
-.ex-stock-row:hover {
-  background: rgb(var(--wui-accent) / 0.08);
-}
-
-.ex-stock-row.is-sel {
-  background: rgb(var(--wui-accent) / 0.14);
-  box-shadow: inset 2px 0 0 rgb(var(--wui-accent));
-}
-
-.ex-stock-row .ex-stock-name {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 1px;
+}
+
+.ex-stock-card {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border: 0;
+  border-bottom: 1px solid rgb(var(--wui-border) / 0.35);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
   text-align: left;
+  box-sizing: border-box;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ex-stock-card:hover {
+  background: rgb(var(--wui-accent) / 0.08);
+  box-shadow: inset 0 0 10px rgb(var(--wui-cyan) / 0.08);
+}
+
+.ex-stock-card.is-sel {
+  background: rgb(var(--wui-accent) / 0.15);
+  box-shadow: inset 3px 0 0 rgb(var(--wui-cyan)), 0 0 12px rgb(var(--wui-cyan) / 0.1);
+}
+
+.ex-stock-card-left {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.ex-stock-card-row1 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   min-width: 0;
 }
 
-.ex-stock-name b {
+.ex-stock-code {
   color: rgb(var(--wui-gold));
   font-family: var(--wui-mono);
   font-size: var(--wui-fs-base);
+  font-weight: 700;
   letter-spacing: 0.5px;
 }
 
-.ex-stock-name i {
-  color: rgb(var(--wui-text));
-  font-size: var(--wui-fs-2xs);
-  font-style: normal;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-}
-
-.ex-stock-name em {
-  margin-top: 1px;
+.ex-stock-sector {
   padding: 0 4px;
   border: 1px solid rgb(var(--wui-border));
   border-radius: 3px;
   color: rgb(var(--wui-text-dim));
   font-size: var(--wui-fs-2xs);
   font-style: normal;
+  line-height: 1.4;
 }
 
-.ex-stock-hold.is-held {
+.ex-stock-hold-badge {
+  padding: 0 4px;
+  border: 1px solid rgb(var(--wui-gold) / 0.4);
+  border-radius: 2px;
   color: rgb(var(--wui-gold));
+  background: rgb(var(--wui-gold) / 0.12);
+  font-family: var(--wui-mono);
+  font-size: var(--wui-fs-2xs);
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.ex-stock-card-row2 {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.ex-stock-fullname {
+  color: rgb(var(--wui-text-dim));
+  font-size: var(--wui-fs-xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+.ex-stock-card-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex: 0 0 auto;
+  margin-left: 8px;
+  text-align: right;
+}
+
+.ex-stock-price-val {
+  color: rgb(var(--wui-text));
+  font-family: var(--wui-mono);
+  font-size: var(--wui-fs-base);
+  font-weight: 600;
+}
+
+.ex-stock-card-row2-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.ex-stock-pct-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 52px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: var(--wui-mono);
+  font-size: var(--wui-fs-2xs);
+  font-weight: 600;
+  text-align: right;
+}
+
+.ex-stock-pct-pill.is-up {
+  background: rgb(var(--wui-tone-gain) / 0.15);
+  color: rgb(var(--wui-tone-gain));
+  border: 1px solid rgb(var(--wui-tone-gain) / 0.35);
+}
+
+.ex-stock-pct-pill.is-down {
+  background: rgb(var(--wui-tone-loss) / 0.15);
+  color: rgb(var(--wui-tone-loss));
+  border: 1px solid rgb(var(--wui-tone-loss) / 0.35);
+}
+
+/* ── 左栏：市场战况仪表 ── */
+
+.ex-market-overview {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  margin-top: auto;
+  border: 1px solid rgb(var(--wui-border));
+  border-radius: 6px;
+  background: linear-gradient(180deg, rgb(var(--wui-bg-panel) / 0.72), rgb(var(--wui-bg-deep) / 0.55));
+}
+
+.ex-market-overview-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+}
+
+.ex-market-index-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.ex-market-index-main {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.ex-market-index-name {
+  font-size: var(--wui-fs-s);
+  font-weight: 600;
+  color: rgb(var(--wui-text));
+}
+
+.ex-market-index-val {
+  font-size: var(--wui-fs-md);
+  font-family: var(--wui-mono);
+  font-weight: 700;
+  color: rgb(var(--wui-text));
+}
+
+.ex-market-index-sub {
+  display: flex;
+  align-items: center;
+}
+
+.ex-market-index-pill {
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-family: var(--wui-mono);
+  font-size: var(--wui-fs-2xs);
+  font-weight: 600;
+}
+
+.ex-market-index-pill.is-up {
+  background: rgb(var(--wui-tone-gain) / 0.15);
+  color: rgb(var(--wui-tone-gain));
+  border: 1px solid rgb(var(--wui-tone-gain) / 0.35);
+}
+
+.ex-market-index-pill.is-down {
+  background: rgb(var(--wui-tone-loss) / 0.15);
+  color: rgb(var(--wui-tone-loss));
+  border: 1px solid rgb(var(--wui-tone-loss) / 0.35);
+}
+
+.ex-market-range-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--wui-fs-2xs);
+  font-family: var(--wui-mono);
+}
+
+.ex-market-ratio-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  background: rgb(var(--wui-bg-deep) / 0.6);
+  border: 1px solid rgb(var(--wui-border) / 0.6);
+  border-radius: 4px;
+}
+
+.ex-market-ratio-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--wui-fs-2xs);
+  font-weight: 600;
+  font-family: var(--wui-mono);
+}
+
+.ex-ratio-label.is-up {
+  color: rgb(var(--wui-tone-gain));
+}
+
+.ex-ratio-label.is-down {
+  color: rgb(var(--wui-tone-loss));
+}
+
+.ex-market-ratio-track {
+  display: flex;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: rgb(var(--wui-border) / 0.4);
+}
+
+.ex-market-ratio-fill.is-up {
+  background: rgb(var(--wui-tone-gain));
+  transition: width 0.3s ease;
+}
+
+.ex-market-ratio-fill.is-down {
+  background: rgb(var(--wui-tone-loss));
+  transition: width 0.3s ease;
+}
+
+.ex-market-stats-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--wui-fs-2xs);
+}
+
+.ex-market-vol-num {
+  color: rgb(var(--wui-text));
+  font-family: var(--wui-mono);
+  font-weight: 600;
 }
 
 /* ── 中栏：K 线 ── */
@@ -450,8 +647,25 @@
   stroke-width: 1;
 }
 
-.ex-candle-body {
+/* 阳线（看涨）：经典权威标准为空心（Hollow），外边框清晰，底色微弱透光 */
+.ex-chart-svg .is-up .ex-candle-body {
+  fill: rgb(var(--wui-tone-gain) / 0.08);
+  stroke: currentColor;
+  stroke-width: 1.2;
+}
+
+/* 阴线（看跌）：经典权威标准为实心（Solid），内部完全填满 */
+.ex-chart-svg .is-down .ex-candle-body {
   fill: currentColor;
+  stroke: currentColor;
+  stroke-width: 1;
+}
+
+/* 平盘十字星（平盘）：实心 1px 横线，保证平盘清晰可见 */
+.ex-chart-svg .is-doji .ex-candle-body {
+  fill: currentColor;
+  stroke: currentColor;
+  stroke-width: 1;
 }
 
 .ex-line {
@@ -702,6 +916,95 @@
   font-weight: 600;
 }
 
+.ex-trade-mode-seg {
+  gap: 3px;
+  background: rgb(var(--wui-bg-deep) / 0.5);
+  padding: 3px;
+  border-radius: 6px;
+}
+
+.ex-trade-mode-seg .ex-seg-btn {
+  border: 1px solid transparent;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.ex-trade-mode-btn-content {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+/* 现货未激活态 */
+.ex-seg-btn.is-spot:not(.is-on) {
+  color: rgb(var(--wui-cyan) / 0.7);
+  background: rgb(var(--wui-cyan) / 0.05);
+  border: 1px solid rgb(var(--wui-cyan) / 0.25);
+}
+
+.ex-seg-btn.is-spot:not(.is-on):hover {
+  color: rgb(var(--wui-cyan));
+  background: rgb(var(--wui-cyan) / 0.12);
+  border-color: rgb(var(--wui-cyan) / 0.5);
+  box-shadow: 0 0 8px rgb(var(--wui-cyan) / 0.2);
+}
+
+/* 杠杆多未激活态：带微弱绿色边框与绿色微弱字体，hover 时浮现看涨微光 */
+.ex-seg-btn.is-long:not(.is-on) {
+  color: rgb(var(--wui-tone-gain) / 0.75);
+  background: rgb(var(--wui-tone-gain) / 0.05);
+  border: 1px solid rgb(var(--wui-tone-gain) / 0.4);
+}
+
+.ex-seg-btn.is-long:not(.is-on):hover {
+  color: rgb(var(--wui-tone-gain));
+  background: rgb(var(--wui-tone-gain) / 0.14);
+  border-color: rgb(var(--wui-tone-gain) / 0.7);
+  box-shadow: 0 0 10px rgb(var(--wui-tone-gain) / 0.25);
+}
+
+/* 杠杆空未激活态：带微弱红色边框与红色微弱字体，hover 时浮现看跌微光 */
+.ex-seg-btn.is-short:not(.is-on) {
+  color: rgb(var(--wui-tone-loss) / 0.75);
+  background: rgb(var(--wui-tone-loss) / 0.05);
+  border: 1px solid rgb(var(--wui-tone-loss) / 0.4);
+}
+
+.ex-seg-btn.is-short:not(.is-on):hover {
+  color: rgb(var(--wui-tone-loss));
+  background: rgb(var(--wui-tone-loss) / 0.14);
+  border-color: rgb(var(--wui-tone-loss) / 0.7);
+  box-shadow: 0 0 10px rgb(var(--wui-tone-loss) / 0.25);
+}
+
+/* 现货激活态 */
+.ex-seg-btn.is-spot.is-on {
+  background: rgb(var(--wui-cyan) / 0.22);
+  color: rgb(var(--wui-cyan));
+  font-weight: 600;
+  border-color: rgb(var(--wui-cyan) / 0.7);
+  box-shadow: inset 0 0 0 1px rgb(var(--wui-cyan) / 0.6), 0 0 10px rgb(var(--wui-cyan) / 0.3);
+}
+
+/* 杠杆多激活态：高能做多绿渐变与发光，黑色高对比字 */
+.ex-seg-btn.is-long.is-on {
+  background: linear-gradient(180deg, rgb(var(--wui-tone-gain)), rgb(var(--wui-tone-gain) / 0.85));
+  color: #000;
+  font-weight: 700;
+  border-color: rgb(var(--wui-tone-gain));
+  box-shadow: 0 0 12px rgb(var(--wui-tone-gain) / 0.45), inset 0 1px 0 rgb(255 255 255 / 0.3);
+}
+
+/* 杠杆空激活态：高能做空红渐变与发光，白色高对比字 */
+.ex-seg-btn.is-short.is-on {
+  background: linear-gradient(180deg, rgb(var(--wui-tone-loss)), rgb(var(--wui-tone-loss) / 0.85));
+  color: #fff;
+  font-weight: 700;
+  border-color: rgb(var(--wui-tone-loss));
+  box-shadow: 0 0 12px rgb(var(--wui-tone-loss) / 0.45), inset 0 1px 0 rgb(255 255 255 / 0.3);
+}
+
 .ex-seg-btn.is-off {
   opacity: 0.38;
   cursor: help;
@@ -818,6 +1121,60 @@
   cursor: default;
 }
 
+.ex-mini-btn.is-accent {
+  border-color: rgb(var(--wui-cyan) / 0.6);
+  color: rgb(var(--wui-cyan));
+}
+
+.ex-mini-btn.is-accent:hover:not(:disabled) {
+  border-color: rgb(var(--wui-cyan));
+  background: rgb(var(--wui-cyan) / 0.12);
+}
+
+.ex-mini-btn.is-close {
+  border-color: rgb(var(--wui-tone-loss) / 0.45);
+  color: rgb(var(--wui-tone-loss));
+}
+
+.ex-mini-btn.is-close:hover:not(:disabled) {
+  border-color: rgb(var(--wui-tone-loss));
+  background: rgb(var(--wui-tone-loss) / 0.15);
+}
+
+.ex-mini-btn.is-cancel:hover:not(:disabled) {
+  border-color: rgb(var(--wui-danger-deep) / 0.8);
+  background: rgb(var(--wui-danger-deep) / 0.15);
+  color: rgb(var(--wui-danger-deep));
+}
+
+.ex-mini-btn.is-play {
+  border-color: rgb(var(--wui-tone-gain) / 0.5);
+  background: rgb(var(--wui-tone-gain) / 0.15);
+  color: rgb(var(--wui-tone-gain));
+}
+
+.ex-mini-btn.is-play:hover:not(:disabled) {
+  border-color: rgb(var(--wui-tone-gain));
+  background: rgb(var(--wui-tone-gain) / 0.25);
+}
+
+.ex-mini-btn.is-pause {
+  border-color: rgb(var(--wui-amber) / 0.5);
+  background: rgb(var(--wui-amber) / 0.15);
+  color: rgb(var(--wui-amber));
+}
+
+.ex-mini-btn.is-pause:hover:not(:disabled) {
+  border-color: rgb(var(--wui-amber));
+  background: rgb(var(--wui-amber) / 0.25);
+}
+
+.ex-mini-btn.is-trash:hover:not(:disabled) {
+  border-color: rgb(var(--wui-danger-deep) / 0.8);
+  background: rgb(var(--wui-danger-deep) / 0.15);
+  color: rgb(var(--wui-danger-deep));
+}
+
 .ex-preview {
   display: flex;
   flex-direction: column;
@@ -915,6 +1272,58 @@
   width: auto;
   padding: 6px 14px;
   font-size: var(--wui-fs-s);
+}
+
+.ex-primary.is-spot {
+  border-color: rgb(var(--wui-cyan) / 0.8);
+  background: linear-gradient(135deg, rgb(var(--wui-cyan)), rgb(var(--wui-blue)));
+  color: #000;
+  box-shadow: 0 2px 10px rgb(var(--wui-cyan) / 0.3);
+}
+
+.ex-primary.is-spot:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgb(var(--wui-cyan)), rgb(var(--wui-blue)));
+  filter: brightness(1.12);
+  box-shadow: 0 4px 14px rgb(var(--wui-cyan) / 0.45);
+}
+
+.ex-primary.is-long {
+  border-color: rgb(var(--wui-tone-gain) / 0.8);
+  background: linear-gradient(135deg, rgb(var(--wui-tone-gain)), rgb(var(--wui-accent)));
+  color: #000;
+  box-shadow: 0 2px 10px rgb(var(--wui-tone-gain) / 0.35);
+}
+
+.ex-primary.is-long:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgb(var(--wui-tone-gain)), rgb(var(--wui-accent)));
+  filter: brightness(1.12);
+  box-shadow: 0 4px 16px rgb(var(--wui-tone-gain) / 0.5);
+}
+
+.ex-primary.is-short {
+  border-color: rgb(var(--wui-tone-loss) / 0.8);
+  background: linear-gradient(135deg, rgb(var(--wui-tone-loss)), rgb(var(--wui-danger-deep)));
+  color: #fff;
+  box-shadow: 0 2px 10px rgb(var(--wui-tone-loss) / 0.35);
+}
+
+.ex-primary.is-short:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgb(var(--wui-tone-loss)), rgb(var(--wui-danger-deep)));
+  filter: brightness(1.12);
+  box-shadow: 0 4px 16px rgb(var(--wui-tone-loss) / 0.5);
+}
+
+.ex-primary.is-algo {
+  border-color: rgb(var(--wui-purple) / 0.8);
+  background: linear-gradient(135deg, rgb(var(--wui-purple)), rgb(var(--wui-cyan)));
+  color: #000;
+  box-shadow: 0 2px 10px rgb(var(--wui-purple) / 0.35);
+}
+
+.ex-primary.is-algo:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgb(var(--wui-purple)), rgb(var(--wui-cyan)));
+  filter: brightness(1.12);
+  box-shadow: 0 4px 16px rgb(var(--wui-purple) / 0.5);
 }
 
 /* ── 二次确认弹层 ── */
@@ -1250,6 +1659,29 @@
   margin-top: 2px;
 }
 
+.ex-bond .is-bond-buy {
+  border-color: rgb(var(--wui-gold) / 0.8);
+  background: linear-gradient(135deg, rgb(var(--wui-gold)), rgb(var(--wui-amber)));
+  color: #000;
+  font-weight: 600;
+}
+
+.ex-bond .is-bond-buy:hover:not(:disabled) {
+  filter: brightness(1.12);
+  box-shadow: 0 0 10px rgb(var(--wui-gold) / 0.4);
+}
+
+.ex-bond .is-bond-redeem {
+  border-color: rgb(var(--wui-gold) / 0.5);
+  color: rgb(var(--wui-gold));
+}
+
+.ex-bond .is-bond-redeem:hover:not(:disabled) {
+  border-color: rgb(var(--wui-gold));
+  background: rgb(var(--wui-gold) / 0.1);
+  box-shadow: 0 0 8px rgb(var(--wui-gold) / 0.25);
+}
+
 /* ── 底部：成交与流水（二级窗口内滚） ── */
 
 .ex-records {
@@ -1395,18 +1827,95 @@
   margin-left: auto;
 }
 
+.ex-chart-periods {
+  height: 24px;
+  box-sizing: border-box;
+}
+
 .ex-chart-periods .ex-seg-btn {
+  height: 100%;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 2px 8px;
   font-family: var(--wui-mono);
   font-size: var(--wui-fs-2xs);
+  line-height: 1;
 }
 
 .ex-chart-toggles {
-  display: flex;
-  align-items: center;
-  gap: 3px;
+  display: inline-flex;
+  align-items: stretch;
+  height: 24px;
+  box-sizing: border-box;
+  border: 1px solid rgb(var(--wui-border));
+  border-radius: 4px;
+  overflow: hidden;
+  background: rgb(var(--wui-bg-deep) / 0.6);
 }
 
+.ex-chart-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 2px 8px;
+  border: 0;
+  border-right: 1px solid rgb(var(--wui-border));
+  background: transparent;
+  color: rgb(var(--wui-text-dim));
+  font-family: var(--wui-mono);
+  font-size: var(--wui-fs-2xs);
+  cursor: pointer;
+  white-space: nowrap;
+  line-height: 1;
+  transition: all 0.15s ease;
+}
+
+.ex-chart-toggle-btn:last-child {
+  border-right: 0;
+}
+
+.ex-chart-toggle-btn:hover {
+  color: rgb(var(--wui-text));
+  background: rgb(var(--wui-accent) / 0.08);
+}
+
+.ex-chart-toggle-btn.is-on {
+  font-weight: 600;
+}
+
+/* MA5 激活：黄光与边框 */
+.ex-chart-toggle-btn.is-ma5.is-on {
+  color: rgb(var(--wui-gold));
+  background: rgb(var(--wui-gold) / 0.16);
+  box-shadow: inset 0 0 0 1px rgb(var(--wui-gold) / 0.6), 0 0 8px rgb(var(--wui-gold) / 0.25);
+}
+
+/* MA20 激活：紫光与边框 */
+.ex-chart-toggle-btn.is-ma20.is-on {
+  color: rgb(var(--wui-purple));
+  background: rgb(var(--wui-purple) / 0.16);
+  box-shadow: inset 0 0 0 1px rgb(var(--wui-purple) / 0.6), 0 0 8px rgb(var(--wui-purple) / 0.25);
+}
+
+/* 成交量 激活：青蓝微光 */
+.ex-chart-toggle-btn.is-vol.is-on {
+  color: rgb(var(--wui-cyan));
+  background: rgb(var(--wui-cyan) / 0.16);
+  box-shadow: inset 0 0 0 1px rgb(var(--wui-cyan) / 0.6), 0 0 8px rgb(var(--wui-cyan) / 0.25);
+}
+
+/* RSI14 激活：橙黄微光 */
+.ex-chart-toggle-btn.is-rsi.is-on {
+  color: rgb(var(--wui-amber));
+  background: rgb(var(--wui-amber) / 0.16);
+  box-shadow: inset 0 0 0 1px rgb(var(--wui-amber) / 0.6), 0 0 8px rgb(var(--wui-amber) / 0.25);
+}
+
+/* 旧类名向后兼容 */
 .ex-toggle {
   padding: 1px 6px;
   opacity: 0.55;
@@ -1467,11 +1976,14 @@
 }
 
 .ex-vol-bar.is-up {
-  fill: rgb(var(--wui-tone-gain) / 0.55);
+  fill: rgb(var(--wui-tone-gain) / 0.25);
+  stroke: rgb(var(--wui-tone-gain) / 0.85);
+  stroke-width: 1;
 }
 
 .ex-vol-bar.is-down {
-  fill: rgb(var(--wui-tone-loss) / 0.55);
+  fill: rgb(var(--wui-tone-loss) / 0.65);
+  stroke: none;
 }
 
 .ex-ma20 {
@@ -2633,22 +3145,40 @@
    专业模式 (ProExchange) · 星舰战术交易舱重构专属样式 (2026-11-03)
    ========================================================================== */
 
-/* ── 三栏栅格优化（右栏拓宽至 360px 赋予交易舱充足操作空间） ── */
+/* ── 三栏栅格优化（左栏 260px 舒适双行卡片，右栏 360px 战术交易舱） ── */
 .ex-pro-grid {
-  grid-template-columns: 200px 1fr 360px;
+  grid-template-columns: 260px 1fr 360px;
   gap: 10px;
 }
 
-/* ── K 线图时间轴缩放工具组 ── */
+/* ── K 线图时间轴缩放工具组（24px 高度与周期/指标胶囊像素级对齐） ── */
 .ex-chart-zoom-group {
   display: inline-flex;
   align-items: center;
+  height: 24px;
+  box-sizing: border-box;
   gap: 4px;
   margin-left: 6px;
-  padding: 1px 4px;
+  padding: 0 4px;
   background: rgb(var(--wui-bg-deep));
   border: 1px solid rgb(var(--wui-border));
   border-radius: 4px;
+}
+
+.ex-chart-zoom-group .ex-mini-btn {
+  height: 20px;
+  padding: 0 6px;
+  border: 0;
+  background: transparent;
+  font-size: var(--wui-fs-2xs);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.ex-chart-zoom-group .ex-mini-btn:hover {
+  background: rgb(var(--wui-accent) / 0.12);
+  color: rgb(var(--wui-text));
 }
 
 .ex-chart-zoom-text {

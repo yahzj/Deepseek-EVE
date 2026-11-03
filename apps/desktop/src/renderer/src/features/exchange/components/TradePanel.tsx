@@ -9,7 +9,7 @@
  * - ≥10x 二次确认，确认框里再显示一次强平价与最大亏损。
  */
 import { useEffect, useRef, useState } from 'react'
-import { Checkmark, SendAlt } from '@carbon/icons-react'
+import { ArrowDownRight, ArrowUpRight, Checkmark, Portfolio, SendAlt } from '@carbon/icons-react'
 import type { ExchangeClient, ExchangeSnapshot, PlaceOrderRequest, Side } from '../client'
 import type { ToastFn } from '../../../pages/common'
 import { amount, money, pctAbs, price as fmtPrice } from '../format'
@@ -231,19 +231,25 @@ export function TradePanel({
         <span className="ex-dim">{code}</span>
       </header>
       <div className="ex-trade-body">
-        <div className="ex-seg ex-seg-wide" role="tablist" aria-label={T.orderTitle}>
-          {(['spot', 'long', 'short'] as const).map((m) => (
-            <button
-              type="button"
-              key={m}
-              role="tab"
-              aria-selected={mode === m}
-              className={`ex-seg-btn${mode === m ? ' is-on' : ''}`}
-              onClick={() => setMode(m)}
-            >
-              {modeLabel(m)}
-            </button>
-          ))}
+        <div className="ex-seg ex-seg-wide ex-trade-mode-seg" role="tablist" aria-label={T.orderTitle}>
+          {(['spot', 'long', 'short'] as const).map((m) => {
+            const Icon = m === 'spot' ? Portfolio : m === 'long' ? ArrowUpRight : ArrowDownRight
+            return (
+              <button
+                type="button"
+                key={m}
+                role="tab"
+                aria-selected={mode === m}
+                className={`ex-seg-btn is-${m}${mode === m ? ' is-on' : ''}`}
+                onClick={() => setMode(m)}
+              >
+                <span className="ex-trade-mode-btn-content">
+                  <Icon size={13} />
+                  <span>{modeLabel(m)}</span>
+                </span>
+              </button>
+            )
+          })}
         </div>
         <p className="ex-mode-hint">{modeHint(mode)}</p>
 
@@ -280,7 +286,7 @@ export function TradePanel({
             />
             <button
               type="button"
-              className="ex-mini-btn"
+              className="ex-mini-btn is-accent"
               onClick={() => {
                 setPriceText(quote.price.toFixed(2))
                 setKind('limit')
@@ -314,7 +320,7 @@ export function TradePanel({
               <button
                 type="button"
                 key={ratio}
-                className="ex-mini-btn"
+                className={`ex-mini-btn${ratio === 1 ? ' is-accent' : ''}`}
                 onClick={() => setQtyByRatio(ratio)}
                 title={TF.maxQty(amount(preview.maxQty))}
               >
@@ -452,7 +458,7 @@ export function TradePanel({
           </div>
         ) : null}
 
-        <button type="button" className="ex-primary" onClick={primaryAction}>
+        <button type="button" className={`ex-primary is-${mode}`} onClick={primaryAction}>
           <SendAlt size={16} /> {busy ? T.submitting : T.submit}
         </button>
       </div>

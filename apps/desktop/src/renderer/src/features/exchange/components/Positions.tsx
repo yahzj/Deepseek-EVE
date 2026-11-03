@@ -157,7 +157,7 @@ export function Positions({
                         <b className={`ex-num ${pnl >= 0 ? 'is-up' : 'is-down'}`}>{money(pnl)}</b>
                         <span className={`ex-num ${pnl >= 0 ? 'is-up' : 'is-down'}`}>{pct(pnlPct)}</span>
                       </div>
-                      <button type="button" className="ex-mini-btn" onClick={() => sellSpot(h.code, h.availableQty ?? h.qty)}>
+                      <button type="button" className="ex-mini-btn is-close" onClick={() => sellSpot(h.code, h.availableQty ?? h.qty)}>
                         <Close size={12} /> {T.posSell}
                       </button>
                     </div>
@@ -240,7 +240,7 @@ export function Positions({
                           {pct((p.unrealizedPnl / Math.max(1, p.margin)) * 100)}
                         </span>
                       </div>
-                      <button type="button" className="ex-mini-btn" onClick={() => closeLeverage(p.code, p.side)}>
+                      <button type="button" className="ex-mini-btn is-close" onClick={() => closeLeverage(p.code, p.side)}>
                         <Close size={12} /> {T.posClose}
                       </button>
                     </div>
@@ -294,7 +294,7 @@ export function Positions({
                   <span className="ex-dim">{shortTime(o.createdAt)}</span>
                 </span>
                 <span className="ex-badge">{sourceLabel(o.source)}</span>
-                <button type="button" className="ex-mini-btn" onClick={() => cancelOrder(o.id)}>
+                <button type="button" className="ex-mini-btn is-cancel" onClick={() => cancelOrder(o.id)}>
                   <TrashCan size={12} /> {T.orderCancel}
                 </button>
               </div>

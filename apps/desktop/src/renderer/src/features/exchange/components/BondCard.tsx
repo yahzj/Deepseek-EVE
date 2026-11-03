@@ -79,10 +79,10 @@ export function BondCard({
           />
         </div>
         <div className="ex-bond-actions">
-          <button type="button" className="ex-mini-btn" onClick={buy}>
+          <button type="button" className="ex-mini-btn is-bond-buy" onClick={buy}>
             {T.bondBuyBtn}
           </button>
-          <button type="button" className="ex-mini-btn" onClick={redeem}>
+          <button type="button" className="ex-mini-btn is-bond-redeem" onClick={redeem}>
             {T.bondRedeem}
           </button>
         </div>

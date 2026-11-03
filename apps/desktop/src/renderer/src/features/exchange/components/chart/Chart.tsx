@@ -295,7 +295,7 @@ export function Chart({
                 type="button"
                 key={key}
                 aria-pressed={toggles[key]}
-                className={`ex-mini-btn ex-toggle${toggles[key] ? ' is-on' : ''}`}
+                className={`ex-chart-toggle-btn is-${key}${toggles[key] ? ' is-on' : ''}`}
                 onClick={() => toggle(key)}
               >
                 {label}

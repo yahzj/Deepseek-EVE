@@ -155,7 +155,11 @@ export function AutoTrade({
                 <span className="ex-dim">{paramsSummary(s)}</span>
               </div>
               <div className="ex-strategy-actions">
-                <button type="button" className="ex-mini-btn" onClick={() => toggle(s)}>
+                <button
+                  type="button"
+                  className={`ex-mini-btn ${s.enabled ? 'is-pause' : 'is-play'}`}
+                  onClick={() => toggle(s)}
+                >
                   {s.enabled ? (
                     <>
                       <Pause size={12} /> {T.strategyPause}
@@ -166,7 +170,7 @@ export function AutoTrade({
                     </>
                   )}
                 </button>
-                <button type="button" className="ex-mini-btn" onClick={() => remove(s)}>
+                <button type="button" className="ex-mini-btn is-trash" onClick={() => remove(s)}>
                   <TrashCan size={12} /> {T.strategyDelete}
                 </button>
               </div>
@@ -239,7 +243,7 @@ export function AutoTrade({
                 </>
               ) : null}
             </div>
-            <button type="button" className="ex-primary ex-primary-small" onClick={save} disabled={busy}>
+            <button type="button" className="ex-primary ex-primary-small is-algo" onClick={save} disabled={busy}>
               <Add size={14} /> {T.strategySave}
             </button>
           </div>
