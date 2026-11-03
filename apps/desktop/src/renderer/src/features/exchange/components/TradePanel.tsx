@@ -377,6 +377,14 @@ export function TradePanel({
             <span>{T.previewFee}</span>
             <b className="ex-num">{money(preview.fee)}</b>
           </div>
+          <div className="ex-preview-row">
+            <span>{T.previewSlippage}</span>
+            <span className="ex-num">{kind === 'limit' ? T.slippageLimitZero : `~0.05% (${money(preview.notional * 0.0005)})`}</span>
+          </div>
+          <div className="ex-preview-row">
+            <span>{T.previewDailyCost}</span>
+            <span className="ex-num">{mode === 'spot' ? T.dailyCostFree : `${money(preview.notional * 0.0003)} / 日`}</span>
+          </div>
           {mode !== 'spot' && preview.liquidationPrice !== null && liqDistance !== null ? (
             <>
               <div className={`ex-preview-row${liqDanger ? ' is-danger' : ''}`}>

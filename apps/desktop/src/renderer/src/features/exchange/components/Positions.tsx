@@ -1,8 +1,10 @@
 /**
  * 右栏下半：持仓 / 委托 Tabs。
  *
- * 设计稿 6.1 要求「持仓行内直接平仓」，所以两处操作都放在行尾按钮里；
- * 现货卖出与杠杆平仓走的是同一个 `closePosition`/`placeOrder` 链路，不另开"投资页"。
+ * 优化（对齐玩家吐槽 2 & 5）：
+ * - 持仓行补齐【波动率档】、【今日振幅】、【距强平百分比 + 人话提示（安全缓冲 / 高危警告）】；
+ * - 场景/初始仓位标明「系统预置」及来源说明，消除决策依据模糊感；
+ * - 行内平仓与卖出，现货与逐仓杠杆直观区分。
  */
 import { useRef, useState } from 'react'
 import type { ExchangeClient, ExchangeOrder, ExchangeSnapshot, OrderSource } from '../client'
@@ -12,7 +14,7 @@ import { T, TF } from '../texts'
 
 type Tab = 'positions' | 'orders'
 
-/** 距强平低于这个百分比：整行红描边（设计稿 6.1 的强平预警） */
+/** 距强平低于这个百分比：整行红描边并高危提示 */
 const DANGER_DISTANCE_PCT = 15
 
 function sourceLabel(source: OrderSource | undefined): string {
@@ -124,19 +126,38 @@ export function Positions({
               const q = snap.stocks.find((s) => s.code === h.code)
               const mark = q?.price ?? 0
               const pnl = (mark - h.avgCost) * h.qty
+              // 振幅与波动率
+              const prev = (q?.prevClose ?? mark) || 1
+              const amp = q ? ((q.high - q.low) / prev) * 100 : 0
+              const volTier = amp >= 6 ? T.posVolHigh : amp >= 3 ? T.posVolMid : T.posVolLow
+
               return (
                 <div className={`ex-pos-row${code === h.code ? ' is-sel' : ''}`} key={`spot-${h.code}`}>
-                  <button type="button" className="ex-pos-code" onClick={() => onSelect(h.code)} title={h.code}>
-                    {h.code}
-                  </button>
+                  <div className="ex-pos-id-col">
+                    <button type="button" className="ex-pos-code" onClick={() => onSelect(h.code)} title={h.code}>
+                      {h.code}
+                    </button>
+                    <span className="ex-preset-tag" title={T.systemPresetTip}>
+                      {T.systemPresetTag}
+                    </span>
+                  </div>
                   <span className="ex-badge">{T.posSideSpot}</span>
                   <div className="ex-pos-main">
-                    <span>{T.posQty} <b className="ex-num">{amount(h.qty)}</b></span>
+                    <span>
+                      {T.posQty} <b className="ex-num">{amount(h.qty)}</b>
+                    </span>
                     {(h.availableQty ?? h.qty) < h.qty ? (
                       <span className="ex-dim">{TF.availableQty(amount(h.availableQty ?? 0))}</span>
                     ) : null}
-                    <span>{T.posEntry} <b className="ex-num">{price(h.avgCost)}</b></span>
-                    <span>{T.posMark} <b className="ex-num">{price(mark)}</b></span>
+                    <span>
+                      {T.posEntry} <b className="ex-num">{price(h.avgCost)}</b>
+                    </span>
+                    <span>
+                      {T.posMark} <b className="ex-num">{price(mark)}</b>
+                    </span>
+                    <span className="ex-pos-vol-tag" title={`今日振幅 ${amp.toFixed(1)}%`}>
+                      {volTier} {amp.toFixed(1)}%
+                    </span>
                   </div>
                   <span className={`ex-num ${pnl >= 0 ? 'is-up' : 'is-down'}`}>{money(pnl)}</span>
                   <button type="button" className="ex-mini-btn" onClick={() => sellSpot(h.code, h.availableQty ?? h.qty)}>
@@ -152,26 +173,61 @@ export function Positions({
             {positions.map((p) => {
               const distance = p.liquidationDistancePct ?? 100
               const danger = distance < DANGER_DISTANCE_PCT
+              const critical = distance < 5
               const up = p.unrealizedPnl >= 0
+              const q = snap.stocks.find((s) => s.code === p.code)
+              const prev = q?.prevClose ?? q?.price ?? 1
+              const amp = q ? ((q.high - q.low) / prev) * 100 : 0
+              const volTier = amp >= 6 ? T.posVolHigh : amp >= 3 ? T.posVolMid : T.posVolLow
+
+              // 距强平人话提示
+              const humanLiq = critical
+                ? TF.posLiqDangerHint(pctAbs(distance), p.side === 'long')
+                : danger
+                  ? TF.posLiqWarnHint(pctAbs(distance), p.side === 'long')
+                  : TF.posLiqSafeHint(pctAbs(distance))
+
               return (
-                <div className={`ex-pos-row${danger ? ' is-danger' : ''}${code === p.code ? ' is-sel' : ''}`} key={p.id}>
-                  <button type="button" className="ex-pos-code" onClick={() => onSelect(p.code)} title={p.code}>
-                    {p.code}
-                  </button>
+                <div
+                  className={`ex-pos-row${danger ? ' is-danger' : ''}${code === p.code ? ' is-sel' : ''}`}
+                  key={p.id}
+                >
+                  <div className="ex-pos-id-col">
+                    <button type="button" className="ex-pos-code" onClick={() => onSelect(p.code)} title={p.code}>
+                      {p.code}
+                    </button>
+                    <span className="ex-preset-tag" title={T.systemPresetTip}>
+                      {T.systemPresetTag}
+                    </span>
+                  </div>
                   <span className={`ex-badge ${p.side === 'long' ? 'is-long' : 'is-short'}`}>
                     {p.side === 'long' ? T.posSideLong : T.posSideShort} · {p.leverage}x
                   </span>
                   <div className="ex-pos-main">
-                    <span>{T.posQty} <b className="ex-num">{amount(p.qty)}</b></span>
-                    <span>{T.posEntry} <b className="ex-num">{price(p.avgEntry)}</b></span>
-                    <span>{T.posMargin} <b className="ex-num">{money(p.margin)}</b></span>
+                    <span>
+                      {T.posQty} <b className="ex-num">{amount(p.qty)}</b>
+                    </span>
+                    <span>
+                      {T.posEntry} <b className="ex-num">{price(p.avgEntry)}</b>
+                    </span>
+                    <span>
+                      {T.posMargin} <b className="ex-num">{money(p.margin)}</b>
+                    </span>
                     <span className={danger ? 'is-danger' : ''}>
-                      {T.posLiq} <b className="ex-num">{price(p.liquidationPrice)}</b>（{pctAbs(distance)}）
+                      {T.posLiq} <b className="ex-num">{price(p.liquidationPrice)}</b>
+                    </span>
+                    <span className={`ex-pos-human-liq ${danger ? 'is-danger' : 'is-safe'}`} title={humanLiq}>
+                      {humanLiq}
+                    </span>
+                    <span className="ex-pos-vol-tag" title={`今日振幅 ${amp.toFixed(1)}%`}>
+                      {volTier} {amp.toFixed(1)}%
                     </span>
                   </div>
                   <div className="ex-pos-pnl">
                     <span className={`ex-num ${up ? 'is-up' : 'is-down'}`}>{money(p.unrealizedPnl)}</span>
-                    <span className={`ex-num ${up ? 'is-up' : 'is-down'}`}>{pct((p.unrealizedPnl / Math.max(1, p.margin)) * 100)}</span>
+                    <span className={`ex-num ${up ? 'is-up' : 'is-down'}`}>
+                      {pct((p.unrealizedPnl / Math.max(1, p.margin)) * 100)}
+                    </span>
                   </div>
                   <button type="button" className="ex-mini-btn" onClick={() => closeLeverage(p.code, p.side)}>
                     {T.posClose}
