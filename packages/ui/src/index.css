@@ -91,6 +91,11 @@
   --wui-rare: 244 201 93;
   --wui-red: 228 132 132;
   --wui-red-deep: 200 101 101;
+  /* 涨跌语义色单点（2026-11-03 股市批）：国内习惯「红涨绿跌」⇒ gain = 红系（涨/盈）、
+     loss = 绿系（跌/亏）。色值取本主题既有 red/green 档，与 HUD 同一色相；交易所页的
+     涨跌幅/盈亏/K 线/盘口买卖只引用这两个 token，禁止散写色值。 */
+  --wui-tone-gain: 228 132 132;
+  --wui-tone-loss: 111 220 143;
   --wui-role-armed: 232 111 111;
   --wui-role-armored: 232 164 90;
   --wui-role-hauler: 111 179 232;
@@ -462,6 +467,9 @@
   --wui-rare: 114 84 8;
   --wui-red: 123 27 27;
   --wui-red-deep: 154 55 55;
+  /* 亮白主题：红涨绿跌（取本主题深色档，保证亮底上对比度 ≥ 4.5） */
+  --wui-tone-gain: 123 27 27;
+  --wui-tone-loss: 25 103 48;
   --wui-role-armed: 144 23 23;
   --wui-role-armored: 129 76 18;
   --wui-role-hauler: 23 91 144;
@@ -1404,6 +1412,9 @@
   --wui-rare: 255 252 245;
   --wui-red: 254 245 245;
   --wui-red-deep: 253 247 247;
+  /* 高对比主题：黑底上要给足亮度的红/绿（本主题既有 red/green 是近白，专门另取一档） */
+  --wui-tone-gain: 255 120 120;
+  --wui-tone-loss: 120 255 160;
   --wui-role-armed: 255 245 245;
   --wui-role-armored: 255 250 245;
   --wui-role-hauler: 245 251 255;
@@ -1905,6 +1916,9 @@
   --wui-rare: 218 203 126;
   --wui-red: 223 154 144;
   --wui-red-deep: 213 145 135;
+  /* 暖色主题：红涨绿跌（沿用本主题 red/green 档） */
+  --wui-tone-gain: 223 154 144;
+  --wui-tone-loss: 121 216 161;
   --wui-role-armed: 219 141 131;
   --wui-role-armored: 214 178 114;
   --wui-role-hauler: 131 170 219;
@@ -2403,6 +2417,9 @@
   --wui-rare: 234 191 82;
   --wui-red: 214 102 102;
   --wui-red-deep: 199 117 117;
+  /* 夜间主题：红涨绿跌（沿用本主题 red/green 档） */
+  --wui-tone-gain: 214 102 102;
+  --wui-tone-loss: 105 211 136;
   --wui-role-armed: 221 95 95;
   --wui-role-armored: 224 161 92;
   --wui-role-hauler: 95 166 221;
@@ -2901,6 +2918,9 @@
   --wui-rare: 218 203 126;
   --wui-red: 223 154 144;
   --wui-red-deep: 213 145 135;
+  /* 暖色主题：红涨绿跌（沿用本主题 red/green 档） */
+  --wui-tone-gain: 223 154 144;
+  --wui-tone-loss: 121 216 161;
   --wui-role-armed: 219 141 131;
   --wui-role-armored: 214 178 114;
   --wui-role-hauler: 131 170 219;
@@ -3399,6 +3419,9 @@
   --wui-rare: 244 206 93;
   --wui-red: 228 132 196;
   --wui-red-deep: 211 121 181;
+  /* 色盲友好主题：沿用本主题的「红/绿」语义档（此主题下即粉/金，保持同一套色盲可辨色相） */
+  --wui-tone-gain: 228 132 196;
+  --wui-tone-loss: 220 193 111;
   --wui-role-armed: 232 111 111;
   --wui-role-armored: 232 164 90;
   --wui-role-hauler: 111 179 232;
@@ -3965,4 +3988,52 @@
   --wui-hud-surface-soft: 11 16 26;
   --wui-hud-surface: 14 20 32;
   --wui-hud-surface-raised: 20 29 46;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * **涨跌配色随语言切换**（2026-11-03 股市批 · 船长：「中文 = 红涨绿跌，英文 = 绿涨红跌」）
+ *
+ * 上方各主题块的 `--wui-tone-gain` / `--wui-tone-loss` 默认值 = 中文国内习惯（gain 红 / loss 绿），
+ * 所以 zh 不需要任何额外规则；英文（国际惯例）只需把这两个**语义 token 交换取值**。
+ * 各主题的红/绿档不同 ⇒ 一个主题一条，不能合成一条全局规则。
+ *
+ * 特异性：`html[data-theme='…'][data-locale='en']` = (0,2,1)，高于主题块自身的
+ * `[data-theme='…']` = (0,1,0)；且追加在文件末尾 ⇒ 特异性与书写顺序双保险。
+ *
+ * ⚠ 默认皮肤 `deepspace` 在 CSS 里没有自己的主题块（就是最上面的 `:root`），但 `ui/theme.ts`
+ *   会**显式**把 `data-theme='deepspace'` 写到 `<html>` ⇒ 这里必须单列一条，
+ *   否则英文下默认皮肤（最多人用的那套）不会切换。
+ * ⚠ 色盲友好（cb）主题本来就不用字面红绿（它的「红」= 品红、「绿」= 鸭黄，见上方主题块）：
+ *   英文仍交换这两个语义色（金涨品红跌），保持同一套色盲可辨色相，不硬塞红绿。
+ *
+ * 使用点（交易所页涨跌幅 / 盈亏 / K 线 / 盘口等）只引用 token，本文件之外零改动。
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+html[data-theme='deepspace'][data-locale='en'] {
+  --wui-tone-gain: 111 220 143; /* 绿涨（原 loss 值） */
+  --wui-tone-loss: 228 132 132; /* 红跌（原 gain 值） */
+}
+
+html[data-theme='daylight'][data-locale='en'] {
+  --wui-tone-gain: 25 103 48;
+  --wui-tone-loss: 123 27 27;
+}
+
+html[data-theme='contrast'][data-locale='en'] {
+  --wui-tone-gain: 120 255 160;
+  --wui-tone-loss: 255 120 120;
+}
+
+html[data-theme='warm'][data-locale='en'] {
+  --wui-tone-gain: 121 216 161;
+  --wui-tone-loss: 223 154 144;
+}
+
+html[data-theme='night'][data-locale='en'] {
+  --wui-tone-gain: 105 211 136;
+  --wui-tone-loss: 214 102 102;
+}
+
+html[data-theme='cb'][data-locale='en'] {
+  --wui-tone-gain: 220 193 111;
+  --wui-tone-loss: 228 132 196;
 }

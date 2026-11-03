@@ -2,6 +2,13 @@
 
 > 本页记录当前规则维护，不是开工必读。历史流水已移入`docs/archive/`；无船长明确查阅要求禁止读取或检索，包括Git历史。
 
+## 2026-11-03 子代理默认使用 Serena MCP（含环境缺口登记）
+
+- 依据：船长指示「子代理用的工具不齐全啊默认也要用serena mcp」。
+- 生效范围：`AGENTS.md` §5.1。
+- 现行规则：派工任务书必须写明子代理优先使用 `serena` MCP 做符号定位与编辑；若 Serena 因环境原因不可用，子代理必须明确报告原因并降级到 read/grep，**不得静默退化**。
+- 环境缺口与修复（2026-11-03 主代理）：DSH home 级配置 `~/.dsh/cordis.patch.yml` 原把 `mcp-serena` 写死 `--project 'D:\Documents\GitHub\Border-Pioneer-2'`，导致本仓下 Serena 全部工具报 `FileNotFound`、`list_memories` 返回空。**已修复为双实例**：`serena` 仍指向 `Border-Pioneer-2`，新增 `serena-eve` 指向本仓（工具前缀 `mcp__serena-eve__*`）。`web` profile 会热重载 patch，**无需重启**；已实测本仓 `get_symbols_overview` 与 `find_referencing_symbols` 正常。原配置备份在 `cordis.patch.yml.bak-20261103-132910`。
+
 ## 2026-11-02 Serena MCP 工具增删改查、大文件禁读与子代理并行干活
 
 - 依据：船长指示「默认可以用serena mcp这个工具增删改查，超过500行的东西不能直接读，用serena差引用和定义很快的，不需要全读一遍，只要涉及到干活修改就开子代理干活，我们主代理负责路由任务给子代理并行干活，最后统一验收。」

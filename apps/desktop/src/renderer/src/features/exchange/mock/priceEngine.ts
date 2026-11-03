@@ -142,8 +142,83 @@ export function applyEventShock(model: PriceModel, pct: number): void {
   model.varianceEwma = clampVol(model, model.varianceEwma * 4)
 }
 
+export interface SynthBarsOptions {
+  /** 一根 K 线的秒数（由图表周期决定：M1=60、H1=3600、D1=86400…） */
+  barSeconds: number
+  /** 末根收盘价：历史整体缩放到当前价，保证与实时行情衔接、切周期不跳价 */
+  endPrice: number
+  /** 一根 K 线的大致成交量基准（只影响柱高观感，不影响撮合） */
+  volumeBase: number
+}
+
+/**
+ * 合成一段**多周期历史 K 线**（2026-11-03 六周期批）。
+ *
+ * 与 `synthKlines` 的差别：
+ * - 时间戳由调用方传入（D1/D7/D30 要走本机日历边界，不能简单 `i * 60s`）；
+ * - **不写回** `model` 的实时状态 —— 每个周期各合成一段，互不干扰实时价格；
+ * - 各周期独立合成、只共享「末根收盘价 = 当前价」与同一套随机过程/肥尾，
+ *   这是原型的已知取舍：400 根 D30 与 400 根 M1 不是同一段历史的嵌套聚合，
+ *   但都来自同一价格引擎且图尾价格一致，切周期不会出现"价格跳变"。
+ * - 波动率按 `σ√T` 缩放后**夹在 0.4%~4.5%**：1 分钟不会太温、日/周/月也不会把
+ *   价格打到 0.2A~5A 的硬边界上（那是实时引擎的边界，历史只用于铺图）。
+ */
+export function synthBars(
+  model: PriceModel,
+  rng: Rng,
+  timestamps: readonly number[],
+  opts: SynthBarsOptions,
+): Kline[] {
+  const count = timestamps.length
+  if (count === 0) return []
+  const safeSeconds = Math.max(1, opts.barSeconds)
+  const barSigma = Math.min(0.045, Math.max(0.004, model.sigmaBase * Math.sqrt(safeSeconds)))
+  // 均值回归系数按「一根 K 线」折算后夹住；不夹的话 D1 的 θT≈6.9 会让序列一步归零
+  const barTheta = Math.min(0.06, Math.max(0.002, model.theta * safeSeconds))
+  const drift = Math.min(0.01, Math.max(-0.01, model.mu * safeSeconds))
+  const out: Kline[] = []
+  let x = 0
+  let prevClose = 1
+  for (let i = 0; i < count; i++) {
+    const z = studentT(rng)
+    x = Math.min(1.6, Math.max(-1.6, x + barSigma * z + drift - barTheta * x))
+    const close = Math.exp(x)
+    const open = prevClose
+    const wick = barSigma * 0.35 * (0.25 + rng.next())
+    out.push({
+      t: timestamps[i]!,
+      o: open,
+      h: Math.max(open, close) * (1 + wick),
+      l: Math.min(open, close) * (1 - wick),
+      c: close,
+      v: Math.max(
+        1,
+        opts.volumeBase * (0.55 + rng.next() * 0.9) * (1 + Math.min(2, Math.abs(z)) * 0.45),
+      ),
+    })
+    prevClose = close
+  }
+  // 整体缩放到当前价；末根再钉一次收盘价，避免浮点误差让图尾与现价差一分钱
+  const last = out[out.length - 1]!
+  const factor = last.c > 0 && opts.endPrice > 0 ? opts.endPrice / last.c : 1
+  for (const bar of out) {
+    bar.o *= factor
+    bar.h *= factor
+    bar.l *= factor
+    bar.c *= factor
+  }
+  if (opts.endPrice > 0) {
+    last.c = opts.endPrice
+    last.h = Math.max(last.h, opts.endPrice)
+    last.l = Math.min(last.l, opts.endPrice)
+  }
+  return out
+}
+
 /**
  * 生成一段历史 K 线（页面首次打开时 K 线不能是空的）。
+ *
+ * ⚠ 这是第一版单周期（M1）铺图函数，保留给旧调用/对照；六周期图表改用 `synthBars`。
  *
  * 为什么用「同一模型往前推」而不是造假随机数：历史段结束后把 `model.x` 设成最后一根收盘价，
  * 当前价与图尾自然衔接；锚点仍是原值，于是「价格偏离锚点 → 均值回归」在开局就有戏。

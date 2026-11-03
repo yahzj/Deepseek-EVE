@@ -104,6 +104,17 @@ const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
   { key: 'achieve', label: 'ui.App.119', icon: 'ach-first' },
   // 2026-09-11 船长定：新增「通讯」页（NPC 消息 = 剧情与任务提示；邮件形图标，未读时闪烁 + 计数）
   { key: 'comms', label: 'ui.App.009', icon: 'nav-mail' },
+  /**
+   * **证券交易所（F0 可点击原型）·「股市」**（2026-11-03 船长：「先做可点击原型」；
+   * 同日追加反馈：「看不到股市入口」——原先放在 `DEBUG_NAV_ITEMS` 里，而调试模式在打包版/公网
+   * 域名下恒禁用（`debugAllowed()` 只放行 localhost/内网）⇒ 玩家永远看不见）。
+   * **原型期临时上正式导航**（本数组末位 = 现代布局右下角最右），验收后再决定是否加解锁门禁、
+   * 转正或替换；`unlocked()` 对表外 key 恒真（`packages/core/src/firstTasks.ts`）⇒ 开局即可见。
+   * label 仍用中文原文：`AppShell` 的 `t()` 查不到词条时原样返回（见 `i18n/locale.tsx`），
+   * 转正登记 `ui.exchange.*` 后再换 id。图标 = Carbon `ChartCandlestick`（`nav-exchange`）。
+   * **现代布局专属**：旧版 classic 外壳不显示本项（在下方传 `navItems` 前就地过滤；不改 AppShell）。
+   */
+  { key: 'exchange', label: '股市', icon: 'nav-exchange' },
 ]
 
 /**
@@ -122,13 +133,6 @@ const DEBUG_NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
    * 先进 `DEBUG_NAV_ITEMS`（只有调试模式看得见），验收通过再决定要不要转正/替换。
    */
   { key: 'industryHud', label: 'ui.hud.101', icon: 'nav-industry' },
-  /**
-   * **证券交易所（F0 可点击原型）**（2026-11-03 船长：「先做可点击原型」）：
-   * 只在调试模式可见。label 这里刻意用中文原文而不是 l10n id——`AppShell` 的 `t()` 走
-   * `textOf()`，查不到词条时**原样返回传入的字符串**（见 `i18n/locale.tsx`），所以中文原文
-   * 能安全显示、不会变成空串或抛错；转正时再登记 `ui.exchange.*` 并换成 id。
-   */
-  { key: 'exchange', label: '证券交易所', icon: 'nav-market' },
 ]
 
 export type PageKey =
@@ -1376,7 +1380,14 @@ async function applyLayoutAndReload(): Promise<void> {
         promosNow={promosNow}
         tuningsNow={tuningsNow}
         tuningTick={tuningTick}
-        navItems={NAV_ITEMS}
+        /**
+         * **股市入口：modern-only**（2026-11-03 船长令）：
+         * 已从 `DEBUG_NAV_ITEMS` 移入 `NAV_ITEMS` 末位（现代布局右下角最右侧、不需要调试模式），
+         * 但旧版 classic 布局一个字都不动 ⇒ 在交给 `AppShell` 之前就地过滤掉 exchange。
+         * 不在 AppShell 里加 `modernOnly` 标记，是因为该文件当前有在途改动（硬约束）；
+         * 调试项（工业 HUD、stellar）保持原样，两类布局都可见。
+         */
+        navItems={layoutKind === 'classic' ? NAV_ITEMS.filter((item) => item.key !== 'exchange') : NAV_ITEMS}
         debugNavItems={[...DEBUG_NAV_ITEMS, { key: 'stellar', label: 'ui.stellar.054', icon: 'nav-map',
           onSelect: () => { if (planetaryEnabled()) { hideActivityWin(); setPlanetOpen(true) } } }]}
         readDebugEnabled={readDebugEnabled}

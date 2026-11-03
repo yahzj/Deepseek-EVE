@@ -14,8 +14,6 @@
  * - `getSnapshot()` 里的 `news / dividends / bonds / index` 对应将来的
  *   `/api/exchange/events`、分红流水、债券产品与指数条接口，现在先由 Mock 提供。
  */
-import { MockExchangeClient } from './mock/MockExchangeClient'
-
 export { ExchangeError } from './errors'
 
 export type Side = 'buy' | 'sell'
@@ -143,6 +141,14 @@ export type ExchangeEventType =
   | 'reconnect'
 
 export interface Kline { t: number; o: number; h: number; l: number; c: number; v: number }
+
+/**
+ * 图表周期（2026-11-03 船长追加）：`分时 / M1 / H1 / D1 / D7 / D30`。
+ * 分时 = 当日 00:00（本机真实日）起的 1 分钟线；其余为按周期聚合的 K 线。
+ * 服务端将来只提供原始 K 线，指标一律前端现算（避免两端口径漂移）。
+ */
+export type ChartPeriod = 'intraday' | 'm1' | 'h1' | 'd1' | 'd7' | 'd30'
+
 export interface DepositResult { nonce: string; applied: number; fee: number; cash: number; receiptHash: string }
 export interface WithdrawResult { nonce: string; amount: number; fee: number; availableAt: number; receiptHash: string }
 export type Unsubscribe = () => void
@@ -285,11 +291,19 @@ export interface ExchangeClient {
   on(type: ExchangeEventType, cb: (payload: unknown) => void): Unsubscribe
 
   // ── 原型扩展（接真机时替换为轮询/推送缓存） ──
-  /** 启动 1 秒 tick（页面挂载时调用；卸载必须 stop，防后台泄漏） */
+  /**
+   * 页面挂载通知：确保引擎在跑，并按真实流逝时间补算离页期间漏掉的拍。
+   * 2026-11-03 挂机语义：Mock 引擎由模块单例持有（构造即启动），**离开页面不暂停**；
+   * `stop()` 只表示页面卸载（Mock 里顺手落盘），**不停止行情**。
+   */
   start(): void
   stop(): void
   onTick(cb: () => void): Unsubscribe
   getSnapshot(code: string): ExchangeSnapshot
+  /** 六周期图表数据（同步读缓存：Mock 内存直读；HTTP 由订阅缓存提供，未连上时为空数组） */
+  getChartSeries(code: string, period: ChartPeriod): Kline[]
+  /** 「重置模拟账户」：回到 1,000 万启动资金；HTTP 实现没有本地账户可重置 */
+  resetAccount(): void
   buyBond(amount: number): BondHolding
   redeemBond(): number
   /** 下单预览（保证金/名义/手续费/强平价/距强平/上限/不可下单原因） */
@@ -297,16 +311,7 @@ export interface ExchangeClient {
 }
 
 /**
- * 装配点：原型固定用 Mock。改成联机时只需在这里切到 `HttpExchangeClient`，
- * 页面与组件一行都不用动。
- *
- * 为什么做成模块级单例：调试页在切换导航时会被卸载（App 用 `key={page}` 重挂载），
- * 若每次进页都新建客户端，船长切出去看一眼再回来——资金、持仓、策略全没了，
- * 10 分钟的手感判断会被打断。单例只活在当前页面进程里：刷新/重开即重置，也不写存档。
+ * 装配点（2026-11-03 双轨数据源批）：已迁到 `factory.ts` —— `createExchangeClient({ mode, serverUrl })`
+ * 按 `localStorage['whale-idle:exch-src']` 解析 Mock / HTTP，并保证 Mock 引擎是**模块单例**。
+ * 页面与组件只 import 本文件的接口与 DTO，不 import `mock/` 或 `http/` 具体实现。
  */
-let sharedClient: ExchangeClient | null = null
-
-export function createExchangeClient(): ExchangeClient {
-  if (sharedClient === null) sharedClient = new MockExchangeClient()
-  return sharedClient
-}

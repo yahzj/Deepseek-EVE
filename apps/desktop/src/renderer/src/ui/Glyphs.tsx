@@ -8,13 +8,14 @@
  * - 形状按内容体系分族：物品=圆环徽、装备=方框徽、舰船角色=大形徽、蓝图=图纸矩形、
  *   技能=圆徽；每种形状内部用不同几何区分分类。
  */
-import type { ComponentType, ReactNode } from 'react'
+import type { ComponentType, CSSProperties, ReactNode } from 'react'
 import { isModernLayout } from './layoutPreference'
 import {
   Rocket as CarbonRocket,
   Chip as CarbonChip,
   InventoryManagement as CarbonInventory,
   ArrowsHorizontal as CarbonMarket,
+  ChartCandlestick as CarbonChartCandlestick,
   Industry as CarbonIndustry,
   Network_4 as CarbonSkills,
   Task as CarbonTask,
@@ -1408,6 +1409,37 @@ export function Glyph({
   color?: string
   className?: string
 }) {
+  /**
+   * **股市入口 · 双色图标**（2026-11-03 船长令：Carbon `ChartCandlestick`，左半绿、右半红）。
+   * Carbon 图标是单色填充路径，单层 `fill` 无法分半 ⇒ 两层完全叠放，用 `clip-path` 各裁一半；
+   * 颜色必须写进 **style**（SVG 呈现属性不认 `var()`，见 `ui/tones.ts` 顶部记录过的坑）。
+   * 左右语义：左绿 = 跌（loss）、右红 = 涨（gain），与国内「红涨绿跌」同一套 token。
+   */
+  if (isModernLayout() && name === 'nav-exchange') {
+    const layerStyle = (colorValue: string, clip: string): CSSProperties => ({
+      position: 'absolute',
+      inset: 0,
+      color: colorValue,
+      clipPath: clip,
+    })
+    return (
+      <span
+        className={className}
+        aria-hidden="true"
+        style={{ position: 'relative', display: 'inline-flex', width: size, height: size, flex: '0 0 auto' }}
+      >
+        <CarbonChartCandlestick
+          size={size}
+          style={layerStyle('rgb(var(--wui-tone-loss))', 'inset(0 50% 0 0)')}
+        />
+        <CarbonChartCandlestick
+          size={size}
+          style={layerStyle('rgb(var(--wui-tone-gain))', 'inset(0 0 0 50%)')}
+        />
+      </span>
+    )
+  }
+
   if (isModernLayout()) {
     const ModernIcon = MODERN_NAV_GLYPHS[name]
     if (ModernIcon) {
