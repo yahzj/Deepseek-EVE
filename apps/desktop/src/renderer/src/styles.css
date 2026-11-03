@@ -1388,17 +1388,23 @@ html[data-locale='en'] body {
 /* ---------- 星图显示模式切换（2026-09-11 船长：名称 / 安全等级 / 敌对派系 三态互斥） ---------- */
 
 .app-map-viewbar {
-
   display: flex;
-
   align-items: center;
-
   gap: var(--wui-sp-6);
-
   flex: 0 0 auto;
-
   padding: 0 var(--wui-sp-2) var(--wui-sp-2);
+}
 
+.app-map-viewbar .app-btn {
+  transition: background 0.18s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, transform 0.12s ease;
+}
+
+.app-map-viewbar .app-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.app-map-viewbar .app-btn.is-primary {
+  box-shadow: 0 0 8px rgb(var(--wui-accent) / 0.35);
 }
 
 /* ═══════════ 星图缩放 ＋ 星系判定范围（**2026-10-02 船长令**）═══════════════════
@@ -1419,18 +1425,29 @@ html[data-locale='en'] body {
   width: 30px; height: 26px; padding: 0; font-family: inherit; font-size: var(--wui-fs-base); font-weight: 600;
   color: rgb(var(--wui-text)); background: rgb(var(--wui-bg-hover) / 0.6);
   border: 1px solid rgb(var(--wui-map-minor) / 0.35); border-radius: var(--wui-sp-5); cursor: pointer;
+  transition: transform 0.12s ease, background 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
 }
-.app-map-zoom-btn:hover:not(:disabled) { border-color: rgb(var(--wui-accent) / 0.55); background: rgb(var(--wui-slot) / 0.7); }
+.app-map-zoom-btn:hover:not(:disabled) { border-color: rgb(var(--wui-accent) / 0.65); background: rgb(var(--wui-slot) / 0.75); box-shadow: 0 0 6px rgb(var(--wui-accent) / 0.25); }
+.app-map-zoom-btn:active:not(:disabled) { transform: scale(0.92); }
 .app-map-zoom-btn:disabled { opacity: 0.4; cursor: default; }
 .app-map-zoom-btn.is-text { width: auto; min-width: 30px; height: 24px; padding: 0 var(--wui-sp-6); font-size: var(--wui-fs-2xse); font-weight: 400; }
+.app-map-zoom-btn.is-text:active:not(:disabled) { transform: scale(0.96); }
 .app-map-zoom-val { min-width: 34px; text-align: center; font-size: var(--wui-fs-2xse); color: rgb(var(--wui-dim)); }
 
-/* 拖图（与虫洞地图同款）：**只在放大之后**才给"可拖"语义 —— 适应态没有可拖的余地，给了会误导。
-   ⚠ `touch-action: none` **必须有**（虫洞地图那边也有）：触屏上若留着 `auto`，浏览器会把这一次触摸
-   当成滚动手势、在越过起拖阈值之前就把指针流 `pointercancel` 掉 —— 实测表现为"拖了但地图纹丝不动"。
-   只在放大后加：适应态本来就没得拖，不必抢走正常滚动。 */
+/* 拖图（与虫洞地图同款）：只在放大之后才给可拖语义 */
 .app-starmap.is-zoomed { cursor: grab; touch-action: none; }
 .app-starmap.is-zoomed.is-panning { cursor: grabbing; }
+
+/* 极端缩放时防止文字与连线背景重叠挤压 */
+.app-starmap.is-zoomed .app-map-label {
+  text-shadow: 0 1px 4px rgb(var(--wui-bg-deep) / 0.95), 0 0 8px rgb(var(--wui-bg-deep) / 0.9);
+}
+.app-starmap.is-zoomed .app-map-min {
+  text-shadow: 0 1px 3px rgb(var(--wui-bg-deep) / 0.95), 0 0 6px rgb(var(--wui-bg-deep) / 0.85);
+}
+.app-starmap.is-zoomed .app-map-famchip-text {
+  text-shadow: 0 1px 3px rgb(var(--wui-bg-deep) / 0.9);
+}
 /* 敌族标签（2026-09-11 船长：按敌族划分颜色、标签化展示，与安全等级色阶明显区分）——
    颜色由各族修饰类给出，rect/text 一律 currentColor，遵守「视觉物件走 SVG」纪律 */
 
@@ -2179,25 +2196,43 @@ html[data-locale='en'] body {
 }
 
 .app-map-edge {
-
   stroke: rgb(var(--wui-x228));
-
   stroke-width: 1.2;
-
   stroke-dasharray: 4 3;
-
   transition: stroke 0.12s ease;
-
 }
 
 .app-map-edge.is-cross {
-
   stroke: rgb(var(--wui-x51));
-
   stroke-width: 1.8;
-
   stroke-dasharray: 6 2;
+}
 
+.app-map-edge.is-selected-route {
+  stroke: rgb(var(--wui-accent));
+  stroke-width: 1.8;
+  stroke-dasharray: 6 3;
+  filter: drop-shadow(0 0 4px rgb(var(--wui-accent) / 0.75));
+}
+
+.app-map-edge-flow {
+  stroke: rgb(var(--wui-accent));
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-dasharray: 4 14;
+  animation: app-map-flow 2s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes app-map-flow {
+  from { stroke-dashoffset: 18; }
+  to { stroke-dashoffset: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-map-edge-flow {
+    animation: none;
+  }
 }
 
 .app-map-xdot {
@@ -2429,9 +2464,42 @@ html[data-locale='en'] body {
 }
 
 .app-map-node {
-
   cursor: pointer;
+}
 
+.app-map-star-glow {
+  pointer-events: none;
+  opacity: 0.88;
+  transition: opacity 0.2s ease;
+}
+
+.app-map-node:hover .app-map-star-glow {
+  opacity: 1;
+}
+
+.app-map-hub-ring {
+  pointer-events: none;
+}
+
+.app-map-orbit-ring {
+  fill: none;
+  stroke: rgb(var(--wui-gold) / 0.45);
+  stroke-width: 0.9;
+  stroke-dasharray: 4 2;
+}
+
+.app-map-orbit-cross {
+  fill: none;
+  stroke: rgb(var(--wui-gold) / 0.65);
+  stroke-width: 1.2;
+}
+
+.app-map-station-ring {
+  fill: none;
+  stroke: rgb(var(--wui-accent) / 0.55);
+  stroke-width: 1;
+  stroke-dasharray: 3 2;
+  pointer-events: none;
 }
 
 .app-map-dot {
@@ -9590,49 +9658,91 @@ body.no-fx .app-fit-cpustrip-track.is-full i {
 
 }
 
-/* V16.1/16.2 安全等级（EVE 式）：≥0 绿→黄，低于 0 即红、近 −1 转紫 */
-
-.app-map-label.app-sec-1 { fill: rgb(var(--wui-x23)); }
-
-.app-map-label.app-sec-2 { fill: rgb(var(--wui-x48)); }
-
-.app-map-label.app-sec-3 { fill: rgb(var(--wui-danger-map)); }
-
-.app-map-label.app-sec-4 { fill: rgb(var(--wui-x50)); }
-
-.app-map-label.app-sec-5 { fill: rgb(var(--wui-x41)); }
+/* V16.1/16.2 安全等级色彩规范：高安（绿）、低安（警戒黄/橙）、零安/法外之地（危险红） */
+.app-map-label.app-sec-1 { fill: rgb(var(--wui-tone-gain)); }
+.app-map-label.app-sec-2 { fill: rgb(var(--wui-amber)); }
+.app-map-label.app-sec-3 { fill: rgb(var(--wui-tone-loss)); }
+.app-map-label.app-sec-4 { fill: rgb(var(--wui-tone-loss)); }
+.app-map-label.app-sec-5 { fill: rgb(var(--wui-tone-loss)); }
 
 .app-sec-chip {
-
   display: inline-block;
-
   margin-left: var(--wui-sp-8);
-
   padding: 0 var(--wui-sp-7);
-
   border-radius: var(--wui-sp-8);
-
   font-size: var(--wui-fs-2xsd);
-
   font-family: var(--wui-mono);
-
   line-height: 1.7;
-
   vertical-align: 1px;
-
   color: rgb(var(--wui-x63));
-
 }
 
-.app-sec-chip-1 { background: rgb(var(--wui-x23)); }
+.app-sec-chip-1 { background: rgb(var(--wui-tone-gain)); }
+.app-sec-chip-2 { background: rgb(var(--wui-amber)); }
+.app-sec-chip-3 { background: rgb(var(--wui-tone-loss)); }
+.app-sec-chip-4 { background: rgb(var(--wui-tone-loss)); }
+.app-sec-chip-5 { background: rgb(var(--wui-tone-loss)); color: rgb(var(--wui-x194)); }
 
-.app-sec-chip-2 { background: rgb(var(--wui-x48)); }
-
-.app-sec-chip-3 { background: rgb(var(--wui-danger-map)); }
-
-.app-sec-chip-4 { background: rgb(var(--wui-x50)); }
-
-.app-sec-chip-5 { background: rgb(var(--wui-x41)); color: rgb(var(--wui-x194)); }
+/* 星图悬停情报卡（2026-11-04 专项优化）：键值对齐、等宽数字、科幻战术面板 */
+.app-starmap-tt {
+  min-width: 220px;
+  max-width: 320px;
+  padding: var(--wui-sp-6) var(--wui-sp-8);
+  background: rgb(var(--wui-bg-panel));
+  border: 1px solid rgb(var(--wui-border));
+  border-radius: var(--wui-sp-6);
+  box-shadow: 0 8px 24px rgb(var(--wui-scrim) / 0.55), 0 0 1px rgb(var(--wui-border));
+  font-size: var(--wui-fs-xs);
+  letter-spacing: 0;
+  pointer-events: none;
+}
+.app-starmap-tt-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--wui-sp-6);
+  padding-bottom: var(--wui-sp-5);
+  margin-bottom: var(--wui-sp-5);
+  border-bottom: 1px solid rgb(var(--wui-border) / 0.7);
+}
+.app-starmap-tt-title {
+  display: flex;
+  align-items: center;
+  gap: var(--wui-sp-6);
+}
+.app-starmap-tt-title strong {
+  font-size: var(--wui-fs-s);
+  color: rgb(var(--wui-text-bright));
+}
+.app-starmap-tt-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wui-sp-4);
+}
+.app-starmap-tt-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--wui-sp-8);
+  line-height: 1.4;
+}
+.app-starmap-tt-row.is-invasion {
+  padding-top: var(--wui-sp-3);
+  border-top: 1px dashed rgb(var(--wui-tone-loss) / 0.4);
+}
+.app-starmap-tt-lbl {
+  color: rgb(var(--wui-dim));
+  font-size: var(--wui-fs-2xsd);
+  white-space: nowrap;
+}
+.app-starmap-tt-val {
+  color: rgb(var(--wui-text));
+  font-family: var(--wui-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--wui-fs-2xsd);
+  text-align: right;
+  white-space: nowrap;
+}
 
 /* T1 顶部活动窗口（优化：置于左侧主列顶部；按钮紧贴条目左侧，不再横跨全屏） */
 

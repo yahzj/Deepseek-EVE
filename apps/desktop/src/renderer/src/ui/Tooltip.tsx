@@ -226,7 +226,7 @@ function cancelPending(): void {
   pendingOwner = null
 }
 
-type HoverEnterEvent = MouseEvent<HTMLElement>
+type HoverEnterEvent = MouseEvent<Element>
 
 /**
  * **内层优先**：从指针所在元素往上走到本元素之间，若中途有**更深的提示归属**
