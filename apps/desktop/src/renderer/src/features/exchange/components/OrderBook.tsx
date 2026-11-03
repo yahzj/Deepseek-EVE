@@ -1,8 +1,10 @@
 /**
  * 五档盘口 + 逐笔成交。
  *
- * 盘口档位是可点击按钮：排面（把价格填进右侧下单面板）是设计稿 6.1 明确要求的快捷操作，
- * 做成整行按钮比在价格上挂小链接更符合"交易所"手感，也自带键盘可达性。
+ * 优化（对齐玩家吐槽 3）：
+ * - 增加买卖量不平衡条（Depth Imbalance Bar）：实时汇总买卖五档总量，
+ *   展示多空买卖压力差比例条与状态标签（多头占优 / 空头占优 / 多空均势），盘口买卖力量一目了然；
+ * - 盘口档位可点击直接把价格填入下单面板。
  */
 import type { BookLevel, OrderBookSnapshot, TradeRecord } from '../client'
 import { amount, clock, price } from '../format'
@@ -30,16 +32,43 @@ export function OrderBook({
     book.asks[0] !== undefined && book.bids[0] !== undefined
       ? book.asks[0].price - book.bids[0].price
       : null
+
+  // 计算买卖总量与深度不平衡比例
+  const sumAsks = book.asks.reduce((s, l) => s + l.qty, 0)
+  const sumBids = book.bids.reduce((s, l) => s + l.qty, 0)
+  const totalDepth = sumAsks + sumBids
+  const bidRatio = totalDepth > 0 ? (sumBids / totalDepth) * 100 : 50
+  const askRatio = 100 - bidRatio
+
+  const diff = bidRatio - askRatio
+  const imbalanceLabel =
+    diff > 10 ? T.imbalanceBuyAdv : diff < -10 ? T.imbalanceSellAdv : T.imbalanceBalanced
+
   return (
     <section className="ex-panel ex-book" aria-label={T.bookTitle}>
       <header className="ex-panel-head">
         <h3 className="ex-panel-title">{T.bookTitle}</h3>
         <span className="ex-dim">{T.bookClickHint}</span>
       </header>
+
+      {/* 买卖量不平衡条（深度差力量条） */}
+      <div className="ex-imbalance-wrap" title={`${T.bookImbalance}：买方 ${sumBids} 股 / 卖方 ${sumAsks} 股`}>
+        <div className="ex-imbalance-head">
+          <span className="ex-imbalance-side is-bid">{bidRatio.toFixed(1)}%</span>
+          <span className="ex-imbalance-tag">{imbalanceLabel}</span>
+          <span className="ex-imbalance-side is-ask">{askRatio.toFixed(1)}%</span>
+        </div>
+        <div className="ex-imbalance-bar">
+          <div className="ex-imbalance-fill is-bid" style={{ width: `${bidRatio}%` }} />
+          <div className="ex-imbalance-fill is-ask" style={{ width: `${askRatio}%` }} />
+        </div>
+      </div>
+
       <div className="ex-book-legend">
         <span>{T.bookPrice}</span>
         <span>{T.bookQty}</span>
       </div>
+
       <div className="ex-book-side is-ask">
         {[...asks].reverse().map((level, idx) => {
           const pos = asks.length - idx
@@ -68,10 +97,12 @@ export function OrderBook({
           )
         })}
       </div>
+
       <div className="ex-book-spread">
         <span>{T.bookPrice}</span>
         <b>{spread !== null ? price(spread) : '—'}</b>
       </div>
+
       <div className="ex-book-side is-bid">
         {bids.map((level, idx) => {
           const pos = idx + 1
@@ -104,7 +135,7 @@ export function OrderBook({
   )
 }
 
-/** 逐笔成交：只显示最近 12 笔，方向色块区分主动买/卖 */
+/** 逐笔成交：只显示最近 14 笔，方向色块区分主动买/卖 */
 export function TradeTape({ trades }: { trades: TradeRecord[] }) {
   return (
     <section className="ex-panel ex-tape" aria-label={T.tradesTitle}>

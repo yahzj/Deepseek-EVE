@@ -5,6 +5,7 @@
  * 策略单与手动单同一条下单链路，委托列表里只用一个小角标区分来源。
  */
 import { useState } from 'react'
+import { Add, ChevronDown, ChevronRight, Pause, Play, TrashCan } from '@carbon/icons-react'
 import type { ExchangeClient, ExchangeSnapshot, StrategySpec } from '../client'
 import type { ToastFn } from '../../../pages/common'
 import { amount } from '../format'
@@ -28,7 +29,7 @@ function templateLabel(template: StrategySpec['template']): string {
 function paramsSummary(spec: StrategySpec): string {
   const p = spec.params
   if (spec.template === 'dca') {
-    return `${amount(Number(p.amount ?? 0))} cr / ${Math.round(Number(p.intervalSec ?? 0))} 秒`
+    return `${amount(Number(p.amount ?? 0))} ISK / ${Math.round(Number(p.intervalSec ?? 0))} 秒`
   }
   if (spec.template === 'grid') {
     return `${Number(p.lowerPct ?? 0)}% ~ ${Number(p.upperPct ?? 0)}% · ${Math.round(Number(p.grids ?? 0))} 格 × ${amount(Number(p.qty ?? 0))} 股`
@@ -41,13 +42,15 @@ export function AutoTrade({
   snap,
   code,
   onToast,
+  alwaysOpen = false,
 }: {
   client: ExchangeClient
   snap: ExchangeSnapshot
   code: string
   onToast: ToastFn
+  alwaysOpen?: boolean
 }) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(alwaysOpen)
   const [template, setTemplate] = useState<Template>('dca')
   const [amountText, setAmountText] = useState('50000')
   const [intervalText, setIntervalText] = useState('20')
@@ -79,7 +82,38 @@ export function AutoTrade({
     return { template, code, params, enabled: true }
   }
 
+  const validate = (): string | null => {
+    if (template === 'dca') {
+      const amt = Number(amountText)
+      const intv = Number(intervalText)
+      if (!Number.isFinite(amt) || amt <= 0) return '定投金额必须大于 0'
+      if (!Number.isFinite(intv) || intv < 3) return '定投执行间隔至少为 3 秒'
+    } else if (template === 'grid') {
+      const low = Number(lowerText)
+      const up = Number(upperText)
+      const g = Math.round(Number(gridsText))
+      const q = Math.round(Number(qtyText))
+      if (!Number.isFinite(low) || !Number.isFinite(up) || low >= up) return '网格下限比例必须小于上限比例'
+      if (!Number.isFinite(g) || g < 2 || g > 12) return '网格区间数需在 2 ~ 12 之间'
+      if (!Number.isFinite(q) || q <= 0) return '每格委托数量必须大于 0'
+    } else {
+      const act = Number(activateText)
+      const tr = Number(trailText)
+      const q = Math.round(Number(qtyText))
+      if (!Number.isFinite(act) || act <= 0) return '触发盈利激活比例需大于 0%'
+      if (!Number.isFinite(tr) || tr <= 0) return '高点回撤止盈比例需大于 0%'
+      if (tr >= act) return '回撤比例必须小于激活涨幅'
+      if (!Number.isFinite(q) || q < 0) return '委托数量不能为负数'
+    }
+    return null
+  }
+
   const save = (): void => {
+    const err = validate()
+    if (err) {
+      onToast(err, true)
+      return
+    }
     setBusy(true)
     void client
       .saveStrategy(buildSpec())
@@ -106,7 +140,7 @@ export function AutoTrade({
   return (
     <section className={`ex-panel ex-auto${open ? ' is-open' : ''}`} aria-label={T.autoTradeTitle}>
       <button type="button" className="ex-auto-head" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
-        <span className="ex-auto-caret">{open ? '▾' : '▸'}</span>
+        <span className="ex-auto-caret">{open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</span>
         <span className="ex-panel-title">{T.autoTradeTitle}</span>
         <span className="ex-dim">{T.autoTradeHint}</span>
       </button>
@@ -121,11 +155,23 @@ export function AutoTrade({
                 <span className="ex-dim">{paramsSummary(s)}</span>
               </div>
               <div className="ex-strategy-actions">
-                <button type="button" className="ex-mini-btn" onClick={() => toggle(s)}>
-                  {s.enabled ? T.strategyDisabled : T.strategyEnabled}
+                <button
+                  type="button"
+                  className={`ex-mini-btn ${s.enabled ? 'is-pause' : 'is-play'}`}
+                  onClick={() => toggle(s)}
+                >
+                  {s.enabled ? (
+                    <>
+                      <Pause size={12} /> {T.strategyPause}
+                    </>
+                  ) : (
+                    <>
+                      <Play size={12} /> {T.strategyResume}
+                    </>
+                  )}
                 </button>
-                <button type="button" className="ex-mini-btn" onClick={() => remove(s)}>
-                  {T.strategyDelete}
+                <button type="button" className="ex-mini-btn is-trash" onClick={() => remove(s)}>
+                  <TrashCan size={12} /> {T.strategyDelete}
                 </button>
               </div>
             </div>
@@ -197,8 +243,8 @@ export function AutoTrade({
                 </>
               ) : null}
             </div>
-            <button type="button" className="ex-primary ex-primary-small" onClick={save} disabled={busy}>
-              {T.strategySave}
+            <button type="button" className="ex-primary ex-primary-small is-algo" onClick={save} disabled={busy}>
+              <Add size={14} /> {T.strategySave}
             </button>
           </div>
         </div>

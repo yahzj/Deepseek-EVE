@@ -27,7 +27,7 @@ export function BondCard({
   const buy = (): void => {
     try {
       client.buyBond(Number(amountText))
-      onToast(`${T.toastBondBought} ${money(Number(amountText))} cr`)
+      onToast(`${T.toastBondBought} ${money(Number(amountText))} ISK`)
     } catch (err) {
       onToast(err instanceof Error ? err.message : String(err), true)
     }
@@ -39,7 +39,7 @@ export function BondCard({
     }
     try {
       const total = client.redeemBond()
-      if (total > 0) onToast(`${T.toastBondRedeemed} ${money(total)} cr`)
+      if (total > 0) onToast(`${T.toastBondRedeemed} ${money(total)} ISK`)
     } catch (err) {
       onToast(err instanceof Error ? err.message : String(err), true)
     }
@@ -79,10 +79,10 @@ export function BondCard({
           />
         </div>
         <div className="ex-bond-actions">
-          <button type="button" className="ex-mini-btn" onClick={buy}>
+          <button type="button" className="ex-mini-btn is-bond-buy" onClick={buy}>
             {T.bondBuyBtn}
           </button>
-          <button type="button" className="ex-mini-btn" onClick={redeem}>
+          <button type="button" className="ex-mini-btn is-bond-redeem" onClick={redeem}>
             {T.bondRedeem}
           </button>
         </div>

@@ -10,7 +10,7 @@
  */
 import { activityOverview, scanAwaitingView, scanStatus, SYNAPTIC_ACCELERANT_MUL } from '@whale/core'
 import type { ActivityView } from '@whale/core'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
@@ -22,6 +22,8 @@ import { goFor } from '../ui/activityGo'
 import { stopLabel, doStop } from './activityStopLabel'
 import { fmtDuration } from '../i18n/fmt'
 import { explorationActivityText } from '../ui/explorationActivityText'
+import { createExchangeClient } from '../features/exchange/factory'
+import { money, pct } from '../features/exchange/format'
 import '../styles-activity-invasion.css'
 
 const KIND_ICON: Record<string, string> = {
@@ -133,7 +135,7 @@ function SmoothFill({
 /**
  * 活动项 → 跳转目标页面（可带星图二级标签）——船长 2026-09-05 点击跳转。
  *
- * ⚠️ 扩展约定（新增活动时务必同步）：以后若新增活动项目 / 新增页面，
+ * 【注意】扩展约定（新增活动时务必同步）：以后若新增活动项目 / 新增页面，
  * 必须在本函数补充对应 `case`（kind → { page, mapTab? }），否则新活动点下去
  * 会回退到默认 `{ page: 'map' }`（星图页），跳转失效。
  * 映射关系建议遵循：采矿→星图·矿带开采；扫描/远征/返航/待命→星图·远征；
@@ -209,6 +211,50 @@ export function ActivityBar({
   useEffect(() => {
     if (haulAsk && !hasHaulActivity) setHaulAsk(false)
   }, [haulAsk, hasHaulActivity])
+
+  // ── 深空证券交易所监控（副AI活动最下方，船长 2026-11-03 令） ──
+  const [exchTick, bumpExchTick] = useState(0)
+  const exchBundle = useMemo(() => createExchangeClient(), [])
+  useEffect(() => {
+    const unsub = exchBundle.client.onTick(() => bumpExchTick((t) => t + 1))
+    return unsub
+  }, [exchBundle.client])
+
+  const exchSnap = useMemo(
+    () => exchBundle.client.getSnapshot('SMHI'),
+    [exchBundle.client, exchTick],
+  )
+
+  const exchSummary = useMemo(() => {
+    const holdings = exchSnap.account.holdings
+    const positions = exchSnap.account.positions
+    let totalPnl = 0
+    let totalCostOrMargin = 0
+    const heldList: string[] = []
+
+    for (const h of holdings) {
+      if (h.qty > 0) {
+        heldList.push(h.code)
+        const q = exchSnap.stocks.find((s) => s.code === h.code)
+        if (q) totalPnl += (q.price - h.avgCost) * h.qty
+        totalCostOrMargin += h.avgCost * h.qty
+      }
+    }
+    for (const p of positions) {
+      heldList.push(`${p.code}(${p.leverage}x)`)
+      totalPnl += p.unrealizedPnl
+      totalCostOrMargin += p.margin
+    }
+
+    const uniqueCodes = Array.from(new Set(heldList))
+    const pnlPct = totalCostOrMargin > 0 ? (totalPnl / totalCostOrMargin) * 100 : 0
+    return {
+      hasPositions: uniqueCodes.length > 0,
+      uniqueCodes,
+      totalPnl,
+      pnlPct,
+    }
+  }, [exchSnap])
 
   const renderItem = (v: ActivityView) => {
     const target = goFor(v.kind)
@@ -457,6 +503,43 @@ export function ActivityBar({
             onClick={() => onAiCenter?.()}
           />
         )}
+      </div>
+
+      {/* ── 股市活动监控（副AI活动最下方，船长 2026-11-03 令，点击直达股市） ── */}
+      <div className="app-activitybar-group app-activitybar-group-exchange">
+        <div className="app-activitybar-gtitle">深空证券交易所</div>
+        <button
+          type="button"
+          className="app-ai-act app-activitybar-exch-btn"
+          title={
+            exchSummary.hasPositions
+              ? `已持仓：${exchSummary.uniqueCodes.join('、')}，当前浮盈 ${exchSummary.totalPnl >= 0 ? '+' : ''}${money(exchSummary.totalPnl)} ISK (${pct(exchSummary.pnlPct)})。点击直达股市大厅`
+              : '深空证券交易所实时运行中，点击进入交易大厅选股'
+          }
+          onClick={() => onGoPage?.('exchange')}
+        >
+          <span className="app-activitybar-icon">
+            <Glyph name="nav-exchange" size={14} color="rgb(var(--wui-cyan))" />
+          </span>
+          <span className="app-ai-act-main">
+            <span className="app-ai-act-label">
+              {exchSummary.hasPositions ? exchSummary.uniqueCodes.join(' · ') : '股市行情监控'}
+            </span>
+            <span
+              className={`app-ai-act-sub ${
+                exchSummary.hasPositions
+                  ? exchSummary.totalPnl >= 0
+                    ? 'is-up'
+                    : 'is-down'
+                  : 'app-dim'
+              }`}
+            >
+              {exchSummary.hasPositions
+                ? `收益 ${exchSummary.totalPnl >= 0 ? '+' : ''}${money(exchSummary.totalPnl)} ISK (${pct(exchSummary.pnlPct)})`
+                : '未持仓 · 点击进入'}
+            </span>
+          </span>
+        </button>
       </div>
     </aside>
   )
