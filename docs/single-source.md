@@ -73,7 +73,7 @@
 | 星系天体本体投影清晰度 | `stellarTextureSize` · `ui/stellarPlanetShader.ts` | 地图/详情共用，带环独立尺度/上限/同帧缓存专项；材质层来自`stellarPixelMaterials`原生生成参数 |
 | 星图公开地表面积与本体半径 | `stellarMapBodyRadii` · `panels/stellarBodySize.ts` | 地表总格数平方根、固态统一拥挤比例；动态/静态/命中/标签共用，气态及详情尺寸不变；面积与同步专项 |
 | 手册新入侵装备与无人机显示顺序 | `handbookContentOrderOf()` · `ui/handbookOrder.ts` | 只变视图，原条目顺序与目录守恒，图标/列表/势力入口统一专项；F2/F3 |
-| 酸蚀有效抗性与渐增速度 | `acidResistsOf()` / `battleSpeedBonusOf()` / `foeAcidRowsOf()` · `alienEquipment.ts` | 逐层到期、触底恢复、跨波/读档、常驻渐增与当前周期收益混装排序、捕获网专项；F2/F3 |
+| 酸蚀有效抗性与装备速度 | `acidResistsOf()` / `battleSpeedBonusOf()` / `foeAcidRowsOf()` · `alienEquipment.ts` | 逐层到期、触底恢复、跨波/读档；有效速度件同池折权，仅推进器受点火周期及停机影响，其他槽位持续生效，渐增件按战斗时钟增长；F2/F3 |
 | 激光校准远端威力保留 | `laserFalloffOf` · `equipment.ts`，只在玩家激光建档消费 | 混装折权加算、上限1、其他武器不变专项；`arch:guard` F2/F3 |
 | 敌方族格最终血量倍率 | `foeFamilyHpMulOf()` · `foePower.ts` | C族三层最终+30%、非C不变、舰体/机型独立判定、共享旗舰绝对血覆盖与预算不抵消专项 |
 | 全舰容量提升及敌舰最终倍率 | `SHIP_HP_UPLIFT_MUL` · `combatMath.ts`；`foeShipHpMulOf()` · `foePower.ts` | 玩家舰体/插件1.5、敌舰最终1.5且保留族格、预算和火力不变、无人机排除、共享池绝对覆盖专项 |
@@ -158,6 +158,7 @@
 | 已登记待译条目的中文回退 | `l10nEntryText()` · `l10n/table.ts`；界面`textOf`及主进程`t`调用 | 待译标记/文档登记成对、非待译空值仍拒绝、同入口占位符与中英渲染专项 |
 | 内容名/说明的英文覆盖层 | `packages/data/src/l10n.ts`（`EN_*` ＋ `overlay*`） | `l10n:check` ＋ core `l10n-overlay.test.ts` |
 | 势力族色 | `FOE_ACCENT` · `ui/tones.ts` | 与星图族标签/战场敌舰/图鉴族徽同源（人工核） |
+| 势力图鉴最终展示清单 | `buildFactionCards()` · `factionCodex.ts` | 合并`FACTION_CODEX`与core的`FOE_LAIR_GEAR`，装备/物品和图纸分栏去重；内容护栏检查窝点池、引用、件型、重复及产物图纸，解锁仍按遭遇记录 |
 | 物品稀有度分档 | `itemRarityTierOf()` · `rarityTier.ts` | `content:check` 稀有度契约 |
 | 公告数据（**仅经船长批准后写入**） | `announcements.ts` | 约定 §十二（发布审核） |
 

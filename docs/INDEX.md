@@ -13,7 +13,7 @@
 
 ## 统计
 
-- 非归档文档 **353** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4148** KB · **46291** 行
+- 非归档文档 **353** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4150** KB · **46302** 行
 - 状态分布：**未标注** 168 · **已确认/已实现** 127 · **进行中** 39 · **待裁定** 18 · **历史留档** 1
 - 孤儿文档（0 引用）**197** 份 · 状态未标注 **168** 份
 - 一、常用文档（按任务查阅）：**11** 份
@@ -36,9 +36,9 @@
 | `docs/data-map.md` | 数据速查页 | 未标注 | — | 3 KB / 38 行 | 4 |
 | `docs/development-conventions.md` | 开发约定 | 未标注 | — | 22 KB / 167 行 | 15 |
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（现行译名表） | — | 46 KB / 810 行 | 9 |
-| `docs/glossary.md` | 术语词典 | 未标注 | — | 21 KB / 193 行 | 59 |
+| `docs/glossary.md` | 术语词典 | 未标注 | — | 21 KB / 194 行 | 59 |
 | `docs/roadmap.md` | 当前待办与实施边界 | 未标注 | — | 7 KB / 64 行 | 61 |
-| `docs/single-source.md` | 单点索引（谁有权算、谁只能读） | 未标注 | — | 38 KB / 277 行 | 20 |
+| `docs/single-source.md` | 单点索引（谁有权算、谁只能读） | 未标注 | — | 39 KB / 278 行 | 20 |
 
 ## 七、评审与体检（review） —— 4 份
 
@@ -358,7 +358,7 @@
 |---|---|---|---|---|---|
 | `docs/development-conventions-changelog.md` | 开发约定维护记录 | 未标注 | — | 1 KB / 18 行 | 6 |
 | `docs/git-gate-approval.md` | Git提交审批放行 | 未标注 | — | 2 KB / 28 行 | 1 |
-| `docs/l10n-pending.md` | 待英文本地化记录 | 未标注 | — | 21 KB / 372 行 | 19 |
+| `docs/l10n-pending.md` | 待英文本地化记录 | 未标注 | — | 22 KB / 381 行 | 19 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 

@@ -9,7 +9,7 @@ export function applyMeWebDebuff<T extends UnitSpec>(spec: T, d: import('../stat
   spec.speedMps = Math.max(20, spec.speedMps * d.slowMul)
   if (d.noThruster) {
     spec.thrusterBoost = 0
-    if (spec.speedBonusModules) spec.speedBonusModules = spec.speedBonusModules.filter(mod => mod.speedRamp)
+    if (spec.speedBonusModules) spec.speedBonusModules = spec.speedBonusModules.filter(mod => mod.slot !== 'propulsion')
   }
   if (d.noEvasion) spec.evasion = 0
   if (d.rangeDownM > 0) {

@@ -6535,6 +6535,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipInfo.253": { zh: "各件独立运作", en: "Each module operates independently" },
   "ui.shipInfo.254": { zh: "乘法叠加", en: "Multiplicative stacking" },
   "ui.shipInfo.255": { zh: "同类型扩槽插件仅限一件", en: "One slot-expansion plug per type" },
+  // ⟪文案调整 2026-11-03⟫ 非推进器速度效果独立于点火周期；保留旧模板和既有英文。
+  "ui.shipInfo.256": { zh: "战斗机动 +{p1}", en: "", enDeferred: true },
   "ui.shipInfo.079": { zh: "多装递减", en: "Diminishing returns when stacked" },
   "ui.shipInfo.080": { zh: "放飞 CPU", en: "Launch CPU" },
   "ui.shipInfo.081": { zh: "占用舱容", en: "Cargo space used" },

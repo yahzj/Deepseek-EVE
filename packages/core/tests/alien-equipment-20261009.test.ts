@@ -198,7 +198,7 @@ describe('酸蚀独立期限与恢复', () => {
 })
 
 describe('增压速度同池折权', () => {
-  it('周期冷却移除普通速度件后重新排序，增压腔保留，不影响未装增压件的周期', () => {
+  it('周期冷却仅移除推进器后重新排序，增压腔持续生效，旧规格回退不变', () => {
     const spec = { thrusterBoost: .6, speedBonusModules: [ctx.modules.get(speedId)!, ctx.modules.get(speedId)!, ctx.modules.get('mod-prop-2')!] }
     const clock = { startedAtGameMs: 1000, lastTickGameMs: 61000 }
     expect(battleSpeedBonusOf(spec, clock, true)).toBeCloseTo(weightedSum([.6, .35, .35]))

@@ -310,22 +310,14 @@ export function createPlayerSpec(
     }
   }
 
-  // 速度收益折权加算；命中代价使用对应收益权重后相乘。
+  // 速度件共用折权排序；推进器只把其自身的速度份额放入点火周期。
   // 2026-09-13 虫洞专属（生体脉搏加速器）：速度加成**不再只认推进器槽**——任意槽位携带
   // `speedBonusPct` 都计入（与 speedPenaltyPct / hitPenalty 的"全件扫描"同口径）；
-  // 既有装备只有推进器带本字段 ⇒ 行为零变化。
-  const propSpeeds = allFittedModules(fitted, ctx)
-    .filter(m => !m.speedRamp)
-    .map((m) => m.speedBonusPct ?? 0)
-    .filter((v) => v > 0)
-  /**
-   * **推进器多件 = 折权加算**（**2026-09-20 船长**：「**基础改为加算，但是依旧有多件衰减**」）：
-   * 单体加成按 `stackWeight`（100% / 87% / 57% / 28% / 11%…）折减后**相加** ⇒ 件件递减、总额收敛。
-   * ⚠ 原为 `curveMult`（乘积形 `Π(1+pᵢ·wᵢ)`）：对 +250% 这种大额件会**放大**（2 件 ×11.10、3 件 ×26.95），
-   * 现 2 件 ×5.67、3 件 ×7.10。判据单点 = `equipment.weightedSum`；收敛分组见 `stackingOf`（`weighted`）。
-   * ⚠ 命中 / 跃迁速度 / 目标锁定**仍是 EVE 曲线**（本裁定只动速度）。
-   */
-  const speedEq = 1 + weightedSum(propSpeeds)
+  // 原有速度件均保留，运行时按推进器 / 非推进器来源拆分应用。
+  const speedBonusModules = allFittedModules(fitted, ctx)
+    .filter((m) => (m.speedBonusPct ?? 0) > 0)
+    .map(({ slot, speedBonusPct, speedRamp }) => ({ slot, speedBonusPct, speedRamp }))
+  const thrusterBoost = weightedSum(speedBonusModules.filter(mod => mod.slot === 'propulsion').map(mod => mod.speedBonusPct ?? 0))
   /**
    * **本单位推进器的点火周期**（2026-09-14 船长新增「微型跃迁引擎」：点火 10 秒 / 冷却 60 秒）。
    * 取**装配里点火最短的那件**（同长再取冷却更短的那件）——没有覆盖件的装配 ⇒ `cycle` 与全局值相同
@@ -688,17 +680,15 @@ export function createPlayerSpec(
     hitMul: penalties.hit,
     signatureM: ship.signatureM ?? 80,
     scanResMm: ship.scanResMm ?? 500,
-    // V17 矢量推进器 = 加力推进；V18.1 多件速度加成 EVE 曲线收敛；矢量机动操作（舰船）再乘 +5%/级
+    // V17 矢量推进器 = 加力推进；装备速度加成在机动阶段分别结算；矢量机动操作（舰船）再乘 +5%/级
     // 常驻速度代价逐件相乘，保留原安全下限。
-    // 2026-09-10 船长（推进器周期化）：**基础速度不含推进器**——推进器改走 thrusterBoost，
-    // 只在爆发窗口内生效（见 thrusterPhase），冷却期回到本值。
+    // 基础速度不含装备百分比；速度来源明细在机动阶段按当前有效状态同池折权。
     speedMps:
       ((ship.maxSpeedMps ?? 200) + plugSpeedMps) *
       (1 + bal.speedPerLevel * Math.min(5, state.skills.trained[bal.speedSkillId] ?? 0)) *
       Math.max(0.1, penalties.speed) * damage.speed,
-    // 推进器爆发倍率（多件 EVE 曲线收敛后的合成值 − 1）：0 = 未装；爆发窗口内才乘上去
-    ...(speedEq > 1 ? { thrusterBoost: speedEq - 1 } : {}),
-    ...(allDefs.some(mod => mod.speedRamp) ? { speedBonusModules: allDefs.filter(mod => (mod.speedBonusPct ?? 0) > 0) } : {}),
+    ...(thrusterBoost > 0 ? { thrusterBoost } : {}),
+    ...(speedBonusModules.some(mod => mod.slot !== 'propulsion' || mod.speedRamp) ? { speedBonusModules } : {}),
     // 本单位自己的点火周期（只在有覆盖件时写；没写 = 全局 60/60，见 `unitThrusterCycle`）
     ...(cycleOverridden ? { thrusterBoostMs: propCycle!.boostMs, thrusterCooldownMs: propCycle!.cooldownMs } : {}),
     // 船长2026-10-19：短距离跃迁改归支援；多件取距离最大、同距冷却最短者，参数读取装备。

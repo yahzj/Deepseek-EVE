@@ -1,5 +1,10 @@
 # 工具区台账（tools/）
 
+## 势力图鉴与非推进器速度（2026-11-03）
+
+- 先`npm run build`，再`node tools/faction-codex-native-check.cjs`：读取当前内容目录和独立合成遭遇档，使用隐藏Electron核对中英七族装备/舰船/图纸分栏和计数、逐一打开补回的14件模块及1张图纸详情，检查正式存盘未改变遭遇、装备及图纸库存；结果输出控制台，不读取个人档，不代替观感验收。
+- 构建后`node tools/independent-speed-native-check.cjs`：独立合成装配档，隐藏Electron中英核对生体脉搏加速器、几丁质骨架层与矢量推进器MK2参数卡，非推进器不含点火/冷却、推进器保留周期，并核对正式存盘装配不变；结果输出控制台。两工具均只清理经绝对路径和唯一前缀检查的自建临时userData，结束由自身Electron退出。
+
 ## 统一手动发布（2026-11-02）
 
 - `.github/scripts/release-plan.cjs` 为 `publish.yml` 的版本与产物校验助手：`resolve` 把已推送引用锁定成默认分支内的40位SHA并校验Windows标签/包版本；`manifest` 记录构建源码及产物SHA-256；`verify` 拒绝下载产物版本、校验和或文件清单不符。只由工作流或独立夹具调用，不创建标签、推送或调用线上API。统一操作入口及切换注意事项见 `.github/RELEASING.md`。
