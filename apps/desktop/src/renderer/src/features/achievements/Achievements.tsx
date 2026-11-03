@@ -24,33 +24,82 @@
 import { Glyph } from '../../ui/Glyphs'
 import { Panel } from '@whale/ui'
 import { hoverTipProps } from '../../ui/Tooltip'
-import { achievementCount, achievementOverview } from '@whale/core'
-import type { AchievementDef } from '@whale/core'
+import { achievementCount, achievementOverview, achievementReached, firstStatOf } from '@whale/core'
+import type { AchievementDef, AchievementSource, FirstStatKey } from '@whale/core'
 import type { GameEngine } from '../../game/engine'
 import { tr } from '../../i18n/locale'
 import { fmtDuration } from '../../i18n/fmt'
+
+interface BadgeProgress {
+  current: number
+  target: number
+  ratio: number
+  display?: string
+}
+
+function computeAchievementProgress(
+  state: GameEngine['state'],
+  source: AchievementSource,
+  isEarned: boolean,
+): BadgeProgress {
+  if (isEarned) return { current: 1, target: 1, ratio: 1 }
+  if (source.kind === 'task') {
+    const done = state.importantTasks[source.taskId]?.done === true
+    return { current: done ? 1 : 0, target: 1, ratio: done ? 1 : 0 }
+  }
+  if (source.kind === 'chain') {
+    const cur = state.importantTasks[`chain-${source.chainId}`]?.delivered ?? 0
+    const tgt = Math.max(1, source.level)
+    const ratio = Math.min(1, Math.max(0, cur / tgt))
+    return { current: cur, target: tgt, ratio, display: `${cur} / ${tgt}` }
+  }
+  if (source.kind === 'milestone') {
+    const cur = firstStatOf(state, source.stat as FirstStatKey)
+    const tgt = Math.max(1, source.target)
+    const ratio = Math.min(1, Math.max(0, cur / tgt))
+    return {
+      current: cur,
+      target: tgt,
+      ratio,
+      display: `${cur.toLocaleString('zh-CN')} / ${tgt.toLocaleString('zh-CN')}`,
+    }
+  }
+  if (source.kind === 'ironman' || source.kind === 'ironmanClosed') {
+    const reached = achievementReached(state, source)
+    return { current: reached ? 1 : 0, target: 1, ratio: reached ? 1 : 0 }
+  }
+  return { current: 0, target: 1, ratio: 0 }
+}
 
 /** 一枚徽章小卡（固定尺寸，防悬停内容变化引起跳动） */
 function BadgeCard({
   def,
   earnedAt,
   timeLine,
+  progress,
 }: {
   def: AchievementDef
   earnedAt: number | null
   /** **完成时间那一行**（船长：「还要记录成就完成时间」）——由调用方拼好（走 `t()`，不在这里拼串） */
   timeLine: string
+  progress: BadgeProgress
 }) {
   const got = earnedAt !== null
   /**
-   * **悬停富卡：三行**（船长 2026-09-20「不要挤一块」）——
-   * 名字行（金 · 加粗 · 独占一行）/ 说明行 / 时间行（暗色 · 上方虚线分隔）。
-   * 三行都是块级 ⇒ 不会再挤成一段。
+   * **悬停富卡：三行/四行**（船长 2026-09-20「不要挤一块」）——
+   * 名字行（金 · 加粗 · 独占一行）/ 说明行 / 进度行（未达成时清晰指示）/ 时间行（暗色 · 上方虚线分隔）。
+   * 全部是块级 ⇒ 不会再挤成一段。
    */
   const tip = (
     <>
       <span className="app-ship-hover-title">{def.name}</span>
       <div className="app-ach-tip-note">{def.note}</div>
+      {!got && progress.display ? (
+        <div className="app-ach-tip-prog">
+          <span className="app-dim">{tr('ui.hud.044')}：</span>
+          {progress.display}
+        </div>
+      ) : null}
       <div className="app-ach-tip-time">{timeLine}</div>
     </>
   )
@@ -62,6 +111,11 @@ function BadgeCard({
       </span>
       <span className="app-ach-name">{def.name}</span>
       {got ? <span className="app-ach-check">✓</span> : null}
+      {!got && progress.ratio > 0 ? (
+        <div className="app-ach-prog-track">
+          <div className="app-ach-prog-fill" style={{ width: `${Math.round(progress.ratio * 100)}%` }} />
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -114,6 +168,7 @@ export function Achievements({ engine }: { engine: GameEngine }) {
               def={r.def}
               earnedAt={r.earnedAt}
               timeLine={badgeTimeLine(r.earnedAt, r.legacy)}
+              progress={computeAchievementProgress(state, r.def.source, r.earnedAt !== null)}
             />
           ))}
         </div>

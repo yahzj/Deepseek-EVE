@@ -269,6 +269,12 @@ export function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; o
                 <div className="app-station-mats">
                   {tr("ui.Expedition.115")} {name}×{t.need.toLocaleString('zh-CN')}（L{t.level ?? 1}{tr('ui.Expedition.423')}
                 </div>
+                <div className="app-task-progress-track">
+                  <div
+                    className={`app-task-progress-bar${canFinish ? ' is-ready' : ''}`}
+                    style={{ width: `${t.need > 0 ? Math.min(100, Math.round((Math.min(have, t.need) / t.need) * 100)) : 0}%` }}
+                  />
+                </div>
                 {/* 奖励独立成行 + 金色（船长 2026-09-18：「所有任务卡片都有的问题，奖励不明显」） */}
                 <div className="app-task-reward">
                   <span className="app-dim">{tr("ui.Expedition.004")} </span>
@@ -297,7 +303,7 @@ export function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; o
                     {tr("ui.Expedition.052")} {have.toLocaleString('zh-CN')} {tr("ui.Expedition.102")}{short > 0 ? tr("ui.Expedition.332", { p1: short.toLocaleString('zh-CN') }) : ''}
                   </span>
                   <button
-                    className="app-btn is-small is-primary"
+                    className={`app-btn is-small is-primary${canFinish ? ' is-claim-ready' : ''}`}
                     disabled={!canFinish}
                     title={canFinish ? tr("ui.Expedition.053", { name: name, p2: t.need.toLocaleString('zh-CN'), p3: t.rewardIsk.toLocaleString('zh-CN') }) : lockedTxt}
                     onClick={() => act(t.id)}

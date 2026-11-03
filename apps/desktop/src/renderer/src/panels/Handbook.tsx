@@ -100,6 +100,42 @@ export type RawData = Record<string, unknown>
  */
 const FACTION_NAME_BASE: Record<string, number> = { A: 326, C: 335, D: 344, E: 353, G: 362, H: 371, R: 381 }
 
+/** 左侧导航（顺序即展示顺序） */
+const NAV: Array<{ key: Tab; label: string }> = [
+  { key: 'guide', get label() { return tr("ui.Handbook.186") } },
+  { key: 'rules', get label() { return tr("ui.Handbook.187") } },
+  { key: 'items', get label() { return tr("ui.Handbook.188") } },
+  { key: 'modules', get label() { return tr("ui.Handbook.254") } },
+  { key: 'ships', get label() { return tr("ui.Handbook.189") } },
+  { key: 'blueprints', get label() { return tr("ui.Handbook.255") } },
+  // 2026-09-26 船长：「敌族图鉴单独列出吧，放在蓝图图鉴下方，叫『势力图鉴』」
+  { key: 'factions', get label() { return tr("ui.codex.001") } },
+  { key: 'skills', get label() { return tr("ui.Handbook.124") } },
+]
+/** 各页搜索框占位词（按当前页给出，玩家一眼知道搜的是哪一页） */
+const SEARCH_PLACEHOLDER: Record<Tab, string> = {
+  get guide() { return tr("ui.Handbook.125") },
+  get rules() { return tr("ui.Handbook.126") },
+  get items() { return tr("ui.Handbook.127") },
+  get modules() { return tr("ui.Handbook.128") },
+  get ships() { return tr("ui.Handbook.129") },
+  get blueprints() { return tr("ui.Handbook.130") },
+  get factions() { return tr("ui.codex.002") },
+  get skills() { return tr("ui.Handbook.131") },
+}
+/** 分组计数量词（与仓库「N 种」同款）——置于 FactionDetailPanel 之前以确保 TDZ 安全 */
+const COUNT_UNIT: Record<Tab, string> = {
+  get guide() { return tr("ui.Handbook.190") },
+  get rules() { return tr("ui.Handbook.190") },
+  get items() { return tr("ui.Handbook.191") },
+  get modules() { return tr("ui.MarketPage.117") },
+  get ships() { return tr("ui.MarketPage.116") },
+  get blueprints() { return tr("ui.Handbook.017") },
+  get factions() { return tr("ui.Handbook.190") }, // 「条」（与说明类同单位：每张卡 = 一个势力）
+  get skills() { return tr("ui.Handbook.256") },
+}
+const VIEW_KEY = 'whale-idle:handbook-view'
+
 /**
  * **势力图鉴的详情容器**（2026-09-26 船长令：「在势力图鉴内新建一个窗口容器，玩家点击某个势力后，
  * 下方窗口内就显示该势力的介绍和敌人种类，专属装备，舰船等」）。
@@ -255,41 +291,7 @@ function collectFoeShips(engine: GameEngine): Map<string, FoeShipDef> {
   return out
 }
 
-/** 左侧导航（顺序即展示顺序） */
-const NAV: Array<{ key: Tab; label: string }> = [
-  { key: 'guide', get label() { return tr("ui.Handbook.186") } },
-  { key: 'rules', get label() { return tr("ui.Handbook.187") } },
-  { key: 'items', get label() { return tr("ui.Handbook.188") } },
-  { key: 'modules', get label() { return tr("ui.Handbook.254") } },
-  { key: 'ships', get label() { return tr("ui.Handbook.189") } },
-  { key: 'blueprints', get label() { return tr("ui.Handbook.255") } },
-  // 2026-09-26 船长：「敌族图鉴单独列出吧，放在蓝图图鉴下方，叫『势力图鉴』」
-  { key: 'factions', get label() { return tr("ui.codex.001") } },
-  { key: 'skills', get label() { return tr("ui.Handbook.124") } },
-]
-/** 各页搜索框占位词（按当前页给出，玩家一眼知道搜的是哪一页） */
-const SEARCH_PLACEHOLDER: Record<Tab, string> = {
-  get guide() { return tr("ui.Handbook.125") },
-  get rules() { return tr("ui.Handbook.126") },
-  get items() { return tr("ui.Handbook.127") },
-  get modules() { return tr("ui.Handbook.128") },
-  get ships() { return tr("ui.Handbook.129") },
-  get blueprints() { return tr("ui.Handbook.130") },
-  get factions() { return tr("ui.codex.002") },
-  get skills() { return tr("ui.Handbook.131") },
-}
-/** 分组计数量词（与仓库「N 种」同款） */
-const COUNT_UNIT: Record<Tab, string> = {
-  get guide() { return tr("ui.Handbook.190") },
-  get rules() { return tr("ui.Handbook.190") },
-  get items() { return tr("ui.Handbook.191") },
-  get modules() { return tr("ui.MarketPage.117") },
-  get ships() { return tr("ui.MarketPage.116") },
-  get blueprints() { return tr("ui.Handbook.017") },
-  get factions() { return tr("ui.Handbook.190") }, // 「条」（与说明类同单位：每张卡 = 一个势力）
-  get skills() { return tr("ui.Handbook.256") },
-}
-const VIEW_KEY = 'whale-idle:handbook-view'
+
 
 /** 蓝图门类（手册「蓝图图鉴」主筛选）：判据与分组键同源（有 `shipId` = 舰船蓝图、
  *  有 `itemId` = 消耗品蓝图、其余 = 装备蓝图）。2026-09-20 船长裁定「零件蓝图归到该组」：
@@ -1734,10 +1736,15 @@ export function Handbook({
                    * 现在补一枚**一次归零**的按钮：关键词 + 一级分类 + 二级分类（三处一起清；
                    * 「切页归零、关键词跨页保留」那套口径不变，本按钮只在"清"的方向上动）。
                    */
-                  <div className="app-dim app-inv-empty" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8 }}>
-                    <span>{q !== '' ? tr("ui.Handbook.253", { p1: query.trim() }) : tr("ui.Handbook.185")}</span>
+                  <div className="app-codex-empty-guide">
+                    <span className="app-codex-empty-icon">
+                      <Glyph name="signal-lost" size={36} color="rgb(var(--wui-accent))" />
+                    </span>
+                    <span className="app-codex-empty-title">
+                      {q !== '' ? tr("ui.Handbook.253", { p1: query.trim() }) : tr("ui.Handbook.185")}
+                    </span>
                     <button
-                      className="app-btn is-small"
+                      className="app-btn is-small is-primary app-codex-empty-btn is-claim-ready"
                       onClick={() => {
                         setQuery('')
                         setMainKey(SUB_ALL)

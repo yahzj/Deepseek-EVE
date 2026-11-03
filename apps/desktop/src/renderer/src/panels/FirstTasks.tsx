@@ -131,6 +131,12 @@ export function FirstTasks({
          */}
         <span className="app-dim">{ordered.length > 1 ? tr('ui.FirstTasks.036') : tr('ui.FirstTasks.035')}</span>
       </div>
+      <div className="app-task-progress-track" style={{ marginBottom: 'var(--wui-sp-6)' }}>
+        <div
+          className="app-task-progress-bar is-gold"
+          style={{ width: `${taskTotal > 0 ? Math.min(100, Math.round((doneN / taskTotal) * 100)) : 0}%` }}
+        />
+      </div>
       {ordered.map(({ def }) => {
         const jumps = FIRST_JUMPS[def.id] ?? []
         /**
@@ -162,6 +168,7 @@ export function FirstTasks({
             <div className="app-station-head">
               <span className="app-station-name">
                 {'◆'} {firstTaskText(def, loc, 'title')}
+                {claimable ? <em className="app-chip" style={{ marginLeft: 'var(--wui-sp-6)', color: 'rgb(var(--wui-gold))', borderColor: 'rgb(var(--wui-gold) / 0.5)' }}>{tr('ui.FirstTasks.037')}</em> : null}
               </span>
               <span className="app-station-actions">
                 {/* 右上角：跳转按钮（船长 2026-09-18：「所有'第一次'任务都加一个跳转界面的按钮」）
@@ -186,7 +193,7 @@ export function FirstTasks({
                   </button>
                 )) : null}
                 <button
-                  className="app-btn is-primary is-small"
+                  className={`app-btn is-primary is-small${claimable ? ' is-claim-ready' : ''}`}
                   title={claimable ? tr('ui.FirstTasks.037') : tr('ui.FirstTasks.038')}
                   disabled={!claimable}
                   onClick={() => {

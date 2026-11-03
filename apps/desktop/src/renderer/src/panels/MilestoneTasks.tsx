@@ -63,6 +63,12 @@ export function MilestoneTasks({ engine, onToast }: { engine: GameEngine; onToas
         {tr('ui.MilestoneTasks.001')} {open.length}/{rows.length} {tr('ui.MilestoneTasks.002')}
         <span className="app-dim">{tr('ui.MilestoneTasks.003')}</span>
       </div>
+      <div className="app-task-progress-track" style={{ marginBottom: 'var(--wui-sp-6)' }}>
+        <div
+          className="app-task-progress-bar is-gold"
+          style={{ width: `${rows.length > 0 ? Math.min(100, Math.round((open.length / rows.length) * 100)) : 0}%` }}
+        />
+      </div>
       {open.length === 0 ? (
         <div className="app-dim app-note">{tr('ui.MilestoneTasks.004')}</div>
       ) : (
@@ -85,6 +91,12 @@ export function MilestoneTasks({ engine, onToast }: { engine: GameEngine; onToas
                 {tr('ui.FirstTasks.016')} {r.count.toLocaleString('zh-CN')}/{goal.toLocaleString('zh-CN')} {unit}
                 {r.next === null ? tr('ui.FirstTasks.017') : ''}
               </div>
+              <div className="app-task-progress-track">
+                <div
+                  className={`app-task-progress-bar${claimableNow ? ' is-ready' : ''}`}
+                  style={{ width: `${goal > 0 ? Math.min(100, Math.round((Math.min(r.count, goal) / goal) * 100)) : 0}%` }}
+                />
+              </div>
               <div className="app-task-reward">
                 <span className="app-dim">{tr('ui.FirstTasks.018')} </span>
                 {r.nextRewardIsk > 0
@@ -97,7 +109,7 @@ export function MilestoneTasks({ engine, onToast }: { engine: GameEngine; onToas
                 </span>
                 {claimableNow ? (
                   <button
-                    className="app-btn is-small is-primary"
+                    className="app-btn is-small is-primary is-claim-ready"
                     title={tr('ui.FirstTasks.032', { p1: r.pendingIsk.toLocaleString('zh-CN') })}
                     onClick={() => {
                       const isk = engine.claimChainRewardAt(r.chainId)

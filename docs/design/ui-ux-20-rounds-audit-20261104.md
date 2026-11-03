@@ -28,7 +28,7 @@
 | **第 15 轮** | 全局 · 战斗视界与战场动态 HUD | 护盾/装甲/结构三色血条、动能/爆破/能量伤害飘字层级、战斗日志回溯 | 已完成 ✓ |
 | **第 16 轮** | 全局 · 虫洞与空间信号矩阵解密 | 矩阵探测网格、波形共振图对齐、信标解锁动效、探索结算弹窗 | 已完成 ✓ |
 | **第 17 轮** | 全局 · 物品背包与仓储物流交互 | 物品槽位悬停浮层、稀有度边框、堆叠数量角标、分类筛选 Tab | 已完成 ✓ |
-| **第 18 轮** | 全局 · 任务中心与成就图鉴手册 | 任务追踪进度条、奖励领取正反馈微动效、成就点亮、手册检索 | 待开始 |
+| **第 18 轮** | 全局 · 任务中心与成就图鉴手册 | 任务追踪进度条、奖励领取正反馈微动效、成就点亮、手册检索 | 已完成 ✓ |
 | **第 19 轮** | 全局 · 通用弹窗、设置面板与 Tooltip | 统一 Tooltip 延迟与防闪烁、全局模态居中、ESC 退出、设置选项 | 待开始 |
 | **第 20 轮** | 全局 · 全端分辨率响应式与全主题终审闭环 | 1080P/2K/4K/窄窗适配、全主题色板契约回归、整库构建回归、统一 Push | 待开始 |
 
@@ -332,3 +332,21 @@
   5. 悬停情报浮层：卡片详尽呈现名称、分类、势力（`crestFamOf`）、单件体积、单价估值与总价，说明文案两端对齐，零 Emoji，全色板契约达标。
 - **验证结果**：
   - `typecheck`、`ui:theme-check`、`ui:rot-check` 全部 100% 绿灯通过。
+
+
+## 第 18 轮：全局 · 任务中心与成就图鉴手册（已闭环）
+- **修改文件**：
+  - `apps/desktop/src/renderer/src/features/achievements/Achievements.tsx`
+  - `apps/desktop/src/renderer/src/features/transport/SideTasksArea.tsx`
+  - `apps/desktop/src/renderer/src/panels/FirstTasks.tsx`
+  - `apps/desktop/src/renderer/src/panels/Handbook.tsx`
+  - `apps/desktop/src/renderer/src/panels/ImportantTasks.tsx`
+  - `apps/desktop/src/renderer/src/panels/MilestoneTasks.tsx`
+  - `apps/desktop/src/renderer/src/styles.css`
+- **问题与重构**：
+  1. 任务中心进度条系统：主线、新手与里程碑任务卡片全量接入平滑微进度条（`.app-task-progress-bar`），文本两端对齐与等宽数字对齐；
+  2. 奖励领取正反馈微动效：就绪时触发金色呼吸流光（`app-btn-gold-pulse`），点击领奖平滑过渡反馈；
+  3. 成就系统视觉升级：已达成成就高光点亮态（科技金辉光 `rgb(var(--wui-gold))` 体系与投影视效），未达成呈现优雅深色哑光与微进度条；
+  4. 图鉴手册空状态引导组件：无搜索结果时展示失步线稿与一键重置引导；前置提升静态常量彻底消除 1 处闭包 TDZ 隐患，零 Emoji，全色板契约达标。
+- **验证结果**：
+  - `typecheck`、`ui:theme-check`、`ui:rot-check`、36 项成就单元测试全部 100% 绿灯通过。

@@ -57,6 +57,12 @@ export function ImportantTasks({ engine }: { engine: GameEngine }) {
               {tr("ui.ImportantTasks.005")} {exploredN}/{galaxyTotal} {tr("ui.FirstTasks.004")}{allExplored ? tr('ui.ImportantTasks.008') : ''}）
             </span>
           </div>
+          <div className="app-task-progress-track">
+            <div
+              className={`app-task-progress-bar${allExplored ? ' is-ready' : ''}`}
+              style={{ width: `${galaxyTotal > 0 ? Math.min(100, Math.round((exploredN / galaxyTotal) * 100)) : 0}%` }}
+            />
+          </div>
           <div className="app-imp-card-state">
             {allExplored ? tr("ui.ImportantTasks.006") : tr("ui.ImportantTasks.007")}
           </div>
