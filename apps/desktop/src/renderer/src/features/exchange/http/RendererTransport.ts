@@ -8,6 +8,10 @@
  *     原样回调；指数退避重连（1s→30s）；页面隐藏暂停、恢复可见自动重连。
  * 这样 CSP / 令牌落点将来若改走桌面主进程 IPC，只替换本文件即可，客户端与页面不动。
  *
+ * 离线缓存（2026-11-04）：GET 成功响应写入 `MarketCache`（localStorage，7 天/3MB）。只有
+ * **网络层失败**（fetch throw / timeout）才回退缓存并标记离线；4xx/5xx 一律不回退不缓存。
+ * WS 最新帧按 type 留存（白名单帧落盘），断线重连成功后按最近 GET 清单补拉一轮。
+ *
  * 令牌纪律：只从 `tokenProvider` 现取，**不写入任何日志、错误消息或 URL 以外的地方**；
  * 本文件不调用 `console.*`。WS 的 token 只能进 query（浏览器 WebSocket 不支持自定义头），
  * 这是与 Go 服务端约定的唯一通道（`GET /api/exchange/stream` 读 `token`）。
@@ -21,6 +25,76 @@ import {
   type Transport,
   type TransportRequest,
 } from './transport'
+import { marketCache, type MarketCache } from './MarketCache'
+
+/* ═══════════════ 离线状态与重连事件（模块级） ═══════════════ */
+
+/**
+ * 为什么是模块级而不是实例级：`factory` 只在页面打开时建一次 transport，但页面内可能有多个
+ * 读取方（将来接「离线数据」徽标），它们拿不到实例。模块级状态让 `isExchangeOffline()` 在
+ * 任何地方都能读，且多个 transport（改服务器地址后重建）共享同一份链路认知。
+ */
+let exchangeOffline = false
+const offlineListeners = new Set<(offline: boolean) => void>()
+const reconnectListeners = new Set<() => void>()
+
+/** 只读：当前是否在用本地缓存顶替实时数据（网络层不可达）。 */
+export function isExchangeOffline(): boolean {
+  return exchangeOffline
+}
+
+/** 订阅离线状态变化；返回退订函数。供将来 UI 显示「离线数据」徽标。 */
+export function onExchangeOfflineChange(cb: (offline: boolean) => void): Unsubscribe {
+  offlineListeners.add(cb)
+  return () => {
+    offlineListeners.delete(cb)
+  }
+}
+
+/** 订阅「WS 断线重连成功」；传输层会同时按缓存清单补拉一轮，订阅方可自行再刷首屏。 */
+export function onExchangeReconnect(cb: () => void): Unsubscribe {
+  reconnectListeners.add(cb)
+  return () => {
+    reconnectListeners.delete(cb)
+  }
+}
+
+function setExchangeOffline(next: boolean): void {
+  if (exchangeOffline === next) return
+  exchangeOffline = next
+  for (const cb of [...offlineListeners]) {
+    try {
+      cb(next)
+    } catch {
+      // 订阅方异常不得影响请求主流程
+    }
+  }
+}
+
+function notifyExchangeReconnect(): void {
+  for (const cb of [...reconnectListeners]) {
+    try {
+      cb()
+    } catch {
+      // 同上
+    }
+  }
+}
+
+/** WS 帧在缓存里的伪键前缀：与真实 GET path 隔开，补拉时不会被当成 RPC 重放。 */
+const FRAME_CACHE_PREFIX = 'frame:'
+
+/**
+ * 哪些帧值得落盘：回合末一次性广播的行情/盘口/账户/委托帧体积小、恢复价值高；
+ * trades/event 帧只留在内存（`getLastFrame`），避免每回合把大数组写进 3MB 限额。
+ */
+const PERSISTED_FRAME_TYPES = new Set(['round', 'stocks', 'book', 'account', 'orders', 'agents'])
+
+/** 重连补拉的路径上限：宁可少拉，也不要在弱网恢复瞬间打出一波几十个请求。 */
+const RESYNC_MAX_PATHS = 64
+
+/** 重连后稍等再补拉，给 WS 首帧/服务端限流一点余量。 */
+const RESYNC_DELAY_MS = 150
 
 /** 页面可见性来源：默认读 `document`；探针/测试可注入假实现。 */
 export interface VisibilitySource {
@@ -44,6 +118,8 @@ export interface RendererTransportOptions {
   reconnectBaseMs?: number
   /** 指数退避上限（毫秒），默认 30000 */
   reconnectMaxMs?: number
+  /** 注入点（探针/测试）：默认用本模块共享的 localStorage 缓存 `marketCache` */
+  cache?: MarketCache
 }
 
 /** 单次 REST 请求超时：回合制下行情接口不该慢于这个值，卡住就报可重试错误 */
@@ -58,6 +134,8 @@ interface StreamHandle {
   attempt: number
   stopped: boolean
   hidden: boolean
+  /** 是否已经成功连上过一次；只有「连过又断」的重连才补拉（首连由 client 自己 bootstrap） */
+  everConnected: boolean
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -108,6 +186,13 @@ export class RendererTransport implements Transport {
   private readonly reconnectBaseMs: number
   private readonly reconnectMaxMs: number
   private readonly streams = new Set<StreamHandle>()
+  private readonly cache: MarketCache
+  /** 本实例最近成功过的 GET path（旧→新），重连补拉的清单来源之一 */
+  private readonly recentGetPaths = new Map<string, number>()
+  /** WS 最新帧（内存态，按 type 覆盖）；`getLastFrame` 与将来的快照恢复用 */
+  private readonly lastFrames = new Map<string, unknown>()
+  private resyncTimer: ReturnType<typeof setTimeout> | null = null
+  private resyncing = false
 
   constructor(options: RendererTransportOptions) {
     this.serverUrl = normalizeServerUrl(options.serverUrl)
@@ -125,6 +210,7 @@ export class RendererTransport implements Transport {
     this.visibility = options.visibility ?? defaultVisibility()
     this.reconnectBaseMs = Math.max(100, options.reconnectBaseMs ?? 1_000)
     this.reconnectMaxMs = Math.max(this.reconnectBaseMs, options.reconnectMaxMs ?? 30_000)
+    this.cache = options.cache ?? marketCache
   }
 
   /* ═══════════════ REST ═══════════════ */
@@ -133,8 +219,14 @@ export class RendererTransport implements Transport {
     // 先取令牌：未登录不该产生任何网络请求（也避免把匿名请求打到生产服务器）。
     const token = this.requireToken()
     const url = this.httpUrlOf(req.path)
+    /** 只有 GET 响应进缓存；下单/划转等写请求永远不缓存、也绝不回退。 */
+    const cacheable = req.method === 'GET'
     const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+    let timedOut = false
+    const timer = setTimeout(() => {
+      timedOut = true
+      controller.abort()
+    }, REQUEST_TIMEOUT_MS)
     const detach = linkAbort(req.signal, controller)
     try {
       const headers: Record<string, string> = {
@@ -153,12 +245,25 @@ export class RendererTransport implements Transport {
           credentials: 'omit',
           redirect: 'error',
         })
-      } catch (err) {
-        if (controller.signal.aborted) {
-          throw new ExchangeError('timeout', '交易所请求超时：请稍后重试')
+      } catch {
+        // 调用方主动取消（切标的/卸载）不该拿缓存冒充结果，仍按原样报错。
+        const callerAborted = req.signal?.aborted === true
+        const failure =
+          timedOut || controller.signal.aborted
+            ? new ExchangeError('timeout', '交易所请求超时：请稍后重试')
+            : new ExchangeError('network_error', '无法连接交易所服务器：请检查网络或服务器地址')
+        // 只有网络层失败才回退（fetch throw / timeout）；4xx/5xx 在下面单独分支，绝不回退。
+        if (cacheable && !callerAborted) {
+          const cached = this.cache.get<T>(req.path)
+          if (cached !== undefined) {
+            setExchangeOffline(true)
+            return cached
+          }
         }
-        throw new ExchangeError('network_error', '无法连接交易所服务器：请检查网络或服务器地址')
+        throw failure
       }
+      // 收到任何响应（含 4xx/5xx）就说明链路通了：离线标记可以撤掉。
+      setExchangeOffline(false)
       const text = await response.text().catch(() => '')
       let body: unknown
       if (text.trim() !== '') {
@@ -180,6 +285,10 @@ export class RendererTransport implements Transport {
         // 401 统一走未登录错误：页面/调用方能据此引导重新登录，而不是当成普通业务错误。
         if (response.status === 401) throw new ExchangeAuthError(message)
         throw new ExchangeError(code, message)
+      }
+      if (cacheable && body !== undefined) {
+        this.cache.put(req.path, body)
+        this.rememberGetPath(req.path)
       }
       return body as T
     } finally {
@@ -204,6 +313,7 @@ export class RendererTransport implements Transport {
       attempt: 0,
       stopped: false,
       hidden: this.visibility.isHidden(),
+      everConnected: false,
     }
     this.streams.add(handle)
     handle.detachVisibility = this.visibility.onChange((hidden) => this.onHidden(handle, hidden))
@@ -214,6 +324,26 @@ export class RendererTransport implements Transport {
   /** 测试/退出用：关闭全部连接与定时器（页面正常只需退订各自的流）。 */
   dispose(): void {
     for (const handle of Array.from(this.streams)) this.disposeStream(handle)
+    if (this.resyncTimer !== null) {
+      clearTimeout(this.resyncTimer)
+      this.resyncTimer = null
+    }
+  }
+
+  /** 只读：当前是否在用本地缓存顶替实时数据（供「离线数据」徽标等读取）。 */
+  isOffline(): boolean {
+    return isExchangeOffline()
+  }
+
+  /** 订阅离线状态变化；返回退订函数。 */
+  onOfflineChange(cb: (offline: boolean) => void): Unsubscribe {
+    return onExchangeOfflineChange(cb)
+  }
+
+  /** 取某类 WS 帧的最新数据（先内存后落盘缓存），供重启/断网后恢复快照。 */
+  getLastFrame(type: string): unknown {
+    if (this.lastFrames.has(type)) return this.lastFrames.get(type)
+    return this.cache.get(`${FRAME_CACHE_PREFIX}${type}`)
   }
 
   private requireToken(): string {
@@ -235,6 +365,66 @@ export class RendererTransport implements Transport {
     return url.toString()
   }
 
+  /* ═══════════════ 本地缓存 / 离线补拉 ═══════════════ */
+
+  private rememberGetPath(path: string): void {
+    this.recentGetPaths.delete(path)
+    this.recentGetPaths.set(path, Date.now())
+    if (this.recentGetPaths.size > RESYNC_MAX_PATHS) {
+      const oldest = this.recentGetPaths.keys().next().value
+      if (oldest !== undefined) this.recentGetPaths.delete(oldest)
+    }
+  }
+
+  /** WS 帧按 type 覆盖留存；白名单内的帧同时落盘，重启后仍能读到最近一次广播。 */
+  private rememberFrame(type: string, data: unknown): void {
+    if (data === undefined) return
+    this.lastFrames.set(type, data)
+    if (PERSISTED_FRAME_TYPES.has(type)) this.cache.put(`${FRAME_CACHE_PREFIX}${type}`, data)
+  }
+
+  /** 重连补拉：断线期间可能已跨过回合结算，用最近读过的 GET 路径把行情/盘口/账户补齐。 */
+  private scheduleResync(): void {
+    if (this.resyncTimer !== null) return
+    this.resyncTimer = setTimeout(() => {
+      this.resyncTimer = null
+      void this.resync()
+    }, RESYNC_DELAY_MS)
+  }
+
+  private async resync(): Promise<void> {
+    if (this.resyncing) return
+    this.resyncing = true
+    try {
+      notifyExchangeReconnect()
+      for (const path of this.resyncPaths()) {
+        // 页面已关/全部退订后不再补拉，避免后台空转。
+        if (this.streams.size === 0) break
+        try {
+          await this.request({ method: 'GET', path })
+        } catch {
+          // 单条失败（含无缓存可回退）不阻塞其余路径；离线状态由 request 统一维护。
+        }
+      }
+    } finally {
+      this.resyncing = false
+    }
+  }
+
+  private resyncPaths(): string[] {
+    const seen = new Set<string>()
+    const paths: string[] = []
+    const push = (path: string): void => {
+      if (path === '' || path.startsWith(FRAME_CACHE_PREFIX) || seen.has(path)) return
+      seen.add(path)
+      paths.push(path)
+    }
+    // 最近读过的路径优先；重启后本实例还没读过时，用落盘缓存里的 GET 路径兜底。
+    for (const path of [...this.recentGetPaths.keys()].reverse()) push(path)
+    for (const path of this.cache.paths()) push(path)
+    return paths.slice(0, RESYNC_MAX_PATHS)
+  }
+
   private connect(handle: StreamHandle): void {
     if (handle.stopped || handle.hidden || handle.socket !== null) return
     const WebSocketImpl = this.webSocketImpl
@@ -247,6 +437,13 @@ export class RendererTransport implements Transport {
       return
     }
     handle.socket = socket
+    socket.onopen = () => {
+      // 链路恢复：撤掉离线标记；「连过又断」的重连补拉一轮（首连由 client 自己 bootstrap）。
+      setExchangeOffline(false)
+      const reconnected = handle.everConnected
+      handle.everConnected = true
+      if (reconnected) this.scheduleResync()
+    }
     socket.onmessage = (event: MessageEvent) => {
       // 收到有效帧才重置退避：只「连上」不足以说明链路健康（服务端可能立刻拒绝）。
       handle.attempt = 0
@@ -258,6 +455,8 @@ export class RendererTransport implements Transport {
         return
       }
       if (!isRecord(parsed) || typeof parsed.type !== 'string') return
+      // 先留存最新帧：断网/重开后 `getLastFrame` 仍能拿到最近一次广播的行情/账户。
+      this.rememberFrame(parsed.type, parsed.data)
       try {
         handle.onMessage(parsed)
       } catch {
