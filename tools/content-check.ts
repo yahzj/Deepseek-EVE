@@ -87,6 +87,7 @@ import {
   MATTER_TECH_NODES,
   FACTION_CODEX,
   FACTION_CODEX_ORDER,
+  buildFactionCards,
   FOE_SHIPS,
   // 2026-09-30 文案审核批：开发侧残留契约要逐条扫公告正文（此前本文件没读过公告表）
   ANNOUNCEMENTS,
@@ -8546,7 +8547,8 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
  * 重复登记（两族都列 ⇒ 归属口径不一致）**一律报红**。覆盖面：
  *   ① `mod-wh-*` 与 `sh-wh-*`（虫洞专属件与专属舰；数据侧**没有族字段**，登记表就是唯一依据）；
  *   ② `exclusive: true` 的无人机（图鉴里的「专属装备」含它们）；
- *   ③ 被登记表引用的**图纸 id** 必须在册（`bp-*` / `sbp-*`），防写错 id 静默变成一行空名。
+ *   ③ 最终展示清单的件型、引用、归属与唯一性；窝点池必须全部进入对应栏位；
+ *   ④ 虫洞图纸及专属产物的生产图纸全部收录。
  */
 function checkFactionExclusive(): void {
   const owner = new Map<string, string>()
@@ -8584,11 +8586,43 @@ function checkFactionExclusive(): void {
   )
   // ③ 重复登记
   check(dup.length === 0, `势力专属登记契约：${dup.join('；')}`)
+  const cards = buildFactionCards(FOE_SHIPS, undefined)
+  const displayed = new Map<string, string>()
+  const moduleIds = new Set(MODULES.map(m => m.id))
+  const itemIds = new Set(ITEMS.map(item => item.id))
+  const shipIds = new Set(SHIPS.map(ship => ship.id))
+  const blueprintIds = new Set([...BLUEPRINTS, ...SHIP_BLUEPRINTS].map(bp => bp.id))
+  for (const card of cards) {
+    for (const [kind, ids] of [['装备', card.modules], ['舰船', card.ships], ['图纸', card.blueprints]] as const) {
+      const valid = kind === '装备' ? (id: string) => moduleIds.has(id) || itemIds.has(id)
+        : kind === '舰船' ? (id: string) => shipIds.has(id) : (id: string) => blueprintIds.has(id)
+      for (const id of ids) {
+        check(valid(id), `势力图鉴展示契约：${card.family}/${kind}/${id} 无对应定义或放错栏位`)
+        check(!displayed.has(id), `势力图鉴展示契约：${id} 在${displayed.get(id)}与${card.family}/${kind}重复展示`)
+        displayed.set(id, `${card.family}/${kind}`)
+      }
+    }
+    for (const id of FOE_LAIR_GEAR[card.family]) {
+      const list = blueprintIds.has(id) ? card.blueprints : card.modules
+      check(list.includes(id), `势力图鉴展示契约：${card.family}的窝点专属${id}未进入对应展示栏`)
+    }
+    for (const bp of BLUEPRINTS) {
+      const output = bp.moduleId ?? bp.itemId
+      if (output && card.modules.includes(output)) check(card.blueprints.includes(bp.id), `势力图鉴展示契约：${card.family}的专属产物${output}缺生产图纸${bp.id}`)
+    }
+    for (const bp of SHIP_BLUEPRINTS) {
+      if (card.ships.includes(bp.shipId)) check(card.blueprints.includes(bp.id), `势力图鉴展示契约：${card.family}的专属舰${bp.shipId}缺图纸${bp.id}`)
+    }
+  }
+  for (const bp of [...BLUEPRINTS, ...SHIP_BLUEPRINTS].filter(bp => /^(?:bp-wh-|sbp-wh-|bp-lair-)/.test(bp.id))) {
+    check(displayed.has(bp.id), `势力图鉴展示契约：专属图纸${bp.id}未展示`)
+  }
   console.log(
     `· 势力专属登记契约：${FACTION_CODEX_ORDER.length} 族 · ` +
-      FACTION_CODEX_ORDER.map((f) => `${f} ${FACTION_CODEX[f]!.modules.length + FACTION_CODEX[f]!.ships.length + FACTION_CODEX[f]!.blueprints.length}`).join(' / ') +
+      cards.map(card => `${card.family} ${card.modules.length + card.ships.length + card.blueprints.length}`).join(' / ') +
       ` 件（mod-wh ${whMods.length} 全覆盖 · sh-wh ${whShips.length} 全覆盖 · exclusive 无人机 ${exDrones.length} 全覆盖 · 无重复）`,
   )
+  console.log(`· 势力图鉴展示契约：${displayed.size}条最终卡片引用可解析，窝点池${Object.values(FOE_LAIR_GEAR).flat().length}条已按件型收录，专属产物图纸齐备`)
 }
 
 checkFactionExclusive()

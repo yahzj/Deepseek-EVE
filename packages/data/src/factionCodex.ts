@@ -11,7 +11,7 @@
  *
  * ⚠ **两张来源不同的清单**（别混）：
  *  - **窝点专属件**（`mod-lair-*` / `drone-exile-bee` / `bp-lair-g-drone`）的族归属在 **core `FOE_LAIR_GEAR`**
- *    有权威表（`Record<FoeFamily, readonly string[]>`）⇒ 本表**引用它**，不另写一份；
+ *    有权威表（`Record<FoeFamily, readonly string[]>`）⇒ `buildFactionCards`按件型合并它，不另抄清单；
  *  - **虫洞专属件与专属舰**（`mod-wh-*` / `sh-wh-*`）在数据侧**没有族字段**（只有 id 前缀与段落注释）
  *    ⇒ 本表就是它们的**族归属登记处**；判据 = id 前缀 ＋ `modules.ts` / `ships.ts` 的段落注释。
  *    护栏 = `content:check` 的「势力专属登记契约」（每个 `mod-wh-*` / `sh-wh-*` 必须**恰好**落在一族里，
@@ -32,7 +32,7 @@ export interface FactionCodexEntry {
   nameId: string
   /** 徽记（`ui/Glyphs.tsx` 的图标名；族徽与敌情悬停同一套 `fam-*`） */
   glyph: string
-  /** **虫洞专属装备**（我方件；`mod-wh-<族>-*`） */
+  /** 显式登记的专属模块/物品；窝点池由buildFactionCards合并。 */
   modules: readonly string[]
   /** **专属舰船**（我方舰；`sh-wh-<族>-*`） */
   ships: readonly string[]
@@ -179,7 +179,7 @@ export interface FactionCard {
 }
 
 /**
- * **按当前档的遭遇记录装配六张卡片**（界面唯一入口）。
+ * 按当前档的遭遇记录装配势力卡片（界面唯一入口）。
  *
  * `foeShipSeen` 的键就是敌舰**舰级 id**（`combat.noteFoeShipsSeen` 写入）⇒ 与 `FOE_SHIPS` 的 id 同域，
  * 直接查表即可；**老档没有该字段 ⇒ 全部未遇**（零迁移，符合"新图鉴从零解锁"的预期）。
@@ -190,6 +190,10 @@ export function buildFactionCards(
 ): FactionCard[] {
   return FACTION_CODEX_ORDER.map((family) => {
     const entry = FACTION_CODEX[family]!
+    const lairGear = FOE_LAIR_GEAR[family]
+    // 窝点池混有模块、无人机和图纸；分栏合并并去重，不能只补族徽反查而漏掉展示。
+    const modules = [...new Set([...entry.modules, ...lairGear.filter(id => !id.startsWith('bp-') && !id.startsWith('sbp-'))])]
+    const blueprints = [...new Set([...entry.blueprints, ...lairGear.filter(id => id.startsWith('bp-') || id.startsWith('sbp-'))])]
     const enemies: FactionEnemy[] = foeShips
       .filter((s) => s.family === family)
       .map((s) => ({ id: s.id, seen: foeShipSeen?.[s.id] === true }))
@@ -202,9 +206,9 @@ export function buildFactionCards(
       seenCount,
       totalCount: enemies.length,
       enemies,
-      modules: entry.modules,
+      modules,
       ships: entry.ships,
-      blueprints: entry.blueprints,
+      blueprints,
     }
   })
 }
