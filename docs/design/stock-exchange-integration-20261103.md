@@ -175,4 +175,6 @@ Node 内部接口（**仅 localhost + 共享密钥**）：
 - **灰度开关**：systemd `EXCHANGE_SHORT_ENABLED=1`、`EXCHANGE_BORROW_POOL=100000`、`EXCHANGE_BORROW_RATE_BP=5`；回滚只需改回 0 并重启。
 - **波动率校准**：价格引擎 σ 从每回合 1.7%~3.8% 降到 0.35%~0.52%（高流动 0.00030/中 0.00025/小盘 0.00020，按 √秒 缩放），波动放大上限 4→1.6；此前价格长期顶在 ±3% 边界，校准后涨跌幅限制回归安全阀。
 - **验证**：`go vet` 0、`go test -race` 63.8s 绿、linux amd64 构建；生产 `/borrow` 三池各 100000、启动日志 shortEnabled；后续观测单回合中位 |Δ| 与黑隐者开空足迹。
+- **上线后修复**：人格持仓未落库（只存 holdings）→ 新增 `exchange_agent_positions` 表与读写、`initAgentsLocked` 恢复、跨重启测试；生产实测 5979101 黑隐者开空 SMHI 92 股，DB `owl/SMHI/short/92 margin=10,002,440`、`borrow_pool SMHI=99908`，02:35 结算扣借券费 9,997（≈5bp）。
+- **校准后波动实测（8 回合）**：SMHI 中位 1.52%/p90 3.0%；UGMC 0.90%/3.75%；OJLS 0.90%/1.49%；ABSI 1.87%/3.75%（事件回合最大 10% 属预期）。较校准前中位 1.46~3.78%、p90 13~19% 明显收敛，仍有订单流/事件顶到限制的情况，属可接受范围。
 
