@@ -1707,10 +1707,10 @@ export class MockExchangeClient implements ExchangeClient {
 
   async withdraw(amountValue: number, nonce: string): Promise<{ nonce: string; amount: number; fee: number; availableAt: number; receiptHash: string }> {
     if (!(amountValue > 0)) throw new ExchangeError('bad_amount', '出金金额必须大于 0')
-    const fee = amountValue * 0.001
-    if (amountValue + fee > this.cash) throw new ExchangeError('insufficient_cash', T.toastNoCash)
-    this.cash -= amountValue + fee
-    return { nonce, amount: amountValue, fee, availableAt: this.ts() + 60_000, receiptHash: `mock-${nonce}` }
+    // 与真实服务器 deductForWithdraw 对齐：出金只校验 cash >= amount，不额外收手续费
+    if (amountValue > this.cash) throw new ExchangeError('insufficient_cash', T.toastNoCash)
+    this.cash -= amountValue
+    return { nonce, amount: amountValue, fee: 0, availableAt: this.ts() + 60_000, receiptHash: `mock-${nonce}` }
   }
 
   async cancelOrder(id: string): Promise<void> {
