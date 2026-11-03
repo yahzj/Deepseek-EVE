@@ -424,7 +424,7 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
                       <Glyph name={item.icon} size={item.key === 'map' ? 44 : 34} color={NAV_TONES[item.icon]} />
         {unreadN > 0 ? <i className="app-nav-badge">{unreadN > 9 ? '9+' : unreadN}</i> : null}
         </span>
-        <span>{t(item.label)}</span>
+        <span className="app-nav-label">{t(item.label)}</span>
         </button>
         )
         }

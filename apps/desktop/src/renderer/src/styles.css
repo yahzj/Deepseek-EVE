@@ -590,35 +590,59 @@ html[data-locale='en'] body {
 }
 
 .app-logo {
-
   font-size: var(--wui-fs-lg);
-
   font-weight: 700;
-
   letter-spacing: 3px;
-
   color: rgb(var(--wui-gold));
-
-  text-shadow: 0 0 12px rgba(232, 180, 90, 0.35);
-
+  text-shadow: 0 0 12px rgb(var(--wui-gold) / 0.35);
 }
 
 .app-pilot {
-
   color: rgb(var(--wui-text-dim));
-
   font-size: var(--wui-fs-s);
-
 }
 
 .app-clock {
-
+  display: inline-flex;
+  align-items: center;
+  gap: var(--wui-sp-6);
+  min-height: 28px;
+  padding: var(--wui-sp-3) var(--wui-sp-10);
+  border: 1px solid rgb(var(--wui-accent) / 0.35);
+  border-radius: var(--wui-sp-12);
+  background: linear-gradient(180deg, rgb(var(--wui-accent) / 0.1), rgb(var(--wui-accent) / 0.03));
   color: rgb(var(--wui-accent));
-
   font-family: var(--wui-mono);
-
   font-size: var(--wui-fs-s);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
 
+.app-clock:hover {
+  border-color: rgb(var(--wui-accent) / 0.75);
+  box-shadow: 0 0 10px rgb(var(--wui-accent) / 0.25);
+  background: linear-gradient(180deg, rgb(var(--wui-accent) / 0.16), rgb(var(--wui-accent) / 0.06));
+}
+
+.app-header-right .app-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--wui-sp-6);
+  min-height: 28px;
+  padding: var(--wui-sp-3) var(--wui-sp-10);
+  border-radius: var(--wui-sp-4);
+  font-size: var(--wui-fs-s);
+  letter-spacing: 0.02em;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.app-header-right .app-btn:hover:not(:disabled) {
+  border-color: rgb(var(--wui-accent) / 0.75);
+  box-shadow: 0 0 8px rgb(var(--wui-accent) / 0.25);
+  transform: translateY(-1px);
 }
 
 /* ---------- 主体三栏 ---------- */
@@ -1075,19 +1099,12 @@ html[data-locale='en'] body {
 /* ---------- 顶部 ISK 余额 ---------- */
 
 .app-isk {
-
   color: rgb(var(--wui-gold));
-
   font-family: var(--wui-mono);
-
   font-size: var(--wui-fs-md);
-
   font-weight: 700;
-
   letter-spacing: 1px;
-
-  text-shadow: 0 0 10px rgba(232, 180, 90, 0.25);
-
+  text-shadow: 0 0 10px rgb(var(--wui-gold) / 0.25);
 }
 
 /**
@@ -1113,12 +1130,14 @@ html[data-locale='en'] body {
   border: 1px solid rgb(var(--wui-x145) / 0.38);
   border-radius: var(--wui-sp-12);
   background: linear-gradient(180deg, rgb(var(--wui-x254) / 0.3), rgb(var(--wui-x155) / 0.5));
+  font-family: var(--wui-mono);
   font-size: var(--wui-fs-base);
-  letter-spacing: -0.3px; /* 船长 2026-09-13：「可以考虑调整字间距宽」⇒ 略收紧，给数字让位 */
-  font-variant-numeric: tabular-nums; /* 等宽数字：位数变化时列宽稳定，不跳动 */
+  letter-spacing: -0.3px;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* 声望容器：青蓝色语汇（与钱包的金色区分开），标签用次级字号 */
@@ -4317,11 +4336,9 @@ html[data-locale='en'] body {
 }
 
 .app-nav-side .app-nav-item.is-featured:hover {
-
   border-color: rgb(var(--wui-accent) / 0.9);
-
-  box-shadow: 0 0 12px rgba(79, 216, 196, 0.22);
-
+  box-shadow: 0 0 16px rgb(var(--wui-accent) / 0.35);
+  transform: translateY(-1px);
 }
 
 .app-nav-side .app-nav-item.is-featured.is-active {
@@ -9466,42 +9483,27 @@ html[data-locale='en'] body {
    ⇒ 同时可见 20+ 行。⚠ 配套改动见 App.tsx：活动栏已搬出 `.app-page-main`、成为其兄弟节点。 */
 
 .app-activitybar {
-
   display: flex;
-
   flex-direction: column;
-
   gap: var(--wui-sp-6);
-
   width: 150px; /* **左侧竖列**：定宽 150px */
-
-  /* ⚠ **2026-09-25 修（船长报「活动栏竖向滚动条并不存在，本地存档已经明确超出了窗口」）**：
-     这条规则里 `flex` 与 `overflow-y` 曾被多次叠加写上（历史遗留），后写的 `flex: 0 0 auto`
-     覆盖了前面的 `flex: 1 1 auto` ⇒ **既不伸也不缩** ⇒ 活动栏按内容长到 **1029px**、
-     从父列（595px）溢出 ⇒ 自身的 `overflow-y: auto` **永不触发**（自身高 = 内容高）⇒ 没滚动条，
-     多出的部分被 `.app-workspace` 的 hidden 直接裁掉。
-     正解：**可收缩**（`flex: 0 1 auto`）+ `max-height: 100%` 把高度约束在左列内 ⇒ 超出即列内滚动。 */
-
   flex: 0 1 auto;
-
   min-height: 0;
-
   max-height: 100%;
-
   box-sizing: border-box;
-
   overflow-y: auto;
-
   margin: 0;
-
   padding: var(--wui-sp-8) var(--wui-sp-6);
-
   background: rgb(var(--wui-x15) / 0.85);
-
   border: 1px solid rgb(var(--wui-border));
-
   border-radius: var(--wui-sp-6);
+  transition: padding 0.2s ease-out, background-color 0.2s ease-out;
+}
 
+.app-activitybar.is-collapsed {
+  padding-top: var(--wui-sp-4);
+  padding-bottom: var(--wui-sp-4);
+  background: rgb(var(--wui-x15) / 0.6);
 }
 
 /* 活动窗口头部：标题 + AI 徽标 + 连击标记
@@ -11733,9 +11735,26 @@ html[data-locale='en'] body {
   .app-nav-item.is-unread .app-nav-icon { animation: none; opacity: .8; }
 }
 .app-nav-badge {
-  position: absolute; top: -5px; right: -7px; min-width: 13px; height: 13px; padding: 0 var(--wui-sp-3);
-  border-radius: var(--wui-sp-7); background: rgb(var(--wui-badge-bg)); color: rgb(var(--wui-badge-ink)); font-size: var(--wui-fs-2xsd); font-weight: 700;
-  line-height: 13px; text-align: center; box-shadow: 0 0 6px rgba(255, 90, 60, .85);
+  position: absolute;
+  top: -4px;
+  right: -7px;
+  z-index: 2;
+  min-width: 14px;
+  height: 14px;
+  box-sizing: border-box;
+  padding: 0 3px;
+  border-radius: 7px;
+  background: rgb(var(--wui-badge-bg));
+  color: rgb(var(--wui-badge-ink));
+  font-family: var(--wui-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--wui-fs-2xsd);
+  font-weight: 700;
+  line-height: 12px;
+  text-align: center;
+  border: 1px solid rgb(var(--wui-bg-deep));
+  box-shadow: 0 0 6px rgb(var(--wui-badge-bg) / 0.85);
+  pointer-events: none;
 }
 /* ═══════════ 侧边栏点击 / 一级页切换反馈（船长 2026-09-14：「点击左边侧边栏的时候，中间主窗口进行切换时
    最好给予玩家一个反馈，哪怕点的是当前窗口」） ═══════════
@@ -11757,7 +11776,7 @@ html[data-locale='en'] body {
   .app-page-content,
   .app-page-content.is-beat,
   .app-nav-item.is-beat .app-nav-icon { animation: none; }
-  .app-page-content.is-beat { box-shadow: inset 0 0 0 1px rgba(79, 216, 196, 0.55); }
+  .app-page-content.is-beat { box-shadow: inset 0 0 0 1px rgb(var(--wui-accent) / 0.55); }
   .app-nav-item.is-beat { border-color: rgb(var(--wui-accent)); color: rgb(var(--wui-accent)); }
 }
 /* 双列：左列消息列表 + 右列通讯器正文；两列各自内部滚动（列表 .app-comms-list、屏幕 .app-comms-screen）。
@@ -13233,31 +13252,30 @@ input.app-wh-template-name { min-height: 36px; padding: var(--wui-sp-6) var(--wu
    ══════════════════════════════════════════════════════════════════════════════ */
 
 .app-nav-side .app-nav-item {
-
   flex-direction: column; /* 图标在上、文字在下 */
-
   align-items: center;
-
-  justify-content: flex-start;
-
+  justify-content: center;
   text-align: center;
-
-  gap: var(--wui-sp-1);
-
-  flex: 0 0 auto;
-
-  width: 78px; /* 定宽：否则作为 flex 子项会被撑满组宽 */
-
-  min-width: 0;
-
+  gap: var(--wui-sp-2);
+  flex: 0 1 auto;
+  width: 78px;
+  min-width: 60px;
+  max-width: 82px;
   padding: var(--wui-sp-4) var(--wui-sp-2) var(--wui-sp-3);
-
   font-size: var(--wui-fs-2xsc);
-
   line-height: 1.25;
-
   white-space: nowrap;
+  position: relative;
+}
 
+.app-nav-side .app-nav-item .app-nav-label {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
 }
 
 /* 舰船插件槽（2026-09-26 船长令：只读区，无卸下、无替换；样式参照上方 .app-fit-ammotier 与 .app-fit-slot-icon） */
@@ -13540,6 +13558,13 @@ body.no-fx .app-bm-monitor * { animation: none; }
 .app-root.is-layout-classic #classic-navigation {
   min-height: 0; overflow: hidden; align-items: stretch; justify-content: flex-start;
   container: classic-nav / size;
+  transition: width 0.2s cubic-bezier(0.16, 1, 0.3, 1), flex 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.app-root.is-layout-classic #classic-navigation .app-nav-label {
+  transition: opacity 150ms ease-out;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .app-root.is-layout-classic .app-classic-nav-scroll {
   display: flex; flex-direction: column; align-items: stretch; gap: inherit;
@@ -13745,14 +13770,46 @@ body.no-fx .app-root.is-layout-classic:not(.is-mobile-layout) .app-log-side { tr
   box-shadow: inset 0 -3px 0 rgb(var(--wui-hud-primary)), 0 0 20px rgb(var(--wui-hud-primary) / 0.35);
   color: rgb(var(--wui-hud-text));
 }
+.app-root.is-layout-modern .app-nav-item.is-active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 12%;
+  right: 12%;
+  height: 2px;
+  background: rgb(var(--wui-hud-primary));
+  box-shadow: 0 0 8px rgb(var(--wui-hud-primary)), 0 0 16px rgb(var(--wui-hud-primary) / 0.6);
+  border-radius: 1px;
+}
+.app-root.is-layout-modern .app-nav-item.is-active .app-nav-icon {
+  filter: drop-shadow(0 0 6px rgb(var(--wui-hud-primary) / 0.65));
+}
+@keyframes app-nav-featured-breathe {
+  0%, 100% {
+    box-shadow: 0 0 20px rgb(var(--wui-hud-primary) / 0.3), inset 0 0 12px rgb(var(--wui-hud-primary) / 0.2);
+    border-color: rgb(var(--wui-hud-primary) / 0.7);
+  }
+  50% {
+    box-shadow: 0 0 32px rgb(var(--wui-hud-primary) / 0.55), inset 0 0 18px rgb(var(--wui-hud-primary) / 0.35);
+    border-color: rgb(var(--wui-hud-primary));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-root.is-layout-modern .app-nav-item.is-featured {
+    animation: none;
+  }
+}
 .app-root.is-layout-modern .app-nav-item.is-featured {
   background: linear-gradient(180deg, rgb(var(--wui-hud-primary-hover) / 0.3), rgb(var(--wui-hud-primary-active) / 0.18));
   border: 1px solid rgb(var(--wui-hud-primary) / 0.7);
   box-shadow: 0 0 24px rgb(var(--wui-hud-primary) / 0.3), inset 0 0 14px rgb(var(--wui-hud-primary) / 0.25);
+  animation: app-nav-featured-breathe 3.6s ease-in-out infinite;
 }
 .app-root.is-layout-modern .app-nav-item.is-featured:hover {
+  animation-play-state: paused;
   background: linear-gradient(180deg, rgb(var(--wui-hud-primary-hover) / 0.42), rgb(var(--wui-hud-primary-active) / 0.3));
-  box-shadow: 0 0 32px rgb(var(--wui-hud-primary) / 0.5), inset 0 0 18px rgb(var(--wui-hud-primary) / 0.35);
+  box-shadow: 0 0 34px rgb(var(--wui-hud-primary) / 0.65), inset 0 0 20px rgb(var(--wui-hud-primary) / 0.4);
+  border-color: rgb(var(--wui-hud-primary));
   transform: translateY(-2px);
 }
 
@@ -14483,11 +14540,33 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
   box-shadow: inset 0 -3px 0 rgb(var(--wui-hud-primary)), 0 0 20px rgb(var(--wui-hud-primary) / 0.38);
   color: rgb(var(--wui-hud-text));
 }
+.app-root.is-layout-modern .app-nav-item.is-active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 12%;
+  right: 12%;
+  height: 2px;
+  background: rgb(var(--wui-hud-primary));
+  box-shadow: 0 0 8px rgb(var(--wui-hud-primary)), 0 0 16px rgb(var(--wui-hud-primary) / 0.6);
+  border-radius: 1px;
+}
+.app-root.is-layout-modern .app-nav-item.is-active .app-nav-icon {
+  filter: drop-shadow(0 0 6px rgb(var(--wui-hud-primary) / 0.65));
+}
 .app-root.is-layout-modern .app-nav-item.is-featured {
   background: linear-gradient(180deg, rgb(var(--wui-hud-primary-hover) / 0.35), rgb(var(--wui-hud-primary-active) / 0.22));
   border: 1px solid rgb(var(--wui-hud-primary) / 0.85);
   clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px)) !important;
   box-shadow: 0 0 24px rgb(var(--wui-hud-primary) / 0.35), inset 0 0 14px rgb(var(--wui-hud-primary) / 0.28);
+  animation: app-nav-featured-breathe 3.6s ease-in-out infinite;
+}
+.app-root.is-layout-modern .app-nav-item.is-featured:hover {
+  animation-play-state: paused;
+  background: linear-gradient(180deg, rgb(var(--wui-hud-primary-hover) / 0.45), rgb(var(--wui-hud-primary-active) / 0.32));
+  box-shadow: 0 0 34px rgb(var(--wui-hud-primary) / 0.65), inset 0 0 20px rgb(var(--wui-hud-primary) / 0.4);
+  border-color: rgb(var(--wui-hud-primary));
+  transform: translateY(-2px);
 }
 
 /* ── 左侧活动运转栏 ── */
