@@ -218,12 +218,17 @@ export function moduleHoverContent(
   shipId?: string,
   /** **本件在同族里的位序**（1 起；`fittedEffectParamsOf` 折权用）——由调用方按装配位序给 */
   ordinal = 1,
+  /** 属性增减对比或特有追加内容 */
+  extra?: ReactNode,
 ): ReactNode {
   return infoCardContent(
     mod.name,
     moduleInfoLines(mod, engine, shipId, ordinal),
     mod.description,
-    hint ? <div className="app-info-note">{hint}</div> : null,
+    <>
+      {hint ? <div className="app-info-note">{hint}</div> : null}
+      {extra}
+    </>,
   )
 }
 

@@ -77,7 +77,7 @@ import { HintIcon } from '../ui/Hint'
 import { ShipSprite } from '../ui/ShipSprite'
 // ⚠ 槽类名（高/中/低槽）走本地化单点 `rackText`（2026-09-26 船长报障：英文界面下槽位名漏中文）——
 // core 的 `RACK_LABELS` / `rackLabel` 是纯中文表，**渲染层不得直读**（见 `ui/labelsText.ts` 头注）
-import { rackText, slotText } from '../ui/labelsText'
+import { crestFamOf, crestLabelOf, rackText, slotText } from '../ui/labelsText'
 import type { PageProps } from './common'
 import { tr, cmdText } from '../i18n/locale'
 import { Crosshair } from '../ui/layoutIcons'
@@ -360,7 +360,7 @@ function CpuStrip({ used, total }: { used: number; total: number }): ReactNode {
     >
       <span className="app-fit-cpustrip-label">{tr("ui.FitPage.020")}</span>
       <span className="app-fit-cpustrip-num">
-        {used} / {total} <span style={{ fontSize: 'var(--wui-fs-xs)', color: 'rgb(var(--wui-dim))', fontWeight: 'normal' }}>(剩 {minus(rem)})</span>
+        {used} / {total} <span className="app-fit-cpustrip-rem">(剩 {minus(rem)})</span>
       </span>
       <span className="app-fit-cpustrip-pct">
         {over ? tr("ui.FitPage.128", { p1: -rem }) : rem === 0 ? tr("ui.FitPage.021") : `${Math.round(usedPct)}%`}
@@ -1024,27 +1024,31 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                 {Array.from({ length: Math.max(total, bays.length) }, (_, i) => {
                   const fittedId = bays[i] ?? null
                   const fittedDef = fittedId ? engine.ctx.modules.get(fittedId) : undefined
+                  const isSelected = pickBay?.rack === rack && pickBay?.index === i
+                  const isLocked = configurationBlock !== null
                   if (!fittedDef) {
                     // 空位：点击槽位 → 浮层选装（船长 2026-09-05：格内不显示位序、无下拉）
                     return (
                       <button
                         key={`${rack}-${i}`}
-                        className="app-fit-slot-icon is-empty"
-                        disabled={configurationBlock !== null}
+                        className={`app-fit-slot-icon is-empty${isSelected ? ' is-selected' : ''}${isLocked ? ' is-locked' : ''}`}
+                        disabled={isLocked}
                         onClick={() => openPick(rack, i)}
-                        title={tr("ui.FitPage.149", { p1: i + 1 })}
+                        title={isLocked ? cmdText(configurationBlock) : tr("ui.FitPage.149", { p1: i + 1 })}
                       >
                         <span className="app-fit-slot-icon-glyph">＋</span>
-                        <span className="app-fit-slot-icon-name">{tr("ui.FitPage.023")}</span>
+                        <span className="app-fit-slot-icon-name">{isLocked ? tr("ui.FitPage.083") : tr("ui.FitPage.023")}</span>
                       </button>
                     )
                   }
                   const tone = toneOf(fittedDef.slot)
+                  const tier = rarityTierOf(`mod-${fittedDef.id}`)
+                  const crest = crestFamOf(fittedDef.id)
                   return (
                     <button
                       key={`${rack}-${i}`}
-                      className="app-fit-slot-icon is-filled"
-                      disabled={configurationBlock !== null}
+                      className={`app-fit-slot-icon is-filled${isSelected ? ' is-selected' : ''}${isLocked ? ' is-locked' : ''} is-r${tier}`}
+                      disabled={isLocked}
                       onClick={() => openPick(rack, i)}
                       /* 2026-09-16 船长：「装配界面，鼠标悬停槽位上的装备时，显示出的装备详细过于简陋，
                          参考仓库界面的物品详细」⇒ 改挂**仓库同款富卡**（`moduleHoverContent` =
@@ -1079,6 +1083,15 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                         ),
                       )}
                     >
+                      {crest != null ? (
+                        <span
+                          className={`app-fit-slot-crest is-fam-${crest.toLowerCase()}`}
+                          aria-label={crestLabelOf(crest)}
+                          title={crestLabelOf(crest)}
+                        >
+                          <Glyph name={`fam-${crest.toLowerCase()}`} size={12} color="currentColor" />
+                        </span>
+                      ) : null}
                       <span className="app-fit-slot-icon-glyph">
                         <Glyph name={fittedDef.slot} size={22} color={tone} />
                       </span>
@@ -1331,19 +1344,51 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
               {pickShown.map((m) => {
                 const segs = pickDiffs?.get(m.id)
                 const sameAsOld = (fitted?.[pickBay.rack]?.[pickBay.index] ?? null) === m.id
+                const tier = rarityTierOf(`mod-${m.id}`)
+                const crest = crestFamOf(m.id)
                 return (
                   <button
                     key={m.id}
-                    className="app-fit-pick-item"
+                    className={`app-fit-pick-item is-r${tier}`}
                     /* 2026-09-16 同批：候选卡也换成**仓库同款富卡**（标题 + 参数表 + 描述），
                        `fitOptionLabel` 里那串"第 N 件衰减/取最长一件"的行动信息降为末行注脚。
+                       装配属性对比全量注入悬停富卡，提升项增益绿、下降项预警红。
                        ⚠ 不再写 `title`（同一元素禁 `title` + 富提示并存）。 */
-                    {...hoverTipProps(moduleHoverContent(m, fitOptionLabel(m), engine, effectiveTarget))}
+                    {...hoverTipProps(
+                      moduleHoverContent(
+                        m,
+                        fitOptionLabel(m),
+                        engine,
+                        effectiveTarget,
+                        1,
+                        segs && segs.length > 0 ? (
+                          <div className="app-fit-tip-diffs">
+                            <div className="app-fit-tip-diffs-title">{tr("ui.FitPage.170")}</div>
+                            <div className="app-fit-tip-diffs-list">
+                              {segs.map((s, idx) => (
+                                <span key={idx} className={`dseg is-${s.c}`}>
+                                  {s.t}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        ) : undefined,
+                      ),
+                    )}
                     onClick={() => pickModule(m)}
                     disabled={sameAsOld || configurationBlock !== null}
                   >
                     {/* 图标与名称同行（船长 2026-09-05：图标不再单独占一行） */}
                     <span className="app-fit-pick-head">
+                      {crest != null ? (
+                        <span
+                          className={`app-fit-slot-crest is-fam-${crest.toLowerCase()}`}
+                          aria-label={crestLabelOf(crest)}
+                          title={crestLabelOf(crest)}
+                        >
+                          <Glyph name={`fam-${crest.toLowerCase()}`} size={12} color="currentColor" />
+                        </span>
+                      ) : null}
                       <span className="app-fit-pick-icon">
                         <Glyph name={m.slot} size={20} color={toneOf(m.slot)} />
                       </span>
@@ -1612,6 +1657,7 @@ function PluginSlotsSection({ engine, target }: { engine: PageProps['engine']; t
       <div className="app-fit-icongrid">
         {Array.from({ length: slots }, (_, i) => {
           const def = installed[i]
+          const isLocked = configurationBlock !== null
           if (!def) {
             /**
              * 空槽：**可点**（2026-09-27 补的装入入口；见本组件头注）。装满或无可装插件时点开是空列表，
@@ -1620,7 +1666,7 @@ function PluginSlotsSection({ engine, target }: { engine: PageProps['engine']; t
             return (
               <span
                 key={`plug-${i}`}
-                className="app-fit-slot-icon is-empty"
+                className={`app-fit-slot-icon is-empty${isLocked ? ' is-locked' : ''}`}
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {
@@ -1638,25 +1684,36 @@ function PluginSlotsSection({ engine, target }: { engine: PageProps['engine']; t
                   setConfirmId(null)
                   setPicking(true)
                 }}
-                aria-disabled={configurationBlock !== null}
-                title={configurationBlock ? cmdText(configurationBlock) : tr('ui.FitPage.178')}
+                aria-disabled={isLocked}
+                title={isLocked ? cmdText(configurationBlock) : tr('ui.FitPage.178')}
               >
                 <span className="app-fit-slot-icon-glyph">＋</span>
-                <span className="app-fit-slot-icon-name">{tr('ui.FitPage.178')}</span>
+                <span className="app-fit-slot-icon-name">{isLocked ? tr("ui.FitPage.083") : tr('ui.FitPage.178')}</span>
               </span>
             )
           }
           const tone = toneOf(def.slot)
+          const tier = rarityTierOf(`mod-${def.id}`)
+          const crest = crestFamOf(def.id)
           return (
             <span
               key={`plug-${i}`}
-              className="app-fit-slot-icon is-filled is-readonly"
+              className={`app-fit-slot-icon is-filled is-readonly is-r${tier}`}
               {...hoverTipProps(
                 /* 插件槽（只读展示）：同批 —— 也给本舰上下文（插件里的维修类效果按同一把尺显示） */
                 moduleHoverContent(def, tr('ui.Expedition.443'), engine, target,
                   installed.slice(0, i + 1).filter(p => p.id === def.id).length),
               )}
             >
+              {crest != null ? (
+                <span
+                  className={`app-fit-slot-crest is-fam-${crest.toLowerCase()}`}
+                  aria-label={crestLabelOf(crest)}
+                  title={crestLabelOf(crest)}
+                >
+                  <Glyph name={`fam-${crest.toLowerCase()}`} size={12} color="currentColor" />
+                </span>
+              ) : null}
               <span className="app-fit-slot-icon-glyph">
                 <Glyph name="plug" size={22} color={tone} />
               </span>
