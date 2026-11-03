@@ -224,8 +224,22 @@
 }
 
 .ex-col-right {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
   overflow-y: auto;
-  padding-right: 2px;
+  overflow-x: hidden;
+  padding-right: 3px;
+}
+
+/* 下单面板与持仓面板禁止被 flex 压缩导致下半身溢出与兄弟面板重叠 */
+.ex-trade {
+  flex: 0 0 auto;
+}
+
+.ex-positions {
+  flex: 0 0 auto;
 }
 
 .ex-col-mid {
@@ -1100,11 +1114,22 @@
   font: inherit;
   text-align: left;
   cursor: pointer;
+  min-width: 0;
+}
+
+.ex-auto-head .ex-panel-title {
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .ex-auto-head .ex-dim {
   margin-left: auto;
   text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  font-size: 11px;
 }
 
 .ex-auto-caret {
@@ -1657,7 +1682,7 @@
   flex-direction: column;
   gap: 6px;
   padding: 8px 10px;
-  background: rgb(var(--wui-bg-panel) / 0.7);
+  background: rgb(var(--wui-bg-panel));
   border: 1px solid rgb(var(--wui-border));
   border-radius: 4px;
   transition: all 0.15s ease;
