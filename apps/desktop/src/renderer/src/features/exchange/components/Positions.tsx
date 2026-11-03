@@ -8,6 +8,7 @@
  * - 保证在任何宽度与高度下零截断、零列错位。
  */
 import { useRef, useState } from 'react'
+import { Close, TrashCan } from '@carbon/icons-react'
 import type { ExchangeClient, ExchangeOrder, ExchangeSnapshot, OrderSource } from '../client'
 import type { ToastFn } from '../../../pages/common'
 import { amount, money, pct, pctAbs, price, shortTime } from '../format'
@@ -157,7 +158,7 @@ export function Positions({
                         <span className={`ex-num ${pnl >= 0 ? 'is-up' : 'is-down'}`}>{pct(pnlPct)}</span>
                       </div>
                       <button type="button" className="ex-mini-btn" onClick={() => sellSpot(h.code, h.availableQty ?? h.qty)}>
-                        {T.posSell}
+                        <Close size={12} /> {T.posSell}
                       </button>
                     </div>
                   </div>
@@ -240,7 +241,7 @@ export function Positions({
                         </span>
                       </div>
                       <button type="button" className="ex-mini-btn" onClick={() => closeLeverage(p.code, p.side)}>
-                        {T.posClose}
+                        <Close size={12} /> {T.posClose}
                       </button>
                     </div>
                   </div>
@@ -294,7 +295,7 @@ export function Positions({
                 </span>
                 <span className="ex-badge">{sourceLabel(o.source)}</span>
                 <button type="button" className="ex-mini-btn" onClick={() => cancelOrder(o.id)}>
-                  {T.orderCancel}
+                  <TrashCan size={12} /> {T.orderCancel}
                 </button>
               </div>
             ))}

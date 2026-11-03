@@ -5,6 +5,7 @@
  * - 每条快讯标「利多/利空/中性 + 标的代码 + 影响百分比」彩色徽标；
  * - 复制一份做无缝循环，悬停暂停；`prefers-reduced-motion` 时退回横向滚动。
  */
+import { Bullhorn } from '@carbon/icons-react'
 import type { NewsItem } from '../client'
 import { clock } from '../format'
 import { T, TF } from '../texts'
@@ -60,7 +61,7 @@ export function NewsTicker({ news }: { news: NewsItem[] }) {
   if (news.length === 0) {
     return (
       <div className="ex-ticker ex-ticker-empty" role="status">
-        <span className="ex-ticker-tag">{T.newFlash}</span>
+        <span className="ex-ticker-tag"><Bullhorn size={13} /> {T.newFlash}</span>
         <span className="ex-ticker-text">{T.noNews}</span>
       </div>
     )
@@ -68,7 +69,7 @@ export function NewsTicker({ news }: { news: NewsItem[] }) {
   const loop = news.slice(0, 8)
   return (
     <div className="ex-ticker" role="status" aria-live="off">
-      <span className="ex-ticker-tag">{T.newFlash}</span>
+      <span className="ex-ticker-tag"><Bullhorn size={13} /> {T.newFlash}</span>
       <div className="ex-ticker-viewport">
         <div className="ex-ticker-track">
           {[0, 1].map((copy) => (

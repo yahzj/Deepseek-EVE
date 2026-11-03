@@ -23,3 +23,21 @@
 2. `apps/desktop/src/renderer/src/features/exchange/components/chart/Chart.tsx`：引入 `visibleCount` 与 `panOffset`，接管 `onWheel`（滚轮时间轴缩放）与鼠标平移；
 3. `apps/desktop/src/renderer/src/features/exchange/components/ProExchange.tsx`：中栏重构为「大屏 K 线」+「多空能量槽与持仓战报」，右栏重构为「双核交易舱（挂单杠杆 / 自动交易 Tabs）」；
 4. `apps/desktop/src/renderer/src/features/exchange/exchange.css`：为新布局、滚轮拖拽手势、多空能量条和活动栏卡片提供赛博科幻样式。
+
+## 二轮独立审核与复核验收（2026-11-03 Double Check）
+- **审查员角色**：独立审查员（Auditor）
+- **核验清单与排查结论**：
+  1. **Emoji 与非常规字符彻底归零核验**：
+     - 使用全量 Unicode 正则探针扫描所有 TSX/TS/CSS 文件，Emoji 命中数为 0，完全达标；
+  2. **IBM Carbon 图标（@carbon/icons-react）全量复核**：
+     - K 线缩放（ZoomIn, ZoomOut, Reset）、挂单与杠杆（Target/Crosshair）、自动交易（Bot, Play, Pause, TrashCan, Add, ChevronDown, ChevronRight）、持仓与委托（ChartCandlestick, Receipt, Close, TrashCan）、模式切换（Portfolio, Analytics）、快讯走马灯（Bullhorn）、交易面板（SendAlt, Checkmark）全部贴合语义；
+     - 现货持仓行“卖出”按钮补齐 `<Close size={12} />`，与杠杆“平仓”保持同类操作的一致性；
+     - `.ex-auto-caret` 补充 `display: inline-flex; align-items: center; justify-content: center;`，确保折叠箭头垂直居中；
+     - 自动量化交易按钮动作文案优化为清晰动词「暂停」/「启用」（`T.strategyPause` / `T.strategyResume`），彻底消除状态名词与动作按钮混淆；
+  3. **交互逻辑、数据边界与世界观文案审查**：
+     - 消除残留的 `cr` 货币符号（`BondCard.tsx`、`ActivityBar.tsx`、`MockExchangeClient.ts`），全量统一为星际通用货币 `ISK`；
+     - 左侧活动栏 `ActivityBar.tsx` 股市监控卡片数据格式强化：
+       - 计算总投资成本/保证金，严格展示净盈亏数值与净收益率百分比（如 `收益 +1,234.56 ISK (+12.34%)`）；
+       - 补齐 `.app-activitybar-exch-btn .app-ai-act-sub.is-up`（`--wui-tone-profit`）与 `.is-down`（`--wui-tone-loss`）红绿主题色板规则，修复原样式脱节无色问题；
+       - 点击卡片正常激活 `onGoPage('exchange')` 直达股市交易大厅；
+     - 现货/多头/空头表单联动与市价全平逻辑严密，无类型或状态竞态。

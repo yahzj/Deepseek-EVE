@@ -9,6 +9,7 @@
  * - ≥10x 二次确认，确认框里再显示一次强平价与最大亏损。
  */
 import { useEffect, useRef, useState } from 'react'
+import { Checkmark, SendAlt } from '@carbon/icons-react'
 import type { ExchangeClient, ExchangeSnapshot, PlaceOrderRequest, Side } from '../client'
 import type { ToastFn } from '../../../pages/common'
 import { amount, money, pctAbs, price as fmtPrice } from '../format'
@@ -102,7 +103,7 @@ export function TradePanel({
       ? null
       : priceText.trim() === '' || !Number.isFinite(priceNum) || priceNum <= 0
         ? T.toastInvalidPrice
-        : Math.abs(priceNum / quote.price - 1) > 0.2
+        : !quote.price || quote.price <= 0 ? null : Math.abs(priceNum / quote.price - 1) > 0.2
           ? T.toastInvalidPrice
           : null
   const qtyError =
@@ -452,7 +453,7 @@ export function TradePanel({
         ) : null}
 
         <button type="button" className="ex-primary" onClick={primaryAction}>
-          {busy ? T.submitting : T.submit}
+          <SendAlt size={16} /> {busy ? T.submitting : T.submit}
         </button>
       </div>
 
@@ -494,7 +495,7 @@ export function TradePanel({
                   submit(req)
                 }}
               >
-                {T.confirmOk}
+                <Checkmark size={14} /> {T.confirmOk}
               </button>
             </div>
           </div>

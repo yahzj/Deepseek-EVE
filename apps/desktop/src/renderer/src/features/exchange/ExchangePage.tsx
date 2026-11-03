@@ -9,6 +9,7 @@
  * - 共享同一个 Client 单例与快照，切换模式零延迟、状态零丢失。
  */
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
+import { Analytics, Portfolio, Reset } from '@carbon/icons-react'
 import type { PageProps } from '../../pages/common'
 import type { MarginCallPayload } from './client'
 import type { ExchangeClientBundle, ExchangeSourceInfo } from './factory'
@@ -179,7 +180,7 @@ function ExchangeBody({
             className={`ex-mode-tab ex-mode-tab-simple${viewMode === 'simple' ? ' is-active' : ''}`}
             onClick={() => switchViewMode('simple')}
           >
-            <span className="ex-mode-tab-title">{T.viewModeSimple}</span>
+            <span className="ex-mode-tab-title"><Portfolio size={14} /> {T.viewModeSimple}</span>
             <span className="ex-mode-tab-sub">现货 · 零爆仓</span>
           </button>
           <button
@@ -189,7 +190,7 @@ function ExchangeBody({
             className={`ex-mode-tab ex-mode-tab-pro${viewMode === 'pro' ? ' is-active' : ''}`}
             onClick={() => switchViewMode('pro')}
           >
-            <span className="ex-mode-tab-title">{T.viewModePro}</span>
+            <span className="ex-mode-tab-title"><Analytics size={14} /> {T.viewModePro}</span>
             <span className="ex-mode-tab-sub">杠杆 · 深度盘口</span>
           </button>
         </div>
@@ -263,7 +264,7 @@ function ExchangeBody({
               title={T.resetMockHint}
               onClick={resetMock}
             >
-              {T.resetMock}
+              <Reset size={12} /> {T.resetMock}
             </button>
           ) : null}
         </div>

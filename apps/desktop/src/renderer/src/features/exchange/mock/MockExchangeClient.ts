@@ -64,7 +64,7 @@ import * as M from './margin'
 const CONTRACT_VERSION = 1
 /** 手续费率（原型统一 5 bp，买/卖/开/平都收） */
 const FEE_RATE = 0.0005
-/** 原型专用虚拟资金：1000 万 cr，不入存档 */
+/** 原型专用虚拟资金：1000 万 ISK，不入存档 */
 const START_CASH = 10_000_000
 /** 债券日化 0.03%（原型观感值，不代表最终经济数值） */
 const BOND_DAILY_RATE = 0.0003

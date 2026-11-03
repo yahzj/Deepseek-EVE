@@ -69,6 +69,9 @@
 }
 
 .ex-ticker-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   flex: 0 0 auto;
   margin-left: 8px;
   padding: 2px 8px;
@@ -790,6 +793,11 @@
 }
 
 .ex-mini-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  vertical-align: middle;
   padding: 3px 9px;
   border: 1px solid rgb(var(--wui-border-bright));
   border-radius: 4px;
@@ -876,6 +884,10 @@
 }
 
 .ex-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   width: 100%;
   margin-top: 2px;
   padding: 9px 12px;
@@ -1133,6 +1145,9 @@
 }
 
 .ex-auto-caret {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   color: rgb(var(--wui-accent));
   font-size: var(--wui-fs-s);
 }
@@ -1690,6 +1705,10 @@
 }
 
 .ex-mode-tab-title {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
   font-size: var(--wui-fs-xs);
   font-weight: 600;
   letter-spacing: 0.5px;
@@ -2557,6 +2576,10 @@
 }
 
 .ex-simple-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   padding: 3px 8px;
   border: 1px solid rgb(var(--wui-border));
   border-radius: 3px;
@@ -2748,6 +2771,9 @@
 }
 
 .ex-pro-mid-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 4px 12px;
   border: 1px solid transparent;
   border-radius: 4px;
@@ -2871,4 +2897,14 @@
   border-color: rgb(var(--wui-cyan));
   box-shadow: 0 0 10px rgb(var(--wui-cyan) / 0.3);
   transform: translateY(-1px);
+}
+
+.app-activitybar-exch-btn .app-ai-act-sub.is-up {
+  color: rgb(var(--wui-tone-gain));
+  font-weight: 600;
+}
+
+.app-activitybar-exch-btn .app-ai-act-sub.is-down {
+  color: rgb(var(--wui-tone-loss));
+  font-weight: 600;
 }

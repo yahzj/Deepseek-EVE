@@ -141,6 +141,8 @@ export const T = {
   strategyTrailingTp: '移动止盈',
   strategyEnabled: '运行中',
   strategyDisabled: '已暂停',
+  strategyPause: '暂停',
+  strategyResume: '启用',
   strategyDelete: '删除',
   strategyCreateTitle: '新建策略',
   strategyAmount: '每次投入',

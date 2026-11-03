@@ -9,6 +9,7 @@
  * - 右侧拓宽为双核战术交易舱：大 Tab 一键切换【挂单&杠杆】与【智能量化策略】，满幅展开。
  */
 import { useState } from 'react'
+import { Bot, ChartCandlestick, Receipt, Target as Crosshair } from '@carbon/icons-react'
 import type { ExchangeClient, ExchangeSnapshot } from '../client'
 import type { ToastFn } from '../../../pages/common'
 import { StockList } from './StockList'
@@ -35,7 +36,17 @@ function MarketSentimentBar({ book }: { book: ExchangeSnapshot['book'] }) {
   const total = sumAsks + sumBids
   const bidRatio = total > 0 ? (sumBids / total) * 100 : 50
   const askRatio = 100 - bidRatio
-  const isBull = bidRatio >= askRatio
+  const diff = bidRatio - askRatio
+  const statusLabel =
+    Math.abs(diff) < 3
+      ? '[力量均衡]'
+      : diff > 15
+        ? '[多方强势]'
+        : diff > 0
+          ? '[多方占优]'
+          : diff < -15
+            ? '[空方抛压]'
+            : '[空方占优]'
 
   return (
     <div className="ex-pro-sentiment" title={`买方挂单 ${sumBids} 股 / 卖方挂单 ${sumAsks} 股`}>
@@ -44,7 +55,7 @@ function MarketSentimentBar({ book }: { book: ExchangeSnapshot['book'] }) {
           多方买盘 {bidRatio.toFixed(1)}%
         </span>
         <span className="ex-pro-sentiment-status ex-dim">
-          {isBull ? '🚀 多方买盘强势' : '⚡ 空方抛压占优'}
+          {statusLabel}
         </span>
         <span className="ex-pro-sentiment-tag is-ask">
           空方卖盘 {askRatio.toFixed(1)}%
@@ -100,7 +111,8 @@ export function ProExchange({
               className={`ex-pro-mid-tab${midTab === 'positions' ? ' is-active' : ''}`}
               onClick={() => setMidTab('positions')}
             >
-              ⚔ 当前多空持仓与委托 {posCount > 0 ? `(${posCount})` : ''}
+              <ChartCandlestick size={16} />
+              <span>当前多空持仓与委托{posCount > 0 ? ` (${posCount})` : ''}</span>
             </button>
             <button
               type="button"
@@ -109,7 +121,8 @@ export function ProExchange({
               className={`ex-pro-mid-tab${midTab === 'records' ? ' is-active' : ''}`}
               onClick={() => setMidTab('records')}
             >
-              📜 成交历史与流水
+              <Receipt size={16} />
+              <span>成交历史与流水</span>
             </button>
           </div>
 
@@ -133,7 +146,8 @@ export function ProExchange({
             className={`ex-pro-right-tab${rightTab === 'trade' ? ' is-active' : ''}`}
             onClick={() => setRightTab('trade')}
           >
-            <span className="ex-pro-right-tab-title">🎯 挂单与杠杆</span>
+            <Crosshair size={16} />
+            <span className="ex-pro-right-tab-title">挂单与杠杆</span>
           </button>
           <button
             type="button"
@@ -142,7 +156,8 @@ export function ProExchange({
             className={`ex-pro-right-tab${rightTab === 'auto' ? ' is-active' : ''}`}
             onClick={() => setRightTab('auto')}
           >
-            <span className="ex-pro-right-tab-title">🤖 自动量化交易</span>
+            <Bot size={16} />
+            <span className="ex-pro-right-tab-title">自动量化交易</span>
             {snap.strategies.length > 0 ? (
               <span className="ex-pro-right-tab-badge">{snap.strategies.length}</span>
             ) : null}

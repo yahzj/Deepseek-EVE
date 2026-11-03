@@ -13,7 +13,7 @@
 
 ## 统计
 
-- 非归档文档 **371** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4339** KB · **49103** 行
+- 非归档文档 **371** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4344** KB · **49155** 行
 - 状态分布：**未标注** 183 · **已确认/已实现** 128 · **进行中** 39 · **待裁定** 20 · **历史留档** 1
 - 孤儿文档（0 引用）**208** 份 · 状态未标注 **183** 份
 - 一、常用文档（按任务查阅）：**11** 份
@@ -55,17 +55,17 @@
 |---|---|---|---|---|---|
 | `docs/design/activitybar-progress-smoothness-20261103.md` | 设计文档：左侧活动栏进度条刷新率与平滑度优化 (2026-11-03) | 未标注 | 2026-11-03 | 4 KB / 63 行 | 0 |
 | `docs/design/deep-space-exchange-dual-mode-20261103.md` | 设计文档：深空证券交易所（DSSE）双模式 UI/UX 重构 (2026-11-03) | 未标注 | 2026-11-03 | 4 KB / 58 行 | 0 |
-| `docs/design/deep-space-exchange-pro-refinement-20261103.md` | 深空证券交易所 · 专业界面重构与活动栏常驻监控设计（2026-11-03） | 已确认/已实现（已获船长授权实施中） | 2026-11-03 | 2 KB / 26 行 | 0 |
+| `docs/design/deep-space-exchange-pro-refinement-20261103.md` | 深空证券交易所 · 专业界面重构与活动栏常驻监控设计（2026-11-03） | 已确认/已实现（已获船长授权实施中） | 2026-11-03 | 4 KB / 44 行 | 0 |
 | `docs/design/main-git-sync-20261103.md` | 主树 Git 同步工作记录（2026-11-03） | 未标注（本地第三次 merge 待完成、待验） | 2026-11-03 | 2 KB / 26 行 | 1 |
 | `docs/design/settings-subpages-20261103.md` | 设置子页面分类（2026-11-03） | 未标注（设置分类及第一轮远端同步已包含在本地） | 2026-11-03 | 4 KB / 43 行 | 1 |
 | `docs/design/stock-exchange-ai-ecosystem-20261103.md` | 证券交易所 · AI 市场生态设计（让市场「活」起来） | 未标注（设计稿） | 2026-11-03 | 9 KB / 175 行 | 1 |
 | `docs/design/stock-exchange-backend-spec-20261103.md` | 证券交易所 · 后端契约级设计（P0 实施基线） | 未标注（待开工确认） | 2026-11-03 | 26 KB / 461 行 | 2 |
-| `docs/design/stock-exchange-economy-pvp-20261103.md` | 证券交易所 · 经济闭环与 PvP/AI 博弈设计 | 未标注（设计稿　｜　日期：2026-11-0） | 2026-11-03 | 11 KB / 162 行 | 0 |
+| `docs/design/stock-exchange-economy-pvp-20261103.md` | 证券交易所 · 经济闭环与 PvP/AI 博弈设计 | 未标注（设计稿　｜　日期：2026-11-0） | 2026-11-03 | 11 KB / 169 行 | 0 |
 | `docs/design/stock-exchange-pacing-emotion-20261103.md` | 证券交易所 · 节奏与情绪设计（Tension & Release） | 未标注（设计稿） | 2026-11-03 | 13 KB / 213 行 | 1 |
 | `docs/design/stock-exchange-playtest-20261103.md` | 证券交易所 · 可玩性算法验证（P0：建造前筛参数） | 未标注（设计并实施中　｜　日期：2026-1） | 2026-11-03 | 6 KB / 105 行 | 2 |
-| `docs/design/stock-exchange-playtest-v2-20261103.md` | 证券交易所 · 可玩性验证 v2：赌桌级动力学验证 | 未标注（设计并实施中　｜　日期：2026-1） | 2026-11-03 | 6 KB / 102 行 | 0 |
+| `docs/design/stock-exchange-playtest-v2-20261103.md` | 证券交易所 · 可玩性验证 v2：赌桌级动力学验证 | 未标注（设计并实施中　｜　日期：2026-1） | 2026-11-03 | 8 KB / 127 行 | 0 |
 | `docs/design/stock-exchange-prototype-20261103.md` | 证券交易所 · 可点击原型（F0）工作文档 | 未标注（实施中） | 2026-11-03 | 14 KB / 192 行 | 0 |
-| `docs/design/stock-exchange-server-20261103.md` | 证券交易所（服务端真股市）设计方案 | 待裁定（待裁决） | 2026-11-03 | 42 KB / 605 行 | 4 |
+| `docs/design/stock-exchange-server-20261103.md` | 证券交易所（服务端真股市）设计方案 | 待裁定（待裁决） | 2026-11-03 | 43 KB / 607 行 | 4 |
 | `docs/design/stock-market-system-20261103.md` | 证券交易所（股市系统）设计方案与技术架构 | 待裁定（设计方案待裁决） | 2026-11-03 | 13 KB / 198 行 | 4 |
 | `docs/design/ui-scifi-hud-refinement-20261103.md` | 科幻未来（Modern HUD）UI/UX 全维规范化修复与体验优化 · 2026-11-03 | 待裁定（已完成 · 待船长验收） | 2026-11-03 | 3 KB / 42 行 | 0 |
 | `docs/design/ui-ux-ergonomics-audit-20261103.md` | 设计文档：UI/UX 工效学与视觉硬伤全面修复 (2026-11-03) | 未标注 | 2026-11-03 | 3 KB / 59 行 | 0 |
@@ -436,9 +436,9 @@
 
 - `docs/design/activitybar-progress-smoothness-20261103.md`（2026-11-03 · 4 KB）—— 设计文档：左侧活动栏进度条刷新率与平滑度优化 (2026-11-03)
 - `docs/design/deep-space-exchange-dual-mode-20261103.md`（2026-11-03 · 4 KB）—— 设计文档：深空证券交易所（DSSE）双模式 UI/UX 重构 (2026-11-03)
-- `docs/design/deep-space-exchange-pro-refinement-20261103.md`（2026-11-03 · 2 KB）—— 深空证券交易所 · 专业界面重构与活动栏常驻监控设计（2026-11-03）
+- `docs/design/deep-space-exchange-pro-refinement-20261103.md`（2026-11-03 · 4 KB）—— 深空证券交易所 · 专业界面重构与活动栏常驻监控设计（2026-11-03）
 - `docs/design/stock-exchange-economy-pvp-20261103.md`（2026-11-03 · 11 KB）—— 证券交易所 · 经济闭环与 PvP/AI 博弈设计
-- `docs/design/stock-exchange-playtest-v2-20261103.md`（2026-11-03 · 6 KB）—— 证券交易所 · 可玩性验证 v2：赌桌级动力学验证
+- `docs/design/stock-exchange-playtest-v2-20261103.md`（2026-11-03 · 8 KB）—— 证券交易所 · 可玩性验证 v2：赌桌级动力学验证
 - `docs/design/stock-exchange-prototype-20261103.md`（2026-11-03 · 14 KB）—— 证券交易所 · 可点击原型（F0）工作文档
 - `docs/design/ui-scifi-hud-refinement-20261103.md`（2026-11-03 · 3 KB）—— 科幻未来（Modern HUD）UI/UX 全维规范化修复与体验优化 · 2026-11-03
 - `docs/design/ui-ux-ergonomics-audit-20261103.md`（2026-11-03 · 3 KB）—— 设计文档：UI/UX 工效学与视觉硬伤全面修复 (2026-11-03)

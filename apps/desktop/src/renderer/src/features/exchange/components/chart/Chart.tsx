@@ -9,6 +9,7 @@
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { MouseEvent as ReactMouseEvent } from 'react'
+import { Reset, ZoomIn, ZoomOut } from '@carbon/icons-react'
 import type { ChartPeriod, ExchangeClient, StockQuote } from '../../client'
 import { CHART_PERIODS, INTRADAY_MAX_POINTS, chartPeriodSpec, sampleSeries } from '../../chartPeriods'
 import { amount, pct, price } from '../../format'
@@ -308,7 +309,7 @@ export function Chart({
               title="放大时间轴（看清单根蜡烛细节，亦可滚轮向上）"
               onClick={() => setVisibleCount((v) => Math.max(15, v - 10))}
             >
-              + 放大
+              <ZoomIn size={14} /> 放大
             </button>
             <span className="ex-chart-zoom-text ex-dim">{bars.length} 根</span>
             <button
@@ -317,7 +318,7 @@ export function Chart({
               title="缩小时间轴（看宏观大趋势，亦可滚轮向下）"
               onClick={() => setVisibleCount((v) => Math.min(180, v + 10))}
             >
-              - 缩小
+              <ZoomOut size={14} /> 缩小
             </button>
             {clampedOffset > 0 ? (
               <button
@@ -326,7 +327,7 @@ export function Chart({
                 title="已处于历史回溯态，点击快速回到最新行情"
                 onClick={() => setPanOffset(0)}
               >
-                最新 ⏩
+                <Reset size={14} /> 最新
               </button>
             ) : null}
           </div>

@@ -5,6 +5,7 @@
  * 提供【一键全部平仓变现】大按钮。
  */
 import { useRef, useState } from 'react'
+import { Close } from '@carbon/icons-react'
 import type { ExchangeClient, ExchangeSnapshot } from '../client'
 import type { ToastFn } from '../../../pages/common'
 import { amount, money, pct, price } from '../format'
@@ -91,7 +92,7 @@ export function SimplePosition({ client, snap, code, onToast }: SimplePositionPr
           onClick={handleCloseAll}
           title="以市价卖出当前标的所有现货与平掉杠杆仓位"
         >
-          {busy ? '清仓中…' : T.closeAllPositions}
+          {busy ? '清仓中…' : <><Close size={13} /> {T.closeAllPositions}</>}
         </button>
       </div>
 
