@@ -56,6 +56,49 @@
       "pages_produced": [
         "roadmap-open-items"
       ]
+    },
+    "uisdc:skills-9": {
+      "content_hash": "d4173f6b6aa008ead65907920ce59e957062c38ed163a8946d48b0704a1643f3",
+      "last_ingested": "2026-11-03T02:25:00.000Z",
+      "pages_produced": [
+        "design-skills-guide"
+      ]
+    },
+    "book:design-of-everyday-things": {
+      "content_hash": "3bd23fff0ff4df369b66152def92a67c2cbb0bd5ca7ef828834d826c10597188",
+      "last_ingested": "2026-11-03T02:35:00.000Z",
+      "pages_produced": [
+        "human-centered-design",
+        "norman-design-of-everyday-things"
+      ]
+    },
+    "book:color-theory-dan-scott": {
+      "content_hash": "fb22c81bcba8d63bd870a496249b9721da723d3ad3dc7e4afcfcffc5e3d03e2c",
+      "last_ingested": "2026-11-03T02:45:00.000Z",
+      "pages_produced": [
+        "color-theory-dan-scott"
+      ]
+    },
+    "book:designing-interfaces-tidwell": {
+      "content_hash": "bb23c6334528c768b60c87549f2f73a6823d91d5330a27405972943f6b6bdd1a",
+      "last_ingested": "2026-11-03T02:45:00.000Z",
+      "pages_produced": [
+        "designing-interfaces-tidwell"
+      ]
+    },
+    "book:designing-ux-forms-enders": {
+      "content_hash": "bf1b1f8f60b63cd52184266b2deffa3b3ce5e4f55d432ac1a0061ebf90c3624f",
+      "last_ingested": "2026-11-03T02:45:00.000Z",
+      "pages_produced": [
+        "designing-ux-forms-enders"
+      ]
+    },
+    "book:universal-principles-of-design": {
+      "content_hash": "ebe0ee10f337070709e546243ccb79060c8123f8dd42545b0ae23bc99890786f",
+      "last_ingested": "2026-11-03T02:45:00.000Z",
+      "pages_produced": [
+        "universal-principles-of-design"
+      ]
     }
   }
 }
