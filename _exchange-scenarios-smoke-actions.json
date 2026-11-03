@@ -1,0 +1,116 @@
+{
+  "actions": [
+    {
+      "id": 1,
+      "notional": 200000,
+      "action": "buy_spot",
+      "code": "SMHI"
+    },
+    {
+      "id": 2,
+      "action": "close",
+      "code": "UGMC"
+    },
+    {
+      "id": 3,
+      "action": "close",
+      "code": "OJLS"
+    },
+    {
+      "id": 4,
+      "leverage": 10,
+      "notional": 100000,
+      "action": "buy_long",
+      "code": "ABSI"
+    },
+    {
+      "id": 5,
+      "action": "sell",
+      "code": "SMHI"
+    },
+    {
+      "id": 6,
+      "leverage": 5,
+      "notional": 80000,
+      "action": "buy_short",
+      "code": "UGMC"
+    },
+    {
+      "id": 7,
+      "action": "hold",
+      "code": "SMHI"
+    },
+    {
+      "id": 8,
+      "notional": 1,
+      "action": "buy_spot",
+      "code": "ABSI"
+    },
+    {
+      "id": 9,
+      "notional": 100000,
+      "action": "sell",
+      "code": "SMHI"
+    },
+    {
+      "id": 10,
+      "action": "close",
+      "code": "UGMC"
+    },
+    {
+      "id": 11,
+      "action": "hold",
+      "code": "SMHI"
+    },
+    {
+      "id": 12,
+      "leverage": 50,
+      "notional": 50000,
+      "action": "buy_long",
+      "code": "ABSI"
+    },
+    {
+      "id": 13,
+      "action": "sell",
+      "code": "SMHI"
+    },
+    {
+      "id": 14,
+      "action": "close",
+      "code": "UGMC"
+    },
+    {
+      "id": 15,
+      "action": "hold",
+      "code": "SMHI"
+    },
+    {
+      "id": 16,
+      "leverage": 20,
+      "notional": 60000,
+      "action": "buy_short",
+      "code": "ABSI"
+    },
+    {
+      "id": 17,
+      "action": "sell",
+      "code": "SMHI"
+    },
+    {
+      "id": 18,
+      "action": "hold",
+      "code": "SMHI"
+    },
+    {
+      "id": 19,
+      "action": "close",
+      "code": "OJLS"
+    },
+    {
+      "id": 20,
+      "notional": 200000,
+      "action": "buy_spot",
+      "code": "ABSI"
+    }
+  ]
+}

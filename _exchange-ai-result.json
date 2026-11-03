@@ -1,0 +1,1200 @@
+{
+  "meta": {
+    "format": "exchange-ai-result/v1",
+    "generatedBy": "tools/_exchange-headless.ts",
+    "note": "每个场景在快照时点执行一个动作，然后手动推进 1440 拍（24 个游戏日）。pnl 是动作后权益到期末权益的差；totalPnl 相对 10,000,000 初始资金。",
+    "actionsFile": "D:\\Documents\\GitHub\\Deepseek-EVE\\_exchange-ai-actions.json",
+    "scenarioFile": "D:\\Documents\\GitHub\\Deepseek-EVE\\_exchange-scenarios.json",
+    "scenarioCount": 20,
+    "forwardTicks": 1440,
+    "startCash": 10000000,
+    "definitions": {
+      "pnl": "equityEnd - equityAfterAction（本次动作持有期盈亏）",
+      "totalPnl": "equityEnd - 10,000,000",
+      "maxDrawdown": "动作后权益曲线的最大峰值回撤（信用点，正数）",
+      "maxDrawdownPct": "最大回撤百分比（正数）",
+      "blownUp": "窗口内至少一个仓位被强平清空（fullyClosed），或期末权益 ≤ 0"
+    },
+    "executedCount": 20,
+    "filledCount": 11,
+    "blownUpCount": 4
+  },
+  "results": [
+    {
+      "id": 1,
+      "focus": "SMHI",
+      "recipe": {
+        "id": 1,
+        "seed": 20365832,
+        "focus": "SMHI",
+        "warmupTicks": 67,
+        "gapTicks": 4,
+        "preAction": {
+          "kind": "spot",
+          "notional": 370000,
+          "leverage": 2
+        }
+      },
+      "tickStart": 71,
+      "tickEnd": 1511,
+      "action": {
+        "id": 1,
+        "action": "hold",
+        "code": "SMHI"
+      },
+      "executed": true,
+      "filled": false,
+      "orderStatus": "hold",
+      "filledQty": 0,
+      "avgFillPrice": null,
+      "closedQty": 0,
+      "error": null,
+      "note": "不操作",
+      "equityBeforeAction": 9997174.27,
+      "equityAfterAction": 9997174.27,
+      "equityEnd": 10570135.79,
+      "pnl": 572961.52,
+      "pnlPct": 5.7312,
+      "totalPnl": 570135.79,
+      "marginCallCount": 0,
+      "liquidated": false,
+      "liquidatedFully": false,
+      "blownUp": false,
+      "maxDrawdown": 211464.68,
+      "maxDrawdownPct": 1.9613,
+      "peakEquity": 10781600.48,
+      "troughEquity": 9983819.82,
+      "positionsStart": [],
+      "positionsEnd": [],
+      "holdingsEnd": [
+        {
+          "code": "SMHI",
+          "qty": 3001,
+          "avgCost": 123.19,
+          "value": 933761.15
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "focus": "UGMC",
+      "recipe": {
+        "id": 2,
+        "seed": 20470561,
+        "focus": "UGMC",
+        "warmupTicks": 110,
+        "gapTicks": 5,
+        "preAction": {
+          "kind": "long",
+          "notional": 200000,
+          "leverage": 5
+        }
+      },
+      "tickStart": 115,
+      "tickEnd": 1555,
+      "action": {
+        "id": 2,
+        "action": "hold",
+        "code": "UGMC"
+      },
+      "executed": true,
+      "filled": false,
+      "orderStatus": "hold",
+      "filledQty": 0,
+      "avgFillPrice": null,
+      "closedQty": 0,
+      "error": null,
+      "note": "不操作",
+      "equityBeforeAction": 9984439.6,
+      "equityAfterAction": 9984439.6,
+      "equityEnd": 10003589.52,
+      "pnl": 19149.91,
+      "pnlPct": 0.1918,
+      "totalPnl": 3589.52,
+      "marginCallCount": 3,
+      "liquidated": true,
+      "liquidatedFully": false,
+      "blownUp": false,
+      "maxDrawdown": 106312.5,
+      "maxDrawdownPct": 1.0625,
+      "peakEquity": 10023757.8,
+      "troughEquity": 9899747.88,
+      "positionsStart": [
+        {
+          "code": "UGMC",
+          "side": "long",
+          "qty": 24293,
+          "avgEntry": 41.06,
+          "leverage": 5,
+          "margin": 199494.12,
+          "unrealizedPnl": -15061.66,
+          "liquidationPrice": 37.33
+        }
+      ],
+      "positionsEnd": [
+        {
+          "code": "UGMC",
+          "side": "long",
+          "qty": 8334,
+          "avgEntry": 41.06,
+          "leverage": 5,
+          "margin": 68438.81,
+          "unrealizedPnl": 68922.18,
+          "liquidationPrice": 37.33
+        }
+      ],
+      "holdingsEnd": []
+    },
+    {
+      "id": 3,
+      "focus": "OJLS",
+      "recipe": {
+        "id": 3,
+        "seed": 20575290,
+        "focus": "OJLS",
+        "warmupTicks": 153,
+        "gapTicks": 6,
+        "preAction": {
+          "kind": "short",
+          "notional": 145000,
+          "leverage": 2
+        }
+      },
+      "tickStart": 159,
+      "tickEnd": 1599,
+      "action": {
+        "id": 3,
+        "action": "close",
+        "code": "OJLS"
+      },
+      "executed": true,
+      "filled": true,
+      "orderStatus": "closed",
+      "filledQty": 4213,
+      "avgFillPrice": null,
+      "closedQty": 4213,
+      "error": null,
+      "note": "市价平空 2x",
+      "equityBeforeAction": 9984182.8,
+      "equityAfterAction": 9983482.15,
+      "equityEnd": 9983482.15,
+      "pnl": 0,
+      "pnlPct": 0,
+      "totalPnl": -16517.85,
+      "marginCallCount": 0,
+      "liquidated": false,
+      "liquidatedFully": false,
+      "blownUp": false,
+      "maxDrawdown": 0,
+      "maxDrawdownPct": 0,
+      "peakEquity": 9983482.15,
+      "troughEquity": 9983482.15,
+      "positionsStart": [
+        {
+          "code": "OJLS",
+          "side": "short",
+          "qty": 4213,
+          "avgEntry": 68.76,
+          "leverage": 2,
+          "margin": 144842.94,
+          "unrealizedPnl": -15672.36,
+          "liquidationPrice": 79.34
+        }
+      ],
+      "positionsEnd": [],
+      "holdingsEnd": []
+    },
+    {
+      "id": 4,
+      "focus": "ABSI",
+      "recipe": {
+        "id": 4,
+        "seed": 20680019,
+        "focus": "ABSI",
+        "warmupTicks": 196,
+        "gapTicks": 3,
+        "preAction": {
+          "kind": "none",
+          "notional": 90000,
+          "leverage": 5
+        }
+      },
+      "tickStart": 199,
+      "tickEnd": 1639,
+      "action": {
+        "id": 4,
+        "action": "buy_spot",
+        "code": "ABSI",
+        "notional": 200000
+      },
+      "executed": true,
+      "filled": true,
+      "orderStatus": "filled",
+      "filledQty": 906,
+      "avgFillPrice": 220.46,
+      "closedQty": 0,
+      "error": null,
+      "note": "市价买入现货",
+      "equityBeforeAction": 10000000,
+      "equityAfterAction": 9999646.45,
+      "equityEnd": 9906582.02,
+      "pnl": -93064.44,
+      "pnlPct": -0.9307,
+      "totalPnl": -93417.98,
+      "marginCallCount": 0,
+      "liquidated": false,
+      "liquidatedFully": false,
+      "blownUp": false,
+      "maxDrawdown": 186606.03,
+      "maxDrawdownPct": 1.8533,
+      "peakEquity": 10068819.74,
+      "troughEquity": 9882213.71,
+      "positionsStart": [],
+      "positionsEnd": [],
+      "holdingsEnd": [
+        {
+          "code": "ABSI",
+          "qty": 906,
+          "avgCost": 220.46,
+          "value": 104860.44
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "focus": "SMHI",
+      "recipe": {
+        "id": 5,
+        "seed": 20784748,
+        "focus": "SMHI",
+        "warmupTicks": 239,
+        "gapTicks": 4,
+        "preAction": {
+          "kind": "spot",
+          "notional": 250000,
+          "leverage": 2
+        }
+      },
+      "tickStart": 243,
+      "tickEnd": 1683,
+      "action": {
+        "id": 5,
+        "action": "buy_spot",
+        "code": "UGMC",
+        "notional": 200000
+      },
+      "executed": true,
+      "filled": true,
+      "orderStatus": "filled",
+      "filledQty": 3132,
+      "avgFillPrice": 63.82,
+      "closedQty": 0,
+      "error": null,
+      "note": "市价买入现货",
+      "equityBeforeAction": 9997497.65,
+      "equityAfterAction": 9996990.55,
+      "equityEnd": 10540078.01,
+      "pnl": 543087.46,
+      "pnlPct": 5.4325,
+      "totalPnl": 540078.01,
+      "marginCallCount": 0,
+      "liquidated": false,
+      "liquidatedFully": false,
+      "blownUp": false,
+      "maxDrawdown": 220722.63,
+      "maxDrawdownPct": 2.0822,
+      "peakEquity": 10603732.23,
+      "troughEquity": 9958674.7,
+      "positionsStart": [],
+      "positionsEnd": [],
+      "holdingsEnd": [
+        {
+          "code": "SMHI",
+          "qty": 2528,
+          "avgCost": 98.84,
+          "value": 746948.16
+        },
+        {
+          "code": "UGMC",
+          "qty": 3132,
+          "avgCost": 63.82,
+          "value": 236559.96
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "focus": "UGMC",
+      "recipe": {
+        "id": 6,
+        "seed": 20889477,
+        "focus": "UGMC",
+        "warmupTicks": 282,
+        "gapTicks": 5,
+        "preAction": {
+          "kind": "long",
+          "notional": 200000,
+          "leverage": 5
+        }
+      },
+      "tickStart": 287,
+      "tickEnd": 1727,
+      "action": {
+        "id": 6,
+        "action": "hold",
+        "code": "UGMC"
+      },
+      "executed": true,
+      "filled": false,
+      "orderStatus": "hold",
+      "filledQty": 0,
+      "avgFillPrice": null,
+      "closedQty": 0,
+      "error": null,
+      "note": "不操作",
+      "equityBeforeAction": 9985317.39,
+      "equityAfterAction": 9985317.39,
+      "equityEnd": 9894134.31,
+      "pnl": -91183.08,
+      "pnlPct": -0.9132,
+      "totalPnl": -105865.69,
+      "marginCallCount": 4,
+      "liquidated": true,
+      "liquidatedFully": true,
+      "blownUp": true,
+      "maxDrawdown": 92891.98,
+      "maxDrawdownPct": 0.9301,
+      "peakEquity": 9987026.29,
+      "troughEquity": 9894134.31,
+      "positionsStart": [
+        {
+          "code": "UGMC",
+          "side": "long",
+          "qty": 17089,
+          "avgEntry": 58.37,
+          "leverage": 5,
+          "margin": 199496.99,
+          "unrealizedPnl": -14183.87,
+          "liquidationPrice": 53.06
+        }
+      ],
+      "positionsEnd": [],
+      "holdingsEnd": []
+    },
+    {
+      "id": 7,
+      "focus": "OJLS",
+      "recipe": {
+        "id": 7,
+        "seed": 20994206,
+        "focus": "OJLS",
+        "warmupTicks": 325,
+        "gapTicks": 6,
+        "preAction": {
+          "kind": "short",
+          "notional": 145000,
+          "leverage": 2
+        }
+      },
+      "tickStart": 331,
+      "tickEnd": 1771,
+      "action": {
+        "id": 7,
+        "action": "hold",
+        "code": "OJLS"
+      },
+      "executed": true,
+      "filled": false,
+      "orderStatus": "hold",
+      "filledQty": 0,
+      "avgFillPrice": null,
+      "closedQty": 0,
+      "error": null,
+      "note": "不操作",
+      "equityBeforeAction": 9988381.06,
+      "equityAfterAction": 9988381.06,
+      "equityEnd": 10130885.62,
+      "pnl": 142504.56,
+      "pnlPct": 1.4267,
+      "totalPnl": 130885.62,
+      "marginCallCount": 0,
+      "liquidated": false,
+      "liquidatedFully": false,
+      "blownUp": false,
+      "maxDrawdown": 62298.72,
+      "maxDrawdownPct": 0.6209,
+      "peakEquity": 10147965.1,
+      "troughEquity": 9962837.08,
+      "positionsStart": [
+        {
+          "code": "OJLS",
+          "side": "short",
+          "qty": 3762,
+          "avgEntry": 77,
+          "leverage": 2,
+          "margin": 144837,
+          "unrealizedPnl": -11474.1,
+          "liquidationPrice": 88.85
+        }
+      ],
+      "positionsEnd": [
+        {
+          "code": "OJLS",
+          "side": "short",
+          "qty": 3762,
+          "avgEntry": 77,
+          "leverage": 2,
+          "margin": 144837,
+          "unrealizedPnl": 131030.46,
+          "liquidationPrice": 88.85
+        }
+      ],
+      "holdingsEnd": []
+    },
+    {
+      "id": 8,
+      "focus": "ABSI",
+      "recipe": {
+        "id": 8,
+        "seed": 21098935,
+        "focus": "ABSI",
+        "warmupTicks": 368,
+        "gapTicks": 3,
+        "preAction": {
+          "kind": "none",
+          "notional": 90000,
+          "leverage": 5
+        }
+      },
+      "tickStart": 371,
+      "tickEnd": 1811,
+      "action": {
+        "id": 8,
+        "action": "buy_spot",
+        "code": "ABSI",
+        "notional": 200000
+      },
+      "executed": true,
+      "filled": true,
+      "orderStatus": "filled",
+      "filledQty": 1074,
+      "avgFillPrice": 186.07,
+      "closedQty": 0,
+      "error": null,
+      "note": "市价买入现货",
+      "equityBeforeAction": 10000000,
+      "equityAfterAction": 9999653.06,
+      "equityEnd": 10031496.96,
+      "pnl": 31843.9,
+      "pnlPct": 0.3185,
+      "totalPnl": 31496.96,
+      "marginCallCount": 0,
+      "liquidated": false,
+      "liquidatedFully": false,
+      "blownUp": false,
+      "maxDrawdown": 96116.59,
+      "maxDrawdownPct": 0.9608,
+      "peakEquity": 10065766.34,
+      "troughEquity": 9907617.67,
+      "positionsStart": [],
+      "positionsEnd": [],
+      "holdingsEnd": [
+        {
+          "code": "ABSI",
+          "qty": 1074,
+          "avgCost": 186.07,
+          "value": 229814.52
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "focus": "SMHI",
+      "recipe": {
+        "id": 9,
+        "seed": 21203664,
+        "focus": "SMHI",
+        "warmupTicks": 411,
+        "gapTicks": 4,
+        "preAction": {
+          "kind": "spot",
+          "notional": 730000,
+          "leverage": 2
+        }
+      },
+      "tickStart": 415,
+      "tickEnd": 1855,
+      "action": {
+        "id": 9,
+        "action": "sell",
+        "code": "SMHI"
+      },
+      "executed": true,
+      "filled": true,
+      "orderStatus": "filled",
+      "filledQty": 6067,
+      "avgFillPrice": 123.4,
+      "closedQty": 0,
+      "error": null,
+      "note": "市价卖出",
+      "equityBeforeAction": 10019899,
+      "equityAfterAction": 10018371.94,
+      "equityEnd": 10018371.94,
+      "pnl": 0,
+      "pnlPct": 0,
+      "totalPnl": 18371.94,
+      "marginCallCount": 0,
+      "liquidated": false,
+      "liquidatedFully": false,
+      "blownUp": false,
+      "maxDrawdown": 0,
+      "maxDrawdownPct": 0,
+      "peakEquity": 10018371.94,
+      "troughEquity": 10018371.94,
+      "positionsStart": [],
+      "positionsEnd": [],
+      "holdingsEnd": []
+    },
+    {
+      "id": 10,
+      "focus": "UGMC",
+      "recipe": {
+        "id": 10,
+        "seed": 21308393,
+        "focus": "UGMC",
+        "warmupTicks": 454,
+        "gapTicks": 5,
+        "preAction": {
+          "kind": "long",
+          "notional": 200000,
+          "leverage": 5
+        }
+      },
+      "tickStart": 459,
+      "tickEnd": 1899,
+      "action": {
+        "id": 10,
+        "action": "hold",
+        "code": "UGMC"
+      },
+      "executed": true,
+      "filled": false,
+      "orderStatus": "hold",
+      "filledQty": 0,
+      "avgFillPrice": null,
+      "closedQty": 0,
+      "error": null,
+      "note": "不操作",
+      "equityBeforeAction": 9993919.15,
+      "equityAfterAction": 9993919.15,
+      "equityEnd": 9903316.71,
+      "pnl": -90602.44,
+      "pnlPct": -0.9066,
+      "totalPnl": -96683.29,
+      "marginCallCount": 4,
+      "liquidated": true,
+      "liquidatedFully": true,
+      "blownUp": true,
+      "maxDrawdown": 244593.17,
+      "maxDrawdownPct": 2.4103,
+      "peakEquity": 10147897.93,
+      "troughEquity": 9903304.76,
+      "positionsStart": [
+        {
+          "code": "UGMC",
+          "side": "long",
+          "qty": 24270,
+          "avgEntry": 41.1,
+          "leverage": 5,
+          "margin": 199499.4,
+          "unrealizedPnl": -5582.1,
+          "liquidationPrice": 37.36
+        }
+      ],
+      "positionsEnd": [],
+      "holdingsEnd": []
+    },
+    {
+      "id": 11,
+      "focus": "OJLS",
+      "recipe": {
+        "id": 11,
+        "seed": 21413122,
+        "focus": "OJLS",
+        "warmupTicks": 497,
+        "gapTicks": 6,
+        "preAction": {
+          "kind": "short",
+          "notional": 145000,
+          "leverage": 2
+        }
+      },
+      "tickStart": 503,
+      "tickEnd": 1943,
+      "action": {
+        "id": 11,
+        "action": "hold",
+        "code": "OJLS"
+      },
+      "executed": true,
+      "filled": false,
+      "orderStatus": "hold",
+      "filledQty": 0,
+      "avgFillPrice": null,
+      "closedQty": 0,
+      "error": null,
+      "note": "不操作",
+      "equityBeforeAction": 9999563.55,
+      "equityAfterAction": 9999563.55,
+      "equityEnd": 10136396.85,
+      "pnl": 136833.3,
+      "pnlPct": 1.3684,
+      "totalPnl": 136396.85,
+      "marginCallCount": 0,
+      "liquidated": false,
+      "liquidatedFully": false,
+      "blownUp": false,
+      "maxDrawdown": 70858.8,
+      "maxDrawdownPct": 0.6998,
+      "peakEquity": 10160672.55,
+      "troughEquity": 9975943.95,
+      "positionsStart": [
+        {
+          "code": "OJLS",
+          "side": "short",
+          "qty": 7290,
+          "avgEntry": 39.74,
+          "leverage": 2,
+          "margin": 144852.3,
+          "unrealizedPnl": -291.6,
+          "liquidationPrice": 45.85
+        }
+      ],
+      "positionsEnd": [
+        {
+          "code": "OJLS",
+          "side": "short",
+          "qty": 7290,
+          "avgEntry": 39.74,
+          "leverage": 2,
+          "margin": 144852.3,
+          "unrealizedPnl": 136541.7,
+          "liquidationPrice": 45.85
+        }
+      ],
+      "holdingsEnd": []
+    },
+    {
+      "id": 12,
+      "focus": "ABSI",
+      "recipe": {
+        "id": 12,
+        "seed": 21517851,
+        "focus": "ABSI",
+        "warmupTicks": 540,
+        "gapTicks": 3,
+        "preAction": {
+          "kind": "none",
+          "notional": 90000,
+          "leverage": 5
+        }
+      },
+      "tickStart": 543,
+      "tickEnd": 1983,
+      "action": {
+        "id": 12,
+        "action": "buy_spot",
+        "code": "SMHI",
+        "notional": 200000
+      },
+      "executed": true,
+      "filled": true,
+      "orderStatus": "filled",
+      "filledQty": 1242,
+      "avgFillPrice": 160.86,
+      "closedQty": 0,
+      "error": null,
+      "note": "市价买入现货",
+      "equityBeforeAction": 10000000,
+      "equityAfterAction": 9999602.03,
+      "equityEnd": 10258190.4,
+      "pnl": 258588.37,
+      "pnlPct": 2.586,
+      "totalPnl": 258190.4,
+      "marginCallCount": 0,
+      "liquidated": false,
+      "liquidatedFully": false,
+      "blownUp": false,
+      "maxDrawdown": 69142.34,
+      "maxDrawdownPct": 0.6903,
+      "peakEquity": 10270465.98,
+      "troughEquity": 9946429.41,
+      "positionsStart": [],
+      "positionsEnd": [],
+      "holdingsEnd": [
+        {
+          "code": "SMHI",
+          "qty": 1242,
+          "avgCost": 160.86,
+          "value": 455963.04
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "focus": "SMHI",
+      "recipe": {
+        "id": 13,
+        "seed": 21622580,
+        "focus": "SMHI",
+        "warmupTicks": 583,
+        "gapTicks": 4,
+        "preAction": {
+          "kind": "spot",
+          "notional": 610000,
+          "leverage": 2
+        }
+      },
+      "tickStart": 587,
+      "tickEnd": 2027,
+      "action": {
+        "id": 13,
+        "action": "hold",
+        "code": "SMHI"
+      },
+      "executed": true,
+      "filled": false,
+      "orderStatus": "hold",
+      "filledQty": 0,
+      "avgFillPrice": null,
+      "closedQty": 0,
+      "error": null,
+      "note": "不操作",
+      "equityBeforeAction": 9982501.55,
+      "equityAfterAction": 9982501.55,
+      "equityEnd": 10516021.02,
+      "pnl": 533519.47,
+      "pnlPct": 5.3445,
+      "totalPnl": 516021.02,
+      "marginCallCount": 0,
+      "liquidated": false,
+      "liquidatedFully": false,
+      "blownUp": false,
+      "maxDrawdown": 268407.24,
+      "maxDrawdownPct": 2.6174,
+      "peakEquity": 10549387.3,
+      "troughEquity": 9919461.45,
+      "positionsStart": [],
+      "positionsEnd": [],
+      "holdingsEnd": [
+        {
+          "code": "SMHI",
+          "qty": 4084,
+          "avgCost": 149.27,
+          "value": 1118689.28
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "focus": "UGMC",
+      "recipe": {
+        "id": 14,
+        "seed": 21727309,
+        "focus": "UGMC",
+        "warmupTicks": 626,
+        "gapTicks": 5,
+        "preAction": {
+          "kind": "long",
+          "notional": 200000,
+          "leverage": 5
+        }
+      },
+      "tickStart": 631,
+      "tickEnd": 2071,
+      "action": {
+        "id": 14,
+        "action": "hold",
+        "code": "UGMC"
+      },
+      "executed": true,
+      "filled": false,
+      "orderStatus": "hold",
+      "filledQty": 0,
+      "avgFillPrice": null,
+      "closedQty": 0,
+      "error": null,
+      "note": "不操作",
+      "equityBeforeAction": 10016541.26,
+      "equityAfterAction": 10016541.26,
+      "equityEnd": 9880518.77,
+      "pnl": -136022.49,
+      "pnlPct": -1.358,
+      "totalPnl": -119481.23,
+      "marginCallCount": 3,
+      "liquidated": true,
+      "liquidatedFully": true,
+      "blownUp": true,
+      "maxDrawdown": 165416.49,
+      "maxDrawdownPct": 1.6466,
+      "peakEquity": 10045935.26,
+      "troughEquity": 9880518.77,
+      "positionsStart": [
+        {
+          "code": "UGMC",
+          "side": "long",
+          "qty": 21300,
+          "avgEntry": 46.83,
+          "leverage": 5,
+          "margin": 199495.8,
+          "unrealizedPnl": 17040,
+          "liquidationPrice": 42.57
+        }
+      ],
+      "positionsEnd": [],
+      "holdingsEnd": []
+    },
+    {
+      "id": 15,
+      "focus": "OJLS",
+      "recipe": {
+        "id": 15,
+        "seed": 21832038,
+        "focus": "OJLS",
+        "warmupTicks": 669,
+        "gapTicks": 6,
+        "preAction": {
+          "kind": "short",
+          "notional": 145000,
+          "leverage": 2
+        }
+      },
+      "tickStart": 675,
+      "tickEnd": 2115,
+      "action": {
+        "id": 15,
+        "action": "close",
+        "code": "OJLS"
+      },
+      "executed": true,
+      "filled": true,
+      "orderStatus": "closed",
+      "filledQty": 2794,
+      "avgFillPrice": null,
+      "closedQty": 2794,
+      "error": null,
+      "note": "市价平空 2x",
+      "equityBeforeAction": 9994937.75,
+      "equityAfterAction": 9994287.3,
+      "equityEnd": 9994287.3,
+      "pnl": 0,
+      "pnlPct": 0,
+      "totalPnl": -5712.7,
+      "marginCallCount": 0,
+      "liquidated": false,
+      "liquidatedFully": false,
+      "blownUp": false,
+      "maxDrawdown": 0,
+      "maxDrawdownPct": 0,
+      "peakEquity": 9994287.3,
+      "troughEquity": 9994287.3,
+      "positionsStart": [
+        {
+          "code": "OJLS",
+          "side": "short",
+          "qty": 2794,
+          "avgEntry": 103.66,
+          "leverage": 2,
+          "margin": 144813.02,
+          "unrealizedPnl": -4917.44,
+          "liquidationPrice": 119.61
+        }
+      ],
+      "positionsEnd": [],
+      "holdingsEnd": []
+    },
+    {
+      "id": 16,
+      "focus": "ABSI",
+      "recipe": {
+        "id": 16,
+        "seed": 21936767,
+        "focus": "ABSI",
+        "warmupTicks": 712,
+        "gapTicks": 3,
+        "preAction": {
+          "kind": "none",
+          "notional": 90000,
+          "leverage": 5
+        }
+      },
+      "tickStart": 715,
+      "tickEnd": 2155,
+      "action": {
+        "id": 16,
+        "action": "buy_spot",
+        "code": "SMHI",
+        "notional": 200000
+      },
+      "executed": true,
+      "filled": true,
+      "orderStatus": "filled",
+      "filledQty": 1085,
+      "avgFillPrice": 184.21,
+      "closedQty": 0,
+      "error": null,
+      "note": "市价买入现货",
+      "equityBeforeAction": 10000000,
+      "equityAfterAction": 9999596.27,
+      "equityEnd": 10295976.11,
+      "pnl": 296379.84,
+      "pnlPct": 2.9639,
+      "totalPnl": 295976.11,
+      "marginCallCount": 0,
+      "liquidated": false,
+      "liquidatedFully": false,
+      "blownUp": false,
+      "maxDrawdown": 112237.06,
+      "maxDrawdownPct": 1.086,
+      "peakEquity": 10335094.97,
+      "troughEquity": 9964282.95,
+      "positionsStart": [],
+      "positionsEnd": [],
+      "holdingsEnd": [
+        {
+          "code": "SMHI",
+          "qty": 1085,
+          "avgCost": 184.21,
+          "value": 492546.6
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "focus": "SMHI",
+      "recipe": {
+        "id": 17,
+        "seed": 22041496,
+        "focus": "SMHI",
+        "warmupTicks": 755,
+        "gapTicks": 4,
+        "preAction": {
+          "kind": "spot",
+          "notional": 490000,
+          "leverage": 2
+        }
+      },
+      "tickStart": 759,
+      "tickEnd": 2199,
+      "action": {
+        "id": 17,
+        "action": "sell",
+        "code": "SMHI"
+      },
+      "executed": true,
+      "filled": true,
+      "orderStatus": "filled",
+      "filledQty": 1603,
+      "avgFillPrice": 306.77,
+      "closedQty": 0,
+      "error": null,
+      "note": "市价卖出",
+      "equityBeforeAction": 10002544.37,
+      "equityAfterAction": 10001561.11,
+      "equityEnd": 10001561.11,
+      "pnl": 0,
+      "pnlPct": 0,
+      "totalPnl": 1561.11,
+      "marginCallCount": 0,
+      "liquidated": false,
+      "liquidatedFully": false,
+      "blownUp": false,
+      "maxDrawdown": 0,
+      "maxDrawdownPct": 0,
+      "peakEquity": 10001561.11,
+      "troughEquity": 10001561.11,
+      "positionsStart": [],
+      "positionsEnd": [],
+      "holdingsEnd": []
+    },
+    {
+      "id": 18,
+      "focus": "UGMC",
+      "recipe": {
+        "id": 18,
+        "seed": 22146225,
+        "focus": "UGMC",
+        "warmupTicks": 798,
+        "gapTicks": 5,
+        "preAction": {
+          "kind": "long",
+          "notional": 200000,
+          "leverage": 5
+        }
+      },
+      "tickStart": 803,
+      "tickEnd": 2243,
+      "action": {
+        "id": 18,
+        "action": "close",
+        "code": "UGMC"
+      },
+      "executed": true,
+      "filled": true,
+      "orderStatus": "closed",
+      "filledQty": 33836,
+      "avgFillPrice": null,
+      "closedQty": 33836,
+      "error": null,
+      "note": "市价平多 5x",
+      "equityBeforeAction": 9992057.34,
+      "equityAfterAction": 9989533.17,
+      "equityEnd": 9989533.17,
+      "pnl": 0,
+      "pnlPct": 0,
+      "totalPnl": -10466.83,
+      "marginCallCount": 0,
+      "liquidated": false,
+      "liquidatedFully": false,
+      "blownUp": false,
+      "maxDrawdown": 0,
+      "maxDrawdownPct": 0,
+      "peakEquity": 9989533.17,
+      "troughEquity": 9989533.17,
+      "positionsStart": [
+        {
+          "code": "UGMC",
+          "side": "long",
+          "qty": 33836,
+          "avgEntry": 29.48,
+          "leverage": 5,
+          "margin": 199497.06,
+          "unrealizedPnl": -7443.92,
+          "liquidationPrice": 26.8
+        }
+      ],
+      "positionsEnd": [],
+      "holdingsEnd": []
+    },
+    {
+      "id": 19,
+      "focus": "OJLS",
+      "recipe": {
+        "id": 19,
+        "seed": 22250954,
+        "focus": "OJLS",
+        "warmupTicks": 841,
+        "gapTicks": 6,
+        "preAction": {
+          "kind": "short",
+          "notional": 145000,
+          "leverage": 2
+        }
+      },
+      "tickStart": 847,
+      "tickEnd": 2287,
+      "action": {
+        "id": 19,
+        "action": "hold",
+        "code": "OJLS"
+      },
+      "executed": true,
+      "filled": false,
+      "orderStatus": "hold",
+      "filledQty": 0,
+      "avgFillPrice": null,
+      "closedQty": 0,
+      "error": null,
+      "note": "不操作",
+      "equityBeforeAction": 9996999,
+      "equityAfterAction": 9996999,
+      "equityEnd": 10142502,
+      "pnl": 145503,
+      "pnlPct": 1.4555,
+      "totalPnl": 142502,
+      "marginCallCount": 0,
+      "liquidated": false,
+      "liquidatedFully": false,
+      "blownUp": false,
+      "maxDrawdown": 66985.27,
+      "maxDrawdownPct": 0.6618,
+      "peakEquity": 10143903.14,
+      "troughEquity": 9980616.44,
+      "positionsStart": [
+        {
+          "code": "OJLS",
+          "side": "short",
+          "qty": 5389,
+          "avgEntry": 53.75,
+          "leverage": 2,
+          "margin": 144829.38,
+          "unrealizedPnl": -2856.17,
+          "liquidationPrice": 62.02
+        }
+      ],
+      "positionsEnd": [
+        {
+          "code": "OJLS",
+          "side": "short",
+          "qty": 5389,
+          "avgEntry": 53.75,
+          "leverage": 2,
+          "margin": 144829.38,
+          "unrealizedPnl": 142646.83,
+          "liquidationPrice": 62.02
+        }
+      ],
+      "holdingsEnd": []
+    },
+    {
+      "id": 20,
+      "focus": "ABSI",
+      "recipe": {
+        "id": 20,
+        "seed": 22355683,
+        "focus": "ABSI",
+        "warmupTicks": 884,
+        "gapTicks": 3,
+        "preAction": {
+          "kind": "none",
+          "notional": 90000,
+          "leverage": 5
+        }
+      },
+      "tickStart": 887,
+      "tickEnd": 2327,
+      "action": {
+        "id": 20,
+        "action": "buy_long",
+        "code": "ABSI",
+        "notional": 200000,
+        "leverage": 5
+      },
+      "executed": true,
+      "filled": true,
+      "orderStatus": "filled",
+      "filledQty": 4657,
+      "avgFillPrice": 214.18,
+      "closedQty": 0,
+      "error": null,
+      "note": "市价开多 5x",
+      "equityBeforeAction": 10000000,
+      "equityAfterAction": 9998243.89,
+      "equityEnd": 9882721.39,
+      "pnl": -115522.5,
+      "pnlPct": -1.1554,
+      "totalPnl": -117278.61,
+      "marginCallCount": 3,
+      "liquidated": true,
+      "liquidatedFully": true,
+      "blownUp": true,
+      "maxDrawdown": 169823.12,
+      "maxDrawdownPct": 1.6894,
+      "peakEquity": 10052544.51,
+      "troughEquity": 9882721.39,
+      "positionsStart": [],
+      "positionsEnd": [],
+      "holdingsEnd": []
+    }
+  ]
+}

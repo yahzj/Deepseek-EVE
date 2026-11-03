@@ -1,0 +1,104 @@
+{
+  "actions": [
+    {
+      "id": 1,
+      "action": "hold",
+      "code": "SMHI"
+    },
+    {
+      "id": 2,
+      "action": "hold",
+      "code": "SMHI"
+    },
+    {
+      "id": 3,
+      "action": "hold",
+      "code": "SMHI"
+    },
+    {
+      "id": 4,
+      "action": "hold",
+      "code": "SMHI"
+    },
+    {
+      "id": 5,
+      "action": "hold",
+      "code": "SMHI"
+    },
+    {
+      "id": 6,
+      "action": "hold",
+      "code": "SMHI"
+    },
+    {
+      "id": 7,
+      "action": "hold",
+      "code": "SMHI"
+    },
+    {
+      "id": 8,
+      "action": "hold",
+      "code": "SMHI"
+    },
+    {
+      "id": 9,
+      "action": "hold",
+      "code": "SMHI"
+    },
+    {
+      "id": 10,
+      "action": "hold",
+      "code": "SMHI"
+    },
+    {
+      "id": 11,
+      "action": "hold",
+      "code": "SMHI"
+    },
+    {
+      "id": 12,
+      "action": "hold",
+      "code": "SMHI"
+    },
+    {
+      "id": 13,
+      "action": "hold",
+      "code": "SMHI"
+    },
+    {
+      "id": 14,
+      "action": "hold",
+      "code": "SMHI"
+    },
+    {
+      "id": 15,
+      "action": "hold",
+      "code": "SMHI"
+    },
+    {
+      "id": 16,
+      "action": "hold",
+      "code": "SMHI"
+    },
+    {
+      "id": 17,
+      "action": "hold",
+      "code": "SMHI"
+    },
+    {
+      "id": 18,
+      "action": "hold",
+      "code": "SMHI"
+    },
+    {
+      "id": 19,
+      "action": "hold",
+      "code": "SMHI"
+    },
+    {
+      "id": 20,
+      "action": "hold",
+      "code": "SMHI"
+    }
+  ]
+}

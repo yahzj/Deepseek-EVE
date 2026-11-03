@@ -13,7 +13,7 @@
 
 ## 统计
 
-- 非归档文档 **377** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4406** KB · **49989** 行
+- 非归档文档 **377** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4409** KB · **50040** 行
 - 状态分布：**未标注** 187 · **已确认/已实现** 130 · **进行中** 39 · **待裁定** 20 · **历史留档** 1
 - 孤儿文档（0 引用）**209** 份 · 状态未标注 **187** 份
 - 一、常用文档（按任务查阅）：**11** 份
@@ -74,7 +74,7 @@
 | `docs/design/stock-market-system-20261103.md` | 证券交易所（股市系统）设计方案与技术架构 | 待裁定（设计方案待裁决） | 2026-11-03 | 13 KB / 198 行 | 4 |
 | `docs/design/ui-scifi-hud-refinement-20261103.md` | 科幻未来（Modern HUD）UI/UX 全维规范化修复与体验优化 · 2026-11-03 | 待裁定（已完成 · 待船长验收） | 2026-11-03 | 3 KB / 42 行 | 0 |
 | `docs/design/ui-ux-ergonomics-audit-20261103.md` | 设计文档：UI/UX 工效学与视觉硬伤全面修复 (2026-11-03) | 未标注 | 2026-11-03 | 3 KB / 59 行 | 0 |
-| `docs/design/whale-server-1000ccu-20261103.md` | whale-server · 1000 人在线容量评估与重构方案 | 未标注（方案稿） | 2026-11-03 | 7 KB / 125 行 | 0 |
+| `docs/design/whale-server-1000ccu-20261103.md` | whale-server · 1000 人在线容量评估与重构方案 | 未标注（方案稿） | 2026-11-03 | 10 KB / 176 行 | 0 |
 | `docs/design/carbon-icons-modern-layout-20261102.md` | 现代布局 Carbon Icons 升级方案（科幻未来专供 · 2026-11-02） | 未标注（已结合船长两次指令深化） | 2026-11-02 | 7 KB / 88 行 | 0 |
 | `docs/design/cosmic-hud-layout-20261102.md` | 界面外壳：第三套可选布局「深空 HUD / Cosmic」设计方案 | 未标注（船长已裁定并下达优化令） | 2026-11-02 | 10 KB / 155 行 | 0 |
 | `docs/design/d2-main-integration-20261102.md` | 二号与主树整合及上传核验 | 未标注（本地整合与冲突处理完成） | 2026-11-02 | 6 KB / 72 行 | 0 |
@@ -448,7 +448,7 @@
 - `docs/design/stock-exchange-prototype-20261103.md`（2026-11-03 · 15 KB）—— 证券交易所 · 可点击原型（F0）工作文档
 - `docs/design/ui-scifi-hud-refinement-20261103.md`（2026-11-03 · 3 KB）—— 科幻未来（Modern HUD）UI/UX 全维规范化修复与体验优化 · 2026-11-03
 - `docs/design/ui-ux-ergonomics-audit-20261103.md`（2026-11-03 · 3 KB）—— 设计文档：UI/UX 工效学与视觉硬伤全面修复 (2026-11-03)
-- `docs/design/whale-server-1000ccu-20261103.md`（2026-11-03 · 7 KB）—— whale-server · 1000 人在线容量评估与重构方案
+- `docs/design/whale-server-1000ccu-20261103.md`（2026-11-03 · 10 KB）—— whale-server · 1000 人在线容量评估与重构方案
 - `docs/design/carbon-icons-modern-layout-20261102.md`（2026-11-02 · 7 KB）—— 现代布局 Carbon Icons 升级方案（科幻未来专供 · 2026-11-02）
 - `docs/design/cosmic-hud-layout-20261102.md`（2026-11-02 · 10 KB）—— 界面外壳：第三套可选布局「深空 HUD / Cosmic」设计方案
 - `docs/design/d2-main-integration-20261102.md`（2026-11-02 · 6 KB）—— 二号与主树整合及上传核验
