@@ -1,7 +1,14 @@
 # 股市 · 做空与借券（回合制 B2）
 
-> 状态：设计稿（待实现）　｜　日期：2026-11-04
-> 关联：`stock-exchange-round-model-20261103.md`（回合制）、`stock-exchange-economy-pvp-20261103.md`（经济）、`stock-exchange-ai-ecosystem-20261103.md`（夜枭）
+> 状态：**v1 已实现并灰度上线（2026-11-04，`EXCHANGE_SHORT_ENABLED=1`）**　｜　日期：2026-11-04
+> 关联：`stock-exchange-round-model-20261103.md`（回合制）、`stock-exchange-economy-pvp-20261103.md`（经济）、`stock-exchange-ai-ecosystem-20261103.md`（夜枭→黑隐者 C3A8）
+>
+> ## 实现记录（2026-11-04）
+> - Go：`short.go`（券源池 10 万股/标的、借券费 `rate=5bp×(1+util²×4)` 按回合从保证金扣、开空冻结、空头结算/分片强平/券源归还）；`round.go` 结算分派与券池同事务落库；`leverage.go` 空头镜像公式；`service.go` Config（`ShortEnabled`/`BorrowPoolPerStock`/`BorrowRateBp`）与平空接口；`store.go` `orders.is_short` 幂等补列；`GET /api/exchange/borrow`；黑隐者 2x 开空；`SQ-*` 空头踩踏快讯。
+> - 公式：`equity=margin+(entry−price)×qty`、`MM=0.6×notional/L`、`P_liq_short=entry+(entry−P_liq_long)`；净负转 debt，与多头一致。
+> - 测试：13 个新用例 + 全量 `go test -race` 绿；生产启动日志确认 `shortEnabled`，`/borrow` 三池各 100000。
+> - 已知限制（后续）：单账户借券 20% 上限与 util>80% 提保证金未实现；空头收益未纳入监管罚没；借券费销毁而非归系统；极端成交价冻结额封顶、靠回合末强平兜底。
+
 
 ---
 

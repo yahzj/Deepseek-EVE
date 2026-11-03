@@ -13,9 +13,9 @@
 
 ## 统计
 
-- 非归档文档 **384** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4456** KB · **50697** 行
-- 状态分布：**未标注** 192 · **已确认/已实现** 132 · **进行中** 39 · **待裁定** 20 · **历史留档** 1
-- 孤儿文档（0 引用）**210** 份 · 状态未标注 **192** 份
+- 非归档文档 **384** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4461** KB · **50741** 行
+- 状态分布：**未标注** 191 · **已确认/已实现** 133 · **进行中** 39 · **待裁定** 20 · **历史留档** 1
+- 孤儿文档（0 引用）**210** 份 · 状态未标注 **191** 份
 - 一、常用文档（按任务查阅）：**11** 份
 - 七、评审与体检（review）：**4** 份
 - 三、设计与工作文档（需核实状态）：**329** 份
@@ -55,7 +55,7 @@
 |---|---|---|---|---|---|
 | `docs/design/stock-exchange-events-64-20261104.md` | 股市 · 64 事件四象分类与六人格改名（实施规格） | 已确认/已实现（已获船长确认） | 2026-11-04 | 5 KB / 94 行 | 1 |
 | `docs/design/stock-exchange-products-20261104.md` | 股市 · 保底产品与本地资金模型（2026-11-04） | 已确认/已实现（已实现并部署　｜　依据：船长 202） | 2026-11-04 | 3 KB / 43 行 | 1 |
-| `docs/design/ui-ux-20-rounds-audit-20261104.md` | 全局 UI/UX 20 轮深度审核与自动化修复全记录（2026-11-04） | 未标注（自动化执行中） | 2026-11-04 | 4 KB / 35 行 | 0 |
+| `docs/design/ui-ux-20-rounds-audit-20261104.md` | 全局 UI/UX 20 轮深度审核与自动化修复全记录（2026-11-04） | 未标注（自动化执行中） | 2026-11-04 | 7 KB / 65 行 | 0 |
 | `docs/design/activitybar-progress-smoothness-20261103.md` | 设计文档：左侧活动栏进度条刷新率与平滑度优化 (2026-11-03) | 未标注 | 2026-11-03 | 4 KB / 63 行 | 0 |
 | `docs/design/cloud-settings-20261103.md` | 账号与云存档设置（2026-11-03） | 未标注（本批仅本地合入） | 2026-11-03 | 9 KB / 69 行 | 1 |
 | `docs/design/deep-space-exchange-dual-mode-20261103.md` | 设计文档：深空证券交易所（DSSE）双模式 UI/UX 重构 (2026-11-03) | 未标注 | 2026-11-03 | 4 KB / 57 行 | 0 |
@@ -68,7 +68,7 @@
 | `docs/design/stock-exchange-economy-pvp-20261103.md` | 证券交易所 · 经济闭环与 PvP/AI 博弈设计 | 未标注（设计稿　｜　日期：2026-11-0） | 2026-11-03 | 11 KB / 169 行 | 2 |
 | `docs/design/stock-exchange-go-migration-20261103.md` | 全量迁 Go · 迁移计划与阶段划分 | 已确认/已实现（已获船长方向批准） | 2026-11-03 | 5 KB / 82 行 | 1 |
 | `docs/design/stock-exchange-go-stack-20261103.md` | 证券交易所 · Go 技术栈与开源参考调研 | 未标注（调研稿） | 2026-11-03 | 11 KB / 153 行 | 1 |
-| `docs/design/stock-exchange-integration-20261103.md` | 股市系统 · 联调部署契约（Go 交易所 ↔ Node 主服务 ↔ 桌面前端） | 未标注（执行中） | 2026-11-03 | 13 KB / 172 行 | 1 |
+| `docs/design/stock-exchange-integration-20261103.md` | 股市系统 · 联调部署契约（Go 交易所 ↔ Node 主服务 ↔ 桌面前端） | 未标注（执行中） | 2026-11-03 | 14 KB / 179 行 | 1 |
 | `docs/design/stock-exchange-pacing-emotion-20261103.md` | 证券交易所 · 节奏与情绪设计（Tension & Release） | 未标注（设计稿） | 2026-11-03 | 13 KB / 213 行 | 1 |
 | `docs/design/stock-exchange-parallel-20261103.md` | 证券交易所 · 并行化架构决策（交易所计算线独立） | 未标注（实施中　｜　日期：2026-11-0） | 2026-11-03 | 7 KB / 101 行 | 1 |
 | `docs/design/stock-exchange-playtest-20261103.md` | 证券交易所 · 可玩性算法验证（P0：建造前筛参数） | 未标注（设计并实施中　｜　日期：2026-1） | 2026-11-03 | 6 KB / 105 行 | 2 |
@@ -76,7 +76,7 @@
 | `docs/design/stock-exchange-prototype-20261103.md` | 证券交易所 · 可点击原型（F0）工作文档 | 未标注（实施中） | 2026-11-03 | 15 KB / 202 行 | 0 |
 | `docs/design/stock-exchange-round-model-20261103.md` | 股市 · 回合制行情与撮合模型（5 分钟一轮，可配） | 未标注（设计已定） | 2026-11-03 | 6 KB / 93 行 | 3 |
 | `docs/design/stock-exchange-server-20261103.md` | 证券交易所（服务端真股市）设计方案 | 待裁定（待裁决） | 2026-11-03 | 43 KB / 615 行 | 6 |
-| `docs/design/stock-exchange-short-selling-20261103.md` | 股市 · 做空与借券（回合制 B2） | 未标注（设计稿） | 2026-11-03 | 4 KB / 74 行 | 0 |
+| `docs/design/stock-exchange-short-selling-20261103.md` | 股市 · 做空与借券（回合制 B2） | 已确认/已实现（v1 已实现并灰度上线） | 2026-11-03 | 5 KB / 81 行 | 0 |
 | `docs/design/stock-market-system-20261103.md` | 证券交易所（股市系统）设计方案与技术架构 | 待裁定（设计方案待裁决） | 2026-11-03 | 13 KB / 198 行 | 4 |
 | `docs/design/ui-scifi-hud-refinement-20261103.md` | 科幻未来（Modern HUD）UI/UX 全维规范化修复与体验优化 · 2026-11-03 | 待裁定（已完成 · 待船长验收） | 2026-11-03 | 3 KB / 42 行 | 0 |
 | `docs/design/ui-ux-ergonomics-audit-20261103.md` | 设计文档：UI/UX 工效学与视觉硬伤全面修复 (2026-11-03) | 未标注 | 2026-11-03 | 3 KB / 59 行 | 0 |
@@ -447,12 +447,12 @@
 
 > 仅表示没有其他收录文档提到本文件名，不能据此删除、归档或批准阅读历史。
 
-- `docs/design/ui-ux-20-rounds-audit-20261104.md`（2026-11-04 · 4 KB）—— 全局 UI/UX 20 轮深度审核与自动化修复全记录（2026-11-04）
+- `docs/design/ui-ux-20-rounds-audit-20261104.md`（2026-11-04 · 7 KB）—— 全局 UI/UX 20 轮深度审核与自动化修复全记录（2026-11-04）
 - `docs/design/activitybar-progress-smoothness-20261103.md`（2026-11-03 · 4 KB）—— 设计文档：左侧活动栏进度条刷新率与平滑度优化 (2026-11-03)
 - `docs/design/deep-space-exchange-dual-mode-20261103.md`（2026-11-03 · 4 KB）—— 设计文档：深空证券交易所（DSSE）双模式 UI/UX 重构 (2026-11-03)
 - `docs/design/stock-exchange-playtest-v2-20261103.md`（2026-11-03 · 12 KB）—— 证券交易所 · 可玩性验证 v2：赌桌级动力学验证
 - `docs/design/stock-exchange-prototype-20261103.md`（2026-11-03 · 15 KB）—— 证券交易所 · 可点击原型（F0）工作文档
-- `docs/design/stock-exchange-short-selling-20261103.md`（2026-11-03 · 4 KB）—— 股市 · 做空与借券（回合制 B2）
+- `docs/design/stock-exchange-short-selling-20261103.md`（2026-11-03 · 5 KB）—— 股市 · 做空与借券（回合制 B2）
 - `docs/design/ui-scifi-hud-refinement-20261103.md`（2026-11-03 · 3 KB）—— 科幻未来（Modern HUD）UI/UX 全维规范化修复与体验优化 · 2026-11-03
 - `docs/design/ui-ux-ergonomics-audit-20261103.md`（2026-11-03 · 3 KB）—— 设计文档：UI/UX 工效学与视觉硬伤全面修复 (2026-11-03)
 - `docs/design/whale-server-1000ccu-20261103.md`（2026-11-03 · 12 KB）—— whale-server · 1000 人在线容量评估与重构方案
@@ -658,7 +658,7 @@
 - `docs/design/v18.1-support.md`（无日期 · 9 KB）—— V18.1 设计总结：支援装备 + 叠加收敛（取消同类唯一 · 已确认实施）
 - `docs/design/v18b2-lasers.md`（无日期 · 5 KB）—— V18B-2 设计总结：激光炮武器族（能量系形态 · 已确认实施）
 
-## 附：状态未标注（192 份，待补一行 `状态：…`）
+## 附：状态未标注（191 份，待补一行 `状态：…`）
 
 - `docs/design/ui-ux-20-rounds-audit-20261104.md`（2026-11-04）—— 全局 UI/UX 20 轮深度审核与自动化修复全记录（2026-11-04）
 - `docs/design/activitybar-progress-smoothness-20261103.md`（2026-11-03）—— 设计文档：左侧活动栏进度条刷新率与平滑度优化 (2026-11-03)
@@ -677,7 +677,6 @@
 - `docs/design/stock-exchange-playtest-v2-20261103.md`（2026-11-03）—— 证券交易所 · 可玩性验证 v2：赌桌级动力学验证
 - `docs/design/stock-exchange-prototype-20261103.md`（2026-11-03）—— 证券交易所 · 可点击原型（F0）工作文档
 - `docs/design/stock-exchange-round-model-20261103.md`（2026-11-03）—— 股市 · 回合制行情与撮合模型（5 分钟一轮，可配）
-- `docs/design/stock-exchange-short-selling-20261103.md`（2026-11-03）—— 股市 · 做空与借券（回合制 B2）
 - `docs/design/ui-ux-ergonomics-audit-20261103.md`（2026-11-03）—— 设计文档：UI/UX 工效学与视觉硬伤全面修复 (2026-11-03)
 - `docs/design/whale-server-1000ccu-20261103.md`（2026-11-03）—— whale-server · 1000 人在线容量评估与重构方案
 - `docs/design/carbon-icons-modern-layout-20261102.md`（2026-11-02）—— 现代布局 Carbon Icons 升级方案（科幻未来专供 · 2026-11-02）

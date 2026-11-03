@@ -169,3 +169,10 @@ Node 内部接口（**仅 localhost + 共享密钥**）：
 - **前端**：默认 IP 直连 + 失败回退域名、7 天离线缓存、回合倒计时徽标、入金/出金弹窗（本地存档扣加）、本地债券、保底基金。
 - **回滚**：每批部署前备份 `/home/ubuntu/whale-exchange/whale-exchange.prev`；环境变量开关：`EXCHANGE_LOCAL_SAVE_MODE=0` 回旧钱包桥、`EXCHANGE_ROUND_LIMIT_BP=0` 关涨跌幅限制。
 
+### 8.11 做空/借券 v1 灰度 + 波动率校准（2026-11-04）
+
+- **做空/借券**：`short.go` 券源池（默认 10 万股/标的，meta 持久化）、借券费 `5bp×(1+util²×4)`/回合从保证金扣、开空冻结/平空/空头分片强平/券源归还；黑隐者改为 2x 开空；`SQ-*` 空头踩踏快讯；`GET /api/exchange/borrow`。
+- **灰度开关**：systemd `EXCHANGE_SHORT_ENABLED=1`、`EXCHANGE_BORROW_POOL=100000`、`EXCHANGE_BORROW_RATE_BP=5`；回滚只需改回 0 并重启。
+- **波动率校准**：价格引擎 σ 从每回合 1.7%~3.8% 降到 0.35%~0.52%（高流动 0.00030/中 0.00025/小盘 0.00020，按 √秒 缩放），波动放大上限 4→1.6；此前价格长期顶在 ±3% 边界，校准后涨跌幅限制回归安全阀。
+- **验证**：`go vet` 0、`go test -race` 63.8s 绿、linux amd64 构建；生产 `/borrow` 三池各 100000、启动日志 shortEnabled；后续观测单回合中位 |Δ| 与黑隐者开空足迹。
+
