@@ -13,9 +13,9 @@
 
 ## 统计
 
-- 非归档文档 **377** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4410** KB · **50072** 行
+- 非归档文档 **377** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4411** KB · **50070** 行
 - 状态分布：**未标注** 187 · **已确认/已实现** 130 · **进行中** 39 · **待裁定** 20 · **历史留档** 1
-- 孤儿文档（0 引用）**209** 份 · 状态未标注 **187** 份
+- 孤儿文档（0 引用）**208** 份 · 状态未标注 **187** 份
 - 一、常用文档（按任务查阅）：**11** 份
 - 七、评审与体检（review）：**4** 份
 - 三、设计与工作文档（需核实状态）：**322** 份
@@ -30,7 +30,7 @@
 |---|---|---|---|---|---|
 | `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定 | 未标注 | — | 16 KB / 111 行 | 28 |
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 6 KB / 75 行 | 13 |
-| `docs/catalog.md` | 文档目录 | 未标注 | — | 3 KB / 43 行 | 6 |
+| `docs/catalog.md` | 文档目录 | 未标注 | — | 4 KB / 44 行 | 6 |
 | `docs/content-workbench.md` | 内容工作台 | 未标注 | — | 3 KB / 35 行 | 2 |
 | `docs/data-editor.md` | 大鲸鱼数据编辑器 | 未标注 | — | 4 KB / 45 行 | 6 |
 | `docs/data-map.md` | 数据速查页 | 未标注 | — | 3 KB / 38 行 | 5 |
@@ -56,7 +56,7 @@
 | `docs/design/activitybar-progress-smoothness-20261103.md` | 设计文档：左侧活动栏进度条刷新率与平滑度优化 (2026-11-03) | 未标注 | 2026-11-03 | 4 KB / 63 行 | 0 |
 | `docs/design/cloud-settings-20261103.md` | 账号与云存档设置（2026-11-03） | 未标注（本批仅本地合入） | 2026-11-03 | 8 KB / 69 行 | 1 |
 | `docs/design/deep-space-exchange-dual-mode-20261103.md` | 设计文档：深空证券交易所（DSSE）双模式 UI/UX 重构 (2026-11-03) | 未标注 | 2026-11-03 | 4 KB / 57 行 | 0 |
-| `docs/design/deep-space-exchange-pro-refinement-20261103.md` | 深空证券交易所 · 专业界面重构与活动栏常驻监控设计（2026-11-03） | 已确认/已实现（已获船长授权实施中） | 2026-11-03 | 14 KB / 132 行 | 0 |
+| `docs/design/deep-space-exchange-pro-refinement-20261103.md` | 深空证券交易所 · 专业界面重构与活动栏常驻监控设计（2026-11-03） | 已确认/已实现（已获船长授权实施完毕并通过全量验收） | 2026-11-03 | 14 KB / 129 行 | 1 |
 | `docs/design/main-git-sync-20261103.md` | 主树 Git 同步工作记录（2026-11-03） | 未标注（本地第三次 merge 待完成、待验） | 2026-11-03 | 2 KB / 26 行 | 1 |
 | `docs/design/settings-subpages-20261103.md` | 设置子页面分类（2026-11-03） | 未标注（设置分类及第一轮远端同步已包含在本地） | 2026-11-03 | 4 KB / 43 行 | 1 |
 | `docs/design/stock-exchange-ai-ecosystem-20261103.md` | 证券交易所 · AI 市场生态设计（让市场「活」起来） | 未标注（设计稿） | 2026-11-03 | 9 KB / 175 行 | 1 |
@@ -436,13 +436,12 @@
 | `docs/design/ship-battle-art/acceptance-visual-20260909.md` | 舰船战斗图形 · 真机目测与细节验收清单（2026-09-09 三号，给船长） | 未标注 | 2026-09-09 | 4 KB / 54 行 | 2 |
 | `docs/design/ship-battle-art/README.md` | 舰船战斗图形重设计(三号 · 样稿阶段,2026-09-09) | 未标注 | — | 8 KB / 87 行 | 24 |
 
-## 附：孤儿文档（0 引用，209 份）
+## 附：孤儿文档（0 引用，208 份）
 
 > 仅表示没有其他收录文档提到本文件名，不能据此删除、归档或批准阅读历史。
 
 - `docs/design/activitybar-progress-smoothness-20261103.md`（2026-11-03 · 4 KB）—— 设计文档：左侧活动栏进度条刷新率与平滑度优化 (2026-11-03)
 - `docs/design/deep-space-exchange-dual-mode-20261103.md`（2026-11-03 · 4 KB）—— 设计文档：深空证券交易所（DSSE）双模式 UI/UX 重构 (2026-11-03)
-- `docs/design/deep-space-exchange-pro-refinement-20261103.md`（2026-11-03 · 14 KB）—— 深空证券交易所 · 专业界面重构与活动栏常驻监控设计（2026-11-03）
 - `docs/design/stock-exchange-go-migration-20261103.md`（2026-11-03 · 5 KB）—— 全量迁 Go · 迁移计划与阶段划分
 - `docs/design/stock-exchange-playtest-v2-20261103.md`（2026-11-03 · 12 KB）—— 证券交易所 · 可玩性验证 v2：赌桌级动力学验证
 - `docs/design/stock-exchange-prototype-20261103.md`（2026-11-03 · 15 KB）—— 证券交易所 · 可点击原型（F0）工作文档

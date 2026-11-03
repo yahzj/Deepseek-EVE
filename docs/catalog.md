@@ -23,6 +23,7 @@
 | 已获授权的英文工作 | `docs/glossary-en.md`、`docs/l10n-pending.md` |
 | 静态参数与内容编辑 | `docs/data-map.md`、`docs/data-editor.md`、`docs/content-workbench.md` |
 | 页面、表现与动画 | 开发约定§九、§十四，再读本域实现与对应现行设计稿 |
+| 深空证券交易所（极简双向/专业重构/标准K线） | `docs/design/deep-space-exchange-pro-refinement-20261103.md`；现行设计稿与视觉/交互规范 |
 | 设置子页面分类 | `docs/design/settings-subpages-20261103.md`；仅重组现有设置项，实施期间为现行工作稿 |
 | 账号与手动云存档设置 | `docs/design/cloud-settings-20261103.md`；本批仅本地合入、不推送；端到端桌面 smoke、全量回归、观感验收未完成，首次注册令牌撤销和公网 HTTPS 尚未验证 |
 | 数值与经济 | 开发约定§一、§二，对应设计稿及校准工具 |
