@@ -13,9 +13,9 @@
 
 ## 统计
 
-- 非归档文档 **384** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4471** KB · **50847** 行
+- 非归档文档 **384** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4491** KB · **51098** 行
 - 状态分布：**未标注** 191 · **已确认/已实现** 133 · **进行中** 39 · **待裁定** 20 · **历史留档** 1
-- 孤儿文档（0 引用）**210** 份 · 状态未标注 **191** 份
+- 孤儿文档（0 引用）**209** 份 · 状态未标注 **191** 份
 - 一、常用文档（按任务查阅）：**11** 份
 - 七、评审与体检（review）：**4** 份
 - 三、设计与工作文档（需核实状态）：**329** 份
@@ -55,7 +55,7 @@
 |---|---|---|---|---|---|
 | `docs/design/stock-exchange-events-64-20261104.md` | 股市 · 64 事件四象分类与六人格改名（实施规格） | 已确认/已实现（已获船长确认） | 2026-11-04 | 5 KB / 94 行 | 1 |
 | `docs/design/stock-exchange-products-20261104.md` | 股市 · 保底产品与本地资金模型（2026-11-04） | 已确认/已实现（已实现并部署　｜　依据：船长 202） | 2026-11-04 | 3 KB / 43 行 | 1 |
-| `docs/design/ui-ux-20-rounds-audit-20261104.md` | 全局 UI/UX 20 轮深度审核与自动化修复全记录（2026-11-04） | 未标注（自动化执行中） | 2026-11-04 | 14 KB / 160 行 | 0 |
+| `docs/design/ui-ux-20-rounds-audit-20261104.md` | 全局 UI/UX 20 轮深度审核与自动化修复全记录（2026-11-04） | 未标注（自动化执行中） | 2026-11-04 | 33 KB / 398 行 | 0 |
 | `docs/design/activitybar-progress-smoothness-20261103.md` | 设计文档：左侧活动栏进度条刷新率与平滑度优化 (2026-11-03) | 未标注 | 2026-11-03 | 4 KB / 63 行 | 0 |
 | `docs/design/cloud-settings-20261103.md` | 账号与云存档设置（2026-11-03） | 未标注（本批仅本地合入） | 2026-11-03 | 9 KB / 69 行 | 1 |
 | `docs/design/deep-space-exchange-dual-mode-20261103.md` | 设计文档：深空证券交易所（DSSE）双模式 UI/UX 重构 (2026-11-03) | 未标注 | 2026-11-03 | 4 KB / 57 行 | 0 |
@@ -80,7 +80,7 @@
 | `docs/design/stock-market-system-20261103.md` | 证券交易所（股市系统）设计方案与技术架构 | 待裁定（设计方案待裁决） | 2026-11-03 | 13 KB / 198 行 | 4 |
 | `docs/design/ui-scifi-hud-refinement-20261103.md` | 科幻未来（Modern HUD）UI/UX 全维规范化修复与体验优化 · 2026-11-03 | 待裁定（已完成 · 待船长验收） | 2026-11-03 | 3 KB / 42 行 | 0 |
 | `docs/design/ui-ux-ergonomics-audit-20261103.md` | 设计文档：UI/UX 工效学与视觉硬伤全面修复 (2026-11-03) | 未标注 | 2026-11-03 | 3 KB / 59 行 | 0 |
-| `docs/design/whale-server-1000ccu-20261103.md` | whale-server · 1000 人在线容量评估与重构方案 | 未标注（方案稿） | 2026-11-03 | 12 KB / 209 行 | 0 |
+| `docs/design/whale-server-1000ccu-20261103.md` | whale-server · 1000 人在线容量评估与重构方案 | 未标注（方案稿） | 2026-11-03 | 12 KB / 209 行 | 1 |
 | `docs/design/carbon-icons-modern-layout-20261102.md` | 现代布局 Carbon Icons 升级方案（科幻未来专供 · 2026-11-02） | 未标注（已结合船长两次指令深化） | 2026-11-02 | 7 KB / 88 行 | 0 |
 | `docs/design/cosmic-hud-layout-20261102.md` | 界面外壳：第三套可选布局「深空 HUD / Cosmic」设计方案 | 未标注（船长已裁定并下达优化令） | 2026-11-02 | 10 KB / 155 行 | 0 |
 | `docs/design/d2-main-integration-20261102.md` | 二号与主树整合及上传核验 | 未标注（本地整合与冲突处理完成） | 2026-11-02 | 6 KB / 72 行 | 0 |
@@ -389,7 +389,7 @@
 |---|---|---|---|---|---|
 | `docs/development-conventions-changelog.md` | 开发约定维护记录 | 未标注 | — | 5 KB / 47 行 | 6 |
 | `docs/git-gate-approval.md` | Git提交审批放行 | 未标注 | — | 2 KB / 28 行 | 1 |
-| `docs/l10n-pending.md` | 待英文本地化记录 | 未标注 | — | 28 KB / 472 行 | 23 |
+| `docs/l10n-pending.md` | 待英文本地化记录 | 未标注 | — | 29 KB / 485 行 | 24 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -443,11 +443,11 @@
 | `docs/design/ship-battle-art/acceptance-visual-20260909.md` | 舰船战斗图形 · 真机目测与细节验收清单（2026-09-09 三号，给船长） | 未标注 | 2026-09-09 | 4 KB / 54 行 | 2 |
 | `docs/design/ship-battle-art/README.md` | 舰船战斗图形重设计(三号 · 样稿阶段,2026-09-09) | 未标注 | — | 8 KB / 87 行 | 24 |
 
-## 附：孤儿文档（0 引用，210 份）
+## 附：孤儿文档（0 引用，209 份）
 
 > 仅表示没有其他收录文档提到本文件名，不能据此删除、归档或批准阅读历史。
 
-- `docs/design/ui-ux-20-rounds-audit-20261104.md`（2026-11-04 · 14 KB）—— 全局 UI/UX 20 轮深度审核与自动化修复全记录（2026-11-04）
+- `docs/design/ui-ux-20-rounds-audit-20261104.md`（2026-11-04 · 33 KB）—— 全局 UI/UX 20 轮深度审核与自动化修复全记录（2026-11-04）
 - `docs/design/activitybar-progress-smoothness-20261103.md`（2026-11-03 · 4 KB）—— 设计文档：左侧活动栏进度条刷新率与平滑度优化 (2026-11-03)
 - `docs/design/deep-space-exchange-dual-mode-20261103.md`（2026-11-03 · 4 KB）—— 设计文档：深空证券交易所（DSSE）双模式 UI/UX 重构 (2026-11-03)
 - `docs/design/stock-exchange-playtest-v2-20261103.md`（2026-11-03 · 12 KB）—— 证券交易所 · 可玩性验证 v2：赌桌级动力学验证
@@ -455,7 +455,6 @@
 - `docs/design/stock-exchange-short-selling-20261103.md`（2026-11-03 · 6 KB）—— 股市 · 做空与借券（回合制 B2）
 - `docs/design/ui-scifi-hud-refinement-20261103.md`（2026-11-03 · 3 KB）—— 科幻未来（Modern HUD）UI/UX 全维规范化修复与体验优化 · 2026-11-03
 - `docs/design/ui-ux-ergonomics-audit-20261103.md`（2026-11-03 · 3 KB）—— 设计文档：UI/UX 工效学与视觉硬伤全面修复 (2026-11-03)
-- `docs/design/whale-server-1000ccu-20261103.md`（2026-11-03 · 12 KB）—— whale-server · 1000 人在线容量评估与重构方案
 - `docs/design/carbon-icons-modern-layout-20261102.md`（2026-11-02 · 7 KB）—— 现代布局 Carbon Icons 升级方案（科幻未来专供 · 2026-11-02）
 - `docs/design/cosmic-hud-layout-20261102.md`（2026-11-02 · 10 KB）—— 界面外壳：第三套可选布局「深空 HUD / Cosmic」设计方案
 - `docs/design/d2-main-integration-20261102.md`（2026-11-02 · 6 KB）—— 二号与主树整合及上传核验
