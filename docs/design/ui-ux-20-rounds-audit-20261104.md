@@ -20,7 +20,7 @@
 | **第 07 轮** | 股市 · 标的行情卡片与左下大盘战况仪表 | 双行紧凑卡片、持仓徽标、多空涨跌比双色槽、成交额格式化 | 已完成 ✓ |
 | **第 08 轮** | 股市 · 低风险理财与快讯跑马灯 | 理财计息跳动平滑性、快讯走马灯悬停暂停、多空舆情色彩规范 | 已完成 ✓ |
 | **第 09 轮** | 股市 · 活动栏快捷监控微卡片与路由直达 | 侧栏卡片排版、红绿盈亏色板规范、点击直达路由状态保持 | 已完成 ✓ |
-| **第 10 轮** | 股市 · 全 6 套主题对比度与可访问性终审 | daylight / contrast / cb 全主题下的视觉清晰度、无残留硬编码、a11y | 待开始 |
+| **第 10 轮** | 股市 · 全 6 套主题对比度与可访问性终审 | daylight / contrast / cb 全主题下的视觉清晰度、无残留硬编码、a11y | 已完成 ✓ |
 | **第 11 轮** | 全局 · 顶栏与全局底栏导航系统 | 顶栏资源读数排版、底栏功能图标与光晕、活动栏展开折叠动效 | 待开始 |
 | **第 12 轮** | 全局 · 舰船管理与装配面板 | 装备槽位网格、装配对比 Tooltip、属性面板同名检查、族徽渲染 | 待开始 |
 | **第 13 轮** | 全局 · 工业制造与研发装配流程 | 配方列表滚动、材料扣除前馈、制造进度倒计时、批量拖动条 | 待开始 |
@@ -174,3 +174,24 @@
   5. 交易所状态订阅从 ActivityBar 剥离并下沉至组件内部，消除秒级全栏重渲染，提升渲染性能；零 Emoji，全色板契约达标。
 - **验证结果**：
   - `typecheck`、`ui:theme-check`、`ui:rot-check` 全部 100% 绿灯通过。
+
+
+## 第 10 轮：股市 · 全 6 套主题对比度与可访问性终审（已闭环）
+- **修改文件**：
+  - `apps/desktop/src/renderer/src/features/exchange/format.ts`
+  - `apps/desktop/src/renderer/src/features/exchange/exchange.css`
+  - `apps/desktop/src/renderer/src/features/exchange/components/Positions.tsx`
+  - `apps/desktop/src/renderer/src/features/exchange/components/SimplePosition.tsx`
+  - `apps/desktop/src/renderer/src/features/exchange/components/SimpleTrade.tsx`
+  - `apps/desktop/src/renderer/src/features/exchange/components/BondCard.tsx`
+  - `apps/desktop/src/renderer/src/features/exchange/components/FundCard.tsx`
+  - `apps/desktop/src/renderer/src/features/exchange/components/TradePanel.tsx`
+  - `apps/desktop/src/renderer/src/features/exchange/components/NewsTicker.tsx`
+- **问题与重构**：
+  1. daylight（浅色模式）深度适配：修复实色大操作按钮在浅色下的文字不可读问题，统一使用浅白字体保证对比度 > 5:1；增加面板与卡片 1px 细微边界与微阴影，防止浅色融化；
+  2. contrast（高对比度模式）深度适配：消除低透明度衰减边框，全量提升为鲜明实线边框并增强 outline 轮廓；
+  3. cb（色弱友好模式）形态强化：新增 pnlMoney 格式化，正负数显式强制带 +/- 符号；多头胶囊采用实线边框、空头胶囊采用虚线边框，仅凭线型与正负号即可无障碍辨识多空；
+  4. 键盘 a11y 强化：统一配置规范的 :focus-visible 焦点轮廓，补充纯图标与快捷按钮的 title/aria-label 提示；
+  5. 自动化无头回归：tools/exchange-headless.ts --selftest 两次 20 份场景 SHA-256 逐字节比对 100% 一致通过。
+- **验证结果**：
+  - `typecheck`、`ui:theme-check`、`ui:rot-check`、`exchange-headless selftest` 全部 100% 绿灯通过。

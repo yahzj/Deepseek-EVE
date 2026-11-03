@@ -5416,3 +5416,238 @@
   color: rgb(var(--wui-tone-loss));
   font-weight: 600;
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   全套 6 种主题对比度与可访问性终审增强契约（2026-11-04）
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── 键盘可访问性（a11y）：规范 :focus-visible 轮廓与交互友好 ── */
+.ex-page button:focus-visible,
+.ex-page input:focus-visible,
+.ex-page [role="tab"]:focus-visible,
+.ex-page [role="button"]:focus-visible,
+.app-activitybar-exch-card:focus-visible {
+  outline: 2px solid rgb(var(--wui-accent));
+  outline-offset: 1px;
+}
+
+/* ── daylight（浅色日间模式）深度对比度与层级强化 ── */
+[data-theme='daylight'] .ex-topbar,
+[data-theme='daylight'] .ex-panel,
+[data-theme='daylight'] .ex-market-overview,
+[data-theme='daylight'] .ex-records,
+[data-theme='daylight'] .ex-simple-sidebar,
+[data-theme='daylight'] .ex-simple-header,
+[data-theme='daylight'] .ex-simple-chart-card,
+[data-theme='daylight'] .ex-simple-trade-card,
+[data-theme='daylight'] .ex-simple-pos-card,
+[data-theme='daylight'] .ex-pro-mid-bottom,
+[data-theme='daylight'] .ex-pro-col-right {
+  background: rgb(var(--wui-bg-panel));
+  border: 1px solid rgb(var(--wui-border) / 0.85);
+  box-shadow: 0 1px 4px rgb(var(--wui-border) / 0.35);
+}
+
+[data-theme='daylight'] .ex-stock-card {
+  border-bottom-color: rgb(var(--wui-border) / 0.65);
+}
+
+[data-theme='daylight'] .ex-stock-card:hover {
+  background: rgb(var(--wui-accent) / 0.12);
+}
+
+[data-theme='daylight'] .ex-stock-card.is-sel {
+  background: linear-gradient(90deg, rgb(var(--wui-accent) / 0.22), rgb(var(--wui-accent) / 0.06));
+  box-shadow: inset 3px 0 0 rgb(var(--wui-accent));
+  border-bottom-color: rgb(var(--wui-accent) / 0.6);
+}
+
+[data-theme='daylight'] .ex-simple-stock-card {
+  background: rgb(var(--wui-bg-field) / 0.8);
+  border-color: rgb(var(--wui-border) / 0.85);
+}
+
+[data-theme='daylight'] .ex-simple-stock-card:hover {
+  background: rgb(var(--wui-bg-hover) / 0.85);
+  border-color: rgb(var(--wui-border-bright));
+}
+
+[data-theme='daylight'] .ex-simple-stock-card.is-sel {
+  background: linear-gradient(135deg, rgb(var(--wui-accent) / 0.22), rgb(var(--wui-bg-field)));
+  border-color: rgb(var(--wui-accent));
+}
+
+[data-theme='daylight'] .ex-trade-mode-seg {
+  background: rgb(var(--wui-bg-panel));
+  border: 1px solid rgb(var(--wui-border));
+}
+
+[data-theme='daylight'] .ex-seg-btn {
+  border-right-color: rgb(var(--wui-border));
+}
+
+[data-theme='daylight'] .ex-tape-row,
+[data-theme='daylight'] .ex-records-row {
+  border-bottom-color: rgb(var(--wui-border) / 0.5);
+}
+
+[data-theme='daylight'] .ex-preview,
+[data-theme='daylight'] .ex-market-ratio-box,
+[data-theme='daylight'] .ex-simple-trade-preview,
+[data-theme='daylight'] .ex-bot-viz,
+[data-theme='daylight'] .ex-bot-card {
+  background: rgb(var(--wui-bg-panel));
+  border-color: rgb(var(--wui-border) / 0.85);
+}
+
+[data-theme='daylight'] .ex-input {
+  background: rgb(var(--wui-bg-panel));
+  border-color: rgb(var(--wui-border) / 0.9);
+  color: rgb(var(--wui-text));
+}
+
+[data-theme='daylight'] .ex-simple-input-wrap {
+  background: rgb(var(--wui-bg-panel));
+  border-color: rgb(var(--wui-border) / 0.9);
+}
+
+/* daylight 下实色大按钮文字高对比度保证（彻底消灭白字白底与黑字黑底） */
+[data-theme='daylight'] .ex-primary.is-spot {
+  color: rgb(var(--wui-chip-ink));
+  background: linear-gradient(135deg, rgb(var(--wui-cyan)), rgb(var(--wui-blue-2)));
+}
+
+[data-theme='daylight'] .ex-primary.is-long {
+  color: rgb(var(--wui-chip-ink));
+}
+
+[data-theme='daylight'] .ex-primary.is-short {
+  color: rgb(var(--wui-chip-ink));
+}
+
+[data-theme='daylight'] .ex-primary.is-algo,
+[data-theme='daylight'] .ex-bot-deploy-btn {
+  color: rgb(var(--wui-chip-ink));
+}
+
+[data-theme='daylight'] .ex-simple-big-action-btn.is-buy {
+  color: rgb(var(--wui-chip-ink));
+}
+
+[data-theme='daylight'] .ex-simple-big-action-btn.is-short,
+[data-theme='daylight'] .ex-simple-big-action-btn.is-sell {
+  color: rgb(var(--wui-chip-ink));
+}
+
+[data-theme='daylight'] .ex-bot-action-btn.is-confirming {
+  color: rgb(var(--wui-chip-ink));
+}
+
+/* ── contrast（高对比黑白模式）鲜明边框与线条强化 ── */
+[data-theme='contrast'] .ex-page .ex-panel,
+[data-theme='contrast'] .ex-page .ex-topbar,
+[data-theme='contrast'] .ex-page .ex-market-overview,
+[data-theme='contrast'] .ex-page .ex-records,
+[data-theme='contrast'] .ex-page .ex-simple-sidebar,
+[data-theme='contrast'] .ex-page .ex-simple-header,
+[data-theme='contrast'] .ex-page .ex-simple-chart-card,
+[data-theme='contrast'] .ex-page .ex-simple-trade-card,
+[data-theme='contrast'] .ex-page .ex-simple-pos-card,
+[data-theme='contrast'] .ex-page .ex-pro-mid-bottom,
+[data-theme='contrast'] .ex-page .ex-pro-col-right {
+  border: 1px solid rgb(var(--wui-border-bright));
+}
+
+[data-theme='contrast'] .ex-stock-card {
+  border-bottom: 1px solid rgb(var(--wui-border));
+}
+
+[data-theme='contrast'] .ex-stock-card.is-sel,
+[data-theme='contrast'] .ex-simple-stock-card.is-sel {
+  border-color: rgb(var(--wui-accent));
+  outline: 1px solid rgb(var(--wui-accent));
+}
+
+[data-theme='contrast'] .ex-simple-stock-card {
+  border: 1px solid rgb(var(--wui-border-bright));
+}
+
+[data-theme='contrast'] .ex-input,
+[data-theme='contrast'] .ex-simple-input-wrap {
+  border: 1px solid rgb(var(--wui-border-bright));
+}
+
+[data-theme='contrast'] .ex-seg {
+  border: 1px solid rgb(var(--wui-border-bright));
+}
+
+[data-theme='contrast'] .ex-seg-btn {
+  border-right: 1px solid rgb(var(--wui-border-bright));
+}
+
+[data-theme='contrast'] .ex-tape-row,
+[data-theme='contrast'] .ex-records-row {
+  border-bottom: 1px solid rgb(var(--wui-border));
+}
+
+[data-theme='contrast'] .ex-preview,
+[data-theme='contrast'] .ex-market-ratio-box,
+[data-theme='contrast'] .ex-simple-trade-preview,
+[data-theme='contrast'] .ex-bot-viz,
+[data-theme='contrast'] .ex-bot-card {
+  border: 1px solid rgb(var(--wui-border-bright));
+}
+
+[data-theme='contrast'] .ex-bot-card-metrics,
+[data-theme='contrast'] .ex-pos-detail-row,
+[data-theme='contrast'] .ex-preview-dim {
+  border-top: 1px solid rgb(var(--wui-border));
+}
+
+/* ── cb（色弱/红绿友好模式）多维度形态与边框辨识强化 ── */
+[data-theme='cb'] .ex-stock-pct-pill.is-up,
+[data-theme='cb'] .ex-simple-card-change.is-up,
+[data-theme='cb'] .ex-market-index-pill.is-up,
+[data-theme='cb'] .ex-simple-chart-tag.is-up,
+[data-theme='cb'] .exch-sb-chg.is-up {
+  border-style: solid;
+  border-width: 1.5px;
+  font-weight: 700;
+}
+
+[data-theme='cb'] .ex-stock-pct-pill.is-down,
+[data-theme='cb'] .ex-simple-card-change.is-down,
+[data-theme='cb'] .ex-market-index-pill.is-down,
+[data-theme='cb'] .ex-simple-chart-tag.is-down,
+[data-theme='cb'] .exch-sb-chg.is-down {
+  border-style: dashed;
+  border-width: 1.5px;
+  font-weight: 700;
+}
+
+[data-theme='cb'] .ex-simple-pos-row.is-long {
+  border-left-style: solid;
+  border-left-width: 4px;
+}
+
+[data-theme='cb'] .ex-simple-pos-row.is-short {
+  border-left-style: dashed;
+  border-left-width: 4px;
+}
+
+[data-theme='cb'] .ex-stock-hold-badge.is-long,
+[data-theme='cb'] .ex-simple-holding-badge.is-long {
+  border-style: solid;
+  border-width: 1.5px;
+}
+
+[data-theme='cb'] .ex-stock-hold-badge.is-short,
+[data-theme='cb'] .ex-simple-holding-badge.is-short {
+  border-style: dashed;
+  border-width: 1.5px;
+}
+
+/* ── warm 暖色夜间主题下黄金购买按钮对比度适配 ── */
+[data-theme='warm'] .ex-bond .is-bond-buy {
+  color: rgb(var(--wui-bg-deep));
+}

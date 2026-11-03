@@ -11,6 +11,16 @@ export function money(n: number): string {
   return n.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+
+/** 盈亏金额：带明确正负号（正数显式加号），千分位、2 位小数（+12,345.67 / -12,345.67 / 0.00） */
+export function pnlMoney(n: number): string {
+  if (!Number.isFinite(n)) return '—'
+  const formatted = Math.abs(n).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  if (n > 0) return `+${formatted}`
+  if (n < 0) return `-${formatted}`
+  return '0.00'
+}
+
 /** 金额但不要小数（成交量、股数等整数量级） */
 export function amount(n: number): string {
   if (!Number.isFinite(n)) return '—'

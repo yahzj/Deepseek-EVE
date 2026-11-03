@@ -155,10 +155,12 @@ export function BondCard({
             <label className="ex-label" htmlFor="ex-bond-input">
               {T.bondBuy}
             </label>
-            <div className="ex-bond-quick-ratios">
+            <div className="ex-bond-quick-ratios" role="group" aria-label="快捷买入比例">
               <button
                 type="button"
                 className="ex-bond-ratio-btn"
+                title="快捷买入 25% 可用资金"
+                aria-label="快捷买入 25% 可用资金"
                 disabled={availableIsk <= 0}
                 onClick={() => setRatio(0.25)}
               >
@@ -167,6 +169,8 @@ export function BondCard({
               <button
                 type="button"
                 className="ex-bond-ratio-btn"
+                title="快捷买入 50% 可用资金"
+                aria-label="快捷买入 50% 可用资金"
                 disabled={availableIsk <= 0}
                 onClick={() => setRatio(0.5)}
               >
@@ -175,6 +179,8 @@ export function BondCard({
               <button
                 type="button"
                 className="ex-bond-ratio-btn"
+                title="快捷买入全部可用资金"
+                aria-label="快捷买入全部可用资金"
                 disabled={availableIsk <= 0}
                 onClick={() => setRatio(1)}
               >

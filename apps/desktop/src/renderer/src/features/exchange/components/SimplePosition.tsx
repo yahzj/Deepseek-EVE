@@ -14,7 +14,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Close, WarningAlt } from '@carbon/icons-react'
 import type { ExchangeClient, ExchangeSnapshot } from '../client'
 import type { ToastFn } from '../../../pages/common'
-import { amount, money, pct, price } from '../format'
+import { amount, money, pct, pnlMoney, price } from '../format'
 import { T, TF } from '../texts'
 
 interface SimplePositionProps {
@@ -196,7 +196,7 @@ export function SimplePosition({ client, snap, code, onToast }: SimplePositionPr
             )}
           </div>
           <span className={`ex-simple-pos-total-pnl ${isOverallProfit ? 'is-up' : 'is-down'}`}>
-            净浮盈: {isOverallProfit ? '+' : ''}{money(totalPnl)} ({isOverallProfit ? '+' : ''}{pct(totalPnlPct)})
+            净浮盈: {pnlMoney(totalPnl)} ({pct(totalPnlPct)})
           </span>
         </div>
 
@@ -207,6 +207,7 @@ export function SimplePosition({ client, snap, code, onToast }: SimplePositionPr
               className="ex-simple-close-cancel-btn"
               onClick={cancelConfirm}
               title="取消全部平仓"
+              aria-label="取消全部平仓"
             >
               取消
             </button>
@@ -273,7 +274,7 @@ export function SimplePosition({ client, snap, code, onToast }: SimplePositionPr
               <div className="ex-simple-pos-item is-pnl">
                 <span className="ex-dim">{T.unrealizedPnl}</span>
                 <b className={`ex-num ex-simple-pos-pnl-val ${spotPnl >= 0 ? 'is-up' : 'is-down'}`}>
-                  {spotPnl >= 0 ? '+' : ''}{money(spotPnl)} ({spotPnl >= 0 ? '+' : ''}{pct(spotPnlPct)})
+                  {pnlMoney(spotPnl)} ({pct(spotPnlPct)})
                 </b>
               </div>
             </div>
@@ -343,7 +344,7 @@ export function SimplePosition({ client, snap, code, onToast }: SimplePositionPr
                 <div className="ex-simple-pos-item is-pnl">
                   <span className="ex-dim">{T.unrealizedPnl}</span>
                   <b className={`ex-num ex-simple-pos-pnl-val ${isPnlUp ? 'is-up' : 'is-down'}`}>
-                    {isPnlUp ? '+' : ''}{money(p.unrealizedPnl)} ({isPnlUp ? '+' : ''}{pct(pnlPct)})
+                    {pnlMoney(p.unrealizedPnl)} ({pct(pnlPct)})
                   </b>
                 </div>
               </div>

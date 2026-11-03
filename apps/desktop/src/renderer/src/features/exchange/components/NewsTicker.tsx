@@ -100,6 +100,7 @@ export function NewsTicker({
                         type="button"
                         className="ex-ticker-code-btn"
                         title={TF.newsSwitchSymbol(impact.primaryCode)}
+                        aria-label={TF.newsSwitchSymbol(impact.primaryCode)}
                         onClick={(e) => {
                           e.stopPropagation()
                           onSelectCode?.(impact.primaryCode!)

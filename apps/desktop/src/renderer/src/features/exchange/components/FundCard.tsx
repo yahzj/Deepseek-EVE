@@ -128,10 +128,12 @@ export function FundCard({
             <label className="ex-label" htmlFor="ex-fund-input">
               {T.fundAmount}
             </label>
-            <div className="ex-bond-quick-ratios">
+            <div className="ex-bond-quick-ratios" role="group" aria-label="快捷投入比例">
               <button
                 type="button"
                 className="ex-bond-ratio-btn"
+                title="快捷投入 25% 可用资金"
+                aria-label="快捷投入 25% 可用资金"
                 disabled={calc || availableCash <= 0}
                 onClick={() => setRatio(0.25)}
               >
@@ -140,6 +142,8 @@ export function FundCard({
               <button
                 type="button"
                 className="ex-bond-ratio-btn"
+                title="快捷投入 50% 可用资金"
+                aria-label="快捷投入 50% 可用资金"
                 disabled={calc || availableCash <= 0}
                 onClick={() => setRatio(0.5)}
               >
@@ -148,6 +152,8 @@ export function FundCard({
               <button
                 type="button"
                 className="ex-bond-ratio-btn"
+                title="快捷投入全部可用资金"
+                aria-label="快捷投入全部可用资金"
                 disabled={calc || availableCash <= 0}
                 onClick={() => setRatio(1)}
               >

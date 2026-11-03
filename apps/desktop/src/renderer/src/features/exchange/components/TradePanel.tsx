@@ -313,6 +313,8 @@ export function TradePanel({
               <button
                 type="button"
                 className="ex-mini-btn is-accent"
+                title={T.useBookPrice}
+                aria-label={T.useBookPrice}
                 onClick={() => {
                   setPriceText(quote.price.toFixed(2))
                   setKind('limit')

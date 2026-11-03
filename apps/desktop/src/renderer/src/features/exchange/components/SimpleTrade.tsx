@@ -261,7 +261,7 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
                   title="清空输入 (Esc)"
                   aria-label="清空输入"
                 >
-                  ✕
+                  ×
                 </button>
               )}
               <span className="ex-simple-input-unit">ISK</span>
@@ -279,10 +279,12 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
           </div>
 
           {/* 快捷筹码 */}
-          <div className="ex-simple-chips">
+          <div className="ex-simple-chips" role="group" aria-label="快捷比例筹码">
             <button
               type="button"
               className={`ex-simple-chip-btn${isRatioActive(0.25) ? ' is-active' : ''}`}
+              title="快捷填入 25% 可用资金"
+              aria-label="快捷填入 25% 可用资金"
               onClick={() => quickCashRatio(0.25)}
             >
               {T.quickBuy25}
@@ -290,6 +292,8 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
             <button
               type="button"
               className={`ex-simple-chip-btn${isRatioActive(0.5) ? ' is-active' : ''}`}
+              title="快捷填入 50% 可用资金"
+              aria-label="快捷填入 50% 可用资金"
               onClick={() => quickCashRatio(0.5)}
             >
               {T.quickBuy50}
@@ -297,6 +301,8 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
             <button
               type="button"
               className={`ex-simple-chip-btn${isRatioActive(0.75) ? ' is-active' : ''}`}
+              title="快捷填入 75% 可用资金"
+              aria-label="快捷填入 75% 可用资金"
               onClick={() => quickCashRatio(0.75)}
             >
               {T.quickBuy75}
@@ -304,6 +310,8 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
             <button
               type="button"
               className={`ex-simple-chip-btn is-max${isRatioActive(1.0) ? ' is-active' : ''}`}
+              title="快捷填入全部可用资金"
+              aria-label="快捷填入全部可用资金"
               onClick={() => quickCashRatio(1.0)}
             >
               {T.quickBuyAll}
