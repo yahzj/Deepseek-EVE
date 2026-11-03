@@ -20,9 +20,19 @@ export function StockList({
   selected: string
   onSelect: (code: string) => void
 }) {
-  const held = new Map<string, number>()
-  for (const h of snap.account.holdings) held.set(h.code, (held.get(h.code) ?? 0) + h.qty)
-  for (const p of snap.account.positions) held.set(p.code, (held.get(p.code) ?? 0) + p.qty)
+  // 统计每个标的的持仓明细（现货、做多杠杆、做空杠杆）
+  const holdMap = new Map<string, { spotQty: number; longQty: number; shortQty: number }>()
+  for (const h of snap.account.holdings) {
+    const cur = holdMap.get(h.code) ?? { spotQty: 0, longQty: 0, shortQty: 0 }
+    cur.spotQty += h.qty
+    holdMap.set(h.code, cur)
+  }
+  for (const p of snap.account.positions) {
+    const cur = holdMap.get(p.code) ?? { spotQty: 0, longQty: 0, shortQty: 0 }
+    if (p.side === 'long') cur.longQty += p.qty
+    else if (p.side === 'short') cur.shortQty += p.qty
+    holdMap.set(p.code, cur)
+  }
 
   return (
     <section className="ex-panel ex-stock-list" aria-label={T.stockListTitle}>
@@ -32,7 +42,7 @@ export function StockList({
       </header>
       <div className="ex-stock-cards" role="list">
         {snap.stocks.map((q) => {
-          const hold = held.get(q.code) ?? 0
+          const hold = holdMap.get(q.code) ?? { spotQty: 0, longQty: 0, shortQty: 0 }
           const up = q.changePct >= 0
           const isSel = selected === q.code
           return (
@@ -50,9 +60,19 @@ export function StockList({
                 <div className="ex-stock-card-row1">
                   <span className="ex-stock-code">{q.code}</span>
                   <span className="ex-stock-sector">{q.sector}</span>
-                  {hold > 0 ? (
-                    <span className="ex-stock-hold-badge" title={`当前持仓 ${amount(hold)} 股`}>
-                      持 {amount(hold)}
+                  {hold.longQty > 0 ? (
+                    <span className="ex-stock-hold-badge is-long" title={`做多持仓 ${amount(hold.longQty)} 股`}>
+                      多 {amount(hold.longQty)}
+                    </span>
+                  ) : null}
+                  {hold.shortQty > 0 ? (
+                    <span className="ex-stock-hold-badge is-short" title={`做空持仓 ${amount(hold.shortQty)} 股`}>
+                      空 {amount(hold.shortQty)}
+                    </span>
+                  ) : null}
+                  {hold.spotQty > 0 ? (
+                    <span className="ex-stock-hold-badge is-spot" title={`现货持仓 ${amount(hold.spotQty)} 股`}>
+                      持 {amount(hold.spotQty)}
                     </span>
                   ) : null}
                 </div>

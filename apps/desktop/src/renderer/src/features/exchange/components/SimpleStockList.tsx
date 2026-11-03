@@ -7,7 +7,7 @@
  */
 import type { ExchangeClient, ExchangeSnapshot } from '../client'
 import { amount, pct, price } from '../format'
-import { T, TF } from '../texts'
+import { T } from '../texts'
 import { Sparkline } from './Sparkline'
 
 interface SimpleStockListProps {
@@ -18,13 +18,18 @@ interface SimpleStockListProps {
 }
 
 export function SimpleStockList({ client, snap, selected, onSelect }: SimpleStockListProps) {
-  // 统计每只股票的持仓数量（现货 + 杠杆仓总和）
-  const held = new Map<string, number>()
+  // 统计每只股票的持仓明细（现货、做多杠杆、做空杠杆）
+  const holdMap = new Map<string, { spotQty: number; longQty: number; shortQty: number }>()
   for (const h of snap.account.holdings) {
-    held.set(h.code, (held.get(h.code) ?? 0) + h.qty)
+    const cur = holdMap.get(h.code) ?? { spotQty: 0, longQty: 0, shortQty: 0 }
+    cur.spotQty += h.qty
+    holdMap.set(h.code, cur)
   }
   for (const p of snap.account.positions) {
-    held.set(p.code, (held.get(p.code) ?? 0) + p.qty)
+    const cur = holdMap.get(p.code) ?? { spotQty: 0, longQty: 0, shortQty: 0 }
+    if (p.side === 'long') cur.longQty += p.qty
+    else if (p.side === 'short') cur.shortQty += p.qty
+    holdMap.set(p.code, cur)
   }
 
   return (
@@ -37,8 +42,9 @@ export function SimpleStockList({ client, snap, selected, onSelect }: SimpleStoc
       <div className="ex-simple-card-list" role="list">
         {snap.stocks.map((q) => {
           const isSel = selected === q.code
-          const hold = held.get(q.code) ?? 0
+          const hold = holdMap.get(q.code) ?? { spotQty: 0, longQty: 0, shortQty: 0 }
           const up = q.changePct >= 0
+          const hasHolding = hold.spotQty > 0 || hold.longQty > 0 || hold.shortQty > 0
 
           return (
             <div
@@ -55,10 +61,24 @@ export function SimpleStockList({ client, snap, selected, onSelect }: SimpleStoc
               }}
               aria-pressed={isSel}
             >
-              {/* 持仓角标 */}
-              {hold > 0 ? (
-                <div className="ex-simple-holding-badge">
-                  {TF.holdingsCountBadge(amount(hold))}
+              {/* 持仓角标群 */}
+              {hasHolding ? (
+                <div className="ex-simple-holding-badges">
+                  {hold.longQty > 0 ? (
+                    <span className="ex-simple-holding-badge is-long" title={`做多持仓 ${amount(hold.longQty)} 股`}>
+                      多 {amount(hold.longQty)}
+                    </span>
+                  ) : null}
+                  {hold.shortQty > 0 ? (
+                    <span className="ex-simple-holding-badge is-short" title={`做空持仓 ${amount(hold.shortQty)} 股`}>
+                      空 {amount(hold.shortQty)}
+                    </span>
+                  ) : null}
+                  {hold.spotQty > 0 ? (
+                    <span className="ex-simple-holding-badge is-spot" title={`现货持仓 ${amount(hold.spotQty)} 股`}>
+                      持 {amount(hold.spotQty)}
+                    </span>
+                  ) : null}
                 </div>
               ) : null}
 
@@ -66,6 +86,7 @@ export function SimpleStockList({ client, snap, selected, onSelect }: SimpleStoc
               <div className="ex-simple-card-top">
                 <span className="ex-simple-card-code">{q.code}</span>
                 <span className="ex-simple-card-name" title={q.nameKey}>{q.nameKey}</span>
+                <span className="ex-simple-card-sector">{q.sector}</span>
               </div>
 
               {/* 卡片中间与右侧：现价、涨跌幅、Sparkline */}

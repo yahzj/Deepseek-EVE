@@ -54,3 +54,12 @@ export function round(n: number, digits = 2): number {
   const f = 10 ** digits
   return Math.round(n * f) / f
 }
+
+/** 成交额规范格式化：如 99.45M ISK / 1.25B ISK / 850.00K ISK */
+export function turnover(n: number): string {
+  if (!Number.isFinite(n) || n <= 0) return '0.00 ISK'
+  if (n >= 1e9) return `${(n / 1e9).toFixed(2)}B ISK`
+  if (n >= 1e6) return `${(n / 1e6).toFixed(2)}M ISK`
+  if (n >= 1e3) return `${(n / 1e3).toFixed(2)}K ISK`
+  return `${n.toFixed(2)} ISK`
+}
