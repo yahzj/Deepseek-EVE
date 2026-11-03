@@ -647,21 +647,26 @@
   stroke-width: 1;
 }
 
-/* 阳线（看涨）：经典权威标准为空心（Hollow），外边框清晰，底色微弱透光 */
+/* 阳线（看涨）：经典权威标准为空心中空（Hollow），外边框清晰，腹部纯净不穿堂 */
 .ex-chart-svg .is-up .ex-candle-body {
-  fill: rgb(var(--wui-tone-gain) / 0.08);
+  fill: rgb(var(--wui-tone-gain) / 0.05);
   stroke: currentColor;
   stroke-width: 1.2;
 }
 
-/* 阴线（看跌）：经典权威标准为实心（Solid），内部完全填满 */
+/* 阴线（看跌）：经典权威标准为实心饱满（Solid），内部完全填满 */
 .ex-chart-svg .is-down .ex-candle-body {
   fill: currentColor;
   stroke: currentColor;
   stroke-width: 1;
 }
 
-/* 平盘十字星（平盘）：实心 1px 横线，保证平盘清晰可见 */
+/* 平盘十字星（平盘）：1px 刚劲横档 */
+.ex-candle-doji-bar {
+  stroke: currentColor;
+  stroke-width: 1.2;
+}
+
 .ex-chart-svg .is-doji .ex-candle-body {
   fill: currentColor;
   stroke: currentColor;
@@ -1899,7 +1904,7 @@
   cursor: pointer;
   white-space: nowrap;
   line-height: 1;
-  transition: all 0.15s ease;
+  transition: color 0.18s ease-in-out, background-color 0.18s ease-in-out, box-shadow 0.18s ease-in-out, border-color 0.18s ease-in-out, transform 0.12s ease;
 }
 
 .ex-chart-toggle-btn:last-child {
@@ -1911,36 +1916,40 @@
   background: rgb(var(--wui-accent) / 0.08);
 }
 
+.ex-chart-toggle-btn:active {
+  transform: scale(0.96);
+}
+
 .ex-chart-toggle-btn.is-on {
   font-weight: 600;
 }
 
-/* MA5 激活：黄光与边框 */
+/* MA5 激活：黄金色微光与边框 */
 .ex-chart-toggle-btn.is-ma5.is-on {
   color: rgb(var(--wui-gold));
   background: rgb(var(--wui-gold) / 0.16);
   box-shadow: inset 0 0 0 1px rgb(var(--wui-gold) / 0.6), 0 0 8px rgb(var(--wui-gold) / 0.25);
 }
 
-/* MA20 激活：紫光与边框 */
+/* MA20 激活：科技紫微光与边框 */
 .ex-chart-toggle-btn.is-ma20.is-on {
   color: rgb(var(--wui-purple));
   background: rgb(var(--wui-purple) / 0.16);
   box-shadow: inset 0 0 0 1px rgb(var(--wui-purple) / 0.6), 0 0 8px rgb(var(--wui-purple) / 0.25);
 }
 
-/* 成交量 激活：青蓝微光 */
+/* 成交量 激活：琥珀金微光 */
 .ex-chart-toggle-btn.is-vol.is-on {
-  color: rgb(var(--wui-cyan));
-  background: rgb(var(--wui-cyan) / 0.16);
-  box-shadow: inset 0 0 0 1px rgb(var(--wui-cyan) / 0.6), 0 0 8px rgb(var(--wui-cyan) / 0.25);
-}
-
-/* RSI14 激活：橙黄微光 */
-.ex-chart-toggle-btn.is-rsi.is-on {
   color: rgb(var(--wui-amber));
   background: rgb(var(--wui-amber) / 0.16);
   box-shadow: inset 0 0 0 1px rgb(var(--wui-amber) / 0.6), 0 0 8px rgb(var(--wui-amber) / 0.25);
+}
+
+/* RSI14 激活：冰青色微光与边框 */
+.ex-chart-toggle-btn.is-rsi.is-on {
+  color: rgb(var(--wui-cyan));
+  background: rgb(var(--wui-cyan) / 0.16);
+  box-shadow: inset 0 0 0 1px rgb(var(--wui-cyan) / 0.6), 0 0 8px rgb(var(--wui-cyan) / 0.25);
 }
 
 /* 旧类名向后兼容 */
@@ -1998,9 +2007,20 @@
   font-size: 8px;
 }
 
+.ex-pane-border {
+  stroke: rgb(var(--wui-border) / 0.75);
+  stroke-width: 1;
+}
+
 .ex-pane-baseline {
   stroke: rgb(var(--wui-border));
   stroke-width: 1;
+}
+
+.ex-pane-guide-text {
+  fill: rgb(var(--wui-text-dim) / 0.6);
+  font-family: var(--wui-mono);
+  font-size: 8px;
 }
 
 .ex-vol-bar.is-up {
@@ -2014,10 +2034,11 @@
   stroke: none;
 }
 
+/* MA20 曲线：科技紫，与开关同色呼应 */
 .ex-ma20 {
   fill: none;
-  stroke: rgb(var(--wui-accent) / 0.85);
-  stroke-width: 1.2;
+  stroke: rgb(var(--wui-purple) / 0.95);
+  stroke-width: 1.3;
 }
 
 .ex-avg {
@@ -2026,9 +2047,10 @@
   stroke-width: 1.2;
 }
 
+/* RSI14 曲线：冰青色，与开关同色呼应 */
 .ex-rsi {
   fill: none;
-  stroke: rgb(var(--wui-purple) / 0.9);
+  stroke: rgb(var(--wui-cyan) / 0.95);
   stroke-width: 1.4;
 }
 
@@ -2036,6 +2058,45 @@
   stroke: rgb(var(--wui-border-bright) / 0.7);
   stroke-width: 1;
   stroke-dasharray: 2 4;
+}
+
+/* 极值标记（最高价 / 最低价）：经典折线标尺 */
+.ex-extremum-group {
+  pointer-events: none;
+}
+
+.ex-extremum-dot {
+  fill: rgb(var(--wui-text-dim));
+  pointer-events: none;
+}
+
+.ex-extremum-line {
+  fill: none;
+  stroke: rgb(var(--wui-text-dim) / 0.65);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+  pointer-events: none;
+}
+
+.ex-extremum-text {
+  fill: rgb(var(--wui-text-dim));
+  font-family: var(--wui-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* 十字准星与坐标轴刻度胶囊交互 */
+.ex-crosshair {
+  opacity: 0;
+  transition: opacity 0.15s ease-out;
+  pointer-events: none;
+}
+
+.ex-crosshair.is-active {
+  opacity: 1;
 }
 
 .ex-crosshair-line {
@@ -2047,7 +2108,37 @@
 
 .ex-crosshair-dot {
   fill: rgb(var(--wui-gold));
+  stroke: rgb(var(--wui-bg-deep));
+  stroke-width: 1;
   pointer-events: none;
+}
+
+.ex-axis-pill {
+  pointer-events: none;
+}
+
+.ex-axis-pill-bg {
+  fill: rgb(var(--wui-bg-deep));
+  stroke: rgb(var(--wui-border-bright) / 0.8);
+  stroke-width: 1;
+}
+
+.ex-axis-pill-text {
+  fill: rgb(var(--wui-text-bright));
+  font-family: var(--wui-mono);
+  font-size: var(--wui-fs-2xs);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  user-select: none;
+}
+
+.ex-axis-pill-price .ex-axis-pill-bg {
+  fill: rgb(var(--wui-gold) / 0.18);
+  stroke: rgb(var(--wui-gold) / 0.8);
+}
+
+.ex-axis-pill-price .ex-axis-pill-text {
+  fill: rgb(var(--wui-gold));
 }
 
 /* 十字光标提示（内容挂在全局 `.app-tip` 里，这里只排版） */

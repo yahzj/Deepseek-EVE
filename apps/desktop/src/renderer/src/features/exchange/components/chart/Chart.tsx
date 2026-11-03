@@ -157,6 +157,30 @@ export function Chart({
   const xOf = (i: number): number => plotLeft + slot * (i + 0.5)
   const yOf = (p: number): number => 8 + (1 - (p - lo) / span) * (mainBottom - 8)
 
+  // 极值标记计算：当前可见周期内最高价与最低价及其坐标索引
+  const extremum = useMemo(() => {
+    if (bars.length < 2) return null
+    let maxIdx = 0
+    let minIdx = 0
+    for (let i = 1; i < bars.length; i++) {
+      if (bars[i]!.h > bars[maxIdx]!.h) maxIdx = i
+      if (bars[i]!.l < bars[minIdx]!.l) minIdx = i
+    }
+    return {
+      maxIdx,
+      minIdx,
+      maxH: bars[maxIdx]!.h,
+      minL: bars[minIdx]!.l,
+    }
+  }, [bars])
+
+  // 记住最近一次的十字光标坐标，支持离开图表时平滑淡出过渡
+  const lastPointRef = useRef<CrosshairPoint | null>(null)
+  if (point) {
+    lastPointRef.current = point
+  }
+  const activeCrosshair = point ?? lastPointRef.current
+
   const changePeriod = (next: ChartPeriod): void => {
     rememberedPeriod = next
     setPeriod(next)
@@ -416,6 +440,73 @@ export function Chart({
               avg={avg}
             />
 
+            {/* 极值标记（最高价 / 最低价）：权威折线标尺，带内缩边界防裁切判断 */}
+            {extremum ? (
+              <g className="ex-extremum-group" aria-hidden="true">
+                {/* 最高价标注 */}
+                {(() => {
+                  const x = xOf(extremum.maxIdx)
+                  const y = yOf(extremum.maxH)
+                  const isLeft = x > (plotLeft + plotRight) / 2
+                  const armLen = 14
+                  const bendX = isLeft ? x - armLen : x + armLen
+                  const tailX = isLeft ? bendX - 6 : bendX + 6
+                  const textY = Math.max(14, Math.min(mainBottom - 10, y < 18 ? y + 10 : y - 2))
+                  const textX = isLeft ? tailX - 4 : tailX + 4
+                  const textAnchor = isLeft ? 'end' : 'start'
+                  const label = `H ${price(extremum.maxH)}`
+                  return (
+                    <g key="hi">
+                      <circle cx={x} cy={y} r={1.8} className="ex-extremum-dot" />
+                      <polyline
+                        points={`${x.toFixed(1)},${y.toFixed(1)} ${bendX.toFixed(1)},${textY.toFixed(1)} ${tailX.toFixed(1)},${textY.toFixed(1)}`}
+                        className="ex-extremum-line"
+                      />
+                      <text
+                        x={textX.toFixed(1)}
+                        y={(textY + 3).toFixed(1)}
+                        textAnchor={textAnchor}
+                        className="ex-extremum-text"
+                      >
+                        {label}
+                      </text>
+                    </g>
+                  )
+                })()}
+
+                {/* 最低价标注 */}
+                {(() => {
+                  const x = xOf(extremum.minIdx)
+                  const y = yOf(extremum.minL)
+                  const isLeft = x > (plotLeft + plotRight) / 2
+                  const armLen = 14
+                  const bendX = isLeft ? x - armLen : x + armLen
+                  const tailX = isLeft ? bendX - 6 : bendX + 6
+                  const textY = Math.max(16, Math.min(mainBottom - 6, y > mainBottom - 18 ? y - 10 : y + 4))
+                  const textX = isLeft ? tailX - 4 : tailX + 4
+                  const textAnchor = isLeft ? 'end' : 'start'
+                  const label = `L ${price(extremum.minL)}`
+                  return (
+                    <g key="lo">
+                      <circle cx={x} cy={y} r={1.8} className="ex-extremum-dot" />
+                      <polyline
+                        points={`${x.toFixed(1)},${y.toFixed(1)} ${bendX.toFixed(1)},${textY.toFixed(1)} ${tailX.toFixed(1)},${textY.toFixed(1)}`}
+                        className="ex-extremum-line"
+                      />
+                      <text
+                        x={textX.toFixed(1)}
+                        y={(textY + 3).toFixed(1)}
+                        textAnchor={textAnchor}
+                        className="ex-extremum-text"
+                      >
+                        {label}
+                      </text>
+                    </g>
+                  )
+                })()}
+              </g>
+            ) : null}
+
             {/* 现价虚线 + 右轴读数 */}
             <line
               x1={plotLeft}
@@ -464,13 +555,17 @@ export function Chart({
               />
             ) : null}
 
-            {point ? (
+            {activeCrosshair && activeCrosshair.index < bars.length ? (
               <Crosshair
-                point={point}
+                point={activeCrosshair}
+                active={Boolean(point)}
                 top={8}
                 bottom={toggles.rsi ? rsiBottom : toggles.vol ? volBottom : mainBottom}
                 left={plotLeft}
                 right={plotRight}
+                axisY={h - axisH}
+                timeText={axisSpec.axisLabel(bars[activeCrosshair.index]!.t)}
+                priceText={price(bars[activeCrosshair.index]!.c)}
               />
             ) : null}
 
@@ -514,16 +609,20 @@ function RsiPane({
   const yOf = (v: number): number => bottom - (Math.max(0, Math.min(100, v)) / 100) * height
   return (
     <g>
+      <line x1={left} x2={right} y1={top} y2={top} className="ex-pane-border" />
       <line x1={left} x2={right} y1={bottom} y2={bottom} className="ex-pane-baseline" />
       {[30, 70].map((v) => (
         <g key={`rsi-${v}`}>
           <line x1={left} x2={right} y1={yOf(v)} y2={yOf(v)} className="ex-rsi-guide" />
-          <text x={left + 2} y={yOf(v) - 2} className="ex-pane-dim">
+          <text x={left + 4} y={yOf(v) - 2} className="ex-pane-dim">
+            {v}
+          </text>
+          <text x={right + 4} y={yOf(v) + 3} className="ex-axis-text ex-pane-guide-text">
             {v}
           </text>
         </g>
       ))}
-      <text x={left + 2} y={top + 9} className="ex-pane-label">
+      <text x={left + 4} y={top + 10} className="ex-pane-label">
         RSI14
       </text>
       <polyline points={indicatorPoints(values, xOf, yOf)} className="ex-rsi" />

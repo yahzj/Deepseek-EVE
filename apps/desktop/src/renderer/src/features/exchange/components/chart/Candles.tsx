@@ -89,13 +89,23 @@ export function Candles({
             >
               <line x1={x} x2={x} y1={yHigh} y2={top} className="ex-candle-wick" />
               <line x1={x} x2={x} y1={bottom} y2={yLow} className="ex-candle-wick" />
-              <rect
-                x={x - geo.bodyW / 2}
-                y={top}
-                width={geo.bodyW}
-                height={Math.max(1, bottom - top)}
-                className="ex-candle-body"
-              />
+              {isDoji ? (
+                <line
+                  x1={x - geo.bodyW / 2}
+                  x2={x + geo.bodyW / 2}
+                  y1={top}
+                  y2={top}
+                  className="ex-candle-doji-bar"
+                />
+              ) : (
+                <rect
+                  x={x - geo.bodyW / 2}
+                  y={top}
+                  width={geo.bodyW}
+                  height={Math.max(1, bottom - top)}
+                  className="ex-candle-body"
+                />
+              )}
             </g>
           )
         })
