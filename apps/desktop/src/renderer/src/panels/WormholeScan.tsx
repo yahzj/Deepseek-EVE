@@ -54,6 +54,22 @@ function foundDateLabel(state: GameState, foundAtGameMs: number): string {
 }
 
 /** 库存项的**标准一行**（卡片与放弃弹窗共用同一口径）：族徽 + 「原型名，发现于 X月X日」 */
+function signalTypeMeta(archetype: WormholeArchetype): { typeName: string; toneClass: string } {
+  switch (archetype) {
+    case 'ruins':
+      return { typeName: '遗迹信号', toneClass: 'is-relic' }
+    case 'wreck':
+      return { typeName: '数据信号', toneClass: 'is-data' }
+    case 'combat':
+      return { typeName: '战斗信号', toneClass: 'is-combat' }
+    case 'vein':
+      return { typeName: '矿脉/气体', toneClass: 'is-gas' }
+    case 'balanced':
+    default:
+      return { typeName: '虫洞引力源', toneClass: 'is-wormhole' }
+  }
+}
+
 function stockLineOf(
   state: GameState,
   item: { family: WormholeFamily; archetype: WormholeArchetype; foundAtGameMs: number },
@@ -182,16 +198,30 @@ export function WormholeScanTab({
         ) : null}
 
         <div className="app-wh-scanbar">
-          <div className="app-wh-scanbar-label">
-            {tr("ui.WormholeScan.008")} <b>{percent}%</b>
-            <span className="app-dim">
-              {' '}
-              {tr('ui.WormholeScan.057', { a: fmtDuration(done), b: fmtDuration(windowMs) })}
-              {scan.active ? ` · 还需 ${fmtDuration(Math.max(0, windowMs - done))}` : ''}
-            </span>
+          <div className="app-wh-scanbar-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              {tr("ui.WormholeScan.008")} <b>{percent}%</b>
+              <span className="app-dim">
+                {' '}
+                {tr('ui.WormholeScan.057', { a: fmtDuration(done), b: fmtDuration(windowMs) })}
+                {scan.active ? ` · 还需 ${fmtDuration(Math.max(0, windowMs - done))}` : ''}
+              </span>
+            </div>
+            <div>
+              {percent >= 100 ? (
+                <span className="app-sig-badge is-locked">锁定 100%</span>
+              ) : scan.active ? (
+                <span className="app-sig-badge is-scanning">解析中 {percent}%</span>
+              ) : (
+                <span className="app-sig-badge is-idle">待机</span>
+              )}
+            </div>
           </div>
           <div className="app-wh-scanbar-track">
-            <div className="app-wh-scanbar-fill" style={{ width: `${percent}%` }} />
+            <div
+              className={`app-wh-scanbar-fill${scan.active && percent < 100 ? ' is-scanning' : percent >= 100 ? ' is-locked' : ''}`}
+              style={{ width: `${percent}%` }}
+            />
           </div>
           <div className="app-wh-scanbar-actions">
             {scan.active ? (
@@ -265,19 +295,22 @@ export function WormholeScanTab({
               const line = stockLineOf(state, item)
               const famName = engine.wormholeFamilyName(item.family)
               const archName = archetypeText(item.archetype)
+              const sigMeta = signalTypeMeta(item.archetype)
+              const sigId = `SIG-${item.id.replace(/[^a-zA-Z0-9]/g, '').slice(0, 6).toUpperCase()}`
               return (
                 <li key={item.id} className="app-inv-row">
                   <div className="app-inv-main">
-                    <span className="app-inv-name">
-                      <span className="app-ico">
-                        <Glyph name={line.glyph} size={14} color={ICO_TONES[line.glyph]} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--wui-sp-6)', flexWrap: 'wrap', marginBottom: 'var(--wui-sp-2)' }}>
+                      <span className="app-sig-id">{sigId}</span>
+                      <span className={`app-sig-tag ${sigMeta.toneClass}`}>{sigMeta.typeName}</span>
+                      <span className="app-sig-strength">100% 锁定</span>
+                      <span className="app-inv-name" style={{ marginLeft: 'auto' }}>
+                        <span className="app-ico">
+                          <Glyph name={line.glyph} size={14} color={ICO_TONES[line.glyph]} />
+                        </span>
+                        {tr("ui.Expedition.005")}
                       </span>
-                      {tr("ui.Expedition.005")}
-                    </span>
-                    {/**
-                     * 卡片只留「**原型名，发现于 X月X日**」（船长 2026-09-14：「只需要显示'遗迹密集，
-                     * 发现于XX月XX日'」）——族名/深度说明/相对时间一律撤下，完整口径进悬停。
-                     */}
+                    </div>
                     <span
                       className="app-inv-count"
                       title={
@@ -287,15 +320,19 @@ export function WormholeScanTab({
                     >
                       {line.text}
                     </span>
-                    {/**
-                     * **敌情一行**（船长 2026-09-16：「给虫洞卡片添加更多信息（虫洞内是什么敌人，
-                     * 以什么类型伤害为主）」）：一句话 = 浅层卡名（族名）+ 主系；三档构成进悬停。
-                     * 与 2026-09-14「卡片只显示原型名+发现日期」不冲突——那一条说的是**第二行**的内容，
-                     * 本行是**新增的第三行**（`.app-inv-main` 是纵向 flex ⇒ 自然换行，无需改样式）。
-                     */}
                     <span className="app-inv-count" title={wormholeIntelTip(engine, item.family, archName)}>
                       {wormholeIntelLine(engine, item.family)}
                     </span>
+                    <div className="app-wh-capsules" style={{ marginTop: 'var(--wui-sp-4)' }}>
+                      <span className="app-wh-capsule is-stable">
+                        <span className="app-wh-capsule-dot" />
+                        生命周期: 稳定
+                      </span>
+                      <span className="app-wh-capsule is-mass-safe">
+                        <span className="app-wh-capsule-dot" />
+                        质量状态: 充裕
+                      </span>
+                    </div>
                   </div>
                   <div className="app-inv-btns">
                     <button className="app-btn is-small is-primary" onClick={() => onExplore(item.id)}>

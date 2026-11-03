@@ -12457,7 +12457,7 @@ body.no-fx .app-fit-cpustrip-track.is-full i {
 .app-wh-card.is-picked {
   border-color: rgb(var(--wui-accent) / 0.55);
   background: rgb(var(--wui-accent) / 0.06);
-  box-shadow: inset 0 0 0 1px rgba(79, 216, 196, 0.35);
+  box-shadow: inset 0 0 0 1px rgb(var(--wui-accent) / 0.35);
 }
 .app-wh-card:disabled { cursor: default; opacity: 0.75; border-color: rgb(var(--wui-gold) / 0.45); background: rgb(var(--wui-gold) / 0.05); }
 .app-wh-card-art { display: flex; align-items: center; justify-content: center; height: 64px; overflow: hidden; color: rgb(var(--wui-accent)); }
@@ -12746,7 +12746,7 @@ body.no-fx .app-fit-cpustrip-track.is-full i {
 }
 .app-wh-hex.is-just-scanned polygon { animation: app-wh-hex-lit 420ms ease-out both; }
 @keyframes app-wh-hex-lit {
-  0% { stroke: rgb(var(--wui-x53)); stroke-width: 3; filter: drop-shadow(0 0 6px rgba(79, 216, 196, 0.85)); }
+  0% { stroke: rgb(var(--wui-x53)); stroke-width: 3; filter: drop-shadow(0 0 6px rgb(var(--wui-accent) / 0.85)); }
   100% { stroke-width: 1.6; filter: none; }
 }
 .app-wh-hex:hover polygon { stroke-width: 2; }
@@ -12835,7 +12835,7 @@ body.no-fx .app-fit-cpustrip-track.is-full i {
 .app-wh-tab:hover { border-color: rgb(var(--wui-accent) / 0.55); background: rgb(var(--wui-slot) / 0.7); }
 .app-wh-tab.is-active {
   border-color: rgb(var(--wui-accent) / 0.7); background: rgb(var(--wui-accent) / 0.12);
-  box-shadow: inset 0 0 0 1px rgba(79, 216, 196, 0.35);
+  box-shadow: inset 0 0 0 1px rgb(var(--wui-accent) / 0.35);
 }
 .app-wh-tab-label { line-height: 1.2; }
 .app-wh-tab-sub { font-size: var(--wui-fs-2xse); font-weight: 400; color: rgb(var(--wui-dim)); }
@@ -13202,6 +13202,403 @@ input.app-wh-template-name { min-height: 36px; padding: var(--wui-sp-6) var(--wu
 }
 .app-wh-scanbar-fill { height: 100%; background: rgb(var(--wui-accent)); transition: width 240ms linear; }
 .app-wh-scanbar-actions { display: flex; gap: var(--wui-sp-8); align-items: center; flex-wrap: wrap; }
+
+/* ═══════════ 空间信号扫描、矩阵网格、共振解密与虫洞状态 ═══════════ */
+
+/* 1. 信号 ID 与分类标签、强度徽标 */
+.app-sig-id {
+  display: inline-block;
+  font-family: var(--wui-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--wui-fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: rgb(var(--wui-accent));
+  padding: var(--wui-sp-1) var(--wui-sp-6);
+  border-radius: var(--wui-sp-3);
+  background: rgb(var(--wui-accent) / 0.12);
+  border: 1px solid rgb(var(--wui-accent) / 0.35);
+}
+
+.app-sig-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--wui-sp-3);
+  font-size: var(--wui-fs-2xse);
+  font-weight: 600;
+  padding: var(--wui-sp-1) var(--wui-sp-5);
+  border-radius: var(--wui-sp-999);
+  border: 1px solid rgb(var(--wui-border));
+  color: rgb(var(--wui-text-dim));
+  background: rgb(var(--wui-bg-sunken) / 0.5);
+}
+.app-sig-tag.is-relic {
+  color: rgb(var(--wui-gold));
+  border-color: rgb(var(--wui-gold) / 0.45);
+  background: rgb(var(--wui-gold) / 0.1);
+}
+.app-sig-tag.is-data {
+  color: rgb(var(--wui-x146));
+  border-color: rgb(var(--wui-x146) / 0.45);
+  background: rgb(var(--wui-x146) / 0.1);
+}
+.app-sig-tag.is-combat {
+  color: rgb(var(--wui-danger));
+  border-color: rgb(var(--wui-danger) / 0.45);
+  background: rgb(var(--wui-danger) / 0.1);
+}
+.app-sig-tag.is-gas {
+  color: rgb(var(--wui-rare));
+  border-color: rgb(var(--wui-rare) / 0.45);
+  background: rgb(var(--wui-rare) / 0.1);
+}
+.app-sig-tag.is-wormhole {
+  color: rgb(var(--wui-accent));
+  border-color: rgb(var(--wui-accent) / 0.45);
+  background: rgb(var(--wui-accent) / 0.1);
+}
+
+.app-sig-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--wui-sp-4);
+  font-size: var(--wui-fs-xs);
+  padding: var(--wui-sp-1) var(--wui-sp-6);
+  border-radius: var(--wui-sp-4);
+  font-weight: 500;
+}
+.app-sig-badge.is-scanning {
+  color: rgb(var(--wui-amber));
+  background: rgb(var(--wui-amber) / 0.12);
+  border: 1px solid rgb(var(--wui-amber) / 0.35);
+}
+.app-sig-badge.is-locked {
+  color: rgb(var(--wui-green-soft));
+  background: rgb(var(--wui-green-soft) / 0.12);
+  border: 1px solid rgb(var(--wui-green-soft) / 0.35);
+}
+.app-sig-badge.is-idle {
+  color: rgb(var(--wui-dim));
+  background: rgb(var(--wui-x01) / 0.05);
+  border: 1px solid rgb(var(--wui-border));
+}
+
+.app-sig-strength {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--wui-sp-4);
+  font-size: var(--wui-fs-2xse);
+  font-family: var(--wui-mono);
+  font-variant-numeric: tabular-nums;
+  color: rgb(var(--wui-green-soft));
+}
+
+.app-wh-scanbar-fill.is-scanning {
+  background: rgb(var(--wui-amber));
+  box-shadow: 0 0 8px rgb(var(--wui-amber) / 0.5);
+}
+.app-wh-scanbar-fill.is-locked {
+  background: rgb(var(--wui-green-soft));
+  box-shadow: 0 0 8px rgb(var(--wui-green-soft) / 0.5);
+}
+
+/* 2. 扫描网格视口：同心雷达圆环与探针球范围 */
+.app-wh-radar-ring {
+  fill: none;
+  stroke: rgb(var(--wui-accent) / 0.15);
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+  pointer-events: none;
+}
+.app-wh-radar-axis {
+  stroke: rgb(var(--wui-accent) / 0.12);
+  stroke-width: 1;
+  stroke-dasharray: 4 6;
+  pointer-events: none;
+}
+.app-wh-probe-sphere {
+  fill: rgb(var(--wui-accent) / 0.035);
+  stroke: rgb(var(--wui-accent) / 0.45);
+  stroke-width: 1.4;
+  stroke-dasharray: 6 3;
+  pointer-events: none;
+  animation: app-wh-probe-pulse 3s ease-in-out infinite alternate;
+}
+@keyframes app-wh-probe-pulse {
+  0% { stroke-opacity: 0.35; fill-opacity: 0.02; }
+  100% { stroke-opacity: 0.75; fill-opacity: 0.06; }
+}
+
+/* 3. 虫洞状态胶囊（生命周期与质量状态） */
+.app-wh-capsules {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--wui-sp-6);
+}
+.app-wh-capsule {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--wui-sp-4);
+  font-size: var(--wui-fs-xs);
+  padding: var(--wui-sp-2) var(--wui-sp-8);
+  border-radius: var(--wui-sp-999);
+  border: 1px solid rgb(var(--wui-border));
+  background: rgb(var(--wui-bg-hover) / 0.6);
+  color: rgb(var(--wui-text));
+  white-space: nowrap;
+}
+.app-wh-capsule-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: 0 0 auto;
+}
+.app-wh-capsule.is-stable {
+  border-color: rgb(var(--wui-green-soft) / 0.6);
+  background: rgb(var(--wui-green-soft) / 0.1);
+  color: rgb(var(--wui-green-soft));
+}
+.app-wh-capsule.is-collapsing {
+  border-color: rgb(var(--wui-amber) / 0.6);
+  background: rgb(var(--wui-amber) / 0.12);
+  color: rgb(var(--wui-amber));
+}
+.app-wh-capsule.is-closing {
+  border-color: rgb(var(--wui-danger) / 0.7);
+  background: rgb(var(--wui-danger) / 0.14);
+  color: rgb(var(--wui-danger));
+  animation: app-wh-danger-blink 1.5s ease-in-out infinite alternate;
+}
+.app-wh-capsule.is-mass-safe {
+  border-color: rgb(var(--wui-blue) / 0.6);
+  background: rgb(var(--wui-blue) / 0.1);
+  color: rgb(var(--wui-blue));
+}
+.app-wh-capsule.is-depleted {
+  border-color: rgb(var(--wui-danger) / 0.7);
+  background: rgb(var(--wui-danger) / 0.14);
+  color: rgb(var(--wui-danger));
+}
+@keyframes app-wh-danger-blink {
+  0% { opacity: 0.8; }
+  100% { opacity: 1; box-shadow: 0 0 8px rgb(var(--wui-danger) / 0.4); }
+}
+
+/* 跃迁深入按钮危险态防呆 */
+.app-wh-work.is-danger-jump {
+  border-color: rgb(var(--wui-danger) / 0.8) !important;
+  background: rgb(var(--wui-danger) / 0.18) !important;
+  color: rgb(var(--wui-danger)) !important;
+}
+
+/* 4. 波形共振与矩阵解密小游戏 */
+.app-wh-resonance {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wui-sp-6);
+  padding: var(--wui-sp-8) var(--wui-sp-10);
+  border: 1px solid rgb(var(--wui-accent) / 0.4);
+  border-radius: var(--wui-sp-6);
+  background: rgb(var(--wui-bg-sunken) / 0.55);
+  margin-top: var(--wui-sp-6);
+}
+.app-wh-resonance-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--wui-sp-8);
+}
+.app-wh-resonance-title {
+  font-size: var(--wui-fs-sm);
+  font-weight: 600;
+  color: rgb(var(--wui-accent));
+  display: flex;
+  align-items: center;
+  gap: var(--wui-sp-6);
+}
+.app-wh-resonance-svg {
+  width: 100%;
+  height: 68px;
+  background: rgb(var(--wui-scrim) / 0.85);
+  border: 1px solid rgb(var(--wui-border));
+  border-radius: var(--wui-sp-4);
+  display: block;
+}
+.app-wh-resonance-target {
+  fill: none;
+  stroke: rgb(var(--wui-x146));
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+  opacity: 0.8;
+}
+.app-wh-resonance-tuned {
+  fill: none;
+  stroke: rgb(var(--wui-accent));
+  stroke-width: 2;
+  transition: d 80ms ease-out;
+}
+.app-wh-resonance.is-locked .app-wh-resonance-tuned {
+  stroke: rgb(var(--wui-green-soft));
+  filter: drop-shadow(0 0 4px rgb(var(--wui-green-soft) / 0.7));
+}
+.app-wh-resonance-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--wui-sp-8);
+  align-items: center;
+}
+.app-wh-resonance-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wui-sp-3);
+}
+.app-wh-resonance-row {
+  display: flex;
+  align-items: center;
+  gap: var(--wui-sp-4);
+}
+.app-wh-resonance-btn {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--wui-mono);
+  font-size: var(--wui-fs-sm);
+  font-weight: 600;
+  color: rgb(var(--wui-text));
+  background: rgb(var(--wui-bg-hover) / 0.7);
+  border: 1px solid rgb(var(--wui-border));
+  border-radius: var(--wui-sp-3);
+  cursor: pointer;
+  padding: 0;
+}
+.app-wh-resonance-btn:hover:not(:disabled) {
+  border-color: rgb(var(--wui-accent) / 0.6);
+  background: rgb(var(--wui-slot) / 0.8);
+}
+.app-wh-resonance-slider {
+  flex: 1 1 auto;
+  accent-color: rgb(var(--wui-accent));
+  height: 4px;
+}
+.app-wh-resonance-metrics {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--wui-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--wui-fs-xs);
+  color: rgb(var(--wui-dim));
+}
+.app-wh-resonance-metrics b {
+  color: rgb(var(--wui-accent));
+}
+.app-wh-resonance.is-locked .app-wh-resonance-metrics b {
+  color: rgb(var(--wui-green-soft));
+}
+/* 共振全息脉冲反馈 */
+.app-resonance-pulse {
+  position: relative;
+}
+.app-resonance-pulse::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  border: 2px solid rgb(var(--wui-green-soft));
+  animation: app-wh-pulse-ring 800ms ease-out forwards;
+  pointer-events: none;
+}
+@keyframes app-wh-pulse-ring {
+  0% { transform: scale(0.98); opacity: 0.9; }
+  100% { transform: scale(1.08); opacity: 0; }
+}
+
+/* 5. 遗迹开箱与探索结算物品槽位网格 */
+.app-wh-settle-slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(136px, 1fr));
+  gap: var(--wui-sp-8);
+  margin-top: var(--wui-sp-8);
+}
+.app-wh-settle-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--wui-sp-4);
+  padding: var(--wui-sp-8) var(--wui-sp-6);
+  background: rgb(var(--wui-bg-hover) / 0.5);
+  border: 1px solid rgb(var(--wui-border));
+  border-radius: var(--wui-sp-5);
+  transition: transform 120ms, border-color 120ms;
+}
+.app-wh-settle-slot:hover {
+  transform: translateY(-2px);
+  border-color: rgb(var(--wui-accent) / 0.6);
+}
+.app-wh-settle-slot.is-epic {
+  border-color: rgb(var(--wui-gold) / 0.6);
+  background: rgb(var(--wui-gold) / 0.08);
+  box-shadow: inset 0 0 10px rgb(var(--wui-gold) / 0.15);
+}
+.app-wh-settle-slot.is-rare {
+  border-color: rgb(var(--wui-accent) / 0.6);
+  background: rgb(var(--wui-accent) / 0.08);
+  box-shadow: inset 0 0 10px rgb(var(--wui-accent) / 0.15);
+}
+.app-wh-settle-slot.is-special {
+  border-color: rgb(var(--wui-x146) / 0.6);
+  background: rgb(var(--wui-x146) / 0.08);
+  box-shadow: inset 0 0 10px rgb(var(--wui-x146) / 0.15);
+}
+.app-wh-settle-slot-ico {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.app-wh-settle-slot-name {
+  font-size: var(--wui-fs-xs);
+  font-weight: 600;
+  color: rgb(var(--wui-text));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.app-wh-settle-slot-qty {
+  font-family: var(--wui-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--wui-fs-2xse);
+  color: rgb(var(--wui-dim));
+}
+.app-wh-settle-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wui-sp-4);
+  margin-top: var(--wui-sp-6);
+  padding: var(--wui-sp-6) var(--wui-sp-8);
+  border-radius: var(--wui-sp-4);
+  background: rgb(var(--wui-x01) / 0.02);
+  border: 1px solid rgb(var(--wui-border));
+}
+.app-wh-settle-metric-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--wui-fs-s);
+}
+.app-wh-settle-metric-val {
+  font-family: var(--wui-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: rgb(var(--wui-accent));
+}
 
 /* ═══════════ 「扫描虫洞」两个子页 + 谜质科技树（2026-09-19 船长：拆 2 个子页面）═══════════
    子页包装层只为"切换显示"——`.app-win-body` 是**块级**容器，故包装层不影响原页面布局；
