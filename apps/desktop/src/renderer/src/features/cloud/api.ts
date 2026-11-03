@@ -1,4 +1,8 @@
-import { readCloudPreferences } from './preferences'
+import {
+  DEFAULT_CLOUD_SERVER,
+  FALLBACK_CLOUD_SERVER,
+  readCloudPreferences,
+} from './preferences'
 import type { CloudAuthResponse, CloudProfile, CloudSave, CloudSaveVersion } from './types'
 
 // 兼容浏览器与 Node 的全局 fetch 类型，不要求引擎测试加载 DOM 类型库。
@@ -55,16 +59,41 @@ export function normalizeCloudServerURL(input: string): string {
   }
   const hostname = url.hostname.replace(/^\[|\]$/g, '').toLowerCase()
   const local = hostname === 'localhost' || hostname === '::1' || /^127(?:\.\d{1,3}){3}$/.test(hostname)
-  if ((url.protocol !== 'https:' && !(url.protocol === 'http:' && local))
+  /**
+   * 2026-11-04 船长决定「默认 IP 直连、失败回退域名」：域名走 Cloudflare，链路抖动时整站不可用，
+   * 直连源站 IP 必须允许明文 HTTP（源站证书只签了域名）。因此 HTTP 放行范围从「仅回环」扩到
+   * 「IP 字面量」；**域名仍必须 HTTPS**，不给明文开新口子。
+   */
+  const ipLiteral = /^\d{1,3}(?:\.\d{1,3}){3}$/.test(hostname)
+  if ((url.protocol !== 'https:' && !(url.protocol === 'http:' && (local || ipLiteral)))
     || url.username || url.password || url.search || url.hash
     || (url.pathname !== '' && url.pathname !== '/')) {
     throw new CloudApiError(0, 'invalid_server', 'invalid_server')
   }
   const pageLocation = (globalThis as { location?: { protocol: string } }).location
-  if (pageLocation?.protocol === 'https:' && url.protocol !== 'https:') {
+  // HTTP 网页里的明文 IP 由浏览器的混合内容策略拒绝，这里只在**域名降级**时提前拦住；
+  // 默认 IP 直连要留着，失败后由 createCloudApi 的回退逻辑换域名，不能在建 api 时就炸掉。
+  if (pageLocation?.protocol === 'https:' && url.protocol !== 'https:' && !ipLiteral) {
     throw new CloudApiError(0, 'insecure_server', 'insecure_server')
   }
   return url.origin
+}
+
+/**
+ * 只有「当前入口就是默认 IP 直连」才准备域名兜底：玩家自存的地址（含只存域名的旧会话）
+ * 行为不变，仍然单点失败并把错误交给调用方。
+ */
+function resolveFallbackOrigin(origin: string): string | null {
+  let primary: string
+  let fallback: string
+  try {
+    primary = normalizeCloudServerURL(DEFAULT_CLOUD_SERVER)
+    fallback = normalizeCloudServerURL(FALLBACK_CLOUD_SERVER)
+  } catch {
+    return null
+  }
+  if (!primary || !fallback || origin !== primary || fallback === origin) return null
+  return fallback
 }
 
 function object(value: unknown): value is Record<string, unknown> {
@@ -141,8 +170,14 @@ export function createCloudApi(options: CloudApiOptions): CloudApi {
   if (!origin) throw new CloudApiError(0, 'invalid_server', 'invalid_server')
   const fetcher = options.fetchImpl ?? fetch
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
+  const fallbackOrigin = resolveFallbackOrigin(origin)
 
-  async function request<T>(path: string, init: CloudRequestInit, validate: (body: unknown) => body is T, signal?: AbortSignal): Promise<T> {
+  /**
+   * 单次尝试：`request` 在网络层失败时会换 fallback 地址再调一次本函数，这里只管「打到某个
+   * origin 上会发生什么」。令牌归属仍按调用方配置的 `origin` 判断——回退到域名时带的还是
+   * 同一份会话令牌，也不会把令牌发给与配置无关的服务器。
+   */
+  async function attempt<T>(serverOrigin: string, path: string, init: CloudRequestInit, validate: (body: unknown) => body is T, signal?: AbortSignal): Promise<T> {
     const controller = new AbortController()
     const abort = () => controller.abort()
     signal?.addEventListener('abort', abort, { once: true })
@@ -168,7 +203,7 @@ export function createCloudApi(options: CloudApiOptions): CloudApi {
         ...init, headers, signal: controller.signal,
         redirect: 'error', credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer',
       }
-      const response = await fetcher(new URL(path, `${origin}/`), requestInit)
+      const response = await fetcher(new URL(path, `${serverOrigin}/`), requestInit)
       const raw = await readBoundedText(response)
       let body: unknown
       try {
@@ -201,6 +236,28 @@ export function createCloudApi(options: CloudApiOptions): CloudApi {
     } finally {
       clearTimeout(timer)
       signal?.removeEventListener('abort', abort)
+    }
+  }
+
+  /**
+   * 默认 IP 直连失败时用域名**单次**重试，成功后照常返回（**不持久化切换服务器**，下一次仍先试
+   * 默认地址，直连恢复后自动回到快路径）。
+   * 重试边界：只有网络层失败（fetch throw / timeout）才换地址；4xx/5xx 与响应校验失败说明服务端
+   * 已经应答，换主机重发会重复副作用（登录、上传存档），一律原样抛给调用方。调用方自己 abort 也
+   * 不重试，否则「取消」会变成又一轮请求。两次都失败时抛第一次的错误。
+   */
+  async function request<T>(path: string, init: CloudRequestInit, validate: (body: unknown) => body is T, signal?: AbortSignal): Promise<T> {
+    try {
+      return await attempt(origin, path, init, validate, signal)
+    } catch (error) {
+      const networkFailure = error instanceof CloudApiError && error.status === 0
+        && (error.code === 'network_error' || error.code === 'timeout')
+      if (!networkFailure || fallbackOrigin === null || signal?.aborted) throw error
+      try {
+        return await attempt(fallbackOrigin, path, init, validate, signal)
+      } catch {
+        throw error
+      }
     }
   }
 

@@ -23,7 +23,7 @@
  * HTTP 客户端同样按「服务器地址 + 传输层类型」复用，避免切页重建连接。
  */
 import type { ExchangeClient } from './client'
-import { readCloudPreferences } from '../cloud/preferences'
+import { DEFAULT_CLOUD_SERVER, FALLBACK_CLOUD_SERVER, readCloudPreferences } from '../cloud/preferences'
 import { MockExchangeClient } from './mock/MockExchangeClient'
 import { HttpExchangeClient } from './http/HttpExchangeClient'
 import { RendererTransport } from './http/RendererTransport'
@@ -113,6 +113,10 @@ export function resolveExchangeSource(opts: ExchangeClientOptions = {}): Exchang
   if (serverUrl === null && mode === 'http' && accountDefault) {
     serverUrl = accountDefault.serverUrl
   }
+  // 2026-11-04：http 模式下解析不到地址就用默认 IP 直连——空地址不再等于「引导态」。
+  if (mode === 'http' && (serverUrl === null || serverUrl.trim() === '')) {
+    serverUrl = DEFAULT_CLOUD_SERVER
+  }
   return {
     mode,
     serverUrl,
@@ -154,7 +158,11 @@ export function createExchangeClient(opts: ExchangeClientOptions = {}): Exchange
         }
       }
       try {
-        transport = new RendererTransport({ serverUrl: source.serverUrl })
+        transport = new RendererTransport({
+          serverUrl: source.serverUrl,
+          // 默认 IP 直连失败时换域名各试一次（不写回设置，见 RendererTransport.request）。
+          fallbackServerUrl: FALLBACK_CLOUD_SERVER,
+        })
       } catch (err) {
         return {
           client: new HttpExchangeClient(new NotConnectedTransport()),

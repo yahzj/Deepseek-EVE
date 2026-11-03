@@ -104,8 +104,13 @@ export interface VisibilitySource {
 }
 
 export interface RendererTransportOptions {
-  /** 交易所服务器根地址（如 `https://shit.fuckrapper.online`）；空串视为引导态 */
+  /** 交易所服务器根地址（如 `http://123.207.188.192`）；空串视为引导态 */
   serverUrl: string
+  /**
+   * 备用地址（2026-11-04 船长决定：默认 IP 直连，失败回退域名）。只在**网络层失败**时用一次，
+   * 成功也不会改写 `serverUrl`，下一次请求仍先试主地址。
+   */
+  fallbackServerUrl?: string
   /** 令牌来源；默认读云存档会话 `readCloudPreferences().session?.token` */
   tokenProvider?: () => string | null | undefined
   /** 注入点（探针/测试/将来主进程代理）；默认全局 `fetch` */
@@ -127,6 +132,10 @@ const REQUEST_TIMEOUT_MS = 15_000
 
 interface StreamHandle {
   url: string
+  /** WS 路径；切地址时只换主机，path/query/token 全部保留 */
+  path: string
+  /** 当前生效地址：首连失败切到域名后固定下来，避免两个地址反复横跳 */
+  serverUrl: string
   onMessage: (payload: unknown) => void
   socket: WebSocket | null
   timer: ReturnType<typeof setTimeout> | null
@@ -179,6 +188,8 @@ function normalizeServerUrl(raw: string): string {
 
 export class RendererTransport implements Transport {
   private readonly serverUrl: string
+  /** 备用地址；null = 不启用回退（未配置、配置非法或与主地址相同） */
+  private readonly fallbackServerUrl: string | null
   private readonly tokenProvider: () => string | null | undefined
   private readonly fetchImpl: typeof fetch
   private readonly webSocketImpl: typeof WebSocket | null
@@ -196,6 +207,7 @@ export class RendererTransport implements Transport {
 
   constructor(options: RendererTransportOptions) {
     this.serverUrl = normalizeServerUrl(options.serverUrl)
+    this.fallbackServerUrl = this.resolveFallback(options.fallbackServerUrl)
     this.tokenProvider =
       options.tokenProvider ??
       (() => readCloudPreferences().session?.token ?? null)
@@ -218,83 +230,97 @@ export class RendererTransport implements Transport {
   async request<T>(req: TransportRequest): Promise<T> {
     // 先取令牌：未登录不该产生任何网络请求（也避免把匿名请求打到生产服务器）。
     const token = this.requireToken()
-    const url = this.httpUrlOf(req.path)
     /** 只有 GET 响应进缓存；下单/划转等写请求永远不缓存、也绝不回退。 */
     const cacheable = req.method === 'GET'
-    const controller = new AbortController()
-    let timedOut = false
-    const timer = setTimeout(() => {
-      timedOut = true
-      controller.abort()
-    }, REQUEST_TIMEOUT_MS)
-    const detach = linkAbort(req.signal, controller)
-    try {
-      const headers: Record<string, string> = {
-        Accept: 'application/json',
-        Authorization: `Bearer ${token}`,
-      }
-      if (req.body !== undefined) headers['Content-Type'] = 'application/json'
-      let response: Response
+    /**
+     * 默认 IP 直连失败时换域名再打**一次**（2026-11-04 船长决定）。只对网络层失败生效：
+     * 4xx/5xx 说明链路已经通了，换地址重发只会重复副作用，绝不重试；调用方主动取消也不重试。
+     * 成功后不改写 `serverUrl`，下一次请求仍先走主地址。
+     */
+    const servers = this.fallbackServerUrl === null
+      ? [this.serverUrl]
+      : [this.serverUrl, this.fallbackServerUrl]
+    const headers: Record<string, string> = {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    }
+    if (req.body !== undefined) headers['Content-Type'] = 'application/json'
+    for (let index = 0; index < servers.length; index += 1) {
+      const serverUrl = servers[index]!
+      const controller = new AbortController()
+      let timedOut = false
+      const timer = setTimeout(() => {
+        timedOut = true
+        controller.abort()
+      }, REQUEST_TIMEOUT_MS)
+      const detach = linkAbort(req.signal, controller)
       try {
-        response = await this.fetchImpl(url, {
-          method: req.method,
-          headers,
-          body: req.body === undefined ? undefined : JSON.stringify(req.body),
-          signal: controller.signal,
-          cache: 'no-store',
-          credentials: 'omit',
-          redirect: 'error',
-        })
-      } catch {
-        // 调用方主动取消（切标的/卸载）不该拿缓存冒充结果，仍按原样报错。
-        const callerAborted = req.signal?.aborted === true
-        const failure =
-          timedOut || controller.signal.aborted
-            ? new ExchangeError('timeout', '交易所请求超时：请稍后重试')
-            : new ExchangeError('network_error', '无法连接交易所服务器：请检查网络或服务器地址')
-        // 只有网络层失败才回退（fetch throw / timeout）；4xx/5xx 在下面单独分支，绝不回退。
-        if (cacheable && !callerAborted) {
-          const cached = this.cache.get<T>(req.path)
-          if (cached !== undefined) {
-            setExchangeOffline(true)
-            return cached
+        let response: Response
+        try {
+          response = await this.fetchImpl(this.httpUrlOf(req.path, serverUrl), {
+            method: req.method,
+            headers,
+            body: req.body === undefined ? undefined : JSON.stringify(req.body),
+            signal: controller.signal,
+            cache: 'no-store',
+            credentials: 'omit',
+            redirect: 'error',
+          })
+        } catch {
+          // 调用方主动取消（切标的/卸载）不该拿缓存冒充结果，仍按原样报错。
+          const callerAborted = req.signal?.aborted === true
+          const failure =
+            timedOut || controller.signal.aborted
+              ? new ExchangeError('timeout', '交易所请求超时：请稍后重试')
+              : new ExchangeError('network_error', '无法连接交易所服务器：请检查网络或服务器地址')
+          // 还没试过备用地址就换域名再试一次；超时和断连都算网络层失败。
+          if (!callerAborted && index + 1 < servers.length) continue
+          // 只有网络层失败才回退缓存（fetch throw / timeout）；4xx/5xx 在下面单独分支，绝不回退。
+          if (cacheable && !callerAborted) {
+            const cached = this.cache.get<T>(req.path)
+            if (cached !== undefined) {
+              setExchangeOffline(true)
+              return cached
+            }
+          }
+          throw failure
+        }
+        // 收到任何响应（含 4xx/5xx）就说明链路通了：离线标记可以撤掉。
+        setExchangeOffline(false)
+        const text = await response.text().catch(() => '')
+        let body: unknown
+        if (text.trim() !== '') {
+          try {
+            body = JSON.parse(text)
+          } catch {
+            throw new ExchangeError('malformed_response', '交易所返回了无法解析的响应')
           }
         }
-        throw failure
-      }
-      // 收到任何响应（含 4xx/5xx）就说明链路通了：离线标记可以撤掉。
-      setExchangeOffline(false)
-      const text = await response.text().catch(() => '')
-      let body: unknown
-      if (text.trim() !== '') {
-        try {
-          body = JSON.parse(text)
-        } catch {
-          throw new ExchangeError('malformed_response', '交易所返回了无法解析的响应')
+        if (!response.ok) {
+          const code =
+            isRecord(body) && typeof body.code === 'string' && body.code !== ''
+              ? body.code
+              : `http_${response.status}`
+          const message =
+            isRecord(body) && typeof body.message === 'string' && body.message !== ''
+              ? body.message
+              : `交易所请求失败（HTTP ${response.status}）`
+          // 401 统一走未登录错误：页面/调用方能据此引导重新登录，而不是当成普通业务错误。
+          if (response.status === 401) throw new ExchangeAuthError(message)
+          throw new ExchangeError(code, message)
         }
+        if (cacheable && body !== undefined) {
+          this.cache.put(req.path, body)
+          this.rememberGetPath(req.path)
+        }
+        return body as T
+      } finally {
+        clearTimeout(timer)
+        detach()
       }
-      if (!response.ok) {
-        const code =
-          isRecord(body) && typeof body.code === 'string' && body.code !== ''
-            ? body.code
-            : `http_${response.status}`
-        const message =
-          isRecord(body) && typeof body.message === 'string' && body.message !== ''
-            ? body.message
-            : `交易所请求失败（HTTP ${response.status}）`
-        // 401 统一走未登录错误：页面/调用方能据此引导重新登录，而不是当成普通业务错误。
-        if (response.status === 401) throw new ExchangeAuthError(message)
-        throw new ExchangeError(code, message)
-      }
-      if (cacheable && body !== undefined) {
-        this.cache.put(req.path, body)
-        this.rememberGetPath(req.path)
-      }
-      return body as T
-    } finally {
-      clearTimeout(timer)
-      detach()
     }
+    // 两个地址都在网络层失败时按网络错误收口（循环内通常已 throw，这里只兜底）。
+    throw new ExchangeError('network_error', '无法连接交易所服务器：请检查网络或服务器地址')
   }
 
   /* ═══════════════ WebSocket ═══════════════ */
@@ -306,6 +332,8 @@ export class RendererTransport implements Transport {
     }
     const handle: StreamHandle = {
       url: this.wsUrlOf(path, token),
+      path,
+      serverUrl: this.serverUrl,
       onMessage,
       socket: null,
       timer: null,
@@ -353,16 +381,44 @@ export class RendererTransport implements Transport {
     return token
   }
 
-  private httpUrlOf(path: string): string {
-    return new URL(path, `${this.serverUrl}/`).toString()
+  /** 备用地址归一化：非法或与主地址相同都视为「不启用」，不因一处配置笔误炸掉整个传输层。 */
+  private resolveFallback(raw: string | undefined): string | null {
+    if (typeof raw !== 'string' || raw.trim() === '') return null
+    let origin: string
+    try {
+      origin = normalizeServerUrl(raw)
+    } catch {
+      return null
+    }
+    return origin === this.serverUrl ? null : origin
   }
 
-  private wsUrlOf(path: string, token: string): string {
-    const url = new URL(path, `${this.serverUrl}/`)
+  private httpUrlOf(path: string, serverUrl: string = this.serverUrl): string {
+    return new URL(path, `${serverUrl}/`).toString()
+  }
+
+  private wsUrlOf(path: string, token: string, serverUrl: string = this.serverUrl): string {
+    const url = new URL(path, `${serverUrl}/`)
     url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
     // 保留调用方已有的 codes/topics/throttle，只补 token（Go 只从 query 读令牌）。
     url.searchParams.set('token', token)
     return url.toString()
+  }
+
+  /**
+   * 主地址首连失败 → 把这条流切到备用地址（每个流只切一次，之后固定在该地址）。
+   * 只改协议与主机，path、query 与 token 原样保留，令牌不额外落进内存字段。
+   */
+  private switchStreamToFallback(handle: StreamHandle): boolean {
+    const fallback = this.fallbackServerUrl
+    if (fallback === null || handle.serverUrl === fallback) return false
+    const target = new URL(fallback)
+    const url = new URL(handle.url)
+    url.protocol = target.protocol === 'https:' ? 'wss:' : 'ws:'
+    url.host = target.host
+    handle.serverUrl = fallback
+    handle.url = url.toString()
+    return true
   }
 
   /* ═══════════════ 本地缓存 / 离线补拉 ═══════════════ */
@@ -433,6 +489,8 @@ export class RendererTransport implements Transport {
     try {
       socket = new WebSocketImpl(handle.url)
     } catch {
+      // 连构造都失败同样属于主地址连接失败：切备用地址，并按基础间隔重试。
+      if (!handle.everConnected && this.switchStreamToFallback(handle)) handle.attempt = 0
       this.scheduleReconnect(handle)
       return
     }
@@ -473,6 +531,8 @@ export class RendererTransport implements Transport {
     }
     socket.onclose = () => {
       if (handle.socket === socket) handle.socket = null
+      // 首连就失败（onerror 会先触发 close，且从未连上）才换域名；切过之后不再回切，避免横跳。
+      if (!handle.everConnected && this.switchStreamToFallback(handle)) handle.attempt = 0
       this.scheduleReconnect(handle)
     }
   }

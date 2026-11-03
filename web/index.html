@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- 内容安全策略：脚本仅限自身；账号与云档允许 HTTPS 及回环 HTTP，不新增聊天连接策略。 -->
+    <!-- 内容安全策略：脚本仅限自身；账号与云档允许 HTTPS、默认 IP 直连（HTTP）及回环 HTTP，不新增聊天连接策略。 -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self' https: http://localhost:* http://127.0.0.1:* http://[::1]:*"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self' https: http://123.207.188.192 http://localhost:* http://127.0.0.1:* http://[::1]:*"
     />
     <title>大鲸鱼-深空放置（网页版）</title>
   </head>

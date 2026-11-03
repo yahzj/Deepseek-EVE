@@ -151,3 +151,11 @@ Node 内部接口（**仅 localhost + 共享密钥**）：
 - Go 服务环境增加 `EXCHANGE_HISTORY_BARS=2016`（5m 约一周）；当前 `GET /klines` 单次最多返回 1000 根（约 3.5 天），取满一周需放开接口上限（待办）。
 - 客户端新增 7 天离线缓存（`MarketCache` + `RendererTransport` 回退/补拉）：断网时可看最近行情/盘口/K线，写请求仍失败；缓存不含 token。
 
+### 8.9 内测启动资金与钱包充值缺口（2026-11-04）
+
+- **缺口**：服务器钱包（`whale-server.db` 的 `wallets`）与游戏存档内信用点是两套账。钱包只有服务端系统记账时才有余额，游戏存档不会自动同步；因此新/老玩家首次入金会报「钱包信用点不足」。
+- **内测处置**：对船长账号 18（`dadadada`）通过内部资金桥记一笔 **5000 万内测启动资金**（nonce `playtest-grant-20261104`），双分录可审计：
+  - `internal_exchange_credit_in`：account_id=18，credits_delta=+50,000,000；
+  - `internal_exchange_credit_clearing`：account_id=null，credits_delta=−50,000,000。
+- **待办（正式上线前必须解决）**：确定「游戏存档信用点 → 服务器钱包」的合法充值来源（如云存档校验后按存档余额一次性镜像、或游戏内服务端经济活动可赚取），并加配额与防刷；不能长期依赖手工内测拨款。
+

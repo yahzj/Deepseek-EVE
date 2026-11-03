@@ -267,7 +267,8 @@ describe('cloud API', () => {
       setItem: (key: string, value: string) => { values.set(key, value) },
       removeItem: (key: string) => { values.delete(key) },
     })
-    expect(preferences.DEFAULT_CLOUD_SERVER).toBe('https://shit.fuckrapper.online')
+    expect(preferences.DEFAULT_CLOUD_SERVER).toBe('http://123.207.188.192')
+    expect(preferences.FALLBACK_CLOUD_SERVER).toBe('https://shit.fuckrapper.online')
     expect(preferences.readCloudPreferences()).toEqual({ server: preferences.DEFAULT_CLOUD_SERVER, session: null })
     values.set('whale.cloud.server', 'https://configured.example')
     expect(preferences.readCloudPreferences().server).toBe('https://configured.example')
@@ -289,7 +290,7 @@ describe('cloud API', () => {
     ])
     expect(directives.at(-1)?.split(' ')).toEqual([
       'connect-src', "'self'", ...(path.startsWith('apps/') ? ['ws:'] : []),
-      'https:', 'http://localhost:*', 'http://127.0.0.1:*', 'http://[::1]:*',
+      'https:', 'http://123.207.188.192', 'http://localhost:*', 'http://127.0.0.1:*', 'http://[::1]:*',
     ])
   })
 })

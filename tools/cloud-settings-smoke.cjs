@@ -54,7 +54,7 @@ function selfTest() {
   const f = fixture()
   assert.notEqual(f.CLOUD_SMOKE_PILOT, f.CLOUD_SMOKE_CHARACTER, '账号名必须区别于游戏角色名')
   const { DEFAULT_CLOUD_SERVER } = require('../apps/desktop/src/renderer/src/features/cloud/preferences.ts')
-  assert.equal(DEFAULT_CLOUD_SERVER, 'https://shit.fuckrapper.online', '默认后台契约尚未落齐或已改变')
+  assert.equal(DEFAULT_CLOUD_SERVER, 'http://123.207.188.192', '默认后台契约尚未落齐或已改变')
   for (const wallet of [111, 222]) {
     assert.equal(JSON.parse(f.cloudSettingsFixture(wallet)).state.character.name, f.CLOUD_SMOKE_CHARACTER)
     const result = f.inspectCloudUpload(f.cloudSettingsFixture(wallet))
