@@ -2604,3 +2604,271 @@
   border-radius: 3px;
   font-size: 10px;
 }
+
+
+/* ==========================================================================
+   专业模式 (ProExchange) · 星舰战术交易舱重构专属样式 (2026-11-03)
+   ========================================================================== */
+
+/* ── 三栏栅格优化（右栏拓宽至 360px 赋予交易舱充足操作空间） ── */
+.ex-pro-grid {
+  grid-template-columns: 200px 1fr 360px;
+  gap: 10px;
+}
+
+/* ── K 线图时间轴缩放工具组 ── */
+.ex-chart-zoom-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 6px;
+  padding: 1px 4px;
+  background: rgb(var(--wui-bg-deep));
+  border: 1px solid rgb(var(--wui-border));
+  border-radius: 4px;
+}
+
+.ex-chart-zoom-text {
+  font-family: var(--wui-mono);
+  font-size: 10px;
+  padding: 0 4px;
+}
+
+.ex-chart-wrap.is-dragging {
+  cursor: grabbing;
+}
+
+.ex-chart-hit {
+  cursor: crosshair;
+}
+
+.ex-chart-hit.is-dragging {
+  cursor: grabbing;
+}
+
+/* ── 中栏 K 线与持仓作战席 ── */
+.ex-pro-col-mid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.ex-pro-chart-wrap {
+  flex: 1 1 360px;
+  min-height: 240px;
+  display: flex;
+  flex-direction: column;
+}
+
+.ex-pro-chart-wrap .ex-chart {
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── 多空博弈张力槽 ── */
+.ex-pro-sentiment {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 10px;
+  background: rgb(var(--wui-bg-panel));
+  border: 1px solid rgb(var(--wui-border));
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.ex-pro-sentiment-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--wui-fs-2xs);
+}
+
+.ex-pro-sentiment-tag {
+  font-weight: 700;
+  font-family: var(--wui-mono);
+}
+
+.ex-pro-sentiment-tag.is-bid {
+  color: rgb(var(--wui-tone-gain));
+}
+
+.ex-pro-sentiment-tag.is-ask {
+  color: rgb(var(--wui-tone-loss));
+}
+
+.ex-pro-sentiment-status {
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.ex-pro-sentiment-track {
+  display: flex;
+  height: 6px;
+  background: rgb(var(--wui-bg-field));
+  border-radius: 999px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.3);
+}
+
+.ex-pro-sentiment-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.ex-pro-sentiment-fill.is-bid {
+  background: linear-gradient(90deg, rgb(var(--wui-tone-gain) / 0.6), rgb(var(--wui-tone-gain)));
+}
+
+.ex-pro-sentiment-fill.is-ask {
+  background: linear-gradient(90deg, rgb(var(--wui-tone-loss)), rgb(var(--wui-tone-loss) / 0.6));
+}
+
+/* ── 中栏下半部：持仓与流水二级 Tab ── */
+.ex-pro-mid-bottom {
+  flex: 0 1 240px;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  background: rgb(var(--wui-bg-panel));
+  border: 1px solid rgb(var(--wui-border));
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.ex-pro-mid-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px 8px;
+  background: rgb(var(--wui-bg-deep));
+  border-bottom: 1px solid rgb(var(--wui-border));
+  flex-shrink: 0;
+}
+
+.ex-pro-mid-tab {
+  padding: 4px 12px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: rgb(var(--wui-text-dim));
+  font-size: var(--wui-fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ex-pro-mid-tab:hover {
+  color: rgb(var(--wui-text));
+  background: rgb(var(--wui-bg-hover));
+}
+
+.ex-pro-mid-tab.is-active {
+  color: rgb(var(--wui-accent));
+  background: rgb(var(--wui-accent) / 0.15);
+  border-color: rgb(var(--wui-accent) / 0.4);
+}
+
+.ex-pro-mid-panel {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.ex-pro-mid-panel .ex-positions,
+.ex-pro-mid-panel .ex-records {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  height: 100%;
+}
+
+/* ── 右栏：双核战术交易舱 ── */
+.ex-pro-col-right {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: rgb(var(--wui-bg-panel));
+  border: 1px solid rgb(var(--wui-border));
+  border-radius: 6px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.ex-pro-right-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 4px;
+  gap: 4px;
+  background: rgb(var(--wui-bg-deep));
+  border-bottom: 1px solid rgb(var(--wui-border));
+  flex-shrink: 0;
+}
+
+.ex-pro-right-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: rgb(var(--wui-text-dim));
+  font-size: var(--wui-fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ex-pro-right-tab:hover {
+  color: rgb(var(--wui-text));
+  background: rgb(var(--wui-bg-hover));
+}
+
+.ex-pro-right-tab.is-active {
+  background: linear-gradient(135deg, rgb(var(--wui-accent) / 0.22), rgb(var(--wui-cyan) / 0.12));
+  border-color: rgb(var(--wui-accent));
+  color: rgb(var(--wui-cyan));
+  box-shadow: 0 0 10px rgb(var(--wui-accent) / 0.3);
+}
+
+.ex-pro-right-tab-badge {
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgb(var(--wui-cyan) / 0.25);
+  color: rgb(var(--wui-cyan));
+  font-size: 10px;
+  font-family: var(--wui-mono);
+}
+
+.ex-pro-right-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px 10px;
+}
+
+.ex-pro-right-body .ex-trade,
+.ex-pro-right-body .ex-auto {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+/* ── 活动栏常驻股市监控卡片专属微样式 ── */
+.app-activitybar-exch-btn {
+  border: 1px solid rgb(var(--wui-cyan) / 0.35);
+  background: linear-gradient(135deg, rgb(var(--wui-cyan) / 0.1), rgb(var(--wui-bg-panel)));
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.app-activitybar-exch-btn:hover {
+  border-color: rgb(var(--wui-cyan));
+  box-shadow: 0 0 10px rgb(var(--wui-cyan) / 0.3);
+  transform: translateY(-1px);
+}

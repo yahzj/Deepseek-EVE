@@ -66,6 +66,12 @@ export function Chart({
   const svgRef = useRef<SVGSVGElement | null>(null)
   const tipShown = useRef(false)
 
+  // 时间轴滚轮缩放与鼠标拖拽平移状态（船长 2026-11-03 交互升级）
+  const [visibleCount, setVisibleCount] = useState<number>(60)
+  const [panOffset, setPanOffset] = useState<number>(0)
+  const dragStartRef = useRef<{ x: number; offset: number } | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+
   useLayoutEffect(() => {
     const el = wrapRef.current
     if (!el) return
@@ -89,15 +95,31 @@ export function Chart({
 
   const data = useMemo(() => {
     const raw = client.getChartSeries(code, period)
-    const bars = period === 'intraday' ? sampleSeries(raw, INTRADAY_MAX_POINTS) : raw
-    const ma5 = movingAverage(bars, 5)
-    const ma20 = movingAverage(bars, 20)
-    const rsiValues = rsi(bars, 14)
-    const avg = period === 'intraday' ? averageLine(bars) : null
-    return { raw, bars, ma5, ma20, rsiValues, avg }
-  }, [client, code, period, quote.price, tick])
+    const allBars = period === 'intraday' ? sampleSeries(raw, INTRADAY_MAX_POINTS) : raw
+    const allMa5 = movingAverage(allBars, 5)
+    const allMa20 = movingAverage(allBars, 20)
+    const allRsi = rsi(allBars, 14)
+    const allAvg = period === 'intraday' ? averageLine(allBars) : null
 
-  const { raw, bars, ma5, ma20, rsiValues, avg } = data
+    // 基于 visibleCount 与 panOffset 截取可视窗口数据
+    const totalBars = allBars.length
+    const clampedCount = Math.max(15, Math.min(visibleCount, Math.max(15, totalBars)))
+    const maxOffset = Math.max(0, totalBars - clampedCount)
+    const clampedOffset = Math.max(0, Math.min(panOffset, maxOffset))
+
+    const endIdx = totalBars - clampedOffset
+    const startIdx = Math.max(0, endIdx - clampedCount)
+
+    const bars = allBars.slice(startIdx, endIdx)
+    const ma5 = allMa5.slice(startIdx, endIdx)
+    const ma20 = allMa20.slice(startIdx, endIdx)
+    const rsiValues = allRsi.slice(startIdx, endIdx)
+    const avg = allAvg ? allAvg.slice(startIdx, endIdx) : null
+
+    return { raw, bars, ma5, ma20, rsiValues, avg, totalBars, maxOffset, clampedOffset }
+  }, [client, code, period, quote.price, tick, visibleCount, panOffset])
+
+  const { raw, bars, ma5, ma20, rsiValues, avg, maxOffset, clampedOffset } = data
   const lastBar = bars.length > 0 ? bars[bars.length - 1]! : null
   const up = quote.changePct >= 0
 
@@ -130,7 +152,7 @@ export function Chart({
   const span = Math.max(1e-6, hi - lo)
   const innerW = Math.max(1, plotRight - plotLeft)
   const slot = bars.length > 0 ? innerW / bars.length : innerW
-  const bodyW = Math.max(1, Math.min(10, slot * 0.62))
+  const bodyW = Math.max(1, Math.min(12, slot * 0.68))
   const xOf = (i: number): number => plotLeft + slot * (i + 0.5)
   const yOf = (p: number): number => 8 + (1 - (p - lo) / span) * (mainBottom - 8)
 
@@ -138,8 +160,28 @@ export function Chart({
     rememberedPeriod = next
     setPeriod(next)
     setPoint(null)
+    setPanOffset(0) // 切换周期重置平移
     hideTip()
     tipShown.current = false
+  }
+
+  // 滚轮缩放时间轴
+  const handleWheel = (e: React.WheelEvent): void => {
+    e.preventDefault()
+    const step = e.deltaY < 0 ? -6 : 6
+    setVisibleCount((prev) => Math.max(15, Math.min(180, prev + step)))
+  }
+
+  // 拖拽平移时间轴
+  const handleMouseDown = (e: React.MouseEvent): void => {
+    if (e.button !== 0) return
+    dragStartRef.current = { x: e.clientX, offset: panOffset }
+    setIsDragging(true)
+  }
+
+  const handleMouseUp = (): void => {
+    dragStartRef.current = null
+    setIsDragging(false)
   }
 
   const toggle = (key: ToggleKey): void => {
@@ -160,6 +202,14 @@ export function Chart({
   }
 
   const onMove = (event: ReactMouseEvent<SVGRectElement>): void => {
+    if (dragStartRef.current) {
+      const dx = event.clientX - dragStartRef.current.x
+      const barsMoved = Math.round(dx / Math.max(1, slot))
+      setPanOffset(Math.max(0, Math.min(maxOffset, dragStartRef.current.offset + barsMoved)))
+      hideTip()
+      tipShown.current = false
+      return
+    }
     const next = pointAt(event)
     if (!next) return
     setPoint(next)
@@ -180,6 +230,8 @@ export function Chart({
   }
 
   const onLeave = (): void => {
+    dragStartRef.current = null
+    setIsDragging(false)
     setPoint(null)
     hideTip()
     tipShown.current = false
@@ -249,6 +301,35 @@ export function Chart({
               </button>
             ))}
           </div>
+          <div className="ex-chart-zoom-group" role="group" aria-label="时间轴缩放">
+            <button
+              type="button"
+              className="ex-mini-btn"
+              title="放大时间轴（看清单根蜡烛细节，亦可滚轮向上）"
+              onClick={() => setVisibleCount((v) => Math.max(15, v - 10))}
+            >
+              + 放大
+            </button>
+            <span className="ex-chart-zoom-text ex-dim">{bars.length} 根</span>
+            <button
+              type="button"
+              className="ex-mini-btn"
+              title="缩小时间轴（看宏观大趋势，亦可滚轮向下）"
+              onClick={() => setVisibleCount((v) => Math.min(180, v + 10))}
+            >
+              - 缩小
+            </button>
+            {clampedOffset > 0 ? (
+              <button
+                type="button"
+                className="ex-mini-btn is-on"
+                title="已处于历史回溯态，点击快速回到最新行情"
+                onClick={() => setPanOffset(0)}
+              >
+                最新 ⏩
+              </button>
+            ) : null}
+          </div>
         </div>
       </header>
 
@@ -294,7 +375,11 @@ export function Chart({
         </span>
       </div>
 
-      <div className="ex-chart-wrap" ref={wrapRef}>
+      <div
+        className={`ex-chart-wrap${isDragging ? ' is-dragging' : ''}`}
+        ref={wrapRef}
+        onWheel={handleWheel}
+      >
         {bars.length < 2 ? (
           <div className="ex-empty">{T.chartNoData}</div>
         ) : (
@@ -388,15 +473,17 @@ export function Chart({
               />
             ) : null}
 
-            {/* 透明覆盖层：承接十字光标事件（放在最后，盖住所有可绘制元素） */}
+            {/* 透明覆盖层：承接十字光标与拖拽平移事件（放在最后，盖住所有可绘制元素） */}
             <rect
               x={0}
               y={0}
               width={w}
               height={h}
               fill="transparent"
-              className="ex-chart-hit"
+              className={`ex-chart-hit${isDragging ? ' is-dragging' : ''}`}
+              onMouseDown={handleMouseDown}
               onMouseMove={onMove}
+              onMouseUp={handleMouseUp}
               onMouseLeave={onLeave}
             />
           </svg>

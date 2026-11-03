@@ -41,13 +41,15 @@ export function AutoTrade({
   snap,
   code,
   onToast,
+  alwaysOpen = false,
 }: {
   client: ExchangeClient
   snap: ExchangeSnapshot
   code: string
   onToast: ToastFn
+  alwaysOpen?: boolean
 }) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(alwaysOpen)
   const [template, setTemplate] = useState<Template>('dca')
   const [amountText, setAmountText] = useState('50000')
   const [intervalText, setIntervalText] = useState('20')
