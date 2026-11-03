@@ -1,33 +1,53 @@
 /**
  * 低风险理财卡：一笔可买的「舰船债券」。
  *
- * 利率是**原型观感值**（日化 0.03%，游戏内 60 秒按 1 日计息），用于让船长在 10 分钟里
- * 看到「利息在涨」；不代表最终经济数值，转正时由服务端配置下发。
+ * 两种模式：
+ * - 模拟盘：债券由 Mock 客户端本地维护（原有行为）；
+ * - 联机模式（传 engine）：债券走**本地存档 ISK + 本地分钟计息**，不上服务器
+ *   （船长 2026-11-04 定案：存档币本地为准、作弊不设防）。
  */
 import { useState } from 'react'
 import type { ExchangeClient, ExchangeSnapshot } from '../client'
 import type { ToastFn } from '../../../pages/common'
+import type { GameEngine } from '../../../game/engine'
 import { money, pctAbs } from '../format'
 import { T } from '../texts'
+import { LOCAL_BOND_MINUTE_RATE, buyLocalBond, localBondHolding, redeemLocalBond } from '../localProducts'
+
+const LOCAL_PRODUCT = {
+  id: 'WHALE-BOND-LOCAL',
+  name: '舰船债券 · 稳健型',
+  dailyRate: LOCAL_BOND_MINUTE_RATE,
+  note: '本地计息：每 60 秒 0.03%',
+}
 
 export function BondCard({
   client,
   snap,
   onToast,
+  engine,
 }: {
   client: ExchangeClient
   snap: ExchangeSnapshot
   onToast: ToastFn
+  /** 联机模式传引擎：债券改走本地存档 ISK + 本地计息 */
+  engine?: GameEngine
 }) {
   const [amountText, setAmountText] = useState('100000')
-  const bond = snap.bonds
-  const product = snap.bondProduct
+  const local = engine !== undefined
+  const bond = local ? localBondHolding() : snap.bonds
+  const product = local ? LOCAL_PRODUCT : snap.bondProduct
   const held = bond.principal + bond.accrued
 
   const buy = (): void => {
     try {
-      client.buyBond(Number(amountText))
-      onToast(`${T.toastBondBought} ${money(Number(amountText))} ISK`)
+      const amount = Number(amountText)
+      if (local) {
+        buyLocalBond(engine, amount)
+      } else {
+        client.buyBond(amount)
+      }
+      onToast(`${T.toastBondBought} ${money(amount)} ISK`)
     } catch (err) {
       onToast(err instanceof Error ? err.message : String(err), true)
     }
@@ -38,7 +58,7 @@ export function BondCard({
       return
     }
     try {
-      const total = client.redeemBond()
+      const total = local ? redeemLocalBond(engine) : client.redeemBond()
       if (total > 0) onToast(`${T.toastBondRedeemed} ${money(total)} ISK`)
     } catch (err) {
       onToast(err instanceof Error ? err.message : String(err), true)
@@ -49,12 +69,14 @@ export function BondCard({
     <section className="ex-panel ex-bond" aria-label={T.bondTitle}>
       <header className="ex-panel-head">
         <h3 className="ex-panel-title">{T.bondTitle}</h3>
-        <span className="ex-dim">{T.bondGameDay}</span>
+        <span className="ex-dim">{local ? T.bondLocalNote : T.bondGameDay}</span>
       </header>
       <div className="ex-bond-body">
         <div className="ex-bond-name">
           <b>{product.name}</b>
-          <span className="ex-bond-rate">{T.bondRateLabel} {pctAbs(product.dailyRate * 100)}</span>
+          <span className="ex-bond-rate">
+            {T.bondRateLabel} {pctAbs(product.dailyRate * 100)}
+          </span>
         </div>
         <div className="ex-preview-row">
           <span>{T.bondPrincipal}</span>
@@ -68,8 +90,16 @@ export function BondCard({
           <span>{T.bondValue}</span>
           <b className="ex-num">{money(held)}</b>
         </div>
+        {local ? (
+          <div className="ex-preview-row">
+            <span>{T.cashierLocalWallet}</span>
+            <b className="ex-num">{money(engine.state.wallet.isk)}</b>
+          </div>
+        ) : null}
         <div className="ex-field">
-          <label className="ex-label" htmlFor="ex-bond-input">{T.bondBuy}</label>
+          <label className="ex-label" htmlFor="ex-bond-input">
+            {T.bondBuy}
+          </label>
           <input
             id="ex-bond-input"
             className="ex-input ex-num"

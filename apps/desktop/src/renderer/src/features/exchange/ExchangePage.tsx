@@ -292,6 +292,9 @@ function ExchangeBody({
           code={code}
           onSelectCode={selectCode}
           onToast={onToast}
+          engine={engine}
+          isServer={bundle.source.mode !== 'mock'}
+          onRefresh={bump}
         />
       ) : (
         <ProExchange

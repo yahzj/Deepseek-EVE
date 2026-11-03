@@ -194,6 +194,21 @@ export type ChartPeriod = 'intraday' | 'm1' | 'h1' | 'd1' | 'd7' | 'd30'
 
 export interface DepositResult { nonce: string; applied: number; fee: number; cash: number; receiptHash: string }
 export interface WithdrawResult { nonce: string; amount: number; fee: number; availableAt: number; receiptHash: string }
+
+/** 基金单期结算结果：服务端用实盘数据 + nonce 决定输赢，盈利 = 3×债券分钟利息，亏损 = 1×。 */
+export interface FundPlayResult {
+  win: boolean
+  amount: number
+  /** 净盈亏（正=盈利、负=亏损），单位信用点 */
+  profit: number
+  /** 本单使用的债券分钟利率（基点） */
+  rateBp: number
+  /** 结算依据（实盘数据摘要，展示给玩家） */
+  evidence: string
+  /** 结算后的交易所可用现金 */
+  cash: number
+  replayed?: boolean
+}
 export type Unsubscribe = () => void
 
 /** 公共成交流水的「吃单方」：`mm` = 做市商主动成交（玩家挂单被吃） */
@@ -359,6 +374,8 @@ export interface ExchangeClient {
   resetAccount(): void
   buyBond(amount: number): BondHolding
   redeemBond(): number
+  /** 基金：投入交易所现金，服务端按实盘数据 50/50 结算（盈利 3× 债券分钟利息，亏损 1×） */
+  playFund(amount: number, nonce: string): Promise<FundPlayResult>
   /** 下单预览（保证金/名义/手续费/强平价/距强平/上限/不可下单原因） */
   previewOrder(req: PlaceOrderRequest): OrderPreview
 }

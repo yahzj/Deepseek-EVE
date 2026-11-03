@@ -35,6 +35,7 @@ import type {
   ExchangeOrder,
   ExchangeSnapshot,
   ExchangeTopic,
+  FundPlayResult,
   IndexQuote,
   Kline,
   NewsItem,
@@ -954,6 +955,14 @@ export class HttpExchangeClient implements ExchangeClient {
 
   redeemBond(): number {
     throw new ExchangeError('not_supported', '联机模式暂未开放债券')
+  }
+
+  /**
+   * 基金：服务端按实盘数据结算（盈利 3× 债券分钟利息、亏损 1×）。
+   * 前端只等结果；「计算中…」动画在 FundCard 里做。
+   */
+  async playFund(amount: number, nonce: string): Promise<FundPlayResult> {
+    return this.post<FundPlayResult>('/fund/play', { amount, nonce })
   }
 
   /**

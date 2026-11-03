@@ -11,10 +11,12 @@
  */
 import type { ExchangeClient, ExchangeSnapshot } from '../client'
 import type { ToastFn } from '../../../pages/common'
+import type { GameEngine } from '../../../game/engine'
 import { amount, pct, price } from '../format'
 import { T } from '../texts'
 import { SimpleStockList } from './SimpleStockList'
 import { BondCard } from './BondCard'
+import { FundCard } from './FundCard'
 import { SimpleChart } from './SimpleChart'
 import { SimpleTrade } from './SimpleTrade'
 import { SimplePosition } from './SimplePosition'
@@ -25,6 +27,12 @@ interface SimpleExchangeProps {
   code: string
   onSelectCode: (code: string) => void
   onToast: ToastFn
+  /** 游戏引擎：联机模式下债券走本地存档 ISK + 本地计息 */
+  engine: GameEngine
+  /** 当前是否联机模式（模拟盘债券仍走 Mock 客户端） */
+  isServer: boolean
+  /** 刷新页面快照（基金结算后） */
+  onRefresh: () => void
 }
 
 export function SimpleExchange({
@@ -33,16 +41,25 @@ export function SimpleExchange({
   code,
   onSelectCode,
   onToast,
+  engine,
+  isServer,
+  onRefresh,
 }: SimpleExchangeProps) {
   const quote = snap.stocks.find((s) => s.code === code) ?? snap.quote
   const isUp = quote.changePct >= 0
 
   return (
     <div className="ex-simple-layout">
-      {/* 左栏：星际企业榜 + 低风险理财 */}
+      {/* 左栏：星际企业榜 + 低风险理财 + 保底基金 */}
       <aside className="ex-simple-col-left" aria-label="行情与理财">
         <SimpleStockList client={client} snap={snap} selected={code} onSelect={onSelectCode} />
-        <BondCard client={client} snap={snap} onToast={onToast} />
+        <BondCard
+          client={client}
+          snap={snap}
+          onToast={onToast}
+          engine={isServer ? engine : undefined}
+        />
+        <FundCard client={client} snap={snap} onToast={onToast} onRefresh={onRefresh} />
       </aside>
 
       {/* 右栏：行情主视区 + 现货买卖舱 + 持仓战报 */}
