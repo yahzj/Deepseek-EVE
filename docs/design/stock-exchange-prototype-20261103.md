@@ -151,3 +151,41 @@ features/exchange/
 - 原型用「简化撮合 + 做市商托底」，不追求与后端撮合逐笔一致；接口形状对齐即可。
 - 分红/债券利率是**原型观感值**，不代表最终经济数值。
 - 原型不追求视觉终稿，版式沿用现有页面骨架，船长的观感验收另批。
+
+## 十、交接：给接手修 UI 的 AI（2026-11-03 船长指派）
+
+> 交接范围：只修原型页的**点击与界面问题**，不改玩法设计、不扩功能、不碰后端。
+
+### 10.1 怎么跑起来
+
+1. `npm run dev`（必须是最新工作树，别用旧打包产物）。
+2. 布局切「科幻未来（modern）」——「股市」入口在**现代布局主导航最右侧，不需要调试模式**；旧版布局不显示。
+3. 进去后默认是 Mock「模拟盘」，账户/持仓落 `localStorage['whale-idle:exch-mock']`，刷新不丢；页面有「重置模拟账户」。
+
+### 10.2 文件边界（重要）
+
+| 可以改 | 只读/禁改 |
+|---|---|
+| `features/exchange/**`（页面、组件、`exchange.css`、mock、http 桩、factory） | `styles.css`、`ui/layout-css/*`、`panels/ActivityBar.tsx`、`ui/AppShell.tsx`、`game/engine.ts`、`features/combat/*`、`pages/FitPage.tsx`、`ui/ShipStatusWin.tsx` |
+| `pages/ExchangePage.tsx`（薄壳 re-export） | `packages/core/**`（本原型不依赖 core 规则） |
+| `App.tsx`（仅导航接线，改前先看当前 diff） | 游戏存档/迁移/白名单文件 |
+
+- 样式只写在 `features/exchange/exchange.css`，类名统一 `ex-` 前缀，**不要污染全局样式**。
+- 本仓 Serena 工具前缀是 `mcp__serena-eve__*`（默认 `serena` 实例指向 Border-Pioneer-2，别用错）。
+
+### 10.3 已知 UI 问题清单（交接时点的真实缺口）
+
+1. **未适配窄屏/手机旋转**：三栏在窄视口会挤压，未做线性化。
+2. **持仓行只有「平仓」**：缺「调整保证金 / 行内设止盈止损」（设计稿 6.1 有，实现未做）。
+3. **杠杆单按 IOC 处理**（吃不完即撤），委托列表里不会留杠杆挂单；UI 未提示这个语义。
+4. **各周期历史是独立合成**：切换 M1/H1/D1/D7/D30 时历史形态会跳变，视觉上突兀（可加过渡或说明，后端接上后换真实聚合）。
+5. **cb（色盲）主题不是红绿**：是品红/鸭黄设计，验证涨跌色时别当 bug；中英文红绿语义切换已实现。
+6. 数据源徽标、重置按钮的位置与视觉未做船长观感验收。
+
+### 10.4 纪律
+
+- 行情随机源继续用现有可复现 PRNG，**禁止 `Math.random()`**；Mock 模式**禁止任何网络请求**。
+- 提交走钩子，禁止 `--no-verify`；本地提交、不推送、不混批。
+- 跑 `npm run typecheck`、`npm run ui:rot-check`、`npm run ui:theme-check` 全绿再交。
+- 观感是否通过由船长判定，AI 不自判「UI 已验收」。
+
