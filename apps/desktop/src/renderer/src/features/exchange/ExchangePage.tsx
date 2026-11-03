@@ -29,10 +29,10 @@ const VIEW_MODE_KEY = 'whale-idle:exch-view-mode'
 /** 切页返回后保持选中标的（Spatial Memory） */
 let rememberedCode = DEFAULT_CODE
 
-export function ExchangePage({ onToast }: PageProps) {
+export function ExchangePage({ engine, onToast }: PageProps) {
   const bundle = useMemo(() => createExchangeClient(), [])
   if (bundle.error) return <ExchangeGuide bundle={bundle} />
-  return <ExchangeBody bundle={bundle} onToast={onToast} />
+  return <ExchangeBody bundle={bundle} engine={engine} onToast={onToast} />
 }
 
 /** 数据源徽标（模拟盘 / 服务器） */
@@ -72,9 +72,11 @@ function ExchangeGuide({ bundle }: { bundle: ExchangeClientBundle }) {
 
 function ExchangeBody({
   bundle,
+  engine,
   onToast,
 }: {
   bundle: ExchangeClientBundle
+  engine: PageProps['engine']
   onToast: PageProps['onToast']
 }) {
   const client = bundle.client
@@ -309,6 +311,8 @@ function ExchangeBody({
           mode={cashier}
           cash={snap.account.cash}
           client={client}
+          localIsk={engine.state.wallet.isk}
+          onLocalDelta={(delta) => engine.exchangeWalletDelta(delta)}
           onToast={onToast}
           onClose={() => setCashier(null)}
           onRefresh={bump}

@@ -285,13 +285,15 @@ export const T = {
   systemPresetTag: '系统预置',
   systemPresetTip: '演练预设仓位：系统初始配置用于测试功能',
 
-  // ── 入金 / 出金（游戏钱包 ⇄ 券商现金） ──
+  // ── 入金 / 出金（本地存档 ISK ⇄ 券商现金，服务端只记交易所账） ──
   deposit: '入金',
   withdraw: '出金',
   cashierDepositTitle: '入金到交易所',
   cashierWithdrawTitle: '从交易所出金',
-  cashierDepositHint: '从游戏钱包转入，单日额度以服务器为准。',
-  cashierWithdrawHint: '扣除手续费后到账，可能有冷却/延迟。',
+  cashierDepositHint: '从本地存档扣除 ISK 转入交易所，服务器只记交易所账。',
+  cashierWithdrawHint: '从交易所转回本地存档，即时到账。',
+  cashierLocalWallet: '本地钱包',
+  cashierLocalInsufficient: '本地钱包 ISK 不足',
   cashierAmount: '金额（ISK）',
   cashierPreset1m: '100 万',
   cashierPreset5m: '500 万',

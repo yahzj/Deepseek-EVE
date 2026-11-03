@@ -25,6 +25,8 @@ export function Cashier({
   mode,
   cash,
   client,
+  localIsk,
+  onLocalDelta,
   onToast,
   onClose,
   onRefresh,
@@ -33,6 +35,10 @@ export function Cashier({
   /** 当前交易所现金（出金「全部」用） */
   cash: number
   client: ExchangeClient
+  /** 本地存档钱包 ISK（入金扣款来源，显示在弹窗内） */
+  localIsk: number
+  /** 本地存档资金增减：入金传负、出金/退款传正；返回 false = 余额不足或非法 */
+  onLocalDelta: (delta: number) => boolean
   onToast: ToastFn
   onClose: () => void
   /** 让页面重渲染一次（资金动作后刷新顶栏现金） */
@@ -86,28 +92,40 @@ export function Cashier({
     const nonce = crypto.randomUUID()
     // 资金动作后补拉账户再刷新：联机客户端的现金缓存只在回合末推送，
     // 不补拉会让「入金成功但顶栏现金没变」看起来像没到账。
-    const refresh = (): void => {
-      void client
-        .getAccount()
-        .catch(() => undefined)
-        .then(() => onRefresh())
+    const refresh = async (): Promise<void> => {
+      await client.getAccount().catch(() => undefined)
+      onRefresh()
     }
-    const request =
-      mode === 'deposit'
-        ? client.deposit(value, nonce).then((result) => {
+    void (async () => {
+      try {
+        if (mode === 'deposit') {
+          // 船长定案：存档币以本地为准——先从本地存档扣 ISK，服务器只记交易所账。
+          if (!onLocalDelta(-value)) {
+            onToast(T.cashierLocalInsufficient, true)
+            return
+          }
+          try {
+            const result = await client.deposit(value, nonce)
             onToast(TF.cashierDepositDone(amount(result.applied)))
-            refresh()
-          })
-        : client.withdraw(value, nonce).then((result) => {
-            onToast(TF.cashierWithdrawDone(amount(result.amount)))
-            refresh()
-          })
-    void request
-      .then(() => closeRef.current())
-      .catch((err: unknown) => onToast(err instanceof Error ? err.message : String(err), true))
-      .finally(() => {
+          } catch (err) {
+            // 服务器未入账：把本地扣款退回，避免钱两边都消失。
+            onLocalDelta(value)
+            throw err
+          }
+        } else {
+          const result = await client.withdraw(value, nonce)
+          // 服务器已受理：把 ISK 加回本地存档。
+          onLocalDelta(result.amount)
+          onToast(TF.cashierWithdrawDone(amount(result.amount)))
+        }
+        await refresh()
+        closeRef.current()
+      } catch (err) {
+        onToast(err instanceof Error ? err.message : String(err), true)
+      } finally {
         if (aliveRef.current) setBusy(false)
-      })
+      }
+    })()
   }
 
   // 焦点在按钮上时 Enter 交给按钮自己（避免一次 Enter 触发两次）
@@ -176,7 +194,11 @@ export function Cashier({
               <span className="ex-dim">
                 {T.cashierExchangeCash}：{money(cash)}
               </span>
-            ) : null}
+            ) : (
+              <span className="ex-dim">
+                {T.cashierLocalWallet}：{money(localIsk)}
+              </span>
+            )}
           </div>
         </div>
 
