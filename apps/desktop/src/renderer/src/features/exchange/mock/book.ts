@@ -257,6 +257,24 @@ export class OrderBook {
     }
   }
 
+  /**
+   * **从本地持久化恢复一条挂单**（刷新后用）：直接进簿、**不撮合**。
+   * 为什么不能复用 `submit`：挂了一夜的限价单若按当前盘口重新撮合，会立刻成交并回写现金，
+   * 与持久化前冻结的金额对不上；这里只重建队列，后续由 `syncRestingOrders` 按成交情况对账。
+   */
+  restoreResting(side: Side, price: number, qty: number, owner: 'player' | 'strategy'): BookOrder {
+    const order: BookOrder = {
+      id: this.nextId(owner === 'strategy' ? 'ST' : 'PX'),
+      side,
+      priceCents: Math.max(1, toCents(price)),
+      qty,
+      seq: this.seq,
+      owner,
+    }
+    this.insertResting(order)
+    return order
+  }
+
   /** 撤单：只允许撤玩家/策略的挂单（做市商单由重挂流程整批清理） */
   cancel(orderId: string): BookOrder | null {
     for (const book of [this.bids, this.asks]) {

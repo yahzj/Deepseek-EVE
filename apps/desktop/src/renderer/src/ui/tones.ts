@@ -26,7 +26,7 @@
 export const toneVar = (name: string): string =>
   'rgb(var(--wui-tone-' + name + ', 143 163 184))'
 
-/** TONES（83 条） */
+/** TONES（85 条；其中 gain/loss 为 2026-11-03 股市批新增） */
 export const TONES: Record<string, string> = {
   ore: toneVar('ore'),
   mineral: toneVar('mineral'),
@@ -131,6 +131,10 @@ export const TONES: Record<string, string> = {
   'group-贸易': toneVar('group-trade'),
   // 2026-09-27：新大类「矿业」（采矿 + 采矿舰操作从工业独立）——色相取紫晶，与既有五色相都不同
   'group-矿业': toneVar('group-mining'),
+  /* 涨跌语义色（2026-11-03 股市批单点）：国内习惯「红涨绿跌」⇒ gain = 红、loss = 绿。
+     ⚠ 只给交易所与带涨跌语义的读数用；普通「危险/警告」仍走 `--wui-red` / `--wui-amber`。 */
+  gain: toneVar('gain'),
+  loss: toneVar('loss'),
 }
 
 /** NAV_TONES（17 条） */

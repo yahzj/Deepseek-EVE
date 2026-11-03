@@ -1,9 +1,17 @@
 /**
- * Mock 交易所客户端（F0 原型）——**纯前端、内存状态、不接服务器、不写存档**。
+ * Mock 交易所客户端（F0 原型）——**纯前端、不接服务器、不写游戏存档**。
+ *
+ * 2026-11-03 追加批的三条硬语义：
+ * ① **挂机**：1 秒 tick 由本类自己持有（模块单例构造即启动），页面只订阅/退订；
+ *    离开页面不暂停，回来按流逝时间补算（单次上限 3600 拍）。
+ * ② **持久化**：账户/持仓/委托/策略/债券/行情状态写 `localStorage['whale-idle:exch-mock']`，
+ *    刷新不丢；与游戏 v31 存档完全隔离，页面提供「重置模拟账户」。
+ * ③ **六周期**：启动铺 `分时/M1/H1/D1/D7/D30` 历史（每周期 400 根，分时按当日分钟数），
+ *    之后每拍只更新各周期最新一根。
  *
  * 一拍（1 秒）的固定步序（步序错会出现"螺旋爆仓"或"行情不跟手"）：
  *   事件冲击 → 行情演进 → 做市商重挂五档 → 同步玩家挂单成交 → 条件单 → 量化策略
- *   → 强平 → 债券计息 → 分红 → 广播
+ *   → 强平 → 债券计息 → 分红。（广播由 `advance()` 在补算结束后统一发一次）
  *
  * 为什么这些顺序：价格先动，挂单才知道自己是否穿价；强平必须在策略之后（策略不能抢先
  * 替玩家躲强平）；分红/计息放最后，避免"刚成交就计一天利息"的奇怪读数。
@@ -13,6 +21,7 @@
 import type {
   BondHolding,
   BondProduct,
+  ChartPeriod,
   DividendRecord,
   ExchangeAccount,
   ExchangeClient,
@@ -44,10 +53,10 @@ import {
   createPriceModel,
   createRng,
   stepPrice,
-  synthKlines,
   type PriceModel,
   type Rng,
 } from './priceEngine'
+import { buildStockSeries, updateStockSeries, type StockSeries } from './history'
 import { OrderBook } from './book'
 import * as M from './margin'
 
@@ -57,8 +66,6 @@ const CONTRACT_VERSION = 1
 const FEE_RATE = 0.0005
 /** 原型专用虚拟资金：1000 万 cr，不入存档 */
 const START_CASH = 10_000_000
-/** 每根 K 线的 tick 数（1 秒 × 60 = 1 分钟） */
-const TICKS_PER_BAR = 60
 /** 债券日化 0.03%（原型观感值，不代表最终经济数值） */
 const BOND_DAILY_RATE = 0.0003
 /** 债券计息：游戏内 60 秒 = 1 日（原型示意，非最终数值） */
@@ -66,6 +73,16 @@ const TICKS_PER_GAME_DAY = 60
 /** 分红：每 60 秒按现货持仓市值象征性派 0.04%（原型观感值） */
 const DIVIDEND_INTERVAL_TICKS = 60
 const DIVIDEND_RATE = 0.0004
+/**
+ * 模拟账户持久化（与游戏 v31 存档**完全隔离**；只存交易所自己的模拟盘状态）。
+ * 需求（2026-11-03 双轨数据源批）：刷新不丢账户/持仓/委托，页面可一键重置回 1,000 万。
+ */
+const MOCK_SAVE_KEY = 'whale-idle:exch-mock'
+const MOCK_SAVE_VERSION = 1
+/** 离开页面/标签页后台后按流逝时间补算，单次上限 3600 拍（约 1 小时），避免恢复时长时间卡顿 */
+const MAX_CATCHUP_TICKS = 3600
+/** 每 5 拍落一次盘（localStorage 写太频繁会拖慢 1 秒 tick；pagehide 时另会补落一次） */
+const SAVE_EVERY_TICKS = 5
 
 interface StockDef {
   code: string
@@ -103,15 +120,14 @@ interface StockState {
   def: StockDef
   model: PriceModel
   book: OrderBook
-  klines: Kline[]
+  /** 六周期 K 线（启动铺 400 根，1 秒 tick 只改最新一根；见 mock/history.ts） */
+  series: StockSeries
   price: number
   prevClose: number
   open: number
   high: number
   low: number
   volume: number
-  /** 当前 K 线所属的分钟序号（-1 = 还没有当根） */
-  barIndex: number
 }
 
 interface SpotState {
@@ -148,6 +164,56 @@ interface StrategyState {
   gridBuyCount: number
   gridSellCount: number
   lastError: string
+}
+
+/** 每只标的需要跨刷新延续的最小行情状态（K 线历史不存：启动时按现价重新铺图） */
+interface PersistedStockState {
+  code: string
+  price: number
+  prevClose: number
+  open: number
+  high: number
+  low: number
+  volume: number
+  x: number
+  varianceEwma: number
+}
+
+/** `localStorage['whale-idle:exch-mock']` 的形状（版本不符直接忽略，不迁移旧原型数据） */
+interface PersistedMockState {
+  v: number
+  savedAt: number
+  tick: number
+  cash: number
+  frozen: number
+  spot: Array<{ code: string; qty: number; avgCost: number }>
+  positions: Array<{
+    id: string
+    code: string
+    side: 'long' | 'short'
+    qty: number
+    entry: number
+    leverage: number
+    margin: number
+  }>
+  orders: OrderState[]
+  myTrades: TradeRecord[]
+  dividends: DividendRecord[]
+  strategies: Array<{
+    spec: StrategySpec
+    nextTick: number
+    activated: boolean
+    high: number
+    gridBuyCount: number
+    gridSellCount: number
+    lastError: string
+  }>
+  bond: BondHolding
+  news: NewsItem[]
+  seq: { order: number; strategy: number; trade: number; news: number }
+  nextEventTick: number
+  index: { open: number; high: number; low: number }
+  stocks: PersistedStockState[]
 }
 
 interface EventTemplate {
@@ -202,8 +268,9 @@ const clampPrice = (p: number): number => Math.max(0.01, round(p, 2))
 export class MockExchangeClient implements ExchangeClient {
   readonly contractVersion = CONTRACT_VERSION
 
-  private readonly rng: Rng
-  private readonly startTs: number
+  private rng: Rng
+  private startTs: number
+  private readonly seed: number
   private readonly stocks = new Map<string, StockState>()
   private readonly spot = new Map<string, SpotState>()
   private readonly positions = new Map<string, PositionState>()
@@ -228,6 +295,16 @@ export class MockExchangeClient implements ExchangeClient {
   private indexOpen = 1000
   private indexHigh = 1000
   private indexLow = 1000
+  /** 上一次真正推进行情的时间（用于离开页面后的补算） */
+  private lastStepWall = Date.now()
+  /** 补算期间静默广播：后台补 3600 拍时不要把强平提示连弹几十条 */
+  private silent = false
+  private readonly onPageHide = (): void => {
+    this.persist()
+  }
+  private readonly onVisibilityChange = (): void => {
+    if (typeof document !== 'undefined' && document.visibilityState === 'visible') this.catchUp()
+  }
   private bond: BondHolding = {
     principal: 0,
     accrued: 0,
@@ -236,38 +313,141 @@ export class MockExchangeClient implements ExchangeClient {
   }
 
   constructor(seed = 20261103) {
+    this.seed = seed
     this.rng = createRng(seed)
-    this.startTs = Date.now()
-    for (const def of STOCK_DEFS) {
-      const model = createPriceModel(def.code, def.anchor, def.sigma, def.mu, def.theta)
-      const klines = synthKlines(model, this.rng, 90, this.startTs)
-      const first = klines[0]!
-      const last = klines[klines.length - 1]!
-      this.stocks.set(def.code, {
-        def,
-        model,
-        book: new OrderBook(def.code),
-        klines,
-        price: last.c,
-        prevClose: first.o,
-        open: first.o,
-        high: klines.reduce((mx, k) => Math.max(mx, k.h), last.c),
-        low: klines.reduce((mn, k) => Math.min(mn, k.l), last.c),
-        volume: 0,
-        barIndex: -1,
-      })
-    }
-    this.indexOpen = this.indexValue()
-    this.indexHigh = this.indexOpen
-    this.indexLow = this.indexOpen
+    const saved = this.readPersisted()
+    const now = Date.now()
+    this.tick = saved?.tick ?? 0
+    // 从持久化的 tick 接着走：订单/流水的 ts 不会因为刷新跳回过去
+    this.startTs = now - this.tick * 1000
+    this.buildStocks(now, saved)
+    if (saved) this.applyPersisted(saved)
+    else this.seedOpeningNews()
+    const savedIndex = saved?.index
+    this.indexOpen =
+      savedIndex && Number.isFinite(savedIndex.open) ? savedIndex.open : this.indexValue()
+    this.indexHigh =
+      savedIndex && Number.isFinite(savedIndex.high) ? savedIndex.high : this.indexOpen
+    this.indexLow =
+      savedIndex && Number.isFinite(savedIndex.low) ? savedIndex.low : this.indexOpen
     // 首帧就把五档铺出来：否则进页后的第一秒盘口是全空的，像没连上
+    this.refreshAllQuotes()
+    if (saved) this.restoreRestingOrders()
+    // 模块单例常驻：构造即启动，页面卸载不停（挂机语义见 start/stop 注释）
+    this.startEngine()
+  }
+
+  /* ═══════════════ 生命周期与广播 ═══════════════ */
+
+  /**
+   * 页面挂载通知：确保引擎在跑，并按真实流逝时间补算离开页面期间漏掉的拍。
+   * 引擎本身由模块单例持有（构造时启动），这里**不会**重复建定时器。
+   */
+  start(): void {
+    this.startEngine()
+    this.catchUp()
+  }
+
+  /**
+   * 页面卸载通知。**不停止行情引擎**（2026-11-03 船长要求挂机语义：离开页面行情继续走），
+   * 只顺手落一次盘，让刷新/重进时能接着玩。
+   */
+  stop(): void {
+    this.persist()
+  }
+
+  /** 引擎只建一次定时器；监听器也只挂一次（模块单例，页面反复进出不会叠加） */
+  private startEngine(): void {
+    if (this.timer !== null) return
+    if (typeof window !== 'undefined') {
+      this.timer = window.setInterval(() => this.onTimer(), 1000)
+      window.addEventListener('pagehide', this.onPageHide)
+    }
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', this.onVisibilityChange)
+    }
+  }
+
+  private onTimer(): void {
+    this.catchUp()
+    this.persistIfNeeded()
+  }
+
+  /**
+   * 按真实流逝时间补算（页面卸载/标签页后台/整机休眠后回来）。
+   * 单次最多补 `MAX_CATCHUP_TICKS` 拍；超过上限的时间**直接丢弃**而不是排队补，
+   * 否则切回页面要同步跑几万拍、界面会卡死（船长要求「避免长时间后台卡顿」）。
+   */
+  private catchUp(): void {
+    const now = Date.now()
+    const elapsed = Math.floor((now - this.lastStepWall) / 1000)
+    if (elapsed <= 0) return
+    const ticks = Math.min(elapsed, MAX_CATCHUP_TICKS)
+    this.lastStepWall = elapsed > MAX_CATCHUP_TICKS ? now : this.lastStepWall + elapsed * 1000
+    // 超过补算上限的时间直接跳过：把跳过的秒数补进 startTs，保证之后 K 线的桶仍落在真实时钟上
+    if (elapsed > MAX_CATCHUP_TICKS) this.startTs += (elapsed - MAX_CATCHUP_TICKS) * 1000
+    this.advance(ticks)
+  }
+
+  /** 连续跑 N 拍，只在最后广播一次 tick（补算时避免 N 次 React 重渲染） */
+  private advance(count: number): void {
+    if (count <= 0) return
+    this.silent = count > 1
+    for (let i = 0; i < count; i++) this.step()
+    this.silent = false
+    this.emitTick()
+  }
+
+  private persistIfNeeded(): void {
+    if (this.tick % SAVE_EVERY_TICKS === 0) this.persist()
+  }
+
+  private refreshAllQuotes(): void {
     const ts = this.ts()
     for (const st of this.stocks.values()) {
       st.book.refreshQuotes(st.price, st.def.spreadBps, st.def.levelQty, this.rng, ts)
     }
+  }
+
+  /** 建 4 只标的的行情模型与六周期历史（有持久化状态时续上价格/模型状态） */
+  private buildStocks(now: number, saved: PersistedMockState | null): void {
+    this.stocks.clear()
+    for (const def of STOCK_DEFS) {
+      const savedStock = saved?.stocks.find((s) => s.code === def.code)
+      const model = createPriceModel(def.code, def.anchor, def.sigma, def.mu, def.theta)
+      if (savedStock) {
+        if (Number.isFinite(savedStock.x)) model.x = savedStock.x
+        if (Number.isFinite(savedStock.varianceEwma) && savedStock.varianceEwma > 0) {
+          model.varianceEwma = savedStock.varianceEwma
+        }
+      }
+      const endPrice =
+        savedStock && Number.isFinite(savedStock.price) && savedStock.price > 0
+          ? savedStock.price
+          : def.anchor
+      const series = buildStockSeries(model, this.rng, now, endPrice, def.levelQty)
+      const m1 = series.series.m1
+      const first = m1[0]!
+      const last = m1[m1.length - 1]!
+      this.stocks.set(def.code, {
+        def,
+        model,
+        book: new OrderBook(def.code),
+        series,
+        price: endPrice,
+        prevClose: savedStock?.prevClose ?? first.o,
+        open: savedStock?.open ?? first.o,
+        high: savedStock?.high ?? m1.reduce((mx, k) => Math.max(mx, k.h), last.c),
+        low: savedStock?.low ?? m1.reduce((mn, k) => Math.min(mn, k.l), last.c),
+        volume: savedStock?.volume ?? 0,
+      })
+    }
+  }
+
+  private seedOpeningNews(): void {
     this.news.push({
       id: 'NEWS-0',
-      ts: this.startTs,
+      ts: this.ts(),
       title: '证券交易所开始试营业',
       body: '四家上市公司挂牌，行情每 1 秒刷新一次。本页为原型，虚拟资金不写入存档。',
       tone: 'info',
@@ -275,17 +455,192 @@ export class MockExchangeClient implements ExchangeClient {
     })
   }
 
-  /* ═══════════════ 生命周期与广播 ═══════════════ */
-
-  start(): void {
-    if (this.timer !== null) return
-    this.timer = window.setInterval(() => this.step(), 1000)
+  /** 刷新后把挂单重新放回簿上（**不撮合**：挂了一夜的单不能按当前盘口立刻成交，否则账对不上） */
+  private restoreRestingOrders(): void {
+    for (const order of this.orders) {
+      if (order.status !== 'open' && order.status !== 'partial') continue
+      if (order.qtyRemaining <= 0 || order.price === null || order.price <= 0) continue
+      const st = this.stocks.get(order.code)
+      if (!st) continue
+      const owner = order.source === 'strategy' ? 'strategy' : 'player'
+      const resting = st.book.restoreResting(order.side, order.price, order.qtyRemaining, owner)
+      order.bookOrderId = resting.id
+    }
   }
 
-  stop(): void {
-    if (this.timer === null) return
-    window.clearInterval(this.timer)
-    this.timer = null
+  private applyPersisted(saved: PersistedMockState): void {
+    if (Number.isFinite(saved.cash)) this.cash = saved.cash
+    if (Number.isFinite(saved.frozen)) this.frozen = saved.frozen
+    for (const s of Array.isArray(saved.spot) ? saved.spot : []) {
+      if (!s || typeof s.code !== 'string' || !(s.qty > 0)) continue
+      this.spot.set(s.code, { qty: s.qty, avgCost: s.avgCost })
+    }
+    for (const p of Array.isArray(saved.positions) ? saved.positions : []) {
+      if (!p || typeof p.code !== 'string' || !(p.qty > 0)) continue
+      this.positions.set(`${p.code}:${p.side}`, {
+        id: p.id,
+        code: p.code,
+        side: p.side,
+        qty: p.qty,
+        entry: p.entry,
+        leverage: p.leverage,
+        margin: p.margin,
+        liqTicks: 0,
+      })
+    }
+    this.orders.length = 0
+    for (const o of Array.isArray(saved.orders) ? saved.orders : []) {
+      if (!o || typeof o.id !== 'string') continue
+      this.orders.push({ ...o, bookOrderId: '' })
+    }
+    this.myTrades.length = 0
+    if (Array.isArray(saved.myTrades)) this.myTrades.push(...saved.myTrades.slice(0, 100))
+    this.dividends.length = 0
+    if (Array.isArray(saved.dividends)) this.dividends.push(...saved.dividends.slice(0, 60))
+    this.strategies.clear()
+    for (const s of Array.isArray(saved.strategies) ? saved.strategies : []) {
+      if (!s?.spec?.id) continue
+      this.strategies.set(s.spec.id, {
+        spec: s.spec,
+        nextTick: s.nextTick ?? this.tick + 3,
+        activated: s.activated === true,
+        high: s.high ?? 0,
+        gridBuyCount: s.gridBuyCount ?? 0,
+        gridSellCount: s.gridSellCount ?? 0,
+        lastError: s.lastError ?? '',
+      })
+    }
+    if (saved.bond && Number.isFinite(saved.bond.principal)) this.bond = { ...saved.bond }
+    this.news.length = 0
+    if (Array.isArray(saved.news)) this.news.push(...saved.news.slice(0, 12))
+    if (this.news.length === 0) this.seedOpeningNews()
+    const seq = saved.seq
+    if (seq) {
+      this.orderSeq = seq.order ?? 0
+      this.strategySeq = seq.strategy ?? 0
+      this.tradeSeq = seq.trade ?? 0
+      this.newsSeq = seq.news ?? 0
+    }
+    if (Number.isFinite(saved.nextEventTick)) this.nextEventTick = saved.nextEventTick
+  }
+
+  private readPersisted(): PersistedMockState | null {
+    if (typeof window === 'undefined') return null
+    try {
+      const raw = window.localStorage.getItem(MOCK_SAVE_KEY)
+      if (!raw) return null
+      const parsed = JSON.parse(raw) as PersistedMockState
+      if (!parsed || parsed.v !== MOCK_SAVE_VERSION) return null
+      if (!Array.isArray(parsed.stocks) || !Array.isArray(parsed.orders)) return null
+      return parsed
+    } catch {
+      return null
+    }
+  }
+
+  private toPersisted(): PersistedMockState {
+    return {
+      v: MOCK_SAVE_VERSION,
+      savedAt: Date.now(),
+      tick: this.tick,
+      cash: this.cash,
+      frozen: this.frozen,
+      spot: [...this.spot.entries()].map(([code, hold]) => ({ code, qty: hold.qty, avgCost: hold.avgCost })),
+      positions: [...this.positions.values()].map((p) => ({
+        id: p.id,
+        code: p.code,
+        side: p.side,
+        qty: p.qty,
+        entry: p.entry,
+        leverage: p.leverage,
+        margin: p.margin,
+      })),
+      orders: this.orders.slice(0, 200),
+      myTrades: this.myTrades.slice(0, 100),
+      dividends: this.dividends.slice(0, 60),
+      strategies: [...this.strategies.values()],
+      bond: { ...this.bond },
+      news: this.news.slice(0, 12),
+      seq: {
+        order: this.orderSeq,
+        strategy: this.strategySeq,
+        trade: this.tradeSeq,
+        news: this.newsSeq,
+      },
+      nextEventTick: this.nextEventTick,
+      index: { open: this.indexOpen, high: this.indexHigh, low: this.indexLow },
+      stocks: [...this.stocks.values()].map((st) => ({
+        code: st.def.code,
+        price: st.price,
+        prevClose: st.prevClose,
+        open: st.open,
+        high: st.high,
+        low: st.low,
+        volume: st.volume,
+        x: st.model.x,
+        varianceEwma: st.model.varianceEwma,
+      })),
+    }
+  }
+
+  private persist(): void {
+    if (typeof window === 'undefined') return
+    try {
+      window.localStorage.setItem(MOCK_SAVE_KEY, JSON.stringify(this.toPersisted()))
+    } catch {
+      // 存储被禁/配额满：原型不因持久化失败而停摆
+    }
+  }
+
+  private clearPersisted(): void {
+    if (typeof window === 'undefined') return
+    try {
+      window.localStorage.removeItem(MOCK_SAVE_KEY)
+    } catch {
+      // 同上
+    }
+  }
+
+  /**
+   * 重置模拟账户（页面「重置模拟账户」按钮）：回到 1,000 万本金、清空持仓/委托/策略/流水，
+   * 行情从锚点重新起跑。与游戏存档无关（数据只在本文件的 localStorage 键里）。
+   */
+  resetAccount(): void {
+    this.clearPersisted()
+    this.rng = createRng(this.seed)
+    this.cash = START_CASH
+    this.frozen = 0
+    this.tick = 0
+    this.startTs = Date.now()
+    this.lastStepWall = this.startTs
+    this.orderSeq = 0
+    this.strategySeq = 0
+    this.tradeSeq = 0
+    this.newsSeq = 0
+    this.nextEventTick = 6
+    this.spot.clear()
+    this.positions.clear()
+    this.orders.length = 0
+    this.myTrades.length = 0
+    this.dividends.length = 0
+    this.news.length = 0
+    this.strategies.clear()
+    this.bond = { principal: 0, accrued: 0, purchasedAt: null, rateDaily: BOND_DAILY_RATE }
+    this.buildStocks(this.startTs, null)
+    this.indexOpen = this.indexValue()
+    this.indexHigh = this.indexOpen
+    this.indexLow = this.indexOpen
+    this.seedOpeningNews()
+    this.refreshAllQuotes()
+    this.persist()
+    this.emitTick()
+  }
+
+  /** 六周期图表数据（同步：页面每 tick 取一次，避免整页快照携带 6×400×4 根 K 线） */
+  getChartSeries(code: string, period: ChartPeriod): Kline[] {
+    const st = this.stocks.get(code)
+    if (!st) return []
+    return st.series.series[period].slice()
   }
 
   onTick(cb: () => void): Unsubscribe {
@@ -314,6 +669,8 @@ export class MockExchangeClient implements ExchangeClient {
   }
 
   private emit(type: ExchangeEventType, payload: unknown): void {
+    // 补算期间不广播：后台一次补 3600 拍时，强平/条件单提示会连弹几十条
+    if (this.silent) return
     const set = this.handlers.get(type)
     if (!set) return
     for (const cb of set) {
@@ -361,7 +718,7 @@ export class MockExchangeClient implements ExchangeClient {
       st.book.refreshQuotes(price, st.def.spreadBps, st.def.levelQty, this.rng, ts)
       const volume = Math.max(1, Math.round(st.def.levelQty * (0.04 + this.rng.next() * 0.12)))
       st.volume += volume
-      this.updateKline(st, price, volume, ts)
+      updateStockSeries(st.series, ts, price, volume)
     }
     this.syncRestingOrders()
     this.runConditionalOrders(ts)
@@ -372,23 +729,6 @@ export class MockExchangeClient implements ExchangeClient {
     const index = this.indexValue()
     this.indexHigh = Math.max(this.indexHigh, index)
     this.indexLow = Math.min(this.indexLow, index)
-    this.emitTick()
-  }
-
-  private updateKline(st: StockState, price: number, volume: number, ts: number): void {
-    const bar = Math.floor(this.tick / TICKS_PER_BAR)
-    if (bar !== st.barIndex) {
-      st.klines.push({ t: ts, o: price, h: price, l: price, c: price, v: volume })
-      st.barIndex = bar
-      if (st.klines.length > 150) st.klines.splice(0, st.klines.length - 150)
-      return
-    }
-    const k = st.klines[st.klines.length - 1]
-    if (!k) return
-    k.h = Math.max(k.h, price)
-    k.l = Math.min(k.l, price)
-    k.c = price
-    k.v += volume
   }
 
   /* ═══════════════ 行情与指数 ═══════════════ */
@@ -1296,7 +1636,7 @@ export class MockExchangeClient implements ExchangeClient {
       quote: this.quoteOf(st),
       book: st.book.snapshot(ts),
       trades: st.book.trades(20),
-      klines: st.klines.slice(-120),
+      klines: st.series.series.m1.slice(-120),
       account: this.buildAccount(),
       orders: this.currentOrders(),
       myTrades: this.myTrades.slice(0, 100),
@@ -1330,12 +1670,13 @@ export class MockExchangeClient implements ExchangeClient {
   async getKlines(code: string, interval: '1m' | '5m' | '1h', limit = 120): Promise<Kline[]> {
     const st = this.stocks.get(code)
     if (!st) throw new ExchangeError('unknown_code', `未知标的：${code}`)
-    const bars = st.klines
-    if (interval === '1m') return bars.slice(-limit)
-    const size = interval === '5m' ? 5 : 60
+    if (interval === '1m') return st.series.series.m1.slice(-limit)
+    if (interval === '1h') return st.series.series.h1.slice(-limit)
+    // 5 分钟线由 M1 现聚合（服务端契约里的 5m 档；原型不单独维护序列）
+    const bars = st.series.series.m1
     const out: Kline[] = []
-    for (let i = 0; i < bars.length; i += size) {
-      const group = bars.slice(i, i + size)
+    for (let i = 0; i < bars.length; i += 5) {
+      const group = bars.slice(i, i + 5)
       const first = group[0]!
       const last = group[group.length - 1]!
       out.push({
