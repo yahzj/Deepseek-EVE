@@ -344,6 +344,7 @@ export function BattleScreen({
         amount: Math.round(acc.amount),
         type: acc.type,
         miss: acc.amount <= 0,
+        crit: Boolean(acc.crit || acc.amount >= 250),
       })
     }
     popupAccRef.current.clear()

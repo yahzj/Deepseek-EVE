@@ -25,7 +25,7 @@
 | **第 12 轮** | 全局 · 舰船管理与装配面板 | 装备槽位网格、装配对比 Tooltip、属性面板同名检查、族徽渲染 | 已完成 ✓ |
 | **第 13 轮** | 全局 · 工业制造与研发装配流程 | 配方列表滚动、材料扣除前馈、制造进度倒计时、批量拖动条 | 已完成 ✓ |
 | **第 14 轮** | 全局 · 星图与深空雷达探测系统 | 星系天体悬停高亮、跳跃航线连线、星图缩放平移、深空星云层次 | 已完成 ✓ |
-| **第 15 轮** | 全局 · 战斗视界与战场动态 HUD | 护盾/装甲/结构三色血条、动能/爆破/能量伤害飘字层级、战斗日志回溯 | 待开始 |
+| **第 15 轮** | 全局 · 战斗视界与战场动态 HUD | 护盾/装甲/结构三色血条、动能/爆破/能量伤害飘字层级、战斗日志回溯 | 已完成 ✓ |
 | **第 16 轮** | 全局 · 虫洞与空间信号矩阵解密 | 矩阵探测网格、波形共振图对齐、信标解锁动效、探索结算弹窗 | 待开始 |
 | **第 17 轮** | 全局 · 物品背包与仓储物流交互 | 物品槽位悬停浮层、稀有度边框、堆叠数量角标、分类筛选 Tab | 待开始 |
 | **第 18 轮** | 全局 · 任务中心与成就图鉴手册 | 任务追踪进度条、奖励领取正反馈微动效、成就点亮、手册检索 | 待开始 |
@@ -256,3 +256,24 @@
   5. 控制工具栏缩放复位按键微动效，高倍缩放与密集网格下增加文字多层投影防遮挡，拓宽 Tooltip 支持 SVG 容器，零 Emoji，全色板契约达标。
 - **验证结果**：
   - `typecheck`、`ui:theme-check`、`ui:rot-check`、40 项星图几何单测全部 100% 绿灯通过。
+
+
+## 第 15 轮：全局 · 战斗视界与战场动态 HUD（已闭环）
+- **修改文件**：
+  - `packages/ui/src/index.css`
+  - `apps/desktop/src/renderer/src/styles.css`
+  - `apps/desktop/src/renderer/src/ui/layout-css/styles-classic.css`
+  - `apps/desktop/src/renderer/src/ui/layout-css/styles-modern.css`
+  - `apps/desktop/src/renderer/src/features/combat/battleViewCore.tsx`
+  - `apps/desktop/src/renderer/src/features/combat/buildProjectileLayers.tsx`
+  - `apps/desktop/src/renderer/src/features/combat/buildEnemyLayers.tsx`
+  - `apps/desktop/src/renderer/src/features/combat/consumeBattleEvents.tsx`
+  - `apps/desktop/src/renderer/src/features/combat/BattleScreen.tsx`
+  - `apps/desktop/src/renderer/src/features/combat/useVisualState.tsx`
+- **问题与重构**：
+  1. 三层血条与低血量警戒：护盾（能量蓝）、装甲（装甲黄）、结构（警示红）分层清晰，绑定 `--wui-tone-hp-*` 并消除全部裸色字面量；掉血平滑缓动，结构低于 25% 呈现红光呼吸警戒态；
+  2. 三系伤害飘字与暴击冲击反馈：动能黄、爆破红、能量蓝三系伤害本色辉光平滑飘散，彻底消除黑块堆叠；大额伤害与暴击放大至 28px 并带有外发光冲击回弹；
+  3. 战术目标锁定框：被锁定敌舰拥有战术瞄准角标与等宽测距（自适应 m/km/AU）及方位角 HUD；
+  4. 战斗日志与结算：战损明细结构化对齐，数值全量等宽排版；零 Emoji，全色板契约达标。
+- **验证结果**：
+  - `typecheck`、`ui:theme-check`、`ui:rot-check` 全部 100% 绿灯通过。

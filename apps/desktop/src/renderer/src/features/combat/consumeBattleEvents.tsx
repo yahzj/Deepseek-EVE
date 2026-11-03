@@ -37,7 +37,7 @@ keyRef: import('react').MutableRefObject<number>
 foeSizeOf: (tag: string) => number
 meSizeByTag: Map<string, number>
 meSize: number
-popupAccRef: import('react').MutableRefObject<Map<string, { x: number; y: number; amount: number; type: DamageType; miss: boolean; }>>
+popupAccRef: import('react').MutableRefObject<Map<string, { x: number; y: number; amount: number; type: DamageType; miss: boolean; crit?: boolean; }>>
 arcs: NonNullable<ReturnType<typeof battleArcsFor>>
 blinkRef: import('react').MutableRefObject<Map<string, { side: "foe" | "me"; vanish: number; move: number; appear: number; segMs: number; }>>
 dims: Dims
@@ -81,8 +81,9 @@ if (arrivals.length > 0) {
             ...anchors.dst, size: meSizeByTag.get(fx.to) ?? meSize, born: now, delay })
           if (fx.to) {
             const prev = popupAccRef.current.get(fx.to)
-            popupAccRef.current.set(fx.to, { ...anchors.dst, amount: (prev?.amount ?? 0) + (fx.dmg ?? 0),
-              type: 'kinetic', miss: (prev?.miss ?? false) || !fx.hit })
+            const dmgVal = fx.dmg ?? 0
+            popupAccRef.current.set(fx.to, { ...anchors.dst, amount: (prev?.amount ?? 0) + dmgVal,
+              type: 'kinetic', miss: (prev?.miss ?? false) || !fx.hit, crit: (prev?.crit ?? false) || dmgVal >= 200 })
           }
         }
         // 同拍多只爆虫只覆盖一份全队附着，伤害事件仍逐只显示。
@@ -475,6 +476,7 @@ if (arrivals.length > 0) {
           amount: (prev?.amount ?? 0) + dmg,
           type: fx.type,
           miss: (prev?.miss ?? false) || fx.hit === false,
+          crit: (prev?.crit ?? false) || dmg >= 200,
         })
       }
     }

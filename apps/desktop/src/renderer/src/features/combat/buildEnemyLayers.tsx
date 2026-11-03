@@ -17,6 +17,19 @@ import { LAY, foeHangarByTag, foeHangarTotal, foeRowBoxesOf, BOOM_LIFE, clamp01,
 
 import { hoverTipProps } from '../../ui/Tooltip'
 
+function formatLockDist(meters: number): string {
+  if (meters >= 149_597_870_700) {
+    return `${(meters / 149_597_870_700).toFixed(2)} AU`
+  }
+  if (meters >= 10_000) {
+    return `${(meters / 1000).toFixed(1)} km`
+  }
+  if (meters >= 1_000) {
+    return `${(meters / 1000).toFixed(2)} km`
+  }
+  return `${Math.round(meters)} m`
+}
+
 export function buildEnemyLayers({
     arcs, foeRowTags, isFoeMainTag, battle, tr, lay,
     foeFormation, foeBarGeoms, foeAnomaly, corpseAtRef, now, acidDeathsRef,
@@ -229,6 +242,18 @@ foeNameOf: (tag: string) => string
               }
             />
           </span>
+        ) : null}
+        {locked ? (
+          <div className="app-bts-lock-box" aria-hidden="true">
+            <span className="app-bts-lock-bracket tl" />
+            <span className="app-bts-lock-bracket tr" />
+            <span className="app-bts-lock-bracket bl" />
+            <span className="app-bts-lock-bracket br" />
+            <div className="app-bts-lock-hud">
+              <span className="app-bts-lock-dist">{formatLockDist(combat.distanceM)}</span>
+              <span className="app-bts-lock-bearing">{String((Math.round((slot.col - (foeFormation.colW.length - 1) / 2) * 14) + 360) % 360).padStart(3, '0')}°</span>
+            </div>
+          </div>
         ) : null}
         {/* 敌方机群由**机群层**统一出海（第二层，见 `.app-bts-drones` 内的 foeWings 渲染） */}
         {boomLive && !acidDeath ? (

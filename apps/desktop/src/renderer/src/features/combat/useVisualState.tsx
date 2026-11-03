@@ -111,10 +111,10 @@ const meSpeedRef = useRef(200)
    * 生命期用**战斗时钟** `now`（与弹道同一把尺，见下方 filter），不用墙钟 ⇒ 倍速跟着快、暂停即冻结。
    */
   const popupsRef = useRef<
-    Array<{ key: number; target: string; slot: number; x: number; y: number; born: number; amount: number; type: DamageType; miss: boolean }>
+    Array<{ key: number; target: string; slot: number; x: number; y: number; born: number; amount: number; type: DamageType; miss: boolean; crit?: boolean }>
   >([])
   /** 同一拍内按目标聚合（key = 目标 tag）——每拍末尾一次性落成飘字（甲②：累加成一个数字） */
-  const popupAccRef = useRef<Map<string, { x: number; y: number; amount: number; type: DamageType; miss: boolean }>>(
+  const popupAccRef = useRef<Map<string, { x: number; y: number; amount: number; type: DamageType; miss: boolean; crit?: boolean }>>(
     new Map(),
   )
   /** 2026-09-10 炮口轮换计数（key = 'me' 或敌方 tag；多炮口舰逐发轮换开火点） */
