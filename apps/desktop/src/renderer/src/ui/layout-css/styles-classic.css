@@ -13792,9 +13792,9 @@ body.no-fx .app-root.is-layout-classic:not(.is-mobile-layout) .app-log-side { tr
 .app-root.is-layout-modern .app-fit-stage {
   position: relative;
   background:
-    radial-gradient(800px 500px at 50% 50%, rgb(var(--wui-hud-primary) / 0.08), transparent 70%),
-    linear-gradient(rgb(var(--wui-hud-primary) / 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(var(--wui-hud-primary) / 0.04) 1px, transparent 1px),
+    radial-gradient(800px 500px at 50% 50%, rgb(var(--wui-hud-primary) / 0.035), transparent 70%),
+    linear-gradient(rgb(var(--wui-hud-primary) / 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(var(--wui-hud-primary) / 0.018) 1px, transparent 1px),
     rgb(var(--wui-hud-bg-base) / 0.96);
   background-size: 100% 100%, 36px 36px, 36px 36px, auto;
   border: 1px solid rgb(var(--wui-hud-primary) / 0.3);
@@ -14425,6 +14425,27 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
   border-radius: 0 !important;
 }
 
+/* ── 自然图符与状态微指示器白名单豁免（恢复自然圆形意符） ──
+   理论依据：唐·诺曼「自然映射（Natural Mapping）」与利德威尔「图符化表征（Iconic Representation）」。
+   天体、射频、脉冲光晕与状态灯在人类认知中为天然球形/圆形，不强行压制为方块。 */
+.app-root.is-layout-modern .app-activitybar-idle-dot,
+.app-root.is-layout-modern .app-ann-dot,
+.app-root.is-layout-modern .app-comms-dot,
+.app-root.is-layout-modern .app-bts-reload-dot,
+.app-root.is-layout-modern .app-bts-cursor::after,
+.app-root.is-layout-modern .app-bts-muzzle,
+.app-root.is-layout-modern .app-bts-puff,
+.app-root.is-layout-modern .app-bts-chip i,
+.app-root.is-layout-modern .app-bts-repair i,
+.app-root.is-layout-modern .app-bts-boom .b-core,
+.app-root.is-layout-modern .app-bts-boom .b-ring,
+.app-root.is-layout-modern .app-bts-star,
+.app-root.is-layout-modern .app-toggle-track::after,
+.app-root.is-layout-modern .is-round-dot,
+.app-root.is-layout-modern [data-shape="circle"] {
+  border-radius: 50% !important;
+}
+
 /* ── 顶栏与外壳仪表舱 ── */
 .app-root.is-layout-modern .app-pilot {
   padding: 3px 10px;
@@ -14533,6 +14554,7 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
     0 calc(100% - 10px)
   );
   border: 1px solid rgb(var(--wui-hud-primary) / 0.45);
+  filter: drop-shadow(0 16px 36px rgba(0, 0, 0, 0.85));
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.85), 0 0 24px rgb(var(--wui-hud-primary) / 0.15), inset 0 0 0 1px rgb(var(--wui-hud-primary) / 0.1);
   background: linear-gradient(180deg, rgb(var(--wui-hud-surface) / 0.98), rgb(var(--wui-hud-surface-deep) / 0.98));
 }
