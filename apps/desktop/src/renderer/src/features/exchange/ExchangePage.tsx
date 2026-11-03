@@ -16,6 +16,7 @@ import type { ExchangeClientBundle, ExchangeSourceInfo } from './factory'
 import { createExchangeClient } from './factory'
 import { amount, money, pct, pctAbs } from './format'
 import { T, TF } from './texts'
+import { Cashier } from './components/Cashier'
 import { NewsTicker } from './components/NewsTicker'
 import { SimpleExchange } from './components/SimpleExchange'
 import { ProExchange } from './components/ProExchange'
@@ -79,6 +80,8 @@ function ExchangeBody({
   const [tick, bump] = useReducer((n: number) => n + 1, 0)
   const [code, setCode] = useState(rememberedCode)
   const [pickedPrice, setPickedPrice] = useState<{ value: number; seq: number } | null>(null)
+  // 入金 / 出金弹窗：null = 关闭
+  const [cashier, setCashier] = useState<'deposit' | 'withdraw' | null>(null)
 
   // 极简 / 专业 双模式状态（默认极简）
   const [viewMode, setViewMode] = useState<'simple' | 'pro'>(() => {
@@ -254,8 +257,14 @@ function ExchangeBody({
           </>
         )}
 
-        {/* 顶栏右侧：数据源徽标 + 重置按钮 */}
+        {/* 顶栏右侧：入金 / 出金 + 数据源徽标 + 重置按钮 */}
         <div className="ex-top-actions">
+          <button type="button" className="ex-mini-btn" onClick={() => setCashier('deposit')}>
+            {T.deposit}
+          </button>
+          <button type="button" className="ex-mini-btn" onClick={() => setCashier('withdraw')}>
+            {T.withdraw}
+          </button>
           <SourceBadge source={bundle.source} />
           {bundle.source.mode === 'mock' ? (
             <button
@@ -290,6 +299,18 @@ function ExchangeBody({
           onToast={onToast}
         />
       )}
+
+      {/* 入金 / 出金弹窗：资金闸门，关闭后回到原模式 */}
+      {cashier !== null ? (
+        <Cashier
+          mode={cashier}
+          cash={snap.account.cash}
+          client={client}
+          onToast={onToast}
+          onClose={() => setCashier(null)}
+          onRefresh={bump}
+        />
+      ) : null}
     </div>
   )
 }

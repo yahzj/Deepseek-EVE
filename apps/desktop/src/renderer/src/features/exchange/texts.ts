@@ -280,6 +280,25 @@ export const T = {
   posLiqSafe: '平稳安全',
   systemPresetTag: '系统预置',
   systemPresetTip: '演练预设仓位：系统初始配置用于测试功能',
+
+  // ── 入金 / 出金（游戏钱包 ⇄ 券商现金） ──
+  deposit: '入金',
+  withdraw: '出金',
+  cashierDepositTitle: '入金到交易所',
+  cashierWithdrawTitle: '从交易所出金',
+  cashierDepositHint: '从游戏钱包转入，单日额度以服务器为准。',
+  cashierWithdrawHint: '扣除手续费后到账，可能有冷却/延迟。',
+  cashierAmount: '金额（ISK）',
+  cashierPreset1m: '100 万',
+  cashierPreset5m: '500 万',
+  cashierPreset10m: '1000 万',
+  cashierAll: '全部',
+  cashierExchangeCash: '交易所现金',
+  cashierInvalidAmount: '请输入正整数金额',
+  cashierCancel: '取消',
+  cashierConfirmDeposit: '确认入金',
+  cashierConfirmWithdraw: '确认出金',
+  cashierSubmitting: '提交中…',
 } as const
 
 /** 带参数文案（集中在一处，组件只拼函数） */
@@ -321,4 +340,6 @@ export const TF = {
   posLiqSafeHint: (dist: string) => `安全缓冲 ${dist}`,
   posLiqWarnHint: (dist: string, isLong: boolean) => (isLong ? `高危：再跌 ${dist} 强平！` : `高危：再涨 ${dist} 强平！`),
   posLiqDangerHint: (dist: string, isLong: boolean) => (isLong ? `极度危险！再跌 ${dist} 立即强平！` : `极度危险！再涨 ${dist} 立即强平！`),
+  cashierDepositDone: (v: string) => `已入金 ${v} ISK`,
+  cashierWithdrawDone: (v: string) => `出金 ${v} ISK 已受理，到账以服务器结算为准`,
 } as const
