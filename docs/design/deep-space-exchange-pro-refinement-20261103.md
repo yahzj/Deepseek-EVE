@@ -90,3 +90,42 @@
   - `apps/desktop/src/renderer/src/features/exchange/exchange.css`
   - `apps/desktop/src/renderer/src/features/exchange/components/chart/Candles.tsx`
   - `docs/design/deep-space-exchange-pro-refinement-20261103.md`
+
+## 五轮 极简看盘双向多空交易与单独/一键平仓重构（2026-11-03 Simple Trade & Position Refactoring）
+- **背景**：根据船长显式批准意见（“可以的，也要支持单独平仓，和一键平仓”），彻底消除极简看盘“只能买入后卖出现货”的单向局限，将极简看盘升级为真正的双向看涨做多/看跌做空交易舱，并全面支持对各个多空仓位【单独平仓】以及【一键全部平仓】。
+- **落实明细**：
+  1. **极简买卖舱升级（SimpleTrade.tsx）**：
+     - 废除原先单向卖出现货逻辑，将两个 Tab 升级为【看涨 · 买多】（`buy`）与【看跌 · 卖空】（`short`）；
+     - 统一以【投入现金 ISK】为输入口径，支持 25% / 50% / 75% / 全仓 快捷筹码；
+     - 实时前馈换算：买多按 1x 现货计算预计股数与手续费；做空按 2x 杠杆融券市价开空，零门槛借券卖出（0 股也能借券开空），明示占用保证金与手续费；
+     - 动作按钮与特征提示：买多提示“看涨买入，价格上涨即享现货增值”，大按钮高光绿；卖空提示“零门槛借券做空，价格下跌即赚取丰厚差价”，大按钮高光红。
+  2. **持仓战报升级（SimplePosition.tsx）**：
+     - 汇聚当前标的之现货多头、逐仓多头与融券空头全部持仓；
+     - 各子仓位配备专属【单独平仓】微按钮：现货提供 `<Close size={12} /> 平多变现`；融券空头提供 `<Close size={12} /> 平空结清`（调用 `client.closePosition(code, 'short')`）；杠杆多头提供 `<Close size={12} /> 平多结清`；
+     - 顶部配备醒目的【一键全部平仓】大按钮，一键市价卖出该标的所有现货并结清所有杠杆多空单，全部变现为可用资金；
+     - 呈现当前标的总净盈亏与净收益率总览；
+     - 空状态优雅提示“暂未持有该标的仓位，可在左侧买卖舱输入金额，一键看涨买多或看跌做空”。
+  3. **视觉与色板规范（exchange.css）**：
+     - 买多/卖空 Tab 与动作大按钮分别应用 `--wui-tone-gain` 与 `--wui-tone-loss` 色板渐变与辉光；
+     - 持仓行左侧边框颜色语义分流（现货深空青 `--wui-cyan`，空头激进红 `--wui-tone-loss`，多头荧光绿 `--wui-tone-gain`）；
+     - 严格遵循 `--wui-*` 色彩三元组与深空科幻 HUD 视觉契约。
+- **涉及文件**：
+  - `apps/desktop/src/renderer/src/features/exchange/components/SimpleTrade.tsx`
+  - `apps/desktop/src/renderer/src/features/exchange/components/SimplePosition.tsx`
+  - `apps/desktop/src/renderer/src/features/exchange/exchange.css`
+  - `apps/desktop/src/renderer/src/features/exchange/texts.ts`
+  - `docs/design/deep-space-exchange-pro-refinement-20261103.md`
+
+## 六轮 极简 K 线图鼠标悬停坐标映射修复（2026-11-03 SimpleChart Coordinate Mapping Fix）
+- **背景**：响应船长关于“股市简易看盘，鼠标移动到 K 线图上映射坐标不对”的反馈，排查并彻底修复 SimpleChart 鼠标物理屏幕像素与 SVG 虚拟 viewBox 坐标系混淆导致的十字线/圆圈光标漂移。
+- **病因分析**：
+  - 原代码在 `onMouseMove` 中直接使用 `const ratio = (relX - padX) / usableW`，其中 `relX` 是 `getBoundingClientRect()` 测出的容器真实屏幕物理像素宽度（可达 800~1200px），而 `padX`（14）与 `usableW`（612）是 SVG 内部写死的固定虚拟尺寸（`viewBox="0 0 640 170"`）；
+  - 这种量纲混淆导致鼠标移动到容器 60% 宽度处时，计算出的 `ratio` 已经强行达到 1.0（被 `Math.min(1, ...)` 卡死在最右端），造成“鼠标在屏幕中央偏右，光标虚线却已飞速撞墙死锁在最右侧”的严重错位失真。
+- **落实明细**：
+  - 将鼠标物理屏幕 X 坐标先行映射到 SVG viewBox 局部坐标系：`const svgX = ((e.clientX - rect.left) / rect.width) * width`；
+  - 再基于统一的 viewBox 坐标系计算有效数据绘图区的归一化比例：`const ratio = Math.max(0, Math.min(1, (svgX - padX) / usableW))`；
+  - 同步引入 `onTouchMove` 触控滑动支持与触摸结束自动重置光标；
+  - 无论界面在何种分辨率或容器宽度下拉伸，垂直十字虚线与数据圆圈均实现像素级 1:1 吸附于鼠标指针下方。
+- **涉及文件**：
+  - `apps/desktop/src/renderer/src/features/exchange/components/SimpleChart.tsx`
+  - `docs/design/deep-space-exchange-pro-refinement-20261103.md`

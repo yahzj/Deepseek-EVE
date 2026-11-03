@@ -132,11 +132,25 @@ export function SimpleChart({ client, code, quote, tick }: SimpleChartProps) {
         onMouseMove={(e) => {
           if (coords.length === 0) return
           const rect = e.currentTarget.getBoundingClientRect()
-          const relX = e.clientX - rect.left
-          const ratio = Math.max(0, Math.min(1, (relX - padX) / usableW))
+          if (!rect || rect.width <= 0) return
+          // 物理屏幕坐标转换为 SVG viewBox 视口坐标（消除屏幕宽度与 viewBox 尺寸差异导致的映射漂移）
+          const svgX = ((e.clientX - rect.left) / rect.width) * width
+          const ratio = Math.max(0, Math.min(1, (svgX - padX) / usableW))
           const idx = Math.round(ratio * (coords.length - 1))
           setHoverIndex(idx)
         }}
+        onTouchMove={(e) => {
+          if (coords.length === 0) return
+          const touch = e.touches[0]
+          if (!touch) return
+          const rect = e.currentTarget.getBoundingClientRect()
+          if (!rect || rect.width <= 0) return
+          const svgX = ((touch.clientX - rect.left) / rect.width) * width
+          const ratio = Math.max(0, Math.min(1, (svgX - padX) / usableW))
+          const idx = Math.round(ratio * (coords.length - 1))
+          setHoverIndex(idx)
+        }}
+        onTouchEnd={() => setHoverIndex(null)}
       >
         {points.length < 2 ? (
           <div className="ex-simple-chart-empty">{T.chartNoData}</div>
