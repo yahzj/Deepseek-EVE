@@ -110,7 +110,19 @@ export interface ExchangeOrder {
   qty: number
   qtyRemaining: number
   leverage: number
-  status: 'open' | 'partial' | 'filled' | 'cancelled' | 'rejected' | 'trigger_pending'
+  /**
+   * 回合制（2026-11-03）新增 `queued`（已进本回合队列、尚未撮合）与 `expired`
+   * （回合结算未成交部分撤销并解冻）。Mock 仍只用原有状态，HTTP 适配器按服务端原样透传。
+   */
+  status:
+    | 'open'
+    | 'partial'
+    | 'filled'
+    | 'cancelled'
+    | 'rejected'
+    | 'trigger_pending'
+    | 'queued'
+    | 'expired'
   createdAt: number
   /** 以下为原型扩展（真机响应同样会带，界面用来显示来源与成交均价） */
   source?: OrderSource
@@ -118,6 +130,37 @@ export interface ExchangeOrder {
   avgFillPrice?: number
   triggerPrice?: number
   reduceOnly?: boolean
+}
+
+/**
+ * 回合时钟（Go `GET /api/exchange/round` 与 WS `round` 帧）。
+ * 字段名照服务端 `RoundView`；`usedOrders` 只在 REST 响应里出现（WS 广播是公共视图，不含配额）。
+ */
+export interface RoundInfo {
+  roundNo: number
+  startedAt: number
+  nextRoundAt: number
+  locked: boolean
+  maxOrders: number
+  /** 本回合已提交笔数（撤单不返还；WS 公共帧不带，缺省按 0 处理） */
+  usedOrders?: number
+  /** 回合长度（秒），服务端下发，默认 300 */
+  roundSec: number
+  /** 回合末锁定窗口（秒），默认 10 */
+  lockSec: number
+  /** 服务器毫秒时间，客户端据此校正倒计时 */
+  serverTime: number
+}
+
+/** 批量提交结果（Go `POST /api/exchange/orders/batch`） */
+export interface BatchOrderResult {
+  roundNo: number
+  /** 服务端返回的批量状态，当前恒为 `queued` */
+  status: string
+  accepted: number
+  maxOrders: number
+  usedOrders: number
+  orders: ExchangeOrder[]
 }
 
 export interface StrategySpec {
@@ -276,10 +319,20 @@ export interface ExchangeClient {
   getKlines(code: string, interval: '1m' | '5m' | '1h', limit?: number): Promise<Kline[]>
   getAccount(): Promise<ExchangeAccount>
   getOrders(): Promise<ExchangeOrder[]>
+  /**
+   * 回合时钟（可选：只有联机客户端实现；Mock 不实现）。
+   * 未来 UI 接入点见 `round.ts` 里的 `RoundClock`。
+   */
+  getRound?(): Promise<RoundInfo>
   // 交易
   deposit(amount: number, nonce: string): Promise<DepositResult>
   withdraw(amount: number, nonce: string): Promise<WithdrawResult>
   placeOrder(req: PlaceOrderRequest): Promise<ExchangeOrder>
+  /**
+   * 批量提交（可选：只有联机客户端实现；Go `POST /orders/batch` 全成全败，单批 ≤ 每回合配额）。
+   * 未来 UI 接入点见 `round.ts` 里的 `OrderQueue`。
+   */
+  batchPlaceOrders?(reqs: PlaceOrderRequest[]): Promise<BatchOrderResult>
   cancelOrder(id: string): Promise<void>
   closePosition(code: string, side: 'long' | 'short', qty?: number): Promise<void>
   // 量化
