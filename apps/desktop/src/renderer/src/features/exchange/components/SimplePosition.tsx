@@ -37,7 +37,7 @@ export function SimplePosition({ client, snap, code, onToast }: SimplePositionPr
     return (
       <div className="ex-simple-pos-card is-empty">
         <div className="ex-simple-pos-empty-inner">
-          <div className="ex-simple-pos-empty-icon">📊</div>
+          
           <div className="ex-simple-pos-empty-title">暂未持有 {code} 股份</div>
           <span className="ex-dim">可在左侧买卖舱输入金额，一键市价买入建仓</span>
         </div>
@@ -119,7 +119,7 @@ export function SimplePosition({ client, snap, code, onToast }: SimplePositionPr
       {posList.length > 0 ? (
         <div className="ex-simple-pos-warn-line">
           <span className="ex-dim">
-            ⚡ 提示：检测到 {posList.length} 笔杠杆仓位，可在右上角切至「专业终端」管理。
+            提示：检测到 {posList.length} 笔杠杆仓位，可在顶栏切至「专业终端」管理。
           </span>
         </div>
       ) : null}

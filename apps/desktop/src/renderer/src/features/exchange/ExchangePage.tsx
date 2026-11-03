@@ -2,7 +2,8 @@
  * 证券交易所 · 一级页（**深空证券交易所 DSSE · 双模式**）。
  *
  * 核心升级：
- * - 极简 / 专业 双模式一键切换（持久化到 `localStorage['whale-idle:exch-view-mode']`，默认极简）；
+ * - 极简 / 专业 双模式 Segmented Tabs 一览无遗，一键切换（持久化到 `localStorage['whale-idle:exch-view-mode']`）；
+ * - 纯净硬核科幻 HUD 视觉，彻底去除 emoji；
  * - 极简模式：双栏清爽布局，4位代码股票，Sparkline，流光渐变面积图，傻瓜现货买卖舱，当前持仓战报，零门槛；
  * - 专业模式：三栏全功能 HUD PRO，逐仓杠杆，五档深度盘口（含买卖量不平衡条），量化网格与流水；
  * - 共享同一个 Client 单例与快照，切换模式零延迟、状态零丢失。
@@ -88,11 +89,11 @@ function ExchangeBody({
     }
   })
 
-  const toggleViewMode = () => {
-    const next = viewMode === 'simple' ? 'pro' : 'simple'
-    setViewMode(next)
+  const switchViewMode = (mode: 'simple' | 'pro') => {
+    if (viewMode === mode) return
+    setViewMode(mode)
     try {
-      localStorage.setItem(VIEW_MODE_KEY, next)
+      localStorage.setItem(VIEW_MODE_KEY, mode)
     } catch {
       // ignore
     }
@@ -126,12 +127,10 @@ function ExchangeBody({
   // 极简模式下计算总浮动盈亏（现货 + 杠杆仓总和）
   const totalUnrealizedPnl = useMemo(() => {
     let sum = 0
-    // 现货浮盈
     for (const h of snap.account.holdings) {
       const q = snap.stocks.find((s) => s.code === h.code)
       if (q) sum += (q.price - h.avgCost) * h.qty
     }
-    // 杠杆浮盈
     for (const p of snap.account.positions) {
       sum += p.unrealizedPnl
     }
@@ -169,6 +168,30 @@ function ExchangeBody({
         <div className="ex-title">
           <h2 className="ex-title-text">{T.simpleTopTitle}</h2>
           <span className="ex-prototype">{T.prototypeBadge}</span>
+        </div>
+
+        {/* 核心双模式 Segmented Tabs：醒目清晰，直观切换 */}
+        <div className="ex-mode-tabs" role="tablist" aria-label="交易视图模式">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={viewMode === 'simple'}
+            className={`ex-mode-tab${viewMode === 'simple' ? ' is-active' : ''}`}
+            onClick={() => switchViewMode('simple')}
+          >
+            <span className="ex-mode-tab-title">{T.viewModeSimple}</span>
+            <span className="ex-mode-tab-sub">现货 · 零爆仓</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={viewMode === 'pro'}
+            className={`ex-mode-tab${viewMode === 'pro' ? ' is-active' : ''}`}
+            onClick={() => switchViewMode('pro')}
+          >
+            <span className="ex-mode-tab-title">{T.viewModePro}</span>
+            <span className="ex-mode-tab-sub">杠杆 · 深度盘口</span>
+          </button>
         </div>
 
         {/* 极简模式顶栏资产指标：总资产、可用现金、浮动盈亏 */}
@@ -226,21 +249,8 @@ function ExchangeBody({
           </>
         )}
 
-        {/* 顶栏右侧：双模式切换开关 + 数据源徽标 + 重置按钮 */}
+        {/* 顶栏右侧：数据源徽标 + 重置按钮 */}
         <div className="ex-top-actions">
-          <button
-            type="button"
-            className="ex-mode-switch-btn"
-            onClick={toggleViewMode}
-            title={viewMode === 'simple' ? '切换至全功能专业终端' : '切换至极简看盘模式'}
-          >
-            <span className="ex-mode-switch-icon">⚡</span>
-            <span className="ex-mode-switch-text">
-              {viewMode === 'simple' ? T.viewModeSimple : T.viewModePro}
-            </span>
-            <span className="ex-mode-switch-tip">切至{viewMode === 'simple' ? '专业' : '极简'}</span>
-          </button>
-
           <SourceBadge source={bundle.source} />
           {bundle.source.mode === 'mock' ? (
             <button

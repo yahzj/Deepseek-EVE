@@ -206,8 +206,8 @@ export const T = {
   riskWarning: '高风险',
 
   // ── 极简模式专属文案 ──
-  viewModeSimple: '极简看盘 ⚡',
-  viewModePro: '专业终端 ⤢',
+  viewModeSimple: '极简看盘',
+  viewModePro: '专业终端',
   simpleTopTitle: '深空证券交易所',
   totalAssets: '总资产',
   unrealizedPnl: '浮动盈亏',
