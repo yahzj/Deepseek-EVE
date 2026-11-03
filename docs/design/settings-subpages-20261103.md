@@ -1,6 +1,6 @@
 # 设置子页面分类（2026-11-03）
 
-> 状态：已实现、自测通过，待合入；未推送。经办：三号（verify）。
+> 状态：已合入本地 main，待船长观感验收；未推送。经办：三号（verify）。
 
 ## 船长原话
 
@@ -30,11 +30,12 @@
 
 ## 实现与验证
 
-- 功能域：设置面板；同类参照为现有 `app-subtabs` / `app-subtab`。未改 core、后端和主树；本地化表及受影响的 UI 检查工具随本批更新。
+- 功能域：设置面板；同类参照为现有 `app-subtabs` / `app-subtab`。实现与提交在三号树完成，未改 core 或后端；本地化表及受影响的 UI 检查工具随本批更新。
 - 保留现有控件处理函数、偏好键、默认值和存档操作；仅分类渲染。弹窗高度稳定，内容区域独立滚动，切页回到顶部。
 - 新增 `tools/settings-subpages-smoke.cjs`。用法：先 `npm run build`，再 `node tools/settings-subpages-smoke.cjs`；输入三号桌面构建和自建合成档，输出 `tools/_ui-artifacts/settings-subpages/report.json`。隐藏 Electron，临时用户目录隔离，结束清理自有进程和目录。
 - 隐藏 Electron 检查通过：classic / modern 两种布局、zh / en 两种界面、1366 / 600 / 375 像素宽度；五类设置分类、右上角客户端版本号、完整版本悬停信息、复制反馈、键盘切换、尺寸稳定、切页不改偏好、静音和补给来源、底栏许可弹窗、发布形态开发者门禁。运行时异常 0；这是功能和几何检查，不代替船长观感验收。
 - 最终 `npm run build`、`npm run typecheck`、`npm run content:check`、`npm run l10n:check`、`npm run l10n:params`、`npm run ui:rot-check` 均通过；`git diff --check` 通过。`docs/INDEX.md` 已刷新并通过 `npm run docs:index -- --check`。
 - 沙箱内 tsx 受 `uv_os_get_passwd ENOMEM` 阻挡，经批准在沙箱外运行静态脚本后通过；不改系统设置或依赖。
 - 现有声音、存档和导出/手机检查工具只同步分类入口，已做语法检查，未重跑这些工具的完整旅程。未跑完整 core 回归，本批不改核心行为且尚未进入集中验收。
+- 设置提交 `53e28ccb3`，同步主树新增进度后的合并提交 `d52f3c94a`；唯一冲突为生成索引，已重新生成。主树已快进合入，两次提交钩子全绿；主树桌面构建已更新并通过，未推送远端。
 - 验收预览：`http://127.0.0.1:5184/`，三号最新桌面 renderer 构建，HTTP 200；预览自有进程 PID 30084，日志在 `tools/_ui-artifacts/settings-subpages/preview.*.log`。
