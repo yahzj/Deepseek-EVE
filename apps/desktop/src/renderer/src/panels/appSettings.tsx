@@ -25,6 +25,7 @@ import { SfxConsole } from './SfxConsole'
 /** 客户端版本三件套与运行形态（**2026-10-02 船长令**；构建时注入，见 `game/buildInfo.ts`） */
 import { BUILD, BUILD_FORM } from '../game/buildInfo'
 import type { GameEngine } from '../game/engine'
+import { CloudSavePanel } from '../features/cloud/CloudSavePanel'
 import './appSettings.css'
 /**
  * **界面字体**（**2026-11-02 船长令**，多轮迭代后的最终口径）：
@@ -224,7 +225,7 @@ export function readLogPrefs(): LogPrefs {
  *  界面配色（2026-09-22 船长令）：深空/亮白/跟随系统，存本机、即时生效 */
 export function SettingsPanel({
   root,
-  onClose,
+  onClose: onRequestClose,
   engine,
   onSave,
   onReset,
@@ -281,6 +282,10 @@ export function SettingsPanel({
 }) {
   const { locale, setLocale, t } = useL10n()
   const [settingsPage, setSettingsPage] = useState<SettingsPage>('interface')
+  const [cloudApplying, setCloudApplying] = useState(false)
+  function onClose(): void {
+    if (!cloudApplying) onRequestClose()
+  }
   const visibleSettingsPages = SETTINGS_PAGES.filter((page) => page.id !== 'developer' || debugAllowed())
   const [zoom, setZoom] = useState(readZoom)
   const [fs, setFs] = useState(readFontScale)
@@ -396,8 +401,10 @@ export function SettingsPanel({
               aria-controls={settingsPage === page.id ? `settings-panel-${page.id}` : undefined}
               tabIndex={settingsPage === page.id ? 0 : -1}
               className={`app-subtab${settingsPage === page.id ? ' is-active' : ''}`}
-              onClick={() => setSettingsPage(page.id)}
+              disabled={cloudApplying}
+              onClick={() => { if (!cloudApplying) setSettingsPage(page.id) }}
               onKeyDown={(event) => {
+                if (cloudApplying) return
                 const lastIndex = visibleSettingsPages.length - 1
                 const nextIndex = event.key === 'ArrowRight'
                   ? (index + 1) % visibleSettingsPages.length
@@ -786,13 +793,15 @@ export function SettingsPanel({
               <span className="app-settings-label">{tr('ui.App.063')}</span>
             </div>
             <div className="app-settings-btns">
-              <button className="app-btn is-small" onClick={onSave}>
+              <button className="app-btn is-small" onClick={onSave} disabled={cloudApplying}>
                 {tr('ui.App.063')}
               </button>
               <button
                 className="app-btn is-small"
+                disabled={cloudApplying}
                 title={tr('ui.App.064')}
                 onClick={() => {
+                  if (cloudApplying) return
                   onOpenSaveManager()
                   onClose()
                 }}
@@ -801,7 +810,9 @@ export function SettingsPanel({
               </button>
               <button
                 className="app-btn is-small is-danger"
+                disabled={cloudApplying}
                 onClick={() => {
+                  if (cloudApplying) return
                   onClose()
                   onReset()
                 }}
@@ -810,6 +821,7 @@ export function SettingsPanel({
               </button>
             </div>
           </div>
+          <CloudSavePanel engine={engine} onApplyingChange={setCloudApplying} />
           </> : null}
         </div>
         {/* **切换界面布局 ⇒ 提示重开**（2026-09-25 船长令）：确认后存档并关游戏；取消则什么都不做 */}
@@ -839,12 +851,14 @@ export function SettingsPanel({
             <button className="app-btn is-small" onClick={() => setLicenseOpen(true)}>
               {t('ui.App.181')}
             </button>
-            <button className="app-btn is-small" onClick={() => { setZoom(1); setFs(1); selectFont('default') }}>
+            <button className="app-btn is-small" disabled={cloudApplying} onClick={() => { if (cloudApplying) return; setZoom(1); setFs(1); selectFont('default') }}>
               {t('ui.App.023')}
             </button>
             <button
               className="app-btn is-small is-primary"
+              disabled={cloudApplying}
               onClick={() => {
+                if (cloudApplying) return
                 persist()
                 onClose()
               }}

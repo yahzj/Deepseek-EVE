@@ -118,7 +118,7 @@ async function child() {
       await page.wait('!!document.querySelector("#settings-panel-interface")')
       assert.equal(await page.js(`document.querySelectorAll('.app-settings-tabs [role=tab]').length`), 5)
       const initialPrefs = await prefs()
-      const expected = { interface: 7, sound: 9, game: 1, save: 2, developer: 1 }
+      const expected = { interface: 7, sound: 9, game: 1, save: 3, developer: 1 }
       assert.deepEqual(await page.js(`Array.from(document.querySelectorAll('#settings-panel-interface .app-settings-row'), row => row.querySelector('.app-settings-label')?.textContent.trim())`),
         ['ui.App.025', 'ui.App.146', 'ui.App.012', 'ui.App.014', 'ui.App.178', 'ui.App.127', 'ui.App.016'].map(t))
       assert.deepEqual(await page.js(`Array.from([...document.querySelectorAll('#settings-panel-interface .app-settings-row')].find(row => row.querySelector('.app-settings-label')?.textContent.trim() === ${JSON.stringify(t('ui.App.178'))}).querySelectorAll('button'), button => button.textContent.trim())`),

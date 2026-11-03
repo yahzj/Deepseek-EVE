@@ -788,6 +788,7 @@ export class GameEngine {
   private savePaused = false
   private reconnectChoice: ReconnectChoice | null = null
   private reconnectResolving = false
+  private loadResolving = false
   /** 非战斗期推进余额（累计满 1s 才推进一次，保持旧节奏；战斗中改 100ms 切片实时推进） */
   private pendingMs = 0
   /** 心跳周期毫秒（2026-09-08 降频优化：挂机 500ms；战斗/教学加速/远征去程边界保持 100ms） */
@@ -1312,7 +1313,7 @@ export class GameEngine {
    * - `ok` = 正常。
    */
   saveWriteState(): 'ok' | 'paused' | 'unavailable' {
-    if (!canWriteSave() || this.reconnectResolving) return 'paused'
+    if (!canWriteSave() || this.reconnectResolving || this.loadResolving) return 'paused'
     if (this.saveUnavailable) return 'unavailable'
     if (this.savePaused) return 'paused'
     return 'ok'
@@ -1431,7 +1432,7 @@ export class GameEngine {
   private tick(): void {
     if (this.stopped) return
     if (this.wormholeTestEnabled()) { this.winCache.pause(); this.lastRealMs = Date.now(); return }
-    if (!canWriteSave() || this.reconnectResolving) { this.winCache.pause(); this.lastRealMs = Date.now(); return }
+    if (!canWriteSave() || this.reconnectResolving || this.loadResolving) { this.winCache.pause(); this.lastRealMs = Date.now(); return }
     const now = Date.now()
     const dt = Math.max(1, now - this.lastRealMs)
     this.lastRealMs = now
@@ -1571,7 +1572,8 @@ export class GameEngine {
 
   /** 复用重连提交锁：候选写入期间不推进旧状态或追加旧快照。 */
   private async commitLoadedSave(candidate: GameState, report: OfflineReport | null, rescue: boolean): Promise<boolean> {
-    if (this.saveWriteState() !== 'ok') return false
+    // 调用方持有全链载入锁；这里只拒绝另一个提交，不能因自身的 loadResolving 拒绝候选。
+    if (!canWriteSave() || this.saveUnavailable || this.savePaused || this.reconnectResolving) return false
     this.reconnectResolving = true
     try {
       if (await this.persistSnapshot(this.createSaveSnapshot(candidate), true) === null) return false
@@ -1926,6 +1928,8 @@ export class GameEngine {
   }
 
   async restoreBackup(name: string): Promise<{ ok: boolean; error?: string }> {
+    if (this.loadResolving || this.reconnectResolving) return { ok: false, error: tr('ui.engine.027') }
+    this.loadResolving = true
     try {
       const read = await saveBridge.readBackup(name)
       if (!read.ok || read.text === undefined) return { ok: false, error: read.error ?? tr('ui.engine.049') }
@@ -1943,7 +1947,7 @@ export class GameEngine {
         ? { ok: true } : { ok: false, error: tr('ui.engine.027') }
     } catch (err) {
       return { ok: false, error: String(err) }
-    }
+    } finally { this.loadResolving = false }
   }
 
   /* ─────────────── 存档导入 / 导出（外部文件；2026-09-08 船长定） ─────────────── */
@@ -1957,10 +1961,11 @@ export class GameEngine {
   /** 用户手势内先申请文件权限，授权本身不允许写入；不同内容一律交给玩家选择。 */
   async reconnectLocalSave(): Promise<{ ok: boolean; choice?: ReconnectChoice; error?: string }> {
     const api = saveBridge.saveFile
-    if (!api || this.reconnectResolving) return { ok: false }
-    const file = await api.reconnect()
-    if (!file.ok || file.text === undefined || file.token === undefined) return { ok: false, error: file.error }
+    if (!api || this.reconnectResolving || this.loadResolving) return { ok: false }
+    this.loadResolving = true
     try {
+      const file = await api.reconnect()
+      if (!file.ok || file.text === undefined || file.token === undefined) return { ok: false, error: file.error }
       const parsed = loadSaveFile(file.text)
       const browser = await saveBridge.load()
       const current = this.currentSaveText()
@@ -1975,6 +1980,7 @@ export class GameEngine {
       this.reconnectChoice = choice
       return { ok: true, choice }
     } catch (err) { return { ok: false, error: tr('ui.engine.028', { p1: String(err) }) } }
+    finally { this.loadResolving = false }
   }
 
   private reconnectChanged(file: SaveFileReconnectResult): { ok: boolean; choice?: ReconnectChoice; error?: string } {
@@ -1995,7 +2001,8 @@ export class GameEngine {
   }> {
     const api = saveBridge.saveFile
     const selected = this.reconnectChoice
-    if (!api || !selected || this.reconnectResolving || !canWriteSave()) return { ok: false }
+    if (!api || !selected || this.reconnectResolving || this.loadResolving || !canWriteSave()) return { ok: false }
+    this.loadResolving = true
     this.reconnectResolving = true
     try {
       let candidate: GameState
@@ -2044,7 +2051,7 @@ export class GameEngine {
       this.reconnectChoice = null
       return { ok: true, loaded: choice === 'file' }
     } catch (err) { return { ok: false, error: String(err) } }
-    finally { this.reconnectResolving = false }
+    finally { this.reconnectResolving = false; this.loadResolving = false }
   }
 
   /** 沿现有导入链准备候选，返回简报；不提前修改当前内存。 */
@@ -2082,6 +2089,16 @@ export class GameEngine {
     }
   }
 
+  /** 云端上传只取本地保存桥已确认写入的确切快照。 */
+  async exportCloudSave(): Promise<{ ok: boolean; text?: string; error?: string }> {
+    try {
+      const text = await this.persistSnapshot()
+      return text === null ? { ok: false, error: tr('ui.engine.027') } : { ok: true, text }
+    } catch (err) {
+      return { ok: false, error: String(err) }
+    }
+  }
+
   /** 导出指定备份：桌面 = 系统对话框选位置；手机网页 = 优先系统分享、回落浏览器下载 */
   async exportBackupToFile(name: string): Promise<{ ok: boolean; path?: string; shared?: boolean; canceled?: boolean; error?: string }> {
     try {
@@ -2096,32 +2113,42 @@ export class GameEngine {
   /** 从外部文件导入存档：**不备份当前档**（2026-09-17 船长）→ 校验可解析 → 按时间差补齐离线进度
    * （与正常启动同口径：repair 迁移 + simulateOffline + 离线简报）→ 落盘 → 热替换内存 */
   async importSaveFromFile(): Promise<{ ok: boolean; canceled?: boolean; error?: string }> {
+    if (this.loadResolving || this.reconnectResolving) return { ok: false, error: tr('ui.engine.027') }
+    this.loadResolving = true
     try {
       const picked = await saveBridge.pickImportSave()
       if (!picked.ok) return { ok: false, canceled: picked.canceled === true, error: picked.error }
-      const text = picked.text ?? ''
-      let parsed: ReturnType<typeof loadSaveFile>
-      try {
-        parsed = loadSaveFile(text)
-      } catch (err) {
-        return { ok: false, error: tr("ui.engine.028", { p1: err instanceof Error ? err.message : String(err) }) }
-      }
-      const imported = parsed.state
-      /**
-       * ⚠ **2026-09-17 船长**：「**导入或者恢复存档时，不要备份现有存档**」⇒ 原先这里会
-       * `persist()` ＋ `saveBridge.backup()` 给当前档留一份"防误操作"备份，现已删除（与恢复那条同口径）。
-       * 要留退路请在导入前点「备份当前档」——手动备份与备份列表功能照旧。
-       */
-      // 铁人档：装载闸门（见 `ironmanLoadCheck`）
-      const gate = await this.ironmanLoadCheck(text, parsed.savedAtWallMs, false)
-      if (!gate.ok) return { ok: false, error: gate.error }
-      await this.syncIronmanHead(imported)
-      const report = this.prepareImportedState(imported, parsed.savedAtWallMs)
-      return await this.commitLoadedSave(imported, report, gate.rescue)
-        ? { ok: true } : { ok: false, error: tr('ui.engine.027') }
+      return await this.importSaveText(picked.text ?? '')
     } catch (err) {
       return { ok: false, error: String(err) }
+    } finally { this.loadResolving = false }
+  }
+
+  async importCloudSave(text: string): Promise<{ ok: boolean; error?: string }> {
+    if (this.loadResolving || this.reconnectResolving) return { ok: false, error: tr('ui.engine.027') }
+    this.loadResolving = true
+    try {
+      return await this.importSaveText(text)
+    } catch (err) {
+      return { ok: false, error: String(err) }
+    } finally { this.loadResolving = false }
+  }
+
+  /** 调用方持有全链载入锁；不自动备份，候选写成功后才替换内存。 */
+  private async importSaveText(text: string): Promise<{ ok: boolean; error?: string }> {
+    let parsed: ReturnType<typeof loadSaveFile>
+    try {
+      parsed = loadSaveFile(text)
+    } catch (err) {
+      return { ok: false, error: tr('ui.engine.028', { p1: err instanceof Error ? err.message : String(err) }) }
     }
+    const gate = await this.ironmanLoadCheck(text, parsed.savedAtWallMs, false)
+    if (!gate.ok) return { ok: false, error: gate.error }
+    const imported = parsed.state
+    await this.syncIronmanHead(imported)
+    const report = this.prepareImportedState(imported, parsed.savedAtWallMs)
+    return await this.commitLoadedSave(imported, report, gate.rescue)
+      ? { ok: true } : { ok: false, error: tr('ui.engine.027') }
   }
 
   /** 删除某份备份（只删备份文件，不影响当前档） */

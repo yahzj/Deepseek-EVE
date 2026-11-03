@@ -1,0 +1,27 @@
+.app-cloud { min-width: 0; letter-spacing: 0; }
+.app-cloud h3 { margin: 0; }
+.app-cloud-section { display: flex; flex-direction: column; gap: var(--wui-sp-8); padding-block: var(--wui-sp-8); min-width: 0; }
+.app-cloud-section + .app-cloud-section { border-top: 1px solid rgb(var(--wui-border)); }
+.app-cloud-heading, .app-cloud-account, .app-cloud-latest, .app-cloud-modes { display: flex; align-items: center; gap: var(--wui-sp-8); flex-wrap: wrap; min-width: 0; }
+.app-cloud-heading { justify-content: space-between; }
+.app-cloud-field { display: grid; grid-template-columns: minmax(70px, 100px) minmax(0, 1fr); align-items: center; gap: var(--wui-sp-8); }
+.app-cloud-field input { box-sizing: border-box; width: 100%; min-width: 0; min-height: 36px; padding: var(--wui-sp-6) var(--wui-sp-8); border: 1px solid rgb(var(--wui-border)); border-radius: 4px; background: rgb(var(--wui-bg-field)); color: rgb(var(--wui-text)); font: inherit; }
+.app-cloud-field input:focus-visible { outline: 2px solid rgb(var(--wui-accent)); outline-offset: 2px; }
+.app-cloud-profile { display: flex; flex-wrap: wrap; gap: var(--wui-sp-6); min-width: 0; }
+.app-cloud .app-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--wui-sp-6); min-height: 36px; max-width: 100%; white-space: normal; overflow-wrap: anywhere; letter-spacing: 0; }
+.app-cloud .app-btn svg { flex: 0 0 auto; }
+.app-cloud p { margin: 0; }
+.app-cloud p, .app-cloud span, .app-cloud strong, .app-cloud code { overflow-wrap: anywhere; min-width: 0; }
+.app-cloud-confirm, .app-cloud-recovery { display: flex; flex-direction: column; gap: var(--wui-sp-8); padding-block: var(--wui-sp-8); border-top: 1px solid rgb(var(--wui-border)); }
+.app-cloud-recovery code { user-select: all; font-family: var(--wui-mono); }
+.app-cloud-versions { max-height: 180px; overflow-y: auto; overscroll-behavior: contain; }
+.app-cloud-version { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; align-items: center; gap: var(--wui-sp-8); padding-block: var(--wui-sp-4); }
+.app-cloud-version time { overflow-wrap: anywhere; }
+.app-cloud-ok { color: rgb(var(--wui-accent)); }
+.app-cloud-error { color: rgb(var(--wui-log-warn)); }
+.app-cloud-muted, .app-cloud-status { color: rgb(var(--wui-text-dim)); }
+.app-cloud-status { min-height: 1.5em; overflow-wrap: anywhere; }
+@media (max-width: 560px) {
+  .app-cloud-field { grid-template-columns: minmax(0, 1fr); gap: var(--wui-sp-4); }
+  .app-cloud .app-btn { min-height: 44px; }
+}
