@@ -64,9 +64,9 @@ export function SimpleChart({ client, code, quote, tick }: SimpleChartProps) {
 
   // SVG 视口尺寸
   const width = 640
-  const height = 170
+  const height = 150
   const padX = 14
-  const padY = 16
+  const padY = 14
   const usableW = width - padX * 2
   const usableH = height - padY * 2
 

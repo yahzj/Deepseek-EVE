@@ -10,7 +10,7 @@ import { useState } from 'react'
 import type { ExchangeClient, ExchangeSnapshot, FundPlayResult } from '../client'
 import type { ToastFn } from '../../../pages/common'
 import { money } from '../format'
-import { T } from '../texts'
+import { T, TF } from '../texts'
 
 const CALC_ANIM_MS = 1200
 
@@ -54,7 +54,7 @@ export function FundCard({
         const [result] = await Promise.all([client.playFund(amount, nonce), sleep(CALC_ANIM_MS)])
         setLast(result)
         onToast(
-          result.win ? T.fundWin(money(result.profit)) : T.fundLose(money(-result.profit)),
+          result.win ? TF.fundWin(money(result.profit)) : TF.fundLose(money(-result.profit)),
           !result.win,
         )
         onRefresh()
