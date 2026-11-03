@@ -13,7 +13,7 @@
 
 ## 统计
 
-- 非归档文档 **384** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4466** KB · **50793** 行
+- 非归档文档 **384** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4466** KB · **50796** 行
 - 状态分布：**未标注** 191 · **已确认/已实现** 133 · **进行中** 39 · **待裁定** 20 · **历史留档** 1
 - 孤儿文档（0 引用）**210** 份 · 状态未标注 **191** 份
 - 一、常用文档（按任务查阅）：**11** 份
@@ -68,7 +68,7 @@
 | `docs/design/stock-exchange-economy-pvp-20261103.md` | 证券交易所 · 经济闭环与 PvP/AI 博弈设计 | 未标注（设计稿　｜　日期：2026-11-0） | 2026-11-03 | 11 KB / 169 行 | 2 |
 | `docs/design/stock-exchange-go-migration-20261103.md` | 全量迁 Go · 迁移计划与阶段划分 | 已确认/已实现（已获船长方向批准） | 2026-11-03 | 5 KB / 82 行 | 1 |
 | `docs/design/stock-exchange-go-stack-20261103.md` | 证券交易所 · Go 技术栈与开源参考调研 | 未标注（调研稿） | 2026-11-03 | 11 KB / 153 行 | 1 |
-| `docs/design/stock-exchange-integration-20261103.md` | 股市系统 · 联调部署契约（Go 交易所 ↔ Node 主服务 ↔ 桌面前端） | 未标注（执行中） | 2026-11-03 | 15 KB / 183 行 | 1 |
+| `docs/design/stock-exchange-integration-20261103.md` | 股市系统 · 联调部署契约（Go 交易所 ↔ Node 主服务 ↔ 桌面前端） | 未标注（执行中） | 2026-11-03 | 15 KB / 186 行 | 1 |
 | `docs/design/stock-exchange-pacing-emotion-20261103.md` | 证券交易所 · 节奏与情绪设计（Tension & Release） | 未标注（设计稿） | 2026-11-03 | 13 KB / 213 行 | 1 |
 | `docs/design/stock-exchange-parallel-20261103.md` | 证券交易所 · 并行化架构决策（交易所计算线独立） | 未标注（实施中　｜　日期：2026-11-0） | 2026-11-03 | 7 KB / 101 行 | 1 |
 | `docs/design/stock-exchange-playtest-20261103.md` | 证券交易所 · 可玩性算法验证（P0：建造前筛参数） | 未标注（设计并实施中　｜　日期：2026-1） | 2026-11-03 | 6 KB / 105 行 | 2 |
