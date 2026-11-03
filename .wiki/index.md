@@ -19,6 +19,7 @@
 
 ## 参考资料
 
+- [[art-of-game-design-schell]] 《游戏设计艺术（第3版）》全景透镜体系与大鲸鱼体验映射 — 杰西·谢尔传世圣经：全景四元法（机制/美学/故事/技术）、五种倾听、心流通道动力学、10大核心透镜卡片库（心流/功能可供性/有意义选择/经济平衡/优雅/控制感/时间/风险/兴趣曲线/间接控制），以及大鲸鱼暗黑科幻冷色调 HUD 与双重时间节拍落地。
 - [[balance-master-game-economy]] 《平衡掌控者：游戏数值经济设计》全书精要与大鲸鱼经济学映射 — MMORPG 经济产销闭环（Faucet-Sink-Stock-Velocity）、多币制分层隔离、恶性通胀成因与动态治理组合拳，以及大鲸鱼项目 ISK 循环、高净值玩家蓄水池与股市印花税销毁口设计。
 - [[balance-master/README]] 《平衡掌控者》全书知识图谱总览 — 似水无痕 著 292 页原书全量知识提取总览：涵盖数值职业路线、Excel 函数宝典、产耗模型、三币制、交易防外挂、追求点分层、VBA 随机仿真、运营健康度监控与大鲸鱼落地映射等 15 篇专题库。
 - [[color-theory-dan-scott]] 丹·斯科特《色彩理论速查指南》精要与深空 HUD 色彩体系映射 — 丹·斯科特《Color Theory Cheat Sheet》精要：色彩三大维度（明度/色相/饱和度）、冷暖对比、调色与受限调色板、六大经典配色方案，以及在《大鲸鱼-深空放置》科幻 HUD 终端、暗黑背景与状态反馈的工程落地映射。
@@ -26,6 +27,10 @@
 - [[design-skills-guide]] 顶级 Design Skills 与 AI 设计提效指南 — 优设网推荐的 8 个顶级 Design Skills 技能包：涵盖创意方向、设计智能、质量合规与工程模式四大类别，以及如何组合使用让 AI 界面摆脱同质化并具备资深设计师质感。
 - [[designing-interfaces-tidwell]] 珍妮弗·蒂德威尔《界面设计模式》（第3版）全书精要与交互模式库 — 交互设计圣经《Designing Interfaces》（第3版）全书知识体系：认知行为模式、信息架构与屏幕类型、导航与寻路、布局原则、动作与命令、复杂数据可视化、列表与表单，以及科幻 HUD 放置游戏界面模式映射。
 - [[designing-ux-forms-enders]] 杰西卡·恩德斯《表单设计体验》全书精要与工程落地指南 — 杰西卡·恩德斯《Designing UX: Forms》全书知识体系：表单三维模型（关系/对话/外观）、回答问题的四阶段认知心理模型、单列垂直布局、控件选型与下拉菜单替代方案、行内即时校验、防错减负与 QxQ 文档化落地。
+- [[game-design-236-techniques]] 《游戏设计的236个技巧》实战手册与微观体验工程学 — 大野功二图灵设计经典：打击感物理学（Hitstop帧数冻结与白闪Shader/Trauma震动衰减模型/150ms输入缓冲）、空间诱导（明暗对比与诱饵面包屑链条）、二阶弹簧-阻尼运镜追踪，以及伤害飘字150ms聚合与四级色彩认知编码。
+- [[game-design-creativity-and-rhythm]] 《大师谈游戏设计：创意与节奏》精要与心流波浪工程学 — 吉泽秀雄南梦宫传奇经验：创意三角（主题/概念/系统）、情绪波浪动力学（Tension & Release四段式循环）、险象环生（Near Miss）与残血锁血多巴胺放大，以及大鲸鱼双重时间节拍状态机与破除挂机枯燥的四大节奏炸弹。
+- [[game-mechanics-advanced-design]] 《游戏机制：高级游戏设计技术》Machinations 理论与大鲸鱼系统动力学模型 — Ernest Adams & Joris Dormans 传世巨著：系统动力学五大元素（Source/Pool/Drain/Converter/Trader）、正负反馈回路极性与延迟、离散/连续机制、渐进与涌现双螺旋，以及大鲸鱼工业开采制造战损闭环与深空证券交易所拓扑建模。
+- [[game-programming-patterns]] 《游戏编程模式》全景重构与大鲸鱼纯单向核心引擎架构 — Robert Nystrom 软件工程经典：序列模式（Game Loop/Update Method/Double Buffer）、行为模式（Bytecode/Subclass Sandbox/Type Object）、解耦模式（Component/Event Queue/Service Locator）与经典 GoF 游戏化改造，深度剖析 @whale/core 纯单向数据流与享元架构。
 - [[hft-systems-orderbook-matching]] 《高频交易系统：开发与实战》精要与大鲸鱼确定性架构映射 — 红黑树+双向链表 L2/L3 复合订单簿、O(1) 哈希定位撤单、单线程无锁事件循环、定点数防漂移哲学与 WAL 快照机制，以及 core 层纯内存确定性状态推进与离线演算同构映射。
 - [[intrepidkarthi-orderbook]] intrepidkarthi/orderbook 架构沉思录与第一性原理 — Nasdaq、LMAX、Binance、CME 等真实交易所撮合引擎架构演进与历史灾难复盘，Avellaneda-Stoikov 做市模型与纯确定性状态机隔离。
 - [[lagback-corleonemarket]] LagBack/corleonemarket 实时模拟股市架构解构 — Node.js + MySQL 极简架构：基于 Ornstein-Uhlenbeck 均值回归的价格引擎、星际丑闻/大合同事件表驱动，与公司所有者抽成机制。

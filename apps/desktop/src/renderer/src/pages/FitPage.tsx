@@ -350,9 +350,9 @@ function rangeShort(m: ModuleDef): string {
 function CpuStrip({ used, total }: { used: number; total: number }): ReactNode {
   const rem = total - used
   const over = rem < 0
-  const remPct = total > 0 ? Math.max(0, Math.min(100, (rem / total) * 100)) : 0
-  // 醒目分级：剩余充足青绿 → ≤15% 琥珀告警（含"刚好装满"）→ 超载危险红
-  const cls = over ? 'is-full' : remPct <= 15 ? 'is-warn' : 'is-ok'
+  const usedPct = total > 0 ? (over ? 100 : Math.max(0, Math.min(100, (used / total) * 100))) : 0
+  // 醒目分级：未超载且使用率 < 90% 充足青绿 → ≥90% 琥珀告警（含"刚好装满"）→ 超载危险红
+  const cls = over ? 'is-full' : (total > 0 && used / total >= 0.9) ? 'is-warn' : 'is-ok'
   return (
     <div
       className={`app-fit-cpustrip ${cls}`}
@@ -360,13 +360,13 @@ function CpuStrip({ used, total }: { used: number; total: number }): ReactNode {
     >
       <span className="app-fit-cpustrip-label">{tr("ui.FitPage.020")}</span>
       <span className="app-fit-cpustrip-num">
-        {minus(rem)} / {total}
+        {used} / {total} <span style={{ fontSize: 'var(--wui-fs-xs)', color: 'rgb(var(--wui-dim))', fontWeight: 'normal' }}>(剩 {minus(rem)})</span>
       </span>
       <span className="app-fit-cpustrip-pct">
-        {over ? tr("ui.FitPage.128", { p1: -rem }) : rem === 0 ? tr("ui.FitPage.021") : `${Math.round(remPct)}%`}
+        {over ? tr("ui.FitPage.128", { p1: -rem }) : rem === 0 ? tr("ui.FitPage.021") : `${Math.round(usedPct)}%`}
       </span>
-      <span className={`app-fit-cpustrip-track ${cls}`} role="progressbar" aria-valuenow={Math.round(remPct)} aria-valuemin={0} aria-valuemax={100}>
-        <i style={{ width: `${remPct}%` }} />
+      <span className={`app-fit-cpustrip-track ${cls}`} role="progressbar" aria-valuenow={Math.round(usedPct)} aria-valuemin={0} aria-valuemax={100}>
+        <i style={{ width: `${usedPct}%` }} />
       </span>
     </div>
   )

@@ -1,0 +1,153 @@
+# 证券交易所 · 可点击原型（F0）工作文档
+
+> 状态：**实施中**（船长 2026-11-03 选定「先做可点击原型」）
+> 目标：用最小成本判断「1 秒行情 + 杠杆强平 + 事件驱动 + 长线持有 + 量化挂机」这套玩法**手感好不好玩**，不接服务器、不改存档。
+> 上游文档：`docs/design/stock-exchange-server-20261103.md`（总体设计）、`docs/design/stock-exchange-backend-spec-20261103.md`（`ExchangeClient` 契约与后端设计）
+
+---
+
+## 一、范围
+
+### 做什么
+
+| 模块 | 内容 |
+|---|---|
+| 入口 | 游戏内**调试模式可见**的一级页「证券交易所」（沿用 `DEBUG_NAV_ITEMS` 惯例，不进玩家视野） |
+| 标的 | 船长指定的 4 家公司：SMHI / UGMC / OJLS / ABSI |
+| 行情 | 1 秒 tick、五档盘口、逐笔成交、1 分钟 K 线（SVG）、分时 |
+| 下单 | 现货买入 / 杠杆多 / 杠杆空（同一面板分段控件）、限价/市价、2/5/10/20/50x |
+| 风控 | 保证金、强平价预览、逐仓强平、权益/保证金率 |
+| 条件单 | 止损 / 止盈（前端 Mock 模拟触发） |
+| 事件 | 四类板块联动事件 + 财经快讯走马灯（驱动价格与波动率） |
+| 长线 | 持仓、累计分红（原型用 60 秒一次象征性结算，便于感知） |
+| 低风险理财 | 「舰船债券」产品：日化 0.03%，可小额买入（对应船长「低风险理财也要」） |
+| 量化 | 3 个模板：定投 / 网格 / 移动止盈；自动执行、可在委托列表看到 |
+| 资金 | 原型专用虚拟资金 1,000 万 cr（**不入游戏存档、不接服务器**） |
+
+### 不做什么（留到后端/转正批）
+
+- 不写 `apps/server` 任何代码；不发网络请求。
+- 不改 `packages/core`、`packages/data`（避免跨域）。
+- 不动本地存档 v31、不动 `engine.ts` / `ActivityBar.tsx` / `styles.css` / `layout-css/*`（这些文件有在途未提交改动）。
+- 不做真实玩家撮合、不做服务器时钟、不做分红经济体、不做股东特权。
+- 文案先用中文常量集中在 `features/exchange/texts.ts`，转正时一次性换成 l10n id（本批不登记 `docs/l10n-pending.md`，因为不进玩家视野）。
+
+## 二、架构（为将来接后端预留）
+
+```
+features/exchange/
+├── client.ts              // ExchangeClient 接口（与 backend-spec §13 同构，纯类型 + 接口）
+├── mock/
+│   ├── MockExchangeClient.ts   // 实现接口：行情引擎/撮合/账户/持仓/强平/事件/量化/债券
+│   ├── priceEngine.ts          // 对数随机游走 + EWMA 波动 + 均值回归 + 事件冲击
+│   ├── book.ts                 // 内存订单簿 + 做市商五档 + 限价/市价撮合
+│   └── margin.ts               // 保证金/强平/资金费（原型简化）
+├── ExchangePage.tsx        // 页面（固定头 + 内滚二级窗口）
+├── components/             // StockList / Chart / OrderBook / TradePanel / Positions / AutoTrade / NewsTicker / BondCard
+├── texts.ts                // 中文文案常量（转正换 l10n id）
+└── exchange.css            // 页面局部样式（不碰全局 styles.css）
+```
+
+- **UI 只依赖 `ExchangeClient` 接口**，不 import `mock/` 具体实现；换真机适配器时只改一处装配点。
+- 页面壳：`pages/ExchangePage.tsx` 仅一行 re-export（沿用市场页惯例）。
+- 接入点（仅改 `App.tsx`）：`PageKey` 加 `'exchange'`、`PAGE_NO_SCROLL` 登记、`DEBUG_NAV_ITEMS` 加一项（复用现有 `nav-market` 图标）、渲染分支加 `<ExchangePage {...pageProps} />`。
+
+## 三、行情图表规格（船长 2026-11-03 追加）
+
+| 图表 | 内容 |
+|---|---|
+| 分时图 | 当日 00:00（服务端真实日）起的 1 分钟线 + 均价线 + 成交量；最多抽样 240 点显示 |
+| K 线周期 | `分时 / M1 / H1 / D1 / D7 / D30` 切换（M1=1 分钟、H1=1 小时、D1=日、D7=周、D30=月） |
+| 蜡烛 | 红涨绿跌（国内习惯；最终观感由船长定），影线 + 实体，涨跌幅配色与列表一致 |
+| 成交量 | 图表下方独立柱区，按当根涨跌染色，与主图共享时间轴 |
+| 指标 | 默认叠加 `MA5 / MA20`；副图 `RSI(14)`；指标可开关，避免高密度 HUD 过载 |
+| 十字光标 | 悬停显示该根 `O/H/L/C/量/指标值`，走现有 `ui/Tooltip` 机制 |
+| 历史数据 | 原型启动时用同一价格引擎**向前合成 400 根**历史，保证图表不空；不造假随机数种子 |
+
+**指标计算全部在前端完成**（从 K 线 OHLCV 现算），服务端将来只提供原始 K 线，不下发指标值——避免两端口径漂移。后端 K 线聚合与保留期见 `stock-exchange-backend-spec-20261103.md`：1 分钟线保留 7 天、1 小时线保留 180 天、日线长期保留，周/月线由日线派生。
+
+## 四、验收标准
+
+1. `npm run typecheck` 零错误（四个目标）。
+2. 调试模式启动后导航出现「证券交易所」，可进页；非调试模式不可见。
+3. 1 秒行情跳动、盘口五档刷新、K 线随行情生成。
+4. 能完成：虚拟资金入金 → 现货买入 → 持仓出现 → 卖出平仓 → 账户权益变化。
+5. 能完成杠杆流程：20x 开多 → 价格反向 → 保证金率下降 → 触发强平 → 显示爆仓结果。
+6. 事件快讯能出现并让对应板块波动放大。
+7. 量化模板能创建并自动下单。
+8. 债券能买入并按日化 0.03% 计息。
+9. 不产生任何网络请求；不写存档；不改动在途文件。
+
+## 五、入口规格（船长 2026-11-03 追加）
+
+| 项 | 规格 |
+|---|---|
+| 位置 | 主导航（与「出港」同一排），**最右侧**。原型阶段挂 `DEBUG_NAV_ITEMS` 末位（渲染顺序天然最右）；转正时移入 `NAV_ITEMS` 末位，位置不变 |
+| 名称 | **股市** |
+| 图标 | IBM Carbon `ChartCandlestick`（与「出港/市场」同一套 Carbon 图标体系，取「K 线」语义）；**双色**：左半绿、右半红，用 CSS `clip-path` 对半裁切两层叠放实现 |
+| 配色 | 新增语义色 `--wui-tone-gain`（绿）/ `--wui-tone-loss`（红），深空/亮白两套主题各一份；涨跌、盈亏、K 线统一走这两个单点，不散写十六进制 |
+| 尺寸 | 与同级导航图标一致（26px），不改变导航行高与位置 |
+| 调试可见性 | 按仓库惯例，原型页先只在调试模式可见（`localStorage['whale-idle:debug']='1'` 后刷新）；**船长要求常驻主导航时一行改回 `NAV_ITEMS` 即可** |
+
+> 图标实现注意：Carbon 图标是单色填充路径，双色不能靠 `fill` 直接分半，必须用 `clip-path: inset(0 50% 0 0)` / `inset(0 0 0 50%)` 叠两层；颜色走 CSS 变量（SVG 呈现属性不认 `var()`，见 `ui/tones.ts` 顶部已记录过的坑）。
+
+## 六、布局范围（船长 2026-11-03 追加：**现代布局专属**）
+
+- 本原型**只在「科幻未来（modern）」布局实现**；旧版（classic）布局**一个字都不动**——不加导航项、不加样式、不改任何 classic CSS。
+- 依据：`layoutKind` 只有两种外壳（`readLayoutPref()` 把 `cosmic` 归并为 `modern`），`AppShell` 用 `layoutKind === 'classic' ? renderClassic() : renderModern()` 分流。
+- 落地方式：导航项加 `modernOnly?: boolean` 标记，`AppShell` 组装导航时在 `layoutKind === 'classic'` 情况下过滤掉；图标本就走 `Glyph` 的 modern 分支（Carbon），classic 分支不会命中。
+- 样式约束：`styles.css`、`ui/layout-css/styles-classic.css`、`ui/layout-css/styles-modern.css` 均有在途未提交改动，本批**一律不改**；页面样式只写在新文件 `features/exchange/exchange.css` 内，且类名统一 `exch-` 前缀，避免影响其他页。
+- 切布局需重启（设置内已有提示），因此不存在「现代布局下打开页面、切回旧版仍停留」的边界。
+
+## 七、交互模式约束（Tidwell《界面设计模式》映射，实现与验收对照用）
+
+| 模式 | 在本页的落地 |
+|---|---|
+| Center Stage + 双侧动作面板 + 底部折叠 | 三栏（列表/图表/下单）+ 底部二级窗口（委托/成交/流水），不改拓扑 |
+| Safe Exploration（安全探索） | 下单前预览保证金/强平价/最大亏损；≥10x 二次确认；挂单随时可撤；破产清算这类不可逆操作放二级窗口并需输入确认 |
+| Habituation（警报疲劳） | 强平预警**分级**：距强平 >30% 无提示 / 15~30% 黄色 / <15% 橙色 / 已触发红色；**禁止全屏闪烁** |
+| Satisficing（满意即止） | 数量与杠杆给推荐默认值；空仓时高亮「一键买入」，不让新手面对空白表单 |
+| Brushing / Dynamic Queries | 悬停 K 线联动高亮盘口与持仓；点击盘口档位直接填入价格；列表筛选即时生效 |
+| Incremental Construction | 策略创建分步：选模板 → 填条件 → 预览（原型可略回测） |
+| Streamlined Repetition | 快捷键：`B` 买 / `S` 卖 / `Esc` 撤单 / `1~5` 选杠杆档；支持批量撤单 |
+| Spatial Memory | 选中标的与 K 线周期在切页返回后保持；导航位置固定不动 |
+| Progressive disclosure | 高级订单类型（IOC/Post-Only/冰山）默认折叠，不默认展开 |
+
+## 八、数据源双轨：Mock 实时可玩 ⇄ HTTP 后端预留（船长 2026-11-03 追加）
+
+**能做到，且两者不冲突**——因为 UI 只依赖 `ExchangeClient` 一个接口，Mock 与 HTTP 是它的两个实现。
+
+| 层 | 内容 |
+|---|---|
+| 契约 | `client.ts`：`ExchangeClient` 接口 + DTO + `EXCHANGE_CONTRACT_VERSION = 1`（与后端 spec §13 同构） |
+| 实现 A | `mock/MockExchangeClient.ts`：内存行情/撮合/账户/持仓/强平/事件/量化，1 秒 tick，**现在就能实时玩** |
+| 实现 B | `http/HttpExchangeClient.ts`：同一接口的 HTTP/WS 实现；**通过注入 `Transport` 依赖，不在内部直接调 `fetch`** |
+| 传输桩 | `http/transport.ts`：`Transport` 接口（`request()` / `subscribe()`）+ `NotConnectedTransport`（未接服务器时抛 `ExchangeOfflineError`）——原型阶段**零网络请求**，但接口形状已冻结 |
+| 装配点 | `factory.ts`：`createExchangeClient({ mode, serverUrl, token })`，UI 只 import 它 |
+| 切换 | 数据源解析顺序：`localStorage['whale-idle:exch-src']` → 构建期 env → 默认 `mock`；页面右上角显示数据源徽标（`模拟盘` / `服务器`） |
+| 兜底 | 切到 `http` 且未配置服务器 ⇒ 显示引导态（「请先在云端设置填服务器地址」），不崩溃、不静默回退 |
+
+**为什么这样就能「又预留、又能玩」**：
+
+1. Mock 与 HTTP 返回**完全相同的 DTO**，后端接上时 UI 一行不用改；
+2. HTTP 适配器靠注入 `Transport`，所以原型阶段**不产生任何网络代码路径**（CSP 拦截问题留到 F1 桌面 IPC 通道时再解决）；
+3. 契约版本握手：将来 `/api/exchange/meta` 返回 `contractVersion`，不匹配前端拒绝连接并提示升级，避免前后端悄悄漂移。
+
+**Mock 的测试便利性**：
+
+- Mock 账户/持仓/委托默认持久化到 `localStorage`（键 `whale-idle:exch-mock`），刷新不丢，可连续试玩；
+- 页面提供「重置模拟账户」按钮（回到 1,000 万启动资金）；
+- `localStorage` 数据与游戏存档完全隔离，不污染 v31 存档。
+
+**验收追加**：
+
+1. 页面右上角有数据源徽标，Mock 模式明确标「模拟盘」。
+2. `HttpExchangeClient` 文件存在、类型完整、能通过 typecheck，但原型运行时**不发起任何网络请求**（可用 DevTools Network 面板确认）。
+3. 切换数据源不改变任何 UI 结构（同一接口）。
+4. 刷新页面后模拟账户与持仓仍在；点重置能回到初始资金。
+
+## 九、已知取舍
+
+- 原型用「简化撮合 + 做市商托底」，不追求与后端撮合逐笔一致；接口形状对齐即可。
+- 分红/债券利率是**原型观感值**，不代表最终经济数值。
+- 原型不追求视觉终稿，版式沿用现有页面骨架，船长的观感验收另批。
