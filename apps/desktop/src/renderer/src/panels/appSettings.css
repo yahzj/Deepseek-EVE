@@ -28,6 +28,79 @@
   font-display: swap;
 }
 
+.app-modal.app-settings-modal {
+  height: min(720px, calc(100vh - 80px));
+}
+
+.app-settings-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--wui-sp-8);
+}
+
+.app-settings-version {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  flex: 0 1 auto;
+  gap: var(--wui-sp-6);
+  min-width: 0;
+  color: rgb(var(--wui-text-dim));
+  font-size: var(--wui-fs-xs);
+  text-align: right;
+}
+
+.app-settings-version span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.app-settings-version button {
+  flex: 0 0 auto;
+}
+
+.app-settings-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  flex: 0 0 auto;
+  margin-bottom: var(--wui-sp-8);
+}
+
+.app-settings-tabs .app-subtab {
+  justify-content: center;
+  min-width: 0;
+  min-height: 36px;
+  padding-inline: var(--wui-sp-8);
+  overflow-wrap: anywhere;
+}
+
+.app-settings-modal .app-settings-list {
+  flex: 1 1 auto;
+}
+
+.app-settings-modal .app-settings-foot {
+  flex-wrap: wrap;
+}
+
+.app-settings-modal .app-settings-val {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.app-settings-list[role='tabpanel']:focus-visible {
+  outline: 1px solid rgb(var(--wui-accent) / 0.55);
+  outline-offset: 2px;
+}
+
+@media (max-width: 560px) {
+  .app-settings-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 :root[data-ui-font='unifont'] body,
 :root[data-ui-font='unifont'] input,
 :root[data-ui-font='unifont'] textarea,

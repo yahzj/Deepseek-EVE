@@ -7854,6 +7854,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ui.App.189': { zh: '版权与授权声明（原文）', en: '', enDeferred: true },
   'ui.App.190': { zh: '双许可与商业使用条款 · GNU AGPLv3（原文）', en: '', enDeferred: true },
   'ui.App.191': { zh: '其他第三方组件（React、React DOM、Scheduler、Lucide、星系素材等）分别遵循各自的许可证。', en: '', enDeferred: true },
+  // ⟪设置分类 2026-11-03⟫ 只为现有设置项增加子页面标签；英文未授权，按约定留空并登记待译。
+  'ui.App.192': { zh: '界面与语言', en: '', enDeferred: true },
+  'ui.App.193': { zh: '声音', en: '', enDeferred: true },
+  'ui.App.194': { zh: '游戏', en: '', enDeferred: true },
+  'ui.App.195': { zh: '存档', en: '', enDeferred: true },
+  'ui.App.196': { zh: '开发者', en: '', enDeferred: true },
   // ⟪声音系统追加批 2026-11-02⟫ BGM / 环境音 / 战斗细分 / UI 反馈 / 音高随机；英文未授权，按约定登记待译。
   'ui.sfx.024': { zh: '音乐', en: '', enDeferred: true },
   'ui.sfx.025': { zh: '环境', en: '', enDeferred: true },

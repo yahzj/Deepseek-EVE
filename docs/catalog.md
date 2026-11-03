@@ -23,6 +23,7 @@
 | 已获授权的英文工作 | `docs/glossary-en.md`、`docs/l10n-pending.md` |
 | 静态参数与内容编辑 | `docs/data-map.md`、`docs/data-editor.md`、`docs/content-workbench.md` |
 | 页面、表现与动画 | 开发约定§九、§十四，再读本域实现与对应现行设计稿 |
+| 设置子页面分类 | `docs/design/settings-subpages-20261103.md`；仅重组现有设置项，实施期间为现行工作稿 |
 | 数值与经济 | 开发约定§一、§二，对应设计稿及校准工具 |
 | 玩家文案与公告 | 开发约定§十一、§十二、§十三；公告待审稿未经批准不落库 |
 | 第二阶段空间站 | `docs/design/human-revival-station.md`、`docs/design/human-revival-station-research-20261018.md`；未决方案不能当已实现 |

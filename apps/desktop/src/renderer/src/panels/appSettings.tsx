@@ -65,6 +65,16 @@ import {
   readZoom,
 } from '../ui/uiScale'
 
+type SettingsPage = 'interface' | 'sound' | 'game' | 'save' | 'developer'
+
+const SETTINGS_PAGES: ReadonlyArray<{ id: SettingsPage; labelId: string }> = [
+  { id: 'interface', labelId: 'ui.App.192' },
+  { id: 'sound', labelId: 'ui.App.193' },
+  { id: 'game', labelId: 'ui.App.194' },
+  { id: 'save', labelId: 'ui.App.195' },
+  { id: 'developer', labelId: 'ui.App.196' },
+]
+
 /* ═══════════ GNU Unifont 18.0.01 的元信息（2026-11-02 核对） ═══════════
    口径来源：官方发布页 <https://unifoundry.com/unifont/>（18.0.01 / 2026-09-16 发布）与
    字体文件自身的 name 表（版权、许可描述、许可 URL）。下面三条英文**照录字体文件内嵌原文**：
@@ -253,6 +263,8 @@ export function SettingsPanel({
   onRefreshSaveFileStatus: () => void
 }) {
   const { locale, setLocale, t } = useL10n()
+  const [settingsPage, setSettingsPage] = useState<SettingsPage>('interface')
+  const visibleSettingsPages = SETTINGS_PAGES.filter((page) => page.id !== 'developer' || debugAllowed())
   const [zoom, setZoom] = useState(readZoom)
   const [fs, setFs] = useState(readFontScale)
   /**
@@ -343,31 +355,61 @@ export function SettingsPanel({
   return (
     <div className="app-modal-mask" onClick={onClose}>
       <div className="app-modal app-settings-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="app-settings-title">{t('ui.App.010')}</div>
+        <div className="app-settings-heading">
+          <div className="app-settings-title">{t('ui.App.010')}</div>
+          <div className="app-settings-version">
+            <span title={`${t('ui.App.170')} ${clientVersionLine()}`}>{t('ui.App.168')}: {BUILD.version}</span>
+            <button className="app-btn is-small" onClick={() => void copyClientVersion()}>
+              {copiedVersion ? tr('ui.App.044') : tr('ui.App.171')}
+            </button>
+          </div>
+        </div>
         <div className="app-settings-sub">
           {t('ui.App.011')}
         </div>
-        <div className="app-settings-list">
-          {/**
-           * **客户端版本**（**2026-10-02 船长令**：「**建议在设置里给游戏添加版本号，否则无法判断玩家
-           * 当前版本**」）—— 船长三问裁定：值 = 版本号 · 构建 sha · 构建日期 · 运行形态；本批只做显示；
-           * 命名用「客户端版本」（避开游戏内已有的「版本号」＝铁人档世代号）；**放最上方**（第一眼就能读到）。
-           * 值由构建时注入（`game/buildInfo.ts` 读、`tools/build-info.ts` 注入）；
-           * 「复制」走与性能 HUD 同一套写法（`navigator.clipboard` ＋ execCommand 兜底），
-           * 复制成功的提示**复用 `ui.App.044`「✓ 已复制」**（不新造同义串）。
-           */}
-          <div className="app-settings-row">
-            <div className="app-settings-head">
-              <span className="app-settings-label">{t('ui.App.168')}</span>
-              <span className="app-settings-val">{clientVersionLine()}</span>
-            </div>
-            <div className="app-settings-btns">
-              <button className="app-btn is-small" onClick={() => void copyClientVersion()}>
-                {copiedVersion ? tr('ui.App.044') : tr('ui.App.171')}
-              </button>
-            </div>
-            <div className="app-settings-desc">{t('ui.App.170')}</div>
-          </div>
+        <div className="app-subtabs app-settings-tabs" role="tablist" aria-label={t('ui.App.010')} aria-orientation="horizontal">
+          {visibleSettingsPages.map((page, index) => (
+            <button
+              key={page.id}
+              id={`settings-tab-${page.id}`}
+              type="button"
+              role="tab"
+              aria-selected={settingsPage === page.id}
+              aria-controls={settingsPage === page.id ? `settings-panel-${page.id}` : undefined}
+              tabIndex={settingsPage === page.id ? 0 : -1}
+              className={`app-subtab${settingsPage === page.id ? ' is-active' : ''}`}
+              onClick={() => setSettingsPage(page.id)}
+              onKeyDown={(event) => {
+                const lastIndex = visibleSettingsPages.length - 1
+                const nextIndex = event.key === 'ArrowRight'
+                  ? (index + 1) % visibleSettingsPages.length
+                  : event.key === 'ArrowLeft'
+                    ? (index - 1 + visibleSettingsPages.length) % visibleSettingsPages.length
+                    : event.key === 'Home'
+                      ? 0
+                      : event.key === 'End'
+                        ? lastIndex
+                        : -1
+                if (nextIndex < 0) return
+                event.preventDefault()
+                const nextPage = visibleSettingsPages[nextIndex]!
+                setSettingsPage(nextPage.id)
+                document.getElementById(`settings-tab-${nextPage.id}`)?.focus()
+              }}
+            >
+              {t(page.labelId)}
+            </button>
+          ))}
+        </div>
+        <div
+          key={settingsPage}
+          className="app-settings-list"
+          id={`settings-panel-${settingsPage}`}
+          role="tabpanel"
+          aria-labelledby={`settings-tab-${settingsPage}`}
+          tabIndex={0}
+        >
+          {settingsPage === 'interface' ? <>
           {/* 语言（2026-09-19 船长令「英语本地化」）：默认跟随系统，这里可随时覆盖；语言不进存档 */}
           <div className="app-settings-row">
             <div className="app-settings-head">
@@ -412,28 +454,6 @@ export function SettingsPanel({
             </div>
             <div className="app-settings-desc">{t('ui.App.149')}</div>
           </div>
-          {/* 弹药 / 修理组件取用来源（2026-09-23 船长令）：随档开关，洞内同理 */}
-          <div className="app-settings-row">
-            <div className="app-settings-head">
-              <span className="app-settings-label">{t('ui.App.137')}</span>
-              <span className="app-settings-val">{resupply ? tr('ui.App.138') : tr('ui.App.139')}</span>
-            </div>
-            <div className="app-settings-btns">
-              <button
-                className={`app-btn is-small${resupply ? ' is-primary' : ''}`}
-                onClick={() => toggleResupply(true)}
-              >
-                {tr('ui.App.138')}
-              </button>
-              <button
-                className={`app-btn is-small${!resupply ? ' is-primary' : ''}`}
-                onClick={() => toggleResupply(false)}
-              >
-                {tr('ui.App.139')}
-              </button>
-            </div>
-            <div className="app-settings-desc">{t('ui.App.140')}</div>
-          </div>
           <div className="app-settings-row">
             <div className="app-settings-head">
               <span className="app-settings-label">{t('ui.App.012')}</span>
@@ -454,7 +474,7 @@ export function SettingsPanel({
            * **界面字体**（**2026-11-02 船长令**：「增加一个字体选择的功能在设置界面」）：放「字体大小」正下方，
            * 交互与同页「语言 / 界面布局 / 界面配色」三行一致（`app-settings-row` ＋ `app-btn is-small`，
            * 选中项 `is-primary`）。两项：默认（现有系统字体栈，行为与改动前一致）与 GNU Unifont
-           * （内嵌像素点阵全字库，授权全文见本页最下方「许可与授权」）。本机偏好、即时生效、不进存档。
+           * （内嵌像素点阵全字库，授权全文见底栏「许可与授权」）。本机偏好、即时生效、不进存档。
            */}
           <div className="app-settings-row">
             <div className="app-settings-head">
@@ -496,6 +516,31 @@ export function SettingsPanel({
             </div>
             <div className="app-settings-desc">{t('ui.App.132')}</div>
           </div>
+          <div className="app-settings-row">
+            <div className="app-settings-head">
+              <span className="app-settings-label">{t('ui.App.016')}</span>
+              <span className="app-settings-val">{bg ? currentSpaceBg()?.label : t('ui.App.017')}</span>
+            </div>
+            <div className="app-settings-btns">
+              <button
+                className="app-btn is-small"
+                onClick={() => setBg(rerollSpaceBg())}
+                disabled={!bg || !themeUsesSpacePhoto(effectiveTheme)}
+                title={t('ui.App.019')}
+              >
+                {t('ui.App.018')}
+              </button>
+            </div>
+            <div className="app-settings-desc">
+              {!themeUsesSpacePhoto(effectiveTheme)
+                ? t('ui.App.133')
+                : bg
+                  ? t('ui.App.020', { n: bg.total })
+                  : t('ui.App.021')}
+            </div>
+          </div>
+          </> : null}
+          {settingsPage === 'sound' ? <>
           {/**
            * **声音**（**2026-11-02 船长令**：「现在这个项目没有声音介入…方便我接入我做的音效」）：
            * 总音量 + 一键静音 + 四类分类音量；本机偏好（`localStorage`，与语言/缩放/主题同族），
@@ -598,29 +643,32 @@ export function SettingsPanel({
             />
             <div className="app-settings-desc">{t('ui.sfx.061')}</div>
           </div>
+          </> : null}
+          {settingsPage === 'game' ? <>
+          {/* 弹药 / 修理组件取用来源（2026-09-23 船长令）：随档开关，洞内同理 */}
           <div className="app-settings-row">
             <div className="app-settings-head">
-              <span className="app-settings-label">{t('ui.App.016')}</span>
-              <span className="app-settings-val">{bg ? currentSpaceBg()?.label : t('ui.App.017')}</span>
+              <span className="app-settings-label">{t('ui.App.137')}</span>
+              <span className="app-settings-val">{resupply ? tr('ui.App.138') : tr('ui.App.139')}</span>
             </div>
             <div className="app-settings-btns">
               <button
-                className="app-btn is-small"
-                onClick={() => setBg(rerollSpaceBg())}
-                disabled={!bg || !themeUsesSpacePhoto(effectiveTheme)}
-                title={t('ui.App.019')}
+                className={`app-btn is-small${resupply ? ' is-primary' : ''}`}
+                onClick={() => toggleResupply(true)}
               >
-                {t('ui.App.018')}
+                {tr('ui.App.138')}
+              </button>
+              <button
+                className={`app-btn is-small${!resupply ? ' is-primary' : ''}`}
+                onClick={() => toggleResupply(false)}
+              >
+                {tr('ui.App.139')}
               </button>
             </div>
-            <div className="app-settings-desc">
-              {!themeUsesSpacePhoto(effectiveTheme)
-                ? t('ui.App.133')
-                : bg
-                  ? t('ui.App.020', { n: bg.total })
-                  : t('ui.App.021')}
-            </div>
+            <div className="app-settings-desc">{t('ui.App.140')}</div>
           </div>
+          </> : null}
+          {settingsPage === 'developer' ? <>
           {/*
            * **开发者：调试模式**（2026-09-25 加）：船长反馈「已开启调试模式，调试按钮依旧不可见」
            * —— 根因是开关设在**另一个 origin**（DevTools 里那行 localStorage 落在浏览器侧，桌面端读不到）。
@@ -651,6 +699,8 @@ export function SettingsPanel({
             </div>
           ) : null}
           {debugAllowed() && debugOnState ? <div className="app-settings-row"><div className="app-settings-head"><label className="app-settings-label"><input type="checkbox" checked={futureWormholeEnabled()} onChange={e => { setFutureWormholeEnabled(e.target.checked); onDebugChange(debugOnState) }} />{tr('ui.explorationName.019')}</label></div><div className="app-settings-desc">{tr('ui.explorationName.018')}</div></div> : null}
+          </> : null}
+          {settingsPage === 'save' ? <>
           {/**
            * **存档一组**（2026-09-25 船长令：「将存档管理，重置档案，保存移动到设置内」）
            * —— 这三个按钮原先在顶栏右侧，与本组功能同类（都作用于存档）⇒ 归到设置里。
@@ -745,6 +795,7 @@ export function SettingsPanel({
               </button>
             </div>
           </div>
+          </> : null}
         </div>
         {/* **切换界面布局 ⇒ 提示重开**（2026-09-25 船长令）：确认后存档并关游戏；取消则什么都不做 */}
         {layoutPending !== null ? (
@@ -770,7 +821,6 @@ export function SettingsPanel({
         <div className="app-settings-foot">
           <span className="app-dim">{t('ui.App.022')}</span>
           <span className="app-settings-btns">
-            {/* 许可与授权（2026-11-02 船长令：设置最下方一枚按钮，弹窗列出授权书全文） */}
             <button className="app-btn is-small" onClick={() => setLicenseOpen(true)}>
               {t('ui.App.181')}
             </button>
