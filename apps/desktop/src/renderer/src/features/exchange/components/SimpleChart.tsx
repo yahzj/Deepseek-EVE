@@ -2,9 +2,10 @@
  * 极简模式 · 平滑流光渐变面积图（SimpleChart）。
  *
  * 专为放置游戏玩家打造：
- * - 隐藏繁杂的蜡烛线、影线与多指标，只提供【分时 (实时)】、【日走势 (24小时)】、【历史周线 (7天)】3 个通俗大按钮；
- * - 绘制发光平滑渐变面积曲线，随行情涨跌呈现青绿（涨）或朱红（跌）的呼吸微光；
- * - 鼠标/触摸移动时提供十字虚线与浮动价格读数，直观清爽。
+ * - 【分时 (实时)】、【日走势 (24小时)】、【历史周线 (7天)】3 个通俗大按钮；
+ * - 发光平滑渐变面积曲线，最高/最低参考刻度线；
+ * - 鼠标划过实时呈现十字虚线与精确价格读数；
+ * - 紧凑高度，保障交易舱与持仓一屏可见。
  */
 import { useMemo, useState } from 'react'
 import type { ChartPeriod, ExchangeClient, StockQuote } from '../client'
@@ -45,7 +46,6 @@ export function SimpleChart({ client, code, quote, tick }: SimpleChartProps) {
   // 提取价格序列
   const points = useMemo(() => {
     if (series.length === 0) return []
-    // 截取最多 60 个点保持线条平滑
     const sample = series.slice(-60)
     return sample.map((k) => ({
       t: k.t,
@@ -64,28 +64,30 @@ export function SimpleChart({ client, code, quote, tick }: SimpleChartProps) {
 
   // SVG 视口尺寸
   const width = 640
-  const height = 240
-  const padX = 12
-  const padY = 24
+  const height = 170
+  const padX = 14
+  const padY = 16
   const usableW = width - padX * 2
   const usableH = height - padY * 2
 
-  const { pathLine, pathArea, coords } = useMemo(() => {
-    if (points.length < 2) return { pathLine: '', pathArea: '', coords: [] }
-    const minP = Math.min(...points.map((p) => p.p))
-    const maxP = Math.max(...points.map((p) => p.p))
-    const span = maxP - minP || 1
+  const { pathLine, pathArea, coords, minP, maxP } = useMemo(() => {
+    if (points.length < 2) {
+      return { pathLine: '', pathArea: '', coords: [], minP: 0, maxP: 0 }
+    }
+    const min = Math.min(...points.map((p) => p.p))
+    const max = Math.max(...points.map((p) => p.p))
+    const span = max - min || 1
     const stepX = usableW / (points.length - 1)
 
     const cs = points.map((pt, i) => {
       const x = padX + i * stepX
-      const y = height - padY - ((pt.p - minP) / span) * usableH
+      const y = height - padY - ((pt.p - min) / span) * usableH
       return [x, y] as [number, number]
     })
 
     const line = cs.reduce((acc, [x, y], i) => `${acc} ${i === 0 ? 'M' : 'L'} ${x.toFixed(1)},${y.toFixed(1)}`, '')
-    const area = `${line} L ${padX + usableW},${height - 4} L ${padX},${height - 4} Z`
-    return { pathLine: line, pathArea: area, coords: cs }
+    const area = `${line} L ${(padX + usableW).toFixed(1)},${height} L ${padX.toFixed(1)},${height} Z`
+    return { pathLine: line, pathArea: area, coords: cs, minP: min, maxP: max }
   }, [points, usableW, usableH, padX, padY, height])
 
   const strokeColor = isUp ? 'rgb(var(--wui-tone-gain))' : 'rgb(var(--wui-tone-loss))'
@@ -104,12 +106,15 @@ export function SimpleChart({ client, code, quote, tick }: SimpleChartProps) {
           <span className="ex-simple-chart-time ex-dim">时间: {displayTime}</span>
         </div>
 
-        <div className="ex-simple-periods" role="tablist">
+        {/* 周期切换按钮组 */}
+        <div className="ex-simple-chart-periods" role="tablist">
           {(['intraday', 'd1', 'd7'] as SimplePeriod[]).map((p) => (
             <button
               key={p}
               type="button"
-              className={`ex-simple-period-btn${period === p ? ' is-active' : ''}`}
+              role="tab"
+              aria-selected={period === p}
+              className={`ex-simple-period-btn${period === p ? ' is-on' : ''}`}
               onClick={() => {
                 setPeriod(p)
                 setHoverIndex(null)
@@ -139,10 +144,37 @@ export function SimpleChart({ client, code, quote, tick }: SimpleChartProps) {
           <svg className="ex-simple-svg" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
             <defs>
               <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={strokeColor} stopOpacity="0.32" />
+                <stop offset="0%" stopColor={strokeColor} stopOpacity="0.25" />
                 <stop offset="100%" stopColor={strokeColor} stopOpacity="0.0" />
               </linearGradient>
             </defs>
+
+            {/* 上下界辅助网格线与读数 */}
+            <line
+              x1={padX}
+              y1={padY}
+              x2={padX + usableW}
+              y2={padY}
+              stroke="rgb(var(--wui-border))"
+              strokeWidth="0.8"
+              strokeDasharray="4 4"
+            />
+            <text x={padX + usableW} y={padY - 4} textAnchor="end" className="ex-simple-axis-text">
+              {price(maxP)}
+            </text>
+
+            <line
+              x1={padX}
+              y1={height - padY}
+              x2={padX + usableW}
+              y2={height - padY}
+              stroke="rgb(var(--wui-border))"
+              strokeWidth="0.8"
+              strokeDasharray="4 4"
+            />
+            <text x={padX + usableW} y={height - padY + 11} textAnchor="end" className="ex-simple-axis-text">
+              {price(minP)}
+            </text>
 
             {/* 背景发光渐变区域 */}
             <path d={pathArea} fill={`url(#${gradId})`} />
@@ -152,7 +184,7 @@ export function SimpleChart({ client, code, quote, tick }: SimpleChartProps) {
               d={pathLine}
               fill="none"
               stroke={strokeColor}
-              strokeWidth="2.2"
+              strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
             />
@@ -200,4 +232,3 @@ function formatPeriodTime(ts: number, period: SimplePeriod): string {
   }
   return `${mon}月${day}日`
 }
-

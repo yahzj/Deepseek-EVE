@@ -1,8 +1,8 @@
 /**
- * 极简模式 · 当前标的持仓看板（SimplePosition）。
+ * 极简模式 · 当前标的持仓战报（SimplePosition）。
  *
- * 紧贴买卖舱下方，直观展示当前股票的持仓数量、持仓成本与浮动盈亏，
- * 并提供【一键全部平仓变现】大按钮，让玩家对赚赔一目了然、落袋为安零门槛。
+ * 紧凑清晰展现持仓股数、持仓成本、现股市值与浮动盈亏，
+ * 提供【一键全部平仓变现】大按钮。
  */
 import { useRef, useState } from 'react'
 import type { ExchangeClient, ExchangeSnapshot } from '../client'
@@ -31,14 +31,15 @@ export function SimplePosition({ client, snap, code, onToast }: SimplePositionPr
 
   // 杠杆持仓（若此前在专业模式开过多空）
   const posList = snap.account.positions.filter((p) => p.code === code)
-
   const hasAnyPosition = heldQty > 0 || posList.length > 0
 
   if (!hasAnyPosition) {
     return (
       <div className="ex-simple-pos-card is-empty">
-        <div className="ex-simple-pos-empty-text">
-          <span className="ex-dim">当前未持有 <b>{code}</b> 的任何股份，可在上方买入建仓</span>
+        <div className="ex-simple-pos-empty-inner">
+          <div className="ex-simple-pos-empty-icon">📊</div>
+          <div className="ex-simple-pos-empty-title">暂未持有 {code} 股份</div>
+          <span className="ex-dim">可在左侧买卖舱输入金额，一键市价买入建仓</span>
         </div>
       </div>
     )
@@ -88,6 +89,7 @@ export function SimplePosition({ client, snap, code, onToast }: SimplePositionPr
           className="ex-simple-close-btn"
           disabled={busy}
           onClick={handleCloseAll}
+          title="以市价卖出当前标的所有现货与平掉杠杆仓位"
         >
           {busy ? '清仓中…' : T.closeAllPositions}
         </button>
@@ -108,7 +110,7 @@ export function SimplePosition({ client, snap, code, onToast }: SimplePositionPr
         </div>
         <div className="ex-simple-pos-item is-pnl">
           <span className="ex-dim">{T.unrealizedPnl}</span>
-          <b className={`ex-num ${isUp ? 'is-up' : 'is-down'}`}>
+          <b className={`ex-num ex-simple-pos-pnl-val ${isUp ? 'is-up' : 'is-down'}`}>
             {isUp ? '+' : ''}{money(spotPnl)} ({pct(spotPnlPct)})
           </b>
         </div>
@@ -116,10 +118,11 @@ export function SimplePosition({ client, snap, code, onToast }: SimplePositionPr
 
       {posList.length > 0 ? (
         <div className="ex-simple-pos-warn-line">
-          <span className="ex-dim">提示：本标的尚存 {posList.length} 笔高阶杠杆持仓，可在右上角切至「专业终端」管理强平线与止盈止损。</span>
+          <span className="ex-dim">
+            ⚡ 提示：检测到 {posList.length} 笔杠杆仓位，可在右上角切至「专业终端」管理。
+          </span>
         </div>
       ) : null}
     </div>
   )
 }
-

@@ -2,12 +2,12 @@
  * 极简模式 · 投资大厅主视图（SimpleExchange）。
  *
  * 布局：
- * - 左栏：星际企业榜单（SimpleStockList，4 位代码，Sparkline 走势，持仓角标，无债券无冗余）；
- * - 右栏：
- *   1. 标的概览抬头（大字现价、今日涨跌、24h 高低与成交）；
- *   2. 平滑流光渐变走势图（SimpleChart，分时/日走势/周线 3 个大按钮，带呼吸微光与十字线）；
- *   3. 傻瓜式现货买卖舱（SimpleTrade，市价即时成交，25%/50%/75%/全仓快捷筹码，0.1% 费率）；
- *   4. 当前股票持仓战报（SimplePosition，持仓股数、成本、浮动盈亏与一键清仓套现大按钮）。
+ * - 左栏（250px）：星际企业榜单（SimpleStockList，4 位代码，Sparkline 走势，持仓角标）；
+ * - 右栏（自适应）：
+ *   1. 标的概览横幅（紧凑 header：大字现价、今日涨跌、24h 高低与成交）；
+ *   2. 平滑流光渐变走势图（SimpleChart，分时/日走势/周线，呼吸微光，辅助刻度线）；
+ *   3. 下方双栏（SimpleTrade 傻瓜现货买卖舱 + SimplePosition 当前持仓战报）。
+ * - 紧凑高度，一屏尽览，杜绝页面滚动。
  */
 import type { ExchangeClient, ExchangeSnapshot } from '../client'
 import type { ToastFn } from '../../../pages/common'
@@ -46,11 +46,11 @@ export function SimpleExchange({
         {/* 标的抬头横幅 */}
         <header className="ex-simple-header">
           <div className="ex-simple-head-identity">
-            <h3 className="ex-simple-stock-title">
+            <div className="ex-simple-stock-title">
               <span className="ex-simple-stock-name">{quote.nameKey}</span>
               <span className="ex-simple-stock-code">{quote.code}</span>
               <span className="ex-simple-stock-sector">{quote.sector}</span>
-            </h3>
+            </div>
             <div className="ex-simple-head-pricing">
               <span className="ex-simple-big-price ex-num">{price(quote.price)}</span>
               <span className={`ex-simple-big-change ex-num ${isUp ? 'is-up' : 'is-down'}`}>
@@ -89,4 +89,3 @@ export function SimpleExchange({
     </div>
   )
 }
-

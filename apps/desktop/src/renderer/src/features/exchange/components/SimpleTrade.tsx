@@ -2,9 +2,10 @@
  * 极简模式 · 现货傻瓜式买卖舱（SimpleTrade）。
  *
  * 核心设计：
- * - 只有【买入】和【卖出】两档，纯现货市价即时成交，永不爆仓零风险；
- * - 提供 25% / 50% / 75% / 全仓 快捷筹码选择；
- * - 自动实时换算预计股数或变现金额，并明示 0.1% 印花手续费。
+ * - 纯现货市价即时成交（IOC），永不爆仓零门槛；
+ * - 25% / 50% / 75% / 全仓 快捷筹码；
+ * - 实时换算预计股数 / 变现金额，明示 0.1% 手续费；
+ * - 深度贴合深空科幻 HUD 视觉，类名严格与 exchange.css 对齐。
  */
 import { useRef, useState } from 'react'
 import type { ExchangeClient, ExchangeSnapshot } from '../client'
@@ -123,33 +124,37 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
 
   return (
     <div className="ex-simple-trade-card">
+      {/* 顶部 Tab 切换 */}
       <div className="ex-simple-trade-tabs" role="tablist">
         <button
           type="button"
-          className={`ex-simple-trade-tab is-buy${tab === 'buy' ? ' is-active' : ''}`}
+          role="tab"
+          aria-selected={tab === 'buy'}
+          className={`ex-simple-trade-tab is-buy${tab === 'buy' ? ' is-on is-active' : ''}`}
           onClick={() => setTab('buy')}
         >
           {T.simpleTradeBuy}
         </button>
         <button
           type="button"
-          className={`ex-simple-trade-tab is-sell${tab === 'sell' ? ' is-active' : ''}`}
+          role="tab"
+          aria-selected={tab === 'sell'}
+          className={`ex-simple-trade-tab is-sell${tab === 'sell' ? ' is-on is-active' : ''}`}
           onClick={() => setTab('sell')}
         >
-          {T.simpleTradeSell} ({amount(heldQty)} 股)
+          {T.simpleTradeSell} {heldQty > 0 ? `(${amount(heldQty)})` : ''}
         </button>
       </div>
 
       <div className="ex-simple-trade-body">
         {tab === 'buy' ? (
           <div className="ex-simple-trade-form">
-            <div className="ex-simple-trade-row">
-              <span className="ex-dim">可用资金: <b className="ex-num">{money(cash)}</b></span>
-              <span className="ex-dim">当前市价: <b className="ex-num">{price(currentPrice)}</b></span>
+            <div className="ex-simple-trade-info-row">
+              <span className="ex-dim">可用: <b className="ex-num">{money(cash)}</b></span>
+              <span className="ex-dim">市价: <b className="ex-num">{price(currentPrice)}</b></span>
             </div>
 
             <div className="ex-simple-input-group">
-              <label htmlFor="ex-simple-buy-amount" className="ex-dim">{T.inputAmountLabel} (ISK)</label>
               <div className="ex-simple-input-wrap">
                 <input
                   id="ex-simple-buy-amount"
@@ -166,42 +171,41 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
 
             {/* 快捷筹码 */}
             <div className="ex-simple-chips">
-              <button type="button" className="ex-simple-chip" onClick={() => quickBuyRatio(0.25)}>{T.quickBuy25}</button>
-              <button type="button" className="ex-simple-chip" onClick={() => quickBuyRatio(0.5)}>{T.quickBuy50}</button>
-              <button type="button" className="ex-simple-chip" onClick={() => quickBuyRatio(0.75)}>{T.quickBuy75}</button>
-              <button type="button" className="ex-simple-chip is-max" onClick={() => quickBuyRatio(1.0)}>{T.quickBuyAll}</button>
+              <button type="button" className="ex-simple-chip-btn" onClick={() => quickBuyRatio(0.25)}>{T.quickBuy25}</button>
+              <button type="button" className="ex-simple-chip-btn" onClick={() => quickBuyRatio(0.5)}>{T.quickBuy50}</button>
+              <button type="button" className="ex-simple-chip-btn" onClick={() => quickBuyRatio(0.75)}>{T.quickBuy75}</button>
+              <button type="button" className="ex-simple-chip-btn is-max" onClick={() => quickBuyRatio(1.0)}>{T.quickBuyAll}</button>
             </div>
 
             {/* 预估换算 */}
-            <div className="ex-simple-est-box">
-              <div className="ex-simple-est-row">
-                <span>{T.estSharesLabel}:</span>
-                <b className="ex-num is-highlight">{amount(estBuyQty)} 股</b>
+            <div className="ex-simple-trade-preview">
+              <div className="ex-simple-preview-row">
+                <span className="ex-dim">{T.estSharesLabel}</span>
+                <b className="ex-num ex-highlight-green">{amount(estBuyQty)} 股</b>
               </div>
-              <div className="ex-simple-est-row ex-dim">
-                <span>{T.estFeeLabel} (0.1%):</span>
+              <div className="ex-simple-preview-row">
+                <span className="ex-dim">{T.estFeeLabel} (0.1%)</span>
                 <span className="ex-num">{money(estBuyFee)}</span>
               </div>
             </div>
 
             <button
               type="button"
-              className="ex-simple-action-btn is-buy"
+              className="ex-simple-big-action-btn is-buy"
               disabled={busy || estBuyQty <= 0 || inputAmountNum > cash}
               onClick={handleBuy}
             >
-              {busy ? '下单中…' : `${T.simpleBuyAction} (${code})`}
+              {busy ? '下单中…' : `${T.simpleBuyAction} · ${code}`}
             </button>
           </div>
         ) : (
           <div className="ex-simple-trade-form">
-            <div className="ex-simple-trade-row">
-              <span className="ex-dim">持有股数: <b className="ex-num">{amount(heldQty)} 股</b></span>
-              <span className="ex-dim">当前市值: <b className="ex-num">{money(heldQty * currentPrice)}</b></span>
+            <div className="ex-simple-trade-info-row">
+              <span className="ex-dim">可卖: <b className="ex-num">{amount(heldQty)} 股</b></span>
+              <span className="ex-dim">市值: <b className="ex-num">{money(heldQty * currentPrice)}</b></span>
             </div>
 
             <div className="ex-simple-input-group">
-              <label htmlFor="ex-simple-sell-qty" className="ex-dim">{T.sellQtyLabel}</label>
               <div className="ex-simple-input-wrap">
                 <input
                   id="ex-simple-sell-qty"
@@ -209,7 +213,7 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
                   type="number"
                   min="0"
                   max={heldQty}
-                  placeholder={`最多可卖 ${heldQty} 股`}
+                  placeholder={`可卖 ${heldQty} 股`}
                   value={sellQty}
                   onChange={(e) => setSellQty(e.target.value)}
                 />
@@ -219,31 +223,31 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
 
             {/* 快捷减仓 */}
             <div className="ex-simple-chips">
-              <button type="button" className="ex-simple-chip" onClick={() => quickSellRatio(0.25)}>{T.quickSell25}</button>
-              <button type="button" className="ex-simple-chip" onClick={() => quickSellRatio(0.5)}>{T.quickSellHalf}</button>
-              <button type="button" className="ex-simple-chip" onClick={() => quickSellRatio(0.75)}>{T.quickSell75}</button>
-              <button type="button" className="ex-simple-chip is-max" onClick={() => quickSellRatio(1.0)}>{T.quickSellAll}</button>
+              <button type="button" className="ex-simple-chip-btn" onClick={() => quickSellRatio(0.25)}>{T.quickSell25}</button>
+              <button type="button" className="ex-simple-chip-btn" onClick={() => quickSellRatio(0.5)}>{T.quickSellHalf}</button>
+              <button type="button" className="ex-simple-chip-btn" onClick={() => quickSellRatio(0.75)}>{T.quickSell75}</button>
+              <button type="button" className="ex-simple-chip-btn is-max" onClick={() => quickSellRatio(1.0)}>{T.quickSellAll}</button>
             </div>
 
             {/* 预估变现 */}
-            <div className="ex-simple-est-box">
-              <div className="ex-simple-est-row">
-                <span>{T.estProceedsLabel}:</span>
-                <b className="ex-num is-highlight">{money(estNetProceeds)}</b>
+            <div className="ex-simple-trade-preview">
+              <div className="ex-simple-preview-row">
+                <span className="ex-dim">{T.estProceedsLabel}</span>
+                <b className="ex-num ex-highlight-green">{money(estNetProceeds)}</b>
               </div>
-              <div className="ex-simple-est-row ex-dim">
-                <span>{T.estFeeLabel} (0.1%):</span>
+              <div className="ex-simple-preview-row">
+                <span className="ex-dim">{T.estFeeLabel} (0.1%)</span>
                 <span className="ex-num">{money(estSellFee)}</span>
               </div>
             </div>
 
             <button
               type="button"
-              className="ex-simple-action-btn is-sell"
+              className="ex-simple-big-action-btn is-sell"
               disabled={busy || inputSellQtyNum <= 0 || inputSellQtyNum > heldQty}
               onClick={handleSell}
             >
-              {busy ? '平仓中…' : `${T.simpleSellAction} (${code})`}
+              {busy ? '变现中…' : `${T.simpleSellAction} · ${code}`}
             </button>
           </div>
         )}
@@ -251,4 +255,3 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
     </div>
   )
 }
-

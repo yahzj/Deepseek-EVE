@@ -1,7 +1,7 @@
 /**
- * 极简模式 · 左栏星际企业榜（约 300px）。
+ * 极简模式 · 左栏星际企业榜（约 250px）。
  *
- * 极简卡片式展示 4 位代码股票（SMHI、UGMC、OJLS、ABSI）：
+ * 紧凑卡片式展示 4 位代码股票（SMHI、UGMC、OJLS、ABSI）：
  * - 4 位代码 + 公司名 + 现价大字 + 今日涨跌 + Sparkline 小走势；
  * - 若持有该公司股票，卡片右上角显示精致角标「持仓 X 股」；
  * - 极简模式下不显示债券理财卡（BondCard），保持专注纯粹。
@@ -67,7 +67,6 @@ export function SimpleStockList({ client, snap, selected, onSelect }: SimpleStoc
               <div className="ex-simple-card-top">
                 <span className="ex-simple-card-code">{q.code}</span>
                 <span className="ex-simple-card-name" title={q.nameKey}>{q.nameKey}</span>
-                <span className="ex-simple-card-sector">{q.sector}</span>
               </div>
 
               {/* 卡片中间与右侧：现价、涨跌幅、Sparkline */}
@@ -80,7 +79,7 @@ export function SimpleStockList({ client, snap, selected, onSelect }: SimpleStoc
                 </div>
 
                 <div className="ex-simple-card-spark">
-                  <Sparkline client={client} code={q.code} isUp={up} width={82} height={26} />
+                  <Sparkline client={client} code={q.code} isUp={up} width={72} height={24} />
                 </div>
               </div>
             </div>
