@@ -9721,9 +9721,15 @@ html[data-locale='en'] body {
 
   display: flex;
 
-  align-items: flex-start; /* 2026-09-25 窄列：图标与文字改为**纵向堆叠**（原横向一行在 150px 里放不下） */
+  flex-direction: column;
 
-  gap: var(--wui-sp-4);
+  align-items: stretch;
+
+  width: 100%;
+
+  box-sizing: border-box;
+
+  gap: var(--wui-sp-3);
 
   padding: var(--wui-sp-4) var(--wui-sp-6);
 
@@ -9750,6 +9756,71 @@ html[data-locale='en'] body {
 .app-activitybar-item.is-mining { border-color: rgb(var(--wui-accent) / 0.35); }
 
 .app-activitybar-icon { font-size: var(--wui-fs-base); }
+
+.app-activitybar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-width: 0;
+  gap: var(--wui-sp-3);
+}
+
+.app-activitybar-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--wui-sp-4);
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.app-activitybar-head .app-activitybar-label-text {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--wui-fs-sm);
+  font-weight: 600;
+  color: rgb(var(--wui-text));
+}
+
+.app-activitybar-head .app-activitybar-act {
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+.app-activitybar-action-btn {
+  padding: 1px 6px;
+  font-size: var(--wui-fs-2xse);
+  line-height: 16px;
+  height: 18px;
+  border-radius: 2px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.app-activitybar-progress-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  margin: 1px 0;
+}
+
+.app-activitybar-progress-row .app-activitybar-track {
+  width: 100%;
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+}
+
+.app-activitybar-footer {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+}
 
 /* **活动卡的操作按钮**（2026-09-25 船长令：「像停止清缴这类按钮不应该放在右侧了，
    应该放卡牌底边附近」）⇒ 按钮不再与标签/进度同行，而是排在它们**下方、卡内右下**。 */
@@ -11735,8 +11806,11 @@ html[data-locale='en'] body {
    不是 CSS 拼形状——outline 只描边、不改盒形），于是"文字容器 = 圆角框"，窗口任意尺寸都不会错位。 */
 .app-comms-device { position: relative; min-height: 0; display: flex; }
 .app-comms-frame { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-.app-comms-frame rect { fill: none; stroke: rgb(var(--wui-border)); stroke-width: 1.6; }
+.app-comms-frame rect,
+.app-comms-frame polygon { fill: none; stroke: rgb(var(--wui-border)); stroke-width: 1.6; }
 .app-comms-frame path { fill: none; stroke: rgb(var(--wui-x182) / 0.28); stroke-width: 1.2; }
+.app-comms-frame-modern { display: none; }
+.app-comms-frame-classic { display: contents; }
 /* 机身内工作区：上 15 / 侧 19 / 下 15。下檐口（动作按钮 + 通栏「前往」两行）改为**在流内**排布
    （2026-09-11 船长定「乙」），由两行的自然高度撑起、屏幕 flex:1 自动让位——不再用
    "绝对定位 + 预留下内边距"的老办法（那样两行会互相压，且长提示折行时会错位）。 */
@@ -13718,9 +13792,9 @@ body.no-fx .app-root.is-layout-classic:not(.is-mobile-layout) .app-log-side { tr
 .app-root.is-layout-modern .app-fit-stage {
   position: relative;
   background:
-    radial-gradient(800px 500px at 50% 50%, rgb(var(--wui-hud-primary) / 0.08), transparent 70%),
-    linear-gradient(rgb(var(--wui-hud-primary) / 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(var(--wui-hud-primary) / 0.04) 1px, transparent 1px),
+    radial-gradient(800px 500px at 50% 50%, rgb(var(--wui-hud-primary) / 0.035), transparent 70%),
+    linear-gradient(rgb(var(--wui-hud-primary) / 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(var(--wui-hud-primary) / 0.018) 1px, transparent 1px),
     rgb(var(--wui-hud-bg-base) / 0.96);
   background-size: 100% 100%, 36px 36px, 36px 36px, auto;
   border: 1px solid rgb(var(--wui-hud-primary) / 0.3);
@@ -14351,6 +14425,27 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
   border-radius: 0 !important;
 }
 
+/* ── 自然图符与状态微指示器白名单豁免（恢复自然圆形意符） ──
+   理论依据：唐·诺曼「自然映射（Natural Mapping）」与利德威尔「图符化表征（Iconic Representation）」。
+   天体、射频、脉冲光晕与状态灯在人类认知中为天然球形/圆形，不强行压制为方块。 */
+.app-root.is-layout-modern .app-activitybar-idle-dot,
+.app-root.is-layout-modern .app-ann-dot,
+.app-root.is-layout-modern .app-comms-dot,
+.app-root.is-layout-modern .app-bts-reload-dot,
+.app-root.is-layout-modern .app-bts-cursor::after,
+.app-root.is-layout-modern .app-bts-muzzle,
+.app-root.is-layout-modern .app-bts-puff,
+.app-root.is-layout-modern .app-bts-chip i,
+.app-root.is-layout-modern .app-bts-repair i,
+.app-root.is-layout-modern .app-bts-boom .b-core,
+.app-root.is-layout-modern .app-bts-boom .b-ring,
+.app-root.is-layout-modern .app-bts-star,
+.app-root.is-layout-modern .app-toggle-track::after,
+.app-root.is-layout-modern .is-round-dot,
+.app-root.is-layout-modern [data-shape="circle"] {
+  border-radius: 50% !important;
+}
+
 /* ── 顶栏与外壳仪表舱 ── */
 .app-root.is-layout-modern .app-pilot {
   padding: 3px 10px;
@@ -14459,6 +14554,7 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
     0 calc(100% - 10px)
   );
   border: 1px solid rgb(var(--wui-hud-primary) / 0.45);
+  filter: drop-shadow(0 16px 36px rgba(0, 0, 0, 0.85));
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.85), 0 0 24px rgb(var(--wui-hud-primary) / 0.15), inset 0 0 0 1px rgb(var(--wui-hud-primary) / 0.1);
   background: linear-gradient(180deg, rgb(var(--wui-hud-surface) / 0.98), rgb(var(--wui-hud-surface-deep) / 0.98));
 }
@@ -15017,6 +15113,291 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
 @media (max-width: 720px) {
   .app-sfx-row { grid-template-columns: minmax(0, 1fr) auto; row-gap: var(--wui-sp-4); }
   .app-sfx-actions { grid-column: 1 / -1; justify-content: flex-start; }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * 左侧活动运转栏与态势感知立柱（现代航电 HUD 深度系统 · 2026-11-02）
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+.app-root.is-layout-modern .app-left-col {
+  gap: var(--wui-sp-8);
+}
+.app-root.is-layout-modern .app-shipwin {
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.32);
+  background: rgb(var(--wui-hud-surface-soft) / 0.92);
+  border-radius: 2px;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgb(var(--wui-hud-primary) / 0.08);
+}
+.app-root.is-layout-modern .app-activitybar,
+.app-root.is-layout-modern aside.app-activitybar {
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.32);
+  background: rgb(var(--wui-hud-surface-soft) / 0.92);
+  border-radius: 2px;
+  clip-path: polygon(
+    0 0,
+    calc(100% - 8px) 0,
+    100% 8px,
+    100% calc(100% - 8px),
+    calc(100% - 8px) 100%,
+    0 100%
+  );
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgb(var(--wui-hud-primary) / 0.08);
+}
+.app-root.is-layout-modern .app-activitybar-gtitle {
+  display: flex;
+  align-items: center;
+  color: rgb(var(--wui-hud-primary));
+  font-size: var(--wui-fs-2xse);
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  border-left: 2px solid rgb(var(--wui-hud-primary));
+  padding-left: 6px;
+  margin-bottom: 2px;
+  border-bottom: 1px dashed rgb(var(--wui-hud-primary) / 0.2);
+  padding-bottom: 3px;
+}
+.app-root.is-layout-modern .app-activitybar-idle {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 8px;
+  background: rgb(var(--wui-hud-surface) / 0.6);
+  border: 1px dashed rgb(var(--wui-hud-primary) / 0.25);
+  border-radius: 2px;
+  clip-path: polygon(0 0, calc(100% - 5px) 0, 100% 5px, 100% 100%, 0 100%);
+  transition: all 0.18s ease;
+}
+.app-root.is-layout-modern .app-activitybar-idle.is-clickable:hover {
+  background: rgb(var(--wui-hud-primary) / 0.14);
+  border-color: rgb(var(--wui-hud-primary) / 0.6);
+  box-shadow: inset 0 0 8px rgb(var(--wui-hud-primary) / 0.18);
+}
+.app-root.is-layout-modern .app-activitybar-idle-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.app-root.is-layout-modern .app-activitybar-idle-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgb(var(--wui-hud-primary));
+  box-shadow: 0 0 6px rgb(var(--wui-hud-primary) / 0.85);
+  animation: app-swin-breathe 2.4s ease-in-out infinite;
+}
+.app-root.is-layout-modern .app-activitybar-idle-title {
+  font-size: var(--wui-fs-xsb);
+  font-weight: 600;
+  color: rgb(var(--wui-hud-text));
+}
+.app-root.is-layout-modern .app-activitybar-idle-tip {
+  font-size: var(--wui-fs-2xse);
+  line-height: 1.35;
+  color: rgb(var(--wui-hud-text-dim));
+}
+.app-root.is-layout-modern .app-activitybar-idle.is-clickable:hover .app-activitybar-idle-tip {
+  color: rgb(var(--wui-hud-primary));
+}
+.app-root.is-layout-modern .app-activitybar-item {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  box-sizing: border-box;
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%) !important;
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.22);
+  background: rgb(var(--wui-hud-surface) / 0.75);
+  padding: 5px 6px;
+  gap: 3px;
+}
+.app-root.is-layout-modern .app-activitybar-item:hover {
+  border-color: rgb(var(--wui-hud-primary) / 0.5);
+  background: rgb(var(--wui-hud-primary) / 0.12);
+  box-shadow: inset 0 0 10px rgb(var(--wui-hud-primary) / 0.12);
+}
+.app-root.is-layout-modern .app-activitybar-item.is-active {
+  border-left: 3px solid rgb(var(--wui-hud-primary));
+  background: rgb(var(--wui-hud-primary) / 0.18);
+  box-shadow: inset 0 0 10px rgb(var(--wui-hud-primary) / 0.15);
+}
+.app-root.is-layout-modern .app-activitybar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-width: 0;
+  gap: 4px;
+}
+.app-root.is-layout-modern .app-activitybar-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+.app-root.is-layout-modern .app-activitybar-head .app-activitybar-label-text {
+  color: rgb(var(--wui-hud-text));
+  font-size: var(--wui-fs-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.app-root.is-layout-modern .app-activitybar-action-btn {
+  padding: 1px 5px;
+  font-size: var(--wui-fs-2xse);
+  height: 18px;
+  line-height: 16px;
+  border-radius: 2px;
+  border: 1px solid rgb(var(--wui-warn-soft) / 0.4);
+  background: rgb(var(--wui-warn-soft) / 0.15);
+  color: rgb(var(--wui-warn-soft));
+  white-space: nowrap;
+}
+.app-root.is-layout-modern .app-activitybar-action-btn:hover {
+  background: rgb(var(--wui-warn-soft) / 0.3);
+  border-color: rgb(var(--wui-warn-soft));
+}
+.app-root.is-layout-modern .app-activitybar-sub {
+  color: rgb(var(--wui-hud-text-dim));
+  font-size: var(--wui-fs-2xse);
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+.app-root.is-layout-modern .app-activitybar-progress-row .app-activitybar-track {
+  background: rgb(var(--wui-hud-primary) / 0.12);
+}
+.app-root.is-layout-modern .app-activitybar-progress-row .app-activitybar-fill {
+  background: linear-gradient(90deg, rgb(var(--wui-hud-primary)), rgb(var(--wui-hud-primary-hover)));
+  box-shadow: 0 0 6px rgb(var(--wui-hud-primary) / 0.6);
+}
+.app-root.is-layout-modern .app-activitybar-footer {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+}
+.app-root.is-layout-modern .app-activitybar-footer .app-activitybar-pct {
+  color: rgb(var(--wui-hud-primary));
+}
+.app-root.is-layout-modern .app-activitybar-time {
+  font-size: var(--wui-fs-2xse);
+  font-family: var(--wui-mono);
+  color: rgb(var(--wui-hud-text-dim));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+/* ── 通讯界面现代 HUD 缺角体系（2026-11-02 船长令：「通讯界面背景还是有圆角的图案，这个要做成缺角的统一风格」） ── */
+.app-root.is-layout-modern .app-comms-frame-classic {
+  display: none;
+}
+.app-root.is-layout-modern .app-comms-frame-modern {
+  display: contents;
+}
+.app-root.is-layout-modern .app-comms-frame polygon,
+.app-root.is-layout-modern .app-comms-frame path {
+  stroke: rgb(var(--wui-hud-primary) / 0.42);
+  stroke-width: 1.3;
+}
+.app-root.is-layout-modern .app-comms-device {
+  background: rgb(var(--wui-hud-surface-soft) / 0.92);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgb(var(--wui-hud-primary) / 0.08);
+}
+.app-root.is-layout-modern .app-comms-screen {
+  border-radius: 0;
+  outline: none;
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.28);
+  background: rgb(var(--wui-hud-surface-deep) / 0.9);
+  clip-path: polygon(
+    0 0,
+    calc(100% - 8px) 0,
+    100% 8px,
+    100% 100%,
+    8px 100%,
+    0 calc(100% - 8px)
+  );
+  box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.6), 0 0 12px rgb(var(--wui-hud-primary) / 0.06);
+}
+.app-root.is-layout-modern .app-comms-avatar {
+  border-radius: 0;
+  clip-path: polygon(
+    0 0,
+    calc(100% - 6px) 0,
+    100% 6px,
+    100% 100%,
+    6px 100%,
+    0 calc(100% - 6px)
+  );
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.45);
+  background: rgb(var(--wui-hud-primary) / 0.12);
+  box-shadow: inset 0 0 8px rgb(var(--wui-hud-primary) / 0.15);
+}
+.app-root.is-layout-modern .app-btn.app-comms-goto {
+  border-radius: 0;
+  clip-path: polygon(
+    0 0,
+    calc(100% - 8px) 0,
+    100% 8px,
+    100% 100%,
+    8px 100%,
+    0 calc(100% - 8px)
+  ) !important;
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.65);
+  background: linear-gradient(90deg, rgb(var(--wui-hud-primary) / 0.22) 0%, rgb(var(--wui-hud-primary-hover) / 0.35) 100%);
+  box-shadow: 0 0 14px rgb(var(--wui-hud-primary) / 0.25);
+  transition: all 0.2s ease;
+}
+.app-root.is-layout-modern .app-btn.app-comms-goto:hover {
+  background: linear-gradient(90deg, rgb(var(--wui-hud-primary) / 0.35) 0%, rgb(var(--wui-hud-primary-hover) / 0.5) 100%);
+  box-shadow: 0 0 20px rgb(var(--wui-hud-primary) / 0.45);
+  border-color: rgb(var(--wui-hud-primary));
+}
+.app-root.is-layout-modern .app-comms-title {
+  color: rgb(var(--wui-hud-text));
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+.app-root.is-layout-modern .app-comms-kind,
+.app-root.is-layout-modern .app-comms-align {
+  border-radius: 0;
+  clip-path: polygon(0 0, calc(100% - 4px) 0, 100% 4px, 100% 100%, 4px 100%, 0 calc(100% - 4px));
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.4);
+  background: rgb(var(--wui-hud-primary) / 0.12);
+}
+.app-root.is-layout-modern .app-comms-item {
+  border-radius: 0;
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.18);
+  background: rgb(var(--wui-hud-surface) / 0.7);
+  transition: all 0.18s ease;
+}
+.app-root.is-layout-modern .app-comms-item:hover {
+  border-color: rgb(var(--wui-hud-primary) / 0.5);
+  background: rgb(var(--wui-hud-primary) / 0.12);
+  box-shadow: inset 0 0 10px rgb(var(--wui-hud-primary) / 0.12);
+}
+.app-root.is-layout-modern .app-comms-item.is-sel {
+  border-color: rgb(var(--wui-hud-primary) / 0.7);
+  border-left: 3px solid rgb(var(--wui-hud-primary));
+  background: rgb(var(--wui-hud-primary) / 0.18);
+  box-shadow: inset 0 0 12px rgb(var(--wui-hud-primary) / 0.18);
+}
+.app-root.is-layout-modern .app-comms-item.is-unread .app-comms-subject {
+  color: rgb(var(--wui-hud-primary));
+}
+.app-root.is-layout-modern .app-tasktab {
+  border-radius: 0;
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%);
 }
 
 

@@ -34,6 +34,7 @@ import { ActivityBarClassic } from '../panels/ActivityBarClassic'
 import { AnnouncementHub } from '../panels/Announcements'
 import { DebugButton } from '../panels/DebugPanel'
 import { Glyph } from './Glyphs'
+import { Book as CarbonBook, Settings as CarbonSettings } from '@carbon/icons-react'
 import { ICO_TONES, NAV_TONES } from './tones'
 import { MoneyFit } from './MoneyFit'
 import { ShipStatusWin } from './ShipStatusWin'
@@ -315,6 +316,7 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
               }}
               title={tr("ui.App.061")}
             >
+              <span className="app-ico"><CarbonBook size={14} fill="currentColor" /></span>
               {t('ui.App.028')}
             </button>
             <button
@@ -325,6 +327,7 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
               }}
               title={tr("ui.App.062")}
             >
+              <span className="app-ico"><CarbonSettings size={14} fill="currentColor" /></span>
               {t('ui.App.010')}
             </button>
             {/**

@@ -8,7 +8,23 @@
  * - 形状按内容体系分族：物品=圆环徽、装备=方框徽、舰船角色=大形徽、蓝图=图纸矩形、
  *   技能=圆徽；每种形状内部用不同几何区分分类。
  */
-import type { ReactNode } from 'react'
+import type { ComponentType, ReactNode } from 'react'
+import { isModernLayout } from './layoutPreference'
+import {
+  Rocket as CarbonRocket,
+  Chip as CarbonChip,
+  InventoryManagement as CarbonInventory,
+  ArrowsHorizontal as CarbonMarket,
+  Industry as CarbonIndustry,
+  Network_4 as CarbonSkills,
+  Task as CarbonTask,
+  Email as CarbonMail,
+  Target as CarbonTarget,
+  Gem as CarbonMine,
+  Recycle as CarbonSalvage,
+  Bot as CarbonAi,
+  Radar as CarbonRadar,
+} from '@carbon/icons-react'
 import { wreckTierOf } from './itemSubs'
 
 /** glyph 名 → 矢量内容（以 <g> 为单位，使用 currentColor 描边） */
@@ -1365,6 +1381,22 @@ export function inventoryItemTone(itemId: string, kind: string): string {
 }
 
 /** 渲染一个科幻线性图标 */
+const MODERN_NAV_GLYPHS: Record<string, ComponentType<any>> = {
+  'nav-ship': CarbonRocket,
+  'nav-fit': CarbonChip,
+  'nav-items': CarbonInventory,
+  'nav-market': CarbonMarket,
+  'nav-industry': CarbonIndustry,
+  'nav-skills': CarbonSkills,
+  'nav-task': CarbonTask,
+  'nav-mail': CarbonMail,
+  'nav-bounty': CarbonTarget,
+  'nav-mine': CarbonMine,
+  'nav-salvage': CarbonSalvage,
+  'nav-ai': CarbonAi,
+  'ico-scan': CarbonRadar,
+}
+
 export function Glyph({
   name,
   size = 26,
@@ -1376,6 +1408,21 @@ export function Glyph({
   color?: string
   className?: string
 }) {
+  if (isModernLayout()) {
+    const ModernIcon = MODERN_NAV_GLYPHS[name]
+    if (ModernIcon) {
+      return (
+        <ModernIcon
+          size={size}
+          fill={color ?? 'currentColor'}
+          className={className}
+          style={color ? { color } : undefined}
+          aria-hidden="true"
+        />
+      )
+    }
+  }
+
   return (
     <svg
       className={className}

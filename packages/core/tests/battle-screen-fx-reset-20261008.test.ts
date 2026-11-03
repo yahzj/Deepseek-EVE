@@ -20,7 +20,7 @@ beforeAll(async () => {
     entryPoints: [fileURLToPath(new URL('apps/desktop/src/renderer/src/features/combat/BattleScreen.tsx', root))],
     bundle: true, write: false, platform: 'node', format: 'cjs', jsx: 'transform',
     tsconfigRaw: { compilerOptions: { jsx: 'react' } },
-    banner: { js: "var React = require('react');" }, external: ['react', 'lucide-react', '@whale/core', '@whale/data'],
+    banner: { js: "var React = require('react');" }, external: ['react', 'lucide-react', '@carbon/icons-react', '@whale/core', '@whale/data'],
     plugins: [{ name: 'render-only-shell', setup(builder) {
       builder.onLoad({ filter: /[\\/]i18n[\\/]locale\.tsx$/ }, () => ({ loader: 'js', contents:
         'export const tr=globalThis.__tr; export const futureTr=tr; export const isEn=()=>false; export const cmdText=()=>""; export const mountNamesTextOf=(x)=>x??[]; export const logText=(x)=>x.text??"";' }))
@@ -58,9 +58,9 @@ function harness() {
   const realRequire = createRequire(import.meta.url)
   runInNewContext(compiled, { module, exports: module.exports,
     __tr: (id: string, params?: Record<string, unknown>) => (L10N[id]?.zh ?? id).replace(/\{(\w+)\}/g, (s, k) => String(params?.[k] ?? s)),
-    performance: { now: () => now }, console,
+    performance: { now: () => now }, console, process,
     require: (id: string) => id === 'react' ? react : id === '@whale/core' ? core : id === '@whale/data' ? data
-      : id === 'lucide-react' ? new Proxy({}, { get: (_, key) => String(key) }) : realRequire(id),
+      : id === 'lucide-react' || id === '@carbon/icons-react' || id.endsWith('layoutIcons') ? new Proxy({}, { get: (_, key) => String(key) }) : realRequire(id),
   })
   const ctx = buildSimContext(), state = createInitialState({ nowWallMs: 0, seed: 19 })
   state.shipId = addShipToFleet(state, 'sh-nautilus')

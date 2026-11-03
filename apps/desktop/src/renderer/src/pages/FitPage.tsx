@@ -80,7 +80,7 @@ import { ShipSprite } from '../ui/ShipSprite'
 import { rackText, slotText } from '../ui/labelsText'
 import type { PageProps } from './common'
 import { tr, cmdText } from '../i18n/locale'
-import { Crosshair } from 'lucide-react'
+import { Crosshair } from '../ui/layoutIcons'
 import { FittingRange } from '../panels/FittingRange'
 
 

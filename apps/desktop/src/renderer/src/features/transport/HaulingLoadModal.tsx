@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { X } from 'lucide-react'
+import { X } from '../../ui/layoutIcons'
 import { haulEffectiveMinutes, haulFleetPathOf, haulRewardRange, haulRiskPreviewOf, type GameState, type SimContext } from '@whale/core'
 import { tr } from '../../i18n/locale'
 import { isk } from '../../pages/common'

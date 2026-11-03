@@ -229,7 +229,7 @@ function componentHarness() {
       if (name === 'react') return hooks
       if (name === 'react/jsx-runtime') return { jsx, jsxs, Fragment }
       if (name === '../i18n/locale') return { tr: (id: string) => id }
-      if (name === 'lucide-react') return { ZoomIn: 'zoom-in', ZoomOut: 'zoom-out', Pause: 'pause', Play: 'play', AlertTriangle: 'alert' }
+      if (name === 'lucide-react' || name.endsWith('layoutIcons')) return { ZoomIn: 'zoom-in', ZoomOut: 'zoom-out', Pause: 'pause', Play: 'play', AlertTriangle: 'alert' }
       if (name === '../ui/Glyphs') return { Glyph: 'glyph' }
       if (name === '../ui/stellarArt') return { StellarPlanetArt, STELLAR_PLANET_KIND_IDS }
       if (name === '../ui/stellarAssets') return { STELLAR_PLANET_ASSETS: { gas: { span: 800 / 256 } } }

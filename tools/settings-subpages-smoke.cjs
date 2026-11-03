@@ -119,6 +119,12 @@ async function child() {
       assert.equal(await page.js(`document.querySelectorAll('.app-settings-tabs [role=tab]').length`), 5)
       const initialPrefs = await prefs()
       const expected = { interface: 7, sound: 9, game: 1, save: 2, developer: 1 }
+      assert.deepEqual(await page.js(`Array.from(document.querySelectorAll('#settings-panel-interface .app-settings-row'), row => row.querySelector('.app-settings-label')?.textContent.trim())`),
+        ['ui.App.025', 'ui.App.146', 'ui.App.012', 'ui.App.014', 'ui.App.178', 'ui.App.127', 'ui.App.016'].map(t))
+      assert.deepEqual(await page.js(`Array.from([...document.querySelectorAll('#settings-panel-interface .app-settings-row')].find(row => row.querySelector('.app-settings-label')?.textContent.trim() === ${JSON.stringify(t('ui.App.178'))}).querySelectorAll('button'), button => button.textContent.trim())`),
+        ['ui.App.179', 'ui.App.195'].map(t))
+      assert.deepEqual(await page.js(`Array.from([...document.querySelectorAll('#settings-panel-interface .app-settings-row')].find(row => row.querySelector('.app-settings-label')?.textContent.trim() === ${JSON.stringify(t('ui.App.127'))}).querySelectorAll('button'), button => button.textContent.trim())`),
+        ['ui.App.128', 'ui.App.130', 'ui.App.134', 'ui.App.135', 'ui.App.136'].map(t))
       assert.equal(await page.js(`document.querySelector('.app-settings-version span')?.textContent.trim()`), `${t('ui.App.168')}: ${clientVersion}`)
       assert.equal(await page.js(`document.querySelector('.app-settings-version span')?.title.startsWith(${JSON.stringify(t('ui.App.170'))})`), true)
       let baseline
@@ -158,6 +164,8 @@ async function child() {
       assert(await page.js(`!![...document.querySelectorAll('.app-settings-foot button')].find(button=>button.textContent.trim()===${JSON.stringify(t('ui.App.181'))})`))
       await page.text('.app-settings-foot', t('ui.App.181'))
       await page.wait('!!document.querySelector(".app-license-modal")')
+      assert.deepEqual(await page.js(`Array.from(document.querySelectorAll('.app-license-modal .app-license-h'), heading => heading.textContent.trim())`),
+        ['ui.App.184', 'ui.App.192', 'ui.App.188'].map(t))
       await page.text('.app-license-modal .app-modal-head', t('ui.App.183'))
       assert(await page.js('!!document.querySelector("#settings-panel-game")'))
       for (const [width, height] of [[600, 800], [375, 812]]) {

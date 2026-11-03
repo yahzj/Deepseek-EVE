@@ -3429,11 +3429,11 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.App.130": { zh: "高对比", en: "High contrast" },
   "ui.App.131": { zh: "跟随系统", en: "Match system" },
   /* ⟪文案调整 2026-09-22⟫ 船长令「继续做剩余的颜色」⇒ 第三套主题（高对比深色）上线，说明文案随之补上它 */
-  "ui.App.132": { zh: "深空为原来的深色界面，亮白为浅色界面，高对比为近黑底加亮字，暖色护眼偏暖、蓝光更少，纯黑夜间底为纯黑、字更柔和，色盲友好把识别色换成色觉安全的一组颜色；即时生效，不写入存档。", en: "Deep Space is the original dark interface; Daylight is the light one; High contrast uses a near-black background with brighter text; Warm shifts the palette warm to cut blue light; Night black uses a pure black background with softer text; Color-blind friendly swaps the identity colors for a color-vision-safe set. Applies instantly and is not stored in the save." },
+  "ui.App.132": { zh: "深空为经典深色界面，高对比为近黑底加亮字，暖色偏暖且蓝光更少，纯黑夜间底为纯黑、字更柔和，色盲将识别色换为色觉安全色；即时生效，不写入存档。", en: "Deep Space is the original dark interface; High contrast uses a near-black background with brighter text; Warm shifts the palette warm to cut blue light; Night black uses a pure black background with softer text; Color-blind swaps the identity colors for a color-vision-safe set. Applies instantly and is not stored in the save." },
   "ui.App.133": { zh: "亮白配色不铺星图底，故此项在亮白下不可用。", en: "The Daylight scheme does not use the starfield backdrop, so this option is unavailable there." },
-  "ui.App.134": { zh: "暖色护眼", en: "Warm" },
+  "ui.App.134": { zh: "暖色", en: "Warm" },
   "ui.App.135": { zh: "纯黑夜间", en: "Night black" },
-  "ui.App.136": { zh: "色盲友好", en: "Color-blind friendly" },
+  "ui.App.136": { zh: "色盲", en: "Color-blind safe" },
   "ui.App.137": { zh: "弹药与维修组件", en: "Ammo and repair kits" },
   "ui.App.138": { zh: "从仓库取用", en: "From the warehouse" },
   "ui.App.139": { zh: "从货仓取用", en: "From ship holds" },
@@ -7840,11 +7840,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ui.sfx.051': { zh: '关闭', en: '', enDeferred: true },
   'ui.sfx.052': { zh: '本机覆盖只存在这台机器；发布版使用仓库内置音效。', en: '', enDeferred: true },
   'ui.sfx.054': { zh: '存储不可用：本次会话内有效', en: '', enDeferred: true },
-  // ⟪界面字体与许可与授权 2026-11-02⟫ 船长确认新增界面字体选择（内嵌 GNU Unifont）与授权书全文弹窗；
-  // 英文未授权准备，按约定留空并登记待译（docs/l10n-pending.md）。授权书正文是英文原文，照录、不译、不改写。
+  // ⟪界面字体与许可与授权 2026-11-02⟫ 船长最终口径：默认 = 微软雅黑 + Oxanium（英文/数字）；
+  // 复古 = 统一只用 GNU Unifont。英文未授权准备，按约定留空并登记待译
+  // （docs/l10n-pending.md）。授权书正文是英文原文，照录、不译、不改写。
   'ui.App.178': { zh: '界面字体', en: '', enDeferred: true },
   'ui.App.179': { zh: '默认', en: '', enDeferred: true },
-  'ui.App.180': { zh: '默认沿用现有系统字体；GNU Unifont 为像素点阵全字库。即时生效，不写入存档。', en: '', enDeferred: true },
+  'ui.App.180': { zh: '默认提供现代清晰字形，复古提供经典像素点阵。即时生效，不写入存档。', en: '', enDeferred: true },
   'ui.App.181': { zh: '许可与授权', en: '', enDeferred: true },
   'ui.App.182': { zh: '以下为内嵌字体与本项目的授权书完整原文。', en: '', enDeferred: true },
   'ui.App.183': { zh: '关闭', en: '', enDeferred: true },
@@ -7857,11 +7858,16 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ui.App.190': { zh: '双许可与商业使用条款 · GNU AGPLv3（原文）', en: '', enDeferred: true },
   'ui.App.191': { zh: '其他第三方组件（React、React DOM、Scheduler、Lucide、星系素材等）分别遵循各自的许可证。', en: '', enDeferred: true },
   // ⟪设置分类 2026-11-03⟫ 只为现有设置项增加子页面标签；英文未授权，按约定留空并登记待译。
-  'ui.App.192': { zh: '界面与语言', en: '', enDeferred: true },
-  'ui.App.193': { zh: '声音', en: '', enDeferred: true },
-  'ui.App.194': { zh: '游戏', en: '', enDeferred: true },
-  'ui.App.195': { zh: '存档', en: '', enDeferred: true },
-  'ui.App.196': { zh: '开发者', en: '', enDeferred: true },
+  'ui.settingsTab.001': { zh: '界面与语言', en: '', enDeferred: true },
+  'ui.settingsTab.002': { zh: '声音', en: '', enDeferred: true },
+  'ui.settingsTab.003': { zh: '游戏', en: '', enDeferred: true },
+  'ui.settingsTab.004': { zh: '存档', en: '', enDeferred: true },
+  'ui.settingsTab.005': { zh: '开发者', en: '', enDeferred: true },
+  // ⟪Oxanium 追加 2026-11-02⟫ 默认档英文/数字用 Oxanium（SIL OFL 1.1，见授权小节）。
+  'ui.App.192': { zh: 'Oxanium 字体（默认档英文/数字）', en: '', enDeferred: true },
+  'ui.App.193': { zh: '版本 {p1} · 文件 {p2} · 版权 {p3} · 项目页 {p4} · 授权原文 {p5}', en: '', enDeferred: true },
+  'ui.App.194': { zh: '字体授权与来源说明（原文）', en: '', enDeferred: true },
+  'ui.App.195': { zh: '复古', en: '', enDeferred: true },
   // ⟪声音系统追加批 2026-11-02⟫ BGM / 环境音 / 战斗细分 / UI 反馈 / 音高随机；英文未授权，按约定登记待译。
   'ui.sfx.024': { zh: '音乐', en: '', enDeferred: true },
   'ui.sfx.025': { zh: '环境', en: '', enDeferred: true },

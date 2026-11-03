@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Crosshair, Pause, Play, RotateCcw, X } from 'lucide-react'
+import { Crosshair, Pause, Play, RotateCcw, X } from '../../ui/layoutIcons'
 import { advanceFittingRange, createFittingRange, fittingRangeStats, RANGE_DURATION_MS, RANGE_MAX_DISTANCE_M, type RangeLayer } from '@whale/core'
 import type { GameEngine } from '../../game/engine'
 import { BattleScreen } from './BattleScreen'

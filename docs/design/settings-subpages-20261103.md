@@ -1,6 +1,6 @@
 # 设置子页面分类（2026-11-03）
 
-> 状态：已合入本地 main，待船长观感验收；未推送。经办：三号（verify）。
+> 状态：设置分类已在旧本地提交中合入当时的本地 main；本次 `origin/main` 同步 merge 仍 pending、尚未提交，也未推送。当前合并产物待验收。经办：三号（verify）。
 
 ## 船长原话
 
@@ -26,16 +26,20 @@
 
 ## 文案
 
-- 仅新增五个分类标签本地化 ID；英文未获单独授权，按现行规则延期并登记。
+- 仅新增五个分类标签本地化 ID：`ui.settingsTab.001–005` 依次为界面与语言、声音、游戏、存档、开发者；中文原文不变，英文未获单独授权，按现行规则延期并登记。
+- 2026-11-03 Git 同步统一审查裁定：远端已发布的 `ui.App.192–195` 保持 Oxanium 标题、元信息、来源说明及“复古”的原义；撤销本地未推送分类对 `ui.App.192–196` 的占用，迁入上述独立命名空间，不覆盖远端既有英文。此前将远端条目迁至 `197–200` 的方案撤销。
 
 ## 实现与验证
 
+- 本节区分 Git 同步前的旧分类验证与当前 merge 验证；旧 UI 报告不代表当前合并产物的 smoke 通过。当前统一检查结果由主代理提供，本轮仅同步文档，不改设置功能或其他玩家文字。
 - 功能域：设置面板；同类参照为现有 `app-subtabs` / `app-subtab`。实现与提交在三号树完成，未改 core 或后端；本地化表及受影响的 UI 检查工具随本批更新。
 - 保留现有控件处理函数、偏好键、默认值和存档操作；仅分类渲染。弹窗高度稳定，内容区域独立滚动，切页回到顶部。
 - 新增 `tools/settings-subpages-smoke.cjs`。用法：先 `npm run build`，再 `node tools/settings-subpages-smoke.cjs`；输入三号桌面构建和自建合成档，输出 `tools/_ui-artifacts/settings-subpages/report.json`。隐藏 Electron，临时用户目录隔离，结束清理自有进程和目录。
-- 隐藏 Electron 检查通过：classic / modern 两种布局、zh / en 两种界面、1366 / 600 / 375 像素宽度；五类设置分类、右上角客户端版本号、完整版本悬停信息、复制反馈、键盘切换、尺寸稳定、切页不改偏好、静音和补给来源、底栏许可弹窗、发布形态开发者门禁。运行时异常 0；这是功能和几何检查，不代替船长观感验收。
-- 最终 `npm run build`、`npm run typecheck`、`npm run content:check`、`npm run l10n:check`、`npm run l10n:params`、`npm run ui:rot-check` 均通过；`git diff --check` 通过。`docs/INDEX.md` 已刷新并通过 `npm run docs:index -- --check`。
-- 沙箱内 tsx 受 `uv_os_get_passwd ENOMEM` 阻挡，经批准在沙箱外运行静态脚本后通过；不改系统设置或依赖。
-- 现有声音、存档和导出/手机检查工具只同步分类入口，已做语法检查，未重跑这些工具的完整旅程。未跑完整 core 回归，本批不改核心行为且尚未进入集中验收。
-- 设置提交 `53e28ccb3`，同步主树新增进度后的合并提交 `d52f3c94a`；唯一冲突为生成索引，已重新生成。主树已快进合入，两次提交钩子全绿；主树桌面构建已更新并通过，未推送远端。
-- 验收预览：`http://127.0.0.1:5184/`，三号最新桌面 renderer 构建，HTTP 200；预览自有进程 PID 30084，日志在 `tools/_ui-artifacts/settings-subpages/preview.*.log`。
+- 以下为设置分类旧本地提交时记录的验证，不代表当前 `origin/main` 合并产物。该旧报告中的隐藏 Electron 检查及 HTTP 预览不能替代本次 smoke。
+- 旧本地提交的隐藏 Electron 检查曾报告通过：classic / modern 两种布局、zh / en 两种界面、1366 / 600 / 375 像素宽度；五类设置分类、右上角客户端版本号、完整版本悬停信息、复制反馈、键盘切换、尺寸稳定、切页不改偏好、静音和补给来源、底栏许可弹窗、发布形态开发者门禁，运行时异常 0。该读数不代替船长观感验收，也不代表当前合并构建。
+- 当前合并的 `npm run build`、`npm run typecheck`、`npm run content:check`、`npm run l10n:check`、`npm run l10n:params`、`npm run ui:rot-check`、`npm run docs:index -- --check` 和完整 core 回归已由主代理报告通过；详细数值及边界见 `main-git-sync-20261103.md`。
+- 当前 merge 的 Electron smoke 未验证：`npm ci --ignore-scripts` 后 Electron binary 不可用。当前产物的设置冒烟仍待 binary 恢复后执行；不可沿用旧本地提交的 smoke 结果。
+- 旧记录：当时沙箱内 tsx 受 `uv_os_get_passwd ENOMEM` 阻挡，获批后在沙箱外运行静态脚本；该记录不是当前 merge 验证的限制或结果。
+- 旧分类实现只同步现有声音、存档和导出/手机检查工具的分类入口，当时做过语法检查、未跑工具完整旅程或完整 core 回归；该旧范围记录不否定当前主代理已完成的 core 全量回归。
+- 历史提交记录：设置提交 `53e28ccb3` 与当时同步主树新增进度后的合并提交 `d52f3c94a`。这些提交属于旧本地历史；本次待处理 merge 尚未提交，不能据此称本次已合入 main。当前最新 fetch 失败，最后可见 `origin/main` 为 `dc98d5ccbe58fc843d2bab48fdc12b14859eaf64`；后续同步由主代理处理。
+- 旧验收预览记录：`http://127.0.0.1:5184/`，当时三号桌面 renderer 构建曾返回 HTTP 200；当时预览自有进程 PID 30084，日志在 `tools/_ui-artifacts/settings-subpages/preview.*.log`。不表示当前服务仍在运行或内容为本次 merge 最新构建。

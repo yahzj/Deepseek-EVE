@@ -8,7 +8,7 @@
 
 ## 输入与输出
 
-- 输入：根目录`LICENSE.txt`；目标工程安装的`react`、`react-dom`、`scheduler`、`lucide-react`许可证；现有`LICENSE-PixelPlanets.txt`；内嵌字体授权 `apps/desktop/src/renderer/src/assets/licenses/unifont-18.0.01-LICENSE.txt`（GNU Unifont 18.0.01，2026-11-02 随可选界面字体入库）。
+- 输入：根目录`LICENSE.txt`；目标工程安装的`react`、`react-dom`、`scheduler`、`lucide-react`许可证；现有`LICENSE-PixelPlanets.txt`；内嵌字体授权两份：`apps/desktop/src/renderer/src/assets/licenses/unifont-18.0.01-LICENSE.txt`（GNU Unifont，复古档全字体，2026-11-02 随可选界面字体入库）与 `oxanium-LICENSE.txt`（Oxanium，SIL OFL 1.1，默认档英文/数字）。
 - 输出：`web/dist/`或`apps/desktop/out/renderer/`下的`LICENSE.txt`、`copyright.html`、`THIRD-PARTY-NOTICES.txt`。
 - HTML入口增加版权元信息及`rel="license"`链接；全部渲染JS保留版权头；独立版权页不加载脚本、不收集信息。
 - 显式关闭两端生产源码映射；桌面main/preload也关闭。已有版本、提交标识和构建时间继续由`tools/build-info.ts`提供。

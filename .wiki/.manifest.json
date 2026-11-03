@@ -1,0 +1,104 @@
+{
+  "version": 1,
+  "sources": {
+    "docs-distill:collab-gates": {
+      "content_hash": "1c94ce34cd50c58fdaef73519f13f8b86728cab3a942308c409afd64539b6d2c",
+      "last_ingested": "2026-11-02T13:58:13.492Z",
+      "pages_produced": [
+        "collab-gates"
+      ]
+    },
+    "docs-distill:verification-and-commit": {
+      "content_hash": "16b068e2c976f8f118f62a6f38ccbaf0533a55b7ae048947663e2196d2bda7de",
+      "last_ingested": "2026-11-02T13:58:22.734Z",
+      "pages_produced": [
+        "verification-and-commit"
+      ]
+    },
+    "docs-distill:docs-system": {
+      "content_hash": "52ea6afc610d67d71a003b8cc05841a28e07b937c1e00ff2f6b9d2a15a9b1158",
+      "last_ingested": "2026-11-02T13:58:31.792Z",
+      "pages_produced": [
+        "docs-system"
+      ]
+    },
+    "docs-distill:project-overview": {
+      "content_hash": "20fc44e1c1666234f569c7153a630d38631572248611b0d6cf3447e4178f4eaf",
+      "last_ingested": "2026-11-02T13:58:39.726Z",
+      "pages_produced": [
+        "project-overview"
+      ]
+    },
+    "docs-distill:save-architecture": {
+      "content_hash": "7b9d53bf1ee180964a2a3bc467019ca4263f258d6c52334be109e3108e748345",
+      "last_ingested": "2026-11-02T13:59:59.753Z",
+      "pages_produced": [
+        "save-architecture"
+      ]
+    },
+    "docs-distill:data-content-editing": {
+      "content_hash": "6d0b77d2083aed621e800ea3136f01924a8f50501db632399502ac8a2021a641",
+      "last_ingested": "2026-11-02T14:00:15.978Z",
+      "pages_produced": [
+        "data-content-editing"
+      ]
+    },
+    "docs-distill:glossary-terms": {
+      "content_hash": "1fef108d2a74593c616cb7d916c77522373e175f47a501447dc5dde10dadf02c",
+      "last_ingested": "2026-11-02T14:00:34.424Z",
+      "pages_produced": [
+        "glossary-terms"
+      ]
+    },
+    "docs-distill:roadmap-open-items": {
+      "content_hash": "4f232dde9aee9a3c06f6f7555638cf4ddd07fba822fe21adf695b66b7f8c0161",
+      "last_ingested": "2026-11-02T14:00:50.392Z",
+      "pages_produced": [
+        "roadmap-open-items"
+      ]
+    },
+    "uisdc:skills-9": {
+      "content_hash": "d4173f6b6aa008ead65907920ce59e957062c38ed163a8946d48b0704a1643f3",
+      "last_ingested": "2026-11-03T02:25:00.000Z",
+      "pages_produced": [
+        "design-skills-guide"
+      ]
+    },
+    "book:design-of-everyday-things": {
+      "content_hash": "3bd23fff0ff4df369b66152def92a67c2cbb0bd5ca7ef828834d826c10597188",
+      "last_ingested": "2026-11-03T02:35:00.000Z",
+      "pages_produced": [
+        "human-centered-design",
+        "norman-design-of-everyday-things"
+      ]
+    },
+    "book:color-theory-dan-scott": {
+      "content_hash": "fb22c81bcba8d63bd870a496249b9721da723d3ad3dc7e4afcfcffc5e3d03e2c",
+      "last_ingested": "2026-11-03T02:45:00.000Z",
+      "pages_produced": [
+        "color-theory-dan-scott"
+      ]
+    },
+    "book:designing-interfaces-tidwell": {
+      "content_hash": "bb23c6334528c768b60c87549f2f73a6823d91d5330a27405972943f6b6bdd1a",
+      "last_ingested": "2026-11-03T02:45:00.000Z",
+      "pages_produced": [
+        "designing-interfaces-tidwell"
+      ]
+    },
+    "book:designing-ux-forms-enders": {
+      "content_hash": "bf1b1f8f60b63cd52184266b2deffa3b3ce5e4f55d432ac1a0061ebf90c3624f",
+      "last_ingested": "2026-11-03T02:45:00.000Z",
+      "pages_produced": [
+        "designing-ux-forms-enders"
+      ]
+    },
+    "book:universal-principles-of-design": {
+      "content_hash": "ebe0ee10f337070709e546243ccb79060c8123f8dd42545b0ae23bc99890786f",
+      "last_ingested": "2026-11-03T02:45:00.000Z",
+      "pages_produced": [
+        "universal-principles-of-design"
+      ]
+    }
+  }
+}

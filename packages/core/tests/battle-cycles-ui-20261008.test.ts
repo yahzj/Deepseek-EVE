@@ -108,7 +108,7 @@ function harness(locale: 'zh' | 'en' = 'zh') {
     },
     require: (id: string) => {
       if (id === 'react') return react
-      if (id === 'lucide-react') return { List: 'List', Pin: 'Pin', ChevronDown: 'ChevronDown' }
+      if (id === 'lucide-react' || id.endsWith('layoutIcons')) return { List: 'List', Pin: 'Pin', ChevronDown: 'ChevronDown' }
       if (id === '../../i18n/locale') return { tr }
       if (id === '../../ui/Tooltip') return { TIP_DELAY_MS: delay }
       if (id === '../../ui/tones') return { DMG_COLOR: { kinetic: 'gold', explosive: 'red', plasma: 'cyan' } }

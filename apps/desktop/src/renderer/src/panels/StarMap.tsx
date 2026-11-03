@@ -86,7 +86,14 @@ const MAP_H = 300
  */
 const MAP_PAD_TOP = 20
 const MAP_PAD_X = 8
-/** 敌对派系活跃"选中方框"边长（2026-09-10 船长：用方框选中目标星系）——34 足以框住最大 r=11 的母港形节点 */
+/**
+ * **母港节点圆点半径**（2026-11-02 船长：「红框标注的母港的圆要比所有人都大一号」）——
+ * 原为 11（比普通节点 r=8 / 未探索 r=7 已大 3），再加一级 ⇒ **13**：星图按容器整体缩放到约
+ * 2.3 倍显示，实际观感直径约 +4.6px，保证"母港比所有星系都显眼"仍成立。
+ * ⚠ `FACTION_BOX_M`（34）按它的倍数留边：方框半边长 17 > 13，仍框得住.
+ */
+const HUB_DOT_R = 17
+/** 敌对派系活跃"选中方框"边长（2026-09-10 船长：用方框选中目标星系）——34 足以框住最大 r=13 的母港形节点 */
 const FACTION_BOX_M = 34
 /** viewBox 与实际内容尺寸（拖拽换算用；getBoundingClientRect 覆盖的是含留白的可视范围） */
 const MAP_VB_W = MAP_W + MAP_PAD_X * 2
@@ -107,7 +114,7 @@ const MAP_DRAG_THRESHOLD_PX = 4
  * 16 是**实测安全上限**：20 个星系里除 `galaxy-vault`/`galaxy-nadir`（相距 10.2）之外最近的是 33.5，
  * 而 16+16 = 32 < 33.5 ⇒ 判定圆两两不重叠。
  */
-const MAP_HIT_R = 16
+const MAP_HIT_R = 20
 /**
  * 布局本地覆盖键（v2，2026-09-05）：船长本地排版坐标已合入内置默认（universe.ts，并整体左移 14），
  * 旧键 v1（whale-idle:starmap-layout，09-04 编辑器排版本）一律不再读取——
@@ -155,7 +162,7 @@ const FAM_CHIP_CHAR_W = 11
 const FAM_CHIP_PAD_X = 5
 const FAM_CHIP_GAP = 3
 const FAM_CHIP_H = 14
-const FAM_CHIP_Y = 12 // 标签顶边相对星系中心的高度（文字基线 ≈ 中心 +22.5，与名称基线 +21 同带）
+const FAM_CHIP_Y = 14.5 // 标签顶边相对星系中心的高度（文字基线 ≈ 中心 +25，与名称基线 +23 同带）
 const FAM_CHIP_BASE = 10.5 // 文字基线相对标签顶边（11px 字在 14 高里的垂直居中）
 const famChipW = (text: string): number => text.length * FAM_CHIP_CHAR_W + FAM_CHIP_PAD_X * 2
 
@@ -173,9 +180,9 @@ function readLayoutOverride(): LayoutMap {
 }
 
 /** 名称放在图标正下方（恒为两节点下方，同航道已按名宽留距） */
-function NodeLabel({ name, x, y, cls }: { name: string; x: number; y: number; cls?: string }) {
+function NodeLabel({ name, x, y, cls, dy = 23 }: { name: string; x: number; y: number; cls?: string; dy?: number }) {
   return (
-    <text x={x} y={y + 21} textAnchor="middle" className={`app-map-label${cls ?? ''}`}>
+    <text x={x} y={y + dy} textAnchor="middle" className={`app-map-label${cls ?? ''}`}>
       {name}
     </text>
   )
@@ -1275,23 +1282,25 @@ export function StarMap({
               <circle
                 cx={p.x}
                 cy={p.y}
-                r={frontier ? 7 : isHub ? 11 : 8}
+                r={frontier ? 9.5 : isHub ? HUB_DOT_R : 11}
                 className={`app-map-dot${cls}${isFactionNode ? ' is-faction' : ''}`}
                 /* 入侵标记的读数挂在圆点上（见上面 `invasionTip` 的说明）：圆点是节点最自然的悬停目标，
                    而那一组标记自己是 `pointer-events: none`（不挡点击）⇒ 只挂那边等于没挂 */
                 {...(invasionTip !== null ? { 'data-tip': invasionTip } : {})}
               />
-              {/* 悬赏情报徽标（协会共享情报：剪影也显示数量，帮助判断是否值得扫描） */}
+              {/* 悬赏情报徽标（协会共享情报：剪影也显示数量，帮助判断是否值得扫描）
+                  2026-11-02 船长：「英文和数字的字号要在大2号」⇒ 徽标字号 +2px 后基线同步上移 3 单位
+                  （-12 → -15），否则放大后的字腹会压到节点圆点上沿。 */}
               {bounty > 0 && frontier ? (
-                <text x={p.x} y={p.y - 12} textAnchor="middle" className="app-map-bounty">
+                <text x={p.x} y={p.y - 17} textAnchor="middle" className="app-map-bounty">
                   ⚔{bounty}
                 </text>
               ) : null}
               {/* 赏金任务徽标（2026-09-10 船长）：与悬赏情报同款样式，换符号（⚑）与配色区分。
                   2026-09-10 船长复查：**节点上不再显示倒计时**（h:mm 粒度看起来"不走"，
-                  精确倒计时留在任务中心头部与星系弹窗里）→ 只留 ⚑ 数量徽标 */}
+                  精确倒计时留在任务中心头部与星系弹窗里）→ 只留 ⚑ 数量徽标；同样上移 3 单位（字号 +2px） */}
               {(tasksByGalaxy.get(g.id)?.length ?? 0) > 0 ? (
-                <text x={p.x + stackDx(g, 14, -24, -10)} y={p.y - 12} textAnchor="middle" className="app-map-bounty is-task">
+                <text x={p.x + stackDx(g, 14, -27, -13)} y={p.y - 17} textAnchor="middle" className="app-map-bounty is-task">
                   ⚑{tasksByGalaxy.get(g.id)!.length}
                 </text>
               ) : null}
@@ -1310,6 +1319,7 @@ export function StarMap({
                   name={labelText}
                   x={p.x}
                   y={p.y}
+                  dy={isHub ? 31 : 23}
                   cls={
                     isHub
                       ? cls

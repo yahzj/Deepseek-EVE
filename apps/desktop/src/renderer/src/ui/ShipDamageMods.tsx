@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { X } from 'lucide-react'
+import { X } from './layoutIcons'
 import { cleanShipDamage, SHIP_DAMAGE_DEFS, SHIP_DAMAGE_PENALTY, type ShipDamageKind } from '@whale/core'
 import { tr } from '../i18n/locale'
 import { Glyph } from './Glyphs'
