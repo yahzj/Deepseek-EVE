@@ -13,12 +13,12 @@
 
 ## 统计
 
-- 非归档文档 **379** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4425** KB · **50285** 行
-- 状态分布：**未标注** 189 · **已确认/已实现** 130 · **进行中** 39 · **待裁定** 20 · **历史留档** 1
-- 孤儿文档（0 引用）**209** 份 · 状态未标注 **189** 份
+- 非归档文档 **382** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4444** KB · **50580** 行
+- 状态分布：**未标注** 191 · **已确认/已实现** 131 · **进行中** 39 · **待裁定** 20 · **历史留档** 1
+- 孤儿文档（0 引用）**210** 份 · 状态未标注 **191** 份
 - 一、常用文档（按任务查阅）：**11** 份
 - 七、评审与体检（review）：**4** 份
-- 三、设计与工作文档（需核实状态）：**324** 份
+- 三、设计与工作文档（需核实状态）：**327** 份
 - 二、其它（docs 根目录）：**3** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
 - 八、测试档说明（test-saves）：**29** 份
@@ -28,7 +28,7 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档） |
 |---|---|---|---|---|---|
-| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定 | 未标注 | — | 16 KB / 111 行 | 28 |
+| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定 | 未标注 | — | 17 KB / 111 行 | 29 |
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 6 KB / 75 行 | 13 |
 | `docs/catalog.md` | 文档目录 | 未标注 | — | 4 KB / 44 行 | 6 |
 | `docs/content-workbench.md` | 内容工作台 | 未标注 | — | 3 KB / 35 行 | 2 |
@@ -49,30 +49,32 @@
 | `docs/review/pending-decisions-20260910.md` | 待船长裁决清单（2026-09-10 · 二号整理，供逐条审核） | 未标注 | 2026-09-10 | 29 KB / 374 行 | 2 |
 | `docs/review/guoqing-audit-followup.md` | 国庆节审查当前跟进 | 未标注（已复核修复） | — | 3 KB / 21 行 | 3 |
 
-## 三、设计与工作文档（需核实状态） —— 324 份
+## 三、设计与工作文档（需核实状态） —— 327 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档） |
 |---|---|---|---|---|---|
+| `docs/design/stock-exchange-events-64-20261104.md` | 股市 · 64 事件四象分类与六人格改名（实施规格） | 已确认/已实现（已获船长确认） | 2026-11-04 | 5 KB / 94 行 | 1 |
 | `docs/design/activitybar-progress-smoothness-20261103.md` | 设计文档：左侧活动栏进度条刷新率与平滑度优化 (2026-11-03) | 未标注 | 2026-11-03 | 4 KB / 63 行 | 0 |
 | `docs/design/cloud-settings-20261103.md` | 账号与云存档设置（2026-11-03） | 未标注（本批仅本地合入） | 2026-11-03 | 8 KB / 69 行 | 1 |
 | `docs/design/deep-space-exchange-dual-mode-20261103.md` | 设计文档：深空证券交易所（DSSE）双模式 UI/UX 重构 (2026-11-03) | 未标注 | 2026-11-03 | 4 KB / 57 行 | 0 |
 | `docs/design/deep-space-exchange-pro-refinement-20261103.md` | 深空证券交易所 · 专业界面重构与活动栏常驻监控设计（2026-11-03） | 已确认/已实现（已获船长授权实施完毕并通过全量验收） | 2026-11-03 | 14 KB / 129 行 | 1 |
 | `docs/design/main-git-sync-20261103.md` | 主树 Git 同步工作记录（2026-11-03） | 未标注（本地第三次 merge 待完成、待验） | 2026-11-03 | 2 KB / 26 行 | 1 |
 | `docs/design/settings-subpages-20261103.md` | 设置子页面分类（2026-11-03） | 未标注（设置分类及第一轮远端同步已包含在本地） | 2026-11-03 | 4 KB / 43 行 | 1 |
-| `docs/design/stock-exchange-ai-ecosystem-20261103.md` | 证券交易所 · AI 市场生态设计（让市场「活」起来） | 未标注（设计稿） | 2026-11-03 | 9 KB / 175 行 | 1 |
+| `docs/design/stock-exchange-ai-ecosystem-20261103.md` | 证券交易所 · AI 市场生态设计（让市场「活」起来） | 未标注（设计稿） | 2026-11-03 | 9 KB / 175 行 | 3 |
 | `docs/design/stock-exchange-backend-b0-20261103.md` | 证券交易所 · 后端 B0 工作文档（订单簿/撮合/账户/REST） | 已确认/已实现（B0-1 已实现） | 2026-11-03 | 5 KB / 65 行 | 3 |
 | `docs/design/stock-exchange-backend-spec-20261103.md` | 证券交易所 · 后端契约级设计（P0 实施基线） | 未标注（待开工确认） | 2026-11-03 | 26 KB / 461 行 | 5 |
-| `docs/design/stock-exchange-economy-pvp-20261103.md` | 证券交易所 · 经济闭环与 PvP/AI 博弈设计 | 未标注（设计稿　｜　日期：2026-11-0） | 2026-11-03 | 11 KB / 169 行 | 1 |
+| `docs/design/stock-exchange-economy-pvp-20261103.md` | 证券交易所 · 经济闭环与 PvP/AI 博弈设计 | 未标注（设计稿　｜　日期：2026-11-0） | 2026-11-03 | 11 KB / 169 行 | 2 |
 | `docs/design/stock-exchange-go-migration-20261103.md` | 全量迁 Go · 迁移计划与阶段划分 | 已确认/已实现（已获船长方向批准） | 2026-11-03 | 5 KB / 82 行 | 1 |
 | `docs/design/stock-exchange-go-stack-20261103.md` | 证券交易所 · Go 技术栈与开源参考调研 | 未标注（调研稿） | 2026-11-03 | 11 KB / 153 行 | 1 |
-| `docs/design/stock-exchange-integration-20261103.md` | 股市系统 · 联调部署契约（Go 交易所 ↔ Node 主服务 ↔ 桌面前端） | 未标注（执行中） | 2026-11-03 | 6 KB / 96 行 | 0 |
+| `docs/design/stock-exchange-integration-20261103.md` | 股市系统 · 联调部署契约（Go 交易所 ↔ Node 主服务 ↔ 桌面前端） | 未标注（执行中） | 2026-11-03 | 9 KB / 140 行 | 0 |
 | `docs/design/stock-exchange-pacing-emotion-20261103.md` | 证券交易所 · 节奏与情绪设计（Tension & Release） | 未标注（设计稿） | 2026-11-03 | 13 KB / 213 行 | 1 |
 | `docs/design/stock-exchange-parallel-20261103.md` | 证券交易所 · 并行化架构决策（交易所计算线独立） | 未标注（实施中　｜　日期：2026-11-0） | 2026-11-03 | 7 KB / 101 行 | 1 |
 | `docs/design/stock-exchange-playtest-20261103.md` | 证券交易所 · 可玩性算法验证（P0：建造前筛参数） | 未标注（设计并实施中　｜　日期：2026-1） | 2026-11-03 | 6 KB / 105 行 | 2 |
 | `docs/design/stock-exchange-playtest-v2-20261103.md` | 证券交易所 · 可玩性验证 v2：赌桌级动力学验证 | 未标注（设计并实施中　｜　日期：2026-1） | 2026-11-03 | 12 KB / 206 行 | 0 |
 | `docs/design/stock-exchange-prototype-20261103.md` | 证券交易所 · 可点击原型（F0）工作文档 | 未标注（实施中） | 2026-11-03 | 15 KB / 202 行 | 0 |
-| `docs/design/stock-exchange-round-model-20261103.md` | 股市 · 回合制行情与撮合模型（5 分钟一轮，可配） | 未标注（设计已定） | 2026-11-03 | 6 KB / 86 行 | 0 |
+| `docs/design/stock-exchange-round-model-20261103.md` | 股市 · 回合制行情与撮合模型（5 分钟一轮，可配） | 未标注（设计已定） | 2026-11-03 | 6 KB / 86 行 | 2 |
 | `docs/design/stock-exchange-server-20261103.md` | 证券交易所（服务端真股市）设计方案 | 待裁定（待裁决） | 2026-11-03 | 43 KB / 615 行 | 6 |
+| `docs/design/stock-exchange-short-selling-20261103.md` | 股市 · 做空与借券（回合制 B2） | 未标注（设计稿） | 2026-11-03 | 4 KB / 74 行 | 0 |
 | `docs/design/stock-market-system-20261103.md` | 证券交易所（股市系统）设计方案与技术架构 | 待裁定（设计方案待裁决） | 2026-11-03 | 13 KB / 198 行 | 4 |
 | `docs/design/ui-scifi-hud-refinement-20261103.md` | 科幻未来（Modern HUD）UI/UX 全维规范化修复与体验优化 · 2026-11-03 | 待裁定（已完成 · 待船长验收） | 2026-11-03 | 3 KB / 42 行 | 0 |
 | `docs/design/ui-ux-ergonomics-audit-20261103.md` | 设计文档：UI/UX 工效学与视觉硬伤全面修复 (2026-11-03) | 未标注 | 2026-11-03 | 3 KB / 59 行 | 0 |
@@ -357,6 +359,7 @@
 | `docs/design/manufacture-refine-worker-econ.md` | 工业工位收益体检与展示（组装机 + 精炼炉，2026-09-08 定稿） | 已确认/已实现（已确认） | — | 6 KB / 93 行 | 0 |
 | `docs/design/power-ladder-rework.md` | 战力阶梯拉长：威胁曲线重标 + 装备解锁闸门（设计稿 · 2026-09-06 立稿） | 未标注 | — | 41 KB / 484 行 | 10 |
 | `docs/design/ship-size-tier-rework.md` | 舰船尺寸分级重构 + 巡洋舰线(设计定稿 v3,2026-09-09 船长逐轮拍板;状态:已确认并实现、已合入 main) | 已确认/已实现（已确认并实现、已合入 main） | — | 13 KB / 153 行 | 2 |
+| `docs/design/stock-exchange-events-64-catalog.md` | 64 事件目录（16 剧本 × 4 强度，实现用文案表） | 未标注 | — | 5 KB / 71 行 | 0 |
 | `docs/design/substation-hub-return.md` | 已建成副空间站 = 母港镜像 + 自动返航最近站（状态：已确认） | 已确认/已实现（已确认） | — | 4 KB / 43 行 | 0 |
 | `docs/design/t1-activity-window.md` | T1 顶部活动窗口（状态：已确认） | 已确认/已实现（已确认） | — | 4 KB / 55 行 | 0 |
 | `docs/design/t2-skill-queue.md` | T2 技能队列改造（状态：已确认） | 已确认/已实现（已确认） | — | 5 KB / 61 行 | 0 |
@@ -382,7 +385,7 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档） |
 |---|---|---|---|---|---|
-| `docs/development-conventions-changelog.md` | 开发约定维护记录 | 未标注 | — | 4 KB / 35 行 | 6 |
+| `docs/development-conventions-changelog.md` | 开发约定维护记录 | 未标注 | — | 5 KB / 47 行 | 6 |
 | `docs/git-gate-approval.md` | Git提交审批放行 | 未标注 | — | 2 KB / 28 行 | 1 |
 | `docs/l10n-pending.md` | 待英文本地化记录 | 未标注 | — | 28 KB / 472 行 | 23 |
 
@@ -438,16 +441,16 @@
 | `docs/design/ship-battle-art/acceptance-visual-20260909.md` | 舰船战斗图形 · 真机目测与细节验收清单（2026-09-09 三号，给船长） | 未标注 | 2026-09-09 | 4 KB / 54 行 | 2 |
 | `docs/design/ship-battle-art/README.md` | 舰船战斗图形重设计(三号 · 样稿阶段,2026-09-09) | 未标注 | — | 8 KB / 87 行 | 24 |
 
-## 附：孤儿文档（0 引用，209 份）
+## 附：孤儿文档（0 引用，210 份）
 
 > 仅表示没有其他收录文档提到本文件名，不能据此删除、归档或批准阅读历史。
 
 - `docs/design/activitybar-progress-smoothness-20261103.md`（2026-11-03 · 4 KB）—— 设计文档：左侧活动栏进度条刷新率与平滑度优化 (2026-11-03)
 - `docs/design/deep-space-exchange-dual-mode-20261103.md`（2026-11-03 · 4 KB）—— 设计文档：深空证券交易所（DSSE）双模式 UI/UX 重构 (2026-11-03)
-- `docs/design/stock-exchange-integration-20261103.md`（2026-11-03 · 6 KB）—— 股市系统 · 联调部署契约（Go 交易所 ↔ Node 主服务 ↔ 桌面前端）
+- `docs/design/stock-exchange-integration-20261103.md`（2026-11-03 · 9 KB）—— 股市系统 · 联调部署契约（Go 交易所 ↔ Node 主服务 ↔ 桌面前端）
 - `docs/design/stock-exchange-playtest-v2-20261103.md`（2026-11-03 · 12 KB）—— 证券交易所 · 可玩性验证 v2：赌桌级动力学验证
 - `docs/design/stock-exchange-prototype-20261103.md`（2026-11-03 · 15 KB）—— 证券交易所 · 可点击原型（F0）工作文档
-- `docs/design/stock-exchange-round-model-20261103.md`（2026-11-03 · 6 KB）—— 股市 · 回合制行情与撮合模型（5 分钟一轮，可配）
+- `docs/design/stock-exchange-short-selling-20261103.md`（2026-11-03 · 4 KB）—— 股市 · 做空与借券（回合制 B2）
 - `docs/design/ui-scifi-hud-refinement-20261103.md`（2026-11-03 · 3 KB）—— 科幻未来（Modern HUD）UI/UX 全维规范化修复与体验优化 · 2026-11-03
 - `docs/design/ui-ux-ergonomics-audit-20261103.md`（2026-11-03 · 3 KB）—— 设计文档：UI/UX 工效学与视觉硬伤全面修复 (2026-11-03)
 - `docs/design/whale-server-1000ccu-20261103.md`（2026-11-03 · 12 KB）—— whale-server · 1000 人在线容量评估与重构方案
@@ -637,6 +640,7 @@
 - `docs/design/bounty-insurance.md`（无日期 · 5 KB）—— 连续作战保险：带伤预警 + 战内自动撤退（已确认 2026-09-08）
 - `docs/design/deliver-trip-and-station-gating.md`（无日期 · 5 KB）—— 建站交付航线 + 市场成交静默 + 市场蓝图标识 + 未建成副站彻底收口（2026-09-08 定稿）
 - `docs/design/manufacture-refine-worker-econ.md`（无日期 · 6 KB）—— 工业工位收益体检与展示（组装机 + 精炼炉，2026-09-08 定稿）
+- `docs/design/stock-exchange-events-64-catalog.md`（无日期 · 5 KB）—— 64 事件目录（16 剧本 × 4 强度，实现用文案表）
 - `docs/design/substation-hub-return.md`（无日期 · 4 KB）—— 已建成副空间站 = 母港镜像 + 自动返航最近站（状态：已确认）
 - `docs/design/t1-activity-window.md`（无日期 · 4 KB）—— T1 顶部活动窗口（状态：已确认）
 - `docs/design/t2-skill-queue.md`（无日期 · 5 KB）—— T2 技能队列改造（状态：已确认）
@@ -652,7 +656,7 @@
 - `docs/design/v18.1-support.md`（无日期 · 9 KB）—— V18.1 设计总结：支援装备 + 叠加收敛（取消同类唯一 · 已确认实施）
 - `docs/design/v18b2-lasers.md`（无日期 · 5 KB）—— V18B-2 设计总结：激光炮武器族（能量系形态 · 已确认实施）
 
-## 附：状态未标注（189 份，待补一行 `状态：…`）
+## 附：状态未标注（191 份，待补一行 `状态：…`）
 
 - `docs/design/activitybar-progress-smoothness-20261103.md`（2026-11-03）—— 设计文档：左侧活动栏进度条刷新率与平滑度优化 (2026-11-03)
 - `docs/design/cloud-settings-20261103.md`（2026-11-03）—— 账号与云存档设置（2026-11-03）
@@ -670,6 +674,7 @@
 - `docs/design/stock-exchange-playtest-v2-20261103.md`（2026-11-03）—— 证券交易所 · 可玩性验证 v2：赌桌级动力学验证
 - `docs/design/stock-exchange-prototype-20261103.md`（2026-11-03）—— 证券交易所 · 可点击原型（F0）工作文档
 - `docs/design/stock-exchange-round-model-20261103.md`（2026-11-03）—— 股市 · 回合制行情与撮合模型（5 分钟一轮，可配）
+- `docs/design/stock-exchange-short-selling-20261103.md`（2026-11-03）—— 股市 · 做空与借券（回合制 B2）
 - `docs/design/ui-ux-ergonomics-audit-20261103.md`（2026-11-03）—— 设计文档：UI/UX 工效学与视觉硬伤全面修复 (2026-11-03)
 - `docs/design/whale-server-1000ccu-20261103.md`（2026-11-03）—— whale-server · 1000 人在线容量评估与重构方案
 - `docs/design/carbon-icons-modern-layout-20261102.md`（2026-11-02）—— 现代布局 Carbon Icons 升级方案（科幻未来专供 · 2026-11-02）
@@ -829,6 +834,7 @@
 - `docs/design/b3-salvage.md`（无日期）—— B3 残骸打捞与回收系统（设计总结 · 已实现，2026-09-05 全链落地）
 - `docs/design/power-ladder-rework.md`（无日期）—— 战力阶梯拉长：威胁曲线重标 + 装备解锁闸门（设计稿 · 2026-09-06 立稿）
 - `docs/design/ship-battle-art/README.md`（无日期）—— 舰船战斗图形重设计(三号 · 样稿阶段,2026-09-09)
+- `docs/design/stock-exchange-events-64-catalog.md`（无日期）—— 64 事件目录（16 剧本 × 4 强度，实现用文案表）
 - `docs/design/v11-random-events.md`（无日期）—— V11 设计：随机事件系统（已实现）
 - `docs/design/v12-combat.md`（无日期）—— V12 设计：实时战斗引擎（统一状态机 · 编队单位模型）
 - `docs/design/v9-market.md`（无日期）—— V9 设计：市场系统（已实现）
