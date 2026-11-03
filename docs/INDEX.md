@@ -13,9 +13,9 @@
 
 ## 统计
 
-- 非归档文档 **364** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4286** KB · **48258** 行
+- 非归档文档 **364** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4283** KB · **48210** 行
 - 状态分布：**未标注** 177 · **已确认/已实现** 127 · **进行中** 39 · **待裁定** 20 · **历史留档** 1
-- 孤儿文档（0 引用）**206** 份 · 状态未标注 **177** 份
+- 孤儿文档（0 引用）**204** 份 · 状态未标注 **177** 份
 - 一、常用文档（按任务查阅）：**11** 份
 - 七、评审与体检（review）：**4** 份
 - 三、设计与工作文档（需核实状态）：**309** 份
@@ -30,15 +30,15 @@
 |---|---|---|---|---|---|
 | `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定 | 未标注 | — | 15 KB / 107 行 | 27 |
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 6 KB / 75 行 | 13 |
-| `docs/catalog.md` | 文档目录 | 未标注 | — | 3 KB / 41 行 | 5 |
+| `docs/catalog.md` | 文档目录 | 未标注 | — | 3 KB / 42 行 | 5 |
 | `docs/content-workbench.md` | 内容工作台 | 未标注 | — | 3 KB / 35 行 | 2 |
 | `docs/data-editor.md` | 大鲸鱼数据编辑器 | 未标注 | — | 4 KB / 45 行 | 6 |
 | `docs/data-map.md` | 数据速查页 | 未标注 | — | 3 KB / 38 行 | 5 |
 | `docs/development-conventions.md` | 开发约定 | 未标注 | — | 23 KB / 169 行 | 16 |
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（现行译名表） | — | 46 KB / 810 行 | 9 |
-| `docs/glossary.md` | 术语词典 | 未标注 | — | 21 KB / 193 行 | 59 |
+| `docs/glossary.md` | 术语词典 | 未标注 | — | 21 KB / 194 行 | 59 |
 | `docs/roadmap.md` | 当前待办与实施边界 | 未标注 | — | 7 KB / 64 行 | 61 |
-| `docs/single-source.md` | 单点索引（谁有权算、谁只能读） | 未标注 | — | 38 KB / 277 行 | 20 |
+| `docs/single-source.md` | 单点索引（谁有权算、谁只能读） | 未标注 | — | 39 KB / 278 行 | 20 |
 
 ## 七、评审与体检（review） —— 4 份
 
@@ -54,6 +54,8 @@
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档） |
 |---|---|---|---|---|---|
 | `docs/design/activitybar-progress-smoothness-20261103.md` | 设计文档：左侧活动栏进度条刷新率与平滑度优化 (2026-11-03) | 未标注 | 2026-11-03 | 4 KB / 63 行 | 0 |
+| `docs/design/main-git-sync-20261103.md` | 主树 Git 同步工作记录（2026-11-03） | 未标注（本地第三次 merge 待完成、待验） | 2026-11-03 | 2 KB / 26 行 | 1 |
+| `docs/design/settings-subpages-20261103.md` | 设置子页面分类（2026-11-03） | 未标注（设置分类及第一轮远端同步已包含在本地） | 2026-11-03 | 4 KB / 43 行 | 1 |
 | `docs/design/stock-exchange-backend-spec-20261103.md` | 证券交易所 · 后端契约级设计（P0 实施基线） | 未标注（待开工确认） | 2026-11-03 | 26 KB / 461 行 | 2 |
 | `docs/design/stock-exchange-prototype-20261103.md` | 证券交易所 · 可点击原型（F0）工作文档 | 未标注（实施中） | 2026-11-03 | 12 KB / 154 行 | 0 |
 | `docs/design/stock-exchange-server-20261103.md` | 证券交易所（服务端真股市）设计方案 | 待裁定（待裁决） | 2026-11-03 | 41 KB / 602 行 | 2 |
@@ -61,13 +63,11 @@
 | `docs/design/ui-scifi-hud-refinement-20261103.md` | 科幻未来（Modern HUD）UI/UX 全维规范化修复与体验优化 · 2026-11-03 | 待裁定（已完成 · 待船长验收） | 2026-11-03 | 3 KB / 42 行 | 0 |
 | `docs/design/ui-ux-ergonomics-audit-20261103.md` | 设计文档：UI/UX 工效学与视觉硬伤全面修复 (2026-11-03) | 未标注 | 2026-11-03 | 3 KB / 59 行 | 0 |
 | `docs/design/carbon-icons-modern-layout-20261102.md` | 现代布局 Carbon Icons 升级方案（科幻未来专供 · 2026-11-02） | 未标注（已结合船长两次指令深化） | 2026-11-02 | 7 KB / 88 行 | 0 |
-| `docs/design/cloud-server-20261102.md` | 云存档与聊天服务器 · 设计与实现（2026-11-02） | 未标注（P0） | 2026-11-02 | 9 KB / 104 行 | 0 |
 | `docs/design/cosmic-hud-layout-20261102.md` | 界面外壳：第三套可选布局「深空 HUD / Cosmic」设计方案 | 未标注（船长已裁定并下达优化令） | 2026-11-02 | 10 KB / 155 行 | 0 |
 | `docs/design/d2-main-integration-20261102.md` | 二号与主树整合及上传核验 | 未标注（本地整合与冲突处理完成） | 2026-11-02 | 6 KB / 72 行 | 0 |
 | `docs/design/datadog-dashboard-ui-20261102.md` | 深空数据看板与复杂后台监控大屏（DataDog / Mixpanel 风格）三轮 UX 审查与全量修复落地记录（2026-11-02） | 未标注（待验收） | 2026-11-02 | 8 KB / 84 行 | 0 |
 | `docs/design/manual-publish-20261102.md` | 统一手动发布 | 未标注（实现与本地专项验证完成） | 2026-11-02 | 3 KB / 25 行 | 0 |
 | `docs/design/modern-ui-industry-hud-20261102.md` | 设计工作文档：新版 UI 整体重塑 · 星际飞船控制台与航电 HUD（2026-11-02） | 进行中（进行中 · 船长授权全部实施与整体 ） | 2026-11-02 | 9 KB / 130 行 | 0 |
-| `docs/design/remote-audio-integration-20261102.md` | 远端声音与设置更新集成 | 未标注（合并验证完成） | 2026-11-02 | 3 KB / 39 行 | 0 |
 | `docs/design/settings-fixes-20261102.md` | 设置界面四项报障修复（字号 / 配色 / 宇宙背景 / 选中按钮）· 2026-11-02 | 已确认/已实现（已落地 · 船长验收完成） | 2026-11-02 | 22 KB / 286 行 | 1 |
 | `docs/design/signal-auto-estimate-20261102.md` | 信号空间自动探索估算方案 | 未标注（船长2026-11-02回复「按你推） | 2026-11-02 | 11 KB / 105 行 | 1 |
 | `docs/design/signal-auto-yield-comparison-20261102.md` | 信号自动探索新旧收益对照 | 未标注（二号完成正式配对对照） | 2026-11-02 | 9 KB / 83 行 | 0 |
@@ -331,7 +331,7 @@
 | `docs/design/foe-unit-naming-20260909.md` | 敌舰单位显示名（舰种名 × 规格词缀） | 已确认/已实现（已确认·已实现） | 2026-09-09 | 3 KB / 42 行 | 0 |
 | `docs/design/market-rarity-tier-20260909.md` | 市场数字稀有度（隐藏档 · 稀有订单分层）设计稿 | 已确认/已实现（已确认并落地） | 2026-09-09 | 5 KB / 65 行 | 0 |
 | `docs/design/wave-battles-20260909.md` | 多波次敌人设定(低安顶段悬赏)设计稿(2026-09-09;已确认并实现·待验收/待发布) | 未标注 | 2026-09-09 | 12 KB / 131 行 | 3 |
-| `docs/design/assets/stellar-samples-20261009/README.md` | PixelPlanets 三类天体样片 | 未标注（原静态审查样片保留） | — | 2 KB / 29 行 | 22 |
+| `docs/design/assets/stellar-samples-20261009/README.md` | PixelPlanets 三类天体样片 | 未标注（原静态审查样片保留） | — | 2 KB / 29 行 | 24 |
 | `docs/design/b3-flavor-content.md` | B3.1 星系/敌群特色残骸产出 · 数值表（2026-09-08 已确认，收尾归档） | 已确认/已实现（已收尾归档） | — | 7 KB / 82 行 | 0 |
 | `docs/design/b3-salvage.md` | B3 残骸打捞与回收系统（设计总结 · 已实现，2026-09-05 全链落地） | 未标注 | — | 12 KB / 122 行 | 3 |
 | `docs/design/bounty-insurance.md` | 连续作战保险：带伤预警 + 战内自动撤退（已确认 2026-09-08） | 已确认/已实现（已确认并落地） | — | 5 KB / 65 行 | 0 |
@@ -369,7 +369,7 @@
 |---|---|---|---|---|---|
 | `docs/development-conventions-changelog.md` | 开发约定维护记录 | 未标注 | — | 3 KB / 28 行 | 6 |
 | `docs/git-gate-approval.md` | Git提交审批放行 | 未标注 | — | 2 KB / 28 行 | 1 |
-| `docs/l10n-pending.md` | 待英文本地化记录 | 未标注 | — | 21 KB / 363 行 | 22 |
+| `docs/l10n-pending.md` | 待英文本地化记录 | 未标注 | — | 23 KB / 386 行 | 22 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -409,7 +409,7 @@
 | `docs/test-saves/black-market-20261004.md` | 黑市页面验收档 | 待裁定（随功能待船长验收） | 2026-10-04 | 1 KB / 15 行 | 1 |
 | `docs/test-saves/hauler-20261004.md` | 纯货舰修订验收档 | 未标注（已验收） | 2026-10-04 | 2 KB / 25 行 | 2 |
 | `docs/test-saves/whexpedition-20261004.md` | 虫洞第一批合成测试档 | 未标注（未来虫洞整备/事件/警戒的隔离验收材） | 2026-10-04 | 10 KB / 78 行 | 1 |
-| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 83 KB / 840 行 | 22 |
+| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 83 KB / 840 行 | 24 |
 
 ## 六、专题：舰船美术（design/ship-battle-art） —— 7 份
 
@@ -421,9 +421,9 @@
 | `docs/design/ship-battle-art/battle-sprite-tier-20260911.md` | 战斗画面「舰种体积」（舰身大小随舰种档，2026-09-11 船长定；状态：已实现，但按船长裁决暂时关闭 —— 显示还原、系统保留） | 已确认/已实现（已实现） | 2026-09-11 | 14 KB / 177 行 | 4 |
 | `docs/design/ship-battle-art/mounts-20260910.md` | 舰船战斗图形·挂点对齐（引擎喷口 + 真实炮口）2026-09-10 | 已确认/已实现（已确认） | 2026-09-10 | 6 KB / 94 行 | 1 |
 | `docs/design/ship-battle-art/acceptance-visual-20260909.md` | 舰船战斗图形 · 真机目测与细节验收清单（2026-09-09 三号，给船长） | 未标注 | 2026-09-09 | 4 KB / 54 行 | 2 |
-| `docs/design/ship-battle-art/README.md` | 舰船战斗图形重设计(三号 · 样稿阶段,2026-09-09) | 未标注 | — | 8 KB / 87 行 | 22 |
+| `docs/design/ship-battle-art/README.md` | 舰船战斗图形重设计(三号 · 样稿阶段,2026-09-09) | 未标注 | — | 8 KB / 87 行 | 24 |
 
-## 附：孤儿文档（0 引用，206 份）
+## 附：孤儿文档（0 引用，204 份）
 
 > 仅表示没有其他收录文档提到本文件名，不能据此删除、归档或批准阅读历史。
 
@@ -432,13 +432,11 @@
 - `docs/design/ui-scifi-hud-refinement-20261103.md`（2026-11-03 · 3 KB）—— 科幻未来（Modern HUD）UI/UX 全维规范化修复与体验优化 · 2026-11-03
 - `docs/design/ui-ux-ergonomics-audit-20261103.md`（2026-11-03 · 3 KB）—— 设计文档：UI/UX 工效学与视觉硬伤全面修复 (2026-11-03)
 - `docs/design/carbon-icons-modern-layout-20261102.md`（2026-11-02 · 7 KB）—— 现代布局 Carbon Icons 升级方案（科幻未来专供 · 2026-11-02）
-- `docs/design/cloud-server-20261102.md`（2026-11-02 · 9 KB）—— 云存档与聊天服务器 · 设计与实现（2026-11-02）
 - `docs/design/cosmic-hud-layout-20261102.md`（2026-11-02 · 10 KB）—— 界面外壳：第三套可选布局「深空 HUD / Cosmic」设计方案
 - `docs/design/d2-main-integration-20261102.md`（2026-11-02 · 6 KB）—— 二号与主树整合及上传核验
 - `docs/design/datadog-dashboard-ui-20261102.md`（2026-11-02 · 8 KB）—— 深空数据看板与复杂后台监控大屏（DataDog / Mixpanel 风格）三轮 UX 审查与全量修复落地记录（2026-11-02）
 - `docs/design/manual-publish-20261102.md`（2026-11-02 · 3 KB）—— 统一手动发布
 - `docs/design/modern-ui-industry-hud-20261102.md`（2026-11-02 · 9 KB）—— 设计工作文档：新版 UI 整体重塑 · 星际飞船控制台与航电 HUD（2026-11-02）
-- `docs/design/remote-audio-integration-20261102.md`（2026-11-02 · 3 KB）—— 远端声音与设置更新集成
 - `docs/design/signal-auto-yield-comparison-20261102.md`（2026-11-02 · 9 KB）—— 信号自动探索新旧收益对照
 - `docs/design/ui-activitybar-and-bottom-nav-20261102.md`（2026-11-02 · 5 KB）—— 左侧活动栏排版重构与底部导航栏字号优化 · 2026-11-02
 - `docs/design/ui-comms-chamfer-modern-20261102.md`（2026-11-02 · 3 KB）—— 通讯界面科幻未来 HUD 缺角风格统一改造 · 2026-11-02
@@ -637,16 +635,16 @@
 ## 附：状态未标注（177 份，待补一行 `状态：…`）
 
 - `docs/design/activitybar-progress-smoothness-20261103.md`（2026-11-03）—— 设计文档：左侧活动栏进度条刷新率与平滑度优化 (2026-11-03)
+- `docs/design/main-git-sync-20261103.md`（2026-11-03）—— 主树 Git 同步工作记录（2026-11-03）
+- `docs/design/settings-subpages-20261103.md`（2026-11-03）—— 设置子页面分类（2026-11-03）
 - `docs/design/stock-exchange-backend-spec-20261103.md`（2026-11-03）—— 证券交易所 · 后端契约级设计（P0 实施基线）
 - `docs/design/stock-exchange-prototype-20261103.md`（2026-11-03）—— 证券交易所 · 可点击原型（F0）工作文档
 - `docs/design/ui-ux-ergonomics-audit-20261103.md`（2026-11-03）—— 设计文档：UI/UX 工效学与视觉硬伤全面修复 (2026-11-03)
 - `docs/design/carbon-icons-modern-layout-20261102.md`（2026-11-02）—— 现代布局 Carbon Icons 升级方案（科幻未来专供 · 2026-11-02）
-- `docs/design/cloud-server-20261102.md`（2026-11-02）—— 云存档与聊天服务器 · 设计与实现（2026-11-02）
 - `docs/design/cosmic-hud-layout-20261102.md`（2026-11-02）—— 界面外壳：第三套可选布局「深空 HUD / Cosmic」设计方案
 - `docs/design/d2-main-integration-20261102.md`（2026-11-02）—— 二号与主树整合及上传核验
 - `docs/design/datadog-dashboard-ui-20261102.md`（2026-11-02）—— 深空数据看板与复杂后台监控大屏（DataDog / Mixpanel 风格）三轮 UX 审查与全量修复落地记录（2026-11-02）
 - `docs/design/manual-publish-20261102.md`（2026-11-02）—— 统一手动发布
-- `docs/design/remote-audio-integration-20261102.md`（2026-11-02）—— 远端声音与设置更新集成
 - `docs/design/signal-auto-estimate-20261102.md`（2026-11-02）—— 信号空间自动探索估算方案
 - `docs/design/signal-auto-yield-comparison-20261102.md`（2026-11-02）—— 信号自动探索新旧收益对照
 - `docs/design/sound-layers-20261102.md`（2026-11-02）—— 声音系统追加批：BGM / 环境音 / 战斗细分 / 音高随机 · 2026-11-02 工作文档

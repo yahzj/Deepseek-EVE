@@ -240,6 +240,8 @@ async function main() {
   })()`)
   check(openSettings === 'ok', '顶栏「设置」按钮可点')
   await sleep(400)
+  await evaluate(`document.querySelector('#settings-tab-sound')?.click()`)
+  await sleep(200)
   const settings = await evaluate(`({
     modal: !!document.querySelector('.app-settings-modal'),
     sliders: document.querySelectorAll('.app-settings-slider').length,
@@ -247,7 +249,7 @@ async function main() {
     hasConsoleBtn: [...document.querySelectorAll('button')].some(x => x.textContent.trim() === '音效台')
   })`)
   check(settings.modal === true, '设置面板已打开')
-  check(settings.sliders >= 10, `设置里滑条 ≥10（缩放/字号/总音量/6 类分类/音高，实际 ${settings.sliders}）`)
+  check(settings.sliders === 8, `声音页滑条为 8（总音量/6 类分类/音高，实际 ${settings.sliders}）`)
   check(settings.hasPitchRow === true, '设置里出现「战斗音效音高随机」一行')
   check(settings.hasConsoleBtn === true, '设置内出现「音效台」入口（本机调试门禁放行）')
 

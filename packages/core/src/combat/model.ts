@@ -115,7 +115,8 @@ export interface UnitSpec {
   droneHpMul?: number
   rebirthRepair?: import('../types').ModuleDef['rebirthRepair']
   crisisOverload?: { rangeMul: number; damageMul: number; speedMul: number; droneInitialMul: number; droneCycleMul: number }
-  speedBonusModules?: Array<Pick<import('../types').ModuleDef, 'speedBonusPct' | 'speedRamp'>>
+  /** 当前速度来源；仅推进器槽受点火周期与停机影响，其余槽位持续生效。 */
+  speedBonusModules?: Array<Pick<import('../types').ModuleDef, 'slot' | 'speedBonusPct' | 'speedRamp'>>
   /** 玩家无人机首次出击间隔；缺省为500ms。 */
   droneLaunchGapMs?: number
   /** 复活入队的旧机库等待，不叠加首发新装备或船体特性。 */
@@ -208,13 +209,11 @@ export interface UnitSpec {
   hitMul?: number
   signatureM: number
   scanResMm: number
-  /** 基础战斗机动速度（不含推进器）——推进器改为周期爆发（见 thrusterBoost），
-   *  实际机动 = 本值 ×(1 + 爆发期内的 thrusterBoost) */
+  /** 基础战斗机动速度；装备加成由 speedBonusModules 与推进器周期分别应用。 */
   speedMps: number
   agility: number
   weapons: WeaponSpec[]
-  /** 推进器爆发倍率（2026-09-10 船长定：多件 EVE 曲线收敛后的合成值 − 1，如 MK1 = 0.4）；
-   *  **只在爆发窗口内生效**（`thrusterPhase` 判定），冷却期不生效 → 缺省 0 = 无推进器 */
+  /** 推进器自身的折权速度加成；无来源明细时作回退值，有明细时按当前有效速度件重新折权。 */
   thrusterBoost?: number
   /**
    * **本单位的推进器点火周期**（2026-09-14 船长新增「微型跃迁引擎」：点火 **10 秒** / 冷却 **60 秒**，

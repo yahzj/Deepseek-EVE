@@ -5,6 +5,7 @@ import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
 import { ITEMS, MODULES, L10N, EN_ITEMS_ALL, EN_MODULES, EN_BLUEPRINTS, buildSimContext, l10nEntryText } from '@whale/data'
 import * as core from '../src/index'
+import { weightedSum } from '../src/equipment'
 import { idLiteralsIn, stripComments } from '../../../tools/text-scan'
 import { applyApprovedFleetModuleDelta } from './helpers/approved-fleet-delta-20261101'
 
@@ -163,7 +164,7 @@ const bindings = {
   MODULE_SUBS: [], moduleSubKeyOf: () => '', subText: () => '',
 }
 runInNewContext(ts.transpileModule(code, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React } }).outputText, bindings)
-const display = bindings.exports as { itemInfoLines: (item: (typeof ITEMS)[number]) => Row[]; moduleInfoLines: (module: (typeof MODULES)[number], engine?: unknown, shipId?: string, ordinal?: number) => Row[]; moduleShortEffect: (module: (typeof MODULES)[number]) => string }
+const display = bindings.exports as { itemInfoLines: (item: (typeof ITEMS)[number]) => Row[]; moduleInfoLines: (module: (typeof MODULES)[number], engine?: unknown, shipId?: string, ordinal?: number) => Row[]; moduleShortEffect: (module: (typeof MODULES)[number]) => string; fittedSpeedLine: (spec: core.UnitSpec, balance: core.BattleBalance) => Row }
 const subSource = ts.createSourceFile('itemSubs.ts', readFileSync(new URL('../../../apps/desktop/src/renderer/src/ui/itemSubs.ts', import.meta.url), 'utf8'), ts.ScriptTarget.Latest, true)
 const subCode = subSource.statements.filter(node => !ts.isImportDeclaration(node)).map(node => node.getText(subSource)).join('\n')
 const subBindings = { ...core, exports: {}, tr: bindings.tr }
@@ -300,14 +301,37 @@ describe('真实参数行承接说明数字', () => {
       const value = textOf((speed[0] ?? afterburner[0])!.v)
       const pct = `${Math.round(module.speedBonusPct! * 100)}%`
       expect(value, module.id).toContain(pct)
-      expect(value, module.id).toMatch(locale === 'zh' ? /点火/ : /burning/)
       expect(display.moduleShortEffect(module), module.id).toContain(pct)
-      const cycle = core.thrusterCycleSeconds(core.DEFAULT_BALANCE.battle, core.thrusterCycleOfModule(module))
-      const period = L10N['ui.shipInfo.183']![locale].replace('{p1}', String(cycle.boost)).replace('{p2}', String(cycle.cooldown))
-      expect(display.moduleShortEffect(module), module.id).toContain(period)
       expect(textOf(rows[0]!.v), module.id).toBe(`${module.slot}（${module.rack}）`)
-      if (module.slot === 'propulsion') expect(filters.moduleSubKeyOf(module.slot, module.id)).toBe('prop')
+      if (module.slot === 'propulsion') {
+        expect(value, module.id).toMatch(locale === 'zh' ? /点火/ : /burning/)
+        const cycle = core.thrusterCycleSeconds(core.DEFAULT_BALANCE.battle, core.thrusterCycleOfModule(module))
+        const period = L10N['ui.shipInfo.183']![locale].replace('{p1}', String(cycle.boost)).replace('{p2}', String(cycle.cooldown))
+        expect(display.moduleShortEffect(module), module.id).toContain(period)
+        expect(filters.moduleSubKeyOf(module.slot, module.id)).toBe('prop')
+      } else {
+        const expected = l10nEntryText(L10N['ui.shipInfo.256']!, locale).replace('{p1}', pct)
+        expect(value, module.id).toBe(expected)
+        expect(display.moduleShortEffect(module), module.id).toContain(expected)
+        expect(rows.map(row => textOf(row.v)).join('|'), module.id).not.toMatch(/点火|冷却|burn|cooldown/i)
+        expect(display.moduleShortEffect(module), module.id).not.toMatch(/点火|冷却|burn|cooldown/i)
+      }
     }
+  })
+  it.each(['zh', 'en'] as const)('%s 非推进器装后机动包含持续收益且没有点火尾注，混装推进器仍显示周期', locale => {
+    language.value = locale
+    const ctx = buildSimContext(), state = core.createInitialState({ nowWallMs: 0 })
+    state.fleet[state.shipId]!.fitted = { high: [], mid: [], low: ['mod-wh-c-pulse', 'mod-wh-c-frame'] }
+    const spec = core.createPlayerSpec(state, ctx, state.shipId)!
+    const text = textOf(display.fittedSpeedLine(spec, ctx.balance.battle).v)
+    const expected = Math.round(spec.speedMps * (1 + weightedSum([.1, .05])))
+    expect(text).toBe(`${expected} m/s`)
+    expect(text).not.toMatch(/点火|冷却|burn|cooldown/i)
+    state.fleet[state.shipId]!.fitted.mid = ['mod-mwd-1']
+    const mixed = core.createPlayerSpec(state, ctx, state.shipId)!
+    const mixedText = textOf(display.fittedSpeedLine(mixed, ctx.balance.battle).v)
+    expect(mixedText).toContain(`${expected} m/s`)
+    expect(mixedText).toMatch(locale === 'zh' ? /点火/ : /burn/)
   })
   it('中英已装周期与负面值均从真实核心读取，不漏槽或保留最大值旧提示', () => {
     const ctx = buildSimContext()

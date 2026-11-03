@@ -49,11 +49,11 @@ export function expireFoeAcidLayers(battle: AcidState, nowMs = battle.lastTickGa
   if (!Object.keys(battle.foeAcidLayers).length) delete battle.foeAcidLayers
 }
 
-/** 常驻渐增件与当前有效周期件同池折权；冷却只移除周期收益。 */
+/** 速度件全族共用折权排序；推进器收益随点火相位开关，其他槽位收益常驻。 */
 export function battleSpeedBonusOf(spec: Pick<UnitSpec, 'speedBonusModules' | 'thrusterBoost'>, battle: Pick<BattleState, 'startedAtGameMs' | 'lastTickGameMs'>, boosting = true): number {
   if (!spec.speedBonusModules) return boosting ? spec.thrusterBoost ?? 0 : 0
   const elapsed = Math.max(0, battle.lastTickGameMs - battle.startedAtGameMs)
-  return weightedSum(spec.speedBonusModules.filter(mod => boosting || mod.speedRamp).map(mod => {
+  return weightedSum(spec.speedBonusModules.filter(mod => mod.slot !== 'propulsion' || boosting).map(mod => {
     const ramp = mod.speedRamp
     const base = mod.speedBonusPct ?? 0
     return ramp ? base + (ramp.maxBonusPct - base) * Math.min(1, elapsed / ramp.rampMs) : base

@@ -20,6 +20,17 @@ function approvedTranslation(id: string, ref = 'af94a6af'): L10nEntry {
 
 /** 船长确认MK1改名及扫描叠加规则后，历史词条守恒只放行这些精确变化。 */
 export function approvedMk1CopyDelta(id: string, entry: L10nEntry): L10nEntry {
+  // 2026-11-02 船长批准精简配色选项与文案，及字体两档说明；精确保护当前中英文本。
+  const approvedUiCopy: Readonly<Record<string, L10nEntry>> = {
+    'ui.App.132': {
+      zh: '深空为经典深色界面，高对比为近黑底加亮字，暖色偏暖且蓝光更少，纯黑夜间底为纯黑、字更柔和，色盲将识别色换为色觉安全色；即时生效，不写入存档。',
+      en: 'Deep Space is the original dark interface; High contrast uses a near-black background with brighter text; Warm shifts the palette warm to cut blue light; Night black uses a pure black background with softer text; Color-blind swaps the identity colors for a color-vision-safe set. Applies instantly and is not stored in the save.',
+    },
+    'ui.App.134': { zh: '暖色', en: 'Warm' },
+    'ui.App.136': { zh: '色盲', en: 'Color-blind safe' },
+    'ui.App.180': { zh: '默认提供现代清晰字形，复古提供经典像素点阵。即时生效，不写入存档。', en: '', enDeferred: true },
+  }
+  if (approvedUiCopy[id]) return approvedUiCopy[id]!
   // 2026-10-19装备说明及百分号调整，仅放行已提交的十条精确文本。
   if (['mod.copy.054', 'mod.gravekeeperGear.006', 'ui.gravekeeperGear.008', 'ui.gravekeeper.003',
     'ui.alienLoot.002', 'ui.alienArmor.001', 'ui.alienArmor.002', 'ui.foeIntro.106', 'ui.shipInfo.047', 'ui.shipInfo.166'].includes(id)) {

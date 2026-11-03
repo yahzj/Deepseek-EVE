@@ -6535,6 +6535,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipInfo.253": { zh: "各件独立运作", en: "Each module operates independently" },
   "ui.shipInfo.254": { zh: "乘法叠加", en: "Multiplicative stacking" },
   "ui.shipInfo.255": { zh: "同类型扩槽插件仅限一件", en: "One slot-expansion plug per type" },
+  // ⟪文案调整 2026-11-03⟫ 非推进器速度效果独立于点火周期；保留旧模板和既有英文。
+  "ui.shipInfo.256": { zh: "战斗机动 +{p1}", en: "", enDeferred: true },
   "ui.shipInfo.079": { zh: "多装递减", en: "Diminishing returns when stacked" },
   "ui.shipInfo.080": { zh: "放飞 CPU", en: "Launch CPU" },
   "ui.shipInfo.081": { zh: "占用舱容", en: "Cargo space used" },
@@ -7855,6 +7857,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ui.App.189': { zh: '版权与授权声明（原文）', en: '', enDeferred: true },
   'ui.App.190': { zh: '双许可与商业使用条款 · GNU AGPLv3（原文）', en: '', enDeferred: true },
   'ui.App.191': { zh: '其他第三方组件（React、React DOM、Scheduler、Lucide、星系素材等）分别遵循各自的许可证。', en: '', enDeferred: true },
+  // ⟪设置分类 2026-11-03⟫ 只为现有设置项增加子页面标签；英文未授权，按约定留空并登记待译。
+  'ui.settingsTab.001': { zh: '界面与语言', en: '', enDeferred: true },
+  'ui.settingsTab.002': { zh: '声音', en: '', enDeferred: true },
+  'ui.settingsTab.003': { zh: '游戏', en: '', enDeferred: true },
+  'ui.settingsTab.004': { zh: '存档', en: '', enDeferred: true },
+  'ui.settingsTab.005': { zh: '开发者', en: '', enDeferred: true },
   // ⟪Oxanium 追加 2026-11-02⟫ 默认档英文/数字用 Oxanium（SIL OFL 1.1，见授权小节）。
   'ui.App.192': { zh: 'Oxanium 字体（默认档英文/数字）', en: '', enDeferred: true },
   'ui.App.193': { zh: '版本 {p1} · 文件 {p2} · 版权 {p3} · 项目页 {p4} · 授权原文 {p5}', en: '', enDeferred: true },

@@ -251,7 +251,8 @@ export function crossFamilyShort(mod: ModuleDef): string {
     if (mod.speedRamp)
       parts.push(tr('ui.alienLoot.004', { p1: (mod.speedBonusPct ?? 0) * 100, p2: mod.speedRamp.maxBonusPct * 100, p3: mod.speedRamp.rampMs / 1000 }))
     else if (mod.speedBonusPct !== undefined)
-      parts.push(tr("ui.shipInfo.107", { p1: pct(mod.speedBonusPct), p2: thrusterCycleShort(mod) }))
+      // ⟪文案调整 2026-11-03⟫ 船长确认非推进器速度加成独立生效，不显示点火周期。
+      parts.push(tr('ui.shipInfo.256', { p1: pct(mod.speedBonusPct) }))
     if ((mod.hitPenalty ?? 0) > 0) parts.push(tr("ui.shipInfo.108", { p1: (1 - (mod.hitPenalty ?? 0)).toFixed(2) }))
   }
   if (foreign('drone-rack') && (mod.droneBayBonusM3 ?? 0) > 0) parts.push(tr("ui.shipInfo.146", { p1: fmt(mod.droneBayBonusM3 ?? 0) }))

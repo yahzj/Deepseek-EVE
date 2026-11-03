@@ -19,6 +19,7 @@ import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
 import type { ModuleDef, SimContext } from '../src/types'
 import { ammoLoadTotals, applyDamage, createPlayerSpec } from '../src/combat'
+import { battleSpeedBonusOf } from '../src/alienEquipment'
 import { anomaly, makeTestCtx, moduleDef, ship } from './helpers'
 
 /** 动能炮（高槽，3000 m / 600 ms）——射程与装填都便于算整数 */
@@ -201,9 +202,11 @@ describe('虫洞装备新机制（2026-09-13）', () => {
       high: ['mod-g', null, null, null],
       mid: ['mod-spd', null, null, null],
     })
-    // 推进器加成在引擎里以 `thrusterBoost`（点火期倍率）随单位走，而不是直接改 `speedMps`
+    // 非推进器保留独立速度来源，不生成推进器爆发标记，冷却期仍有加成。
     expect(specOf(base.state, base.ctx).thrusterBoost ?? 0).toBe(0)
-    expect(specOf(fast.state, fast.ctx).thrusterBoost ?? 0).toBeGreaterThan(0)
+    const spec = specOf(fast.state, fast.ctx)
+    expect(spec.thrusterBoost).toBeUndefined()
+    expect(battleSpeedBonusOf(spec, { startedAtGameMs: 0, lastTickGameMs: 61000 }, false)).toBeCloseTo(.1)
   })
 
   it('⑩ 缺省不受影响：不带任何新字段的装备，各旋钮一律不生效', () => {

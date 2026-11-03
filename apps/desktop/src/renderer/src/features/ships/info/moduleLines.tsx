@@ -507,7 +507,8 @@ export function moduleInfoLines(mod: ModuleDef, engine?: GameEngine, shipId?: st
   if (mod.acidOnHit) lines.push({ k: tr('ui.alienLoot.001'), v: tr('ui.alienLoot.002', { p1: mod.acidOnHit.cutPct * 100, p2: mod.acidOnHit.durationMs / 1000 }) })
   if (mod.speedRamp) lines.push({ k: tr('ui.alienLoot.003'), v: tr('ui.alienLoot.004', { p1: (mod.speedBonusPct ?? 0) * 100, p2: mod.speedRamp.maxBonusPct * 100, p3: mod.speedRamp.rampMs / 1000 }) })
   if ((mod.speedBonusPct ?? 0) > 0 && mod.slot !== 'propulsion' && !mod.speedRamp) {
-    lines.push({ k: tr("ui.shipInfo.075"), v: tr("ui.shipInfo.168", { p1: pct(mod.speedBonusPct ?? 0) }) })
+    // ⟪文案调整 2026-11-03⟫ 与非推进器短效摘要共用独立速度模板。
+    lines.push({ k: tr("ui.shipInfo.075"), v: tr('ui.shipInfo.256', { p1: pct(mod.speedBonusPct ?? 0) }) })
   }
   // 跨族加成（2026-09-11 修复：槽位族之外的加成原先一律不显示——见 crossFamilyLines 注释）
   lines.push(...crossFamilyLines(mod))

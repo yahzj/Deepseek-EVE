@@ -104,7 +104,7 @@ export function releaseFoeChargeOnHit(
 
 /**
  * **单位机动倍率（单点）**——两侧"周期/状态 ⇒ 机动乘子"都从这里取，免得同一段判断散在多处：
- * - **我方**：推进器**周期爆发**（`thrusterPhase`，周期逐单位；点火窗口内 ×(1+`thrusterBoost`)，冷却期 ×1）；
+ * - **我方**：有效速度件同池折权；推进器按逐单位点火周期启停，非推进器持续生效；
  * - **敌方**：**冲锋**（`b.foeCharges[tag].on` ⇒ ×(舰级 `foeChargeMul` ?? 全局 `bal.foeChargeMul`)）。
  *
  * 两侧都只乘进**自己那一项**：编队速度 = "逐单位乘各自倍率 → 取平均"（见 `stepBattle`），

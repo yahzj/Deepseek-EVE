@@ -24,6 +24,7 @@ function rowRenderer(layout: string, locale: 'zh' | 'en') {
   const src = sourceOf(`panels/${layout}.tsx`)
   const component = src.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === layout) as ts.FunctionDeclaration
   const row = component.body!.statements.filter(ts.isVariableStatement).flatMap(node => [...node.declarationList.declarations]).find(node => node.name.getText(src) === 'renderItem')!
+  const smoothFill = src.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === 'SmoothFill')
   const icons = src.statements.filter(ts.isVariableStatement).find(node => node.declarationList.declarations.some(node => node.name.getText(src) === 'KIND_ICON'))!
   const labels = sourceOf('panels/activityStopLabel.ts')
   const stop = labels.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === 'doStop')!
@@ -33,11 +34,14 @@ function rowRenderer(layout: string, locale: 'zh' | 'en') {
   const tr = (id: string, params?: Record<string, unknown>) => (L10N[id]?.[locale] ?? id).replace(/\{(\w+)\}/g, (match, key: string) => String(params?.[key] ?? match))
   const engine = { invasionLoopAt: vi.fn(() => ({ ok: true })), bountyLoopAt: vi.fn(() => ({ ok: true })) }
   const onGoPage = vi.fn(), onToast = vi.fn()
-  const scope = { result: undefined, React: { createElement: (type: unknown, props: object | null, ...children: unknown[]) => ({ type, props: props ?? {}, children }) },
+  // 只替换首帧 Hooks 外壳，进度填充仍执行真实组件，不在此模拟动画时序。
+  const scope = { result: undefined, React: { createElement: (type: unknown, props: object | null, ...children: unknown[]) =>
+    typeof type === 'function' ? type({ ...props, children }) : ({ type, props: props ?? {}, children }) },
+    useRef: (value: number) => ({ current: value }), useEffect: () => {},
     tr, cmdText: () => '', engine, onToast, onGoPage, onOpenWormhole: undefined,
     Glyph: 'Glyph', NAV_TONES: {}, ICO_TONES: {}, fmtDuration: (ms: number) => `${Math.ceil(ms / 1000)}s`,
     haulAsk: false, retreatAsk: false, setHaulAsk: () => {}, setRetreatAsk: () => {} }
-  const code = [icons.getText(src), stop.getText(labels).replace(/^export\s+/, ''), labelFn.getText(labels).replace(/^export\s+/, ''), routeFn.getText(routes).replace(/^export\s+/, ''), `const ${row.getText(src)};`, 'globalThis.result=renderItem'].join('\n')
+  const code = [icons.getText(src), ...(smoothFill ? [smoothFill.getText(src)] : []), stop.getText(labels).replace(/^export\s+/, ''), labelFn.getText(labels).replace(/^export\s+/, ''), routeFn.getText(routes).replace(/^export\s+/, ''), `const ${row.getText(src)};`, 'globalThis.result=renderItem'].join('\n')
   runInNewContext(ts.transpileModule(code, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React } }).outputText, scope)
   const localize = (view: ActivityView): ActivityView => ({ ...view, label: view.labelId ? tr(view.labelId, view.labelParams) : view.label,
     sub: view.subId ? tr(view.subId, { ...view.subParams, ...(view.subParams?.p2Id ? { p2: tr(String(view.subParams.p2Id)) } : {}) }) : view.sub })
