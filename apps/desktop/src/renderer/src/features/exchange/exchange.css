@@ -5202,6 +5202,198 @@
 }
 
 /* ── 活动栏常驻股市监控卡片专属微样式 ── */
+.app-activitybar-exch-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wui-sp-2);
+  width: 100%;
+  box-sizing: border-box;
+  padding: 5px 6px;
+  border-radius: var(--wui-sp-6);
+  border: 1px solid rgb(var(--wui-cyan) / 0.35);
+  background: linear-gradient(135deg, rgb(var(--wui-cyan) / 0.08), rgb(var(--wui-bg-sunken) / 0.7));
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  color: rgb(var(--wui-text));
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, transform 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.app-activitybar-exch-card:hover {
+  border-color: rgb(var(--wui-cyan));
+  background: linear-gradient(135deg, rgb(var(--wui-cyan) / 0.16), rgb(var(--wui-bg-panel)));
+  box-shadow: 0 0 10px rgb(var(--wui-cyan) / 0.35);
+  transform: translateY(-1px);
+}
+
+.app-activitybar-exch-card.is-profitable {
+  border-color: rgb(var(--wui-tone-gain) / 0.45);
+}
+
+.app-activitybar-exch-card.is-profitable:hover {
+  border-color: rgb(var(--wui-tone-gain));
+  box-shadow: 0 0 10px rgb(var(--wui-tone-gain) / 0.35);
+}
+
+.app-activitybar-exch-card.is-loss {
+  border-color: rgb(var(--wui-tone-loss) / 0.45);
+}
+
+.app-activitybar-exch-card.is-loss:hover {
+  border-color: rgb(var(--wui-tone-loss));
+  box-shadow: 0 0 10px rgb(var(--wui-tone-loss) / 0.35);
+}
+
+.exch-sb-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.exch-sb-head-left {
+  display: flex;
+  align-items: center;
+  gap: var(--wui-sp-1);
+  min-width: 0;
+}
+
+.exch-sb-code {
+  font-family: var(--wui-mono);
+  font-size: var(--wui-fs-2xsc);
+  font-weight: 700;
+  color: rgb(var(--wui-gold));
+  letter-spacing: 0.5px;
+  line-height: 1;
+}
+
+.exch-sb-badge {
+  font-family: var(--wui-mono);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 1px 3px;
+  border-radius: var(--wui-sp-2);
+  background: rgb(var(--wui-cyan) / 0.15);
+  color: rgb(var(--wui-cyan));
+  border: 1px solid rgb(var(--wui-cyan) / 0.3);
+}
+
+.exch-sb-head-right {
+  display: flex;
+  align-items: center;
+  gap: var(--wui-sp-2);
+  min-width: 0;
+}
+
+.exch-sb-price {
+  font-family: var(--wui-mono);
+  font-size: var(--wui-fs-2xsc);
+  font-weight: 600;
+  color: rgb(var(--wui-text));
+  line-height: 1;
+}
+
+.exch-sb-chg {
+  font-family: var(--wui-mono);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.1;
+  padding: 1px 3px;
+  border-radius: var(--wui-sp-2);
+  white-space: nowrap;
+}
+
+.exch-sb-chg.is-up {
+  color: rgb(var(--wui-tone-gain));
+  background: rgb(var(--wui-tone-gain) / 0.12);
+  border: 1px solid rgb(var(--wui-tone-gain) / 0.28);
+}
+
+.exch-sb-chg.is-down {
+  color: rgb(var(--wui-tone-loss));
+  background: rgb(var(--wui-tone-loss) / 0.12);
+  border: 1px solid rgb(var(--wui-tone-loss) / 0.28);
+}
+
+.exch-sb-chg.is-zero {
+  color: rgb(var(--wui-text-dim));
+  background: rgb(var(--wui-bg-sunken) / 0.4);
+}
+
+.exch-sb-pnl-label {
+  font-size: 10px;
+  color: rgb(var(--wui-text-dim));
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.exch-sb-pnl-right {
+  display: flex;
+  align-items: center;
+  gap: var(--wui-sp-1);
+  min-width: 0;
+}
+
+.exch-sb-pnl-val {
+  font-family: var(--wui-mono);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.exch-sb-pnl-val.is-up {
+  color: rgb(var(--wui-tone-gain));
+}
+
+.exch-sb-pnl-val.is-down {
+  color: rgb(var(--wui-tone-loss));
+}
+
+.exch-sb-pnl-pct {
+  font-family: var(--wui-mono);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.exch-sb-pnl-pct.is-up {
+  color: rgb(var(--wui-tone-gain));
+}
+
+.exch-sb-pnl-pct.is-down {
+  color: rgb(var(--wui-tone-loss));
+}
+
+.exch-sb-unheld-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  font-size: 10px;
+  line-height: 1;
+}
+
+.exch-sb-unheld-label {
+  color: rgb(var(--wui-text-dim));
+}
+
+.exch-sb-unheld-action {
+  color: rgb(var(--wui-cyan));
+  display: inline-flex;
+  align-items: center;
+  gap: var(--wui-sp-1);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+/* 兼容旧类名保留 */
 .app-activitybar-exch-btn {
   border: 1px solid rgb(var(--wui-cyan) / 0.35);
   background: linear-gradient(135deg, rgb(var(--wui-cyan) / 0.1), rgb(var(--wui-bg-panel)));

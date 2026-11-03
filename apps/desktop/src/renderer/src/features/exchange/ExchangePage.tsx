@@ -17,17 +17,18 @@ import { createExchangeClient } from './factory'
 import { amount, money, pct, pctAbs } from './format'
 import { T, TF } from './texts'
 import { Cashier } from './components/Cashier'
+import {
+  getExchangeSelectedCode,
+  setExchangeSelectedCode,
+  subscribeExchangeSelectedCode,
+} from './selectedCode'
 import { NewsTicker } from './components/NewsTicker'
 import { SimpleExchange } from './components/SimpleExchange'
 import { ProExchange } from './components/ProExchange'
 import { RoundBadge } from './components/RoundBadge'
 import './exchange.css'
 
-const DEFAULT_CODE = 'SMHI'
 const VIEW_MODE_KEY = 'whale-idle:exch-view-mode'
-
-/** 切页返回后保持选中标的（Spatial Memory） */
-let rememberedCode = DEFAULT_CODE
 
 export function ExchangePage({ engine, onToast }: PageProps) {
   const bundle = useMemo(() => createExchangeClient(), [])
@@ -81,8 +82,16 @@ function ExchangeBody({
 }) {
   const client = bundle.client
   const [tick, bump] = useReducer((n: number) => n + 1, 0)
-  const [code, setCode] = useState(rememberedCode)
+  const [code, setCode] = useState(getExchangeSelectedCode)
   const [pickedPrice, setPickedPrice] = useState<{ value: number; seq: number } | null>(null)
+
+  // 响应外部（如活动栏快捷监控微卡片）的标的高亮切换
+  useEffect(() => {
+    return subscribeExchangeSelectedCode((nextCode) => {
+      setCode(nextCode)
+      setPickedPrice(null)
+    })
+  }, [])
   // 入金 / 出金弹窗：null = 关闭
   const [cashier, setCashier] = useState<'deposit' | 'withdraw' | null>(null)
 
@@ -147,7 +156,7 @@ function ExchangeBody({
   const pnlUp = totalUnrealizedPnl >= 0
 
   const selectCode = (next: string): void => {
-    rememberedCode = next
+    setExchangeSelectedCode(next)
     setCode(next)
     setPickedPrice(null)
   }
