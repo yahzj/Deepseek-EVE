@@ -3,8 +3,7 @@
  *
  * 紧凑卡片式展示 4 位代码股票（SMHI、UGMC、OJLS、ABSI）：
  * - 4 位代码 + 公司名 + 现价大字 + 今日涨跌 + Sparkline 小走势；
- * - 若持有该公司股票，卡片右上角显示精致角标「持仓 X 股」；
- * - 极简模式下不显示债券理财卡（BondCard），保持专注纯粹。
+ * - 若持有该公司股票，卡片右上角显示精致角标「持仓 X 股」。
  */
 import type { ExchangeClient, ExchangeSnapshot } from '../client'
 import { amount, pct, price } from '../format'
@@ -29,7 +28,7 @@ export function SimpleStockList({ client, snap, selected, onSelect }: SimpleStoc
   }
 
   return (
-    <aside className="ex-simple-sidebar" aria-label={T.stockListTitle}>
+    <section className="ex-simple-sidebar" aria-label={T.stockListTitle}>
       <div className="ex-simple-side-head">
         <h3 className="ex-simple-side-title">星际企业榜</h3>
         <span className="ex-dim">4 核心标的</span>
@@ -86,6 +85,6 @@ export function SimpleStockList({ client, snap, selected, onSelect }: SimpleStoc
           )
         })}
       </div>
-    </aside>
+    </section>
   )
 }

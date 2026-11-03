@@ -2,7 +2,7 @@
  * 专业模式 · 全功能终端主视图（ProExchange）。
  *
  * 布局：
- * - 左栏：标的列表（StockList）+ 低风险理财债券卡（BondCard）；
+ * - 左栏：标的列表（StockList，全高舒展排列）；
  * - 中栏：专业多周期蜡烛图（Chart）+ 五档深度盘口（OrderBook，含买卖量不平衡条）+ 逐笔成交（TradeTape）；
  * - 右栏：2~50x 逐仓杠杆与限价下单面板（TradePanel）+ 持仓/委托（Positions）+ 量化网格/定投策略（AutoTrade）；
  * - 底部：成交历史与分红流水二级窗口（Records）。
@@ -10,7 +10,6 @@
 import type { ExchangeClient, ExchangeSnapshot } from '../client'
 import type { ToastFn } from '../../../pages/common'
 import { StockList } from './StockList'
-import { BondCard } from './BondCard'
 import { Chart } from './Chart'
 import { OrderBook, TradeTape } from './OrderBook'
 import { TradePanel } from './TradePanel'
@@ -42,7 +41,6 @@ export function ProExchange({
       <div className="ex-grid">
         <aside className="ex-col ex-col-left">
           <StockList snap={snap} selected={code} onSelect={onSelectCode} />
-          <BondCard client={client} snap={snap} onToast={onToast} />
         </aside>
 
         <section className="ex-col ex-col-mid">

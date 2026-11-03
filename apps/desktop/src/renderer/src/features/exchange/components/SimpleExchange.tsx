@@ -14,6 +14,7 @@ import type { ToastFn } from '../../../pages/common'
 import { amount, pct, price } from '../format'
 import { T } from '../texts'
 import { SimpleStockList } from './SimpleStockList'
+import { BondCard } from './BondCard'
 import { SimpleChart } from './SimpleChart'
 import { SimpleTrade } from './SimpleTrade'
 import { SimplePosition } from './SimplePosition'
@@ -38,8 +39,11 @@ export function SimpleExchange({
 
   return (
     <div className="ex-simple-layout">
-      {/* 左栏：星际企业榜 */}
-      <SimpleStockList client={client} snap={snap} selected={code} onSelect={onSelectCode} />
+      {/* 左栏：星际企业榜 + 低风险理财 */}
+      <aside className="ex-simple-col-left" aria-label="行情与理财">
+        <SimpleStockList client={client} snap={snap} selected={code} onSelect={onSelectCode} />
+        <BondCard client={client} snap={snap} onToast={onToast} />
+      </aside>
 
       {/* 右栏：行情主视区 + 现货买卖舱 + 持仓战报 */}
       <main className="ex-simple-main" aria-label={`${quote.nameKey} 交易大厅`}>

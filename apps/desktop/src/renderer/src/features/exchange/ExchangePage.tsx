@@ -176,7 +176,7 @@ function ExchangeBody({
             type="button"
             role="tab"
             aria-selected={viewMode === 'simple'}
-            className={`ex-mode-tab${viewMode === 'simple' ? ' is-active' : ''}`}
+            className={`ex-mode-tab ex-mode-tab-simple${viewMode === 'simple' ? ' is-active' : ''}`}
             onClick={() => switchViewMode('simple')}
           >
             <span className="ex-mode-tab-title">{T.viewModeSimple}</span>
@@ -186,7 +186,7 @@ function ExchangeBody({
             type="button"
             role="tab"
             aria-selected={viewMode === 'pro'}
-            className={`ex-mode-tab${viewMode === 'pro' ? ' is-active' : ''}`}
+            className={`ex-mode-tab ex-mode-tab-pro${viewMode === 'pro' ? ' is-active' : ''}`}
             onClick={() => switchViewMode('pro')}
           >
             <span className="ex-mode-tab-title">{T.viewModePro}</span>
@@ -194,7 +194,7 @@ function ExchangeBody({
           </button>
         </div>
 
-        {/* 极简模式顶栏资产指标：总资产、可用现金、浮动盈亏 */}
+        {/* 极简模式顶栏资产指标：总资产、可用现金、理财总值、浮动盈亏 */}
         {viewMode === 'simple' ? (
           <div className="ex-simple-top-stats">
             <div className="ex-stat ex-stat-big">
@@ -204,6 +204,10 @@ function ExchangeBody({
             <div className="ex-stat">
               <span className="ex-dim">{T.availableCash}</span>
               <b className="ex-num">{money(snap.account.cash)}</b>
+            </div>
+            <div className="ex-stat">
+              <span className="ex-dim">{T.bondValue}</span>
+              <b className="ex-num">{money(bondTotal)}</b>
             </div>
             <div className="ex-stat">
               <span className="ex-dim">{T.unrealizedPnl}</span>
