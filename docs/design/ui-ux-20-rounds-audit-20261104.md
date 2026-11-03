@@ -27,7 +27,7 @@
 | **第 14 轮** | 全局 · 星图与深空雷达探测系统 | 星系天体悬停高亮、跳跃航线连线、星图缩放平移、深空星云层次 | 已完成 ✓ |
 | **第 15 轮** | 全局 · 战斗视界与战场动态 HUD | 护盾/装甲/结构三色血条、动能/爆破/能量伤害飘字层级、战斗日志回溯 | 已完成 ✓ |
 | **第 16 轮** | 全局 · 虫洞与空间信号矩阵解密 | 矩阵探测网格、波形共振图对齐、信标解锁动效、探索结算弹窗 | 已完成 ✓ |
-| **第 17 轮** | 全局 · 物品背包与仓储物流交互 | 物品槽位悬停浮层、稀有度边框、堆叠数量角标、分类筛选 Tab | 待开始 |
+| **第 17 轮** | 全局 · 物品背包与仓储物流交互 | 物品槽位悬停浮层、稀有度边框、堆叠数量角标、分类筛选 Tab | 已完成 ✓ |
 | **第 18 轮** | 全局 · 任务中心与成就图鉴手册 | 任务追踪进度条、奖励领取正反馈微动效、成就点亮、手册检索 | 待开始 |
 | **第 19 轮** | 全局 · 通用弹窗、设置面板与 Tooltip | 统一 Tooltip 延迟与防闪烁、全局模态居中、ESC 退出、设置选项 | 待开始 |
 | **第 20 轮** | 全局 · 全端分辨率响应式与全主题终审闭环 | 1080P/2K/4K/窄窗适配、全主题色板契约回归、整库构建回归、统一 Push | 待开始 |
@@ -310,3 +310,25 @@
      - 6 套主题对比度、旋转契约、Token 契约全量 100% 绿灯通过。
 - **验证结果**：
   - `typecheck`、`ui:theme-check`、`ui:rot-check`、`ui:layout-css:check` 全部 100% 绿灯通过。
+
+
+## 第 17 轮：全局 · 物品背包与仓储物流交互（已闭环）
+- **修改文件**：
+  - `apps/desktop/src/renderer/src/styles.css`
+  - `apps/desktop/src/renderer/src/ui/layout-css/styles-classic.css`
+  - `apps/desktop/src/renderer/src/ui/layout-css/styles-modern.css`
+  - `apps/desktop/src/renderer/src/ui/itemView.tsx`
+  - `apps/desktop/src/renderer/src/features/ships/info/cards.tsx`
+  - `apps/desktop/src/renderer/src/features/ships/info/moduleLines.tsx`
+  - `apps/desktop/src/renderer/src/pages/CargoPage.tsx`
+  - `apps/desktop/src/renderer/src/pages/ItemsPage.tsx`
+  - `packages/data/src/l10n/table.ts`
+  - `docs/l10n-pending.md`
+- **问题与重构**：
+  1. 物品槽位（Slot）交互优化：增加高光微动效、选定态高亮轮廓；稀有度边框清晰分级（T1~T5 分级绑定品级 Token 并附带环境内发光）；
+  2. 堆叠数量角标绑定等宽数字 `var(--wui-mono)`，增加微边框半透明衬底防遮挡物品图标；列表模式堆叠数量等宽排版；
+  3. 货舱容量负载条升级：已用比例 >90% 预警黄、满载 100% 危险红；新增指标卡展示可见库存/货舱总体积、总估值、种类与总件数；
+  4. 快速整理交互：提供按稀有度与估值降序一键瞬时整理及微动效；
+  5. 悬停情报浮层：卡片详尽呈现名称、分类、势力（`crestFamOf`）、单件体积、单价估值与总价，说明文案两端对齐，零 Emoji，全色板契约达标。
+- **验证结果**：
+  - `typecheck`、`ui:theme-check`、`ui:rot-check` 全部 100% 绿灯通过。

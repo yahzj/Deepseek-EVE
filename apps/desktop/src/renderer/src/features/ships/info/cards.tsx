@@ -7,7 +7,7 @@ import { shipCurrentLines, shipInfoLines } from './shipLines'
 import { hoverTipProps } from '../../../ui/Tooltip'
 import type { GameEngine } from '../../../game/engine'
 import { moduleInfoLines } from './moduleLines'
-import { kindTextOfItem } from '../../../ui/labelsText'
+import { kindTextOfItem, crestFamOf, crestLabelOf } from '../../../ui/labelsText'
 
 /**
  * 敌方**火力构成**（2026-09-10 船长：混伤——「需要在任务中告知玩家」）：
@@ -277,8 +277,10 @@ export function itemHoverContent(
   item: ItemDef,
   nameOf?: (id: string) => string | undefined,
   hint?: ReactNode,
+  quantity?: number,
+  unitPrice?: number,
 ): ReactNode {
-  return infoCardContent(item.name, itemInfoLines(item, nameOf), item.description, hint ? <div className="app-info-note">{hint}</div> : null)
+  return infoCardContent(item.name, itemInfoLines(item, nameOf, true, quantity, unitPrice), item.description, hint ? <div className="app-info-note">{hint}</div> : null)
 }
 
 /**
@@ -315,13 +317,21 @@ export function ModuleHover({
 }
 
 /** 物品统一信息行（悬浮窗数据源：种类/体积/收价 + 精炼 + 弹药无人机战斗行 + 修理组件） */
-export function itemInfoLines(item: ItemDef, nameOf?: (id: string) => string | undefined, includePrice = true): InfoLine[] {
+export function itemInfoLines(item: ItemDef, nameOf?: (id: string) => string | undefined, includePrice = true, quantity?: number, unitPrice?: number): InfoLine[] {
   const lines: InfoLine[] = [
     { k: tr("ui.Handbook.005"), v: kindTextOfItem(item) }, // 2026-09-10 无人机：无人机 · 侦察机（子属性并入种类）
-    { k: tr("ui.Handbook.006"), v: `${item.unitM3} m³` },
   ]
-  if (includePrice && (item.baseSellPriceIsk ?? 0) > 0) {
-    lines.push({ k: tr("ui.shipInfo.086"), v: tr("ui.shipInfo.177", { p1: item.baseSellPriceIsk.toLocaleString('zh-CN') }) })
+  const crest = crestFamOf(item.id)
+  if (crest) {
+    lines.push({ k: tr("ui.shipInfo.257"), v: crestLabelOf(crest) })
+  }
+  lines.push({ k: tr("ui.Handbook.006"), v: `${item.unitM3} m³` })
+  const price = unitPrice !== undefined ? unitPrice : (item.baseSellPriceIsk ?? 0)
+  if (includePrice && price > 0) {
+    lines.push({ k: tr("ui.shipInfo.086"), v: tr("ui.shipInfo.177", { p1: price.toLocaleString('zh-CN') }) })
+  }
+  if (quantity !== undefined && quantity > 1 && price > 0) {
+    lines.push({ k: tr("ui.shipInfo.258"), v: tr("ui.shipInfo.177", { p1: (price * quantity).toLocaleString('zh-CN') }) })
   }
   if (item.refine !== undefined && item.refine.length > 0) {
     lines.push({
@@ -370,15 +380,19 @@ export function ItemHover({
   children,
   as = 'span',
   className,
+  quantity,
+  unitPrice,
 }: {
   item: ItemDef
   nameOf?: (id: string) => string | undefined
   children: ReactNode
   as?: ElementType
   className?: string
+  quantity?: number
+  unitPrice?: number
 }) {
   return (
-    <InfoHover title={item.name} lines={itemInfoLines(item, nameOf)} note={item.description} as={as} className={className}>
+    <InfoHover title={item.name} lines={itemInfoLines(item, nameOf, true, quantity, unitPrice)} note={item.description} as={as} className={className}>
       {children}
     </InfoHover>
   )

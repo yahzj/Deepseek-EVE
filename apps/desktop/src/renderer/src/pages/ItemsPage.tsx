@@ -166,12 +166,37 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
     if (!subHit(id)) return false
     return true
   }
-  const itemHits = rows.filter(([id]) => hitItem(id) && dimHit(id))
-  const modHits = showMods ? modRows.filter(([id]) => hitMod(id) && dimHit(id)) : []
+  const [tidySort, setTidySort] = useState(false)
+  const rawItemHits = rows.filter(([id]) => hitItem(id) && dimHit(id))
+  const itemHits = tidySort
+    ? [...rawItemHits].sort((a, b) => {
+        const rDiff = (itemRarityTierOf(b[0]) ?? 0) - (itemRarityTierOf(a[0]) ?? 0)
+        if (rDiff !== 0) return rDiff
+        const valB = (itemBuyQuote(engine, b[0]) ?? (engine.ctx.items.get(b[0])?.baseSellPriceIsk ?? 0)) * b[1]
+        const valA = (itemBuyQuote(engine, a[0]) ?? (engine.ctx.items.get(a[0])?.baseSellPriceIsk ?? 0)) * a[1]
+        return valB - valA
+      })
+    : rawItemHits
+
+  const rawModHits = showMods ? modRows.filter(([id]) => hitMod(id) && dimHit(id)) : []
+  const modHits = tidySort
+    ? [...rawModHits].sort((a, b) => {
+        const rDiff = (itemRarityTierOf(b[0]) ?? 0) - (itemRarityTierOf(a[0]) ?? 0)
+        return rDiff
+      })
+    : rawModHits
   const itemKinds = [...ITEM_KIND_ORDER, 'other']
   const hitTotal = itemHits.length + modHits.length
   /** 搜索或筛选任一生效（标题计数与空态文案据此换措辞） */
   const wareNarrowed = wq.length > 0 || kindPicked || wareSub !== SUB_ALL
+  const totalWareVol =
+    itemHits.reduce((acc, [id, n]) => acc + n * (engine.ctx.items.get(id)?.unitM3 ?? 1), 0) +
+    modHits.reduce((acc, [, n]) => acc + n * 1, 0)
+  const totalWareValue =
+    itemHits.reduce((acc, [id, n]) => {
+      const quote = itemBuyQuote(engine, id) ?? (engine.ctx.items.get(id)?.baseSellPriceIsk ?? 0)
+      return acc + n * quote
+    }, 0)
 
   // 2026-09-09（船长口径 A）：任何仓库物品都可装船携带（引擎按各自体积装；矿物/弹药/无人机亦同）；
   // 装备（模块）装船见 handleLoadMod（按 1 m³/件 计入货舱）
@@ -304,6 +329,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
       hover: moduleHoverContent(def),
       // 稀有度小标签（2026-09-20 船长）：装备的市场 refId 本来就是 `mod-<id>` ⇒ 直接传 id
       rarity: itemRarityTierOf(id),
+      selected: pickMod === id,
       ...(crest !== undefined ? { crest } : {}),
     })
   }
@@ -319,6 +345,13 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
       right={
         <span className="app-head-search-wrap">
           <ItemViewBar mode={mode} onChange={setMode} />
+          <button
+            className={`app-btn is-small is-tidy${tidySort ? ' is-active' : ''}`}
+            onClick={() => setTidySort((prev) => !prev)}
+            title={tr('ui.CargoPage.063')}
+          >
+            {tr('ui.CargoPage.063')}
+          </button>
           <input
             className="app-head-search"
             type="text"
@@ -327,6 +360,14 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
             onChange={(e) => setWareQuery(e.target.value)}
             spellCheck={false}
           />
+          <span className="app-cargo-stat-item" style={{ fontSize: 'var(--wui-fs-xs)' }}>
+            <span className="app-dim">{tr("ui.CargoPage.061")}:</span>
+            <span className="app-cargo-stat-val">{m3(totalWareVol)}</span>
+          </span>
+          <span className="app-cargo-stat-item" style={{ fontSize: 'var(--wui-fs-xs)' }}>
+            <span className="app-dim">{tr("ui.CargoPage.062")}:</span>
+            <span className="app-cargo-stat-val">{isk(totalWareValue)}</span>
+          </span>
           <span className="app-dim">
             {wareNarrowed
               ? t('ui.ItemsPage.016', { n: hitTotal })
@@ -454,6 +495,8 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                       as="li"
                       item={def}
                       nameOf={(pid) => engine.ctx.items.get(pid)?.name}
+                      quantity={units}
+                      unitPrice={buy}
                       className="app-inv-row"
                     >
                       <div className="app-inv-main">
@@ -630,21 +673,19 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
             if (kindRows2.length === 0 && (kind !== 'ore' && kind !== 'mineral' || wareNarrowed)) return null
             const cells: ItemGridCell[] = kindRows2.map(([id, units]) => {
               const def = engine.ctx.items.get(id)
+              const crest = crestFamOf(id)
+              const buy = itemBuyQuote(engine, id)
               return {
                 key: id,
-                /* ⚠ **2026-09-30 船长报障「我在仓库看到的道具依旧没有图标」**：这一条是**图标模式**的
-                   格子取图口，原先按大类键 ⇒ 三件道具在图鉴式网格里还是通用「消耗品」图标。
-                   与列表模式同一处判定：走 `itemGlyphName` 单点。 */
                 glyph: itemGlyphName(def?.id ?? id, def?.kind ?? kind),
                 name: def?.name ?? id,
                 sub: `×${units.toLocaleString('zh-CN')} · ${m3(units * (def?.unitM3 ?? 1))}`,
                 title: def?.description,
-                // 富卡悬停（与列表模式的 ItemHover 同一内容；船长 2026-09-19 报障：图标模式原先是纯文本简介）
-                hover: def ? itemHoverContent(def, (pid) => engine.ctx.items.get(pid)?.name) : undefined,
-                // 稀有残骸上稀有金（船长 2026-09-19）；其余物品照旧按大类取色
+                hover: def ? itemHoverContent(def, (pid) => engine.ctx.items.get(pid)?.name, undefined, units, buy) : undefined,
                 tone: inventoryItemTone(id, def?.kind ?? kind),
-                // 稀有度小标签（2026-09-20 船长）：物品按 id 查档（含市场外档表与 AI 核心的映射）
                 rarity: itemRarityTierOf(id),
+                selected: pickItem === id,
+                ...(crest !== undefined ? { crest } : {}),
               }
             })
             const extra2 = kindExtraNote(kind)

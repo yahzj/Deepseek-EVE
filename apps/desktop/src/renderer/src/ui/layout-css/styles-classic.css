@@ -1905,11 +1905,9 @@ html[data-locale='en'] body {
 }
 
 .app-inv-count {
-
+  font-family: var(--wui-mono);
   font-size: var(--wui-fs-xs);
-
   color: rgb(var(--wui-text-dim));
-
 }
 
 /* 行内说明（**2026-10-02 船长令**：技能页「技能加速」的「持有的加速道具」每行要说明该道具的效果，
@@ -8424,43 +8422,83 @@ body.no-fx .app-fit-cpustrip-track.is-full i {
 }
 
 .app-hand-cell {
-
   --tone: rgb(var(--wui-dim));
-
   display: flex;
-
   flex-direction: column;
-
   align-items: center;
-
   gap: var(--wui-sp-4);
-
   padding: var(--wui-sp-10) var(--wui-sp-6) var(--wui-sp-8);
-
   background: color-mix(in srgb, var(--tone) 7%, rgb(var(--wui-x16) / 0.55));
-
   border: 1px solid color-mix(in srgb, var(--tone) 42%, transparent);
-
   border-radius: var(--wui-sp-8);
-
   cursor: pointer;
-
   font-family: inherit;
-
   color: rgb(var(--wui-text));
-
-  transition: border-color 0.15s, background 0.15s;
-
+  transition: border-color 0.16s ease, background 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
   text-align: center;
-
 }
 
 .app-hand-cell:hover {
-
   border-color: var(--tone);
-
   background: color-mix(in srgb, var(--tone) 14%, rgb(var(--wui-x123) / 0.85));
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px color-mix(in srgb, var(--tone) 30%, transparent);
+}
 
+.app-hand-cell.is-selected,
+.app-hand-cell.is-active,
+.app-hand-cell[aria-selected="true"] {
+  border-color: rgb(var(--wui-hud-primary));
+  box-shadow: 0 0 12px rgb(var(--wui-hud-primary) / 0.45), inset 0 0 8px rgb(var(--wui-hud-primary) / 0.18);
+  outline: 2px solid rgb(var(--wui-hud-primary) / 0.65);
+  outline-offset: 1px;
+  background: color-mix(in srgb, var(--tone) 18%, rgb(var(--wui-hud-primary) / 0.12));
+}
+
+.app-hand-cell.is-r1 {
+  border-color: color-mix(in srgb, rgb(var(--wui-dim)) 35%, transparent);
+}
+.app-hand-cell.is-r1:hover {
+  border-color: rgb(var(--wui-dim));
+  box-shadow: 0 3px 10px rgb(var(--wui-dim) / 0.25);
+}
+
+.app-hand-cell.is-r2 {
+  border-color: color-mix(in srgb, rgb(var(--wui-cyan-bright)) 50%, transparent);
+  box-shadow: inset 0 0 6px rgb(var(--wui-cyan-bright) / 0.12);
+}
+.app-hand-cell.is-r2:hover {
+  border-color: rgb(var(--wui-cyan-bright));
+  box-shadow: 0 3px 12px rgb(var(--wui-cyan-bright) / 0.35);
+}
+
+.app-hand-cell.is-r3 {
+  border-color: color-mix(in srgb, rgb(var(--wui-amber-3)) 55%, transparent);
+  box-shadow: inset 0 0 8px rgb(var(--wui-amber-3) / 0.15);
+}
+.app-hand-cell.is-r3:hover {
+  border-color: rgb(var(--wui-amber-3));
+  box-shadow: 0 3px 12px rgb(var(--wui-amber-3) / 0.4);
+}
+
+.app-hand-cell.is-r4 {
+  border-color: color-mix(in srgb, rgb(var(--wui-rare)) 65%, transparent);
+  background: color-mix(in srgb, rgb(var(--wui-rare)) 9%, rgb(var(--wui-x16) / 0.55));
+  box-shadow: 0 0 8px rgb(var(--wui-rare) / 0.2), inset 0 0 8px rgb(var(--wui-rare) / 0.16);
+}
+.app-hand-cell.is-r4:hover {
+  border-color: rgb(var(--wui-rare));
+  box-shadow: 0 3px 14px rgb(var(--wui-rare) / 0.48);
+}
+
+.app-hand-cell.is-r5 {
+  border-color: color-mix(in srgb, rgb(var(--wui-exotic)) 75%, transparent);
+  background: color-mix(in srgb, rgb(var(--wui-exotic)) 12%, rgb(var(--wui-x16) / 0.55));
+  box-shadow: 0 0 12px rgb(var(--wui-exotic) / 0.3), inset 0 0 10px rgb(var(--wui-exotic) / 0.22);
+}
+.app-hand-cell.is-r5:hover {
+  border-color: rgb(var(--wui-exotic));
+  box-shadow: 0 3px 16px rgb(var(--wui-exotic) / 0.58);
 }
 
 .app-hand-cell-icon {
@@ -8502,19 +8540,19 @@ body.no-fx .app-fit-cpustrip-track.is-full i {
 }
 
 .app-hand-cell-sub {
-
+  font-family: var(--wui-mono);
   font-size: var(--wui-fs-2xse);
-
   color: rgb(var(--wui-text-dim));
-
   max-width: 100%;
-
   overflow: hidden;
-
   text-overflow: ellipsis;
-
   white-space: nowrap;
-
+  background: rgb(var(--wui-bg-deep) / 0.75);
+  backdrop-filter: blur(2px);
+  border-radius: var(--wui-sp-3);
+  border: 1px solid rgb(var(--wui-border) / 0.45);
+  padding: 1px var(--wui-sp-4);
+  line-height: 1.4;
 }
 
 /* ═══════════ 图标模式的**稀有度小标签**（2026-09-20 船长：「给每个物品的图标模式右上角添加
@@ -11999,192 +12037,11 @@ body.no-fx .app-fit-cpustrip-track.is-full i {
 
 /* ui font scale overrides (SettingsPanel, captain 2026-09-05) */
 .app-inv-name{font-size:var(--wui-fs-s)}
-.app-inv-count{font-size:var(--wui-fs-xs)}
-.app-sr-name{font-size:var(--wui-fs-s)}
-.app-sr-sub{font-size:var(--wui-fs-2xsd)}
-.app-chip{font-size:var(--wui-fs-xs)}
-.app-btn{font-size:var(--wui-fs-s)}
-
-/* settings panel (captain UI polish 2026-09-05)
-   ── **2026-09-25 船长反馈：「设置界面显示不全，底部的按钮而且太宽，浪费了很多位置」** ⇒ 三条修正：
-      ① **显示不全**：弹窗原先只有 `max-height`（640px）但 `overflow: visible`，而内容
-         `.app-settings-list` 实测 733px ⇒ 尾部「宇宙背景/存档」与底部按钮**溢出弹窗**、被底栏压住。
-         改为「弹窗 = 纵向 flex + max-height」、**只有列表滚动**（标题与底部按钮固定可见）。
-      ② **浪费位置**：每个设置行原先「标签在上、值/按钮在下」竖着堆两行，设置项一多就撑爆。
-         改为**标签与控件同行**（`head` 两端对齐），描述文字另起一行。
-      ③ **太宽**：弹窗 460px 装不下"标签+控件"同行 ⇒ 加宽到 620px（窄窗仍按 `100vw - 48px` 收）。 */
-.app-settings-modal{box-sizing:border-box;width:620px;max-width:calc(100vw - 48px);max-height:calc(100vh - 80px);display:flex;flex-direction:column;padding:var(--wui-sp-14) var(--wui-sp-16) var(--wui-sp-12)}
-.app-settings-title{font-size:var(--wui-fs-lg);font-weight:700;letter-spacing:2px;color:rgb(var(--wui-gold));margin-bottom:var(--wui-sp-2)}
-.app-settings-sub{font-size:var(--wui-fs-xs);color:rgb(var(--wui-text-dim));margin-bottom:var(--wui-sp-8)}
-.app-settings-list{display:flex;flex-direction:column;gap:var(--wui-sp-6);overflow-y:auto;min-height:0;padding-right:var(--wui-sp-2)}
-.app-settings-row{display:flex;flex-direction:column;gap:var(--wui-sp-5);padding:var(--wui-sp-8) var(--wui-sp-10);border:1px solid rgb(var(--wui-map-minor) / 0.28);border-radius:var(--wui-sp-8);background:rgb(var(--wui-bg-field) / 0.55)}
-.app-settings-head{display:flex;align-items:center;justify-content:space-between;gap:var(--wui-sp-10);flex-wrap:wrap}
-.app-settings-label{font-size:var(--wui-fs-s);font-weight:600}
-.app-settings-val{font-family:var(--wui-mono);font-size:var(--wui-fs-s);color:rgb(var(--wui-flag));background:rgb(var(--wui-gold) / 0.08);border:1px solid rgb(var(--wui-gold) / 0.35);border-radius:var(--wui-sp-4);padding:var(--wui-sp-1) var(--wui-sp-8);min-width:52px;text-align:center}
-.app-settings-slider{width:100%;accent-color:rgb(var(--wui-accent));height:18px;cursor:pointer}
-.app-settings-desc{font-size:var(--wui-fs-2xsd);color:rgb(var(--wui-text-dim))}
-.app-settings-foot{display:flex;align-items:center;justify-content:space-between;gap:var(--wui-sp-8);flex-shrink:0;margin-top:var(--wui-sp-8);padding-top:var(--wui-sp-8);border-top:1px dashed rgb(var(--wui-map-minor) / 0.3)}
-.app-settings-btns{display:flex;gap:var(--wui-sp-6);flex-wrap:wrap}
-/* 设置内的按钮不再被 flex 拉宽（船长：「底部的按钮而且太宽」） */
-.app-settings-modal .app-btn{flex:0 0 auto;width:auto}
-/* ── 市场「全部卖出」确认框（2026-09-05 船长：先预览实际成交与到账再确认） ── */
-.app-mkt-confirm-mask { position: fixed; inset: 0; z-index: 96; background: rgb(var(--wui-x11) / 0.62); display: flex; align-items: center; justify-content: center; }
-.app-mkt-confirm { width: min(460px, 90vw); background: linear-gradient(180deg, rgb(var(--wui-x190) / 0.99), rgb(var(--wui-x79) / 0.99)); border: 1px solid rgb(var(--wui-x40)); border-radius: var(--wui-sp-12); padding: var(--wui-sp-16) var(--wui-sp-18); box-shadow: 0 14px 44px rgba(0,0,0,.7); display: flex; flex-direction: column; gap: var(--wui-sp-9); }
-.app-mkt-confirm-title { font-size: var(--wui-fs-lg); font-weight: 800; color: rgb(var(--wui-flag)); }
-.app-mkt-confirm-row { display: flex; align-items: center; justify-content: space-between; gap: var(--wui-sp-12); font-size: var(--wui-fs-base); color: rgb(var(--wui-x42)); }
-.app-mkt-confirm-row.is-net { border-top: 1px dashed rgb(var(--wui-x01) / 0.16); padding-top: var(--wui-sp-8); }
-.app-mkt-confirm-note { font-size: var(--wui-fs-s); color: rgb(var(--wui-x208)); line-height: 1.7; border: 1px dashed rgb(var(--wui-x105)); background: rgb(var(--wui-x264) / 0.16); border-radius: var(--wui-sp-8); padding: var(--wui-sp-7) var(--wui-sp-10); }
-.app-mkt-confirm-btns { display: flex; gap: var(--wui-sp-10); justify-content: flex-end; margin-top: var(--wui-sp-4); }
-
-
-/* ---------- perf HUD (2026-09-08 diagnostic tool; debug flag only) ---------- */
-
-.app-perf-hud { position: fixed; right: 12px; bottom: 12px; z-index: 95; width: 350px; padding: var(--wui-sp-10) var(--wui-sp-12); border-radius: var(--wui-sp-8); border: 1px solid rgb(var(--wui-cyan) / 0.35); background: rgb(var(--wui-bg-winbox) / 0.96); color: rgb(var(--wui-x163)); font-family: var(--wui-mono); font-size: var(--wui-fs-xsb); box-shadow: 0 6px 22px rgba(0, 0, 0, 0.55); display: flex; flex-direction: column; gap: var(--wui-sp-4); }
-
-.app-perf-hud-title { display: flex; align-items: center; gap: var(--wui-sp-6); font-size: var(--wui-fs-s); font-weight: 700; color: rgb(var(--wui-flag)); }
-
-.app-perf-hud-title .app-btn { margin-left: auto; }
-
-.app-perf-hud-line { display: flex; justify-content: space-between; gap: var(--wui-sp-10); }
-
-.app-perf-hud-tip { margin-top: var(--wui-sp-2); font-size: var(--wui-fs-2xse); }
-
-/* ---------- market detail quick book click (2026-09-08) ---------- */
-
-.app-mkt-depth.is-click { cursor: pointer; }
-
-.app-mkt-depth.is-click:hover { background: rgb(var(--wui-cyan) / 0.08); }
-
-/* ---------- market right column stretch ----------
-   2026-09-08 初版：右栏富余高度全给**最后一个**面板（「我的挂单」）——目的是与左栏同高。
-   2026-09-14 船长（甲）：「市场详情面板太矮，右栏空的高度全跑到我的挂单」⇒ 改判：富余给**第一个**面板
-   （「市场详情」）、「我的挂单」≤ 右栏 40%。
-   **2026-09-15 船长再改判**：「**保证订单详细内容不会被压缩的基础上，多余的给我的订单**」
-   ＋（同日澄清）「**我的意思是，保证订单详细窗口的上限和下限，我的订单不用上下限控制**」⇒ 即：
-   ① 上下限只加在「订单详细窗口」（市场详情面板）上：上限 = 内容自然高、下限 = `min-height: 400px`；
-   ② 「我的挂单」不加任何上下限（`flex: 1 1 auto` ＋ `max-height: none` ＋ `min-height: 0`），
-      窗口有富余就把富余全给它，可见行数由 `MarketPage.MyOrders` 量成「整行」。
-
-   ⚠ **2026-09-22 船长令（现行口径）**：「**市场内，将我的挂单放入和常驻订单同级的子页面内，
-   位置排在第一位，但是玩家进入市场时，默认还是打开常驻订单。**」⇒ 「我的挂单」**搬出右栏**、
-   成了左栏第一位子标签页 ⇒ **右栏通常只剩「市场详情」一块**（窄屏则一块都不渲染）。
-   于是上面那套"两块分富余"的规则简化成一条：**右栏唯一的面板吃满右栏**，
-   下限仍保 `400px`（窗口矮到一定程度就由面板体内滚兜底，绝不裁内容）。
-   船长同日选定（问「右栏少了补高件怎么办」）：**让行情详情卡独占时撑满右栏**。
-   ⇒ 上面 2026-09-14 / 09-15 那套双面板分配**已随之作废**（保留在注释里备查）。 */
-
-.app-mkt-right > .wui-panel:only-child { flex: 1 1 auto; max-height: none; min-height: 400px; }
-
-/* ---------- market page fill chain (2026-09-08 no-scroll) ---------- */
-
-.app-page-content.no-scroll > .page-stack.page-fill > .app-mkt-split { flex: 1 1 auto; min-height: 0; }
-
-.app-mkt-left { min-height: 0; }
-
-.app-mkt-left > .wui-panel { flex: 1 1 auto; min-height: 0; }
-
-.app-mkt-right { min-height: 0; }
-
-.app-mkt-right > .wui-panel { min-height: 0; }
-
-/* ---------- fixed-head + scroll-body inside panel (2026-09-08) ---------- */
-
-.wui-panel.win-fixed-body > .wui-panel-body { overflow: hidden; display: flex; flex-direction: column; gap: var(--wui-sp-8); }
-
-.wui-panel.win-fixed-body .app-win-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: var(--wui-sp-2); }
-
-/* ---------- AI task progress like main-control (2026-09-08) ---------- */
-
-.app-ai-taskbar { display: inline-flex; align-items: center; gap: var(--wui-sp-8); font-size: var(--wui-fs-xs); }
-
-.app-belt-worker.is-ai { flex-direction: column; align-items: stretch; gap: var(--wui-sp-3); }
-
-.app-belt-worker.is-ai .app-belt-worker-line { display: flex; align-items: center; gap: var(--wui-sp-8); min-width: 0; }
-
-/* ---------- fix: flex-shrink override so is-fill panels collapse into remaining height (2026-09-08) ---------- */
-
-.page-stack > .wui-panel.is-fill { flex-shrink: 1; }
-
-/* 舰船独立矢量形资产层（三号 2026-09-09；无类元素 = 主轮廓继承 currentColor 2.2） */
-.shipart-panel { stroke-width: 1; opacity: .4; fill: none; }
-.shipart-acc { stroke-width: 1.6; fill: none; }
-.shipart-accf { fill: currentColor; stroke: none; }
-.shipart-volt { stroke: rgb(var(--wui-x77)); stroke-width: 1.4; fill: none; opacity: .85; }
-/* 敌族发光件（异形磷光绿 / 守墓磷光冰蓝；实心点用 -fill 版） */
-.shipart-volt-g { stroke: rgb(var(--wui-x31)); stroke-width: 1.5; fill: none; opacity: .9; }
-.shipart-volt-i { stroke: rgb(var(--wui-x34)); stroke-width: 1.5; fill: none; opacity: .9; }
-.shipart-fill-g { fill: rgb(var(--wui-x31)); stroke: none; opacity: .9; }
-.shipart-fill-i { fill: rgb(var(--wui-x34)); stroke: none; opacity: .9; }
-/* ---------- 组装机连续生产开关（2026-09-09 船长定：线行滑动开关 + 目标件数） ---------- */
-
-/* （2026-09-10 起 `.app-mf-loop` 逐线控件容器随"循环制造"上移到卡片级而删除，改用 `.app-belt-loop`） */
-
-/* 组装机卡片级「循环制造」控制条（2026-09-10 船长定：开关与目标件数从逐行上移到整张生产卡）——
-   与线行名册同族（同一描边/底色家族，压低一档饱和度以示"卡片级、非单线"）；
-   固定 min-height：开关切换（目标输入框进出）不改变行高，避免卡面跳动 */
-.app-belt-loop { display: flex; align-items: center; flex-wrap: wrap; gap: var(--wui-sp-4) var(--wui-sp-8); min-height: 24px; padding: var(--wui-sp-3) var(--wui-sp-6); border: 1px dashed rgb(var(--wui-cyan) / 0.22); border-radius: var(--wui-sp-5); background: rgb(var(--wui-cyan) / 0.035); font-size: var(--wui-fs-xs); color: rgb(var(--wui-text-hi) / 0.85); }
-.app-mf-made { color: rgb(var(--wui-accent)); font-variant-numeric: tabular-nums; }
-.app-mf-why { color: rgb(var(--wui-amber)); }
-.app-mf-note { margin-left: auto; white-space: nowrap; }
-
-.app-toggle { display: inline-flex; align-items: center; gap: var(--wui-sp-5); cursor: pointer; user-select: none; font-size: var(--wui-fs-xs); color: rgb(var(--wui-text-hi) / 0.85); }
-.app-toggle-input { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
-.app-toggle-track { position: relative; width: 30px; height: 16px; border-radius: var(--wui-sp-9); background: rgb(var(--wui-x01) / 0.18); transition: background 0.15s ease; flex: none; }
-.app-toggle-track::after { content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: rgb(var(--wui-x171)); transition: left 0.15s ease, background 0.15s ease; }
-.app-toggle-input:checked + .app-toggle-track { background: rgb(var(--wui-accent) / 0.85); }
-.app-toggle-input:checked + .app-toggle-track::after { left: 16px; background: rgb(var(--wui-x01)); }
-.app-toggle-input:focus-visible + .app-toggle-track { outline: 1px solid rgb(var(--wui-accent) / 0.9); }
-
-.app-mf-goal { display: inline-flex; align-items: center; gap: var(--wui-sp-3); font-size: var(--wui-fs-xs); color: rgb(var(--wui-text-hi) / 0.7); white-space: nowrap; }
-.app-mf-goal-input { width: 46px; padding: var(--wui-sp-1) var(--wui-sp-4); font-size: var(--wui-fs-xs); color: inherit; background: rgb(var(--wui-well) / 0.35); border: 1px solid rgb(var(--wui-cyan) / 0.25); border-radius: var(--wui-sp-4); }
-.app-mf-goal-input:focus { outline: none; border-color: rgb(var(--wui-accent) / 0.8); }
-
-
-/* ---------- 玩家标记（收藏）星标（2026-09-10 船长定：四处界面同一枚星标按钮，未标记=暗色空心、已标记=金色实心） ---------- */
-/* 小方块图标按钮（复刻 .app-btn.is-small 家族尺寸；星标常驻显示，标记与否不改布局） */
-.app-mark-btn { display: inline-flex; align-items: center; justify-content: center; padding: var(--wui-sp-2) var(--wui-sp-5); background: rgb(var(--wui-bg-btn)); color: rgb(var(--wui-text-hi) / 0.42); border: 1px solid rgb(var(--wui-border-bright)); border-radius: var(--wui-sp-3); cursor: pointer; transition: all 0.15s; font-family: inherit; }
-.app-mark-btn .app-ico { margin-right: 0; }
-.app-mark-btn:hover { background: rgb(var(--wui-bg-btn-hover)); border-color: rgb(var(--wui-accent)); color: rgb(var(--wui-amber-3)); }
-.app-mark-btn.is-on { color: rgb(var(--wui-amber-3)); border-color: rgb(var(--wui-gold) / 0.55); background: rgb(var(--wui-gold) / 0.1); }
-/* 已标记的星形实心：填色由 CSS 给（Glyph 本体保持线稿语言） */
-.app-mark-btn.is-on .app-ico path { fill: rgb(var(--wui-amber-3) / 0.35); }
-.app-mark-btn:focus-visible { outline: none; border-color: rgb(var(--wui-accent)); }
-
-/* 卡片头右侧按钮/徽标分组（精炼炉卡、组装机蓝图卡；与 .app-ship-top-right 同款布局） */
-.app-belt-head-right { margin-left: auto; display: inline-flex; align-items: center; gap: var(--wui-sp-6); flex: none; }
-/**
- * **声望门槛提示单独占一行**（2026-09-22 船长报障：「组装机『✕ 需「深空工业协会」声望 4（当前 1）』
- * 的标签**不再是单独占一行**」）。
- *
- * 沿革（查实的根因）：2026-09-10「玩家标记（收藏）」批（`a838ea0b`）给卡头加了 `.app-belt-head-right`
- * 这个**不换行的 inline-flex** 分组，把那枚提示从"卡头直接子元素"挪进了它里面 ⇒ 从此被挤在星标旁边，
- * 长句还会溢出卡片。这里让它**整行独占、右对齐**（其余徽标照旧排在星标那一行）。
- * ⚠ 只对 `.is-exotic`（声望门槛）生效：`is-stock` / `is-cost` 等短徽标不跟着换行。
- */
-.app-belt-head { flex-wrap: wrap; }
-.app-belt-head-right { flex-wrap: wrap; justify-content: flex-end; flex: 0 1 auto; min-width: 0; max-width: 100%; }
-.app-belt-head-right > .app-chip.is-exotic { flex-basis: 100%; max-width: 100%; text-align: right; white-space: normal; height: auto; }
-/* ---------- 星图页自适应（2026-09-10 船长定：全屏/宽屏下星图"过宽→过高"，把面板顶出滚动条） ---------- */
-/* 面板体纵向 flex：状态行等按自然高度，剩余高度全部交给星图容器 */
-.app-exp-panel > .wui-panel-body { display: flex; flex-direction: column; }
-.app-exp-panel > .wui-panel-body > *:not(.app-starmap-wrap) { flex: 0 0 auto; }
-/* 星图容器：可被压缩（min-height:0 才允许收缩），内部列向排列——星图吃高度，提示行/编辑条保持自然高度 */
-.app-starmap-wrap { display: flex; flex-direction: column; flex: 0 1 auto; min-height: 0; }
-.app-map-hint { flex: 0 0 auto; }
-/* 星图：容器够高时尺寸与观感不变；装不下时整体等比缩小（SVG 按 viewBox 居中留白），任何窗口尺寸都不出滚动条；
-   保底高度 200px——窗口被压到极矮时宁可面板内滚动，也不把星图压成一条线；border-box 顺带消掉 width:100% 与 1px 边框叠加的 2px 溢出 */
-.app-starmap { flex: 0 1 auto; min-height: 200px; box-sizing: border-box; }.app-map-editbar { flex: 0 0 auto; } /* 星图自适应：布局编辑条（开发工具）保持自然高度，不参与压缩 */
-/* 维修装置·运转消耗高亮（2026-09-10 船长：消耗的修理组件常被玩家忽略）——沿用既有 is-* 修饰体例 */
-.app-chip.is-cost { color: rgb(var(--wui-warn-soft)); border-color: rgb(var(--wui-warn-soft) / 0.5); background: rgb(var(--wui-warn-soft) / 0.1); }
-.app-chip.is-warn { color: rgb(var(--wui-amber-strong)); border-color: rgb(var(--wui-amber-strong) / 0.5); background: rgb(var(--wui-amber-strong) / 0.1); } /* 低安航路：运输途中可能遇袭（2026-09-13 船长「会遇袭的运输任务需要特意标注」） */
-.app-chip.is-ok { color: rgb(var(--wui-mint)); border-color: rgb(var(--wui-mint) / 0.45); background: rgb(var(--wui-mint) / 0.08); } /* 无消耗自愈（异形生体件） */
-/* **危险标签**（**2026-09-26 船长令**：「**将入侵卡标红，打上危险的标签**」）——红底红字，
- * 沿用既有 `is-*` 修饰体例、配色取既有 `--wui-danger-strong`（与入侵残骸条同一族红）。
- * 目前唯一用处 = 入侵舰队的悬赏卡：敌人是随机抽的、胜率不固定，先给玩家一个"别按平时的手感上"的信号。 */
-.app-chip.is-danger { color: rgb(var(--wui-danger-strong)); border-color: rgb(var(--wui-danger-strong) / 0.55); background: rgb(var(--wui-danger-deep) / 0.14); }
-.app-kit-stock.is-bad { color: rgb(var(--wui-red)); font-weight: 600; }
-.app-kit-stock.is-warn { color: rgb(var(--wui-amber)); font-weight: 600; }
-.app-kit-stock.is-ok { color: rgb(var(--wui-text-dim)); }
+.app-inv-count {
+  font-family: var(--wui-mono);
+  font-size: var(--wui-fs-xs);
+  color: rgb(var(--wui-text-dim));
+}
 
 /* ═══════════ 通讯页（2026-09-11 船长定：NPC 消息补充剧情与任务提示；邮件形导航图标 + 通讯器造型） ═══════════
    一级页不滚（约定第六章）：整页不滚，列表内部滚动（.app-comms-list）。
