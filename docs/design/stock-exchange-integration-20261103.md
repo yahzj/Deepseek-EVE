@@ -157,5 +157,15 @@ Node 内部接口（**仅 localhost + 共享密钥**）：
 - **内测处置**：对船长账号 18（`dadadada`）通过内部资金桥记一笔 **5000 万内测启动资金**（nonce `playtest-grant-20261104`），双分录可审计：
   - `internal_exchange_credit_in`：account_id=18，credits_delta=+50,000,000；
   - `internal_exchange_credit_clearing`：account_id=null，credits_delta=−50,000,000。
-- **待办（正式上线前必须解决）**：确定「游戏存档信用点 → 服务器钱包」的合法充值来源（如云存档校验后按存档余额一次性镜像、或游戏内服务端经济活动可赚取），并加配额与防刷；不能长期依赖手工内测拨款。
+- **已取代（2026-11-04）**：船长定案改为「存档币本地为准、服务器只记交易所账」（见 `stock-exchange-products-20261104.md`）。Go 开 `EXCHANGE_LOCAL_SAVE_MODE=1` 后入金/出金不再依赖服务器钱包；上述 5000 万拨款仅作历史记录。
+
+### 8.10 2026-11-04 批次部署记录
+
+- **回合涨跌幅限制**（±3% 普通 / ±8% 事件，按波动档缩放）：已部署；部署后第一个结算回合（01:20）SMHI +0.15%、UGMC −3.75%、OJLS +4.49%、ABSI +3.75%，全部在限制内。
+- **64 事件四象分类 + 六人格 EVE 风改名**（星门局 K7A0 / 截击者 F4B1 / 锚定者 A2C7 / 黑隐者 C3A8 / 克隆潮 H5D6 / 利维坦 L2F9）：已部署；`/agents` 实测新名 + callsign；`/events` 新增 xiang/xiangName/intensity。
+- **本地记账模式**（`EXCHANGE_LOCAL_SAVE_MODE=1`）：空钱包新账号直接入金 300 万验证通过；出金只扣交易所现金。
+- **保底基金**（`POST /api/exchange/fund/play`）：部署后 4 次结算验证（输赢各现、重放幂等、现金守恒、审核行 kind=fund_play）。
+- **K 线单次上限 1000→2016**（5m 约一周）：实测一次返回 2016 根。
+- **前端**：默认 IP 直连 + 失败回退域名、7 天离线缓存、回合倒计时徽标、入金/出金弹窗（本地存档扣加）、本地债券、保底基金。
+- **回滚**：每批部署前备份 `/home/ubuntu/whale-exchange/whale-exchange.prev`；环境变量开关：`EXCHANGE_LOCAL_SAVE_MODE=0` 回旧钱包桥、`EXCHANGE_ROUND_LIMIT_BP=0` 关涨跌幅限制。
 
