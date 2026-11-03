@@ -933,7 +933,7 @@ export class GameEngine {
   /** 按当前局面重排心跳周期（只在需要变速时才重建定时器，避免每拍 clearInterval 抖动） */
   private ensurePump(): void {
     if (this.stopped) return
-    const want = this.wantsFastPump() ? 100 : 500
+    const want = this.wantsFastPump() ? 100 : 250
     if (want === this.pumpMs) return
     this.pumpMs = want
     if (this.intervalId !== null) window.clearInterval(this.intervalId)
@@ -1503,7 +1503,7 @@ export class GameEngine {
         return // 下一拍起进入 inBattle 泵，余额按 100ms 分片追平
       }
     }
-    if (this.pendingMs >= 1000) {
+    if (this.pendingMs >= this.pumpMs) {
       this.advanceSlice(this.pendingMs)
       this.pendingMs = 0
       this.notify()

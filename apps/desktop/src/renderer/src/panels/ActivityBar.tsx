@@ -10,7 +10,7 @@
  */
 import { activityOverview, scanAwaitingView, scanStatus, SYNAPTIC_ACCELERANT_MUL } from '@whale/core'
 import type { ActivityView } from '@whale/core'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
@@ -87,6 +87,46 @@ function ActivityBarIdle({
       </div>
       {tip ? <div className="app-activitybar-idle-tip">{tip}</div> : null}
     </div>
+  )
+}
+
+/**
+ * 进度条平滑补间填充微组件：
+ * 当百分比递增时，遵循 CSS 声明的 0.25s linear 硬件加速过渡；
+ * 当百分比回退或循环重置时（percent < prevPercent），设置 transition: 'none' 瞬回归零，
+ * 避免反向缩回倒放的非物理视觉瑕疵。
+ */
+function SmoothFill({
+  percent,
+  className,
+  as: Tag = 'span',
+  style,
+}: {
+  percent: number
+  className?: string
+  as?: 'span' | 'i'
+  style?: React.CSSProperties
+}) {
+  const clamped = Math.min(100, Math.max(0, percent))
+  const prevRef = useRef(clamped)
+  const isReset = clamped < prevRef.current
+
+  useEffect(() => {
+    prevRef.current = clamped
+  })
+
+  const defaultClass = Tag === 'span' ? 'app-activitybar-fill' : undefined
+  const finalClass = className !== undefined ? className : defaultClass
+
+  return (
+    <Tag
+      className={finalClass}
+      style={{
+        ...style,
+        width: `${clamped}%`,
+        ...(isReset ? { transition: 'none' } : undefined),
+      }}
+    />
   )
 }
 
@@ -280,10 +320,7 @@ export function ActivityBar({
         {hasProgress ? (
           <div className="app-activitybar-progress-row">
             <span className="app-activitybar-track">
-              <span
-                className="app-activitybar-fill"
-                style={{ width: `${Math.min(100, Math.max(0, v.percent ?? 0))}%` }}
-              />
+              <SmoothFill percent={v.percent ?? 0} />
             </span>
           </div>
         ) : null}
@@ -350,7 +387,7 @@ export function ActivityBar({
               </div>
               <div className="app-activitybar-progress-row">
                 <span className="app-activitybar-track">
-                  <span className="app-activitybar-fill" style={{ width: `${Math.min(100, Math.max(0, scanBar.percent))}%` }} />
+                  <SmoothFill percent={scanBar.percent} />
                 </span>
               </div>
             </button>
@@ -408,7 +445,7 @@ export function ActivityBar({
                 </span>
                 {v.percent !== null ? (
                   <span className="app-progress-mini" title={`${v.label} ${Math.round(v.percent)}%`}>
-                    <i style={{ width: `${Math.min(100, Math.max(0, v.percent))}%` }} />
+                    <SmoothFill percent={v.percent} as="i" />
                   </span>
                 ) : null}
               </button>

@@ -898,11 +898,21 @@ html[data-locale='en'] body {
 }
 
 .app-btn.is-small {
-
   padding: var(--wui-sp-2) var(--wui-sp-8);
-
   font-size: var(--wui-fs-xs);
-
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.app-btn.is-small::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  left: -2px;
+  right: -2px;
 }
 
 /* ---------- 训练队列 ---------- */
@@ -3878,10 +3888,15 @@ html[data-locale='en'] body {
   font: inherit;
   text-align: left;
   position: relative;
+  cursor: pointer;
+}
+.app-shipwin-wrap:hover .app-shipwin {
+  border-color: rgb(var(--wui-flag) / 0.5);
+  box-shadow: 0 0 10px rgb(var(--wui-accent) / 0.2);
 }
 .app-shipwin-wrap.is-restore { cursor: pointer; }
 .app-shipwin-wrap.is-restore:hover .app-shipwin { border-color: rgb(var(--wui-flag) / 0.6); }
-.app-shipwin-wrap.is-restore:focus-visible { outline: 1px solid rgb(var(--wui-gold)); outline-offset: 2px; }
+.app-shipwin-wrap:focus-visible { outline: 1px solid rgb(var(--wui-gold)); outline-offset: 2px; }
 /* 角标：脉冲语汇沿用撤掉那枚浮动标的 `app-float-pulse`（同族观感，不另造） */
 .app-shipwin-badge {
   position: absolute;
@@ -6658,54 +6673,31 @@ html[data-locale='en'] body {
 }
 
 .app-mkt-depth {
-
   display: grid;
-
-  grid-template-columns: 58px 1fr 52px;
-
+  grid-template-columns: minmax(64px, auto) 1fr minmax(52px, auto);
   gap: var(--wui-sp-6);
-
   align-items: center;
-
   font-size: var(--wui-fs-xs);
-
   line-height: 1.5;
-
   font-family: var(--wui-mono);
-
+  font-variant-numeric: tabular-nums;
 }
-
 .app-mkt-depth-price { color: rgb(var(--wui-text-dim)); text-align: right; }
-
 .app-mkt-depth-bar {
-
   height: 8px;
-
   border-radius: var(--wui-sp-3);
-
   background: rgb(var(--wui-well) / 0.35);
-
   overflow: hidden;
-
   display: block;
-
 }
-
 .app-mkt-depth-bar i {
-
   display: block;
-
   height: 100%;
-
   border-radius: var(--wui-sp-3);
-
 }
-
 .app-mkt-depth-buy i { background: linear-gradient(90deg, rgb(var(--wui-accent-deep)), rgb(var(--wui-accent))); }
-
 .app-mkt-depth-sell i { background: linear-gradient(90deg, rgb(var(--wui-gold-deep)), rgb(var(--wui-amber))); }
-
-.app-mkt-depth-qty { color: rgb(var(--wui-flag)); }
+.app-mkt-depth-qty { color: rgb(var(--wui-flag)); text-align: right; }
 
 .app-mkt-trade {
 
@@ -9867,7 +9859,7 @@ html[data-locale='en'] body {
 
 }
 
-.app-activitybar-fill { transition: width 0.35s ease;
+.app-activitybar-fill { transition: width 0.25s linear;
 
   display: block;
 
@@ -9961,7 +9953,7 @@ html[data-locale='en'] body {
 
 }
 
-.app-activitybar-scan.is-done .app-activitybar-fill { transition: width 0.35s ease; background: rgb(var(--wui-gold)); }
+.app-activitybar-scan.is-done .app-activitybar-fill { transition: width 0.25s linear; background: rgb(var(--wui-gold)); }
 
 .app-activitybar-scan.is-done .app-activitybar-scan-time { color: rgb(var(--wui-gold)); }
 
@@ -11168,7 +11160,7 @@ html[data-locale='en'] body {
 
 .app-progress-mini { display: inline-block; flex: 0 0 auto; width: 60px; height: 6px; border-radius: var(--wui-sp-3); background: rgb(var(--wui-well) / 0.45); overflow: hidden; }
 
-.app-progress-mini i { display: block; height: 100%; border-radius: var(--wui-sp-3); background: linear-gradient(90deg, rgb(var(--wui-accent-deep)), rgb(var(--wui-accent))); transition: width .35s ease; }
+.app-progress-mini i { display: block; height: 100%; border-radius: var(--wui-sp-3); background: linear-gradient(90deg, rgb(var(--wui-accent-deep)), rgb(var(--wui-accent))); transition: width 0.25s linear; }
 
 .app-progress-mini.is-warn i { background: linear-gradient(90deg, rgb(var(--wui-gold-deep)), rgb(var(--wui-amber))); }
 
@@ -13327,7 +13319,9 @@ input.app-wh-template-name { min-height: 36px; padding: var(--wui-sp-6) var(--wu
    ⚠ 新 HUD 页（.hud-bar > i）走的是技能口径的 	ransform: scaleX()（动效只碰 transform/opacity），
    两条路线**参数一致（0.35s ease）**，观感对得上。
    ⚠ 关动画偏好下不"涨"，直接给终态（无障碍硬线）。 */
-.app-activitybar-fill,
+.app-activitybar-fill {
+  transition: width 0.25s linear;
+}
 .app-act-bar,
 .app-dur-fill,
 .app-skill-card-bar i {
@@ -14209,11 +14203,19 @@ body.no-fx .app-root.is-layout-modern .app-fit-slot-icon::after {
 /* ═══════════════════════════════════════════════════════════════════════════════
  * 11. 能量流动与战术微动效
  * ═══════════════════════════════════════════════════════════════════════════════ */
-.app-root.is-layout-modern .app-fit-cpustrip-track i {
+.app-root.is-layout-modern .app-fit-cpustrip-track:not(.is-warn):not(.is-full) i {
   background: linear-gradient(90deg, rgb(var(--wui-hud-primary)), rgb(var(--wui-hud-primary-hover)), rgb(var(--wui-hud-primary)));
   background-size: 200% 100%;
   animation: hud-energy-flow 4s linear infinite;
   box-shadow: 0 0 8px rgb(var(--wui-hud-primary) / 0.5);
+}
+.app-root.is-layout-modern .app-fit-cpustrip-track.is-warn i {
+  background: linear-gradient(90deg, rgb(var(--wui-gold-deep)), rgb(var(--wui-amber)));
+  animation: none;
+}
+.app-root.is-layout-modern .app-fit-cpustrip-track.is-full i {
+  background: linear-gradient(90deg, rgb(var(--wui-red-deep)), rgb(var(--wui-red)));
+  animation: none;
 }
 @keyframes hud-energy-flow {
   0% { background-position: 0% 0%; }

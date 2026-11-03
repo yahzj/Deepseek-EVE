@@ -57,6 +57,7 @@ import { CommsPage } from './pages/CommsPage'
 import { CommsEave, CommsScreen } from './panels/CommsReader'
 import { TaskCenterPage } from './pages/TaskCenterPage'
 import { AchievementsPage } from './pages/AchievementsPage'
+import { ExchangePage } from './pages/ExchangePage'
 import type { MapGotoTarget, MapTab, TaskFocusTarget } from './pages/MapPage'
 import type { ToastFn } from './pages/common'
 import type { GameEngine } from './game/engine'
@@ -121,6 +122,13 @@ const DEBUG_NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
    * 先进 `DEBUG_NAV_ITEMS`（只有调试模式看得见），验收通过再决定要不要转正/替换。
    */
   { key: 'industryHud', label: 'ui.hud.101', icon: 'nav-industry' },
+  /**
+   * **证券交易所（F0 可点击原型）**（2026-11-03 船长：「先做可点击原型」）：
+   * 只在调试模式可见。label 这里刻意用中文原文而不是 l10n id——`AppShell` 的 `t()` 走
+   * `textOf()`，查不到词条时**原样返回传入的字符串**（见 `i18n/locale.tsx`），所以中文原文
+   * 能安全显示、不会变成空串或抛错；转正时再登记 `ui.exchange.*` 并换成 id。
+   */
+  { key: 'exchange', label: '证券交易所', icon: 'nav-market' },
 ]
 
 export type PageKey =
@@ -135,9 +143,10 @@ export type PageKey =
   | 'task'
   | 'achieve'
   | 'comms'
+  | 'exchange'
 
 /** 已转换"一级页不滚"的页面（每完成一页在此登记；见 docs/design/page-scroll-layout.md 实施清单） */
-const PAGE_NO_SCROLL = new Set<string>(['ship', 'fit', 'market', 'map', 'industry', 'industryHud', 'skills', 'items', 'task', 'achieve', 'comms'])
+const PAGE_NO_SCROLL = new Set<string>(['ship', 'fit', 'market', 'map', 'industry', 'industryHud', 'skills', 'items', 'task', 'achieve', 'comms', 'exchange'])
 
 /**
  * 手机自绘下拉面板「最短出现间隔」（毫秒 · 2026-09-13 船长定）。
@@ -1308,6 +1317,16 @@ async function applyLayoutAndReload(): Promise<void> {
     return () => window.removeEventListener('whale-planetary-open', open)
   }, [])
   useEffect(() => {
+    const onPageChange = (e: Event): void => {
+      const ce = e as CustomEvent<{ page: PageKey }>
+      if (ce.detail?.page) {
+        changePage(ce.detail.page)
+      }
+    }
+    window.addEventListener('whale-page-change', onPageChange)
+    return () => window.removeEventListener('whale-page-change', onPageChange)
+  }, [changePage])
+  useEffect(() => {
     const s = engine.state.onboarding.step
     if (prevObStep.current === ONB_AWAKEN && s !== ONB_AWAKEN) {
       // 序章收尾落「任务中心 · 重要任务」：写会话级记忆（原写 localStorage 的跨启动记忆，
@@ -1455,6 +1474,7 @@ async function applyLayoutAndReload(): Promise<void> {
                 }}
               />
             ) : null}
+            {page === 'exchange' ? <ExchangePage {...pageProps} /> : null}
             {page === 'industry' ? (
             <IndustryPage
             {...pageProps}
