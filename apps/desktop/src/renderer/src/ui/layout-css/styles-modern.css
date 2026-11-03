@@ -4866,9 +4866,43 @@ html[data-locale='en'] body {
 }
 
 .app-cargo-head .wui-progress {
-
   flex: 1;
+}
 
+.app-cargo-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--wui-sp-10);
+  padding: var(--wui-sp-4) var(--wui-sp-8);
+  background: rgb(var(--wui-bg-panel) / 0.55);
+  border: 1px solid rgb(var(--wui-border) / 0.6);
+  border-radius: var(--wui-sp-5);
+  font-size: var(--wui-fs-xs);
+  color: rgb(var(--wui-text-dim));
+  margin-top: var(--wui-sp-6);
+  margin-bottom: var(--wui-sp-8);
+}
+
+.app-cargo-stat-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--wui-sp-4);
+}
+
+.app-cargo-stat-val {
+  font-family: var(--wui-mono);
+  color: rgb(var(--wui-text));
+  font-weight: 600;
+  font-size: var(--wui-fs-s);
+}
+
+.app-btn.is-tidy {
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.app-btn.is-tidy:active {
+  transform: scale(0.96);
 }
 
 /* T3 货仓页：查看船选择条 */
@@ -7555,8 +7589,8 @@ body.no-fx .app-fit-cpustrip-track.is-full i {
 
 /* 标题行内搜索栏（2026-09-09 船长：技能目录 / 仓库标题内搜索；观感同市场搜索框） */
 .app-head-search-wrap { display: inline-flex; align-items: center; gap: var(--wui-sp-8); }
-.app-head-search { width: 150px; padding: var(--wui-sp-3) var(--wui-sp-8); border: 1px solid rgb(var(--wui-border)); border-radius: var(--wui-sp-5); background: rgb(var(--wui-bg-field) / 0.8); color: rgb(var(--wui-text)); font-family: inherit; font-size: var(--wui-fs-s); }
-.app-head-search:focus { outline: none; border-color: rgb(var(--wui-accent)); }
+.app-head-search { width: 150px; padding: var(--wui-sp-3) var(--wui-sp-8); border: 1px solid rgb(var(--wui-border)); border-radius: var(--wui-sp-5); background: rgb(var(--wui-bg-field) / 0.8); color: rgb(var(--wui-text)); font-family: inherit; font-size: var(--wui-fs-s); transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease; }
+.app-head-search:focus { outline: none; border-color: rgb(var(--wui-accent)); box-shadow: 0 0 0 2px rgb(var(--wui-accent) / 0.25); background: rgb(var(--wui-bg-panel)); }
 .app-head-search::placeholder { color: rgb(var(--wui-text-dim)); opacity: 0.85; }
 
 /* 市场搜索框 */
@@ -7978,43 +8012,39 @@ body.no-fx .app-fit-cpustrip-track.is-full i {
 /* ═══════════════ 弹层 / 存档管理 / 手册图鉴（B5 B6） ═══════════════ */
 
 .app-modal-mask {
-
   position: fixed;
-
   inset: 0;
-
   z-index: 120;
-
-  background: rgb(var(--wui-x12) / 0.62);
-
+  background: rgb(var(--wui-x12) / 0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   display: flex;
-
   align-items: center;
-
   justify-content: center;
-
+  animation: appModalMaskFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .app-modal {
-
   width: 460px;
-
   max-width: calc(100vw - 40px);
-
   max-height: min(640px, calc(100vh - 80px));
-
   display: flex;
-
   flex-direction: column;
-
   background: linear-gradient(180deg, rgb(var(--wui-bg-scene-dock)), rgb(var(--wui-x72)));
-
   border: 1px solid rgb(var(--wui-accent) / 0.35);
-
   border-radius: var(--wui-sp-10);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.65), 0 0 24px rgb(var(--wui-accent) / 0.08);
+  animation: appModalPopIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
 
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+@keyframes appModalMaskFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 
+@keyframes appModalPopIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 .app-modal-wide {
@@ -8781,7 +8811,7 @@ body.no-fx .app-fit-cpustrip-track.is-full i {
 
 .app-info-val { color: rgb(var(--wui-text)); min-width: 0; overflow-wrap: anywhere; font-family: var(--wui-mono); font-variant-numeric: tabular-nums; }
 
-.app-info-note { margin-top: var(--wui-sp-5); padding-top: var(--wui-sp-4); border-top: 1px dashed rgb(var(--wui-border)); color: rgb(var(--wui-text-dim)); font-size: var(--wui-fs-2xse); line-height: 1.5; }
+.app-info-note { margin-top: var(--wui-sp-5); padding-top: var(--wui-sp-4); border-top: 1px dashed rgb(var(--wui-border)); color: rgb(var(--wui-text-dim)); font-size: var(--wui-fs-2xse); line-height: 1.6; text-align: justify; text-justify: inter-ideograph; }
 
 .app-combat-badges { display: inline-flex; gap: var(--wui-sp-6); flex-wrap: wrap; align-items: center; }
 
@@ -8871,43 +8901,31 @@ body.no-fx .app-fit-cpustrip-track.is-full i {
 /* ═══════════════ 全局悬停提示（Tooltip） ═══════════════ */
 
 .app-tip {
-
   position: fixed;
   width: max-content;
-
-  /* ⚠ **必须压过全站所有浮层**（2026-09-16 船长报障：「装入和更换界面中，鼠标悬停的悬浮窗会被
-     界面遮挡」——根因 = 原值 1000 **低于**换装浮层 `.app-fit-overlay` 的 1100：提示层虽然画在
-     最外层 fixed 单例里，却被浮层整片盖住）。
-     现行 3000 = 全站最高浮层 1100 之上留足余量；**今后新加浮层不得超过本值**。 */
   z-index: 3000;
-
-  /* border-box让限宽约束外框；实际宽高与收边统一走ui/tooltipGeometry。 */
   box-sizing: border-box;
-
   overflow-y: auto;
-
   padding: var(--wui-sp-7) var(--wui-sp-11);
-
   font-size: var(--wui-fs-xsb);
-
   line-height: 1.6;
-
   white-space: pre-line;
-
   color: rgb(var(--wui-text));
-
   background: linear-gradient(180deg, rgb(var(--wui-x136) / 0.98), rgb(var(--wui-x71) / 0.98));
-
   border: 1px solid rgb(var(--wui-accent) / 0.35);
-
   border-radius: var(--wui-sp-7);
-
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
-
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   pointer-events: none;
-
   word-break: break-word;
+  transition: opacity 0.14s cubic-bezier(0.16, 1, 0.3, 1), transform 0.14s cubic-bezier(0.16, 1, 0.3, 1);
+}
 
+.app-tip.is-leaving {
+  opacity: 0;
+  transform: scale(0.98);
+  pointer-events: none;
 }
 
 /* 富内容（舰船/装备说明表）在提示层内的视觉微调 */
@@ -8916,7 +8934,7 @@ body.no-fx .app-fit-cpustrip-track.is-full i {
 .app-tip .app-info-key { flex: 0 0 112px; width: 112px; }
 .app-tip .app-info-val { flex: 1 1 auto; }
 
-.app-tip .app-info-note { font-size: var(--wui-fs-2xse); opacity: 0.72; margin-top: var(--wui-sp-4); padding-top: var(--wui-sp-3); border-top: 1px dashed rgb(var(--wui-border)); }
+.app-tip .app-info-note { font-size: var(--wui-fs-2xse); opacity: 0.85; margin-top: var(--wui-sp-4); padding-top: var(--wui-sp-3); border-top: 1px dashed rgb(var(--wui-border)); line-height: 1.6; text-align: justify; text-justify: inter-ideograph; }
 
 /* ---------- 星图：布局编辑器 / 名称下置微调 ---------- */
 
@@ -10992,6 +11010,103 @@ body.no-fx .app-fit-cpustrip-track.is-full i {
 
   padding: var(--wui-sp-3) var(--wui-sp-6);
 
+}
+
+/* ── 任务中心排版与等宽数字契约 ── */
+.app-station-mats,
+.app-imp-card-body,
+.app-imp-card-goal,
+.app-station-deliver,
+.app-task-reward {
+  text-align: justify;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 任务中心通用微进度条（带平滑过渡） ── */
+.app-task-progress-track {
+  width: 100%;
+  height: 4px;
+  background: rgb(var(--wui-bg-deep) / 0.7);
+  border-radius: var(--wui-sp-2);
+  overflow: hidden;
+  position: relative;
+  border: 1px solid rgb(var(--wui-border) / 0.3);
+  margin: var(--wui-sp-2) 0;
+  box-sizing: border-box;
+}
+.app-task-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, rgb(var(--wui-accent-deep)), rgb(var(--wui-accent)));
+  border-radius: var(--wui-sp-2);
+  transition: width 0.36s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.app-task-progress-bar.is-gold {
+  background: linear-gradient(90deg, rgb(var(--wui-gold-soft)), rgb(var(--wui-gold)));
+  box-shadow: 0 0 6px rgb(var(--wui-gold) / 0.4);
+}
+.app-task-progress-bar.is-ready {
+  background: linear-gradient(90deg, rgb(var(--wui-green) / 0.8), rgb(var(--wui-green)));
+  box-shadow: 0 0 6px rgb(var(--wui-green) / 0.4);
+}
+
+/* ── 奖励领取就绪态动效（金色微光与呼吸，平滑正反馈） ── */
+@keyframes app-btn-gold-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgb(var(--wui-gold) / 0.4), inset 0 0 6px rgb(var(--wui-gold) / 0.15);
+    border-color: rgb(var(--wui-gold) / 0.7);
+  }
+  50% {
+    box-shadow: 0 0 10px 2px rgb(var(--wui-gold) / 0.6), inset 0 0 10px rgb(var(--wui-gold) / 0.3);
+    border-color: rgb(var(--wui-gold));
+  }
+}
+.app-btn.is-claim-ready {
+  color: rgb(var(--wui-gold));
+  border-color: rgb(var(--wui-gold) / 0.75);
+  background: linear-gradient(180deg, rgb(var(--wui-gold) / 0.15) 0%, rgb(var(--wui-bg-panel) / 0.8) 100%);
+  font-weight: 700;
+  animation: app-btn-gold-pulse 2.4s ease-in-out infinite;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.app-btn.is-claim-ready:hover:not(:disabled) {
+  background: rgb(var(--wui-gold) / 0.25);
+  box-shadow: 0 0 14px rgb(var(--wui-gold) / 0.75), inset 0 0 8px rgb(var(--wui-gold) / 0.2);
+  border-color: rgb(var(--wui-gold));
+}
+.app-btn.is-claim-ready:active:not(:disabled) {
+  transform: scale(0.96);
+  filter: brightness(1.25);
+  box-shadow: 0 0 4px rgb(var(--wui-gold) / 0.5);
+}
+
+/* ── 图鉴手册空状态引导 ── */
+.app-codex-empty-guide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--wui-sp-6);
+  padding: var(--wui-sp-14) var(--wui-sp-10);
+  background: rgb(var(--wui-bg-panel) / 0.4);
+  border: 1px dashed rgb(var(--wui-border) / 0.6);
+  border-radius: var(--wui-sp-8);
+  margin: var(--wui-sp-10) auto;
+  max-width: 420px;
+  text-align: center;
+}
+.app-codex-empty-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 0 8px rgb(var(--wui-accent) / 0.3));
+}
+.app-codex-empty-title {
+  font-size: var(--wui-fs-s);
+  color: rgb(var(--wui-text-dim));
+  line-height: 1.5;
+}
+.app-codex-empty-btn {
+  margin-top: var(--wui-sp-4);
 }
 
 /* 通讯器（通讯界面样式：一次性全文呈现） */
@@ -13804,27 +13919,69 @@ input.app-wh-template-name { min-height: 36px; padding: var(--wui-sp-6) var(--wu
   position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
   gap: var(--wui-sp-3); height: 74px; padding: var(--wui-sp-6) var(--wui-sp-4); box-sizing: border-box; overflow: hidden;
   border: 1px solid rgb(var(--wui-border)); border-radius: var(--wui-sp-6); background: rgb(var(--wui-bg-hover) / 0.5);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
-/* 未达成：整体压暗（图案本身已转灰阶，这里再压一层底，与已获得拉开层次） */
-.app-ach-badge:not(.is-earned) { opacity: 0.72; }
+/* 已达成：高光点亮态（科技金辉光） */
+.app-ach-badge.is-earned {
+  border-color: rgb(var(--wui-gold) / 0.55);
+  background: linear-gradient(180deg, rgb(var(--wui-gold) / 0.12) 0%, rgb(var(--wui-bg-hover) / 0.7) 100%);
+  box-shadow: 0 0 12px rgb(var(--wui-gold) / 0.18), inset 0 0 8px rgb(var(--wui-gold) / 0.08);
+}
+.app-ach-badge.is-earned:hover {
+  border-color: rgb(var(--wui-gold) / 0.85);
+  box-shadow: 0 0 16px rgb(var(--wui-gold) / 0.3), inset 0 0 12px rgb(var(--wui-gold) / 0.14);
+}
+/* 未达成：优雅深色哑光 */
+.app-ach-badge:not(.is-earned) {
+  opacity: 0.82;
+  background: rgb(var(--wui-bg-deep) / 0.75);
+  border-color: rgb(var(--wui-border) / 0.45);
+}
+.app-ach-badge:not(.is-earned):hover {
+  opacity: 1;
+  border-color: rgb(var(--wui-border) / 0.7);
+  background: rgb(var(--wui-bg-hover) / 0.6);
+}
 .app-ach-badge-art { display: flex; align-items: center; justify-content: center; height: 34px; line-height: 0; }
 .app-ach-name {
   font-size: var(--wui-fs-2xse); line-height: 1.25; text-align: center; color: rgb(var(--wui-text-dim));
   max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
-.app-ach-badge.is-earned .app-ach-name { color: rgb(var(--wui-text)); }
+.app-ach-badge.is-earned .app-ach-name { color: rgb(var(--wui-text)); font-weight: 600; }
 .app-ach-check {
   position: absolute; top: 2px; right: 4px; font-size: var(--wui-fs-2xsd); line-height: 1;
-  color: rgb(var(--wui-accent)); opacity: 0.9;
+  color: rgb(var(--wui-gold)); filter: drop-shadow(0 0 4px rgb(var(--wui-gold) / 0.6));
+}
+/* 未达成成就底部清晰微进度条 */
+.app-ach-prog-track {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgb(var(--wui-bg-deep) / 0.9);
+  overflow: hidden;
+}
+.app-ach-prog-fill {
+  height: 100%;
+  background: linear-gradient(90deg, rgb(var(--wui-accent-deep)), rgb(var(--wui-accent)));
+  transition: width 0.3s ease;
 }
 /* 悬停富卡：说明行（暗色，独占一行；写法与 `.app-info-note` 同族） */
 .app-tip .app-ach-tip-note {
   display: block; margin-top: var(--wui-sp-5); color: rgb(var(--wui-text-dim)); font-size: var(--wui-fs-xs); line-height: 1.5;
 }
+/* 悬停富卡：进度指示行 */
+.app-tip .app-ach-tip-prog {
+  display: block; margin-top: var(--wui-sp-4); font-size: var(--wui-fs-xsb);
+  color: rgb(var(--wui-text)); font-variant-numeric: tabular-nums;
+}
 /* 悬停富卡：时间行（**单独一行**，虚线分隔 ⇒ 与说明拉开层次） */
 .app-tip .app-ach-tip-time {
   display: block; margin-top: var(--wui-sp-5); padding-top: var(--wui-sp-4);
   border-top: 1px dashed rgb(var(--wui-border)); color: rgb(var(--wui-text-dim)); font-size: var(--wui-fs-2xse); line-height: 1.5;
+  font-variant-numeric: tabular-nums;
 }
 @media (max-width: 640px) {
   .app-ach-grid { grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); }

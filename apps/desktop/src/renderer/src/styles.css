@@ -8008,43 +8008,39 @@ body.no-fx .app-fit-cpustrip-track.is-full i {
 /* ═══════════════ 弹层 / 存档管理 / 手册图鉴（B5 B6） ═══════════════ */
 
 .app-modal-mask {
-
   position: fixed;
-
   inset: 0;
-
   z-index: 120;
-
-  background: rgb(var(--wui-x12) / 0.62);
-
+  background: rgb(var(--wui-x12) / 0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   display: flex;
-
   align-items: center;
-
   justify-content: center;
-
+  animation: appModalMaskFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .app-modal {
-
   width: 460px;
-
   max-width: calc(100vw - 40px);
-
   max-height: min(640px, calc(100vh - 80px));
-
   display: flex;
-
   flex-direction: column;
-
   background: linear-gradient(180deg, rgb(var(--wui-bg-scene-dock)), rgb(var(--wui-x72)));
-
   border: 1px solid rgb(var(--wui-accent) / 0.35);
-
   border-radius: var(--wui-sp-10);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.65), 0 0 24px rgb(var(--wui-accent) / 0.08);
+  animation: appModalPopIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
 
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+@keyframes appModalMaskFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 
+@keyframes appModalPopIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 .app-modal-wide {
@@ -8901,43 +8897,31 @@ body.no-fx .app-fit-cpustrip-track.is-full i {
 /* ═══════════════ 全局悬停提示（Tooltip） ═══════════════ */
 
 .app-tip {
-
   position: fixed;
   width: max-content;
-
-  /* ⚠ **必须压过全站所有浮层**（2026-09-16 船长报障：「装入和更换界面中，鼠标悬停的悬浮窗会被
-     界面遮挡」——根因 = 原值 1000 **低于**换装浮层 `.app-fit-overlay` 的 1100：提示层虽然画在
-     最外层 fixed 单例里，却被浮层整片盖住）。
-     现行 3000 = 全站最高浮层 1100 之上留足余量；**今后新加浮层不得超过本值**。 */
   z-index: 3000;
-
-  /* border-box让限宽约束外框；实际宽高与收边统一走ui/tooltipGeometry。 */
   box-sizing: border-box;
-
   overflow-y: auto;
-
   padding: var(--wui-sp-7) var(--wui-sp-11);
-
   font-size: var(--wui-fs-xsb);
-
   line-height: 1.6;
-
   white-space: pre-line;
-
   color: rgb(var(--wui-text));
-
   background: linear-gradient(180deg, rgb(var(--wui-x136) / 0.98), rgb(var(--wui-x71) / 0.98));
-
   border: 1px solid rgb(var(--wui-accent) / 0.35);
-
   border-radius: var(--wui-sp-7);
-
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
-
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   pointer-events: none;
-
   word-break: break-word;
+  transition: opacity 0.14s cubic-bezier(0.16, 1, 0.3, 1), transform 0.14s cubic-bezier(0.16, 1, 0.3, 1);
+}
 
+.app-tip.is-leaving {
+  opacity: 0;
+  transform: scale(0.98);
+  pointer-events: none;
 }
 
 /* 富内容（舰船/装备说明表）在提示层内的视觉微调 */

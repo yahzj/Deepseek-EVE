@@ -329,7 +329,11 @@ export function hideTip(): void {
 
 export function TooltipLayer(): ReactNode {
   const [state, setState] = useState<TipState | null>(null)
+  const [displayState, setDisplayState] = useState<TipState | null>(null)
+  const [isLeaving, setIsLeaving] = useState(false)
+  const leaveTimerRef = useRef<number>(0)
   const ref = useRef<HTMLDivElement | null>(null)
+
   useEffect(() => {
     listeners.add(setState)
     return () => {
@@ -347,6 +351,37 @@ export function TooltipLayer(): ReactNode {
       window.removeEventListener('pointerdown', dismiss)
       window.removeEventListener('scroll', dismiss, true)
       window.removeEventListener('resize', dismiss)
+    }
+  }, [])
+
+  /**
+   * 悬停提示平滑淡出与防闪烁治理：
+   * 移出时通过 displayState 维持 DOM 节点并追加 .is-leaving 进行平滑淡出；
+   * 140ms 后安全卸载，杜绝指针掠过时的硬切骤闪。
+   */
+  useEffect(() => {
+    if (state !== null) {
+      if (leaveTimerRef.current !== 0) {
+        window.clearTimeout(leaveTimerRef.current)
+        leaveTimerRef.current = 0
+      }
+      setDisplayState(state)
+      setIsLeaving(false)
+    } else if (displayState !== null && !isLeaving) {
+      setIsLeaving(true)
+      leaveTimerRef.current = window.setTimeout(() => {
+        leaveTimerRef.current = 0
+        setDisplayState(null)
+        setIsLeaving(false)
+      }, 140)
+    }
+  }, [state, displayState, isLeaving])
+
+  useEffect(() => {
+    return () => {
+      if (leaveTimerRef.current !== 0) {
+        window.clearTimeout(leaveTimerRef.current)
+      }
     }
   }, [])
 
@@ -625,18 +660,29 @@ export function TooltipLayer(): ReactNode {
 
   // 渲染后按实际尺寸精修落点（首帧估算 → 实测翻转/收敛一次；cx < 0 表示已精修）
   useLayoutEffect(() => {
-    if (!state || state.cx < 0) return
+    if (!displayState || displayState.cx < 0) return
     const el = ref.current
     if (!el) return
     const m = viewMetrics()
-    const layout = tooltipLayout(m, { x: state.cx, y: state.cy }, { width: el.offsetWidth, height: el.offsetHeight })
-    setState((s) => (s && s.cx >= 0 ? { ...s, cx: -1, cy: -1, ...layout } : s))
-  }, [state])
+    const layout = tooltipLayout(m, { x: displayState.cx, y: displayState.cy }, { width: el.offsetWidth, height: el.offsetHeight })
+    setDisplayState((s) => (s && s.cx >= 0 ? { ...s, cx: -1, cy: -1, ...layout } : s))
+  }, [displayState])
 
-  if (!state) return null
+  if (!displayState) return null
+  const isMeasuring = displayState.cx >= 0
   return (
-    <div ref={ref} className="app-tip" style={{ left: state.x, top: state.y, maxWidth: state.maxWidth, maxHeight: state.maxHeight }}>
-      {state.content}
+    <div
+      ref={ref}
+      className={`app-tip${isLeaving ? ' is-leaving' : ''}${isMeasuring ? ' is-measuring' : ''}`}
+      style={{
+        left: displayState.x,
+        top: displayState.y,
+        maxWidth: displayState.maxWidth,
+        maxHeight: displayState.maxHeight,
+        visibility: isMeasuring ? 'hidden' : 'visible',
+      }}
+    >
+      {displayState.content}
     </div>
   )
 }

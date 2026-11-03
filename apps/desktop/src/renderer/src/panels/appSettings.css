@@ -220,3 +220,77 @@
   line-height: 1.7;
   color: rgb(var(--wui-text-dim));
 }
+
+/* ── 三、设置面板体验微动效与排版优化 ── */
+
+/* 设置行：微光悬停、层次分明的圆角与背景 */
+.app-settings-modal .app-settings-row {
+  transition: border-color 0.18s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.app-settings-modal .app-settings-row:hover {
+  border-color: rgb(var(--wui-accent) / 0.4);
+  background: rgb(var(--wui-bg-field) / 0.75);
+}
+
+/* 按钮及开关微动效（Toggle 按下缩放、激活微光、平滑过渡） */
+.app-settings-modal .app-btn {
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.app-settings-modal .app-btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.app-settings-modal .app-btn.is-primary {
+  box-shadow: 0 0 10px rgb(var(--wui-accent) / 0.35), inset 0 0 6px rgb(var(--wui-accent) / 0.2);
+  border-color: rgb(var(--wui-accent));
+}
+
+.app-settings-modal .app-btn.is-warn {
+  box-shadow: 0 0 10px rgb(var(--wui-amber) / 0.35);
+}
+
+/* 主题选择器专属卡片排布与微光激活态 */
+.app-settings-btns.is-theme-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--wui-sp-6);
+}
+
+.app-settings-btns.is-theme-group .app-btn {
+  min-width: 60px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.app-settings-btns.is-theme-group .app-btn.is-primary {
+  box-shadow: 0 0 12px rgb(var(--wui-accent) / 0.45), inset 0 0 8px rgb(var(--wui-accent) / 0.25);
+  border-color: rgb(var(--wui-accent));
+  font-weight: 700;
+}
+
+/* 滑块微动效：手柄微光、悬停响应 */
+.app-settings-slider {
+  transition: filter 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.app-settings-slider:hover:not(:disabled) {
+  filter: drop-shadow(0 0 6px rgb(var(--wui-accent) / 0.5));
+}
+
+/* 复选框开关微动效与整齐居中 */
+.app-settings-modal input[type='checkbox'] {
+  accent-color: rgb(var(--wui-accent));
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+  vertical-align: middle;
+  margin-right: var(--wui-sp-6);
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.app-settings-modal input[type='checkbox']:active {
+  transform: scale(0.9);
+}

@@ -29,7 +29,7 @@
 | **第 16 轮** | 全局 · 虫洞与空间信号矩阵解密 | 矩阵探测网格、波形共振图对齐、信标解锁动效、探索结算弹窗 | 已完成 ✓ |
 | **第 17 轮** | 全局 · 物品背包与仓储物流交互 | 物品槽位悬停浮层、稀有度边框、堆叠数量角标、分类筛选 Tab | 已完成 ✓ |
 | **第 18 轮** | 全局 · 任务中心与成就图鉴手册 | 任务追踪进度条、奖励领取正反馈微动效、成就点亮、手册检索 | 已完成 ✓ |
-| **第 19 轮** | 全局 · 通用弹窗、设置面板与 Tooltip | 统一 Tooltip 延迟与防闪烁、全局模态居中、ESC 退出、设置选项 | 待开始 |
+| **第 19 轮** | 全局 · 通用弹窗、设置面板与 Tooltip | 统一 Tooltip 延迟与防闪烁、全局模态居中、ESC 退出、设置选项 | 已完成 ✓ |
 | **第 20 轮** | 全局 · 全端分辨率响应式与全主题终审闭环 | 1080P/2K/4K/窄窗适配、全主题色板契约回归、整库构建回归、统一 Push | 待开始 |
 
 
@@ -350,3 +350,21 @@
   4. 图鉴手册空状态引导组件：无搜索结果时展示失步线稿与一键重置引导；前置提升静态常量彻底消除 1 处闭包 TDZ 隐患，零 Emoji，全色板契约达标。
 - **验证结果**：
   - `typecheck`、`ui:theme-check`、`ui:rot-check`、36 项成就单元测试全部 100% 绿灯通过。
+
+
+## 第 19 轮：全局 · 通用弹窗、设置面板与 Tooltip（已闭环）
+- **修改文件**：
+  - `apps/desktop/src/renderer/src/ui/Tooltip.tsx`
+  - `apps/desktop/src/renderer/src/ui/tooltipGeometry.ts`
+  - `apps/desktop/src/renderer/src/styles.css`
+  - `apps/desktop/src/renderer/src/ui/layout-css/styles-classic.css`
+  - `apps/desktop/src/renderer/src/ui/layout-css/styles-modern.css`
+  - `apps/desktop/src/renderer/src/panels/appSettings.tsx`
+  - `apps/desktop/src/renderer/src/panels/appSettings.css`
+- **问题与重构**：
+  1. 全局 Tooltip 防抖防闪烁与边缘安全 Clamp：引入 `displayState` 与 `isLeaving` 状态，鼠标移出时支持 140ms 平滑淡出（`.is-leaving`），首帧精修真实坐标防跳跃；优化几何 Clamp 算法，彻底消除在视口右侧或底部溢出截断；
+  2. 全局弹窗模态体系升级：背景半透明深空遮罩增强并新增 `backdrop-filter: blur(6px)` 磨砂高斯模糊效果；弹窗新增 `scale(0.96) -> 1.0` 平滑缩放入场动效与深空微光阴影；
+  3. 全局键盘 ESC 退出体系：设置主面板支持 ESC 安全关闭，许可弹窗支持 ESC 单独关闭不误触父级；
+  4. 设置面板 6 套主题卡片（深空、日间、高对比、暖色、夜间、色弱模式）微光激活态增强，滑块手感与复选框垂直工整对齐，零 Emoji，全色板契约达标。
+- **验证结果**：
+  - `typecheck`、`ui:theme-check`、`ui:rot-check`、`ui:tip-check`、设置冒烟测试全部 100% 绿灯通过。
