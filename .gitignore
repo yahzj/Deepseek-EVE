@@ -54,3 +54,6 @@ steam/depot_build_*.vdf
 # 临时探针（_ 前缀）不入库：验证结束转正式 tools/ 或删除
 /_exchange*
 /tools/_*
+
+# Serena 项目记忆（本地知识，含服务器地址/测试账号等运维信息，不进公开仓库）
+/.serena/memories/project/
