@@ -46,6 +46,10 @@ export const T = {
   sourceMock: '模拟盘',
   sourceServer: '服务器',
   sourceBadgeHint: '数据源：模拟盘为本地虚拟资金；服务器为联机行情',
+  roundSettleIn: '距结算',
+  roundLocked: '已锁定',
+  roundBadgeHint: '回合制交易：倒计时归零后集合竞价结算；回合末锁定窗口内不再接受新委托',
+  roundLockedHint: '已进入回合末锁定窗口：本回合委托已截止，等待集合竞价结算',
   resetMock: '重置模拟账户',
   resetMockDone: '模拟账户已重置：回到 1,000 万启动资金',
   resetMockHint: '回到 1,000 万启动资金；只清空交易所模拟数据，不影响游戏存档',
@@ -342,4 +346,5 @@ export const TF = {
   posLiqDangerHint: (dist: string, isLong: boolean) => (isLong ? `极度危险！再跌 ${dist} 立即强平！` : `极度危险！再涨 ${dist} 立即强平！`),
   cashierDepositDone: (v: string) => `已入金 ${v} ISK`,
   cashierWithdrawDone: (v: string) => `出金 ${v} ISK 已受理，到账以服务器结算为准`,
+  roundQuota: (used: number, max: number) => `委托 ${used}/${max}`,
 } as const

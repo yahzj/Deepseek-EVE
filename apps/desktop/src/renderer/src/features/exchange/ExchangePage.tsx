@@ -20,6 +20,7 @@ import { Cashier } from './components/Cashier'
 import { NewsTicker } from './components/NewsTicker'
 import { SimpleExchange } from './components/SimpleExchange'
 import { ProExchange } from './components/ProExchange'
+import { RoundBadge } from './components/RoundBadge'
 import './exchange.css'
 
 const DEFAULT_CODE = 'SMHI'
@@ -266,6 +267,8 @@ function ExchangeBody({
             {T.withdraw}
           </button>
           <SourceBadge source={bundle.source} />
+          {/* 回合倒计时 + 本回合委托配额：回合一变触发 bump，重拉页面快照 */}
+          <RoundBadge client={client} onNewRound={bump} />
           {bundle.source.mode === 'mock' ? (
             <button
               type="button"
