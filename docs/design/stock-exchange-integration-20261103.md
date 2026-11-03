@@ -135,5 +135,19 @@ Node 内部接口（**仅 localhost + 共享密钥**）：
 
 ### 8.6 已知阻塞
 
-- **公网入口**：Cloudflare 代理到源站 525（源站直连 200、证书链 OK、nginx 无对应请求）。待船长二选一：CF 记录改「仅 DNS」直连，或给授权用 cloudflared Tunnel。
+- **公网入口**：Cloudflare 代理到源站 525（源站直连 200、证书链 OK、nginx 无对应请求）。**已解决（2026-11-03）**：CF 记录改「仅 DNS」后外部 `GET /api/exchange/meta` 200、WS 升级 101。
+- **本机网络**：船长机器拦截带 SNI 的 TLS 到源 IP（无 SNI 直连 200、带 SNI 卡死），且腾讯云对未备案域名走 80 有 302 拦截。**临时通道**：nginx 80 端口按出口 IP allowlist 提供明文 HTTP 反代（127.0.0.1 + 船长出口 IP），客户端服务器地址改用 `http://123.207.188.192`。船长已确认：默认 IP 直连、失败回退域名（明文 HTTP 的安全代价已接受）。
+
+### 8.7 回合涨跌幅限制（2026-11-04 上线）
+
+- 版本：`whale-server-go` 提交「回合涨跌幅限制（±3% 普通 / ±8% 事件）」；启动日志确认 `roundLimitBp=300 roundEventLimitBp=800`。
+- 参数：`EXCHANGE_ROUND_LIMIT_BP`（默认 300）、`EXCHANGE_ROUND_EVENT_LIMIT_BP`（默认 800）；按波动档缩放：SMHI ×1.0=3%、UGMC/ABSI ×1.25=3.75%、OJLS ×1.5=4.5%；事件回合放宽到 800bp 后同比例缩放。
+- 修复内容：价格引擎输出与集合竞价清算价统一钳制；结算后价格模型同步钳制价，避免漂移路径绕过限制。
+- 验证（生产）：部署后第一个结算回合（01:20）四标的变动 SMHI +0.15%、UGMC −3.75%、OJLS +4.49%、ABSI +3.75%，全部在限制内；修复前同标的单回合曾出现 +21.61%、−17.62%。
+- 回滚：服务器保留 `/home/ubuntu/whale-exchange/whale-exchange.prev`，覆盖回该文件并重启即可。
+
+### 8.8 K 线历史与本地缓存
+
+- Go 服务环境增加 `EXCHANGE_HISTORY_BARS=2016`（5m 约一周）；当前 `GET /klines` 单次最多返回 1000 根（约 3.5 天），取满一周需放开接口上限（待办）。
+- 客户端新增 7 天离线缓存（`MarketCache` + `RendererTransport` 回退/补拉）：断网时可看最近行情/盘口/K线，写请求仍失败；缓存不含 token。
 
