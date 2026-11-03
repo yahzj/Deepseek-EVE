@@ -213,11 +213,116 @@ const CLASSIC_RESETS = `
   flex: 1;
   width: auto;
 }
-/* 活动栏：新版是左列里的定宽竖列，旧版是主列顶部一条 ⇒ 清掉新版的宽高约束 */
+/* 活动栏：新版是左列里的定宽竖列，旧版是主列顶部一条 ⇒ 清掉新版的宽高约束并恢复旧版全宽横向流（对齐原版视觉基准） */
 .app-root.is-layout-classic .app-activitybar {
   flex: 0 0 auto;
   min-height: 0;
   margin: 0 0 var(--wui-sp-6);
+  width: 100%;
+}
+.app-root.is-layout-classic .app-activitybar-hd {
+  display: flex;
+  align-items: center;
+  gap: var(--wui-sp-6);
+  flex-wrap: wrap;
+  margin-bottom: var(--wui-sp-4);
+}
+.app-root.is-layout-classic .app-activitybar.is-collapsed .app-activitybar-hd {
+  margin-bottom: 0;
+}
+.app-root.is-layout-classic .app-activitybar-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wui-sp-3);
+  margin-bottom: var(--wui-sp-4);
+}
+.app-root.is-layout-classic .app-activitybar-gtitle {
+  font-size: var(--wui-fs-2xsc);
+  color: rgb(var(--wui-text-dim));
+  font-weight: 500;
+}
+.app-root.is-layout-classic .app-activitybar-item {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  gap: var(--wui-sp-8) !important;
+  padding: var(--wui-sp-3) var(--wui-sp-8) !important;
+  border: 1px solid rgb(var(--wui-map-minor) / 0.35) !important;
+  border-radius: var(--wui-sp-6) !important;
+  background: rgb(var(--wui-bg-sunken) / 0.65) !important;
+  cursor: pointer !important;
+}
+.app-root.is-layout-classic .app-activitybar-icon {
+  flex: 0 0 auto !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: var(--wui-fs-base) !important;
+}
+.app-root.is-layout-classic .app-activitybar-main {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+}
+.app-root.is-layout-classic .app-activitybar-line {
+  display: flex !important;
+  align-items: center !important;
+  gap: var(--wui-sp-8) !important;
+  flex-wrap: nowrap !important;
+  width: 100% !important;
+  font-size: var(--wui-fs-xsb) !important;
+}
+.app-root.is-layout-classic .app-activitybar-label {
+  flex: 0 0 auto !important;
+  font-weight: 600 !important;
+  color: rgb(var(--wui-text)) !important;
+  white-space: nowrap !important;
+}
+.app-root.is-layout-classic .app-activitybar-sub {
+  flex: 0 1 auto !important;
+  font-size: var(--wui-fs-2xse) !important;
+  color: rgb(var(--wui-dim)) !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+.app-root.is-layout-classic .app-activitybar-track {
+  display: inline-block !important;
+  flex: 1 1 auto !important;
+  width: auto !important;
+  min-width: 60px !important;
+  height: 4px !important;
+  border-radius: 2px !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  overflow: hidden !important;
+  margin: 0 var(--wui-sp-6) !important;
+}
+.app-root.is-layout-classic .app-activitybar-fill {
+  height: 100% !important;
+  background: rgb(var(--wui-accent)) !important;
+  border-radius: 2px !important;
+  transition: width 0.25s linear !important;
+}
+.app-root.is-layout-classic .app-activitybar-time {
+  flex: 0 0 auto !important;
+  white-space: nowrap !important;
+  font-size: var(--wui-fs-2xse) !important;
+  color: rgb(var(--wui-text-dim)) !important;
+  font-family: var(--wui-mono) !important;
+}
+.app-root.is-layout-classic .app-activitybar-item .app-btn {
+  flex: 0 0 auto !important;
+  margin-left: auto !important;
+  white-space: nowrap !important;
+}
+.app-root.is-layout-classic .app-activitybar-idle {
+  display: block !important;
+  padding: var(--wui-sp-3) var(--wui-sp-8) !important;
+  font-size: var(--wui-fs-xsb) !important;
+  color: rgb(var(--wui-text-dim)) !important;
+  white-space: nowrap !important;
 }
 `
 
