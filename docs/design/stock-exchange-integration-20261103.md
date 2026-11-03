@@ -93,3 +93,47 @@ Node 内部接口（**仅 localhost + 共享密钥**）：
 3. 端到端：登录账号 → 入金 → 限价挂单 → 另一账号成交 → 双方钱包/持仓/账本一致 → 撤单/出金；WS 每秒收到行情。
 4. 故障演练：停 Go → 前端显示离线错误、Node 其他功能不受影响；起 Go → 恢复挂单。
 5. 回滚：nginx 去掉 exchange location 即回到纯 Node，游戏功能无损。
+
+---
+
+## 八、部署落地记录（2026-11-03 首次上线）
+
+### 8.1 已部署组件
+
+| 组件 | 路径 / 单元 | 说明 |
+|---|---|---|
+| Node 主服务 | `/home/ubuntu/whale-server`，`whale-server.service`（8787） | 新增内部资金桥 `src/internal-exchange.ts`；unit 增加 `EnvironmentFile=/etc/whale/internal.env` |
+| Go 交易所 | `/home/ubuntu/whale-exchange/whale-exchange`，`whale-exchange.service`（127.0.0.1:8788） | 二进制由本地交叉编译上传；数据 `/home/ubuntu/whale-exchange/data/whale-exchange.db` |
+| nginx | `/etc/nginx/sites-enabled/whale-exchange`（→ sites-available） | 新增 `location ^~ /api/exchange/`→8788、`location ^~ /internal/`→404；保留 `location /`→8787 |
+| 共享密钥 | `/etc/whale/internal.env`（root 600） | `WHALE_INTERNAL_SECRET`，Node 与 Go 两个 unit 都通过 EnvironmentFile 读取 |
+
+### 8.2 环境变量（生产）
+
+- Node：`WHALE_INTERNAL_SECRET`（来自 EnvironmentFile）
+- Go：`EXCHANGE_ADDR=127.0.0.1:8788`、`EXCHANGE_DB=/home/ubuntu/whale-exchange/data/whale-exchange.db`、`WHALE_AUTH_DB=/home/ubuntu/whale-server/data/whale-server.db`、`WHALE_INTERNAL_URL=http://127.0.0.1:8787`、`EXCHANGE_ROUND_SEC=300`、`EXCHANGE_MARKET_SEED=20261103`、`EXCHANGE_MAKER_ENABLED=1`、`EXCHANGE_CORS_ORIGINS=*`
+
+### 8.3 部署前备份（必须）
+
+1. `VACUUM INTO /var/backups/whale/manual/whale-server-<ts>.db`（生产库一致快照）；
+2. 打包 `/home/ubuntu/whale-server/src` 与 `package.json`；
+3. 备份 nginx 站点配置到 `/var/backups/whale/manual/`；
+4. 每小时备份脚本已独立运行（见 `whale-server/deploy/whale-backup.sh`）。
+
+### 8.4 冒烟结果（生产）
+
+- nginx 本机：`/` 200、`/api/exchange/meta` 200、`/internal/*` 404、未登录 `/api/exchange/round` 401；
+- CORS：`OPTIONS` → 204 + 四项头；`Origin: file://` 可访问；
+- 端到端（60 秒回合冒烟）：注册→内部充值→入金 200 万→限价买→排队→回合末成交 5 股 @149,488→持仓→出金；
+- 六人格上线：`/api/exchange/agents` 六行、每人 2 亿初始资本；回合边界后铁砧/磐石/巨鲸的委托进入 `queued`，等待回合末成交。
+
+### 8.5 回滚步骤
+
+1. `sudo rm /etc/nginx/sites-enabled/whale-exchange` 中新增的两个 location（或还原备份配置）→ `nginx -t && systemctl reload nginx`；
+2. `sudo systemctl disable --now whale-exchange`（Go 服务停）；
+3. Node 若需回退：解包 `/var/backups/whale/manual/whale-server-src-<ts>.tgz` 覆盖 `src`，`systemctl restart whale-server`；
+4. 数据库回退：停 Node → 用 `/var/backups/whale/manual/whale-server-<ts>.db` 覆盖 `data/whale-server.db`（先移走 `-wal/-shm`）→ 起 Node。
+
+### 8.6 已知阻塞
+
+- **公网入口**：Cloudflare 代理到源站 525（源站直连 200、证书链 OK、nginx 无对应请求）。待船长二选一：CF 记录改「仅 DNS」直连，或给授权用 cloudflared Tunnel。
+

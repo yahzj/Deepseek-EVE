@@ -17,6 +17,8 @@
  *   - `GET /account` → `{cash,frozen,debt,equity,marginRatio,creditGrade,positions,holdings,openOrders,pendingWithdrawals}`
  *   - WS `/stream` → `{type,data}`；type ∈ round/stocks/book/trades/account/orders/event，
  *     其中 `stocks` 是数组、`trades` 是「该标的的成交数组」、`book` 是单标的盘口。
+ *   - `GET  /news?limit=20` → **裸数组** NewsItem[]（新→旧；WS `event` 只推本回合增量，
+ *     首屏靠这次补拉，两者按 id 去重合并）。
  *   - 价格/金额**不做缩放**：服务器整数单位就是信用点，显示交给现有 UI（`format.ts`）。
  */
 import type {
@@ -57,6 +59,9 @@ const CONTRACT_VERSION = 1
 const DEFAULT_FEE_RATE = 0.0005
 /** 回合制默认配额（服务器 `/round`、`/meta` 下发时以服务器为准） */
 const DEFAULT_MAX_ORDERS = 10
+/** 首屏快讯条数（`GET /news?limit=`）与缓存上限（WS 实时帧与首屏历史共用一份缓存） */
+const NEWS_FETCH_LIMIT = 20
+const NEWS_CACHE_LIMIT = 30
 
 const EMPTY_INDEX: IndexQuote = { value: 1000, changePct: 0, high: 1000, low: 1000 }
 
@@ -301,6 +306,8 @@ function normalizeNews(raw: unknown): NewsItem | null {
   const id = typeof raw.id === 'string' ? raw.id : ''
   const title = text(raw.title)
   if (id === '' && title === '') return null
+  // 后端 tone ∈ good/bad/neutral；前端 DTO 只有 good/bad/warn/info，
+  // `neutral` 与未知值一并归到 `info`（快讯栏按中性色渲染，不引入新 tone）。
   const tone =
     raw.tone === 'good' || raw.tone === 'bad' || raw.tone === 'warn'
       ? raw.tone
@@ -503,6 +510,9 @@ export class HttpExchangeClient implements ExchangeClient {
 
   private async bootstrap(): Promise<void> {
     try {
+      // 快讯不依赖行情：首屏就并发补拉（WS `event` 只推本回合增量）。
+      // 失败只丢弃快讯、不阻塞主快照，也不向页面抛错。
+      const newsTask = this.loadNews().catch(() => undefined)
       const stocks = await this.getStocks()
       const code = stocks[0]?.code
       const [account, orders, strategies] = await Promise.all([
@@ -525,7 +535,7 @@ export class HttpExchangeClient implements ExchangeClient {
           this.loadChart(code, 'd30'),
         ])
       }
-      await Promise.all([roundTask, metaTask])
+      await Promise.all([roundTask, metaTask, newsTask])
       this.emitTick()
     } catch (err) {
       // 连不上：界面由数据源徽标 + 引导态兜底；这里只上报，不伪造数据
@@ -544,6 +554,45 @@ export class HttpExchangeClient implements ExchangeClient {
     }
     const commissionBp = num(raw.commissionBp, Number.NaN)
     if (Number.isFinite(commissionBp) && commissionBp >= 0) this.feeRate = commissionBp / 10_000
+  }
+
+  /**
+   * 首屏快讯：`GET /news` 返回**裸数组** `NewsItem[]`（新→旧，后端持久化）。
+   * WS `event` 每回合只推增量，所以打开页面时补拉一次历史，否则快讯栏要等下一回合才有内容。
+   * 失败由调用方 `.catch` 吞掉：快讯不是主流程，不能拖垮行情/账户快照。
+   */
+  private async loadNews(): Promise<void> {
+    const raw = await this.get<unknown>(`/news?limit=${NEWS_FETCH_LIMIT}`)
+    if (!Array.isArray(raw)) return
+    const items = raw
+      .map(normalizeNews)
+      .filter(isPresent)
+      .slice(0, NEWS_FETCH_LIMIT)
+    this.mergeNews(items, false)
+  }
+
+  /**
+   * 合并快讯并按 `id` 去重：`/news` 首屏与 WS `event` 实时帧会重叠（同一回合事件已落库）。
+   * `prepend = true` 用于实时帧（新条目在前）；首屏历史追加在已收到的实时条目之后。
+   * 重复 `id` 保留先出现的一份，避免滚动栏里同一条快讯出现两次。
+   */
+  private mergeNews(items: NewsItem[], prepend: boolean): void {
+    if (items.length === 0) return
+    const seen = new Set<string>()
+    const merged: NewsItem[] = []
+    const push = (item: NewsItem): void => {
+      if (seen.has(item.id)) return
+      seen.add(item.id)
+      merged.push(item)
+    }
+    if (prepend) {
+      for (const item of items) push(item)
+      for (const item of this.news) push(item)
+    } else {
+      for (const item of this.news) push(item)
+      for (const item of items) push(item)
+    }
+    this.news = merged.slice(0, NEWS_CACHE_LIMIT)
   }
 
   /**
@@ -599,7 +648,7 @@ export class HttpExchangeClient implements ExchangeClient {
       }
       case 'event': {
         const news = normalizeNews(data)
-        if (news !== null) this.news = [news, ...this.news].slice(0, 30)
+        if (news !== null) this.mergeNews([news], true)
         break
       }
       // ── 旧帧兼容（F0 原型口径；Go 现在发 trades 复数帧） ──
