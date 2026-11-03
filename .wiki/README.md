@@ -9,36 +9,57 @@
 
 ```mermaid
 graph TD
-    Wiki["大鲸鱼金融与经济知识库 (.wiki)"]
-    Wiki --> Part1["一、理论基石 (书籍精要)"]
-    Wiki --> Part2["二、《平衡掌控者》原书专题"]
-    Wiki --> Part3["三、开源项目解构 (工程实践)"]
-    Wiki --> Part4["四、工程落地白皮书"]
+    Wiki["大鲸鱼金融与游戏设计知识库 (.wiki)"]
+    Wiki --> Part1["一、金融与撮合基石 (Books & Theory)"]
+    Wiki --> Part2["二、游戏设计与系统架构 (Game Design Classics)"]
+    Wiki --> Part3["三、《平衡掌控者》原书专题库 (15篇)"]
+    Wiki --> Part4["四、开源模拟器解构 (Open Source Repos)"]
+    Wiki --> Part5["五、工程落地白皮书 (Whitepapers)"]
 
     Part1 --> B1["[[books/balance-master-game-economy|平衡掌控者理论精要]]"]
     Part1 --> B2["[[books/matching-engines-for-dummies|Matching Engines for Dummies]]"]
     Part1 --> B3["[[books/hft-systems-orderbook-matching|高频交易系统订单簿架构]]"]
 
-    Part2 --> BM_Home["[[balance-master/README|平衡掌控者全书知识图谱]]"]
-    
-    Part3 --> R1["[[repos/lagback-corleonemarket|LagBack/corleonemarket]]"]
-    Part3 --> R2["[[repos/intrepidkarthi-orderbook|intrepidkarthi/orderbook]]"]
-    Part3 --> R3["[[repos/tschonsen-stocksim|Tschonsen/StockSim]]"]
+    Part2 --> G1["[[books/game-mechanics-advanced-design|游戏机制：高级游戏设计技术]]"]
+    Part2 --> G2["[[books/game-programming-patterns|游戏编程模式]]"]
+    Part2 --> G3["[[books/art-of-game-design-schell|游戏设计艺术 (第3版)]]"]
+    Part2 --> G4["[[books/game-design-236-techniques|游戏设计的236个技巧]]"]
+    Part2 --> G5["[[books/game-design-creativity-and-rhythm|大师谈游戏设计：创意与节奏]]"]
 
-    Part4 --> S1["[[synthesis/whale-stock-market-architecture|大鲸鱼股市系统工程白皮书]]"]
+    Part3 --> BM_Home["[[balance-master/README|平衡掌控者全书知识图谱]]"]
+    
+    Part4 --> R1["[[repos/lagback-corleonemarket|LagBack/corleonemarket]]"]
+    Part4 --> R2["[[repos/intrepidkarthi-orderbook|intrepidkarthi/orderbook]]"]
+    Part4 --> R3["[[repos/tschonsen-stocksim|Tschonsen/StockSim]]"]
+
+    Part5 --> S1["[[synthesis/whale-stock-market-architecture|大鲸鱼股市系统工程白皮书]]"]
 ```
 
 ---
 
 ## 核心知识板块
 
-### 一、理论基石（Books & Theory）
+### 一、金融与撮合基石（Financial & Exchange Theory）
 * **[[books/balance-master-game-economy|《平衡掌控者：游戏数值经济设计》精要]]**  
   *探讨 MMORPG 经济系统闭环、货币流动、恶性通胀成因与组合拳治理，将股市锚定在游戏经济实体上。*
 * **[[books/matching-engines-for-dummies|《Matching Engines for Dummies》（Devexperts）]]**  
   *深入 Central Limit Order Book（CLOB）微观结构、价格-时间优先（FIFO）与撮合引擎状态机。*
 * **[[books/hft-systems-orderbook-matching|《高频交易系统：开发与实战》订单簿与撮合架构]]**  
   *内存组合数据结构设计（价格档位有序表 + 双向链表 + O(1) Hash索引）、定点数防漂移与事件回放。*
+
+---
+
+### 二、游戏设计与系统架构殿堂专著（Game Design & System Architecture）
+* **[[books/game-mechanics-advanced-design|《游戏机制：高级游戏设计技术》（Ernest Adams & Joris Dormans）]]**  
+  *Machinations 系统动力学开山之作：五大核心结构元素（Source/Pool/Drain/Converter/Trader）、正负反馈回路极性与延迟调谐、离散与连续机制演进，深度映射大鲸鱼实体经济完全闭环与股市动力学。*
+* **[[books/game-programming-patterns|《游戏编程模式》（Robert Nystrom）]]**  
+  *游戏工程重构圣经：四大类经典模式深度解构（游戏循环、更新方法、双缓冲、字节码、组件、事件队列、享元与命令模式），全面映射 `@whale/core` 纯单向数据流与确定性引擎架构。*
+* **[[books/art-of-game-design-schell|《游戏设计艺术（第3版）》（Jesse Schell）]]**  
+  *游戏设计全景透镜体系：全景四元法（机制/美学/故事/技术）、心流通道动力学与 10 大精选核心透镜卡片库，映射大鲸鱼深空 HUD 操控感与多空博弈心理。*
+* **[[books/game-design-236-techniques|《游戏设计的236个技巧：游戏机制、关卡设计和镜头窍门》（大野功二）]]**  
+  *手感与微观体验工程学：打击感物理学（Hitstop 帧数冻结与白闪 Shader、Trauma 震动衰减模型、150ms 输入缓冲）、空间明暗诱导与伤害飘字 150ms 聚合合流。*
+* **[[books/game-design-creativity-and-rhythm|《大师谈游戏设计：创意与节奏》（吉泽秀雄）]]**  
+  *南梦宫元老节奏工程学：创意三角、张弛有度情绪波浪理论（Tension & Release）、残血险象环生强化，以及大鲸鱼双重时间节拍状态机与破除挂机枯燥的四大节奏炸弹。*
 
 ---
 
