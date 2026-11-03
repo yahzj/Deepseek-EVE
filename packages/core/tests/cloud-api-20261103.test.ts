@@ -267,7 +267,7 @@ describe('cloud API', () => {
       setItem: (key: string, value: string) => { values.set(key, value) },
       removeItem: (key: string) => { values.delete(key) },
     })
-    expect(preferences.DEFAULT_CLOUD_SERVER).toBe('http://127.0.0.1:8787')
+    expect(preferences.DEFAULT_CLOUD_SERVER).toBe('https://shit.fuckrapper.online')
     expect(preferences.readCloudPreferences()).toEqual({ server: preferences.DEFAULT_CLOUD_SERVER, session: null })
     values.set('whale.cloud.server', 'https://configured.example')
     expect(preferences.readCloudPreferences().server).toBe('https://configured.example')

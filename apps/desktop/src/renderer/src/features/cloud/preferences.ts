@@ -6,8 +6,8 @@ export interface CloudPreferences {
 }
 
 const SERVER_KEY = 'whale.cloud.server'
-// 本机联调入口；公网部署时在此替换为HTTPS地址，不提供玩家侧地址设置。
-export const DEFAULT_CLOUD_SERVER = 'http://127.0.0.1:8787'
+// 公网正式入口（Cloudflare → 腾讯云源站，HTTPS）；本地联调时可临时改回 http://127.0.0.1:8787。
+export const DEFAULT_CLOUD_SERVER = 'https://shit.fuckrapper.online'
 const SESSION_PREFIX = 'whale.cloud.session:'
 let memoryServer: string | undefined
 const memorySessions = new Map<string, CloudAuthResponse | null>()

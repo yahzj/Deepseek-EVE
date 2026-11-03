@@ -13,10 +13,10 @@
 本篇记录verify工作区的整个账号/云存档接入批次，涵盖API、偏好、引擎、设置UI、连接策略及统一验证，不再按子代理拆分结论。依据为后端 `H:\大鲸鱼\whale-server\docs\account-system-design.md` §7 已批准规则。
 
 - 设置的save分类尾部增加账号区与手动云档区，不新增一级tab；未登录不影响本地游戏。布局沿用app-settings-row/head/label/btns/app-btn，区内用分隔线，不套多层卡片。
-- preferences.ts唯一可替换DEFAULT_CLOUD_SERVER为http://127.0.0.1:8787，仅无saved server时使用；保留已存server及内部saveCloudServer供配置和自动化测试挂载前注入动态服务。玩家UI无地址label/input/apply，不提供URL/query/window地址设置。未登录不自动请求，有已存会话时首次显示仅核验profile，不自动上传、下载或载入；会话仍按server隔离。
+- preferences.ts唯一可替换DEFAULT_CLOUD_SERVER为https://shit.fuckrapper.online（2026-11-03 由联调地址 http://127.0.0.1:8787 替换，Cloudflare 代理腾讯云源站，HTTPS 已验证），仅无saved server时使用；保留已存server及内部saveCloudServer供配置和自动化测试挂载前注入动态服务。玩家UI无地址label/input/apply，不提供URL/query/window地址设置。未登录不自动请求，有已存会话时首次显示仅核验profile，不自动上传、下载或载入；会话仍按server隔离。
 - 地址统一由normalizeCloudServerURL处理：公网HTTPS、回环HTTP；HTTPS网页拒绝混合HTTP。请求禁止重定向、不携带站点cookie、不缓存响应、不自动重试。桌面和网页CSP允许HTTPS与回环HTTP连接，脚本策略仍限自身。
 - 注册、登录、恢复入口在设置内，用户名初值为空，切换注册清空而非重填飞行员；账号名与存档名独立，不读取或写入character.name。350ms防抖占用预检保留；恢复走redeemRecovery再profile，核验成功才持久化token/profile。密码与恢复码不持久化；恢复码按server/playerId仅驻留renderer内存，标明owner、可复制、手动确认关闭，切分类不丢失。
-- 本机回环HTTP用于当前联调，公网HTTP仍禁止，API的HTTPS规则不降低；后续公网HTTPS地址由另一后台对话完成后在代码常量替换，本轮不宣称公网HTTPS endpoint已验证。
+- 本机回环HTTP用于联调，公网HTTP仍禁止，API的HTTPS规则不降低；2026-11-03 公网HTTPS地址（https://shit.fuckrapper.online）已实测可用并落入默认常量。
 - 按最新授权删除未发布且无调用的ui.cloud.003/.004及延期登记，不复用ID；ui.cloud.109改为“在线服务暂不可用，请稍后重试。”，ui.cloud.110改为“无法连接服务器，请检查网络或稍后重试。”，保留enDeferred与英文延期。
 - 401清登录；429采用extra.retryAfterMs，缺失或不安全时回退普通限流60000ms、登录锁定600000ms，限制定时器范围。带参数限流提示独立映射并提供p1，不放进无参ERROR_IDS。所有延期ID逐行登记，英文未授权。
 
