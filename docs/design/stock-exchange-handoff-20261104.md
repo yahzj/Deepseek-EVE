@@ -78,7 +78,7 @@
 
 ### 3.6.1 手续费
 - 生产 `commissionBp = 1`、`stampBp = 1`（systemd `EXCHANGE_COMMISSION_BP` / `EXCHANGE_STAMP_BP`），即买卖各 **0.01%**；`/api/exchange/meta` 下发 `feeRate = 0.0001`。
-- 杠杆档 2x+ 仍走 `leverageFeeBp`（≤20x 买 5bp / 卖 10bp，20~50x 3/6，>50x 2/4）；1x 与现货按 `CommissionBp` 计，成交用 `feeOf`（向下取整）、冻结用 `ceilFeeOf`（向上取整）。
+- 杠杆档 2x+ 仍走 `leverageFeeBp`（≤20x 买 5bp / 卖 10bp；>20x 且 ≤50x 买 3bp / 卖 6bp；>50x 买 2bp / 卖 4bp）；1x 与现货按 `CommissionBp` 计（当前生产 1bp = 0.01%，买卖同价），成交用 `feeOf`（向下取整）、冻结用 `ceilFeeOf`（向上取整）。
 - 代码默认值仍是 0（`Defaults()`），生产以环境变量为准；重装机器时须一并写入 systemd。
 
 ### 3.7 极简模式保底产品
