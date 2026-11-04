@@ -19,20 +19,21 @@ interface SimpleChartProps {
   tick: number
 }
 
-type SimplePeriod = 'm1' | 'm5' | 'h5' | 'd5' | 'd35'
+type SimplePeriod = 'intraday' | 'm1' | 'm5' | 'h1' | 'd1' | 'd7'
 
 const PERIOD_LABELS: Record<SimplePeriod, string> = {
+  intraday: '分时',
   m1: 'M1',
   m5: 'M5',
-  h5: 'H5',
-  d5: 'D5',
-  d35: 'D35',
+  h1: 'H1',
+  d1: '日线',
+  d7: '周线',
 }
 
-const SIMPLE_PERIODS: SimplePeriod[] = ['m1', 'm5', 'h5', 'd5', 'd35']
+const SIMPLE_PERIODS: SimplePeriod[] = ['intraday', 'm1', 'm5', 'h1', 'd1', 'd7']
 
 export function SimpleChart({ client, code, quote, tick }: SimpleChartProps) {
-  const [period, setPeriod] = useState<SimplePeriod>('m1')
+  const [period, setPeriod] = useState<SimplePeriod>('intraday')
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
 
   // 周期即 client 周期（2026-11-04 船长：分时图改为 M1/M5/H5/D5/D35）
@@ -254,15 +255,15 @@ function formatPeriodTime(ts: number, period: SimplePeriod): string {
   const d = new Date(ts)
   const hh = String(d.getHours()).padStart(2, '0')
   const mm = String(d.getMinutes()).padStart(2, '0')
-  if (period === 'm1' || period === 'm5') {
+  if (period === 'intraday' || period === 'm1' || period === 'm5') {
     return `${hh}:${mm}`
   }
   const mon = d.getMonth() + 1
   const day = d.getDate()
-  if (period === 'h5') {
+  if (period === 'h1') {
     return `${mon}/${day} ${hh}:00`
   }
-  if (period === 'd5') {
+  if (period === 'd1' || period === 'd7') {
     return `${mon}月${day}日`
   }
   return `${d.getFullYear()}/${mon}/${day}`
