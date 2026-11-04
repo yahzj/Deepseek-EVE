@@ -317,6 +317,7 @@ function hookFixture(stored = true, server = target.server) {
     saveLatest: vi.fn(async (_signal?: AbortSignal): Promise<{ version: number; data: string | null }> => ({ version: 0, data: null })),
     saveVersions: vi.fn(async () => []),
     saveVersion: vi.fn(), uploadSave: vi.fn(async () => ({ version: 1, size: 100 })), rotateRecovery: vi.fn(),
+    chatHistory: vi.fn(async () => ({ channel: 'zh' as const, messages: [], nextBeforeId: null })),
   } satisfies CloudApi
   const factory = vi.fn(() => api)
   const engine = {

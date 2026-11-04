@@ -38,6 +38,20 @@ export interface CloudApi {
   saveVersions(signal?: AbortSignal): Promise<CloudSaveVersion[]>
   saveVersion(version: number, signal?: AbortSignal): Promise<CloudSave>
   uploadSave(data: string, baseVersion: number, signal?: AbortSignal): Promise<Pick<CloudSaveVersion, 'version' | 'size'>>
+  chatHistory(channel: 'zh' | 'en', limit?: number, beforeId?: number, signal?: AbortSignal): Promise<CloudChatHistory>
+}
+
+export interface CloudChatMessage {
+  id: number
+  nickname: string
+  text: string
+  created_at: number
+}
+
+export interface CloudChatHistory {
+  channel: 'zh' | 'en'
+  messages: CloudChatMessage[]
+  nextBeforeId?: number | null
 }
 
 const MAX_SAVE_BYTES = 10 * 1024 * 1024
@@ -106,7 +120,7 @@ function utf8Size(value: string): number {
   return new TextEncoder().encode(value).byteLength
 }
 
-async function readBoundedText(response: CloudResponse): Promise<string> {
+async function readBoundedText(response: CloudResponse, maxBytes = MAX_RESPONSE_BYTES): Promise<string> {
   if (!response.body) return ''
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
@@ -117,7 +131,7 @@ async function readBoundedText(response: CloudResponse): Promise<string> {
       const { done, value } = await reader.read()
       if (done) break
       size += value.byteLength
-      if (size > MAX_RESPONSE_BYTES) {
+      if (size > maxBytes) {
         await reader.cancel()
         throw new CloudApiError(response.status, 'response_too_large', 'response_too_large')
       }
@@ -142,7 +156,7 @@ export function createCloudApi(options: CloudApiOptions): CloudApi {
   const fetcher = options.fetchImpl ?? fetch
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
 
-  async function request<T>(path: string, init: CloudRequestInit, validate: (body: unknown) => body is T, signal?: AbortSignal): Promise<T> {
+  async function request<T>(path: string, init: CloudRequestInit, validate: (body: unknown) => body is T, signal?: AbortSignal, maxBytes = MAX_RESPONSE_BYTES): Promise<T> {
     const controller = new AbortController()
     const abort = () => controller.abort()
     signal?.addEventListener('abort', abort, { once: true })
@@ -169,7 +183,7 @@ export function createCloudApi(options: CloudApiOptions): CloudApi {
         redirect: 'error', credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer',
       }
       const response = await fetcher(new URL(path, `${origin}/`), requestInit)
-      const raw = await readBoundedText(response)
+      const raw = await readBoundedText(response, maxBytes)
       let body: unknown
       try {
         body = raw ? JSON.parse(raw) : null
@@ -239,5 +253,33 @@ export function createCloudApi(options: CloudApiOptions): CloudApi {
         (body): body is Pick<CloudSaveVersion, 'version' | 'size'> => object(body)
           && finiteInteger(body.version) && finiteInteger(body.size), signal)
     },
+    chatHistory: (channel, limit = 100, beforeId, signal) => {
+      if (channel !== 'zh' && channel !== 'en') throw new CloudApiError(0, 'bad_channel', 'bad_channel')
+      if (!finiteInteger(limit, 1) || limit > 100 || beforeId !== undefined && !finiteInteger(beforeId, 1)) {
+        throw new CloudApiError(0, 'invalid_chat_cursor', 'invalid_chat_cursor')
+      }
+      const query = new URLSearchParams({ channel, limit: String(limit) })
+      if (beforeId !== undefined) query.set('beforeId', String(beforeId))
+      return request(`/api/chat/history?${query}`, { method: 'GET' },
+        (body): body is CloudChatHistory => object(body)
+          && body.channel === channel
+          && Array.isArray(body.messages) && body.messages.length <= limit
+          && body.messages.every((message) => object(message)
+            && finiteInteger(message.id, 1)
+            && typeof message.nickname === 'string' && message.nickname.length <= 128
+            && typeof message.text === 'string' && message.text.length <= 500
+            && finiteInteger(message.created_at))
+          && (body.nextBeforeId === undefined || body.nextBeforeId === null || finiteInteger(body.nextBeforeId, 1)), signal, 512 * 1024)
+    },
   }
+}
+
+export function cloudChatSocketUrl(server: string, token: string): string {
+  const origin = normalizeCloudServerURL(server)
+  if (!origin) throw new CloudApiError(0, 'invalid_server', 'invalid_server')
+  if (typeof token !== 'string' || !token.trim()) throw new CloudApiError(0, 'missing_token', 'missing_token')
+  const url = new URL('/api/chat/ws', origin)
+  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
+  url.searchParams.set('token', token)
+  return url.toString()
 }

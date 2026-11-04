@@ -9,6 +9,7 @@
  *   技能=圆徽；每种形状内部用不同几何区分分类。
  */
 import type { ComponentType, CSSProperties, ReactNode } from 'react'
+import { MessageSquare } from 'lucide-react'
 import { isModernLayout } from './layoutPreference'
 import {
   Rocket as CarbonRocket,
@@ -25,6 +26,7 @@ import {
   Recycle as CarbonSalvage,
   Bot as CarbonAi,
   Radar as CarbonRadar,
+  Chat as CarbonChat,
 } from '@carbon/icons-react'
 import { wreckTierOf } from './itemSubs'
 
@@ -1391,6 +1393,7 @@ const MODERN_NAV_GLYPHS: Record<string, ComponentType<any>> = {
   'nav-skills': CarbonSkills,
   'nav-task': CarbonTask,
   'nav-mail': CarbonMail,
+  'nav-chat': CarbonChat,
   'nav-bounty': CarbonTarget,
   'nav-mine': CarbonMine,
   'nav-salvage': CarbonSalvage,
@@ -1409,6 +1412,9 @@ export function Glyph({
   color?: string
   className?: string
 }) {
+  if (name === 'nav-chat' && !isModernLayout()) {
+    return <MessageSquare size={size} strokeWidth={1.7} className={className} style={color ? { color } : undefined} aria-hidden="true" />
+  }
   /**
    * **股市入口 · 双色图标**（2026-11-03 船长令：Carbon `ChartCandlestick`，左半绿、右半红）。
    * Carbon 图标是单色填充路径，单层 `fill` 无法分半 ⇒ 两层完全叠放，用 `clip-path` 各裁一半；

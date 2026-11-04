@@ -54,10 +54,12 @@ import { IndustryHudPage } from './pages/IndustryHudPage'
 import { SkillsTreePage } from './pages/SkillsTreePage'
 import { MapPage, MAP_TABS, TAB_UNLOCK_KEY } from './pages/MapPage'
 import { CommsPage } from './pages/CommsPage'
+import { OnlineChatPage } from './pages/OnlineChatPage'
 import { CommsEave, CommsScreen } from './panels/CommsReader'
 import { TaskCenterPage } from './pages/TaskCenterPage'
 import { AchievementsPage } from './pages/AchievementsPage'
 import { ExchangePage } from './pages/ExchangePage'
+import { useOnlineChat } from './features/cloud/useOnlineChat'
 import type { MapGotoTarget, MapTab, TaskFocusTarget } from './pages/MapPage'
 import type { ToastFn } from './pages/common'
 import type { GameEngine } from './game/engine'
@@ -104,6 +106,7 @@ const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
   { key: 'achieve', label: 'ui.App.119', icon: 'ach-first' },
   // 2026-09-11 船长定：新增「通讯」页（NPC 消息 = 剧情与任务提示；邮件形图标，未读时闪烁 + 计数）
   { key: 'comms', label: 'ui.App.009', icon: 'nav-mail' },
+  { key: 'chat', label: 'ui.chat.019', icon: 'nav-chat' },
   /**
    * **证券交易所（F0 可点击原型）·「股市」**（2026-11-03 船长：「先做可点击原型」；
    * 同日追加反馈：「看不到股市入口」——原先放在 `DEBUG_NAV_ITEMS` 里，而调试模式在打包版/公网
@@ -147,10 +150,11 @@ export type PageKey =
   | 'task'
   | 'achieve'
   | 'comms'
+  | 'chat'
   | 'exchange'
 
 /** 已转换"一级页不滚"的页面（每完成一页在此登记；见 docs/design/page-scroll-layout.md 实施清单） */
-const PAGE_NO_SCROLL = new Set<string>(['ship', 'fit', 'market', 'map', 'industry', 'industryHud', 'skills', 'items', 'task', 'achieve', 'comms', 'exchange'])
+const PAGE_NO_SCROLL = new Set<string>(['ship', 'fit', 'market', 'map', 'industry', 'industryHud', 'skills', 'items', 'task', 'achieve', 'comms', 'chat', 'exchange'])
 
 /**
  * 手机自绘下拉面板「最短出现间隔」（毫秒 · 2026-09-13 船长定）。
@@ -654,6 +658,7 @@ async function applyLayoutAndReload(): Promise<void> {
     setToast({ text, warn })
     toastTimer.current = window.setTimeout(() => setToast(null), warn && text.includes('\n') ? 15_000 : 3200)
   }
+  const onlineChat = useOnlineChat(locale, showToast)
   /**
    * **点击底部提示条立即关闭**（2026-09-13 船长：「屏幕下方的错误提示，允许玩家通过点击快速关闭。」）——
    * 两种底部提示（操作提示 `.app-toast` 与随机事件小弹卡 `.app-event-toast`）**整条可点**：
@@ -791,6 +796,7 @@ async function applyLayoutAndReload(): Promise<void> {
   const [modeChoiceImportHold, setModeChoiceImportHold] = useState(false)
   const [showHandbook, setShowHandbook] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [settingsInitialPage, setSettingsInitialPage] = useState<'interface' | 'save'>('interface')
   const [battleOpen, setBattleOpen] = useState(false)
   /** 新档模式选择（铁人 S4b）：重置档案确认后弹一次，选普通/铁人再开局 */
 
@@ -1369,7 +1375,7 @@ async function applyLayoutAndReload(): Promise<void> {
         firstTaskNew={firstTaskNew}
         navBeat={navBeat}
         page={page}
-        setShowSettings={setShowSettings}
+        setShowSettings={(open) => { setSettingsInitialPage('interface'); setShowSettings(open) }}
         mobileLog={mobileLayout ? { open: mobileLogOpen, onToggle: () => setMobileLogOpen((open) => !open) } : null}
         setShowHandbook={setShowHandbook}
         copyQqGroup={copyQqGroup}
@@ -1573,6 +1579,9 @@ async function applyLayoutAndReload(): Promise<void> {
              */
             onOpenPlugExchange={openPlugExchange}
             />
+            ) : null}
+            {page === 'chat' ? (
+              <OnlineChatPage chat={onlineChat} onToast={showToast} onOpenSettings={() => { setSettingsInitialPage('save'); setShowSettings(true); hideActivityWin() }} />
             ) : null}
             </div>
           </>
@@ -1984,6 +1993,7 @@ async function applyLayoutAndReload(): Promise<void> {
       ) : null}
       {showSettings ? (
         <SettingsPanel
+          initialPage={settingsInitialPage}
           root={rootRef}
           onClose={() => setShowSettings(false)}
           engine={engine}

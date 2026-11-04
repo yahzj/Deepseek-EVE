@@ -246,6 +246,7 @@ export function SettingsPanel({
   onReconnectSaveFile,
   onUnbindSaveFile,
   onRefreshSaveFileStatus,
+  initialPage = 'interface',
 }: {
   root: RefObject<HTMLDivElement>
   onClose: () => void
@@ -279,9 +280,10 @@ export function SettingsPanel({
   onUnbindSaveFile: () => void
   /** 打开设置时自报一次绑定状态（权限可能被浏览器收回） */
   onRefreshSaveFileStatus: () => void
+  initialPage?: SettingsPage
 }) {
   const { locale, setLocale, t } = useL10n()
-  const [settingsPage, setSettingsPage] = useState<SettingsPage>('interface')
+  const [settingsPage, setSettingsPage] = useState<SettingsPage>(initialPage)
   const [cloudApplying, setCloudApplying] = useState(false)
   function onClose(): void {
     if (!cloudApplying) onRequestClose()

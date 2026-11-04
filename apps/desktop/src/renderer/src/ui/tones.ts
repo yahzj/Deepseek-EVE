@@ -137,7 +137,7 @@ export const TONES: Record<string, string> = {
   loss: toneVar('loss'),
 }
 
-/** NAV_TONES（17 条） */
+/** NAV_TONES（18 条） */
 export const NAV_TONES: Record<string, string> = {
   'nav-map': toneVar('nav-map'),
   'nav-ship': toneVar('nav-ship'),
@@ -147,6 +147,7 @@ export const NAV_TONES: Record<string, string> = {
   'nav-industry': toneVar('nav-industry'),
   'nav-skills': toneVar('nav-skills'),
   'nav-mail': toneVar('nav-mail'),
+  'nav-chat': toneVar('nav-mail'),
   'faction-octopus': toneVar('faction-octopus'),
   'nav-mine': toneVar('nav-mine'),
   'nav-bounty': toneVar('nav-bounty'),

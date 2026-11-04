@@ -166,6 +166,10 @@
 
 | 关注点 | 唯一实现 | 护栏 |
 |---|---|---|
+| 聊天 WebSocket 地址与 HTTPS 同源校验 | `cloudChatSocketUrl` · `features/cloud/api.ts` | API、token 编码与 CSP 专项；`arch:guard` F2/F3 |
+| 同一连接跨频道聊天限频与批次调度 | `createChatQueue` · `features/cloud/chatQueue.ts` | 首帧与后续 3 秒、每帧 5 条、断线不重发已发送帧专项 |
+| 跨窗口账号偏好缓存刷新 | `refreshCloudPreferences` · `features/cloud/preferences.ts` | 本机内存回退与跨窗口退出专项 |
+| 应用级聊天连接、回执与历史合并 | `useOnlineChat` · `features/cloud/useOnlineChat.ts` | 实际生命周期、账号切换、历史/广播去重与本机真实后台冒烟 |
 | 两个市场入口的商品名称与蓝图产物/材料悬停 | `marketGoodDisplayName()` / `blueprintHoverLines()` / `MarketGoodHover` · `ui/marketGoodHover.tsx` | `arch:guard` F2/F3；黑市浏览器专项 |
 | 市场商品卡图标/分类/说明及完整详情 | `marketGoodInfo()` · `ui/marketGoodHover.tsx`；参数沿用仓库信息行，黑市场景不含参考价 | `arch:guard` F2/F3；黑市卡片详情回归 |
 | 网页重连存档摘要与有效状态内容比较 | `reconnectProgress()` / `sameReconnectProgress()` · `game/saveReconnect.ts` | `save-reconnect-engine-20261004.test.ts` · `arch:guard` F2/F3 |

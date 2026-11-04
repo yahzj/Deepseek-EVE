@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { CloudApiError, createCloudApi, normalizeCloudServerURL } from '../../../apps/desktop/src/renderer/src/features/cloud/api'
+import { CloudApiError, cloudChatSocketUrl, createCloudApi, normalizeCloudServerURL } from '../../../apps/desktop/src/renderer/src/features/cloud/api'
 import { readCloudPreferences, saveCloudServer, saveCloudSession } from '../../../apps/desktop/src/renderer/src/features/cloud/preferences'
 import type { CloudStorage } from '../../../apps/desktop/src/renderer/src/features/cloud/preferences'
 import type { CloudAuthResponse } from '../../../apps/desktop/src/renderer/src/features/cloud/types'
@@ -172,6 +172,52 @@ describe('cloud API', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(1)
   })
 
+  it('builds the authenticated WSS chat URL and loads paginated chat history', async () => {
+    expect(cloudChatSocketUrl('https://shit.fuckrapper.online', 'token with space'))
+      .toBe('wss://shit.fuckrapper.online/api/chat/ws?token=token+with+space')
+    const fetchImpl = fetchMock(jsonResponse({
+      channel: 'zh',
+      messages: [{ id: 8, nickname: 'Pilot', text: 'Hello', created_at: 1234 }],
+      nextBeforeId: 8,
+    }))
+    const api = createCloudApi({ server: 'https://shit.fuckrapper.online', token: 'session-token', fetchImpl })
+    await expect(api.chatHistory('zh', 100, 10)).resolves.toEqual({
+      channel: 'zh',
+      messages: [{ id: 8, nickname: 'Pilot', text: 'Hello', created_at: 1234 }],
+      nextBeforeId: 8,
+    })
+    expect(String(fetchImpl.mock.calls[0]![0])).toBe('https://shit.fuckrapper.online/api/chat/history?channel=zh&limit=100&beforeId=10')
+    expect(new Headers(fetchImpl.mock.calls[0]![1]?.headers).get('Authorization')).toBe('Bearer session-token')
+  })
+
+  it('rejects invalid chat cursors before any request and keeps token encoding inside the socket query', () => {
+    const fetchImpl = vi.fn<typeof fetch>()
+    const api = createCloudApi({ server: 'https://cloud.example', fetchImpl })
+    for (const limit of [0, -1, 1.5, 101]) {
+      expect(() => api.chatHistory('zh', limit)).toThrowError(expect.objectContaining({ code: 'invalid_chat_cursor' }))
+    }
+    for (const cursor of [0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
+      expect(() => api.chatHistory('en', 100, cursor)).toThrowError(expect.objectContaining({ code: 'invalid_chat_cursor' }))
+    }
+    expect(() => cloudChatSocketUrl('https://cloud.example', '')).toThrowError(expect.objectContaining({ code: 'missing_token' }))
+    const url = new URL(cloudChatSocketUrl('https://cloud.example', 'a&channel=en#private'))
+    expect(url.pathname).toBe('/api/chat/ws')
+    expect(url.searchParams.get('token')).toBe('a&channel=en#private')
+    expect(url.searchParams.get('channel')).toBeNull()
+    expect(url.hash).toBe('')
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    { channel: 'en', messages: [], nextBeforeId: null },
+    { channel: 'zh', messages: [{ id: 0, nickname: 'Pilot', text: 'x', created_at: 1 }], nextBeforeId: null },
+    { channel: 'zh', messages: [{ id: 1, nickname: 'Pilot', text: 'x'.repeat(501), created_at: 1 }], nextBeforeId: null },
+    { channel: 'zh', messages: [], nextBeforeId: -1 },
+  ])('rejects malformed chat history', async (body) => {
+    await expect(createCloudApi({ server: 'https://cloud.example', fetchImpl: fetchMock(jsonResponse(body)) }).chatHistory('zh'))
+      .rejects.toMatchObject({ code: 'malformed_response' })
+  })
+
   it('accepts a 10 MiB decoded save even with sixfold JSON escaping', async () => {
     const data = '\u0000'.repeat(10 * 1024 * 1024)
     const fetchImpl = fetchMock(jsonResponse({ version: 1, data }))
@@ -258,6 +304,43 @@ describe('cloud API', () => {
     expect(values.get('whale.cloud.server')).toBe('https://readonly.example')
   })
 
+  it('refreshes cached credentials only for a matching cross-window storage event', async () => {
+    vi.resetModules()
+    const preferences = await import('../../../apps/desktop/src/renderer/src/features/cloud/preferences')
+    const values = new Map<string, string>()
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => { values.set(key, value) },
+      removeItem: (key: string) => { values.delete(key) },
+    })
+    preferences.saveCloudServer('https://cross-window.example')
+    preferences.saveCloudSession('https://cross-window.example', auth)
+    const key = 'whale.cloud.session:https://cross-window.example'
+    values.delete(key)
+    expect(preferences.readCloudPreferences().session?.token).toBe(auth.token)
+    expect(preferences.refreshCloudPreferences('unrelated').session?.token).toBe(auth.token)
+    expect(preferences.refreshCloudPreferences(key).session).toBeNull()
+    values.set('whale.cloud.server', 'https://other-window.example')
+    expect(preferences.refreshCloudPreferences('whale.cloud.server').server).toBe('https://other-window.example')
+  })
+
+  it('notifies same-window consumers with no credential payload even when storage is unavailable', async () => {
+    vi.resetModules()
+    const preferences = await import('../../../apps/desktop/src/renderer/src/features/cloud/preferences')
+    vi.stubGlobal('localStorage', undefined)
+    const dispatch = vi.fn(() => true)
+    vi.stubGlobal('dispatchEvent', dispatch)
+    preferences.saveCloudServer('https://memory-only.example')
+    preferences.saveCloudSession('https://memory-only.example', auth)
+    preferences.saveCloudSession('https://memory-only.example', null)
+    expect(dispatch).toHaveBeenCalledTimes(3)
+    for (const [event] of dispatch.mock.calls as unknown as Array<[Event]>) {
+      expect(event.type).toBe(preferences.CLOUD_SESSION_CHANGE_EVENT)
+      expect(JSON.stringify(event)).not.toContain(auth.token)
+    }
+    expect(preferences.readCloudPreferences().session).toBeNull()
+  })
+
   it('defaults only absent configuration to loopback and preserves explicit configured servers', async () => {
     vi.resetModules()
     const preferences = await import('../../../apps/desktop/src/renderer/src/features/cloud/preferences')
@@ -280,7 +363,7 @@ describe('cloud API', () => {
     expect(preferences.readCloudPreferences().session).toBeNull()
   })
 
-  it.each(['apps/desktop/src/renderer/index.html', 'web/index.html'])('only expands connect-src in %s', path => {
+  it.each(['apps/desktop/src/renderer/index.html', 'web/index.html'])('allows only the cloud host and loopback in %s', path => {
     const html = readFileSync(new URL(`../../../${path}`, import.meta.url), 'utf8')
     const csp = html.match(/content="(default-src [^"]+)"/)![1]!
     const directives = csp.split(';').map(value => value.trim())
@@ -288,8 +371,9 @@ describe('cloud API', () => {
       "default-src 'self'", "script-src 'self'", "style-src 'self' 'unsafe-inline'", "img-src 'self' data:", "media-src 'self' blob:",
     ])
     expect(directives.at(-1)?.split(' ')).toEqual([
-      'connect-src', "'self'", ...(path.startsWith('apps/') ? ['ws:'] : []),
-      'https:', 'http://localhost:*', 'http://127.0.0.1:*', 'http://[::1]:*',
+      'connect-src', "'self'", 'https://shit.fuckrapper.online', 'wss://shit.fuckrapper.online',
+      'http://localhost:*', 'http://127.0.0.1:*', 'http://[::1]:*',
+      'ws://localhost:*', 'ws://127.0.0.1:*', 'ws://[::1]:*',
     ])
   })
 })

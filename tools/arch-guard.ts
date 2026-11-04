@@ -110,6 +110,10 @@ const DATA_TABLES: readonly string[] = [
  * 其余文件出现同名定义照样按 F2 报红。
  */
 const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; exported: boolean }[] = [
+  { concept: '聊天连接地址与 HTTPS 同源校验', symbol: 'cloudChatSocketUrl', file: 'apps/desktop/src/renderer/src/features/cloud/api.ts', exported: true },
+  { concept: '同连接跨频道聊天批次调度', symbol: 'createChatQueue', file: 'apps/desktop/src/renderer/src/features/cloud/chatQueue.ts', exported: true },
+  { concept: '跨窗口账号偏好缓存刷新', symbol: 'refreshCloudPreferences', file: 'apps/desktop/src/renderer/src/features/cloud/preferences.ts', exported: true },
+  { concept: '应用级聊天生命周期与历史合并', symbol: 'useOnlineChat', file: 'apps/desktop/src/renderer/src/features/cloud/useOnlineChat.ts', exported: true },
   { concept: '工业活动统一目标威胁', symbol: 'industrialThreatOf', file: 'packages/core/src/encounters/risk.ts', exported: true },
   { concept: '工业活动独立遇袭频率修正', symbol: 'industrialFrequencyOf', file: 'packages/core/src/encounters/risk.ts', exported: true },
   { concept: '实际出勤质量与携货快照', symbol: 'industrialFleetSnapshotOf', file: 'packages/core/src/encounters/risk.ts', exported: true },
