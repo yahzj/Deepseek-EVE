@@ -368,6 +368,8 @@ export interface ExchangeClient {
   stop(): void
   /** 可选：重试首屏数据（HTTP 模式实现；Mock 不需要）。页面看门狗用它自愈空数据。 */
   retryBootstrap?(): void
+  /** 可选：切换标的后补拉该标的 K 线/盘口（HTTP 模式实现；首屏只拉了首只标的）。 */
+  ensureSymbolData?(code: string): void
   onTick(cb: () => void): Unsubscribe
   getSnapshot(code: string): ExchangeSnapshot
   /** 六周期图表数据（同步读缓存：Mock 内存直读；HTTP 由订阅缓存提供，未连上时为空数组） */

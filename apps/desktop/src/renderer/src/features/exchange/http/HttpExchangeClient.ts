@@ -433,6 +433,8 @@ export class HttpExchangeClient implements ExchangeClient {
   /** bootstrap 进行中/最近一次时间：看门狗重试防止并发风暴 */
   private bootstrapping = false
   private lastBootstrapAt = 0
+  /** 正在补拉数据的标的（防止切换标的时重复请求） */
+  private symbolLoading = new Set<string>()
 
   constructor(transport: Transport, basePath = '/api/exchange') {
     this.transport = transport
@@ -727,6 +729,39 @@ export class HttpExchangeClient implements ExchangeClient {
 
   getChartSeries(code: string, period: ChartPeriod): Kline[] {
     return this.chartCache.get(`${code}:${period}`) ?? []
+  }
+
+  /**
+   * 切换标的后补拉该标的数据：bootstrap 只拉了首只标的的 K 线/盘口，
+   * 切到其它标的后不补拉就会一直显示「行情初始化中…」、盘口为空。
+   * 幂等：已缓存/进行中直接返回；完成后 emitTick 触发重渲染。
+   */
+  ensureSymbolData(code: string): void {
+    if (code === '') return
+    const needChart = !this.chartCache.has(`${code}:m1`)
+    const needBook = !this.books.has(code)
+    if (!needChart && !needBook) return
+    if (this.symbolLoading.has(code)) return
+    this.symbolLoading.add(code)
+    const tasks: Promise<unknown>[] = []
+    if (needChart) {
+      tasks.push(
+        this.loadChart(code, 'm1'),
+        this.loadChart(code, 'h1'),
+        this.loadChart(code, 'd1'),
+        this.loadChart(code, 'd7'),
+        this.loadChart(code, 'd30'),
+      )
+    }
+    if (needBook) {
+      tasks.push(this.getBook(code).then((book) => this.books.set(code, book)))
+    }
+    void Promise.all(tasks)
+      .catch(() => undefined)
+      .finally(() => {
+        this.symbolLoading.delete(code)
+        this.emitTick()
+      })
   }
 
   /* ═══════════════ 查询 ═══════════════ */

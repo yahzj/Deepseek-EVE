@@ -159,6 +159,15 @@ function ExchangeBody({
     return () => window.clearTimeout(timer)
   }, [snap.stocks.length])
 
+  // 切换标的补拉图表/盘口：联机模式 bootstrap 只拉了首只标的，其余切过去会一直「行情初始化中…」。
+  useEffect(() => {
+    if (snap.stocks.length === 0) return
+    const hasChart = client.getChartSeries(code, 'm1').length > 0
+    const hasBook = snap.book.bids.length + snap.book.asks.length > 0
+    if (hasChart && hasBook) return
+    client.ensureSymbolData?.(code)
+  }, [client, code, tick, snap.book.bids.length, snap.book.asks.length])
+
   const marginUsed = snap.account.positions.reduce((sum, p) => sum + p.margin, 0)
   const marginRatio = marginUsed > 0 ? pctAbs(snap.account.marginRatio * 100) : '—'
   const bondTotal = snap.bonds.principal + snap.bonds.accrued
