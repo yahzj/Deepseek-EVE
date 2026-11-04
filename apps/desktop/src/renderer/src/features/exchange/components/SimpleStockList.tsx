@@ -3,7 +3,7 @@
  *
  * 紧凑卡片式展示 4 位代码股票（SMHI、UGMC、OJLS、ABSI）：
  * - 4 位代码 + 公司名 + 现价大字 + 今日涨跌 + 名字右侧 Sparkline 小走势（2026-11-04 船长：必须保留）；
- * - 若持有该公司股票，卡片右上角显示精致角标「持仓 X 股」。
+ * - 若持有该公司股票，卡片右下角显示精致角标「持仓 X 股」（2026-11-04 船长：右上角留给板块标签，持仓角标置于右下角）。
  */
 import type { ExchangeClient, ExchangeSnapshot } from '../client'
 import { amount, pct, price } from '../format'
@@ -74,7 +74,28 @@ export function SimpleStockList({ client, snap, selected, onSelect }: SimpleStoc
               aria-pressed={isSel}
               aria-label={`${q.code} ${q.nameKey} 现价 ${price(q.price)} 涨跌 ${pct(q.changePct)}`}
             >
-              {/* 持仓角标群 */}
+              {/* 卡片头部：代码 + 名称 + 板块（右上角不再被持仓徽标遮挡） */}
+              <div className="ex-simple-card-top">
+                <span className="ex-simple-card-code">{q.code}</span>
+                <span className="ex-simple-card-name" title={q.nameKey}>{q.nameKey}</span>
+                <span className="ex-simple-card-sector">{q.sector}</span>
+              </div>
+
+              {/* 卡片中间与右侧：现价、涨跌幅、Sparkline */}
+              <div className="ex-simple-card-main">
+                <div className="ex-simple-card-price-col">
+                  <div className="ex-simple-card-price ex-num">{price(q.price)}</div>
+                  <div className={`ex-simple-card-change ex-num ${up ? 'is-up' : 'is-down'}`}>
+                    {pct(q.changePct)}
+                  </div>
+                </div>
+
+                <div className="ex-simple-card-spark">
+                  <Sparkline client={client} code={q.code} isUp={up} width={72} height={hasHolding ? 18 : 24} />
+                </div>
+              </div>
+
+              {/* 持仓角标群：置于右下角（2026-11-04 船长口径） */}
               {hasHolding ? (
                 <div className="ex-simple-holding-badges">
                   {hold.longQty > 0 ? (
@@ -94,27 +115,6 @@ export function SimpleStockList({ client, snap, selected, onSelect }: SimpleStoc
                   ) : null}
                 </div>
               ) : null}
-
-              {/* 卡片头部：代码 + 名称 + 板块 */}
-              <div className="ex-simple-card-top">
-                <span className="ex-simple-card-code">{q.code}</span>
-                <span className="ex-simple-card-name" title={q.nameKey}>{q.nameKey}</span>
-                <span className="ex-simple-card-sector">{q.sector}</span>
-              </div>
-
-              {/* 卡片中间与右侧：现价、涨跌幅、Sparkline */}
-              <div className="ex-simple-card-main">
-                <div className="ex-simple-card-price-col">
-                  <div className="ex-simple-card-price ex-num">{price(q.price)}</div>
-                  <div className={`ex-simple-card-change ex-num ${up ? 'is-up' : 'is-down'}`}>
-                    {pct(q.changePct)}
-                  </div>
-                </div>
-
-                <div className="ex-simple-card-spark">
-                  <Sparkline client={client} code={q.code} isUp={up} width={72} height={24} />
-                </div>
-              </div>
             </div>
           )
         })}

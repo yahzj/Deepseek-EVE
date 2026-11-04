@@ -441,6 +441,14 @@
   width: 100%;
 }
 
+.ex-stock-card-spark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  padding: 0 6px;
+}
+
 .ex-stock-card-right {
   display: flex;
   flex-direction: column;
@@ -3757,8 +3765,9 @@
 
 .ex-simple-holding-badges {
   position: absolute;
-  top: 5px;
-  right: 6px;
+  bottom: 5px;
+  right: 8px;
+  z-index: 2;
   display: flex;
   align-items: center;
   gap: 3px;
@@ -3802,7 +3811,6 @@
   gap: 5px;
   min-width: 0;
   width: 100%;
-  padding-right: 32px;
 }
 
 .ex-simple-card-code {
