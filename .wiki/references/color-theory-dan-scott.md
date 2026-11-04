@@ -333,7 +333,7 @@ updated: 2026-11-03T02:45:00.000Z
 - [[norman-design-of-everyday-things]]：唐·诺曼《日常的设计》全书精要与工程落地指南
 - [[human-centered-design]]：以人为本设计（HCD）与认知交互模型
 - [[design-skills-guide]]：顶级 Design Skills 与 AI 设计提效指南
-- [[app-theme-system]]：桌面端主题多色板配置与变量系统规范
+- 桌面端主题多色板配置与变量系统规范（`docs/` 有专文，知识库暂无页面）
 
 ### Sources
 - Scott, Dan. *Color Theory Cheat Sheet*. Draw Paint Academy, 2019. (全书核心理论来源，书籍哈希: `fb22c81bcba8d63bd870a496249b9721da723d3ad3dc7e4afcfcffc5e3d03e2c`)

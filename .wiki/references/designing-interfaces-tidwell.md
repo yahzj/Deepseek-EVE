@@ -468,3 +468,9 @@ export const FittingSlotBay: FC<{ shipId: string }> = ({ shipId }) => {
 | **数据筛选** | **Dynamic Queries + Preattentive Highlighting**：拖动滑块毫秒级重绘 | **Submit to Filter（点击提交查询）**：每次微调都需点击「查询」并转圈等待 | 打破认知流（Flow），无法建立参数与结果的心智映射 | 前端轻量本地索引；过滤条件输入即触发响应 |
 | **表单与配置** | **Forgiving Format + Smart Prefills**：兼容缩写，预填历史优选值 | **Strict Regex Error（严苛正则报错）**：输入空格或小写字母即弹出爆红提示 | 增加无效认知负担；将机器的懒惰转嫁给人类 | 宽容解析输入；永远提供高置信度的默认预填 |
 | **界面体系** | **Atomic Design + Token 治理**：设计基元严格分层，布局参数全局绑定 | **Snowflake Components（雪花组件）**：每个页面随手写专属 CSS，样式各自为政 | 维护成本指数爆炸；界面视觉割裂，破坏品牌统一性 | 严格按原子/分子分层；严禁散装颜色与随意边距 |
+## 相关页
+
+- [[designing-ux-forms-enders]]：表单与输入交互的另一套模式库
+- [[universal-principles-of-design]]：125 条通用设计法则
+- [[human-centered-design]]：以人为本的设计方法
+- [[design-skills-guide]]：设计技能与 AI 提效工作流
