@@ -60,14 +60,14 @@ export function SimpleExchange({
   const [sideTab, setSideTab] = useState<'orders' | 'finance' | 'agents'>('orders')
 
   return (
-    <div className="ex-simple-layout ex-simple-grid">
+    <div className="ex-grid ex-simple-grid">
       {/* 左栏：星际企业榜 */}
-      <aside className="ex-simple-col-left" aria-label="行情列表">
+      <aside className="ex-col ex-col-left ex-simple-col-left" aria-label="行情列表">
         <SimpleStockList client={client} snap={snap} selected={code} onSelect={onSelectCode} />
       </aside>
 
       {/* 中栏：行情主视区 + 现货/融券买卖舱 */}
-      <main className="ex-simple-col-mid" aria-label={`${quote.nameKey} 交易主视区`}>
+      <main className="ex-col ex-col-mid ex-simple-col-mid" aria-label={`${quote.nameKey} 交易主视区`}>
         {/* 标的抬头横幅 */}
         <header className="ex-simple-header">
           <div className="ex-simple-head-identity">
@@ -112,7 +112,7 @@ export function SimpleExchange({
       </main>
 
       {/* 右栏：「我的下注与委托 / 理财与基金」二级切换 */}
-      <aside className="ex-simple-col-right" aria-label="下注、委托与理财">
+      <aside className="ex-col ex-col-right ex-simple-col-right" aria-label="下注、委托与理财">
         <div className="ex-simple-side-switch" role="tablist" aria-label={T.myOrdersTitle}>
           <button
             type="button"

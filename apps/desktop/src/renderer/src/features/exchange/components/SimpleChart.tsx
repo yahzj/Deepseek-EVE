@@ -254,7 +254,7 @@ export function SimpleChart({ client, code, quote, tick }: SimpleChartProps) {
                 className={`ex-simple-cursor-bubble ex-num${coords[hoverIndex][1] < 45 ? ' is-flip' : ''}`}
                 style={{
                   left: `${(coords[hoverIndex][0] / width) * 100}%`,
-                  top: `${coords[hoverIndex][1]}px`,
+                  top: `${(coords[hoverIndex][1] / height) * 100}%`,
                 }}
               >
                 <span className="ex-bubble-price">{price(displayPrice)}</span>
