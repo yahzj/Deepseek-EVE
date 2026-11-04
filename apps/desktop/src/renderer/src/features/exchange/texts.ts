@@ -343,6 +343,8 @@ export const T = {
   cashierConfirmDeposit: '确认入金',
   cashierConfirmWithdraw: '确认出金',
   cashierSubmitting: '提交中…',
+  simplePendingTitle: '本回合待成交委托',
+  simplePendingNote: '回合末集合竞价统一成交',
 } as const
 
 /** 带参数文案（集中在一处，组件只拼函数） */
@@ -382,8 +384,6 @@ export const TF = {
   holdingsCountBadge: (qty: string) => `持仓 ${qty}股`,
   simpleOrderDone: (code: string, side: string, qty: string) =>
     `${side}委托已提交：${code} ${qty} 股，回合末集合竞价成交`,
-  simplePendingTitle: '本回合待成交委托',
-  simplePendingNote: '回合末集合竞价统一成交',
   closeAllDone: (code: string, qty: string) => `已提交全额平仓：${code} 共 ${qty} 股，回合末成交`,
   closeSpotDone: (code: string, qty: string) => `已提交现货平仓：${code} ${qty} 股，回合末成交`,
   closePosDone: (code: string, side: string, qty: string) => `已提交${side}平仓：${code} ${qty} 股，回合末成交`,
