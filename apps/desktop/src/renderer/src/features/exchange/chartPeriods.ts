@@ -95,6 +95,66 @@ export const CHART_PERIODS: ChartPeriodSpec[] = [
     },
   },
   {
+    id: 'm5',
+    label: 'M5',
+    bucketMs: 5 * MINUTE_MS,
+    historyCount: HISTORY_BARS,
+    barSeconds: 300,
+    axisLabel: (ts) => {
+      const d = new Date(ts)
+      return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`
+    },
+    tipLabel: (ts) => {
+      const d = new Date(ts)
+      return `${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`
+    },
+  },
+  {
+    id: 'h5',
+    label: 'H5',
+    bucketMs: 5 * 3_600_000,
+    historyCount: HISTORY_BARS,
+    barSeconds: 18_000,
+    axisLabel: (ts) => {
+      const d = new Date(ts)
+      return `${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}时`
+    },
+    tipLabel: (ts) => {
+      const d = new Date(ts)
+      return `${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:00`
+    },
+  },
+  {
+    id: 'd5',
+    label: 'D5',
+    bucketMs: 5 * 86_400_000,
+    historyCount: HISTORY_BARS,
+    barSeconds: 5 * 86_400,
+    axisLabel: (ts) => {
+      const d = new Date(ts)
+      return `${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
+    },
+    tipLabel: (ts) => {
+      const d = new Date(ts)
+      return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}（5日）`
+    },
+  },
+  {
+    id: 'd35',
+    label: 'D35',
+    bucketMs: 35 * 86_400_000,
+    historyCount: HISTORY_BARS,
+    barSeconds: 35 * 86_400,
+    axisLabel: (ts) => {
+      const d = new Date(ts)
+      return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`
+    },
+    tipLabel: (ts) => {
+      const d = new Date(ts)
+      return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}（35日）`
+    },
+  },
+  {
     id: 'h1',
     label: 'H1',
     bucketMs: 3_600_000,
@@ -155,6 +215,17 @@ export const CHART_PERIODS: ChartPeriodSpec[] = [
     },
   },
 ]
+
+/** 专业终端周期切换按钮（2026-11-04 船长：M1、M5、H5、D5、D35） */
+export const PRO_CHART_PERIODS: ChartPeriodSpec[] = [
+  'm1',
+  'm5',
+  'h5',
+  'd5',
+  'd35',
+]
+  .map((id) => CHART_PERIODS.find((spec) => spec.id === (id as ChartPeriod)))
+  .filter((spec): spec is ChartPeriodSpec => spec !== undefined)
 
 const SPEC_BY_ID = new Map<ChartPeriod, ChartPeriodSpec>(CHART_PERIODS.map((s) => [s.id, s]))
 

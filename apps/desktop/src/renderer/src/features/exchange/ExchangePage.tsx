@@ -136,9 +136,14 @@ function ExchangeBody({
     const watchdog = window.setInterval(() => {
       if (client.getSnapshot(codeRef.current).stocks.length === 0) client.retryBootstrap?.()
     }, 3000)
+    // 行情 10 秒刷新一次（2026-11-04 船长：玩家要能看到 10 秒级数据变动）；回合仍 5 分钟、每回合 10 手。
+    const marketRefresh = window.setInterval(() => {
+      void client.refreshMarketData?.(codeRef.current)
+    }, 10_000)
     client.start()
     return () => {
       window.clearInterval(watchdog)
+      window.clearInterval(marketRefresh)
       stopTick()
       stopMargin()
       stopError()
@@ -383,3 +388,4 @@ function ExchangeBody({
     </div>
   )
 }
+

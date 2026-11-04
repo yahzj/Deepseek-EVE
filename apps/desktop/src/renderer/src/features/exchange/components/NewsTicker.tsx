@@ -1,60 +1,27 @@
 /**
- * 财经快讯走马灯。
+ * 财经快讯 · 竖向播报（2026-11-04 船长：不要横向走马灯，要竖向，一分钟一行）。
  *
- * 优化（对齐玩家吐槽 1）：
- * - 每条快讯标「利多/利空/中性 + 标的代码 + 影响百分比」彩色徽标；
- * - 复制一份做无缝循环，悬停暂停；`prefers-reduced-motion` 时退回横向滚动。
+ * - 每 60 秒最多追加一行，首屏先显示最新一条；最多保留 4 行；
+ * - 只展示玩家向信息：强度话术与影响回合已由服务端写进文案；四象/冲击基点/小盘系数不展示；
+ * - 兼容历史快讯：旧文案括号里的内部元信息在前端再兜底剥掉。
  */
+import { useEffect, useRef, useState } from 'react'
 import { Bullhorn } from '@carbon/icons-react'
 import type { NewsItem } from '../client'
 import { clock } from '../format'
 import { T, TF } from '../texts'
 
-/** 根据快讯 id 与 tone 生成确定性的影响幅度与方向描述 */
-function getNewsImpact(item: NewsItem): {
-  dirText: string
-  pctText: string
-  isUp: boolean | null
-  primaryCode?: string
-} {
-  // 简易哈希保证同一条快讯读数稳定
-  let hash = 0
-  for (let i = 0; i < item.id.length; i++) {
-    hash = (hash * 31 + item.id.charCodeAt(i)) & 0xffffffff
-  }
-  const pctVal = 2.0 + Math.abs(hash % 45) / 10 // 2.0% ~ 6.4%
-  const primaryCode = item.codes.length > 0 ? item.codes[0] : undefined
+/** 历史快讯里的内部元信息兜底清理（新快讯由服务端直接输出玩家向措辞） */
+const LEGACY_META = /（[^（）]*(?:强度|冲击|影响|回合|bp|×)[^（）]*）/g
 
-  if (item.tone === 'good') {
-    return {
-      dirText: T.newsBull,
-      pctText: `+${pctVal.toFixed(1)}%`,
-      isUp: true,
-      primaryCode,
-    }
-  }
-  if (item.tone === 'bad') {
-    return {
-      dirText: T.newsBear,
-      pctText: `-${pctVal.toFixed(1)}%`,
-      isUp: false,
-      primaryCode,
-    }
-  }
-  if (item.tone === 'warn') {
-    return {
-      dirText: T.newsBear,
-      pctText: `-${(pctVal * 0.6).toFixed(1)}%`,
-      isUp: false,
-      primaryCode,
-    }
-  }
-  return {
-    dirText: T.newsNeutral,
-    pctText: `±0.5%`,
-    isUp: null,
-    primaryCode,
-  }
+function playerText(text: string): string {
+  return text.replace(LEGACY_META, '').replace(/\s+/g, ' ').trim()
+}
+
+function toneLabel(tone: NewsItem['tone']): string {
+  if (tone === 'good') return T.newsBull
+  if (tone === 'bad' || tone === 'warn') return T.newsBear
+  return T.newsNeutral
 }
 
 export function NewsTicker({
@@ -64,7 +31,25 @@ export function NewsTicker({
   news: NewsItem[]
   onSelectCode?: (code: string) => void
 }) {
-  if (news.length === 0) {
+  const newsRef = useRef(news)
+  newsRef.current = news
+  const [rows, setRows] = useState<NewsItem[]>([])
+  const lastIdRef = useRef('')
+
+  // 每分钟只追加一行：即使 tick 频繁让 news 变化，也不会刷屏。
+  useEffect(() => {
+    const appendLatest = (): void => {
+      const latest = newsRef.current[0]
+      if (latest === undefined || latest.id === lastIdRef.current) return
+      lastIdRef.current = latest.id
+      setRows((prev) => [latest, ...prev].slice(0, 4))
+    }
+    appendLatest()
+    const timer = window.setInterval(appendLatest, 60_000)
+    return () => window.clearInterval(timer)
+  }, [])
+
+  if (rows.length === 0) {
     return (
       <div className="ex-ticker ex-ticker-empty" role="status">
         <span className="ex-ticker-tag">
@@ -74,51 +59,41 @@ export function NewsTicker({
       </div>
     )
   }
-  const loop = news.slice(0, 8)
+
   return (
-    <div className="ex-ticker" role="status" aria-live="off">
+    <div className="ex-ticker ex-ticker-feed" role="status" aria-live="polite">
       <span className="ex-ticker-tag">
         <Bullhorn size={13} /> {T.newFlash}
       </span>
-      <div className="ex-ticker-viewport">
-        <div className="ex-ticker-track">
-          {[0, 1].map((copy) => (
-            <div className="ex-ticker-group" key={copy} aria-hidden={copy === 1}>
-              {loop.map((item) => {
-                const impact = getNewsImpact(item)
-                const toneClass =
-                  impact.isUp === true ? 'is-bull' : impact.isUp === false ? 'is-bear' : 'is-neutral'
-
-                return (
-                  <span className={`ex-ticker-item is-${item.tone}`} key={`${copy}-${item.id}`}>
-                    <span className={`ex-ticker-impact ${toneClass}`}>
-                      <span className="ex-ticker-impact-dir">{impact.dirText}</span>
-                      <span className="ex-ticker-impact-pct">{impact.pctText}</span>
-                    </span>
-                    {impact.primaryCode ? (
-                      <button
-                        type="button"
-                        className="ex-ticker-code-btn"
-                        title={TF.newsSwitchSymbol(impact.primaryCode)}
-                        aria-label={TF.newsSwitchSymbol(impact.primaryCode)}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onSelectCode?.(impact.primaryCode!)
-                        }}
-                      >
-                        {impact.primaryCode}
-                      </button>
-                    ) : null}
-                    <span className="ex-ticker-time">{clock(item.ts)}</span>
-                    <b className="ex-ticker-title">{item.title}</b>
-                    <span className="ex-ticker-sep">：</span>
-                    <span className="ex-ticker-body">{item.body}</span>
-                  </span>
-                )
-              })}
+      <div className="ex-ticker-feed-list">
+        {rows.map((item) => {
+          const toneClass =
+            item.tone === 'good' ? 'is-bull' : item.tone === 'bad' || item.tone === 'warn' ? 'is-bear' : 'is-neutral'
+          const code = item.codes.length > 0 ? item.codes[0] : null
+          return (
+            <div className={`ex-ticker-feed-row is-${item.tone}`} key={item.id}>
+              <span className={`ex-ticker-impact ${toneClass}`}>{toneLabel(item.tone)}</span>
+              <span className="ex-ticker-time">{clock(item.ts)}</span>
+              <b className="ex-ticker-title">{playerText(item.title)}</b>
+              {code !== null ? (
+                <button
+                  type="button"
+                  className="ex-ticker-code-btn"
+                  title={TF.newsSwitchSymbol(code)}
+                  aria-label={TF.newsSwitchSymbol(code)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onSelectCode?.(code)
+                  }}
+                >
+                  {code}
+                </button>
+              ) : null}
+              <span className="ex-ticker-sep">：</span>
+              <span className="ex-ticker-body">{playerText(item.body)}</span>
             </div>
-          ))}
-        </div>
+          )
+        })}
       </div>
     </div>
   )

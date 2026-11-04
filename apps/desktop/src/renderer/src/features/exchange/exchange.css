@@ -5737,3 +5737,34 @@
 [data-theme='warm'] .ex-bond .is-bond-buy {
   color: rgb(var(--wui-bg-deep));
 }
+
+/* ── 竖向财经快讯：每分钟一行（2026-11-04 船长口径，替代横向走马灯） ── */
+.ex-ticker.ex-ticker-feed {
+  align-items: flex-start;
+  height: auto;
+  min-height: 30px;
+  padding: 5px 0;
+  overflow: visible;
+  white-space: normal;
+}
+.ex-ticker-feed-list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.ex-ticker-feed-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  line-height: 18px;
+  white-space: nowrap;
+}
+.ex-ticker-feed-row .ex-ticker-body {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

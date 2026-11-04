@@ -2,7 +2,7 @@
  * 极简模式 · 投资大厅主视图（SimpleExchange）。
  *
  * 布局：
- * - 左栏（240px）：星际企业榜单（SimpleStockList，4 位代码，Sparkline 走势，持仓角标）；
+ * - 左栏（240px）：星际企业榜单（SimpleStockList，4 位代码，持仓角标）；
  * - 中栏（自适应）：
  *   1. 标的概览横幅（紧凑 header：大字现价、今日涨跌、24h 高低与成交）；
  *   2. 平滑流光渐变走势图（SimpleChart，分时/日走势/周线，呼吸微光，辅助刻度线）；
@@ -56,7 +56,7 @@ export function SimpleExchange({
     <div className="ex-simple-layout ex-simple-grid">
       {/* 左栏：星际企业榜 */}
       <aside className="ex-simple-col-left" aria-label="行情列表">
-        <SimpleStockList client={client} snap={snap} selected={code} onSelect={onSelectCode} />
+        <SimpleStockList snap={snap} selected={code} onSelect={onSelectCode} />
       </aside>
 
       {/* 中栏：行情主视区 + 现货/融券买卖舱 */}
@@ -118,3 +118,4 @@ export function SimpleExchange({
     </div>
   )
 }
+
