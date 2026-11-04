@@ -612,9 +612,9 @@ export class HttpExchangeClient implements ExchangeClient {
           this.getBook(code).then((book) => this.books.set(code, book)),
           this.loadChart(code, 'm1'),
           this.loadChart(code, 'm5'),
-          this.loadChart(code, 'h5'),
-          this.loadChart(code, 'd5'),
-          this.loadChart(code, 'd35'),
+          this.loadChart(code, 'h1'),
+          this.loadChart(code, 'd1'),
+          this.loadChart(code, 'd7'),
         )
       }
       // 其余三只标的的图表后台预载，玩家切股票时不再等网络。

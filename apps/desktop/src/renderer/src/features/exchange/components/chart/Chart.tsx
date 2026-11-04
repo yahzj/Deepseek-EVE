@@ -21,7 +21,7 @@ import { VolumePane } from './VolumePane'
 import { Crosshair, crosshairTipContent, type CrosshairPoint } from './Crosshair'
 
 /** 切页返回后保持周期（设计稿「Spatial Memory」：选中标的与 K 线周期不因切页丢失） */
-let rememberedPeriod: ChartPeriod = 'm1'
+let rememberedPeriod: ChartPeriod = 'intraday'
 /** 指标开关同样跨页保持（默认全开） */
 let rememberedToggles = { ma5: true, ma20: true, rsi: true, vol: true }
 
@@ -64,7 +64,7 @@ export function Chart({
 }) {
   const [period, setPeriod] = useState<ChartPeriod>(() => {
     const wanted = initialPeriod ?? rememberedPeriod
-    return PRO_CHART_PERIODS.some((spec) => spec.id === wanted) ? wanted : 'm1'
+    return PRO_CHART_PERIODS.some((spec) => spec.id === wanted) ? wanted : 'intraday'
   })
   const [toggles, setToggles] = useState(() => ({ ...rememberedToggles }))
   const [size, setSize] = useState<ChartSize>({ w: 660, h: 320 })
