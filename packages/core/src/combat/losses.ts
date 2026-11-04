@@ -31,11 +31,10 @@ export function persistFleetHullDamage(
   const cap = createPlayerSpec(state, ctx, shipId)
   if (!cap) return
   const clamp01 = (v: number): number => Math.min(1, Math.max(0, v))
-  const originalArmor = cap.hp.a - (cap.shieldArmorHp ?? 0)
-  // 临时镀膜先承伤；不能将尚存临时甲回写为原甲修复。
-  const originalAtStart = Math.ceil(originalArmor * clamp01(fleetShip.armorPct ?? 1))
-  const remainingArmor = unit.hp.coating?.armor ?? (cap.shieldArmorHp !== undefined ? Math.min(unit.hp.a, originalAtStart) : unit.hp.a)
-  fleetShip.armorPct = originalArmor > 0 ? clamp01(remainingArmor / originalArmor) : 1
+  // 旧在途战斗保留独立原甲账；新场次按总装甲剩余比例跨场保留，不补满转换部分。
+  const armorMax = unit.hp.coating?.maxArmor ?? (cap.shieldArmorHp !== undefined ? unit.hpMax?.a ?? cap.hp.a : cap.hp.a)
+  const remainingArmor = unit.hp.coating?.armor ?? unit.hp.a
+  fleetShip.armorPct = armorMax > 0 ? clamp01(remainingArmor / armorMax) : 1
   fleetShip.durability = cap.hp.h > 0 ? clamp01(unit.hp.h / cap.hp.h) : 0
 }
 

@@ -28,6 +28,7 @@ import { wormholeEnter } from '../src/wormhole'
 import type { WormholeRunState } from '../src/wormhole'
 import { advanceWormhole, wormholeStartBattle } from '../src/wormholeBattle'
 import type { AnomalyDef } from '../src/types'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
 const T3 = 'sh-thresher'
@@ -59,11 +60,12 @@ function enterT3Run(seed: number): { state: GameState; run: WormholeRunState; le
 
 /** 开一场洞内节点战并返回 battle */
 function startBattle(state: GameState, run: WormholeRunState): NonNullable<WormholeRunState['battle']> {
+  finishDeparture(state, ctx)
   const g = run.grid!
   const cell = g.cells.find((c) => c.key === `${g.pos.q},${g.pos.r}`)!
   cell.place = 'ship'
   g.activated = g.activated.filter((k) => k !== cell.key)
-  const r = wormholeStartBattle(state, ctx, 'node', 0)
+  const r = wormholeStartBattle(state, ctx, 'node', state.gameMs)
   expect(r.ok, r.error ?? '').toBe(true)
   return run.battle!
 }

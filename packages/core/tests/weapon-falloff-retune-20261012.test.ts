@@ -107,6 +107,10 @@ describe('玩家动能武器远端命中倍率调整', () => {
       id: `invasion-beacon-${family}`, kind: 'consumable', unitM3: .01, baseSellPriceIsk: 480000000 })
     if (path.endsWith('/foeShips.json') || path.endsWith('/foeMounts.json')) applyApprovedEnemyEwDelta(expected.groups.parameters)
     if (path.endsWith('/items.json')) addApprovedRepairDrone(expected.groups.DRONES_0)
+    // 已批准的五族加密箱固定增量；不从待测目录回填预期。
+    if (path.endsWith('/items.json')) expected.groups.BLUEPRINT_CONTAINERS_0.unshift(...[
+      'box-encrypted-a', 'box-encrypted-c', 'box-encrypted-d', 'box-encrypted-e', 'box-encrypted-g',
+    ].map(id => ({ id, kind: 'container', unitM3: 1000, baseSellPriceIsk: 1 })))
     expect(JSON.parse(readFileSync(new URL(path, root), 'utf8'))).toEqual(expected)
   })
 

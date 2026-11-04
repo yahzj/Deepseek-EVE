@@ -198,7 +198,8 @@ export function moduleShortEffect(mod: ModuleDef): string {
        */
       const bits: string[] = []
       if (mod.stealthWithPropulsion) bits.push(tr('ui.factionPlug.001'))
-      if (mod.shieldArmorConversionPct !== undefined) bits.push(tr('ui.factionPlug.002', { p1: pct(mod.shieldArmorConversionPct) }))
+      // ⟪文案调整 2026-11-02⟫ 护盾保留量与转换率均读同一件插件参数。
+      if (mod.shieldArmorConversionPct !== undefined) bits.push(tr('ui.factionPlug.008', { p1: pct(mod.shieldArmorConversionPct), p2: pct(mod.shieldCapacityRetainedPct ?? 0) }))
       if (mod.shieldPassiveBonusPct !== undefined) bits.push(tr('ui.factionPlug.003', { p1: pct(mod.shieldPassiveBonusPct) }))
       if (mod.cargoCapacityBonusPct !== undefined) bits.push(tr('ui.factionPlug.004', { p1: pct(mod.cargoCapacityBonusPct) }))
       if (mod.cpuPenalty !== undefined) bits.push(tr('ui.factionPlug.005', { p1: fmt(mod.cpuPenalty) }))
@@ -206,6 +207,23 @@ export function moduleShortEffect(mod: ModuleDef): string {
         hp: pct(1 - mod.dronePrinting.hpMul), damage: pct(1 - mod.dronePrinting.damageMul),
         launch: pct(1 - mod.dronePrinting.launchMul), deck: pct(1 - mod.dronePrinting.deckCycleMul),
       }))
+      if (mod.damageManagement) {
+        bits.push(tr('ui.factionPlug.010', { p1: pct(mod.damageManagement.penaltyReductionPct) }))
+        bits.push(tr('ui.factionPlug.012', { p1: pct(mod.damageManagement.hullResistPerKind), p2: mod.damageManagement.maxKinds }))
+      }
+      if (mod.armorCapacityPenaltyPct !== undefined) bits.push(tr('ui.factionPlug.013', { p1: pct(mod.armorCapacityPenaltyPct) }))
+      if (mod.armorRegenPerSec !== undefined) bits.push(tr('ui.factionPlug.015', { p1: recoveryPct(mod.armorRegenPerSec) }))
+      if (mod.chargedWeapons) {
+        bits.push(tr('ui.factionPlug.017', { p1: fmt(mod.chargedWeapons.damageMul) }))
+        bits.push(tr('ui.factionPlug.019', { p1: fmt(mod.chargedWeapons.reloadMul) }))
+        bits.push(tr('ui.factionPlug.021', { p1: pct(mod.chargedWeapons.falloffReductionPct) }))
+      }
+      if (mod.droneCommand) {
+        bits.push(tr('ui.factionPlug.023', { p1: pct(mod.droneCommand.sharePct) }))
+        bits.push(tr('ui.factionPlug.025', { p1: pct(mod.droneCommand.targetWeightPerM3) }))
+      }
+      if (mod.hullCapacityBonusPct !== undefined) bits.push(tr('ui.factionPlug.026', { p1: pct(mod.hullCapacityBonusPct) }))
+      if (mod.recoveryDamageImmune) bits.push(tr('ui.factionPlug.028'))
       if (mod.shieldHpAdd !== undefined) bits.push(tr('ui.shipInfo.187', { p1: fmt(mod.shieldHpAdd) }))
       if (mod.armorHpAdd !== undefined) bits.push(tr('ui.shipInfo.188', { p1: fmt(mod.armorHpAdd) }))
       if (mod.hullHpAdd !== undefined) bits.push(tr('ui.shipInfo.189', { p1: fmt(mod.hullHpAdd) }))
@@ -235,7 +253,7 @@ export function moduleShortEffect(mod: ModuleDef): string {
   // ⚠ **2026-09-29**：墨潮电子舱改归 `fleetDecay`（全队折权缺口乘法）⇒ 它**开始**挂"多装递减"
   //   （旧 `sum` 组"同舰加和、上限内不打折"已作废，当时正因不衰减而排除在外）。
   const stShort = stackingOf(mod).group
-  return body + (mod.unique === true || stShort === 'flat' || stShort === 'max' ? '' : tr('ui.shipInfo.179'))
+  return body + (mod.plugNonStacking ? ` · ${tr('ui.factionPlug.007')}` : mod.unique === true || stShort === 'flat' || stShort === 'max' ? '' : tr('ui.shipInfo.179'))
 }
 
 /** 跨族加成的**短行**文本（装配台槽位行 / 装备库行 / 手册网格共用；与上面的信息卡同源口径） */

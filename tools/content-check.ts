@@ -372,7 +372,7 @@ const DMG_TYPES = new Set(['kinetic', 'explosive', 'plasma'])
 //   +4（折跃等离子 / 低温跃迁浆 / 曲率凝析物 / 超空间折跃燃料）→ 物品总数 104→**108**、原材料 8→**11**
 // 2026-09-30（实验室后续内容批 · 船长令「信号发射器和技能加速剂」）：+2（信号发射器 / 突触加速剂，
 //   走奇货档 · 施工期 `unreleased`）→ 物品总数 108→**110**
-check(itemDefs.length === 123, `物品总数应为123（含修理无人机），实际 ${itemDefs.length}`)
+check(itemDefs.length === 128, `物品总数应为128（含五族加密货柜），实际 ${itemDefs.length}`)
 check(ores.length === 8, `原矿应为 8 种（含虫洞线的虚空母矿），实际 ${ores.length}`)
 check(minerals.length === 11, `原材料应为 11 种（2026-09-29 跃迁燃料链 +3），实际 ${minerals.length}`)
 check(gases.length === 4, `气体应为 4 种，实际 ${gases.length}`)
@@ -425,9 +425,9 @@ console.log(`· 市场商品卡：${MARKET_GOODS.length} 张`)
 
 /* ── 数字稀有度表（2026-09-09 船长拍板：稀有度入物品本体 RARITY_TIER）──
  * ⚠ **2026-09-20 合并**（船长：「两个稀有度表没有区别就合并，并删除多余的表」）：原先拆出去的
- * `OFF_MARKET_RARITY_TIER`（残骸/碎片）已并入本表 ⇒ 本表**同时装两类键**：
- * ① 市场商品的 refId ② **市场外物品的物品 id**（残骸 `wreck-*` / 碎片 `frag-*`）。
- * 因此下面**不再有**「键数 = 市场卡数」与「多余键」两条（它们的前提已不存在），改为按两类键分别核对。 */
+ * `OFF_MARKET_RARITY_TIER`（残骸/碎片）已并入本表 ⇒ 本表**同时装三类键**：
+ * ① 市场商品的 refId ② **市场外物品的物品 id**（残骸 `wreck-*` / 碎片 `frag-*`）③ 真实蓝图 id。
+ * 不要求键数等于市场卡数；市场外键仍须能在物品或蓝图目录解析，防止留下死键。 */
 {
   const tableKeys = new Set(Object.keys(RARITY_TIER))
   const refSet = new Set(MARKET_GOODS.map((g) => g.refId))
@@ -439,7 +439,7 @@ console.log(`· 市场商品卡：${MARKET_GOODS.length} 张`)
     check(Number.isInteger(v) && v >= 1 && v <= 5, `稀有度表 ${k} 值非法：${v}（应为 1~5 整数，2026-09-16 上沿 4 → 5）`)
   }
   /**
-   * **"表里有、市场没有"的键 = 市场外物品**（残骸 / 碎片）：必须真的是某件物品的 id。
+   * **"表里有、市场没有"的键**：须为真实物品或蓝图 id，获取渠道不决定是否允许登记稀有度。
    * 物品 id 有**三族来源**，只查静态物品表会把派生 id 全判死键（2026-09-20 首次跑就抓到两族）：
    * ① 静态物品表 `ITEMS`；② **碎片**（`frag-<moduleId>`，由 `FRAGMENT_RECIPES` 派生）；
    * ③ **残骸**（`wreck-<组键>` / `wreck-rare-<组键>`，由 `WRECK_GROUPS` 的组键派生）。
@@ -450,9 +450,10 @@ console.log(`· 市场商品卡：${MARKET_GOODS.length} 张`)
     itemIds.add(wreckItemIdOfKey(g.key))
     itemIds.add(rareWreckItemIdOfKey(g.key))
   }
+  const blueprintIds = new Set([...BLUEPRINTS, ...SHIP_BLUEPRINTS].map(bp => bp.id))
   for (const k of tableKeys) {
     if (refSet.has(k)) continue // 市场商品的键（上一条已核）
-    check(itemIds.has(k) || k === 'bp-deep-space-probe' && BLUEPRINTS.some(bp => bp.id === k && bp.unreleased), `稀有度表多余键 ${k}：既不是任何市场卡的 refId，也不是任何物品的 id（改名/删除后留下的死键？）`)
+    check(itemIds.has(k) || blueprintIds.has(k), `稀有度表多余键 ${k}：既不是任何市场卡的 refId，也不是任何物品或蓝图的 id（改名/删除后留下的死键？）`)
   }
   /** 反向：**残骸必须有档**（它们不在市场里，漏配就永远没有稀有度 ⇒ 静默半成品） */
   for (const d of itemDefs) {
@@ -498,6 +499,7 @@ const hasRareBulk = (g: MarketGoodDef): boolean =>
   g.rareQtyMul !== undefined && g.rareWeightMul !== undefined && g.absorbQtyPerWindow !== undefined
 for (const item of itemDefs) {
   const good = itemGoods.get(item.id)
+  if (/^box-encrypted-[acdeg]$/.test(item.id)) continue // 船长确认：仅研究所获取，不进入市场。
   if (item.id === 'deep-space-probe' && item.unreleased && !good) continue
   if (item.exclusive === true) {
     check(
@@ -642,6 +644,7 @@ for (const item of itemDefs) {
  * - AI 核心（实物形态）：指到它的**核心市场卡**（kind `aicore`）⇒ 撤离即入核心账本。
  */
 const containerIds = new Set<string>([
+  ...['a', 'c', 'd', 'e', 'g'].map(f => `box-encrypted-${f}`),
   ...WORMHOLE_FAMILIES.map((f) => `box-relic-${f.toLowerCase()}`),
   ...WORMHOLE_BP_BOX_IDS,
   // 2026-09-15 船长确认的两个新货柜（贵重品 2 格 / 军用备货 4 格）：同样"带回后拆解"⇒ 无配方但登记在册
@@ -6092,6 +6095,8 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
     }
     // ② 可获得内容必须有市场行（例外表逐条写理由）
     const NO_ROW_OK: ReadonlyArray<readonly [string, string]> = [
+      ...['a', 'c', 'd', 'e', 'g'].map(f => [`box-encrypted-${f}`, '生产研究所专属货柜，不开放市场交易'] as const),
+      ...['pirate-raider', 'alien-shield-coating', 'gravekeeper-capacitor', 'titan-compression', 'deadarmy-printing'].map(id => [`bp-once-plug-${id}`, '加密货柜专属一次性插件图纸，不开放市场交易'] as const),
       ['sandcat', '协会保底艇（开局船）：不给市场行，防"卖光起步资产"把新档卡死'],
       ['sh-dunkleosteus', '邓氏鱼级壳体：无蓝图、无掉落、无任何获取渠道（内容未做）⇒ 补行等于给拿不到的东西标价'],
       ['sbp-sandcat', '磷虾级舰船蓝图：只作「第一次生产」的任务奖励发放，不进市场（船长 2026-09-18）'],
@@ -6153,7 +6158,9 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
    * **整类图鉴的按钮静默消失**——玩家看不见"少了个按钮"，只有这条契约会点名。 */
   {
     const jumpCtx = buildSimContext()
-    const handNoJumpOk = new Set(['sandcat', 'sh-dunkleosteus', 'sbp-sandcat', 'bp-part-circuit', 'bp-part-armor-plate', 'bp-part-frame', 'bp-part-cable', 'bp-part-coolant', 'bp-part-gyro', 'bp-part-lens'])
+    const handNoJumpOk = new Set(['sandcat', 'sh-dunkleosteus', 'sbp-sandcat', 'bp-part-circuit', 'bp-part-armor-plate', 'bp-part-frame', 'bp-part-cable', 'bp-part-coolant', 'bp-part-gyro', 'bp-part-lens',
+      ...['a', 'c', 'd', 'e', 'g'].map(f => `box-encrypted-${f}`),
+      ...['pirate-raider', 'alien-shield-coating', 'gravekeeper-capacitor', 'titan-compression', 'deadarmy-printing'].map(id => `bp-once-plug-${id}`)])
     const unreleasedRowIds = new Set(
       MARKET_GOODS.filter((g) => (g as { unreleased?: boolean }).unreleased === true).map((g) => g.refId),
     )
@@ -8697,8 +8704,10 @@ checkFactionCodexArchive()
  *    找到读取点（登记了却没人读 ⇒ 红 —— 正是 CPU / 扩槽那两次的形态）。
  */
 const PLUG_EFFECT_FIELDS: readonly string[] = [
-  'plugNonStacking', 'stealthWithPropulsion', 'shieldArmorConversionPct', 'shieldPassiveBonusPct',
+  'plugNonStacking', 'stealthWithPropulsion', 'shieldArmorConversionPct', 'shieldCapacityRetainedPct', 'shieldPassiveBonusPct',
   'cargoCapacityBonusPct', 'droneBayBonusM3', 'cpuPenalty', 'dronePrinting',
+  'damageManagement', 'armorCapacityPenaltyPct', 'armorRegenPerSec', 'chargedWeapons', 'droneCommand',
+  'hullCapacityBonusPct', 'recoveryDamageImmune',
   'shieldHpAdd',
   'armorHpAdd',
   'hullHpAdd', // 三层血固定值

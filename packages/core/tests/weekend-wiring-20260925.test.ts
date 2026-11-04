@@ -69,6 +69,7 @@ import {
   weekendNoteFlagshipDamage,
 } from '../src/weekendEvent'
 import type { WeekendEventState } from '../src/weekendEvent'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
 /** 用例共用的"被占星系"= 第一条不挂母港/核心的矿带所在星系（星系名不进断言，只作 id） */
@@ -131,7 +132,7 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     expect(ctx.galaxies.get(gid)?.security ?? 1, '本用例必须落在高安，否则证不了"破例"').toBeGreaterThan(
       ctx.balance.encounter.lowSecMax,
     )
-    /** 在该星系开工采矿 ⇒ 产生"暴露"（`collectExposures` 的输入；采矿指令即视为在带） */
+    /** 完成采矿离港后在该星系产生暴露，供遇袭判定消费。 */
     const run = (occupying: boolean): { spawned: boolean; s: ReturnType<typeof createInitialState> } => {
       const s = occupying ? invaded(gid) : createInitialState({ nowWallMs: 0, seed: 21 })
       s.debugQuick = true
@@ -139,6 +140,7 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
       s.shipId = uid
       s.exploredGalaxies = [...new Set([...(s.exploredGalaxies ?? []), gid])]
       expect(startMining(s, belt.id, ctx).ok, '开工采矿').toBe(true)
+      finishDeparture(s, ctx)
       let spawned = false
       for (let i = 0; i < 200 && !spawned; i++) {
         s.encounterZoneCooldown[gid] = 0 // 清区域冷却：让每一掷都独立（本用例只验"能不能掷出"）
@@ -735,6 +737,7 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
       deadlineGameMs: 0,
       battle,
     }
+    finishDeparture(s, ctx)
     return { s, battle }
   }
 
@@ -1001,6 +1004,7 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
       deadlineGameMs: 0,
       battle,
     }
+    finishDeparture(s, ctx)
     const card = applyFoeOverride(ctx.anomalies.get('ink-flagship')!, battle.foeOverride!)
     /** 第 1 波（突击舰 · 期望 2,352）⇒ 滑条远端 = 它的开战距离；先把玩家期望设成"最远" */
     const far0 = battleOpenM(createPlayerSpec(s, ctx, leader)!, activeFoeSpecsOf(card, ctx.balance.battle, 0), ctx.balance.battle)

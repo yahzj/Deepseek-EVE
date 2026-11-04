@@ -60,6 +60,11 @@
 
 待启动活动显示：`pendingStationActivityView`（`stationActivityPending.ts`）读取同一待办和实际返航账本，目标/进度/剩余时长/取消动作供两套活动栏共用；不把排队当作已经开工。
 
+主控离港与星门阶段：`departure.ts:departureView` 统一活动栏的阶段、倒计时与进度；`associationGateMs` 按既有最短航程计算 5 至 20 秒。入口登记出发行程，作业推进消费等待，存档清洗保留剩余阶段，不影响 AI 独立任务。
+
+生产研究所首捞：`wormholeSalvage.ts:wormholeResearchBox` 使用整趟势力与独立随机流，只出非贵重品柜；加密柜不加入普通货柜池。`encryptedContainer.ts:encryptedBlueprintGroups` 为五族首批插件/武器/舰船一次性图纸显式登记与校验单点，`encryptedBlueprintDraw` 统一1至3张、类别等权及允许重复抽取。
+出发等待总长由同文件 `departureDurationMs` 计算，活动入口和悬赏收益估算共用；星门仅用于悬赏、采矿、打捞。
+
 交付安排空间：`siteDeliverFreeCargoM3`（`location.ts`）只读当前可用空间，采矿/打捞待返航时按到港自动卸货后的容量预检；页面和实际安排同源，不提前卸货。
 
 接续返航落点：`stationActivityReturnSite`（`location.ts`）沿用采矿最近基地/打捞母港航程判据，仅用于接续预检及待办舰真实到港后位置更新，不提前停靠。
@@ -102,6 +107,9 @@
 | 敌舰受击增程的独立挂载件触发提示 | `announceFoeGunRangeBuff()` · `foeRange.ts`；说明继续走`mountEffectText()` | 主/副目标、独立文案、中英参数及原增程判定专项；`arch:guard` F2/F3 |
 | 五类准备阵容清洗、恢复与记忆 | `cleanPreparationSquads()` / `preparationSquadOf()` / `notePreparationSquad()` · `preparationSquads.ts` | 五类隔离、实例顺序、缺船/忙态、显式空、旧档兼容与往返；页面通过统一选择hook接入；`arch:guard` F2/F3 |
 | 护盾力场排除自身、有效目标与最大护盾代价 | `pulseShieldFieldFor()` / `SHIELD_FIELD_COST_PCT` · `combatRepair.ts` | 力场专项：费用与目标数无关、足量/不足/无目标、周期/混装/读档；详情费用读取同一常量；`arch:guard` F2/F3 |
+| 双方护盾自然回复与旗舰速率映射 | `passiveShieldRateOf()` · `combat/passiveRecovery.ts` | 当前盾比例、满盾托底、零盾不回；旗舰卡面速率基准与共享容量分离；战斗推进和估算共用 |
+| 恒定承伤下护盾回复与装甲自愈的破层时间 | `passiveShieldBreakSeconds()` / `passiveArmorBreakSeconds()` · `combat/passiveRecovery.ts` | 解析估算共用回复规则；无法破层返回无限时长，装甲自愈独立于修复输出加成 |
+| 无人机指挥共享增幅与全队已装载体积快照 | `applyDroneCommandAura()` / `droneCommandVolumeM3Of()` · `combat/droneCommand.ts` | 活友舰只取最高来源一次、不递归且排除本舰；全舰队已装载体积在开战时建档，来源目标权重无上限 |
 | 版本化星系、坐标输入、搜索周期与候选容量 | `generateStellarSystem()` / `parseStellarSeed()` · `stellarGeneration.ts`；`stellarSearchDuration()` / `stellarCapacity()` / `stellarSystemDeveloped()` / `stellarCandidateCount()` · `stellarSearch.ts`；`cleanStellarState()` · `stellarSave.ts` | 同种子独立世界、预扣／暂停／连续搜索、基地保护、超过64星球往返专项 |
 | 探测机专属材料折扣 | `probeMaterialFactor()` · `probeManufacturing.ts`；由既有 `matNeedCount()` 贯穿预览、投料、续产和退款 | 百万配方、全级折扣、普通蓝图隔离专项 |
 | 星系动态视口与手势 | `stellarViewBox()` / `moveStellarGesture()` · `stellarMapView.ts` | 缩放锚点、旋转逆矩阵、双指减指、逐星系会话记忆专项 |
@@ -110,6 +118,7 @@
 | 星球注入目录参数和引用校验 | `planetCatalogIssues()` · `planetCatalog.ts` | 生成入口与内容检查共用；非法参数、冲突引用、重复相邻规则专项 |
 | 星球生成、勘探、环境、四向相邻、建设校验与存档 | `generatePlanet()` · `planetGeneration.ts`；`planetEnvironmentOf()` · `planetRules.ts`；`planetSurveyView()` · `planetSurvey.ts`；`planetAdjacencyOf()` / `planetConstructionCheck()` · `planetGrid.ts`；`cleanPlanetaryState()` · `planetSave.ts` | 独立种子、未知信息隔离、互斥、相邻封顶／断电与存档往返专项；`arch:guard` F2/F3 |
 | 玩家整船回收/装备保全与战损插件 | `hullRecoveryChanceOf()` / `wreckEquipmentRecoveryChanceOf()` · `shipWrecks.ts`；`shipDamageEffects()` / `rollShipDamage()` · `shipDamage.ts` | 工程技能加算、首次判定/往返不重掷、六类最终属性及普通插件隔离；旧残骸规则兼容 |
+| 战损管理按不同类型贡献动能与能量抗性 | `shipDamageHullResistOf()` · `shipDamage.ts` | 抗性按战损类型去重并受类型数上限约束；战损数组和每件属性惩罚仍保留 |
 | 爆虫触发、本场腐蚀、全队孵化与巢母加速 | `triggerAcidBurst()` / `applyAlienCorrosion()` / `advanceFoeHatcheries()` / `advanceFoeAbilityClocks()` / `foeFleetSpeedMulOf()` · `alienCombat.ts` | 异形入侵专项：距离边界、伤害顺序、死亡去重、随档、有限/无限额度、多载体去重、有效时长与死亡解除；`arch:guard` F2/F3 |
 | 限额慢补货：配置判据、初始化、周期进度、余额与统一核销 | `hasLimitedSupply()` / `ensureLimitedSupply()` / `advanceLimitedSupply()` / `limitedSupplyAvailable()` / `consumeLimitedSupply()` · `marketLimitedSupply.ts`；价格分档在`market/supply.ts:refreshLimitedSupplyBook()` | 市场限额专项、存档往返；`arch:guard` F2/F3；`content:check` 配置合法性 |
 | 武器组炮数与逐炮守恒分摊 | `volleyGunCountOf()` / `volleyDamageShareOf()` · `combatVolley.ts` | 逐炮齐射专项；`arch:guard` F2/F3 |

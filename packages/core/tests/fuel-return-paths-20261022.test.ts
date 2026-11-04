@@ -6,7 +6,8 @@ import { activityOverview } from '../src/activity'
 import { advanceAi, aiTaskView, aiEfficiency, assignAiMining, assignAiSalvage } from '../src/ai'
 import { DEFAULT_BALANCE } from '../src/balance'
 import { advanceGame } from '../src/engine'
-import { advanceAutoLoopInvasion, advanceExpedition, expeditionStatus, resolveBattleOutcome, retreatBattle, setAutoLoopInvasion, startExpedition } from '../src/expedition'
+import { advanceAutoLoopInvasion, advanceExpedition, expeditionStatus, resolveBattleOutcome, retreatBattle, setAutoLoopInvasion, startExpedition as launchExpedition } from '../src/expedition'
+import { finishDeparture } from './helpers/departure-ready'
 import { addShipToFleet } from '../src/fleetBook'
 import { startRefineRun } from '../src/industry'
 import { jumpFuelLegMsOf, jumpFuelStockOf } from '../src/jumpFuel'
@@ -21,6 +22,11 @@ import { scaledReturnMs } from '../src/trips'
 import { anomaly, belt, makeTestCtx, moduleDef, ship } from './helpers'
 
 afterEach(() => vi.restoreAllMocks())
+function startExpedition(...args: Parameters<typeof launchExpedition>) {
+  const result = launchExpedition(...args)
+  if (result.ok) finishDeparture(args[0], args[2])
+  return result
+}
 type Work = 'mining' | 'salvaging'
 type Exit = 'stop' | 'switch' | 'queue'
 
@@ -50,6 +56,7 @@ function working(mode: Work, units = 100) {
   w.state.fleet[w.state.shipId]!.fitted.high = ['fuel-salvager']
   const result = mode === 'mining' ? startMining(w.state, 'fuel-belt', w.ctx) : startSalvageOp(w.state, 'galaxy-far', w.ctx)
   expect(result.ok).toBe(true)
+  finishDeparture(w.state, w.ctx)
   w.state.fleet[w.state.shipId]!.cargo = units > 0 ? { 'ore-a': units } : {}
   return w
 }
@@ -233,6 +240,7 @@ describe.each(['mining', 'salvaging'] as const)('%s燃料返航各入口', mode 
     expect(loaded[mode].phase).toBe('returning')
     advanceWork(actualW, mode, 1)
     expect(loaded[mode].phase).toBe(mode)
+    finishDeparture(loaded, w.ctx)
     loaded.warehouse.items['jump-fuel'] = 0
     loaded.fleet[loaded.shipId]!.cargo = { 'ore-a': 100 }
     startReturn(actualW, mode)
@@ -348,6 +356,7 @@ describe('远征燃料与返航显示', () => {
     state.weekendEvent = { seq: 1, startedAtWallMs: now, family: 'C', coreId: 'galaxy-kor', peripheryIds: core ? [] : ['galaxy-redring'], contributed: {} }
     expect(setAutoLoopInvasion(state, ctx, core ? 'galaxy-kor' : 'galaxy-redring', now).ok).toBe(true)
     expect(advanceAutoLoopInvasion(state, ctx, now)).toBeNull()
+    finishDeparture(state, ctx)
     const control = structuredClone(state)
     control.jumpFuel!.expedition = false
     for (const s of [state, control]) { s.expedition.battle!.ended = 'me'; resolveBattleOutcome(s, ctx) }

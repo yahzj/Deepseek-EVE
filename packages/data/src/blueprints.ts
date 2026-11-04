@@ -51,6 +51,7 @@ export const BLUEPRINT_PRICE_STEP = 500
  * 修理组件蓝图与之无关（船长：「其他保持不变」⇒ 走系数默认值）。
  */
 export const BLUEPRINT_PRICE_OVERRIDES: Readonly<Record<string, { price: number; reason: string }>> = {
+  'bp-once-drone-repair-mil': { price: 840_000, reason: '2026-11-02船长授权决定：一次性50架批次书价为批次货值40%，配合约50%材料成本保留制造收益' },
   'bp-drone-launch-3': { price: 8_160_000, reason: '2026-10-09船长确认：MK3迁入奇货，永久蓝图按奇货×4' },
   'bp-laser-calibration-3': { price: 9_440_000, reason: '2026-10-09船长确认：MK3迁入奇货，永久蓝图按奇货×4' },
   'bp-faction-drone-bee': { price: 2_400_000, reason: '2026-10-09船长确认：势力无人机永久图纸基价为50架批次货值×2，黑市独占' },
@@ -148,7 +149,29 @@ const FACTION_DRONE_RECIPES = {
   },
 } as const
 
+// 50架基准料单；永久图纸按相同单位成本扩大为100架，不复制第二份配方。
+const REPAIR_DRONE_BATCH_MATERIALS = [
+  { itemId: 'min-tritanium', count: 20_000 },
+  { itemId: 'min-pyerite', count: 10_000 },
+  { itemId: 'min-mexallon', count: 10_000 },
+  { itemId: 'part-circuit', count: 1_000 },
+  { itemId: 'part-coolant', count: 1_000 },
+  { itemId: 'part-drone-neural', count: 387 },
+] as const
+
 const BASE_BLUEPRINTS: readonly BlueprintDef[] = [
+  ...([false, true] as const).map(singleUse => {
+    const batches = singleUse ? 1 : 2
+    return {
+      id: singleUse ? 'bp-once-drone-repair-mil' : 'bp-drone-repair-mil',
+      name: L10N[singleUse ? 'bp.repairDrone.001' : 'bp.repairDrone.002']!.zh,
+      description: L10N[singleUse ? 'bp.repairDrone.003' : 'bp.repairDrone.004']!.zh,
+      itemId: 'drone-repair-mil', outputUnits: 50 * batches,
+      ...(singleUse ? { singleUse: true } : {}),
+      materials: REPAIR_DRONE_BATCH_MATERIALS.map(material => ({ ...material, count: material.count * batches })),
+      buildSeconds: 360 * batches, buildCostIsk: 0, priceIsk: singleUse ? 840_000 : 16_800_000,
+    }
+  }),
   {
     id: 'bp-faction-drone-bee', name: L10N['bp.factionDrone.001']!.zh,
     description: L10N['bp.factionDrone.006']!.zh, itemId: 'drone-exile-bee',
@@ -3296,7 +3319,13 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
   ...SHIP_PLUGS.filter(mod => mod.id.startsWith('plug-pirate-') || mod.id.startsWith('plug-alien-') ||
     mod.id.startsWith('plug-gravekeeper-') || mod.id.startsWith('plug-titan-') || mod.id.startsWith('plug-deadarmy-')).map(mod => ({
     ...BASE_BLUEPRINTS.find(bp => bp.id === 'bp-plug-shield-plate')!,
-    id: `bp-${mod.id}`, moduleId: mod.id, name: `${mod.name}图纸`, description: L10N['bp.factionPlug.001']!.zh,
+    id: `bp-once-${mod.id}`, moduleId: mod.id, singleUse: true,
+    name: `${mod.name}${L10N['bp.encrypted.001']!.zh}`, description: L10N['bp.encrypted.002']!.zh,
+  })),
+  ...SHIP_PLUGS.filter(mod => mod.id.startsWith('plug-pirate-') || mod.id.startsWith('plug-alien-') ||
+    mod.id.startsWith('plug-gravekeeper-') || mod.id.startsWith('plug-titan-') || mod.id.startsWith('plug-deadarmy-')).map(mod => ({
+    ...BASE_BLUEPRINTS.find(bp => bp.id === 'bp-plug-shield-plate')!,
+    id: `bp-${mod.id}`, moduleId: mod.id, name: `${mod.name}${L10N['bp.factionPlug.002']!.zh}`, description: L10N['bp.factionPlug.001']!.zh,
   })),
   ...[
     ['bp-drone-launch-1', 'mod-drone-launch-1', 'bp-drone-tac-1', 'bp.launchCalibration.001'],

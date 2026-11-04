@@ -213,8 +213,9 @@ describe('危机超载', () => {
     const before=JSON.stringify(spec)
     const fx=crisisEffectsOf([ctx.modules.get(ids[1])!,ctx.modules.get(ids[1])!])!
     expect(fx.rangeMul).toBeCloseTo(1.4*(1+.4*stackWeight(2)))
-    expect(fx.damageMul).toBeCloseTo(1.3*(1+.3*stackWeight(2)))
-    expect(fx.speedMul).toBeCloseTo(.4*(1-.6*stackWeight(2)))
+    expect(fx.damageMul).toBeCloseTo(1.25*(1+.25*stackWeight(2)))
+    expect(fx.speedMul).toBeCloseTo(.6*(1-.4*stackWeight(2)))
+    expect(crisisEffectsOf([ctx.modules.get(ids[1])!])!.speedMul).toBeCloseTo(.6)
     expect(stackingOf(ctx.modules.get(ids[1])!).group).toBe('curve')
     syncPlayerCrisis(b,[spec]);expect(b.meCrisisActive).toBeUndefined()
     b.units.player!.hp.s=0;syncPlayerCrisis(b,[spec])
@@ -244,10 +245,10 @@ describe('危机超载', () => {
     expect(b.droneLaunchBy.player!.gapMs).toBe(250)
     expect(b.droneLaunchBy.player!.reviveGapMs).toBe(500)
     syncPlayerCrisis(b,[spec]);expect(rt.weapons[0]).toBe(2200)
-    expect(playerGravekeeperSpecOf(b,spec).weapons[0]!.reloadMs).toBe(2640)
+    expect(playerGravekeeperSpecOf(b,spec).weapons[0]!.reloadMs).toBe(3300)
     expect(playerGravekeeperSpecOf(b,{...spec,tag:'ally-1'}).weapons[0]!.reloadMs).toBe(4400)
   })
-  it('真实无人机首轮计时减半，成功出击后的攻击周期乘0.6而非单发增伤', () => {
+  it('真实无人机首轮计时减半，成功出击后的攻击周期乘0.75而非单发增伤', () => {
     const {state,sid,card,use}=shooting()
     state.fleet[sid]!.fitted={high:[],mid:[ids[1]],low:[]}
     state.fleet[sid]!.droneLoad={'drone-scout':2}
@@ -265,7 +266,7 @@ describe('危机超载', () => {
       state.gameMs=t;advanceBattleFor(state,use,fresh,sid,card.id)
     }
     expect(fresh.dronePools![`player:${index}`]!.launched).toBe(true)
-    expect(fresh.units.player!.weapons[index]).toBe(Math.round(spec.weapons[index]!.reloadMs*.6))
+    expect(fresh.units.player!.weapons[index]).toBe(Math.round(spec.weapons[index]!.reloadMs*.75))
     const active=playerGravekeeperSpecOf(fresh,spec)
     expect(active.weapons[index]!.shotDmg).toBe(spec.weapons[index]!.shotDmg)
     expect(active.weapons[index]!.maxRangeM).toBe(spec.weapons[index]!.maxRangeM)
@@ -295,7 +296,7 @@ describe('磁轨附伤与随档', () => {
     const spec=playerGravekeeperSpecOf({...b,meCrisisActive:{player:true},meRailStacks:{'player#0':5}},original)
     const raw=spec.weapons[0]!.shotsByType!.kinetic!
     const baseDamage=original.weapons[0]!.shotsByType!.kinetic!
-    expect(raw).toBe(Math.ceil(baseDamage*1.3))
+    expect(raw).toBe(Math.ceil(baseDamage*1.25))
     b.meCrisisActive={player:true};b.meRailStacks={'player#0':5}
     const rt=b.units['foe-0']!
     rt.hp={s:layer==='s'?1e8:0,a:layer==='a'?1e8:0,h:1e8}

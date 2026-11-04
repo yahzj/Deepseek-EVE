@@ -165,6 +165,7 @@ export const CONTAINER_KIND_KEYS: readonly string[] = ['container']
 
 /** 货柜的四个二级子类（顺序 = 渲染顺序；"安全柜"五族在前，"贵重品/军用"两个新柜在后） */
 export const CONTAINER_SUBS: SubOption[] = [
+  { key: 'encrypted', label: '加密货柜', id: 'ui.researchLab.003' },
   { key: 'safe', label: '遗迹安全货柜', id: 'ui.itemSubs.002' },
   { key: 'bp', label: '图纸货柜', id: 'ui.itemSubs.003' },
   { key: 'valuables', label: '贵重品货柜', id: 'ui.itemSubs.004' },
@@ -177,6 +178,7 @@ export const CONTAINER_SUBS: SubOption[] = [
  * 的正则同一把尺）· 三档图纸柜 = core `WORMHOLE_BP_BOX_IDS` · 贵重品/军用柜 = core 两个常量。
  */
 export function containerSubKeyOf(refId: string): string {
+  if (/^box-encrypted-[acdeg]$/.test(refId)) return 'encrypted'
   if (/^box-relic-[a-z]$/.test(refId)) return 'safe'
   if ((WORMHOLE_BP_BOX_IDS as readonly string[]).includes(refId)) return 'bp'
   if (refId === WORMHOLE_VALUABLES_BOX_ID) return 'valuables'

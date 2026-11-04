@@ -54,10 +54,11 @@ export const FACTION_CODEX: Record<string, FactionCodexEntry> = {
     family: 'A',
     nameId: 'ui.Handbook.326', // 海盗舰系（每族 9 格的起始格）
     glyph: 'fam-a',
-    modules: ['mod-wh-a-coat', 'mod-wh-a-frag', 'mod-wh-a-hangar', 'mod-wh-a-prop', 'mod-wh-a-scan', 'mod-wh-a-shield', 'plug-pirate-raider'],
+    modules: ['mod-wh-a-coat', 'mod-wh-a-frag', 'mod-wh-a-hangar', 'mod-wh-a-prop', 'mod-wh-a-scan', 'mod-wh-a-shield', 'plug-pirate-raider', 'plug-pirate-damage-management'],
     ships: ['sh-wh-a-frigate', 'sh-wh-a-destroyer', 'sh-wh-a-cruiser'],
     blueprints: ['bp-wh-a-coat', 'bp-wh-a-frag', 'bp-wh-a-hangar', 'bp-wh-a-prop', 'bp-wh-a-scan', 'bp-wh-a-shield',
-      'sbp-wh-a-frigate', 'sbp-wh-a-destroyer', 'sbp-wh-a-cruiser', 'bp-plug-pirate-raider'],
+      'sbp-wh-a-frigate', 'sbp-wh-a-destroyer', 'sbp-wh-a-cruiser', 'bp-plug-pirate-raider', 'bp-once-plug-pirate-raider',
+      'bp-plug-pirate-damage-management', 'bp-once-plug-pirate-damage-management'],
   },
   /* ── C 异形生物（Aberrant）──
      依据：`modules.ts`「C 族」段五件（生体棱镜束 / 骨架 / 导弹 / 脉冲 / 激光）；窝点三件见 `FOE_LAIR_GEAR.C`；
@@ -67,10 +68,11 @@ export const FACTION_CODEX: Record<string, FactionCodexEntry> = {
     nameId: 'ui.Handbook.335', // 异形生物
     glyph: 'fam-c',
     // `drone-wh-c-heavy` = 巢卫攻坚无人机（C 族专属消耗品；一次性图纸 `bp-wh-c-drone` 见 blueprints）
-    modules: ['mod-wh-c-frame', 'mod-wh-c-laser', 'mod-wh-c-missile', 'mod-wh-c-prism', 'mod-wh-c-pulse', 'drone-wh-c-heavy', 'drone-jawclaw', 'mod-alien-acid-launcher', 'mod-alien-pressure-chamber', 'plug-alien-shield-coating'],
+    modules: ['mod-wh-c-frame', 'mod-wh-c-laser', 'mod-wh-c-missile', 'mod-wh-c-prism', 'mod-wh-c-pulse', 'drone-wh-c-heavy', 'drone-jawclaw', 'mod-alien-acid-launcher', 'mod-alien-pressure-chamber', 'plug-alien-shield-coating', 'plug-alien-nanobiomass'],
     ships: ['sh-wh-c-frigate', 'sh-wh-c-destroyer', 'sh-wh-c-cruiser'],
     blueprints: ['bp-wh-c-frame', 'bp-wh-c-laser', 'bp-wh-c-missile', 'bp-wh-c-prism', 'bp-wh-c-pulse', 'bp-wh-c-drone',
-      'sbp-wh-c-frigate', 'sbp-wh-c-destroyer', 'sbp-wh-c-cruiser', 'bp-faction-drone-hiveguard', 'bp-faction-drone-jawclaw', 'bp-plug-alien-shield-coating'],
+      'sbp-wh-c-frigate', 'sbp-wh-c-destroyer', 'sbp-wh-c-cruiser', 'bp-faction-drone-hiveguard', 'bp-faction-drone-jawclaw', 'bp-plug-alien-shield-coating', 'bp-once-plug-alien-shield-coating',
+      'bp-plug-alien-nanobiomass', 'bp-once-plug-alien-nanobiomass'],
   },
   /* ── D 守墓古舰（Gravekeeper）──
      依据：`modules.ts`「D 族」段六件（陵卫连装炮 / 陵墓护盾芯 / 守墓者丧钟 / 陵寝棱镜炮 /
@@ -79,10 +81,11 @@ export const FACTION_CODEX: Record<string, FactionCodexEntry> = {
     family: 'D',
     nameId: 'ui.Handbook.344', // 守墓古舰
     glyph: 'fam-d',
-    modules: ['mod-wh-d-laser', 'mod-wh-d-loader', 'mod-wh-d-lock', 'mod-wh-d-shield', 'mod-wh-d-steady', 'mod-wh-d-turret', 'mod-gravekeeper-rebirth', 'mod-gravekeeper-crisis', 'mod-gravekeeper-rail', 'plug-gravekeeper-capacitor'],
+    modules: ['mod-wh-d-laser', 'mod-wh-d-loader', 'mod-wh-d-lock', 'mod-wh-d-shield', 'mod-wh-d-steady', 'mod-wh-d-turret', 'mod-gravekeeper-rebirth', 'mod-gravekeeper-crisis', 'mod-gravekeeper-rail', 'plug-gravekeeper-capacitor', 'plug-gravekeeper-charge'],
     ships: ['sh-wh-d-frigate', 'sh-wh-d-destroyer', 'sh-wh-d-cruiser'],
     blueprints: ['bp-wh-d-laser', 'bp-wh-d-loader', 'bp-wh-d-lock', 'bp-wh-d-shield', 'bp-wh-d-steady', 'bp-wh-d-turret',
-      'sbp-wh-d-frigate', 'sbp-wh-d-destroyer', 'sbp-wh-d-cruiser', 'bp-plug-gravekeeper-capacitor'],
+      'sbp-wh-d-frigate', 'sbp-wh-d-destroyer', 'sbp-wh-d-cruiser', 'bp-plug-gravekeeper-capacitor', 'bp-once-plug-gravekeeper-capacitor',
+      'bp-plug-gravekeeper-charge', 'bp-once-plug-gravekeeper-charge'],
   },
   /* ── E 泰坦巨构（Titan）──
      依据：`modules.ts`「E 族」段五件（巨构损管阵列 / 导控塔 / 协处理器 / 近防阵列 / 护盾矩阵）；
@@ -93,10 +96,11 @@ export const FACTION_CODEX: Record<string, FactionCodexEntry> = {
     nameId: 'ui.Handbook.353', // 泰坦巨构
     glyph: 'fam-e',
     // `drone-wh-e-sentry` = 构件哨戒无人机（E 族专属消耗品；一次性图纸 `bp-wh-e-drone` 见 blueprints）
-    modules: ['mod-wh-e-cpu', 'mod-wh-e-dc', 'mod-wh-e-pd', 'mod-wh-e-shield', 'mod-wh-e-tac', 'drone-wh-e-sentry', 'plug-titan-compression'],
+    modules: ['mod-wh-e-cpu', 'mod-wh-e-dc', 'mod-wh-e-pd', 'mod-wh-e-shield', 'mod-wh-e-tac', 'drone-wh-e-sentry', 'plug-titan-compression', 'plug-titan-drone-command'],
     ships: ['sh-wh-e-frigate', 'sh-wh-e-destroyer', 'sh-wh-e-carrier'],
     blueprints: ['bp-wh-e-cpu', 'bp-wh-e-dc', 'bp-wh-e-pd', 'bp-wh-e-shield', 'bp-wh-e-tac', 'bp-wh-e-drone', 'bp-faction-drone-construct',
-      'sbp-wh-e-frigate', 'sbp-wh-e-destroyer', 'sbp-wh-e-carrier', 'bp-plug-titan-compression'],
+      'sbp-wh-e-frigate', 'sbp-wh-e-destroyer', 'sbp-wh-e-carrier', 'bp-plug-titan-compression', 'bp-once-plug-titan-compression',
+      'bp-plug-titan-drone-command', 'bp-once-plug-titan-drone-command'],
   },
   /* ── G 鱿鱼亡军（Deadarmy）──
      依据：`modules.ts`「G 族」段六件（幽灵弹道校正器 / 亡军火控 / 亡军蜂巢坞 / 鱿蜂结构层 /
@@ -107,10 +111,11 @@ export const FACTION_CODEX: Record<string, FactionCodexEntry> = {
     nameId: 'ui.Handbook.362', // 鱿鱼亡军
     glyph: 'fam-g',
     // `drone-exile-bee` = 鱿蜂无人机（G 族窝点链产物；一次性图纸 `bp-lair-g-drone` 在 core `FOE_LAIR_GEAR.G` 名下单列）
-    modules: ['mod-wh-g-ballistic', 'mod-wh-g-fcs', 'mod-wh-g-hangar', 'mod-wh-g-hull', 'mod-wh-g-prop', 'mod-wh-g-turret', 'drone-exile-bee', 'plug-deadarmy-printing'],
+    modules: ['mod-wh-g-ballistic', 'mod-wh-g-fcs', 'mod-wh-g-hangar', 'mod-wh-g-hull', 'mod-wh-g-prop', 'mod-wh-g-turret', 'drone-exile-bee', 'plug-deadarmy-printing', 'plug-deadarmy-reinforced-hull'],
     ships: ['sh-wh-g-frigate', 'sh-wh-g-destroyer', 'sh-wh-g-cruiser'],
     blueprints: ['bp-wh-g-ballistic', 'bp-wh-g-fcs', 'bp-wh-g-hangar', 'bp-wh-g-hull', 'bp-wh-g-prop', 'bp-wh-g-turret', 'bp-faction-drone-bee',
-      'sbp-wh-g-frigate', 'sbp-wh-g-destroyer', 'sbp-wh-g-cruiser', 'bp-plug-deadarmy-printing'],
+      'sbp-wh-g-frigate', 'sbp-wh-g-destroyer', 'sbp-wh-g-cruiser', 'bp-plug-deadarmy-printing', 'bp-once-plug-deadarmy-printing',
+      'bp-plug-deadarmy-reinforced-hull', 'bp-once-plug-deadarmy-reinforced-hull'],
   },
   /* ── H 墨潮帮（Ink Tide）──
      依据：2026-09-26 势力装备批 —— **两件模块**（墨潮电子舱 `mod-lair-ecm-h` / 墨潮捕获网 `mod-lair-web-h`，
@@ -226,9 +231,12 @@ export function buildFactionCards(
  * 按族给 id 清单）——两处合起来才等于"族专属件"的全集；`FOE_LAIR_GEAR` 里 B/F 两族恒空。
  */
 export function factionOfExclusive(id: string): FoeFamily | null {
+  const box = /^box-encrypted-([acdeg])$/.exec(id)
+  if (box) return box[1]!.toUpperCase() as FoeFamily
+  const actualId = id.startsWith('bp-once-plug-') ? id.replace('bp-once-', 'bp-') : id
   for (const family of FACTION_CODEX_ORDER) {
     const e = FACTION_CODEX[family]!
-    if (e.modules.includes(id) || e.ships.includes(id) || e.blueprints.includes(id)) return family
+    if (e.modules.includes(actualId) || e.ships.includes(actualId) || e.blueprints.includes(actualId)) return family
   }
   /** 老窝点件（`mod-lair-*` / 专属无人机 / 其一次性图纸）：权威表在 core，本表不重列 */
   for (const family of FACTION_CODEX_ORDER) {

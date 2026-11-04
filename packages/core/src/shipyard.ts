@@ -72,6 +72,7 @@ export function ownsShip(state: GameState, shipId: string): boolean {
 
 /** 换驾驶只读预检；善后与召回只在全部校验通过后执行。 */
 export function changeShipBlockReason(state: GameState, shipId: string, ctx: SimContext): CoreBlockReason | null {
+  if (state.departure) return { error: 'departure-in-progress', errorId: state.departure.progressMs < state.departure.undockMs ? 'core.departure.001' : 'core.departure.002' }
   if (state.hauling.active && state.hauling.fleetLeg) return { error: 'hauling-return-required', errorId: 'core.industrial.006' }
   // **进洞船只所有行为锁定**（船长 2026-09-13：锁，进洞船只所有行为都锁定。包括维修。）
   const lock = shipLockedReason(state, shipId, '换驾驶到它')
@@ -534,6 +535,99 @@ export function repairShip(state: GameState, shipId: string, ctx: SimContext): C
     { p1: name, p2: cost.toLocaleString('zh-CN') },
   )
   return { ok: true }
+}
+
+export interface FleetRepairPlan {
+  repairableShipIds: string[]
+  totalCost: number
+  fullCount: number
+  blockedCount: number
+}
+
+/** 汇总舰队中当前可维修的受损舰船、费用与状态计数；不修改存档。 */
+export function fleetRepairPlan(state: GameState, ctx: SimContext): FleetRepairPlan {
+  const repairableShipIds: string[] = []
+  let totalCost = 0
+  let fullCount = 0
+  let blockedCount = 0
+
+  for (const shipId of Object.keys(state.fleet)) {
+    const fleetShip = state.fleet[shipId]!
+    if (shipOperationBlockReason(state, ctx, shipId, 'repair')) {
+      blockedCount += 1
+      continue
+    }
+    const armorPct = fleetShip.armorPct ?? 1
+    const isFull = fleetShip.durability >= 1 && armorPct >= 1
+    if (isFull) fullCount += 1
+    if (isFull || !Number.isFinite(fleetShip.durability) || !Number.isFinite(armorPct)) continue
+    if (!fleetDefOf(state, ctx, shipId) || !layerCaps(state, ctx, shipId)) continue
+
+    const cost = repairCostIsk(state, shipId, ctx)
+    if (!Number.isFinite(cost) || cost < 0) continue
+    repairableShipIds.push(shipId)
+    totalCost += cost
+  }
+
+  return { repairableShipIds, totalCost, fullCount, blockedCount }
+}
+
+export type FleetRepairResult =
+  | { ok: true; repairedCount: number; totalCost: number; fullCount: number; blockedCount: number }
+  | CommandResult
+
+/** 全队港内维修：先完整校验当前目标与总费用，再逐船复用单船维修契约。 */
+export function repairFleet(state: GameState, ctx: SimContext): FleetRepairResult {
+  const plan = fleetRepairPlan(state, ctx)
+  if (plan.repairableShipIds.length === 0) {
+    return { ok: false, error: '舰队中没有可修复的受损舰船。' }
+  }
+
+  let checkedCost = 0
+  for (const shipId of plan.repairableShipIds) {
+    const fleetShip = state.fleet[shipId]
+    const cost = repairCostIsk(state, shipId, ctx)
+    if (
+      !fleetShip ||
+      !fleetDefOf(state, ctx, shipId) ||
+      !layerCaps(state, ctx, shipId) ||
+      !Number.isFinite(fleetShip.durability) ||
+      !Number.isFinite(fleetShip.armorPct ?? 1) ||
+      (fleetShip.durability >= 1 && (fleetShip.armorPct ?? 1) >= 1) ||
+      shipOperationBlockReason(state, ctx, shipId, 'repair') !== null ||
+      !Number.isFinite(cost) ||
+      cost < 0
+    ) {
+      return { ok: false, error: '舰队维修计划已失效，请重新确认。' }
+    }
+    checkedCost += cost
+  }
+
+  if (!Number.isFinite(checkedCost) || checkedCost !== plan.totalCost) {
+    return { ok: false, error: '舰队维修计划已失效，请重新确认。' }
+  }
+  if (!Number.isFinite(state.wallet.isk) || state.wallet.isk < checkedCost) {
+    const amount = checkedCost.toLocaleString('zh-CN')
+    return {
+      ok: false,
+      error: `维修费不足：需要 ${amount} 信用点。`,
+      errorId: 'core.shipyard.045',
+      errorParams: { p1: amount },
+    }
+  }
+
+  for (const shipId of plan.repairableShipIds) {
+    const result = repairShip(state, shipId, ctx)
+    if (!result.ok) return { ok: false, error: '舰队维修计划已失效，请重新确认。' }
+  }
+
+  return {
+    ok: true,
+    repairedCount: plan.repairableShipIds.length,
+    totalCost: checkedCost,
+    fullCount: plan.fullCount,
+    blockedCount: plan.blockedCount,
+  }
 }
 
 /* ───────── T5 船只锁定（防误售，跨会话持久） ───────── */

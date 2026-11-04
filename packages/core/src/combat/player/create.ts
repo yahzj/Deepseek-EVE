@@ -8,7 +8,7 @@ import { moduleAllowedOnShip } from '../../shipFitting'
 import { familyModules, allFittedModules, equipmentPenaltiesOf, curveMult, gapCombine, weightedSum, laserFalloffOf, droneBayTotalM3, cpuBudgetOf, fittedCpuUsed } from '../../equipment'
 import { MY_WEB_RANGE_M, WEB_BREAK_DIST_M, mergeResist, applyAdds, damageUpgradeMult, ammoIdFor, familyUpgradeMult, hitUpgradeMult, reloadUpgradeMult, droneReloadUpgradeMult, DRONE_SKILL, droneSkillLv } from './factors'
 import { shipCategoryKeyOf } from '../../labels'
-import { shipDamageEffects } from '../../shipDamage'
+import { shipDamageEffects, shipDamageHullResistOf } from '../../shipDamage'
 import { type Hp3, RESIST_FLOOR } from '../combatMath'
 import { ceilFinalQuantity } from '../../quantity'
 import { supportEffectPartsOf } from '../../stacking'
@@ -146,7 +146,8 @@ export function createPlayerSpec(
    * **全仓没有任何消费点**（`grep plugShieldAdd` 只有"声明 ＋ 累加"两行）⇒ 插件加血**一点都没生效**；
    * 速度那两格同理。本段把它们提到基线处，旧的死累加随之删除。
    */
-  const damage = shipDamageEffects(fleet.damagePlugs)
+  const management = plugDefs.find(p => p.damageManagement)?.damageManagement
+  const damage = shipDamageEffects(fleet.damagePlugs, management)
   const plugHpAdd = {
     s: plugDefs.reduce((n, p) => n + (p.shieldHpAdd ?? 0), 0),
     a: plugDefs.reduce((n, p) => n + (p.armorHpAdd ?? 0), 0),
@@ -166,11 +167,16 @@ export function createPlayerSpec(
     h: ceilFinalQuantity(baseHp.h * Math.max(1, hullHpMult) * hullSkillMult * damage.hull),
   }
   const coatingPct = Math.max(0, ...plugDefs.map(p => p.shieldArmorConversionPct ?? 0))
-  const shieldArmorHp = coatingPct > 0 ? ceilFinalQuantity(hp.s * coatingPct) : 0
+  let shieldArmorHp = coatingPct > 0 ? ceilFinalQuantity(hp.s * coatingPct) : 0
   if (coatingPct > 0) {
     hp.a += shieldArmorHp
-    hp.s = 0
+    const retained = Math.max(0, ...plugDefs.map(p => p.shieldCapacityRetainedPct ?? 0))
+    hp.s = ceilFinalQuantity(hp.s * Math.min(1, retained))
   }
+  const armorCapacityMul = plugDefs.reduce((mul, p) => mul * (1 - (p.armorCapacityPenaltyPct ?? 0)), 1)
+  hp.a = ceilFinalQuantity(hp.a * armorCapacityMul)
+  shieldArmorHp = ceilFinalQuantity(shieldArmorHp * armorCapacityMul)
+  hp.h = ceilFinalQuantity(hp.h * (1 + plugDefs.reduce((bonus, p) => bonus + (p.hullCapacityBonusPct ?? 0), 0)))
   const shieldRes = mergeResist(ship.shieldResist, undefined)
   for (const m of shieldDefs) applyAdds(shieldRes, m.shieldResistAdd)
   const armorRes = mergeResist(ship.armorResist, undefined)
@@ -308,6 +314,10 @@ export function createPlayerSpec(
         resists[layer][rt] = Math.max(RESIST_FLOOR, (resists[layer][rt] ?? 0) - resistPen)
       }
     }
+  }
+  const damageHullResist = shipDamageHullResistOf(fleet.damagePlugs, management)
+  if (damageHullResist > 0) {
+    for (const type of ['kinetic', 'plasma'] as const) hullRes[type] = Math.min(0.9, (hullRes[type] ?? 0) + damageHullResist)
   }
 
   // 速度件共用折权排序；推进器只把其自身的速度份额放入点火周期。
@@ -534,7 +544,11 @@ export function createPlayerSpec(
    * 干扰压制那条加法反解不会把带插件的机群**多压**。
    */
   const droneRangeMult = 1 + weightedSum(droneRangePcts) + Math.max(0, plugRangeBonus)
-
+  const droneDamageMult =
+    (1 + droneDmgBonus) *
+    (1 + (ship.droneDmgBonus ?? 0)) *
+    (1 + DRONE_SKILL.warfarePerLevel * droneSkillLv(state, 'drone-warfare')) *
+    (1 + DRONE_SKILL.strikePerLevel * droneSkillLv(state, 'drone-strike'))
 
   let bayUsed = 0
   // CPU 余量 = 预算总额（船体 CPU + 已装协处理器加成；2026-09-11 新增件）− 已装模块占用
@@ -585,14 +599,7 @@ export function createPlayerSpec(
       // **无人机打击学（drone-strike）+4%/级**（2026-09-10 船长：高阶伤害技能）；三者乘算；
       // 2026-09-10 船长：再加船体无人机专属加成（ship.droneDmgBonus，王鲭 +12%/梭鱼 +8%）
       // 2026-09-10 船长：单发 ×2 与装填 ×2 同步（每轮更重、节奏更舒缓，净 DPS 不变）
-      const shot = ceilFinalQuantity(
-        (def.dmg ?? 0) *
-          2 *
-          (1 + droneDmgBonus) *
-          (1 + (ship.droneDmgBonus ?? 0)) *
-          (1 + DRONE_SKILL.warfarePerLevel * droneSkillLv(state, 'drone-warfare')) *
-          (1 + DRONE_SKILL.strikePerLevel * droneSkillLv(state, 'drone-strike')),
-      )
+      const shot = ceilFinalQuantity((def.dmg ?? 0) * 2 * droneDamageMult)
       for (let i = 0; i < n; i++) {
         // **基准账**：无人机每架也是一条武器条目 ⇒ 逐架入账（基准 = 机型射程、加成 = 中继天线那套
         // `droneRangeMult`）——不入账就会被当成"无加成"压（2026-09-26 修）。
@@ -619,6 +626,25 @@ export function createPlayerSpec(
     }
   }
 
+  // 武器自身与校准仪先完成合成，再修正整条攻击时间轴；近防同样参与。
+  const charged = plugDefs.find(p => p.chargedWeapons)?.chargedWeapons
+  if (charged) {
+    for (const weapon of weapons) {
+      if (weapon.src !== 'laser' && !((weapon.src === 'turret' || weapon.src === 'missile') && weapon.shotsByType?.kinetic !== undefined)) continue
+      weapon.reloadMs = Math.max(1, Math.round(weapon.reloadMs * charged.reloadMul))
+      if (weapon.shotDmg !== undefined) weapon.shotDmg = ceilFinalQuantity(weapon.shotDmg * charged.damageMul)
+      if (weapon.shotsByType) for (const type of ['kinetic', 'explosive', 'plasma'] as const) {
+        const shot = weapon.shotsByType[type]
+        if (shot !== undefined) weapon.shotsByType[type] = ceilFinalQuantity(shot * charged.damageMul)
+      }
+      weapon.falloff = 1 - (1 - weapon.falloff) * (1 - charged.falloffReductionPct)
+      if (weapon.overlayDrive) weapon.overlayDrive = {
+        stepMs: weapon.overlayDrive.stepMs * charged.reloadMul,
+        floorMs: Math.round(weapon.overlayDrive.floorMs * charged.reloadMul),
+      }
+      if (weapon.burst) weapon.burst = { ...weapon.burst, gapMs: Math.round(weapon.burst.gapMs * charged.reloadMul) }
+    }
+  }
   if (damage.range !== 1) {
     for (const weapon of weapons) weapon.maxRangeM = Math.round(weapon.maxRangeM * damage.range)
     for (const range of refs?.weaponRanges ?? []) range.baseM *= damage.range
@@ -652,11 +678,15 @@ export function createPlayerSpec(
     ...(dcDevice?.rebirthRepair ? { rebirthRepair: dcDevice.rebirthRepair } : {}),
     ...(crisisOverload ? { crisisOverload } : {}),
     hp,
+    ...(plugDefs.some(p => (p.armorRegenPerSec ?? 0) > 0)
+      ? { armorRegenPerSec: plugDefs.reduce((rate, p) => rate + (p.armorRegenPerSec ?? 0), 0) } : {}),
     ...(coatingPct > 0 ? { shieldArmorHp } : {}),
     ...(plugDefs.some(p => (p.shieldPassiveBonusPct ?? 0) > 0)
       ? { shieldPassiveBonusPct: plugDefs.reduce((n, p) => n + (p.shieldPassiveBonusPct ?? 0), 0) } : {}),
     ...(printing ? { droneHpMul: printing.hpMul } : {}),
     resists,
+    droneDamageBonusPct: droneDamageMult - 1,
+    ...(plugDefs.some(p => p.droneCommand) ? { droneCommand: plugDefs.find(p => p.droneCommand)!.droneCommand } : {}),
     // 本舰无人机结构层加成（模块求和；2026-09-13 船长：鱿蜂结构层「提高无人机 80% 的结构」）
     droneHullBonusPct: allDefs.reduce((s, m) => s + (m.droneHullHpBonusPct ?? 0), 0),
     // 本舰无人机护盾层加成（模块求和；2026-09-27 船长令：无人机护盾投射仪 MK2/MK3 = +70%/+100%，多件线性相加不设上限）

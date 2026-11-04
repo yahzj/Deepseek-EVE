@@ -12,15 +12,16 @@ import { snapshotFoeStandby } from './damage'
 import { thrusterPhase, unitThrusterCycle, updateFoeCharge, unitSpeedMulOf, combatSpeed, steerStep, effectiveHitMul } from './movement'
 import { foeDesiredRange, battleMaxDistanceM } from './foes/tactics'
 import { expireFoeWebs, advanceMyCaptureWebs } from './captureWebs'
-import { isAlive, clamp } from './combatMath'
+import { isAlive, clamp, healArmorHp } from './combatMath'
 import { settleBlinkQueue, blinkHoldSides } from './blink'
 import { FOE_SUPPORT_TAG_RE } from './foeCard'
 import { isFoeEngageable, resolvePointDefense } from './combatDrones'
 import { firePlayerPhase } from './playerFire'
 import { fireEnemyPhase } from './enemyFire'
-import { SHIELD_REGEN_FLOOR_PCT } from './combatRepair'
 import { pushBattleNotice } from './combatFx'
 import { isAliveAnyOf } from './targeting'
+import { passiveShieldRateOf } from './passiveRecovery'
+import { applyDroneCommandAura } from './droneCommand'
 
 /**
  * 一步战斗推进。
@@ -56,7 +57,7 @@ export function stepBattle(
 ): void {
   syncPlayerCrisis(b, baseMyUnits)
   for (const spec of baseMyUnits) advancePlayerRebirth(b, spec, b.lastTickGameMs)
-  const myUnits = baseMyUnits.map(spec => playerGravekeeperSpecOf(b, spec))
+  const myUnits = applyDroneCommandAura(baseMyUnits, b).map(spec => playerGravekeeperSpecOf(b, spec))
   if (simulation) {
     b.distanceM = simulation.distanceM
     for (const foe of foes) {
@@ -224,11 +225,25 @@ export function stepBattle(
       if (urt.hp.s >= sMax || (urt.hp.a <= 0 && urt.hp.h <= 0)) continue
       // 后续被动恢复来源同区加算，不为各个来源另开乘区。
       const regenMul = (1 + (unit.shieldPassiveBonusPct ?? 0)) * (1 + Math.max(0, unit.repairOutputBonusPct ?? 0))
-      const floor = sMax * SHIELD_REGEN_FLOOR_PCT
-      const rate = urt.hp.s > 0 ? Math.max(urt.hp.s * bal.shieldRegenPerSec, floor) * regenMul : 0
+      const rate = passiveShieldRateOf(urt.hp.s, sMax, bal.shieldRegenPerSec, regenMul)
       const regen = rate * dtSec
       if (regen > 0) urt.hp.s = Math.min(sMax, urt.hp.s + regen)
     }
+  }
+  for (const unit of foes) {
+    const rt = b.units[unit.tag]
+    if (!rt || !isAlive(b, unit.tag) || (rt.hp.a <= 0 && rt.hp.h <= 0)) continue
+    const boss = unit.foeShipId !== undefined && unit.foeShipId === b.foeOverride?.bossShipId
+    const cap = unit.shieldRegenCap ?? (boss ? b.foeOverride?.bossMaxLayers?.s : undefined) ?? rt.hpMax?.s ?? unit.hp.s
+    const max = unit.shieldRegenMax ?? cap
+    if (rt.hp.s < cap) rt.hp.s = Math.min(cap, rt.hp.s + passiveShieldRateOf(rt.hp.s, max, bal.shieldRegenPerSec, 1, cap) * dtSec)
+  }
+  for (const unit of myUnits) {
+    const rt = b.units[unit.tag]
+    const armorRate = unit.armorRegenPerSec ?? 0
+    if (!rt || !isAlive(b, unit.tag) || armorRate <= 0) continue
+    const max = rt.hpMax?.a ?? unit.hp.a
+    healArmorHp(rt.hp, Math.min(Math.max(0, max - rt.hp.a), max * armorRate * dtSec))
   }
 
   // ── 隐秘行动装置（2026-09-15 船长）：**窗口到点即现形** —— "先到者为准"的另一支

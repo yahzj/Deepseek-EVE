@@ -7,6 +7,8 @@ import type { BlinkSeg, LogParams } from '../../state'
 export interface BattleState {
   /** 缺省旧编成；新开战固定使用扩编规则，读档不切换。 */
   enemyFormationVersion?: 1
+  /** 开战装载的无人机总体积快照；旧战斗缺省由初装账回退。 */
+  droneCommandVolumeM3?: number
   /** 本场入场配置快照；供玩家按卡记忆，自动模拟不写。 */
   rangeMemory?: import('../../battleRangeMemory').BattleRangeSnapshot
   foeAcidLayers?: Record<string, Array<{ cutPct: number; untilMs: number }>>
@@ -93,7 +95,7 @@ export interface BattleState {
     bossHpMax?: number
     /** 母舰**当前三层血**（按 护盾→装甲→结构 顺序扣；见 `weekendEvent.weekendFlagshipLayersOf`） */
     bossHpLayers?: { s: number; a: number; h: number }
-    /** 母舰三层血的**容量**（= 池子总量 × 卡面 split）：界面血条三行的分母 */
+    /** 母舰共享池三层容量：血条分母与回盾封顶，不替代本场hpMax结算基线。 */
     bossMaxLayers?: { s: number; a: number; h: number }
     /** 哪一条舰级算母舰（`foeShipId`） */
     bossShipId?: string

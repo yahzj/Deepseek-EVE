@@ -17,19 +17,20 @@ import {
   WEEKEND_FLAGSHIP_POOL_HP,
   WEEKEND_FLAGSHIP_SHIP_ID,
   weekendBossPoolView,
-  weekendFlagshipHpRemaining,
   weekendFlagshipSlotOf,
   weekendFlagshipLayerCaps,
   weekendFlagshipLayersOf,
   weekendFlagshipView,
 } from './weekendEvent'
 import type { WeekendBossPoolView } from './weekendEvent'
+import { flagshipRawLeftOf } from './invasion/event/boss'
 import type { FoeOverride } from './combat'
 import { shipDisplayName } from './instances'
 import { calcPower } from './expedition'
 import { preparationSquadOf, notePreparationSquad } from './preparationSquads'
 import { combatShipLimit, commandBudgetOf } from './combat/command/rules'
 import { shipOperationBlockReason } from './shipActionPolicy'
+import { beginDeparture, departureOrigin } from './departure'
 
 /** 参战舰船**上限**（旗舰战 = 4 艘小队战；语义是上限、不是"必须带满"——与虫洞 `WORMHOLE_MAX_SHIPS` 同款口径） */
 export const WEEKEND_FLAGSHIP_MAX_SHIPS = combatShipLimit(true)
@@ -247,7 +248,7 @@ function weekendStartFlagshipBattleMutable(state: GameState, ctx: SimContext, no
   if (use.some(id => shipOperationBlockReason(state, ctx, id, 'configure') !== null)) return null
   if (clean.length > 0) weekendNoteFlagshipSquad(state, clean)
   /**
-   * **母舰血条 = 池子剩余**（船长 2026-09-25 选「甲」）：开战这一刻把 `weekendFlagshipHpRemaining(ev)`
+   * 母舰血条取共享池实际剩余，保留跨场恢复小数。
    * 传进覆写口 ⇒ 战斗里母舰的满血就是池子剩余（单场不死名副其实；打空即击沉）。
    * 覆写随档存进 `BattleState.foeOverride` ⇒ 逐拍重建母舰、读档续战都吃同一份。
    *
@@ -263,7 +264,7 @@ function weekendStartFlagshipBattleMutable(state: GameState, ctx: SimContext, no
    *   它同时决定**每发的实收伤害**（`applyDamage` 逐层乘"层克制 × (1−该层该系抗性)"）。
    */
   const poolTotal = state.weekendEvent?.flagshipHpMax ?? WEEKEND_FLAGSHIP_POOL_HP
-  const bossHp = weekendFlagshipHpRemaining(state.weekendEvent)
+  const bossHp = Math.max(0, flagshipRawLeftOf(state.weekendEvent))
   /**
    * 🔴 **认母舰 = `weekendFlagshipSlotOf`（族无关 · 从本卡自身认 T5）** —— **2026-10-02 修**：
    * 原先把 `bossShipId` 与"取 `split` 的舰级"都写死成 H 族那艘 ⇒ **R 族（本期入侵族）**
@@ -271,7 +272,7 @@ function weekendStartFlagshipBattleMutable(state: GameState, ctx: SimContext, no
    * 成 H 族的 `split` ③ 战斗内血条分母回落成"单位自身满值"＝**满血**（玩家报障原话）。
    */
   const bossSlot = weekendFlagshipSlotOf(ctx.anomalies.get(spec.cardId))
-  const cap = weekendFlagshipLayerCaps(poolTotal, bossSlot?.ship.split ?? { s: 0.2, a: 0.55, h: 0.25 })
+  const cap = weekendFlagshipLayerCaps(poolTotal, bossSlot?.split ?? bossSlot?.ship.split ?? { s: 0.2, a: 0.55, h: 0.25 })
   const override: FoeOverride = {
     threat: spec.threat,
     waves: weekendFlagshipWavesOf(),
@@ -282,7 +283,10 @@ function weekendStartFlagshipBattleMutable(state: GameState, ctx: SimContext, no
     bossShipId: bossSlot?.ship.id ?? WEEKEND_FLAGSHIP_SHIP_ID,
   }
   // 船长2026-10-21：旗舰同样按实际卡ID记忆，核心星系不再决定距离。
-  return startFleetBattleFor(state, ctx, use, spec.cardId, state.gameMs, undefined, undefined, override, true)
+  const origin = departureOrigin(state, ctx)
+  const battle = startFleetBattleFor(state, ctx, use, spec.cardId, state.gameMs + (origin.docked ? 10_000 : 0), undefined, undefined, override, true)
+  if (battle) beginDeparture(state, ctx, 'flagship', state.weekendEvent!.coreId, origin)
+  return battle
 }
 
 /* ═══════════════ 旗舰战的"战斗宿主"解析（界面侧） ═══════════════
@@ -324,6 +328,7 @@ export interface WeekendFlagshipBattleView {
  * 判据 = 遭遇槽里挂着旗舰卡 + 那场战斗还在（`weekendFlagshipEncounterOf` + `enc.battle`）。
  */
 export function weekendFlagshipBattleActive(state: GameState): boolean {
+  if (state.departure?.kind === 'flagship') return false
   const enc = state.encounter
   if (!enc.active || !enc.battle) return false
   return weekendFlagshipEncounterOf(state, enc)
@@ -331,6 +336,7 @@ export function weekendFlagshipBattleActive(state: GameState): boolean {
 
 /** 旗舰战的战斗视图（无 / 还没开打 ⇒ `null`）。 */
 export function weekendFlagshipBattleViewOf(state: GameState, ctx: SimContext): WeekendFlagshipBattleView | null {
+  if (state.departure?.kind === 'flagship') return null
   const enc = state.encounter
   const battle = enc.battle
   if (!battle || !enc.active) return null

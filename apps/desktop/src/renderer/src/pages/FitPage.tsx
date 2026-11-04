@@ -30,6 +30,7 @@ import {
   createPlayerSpec,
   /** 2026-09-26 船长令：装配页插件槽只读区（core 单点给槽位上限 + 已装清单） */
   plugInfoOf,
+  plugEffectsOf,
   cleanShipDamage,
   /** 2026-09-27 船长报障：装入入口（空槽可点，弹层选装，二次确认，installPlug） */
   installPlug,
@@ -1665,7 +1666,7 @@ function PluginSlotsSection({ engine, target }: { engine: PageProps['engine']; t
             </span>
           )
         })}
-        <ShipDamageMods ids={damage} />
+        <ShipDamageMods ids={damage} management={plugEffectsOf(state, ctx, target).find(mod => mod.damageManagement)?.damageManagement} />
       </div>
       {/* **装入弹层**（2026-09-27 补）：复用本页既有的 `.app-fit-overlay` / `.app-fit-modal` 一族，
           不另造样式；二次确认在同一弹层内完成（第一次点「装入」⇒ 该行变成「确认装入」＋「取消」） */}

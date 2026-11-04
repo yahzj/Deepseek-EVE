@@ -19,11 +19,12 @@ import { originGalaxyOf } from '../location'
 import { shortestTravelMinutes, travelLegMs } from '../travel'
 import { ceilFinalQuantity } from '../quantity'
 import { calcPower } from './tactics'
-import { rollTravelEvent, maybeFireTravelEvent } from './travel'
+import { rollTravelEvent } from './travel'
 import { shipDisplayName } from '../instances'
 import { weekendBattleInvolvedOf } from '../weekendBattle'
 import { startBattleFor, createPlayerSpec } from '../combat'
 import { autoLoopInvasionGalaxy } from './loopState'
+import { beginDeparture, departureOrigin, departureArrivalLog } from '../departure'
 
 /**
  * 出征通用前置检查（startExpedition 与"采矿转战"入口共用）：
@@ -31,6 +32,7 @@ import { autoLoopInvasionGalaxy } from './loopState'
  * 不含"采矿/远征进行中"互斥（由各入口自己裁决）与起点可达性（由各入口按自身起点检查）。
  */
 export function expeditionPreflight(state: GameState, ctx: SimContext, anomalyId: string, galaxyId?: string): CommandResult {
+  if (state.departure) return { ok: false, errorId: state.departure.progressMs < state.departure.undockMs ? 'core.departure.001' : 'core.departure.002' }
   if (!state.expedition.active && state.expedition.sortie) return { ok: false, error: '远征进行中，等战报回来再说吧。', errorId: 'core.expedition.011' }
   const anomaly = ctx.anomalies.get(anomalyId)
   if (!anomaly) return { ok: false, error: `未知目标：${anomalyId}。`, errorId: 'core.expedition.003', errorParams: { p1: anomalyId } }
@@ -77,6 +79,7 @@ export function startExpedition(
 
 export function startExpeditionMutable(state: GameState, anomalyId: string, ctx: SimContext,
   opts?: { desireM?: number; lairTier?: LairTier; foeGalaxyId?: string; rewardIskOverride?: number; confirmActivitySwitch?: boolean }): CommandResult {
+  const departureFrom = departureOrigin(state, ctx)
   const pre = expeditionPreflight(state, ctx, anomalyId, opts?.foeGalaxyId)
   if (!pre.ok) return pre
   const squad = combatRosterOf(state)
@@ -108,13 +111,19 @@ export function startExpeditionMutable(state: GameState, anomalyId: string, ctx:
   if (opts?.confirmActivitySwitch) haltCurrentActivity(state, ctx)
   const gateSkip = applyActivityGate(state, 'expedition', ctx)
   if (gateSkip) return gateSkip
+  // 野外转战不留下旧作业的返航账本，否则战斗期间会被旧账本到港卸货。
+  if (state.pendingActivityReturn && !departureFrom.docked) {
+    delete state.shipReturns[state.shipId]
+    state.pendingActivityReturn = null
+    state.haltedBySwitch = null
+  }
   /**
    * T8：出发地 = 当前位置（野外停留点或空间站）——⚠ **算在判据之后**：掩护巡逻那类可自动停的活动
    * 停下时舰船已即时归位（`awayGalaxy` 归零）⇒ 出发地要按"停机之后"的位置算，免得出现
    * "按巡逻星系的航路校验、却从母港出发"的错位。`awayGalaxy` 复位同样放在**全部校验之后**
    * （2026-09-21 统一批顺手修正：原先它在航路校验之前清标记，校验失败也照清）。
    */
-  const from = originGalaxyOf(state, ctx)
+  const from = departureFrom.docked ? originGalaxyOf(state, ctx) : departureFrom.galaxy
   const targetGalaxy = opts?.foeGalaxyId ?? anomaly.galaxyId
   const outMinutes = shortestTravelMinutes(ctx, from, targetGalaxy)
   if (!Number.isFinite(outMinutes)) return { ok: false, error: '目标星系不在已知航路内。', errorId: 'core.expedition.024' }
@@ -141,9 +150,9 @@ export function startExpeditionMutable(state: GameState, anomalyId: string, ctx:
   if (opts?.rewardIskOverride !== undefined && Number.isFinite(opts.rewardIskOverride)) {
     exp.rewardIskOverride = Math.max(0, ceilFinalQuantity(opts.rewardIskOverride))
   } else delete exp.rewardIskOverride
-  exp.phase = 'out' // 占位：本函数内随即转入 battle（去程取消：开战时刻 = 现在）
+  exp.phase = 'out'
   exp.battle = null
-  exp.finishAtGameMs = now // 开战时刻 = 下达时刻（不再有去程等待）
+  exp.finishAtGameMs = now + beginDeparture(state, ctx, 'expedition', targetGalaxy, departureFrom)
   exp.outMs = outMs
   exp.combatMs = anomaly.combatSeconds * 1000
   exp.durationMs = outMs + exp.combatMs
@@ -153,30 +162,24 @@ export function startExpeditionMutable(state: GameState, anomalyId: string, ctx:
   exp.returnReason = undefined
   exp.lairTier = opts?.lairTier // 赏金任务·窝点档位（普通悬赏 = undefined）
   exp.factionActive = factionHit // 派系活跃目标（当日选中星系的常驻悬赏 = true）
+  // 仅在副本上校验射程；实际舰船与弹药保持未开战状态。
+  const preview = structuredClone(state)
+  if (!beginBattleAtMutable(preview, ctx, anomalyId, state.shipId, exp.finishAtGameMs, opts?.desireM)) {
+    return { ok: false, errorId: 'core.expedition.014' }
+  }
   // 显式距离仅随本次开战记录到实际卡ID，不再改写星系偏好。
   const shipName = shipDisplayName(state, ctx, state.shipId)
   const outName = opts?.lairTier ? lairNameOf(anomaly, opts.lairTier) : anomaly.name
-  addLog(
+  departureArrivalLog(
     state,
     'combat',
     `⚔ 远征开始（${outName}）：${shipName} 自「${fromName}」起航，立即抵达目标空域进入交火。胜利后自动返航最近空间站（母港或已建成副站，含去返全程，不可召回）；失利/撤退同样自动返航。`,
     'core.expedition.040',
     { p1: outName, p2: shipName, p3: fromName },
   )
-  // 途中事件（若有）在出发瞬间触发一次（不再有去程中段等待）
-  if (exp.eventId) maybeFireTravelEvent(state, ctx)
-  // 去程取消：立即开战（beginBattleAt 会点亮目标星系并写"进入交火"日志）
-  const opened = beginBattleAt(state, ctx, anomalyId, state.shipId, now, opts?.desireM)
-  if (!opened) {
-    delete exp.sortie
-    exp.active = false
-    exp.anomalyId = null
-    exp.battle = null
-    exp.phase = 'out'
-    exp.finishAtGameMs = 0
-    return { ok: false, error: '目标已不存在，无法开战。', errorId: 'core.expedition.014' }
-  }
-  return { ok: true }
+  // 实际到达前不建战斗、不扣预载弹药；到达沿用卡片射程记忆。
+  const result = { ok: true, battle: preview.expedition.battle! }
+  return result
 }
 
 /**
@@ -224,7 +227,7 @@ export function startExpeditionFromMiningMutable(state: GameState, anomalyId: st
   m.originGalaxy = null
   m.rvLeft = 0 // 转战悬赏即离开矿带作业：红利窗口清零
   // 矿带在异星系：以"野外停泊"表达起点（startExpedition 会读取并清空）
-  if (from !== null) state.awayGalaxy = from
+  state.awayGalaxy = from ?? 'galaxy-hub'
   const shipName = shipDisplayName(state, ctx, state.shipId)
   /** 转战目标名（日志模板与参数同源，避免两处各算一次） */
   const bountyTargetName = opts?.lairTier ? lairNameOf(anomaly, opts.lairTier) : anomaly.name

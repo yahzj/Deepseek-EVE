@@ -1,5 +1,108 @@
 # 待英文本地化记录
 
+## 舰队全部修理界面（2026-11-04）
+
+- 来源：船长确认在「我的舰队」增加全部修理预览与二次确认；未授权准备英文，按中文回退登记。
+
+| ID | 中文依据与范围 | 状态 |
+| --- | --- | --- |
+| `ui.shipPageFleetRepair.001` | 全部修理按钮 | 待本地化 |
+| `ui.shipPageFleetRepair.002` | 修理确认弹窗标题 | 待本地化 |
+| `ui.shipPageFleetRepair.003` | 可修理舰船数 | 待本地化 |
+| `ui.shipPageFleetRepair.004` | 无需修理、跳过的健康舰船数 | 待本地化 |
+| `ui.shipPageFleetRepair.005` | 忙碌或在外、跳过的舰船数 | 待本地化 |
+| `ui.shipPageFleetRepair.006` | 修理总费用 | 待本地化 |
+| `ui.shipPageFleetRepair.007` | 当前余额 | 待本地化 |
+| `ui.shipPageFleetRepair.008` | 资金不足差额 | 待本地化 |
+| `ui.shipPageFleetRepair.009` | 计划变化后要求再次确认 | 待本地化 |
+| `ui.shipPageFleetRepair.010` | 确认修理按钮 | 待本地化 |
+| `ui.shipPageFleetRepair.011` | 修理成功数量、费用及跳过数量 | 待本地化 |
+| `ui.shipPageFleetRepair.012` | 修理失败回退提示 | 待本地化 |
+| `ui.shipPageFleetRepair.013` | 无可修理舰船的按钮提示 | 待本地化 |
+| `ui.shipPageFleetRepair.014` | 取消按钮 | 待本地化 |
+
+## 五族插件扩充与参数展示（2026-11-04）
+
+已确认机制的中文规格直接落地，说明待主代理审核；未启动英文准备，新增名称、说明和参数标签均使用 `en: ''`、`enDeferred: true`。新插件的永久及一次性图纸名称随中文产物名派生，英文界面同样回退中文；已有英文保持。
+
+| ID | 中文依据与范围 | 状态 |
+| --- | --- | --- |
+| `mod.factionPlug.010` | 战损管理插件名称 | 待本地化 |
+| `mod.factionPlug.011` | 战损惩罚降低与按类型提高结构动能、能量抗性 | 待本地化 |
+| `mod.factionPlug.012` | 纳米生物质插件名称 | 待本地化 |
+| `mod.factionPlug.013` | 装甲容量代价与持续自愈 | 待本地化 |
+| `mod.factionPlug.014` | 蓄能插件名称 | 待本地化 |
+| `mod.factionPlug.015` | 动能和激光单发、间隔与衰减效果 | 待本地化 |
+| `mod.factionPlug.016` | 无人机指挥插件名称 | 待本地化 |
+| `mod.factionPlug.017` | 友军无人机增伤与自身选靶权重 | 待本地化 |
+| `mod.factionPlug.018` | 坚固结构插件名称 | 待本地化 |
+| `mod.factionPlug.019` | 结构扩容与整船回收不新增战损 | 待本地化 |
+| `bp.factionPlug.002` | 永久插件图纸名称后缀 | 待本地化 |
+| `ui.factionPlug.009` | 战损惩罚行名 | 待本地化 |
+| `ui.factionPlug.010` | 战损属性惩罚降低比例 | 待本地化 |
+| `ui.factionPlug.011` | 战损结构抗性行名 | 待本地化 |
+| `ui.factionPlug.012` | 每种战损的结构抗性与计数上限 | 待本地化 |
+| `ui.factionPlug.013` | 装甲容量代价短行 | 待本地化 |
+| `ui.factionPlug.014` | 装甲自愈行名 | 待本地化 |
+| `ui.factionPlug.015` | 每秒按最大装甲比例修复 | 待本地化 |
+| `ui.factionPlug.016` | 动能与激光单发伤害行名 | 待本地化 |
+| `ui.factionPlug.017` | 动能与激光单发伤害倍率 | 待本地化 |
+| `ui.factionPlug.018` | 动能与激光攻击间隔行名 | 待本地化 |
+| `ui.factionPlug.019` | 动能与激光攻击间隔倍率 | 待本地化 |
+| `ui.factionPlug.020` | 武器衰减行名 | 待本地化 |
+| `ui.factionPlug.021` | 动能命中衰减与激光远端威力衰减降低比例 | 待本地化 |
+| `ui.factionPlug.022` | 友军无人机增伤行名 | 待本地化 |
+| `ui.factionPlug.023` | 自身无人机伤害加成的分享比例 | 待本地化 |
+| `ui.factionPlug.024` | 自身选靶权重行名 | 待本地化 |
+| `ui.factionPlug.025` | 全队装载无人机每单位体积的选靶权重 | 待本地化 |
+| `ui.factionPlug.026` | 结构容量增加比例短行 | 待本地化 |
+| `ui.factionPlug.027` | 整船回收行名 | 待本地化 |
+| `ui.factionPlug.028` | 整船回收不新增战损参数行 | 待本地化 |
+
+## 生产研究所与加密货柜（2026-11-03）
+
+| ID | 中文依据与范围 | 状态 |
+| --- | --- | --- |
+| `ui.researchLab.001` | 生产研究所地点名 | 待本地化 |
+| `ui.researchLab.002` | 生产研究所首次打捞说明 | 待本地化 |
+| `ui.researchLab.003` | 加密货柜子分类 | 待本地化 |
+| `core.encrypted.001` | 奖池缺失时停止拆解 | 待本地化 |
+| `core.researchLab.001` | 奖励定义缺失时保留首次打捞机会 | 待本地化 |
+| `item.encrypted.001` | 海盗加密货柜名 | 待本地化 |
+| `item.encrypted.002` | 异形加密货柜名 | 待本地化 |
+| `item.encrypted.003` | 守墓加密货柜名 | 待本地化 |
+| `item.encrypted.004` | 巨构加密货柜名 | 待本地化 |
+| `item.encrypted.005` | 亡军加密货柜名 | 待本地化 |
+| `item.encrypted.006` | 加密货柜说明 | 待本地化 |
+| `bp.encrypted.001` | 一次性图纸名称后缀 | 待本地化 |
+| `bp.encrypted.002` | 一次性插件图纸说明 | 待本地化 |
+
+## 修理无人机图纸与势力插件调整（2026-11-02）
+
+船长授权由二号决定生产参数并一起执行前述插件调整；未授权准备英文。旧英文条目保留，新说明及蓝图回退中文。
+
+| ID | 中文依据与范围 | 状态 |
+| --- | --- | --- |
+| `bp.repairDrone.001` | 军用修理无人机一次性图纸名称 | 待本地化 |
+| `bp.repairDrone.002` | 军用修理无人机永久图纸名称 | 待本地化 |
+| `bp.repairDrone.003` | 一次性图纸用途与消耗 | 待本地化 |
+| `bp.repairDrone.004` | 永久图纸用途 | 待本地化 |
+| `mod.factionPlug.008` | 镀膜保留护盾及装甲按总量比例保留 | 待本地化 |
+| `mod.factionPlug.009` | 空间压缩移除CPU惩罚 | 待本地化 |
+| `ui.factionPlug.008` | 镀膜转换率与护盾保留率参数行 | 待本地化 |
+
+## 主控离港与星门阶段（2026-11-02）
+
+- 来源：船长确认离港覆盖所有实际出港活动，星门仅覆盖悬赏、采矿和打捞。
+- `core.departure.001`：正在离港；`core.departure.002`：正在使用协会跃迁星门前往目的地；`core.departure.003`：正在返港进行补给。
+- 均采用船长原文，未启动英文准备，使用 `en: ''`、`enDeferred: true`，英文界面回退中文。
+
+| ID | 中文依据与范围 | 状态 |
+| --- | --- | --- |
+| `core.departure.001` | 主控离港阶段：正在离港 | 待本地化 |
+| `core.departure.002` | 协会星门阶段：正在使用协会跃迁星门前往目的地 | 待本地化 |
+| `core.departure.003` | 悬赏胜利返港：正在返港进行补给 | 待本地化 |
+
 ## 声音系统追加批：BGM / 环境音 / 战斗细分 / 音高随机（2026-11-02）
 
 - 来源：船长 2026-11-02 要求补 BGM 与环境音、细化战斗触发，并确认战斗重复音「1200 音分八度里上下浮动 100 音分」的音高随机。未授权准备英文。

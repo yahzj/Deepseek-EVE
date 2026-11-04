@@ -11,6 +11,7 @@ import { Glyph, ICO_TONES } from '../../ui/Glyphs'
 import { fmtDuration } from '../../i18n/fmt'
 import { FoeDamageMix, ProfileChip } from '../../ui/shipInfo'
 import { RangeEwPreview } from '../combat/RangeEwPanel'
+import { departureDurationMs } from '@whale/core'
 
 /** 野外应急修理（2026-10-02 批次 4p 随 GalaxyActions 迁到 StarMap.tsx） */
 
@@ -68,7 +69,8 @@ export function AnomalyCard({
   const localTarget = anomaly.galaxyId === retBase
   const retMins = localTarget ? NaN : shortestTravelMinutes(engine.ctx, retBase, anomaly.galaxyId)
   const retMs = localTarget ? 120_000 : Number.isFinite(retMins) ? travelLegMs(state, engine.ctx, retMins) * RETURN_LEG_MUL : 0
-  const roundTripMs = Math.max(1, combatMs + retMs)
+  const departureMs = departureDurationMs(engine.ctx, 'expedition', retBase, anomaly.galaxyId).totalMs
+  const roundTripMs = Math.max(1, departureMs + combatMs + retMs)
   const grossIsk = ceilFinalQuantity((factionHit ? factionBaseRewardIsk(anomaly) : anomaly.rewardIsk) * bountyRewardFactor(state))
   const iskPerHour = roundTripMs > 0 ? grossIsk / (roundTripMs / 3_600_000) : 0
   const iskPerHourTxt =
@@ -344,7 +346,7 @@ export function AnomalyCard({
       {invadedHere ? null : (
         <div
           className="app-ano-econ"
-          title={tr("ui.Expedition.039", { p1: grossIsk.toLocaleString('zh-CN'), p2: fmtDuration(roundTripMs) })}
+          title={`${grossIsk.toLocaleString('zh-CN')} / ${fmtDuration(roundTripMs)}`}
         >
           {MONEY_GLYPH} {tr("ui.Expedition.040")}{iskPerHourTxt} {tr("ui.Expedition.041")}
         </div>

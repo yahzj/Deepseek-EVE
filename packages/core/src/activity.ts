@@ -28,6 +28,7 @@ import { haulEndpointName } from './hauling'
 import { travelMinutesEff } from './travel'
 import { weekendFoePoolOf } from './weekendEvent'
 import { pendingStationActivityView } from './stationActivityPending'
+import { departureView } from './departure'
 
 /** 活动种类（UI 据此渲染图标；新增耗时作业在此扩展） */
 export type ActivityKind =
@@ -674,6 +675,27 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     })
   }
 
+  const departure = departureView(state)
+  if (departure) {
+    if (departure.kind === 'flagship') out.push({ id: 'flagship-departure', kind: 'expedition',
+      label: state.encounter.name || (state.encounter.anomalyId ? ctx.anomalies.get(state.encounter.anomalyId)?.name ?? '' : ''),
+      sub: '', badge: 'invasion', percent: departure.percent, remainingMs: departure.remainingMs, stopable: false, stop: null })
+    const kind = { mining: 'mining', salvaging: 'salvage', expedition: 'expedition', hauling: 'hauling',
+      deliver: 'courier', siteDeliver: 'transit', wormhole: 'wormhole', flagship: 'expedition' }[departure.kind]
+    const row = out.find(item => item.kind === kind)
+    if (row) {
+      row.sub = ''
+      row.subId = departure.textId
+      delete row.subParams
+      row.percent = departure.percent
+      row.remainingMs = departure.remainingMs
+    }
+  }
+  // ⟪文案调整 2026-11-02⟫ 船长指定悬赏胜利返港显示补给状态；循环停止权限不变。
+  if (state.expedition.active && state.expedition.phase === 'back' && state.expedition.returnReason === 'victory') {
+    const row = out.find(item => item.id === 'expedition')
+    if (row) { row.sub = ''; row.subId = 'core.departure.003'; delete row.subParams }
+  }
   return out
 }
 

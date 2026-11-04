@@ -110,6 +110,12 @@ const DATA_TABLES: readonly string[] = [
  * 其余文件出现同名定义照样按 F2 报红。
  */
 const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; exported: boolean }[] = [
+  { concept: '势力加密货柜蓝图分组', symbol: 'encryptedBlueprintGroups', file: 'packages/core/src/encryptedContainer.ts', exported: true },
+  { concept: '势力加密货柜抽取', symbol: 'encryptedBlueprintDraw', file: 'packages/core/src/encryptedContainer.ts', exported: true },
+  { concept: '生产研究所首捞货柜', symbol: 'wormholeResearchBox', file: 'packages/core/src/wormholeSalvage.ts', exported: true },
+  { concept: '主控离港与星门阶段', symbol: 'departureView', file: 'packages/core/src/departure.ts', exported: true },
+  { concept: '协会星门距离耗时', symbol: 'associationGateMs', file: 'packages/core/src/departure.ts', exported: true },
+  { concept: '主控出发等待总长', symbol: 'departureDurationMs', file: 'packages/core/src/departure.ts', exported: true },
   { concept: '工业活动统一目标威胁', symbol: 'industrialThreatOf', file: 'packages/core/src/encounters/risk.ts', exported: true },
   { concept: '工业活动独立遇袭频率修正', symbol: 'industrialFrequencyOf', file: 'packages/core/src/encounters/risk.ts', exported: true },
   { concept: '实际出勤质量与携货快照', symbol: 'industrialFleetSnapshotOf', file: 'packages/core/src/encounters/risk.ts', exported: true },
@@ -240,6 +246,11 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
   { concept: '准备阵容按实例保存且不执行任务', symbol: 'notePreparationSquad', file: 'packages/core/src/preparationSquads.ts', exported: true },
   { concept: '护盾力场每次有效脉冲的最大护盾代价', symbol: 'SHIELD_FIELD_COST_PCT', file: 'packages/core/src/combat/combatRepair.ts', exported: true },
   { concept: '护盾力场排除自身与按需支付恢复', symbol: 'pulseShieldFieldFor', file: 'packages/core/src/combat/combatRepair.ts', exported: true },
+  { concept: '双方护盾自然回复与旗舰基准映射速率', symbol: 'passiveShieldRateOf', file: 'packages/core/src/combat/passiveRecovery.ts', exported: true },
+  { concept: '护盾自然回复下恒定承伤破盾时间', symbol: 'passiveShieldBreakSeconds', file: 'packages/core/src/combat/passiveRecovery.ts', exported: true },
+  { concept: '装甲自愈下恒定承伤破甲时间', symbol: 'passiveArmorBreakSeconds', file: 'packages/core/src/combat/passiveRecovery.ts', exported: true },
+  { concept: '无人机指挥最高来源光环与目标权重', symbol: 'applyDroneCommandAura', file: 'packages/core/src/combat/droneCommand.ts', exported: true },
+  { concept: '无人机指挥全舰队已装载体积开战快照', symbol: 'droneCommandVolumeM3Of', file: 'packages/core/src/combat/droneCommand.ts', exported: true },
   { concept: '锁定阵列共享比例', symbol: 'LOCK_SHARED_SCALE', file: 'packages/core/src/combat/lockAura.ts', exported: true },
   { concept: '锁定阵列常规共享上限', symbol: 'LOCK_SHARED_CAP', file: 'packages/core/src/combat/lockAura.ts', exported: true },
   { concept: '锁定阵列本舰与存活来源共享合成', symbol: 'applyFleetLockAura', file: 'packages/core/src/combat/lockAura.ts', exported: true },
@@ -265,6 +276,7 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
   { concept: '整船回收与工程技能加算概率', symbol: 'hullRecoveryChanceOf', file: 'packages/core/src/shipWrecks.ts', exported: true },
   { concept: '整船装备保全技能概率', symbol: 'wreckEquipmentRecoveryChanceOf', file: 'packages/core/src/shipWrecks.ts', exported: true },
   { concept: '战损插件清洗与最终属性倍率', symbol: 'shipDamageEffects', file: 'packages/core/src/shipDamage.ts', exported: true },
+  { concept: '战损管理按不同战损类型计算双系抗性', symbol: 'shipDamageHullResistOf', file: 'packages/core/src/shipDamage.ts', exported: true },
   { concept: '战损插件随机新增与去重上限', symbol: 'rollShipDamage', file: 'packages/core/src/shipDamage.ts', exported: true },
   { concept: '爆虫一次性腐蚀触发', symbol: 'triggerAcidBurst', file: 'packages/core/src/combat/alienCombat.ts', exported: true },
   { concept: '本场装甲结构腐蚀抗性', symbol: 'applyAlienCorrosion', file: 'packages/core/src/combat/alienCombat.ts', exported: true },

@@ -310,6 +310,8 @@ export const MARKET_GOODS_RAW_0_TEXT_BINDINGS: Record<string, Record<string, unk
   "bp-dc-2": {},
   "bp-dc-3": {},
   "bp-drone-scout": {},
+  "bp-once-drone-repair-mil": {},
+  "bp-drone-repair-mil": {},
   "bp-drone-assault": {},
   "bp-drone-heavy": {},
   "bp-drone-sentry": {},
@@ -439,6 +441,11 @@ export const MARKET_GOODS_RAW_0_TEXT_BINDINGS: Record<string, Record<string, unk
   "core-alpha": {},
 }
 export const MARKET_GOODS_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
+  'plug-pirate-damage-management': {}, 'bp-plug-pirate-damage-management': {}, 'bp-once-plug-pirate-damage-management': {},
+  'plug-alien-nanobiomass': {}, 'bp-plug-alien-nanobiomass': {}, 'bp-once-plug-alien-nanobiomass': {},
+  'plug-gravekeeper-charge': {}, 'bp-plug-gravekeeper-charge': {}, 'bp-once-plug-gravekeeper-charge': {},
+  'plug-titan-drone-command': {}, 'bp-plug-titan-drone-command': {}, 'bp-once-plug-titan-drone-command': {},
+  'plug-deadarmy-reinforced-hull': {}, 'bp-plug-deadarmy-reinforced-hull': {}, 'bp-once-plug-deadarmy-reinforced-hull': {},
   'mod-gravekeeper-rebirth': {}, 'mod-gravekeeper-crisis': {}, 'mod-gravekeeper-rail': {},
   'mod-alien-acid-launcher': {}, 'mod-alien-pressure-chamber': {},
   "sbp-wh-a-frigate": {},

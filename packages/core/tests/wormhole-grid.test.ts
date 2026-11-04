@@ -38,10 +38,16 @@ import type { WormholeSignal } from '../src/wormholeGrid'
 import { createInitialState } from '../src/state'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { addShipToFleet } from '../src/shipyard'
-import { wormholeEnter, wormholeGridScan, wormholeGridTravel } from '../src/wormhole'
+import { wormholeEnter as enterWormhole, wormholeGridScan, wormholeGridTravel } from '../src/wormhole'
+import { finishDeparture } from './helpers/departure-ready'
 import { buildSimContext } from '@whale/data'
 
 const ctx = buildSimContext()
+function wormholeEnter(...args: Parameters<typeof enterWormhole>) {
+  const result = enterWormhole(...args)
+  if (result.ok) finishDeparture(args[0], args[1])
+  return result
+}
 
 describe('虫洞网格 · 几何（F3a）', () => {
   it('半径 R 的圆盘格数 = 3R(R+1)+1（R=2 ⇒ 19 格）', () => {

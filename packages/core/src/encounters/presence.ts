@@ -106,6 +106,7 @@ export function collectExposures(state: GameState, ctx: SimContext, includeOccup
   const bal = ctx.balance.encounter
   const out = new Map<string, Exposure>()
   const push = (e: Exposure): void => {
+    if (state.departure && (e.shipId === state.departure.shipId || state.combatEscort?.shipIds.includes(e.shipId))) return
     // 中安/高安不掷（低安 = sec ≤ 0，含 0）；**占领区破例**见上面的 `includeOccupiedAt`
     if (secOf(ctx, e.galaxyId) > bal.lowSecMax) {
       if (includeOccupiedAt === undefined) return

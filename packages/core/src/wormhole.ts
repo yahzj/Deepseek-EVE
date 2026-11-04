@@ -11,6 +11,7 @@
  * 本模块**只放纯逻辑**（数值换算与校验），不持状态、不碰存档；副本状态机在 C 批另开。
  */
 import { ceilFinalQuantity } from './quantity'
+import { beginDeparture, departureOrigin } from './departure'
 import { bumpFirst, peakFirst } from './firstTasks'
 import { type BusyLabel } from './busyLabels'
 import type { GameState, BattleState, WormholeArchetype, WormholeFamily } from './state'
@@ -722,6 +723,7 @@ export function wormholeDescend(
   scanBonus = 0,
   opts?: { confirmLeaveCargo?: boolean },
 ): WormholeAdvanceResult {
+  if (state.departure?.kind === 'wormhole') return { ok: false, errorId: 'core.departure.001' }
   const run = state.wormhole.run
   if (!run) return { ok: false, error: '当前不在虫洞里。', errorId: 'core.wormhole.003' }
   if (run.expeditionRules !== undefined && run.expeditionRules !== 2) return { ok: false, code: 'unsupported-rules' }
@@ -999,7 +1001,9 @@ export function wormholePendingBattleReason(state: GameState): CoreBlockReason |
 }
 
 /** 战斗中不许做任何层内动作（与"战斗没结束不能撤/不能深入"同一把尺） */
-function gridActionBlocked(run: WormholeRunState): CoreBlockReason | null {
+function gridActionBlocked(state: GameState): CoreBlockReason | null {
+  if (state.departure?.kind === 'wormhole') return { error: '正在离港', errorId: 'core.departure.001' }
+  const run = state.wormhole.run!
   if (run.battle) return { error: '战斗中：先打完这一场。', errorId: 'core.wormhole.035' }
   const here = run.grid ? gridCellAt(run.grid, run.grid.pos) : undefined
   if (run.expeditionRules === 2 && here && hasLiveFoe(here)) return { error: '对方已经发现我们：先点「开战」打完这一场。', errorId: 'core.wormhole.034' }
@@ -1042,7 +1046,7 @@ export function wormholeGridScan(state: GameState, ctx?: SimContext): WormholeGr
   if (!hit) return { ok: false, error: '本层没有网格：无法扫描。', errorId: 'core.wormhole.010' }
   const { run, grid } = hit
   if (run.expeditionRules !== undefined && run.expeditionRules !== 2) return { ok: false, code: 'unsupported-rules' }
-  const blocked = gridActionBlocked(run)
+  const blocked = gridActionBlocked(state)
   if (blocked) return { ok: false, error: blocked.error, errorId: blocked.errorId, errorParams: blocked.errorParams }
   if (ctx) grid.scanRadius = WORMHOLE_SCAN_RADIUS_BASE + wormholeScanBonusOf(ctx, run.fleet)
   /**
@@ -1146,7 +1150,7 @@ export function wormholeGridTravel(
   if (!hit) return { ok: false, error: '本层没有网格：无法前往。', errorId: 'core.wormhole.012' }
   const { run, grid } = hit
   if (run.expeditionRules !== undefined && run.expeditionRules !== 2) return { ok: false, code: 'unsupported-rules' }
-  const blocked = gridActionBlocked(run)
+  const blocked = gridActionBlocked(state)
   if (blocked) return { ok: false, error: blocked.error, errorId: blocked.errorId, errorParams: blocked.errorParams }
   const cell = gridCellAt(grid, target)
   if (!cell) return { ok: false, error: '那一格不在本层网格里。', errorId: 'core.wormhole.013' }
@@ -1343,7 +1347,7 @@ export function wormholeGridActivate(state: GameState): WormholeGridActionResult
   if (!hit) return { ok: false, error: '本层没有网格：无法激活。', errorId: 'core.wormhole.017' }
   const { run, grid } = hit
   if (run.expeditionRules !== undefined && run.expeditionRules !== 2) return { ok: false, code: 'unsupported-rules' }
-  const blocked = gridActionBlocked(run)
+  const blocked = gridActionBlocked(state)
   if (blocked) return { ok: false, error: blocked.error, errorId: blocked.errorId, errorParams: blocked.errorParams }
   const cell = gridCellAt(grid, grid.pos)
   if (!cell) return { ok: false, error: '当前位置不在网格里。', errorId: 'core.wormhole.018' }
@@ -1803,8 +1807,9 @@ export function wormholeEnter(
    * **本处的"出生信息"**（可选）：从库存项进洞时把 起始层 / 内容原型 / 敌族 一并带进来
    * （丙 + 丁 · 船长 2026-09-14）。不传（调试入口/老路径）⇒ 层按老口径、族与原型按 `seed` 现算。
    */
-  origin?: { depth?: number; archetype?: WormholeArchetype; family?: WormholeFamily; expeditionRules?: number },
+  origin?: { depth?: number; archetype?: WormholeArchetype; family?: WormholeFamily; expeditionRules?: number; automatic?: true },
 ): WormholeStartResult {
+  const departureFrom = departureOrigin(state, ctx)
   if (state.wormhole.run) return { ok: false, error: '已经在虫洞里了：先撤离或结算本趟。', errorId: 'core.wormhole.026' }
   const budget = commandBudgetOf(state, ctx, shipIds, true)
   if (!budget.ok) return budget
@@ -1833,6 +1838,7 @@ export function wormholeEnter(
   r.run.family = origin?.family ?? wormholeFamilyOfSeed(seed)
   if (origin?.expeditionRules !== undefined) r.run.expeditionRules = origin.expeditionRules
   state.wormhole.run = r.run
+  if (!origin?.automatic) beginDeparture(state, ctx, 'wormhole', departureFrom.galaxy, departureFrom)
   /**
    * **进新一趟 ⇒ 上一趟的结算单作废**（**2026-09-27 玩家报障修复 · 甲案**，船长批「按你推荐来」）。
    *

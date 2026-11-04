@@ -234,9 +234,10 @@ export function flagshipBattleLedger(
     if (!max) continue
     const maxSum = max.s + max.a + max.h
     const curSum = u.hp.s + u.hp.a + u.hp.h
-    rawDmg += Math.max(0, maxSum - curSum)
+    // 负净损失表示本场补回了此前失去的护盾，必须传到共享池结算。
+    rawDmg += maxSum - curSum
     maxHp += maxSum
     seq++
   }
-  return { rawDmg: ceilFinalQuantity(rawDmg), flagshipMaxHp: ceilFinalQuantity(maxHp), flagshipSeq: seq }
+  return { rawDmg: rawDmg < 0 ? rawDmg : ceilFinalQuantity(rawDmg), flagshipMaxHp: ceilFinalQuantity(maxHp), flagshipSeq: seq }
 }

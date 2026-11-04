@@ -12,8 +12,9 @@ import { meFoeRangeDebuffOf } from './foeRange'
 import { beamPowerFactor } from './beam'
 import { foeDamageComposition } from '../wormholeFoes'
 import { ceilFinalQuantity } from '../quantity'
-import { SHIELD_REGEN_FLOOR_PCT, shieldChargeStreamsOf } from './combatRepair'
+import { shieldChargeStreamsOf } from './combatRepair'
 import { spreadWinChance } from './combatReport'
+import { passiveShieldBreakSeconds, passiveArmorBreakSeconds } from './passiveRecovery'
 
 /**
  * **某星系的玩家目标距离设定**（船长 2026-09-11：「玩家每个星系设定的目标距离独立保存，
@@ -227,35 +228,27 @@ export function steadyPreview(
   //     · `sX ≥ s > 0`：**恒速段**（净掉率 = D − sCap；`D ≤ sCap` ⇒ 恒速回充，永远打不穿）
   //     · `s = 0`：破盾，回充归 0（不变）
   const foeDpsNet = foeDps * foeMul
-  const regenMul = 1 + (me.shieldPassiveBonusPct ?? 0)
-  const k = bal.shieldRegenPerSec * regenMul
+  const regenMul = (1 + (me.shieldPassiveBonusPct ?? 0)) * (1 + Math.max(0, me.repairOutputBonusPct ?? 0))
   const s0 = Math.max(0, me.hp.s)
-  const sCap = s0 * SHIELD_REGEN_FLOOR_PCT * regenMul
-  const sX = k > 0 ? sCap / k : Number.POSITIVE_INFINITY
   /**
    * **每秒回盾量 = Σ 逐路「本路比例 × 满盾 ÷ 本路间隔」**（**2026-09-21 逐型号独立回转**后：
    * 各路各按各的节奏跳，所以必须逐路换算再相加，不能拿"合计比例 ÷ 某个间隔"）。
    */
   const chargePerSec =
     shieldChargeStreamsOf(state, ctx, shipId).reduce((n, s) => n + (s.pct * s0) / Math.max(1, s.ms) / 1000, 0)
-  let ttrMe: number
-  if (foeDpsNet <= 0) {
-    ttrMe = Number.POSITIVE_INFINITY // 敌方打不动我
-  } else if (k > 0 && s0 > 0 && foeDpsNet <= Math.max(k * s0, sCap)) {
-    ttrMe = Number.POSITIVE_INFINITY // 回充顶住敌火：盾永不破 ⇒ 只有超时血比才可能落败
-  } else if (k > 0 && s0 > 0) {
-    // 第一段：指数衰减到交点（已在交点以下就直接进第二段）
-    const tExp = s0 > sX ? Math.log((foeDpsNet - sCap) / (foeDpsNet - k * s0)) / k : 0
-    // 第二段：从 `min(s0, sX)` 恒速掉到 0
-    const lin = foeDpsNet - sCap
-    const tLin = lin > 0 ? Math.min(s0, sX) / lin : Number.POSITIVE_INFINITY
-    const tBreak = tExp + tLin // 盾被打穿（∞ = 恒速段也顶得住 ⇒ 永远打不穿）
-    const after = Math.max(0, foeDpsNet - chargePerSec) // 破盾后：充能装置托底
-    ttrMe = Number.isFinite(tBreak) && after > 0 ? tBreak + (me.hp.a + me.hp.h) / after : Number.POSITIVE_INFINITY
-  } else {
-    ttrMe = meHpTotal / foeDpsNet // 无回充（费率 0 或无盾）：原口径
-  }
-  const ttrFoe = meDps > 0 ? foeHpTotal / Math.max(1e-9, meDps * meMul) : Infinity // 我击毁敌方所需秒数
+  const tBreak = passiveShieldBreakSeconds(s0, s0, foeDpsNet, bal.shieldRegenPerSec, regenMul)
+  const after = Math.max(0, foeDpsNet - (s0 > 0 && bal.shieldRegenPerSec > 0 ? chargePerSec : 0))
+  const ttrMe = tBreak + passiveArmorBreakSeconds(me.hp.a, me.hp.a, after, me.armorRegenPerSec) + (after > 0 ? me.hp.h / after : Infinity)
+  const damagePerSec = meDps * meMul
+  // 逐舰击破时，每艘的护盾都按自身卡面容量回充；全波只累计各舰的延长时间。
+  const recoveryFoes = shipWaveBuilds ? shipWaveBuilds.flatMap(build => build.specs) : foes
+  const regenDelay = damagePerSec > 0 ? recoveryFoes.reduce((sum, foe) => {
+    const cap = foe.shieldRegenCap ?? foe.hp.s
+    const seconds = passiveShieldBreakSeconds(foe.hp.s, foe.shieldRegenMax ?? cap, damagePerSec,
+      foe.hp.a > 0 || foe.hp.h > 0 ? bal.shieldRegenPerSec : 0, 1, cap)
+    return sum + seconds - foe.hp.s / damagePerSec
+  }, 0) : 0
+  const ttrFoe = damagePerSec > 0 ? foeHpTotal / damagePerSec + regenDelay : Infinity
   return { me, meHpTotal, foeHpTotal, meDps, foeDps, ttrMe, ttrFoe }
 }
 
@@ -307,6 +300,18 @@ export function bountyDamageForecast(
   const foeFireSec = Math.max(0, duration - stealthSec)
   const dmg = Number.isFinite(duration) ? sp.foeDps * foeFireSec : 0
   const afterShield = Math.max(0, dmg - sp.me.hp.s)
+  if ((sp.me.armorRegenPerSec ?? 0) > 0) {
+    const regenMul = (1 + (sp.me.shieldPassiveBonusPct ?? 0)) * (1 + Math.max(0, sp.me.repairOutputBonusPct ?? 0))
+    const shieldSeconds = passiveShieldBreakSeconds(sp.me.hp.s, sp.me.hp.s, sp.foeDps, ctx.balance.battle.shieldRegenPerSec, regenMul)
+    const armorSeconds = Math.max(0, foeFireSec - shieldSeconds)
+    const netArmorDps = Math.max(0, sp.foeDps - sp.me.hp.a * sp.me.armorRegenPerSec!)
+    const armorDamage = Number.isFinite(duration) ? armorSeconds * netArmorDps : 0
+    const armorLoss = sp.me.hp.a > 0 ? clamp(0, 1, armorDamage / sp.me.hp.a) : armorDamage > 0 ? 1 : 0
+    const armorBreak = passiveArmorBreakSeconds(sp.me.hp.a, sp.me.hp.a, sp.foeDps, sp.me.armorRegenPerSec)
+    const hullDamage = Number.isFinite(duration) ? Math.max(0, armorSeconds - armorBreak) * sp.foeDps : 0
+    const hullLoss = sp.me.hp.h > 0 ? clamp(0, 1, hullDamage / sp.me.hp.h) : hullDamage > 0 ? 1 : 0
+    return { armorLoss, hullLoss, rawWin }
+  }
   const armorLoss = sp.me.hp.a > 0 ? clamp(0, 1, afterShield / sp.me.hp.a) : afterShield > 0 ? 1 : 0
   const hullLoss = sp.me.hp.h > 0 ? clamp(0, 1, Math.max(0, afterShield - sp.me.hp.a) / sp.me.hp.h) : afterShield > sp.me.hp.a ? 1 : 0
   return { armorLoss, hullLoss, rawWin }

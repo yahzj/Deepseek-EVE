@@ -542,6 +542,23 @@ export function moduleInfoLines(mod: ModuleDef, engine?: GameEngine, shipId?: st
   if (mod.burst) {
     lines.push({ k: tr('ui.moduleSpecs.007'), v: tr('ui.moduleSpecs.008', { p1: mod.burst.shots, p2: mod.burst.gapMs / 1000 }) })
   }
+  if (mod.damageManagement) {
+    lines.push({ k: tr('ui.factionPlug.009'), v: tr('ui.factionPlug.010', { p1: pct(mod.damageManagement.penaltyReductionPct) }) })
+    lines.push({ k: tr('ui.factionPlug.011'), v: tr('ui.factionPlug.012', { p1: pct(mod.damageManagement.hullResistPerKind), p2: mod.damageManagement.maxKinds }) })
+  }
+  if (mod.armorCapacityPenaltyPct !== undefined) lines.push({ k: tr('ui.shipInfo.016'), v: `-${pct(mod.armorCapacityPenaltyPct)}` })
+  if (mod.armorRegenPerSec !== undefined) lines.push({ k: tr('ui.factionPlug.014'), v: tr('ui.factionPlug.015', { p1: recoveryPct(mod.armorRegenPerSec) }) })
+  if (mod.chargedWeapons) {
+    lines.push({ k: tr('ui.factionPlug.016'), v: `×${fmt(mod.chargedWeapons.damageMul)}` })
+    lines.push({ k: tr('ui.factionPlug.018'), v: `×${fmt(mod.chargedWeapons.reloadMul)}` })
+    lines.push({ k: tr('ui.factionPlug.020'), v: tr('ui.factionPlug.021', { p1: pct(mod.chargedWeapons.falloffReductionPct) }) })
+  }
+  if (mod.droneCommand) {
+    lines.push({ k: tr('ui.factionPlug.022'), v: tr('ui.factionPlug.023', { p1: pct(mod.droneCommand.sharePct) }) })
+    lines.push({ k: tr('ui.factionPlug.024'), v: tr('ui.factionPlug.025', { p1: pct(mod.droneCommand.targetWeightPerM3) }) })
+  }
+  if (mod.hullCapacityBonusPct !== undefined) lines.push({ k: tr('ui.shipInfo.066'), v: `+${pct(mod.hullCapacityBonusPct)}` })
+  if (mod.recoveryDamageImmune) lines.push({ k: tr('ui.factionPlug.027'), v: tr('ui.factionPlug.028') })
   if (mod.slot === 'plug') lines.push({ k: tr('ui.moduleSpecs.009'), v: moduleShortEffect(mod) })
   // V18.1 叠加方式标签（所有装备统一：收敛件 = 多装递减；线性件 = 全额叠加；
   // 2026-09-15 隐秘行动装置 = **取最长一件、不叠加**——`max` 组单列一档，不谎报"全额叠加"）

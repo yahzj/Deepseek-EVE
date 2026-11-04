@@ -1047,7 +1047,7 @@ export function SignalSpacePanel({
       <>
         <SignalRangeEwPreview state={state} ctx={ctx} />
         <div className="app-wh-node-title">
-          {atExit ? tr("ui.Wormhole.007") : placeText(hereCell.place)}
+          {atExit ? tr("ui.Wormhole.007") : hereCell.researchLab ? tr('ui.researchLab.001') : placeText(hereCell.place)}
           {/* 地点说明**不进 ⓘ**（2026-09-14 船长裁定：「地点卡的说明不要进 ⓘ」）：它跟着当前格子变，
               属于"这一格现在是什么"的读数 ⇒ 按 2026-09-13 口径（常驻说明进 ⓘ、状态读数留眼前）留在卡里 */}
           <span className="app-dim">
@@ -1055,6 +1055,7 @@ export function SignalSpacePanel({
             {grid.activated.includes(hereKey) ? tr('ui.Wormhole.303') : ''}
           </span>
         </div>
+        {hereCell.researchLab ? <div className="app-dim app-note">{tr('ui.researchLab.002')}</div> : null}
         {/* **作业进度条**（F2b · 纯表现 380ms）：摆在堆清单正上方——卡片"向下移出"的同时，这条在走 */}
         {jobFx ? (
           <div className="app-wh-jobrow" key={jobFx.nonce}>
@@ -1169,7 +1170,7 @@ export function SignalSpacePanel({
             </div>
           </>
         ) : (
-          <div className="app-dim app-note">{PLACE_NOTE[hereCell.place]}</div>
+          <div className="app-dim app-note">{hereCell.researchLab ? tr('ui.researchLab.002') : PLACE_NOTE[hereCell.place]}</div>
         )}
       </>
     )
@@ -2567,7 +2568,7 @@ function WhGridMap({
               : isExit
                 ? tr('ui.Wormhole.324', { p1: cleared ? tr("ui.Wormhole.269") : tr("ui.Wormhole.270") })
                 : visited
-                  ? tr('ui.Wormhole.325', { p1: placeText(c.place), p2: cleared ? tr('ui.Wormhole.303') : '' }) +
+                  ? tr('ui.Wormhole.325', { p1: c.researchLab ? tr('ui.researchLab.001') : placeText(c.place), p2: cleared ? tr('ui.Wormhole.303') : '' }) +
                     `${hasLeftover ? ` · 还有 ${(c.piles ?? []).length} 堆没拿` : ''}`
                   : nebula
                     ? tr("ui.Wormhole.163")

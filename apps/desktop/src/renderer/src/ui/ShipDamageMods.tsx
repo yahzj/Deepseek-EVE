@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
-import { cleanShipDamage, SHIP_DAMAGE_DEFS, SHIP_DAMAGE_PENALTY, type ShipDamageKind } from '@whale/core'
+import { cleanShipDamage, shipDamageEffects, SHIP_DAMAGE_DEFS, SHIP_DAMAGE_PENALTY, type ModuleDef, type ShipDamageKind } from '@whale/core'
 import { tr } from '../i18n/locale'
 import { Glyph } from './Glyphs'
 import { hideTip, hoverTipProps } from './Tooltip'
@@ -9,13 +9,13 @@ import { infoCardContent } from './shipInfo'
 import '../styles-ship-damage.css'
 
 /** 船长 2026-10-07 确认：战损与普通插件同格展示，详情沿用富卡及弹层。 */
-export function ShipDamageMods({ ids }: { ids?: readonly ShipDamageKind[] }) {
+export function ShipDamageMods({ ids, management }: { ids?: readonly ShipDamageKind[]; management?: ModuleDef['damageManagement'] }) {
   const [picked, setPicked] = useState<string | null>(null)
   const modal = useRef<HTMLDivElement>(null)
   const trigger = useRef<HTMLButtonElement | null>(null)
   const dialogId = useId()
   const damage = cleanShipDamage(ids)
-  const pct = `${Math.round(SHIP_DAMAGE_PENALTY * 100)}%`
+  const pct = `${Math.round((management ? 1 - shipDamageEffects(['shield'], management).shield : SHIP_DAMAGE_PENALTY) * 100)}%`
   const cards = (damage ?? []).map((id, index) => {
     const def = SHIP_DAMAGE_DEFS.find(row => row.id === id)!
     const name = tr(def.nameId)

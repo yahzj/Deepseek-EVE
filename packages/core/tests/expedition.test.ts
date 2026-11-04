@@ -8,16 +8,28 @@ import { createInitialState } from '../src/state'
 import { advanceGame } from '../src/engine'
 import { addModule, fitModule } from '../src/equipment'
 import {
-  advanceAutoLoopBounty,
+  advanceAutoLoopBounty as launchAutoLoop,
   advanceExpedition,
   battleTacticDesire,
   expeditionStatus,
   setBattleDesire,
-  startExpedition,
+  startExpedition as launchExpedition,
 } from '../src/expedition'
 import { battleWinPreview, battleArcsFor, bountyDamageForecast, bountyWinPercentGuarded, createFoeSpecs } from '../src/combat'
 import { anomaly, DEFAULT_TEST_ITEMS, makeTestCtx, moduleDef, ship } from './helpers'
 import { clearInitialStanding, setStanding } from './helpers'
+import { finishDeparture } from './helpers/departure-ready'
+
+function startExpedition(...args: Parameters<typeof launchExpedition>) {
+  const result = launchExpedition(...args)
+  if (result.ok) finishDeparture(args[0], args[2])
+  return result
+}
+function advanceAutoLoopBounty(...args: Parameters<typeof launchAutoLoop>) {
+  const result = launchAutoLoop(...args)
+  finishDeparture(...args)
+  return result
+}
 
 describe('远征 V12：两阶段', () => {
   let state: GameState
@@ -63,7 +75,7 @@ describe('远征 V12：两阶段', () => {
     expect(state.logs.some((l) => l.text.includes('已自动停止「开采」'))).toBe(true)
   })
 
-  it('去程取消：出发即开战（无 out 等待）；交火打完自动结算', () => {
+  it('完成出发等待后开战；交火打完自动结算', () => {
     // ano-a 在母港星系：即时进入交火
     expect(startExpedition(state, 'ano-a', ctx).ok).toBe(true)
     expect(state.expedition.phase).toBe('battle')
@@ -79,7 +91,7 @@ describe('远征 V12：两阶段', () => {
     expect(state.logs.some((l) => l.text.includes('战报'))).toBe(true)
   })
 
-  it('途中事件在出发瞬间触发一次（去程已取消，无中段等待）', () => {
+  it('途中事件在抵达时触发一次', () => {
     const farCtx = makeTestCtx({
       anomalies: [anomaly('ano-far0', 'galaxy-far', { threat: 4, reward: 5_000 })],
       balance: { ...makeTestCtx().balance, travelEventChance: 1 }, // 途中事件必触发（去随机）

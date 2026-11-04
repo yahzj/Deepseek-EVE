@@ -12,6 +12,7 @@ import { confirmBattleRange as coreConfirmBattleRange } from '../src/battleRange
 import { cancelBattleRange as coreCancelBattleRange } from '../src/battleRangeMemory'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { gameSaveMethods } from './helpers/save-shell'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
 const NOW = new Date(2026, 9, 26, 12).getTime()
@@ -73,6 +74,8 @@ describe('连续战斗距离确认的真实引擎外壳', () => {
     expect(observed).toEqual([true])
     expect(persist).toHaveBeenCalledTimes(1)
     expect(state.pendingBattleRange).toBeUndefined()
+    expect(state.expedition.battle).toBeNull()
+    finishDeparture(state, ctx)
     expect(state.expedition.battle!.myDesireM).toBe(1700)
     if (kind === 'bounty') expect(state.autoLoopAnomalyId).toBe('ano-training')
     else expect(state.weekendEvent!.autoLoopGalaxyId).toBe('galaxy-redring')
