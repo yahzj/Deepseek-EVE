@@ -1,3 +1,5 @@
+import { isEn } from '../../../i18n/locale'
+import { T } from '../texts'
 import { useEffect, useMemo, useState } from 'react'
 import { ChevronRight } from '@carbon/icons-react'
 import { createExchangeClient } from '../factory'
@@ -91,9 +93,13 @@ export function SidebarExchangeCard({ onGoPage }: SidebarExchangeCardProps) {
   const quotePrice = activeQuote?.price ?? 0
   const quoteChgPct = activeQuote?.changePct ?? 0
 
-  const tooltipTitle = hasPositions
-    ? `已持仓股票：${uniqueCodes.join('、')}\n当前总浮动盈亏：${totalPnl >= 0 ? '+' : ''}${amount(totalPnl)} 信用点 (${pct(pnlPct)})\n主力股票：${primaryCode}（现价 ${price(quotePrice)} 信用点，涨跌幅 ${pct(quoteChgPct)}）\n点击直达交易所并定位该股票`
-    : `深空证券交易所实时监控中\n参考股票：${primaryCode}（现价 ${price(quotePrice)} 信用点，涨跌幅 ${pct(quoteChgPct)}）\n当前未建仓，点击直达交易大厅选股`
+  const tooltipTitle = isEn()
+    ? (hasPositions
+        ? `Holdings: ${uniqueCodes.join(', ')}\nTotal Unrealized PnL: ${totalPnl >= 0 ? '+' : ''}${amount(totalPnl)} Credits (${pct(pnlPct)})\nPrimary: ${primaryCode} (Price: ${price(quotePrice)} Credits, Chg: ${pct(quoteChgPct)})\nClick to open exchange`
+        : `Deep Space Exchange live\nReference: ${primaryCode} (Price: ${price(quotePrice)} Credits, Chg: ${pct(quoteChgPct)})\nNo positions held, click to enter`)
+    : (hasPositions
+        ? `已持仓股票：${uniqueCodes.join('、')}\n当前总浮动盈亏：${totalPnl >= 0 ? '+' : ''}${amount(totalPnl)} 信用点 (${pct(pnlPct)})\n主力股票：${primaryCode}（现价 ${price(quotePrice)} 信用点，涨跌幅 ${pct(quoteChgPct)}）\n点击直达交易所并定位该股票`
+        : `深空证券交易所实时监控中\n参考股票：${primaryCode}（现价 ${price(quotePrice)} 信用点，涨跌幅 ${pct(quoteChgPct)}）\n当前未建仓，点击直达交易大厅选股`)
 
   return (
     <button
@@ -109,7 +115,7 @@ export function SidebarExchangeCard({ onGoPage }: SidebarExchangeCardProps) {
         <div className="exch-sb-head-left">
           <span className="exch-sb-code">{primaryCode}</span>
           {uniqueCodes.length > 1 ? (
-            <span className="exch-sb-badge" title={`共持有 ${uniqueCodes.length} 只股票`}>
+            <span className="exch-sb-badge" title={isEn() ? `Total ${uniqueCodes.length} stocks held` : `共持有 ${uniqueCodes.length} 只股票`}>
               +{uniqueCodes.length - 1}
             </span>
           ) : null}
@@ -129,7 +135,7 @@ export function SidebarExchangeCard({ onGoPage }: SidebarExchangeCardProps) {
       {/* 底部收益行：持仓盈亏数值与百分比 / 未持仓点击进入 */}
       {hasPositions ? (
         <div className="exch-sb-row exch-sb-pnl-row">
-          <span className="exch-sb-pnl-label">{totalPnl >= 0 ? '浮盈' : '浮亏'}</span>
+          <span className="exch-sb-pnl-label">{totalPnl >= 0 ? T.sidebarPnlFloatWin : T.sidebarPnlFloatLoss}</span>
           <div className="exch-sb-pnl-right">
             <span className={`exch-sb-pnl-val ${totalPnl >= 0 ? 'is-up' : 'is-down'}`}>
               {totalPnl >= 0 ? '+' : '-'}{amount(Math.abs(totalPnl))}
@@ -141,9 +147,9 @@ export function SidebarExchangeCard({ onGoPage }: SidebarExchangeCardProps) {
         </div>
       ) : (
         <div className="exch-sb-row exch-sb-unheld-row">
-          <span className="exch-sb-unheld-label">未持仓</span>
+          <span className="exch-sb-unheld-label">{T.sidebarUnheld}</span>
           <span className="exch-sb-unheld-action">
-            <span>选股进入</span>
+            <span>{T.sidebarSelectStock}</span>
             <ChevronRight size={11} />
           </span>
         </div>

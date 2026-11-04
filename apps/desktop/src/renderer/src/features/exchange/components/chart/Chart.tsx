@@ -14,6 +14,7 @@ import type { ChartPeriod, ExchangeClient, StockQuote } from '../../client'
 import { INTRADAY_MAX_POINTS, PRO_CHART_PERIODS, chartPeriodSpec, sampleSeries } from '../../chartPeriods'
 import { amount, pct, price } from '../../format'
 import { T } from '../../texts'
+import { isEn } from '../../../../i18n/locale'
 import { hideTip, moveTip, showTip } from '../../../../ui/Tooltip'
 import { averageLine, lastDefined, movingAverage, rsi } from './indicators'
 import { Candles } from './Candles'
@@ -349,28 +350,28 @@ export function Chart({
             <button
               type="button"
               className="ex-mini-btn"
-              title="放大时间轴（看清单根蜡烛细节，亦可滚轮向上）"
+              title={isEn() ? "Zoom in timeline (scroll up)" : "放大时间轴（看清单根蜡烛细节，亦可滚轮向上）"}
               onClick={() => setVisibleCount((v) => Math.max(15, v - 10))}
             >
-              <ZoomIn size={14} /> 放大
+              <ZoomIn size={14} /> {T.chartZoomIn}
             </button>
-            <span className="ex-chart-zoom-text ex-dim">{bars.length} 根</span>
+            <span className="ex-chart-zoom-text ex-dim">{bars.length} {T.chartBar}</span>
             <button
               type="button"
               className="ex-mini-btn"
-              title="缩小时间轴（看宏观大趋势，亦可滚轮向下）"
+              title={isEn() ? "Zoom out timeline (scroll down)" : "缩小时间轴（看宏观大趋势，亦可滚轮向下）"}
               onClick={() => setVisibleCount((v) => Math.min(180, v + 10))}
             >
-              <ZoomOut size={14} /> 缩小
+              <ZoomOut size={14} /> {T.chartZoomOut}
             </button>
             {clampedOffset > 0 ? (
               <button
                 type="button"
                 className="ex-mini-btn is-on"
-                title="已处于历史回溯态，点击快速回到最新行情"
+                title={isEn() ? "Reset to latest quote" : "已处于历史回溯态，点击快速回到最新行情"}
                 onClick={() => setPanOffset(0)}
               >
-                <Reset size={14} /> 最新
+                <Reset size={14} /> {T.chartZoomLatest}
               </button>
             ) : null}
           </div>

@@ -7,7 +7,8 @@
  */
 import type { ExchangeClient, ExchangeSnapshot } from '../client'
 import { amount, pct, price } from '../format'
-import { T } from '../texts'
+import { T, stockName, stockSector } from '../texts'
+import { isEn } from '../../../i18n/locale'
 import { Sparkline } from './Sparkline'
 
 interface SimpleStockListProps {
@@ -35,8 +36,8 @@ export function SimpleStockList({ client, snap, selected, onSelect }: SimpleStoc
   return (
     <section className="ex-simple-sidebar" aria-label={T.stockListTitle}>
       <div className="ex-simple-side-head">
-        <h3 className="ex-simple-side-title">星际企业榜</h3>
-        <span className="ex-dim">4 核心股票</span>
+        <h3 className="ex-simple-side-title">{T.simpleStockListTitle}</h3>
+        <span className="ex-dim">{T.simpleStockListSub}</span>
       </div>
 
       <div className="ex-simple-card-list" role="list">
@@ -72,13 +73,13 @@ export function SimpleStockList({ client, snap, selected, onSelect }: SimpleStoc
                 }
               }}
               aria-pressed={isSel}
-              aria-label={`${q.code} ${q.nameKey} 现价 ${price(q.price)} 涨跌 ${pct(q.changePct)}`}
+              aria-label={`${q.code} ${stockName(q.code, q.nameKey)} ${price(q.price)} ${pct(q.changePct)}`}
             >
               {/* 卡片头部：代码 + 名称 + 板块（右上角不再被持仓徽标遮挡） */}
               <div className="ex-simple-card-top">
                 <span className="ex-simple-card-code">{q.code}</span>
-                <span className="ex-simple-card-name" title={q.nameKey}>{q.nameKey}</span>
-                <span className="ex-simple-card-sector">{q.sector}</span>
+                <span className="ex-simple-card-name" title={stockName(q.code, q.nameKey)}>{stockName(q.code, q.nameKey)}</span>
+                <span className="ex-simple-card-sector">{stockSector(q.sector)}</span>
               </div>
 
               {/* 卡片中间与右侧：现价、涨跌幅、Sparkline */}
@@ -99,18 +100,18 @@ export function SimpleStockList({ client, snap, selected, onSelect }: SimpleStoc
               {hasHolding ? (
                 <div className="ex-simple-holding-badges">
                   {hold.longQty > 0 ? (
-                    <span className="ex-simple-holding-badge is-long" title={`做多持仓 ${amount(hold.longQty)} 股`}>
-                      多 {amount(hold.longQty)}
+                    <span className="ex-simple-holding-badge is-long" title={isEn() ? `Long: ${amount(hold.longQty)} shs` : `做多持仓 ${amount(hold.longQty)} 股`}>
+                      {T.badgeLong} {amount(hold.longQty)}
                     </span>
                   ) : null}
                   {hold.shortQty > 0 ? (
-                    <span className="ex-simple-holding-badge is-short" title={`做空持仓 ${amount(hold.shortQty)} 股`}>
-                      空 {amount(hold.shortQty)}
+                    <span className="ex-simple-holding-badge is-short" title={isEn() ? `Short: ${amount(hold.shortQty)} shs` : `做空持仓 ${amount(hold.shortQty)} 股`}>
+                      {T.badgeShort} {amount(hold.shortQty)}
                     </span>
                   ) : null}
                   {hold.spotQty > 0 ? (
-                    <span className="ex-simple-holding-badge is-spot" title={`现货持仓 ${amount(hold.spotQty)} 股`}>
-                      持 {amount(hold.spotQty)}
+                    <span className="ex-simple-holding-badge is-spot" title={isEn() ? `Spot: ${amount(hold.spotQty)} shs` : `现货持仓 ${amount(hold.spotQty)} 股`}>
+                      {T.badgeSpot} {amount(hold.spotQty)}
                     </span>
                   ) : null}
                 </div>

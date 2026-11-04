@@ -1,3 +1,4 @@
+import { isEn } from '../../../i18n/locale'
 /**
  * 右栏下半：持仓 / 委托 Tabs。
  *
@@ -147,7 +148,7 @@ export function Positions({
                         {T.systemPresetTag}
                       </span>
                       <span className="ex-badge">{T.posSideSpot}</span>
-                      <span className="ex-pos-vol-tag" title={`今日振幅 ${amp.toFixed(1)}%`}>
+                      <span className="ex-pos-vol-tag" title={isEn() ? `Daily amplitude ${amp.toFixed(1)}%` : `今日振幅 ${amp.toFixed(1)}%`}>
                         {volTier} {amp.toFixed(1)}%
                       </span>
                     </div>
@@ -176,7 +177,7 @@ export function Positions({
                     </div>
                     {(h.availableQty ?? h.qty) < h.qty ? (
                       <div className="ex-pos-detail-item">
-                        <span className="ex-dim">可卖</span>
+                        <span className="ex-dim">{isEn() ? 'Avail' : '可卖'}</span>
                         <b className="ex-num">{amount(h.availableQty ?? 0)}</b>
                       </div>
                     ) : null}
@@ -189,7 +190,7 @@ export function Positions({
                       <b className="ex-num">{price(mark)}</b>
                     </div>
                     <div className="ex-pos-detail-item">
-                      <span className="ex-dim">当前市值</span>
+                      <span className="ex-dim">{T.positionMarkVal}</span>
                       <b className="ex-num">{money(h.qty * mark)}</b>
                     </div>
                   </div>
@@ -234,7 +235,7 @@ export function Positions({
                       <span className={`ex-badge ${p.side === 'long' ? 'is-long' : 'is-short'}`}>
                         {p.side === 'long' ? T.posSideLong : T.posSideShort} · {p.leverage}x
                       </span>
-                      <span className="ex-pos-vol-tag" title={`今日振幅 ${amp.toFixed(1)}%`}>
+                      <span className="ex-pos-vol-tag" title={isEn() ? `Daily amplitude ${amp.toFixed(1)}%` : `今日振幅 ${amp.toFixed(1)}%`}>
                         {volTier} {amp.toFixed(1)}%
                       </span>
                     </div>

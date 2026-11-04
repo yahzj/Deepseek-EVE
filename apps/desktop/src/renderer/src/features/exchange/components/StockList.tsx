@@ -10,7 +10,8 @@
  */
 import type { ExchangeClient, ExchangeSnapshot } from '../client'
 import { amount, pct, price } from '../format'
-import { T } from '../texts'
+import { T, stockName, stockSector } from '../texts'
+import { isEn } from '../../../i18n/locale'
 import { Sparkline } from './Sparkline'
 
 export function StockList({
@@ -57,32 +58,32 @@ export function StockList({
               className={`ex-stock-card${isSel ? ' is-sel' : ''}`}
               onClick={() => onSelect(q.code)}
               aria-pressed={isSel}
-              title={`${q.nameKey} · ${q.sector}`}
+              title={`${stockName(q.code, q.nameKey)} · ${stockSector(q.sector)}`}
             >
               {/* 左栏：代码 + 板块 + 持仓徽标 / 公司全称 */}
               <div className="ex-stock-card-left">
                 <div className="ex-stock-card-row1">
                   <span className="ex-stock-code">{q.code}</span>
-                  <span className="ex-stock-sector">{q.sector}</span>
+                  <span className="ex-stock-sector">{stockSector(q.sector)}</span>
                   {hold.longQty > 0 ? (
-                    <span className="ex-stock-hold-badge is-long" title={`做多持仓 ${amount(hold.longQty)} 股`}>
-                      多 {amount(hold.longQty)}
+                    <span className="ex-stock-hold-badge is-long" title={isEn() ? `Long: ${amount(hold.longQty)} shs` : `做多持仓 ${amount(hold.longQty)} 股`}>
+                      {T.badgeLong} {amount(hold.longQty)}
                     </span>
                   ) : null}
                   {hold.shortQty > 0 ? (
-                    <span className="ex-stock-hold-badge is-short" title={`做空持仓 ${amount(hold.shortQty)} 股`}>
-                      空 {amount(hold.shortQty)}
+                    <span className="ex-stock-hold-badge is-short" title={isEn() ? `Short: ${amount(hold.shortQty)} shs` : `做空持仓 ${amount(hold.shortQty)} 股`}>
+                      {T.badgeShort} {amount(hold.shortQty)}
                     </span>
                   ) : null}
                   {hold.spotQty > 0 ? (
-                    <span className="ex-stock-hold-badge is-spot" title={`现货持仓 ${amount(hold.spotQty)} 股`}>
-                      持 {amount(hold.spotQty)}
+                    <span className="ex-stock-hold-badge is-spot" title={isEn() ? `Spot: ${amount(hold.spotQty)} shs` : `现货持仓 ${amount(hold.spotQty)} 股`}>
+                      {T.badgeSpot} {amount(hold.spotQty)}
                     </span>
                   ) : null}
                 </div>
                 <div className="ex-stock-card-row2">
-                  <span className="ex-stock-fullname" title={q.nameKey}>
-                    {q.nameKey}
+                  <span className="ex-stock-fullname" title={stockName(q.code, q.nameKey)}>
+                    {stockName(q.code, q.nameKey)}
                   </span>
                 </div>
               </div>

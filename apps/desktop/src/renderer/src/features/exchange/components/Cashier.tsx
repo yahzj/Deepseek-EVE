@@ -256,9 +256,9 @@ export function Cashier({
             )}
           </div>
           {mode === 'withdraw' && value > cash ? (
-            <div className="ex-cashier-warn is-warn">超过交易所可用现金（上限 {money(cash)} 信用点）</div>
+            <div className="ex-cashier-warn is-warn">{TF.cashierExceedExchangeCash(money(cash))}</div>
           ) : mode === 'deposit' && value > localIsk ? (
-            <div className="ex-cashier-warn is-warn">超过本地钱包可用余额（上限 {money(localIsk)} 信用点）</div>
+            <div className="ex-cashier-warn is-warn">{TF.cashierExceedLocalWallet(money(localIsk))}</div>
           ) : null}
         </div>
 
