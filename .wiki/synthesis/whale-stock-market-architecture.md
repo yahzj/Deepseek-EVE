@@ -1,6 +1,18 @@
+---
+id: whale-stock-market-architecture
+title: 大鲸鱼证券交易所：理论到落地的工程实施白皮书
+category: synthesis
+tags: [stock-market, matching-engine, economy, architecture, scifi-simulation]
+summary: 大鲸鱼证券交易所从理论到落地的工程白皮书：撮合引擎与订单簿选型、经济闭环、抗作弊与确定性驱动，以及与游戏核心经济强绑定的实施路径。
+tier: core
+source: synthesis:whale-stock-market-architecture
+confidence: extracted
+created: 2026-11-03T00:00:00.000Z
+updated: 2026-11-04T00:00:00.000Z
+---
 # 大鲸鱼证券交易所：理论到落地的工程实施白皮书
 
-> 关联索引：[[README|知识库总览]] | [[books/balance-master-game-economy|平衡掌控者]] | [[books/matching-engines-for-dummies|撮合引擎入门]] | [[repos/tschonsen-stocksim|StockSim]]  
+> 关联索引：[知识库总览](../README.md) | [[balance-master-game-economy|平衡掌控者]] | [[matching-engines-for-dummies|撮合引擎入门]] | [[tschonsen-stocksim|StockSim]]  
 > 适用版本：Deepseek-EVE `packages/core` 架构演进  
 > 核心目标：构建高拟真、抗作弊、纯本地确定性驱动并与游戏核心经济闭环强绑定的宇宙二级证券交易系统。
 
