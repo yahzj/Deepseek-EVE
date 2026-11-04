@@ -433,7 +433,7 @@ export type Unsubscribe = () => void
 
 | 项 | 实测结论 | 对股市后端的影响 |
 |---|---|---|
-| 代码位置 | 服务端已**移出游戏主树**，成为独立仓库 `whale-server`（HANDOFF 记为 `H:\大鲸鱼\whale-server`）；游戏主树内 `apps/server/` 是**旧版快照** | 股市必须写在独立仓库的 `src/exchange/`，**不能再改 `apps/server/`** |
+| 代码位置 | 服务端已**移出游戏主树**，成为独立仓库 `whale-server`（HANDOFF 记为 `H:\大鲸鱼\deepseek-EVE-Background`）；游戏主树内 `apps/server/` 是**旧版快照** | 股市必须写在独立仓库的 `src/exchange/`，**不能再改 `apps/server/`** |
 | 账号体系 | 用户名/密码（scrypt）+ `sessions` 多设备会话（30 天滑动）+ 恢复码；设备码通道 deprecated 保留 | 股市接口复用同一 `authenticate()`；**无需新建账号体系** |
 | 登录策略 | **登录非强制**：未登录可正常单机游玩；线上聊天/交易点击后提示登录 | 股市按「线上交易」同类处理：未登录可看引导页，不可交易；**不做遮罩强制跳转** |
 | 数据锚点 | saves / wallets / item_stacks / items / orders / trades / ledger / production 全部以 `account_id` 为键 | 新增 `exchange_*` 表全部用 `account_id` 外键；多设备天然共享同一证券账户 |
@@ -455,6 +455,6 @@ export type Unsubscribe = () => void
 
 ### 18.3 开工前置卡点（阻塞）
 
-- **独立仓库源码不在本机**：`H:\大鲸鱼\whale-server` 不存在（H 盘未挂载/非本机路径），游戏主树 `apps/server/` 为旧版。**在拿到现行源码前不能开工写 exchange**，否则会基于旧版产生分叉。
+- **独立仓库源码不在本机**：`H:\大鲸鱼\deepseek-EVE-Background` 不存在（H 盘未挂载/非本机路径），游戏主树 `apps/server/` 为旧版。**在拿到现行源码前不能开工写 exchange**，否则会基于旧版产生分叉。
 - 可选解法（待船长裁定）：① 船长提供独立仓库位置/远程地址；② 允许我从服务器 `scp` 拉回 `~/whale-server/src` 建立本地基线（会丢失 git 历史，只能以服务器快照为起点）；③ 在服务器上直接开发（不推荐，无本地回滚与测试）。
 
