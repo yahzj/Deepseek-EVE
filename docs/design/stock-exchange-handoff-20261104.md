@@ -203,7 +203,7 @@ cp -f whale-exchange.prev whale-exchange && sudo systemctl restart whale-exchang
 9. Tooltip 死循环已修（`TooltipLayer` effect 依赖问题），但 UI 层若有类似「displayState 进依赖」模式要注意同类回归。
 10. 安全边界：本地存档作弊不设防（船长允许）；IP 明文 HTTP 风险船长已接受；token 存在客户端 localStorage。
 11. 简单界面图表已**固定为「分时」**（原 M1/M5/H1/日线/周线切换入口已移除）；`HttpExchangeClient.ensureChartData(code, period)` 的按需加载仍在，恢复周期切换时直接接回即可。
-12. 微光纳米（SPRK）等低价股 `priceTick = 1`，5 分钟 K 线常出现四价相同、成交量为 0；改报价精度会牵动全部低价股，未处理。
+12. 微光纳米（SPRK）低价股 `priceTick = 1` 曾让 5 分钟 K 线常出现四价相同。2026-11-04 船长选 A：锚定从 60 抬到 500（`internal/exchange/stocks.go`，一个价位 = 0.2%），生产 K 线按 25/3 等比缩放、行情状态 `x=0` 重新锚定；成交量仍只在回合末出现（回合内不撮合的已知分层）。
 
 ---
 
