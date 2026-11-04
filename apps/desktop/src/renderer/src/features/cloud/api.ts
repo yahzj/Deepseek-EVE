@@ -335,7 +335,12 @@ export function cloudChatSocketUrl(server: string, token: string): string {
   const origin = normalizeCloudServerURL(server)
   if (!origin) throw new CloudApiError(0, 'invalid_server', 'invalid_server')
   if (typeof token !== 'string' || !token.trim()) throw new CloudApiError(0, 'missing_token', 'missing_token')
-  const url = new URL('/api/chat/ws', resolveFallbackOrigin(origin) ?? origin)
+  /**
+   * 主入口已是 HTTPS 时 socket 就地走 wss，无需回退；只有主入口是明文 IP（旧默认模式）时，
+   * 才借用回退域名把长连接升到 WSS，避免令牌在 socket 上明文传输。
+   */
+  const socketOrigin = origin.startsWith('https:') ? origin : (resolveFallbackOrigin(origin) ?? origin)
+  const url = new URL('/api/chat/ws', socketOrigin)
   const hostname = url.hostname.replace(/^\[|\]$/g, '').toLowerCase()
   const local = hostname === 'localhost' || hostname === '::1' || /^127(?:\.\d{1,3}){3}$/.test(hostname)
   if (url.protocol !== 'https:' && !local) throw new CloudApiError(0, 'insecure_server', 'insecure_server')

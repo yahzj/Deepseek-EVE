@@ -8,15 +8,15 @@ export interface CloudPreferences {
 const SERVER_KEY = 'whale.cloud.server'
 export const CLOUD_SESSION_CHANGE_EVENT = 'whale-cloud-session-change'
 /**
- * 默认入口（2026-11-04 船长决定）：**优先 IP 直连**，绕过 Cloudflare 链路的抖动；
- * 只有「无 saved server」时才用它，已存 server 的会话完全不受影响。
+ * 默认入口（2026-11-04 换新域名）：`https://game.bajibaji.party` 直连源站 nginx
+ * （Let's Encrypt 正式证书，不经 Cloudflare），全程 HTTPS 加密。
  */
-export const DEFAULT_CLOUD_SERVER = 'http://123.207.188.192'
+export const DEFAULT_CLOUD_SERVER = 'https://game.bajibaji.party'
 /**
- * 兜底入口（域名，Cloudflare → 腾讯云源站）：仅在**请求遇到网络层失败**时用一次，
+ * 兜底入口（源站 IP 明文 HTTP，经 nginx 80 反代）：仅在**请求遇到网络层失败**时用一次，
  * 不写回偏好、不替换 `DEFAULT_CLOUD_SERVER`，所以玩家可见的「服务器」始终是默认地址。
  */
-export const FALLBACK_CLOUD_SERVER = 'https://shit.fuckrapper.online'
+export const FALLBACK_CLOUD_SERVER = 'http://123.207.188.192'
 const SESSION_PREFIX = 'whale.cloud.session:'
 let memoryServer: string | undefined
 const memorySessions = new Map<string, CloudAuthResponse | null>()
