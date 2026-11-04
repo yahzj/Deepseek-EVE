@@ -52,6 +52,7 @@ import type {
   Unsubscribe,
   WithdrawResult,
 } from '../client'
+import { bucketStart } from '../chartPeriods'
 import { ExchangeError } from '../errors'
 import type { Transport } from './transport'
 
@@ -707,6 +708,7 @@ export class HttpExchangeClient implements ExchangeClient {
       case 'stocks': {
         if (Array.isArray(data)) {
           this.stocks = data.map(normalizeStock).filter(isPresent)
+          this.updateIntraCandles(this.stocks)
         }
         break
       }
@@ -857,6 +859,33 @@ export class HttpExchangeClient implements ExchangeClient {
   }
 
   /**
+   * 回合内 10 秒行情步进时，实时更新内存缓存中正在生成的当前 K 线（M1 / M5 / intraday 等）。
+   * 让图表最右侧的活跃蜡烛针头实时上下伸缩，不需等待 30 秒 HTTP 轮询即可平滑反应价格变动。
+   */
+  private updateIntraCandles(quotes: StockQuote[]): void {
+    const now = Date.now()
+    for (const quote of quotes) {
+      const p = quote.price
+      if (!Number.isFinite(p) || p <= 0) continue
+      for (const [key, bars] of this.chartCache) {
+        if (!key.startsWith(`${quote.code}:`) || bars.length === 0) continue
+        const periodStr = key.slice(quote.code.length + 1) as ChartPeriod
+        const last = bars[bars.length - 1]
+        if (!last) continue
+        const bucket = bucketStart(periodStr, now)
+        if (last.t === bucket) {
+          last.h = Math.max(last.h, p)
+          last.l = Math.min(last.l, p)
+          last.c = p
+        } else if (bucket > last.t) {
+          bars.push({ t: bucket, o: p, h: p, l: p, c: p, v: 0 })
+          if (bars.length > 200) bars.shift()
+        }
+      }
+    }
+  }
+
+  /**
    * 切换标的后补拉该标的数据：bootstrap 只拉了首只标的的 K 线/盘口，
    * 切到其它标的后不补拉就会一直显示「行情初始化中…」、盘口为空。
    * 幂等：已缓存/进行中直接返回；完成后 emitTick 触发重渲染。
@@ -902,6 +931,7 @@ export class HttpExchangeClient implements ExchangeClient {
     const rows = Array.isArray(raw) ? raw : isRecord(raw) && Array.isArray(raw.stocks) ? raw.stocks : null
     if (rows === null) throw new ExchangeError('malformed_response', '行情响应格式不正确')
     this.stocks = rows.map(normalizeStock).filter(isPresent)
+    this.updateIntraCandles(this.stocks)
     return this.stocks
   }
 
