@@ -56,7 +56,7 @@ function ExchangeGuide({ bundle }: { bundle: ExchangeClientBundle }) {
       <header className="ex-topbar">
         <div className="ex-title">
           <h2 className="ex-title-text">{T.simpleTopTitle}</h2>
-          <span className="ex-prototype">{T.prototypeBadge}</span>
+          
         </div>
         <div className="ex-top-actions">
           <SourceBadge source={bundle.source} />
@@ -238,7 +238,7 @@ function ExchangeBody({
       <header className="ex-topbar">
         <div className="ex-title">
           <h2 className="ex-title-text">{T.simpleTopTitle}</h2>
-          <span className="ex-prototype">{T.prototypeBadge}</span>
+          
         </div>
 
         {/* 核心双模式 Segmented Tabs：醒目清晰，直观切换 */}
