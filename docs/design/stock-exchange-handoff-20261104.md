@@ -67,21 +67,29 @@
 
 ### 3.5 做空 / 借券
 - 券源池每标的 10 万股，借券费 5bp/回合（利用率越高越贵）；空头持仓、强平价、平空归还券源。
-- 黑隐者按「跌幅/高估」逻辑 2x 开空；玩家可 `POST /orders {side:sell, leverage:2, short:true}` 开空，`POST /positions/:code/short/close` 平空。`GET /api/exchange/borrow` 查券池。
+- 杠杆档 2/5/10/20/50/90；**1x 为全额保证金**（2026-11-04 船长令：简单界面「看跌」与「看涨」对称，投入多少占用多少）。`POST /orders {side:sell, leverage, short:true}` 开空，`POST /positions/:code/short/close` 平空，`GET /api/exchange/borrow` 查券池。
+- 1x 空头不设强平价（`shortLiqPrice` 返回 0），强平改为「无强平价时只看权益线」；1x 平空不冻结现金、结算按 `CommissionBp` 计费，与现货同源。
+- 黑隐者仍按「跌幅/高估」逻辑用 2x 开空。
 - 生产当前仍有黑隐者 SMHI 空头持仓（持久化验证过跨重启恢复）。
 
 ### 3.6 资金模型（LocalSaveMode）
 - 游戏存档币**本地为准**：前端入金扣本地 ISK（`engine.exchangeWalletDelta`），服务端只记交易所账；出金反向加回本地。作弊不设防，线上算法保证公平（船长原话）。
 - 回滚开关：`EXCHANGE_LOCAL_SAVE_MODE=0` → 恢复旧「Node 钱包桥」模式。
 
+### 3.6.1 手续费
+- 生产 `commissionBp = 1`、`stampBp = 1`（systemd `EXCHANGE_COMMISSION_BP` / `EXCHANGE_STAMP_BP`），即买卖各 **0.01%**；`/api/exchange/meta` 下发 `feeRate = 0.0001`。
+- 杠杆档 2x+ 仍走 `leverageFeeBp`（≤20x 买 5bp / 卖 10bp，20~50x 3/6，>50x 2/4）；1x 与现货按 `CommissionBp` 计，成交用 `feeOf`（向下取整）、冻结用 `ceilFeeOf`（向上取整）。
+- 代码默认值仍是 0（`Defaults()`），生产以环境变量为准；重装机器时须一并写入 systemd。
+
 ### 3.7 极简模式保底产品
-- 债券：本地计算，0.03%/分钟（`localProducts.ts`，localStorage `whale-idle:exch-bond-local:v1`），不请求服务器。
+- 债券：**交易所现金**申购（2026-11-04 修订，船长原话「债券也要用入金的钱包购买」）。`GET /bond` 查持仓、`POST /bond/open` 申购、`POST /bond/redeem` 赎回；单利 3bp/分钟、不滚本，服务端一次乘法惰性结算，表 `exchange_bond_positions`。
 - 基金：**放置型**（2026-11-04 修订）。`GET /fund` 查持仓、`POST /fund/open` 申购、`POST /fund/redeem` 赎回；本金锁定，按真实分钟逐分钟结算（70% +16bp / 30% −7bp，期望 +9bp ≈ 债券 3 倍），亏损真实发生、随时可赎；逐分钟结果由 `HMAC(fundSecret, "fund|<account>|<minute>")` 决定，可重放；audit 走 `exchange_transfers.kind=fund_open/fund_redeem`。
+- 两者都在左侧活动栏交易所卡片显示收益（有持仓才显示），跟随行情轮询 10 秒刷新。
 
 ### 3.8 API 与数据表（摘要）
-- 主要接口：`/api/exchange/{meta,round,stocks,book/:code,trades/:code,klines/:code,account,orders,positions,trades/mine,news,events,agents,borrow,strategies,deposit,withdraw,fund,fund/open,fund/redeem,stream(WS)}`。
+- 主要接口：`/api/exchange/{meta,round,stocks,book/:code,trades/:code,klines/:code,account,orders,positions,trades/mine,news,events,agents,borrow,strategies,deposit,withdraw,bond,bond/open,bond/redeem,fund,fund/open,fund/redeem,stream(WS)}`。
 - K 线 interval 支持 `1m/5m/1h/1d/1w/1mo`，单次上限 2016 根；1 周历史用 5m×2016 拉满。
-- 关键表：`exchange_accounts, exchange_orders, exchange_trades, exchange_holdings, exchange_positions, exchange_agents, exchange_agent_positions, exchange_events, exchange_news, exchange_klines, exchange_transfers`；券池在 meta `borrow_pool`。
+- 关键表：`exchange_accounts, exchange_orders, exchange_trades, exchange_holdings, exchange_positions, exchange_agents, exchange_agent_positions, exchange_events, exchange_news, exchange_klines, exchange_transfers, exchange_bond_positions, exchange_fund_positions`；券池在 meta `borrow_pool`。
 
 ---
 
@@ -190,10 +198,12 @@ cp -f whale-exchange.prev whale-exchange && sudo systemctl restart whale-exchang
 4. 测试账号残留：`smoke*`/`bot*`/`e2e*` 以及账号 17 有债务 383,394；可清理但注意别删船长账号（`dadadada` id 18）。
 5. Node/Go 两个仓库**没有远端**，交接时需拷贝或建远端。
 6. 生产 IP 明文通道 allowlist 仅限 `127.0.0.1`/`124.90.21.128`；换网络/换人需改 nginx allowlist。
-7. 交易所文档：`docs/design/stock-exchange-integration-20261103.md` §8.6–8.11 有部署/回滚/E2E/机器人试玩证据；事件目录/设计稿在 `stock-exchange-events-64-*`、`stock-exchange-short-selling-20261103.md`、`stock-exchange-products-20261104.md`、`stock-exchange-round-model-20261103.md`。本次 10 秒行情/图表五周期/快讯竖向/缓存改动**尚未补写设计文档**，接手可补。
+7. 交易所文档：`docs/design/stock-exchange-integration-20261103.md` §8.6–8.11 有部署/回滚/E2E/机器人试玩证据；事件目录/设计稿在 `stock-exchange-events-64-*`、`stock-exchange-short-selling-20261103.md`、`stock-exchange-products-20261104.md`、`stock-exchange-round-model-20261103.md`。2026-11-04 晚间的保底产品放置型、债券改交易所现金、1x 做空、手续费 1bp、左侧栏收益、快讯两行、按钮进度条、行情百分比已补进本文件 §3.5–3.8 与 products 文档。
 8. 已知 UI 冲突：UI review AI 会持续改交易所组件（本轮已回滚全局 UI 且保持交易所功能）；改前先 `git status`，别覆盖在途文件。
 9. Tooltip 死循环已修（`TooltipLayer` effect 依赖问题），但 UI 层若有类似「displayState 进依赖」模式要注意同类回归。
 10. 安全边界：本地存档作弊不设防（船长允许）；IP 明文 HTTP 风险船长已接受；token 存在客户端 localStorage。
+11. 简单界面图表已**固定为「分时」**（原 M1/M5/H1/日线/周线切换入口已移除）；`HttpExchangeClient.ensureChartData(code, period)` 的按需加载仍在，恢复周期切换时直接接回即可。
+12. 微光纳米（SPRK）等低价股 `priceTick = 1`，5 分钟 K 线常出现四价相同、成交量为 0；改报价精度会牵动全部低价股，未处理。
 
 ---
 

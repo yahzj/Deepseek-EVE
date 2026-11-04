@@ -13,7 +13,7 @@
 
 ## 统计
 
-- 非归档文档 **387** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4519** KB · **51506** 行
+- 非归档文档 **387** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4530** KB · **51572** 行
 - 状态分布：**未标注** 193 · **已确认/已实现** 134 · **进行中** 39 · **待裁定** 20 · **历史留档** 1
 - 孤儿文档（0 引用）**210** 份 · 状态未标注 **193** 份
 - 一、常用文档（按任务查阅）：**11** 份
@@ -28,15 +28,15 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档） |
 |---|---|---|---|---|---|
-| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定 | 未标注 | — | 17 KB / 111 行 | 30 |
-| `docs/architecture.md` | 架构文档 | 未标注 | — | 6 KB / 75 行 | 13 |
+| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定 | 未标注 | — | 20 KB / 120 行 | 33 |
+| `docs/architecture.md` | 架构文档 | 未标注 | — | 6 KB / 75 行 | 14 |
 | `docs/catalog.md` | 文档目录 | 未标注 | — | 4 KB / 45 行 | 7 |
 | `docs/content-workbench.md` | 内容工作台 | 未标注 | — | 3 KB / 35 行 | 2 |
 | `docs/data-editor.md` | 大鲸鱼数据编辑器 | 未标注 | — | 4 KB / 45 行 | 6 |
 | `docs/data-map.md` | 数据速查页 | 未标注 | — | 3 KB / 38 行 | 5 |
-| `docs/development-conventions.md` | 开发约定 | 未标注 | — | 23 KB / 169 行 | 16 |
+| `docs/development-conventions.md` | 开发约定 | 未标注 | — | 24 KB / 170 行 | 18 |
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（现行译名表） | — | 46 KB / 810 行 | 9 |
-| `docs/glossary.md` | 术语词典 | 未标注 | — | 21 KB / 194 行 | 59 |
+| `docs/glossary.md` | 术语词典 | 未标注 | — | 21 KB / 195 行 | 61 |
 | `docs/roadmap.md` | 当前待办与实施边界 | 未标注 | — | 7 KB / 64 行 | 61 |
 | `docs/single-source.md` | 单点索引（谁有权算、谁只能读） | 未标注 | — | 39 KB / 282 行 | 20 |
 
@@ -55,8 +55,8 @@
 |---|---|---|---|---|---|
 | `docs/design/exchange-ui-ux-audit-20261104.md` | 证券交易所 UI/UX 深度体验审核与逐轮优化（2026-11-04） | 已确认/已实现（已完成） | 2026-11-04 | 3 KB / 40 行 | 0 |
 | `docs/design/stock-exchange-events-64-20261104.md` | 股市 · 64 事件四象分类与六人格改名（实施规格） | 已确认/已实现（已获船长确认） | 2026-11-04 | 5 KB / 94 行 | 1 |
-| `docs/design/stock-exchange-handoff-20261104.md` | 股票交易所系统交接文档（Handoff） | 未标注 | 2026-11-04 | 14 KB / 213 行 | 0 |
-| `docs/design/stock-exchange-products-20261104.md` | 股市 · 保底产品与本地资金模型（2026-11-04） | 已确认/已实现（已实现并部署　｜　依据：船长 202） | 2026-11-04 | 3 KB / 43 行 | 2 |
+| `docs/design/stock-exchange-handoff-20261104.md` | 股票交易所系统交接文档（Handoff） | 未标注 | 2026-11-04 | 16 KB / 223 行 | 0 |
+| `docs/design/stock-exchange-products-20261104.md` | 股市 · 保底产品与本地资金模型（2026-11-04） | 已确认/已实现（已实现并部署　｜　依据：船长 202） | 2026-11-04 | 5 KB / 62 行 | 3 |
 | `docs/design/ui-ux-20-rounds-audit-20261104.md` | 全局 UI/UX 20 轮深度审核与自动化修复全记录（2026-11-04） | 未标注（全部 20 轮圆满完成） | 2026-11-04 | 33 KB / 398 行 | 0 |
 | `docs/design/activitybar-progress-smoothness-20261103.md` | 设计文档：左侧活动栏进度条刷新率与平滑度优化 (2026-11-03) | 未标注 | 2026-11-03 | 4 KB / 63 行 | 0 |
 | `docs/design/cloud-settings-20261103.md` | 账号与云存档设置（2026-11-03） | 未标注（本批仅本地合入） | 2026-11-03 | 9 KB / 69 行 | 1 |
@@ -390,7 +390,7 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档） |
 |---|---|---|---|---|---|
-| `docs/development-conventions-changelog.md` | 开发约定维护记录 | 未标注 | — | 5 KB / 47 行 | 6 |
+| `docs/development-conventions-changelog.md` | 开发约定维护记录 | 未标注 | — | 8 KB / 73 行 | 6 |
 | `docs/git-gate-approval.md` | Git提交审批放行 | 未标注 | — | 2 KB / 28 行 | 1 |
 | `docs/l10n-pending.md` | 待英文本地化记录 | 未标注 | — | 31 KB / 518 行 | 24 |
 
@@ -451,7 +451,7 @@
 > 仅表示没有其他收录文档提到本文件名，不能据此删除、归档或批准阅读历史。
 
 - `docs/design/exchange-ui-ux-audit-20261104.md`（2026-11-04 · 3 KB）—— 证券交易所 UI/UX 深度体验审核与逐轮优化（2026-11-04）
-- `docs/design/stock-exchange-handoff-20261104.md`（2026-11-04 · 14 KB）—— 股票交易所系统交接文档（Handoff）
+- `docs/design/stock-exchange-handoff-20261104.md`（2026-11-04 · 16 KB）—— 股票交易所系统交接文档（Handoff）
 - `docs/design/ui-ux-20-rounds-audit-20261104.md`（2026-11-04 · 33 KB）—— 全局 UI/UX 20 轮深度审核与自动化修复全记录（2026-11-04）
 - `docs/design/activitybar-progress-smoothness-20261103.md`（2026-11-03 · 4 KB）—— 设计文档：左侧活动栏进度条刷新率与平滑度优化 (2026-11-03)
 - `docs/design/deep-space-exchange-dual-mode-20261103.md`（2026-11-03 · 4 KB）—— 设计文档：深空证券交易所（DSSE）双模式 UI/UX 重构 (2026-11-03)

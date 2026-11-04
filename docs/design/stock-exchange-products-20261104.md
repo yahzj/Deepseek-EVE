@@ -15,13 +15,23 @@
 - **客户端职责**：入金前从本地存档扣 ISK（`GameEngine.exchangeWalletDelta(-amount)`），失败退回；出金成功后加回本地存档。
 - **作弊政策**：允许（本地可随意改 ISK），线上公平性靠撮合/涨跌幅/监管/保险基金等算法保证，不靠地图外校验。
 
-## 二、债券（本地计算，不上服务器）
+## 二、债券（交易所现金，服务端单利结算）
+
+> 2026-11-04 修订，船长原话：「债券也要用入金的钱包购买，本地钱包不能直接用」。
+> 旧版从本地存档 ISK 扣款、只存 `localStorage`、不经过服务器；已整批替换为交易所现金 + 服务端记账。
 
 - 入口：极简模式左栏「低风险理财 · 舰船债券」。
-- 规则：固定利率 **0.03%/分钟**（`localProducts.ts`：`LOCAL_BOND_MINUTE_RATE = 0.0003`），按分钟连续计息、不滚入本金。
-- 资金：买入从**本地存档 ISK** 扣款；赎回本息一次性加回本地存档。
-- 存储：`localStorage['whale-idle:exch-bond-local:v1'] = { principal, startedAt }`；离线/重启后按时间差继续计息。
-- 模拟盘仍走 Mock 客户端的债券实现（行为不变）；联机模式（传 engine）走本地实现。
+- 规则：固定利率 **3bp/分钟（0.03%）**，按分钟单利累积、不滚入本金（`internal/exchange/bond.go`：`bondMinuteBp = 3`）。
+- 资金：从**交易所现金**申购，本金锁定在持仓里，现金当场扣减；赎回 = 本金 + 累计收益。
+- 接口：
+  - `GET  /api/exchange/bond` → 持仓（顺带惰性结算到当前分钟）；
+  - `POST /api/exchange/bond/open {amount, nonce}` → 申购 / 追加；
+  - `POST /api/exchange/bond/redeem {nonce}` → 赎回本金 + 累计收益。
+- 结算：惰性一次乘法 `accrued += principal × 3bp × minutes`，不逐分钟循环；离线照常累积。
+- 存储：表 `exchange_bond_positions`（`account_id / principal / accrued / settled_minute / opened_at`）；审计行 `exchange_transfers.kind = bond_open / bond_redeem`。
+- 幂等：同一 nonce 重放返回当前持仓；换金额重放 409 `nonce_conflict`；空仓赎回 409 `no_bond_position`。
+- 前端：`BondCard` 跟随行情 10 秒刷新，30 秒兜底拉取；空仓时输入金额申购，有仓时显示本金 / 累计收益 / 当前价值 / 已计息分钟。
+- 模拟盘：`MockExchangeClient` 用同一单利规则本地复现。
 
 ## 三、保底基金（放置型，服务端按分钟结算）
 
@@ -41,7 +51,7 @@
 - 确定性：`HMAC(fundSecret, "fund|<accountID>|<minute>")` 前 8 字节 `%100 < 70` → +16bp，否则 −7bp；同一账户同一分钟可重放，离线照常累积。
 - 长离线：单次最多逐分钟结算 7 天（`fundMaxSettleMinutes`），超出部分按期望 9bp 折算，避免超长离线卡死。
 - 幂等：同一 nonce 重放返回当前持仓，不重复扣款/加钱；审计行 `exchange_transfers.kind = fund_open / fund_redeem`（赎回行 `Fee` 存累计收益）。
-- 前端：`FundCard` 空仓时显示申购输入；有仓时显示本金 / 累计收益 / 当前价值 / 已计息分钟，并提供「追加」「全部赎回」；每 60 秒刷新一次持仓。
+- 前端：`FundCard` 空仓时显示申购输入；有仓时显示本金 / 累计收益 / 当前价值 / 已计息分钟，并提供「追加」「全部赎回」；持仓跟随行情轮询 10 秒刷新。
 - 模拟盘：`MockExchangeClient` 用 FNV-1a(分钟) 复现同一规则，持仓写入 `whale-idle:exch-mock` 存档。
 
 ## 四、边界
