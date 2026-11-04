@@ -5758,9 +5758,34 @@ html body .app-root.is-layout-modern .ex-page .ex-simple-big-action-btn:disabled
   font-weight: 600;
 }
 
+.app-activitybar-exch-btn .app-ai-act-sub.is-up {
+  color: rgb(var(--wui-tone-gain));
+  font-weight: 600;
+}
+
 .app-activitybar-exch-btn .app-ai-act-sub.is-down {
   color: rgb(var(--wui-tone-loss));
   font-weight: 600;
+}
+
+.app-activitybar-exch-btn.is-bond {
+  border-color: rgb(var(--wui-gold) / 0.4);
+  background: linear-gradient(135deg, rgb(var(--wui-gold) / 0.12), rgb(var(--wui-bg-panel)));
+}
+
+.app-activitybar-exch-btn.is-bond:hover {
+  border-color: rgb(var(--wui-gold));
+  box-shadow: 0 0 10px rgb(var(--wui-gold) / 0.35);
+}
+
+.app-activitybar-exch-btn.is-fund {
+  border-color: rgb(var(--wui-purple) / 0.4);
+  background: linear-gradient(135deg, rgb(var(--wui-purple) / 0.12), rgb(var(--wui-bg-panel)));
+}
+
+.app-activitybar-exch-btn.is-fund:hover {
+  border-color: rgb(var(--wui-purple));
+  box-shadow: 0 0 10px rgb(var(--wui-purple) / 0.35);
 }
 
 /* ══════════════════════════════════════════════════════════════════

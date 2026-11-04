@@ -285,35 +285,10 @@ export function ActivityBar({
       uniqueCodes,
       totalPnl,
       pnlPct,
-      savings,
+      bonds,
+      funds,
     }
   }, [exchSnap, savingsLive])
-
-  // 左侧卡片的副行与悬停说明：股票持仓优先，保底产品（债券/基金）叠加在后面
-  const savingText = exchSummary.savings
-    .map((s) => `${s.label} ${s.pnl >= 0 ? '+' : ''}${money(s.pnl)}`)
-    .join('  ')
-  const exchSub = exchSummary.hasPositions
-    ? `收益 ${exchSummary.totalPnl >= 0 ? '+' : ''}${money(exchSummary.totalPnl)} ISK (${pct(exchSummary.pnlPct)})${savingText ? ` · ${savingText}` : ''}`
-    : savingText
-  const savingAllUp = exchSummary.savings.every((s) => s.pnl >= 0)
-  const savingAllDown = exchSummary.savings.every((s) => s.pnl < 0)
-  const exchSubTone = exchSummary.hasPositions
-    ? exchSummary.totalPnl >= 0
-      ? 'is-up'
-      : 'is-down'
-    : exchSummary.savings.length === 0
-      ? 'app-dim'
-      : savingAllUp
-        ? 'is-up'
-        : savingAllDown
-          ? 'is-down'
-          : 'app-dim'
-  const exchSubTitle = exchSummary.hasPositions
-    ? `已持仓：${exchSummary.uniqueCodes.join('、')}，当前浮盈 ${exchSummary.totalPnl >= 0 ? '+' : ''}${money(exchSummary.totalPnl)} ISK (${pct(exchSummary.pnlPct)})${savingText ? `；${savingText}` : ''}。点击直达交易所`
-    : exchSummary.savings.length > 0
-      ? `保底产品收益：${savingText}。点击直达交易所`
-      : '点击进入交易所'
 
   const renderItem = (v: ActivityView) => {
     const target = goFor(v.kind)
@@ -564,27 +539,98 @@ export function ActivityBar({
         )}
       </div>
 
-      {/* ── 交易所活动监控（副AI活动最下方，点击直达交易所） ── */}
+      {/* ── 交易所活动监控（副AI活动最下方，独立展示股票、债券与基金） ── */}
       <div className="app-activitybar-group app-activitybar-group-exchange">
-        <div className="app-activitybar-gtitle">交易所</div>
-        <button
-          type="button"
-          className="app-ai-act app-activitybar-exch-btn"
-          title={exchSubTitle}
-          onClick={() => onGoPage?.('exchange')}
-        >
-          <span className="app-activitybar-icon">
-            <Glyph name="nav-exchange" size={14} color="rgb(var(--wui-cyan))" />
-          </span>
-          <span className="app-ai-act-main">
-            <span className="app-ai-act-label">
-              {exchSummary.hasPositions ? exchSummary.uniqueCodes.join(' · ') : '股市'}
+        <div className="app-activitybar-gtitle">{isEn() ? 'Exchange' : '深空证券交易所'}</div>
+        <div className="app-ai-act-list">
+          {/* ① 股票条目（单独一行展示） */}
+          <button
+            type="button"
+            className="app-ai-act app-activitybar-exch-btn"
+            title={
+              exchSummary.hasPositions
+                ? (isEn()
+                    ? `Stock holdings: ${exchSummary.uniqueCodes.join(', ')}, PnL ${exchSummary.totalPnl >= 0 ? '+' : ''}${money(exchSummary.totalPnl)} (${pct(exchSummary.pnlPct)}). Click to view`
+                    : `股票持仓：${exchSummary.uniqueCodes.join('、')}，当前浮盈 ${exchSummary.totalPnl >= 0 ? '+' : ''}${money(exchSummary.totalPnl)} (${pct(exchSummary.pnlPct)})。点击直达交易所`)
+                : (isEn() ? 'Deep Space Exchange: no stocks held, click to trade' : '深空证券交易所：当前未持仓股票，点击进入选股')
+            }
+            onClick={() => onGoPage?.('exchange')}
+          >
+            <span className="app-activitybar-icon">
+              <Glyph name="nav-exchange" size={14} color="rgb(var(--wui-cyan))" />
             </span>
-            {exchSub !== '' ? (
-              <span className={`app-ai-act-sub ${exchSubTone}`}>{exchSub}</span>
-            ) : null}
-          </span>
-        </button>
+            <span className="app-ai-act-main">
+              <span className="app-ai-act-label">
+                {exchSummary.hasPositions ? exchSummary.uniqueCodes.join(' · ') : (isEn() ? 'Stocks' : '股票')}
+              </span>
+              <span
+                className={`app-ai-act-sub ${
+                  exchSummary.hasPositions
+                    ? exchSummary.totalPnl >= 0
+                      ? 'is-up'
+                      : 'is-down'
+                    : 'app-dim'
+                }`}
+              >
+                {exchSummary.hasPositions
+                  ? `${isEn() ? 'PnL' : '收益'} ${exchSummary.totalPnl >= 0 ? '+' : ''}${money(exchSummary.totalPnl)} (${pct(exchSummary.pnlPct)})`
+                  : (isEn() ? 'No Position' : '未持仓')}
+              </span>
+            </span>
+          </button>
+
+          {/* ② 债券条目（仅在已购买且本金 > 0 时单独一行显示收益，没有购买不显示） */}
+          {exchSummary.bonds && exchSummary.bonds.principal > 0 ? (
+            <button
+              type="button"
+              className="app-ai-act app-activitybar-exch-btn is-bond"
+              title={
+                isEn()
+                  ? `Bonds: Principal ${money(exchSummary.bonds.principal)}, Accrued +${money(exchSummary.bonds.accrued)}. Click to manage`
+                  : `稳健型债券：本金 ${money(exchSummary.bonds.principal)}，累计计息 +${money(exchSummary.bonds.accrued)}。点击直达交易所理财`
+              }
+              onClick={() => onGoPage?.('exchange')}
+            >
+              <span className="app-activitybar-icon">
+                <Glyph name="nav-market" size={14} color="rgb(var(--wui-gold))" />
+              </span>
+              <span className="app-ai-act-main">
+                <span className="app-ai-act-label">{isEn() ? 'Bonds' : '稳健债券'}</span>
+                <span className="app-ai-act-sub is-up">
+                  {isEn() ? 'Interest' : '收益'} +{money(exchSummary.bonds.accrued)}
+                </span>
+              </span>
+            </button>
+          ) : null}
+
+          {/* ③ 基金条目（仅在已购买且本金 > 0 时单独一行显示收益，没有购买不显示） */}
+          {exchSummary.funds && exchSummary.funds.principal > 0 ? (
+            <button
+              type="button"
+              className="app-ai-act app-activitybar-exch-btn is-fund"
+              title={
+                isEn()
+                  ? `Hedge Fund: Principal ${money(exchSummary.funds.principal)}, Accrued ${exchSummary.funds.accrued >= 0 ? '+' : ''}${money(exchSummary.funds.accrued)}. Click to manage`
+                  : `深空对冲基金：本金 ${money(exchSummary.funds.principal)}，累计收益 ${exchSummary.funds.accrued >= 0 ? '+' : ''}${money(exchSummary.funds.accrued)}。点击直达交易所基金`
+              }
+              onClick={() => onGoPage?.('exchange')}
+            >
+              <span className="app-activitybar-icon">
+                <Glyph name="nav-skills" size={14} color="rgb(var(--wui-purple))" />
+              </span>
+              <span className="app-ai-act-main">
+                <span className="app-ai-act-label">{isEn() ? 'Hedge Fund' : '对冲基金'}</span>
+                <span
+                  className={`app-ai-act-sub ${
+                    exchSummary.funds.accrued >= 0 ? 'is-up' : 'is-down'
+                  }`}
+                >
+                  {isEn() ? 'PnL' : '收益'} {exchSummary.funds.accrued >= 0 ? '+' : ''}${money(exchSummary.funds.accrued)}
+                </span>
+              </span>
+            </button>
+          ) : null}
+        </div>
       </div>
     </aside>
   )
