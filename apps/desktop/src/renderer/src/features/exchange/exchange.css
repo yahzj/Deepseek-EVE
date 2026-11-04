@@ -4263,30 +4263,53 @@
 
 .ex-simple-trade-tab {
   flex: 1;
-  padding: 6px 0;
+  padding: 8px 0;
   border: 1px solid rgb(var(--wui-border));
   border-radius: 4px;
   background: rgb(var(--wui-bg-field));
   color: rgb(var(--wui-text-dim));
-  font-size: var(--wui-fs-xs);
-  font-weight: 700;
+  font-size: var(--wui-fs-base);
+  font-weight: 800;
+  letter-spacing: 1px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
+.ex-simple-trade-tab.is-buy {
+  border-color: rgb(var(--wui-tone-gain) / 0.35);
+  color: rgb(var(--wui-tone-gain) / 0.7);
+}
+
+.ex-simple-trade-tab.is-buy:hover {
+  border-color: rgb(var(--wui-tone-gain) / 0.6);
+  color: rgb(var(--wui-tone-gain));
+}
+
 .ex-simple-trade-tab.is-buy.is-on {
-  background: rgb(var(--wui-tone-gain) / 0.18);
+  background: rgb(var(--wui-tone-gain) / 0.22);
   border-color: rgb(var(--wui-tone-gain));
   color: rgb(var(--wui-tone-gain));
-  box-shadow: 0 0 8px rgb(var(--wui-tone-gain) / 0.25);
+  box-shadow: 0 0 12px rgb(var(--wui-tone-gain) / 0.35);
+}
+
+.ex-simple-trade-tab.is-short,
+.ex-simple-trade-tab.is-sell {
+  border-color: rgb(var(--wui-tone-loss) / 0.35);
+  color: rgb(var(--wui-tone-loss) / 0.7);
+}
+
+.ex-simple-trade-tab.is-short:hover,
+.ex-simple-trade-tab.is-sell:hover {
+  border-color: rgb(var(--wui-tone-loss) / 0.6);
+  color: rgb(var(--wui-tone-loss));
 }
 
 .ex-simple-trade-tab.is-short.is-on,
 .ex-simple-trade-tab.is-sell.is-on {
-  background: rgb(var(--wui-tone-loss) / 0.18);
+  background: rgb(var(--wui-tone-loss) / 0.22);
   border-color: rgb(var(--wui-tone-loss));
   color: rgb(var(--wui-tone-loss));
-  box-shadow: 0 0 8px rgb(var(--wui-tone-loss) / 0.25);
+  box-shadow: 0 0 12px rgb(var(--wui-tone-loss) / 0.35);
 }
 
 .ex-simple-trade-body {

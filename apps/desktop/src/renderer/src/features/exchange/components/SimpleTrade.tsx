@@ -345,7 +345,7 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
           ) : (
             <div className="ex-simple-trade-preview">
               <div className="ex-simple-preview-row">
-                <span className="ex-dim">{isEn() ? 'Est. Short (2x)' : '预计做空 (2x)'}</span>
+                <span className="ex-dim">{isEn() ? 'Est. Fall (2x)' : '预计看跌 (2x)'}</span>
                 <b className="ex-num ex-highlight-red">{amount(estShortQty)} {T.sharesSuffix}</b>
               </div>
               <div className="ex-simple-preview-row">
@@ -366,7 +366,7 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
               className="ex-simple-big-action-btn is-buy"
               disabled={!canSubmit}
               onClick={handleBuy}
-              title={canSubmit ? '提交市价买多（回合末集合竞价成交）(Enter)' : (disableReason ?? '')}
+              title={canSubmit ? '提交看涨下注（回合末集合竞价成交）(Enter)' : (disableReason ?? '')}
             >
               {busy ? T.submittingBuy : `${T.simpleBuyAction} · ${code}`}
             </button>
@@ -376,7 +376,7 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
               className="ex-simple-big-action-btn is-short"
               disabled={!canSubmit}
               onClick={handleShort}
-              title={canSubmit ? '提交融券卖空（回合末集合竞价成交）(Enter)' : (disableReason ?? '')}
+              title={canSubmit ? '提交看跌下注（回合末集合竞价成交）(Enter)' : (disableReason ?? '')}
             >
               {busy ? T.submittingShort : `${T.simpleShortAction} · ${code}`}
             </button>

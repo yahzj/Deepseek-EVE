@@ -1,6 +1,6 @@
 import { isEn } from '../../../i18n/locale'
 /**
- * 极简模式 · 当前标的持仓战报（SimplePosition）。
+ * 极简模式 · 当前标的下注列表（SimplePosition）。
  *
  * 核心设计：
  * - 集中呈现当前标的的现货多头、逐仓多头与融券空头全部持仓；
@@ -268,15 +268,15 @@ export function SimplePosition({ client, snap, code, onToast }: SimplePositionPr
             </div>
             <div className="ex-simple-pos-row-grid">
               <div className="ex-simple-pos-item">
-                <span className="ex-dim">{T.currentHolding}</span>
+                <span className="ex-dim">{T.simpleBetShares}</span>
                 <b className="ex-num">{amount(heldQty)} {T.sharesSuffix}</b>
               </div>
               <div className="ex-simple-pos-item">
-                <span className="ex-dim">{T.positionCost}</span>
+                <span className="ex-dim">{T.simpleBetPrice}</span>
                 <b className="ex-num">{price(avgCost)}</b>
               </div>
               <div className="ex-simple-pos-item">
-                <span className="ex-dim">{T.positionMarkVal}</span>
+                <span className="ex-dim">{T.simpleBetPrincipal}</span>
                 <b className="ex-num">{money(spotVal)}</b>
               </div>
               <div className="ex-simple-pos-item is-pnl">
@@ -318,7 +318,7 @@ export function SimplePosition({ client, snap, code, onToast }: SimplePositionPr
             >
               <div className="ex-simple-pos-row-head">
                 <div className={`ex-simple-pos-badge ${isShort ? 'is-short' : 'is-long'}`}>
-                  {isShort ? `${T.marginShortLabel} · ${p.leverage}x` : `${T.marginLongLabel} · ${p.leverage}x`}
+                  {isShort ? `下注看跌 · ${p.leverage}x` : `下注看涨 · ${p.leverage}x`}
                 </div>
                 <button
                   type="button"
@@ -339,15 +339,15 @@ export function SimplePosition({ client, snap, code, onToast }: SimplePositionPr
 
               <div className="ex-simple-pos-row-grid">
                 <div className="ex-simple-pos-item">
-                  <span className="ex-dim">{isShort ? T.marginShortQty : T.marginLongQty}</span>
+                  <span className="ex-dim">{T.simpleBetShares}</span>
                   <b className="ex-num">{amount(p.qty)} {T.sharesSuffix}</b>
                 </div>
                 <div className="ex-simple-pos-item">
-                  <span className="ex-dim">{isShort ? T.shortEntryPrice : T.longEntryPrice}</span>
+                  <span className="ex-dim">{T.simpleBetPrice}</span>
                   <b className="ex-num">{price(p.avgEntry)}</b>
                 </div>
                 <div className="ex-simple-pos-item">
-                  <span className="ex-dim">{T.simpleEstMargin}</span>
+                  <span className="ex-dim">{T.simpleBetPrincipal}</span>
                   <b className="ex-num">{money(p.margin)}</b>
                 </div>
                 <div className="ex-simple-pos-item is-pnl">
