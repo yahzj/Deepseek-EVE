@@ -54,4 +54,10 @@
 - `npm run typecheck`、`npm run l10n:check`、`npm run content:check`、`npm run ui:rot-check`、`npm run arch:guard`。
 - `npm run build`、`npm --prefix web run build`。
 - `npm run audio:smoke`（含导出 Blob 捕获校验）、`npm run audio:smoke:desktop`（file:// 与发布门禁）。
+
+### 验证结果（2026-11-04）
+
+- `audio:check`：33 事件/6 分类、素材目录 0 文件、本域 73 条 id；入库包往返/非法包拒绝/临时目录安装用例全过。
+- 类型与固定检查：四 workspace `typecheck` exit 0；`content:check`、`l10n:check`（7018 条、202 条待译）、`ui:rot-check`、`arch:guard`（单点 245 条，F1-F9 全 0）通过。
+- 构建与冒烟：桌面与网页构建通过；`audio:smoke` 33 项全过（含导出 Blob 捕获校验：PK 魔数、manifest v1、`sfx/invasion-alarm.wav` 路径、成功提示）；`audio:smoke:desktop` 全过（file:// 内置与本机覆盖均可播、发布门禁不暴露调试口、0 console error）。
 - 待船长：导入真实素材走一遍「导出 → audio:install → 全部清除 → audio:check」，验收音效/音乐/环境实际听感与首批素材公告。
