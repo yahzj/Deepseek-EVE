@@ -2,8 +2,8 @@
   "version": 1,
   "sources": {
     "docs-distill:collab-gates": {
-      "content_hash": "1c94ce34cd50c58fdaef73519f13f8b86728cab3a942308c409afd64539b6d2c",
-      "last_ingested": "2026-11-02T13:58:13.492Z",
+      "content_hash": "cb4bde99e5e130e98abfd07af3564649cc0879b1c8e0944ad9ec34e19d2602e6",
+      "last_ingested": "2026-11-04T10:26:55.250Z",
       "pages_produced": [
         "collab-gates"
       ]
