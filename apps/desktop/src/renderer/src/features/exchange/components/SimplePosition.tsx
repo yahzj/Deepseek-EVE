@@ -65,13 +65,20 @@ export function SimplePosition({ client, snap, code, onToast }: SimplePositionPr
 
   // 组件卸载时清理倒计时定时器
   useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && confirmCloseAll) {
+        cancelConfirm()
+      }
+    }
+    window.addEventListener('keydown', handleKey)
     return () => {
+      window.removeEventListener('keydown', handleKey)
       if (countdownTimer.current) {
         clearInterval(countdownTimer.current)
         countdownTimer.current = null
       }
     }
-  }, [])
+  }, [confirmCloseAll])
 
   if (!hasAnyPosition) {
     return (
@@ -290,13 +297,14 @@ export function SimplePosition({ client, snap, code, onToast }: SimplePositionPr
           const isThisBusy = closingTarget === posKey
 
           // 强平安全距离评估
-          const distance = p.liquidationDistancePct ?? (
+          const rawDist = p.liquidationDistancePct ?? (
             p.liquidationPrice > 0 && curPrice > 0
               ? isShort
                 ? Math.max(0, ((p.liquidationPrice - curPrice) / curPrice) * 100)
                 : Math.max(0, ((curPrice - p.liquidationPrice) / curPrice) * 100)
               : 100
           )
+          const distance = Number.isFinite(rawDist) ? Math.max(0, rawDist) : 0
           const isCritical = distance < LIQ_CRITICAL_PCT
           const isDanger = distance < LIQ_DANGER_PCT
           const riskLevelClass = isCritical ? 'is-critical' : isDanger ? 'is-danger' : 'is-safe'
@@ -354,7 +362,8 @@ export function SimplePosition({ client, snap, code, onToast }: SimplePositionPr
                 <div className={`ex-simple-pos-risk-bar ${riskLevelClass}`}>
                   <div className="ex-simple-pos-risk-info">
                     <span className="ex-simple-pos-risk-tag">
-                      {isCritical ? '强平极危' : isDanger ? '强平预警' : '仓位健康'}
+                      {isCritical && <WarningAlt size={12} className="ex-risk-icon-pulse" />}
+                      {isCritical ? ' 强平极危' : isDanger ? '强平预警' : '仓位健康'}
                     </span>
                     <span className="ex-simple-pos-risk-desc">
                       强平价: <b className="ex-num">{price(p.liquidationPrice)}</b>

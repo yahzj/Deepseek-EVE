@@ -204,7 +204,10 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
           className={`ex-simple-trade-tab is-buy${tab === 'buy' ? ' is-on is-active' : ''}`}
           onClick={() => {
             setTab('buy')
-            setActiveRatio(null)
+            if (activeRatio !== null) {
+              const val = Math.floor(cash * activeRatio)
+              setCashAmount(val > 0 ? String(val) : '')
+            }
           }}
         >
           {T.simpleTradeBuy}
@@ -216,7 +219,10 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
           className={`ex-simple-trade-tab is-short${tab === 'short' ? ' is-on is-active' : ''}`}
           onClick={() => {
             setTab('short')
-            setActiveRatio(null)
+            if (activeRatio !== null) {
+              const val = Math.floor(cash * activeRatio)
+              setCashAmount(val > 0 ? String(val) : '')
+            }
           }}
         >
           {T.simpleTradeShort}

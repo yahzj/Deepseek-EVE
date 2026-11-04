@@ -57,9 +57,22 @@ export function SimpleStockList({ client, snap, selected, onSelect }: SimpleStoc
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault()
                   onSelect(q.code)
+                } else if (e.key === 'ArrowDown') {
+                  e.preventDefault()
+                  const idx = snap.stocks.findIndex((s) => s.code === q.code)
+                  if (idx >= 0 && idx < snap.stocks.length - 1) {
+                    onSelect(snap.stocks[idx + 1].code)
+                  }
+                } else if (e.key === 'ArrowUp') {
+                  e.preventDefault()
+                  const idx = snap.stocks.findIndex((s) => s.code === q.code)
+                  if (idx > 0) {
+                    onSelect(snap.stocks[idx - 1].code)
+                  }
                 }
               }}
               aria-pressed={isSel}
+              aria-label={`${q.code} ${q.nameKey} 现价 ${price(q.price)} 涨跌 ${pct(q.changePct)}`}
             >
               {/* 持仓角标群 */}
               {hasHolding ? (

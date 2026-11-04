@@ -33,7 +33,8 @@ export function Sparkline({ client, code, isUp, width = 76, height = 24 }: Spark
 
   const min = Math.min(...points)
   const max = Math.max(...points)
-  const span = max - min || 1
+  const isFlat = max === min
+  const span = isFlat ? 1 : max - min
 
   const paddingY = 2
   const usableH = height - paddingY * 2
@@ -41,7 +42,7 @@ export function Sparkline({ client, code, isUp, width = 76, height = 24 }: Spark
 
   const coords = points.map((val, i) => {
     const x = i * stepX
-    const y = height - paddingY - ((val - min) / span) * usableH
+    const y = isFlat ? height / 2 : height - paddingY - ((val - min) / span) * usableH
     return [x, y] as [number, number]
   })
 
