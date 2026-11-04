@@ -197,7 +197,7 @@ export function SimplePosition({ client, snap, code, onToast }: SimplePositionPr
           <div className="ex-simple-pos-title-row">
             <h4 className="ex-simple-pos-title">我的【{code}】持仓战报</h4>
             {totalMargin > 0 && (
-              <span className="ex-simple-pos-margin-badge" title="当前标的逐仓杠杆占用总保证金">
+              <span className="ex-simple-pos-margin-badge" title="当前股票逐仓杠杆占用总保证金">
                 保证金: <b className="ex-num">{money(totalMargin)}</b>
               </span>
             )}
@@ -224,7 +224,7 @@ export function SimplePosition({ client, snap, code, onToast }: SimplePositionPr
             className={`ex-simple-close-all-btn${confirmCloseAll ? ' is-confirming' : ''}${closingTarget === 'all' ? ' is-busy' : ''}`}
             disabled={isBusy}
             onClick={handleClickCloseAll}
-            title={confirmCloseAll ? '高危操作：再次点击立即全部平仓！' : '以市价卖出该标的所有现货并结清所有杠杆仓位'}
+            title={confirmCloseAll ? '高危操作：再次点击立即全部平仓！' : '以市价卖出该股票所有现货并结清所有杠杆仓位'}
           >
             {closingTarget === 'all' ? (
               <span className="ex-simple-pos-loading">清仓中…</span>

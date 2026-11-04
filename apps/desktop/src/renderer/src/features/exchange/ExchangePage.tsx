@@ -56,7 +56,7 @@ function ExchangeGuide({ bundle }: { bundle: ExchangeClientBundle }) {
       <header className="ex-topbar">
         <div className="ex-title">
           <h2 className="ex-title-text">{T.simpleTopTitle}</h2>
-          <span className="ex-prototype">{T.prototypeBadge}</span>
+          
         </div>
         <div className="ex-top-actions">
           <SourceBadge source={bundle.source} />
@@ -136,9 +136,14 @@ function ExchangeBody({
     const watchdog = window.setInterval(() => {
       if (client.getSnapshot(codeRef.current).stocks.length === 0) client.retryBootstrap?.()
     }, 3000)
+    // 行情 10 秒刷新一次（2026-11-04 船长：玩家要能看到 10 秒级数据变动）；回合仍 5 分钟、每回合 10 手。
+    const marketRefresh = window.setInterval(() => {
+      void client.refreshMarketData?.(codeRef.current)
+    }, 10_000)
     client.start()
     return () => {
       window.clearInterval(watchdog)
+      window.clearInterval(marketRefresh)
       stopTick()
       stopMargin()
       stopError()
@@ -233,7 +238,7 @@ function ExchangeBody({
       <header className="ex-topbar">
         <div className="ex-title">
           <h2 className="ex-title-text">{T.simpleTopTitle}</h2>
-          <span className="ex-prototype">{T.prototypeBadge}</span>
+          
         </div>
 
         {/* 核心双模式 Segmented Tabs：醒目清晰，直观切换 */}
@@ -383,3 +388,4 @@ function ExchangeBody({
     </div>
   )
 }
+

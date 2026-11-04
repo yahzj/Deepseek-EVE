@@ -8,7 +8,7 @@
 ## 一、部署拓扑（生产服务器 123.207.188.192）
 
 ```
-客户端 ──HTTPS──▶ nginx:443（shit.fuckrapper.online，自签/自定义证书）
+客户端 ──HTTPS──▶ nginx:443（game.bajibaji.party，Let's Encrypt 正式证书，2026-11-04 起）
                      │
                      ├─ /api/exchange/*  ──▶ Go 交易所 127.0.0.1:8788（WS 升级同样支持）
                      ├─ /internal/*      ──▶ 404（外部一律拒绝）
@@ -89,7 +89,7 @@ Node 内部接口（**仅 localhost + 共享密钥**）：
 ## 六、验收
 
 1. `go test -race ./...`、`go vet` 全绿；Node `npm test` 全绿（新增内部接口用例）。
-2. 生产：`curl https://shit.fuckrapper.online/api/exchange/stocks` 返回 4 标的；`/internal/*` 外部 404。
+2. 生产：`curl https://game.bajibaji.party/api/exchange/stocks` 返回 4 标的；`/internal/*` 外部 404。
 3. 端到端：登录账号 → 入金 → 限价挂单 → 另一账号成交 → 双方钱包/持仓/账本一致 → 撤单/出金；WS 每秒收到行情。
 4. 故障演练：停 Go → 前端显示离线错误、Node 其他功能不受影响；起 Go → 恢复挂单。
 5. 回滚：nginx 去掉 exchange location 即回到纯 Node，游戏功能无损。

@@ -1,11 +1,13 @@
 /**
- * 图表周期定义（**单点**）——`分时 / M1 / H1 / D1 / D7 / D30`。
+ * 图表周期定义（**单点**）——`分时 / M1 / M5 / H1 / 日线 / 周线`。
  *
- * 为什么单独一个文件：Mock 引擎要按同一套桶宽合成历史与推进实时 K 线，图表组件要用同一套
- * 标签与抽样规则；两边各写一份迟早出现「图上写 09:05、数据却是 09:04」的错位。
- *
- * 时间口径：一律用**本机真实时间**（原型不接服务端时钟；与设计稿「服务端真实日」的差异
- * 在转正时换成服务器时间即可，桶的划分逻辑不变）。
+ * 周期分类标准规范（2026-11-04 船长口径）：
+ * - 「分时」（intraday）：10 秒实时行情的动态走势线
+ * - 「M1」（m1）：1 分钟蜡烛（回合内 5 根微观蜡烛）
+ * - 「M5」（m5）：5 分钟蜡烛（核心回合线，一回合一根）
+ * - 「H1」（h1）：1 小时蜡烛（12 回合）
+ * - 「日线」（d1）：24 小时走势
+ * - 「周线」（d7）：7 天大周期走势
  */
 import type { ChartPeriod, Kline } from './client'
 
@@ -95,6 +97,21 @@ export const CHART_PERIODS: ChartPeriodSpec[] = [
     },
   },
   {
+    id: 'm5',
+    label: 'M5',
+    bucketMs: 5 * MINUTE_MS,
+    historyCount: HISTORY_BARS,
+    barSeconds: 300,
+    axisLabel: (ts) => {
+      const d = new Date(ts)
+      return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`
+    },
+    tipLabel: (ts) => {
+      const d = new Date(ts)
+      return `${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`
+    },
+  },
+  {
     id: 'h1',
     label: 'H1',
     bucketMs: 3_600_000,
@@ -111,7 +128,7 @@ export const CHART_PERIODS: ChartPeriodSpec[] = [
   },
   {
     id: 'd1',
-    label: 'D1',
+    label: '日线',
     bucketMs: 86_400_000,
     historyCount: HISTORY_BARS,
     barSeconds: 86_400,
@@ -126,7 +143,7 @@ export const CHART_PERIODS: ChartPeriodSpec[] = [
   },
   {
     id: 'd7',
-    label: 'D7',
+    label: '周线',
     bucketMs: 7 * 86_400_000,
     historyCount: HISTORY_BARS,
     barSeconds: 7 * 86_400,
@@ -139,22 +156,19 @@ export const CHART_PERIODS: ChartPeriodSpec[] = [
       return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}（周）`
     },
   },
-  {
-    id: 'd30',
-    label: 'D30',
-    bucketMs: 30 * 86_400_000,
-    historyCount: HISTORY_BARS,
-    barSeconds: 30 * 86_400,
-    axisLabel: (ts) => {
-      const d = new Date(ts)
-      return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`
-    },
-    tipLabel: (ts) => {
-      const d = new Date(ts)
-      return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}（月）`
-    },
-  },
 ]
+
+/** 专业终端周期切换按钮（2026-11-04 船长：分时、M1、M5、H1、日线、周线） */
+export const PRO_CHART_PERIODS: ChartPeriodSpec[] = [
+  'intraday',
+  'm1',
+  'm5',
+  'h1',
+  'd1',
+  'd7',
+]
+  .map((id) => CHART_PERIODS.find((spec) => spec.id === (id as ChartPeriod)))
+  .filter((spec): spec is ChartPeriodSpec => spec !== undefined)
 
 const SPEC_BY_ID = new Map<ChartPeriod, ChartPeriodSpec>(CHART_PERIODS.map((s) => [s.id, s]))
 

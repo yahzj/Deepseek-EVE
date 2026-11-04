@@ -19,20 +19,25 @@ interface SimpleChartProps {
   tick: number
 }
 
-type SimplePeriod = 'intraday' | 'd1' | 'd7'
+type SimplePeriod = 'intraday' | 'm1' | 'm5' | 'h1' | 'd1' | 'd7'
 
 const PERIOD_LABELS: Record<SimplePeriod, string> = {
   intraday: '分时',
-  d1: '日走势',
+  m1: 'M1',
+  m5: 'M5',
+  h1: 'H1',
+  d1: '日线',
   d7: '周线',
 }
+
+const SIMPLE_PERIODS: SimplePeriod[] = ['intraday', 'm1', 'm5', 'h1', 'd1', 'd7']
 
 export function SimpleChart({ client, code, quote, tick }: SimpleChartProps) {
   const [period, setPeriod] = useState<SimplePeriod>('intraday')
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
 
-  // 映射周期参数至 client 接口
-  const clientPeriod: ChartPeriod = period === 'intraday' ? 'intraday' : period === 'd1' ? 'd1' : 'd7'
+  // 周期即 client 周期（2026-11-04 船长：分时图改为 M1/M5/H5/D5/D35）
+  const clientPeriod: ChartPeriod = period
 
   const series = useMemo(() => {
     try {
@@ -109,7 +114,7 @@ export function SimpleChart({ client, code, quote, tick }: SimpleChartProps) {
 
         {/* 周期切换按钮组 */}
         <div className="ex-simple-chart-periods" role="tablist">
-          {(['intraday', 'd1', 'd7'] as SimplePeriod[]).map((p) => (
+          {SIMPLE_PERIODS.map((p) => (
             <button
               key={p}
               type="button"
@@ -250,13 +255,16 @@ function formatPeriodTime(ts: number, period: SimplePeriod): string {
   const d = new Date(ts)
   const hh = String(d.getHours()).padStart(2, '0')
   const mm = String(d.getMinutes()).padStart(2, '0')
-  if (period === 'intraday') {
+  if (period === 'intraday' || period === 'm1' || period === 'm5') {
     return `${hh}:${mm}`
   }
   const mon = d.getMonth() + 1
   const day = d.getDate()
-  if (period === 'd1') {
-    return `${mon}/${day} ${hh}:${mm}`
+  if (period === 'h1') {
+    return `${mon}/${day} ${hh}:00`
   }
-  return `${mon}月${day}日`
+  if (period === 'd1' || period === 'd7') {
+    return `${mon}月${day}日`
+  }
+  return `${d.getFullYear()}/${mon}/${day}`
 }

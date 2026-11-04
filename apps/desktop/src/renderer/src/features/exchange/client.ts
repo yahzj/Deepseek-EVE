@@ -190,7 +190,7 @@ export interface Kline { t: number; o: number; h: number; l: number; c: number; 
  * 分时 = 当日 00:00（本机真实日）起的 1 分钟线；其余为按周期聚合的 K 线。
  * 服务端将来只提供原始 K 线，指标一律前端现算（避免两端口径漂移）。
  */
-export type ChartPeriod = 'intraday' | 'm1' | 'h1' | 'd1' | 'd7' | 'd30'
+export type ChartPeriod = 'intraday' | 'm1' | 'm5' | 'h5' | 'd5' | 'd35' | 'h1' | 'd1' | 'd7' | 'd30'
 
 export interface DepositResult { nonce: string; applied: number; fee: number; cash: number; receiptHash: string }
 export interface WithdrawResult { nonce: string; amount: number; fee: number; availableAt: number; receiptHash: string }
@@ -370,6 +370,8 @@ export interface ExchangeClient {
   retryBootstrap?(): void
   /** 可选：切换标的后补拉该标的 K 线/盘口（HTTP 模式实现；首屏只拉了首只标的）。 */
   ensureSymbolData?(code: string): void
+  /** 可选：每分钟刷新行情/账户/委托/快讯（HTTP 模式实现）。 */
+  refreshMarketData?(code: string): void
   onTick(cb: () => void): Unsubscribe
   getSnapshot(code: string): ExchangeSnapshot
   /** 六周期图表数据（同步读缓存：Mock 内存直读；HTTP 由订阅缓存提供，未连上时为空数组） */

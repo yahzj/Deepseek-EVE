@@ -52,6 +52,7 @@ import type {
   Unsubscribe,
   WithdrawResult,
 } from '../client'
+import { bucketStart } from '../chartPeriods'
 import { ExchangeError } from '../errors'
 import type { Transport } from './transport'
 
@@ -404,6 +405,27 @@ function emptyQuote(code: string): StockQuote {
   }
 }
 
+/** 把服务端基础周期 K 线按倍数聚合成更大周期的 OHLCV（H5/D5/D35 用）。 */
+function aggregateKlines(rows: Kline[], factor: number): Kline[] {
+  if (factor <= 1 || rows.length === 0) return rows
+  const out: Kline[] = []
+  for (let i = 0; i < rows.length; i += factor) {
+    const group = rows.slice(i, i + factor)
+    const first = group[0]!
+    const last = group[group.length - 1]!
+    let high = first.h
+    let low = first.l
+    let volume = 0
+    for (const bar of group) {
+      if (bar.h > high) high = bar.h
+      if (bar.l < low) low = bar.l
+      volume += bar.v
+    }
+    out.push({ t: first.t, o: first.o, h: high, l: low, c: last.c, v: volume })
+  }
+  return out
+}
+
 export class HttpExchangeClient implements ExchangeClient {
   readonly contractVersion = CONTRACT_VERSION
 
@@ -435,6 +457,14 @@ export class HttpExchangeClient implements ExchangeClient {
   private lastBootstrapAt = 0
   /** 正在补拉数据的标的（防止切换标的时重复请求） */
   private symbolLoading = new Set<string>()
+  /** K 线本地缓存（7 天 TTL，跨重启秒开图表）；key = code:period */
+  private chartCachedAt = new Map<string, number>()
+  private chartPersistTimer = 0
+  private chartsHydrated = false
+  private refreshing = false
+  private refreshCount = 0
+  private static readonly CHART_CACHE_KEY = 'whale-idle:exch-charts:v1'
+  private static readonly CHART_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000
 
   constructor(transport: Transport, basePath = '/api/exchange') {
     this.transport = transport
@@ -458,6 +488,11 @@ export class HttpExchangeClient implements ExchangeClient {
   /* ═══════════════ 生命周期 ═══════════════ */
 
   start(): void {
+    if (!this.chartsHydrated) {
+      this.chartsHydrated = true
+      // 先灌 7 天内的本地 K 线缓存，图表秒开；随后 bootstrap 用网络数据覆盖。
+      this.hydrateCharts()
+    }
     if (this.streamUnsub !== null) return
     try {
       // 不传 topics/codes：Go 侧默认订阅 round/stocks/book/trades/account/orders/event 全量；
@@ -484,6 +519,42 @@ export class HttpExchangeClient implements ExchangeClient {
     if (this.bootstrapping) return
     if (Date.now() - this.lastBootstrapAt < 4000) return
     void this.bootstrap()
+  }
+
+  /**
+   * 每分钟刷新一次行情（5 分钟回合共 5 次）：行情/账户/委托/快讯/盘口 + 全部标的 m1 K 线。
+   * 玩家操作额度仍由回合决定（每回合 10 单，5 分钟共 10 手）。
+   */
+  async refreshMarketData(code: string): Promise<void> {
+    if (this.refreshing) return
+    this.refreshing = true
+    try {
+      // 行情/账户/盘口 10 秒一次；K 线较重，每 3 次（约 30 秒）刷一次。
+      const withCharts = this.refreshCount % 3 === 0
+      this.refreshCount += 1
+      const stocksTask = this.getStocks().catch(() => undefined)
+      const [account, orders] = await Promise.all([
+        this.getAccount().catch(() => null),
+        this.getOrders().catch((): ExchangeOrder[] => []),
+      ])
+      if (account !== null) this.account = account
+      this.orders = orders
+      await stocksTask
+      await Promise.all([
+        this.loadNews().catch(() => undefined),
+        code === ''
+          ? Promise.resolve()
+          : this.getBook(code)
+              .then((book) => this.books.set(code, book))
+              .catch(() => undefined),
+        ...(withCharts
+          ? this.stocks.map((stock) => this.loadChart(stock.code, 'm1').catch(() => undefined))
+          : []),
+      ])
+      this.emitTick()
+    } finally {
+      this.refreshing = false
+    }
   }
 
   onTick(cb: () => void): Unsubscribe {
@@ -540,12 +611,14 @@ export class HttpExchangeClient implements ExchangeClient {
         chartTasks.push(
           this.getBook(code).then((book) => this.books.set(code, book)),
           this.loadChart(code, 'm1'),
+          this.loadChart(code, 'm5'),
           this.loadChart(code, 'h1'),
           this.loadChart(code, 'd1'),
           this.loadChart(code, 'd7'),
-          this.loadChart(code, 'd30'),
         )
       }
+      // 其余三只标的的图表后台预载，玩家切股票时不再等网络。
+      for (const stock of stocks.slice(1)) this.ensureSymbolData(stock.code)
       const roundTask = this.getRound().catch(() => null)
       const metaTask = this.loadMeta().catch(() => undefined)
       const [account, orders, strategies] = await Promise.all([
@@ -635,6 +708,7 @@ export class HttpExchangeClient implements ExchangeClient {
       case 'stocks': {
         if (Array.isArray(data)) {
           this.stocks = data.map(normalizeStock).filter(isPresent)
+          this.updateIntraCandles(this.stocks)
         }
         break
       }
@@ -710,28 +784,105 @@ export class HttpExchangeClient implements ExchangeClient {
 
   /* ═══════════════ 图表 ═══════════════ */
 
-  /** 周期 → 服务端 K 线 interval（Go 支持 1m/5m/1h/1d/1w/1mo）；基础周期是 5m。 */
-  private intervalOf(period: ChartPeriod): string {
-    if (period === 'h1') return '1h'
-    if (period === 'd1') return '1d'
-    if (period === 'd7') return '1w'
-    if (period === 'd30') return '1mo'
-    return '1m'
+  /** 周期 → 服务端基础 interval + 聚合倍数（Go 支持 1m/5m/1h/1d/1w/1mo；H5/D5/D35 走聚合）。 */
+  private chartSource(period: ChartPeriod): { interval: string; agg: number } {
+    if (period === 'm5') return { interval: '5m', agg: 1 }
+    if (period === 'h5') return { interval: '1h', agg: 5 }
+    if (period === 'd5') return { interval: '1d', agg: 5 }
+    if (period === 'd35') return { interval: '1d', agg: 35 }
+    if (period === 'h1') return { interval: '1h', agg: 1 }
+    if (period === 'd1') return { interval: '1d', agg: 1 }
+    if (period === 'd7') return { interval: '1w', agg: 1 }
+    if (period === 'd30') return { interval: '1mo', agg: 1 }
+    return { interval: '1m', agg: 1 }
   }
 
   private async loadChart(code: string, period: ChartPeriod): Promise<void> {
-    const interval = this.intervalOf(period)
-    // 图表可视最多 180 根；200 根足够，且能把 5 个周期的首屏流量从 ~135KB 降到 ~68KB。
+    const { interval, agg } = this.chartSource(period)
+    // 图表可视最多 180 根；聚合周期多取几倍基础根数，但不超过服务端 2016 上限。
+    const limit = agg > 1 ? Math.min(2016, 200 * agg) : 200
     const rows = await this.get<unknown>(
-      `/klines/${encodeURIComponent(code)}?interval=${interval}&limit=200`,
+      `/klines/${encodeURIComponent(code)}?interval=${interval}&limit=${limit}`,
     )
-    const bars = Array.isArray(rows) ? (rows as Kline[]) : []
-    this.chartCache.set(`${code}:${period}`, bars)
-    if (period === 'm1') this.chartCache.set(`${code}:intraday`, bars)
+    const bars = aggregateKlines(Array.isArray(rows) ? (rows as Kline[]) : [], agg)
+    const key = `${code}:${period}`
+    this.chartCache.set(key, bars)
+    this.chartCachedAt.set(key, Date.now())
+    if (period === 'm1') {
+      this.chartCache.set(`${code}:intraday`, bars)
+      this.chartCachedAt.set(`${code}:intraday`, Date.now())
+    }
+    this.schedulePersistCharts()
   }
 
   getChartSeries(code: string, period: ChartPeriod): Kline[] {
     return this.chartCache.get(`${code}:${period}`) ?? []
+  }
+
+  /** 启动时把 7 天内的本地 K 线缓存灌回内存：先出图，再由网络刷新覆盖。 */
+  private hydrateCharts(): void {
+    if (typeof window === 'undefined') return
+    try {
+      const raw = window.localStorage.getItem(HttpExchangeClient.CHART_CACHE_KEY)
+      if (raw === null) return
+      const parsed = JSON.parse(raw) as Record<string, { t?: number; bars?: Kline[] }>
+      const now = Date.now()
+      for (const [key, entry] of Object.entries(parsed)) {
+        if (entry === null || typeof entry.t !== 'number' || !Array.isArray(entry.bars)) continue
+        if (now - entry.t > HttpExchangeClient.CHART_CACHE_TTL_MS) continue
+        this.chartCache.set(key, entry.bars)
+        this.chartCachedAt.set(key, entry.t)
+      }
+    } catch {
+      /* 缓存损坏按没有处理，不阻塞行情 */
+    }
+  }
+
+  private schedulePersistCharts(): void {
+    if (typeof window === 'undefined' || this.chartPersistTimer !== 0) return
+    this.chartPersistTimer = window.setTimeout(() => {
+      this.chartPersistTimer = 0
+      this.persistCharts()
+    }, 800)
+  }
+
+  private persistCharts(): void {
+    try {
+      const out: Record<string, { t: number; bars: Kline[] }> = {}
+      for (const [key, bars] of this.chartCache) {
+        out[key] = { t: this.chartCachedAt.get(key) ?? Date.now(), bars }
+      }
+      window.localStorage.setItem(HttpExchangeClient.CHART_CACHE_KEY, JSON.stringify(out))
+    } catch {
+      /* 配额/隐私模式失败不影响行情 */
+    }
+  }
+
+  /**
+   * 回合内 10 秒行情步进时，实时更新内存缓存中正在生成的当前 K 线（M1 / M5 / intraday 等）。
+   * 让图表最右侧的活跃蜡烛针头实时上下伸缩，不需等待 30 秒 HTTP 轮询即可平滑反应价格变动。
+   */
+  private updateIntraCandles(quotes: StockQuote[]): void {
+    const now = Date.now()
+    for (const quote of quotes) {
+      const p = quote.price
+      if (!Number.isFinite(p) || p <= 0) continue
+      for (const [key, bars] of this.chartCache) {
+        if (!key.startsWith(`${quote.code}:`) || bars.length === 0) continue
+        const periodStr = key.slice(quote.code.length + 1) as ChartPeriod
+        const last = bars[bars.length - 1]
+        if (!last) continue
+        const bucket = bucketStart(periodStr, now)
+        if (last.t === bucket) {
+          last.h = Math.max(last.h, p)
+          last.l = Math.min(last.l, p)
+          last.c = p
+        } else if (bucket > last.t) {
+          bars.push({ t: bucket, o: p, h: p, l: p, c: p, v: 0 })
+          if (bars.length > 200) bars.shift()
+        }
+      }
+    }
   }
 
   /**
@@ -751,10 +902,10 @@ export class HttpExchangeClient implements ExchangeClient {
       tasks.push(
         // m1 先到先渲染，其余周期后台补齐，切标的时图表不必等 5 个请求全回来。
         this.loadChart(code, 'm1').then(() => this.emitTick()),
-        this.loadChart(code, 'h1'),
-        this.loadChart(code, 'd1'),
-        this.loadChart(code, 'd7'),
-        this.loadChart(code, 'd30'),
+        this.loadChart(code, 'm5'),
+        this.loadChart(code, 'h5'),
+        this.loadChart(code, 'd5'),
+        this.loadChart(code, 'd35'),
       )
     }
     if (needBook) {
@@ -780,6 +931,7 @@ export class HttpExchangeClient implements ExchangeClient {
     const rows = Array.isArray(raw) ? raw : isRecord(raw) && Array.isArray(raw.stocks) ? raw.stocks : null
     if (rows === null) throw new ExchangeError('malformed_response', '行情响应格式不正确')
     this.stocks = rows.map(normalizeStock).filter(isPresent)
+    this.updateIntraCandles(this.stocks)
     return this.stocks
   }
 

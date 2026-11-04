@@ -18,7 +18,7 @@ export const T = {
   bondValue: '债券本息',
   indexName: '星海综合指数',
 
-  stockListTitle: '标的',
+  stockListTitle: '股票',
   stockListHint: '点击切换 · 原型 4 家',
   colCode: '代码',
   colName: '名称',
@@ -106,8 +106,8 @@ export const T = {
   orderModeHintSpot: '现货 = 按现价买卖，全额现金，不爆仓。',
   orderModeHintLong: '杠杆多 = 借入资金买入；价格跌到强平价会被强制平仓。',
   orderModeHintShort: '杠杆空 = 借券卖出；价格上涨到强平价会被强制平仓。',
-  leverageUnavailable: '该杠杆档超出标的允许范围',
-  noShort: '该标的不可做空',
+  leverageUnavailable: '该杠杆档超出该股票的允许范围',
+  noShort: '该股票不可做空',
 
   tabsPosition: '持仓',
   tabsOrder: '委托',
@@ -208,7 +208,7 @@ export const T = {
   bondHoldingsSub: '持仓本息',
   fundAllIn: '全投',
   fundNoCashShort: '现金不足',
-  newsClickToView: '点击切换标的行情',
+  newsClickToView: '点击切换股票行情',
 
   recordsTitle: '成交与流水',
   recordsOrders: '当前委托',
@@ -218,7 +218,7 @@ export const T = {
   recordsEmptyTrades: '暂无成交。',
   recordsEmptyDividends: '暂无分红（每 60 秒按现货持仓象征性结算一次）。',
   recordsTime: '时间',
-  recordsCode: '标的',
+  recordsCode: '股票',
   recordsSide: '方向',
   recordsType: '类型',
   recordsPrice: '价格',
@@ -366,7 +366,7 @@ export const TF = {
   totalQty: (n: string) => `持有 ${n}`,
   leverageConflict: (l: string) => `同一方向已有 ${l} 仓位，请先平仓或沿用该杠杆`,
   triggerPriceInvalid: '触发价必须大于 0',
-  reduceOnlyInvalid: '该标的没有可平仓位',
+  reduceOnlyInvalid: '该股票没有可平仓位',
   bondNoCash: '可用资金不足，无法买入债券',
   positionOpened: (code: string, side: string, qty: string) => `${code} ${side}仓 ${qty} 股已成交`,
   positionClosed: (code: string, qty: string) => `${code} 平仓 ${qty} 股`,
@@ -379,7 +379,7 @@ export const TF = {
   fundLose: (loss: string) => `基金亏损 −${loss} ISK`,
   fundEvidence: (detail: string) => `结算依据：${detail}`,
   marginCalled: (code: string, side: string, qty: string) => `${code} ${side}仓被强平 ${qty} 股`,
-  portfolioHint: (n: number) => `当前持有 ${n} 个标的`,
+  portfolioHint: (n: number) => `当前持有 ${n} 只股票`,
   indexValue: (v: string) => v,
   newsTime: (t: string) => t,
   orderRejected: (reason: string) => `下单失败：${reason}`,
@@ -403,3 +403,4 @@ export const TF = {
   roundQuota: (used: number, max: number) => `委托 ${used}/${max}`,
   newsSwitchSymbol: (code: string) => `切换至 ${code} 行情`,
 } as const
+
