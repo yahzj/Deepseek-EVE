@@ -13,12 +13,12 @@
 
 ## 统计
 
-- 非归档文档 **387** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4530** KB · **51572** 行
-- 状态分布：**未标注** 193 · **已确认/已实现** 134 · **进行中** 39 · **待裁定** 20 · **历史留档** 1
+- 非归档文档 **388** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4536** KB · **51646** 行
+- 状态分布：**未标注** 193 · **已确认/已实现** 135 · **进行中** 39 · **待裁定** 20 · **历史留档** 1
 - 孤儿文档（0 引用）**210** 份 · 状态未标注 **193** 份
 - 一、常用文档（按任务查阅）：**11** 份
 - 七、评审与体检（review）：**4** 份
-- 三、设计与工作文档（需核实状态）：**332** 份
+- 三、设计与工作文档（需核实状态）：**333** 份
 - 二、其它（docs 根目录）：**3** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
 - 八、测试档说明（test-saves）：**29** 份
@@ -36,9 +36,9 @@
 | `docs/data-map.md` | 数据速查页 | 未标注 | — | 3 KB / 38 行 | 5 |
 | `docs/development-conventions.md` | 开发约定 | 未标注 | — | 24 KB / 170 行 | 18 |
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（现行译名表） | — | 46 KB / 810 行 | 9 |
-| `docs/glossary.md` | 术语词典 | 未标注 | — | 21 KB / 195 行 | 61 |
-| `docs/roadmap.md` | 当前待办与实施边界 | 未标注 | — | 7 KB / 64 行 | 61 |
-| `docs/single-source.md` | 单点索引（谁有权算、谁只能读） | 未标注 | — | 39 KB / 282 行 | 20 |
+| `docs/glossary.md` | 术语词典 | 未标注 | — | 21 KB / 196 行 | 62 |
+| `docs/roadmap.md` | 当前待办与实施边界 | 未标注 | — | 7 KB / 64 行 | 62 |
+| `docs/single-source.md` | 单点索引（谁有权算、谁只能读） | 未标注 | — | 40 KB / 283 行 | 21 |
 
 ## 七、评审与体检（review） —— 4 份
 
@@ -49,10 +49,11 @@
 | `docs/review/pending-decisions-20260910.md` | 待船长裁决清单（2026-09-10 · 二号整理，供逐条审核） | 未标注 | 2026-09-10 | 29 KB / 374 行 | 2 |
 | `docs/review/guoqing-audit-followup.md` | 国庆节审查当前跟进 | 未标注（已复核修复） | — | 3 KB / 21 行 | 3 |
 
-## 三、设计与工作文档（需核实状态） —— 332 份
+## 三、设计与工作文档（需核实状态） —— 333 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档） |
 |---|---|---|---|---|---|
+| `docs/design/audio-ingest-20261104.md` | 音效正式入库（音效台导出 → audio:install） | 已确认/已实现（已实现、专项自测通过） | 2026-11-04 | 5 KB / 58 行 | 1 |
 | `docs/design/exchange-ui-ux-audit-20261104.md` | 证券交易所 UI/UX 深度体验审核与逐轮优化（2026-11-04） | 已确认/已实现（已完成） | 2026-11-04 | 3 KB / 40 行 | 0 |
 | `docs/design/stock-exchange-events-64-20261104.md` | 股市 · 64 事件四象分类与六人格改名（实施规格） | 已确认/已实现（已获船长确认） | 2026-11-04 | 5 KB / 94 行 | 1 |
 | `docs/design/stock-exchange-handoff-20261104.md` | 股票交易所系统交接文档（Handoff） | 未标注 | 2026-11-04 | 16 KB / 223 行 | 0 |
@@ -353,7 +354,7 @@
 | `docs/design/foe-unit-naming-20260909.md` | 敌舰单位显示名（舰种名 × 规格词缀） | 已确认/已实现（已确认·已实现） | 2026-09-09 | 3 KB / 42 行 | 0 |
 | `docs/design/market-rarity-tier-20260909.md` | 市场数字稀有度（隐藏档 · 稀有订单分层）设计稿 | 已确认/已实现（已确认并落地） | 2026-09-09 | 5 KB / 65 行 | 0 |
 | `docs/design/wave-battles-20260909.md` | 多波次敌人设定(低安顶段悬赏)设计稿(2026-09-09;已确认并实现·待验收/待发布) | 未标注 | 2026-09-09 | 12 KB / 131 行 | 3 |
-| `docs/design/assets/stellar-samples-20261009/README.md` | PixelPlanets 三类天体样片 | 未标注（原静态审查样片保留） | — | 2 KB / 29 行 | 24 |
+| `docs/design/assets/stellar-samples-20261009/README.md` | PixelPlanets 三类天体样片 | 未标注（原静态审查样片保留） | — | 2 KB / 29 行 | 25 |
 | `docs/design/b3-flavor-content.md` | B3.1 星系/敌群特色残骸产出 · 数值表（2026-09-08 已确认，收尾归档） | 已确认/已实现（已收尾归档） | — | 7 KB / 82 行 | 0 |
 | `docs/design/b3-salvage.md` | B3 残骸打捞与回收系统（设计总结 · 已实现，2026-09-05 全链落地） | 未标注 | — | 12 KB / 122 行 | 3 |
 | `docs/design/bounty-insurance.md` | 连续作战保险：带伤预警 + 战内自动撤退（已确认 2026-09-08） | 已确认/已实现（已确认并落地） | — | 5 KB / 65 行 | 0 |
@@ -392,7 +393,7 @@
 |---|---|---|---|---|---|
 | `docs/development-conventions-changelog.md` | 开发约定维护记录 | 未标注 | — | 8 KB / 73 行 | 6 |
 | `docs/git-gate-approval.md` | Git提交审批放行 | 未标注 | — | 2 KB / 28 行 | 1 |
-| `docs/l10n-pending.md` | 待英文本地化记录 | 未标注 | — | 31 KB / 518 行 | 24 |
+| `docs/l10n-pending.md` | 待英文本地化记录 | 未标注 | — | 31 KB / 532 行 | 25 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -432,7 +433,7 @@
 | `docs/test-saves/black-market-20261004.md` | 黑市页面验收档 | 待裁定（随功能待船长验收） | 2026-10-04 | 1 KB / 15 行 | 1 |
 | `docs/test-saves/hauler-20261004.md` | 纯货舰修订验收档 | 未标注（已验收） | 2026-10-04 | 2 KB / 25 行 | 2 |
 | `docs/test-saves/whexpedition-20261004.md` | 虫洞第一批合成测试档 | 未标注（未来虫洞整备/事件/警戒的隔离验收材） | 2026-10-04 | 10 KB / 78 行 | 1 |
-| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 83 KB / 840 行 | 24 |
+| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 83 KB / 840 行 | 25 |
 
 ## 六、专题：舰船美术（design/ship-battle-art） —— 7 份
 
@@ -444,7 +445,7 @@
 | `docs/design/ship-battle-art/battle-sprite-tier-20260911.md` | 战斗画面「舰种体积」（舰身大小随舰种档，2026-09-11 船长定；状态：已实现，但按船长裁决暂时关闭 —— 显示还原、系统保留） | 已确认/已实现（已实现） | 2026-09-11 | 14 KB / 177 行 | 4 |
 | `docs/design/ship-battle-art/mounts-20260910.md` | 舰船战斗图形·挂点对齐（引擎喷口 + 真实炮口）2026-09-10 | 已确认/已实现（已确认） | 2026-09-10 | 6 KB / 94 行 | 1 |
 | `docs/design/ship-battle-art/acceptance-visual-20260909.md` | 舰船战斗图形 · 真机目测与细节验收清单（2026-09-09 三号，给船长） | 未标注 | 2026-09-09 | 4 KB / 54 行 | 2 |
-| `docs/design/ship-battle-art/README.md` | 舰船战斗图形重设计(三号 · 样稿阶段,2026-09-09) | 未标注 | — | 8 KB / 87 行 | 24 |
+| `docs/design/ship-battle-art/README.md` | 舰船战斗图形重设计(三号 · 样稿阶段,2026-09-09) | 未标注 | — | 8 KB / 87 行 | 25 |
 
 ## 附：孤儿文档（0 引用，210 份）
 
