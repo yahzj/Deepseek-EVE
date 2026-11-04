@@ -242,7 +242,7 @@ function ExchangeBody({
         </div>
 
         {/* 核心双模式 Segmented Tabs：醒目清晰，直观切换 */}
-        <div className="ex-mode-tabs" role="tablist" aria-label="交易视图模式">
+        <div className="ex-mode-tabs" role="tablist" aria-label={T.viewModeSimple}>
           <button
             type="button"
             role="tab"
@@ -251,7 +251,7 @@ function ExchangeBody({
             onClick={() => switchViewMode('simple')}
           >
             <span className="ex-mode-tab-title"><Portfolio size={14} /> {T.viewModeSimple}</span>
-            <span className="ex-mode-tab-sub">现货 · 零爆仓</span>
+            <span className="ex-mode-tab-sub">{T.modeSpotSub}</span>
           </button>
           <button
             type="button"
@@ -261,7 +261,7 @@ function ExchangeBody({
             onClick={() => switchViewMode('pro')}
           >
             <span className="ex-mode-tab-title"><Analytics size={14} /> {T.viewModePro}</span>
-            <span className="ex-mode-tab-sub">杠杆 · 深度盘口</span>
+            <span className="ex-mode-tab-sub">{T.modeProSub}</span>
           </button>
         </div>
 

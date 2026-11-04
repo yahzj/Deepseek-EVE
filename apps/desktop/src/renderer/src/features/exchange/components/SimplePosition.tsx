@@ -1,5 +1,6 @@
+import { isEn } from '../../../i18n/locale'
 /**
- * 极简模式 · 当前标的持仓战报（SimplePosition）。
+ * 极简模式 · 当前标的下注列表（SimplePosition）。
  *
  * 核心设计：
  * - 集中呈现当前标的的现货多头、逐仓多头与融券空头全部持仓；
@@ -84,7 +85,7 @@ export function SimplePosition({ client, snap, code, onToast }: SimplePositionPr
     return (
       <div className="ex-simple-pos-card is-empty">
         <div className="ex-simple-pos-empty-inner">
-          <div className="ex-simple-pos-empty-title">暂未持有 {code} 仓位</div>
+          <div className="ex-simple-pos-empty-title">{TF.noPositionFor(code)}</div>
           <span className="ex-dim">{T.simpleEmptyPosHint}</span>
         </div>
       </div>
@@ -128,7 +129,7 @@ export function SimplePosition({ client, snap, code, onToast }: SimplePositionPr
     setClosingTarget(posKey)
     try {
       await client.closePosition(code, pSide)
-      onToast(TF.closePosDone(code, pSide === 'short' ? '融券空头' : '杠杆多头', amount(pQty)))
+      onToast(TF.closePosDone(code, pSide === 'short' ? T.marginShortLabel : T.marginLongLabel, amount(pQty)))
     } catch (err) {
       onToast(err instanceof Error ? err.message : String(err), true)
     } finally {
@@ -195,15 +196,15 @@ export function SimplePosition({ client, snap, code, onToast }: SimplePositionPr
       <div className="ex-simple-pos-head">
         <div className="ex-simple-pos-head-info">
           <div className="ex-simple-pos-title-row">
-            <h4 className="ex-simple-pos-title">我的【{code}】持仓战报</h4>
+            <h4 className="ex-simple-pos-title">{TF.simplePositionReport(code)}</h4>
             {totalMargin > 0 && (
-              <span className="ex-simple-pos-margin-badge" title="当前股票逐仓杠杆占用总保证金">
-                保证金: <b className="ex-num">{money(totalMargin)}</b>
+              <span className="ex-simple-pos-margin-badge" title={isEn() ? "Total margin used by isolated positions" : "当前股票逐仓杠杆占用总保证金"}>
+                {T.marginUsed}: <b className="ex-num">{money(totalMargin)}</b>
               </span>
             )}
           </div>
           <span className={`ex-simple-pos-total-pnl ${isOverallProfit ? 'is-up' : 'is-down'}`}>
-            净浮盈: {pnlMoney(totalPnl)} ({pct(totalPnlPct)})
+            {T.unrealizedPnl}: {pnlMoney(totalPnl)} ({pct(totalPnlPct)})
           </span>
         </div>
 
@@ -224,14 +225,14 @@ export function SimplePosition({ client, snap, code, onToast }: SimplePositionPr
             className={`ex-simple-close-all-btn${confirmCloseAll ? ' is-confirming' : ''}${closingTarget === 'all' ? ' is-busy' : ''}`}
             disabled={isBusy}
             onClick={handleClickCloseAll}
-            title={confirmCloseAll ? '高危操作：再次点击立即全部平仓！' : '以市价卖出该股票所有现货并结清所有杠杆仓位'}
+            title={confirmCloseAll ? T.confirmCloseAllTooltip : T.confirmCloseAllHelp}
           >
             {closingTarget === 'all' ? (
-              <span className="ex-simple-pos-loading">清仓中…</span>
+              <span className="ex-simple-pos-loading">{T.closing}</span>
             ) : confirmCloseAll ? (
               <>
                 <WarningAlt size={13} />
-                <span>确定全平? ({countdown}s)</span>
+                <span>{T.confirmCloseAll} ({countdown}s)</span>
               </>
             ) : (
               <>
@@ -254,10 +255,10 @@ export function SimplePosition({ client, snap, code, onToast }: SimplePositionPr
                 className={`ex-simple-sub-close-btn is-close${closingTarget === 'spot' ? ' is-busy' : ''}`}
                 disabled={isBusy}
                 onClick={handleCloseSpot}
-                title="单独市价全额卖出现货多头"
+                title={isEn() ? "Market sell all spot holdings" : "单独市价全额卖出现货多头"}
               >
                 {closingTarget === 'spot' ? (
-                  <span className="ex-simple-pos-loading">变现中…</span>
+                  <span className="ex-simple-pos-loading">{T.cashing}</span>
                 ) : (
                   <>
                     <Close size={12} /> {T.simpleCloseSpot}
@@ -267,15 +268,15 @@ export function SimplePosition({ client, snap, code, onToast }: SimplePositionPr
             </div>
             <div className="ex-simple-pos-row-grid">
               <div className="ex-simple-pos-item">
-                <span className="ex-dim">{T.currentHolding}</span>
-                <b className="ex-num">{amount(heldQty)} 股</b>
+                <span className="ex-dim">{T.simpleBetShares}</span>
+                <b className="ex-num">{amount(heldQty)} {T.sharesSuffix}</b>
               </div>
               <div className="ex-simple-pos-item">
-                <span className="ex-dim">{T.positionCost}</span>
+                <span className="ex-dim">{T.simpleBetPrice}</span>
                 <b className="ex-num">{price(avgCost)}</b>
               </div>
               <div className="ex-simple-pos-item">
-                <span className="ex-dim">{T.positionMarkVal}</span>
+                <span className="ex-dim">{T.simpleBetPrincipal}</span>
                 <b className="ex-num">{money(spotVal)}</b>
               </div>
               <div className="ex-simple-pos-item is-pnl">
@@ -317,17 +318,17 @@ export function SimplePosition({ client, snap, code, onToast }: SimplePositionPr
             >
               <div className="ex-simple-pos-row-head">
                 <div className={`ex-simple-pos-badge ${isShort ? 'is-short' : 'is-long'}`}>
-                  {isShort ? `融券空头 · ${p.leverage}x` : `杠杆多头 · ${p.leverage}x`}
+                  {isShort ? `下注看跌 · ${p.leverage}x` : `下注看涨 · ${p.leverage}x`}
                 </div>
                 <button
                   type="button"
                   className={`ex-simple-sub-close-btn is-close${isThisBusy ? ' is-busy' : ''}`}
                   disabled={isBusy}
                   onClick={() => handleClosePos(posKey, p.side, p.qty)}
-                  title={isShort ? '单独市价全平空头仓位' : '单独市价全平多头仓位'}
+                  title={isShort ? (isEn() ? 'Market close short position' : '单独市价全平空头仓位') : (isEn() ? 'Market close long position' : '单独市价全平多头仓位')}
                 >
                   {isThisBusy ? (
-                    <span className="ex-simple-pos-loading">平仓中…</span>
+                    <span className="ex-simple-pos-loading">{T.closingPos}</span>
                   ) : (
                     <>
                       <Close size={12} /> {isShort ? T.simpleCloseShort : T.simpleCloseLong}
@@ -338,15 +339,15 @@ export function SimplePosition({ client, snap, code, onToast }: SimplePositionPr
 
               <div className="ex-simple-pos-row-grid">
                 <div className="ex-simple-pos-item">
-                  <span className="ex-dim">{isShort ? '融券数量' : '杠杆数量'}</span>
-                  <b className="ex-num">{amount(p.qty)} 股</b>
+                  <span className="ex-dim">{T.simpleBetShares}</span>
+                  <b className="ex-num">{amount(p.qty)} {T.sharesSuffix}</b>
                 </div>
                 <div className="ex-simple-pos-item">
-                  <span className="ex-dim">{isShort ? '开空均价' : '开多均价'}</span>
+                  <span className="ex-dim">{T.simpleBetPrice}</span>
                   <b className="ex-num">{price(p.avgEntry)}</b>
                 </div>
                 <div className="ex-simple-pos-item">
-                  <span className="ex-dim">{T.simpleEstMargin}</span>
+                  <span className="ex-dim">{T.simpleBetPrincipal}</span>
                   <b className="ex-num">{money(p.margin)}</b>
                 </div>
                 <div className="ex-simple-pos-item is-pnl">
@@ -363,16 +364,16 @@ export function SimplePosition({ client, snap, code, onToast }: SimplePositionPr
                   <div className="ex-simple-pos-risk-info">
                     <span className="ex-simple-pos-risk-tag">
                       {isCritical && <WarningAlt size={12} className="ex-risk-icon-pulse" />}
-                      {isCritical ? ' 强平极危' : isDanger ? '强平预警' : '仓位健康'}
+                      {isCritical ? ` ${T.healthDanger}` : isDanger ? ` ${T.healthWarn}` : ` ${T.healthSafe}`}
                     </span>
                     <span className="ex-simple-pos-risk-desc">
-                      强平价: <b className="ex-num">{price(p.liquidationPrice)}</b>
+                      {T.previewLiqPrice}: <b className="ex-num">{price(p.liquidationPrice)}</b>
                       <span className="ex-simple-pos-risk-gap">
-                        (距强平: <b className="ex-num">{distance.toFixed(1)}%</b>)
+                        ({T.previewLiqDistance}: <b className="ex-num">{distance.toFixed(1)}%</b>)
                       </span>
                     </span>
                   </div>
-                  <div className="ex-simple-pos-meter-track" title={`距强平安全距离: ${distance.toFixed(1)}%`}>
+                  <div className="ex-simple-pos-meter-track" title={`${T.previewLiqDistance}: ${distance.toFixed(1)}%`}>
                     <div
                       className={`ex-simple-pos-meter-fill ${riskLevelClass}`}
                       style={{ width: `${healthBarWidth}%` }}

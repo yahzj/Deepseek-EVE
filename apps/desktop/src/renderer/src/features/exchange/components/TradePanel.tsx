@@ -1,3 +1,4 @@
+import { isEn } from '../../../i18n/locale'
 /**
  * 统一下单面板（现货 / 杠杆多 / 杠杆空 共用一套控件）。
  *
@@ -188,7 +189,7 @@ export function TradePanel({
         }
         // 回合制委托提交后尚未成交：展示委托数量，避免「已提交 0 股」的误导。
         const shownQty = filled > 0 ? filled : order.qty
-        onToast(`${T.toastOrderPlaced}：${order.code} ${order.side === 'buy' ? T.buy : T.sell} ${amount(shownQty)} 股`)
+        onToast(`${T.toastOrderPlaced}: ${order.code} ${order.side === 'buy' ? T.buy : T.sell} ${amount(shownQty)} ${T.sharesSuffix}`)
       } catch (err) {
         onToast(err instanceof Error ? err.message : String(err), true)
       } finally {
@@ -406,17 +407,17 @@ export function TradePanel({
                     aria-pressed={isSelected}
                     aria-disabled={!allowed}
                     className={`ex-lev-pill is-${mode}${isSelected ? ' is-on' : ''}${allowed ? '' : ' is-off'}`}
-                    title={allowed ? TF.leverageLabel(String(l)) : `${T.leverageUnavailable}（最高 ${quote.maxLeverage}x）`}
+                    title={allowed ? TF.leverageLabel(String(l)) : (isEn() ? `${T.leverageUnavailable} (Max ${quote.maxLeverage}x)` : `${T.leverageUnavailable}（最高 ${quote.maxLeverage}x）`)}
                     onClick={() => {
                       if (!allowed) {
-                        onToast(`${T.leverageUnavailable}：${code} 最高 ${quote.maxLeverage}x`, true)
+                        onToast(isEn() ? `${T.leverageUnavailable}: ${code} Max ${quote.maxLeverage}x` : `${T.leverageUnavailable}：${code} 最高 ${quote.maxLeverage}x`, true)
                         return
                       }
                       setLeverage(l)
                     }}
                   >
                     <span className="ex-lev-pill-val">{l}x</span>
-                    {l >= 10 ? <span className="ex-lev-pill-dot" title="高杠杆二次确认" /> : null}
+                    {l >= 10 ? <span className="ex-lev-pill-dot" title={T.confirmTitle} /> : null}
                   </button>
                 )
               })}
@@ -446,7 +447,7 @@ export function TradePanel({
           </div>
           <div className="ex-preview-row">
             <span>{T.previewDailyCost}</span>
-            <span className="ex-num">{mode === 'spot' ? T.dailyCostFree : `${money(preview.notional * 0.0003)} / 日`}</span>
+            <span className="ex-num">{mode === 'spot' ? T.dailyCostFree : isEn() ? `${money(preview.notional * 0.0003)} / day` : `${money(preview.notional * 0.0003)} / 日`}</span>
           </div>
           {mode !== 'spot' && preview.liquidationPrice !== null && liqDistance !== null ? (
             <div className={`ex-liq-block${liqDanger ? ' is-danger' : ''}`}>

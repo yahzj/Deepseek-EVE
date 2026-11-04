@@ -1,5 +1,6 @@
+import { T } from '../../texts'
 /**
- * 副图一：成交量柱（与主图共享时间轴，按当根 K 线涨跌染色）。
+ * 副图一：{T.chartVolumeLabel}柱（与主图共享时间轴，按当根 K 线涨跌染色）。
  */
 import type { Kline } from '../../client'
 
@@ -39,9 +40,7 @@ export function VolumePane({
           />
         )
       })}
-      <text x={left + 4} y={top + 10} className="ex-pane-label">
-        成交量
-      </text>
+      <text x={left + 4} y={top + 10} className="ex-pane-label">{T.chartVolumeLabel}</text>
     </g>
   )
 }

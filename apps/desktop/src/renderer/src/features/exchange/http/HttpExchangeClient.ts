@@ -799,8 +799,8 @@ export class HttpExchangeClient implements ExchangeClient {
 
   private async loadChart(code: string, period: ChartPeriod): Promise<void> {
     const { interval, agg } = this.chartSource(period)
-    // 图表可视最多 180 根；聚合周期多取几倍基础根数，但不超过服务端 2016 上限。
-    const limit = agg > 1 ? Math.min(2016, 200 * agg) : 200
+    // 支持 7 天完整展示（5m 级别 7 天为 2016 根），不超过服务端 2016 上限
+    const limit = Math.min(2016, 2016 * agg)
     const rows = await this.get<unknown>(
       `/klines/${encodeURIComponent(code)}?interval=${interval}&limit=${limit}`,
     )
@@ -808,8 +808,10 @@ export class HttpExchangeClient implements ExchangeClient {
     const key = `${code}:${period}`
     this.chartCache.set(key, bars)
     this.chartCachedAt.set(key, Date.now())
-    if (period === 'm1') {
-      this.chartCache.set(`${code}:intraday`, bars)
+    if (period === 'm1' && !this.chartCache.has(`${code}:intraday`)) {
+      // 分时图初始用 m1 历史切片做底，独立数组，后续由 10 秒行情步进独立追加高频点
+      const initIntraday = bars.slice(-60).map((b) => ({ ...b }))
+      this.chartCache.set(`${code}:intraday`, initIntraday)
       this.chartCachedAt.set(`${code}:intraday`, Date.now())
     }
     this.schedulePersistCharts()

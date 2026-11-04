@@ -14,6 +14,7 @@ import type { ChartPeriod, ExchangeClient, StockQuote } from '../../client'
 import { INTRADAY_MAX_POINTS, PRO_CHART_PERIODS, chartPeriodSpec, sampleSeries } from '../../chartPeriods'
 import { amount, pct, price } from '../../format'
 import { T } from '../../texts'
+import { isEn } from '../../../../i18n/locale'
 import { hideTip, moveTip, showTip } from '../../../../ui/Tooltip'
 import { averageLine, lastDefined, movingAverage, rsi } from './indicators'
 import { Candles } from './Candles'
@@ -152,7 +153,13 @@ export function Chart({
   if (bars.length > 0) {
     hi = bars.reduce((m, b) => Math.max(m, b.h), bars[0]!.h)
     lo = bars.reduce((m, b) => Math.min(m, b.l), bars[0]!.l)
-    const pad = Math.max((hi - lo) * 0.06, hi * 0.002)
+    const mid = (hi + lo) / 2
+    // 船长 2026-11-04：上下轴自适应比例自动调节
+    // 1. 平盘/极小振幅保护：至少按基准价格 1.5% 视窗展开，避免几分钱波动假性撑满画布
+    // 2. 上下呼吸安全边距：各留 12% 安全区，蜡烛柱与极值标记绝不撞顶踩底
+    const minSpan = Math.max(1, mid * 0.015)
+    const effectiveSpan = Math.max(hi - lo, minSpan)
+    const pad = effectiveSpan * 0.12
     hi += pad
     lo = Math.max(0, lo - pad)
   }
@@ -343,28 +350,28 @@ export function Chart({
             <button
               type="button"
               className="ex-mini-btn"
-              title="放大时间轴（看清单根蜡烛细节，亦可滚轮向上）"
+              title={isEn() ? "Zoom in timeline (scroll up)" : "放大时间轴（看清单根蜡烛细节，亦可滚轮向上）"}
               onClick={() => setVisibleCount((v) => Math.max(15, v - 10))}
             >
-              <ZoomIn size={14} /> 放大
+              <ZoomIn size={14} /> {T.chartZoomIn}
             </button>
-            <span className="ex-chart-zoom-text ex-dim">{bars.length} 根</span>
+            <span className="ex-chart-zoom-text ex-dim">{bars.length} {T.chartBar}</span>
             <button
               type="button"
               className="ex-mini-btn"
-              title="缩小时间轴（看宏观大趋势，亦可滚轮向下）"
+              title={isEn() ? "Zoom out timeline (scroll down)" : "缩小时间轴（看宏观大趋势，亦可滚轮向下）"}
               onClick={() => setVisibleCount((v) => Math.min(180, v + 10))}
             >
-              <ZoomOut size={14} /> 缩小
+              <ZoomOut size={14} /> {T.chartZoomOut}
             </button>
             {clampedOffset > 0 ? (
               <button
                 type="button"
                 className="ex-mini-btn is-on"
-                title="已处于历史回溯态，点击快速回到最新行情"
+                title={isEn() ? "Reset to latest quote" : "已处于历史回溯态，点击快速回到最新行情"}
                 onClick={() => setPanOffset(0)}
               >
-                <Reset size={14} /> 最新
+                <Reset size={14} /> {T.chartZoomLatest}
               </button>
             ) : null}
           </div>

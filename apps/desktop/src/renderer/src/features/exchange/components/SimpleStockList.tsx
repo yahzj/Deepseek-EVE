@@ -3,11 +3,12 @@
  *
  * 紧凑卡片式展示 4 位代码股票（SMHI、UGMC、OJLS、ABSI）：
  * - 4 位代码 + 公司名 + 现价大字 + 今日涨跌 + 名字右侧 Sparkline 小走势（2026-11-04 船长：必须保留）；
- * - 若持有该公司股票，卡片右下角显示精致角标「持仓 X 股」（2026-11-04 船长：右上角留给板块标签，持仓角标置于右下角）。
+ * - 若持有该公司股票，卡片顶部右侧与板块微标并列展示精致持仓微标（遵循 Wiki/Tidwell 设计规范：流式排布，零重叠，消灭右下角走势遮挡）。
  */
 import type { ExchangeClient, ExchangeSnapshot } from '../client'
 import { amount, pct, price } from '../format'
-import { T } from '../texts'
+import { T, stockName, stockSector } from '../texts'
+import { isEn } from '../../../i18n/locale'
 import { Sparkline } from './Sparkline'
 
 interface SimpleStockListProps {
@@ -35,8 +36,8 @@ export function SimpleStockList({ client, snap, selected, onSelect }: SimpleStoc
   return (
     <section className="ex-simple-sidebar" aria-label={T.stockListTitle}>
       <div className="ex-simple-side-head">
-        <h3 className="ex-simple-side-title">星际企业榜</h3>
-        <span className="ex-dim">4 核心股票</span>
+        <h3 className="ex-simple-side-title">{T.simpleStockListTitle}</h3>
+        <span className="ex-dim">{T.simpleStockListSub}</span>
       </div>
 
       <div className="ex-simple-card-list" role="list">
@@ -72,16 +73,20 @@ export function SimpleStockList({ client, snap, selected, onSelect }: SimpleStoc
                 }
               }}
               aria-pressed={isSel}
-              aria-label={`${q.code} ${q.nameKey} 现价 ${price(q.price)} 涨跌 ${pct(q.changePct)}`}
+              aria-label={`${q.code} ${stockName(q.code, q.nameKey)} ${price(q.price)} ${pct(q.changePct)}`}
             >
-              {/* 卡片头部：代码 + 名称 + 板块（右上角不再被持仓徽标遮挡） */}
+              {/* 卡片头部：代码 + 名称 + 板块标签（右上角清晰独立） */}
               <div className="ex-simple-card-top">
-                <span className="ex-simple-card-code">{q.code}</span>
-                <span className="ex-simple-card-name" title={q.nameKey}>{q.nameKey}</span>
-                <span className="ex-simple-card-sector">{q.sector}</span>
+                <div className="ex-simple-card-title-group">
+                  <span className="ex-simple-card-code">{q.code}</span>
+                  <span className="ex-simple-card-name" title={stockName(q.code, q.nameKey)}>
+                    {stockName(q.code, q.nameKey)}
+                  </span>
+                </div>
+                <span className="ex-simple-card-sector">{stockSector(q.sector)}</span>
               </div>
 
-              {/* 卡片中间与右侧：现价、涨跌幅、Sparkline */}
+              {/* 卡片下部：左侧现价/涨跌幅，右侧 Sparkline 走势与右下角持仓角标 */}
               <div className="ex-simple-card-main">
                 <div className="ex-simple-card-price-col">
                   <div className="ex-simple-card-price ex-num">{price(q.price)}</div>
@@ -90,31 +95,31 @@ export function SimpleStockList({ client, snap, selected, onSelect }: SimpleStoc
                   </div>
                 </div>
 
-                <div className="ex-simple-card-spark">
-                  <Sparkline client={client} code={q.code} isUp={up} width={72} height={hasHolding ? 18 : 24} />
+                <div className="ex-simple-card-right-col">
+                  <div className="ex-simple-card-spark">
+                    <Sparkline client={client} code={q.code} isUp={up} width={72} height={hasHolding ? 18 : 24} />
+                  </div>
+                  {hasHolding ? (
+                    <div className="ex-simple-holding-badges" aria-label="持仓">
+                      {hold.longQty > 0 ? (
+                        <span className="ex-simple-holding-badge is-long" title={isEn() ? `Long: ${amount(hold.longQty)} shs` : `做多持仓 ${amount(hold.longQty)} 股`}>
+                          {T.badgeLong} {amount(hold.longQty)}
+                        </span>
+                      ) : null}
+                      {hold.shortQty > 0 ? (
+                        <span className="ex-simple-holding-badge is-short" title={isEn() ? `Short: ${amount(hold.shortQty)} shs` : `做空持仓 ${amount(hold.shortQty)} 股`}>
+                          {T.badgeShort} {amount(hold.shortQty)}
+                        </span>
+                      ) : null}
+                      {hold.spotQty > 0 ? (
+                        <span className="ex-simple-holding-badge is-spot" title={isEn() ? `Spot: ${amount(hold.spotQty)} shs` : `现货持仓 ${amount(hold.spotQty)} 股`}>
+                          {T.badgeSpot} {amount(hold.spotQty)}
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
               </div>
-
-              {/* 持仓角标群：置于右下角（2026-11-04 船长口径） */}
-              {hasHolding ? (
-                <div className="ex-simple-holding-badges">
-                  {hold.longQty > 0 ? (
-                    <span className="ex-simple-holding-badge is-long" title={`做多持仓 ${amount(hold.longQty)} 股`}>
-                      多 {amount(hold.longQty)}
-                    </span>
-                  ) : null}
-                  {hold.shortQty > 0 ? (
-                    <span className="ex-simple-holding-badge is-short" title={`做空持仓 ${amount(hold.shortQty)} 股`}>
-                      空 {amount(hold.shortQty)}
-                    </span>
-                  ) : null}
-                  {hold.spotQty > 0 ? (
-                    <span className="ex-simple-holding-badge is-spot" title={`现货持仓 ${amount(hold.spotQty)} 股`}>
-                      持 {amount(hold.spotQty)}
-                    </span>
-                  ) : null}
-                </div>
-              ) : null}
             </div>
           )
         })}
