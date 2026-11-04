@@ -19,7 +19,7 @@ export const ZH_T = {
   "bondValue": "债券本息",
   "indexName": "星海综合指数",
   "stockListTitle": "股票",
-  "stockListHint": "点击切换 · 原型 4 家",
+  "stockListHint": "点击切换 · 8 家上市公司",
   "colCode": "代码",
   "colName": "名称",
   "colSector": "板块",
@@ -341,7 +341,7 @@ export const ZH_T = {
   "modeSpotSub": "简单 · 明了",
   "modeProSub": "杠杆 · 自动交易",
   "simpleStockListTitle": "股票",
-  "simpleStockListSub": "4 核心股票",
+  "simpleStockListSub": "8 大星际名企",
   "badgeLong": "多",
   "badgeShort": "空",
   "badgeSpot": "持",
@@ -434,7 +434,7 @@ export const EN_T: Record<keyof typeof ZH_T, string> = {
   "bondValue": "Bond Assets",
   "indexName": "Galactic Composite Index",
   "stockListTitle": "Stocks",
-  "stockListHint": "Click to select · 4 listed",
+  "stockListHint": "Click to select · 8 listed",
   "colCode": "Symbol",
   "colName": "Name",
   "colSector": "Sector",
@@ -756,7 +756,7 @@ export const EN_T: Record<keyof typeof ZH_T, string> = {
   "modeSpotSub": "Simple · Clear",
   "modeProSub": "Leverage · Auto Trade",
   "simpleStockListTitle": "Stocks",
-  "simpleStockListSub": "4 Core Stocks",
+  "simpleStockListSub": "8 Star Enterprises",
   "badgeLong": "Long",
   "badgeShort": "Short",
   "badgeSpot": "Spot",
@@ -950,40 +950,92 @@ export const TF = {
     isEn() ? `Exceeds local wallet balance (limit ${limit} Credits)` : `超过本地钱包可用余额（上限 ${limit} 信用点）`,
 } as const
 
+const EN_STOCK_NAMES: Record<string, string> = {
+  SMHI: 'Star Heavy Industries',
+  GBCI: 'Galactic Trust',
+  UGMC: 'United Galactic Minerals & Energy',
+  ABSI: 'Asteroid Blueprint Sciences',
+  NVSC: 'Quantum Compute',
+  CLON: 'Clone Biotech',
+  OJLS: 'Origin Jumpstar Logistics',
+  SPRK: 'Spark Nano',
+}
+
+const ZH_STOCK_NAMES: Record<string, string> = {
+  SMHI: '星海重工',
+  GBCI: '银河信托',
+  UGMC: '联星能源',
+  ABSI: '深空蓝图',
+  NVSC: '量子算力',
+  CLON: '克隆生科',
+  OJLS: '欧吉物流',
+  SPRK: '微光纳米',
+}
+
 /** 股票名称多语言映射 */
 export function stockName(code: string, fallbackName?: string): string {
   if (isEn()) {
-    switch (code) {
-      case 'SMHI':
-        return 'Star Heavy'
-      case 'UGMC':
-        return 'Galaxy Mining'
-      case 'OJLS':
-        return 'OJ Logistics'
-      case 'ABSI':
-        return 'Abyss Blueprint'
-      default:
-        return fallbackName ?? code
-    }
+    return EN_STOCK_NAMES[code] ?? fallbackName ?? code
   }
-  return fallbackName ?? code
+  return ZH_STOCK_NAMES[code] ?? fallbackName ?? code
+}
+
+const SECTOR_ZH_MAP: Record<string, string> = {
+  military: '军工',
+  defense: '军工',
+  banking: '银行',
+  energy: '能源',
+  mining: '采矿',
+  technology: '科技',
+  tech: '科技',
+  computing: '算力',
+  biotech: '医疗',
+  medical: '医疗',
+  logistics: '物流',
+  materials: '材料',
+}
+
+const SECTOR_EN_MAP: Record<string, string> = {
+  军工: 'Military',
+  银行: 'Banking',
+  能源: 'Energy',
+  采矿: 'Mining',
+  科技: 'Tech',
+  算力: 'Computing',
+  医疗: 'Biotech',
+  物流: 'Logistics',
+  材料: 'Materials',
 }
 
 /** 股票板块多语言映射 */
 export function stockSector(sector: string): string {
+  const norm = sector.trim()
+  const lower = norm.toLowerCase()
   if (isEn()) {
-    switch (sector) {
-      case '军工':
-        return 'Defense'
-      case '采矿':
-        return 'Mining'
-      case '物流':
-        return 'Logistics'
-      case '科技':
-        return 'Tech'
-      default:
-        return sector
+    if (SECTOR_EN_MAP[norm]) return SECTOR_EN_MAP[norm]
+    if (SECTOR_ZH_MAP[lower]) {
+      return lower === 'military' || lower === 'defense'
+        ? 'Military'
+        : lower === 'banking'
+          ? 'Banking'
+          : lower === 'energy'
+            ? 'Energy'
+            : lower === 'mining'
+              ? 'Mining'
+              : lower === 'technology' || lower === 'tech'
+                ? 'Tech'
+                : lower === 'computing'
+                  ? 'Computing'
+                  : lower === 'biotech' || lower === 'medical'
+                    ? 'Biotech'
+                    : lower === 'logistics'
+                      ? 'Logistics'
+                      : lower === 'materials'
+                        ? 'Materials'
+                        : norm
     }
+    return norm
   }
-  return sector
+  if (SECTOR_ZH_MAP[lower]) return SECTOR_ZH_MAP[lower]
+  return norm
 }

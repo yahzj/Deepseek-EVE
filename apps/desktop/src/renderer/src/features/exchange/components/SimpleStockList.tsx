@@ -75,7 +75,7 @@ export function SimpleStockList({ client, snap, selected, onSelect }: SimpleStoc
               aria-pressed={isSel}
               aria-label={`${q.code} ${stockName(q.code, q.nameKey)} ${price(q.price)} ${pct(q.changePct)}`}
             >
-              {/* 卡片头部：代码 + 名称 + 标签组（板块与持仓微标并列，流式排布零重叠） */}
+              {/* 卡片头部：代码 + 名称 + 板块标签（右上角清晰独立） */}
               <div className="ex-simple-card-top">
                 <div className="ex-simple-card-title-group">
                   <span className="ex-simple-card-code">{q.code}</span>
@@ -83,10 +83,24 @@ export function SimpleStockList({ client, snap, selected, onSelect }: SimpleStoc
                     {stockName(q.code, q.nameKey)}
                   </span>
                 </div>
-                <div className="ex-simple-card-tag-group">
-                  <span className="ex-simple-card-sector">{stockSector(q.sector)}</span>
+                <span className="ex-simple-card-sector">{stockSector(q.sector)}</span>
+              </div>
+
+              {/* 卡片下部：左侧现价/涨跌幅，右侧 Sparkline 走势与右下角持仓角标 */}
+              <div className="ex-simple-card-main">
+                <div className="ex-simple-card-price-col">
+                  <div className="ex-simple-card-price ex-num">{price(q.price)}</div>
+                  <div className={`ex-simple-card-change ex-num ${up ? 'is-up' : 'is-down'}`}>
+                    {pct(q.changePct)}
+                  </div>
+                </div>
+
+                <div className="ex-simple-card-right-col">
+                  <div className="ex-simple-card-spark">
+                    <Sparkline client={client} code={q.code} isUp={up} width={72} height={hasHolding ? 18 : 24} />
+                  </div>
                   {hasHolding ? (
-                    <div className="ex-simple-holding-badges">
+                    <div className="ex-simple-holding-badges" aria-label="持仓">
                       {hold.longQty > 0 ? (
                         <span className="ex-simple-holding-badge is-long" title={isEn() ? `Long: ${amount(hold.longQty)} shs` : `做多持仓 ${amount(hold.longQty)} 股`}>
                           {T.badgeLong} {amount(hold.longQty)}
@@ -104,20 +118,6 @@ export function SimpleStockList({ client, snap, selected, onSelect }: SimpleStoc
                       ) : null}
                     </div>
                   ) : null}
-                </div>
-              </div>
-
-              {/* 卡片中间与右侧：现价、涨跌幅、Sparkline（恢复标准 24px 高度，无角标遮挡） */}
-              <div className="ex-simple-card-main">
-                <div className="ex-simple-card-price-col">
-                  <div className="ex-simple-card-price ex-num">{price(q.price)}</div>
-                  <div className={`ex-simple-card-change ex-num ${up ? 'is-up' : 'is-down'}`}>
-                    {pct(q.changePct)}
-                  </div>
-                </div>
-
-                <div className="ex-simple-card-spark">
-                  <Sparkline client={client} code={q.code} isUp={up} width={72} height={24} />
                 </div>
               </div>
             </div>

@@ -61,8 +61,8 @@ import { buildStockSeries, updateStockSeries, type StockSeries } from './history
 import { OrderBook } from './book'
 import * as M from './margin'
 
-/** 契约版本（与后端 `/api/exchange/meta` 对齐；原型固定 1） */
-const CONTRACT_VERSION = 1
+/** 契约版本（与后端 `/api/exchange/meta` 对齐；现为版本 2） */
+const CONTRACT_VERSION = 2
 /** 手续费率（原型统一 5 bp，买/卖/开/平都收） */
 const FEE_RATE = 0.0005
 /** 原型专用虚拟资金：1000 万 ISK，不入存档 */
@@ -79,7 +79,7 @@ const DIVIDEND_RATE = 0.0004
  * 需求（2026-11-03 双轨数据源批）：刷新不丢账户/持仓/委托，页面可一键重置回 1,000 万。
  */
 const MOCK_SAVE_KEY = 'whale-idle:exch-mock'
-const MOCK_SAVE_VERSION = 1
+const MOCK_SAVE_VERSION = 2
 /** 离开页面/标签页后台后按流逝时间补算，单次上限 3600 拍（约 1 小时），避免恢复时长时间卡顿 */
 const MAX_CATCHUP_TICKS = 3600
 /** 每 5 拍落一次盘（localStorage 写太频繁会拖慢 1 秒 tick；pagehide 时另会补落一次） */
@@ -104,15 +104,19 @@ interface StockDef {
 }
 
 /**
- * 4 家标的（船长指定代码与板块；公司名为原型占位，转正时换成正式设定）。
+ * 8 家标的（大盘、中盘、成长、散户阶梯价格与市值体系，涵盖军工、银行、能源、科技、算力、医疗、物流、材料八大板块）。
  * σ 的取值考虑"10 分钟里要看得见波动、又不至于 1 分钟就崩盘"：
- * 军工最躁、采矿最稳，与设计稿「军工科研 1.6% / 常规 0.9% / 蓝筹 0.5%（60 秒）」同序。
+ * 高波动成长/妖股更躁，大盘蓝筹更稳。
  */
 const STOCK_DEFS: StockDef[] = [
-  { code: 'SMHI', name: '星海重工', sector: '军工', anchor: 124.5, sigma: 0.0022, mu: 0.000004, theta: 0.00008, floatShares: 320_000_000, maxLeverage: 50, shortable: true, spreadBps: 30, levelQty: 60_000 },
-  { code: 'UGMC', name: '联星矿业', sector: '采矿', anchor: 45.2, sigma: 0.0013, mu: 0.000002, theta: 0.00009, floatShares: 680_000_000, maxLeverage: 20, shortable: true, spreadBps: 40, levelQty: 120_000 },
-  { code: 'OJLS', name: '欧吉物流', sector: '物流', anchor: 88.2, sigma: 0.0014, mu: 0.000002, theta: 0.00009, floatShares: 450_000_000, maxLeverage: 20, shortable: true, spreadBps: 35, levelQty: 80_000 },
-  { code: 'ABSI', name: '深空蓝图', sector: '科技', anchor: 210.0, sigma: 0.0019, mu: 0.000006, theta: 0.00007, floatShares: 180_000_000, maxLeverage: 50, shortable: true, spreadBps: 25, levelQty: 35_000 },
+  { code: 'SMHI', name: '星海重工', sector: '军工', anchor: 50_000, sigma: 0.0022, mu: 0.000004, theta: 0.00008, floatShares: 20_000_000, maxLeverage: 50, shortable: true, spreadBps: 30, levelQty: 5_000 },
+  { code: 'GBCI', name: '银河信托', sector: '银行', anchor: 25_000, sigma: 0.0010, mu: 0.000002, theta: 0.00010, floatShares: 32_000_000, maxLeverage: 30, shortable: true, spreadBps: 20, levelQty: 10_000 },
+  { code: 'UGMC', name: '联星能源', sector: '能源', anchor: 8_000, sigma: 0.0014, mu: 0.000003, theta: 0.00008, floatShares: 50_000_000, maxLeverage: 40, shortable: true, spreadBps: 30, levelQty: 30_000 },
+  { code: 'ABSI', name: '深空蓝图', sector: '科技', anchor: 3_000, sigma: 0.0018, mu: 0.000005, theta: 0.00007, floatShares: 60_000_000, maxLeverage: 50, shortable: true, spreadBps: 25, levelQty: 50_000 },
+  { code: 'NVSC', name: '量子算力', sector: '算力', anchor: 1_200, sigma: 0.0024, mu: 0.000006, theta: 0.00007, floatShares: 100_000_000, maxLeverage: 70, shortable: true, spreadBps: 35, levelQty: 80_000 },
+  { code: 'CLON', name: '克隆生科', sector: '医疗', anchor: 500, sigma: 0.0026, mu: 0.000005, theta: 0.00008, floatShares: 120_000_000, maxLeverage: 80, shortable: true, spreadBps: 40, levelQty: 120_000 },
+  { code: 'OJLS', name: '欧吉物流', sector: '物流', anchor: 200, sigma: 0.0012, mu: 0.000002, theta: 0.00009, floatShares: 200_000_000, maxLeverage: 60, shortable: false, spreadBps: 35, levelQty: 200_000 },
+  { code: 'SPRK', name: '微光纳米', sector: '材料', anchor: 60, sigma: 0.0028, mu: 0.000004, theta: 0.00008, floatShares: 400_000_000, maxLeverage: 90, shortable: true, spreadBps: 50, levelQty: 500_000 },
 ]
 
 const DEFAULT_CODE = STOCK_DEFS[0]!.code
@@ -226,7 +230,7 @@ interface EventTemplate {
   flippable?: boolean
 }
 
-/** 四类板块联动事件（战事/矿石/航路/虫洞），冲击幅度在触发时再抖动 */
+/** 板块联动事件（涵盖军工、银行、能源、科技、算力、医疗、物流、材料八大板块），冲击幅度在触发时再抖动 */
 const EVENT_TEMPLATES: EventTemplate[] = [
   {
     title: '边境战事升级',
@@ -235,10 +239,38 @@ const EVENT_TEMPLATES: EventTemplate[] = [
     effects: [{ code: 'SMHI', pct: 0.05 }, { code: 'OJLS', pct: -0.025 }],
   },
   {
-    title: '矿区产出波动',
-    body: '主力矿带作业状态突变，采矿板块产量预期被重新定价。',
+    title: '星际信贷评级调整',
+    body: '银河信托资产质量获主流评级机构上调，跨星系流动性回暖。',
+    tone: 'good',
+    effects: [{ code: 'GBCI', pct: 0.04 }],
+    flippable: true,
+  },
+  {
+    title: '能源管网波动',
+    body: '主要恒星聚变管网出力异常，能源板块现货供给预期震荡。',
     tone: 'bad',
     effects: [{ code: 'UGMC', pct: -0.04 }],
+    flippable: true,
+  },
+  {
+    title: '虫洞蓝图流出',
+    body: '一份虫洞构造蓝图在黑市出现，科技板块估值被重新想象。',
+    tone: 'good',
+    effects: [{ code: 'ABSI', pct: 0.055 }],
+    flippable: true,
+  },
+  {
+    title: '量子算力突破',
+    body: '新一代量子跃迁算法通过实证检验，全网算力需求集中爆发。',
+    tone: 'good',
+    effects: [{ code: 'NVSC', pct: 0.06 }],
+    flippable: true,
+  },
+  {
+    title: '基因编辑合规争议',
+    body: '多星系道德委员会联合审查克隆技术，部分实验项目面临暂停。',
+    tone: 'bad',
+    effects: [{ code: 'CLON', pct: -0.05 }],
     flippable: true,
   },
   {
@@ -249,10 +281,10 @@ const EVENT_TEMPLATES: EventTemplate[] = [
     flippable: true,
   },
   {
-    title: '虫洞蓝图流出',
-    body: '一份虫洞构造蓝图在黑市出现，科技板块估值被重新想象。',
+    title: '纳米合成工艺革新',
+    body: '微光纳米公布低成本分子组装新工艺，超导材料量产预期大增。',
     tone: 'good',
-    effects: [{ code: 'ABSI', pct: 0.055 }],
+    effects: [{ code: 'SPRK', pct: 0.07 }],
     flippable: true,
   },
 ]
@@ -410,7 +442,7 @@ export class MockExchangeClient implements ExchangeClient {
     }
   }
 
-  /** 建 4 只标的的行情模型与六周期历史（有持久化状态时续上价格/模型状态） */
+  /** 建 8 只标的的行情模型与六周期历史（有持久化状态时续上价格/模型状态） */
   private buildStocks(now: number, saved: PersistedMockState | null): void {
     this.stocks.clear()
     for (const def of STOCK_DEFS) {
@@ -450,7 +482,7 @@ export class MockExchangeClient implements ExchangeClient {
       id: 'NEWS-0',
       ts: this.ts(),
       title: '证券交易所开始试营业',
-      body: '四家上市公司挂牌，行情每 1 秒刷新一次。本页为原型，虚拟资金不写入存档。',
+      body: '八家上市公司挂牌，行情每 1 秒刷新一次。本页为原型，虚拟资金不写入存档。',
       tone: 'info',
       codes: STOCK_DEFS.map((s) => s.code),
     })
@@ -754,7 +786,7 @@ export class MockExchangeClient implements ExchangeClient {
     }
   }
 
-  /** 指数：按初始市值权重加权 4 只标的，基点 1000（原型自造，不接服务端指数） */
+  /** 指数：按初始市值权重加权 8 只标的，基点 1000（原型自造，不接服务端指数） */
   private indexValue(): number {
     let num = 0
     let den = 0
