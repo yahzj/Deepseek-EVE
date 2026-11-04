@@ -141,7 +141,8 @@
     "l10n:params": "tsx tools/param-miss-check.ts",
     "audio:check": "tsx tools/audio-check.ts",
     "audio:smoke": "node tools/audio-smoke.mjs",
-    "audio:smoke:desktop": "electron tools/audio-desktop-smoke.cjs"
+    "audio:smoke:desktop": "electron tools/audio-desktop-smoke.cjs",
+    "audio:install": "tsx tools/audio-install.ts"
   },
   "devDependencies": {
     "exceljs": "^4.4.0",

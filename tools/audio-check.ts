@@ -14,7 +14,8 @@
  * **版本自检**：游戏版本 v0.1.0 · 存档结构 **v31** · 最后核对 2026-11-02 · 最后跑过 2026-11-02
  * 判据：档结构版本跨一个大版本，或本域文案/清单/构建入口改动后必须重跑并更新本行。
  */
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
   SFX_CATEGORIES,
@@ -47,6 +48,19 @@ import {
   sceneBgmOf,
   sceneFlagsFromState,
 } from '../apps/desktop/src/renderer/src/game/audio/scene'
+import {
+  SFX_PACK_FORMAT,
+  SFX_PACK_VERSION,
+  SfxPackError,
+  buildSfxPack,
+  parseSfxPack,
+  sfxPackAssetPath,
+  sfxPackDirOf,
+  writeSfxPackZip,
+} from '../apps/desktop/src/renderer/src/game/audio/sfxPack'
+import type { SfxPackSourceFile } from '../apps/desktop/src/renderer/src/game/audio/sfxPack'
+import type { SfxCueId } from '../apps/desktop/src/renderer/src/game/audio/cues'
+import { installSfxPack } from './audio-install'
 
 const ROOT = process.cwd()
 const failures: string[] = []
@@ -104,6 +118,123 @@ if (missing.length > 0) {
   console.log(`· 未接入素材的语义 id（缺 = 静音，不算错误）：${missing.join('、')}`)
 }
 
+/* ═══════════ 二·六、音效正式入库包（音效台导出 → audio:install 写入）═══════════ */
+
+/** 构造一条合成覆盖（包格式不解析音频内容，字节只需可辨认） */
+function packSource(cueId: SfxCueId, fileName: string, seed: number): SfxPackSourceFile {
+  return { cueId, fileName, updatedAt: 1_761_000_000_000, data: new Uint8Array([seed, seed + 1, seed + 2, seed + 3]) }
+}
+
+/** 断言某段逻辑必须抛 `SfxPackError`（非法包绝不能写进素材目录） */
+function expectPackError(run: () => unknown, label: string): void {
+  try {
+    run()
+    check(false, `入库包：${label}本应被拒绝，实际通过`)
+  } catch (err) {
+    check(err instanceof SfxPackError && err.errors.length > 0, `入库包：${label}应抛出 SfxPackError（实际 ${err instanceof Error ? err.name : typeof err}）`)
+  }
+}
+
+const PACK_CREATED_AT = '2026-11-04T00:00:00.000Z'
+const packSources: SfxPackSourceFile[] = [
+  packSource('invasion-alarm', 'invasion-alarm.wav', 10),
+  packSource('bgm-docked', 'bgm-docked.mp3', 20),
+  packSource('ambient-blip-comms', 'ambient-blip-comms.ogg', 30),
+]
+const packBytes = buildSfxPack(packSources, { createdAt: PACK_CREATED_AT })
+check(packBytes.length > 0 && packBytes[0] === 0x50 && packBytes[1] === 0x4b, '入库包应是 zip（PK 魔数）')
+
+const parsedPack = parseSfxPack(packBytes)
+check(parsedPack.files.length === 3, `入库包解析出 3 条素材（实际 ${parsedPack.files.length}）`)
+check(parsedPack.manifest.createdAt === PACK_CREATED_AT && parsedPack.manifest.version === SFX_PACK_VERSION, '入库包 manifest 的版本/生成时间不正确')
+const parsedPaths = parsedPack.files.map((entry) => entry.file.path).sort()
+check(
+  parsedPaths.join(',') === 'ambient/ambient-blip-comms.ogg,bgm/bgm-docked.mp3,sfx/invasion-alarm.wav',
+  `入库包路径映射错误（实际 ${parsedPaths.join(',')}）`,
+)
+for (const id of SFX_CUE_IDS) {
+  const category = SFX_CUES[id].category
+  const expectedDir = category === 'music' ? 'bgm' : category === 'ambient' ? 'ambient' : 'sfx'
+  check(sfxPackDirOf(id) === expectedDir, `${id}：入库目录应为 ${expectedDir}（实际 ${sfxPackDirOf(id)}）`)
+}
+check(sfxPackAssetPath('bgm-docked', 'mp3') === 'bgm/bgm-docked.mp3', '入库包路径约定错误（bgm）')
+check(sfxPackAssetPath('ambient-blip-static', 'm4a') === 'ambient/ambient-blip-static.m4a', '入库包路径约定错误（ambient）')
+
+expectPackError(() => buildSfxPack([packSource('nope' as SfxCueId, 'nope.wav', 1)], { createdAt: PACK_CREATED_AT }), '未知语义 id ')
+expectPackError(() => buildSfxPack([packSource('invasion-alarm', 'invasion-alarm.txt', 1)], { createdAt: PACK_CREATED_AT }), '非音频扩展名 ')
+expectPackError(
+  () => buildSfxPack([packSource('invasion-alarm', 'invasion-alarm.wav', 1), packSource('invasion-alarm', 'invasion-alarm.mp3', 2)], { createdAt: PACK_CREATED_AT }),
+  '同一语义 id 重复打包',
+)
+expectPackError(() => parseSfxPack(packBytes.subarray(0, Math.floor(packBytes.length / 2))), '截断的入库包')
+
+const emptyManifestObject = {
+  format: SFX_PACK_FORMAT,
+  version: SFX_PACK_VERSION,
+  createdAt: PACK_CREATED_AT,
+  generator: 'whale-idle-sfx-console',
+  assetsRoot: 'apps/desktop/src/renderer/src/assets',
+  files: [],
+}
+const emptyManifest = new TextEncoder().encode(JSON.stringify(emptyManifestObject))
+check(parseSfxPack(writeSfxPackZip([{ path: 'manifest.json', data: emptyManifest }])).files.length === 0, '空入库包（0 条）应能解析')
+expectPackError(
+  () =>
+    parseSfxPack(
+      writeSfxPackZip([{ path: 'manifest.json', data: new TextEncoder().encode(JSON.stringify({ ...emptyManifestObject, version: 99 })) }]),
+    ),
+  '不支持的包版本',
+)
+expectPackError(
+  () =>
+    parseSfxPack(
+      writeSfxPackZip([
+        { path: 'manifest.json', data: emptyManifest },
+        { path: 'sfx/invasion-alarm.mp3', data: new Uint8Array([1, 2, 3]) },
+      ]),
+    ),
+  '包内有清单未登记的音频文件',
+)
+
+/* 安装到临时目录：只测真实写盘/覆盖/变体清理/预览，不碰仓库素材 */
+const installTempRoot = mkdtempSync(join(tmpdir(), 'whale-audio-install-'))
+try {
+  const first = installSfxPack(packBytes, { assetsRoot: installTempRoot })
+  check(first.written.length === 3 && first.overwritten.length === 0, `安装：首次应新增 3 条（实际新增 ${first.written.length} / 覆盖 ${first.overwritten.length}）`)
+  check(first.coverage.covered === 3 && first.coverage.total === SFX_CUE_IDS.length, '安装：覆盖度统计错误')
+  check(readFileSync(join(installTempRoot, 'sfx', 'invasion-alarm.wav')).length === 4, '安装：素材字节未写入临时目录')
+
+  const second = installSfxPack(packBytes, { assetsRoot: installTempRoot })
+  check(second.skipped.length === 3 && second.written.length === 0 && second.overwritten.length === 0, '安装：字节一致应跳过（不重写）')
+
+  // 旧扩展名/变体：写入不同字节时默认清理，避免新旧素材被 manifest 当成多份变体随机混播
+  writeFileSync(join(installTempRoot, 'sfx', 'invasion-alarm.1.mp3'), new Uint8Array([9, 9]))
+  const changedPack = buildSfxPack([packSource('invasion-alarm', 'invasion-alarm.wav', 11)], { createdAt: PACK_CREATED_AT })
+  const changed = installSfxPack(changedPack, { assetsRoot: installTempRoot })
+  check(changed.overwritten.includes('sfx/invasion-alarm.wav'), '安装：不同字节应覆盖')
+  check(changed.removedVariants.includes('sfx/invasion-alarm.1.mp3'), '安装：默认应移除同事件旧扩展名变体')
+  check(!existsSync(join(installTempRoot, 'sfx', 'invasion-alarm.1.mp3')), '安装：旧变体文件应已删除')
+
+  // --keep-variants 保留手工变体（并警告混播）
+  writeFileSync(join(installTempRoot, 'sfx', 'invasion-alarm.2.mp3'), new Uint8Array([8, 8]))
+  const kept = installSfxPack(buildSfxPack([packSource('invasion-alarm', 'invasion-alarm.wav', 12)], { createdAt: PACK_CREATED_AT }), {
+    assetsRoot: installTempRoot,
+    keepVariants: true,
+  })
+  check(kept.removedVariants.length === 0 && existsSync(join(installTempRoot, 'sfx', 'invasion-alarm.2.mp3')), '安装：--keep-variants 应保留旧变体')
+  check(kept.warnings.some((warning) => warning.includes('保留旧变体')), '安装：--keep-variants 应给出混播警告')
+
+  // --dry-run 只预览不写
+  const dry = installSfxPack(buildSfxPack([packSource('invasion-alarm', 'invasion-alarm.wav', 13)], { createdAt: PACK_CREATED_AT }), {
+    assetsRoot: installTempRoot,
+    dryRun: true,
+  })
+  check(dry.dryRun === true && dry.overwritten.includes('sfx/invasion-alarm.wav'), '安装：--dry-run 应报告将覆盖')
+  check(readFileSync(join(installTempRoot, 'sfx', 'invasion-alarm.wav'))[0] === 12, '安装：--dry-run 不应写文件')
+} finally {
+  rmSync(installTempRoot, { recursive: true, force: true })
+}
+
 /* ═══════════ 二·五、日志规则必须指向真实 addLog 写入点 ═══════════ */
 
 /**
@@ -155,6 +286,7 @@ const UI_L10N_IDS = [
   'ui.sfx.040', 'ui.sfx.041', 'ui.sfx.042', 'ui.sfx.043', 'ui.sfx.044', 'ui.sfx.045', 'ui.sfx.046',
   'ui.sfx.047', 'ui.sfx.048', 'ui.sfx.049', 'ui.sfx.050', 'ui.sfx.051', 'ui.sfx.052', 'ui.sfx.054',
   'ui.sfx.060', 'ui.sfx.061', 'ui.sfx.062', 'ui.sfx.063', 'ui.sfx.065', 'ui.sfx.066', 'ui.sfx.069',
+  'ui.sfx.070', 'ui.sfx.071', 'ui.sfx.072', 'ui.sfx.073', 'ui.sfx.074', 'ui.sfx.075',
 ]
 const allL10nIds = new Set<string>([...SFX_CUE_IDS.map((id) => SFX_CUES[id].nameId), ...SFX_CATEGORIES.map((c) => SFX_CATEGORY_NAME_ID[c]), ...UI_L10N_IDS])
 

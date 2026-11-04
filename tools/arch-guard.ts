@@ -394,6 +394,12 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
     file: 'apps/desktop/src/renderer/src/game/audio/rules.ts',
     exported: true,
   },
+  {
+    concept: '音效正式入库包格式与素材路径映射（音效台导出、audio:install 与 audio:check 共用 · 2026-11-04）',
+    symbol: 'sfxPackAssetPath',
+    file: 'apps/desktop/src/renderer/src/game/audio/sfxPack.ts',
+    exported: true,
+  },
 ]
 
 /** F4：渲染层一级页/面板不许自己建仿真上下文（那是 `engine.ts` 的活） */

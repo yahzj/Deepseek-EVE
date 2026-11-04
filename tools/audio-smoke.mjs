@@ -2,9 +2,10 @@
  * **声音系统冒烟（网页构建 · 无头 Chrome）** —— 2026-11-02 入库的正式工具。
  *
  * 用途：改音效相关代码/素材后，一条命令验证整条链路真的通（不是只看类型）：
- * 安装入口 → 15 条语义清单 → blob 音频可播（CSP `media-src blob:`）→ 设置「声音」分组 →
+ * 安装入口 → 33 条语义清单 → blob 音频可播（CSP `media-src blob:`）→ 设置「声音」分组 →
  * 本机音效台（**强制「科幻未来」布局**，验证弹层不被设置弹窗 `clip-path` 裁切）→
- * 拖入文件按文件名自动配对 → IndexedDB 落盘 → 试听 → 全部清除 → 无 console error。
+ * 拖入文件按文件名自动配对 → IndexedDB 落盘 → 试听 → 导出正式入库包（捕获 Blob 校验 zip，
+ * 不依赖下载目录）→ 全部清除 → 无 console error。
  *
  * 前置：① `npm --prefix web run build`（本工具自起静态服务托管 `web/dist`；
  *          用 `AUDIO_SMOKE_DIST=<相对仓库根的目录>` 可改托管别的构建产物）；
@@ -306,6 +307,40 @@ async function main() {
   check((dropResult.badge ?? '').includes('本机覆盖'), `面板状态徽标已切到本机覆盖（实际「${dropResult.badge}」）`)
   check(dropResult.overrides === 1, `IndexedDB 本机覆盖 1 条（实际 ${dropResult.overrides}）`)
   check(dropResult.preview === true, '本机覆盖可试听（Audio 起播未抛错）')
+
+  // 导出正式入库包：hook createObjectURL 捕获 Blob（校验格式即可，不依赖无头浏览器的下载目录）
+  const packExport = await evaluate(`(async () => {
+    const btn = [...document.querySelectorAll('.app-sfx-modal button')].find(x => x.textContent.trim() === '导出正式入库包')
+    if (!btn) return { ok: false, reason: 'no-btn' }
+    if (btn.disabled) return { ok: false, reason: 'disabled' }
+    window.__packCapture = null
+    const origCreate = URL.createObjectURL
+    URL.createObjectURL = function (obj) {
+      try { if (obj instanceof Blob && obj.type === 'application/zip') window.__packCapture = obj } catch (e) { /* 忽略 */ }
+      return origCreate.call(URL, obj)
+    }
+    try {
+      btn.click()
+      for (let i = 0; i < 40 && !window.__packCapture; i++) await new Promise(r => setTimeout(r, 100))
+      const blob = window.__packCapture
+      if (!blob) return { ok: false, reason: 'no-blob' }
+      const bytes = new Uint8Array(await blob.arrayBuffer())
+      const text = new TextDecoder().decode(bytes)
+      const modal = document.querySelector('.app-sfx-modal')
+      return {
+        ok: true,
+        size: bytes.length,
+        magic: bytes[0] === 0x50 && bytes[1] === 0x4b,
+        manifest: text.includes('"format": "whale-idle-sfx-pack"') && text.includes('"version": 1'),
+        path: text.includes('sfx/invasion-alarm.wav'),
+        notice: (modal ? modal.textContent : document.body.textContent).includes('已生成'),
+      }
+    } finally { URL.createObjectURL = origCreate }
+  })()`)
+  check(packExport.ok === true, `音效台可导出正式入库包（实际 ${JSON.stringify(packExport)}）`)
+  check(packExport.magic === true && packExport.size > 200, `入库包是 zip 且非空（实际 ${packExport.size} 字节）`)
+  check(packExport.manifest === true && packExport.path === true, '入库包含 manifest v1 与正确素材路径')
+  check(packExport.notice === true, '导出后给出成功提示')
 
   const clearResult = await evaluate(`(async () => {
     const b = [...document.querySelectorAll('button')].find(x => x.textContent.trim() === '全部清除')

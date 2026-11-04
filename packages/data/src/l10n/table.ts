@@ -7983,6 +7983,13 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ui.sfx.065': { zh: '±{p1} 音分（{p2} 个半音）', en: '', enDeferred: true },
   'ui.sfx.066': { zh: '音效', en: '', enDeferred: true },
   'ui.sfx.069': { zh: '±{p1} 音分', en: '', enDeferred: true },
+  // ⟪声音正式入库 2026-11-04⟫ 音效台导出正式入库包 + audio:install 写入仓库；英文未授权，按约定登记待译。
+  'ui.sfx.070': { zh: '导出正式入库包', en: '', enDeferred: true },
+  'ui.sfx.071': { zh: '把已导入的本机覆盖打包成正式素材：下载后在仓库根运行 npm run audio:install，校验通过会写入 assets 的音效、音乐、环境目录。', en: '', enDeferred: true },
+  'ui.sfx.072': { zh: '已生成 {p1}（{p2} 条）；下载后运行 npm run audio:install 写入仓库。', en: '', enDeferred: true },
+  'ui.sfx.073': { zh: '没有本机覆盖可导出：先把音频文件拖入音效台或逐行导入。', en: '', enDeferred: true },
+  'ui.sfx.074': { zh: '导出失败：{p1}', en: '', enDeferred: true },
+  'ui.sfx.075': { zh: '正在打包…', en: '', enDeferred: true },
   'ui.sfx.080': { zh: '停靠音乐', en: '', enDeferred: true },
   'ui.sfx.081': { zh: '太空音乐', en: '', enDeferred: true },
   'ui.sfx.082': { zh: '战斗音乐', en: '', enDeferred: true },
