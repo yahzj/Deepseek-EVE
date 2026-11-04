@@ -158,11 +158,11 @@
 }
 
 .ex-title {
-  display: flex;
+  display: inline-flex;
   flex-direction: column;
   justify-content: center;
-  align-items: flex-start;
-  gap: 2px;
+  align-items: stretch;
+  gap: 3px;
   flex: 0 0 auto;
 }
 
@@ -183,19 +183,12 @@
   color: rgb(var(--wui-gold));
 }
 
+/* 船长令（2026-11-04）：服务器微标挪到绿框（标题）下方，与「交易所」三个字末尾严格对齐 */
 .ex-title-sub-row {
   display: flex;
-  align-items: center;
+  justify-content: flex-end;
+  width: 100%;
   line-height: 1;
-}
-
-.ex-title-spacer {
-  visibility: hidden;
-  font-size: var(--wui-fs-lg);
-  font-weight: 700;
-  letter-spacing: 2px;
-  user-select: none;
-  pointer-events: none;
 }
 
 .ex-topbar-status {

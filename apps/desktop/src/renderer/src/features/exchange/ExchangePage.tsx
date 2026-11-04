@@ -234,7 +234,6 @@ function ExchangeBody({
               <span className="ex-title-suffix">{T.titleSuffix}</span>
             </h2>
             <div className="ex-title-sub-row">
-              <span className="ex-title-spacer" aria-hidden="true">{T.titlePrefix}</span>
               <SourceBadge source={bundle.source} />
             </div>
           </div>
