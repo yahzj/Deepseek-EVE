@@ -4951,6 +4951,19 @@
 
 .ex-simple-pos-risk-bar.is-critical .ex-simple-pos-risk-tag {
   color: rgb(var(--wui-tone-loss));
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.ex-risk-icon-pulse {
+  animation: ex-pulse-risk 0.9s infinite alternate;
+  vertical-align: -1px;
+}
+
+@keyframes ex-pulse-risk {
+  from { opacity: 0.4; transform: scale(0.88); }
+  to { opacity: 1; transform: scale(1.15); }
 }
 
 .ex-simple-pos-risk-desc {
