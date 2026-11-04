@@ -3763,54 +3763,21 @@
   box-shadow: 0 0 12px rgb(var(--wui-accent) / 0.25), inset 2px 0 0 rgb(var(--wui-accent));
 }
 
-.ex-simple-holding-badges {
-  position: absolute;
-  bottom: 5px;
-  right: 8px;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  max-width: 60%;
-  justify-content: flex-end;
-  pointer-events: none;
-}
-
-.ex-simple-holding-badge {
-  padding: 1px 5px;
-  border-radius: 999px;
-  font-size: 9px;
-  font-weight: 600;
-  font-family: var(--wui-mono);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  line-height: 1.3;
-}
-
-.ex-simple-holding-badge.is-spot {
-  background: rgb(var(--wui-gold) / 0.16);
-  color: rgb(var(--wui-gold));
-  border: 1px solid rgb(var(--wui-gold) / 0.4);
-}
-
-.ex-simple-holding-badge.is-long {
-  background: rgb(var(--wui-tone-gain) / 0.18);
-  color: rgb(var(--wui-tone-gain));
-  border: 1px solid rgb(var(--wui-tone-gain) / 0.4);
-}
-
-.ex-simple-holding-badge.is-short {
-  background: rgb(var(--wui-tone-loss) / 0.18);
-  color: rgb(var(--wui-tone-loss));
-  border: 1px solid rgb(var(--wui-tone-loss) / 0.4);
-}
-
 .ex-simple-card-top {
   display: flex;
   align-items: center;
-  gap: 5px;
+  justify-content: space-between;
+  gap: 6px;
   min-width: 0;
   width: 100%;
+}
+
+.ex-simple-card-title-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .ex-simple-card-code {
@@ -3832,8 +3799,16 @@
   text-overflow: ellipsis;
 }
 
+.ex-simple-card-tag-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
 .ex-simple-card-sector {
-  padding: 0 3px;
+  padding: 0 4px;
   border: 1px solid rgb(var(--wui-border) / 0.6);
   border-radius: 2px;
   color: rgb(var(--wui-text-dim));
@@ -3841,6 +3816,43 @@
   line-height: 1.3;
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+.ex-simple-holding-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.ex-simple-holding-badge {
+  padding: 0 4px;
+  border-radius: 2px;
+  font-size: 9px;
+  font-weight: 600;
+  font-family: var(--wui-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  line-height: 1.3;
+  flex-shrink: 0;
+}
+
+.ex-simple-holding-badge.is-spot {
+  background: rgb(var(--wui-gold) / 0.16);
+  color: rgb(var(--wui-gold));
+  border: 1px solid rgb(var(--wui-gold) / 0.4);
+}
+
+.ex-simple-holding-badge.is-long {
+  background: rgb(var(--wui-tone-gain) / 0.18);
+  color: rgb(var(--wui-tone-gain));
+  border: 1px solid rgb(var(--wui-tone-gain) / 0.4);
+}
+
+.ex-simple-holding-badge.is-short {
+  background: rgb(var(--wui-tone-loss) / 0.18);
+  color: rgb(var(--wui-tone-loss));
+  border: 1px solid rgb(var(--wui-tone-loss) / 0.4);
 }
 
 .ex-simple-card-main {
