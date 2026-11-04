@@ -82,50 +82,68 @@ const TIP_HOVER_ATTR = 'data-tip-hover'
 /** `n` = 压住这条元素的属主数：接管层与富卡可能同时压同一批元素 ⇒ 引用计数，减到 0 才真的还原 */
 let mutedChain: Array<{ el: Element; text: string; n: number }> = []
 
+/** 内部更新标志位：当前是否正在执行 DOM 提示属性变更，防止 MutationObserver 重入与递归死循环 */
+let isMutingDom = false
+
 /** 压住 `el` 自身与祖先链上的 `title`（引用计数 +1；承诺调用方离开时按同一条链 `releaseTitleChain` 一次） */
 function muteTitleChain(el: Element): void {
-  for (let n: Element | null = el; n; n = n.parentElement) {
-    const t = n.getAttribute('title')
-    const rec = mutedChain.find((m) => m.el === n)
-    if (rec) {
+  isMutingDom = true
+  try {
+    for (let n: Element | null = el; n; n = n.parentElement) {
+      const t = n.getAttribute('title')
+      const rec = mutedChain.find((m) => m.el === n)
+      if (rec) {
+        if (t !== null && t !== '') {
+          rec.text = t // React 写了新值（读数型 title 会变）⇒ 以新值为「原值」
+          n.setAttribute('title', '')
+        }
+        rec.n += 1
+        continue
+      }
       if (t !== null && t !== '') {
-        rec.text = t // React 写了新值（读数型 title 会变）⇒ 以新值为「原值」
+        mutedChain.push({ el: n, text: t, n: 1 })
         n.setAttribute('title', '')
       }
-      rec.n += 1
-      continue
     }
-    if (t !== null && t !== '') {
-      mutedChain.push({ el: n, text: t, n: 1 })
-      n.setAttribute('title', '')
-    }
+  } finally {
+    isMutingDom = false
   }
 }
 
 /** 只补压、不再计数（同一属主的重复压制：React 把 `title` 写回来了；链上新出现的祖先算本次这一份） */
 function reblankTitleChain(el: Element): void {
-  for (let n: Element | null = el; n; n = n.parentElement) {
-    const t = n.getAttribute('title')
-    if (t === null || t === '') continue
-    const rec = mutedChain.find((m) => m.el === n)
-    if (rec) rec.text = t
-    else mutedChain.push({ el: n, text: t, n: 1 })
-    n.setAttribute('title', '')
+  isMutingDom = true
+  try {
+    for (let n: Element | null = el; n; n = n.parentElement) {
+      const t = n.getAttribute('title')
+      if (t === null || t === '') continue
+      const rec = mutedChain.find((m) => m.el === n)
+      if (rec) rec.text = t
+      else mutedChain.push({ el: n, text: t, n: 1 })
+      n.setAttribute('title', '')
+    }
+  } finally {
+    isMutingDom = false
   }
 }
 
 /** 某个属主放手：走同一条链把计数减一，减到 0 才还原（元素当前已有非空 title ⇒ 作者层自己写的，以它为准） */
 function releaseTitleChain(el: Element): void {
-  for (let n: Element | null = el; n; n = n.parentElement) {
-    const i = mutedChain.findIndex((m) => m.el === n)
-    if (i < 0) continue
-    const rec = mutedChain[i]!
-    rec.n -= 1
-    if (rec.n > 0) continue
-    mutedChain.splice(i, 1)
-    if (!rec.el.isConnected) continue // 已从文档里摘掉的元素不用还
-    const now = rec.el.getAttribute('title')
-    if (now === null || now === '') rec.el.setAttribute('title', rec.text)
+  isMutingDom = true
+  try {
+    for (let n: Element | null = el; n; n = n.parentElement) {
+      const i = mutedChain.findIndex((m) => m.el === n)
+      if (i < 0) continue
+      const rec = mutedChain[i]!
+      rec.n -= 1
+      if (rec.n > 0) continue
+      mutedChain.splice(i, 1)
+      if (!rec.el.isConnected) continue // 已从文档里摘掉的元素不用还
+      const now = rec.el.getAttribute('title')
+      if (now === null || now === '') rec.el.setAttribute('title', rec.text)
+    }
+  } finally {
+    isMutingDom = false
   }
 }
 
@@ -458,10 +476,15 @@ export function TooltipLayer(): ReactNode {
         const from = title !== null ? 'title' : authored !== null ? 'tip' : 'stash'
         return { el: attrEl, text: title ?? authored ?? stashed ?? '', svgTitle: null, from }
       }
-      // SVG 链兜底：往上找第一个带**直接** `<title>` 子元素的祖先（`<svg>` 根自身不参与）
-      for (let n: Element | null = el; n && n.tagName.toLowerCase() !== 'svg'; n = n.parentElement) {
-        const t = Array.from(n.children).find((c) => c.tagName.toLowerCase() === 'title')
-        if (t) return { el: n, text: (t.textContent ?? '').trim(), svgTitle: t, from: 'title' }
+      // SVG 链兜底：往上找第一个带**直接** `<title>` 子元素的祖先（`<svg>` 根自身不参与；普通 HTML 节点直接跳过）
+      if (el.closest('svg') !== null) {
+        for (let n: Element | null = el; n && n.tagName.toLowerCase() !== 'svg'; n = n.parentElement) {
+          for (let c = n.firstElementChild; c; c = c.nextElementSibling) {
+            if (c.tagName.toLowerCase() === 'title') {
+              return { el: n, text: (c.textContent ?? '').trim(), svgTitle: c, from: 'title' }
+            }
+          }
+        }
       }
       return null
     }
@@ -481,17 +504,23 @@ export function TooltipLayer(): ReactNode {
      * 提示再弹 ⇒ 同屏两个。现在**指针一进就压**（`armAgain` 调用本函数），延迟只决定「我们这条何时画出来」。
      */
     const muteNative = (src: TipSrc): void => {
-      if (src.svgTitle) {
-        if ((src.svgTitle.textContent ?? '') !== '') src.svgTitle.textContent = ''
-      } else if (src.from === 'title') {
-        // 文本挪进暂存：摘走期间仍能认出这个元素（`srcOf`），也继续供自绘提示取文本
-        src.el.setAttribute(TIP_STASH_ATTR, src.text)
+      isMutingDom = true
+      try {
+        if (src.svgTitle) {
+          if ((src.svgTitle.textContent ?? '') !== '') src.svgTitle.textContent = ''
+        } else if (src.from === 'title') {
+          // 文本挪进暂存：摘走期间仍能认出这个元素（`srcOf`），也继续供自绘提示取文本
+          src.el.setAttribute(TIP_STASH_ATTR, src.text)
+        }
+        const same = mutedSrc !== null && mutedSrc.el === src.el
+        if (mutedSrc !== null && !same) unmuteNative()
+        if (same) reblankTitleChain(src.el)
+        else muteTitleChain(src.el)
+        mutedSrc = src
+        obs?.takeRecords()
+      } finally {
+        isMutingDom = false
       }
-      const same = mutedSrc !== null && mutedSrc.el === src.el
-      if (mutedSrc !== null && !same) unmuteNative()
-      if (same) reblankTitleChain(src.el)
-      else muteTitleChain(src.el)
-      mutedSrc = src
     }
 
     /** 把原生提示源原样放回并清掉观察器（`data-tip` 作者属性不留痕） */
@@ -506,19 +535,24 @@ export function TooltipLayer(): ReactNode {
       obs = null
       const s = mutedSrc
       mutedSrc = null
-      if (s) releaseTitleChain(s.el)
-      if (!s) return
-      if (s.svgTitle) {
-        // 展示期间 React 改写过文本 ⇒ `s.text` 已被观察器同步成新值，以新值为准
-        if ((s.svgTitle.textContent ?? '') === '') s.svgTitle.textContent = s.text
-        return
+      isMutingDom = true
+      try {
+        if (s) releaseTitleChain(s.el)
+        if (!s) return
+        if (s.svgTitle) {
+          // 展示期间 React 改写过文本 ⇒ `s.text` 已被观察器同步成新值，以新值为准
+          if ((s.svgTitle.textContent ?? '') === '') s.svgTitle.textContent = s.text
+          return
+        }
+        const stashed = s.el.getAttribute(TIP_STASH_ATTR)
+        if (stashed === null) return
+        s.el.removeAttribute(TIP_STASH_ATTR)
+        // 只在元素当前"没有 title"或"还是我们写的空占位"时放回（React 若已写新值，以新值为准）
+        const now = s.el.getAttribute('title')
+        if (now === null || now === '') s.el.setAttribute('title', stashed)
+      } finally {
+        isMutingDom = false
       }
-      const stashed = s.el.getAttribute(TIP_STASH_ATTR)
-      if (stashed === null) return
-      s.el.removeAttribute(TIP_STASH_ATTR)
-      // 只在元素当前"没有 title"或"还是我们写的空占位"时放回（React 若已写新值，以新值为准）
-      const now = s.el.getAttribute('title')
-      if (now === null || now === '') s.el.setAttribute('title', stashed)
     }
 
     /** 锚点：鼠标位置（2026-09-13 船长「要跟随鼠标走」）；触屏合成事件给 (0,0) 时回落元素底边中点 */
@@ -552,6 +586,7 @@ export function TooltipLayer(): ReactNode {
     const watch = (el: Element, svgTitle: Element | null): void => {
       obs?.disconnect()
       obs = new MutationObserver(() => {
+        if (isMutingDom) return
         if (!hovered || !hovered.isConnected) {
           putBack()
           hideTip()
@@ -571,6 +606,9 @@ export function TooltipLayer(): ReactNode {
           if (fresh === '' || fresh === shown.text) return
           shown.text = fresh
         } else {
+          // 只有当真实 DOM 上出现了非空的 title，才是 React 重新写回了 title
+          const rawTitle = src.el.getAttribute('title')
+          if (rawTitle === null || rawTitle === '') return
           const fresh = src.text
           if (fresh.trim() === '') return
           // React 把 title 写回来了（读数型 title 会随状态变）⇒ 重新压掉；原值以新值为准（见 muteTitleChain）
@@ -608,10 +646,16 @@ export function TooltipLayer(): ReactNode {
      * （2026-09-14 用真产物端到端实测到过这个回归：悬停「设置」根本不弹自绘提示）。
      * ⇒ 同属一个提示归属元素时只"跟着更新、延迟不重启"；换了归属才重开一轮。
      */
+    let lastEnterTarget: Element | null = null
+    let lastLeaveTarget: Element | null = null
+    let lastLeaveTo: Element | null = null
+
     const onEnter = (e: Event): void => {
       const t = e.target as Element | null
       if (!t || typeof t.closest !== 'function') return
-      if (hovered === t) return
+      if (hovered === t || lastEnterTarget === t) return
+      lastEnterTarget = t
+      lastLeaveTarget = null
       if (hovered && hovered.contains(t) && ownerOf(t) === ownerOf(hovered)) {
         hovered = t
         watch(t, null)
@@ -623,9 +667,14 @@ export function TooltipLayer(): ReactNode {
     }
     const onLeave = (e: Event): void => {
       if (!hovered) return
+      const t = e.target as Element | null
       // 注意：本文件顶部的 `MouseEvent` 是 React 的类型，这里要的是 DOM 事件的 relatedTarget
       const to = (e as unknown as { relatedTarget?: Node | null }).relatedTarget ?? null
       const toEl = to !== null && to.nodeType === 1 ? (to as Element) : null
+      if (lastLeaveTarget === t && lastLeaveTo === toEl) return
+      lastLeaveTarget = t
+      lastLeaveTo = toEl
+      lastEnterTarget = null
       if (toEl !== null) {
         const owner = ownerOf(hovered)
         if (toEl === owner || owner.contains(toEl)) return // 指针还在提示归属元素里（如从内层移到按钮本体）⇒ 不动

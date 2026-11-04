@@ -86,6 +86,7 @@ const MAP_H = 300
  * （布局数据 / 本地覆盖 / 编辑器坐标一律不变，只改 viewBox 的可视范围）。
  */
 const MAP_PAD_TOP = 20
+const MAP_PAD_BOTTOM = 28
 const MAP_PAD_X = 8
 /**
  * **母港节点圆点半径**（2026-11-02 船长：「红框标注的母港的圆要比所有人都大一号」）——
@@ -98,7 +99,7 @@ const HUB_DOT_R = 17
 const FACTION_BOX_M = 34
 /** viewBox 与实际内容尺寸（拖拽换算用；getBoundingClientRect 覆盖的是含留白的可视范围） */
 const MAP_VB_W = MAP_W + MAP_PAD_X * 2
-const MAP_VB_H = MAP_H + MAP_PAD_TOP
+const MAP_VB_H = MAP_H + MAP_PAD_TOP + MAP_PAD_BOTTOM
 /**
  * **星图缩放**（**2026-10-02 船长令**，转玩家反馈：「手机端，星图界面各个星系判定范围过小（尤其是未探索的
  * 星系），几乎点不中/点了没反应。建议星图和虫洞探索一样允许放大」）—— 手感与虫洞探索地图同一套：
