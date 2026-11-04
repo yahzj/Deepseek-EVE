@@ -318,6 +318,11 @@ function hookFixture(stored = true, server = target.server) {
     saveVersions: vi.fn(async () => []),
     saveVersion: vi.fn(), uploadSave: vi.fn(async () => ({ version: 1, size: 100 })), rotateRecovery: vi.fn(),
     chatHistory: vi.fn(async () => ({ channel: 'zh' as const, messages: [], nextBeforeId: null })),
+    marketRelaySync: vi.fn(async () => ({
+      protocolVersion: 1 as const, requestId: '', serverTime: 0,
+      policy: { version: 1 as const, scarceMultiplier: 1, sampleRatio: 0, maxOffers: 0, maxPriceRatio: 1, offerTtlMs: 0 },
+      offers: [], settlements: [], acknowledgedSettlementIds: [], acknowledgedFillIds: [],
+    })),
   } satisfies CloudApi
   const factory = vi.fn(() => api)
   const engine = {

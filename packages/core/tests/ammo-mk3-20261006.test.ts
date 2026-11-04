@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildSimContext, BLUEPRINT_PRICE_OVERRIDES, L10N, rarityTierOf } from '@whale/data'
 import { createInitialState } from '../src/state'
 import { blackMarketBuy, blackMarketCandidateGoods, blackMarketDayStart, ensureBlackMarket } from '../src/blackMarket'
-import { advanceMarket, buyAtMarket, ensureMarket, learnBlueprint, listSellHolding, placeBuyOrder, placeSellOrder } from '../src/market'
+import { advanceMarket, buyAtMarket, cancelOrder, ensureMarket, learnBlueprint, listSellHolding, placeBuyOrder } from '../src/market'
 import { fireMarketOrderEvent } from '../src/events'
 import { advanceManufacturing, calcBuildDurationMs, startManufacturing } from '../src/manufacturing'
 import { fitModule, setAmmoTier } from '../src/equipment'
@@ -92,12 +92,17 @@ describe('MK3三系定稿数据和黑市唯一供货', () => {
       expect(state.market.npcSell[bpId] ?? []).toEqual([])
       expect(state.market.npcBuy[bpId] ?? []).toEqual([])
       state.blueprintStock[bpId] = 1
-      const before = JSON.stringify(state)
+      const beforeBuyAtMarket = JSON.stringify(state)
       expect(buyAtMarket(state, ctx, bpId, 1).bought).toBe(0)
-      expect(placeBuyOrder(state, ctx, bpId, 1e9, 1)).toBeNull()
-      expect(placeSellOrder(state, ctx, bpId, 1e9, 1)).toBeNull()
+      expect(JSON.stringify(state)).toBe(beforeBuyAtMarket)
+      const buyOrder = placeBuyOrder(state, ctx, bpId, 1e9, 1)
+      expect(buyOrder).not.toBeNull()
+      expect(buyOrder).toMatchObject({ side: 'buy', good: bpId, price: 1e9, qty: 1, filled: 0, escrowIsk: 1e9 })
+      expect(state.orders).toContain(buyOrder)
+      expect(cancelOrder(state, ctx, buyOrder!.id)).toBe(true)
+      const beforeSellFromInventory = JSON.stringify(state)
       expect(listSellHolding(state, ctx, bpId, 1e9, 1).ok).toBe(false)
-      expect(JSON.stringify(state)).toBe(before)
+      expect(JSON.stringify(state)).toBe(beforeSellFromInventory)
       expect(Object.values(FRAGMENT_RECIPES).some(r => r.blueprintId === bpId)).toBe(false)
       for (const family of ['A', 'C', 'D', 'E', 'G']) expect(wormholeFamilyPoolOf(ctx, family).moduleBlueprints).not.toContain(bpId)
     }

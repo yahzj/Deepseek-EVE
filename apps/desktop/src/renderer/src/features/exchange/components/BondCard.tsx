@@ -1,3 +1,4 @@
+import { isEn } from '../../../i18n/locale'
 /**
  * 低风险理财卡：一笔可买的「舰船债券」。
  *
@@ -16,9 +17,9 @@ import { LOCAL_BOND_MINUTE_RATE, buyLocalBond, localBondHolding, redeemLocalBond
 
 const LOCAL_PRODUCT = {
   id: 'WHALE-BOND-LOCAL',
-  name: '舰船债券 · 稳健型',
+  get name() { return T.bondName },
   dailyRate: LOCAL_BOND_MINUTE_RATE,
-  note: '本地计息：每 60 秒 0.03%',
+  get note() { return T.bondNote },
 }
 
 export function BondCard({
@@ -90,7 +91,7 @@ export function BondCard({
       } else {
         client.buyBond(numericAmount)
       }
-      onToast(`${T.toastBondBought} ${money(numericAmount)} ISK`)
+      onToast(`${T.toastBondBought} ${money(numericAmount)} ${T.creditUnit}`)
     } catch (err) {
       onToast(err instanceof Error ? err.message : String(err), true)
     }
@@ -103,7 +104,7 @@ export function BondCard({
     }
     try {
       const total = local ? redeemLocalBond(engine) : client.redeemBond()
-      if (total > 0) onToast(`${T.toastBondRedeemed} ${money(total)} ISK`)
+      if (total > 0) onToast(`${T.toastBondRedeemed} ${money(total)} ${T.creditUnit}`)
     } catch (err) {
       onToast(err instanceof Error ? err.message : String(err), true)
     }
@@ -127,25 +128,25 @@ export function BondCard({
         <div className="ex-preview-row">
           <span>{T.bondPrincipal}</span>
           <b className="ex-num">
-            {money(bond.principal)} <span className="ex-unit">ISK</span>
+            {money(bond.principal)} <span className="ex-unit">{T.creditUnit}</span>
           </b>
         </div>
         <div className="ex-preview-row is-bond-highlight">
           <span>{T.bondAccrued}</span>
           <b className={`ex-num is-up ex-bond-accrued ${isAccruing ? 'is-pulse' : ''}`}>
-            +{money(bond.accrued)} <span className="ex-unit">ISK</span>
+            +{money(bond.accrued)} <span className="ex-unit">{T.creditUnit}</span>
           </b>
         </div>
         <div className="ex-preview-row">
           <span>{T.bondValue}</span>
           <b className="ex-num">
-            {money(held)} <span className="ex-unit">ISK</span>
+            {money(held)} <span className="ex-unit">{T.creditUnit}</span>
           </b>
         </div>
         <div className="ex-preview-row">
           <span>{local ? T.cashierLocalWallet : T.strategyAvailCash}</span>
           <b className="ex-num">
-            {money(availableIsk)} <span className="ex-unit">ISK</span>
+            {money(availableIsk)} <span className="ex-unit">{T.creditUnit}</span>
           </b>
         </div>
 
@@ -155,12 +156,12 @@ export function BondCard({
             <label className="ex-label" htmlFor="ex-bond-input">
               {T.bondBuy}
             </label>
-            <div className="ex-bond-quick-ratios" role="group" aria-label="快捷买入比例">
+            <div className="ex-bond-quick-ratios" role="group" aria-label={isEn() ? "Quick buy ratios" : "快捷买入比例"}>
               <button
                 type="button"
                 className="ex-bond-ratio-btn"
-                title="快捷买入 25% 可用资金"
-                aria-label="快捷买入 25% 可用资金"
+                title={isEn() ? "Quick buy 25% cash" : "快捷买入 25% 可用资金"}
+                aria-label={isEn() ? "Quick buy 25% cash" : "快捷买入 25% 可用资金"}
                 disabled={availableIsk <= 0}
                 onClick={() => setRatio(0.25)}
               >
@@ -169,8 +170,8 @@ export function BondCard({
               <button
                 type="button"
                 className="ex-bond-ratio-btn"
-                title="快捷买入 50% 可用资金"
-                aria-label="快捷买入 50% 可用资金"
+                title={isEn() ? "Quick buy 50% cash" : "快捷买入 50% 可用资金"}
+                aria-label={isEn() ? "Quick buy 50% cash" : "快捷买入 50% 可用资金"}
                 disabled={availableIsk <= 0}
                 onClick={() => setRatio(0.5)}
               >
@@ -179,8 +180,8 @@ export function BondCard({
               <button
                 type="button"
                 className="ex-bond-ratio-btn"
-                title="快捷买入全部可用资金"
-                aria-label="快捷买入全部可用资金"
+                title={isEn() ? "Quick buy max cash" : "快捷买入全部可用资金"}
+                aria-label={isEn() ? "Quick buy max cash" : "快捷买入全部可用资金"}
                 disabled={availableIsk <= 0}
                 onClick={() => setRatio(1)}
               >
@@ -197,7 +198,7 @@ export function BondCard({
               onChange={(e) => setAmountText(e.target.value)}
               onBlur={handleBlur}
             />
-            <span className="ex-input-unit">ISK</span>
+            <span className="ex-input-unit">{T.creditUnit}</span>
           </div>
           {/* 防呆提示 */}
           {isOverCash ? (

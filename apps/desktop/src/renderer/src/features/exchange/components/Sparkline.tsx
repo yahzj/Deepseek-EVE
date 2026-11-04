@@ -27,6 +27,18 @@ export function Sparkline({ client, code, isUp, width = 76, height = 24 }: Spark
     points = []
   }
 
+  // 优雅降级：若 intraday 尚未累积足够高频点，自动回退到 m1 周期切片，保障专业/极简终端均秒级出图
+  if (points.length < 2) {
+    try {
+      const m1Series = client.getChartSeries(code, 'm1')
+      if (m1Series && m1Series.length > 0) {
+        points = m1Series.slice(-24).map((k) => k.c)
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   if (points.length < 2) {
     return <div className="ex-sparkline-empty" style={{ width, height }} />
   }

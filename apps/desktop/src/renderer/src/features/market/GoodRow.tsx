@@ -119,7 +119,7 @@ export function GoodRow({
             </span>
           </span>
           <span className="app-mkt-quote">
-            {tr("ui.MarketPage.030")} <b className={quote.sell !== undefined ? 'app-price-sell' : ''}>{quote.sell !== undefined ? isk(quote.sell) : good.playerBuyable === false ? tr("ui.MarketPage.031") : tr("ui.MarketPage.032")}</b>
+            {tr("ui.MarketPage.030")} <b className={quote.sell !== undefined ? 'app-price-sell' : ''}>{quote.sell !== undefined ? isk(quote.sell) : tr("ui.MarketPage.032")}</b>
             {quote.sellQty > 1 ? ` ×${quote.sellQty.toLocaleString('zh-CN')}` : ''}
           </span>
           {life !== undefined ? (

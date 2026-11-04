@@ -2,9 +2,21 @@ import type { GameState } from '../state'
 import type { MarketGoodDef, MarketGoodKind, SimContext } from '../types'
 import { DSI_FACTION_ID, standingOf } from '../standing'
 
-/** 普通市场与订单事件只列可买或可卖的货，双禁令商品只保留黑市报价用途。 */
+/** 玩家市场包含所有已上线且有交付定义的商品，NPC 买卖限制仍由各自路径检查。 */
 export function marketTradingGoods(ctx: SimContext): MarketGoodDef[] {
-  return [...ctx.marketGoods.values()].filter(g => g.playerBuyable !== false || g.playerSellable !== false)
+  return [...ctx.marketGoods.values()].filter(g => playerTradingGood(ctx, g))
+}
+
+export function playerTradingGood(ctx: SimContext, def: MarketGoodDef): boolean {
+  if (def.unreleased) return false
+  const ref = def.kind === 'item' ? ctx.items.get(def.refId)
+    : def.kind === 'module' ? ctx.modules.get(def.refId)
+      : def.kind === 'ship' ? ctx.ships.get(def.refId)
+        : def.kind === 'blueprint' ? ctx.blueprints.get(def.refId) ?? ctx.shipBlueprints.get(def.refId)
+          : undefined
+  if (def.kind === 'aicore') return ['basic', 'alpha', 'beta', 'gamma'].includes(def.refId)
+  if (!ref) return def.kind === 'item'
+  return !('unreleased' in ref && ref.unreleased) && !('hidden' in ref && ref.hidden)
 }
 
 /* ═══════════ 查询 ═══════════ */

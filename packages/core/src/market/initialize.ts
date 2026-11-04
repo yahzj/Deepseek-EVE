@@ -4,6 +4,7 @@ import { ensureLimitedSupply, hasLimitedSupply } from '../marketLimitedSupply'
 import { RARE_DRAW_PERIOD_MS } from './constants'
 import { seedCommonBook, refreshLimitedSupplyBook } from './supply'
 import { priceLevel } from './pricing'
+import { pruneRelayOffers } from './relayLedger'
 
 /* ═══════════ 初始化 ═══════════ */
 
@@ -12,6 +13,7 @@ import { priceLevel } from './pricing'
  * 离线结算时由 advanceMarket 传"离线起点"，使整段离线也按窗口推进（订单过期/补单/撮合）。 */
 export function ensureMarket(state: GameState, ctx: SimContext, opts?: { openAtGameMs?: number }): void {
   const mk = state.market
+  pruneRelayOffers(state, opts?.openAtGameMs ?? state.gameMs)
   const freshInit = mk.lastTickGameMs === 0 && mk.orderSeq === 0 && Object.keys(mk.pools).length === 0
   const openAt = opts?.openAtGameMs !== undefined ? Math.max(0, Math.floor(opts.openAtGameMs)) : state.gameMs
   // P2 抽取节拍基准（零迁移容错）：旧档无 slowDrawLastGameMs 时补"开盘前一周期"→ 首个窗口即触发抽取
@@ -31,7 +33,7 @@ export function ensureMarket(state: GameState, ctx: SimContext, opts?: { openAtG
     mk.npcBuy[key] ??= []
     mk.npcSell[key] ??= []
     // 目录停售后撤下旧档NPC供应，收购簿与玩家订单不动。
-    if (def.playerBuyable === false && mk.npcSell[key]!.length > 0) mk.npcSell[key] = []
+    if (def.playerBuyable === false && mk.npcSell[key]!.length > 0) mk.npcSell[key] = mk.npcSell[key]!.filter(o => o.relay)
     mk.digest[key] ??= { qty: 0, price: 0, perWindow: 0 }
     mk.priceHistory[key] ??= []
   }
@@ -65,7 +67,7 @@ export function ensureMarket(state: GameState, ctx: SimContext, opts?: { openAtG
     if (!hasLimitedSupply(def)) continue
     const pool = mk.pools[def.key]!
     const fresh = ensureLimitedSupply(pool, def, openAt)
-    const qty = mk.npcSell[def.key]!.reduce((sum, order) => sum + order.qty, 0)
+    const qty = mk.npcSell[def.key]!.reduce((sum, order) => sum + (order.relay ? 0 : order.qty), 0)
     if (fresh || qty !== pool.limitedSupply!.remaining) refreshLimitedSupplyBook(state, ctx, def, openAt)
   }
 }

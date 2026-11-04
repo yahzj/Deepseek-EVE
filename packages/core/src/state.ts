@@ -1,4 +1,5 @@
 import type { BattleState } from './combat/state/battle'
+import type { MarketRelayState } from './market/relayTypes'
 import { commandShipDeployed } from './combat/command/locks'
 import type { DroneLossReport, BattleReportRecord } from './combat/state/report'
 /**
@@ -787,6 +788,8 @@ export interface NpcMarketOrder {
   /** P2 暗市单标记（2026-09-06）：闸内 rare 商品以低权重命中全局配额时刷出的 ×4 价订单；
    * 可绕过常驻声望拦截买入（外观同普通稀有单，玩家向隐身） */
   bm?: boolean
+  /** 外来报价只由玩家成交消费，不参与 NPC 内部消化或重新上传。 */
+  relay?: { quoteId: string }
 }
 
 /** 内部消化队列（NPC 冲突订单随时间推进成交，不瞬消） */
@@ -800,6 +803,7 @@ export interface MarketDigestEntry {
 
 /** 市场（v9；商品目录与池初始化由引擎按 ctx 惰性完成） */
 export interface MarketState {
+  relay?: MarketRelayState
   /** 商品池：good key -> 池/冲击状态 */
   pools: Record<string, MarketPoolState>
   /** NPC 需求簿：key -> 收购单数组（玩家卖出成交对象） */
@@ -821,6 +825,8 @@ export interface MarketState {
 
 /** 我的挂单（限价；side='sell' 卖出 / 'buy' 买入） */
 export interface PlayerOrder {
+  relayId?: string
+  remoteApplied?: number
   id: number
   side: 'sell' | 'buy'
   good: string

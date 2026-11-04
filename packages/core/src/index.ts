@@ -120,6 +120,8 @@ export { battleCardRangeOf, pendingBattleRangeView, cancelBattleRange } from './
 export { confirmBattleRange } from './battleRangeConfirm'
 export type { BattleAmmoPreloadRow, BattleAmmoPreloadPlan } from './battleAmmoPreflight'
 export { marketTradingGoods } from './market'
+export type { MarketRelayRequest, MarketRelayResponse, MarketRelayPolicy, MarketRelayOffer, MarketRelaySettlement } from './market/relayTypes'
+export { prepareMarketRelayRequest, applyMarketRelayResponse, marketRelayPendingRequest } from './market/relay'
 export { volleyGunCountOf, volleyDamageShareOf } from './combatVolley'
 export type { BlackMarketState, BlackMarketOffer } from './state'
 export { enemyFormationCard, rangeEwFlagshipCard } from './combat/formation'

@@ -9,6 +9,8 @@ import { tradeNoteText, goodName, tradeNoteId } from './labels'
 import type { TradeNote } from './labels'
 import { depositGood } from './stock'
 import { refreshLimitedSupplyBook } from './supply'
+import { bmGateLocked, goodLockedReason, playerTradingGood } from './access'
+import { relayAvailableQty, relayTradable, recordRelayFill } from './relayLedger'
 
 /** 卖单成交：钱入账（物品含声望加成，成交扣贸易税），escrow 扣减，池吸收，记录净卖量 */
 export function settleSell(
@@ -18,26 +20,35 @@ export function settleSell(
   npc: NpcMarketOrder,
   take: number,
   idx: number,
+  remote = false,
 ): void {
   const def = ctx.marketGoods.get(order.good)
+  if (!def || !playerTradingGood(ctx, def)) return
+  if (!remote && (!relayTradable(state, npc) || (!npc.relay && def.playerSellable === false))) return
+  const shipSale = !!state.escrowShips[order.id]
+  take = Math.min(take, order.qty, remote ? take : relayAvailableQty(state, npc), shipSale ? 1 : state.escrowItems[order.good] ?? 0)
+  if (take <= 0) return
   const mult = sellStandingMult(state, def)
-  const gross = ceilFinalQuantity(take * order.price * mult)
+  const gross = ceilFinalQuantity(take * (npc.relay && !remote ? npc.price : order.price) * mult)
   const net = netAfterTax(state, ctx, gross)
   const tax = gross - net
   state.wallet.isk += net
   // 市场链（2026-09-18 船长：「挂单按照市场交易收入计数」·「按税后算」）：卖出入账即累计
   bumpFirst(state, 'marketIncome', net)
-  state.escrowItems[order.good] = Math.max(0, (state.escrowItems[order.good] ?? 0) - take)
+  if (!shipSale) state.escrowItems[order.good] = Math.max(0, (state.escrowItems[order.good] ?? 0) - take)
   order.filled += take
   order.qty -= take
   order.windowFilled = (order.windowFilled ?? 0) + take
-  npc.qty -= take
+  if (!remote) {
+    recordRelayFill(state, npc, take)
+    npc.qty -= take
+  }
   const pool = state.market.pools[order.good]
-  if (pool) {
+  if (pool && !remote && !npc.relay) {
     pool.netVol -= take
     if (def?.poolTarget && def.poolTarget > 0) pool.q += take
   }
-  if (npc.qty <= 0) state.market.npcBuy[order.good]!.splice(idx, 1)
+  if (!remote && npc.qty <= 0) state.market.npcBuy[order.good]!.splice(idx, 1)
   const note: TradeNote = tax > 0 ? (mult > 1 ? 'bonusTax' : 'tax') : mult > 1 ? 'bonus' : ''
   const taxNote = tradeNoteText(note, tax)
   if (state.escrowShips[order.id]) {
@@ -61,9 +72,12 @@ export function settleSell(
 /** 买单成交：**从预扣里结算**（挂价 × 成交量），挂价高于实际成交价时把价差退回钱包，货入对应库存，池售出。
  *  2026-09-11（船长裁决「甲」预扣冻结）：钱在挂单时已扣，故此处不再看钱包；
  *  **遗留单**（改动前挂的、`escrowIsk` 缺省 0）仍按旧口径——钱包够才成交，不够继续挂着等。 */
-export function settleBuy(state: GameState, ctx: SimContext, order: PlayerOrder, npc: NpcMarketOrder, idx: number, atGameMs: number): void {
+export function settleBuy(state: GameState, ctx: SimContext, order: PlayerOrder, npc: NpcMarketOrder, idx: number, atGameMs: number, remote = false): void {
   const def = ctx.marketGoods.get(order.good)
-  const take = Math.min(order.qty, npc.qty, limitedSupplyAvailable(state.market.pools[order.good], def))
+  if (!def || !playerTradingGood(ctx, def) || goodLockedReason(state, def) !== null) return
+  if (bmGateLocked(state, def) && (remote || npc.relay || !npc.bm)) return
+  if (!remote && (!relayTradable(state, npc, atGameMs) || (!npc.relay && def.playerBuyable === false))) return
+  const take = Math.min(order.qty, remote ? npc.qty : relayAvailableQty(state, npc, atGameMs), remote || npc.relay ? Infinity : limitedSupplyAvailable(state.market.pools[order.good], def), def.kind === 'ship' ? 50 : Infinity)
   if (take <= 0) return
   const actual = take * npc.price // 实付给 NPC
   const reserved = take * order.price // 本笔应从预扣里核销的额度
@@ -78,17 +92,20 @@ export function settleBuy(state: GameState, ctx: SimContext, order: PlayerOrder,
     state.wallet.isk -= actual
     order.escrowIsk = 0
   }
-  consumeLimitedSupply(state.market.pools[order.good], def, take, atGameMs)
+  if (!remote && !npc.relay) consumeLimitedSupply(state.market.pools[order.good], def, take, atGameMs)
   depositGood(state, ctx, order.good, take)
   order.filled += take
   order.qty -= take
-  npc.qty -= take
+  if (!remote) {
+    recordRelayFill(state, npc, take)
+    npc.qty -= take
+  }
   const pool = state.market.pools[order.good]
-  if (pool) {
+  if (pool && !remote && !npc.relay) {
     pool.netVol += take
     if (def?.poolTarget && def.poolTarget > 0) pool.q = Math.max(0, pool.q - take)
   }
-  if (npc.qty <= 0) state.market.npcSell[order.good]!.splice(idx, 1)
+  if (!remote && npc.qty <= 0) state.market.npcSell[order.good]!.splice(idx, 1)
   // 成交完毕：预扣余量（四舍五入/遗留单残留）一并退回钱包，避免挂单移出后钱失踪
   if (order.qty <= 0 && (order.escrowIsk ?? 0) > 0) {
     state.wallet.isk += order.escrowIsk ?? 0
@@ -151,6 +168,7 @@ export function settleSnatchSell(state: GameState, ctx: SimContext, order: Playe
  *  2026-09-11（预扣冻结）：钱在挂单时已扣 ⇒ 从预扣里核销 1 件；遗留单（无预扣）仍看钱包。 */
 export function settleSnatchBuy(state: GameState, ctx: SimContext, order: PlayerOrder, atGameMs: number): void {
   const def = ctx.marketGoods.get(order.good)
+  if (!def || def.playerBuyable === false || goodLockedReason(state, def) !== null || bmGateLocked(state, def)) return
   if (limitedSupplyAvailable(state.market.pools[order.good], def) < 1) return
   const escrow = order.escrowIsk ?? 0
   if (escrow >= order.price) {

@@ -39,7 +39,7 @@
 
 - 游戏入口与页面：`apps/desktop/src/renderer/src/App.tsx`、`apps/desktop/src/renderer/src/pages/OnlineChatPage.tsx`。
 - 连接、历史与发送队列：`apps/desktop/src/renderer/src/features/cloud/useOnlineChat.ts`、`chatQueue.ts`；请求与会话复用同目录 `api.ts`、`preferences.ts`。
-- 后端聊天与历史接口：`H:\大鲸鱼\whale-server\src\chat.ts`、`H:\大鲸鱼\whale-server\src\http-api.ts`。
+- 后端聊天与历史接口：`H:\大鲸鱼\deepseek-EVE-Background\src\chat.ts`、`H:\大鲸鱼\deepseek-EVE-Background\src\http-api.ts`。
 - 本地桌面冒烟入口：`tools/online-chat-smoke.cjs`、`tools/online-chat-fixture.ts`。
 
 ## 同步后的本地验证
@@ -76,7 +76,7 @@
 
 ## 部署交接与待办
 
-- 后端部署交接：`H:\大鲸鱼\whale-server\docs\chat-deploy-handoff-20261103.md`。本批未部署、未公网联调；另一后端对话部署后再核验公网 HTTPS/WSS、鉴权、心跳与实际网络切换表现。
+- 后端部署交接：`H:\大鲸鱼\deepseek-EVE-Background\docs\chat-deploy-handoff-20261103.md`。本批未部署、未公网联调；另一后端对话部署后再核验公网 HTTPS/WSS、鉴权、心跳与实际网络切换表现。
 - WebSocket 的 token query 可能进入反向代理访问日志，部署对话仍需按交接核验日志脱敏；客户端不能隐藏请求 URL。船长所见频繁上下线的真实网络原因仍需部署端日志取证，本地修复与冒烟不替代线上原因确认。
 - 同步后网页生产 `build` 已通过；整库最终回归留待船长明确开始集中验收时执行，本批专项不能替代整库验收。
 - 既有“首次注册令牌撤销”另批待办保持，不在本批关闭。主树已在本地快进合入 `f0a43c0ba`，尚未推送；后续仍待船长测试验收、后端部署与公网联调及公告审核，尚未发布。

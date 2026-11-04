@@ -9,7 +9,8 @@ import { ensureMarket } from './initialize'
 import { bumpFirstMarketTrade, goodName } from './labels'
 import { sellStandingMult, marketSellSkillMult, netAfterTax, levelOf } from './pricing'
 import { pushSellOrder, placeBuyOrder } from './orders'
-import { goodLockedReason, bmGateLocked, marketGoodOf } from './access'
+import { goodLockedReason, bmGateLocked, marketGoodOf, playerTradingGood } from './access'
+import { relayAvailableQty, relayTradable, recordRelayFill } from './relayLedger'
 import { depositGood } from './stock'
 import { marketQuote } from './view'
 
@@ -22,20 +23,24 @@ export function sellAtMarket(
   ensureMarket(state, ctx)
   const mk = state.market
   const def = ctx.marketGoods.get(goodKey)
-  if (!def || qty <= 0) return { sold: 0, total: 0, avg: 0, remaining: qty }
+  if (!def || !playerTradingGood(ctx, def) || qty <= 0) return { sold: 0, total: 0, avg: 0, remaining: qty }
   let remaining = qty
   let total = 0
   const fillPrices: number[] = []
+  let npcSold = 0
   const buyList = mk.npcBuy[goodKey] ?? []
   const sorted = [...buyList].sort((a, b) => b.price - a.price)
   for (const npc of sorted) {
     if (remaining <= 0) break
-    const take = Math.min(remaining, npc.qty)
+    if (!relayTradable(state, npc) || (!npc.relay && def.playerSellable === false)) continue
+    const take = Math.min(remaining, relayAvailableQty(state, npc))
     const idx = buyList.indexOf(npc)
     if (idx < 0) continue
     total += take * npc.price
     fillPrices.push(npc.price)
     remaining -= take
+    recordRelayFill(state, npc, take)
+    if (!npc.relay) npcSold += take
     npc.qty -= take
     if (npc.qty <= 0) buyList.splice(idx, 1)
   }
@@ -55,8 +60,8 @@ export function sellAtMarket(
   state.escrowItems[goodKey] = Math.max(0, (state.escrowItems[goodKey] ?? 0) - sold)
   const pool = mk.pools[goodKey]
   if (pool) {
-    pool.netVol -= sold
-    if (def.poolTarget && def.poolTarget > 0) pool.q += sold
+    pool.netVol -= npcSold
+    if (def.poolTarget && def.poolTarget > 0) pool.q += npcSold
   }
   if (sold > 0) {
     const text =
@@ -124,17 +129,18 @@ export function buyAtMarket(
   ensureMarket(state, ctx)
   const mk = state.market
   const def = ctx.marketGoods.get(goodKey)
-  if (!def || qty <= 0) return { bought: 0, total: 0, avg: 0, remaining: qty, shipUid: null, blocked: 'no-stock' }
+  if (!def || !playerTradingGood(ctx, def) || qty <= 0) return { bought: 0, total: 0, avg: 0, remaining: qty, shipUid: null, blocked: 'no-stock' }
   if (goodLockedReason(state, def) !== null) {
     return { bought: 0, total: 0, avg: 0, remaining: qty, shipUid: null, blocked: 'standing' }
   }
-  if (def.playerBuyable === false) {
+  if (def.playerBuyable === false && !(mk.npcSell[goodKey] ?? []).some(o => o.relay && relayTradable(state, o))) {
     return { bought: 0, total: 0, avg: 0, remaining: qty, shipUid: null, blocked: 'not-buyable' } // 只收不卖（残骸等）
   }
   // P2 暗市闸：声望未达时只能吃暗市单（bm 标记），常驻单跳过
   const bmLock = bmGateLocked(state, def)
   let remaining = qty
   let total = 0
+  let npcBought = 0
   let shipUid: string | null = null
   let blocked: 'no-stock' | 'insufficient-isk' | 'standing' | undefined =
     (mk.npcSell[goodKey] ?? []).length === 0 ? 'no-stock' : undefined
@@ -142,12 +148,13 @@ export function buyAtMarket(
   const sorted = [...sellList].sort((a, b) => a.price - b.price)
   for (const npc of sorted) {
     if (remaining <= 0) break
-    if (bmLock && !npc.bm) {
+    if (!relayTradable(state, npc) || (!npc.relay && def.playerBuyable === false)) continue
+    if (bmLock && (npc.relay || !npc.bm)) {
       blocked = 'standing' // 单子在、但被声望闸跳过——不能报"没货"
       continue
     }
-    const take = Math.min(remaining, npc.qty, limitedSupplyAvailable(mk.pools[goodKey], def))
-    if (take <= 0) break
+    const take = Math.min(remaining, relayAvailableQty(state, npc), npc.relay ? Infinity : limitedSupplyAvailable(mk.pools[goodKey], def), def.kind === 'ship' ? 50 : Infinity)
+    if (take <= 0) continue
     const value = take * npc.price
     if (state.wallet.isk < value) {
       blocked = 'insufficient-isk' // 钱不够——同样不能报"没货"
@@ -156,7 +163,11 @@ export function buyAtMarket(
     const idx = sellList.indexOf(npc)
     if (idx < 0) continue
     state.wallet.isk -= value
-    consumeLimitedSupply(mk.pools[goodKey], def, take, state.gameMs)
+    if (!npc.relay) {
+      consumeLimitedSupply(mk.pools[goodKey], def, take, state.gameMs)
+      npcBought += take
+    }
+    recordRelayFill(state, npc, take)
     total += value
     remaining -= take
     const depUid = depositGood(state, ctx, goodKey, take)
@@ -169,8 +180,8 @@ export function buyAtMarket(
   if (bought > 0) bumpFirstMarketTrade(state)
   const pool = mk.pools[goodKey]
   if (pool) {
-    pool.netVol += bought
-    if (def.poolTarget && def.poolTarget > 0) pool.q = Math.max(0, pool.q - bought)
+    pool.netVol += npcBought
+    if (def.poolTarget && def.poolTarget > 0) pool.q = Math.max(0, pool.q - npcBought)
   }
   if (bought > 0) {
     addLog(

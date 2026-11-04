@@ -4,6 +4,8 @@ import {
   readCloudPreferences,
 } from './preferences'
 import type { CloudAuthResponse, CloudProfile, CloudSave, CloudSaveVersion } from './types'
+import type { MarketRelayRequest, MarketRelayResponse } from '@whale/core'
+import { MARKET_RELAY_MAX_BYTES, marketRelayJsonWithinLimit, marketRelayRequestShape, marketRelayResponseShape } from '../market/relay/protocol'
 
 // 兼容浏览器与 Node 的全局 fetch 类型，不要求引擎测试加载 DOM 类型库。
 type CloudRequestInit = NonNullable<Parameters<typeof globalThis.fetch>[1]> & {
@@ -43,6 +45,7 @@ export interface CloudApi {
   saveVersion(version: number, signal?: AbortSignal): Promise<CloudSave>
   uploadSave(data: string, baseVersion: number, signal?: AbortSignal): Promise<Pick<CloudSaveVersion, 'version' | 'size'>>
   chatHistory(channel: 'zh' | 'en', limit?: number, beforeId?: number, signal?: AbortSignal): Promise<CloudChatHistory>
+  marketRelaySync(payload: MarketRelayRequest, signal?: AbortSignal): Promise<MarketRelayResponse>
 }
 
 export interface CloudChatMessage {
@@ -327,6 +330,14 @@ export function createCloudApi(options: CloudApiOptions): CloudApi {
             && typeof message.text === 'string' && message.text.length <= 500
             && finiteInteger(message.created_at))
           && (body.nextBeforeId === undefined || body.nextBeforeId === null || finiteInteger(body.nextBeforeId, 1)), signal, 512 * 1024)
+    },
+    marketRelaySync: (payload, signal) => {
+      if (!marketRelayRequestShape(payload) || !marketRelayJsonWithinLimit(payload)) {
+        throw new CloudApiError(0, 'invalid_market_relay_request', 'invalid_market_relay_request')
+      }
+      return request('/api/market/relay/sync', json('POST', payload),
+        (body): body is MarketRelayResponse => marketRelayJsonWithinLimit(body) && marketRelayResponseShape(body, payload),
+        signal, MARKET_RELAY_MAX_BYTES)
     },
   }
 }

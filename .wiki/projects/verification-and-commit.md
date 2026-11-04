@@ -103,7 +103,7 @@ updated: 2026-11-02T13:58:22.734Z
 
 ## 相关页
 
-- 协作流程、四步闸门与跨域申请：[[collab-gates]]
+- 协作流程、确认闸门与跨域申请：[[collab-gates]]
 - 文档阅读、生成索引与归档：[[docs-system]]
 
 ## Sources

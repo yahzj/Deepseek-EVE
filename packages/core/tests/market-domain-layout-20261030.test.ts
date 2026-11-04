@@ -73,8 +73,12 @@ describe('市场域目录与兼容契约', () => {
       expect(ast.statements.every(ts.isExportDeclaration), file).toBe(true)
     }
     for (const dir of ['packages/core/src/market', 'packages/data/src/market', 'apps/desktop/src/renderer/src/features/market']) {
-      for (const name of readdirSync(resolve(ROOT, dir))) {
-        const file = resolve(ROOT, dir, name)
+      const collectSourceFiles = (directory: string): string[] => readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
+        const file = resolve(directory, entry.name)
+        if (entry.isDirectory()) return collectSourceFiles(file)
+        return entry.isFile() && /\.(?:[cm]?[jt]sx?)$/.test(entry.name) ? [file] : []
+      })
+      for (const file of collectSourceFiles(resolve(ROOT, dir))) {
         expect(readFileSync(file, 'utf8').trimEnd().split(/\r?\n/).length, file).toBeLessThanOrEqual(800)
       }
     }

@@ -127,8 +127,13 @@ describe('五种势力无人机永久图纸', () => {
     }
     for (const row of cases) {
       expect(state.market.npcSell[row.id] ?? []).toEqual([])
-      expect(buyAtMarket(state, ctx, row.id, 1).bought).toBe(0)
-      expect(placeBuyOrder(state, ctx, row.id, 1e9, 1)).toBeNull()
+      expect(buyAtMarket(state, ctx, row.id, 1).blocked).toBe('not-buyable')
+      const walletBeforeOrder = state.wallet.isk
+      const buyOrder = placeBuyOrder(state, ctx, row.id, 1e9, 1)
+      expect(buyOrder).toMatchObject({ side: 'buy', good: row.id, price: 1e9, qty: 1, escrowIsk: 1e9 })
+      expect(state.wallet.isk).toBe(walletBeforeOrder - 1e9)
+      expect(cancelOrder(state, ctx, buyOrder!.id)).toBe(true)
+      expect(state.wallet.isk).toBe(walletBeforeOrder)
       expect(Object.values(FOE_LAIR_GEAR).flat()).not.toContain(row.id)
       expect(Object.values(FRAGMENT_RECIPES).some(recipe => recipe.blueprintId === row.id)).toBe(false)
       for (const family of ['A', 'C', 'D', 'E', 'G']) expect(wormholeFamilyPoolOf(ctx, family).moduleBlueprints).not.toContain(row.id)

@@ -1,3 +1,4 @@
+import { isEn } from '../../../../i18n/locale'
 /**
  * 自动量化交易机器人面板（网格 / 定投 / 移动止盈）。
  *
@@ -109,14 +110,14 @@ function GridVisualizer({
         </div>
 
         <div className="ex-bot-viz-cur-block">
-          <span className="ex-bot-viz-lbl">当前市价</span>
+          <span className="ex-bot-viz-lbl">{T.colPrice}</span>
           <span className="ex-bot-viz-cur font-mono">{formatNum(cur)}</span>
           <span
             className={`ex-bot-viz-badge ${
               isBelow ? 'is-warn' : isAbove ? 'is-danger' : 'is-normal'
             }`}
           >
-            {isBelow ? '低于区间(等待入场)' : isAbove ? '击穿上限(已出局)' : '区间套利运行中'}
+            {isBelow ? T.botStatusWaiting : isAbove ? T.botStatusOut : T.botStatusRunning}
           </span>
         </div>
 
@@ -141,7 +142,7 @@ function GridVisualizer({
           <div
             className={`ex-bot-pin ${isBelow ? 'is-left' : isAbove ? 'is-right' : 'is-mid'}`}
             style={{ left: `${clampedPos}%` }}
-            title={`现价: ${formatNum(cur)} ISK (${clampedPos.toFixed(1)}%)`}
+            title={`${T.colPrice}: ${formatNum(cur)} ${T.creditUnit} (${clampedPos.toFixed(1)}%)`}
           >
             <div className="ex-bot-pin-line" />
             <div className="ex-bot-pin-head" />
@@ -152,13 +153,13 @@ function GridVisualizer({
       {/* 底部指标概览 */}
       <div className="ex-bot-viz-foot">
         <span className="ex-bot-stat-pill">
-          网格密度: <b className="font-mono">{validGrids} 格</b>
+          {T.botDensity}: <b className="font-mono">{validGrids} {isEn() ? 'grids' : '格'}</b>
         </span>
         <span className="ex-bot-stat-pill">
-          单格价差: <b className="font-mono">{formatNum(stepPrice)} ISK</b>
+          {T.botStepDiff}: <b className="font-mono">{formatNum(stepPrice)} {T.creditUnit}</b>
         </span>
         <span className="ex-bot-stat-pill">
-          预估单格净利: <b className="font-mono">{estProfitPerGrid.toFixed(2)}%</b>
+          {T.botEstNetProfit}: <b className="font-mono">{estProfitPerGrid.toFixed(2)}%</b>
         </span>
       </div>
     </div>
@@ -266,23 +267,23 @@ function StrategyCardItem({
         {isGrid ? (
           <>
             <div className="ex-bot-metric-col">
-              <span className="ex-bot-metric-lbl">价格区间</span>
+              <span className="ex-bot-metric-lbl">{T.botPriceRange}</span>
               <span className="ex-bot-metric-val font-mono">
                 {formatNum(lowerPrice)} ~ {formatNum(upperPrice)}
               </span>
             </div>
             <div className="ex-bot-metric-col">
-              <span className="ex-bot-metric-lbl">套利次数</span>
-              <span className="ex-bot-metric-val font-mono">{tradeMatches} 笔</span>
+              <span className="ex-bot-metric-lbl">{T.botTradeMatches}</span>
+              <span className="ex-bot-metric-val font-mono">{tradeMatches} {isEn() ? 'trades' : '笔'}</span>
             </div>
             <div className="ex-bot-metric-col">
-              <span className="ex-bot-metric-lbl">已实现利润</span>
+              <span className="ex-bot-metric-lbl">{T.botRealizedProfit}</span>
               <span className="ex-bot-metric-val font-mono is-profit">
-                +{formatNum(realizedProfit)} ISK
+                +{formatNum(realizedProfit)} {T.creditUnit}
               </span>
             </div>
             <div className="ex-bot-metric-col">
-              <span className="ex-bot-metric-lbl">预估年化</span>
+              <span className="ex-bot-metric-lbl">{T.botEstApy}</span>
               <span className="ex-bot-metric-val font-mono is-apr">{estApr}%</span>
             </div>
           </>
@@ -292,15 +293,15 @@ function StrategyCardItem({
           <>
             <div className="ex-bot-metric-col">
               <span className="ex-bot-metric-lbl">{T.strategyAmount}</span>
-              <span className="ex-bot-metric-val font-mono">{amount(Number(p.amount ?? 0))} ISK</span>
+              <span className="ex-bot-metric-val font-mono">{amount(Number(p.amount ?? 0))} {T.creditUnit}</span>
             </div>
             <div className="ex-bot-metric-col">
               <span className="ex-bot-metric-lbl">{T.strategyInterval}</span>
-              <span className="ex-bot-metric-val font-mono">{Math.round(Number(p.intervalSec ?? 0))} 秒</span>
+              <span className="ex-bot-metric-val font-mono">{Math.round(Number(p.intervalSec ?? 0))} {isEn() ? 's' : '秒'}</span>
             </div>
             <div className="ex-bot-metric-col">
-              <span className="ex-bot-metric-lbl">执行状态</span>
-              <span className="ex-bot-metric-val font-mono">循环定投中</span>
+              <span className="ex-bot-metric-lbl">{T.botStatus}</span>
+              <span className="ex-bot-metric-val font-mono">{T.botDcaRunning}</span>
             </div>
           </>
         ) : null}
@@ -308,16 +309,16 @@ function StrategyCardItem({
         {isTp ? (
           <>
             <div className="ex-bot-metric-col">
-              <span className="ex-bot-metric-lbl">激活涨幅</span>
+              <span className="ex-bot-metric-lbl">{T.strategyActivate}</span>
               <span className="ex-bot-metric-val font-mono">+{Number(p.activatePct ?? 0)}%</span>
             </div>
             <div className="ex-bot-metric-col">
-              <span className="ex-bot-metric-lbl">回撤止盈</span>
+              <span className="ex-bot-metric-lbl">{T.strategyTrail}</span>
               <span className="ex-bot-metric-val font-mono">{Number(p.trailPct ?? 0)}%</span>
             </div>
             <div className="ex-bot-metric-col">
               <span className="ex-bot-metric-lbl">{T.strategyQty}</span>
-              <span className="ex-bot-metric-val font-mono">{amount(qty)} 股</span>
+              <span className="ex-bot-metric-val font-mono">{amount(qty)} {T.sharesSuffix}</span>
             </div>
           </>
         ) : null}
@@ -389,47 +390,47 @@ export function BotPanel({
     const errs: Record<string, string> = {}
     if (template === 'grid') {
       if (!Number.isFinite(numLower) || numLower <= 0) {
-        errs.lowerPrice = '网格下限必须大于 0'
+        errs.lowerPrice = T.botGridErrLower
       }
       if (!Number.isFinite(numUpper) || numUpper <= 0) {
-        errs.upperPrice = '网格上限必须大于 0'
+        errs.upperPrice = T.botGridErrUpper
       } else if (Number.isFinite(numLower) && numUpper <= numLower) {
-        errs.upperPrice = '网格上限必须高于网格下限'
+        errs.upperPrice = T.botGridErrUpperGtLower
       }
       if (!Number.isFinite(numGrids) || numGrids < 2 || numGrids > 50) {
-        errs.grids = '网格格数必须在 2 ~ 50 格之间'
+        errs.grids = T.botGridErrGrids
       }
       if (!Number.isFinite(numQty) || numQty < 1) {
-        errs.qty = '每格委托数量至少为 1 股'
+        errs.qty = T.botGridErrQty
       }
       if (estTotalGridInvestment > availableCash) {
-        errs.cash = `预估总投入 (${formatNum(estTotalGridInvestment)} ISK) 超出可用资金 (${formatNum(availableCash)} ISK)`
+        errs.cash = isEn() ? `Est. total investment (${formatNum(estTotalGridInvestment)} Credits) exceeds available cash (${formatNum(availableCash)} Credits)` : `预估总投入 (${formatNum(estTotalGridInvestment)} {T.creditUnit}) 超出可用资金 (${formatNum(availableCash)} 信用点)`
       }
     } else if (template === 'dca') {
       const amt = Number(dcaAmountText)
       const intv = Number(dcaIntervalText)
       if (!Number.isFinite(amt) || amt <= 0) {
-        errs.dcaAmount = '定投金额必须大于 0'
+        errs.dcaAmount = T.botDcaErrAmount
       } else if (amt > availableCash) {
-        errs.dcaAmount = `定投金额超出当前可用资金 (${formatNum(availableCash)} ISK)`
+        errs.dcaAmount = isEn() ? `DCA amount exceeds available cash (${formatNum(availableCash)} Credits)` : `定投金额超出当前可用资金 (${formatNum(availableCash)} 信用点)`
       }
       if (!Number.isFinite(intv) || intv < 3) {
-        errs.dcaInterval = '定投执行间隔至少为 3 秒'
+        errs.dcaInterval = T.botDcaErrInterval
       }
     } else {
       const act = Number(tpActivateText)
       const tr = Number(tpTrailText)
       const q = Math.round(Number(tpQtyText))
       if (!Number.isFinite(act) || act <= 0) {
-        errs.tpActivate = '盈利激活涨幅需大于 0%'
+        errs.tpActivate = T.botTpErrActivate
       }
       if (!Number.isFinite(tr) || tr <= 0) {
-        errs.tpTrail = '回撤止盈比例需大于 0%'
+        errs.tpTrail = T.botTpErrTrail
       } else if (Number.isFinite(act) && tr >= act) {
-        errs.tpTrail = '回撤比例必须小于激活涨幅'
+        errs.tpTrail = T.botTpErrTrailLt
       }
       if (!Number.isFinite(q) || q < 1) {
-        errs.tpQty = '止盈委托数量至少为 1 股'
+        errs.tpQty = T.botTpErrQty
       }
     }
     return errs
@@ -566,7 +567,7 @@ export function BotPanel({
             <div className="ex-bot-form-title-row">
               <h4 className="ex-subtitle">{T.strategyCreateTitle}</h4>
               <span className="ex-bot-cash-hint">
-                {T.strategyAvailCash}: <b className="font-mono">{formatNum(availableCash)} ISK</b>
+                {T.strategyAvailCash}: <b className="font-mono">{formatNum(availableCash)} {T.creditUnit}</b>
               </span>
             </div>
 
@@ -591,7 +592,7 @@ export function BotPanel({
               <div className="ex-bot-grid-form">
                 <div className="ex-form-grid">
                   <label className="ex-field" htmlFor={`${uniquePrefix}-lower`}>
-                    <span className="ex-label">{T.strategyLower} (ISK)</span>
+                    <span className="ex-label">{T.strategyLower} ({T.creditUnit})</span>
                     <input
                       id={`${uniquePrefix}-lower`}
                       className={`ex-input ex-num${touched.lowerPrice && errors.lowerPrice ? ' has-error' : ''}`}
@@ -606,7 +607,7 @@ export function BotPanel({
                   </label>
 
                   <label className="ex-field" htmlFor={`${uniquePrefix}-upper`}>
-                    <span className="ex-label">{T.strategyUpper} (ISK)</span>
+                    <span className="ex-label">{T.strategyUpper} ({T.creditUnit})</span>
                     <input
                       id={`${uniquePrefix}-upper`}
                       className={`ex-input ex-num${touched.upperPrice && errors.upperPrice ? ' has-error' : ''}`}
@@ -621,7 +622,7 @@ export function BotPanel({
                   </label>
 
                   <label className="ex-field" htmlFor={`${uniquePrefix}-grids`}>
-                    <span className="ex-label">{T.strategyGrids} (2~50格)</span>
+                    <span className="ex-label">{T.strategyGrids} {isEn() ? '(2~50)' : '(2~50格)'}</span>
                     <input
                       id={`${uniquePrefix}-grids`}
                       className={`ex-input ex-num${touched.grids && errors.grids ? ' has-error' : ''}`}
@@ -636,7 +637,7 @@ export function BotPanel({
                   </label>
 
                   <label className="ex-field" htmlFor={`${uniquePrefix}-qty`}>
-                    <span className="ex-label">{T.strategyQty} (股/格)</span>
+                    <span className="ex-label">{T.strategyQty} {isEn() ? '(shs/grid)' : '(股/格)'}</span>
                     <input
                       id={`${uniquePrefix}-qty`}
                       className={`ex-input ex-num${touched.qty && errors.qty ? ' has-error' : ''}`}
@@ -657,12 +658,12 @@ export function BotPanel({
                     <span className="ex-dim">
                       <Information size={12} /> {T.strategySingleGrid}:
                     </span>
-                    <span className="font-mono">{formatNum(singleGridAmount)} ISK</span>
+                    <span className="font-mono">{formatNum(singleGridAmount)} {T.creditUnit}</span>
                   </div>
                   <div className="ex-bot-fund-row">
                     <span className="ex-dim">{T.strategyEstTotal}:</span>
                     <span className={`font-mono${errors.cash ? ' is-cash-overflow' : ''}`}>
-                      {formatNum(estTotalGridInvestment)} ISK
+                      {formatNum(estTotalGridInvestment)} {T.creditUnit}
                     </span>
                   </div>
                   {errors.cash ? <div className="ex-field-error">{errors.cash}</div> : null}
@@ -682,7 +683,7 @@ export function BotPanel({
             {template === 'dca' ? (
               <div className="ex-form-grid">
                 <label className="ex-field" htmlFor={`${uniquePrefix}-dca-amt`}>
-                  <span className="ex-label">{T.strategyAmount} (ISK)</span>
+                  <span className="ex-label">{T.strategyAmount} ({T.creditUnit})</span>
                   <input
                     id={`${uniquePrefix}-dca-amt`}
                     className={`ex-input ex-num${touched.dcaAmount && errors.dcaAmount ? ' has-error' : ''}`}
@@ -697,7 +698,7 @@ export function BotPanel({
                 </label>
 
                 <label className="ex-field" htmlFor={`${uniquePrefix}-dca-int`}>
-                  <span className="ex-label">{T.strategyInterval} (≥3秒)</span>
+                  <span className="ex-label">{T.strategyInterval} {isEn() ? '(≥3s)' : '(≥3秒)'}</span>
                   <input
                     id={`${uniquePrefix}-dca-int`}
                     className={`ex-input ex-num${touched.dcaInterval && errors.dcaInterval ? ' has-error' : ''}`}
@@ -747,7 +748,7 @@ export function BotPanel({
                 </label>
 
                 <label className="ex-field" htmlFor={`${uniquePrefix}-tp-qty`}>
-                  <span className="ex-label">{T.strategyQty} (股)</span>
+                  <span className="ex-label">{T.strategyQty} ({T.sharesSuffix})</span>
                   <input
                     id={`${uniquePrefix}-tp-qty`}
                     className={`ex-input ex-num${touched.tpQty && errors.tpQty ? ' has-error' : ''}`}

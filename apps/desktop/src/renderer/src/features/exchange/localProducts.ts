@@ -65,7 +65,7 @@ export function localBondHolding(now: number = Date.now()): BondHolding {
 export function buyLocalBond(engine: GameEngine, amount: number): BondHolding {
   const value = Math.floor(amount)
   if (!(value > 0) || !Number.isSafeInteger(value)) throw new Error('请输入正整数金额')
-  if (!engine.exchangeWalletDelta(-value)) throw new Error('本地存档 ISK 不足')
+  if (!engine.exchangeWalletDelta(-value)) throw new Error('本地存档信用点不足')
   const prev = readState()
   const startedAt = prev?.startedAt ?? Date.now()
   const principal = (prev?.principal ?? 0) + value

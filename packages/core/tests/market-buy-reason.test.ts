@@ -12,7 +12,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import type { GameState, SimContext } from '../src/index'
-import { advanceGame, buyAtMarket, createInitialState, marketQuote } from '../src/index'
+import { advanceGame, buyAtMarket, createInitialState, marketQuote, marketTradingGoods } from '../src/index'
 import { makeTestCtx } from './helpers'
 import { clearInitialStanding, setStanding } from './helpers'
 
@@ -77,6 +77,7 @@ describe('市价买入：失败原因分诊（不再一律报「只剩 0 件」�
     expect(locked.blocked).toBe('standing')
 
     marketQuote(state, ctx, 'wreck-x')
+    expect(marketTradingGoods(ctx).some(good => good.key === 'wreck-x')).toBe(true)
     const noBuy = buyAtMarket(state, ctx, 'wreck-x', 1)
     expect(noBuy.bought).toBe(0)
     expect(noBuy.blocked).toBe('not-buyable')

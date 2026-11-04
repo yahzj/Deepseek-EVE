@@ -1,3 +1,4 @@
+import { isEn } from '../../../i18n/locale'
 /**
  * 极简模式 · 双向多空看涨看跌交易舱（SimpleTrade）。
  *
@@ -89,24 +90,24 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
   // 防呆校验状态判断
   let disableReason: string | null = null
   if (busy) {
-    disableReason = tab === 'buy' ? '买多订单提交中…' : '卖空订单提交中…'
+    disableReason = tab === 'buy' ? T.submittingBuy : T.submittingShort
   } else if (cash <= 0) {
-    disableReason = '当前可用资金为 0，请先补充资金'
+    disableReason = T.noAvailableCash
   } else if (!cashAmount || inputCashNum <= 0) {
-    disableReason = '请输入投入金额以计算交易股数'
+    disableReason = T.enterAmountPrompt
   } else if (inputCashNum > cash) {
-    disableReason = `投入金额超过可用资金（可用上限 ${money(cash)}）`
+    disableReason = isEn() ? `Amount exceeds available cash (limit ${money(cash)})` : `投入金额超过可用资金（可用上限 ${money(cash)}）`
   } else if (tab === 'buy' && estBuyQty <= 0) {
-    disableReason = `金额不足以买入 1 股（现价 ${price(currentPrice)}）`
+    disableReason = isEn() ? `Amount insufficient to buy 1 share (mark ${price(currentPrice)})` : `金额不足以买入 1 股（现价 ${price(currentPrice)}）`
   } else if (tab === 'short' && estShortQty <= 0) {
-    disableReason = `保证金不足以做空 1 股（现价 ${price(currentPrice)}）`
+    disableReason = isEn() ? `Margin insufficient to short 1 share (mark ${price(currentPrice)})` : `保证金不足以做空 1 股（现价 ${price(currentPrice)}）`
   }
   const canSubmit = !busy && disableReason === null
 
   const handleBuy = async () => {
     if (busy) return
     if (estBuyQty <= 0) {
-      onToast('请输入有效的投入金额', true)
+      onToast(T.toastBondInvalid, true)
       return
     }
     if (inputCashNum > cash) {
@@ -126,7 +127,7 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
         qty: estBuyQty,
         leverage: 1,
       })
-      onToast(TF.simpleOrderDone(code, '买多', amount(order.filledQty ?? estBuyQty)))
+      onToast(TF.simpleOrderDone(code, T.buy, amount(order.filledQty ?? estBuyQty)))
       setCashAmount('')
       setActiveRatio(null)
     } catch (err) {
@@ -159,7 +160,7 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
         qty: estShortQty,
         leverage: 2,
       })
-      onToast(TF.simpleOrderDone(code, '卖空', amount(order.filledQty ?? estShortQty)))
+      onToast(TF.simpleOrderDone(code, T.sell, amount(order.filledQty ?? estShortQty)))
       setCashAmount('')
       setActiveRatio(null)
     } catch (err) {
@@ -232,8 +233,8 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
       <div className="ex-simple-trade-body">
         <div className="ex-simple-trade-form">
           <div className="ex-simple-trade-info-row">
-            <span className="ex-dim">可用: <b className="ex-num">{money(cash)}</b></span>
-            <span className="ex-dim">市价: <b className="ex-num">{price(currentPrice)}</b></span>
+            <span className="ex-dim">{T.availCashShort}: <b className="ex-num">{money(cash)}</b></span>
+            <span className="ex-dim">{T.marketPriceShort}: <b className="ex-num">{price(currentPrice)}</b></span>
           </div>
 
           <div className="ex-simple-input-group">
@@ -253,11 +254,11 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
                 className="ex-simple-input ex-num"
                 type="text"
                 inputMode="numeric"
-                placeholder={tab === 'buy' ? '输入买多金额 (ISK)' : '输入卖空保证金 (ISK)'}
+                placeholder={tab === 'buy' ? T.inputBuyPlaceholder : T.inputShortPlaceholder}
                 value={cashAmount}
                 onChange={handleCashChange}
                 onKeyDown={handleKeyDown}
-                aria-label={tab === 'buy' ? '买多金额' : '卖空保证金'}
+                aria-label={tab === 'buy' ? T.inputAmountLabel : T.simpleEstMargin}
               />
               {cashAmount !== '' && (
                 <button
@@ -270,7 +271,7 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
                   ×
                 </button>
               )}
-              <span className="ex-simple-input-unit">ISK</span>
+              <span className="ex-simple-input-unit">{T.creditUnit}</span>
               <button
                 type="button"
                 className="ex-simple-step-btn is-plus"
@@ -334,7 +335,7 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
             <div className="ex-simple-trade-preview">
               <div className="ex-simple-preview-row">
                 <span className="ex-dim">{T.estSharesLabel}</span>
-                <b className="ex-num ex-highlight-green">{amount(estBuyQty)} 股</b>
+                <b className="ex-num ex-highlight-green">{amount(estBuyQty)} {T.sharesSuffix}</b>
               </div>
               <div className="ex-simple-preview-row">
                 <span className="ex-dim">{T.estFeeLabel} (0.1%)</span>
@@ -344,8 +345,8 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
           ) : (
             <div className="ex-simple-trade-preview">
               <div className="ex-simple-preview-row">
-                <span className="ex-dim">预计做空 (2x)</span>
-                <b className="ex-num ex-highlight-red">{amount(estShortQty)} 股</b>
+                <span className="ex-dim">{isEn() ? 'Est. Fall (2x)' : '预计看跌 (2x)'}</span>
+                <b className="ex-num ex-highlight-red">{amount(estShortQty)} {T.sharesSuffix}</b>
               </div>
               <div className="ex-simple-preview-row">
                 <span className="ex-dim">{T.simpleEstMargin}</span>
@@ -365,9 +366,9 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
               className="ex-simple-big-action-btn is-buy"
               disabled={!canSubmit}
               onClick={handleBuy}
-              title={canSubmit ? '提交市价买多（回合末集合竞价成交）(Enter)' : (disableReason ?? '')}
+              title={canSubmit ? '提交看涨下注（回合末集合竞价成交）(Enter)' : (disableReason ?? '')}
             >
-              {busy ? '买多下单中…' : `${T.simpleBuyAction} · ${code}`}
+              {busy ? T.submittingBuy : `${T.simpleBuyAction} · ${code}`}
             </button>
           ) : (
             <button
@@ -375,9 +376,9 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
               className="ex-simple-big-action-btn is-short"
               disabled={!canSubmit}
               onClick={handleShort}
-              title={canSubmit ? '提交融券卖空（回合末集合竞价成交）(Enter)' : (disableReason ?? '')}
+              title={canSubmit ? '提交看跌下注（回合末集合竞价成交）(Enter)' : (disableReason ?? '')}
             >
-              {busy ? '卖空开仓中…' : `${T.simpleShortAction} · ${code}`}
+              {busy ? T.submittingShort : `${T.simpleShortAction} · ${code}`}
             </button>
           )}
 
@@ -385,7 +386,7 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
           <div className={`ex-simple-trade-guard-hint ${canSubmit ? 'is-ready' : 'is-disabled'}`}>
             <span className="ex-simple-guard-dot" />
             <span className="ex-simple-guard-text">
-              {canSubmit ? '就绪：按 Enter 键或点击上方按钮直接下单（回合末集合竞价成交）' : disableReason}
+              {canSubmit ? T.orderReadyHint : disableReason}
             </span>
           </div>
 
@@ -394,7 +395,7 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
             <div className="ex-simple-trade-preview" role="status" aria-label={T.simplePendingTitle}>
               <div className="ex-simple-preview-row">
                 <span className="ex-dim">{T.simplePendingTitle}（{T.simplePendingNote}）</span>
-                <b className="ex-num">{snap.orders.length} 笔</b>
+                <b className="ex-num">{snap.orders.length} {isEn() ? 'orders' : '笔'}</b>
               </div>
               {snap.orders.slice(0, 3).map((order) => (
                 <div className="ex-simple-preview-row" key={order.id}>
@@ -402,7 +403,7 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
                     {order.side === 'buy' ? '买' : '卖'} {order.code} ·{' '}
                     {order.type === 'market' ? '市价' : price(order.price ?? 0)}
                   </span>
-                  <span className="ex-num">{amount(order.qty)} 股 · 待回合末成交</span>
+                  <span className="ex-num">{amount(order.qty)} {T.sharesSuffix} · {isEn() ? 'Round-end settlement' : '待回合末成交'}</span>
                 </div>
               ))}
             </div>

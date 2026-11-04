@@ -1,3 +1,4 @@
+import { isEn } from '../../i18n/locale'
 /**
  * 图表周期定义（**单点**）——`分时 / M1 / M5 / H1 / 日线 / 周线`。
  *
@@ -68,17 +69,17 @@ export interface ChartPeriodSpec {
 export const CHART_PERIODS: ChartPeriodSpec[] = [
   {
     id: 'intraday',
-    label: '分时',
-    bucketMs: MINUTE_MS,
+    get label() { return isEn() ? 'Line' : '分时' },
+    bucketMs: 10_000,
     historyCount: INTRADAY_MAX_POINTS,
-    barSeconds: 60,
+    barSeconds: 10,
     axisLabel: (ts) => {
       const d = new Date(ts)
       return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`
     },
     tipLabel: (ts) => {
       const d = new Date(ts)
-      return `${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`
+      return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`
     },
   },
   {
@@ -119,7 +120,7 @@ export const CHART_PERIODS: ChartPeriodSpec[] = [
     barSeconds: 3_600,
     axisLabel: (ts) => {
       const d = new Date(ts)
-      return `${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}时`
+      return isEn() ? `${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:00` : `${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}时`
     },
     tipLabel: (ts) => {
       const d = new Date(ts)
@@ -128,7 +129,7 @@ export const CHART_PERIODS: ChartPeriodSpec[] = [
   },
   {
     id: 'd1',
-    label: '日线',
+    get label() { return isEn() ? 'D1' : '日线' },
     bucketMs: 86_400_000,
     historyCount: HISTORY_BARS,
     barSeconds: 86_400,
@@ -143,7 +144,7 @@ export const CHART_PERIODS: ChartPeriodSpec[] = [
   },
   {
     id: 'd7',
-    label: '周线',
+    get label() { return isEn() ? 'W1' : '周线' },
     bucketMs: 7 * 86_400_000,
     historyCount: HISTORY_BARS,
     barSeconds: 7 * 86_400,
@@ -153,7 +154,7 @@ export const CHART_PERIODS: ChartPeriodSpec[] = [
     },
     tipLabel: (ts) => {
       const d = new Date(ts)
-      return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}（周）`
+      return isEn() ? `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} (W)` : `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}（周）`
     },
   },
 ]

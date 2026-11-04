@@ -8,6 +8,7 @@ import { RARE_DRAW_PERIOD_MS, PRICE_SAMPLE_MS, PRICE_HISTORY_LIMIT } from './con
 import { matchPlayerOrders, absorbViaStation } from './matching'
 import { priceLevel } from './pricing'
 import { referenceVol } from './book'
+import { pruneRelayOffers } from './relayLedger'
 
 /* ═══════════ 内部消化与刷单（窗口推进） ═══════════ */
 
@@ -36,6 +37,7 @@ function processWindow(state: GameState, ctx: SimContext): void {
   const bal = ctx.balance.market
   const dt = bal.tickMs
   const nextNow = mk.lastTickGameMs + dt
+  pruneRelayOffers(state, nextNow)
   const regenK = 1 - Math.pow(0.5, dt / bal.poolRegenHalfMs)
   const decayK = 1 - Math.pow(0.5, dt / bal.shockDecayHalfMs)
   const noiseK = 1 - Math.pow(0.5, dt / bal.noiseHalfLifeMs)

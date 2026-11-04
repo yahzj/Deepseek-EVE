@@ -58,6 +58,7 @@ import { PRICE_HISTORY_LIMIT } from './market/constants'
 import { cleanHaulFleetLeg } from './hauling/types'
 import { cleanPirateEncounter } from './encounters/save'
 import { cleanSignalAutoEstimate } from './signalAuto/save'
+import { cleanMarketRelayState } from './market/relaySave'
 
 /** 存档文件格式标识（防止拿别的游戏的 JSON 硬读） */
 export const SAVE_FORMAT = 'whale-idle-save'
@@ -617,8 +618,8 @@ for (const [key, value] of Object.entries(licensesRaw)) {
    * 挂了 `bmStanding` ⇒ 引擎会把 `bm` 写进收购单，而原先这里只留 price/qty/expiresAtGameMs ⇒ **往返丢键**
    * （`save.test.ts` 的「引擎跑过的档不许丢键」护栏抓到 `market.npcBuy.<键>[].bm`）。缺省/非正 ⇒ 不写（老档零迁移）。
    */
-  const orderList = (rawList: unknown): Array<{ price: number; qty: number; expiresAtGameMs: number; bm?: number | boolean | null }> => {
-    const out: Array<{ price: number; qty: number; expiresAtGameMs: number; bm?: number | boolean | null }> = []
+  const orderList = (rawList: unknown): Array<{ price: number; qty: number; expiresAtGameMs: number; bm?: number | boolean | null; relay?: { quoteId: string } }> => {
+    const out: Array<{ price: number; qty: number; expiresAtGameMs: number; bm?: number | boolean | null; relay?: { quoteId: string } }> = []
     if (!Array.isArray(rawList)) return out
     for (const item of rawList) {
       const o = asRaw(item)
@@ -634,11 +635,14 @@ for (const [key, value] of Object.entries(licensesRaw)) {
       // 引擎写的是 m: true（BM 声望门槛标记 · 布尔）⇒ 必须原样保留（见上方注释：按数字处理会连丢两次）
       const bmRaw = o.bm
       const bmVal = typeof bmRaw === 'boolean' ? bmRaw : typeof bmRaw === 'number' && Number.isFinite(bmRaw) ? Math.max(0, Math.floor(bmRaw)) : null
+      const relayRaw = asRaw(o.relay)
+      const relayQuoteId = typeof relayRaw.quoteId === 'string' && relayRaw.quoteId.length > 0 && relayRaw.quoteId.length <= 512 ? relayRaw.quoteId : undefined
       out.push({
         price,
         qty,
         expiresAtGameMs: Math.max(0, Math.floor(num(o.expiresAtGameMs))),
         ...(hasBm ? { bm: bmVal } : {}),
+        ...(relayQuoteId ? { relay: { quoteId: relayQuoteId } } : {}),
       })
     }
     return out
@@ -702,6 +706,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
       if (Number.isFinite(id) && id > maxOrderId) maxOrderId = id
     }
   }
+  const relayState = cleanMarketRelayState(marketRaw.relay, Math.max(0, Math.floor(num(src.gameMs))), Math.max(0, num(src.savedAtWallMs)))
   const market = {
     pools: pools as GameState['market']['pools'],
     npcBuy: buyBooks as GameState['market']['npcBuy'],
@@ -718,6 +723,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
       typeof marketRaw.slowDrawLastGameMs === 'number' && Number.isFinite(marketRaw.slowDrawLastGameMs)
         ? Math.max(0, Math.floor(marketRaw.slowDrawLastGameMs))
         : undefined,
+    ...(relayState ? { relay: relayState } : {}),
   }
 
   // --- 我的挂单（v9）：非法字段丢弃 ---
@@ -745,6 +751,8 @@ for (const [key, value] of Object.entries(licensesRaw)) {
         absorbCredit: Math.max(0, num(o.absorbCredit)),
         // 买单预扣（2026-09-11 起可选字段；缺省 0 = 改动前挂的遗留单，按"成交时扣钱"旧口径）
         escrowIsk: Math.max(0, Math.floor(num(o.escrowIsk))),
+        ...(typeof o.relayId === 'string' && o.relayId.length > 0 && o.relayId.length <= 512 ? { relayId: o.relayId } : {}),
+        ...(typeof o.remoteApplied === 'number' && Number.isSafeInteger(o.remoteApplied) && o.remoteApplied > 0 ? { remoteApplied: o.remoteApplied } : {}),
       })
     }
   }

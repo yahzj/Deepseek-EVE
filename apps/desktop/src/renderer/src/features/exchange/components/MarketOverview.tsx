@@ -1,3 +1,5 @@
+import { T } from '../texts'
+import { isEn } from '../../../i18n/locale'
 /**
  * 市场战况仪表（MarketOverview）。
  *
@@ -27,19 +29,19 @@ export function MarketOverview({ snap }: { snap: ExchangeSnapshot }) {
   const indexBase = indexPct !== -100 ? indexVal / (1 + indexPct / 100) : indexVal
   const indexChangeVal = indexVal - indexBase
   const indexUp = indexPct >= 0
-  const sentiment = upCount > downCount ? '多头占优' : downCount > upCount ? '空头占优' : '多空平衡'
+  const sentiment = upCount > downCount ? T.sentimentBulls : downCount > upCount ? T.sentimentBears : T.sentimentBalanced
 
   return (
-    <section className="ex-panel ex-market-overview" aria-label="全市场战况大盘">
+    <section className="ex-panel ex-market-overview" aria-label={T.marketBattleTitle}>
       <header className="ex-panel-head">
-        <h3 className="ex-panel-title">市场战况</h3>
-        <span className="ex-dim">星深大盘</span>
+        <h3 className="ex-panel-title">{T.marketBattleTitle}</h3>
+        <span className="ex-dim">{T.marketBroad}</span>
       </header>
       <div className="ex-market-overview-body">
         {/* 指数行 */}
         <div className="ex-market-index-row">
           <div className="ex-market-index-main">
-            <span className="ex-market-index-name">星深综指</span>
+            <span className="ex-market-index-name">{T.indexShortName}</span>
             <span className="ex-market-index-val ex-num">{indexVal.toFixed(1)}</span>
           </div>
           <div className="ex-market-index-sub">
@@ -56,26 +58,26 @@ export function MarketOverview({ snap }: { snap: ExchangeSnapshot }) {
 
         {/* 高低范围微标注 */}
         <div className="ex-market-range-row ex-dim">
-          <span>高 {snap.index.high.toFixed(1)}</span>
-          <span>低 {snap.index.low.toFixed(1)}</span>
+          <span>{T.highShort} {snap.index.high.toFixed(1)}</span>
+          <span>{T.lowShort} {snap.index.low.toFixed(1)}</span>
         </div>
 
         {/* 多空情绪双色槽 */}
         <div className="ex-market-ratio-box">
           <div className="ex-market-ratio-header">
-            <span className="ex-dim">多空情绪</span>
+            <span className="ex-dim">{T.sentimentTitle}</span>
             <span className={`ex-market-sentiment-tag ${upCount > downCount ? 'is-up' : downCount > upCount ? 'is-down' : 'is-flat'}`}>
               {sentiment}
             </span>
           </div>
           <div className="ex-market-ratio-labels">
-            <span className="ex-ratio-label is-up">涨 {upCount} ({Math.round(upRatio)}%)</span>
-            {flatCount > 0 ? <span className="ex-ratio-label ex-dim">平 {flatCount}</span> : null}
-            <span className="ex-ratio-label is-down">跌 {downCount} ({Math.round(downRatio)}%)</span>
+            <span className="ex-ratio-label is-up">{T.countUp} {upCount} ({Math.round(upRatio)}%)</span>
+            {flatCount > 0 ? <span className="ex-ratio-label ex-dim">{T.countFlat} {flatCount}</span> : null}
+            <span className="ex-ratio-label is-down">{T.countDown} {downCount} ({Math.round(downRatio)}%)</span>
           </div>
           <div
             className="ex-market-ratio-track"
-            title={`上涨 ${upCount} 家 (${Math.round(upRatio)}%) / 平盘 ${flatCount} 家 / 下跌 ${downCount} 家 (${Math.round(downRatio)}%)`}
+            title={isEn() ? `Up: ${upCount} (${Math.round(upRatio)}%) / Flat: ${flatCount} / Down: ${downCount} (${Math.round(downRatio)}%)` : `上涨 ${upCount} 家 (${Math.round(upRatio)}%) / 平盘 ${flatCount} 家 / 下跌 ${downCount} 家 (${Math.round(downRatio)}%)`}
           >
             <div className="ex-market-ratio-fill is-up" style={{ width: `${upRatio}%` }} />
             {flatRatio > 0 ? <div className="ex-market-ratio-fill is-flat" style={{ width: `${flatRatio}%` }} /> : null}

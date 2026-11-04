@@ -52,13 +52,13 @@ export function refreshLimitedSupplyBook(state: GameState, ctx: SimContext, def:
   const pool = state.market.pools[def.key]!
   const remaining = pool.limitedSupply?.remaining ?? 0
   const L = priceLevel(state, ctx, def, pool.q)
-  const base = Math.max(sellPrice(def, L), (bestBuy(state.market.npcBuy[def.key]!) ?? 0) + 1)
+  const base = Math.max(sellPrice(def, L), (bestBuy(state.market.npcBuy[def.key]!.filter(o => !o.relay)) ?? 0) + 1)
   const step = Math.max(1, ceilFinalQuantity(base * 0.04))
   const shares = [Math.ceil(remaining * 0.3), Math.floor(remaining * 0.35)]
   shares.push(remaining - shares[0]! - shares[1]!)
-  state.market.npcSell[def.key] = shares.flatMap((qty, i) => qty > 0 ? [{
+  state.market.npcSell[def.key] = [...state.market.npcSell[def.key]!.filter(o => o.relay), ...shares.flatMap((qty, i) => qty > 0 ? [{
     price: base + i * step, qty, expiresAtGameMs: now + orderLifeMsOf(def, ctx.balance.market),
-  }] : [])
+  }] : [])]
 }
 
 /** 常驻商品开局簿（openAtMs = 开盘时刻：订单寿命与簿面基准） */
@@ -287,7 +287,7 @@ export function refreshGoodOrders(state: GameState, ctx: SimContext, def: Market
       if (hasLimitedSupply(def)) refreshLimitedSupplyBook(state, ctx, def, now)
       else if (
         def.playerBuyable !== false &&
-        (def.kind === 'blueprint' ? nextRandom(state.rng) < sellChance : sellList.length < 2 || nextRandom(state.rng) < sellChance)
+        (def.kind === 'blueprint' ? nextRandom(state.rng) < sellChance : sellList.filter(o => !o.relay).length < 2 || nextRandom(state.rng) < sellChance)
       ) {
         npcPushSell(state, ctx, def, poolQ, now, lifeMs, ceilFinalQuantity(sellPrice(def, L) * priceJitter(state)), 1)
       }

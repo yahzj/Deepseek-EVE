@@ -36,7 +36,7 @@ import {
   wormholeRollRelicBox,
 } from '../src/wormholeSalvage'
 import { deliverWormholeCores } from '../src/wormholeBattle'
-import { buyAtMarket, buyOrderBlockedReason, marketGoodOf } from '../src/market'
+import { buyAtMarket, buyOrderBlockedReason, cancelOrder, marketGoodOf, placeBuyOrder } from '../src/market'
 import {
   WORMHOLE_AUTO_DURATION_MS,
   WORMHOLE_AUTO_MANUAL,
@@ -156,7 +156,7 @@ describe('虫洞 · 遗迹掉落 AI 核心（2026-09-14 船长定）', () => {
     expect(state.aiCores.alpha).toBe(2)
   })
 
-  it('市场：贝塔 / 阿尔法只收不卖（买入被拒），伽马仍可买；四档行价 = 船长给的数字', () => {
+  it('市场：贝塔 / 阿尔法无NPC卖单且市价买入受限，但玩家可挂买单；伽马仍可买', () => {
     const prices: Array<[string, number, boolean]> = [
       ['core-basic', 25_000, true],
       ['core-gamma', 200_000, true],
@@ -171,10 +171,20 @@ describe('虫洞 · 遗迹掉落 AI 核心（2026-09-14 船长定）', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 5 })
     state.wallet.isk = 1_000_000_000
     setStanding(state, 'dsi', 100)
-    // 只收不卖：买入被明确拒绝（不是"余额不足"这种误导文案）
-    expect(buyOrderBlockedReason(state, ctx, 'core-alpha', 10_000_000, 1)?.errorId).toBe('core.market.043')
-    expect(buyAtMarket(state, ctx, 'core-alpha', 1).blocked).toBe('not-buyable')
-    expect(state.aiCores.alpha ?? 0).toBe(0) // 没买进来
+    // NPC 不出售，但玩家挂买单仍合法；市价买入不能凭空从 NPC 取得核心。
+    for (const [key, price] of [['core-beta', 1_500_000], ['core-alpha', 10_000_000]] as const) {
+      expect(state.market.npcSell[key] ?? []).toEqual([])
+      expect(buyAtMarket(state, ctx, key, 1).blocked).toBe('not-buyable')
+      expect(buyOrderBlockedReason(state, ctx, key, price, 1)).toBeNull()
+      const walletBeforeOrder = state.wallet.isk
+      const order = placeBuyOrder(state, ctx, key, price, 1)
+      expect(order).toMatchObject({ side: 'buy', good: key, price, qty: 1, escrowIsk: price })
+      expect(state.wallet.isk).toBe(walletBeforeOrder - price)
+      expect(cancelOrder(state, ctx, order!.id)).toBe(true)
+      expect(state.wallet.isk).toBe(walletBeforeOrder)
+    }
+    expect(state.aiCores.alpha ?? 0).toBe(0)
+    expect(state.aiCores.beta ?? 0).toBe(0)
     // 伽马仍可买（船长只点了贝塔与阿尔法）
     expect(buyOrderBlockedReason(state, ctx, 'core-gamma', 200_000, 1)).toBeNull()
     expect(marketGoodOf(ctx, 'aicore', 'gamma')).toBeDefined()

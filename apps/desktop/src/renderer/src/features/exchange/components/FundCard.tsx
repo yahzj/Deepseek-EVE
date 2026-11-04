@@ -1,3 +1,4 @@
+import { isEn } from '../../../i18n/locale'
 /**
  * 保底基金（极简模式）：投入交易所现金，服务端用实盘数据结算。
  *
@@ -101,7 +102,7 @@ export function FundCard({
         <div className="ex-preview-row">
           <span>{T.strategyAvailCash}</span>
           <b className="ex-num">
-            {money(availableCash)} <span className="ex-unit">ISK</span>
+            {money(availableCash)} <span className="ex-unit">{T.creditUnit}</span>
           </b>
         </div>
 
@@ -112,11 +113,11 @@ export function FundCard({
               <span>{last.win ? T.fundResultWin : T.fundResultLose}</span>
               <b className={`ex-num ${last.win ? 'is-up ex-fund-result-win' : 'is-down ex-fund-result-lose'}`}>
                 {last.win ? '+' : '−'}
-                {money(Math.abs(last.profit))} <span className="ex-unit">ISK</span>
+                {money(Math.abs(last.profit))} <span className="ex-unit">{T.creditUnit}</span>
               </b>
             </div>
             <div className="ex-preview-row">
-              <span>结算依据</span>
+              <span>{isEn() ? 'Settlement Basis' : '结算依据'}</span>
               <span className="ex-dim ex-num">{last.evidence}</span>
             </div>
           </>
@@ -128,12 +129,12 @@ export function FundCard({
             <label className="ex-label" htmlFor="ex-fund-input">
               {T.fundAmount}
             </label>
-            <div className="ex-bond-quick-ratios" role="group" aria-label="快捷投入比例">
+            <div className="ex-bond-quick-ratios" role="group" aria-label={isEn() ? "Quick invest ratios" : "快捷投入比例"}>
               <button
                 type="button"
                 className="ex-bond-ratio-btn"
-                title="快捷投入 25% 可用资金"
-                aria-label="快捷投入 25% 可用资金"
+                title={isEn() ? "Quick invest 25% cash" : "快捷投入 25% 可用资金"}
+                aria-label={isEn() ? "Quick invest 25% cash" : "快捷投入 25% 可用资金"}
                 disabled={calc || availableCash <= 0}
                 onClick={() => setRatio(0.25)}
               >
@@ -142,8 +143,8 @@ export function FundCard({
               <button
                 type="button"
                 className="ex-bond-ratio-btn"
-                title="快捷投入 50% 可用资金"
-                aria-label="快捷投入 50% 可用资金"
+                title={isEn() ? "Quick invest 50% cash" : "快捷投入 50% 可用资金"}
+                aria-label={isEn() ? "Quick invest 50% cash" : "快捷投入 50% 可用资金"}
                 disabled={calc || availableCash <= 0}
                 onClick={() => setRatio(0.5)}
               >
@@ -152,8 +153,8 @@ export function FundCard({
               <button
                 type="button"
                 className="ex-bond-ratio-btn"
-                title="快捷投入全部可用资金"
-                aria-label="快捷投入全部可用资金"
+                title={isEn() ? "Quick invest max cash" : "快捷投入全部可用资金"}
+                aria-label={isEn() ? "Quick invest max cash" : "快捷投入全部可用资金"}
                 disabled={calc || availableCash <= 0}
                 onClick={() => setRatio(1)}
               >
@@ -171,7 +172,7 @@ export function FundCard({
               onChange={(e) => setAmountText(e.target.value)}
               onBlur={handleBlur}
             />
-            <span className="ex-input-unit">ISK</span>
+            <span className="ex-input-unit">{T.creditUnit}</span>
           </div>
           {/* 防呆提示 */}
           {isOverCash ? (
