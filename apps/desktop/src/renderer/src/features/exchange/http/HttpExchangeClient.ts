@@ -80,6 +80,22 @@ const EMPTY_BOND_POSITION: BondPosition = {
   cash: 0,
 }
 
+/** 基金空仓占位：本金与收益为 0，供左侧活动栏判断「是否已申购」 */
+const EMPTY_FUND_POSITION: FundPosition = {
+  principal: 0,
+  accrued: 0,
+  value: 0,
+  settledMinute: 0,
+  openedAt: 0,
+  minutes: 0,
+  winBp: 16,
+  loseBp: -7,
+  winPercent: 70,
+  expectedBp: 9,
+  bondBp: 3,
+  cash: 0,
+}
+
 const EMPTY_BOND_PRODUCT: BondProduct = {
   id: 'WHALE-BOND',
   name: '舰船债券 · 稳健型',
@@ -512,6 +528,7 @@ export class HttpExchangeClient implements ExchangeClient {
   private dividends: DividendRecord[] = []
   private strategies: StrategySpec[] = []
   private bond: BondPosition = { ...EMPTY_BOND_POSITION }
+  private funds: FundPosition = { ...EMPTY_FUND_POSITION }
   private bondProduct: BondProduct = { ...EMPTY_BOND_PRODUCT }
   private news: NewsItem[] = []
   /** 六人格公开摘要：只在回合末 `agents` 帧到达时更新，其余时间保持上一回合。 */
@@ -610,6 +627,7 @@ export class HttpExchangeClient implements ExchangeClient {
       await Promise.all([
         this.loadNews().catch(() => undefined),
         this.loadBond().catch(() => undefined),
+        this.loadFund().catch(() => undefined),
         // 对手盘面板跟着行情一起刷：WS `agents` 帧只在回合末来一次，页面开着不动会像卡死。
         this.loadAgents().catch(() => undefined),
         code === ''
@@ -677,6 +695,8 @@ export class HttpExchangeClient implements ExchangeClient {
       const agentsTask = this.loadAgents().catch(() => undefined)
       // 债券持仓：顶部「债券价值」与理财卡片都要用，首屏补拉（之后按分钟随行情刷新）。
       const bondTask = this.loadBond().catch(() => undefined)
+      // 基金持仓：左侧活动栏要显示收益，首屏补拉（之后与行情同频刷新）。
+      const fundTask = this.loadFund().catch(() => undefined)
       const stocks = await this.getStocks()
       const code = stocks[0]?.code
       // 行情图/盘口尽早并行：不再等 account/orders 往返后才开始拉 5 个周期 K 线，首屏更快。
@@ -703,7 +723,7 @@ export class HttpExchangeClient implements ExchangeClient {
       this.account = account
       this.orders = orders
       this.strategies = strategies
-      await Promise.all([...chartTasks, roundTask, metaTask, newsTask, agentsTask, bondTask])
+      await Promise.all([...chartTasks, roundTask, metaTask, newsTask, agentsTask, bondTask, fundTask])
       this.emitTick()
     } catch (err) {
       // 连不上：界面由数据源徽标 + 引导态兜底；这里只上报，不伪造数据
@@ -759,6 +779,11 @@ export class HttpExchangeClient implements ExchangeClient {
    */
   private async loadBond(): Promise<void> {
     this.bond = await this.get<BondPosition>('/bond')
+  }
+
+  /** 基金持仓：与债券同口径（首屏 + 每轮行情刷新），供左侧活动栏与卡片读。 */
+  private async loadFund(): Promise<void> {
+    this.funds = await this.get<FundPosition>('/fund')
   }
 
   /**
@@ -1270,6 +1295,7 @@ export class HttpExchangeClient implements ExchangeClient {
       dividends: this.dividends,
       strategies: this.strategies,
       bonds: this.bond,
+      funds: this.funds,
       bondProduct: this.bondProduct,
       news: this.news,
       agents: this.agents,

@@ -246,6 +246,11 @@ export function ActivityBar({
       totalCostOrMargin += p.margin
     }
 
+    // 保底产品收益：只有真的申购过（本金 > 0）才展示，空仓隐藏
+    const savings: { label: string; pnl: number }[] = []
+    if (exchSnap.bonds.principal > 0) savings.push({ label: '债券', pnl: exchSnap.bonds.accrued })
+    if (exchSnap.funds.principal > 0) savings.push({ label: '基金', pnl: exchSnap.funds.accrued })
+
     const uniqueCodes = Array.from(new Set(heldList))
     const pnlPct = totalCostOrMargin > 0 ? (totalPnl / totalCostOrMargin) * 100 : 0
     return {
@@ -253,8 +258,35 @@ export function ActivityBar({
       uniqueCodes,
       totalPnl,
       pnlPct,
+      savings,
     }
   }, [exchSnap])
+
+  // 左侧卡片的副行与悬停说明：股票持仓优先，保底产品（债券/基金）叠加在后面
+  const savingText = exchSummary.savings
+    .map((s) => `${s.label} ${s.pnl >= 0 ? '+' : ''}${money(s.pnl)}`)
+    .join('  ')
+  const exchSub = exchSummary.hasPositions
+    ? `收益 ${exchSummary.totalPnl >= 0 ? '+' : ''}${money(exchSummary.totalPnl)} ISK (${pct(exchSummary.pnlPct)})${savingText ? ` · ${savingText}` : ''}`
+    : savingText
+  const savingAllUp = exchSummary.savings.every((s) => s.pnl >= 0)
+  const savingAllDown = exchSummary.savings.every((s) => s.pnl < 0)
+  const exchSubTone = exchSummary.hasPositions
+    ? exchSummary.totalPnl >= 0
+      ? 'is-up'
+      : 'is-down'
+    : exchSummary.savings.length === 0
+      ? 'app-dim'
+      : savingAllUp
+        ? 'is-up'
+        : savingAllDown
+          ? 'is-down'
+          : 'app-dim'
+  const exchSubTitle = exchSummary.hasPositions
+    ? `已持仓：${exchSummary.uniqueCodes.join('、')}，当前浮盈 ${exchSummary.totalPnl >= 0 ? '+' : ''}${money(exchSummary.totalPnl)} ISK (${pct(exchSummary.pnlPct)})${savingText ? `；${savingText}` : ''}。点击直达交易所`
+    : exchSummary.savings.length > 0
+      ? `保底产品收益：${savingText}。点击直达交易所`
+      : '点击进入交易所'
 
   const renderItem = (v: ActivityView) => {
     const target = goFor(v.kind)
@@ -505,17 +537,13 @@ export function ActivityBar({
         )}
       </div>
 
-      {/* ── 股市活动监控（副AI活动最下方，船长 2026-11-03 令，点击直达股市） ── */}
+      {/* ── 交易所活动监控（副AI活动最下方，点击直达交易所） ── */}
       <div className="app-activitybar-group app-activitybar-group-exchange">
-        <div className="app-activitybar-gtitle">深空证券交易所</div>
+        <div className="app-activitybar-gtitle">交易所</div>
         <button
           type="button"
           className="app-ai-act app-activitybar-exch-btn"
-          title={
-            exchSummary.hasPositions
-              ? `已持仓：${exchSummary.uniqueCodes.join('、')}，当前浮盈 ${exchSummary.totalPnl >= 0 ? '+' : ''}${money(exchSummary.totalPnl)} ISK (${pct(exchSummary.pnlPct)})。点击直达股市大厅`
-              : '深空证券交易所实时运行中，点击进入交易大厅选股'
-          }
+          title={exchSubTitle}
           onClick={() => onGoPage?.('exchange')}
         >
           <span className="app-activitybar-icon">
@@ -523,21 +551,11 @@ export function ActivityBar({
           </span>
           <span className="app-ai-act-main">
             <span className="app-ai-act-label">
-              {exchSummary.hasPositions ? exchSummary.uniqueCodes.join(' · ') : '股市行情监控'}
+              {exchSummary.hasPositions ? exchSummary.uniqueCodes.join(' · ') : '股市'}
             </span>
-            <span
-              className={`app-ai-act-sub ${
-                exchSummary.hasPositions
-                  ? exchSummary.totalPnl >= 0
-                    ? 'is-up'
-                    : 'is-down'
-                  : 'app-dim'
-              }`}
-            >
-              {exchSummary.hasPositions
-                ? `收益 ${exchSummary.totalPnl >= 0 ? '+' : ''}${money(exchSummary.totalPnl)} ISK (${pct(exchSummary.pnlPct)})`
-                : '未持仓 · 点击进入'}
-            </span>
+            {exchSub !== '' ? (
+              <span className={`app-ai-act-sub ${exchSubTone}`}>{exchSub}</span>
+            ) : null}
           </span>
         </button>
       </div>

@@ -395,6 +395,8 @@ export interface ExchangeSnapshot {
   dividends: DividendRecord[]
   strategies: StrategySpec[]
   bonds: BondPosition
+  /** 保底基金持仓（放置型；空仓时本金与收益均为 0） */
+  funds: FundPosition
   bondProduct: BondProduct
   news: NewsItem[]
   /** 六人格公开摘要（WS `agents` 帧，回合末更新；模拟盘为空数组） */

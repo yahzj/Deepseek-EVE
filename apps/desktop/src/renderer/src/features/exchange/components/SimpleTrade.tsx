@@ -37,7 +37,8 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
   const cash = snap.account.cash
 
   const inputCashNum = Number(cashAmount) || 0
-  const feeRate = snap.feeRate ?? 0.001 // 手续费率 (默认 0.1%)
+  const feeRate = snap.feeRate ?? 0
+  const hasFee = feeRate > 0
   const effectiveCash = inputCashNum > 0 ? inputCashNum / (1 + feeRate) : 0
 
   // 买多换算：现货 1x
@@ -47,8 +48,8 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
   const estShortQty = currentPrice > 0 ? Math.floor(effectiveCash / currentPrice) : 0
   const estShortMargin = estShortQty * currentPrice
 
-  // 预估手续费：基于实际输入资金，有输入时不少于 1 信用点
-  const estDisplayFee = inputCashNum > 0 ? Math.max(1, Math.round(inputCashNum * feeRate)) : 0
+  // 预估手续费：与服务器下发的真实费率一致（费率为 0 即免佣，不再补 1 信用点）
+  const estDisplayFee = inputCashNum > 0 ? Math.round(inputCashNum * feeRate) : 0
 
   // 步进微调资金基数（按 1 股换算所需资金，含手续费；两侧同为全额）
   const stepCash = Math.max(1, Math.ceil(currentPrice * (1 + feeRate)))
@@ -211,14 +212,6 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
           role="tab"
           aria-selected={tab === 'buy'}
           className={`ex-simple-trade-tab is-buy${tab === 'buy' ? ' is-on is-active' : ''}`}
-          style={{
-            background: tab === 'buy'
-              ? 'linear-gradient(135deg, #e03131 0%, #c92a2a 100%)'
-              : 'rgba(220, 53, 69, 0.18)',
-            borderColor: tab === 'buy' ? '#ff8787' : 'rgba(235, 75, 75, 0.75)',
-            color: tab === 'buy' ? '#ffffff' : '#ff7875',
-            boxShadow: tab === 'buy' ? '0 0 16px rgba(235, 75, 75, 0.65)' : 'inset 0 0 8px rgba(220, 53, 69, 0.2)',
-          }}
           onClick={() => {
             setTab('buy')
             if (activeRatio !== null) {
@@ -234,14 +227,6 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
           role="tab"
           aria-selected={tab === 'short'}
           className={`ex-simple-trade-tab is-short${tab === 'short' ? ' is-on is-active' : ''}`}
-          style={{
-            background: tab === 'short'
-              ? 'linear-gradient(135deg, #2b8a3e 0%, #237032 100%)'
-              : 'rgba(40, 167, 69, 0.18)',
-            borderColor: tab === 'short' ? '#69db7c' : 'rgba(56, 195, 97, 0.75)',
-            color: tab === 'short' ? '#ffffff' : '#51cf66',
-            boxShadow: tab === 'short' ? '0 0 16px rgba(40, 167, 69, 0.65)' : 'inset 0 0 8px rgba(40, 167, 69, 0.2)',
-          }}
           onClick={() => {
             setTab('short')
             if (activeRatio !== null) {
@@ -362,8 +347,8 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
                 <b className="ex-num ex-highlight-green">{amount(estBuyQty)} {T.sharesSuffix}</b>
               </div>
               <div className="ex-simple-preview-row">
-                <span className="ex-dim">{T.estFeeLabel} ({(feeRate * 100).toFixed(1)}%)</span>
-                <span className="ex-num">{inputCashNum > 0 ? `${money(estDisplayFee)} ${T.creditUnit}` : `0.00 ${T.creditUnit}`}</span>
+                <span className="ex-dim">{T.estFeeLabel} {hasFee ? `(${(feeRate * 100).toFixed(2)}%)` : `(${T.freeFee})`}</span>
+                <span className="ex-num">{money(estDisplayFee)} {T.creditUnit}</span>
               </div>
             </div>
           ) : (
@@ -377,8 +362,8 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
                 <span className="ex-num">{money(estShortMargin)}</span>
               </div>
               <div className="ex-simple-preview-row">
-                <span className="ex-dim">{T.estFeeLabel} ({(feeRate * 100).toFixed(1)}%)</span>
-                <span className="ex-num">{inputCashNum > 0 ? `${money(estDisplayFee)} ${T.creditUnit}` : `0.00 ${T.creditUnit}`}</span>
+                <span className="ex-dim">{T.estFeeLabel} {hasFee ? `(${(feeRate * 100).toFixed(2)}%)` : `(${T.freeFee})`}</span>
+                <span className="ex-num">{money(estDisplayFee)} {T.creditUnit}</span>
               </div>
             </div>
           )}

@@ -118,7 +118,6 @@ export function FundCard({
         <div className="ex-bond-name">
           <b>{T.fundName}</b>
         </div>
-        <p className="ex-modal-text">{T.fundDesc}</p>
 
         {/* 账户可用资金：等宽排版 */}
         <div className="ex-preview-row">
@@ -264,8 +263,6 @@ export function FundCard({
             </button>
           ) : null}
         </div>
-
-        <div className="ex-bond-hint">{T.fundPositionNote}</div>
       </div>
     </section>
   )

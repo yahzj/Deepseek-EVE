@@ -1841,6 +1841,7 @@ export class MockExchangeClient implements ExchangeClient {
       dividends: this.dividends.slice(0, 60),
       strategies: [...this.strategies.values()].map((s) => s.spec),
       bonds: this.bondView(),
+      funds: this.fundView(),
       bondProduct: { ...BOND_PRODUCT },
       news: this.news.slice(0, 12),
       agents: [],
