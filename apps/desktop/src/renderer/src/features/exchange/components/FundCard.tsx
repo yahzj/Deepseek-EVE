@@ -41,7 +41,7 @@ export function FundCard({
   const value = position?.value ?? 0
   const minutes = position?.minutes ?? 0
 
-  // 首屏拉一次持仓，之后每分钟刷新（有仓时收益才会随分钟增长）。
+  // 首屏拉一次持仓，之后每 10 秒刷新（与行情轮询同节奏，收益才会随分钟跳动）。
   useEffect(() => {
     let alive = true
     const pull = (): void => {

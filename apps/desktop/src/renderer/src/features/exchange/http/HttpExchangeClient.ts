@@ -1356,7 +1356,9 @@ export class HttpExchangeClient implements ExchangeClient {
     const leverage = Math.max(1, Math.round(req.leverage ?? 1))
     const margin = leverage > 1 ? notional / leverage : notional
     const feeRate = Number.isFinite(this.feeRate) && this.feeRate > 0 ? this.feeRate : 0
-    const fee = notional * feeRate
+    // 与 Go `feeOf` 同口径：成交名义 × 费率后向下取整（matching.go:69-74），
+    // 预览里保留整数，避免显示 99.9999 被格式化成 100.00 与成交差 1 点。
+    const fee = Math.floor(notional * feeRate)
     // 开空 = side=sell + short=true（1x 全额也算，与 Go `checkShortOpenLocked` 同口径）；
     // 不带 short 的卖单是「卖出持有/平多」。
     const shortOpen = req.short === true && req.side === 'sell'

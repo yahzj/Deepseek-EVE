@@ -42,19 +42,30 @@ export function SimpleChart({ client, code, quote, tick }: SimpleChartProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [client, code, clientPeriod, tick])
 
-  // 空图时按时间推进进度（0→92%，加载完成即消失）：让玩家看到「行情初始化 42%」而不是干等
+  // 空图时按时间推进进度（0→92%，加载完成即消失）：让玩家看到「行情初始化 42%」而不是干等；
+  // 12 秒仍无数据就停表改「暂无行情」，不再空转定时器（子代理 review 2026-11-04 建议 6）。
   const ready = series.length >= 2
   const [loadPct, setLoadPct] = useState(0)
+  const [stalled, setStalled] = useState(false)
   useEffect(() => {
     if (ready) {
       setLoadPct(100)
+      setStalled(false)
       return
     }
     setLoadPct(4)
+    setStalled(false)
     const timer = window.setInterval(() => {
-      setLoadPct((p) => (p >= 92 ? p : Math.min(92, p + Math.max(1, Math.round((92 - p) * 0.07)))))
+      setLoadPct((p) => Math.min(92, p + Math.max(1, Math.round((92 - p) * 0.07))))
     }, 160)
-    return () => window.clearInterval(timer)
+    const guard = window.setTimeout(() => {
+      window.clearInterval(timer)
+      setStalled(true)
+    }, 12_000)
+    return () => {
+      window.clearInterval(timer)
+      window.clearTimeout(guard)
+    }
   }, [ready, code])
 
   // SVG 视口尺寸
@@ -228,7 +239,9 @@ export function SimpleChart({ client, code, quote, tick }: SimpleChartProps) {
         onTouchEnd={() => setHoverIndex(null)}
       >
         {coords.length < 2 ? (
-          <div className="ex-simple-chart-empty">{`${T.chartLoading} ${loadPct}%`}</div>
+          <div className="ex-simple-chart-empty">
+            {stalled ? T.chartNoData : `${T.chartLoading} ${loadPct}%`}
+          </div>
         ) : (
           <>
             {/* 顶底参考刻度（平盘保护与 12% 呼吸区自动比例） */}

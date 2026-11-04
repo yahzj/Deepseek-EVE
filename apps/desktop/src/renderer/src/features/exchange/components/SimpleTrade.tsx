@@ -47,8 +47,10 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
   // 看跌换算：1x 全额融券，投入多少占用多少（与看涨对称）
   const estShortQty = currentPrice > 0 ? Math.floor(effectiveCash / currentPrice) : 0
 
-  // 预估手续费：与服务器成交口径一致（Go feeOf 为向下取整，1bp = 0.01%）
-  const estDisplayFee = inputCashNum > 0 ? Math.floor(inputCashNum * feeRate) : 0
+  // 预估手续费：服务器按成交名义（成交价×股数）向下取整收费（Go feeOf），
+  // 这里用 gross 而不是投入金额——投入额已经含了手续费，直接用会把费算大。
+  const estGross = estBuyQty * currentPrice
+  const estDisplayFee = estGross > 0 ? Math.floor(estGross * feeRate) : 0
 
   // 步进微调资金基数（按 1 股换算所需资金，含手续费；两侧同为全额）
   const stepCash = Math.max(1, Math.ceil(currentPrice * (1 + feeRate)))

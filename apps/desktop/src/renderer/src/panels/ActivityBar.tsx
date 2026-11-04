@@ -23,6 +23,7 @@ import { stopLabel, doStop } from './activityStopLabel'
 import { fmtDuration } from '../i18n/fmt'
 import { explorationActivityText } from '../ui/explorationActivityText'
 import { createExchangeClient } from '../features/exchange/factory'
+import type { BondPosition, FundPosition } from '../features/exchange/client'
 import { money, pct } from '../features/exchange/format'
 import '../styles-activity-invasion.css'
 
@@ -220,6 +221,29 @@ export function ActivityBar({
     return unsub
   }, [exchBundle.client])
 
+  // 保底产品收益常驻刷新：交易所页只在打开时轮询，离开后快照会冻住，
+  // 左侧卡片就会一直显示旧收益。这里独立拉 bond/fund（两个轻量 GET），
+  // 10 秒一次，与交易所页的行情节奏一致（2026-11-04 船长：左侧要能看到收益）。
+  const [savingsLive, setSavingsLive] = useState<{ bonds: BondPosition; funds: FundPosition } | null>(null)
+  useEffect(() => {
+    if (exchBundle.error !== undefined) return undefined
+    const client = exchBundle.client
+    let alive = true
+    const pull = (): void => {
+      void Promise.all([client.getBondPosition(), client.getFundPosition()])
+        .then(([bonds, funds]) => {
+          if (alive) setSavingsLive({ bonds, funds })
+        })
+        .catch(() => undefined)
+    }
+    pull()
+    const timer = window.setInterval(pull, 10_000)
+    return () => {
+      alive = false
+      window.clearInterval(timer)
+    }
+  }, [exchBundle.client, exchBundle.error])
+
   const exchSnap = useMemo(
     () => exchBundle.client.getSnapshot('SMHI'),
     [exchBundle.client, exchTick],
@@ -246,10 +270,13 @@ export function ActivityBar({
       totalCostOrMargin += p.margin
     }
 
-    // 保底产品收益：只有真的申购过（本金 > 0）才展示，空仓隐藏
+    // 保底产品收益：只有真的申购过（本金 > 0）才展示，空仓隐藏；
+    // 优先用活动栏自己的 10 秒拉取结果，交易所页打开时再回落到页面快照。
+    const bonds = savingsLive?.bonds ?? exchSnap.bonds
+    const funds = savingsLive?.funds ?? exchSnap.funds
     const savings: { label: string; pnl: number }[] = []
-    if (exchSnap.bonds.principal > 0) savings.push({ label: '债券', pnl: exchSnap.bonds.accrued })
-    if (exchSnap.funds.principal > 0) savings.push({ label: '基金', pnl: exchSnap.funds.accrued })
+    if (bonds.principal > 0) savings.push({ label: '债券', pnl: bonds.accrued })
+    if (funds.principal > 0) savings.push({ label: '基金', pnl: funds.accrued })
 
     const uniqueCodes = Array.from(new Set(heldList))
     const pnlPct = totalCostOrMargin > 0 ? (totalPnl / totalCostOrMargin) * 100 : 0
@@ -260,7 +287,7 @@ export function ActivityBar({
       pnlPct,
       savings,
     }
-  }, [exchSnap])
+  }, [exchSnap, savingsLive])
 
   // 左侧卡片的副行与悬停说明：股票持仓优先，保底产品（债券/基金）叠加在后面
   const savingText = exchSummary.savings
