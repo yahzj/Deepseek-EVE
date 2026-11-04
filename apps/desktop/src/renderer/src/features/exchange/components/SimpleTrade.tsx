@@ -6,7 +6,7 @@
  * - 两个 Tab 均以【投入资金 ISK】为输入口径，支持 25% / 50% / 75% / 全仓 快捷筹码；
  * - 做空按 2x 杠杆融券市价即时开空，无需持有现货，零门槛借券卖出；
  * - 实时换算预计股数 / 占用保证金 / 手续费，提示价格上涨增值或下跌赚差价；
- * - 纯市价即时成交（IOC），深度贴合深空科幻 HUD 视觉。
+ * - 纯市价委托提交后进入本回合队列，回合末集合竞价统一成交（不是即时 IOC）；
  */
 import { useRef, useState } from 'react'
 import type { ExchangeClient, ExchangeSnapshot } from '../client'
@@ -359,7 +359,7 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
               className="ex-simple-big-action-btn is-buy"
               disabled={!canSubmit}
               onClick={handleBuy}
-              title={canSubmit ? '立即市价买多 (Enter)' : (disableReason ?? '')}
+              title={canSubmit ? '提交市价买多（回合末集合竞价成交）(Enter)' : (disableReason ?? '')}
             >
               {busy ? '买多下单中…' : `${T.simpleBuyAction} · ${code}`}
             </button>
@@ -369,7 +369,7 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
               className="ex-simple-big-action-btn is-short"
               disabled={!canSubmit}
               onClick={handleShort}
-              title={canSubmit ? '立即融券卖空 (Enter)' : (disableReason ?? '')}
+              title={canSubmit ? '提交融券卖空（回合末集合竞价成交）(Enter)' : (disableReason ?? '')}
             >
               {busy ? '卖空开仓中…' : `${T.simpleShortAction} · ${code}`}
             </button>
@@ -379,9 +379,28 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
           <div className={`ex-simple-trade-guard-hint ${canSubmit ? 'is-ready' : 'is-disabled'}`}>
             <span className="ex-simple-guard-dot" />
             <span className="ex-simple-guard-text">
-              {canSubmit ? '就绪：按 Enter 键或点击上方按钮直接下单' : disableReason}
+              {canSubmit ? '就绪：按 Enter 键或点击上方按钮直接下单（回合末集合竞价成交）' : disableReason}
             </span>
           </div>
+
+          {/* 回合制待成交委托：明确告诉玩家「已提交、等回合末成交」，不是没买到 */}
+          {snap.orders.length > 0 ? (
+            <div className="ex-simple-trade-preview" role="status" aria-label={T.simplePendingTitle}>
+              <div className="ex-simple-preview-row">
+                <span className="ex-dim">{T.simplePendingTitle}（{T.simplePendingNote}）</span>
+                <b className="ex-num">{snap.orders.length} 笔</b>
+              </div>
+              {snap.orders.slice(0, 3).map((order) => (
+                <div className="ex-simple-preview-row" key={order.id}>
+                  <span className="ex-dim">
+                    {order.side === 'buy' ? '买' : '卖'} {order.code} ·{' '}
+                    {order.type === 'market' ? '市价' : price(order.price ?? 0)}
+                  </span>
+                  <span className="ex-num">{amount(order.qty)} 股 · 待回合末成交</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
