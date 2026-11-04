@@ -42,6 +42,13 @@ function toneLabel(tone: NewsItem['tone']): string {
   return T.newsNeutral
 }
 
+/** 快讯正文上限：船长令「文字太长显示不全，文案做短」，超出截断并靠悬停看全文 */
+const BODY_MAX = 36
+
+function shortText(text: string, max: number): string {
+  return text.length > max ? `${text.slice(0, max)}…` : text
+}
+
 export function NewsTicker({
   news,
   onSelectCode,
@@ -110,7 +117,9 @@ export function NewsTicker({
                 </button>
               ) : null}
               <span className="ex-ticker-sep">：</span>
-              <span className="ex-ticker-body">{playerText(item.body)}</span>
+              <span className="ex-ticker-body" title={playerText(item.body)}>
+                {shortText(playerText(item.body), BODY_MAX)}
+              </span>
             </div>
           )
         })}

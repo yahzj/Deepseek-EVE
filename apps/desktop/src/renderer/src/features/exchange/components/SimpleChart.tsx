@@ -6,7 +6,7 @@
  * - 【M1 / M5 / H1 / 日线 / 周线】：现代标准 K 线蜡烛图（红涨绿跌、实体影线、开高低收完整刻度）；
  * - 【上下轴自适应比例】：平盘基准 1.5% 视窗保护 + 上下各 12% 呼吸安全区，绝不撑满画布贴边。
  */
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { ChartPeriod, ExchangeClient, StockQuote } from '../client'
 import { pct, price } from '../format'
 import { T } from '../texts'
@@ -37,6 +37,11 @@ export function SimpleChart({ client, code, quote, tick }: SimpleChartProps) {
 
   const isCandle = period !== 'intraday'
   const clientPeriod: ChartPeriod = period
+
+  // 切到未缓存的周期时补拉（否则 H1/日线/周线永远空白、M5 预加载失败也不重试）
+  useEffect(() => {
+    client.ensureChartData?.(code, clientPeriod)
+  }, [client, code, clientPeriod])
 
   const series = useMemo(() => {
     try {

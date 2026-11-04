@@ -19,7 +19,7 @@
  * 随机源：全部走 `createRng(seed)`，禁止 `Math.random()`；同种子可复现整条剧情。
  */
 import type {
-  BondHolding,
+  BondPosition,
   BondProduct,
   ChartPeriod,
   DividendRecord,
@@ -69,14 +69,14 @@ const FEE_RATE = 0.0005
 const START_CASH = 10_000_000
 /** 债券日化 0.03%（原型观感值，不代表最终经济数值） */
 const BOND_DAILY_RATE = 0.0003
+/** 债券分钟利率（基点）：3 = 0.03%/分钟，单利不滚本 */
+const BOND_MINUTE_BP = 3
 // 保底基金（放置型，与线上 Go 侧一致）：每分钟 70% +16bp / 30% −7bp，期望 +9bp ≈ 债券 3bp 的 3 倍。
 const FUND_WIN_BP = 16
 const FUND_LOSE_BP = -7
 const FUND_WIN_PERCENT = 70
 const FUND_EXPECTED_BP = 9
 const FUND_BOND_BP = 3
-/** 债券计息：游戏内 60 秒 = 1 日（原型示意，非最终数值） */
-const TICKS_PER_GAME_DAY = 60
 /** 分红：每 60 秒按现货持仓市值象征性派 0.04%（原型观感值） */
 const DIVIDEND_INTERVAL_TICKS = 60
 const DIVIDEND_RATE = 0.0004
@@ -219,7 +219,7 @@ interface PersistedMockState {
     gridSellCount: number
     lastError: string
   }>
-  bond: BondHolding
+  bond: BondPosition
   /** 保底基金持仓（放置型）；旧存档没有该字段时按空仓处理 */
   fund?: { principal: number; accrued: number; settledMinute: number; openedAt: number }
   news: NewsItem[]
@@ -346,12 +346,10 @@ export class MockExchangeClient implements ExchangeClient {
   private readonly onVisibilityChange = (): void => {
     if (typeof document !== 'undefined' && document.visibilityState === 'visible') this.catchUp()
   }
-  private bond: BondHolding = {
-    principal: 0,
-    accrued: 0,
-    purchasedAt: null,
-    rateDaily: BOND_DAILY_RATE,
-  }
+  /** 低风险理财持仓（放置型）：本金 / 累计利息 / 已结算分钟 / 建仓时间 */
+  private bond = { principal: 0, accrued: 0, settledMinute: 0, openedAt: 0 }
+  /** 债券 nonce 幂等表：nonce → 申购金额（赎回记 0） */
+  private readonly bondNonces = new Map<string, number>()
   /** 保底基金持仓（放置型）：本金 / 累计收益 / 已结算分钟 / 建仓时间 */
   private fund = { principal: 0, accrued: 0, settledMinute: 0, openedAt: 0 }
   /** 基金 nonce 幂等表：nonce → 申购金额（赎回记 0） */
@@ -605,7 +603,7 @@ export class MockExchangeClient implements ExchangeClient {
       myTrades: this.myTrades.slice(0, 100),
       dividends: this.dividends.slice(0, 60),
       strategies: [...this.strategies.values()],
-      bond: { ...this.bond },
+      bond: this.bondView(),
       fund: { ...this.fund },
       news: this.news.slice(0, 12),
       seq: {
@@ -672,7 +670,7 @@ export class MockExchangeClient implements ExchangeClient {
     this.dividends.length = 0
     this.news.length = 0
     this.strategies.clear()
-    this.bond = { principal: 0, accrued: 0, purchasedAt: null, rateDaily: BOND_DAILY_RATE }
+    this.bond = { principal: 0, accrued: 0, settledMinute: 0, openedAt: 0 }
     this.buildStocks(this.startTs, null)
     this.indexOpen = this.indexValue()
     this.indexHigh = this.indexOpen
@@ -771,7 +769,7 @@ export class MockExchangeClient implements ExchangeClient {
     this.runConditionalOrders(ts)
     this.runStrategies(ts)
     this.checkLiquidations(ts)
-    this.accrueBond()
+    this.settleBond()
     this.maybePayDividends(ts)
     const index = this.indexValue()
     this.indexHigh = Math.max(this.indexHigh, index)
@@ -1528,27 +1526,79 @@ export class MockExchangeClient implements ExchangeClient {
 
   /* ═══════════════ 债券 / 分红 ═══════════════ */
 
-  private accrueBond(): void {
-    if (this.bond.principal <= 0) return
-    this.bond.accrued += (this.bond.principal * BOND_DAILY_RATE) / TICKS_PER_GAME_DAY
+  /**
+   * 低风险理财（模拟盘）：规则与线上一致——交易所现金申购、固定 3bp/分钟单利、
+   * 本金锁定、随时可赎；利息按真实分钟惰性结算（2026-11-04 船长令：不再用本地存档直接买）。
+   */
+  private settleBond(): void {
+    const nowMinute = Math.floor(this.ts() / 60_000)
+    if (this.bond.principal <= 0) {
+      this.bond.settledMinute = nowMinute
+      return
+    }
+    if (this.bond.settledMinute === 0) this.bond.settledMinute = Math.floor(this.bond.openedAt / 60_000)
+    const minutes = nowMinute - this.bond.settledMinute
+    if (minutes <= 0) return
+    this.bond.accrued += Math.floor((this.bond.principal * BOND_MINUTE_BP * minutes) / 10_000)
+    this.bond.settledMinute = nowMinute
   }
 
-  buyBond(amountValue: number): BondHolding {
-    const value = round(amountValue, 2)
+  private bondView(): BondPosition {
+    const minutes =
+      this.bond.principal > 0
+        ? Math.max(0, this.bond.settledMinute - Math.floor(this.bond.openedAt / 60_000))
+        : 0
+    return {
+      principal: this.bond.principal,
+      accrued: this.bond.accrued,
+      value: this.bond.principal + this.bond.accrued,
+      settledMinute: this.bond.settledMinute,
+      openedAt: this.bond.openedAt,
+      minutes,
+      minuteBp: BOND_MINUTE_BP,
+      cash: this.cash,
+    }
+  }
+
+  async getBondPosition(): Promise<BondPosition> {
+    this.settleBond()
+    return this.bondView()
+  }
+
+  async openBond(amountValue: number, nonce: string): Promise<BondPosition> {
+    const value = Math.floor(amountValue)
     if (!(value > 0)) throw new ExchangeError('bad_amount', T.toastBondInvalid)
+    const replayed = this.bondNonces.get(nonce)
+    if (replayed !== undefined) {
+      if (replayed !== value) throw new ExchangeError('nonce_conflict', T.toastBondInvalid)
+      this.settleBond()
+      return this.bondView()
+    }
     if (value > this.cash) throw new ExchangeError('insufficient_cash', TF.bondNoCash)
-    this.cash -= value
+    this.settleBond()
+    if (this.bond.principal <= 0) {
+      this.bond.openedAt = this.ts()
+      this.bond.settledMinute = Math.floor(this.ts() / 60_000)
+    }
     this.bond.principal += value
-    if (this.bond.purchasedAt === null) this.bond.purchasedAt = this.ts()
-    return { ...this.bond }
+    this.cash -= value
+    this.bondNonces.set(nonce, value)
+    return this.bondView()
   }
 
-  redeemBond(): number {
-    const total = this.bond.principal + this.bond.accrued
-    if (total <= 0) return 0
-    this.cash += total
-    this.bond = { principal: 0, accrued: 0, purchasedAt: null, rateDaily: BOND_DAILY_RATE }
-    return total
+  async redeemBond(nonce: string): Promise<BondPosition> {
+    const replayed = this.bondNonces.get(nonce)
+    if (replayed !== undefined) {
+      this.settleBond()
+      return this.bondView()
+    }
+    if (this.bond.principal <= 0) throw new ExchangeError('no_bond_position', T.toastBondInvalid)
+    this.settleBond()
+    const payout = Math.max(0, this.bond.principal + this.bond.accrued)
+    this.cash += payout
+    this.bond = { principal: 0, accrued: 0, settledMinute: 0, openedAt: 0 }
+    this.bondNonces.set(nonce, 0)
+    return this.bondView()
   }
 
   /**
@@ -1789,7 +1839,7 @@ export class MockExchangeClient implements ExchangeClient {
       myTrades: this.myTrades.slice(0, 100),
       dividends: this.dividends.slice(0, 60),
       strategies: [...this.strategies.values()].map((s) => s.spec),
-      bonds: { ...this.bond },
+      bonds: this.bondView(),
       bondProduct: { ...BOND_PRODUCT },
       news: this.news.slice(0, 12),
       agents: [],

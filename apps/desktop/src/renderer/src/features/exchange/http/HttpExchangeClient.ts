@@ -25,7 +25,7 @@ import type {
   AgentView,
   BatchOrderResult,
   BookLevel,
-  BondHolding,
+  BondPosition,
   BondProduct,
   ChartPeriod,
   DepositResult,
@@ -69,7 +69,16 @@ const NEWS_CACHE_LIMIT = 30
 
 const EMPTY_INDEX: IndexQuote = { value: 1000, changePct: 0, high: 1000, low: 1000 }
 
-const EMPTY_BOND: BondHolding = { principal: 0, accrued: 0, purchasedAt: null, rateDaily: 0.0003 }
+const EMPTY_BOND_POSITION: BondPosition = {
+  principal: 0,
+  accrued: 0,
+  value: 0,
+  settledMinute: 0,
+  openedAt: 0,
+  minutes: 0,
+  minuteBp: 3,
+  cash: 0,
+}
 
 const EMPTY_BOND_PRODUCT: BondProduct = {
   id: 'WHALE-BOND',
@@ -502,7 +511,7 @@ export class HttpExchangeClient implements ExchangeClient {
   private myTrades: TradeRecord[] = []
   private dividends: DividendRecord[] = []
   private strategies: StrategySpec[] = []
-  private bond: BondHolding = { ...EMPTY_BOND }
+  private bond: BondPosition = { ...EMPTY_BOND_POSITION }
   private bondProduct: BondProduct = { ...EMPTY_BOND_PRODUCT }
   private news: NewsItem[] = []
   /** 六人格公开摘要：只在回合末 `agents` 帧到达时更新，其余时间保持上一回合。 */
@@ -513,6 +522,8 @@ export class HttpExchangeClient implements ExchangeClient {
   private lastBootstrapAt = 0
   /** 正在补拉数据的标的（防止切换标的时重复请求） */
   private symbolLoading = new Set<string>()
+  /** 正在按需补拉的周期（key = code:period）：切到未缓存周期时只发一次请求 */
+  private chartLoading = new Set<string>()
   /** K 线本地缓存（7 天 TTL，跨重启秒开图表）；key = code:period */
   private chartCachedAt = new Map<string, number>()
   private chartPersistTimer = 0
@@ -598,6 +609,7 @@ export class HttpExchangeClient implements ExchangeClient {
       await stocksTask
       await Promise.all([
         this.loadNews().catch(() => undefined),
+        this.loadBond().catch(() => undefined),
         code === ''
           ? Promise.resolve()
           : this.getBook(code)
@@ -661,6 +673,8 @@ export class HttpExchangeClient implements ExchangeClient {
       const newsTask = this.loadNews().catch(() => undefined)
       // 人格摘要同理：WS `agents` 只在回合末推一次，首屏补拉，否则「对手盘」要等 5 分钟。
       const agentsTask = this.loadAgents().catch(() => undefined)
+      // 债券持仓：顶部「债券价值」与理财卡片都要用，首屏补拉（之后按分钟随行情刷新）。
+      const bondTask = this.loadBond().catch(() => undefined)
       const stocks = await this.getStocks()
       const code = stocks[0]?.code
       // 行情图/盘口尽早并行：不再等 account/orders 往返后才开始拉 5 个周期 K 线，首屏更快。
@@ -687,7 +701,7 @@ export class HttpExchangeClient implements ExchangeClient {
       this.account = account
       this.orders = orders
       this.strategies = strategies
-      await Promise.all([...chartTasks, roundTask, metaTask, newsTask, agentsTask])
+      await Promise.all([...chartTasks, roundTask, metaTask, newsTask, agentsTask, bondTask])
       this.emitTick()
     } catch (err) {
       // 连不上：界面由数据源徽标 + 引导态兜底；这里只上报，不伪造数据
@@ -735,6 +749,14 @@ export class HttpExchangeClient implements ExchangeClient {
     if (!isRecord(raw) || !Array.isArray(raw.agents)) return
     this.agents = raw.agents.map(normalizeAgent).filter(isPresent)
     this.emitTick()
+  }
+
+  /**
+   * 债券持仓：首屏与每轮行情刷新时拉一次，写入 `this.bond` 供顶部「债券价值」读。
+   * 申购/赎回后的即时反馈由 `BondCard` 直接使用接口返回值，不依赖这里。
+   */
+  private async loadBond(): Promise<void> {
+    this.bond = await this.get<BondPosition>('/bond')
   }
 
   /**
@@ -895,6 +917,26 @@ export class HttpExchangeClient implements ExchangeClient {
 
   getChartSeries(code: string, period: ChartPeriod): Kline[] {
     return this.chartCache.get(`${code}:${period}`) ?? []
+  }
+
+  /**
+   * 按需补拉单个周期（2026-11-04 船长报障「M5 图载入不出来」）：
+   * 图表组件只读缓存、不发起请求，预加载又只覆盖 m1/m5/h5/d5/d35 ⇒ h1/d1/d7 永远空白、
+   * m5 一旦预加载失败也不会重试。切周期时调用本方法补拉，成功后 emitTick 触发重绘。
+   */
+  ensureChartData(code: string, period: ChartPeriod): void {
+    if (code === '') return
+    const key = `${code}:${period}`
+    if (this.chartCache.has(key) || this.chartLoading.has(key)) return
+    this.chartLoading.add(key)
+    void this.loadChart(code, period)
+      .then(() => this.emitTick())
+      .catch(() => {
+        /* 失败保留空缓存，下次切到该周期会重试 */
+      })
+      .finally(() => {
+        this.chartLoading.delete(key)
+      })
   }
 
   /** 启动时把 7 天内的本地 K 线缓存灌回内存：先出图，再由网络刷新覆盖。 */
@@ -1241,13 +1283,20 @@ export class HttpExchangeClient implements ExchangeClient {
     throw new ExchangeError('not_supported', '联机账户由服务器管理，没有可重置的本地模拟账户')
   }
 
-  /** 联机债券走服务器；本轮 Go 未提供债券接口，同步接口先明确拒绝（页面有引导态兜底） */
-  buyBond(_amount: number): BondHolding {
-    throw new ExchangeError('not_supported', '联机模式暂未开放债券')
+  /**
+   * 债券：放置型持仓，服务端按真实分钟固定 3bp 单利结算；本金锁定、随时可赎。
+   * 2026-11-04 船长令：债券也走交易所现金（入金后的钱），不再用本地存档直接买。
+   */
+  async getBondPosition(): Promise<BondPosition> {
+    return this.get<BondPosition>('/bond')
   }
 
-  redeemBond(): number {
-    throw new ExchangeError('not_supported', '联机模式暂未开放债券')
+  async openBond(amount: number, nonce: string): Promise<BondPosition> {
+    return this.post<BondPosition>('/bond/open', { amount, nonce })
+  }
+
+  async redeemBond(nonce: string): Promise<BondPosition> {
+    return this.post<BondPosition>('/bond/redeem', { nonce })
   }
 
   /**

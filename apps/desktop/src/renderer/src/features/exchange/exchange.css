@@ -159,9 +159,17 @@
 
 .ex-title {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
+  /* 船长令：数据源徽标放到标题下方，与「交易所」三字左对齐并带边框 */
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
   flex: 0 0 auto;
+}
+
+.ex-title > .ex-source-badge {
+  /* 标题「深空证券交易所」前四字宽度 = 4 × (字号 + 字距 2px) */
+  margin-left: calc(4 * (var(--wui-fs-lg) + 2px));
+  padding: 0 6px;
 }
 
 .ex-title-text {
@@ -2873,6 +2881,21 @@
   background: rgb(var(--wui-bg-field) / 0.6);
   font-family: var(--wui-mono);
   font-variant-numeric: tabular-nums;
+  /* 船长令：距结算读数是回合制的主时钟，字号按 HUD 主读数放大 */
+  font-size: var(--wui-fs-md, 13px);
+  padding: 2px 10px;
+}
+
+.ex-round-clock {
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+/* 锁定前 30 秒：黄色提醒，不闪（闪烁只留给锁定档，避免长时间闪屏） */
+.ex-round-clock-badge.is-warn {
+  border-color: rgb(var(--wui-gold) / 0.8);
+  color: rgb(var(--wui-gold));
+  background: rgb(var(--wui-gold) / 0.14);
 }
 
 .ex-round-clock-badge.is-locked {

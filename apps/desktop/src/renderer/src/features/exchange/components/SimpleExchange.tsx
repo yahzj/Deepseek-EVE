@@ -156,12 +156,7 @@ export function SimpleExchange({
             </div>
           ) : sideTab === 'finance' ? (
             <div className="ex-simple-finance">
-              <BondCard
-                client={client}
-                snap={snap}
-                onToast={onToast}
-                engine={isServer ? engine : undefined}
-              />
+              <BondCard client={client} snap={snap} onToast={onToast} onRefresh={onRefresh} />
               <FundCard client={client} snap={snap} onToast={onToast} onRefresh={onRefresh} />
             </div>
           ) : (

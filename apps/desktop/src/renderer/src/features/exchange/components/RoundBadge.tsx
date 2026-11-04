@@ -88,6 +88,8 @@ export function RoundBadge({ client, onNewRound }: RoundBadgeProps) {
   const remainingMs = Math.max(0, round.nextRoundAt - serverNow)
   const lockMs = Math.max(0, round.lockSec) * 1_000
   const locked = round.locked || remainingMs <= lockMs
+  /** 锁定前 30 秒进黄色提醒档：只变色不闪，锁定档才红色闪烁（2026-11-04 船长令） */
+  const warn = !locked && remainingMs <= 30_000
   const mmss = formatMmss(remainingMs)
   const usedOrders = Math.max(0, Math.round(round.usedOrders ?? 0))
   const maxOrders = Math.max(1, Math.round(round.maxOrders))
@@ -95,7 +97,7 @@ export function RoundBadge({ client, onNewRound }: RoundBadgeProps) {
   return (
     <div className="ex-round-badge-group">
       <span
-        className={`ex-source-badge ex-round-clock-badge${locked ? ' is-locked' : ''}`}
+        className={`ex-source-badge ex-round-clock-badge${locked ? ' is-locked' : warn ? ' is-warn' : ''}`}
         title={locked ? T.roundLockedHint : T.roundBadgeHint}
         role="timer"
       >

@@ -193,6 +193,16 @@ function ExchangeBody({
 
   const pnlUp = totalUnrealizedPnl >= 0
 
+  // 现货持仓市值：总资产已在游戏左上角显示，顶栏改为看「钱变成了多少股票」
+  const holdingsValue = useMemo(() => {
+    let sum = 0
+    for (const h of snap.account.holdings) {
+      const q = snap.stocks.find((s) => s.code === h.code)
+      if (q) sum += q.price * h.qty
+    }
+    return sum
+  }, [snap])
+
   const selectCode = (next: string): void => {
     setExchangeSelectedCode(next)
     setCode(next)
@@ -220,6 +230,7 @@ function ExchangeBody({
         <div className="ex-topbar-left">
           <div className="ex-title">
             <h2 className="ex-title-text">{T.simpleTopTitle}</h2>
+            <SourceBadge source={bundle.source} />
           </div>
 
           <div className="ex-mode-tabs" role="tablist" aria-label={T.viewModeSimple}>
@@ -246,9 +257,8 @@ function ExchangeBody({
           </div>
         </div>
 
-        {/* 中区：交易所运行状态（数据源 + 回合倒计时 + 本回合委托配额）及专业模式大盘指数 */}
+        {/* 中区：交易所运行状态（回合倒计时 + 本回合委托配额）及专业模式大盘指数 */}
         <div className="ex-topbar-status">
-          <SourceBadge source={bundle.source} />
           <RoundBadge client={client} onNewRound={bump} />
           {viewMode === 'pro' ? (
             <div className="ex-index" title={T.indexName}>
@@ -262,13 +272,13 @@ function ExchangeBody({
         {/* 右区：个人账户核心资产看板 + 出入金操作（两模式像素级绝对一致，零跳动） */}
         <div className="ex-topbar-right">
           <div className="ex-topbar-stats">
-            <div className="ex-stat ex-stat-big">
-              <span className="ex-dim">{T.totalAssets}</span>
-              <b className="ex-num ex-val-highlight">{money(snap.account.equity)}</b>
-            </div>
             <div className="ex-stat">
               <span className="ex-dim">{T.availableCash}</span>
               <b className="ex-num">{money(snap.account.cash)}</b>
+            </div>
+            <div className="ex-stat">
+              <span className="ex-dim">{T.holdingsValue}</span>
+              <b className="ex-num">{money(holdingsValue)}</b>
             </div>
             <div className="ex-stat">
               <span className="ex-dim">{T.unrealizedPnl}</span>

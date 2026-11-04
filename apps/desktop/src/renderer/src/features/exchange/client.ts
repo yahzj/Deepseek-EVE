@@ -326,6 +326,26 @@ export interface BondHolding {
   rateDaily: number
 }
 
+/** 低风险理财·债券持仓（服务端放置型，2026-11-04 船长令：债券也用入金后的交易所现金购买）。 */
+export interface BondPosition {
+  /** 本金 */
+  principal: number
+  /** 累计已结算利息（单利，不滚本） */
+  accrued: number
+  /** 当前价值 = 本金 + 已结算利息 */
+  value: number
+  /** 已计息到的分钟索引（服务端墙钟） */
+  settledMinute: number
+  /** 建仓时间（毫秒） */
+  openedAt: number
+  /** 已计息分钟数 */
+  minutes: number
+  /** 每分钟利率（基点）：3 = 0.03% */
+  minuteBp: number
+  /** 申购/赎回后的可用现金 */
+  cash: number
+}
+
 export interface IndexQuote {
   value: number
   changePct: number
@@ -374,7 +394,7 @@ export interface ExchangeSnapshot {
   myTrades: TradeRecord[]
   dividends: DividendRecord[]
   strategies: StrategySpec[]
-  bonds: BondHolding
+  bonds: BondPosition
   bondProduct: BondProduct
   news: NewsItem[]
   /** 六人格公开摘要（WS `agents` 帧，回合末更新；模拟盘为空数组） */
@@ -441,6 +461,8 @@ export interface ExchangeClient {
   retryBootstrap?(): void
   /** 可选：切换标的后补拉该标的 K 线/盘口（HTTP 模式实现；首屏只拉了首只标的）。 */
   ensureSymbolData?(code: string): void
+  /** 可选：按需补拉单个图表周期（HTTP 模式实现；未缓存的周期切过去时调用）。 */
+  ensureChartData?(code: string, period: ChartPeriod): void
   /** 可选：每分钟刷新行情/账户/委托/快讯（HTTP 模式实现）。 */
   refreshMarketData?(code: string): void
   onTick(cb: () => void): Unsubscribe
@@ -449,8 +471,12 @@ export interface ExchangeClient {
   getChartSeries(code: string, period: ChartPeriod): Kline[]
   /** 「重置模拟账户」：回到 1,000 万启动资金；HTTP 实现没有本地账户可重置 */
   resetAccount(): void
-  buyBond(amount: number): BondHolding
-  redeemBond(): number
+  /** 债券：查询持仓（服务端惰性结算到当前分钟） */
+  getBondPosition(): Promise<BondPosition>
+  /** 债券：申购，把交易所现金换成本金（可多次追加） */
+  openBond(amount: number, nonce: string): Promise<BondPosition>
+  /** 债券：赎回本金 + 累计利息 */
+  redeemBond(nonce: string): Promise<BondPosition>
   /** 基金：查询持仓（服务端惰性结算到当前分钟，随时可看） */
   getFundPosition(): Promise<FundPosition>
   /** 基金：申购，把交易所现金换成本金；本金锁定、随时可赎 */
