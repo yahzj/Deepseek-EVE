@@ -76,10 +76,10 @@
 
 ### 3.7 极简模式保底产品
 - 债券：本地计算，0.03%/分钟（`localProducts.ts`，localStorage `whale-idle:exch-bond-local:v1`），不请求服务器。
-- 基金：服务端 `/api/exchange/fund/play`，SHA-256 熵源（四只收盘价 + 回合号 + nonce）→ 50% 亏（1×债券分钟利息）/50% 赢（3×），前端含「计算中…」动画；audit 走 `exchange_transfers.kind=fund_play`。
+- 基金：**放置型**（2026-11-04 修订）。`GET /fund` 查持仓、`POST /fund/open` 申购、`POST /fund/redeem` 赎回；本金锁定，按真实分钟逐分钟结算（70% +16bp / 30% −7bp，期望 +9bp ≈ 债券 3 倍），亏损真实发生、随时可赎；逐分钟结果由 `HMAC(fundSecret, "fund|<account>|<minute>")` 决定，可重放；audit 走 `exchange_transfers.kind=fund_open/fund_redeem`。
 
 ### 3.8 API 与数据表（摘要）
-- 主要接口：`/api/exchange/{meta,round,stocks,book/:code,trades/:code,klines/:code,account,orders,positions,trades/mine,news,events,agents,borrow,strategies,deposit,withdraw,fund/play,stream(WS)}`。
+- 主要接口：`/api/exchange/{meta,round,stocks,book/:code,trades/:code,klines/:code,account,orders,positions,trades/mine,news,events,agents,borrow,strategies,deposit,withdraw,fund,fund/open,fund/redeem,stream(WS)}`。
 - K 线 interval 支持 `1m/5m/1h/1d/1w/1mo`，单次上限 2016 根；1 周历史用 5m×2016 拉满。
 - 关键表：`exchange_accounts, exchange_orders, exchange_trades, exchange_holdings, exchange_positions, exchange_agents, exchange_agent_positions, exchange_events, exchange_news, exchange_klines, exchange_transfers`；券池在 meta `borrow_pool`。
 

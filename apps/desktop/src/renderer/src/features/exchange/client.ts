@@ -204,19 +204,36 @@ export type ChartPeriod = 'intraday' | 'm1' | 'm5' | 'h5' | 'd5' | 'd35' | 'h1' 
 export interface DepositResult { nonce: string; applied: number; fee: number; cash: number; receiptHash: string }
 export interface WithdrawResult { nonce: string; amount: number; fee: number; availableAt: number; receiptHash: string }
 
-/** 基金单期结算结果：服务端用实盘数据 + nonce 决定输赢，盈利 = 3×债券分钟利息，亏损 = 1×。 */
-export interface FundPlayResult {
-  win: boolean
-  amount: number
-  /** 净盈亏（正=盈利、负=亏损），单位信用点 */
-  profit: number
-  /** 本单使用的债券分钟利率（基点） */
-  rateBp: number
-  /** 结算依据（实盘数据摘要，展示给玩家） */
-  evidence: string
-  /** 结算后的交易所可用现金 */
+/**
+ * 保底基金持仓（放置型）：申购后本金锁定，按真实分钟逐分钟结算，随时可赎。
+ * 每分钟 70% 概率 +16bp、30% 概率 −7bp，期望 +9bp/分钟 ≈ 债券（3bp/分钟）的 3 倍。
+ * 亏损真实发生，赎回额 = 本金 + 累计收益（accrued 可为负）。
+ */
+export interface FundPosition {
+  /** 本金（申购金额的累计值） */
+  principal: number
+  /** 累计已结算收益，可为负 */
+  accrued: number
+  /** 当前价值 = 本金 + 累计收益 */
+  value: number
+  /** 已计息到的分钟索引（UTC 分钟） */
+  settledMinute: number
+  /** 建仓时间（毫秒） */
+  openedAt: number
+  /** 已计息分钟数 */
+  minutes: number
+  /** 盈利分钟的收益率（基点） */
+  winBp: number
+  /** 亏损分钟的收益率（基点，负数） */
+  loseBp: number
+  /** 盈利分钟占比（0~100） */
+  winPercent: number
+  /** 每分钟期望收益（基点） */
+  expectedBp: number
+  /** 对照用的债券分钟利率（基点） */
+  bondBp: number
+  /** 查询时的交易所可用现金 */
   cash: number
-  replayed?: boolean
 }
 export type Unsubscribe = () => void
 
@@ -434,8 +451,12 @@ export interface ExchangeClient {
   resetAccount(): void
   buyBond(amount: number): BondHolding
   redeemBond(): number
-  /** 基金：投入交易所现金，服务端按实盘数据 50/50 结算（盈利 3× 债券分钟利息，亏损 1×） */
-  playFund(amount: number, nonce: string): Promise<FundPlayResult>
+  /** 基金：查询持仓（服务端惰性结算到当前分钟，随时可看） */
+  getFundPosition(): Promise<FundPosition>
+  /** 基金：申购，把交易所现金换成本金；本金锁定、随时可赎 */
+  openFund(amount: number, nonce: string): Promise<FundPosition>
+  /** 基金：赎回本金 + 累计收益（累计收益可为负） */
+  redeemFund(nonce: string): Promise<FundPosition>
   /** 下单预览（保证金/名义/手续费/强平价/距强平/上限/不可下单原因） */
   previewOrder(req: PlaceOrderRequest): OrderPreview
 }

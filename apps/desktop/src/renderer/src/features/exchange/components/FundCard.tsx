@@ -1,25 +1,20 @@
-import { isEn } from '../../../i18n/locale'
 /**
- * 保底基金（极简模式）：投入交易所现金，服务端用实盘数据结算。
+ * 保底基金（放置型）：本金锁定，按真实分钟逐分钟结算，随时可赎回。
  *
- * 规则（船长 2026-11-04 定案）：
- * - 50% 概率盈利：盈利 = 债券分钟利息 × 3；
- * - 50% 概率亏损：亏损 = 债券分钟利息 × 1（不亏本金）；
- * - 结算由服务端读取实盘数据 + nonce 决定，前端只展示「计算中…」动画与结果。
+ * 规则（船长 2026-11-04 定案：「起码 3 倍收益，但是有概率亏，随时可赎」）：
+ * - 每分钟独立结算：70% 概率 +16bp、30% 概率 −7bp，期望 +9bp ≈ 债券（3bp/分钟）的 3 倍；
+ * - 亏损真实发生，不保本；赎回额 = 本金 + 累计收益（可为负）；
+ * - 结算由服务端按分钟决定（HMAC 确定性可重放），前端只负责展示与触发，不参与计算。
  */
-import { useState } from 'react'
-import type { ExchangeClient, ExchangeSnapshot, FundPlayResult } from '../client'
+import { useEffect, useState } from 'react'
+import { isEn } from '../../../i18n/locale'
+import type { ExchangeClient, ExchangeSnapshot, FundPosition } from '../client'
 import type { ToastFn } from '../../../pages/common'
 import { money } from '../format'
 import { T, TF } from '../texts'
 
-const CALC_ANIM_MS = 1200
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms)
-  })
-}
+/** 持仓刷新间隔：服务端惰性按分钟结算，60 秒拉一次即可。 */
+const POSITION_REFRESH_MS = 60_000
 
 export function FundCard({
   client,
@@ -32,56 +27,84 @@ export function FundCard({
   onToast: ToastFn
   onRefresh: () => void
 }) {
+  const [position, setPosition] = useState<FundPosition | null>(null)
   const [amountText, setAmountText] = useState('100000')
-  const [calc, setCalc] = useState(false)
-  const [last, setLast] = useState<FundPlayResult | null>(null)
+  const [busy, setBusy] = useState(false)
 
   const availableCash = snap.account.cash
+  const principal = position?.principal ?? 0
+  const hasPosition = principal > 0
+  const accrued = position?.accrued ?? 0
+  const value = position?.value ?? 0
+  const minutes = position?.minutes ?? 0
+
+  // 首屏拉一次持仓，之后每分钟刷新（有仓时收益才会随分钟增长）。
+  useEffect(() => {
+    let alive = true
+    const pull = (): void => {
+      void client
+        .getFundPosition()
+        .then((next) => {
+          if (alive) setPosition(next)
+        })
+        .catch(() => undefined)
+    }
+    pull()
+    const timer = setInterval(pull, POSITION_REFRESH_MS)
+    return () => {
+      alive = false
+      clearInterval(timer)
+    }
+  }, [client])
+
   const numericAmount = Math.floor(Number(amountText.replace(/,/g, '')))
   const isInvalid = !Number.isFinite(numericAmount) || numericAmount <= 0
   const isOverCash = !isInvalid && numericAmount > availableCash
-  const canPlay = !calc && !isInvalid && !isOverCash && availableCash > 0
-
-  const handleBlur = (): void => {
-    const raw = Number(amountText.replace(/,/g, ''))
-    if (!Number.isFinite(raw) || raw <= 0) {
-      setAmountText(availableCash > 0 ? String(Math.min(100000, Math.floor(availableCash))) : '100000')
-      return
-    }
-    setAmountText(String(Math.floor(raw)))
-  }
+  const canSubmit = !busy && !isInvalid && !isOverCash && availableCash > 0
 
   const setRatio = (ratio: number): void => {
-    if (availableCash <= 0 || calc) return
+    if (availableCash <= 0 || busy) return
     const target = Math.floor(availableCash * ratio)
     setAmountText(String(Math.max(1, target)))
   }
 
-  const play = (): void => {
-    if (!canPlay) {
-      if (isOverCash) {
-        onToast(T.fundNoCash, true)
-      } else {
-        onToast(T.cashierInvalidAmount, true)
-      }
+  const submit = (): void => {
+    if (!canSubmit) {
+      onToast(isOverCash ? T.fundNoCash : T.cashierInvalidAmount, true)
       return
     }
-    setCalc(true)
-    const nonce = crypto.randomUUID()
+    setBusy(true)
+    const amount = numericAmount
     void (async () => {
       try {
-        // 动画与请求并行：至少展示 1.2 秒「计算中…」，避免结果一闪而过。
-        const [result] = await Promise.all([client.playFund(numericAmount, nonce), sleep(CALC_ANIM_MS)])
-        setLast(result)
-        onToast(
-          result.win ? TF.fundWin(money(result.profit)) : TF.fundLose(money(-result.profit)),
-          !result.win,
-        )
+        const next = await client.openFund(amount, crypto.randomUUID())
+        setPosition(next)
+        setAmountText('')
+        onToast(TF.fundOpened(money(amount)), false)
         onRefresh()
       } catch (err) {
         onToast(err instanceof Error ? err.message : String(err), true)
       } finally {
-        setCalc(false)
+        setBusy(false)
+      }
+    })()
+  }
+
+  const redeem = (): void => {
+    if (busy || !hasPosition) return
+    const payout = Math.max(0, principal + accrued)
+    const lost = accrued < 0
+    setBusy(true)
+    void (async () => {
+      try {
+        const next = await client.redeemFund(crypto.randomUUID())
+        setPosition(next)
+        onToast(TF.fundRedeemed(money(payout)), lost)
+        onRefresh()
+      } catch (err) {
+        onToast(err instanceof Error ? err.message : String(err), true)
+      } finally {
+        setBusy(false)
       }
     })()
   }
@@ -98,7 +121,7 @@ export function FundCard({
         </div>
         <p className="ex-modal-text">{T.fundDesc}</p>
 
-        {/* 账户可用资金展示：等宽排版 */}
+        {/* 账户可用资金：等宽排版 */}
         <div className="ex-preview-row">
           <span>{T.strategyAvailCash}</span>
           <b className="ex-num">
@@ -106,36 +129,60 @@ export function FundCard({
           </b>
         </div>
 
-        {/* 上次结算结果：等宽排版与平滑收益高亮 */}
-        {last !== null ? (
+        {/* 持仓区：本金 / 累计收益 / 当前价值 / 已计息分钟 */}
+        {hasPosition ? (
           <>
-            <div className={`ex-preview-row ${last.win ? 'is-bond-highlight' : ''}`}>
-              <span>{last.win ? T.fundResultWin : T.fundResultLose}</span>
-              <b className={`ex-num ${last.win ? 'is-up ex-fund-result-win' : 'is-down ex-fund-result-lose'}`}>
-                {last.win ? '+' : '−'}
-                {money(Math.abs(last.profit))} <span className="ex-unit">{T.creditUnit}</span>
+            <div className="ex-preview-row">
+              <span>{T.fundPrincipal}</span>
+              <b className="ex-num">
+                {money(principal)} <span className="ex-unit">{T.creditUnit}</span>
+              </b>
+            </div>
+            <div className={`ex-preview-row ${accrued > 0 ? 'is-bond-highlight' : ''}`}>
+              <span>{T.fundAccrued}</span>
+              <b
+                className={`ex-num ${
+                  accrued > 0 ? 'is-up ex-fund-result-win' : accrued < 0 ? 'is-down ex-fund-result-lose' : ''
+                }`}
+              >
+                {accrued > 0 ? '+' : accrued < 0 ? '−' : ''}
+                {money(Math.abs(accrued))} <span className="ex-unit">{T.creditUnit}</span>
               </b>
             </div>
             <div className="ex-preview-row">
-              <span>{isEn() ? 'Settlement Basis' : '结算依据'}</span>
-              <span className="ex-dim ex-num">{last.evidence}</span>
+              <span>{T.fundValue}</span>
+              <b className="ex-num">
+                {money(value)} <span className="ex-unit">{T.creditUnit}</span>
+              </b>
+            </div>
+            <div className="ex-preview-row">
+              <span>{T.fundMinutes}</span>
+              <b className="ex-num">
+                {minutes} {T.fundMinuteUnit}
+              </b>
             </div>
           </>
-        ) : null}
+        ) : (
+          <div className="ex-bond-hint">{T.fundEmpty}</div>
+        )}
 
-        {/* 投入金额配置与快捷比例 */}
+        {/* 申购 / 追加金额 */}
         <div className="ex-bond-field">
           <div className="ex-bond-field-head">
             <label className="ex-label" htmlFor="ex-fund-input">
               {T.fundAmount}
             </label>
-            <div className="ex-bond-quick-ratios" role="group" aria-label={isEn() ? "Quick invest ratios" : "快捷投入比例"}>
+            <div
+              className="ex-bond-quick-ratios"
+              role="group"
+              aria-label={isEn() ? 'Quick invest ratios' : '快捷投入比例'}
+            >
               <button
                 type="button"
                 className="ex-bond-ratio-btn"
-                title={isEn() ? "Quick invest 25% cash" : "快捷投入 25% 可用资金"}
-                aria-label={isEn() ? "Quick invest 25% cash" : "快捷投入 25% 可用资金"}
-                disabled={calc || availableCash <= 0}
+                title={isEn() ? 'Quick invest 25% cash' : '快捷投入 25% 可用资金'}
+                aria-label={isEn() ? 'Quick invest 25% cash' : '快捷投入 25% 可用资金'}
+                disabled={busy || availableCash <= 0}
                 onClick={() => setRatio(0.25)}
               >
                 {T.bondPct25}
@@ -143,9 +190,9 @@ export function FundCard({
               <button
                 type="button"
                 className="ex-bond-ratio-btn"
-                title={isEn() ? "Quick invest 50% cash" : "快捷投入 50% 可用资金"}
-                aria-label={isEn() ? "Quick invest 50% cash" : "快捷投入 50% 可用资金"}
-                disabled={calc || availableCash <= 0}
+                title={isEn() ? 'Quick invest 50% cash' : '快捷投入 50% 可用资金'}
+                aria-label={isEn() ? 'Quick invest 50% cash' : '快捷投入 50% 可用资金'}
+                disabled={busy || availableCash <= 0}
                 onClick={() => setRatio(0.5)}
               >
                 {T.bondPct50}
@@ -153,9 +200,9 @@ export function FundCard({
               <button
                 type="button"
                 className="ex-bond-ratio-btn"
-                title={isEn() ? "Quick invest max cash" : "快捷投入全部可用资金"}
-                aria-label={isEn() ? "Quick invest max cash" : "快捷投入全部可用资金"}
-                disabled={calc || availableCash <= 0}
+                title={isEn() ? 'Quick invest max cash' : '快捷投入全部可用资金'}
+                aria-label={isEn() ? 'Quick invest max cash' : '快捷投入全部可用资金'}
+                disabled={busy || availableCash <= 0}
                 onClick={() => setRatio(1)}
               >
                 {T.fundAllIn}
@@ -168,13 +215,21 @@ export function FundCard({
               className="ex-input ex-num"
               inputMode="numeric"
               value={amountText}
-              disabled={calc}
+              disabled={busy}
               onChange={(e) => setAmountText(e.target.value)}
-              onBlur={handleBlur}
+              onBlur={() => {
+                const raw = Number(amountText.replace(/,/g, ''))
+                if (!Number.isFinite(raw) || raw <= 0) {
+                  setAmountText(
+                    availableCash > 0 ? String(Math.min(100000, Math.floor(availableCash))) : '100000',
+                  )
+                  return
+                }
+                setAmountText(String(Math.floor(raw)))
+              }}
             />
             <span className="ex-input-unit">{T.creditUnit}</span>
           </div>
-          {/* 防呆提示 */}
           {isOverCash ? (
             <div className="ex-bond-hint is-warn">{T.fundNoCash}</div>
           ) : isInvalid && amountText.trim() !== '' ? (
@@ -182,17 +237,18 @@ export function FundCard({
           ) : null}
         </div>
 
-        {/* 优雅禁用态与操作按钮 */}
         <div className="ex-bond-actions">
-          <button
-            type="button"
-            className="ex-mini-btn is-bond-buy"
-            disabled={!canPlay}
-            onClick={play}
-          >
-            {calc ? T.fundCalculating : T.fundPlayBtn}
+          <button type="button" className="ex-mini-btn is-bond-buy" disabled={!canSubmit} onClick={submit}>
+            {busy ? T.fundCalculating : hasPosition ? T.fundAddBtn : T.fundPlayBtn}
           </button>
+          {hasPosition ? (
+            <button type="button" className="ex-mini-btn" disabled={busy} onClick={redeem}>
+              {T.fundRedeemBtn}
+            </button>
+          ) : null}
         </div>
+
+        <div className="ex-bond-hint">{T.fundPositionNote}</div>
       </div>
     </section>
   )

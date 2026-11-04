@@ -164,7 +164,7 @@ Node 内部接口（**仅 localhost + 共享密钥**）：
 - **回合涨跌幅限制**（±3% 普通 / ±8% 事件，按波动档缩放）：已部署；部署后第一个结算回合（01:20）SMHI +0.15%、UGMC −3.75%、OJLS +4.49%、ABSI +3.75%，全部在限制内。
 - **64 事件四象分类 + 六人格 EVE 风改名**（星门局 K7A0 / 截击者 F4B1 / 锚定者 A2C7 / 黑隐者 C3A8 / 克隆潮 H5D6 / 利维坦 L2F9）：已部署；`/agents` 实测新名 + callsign；`/events` 新增 xiang/xiangName/intensity。
 - **本地记账模式**（`EXCHANGE_LOCAL_SAVE_MODE=1`）：空钱包新账号直接入金 300 万验证通过；出金只扣交易所现金。
-- **保底基金**（`POST /api/exchange/fund/play`）：部署后 4 次结算验证（输赢各现、重放幂等、现金守恒、审核行 kind=fund_play）。
+- **保底基金**（`POST /api/exchange/fund/play`）：部署后 4 次结算验证（输赢各现、重放幂等、现金守恒、审核行 kind=fund_play）。—— 该即时开奖版本已于 2026-11-04 改为放置型（`fund/open`、`fund/redeem`），现行规则见 `stock-exchange-products-20261104.md` 第三节。
 - **K 线单次上限 1000→2016**（5m 约一周）：实测一次返回 2016 根。
 - **前端**：默认 IP 直连 + 失败回退域名、7 天离线缓存、回合倒计时徽标、入金/出金弹窗（本地存档扣加）、本地债券、保底基金。
 - **回滚**：每批部署前备份 `/home/ubuntu/whale-exchange/whale-exchange.prev`；环境变量开关：`EXCHANGE_LOCAL_SAVE_MODE=0` 回旧钱包桥、`EXCHANGE_ROUND_LIMIT_BP=0` 关涨跌幅限制。

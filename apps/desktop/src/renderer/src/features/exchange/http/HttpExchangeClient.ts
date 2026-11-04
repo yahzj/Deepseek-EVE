@@ -36,7 +36,7 @@ import type {
   ExchangeOrder,
   ExchangeSnapshot,
   ExchangeTopic,
-  FundPlayResult,
+  FundPosition,
   IndexQuote,
   Kline,
   NewsItem,
@@ -1251,11 +1251,19 @@ export class HttpExchangeClient implements ExchangeClient {
   }
 
   /**
-   * 基金：服务端按实盘数据结算（盈利 3× 债券分钟利息、亏损 1×）。
-   * 前端只等结果；「计算中…」动画在 FundCard 里做。
+   * 基金：放置型持仓。服务端按真实分钟逐分钟结算（70% +16bp / 30% −7bp），
+   * 查询时惰性结算到当前分钟；本金锁定，随时可赎。
    */
-  async playFund(amount: number, nonce: string): Promise<FundPlayResult> {
-    return this.post<FundPlayResult>('/fund/play', { amount, nonce })
+  async getFundPosition(): Promise<FundPosition> {
+    return this.get<FundPosition>('/fund')
+  }
+
+  async openFund(amount: number, nonce: string): Promise<FundPosition> {
+    return this.post<FundPosition>('/fund/open', { amount, nonce })
+  }
+
+  async redeemFund(nonce: string): Promise<FundPosition> {
+    return this.post<FundPosition>('/fund/redeem', { nonce })
   }
 
   /**
