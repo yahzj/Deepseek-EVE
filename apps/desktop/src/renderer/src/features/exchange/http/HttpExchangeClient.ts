@@ -311,8 +311,12 @@ function normalizeRound(raw: unknown): RoundInfo | null {
 function normalizeNews(raw: unknown): NewsItem | null {
   if (!isRecord(raw)) return null
   const id = typeof raw.id === 'string' ? raw.id : ''
+  // 船长指令（2026-11-04）：快讯中关于人格的文案都要去掉，AG- 开头的人格行为快讯直接不接收
+  if (id.startsWith('AG-')) return null
   const title = text(raw.title)
+  const body = text(raw.body)
   if (id === '' && title === '') return null
+  if (title.includes('人格') || body.includes('人格')) return null
   // 后端 tone ∈ good/bad/neutral；前端 DTO 只有 good/bad/warn/info，
   // `neutral` 与未知值一并归到 `info`（快讯栏按中性色渲染，不引入新 tone）。
   const tone =

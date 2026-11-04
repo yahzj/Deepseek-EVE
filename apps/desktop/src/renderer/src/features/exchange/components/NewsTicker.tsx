@@ -14,8 +14,26 @@ import { T, TF } from '../texts'
 /** 历史快讯里的内部元信息兜底清理（新快讯由服务端直接输出玩家向措辞） */
 const LEGACY_META = /（[^（）]*(?:强度|冲击|影响|回合|bp|×)[^（）]*）/g
 
+/** 人格相关的专有名词与括号标记匹配（2026-11-04 船长令：快讯中关于人格的文案都要去掉） */
+const PERSONALITY_REGEX = /(?:六大|六|主力|AI|对手盘)?人格/g
+const PERSONALITY_BRACKETS = /[（(【\[][^（）()【】\[\]]*(?:人格|铁砧|红隼|磐石|夜枭|群星|深潮|黑隐者)[^（）()【】\[\]]*[）)】\]]/g
+
 function playerText(text: string): string {
-  return text.replace(LEGACY_META, '').replace(/\s+/g, ' ').trim()
+  return text
+    .replace(LEGACY_META, '')
+    .replace(PERSONALITY_BRACKETS, '')
+    .replace(PERSONALITY_REGEX, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/** 判断是否属于纯人格行为快讯（需整条过滤，不展示给玩家） */
+function isPersonalityNews(item: NewsItem): boolean {
+  if (item.id.startsWith('AG-')) return true
+  const raw = `${item.title} ${item.body}`
+  if (/(?:六大|六|主力|AI|对手盘)?人格/.test(raw)) return true
+  if (/^(?:【|\[)?(?:铁砧|红隼|磐石|夜枭|群星|深潮|黑隐者)/.test(item.title)) return true
+  return false
 }
 
 function toneLabel(tone: NewsItem['tone']): string {
@@ -36,13 +54,15 @@ export function NewsTicker({
   const [rows, setRows] = useState<NewsItem[]>([])
   const lastIdRef = useRef('')
 
-  // 每分钟只追加一行：即使 tick 频繁让 news 变化，也不会刷屏（最多保留两行）。
+  // 每分钟只追加一行：即使 tick 频繁让 news 变化，也不会刷屏（最多保留两行，彻底过滤人格快讯）。
   useEffect(() => {
     const appendLatest = (): void => {
-      const latest = newsRef.current[0]
+      // 过滤掉所有人格行为与提及人格的快讯
+      const filtered = newsRef.current.filter((item) => !isPersonalityNews(item))
+      const latest = filtered[0]
       if (latest === undefined || latest.id === lastIdRef.current) return
       lastIdRef.current = latest.id
-      setRows((prev) => [latest, ...prev].slice(0, 2))
+      setRows((prev) => [latest, ...prev.filter((p) => !isPersonalityNews(p))].slice(0, 2))
     }
     appendLatest()
     const timer = window.setInterval(appendLatest, 60_000)
