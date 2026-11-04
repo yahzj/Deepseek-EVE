@@ -15,7 +15,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ExchangeClient, ExchangeOrder, OrderSource, RoundInfo } from '../client'
 import type { ToastFn } from '../../../pages/common'
-import { amount, price, shortTime } from '../format'
+import { amount, periodIndex, price, shortTime } from '../format'
 import { T, TF } from '../texts'
 
 type Filter = 'pending' | 'done' | 'all'
@@ -276,7 +276,7 @@ export function MyOrders({ client, onToast, variant }: MyOrdersProps) {
               return (
                 <div className={`ex-myorders-row is-${order.status}`} key={order.id}>
                   <span className="ex-dim">
-                    {order.roundNo ? TF.myOrdersRound(order.roundNo) : '—'}
+                    {order.roundNo ? TF.myOrdersRound(periodIndex(order.roundNo)) : '—'}
                   </span>
                   <span className="ex-dim">{shortTime(order.createdAt)}</span>
                   <span>{order.code}</span>
@@ -325,7 +325,7 @@ export function MyOrders({ client, onToast, variant }: MyOrdersProps) {
                 </div>
                 <div className="ex-myorders-card-bottom">
                   <span className="ex-dim">
-                    {order.roundNo ? `${TF.myOrdersRound(order.roundNo)} · ` : ''}
+                    {order.roundNo ? `${TF.myOrdersRound(periodIndex(order.roundNo))} · ` : ''}
                     {shortTime(order.createdAt)}
                     {order.status === 'queued' ? ` · ${T.myOrdersQueued}` : ''}
                   </span>

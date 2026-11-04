@@ -66,6 +66,19 @@ export function round(n: number, digits = 2): number {
   return Math.round(n * f) / f
 }
 
+/**
+ * 回合号 → 玩家可见的「当日第几期」（2026-11-04 船长令：回合数不能让玩家知道）。
+ *
+ * 服务端 `roundNo = floor(now / roundSec)`，与 Unix 纪元对齐（`internal/exchange/round.go:21`），
+ * 直接显示是七位数天文数字。这里换算成当日第几期（1~288），同日单调递增、跨日重置。
+ */
+export function periodIndex(roundNo: number, roundSec = 300): number {
+  if (!Number.isFinite(roundNo) || roundNo <= 0 || roundSec <= 0) return 0
+  const startSec = roundNo * roundSec
+  const dayStart = Math.floor(startSec / 86400) * 86400
+  return Math.floor((startSec - dayStart) / roundSec) + 1
+}
+
 /** 成交额规范格式化：如 99.45M 信用点 / 1.25B 信用点 / 850.00K 信用点 */
 export function turnover(n: number): string {
   const unit = isEn() ? ' Credits' : ' 信用点'

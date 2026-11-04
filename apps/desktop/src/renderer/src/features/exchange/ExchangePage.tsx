@@ -325,8 +325,8 @@ function ExchangeBody({
         </div>
       </header>
 
-      {/* 财经快讯：紧随顶栏下方，最多展示 2 行（2026-11-04 船长口径） */}
-      <NewsTicker news={snap.news} onSelectCode={selectCode} />
+      {/* 财经快讯：紧随顶栏下方，第一行市场事件、第二行对手盘动作（2026-11-04 船长口径） */}
+      <NewsTicker news={snap.news} agents={snap.agents} onSelectCode={selectCode} />
 
       {/* 行情空数据提示：4 秒仍无 stocks 时显示原因入口，避免只剩空面板 */}
       {dataStale ? (

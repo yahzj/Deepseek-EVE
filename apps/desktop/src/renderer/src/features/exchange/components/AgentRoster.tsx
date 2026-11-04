@@ -7,7 +7,8 @@
  */
 import type { AgentView } from '../client'
 import { amount, money } from '../format'
-import { T } from '../texts'
+import { periodIndex } from '../format'
+import { T, TF } from '../texts'
 
 /** 人格角色代码 → 中文文案（Go `roleMaker` 等常量）。 */
 const ROLE_KEY: Record<string, keyof typeof T> = {
@@ -84,7 +85,7 @@ export function AgentRoster({ agents }: { agents: AgentView[] }) {
                   <b className="ex-num">{action.code}</b>
                   <span className="ex-num">{amount(action.qty)}</span>
                   <span className="ex-dim">
-                    {action.price > 0 ? `@${money(action.price)}` : ''} R{action.roundNo}
+                    {action.price > 0 ? `@${money(action.price)}` : ''} {TF.myOrdersRound(periodIndex(action.roundNo))}
                   </span>
                 </>
               ) : (

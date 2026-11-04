@@ -3533,6 +3533,14 @@
   box-shadow: 0 0 4px rgb(var(--wui-cyan) / 0.15);
 }
 
+/* 第二行对手盘动作：与市场事件的利多/利空区分开 */
+.ex-ticker-impact.is-agent {
+  background: rgb(var(--wui-gold) / 0.16);
+  color: rgb(var(--wui-gold));
+  border: 1px solid rgb(var(--wui-gold) / 0.45);
+  box-shadow: 0 0 4px rgb(var(--wui-gold) / 0.15);
+}
+
 .ex-ticker-code-btn {
   display: inline-flex;
   align-items: center;

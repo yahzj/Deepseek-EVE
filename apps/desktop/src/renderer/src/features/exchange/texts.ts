@@ -330,6 +330,7 @@ export const ZH_T = {
   "newsBull": "利多",
   "newsBear": "利空",
   "newsNeutral": "中性",
+  "newsAgentTag": "动作",
   "bookImbalance": "买卖深度差",
   "imbalanceBuyAdv": "多头占优",
   "imbalanceSellAdv": "空头占优",
@@ -800,6 +801,7 @@ export const EN_T: Record<keyof typeof ZH_T, string> = {
   "newsBull": "Bullish",
   "newsBear": "Bearish",
   "newsNeutral": "Neutral",
+  "newsAgentTag": "Action",
   "bookImbalance": "Order Book Depth",
   "imbalanceBuyAdv": "Buyers Ahead",
   "imbalanceSellAdv": "Sellers Ahead",
@@ -1046,7 +1048,8 @@ export const TF = {
     isEn() ? `Withdrawal of ${v} Credits requested` : `出金 ${v} 信用点已受理，到账以服务器结算为准`,
   roundQuota: (used: number, max: number) =>
     isEn() ? `Orders ${used}/${max}` : `委托 ${used}/${max}`,
-  myOrdersRound: (n: number) => (isEn() ? `Round ${n}` : `第 ${n} 回合`),
+  // 玩家可见的期号：服务端回合号是七位数天文数字，界面只显示「当日第几期」（2026-11-04 船长令）
+  myOrdersRound: (n: number) => (isEn() ? `Period ${n}` : `第 ${n} 期`),
   myOrdersCancelled: (n: number) => (isEn() ? `Cancelled ${n} order(s)` : `已撤销 ${n} 笔委托`),
   myOrdersCount: (n: number) => (isEn() ? `${n} order(s)` : `${n} 笔`),
   myOrdersCancelFailed: (n: number) =>
