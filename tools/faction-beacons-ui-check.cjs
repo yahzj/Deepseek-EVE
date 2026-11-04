@@ -32,7 +32,6 @@ async function parent() {
     for (const task of core.FIRST_TASKS) state.importantTasks[task.id] = { done: true }
     state.exploredGalaxies = [...ctx.galaxies.keys()]
     state.standings.dsi = 100; state.standingsEarned = { dsi: 100 }
-    state.standingClawbackDone = true
     // 本期已结束的合成记录只屏蔽周排期自动开场；专属点火仍由真实UI触发。
     state.weekendLastResult = { seq: 0, family: 'R', coreId: 'galaxy-vault', endedAtWallMs: Date.now() + 86400000,
       flagshipOutcome: 'player', share: 0, tier: 'none', galaxies: [], isk: 0, wreck: 0, blackBox: 0 }

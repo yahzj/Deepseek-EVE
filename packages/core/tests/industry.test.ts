@@ -78,13 +78,13 @@ describe('精炼与市场（M1 经济）', () => {
       expect(state.logs.some((l) => l.text.includes('精炼所得'))).toBe(true)
     })
 
-    it('产出倍率技能影响每批结算：精炼学 5 级 = 150%（每批 floor 后累计）', () => {
+    it('产出倍率技能影响每批结算：精炼学5级150%，每批最终件数向上取整', () => {
       state.skills.trained['refining'] = 5
       state.fleet[state.shipId].cargo['ore-a'] = totalUnits
       expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(true)
       advanceGame(state, 61_000, ctx)
-      expect(countWare(state, 'min-a')).toBe(300) // floor(10×2×1.5)=30/批 ×10
-      expect(countWare(state, 'min-b')).toBe(70) // floor(10×0.5×1.5)=7/批 ×10
+      expect(countWare(state, 'min-a')).toBe(300)
+      expect(countWare(state, 'min-b')).toBe(80)
     })
 
     it('货仓+仓库一并供料；中途停炉：已完成批保留，余料本来就在仓库无需退回', () => {

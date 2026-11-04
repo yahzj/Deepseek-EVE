@@ -17,6 +17,19 @@ const deferredDroneBooks: Readonly<Record<string, number>> = {
   'bp-faction-drone-bee': 1, 'bp-faction-drone-hiveguard': 2, 'bp-faction-drone-construct': 3,
   'bp-faction-drone-ink': 4, 'bp-faction-drone-jawclaw': 5,
 }
+const deferredRepairBooks: Readonly<Record<string, { name: string; description: string }>> = {
+  'bp-once-drone-repair-mil': { name: 'bp.repairDrone.001', description: 'bp.repairDrone.003' },
+  'bp-drone-repair-mil': { name: 'bp.repairDrone.002', description: 'bp.repairDrone.004' },
+}
+const deferredPlugDescriptions: Readonly<Record<string, string>> = {
+  'plug-alien-shield-coating': 'mod.factionPlug.008',
+  'plug-titan-compression': 'mod.factionPlug.009',
+}
+function expectDeferredText(value: string | undefined, id: string): void {
+  expect(L10N[id]!.enDeferred, id).toBe(true)
+  expect(L10N[id]!.en, id).toBe('')
+  expect(value, id).toBe(L10N[id]!.zh)
+}
 const translatedLegacyIds = new Set([
   'mod-alien-acid-launcher', 'mod-alien-pressure-chamber', 'drone-jawclaw',
   'bp-faction-drone-bee', 'bp-faction-drone-hiveguard', 'bp-faction-drone-construct', 'bp-faction-drone-ink', 'bp-faction-drone-jawclaw',
@@ -38,6 +51,34 @@ const deferredGravekeeperShips: Readonly<Record<string, string>> = {
 const deferredGravekeeperCards: Readonly<Record<string, string>> = {
   'gravekeeper-drift': 'ano.gravekeeper.001', 'gravekeeper-line': 'ano.gravekeeper.002',
   'gravekeeper-main': 'ano.gravekeeper.003', 'gravekeeper-flagship': 'ano.gravekeeper.004',
+}
+const mappedSupport: Readonly<Record<string, { name?: string; description: string }>> = {
+  'mod-shieldfield-2': { name: 'mod.fleetSupport.001', description: 'mod.fleetSupport.003' },
+  'mod-shieldfield-3': { name: 'mod.fleetSupport.002', description: 'mod.fleetSupport.003' },
+  'mod-lock-1': { description: 'mod.fleetSupport.004' },
+  'mod-lock-2': { description: 'mod.fleetSupport.004' },
+  'mod-lock-3': { description: 'mod.fleetSupport.004' },
+  'mod-wh-d-lock': { description: 'mod.fleetSupport.004' },
+  'drone-repair-mil': { name: 'item.repairDrone.001', description: 'item.repairDrone.002' },
+  'bp-shieldfield-2': { name: 'bp.fleetSupport.001', description: 'mod.fleetSupport.003' },
+  'bp-shieldfield-3': { name: 'bp.fleetSupport.002', description: 'mod.fleetSupport.003' },
+}
+function expectMappedEnglish(value: string | undefined, textId: string): void {
+  const entry = L10N[textId]!
+  expect(entry, textId).toBeDefined()
+  expect(entry.enDeferred, textId).toBeUndefined()
+  expect(entry.en, textId).not.toBe('')
+  expect(entry.en, textId).not.toMatch(/[\u3400-\u9fff]/)
+  expect(value, textId).toBe(l10nEntryText(entry, 'en'))
+}
+
+/** 固定编成也内嵌文案，只排除文本字段，保留所有数值、ID和数组顺序。 */
+function withoutCardText(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(withoutCardText)
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value)
+    .filter(([key]) => !['name', 'description', 'label', 'foeMountNames', 'foeMountNamePairs'].includes(key))
+    .map(([key, item]) => [key, withoutCardText(item)]))
+  return value
 }
 
 describe('英文覆盖层（P2）', () => {
@@ -157,15 +198,7 @@ describe('英文覆盖层（P2）', () => {
     expect(en.anomalies.get('ano-maw-hunt')?.name).toBe('Maw Hunt Order')
     expect(en.anomalies.get('enc-pirate-4')?.name).toBe('Deepspace Butcher Fleet')
     for (const [id] of Object.entries(deferredGravekeeperCards)) expect(en.anomalies.get(id)!.name, id).not.toBe(zh.anomalies.get(id)!.name)
-    // 深比时**排除 ships**——卡片内嵌敌舰名本就该换（由上面那条"嵌套覆盖"用例单独逐字段核对）
-    const strip = (d: object): string => {
-      const rest: Record<string, unknown> = { ...(d as Record<string, unknown>) }
-      delete rest.name
-      delete rest.description
-      delete rest.ships
-      return JSON.stringify(rest)
-    }
-    for (const [id, def] of zh.anomalies) expect(strip(en.anomalies.get(id)!), `异常点 ${id} 的数值字段`).toBe(strip(def))
+    for (const [id, def] of zh.anomalies) expect(withoutCardText(en.anomalies.get(id)!), `异常点 ${id} 的非文本字段`).toEqual(withoutCardText(def))
   })
 
   it('物品 / 技能：id 集合一致，除 name/description 外逐字段深比一字不动', () => {
@@ -192,9 +225,21 @@ describe('英文覆盖层（P2）', () => {
     expect(en.shipBlueprints.get('sbp-pioneer')?.name).toBe('Narwhal-class Blueprint')
     // 派生覆盖率：能反查到产物的蓝图都必须有英文名（否则说明产物表缺名）
     const noEn = [...zh.blueprints.values()].filter((bp) => {
+      if (bp.id.startsWith('bp-once-plug-')) {
+        expect(L10N['bp.encrypted.001']!.enDeferred).toBe(true)
+        expect(en.blueprints.get(bp.id)?.name).toBe(zh.blueprints.get(bp.id)?.name)
+        return false
+      }
+      const support = mappedSupport[bp.id]
+      if (support?.name) {
+        expectMappedEnglish(en.blueprints.get(bp.id)?.name, support.name)
+        return false
+      }
       const pending = deferredCalibration[bp.id]
       if (pending) return en.blueprints.get(bp.id)?.name === zh.blueprints.get(bp.id)?.name
       const index = deferredDroneBooks[bp.id]
+      const repair = deferredRepairBooks[bp.id]
+      if (repair) { expectDeferredText(en.blueprints.get(bp.id)?.name, repair.name); return false }
       if (index !== undefined) {
         if (translatedLegacyIds.has(bp.id)) {
           expect(en.blueprints.get(bp.id)?.name).not.toBe(zh.blueprints.get(bp.id)?.name)
@@ -292,14 +337,15 @@ describe('英文覆盖层（P2）', () => {
   it('旅行事件 + 谜质科技：全覆盖 + 英文名/正文生效 + 数值深比一字不动', () => {
     const missEv = zh.travelEvents.filter((e) => !(e.id in EN_TRAVEL_EVENTS)).map((e) => e.id)
     expect(missEv, `这些旅行事件还没英文名：${missEv.join(', ')}`).toEqual([])
-    const missMt = [...(zh.matterTech ?? new Map()).keys()].filter((id) => !(id in EN_MATTER_TECH))
+    const mappedAuto = (id: string) => id === 'mt-explore-signal-auto-t3'
+    const missMt = [...(zh.matterTech ?? new Map()).keys()].filter((id) => !(id in EN_MATTER_TECH) && !mappedAuto(id))
     expect(missMt, `这些谜质科技还没英文名：${missMt.join(', ')}`).toEqual([])
     /**
      * **节点说明（`note`）也必须全部有英文**（2026-09-26 三号补 · roadmap 交接项 L1）：
      * 说明字段叫 `note`（不是 `description`）⇒ `overlayMap` 覆盖不到，此前英文界面下一直是中文。
      * 这条断言就是那个缺口的护栏：将来**新增节点漏登记说明** ⇒ 这里当场红。
      */
-    const missNote = [...(zh.matterTech ?? new Map()).keys()].filter((id) => !(id in EN_MATTER_TECH_NOTES))
+    const missNote = [...(zh.matterTech ?? new Map()).keys()].filter((id) => !(id in EN_MATTER_TECH_NOTES) && !mappedAuto(id))
     expect(missNote, `这些谜质科技还没英文说明：${missNote.join(', ')}`).toEqual([])
     /**
      * **事件正文（`text`）也必须全部有英文**（**2026-10-02 三号补 · 远征批**）：
@@ -316,6 +362,11 @@ describe('英文覆盖层（P2）', () => {
     const cjkMt = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/
     for (const [id, def] of zh.matterTech ?? new Map()) {
       const other = en.matterTech!.get(id)!
+      if (mappedAuto(id)) {
+        expectMappedEnglish(other.name, 'ui.signalAuto.001')
+        expectMappedEnglish(other.note, 'ui.signalAuto.002')
+        continue
+      }
       expect(other.note, `${id} 的英文说明应来自原文且有内容`).not.toBe(def.note)
       expect(cjkMt.test(other.note), `${id} 的英文说明残留中日韩字符：${other.note}`).toBe(false)
     }
@@ -359,11 +410,19 @@ describe('英文覆盖层（P2）', () => {
     const noDesc: string[] = []
     for (const it of ITEMS) {
       const other = en.items.get(it.id)!
+      if (it.id.startsWith('box-encrypted-')) {
+        expectDeferredText(other.description, 'item.encrypted.006')
+        expect(other.name).toBe(it.name)
+        continue
+      }
       if (!other.description) {
         noDesc.push(it.id)
         continue
       }
-      if (it.id === 'synaptic-accelerant' && L10N['item.synaptic.001']!.enDeferred === true) {
+      if (mappedSupport[it.id]) {
+        expectMappedEnglish(other.description, mappedSupport[it.id]!.description)
+        expectMappedEnglish(other.name, mappedSupport[it.id]!.name!)
+      } else if (it.id === 'synaptic-accelerant' && L10N['item.synaptic.001']!.enDeferred === true) {
         expect(other.description).toBe(l10nEntryText(L10N['item.synaptic.001']!, 'en'))
       } else if (it.id === 'drone-jawclaw') {
         expect(L10N['item.jawclaw.002']!.en).not.toBe('')
@@ -386,12 +445,19 @@ describe('英文覆盖层（P2）', () => {
     const noDesc: string[] = []
     for (const [id] of zh.modules) {
       const other = en.modules.get(id)!
+      const deferredPlug = deferredPlugDescriptions[id]
+      if (deferredPlug) { expectDeferredText(other.description, deferredPlug); continue }
       if (!other.description) {
         noDesc.push(id)
         continue
       }
       const pending = deferredCalibration[id]
-      if (pending) expect(other.description).not.toBe(zh.modules.get(id)!.description)
+      const support = mappedSupport[id]
+      if (support) {
+        expectMappedEnglish(other.description, support.description)
+        if (support.name) expectMappedEnglish(other.name, support.name)
+        else expect(other.name).not.toBe(zh.modules.get(id)!.name)
+      } else if (pending) expect(other.description).not.toBe(zh.modules.get(id)!.description)
       else if (id.startsWith('mod-alien-')) expect(other.description).not.toBe(zh.modules.get(id)!.description)
       else expect(cjk.test(other.description), `${id} 的英文说明残留中日韩字符：${other.description}`).toBe(false)
     }
@@ -473,11 +539,19 @@ describe('英文覆盖层（P2）', () => {
     const noDesc: string[] = []
     for (const [id] of zh.blueprints) {
       const other = en.blueprints.get(id)!
+      if (id.startsWith('bp-once-plug-')) { expectDeferredText(other.description, 'bp.encrypted.002'); continue }
+      const deferredRepair = deferredRepairBooks[id]
+      if (deferredRepair) { expectDeferredText(other.description, deferredRepair.description); continue }
       if (!other.description) {
         noDesc.push(id)
         continue
       }
       const pending = deferredCalibration[id]
+      const support = mappedSupport[id]
+      if (support) {
+        expectMappedEnglish(other.description, support.description)
+        continue
+      }
       if (pending) { expect(other.description).not.toBe(zh.blueprints.get(id)!.description); continue }
       const index = deferredDroneBooks[id]
       if (index !== undefined) {

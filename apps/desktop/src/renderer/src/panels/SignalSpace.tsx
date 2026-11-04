@@ -1,3 +1,6 @@
+import { PreparationFleetCards } from '../features/combat/PreparationFleetCards'
+import { RangeEwFleet, SignalRangeEwPreview } from '../features/combat/RangeEwPanel'
+import { commandBudgetOf } from '@whale/core'
 /**
  * 信号空间 · 旧玩法界面（船长 2026-10-06：旧玩法从别的工作区拉取）。
  * 来源：Deepseek-EVE-verify，提交 c5f8be8346e2bde9b1e738e7ddbfd5ca4740d519。
@@ -14,19 +17,19 @@
  * 未扫描的格子在图上用**蓝灰虚线边框**区分，且不按信号上色（免得漏真相）。
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { holdTone, hexRingOf, explorationNumber as n, useCountUp, grabOffsetOf, WhGlyph, WhNebulaGlyph } from './explorationShared'
 // 洞内底图固定（船长 2026-09-13）：进洞时把当前那张无缝星云图钉住，本趟不随全站换图而变
 import { currentSpaceBg, spaceBgUrlAt } from '../ui/spaceBg'
 import { HintIcon } from '../ui/Hint'
 import { pinMarked } from '../ui/marks'
 import { wormholeIntelLine, wormholeIntelTip } from '../ui/wormholeIntel'
 // 物品图标（F3c · 船长：「货仓内物品采用图标而不是纯文字」）：安全货柜按族分色、谜质每台一枚专属线稿
-import { Glyph, itemIconOf, itemToneOf, RARE_WRECK_TONE } from '../ui/Glyphs'
+import { Glyph, itemIconOf } from '../ui/Glyphs'
 // 围剿者（2026-09-23）：族徽取色与族→卡表（按格上那张围剿卡反查族，不新增 props）
 import { FOE_ACCENT } from '../ui/tones'
 // ⚠ 地点名走本地化单点（2026-09-26 乙批）——core 的 `WORMHOLE_PLACE_TEXT` 是纯中文表
 import { placeText } from '../ui/labelsText'
 // ⚠ 舰级名走本地化单点（2026-09-26 船长报障「舰船类型文本漏中文」）——core 的 `shipSizeLabel` 是纯中文表
-import { shipTierText } from '../ui/labelsText'
 import { FOE_FAMILY_LABEL } from '../ui/shipArt'
 import { WORMHOLE_FAMILY_CARDS } from '@whale/core'
 import {
@@ -41,7 +44,6 @@ import {
   WORMHOLE_SLOT_M3,
   WORMHOLE_TOTAL_MASS_CAP,
   WORMHOLE_ORE_ITEM_ID,
-  cargoCapacityM3Of,
   isExitCell,
   shipDisplayName,
   wormholeAdmission,
@@ -103,18 +105,18 @@ import {
   // 2026-09-19：入洞读数要单独列科技来源（袋子里只剩合流后的标量）⇒ 需要逐节点读等级
   matterTechNodes,
   matterTechLevel,
+  matterTechSignalAutoYield,
   // 2026-09-19 甲案：自动探索的科技系数（与结算同一个函数 ⇒ 准备页读数即返航时生效的那个数）
   wormholeAutoTechFactors,
   wormholeAutoTechIsNeutral,
-  wormholeShipMass,
   wormholeUnitsPerSlot,
 } from '@whale/core'
 import type { WormholeGridState, WormholeHoldPlacement, WormholeHoldState, WormholePlace, WormholeSettleRecord, WormholeSignal } from '@whale/core'
 import type { GameEngine } from '../game/engine'
-import { ShipSprite, ShipSpriteShape } from '../ui/ShipSprite'
+import { ShipSpriteShape } from '../ui/ShipSprite'
 import { usePreparationSquad } from '../ui/usePreparationSquad'
 import type { ToastFn } from '../pages/common'
-import { SHIP_DOMAIN_SUBS, SHIP_TIER_SUBS, SUB_ALL, shipRolePasses, shipTierPasses, subText, wreckTierOf } from '../ui/itemSubs'
+import { SHIP_DOMAIN_SUBS, SHIP_TIER_SUBS, SUB_ALL, shipRolePasses, shipTierPasses, subText } from '../ui/itemSubs'
 import { tr, cmdText } from '../i18n/locale'
 
 /* 探索地图的几何口径（缩放档 / viewBox 尺寸 / 锚点 / 拖动夹取）抽到 `./wormholeMapGeom`：纯函数、无导入
@@ -135,19 +137,6 @@ import {
 
 type WhTab = 'prep' | 'map' | 'bag'
 
-/**
- * **洞内货仓取色**（船长 2026-09-22 ①：「**货舱内，残骸和稀有残骸按照手册内的颜色做出区分**」）。
- *
- * 在既有单点 `itemToneOf`（**物品 id 优先** ⇒ 安全货柜按族分色、谜质按台分色）之上，只叠一层
- * **残骸档位**：稀有残骸走既有「稀有金」（`RARE_WRECK_TONE`，与手册图鉴的「稀有」徽标、
- * `.app-chip.is-rare` 同一支色阶），普通残骸保持旧黄铜 —— **不新造色、不另立判据**
- * （档位判据 = `wreckTierOf` = core `isRareWreck`，全仓唯一前缀判定）。
- *
- * 谁用它：格区里的物品块（块的描边/底色由 CSS 取 `currentColor` ⇒ 跟着这个色走）与下方的件清单行图标。
- */
-function holdTone(itemId: string, iconKey: string): string {
-  return wreckTierOf(itemId) === 'rare' ? RARE_WRECK_TONE : itemToneOf(itemId, iconKey)
-}
 
 /** 两块格板：货仓（8 列）/ **临时空间**（4 列 × 8 行 = 32 格 · 船长 2026-09-14） */
 type BoardKind = 'hold' | 'temp'
@@ -190,40 +179,8 @@ function scanFxSeq(): number {
   return scanFxSeqCounter
 }
 
-/** 六边形"第几圈"（`(dq,dr)` 的立方距离）——逐格延迟与扩散波共用这一把尺 */
-function hexRingOf(dq: number, dr: number): number {
-  return Math.max(0, Math.round((Math.abs(dq) + Math.abs(dr) + Math.abs(dq + dr)) / 2))
-}
 
-/** 千分位 */
-function n(v: number): string {
-  return Math.round(v).toLocaleString('zh-CN')
-}
 
-/**
- * **数字跳数**（船长 2026-09-13 拍板「⑦要」）：结算单里的 信用点 合计从 0 滚到目标值，
- * 220ms 一跳、共 `ms` 毫秒；纯前端表现，不碰任何数据。
- */
-function useCountUp(value: number, ms = 320): number {
-  const [shown, setShown] = useState(value)
-  useEffect(() => {
-    if (!Number.isFinite(value) || value === 0) {
-      setShown(value)
-      return
-    }
-    const t0 = performance.now()
-    let raf = 0
-    const step = (t: number): void => {
-      const k = Math.min(1, (t - t0) / ms)
-      // 末段减速（ease-out），停下来的那一下才落在真值上
-      setShown(Math.round(value * (1 - Math.pow(1 - k, 3))))
-      if (k < 1) raf = window.requestAnimationFrame(step)
-    }
-    raf = window.requestAnimationFrame(step)
-    return () => window.cancelAnimationFrame(raf)
-  }, [value, ms])
-  return shown
-}
 
 /**
  * ⚠ **本组件不再承载洞内战斗**（2026-09-22 船长令「界面回滚，战斗界面回滚到全屏显示」）。
@@ -332,7 +289,6 @@ export function SignalSpacePanel({
     auto && autoHandover?.reason !== undefined
       ? { error: autoHandover.reason, errorId: autoHandover.reasonId, errorParams: autoHandover.reasonParams }
       : null
-  const autoCores = auto ? engine.wormholeAutoCores() : null
   /**
    * 整队能不能派（core 同一把尺）。主控在队里时按"允许随队"校验（`mainMayJoin`）——
    * 主控那一道闸由 `autoMainReason` 单独说话（换不了就是换不了，理由更具体）。
@@ -521,7 +477,8 @@ export function SignalSpacePanel({
    * **进洞门槛**（核心同一把尺 `wormholeEntryBlockReason`）——**不再用界面徽标 `shipBusyLabel` 自己判**：
    * 两者对「扫描虫洞」口径不同（徽标报"忙"，门槛放行 ⇒ 进洞那一步自动停扫，船长 2026-09-14「进洞自动停止」）。
    */
-  const entryGate = auto || run ? null : engine.wormholeEntryGate(picked)
+  const commandBudget = commandBudgetOf(state, ctx, picked, true)
+  const entryGate = auto || run ? null : !commandBudget.ok ? cmdText(commandBudget) : engine.wormholeEntryGate(picked)
   /** 进洞会先自动停掉的那个活动（目前只有「扫描虫洞」；null = 没有） */
   const autoStopText = auto || run ? null : engine.wormholeEntryAutoStopText()
   /** 带 `warn` 的（长途运输）要单独摆成**警告条**——船长 2026-09-14：「长途运输发出警告」 */
@@ -1088,8 +1045,9 @@ export function SignalSpacePanel({
     if (!grid || !hereCell) return null
     return (
       <>
+        <SignalRangeEwPreview state={state} ctx={ctx} />
         <div className="app-wh-node-title">
-          {atExit ? tr("ui.Wormhole.007") : placeText(hereCell.place)}
+          {atExit ? tr("ui.Wormhole.007") : hereCell.researchLab ? tr('ui.researchLab.001') : placeText(hereCell.place)}
           {/* 地点说明**不进 ⓘ**（2026-09-14 船长裁定：「地点卡的说明不要进 ⓘ」）：它跟着当前格子变，
               属于"这一格现在是什么"的读数 ⇒ 按 2026-09-13 口径（常驻说明进 ⓘ、状态读数留眼前）留在卡里 */}
           <span className="app-dim">
@@ -1097,6 +1055,7 @@ export function SignalSpacePanel({
             {grid.activated.includes(hereKey) ? tr('ui.Wormhole.303') : ''}
           </span>
         </div>
+        {hereCell.researchLab ? <div className="app-dim app-note">{tr('ui.researchLab.002')}</div> : null}
         {/* **作业进度条**（F2b · 纯表现 380ms）：摆在堆清单正上方——卡片"向下移出"的同时，这条在走 */}
         {jobFx ? (
           <div className="app-wh-jobrow" key={jobFx.nonce}>
@@ -1211,7 +1170,7 @@ export function SignalSpacePanel({
             </div>
           </>
         ) : (
-          <div className="app-dim app-note">{PLACE_NOTE[hereCell.place]}</div>
+          <div className="app-dim app-note">{hereCell.researchLab ? tr('ui.researchLab.002') : PLACE_NOTE[hereCell.place]}</div>
         )}
       </>
     )
@@ -1523,14 +1482,7 @@ export function SignalSpacePanel({
               ) : null}
               <div className="app-dim app-note">
                 {auto ? (
-                  <>
-                    {tr("ui.Wormhole.002")}<b>{tr("ui.Wormhole.016")}</b>{tr('ui.Wormhole.365', { p1: WORMHOLE_AUTO_MAX_SHIPS })}{' '}
-                    <b>{tr("ui.Wormhole.017")}</b>{tr("ui.Wormhole.246")}{' '}
-                    {Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)} {tr("ui.Wormhole.088")}{' '}
-                    <b>{tr("ui.Wormhole.133")}</b>
-                    {tr('ui.Wormhole.367', { p1: Math.round(WORMHOLE_AUTO_DAMAGE_MIN * 100), p2: Math.round(WORMHOLE_AUTO_DAMAGE_MAX * 100), p3: tr('ui.Wormhole.368') })}
-                    <b>{tr("ui.Wormhole.198")}</b>{tr('ui.Wormhole.363')}<b>{tr("ui.Wormhole.018")}</b>{tr("ui.Wormhole.019")}
-                  </>
+                  tr('ui.signalAuto.004', { p1: WORMHOLE_AUTO_MAX_SHIPS, p2: Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000) })
                 ) : (
                   <>
                     {tr("ui.Wormhole.089")}{' '}
@@ -1642,73 +1594,9 @@ export function SignalSpacePanel({
                   </span>
                 </div>
               </div>
-              <ul className="app-wh-cards">
-                {whShown.map(({ uid, name, tier, ok, on, busy, armor, dur }) => {
-                  const damaged = armor < 1 || dur < 1
-                  const def = ctx.ships.get(state.fleet[uid]!.defId ?? uid)
-                  const canPick = ok && !busy
-                  const title = !ok
-                    ? auto
-                      ? (busy ?? tr('ui.Wormhole.309'))
-                      : tr("ui.Wormhole.201")
-                    : auto
-                      ? busy
-                        ? busy
-                        : uid === state.shipId
-                          ? (autoHandover?.toName
-                              ? tr("ui.Wormhole.202", { p1: autoHandover.toName })
-                              : tr("ui.Wormhole.135"))
-                          : on
-                            ? tr("ui.Wormhole.024")
-                            : tr("ui.Wormhole.136")
-                      : busy
-                        ? tr("ui.Wormhole.025", { busy })
-                        : on
-                          ? tr("ui.Wormhole.024")
-                          : tr("ui.Wormhole.137")
-                  return (
-                    <li key={uid}>
-                      <button
-                        type="button"
-                        className={`app-wh-card${on ? ' is-picked' : ''}${canPick ? '' : ' is-locked'}`}
-                        disabled={!canPick && !on}
-                        onClick={() => togglePick(uid)}
-                        title={title}
-                      >
-                        <span className="app-wh-card-art" aria-hidden>
-                          {/* ⚠ 不传 name（见上：会把舰名压在卡片文本上） */}
-                          <ShipSprite shipId={state.fleet[uid]!.defId ?? uid} size={132} />
-                        </span>
-                        <span className="app-wh-card-name">{shipDisplayName(state, ctx, uid)}</span>
-                        <span className="app-wh-card-sub">
-                          {shipTierText(tier)}
-                          {busy ? <span className="app-chip is-dim"> {busy}</span> : null}
-                        </span>
-                        <span className="app-wh-card-sub">
-                          {tr("ui.Handbook.159")} {def ? n(wormholeShipMass(def)) : '—'}{tr('ui.Wormhole.280')}{n(cargoCapacityM3Of(state, ctx, uid))} m³
-                        </span>
-                        <span className="app-wh-card-tags">
-                          <span className={`app-wh-card-tag${on ? ' is-on' : ''}`}>
-                            {on ? tr("ui.Wormhole.091") : !ok ? tr("ui.Wormhole.203") : busy ? tr("ui.Wormhole.092") : tr("ui.Wormhole.204")}
-                          </span>
-                          {/* **损伤提示标签**（船长 2026-09-13：「如果舰船有损伤，那么在编入的标签旁新增一个标签
-                              提示玩家，防止不小心损坏的船带入虫洞」）：判据与舰队页「待维修」同一把尺
-                              （`armorPct < 1 || durability < 1`；护盾不持久、不计损伤）。 */}
-                          {damaged ? (
-                            <span
-                              className="app-wh-card-tag is-warn"
-                              title={tr("ui.Wormhole.249", { p1: armor < 1 ? tr("ui.Wormhole.205", { p1: Math.round(armor * 100) }) : '', p2: armor < 1 && dur < 1 ? ' · ' : '', p3: dur < 1 ? tr("ui.Wormhole.206", { p1: Math.round(dur * 100) }) : '' })}
-                            >
-                              {tr("ui.Wormhole.093")}{armor < 1 ? tr('ui.Wormhole.310', { p1: Math.round(armor * 100) }) : ''}
-                              {dur < 1 ? tr('ui.Wormhole.311', { p1: Math.round(dur * 100) }) : ''}
-                            </span>
-                          ) : null}
-                        </span>
-                      </button>
-                    </li>
-                  )
-                })}
-              </ul>
+              <CommandBudget engine={engine} ships={picked} special />
+              <RangeEwFleet state={state} ctx={ctx} ids={picked} />
+              <PreparationFleetCards engine={engine} rows={whShown} auto={auto} handoverName={autoHandover?.toName} togglePick={togglePick} />
 
               {/**
                * **读数条**（同一处位置、同一套样式，两种模式两套内容）：
@@ -1725,13 +1613,14 @@ export function SignalSpacePanel({
               {auto ? (
                 <div className="app-wh-triad">
                   <span className="app-wh-cell">
-                    {tr("ui.Wormhole.027")} <b>{picked.length}</b> {tr("ui.Wormhole.028")} <b>{autoCores?.free ?? 0}</b>{tr("ui.Wormhole.250")} {autoCores?.cap ?? 0}）
+                    {tr('ui.signalAuto.003', { p1: picked.length })}
                   </span>
                   <span className="app-wh-cell">
                     {tr("ui.Wormhole.138")} <b>{Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)}</b> {tr("ui.DebugPanel.007")}
                   </span>
                   <span className="app-wh-cell">
-                    {tr("ui.Wormhole.139")}<b>{tr("ui.Wormhole.370")}</b>{tr("ui.Wormhole.251")}
+                    {/* ⟪文案调整 2026-10-22⟫ 收益只显示科技对应的百分比，移除过程说明与尾注。 */}
+                    {tr("ui.Wormhole.139")}<b>{Math.round(matterTechSignalAutoYield(state, ctx) * 100)}%</b>
                   </span>
                   <span
                     className="app-wh-cell"
@@ -2679,7 +2568,7 @@ function WhGridMap({
               : isExit
                 ? tr('ui.Wormhole.324', { p1: cleared ? tr("ui.Wormhole.269") : tr("ui.Wormhole.270") })
                 : visited
-                  ? tr('ui.Wormhole.325', { p1: placeText(c.place), p2: cleared ? tr('ui.Wormhole.303') : '' }) +
+                  ? tr('ui.Wormhole.325', { p1: c.researchLab ? tr('ui.researchLab.001') : placeText(c.place), p2: cleared ? tr('ui.Wormhole.303') : '' }) +
                     `${hasLeftover ? ` · 还有 ${(c.piles ?? []).length} 堆没拿` : ''}`
                   : nebula
                     ? tr("ui.Wormhole.163")
@@ -2798,50 +2687,7 @@ function WhGridMap({
   )
 }
 
-/**
- * 格内符号（**一律 SVG 线稿**，以格心为原点、半径约 7~8）。
- * `exit` = 下一层入口（箭头）；`signal === null` = 空信息地点（一个小空心点）；
- * `beacon` = 漂浮信标（灯塔塔身 + 两道扫描光）。
- */
-function WhGlyph({ signal, exit }: { signal: WormholeSignal | null; exit?: boolean }) {
-  if (exit) return <path d="M-7,0 L6,0 M1,-5 L7,0 L1,5" />
-  if (signal === 'wreck') return <path d="M-8,3 L-4,-3 L0,2 L4,-4 L8,3" />
-  if (signal === 'ship') return <path d="M-7,-5 L8,0 L-7,5 Z" />
-  if (signal === 'resource') return <path d="M0,-7 L7,0 L0,7 L-7,0 Z" />
-  if (signal === 'radar')
-    return (
-      <>
-        <path d="M-7,4 A7,7 0 0 1 7,4" />
-        <path d="M-3.4,4 A3.4,3.4 0 0 1 3.4,4" />
-        <circle cx={0} cy={4} r={1.4} />
-      </>
-    )
-  if (signal === 'beacon')
-    return (
-      <>
-        <path d="M-3.6,7 L-1.8,-2 L1.8,-2 L3.6,7 Z" />
-        <path d="M-7,-5 L-2.6,-3.4 M7,-5 L2.6,-3.4" />
-        <path d="M-1.8,-2 L1.8,-2" />
-      </>
-    )
-  return <circle cx={0} cy={0} r={2.2} />
-}
 
-/**
- * **星云图标**（船长 2026-09-13 星云机制）：被星云遮住的格画一团云——**SVG 线稿**（约定 §九：
- * 图形一律线稿、禁 CSS 拼形状），由三条疏密不同的弧线叠出"云团"轮廓 + 两颗小星点（说明这是"星云"、
- * 不是"什么都没扫到"）。与 `WhGlyph` 同一套 `currentColor` / 描边语言，故格子配色一变它自动跟随。
- */
-function WhNebulaGlyph() {
-  return (
-    <g className="app-wh-nebula">
-      <path d="M-7,2.4 A3.2,3.2 0 0 1 -2.6,-2.4 A3.6,3.6 0 0 1 3,-1.4 A3,3 0 0 1 7,2.4 Z" />
-      <path d="M-5.6,4.6 A2.4,2.4 0 0 1 -1.6,1.6 A2.6,2.6 0 0 1 3.2,2.2 A2.6,2.6 0 0 1 5.6,4.6" />
-      <circle cx={-3.4} cy={-4.4} r={0.9} />
-      <circle cx={4.2} cy={-3.2} r={0.7} />
-    </g>
-  )
-}
 
 /** 信号名（图例与悬浮提示共用；与 `WORMHOLE_PLACE_TEXT` 分开：信号 ≠ 地点真相） */
 const SIGNAL_TEXT: Readonly<Record<WormholeSignal, string>> = {
@@ -2883,34 +2729,6 @@ const PLACE_NOTE: Readonly<Record<WormholePlace, string>> = {
   get vein() { return tr("ui.Wormhole.168") },
   get matter() { return tr("ui.Wormhole.227") },
   get beacon() { return tr("ui.Wormhole.169") },
-}
-/**
- * **货仓页 = 形状网格**（F4b · 船长 2026-09-13：「类似背包英雄那种需要管理的背包格（没有背包，
- * 货仓直接代表背包大小）」；F5 补一条：「散货也在货仓背包内，并允许玩家拖拽移动」）。
- *
- * 画法（与 core 同一套几何，`wormholeHold`）：
- * - **8 列**、行数 = ⌈可用格数 ÷ 8⌉；超出可用格数的显示位 = **锁定格**（虚线、不可放）；
- * - **一切占格的东西都在 `run.hold.placements` 里**（F5 起散货也是**真摆放件**，不再是画面上临时填的散格）：
- *   **形状件**（安全货柜 2×2 · 图纸货柜 2×1）与**散货条**（一种货一条 1×N 横条，放不下自动改 N×1 竖条）
- *   都按自己的坐标画成整块、**都能拖拽**（落点非法 ⇒ 拒绝并提示）；
- * - 散货条由 core `wormholeHoldSyncCargo` 与 `run.bag` 对齐（数量变了就重放，**先试原位**保住玩家摆好的位置）；
- * - 超载（沉船后格数变小）⇒ 顶部红条 + 「一键抛到容量内」；抛弃**永远手动**（船长裁定 8）。
- */
-/**
- * **抓取偏移**：玩家是抓住块内**第几格**开始拖的（列 dx / 行 dy）。
- *
- * 为什么必须有它（船长 2026-09-13 报障「如果不是拖拽左上角会提示[这里放不下]」）：
- * 拖拽落点事件给的是**鼠标压着的那一格**；件的新左上角 = 落点 − 抓取偏移。
- * 少了这一步，抓右下角拖一个 2×2 货柜就会按"左上角落在右下角那格"去判 —— 必然越界。
- */
-function grabOffsetOf(el: HTMLElement, w: number, h: number, clientX: number, clientY: number): { dx: number; dy: number } {
-  const r = el.getBoundingClientRect()
-  if (r.width <= 0 || r.height <= 0) return { dx: 0, dy: 0 }
-  const clamp = (v: number, max: number): number => Math.min(max, Math.max(0, v))
-  return {
-    dx: clamp(Math.floor(((clientX - r.left) / r.width) * w), w - 1),
-    dy: clamp(Math.floor(((clientY - r.top) / r.height) * h), h - 1),
-  }
 }
 
 function WhHold({
@@ -3673,3 +3491,4 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
     </div>
   )
 }
+import { CommandBudget } from '../features/combat/CommandBudget'

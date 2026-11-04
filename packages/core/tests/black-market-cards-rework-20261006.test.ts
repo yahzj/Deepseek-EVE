@@ -27,7 +27,7 @@ describe('旗舰黑匣价值与旧报价边界', () => {
     expect(ctx.marketGoods.get(id)!.basePrice).toBe(price)
     expect(ctx.marketGoods.get(id)!.playerBuyable).toBe(false)
     expect(core.blackMarketCandidateGoods(ctx).some(g => g.key === id)).toBe(true)
-    expect(core.UNIVERSAL_BLACKBOX_COST).toBe(30)
+    expect(core.UNIVERSAL_BLACKBOX_COST).toBe(60)
   })
 
   it('普通市场无压力/冲击/噪声时，两种旗舰匣的当前收购线同步为1000万', () => {
@@ -67,11 +67,14 @@ describe('黑市详情复用仓库真实参数', () => {
     const tr = (id: string, params?: Record<string, unknown>) => (L10N[id]?.[locale] ?? id)
       .replace(/\{(\w+)\}/g, (m, key: string) => String(params?.[key] ?? m))
     const scope = { ...core, React: { createElement: (type: string, props: unknown, ...children: unknown[]) => ({ type, props, children }) }, tr,
-      kindTextOfItem: (item: { kind: string }) => item.kind, slotText: String, rackText: String, shipRoleText: String, shipTierText: String,
+      kindTextOfItem: (item: { kind: string }) => item.kind, slotText: String, rackText: String, shipRoleText: String, shipSubClassText: String, shipTierText: String,
       MODULE_SUBS: [], moduleSubKeyOf: () => '', subText: String, fmtDuration: String,
       itemGlyphName: (_id: string, kind: string) => kind, inventoryItemTone: () => 'currentColor', toneOf: () => 'currentColor',
       crestFamOf: () => undefined, rackDimKeyOf: () => 'high' }
-    const display = moduleExports('ui/shipInfo.tsx', scope)
+    const display: Record<string, (...args: any[]) => any> = {}
+    for (const file of ['primitives', 'moduleEffects', 'moduleLines', 'shipLines', 'cards']) {
+      Object.assign(display, moduleExports(`features/ships/info/${file}.tsx`, { ...scope, ...display }))
+    }
     const market = moduleExports('ui/marketGoodHover.tsx', { ...scope, ...display })
     for (const good of core.blackMarketCandidateGoods(ctx)) {
       const visible = market.marketGoodInfo!(ctx, good) as Info

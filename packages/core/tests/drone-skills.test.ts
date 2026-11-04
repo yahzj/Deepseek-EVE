@@ -76,11 +76,11 @@ describe('无人机线新技能（2026-09-10 船长）', () => {
     both.skills.trained['drone-reinforce'] = 5
     const b = startBattleFor(both, ctx, both.shipId, HIGH, 0)!
     const pool = Object.values(b.dronePools!).find((p) => p.artId === 'drone-heavy')!
-    expect(pool.h).toBe(Math.round(90 * 1.2 * 1.3)) // 乘算口径：1.2 × 1.3 = 1.56（基础血 ×2）
+    expect(pool.h).toBe(Math.ceil(90 * 1.2 * 1.3))
     const onlyReinforce = makeState()
     onlyReinforce.skills.trained['drone-reinforce'] = 5
     const b2 = startBattleFor(onlyReinforce, ctx, onlyReinforce.shipId, HIGH, 0)!
-    expect(Object.values(b2.dronePools!).find((p) => p.artId === 'drone-heavy')!.h).toBe(Math.round(90 * 1.3))
+    expect(Object.values(b2.dronePools!).find((p) => p.artId === 'drone-heavy')!.h).toBe(Math.ceil(90 * 1.3))
   })
 
   it('规避学：闪避 +2%/级，满级 +10%（相对乘算，封顶 0.9）', () => {

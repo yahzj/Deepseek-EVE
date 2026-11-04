@@ -26,12 +26,12 @@ function world(): GameState {
 }
 
 describe('通用黑匣（2026-09-27 船长令）', () => {
-  it('① 兑换：扣 30 可支配声望 ⇒ 入物品仓库；不足则一枚都不给（可重复换）', () => {
+  it('① 兑换：扣 60 可支配声望 ⇒ 入物品仓库；不足则一枚都不给（可重复换）', () => {
     const s = world()
-    expect(UNIVERSAL_BLACKBOX_COST, '价 = 30 点').toBe(30)
+    expect(UNIVERSAL_BLACKBOX_COST, '价 = 60 点').toBe(60)
     s.standings['dsi'] = UNIVERSAL_BLACKBOX_COST
     const r = exchangeUniversalBlackBox(s)
-    expect(r.ok, '够 30 点 ⇒ 换得到').toBe(true)
+    expect(r.ok, '够 60 点 ⇒ 换得到').toBe(true)
     expect(s.standings['dsi'], '真扣可支配那本').toBe(0)
     expect(countWare(s, UNIVERSAL_BLACKBOX_ITEM_ID), '入物品仓库').toBe(1)
 
@@ -45,10 +45,10 @@ describe('通用黑匣（2026-09-27 船长令）', () => {
     expect(s.standings['dsi']).toBe(UNIVERSAL_BLACKBOX_COST)
   })
 
-  it('② 等价组：旗舰黑匣与通用黑匣互为替代，**组序 = 优先扣除序（先通用）**；组外物品只返回自己', () => {
+  it('② 等价组：插件图纸接受所有已登记黑匣，**组序 = 优先扣除序（先通用）**；组外物品只返回自己', () => {
     // 2026-10-02 每族一件黑匣批（船长令「甲」）：R 族匣 `blackbox-r` 并入同一组（三件互为替代），
     // 组序仍是"通用最先"⇒ 优先扣除序与报名字口径（下面②之补）一个字没变
-    const boxGroup = [UNIVERSAL_BLACKBOX_ITEM_ID, 'blackbox-h', 'blackbox-r', 'blackbox-c']
+    const boxGroup = [UNIVERSAL_BLACKBOX_ITEM_ID, 'blackbox-h', 'blackbox-r', 'blackbox-c', 'blackbox-d']
     expect(materialGroupIdsOf('blackbox-h')).toEqual(boxGroup)
     expect(materialGroupIdsOf('blackbox-r'), '光环匣在同一组里').toEqual(boxGroup)
     expect(materialGroupIdsOf(UNIVERSAL_BLACKBOX_ITEM_ID)).toEqual(boxGroup)

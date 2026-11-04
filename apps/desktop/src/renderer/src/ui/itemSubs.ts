@@ -165,6 +165,7 @@ export const CONTAINER_KIND_KEYS: readonly string[] = ['container']
 
 /** 货柜的四个二级子类（顺序 = 渲染顺序；"安全柜"五族在前，"贵重品/军用"两个新柜在后） */
 export const CONTAINER_SUBS: SubOption[] = [
+  { key: 'encrypted', label: '加密货柜', id: 'ui.researchLab.003' },
   { key: 'safe', label: '遗迹安全货柜', id: 'ui.itemSubs.002' },
   { key: 'bp', label: '图纸货柜', id: 'ui.itemSubs.003' },
   { key: 'valuables', label: '贵重品货柜', id: 'ui.itemSubs.004' },
@@ -177,6 +178,7 @@ export const CONTAINER_SUBS: SubOption[] = [
  * 的正则同一把尺）· 三档图纸柜 = core `WORMHOLE_BP_BOX_IDS` · 贵重品/军用柜 = core 两个常量。
  */
 export function containerSubKeyOf(refId: string): string {
+  if (/^box-encrypted-[acdeg]$/.test(refId)) return 'encrypted'
   if (/^box-relic-[a-z]$/.test(refId)) return 'safe'
   if ((WORMHOLE_BP_BOX_IDS as readonly string[]).includes(refId)) return 'bp'
   if (refId === WORMHOLE_VALUABLES_BOX_ID) return 'valuables'
@@ -282,6 +284,7 @@ export const SUPPORT_MODULE_KEYS: Record<string, readonly string[]> = {
     'mod-wh-g-ballistic', // 幽灵弹道校正器（动能单发 + 射程）
     'mod-lair-web-h', // 墨潮捕获网（战斗中钉住敌舰）
     'mod-lair-ecm-h', // 墨潮电子舱（压制敌方武器射程）
+    'mod-lair-blink-r', // 短距离跃迁装置（受击单次跃迁，取一件）
     'mod-stealth-2', 'mod-stealth-3', // 隐秘行动装置：**开战保护**，属战斗侧（不是航行/后勤）
   ],
   /** 辅助支援件：航行、后勤与作业面（不直接改变交火读数） */
@@ -727,11 +730,6 @@ export function rackPasses(ctx: SimContext, refId: string, key: string): boolean
   return mod !== undefined && rackDimKeyOf(mod) === key
 }
 
-/** 子分类中文名（查不到时回退原键） */
-export function subLabelOf(kind: string, key: string): string {
-  const list = SUBS_OF_KIND[kind] ?? []
-  return list.find((s) => s.key === key)?.label ?? key
-}
 
 /**
  * **子分类/筛选档的显示文案**（单点；2026-09-21 船长报障：「各个子标签页和筛选似乎并没有本地化」）。

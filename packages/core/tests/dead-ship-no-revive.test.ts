@@ -28,6 +28,7 @@ import { wormholeEnter } from '../src/wormhole'
 import type { WormholeRunState } from '../src/wormhole'
 import { advanceWormhole, wormholeStartBattle } from '../src/wormholeBattle'
 import type { AnomalyDef } from '../src/types'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
 const T3 = 'sh-thresher'
@@ -40,7 +41,11 @@ const FREE_DC = 'mod-lair-dc-c'
 const shipOf = (id: string) => FOE_SHIPS.find((s) => s.id === id)!
 
 function fresh(seed = 5): GameState {
-  return createInitialState({ nowWallMs: 0, seed })
+  const state = createInitialState({ nowWallMs: 0, seed })
+  state.standingsEarned = { dsi: 20 }
+  state.skills.trained['fleet-command-basic'] = 5
+  state.skills.trained['fleet-command-coordination'] = 2
+  return state
 }
 
 /** 起一趟 2×T3 编队（主控 = 第一艘；僚舰 = 第二艘） */
@@ -55,11 +60,12 @@ function enterT3Run(seed: number): { state: GameState; run: WormholeRunState; le
 
 /** 开一场洞内节点战并返回 battle */
 function startBattle(state: GameState, run: WormholeRunState): NonNullable<WormholeRunState['battle']> {
+  finishDeparture(state, ctx)
   const g = run.grid!
   const cell = g.cells.find((c) => c.key === `${g.pos.q},${g.pos.r}`)!
   cell.place = 'ship'
   g.activated = g.activated.filter((k) => k !== cell.key)
-  const r = wormholeStartBattle(state, ctx, 'node', 0)
+  const r = wormholeStartBattle(state, ctx, 'node', state.gameMs)
   expect(r.ok, r.error ?? '').toBe(true)
   return run.battle!
 }
@@ -117,7 +123,7 @@ describe('报障：阵亡单位不可被修活（船长 2026-09-19 转述玩家�
     expect(ledger.kitsUsed, '尸体上不该扣组件').toBe(kitsBefore)
   })
 
-  it('③ 后勤舰不会拉起阵亡僚舰：这一跳改修活着的重伤僚舰', () => {
+  it('③ 修理无人机不拉起阵亡僚舰，只修活着的重伤僚舰', () => {
     const state = fresh(7)
     const logi = addShipToFleet(state, LOGI)
     const wingA = addShipToFleet(state, T3)
@@ -126,6 +132,8 @@ describe('报障：阵亡单位不可被修活（船长 2026-09-19 转述玩家�
     expect(wormholeEnter(state, ctx, [logi, wingA, wingB], 7).ok).toBe(true)
     const run = state.wormhole.run!
     state.fleet[logi]!.fitted = { high: [], mid: [REP_CIV], low: [] }
+    state.fleet[logi]!.droneLoad = { 'drone-repair-mil': 2 }
+    state.warehouse.items['repairkit-mil'] = 200
     state.warehouse.items['repairkit-civ'] = 200
     const battle = startBattle(state, run)
     expect(battle.units['ally-1']!.hp.h + battle.units['ally-1']!.hp.a, '僚舰 A 应满血入场').toBeGreaterThan(0)
@@ -135,7 +143,7 @@ describe('报障：阵亡单位不可被修活（船长 2026-09-19 转述玩家�
     bRt.hp = { ...bRt.hp, a: Math.max(1, Math.floor(bRt.hp.a * 0.3)) }
     const bBefore = bRt.hp.a
     sink(battle, 'ally-1')
-    tickSeconds(state, 6)
+    tickSeconds(state, 12)
     expect(hpSum(battle, 'ally-1'), '阵亡僚舰被后勤舰修活了').toBe(0)
     expect(battle.units['ally-2']!.hp.a, '后勤舰本该去修活着的重伤僚舰').toBeGreaterThan(bBefore)
   })

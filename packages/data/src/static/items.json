@@ -190,6 +190,11 @@
       }
     ],
     "BLUEPRINT_CONTAINERS_0": [
+      { "id": "box-encrypted-a", "kind": "container", "unitM3": 1000, "baseSellPriceIsk": 1 },
+      { "id": "box-encrypted-c", "kind": "container", "unitM3": 1000, "baseSellPriceIsk": 1 },
+      { "id": "box-encrypted-d", "kind": "container", "unitM3": 1000, "baseSellPriceIsk": 1 },
+      { "id": "box-encrypted-e", "kind": "container", "unitM3": 1000, "baseSellPriceIsk": 1 },
+      { "id": "box-encrypted-g", "kind": "container", "unitM3": 1000, "baseSellPriceIsk": 1 },
       {
         "id": "box-bp-shallow",
         "kind": "container",
@@ -763,6 +768,20 @@
           "evasion": 0.05
         },
         "exclusive": true
+      },
+      {
+        "id": "drone-repair-mil",
+        "kind": "drone",
+        "unitM3": 40,
+        "baseSellPriceIsk": 42000,
+        "cpuUse": 8,
+        "droneClass": "repair",
+        "repairDrone": true,
+        "repairArmorHp": 10,
+        "repairHullHp": 10,
+        "repairIntervalMs": 10000,
+        "repairKit": "repairkit-mil",
+        "defense": { "shieldHp": 30, "armorHp": 20, "hullHp": 40, "evasion": 0.2 }
       },
       {
         "id": "drone-jawclaw",

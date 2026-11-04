@@ -1,10 +1,10 @@
 import type { GameState } from './state'
+import type { ModuleDef } from './types'
 import { nextInt, nextRandom } from './rng'
 
 export type ShipDamageKind = 'shield' | 'armor' | 'hull' | 'speed' | 'cargo' | 'range'
-export const SHIP_DAMAGE_MAX = 3
 export const SHIP_DAMAGE_CHANCE = 0.5
-export const SHIP_DAMAGE_PENALTY = 0.15
+export const SHIP_DAMAGE_PENALTY = 0.05
 export const SHIP_DAMAGE_DEFS: readonly { id: ShipDamageKind; nameId: string; descriptionId: string }[] = [
   { id: 'shield', nameId: 'ui.shipDamage.001', descriptionId: 'ui.shipDamage.007' },
   { id: 'armor', nameId: 'ui.shipDamage.002', descriptionId: 'ui.shipDamage.008' },
@@ -19,22 +19,32 @@ export function cleanShipDamage(raw: unknown): ShipDamageKind[] | undefined {
   const out: ShipDamageKind[] = []
   for (const value of raw) {
     const def = SHIP_DAMAGE_DEFS.find(row => row.id === value)
-    if (!def || out.includes(def.id)) continue
+    if (!def) continue
     out.push(def.id)
-    if (out.length >= SHIP_DAMAGE_MAX) break
   }
   return out.length ? out : undefined
 }
 
-/** 战损作用于加成后的最终属性；每种仅一份，不进入普通插件叠加池。 */
-export function shipDamageEffects(ids: readonly ShipDamageKind[] | undefined): Record<ShipDamageKind, number> {
-  const damage = new Set(cleanShipDamage(ids))
-  return Object.fromEntries(SHIP_DAMAGE_DEFS.map(def => [def.id, damage.has(def.id) ? 1 - SHIP_DAMAGE_PENALTY : 1])) as Record<ShipDamageKind, number>
+/** 战损作用于加成后的最终属性；同种逐件乘算，无玩法上限，不进入普通插件叠加池。 */
+export function shipDamageEffects(
+  ids: readonly ShipDamageKind[] | undefined,
+  management?: ModuleDef['damageManagement'],
+): Record<ShipDamageKind, number> {
+  const effects = Object.fromEntries(SHIP_DAMAGE_DEFS.map(def => [def.id, 1])) as Record<ShipDamageKind, number>
+  const penalty = SHIP_DAMAGE_PENALTY * (1 - Math.max(0, Math.min(1, management?.penaltyReductionPct ?? 0)))
+  for (const id of cleanShipDamage(ids) ?? []) effects[id] *= 1 - penalty
+  return effects
+}
+
+/** 只对抗性贡献按类型计数；原数组与每件战损的属性惩罚均保留。 */
+export function shipDamageHullResistOf(ids: readonly ShipDamageKind[] | undefined, management?: ModuleDef['damageManagement']): number {
+  if (!management) return 0
+  const kinds = Math.min(new Set(cleanShipDamage(ids) ?? []).size, Math.max(0, Math.floor(management.maxKinds)))
+  return kinds * management.hullResistPerKind
 }
 
 export function rollShipDamage(state: GameState, previous?: readonly ShipDamageKind[]): ShipDamageKind[] {
   const ids = cleanShipDamage(previous) ?? []
-  if (ids.length >= SHIP_DAMAGE_MAX || nextRandom(state.rng) >= SHIP_DAMAGE_CHANCE) return ids
-  const candidates = SHIP_DAMAGE_DEFS.filter(def => !ids.includes(def.id))
-  return [...ids, candidates[nextInt(state.rng, candidates.length)]!.id]
+  if (nextRandom(state.rng) >= SHIP_DAMAGE_CHANCE) return ids
+  return [...ids, SHIP_DAMAGE_DEFS[nextInt(state.rng, SHIP_DAMAGE_DEFS.length)]!.id]
 }

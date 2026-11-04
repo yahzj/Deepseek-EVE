@@ -133,6 +133,8 @@ describe('快递换板独立批次，真实引擎回归', () => {
 
   it('刷新不清在途，过截止到站仍结算锁定酬金，已接单不丢', () => {
     const state = world()
+    // 只核快递酬金，不让随机事件收入混入同一段钱包差额。
+    const local = { ...ctx, balance: { ...ctx.balance, events: { ...ctx.balance.events, enabled: false } } }
     const accepted = structuredClone(state.sideTasks.courier[0]!)
     expect(acceptCourierTask(state, accepted.id).ok).toBe(true)
     const task = state.sideTasks.courier[0]!
@@ -141,10 +143,10 @@ describe('快递换板独立批次，真实引擎回归', () => {
       departAtGameMs: state.gameMs, arriveAtGameMs: 150 * MIN, rewardIsk: 123456, volumeM3: 500,
     }
     const wallet = state.wallet.isk
-    advanceGame(state, 120 * MIN, ctx, { offline: true })
+    advanceGame(state, 120 * MIN, local, { offline: true })
     expect(state.sideTasks.deliver?.rewardIsk).toBe(123456)
     expect(state.sideTasks.accepted).toEqual([accepted])
-    advanceGame(state, 10 * MIN, ctx)
+    advanceGame(state, 10 * MIN, local)
     expect(state.sideTasks.deliver).toBeNull()
     expect(state.wallet.isk - wallet).toBe(123456)
     expect(state.sideTasks.accepted).toEqual([accepted])

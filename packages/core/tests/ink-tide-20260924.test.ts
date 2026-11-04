@@ -36,6 +36,8 @@ import {
 } from '../src/combat'
 
 const ctx = buildSimContext()
+// 保留旧在途战斗的四张编成与覆写契约。
+ctx.anomalies = new Map([...ctx.anomalies].map(([id, card]) => [id, card.foeFormation?.baseline ?? card]))
 /** 一条真船（含装配）——"裸武器落点"用例用它，保证 `createPlayerSpec` 拿得到武器 */
 const state0 = createInitialState({ nowWallMs: 0, seed: 24 })
 state0.shipId = addShipToFleet(state0, 'sh-whiteshark')
@@ -244,13 +246,19 @@ describe('H 族 · 墨潮干扰舰（射程压制 · 船长三例定死口径）
      * 实测扫描：0.2 只到第 0 波 · **0.15 能推进到第 1 波（干扰舰入场）** · 0.1/0.05/0.02 同样能到第 1 波。
      * ⚠ 倍率只缩 `hpMul`/`dmgMul`，**与射程无关** ⇒ 本用例的射程断言逐字有效。
      */
-    const b = startBattleFor(ws, ctx, ew, 'ink-main', 0, undefined, { strengthMul: 0.15 })!
+    const legacyCtx = { ...ctx, anomalies: new Map([...ctx.anomalies].map(([id, card]) => [id, card.rangeEwLegacyCard ?? card])) }
+    const legacyState = { ...ws, fleet: { ...ws.fleet } }
+    legacyState.fleet[ew] = { ...legacyState.fleet[ew]!, fitted: { ...legacyState.fleet[ew]!.fitted, high: ['mod-turret-kin-2', 'mod-turret-kin-2'] } }
+    const b = startBattleFor(legacyState, legacyCtx, ew, 'ink-main', 0, undefined, { strengthMul: 0.15 })!
+    delete b.rangeEwVersion
+    delete b.rangeEw
+    b.meFoeRangeDebuff = .15
     /**
      * 视图入参 = **引擎用的同一份敌卡**（真实界面也这么传：见 `BattleScreen` 的 `whView.anomaly`）
      * ⚠ 不能直接塞 `card('ink-main')` 那张原卡——引擎逐拍走的是 `battleAnomalyOf(...)`（窝点/派系派生后的卡）。
      */
-    const engineCard = battleAnomalyOf(ctx, 'ink-main', ws.expedition.lairTier, ws.expedition.factionActive)!
-    const arcsNow = () => battleArcsFor(ws, ctx, { battle: b, anomaly: engineCard, leaderShipId: ew })!
+    const engineCard = battleAnomalyOf(legacyCtx, 'ink-main', ws.expedition.lairTier, ws.expedition.factionActive)!
+    const arcsNow = () => battleArcsFor(legacyState, legacyCtx, { battle: b, anomaly: engineCard, leaderShipId: ew })!
     const base = arcsNow().me.map((m) => m.maxM)
     expect(base.length).toBe(1)
     expect(b.meFoeRangeDebuff).toBeCloseTo(0.15, 10) // 主控就是电子舰
@@ -262,14 +270,18 @@ describe('H 族 · 墨潮干扰舰（射程压制 · 船长三例定死口径）
 
     let sawJammer = false
     for (let i = 0; i < 2000; i++) {
-      ws.gameMs += 100
-      advanceBattleFor(ws, ctx, b, ew, 'ink-main')
+      legacyState.gameMs += 100
+      advanceBattleFor(legacyState, legacyCtx, b, ew, 'ink-main')
       if ((b.waveIdx ?? 0) >= 1) {
         sawJammer = true
         /** 净 = 0.50 − 0.15 = **0.35**（船长例①）⇒ 每件武器 = 基础 × 0.65（逐件同序） */
         const v = arcsNow()
         expect(v.me.map((m) => m.maxM).length).toBe(base.length)
-        v.me.forEach((m, i) => expect(m.maxM).toBe(Math.max(2, Math.round(base[i]! * 0.65))))
+        v.me.forEach((m, i) => {
+          const webbed = Math.max(2, base[i]! - (b.meWebDebuffs?.player?.rangeDownM ?? 0))
+          const adjusted = Math.max(2, Math.round(webbed * meRangeMulOf(b, wave1)))
+          expect(m.maxM).toBe(adjusted)
+        })
         /**
          * **敌方射程一成不变**（三例都写「敌方不变」）——两条分开钉：
          * ① **干扰舰自己没有动敌方的射程**：把战斗态里"我方电子舰那条削减"清掉（`meFoeRangeDebuff = 0`）

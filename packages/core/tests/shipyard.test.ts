@@ -110,7 +110,7 @@ describe('舰队', () => {
   })
 
   describe('2026-09-09 驾驶船可用性（船长定：弃船补驾驶绝不接管 AI 执勤船；无空闲 → 保底磷虾）', () => {
-    /** AI 掩护巡逻驻留指派（仅作"占用"标记，推进时驻留态无副作用） */
+    /** AI 掩护巡逻驻留指派（用于覆盖船只仍占用中的状态）。 */
     function busyFalconet() {
       state.aiAssignments['sh-falconet'] = {
         coreType: 'basic',
@@ -148,7 +148,7 @@ describe('舰队', () => {
       advanceGame(state, 1_000, ctx)
       expect(state.shipId).toBe('sandcat') // 自愈改派空闲船（舰队序第一艘空闲 = 磷虾，绝不留在 AI 船）
       expect(state.aiAssignments[state.shipId]).toBeUndefined()
-      expect(state.aiAssignments['sh-falconet']).toBeDefined() // AI 任务不受影响
+      expect(state.aiAssignments['sh-falconet']).toBeUndefined() // 旧巡逻由该拍推进自动召回
     })
 
     it('旧档坏态自愈：驾驶船键缺失 → 引擎推进自动改派（档始终有船可开）', () => {

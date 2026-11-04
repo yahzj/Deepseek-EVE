@@ -7,6 +7,7 @@ import { ANNOUNCEMENTS, L10N, l10nEntryText } from '@whale/data'
 import { MECHANICS_APPROVED_ZH } from './fixtures/announcement-mechanics-brief-20261009'
 import { INCURSION_APPROVED_BRIEF, INCURSION_APPROVED_LOOT } from './fixtures/announcement-incursion-brief-20261009'
 import { weekendFamilyForWindow } from '../src/weekendEvent'
+import { approvedMk1CopyDelta } from './helpers/approved-mk1-copy-delta'
 
 const root = new URL('../../../', import.meta.url)
 const baseline = 'dc012f8f'
@@ -29,6 +30,20 @@ const releases = [
   { id: 'ann-balance-mechanics-summary-20261008', heading: '## 三、公告二：数据调整与新增机制',
     title: { zh: '数据调整与新增机制', en: 'Balance Changes and New Mechanics' }, tag: { zh: '系统', en: 'System' } },
 ]
+const currentReleases = [
+  { id: 'ann-equipment-retune-20261019', prefix: 'ano.equipmentRetune', title: { zh: '装备与说明调整', en: 'Equipment and Description Updates' }, bullets: [
+    '跃迁规避装置更名为短距离跃迁装置，调整为中槽战斗支援件，不再触发推进器对隐秘行动的限制；多件安装仍只采用一件效果。',
+    '掠袭者护盾笼CPU占用由46降至36。',
+    '酸液喷吐器射程调整为2500米、装填间隔为3.8秒；命中后每层降低目标装甲全抗性5%，持续15秒，加法叠加、独立到期。',
+    '磁轨蓄能说明明确为按本炮单发伤害附加能量伤害；每次开火后比例+30%、装填间隔+10%，最多5层，加法累计。',
+    '装备叠加说明按实际规则修正，部分当前战斗提示改用%，近盲说明移除自伤备注。',
+  ] },
+  { id: 'ann-depth-damage-retune-20261019', prefix: 'ano.depthRetune', title: { zh: '信号空间资源与战损调整', en: 'Signal Space Resources and Damage Mods' }, bullets: [
+    '玩家探索信号空间时，每深入一层，矿脉与墓场普通残骸各增加一堆。',
+    '信号空间单堆资源仍随层数增加，每层增幅由20%降至8%；自动探索同步调整。',
+    '舰船战损插件每件属性减幅由15%降至5%，允许同种重复获得，按剩余属性乘算叠加，不设件数上限。',
+  ] },
+]
 
 type Node = { type: string; props: Record<string, any>; children: unknown[] }
 function nodes(value: unknown): Node[] {
@@ -44,6 +59,20 @@ function text(value: unknown): string {
 }
 
 describe('船长获批两篇公告发布', () => {
+  it.each(currentReleases)('$id采用10月19日批准稿，正文双语完整且不列敌方数值', release => {
+    const row = ANNOUNCEMENTS.find(row => row.id === release.id)!
+    expect(row.bullets).toEqual(release.bullets)
+    expect(row.date).toBe('2026-10-19')
+    expect(row.title).toBe(release.title.zh)
+    expect(row.bulletIds).toEqual(release.bullets.map((_, i) => `${release.prefix}.${String(i + 3).padStart(3, '0')}`))
+    expect(row.bullets.join('')).not.toMatch(/永陵|旗舰伤害|主树|回归|验收/)
+    for (const id of [row.titleId!, row.tagId!, ...row.bulletIds!]) {
+      expect(L10N[id]!.en).toMatch(/[A-Za-z]/)
+      expect(L10N[id]!.en).not.toMatch(/[\u3400-\u9fff]|\{\w+\}/)
+      expect(L10N[id]!.enDeferred).not.toBe(true)
+    }
+    expect(ANNOUNCEMENTS.slice(0, 2).map(row => row.id)).toEqual(currentReleases.map(row => row.id))
+  })
   it.each(releases)('$id按原获批稿或船长本次短句裁定接线', release => {
     const announcement = ANNOUNCEMENTS.find(row => row.id === release.id)!
     expect(announcement).toBeDefined()
@@ -54,7 +83,9 @@ describe('船长获批两篇公告发布', () => {
     for (const language of ['zh', 'en'] as const) {
       expect(L10N[announcement.titleId!]![language]).toBe(release.title[language])
       expect(L10N[announcement.tagId!]![language]).toBe(release.tag[language])
-      expect(announcement.bulletIds!.map(id => l10nEntryText(L10N[id]!, language))).toEqual(mechanics ? [...MECHANICS_APPROVED_ZH] : expectedIncursion(language))
+      const expected = language === 'zh' ? mechanics ? [...MECHANICS_APPROVED_ZH] : expectedIncursion(language)
+        : announcement.bulletIds!.map(id => approvedMk1CopyDelta(id, { zh: L10N[id]!.zh, en: '', enDeferred: true }).en)
+      expect(announcement.bulletIds!.map(id => l10nEntryText(L10N[id]!, language))).toEqual(expected)
     }
     expect(announcement.title).toBe(L10N[announcement.titleId!]!.zh)
     expect(announcement.tag).toBe(L10N[announcement.tagId!]!.zh)
@@ -105,7 +136,16 @@ describe('船长获批两篇公告发布', () => {
       const item = items[index]!
       expect(text(item)).toContain(release.title[language])
       expect(text(item)).toContain('2026-10-09')
-      expect(nodes(item).filter(node => node.type === 'li').map(text)).toEqual(release.id === 'ann-balance-mechanics-summary-20261008' ? [...MECHANICS_APPROVED_ZH] : expectedIncursion(language))
+      const announcement = ANNOUNCEMENTS[index]!
+      const expected = language === 'zh' ? release.id === 'ann-balance-mechanics-summary-20261008' ? [...MECHANICS_APPROVED_ZH] : expectedIncursion(language)
+        : announcement.bulletIds!.map(id => approvedMk1CopyDelta(id, { zh: L10N[id]!.zh, en: '', enDeferred: true }).en)
+      expect(nodes(item).filter(node => node.type === 'li').map(text)).toEqual(expected)
+    }
+    for (const release of currentReleases) {
+      const index = ANNOUNCEMENTS.findIndex(row => row.id === release.id)
+      const row = ANNOUNCEMENTS[index]!, item = items[index]!
+      expect(text(item)).toContain(release.title[language])
+      expect(nodes(item).filter(node => node.type === 'li').map(text)).toEqual(language === 'zh' ? release.bullets : row.bulletIds!.map(id => L10N[id]!.en))
     }
     expect(seen.get('whale-idle:announce-seen')).toBe(ANNOUNCEMENTS[0]!.id)
   })

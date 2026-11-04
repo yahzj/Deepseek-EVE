@@ -1,6 +1,8 @@
 import { execFileSync } from 'node:child_process'
 import { describe, expect, it } from 'vitest'
 import { applyApprovedScanShipDelta } from './helpers/approved-scan-ship-delta'
+import { applyApprovedTorpedoShipDelta } from './helpers/approved-torpedo-ship-delta-20261019'
+import { applyApprovedFleetShipDelta } from './helpers/approved-fleet-delta-20261101'
 import { buildSimContext } from '@whale/data'
 import ships from '../../data/src/static/ships.json'
 import { createInitialState } from '../src/state'
@@ -64,6 +66,8 @@ describe('获批四舰CPU调整', () => {
       delete (hull as unknown as Record<string, unknown>).droneLaunchCutPct
     }
     applyApprovedScanShipDelta(expected)
+    applyApprovedTorpedoShipDelta(rows)
+    applyApprovedFleetShipDelta(rows)
     expect(current).toEqual(expected)
     expect([...ctx.ships]).toHaveLength(46)
   })

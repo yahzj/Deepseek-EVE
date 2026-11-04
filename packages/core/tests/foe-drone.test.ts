@@ -30,6 +30,8 @@ import type {
 } from "../src/types";
 
 const base = buildSimContext();
+// 原卡的机群拆分机制基准；新增护航的机群与总量在扩编专项覆盖。
+base.anomalies = new Map([...base.anomalies].map(([id, card]) => [id, card.foeFormation?.baseline ?? card]));
 const bal = base.balance.battle;
 
 /** 试验舰级：母舰**射程 1~10 m**（够不着，用来把"机群的火力"从"母舰的火力"里分出来）。
@@ -840,6 +842,8 @@ describe("G 族蜂群机挂载（P-20a 收口：等离子系上舰）", () => {
     expect(gun).toBe(246); // 120 + 63 + 63
     expect(drone).toBe(51); // 26 + 25（占比 0.30 的守恒拆分；T = 锚点 = 自然合计 171）
     expect(gun + drone).toBe(297); // = 迁移前实测总单发 138 × 重定价 2.1562（取整后 297；换系本身不动）
-    expect(hp).toBeCloseTo(2_040 * 2.1562 * 1.5, 6);
+    const raw = createFoeSpecs(DEF, bal, { beforeHpUplift: true })
+    expect(raw.reduce((n, u) => n + u.hp.s + u.hp.a + u.hp.h, 0)).toBeCloseTo(2040 * 2.1562, 6)
+    expect(hp).toBe(raw.reduce((n, u) => n + Math.ceil(u.hp.s * 1.5) + Math.ceil(u.hp.a * 1.5) + Math.ceil(u.hp.h * 1.5), 0));
   });
 });

@@ -8,7 +8,7 @@
  * ＋「**当玩家第一次进入七层是，给玩家发一则通讯讲清楚敌人开始围剿玩家了，并介绍机制**」。
  *
  * 本文件锁住八条：① 层 1~6 一个字不写 · ② 层 ≥7 每消耗 1 回合刷 1 个 ·
- * ③ 上限 = 格数 × 50% · ④ 不刷下一层入口格、不刷还没清掉的舰船信号格 ·
+ * ③ 上限 = 格数 × 50% · ④ 不刷下一层入口格、不刷还没清掉的舰船信号格或已清围剿格 ·
  * ⑤ 刷到玩家当前格 ⇒ 袭击（先确认：`pendingNodeBattle`）· ⑥ 开战自动改用围剿者的卡 ·
  * ⑦ 战果形状（围剿 = 1 堆普通、不给稀有件）· ⑧ 存档往返与老档零迁移。
  */
@@ -108,11 +108,12 @@ describe('虫洞 · 围剿者（第 7 层起逐回合刷怪 · 2026-09-23 船长
     // 打掉一个 ⇒ 候选格与名额都回来
     const victim = grid.cells.find(hasLiveFoe)!
     victim.foe = { ...victim.foe!, cleared: true }
-    expect(spawnTargetsOf(grid).some((c) => c.key === victim.key)).toBe(true)
+    expect(spawnTargetsOf(grid).some((c) => c.key === victim.key)).toBe(false)
     expect(wormholeSpawnAfterTurns(state, 1).spawned).toBe(1)
+    expect(hasLiveFoe(victim)).toBe(false)
   })
 
-  it('④ 不刷下一层入口格；也不刷"还没清掉的舰船信号格"（清掉过的可以再被占）', () => {
+  it('④ 不刷下一层入口格、还没清掉的舰船信号格或已清围剿格', () => {
     const state = enterAt(7)
     const grid = state.wormhole.run!.grid!
     // 造两个"有敌人"的格：一个未清的舰船信号、一个已清的舰船信号
@@ -121,11 +122,13 @@ describe('虫洞 · 围剿者（第 7 层起逐回合刷怪 · 2026-09-23 船长
     const cleared = grid.cells.find((c) => c.key !== uncleared.key && c.key !== `${grid.exit.q},${grid.exit.r}`)!
     cleared.place = 'ship'
     grid.activated.push(cleared.key)
+    cleared.foe = { card: 'wh-pirate-scout', seq: 1, cleared: true }
     wormholeSpawnAfterTurns(state, spawnCapOf(grid) + 10)
     const exitKey = `${grid.exit.q},${grid.exit.r}`
     expect(grid.cells.find((c) => c.key === exitKey)!.foe, '入口格不许被占').toBeUndefined()
     expect(hasLiveFoe(uncleared), '没清掉的舰船信号格不许被占').toBe(false)
-    expect(hasLiveFoe(cleared), '已清掉的旧敌人格可以被占').toBe(true)
+    expect(hasLiveFoe(cleared), '已清掉的旧敌人格不应再被占').toBe(false)
+    expect(cleared.foe?.cleared).toBe(true)
   })
 
   it('⑤ 刷到玩家当前格 ⇒ 袭击：**直接开战**（公告定稿口径 · 不再置 `pendingNodeBattle`）＋ 一条日志', () => {

@@ -3,7 +3,7 @@
  *
  * 船长 2026-09-29 六答：Q2「做个列表之类的，之后有新增入侵就添加选项」·
  * Q3a「和现有规则一样（**随机星系**入侵）」· Q3b「**只能在没有入侵时候使用**」·
- * Q3c「**消耗一个**，不做限制」· Q3d「能获得虚空晶必然声望达标。**不做限制**」。
+ * 消耗一枚，当前累计声望门槛与自然入侵共用；调试豁免。
  *
  * 🔴 **2026-10-02 船长令改判**：「**信号发射器召唤的敌人是随机的（目前只有R和H）**」⇒
  * **势力随机**（池 = `WEEKEND_FINISHED_FAMILIES`，占位族 A/C/G 永不出现）；Q2 那张"选项列表"
@@ -26,6 +26,7 @@ import {
   WEEKEND_FINISHED_FAMILIES,
   WEEKEND_STANDING_BEACON,
   WEEKEND_STANDING_MAX,
+  WEEKEND_MIN_STANDING,
   weekendCoreCandidates,
   weekendHasBuiltStation,
   weekendRandomFamilyOf,
@@ -65,6 +66,7 @@ function readyState() {
   const s = createInitialState({ nowWallMs: 0, seed: 41 })
   s.exploredGalaxies = [...ctx.galaxies.keys()]
   s.awayGalaxy = nonHighSecId()
+  noteStandingEarned(s, DSI_FACTION_ID, WEEKEND_MIN_STANDING)
   addWare(s, INVASION_BEACON_ITEM_ID, 1)
   return s
 }
@@ -167,6 +169,7 @@ describe('信号发射器 · 使用与拒绝', () => {
 
     const b = createInitialState({ nowWallMs: 0, seed: 41 })
     b.awayGalaxy = nonHighSecId() // 先离开基地（否则先被位置限制 core.consumable.010 拦）
+    noteStandingEarned(b, DSI_FACTION_ID, WEEKEND_MIN_STANDING)
     addWare(b, INVASION_BEACON_ITEM_ID, 1)
     const none = useInvasionBeacon(b, ctx)
     expect(none.ok).toBe(false)
@@ -177,7 +180,7 @@ describe('信号发射器 · 使用与拒绝', () => {
   it('**指定星系**时玩家在空间站（母港）也**允许**（2026-09-30 船长报障：别要求玩家先离开自己的空间站）', () => {
     const s = createInitialState({ nowWallMs: 0, seed: 41 })
     s.exploredGalaxies = [...ctx.galaxies.keys()]
-    noteStandingEarned(s, DSI_FACTION_ID, 50) // 母港在高安 ⇒ 指定那条要付声望（代价，非门槛）
+    noteStandingEarned(s, DSI_FACTION_ID, WEEKEND_MIN_STANDING)
     addWare(s, INVASION_BEACON_ITEM_ID, 1)
     const target = weekendCoreCandidates(s, ctx)[0]!
     const r = useInvasionBeacon(s, ctx, { galaxyId: target })
@@ -200,7 +203,7 @@ describe('信号发射器 · 使用与拒绝', () => {
   it('**默认使用**（不指定星系）⇒ **不看位置**：在母港也能开，且不扣声望（**2026-09-30 船长纠正**）', () => {
     const s = createInitialState({ nowWallMs: 0, seed: 41 }) // 母港（高安）· dockedSite 空
     s.exploredGalaxies = [...ctx.galaxies.keys()]
-    noteStandingEarned(s, DSI_FACTION_ID, 50)
+    noteStandingEarned(s, DSI_FACTION_ID, WEEKEND_MIN_STANDING)
     addWare(s, INVASION_BEACON_ITEM_ID, 1)
     const spendable = s.standings[DSI_FACTION_ID] ?? 0
     const r = useInvasionBeacon(s, ctx)
@@ -227,7 +230,7 @@ describe('信号发射器 · 使用与拒绝', () => {
     expect(consumableStockOf(s, INVASION_BEACON_ITEM_ID), '扣掉一枚').toBe(0)
   })
 
-  it('**指定星系**的**唯一禁令**＝目标星系有空间站（母港 / 已建成副站）⇒ 拒 core.consumable.010、不扣料', () => {
+  it('指定目标有空间站（母港 / 已建成副站）⇒ 拒 core.consumable.010、不扣料', () => {
     /* ① 目标 = 母港（自带空间站） */
     const a = readyState() // 自带 1 枚
     const r1 = useInvasionBeacon(a, ctx, { galaxyId: HOME_GALAXY_ID })
@@ -237,7 +240,7 @@ describe('信号发射器 · 使用与拒绝', () => {
     expect(a.weekendEvent, '没建事件').toBeUndefined()
   })
 
-  it('**指定星系**时"未探索 / 高安 / 无副站"都**不再是**限制（只剩空间站那一条）', () => {
+  it('声望达标后，指定无空间站的未探索高安目标仍允许使用', () => {
     /* 高安但无空间站的星系 ⇒ 允许（2026-09-30 船长令：只有"有空间站"这一条禁令） */
     const s = readyState()
     s.awayGalaxy = highSecId()
@@ -280,7 +283,8 @@ describe('信号发射器 · 使用与拒绝', () => {
 
   it('**目标属高安**但**可支配声望不足** ⇒ 拒绝 core.consumable.011，不扣料也不建事件', () => {
     const s = readyState()
-    const target = highSecTargetId(s)! // 新档声望为 0
+    s.standings[DSI_FACTION_ID] = HIGH_SEC_PENALTY - 1
+    const target = highSecTargetId(s)!
     const r = useInvasionBeacon(s, ctx, { galaxyId: target })
     expect(r.ok).toBe(false)
     expect(r.errorId).toBe('core.consumable.011')
@@ -394,18 +398,14 @@ describe('信号发射器 · 目标属高安那一场的通讯变体', () => {
     expect(weekendWarnCommsOf(back, ctx, back.weekendEvent!).bodyIds[0]).toBe('core.weekend.044')
   })
 
-  /**
-   * **玩家自己点火的场次：结算声望固定 5 点**（**2026-10-01 船长令**：「**玩家用信号发射器召唤的入侵，
-   * 每次完成只给 5 声望。**」）——每周那场自己爆发的入侵仍按贡献 0~15 点，判据单点 = `weekendStandingGainOf`。
-   */
-  it('点火场次 ⇒ 事件留痕 `beaconLit`，结算声望**固定 5 点**（每周那场仍按贡献算）', () => {
+  it('点火场次留痕beaconLit，结算固定10声望；自然入侵仍按贡献算', () => {
     const s = readyState()
     expect(useInvasionBeacon(s, ctx).ok).toBe(true)
     const ev = s.weekendEvent!
     expect(ev.beaconLit, '点火来源留痕').toBe(true)
-    expect(weekendStandingGainOf(ev, 1), '点火场：满贡献也是固定 5 点').toBe(WEEKEND_STANDING_BEACON)
-    expect(weekendStandingGainOf({}, 1), '每周那场：满贡献 15 点').toBe(WEEKEND_STANDING_MAX)
-    expect(weekendStandingGainOf({}, 0.5), '每周那场：半贡献 8 点').toBe(8)
+    expect(weekendStandingGainOf(ev, 1), '点火场：满贡献也是固定10点').toBe(WEEKEND_STANDING_BEACON)
+    expect(weekendStandingGainOf({}, 1), '每周那场：满贡献30点').toBe(WEEKEND_STANDING_MAX)
+    expect(weekendStandingGainOf({}, 0.5), '每周那场：半贡献15点').toBe(15)
     expect(loadSaveFile(serializeSaveFile(s, 0)).state.weekendEvent?.beaconLit, '读档后仍在').toBe(true)
   })
 })

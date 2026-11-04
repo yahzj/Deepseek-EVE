@@ -59,18 +59,27 @@ describe('独立网页工程构建依赖', () => {
   it('真实 Vite 配置将工程外源码的渲染依赖统一解析到 web 根目录', () => {
     const source = readFileSync(resolve(ROOT, 'web/vite.config.ts'), 'utf8')
     const scope = {
-      exports: {} as { default: { resolve: { dedupe: string[] }; build: { rollupOptions?: { external?: unknown } } } },
+      exports: {} as { default: (env: { command: string }) => { base: string; plugins: Array<{ name: string }>; resolve: { dedupe: string[] }; build: { rollupOptions?: { external?: unknown } } } },
       require: (id: string) => {
         if (id === 'vite') return { defineConfig: (config: unknown) => config }
         if (id === '@vitejs/plugin-react') return { default: () => ({ name: 'react' }) }
+        if (id === 'vite-plugin-javascript-obfuscator') return { default: () => ({ name: 'obfuscator' }) }
         if (id === 'node:path') return { resolve }
         if (id === '../tools/build-info') return { buildInfoDefine: () => ({}) }
+        if (id === '../tools/release-rights') return {
+          releaseRightsPlugin: () => ({ name: 'release-rights' }),
+          releaseRightsBannerPlugin: () => ({ name: 'release-rights-banner' }),
+        }
         throw new Error(`未声明的配置依赖：${id}`)
       },
     }
     runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, scope)
-    const config = scope.exports.default
-    expect([...config.resolve.dedupe].sort()).toEqual(Object.keys(json('web/package.json').dependencies).sort())
-    expect(config.build.rollupOptions?.external).toBeUndefined()
+    for (const command of ['serve', 'build']) {
+      const config = scope.exports.default({ command })
+      expect([...config.resolve.dedupe].sort()).toEqual(Object.keys(json('web/package.json').dependencies).sort())
+      expect(config.build.rollupOptions?.external).toBeUndefined()
+      expect(config.base).toBe(command === 'build' ? '/Deepseek-EVE/' : '/')
+      expect(config.plugins.map(plugin => plugin.name)).toEqual(['react', 'obfuscator', 'release-rights'])
+    }
   })
 })

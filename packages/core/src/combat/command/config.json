@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "legacySpecialFourShips": false,
+  "maxShips": 12,
+  "legacyMaxShips": 4,
+  "baseCapacity": 25,
+  "standingRequired": 20,
+  "fallbackCostByTier": { "1": 10, "2": 15, "3": 20, "4": 30, "5": 45 },
+  "skills": [
+    { "id": "fleet-command-basic", "perLevel": 5, "rank": 2, "licensePriceIsk": 50000, "licenseStandingReq": 20 },
+    { "id": "fleet-command-coordination", "perLevel": 7, "rank": 3, "licensePriceIsk": 200000, "licenseStandingReq": 40 },
+    { "id": "fleet-command-integration", "perLevel": 8, "rank": 5, "licensePriceIsk": 2000000, "licenseStandingReq": 60 }
+  ]
+}

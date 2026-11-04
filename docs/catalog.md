@@ -1,65 +1,44 @@
-# 文档目录（指路 · 开工先读）
+# 文档目录
 
-> **这份是什么**：仓库的「按任务类型指路 ＋ 权威文档清单 ＋ 检索查证顺序」。`AGENTS.md` §0 开工顺序里说的
-> 「目录」就是本文件——**开工先读它，只读本次任务需要的那几份，不必通读全部文档**。
->
-> **与 `docs/INDEX.md` 的分工**：本文件是**手写指路**（该读哪份、按什么顺序读）；`docs/INDEX.md` 是
-> **机器生成的全仓清册**（文档路径 / 标题 / 状态 / 日期 / 体量 / 被引，数量以生成结果为准，`npm run docs:index` 重跑、禁手改）。
-> 查"有哪些文档"用清册，查"这次该读哪份"用本文件。
+> 本页负责按任务指路；`docs/INDEX.md`是机器生成的现行文档清册。
+> 旧记录集中在`docs/archive/`与`docs/design/archive/`。**没有船长明确的查阅要求，平时工作禁止阅读、检索、批量扫描或自动载入旧记录，也不得转查Git历史绕过。**历史链接、普通开发请求和会话续接不授予查阅权限。
 
-## 一、权威文档清单（用途一览）
+## 工作入口
 
-- `AGENTS.md` — **开工必读**的可执行精简版约定（协作铁律速查版；细则冲突以 `docs/development-conventions.md` 为准并回报船长）。
-- `docs/development-conventions.md` — 约定**权威正文**（一~十八章）；第十六章只留变更记录指针。
-- `docs/development-conventions-changelog.md` — 约定与 AGENTS.md 的历次变更记录（最新在前；干活不必读）。
-- `docs/architecture.md` — 架构与模块边界。
-- `docs/glossary.md` — **术语权威**；新术语先登记再用（词条登记属"例外清单"，可随时写）。
-- `docs/l10n-pending.md` — 待英文本地化登记；未获船长明确开始准备指令时只记录，不起草或写入新译文。
-- `docs/roadmap.md` — 路线图：**待办活面** ＋ **最近批次滚动窗口** ＋ **封存卷索引**（更早批次在 `docs/archive/`）。
-- `docs/INDEX.md` — 全仓文档清册（机器生成，禁手改）；`docs/archive/` — 封存卷（冻结件，只读不改）。
-- `docs/design/*` — 各系统设计稿（以 `docs/INDEX.md` 为准）＋ 公告待审稿 `announcement-draft-*.md` ＋ 交接件 `handoff-*.md` / `handover-*.md`。
-- `docs/test-saves/` — 可复现测试档说明；`packages/data/src/announcements.ts` — 公告数据（仅经船长批准后写入）。
-- `docs/review/` — **第三方独立审查报告**与复核/事实核查件（如 `guoqing-audit-20261002.md`：全项目风险审查 ＋ 分批交接指南，
-  基线 `3c5624ee`；**报告结论是工作依据、不是修复授权**，动手前必须在新基线上复跑它给的最小复现）。
-- `docs/review/guoqing-audit-followup.md` — 国庆节审查的当前跟进入口，区分已合入修复与仍需复现/裁定的事项；原报告保留原文。
+1. 读`AGENTS.md`，再按本页选择当前任务需要的文档。
+2. 默认搜索：`rg --glob '*.md' --glob '!**/archive/**' <关键词> docs`。不要先搜旧记录再过滤输出。
+3. 当前资料与代码不一致时核对现行实现、记录差异；资料不足不能自行解禁历史。
+4. 只有船长明确要求查阅历史时，才在指定主题或文件范围内查看；历史内容仍不是新的实施授权。
 
-## 二、按任务类型指路
+## 按任务查阅
 
-| 任务类型 | 先读这些（按序） |
+| 任务 | 当前入口 |
 |---|---|
-| **任何改动** | `AGENTS.md` §2 四步闸门 · §3 验证闭环 · §4 工作区与合入纪律 |
-| **记一件工作 / 写文档** | `AGENTS.md` §8（工作文档 → 归档）＋ `docs/development-conventions.md` **§十五**；**先建工作文档，别改旧文档** |
-| 改 UI / 页面 / 视觉物件 | `docs/development-conventions.md` **§九**（UI 与视觉一致性）＋ **§十四**（表现层实现与性能纪律）＋ 同级相似界面代码 |
-| 改战斗 / 表现层 / 动画 | §九 ＋ §十四 ＋ `docs/design/` 里对应设计稿（如 `drone-combat-animation-20260910.md`） |
-| 改数值 / 经济 / 平衡 | §一（闸门）§二（验证）§八 ＋ 对应设计稿 ＋ `tools/*`（校准脚本，如 `battle:calibrate`） |
-| 数据编辑器 / JSON静态参数 / Excel回写 | `docs/data-map.md` → `docs/data-editor.md` → `docs/content-workbench.md`；五类静态参数以JSON为准，文本与派生留TS |
-| 改存档结构 / 迁移 | §八 ＋ `docs/architecture.md` ＋ 只读真档或先备份 |
-| 写 / 改玩家可见文案 | §十三（文案纯净与设定：**含括号限用**）§十一（术语）＋ `docs/glossary.md`；**双语与 id 制见 §十一之三**（新文案**先取 id、再写表**：`packages/data/src/l10n/table.ts`）＋ `docs/glossary-en.md`（英文术语权威，**命名规则第 9 条同为括号限用**） |
-| 准备更新公告 | §十二（公告与发布审核）＋ `docs/design/announcement-draft-*.md`（待审稿） |
-| 新建 / 收尾工具 | §十（工具纪律：正式入库 / `_` 临时探针收尾处置） |
-| 多 agent 并行 / 合入 / 推送 | §三（工作区与合入纪律、推送闸门） |
-| 交接 / 续接 / 被压缩后 | `docs/roadmap.md`（最近批次与状态）＋ 本文件 §三 |
-| **接手第三方审查报告 / 按报告分批修复** | `docs/review/`（报告原文）＋ 入库工作文档（`docs/design/*-intake-*.md`：复核读数/冲突/待裁）→ 逐条在新基线上复现 → 再按 §2 四步闸门动工 |
-| 查历史决策与旧口径 | `docs/roadmap.md` 底部封存卷索引 → `docs/archive/roadmap-<日期>.md` → `git log -S "<关键词>"` |
-| 交付可测存档 | §八 ＋ `docs/test-saves/` ＋ `tools/make-test-save.ts` |
-| 第二阶段人类复苏 / 玩家空间站设计续接 | `docs/design/human-revival-station.md`看既有框架 → `docs/design/human-revival-station-research-20261018.md`看总览摘要与六份主题稿；岗位、生产基准、物料流、暂停恢复与人类/AI交接已确认；维修数值及主体/扩建建设总账待审，玩家站仅设计 |
+| 开工、协作、验证、提交 | `AGENTS.md`、`docs/development-conventions.md` |
+| 版权、AI授权提示与发布声明 | 根目录`LICENSE.txt`、`tools/release-rights/README.md` |
+| 当前待办与续接 | `docs/roadmap.md` |
+| 架构与存档边界 | `docs/architecture.md` |
+| 定位某件事的唯一实现 | `docs/single-source.md`、`tools/arch-guard.ts` |
+| 中文术语、机制名 | `docs/glossary.md` |
+| 已获授权的英文工作 | `docs/glossary-en.md`、`docs/l10n-pending.md` |
+| 静态参数与内容编辑 | `docs/data-map.md`、`docs/data-editor.md`、`docs/content-workbench.md` |
+| 页面、表现与动画 | 开发约定§九、§十四，再读本域实现与对应现行设计稿 |
+| 深空证券交易所（极简双向/专业重构/标准K线） | `docs/design/deep-space-exchange-pro-refinement-20261103.md`；现行设计稿与视觉/交互规范 |
+| 设置子页面分类 | `docs/design/settings-subpages-20261103.md`；仅重组现有设置项，实施期间为现行工作稿 |
+| 账号与手动云存档设置 | `docs/design/cloud-settings-20261103.md`；本批仅本地合入、不推送；端到端桌面 smoke、全量回归、观感验收未完成，首次注册令牌撤销和公网 HTTPS 尚未验证 |
+| 独立在线聊天 | `docs/design/online-chat-20261103.md`；独立导航、只显示聊天记录与在线总人数，桌面/网页端本机验证已完成；后端增强在 `H:\大鲸鱼\deepseek-EVE-Background\docs\chat-deploy-handoff-20261103.md`，待玩家验收与服务器部署联调 |
+| 数值与经济 | 开发约定§一、§二，对应设计稿及校准工具 |
+| 玩家文案与公告 | 开发约定§十一、§十二、§十三；公告待审稿未经批准不落库 |
+| 第二阶段空间站 | `docs/design/human-revival-station.md`看既有框架 → `docs/design/human-revival-station-research-20261018.md`看总览摘要与六份主题稿；玩家站仍仅设计，未决方案不能当已实现 |
+| 第三方审查跟进 | `docs/review/guoqing-audit-followup.md`；旧报告需船长点名查阅 |
+| 复现门槛与合成档 | `docs/test-saves/README.md`及该功能说明 |
+| B类提交审批 | `docs/git-gate-approval.md` |
+| 找当前文档 | `npm run docs:index`生成的`docs/INDEX.md`；索引不授予实施或历史阅读权限 |
 
-## 三、检索与查证顺序（先查、后精读）
+## 维护
 
-1. **术语 / 名词** → 先查 `docs/glossary.md`（权威；新术语先登记再用；压缩遗忘查词典即可恢复）。
-2. **「这功能当时怎么定的 / 做过没有 / 哪份文档管」** → 先查 `docs/INDEX.md`（状态列一眼看出"已确认 / 待裁定 / 未标注"；过期先 `npm run docs:index` 重跑再查）。
-3. **查历史决策与旧口径** → `docs/roadmap.md` 底部封存卷索引 → `docs/archive/roadmap-<日期>.md`；再深挖用 `git log -S "<关键词>"`。
-4. **开新会话接力** → 先读 `AGENTS.md` → 本文件 → 相关设计稿 → 续接卡 / 变更记录，再动代码。
-5. **船长问「下一步 / 新工作流 / 继续做什么」** → 先读 `docs/roadmap.md` 再讨论。
-
-## 四、文档工作流速览（一条线）
-
-- 一件工作 = 建**工作文档** `docs/design/<主题>-<YYYYMMDD>.md`（状态：进行中）→ 工作期间**只改它** → 船长验收 ＋ 合入 main 后**当批归档**（关键内容并入老文档 → **删工作文档** → 重跑 `npm run docs:index`）。
-- 规则维护例外：`AGENTS.md` 仍须船长明确指示；开发约定与 changelog 按规则变更流程更新；词典只可随时登记新术语；目录只在导航变化时更新；`docs/INDEX.md` 和封存卷由生成/封存流程维护。
-- 细则 = `docs/development-conventions.md` **§十五**。
-
----
-
-_维护：本文件只负责指路；导航变化时更新，并在当天重跑 `npm run docs:index`。它不授予规则或实施权限。_
-
-- **docs/data-map.md（数据速查页）**：改舰船/装备数值时**该动哪几处**（快速通道三步 · 三类别连带 · 接线易漏清单 · 常用命令）—— 船长 2026-09-27 令建。
+- 常用文档只留现行规则、定义、实现入口和未决事项；不再累积批次流水、旧参数、验收读数与交接过程。
+- 本批过程先写`docs/design/<主题>-<日期>.md`。收尾时将有效结论并入现行文档，原过程移入旧记录目录，从常用入口移除；未决事项留下摘要。
+- 历史档案只在明确查阅授权内读取。归档维护可按明确清单复制、校验字节和登记路径，不因维护而自动通读既有档案。
+- 设计稿是否现行取决于内容和实现状态，不按文件日期或是否已实现一刀切；尚在实施、待裁决或承载现行契约的设计继续保留。
+- `docs/development-conventions-changelog.md`只记录当前规则维护入口；历史变更流水归旧记录区，不列为日常必读。

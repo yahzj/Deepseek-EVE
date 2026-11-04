@@ -33,6 +33,7 @@ import { advanceBattleFor, createFoeSpecs, FOE_ELITE_WORD, FOE_LIGHT_WORD, foeCa
 import { createInitialState } from '../src/state'
 import type { AnomalyDef, FoeShipDef } from '../src/types'
 import { anomaly, makeTestCtx, moduleDef, ship } from './helpers'
+import { roundedFoeHp } from './helpers/rounded-foe-hp'
 
 const bal = makeTestCtx().balance.battle
 
@@ -104,8 +105,8 @@ describe('舰级路径：绝对值口径', () => {
     const skiff = specs[1]!
     const escort = specs[4]!
     expect(hpOf(boss)).toBeCloseTo(400 * 1.5, 6)
-    expect(hpOf(skiff)).toBeCloseTo(100 * 1.5, 6)
-    expect(hpOf(escort)).toBeCloseTo(60 * 1.5, 6)
+    expect(skiff.hp).toEqual(roundedFoeHp(mixedCard(40).ships![1]!))
+    expect(escort.hp).toEqual(roundedFoeHp(mixedCard(40).ships![2]!))
     // 单发：本卡编成 5 单位 → 多舰补偿 2×5/6 = 5/3（2026-09-11 船长确认）
     // 头目 round(60 × 5/3) = 100；杂鱼 round(10 × 5/3) = 17；僚机 round(10 × 0.6 × 5/3) = 10
     expect(boss.weapons[0]!.shotDmg).toBe(100)
@@ -368,7 +369,7 @@ describe('旧路径不受影响（未写 ships 的卡）', () => {
     expect(specs).toHaveLength(1)
     expect(specs[0]!.tag).toBe('foe-0')
     expect(specs[0]!.name).toBe('攻坚重甲舰')
-    expect(hpOf(specs[0]!)).toBeCloseTo(300 * 1.5, 6)
+    expect(specs[0]!.hp).toEqual({ s: Math.ceil(300 * .2 * 1.5), a: Math.ceil(300 * .55 * 1.5), h: Math.ceil(300 * .25 * 1.5) })
   })
 })
 
@@ -621,7 +622,7 @@ describe('多舰船补偿：舰级路径按 N 缩放单发，旧路径不动', (
 
   it('混编卡：头目与杂鱼同吃补偿；多舰补偿不改变血量/速度/射程口径', () => {
     const specs = createFoeSpecs(mixedCard(40), bal)
-    expect(specs.map(hpOf)).toEqual([400, 100, 100, 100, 60].map(n => n * 1.5))
+    expect(specs.map(u => u.hp)).toEqual([BOSS, SKIFF, SKIFF, SKIFF, SKIFF].map((ship, i) => roundedFoeHp({ ship, ...(i === 4 ? { hpMul: .6 } : {}) })))
     expect(specs.map((u) => u.speedMps)).toEqual([380, 350, 350, 350, 350])
     expect(specs.map((u) => u.weapons[0]!.maxRangeM)).toEqual([2600, 2200, 2200, 2200, 2200])
   })
@@ -630,7 +631,7 @@ describe('多舰船补偿：舰级路径按 N 缩放单发，旧路径不动', (
     const def = anomaly('ano-t-legacy-comp', 'galaxy-hub', { threat: 40, tactic: 'brawl' })
     const spec = createFoeSpecs({ ...def, foeHpOverride: 300, defProfile: 'armor' }, bal)[0]!
     // 旧链：dps = 40 × 0.8 = 32 → 32 × 4s × 0.62 ÷ 0.85 = 93.36 → 93（无任何多舰补偿）
-    expect(spec.weapons[0]!.shotDmg).toBe(93)
+    expect(spec.weapons[0]!.shotDmg).toBe(Math.ceil(40 * .8 * 4 * .62 / .85))
   })
 })
 
@@ -663,19 +664,19 @@ describe('赤潮 / 蜃影 火力重锚（船长 2026-09-11 裁决：按实际算
     }, 0)
   const shots = (id: string): number[] => createFoeSpecs(realCard(id), bal).map((u) => u.weapons[0]!.shotDmg ?? 0)
 
-  it('赤潮劫掠舰队（T26）：重锚单发 头目 27 / 杂鱼 7，纸面火力 ≈ 旧实伤 7.25 × 1.2 × 重定价 1.3095', () => {
-    expect(shots('ano-redring-raiders')).toEqual([27, 7, 7, 7])
+  it('赤潮劫掠舰队：逐门向上取整，卡面威胁和旧重锚参数保持', () => {
+    expect(shots('ano-redring-raiders')).toEqual([28, 7, 7, 7])
     const dps = paperDps('ano-redring-raiders')
-    expect(dps).toBeCloseTo(12, 6) // Σ48 ÷ 4s
+    expect(dps).toBeCloseTo(49 / 4, 6)
     expect(dps / 7.25).toBeGreaterThan(1.5) // ≈ ×1.66（原目标 ×1.2 × 2026-09-25 重定价 1.3095 ≈ 1.57，取整 +5.5%）
     expect(dps / 7.25).toBeLessThan(1.8)
     expect(realCard('ano-redring-raiders').threat).toBe(26) // 2026-09-25 两批：34 → 21（重定标）→ 26（手动重定价，属性 ×1.3095）
   })
 
-  it('蜃影导航劫持令（T68）：重锚单发 头目 151 / 杂鱼 32，纸面火力 ≈ 旧实伤 11.50 × 1.2 × 重定价 4.5755', () => {
-    expect(shots('ano-mirage-hijackers')).toEqual([151, 32, 32, 32])
+  it('蜃影导航劫持令：逐门向上取整，远端纸面火力仍读取本舰单发', () => {
+    expect(shots('ano-mirage-hijackers')).toEqual([151, 33, 33, 33])
     const dps = paperDps('ano-mirage-hijackers')
-    expect(dps).toBeCloseTo(61.75, 6) // Σ247 ÷ 4s
+    expect(dps).toBeCloseTo(250 / 4, 6)
     expect(dps / 11.5).toBeGreaterThan(5.2) // ≈ ×5.37（原目标 ×1.2 × 2026-09-25 重定价 4.5755 ≈ 5.49，取整 −2.2%）
     expect(dps / 11.5).toBeLessThan(5.7)
   })
@@ -686,9 +687,10 @@ describe('赤潮 / 蜃影 火力重锚（船长 2026-09-11 裁决：按实际算
       expect(card.ships).toHaveLength(2) // 头目 ×1 + 杂鱼 ×3（两条编成）
       expect(card.ships!.reduce((n, s) => n + Math.max(1, Math.floor(s.count ?? 1)), 0)).toBe(4)
       const specs = createFoeSpecs(card, bal)
-      const hp = specs.map((u) => u.hp.s + u.hp.a + u.hp.h)
-      const bossShare = hp[0]! / hp.reduce((a, b) => a + b, 0)
-      expect(bossShare).toBeCloseTo(0.6, 6) // 头目 60% 血不变
+      const expected = card.ships!.flatMap(slot => Array.from({ length: slot.count ?? 1 }, () => roundedFoeHp(slot)))
+      expect(specs.map(u => u.hp)).toEqual(expected)
+      const raw = createFoeSpecs(card, bal, { beforeHpUplift: true })
+      expect(hpOf(raw[0]!) / raw.reduce((n, u) => n + hpOf(u), 0)).toBeCloseTo(.6, 6)
       // `foeDmgMul` 字段不存在（类型上已删除）——这里锁"卡上没有任何逐卡伤害倍率口"
       expect(Object.keys(card)).not.toContain('foeDmgMul')
       expect(Object.keys(card.ships![0]!)).not.toContain('foeDmgMul')
@@ -723,12 +725,8 @@ describe('血型随卡走 + 头目射程多重方案（船长 2026-09-11 裁决�
       ships: [{ ship: SKIFF, split: { s: 0.5, a: 0.25, h: 0.25 } }, { ship: SKIFF }],
     }
     const specs = createFoeSpecs(def, bal)
-    const frac = (u: (typeof specs)[number]) => {
-      const t = u.hp.s + u.hp.a + u.hp.h
-      return { s: u.hp.s / t, a: u.hp.a / t, h: u.hp.h / t }
-    }
-    expect(frac(specs[0]!).s).toBeCloseTo(0.5, 9) // 条目覆写
-    expect(frac(specs[1]!).s).toBeCloseTo(SKIFF.split.s, 9) // 缺省 = 舰级
+    expect(specs[0]!.hp).toEqual(roundedFoeHp(def.ships![0]!))
+    expect(specs[1]!.hp).toEqual(roundedFoeHp(def.ships![1]!))
   })
 
   it('六张真卡：**每一条**主体的有效血型都等于卡面 `defProfile`（头目也随卡走）', () => {
@@ -748,10 +746,9 @@ describe('血型随卡走 + 头目射程多重方案（船长 2026-09-11 裁决�
           waves > 1 ? { tagPrefix: prefix } : {},
         ).entries()) {
           const t = u.hp.s + u.hp.a + u.hp.h
-          expect({ tag: u.tag, s: Number((u.hp.s / t).toFixed(9)) }).toEqual({
-            tag: u.tag,
-            s: Number(want.s.toFixed(9)),
-          })
+          const slots = card.ships!.filter(slot => (slot.wave ?? 0) === w).flatMap(slot => Array.from({ length: slot.count ?? 1 }, () => slot))
+          expect(slots[i]!.split ?? slots[i]!.ship.split).toEqual(want)
+          expect(u.hp).toEqual(roundedFoeHp(slots[i]!))
           expect(t).toBeGreaterThan(0)
           i; // 逐单位
           checked++
@@ -918,13 +915,19 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     'ano-starcore-boss',
     'ano-maw-hunt',
   ];
-  /** 血量比对用近似（分数式在二进制浮点下末位有差，如 226.87500000000003） */
+  /** 先守原始预算，再守逐层最终向上取整，不放宽精度。 */
   const expectHpClose = (
     got: readonly number[],
-    want: readonly number[],
+    want: readonly number[], slots: readonly import('../src/types').FoeShipSlot[],
   ): void => {
     expect(got).toHaveLength(want.length)
-    got.forEach((v, i) => expect(v).toBeCloseTo(want[i]! * 1.5, 6))
+    const expanded = slots.flatMap(slot => Array.from({ length: slot.count ?? 1 }, () => slot))
+    got.forEach((v, i) => {
+      const slot = expanded[i]!
+      expect(slot.ship.hp * (slot.hpMul ?? 1) * (slot.ship.family === 'C' ? 1.3 : 1)).toBeCloseTo(want[i]!, 6)
+      const hp = roundedFoeHp(slot)
+      expect(v).toBe(hp.s + hp.a + hp.h)
+    })
   };
   /** 取某张卡**全部波次**的单位（首波前缀 `''`；第 n 波 `w{n}-`），展平成一队 */
   const allWaves = (def: AnomalyDef): ReturnType<typeof createFoeSpecs> =>
@@ -998,10 +1001,11 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     expectHpClose(
       u.map(hpOf),
       Array.from({ length: 6 }, () => 3128.3 / 6 * 1.3),
+      def.ships!,
     ); // 2026-09-25 重定价 ×3.1283（原总血 1,000）
-    expect(sum(u.map(hpOf))).toBeCloseTo(3128.3 * 1.3 * 1.5, 6)
+    expect(sum(u.map(hpOf))).toBe(6 * hpOf(u[0]!))
     expect(u.map((x) => x.weapons[0]!.shotDmg)).toEqual(
-      Array.from({ length: 6 }, () => 59),
+      Array.from({ length: 6 }, () => 60),
     ); // 354/6 = 59（重定价后）
     const w = u[0]!.weapons[0]!
     expect(w.kind).toBe('fixed'); // 能量·掷命中（裁定⑤）
@@ -1014,10 +1018,7 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     expect(card('ano-abyss-guard').dmgMix).toEqual({ plasma: 10 }); // 纯能量卡保持纯系（卡面）
     // 血型随卡走：卡面 shield（星髓幼虫舰级缺省是装甲型）
     const h = u[0]!.hp
-    const tot = hpOf(u[0]!)
-    expect(h.s / tot).toBeCloseTo(0.5, 6)
-    expect(h.a / tot).toBeCloseTo(0.25, 6)
-    expect(h.h / tot).toBeCloseTo(0.25, 6)
+    expect(h).toEqual(roundedFoeHp(def.ships![0]!))
   })
 
   it('裂谷畸变体猎杀令（T77）：畸变幼虫 ×8 / 2 波（4+4）；总血 3,790.2645 精确守恒', () => {
@@ -1027,10 +1028,11 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     expectHpClose(
       u.map(hpOf),
       Array.from({ length: 8 }, () => 3790.2645 / 8 * 1.3),
+      def.ships!,
     ); // = 473.7831（2026-09-25 重定价 ×2.0883，原 226.875）
-    expect(sum(u.map(hpOf))).toBeCloseTo(3790.2645 * 1.3 * 1.5, 6)
+    expect(sum(u.map(hpOf))).toBe(8 * hpOf(u[0]!))
     expect(u.map((x) => x.weapons[0]!.shotDmg)).toEqual(
-      Array.from({ length: 8 }, () => 31),
+      Array.from({ length: 8 }, () => 32),
     ); // 248/8 = 31（重定价后）
     expect(u.map((x) => x.speedMps)).toEqual(
       Array.from({ length: 8 }, () => 544),
@@ -1053,10 +1055,10 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
       377.8430625,
       377.8430625,
       377.8430625,
-    ].map(value => value * 1.3))
-    expect(sum(u.map(hpOf))).toBeCloseTo(2015.163 * 1.3 * 1.5, 6)
+    ].map(value => value * 1.3), def.ships!)
+    expect(sum(u.map(hpOf))).toBe(7 * hpOf(u[0]!) + 3 * hpOf(u.at(-1)!))
     expect(u.map((x) => x.weapons[0]!.shotDmg)).toEqual(
-      Array.from({ length: 10 }, () => 30),
+      Array.from({ length: 10 }, () => 31),
     ); // 300/10 = 30（重定价后）
     // 末波（第 3 波）= 成虫 ×3：带 1~2655（舰级带）与速 398（T2 驱逐），tag 走 `w2-` 前缀
     const last = u.filter((x) => x.tag.startsWith('w2-'))
@@ -1080,17 +1082,18 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     expect(boss).toBeTruthy()
     const minions = u.filter((x) => x !== boss)
     expect(minions).toHaveLength(10)
-    expectHpClose([hpOf(boss)], [3994.104 * 0.65 * 1.3]); // 首领占比不变，最终族格血量增加30%。
+    expectHpClose([hpOf(boss)], [3994.104 * 0.65 * 1.3], def.ships!.filter(slot => slot.ship.elite));
     expectHpClose(
       minions.map(hpOf),
       Array.from({ length: 10 }, () => 3994.104 * 0.035 * 1.3),
+      def.ships!.filter(slot => !slot.ship.elite),
     ); // 每只小虫 139.7936（3.5%）
-    expect(sum(u.map(hpOf))).toBeCloseTo(3994.104 * 1.3 * 1.5, 6);
-    expect(boss.weapons[0]!.shotDmg).toBe(470); // 首领 65%（原 80% ⇒ 577；重定价后逐项取整）
+    expect(sum(u.map(hpOf))).toBe(hpOf(boss) + 10 * hpOf(minions[0]!));
+    expect(boss.weapons[0]!.shotDmg).toBe(471);
     expect(minions.map((x) => x.weapons[0]!.shotDmg)).toEqual(
-      Array.from({ length: 10 }, () => 25),
+      Array.from({ length: 10 }, () => 26),
     )
-    expect(sum(u.map((x) => x.weapons[0]!.shotDmg ?? 0))).toBe(720); // 总单发 = 470 + 25×10（重定价后）
+    expect(sum(u.map((x) => x.weapons[0]!.shotDmg ?? 0))).toBe(731);
     expect(boss.speedMps).toBe(297); // 205 × 297/205（船长「将首领速度**单独上调 20 点**」：277 → 297）
     expect(minions.every((x) => x.speedMps === 544)).toBe(true)
     expect(boss.weapons[0]!.maxRangeM).toBe(2713); // 沿革：曾令加到 4,000 → 回收回 2,713 → 2026-09-14「全族 +1000」（3,713）**同日已回滚**
@@ -1279,8 +1282,11 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
       const want = NOW[id]!
       const u = allWaves(def)
       expect(u, id).toHaveLength(want.n)
-      expectHpClose(u.map(hpOf), want.unit); // **逐单位血逐字**
-      expect(sum(u.map(hpOf)), id).toBeCloseTo(want.hp * 1.5, 6)
+      expectHpClose(u.map(hpOf), want.unit, def.ships!);
+      const raw = def.ships!.reduce((n, slot) => n + slot.ship.hp * (slot.hpMul ?? 1) * (slot.count ?? 1), 0)
+      expect(raw, id).toBeCloseTo(want.hp, 6)
+      const expectedHp = def.ships!.reduce((n, slot) => { const h = roundedFoeHp(slot); return n + (h.s + h.a + h.h) * (slot.count ?? 1) }, 0)
+      expect(sum(u.map(hpOf)), id).toBe(expectedHp)
       expect(sum(u.map((x) => x.weapons[0]!.shotDmg ?? 0)), id).toBe(want.shot)
       for (const x of u) {
         expect(x.weapons[0]!.kind, id).toBe('beam'); // D 族**保留必中**（不走 C 族那套掷命中）

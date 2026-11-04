@@ -4,6 +4,7 @@
  * 若日后给技能改名，需同步 data 与这里。
  */
 import type { BalanceConfig, DamageType, FoeFamily } from './types'
+import { INDUSTRIAL_ENCOUNTER_DEFAULTS } from './encounters/config'
 
 /**
  * **返航倍率**（船长 2026-09-14：「**修正倍率回1倍**」）：自动返航时长 = 出发点↔落点**单程 × 本值**。
@@ -130,6 +131,7 @@ export const DEFAULT_BALANCE: BalanceConfig = {
   // B1 低安遭遇（2026-09-04 定稿：占用随机事件时机——事件线到点判定；到达缓冲 5 分钟；
   // 到点遇袭率 sec=0 → 5%、sec=−1 → 20%；实测后回调）
   encounter: {
+    industrial: INDUSTRIAL_ENCOUNTER_DEFAULTS,
     // 2026-09-12 船长两条裁定（「将伏击掷骰阈值降低为0」＋「0也算低安」）：
     // **低安 = sec ≤ 0（含 0）**，只有低安掷伏击；中安（0 < sec < 0.5）与高安一律不掷。
     // ⚠ 本值同时是概率公式的**零风险参考点**（见 `encounters.rollLowSecAmbush`）⇒ 取 0 之后

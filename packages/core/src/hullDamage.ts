@@ -17,6 +17,7 @@
  * - 层满值走 `hullLayerCaps`（与维修、修理组件同一把尺：含模块与技能放大）；
  * - **结构不低于 5%**（绝不弃船），触底时 `floored = true` 由调用方告警。
  */
+import { ceilFinalQuantity } from './quantity'
 import type { GameState } from './state'
 import type { SimContext } from './types'
 import { hullLayerCaps } from './shipyard'
@@ -31,7 +32,7 @@ export function foeFirepowerDps(ctx: SimContext, threat: number): number {
 
 /** 一口伤害（HP）= 敌群火力 × 暴露秒数（至少 1 HP，避免 0 伤害） */
 export function firepowerHitHp(ctx: SimContext, threat: number, seconds: number): number {
-  return Math.max(1, foeFirepowerDps(ctx, threat) * seconds)
+  return Math.max(1, ceilFinalQuantity(foeFirepowerDps(ctx, threat) * seconds))
 }
 
 /** 受击结算结果（日志用：扣了多少、剩多少，都是比例 0~1） */

@@ -88,7 +88,8 @@ describe('准备阵容统一选择hook', () => {
       scope.autoMainPicked = true
       runInNewContext(code, scope)
       expect(scope.result).toBe(refusal)
-      expect(source).toContain('disabled={!canPick && !on}')
+      expect(source).toContain('<PreparationFleetCards')
+      expect(readFileSync(new URL('apps/desktop/src/renderer/src/features/combat/PreparationFleetCards.tsx', root), 'utf8')).toContain('disabled={!canPick && !on}')
       expect(source).toContain(`usePreparationSquad(engine, auto ? '${name === 'SignalSpace' ? 'signal' : 'wormhole'}-auto'`)
     }
     expect(readFileSync(new URL('apps/desktop/src/renderer/src/panels/WeekendFlagshipPrep.tsx', root), 'utf8'))

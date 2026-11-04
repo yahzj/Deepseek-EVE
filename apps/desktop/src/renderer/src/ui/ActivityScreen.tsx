@@ -87,7 +87,7 @@ export function activityKindOf(state: GameState): ActivityKind | null {
 
 /** 活动 → 布景 id（长途运输按航段分两支：就位 / 承运） */
 function sceneIdOf(kind: ActivityKind, state: GameState): ActSceneId {
-  if (kind === 'haul') return state.hauling.tripLegsLeft <= 1 ? 'haul-pos' : 'haul'
+  if (kind === 'haul') return (state.hauling.fleetLeg ? state.hauling.fleetLeg.positioning || state.hauling.fleetLeg.returning : state.hauling.tripLegsLeft <= 1) ? 'haul-pos' : 'haul'
   return kind
 }
 
@@ -197,13 +197,14 @@ function readoutOf(kind: ActivityKind, state: GameState, ctx: SimContext): Reado
     const b = h.routeB === null ? tr('ui.ActivityWin.004') : (ctx.stations.get(h.routeB)?.name ?? h.routeB)
     const to = h.toSiteId === null ? tr('ui.ActivityWin.004') : (ctx.stations.get(h.toSiteId)?.name ?? h.toSiteId)
     // 就位段（`tripLegsLeft === 1`）= 空舱赶去航线端点，与承运段画面/标题都不同（船长要"区分就位与承运"）
-    const positioning = h.tripLegsLeft <= 1
+    const positioning = h.fleetLeg ? h.fleetLeg.positioning : h.tripLegsLeft <= 1
+    const returning = h.fleetLeg?.returning === true
     return {
-      title: tr(positioning ? 'ui.ActivityWin.030' : 'ui.ActivityWin.003'),
+      title: tr(returning ? 'ui.industrial.007' : positioning ? 'ui.ActivityWin.030' : 'ui.ActivityWin.003'),
       lines: [
         `${tr('ui.ActivityWin.014')}${a} ⇄ ${b}`,
         `${tr('ui.ActivityWin.015')}${to}`,
-        positioning ? tr('ui.ActivityWin.031') : `${tr('ui.ActivityWin.016')}×${h.tripMul.toFixed(1)}`,
+        returning ? tr('ui.industrial.007') : positioning ? tr('ui.ActivityWin.031') : `${tr('ui.ActivityWin.016')}×${h.tripMul.toFixed(1)}`,
       ],
       progress: h.legMs > 0 ? Math.min(1, h.phaseAccMs / h.legMs) : null,
       progressLabel: tr('ui.ActivityWin.021'),

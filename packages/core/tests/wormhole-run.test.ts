@@ -4,14 +4,15 @@
  * 锁住三组口径：
  * ① 副本推进（层 / 节点 / 回合）与两条硬约束——**战斗没结束不能撤**、**回合耗尽只能撤离**；
  * ② 层曲线取向：**收益涨得比威胁快**（船长 2026-09-13：「深层收益应该比难度曲线要更高」）；
- * ③ **v25 存档**：字段纯新增、老档迁移补空状态、往返不丢（含进行中的副本状态）。
+ * ③ **v31 存档**：虫洞状态正常往返；低版本旧档由存档版本门拒绝。
  *
  * ✅ 2026-09-14 船长解除不可见（入口常驻、数据全部上线、公开就叫「虫洞」）；
  * 本文件不产生任何玩家可见文案。
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
-import { createInitialState, CURRENT_STATE_VERSION, wormholePilotHoldReason } from '../src/state'
+import { CURRENT_STATE_VERSION, wormholePilotHoldReason } from '../src/state'
+import { createCommandReadyState as createInitialState } from './helpers/command-ready'
 import type { GameState } from '../src/state'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { idleAiShipIds } from '../src/ai'
@@ -305,7 +306,7 @@ describe('虫洞 · 并行战斗与忙态口径（船长 2026-09-13）', () => {
     expect(row2.sub).toContain('已离开')
   })
 
-  it('**洞内距离可调**（2026-09-13 修"锁死"）：写进本场 + 本趟后续节点沿用 + **不污染星系偏好**', () => {
+  it('洞内距离可调，同卡沿用且不污染旧星系偏好', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 7 })
     const a = addShipToFleet(state, T1)
     const b = addShipToFleet(state, T1)
@@ -321,7 +322,7 @@ describe('虫洞 · 并行战斗与忙态口径（船长 2026-09-13）', () => {
     const r = setBattleDesire(state, want, ctx)
     expect(r.ok, `洞内拖距离被拒：${r.error ?? ''}`).toBe(true)
     expect(run.battle!.myDesireM).toBeGreaterThanOrEqual(ctx.balance.battle.minDistanceM)
-    expect(run.desireM, '没把偏好记在本趟上').toBe(run.battle!.myDesireM)
+    expect(state.battleRangeByCard?.[run.battle!.wormhole!.cardId]?.desireM).toBe(run.battle!.myDesireM)
     // **不污染星系偏好**（虫洞不属于任何星系）
     expect(desirePrefOf(state, card.galaxyId)).toBe(prefBefore)
     // 本趟后续节点沿用：重开一场（同节点）应直接吃本趟偏好
@@ -420,8 +421,8 @@ describe('虫洞 · 起程与副本推进', () => {
     expect(run.phase).toBe('inside')
     expect(run.depth).toBe(1)
     expect(run.totalMass).toBe(2_000)
-    expect(run.turnsTotal).toBe(74) // 4×T1 = 74 回合（基础沿革 55 → 60（2026-09-14）→ 100（2026-09-15）→ **80**（2026-09-19 谜质科技树批））
-    expect(run.turnsLeft).toBe(74)
+    expect(run.turnsTotal).toBe(75) // 4×T1，最终回合预算向上取整。
+    expect(run.turnsLeft).toBe(75)
     expect(run.bag).toEqual([])
     // F3a-2：层内内容全部由网格承载；旧的线性节点字段不再生成
     expect(run.pendingNode).toBeNull()
@@ -829,42 +830,44 @@ describe('虫洞 · 层内网格动作（F3a-2 · 扫描 / 前往 各 1 回合�
   })
 })
 
-describe('虫洞 · 层曲线（收益涨得比威胁快 —— 船长 2026-09-13 定）', () => {
-  it('威胁每层 ×1.12（层 1 = 45）、收益每层 ×1.2 ⇒ 单位威胁收益逐层严格上升', () => {
+describe('信号空间 · 堆数与单堆层曲线', () => {
+  it('威胁每层×1.12不变，单堆收益每层×1.08，总资源点收益含额外堆', () => {
     expect(wormholeLayerThreat(1)).toBe(45)
     expect(wormholeLayerThreat(2)).toBe(50) // round(45×1.12)（2026-09-23 船长令：0.10 → 0.12）
     expect(wormholeLayerThreat(3)).toBe(56) // round(45×1.12²)
     expect(wormholeLayerThreat(7)).toBe(89) // 深层读数：层 7/8 曾因 ×1.16 成"墙"
     expect(wormholeLayerThreat(8)).toBe(99)
     expect(wormholeLayerRewardMul(1)).toBeCloseTo(1, 9)
-    expect(wormholeLayerRewardMul(2)).toBeCloseTo(1.2, 9)
-    const perThreat = (d: number): number => wormholeLayerRewardMul(d) / wormholeLayerThreat(d)
-    // 逐层**严格递增**（这正是"深层收益比难度曲线更高"的数学形式）
+    expect(wormholeLayerRewardMul(2)).toBeCloseTo(1.08, 9)
+    const perThreat = (d: number): number => (6.5 + d - 1) * wormholeLayerRewardMul(d) / wormholeLayerThreat(d)
+    // 以基础平均6.5堆的墓场总产出衡量，不再要求单堆倍率大于威胁倍率。
     for (let d = 1; d <= 12; d += 1) {
       expect(perThreat(d + 1), `第 ${d + 1} 层单位威胁收益应高于第 ${d} 层`).toBeGreaterThan(perThreat(d))
     }
   })
 })
 
-describe('虫洞 · v25 存档（纯新增字段 + 零迁移）', () => {
-  // ⚠ 版本号随存档结构演进往上抬：v26 = 「第一次」老档一次性判定；v27 = 市场链换口径的一次性折算；
-  // v28 = 残骸合并（旧"每卡一种"残骸 id → 「族 × 地区」13 组的同组累加折算，2026-09-19）；
-  // v29 = 谜质科技树（2026-09-19）；v30 = 成就徽章（2026-09-20）
-  it('新档带空虫洞状态；当前存档版本 = 30（v30 = 成就徽章，v29 = 谜质科技树）', () => {
+describe('虫洞 · v31 存档', () => {
+  it('新档带空虫洞状态；版本等于当前结构版本', () => {
     expect(CURRENT_STATE_VERSION).toBe(31)
     const s = createInitialState({ nowWallMs: 0, seed: 1 })
     expect(s.version).toBe(31)
     expect(s.wormhole).toEqual({ run: null, lastFleetLost: 0 })
   })
 
-  it('老档（缺 wormhole 字段）读档 ⇒ 补空状态，不报错', () => {
+  it('当前文件缺 wormhole 字段 ⇒ 归一化补空状态', () => {
     const s = createInitialState({ nowWallMs: 0, seed: 1 })
     const raw = JSON.parse(serializeSaveFile(s, 0)) as { version: number; state: Record<string, unknown> }
     delete raw.state.wormhole
-    raw.version = 24
-    raw.state.version = 24
     const loaded = loadSaveFile(JSON.stringify(raw))
     expect(loaded.state.wormhole).toEqual({ run: null, lastFleetLost: 0 })
+  })
+
+  it('v24 旧档不再迁移到当前版本', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 1 })
+    const raw = JSON.parse(serializeSaveFile(state, 0)) as { version: number }
+    raw.version = 24
+    expect(() => loadSaveFile(JSON.stringify(raw))).toThrowError(/早于可读取下限/)
   })
 
   it('进行中的副本状态随档往返不丢（层/回合/背包/待处理节点）', () => {
@@ -878,7 +881,7 @@ describe('虫洞 · v25 存档（纯新增字段 + 零迁移）', () => {
     expect(back.phase).toBe('inside')
     expect(back.depth).toBe(1)
     expect(back.turnsLeft).toBe(run.turnsLeft)
-    expect(back.turnsTotal).toBe(74)
+    expect(back.turnsTotal).toBe(75)
     expect(back.fleet).toEqual([T1, T1, T1, T1])
     expect(back.bag).toEqual([{ itemId: 'ore-voidmother', units: 800 }])
     // 层内网格随档（F3a）：位置/真相/已扫描/终点都在（细项由 wormhole-grid.test.ts 钉）

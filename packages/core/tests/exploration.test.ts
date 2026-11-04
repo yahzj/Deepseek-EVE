@@ -27,7 +27,7 @@ import { EXPLORE_EVENTS } from '../src/events'
 import { assignAiExpedition, assignAiMining, gainAiCore } from '../src/ai'
 import { anomaly, belt, galaxy, makeTestCtx, moduleDef, ship , fittedOf } from './helpers'
 import { shipBusyLabel } from '../src/activity'
-import { loadSaveFile, MIN_MIGRATABLE_VERSION, serializeSaveFile } from '../src/save'
+import { loadSaveFile, MIN_SUPPORTED_SAVE_VERSION, serializeSaveFile } from '../src/save'
 import { setStanding } from './helpers'
 
 describe('V13 星图探索：迷雾与剪影', () => {
@@ -281,7 +281,7 @@ describe('V14 存档迁移与续扫进度', () => {
     delete raw.exploredGalaxies
     delete raw.scanning
     delete raw.scanProgress
-    raw.version = MIN_MIGRATABLE_VERSION // 2026-09-19：迁移链下限（原 v12 已不可迁）
+    raw.version = MIN_SUPPORTED_SAVE_VERSION // 2026-09-19：迁移链下限（原 v12 已不可迁）
     const text = serializeSaveFile(state, 999)
     const loaded = loadSaveFile(text)
     expect(loaded.state.version).toBe(CURRENT_STATE_VERSION)

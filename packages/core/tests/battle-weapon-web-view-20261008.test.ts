@@ -29,6 +29,7 @@ describe('全编队装填视图与捕获网', () => {
       battle.units[spec.tag]!.weapons = spec.weapons.map(w => w.reloadMs / 2)
       return { spec, shipId, name: spec.tag }
     })
+    delete battle.expeditionAmmo // 本例只测旧三族账本的视图兼容。
     battle.ammo.pla = 100
     const before = structuredClone(battle), rows = battleWeaponCyclesOf(battle, units)
     expect(rows).toHaveLength(4)
@@ -58,6 +59,7 @@ describe('全编队装填视图与捕获网', () => {
     spec.weapons = [{ ...laser }, { ...laser }, { ...laser, moduleId: 'mod-laser-2' },
       { ...laser, maxRangeM: laser.maxRangeM + 100 }, { ...laser, reloadMs: laser.reloadMs + 100 }]
     battle.units.player!.weapons = spec.weapons.map(() => 50)
+    delete battle.expeditionAmmo
     battle.ammo.pla = 100
     const units = [{ spec, shipId: ships[0]!, name: 'Lead' }]
     const rows = battleWeaponCyclesOf(battle, units, ctx)
@@ -104,6 +106,7 @@ describe('全编队装填视图与捕获网', () => {
     const { state, ships, battle } = fleet(), spec = createPlayerSpec(state, ctx, ships[0]!)!
     spec.weapons = [{ ...spec.weapons[0]!, label: 'Laser', kind: 'beam', src: 'laser', fixedType: 'plasma', reloadMs: 4000, burst: { shots: 3, gapMs: 100 } }]
     const units = [{ spec, shipId: ships[0]!, name: 'Lead' }]
+    delete battle.expeditionAmmo
     battle.units.player!.weapons = [50]; battle.ammo.pla = 100; battle.meBurstFired = { 'player#0': 1 }
     expect(battleWeaponCyclesOf(battle, units)[0]).toMatchObject({ cycleMs: 100, remainingMs: 50, percent: 50 })
     delete battle.meBurstFired; battle.meOverlayReload = { 'player#0': { r: 2000, f: 2 } }

@@ -18,8 +18,11 @@ import { gravekeeperStatusesOf } from '../src/gravekeeperCombat'
 import { resolvePointDefense } from '../src/combatDrones'
 import { foeStrengthOf, foeThreatOfAnomaly } from '../src/foeSpecs'
 import { foeHpOfThreat } from '../src/foePower'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
+// 保存旧卡数值契约，确保版本缺省的存档继续按旧规格重建。
+ctx.anomalies = new Map([...ctx.anomalies].map(([id, card]) => [id, card.foeFormation?.baseline ?? card]))
 const bal = ctx.balance.battle
 const ship = (suffix: string) => FOE_SHIPS.find(s => s.id === `foe-d-invasion-${suffix}`)!
 function unit(suffix: string) {
@@ -39,9 +42,9 @@ describe('守墓入侵内容', () => {
     expect(['cruiser','bastion','oathkeeper','eternal-tomb'].map(s => ship(s).hp)).toEqual([480,1080,1840,39200])
     const specs = ['cruiser','bastion','oathkeeper','eternal-tomb'].map(unit)
     expect(specs.map(s => s.evasion)).toEqual([.25,.15,.08,.05])
-    expect(specs.map(s => s.hp)).toEqual([{s:324,a:216,h:180},{s:729,a:243,h:202.5},{s:1242,a:414,h:345},{s:17640,a:23520,h:17640}])
+    expect(specs.map(s => s.hp)).toEqual([{s:324,a:216,h:180},{s:729,a:243,h:203},{s:1242,a:414,h:345},{s:17640,a:23520,h:17640}])
     expect(ship('bastion').mounts).toEqual([FOE_MOUNT_IDS.dMausoleumArmor, FOE_MOUNT_IDS.dRangeDebuff])
-    expect(ship('eternal-tomb').mounts).toEqual([FOE_MOUNT_IDS.dCoatingArmor, FOE_MOUNT_IDS.dShieldCapacitor])
+    expect(ship('eternal-tomb').mounts).toEqual([FOE_MOUNT_IDS.dCoatingArmor, FOE_MOUNT_IDS.dShieldCapacitor, FOE_MOUNT_IDS.dReconstruction])
     expect(specs[1]!.resists.armor).toEqual({kinetic:.75,explosive:.75,plasma:.75})
     expect(specs[1]!.resists.hull).toEqual({kinetic:.75,explosive:.75,plasma:.75})
     expect(specs[1]!.resists.shield).toBeUndefined()
@@ -81,7 +84,7 @@ describe('守墓入侵内容', () => {
     const budget=5*natural.x/(10*Math.sqrt(1.5))
     expect(budget).toBeGreaterThan(foeHpOfThreat(190,bal))
     expect(budget).toBeLessThanOrEqual(foeHpOfThreat(191,bal))
-    expect(natural.hp).toBeCloseTo(134283.819,3)
+    expect(natural.hp).toBe(134297)
     const throneSpecs=[1,2].map(i=>activeFoeSpecsOf(card,bal,i).find(s=>s.foeShipId==='foe-d-throne')!)
     expect(throneSpecs.every(s=>s.foeSupportCall?.delaySec===20)).toBe(true)
     expect(activeFoeSpecsOf(card,bal,3).some(s=>s.foeShipId==='foe-d-throne')).toBe(false)
@@ -176,7 +179,7 @@ describe('永陵挂载', () => {
     syncFoeCapacitors(b,[foe])
     expect(b.foeShieldCapacitorActive![foe.tag]).toBe(true)
     for(let i=0;i<40;i++) noteFoeCapacitorAttack(b,foe,0)
-    expect(foeCapacitorMultiplierOf(b,foe,0,'damageMul')).toBeCloseTo(1.3**40,4)
+    expect(foeCapacitorMultiplierOf(b,foe,0,'damageMul')).toBeCloseTo(1.25**40,4)
     expect(foeCapacitorMultiplierOf(b,foe,'pd','damageMul')).toBe(1)
   })
   it('真引擎八炮齐射只叠一次，下一轮间隔立即乘1.1，同齐射不偷吃新增伤害', () => {
@@ -272,10 +275,17 @@ describe('永陵挂载', () => {
     }
     const cardId = 'gravekeeper-flagship'
     const hint = { galaxyId: 'galaxy-maw', kind: 'flagship' as const }
-    const first = weekendStartFlagshipBattle(state, ctx, now, [state.shipId])!
+    const open = () => {
+      const battle = weekendStartFlagshipBattle(state, ctx, now, [state.shipId])!
+      state.encounter = { ...state.encounter, active: true, shipId: state.shipId,
+        galaxyId: hint.galaxyId, anomalyId: cardId, battle }
+      finishDeparture(state, ctx)
+      return battle
+    }
+    const first = open()
     expect(first.foeOverride!.bossHp).toBe(300_000)
     first.waveIdx = 3
-    state.gameMs = 10
+    state.gameMs += 10
     advanceBattleFor(state, ctx, first, state.shipId, cardId)
     const boss = Object.values(first.units).find(u => u.foeShipId === ship('eternal-tomb').id)!
     boss.hp.s -= 80_000
@@ -286,14 +296,16 @@ describe('永陵挂载', () => {
     weekendApplyBattleOutcome(state, ctx, cardId, false, now, first, hint)
     expect(state.weekendEvent!.flagshipHpDone).toBe(80_000)
     expect(countWare(state, 'blackbox-d')).toBe(0)
+    state.encounter.active = false
+    state.encounter.battle = null
     state = loadSaveFile(serializeSaveFile(state)).state
-    state.gameMs = 20
-    const second = weekendStartFlagshipBattle(state, ctx, now, [state.shipId])!
+    state.gameMs += 10
+    const second = open()
     expect(second.foeOverride!.bossHp).toBe(220_000)
     expect(second.foeOverride!.bossHpLayers).toEqual({ s: 10_000, a: 120_000, h: 90_000 })
     expect(second.foeOverride!.bossMaxLayers).toEqual({ s: 90_000, a: 120_000, h: 90_000 })
     second.waveIdx = 3
-    state.gameMs = 30
+    state.gameMs += 10
     advanceBattleFor(state, ctx, second, state.shipId, cardId)
     const secondBoss = Object.values(second.units).find(u => u.foeShipId === ship('eternal-tomb').id)!
     secondBoss.hp = { s: 0, a: 60_000, h: 90_000 }
@@ -301,11 +313,13 @@ describe('永陵挂载', () => {
     weekendApplyBattleOutcome(state, ctx, cardId, false, now, second, hint)
     expect(weekendFlagshipHpRemaining(state.weekendEvent)).toBe(150_000)
     expect(countWare(state, 'blackbox-d')).toBe(0)
-    state.gameMs = 40
-    const third = weekendStartFlagshipBattle(state, ctx, now, [state.shipId])!
+    state.encounter.active = false
+    state.encounter.battle = null
+    state.gameMs += 10
+    const third = open()
     expect(third.foeOverride!.bossHpLayers).toEqual({ s: 0, a: 60_000, h: 90_000 })
     third.waveIdx = 3
-    state.gameMs = 50
+    state.gameMs += 10
     advanceBattleFor(state, ctx, third, state.shipId, cardId)
     const thirdSpecs = activeFoeSpecsOf(applyFoeOverride(ctx.anomalies.get(cardId)!, third.foeOverride!), bal, 3)
     const thirdBoss = thirdSpecs.find(f => f.foeShipId === ship('eternal-tomb').id)!

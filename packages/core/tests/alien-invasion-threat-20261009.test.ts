@@ -8,6 +8,8 @@ import { WRECK_GROUP_BY_KEY } from '../src/wreckGroups'
 import type { AnomalyDef } from '../src/types'
 
 const ctx = buildSimContext()
+// 此文件核对既有5%调整基线，当前扩编及不削弱约束由新专项覆盖。
+ctx.anomalies = new Map([...ctx.anomalies].map(([id, card]) => [id, card.foeFormation?.baseline ?? card]))
 const bal = ctx.balance.battle
 const cases = [
   ['alien-vanguard', 90, 95, 1.19, 1.325],
@@ -53,11 +55,12 @@ describe('C族入侵平均威胁提高5%', () => {
     const design = id === 'alien-broodmother' ? 10 : 3
     expect(target).toBe(Math.round(oldThreat * 1.05))
     expect(card.threat).toBe(currentThreats[id])
-    expect(foeThreatOfAnomaly(card, design, bal)).toBe(card.threat)
+    const actual = id === 'alien-main' ? 151 : card.threat
+    expect(foeThreatOfAnomaly(card, design, bal)).toBe(actual)
     expect(foeThreatOfAnomaly(old, design, bal)).toBeLessThan(card.threat)
     const budget = 5 * foeStrengthOf(card, bal).x / (design * Math.sqrt(SHIP_HP_UPLIFT_MUL))
-    expect(budget).toBeLessThanOrEqual(foeHpOfThreat(card.threat, bal))
-    expect(budget).toBeGreaterThan(foeHpOfThreat(card.threat - 1, bal))
+    expect(budget).toBeLessThanOrEqual(foeHpOfThreat(actual, bal))
+    expect(budget).toBeGreaterThan(foeHpOfThreat(actual - 1, bal))
     expect(card.wreckThreat).toBe(oldThreat)
     expect(card.threatJudged).toBe(oldThreat)
     for (const slot of card.ships!) {

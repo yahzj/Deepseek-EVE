@@ -7,6 +7,7 @@ import { advanceSkillQueue, enqueueSkill, prereqNeedLevel } from '../packages/co
 import { buySkillLicense, hasSkillLicense } from '../packages/core/src/skillLicense'
 import { matterTechNodes, researchMatterTech, MATTER_TECH_ESSENCE_ITEM_ID } from '../packages/core/src/matterTech'
 import { wormholePreparationPlan, wormholeEnterPrepared } from '../packages/core/src/wormholePreparation'
+import { advanceGame } from '../packages/core/src/engine'
 
 export const expeditionContext = buildSimContext()
 export const EXPEDITION_FLEETS = ['guns', 'drones', 'cargo', 'mixed'] as const
@@ -37,6 +38,9 @@ export function makeExpeditionFixture(family: WormholeFamily, seed: number, kind
   const ctx = expeditionContext
   const state = createInitialState({ nowWallMs: 0, seed })
   state.wallet.isk = 1e12
+  const commandSkills = ['fleet-command-basic', 'fleet-command-coordination', 'fleet-command-integration']
+  state.standingsEarned = { ...state.standingsEarned, dsi: Math.max(...commandSkills.map(id => ctx.skills.get(id)!.licenseStandingReq ?? 0)) }
+  for (const id of commandSkills) train(state, id, 5)
   state.warehouse.items[MATTER_TECH_ESSENCE_ITEM_ID] = 1_000_000
   const wanted = [...SKILLS, ctx.balance.battle.cpuSkillId, ctx.balance.battle.evasionSkillId, ctx.balance.battle.hitSkillId, ctx.balance.battle.speedSkillId]
   for (const id of new Set(wanted)) train(state, id, baseline ? 3 : 5)
@@ -85,6 +89,9 @@ export function makeExpeditionFixture(family: WormholeFamily, seed: number, kind
   const plan = wormholePreparationPlan(state, ctx, fleet, { targets: manifest, unload: [] })
   assert(plan.ok, `preparation:${JSON.stringify(plan.invalid)}:${plan.cells}/${plan.capacity}`)
   const before = structuredClone(state)
-  assert(wormholeEnterPrepared(state, ctx, fleet, seed, plan, 'journey', { expeditionRules: 2, goal: 'deep' }).ok)
+  const entered = wormholeEnterPrepared(state, ctx, fleet, seed, plan, 'journey', { expeditionRules: 2, goal: 'deep' })
+  assert(entered.ok, `entry:${entered.error}`)
+  // 本夹具服务洞内规则；通过真实引擎走完离港后才交给策略模拟。
+  if (state.departure) advanceGame(state, state.departure.undockMs + state.departure.gateMs, ctx)
   return { state, before, fleet, manifest, definitions, skills: { ...state.skills.trained }, research: { ...state.research?.levels } }
 }

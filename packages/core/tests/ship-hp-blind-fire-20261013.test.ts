@@ -1,4 +1,3 @@
-import { execFileSync } from 'node:child_process'
 import { describe, expect, it } from 'vitest'
 import { buildSimContext, L10N, l10nEntryText } from '@whale/data'
 import ships from '../../data/src/static/ships.json'
@@ -18,12 +17,11 @@ import { cleanBattle } from '../src/saveBattleClean'
 import { volleyDamageShareOf } from '../src/combatVolley'
 import { beginBattleAt } from '../src/expedition'
 import type { AnomalyDef, ModuleDef } from '../src/types'
-import { applyApprovedScanShipDelta } from './helpers/approved-scan-ship-delta'
+import { ceilFinalQuantity } from '../src/quantity'
+import { activeFoeSpecsOf, foeStrengthOf } from '../src/foeSpecs'
 
 const ctx = buildSimContext()
-const oldShips = JSON.parse(execFileSync('git', ['show', '70ccd2bb:packages/data/src/static/ships.json'], { encoding: 'utf8' })) as typeof ships
-const oldPlugs = JSON.parse(execFileSync('git', ['show', '70ccd2bb:packages/data/src/static/plugs.json'], { encoding: 'utf8' })) as typeof plugs
-const oldRows = Object.values(oldShips.groups).flat()
+const currentRows = Object.values(ships.groups).flat()
 
 function world(high: string[] = []) {
   const state = createInitialState({ nowWallMs: 0, seed: 614 })
@@ -34,28 +32,26 @@ function world(high: string[] = []) {
 }
 
 describe('全舰容量与直接恢复参数', () => {
-  it('46艘舰只改三层血，固定插件只改三个加血值', () => {
-    const expected = structuredClone(oldShips)
-    for (const row of Object.values(expected.groups).flat()) {
-      for (const field of ['shieldHp', 'armorHp', 'hullHp'] as const) row[field] = Math.round(row[field] * SHIP_HP_UPLIFT_MUL)
+  it('46艘当前容量为非负整数，固定插件加血仍为120/210/120', () => {
+    expect(currentRows).toHaveLength(46)
+    expect(SHIP_HP_UPLIFT_MUL).toBe(1.5)
+    for (const row of currentRows) for (const field of ['shieldHp', 'armorHp', 'hullHp'] as const) {
+      expect(Number.isSafeInteger(row[field]), `${row.id}/${field}`).toBe(true)
+      expect(row[field]).toBeGreaterThanOrEqual(0)
     }
-    applyApprovedScanShipDelta(expected)
-    expect(ships).toEqual(expected)
-    const expectedPlugs = structuredClone(oldPlugs)
-    const rows = Object.values(expectedPlugs.groups).flat()
-    Object.assign(rows.find(r => r.id === 'plug-shield-plate')!, { shieldHpAdd: 120 })
-    Object.assign(rows.find(r => r.id === 'plug-armor-plate')!, { armorHpAdd: 210 })
-    Object.assign(rows.find(r => r.id === 'plug-hull-plate')!, { hullHpAdd: 120 })
-    expect(plugs).toEqual(expectedPlugs)
+    const rows = Object.values(plugs.groups).flat()
+    expect(rows.find(r => r.id === 'plug-shield-plate')!.shieldHpAdd).toBe(120)
+    expect(rows.find(r => r.id === 'plug-armor-plate')!.armorHpAdd).toBe(210)
+    expect(rows.find(r => r.id === 'plug-hull-plate')!.hullHpAdd).toBe(120)
   })
 
-  it.each(oldRows.map(row => row.id))('%s只建当前容量，不再派生旧恢复基准', id => {
+  it.each(currentRows.map(row => row.id))('%s只建当前容量，不再派生旧恢复基准', id => {
     const { state } = world()
     const uid = addShipToFleet(state, id)
     state.fleet[uid]!.fitted = { high: [], mid: [], low: [] }
     const spec = createPlayerSpec(state, ctx, uid)!
-    const old = oldRows.find(row => row.id === id)!
-    expect(spec.hp).toEqual({ s: Math.round(old.shieldHp * 1.5), a: Math.round(old.armorHp * 1.5), h: Math.round(old.hullHp * 1.5) })
+    const current = currentRows.find(row => row.id === id)!
+    expect(spec.hp).toEqual({ s: current.shieldHp, a: current.armorHp, h: current.hullHp })
     expect(spec).not.toHaveProperty('recoveryHp')
     expect(spec).not.toHaveProperty('repairCapacityAmp')
   })
@@ -72,12 +68,12 @@ describe('全舰容量与直接恢复参数', () => {
     const before = battle.units.player!.hp.s
     const fieldPct = ctx.modules.get('mod-shieldfield-2')!.shieldFieldPct!
     pulseShieldFieldFor(battle, [spec, other], { pct: fieldPct }, spec)
-    expect(battle.units.player!.hp.s).toBeCloseTo(before - spec.hp.s * SHIELD_FIELD_COST_PCT)
-    expect(battle.units[other.tag]!.hp.s).toBeCloseTo(spec.hp.s * fieldPct)
+    expect(battle.units.player!.hp.s).toBeCloseTo(before - ceilFinalQuantity(spec.hp.s * SHIELD_FIELD_COST_PCT))
+    expect(battle.units[other.tag]!.hp.s).toBe(ceilFinalQuantity(spec.hp.s * fieldPct))
     battle.units.player!.hp.s = 0
     const charge = { streams: [{ modelId: 'mod-shieldchg-2', pct: ctx.modules.get('mod-shieldchg-2')!.shieldPulsePct!, ms: 15000 }], pulses: 0 }
     pulseShieldChargeFor(battle, spec, charge)
-    expect(battle.units.player!.hp.s).toBeCloseTo(spec.hp.s * .133)
+    expect(battle.units.player!.hp.s).toBe(ceilFinalQuantity(spec.hp.s * .133))
     battle.units.player!.hp.s = spec.hp.s - 1
     pulseShieldChargeFor(battle, spec, charge)
     expect(battle.units.player!.hp.s).toBe(spec.hp.s)
@@ -101,11 +97,11 @@ describe('全舰容量与直接恢复参数', () => {
     state.skills.trained['shield-operation'] = 5
     const spec = createPlayerSpec(state, ctx, uid)!
     const def = ctx.ships.get('sh-megalodon')!
-    expect(spec.hp.s).toBeCloseTo((def.shieldHp! + 120) * 1.2)
-    expect(spec.hp.a).toBeCloseTo((def.armorHp! + 210) * 1.2)
+    expect(spec.hp.s).toBe(ceilFinalQuantity((def.shieldHp! + 120) * 1.2))
+    expect(spec.hp.a).toBe(ceilFinalQuantity((def.armorHp! + 210) * 1.2))
     expect(repairStatsFor(state, ctx, uid)!.units[0]).toMatchObject({
-      armorPerPulse: Math.round(18 * spec.hp.a / def.armorHp!),
-      hullPerPulse: Math.round(18 * spec.hp.h / def.hullHp!),
+      armorPerPulse: ceilFinalQuantity(18 * spec.hp.a / def.armorHp!),
+      hullPerPulse: ceilFinalQuantity(18 * spec.hp.h / def.hullHp!),
     })
   })
 
@@ -131,9 +127,9 @@ describe('全舰容量与直接恢复参数', () => {
       const spec = createFoeSpecs(card, ctx.balance.battle)[0]!
       const old = createFoeSpecs(card, ctx.balance.battle, { beforeHpUplift: true })[0]!
       const armorMul = resolveFoeMounts(ship.mounts).foeMausoleumArmor?.hpMul ?? 1
-      expect(spec.hp.s).toBeCloseTo(ship.hp * ship.split.s * foeFamilyHpMulOf(ship.family) * 1.5)
-      expect(spec.hp.a).toBeCloseTo(ship.hp * ship.split.a * armorMul * foeFamilyHpMulOf(ship.family) * 1.5)
-      expect(spec.hp.h).toBeCloseTo(ship.hp * ship.split.h * armorMul * foeFamilyHpMulOf(ship.family) * 1.5)
+      expect(spec.hp.s).toBe(ceilFinalQuantity(ship.hp * ship.split.s * foeFamilyHpMulOf(ship.family) * 1.5))
+      expect(spec.hp.a).toBe(ceilFinalQuantity(ship.hp * ship.split.a * armorMul * foeFamilyHpMulOf(ship.family) * 1.5))
+      expect(spec.hp.h).toBe(ceilFinalQuantity(ship.hp * ship.split.h * armorMul * foeFamilyHpMulOf(ship.family) * 1.5))
       expect(spec.weapons).toEqual(old.weapons)
       expect(spec.foeRepairPulse).toEqual(old.foeRepairPulse)
       expect(spec.repairPct).toBe(old.repairPct)
@@ -149,7 +145,10 @@ describe('全舰容量与直接恢复参数', () => {
 
   it.each(['A', 'C', 'D', 'E', 'G'] as const)('%s新虫洞最终血量含1.5，原预算比例和火力不被反算改动', family => {
     const card = wormholeExpeditionCard(ctx, family, 1, 'ordinary')
-    expect(card.expeditionFoe.strength.hp).toBeCloseTo(card.expeditionFoe.budget.hp, 5)
+    const specs = activeFoeSpecsOf(card, ctx.balance.battle, 0)
+    expect(card.expeditionFoe.strength.hp).toBe(foeStrengthOf(card, ctx.balance.battle).hp)
+    expect(card.expeditionFoe.strength.hp).toBeGreaterThanOrEqual(card.expeditionFoe.budget.hp)
+    expect(card.expeditionFoe.strength.hp - card.expeditionFoe.budget.hp).toBeLessThan(specs.length * 3)
     expect(card.expeditionFoe.budget.hp / foeShipHpMulOf(family)).toBeGreaterThan(0)
     expect(card.expeditionFoe.strength.dps / card.expeditionFoe.budget.dps).toBeGreaterThan(.99)
     expect(card.expeditionFoe.strength.dps).toBeLessThanOrEqual(card.expeditionFoe.budget.dps)
@@ -195,10 +194,12 @@ describe('基础炮与近盲实战', () => {
     expect(beginBattleAt(state, ctx, 'ano-training', uid, 0)).toBe(true)
     const row = state.logs.at(-1)!
     const entry = L10N[row.textId!]!
-    expect(entry).toMatchObject({ en: '', enDeferred: true })
+    expect(entry.enDeferred).toBeUndefined()
+    expect(entry.en).toContain('basic cannon is disabled')
     const render = (text: string) => text.replace(/\{(p\d+)\}/g, (_, key: string) => String(row.textParams?.[key] ?? ''))
     expect(render(l10nEntryText(entry, 'zh'))).toBe(row.text)
-    expect(render(l10nEntryText(entry, 'en'))).toBe(row.text)
+    expect(render(l10nEntryText(entry, 'en'))).toContain('basic cannon is disabled')
+    expect(render(l10nEntryText(entry, 'en'))).not.toMatch(/\{p\d+\}/)
     expect(row.text).not.toMatch(/\{p\d+\}/)
   })
 

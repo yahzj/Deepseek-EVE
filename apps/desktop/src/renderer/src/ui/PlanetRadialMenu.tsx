@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { ArrowLeft, ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, X } from './layoutIcons'
 import { pt } from './planetText'
 import { planetWheelPosition } from './planetWheelGeometry'
 

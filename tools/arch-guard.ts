@@ -27,7 +27,7 @@
  *   F5 **跳转目标契约**：活动栏跳转表指向的页/页签必须真实存在。
  *   F6 **日期格式化本地化**（**2026-09-29 加**）：渲染层不许写死 `toLocaleDateString('zh-CN')` 这类
  *      **把语言焊死**的调用 —— 英文界面下它的输出顺序仍是中文的。走 `i18n/fmt.ts` 的
- *      `fmtDate` / `fmtDateTime`（内部取 `localeTag()`）。
+ *      `fmtDate`（内部取 `localeTag()`）。
  *      ⚠ **只管日期/时间**：`toLocaleString('zh-CN')` 用于**数字千分位**时在 zh/en 下逐位同值
  *      （`i18n/fmt.ts` 头注已写明）⇒ 那 ~180 处不在本检查范围内（避免大批无收益改动）。
  *   F7 **落盘心跳单点**（**2026-09-29 加**）：自动存盘的间隔**只许有一个出处**
@@ -110,6 +110,44 @@ const DATA_TABLES: readonly string[] = [
  * 其余文件出现同名定义照样按 F2 报红。
  */
 const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; exported: boolean }[] = [
+  { concept: '势力加密货柜蓝图分组', symbol: 'encryptedBlueprintGroups', file: 'packages/core/src/encryptedContainer.ts', exported: true },
+  { concept: '势力加密货柜抽取', symbol: 'encryptedBlueprintDraw', file: 'packages/core/src/encryptedContainer.ts', exported: true },
+  { concept: '生产研究所首捞货柜', symbol: 'wormholeResearchBox', file: 'packages/core/src/wormholeSalvage.ts', exported: true },
+  { concept: '主控离港与星门阶段', symbol: 'departureView', file: 'packages/core/src/departure.ts', exported: true },
+  { concept: '协会星门距离耗时', symbol: 'associationGateMs', file: 'packages/core/src/departure.ts', exported: true },
+  { concept: '主控出发等待总长', symbol: 'departureDurationMs', file: 'packages/core/src/departure.ts', exported: true },
+  { concept: '聊天连接地址与 HTTPS 同源校验', symbol: 'cloudChatSocketUrl', file: 'apps/desktop/src/renderer/src/features/cloud/api.ts', exported: true },
+  { concept: '同连接跨频道聊天批次调度', symbol: 'createChatQueue', file: 'apps/desktop/src/renderer/src/features/cloud/chatQueue.ts', exported: true },
+  { concept: '跨窗口账号偏好缓存刷新', symbol: 'refreshCloudPreferences', file: 'apps/desktop/src/renderer/src/features/cloud/preferences.ts', exported: true },
+  { concept: '应用级聊天生命周期与历史合并', symbol: 'useOnlineChat', file: 'apps/desktop/src/renderer/src/features/cloud/useOnlineChat.ts', exported: true },
+  { concept: '工业活动统一目标威胁', symbol: 'industrialThreatOf', file: 'packages/core/src/encounters/risk.ts', exported: true },
+  { concept: '工业活动独立遇袭频率修正', symbol: 'industrialFrequencyOf', file: 'packages/core/src/encounters/risk.ts', exported: true },
+  { concept: '实际出勤质量与携货快照', symbol: 'industrialFleetSnapshotOf', file: 'packages/core/src/encounters/risk.ts', exported: true },
+  { concept: '目标威胁统一海盗组阵', symbol: 'pirateFormationOf', file: 'packages/core/src/encounters/pirateFormation.ts', exported: true },
+  { concept: '全队运输可用货舱与装载分配', symbol: 'haulFleetLoadOf', file: 'packages/core/src/hauling/load.ts', exported: true },
+  { concept: '运输编队航路风险预览', symbol: 'haulRiskPreviewOf', file: 'packages/core/src/hauling/preview.ts', exported: true },
+  { concept: '射程电子战舰级基础', symbol: 'rangeEwBaseOf', file: 'packages/core/src/combat/rangeEw.ts', exported: true },
+  { concept: '射程电子战净强度曲线', symbol: 'rangeEwCutOf', file: 'packages/core/src/combat/rangeEw.ts', exported: true },
+  { concept: '当前编队射程电子战贡献', symbol: 'playerRangeEwOf', file: 'packages/core/src/combat/rangeEw.ts', exported: true },
+  { concept: '双方电子战强度对抗', symbol: 'rangeEwContestOf', file: 'packages/core/src/combat/rangeEw.ts', exported: true },
+  { concept: '目标电子战只读预览', symbol: 'rangeEwPreviewOf', file: 'packages/core/src/combat/rangeEwPreview.ts', exported: true },
+  { concept: '信号空间已公开守卫预览目标', symbol: 'rangeEwSignalTargetOf', file: 'packages/core/src/combat/rangeEwPreview.ts', exported: true },
+  { concept: '敌人固定规格扩编及相对威胁重标', symbol: 'enemyFormationCard', file: 'packages/core/src/combat/formation.ts', exported: true },
+  { concept: '扩编卡逐舰固定规格与战斗覆写', symbol: 'fixedFormationSpecs', file: 'packages/core/src/combat/foes/formation.ts', exported: true },
+  { concept: '在途战斗敌卡按规则版本与覆写统一解析', symbol: 'resolvedBattleAnomaly', file: 'packages/core/src/combat/cards.ts', exported: true },
+  { concept: '训练许可购买累计声望预检', symbol: 'skillLicenseStandingBlock', file: 'packages/core/src/skills/license.ts', exported: true },
+  { concept: '启动与界面共用布局偏好', symbol: 'readLayoutPref', file: 'apps/desktop/src/renderer/src/ui/layoutPreference.ts', exported: true },
+  { concept: '双布局活动停止命令', symbol: 'doStop', file: 'apps/desktop/src/renderer/src/panels/activityStopLabel.ts', exported: true },
+  { concept: '手动自动探索回合预算', symbol: 'wormholeTurnBudget', file: 'packages/core/src/wormhole/fleet/admission.ts', exported: true },
+  { concept: '装配快照槽位清洗', symbol: 'cleanRack', file: 'packages/core/src/save.ts', exported: false },
+  { concept: '双语时间单位分解', symbol: 'durationParts', file: 'packages/core/src/time.ts', exported: false },
+  { concept: '探索货仓取色', symbol: 'holdTone', file: 'apps/desktop/src/renderer/src/panels/explorationShared.tsx', exported: true },
+  { concept: '探索六边形动画圈距', symbol: 'hexRingOf', file: 'apps/desktop/src/renderer/src/panels/explorationShared.tsx', exported: true },
+  { concept: '探索整数展示', symbol: 'explorationNumber', file: 'apps/desktop/src/renderer/src/panels/explorationShared.tsx', exported: true },
+  { concept: '探索结算跳数', symbol: 'useCountUp', file: 'apps/desktop/src/renderer/src/panels/explorationShared.tsx', exported: true },
+  { concept: '探索货仓抓取偏移', symbol: 'grabOffsetOf', file: 'apps/desktop/src/renderer/src/panels/explorationShared.tsx', exported: true },
+  { concept: '探索信号图形', symbol: 'WhGlyph', file: 'apps/desktop/src/renderer/src/panels/explorationShared.tsx', exported: true },
+  { concept: '探索星云图形', symbol: 'WhNebulaGlyph', file: 'apps/desktop/src/renderer/src/panels/explorationShared.tsx', exported: true },
   { concept: '信号发射器物品与势力映射', symbol: 'invasionBeaconTypeOf', file: 'packages/core/src/consumables.ts', exported: true },
   { concept: '有库存的信号发射器选项', symbol: 'availableInvasionBeacons', file: 'packages/core/src/consumables.ts', exported: true },
   { concept: '黑市排除大宗原料的类型判据', symbol: 'isBlackMarketBulkResource', file: 'packages/core/src/blackMarket.ts', exported: true },
@@ -121,28 +159,49 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
   { concept: '已公开星球特性效果详情', symbol: 'planetTraitDetails', file: 'apps/desktop/src/renderer/src/ui/planetTraitDetails.ts', exported: true },
   { concept: '地表轮盘逻辑边界', symbol: 'planetWheelPosition', file: 'apps/desktop/src/renderer/src/ui/planetWheelGeometry.ts', exported: true },
   { concept: '地表已公开地块主体/资源/运行状态', symbol: 'planetSurfaceCellView', file: 'apps/desktop/src/renderer/src/ui/planetSurfaceView.ts', exported: true },
-  { concept: '独立装配靶场快照与伤害统计', symbol: 'fittingRangeStats', file: 'packages/core/src/fittingRange.ts', exported: true },
+  { concept: '独立装配靶场快照与伤害统计', symbol: 'fittingRangeStats', file: 'packages/core/src/combat/fittingRange.ts', exported: true },
   { concept: '星球已开发标记与星系开发状态', symbol: 'stellarPlanetDeveloped', file: 'packages/core/src/stellarSearch.ts', exported: true },
   { concept: '星图与目标预览公开类型外形', symbol: 'StellarPlanetArt', file: 'apps/desktop/src/renderer/src/ui/stellarArt.tsx', exported: true },
   { concept: '星系天体按本体投影的纹理清晰度', symbol: 'stellarTextureSize', file: 'apps/desktop/src/renderer/src/ui/stellarPlanetShader.ts', exported: true },
   { concept: '星图公开地表面积与统一拥挤半径', symbol: 'stellarMapBodyRadii', file: 'apps/desktop/src/renderer/src/panels/stellarBodySize.ts', exported: true },
   { concept: '手册入侵新内容稳定后排', symbol: 'handbookContentOrderOf', file: 'apps/desktop/src/renderer/src/ui/handbookOrder.ts', exported: true },
-  { concept: '酸蚀层独立期限与有效抗性', symbol: 'acidResistsOf', file: 'packages/core/src/alienEquipment.ts', exported: true },
-  { concept: '酸蚀有效层数与下次到期显示', symbol: 'foeAcidRowsOf', file: 'packages/core/src/alienEquipment.ts', exported: true },
-  { concept: '战斗渐增速度同池折权', symbol: 'battleSpeedBonusOf', file: 'packages/core/src/alienEquipment.ts', exported: true },
-  { concept: '激光校准远端保留合成', symbol: 'laserFalloffOf', file: 'packages/core/src/equipment.ts', exported: true },
-  { concept: '战前逐舰实际预载缺口', symbol: 'battleAmmoPreloadPlan', file: 'packages/core/src/battleAmmoPreflight.ts', exported: true },
-  { concept: '技能训练工作量与实时进度换算', symbol: 'trainingLevelProgress', file: 'packages/core/src/training.ts', exported: true },
-  { concept: '旧技能进度一次性工作量兼容', symbol: 'normalizeTrainingProgress', file: 'packages/core/src/training.ts', exported: true },
-  { concept: '敌方族格最终血量倍率', symbol: 'foeFamilyHpMulOf', file: 'packages/core/src/foePower.ts', exported: true },
-  { concept: '全舰血量提升倍率', symbol: 'SHIP_HP_UPLIFT_MUL', file: 'packages/core/src/combatMath.ts', exported: true },
-  { concept: '危机协议正负同权重合成', symbol: 'crisisEffectsOf', file: 'packages/core/src/gravekeeperGear.ts', exported: true },
-  { concept: '玩家守墓装备动态规格', symbol: 'playerGravekeeperSpecOf', file: 'packages/core/src/gravekeeperGear.ts', exported: true },
-  { concept: '磁轨齐射叠层与装填', symbol: 'noteRailAttack', file: 'packages/core/src/gravekeeperGear.ts', exported: true },
-  { concept: '玩家实际承伤与齐射保护', symbol: 'applyPlayerUnitDamage', file: 'packages/core/src/combat.ts', exported: true },
-  { concept: '敌舰最终容量倍率', symbol: 'foeShipHpMulOf', file: 'packages/core/src/foePower.ts', exported: true },
-  { concept: '玩家舰载武器近盲开火', symbol: 'playerWeaponInRange', file: 'packages/core/src/combatMath.ts', exported: true },
-  { concept: '玩家舰载武器近盲伤害倍率', symbol: 'playerBlindDamageMul', file: 'packages/core/src/combatMath.ts', exported: true },
+  { concept: '酸蚀层独立期限与有效抗性', symbol: 'acidResistsOf', file: 'packages/core/src/combat/alienEquipment.ts', exported: true },
+  { concept: '酸蚀有效层数与下次到期显示', symbol: 'foeAcidRowsOf', file: 'packages/core/src/combat/alienEquipment.ts', exported: true },
+  { concept: '战斗持续速度与推进器周期收益同池折权', symbol: 'battleSpeedBonusOf', file: 'packages/core/src/combat/alienEquipment.ts', exported: true },
+  { concept: '势力图鉴登记与窝点池最终装卡', symbol: 'buildFactionCards', file: 'packages/data/src/factionCodex.ts', exported: true },
+  { concept: '激光校准远端保留合成', symbol: 'laserFalloffOf', file: 'packages/core/src/ships/fitting/effects.ts', exported: true },
+  { concept: '战前逐舰实际预载缺口', symbol: 'battleAmmoPreloadPlan', file: 'packages/core/src/combat/battleAmmoPreflight.ts', exported: true },
+  { concept: '真实敌卡距离与射程记忆', symbol: 'battleCardRangeOf', file: 'packages/core/src/combat/battleRangeMemory.ts', exported: true },
+  { concept: '战前全舰最大有效射程', symbol: 'playerFleetMaxRangeOf', file: 'packages/core/src/combat/battleRangeMemory.ts', exported: true },
+  { concept: '射程变化确认事务门禁', symbol: 'withBattleRangeCheck', file: 'packages/core/src/combat/battleRangeMemory.ts', exported: true },
+  { concept: '射程变化待确认视图', symbol: 'pendingBattleRangeView', file: 'packages/core/src/combat/battleRangeMemory.ts', exported: true },
+  { concept: '按卡参战舰船名单差异说明', symbol: 'sameShipRoster', file: 'packages/core/src/combat/battleRangeMemory.ts', exported: false },
+  { concept: '技能训练工作量与实时进度换算', symbol: 'trainingLevelProgress', file: 'packages/core/src/skills/training.ts', exported: true },
+  { concept: '实验室同产物在产预留与可开工容量', symbol: 'labOutputCapped', file: 'packages/core/src/lab.ts', exported: true },
+  { concept: '行情运行与存档共用历史窗口', symbol: 'PRICE_HISTORY_LIMIT', file: 'packages/core/src/market/constants.ts', exported: true },
+  { concept: '每日赏金合法候选与三档保底', symbol: 'rollBountyBoard', file: 'packages/core/src/expedition/bountyBoard.ts', exported: true },
+  { concept: '每日赏金分档声望奖励', symbol: 'bountyTaskStandingGain', file: 'packages/core/src/expedition/bountyBoard.ts', exported: true },
+  { concept: '旧技能进度一次性工作量兼容', symbol: 'normalizeTrainingProgress', file: 'packages/core/src/skills/training.ts', exported: true },
+  { concept: '敌方族格最终血量倍率', symbol: 'foeFamilyHpMulOf', file: 'packages/core/src/combat/foePower.ts', exported: true },
+  { concept: '全舰血量提升倍率', symbol: 'SHIP_HP_UPLIFT_MUL', file: 'packages/core/src/combat/combatMath.ts', exported: true },
+  { concept: '危机协议正负同权重合成', symbol: 'crisisEffectsOf', file: 'packages/core/src/combat/gravekeeperGear.ts', exported: true },
+  { concept: '玩家守墓装备动态规格', symbol: 'playerGravekeeperSpecOf', file: 'packages/core/src/combat/gravekeeperGear.ts', exported: true },
+  { concept: '磁轨齐射叠层与装填', symbol: 'noteRailAttack', file: 'packages/core/src/combat/gravekeeperGear.ts', exported: true },
+  { concept: '玩家实际承伤与齐射保护', symbol: 'applyPlayerUnitDamage', file: 'packages/core/src/combat/damage.ts', exported: true },
+  { concept: '敌方选择玩家舰船的舰级与插件合成权重', symbol: 'playerTargetWeightOf', file: 'packages/core/src/combat/targeting.ts', exported: true },
+  { concept: '玩家指挥容量', symbol: 'commandCapacityOf', file: 'packages/core/src/combat/command/rules.ts', exported: true },
+  { concept: '船型指挥成本', symbol: 'shipCommandCostOf', file: 'packages/core/src/combat/command/rules.ts', exported: true },
+  { concept: '统一指挥预算校验', symbol: 'commandBudgetOf', file: 'packages/core/src/combat/command/rules.ts', exported: true },
+  { concept: '常驻战斗编队名单', symbol: 'combatRosterOf', file: 'packages/core/src/combat/command/roster.ts', exported: true },
+  { concept: '编队实体出勤锁', symbol: 'commandShipDeployed', file: 'packages/core/src/combat/command/locks.ts', exported: true },
+  { concept: '实际随行舰快照', symbol: 'deployedCombatEscorts', file: 'packages/core/src/combat/command/locks.ts', exported: true },
+  { concept: '遭遇战实际参战名单', symbol: 'encounterCombatRosterOf', file: 'packages/core/src/combat/command/locks.ts', exported: true },
+  { concept: '随行舰逐舰可用预检', symbol: 'combatEscortBlock', file: 'packages/core/src/combat/command/locks.ts', exported: true },
+  { concept: '敌舰在场空位', symbol: 'enemyFleetRoom', file: 'packages/core/src/combat/foes/capacity.ts', exported: true },
+  { concept: '编队弹药按实装ID退还', symbol: 'refundBattleAmmo', file: 'packages/core/src/combat/combatAmmo.ts', exported: true },
+  { concept: '敌舰最终容量倍率', symbol: 'foeShipHpMulOf', file: 'packages/core/src/combat/foePower.ts', exported: true },
+  { concept: '玩家舰载武器近盲开火', symbol: 'playerWeaponInRange', file: 'packages/core/src/combat/combatMath.ts', exported: true },
+  { concept: '玩家舰载武器近盲伤害倍率', symbol: 'playerBlindDamageMul', file: 'packages/core/src/combat/combatMath.ts', exported: true },
   { concept: '目标舰实际停靠', symbol: 'shipActuallyDocked', file: 'packages/core/src/shipActionPolicy.ts', exported: true },
   { concept: '目标舰操作许可', symbol: 'shipOperationBlockReason', file: 'packages/core/src/shipActionPolicy.ts', exported: true },
   { concept: '换驾驶只读许可', symbol: 'changeShipBlockReason', file: 'packages/core/src/shipyard.ts', exported: true },
@@ -154,23 +213,27 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
   { concept: '到港待启动目标活动视图', symbol: 'pendingStationActivityView', file: 'packages/core/src/stationActivityPending.ts', exported: true },
   { concept: '交付安排可用货仓空间', symbol: 'siteDeliverFreeCargoM3', file: 'packages/core/src/location.ts', exported: true },
   { concept: '站内接续返航基地落点', symbol: 'stationActivityReturnSite', file: 'packages/core/src/location.ts', exported: true },
-  { concept: '工业合法公共原料', symbol: 'industryAvailable', file: 'packages/core/src/industry.ts', exported: true },
+  { concept: '工业合法公共原料', symbol: 'industryAvailable', file: 'packages/core/src/industry/refining/params.ts', exported: true },
   { concept: '玩家手动目标舰卸货', symbol: 'unloadShipCargo', file: 'packages/core/src/inventory.ts', exported: true },
-  { concept: '悬赏后台预热任务与缓存代次', symbol: 'BountyWinCache', file: 'apps/desktop/src/renderer/src/game/bountyWinCache.ts', exported: true },
-  { concept: '敌人源数字参数读取', symbol: 'enemyParameterOf', file: 'packages/core/src/enemyParameters.ts', exported: true },
-  { concept: '战斗演出事件按场续播', symbol: 'battleFxArrivals', file: 'apps/desktop/src/renderer/src/ui/battleFxCursor.ts', exported: true },
-  { concept: '武器齐射整数扣弹与预付余额', symbol: 'battleWeaponAmmoCost', file: 'packages/core/src/combatAmmo.ts', exported: true },
-  { concept: '首次无人机出击间隔', symbol: 'droneLaunchGapMsOf', file: 'packages/core/src/droneLaunch.ts', exported: true },
+  { concept: '悬赏后台预热任务与缓存代次', symbol: 'BountyWinCache', file: 'apps/desktop/src/renderer/src/features/combat/estimate/bountyWinCache.ts', exported: true },
+  { concept: '敌人源数字参数读取', symbol: 'enemyParameterOf', file: 'packages/core/src/combat/enemyParameters.ts', exported: true },
+  { concept: '战斗演出事件按场续播', symbol: 'battleFxArrivals', file: 'apps/desktop/src/renderer/src/features/combat/battleFxCursor.ts', exported: true },
+  { concept: '武器齐射整数扣弹与预付余额', symbol: 'battleWeaponAmmoCost', file: 'packages/core/src/combat/combatAmmo.ts', exported: true },
+  { concept: '首次无人机出击间隔', symbol: 'droneLaunchGapMsOf', file: 'packages/core/src/combat/droneLaunch.ts', exported: true },
   { concept: '扩槽插件类型', symbol: 'plugSlotExpansionKindOf', file: 'packages/core/src/plugs.ts', exported: true },
   { concept: '扩槽插件同类型安装门禁', symbol: 'plugSlotExpansionBlockedOf', file: 'packages/core/src/plugs.ts', exported: true },
   { concept: '扩槽插件同类型限装与免费退回', symbol: 'normalizePlugSlotExpansions', file: 'packages/core/src/plugs.ts', exported: true },
-  { concept: '扩槽插件缩容后装备与机体退库', symbol: 'repairSlotExpansionPlugs', file: 'packages/core/src/equipment.ts', exported: true },
-  { concept: '入侵循环下一目标与真实抽卡冷却', symbol: 'autoLoopInvasionPlanOf', file: 'packages/core/src/expedition.ts', exported: true },
-  { concept: '全编队同型武器装填与实际射程视图', symbol: 'battleWeaponCyclesOf', file: 'packages/core/src/battleWeaponView.ts', exported: true },
-  { concept: '全编队装置运行周期视图', symbol: 'battleDeviceCyclesOf', file: 'packages/core/src/battleDeviceView.ts', exported: true },
-  { concept: '装备负面继承收益权重的逐件参数', symbol: 'fittedPenaltyPartsOf', file: 'packages/core/src/equipment.ts', exported: true },
-  { concept: '装备装填与降低属性代价合成', symbol: 'equipmentPenaltiesOf', file: 'packages/core/src/equipment.ts', exported: true },
-  { concept: '全战斗主动周期装备代价', symbol: 'equipmentCycleMsOf', file: 'packages/core/src/equipment.ts', exported: true },
+  { concept: '扩槽插件缩容后装备与机体退库', symbol: 'repairSlotExpansionPlugs', file: 'packages/core/src/ships/fitting/repair.ts', exported: true },
+  { concept: '入侵循环下一目标与真实抽卡冷却', symbol: 'autoLoopInvasionPlanOf', file: 'packages/core/src/expedition/invasionLoop.ts', exported: true },
+  { concept: '全编队同型武器装填与实际射程视图', symbol: 'battleWeaponCyclesOf', file: 'packages/core/src/combat/battleWeaponView.ts', exported: true },
+  { concept: '全编队装置运行周期视图', symbol: 'battleDeviceCyclesOf', file: 'packages/core/src/combat/battleDeviceView.ts', exported: true },
+  { concept: '装备负面继承收益权重的逐件参数', symbol: 'fittedPenaltyPartsOf', file: 'packages/core/src/ships/fitting/effects.ts', exported: true },
+  { concept: '多件惩罚曲线权重', symbol: 'stackWeight', file: 'packages/core/src/stacking.ts', exported: true },
+  { concept: '支援件按效果分池权重', symbol: 'supportEffectPartsOf', file: 'packages/core/src/stacking.ts', exported: true },
+  { concept: '插件独立收益池与正负同权投影', symbol: 'plugEffectPartsOf', file: 'packages/core/src/plugEffects.ts', exported: true },
+  { concept: '插件收益池类型', symbol: 'plugStackingKindOf', file: 'packages/core/src/plugEffects.ts', exported: true },
+  { concept: '装备装填与降低属性代价合成', symbol: 'equipmentPenaltiesOf', file: 'packages/core/src/ships/fitting/effects.ts', exported: true },
+  { concept: '全战斗主动周期装备代价', symbol: 'equipmentCycleMsOf', file: 'packages/core/src/ships/fitting/effects.ts', exported: true },
   { concept: '版本化星系初始世界生成', symbol: 'generateStellarSystem', file: 'packages/core/src/stellarGeneration.ts', exported: true },
   { concept: '无符号星系坐标输入', symbol: 'parseStellarSeed', file: 'packages/core/src/stellarGeneration.ts', exported: true },
   { concept: '深空搜索周期与技能加算', symbol: 'stellarSearchDuration', file: 'packages/core/src/stellarSearch.ts', exported: true },
@@ -181,17 +244,32 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
   { concept: '探测机专属材料折扣', symbol: 'probeMaterialFactor', file: 'packages/core/src/probeManufacturing.ts', exported: true },
   { concept: '星系视口世界坐标与缩放', symbol: 'stellarViewBox', file: 'apps/desktop/src/renderer/src/panels/stellarMapView.ts', exported: true },
   { concept: '星系单指与双指几何', symbol: 'moveStellarGesture', file: 'apps/desktop/src/renderer/src/panels/stellarMapView.ts', exported: true },
-  { concept: '敌舰受击增程的独立挂载件触发提示', symbol: 'announceFoeGunRangeBuff', file: 'packages/core/src/foeRange.ts', exported: true },
+  { concept: '敌舰受击增程的独立挂载件触发提示', symbol: 'announceFoeGunRangeBuff', file: 'packages/core/src/combat/foeRange.ts', exported: true },
   { concept: '五类准备阵容清洗与显式空记忆', symbol: 'cleanPreparationSquads', file: 'packages/core/src/preparationSquads.ts', exported: true },
   { concept: '准备阵容恢复与缺省来源', symbol: 'preparationSquadOf', file: 'packages/core/src/preparationSquads.ts', exported: true },
   { concept: '准备阵容按实例保存且不执行任务', symbol: 'notePreparationSquad', file: 'packages/core/src/preparationSquads.ts', exported: true },
-  { concept: '护盾力场每次有效脉冲的最大护盾代价', symbol: 'SHIELD_FIELD_COST_PCT', file: 'packages/core/src/combatRepair.ts', exported: true },
-  { concept: '护盾力场排除自身与按需支付恢复', symbol: 'pulseShieldFieldFor', file: 'packages/core/src/combatRepair.ts', exported: true },
+  { concept: '护盾力场每次有效脉冲的最大护盾代价', symbol: 'SHIELD_FIELD_COST_PCT', file: 'packages/core/src/combat/combatRepair.ts', exported: true },
+  { concept: '护盾力场排除自身与按需支付恢复', symbol: 'pulseShieldFieldFor', file: 'packages/core/src/combat/combatRepair.ts', exported: true },
+  { concept: '双方护盾自然回复与旗舰基准映射速率', symbol: 'passiveShieldRateOf', file: 'packages/core/src/combat/passiveRecovery.ts', exported: true },
+  { concept: '护盾自然回复下恒定承伤破盾时间', symbol: 'passiveShieldBreakSeconds', file: 'packages/core/src/combat/passiveRecovery.ts', exported: true },
+  { concept: '装甲自愈下恒定承伤破甲时间', symbol: 'passiveArmorBreakSeconds', file: 'packages/core/src/combat/passiveRecovery.ts', exported: true },
+  { concept: '无人机指挥最高来源光环与目标权重', symbol: 'applyDroneCommandAura', file: 'packages/core/src/combat/droneCommand.ts', exported: true },
+  { concept: '无人机指挥全舰队已装载体积开战快照', symbol: 'droneCommandVolumeM3Of', file: 'packages/core/src/combat/droneCommand.ts', exported: true },
+  { concept: '锁定阵列共享比例', symbol: 'LOCK_SHARED_SCALE', file: 'packages/core/src/combat/lockAura.ts', exported: true },
+  { concept: '锁定阵列常规共享上限', symbol: 'LOCK_SHARED_CAP', file: 'packages/core/src/combat/lockAura.ts', exported: true },
+  { concept: '锁定阵列本舰与存活来源共享合成', symbol: 'applyFleetLockAura', file: 'packages/core/src/combat/lockAura.ts', exported: true },
+  { concept: '锁定阵列概率选靶', symbol: 'lockAwareFoe', file: 'packages/core/src/combat/targeting.ts', exported: true },
+  { concept: '离线战斗瞬时统计作用域', symbol: 'beginOfflineCombatStats', file: 'packages/core/src/offlineCombatStats.ts', exported: true },
+  { concept: '信号自动探索确定性能力及奖励快照', symbol: 'signalAutoEstimateOf', file: 'packages/core/src/signalAuto/estimate.ts', exported: true },
+  { concept: '信号自动探索快照读档校验', symbol: 'cleanSignalAutoEstimate', file: 'packages/core/src/signalAuto/save.ts', exported: true },
+  { concept: '信号自动探索解析战斗门槛', symbol: 'signalAutoCombatRatio', file: 'packages/core/src/signalAuto/combat.ts', exported: true },
+  { concept: '信号自动探索参考交战参数', symbol: 'SIGNAL_AUTO_COMBAT', file: 'packages/core/src/signalAuto/combat.ts', exported: true },
+  { concept: '信号自动探索推进与收成参数', symbol: 'SIGNAL_AUTO_ESTIMATE_CONFIG', file: 'packages/core/src/signalAuto/estimate.ts', exported: true },
   { concept: '星球供电与产消视图', symbol: 'planetColonyView', file: 'packages/core/src/planetColony.ts', exported: true },
   { concept: '星球离线与在线量子演算', symbol: 'advancePlanetary', file: 'packages/core/src/planetRuntime.ts', exported: true },
   { concept: '星球实际运输与材料交付', symbol: 'dispatchPlanetDelivery', file: 'packages/core/src/planetLogistics.ts', exported: true },
   { concept: '星球工程与退料账', symbol: 'cancelPlanetJob', file: 'packages/core/src/planetConstruction.ts', exported: true },
-  { concept: '战斗视图逐舰推进器点火与敌舰冲锋', symbol: 'battleArcsFor', file: 'packages/core/src/combat.ts', exported: true },
+  { concept: '战斗视图逐舰推进器点火与敌舰冲锋', symbol: 'battleArcsFor', file: 'packages/core/src/combat/arcs.ts', exported: true },
   { concept: '星球注入目录完整性校验', symbol: 'planetCatalogIssues', file: 'packages/core/src/planetCatalog.ts', exported: true },
   { concept: '星球独立子流与地块生成', symbol: 'generatePlanet', file: 'packages/core/src/planetGeneration.ts', exported: true },
   { concept: '星球环境与成本派生', symbol: 'planetEnvironmentOf', file: 'packages/core/src/planetRules.ts', exported: true },
@@ -202,18 +280,19 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
   { concept: '整船回收与工程技能加算概率', symbol: 'hullRecoveryChanceOf', file: 'packages/core/src/shipWrecks.ts', exported: true },
   { concept: '整船装备保全技能概率', symbol: 'wreckEquipmentRecoveryChanceOf', file: 'packages/core/src/shipWrecks.ts', exported: true },
   { concept: '战损插件清洗与最终属性倍率', symbol: 'shipDamageEffects', file: 'packages/core/src/shipDamage.ts', exported: true },
+  { concept: '战损管理按不同战损类型计算双系抗性', symbol: 'shipDamageHullResistOf', file: 'packages/core/src/shipDamage.ts', exported: true },
   { concept: '战损插件随机新增与去重上限', symbol: 'rollShipDamage', file: 'packages/core/src/shipDamage.ts', exported: true },
-  { concept: '爆虫一次性腐蚀触发', symbol: 'triggerAcidBurst', file: 'packages/core/src/alienCombat.ts', exported: true },
-  { concept: '本场装甲结构腐蚀抗性', symbol: 'applyAlienCorrosion', file: 'packages/core/src/alienCombat.ts', exported: true },
-  { concept: '敌机全队有限或无限补损', symbol: 'advanceFoeHatcheries', file: 'packages/core/src/alienCombat.ts', exported: true },
-  { concept: '敌挂件有效参战时长', symbol: 'advanceFoeAbilityClocks', file: 'packages/core/src/alienCombat.ts', exported: true },
-  { concept: '存活敌舰全队渐增机动', symbol: 'foeFleetSpeedMulOf', file: 'packages/core/src/alienCombat.ts', exported: true },
+  { concept: '爆虫一次性腐蚀触发', symbol: 'triggerAcidBurst', file: 'packages/core/src/combat/alienCombat.ts', exported: true },
+  { concept: '本场装甲结构腐蚀抗性', symbol: 'applyAlienCorrosion', file: 'packages/core/src/combat/alienCombat.ts', exported: true },
+  { concept: '敌机全队有限或无限补损', symbol: 'advanceFoeHatcheries', file: 'packages/core/src/combat/alienCombat.ts', exported: true },
+  { concept: '敌挂件有效参战时长', symbol: 'advanceFoeAbilityClocks', file: 'packages/core/src/combat/alienCombat.ts', exported: true },
+  { concept: '存活敌舰全队渐增机动', symbol: 'foeFleetSpeedMulOf', file: 'packages/core/src/combat/alienCombat.ts', exported: true },
   { concept: '静态JSON参数与代码文本装配', symbol: 'staticDataGroup', file: 'packages/data/src/staticData.ts', exported: true },
   { concept: '数值编辑字段与范围计划', symbol: 'planDocuments', file: 'tools/data-editor-schema.ts', exported: true },
   { concept: '限额慢补货配置判据', symbol: 'hasLimitedSupply', file: 'packages/core/src/marketLimitedSupply.ts', exported: true },
   { concept: '限额慢补货额度核销', symbol: 'consumeLimitedSupply', file: 'packages/core/src/marketLimitedSupply.ts', exported: true },
-  { concept: '武器组炮数', symbol: 'volleyGunCountOf', file: 'packages/core/src/combatVolley.ts', exported: true },
-  { concept: '齐射总伤逐炮守恒分摊', symbol: 'volleyDamageShareOf', file: 'packages/core/src/combatVolley.ts', exported: true },
+  { concept: '武器组炮数', symbol: 'volleyGunCountOf', file: 'packages/core/src/combat/combatVolley.ts', exported: true },
+  { concept: '齐射总伤逐炮守恒分摊', symbol: 'volleyDamageShareOf', file: 'packages/core/src/combat/combatVolley.ts', exported: true },
   { concept: '黑市累计声望入口门槛', symbol: 'blackMarketUnlocked', file: 'packages/core/src/blackMarket.ts', exported: true },
   { concept: '黑市候选池与例外购买资格', symbol: 'blackMarketCandidateGoods', file: 'packages/core/src/blackMarket.ts', exported: true },
   { concept: '黑市本地日界', symbol: 'blackMarketDayStart', file: 'packages/core/src/blackMarket.ts', exported: true },
@@ -221,7 +300,7 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
   { concept: '黑市新货架商品组数量', symbol: 'blackMarketLotQuantity', file: 'packages/core/src/blackMarket.ts', exported: true },
   { concept: '黑市锁定交付数量与旧货架兼容', symbol: 'blackMarketOfferQuantity', file: 'packages/core/src/blackMarket.ts', exported: true },
   { concept: '可选弹药档位与同族合法性', symbol: 'ammoTiersOf', file: 'packages/core/src/ammoTiers.ts', exported: true },
-  { concept: '普通市场可流通商品目录', symbol: 'marketTradingGoods', file: 'packages/core/src/market.ts', exported: true },
+  { concept: '普通市场可流通商品目录', symbol: 'marketTradingGoods', file: 'packages/core/src/market/access.ts', exported: true },
   { concept: '沉船快照保存装配方案', symbol: 'saveWreckFitPreset', file: 'packages/core/src/fitPresets.ts', exported: true },
   { concept: '沉船逐位装备与重复扩槽明细', symbol: 'wreckFitDetailOf', file: 'packages/core/src/fitPresets.ts', exported: true },
   { concept: '市场商品可读名称', symbol: 'marketGoodDisplayName', file: 'apps/desktop/src/renderer/src/ui/marketGoodHover.tsx', exported: true },
@@ -250,14 +329,20 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
   { concept: '网页重连存档进度摘要', symbol: 'reconnectProgress', file: 'apps/desktop/src/renderer/src/game/saveReconnect.ts', exported: true },
   { concept: '网页重连有效状态内容比较', symbol: 'sameReconnectProgress', file: 'apps/desktop/src/renderer/src/game/saveReconnect.ts', exported: true },
   { concept: '入侵残骸每族余额与箱子读数', symbol: 'weekendWreckPoolsOf', file: 'packages/core/src/salvage.ts', exported: true },
+  { concept: '打捞实际返航时长（引擎与两处进度读数）', symbol: 'salvageReturnMs', file: 'packages/core/src/salvaging.ts', exported: true },
+  { concept: '采矿打捞返航点火及已走航段接续', symbol: 'workReturnLeg', file: 'packages/core/src/trips.ts', exported: true },
   { concept: '入侵残骸旧账迁移与新桶归一', symbol: 'normalizeWeekendWreckRecord', file: 'packages/core/src/weekendWreckLedger.ts', exported: true },
-  { concept: '聚焦阵列波内修正率（射程与防空同源）', symbol: 'coronaFocusBonusOf', file: 'packages/core/src/coronaFocus.ts', exported: true },
-  { concept: '聚焦阵列全队射程与来源存活', symbol: 'coronaFleetRangeBonusOf', file: 'packages/core/src/coronaFocus.ts', exported: true },
-  { concept: '固定支援舰真实型号标识', symbol: 'supportFoeModelTagOf', file: 'packages/core/src/foeCard.ts', exported: true },
+  { concept: '聚焦阵列波内修正率（射程与防空同源）', symbol: 'coronaFocusBonusOf', file: 'packages/core/src/combat/coronaFocus.ts', exported: true },
+  { concept: '聚焦阵列全队射程与来源存活', symbol: 'coronaFleetRangeBonusOf', file: 'packages/core/src/combat/coronaFocus.ts', exported: true },
+  { concept: '固定支援舰真实型号标识', symbol: 'supportFoeModelTagOf', file: 'packages/core/src/combat/foeCard.ts', exported: true },
   { concept: '仿真上下文（页面取数的唯一入口）', symbol: 'buildSimContext', file: 'packages/data/src/context.ts', exported: true },
   { concept: '渲染层引擎（ctx 的产地，页面取数都从它来）', symbol: 'GameEngine', file: 'apps/desktop/src/renderer/src/game/engine.ts', exported: true },
   { concept: '玩家可见文案唯一表（id → 各语言）', symbol: 'L10N', file: 'packages/data/src/l10n/table.ts', exported: true },
   { concept: '已登记待译条目的中文回退', symbol: 'l10nEntryText', file: 'packages/data/src/l10n/table.ts', exported: true },
+  { concept: '最终整数数量向上取整与浮点整数邻域', symbol: 'ceilFinalQuantity', file: 'packages/core/src/quantity.ts', exported: true },
+  { concept: '信号空间层深额外资源堆数', symbol: 'signalSpaceResourcePileBonus', file: 'packages/core/src/wormhole/foes/curves.ts', exported: true },
+  { concept: '信号空间自动探索科技收益与解锁', symbol: 'matterTechSignalAutoYield', file: 'packages/core/src/matterTech.ts', exported: true },
+  { concept: '信号空间自动探索科技入口门禁', symbol: 'signalAutoResearchBlock', file: 'packages/core/src/wormholeAuto.ts', exported: true },
   { concept: '标签取词单点（槽类/槽位/舰级/地点/机型…）', symbol: 'kindText', file: 'apps/desktop/src/renderer/src/ui/labelsText.ts', exported: true },
   { concept: '舰船子类取词', symbol: 'shipSubClassText', file: 'apps/desktop/src/renderer/src/ui/labelsText.ts', exported: true },
   { concept: '次数链名称取词（任务与成就共用）', symbol: 'firstChainText', file: 'packages/data/src/l10n.ts', exported: true },
@@ -269,7 +354,7 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
   { concept: '势力族色（星图族标签 / 战场敌舰 / 图鉴族徽同源）', symbol: 'FOE_ACCENT', file: 'apps/desktop/src/renderer/src/ui/tones.ts', exported: true },
   { concept: '物品稀有度分档', symbol: 'itemRarityTierOf', file: 'packages/data/src/rarityTier.ts', exported: true },
   { concept: '装备归属档（高/中/低/舰船插件）', symbol: 'rackDimKeyOf', file: 'apps/desktop/src/renderer/src/ui/itemSubs.ts', exported: true },
-  { concept: '技能取消级联基线（只报"因本次取消才失效"的项）', symbol: 'preexistingUnmet', file: 'packages/core/src/skillQueue.ts', exported: false },
+  { concept: '技能取消级联基线（只报"因本次取消才失效"的项）', symbol: 'preexistingUnmet', file: 'packages/core/src/skills/queue.ts', exported: false },
   { concept: '存档清洗白名单（新增随档字段必须两处落笔）', symbol: 'normalizeState', file: 'packages/core/src/save.ts', exported: false },
   { concept: '活动栏「停止/取消」按钮文案（两套外壳共用）', symbol: 'stopLabel', file: 'apps/desktop/src/renderer/src/panels/activityStopLabel.ts', exported: true },
   { concept: '活动栏行「点击去哪」的跳转表（两套外壳共用）', symbol: 'goFor', file: 'apps/desktop/src/renderer/src/ui/activityGo.ts', exported: true },
@@ -283,6 +368,42 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
     concept: '手动工作位被谁占着（炉/回收炉/拆解台/制造线/实验室共用那一个名额 · 2026-10-01 船长令「和旧的工业一样，主控正在活动时禁止按钮」）',
     symbol: 'manualSlotOf',
     file: 'packages/core/src/activityGate.ts',
+    exported: true,
+  },
+  {
+    concept: '音效语义 id 与默认增益/节流（2026-11-02 声音系统 · 调用点/资源文件名/音效台共用一张清单）',
+    symbol: 'SFX_CUES',
+    file: 'apps/desktop/src/renderer/src/game/audio/cues.ts',
+    exported: true,
+  },
+  {
+    concept: '音效播放唯一出口（音量×分类×增益、节流、并发、本机覆盖优先 · 2026-11-02）',
+    symbol: 'playCue',
+    file: 'apps/desktop/src/renderer/src/game/audio/player.ts',
+    exported: true,
+  },
+  {
+    concept: '日志 → 音效的触发规则与文件名匹配（2026-11-02 声音系统）',
+    symbol: 'matchLogCue',
+    file: 'apps/desktop/src/renderer/src/game/audio/rules.ts',
+    exported: true,
+  },
+  {
+    concept: '音效素材文件名 → 语义 id（音效台导入与构建素材表共用一份匹配 · 2026-11-02）',
+    symbol: 'matchSfxFileName',
+    file: 'apps/desktop/src/renderer/src/game/audio/rules.ts',
+    exported: true,
+  },
+  {
+    concept: 'BGM/环境场景解析（战斗>虫洞>入侵>停靠>太空 · 2026-11-02 追加批）',
+    symbol: 'resolveSfxScene',
+    file: 'apps/desktop/src/renderer/src/game/audio/scene.ts',
+    exported: true,
+  },
+  {
+    concept: '音高随机换速率（音分 → playbackRate · 2026-11-02 追加批）',
+    symbol: 'pitchRateFor',
+    file: 'apps/desktop/src/renderer/src/game/audio/rules.ts',
     exported: true,
   },
 ]
@@ -538,7 +659,7 @@ for (const file of rendererFiles) {
 
 /* ═══════════ F6 · 日期格式化本地化：渲染层不许把语言焊死 ═══════════
  * 起因（**2026-09-29 船长令**：英文界面残留中文清理 · 甲案）：`toLocaleDateString('zh-CN')` 这类写法
- * 在英文界面下照样按中文顺序出日期。走 `i18n/fmt.ts` 的 `fmtDate` / `fmtDateTime` 即可。
+ * 在英文界面下照样按中文顺序出日期。走 `i18n/fmt.ts` 的 `fmtDate` 即可。
  * ⚠ 只管**日期/时间**：`toLocaleString('zh-CN')` 用于数字千分位时 zh/en 逐位同值 ⇒ 不报。
  */
 {
@@ -555,7 +676,7 @@ for (const file of rendererFiles) {
         file: rel,
         line: i + 1,
         detail: '把语言焊死的日期格式化（`toLocaleDateString(\'zh-CN\')`）',
-        fix: '改走 `i18n/fmt.ts` 的 `fmtDate` / `fmtDateTime`（内部取 `localeTag()`）',
+        fix: '改走 `i18n/fmt.ts` 的 `fmtDate`（内部取 `localeTag()`）',
       })
     })
   }
@@ -636,12 +757,13 @@ for (const file of rendererFiles) {
 {
   const CORE_DIR = join(ROOT, 'packages', 'core', 'src')
   const coreSrc = new Map<string, string>()
-  for (const name of readdirSync(CORE_DIR)) {
-    if (name.endsWith('.ts')) coreSrc.set(name, stripComments(readFileSync(join(CORE_DIR, name), 'utf8')))
-  }
+  const coreFiles: string[] = []
+  walk(CORE_DIR, coreFiles)
+  for (const file of coreFiles) coreSrc.set(relative(CORE_DIR, file).replace(/\\/g, '/'), stripComments(readFileSync(file, 'utf8')))
 
   const GATE_CALL = /(applyActivityGate|applyActivityHandoff|gateMainActivity|gateMainActivityHandoff)\s*\(/
   const fns = new Map<string, { file: string; gate: boolean; calls: string[] }>()
+  const localFns = new Map<string, { file: string; gate: boolean; calls: string[] }>()
   for (const [file, text] of coreSrc) {
     for (const m of text.matchAll(/export (?:async )?function ([A-Za-z0-9_]+)\s*\(/g)) {
       const body = fnBodyOf(text, m.index ?? 0)
@@ -652,15 +774,22 @@ for (const file of rendererFiles) {
         calls: [...body.matchAll(/\b([A-Za-z_][A-Za-z0-9_]*)\s*\(/g)].map((x) => x[1]!),
       })
     }
+    for (const m of text.matchAll(/(?<!export )(?<!async )\bfunction ([A-Za-z0-9_]+)\s*\(/g)) {
+      const body = fnBodyOf(text, m.index ?? 0)
+      if (body === null) continue
+      localFns.set(`${file}:${m[1]}`, { file, gate: GATE_CALL.test(body),
+        calls: [...body.matchAll(/\b([A-Za-z_][A-Za-z0-9_]*)\s*\(/g)].map(x => x[1]!) })
+    }
   }
   /** 这一条入口最终会不会走到门禁（直接调，或沿委托链 ≤4 层走到一个调了的） */
-  const reachesGate = (name: string, depth = 0, seen = new Set<string>()): boolean => {
-    const f = fns.get(name)
+  const reachesGate = (name: string, depth = 0, seen = new Set<string>(), file?: string): boolean => {
+    const localKey = file ? `${file}:${name}` : name
+    const f = localFns.get(localKey) ?? fns.get(name)
     if (f === undefined) return false
     if (f.gate) return true
-    if (depth >= 4 || seen.has(name)) return false
-    seen.add(name)
-    return f.calls.some((c) => reachesGate(c, depth + 1, seen))
+    if (depth >= 4 || seen.has(localKey)) return false
+    seen.add(localKey)
+    return f.calls.some((c) => reachesGate(c, depth + 1, seen, f.file))
   }
   const lineOfFn = (file: string, name: string): number => {
     const t = coreSrc.get(file) ?? ''

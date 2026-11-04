@@ -25,6 +25,9 @@ import type { CoreBlockReason } from './engine'
 import type { GameState } from './state'
 import type { SimContext } from './types'
 import { addLog, haltActivityForSwitch } from './state'
+import { combatEscortBlock } from './combat/command/locks'
+import { combatRosterOf, makeCombatSortie } from './combat/command/roster'
+import { commandBudgetOf } from './combat/command/rules'
 
 /** 主控活动（10 项；与活动栏、`pilotUnavailableReason`、各 `start*` 入口一一对应） */
 export type MainActivityKind =
@@ -352,6 +355,8 @@ export function gateMainActivity(state: GameState, next: MainActivityKind): Gate
  * 但同样要"先把手上的活收掉"）⇒ 不适用"同项直接放行"那一条。
  */
 function verdictOf(state: GameState, next: MainActivityKind | null): GateVerdict {
+  if (state.departure) return { action: 'reject', message: 'departure-in-progress', messageId: state.departure.progressMs < state.departure.undockMs ? 'core.departure.001' : 'core.departure.002' }
+  if (state.hauling.active && state.hauling.fleetLeg && next !== 'hauling') return { action: 'reject', message: 'hauling-return-required', messageId: 'core.industrial.006' }
   const locked = cannotInterruptReason(state)
   if (locked !== null) {
     /** 三种锁定态各有自己的 id（界面按当前语言渲染；`error` 那份中文原串只作兜底） */
@@ -430,13 +435,22 @@ function skipOf(v: GateVerdict): ActivityGateSkip {
  */
 export function applyActivityGate(state: GameState, next: MainActivityKind, ctx?: SimContext): ActivityGateSkip | null {
   const v = gateMainActivity(state, next)
+  if (ctx && (v.action === 'ok' || v.action === 'halt') && ['mining', 'salvaging', 'hauling', 'standby', 'deliver', 'siteDeliver'].includes(next)) {
+    const squad = combatRosterOf(state)
+    const budget = commandBudgetOf(state, ctx, squad)
+    if (!budget.ok) return { ok: false, error: budget.error!, errorId: budget.errorId, errorParams: budget.errorParams }
+    const blocked = combatEscortBlock(state, squad)
+    if (blocked) return { ok: false, ...blocked }
+  }
   if (v.action === 'ok') {
     delete state.pendingStationActivity
+    if (ctx && ['mining', 'salvaging', 'hauling', 'standby', 'deliver', 'siteDeliver'].includes(next)) state.combatEscort = makeCombatSortie(combatRosterOf(state), state.shipId)
     return null
   }
   if (v.action === 'halt') {
     delete state.pendingStationActivity
     if (v.current !== undefined) haltAndLog(state, ctx, v.current)
+    if (ctx && ['mining', 'salvaging', 'hauling', 'standby', 'deliver', 'siteDeliver'].includes(next)) state.combatEscort = makeCombatSortie(combatRosterOf(state), state.shipId)
     return null
   }
   return skipOf(v)

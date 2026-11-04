@@ -390,9 +390,10 @@ function guideGroupsOf(): HandGroup[] { return [
       {
         title: tr("ui.Handbook.261"),
         paras: [
-          [tr("ui.Handbook.018"), tr("ui.Handbook.139")],
+          // ⟪文案调整 2026-11-02⟫ 不再宣称出发即开战，改用船长确认的阶段原文。
+          [tr("ui.Handbook.018"), `${tr('core.departure.001')} → ${tr('core.departure.002')} → ${tr('ui.invasionActivity.003')}`],
           [tr("ui.Handbook.028"), tr("ui.Handbook.140")],
-          [tr("ui.Handbook.262"), tr("ui.Handbook.141")],
+          [tr("ui.Handbook.262"), tr('core.departure.003')],
         ],
       },
       {

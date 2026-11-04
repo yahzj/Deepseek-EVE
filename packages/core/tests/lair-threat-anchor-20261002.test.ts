@@ -18,13 +18,15 @@ import { describe, expect, it } from 'vitest'
 import { ANOMALIES_FLAVORED, buildSimContext } from '@whale/data'
 import { createFoeSpecs } from '../src/combat'
 import { foeHpOfThreat } from '../src/foePower'
-import { LAIR_THREAT_MUL, isLairCandidate, lairAnomalyOf } from '../src/lairs'
+import { LAIR_THREAT_MUL, isLairCandidate, lairAnomalyOf as deriveLair } from '../src/lairs'
 import { wreckInjectThreatOf } from '../src/salvage'
 import { weekendFoeCardOf } from '../src/weekendEvent'
 import type { AnomalyDef } from '../src/types'
 
 const ctx = buildSimContext()
 const bal = ctx.balance.battle
+// 保留读档旧规则的相对重锚约束，新规则另测增量。
+const lairAnomalyOf = (card: AnomalyDef, tier: 1 | 2 | 3, balance: typeof bal) => deriveLair(card, tier, balance, 0)
 const cards = ANOMALIES_FLAVORED.filter((a) => isLairCandidate(a))
 const tiers = [1, 2, 3] as const
 const hpOf = (c: AnomalyDef): number =>

@@ -106,10 +106,12 @@
       },
       {
         "id": "foe-mount-ink-range-debuff",
+        "rangeDebuff_strength": 120,
         "rangeDebuff_pct": 0.5
       },
       {
         "id": "foe-mount-d-range-debuff",
+        "rangeDebuff_strength": 80,
         "rangeDebuff_pct": 0.15
       },
       {
@@ -164,7 +166,7 @@
         "id": "foe-mount-d-shield-capacitor",
         "shieldCapacitor_rangeMul": 1.5,
         "shieldCapacitor_reloadMul": 1.1,
-        "shieldCapacitor_damageMul": 1.3
+        "shieldCapacitor_damageMul": 1.25
       },
       {
         "id": "foe-mount-d-reconstruction",

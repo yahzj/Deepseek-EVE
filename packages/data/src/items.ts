@@ -79,6 +79,11 @@ const RELIC_CONTAINERS_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> 
 }
 
 const BLUEPRINT_CONTAINERS_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
+  'box-encrypted-a': { name: L10N['item.encrypted.001']!.zh, description: L10N['item.encrypted.006']!.zh },
+  'box-encrypted-c': { name: L10N['item.encrypted.002']!.zh, description: L10N['item.encrypted.006']!.zh },
+  'box-encrypted-d': { name: L10N['item.encrypted.003']!.zh, description: L10N['item.encrypted.006']!.zh },
+  'box-encrypted-e': { name: L10N['item.encrypted.004']!.zh, description: L10N['item.encrypted.006']!.zh },
+  'box-encrypted-g': { name: L10N['item.encrypted.005']!.zh, description: L10N['item.encrypted.006']!.zh },
   "box-bp-shallow": {
     name: '图纸货柜（浅层）',
     description:
@@ -220,6 +225,10 @@ const DRONES_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
   'drone-jawclaw': {
     name: L10N['item.jawclaw.001']!.zh,
     description: L10N['item.jawclaw.002']!.zh,
+  },
+  "drone-repair-mil": {
+    name: L10N['item.repairDrone.001']!.zh,
+    description: L10N['item.repairDrone.002']!.zh,
   },
   "drone-scout": {
     name: '蜂鸟侦察无人机',

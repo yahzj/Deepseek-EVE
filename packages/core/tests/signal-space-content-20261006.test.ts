@@ -4,6 +4,8 @@ import { posix } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { runInNewContext } from 'node:vm'
 import ts from 'typescript'
+import { applyApprovedTorpedoShipDelta } from './helpers/approved-torpedo-ship-delta-20261019'
+import { applyApprovedFleetShipDelta } from './helpers/approved-fleet-delta-20261101'
 import { describe, expect, it } from 'vitest'
 import {
   buildSimContext, EN_ANOMALIES, EN_ITEMS, EN_MATTER_TECH_NOTES, EN_MODULES, EN_SHIPS, EN_SKILLS,
@@ -12,12 +14,12 @@ import {
 import { L10N } from '../../data/src/l10n/table'
 import { signalSpaceTextId, SIGNAL_SPACE_TEXT_IDS } from '../src/explorationText'
 import { resolveFoeMounts } from '../src/foeMounts'
-import { loadSaveFile, serializeSaveFile } from '../src/save'
+import { loadSaveFile, SaveError, serializeSaveFile } from '../src/save'
 import { createInitialState } from '../src/state'
 import { wormholeScanBonusOf } from '../src/wormhole'
 import { wormholeExpeditionCard } from '../src/wormholeExpeditionFoes'
 import {
-  migratedWreckItemId, wreckGroupOfItemId, WRECK_FAMILY_NAMES, WRECK_GROUPS, WRECK_REGION_LABELS, WRECK_YIELD_TIER_MUL,
+  wreckGroupOfItemId, WRECK_FAMILY_NAMES, WRECK_GROUPS, WRECK_REGION_LABELS, WRECK_YIELD_TIER_MUL,
 } from '../src/wreckGroups'
 
 // 船长指定旧玩法来源；只读固定提交，不读取主树或物化另一份工作区。
@@ -85,7 +87,8 @@ describe('信号空间内容 · 固定来源与纯文案边界', () => {
     const visit = (node: ts.Node): void => {
       if (ts.isElementAccessExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'L10N') {
         const id = node.argumentExpression
-        expect(ts.isStringLiteral(id), node.getText(ast)).toBe(true)
+        // 新成就/次数链表按映射动态取ID；只约束静态Signal Space说明，不误拦无关模板。
+        if (!ts.isStringLiteral(id)) expect(["FIRST_CHAIN_TEXT_IDS[chainId]?.name ?? ''", 'id']).toContain(id.getText(ast))
         if (ts.isStringLiteral(id)) {
           if (SIGNAL_SPACE_TEXT_IDS[id.text]) oldIds.push(id.text)
           if (targets.has(id.text)) {
@@ -103,10 +106,10 @@ describe('信号空间内容 · 固定来源与纯文案边界', () => {
 
   it('技能仅六条说明改词：名称、档位、前置、训练时间与中英高亮数字都与来源一致', () => {
     const existing = SKILLS.filter(row => baseSkills.some(original => original.id === row.id))
-    expect(SKILLS.filter(row => !baseSkills.some(original => original.id === row.id) && !['deep-space-probing', 'advanced-deep-space-probing', 'stellar-archive', 'probe-assembly'].includes(row.id)).map(row => row.id)).toEqual([
+    expect(SKILLS.filter(row => !baseSkills.some(original => original.id === row.id) && !['deep-space-probing', 'advanced-deep-space-probing', 'stellar-archive', 'probe-assembly', 'fleet-command-basic', 'fleet-command-coordination', 'fleet-command-integration'].includes(row.id)).map(row => row.id)).toEqual([
       'hull-salvage-engineering', 'advanced-hull-salvage-engineering', 'wreck-equipment-preservation',
     ])
-    sameData(existing, baseSkills, ['description'])
+    sameData(existing, baseSkills.map(skill => skill.branch === 'b-warship' ? { ...skill, group: '舰船' } : skill), ['description'])
     expect(existing.filter((row, i) => row.description !== baseSkills[i]!.description).map((row) => row.id)).toEqual(skillIds)
     for (const row of existing) {
       const original = baseSkills.find((before) => before.id === row.id)!
@@ -134,6 +137,8 @@ describe('信号空间内容 · 固定来源与纯文案边界', () => {
       ...(['sh-nautilus', 'sh-wh-g-frigate'].includes(row.id) ? { wormholeScanRadiusBonus: 2 } : {}),
       ...(['sh-shrike', 'sh-tigershark', 'sh-wh-d-frigate'].includes(row.id) ? { evasion: Number(((row.evasion ?? 0) + .1).toFixed(3)) } : {}),
     }))
+    applyApprovedTorpedoShipDelta(expectedShips)
+    applyApprovedFleetShipDelta(expectedShips)
     sameData(SHIPS, expectedShips, ['description'])
     expect(SHIPS.filter((row, i) => row.description !== baseShips[i]!.description).map((row) => row.id)).toEqual(shipIds)
     for (const id of shipIds) {
@@ -147,7 +152,7 @@ describe('信号空间内容 · 固定来源与纯文案边界', () => {
   })
 
   it('谜质科技全部标识、效果、费用与前置不变，共享说明不伪限定为旧玩法', () => {
-    const existing = MATTER_TECH_NODES.filter(node => !node.id.startsWith('mt-explore-signal-radius-'))
+    const existing = MATTER_TECH_NODES.filter(node => !node.id.startsWith('mt-explore-signal-radius-') && node.id !== 'mt-explore-signal-auto-t3')
     sameData(existing, baseTech, ['note'])
     for (const node of existing) {
       const before = baseTech.find((row) => row.id === node.id)!
@@ -187,13 +192,13 @@ describe('信号空间内容 · 固定来源与纯文案边界', () => {
       }
       for (const member of row.members) {
         expect(wreckGroupOfItemId(`wreck-${member}`)!.key).toBe(row.key)
-        expect(migratedWreckItemId(`wreck-rare-${member}`)).toBe(`wreck-rare-${row.key}`)
+        expect(wreckGroupOfItemId(`wreck-rare-${member}`)!.key).toBe(row.key)
       }
     }
   })
 
   it('旧资产数值与配方不变；模块及谜质装置说明取新ID，历史正文仍可读取', () => {
-    const addedItems = new Set(['ammo-kinetic-3', 'ammo-explosive-3', 'ammo-plasma-3', 'blackbox-c', 'blackbox-d', 'deep-space-probe', 'drone-jawclaw', 'invasion-beacon-r', 'invasion-beacon-c', 'invasion-beacon-h', 'invasion-beacon-d'])
+    const addedItems = new Set(['ammo-kinetic-3', 'ammo-explosive-3', 'ammo-plasma-3', 'blackbox-c', 'blackbox-d', 'deep-space-probe', 'drone-jawclaw', 'drone-repair-mil', 'invasion-beacon-r', 'invasion-beacon-c', 'invasion-beacon-h', 'invasion-beacon-d'])
     expect(ITEMS.filter(item => addedItems.has(item.id)).map(item => item.id).sort()).toEqual([...addedItems].sort())
     sameData(ITEMS.filter(item => !addedItems.has(item.id)), baseItems, ['name', 'description'])
     expect(EN_ITEMS['mat-wh-essence']!.name).toBe('Signal Enigma')
@@ -201,10 +206,18 @@ describe('信号空间内容 · 固定来源与纯文案边界', () => {
       if (addedItems.has(id)) continue
       expect(text.name, id).toBe(id === 'mat-wh-essence' ? 'Signal Enigma' : id === 'synaptic-accelerant' ? 'Synaptic Accelerant MK1' : baseEn.EN_ITEMS[id]!.name)
     }
-    const approvedNewModules = new Set(['mod-drone-launch-1', 'mod-drone-launch-2', 'mod-drone-launch-3', 'mod-laser-calibration-2', 'mod-laser-calibration-3', 'mod-gravekeeper-rebirth', 'mod-gravekeeper-crisis', 'mod-gravekeeper-rail'])
+    const approvedNewModules = new Set(['mod-drone-launch-1', 'mod-drone-launch-2', 'mod-drone-launch-3', 'mod-laser-calibration-2', 'mod-laser-calibration-3', 'mod-gravekeeper-rebirth', 'mod-gravekeeper-crisis', 'mod-gravekeeper-rail', 'mod-alien-acid-launcher', 'mod-alien-pressure-chamber',
+      'plug-pirate-raider', 'plug-alien-shield-coating', 'plug-gravekeeper-capacitor', 'plug-titan-compression', 'plug-deadarmy-printing'])
     for (const [id, text] of Object.entries(EN_MODULES)) {
       if (approvedNewModules.has(id)) continue
-      expect(text.name, id).toBe(baseEn.EN_MODULES[id]!.name)
+      if (/^mod-shieldfield-[23]$/.test(id)) {
+        const entry = L10N[`mod.fleetSupport.00${id.endsWith('2') ? 1 : 2}`]!
+        expect(entry.enDeferred).toBeUndefined()
+        expect(entry.en).not.toBe('')
+        expect(text.name).toBe(entry.en)
+        continue
+      }
+      expect(text.name, id).toBe(id === 'mod-lair-blink-r' ? 'Short-Range Warp Device' : baseEn.EN_MODULES[id]!.name)
     }
     for (const id of ['mod.copy.001', 'mod.copy.002', 'mod.copy.044', 'item.copy.008']) {
       expect(L10N[id]!.en).toMatch(/wormhole/i)
@@ -253,7 +266,7 @@ describe('信号空间内容 · 固定来源与纯文案边界', () => {
     }
   })
 
-  it('v27每卡残骸仍迁移到同一组并合并数量，谜质装置与析出物不换标识', () => {
+  it('v27 每卡残骸档明确拒读，不再自动合并库存', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 19 })
     const cargo = state.fleet[state.shipId]!.cargo
     const legacy: Record<string, number> = { 'mat-wh-essence': 7, 'mat-surveyor': 2 }
@@ -268,18 +281,12 @@ describe('信号空间内容 · 固定来源与纯文案边界', () => {
     const file = JSON.parse(serializeSaveFile(state, 0))
     file.version = 27
     file.state.version = 27
-    const loaded = loadSaveFile(JSON.stringify(file)).state
-    for (const pocket of [loaded.warehouse.items, loaded.fleet[loaded.shipId]!.cargo]) {
-      expect(pocket['mat-wh-essence']).toBe(7)
-      expect(pocket['mat-surveyor']).toBe(2)
-      for (const row of WRECK_GROUPS.filter((group) => group.region === 'wh')) {
-        expect(pocket[`wreck-${row.key}`], row.key).toBe(60)
-        expect(pocket[`wreck-rare-${row.key}`], row.key).toBe(90)
-        for (const member of row.members) {
-          expect(pocket[`wreck-${member}`]).toBeUndefined()
-          expect(pocket[`wreck-rare-${member}`]).toBeUndefined()
-        }
-      }
+    try {
+      loadSaveFile(JSON.stringify(file))
+      expect.unreachable('v27 档不再允许迁移')
+    } catch (error) {
+      expect(error).toBeInstanceOf(SaveError)
+      expect((error as SaveError).code).toBe('VERSION')
     }
   })
 })

@@ -13,6 +13,7 @@ import { createPlayerSpec } from '../src/combat'
 import { curveMult, fitModule, gapCombine, repairDeprecatedModules, sameKindCount, stackingOf, stackWeight } from '../src/equipment'
 import type { ShipDef } from '../src/types'
 import { makeTestCtx, moduleDef, ship } from './helpers'
+import { supportEffectPartsOf } from '../src/stacking'
 
 const DRONE_SCOUT = {
   id: 'drone-scout',
@@ -66,6 +67,14 @@ function expGun(id = 'mod-gun-exp'): ReturnType<typeof moduleDef> {
 }
 
 describe('V18.1 收敛机制（纯函数）', () => {
+  it('支援件按效果分池：混合型号同池，双效果件在各自效果池独立取权重', () => {
+    const kin = moduleDef('kin', 'support', 0, { damageTypeBonusPct: { kinetic: 0.15 }, rack: 'low' })
+    const dual = moduleDef('dual', 'support', 0, { damageTypeBonusPct: { kinetic: 0.18, plasma: 0.18 }, rack: 'low' })
+    const kinetic = supportEffectPartsOf([kin, dual], 'damage:kinetic')
+    const plasma = supportEffectPartsOf([kin, dual], 'damage:plasma')
+    expect(kinetic.map(part => part.weight)).toEqual([stackWeight(2), stackWeight(1)])
+    expect(plasma.map(part => part.weight)).toEqual([1, stackWeight(1)])
+  })
   it('EVE 曲线权重：第 1~5 件 ≈ 100% / 87% / 57% / 28% / 11%', () => {
     const expectW = (n: number, v: number): void => {
       const w = stackWeight(n)
@@ -94,12 +103,12 @@ describe('V18.1 收敛机制（纯函数）', () => {
     expect(gapCombine([0.2], 0.1)).toBeCloseTo(0.28, 9)
   })
 
-  it('stackingOf 分组：稳定器/射速 = flat；索敌(命中) = curve；陀螺(闪避) = gap；推进 = weighted/speed（2026-09-20 起加算）；盾抗 = gap/系键', () => {
+  it('stackingOf 分组：稳定器/射速 = weighted；索敌(命中) = curve；陀螺(闪避) = gap；推进 = weighted/speed；盾抗 = gap/系键', () => {
     expect(stackingOf(moduleDef('s1', 'support', 0, { rack: 'low', damageTypeBonusPct: { kinetic: 0.1 } }))).toEqual({
-      group: 'flat',
-      kind: 'support',
+      group: 'weighted',
+      kind: 'support-damage',
     })
-    expect(stackingOf(moduleDef('r1', 'support', 0, { rack: 'low', reloadCutPct: 0.05 })).group).toBe('flat')
+    expect(stackingOf(moduleDef('r1', 'support', 0, { rack: 'low', reloadCutPct: 0.05 })).group).toBe('weighted')
     expect(stackingOf(moduleDef('t1', 'support', 0, { rack: 'mid', hitBonusPct: 0.08 }))).toEqual({ group: 'curve', kind: 'hit' })
     expect(stackingOf(moduleDef('g1', 'support', 0, { rack: 'mid', evasionGapPct: 0.1 }))).toEqual({ group: 'gap', kind: 'evasion' })
     expect(stackingOf(moduleDef('p1', 'propulsion', 0, { speedBonusPct: 0.15 }))).toEqual({ group: 'weighted', kind: 'speed' })
@@ -195,7 +204,7 @@ describe('V18.1 装配与战斗集成', () => {
     expect(fitModule(state, 'mod-rof-1', ctx).ok).toBe(true)
     expect(fitModule(state, 'mod-rof-2', ctx).ok).toBe(true)
     const after = createPlayerSpec(state, ctx, state.shipId)!.weapons.find((w) => w.kind === 'gun')!
-    expect(after.reloadMs).toBe(Math.round(2000 / 1.1))
+    expect(after.reloadMs).toBe(Math.round(2000 / (1 + 0.05 + 0.05 * stackWeight(2))))
   })
 
   it('索敌阵列：炮台条目 eqHitMul 走 EVE 曲线（两件 +8% ≈ ×1.155），基础舰炮不带', () => {

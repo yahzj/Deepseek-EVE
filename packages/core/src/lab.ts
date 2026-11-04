@@ -16,6 +16,7 @@
  *
  * 配方数据在 `packages/data/src/labRecipes.ts`（`ctx.labRecipes`）。
  */
+import { ceilFinalQuantity } from './quantity'
 import type { GameState, LabRunState } from './state'
 import type { SimContext, LabRecipeDef, AiCoreType } from './types'
 import type { CommandResult } from './engine'
@@ -144,7 +145,7 @@ const LAB_OUTPUT_CAP: Readonly<Record<string, { readonly stockOf: (s: GameState)
 }
 
 /** 本配方的产物是否**已放不下下一批**（没登记封顶的配方恒为 false） */
-export function labOutputCapped(state: GameState, recipe: LabRecipeDef): boolean {
+export function labOutputCapped(state: GameState, recipe: LabRecipeDef, ctx: SimContext, excludeRun?: LabRunState): boolean {
   const cap = LAB_OUTPUT_CAP[recipe.outputItemId]
   if (!cap) return false
   /**
@@ -152,7 +153,11 @@ export function labOutputCapped(state: GameState, recipe: LabRecipeDef): boolean
    * （船长报障原话是「燃料生产并不受上限的影响」，越限一批仍算不受影响）；
    * 存量恰好等于上限时也判"满"（`+batch > cap`）。
    */
-  return cap.stockOf(state) + labBatchUnitsOf(state, recipe) > cap.capOf(state)
+  const reserved = (state.labRuns ?? []).reduce((sum, run) => {
+    if (!run.active || run === excludeRun || ctx.labRecipes.get(run.recipeId)?.outputItemId !== recipe.outputItemId) return sum
+    return sum + run.batchUnits
+  }, 0)
+  return cap.stockOf(state) + reserved + labBatchUnitsOf(state, recipe) > cap.capOf(state)
 }
 
 /** 本配方产物的现有量 / 上限（界面读数用；没登记封顶的配方返回 undefined） */
@@ -185,7 +190,7 @@ function spendBatchMaterials(
 ): { itemId: string; count: number }[] | null {
   const taken: { itemId: string; count: number }[] = []
   for (const m of recipe.materials) {
-    const units = Math.max(1, Math.floor(m.units))
+    const units = Math.max(1, ceilFinalQuantity(m.units))
     if (!removeWare(state, m.itemId, units)) {
       for (const t of taken) addWare(state, t.itemId, t.count)
       return null
@@ -200,7 +205,7 @@ export function labAffordableBatches(state: GameState, recipe: LabRecipeDef): nu
   if (recipe.materials.length === 0) return 0
   let min = Number.POSITIVE_INFINITY
   for (const m of recipe.materials) {
-    const per = Math.max(1, Math.floor(m.units))
+    const per = Math.max(1, ceilFinalQuantity(m.units))
     min = Math.min(min, Math.floor(labMaterialAvailable(state, m.itemId) / per))
   }
   return Number.isFinite(min) ? Math.max(0, min) : 0
@@ -241,14 +246,14 @@ export function labCycleMsOf(state: GameState, ctx: SimContext, recipe: LabRecip
 }
 
 /**
- * **单批产物单位**（基准值 × `LAB_YIELD_SKILLS` 乘区；向下取整到 1 单位）。
+ * **单批产物单位**（基准值 × `LAB_YIELD_SKILLS` 乘区；最终向上取整到 1 单位）。
  *
  * **对外公开的单点**（**2026-10-01 船长裁**：卡面那个「×N」必须读这里）——原先界面读的是
  * `recipe.outputUnits`（**基础值**）⇒ 收率工艺学的效果在卡面看不见，同一张卡上"批产"与"速率"
  * 两个口径。产出封顶（`labOutputCapped`）与实际交付（`advanceLab`）走的也都是它。
  */
 export function labBatchUnitsOf(state: GameState, recipe: LabRecipeDef): number {
-  return Math.max(1, Math.floor(recipe.outputUnits * labYieldMulOf(state, recipe)))
+  return Math.max(1, ceilFinalQuantity(recipe.outputUnits * labYieldMulOf(state, recipe)))
 }
 
 /**
@@ -422,7 +427,8 @@ export function startLabRun(
    * 起线这一步同样要拦，否则"开一条立刻就停"的空转更费解）。上限判据走 `LAB_OUTPUT_CAP` 登记表。
    */
   const capped = labOutputStockOf(state, recipe)
-  if (labOutputCapped(state, recipe)) {
+  const replaced = worker === 'pilot' ? state.labRuns?.find(run => run.active && run.worker === 'pilot') : undefined
+  if (labOutputCapped(state, recipe, ctx, replaced)) {
     return {
       ok: false,
       error: `${recipe.name} 的仓库余量放不下下一批（${(capped?.stock ?? 0).toLocaleString('zh-CN')} / ${(capped?.cap ?? 0).toLocaleString('zh-CN')} 单位）：先消耗或卖出再开工。`,
@@ -573,6 +579,15 @@ export function advanceLab(state: GameState, ctx: SimContext, stats?: SettleStat
       if (++guard > 100_000) break
 
       /** ── ① 结算这一批 ── */
+      const cap = LAB_OUTPUT_CAP[recipe.outputItemId]
+      if (cap && cap.stockOf(state) + r.batchUnits > cap.capOf(state)) {
+        r.deliveryBlocked = true
+        break
+      }
+      if (r.deliveryBlocked) {
+        r.finishAtGameMs = state.gameMs
+        delete r.deliveryBlocked
+      }
       addWare(state, recipe.outputItemId, r.batchUnits)
       r.spentMaterials = []
       const outName = ctx.items.get(recipe.outputItemId)?.name ?? recipe.outputItemId
@@ -599,7 +614,7 @@ export function advanceLab(state: GameState, ctx: SimContext, stats?: SettleStat
       const goal = loop.goal && loop.goal > 0 ? loop.goal : null
       let stopWhy = ''
       if (goal !== null && loop.produced >= goal) stopWhy = `已达成目标 ${goal} 批`
-      else if (labOutputCapped(state, recipe)) {
+      else if (labOutputCapped(state, recipe, ctx, r)) {
         const capped = labOutputStockOf(state, recipe)
         stopWhy = `${outName} 的仓库余量放不下下一批（${(capped?.stock ?? 0).toLocaleString('zh-CN')} / ${(capped?.cap ?? 0).toLocaleString('zh-CN')} 单位）`
       } else if (labAffordableBatches(state, recipe) <= 0) {

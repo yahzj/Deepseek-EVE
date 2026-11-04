@@ -16,7 +16,7 @@
  * ⑤ **两条时间曲线**（衰减爬到 1.0 且随波重置；三连发 100ms 间隔与轮周期）。
  */
 import { describe, expect, it } from 'vitest'
-import { FOE_SHIPS, buildSimContext } from '@whale/data'
+import { ANOMALIES, FOE_SHIPS, buildSimContext } from '@whale/data'
 import { addShipToFleet, createInitialState, startFleetBattleFor } from '../src/index'
 import {
   activeFoeSpecsOf,
@@ -74,14 +74,19 @@ function ctxVariant(
 function battleOf(card: string, ships: number, useCtx: SimContext = ctx) {
   const state = createInitialState({ nowWallMs: 0, seed: 11 })
   const ids: string[] = []
-  for (let i = 0; i < ships; i++) ids.push(addShipToFleet(state, 'sh-thresher'))
+  for (let i = 0; i < Math.min(12, ships); i++) ids.push(addShipToFleet(state, 'sh-thresher'))
   state.shipId = ids[0]!
-  for (const id of ids) state.fleet[id]!.fitted = { high: ['mod-laser-3'], mid: [], low: [] }
+  // 超量旧夹具的总炮数保留在最多12舰的合法高槽内，维持末波观察火力。
+  for (const [index, id] of ids.entries()) state.fleet[id]!.fitted = {
+    high: Array.from({ length: Math.floor(ships / ids.length) + Number(index < ships % ids.length) }, () => 'mod-laser-3'), mid: [], low: [],
+  }
   state.moduleBay['mod-laser-3'] = 1
   for (const a of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) state.warehouse.items[a] = 90_000
   const battle = startFleetBattleFor(state, useCtx, ids, card, 0, null, undefined, undefined)
   expect(battle, '开战应成功').toBeTruthy()
   const b = battle!
+  // 原超量编队只用于延长观察，现用12舰加血压力夹具替代。
+  if (ships > 12) for (const unit of Object.values(b.units)) if (unit.side === 'me') { unit.hp = { s: 1e8, a: 1e8, h: 1e8 }; unit.hpMax = { ...unit.hp } }
   return {
     b,
     tick: (toMs: number) => {
@@ -159,12 +164,9 @@ describe('挂载面（只挂各自主人）', () => {
     expect(nexus!.foeFocusArray, '中枢应带聚焦阵列参数').toEqual({ rampMs: 120_000, rangeBonusPct: 2, antiDroneBonusPct: 2 })
     expect(nexus!.foeStandbyShield, '中枢不得带待机护盾').toBeUndefined()
     expect(nexus!.weapons[0]!.burst, '中枢主武器应带三连发').toEqual({ shots: 3, gapMs: 100 })
-    /**
-     * **每发 −70% 要一路穿过建档管线**（`shotDmg = round(舰级值 × 槽位 dmgMul × 多舰补偿 × 上限缩放)`）：
-     * 拿**同一条卡、只把舰级单发改回 519 且去掉连发**再建一次档 ⇒ 两条单发之比应 = 519 ÷ 156。
-     * （直接断言 156 会被管线缩放挡下——缩放系数是卡与编成的函数，不该在用例里硬编。）
-     */
-    const cardNexus = ctx.anomalies.get(CARD_NEXUS)!
+    // 单发比例在相同原始管线核对，关闭整波越线折扣，避免两组总火力不同改变折扣率。
+    const cardNexus = ANOMALIES.find(card => card.id === CARD_NEXUS)!
+    const ratioBalance = { ...bal, foeDpsOverCapDiscount: 0 }
     const baselineCard = {
       ...cardNexus,
       ships: (cardNexus.ships ?? []).map((s) =>
@@ -173,13 +175,16 @@ describe('挂载面（只挂各自主人）', () => {
           : s,
       ),
     } as NonNullable<ReturnType<typeof ctx.anomalies.get>>
-    const baseline = activeFoeSpecsOf(baselineCard, bal, 3).find((s) => s.foeShipId === 'foe-r-corona-nexus')!
+    const baseline = activeFoeSpecsOf(baselineCard, ratioBalance, 3).find((s) => s.foeShipId === 'foe-r-corona-nexus')!
+    const reduced = activeFoeSpecsOf(cardNexus, ratioBalance, 3).find(s => s.foeShipId === 'foe-r-corona-nexus')!
+    expect(cardNexus.ships!.find(slot => slot.ship.id === 'foe-r-corona-nexus')!.ship.shotDmg).toBe(Math.round(519 * .3))
     expect(baseline.weapons[0]!.burst, '基线：改判前没有连发').toBeUndefined()
+    expect(reduced.weapons[0]!.burst).toEqual(nexus!.weapons[0]!.burst)
     expect(
-      baseline.weapons[0]!.shotDmg! / nexus!.weapons[0]!.shotDmg!,
-      `每发应降到原来的 0.3 倍（基线 ${baseline.weapons[0]!.shotDmg} ⇒ 现在 ${nexus!.weapons[0]!.shotDmg}）`,
+      baseline.weapons[0]!.shotDmg! / reduced.weapons[0]!.shotDmg!,
+      '同一建档管线每发应降到原来的0.3倍',
     ).toBeGreaterThan(3.2)
-    expect(baseline.weapons[0]!.shotDmg! / nexus!.weapons[0]!.shotDmg!).toBeLessThan(3.45)
+    expect(baseline.weapons[0]!.shotDmg! / reduced.weapons[0]!.shotDmg!).toBeLessThan(3.45)
     // 对照：H 族那两张卡两件都不带（零行为变化）
     for (const cardId of ['ink-harass', 'ink-flagship']) {
       const card = ctx.anomalies.get(cardId)
@@ -433,7 +438,7 @@ describe('聚焦阵列：远端衰减爬到 1.0（随波重置）', () => {
       `第三个窗口（衰减已爬到 0.8）：带件那场应明显更高（实测 ${(withFocus.win[2]! / without.win[2]!).toFixed(2)}×）`,
     ).toBeGreaterThan(1.15)
     console.log(
-      `  [读数] 聚焦阵列 A/B（32 舰 · corona-nexus）：换波锚点 ${JSON.stringify(anchors)}；` +
+      `  [读数] 聚焦阵列 A/B（12舰加血压力夹具 · corona-nexus）：换波锚点 ${JSON.stringify(anchors)}；` +
         `中枢自身飘字伤害（+0~20s / +20~40s / +40~60s）：带件 ${withFocus.win.map((x) => x.toFixed(0)).join(' / ')}` +
         ` · 对照 ${without.win.map((x) => x.toFixed(0)).join(' / ')}` +
         ` ⇒ 第三窗口 带件/对照 = ${(withFocus.win[2]! / without.win[2]!).toFixed(3)}（第一窗口 ${(withFocus.win[0]! / without.win[0]!).toFixed(3)}）`,

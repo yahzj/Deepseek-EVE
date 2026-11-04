@@ -15,7 +15,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
-import { createInitialState } from '../src/state'
+import { createCommandReadyState as createInitialState } from './helpers/command-ready'
 import type { GameState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
@@ -89,7 +89,7 @@ describe('虫洞 · 入洞（E 批）', () => {
     expect(state.wormhole.run).not.toBeNull()
     expect(state.wormhole.run!.fleet).toEqual([a, b])
     expect(state.wormhole.run!.totalMass).toBe(7_000)
-    expect(state.wormhole.run!.turnsTotal).toBe(61)
+    expect(state.wormhole.run!.turnsTotal).toBe(62)
     // 已在洞里：不许再进（先撤离/结算）
     expect(wormholeEnter(state, ctx, [a], 1).ok).toBe(false)
   })

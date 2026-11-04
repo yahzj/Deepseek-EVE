@@ -13,12 +13,18 @@ import { wormholeStartBattle } from '../src/wormholeBattle'
 import { wormholeHoldStow } from '../src/wormholeSalvage'
 import { gameSaveMethods, ROOT } from './helpers/save-shell'
 import type { CommandResult } from '../src/engine'
+import { combatRosterOf } from '../src/combat/command/roster'
+import { encounterCombatRosterOf } from '../src/combat/command/locks'
 
 const ctx = buildSimContext()
 const BASE = 'ammo-kinetic-l'
 const MK2 = 'ammo-kinetic-2'
 function setup(count = 2) {
   const state = createInitialState({ nowWallMs: 0, seed: 7, prologue: true })
+  state.standingsEarned = { dsi: 20 }
+  state.skills.trained['fleet-command-basic'] = 5
+  state.skills.trained['fleet-command-coordination'] = 5
+  state.skills.trained['fleet-command-integration'] = 5
   const fleet = Array.from({ length: count }, () => addShipToFleet(state, 'sh-thresher'))
   state.shipId = fleet[0]!
   for (const uid of fleet) state.fleet[uid]!.fitted = { high: ['mod-turret-kin-1'], mid: [], low: [] }
@@ -179,8 +185,12 @@ describe('真实开战外壳软确认', () => {
   it('与活动切换两段确认叠加只需依次确认，不重复弹药警告', () => {
     const p = warningProbe()
     p.state.mining.active = true
-    const command = () => p.state.mining.active ? { ok: false, errorId: 'confirm-activity' } : { ok: true }
-    const switchActivity = p.methods.withActivitySwitch as (key: string, run: () => CommandResult) => CommandResult
+    // 远征确认已改为将确认事实传入命令事务，不由外壳提前停掉活动。
+    const command = (confirmed?: boolean) => {
+      if (confirmed) p.state.mining.active = false
+      return p.state.mining.active ? { ok: false, errorId: 'confirm-activity' } : { ok: true }
+    }
+    const switchActivity = p.methods.withActivitySwitch as (key: string, run: (confirmed?: boolean) => CommandResult) => CommandResult
     const run = () => switchActivity.call(p.methods, 'expedition', command)
     expect(p.warn('fight', p.fleet, run).errorId).toBe('ui.battleAmmo.001')
     expect(p.warn('fight', p.fleet, run).errorId).toBe('confirm-activity')
@@ -219,7 +229,7 @@ describe('真实开战外壳软确认', () => {
   it('所有手动战斗入口复用同一警告；关闭重复作战不被缺弹拦住', () => {
     const names = ['startExpeditionAt', 'startExpeditionFromMiningAt', 'startLairExpeditionAt', 'challengeWeekendFlagship', 'fightEncounterNow',
       'bountyLoopAt', 'invasionLoopAt', 'assignAiExpeditionAt', 'wormholeFight', 'wormholeTravel', 'wormholeActivate']
-    const methods = gameSaveMethods(names, { weekendSanitizeFlagshipSquad: () => ['chosen'], weekendPrepSquadOf: () => ['default'],
+    const methods = gameSaveMethods(names, { combatRosterOf, encounterCombatRosterOf, weekendSanitizeFlagshipSquad: () => ['chosen'], weekendPrepSquadOf: () => ['default'],
       Date: { now: () => 1 }, wormholeTravelTo: (s: GameState) => { s.wormhole.run!.battle = {} as never; return { ok: true } },
       wormholeActivateAt: (s: GameState) => { s.wormhole.run!.battle = {} as never; return { ok: true } }, structuredClone })
     const state = setup(1).state

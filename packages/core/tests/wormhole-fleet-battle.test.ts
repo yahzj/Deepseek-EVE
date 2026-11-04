@@ -207,13 +207,13 @@ describe('虫洞 · 敌方选靶模式（船长 2026-09-13 定）', () => {
     expect(pickMyUnitTarget(state, battle, units, 'smallest')!.tag).toBe('ally-1') // 唯一的 T1
     expect(pickMyUnitTarget(state, battle, units, 'largest')!.tag).toBe('player') // 唯一的 T4
     expect(pickMyUnitTarget(state, battle, units, 'noncombat')!.tag).toBe('ally-1') // 唯一的非战斗船
-    // 随机：多次抽取必须能抽到不止一艘（等权随机的可观测证据）
+    // 舰级加权随机仍允许不同舰种被选中。
     const seen = new Set<string>()
     for (let i = 0; i < 40; i++) seen.add(pickMyUnitTarget(state, battle, units, 'random')!.tag)
     expect(seen.size).toBeGreaterThan(1)
   })
 
-  it('并列一律等权随机；编队里没有非战斗船 ⇒ 退回随机', () => {
+  it('同级同插件并列等权；编队里没有非战斗船 ⇒ 退回舰级加权', () => {
     const state = fresh()
     const a = addShip(state, 'sandcat')
     const b = addShip(state, 'sandcat') // 同型第 2 艘：与 a 同档、同定位
@@ -282,9 +282,7 @@ describe('虫洞 · 敌方选靶模式（船长 2026-09-13 定）', () => {
     const before1 = state.rng.count
     for (let i = 0; i < 20; i++) expect(pickMyUnitTarget(state, battle, units, 'largest')!.tag).toBe('player')
     expect(state.rng.count).toBe(before1 + 20)
-    // ② chance = 0.6：**模式掷中六成**；没掷中的四成退回等权随机——注意"乱打"时**也可能**正好
-    //    打到模式原本要打的那艘（三艘里 1/3）⇒ 观测命中率 = 0.6 + 0.4 ÷ 3 ≈ 0.733，不是 0.6。
-    //    判据因而取三条：不是铁律（有人被乱打）· 不是纯随机（模式确实在起作用）· 落在这条理论带内。
+    // ② 其余四成按舰级4/1/2加权，总选中率 = 0.6 + 0.4×4/7。
     let hits = 0
     const before2 = state.rng.count
     for (let i = 0; i < 400; i++) {
@@ -293,13 +291,9 @@ describe('虫洞 · 敌方选靶模式（船长 2026-09-13 定）', () => {
     // 每发固定两颗骰：倾向骰 + 并列随机（命中与没命中都各一颗）
     expect(state.rng.count).toBe(before2 + 800)
     const misses = 400 - hits
-    // 带子怎么定的：理论上命中率 = 0.6 + 0.4 ÷ 3 ≈ 0.733（400 发的 3σ ≈ ±0.066），但 `nextRandom`
-    // 是"每抽重播种子"的实现、同一条确定性流实测略偏高（正向读到 0.7675；判据写反时读到 0.5475）
-    // ⇒ 取实测 ±0.05 作带子。本用例自持随机流（不依赖上游消费顺序）⇒ 稳定可复现、不是"看运气"。
-    expect(misses).toBeGreaterThan(70) // 铁律会给 0 次
-    expect(misses).toBeLessThan(135) // 纯随机会给 ≈267 次（2/3）
-    expect(hits / 400).toBeGreaterThan(0.68)
-    expect(hits / 400).toBeLessThan(0.8)
+    expect(misses).toBeGreaterThan(30) // 铁律会给0次
+    expect(misses).toBeLessThan(100)
+    expect(hits / 400).toBeCloseTo(0.6 + 0.4 * 4 / 7, 1)
     // ③ chance = 0：模式**完全失效**（三艘都可能被抽到）——"倾向"而不是"铁律"的可观测证据
     const seen = new Set<string>()
     for (let i = 0; i < 200; i++) seen.add(pickMyUnitTarget(state, battle, units, 'largest', 0)!.tag)
@@ -444,15 +438,15 @@ describe('虫洞 · 血条上限恒为满值（2026-09-14 船长报障修复）'
     expect(rt.hpMax).toEqual({ s: full.hp.s, a: full.hp.a, h: full.hp.h })
     // ② 当前值吃那份折扣（护盾不吃：每场满值重建）
     expect(rt.hp.s).toBeCloseTo(full.hp.s, 6)
-    expect(rt.hp.a).toBeCloseTo(full.hp.a * 0.5, 6)
-    expect(rt.hp.h).toBeCloseTo(full.hp.h * 0.4, 6)
+    expect(rt.hp.a).toBe(Math.ceil(full.hp.a * 0.5))
+    expect(rt.hp.h).toBe(Math.ceil(full.hp.h * 0.4))
     expect(rt.hp.a).toBeLessThan(rt.hpMax!.a) // 血条开局就该**不是**满格
     // ③ 视图上限 = 运行时上限（修前洞内这两者不等 —— 舰船卡片上的分母取自 hpMax）
     const arcs = battleArcsFor(state, ctx, { battle, anomaly: ctx.anomalies.get(CARD)!, leaderShipId: leader })!
     expect(arcs.maxHp.me).toEqual(battle.units['player']!.hpMax)
     const viewAlly = arcs.myUnits.find((u) => u.tag === 'ally-1')!
     expect(viewAlly.hpMax).toEqual(rt.hpMax)
-    expect(viewAlly.hp.a).toBeCloseTo(full.hp.a * 0.5, 6)
+    expect(viewAlly.hp.a).toBe(Math.ceil(full.hp.a * 0.5))
   })
 
   it('单船路径同款：主控带伤入场时上限仍是满值（与洞外读数一致）', () => {
@@ -465,8 +459,8 @@ describe('虫洞 · 血条上限恒为满值（2026-09-14 船长报障修复）'
     const battle = startBattleFor(state, ctx, uid, CARD, 0)!
     const rt = battle.units['player']!
     expect(rt.hpMax).toEqual({ s: full.hp.s, a: full.hp.a, h: full.hp.h })
-    expect(rt.hp.a).toBeCloseTo(full.hp.a * 0.6, 6)
-    expect(rt.hp.h).toBeCloseTo(full.hp.h * 0.3, 6)
+    expect(rt.hp.a).toBe(Math.ceil(full.hp.a * 0.6))
+    expect(rt.hp.h).toBe(Math.ceil(full.hp.h * 0.3))
   })
 
   it('满血船零变化：上限 = 当前值（旧档与既有标定读数不受影响）', () => {

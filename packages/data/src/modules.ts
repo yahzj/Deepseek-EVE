@@ -277,12 +277,13 @@ const MODULES_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
       L10N['mod.copy.026']!.zh,
   },
   "mod-shieldfield-2": {
-    name: '护盾充能力场装置 MK2',
-    description: L10N['mod.copy.027']!.zh,
+    // ⟪文案调整 2026-11-01⟫ 船长确认改名与定向投送。
+    name: L10N['mod.fleetSupport.001']!.zh,
+    description: L10N['mod.fleetSupport.003']!.zh,
   },
   "mod-shieldfield-3": {
-    name: '护盾充能力场装置 MK3',
-    description: L10N['mod.copy.027']!.zh,
+    name: L10N['mod.fleetSupport.002']!.zh,
+    description: L10N['mod.fleetSupport.003']!.zh,
   },
   "mod-armor-kin-1": {
     name: '装甲镀层 MK1·动能型',
@@ -486,15 +487,15 @@ const MODULES_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
   },
   "mod-lock-1": {
     name: '目标锁定阵列 MK1',
-    description: L10N['mod.copy.047']!.zh,
+    description: L10N['mod.fleetSupport.004']!.zh,
   },
   "mod-lock-2": {
     name: '目标锁定阵列 MK2',
-    description: L10N['mod.copy.047']!.zh,
+    description: L10N['mod.fleetSupport.004']!.zh,
   },
   "mod-lock-3": {
     name: '目标锁定阵列 MK3',
-    description: L10N['mod.copy.047']!.zh,
+    description: L10N['mod.fleetSupport.004']!.zh,
   },
   "mod-stealth-2": {
     name: '隐秘行动装置 MK2',
@@ -591,7 +592,8 @@ const MODULES_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
       L10N['mod.copy.065']!.zh,
   },
   "mod-lair-blink-r": {
-    name: '跃迁规避装置',
+    // ⟪文案调整 2026-10-19⟫ 船长定名短距离跃迁装置。
+    name: '短距离跃迁装置',
     description: L10N['mod.copy.066']!.zh,
   },
   "mod-lair-beam-r": {
@@ -670,7 +672,7 @@ const MODULES_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
   },
   "mod-wh-d-lock": {
     name: '守墓者丧钟',
-    description: L10N['mod.copy.082']!.zh,
+    description: L10N['mod.fleetSupport.004']!.zh,
   },
   "mod-wh-d-laser": {
     name: '陵寝棱镜炮',

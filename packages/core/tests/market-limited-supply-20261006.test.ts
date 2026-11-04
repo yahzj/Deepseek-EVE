@@ -34,7 +34,7 @@ describe('限额慢补货：存货/经济池分离与共用成交额度', () => 
     const w = world()
     expect(quantity(w.state)).toBe(3000)
     expect(w.state.market.npcSell[KEY]!.map(o => o.qty)).toEqual([900, 1050, 1050])
-    expect(w.state.market.npcBuy[KEY]!.reduce((n, o) => n + o.qty, 0)).toBe(29)
+    expect(w.state.market.npcBuy[KEY]!.reduce((n, o) => n + o.qty, 0)).toBe(30) // 13 + ceil(13×1.25)
     expect(stock(w.state)).toEqual({ remaining: 3000, refillProgressMs: 0, lastRefillGameMs: 0 })
   })
   it('市价购买钱货守恒，买空后不能再次购买或重开市补满', () => {

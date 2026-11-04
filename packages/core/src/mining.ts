@@ -16,25 +16,26 @@
  *   概率按分钟缩放，命中 = 连续 2 循环 ×3 的红利窗口，窗口内不再掷点）；
  * - 日志克制：只在 开始/停止/满舱转返航/卸货完成/富矿脉/换驾驶善后 时写。
  */
+import { ceilFinalQuantity } from './quantity'
 import { tuningMul } from './tuning'
 import { addLog, HOME_GALAXY_ID, miningHalt } from './state'
 import { applyActivityGate } from './activityGate'
+import { beginDeparture, consumeDeparture, cancelDeparture, departureOrigin, departureArrivalLog } from './departure'
 import { bumpFirst } from './firstTasks'
 import { pilotUnavailableReason } from './activityGate'
 import type { CommandResult } from './engine'
-import type { GameState } from './state'
+import type { GameState, WorkReturnProgress } from './state'
 import type { BeltDef, ItemDef, ShipDef, SimContext } from './types'
 import { nextRandom, pickWeighted } from './rng'
 import { isMineableItem } from './labels'
-import { lairNameOf } from './lairs'
 import { addItem, cargoUnitM3, freeCargoM3, unloadCargoOfShipToWarehouse } from './inventory'
 import { DSI_FACTION_ID, standingOf } from './standing'
 import { shortestTravelMinutes, travelLegMs } from './travel'
 import { actionBlockReason, markExplored } from './explore'
-import { miningReturnLegMs, nearestStationGalaxyId } from './location'
+import { miningReturnLegMs, nearestStationGalaxyId, builtSiteAtGalaxy } from './location'
 import { fleetDefOf, shipDisplayName } from './instances'
 import { familyModules } from './equipment'
-import { scaledReturnMs } from './trips'
+import { scaledReturnMs, workReturnLeg } from './trips'
 import { beginJumpFuelLeg, jumpFuelLegMsOf } from './jumpFuel'
 
 /** 一次循环的实际参数（技能+装备加成后的最终值） */
@@ -128,7 +129,7 @@ export function getMiningParams(
    */
   const unitsPerCycle = Math.max(
     1,
-    Math.floor(
+    ceilFinalQuantity(
       (ship.oreUnitsPerCycle * prodMult * (1 + minerBonus) * tuningMul(state, 'miningYield')) /
         Math.max(0.01, ore.unitM3 ?? 1),
     ),
@@ -316,6 +317,8 @@ function miningPreflight(state: GameState, beltId: string, ctx: SimContext): Com
 
 /** 玩家指令：开始在指定采集点开采（矿石/气体/冰矿；高价值采集点有协会声望门槛） */
 export function startMining(state: GameState, beltId: string, ctx: SimContext): CommandResult {
+  if (state.departure) return { ok: false, errorId: 'core.departure.001' }
+  const departureFrom = departureOrigin(state, ctx)
   const pre = miningPreflight(state, beltId, ctx)
   if (!pre.ok) return pre
   const belt = ctx.belts.get(beltId)!
@@ -349,6 +352,11 @@ export function startMining(state: GameState, beltId: string, ctx: SimContext): 
    */
   const gateSkip = applyActivityGate(state, 'mining', ctx)
   if (gateSkip) return gateSkip
+  if (!departureFrom.docked && state.pendingActivityReturn) {
+    delete state.shipReturns[state.shipId]
+    state.pendingActivityReturn = null
+    state.haltedBySwitch = null
+  }
   if (restartingReturn) { state.pendingActivityReturn = null; state.haltedBySwitch = null }
   /**
    * **新指令取消"停止返航"**（**船长 2026-10-02** 报障的连带）——
@@ -375,6 +383,7 @@ export function startMining(state: GameState, beltId: string, ctx: SimContext): 
   m.active = true
   m.beltId = beltId
   m.phase = 'mining' // 去程取消：指令即视为已抵达矿带，立即开始采掘（无出航相位）
+  delete m.fuelMul
   m.cycleAccMs = 0
   m.phaseAccMs = 0
   m.tripUnits = 0
@@ -383,7 +392,7 @@ export function startMining(state: GameState, beltId: string, ctx: SimContext): 
   m.originGalaxy = fromField // 仍记录出发点——用于把去程时间并入首次返航腿
   m.rvLeft = 0 // 富矿红利窗口与矿带绑定：新开（含换带）一律从无窗口起步
   // 船即时到矿带：矿带挂星系（且非母港）即刻点亮探索
-  if (belt.galaxyId) markExplored(state, belt.galaxyId)
+  beginDeparture(state, ctx, 'mining', belt.galaxyId ?? HOME_GALAXY_ID, departureFrom)
 
   const params = getMiningParams(state, ctx)
   const shipName = shipDisplayName(state, ctx, state.shipId)
@@ -396,7 +405,7 @@ export function startMining(state: GameState, beltId: string, ctx: SimContext): 
   const tripNote = m.autoCycle
     ? ' 已启用自动循环：满舱自动返航空间站卸货，卸完自动开始下一趟。'
     : ' 自动循环已关闭：货舱满后将停在矿带。'
-  addLog(
+  departureArrivalLog(
     state,
     'industry',
     `开始开采：${belt.name}。${shipName} 已抵达矿带，立即开始采掘${cycleNote}（满载返航约 ${retSec + outSec} 秒，去程时间已并入返航${travelNote}）。${tripNote}`,
@@ -416,44 +425,8 @@ export function startMining(state: GameState, beltId: string, ctx: SimContext): 
 /** 玩家指令：召回远征（T1 活动窗口统一停止）。仅去程/返航可召回——召回即直接回港、无战果；交火中禁止（避免绕过战斗结算）。
  * 2026-09-06：胜利自动返航（returnReason='victory'）不可召回——路程成本必付，防止"打完立即召回免费回家"。
  * （2026-10-02 从 expedition.ts 原样搬来：唯一跨模块调用方就是本模块，破 mining→expedition 环；index 改从本模块导出。） */
-export function recallExpedition(state: GameState, ctx: SimContext): CommandResult {
-  const exp = state.expedition
-  if (!exp.active) return { ok: false, error: '当前没有进行中的远征。', errorId: 'core.expedition.018' }
-  if (exp.phase === 'battle') {
-    return { ok: false, error: '交火中无法撤离——请先让战斗分出胜负。', errorId: 'core.expedition.019' }
-  }
-  if (exp.phase === 'back' && exp.returnReason === 'victory') {
-    return {
-      ok: false,
-      error: '胜利返航中不可召回——战果已结算，返航（去程并入返航）是本次悬赏的必付航程。',
-      errorId: 'core.expedition.020',
-    }
-  }
-  const anomaly = exp.anomalyId ? ctx.anomalies.get(exp.anomalyId) : undefined
-  const name = anomaly
-    ? exp.lairTier
-      ? lairNameOf(anomaly, exp.lairTier)
-      : anomaly.name
-    : exp.anomalyId ?? '目标'
-  exp.active = false
-  exp.anomalyId = null
-  exp.battle = null
-  exp.lairTier = undefined
-  exp.factionActive = undefined
-  exp.phase = 'out'
-  exp.finishAtGameMs = 0
-  exp.eventId = null
-  exp.eventFired = false
-  state.awayGalaxy = null
-  // 2026-09-08：召回 = 立即回到母港停靠——进港自动整仓卸货
-  const moved = unloadCargoOfShipToWarehouse(state, ctx, state.shipId)
-  addLog(
-    state,
-    'fleet',
-    `远征已召回：舰队中止前往「${name}」并返回母港（无战果）${moved > 0 ? `；货仓已自动卸入物品仓库（${moved.toLocaleString('zh-CN')} 单位）。` : '。'}`,
-  )
-  return { ok: true }
-}
+import { recallExpedition } from './expedition/recall'
+export { recallExpedition } from './expedition/recall'
 
 /**
  * T4 延后项（船长 2026-09-04 定稿）：远征中直接转开采。
@@ -490,21 +463,30 @@ export function startMiningFromExpedition(state: GameState, beltId: string, ctx:
  * 建"善后返航账本"（`state.shipReturns`）：由 `advanceShipReturns` 每拍推进，**到港自动整仓卸入物品仓库并清账**。
  *
  * 腿长口径与 `advanceMining` 的返航段一致：`返航腿 + 出航腿`（去程并入返航），再按货仓占比缩放。
- * ⚠ `miningHalt` 已把 `phaseAccMs` 清零 ⇒ 返航进度从 0 起（**取最坏**：宁可多飞一段，也不凭空瞬移回港）。
+ * 停机前快照保留已走时间及燃料倍率，不能因停止作业而重新点火。
  *
  * @returns 约几秒后到港；**不需要返航**（舰船已不在）⇒ `null`
  */
-function armMiningReturnLeg(state: GameState, ctx: SimContext, beltId: string): number | null {
+function armMiningReturnLeg(state: GameState, ctx: SimContext, beltId: string, progress: WorkReturnProgress): number | null {
   const ship = state.fleet[state.shipId]
   if (!ship) return null
-  const outFull = oneOutboundLegMs(state, ctx, beltId)
-  const fullLeg = oneLegMs(state, ctx, beltId) + outFull
-  const legMs = Math.max(1, scaledReturnMs(fullLeg, state, ctx, state.shipId))
-  state.shipReturns[state.shipId] = { beltId: null, legMs, phaseAccMs: 0, reason: 'miningStop' }
-  return Math.max(0, Math.round(legMs / 1000))
+  const baseMs = progress.phase === 'returning' ? activeMiningReturnMs(state, ctx, beltId, progress)
+    : scaledReturnMs(oneLegMs(state, ctx, beltId) + oneOutboundLegMs(state, ctx, beltId), state, ctx, state.shipId)
+  const leg = workReturnLeg(state, 'mine', baseMs, progress)
+  state.shipReturns[state.shipId] = { beltId: null, ...leg, reason: 'miningStop' }
+  return Math.max(0, Math.round((leg.legMs - leg.phaseAccMs) / 1000))
+}
+
+/** 已开始的自动返航保持最近站和本趟出发地，不改成换船的新航程。 */
+function activeMiningReturnMs(state: GameState, ctx: SimContext, beltId: string, progress: WorkReturnProgress): number {
+  const galaxyId = ctx.belts.get(beltId)?.galaxyId
+  const station = galaxyId ? nearestStationGalaxyId(state, ctx, galaxyId) : HOME_GALAXY_ID
+  return scaledReturnMs(oneLegMs(state, ctx, beltId, undefined, station)
+    + oneOutboundLegMs(state, ctx, beltId, undefined, progress.originGalaxy ?? station), state, ctx, state.shipId)
 }
 
 export function stopMining(state: GameState, ctx: SimContext): boolean {
+  const stayedAtPort = cancelDeparture(state, 'mining')
   /** 状态改动走 `state.ts` 的单点 `miningHalt`（**进洞前自动停采**也用它）⇒ 两条停采路径不会各写一份 */
   const info = miningHalt(state)
   if (info === null) return false
@@ -530,8 +512,8 @@ export function stopMining(state: GameState, ctx: SimContext): boolean {
    * 🔴 **安排真实返航**（**船长 2026-10-02**：与打捞同一个 BUG —— 旧实现只清作业态、**没有返港动作**）
    * ⇒ 建返航账本：飞回来、到港整仓卸货、写「已随打捞善后返航到港」那条日志。
    */
-  if (info.beltId !== null) {
-    const remainSec = armMiningReturnLeg(state, ctx, info.beltId)
+  if (info.beltId !== null && !stayedAtPort) {
+    const remainSec = armMiningReturnLeg(state, ctx, info.beltId, info)
     if (remainSec !== null) {
       const shipName = shipDisplayName(state, ctx, state.shipId)
       const haveCargo = tripUnits > 0
@@ -575,6 +557,8 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
 
   let remaining = deltaMs
   while (m.active && remaining > 0) {
+    remaining = consumeDeparture(state, 'mining', remaining)
+    if (remaining <= 0) break
     // ── 返航阶段（去程并入返航；返航腿按货仓占比缩放——空仓快、满仓=原时长，船长 2026-09-05）──
     if (m.phase === 'returning' || m.phase === 'outbound') {
       const beltDef = m.beltId ? ctx.belts.get(m.beltId) : undefined
@@ -628,6 +612,9 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
         m.cycleAccMs = 0
         m.tripUnits = 0
         m.originGalaxy = null // 起点使命完成，此后循环以空间站为基准
+        delete m.fuelMul
+        beginDeparture(state, ctx, 'mining', belt?.galaxyId ?? HOME_GALAXY_ID,
+          { galaxy: stGal, site: stGal === HOME_GALAXY_ID ? null : builtSiteAtGalaxy(state, ctx, stGal), docked: true })
       } else {
         // 旧档遗留的 outbound 相位（读档恢复）：走完空船腿到达矿带后恢复采掘并点亮探索
         const belt = m.beltId ? ctx.belts.get(m.beltId) : undefined
@@ -958,22 +945,24 @@ export function retireMiningShip(
    * - `preserveExisting`：该船**已经在返航账本里** ⇒ 只**修正腿长与日志**、**保留已走相位**
    *   （账本那份是 `state.haltActivityForSwitch` 建的**占位**：腿长按相位粗估、日志没船名没秒数）。
    */
-  opts?: { beltId?: string; preserveExisting?: boolean; fallbackLegMs?: number },
+  opts?: { beltId?: string; preserveExisting?: boolean; fallbackLegMs?: number; progress?: WorkReturnProgress },
 ): boolean {
   const m = state.mining
   const auto = opts?.beltId !== undefined
+  const snapshot = opts?.progress ?? (auto ? state.pendingActivityReturn?.progress : undefined)
+  const progress = snapshot ?? m
   if (opts?.preserveExisting === true && state.shipId in state.shipReturns) {
     /**
      * **占位账本 ⇒ 用真值修正**（**2026-10-02**）：`state.haltActivityForSwitch` 先建了一份
      * "腿长靠相位估"的占位（它不能 import 本模块），这里用 `ctx` 算出真实腿长补上，
      * 并写下**带船名与真实秒数**的那条日志（那一刻作业态已清，只有这里读得到 ctx）。
      */
-    const legFullFix = miningReturnLegMs(state, ctx, opts.beltId!)
-    const legMsFix = scaledReturnMs(legFullFix, state, ctx, state.shipId)
     const ret = state.shipReturns[state.shipId]!
-    const already = ret.phaseAccMs
-    ret.legMs = Math.max(1, legMsFix)
-    ret.phaseAccMs = Math.min(ret.legMs, already)
+    const baseMs = progress.phase === 'returning' ? activeMiningReturnMs(state, ctx, opts.beltId!, progress)
+      : scaledReturnMs(miningReturnLegMs(state, ctx, opts.beltId!), state, ctx, state.shipId)
+    const leg = workReturnLeg(state, 'mine', baseMs, progress)
+    ret.legMs = leg.legMs
+    ret.phaseAccMs = snapshot ? leg.phaseAccMs : Math.min(leg.legMs, Math.max(ret.phaseAccMs, leg.phaseAccMs))
     const beltFix = ctx.belts.get(opts.beltId!)
     const beltNameFix = beltFix?.name ?? '矿井'
     const shipNameFix = shipDisplayName(state, ctx, state.shipId)
@@ -995,6 +984,7 @@ export function retireMiningShip(
     )
     m.active = false
     m.beltId = null
+    delete m.fuelMul
     return true
   }
   if (!auto && (!m.active || !m.beltId)) return false
@@ -1005,13 +995,9 @@ export function retireMiningShip(
   /** ⚠ allbackLegMs：调用方（state.haltActivityForSwitch，**不能 import 本模块**）给的兜底腿长
    *  ——它没有 ctx，先按状态里的相位估一个；引擎下一拍会用真值覆盖。*/
   const legFull = miningReturnLegMs(state, ctx, beltId)
-  const legMs = opts?.fallbackLegMs !== undefined ? Math.max(1, Math.round(opts.fallbackLegMs)) : scaledReturnMs(legFull, state, ctx, state.shipId)
-  const phaseAccMs =
-    m.phase === 'outbound'
-      ? Math.min(legMs, m.phaseAccMs * 2) // 空船出航腿为正常一半：折返按 2×折算已走
-      : m.phase === 'returning'
-        ? m.phaseAccMs
-        : 0
+  const baseMs = progress.phase === 'returning' ? activeMiningReturnMs(state, ctx, beltId, progress)
+    : opts?.fallbackLegMs !== undefined ? Math.max(1, Math.round(opts.fallbackLegMs)) : scaledReturnMs(legFull, state, ctx, state.shipId)
+  const { legMs, phaseAccMs } = workReturnLeg(state, 'mine', baseMs, progress)
   const oldShip = state.fleet[state.shipId]
   const haveCargo = oldShip ? Object.keys(oldShip.cargo).some((k) => (oldShip.cargo[k] ?? 0) > 0) : false
   state.shipReturns[state.shipId] = {
@@ -1032,6 +1018,7 @@ export function retireMiningShip(
   m.tripUnits = 0
   m.originGalaxy = null
   m.rvLeft = 0 // 换船即离开矿带作业：红利窗口清零
+  delete m.fuelMul
   // ⟪文案调整 2026-10-02⟫ p3 片段「（到港整仓卸货）」→「（卸空货仓）」（同上，见 `core.salvaging.018`）。
   const logText = auto
     ? `开采已停止：${shipName} 从「${beltName}」返航空间站${haveCargo ? '（卸空货仓）' : ''}——约 ${remainSec} 秒后到港。`

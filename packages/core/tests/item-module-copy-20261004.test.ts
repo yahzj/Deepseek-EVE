@@ -5,7 +5,9 @@ import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
 import { ITEMS, MODULES, L10N, EN_ITEMS_ALL, EN_MODULES, EN_BLUEPRINTS, buildSimContext, l10nEntryText } from '@whale/data'
 import * as core from '../src/index'
+import { weightedSum } from '../src/equipment'
 import { idLiteralsIn, stripComments } from '../../../tools/text-scan'
+import { applyApprovedFleetModuleDelta } from './helpers/approved-fleet-delta-20261101'
 
 function historical<T>(file: string, symbol: string, bindings: Record<string, unknown> = {}): T {
   const text = execFileSync('git', ['show', `d2ab64f1:${file}`], { encoding: 'utf8' })
@@ -17,7 +19,7 @@ function historical<T>(file: string, symbol: string, bindings: Record<string, un
 }
 
 describe('物品装备说明双语与数据守恒', () => {
-  it('英文覆盖的物品和装备名称仅信号谜质采用后续已确认改名，其余保持改稿前定名', () => {
+  it('英文覆盖名称仅采用后续已确认改名，其余保持改稿前定名', () => {
     const text = execFileSync('git', ['show', 'd2ab64f1:packages/data/src/l10n.ts'], { encoding: 'utf8' })
     const ast = ts.createSourceFile('l10n.ts', text, ts.ScriptTarget.Latest, true)
     for (const [symbol, live] of [['EN_ITEMS', EN_ITEMS_ALL], ['EN_MODULES', EN_MODULES]] as const) {
@@ -27,8 +29,16 @@ describe('物品装备说明双语与数据守恒', () => {
         if (!ts.isPropertyAssignment(field) || !ts.isStringLiteral(field.name) || !ts.isObjectLiteralExpression(field.initializer)) continue
         const name = field.initializer.properties.find((p): p is ts.PropertyAssignment => ts.isPropertyAssignment(p) && p.name.getText(ast) === 'name')?.initializer
         if (name && ts.isStringLiteral(name)) {
-          const renamed: Record<string, string> = { 'mat-wh-essence': 'Signal Enigma', 'synaptic-accelerant': 'Synaptic Accelerant MK1' }
-          const expected = symbol === 'EN_ITEMS' ? renamed[field.name.text] ?? name.text : name.text
+          const renamed: Record<string, string> = { 'mat-wh-essence': 'Signal Enigma', 'synaptic-accelerant': 'Synaptic Accelerant MK1', 'mod-lair-blink-r': 'Short-Range Warp Device' }
+          const fieldNames: Record<string, string> = { 'mod-shieldfield-2': 'mod.fleetSupport.001', 'mod-shieldfield-3': 'mod.fleetSupport.002' }
+          if (fieldNames[field.name.text]) {
+            const entry = L10N[fieldNames[field.name.text]!]!
+            expect(entry.enDeferred).toBeUndefined()
+            expect(entry.en).not.toBe('')
+            expect(live[field.name.text]?.name).toBe(l10nEntryText(entry, 'en'))
+            continue
+          }
+          const expected = renamed[field.name.text] ?? name.text
           expect(live[field.name.text]?.name, field.name.text).toBe(expected)
         }
       }
@@ -43,12 +53,13 @@ describe('物品装备说明双语与数据守恒', () => {
       return item.id === 'mat-wh-essence' ? { ...item, name: '信号谜质' } : item
     })
     const strip = (entries: typeof ITEMS) => entries.map(({ description: _description, ...rest }) => rest)
-    const added = new Set(['ammo-kinetic-3', 'ammo-explosive-3', 'ammo-plasma-3', 'blackbox-c', 'blackbox-d', 'deep-space-probe', 'drone-jawclaw',
-      'invasion-beacon-r', 'invasion-beacon-c', 'invasion-beacon-h', 'invasion-beacon-d'])
+    const added = new Set(['ammo-kinetic-3', 'ammo-explosive-3', 'ammo-plasma-3', 'blackbox-c', 'blackbox-d', 'deep-space-probe', 'drone-jawclaw', 'drone-repair-mil',
+      'invasion-beacon-r', 'invasion-beacon-c', 'invasion-beacon-h', 'invasion-beacon-d',
+      ...['a', 'c', 'd', 'e', 'g'].map(f => `box-encrypted-${f}`)])
     expect(ITEMS.filter(item => added.has(item.id)).map(item => item.id).sort()).toEqual([...added].sort())
     expect(strip(ITEMS.filter(item => !added.has(item.id)))).toEqual(strip(adjusted))
   })
-  it('旧装备字段仅按已确认值调整，新增十件另由装备专项约束', () => {
+  it('旧装备字段仅按已确认值调整，新增装备与五族插件另由专项约束', () => {
     const plugs = historical<typeof MODULES>('packages/data/src/plugs.ts', 'SHIP_PLUGS')
     const before = historical<typeof MODULES>('packages/data/src/modules.ts', 'MODULES', { SHIP_PLUGS: plugs })
     const strip = (entries: typeof MODULES) => entries.map(({ description: _description, ...rest }) => rest)
@@ -61,21 +72,31 @@ describe('物品装备说明双语与数据守恒', () => {
       // 2026-10-13船长确认：护盾直接调参及上一轮固定血量插件增量。
       const shieldChanges: Record<string, number> = { 'mod-shieldchg-1': .08, 'mod-shieldchg-2': .133, 'mod-shieldchg-3': .213 }
       if (shieldChanges[mod.id] !== undefined) return { ...mod, shieldPulsePct: shieldChanges[mod.id] }
-      if (['mod-shieldfield-2', 'mod-shieldfield-3'].includes(mod.id)) return { ...mod, shieldFieldPct: .067 }
+      if (['mod-shieldfield-2', 'mod-shieldfield-3'].includes(mod.id)) return { ...mod, name: `护盾投送力场 MK${mod.id.slice(-1)}` }
       if (mod.id === 'plug-shield-plate') return { ...mod, shieldHpAdd: 120 }
       if (mod.id === 'plug-armor-plate') return { ...mod, armorHpAdd: 210 }
       if (mod.id === 'plug-hull-plate') return { ...mod, hullHpAdd: 120 }
       // 2026-10-12 船长明确只改玩家动能远端倍率，其他字段继续全值核对。
       if (falloffChanges[mod.id] !== undefined) return { ...mod, falloff: falloffChanges[mod.id] }
       if (mod.id === 'mod-wh-e-cpu') return { ...mod, reloadPenaltyPct: .05 }
-      if (mod.id === 'mod-lair-blink-r') return { ...mod, blink: { ...mod.blink!, cooldownMs: 16000 } }
+      if (mod.id === 'mod-lair-blink-r') return { ...mod, name: '短距离跃迁装置', slot: 'support' as const, blink: { ...mod.blink!, cooldownMs: 16000 } }
+      if (mod.id === 'mod-lair-laser-c') return { ...mod, maxRangeM: 2500, reloadMs: 3800, acidOnHit: { cutPct: .05, durationMs: 15000 } }
+      if (mod.id === 'mod-wh-a-shield') return { ...mod, cpuUse: 36 }
       if (mod.id === 'mod-lair-laser-r') return { ...mod, dmgMult: 2.1, maxRangeM: 6000 }
       return mod.id === 'mod-wh-a-hangar' ? { ...mod, droneCycleCutPct: .2 } : mod
     })
+    applyApprovedFleetModuleDelta(adjusted)
     const newIds = new Set(['mod-drone-launch-1', 'mod-drone-launch-2', 'mod-drone-launch-3', 'mod-laser-calibration-2', 'mod-laser-calibration-3', 'mod-alien-acid-launcher', 'mod-alien-pressure-chamber',
-      'mod-gravekeeper-rebirth', 'mod-gravekeeper-crisis', 'mod-gravekeeper-rail'])
-    expect(MODULES.filter(mod => newIds.has(mod.id))).toHaveLength(10)
-    expect(strip(MODULES.filter(mod => !newIds.has(mod.id)))).toEqual(strip(adjusted))
+      'mod-gravekeeper-rebirth', 'mod-gravekeeper-crisis', 'mod-gravekeeper-rail',
+      'plug-pirate-raider', 'plug-alien-shield-coating', 'plug-gravekeeper-capacitor', 'plug-titan-compression', 'plug-deadarmy-printing'])
+    expect(MODULES.filter(mod => newIds.has(mod.id))).toHaveLength(15)
+    const current = strip(MODULES.filter(mod => !newIds.has(mod.id)))
+    expect(current.map(mod => mod.id)).toEqual(adjusted.map(mod => mod.id))
+    for (const expected of strip(adjusted)) {
+      const actual = current.find(mod => mod.id === expected.id)
+      if (expected.id === 'mod-lair-ecm-h') expect(actual, expected.id).toMatchObject(expected)
+      else expect(actual, expected.id).toEqual(expected)
+    }
   })
   it.each(ITEMS)('$id 物品说明中英唯一表接线一致，名称不变', (item) => {
     const pair = Object.entries(L10N).find(([id, entry]) => (id.startsWith('item.') || id === 'ui.stellar.002') && entry.zh === item.description)
@@ -129,9 +150,11 @@ describe('物品装备说明双语与数据守恒', () => {
 
 type Row = { k: string; v: unknown }
 const language = { value: 'zh' as 'zh' | 'en' }
-const file = new URL('../../../apps/desktop/src/renderer/src/ui/shipInfo.tsx', import.meta.url)
-const source = ts.createSourceFile('shipInfo.tsx', readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
-const code = source.statements.filter((node) => !ts.isImportDeclaration(node)).map((node) => node.getText(source)).join('\n')
+const code = ['primitives', 'shipLines', 'moduleEffects', 'moduleLines', 'cards'].map(name => {
+  const file = new URL(`../../../apps/desktop/src/renderer/src/features/ships/info/${name}.tsx`, import.meta.url)
+  const source = ts.createSourceFile(name + '.tsx', readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+  return source.statements.filter(node => !ts.isImportDeclaration(node) && !ts.isExportDeclaration(node)).map(node => node.getText(source)).join('\n')
+}).join('\n')
 const bindings = {
   ...core, exports: {},
   React: { createElement: (type: string, props: object, ...children: unknown[]) => ({ type, props, children }) },
@@ -142,7 +165,7 @@ const bindings = {
   MODULE_SUBS: [], moduleSubKeyOf: () => '', subText: () => '',
 }
 runInNewContext(ts.transpileModule(code, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React } }).outputText, bindings)
-const display = bindings.exports as { itemInfoLines: (item: (typeof ITEMS)[number]) => Row[]; moduleInfoLines: (module: (typeof MODULES)[number], engine?: unknown, shipId?: string, ordinal?: number) => Row[]; moduleShortEffect: (module: (typeof MODULES)[number]) => string }
+const display = bindings.exports as { itemInfoLines: (item: (typeof ITEMS)[number]) => Row[]; moduleInfoLines: (module: (typeof MODULES)[number], engine?: unknown, shipId?: string, ordinal?: number) => Row[]; moduleShortEffect: (module: (typeof MODULES)[number]) => string; fittedSpeedLine: (spec: core.UnitSpec, balance: core.BattleBalance) => Row }
 const subSource = ts.createSourceFile('itemSubs.ts', readFileSync(new URL('../../../apps/desktop/src/renderer/src/ui/itemSubs.ts', import.meta.url), 'utf8'), ts.ScriptTarget.Latest, true)
 const subCode = subSource.statements.filter(node => !ts.isImportDeclaration(node)).map(node => node.getText(subSource)).join('\n')
 const subBindings = { ...core, exports: {}, tr: bindings.tr }
@@ -154,6 +177,92 @@ function textOf(value: unknown): string {
   return typeof value === 'string' || typeof value === 'number' ? String(value) : ''
 }
 describe('真实参数行承接说明数字', () => {
+  it.each(['zh', 'en'] as const)('%s 支援件与插件递减卡面读取真实折权值，例外保持原标签', locale => {
+    language.value = locale
+    const ctx = buildSimContext(), state = core.createInitialState({ nowWallMs: 0 })
+    const uid = state.shipId
+    state.fleet[uid]!.fitted = { high: [], mid: [], low: ['mod-wh-g-ballistic', 'mod-wh-g-ballistic'] }
+    state.fleet[uid]!.plugs = ['plug-titan-compression', 'plug-titan-compression']
+    const engine = { state, ctx }
+    const stack = (id: string) => textOf(display.moduleInfoLines(ctx.modules.get(id)!).find(row => row.k === L10N['ui.shipInfo.076']![locale])!.v)
+    for (const id of ['mod-stab-kin-3', 'mod-rof-3', 'mod-wh-d-loader', 'mod-wh-d-steady', 'mod-wh-g-ballistic',
+      'plug-shield-plate', 'plug-armor-plate', 'plug-hull-plate', 'plug-firepower', 'plug-sight', 'plug-rangefinder', 'plug-thruster', 'plug-titan-compression']) {
+      expect(stack(id), id).toBe(L10N['ui.shipInfo.079']![locale])
+      expect(display.moduleShortEffect(ctx.modules.get(id)!), id).toContain(L10N['ui.shipInfo.179']![locale])
+    }
+    expect(stack('plug-cpu-core')).toBe(L10N['ui.shipInfo.077']![locale])
+    for (const id of ['plug-target-beacon', 'plug-concealment']) expect(stack(id)).toBe(L10N['ui.shipInfo.254']![locale])
+    const fitted = (id: string) => textOf(display.moduleInfoLines(ctx.modules.get(id)!, engine, uid, 2)
+      .find(row => row.k === L10N['ui.shipInfo.222']![locale])!.v)
+    const ballistic = fitted('mod-wh-g-ballistic')
+    expect(ballistic).toContain(L10N['ui.shipInfo.071']![locale])
+    expect(ballistic).toContain(L10N['ui.shipInfo.082']![locale])
+    expect(ballistic).not.toContain(L10N['ui.shipInfo.069']![locale])
+    const compression = fitted('plug-titan-compression')
+    expect(compression).toContain(L10N['ui.Handbook.010']![locale])
+    expect(compression).not.toContain(L10N['ui.Handbook.030']![locale])
+    expect(compression).toContain('m³')
+    expect(compression).toContain('m/s')
+    expect(compression).not.toMatch(/ui\.[a-zA-Z]|\{p\d+\}/)
+  })
+  it('真实候选提示同型号不漏计，替换时排除原槽，捕获网不误写最长', () => {
+    language.value = 'zh'
+    const file = 'FitPage.tsx'
+    const ast = ts.createSourceFile(file, readFileSync(new URL('../../../apps/desktop/src/renderer/src/pages/FitPage.tsx', import.meta.url), 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+    let label: ts.FunctionDeclaration | undefined
+    const visit = (node: ts.Node): void => {
+      if (ts.isFunctionDeclaration(node) && node.name?.text === 'fitOptionLabel') label = node
+      ts.forEachChild(node, visit)
+    }
+    visit(ast)
+    expect(label).toBeDefined()
+    const ctx = buildSimContext(), state = core.createInitialState({ nowWallMs: 0 })
+    const fitted: core.FittedModules = { high: [], mid: ['mod-lair-blink-r', null], low: [] }
+    const local = { ...core, state, engine: { ctx }, fitted, pickBay: { rack: 'mid', index: 1 }, tr: bindings.tr,
+      moduleShortEffect: () => '', stealthTraitNote: () => '', result: undefined as unknown }
+    runInNewContext(ts.transpileModule(`${label!.getText(ast)}\nglobalThis.result=fitOptionLabel`, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText, local)
+    const text = local.result as (m: (typeof MODULES)[number]) => string
+    expect(text(ctx.modules.get('mod-lair-blink-r')!)).toContain('同类第 2 件')
+    expect(text(ctx.modules.get('mod-lair-blink-r')!)).toContain('不叠加')
+    local.pickBay.index = 0
+    expect(text(ctx.modules.get('mod-lair-blink-r')!)).not.toContain('同类第')
+    fitted.high = ['mod-lair-web-h', null]
+    local.pickBay = { rack: 'high', index: 1 }
+    expect(text(ctx.modules.get('mod-lair-web-h')!)).toContain('取最快一台')
+    expect(text(ctx.modules.get('mod-dc-3')!)).toContain('同舰仅限一件')
+  })
+  it.each(['zh', 'en'] as const)('%s 新装备分类、特殊叠加、酸蚀与磁轨说明均读实际参数', locale => {
+    language.value = locale
+    const mod = (id: string) => MODULES.find(m => m.id === id)!
+    const rows = (id: string) => display.moduleInfoLines(mod(id))
+    const stack = (id: string) => textOf(rows(id).find(row => row.k === L10N['ui.shipInfo.076']![locale])!.v)
+    expect(filters.moduleSubKeyOf('support', 'mod-lair-blink-r')).toBe('support-combat')
+    expect(stack('mod-lair-blink-r')).toBe(L10N['ui.shipInfo.251']![locale])
+    expect(rows('mod-lair-blink-r').filter(row => row.k === L10N['ui.moduleSpecs.005']![locale])).toHaveLength(1)
+    expect(rows('mod-lair-blink-r').some(row => row.k === L10N['ui.shipInfo.020']![locale])).toBe(false)
+    expect(display.moduleShortEffect(mod('mod-lair-blink-r'))).toContain('16')
+    expect(stack('mod-dc-3')).toBe(L10N['ui.shipInfo.252']![locale])
+    expect(stack('mod-gravekeeper-rebirth')).toBe(L10N['ui.shipInfo.252']![locale])
+    for (const id of ['mod-lair-laser-c', 'mod-drone-deck-1']) expect(stack(id)).toBe(L10N['ui.shipInfo.253']![locale])
+    for (const m of MODULES.filter(m => m.slot === 'plug' && ((m.midSlotsAdd ?? 0) > 0 || (m.lowSlotsAdd ?? 0) > 0))) {
+      expect(stack(m.id)).toBe(L10N['ui.shipInfo.255']![locale])
+    }
+    for (const m of MODULES.filter(m => m.targetWeightMul !== undefined)) expect(stack(m.id)).toBe(L10N['ui.shipInfo.254']![locale])
+    const acid = textOf(rows('mod-lair-laser-c').find(row => row.k === L10N['ui.alienLoot.001']![locale])!.v)
+    expect(acid).toContain('5%')
+    expect(acid).toContain('15')
+    expect(rows('mod-lair-laser-c').map(row => textOf(row.v)).join('|')).toContain('2.5 km')
+    expect(rows('mod-lair-laser-c').map(row => textOf(row.v)).join('|')).toContain('3.8')
+    const launcher = textOf(rows('mod-alien-acid-launcher').find(row => row.k === L10N['ui.alienLoot.001']![locale])!.v)
+    expect(launcher).toContain('10%')
+    const rail = textOf(rows('mod-gravekeeper-rail').find(row => row.k === L10N['ui.gravekeeperGear.007']![locale])!.v)
+    expect(rail).toMatch(locale === 'zh' ? /本炮单发伤害/ : /this cannon’s damage per shot/)
+    expect(rail).toContain('30%')
+    expect(rail).toContain('10%')
+    expect(rail).toContain('5')
+    expect(rail).not.toMatch(/百分点|percentage points|\{p\d+\}/)
+    expect(L10N['ui.shipInfo.047']![locale]).not.toMatch(/炸到自己|damages itself/)
+  })
   it('无人机启动提示保留多装递减、不误套全队60%封顶；电子压制提示保持', () => {
     language.value = 'zh'
     for (const id of ['mod-drone-launch-1', 'mod-drone-launch-2', 'mod-drone-launch-3']) {
@@ -162,9 +271,10 @@ describe('真实参数行承接说明数字', () => {
       expect(text).toContain('多装递减')
       expect(text).not.toMatch(/60%|上限|封顶|首次出击/)
     }
-    const ecm = MODULES.find(mod => core.stackingOf(mod).kind === 'ecm')!
+    const ecm = MODULES.find(mod => mod.id === 'mod-lair-ecm-h')!
     expect(ecm).toBeDefined()
-    expect(display.moduleInfoLines(ecm).map(row => textOf(row.v)).join('|')).toContain('60%')
+    expect(display.moduleInfoLines(ecm).map(row => textOf(row.v)).join('|')).toContain('+40')
+    expect(display.moduleInfoLines(ecm).map(row => textOf(row.v)).join('|')).toContain('强度相加')
   })
   it.each(['zh', 'en'] as const)('%s 全目录的速度加成只显示一次，不把非推进器误称加力推进', locale => {
     language.value = locale
@@ -192,14 +302,37 @@ describe('真实参数行承接说明数字', () => {
       const value = textOf((speed[0] ?? afterburner[0])!.v)
       const pct = `${Math.round(module.speedBonusPct! * 100)}%`
       expect(value, module.id).toContain(pct)
-      expect(value, module.id).toMatch(locale === 'zh' ? /点火/ : /burning/)
       expect(display.moduleShortEffect(module), module.id).toContain(pct)
-      const cycle = core.thrusterCycleSeconds(core.DEFAULT_BALANCE.battle, core.thrusterCycleOfModule(module))
-      const period = L10N['ui.shipInfo.183']![locale].replace('{p1}', String(cycle.boost)).replace('{p2}', String(cycle.cooldown))
-      expect(display.moduleShortEffect(module), module.id).toContain(period)
       expect(textOf(rows[0]!.v), module.id).toBe(`${module.slot}（${module.rack}）`)
-      if (module.slot === 'propulsion') expect(filters.moduleSubKeyOf(module.slot, module.id)).toBe('prop')
+      if (module.slot === 'propulsion') {
+        expect(value, module.id).toMatch(locale === 'zh' ? /点火/ : /burning/)
+        const cycle = core.thrusterCycleSeconds(core.DEFAULT_BALANCE.battle, core.thrusterCycleOfModule(module))
+        const period = L10N['ui.shipInfo.183']![locale].replace('{p1}', String(cycle.boost)).replace('{p2}', String(cycle.cooldown))
+        expect(display.moduleShortEffect(module), module.id).toContain(period)
+        expect(filters.moduleSubKeyOf(module.slot, module.id)).toBe('prop')
+      } else {
+        const expected = l10nEntryText(L10N['ui.shipInfo.256']!, locale).replace('{p1}', pct)
+        expect(value, module.id).toBe(expected)
+        expect(display.moduleShortEffect(module), module.id).toContain(expected)
+        expect(rows.map(row => textOf(row.v)).join('|'), module.id).not.toMatch(/点火|冷却|burn|cooldown/i)
+        expect(display.moduleShortEffect(module), module.id).not.toMatch(/点火|冷却|burn|cooldown/i)
+      }
     }
+  })
+  it.each(['zh', 'en'] as const)('%s 非推进器装后机动包含持续收益且没有点火尾注，混装推进器仍显示周期', locale => {
+    language.value = locale
+    const ctx = buildSimContext(), state = core.createInitialState({ nowWallMs: 0 })
+    state.fleet[state.shipId]!.fitted = { high: [], mid: [], low: ['mod-wh-c-pulse', 'mod-wh-c-frame'] }
+    const spec = core.createPlayerSpec(state, ctx, state.shipId)!
+    const text = textOf(display.fittedSpeedLine(spec, ctx.balance.battle).v)
+    const expected = Math.round(spec.speedMps * (1 + weightedSum([.1, .05])))
+    expect(text).toBe(`${expected} m/s`)
+    expect(text).not.toMatch(/点火|冷却|burn|cooldown/i)
+    state.fleet[state.shipId]!.fitted.mid = ['mod-mwd-1']
+    const mixed = core.createPlayerSpec(state, ctx, state.shipId)!
+    const mixedText = textOf(display.fittedSpeedLine(mixed, ctx.balance.battle).v)
+    expect(mixedText).toContain(`${expected} m/s`)
+    expect(mixedText).toMatch(locale === 'zh' ? /点火/ : /burn/)
   })
   it('中英已装周期与负面值均从真实核心读取，不漏槽或保留最大值旧提示', () => {
     const ctx = buildSimContext()
@@ -212,7 +345,8 @@ describe('真实参数行承接说明数字', () => {
       language.value = locale
       const rows = display.moduleInfoLines(ctx.modules.get('mod-shieldfield-2')!, engine, uid)
       const cycle = rows.find(row => row.k === L10N['ui.equipmentPenalty.001']![locale])!
-      expect(textOf(cycle.v)).toContain('11.025')
+      const mod = ctx.modules.get('mod-shieldfield-2')!
+      expect(textOf(cycle.v)).toContain(String(core.equipmentCycleMsOf(state, ctx, uid, mod.shieldFieldMs!) / 1000))
       for (const [id, ordinal] of [['mod-prop-3', 2], ['mod-wh-a-coat', 2], ['mod-wh-e-cpu', 2]] as const) {
         const values = display.moduleInfoLines(ctx.modules.get(id)!, engine, uid, ordinal).map(row => textOf(row.v)).join('|')
         expect(values).not.toMatch(/\{p\d+\}|只取最重|heaviest of several|下限 0|floor 0/)
@@ -228,11 +362,14 @@ describe('真实参数行承接说明数字', () => {
         const id = `mod-shieldfield-${tier}`
         const rows = display.moduleInfoLines(MODULES.find(module => module.id === id)!).map(row => textOf(row.v)).join('|')
         expect(rows).toContain(`${(core.SHIELD_FIELD_COST_PCT * 100).toFixed(1)}%`)
-        expect(rows).toContain(locale === 'zh' ? '其他存活舰船' : 'other surviving fleet ship')
+        expect(rows).toContain(locale === 'zh' ? '最多2艘缺盾队友' : 'up to 2 shield-depleted allies')
+        expect(rows).toContain(locale === 'zh' ? '不恢复自身' : 'does not repair self')
         expect(rows).not.toMatch(/\{p\d\}/)
         const bp = `bp-shieldfield-${tier}`
-        expect(buildSimContext(locale).blueprints.get(bp)!.description).toBe(L10N['mod.copy.027']![locale])
-        expect(EN_BLUEPRINTS[bp]!.description).toBe(L10N['mod.copy.027']!.en)
+        expect(L10N['mod.fleetSupport.003']!.enDeferred).toBeUndefined()
+        expect(L10N['mod.fleetSupport.003']!.en).not.toBe('')
+        expect(buildSimContext(locale).blueprints.get(bp)!.description).toBe(l10nEntryText(L10N['mod.fleetSupport.003']!, locale))
+        expect(EN_BLUEPRINTS[bp]!.description).toBe(l10nEntryText(L10N['mod.fleetSupport.003']!, 'en'))
       }
     }
   })
@@ -254,15 +391,14 @@ describe('真实参数行承接说明数字', () => {
     expect(rowsOf('mod-drone-shield-2')).toContain('70%')
     expect(rowsOf('mod-drone-shield-3')).toContain('100%')
     expect(rowsOf('mod-wh-a-hangar')).toContain('40')
-    expect(rowsOf('mod-lair-ecm-h')).toContain('15%')
-    expect(rowsOf('mod-lair-ecm-h')).toContain(String(core.FOE_RANGE_DEBUFF_FLOOR_M))
+    expect(rowsOf('mod-lair-ecm-h')).toContain('+40')
     expect(rowsOf('mod-lair-beam-r')).toContain('3 发')
     expect(rowsOf('mod-lair-beam-r')).toContain('0.1 秒')
     expect(rowsOf('mod-lair-blink-r')).toContain('2000 m')
     expect(rowsOf('mod-lair-blink-r')).toContain('16 秒')
     expect(rowsOf('mod-lair-laser-r')).toContain('0.6')
     expect(rowsOf('mod-shieldchg-2')).toContain('13.3%')
-    expect(rowsOf('mod-shieldfield-3')).toContain('8')
+    expect(rowsOf('mod-shieldfield-3')).toContain(String(MODULES.find(mod => mod.id === 'mod-shieldfield-3')!.shieldFieldMs! / 1000))
     expect(rowsOf('plug-rangefinder')).toContain('20%')
   })
   it('充能和力场比例在中英短行及详情中直接显示1位小数，装后不再另行折算', () => {
@@ -276,7 +412,7 @@ describe('真实参数行承接说明数字', () => {
     for (const locale of ['zh', 'en'] as const) {
       language.value = locale
       for (const [id, percentage] of [['mod-shieldchg-1', '8.0%'], ['mod-shieldchg-2', '13.3%'],
-        ['mod-shieldchg-3', '21.3%'], ['mod-shieldfield-2', '6.7%'], ['mod-shieldfield-3', '6.7%']] as const) {
+        ['mod-shieldchg-3', '21.3%'], ['mod-shieldfield-2', '10.0%'], ['mod-shieldfield-3', '10.0%']] as const) {
         const mod = ctx.modules.get(id)!
         const before = structuredClone(state)
         const plain = display.moduleInfoLines(mod).map(row => textOf(row.v)).join('|')
@@ -287,7 +423,7 @@ describe('真实参数行承接说明数字', () => {
         }
         if (mod.shieldFieldPct) {
           const mechanism = display.moduleInfoLines(mod, { state, ctx }, uid).find(row => row.k === L10N['ui.moduleSpecs.003']![locale])!
-          expect(textOf(mechanism.v).match(/6\.7%/g)).toHaveLength(2)
+          expect(textOf(mechanism.v).match(/10\.0%/g)).toHaveLength(2)
         }
         const decayed = display.moduleInfoLines(mod, { state, ctx }, uid, 2).find(row => row.k === L10N['ui.shipInfo.222']![locale])!
         const effective = (core.stackWeight(2) * (mod.shieldPulsePct ?? mod.shieldFieldPct ?? 0) * 100).toFixed(1)

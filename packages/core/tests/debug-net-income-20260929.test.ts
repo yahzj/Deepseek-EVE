@@ -37,9 +37,9 @@ describe('净收益/h · 仅调试模式（2026-09-29 船长令）', () => {
 
   it('② 三类卡都只经这一个组件出读数（无旁路 ⇒ 发布版不会漏）', () => {
     // 组装机/造船厂共用 BlueprintCard（Industry.tsx）；精炼卡在 IndustryPage.tsx
-    const industry = read('apps/desktop/src/renderer/src/panels/Industry.tsx')
+    const industry = read('apps/desktop/src/renderer/src/features/industry/BlueprintCard.tsx')
     expect(industry, '组装机/造船厂卡渲染该行').toContain('<NetIncomeLine')
-    const page = read('apps/desktop/src/renderer/src/pages/IndustryPage.tsx')
+    const page = read('apps/desktop/src/renderer/src/features/industry/FurnaceCard.tsx')
     expect(page, '精炼卡渲染该行').toContain('<NetIncomeLine')
     // 门禁只许在这一个组件里判：哪个调用点自己再判一次 debugEnabled 都是旁路的开始
     // （⚠ 比对前先去注释——两处文件都在注释里解释过这条口径，注释提到符号名不算调用）

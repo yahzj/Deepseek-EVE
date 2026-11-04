@@ -3,11 +3,12 @@
  *
  * 覆盖：① 节点表与货币常量的一致性 · ② 研究判据（谜质/信用点/前置/满级）与扣款 ·
  * ③ 按 `effect` 关键字聚合 · ④ 四条机制读数（最大回合数 · 洞内倍速 · 扫描间隔 · 效率加成 · 工业三件）·
- * ⑤ 存档迁移 v28 → v29 与读档往返。
+ * ⑤ v31 当前结构的研究字段清洗与读档往返。
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
-import { addWare, countWare, createInitialState, researchMatterTech, matterTechCanResearch, startLabRun, startRefineRun, stopRefineRun } from '../src/index'
+import { addWare, countWare, researchMatterTech, matterTechCanResearch, startLabRun, startRefineRun, stopRefineRun } from '../src/index'
+import { createCommandReadyState as createInitialState } from './helpers/command-ready'
 import {
   MATTER_TECH_ESSENCE_ITEM_ID,
   MATTER_TECH_VOID_ORE_ITEM_ID,
@@ -47,12 +48,12 @@ function world(): ReturnType<typeof createInitialState> {
 describe('谜质科技树 · 节点表与货币', () => {
   it('30 个节点、id 唯一、效果关键字非空；研究货币 = 虫洞谜质', () => {
     const nodes = matterTechNodes(ctx)
-    expect(nodes.length).toBe(30)
-    expect(new Set(nodes.map((n) => n.id)).size).toBe(30)
+    expect(nodes.length).toBe(31)
+    expect(new Set(nodes.map((n) => n.id)).size).toBe(31)
     expect(nodes.every((n) => n.effect.length > 0 && n.maxLevel >= 1)).toBe(true)
     // 三条线的节点数：探索 6 / 战斗 14 / 工业 8（2026-09-30 船长令追加工业两支精炼提速 ＋ T5 两条）
     const byBranch = (b: string): number => nodes.filter((n) => n.branch === b).length
-    expect([byBranch('explore'), byBranch('battle'), byBranch('industry')]).toEqual([8, 14, 8])
+    expect([byBranch('explore'), byBranch('battle'), byBranch('industry')]).toEqual([9, 14, 8])
     // 货币常量与产出侧同源（本模块写的是字面量，防漂）
     expect(MATTER_TECH_ESSENCE_ITEM_ID).toBe(WORMHOLE_ESSENCE_ITEM_ID)
     // 虚空母矿 id 同源（涓流按它入库；同样是字面量防漂）
@@ -159,7 +160,7 @@ describe('谜质科技树 · 效果聚合与四条机制读数', () => {
     expect(wormholeTurnBudget(0, bonus)).toBe(110)
     // 入场裁定把它算进去（4×T1 = 2,000 质量 ⇒ 74 + 30）
     // 4× 长尾鲨(T3 · 3,500 质量) = 14,000 ⇒ 基础 42 + 科技 30
-    expect(wormholeAdmission(ctx, ['sh-thresher', 'sh-thresher', 'sh-thresher', 'sh-thresher'], bonus).turnBudget).toBe(72)
+    expect(wormholeAdmission(ctx, ['sh-thresher', 'sh-thresher', 'sh-thresher', 'sh-thresher'], bonus).turnBudget).toBe(73)
   })
 
   it('入洞后再点「时序锚定器」⇒ 本趟上限立刻 +10/级（永久加成，与装置同一套夹紧、幂等）', () => {
@@ -195,20 +196,20 @@ describe('谜质科技树 · 效果聚合与四条机制读数', () => {
     const entered = wormholeEnter(state, ctx, fleet, 4242)
     expect(entered.ok, entered.error ?? '').toBe(true)
     const run = state.wormhole.run!
-    expect(run.turnsTotal).toBe(72) // 42 + 30
-    expect(run.turnsBase).toBe(42)
+    expect(run.turnsTotal).toBe(73)
+    expect(run.turnsBase).toBe(43)
     expect(run.turnsTechBonus).toBe(30)
     // 模拟"拾取一台「时序核心」入货仓" ⇒ 触发同步
     run.hold = { placements: [{ id: 'x', kind: 'box', itemId: 'mat-chrono', x: 0, y: 0, w: 2, h: 2 }], cols: 8 }
     wormholeSyncMatterTurns(state, ctx)
-    expect(run.turnsTotal, '科技那 30 回合不该被同步吃掉').toBe(82) // 42 + 10 + 30
-    expect(run.turnsLeft).toBe(82)
+    expect(run.turnsTotal, '科技那30回合不该被同步吃掉').toBe(83)
+    expect(run.turnsLeft).toBe(83)
     // 幂等：再同步不变；丢掉装置 ⇒ 回到 72（只掉装置那 10）
     wormholeSyncMatterTurns(state, ctx)
-    expect(run.turnsTotal).toBe(82)
+    expect(run.turnsTotal).toBe(83)
     run.hold = { placements: [], cols: 8 }
     wormholeSyncMatterTurns(state, ctx)
-    expect(run.turnsTotal).toBe(72)
+    expect(run.turnsTotal).toBe(73)
   })
 
   it('报障修复（老档）：没有 `turnsBase` 的在途趟带科技时，首次同步不吃回合', () => {
@@ -434,15 +435,13 @@ describe('谜质科技树 · 2026-09-30 新增四条（精炼提速 · 涓流 ·
   })
 })
 
-describe('谜质科技树 · 存档（v28 → v29）', () => {
-  it('老档补空树（零行为变化）；新档往返不丢等级', () => {
+describe('谜质科技树 · v31 存档清洗', () => {
+  it('当前版本缺少研究字段时补空树；正常往返保留等级', () => {
     const state = world()
     researchMatterTech(state, ctx, 'mt-battle-hit')
     const text = serializeSaveFile(state)
-    // 造一份"v28 老档"：删掉 research、版本降回 28
+    // 保持 v31 文件头，只删结构字段，验证 normalizeState 的坏/缺字段容错。
     const raw = JSON.parse(text) as { version: number; state: Record<string, unknown> }
-    raw.version = 28
-    raw.state.version = 28
     delete raw.state.research
     const { state: loaded } = loadSaveFile(JSON.stringify(raw))
     expect(loaded.version).toBe(CURRENT_STATE_VERSION)

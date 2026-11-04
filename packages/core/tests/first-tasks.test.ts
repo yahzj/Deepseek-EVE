@@ -321,50 +321,6 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
     expect(state.blueprintStock['sbp-sandcat'] ?? 0).toBe(1)
   })
 
-  /**
-   * **老档一次性收口时，当前那条的起手道具也要补发**（**2026-09-22 船长裁决「甲」**）。
-   *
-   * 现场 = 老档正卡在「第一次采集原矿」且**判据还没满足**（`mineUnits = 0`）⇒ 收口循环里
-   * `claimableFirstTasks` 一条都不返回 ⇒ 若不补发，这条自己的起手道具（强化采集器 MK1）
-   * 就永远拿不到（起手道具只在"轮到那一刻"由 `claimFirstTask` 发）。
-   */
-  it('老档收口：**卡在「第一次采集原矿」的老档也拿得到采集器 MK1**（船长 2026-09-22 裁决「甲」）', () => {
-    const state = testState()
-    state.importantTasks['first-scan'] = { done: true } // 老档：扫描早已完成
-    state.firstTaskAutoClaim = true // v30→v31 迁移打的一次性收口标记
-    expect(visibleFirstTasks(state).map((d) => d.id)).toEqual(['first-mine'])
-    expect(state.moduleBay['mod-miner-1'] ?? 0, '补发前手上没有采集器').toBe(0)
-
-    engineTick(state, 1000, ctx)
-
-    expect(state.moduleBay['mod-miner-1'] ?? 0, '补发当前那条（第一次采集原矿）的起手道具').toBe(1)
-    expect(state.importantTasks['first-mine']?.started).toBe(true)
-    expect(state.firstTaskAutoClaim, '收口跑完即删键（一次性）').toBeUndefined()
-
-    // 幂等：再走几拍不叠加
-    engineTick(state, 1000, ctx)
-    engineTick(state, 1000, ctx)
-    expect(state.moduleBay['mod-miner-1'] ?? 0).toBe(1)
-  })
-
-  it('老档收口：**当前那条已满足** ⇒ 照点击走完 ＋ 下一条的起手道具一并到手（同一条单点）', () => {
-    const state = testState()
-    state.importantTasks['first-scan'] = { done: true }
-    state.firstStats = { ...(state.firstStats ?? {}), mineUnits: 5 } // 判据已满足（已采过 5 单位）
-    state.firstTaskAutoClaim = true
-
-    engineTick(state, 1000, ctx)
-
-    // ① 当前那条（采矿）自己的起手道具：采集器 MK1
-    expect(state.moduleBay['mod-miner-1'] ?? 0).toBe(1)
-    // ② 收口循环按点击同款推进：写 done ＋ 发完成奖励（1,000 单位橄榄岩）
-    expect(state.importantTasks['first-mine']?.done).toBe(true)
-    expect(state.warehouse.items[BELT_ORE] ?? 0).toBeGreaterThanOrEqual(1_000)
-    // ③ 推进后轮到「第一次操作精炼炉」⇒ 它的起手道具也照常发（本表该条无起手道具 ⇒ 只验轮到）
-    expect(visibleFirstTasks(state).map((d) => d.id)).toEqual(['first-refine'])
-    expect(state.firstTaskAutoClaim).toBeUndefined()
-  })
-
   it('「第一条船」的计数落在**造船交付**处：真造出一艘才算，从舰船仓库转入舰队不算（2026-09-18 修）', () => {
     const state = testState()
     reachQueue(state, 'first-ship') // 顺序解锁：先推到它前面
@@ -863,7 +819,7 @@ describe('链阈值（⟪2026-09-23 船长令⟫ 第三轮：L1 不变 + 满级 
   })
 })
 
-describe('市场链：交易收入（税后）＋ 老档一次性折算', () => {
+describe('市场链：交易收入（税后）', () => {
   it('卖货入账 ⇒ 累计 marketIncome（税后净额）；**直卖也计入「第一次挂单销售」**（船长 2026-09-22 放宽）', () => {
     const state = testState()
     const chain = FIRST_TASKS.find((d) => d.id === 'first-order')!.chain!
@@ -940,32 +896,12 @@ describe('市场链：交易收入（税后）＋ 老档一次性折算', () => 
     }
   })
 
-  it('老档一次性折算：按级别对齐（旧表级数 ⇒ 新表同级门槛），已达级数不倒退', () => {
+  it('v31 当前账本读档保持原值；旧挂单数不再转换成收入进度', () => {
     const state = testState()
-    state.firstStats = { orders: 30 } // 旧表 [1,3,8,20,50…] ⇒ 已达第 4 级
-    const file = JSON.parse(serializeSaveFile(state, 1)) as { version: number; state: Record<string, unknown> }
-    file.version = 26 // 装成换口径之前的老档
-    const loaded = loadSaveFile(JSON.stringify(file)).state
-    expect(loaded.firstStats?.marketIncome).toBe(CHAIN_TIERS.marketIncome![3]) // 新表第 4 级 = 100,000
-    const chain = FIRST_TASKS.find((d) => d.id === 'first-order')!.chain!
-    expect(chainProgressOf(loaded, chain).level).toBe(4) // 折算后仍是第 4 级
-    // 折算的落点直接是门槛值 ⇒ 再卖一点就升第 5 级
-    expect(chainProgressOf(loaded, chain).next).toBe(CHAIN_TIERS.marketIncome![4])
-  })
-
-  it('挂单 0 张的老档不写该键（零迁移）；满档老档折到顶档', () => {
-    const fresh = testState()
-    const f1 = JSON.parse(serializeSaveFile(fresh, 1)) as { version: number; state: Record<string, unknown> }
-    f1.version = 25
-    const loadedFresh = loadSaveFile(JSON.stringify(f1)).state
-    expect(loadedFresh.firstStats?.marketIncome).toBeUndefined()
-
-    const maxed = testState()
-    maxed.firstStats = { orders: 3000 } // 旧表顶档
-    const f2 = JSON.parse(serializeSaveFile(maxed, 1)) as { version: number; state: Record<string, unknown> }
-    f2.version = 26
-    const loadedMaxed = loadSaveFile(JSON.stringify(f2)).state
-    expect(loadedMaxed.firstStats?.marketIncome).toBe(CHAIN_TIERS.marketIncome![9])
+    state.firstStats = { orders: 30 }
+    const loaded = loadSaveFile(serializeSaveFile(state, 1)).state
+    expect(loaded.firstStats?.orders).toBe(30)
+    expect(loaded.firstStats?.marketIncome).toBeUndefined()
   })
 })
 
@@ -995,6 +931,23 @@ describe('链条目奖金上卡（船长：写清楚当前这级的具体数额�
 })
 
 describe('「第一次」任务：存档往返', () => {
+  it.each([false, true])('旧自动收口标记不再完成任务或发起手道具（重载=%s）', (reload) => {
+    let state = testState()
+    Object.assign(state, { firstTaskAutoClaim: true })
+    if (reload) state = loadSaveFile(serializeSaveFile(state, 0)).state
+    expect(claimableFirstTasks(state, ctx).map(task => task.id)).toContain('first-scan')
+    const wallet = state.wallet.isk
+    const modules = { ...state.moduleBay }
+    engineTick(state, 1000, ctx)
+    expect(state.importantTasks['first-scan']?.done).not.toBe(true)
+    expect(state.importantTasks['first-mine']?.started).not.toBe(true)
+    expect(state.wallet.isk).toBe(wallet)
+    expect(state.moduleBay).toEqual(modules)
+    expect(claimFirstTask(state, ctx, 'first-scan').ok).toBe(true)
+    expect(state.importantTasks['first-scan']?.done).toBe(true)
+    expect(state.importantTasks['first-mine']?.started).toBe(true)
+  })
+
   it('终身计数与领奖额随档往返（`firstStats` 落盘、缺省 0）', () => {
     const state = testState()
     state.importantTasks['first-scan'] = { done: true }

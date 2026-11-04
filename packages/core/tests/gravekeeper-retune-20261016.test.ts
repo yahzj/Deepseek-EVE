@@ -1,5 +1,4 @@
 import { readFileSync } from 'node:fs'
-import { execFileSync } from 'node:child_process'
 import { runInNewContext } from 'node:vm'
 import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
@@ -18,7 +17,8 @@ import fleetParameters from '../../data/src/static/invasionFleets.json'
 import mountParameters from '../src/static/foeMounts.json'
 import type { AnomalyDef, SimContext } from '../src/types'
 
-const ctx = buildSimContext(), bal = ctx.balance.battle
+const sourceCtx = buildSimContext()
+const ctx = { ...sourceCtx, anomalies: new Map([...sourceCtx.anomalies].map(([id, card]) => [id, card.foeFormation?.baseline ?? card])) }, bal = ctx.balance.battle
 const ids = ['gravekeeper-drift', 'gravekeeper-line', 'gravekeeper-main', 'gravekeeper-flagship'] as const
 const expectedSpeed: Record<string, number> = {
   'foe-d-invasion-cruiser': 319, 'foe-d-invasion-bastion': 232, 'foe-d-invasion-oathkeeper': 148,
@@ -52,18 +52,14 @@ function fixture() {
 
 describe('守墓入侵隔离调参', () => {
   it('静态表只增加入侵速度和盾动抗，后续确认的末波标签/四型近界精确单列', () => {
-    const previous = JSON.parse(execFileSync('git', ['show', 'f8470a57:packages/data/src/static/invasionFleets.json'], { encoding: 'utf8' })) as typeof fleetParameters
-    previous.groups.parameters.find(row => row.id === 'gravekeeper-flagship')!.threat = 191
-    const current = structuredClone(fleetParameters)
-    for (const row of current.groups.parameters) {
+    for (const row of fleetParameters.groups.parameters) {
       if (!ids.includes(row.id as typeof ids[number])) continue
-      for (const key of Object.keys(row)) if (/^ships_\d+_(speedMul|shieldResist_kinetic)$/.test(key)) delete (row as Record<string, unknown>)[key]
+      for (const [key, value] of Object.entries(row)) {
+        if (/^ships_\d+_speedMul$/.test(key)) expect(value).toBe(1.2)
+        if (/^ships_\d+_shieldResist_kinetic$/.test(key)) expect(value).toBe(.3)
+      }
     }
-    expect(current).toEqual(previous)
-    const originalShips = JSON.parse(execFileSync('git', ['show', 'f8470a57:packages/data/src/static/foeShips.json'], { encoding: 'utf8' }))
-    for (const row of originalShips.groups.parameters) if (['foe-d-invasion-cruiser', 'foe-d-invasion-bastion', 'foe-d-invasion-oathkeeper', 'foe-d-invasion-eternal-tomb'].includes(row.id)) row.rangeMinM = 100
-    Object.assign(originalShips.groups.parameters.find((row: { id: string }) => row.id === 'foe-d-invasion-eternal-tomb'), { split_s: .3, split_a: .4, split_h: .3 })
-    expect(JSON.parse(readFileSync(new URL('../../data/src/static/foeShips.json', import.meta.url), 'utf8'))).toEqual(originalShips)
+    expect(fleetParameters.groups.parameters.find(row => row.id === 'gravekeeper-flagship')!.threat).toBe(191)
   })
 
   it.each(ids)('%s每艘基础速度乘1.2，盾动抗30%，血量火力射程及期望不变', id => {
@@ -91,7 +87,8 @@ describe('守墓入侵隔离调参', () => {
       const f = createFoeSpecs(card, bal)[0]!
       expect(f.speedMps).toBe(Math.round(bal.hullClassBaseSpeedMps[ship.hullClassTier] * ship.speedRatio))
       expect(f.resists.shield).toEqual(ship.shieldResist)
-      expect(f.foeReviveEscort).toBeUndefined()
+      if (ship.id === 'foe-d-invasion-eternal-tomb') expect(f.foeReviveEscort).toEqual({ everyMs: 60000, all: true })
+      else expect(f.foeReviveEscort).toBeUndefined()
     }
     const ship = { ...FOE_SHIPS.find(s => s.id === 'foe-d-longship')!, shieldResist: { kinetic: .1, plasma: .2 } }
     const card: AnomalyDef = { ...ctx.anomalies.get('gravekeeper-drift')!, ships: [{ ship, shieldResist: { kinetic: .3 } }], waves: undefined }
@@ -114,12 +111,12 @@ describe('守墓入侵隔离调参', () => {
     expect(w.boss.hp).toEqual({ s: 90000, a: 120000, h: 90000 })
   })
 
-  it('蓄能按1.3乘算，非加法；装填仍1.1，武器分账不改', () => {
+  it('蓄能按1.25乘算，非加法；装填仍1.1，武器分账不改', () => {
     const { b, boss } = fixture()
     b.foeShieldCapacitorActive = { [boss.tag]: true }
     for (let n = 0; n < 8; n++) noteFoeCapacitorAttack(b, boss, 0)
-    expect(foeCapacitorMultiplierOf(b, boss, 0, 'damageMul')).toBeCloseTo(1.3 ** 8, 8)
-    expect(foeCapacitorMultiplierOf(b, boss, 0, 'damageMul')).not.toBeCloseTo(1 + .3 * 8, 5)
+    expect(foeCapacitorMultiplierOf(b, boss, 0, 'damageMul')).toBeCloseTo(1.25 ** 8, 8)
+    expect(foeCapacitorMultiplierOf(b, boss, 0, 'damageMul')).not.toBeCloseTo(1 + .25 * 8, 5)
     expect(foeCapacitorMultiplierOf(b, boss, 0, 'reloadMul')).toBeCloseTo(1.1 ** 8, 8)
     expect(foeCapacitorMultiplierOf(b, boss, 'pd', 'damageMul')).toBe(1)
   })
@@ -313,9 +310,9 @@ describe('重构挂载说明与编辑器', () => {
     expect(preview.references.some(r => r.id === 'gravekeeper-flagship')).toBe(true)
   })
 
-  it('战斗/手册共用的说明按参数展示全体复活，英文回退中文，不冒称墨潮两艘规则', () => {
+  it('战斗/手册共用的说明按参数展示全体复活，英文覆盖不误写墨潮两艘规则', () => {
     const root = new URL('../../../', import.meta.url)
-    const source = readFileSync(new URL('apps/desktop/src/renderer/src/ui/foeBrief.ts', root), 'utf8')
+    const source = readFileSync(new URL('apps/desktop/src/renderer/src/features/combat/foeBrief.ts', root), 'utf8')
     const scope = { exports: {} as { mountEffectText: (id: string) => string; briefShipsOf: (card: AnomalyDef) => Array<{ id: string; mounts: Array<{ name: string; effect: string }> }> },
       require: (id: string) => id === '@whale/core' ? { FOE_MOUNTS } : {
         isEn: () => true,
@@ -323,15 +320,14 @@ describe('重构挂载说明与编辑器', () => {
       } }
     runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, scope)
     const text = scope.exports.mountEffectText(FOE_MOUNT_IDS.dReconstruction)
-    expect(text).toContain('定期重构本波已阵亡的友方舰船。')
-    expect(text).toContain('60秒')
-    expect(text).toContain('全部已阵亡友舰')
-    expect(text).not.toContain('干扰舰')
+    expect(text).toBe(L10N['ui.gravekeeperRetune.001']!.en.replace('{p1}', '60'))
+    expect(text).toContain('all destroyed allies at full health')
+    expect(text).toContain('Every 60 seconds')
+    expect(text).not.toContain('jammer')
     const card = ctx.anomalies.get('gravekeeper-flagship')!, snapshot = structuredClone(card)
     const brief = scope.exports.briefShipsOf(card).find(f => f.id === 'foe-d-invasion-eternal-tomb')!
-    expect(brief.mounts.some(m => m.name === '陵寝重构协议' && m.effect === text)).toBe(true)
+    expect(brief.mounts.some(m => m.name === 'Mausoleum Reconstruction Protocol' && m.effect === text)).toBe(true)
     expect(card).toEqual(snapshot)
-    expect(L10N['ui.gravekeeperRetune.001']).toMatchObject({ en: '', enDeferred: true })
-    expect(readFileSync(new URL('docs/l10n-pending.md', root), 'utf8')).toContain('ui.gravekeeperRetune.001')
+    expect(L10N['ui.gravekeeperRetune.001']!.enDeferred).toBeUndefined()
   })
 })

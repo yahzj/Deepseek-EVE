@@ -7,7 +7,6 @@ import { resolve } from 'node:path'
 import { makeExpeditionFixture, expeditionContext as ctx } from './wormhole-expedition-fixture'
 import { serializeSaveFile, loadSaveFile } from '../packages/core/src/save'
 import { noteStandingEarned, DSI_FACTION_ID } from '../packages/core/src/standing'
-import { repairStandingFromBountyProgress } from '../packages/core/src/expedition'
 import { wormholeScanUnlocked } from '../packages/core/src/wormholeScan'
 import { FIRST_TASKS } from '../packages/core/src/firstTasks'
 import { wormholeSavePreparationTemplate } from '../packages/core/src/wormholePreparationTemplates'
@@ -21,7 +20,6 @@ for (const card of ctx.anomalies.values()) if (!card.hidden && card.standingGain
   state.completedBounties.push(card.id)
   noteStandingEarned(state, DSI_FACTION_ID, card.standingGain)
 }
-repairStandingFromBountyProgress(state, ctx)
 if (!wormholeScanUnlocked(state)) throw new Error('合成声望前提不成立')
 for (const task of FIRST_TASKS) state.importantTasks[task.id] = { done: true }
 state.commsRead = Object.fromEntries([...ctx.commsMessages.keys()].map(id => [id, true]))

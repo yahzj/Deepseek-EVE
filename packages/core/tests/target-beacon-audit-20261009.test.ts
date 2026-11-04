@@ -70,7 +70,7 @@ describe('靶标插件实际安装、重复件和选靶边界', () => {
     expect(createPlayerSpec(w.state, ctx, w.ships[1]!)!.targetWeightMul).toBeCloseTo(2.1, 10)
   })
 
-  it.each([[0.4, 0.3], [0.1, 0.45]] as const)('倾向%s先筛候选：靶标大船不抢最小船分支，随机占比%s', (chance, expected) => {
+  it.each([[0.4, 0.48], [0.1, 0.72]] as const)('倾向%s先筛候选：靶标大船不抢最小船分支，随机占比%s', (chance, expected) => {
     const w = fleet()
     expect(installPlug(w.state, ctx, BEACON, w.ships[1]!).ok).toBe(true)
     const specs = specsOf(w)
@@ -151,7 +151,7 @@ describe('真实开战与逐拍攻击目标', () => {
       }
       expect(battle.ended).toBeNull()
     }
-    const weight = 3 ** count
+    const weight = (mode === 'smallest' ? 4 : 1) * 3 ** count
     const expected = weight / (weight + 3) * (mode === 'smallest' ? 1 - chance : 1)
     for (const [kind, group] of Object.entries(tally)) {
       expect(group.total).toBeGreaterThan(500)
@@ -189,12 +189,13 @@ describe('10%生产配置与派生同源', () => {
     }
   })
 
-  it('唯一偏好目标的总选中率是10%+90%的随机份额，不是10%', () => {
+  it('唯一偏好目标的总选中率是10%+90%的舰级加权份额，不是10%', () => {
     const w = fleet()
     const specs = specsOf(w)
     specs[0]!.shipTier = 4
     const counts = selections(w, specs, 'largest', 0.1)
-    expect(counts.player! / 12000).toBeCloseTo(0.325, 1)
-    console.log(`[选靶核查] 10%最大舰倾向：唯一偏好目标${counts.player}/12000，理论32.5%`)
+    const expected = 0.1 + 0.9 * 4 / 7
+    expect(counts.player! / 12000).toBeCloseTo(expected, 1)
+    console.log(`[选靶核查] 10%最大舰倾向：唯一偏好目标${counts.player}/12000，理论${expected * 100}%`)
   })
 })

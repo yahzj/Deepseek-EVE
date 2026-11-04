@@ -1,45 +1,42 @@
 # 英文术语与专名译名表（English Glossary & Naming Table）
 
-状态：**P0 已冻结**（2026-09-19 立 · 船长五问五答裁决完毕，见 §七）· P0b 专名补齐中
-权威范围：**游戏内可见文案的英文口径**（界面 / 内容数据 / 说明）。开发侧文档、注释、汇报仍用中文（`AGENTS.md` §1）。
-工作文档：`docs/design/l10n-en-20260919.md`。冻结后本表是唯一译名来源；后续批次（P2 内容 / P3 界面）一律按本表出稿。
+状态：现行译名表；未裁定的行继续保留待审标记，不因清理转为已批准。
+权威范围：游戏可见文本的英文术语。只有船长明确启动英文准备后才按表出稿；未启动时登记`docs/l10n-pending.md`，保留已有英文。原因：词表存在不等于本次已授权翻译。
 
 > 怎么用：本表分「命名规则 → 机制与 UI 术语 → 单位与格式 → 专名表（舰船 / 星系 / 矿带 / 势力）」。
-> 审阅时**只需改你不同意的行**；标 ⚠ 的是我拿不准、点名请你裁决的。冻结后我按表批量出稿，改表即改全部。
+> 标 ⚠ 的行需要船长裁定。维护译名时同步核对唯一文本表与实际引用，不能只改本文就声称界面已更新。
 
-## 〇、**游戏名（2026-09-20 船长定 · 冻结）**
+## 〇、游戏名
 
 | 项 | 值 |
 |---|---|
 | 中文名 | **大鲸鱼-深空放置** |
 | **英文名** | **`Great Whale Idle`** |
 | 唯一真源 | 表项 `ui.App.056`（`zh: "大鲸鱼-深空放置"` / `en: "Great Whale Idle"`）——**窗口标题与游戏内产品名都走这一条**，改表即中英同改 |
-| 未采用 | `Great Whale: Deep Space Idle`（船长初拟）——复核提了撞名证据：副标题已有同名 H5 游戏 · `Great Whale` 是万智牌蓝卡名 · Steam 有《The Great Whale Road》 |
 
 改英文名**只需改这一处表项**（窗口标题由 `apps/desktop/src/main/index.ts` 读 `t('ui.App.056')`，不再硬编码）；
 若要同步发行信息，另改 `package.json` 的 `description`、`apps/desktop/package.json` 的 `author` 与商店稿。
 
 ---
 
-## 一、命名规则（直译口径，2026-09-19 船长定）
+## 一、命名规则
 
 1. **直译优先，保留中文名的意象**：长尾鲨级 → `Thresher-class` · 钛钢合金 → `Tritanium Alloy` · 鲣鱼级 → `Skipjack-class`。
    不做英文重命名、不加英文风味词。
 2. **舰级后缀按中文量词直译**：艇 → `Corvette` · 舰 → `Frigate / Destroyer / Cruiser / Battleship`（按中文名里的实际级别）·
    旗舰 → `Flagship` · 货舰 → `Freighter` · 母舰 → `Carrier` · 炮舰 → `Gunboat`。
 3. **档位与型号照抄**：`MK1 / MK2 / MK3` 原样保留；舰体档 `T3 / T4 / T5` → `Tier 3 / Tier 4 / Tier 5`（表格里可写 `T3`）。
-   **2026-10-04 船长改名：T5舰体分类「泰坦」→ `Titan`**；指挥职务「旗舰」及具体舰船型号中的后缀仍译 `Flagship`，不是同一概念。
+   T5舰体分类「泰坦」译`Titan`；指挥职务「旗舰」及具体舰船型号中的后缀仍译`Flagship`，不是同一概念。
 4. **族系前缀照译**：掠袭 → `Raider` · 亡军 → `Deadarmy` · 陵卫/陵寝 → `Tombwarden / Mausoleum` · 巢群 → `Hiveswarm` ·
    构件 → `Construct` · 幽影 → `Wraith` · 哨戒 → `Sentry` · 幼虫 → `Larva` · 甲壳 → `Carapace`。
 5. **中文神话/自造专名**：意译优先，意译会失真时保留拼音（`Xuanwu-class`）＋ 表内加注。
 6. **标点与空格**：中文的 `·` 在英文里写 ` · `（空格中点，保留）· 括号用半角 `()` · 不用中文全角标点 ·
-   数字与单位之间加空格（`3,220 m` · `1,000 m³` · `70,000 ISK`）。
+   数字与单位之间加空格（`3,220 m` · `1,000 m³` · `70,000 credits`）。
 7. **界面术语一律统一**（下表冻结）：例如「拆解」= `Unbox`（货柜专用）、「解体 / 回收」= `Salvage`（残骸专用）——
    与中文侧「货柜=拆解 / 残骸=解体·回收」的同一条口径对齐。
 8. **不写原因解释**这条中文文案硬规矩**同样适用于英文**（括号只许放规格）。
-9. **括号限用**（**2026-09-26 船长令**：「**除非非常有必要，否则不要用括号进行额外说明。需要说明时和我沟通。**」）：
+9. **括号限用**：
    **能不放就不放**；确有必要时**先与船长沟通**再写。规格型数量词（`30 s` · `500 m` · `50 m³`）与档位后缀（`T1` · `MK2`）照留。
-   触发实例：挂载件效果句尾原先各带一个装置名括号，英文侧同样要从"名字 ＋ 规格"压成纯规格。
 
 ## 二、机制与 UI 术语表
 
@@ -67,7 +64,7 @@
 | 护盾 / 装甲 / 结构 | Shield / Armor / Hull | 三层承伤 |
 | 抗性 | Resistance | |
 | 回避率 | Evasion | |
-| 命中率 | Hit Rate | 2026-09-19 新增属性行 |
+| 命中率 | Hit Rate | 属性行 |
 | 命中加成 | Hit Bonus | 加算项 |
 | 推进失稳 | Thruster Instability | 点火期惩罚 |
 | 索敌阵列 | Tracking Array | 中槽命中件 |
@@ -76,7 +73,7 @@
 | 克制系数 | Damage Type Multiplier | |
 | 异常点 | Anomaly | |
 | 悬赏 | Bounty | |
-| 信号空间 | Signal Space | 已上线旧玩法，原称虫洞；2026-10-06船长批准 |
+| 信号空间 | Signal Space | 已上线玩法，与未来虫洞区分 |
 | 信号谜质 | Signal Enigma | 原虫洞谜质；物品标识`mat-wh-essence`不变 |
 | 虫洞 | Wormhole | 未来新玩法，未开放；不指已上线信号空间 |
 | 遗迹 | Ruins | |
@@ -96,8 +93,8 @@
 | 增援 | Reinforcements | |
 | 支援呼叫 | Support Call | |
 | 时序核心 | Chrono Core | |
-| 谜质 / 谜质装置 | Enigma / Enigma Device | ⚠ 见待裁决 ② |
-| 信用点 | credit / credits | 英文侧**不用 ISK**（船长 2026-09-19 裁决）；中文侧仍写「信用点」 |
+| 谜质 / 谜质装置 | Enigma / Enigma Device | 现行译名 |
+| 信用点 | credit / credits | 中文单位信用点，英文单位credit/credits |
 | 离线结算 | Offline Settlement | |
 | 自动作业 | Auto Operations | |
 | 重复清剿 | Repeat Sweep | |
@@ -150,7 +147,7 @@
 | sh-nautilus | 鹦鹉螺级测绘巡洋舰 | `Nautilus-class Survey Cruiser` |
 | sh-tortoise | 陆龟级重装艇 | `Tortoise-class Heavy Corvette` |
 | sh-hawksbill | 玳瑁级重装巡舰 | `Hawksbill-class Heavy Cruiser` |
-| sh-xuanwu | 玄武级重装战列舰 | `Leatherback-class Heavy Battleship` | 棱皮龟（海龟里最大的一型，船长 2026-09-19 裁决）；尾字 2026-09-21 由「旗舰」改「战列舰」（船长「玄武级是战列，不是旗舰」） |
+| sh-xuanwu | 玄武级重装战列舰 | `Leatherback-class Heavy Battleship` | 专名采用Leatherback，舰型为战列舰 |
 | sh-megalodon | 巨齿鲨级战列舰 | `Megalodon-class Battleship` |
 | sh-dunkleosteus | 邓氏鱼级旗舰 | `Dunkleosteus-class Flagship` |
 | sh-flyingfish | 飞鱼级快运舰 | `Flyingfish-class Courier` |
@@ -215,19 +212,12 @@
 | dept-training | 训练处 | `Training Office` | |
 | dept-finance | 财务处 | `Finance Dept` | |
 | dept-route-safety | 航线安全 | `Route Safety` | |
-| dept-recall | 检索重启 | `Recall & Restart` | 船长 2026-09-19 认可；若要改名随时说 |
-| dept-salvage-crew | 老陈一队 | `Chen's Crew No.1` | 船长 2026-09-19 认可 |
+| dept-recall | 检索重启 | `Recall & Restart` | |
+| dept-salvage-crew | 老陈一队 | `Chen's Crew No.1` | |
 
-## 七、已裁决记录（2026-09-19 船长五问五答 · 冻结依据）
+## 七、专名查阅
 
-| # | 议题 | 裁决 |
-|---|---|---|
-| ① | 货币 | **`credit` / `credits`**（英文侧不用 ISK；中文侧仍写「信用点」）⇒ `content:check` 的禁用词契约**无需按语言分叉**（英文侧同样不出现 ISK/EVE/NPC） |
-| ② | 谜质 / 谜质装置 | **`Enigma` / `Enigma Device`** |
-| ③ | 玄武级 | **用某类大型海龟的英文** ⇒ 定为 `Leatherback-class`（棱皮龟，海龟中最大的一型，配「重装战列舰」） |
-| ④ | 老陈一队 / 检索重启 | **`Chen's Crew No.1`** ✓ · `Recall & Restart` 沿用（船长认可；改名随时说） |
-| ⑥ | 磷虾级 / 沙鳗级 / 独角鲸级（三条采矿舰 · 2026-09-30 船长令改名） | **`Krill-class` / `Sandeel-class` / `Narwhal-class`**（海洋生物名，与鲸吞/鲸王/座头鲸同级）；原名 `Sandcat-class` / `Burrower-class` / `Pioneer-class` |
-| ⑤ | 鲸吞级 | **`Whaleswallow-class`**（直译保留意象） |
+现行专名见对应表，货币、谜质和单位见第二、三节。旧问答、未采用名字和改名过程已移入旧记录，不作为日常阅读入口。原因：同一结论不应在裁决流水和专名表各维护一份。
 
 ## 八、专名表 · 物品（86）
 
@@ -405,7 +395,7 @@
 | compression | 压缩技术 | `Compression` |
 | hold-management | 货舱管理学 | `Hold Management` |
 
-### 九之二、专名表 · 技能页术语与技能书（**2026-09-22 船长令 · 技能科技树**）
+### 九之二、专名表 · 技能页术语与技能书
 
 | id | 中文 | English |
 |---|---|---|
@@ -437,7 +427,7 @@
 | b-bounty | 悬赏 | `Bounties` |
 | b-logistics | 物流与货舱 | `Logistics & Cargo` |
 
-> ⚠ 这 23 本技能书的名字在实现里走 l10n 表 `ui.labelsText.026~048`（中英齐）；本表是**译名口径留档**，
+> 技能书名称通过l10n表`ui.labelsText.026~048`取得；本表是现行译名索引，
 > 与 `skillBranchText()` 同源。技能名本身见上一节（`mining-frigate` 采矿舰入门学 · `station-protocol` 空间站维修协议）。
 
 ## 十、专名表 · 异常点（27）
@@ -526,7 +516,7 @@
 | wh-exile-swarm | 残响蜂群 | `Echo Swarm` |
 | wh-exile-line | 残军战列线 | `Remnant Battle Line` |
 
-### 十一之二、专名表 · 敌方挂载件（14）· **2026-09-26 三号补 · 待船长过目**
+### 十一之二、专名表 · 敌方挂载件 · 待船长过目
 
 > 落点 = `packages/core/src/foeMounts.ts` 各件的 `en` 字段（`resolveFoeMounts` 的 `namePairs` 用它，
 > 英文界面经 `overlayCardFoeMounts` 覆盖）。**交接来源**：船长令「**翻译交给三号，你备注下我让三号去做**」
@@ -797,7 +787,7 @@ D 族与 E 族那两件**刻意不同名**（该件 note 明写"名字要不同"
 
 
 
-## 十五、实现口径（id 映射制 · 2026-09-20 船长定）
+## 十五、实现口径（id映射制）
 
 > 本段是**工程口径**（不是译名）：新写玩家可见文案时照这个来；细则见 `docs/development-conventions.md` §十一之三。
 
@@ -809,5 +799,11 @@ D 族与 E 族那两件**刻意不同名**（该件 note 明写"名字要不同"
 | 不译声明 | `l10n-keep`（就近注释，或 `l10n-keep-start`…`-end` 区间） | 用于"中文当键"的数据：联合 key / 形状槽键 / 键表 label / 开发探针 / i18n 实现自身 |
 | 自动放行 | 纯全角标点/空白（`　` `」` `。`）语言中立 | 不计入未译读数 |
 | 闸门 | `npm run l10n:check` 必跑；`npm run l10n:list -- <文件>` 逐条看未译 | 未声明中文串应为 0 |
-| 界面读数注意 | **导航项数随「第一次」前置变**（新档 8 项、老档 10 项） | `FIRST_UNLOCKS`：工业←采集 · 市场←生产 · 星图内页签←扫描 |
+| 界面读数注意 | 导航项随任务进度开放，不固定新旧档数量 | 核对当前任务解锁表和core导出，不从旧验收数量推断 |
 | 游戏名 | 中文「大鲸鱼-深空放置」／英文 **`Great Whale Idle`** | 唯一真源 `ui.App.056`；Electron 窗口标题读同一条 |
+
+## 补充译名
+
+| id | 中文 | 英文 |
+|---|---|---|
+| mod-lair-blink-r | 短距离跃迁装置 | `Short-Range Warp Device` |

@@ -18,7 +18,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { FOE_SHIPS, SHIPS, buildSimContext } from '@whale/data'
-import { createInitialState } from '../src/state'
+import { createCommandReadyState as createInitialState } from './helpers/command-ready'
 import type { GameState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
 import {
@@ -93,8 +93,8 @@ function tickSeconds(state: GameState, seconds: number): void {
   }
 }
 
-describe('后勤舰 · 我方（维修装置修最缺血的队友）', () => {
-  it('后勤舰把维修脉冲指向**三层剩余比例最低的僚舰**（而非自己）', () => {
+describe('后勤舰 · 我方（维修装置只修自身，队友修理由无人机承担）', () => {
+  it('后勤舰维修装置只修自身，不再自动修重伤僚舰', () => {
     const { state, run } = enterRunWithLogi()
     const battle = startBattle(state, run)
     // 敌舰不开火（隔离测量）：只改运行态冷却
@@ -113,10 +113,8 @@ describe('后勤舰 · 我方（维修装置修最缺血的队友）', () => {
     tickSeconds(state, 6) // 跨过第一跳（开战 +5 秒）
     const wingAfter = battle.units['ally-1']!.hp
     const logiAfter = battle.units['player']!.hp
-    // 僚舰被修（甲 +5）
-    expect(wingAfter.a, '僚舰应被修到').toBeGreaterThan(wingBefore.a)
-    // 后勤舰自己**这一跳没被修**（它自己也有装置，但脉冲去修更缺血的那艘了）
-    expect(logiAfter.a, '后勤舰这一跳不该修自己').toBe(logiBefore.a)
+    expect(wingAfter.a, '没有修理无人机不应修队友').toBe(wingBefore.a)
+    expect(logiAfter.a, '本舰维修装置只修自身').toBeGreaterThan(logiBefore.a)
   })
 
   it('对照：**非后勤舰**装了维修装置仍只修自己（旧口径零变化）', () => {
@@ -156,30 +154,33 @@ describe('后勤舰 · 我方（维修装置修最缺血的队友）', () => {
 
 /* ═══════════ 判据：数据字段（2026-09-16 船长「并添加到船体特性属性中」）═══════════ */
 
-describe('后勤舰特性 · 判据 = 数据字段 `repairPulseTargetsFleet`', () => {
-  it('卡面：亡军后勤舰写了它；**写了的船全部是「后勤舰」子分类**（与 content:check 同一条契约）', () => {
+describe('后勤舰特性 · 维修输出加成替代队友选靶', () => {
+  it('卡面：亡军后勤舰声明50%输出加成，不再声明旧自动选靶', () => {
     const logi = SHIPS.find((s) => s.id === LOGI)!
-    expect(logi.repairPulseTargetsFleet, '亡军后勤舰应声明该字段').toBe(true)
+    expect(logi.repairPulseTargetsFleet).toBeUndefined()
+    expect(logi.repairOutputBonusPct).toBe(.5)
     expect(logi.subClass).toBe('后勤舰')
-    const declared = SHIPS.filter((s) => s.repairPulseTargetsFleet === true)
+    const declared = SHIPS.filter((s) => (s.repairOutputBonusPct ?? 0) > 0)
     expect(declared.length, '现在恰好一艘').toBe(1)
     for (const s of declared) expect(s.subClass, `${s.id} 写了修队友就必须是后勤舰`).toBe('后勤舰')
   })
 
-  it('引擎**读字段、不看子分类**：摘掉字段 ⇒ 退回只修自己；给普通船补上 ⇒ 立刻修队友', () => {
+  it('维修输出读数据字段，不靠子分类；旧选靶字段不再进入运行规格', () => {
     const state = fresh(31)
     const logi = addShipToFleet(state, LOGI)
     const plain = addShipToFleet(state, T3)
     // 基线
-    expect(createPlayerSpec(state, ctx, logi)!.logistics, '后勤舰原样 ⇒ 带 logistics').toBe(true)
+    expect(createPlayerSpec(state, ctx, logi)!.repairOutputBonusPct).toBe(.5)
+    expect(createPlayerSpec(state, ctx, logi)!.logistics).toBeUndefined()
     expect(createPlayerSpec(state, ctx, plain)!.logistics, '普通船 ⇒ 不带').toBeUndefined()
     // 补丁上下文（只换 `ships` 表，不动全局数据）
     const ships = new Map(ctx.ships)
-    ships.set(LOGI, { ...ctx.ships.get(LOGI)!, repairPulseTargetsFleet: undefined })
-    ships.set(T3, { ...ctx.ships.get(T3)!, repairPulseTargetsFleet: true })
+    ships.set(LOGI, { ...ctx.ships.get(LOGI)!, repairOutputBonusPct: undefined })
+    ships.set(T3, { ...ctx.ships.get(T3)!, repairOutputBonusPct: .5, repairPulseTargetsFleet: true })
     const patched: SimContext = { ...ctx, ships }
-    expect(createPlayerSpec(state, patched, logi)!.logistics, '摘掉字段 ⇒ 不再是后勤舰口径').toBeUndefined()
-    expect(createPlayerSpec(state, patched, plain)!.logistics, '普通船补上字段 ⇒ 立刻生效').toBe(true)
+    expect(createPlayerSpec(state, patched, logi)!.repairOutputBonusPct).toBeUndefined()
+    expect(createPlayerSpec(state, patched, plain)!.repairOutputBonusPct).toBe(.5)
+    expect(createPlayerSpec(state, patched, plain)!.logistics).toBeUndefined()
   })
 })
 
@@ -243,7 +244,7 @@ describe('后勤舰 · 敌方（50% 自身 DPS → 修理值）', () => {
     const otherBefore = { ...otherRt.hp }
     const ledger = { nextPulseAtMs: REPAIR_PULSE_MS, pulses: 0, healed: 0 }
     pulseFoeRepair(battle, specs, ledger)
-    const expectHeal = (foeNominalDpsOf(tender) * 0.5 * REPAIR_PULSE_MS) / 1000
+    const expectHeal = Math.ceil((foeNominalDpsOf(tender) * 0.5 * REPAIR_PULSE_MS) / 1000)
     expect(ledger.healed).toBeCloseTo(expectHeal, 3)
     // 普通舰被修（甲优先，上限 = 缺口）
     expect(battle.units[other.tag]!.hp.a).toBeGreaterThan(otherBefore.a)

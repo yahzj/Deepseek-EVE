@@ -127,14 +127,21 @@ describe('信号空间被占矿点：覆盖和地点完成不能混用', () => {
     // 本例只验分类和耗尽去重；缩小各堆避免货仓容量成为变量。
     for (const pile of vein.piles!) if (pile.itemId === ore) pile.units = 1
     const taken: unknown[] = []
-    for (let i = 0; i < initial.length; i++) {
+    let remaining = initial.length
+    const turnsBefore = run.turnsLeft
+    let actions = 0
+    while (remaining > 0) {
       const r = wormholeCollectOreAt(state, ctx)
       expect(r.ok, r.error).toBe(true)
+      expect(r.taken!.length).toBeGreaterThan(0)
       expect(r.taken!.every(p => p.itemId === ore)).toBe(true)
-      expect(r.left).toBe(initial.length - i - 1)
-      expect(r.finished).toBe(i === initial.length - 1)
+      remaining -= r.taken!.length
+      expect(r.left).toBe(remaining)
+      expect(r.finished).toBe(remaining === 0)
       taken.push(...r.taken!)
+      actions++
     }
+    expect(turnsBefore - run.turnsLeft).toBe(actions)
     expect(taken).toHaveLength(initial.length)
     expect(vein.piles).toEqual(leftovers)
     expect(run.grid!.activated).toContain(vein.key)
@@ -263,7 +270,13 @@ describe('信号空间被占矿点：覆盖和地点完成不能混用', () => {
     arrive(covered.state)
     expect(covered.run.grid!.activated).not.toContain(covered.vein.key)
     settleWin(covered.state)
-    expect(covered.run.grid!.activated).not.toContain(covered.vein.key)
+    if (place === 'beacon') {
+      expect(covered.run.grid!.activated).toContain(covered.vein.key)
+      expect(covered.run.grid!.exitKnown).toBe(true)
+      const reloaded = loadSaveFile(serializeSaveFile(covered.state)).state.wormhole.run!.grid!
+      expect(reloaded.activated).toContain(covered.vein.key)
+      expect(reloaded.exitKnown).toBe(true)
+    } else expect(covered.run.grid!.activated).not.toContain(covered.vein.key)
     expect(covered.vein.place).toBe(place)
   })
 

@@ -23,7 +23,7 @@ import { describe, expect, it } from 'vitest'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { buildSimContext } from '@whale/data'
-import { createInitialState } from '../src/state'
+import { createCommandReadyState as createInitialState } from './helpers/command-ready'
 import { addShipToFleet } from '../src/shipyard'
 import { wormholeStockPush } from '../src/wormholeScan'
 import { WORMHOLE_ESSENCE_ITEM_ID } from '../src/wormholeSalvage'
@@ -42,6 +42,7 @@ const SEEDS = 200
 /** 跑一趟自动探索，返回报告 + 结算后的档（夹具与 `wormhole-core-drop.test.ts` 一致） */
 function runOnce(seed: number) {
   const state = createInitialState({ nowWallMs: 0, seed })
+  state.research!.levels['mt-explore-signal-auto-t3'] = 3
   const uids = [0, 1, 2, 3].map(() => addShipToFleet(state, T3))
   state.skills.trained['ai-expert'] = 6
   state.wormholeStock = []
@@ -49,6 +50,9 @@ function runOnce(seed: number) {
   const stockId = state.wormholeStock![0]!.id
   const started = wormholeAutoStart(state, ctx, stockId, uids)
   if (!started.ok) throw new Error(`派队失败：${started.error}`)
+  // 本组保留旧在途任务的模拟基准；新估算由signal-auto-estimate专项覆盖。
+  delete state.wormholeAuto![0]!.estimateRules
+  delete state.wormholeAuto![0]!.estimate
   state.gameMs += WORMHOLE_AUTO_DURATION_MS + 1
   advanceWormholeAuto(state, ctx)
   const report = wormholeAutoReportsOf(state)[0]
@@ -75,9 +79,9 @@ describe('自动探索的谜质线（2026-09-27 玩家报障修复 · 船长甲 
       0,
     )
     const avg = total / SEEDS
-    /** 实测 1.91 枚/趟；带子给宽（1.0~3.5）只为兜"整条线又没了"或"数量级写错" */
-    expect(avg, '平均枚数/趟').toBeGreaterThanOrEqual(1.0)
-    expect(avg, '平均枚数/趟').toBeLessThanOrEqual(3.5)
+    // 7f2e89b2起无设备队跳过资源点，回合留给遗迹/谜质；固定200种子不再沿用旧走法的宽区间。
+    expect(total, '无设备队固定200种子总谜质').toBe(878)
+    expect(avg, '平均枚数/趟').toBe(4.39)
   })
 
   it('③ 进的是仓库，且 id 与「谜质科技」的研究货币是同一个', () => {

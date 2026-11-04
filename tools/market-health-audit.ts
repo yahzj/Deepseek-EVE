@@ -20,7 +20,6 @@ function fresh(seed = 10403): GameState {
   const s = createInitialState({ nowWallMs: 1791100000000, seed })
   s.wallet.isk = 1e15
   s.standingsEarned = { dsi: 200 }
-  s.standingClawbackDone = true
   return s
 }
 function tick(s: GameState, context: SimContext, ms = minute) { s.gameMs += ms; advanceMarket(s, ms, context) }

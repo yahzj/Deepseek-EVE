@@ -11,7 +11,7 @@
  *   ① 装配页主属性表（`shipInfoLines` 过滤两张隐藏表 ＋ 机动速度 ＋ 无人机舱合计 ＋ 装后行）
  *   ② 手册·舰船图鉴详情窗（`shipInfoLines`＋`shipIndirectLines`，与 ① 同源但不过滤）
  *   ③ 手册·舰船蓝图产物（同上）
- *   ④ 舰队页悬停卡 = **当前属性**（`shipCurrentRowKeys`：基础行被装后行逐条顶替 ＋ 追加间接属性）
+ *   ④ 舰队页悬停卡 = **当前属性**（`shipCurrentLayout`：基础行被装后行逐条顶替 ＋ 追加间接属性）
  *
  * 口径来源必须与实现同源（直接 import，不许抄一份）：`FIT_MAIN_HIDDEN_KEYS` /
  * `COMBAT_BASE_KEYS` 定义在 `ui/shipInfo.tsx`；页面追加行若改名，这里会跟着红——这正是护栏的目的。

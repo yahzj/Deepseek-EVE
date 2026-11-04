@@ -16,6 +16,7 @@ import { advanceAutoLoopInvasion, autoLoopInvasionGalaxy, setAutoLoopInvasion, s
 import { weekendFoePoolOf } from '../src/weekendEvent'
 import { weekendBattleInvolvedOf } from '../src/weekendBattle'
 import type { WeekendEventState } from '../src/weekendEvent'
+import { advanceExpedition } from '../src/expedition/advance'
 
 const ctx = buildSimContext()
 /** 循环目标固定用**外围**星系：核心的进度还受"至少夺回一个外围"的门禁管，构造夺回态更绕 */
@@ -95,6 +96,7 @@ describe('入侵重复出击 · 再出发', () => {
      */
     s.expedition.active = false
     s.expedition.battle = null
+    advanceExpedition(s, ctx)
     expect(advanceAutoLoopInvasion(s, ctx)).toBeNull()
     expect(ev.assaultDraws ?? 0, '第二场也要抽（每场一支）').toBe(drawsBefore + 2)
     // 「每场重抽」= 抽签盐随场次前进、抽到的卡来自该区域池（两次同卡在概率上允许，故不断言"必不同"）
@@ -133,6 +135,7 @@ describe('入侵重复出击 · 再出发', () => {
     s.bountyCooldowns[card] = s.gameMs + 60_000
     s.expedition.active = false
     s.expedition.battle = null
+    advanceExpedition(s, ctx)
     expect(advanceAutoLoopInvasion(s, ctx), '冷却中 ⇒ 等待（改前这里返回「冷却中…」并把循环停掉）').toBeNull()
     expect(autoLoopInvasionGalaxy(s), '循环必须还活着').toBe(TARGET)
     expect(s.expedition.active, '冷却中不出发').toBe(false)

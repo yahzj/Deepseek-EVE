@@ -11,7 +11,7 @@
  *   （AI / 智能 / 旧时代 / 人类），也不得用「你的舰船」这类把玩家与船分开的说法——**玩家就是那条船**。
  * - `replies` 为**预留**字段（回复选项接口），本期不启用（`core/comms.ts` 的 COMMS_REPLIES_ENABLED = false）。
  */
-import type { CommsMessageDef } from '@whale/core'
+import { COMMAND_STANDING_REQUIRED, type CommsMessageDef } from '@whale/core'
 import { FIRST_TASK_MESSAGES } from './firstTaskMessages'
 import { L10N } from './l10n/table'
 
@@ -44,6 +44,13 @@ const BRIEFING_MESSAGE: CommsMessageDef = {
 
 /** 全部通讯消息（id 稳定；新增即追加，不要改既有 id——已读/送达按 id 记账） */
 export const COMMS_MESSAGES: readonly CommsMessageDef[] = [
+  {
+    id: 'msg-industrial-fleet-risk', factionId: 'dshi', deptId: 'dept-route-safety', kind: '提示',
+    subject: L10N['ui.commsIndustrialRisk.001']!.zh,
+    body: [L10N['ui.commsIndustrialRisk.002']!.zh, L10N['ui.commsIndustrialRisk.003']!.zh],
+    trigger: { kind: 'industrialFleetRisk' }, holdWhenBusy: true,
+    hint: { text: L10N['ui.commsIndustrialRisk.004']!.zh, page: 'ship', shipTab: 'fleet' },
+  },
   ...FIRST_TASK_MESSAGES, // 「第一次」任务系列的 13 封情报信（2026-09-17 教程重做批）
   BRIEFING_MESSAGE,
   {
@@ -469,9 +476,25 @@ export const COMMS_MESSAGES: readonly CommsMessageDef[] = [
     trigger: { kind: 'standing', factionId: 'dsi', min: 100 },
     hint: { text: L10N['ui.commsBlackMarket.005']!.zh, page: 'market' },
   },
+  {
+    id: 'msg-fleet-command-unlock',
+    factionId: 'dshi',
+    deptId: 'dept-training',
+    kind: '提示',
+    subject: L10N['ui.commsFleetUnlock.001']!.zh,
+    body: [
+      L10N['ui.commsFleetUnlock.002']!.zh,
+      L10N['ui.commsFleetUnlock.003']!.zh,
+    ],
+    trigger: { kind: 'standing', factionId: 'dsi', min: COMMAND_STANDING_REQUIRED },
+    popup: true,
+    hint: { text: L10N['ui.commsFleetUnlock.004']!.zh, page: 'skills', tab: '舰船', skillBranch: 'b-command' },
+  },
 ]
 
 /** 通讯消息目录（core 判定触发器；按 id 稳定查表） */
 export function buildCommsCatalog(): ReadonlyMap<string, CommsMessageDef> {
-  return new Map(COMMS_MESSAGES.map((m) => [m.id, m]))
+  // 解锁信先判定，避免同期补发消息占掉唯一弹窗名额；其他消息之间的顺序不变。
+  const messages = [...COMMS_MESSAGES].sort((a, b) => Number(b.id === 'msg-fleet-command-unlock') - Number(a.id === 'msg-fleet-command-unlock'))
+  return new Map(messages.map((m) => [m.id, m]))
 }

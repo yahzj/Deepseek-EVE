@@ -20,6 +20,10 @@ import { deferredL10nIssues } from '../../../tools/l10n-deferred-check'
 import ships from '../../data/src/static/ships.json'
 import modules from '../../data/src/static/modules.json'
 import { applyApprovedScanShipDelta } from './helpers/approved-scan-ship-delta'
+import { applyApprovedTorpedoShipDelta } from './helpers/approved-torpedo-ship-delta-20261019'
+import { applyApprovedEquipmentRetune } from './helpers/approved-equipment-retune-20261019'
+import { applyApprovedFleetShipDelta } from './helpers/approved-fleet-delta-20261101'
+import { shipCommandCostOf, rangeEwBaseOf } from '../src/index'
 
 const ctx = buildSimContext(), root = new URL('../../../', import.meta.url)
 const droneHulls = ['sh-swarm', 'sh-sentinel', 'sh-wh-e-destroyer', 'sh-wh-e-carrier']
@@ -209,6 +213,8 @@ describe('出击加速、激光校准与协处理器5%', () => {
       for (const field of ['shieldHp', 'armorHp', 'hullHp']) hull[field] = Math.round(hull[field]! * 1.5)
     }
     applyApprovedScanShipDelta(expectedShips)
+    applyApprovedTorpedoShipDelta(Object.values(expectedShips.groups).flat() as Array<{ id: string }>)
+    applyApprovedFleetShipDelta(Object.values(expectedShips.groups).flat() as Array<{ id: string }>)
     expect(ships).toEqual(expectedShips)
     const expectedModules = old('packages/data/src/static/modules.json')
     ;(Object.values(expectedModules.groups).flat().find((mod: any) => mod.id === 'mod-wh-e-cpu') as any).reloadPenaltyPct = .05
@@ -229,17 +235,18 @@ describe('出击加速、激光校准与协处理器5%', () => {
     const oldIds = new Set(Object.values(expectedModules.groups).flat().map((mod: any) => mod.id))
     const copy = structuredClone(modules)
     copy.groups.MODULES_0 = copy.groups.MODULES_0.filter(mod => oldIds.has(mod.id))
+    applyApprovedEquipmentRetune(expectedModules)
     expect(copy).toEqual(expectedModules)
   })
 
   it('实际舰体特性显示读取30%参数；已完成英文覆盖且无过期待译登记', () => {
-    const path = new URL('apps/desktop/src/renderer/src/ui/shipInfo.tsx', root)
+    const path = new URL('apps/desktop/src/renderer/src/features/ships/info/shipLines.tsx', root)
     const source = ts.createSourceFile('shipInfo.tsx', readFileSync(path, 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
     const fn = source.statements.find(n => ts.isFunctionDeclaration(n) && n.name?.text === 'shipInfoLines')!
     const scope = { exports: {} as { shipInfoLines: (ship: unknown) => Array<{ k: string; v: string }> },
       tr: (id: string, p?: Record<string, unknown>) => l10nEntryText(L10N[id]!, 'zh').replace(/\{(\w+)\}/g, (m,k) => String(p?.[k] ?? m)),
       fmt: String, shipRoleText: () => '', shipSubClassText: (value: string) => value, shipCategoryKeyOf: () => '', shipTierText: () => '', DMG_LABEL: {}, shipSlotsOf: (ship: any) => ship.slots,
-      pct: (v: number) => `${Math.round(v * 100)}%`, resistsText: () => '', shipCategoryLabelOf: () => '', slotListText: () => '' }
+      pct: (v: number) => `${Math.round(v * 100)}%`, resistsText: () => '', shipCategoryLabelOf: () => '', slotListText: () => '', shipCommandCostOf, rangeEwBaseOf }
     runInNewContext(ts.transpileModule(fn.getText(source), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React }, fileName: 'shipInfo.tsx' }).outputText, scope)
     for (const id of droneHulls) {
       const rows = scope.exports.shipInfoLines(ctx.ships.get(id))

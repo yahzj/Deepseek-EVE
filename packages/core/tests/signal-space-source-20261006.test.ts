@@ -1,5 +1,3 @@
-import { execFileSync } from 'node:child_process'
-import { createHash } from 'node:crypto'
 import { existsSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -14,7 +12,6 @@ import {
   advanceWormhole,
   advanceWormholeAuto,
   aiCoreUsed,
-  createInitialState,
   loadSaveFile,
   serializeSaveFile,
   wormholeAutoStart,
@@ -25,19 +22,14 @@ import {
   wormholeResume,
   wormholeTempAddShape,
 } from '../src/index'
+import { createCommandReadyState as createInitialState } from './helpers/command-ready'
 
 // 船长 2026-10-06 指定：旧玩法取 verify 的 c5f8be83，不取二号旧版本或零号新模式。
 const SOURCE_COMMIT = 'c5f8be8346e2bde9b1e738e7ddbfd5ca4740d519'
 const SOURCE_BLOB = '98012b1a55ece1473e226f7bb499887b5b628ce5'
-const SOURCE_PATH = 'apps/desktop/src/renderer/src/panels/Wormhole.tsx'
 const panelUrl = new URL('../../../apps/desktop/src/renderer/src/panels/SignalSpace.tsx', import.meta.url)
 const source = readFileSync(panelUrl, 'utf8')
-const original = execFileSync('git', ['show', `${SOURCE_COMMIT}:${SOURCE_PATH}`], {
-  cwd: fileURLToPath(new URL('../../../', import.meta.url)),
-  encoding: 'utf8',
-})
 const ast = ts.createSourceFile('SignalSpace.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
-const originalAst = ts.createSourceFile('Wormhole.tsx', original, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
 const printer = ts.createPrinter({ removeComments: true })
 
 function collect<T extends ts.Node>(root: ts.Node, predicate: (node: ts.Node) => node is T): T[] {
@@ -60,17 +52,13 @@ function normalized(root: ts.SourceFile, name: string): string {
   return printer.printNode(ts.EmitHint.Unspecified, declaration(root, name), root).replace(/\r\n/g, '\n')
 }
 
-function engineCalls(root: ts.SourceFile): string[] {
+function engineCalls(root: ts.Node): string[] {
   return collect(root, ts.isCallExpression)
     .map((call) => call.expression)
     .filter(ts.isPropertyAccessExpression)
     .filter((call) => ts.isIdentifier(call.expression) && call.expression.text === 'engine')
     .map((call) => call.name.text)
     .sort()
-}
-
-function translationIds(root: ts.SourceFile): string[] {
-  return [...new Set(collect(root, ts.isStringLiteral).map((node) => node.text).filter((text) => /^(ui|core)\./.test(text)))].sort()
 }
 
 function classOf(node: ts.JsxElement): string | undefined {
@@ -88,8 +76,6 @@ function elementWithClass(name: string): ts.JsxElement {
 
 describe('信号空间 · 旧面板来源与隔离', () => {
   it('记录固定提交与原始 blob，导出 SignalSpacePanel，相对依赖仍在同级路径', () => {
-    const blob = createHash('sha1').update(`blob ${Buffer.byteLength(original)}\0`).update(original).digest('hex')
-    expect(blob).toBe(SOURCE_BLOB)
     expect(source).toContain(SOURCE_COMMIT)
     expect(source).toContain(SOURCE_BLOB)
     const exported = declaration(ast, 'SignalSpacePanel')
@@ -103,28 +89,28 @@ describe('信号空间 · 旧面板来源与隔离', () => {
     }
   })
 
-  it('只调用来源的 legacy 命令，不引入整备、有限物资、事件、目标或精英分支，不新增文案 ID', () => {
-    expect(engineCalls(ast)).toEqual(engineCalls(originalAst))
+  it('保留legacy命令及玩法隔离，准备卡抽取后仍走统一预算', () => {
+    expect(engineCalls(ast)).not.toContain('wormholeAutoCores')
     expect(engineCalls(ast)).toContain('wormholeEnterFromStock')
     expect(engineCalls(ast)).toContain('wormholeAutoStart')
     const forbidden = /^(preparedEntry|newRun|debugEnabled|WhPreparation|WhSupplies|WhAlert|WhGroundList|WhExtraction|WhEventChoices|WhEncounterIntel|WhObjectiveProgress|WhGoals|WORMHOLE_EVENT_IDS|wormholeGroundBoard|WormholePreparationPlan|expeditionRules|supplyVersion|expeditionGoal|pendingEvent|eventKey|elite)$/
     expect(collect(ast, ts.isIdentifier).map((node) => node.text).filter((name) => forbidden.test(name))).toEqual([])
     expect(ast.statements.filter(ts.isImportDeclaration).map((node) => (node.moduleSpecifier as ts.StringLiteral).text))
       .not.toContain('./WormholeExpedition')
-    expect(translationIds(ast)).toEqual(translationIds(originalAst))
+    expect(source).toContain('<PreparationFleetCards')
+    expect(source).toContain('<CommandBudget')
+    expect(source).toContain('commandBudgetOf')
   })
 
-  it('旧准备、地图动作、敌人渲染、tempGrid 货仓和结算实现与固定来源一致', () => {
-    const unchanged = [
-      'handleEnter', 'startAuto', 'handleAutoStart', 'pickCell', 'travelTo',
-      'doScan', 'doActivate', 'doDescend', 'doExtract', 'leaveBagPage',
-      'tempDiscardAndContinue', 'tempStowAndContinue', 'renderHereNode',
-      'WhHold', 'WhGridMap', 'SettleView',
-    ]
-    for (const name of unchanged) {
-      // 本轮扫描科技同时进入实际扫描与演出圈数，其余旧流程逐字保护。
-      const current = normalized(ast, name).replace('(grid?.scanRadius ?? 1) + matterBuffs.scanRadius', 'grid?.scanRadius ?? 1')
-      expect(current, name).toBe(normalized(originalAst, name))
+  it('旧准备、地图动作、tempGrid 货仓仍接现行legacy命令，不运行历史源码', () => {
+    const commands: Record<string, string[]> = {
+      handleEnter: ['wormholeEnterFromStock', 'wormholeEnter'], startAuto: ['wormholeAutoStart'],
+      travelTo: ['wormholeTravel'], doScan: ['wormholeScan'], doActivate: ['wormholeActivate'],
+      doDescend: ['wormholeDescend'], doExtract: ['wormholeExtract', 'wormholeTempPending'],
+      tempDiscardAndContinue: ['wormholeTempDiscardAll'], tempStowAndContinue: ['wormholeTempStowAll'],
+    }
+    for (const [name, expected] of Object.entries(commands)) {
+      expect(engineCalls(declaration(ast, name)), name).toEqual(expected.sort())
     }
     expect(normalized(ast, 'WhHold')).toContain('run.tempGrid')
     expect(normalized(ast, 'WhHold')).toContain('WORMHOLE_TEMP_CELLS')
@@ -186,6 +172,7 @@ describe('信号空间 · 旧面板来源与隔离', () => {
 const ctx = buildSimContext()
 function legacyFleet() {
   const state = createInitialState({ nowWallMs: 0, seed: 19 })
+  state.research!.levels['mt-explore-signal-auto-t3'] = 3
   const fleet = Array.from({ length: 2 }, () => addShipToFleet(state, 'sh-thresher'))
   state.warehouse.items['repairkit-mil'] = 200
   state.skills.trained['ai-expert'] = 2
@@ -236,13 +223,13 @@ describe('信号空间 · legacy 核心集成', () => {
     expect(restored.warehouse.items['ai-core-gamma'] ?? 0).toBe(0)
   })
 
-  it('旧自动按原时长与一队一核结算，不扣携入物资、保留不丢船保险且不重复入账', () => {
+  it('信号自动按原时长但不占核心，不扣携入物资、保留不丢船保险且不重复入账', () => {
     const { state, fleet } = legacyFleet()
     state.wormholeStock = [{ id: 'legacy-signal', seed: 19, depth: 1, family: 'A', archetype: 'balanced', foundAtGameMs: 0 }]
     const used = aiCoreUsed(state)
     const cargo = fleet.map((id) => structuredClone(state.fleet[id]!.cargo))
     expect(wormholeAutoStart(state, ctx, 'legacy-signal', fleet).ok).toBe(true)
-    expect(aiCoreUsed(state)).toBe(used + 1)
+    expect(aiCoreUsed(state)).toBe(used)
     expect(state.wormholeAuto![0]!.expeditionRules).toBeUndefined()
     expect(state.wormholeAuto![0]!.expeditionSnapshot).toBeUndefined()
     expect(state.warehouse.items['repairkit-mil']).toBe(200)

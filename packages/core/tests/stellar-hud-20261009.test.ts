@@ -24,7 +24,7 @@ function harness(locale: 'zh' | 'en' = 'zh', empty = false) {
     if (id === 'react') return { useState: (initial: any) => { const i = cursor++; if (!(i in values)) values[i] = typeof initial === 'function' ? initial() : initial; return [values[i], (value: any) => { values[i] = typeof value === 'function' ? value(values[i]) : value }] }, useRef: (initial: any) => { const i = refCursor++; return refs[i] ?? (refs[i] = { current: initial }) }, useEffect: () => {} }
     if (id === 'react/jsx-runtime') return { jsx, jsxs, Fragment }
     if (id === '@whale/core') return { ...core, manufacturingRunViews: () => [] }
-    if (id === 'lucide-react') return Object.fromEntries(['Copy', 'Crosshair', 'Play', 'Pause', 'Radar', 'Search', 'Trash2', 'X', 'Factory', 'Globe2'].map(name => [name, name]))
+    if (id === 'lucide-react' || id.endsWith('layoutIcons')) return Object.fromEntries(['Copy', 'Crosshair', 'Play', 'Pause', 'Radar', 'Search', 'Trash2', 'X', 'Factory', 'Globe2'].map(name => [name, name]))
     if (id === '../i18n/locale') return { tr }
     if (id === '../i18n/fmt') return { fmtDuration: String, fmtInt: String }
     if (id === '../ui/planetText') return { pt: (key: string) => tr(core.PLANET_TEXT_IDS[key] ?? key) }
@@ -95,11 +95,12 @@ describe('星系星图探索指挥台', () => {
     delete planet.cells[0]!.building; h.render()
     expect(h.find(node => node.type === 'stellar-map').props.bodyStates[body.planetId].size).toBe(size)
   })
-  it.each(['zh', 'en'] as const)('%s任务、详情分区与原操作保留，新增词条待译回退', locale => {
+  it.each(['zh', 'en'] as const)('%s任务、详情分区与原操作保留，新增词条双语完整', locale => {
     const h = harness(locale)
     for (const id of ['ui.stellarHud.001', 'ui.stellarHud.002', 'ui.stellarHud.003']) {
       expect(h.all().some(node => node.props['aria-label'] === h.tr(id) || node.props.children === h.tr(id) || (Array.isArray(node.props.children) && node.props.children.includes(h.tr(id))))).toBe(true)
-      expect(L10N[id]!.enDeferred).toBe(true)
+      expect(L10N[id]!.enDeferred).not.toBe(true)
+      expect(L10N[id]!.en).toMatch(/[A-Za-z]/)
     }
     expect(h.find(node => node.props['data-search-launch'] !== undefined)).toBeDefined()
     expect(h.find(node => node.props['data-probe-manufacture'] !== undefined)).toBeDefined()

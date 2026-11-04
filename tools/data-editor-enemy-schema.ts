@@ -13,6 +13,9 @@ export const ENEMY_FILES: Record<EnemyDataTable, string> = {
   invasionFleets: 'packages/data/src/static/invasionFleets.json', wormholeFleets: 'packages/data/src/static/wormholeFleets.json',
 }
 const LABELS: Record<string, string> = {
+  strength: '射程电子战强度',
+  rangeEwBonus: '额外射程电子战强度', rangeEwEquipmentBonusPct: '电子舱强度加成',
+  rangeEwStrength: '射程电子战强度',
   hp: '基础总血', shotDmg: '基础武器组单发', gunCount: '炮数', reloadMs: '装填间隔', hitRate: '命中参数',
   hullClassTier: '舰种档', speedRatio: '舰种速度倍率', rangeMinM: '射程下限', rangeMaxM: '射程上限',
   desireRangeM: '期望交距', falloff: '远端衰减', blindDmgMul: '近盲伤害倍率', evasion: '闪避',
@@ -39,10 +42,10 @@ export function enemyFieldOf(field: EnemySourceField): NumericField {
   const ratio = /split\.|Resist\.|Pct$|Pct\.|\.pct$|\.add$|^evasion$|\.evasion$|FireShare$|Chance$|hpShare$|hpBelow$/.test(path)
   const fraction = ratio || last === 'falloff' || last === 'hitRate'
   const percent = fraction && !operand
-  const integer = !operand && /^(hullClassTier|lairLevel|gunCount|rareWreckDrop)$|Ms$|\.wave$|\.count$|\.shots$|\.units$|afterKills$|\.stock$/.test(path)
+  const integer = !operand && /^(hullClassTier|lairLevel|gunCount|rareWreckDrop)$|Ms$|\.wave$|\.count$|\.shots$|\.units$|afterKills$|\.stock$|rangeEwStrength$|rangeEwBonus$|rangeDebuff\.strength$/.test(path)
   const zeroAllowed = /shotDmg|dmg$|speedRatio|wave$|rewardIsk|standing|split\.|Resist\.|evasion|Chance|Pct|FireShare|hpShare|\.pct$|\.add$|rangeMinM|hpBelow|Hp$|delayMs|rangeDownM|blindDmgMul|afterKills|sec$/.test(path)
   const max = !operand && fraction ? last === 'hitRate' ? 2 : /Resist|evasion/.test(path) ? 0.9 : /BonusPct$/.test(path) ? undefined : 1 : last === 'hullClassTier' ? 5 : /wave$/.test(path) ? 31 : /count$|units$|stock$/.test(path) ? 100 : undefined
-  const unit = percent ? '%' : /Ms$/.test(last) ? 'ms' : /Seconds$|Sec$|^sec$/.test(last) ? 's' : /RangeM$|MinM$|MaxM$|distanceM|rangeDownM/.test(last) ? 'm' : /Mul$|Ratio$|^mul$/.test(last) ? 'x' : /Isk$/.test(last) ? '信用点' : ''
+  const unit = percent ? '%' : /Ms$/.test(last) ? 'ms' : /Seconds$|Sec$|^sec$/.test(last) ? 's' : /RangeM$|MinM$|MaxM$|distanceM|rangeDownM/.test(last) ? 'm' : /Mul$|Ratio$|^mul$/.test(last) ? 'x' : /Isk$/.test(last) ? '信用点' : /rangeEwStrength|rangeEwBonus|\.strength$/.test(path) ? '强度点' : ''
   const section = /^ships\.(\d+)\./.exec(path) ?? /^drones\.(\d+)\./.exec(path)
   const group = section ? `${path.startsWith('ships') ? '编队' : '机群'}条目 ${Number(section[1]) + 1}` : path.includes('.') ? GROUPS[path.split('.')[0]!] ?? path.split('.')[0]! : '基础参数'
   const resistGroup = path.split('.').find(part => part.endsWith('Resist'))

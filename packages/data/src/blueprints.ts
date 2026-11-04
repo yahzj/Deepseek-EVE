@@ -15,6 +15,7 @@
 
 import type { BlueprintDef, MarketRarity } from '@whale/core'
 import { L10N } from './l10n/table'
+import { SHIP_PLUGS } from './plugs'
 
 /**
  * 装备/物品蓝图的**档位系数**（2026-09-11 船长裁决「甲」+ 同日复核补正）：
@@ -50,6 +51,7 @@ export const BLUEPRINT_PRICE_STEP = 500
  * 修理组件蓝图与之无关（船长：「其他保持不变」⇒ 走系数默认值）。
  */
 export const BLUEPRINT_PRICE_OVERRIDES: Readonly<Record<string, { price: number; reason: string }>> = {
+  'bp-once-drone-repair-mil': { price: 840_000, reason: '2026-11-02船长授权决定：一次性50架批次书价为批次货值40%，配合约50%材料成本保留制造收益' },
   'bp-drone-launch-3': { price: 8_160_000, reason: '2026-10-09船长确认：MK3迁入奇货，永久蓝图按奇货×4' },
   'bp-laser-calibration-3': { price: 9_440_000, reason: '2026-10-09船长确认：MK3迁入奇货，永久蓝图按奇货×4' },
   'bp-faction-drone-bee': { price: 2_400_000, reason: '2026-10-09船长确认：势力无人机永久图纸基价为50架批次货值×2，黑市独占' },
@@ -147,7 +149,29 @@ const FACTION_DRONE_RECIPES = {
   },
 } as const
 
+// 50架基准料单；永久图纸按相同单位成本扩大为100架，不复制第二份配方。
+const REPAIR_DRONE_BATCH_MATERIALS = [
+  { itemId: 'min-tritanium', count: 20_000 },
+  { itemId: 'min-pyerite', count: 10_000 },
+  { itemId: 'min-mexallon', count: 10_000 },
+  { itemId: 'part-circuit', count: 1_000 },
+  { itemId: 'part-coolant', count: 1_000 },
+  { itemId: 'part-drone-neural', count: 387 },
+] as const
+
 const BASE_BLUEPRINTS: readonly BlueprintDef[] = [
+  ...([false, true] as const).map(singleUse => {
+    const batches = singleUse ? 1 : 2
+    return {
+      id: singleUse ? 'bp-once-drone-repair-mil' : 'bp-drone-repair-mil',
+      name: L10N[singleUse ? 'bp.repairDrone.001' : 'bp.repairDrone.002']!.zh,
+      description: L10N[singleUse ? 'bp.repairDrone.003' : 'bp.repairDrone.004']!.zh,
+      itemId: 'drone-repair-mil', outputUnits: 50 * batches,
+      ...(singleUse ? { singleUse: true } : {}),
+      materials: REPAIR_DRONE_BATCH_MATERIALS.map(material => ({ ...material, count: material.count * batches })),
+      buildSeconds: 360 * batches, buildCostIsk: 0, priceIsk: singleUse ? 840_000 : 16_800_000,
+    }
+  }),
   {
     id: 'bp-faction-drone-bee', name: L10N['bp.factionDrone.001']!.zh,
     description: L10N['bp.factionDrone.006']!.zh, itemId: 'drone-exile-bee',
@@ -2923,7 +2947,7 @@ const BASE_BLUEPRINTS: readonly BlueprintDef[] = [
         材料价 = 产物价 × **45%**（本批按 45% 配平，实测 45.1% / 45.0%）。 ══════════ */
   {
     id: 'bp-shieldfield-2',
-    name: '护盾充能力场装置图纸 MK2（一次性）',
+    name: L10N['bp.fleetSupport.001']!.zh,
     moduleId: 'mod-shieldfield-2',
     singleUse: true,
     materials: [
@@ -2943,11 +2967,11 @@ const BASE_BLUEPRINTS: readonly BlueprintDef[] = [
     buildCostIsk: 0,
     priceIsk: 4_000_000, // 船长定平均价 400 万；**书价 = 产物价**（一次性图既有口径）
     // ⟪文案调整 2026-10-07⟫ 力场图纸沿用产物效果说明，避免旧全队免费恢复口径。
-    description: L10N['mod.copy.027']!.zh,
+    description: L10N['mod.fleetSupport.003']!.zh,
   },
   {
     id: 'bp-shieldfield-3',
-    name: '护盾充能力场装置图纸 MK3（一次性）',
+    name: L10N['bp.fleetSupport.002']!.zh,
     moduleId: 'mod-shieldfield-3',
     singleUse: true,
     materials: [
@@ -2967,7 +2991,7 @@ const BASE_BLUEPRINTS: readonly BlueprintDef[] = [
     buildCostIsk: 0,
     priceIsk: 20_000_000, // 船长定平均价 2000 万；**书价 = 产物价**
     // ⟪文案调整 2026-10-07⟫ 型号周期由产物参数行显示，不再手写机制数值。
-    description: L10N['mod.copy.027']!.zh,
+    description: L10N['mod.fleetSupport.003']!.zh,
   },
   /* ══════════════ 舰船插件蓝图（**2026-09-26 船长令**）══════════════
    * 船长原话（照抄）：「**在工业-组装机的门类筛选中，添加舰船插件的新分类，打算依靠黑匣来生产舰船插件。**」
@@ -3292,13 +3316,24 @@ const BLUEPRINT_NAME_TEXT_BINDINGS = {
 } as const
 export const BLUEPRINTS: readonly BlueprintDef[] = [
   ...BASE_BLUEPRINTS,
+  ...SHIP_PLUGS.filter(mod => mod.id.startsWith('plug-pirate-') || mod.id.startsWith('plug-alien-') ||
+    mod.id.startsWith('plug-gravekeeper-') || mod.id.startsWith('plug-titan-') || mod.id.startsWith('plug-deadarmy-')).map(mod => ({
+    ...BASE_BLUEPRINTS.find(bp => bp.id === 'bp-plug-shield-plate')!,
+    id: `bp-once-${mod.id}`, moduleId: mod.id, singleUse: true,
+    name: `${mod.name}${L10N['bp.encrypted.001']!.zh}`, description: L10N['bp.encrypted.002']!.zh,
+  })),
+  ...SHIP_PLUGS.filter(mod => mod.id.startsWith('plug-pirate-') || mod.id.startsWith('plug-alien-') ||
+    mod.id.startsWith('plug-gravekeeper-') || mod.id.startsWith('plug-titan-') || mod.id.startsWith('plug-deadarmy-')).map(mod => ({
+    ...BASE_BLUEPRINTS.find(bp => bp.id === 'bp-plug-shield-plate')!,
+    id: `bp-${mod.id}`, moduleId: mod.id, name: `${mod.name}${L10N['bp.factionPlug.002']!.zh}`, description: L10N['bp.factionPlug.001']!.zh,
+  })),
   ...[
     ['bp-drone-launch-1', 'mod-drone-launch-1', 'bp-drone-tac-1', 'bp.launchCalibration.001'],
     ['bp-drone-launch-2', 'mod-drone-launch-2', 'bp-drone-tac-2', 'bp.launchCalibration.002'],
     ['bp-drone-launch-3', 'mod-drone-launch-3', 'bp-drone-tac-3', 'bp.launchCalibration.003'],
     ['bp-laser-calibration-2', 'mod-laser-calibration-2', 'bp-stab-pla-2', 'bp.launchCalibration.004'],
     ['bp-laser-calibration-3', 'mod-laser-calibration-3', 'bp-stab-pla-3', 'bp.launchCalibration.005'],
-  ].map(([id, moduleId, sourceId, nameId]) => {
+  ].map(([id, moduleId, sourceId]) => {
     const source = BASE_BLUEPRINTS.find(bp => bp.id === sourceId)!
     const priceIsk = id === 'bp-drone-launch-3' ? 8_160_000 : id === 'bp-laser-calibration-3' ? 9_440_000 : source.priceIsk
     return { ...source, id: id!, moduleId: moduleId!, name: BLUEPRINT_NAME_TEXT_BINDINGS[id as keyof typeof BLUEPRINT_NAME_TEXT_BINDINGS].name, priceIsk,

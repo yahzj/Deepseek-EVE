@@ -6,7 +6,7 @@
  *   派生强化（威胁 ×档位系数、外加波次与僚机），敌人类型与该星系特色一致；
  * - **档位由"地图级别"封顶**（2026-09-10 船长定）：每张窝点卡标一个 `lairLevel`（1/2/3），
  *   它是该地图的**档位上限**——1 级图只出外围、2 级图到核心、3 级图全档；族内越低级的地图
- *   出高档位赏金的概率越低。旧规则（档位随玩家声望封顶）已退役，且**每天三档各一张的保底已取消**；
+ *   出高档位赏金的概率越低。旧规则（档位随玩家声望封顶）已退役；合法候选与分区席位允许时三档各保底一条；
  *   接取门槛仍看卡自身声望要求（`AnomalyDef.standingReq`）；
  * - 窝点**只作为赏金任务目标存在**（不入星图常驻悬赏列表、不入档：任务里只记「主题悬赏 id + 档位」，
  *   开战时现算强化卡）；
@@ -17,6 +17,7 @@
  * 数值（威胁系数、波次占比、僚机增量、酬金比例、稀有残骸件数）都是**可调常量**，
  * 集中在文件顶部，等船长定数后改这里一处即可。
  */
+import { ceilFinalQuantity } from './quantity'
 import type { AnomalyDef, DamageType, FoeFamily } from './types'
 import type { GameState } from './state'
 /**
@@ -30,6 +31,7 @@ import { rareDropRateMulOf } from './tuning'
 /** 威胁标签的"相对重锚"要血曲线与它的反解（**2026-10-02 船长令取甲**：只重锚标签、战斗零变化） */
 import { foeHpOfThreat, foeJudgedThreatOf, foeThreatAtHpBudgetOf } from './foePower'
 import type { BattleBalance } from './types'
+import { enemyFormationCard } from './combat/formation'
 
 /** 窝点档位：1 外围 / 2 核心 / 3 深层 */
 export type LairTier = 1 | 2 | 3
@@ -177,7 +179,7 @@ export function factionAnomalyOf(anomaly: AnomalyDef): AnomalyDef {
 
 /** 派系活跃目标的基础奖金 = 主题悬赏奖金 ×1.1（胜利结算沿用既有浮动与技能系数） */
 export function factionBaseRewardIsk(anomaly: AnomalyDef): number {
-  return Math.round(anomaly.rewardIsk * FACTION_BOUNTY_REWARD_MUL)
+  return ceilFinalQuantity(anomaly.rewardIsk * FACTION_BOUNTY_REWARD_MUL)
 }
 
 /* ═══════════ 名称（船长 2026-09-10 词表定稿） ═══════════ */
@@ -316,12 +318,12 @@ export function lairTiersOf(anomaly: AnomalyDef): LairTier[] {
 
 /** 窝点基础奖金 = 主题悬赏奖金 ×**赏金倍率**（2/4/8；胜利结算沿用既有浮动与技能系数） */
 export function lairBaseRewardIsk(anomaly: AnomalyDef, tier: LairTier): number {
-  return Math.round(anomaly.rewardIsk * LAIR_REWARD_MUL[tier])
+  return ceilFinalQuantity(anomaly.rewardIsk * LAIR_REWARD_MUL[tier])
 }
 
 /** 赏金任务酬金（刷出时锁定）= 窝点基础奖金 × 档位酬金比例 */
 export function lairTaskRewardIsk(anomaly: AnomalyDef, tier: LairTier): number {
-  return Math.round(lairBaseRewardIsk(anomaly, tier) * LAIR_TASK_REWARD_MUL[tier])
+  return ceilFinalQuantity(lairBaseRewardIsk(anomaly, tier) * LAIR_TASK_REWARD_MUL[tier])
 }
 
 /**
@@ -382,7 +384,37 @@ export const FOE_SUB_DMG: Record<FoeFamily, readonly DamageType[]> = {
  * `wave: 0/1` 两波**，其余舰级路径卡仍在 `wave: 0`）⇒ 直接套用会让第 2/3 波
  * **刷出 0 个单位**（探针实测）。故舰级路径的窝点**不套旧波表**（每波 ≥ 1 单位、波次按 `slot.wave` 表达）。
  */
-export function lairAnomalyOf(anomaly: AnomalyDef, tier: LairTier, bal: BattleBalance): AnomalyDef {
+type LairCacheEntry = { catalog?: ReadonlyMap<string, import('./types').FoeShipDef>; card: AnomalyDef }
+const formationLairMemo = new WeakMap<AnomalyDef, WeakMap<BattleBalance, Map<LairTier, LairCacheEntry>>>()
+
+export function lairAnomalyOf(anomaly: AnomalyDef, tier: LairTier, bal: BattleBalance, formationVersion: 0 | 1 = 1, shipCatalog?: ReadonlyMap<string, import('./types').FoeShipDef>): AnomalyDef {
+  if (formationVersion === 1) {
+    const base = anomaly.foeFormation?.baseline ?? anomaly
+    const byBalance = formationLairMemo.get(base) ?? new WeakMap<BattleBalance, Map<LairTier, LairCacheEntry>>()
+    const cache = byBalance.get(bal) ?? new Map<LairTier, LairCacheEntry>()
+    const cached = cache.get(tier)
+    if (cached && cached.catalog === shipCatalog) return cached.card
+    const old = lairAnomalyOf(base, tier, bal, 0)
+    if (!old.ships?.length) return old
+    const counts = old.ships.map(slot => Math.max(1, slot.count ?? 1))
+    const candidates = old.ships.map((slot, index) => ({ slot, index }))
+      .filter(({ slot }) => old.foeFamily !== 'E' && !slot.ship.elite && !slot.enterBranch && !slot.ship.repairPct && slot.ship.id !== 'foe-d-stasis' && !slot.ship.id.includes('spore') && !slot.ship.id.includes('hiveback'))
+      .sort((a, b) => a.slot.ship.hp * (a.slot.hpMul ?? 1) - b.slot.ship.hp * (b.slot.hpMul ?? 1))
+    if (old.threat > 40 && candidates.length) {
+      const amount = Math.min(tier, Math.max(1, Math.floor(counts.reduce((a, b) => a + b, 0) * 0.5)))
+      for (let i = 0; i < amount; i++) counts[candidates[i % candidates.length]!.index]! += 1
+    }
+    const maxHp = Math.max(...old.ships.map(slot => slot.ship.hp * (slot.hpMul ?? 1)))
+    const boosts = tier > 1 && old.threat > 100 ? old.ships.flatMap((slot, i) => slot.ship.hp * (slot.hpMul ?? 1) === maxHp ? [i] : []) : []
+    const strong = old.threat > 140
+    const card = enemyFormationCard(old, bal, { counts, boostSlots: boosts, hpMul: strong ? 1.1 : 1.05, dmgMul: strong ? 1.05 : 1.03,
+      ...(!candidates.length && old.threat > 40 && old.foeFamily === 'E' && shipCatalog?.has('foe-auro-hulk')
+        ? { extras: [{ wave: 0, shipId: 'foe-auro-hulk', count: Math.min(tier, 2), share: 0.4 }] } : {}) }, shipCatalog)
+    cache.set(tier, { catalog: shipCatalog, card })
+    byBalance.set(bal, cache)
+    formationLairMemo.set(base, byBalance)
+    return card
+  }
   const waves = LAIR_WAVES[tier]
   const main = foeMainDamageTypeOf(anomaly)
   const sub = subDamageTypeOf(anomaly, main)

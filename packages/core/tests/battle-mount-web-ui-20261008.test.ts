@@ -18,7 +18,7 @@ function evaluate(source: string, globals: Record<string, unknown>) {
 }
 describe('战斗挂载行、手册机动和双向网线', () => {
   it('顶部不重复玩家射程，敌挂载只留短标识，完整详情仍在', () => {
-    const source = file('BattleScreen.tsx')
+    const source = file('../features/combat/renderBattleScene.tsx')
     const ast = ts.createSourceFile('battle.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
     let legend: ts.JsxElement | undefined
     function visit(node: ts.Node) {
@@ -37,7 +37,7 @@ describe('战斗挂载行、手册机动和双向网线', () => {
   })
 
   it.each(['zh', 'en'] as const)('%s每件挂载独立且名称着色，效果正文不重复名称', locale => {
-    const source = ts.createSourceFile('mounts.tsx', file('battleMounts.tsx'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+    const source = ts.createSourceFile('mounts.tsx', file('../features/combat/battleMounts.tsx'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
     const declaration = source.statements.find(n => ts.isFunctionDeclaration(n))!
     const names = ['A', 'B'], pairs = [['装置A', 'Module A'], ['装置B', 'Module B']]
     const tree = evaluate(declaration.getText(source) + '\nglobalThis.result=BattleMountLines({names,pairs})', {
@@ -63,7 +63,7 @@ describe('战斗挂载行、手册机动和双向网线', () => {
     expect(text(speed.children[1])).toBe('240 m/s')
   })
   it('真实BattleScreen网线表达式解析主控、僚舰和敌舰两个方向', () => {
-    const ast = ts.createSourceFile('battle.tsx', file('BattleScreen.tsx'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+    const ast = ts.createSourceFile('battle.tsx', file('../features/combat/buildProjectileLayers.tsx'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
     let initializer: ts.Expression | undefined
     function visit(node: ts.Node) {
       if (ts.isVariableDeclaration(node) && node.name.getText(ast) === 'webEls') initializer = node.initializer

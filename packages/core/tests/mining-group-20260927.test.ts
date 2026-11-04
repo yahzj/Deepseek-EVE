@@ -16,13 +16,14 @@ describe('矿业大类拆分（2026-09-27）', () => {
     expect(SKILL_GROUPS).toEqual(['舰船', '工业', '矿业', '战斗', '工程', '贸易', '探索', '物流'])
   })
 
-  it('矿业 7 条 · 工业 38 条 · 总数 115 条', () => {
+  it('矿业7条、工业39条，指挥技能新增不改变矿业归属', () => {
     // ⚠ 批一当时是「工业 21 条 · 总数 88 条」；批二（R4/R5 上位）把 10 条挂进工业、7 条挂进战斗；
     // 2026-09-29 船长令再加 3 条（炉压调控学 R3 · 炉膛重构学 R5 · 工业自动化统合 R5）⇒ 工业 31 → 34、总 105 → 108；
     // 2026-09-30 船长令（燃料上限批）再加 4 条实验室书技能 ⇒ 工业 34 → 38、总 108 → 112
     expect(SKILLS.filter((s) => s.group === '矿业').length).toBe(7)
     expect(SKILLS.filter((s) => s.group === '工业').length).toBe(39)
-    expect(SKILLS.length).toBe(119)
+    expect(SKILLS.filter(s => !s.id.startsWith('fleet-command-'))).toHaveLength(119)
+    expect(SKILLS.filter(s => s.id.startsWith('fleet-command-')).map(s => s.id)).toEqual(['fleet-command-basic', 'fleet-command-coordination', 'fleet-command-integration'])
   })
 
   it('矿业七条点名核对（防顺手多搬或少搬）', () => {

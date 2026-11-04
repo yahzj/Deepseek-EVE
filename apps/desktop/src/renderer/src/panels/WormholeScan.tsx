@@ -26,6 +26,7 @@ import {
   wormholeStockMaxOf,
   // 子页「谜质科技」的读数（标题行右侧 + 面板内都要用）
   matterTechEssenceHeld,
+  signalAutoResearchBlock,
 } from '@whale/core'
 import type { GameState, WormholeArchetype, WormholeFamily } from '@whale/core'
 import type { GameEngine } from '../game/engine'
@@ -91,6 +92,7 @@ export function WormholeScanTab({
   const scan = state.wormholeScan ?? { active: false, progressMs: 0 }
   const allStock = engine.wormholeStock()
   const stock = allStock.filter(s => s.expeditionRules === undefined)
+  const autoResearchBlock = signalAutoResearchBlock(state, engine.ctx)
   const futureStock = allStock.filter(s => s.expeditionRules === 2)
   const runs = engine.wormholeAutoRuns()
   const reports = engine.wormholeAutoReports()
@@ -302,12 +304,17 @@ export function WormholeScanTab({
                     <button
                       className="app-btn is-small"
                       disabled={runs.some((r) => r.stockId === item.id)}
+                      aria-disabled={autoResearchBlock ? 'true' : undefined}
                       title={
                         runs.some((r) => r.stockId === item.id)
                           ? tr("ui.WormholeScan.019")
-                          : tr("ui.WormholeScan.050", { WORMHOLE_AUTO_MAX_SHIPS: WORMHOLE_AUTO_MAX_SHIPS, p2: Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000) })
+                          : autoResearchBlock ? cmdText(autoResearchBlock)
+                          : tr('ui.signalAuto.004', { p1: WORMHOLE_AUTO_MAX_SHIPS, p2: Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000) })
                       }
-                      onClick={() => onAutoExplore(item.id)}
+                      onClick={() => {
+                        if (autoResearchBlock) { onToast(cmdText(autoResearchBlock), true); return }
+                        onAutoExplore(item.id)
+                      }}
                     >
                       {tr("ui.Wormhole.002")}
                     </button>
@@ -478,7 +485,8 @@ export function WormholeScanTab({
                         : tr("ui.BattleScreen.001")}
                     </span>
                     <span className="app-inv-count">
-                      {rep.shipIds.length} {tr("ui.WormholeScan.042")} {rep.coresReleased} {tr("ui.WormholeScan.043")}{' '}
+                      {rep.expeditionRules === undefined ? tr('ui.signalAuto.003', { p1: rep.shipIds.length })
+                        : <>{rep.shipIds.length} {tr("ui.WormholeScan.042")} {rep.coresReleased} {tr("ui.WormholeScan.043")}</>}{' '}
                       {tr("ui.WormholeScan.067", { p1: fmtDuration(Math.max(0, state.gameMs - rep.finishedAtGameMs)) })}
                     </span>
                   </div>

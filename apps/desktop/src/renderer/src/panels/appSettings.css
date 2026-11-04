@@ -1,0 +1,222 @@
+/**
+ * 设置面板专属样式（2026-11-02 · 内嵌字体 @font-face ＋ 许可与授权全文弹窗）。
+ *
+ * 面板级 CSS 先例：`panels/fittingRange.css`（随组件 import；**不并进** `styles.css` 与
+ * `ui/layout-css/*` 生成件）。本文件只做增量：设置面板既有外观仍由 styles.css / layout-css 提供，
+ * 这里不复制、不改写既有规则。
+ *
+ * ── 一、内嵌字体（2026-11-02 船长令，多轮迭代后最终口径）──
+ * 设置里两档：「默认」与**「复古」**：
+ * · 默认（不挂 data-ui-font）：中文 = 系统微软雅黑栈，**英文/数字 = Oxanium**（可变字重几何体）；
+ *   字体栈写在 `packages/ui/src/index.css` 的 `--wui-font` / `--wui-mono`。
+ * · 复古（`<html data-ui-font="retro">`）：**统一只用 GNU Unifont**（中文 + 英文/数字都是它的
+ *   像素点阵字形）；由 `ui/fontChoice.ts` 写 `--ui-font` 覆盖。
+ * 试排历程：unscii-16 → unscii-8-tall → Oxanium（保留给默认档）→ Eunomia Bold（试掉）
+ * ⇒ 复古档最终统一 Unifont，其余试排字体已移除。两枚在用字体均 `@font-face` 内嵌、
+ * Vite 按资源打包，桌面/网页两入口共用；授权原文见 `assets/licenses/` 与设置最下方「许可与授权」。
+ * ⚠ Oxanium 是矢量字体（任意字号清晰）；Unifont 是 16px 网格点阵（复古档 12–13px 会缩放），
+ *   复古档字号拉到 ~125%（≈16px）最锐利。观感由船长裁定。
+ */
+@font-face {
+  font-family: 'GNU Unifont';
+  src: url('../assets/fonts/unifont-18.0.01.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  /* 换字不拦渲染：先按兜底栈显示，字体到位再换（5MB 字体首次加载不应白屏） */
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Oxanium';
+  src: url('../assets/fonts/oxanium-variable.ttf') format('truetype');
+  /* 可变字重：wght 轴 200–800（官方刻度；UI 里用到 400/600/700/800 都由浏览器自动沿轴取值） */
+  font-weight: 200 800;
+  font-style: normal;
+  /* 43KB，随包内置；同样 swap（加载失败时回退中文栈，不影响可读性） */
+  font-display: swap;
+}
+
+.app-modal.app-settings-modal {
+  height: min(720px, calc(100vh - 80px));
+}
+
+.app-settings-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--wui-sp-8);
+}
+
+.app-settings-version {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  flex: 0 1 auto;
+  gap: var(--wui-sp-6);
+  min-width: 0;
+  color: rgb(var(--wui-text-dim));
+  font-size: var(--wui-fs-xs);
+  text-align: right;
+}
+
+.app-settings-version span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.app-settings-version button {
+  flex: 0 0 auto;
+}
+
+.app-settings-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  flex: 0 0 auto;
+  margin-bottom: var(--wui-sp-8);
+}
+
+.app-settings-tabs .app-subtab {
+  justify-content: center;
+  min-width: 0;
+  min-height: 36px;
+  padding-inline: var(--wui-sp-8);
+  overflow-wrap: anywhere;
+}
+
+.app-settings-modal .app-settings-list {
+  flex: 1 1 auto;
+}
+
+.app-settings-modal .app-settings-foot {
+  flex-wrap: wrap;
+}
+
+.app-settings-modal .app-settings-val {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.app-settings-list[role='tabpanel']:focus-visible {
+  outline: 1px solid rgb(var(--wui-accent) / 0.55);
+  outline-offset: 2px;
+}
+
+@media (max-width: 560px) {
+  .app-settings-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* 复古档覆盖：body / 表单控件改用 `--ui-font`（GNU Unifont → 系统中文栈兜底）；
+   `default` 档不会挂 data-ui-font 属性 ⇒ 本条不命中，回到默认栈（Oxanium + 雅黑）。 */
+:root[data-ui-font] body,
+:root[data-ui-font] input,
+:root[data-ui-font] textarea,
+:root[data-ui-font] select {
+  font-family: var(--ui-font, 'GNU Unifont', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans SC', sans-serif);
+}
+
+/* 复古档：等宽读数也统一用 Unifont（英文/数字/中文都是同一套点阵字形）：
+   · `--wui-mono` 覆盖在 `:root` 上 ⇒ 全站等宽读数一起换；
+   · `--hud-mono` 定义在 `.hud` 元素上，需同元素覆盖（工业 HUD 页）。 */
+:root[data-ui-font='retro'] {
+  --wui-mono: 'GNU Unifont', 'Cascadia Mono', 'Consolas', 'Courier New', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans SC', monospace;
+}
+:root[data-ui-font='retro'] .hud {
+  --hud-mono: 'GNU Unifont', 'Fira Code', 'Consolas', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans SC', monospace;
+}
+
+/* ── 二、许可与授权全文弹窗 ──
+   只读长文本：等宽 + 可滚动；宽度/高度比设置弹窗大，但不超出窗口（小窗口按边距回落）。
+   弹层族沿用现有 `app-modal-mask` / `app-modal` / `app-modal-head` / `app-modal-body`，不另造结构。
+   ⚠ 遮罩层 z-index 高于设置弹窗（120）：本弹窗渲染在设置弹窗**之外**（同层兄弟），
+   避免设置弹窗在「科幻未来」布局下的 `clip-path` 把嵌套弹层裁掉。 */
+.app-license-mask {
+  z-index: 130;
+}
+
+/* 两段式选择器（.app-modal.app-license-modal）压过 `.app-modal` 的默认 460px/640px，且高于布局样式表 */
+.app-modal.app-license-modal {
+  width: min(1040px, calc(100vw - 40px));
+  max-width: calc(100vw - 40px);
+  height: min(86vh, 900px);
+  max-height: calc(100vh - 48px);
+}
+
+.app-license-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  /* 弹窗定了高度 ⇒ 内容区吃掉剩余空间并自己滚（`.app-modal-body` 已给 overflow-y:auto / min-height:0） */
+  flex: 1 1 auto;
+}
+
+.app-license-intro {
+  margin: 0 0 var(--wui-sp-10);
+  color: rgb(var(--wui-text-dim));
+  font-size: var(--wui-fs-s);
+  line-height: 1.7;
+}
+
+.app-license-section {
+  margin: 0;
+  padding-top: var(--wui-sp-12);
+  border-top: 1px solid rgb(var(--wui-border));
+}
+
+/* 第一段紧跟导语，不再画分隔线 */
+.app-license-section:first-of-type {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.app-license-h {
+  margin: 0 0 var(--wui-sp-5);
+  font-size: var(--wui-fs-md);
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: rgb(var(--wui-gold));
+}
+
+.app-license-subh {
+  margin: var(--wui-sp-10) 0 var(--wui-sp-4);
+  font-size: var(--wui-fs-s);
+  font-weight: 600;
+  color: rgb(var(--wui-text));
+}
+
+.app-license-meta {
+  margin: 0 0 var(--wui-sp-6);
+  font-family: var(--wui-mono);
+  font-size: var(--wui-fs-2xse);
+  line-height: 1.75;
+  color: rgb(var(--wui-text-dim));
+  overflow-wrap: anywhere;
+}
+
+/* 授权书正文：照录原文，等宽可读；整段交给 `.app-modal-body` 滚动，不套第二层滚动条 */
+.app-license-pre {
+  margin: 0 0 var(--wui-sp-8);
+  padding: var(--wui-sp-10) var(--wui-sp-12);
+  border: 1px solid rgb(var(--wui-border));
+  border-radius: 4px;
+  background: rgb(var(--wui-bg-field) / 0.55);
+  color: rgb(var(--wui-text));
+  font-family: var(--wui-mono);
+  font-size: var(--wui-fs-xs);
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.app-license-pre:last-child {
+  margin-bottom: 0;
+}
+
+.app-license-note {
+  margin: 0 0 var(--wui-sp-8);
+  font-size: var(--wui-fs-2xsd);
+  line-height: 1.7;
+  color: rgb(var(--wui-text-dim));
+}

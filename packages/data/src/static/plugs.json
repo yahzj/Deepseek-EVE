@@ -4,6 +4,16 @@
   "table": "plugs",
   "groups": {
     "SHIP_PLUGS_0": [
+      { "id": "plug-pirate-raider", "slot": "plug", "rack": "low", "cpuUse": 0, "plugNonStacking": true, "blueprintExchangeDisabled": true, "stealthWithPropulsion": true, "speedPenaltyMps": 20 },
+      { "id": "plug-alien-shield-coating", "slot": "plug", "rack": "low", "cpuUse": 0, "plugNonStacking": true, "blueprintExchangeDisabled": true, "shieldArmorConversionPct": 0.5, "shieldCapacityRetainedPct": 0.1 },
+      { "id": "plug-gravekeeper-capacitor", "slot": "plug", "rack": "low", "cpuUse": 0, "plugNonStacking": true, "blueprintExchangeDisabled": true, "shieldPassiveBonusPct": 0.5 },
+      { "id": "plug-titan-compression", "slot": "plug", "rack": "low", "cpuUse": 0, "blueprintExchangeDisabled": true, "cargoCapacityBonusPct": 0.25, "droneBayBonusM3": 120, "speedPenaltyMps": 20 },
+      { "id": "plug-deadarmy-printing", "slot": "plug", "rack": "low", "cpuUse": 0, "plugNonStacking": true, "blueprintExchangeDisabled": true, "dronePrinting": { "hpMul": 0.75, "damageMul": 0.9, "launchMul": 0.75, "deckCycleMul": 0.6 } },
+      { "id": "plug-pirate-damage-management", "slot": "plug", "rack": "low", "cpuUse": 0, "plugNonStacking": true, "blueprintExchangeDisabled": true, "damageManagement": { "penaltyReductionPct": 0.8, "hullResistPerKind": 0.03, "maxKinds": 10 } },
+      { "id": "plug-alien-nanobiomass", "slot": "plug", "rack": "low", "cpuUse": 0, "plugNonStacking": true, "blueprintExchangeDisabled": true, "armorCapacityPenaltyPct": 0.2, "armorRegenPerSec": 0.006 },
+      { "id": "plug-gravekeeper-charge", "slot": "plug", "rack": "low", "cpuUse": 0, "plugNonStacking": true, "blueprintExchangeDisabled": true, "chargedWeapons": { "reloadMul": 2, "damageMul": 2, "falloffReductionPct": 0.5 } },
+      { "id": "plug-titan-drone-command", "slot": "plug", "rack": "low", "cpuUse": 0, "plugNonStacking": true, "blueprintExchangeDisabled": true, "droneCommand": { "sharePct": 0.5, "targetWeightPerM3": 0.01 } },
+      { "id": "plug-deadarmy-reinforced-hull", "slot": "plug", "rack": "low", "cpuUse": 0, "plugNonStacking": true, "blueprintExchangeDisabled": true, "hullCapacityBonusPct": 0.4, "recoveryDamageImmune": true },
       {
         "id": "plug-shield-plate",
         "slot": "plug",

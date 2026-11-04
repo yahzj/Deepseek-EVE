@@ -293,16 +293,3 @@ export async function readFromBoundFile(): Promise<string | null> {
     return null
   }
 }
-
-/** 探针/体检用：清掉内存与 IndexedDB 里的句柄（生产路径不调） */
-export async function resetSaveFileForTest(): Promise<void> {
-  handle = null
-  restored = true
-  writable = false
-  generation++
-  try {
-    await idbDel(KEY)
-  } catch {
-    /* 忽略 */
-  }
-}

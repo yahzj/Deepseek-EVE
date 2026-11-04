@@ -18,7 +18,8 @@
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
-import { addModule, addShipToFleet, addWare, countWare, createInitialState, fitModule } from '../src/index'
+import { addModule, addShipToFleet, addWare, countWare, fitModule } from '../src/index'
+import { createCommandReadyState as createInitialState } from './helpers/command-ready'
 import { advanceGame } from '../src/engine'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import {
@@ -51,10 +52,7 @@ const GUN = 'mod-missile-3'
 /**
  * 摆一场入侵（核心满 ＋ 外围清完），并把池子预置到"母舰只剩一点点血"。
  *
- * ⚠ **2026-10-03：真打的那三条（① ② ③）余量由 4,000 收到 2,000**（余量、不是判据）——
- * 本夹具的胜负对**战斗随机序列**极敏感：同日给市场加一行新装备卡（三叉戟光束炮）就足以把局面从
- * "打沉"晃成"差 796 血"（该批 rebase 后本用例三连红）。留出余量后，别批内容改动不再晃它；
- * **判据一字未改**（仍是"打沉 ⇒ 落 `bossDownAtMs` ＋ 场次留档置位"）。
+ * 真打用例只为观察击杀留档，使用400点残池，不以旧编队能否打穿整场作平衡门槛。
  */
 function bossWorld(remain = 4_000): { s: GameState; ev: WeekendEventState } {
   const s = createInitialState({ nowWallMs: 0, seed: 20260927 })
@@ -137,7 +135,7 @@ describe('旗舰战留档：玩家亲手击沉（2026-09-27 船长令）', () =>
    * 这一条同时钉住"不是每拍扫血、也不是靠池子算术反推"。
    */
   it('① 母舰在玩家的战斗里被打沉 ⇒ 落 `bossDownAtMs` ＋ 场次留档置位', () => {
-    const { s, ev } = bossWorld(2_000)
+    const { s, ev } = bossWorld(400)
     const squad = armFleet(s)
     const now = 5_000_000
     launchFlagship(s, now, squad)
@@ -154,14 +152,31 @@ describe('旗舰战留档：玩家亲手击沉（2026-09-27 船长令）', () =>
     expect(ev.flagshipPlayerKill!.downAtGameMs, '战斗时钟与单位上的一致').toBe(battle.bossDownAtMs)
   })
 
-  /** ② **幂等**：同一场再抄一次不覆盖首次那一刻 */
-  it('② 同场重复调用 ⇒ 只记第一次（不覆盖）', () => {
+  it('母舰入场但未击沉不落击杀记录，已有伤害不冒充击杀', () => {
     const { s, ev } = bossWorld(2_000)
     const squad = armFleet(s)
     const now = 5_000_000
     launchFlagship(s, now, squad)
     const battle = s.encounter.battle!
     fightToEnd(s, now)
+    const boss = Object.values(battle.units).find(unit => unit.foeShipId === WEEKEND_FLAGSHIP_SHIP_ID)!
+    expect(boss).toBeDefined()
+    expect(boss.hp.s + boss.hp.a + boss.hp.h).toBeGreaterThan(0)
+    expect(battle.bossDownAtMs).toBeUndefined()
+    expect(ev.flagshipPlayerKill).toBeUndefined()
+    expect(weekendNoteFlagshipPlayerKill(s, battle, now + 1_000_000)).toBe(false)
+    expect(ev.flagshipPlayerKill).toBeUndefined()
+  })
+
+  /** ② **幂等**：同一场再抄一次不覆盖首次那一刻 */
+  it('② 同场重复调用 ⇒ 只记第一次（不覆盖）', () => {
+    const { s, ev } = bossWorld(400)
+    const squad = armFleet(s)
+    const now = 5_000_000
+    launchFlagship(s, now, squad)
+    const battle = s.encounter.battle!
+    fightToEnd(s, now)
+    expect(ev.flagshipPlayerKill, '真实击杀是幂等验证的前置').toBeDefined()
     const first = { ...ev.flagshipPlayerKill! }
     expect(first, '留档已置位').not.toBeUndefined()
     /** 战斗对象还在（遭遇槽已清，但我们手里这份引用还在）⇒ 再抄一次应当是"已有记录，不覆盖" */
@@ -171,11 +186,12 @@ describe('旗舰战留档：玩家亲手击沉（2026-09-27 船长令）', () =>
 
   /** ③ **随档往返 ＋ 换场清空**：留档必须随档（否则结算报告又回落到池子算术），换场随事件对象消失 */
   it('③ 留档随档往返；换场（新事件对象）即清空', () => {
-    const { s, ev } = bossWorld(2_000)
+    const { s, ev } = bossWorld(400)
     const squad = armFleet(s)
     const now = 5_000_000
     launchFlagship(s, now, squad)
     fightToEnd(s, now)
+    expect(ev.flagshipPlayerKill, '真实击杀是存档往返的前置').toBeDefined()
     const keep = { ...ev.flagshipPlayerKill! }
     expect(keep, '留档已置位').not.toBeUndefined()
     const back = loadSaveFile(serializeSaveFile(s, 0)).state.weekendEvent

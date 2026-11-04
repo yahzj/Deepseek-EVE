@@ -3849,6 +3849,8 @@
       "category": "A",
       "source": "packages/data/src/foe-ships.ts",
       "fields": [
+        { "key": "rangeEwBonus", "sourcePath": "rangeEwBonus", "expression": "40", "source": "packages/data/src/combat/ships/remnant.ts" },
+        { "key": "rangeEwEquipmentBonusPct", "sourcePath": "rangeEwEquipmentBonusPct", "expression": "0.25", "source": "packages/data/src/combat/ships/remnant.ts" },
         {
           "key": "gunCount",
           "sourcePath": "gunCount",
@@ -3968,6 +3970,8 @@
       "category": "H",
       "source": "packages/data/src/foe-ships.ts",
       "fields": [
+        { "key": "rangeEwBonus", "sourcePath": "rangeEwBonus", "expression": "40", "source": "packages/data/src/combat/ships/ink.ts" },
+        { "key": "rangeEwEquipmentBonusPct", "sourcePath": "rangeEwEquipmentBonusPct", "expression": "0.25", "source": "packages/data/src/combat/ships/ink.ts" },
         {
           "key": "gunCount",
           "sourcePath": "gunCount",
@@ -15039,7 +15043,7 @@
           "name": "永陵级",
           "id": "foe-d-invasion-eternal-tomb",
           "type": "ships",
-          "note": "挂载条目替换，保留镀层/蓄能并加装陵寝重构；血量与火力来源为本条目倍率。"
+          "note": "挂载继承舰级，包含镀层/蓄能/陵寝重构；血量与火力来源为本条目倍率。"
         },
         {
           "index": 6,
@@ -15881,6 +15885,12 @@
           "sourcePath": "rangeDebuff.pct",
           "expression": "0.5",
           "source": "packages/core/src/foeMounts.ts"
+        },
+        {
+          "key": "rangeDebuff_strength",
+          "sourcePath": "rangeDebuff.strength",
+          "expression": "120",
+          "source": "packages/core/src/combat/foeMounts.ts"
         }
       ],
       "entries": [],
@@ -15909,6 +15919,12 @@
           "sourcePath": "rangeDebuff.pct",
           "expression": "0.15",
           "source": "packages/core/src/foeMounts.ts"
+        },
+        {
+          "key": "rangeDebuff_strength",
+          "sourcePath": "rangeDebuff.strength",
+          "expression": "80",
+          "source": "packages/core/src/combat/foeMounts.ts"
         }
       ],
       "entries": [],

@@ -77,9 +77,9 @@ describe('修理组件回血口径（2026-09-13 船长定）', () => {
     const caps = hullLayerCaps(withHullSkill.state, ctx, withHullSkill.uid)!
     expect(caps.capA / caps.baseA).toBeCloseTo(1.2, 6)
     const r = preloadRepairFor(withHullSkill.state, ctx, withHullSkill.uid, 10 * REPAIR_PULSE_MS)
-    // 18 × 1.5（技能）× 1.2（层容量增幅）= 32.4 → 32
-    expect(r?.units[0]?.armorPerPulse).toBe(32)
-    expect(r?.units[0]?.hullPerPulse).toBe(32)
+    // 独立维修脉冲32.4点，按最终整数数量规则向上取整。
+    expect(r?.units[0]?.armorPerPulse).toBe(33)
+    expect(r?.units[0]?.hullPerPulse).toBe(33)
 
     // 装上装甲增厚板（armorHpBonus）⇒ **只有装甲那一路**再放大（分层生效，与组件同口径）
     const armored = world(5, 'mod-hullrep-2')
@@ -90,8 +90,8 @@ describe('修理组件回血口径（2026-09-13 船长定）', () => {
     expect(fitModule(armored.state, plate!.id, ctx).ok).toBe(true)
     const caps2 = hullLayerCaps(armored.state, ctx, armored.uid)!
     const r2 = preloadRepairFor(armored.state, ctx, armored.uid, 10 * REPAIR_PULSE_MS)
-    const wantArmor = Math.round(18 * quickRepairFactor(armored.state, ctx) * (caps2.capA / caps2.baseA))
-    const wantHull = Math.round(18 * quickRepairFactor(armored.state, ctx) * (caps2.capH / caps2.baseH))
+    const wantArmor = Math.ceil(18 * quickRepairFactor(armored.state, ctx) * (caps2.capA / caps2.baseA))
+    const wantHull = Math.ceil(18 * quickRepairFactor(armored.state, ctx) * (caps2.capH / caps2.baseH))
     expect(r2?.units[0]?.armorPerPulse, '装甲那一路按装甲容量增幅').toBe(wantArmor)
     expect(r2?.units[0]?.hullPerPulse, '结构那一路按结构容量增幅').toBe(wantHull)
     expect(caps2.capA / caps2.baseA).toBeGreaterThan(caps2.capH / caps2.baseH) // 甲件只加装甲
@@ -107,9 +107,9 @@ describe('修理组件回血口径（2026-09-13 船长定）', () => {
       expect(useOneRepairKit(state, ctx).ok).toBe(true)
       const clamp = (x: number): number => Math.min(1, x)
       const expectHull =
-        Math.round(clamp(0.5 + Math.round(5 * (caps.capH / caps.baseH) * quickRepairFactor(state, ctx)) / caps.capH) * 1000) / 1000
+        Math.round(clamp(0.5 + Math.ceil(5 * (caps.capH / caps.baseH) * quickRepairFactor(state, ctx)) / caps.capH) * 1000) / 1000
       const expectArmor =
-        Math.round(clamp(0.5 + Math.round(5 * (caps.capA / caps.baseA) * quickRepairFactor(state, ctx)) / caps.capA) * 1000) / 1000
+        Math.round(clamp(0.5 + Math.ceil(5 * (caps.capA / caps.baseA) * quickRepairFactor(state, ctx)) / caps.capA) * 1000) / 1000
       expect(state.fleet[uid]!.durability).toBeCloseTo(expectHull, 3)
       expect(state.fleet[uid]!.armorPct ?? 1).toBeCloseTo(expectArmor, 3)
       // 一次只吃一枚（民用优先），另一档原封不动

@@ -37,6 +37,7 @@ import { moduleAllowedOnShip } from './shipFitting'
 import { wormholeSupplyForBattle } from './wormholeSupplies'
 import { equipmentCycleMsOf } from './equipment'
 import { requeueDroneLaunch } from './droneLaunch'
+import { plugModulesOf } from './plugs'
 
 /** 该舰装了几件储备甲板、各件周期毫秒（**升序** ⇒ 下标 0 = 最快的那件） */
 export function droneReviveCyclesOf(state: GameState, ctx: SimContext, shipId: string): number[] {
@@ -47,9 +48,15 @@ export function droneReviveCyclesOf(state: GameState, ctx: SimContext, shipId: s
     const mod = ctx.modules.get(modId)
     if (!mod || !moduleAllowedOnShip(fleetDefOf(state, ctx, shipId), mod)) continue
     const ms = mod.droneReviveCycleMs
-    if (typeof ms === 'number' && ms > 0) out.push(equipmentCycleMsOf(state, ctx, shipId, ms))
+    if (typeof ms === 'number' && ms > 0) out.push(droneReviveCycleMsOf(state, ctx, shipId, ms))
   }
   return out.sort((a, b) => a - b)
+}
+
+/** 富卡有效周期与战斗甲板账共用，不将打印减免逐拍累乘。 */
+export function droneReviveCycleMsOf(state: GameState, ctx: SimContext, shipId: string, baseMs: number): number {
+  const printing = plugModulesOf(state, ctx, shipId).find(p => p.dronePrinting)?.dronePrinting
+  return Math.ceil(equipmentCycleMsOf(state, ctx, shipId, baseMs) * (printing?.deckCycleMul ?? 1))
 }
 
 /**
@@ -66,7 +73,8 @@ export function initDroneReviveStock(
   battle: BattleState,
   shipIds: readonly string[],
 ): void {
-  const withDeck = shipIds.filter((id) => droneReviveCyclesOf(state, ctx, id).length > 0)
+  const withDeck = shipIds.filter((id) => droneReviveCyclesOf(state, ctx, id).length > 0 &&
+    !plugModulesOf(state, ctx, id).some(p => p.dronePrinting))
   if (withDeck.length === 0) return
   const kinds = new Set<string>()
   for (const p of Object.values(battle.dronePools ?? {})) {
@@ -97,7 +105,8 @@ export function initDroneRevive(
   const c = droneReviveCyclesOf(state, ctx, shipId)
   if (c.length === 0) return
   const book = { ...(battle.droneRevive ?? {}) }
-  book[tag] = { q: [], t: c.map(() => undefined), c, v: {}, shipId }
+  book[tag] = { q: [], t: c.map(() => undefined), c, v: {}, shipId,
+    ...(plugModulesOf(state, ctx, shipId).some(p => p.dronePrinting) ? { printing: true } : {}) }
   battle.droneRevive = book
 }
 
@@ -127,7 +136,7 @@ function reviveOne(state: GameState, battle: BattleState, e: NonNullable<BattleS
       i -= 1
       continue
     }
-    if (budgetOf(battle, p.artId) > 0) {
+    if (e.printing || budgetOf(battle, p.artId) > 0) {
       pick = i
       break
     }
@@ -138,11 +147,13 @@ function reviveOne(state: GameState, battle: BattleState, e: NonNullable<BattleS
   e.q.splice(pick, 1)
   if (!pool || pool.artId === undefined) return false
   // 扣预算（唯一消耗点；扣不到 ⇒ 这一架不补）——**不碰玩家库存**
-  const stock = { ...(battle.droneReviveStock ?? {}) }
-  const left = budgetOf(battle, pool.artId) - 1
-  if (left > 0) stock[pool.artId] = left
-  else delete stock[pool.artId]
-  battle.droneReviveStock = stock
+  if (!e.printing) {
+    const stock = { ...(battle.droneReviveStock ?? {}) }
+    const left = budgetOf(battle, pool.artId) - 1
+    if (left > 0) stock[pool.artId] = left
+    else delete stock[pool.artId]
+    battle.droneReviveStock = stock
+  }
   /**
    * **满血归队**（船长口径）：三层血按建池时记的满值重置，并清掉待命标记 ⇒
    * 本拍就重新进开火循环/选靶池（与敌方备用机库补位同一套写法）。
@@ -165,7 +176,7 @@ function revivableCount(battle: BattleState, e: NonNullable<BattleState['droneRe
   let n = 0
   for (const key of e.q) {
     const p = pools[key]
-    if (p && budgetOf(battle, p.artId) > 0) n += 1
+    if (p && (e.printing || budgetOf(battle, p.artId) > 0)) n += 1
   }
   return n
 }
@@ -210,7 +221,9 @@ export function droneReviveNoteLoss(state: GameState, battle: BattleState, poolK
 export function resolveDroneRevive(state: GameState, ctx: SimContext, battle: BattleState, nowMs: number): void {
   const book = battle.droneRevive
   if (!book) return
-  for (const e of Object.values(book)) {
+  for (const [tag, e] of Object.entries(book)) {
+    const owner = battle.units[tag]
+    if (e.printing && owner && owner.hp.s + owner.hp.a + owner.hp.h <= 0) continue
     // 在途截止时刻不重置；后续新周期采用当前装备参数，不重复乘快照。
     const cycles = droneReviveCyclesOf(state, ctx, e.shipId)
     if (cycles.length === e.c.length) e.c = cycles

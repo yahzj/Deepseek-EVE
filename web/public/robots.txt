@@ -1,0 +1,27 @@
+# Robots.txt for Great Whale Idle (GitHub Pages)
+# 针对商业 AI 训练与自动化抓取爬虫的官方拦截指令
+
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ClaudeBot
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: Bytespider
+Disallow: /
+
+User-agent: PerplexityBot
+Disallow: /
+
+User-agent: anthropic-ai
+Disallow: /
+
+User-agent: Cohere-ai
+Disallow: /
+
+User-agent: *
+Allow: /
+

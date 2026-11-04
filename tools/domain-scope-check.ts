@@ -45,6 +45,20 @@ type Domain = { name: string; globs: readonly string[] }
  * ⚠ 表里**不放共享底层**：那些走 `SHARED`（§十八 第 3 条：改共享底层不算跨模块）。
  */
 const DOMAINS: readonly Domain[] = [
+  { name: '战斗', globs: ['apps/desktop/src/renderer/src/panels/FittingRange.tsx', 'packages/core/src/alienCombat.ts', 'packages/core/src/alienEquipment.ts', 'packages/core/src/battleAmmoPreflight.ts', 'packages/core/src/coronaFocus.ts', 'packages/core/src/droneLaunch.ts', 'packages/core/src/enemyParameters.ts', 'packages/core/src/fittingRange.ts', 'packages/core/src/gravekeeperCombat.ts', 'packages/core/src/gravekeeperGear.ts'] },
+  { name: '战斗', globs: ["packages/core/src/combat/**","packages/data/src/combat/**","apps/desktop/src/renderer/src/features/combat/**"] },
+  { name: '远征与赏金', globs: ["packages/core/src/expedition/**","apps/desktop/src/renderer/src/features/expedition/**"] },
+  { name: '低安遭遇', globs: ["packages/core/src/encounters/**"] },
+  { name: '周末活动与入侵', globs: ["packages/core/src/invasion/**","packages/data/src/invasion/**"] },
+  { name: '虫洞', globs: ["packages/core/src/wormhole/**","packages/data/src/wormhole/**"] },
+  { name: '舰船与装配', globs: ["packages/core/src/ships/**","apps/desktop/src/renderer/src/features/ships/**"] },
+  { name: 'AI 核心', globs: ["packages/core/src/ai/**"] },
+  { name: '站点与位置', globs: ["apps/desktop/src/renderer/src/features/stations/**"] },
+  { name: '运输与时效任务', globs: ["apps/desktop/src/renderer/src/features/transport/**"] },
+  {
+    name: '舰船与装配',
+    globs: ['packages/core/src/equipmentCpu.ts', 'packages/core/src/plugEffects.ts', 'packages/core/src/stacking.ts'],
+  },
   {
     name: '星球勘探与家园建设',
     globs: ['packages/core/src/planet*.ts', 'packages/core/src/stellar*.ts', 'packages/data/src/planets.ts', 'apps/desktop/src/renderer/src/panels/PlanetaryPanel.tsx', 'apps/desktop/src/renderer/src/panels/Stellar*.tsx', 'apps/desktop/src/renderer/src/panels/stellarMapView.ts', 'apps/desktop/src/renderer/src/ui/planetText.ts', 'apps/desktop/src/renderer/src/game/planetaryCommands.ts', 'apps/desktop/src/renderer/src/styles-planetary.css', 'apps/desktop/src/renderer/src/styles-stellar*.css'],
@@ -63,23 +77,23 @@ const DOMAINS: readonly Domain[] = [
   },
   {
     name: '市场与经济',
-    globs: ['packages/core/src/market.ts', 'packages/core/src/marketLimitedSupply.ts', 'packages/core/src/money.ts', 'packages/data/src/marketCatalog.ts', 'apps/desktop/src/renderer/src/pages/MarketPage*', 'apps/desktop/src/renderer/src/ui/SellQtyModal.tsx', 'apps/desktop/src/renderer/src/ui/marketJump.ts', 'apps/desktop/src/renderer/src/ui/MoneyFit.tsx', 'apps/desktop/src/renderer/src/ui/yieldView.tsx'],
+    globs: ['packages/core/src/market/**', 'packages/data/src/market/**', 'apps/desktop/src/renderer/src/features/market/**', 'packages/core/src/market.ts', 'packages/core/src/marketLimitedSupply.ts', 'packages/core/src/money.ts', 'packages/data/src/marketCatalog.ts', 'apps/desktop/src/renderer/src/pages/MarketPage*', 'apps/desktop/src/renderer/src/ui/SellQtyModal.tsx', 'apps/desktop/src/renderer/src/ui/marketJump.ts', 'apps/desktop/src/renderer/src/ui/MoneyFit.tsx', 'apps/desktop/src/renderer/src/ui/yieldView.tsx'],
   },
   {
     name: '工业（炉/组装机/造船/实验室）',
-    globs: ['packages/core/src/industry.ts', 'packages/core/src/manufacturing.ts', 'packages/core/src/probeManufacturing.ts', 'packages/core/src/lab.ts', 'packages/core/src/plugs.ts', 'packages/core/src/scrap.ts', 'packages/core/src/consumables.ts', 'packages/core/src/blackbox.ts', 'packages/data/src/labRecipes.ts', 'packages/data/src/blueprints.ts', 'packages/data/src/plugs.ts', 'apps/desktop/src/renderer/src/pages/IndustryPage*', 'apps/desktop/src/renderer/src/pages/IndustryHudPage*', 'apps/desktop/src/renderer/src/panels/Industry.tsx', 'apps/desktop/src/renderer/src/panels/PlugExchange.tsx', 'apps/desktop/src/renderer/src/ui/fragmentRedeem.tsx', 'apps/desktop/src/renderer/src/ui/hud.tsx', 'apps/desktop/src/renderer/src/ui/aiSlots.tsx', 'apps/desktop/src/renderer/src/ui/aiWorkFx.tsx', 'apps/desktop/src/renderer/src/ui/aiCoreSelect.tsx', 'apps/desktop/src/renderer/src/ui/aiProgress.tsx', 'apps/desktop/src/renderer/src/ui/useLoopGoalDraft.ts'],
+    globs: ['packages/core/src/industry/**', 'apps/desktop/src/renderer/src/features/industry/**', 'packages/core/src/industry.ts', 'packages/core/src/manufacturing.ts', 'packages/core/src/probeManufacturing.ts', 'packages/core/src/lab.ts', 'packages/core/src/plugs.ts', 'packages/core/src/scrap.ts', 'packages/core/src/consumables.ts', 'packages/core/src/blackbox.ts', 'packages/data/src/labRecipes.ts', 'packages/data/src/blueprints.ts', 'packages/data/src/plugs.ts', 'apps/desktop/src/renderer/src/pages/IndustryPage*', 'apps/desktop/src/renderer/src/pages/IndustryHudPage*', 'apps/desktop/src/renderer/src/panels/Industry.tsx', 'apps/desktop/src/renderer/src/panels/PlugExchange.tsx', 'apps/desktop/src/renderer/src/ui/fragmentRedeem.tsx', 'apps/desktop/src/renderer/src/ui/hud.tsx', 'apps/desktop/src/renderer/src/ui/aiSlots.tsx', 'apps/desktop/src/renderer/src/ui/aiWorkFx.tsx', 'apps/desktop/src/renderer/src/ui/aiCoreSelect.tsx', 'apps/desktop/src/renderer/src/ui/aiProgress.tsx', 'apps/desktop/src/renderer/src/ui/useLoopGoalDraft.ts'],
   },
   {
     name: '技能',
-    globs: ['packages/core/src/training.ts', 'packages/core/src/skillLicense.ts', 'packages/core/src/skillQueue.ts', 'packages/data/src/skills.ts', 'packages/data/src/skillTreePositions.ts', 'apps/desktop/src/renderer/src/pages/SkillsTreePage*', 'apps/desktop/src/renderer/src/pages/skillShared*', 'apps/desktop/src/renderer/src/ui/skillText.ts', 'apps/desktop/src/renderer/src/ui/skillTreeLayout.ts'],
+    globs: ['packages/core/src/skills/**', 'packages/data/src/skills/**', 'apps/desktop/src/renderer/src/features/skills/**', 'packages/core/src/training.ts', 'packages/core/src/skillLicense.ts', 'packages/core/src/skillQueue.ts', 'packages/data/src/skills.ts', 'packages/data/src/skillTreePositions.ts', 'apps/desktop/src/renderer/src/pages/SkillsTreePage*', 'apps/desktop/src/renderer/src/pages/skillShared*', 'apps/desktop/src/renderer/src/ui/skillText.ts', 'apps/desktop/src/renderer/src/ui/skillTreeLayout.ts'],
   },
   {
     name: '虫洞',
-    globs: ['packages/core/src/wormhole*.ts', 'packages/core/src/matterTech.ts', 'packages/data/src/wormholeFoes.ts', 'packages/data/src/matterTech.ts', 'apps/desktop/src/renderer/src/panels/Wormhole*.tsx', 'apps/desktop/src/renderer/src/panels/MatterTechTab.tsx', 'apps/desktop/src/renderer/src/panels/wormholeMapGeom.ts', 'apps/desktop/src/renderer/src/ui/wormholeIntel.ts'],
+    globs: ['packages/core/src/wormhole*.ts', 'packages/core/src/matterTech.ts', 'packages/data/src/wormholeFoes.ts', 'packages/data/src/matterTech.ts', 'apps/desktop/src/renderer/src/panels/Wormhole*.tsx', 'apps/desktop/src/renderer/src/panels/SignalSpace.tsx', 'apps/desktop/src/renderer/src/panels/MatterTechTab.tsx', 'apps/desktop/src/renderer/src/panels/wormholeMapGeom.ts', 'apps/desktop/src/renderer/src/ui/wormholeIntel.ts'],
   },
   {
     name: '战斗',
-    globs: ['packages/core/src/combat*.ts', 'packages/core/src/battle*View.ts', 'packages/core/src/foe*.ts', 'packages/core/src/playerSpec.ts', 'packages/core/src/winEstimate.ts', 'packages/core/src/encounters.ts', 'packages/core/src/hullDamage.ts', 'packages/data/src/anomalies.ts', 'packages/data/src/foe-ships.ts', 'packages/data/src/foe-drones.ts', 'packages/data/src/droneRoles.ts', 'apps/desktop/src/renderer/src/panels/BattleScreen.tsx', 'apps/desktop/src/renderer/src/panels/BattleCycles.tsx', 'apps/desktop/src/renderer/src/panels/battle*.tsx', 'apps/desktop/src/renderer/src/panels/battle*.ts', 'apps/desktop/src/renderer/src/ui/battle*.ts', 'apps/desktop/src/renderer/src/ui/foeBrief.ts', 'apps/desktop/src/renderer/src/ui/droneArt.tsx'],
+    globs: ['packages/core/src/combat*.ts', 'packages/core/src/battle*View.ts', 'packages/core/src/battleRangeMemory.ts', 'packages/core/src/battleRangeConfirm.ts', 'packages/core/src/foe*.ts', 'packages/core/src/playerSpec.ts', 'packages/core/src/winEstimate.ts', 'packages/core/src/encounters.ts', 'packages/core/src/hullDamage.ts', 'packages/data/src/anomalies.ts', 'packages/data/src/foe-ships.ts', 'packages/data/src/foe-drones.ts', 'packages/data/src/droneRoles.ts', 'apps/desktop/src/renderer/src/panels/BattleScreen.tsx', 'apps/desktop/src/renderer/src/panels/BattleCycles.tsx', 'apps/desktop/src/renderer/src/panels/BattleRangeConfirm.tsx', 'apps/desktop/src/renderer/src/panels/battle*.tsx', 'apps/desktop/src/renderer/src/panels/battle*.ts', 'apps/desktop/src/renderer/src/ui/battle*.ts', 'apps/desktop/src/renderer/src/ui/foeBrief.ts', 'apps/desktop/src/renderer/src/ui/droneArt.tsx'],
   },
   {
     name: '采矿与打捞',
@@ -87,7 +101,7 @@ const DOMAINS: readonly Domain[] = [
   },
   {
     name: '远征与赏金',
-    globs: ['packages/core/src/expedition.ts', 'packages/core/src/lairs.ts', 'packages/data/src/retiredLairCards.ts', 'apps/desktop/src/renderer/src/panels/bountySort.ts'],
+    globs: ['packages/core/src/expedition/**', 'apps/desktop/src/renderer/src/features/expedition/**', 'packages/core/src/expedition.ts', 'packages/core/src/lairs.ts', 'packages/data/src/retiredLairCards.ts', 'apps/desktop/src/renderer/src/panels/bountySort.ts'],
   },
   {
     name: '运输与时效任务',
@@ -111,7 +125,7 @@ const DOMAINS: readonly Domain[] = [
   },
   {
     name: '成就',
-    globs: ['packages/core/src/achievements.ts', 'packages/data/src/achievements.ts', 'apps/desktop/src/renderer/src/pages/AchievementsPage*', 'apps/desktop/src/renderer/src/panels/Achievements.tsx'],
+    globs: ['packages/core/src/achievements.ts', 'packages/core/src/achievements/**', 'packages/data/src/achievements.ts', 'packages/data/src/achievements/**', 'apps/desktop/src/renderer/src/features/achievements/**', 'apps/desktop/src/renderer/src/pages/AchievementsPage*', 'apps/desktop/src/renderer/src/panels/Achievements.tsx'],
   },
   {
     name: 'AI 核心',
@@ -126,6 +140,10 @@ const DOMAINS: readonly Domain[] = [
     globs: ['packages/core/src/save.ts', 'packages/core/src/saveBattleClean.ts', 'packages/core/src/ironman.ts', 'packages/core/src/debugGate.ts', 'packages/core/src/tuning.ts', 'packages/core/src/settleStats.ts', 'apps/desktop/src/renderer/src/panels/SaveManager.tsx', 'apps/desktop/src/renderer/src/panels/SaveReconnect.tsx', 'apps/desktop/src/renderer/src/panels/SaveWriterGate.tsx', 'apps/desktop/src/renderer/src/panels/DebugPanel.tsx', 'apps/desktop/src/renderer/src/panels/appSettings.tsx', 'apps/desktop/src/renderer/src/panels/Handbook.tsx', 'apps/desktop/src/renderer/src/panels/handbookDetail.tsx', 'apps/desktop/src/renderer/src/ui/theme.ts', 'apps/desktop/src/renderer/src/ui/tones.ts', 'apps/desktop/src/renderer/src/ui/Glyphs.tsx', 'apps/desktop/src/renderer/src/ui/Hint.tsx', 'apps/desktop/src/renderer/src/ui/WinBox.tsx', 'apps/desktop/src/renderer/src/ui/LazyMount.tsx'],
   },
   {
+    name: '联机账号与聊天',
+    globs: ['apps/desktop/src/renderer/src/features/cloud/**', 'apps/desktop/src/renderer/src/pages/OnlineChatPage.tsx'],
+  },
+  {
     name: '任务中心页与总览',
     globs: ['apps/desktop/src/renderer/src/pages/TaskCenterPage*'],
   },
@@ -136,6 +154,7 @@ const DOMAINS: readonly Domain[] = [
  * 判据 = "被两个以上域依赖、且自身不表达任何玩法"的文件。
  */
 const SHARED: readonly string[] = [
+  'packages/core/src/persistence/**',
   'packages/core/src/state.ts',
   'packages/core/src/types.ts',
   'packages/core/src/labels.ts',

@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 import type { GameState } from '../src/state'
 import type { SimContext, StationSiteDef } from '../src/types'
 import { createInitialState, isSiteBuilt, siteProgress } from '../src/state'
-import { serializeSaveFile, loadSaveFile, SAVE_FORMAT, MIN_MIGRATABLE_VERSION} from '../src/save'
+import { serializeSaveFile, loadSaveFile, SAVE_FORMAT, MIN_SUPPORTED_SAVE_VERSION} from '../src/save'
 import {
   deliverStationResources,
   onArriveAtGalaxy,
@@ -183,7 +183,7 @@ describe('T9 存档（v16.1 兼容字段）', () => {
 
     const raw = JSON.stringify({
       format: SAVE_FORMAT,
-      version: MIN_MIGRATABLE_VERSION,
+      version: MIN_SUPPORTED_SAVE_VERSION,
       savedAtWallMs: 0,
       state: {
         stationSites: {

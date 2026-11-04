@@ -50,6 +50,8 @@ function makeFixtures(input) {
   before.wormholeScan = { active: false, progressMs: 123456, welcomed: true }
   before.aiCores.gamma = Math.max(1, before.aiCores.gamma)
   before.skills.trained[input.ctx.balance.aiCore.skillId] = 5
+  // 本工具检查旧入口及玩法隔离，自动队默认使用已研究的满级科技。
+  before.research.levels['mt-explore-signal-auto-t3'] = 3
   before.wormholeStock.push({ ...before.wormholeStock[0], id: 'rename-auto', seed: 29 })
   const cargo = structuredClone(before)
   const stock = cargo.wormholeStock[0]

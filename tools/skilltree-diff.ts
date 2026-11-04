@@ -13,7 +13,7 @@
  */
 import ExcelJS from 'exceljs'
 import { SKILLS, SKILL_BRANCHES } from '@whale/data'
-import { layoutBook } from '../apps/desktop/src/renderer/src/ui/skillTreeLayout'
+import { layoutBook } from '../apps/desktop/src/renderer/src/features/skills/layout'
 
 async function main(): Promise<void> {
   const byId = new Map(SKILLS.map((s) => [s.id, s]))

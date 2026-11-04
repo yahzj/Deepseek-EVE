@@ -51,6 +51,7 @@ const DRONE_CLASS_ID: Record<DroneClass, string> = {
   combat: 'ui.labelsText.004', // 战斗机 / Combat
   assault: 'ui.labelsText.005', // 攻坚机 / Assault
   sentry: 'ui.labelsText.006', // 哨戒机 / Sentry
+  repair: 'ui.repairDrone.001',
 }
 
 /** 舰船角色（= `shipCategoryKeyOf` 的取值域）→ id */
@@ -335,6 +336,7 @@ const SKILL_BRANCH_ID: Record<string, string> = {
   'b-ammo': 'ui.labelsText.036',
   'b-drone': 'ui.labelsText.037',
   'b-warship': 'ui.labelsText.038',
+  'b-command': 'ui.command.005',
   'b-protect': 'ui.labelsText.039',
   'b-repair': 'ui.labelsText.040',
   'b-ship-recovery': 'ui.shipRecovery.001',

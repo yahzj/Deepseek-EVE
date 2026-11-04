@@ -73,14 +73,15 @@ describe('设置英文实机遗漏回归', () => {
       'pages/MapPage.tsx': ['MAP_TABS', 'BELT_SORT_LABEL', 'WRECK_SORT_LABEL'],
       'pages/ShipPage.tsx': ['SHIP_TABS'],
       'pages/FitPage.tsx': ['RACK_FAMILIES', 'HP_KEY_LABEL', 'TYPE_SN'],
-      'pages/IndustryPage.tsx': ['FURNACE_TABS', 'ORE_KIND_LABEL'],
+      'features/industry/classicFilters.tsx': ['FURNACE_TABS', 'ORE_KIND_LABEL'],
       'panels/StarMap.tsx': ['LABEL_MODES'],
       'panels/Expedition.tsx': ['TASK_TABS', 'TASK_SORT_LABEL'],
       'panels/appSettings.tsx': ['KIND_LABEL', 'KIND_DESC'],
       'panels/Handbook.tsx': ['NAV', 'SEARCH_PLACEHOLDER', 'COUNT_UNIT', 'BP_MAIN', 'FILTER_LABEL', 'guideNotesOf', 'ruleGroupsOf'],
       'panels/PrologueScreen.tsx': ['checkLinesOf', 'diagLinesOf'],
       'panels/MilestoneTasks.tsx': ['CHAIN_UNITS'],
-      'ui/shipInfo.tsx': ['DMG_LABEL', 'FIT_MAIN_HIDDEN_KEYS', 'COMBAT_BASE_KEYS'],
+      'features/ships/info/primitives.tsx': ['DMG_LABEL'],
+      'features/ships/info/shipLines.tsx': ['FIT_MAIN_HIDDEN_KEYS', 'COMBAT_BASE_KEYS'],
       'ui/spaceBg.ts': ['TILE_SETS'],
       'panels/SignalSpace.tsx': ['SIGNAL_TEXT', 'GRID_LEGEND'],
       'panels/Wormhole.tsx': ['SIGNAL_TEXT', 'GRID_LEGEND'],
@@ -93,8 +94,8 @@ describe('设置英文实机遗漏回归', () => {
         const strings = JSON.stringify(module, (_key, value) => typeof value === 'function' ? [...value()] : value)
         if (language === 'en') expect(strings).not.toMatch(cjk)
       }
-      const info = modules['ui/shipInfo.tsx']!
-      expect(info.DMG_LABEL.kinetic).toBe(tr('ui.BattleScreen.002'))
+      const info = modules['features/ships/info/shipLines.tsx']!
+      expect(modules['features/ships/info/primitives.tsx']!.DMG_LABEL.kinetic).toBe(tr('ui.BattleScreen.002'))
       expect(info.FIT_MAIN_HIDDEN_KEYS()).toContain(tr('ui.FitPage.049'))
       expect(info.COMBAT_BASE_KEYS().has(tr('ui.FitPage.001'))).toBe(true)
       for (const key of Object.keys(subclasses.SHIP_SUBCLASS_ID)) {

@@ -25,8 +25,8 @@ describe('突触加速剂已批准中英覆盖', () => {
     expect(want).toContain(String(SYNAPTIC_ACCELERANT_MS / 3_600_000))
   })
   it('三处使用入口不再引用旧限制，成功提示与有效时间累加一致', () => {
-    for (const page of ['ItemsPage', 'CargoPage', 'SkillsTreePage']) {
-      const source = readFileSync(new URL(`apps/desktop/src/renderer/src/pages/${page}.tsx`, root), 'utf8')
+    for (const page of ['pages/ItemsPage', 'pages/CargoPage', 'features/skills/SkillBoostBlock']) {
+      const source = readFileSync(new URL(`apps/desktop/src/renderer/src/${page}.tsx`, root), 'utf8')
       expect(source).not.toMatch(/tr\(['"]ui\.ItemsPage\.05[45]['"]\)/)
       expect(source).toContain("tr('ui.boost.012')")
       expect(source).toContain("tr('ui.boost.013')")
@@ -54,6 +54,11 @@ describe('突触加速剂已批准中英覆盖', () => {
       'ui.shipInfo.167': '无人机启动时间 −{p1}',
     }
     for (const [id, row] of Object.entries(scope.exports.L10N)) {
+      // 7eae8c916 按批准范围退役历史补偿；其余旧词条仍逐字保护。
+      if (['core.weekend.039', 'core.weekend.040', 'core.weekend.045'].includes(id)) {
+        expect(L10N[id], id).toBeUndefined()
+        continue
+      }
       expect(L10N[id], id).toEqual(approvedMk1CopyDelta(id, { ...row, zh: renamed[id] ?? row.zh }))
     }
     const backlog = readFileSync(new URL('docs/l10n-pending.md', root), 'utf8')

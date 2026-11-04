@@ -7,11 +7,11 @@
  * 适用：采矿作业内返航、打捞作业内返航、换驾驶善后旧船返航（船长拍板范围）；
  * AI 副船采矿/打捞返航同口径（2026-09-08 卷B2⑥ 船长定稿：与玩家一致——按货仓占比缩放后不再 ÷核心效率；效率只加速出航/空船腿与循环周期）。
  */
-import type { GameState } from './state'
+import type { GameState, WorkReturnProgress } from './state'
 import type { SimContext } from './types'
 import { cargoUsedM3Of, cargoCapacityM3Of } from './inventory'
 import { fleetDefOf } from './instances'
-import { jumpFuelLegMsOf } from './jumpFuel'
+import { beginJumpFuelLeg, jumpFuelLegMsOf } from './jumpFuel'
 
 /** 货仓占用率（基础容量口径）：已用 m³ ÷ 船体基础 cargoM3；缺定义时回退到总容量兜底 */
 export function cargoHoldRatio(state: GameState, ctx: SimContext, shipId: string): number {
@@ -30,4 +30,16 @@ export function cargoHoldRatio(state: GameState, ctx: SimContext, shipId: string
 export function scaledReturnMs(fullMs: number, state: GameState, ctx: SimContext, shipId: string, fuelMul = 1): number {
   const base = Math.max(1, Math.round(fullMs * cargoHoldRatio(state, ctx, shipId)))
   return jumpFuelLegMsOf(base, fuelMul)
+}
+
+/** 新航段只点火一次，已开始返航则继承倍率和真实已走时间。 */
+export function workReturnLeg(state: GameState, activity: 'mine' | 'salvage', baseMs: number, progress: WorkReturnProgress): {
+  legMs: number; phaseAccMs: number
+} {
+  const returning = progress.phase === 'returning'
+  const fuelMul = returning ? progress.fuelMul ?? 1 : beginJumpFuelLeg(state, activity, baseMs)
+  const legMs = jumpFuelLegMsOf(baseMs, fuelMul)
+  const elapsed = returning ? progress.phaseAccMs
+    : progress.phase === 'outbound' ? Math.round(progress.phaseAccMs * 2 / fuelMul) : 0
+  return { legMs, phaseAccMs: Math.min(legMs, Math.max(0, elapsed)) }
 }

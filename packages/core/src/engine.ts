@@ -19,23 +19,33 @@ import type { SimContext } from './types'
 import { advanceMining, advanceShipReturns, retireMiningShip } from './mining'
 import { advanceStandby, advanceTransit, reconcileDockSanity, startSiteDeliverTrip, stationActivityReturnSite } from './location'
 import { shipActuallyDocked } from './shipActionPolicy'
+import { consumeDeparture, departureView, reconcileDeparture } from './departure'
 import { mainActivityOf, manualSlotOf } from './activityGate'
 import type { StationAction } from './stationActivityPending'
 import { reconcilePilotShip } from './shipyard'
-import { advanceManufacturing, startManufacturing } from './manufacturing'
-import { advanceRefining, startRefineRun, startRecycleRun, startUnboxRun, type UnboxResultRow } from './industry'
+import { advanceManufacturing } from './industry/manufacturing/advance'
+import { startManufacturing } from './industry/manufacturing/start'
+import { advanceRefining, type UnboxResultRow } from './industry/refining/advance'
+import { startRefineRun } from './industry/refining/start'
+import { startRecycleRun } from './industry/refining/recycle'
+import { startUnboxRun } from './industry/refining/unbox'
 import { advanceLab, startLabRun } from './lab'
 import { advancePlanetary, reconcilePlanetHome } from './planetRuntime'
 import { advanceExpedition } from './expedition'
 import { advanceWormhole } from './wormholeBattle'
 import { advanceAi, AI_CORE_ORDER } from './ai'
-import { advanceEvents } from './events'
-import { advanceMarket } from './market'
+import { advanceEvents, ensureEventSchedule } from './events'
+import { advanceMarket } from './market/advance'
 import { ensureBlackMarket } from './blackMarket'
 import { repairSlotExpansionPlugs } from './equipment'
 import { advanceEncounterWatch } from './encounters'
+import { collectExposures } from './encounters/presence'
+import { advanceIndustrialProtection } from './encounters/industrial'
+import { fightEncounterMutable } from './encounters/commands'
+import { timedRouteExposureOf } from './encounters/travelExposure'
+import { HOME_GALAXY_ID } from './state'
 import { advanceScanning, ensureTransitExplored } from './explore'
-import { advanceWormholeScan, reconcileWormholePromoGift, reconcileWormholeScanWelcome } from './wormholeScan'
+import { advanceWormholeScan, reconcileWormholeScanWelcome } from './wormholeScan'
 import { advanceWormholeAuto } from './wormholeAuto'
 import { advanceHauling, startHauling } from './hauling'
 import { advanceWreckDrift } from './salvage'
@@ -44,13 +54,11 @@ import { advanceSalvageOp, retireSalvageShip } from './salvaging'
 import { advanceFindHumans, publishFindHumansWhenReady } from './onboarding'
 import { advanceComms } from './comms'
 import {  advanceFirstChains, claimableFirstTasks, peakFirst } from './firstTasks'
-import { advanceAchievements } from './achievements'
+import { advanceAchievements } from './achievements/rules'
 import { advanceMatterOreDrip, matterTechNodes } from './matterTech'
-import { claimFirstTask, grantStartRewardsForCurrent } from './firstRewards'
 import { advanceSideTasks } from './sideTasks'
 import { weekendTickBoss } from './weekendEvent'
 import { weekendFlagshipBattleActive } from './weekendLaunch'
-import { reconcileWeekendBlackBox } from './weekendComms'
 
 /**
  * **我方此刻是否在战斗中**（周末入侵的章鱼人削血要按它暂停）：远征战斗 / 虫洞战斗 / 低安遭遇战
@@ -87,6 +95,7 @@ export interface CoreBlockReason {
 /** 指令执行结果：界面按钮点完拿这个决定是提示错误还是无事发生 */
 export interface CommandResult {
   ok: boolean
+  rangeConfirmation?: boolean
   /** 已接受但需等待真实返航，到港后重验启动；不是已经开工。 */
   queued?: boolean
   /**
@@ -191,9 +200,30 @@ export function advanceGame(
   if (!Number.isFinite(left) || left <= 0) return
   // 深空连续搜索与探测机交付在同一时间轴上结算；无搜索时保留既有整段推进。
   while (left > 0) {
+    reconcileDeparture(state)
+    ensureEventSchedule(state, ctx)
     resolveActivityReturn(state, ctx)
     advancePendingStationActivity(state, ctx, opts?.onStationActivityStarted)
     let step = left
+    const departing = departureView(state)
+    if (departing) step = Math.min(step, Math.max(1, departing.remainingMs))
+    const exposedNow = collectExposures(state, ctx, opts?.nowWallMs ?? state.wallMs ?? Date.now()).length > 0
+    const industrialActive = state.hauling.active || state.encounter.active || state.sideTasks.deliver !== null || exposedNow
+    if (industrialActive) {
+      // 事件、航路小段与战斗必须按实际时刻交替，不在离线末端一起补结。
+      const eventDue = ctx.balance.events.enabled === false ? left : Math.max(1, state.events.nextAtGameMs - state.gameMs)
+      step = Math.min(step, state.encounter.battle ? 1000 : 60_000, eventDue)
+      const fleet = state.hauling.fleetLeg
+      const row = fleet?.path[fleet.pathIndex]
+      if (row && !state.encounter.active) step = Math.min(step, Math.max(1, row.durationMs - row.progressMs))
+      const delivery = state.sideTasks.deliver
+      if (delivery && !state.encounter.active) {
+        const duration = delivery.flightDurationMs ?? delivery.arriveAtGameMs - delivery.departAtGameMs
+        const current = timedRouteExposureOf(ctx, HOME_GALAXY_ID, delivery.galaxyId, duration, duration - (delivery.arriveAtGameMs - state.gameMs))
+        if (current) step = Math.min(step, current.remainingMs)
+        step = Math.min(step, Math.max(1, delivery.arriveAtGameMs - state.gameMs))
+      }
+    }
     const pending = state.pendingStationActivity
     const returning = pending ? state.shipReturns[pending.shipId] : undefined
     if (returning) step = Math.min(step, Math.max(1, Math.ceil(returning.legMs - returning.phaseAccMs)))
@@ -217,8 +247,8 @@ function resolveActivityReturn(state: GameState, ctx: SimContext): void {
   const pending = state.pendingActivityReturn
   if (!pending) return
   state.pendingActivityReturn = null
-  if (pending.kind === 'mining') retireMiningShip(state, ctx, { beltId: pending.id, preserveExisting: true })
-  else retireSalvageShip(state, ctx, { galaxyId: pending.id, preserveExisting: true })
+  if (pending.kind === 'mining') retireMiningShip(state, ctx, { beltId: pending.id, preserveExisting: true, progress: pending.progress })
+  else retireSalvageShip(state, ctx, { galaxyId: pending.id, preserveExisting: true, progress: pending.progress })
 }
 
 /** 清待办后只尝试一次，复用真实命令重新验证，不无限重试或停止后来安排的作业。 */
@@ -241,7 +271,7 @@ function advancePendingStationActivity(state: GameState, ctx: SimContext, onStar
     case 'unbox': result = startUnboxRun(state, ctx, action.itemId, 'pilot'); break
     case 'manufacturing': result = startManufacturing(state, action.blueprintId, 'pilot', ctx); break
     case 'lab': result = startLabRun(state, ctx, action.recipeId, 'pilot'); break
-    case 'hauling': result = startHauling(state, action.aSiteId, action.bSiteId, ctx); break
+    case 'hauling': result = startHauling(state, action.aSiteId, action.bSiteId, ctx, action.requestedM3); break
     case 'siteDeliver': result = startSiteDeliverTrip(state, ctx, action.siteId); break
   }
   if (!result.ok && result.error) addLog(state, 'warn', result.error, result.errorId, result.errorParams)
@@ -251,7 +281,19 @@ function advancePendingStationActivity(state: GameState, ctx: SimContext, onStar
 function advanceGameStep(state: GameState, deltaMs: number, ctx: SimContext, opts?: Parameters<typeof advanceGame>[3]): void {
   const d = Math.floor(deltaMs)
   if (!Number.isFinite(d) || d <= 0) return
+  advanceIndustrialProtection(state, ctx, d, collectExposures(state, ctx).some(row => row.shipId === state.shipId && row.kind !== '扫描'))
+  const pausedEncounter = (!!state.encounter.pirate || state.encounter.automatic === true) && state.encounter.active
   state.gameMs += d
+  // 采矿/打捞自行消费余量以支持内部续趟，其余活动在共享时间轴消费。
+  const departing = state.departure
+  if (departing && departing.kind !== 'mining' && departing.kind !== 'salvaging' && departing.kind !== 'hauling') {
+    consumeDeparture(state, departing.kind, d)
+  }
+  if (pausedEncounter) {
+    if (state.transit.active) state.transit.finishAtGameMs += d
+    if (state.standby.active) state.standby.finishAtGameMs += d
+    if (state.sideTasks.deliver) state.sideTasks.deliver.arriveAtGameMs += d
+  }
   const deferPlanetary = !!state.planetary?.stellar?.search
   if (ctx.planetary && !deferPlanetary) { advancePlanetary(state, d, ctx.planetary, state.gameMs - d); reconcilePlanetHome(state, ctx.planetary) }
   /**
@@ -273,8 +315,8 @@ function advanceGameStep(state: GameState, deltaMs: number, ctx: SimContext, opt
    * ⚠ 标记处理完即清（`pendingActivityReturn`）——它是瞬态信号。
    */
   resolveActivityReturn(state, ctx)
-  advanceMining(state, d, ctx)
-  advanceSalvageOp(state, d, ctx)
+  if (!pausedEncounter) advanceMining(state, d, ctx)
+  if (!pausedEncounter) advanceSalvageOp(state, d, ctx)
   // B3 星系残骸密度：闲置漂移（正在打捞的星系挂起——打捞作业期不结算漂移）
   advanceWreckDrift(state, ctx, d, state.salvaging.active ? state.salvaging.galaxyId : null)
   // T4 换船善后：自动返航中的旧船独立于新作业推进（到港自动卸货）
@@ -318,11 +360,6 @@ function advanceGameStep(state: GameState, deltaMs: number, ctx: SimContext, opt
   // 主控活动「扫描虫洞」（2026-09-14）：进度按游戏时刻累计，满一个窗口发现一处（遇袭不清零）
   // 解锁当次：把进度预置成满窗口（船长 2026-09-14「甲」：点扫描第一拍即得一处；只送一次、不额外提示）
   reconcileWormholeScanWelcome(state)
-  // 限时促销赠送（2026-09-16「虫洞大量生成」）：逐 tick 幂等、只发一次、只给已解锁者（见该函数头注）
-  reconcileWormholePromoGift(state, ctx)
-  // 入侵旗舰黑匣**对账补发**（2026-09-28 船长令「采用工具线上补发」）：逐 tick 幂等，
-  // 只补「玩家亲手击沉 ＋ 输出占比过半（这一档必爆）却没落地」的场次（判据见该函数头注）
-  reconcileWeekendBlackBox(state)
   advanceWormholeScan(state, ctx, d)
   // 自动探索（2026-09-14 批次 3）：到点即结算（收益入仓库 + 损伤 + 待确认报告）；离线大步长同样适用
   advanceWormholeAuto(state, ctx)
@@ -334,6 +371,7 @@ function advanceGameStep(state: GameState, deltaMs: number, ctx: SimContext, opt
   repairSlotExpansionPlugs(state, ctx)
   // 随机事件（到达式触发；B1 低安遭遇占用其到点时机的判定入口；先于市场窗口撮合）
   advanceEvents(state, d, ctx, opts?.offline === true)
+  if (state.encounter.automatic && !state.encounter.battle) fightEncounterMutable(state, ctx)
   // 市场按窗口推进（离线大推进同样覆盖：订单过期/池回归/内部消化/补单/挂单撮合）
   advanceMarket(state, d, ctx)
   // 任务中心：资源20分钟、快递120分钟分批刷新；在市场推进后执行，让资源影响作用于当前簿面。
@@ -350,10 +388,8 @@ function advanceGameStep(state: GameState, deltaMs: number, ctx: SimContext, opt
    * 船长原话：「**第一次任务不要自动完成。要让玩家回到任务中心点击完成才开始下一步，这样给予任务开始前
    * 道具的时间点就很明确**」⇒ 这里**只判不写**：`claimableFirstTasks` 只回答"现在能不能完成"，
    * 完成的推进（写 `done` → 发完成奖励 → 发下一条的起手道具）全在 `firstRewards.claimFirstTask`，
-   * 由玩家在任务中心点「完成」触发。本处只做两件事：
-   * ① **播报一次**「已达成，回任务中心点完成」（`state.firstTaskReadyId` 去重，免得每拍刷屏）；
-   * ② **老档一次性收口**（v30→v31 迁移打的 `firstTaskAutoClaim`）：把读档时"判据已满足却没点过"的积压
-   *    按点击同款走完（发奖/发信/进下一条），跑完即删键 —— 新档不带这个键 ⇒ 一律走手动流程。
+   * 由玩家在任务中心点「完成」触发。本处只播报一次「已达成，回任务中心点完成」，
+   * `state.firstTaskReadyId` 去重，不自动完成任务或补发起手道具。
    */
   const readyNow = claimableFirstTasks(state, ctx)
   if (readyNow.length > 0) {
@@ -362,28 +398,6 @@ function advanceGameStep(state: GameState, deltaMs: number, ctx: SimContext, opt
       state.firstTaskReadyId = first.id
       addLog(state, 'levelup', `◆ 任务已达成：「${first.title}」——回「任务中心」点「完成」继续下一步。`, 'core.firstTasks.001', { p1: first.title })
     }
-  }
-  if (state.firstTaskAutoClaim === true) {
-    /**
-     * **先补发"当前那条的起手道具"**（**2026-09-22 船长裁决「甲」**）：
-     * 起手道具只在"某一条**轮到**时"发（`claimFirstTask` 收尾那一次点击），而**收口只补"已满足却没点过"
-     * 的那几条**——若老档正卡在**带起手道具的那六条**之一、且它自己的判据还没满足（收口循环一条都不走），
-     * 那一条的起手道具就**永远拿不到**了：采集原矿→强化采集器 MK1 · 打捞残骸→打捞器 MK1 ·
-     * 指派 AI 副船→基础 AI 核心 · 生产→150 三钛＋50 类铁 · 第一条船→磷虾级蓝图 · 虫洞→采集器＋打捞器各一台。
-     *
-     * ⇒ 在读档收口这一段**先补发一次当前那条的**（`grantStartRewardsForCurrent` 自带 `started` 去重，
-     * 重复调用不叠加），再跑下面的"已满足 ⇒ 照点击走完"循环。**零新增存档字段、零版本变更**
-     * （复用 v30→v31 打的那一次性标记；已经在旧代码下升过 v31 的档救不回来——那批档的起手道具
-     * 只能自购：采集器市场有售、`bp-miner-1` 可造，船长已知情并选定此口径）。
-     */
-    grantStartRewardsForCurrent(state, ctx)
-    // 上限 20 只是护栏（13 条一轮足够）；每轮都重新取"当前可完成"，天然按顺序推进
-    for (let guard = 0; guard < 20; guard += 1) {
-      const c = claimableFirstTasks(state, ctx)[0]
-      if (!c) break
-      claimFirstTask(state, ctx, c.id)
-    }
-    if (claimableFirstTasks(state, ctx).length === 0) delete state.firstTaskAutoClaim
   }
   // 后续次数链的升级记账（每拍）：只在 importantTasks 上记 level；**不在这里发 ISK** ——
   // 发奖改到任务中心领奖那一刻（claimChainReward），避免离线结算/用例里钱包被悄悄加钱。
@@ -481,7 +495,7 @@ function reconcileMilestoneStats(state: GameState, ctx: SimContext): void {
 }
 
 /** 技能训练队列（2026-10-02 批次 4n 拆到 skillQueue.ts；本文件借回 + 再导出） */
-import { advanceSkillQueue } from './skillQueue'
+import { advanceSkillQueue } from './skills/queue'
 export {
   HIDDEN_SKILL_IDS,
   PREREQ_MIN_LEVEL,
@@ -496,6 +510,6 @@ export {
   skillCancelImpact,
   skillLockMissing,
   skillLockMissingAtQueue,
-} from './skillQueue'
-export type { HeadTrainingInfo, QueueMovePlan, QueueView, SkillPrereqGap } from './skillQueue'
+} from './skills/queue'
+export type { HeadTrainingInfo, QueueMovePlan, QueueView, SkillPrereqGap } from './skills/queue'
 

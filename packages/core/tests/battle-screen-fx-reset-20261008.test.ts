@@ -7,7 +7,7 @@ import { runInNewContext } from 'node:vm'
 import { buildSimContext, L10N } from '@whale/data'
 import { createInitialState } from '../src/state'
 import { addShipToFleet } from '../src/fleetBook'
-import { startBattleFor, battleArcsFor } from '../src/combat'
+import { startBattleFor, startFleetBattleFor, battleArcsFor } from '../src/combat'
 import { pushBattleFx } from '../src/combatFx'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import * as core from '../src/index'
@@ -17,16 +17,18 @@ const root = new URL('../../../', import.meta.url)
 let compiled = ''
 beforeAll(async () => {
   const result = await build({
-    entryPoints: [fileURLToPath(new URL('apps/desktop/src/renderer/src/panels/BattleScreen.tsx', root))],
+    entryPoints: [fileURLToPath(new URL('apps/desktop/src/renderer/src/features/combat/BattleScreen.tsx', root))],
     bundle: true, write: false, platform: 'node', format: 'cjs', jsx: 'transform',
     tsconfigRaw: { compilerOptions: { jsx: 'react' } },
-    banner: { js: "var React = require('react');" }, external: ['react', 'lucide-react', '@whale/core', '@whale/data'],
+    banner: { js: "var React = require('react');" }, external: ['react', 'lucide-react', '@carbon/icons-react', '@whale/core', '@whale/data'],
     plugins: [{ name: 'render-only-shell', setup(builder) {
       builder.onLoad({ filter: /[\\/]i18n[\\/]locale\.tsx$/ }, () => ({ loader: 'js', contents:
         'export const tr=globalThis.__tr; export const futureTr=tr; export const isEn=()=>false; export const cmdText=()=>""; export const mountNamesTextOf=(x)=>x??[]; export const logText=(x)=>x.text??"";' }))
       builder.onLoad({ filter: /[\\/]ui[\\/]Tooltip\.tsx$/ }, () => ({ loader: 'js', contents:
         'export const hoverTipProps=()=>({}); export const TIP_DELAY_MS=500;' }))
-      builder.onLoad({ filter: /[\\/]ui[\\/]battleFit\.ts$/ }, () => ({ loader: 'js', contents: 'export const useBattleFit=()=>{};' }))
+      builder.onLoad({ filter: /[\\/]features[\\/]combat[\\/]battleFit\.ts$/ }, () => ({ loader: 'js', contents: 'export const useBattleFit=()=>{};' }))
+      // 渲染专项保留真实音效桥的Hook，不在Node夹具中加载Vite音频素材和浏览器播放器。
+      builder.onLoad({ filter: /[\\/]game[\\/]audio[\\/]player\.ts$/ }, () => ({ loader: 'js', contents: 'export const playCue=()=>{};' }))
       builder.onLoad({ filter: /\.css$/ }, () => ({ loader: 'js', contents: '' }))
     } }],
   })
@@ -44,19 +46,21 @@ function harness() {
   const slots: any[] = []
   let index = 0, now = 1000
   const react = {
+    memo: (component: unknown) => component,
     createElement: (type: unknown, props: Record<string, any> | null, ...children: unknown[]) => ({ type, props: props ?? {}, children }),
     useRef: (value: unknown) => { const at = index++; return slots[at] ??= { current: value } },
     useState: (value: unknown) => { const at = index++; if (!(at in slots)) slots[at] = value; return [slots[at], (v: unknown) => { slots[at] = v }] },
     useMemo: (fn: () => unknown) => { index++; return fn() },
     useEffect: () => { index++ },
+    useLayoutEffect: () => { index++ },
   }
   const module = { exports: {} as { BattleScreen: (props: unknown) => unknown } }
   const realRequire = createRequire(import.meta.url)
   runInNewContext(compiled, { module, exports: module.exports,
     __tr: (id: string, params?: Record<string, unknown>) => (L10N[id]?.zh ?? id).replace(/\{(\w+)\}/g, (s, k) => String(params?.[k] ?? s)),
-    performance: { now: () => now }, console,
+    performance: { now: () => now }, console, process,
     require: (id: string) => id === 'react' ? react : id === '@whale/core' ? core : id === '@whale/data' ? data
-      : id === 'lucide-react' ? new Proxy({}, { get: (_, key) => String(key) }) : realRequire(id),
+      : id === 'lucide-react' || id === '@carbon/icons-react' || id.endsWith('layoutIcons') ? new Proxy({}, { get: (_, key) => String(key) }) : realRequire(id),
   })
   const ctx = buildSimContext(), state = createInitialState({ nowWallMs: 0, seed: 19 })
   state.shipId = addShipToFleet(state, 'sh-nautilus')
@@ -115,8 +119,24 @@ describe('实际战场渲染链换场与读档', () => {
     for (const pool of Object.values(b.dronePools!)) pool.launched = true
     expect(battleArcsFor(h.engine.state, h.ctx)!.myUnits[0]!.drones[0]!.deployed).toBe(2)
   })
+  it('密集模式玩家容器按舰体定宽，不被更宽血条撑偏锚点', () => {
+    const h = harness(), state = h.engine.state
+    const ids = [state.shipId, ...Array.from({ length: 4 }, () => addShipToFleet(state, 'sh-falconet'))]
+    const battle = startFleetBattleFor(state, h.ctx, ids, 'ano-training')!
+    battle.lastTickGameMs = 1000
+    state.expedition = { ...state.expedition, active: true, phase: 'battle', anomalyId: 'ano-training', battle }
+    const columns = h.render().filter(node => String(node.props.className ?? '').split(' ').includes('is-me')
+      && typeof node.props['data-tag'] === 'string')
+    expect(columns).toHaveLength(ids.length)
+    for (const column of columns) {
+      const sprite = column.children.find(child => child && typeof child === 'object'
+        && 'props' in child && typeof (child as Node).props.size === 'number') as Node
+      expect(sprite).toBeDefined()
+      expect(column.props.style.width).toBe(sprite.props.size)
+    }
+  })
   it('紧凑界面保持同源演出单点，复位在舰位计算之前', () => {
-    const source = readFileSync(new URL('apps/desktop/src/renderer/src/panels/BattleScreen.tsx', root), 'utf8')
+    const source = readFileSync(new URL('apps/desktop/src/renderer/src/features/combat/BattleScreen.tsx', root), 'utf8')
     expect(source.indexOf('battleFxArrivals(fxCursorRef.current, battle)')).toBeLessThan(source.indexOf('const foeAliveTags'))
     expect(source).toContain('droneSortieRef.current.clear()')
     expect(source).toContain('blinkRef.current.clear()')

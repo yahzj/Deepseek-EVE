@@ -4,6 +4,7 @@
  */
 
 export { battleWeaponCyclesOf } from './battleWeaponView'
+export { departureView, departureDurationMs } from './departure'
 export type { GravekeeperStatus } from './gravekeeperCombat'
 export { crisisEffectsOf, playerGravekeeperSpecOf } from './gravekeeperGear'
 export { foeFamilyHpMulOf } from './foePower'
@@ -19,6 +20,7 @@ export type { PendingStationActivity, StationAction } from './stationActivityPen
 export type { BattleWeaponCycleView } from './battleWeaponView'
 export { battleDeviceCyclesOf } from './battleDeviceView'
 export type { BattleDeviceCycleView } from './battleDeviceView'
+export type { BattleState, BattleRepairLedger } from './state'
 
 export type {
   SkillDef,
@@ -111,14 +113,22 @@ export { DEEP_SPACE_PROBE_BLUEPRINT_ID, DEEP_SPACE_SKILL_IDS, PROBE_MATERIAL_PER
 export { planetNeighborIndices, planetConstructionCheck, planetClearanceCheck, planetBuildingOperational, planetAdjacencyOf, planetBuildingOutputMul } from './planetGrid'
 export type { PlanetConstructionCheck } from './planetGrid'
 export type { ShipFitPreset } from './state'
-export { SHIP_DAMAGE_DEFS, SHIP_DAMAGE_MAX, SHIP_DAMAGE_CHANCE, SHIP_DAMAGE_PENALTY, cleanShipDamage, shipDamageEffects, rollShipDamage } from './shipDamage'
+export { SHIP_DAMAGE_DEFS, SHIP_DAMAGE_CHANCE, SHIP_DAMAGE_PENALTY, cleanShipDamage, shipDamageEffects, rollShipDamage } from './shipDamage'
 export type { ShipDamageKind } from './shipDamage'
 export { ammoTiersOf } from './ammoTiers'
 export { battleAmmoPreloadPlan } from './battleAmmoPreflight'
+export { battleCardRangeOf, pendingBattleRangeView, cancelBattleRange } from './battleRangeMemory'
+export { confirmBattleRange } from './battleRangeConfirm'
 export type { BattleAmmoPreloadRow, BattleAmmoPreloadPlan } from './battleAmmoPreflight'
 export { marketTradingGoods } from './market'
 export { volleyGunCountOf, volleyDamageShareOf } from './combatVolley'
 export type { BlackMarketState, BlackMarketOffer } from './state'
+export { enemyFormationCard, rangeEwFlagshipCard } from './combat/formation'
+export { rangeEwBaseOf, rangeEwCutOf, playerRangeEwOf, foeRangeEwOf, rangeEwContestOf, battleRangeEwOf, type RangeEwPart, type RangeEwContest } from './combat/rangeEw'
+export { foeRangeEwSpecsOf } from './combat/foeRange'
+export { rangeEwPreviewOf, rangeEwBattleView, rangeEwSignalTargetOf, type RangeEwView, type RangeEwWeapon } from './combat/rangeEwPreview'
+export { ENEMY_FORMATION_PLANS } from './combat/formation-plans'
+
 export {
   CURRENT_STATE_VERSION,
   MAX_SKILL_LEVEL,
@@ -408,21 +418,6 @@ export {
 } from './weekendEvent'
 export type { WeekendAmbushPick, WeekendBossPoolView, WeekendEventState, WeekendFlagshipView, WeekendTickResult } from './weekendEvent'
 
-/* 2026-10-02 船长令：入侵补偿批（"这一期还是墨潮帮"的档开一场光环补场 · 其余玩家发 1 枚信号发射器）
-   —— 判定双判据 / 判一次落盘 / 暗期开一场，全部在 `weekendCompensation.ts`（工具与用例都读它） */
-export {
-  WEEKEND_COMPENSATION_T0_WALL_MS,
-  WEEKEND_MAKEUP_FAMILY,
-  WEEKEND_MAKEUP_FIRST_WALL_MS,
-  WEEKEND_MAKEUP_FIRST_END_WALL_MS,
-  weekendMakeupWindowOf,
-  weekendCompensationTrackOf,
-  /** 船长 2026-10-02 令「乙」：开补场前回头看的唯一判据（本期已真出过光环 ⇒ 跳过补场、改发 1 枚道具） */
-  weekendCompensationGotRThisPeriod,
-  applyWeekendCompensation,
-  openWeekendMakeupIfDue,
-} from './weekendCompensation'
-
 /* 2026-09-23 周末入侵 · 战斗与结算（M1-b） */
 export {
   WEEKEND_ALL_CLEAR_ISK,
@@ -466,11 +461,6 @@ export {
   WEEKEND_COMMS_FACTION_ID,
   WEEKEND_COMMS_SETTLE_ID,
   WEEKEND_COMMS_WARN_ID,
-  // 2026-09-26 船长令：给"推送前打完入侵却没拿到黑匣"的档补发 1 枚（判据见函数头注）
-  WEEKEND_BOX_COMPENSATION_CUTOFF_WALL_MS,
-  compensateMissingWeekendBlackBox,
-  // 2026-09-28 船长令「采用工具线上补发」：逐 tick 对账，补"记录在案的规则本该必爆却漏发"的场次
-  reconcileWeekendBlackBox,
   weekendFamilyNameId,
   weekendFamilyNameZh,
   weekendRewardLinesOf,
@@ -528,6 +518,7 @@ export {
   matterTechBattleSpeed,
   matterTechBattleSpeedTiers,
   matterTechScanCut,
+  matterTechSignalAutoYield,
   matterTechUnboxCut,
   matterTechVoidYield,
   matterTechWreckYield,
@@ -657,6 +648,8 @@ export {
   durabilityOf,
   repairCostIsk,
   repairShip,
+  fleetRepairPlan,
+  repairFleet,
   isShipLocked,
   lockShip,
   repairWithKits,
@@ -671,6 +664,7 @@ export {
   storeShip,
   unstoreShip,
 } from './shipyard'
+export type { FleetRepairPlan, FleetRepairResult } from './shipyard'
 
 // 装配方案（预设）：保存当前装配 / 按方案换装（2026-09-14 船长）
 export {
@@ -949,13 +943,9 @@ export {
   spendableStandingOf,
   noteStandingEarned,
   spendStanding,
-  // 2026-09-26 船长裁定：按悬赏进度削减被抬高过的累计声望（读档后一次性、只降不升）
-  repairStandingFromBountyProgress,
   INITIAL_STANDING,
   bountyRewardFactor,
   calcPower,
-  winChance,
-  calcExpeditionDurationMs,
   startExpedition,
   startExpeditionFromMining,
   advanceExpedition,
@@ -965,7 +955,6 @@ export {
   battleTacticDesire,
   resolveBattleOutcome,
   expeditionStatus,
-  expeditionFeasibility,
   retreatBattle,
 } from './expedition'
 export type { ExpeditionView, BattleTacticChoice } from './expedition'
@@ -1098,6 +1087,7 @@ export {
   plugSlotsOf,
   plugsOf,
   plugModulesOf,
+  plugEffectsOf,
   plugInfoOf,
   normalizePlugSlotExpansions,
   plugSlotExpansionKindOf,
@@ -1113,6 +1103,7 @@ export {
   UNIVERSAL_BLACKBOX_ITEM_ID,
   exchangeUniversalBlackBox,
 } from './plugs'
+export { plugEffectPartsOf } from './plugEffects'
 /** **拆船回收**（2026-09-27 船长令）：预览 ＋ 执行（唯一取数口：界面两次警告与实际发放同一份算术） */
 export { shipScrapPreviewOf, scrapShip, SHIP_SCRAP_MATERIAL_SHARE } from './scrap'
 export type { ShipScrapPreview } from './scrap'
@@ -1139,10 +1130,9 @@ export {
   wreckGroupKeyOfAnomaly,
   wreckGroupOfAnomaly,
   wreckGroupOfItemId,
-  migratedWreckItemId,
 } from './wreckGroups'
 export type { WreckGroupDef, WreckRegion } from './wreckGroups'
-export { advanceSalvageOp, startSalvageOp, stopSalvageOp, retireSalvageShip, setSalvageAutoCycle, setSalvageStopAfterTrip, salvagerCyclesOf, pullOneWreck, wreckUnitsOf, legMsFor, outboundLegMsFor , setSalvageTarget, wreckTargetsOf } from './salvaging'
+export { advanceSalvageOp, startSalvageOp, stopSalvageOp, retireSalvageShip, setSalvageAutoCycle, setSalvageStopAfterTrip, salvagerCyclesOf, pullOneWreck, wreckUnitsOf, legMsFor, outboundLegMsFor, salvageReturnMs, setSalvageTarget, wreckTargetsOf } from './salvaging'
 export {
   setAutoLoopBounty,
   advanceAutoLoopBounty,
@@ -1270,6 +1260,15 @@ export {
   HAUL_LEG_TIME_MUL,
 } from './hauling'
 export type { HaulEndpoint } from './hauling'
+export { haulFleetLoadOf } from './hauling/load'
+export { haulFleetPathOf } from './hauling/fleet'
+export { haulRiskPreviewOf } from './hauling/preview'
+export { LOCK_SHARED_SCALE, LOCK_SHARED_CAP } from './combat/lockAura'
+export type { OfflineCombatStats, TransportStopReason } from './offlineCombatStats'
+export { haulUnitRewardRange } from './hauling/routes'
+export { industrialThreatOf, industrialFrequencyOf, industrialFleetSnapshotOf, industrialBaseThreatOf } from './encounters/risk'
+export { pirateFormationOf } from './encounters/pirateFormation'
+export { industrialSortieOf } from './encounters/industrial'
 
 export {
   battleWinPreview,
@@ -1329,7 +1328,6 @@ export {
   BATTLE_ARRIVAL_STAGGER_MS,
   // 机群战损（2026-09-10 船长「无人机可被击落」+ 永久损失制）
   pdEnabledFor,
-  droneLostCount,
   settleDroneLosses,
   // 战报改造（2026-09-14 船长定）：唯一构造点 + 四档判定纯函数
   captureBattleReport,
@@ -1493,7 +1491,7 @@ export {
   SaveError,
   serializeSaveFile,
   loadSaveFile,
-  MIN_MIGRATABLE_VERSION,
+  MIN_SUPPORTED_SAVE_VERSION,
 } from './save'
 
 export {
@@ -1567,6 +1565,7 @@ export {
   // 赏金新板提示（船长 2026-09-14：换板未看 ⇒ 导航徽标；进任务中心即记账）
   sideTasksMarkBountySeen,
 } from './sideTasks'
+export { bountyTaskStandingGain } from './expedition/bountyBoard'
 /* 「第一次」任务系列（2026-09-17 教程重做批 · 阶段②）：13 条任务 + 13 条次数链 + 终身计数 */
 export {
   FIRST_TASKS,
@@ -2037,8 +2036,6 @@ export {
   wormholeStockPush,
   wormholeStockTake,
   advanceWormholeScan,
-  // 2026-09-16 限时促销「虫洞大量生成」：逐 tick 幂等的一次性赠送（只发一次、只给已解锁者）
-  reconcileWormholePromoGift,
 } from './wormholeScan'
 export type { WormholeScanState, WormholeStockItem, WormholeArchetype, WormholeFamily } from './state'
 // 限时倍率表（2026-09-15 船长：「允许我快速设置在指定的现实日期之前，给特定数值调整一个倍率」）：
@@ -2051,10 +2048,9 @@ export {
   ruleActiveAt,
   tuningMul,
   tuningMulAt,
-  // 促销层（2026-09-16「虫洞大量生成」）：一条促销 = 扫描倍率 ＋ 一次性赠送 ＋ 合并展示文案
+  // 促销层：一条促销 = 扫描倍率 ＋ 合并展示文案
   PROMOS,
   activePromos,
-  activePromoGifts,
   promoActiveAt,
   promoScanMul,
   promoScanMulAt,
@@ -2083,6 +2079,7 @@ export {
   wormholeAutoCandidates,
   wormholeAutoDefaultShips,
   wormholeAutoCoreBlock,
+  signalAutoResearchBlock,
   wormholeAutoBlockReason,
   wormholeAutoFreeCores,
   wormholeAutoMainHandover,
@@ -2181,7 +2178,7 @@ export { isLocalDebugOrigin } from './debugGate'
 
 /**
  * **技能训练许可**（2026-09-27 船长令：「我想让学习技能有成本」）——
- * 收费档 rank4/5/6（rank6 为预留档）要先买许可才能排训练；rank1~3 免许可。
+ * rank默认价目表与单技能显式定价共用许可资格；编队许可另设累计声望购买门槛。
  * 甲案：买许可只解锁**资格**，训练时长与前置链分毫不动。判据与 `enqueueSkill` 共用同一把尺。
  */
 export {
@@ -2189,6 +2186,7 @@ export {
   skillLicensePriceOf,
   hasSkillLicense,
   skillLicenseMissing,
+  skillLicenseStandingBlock,
   buySkillLicense,
 } from './skillLicense'
 
@@ -2197,6 +2195,7 @@ export {
  * 装配校验与装配页格数共用同一把尺；`installPlug` 里同步就地补齐位数组。
  */
 export { plugSlotAddsOf, shipSlotsWithPlugsOf } from './plugs'
+export { droneReviveCycleMsOf } from './droneRevive'
 export { wormholePreparationPlan, wormholePreparationFillPlan, wormholeEnterPrepared } from './wormholePreparation'
 export { PREPARATION_SQUAD_KINDS, cleanPreparationSquads, preparationSquadOf, notePreparationSquad } from './preparationSquads'
 export type { PreparationSquadKind, PreparationSquads } from './preparationSquads'
@@ -2226,3 +2225,7 @@ export { createFittingRange, advanceFittingRange, fittingRangeStats, RANGE_CARD_
 export type { FittingRange, RangeLayer } from './fittingRange'
 
 
+export { ceilFinalQuantity } from './quantity'
+export { commandBudgetOf, commandCapacityOf, shipCommandCostOf, combatShipLimit, COMBAT_MAX_SHIPS, COMMAND_SKILLS, COMMAND_STANDING_REQUIRED } from './combat/command/rules'
+export { combatRosterOf } from './combat/command/roster'
+export { encounterCombatRosterOf } from './combat/command/locks'

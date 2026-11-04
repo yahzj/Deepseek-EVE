@@ -19,6 +19,9 @@ import { tr } from '../i18n/locale'
 import { ShipSprite } from '../ui/ShipSprite'
 import { pinMarked } from '../ui/marks'
 import { usePreparationSquad } from '../ui/usePreparationSquad'
+import { CommandBudget } from '../features/combat/CommandBudget'
+import { commandBudgetOf } from '@whale/core'
+import { RangeEwPreview } from '../features/combat/RangeEwPanel'
 
 /** 缺口标记 → 文案 id（与准备面板同源；加新缺口时两处一起加） */
 const ISSUE_ID: Record<WeekendPrepIssue, string> = {
@@ -85,7 +88,7 @@ export function WeekendFlagshipPrepModal({ engine, onClose }: { engine: GameEngi
     onClose()
   }
 
-  const short = picked.length < WEEKEND_FLAGSHIP_MAX_SHIPS
+  const budget = commandBudgetOf(engine.state, engine.ctx, picked, true)
   return (
     <div className="app-modal-mask" onClick={onClose}>
       <div className="app-modal app-modal-wide app-wh-prep-modal" onClick={(e) => e.stopPropagation()}>
@@ -96,6 +99,8 @@ export function WeekendFlagshipPrepModal({ engine, onClose }: { engine: GameEngi
           </button>
         </div>
         <div className="app-modal-body">
+          <CommandBudget engine={engine} ships={picked} special />
+          <RangeEwPreview state={engine.state} ctx={engine.ctx} card={engine.ctx.anomalies.get(prep.cardId)} ids={picked} />
           <div className="app-dim app-note">
             {tr('ui.weekend.064', {
               p1: tr(weekendFamilyNameId(engine.state.weekendEvent?.family ?? 'H') ?? 'core.weekend.023'),
@@ -164,7 +169,6 @@ export function WeekendFlagshipPrepModal({ engine, onClose }: { engine: GameEngi
               )
             })}
           </ul>
-          {short ? <div className="app-warn app-wh-gate">{tr('ui.weekend.072', { p1: String(WEEKEND_FLAGSHIP_MAX_SHIPS) })}</div> : null}
           {err !== '' ? <div className="app-warn app-wh-gate app-battle-ammo-warning" role="alert">{err}</div> : null}
           <div className="app-wh-actions">
             <button
@@ -176,7 +180,7 @@ export function WeekendFlagshipPrepModal({ engine, onClose }: { engine: GameEngi
             >
               {tr('ui.weekend.073')}
             </button>
-            <button className="app-btn is-primary" disabled={picked.length === 0} onClick={engage}>
+            <button className="app-btn is-primary" disabled={!budget.ok} onClick={engage}>
               {tr('ui.weekend.074')}
             </button>
           </div>

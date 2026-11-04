@@ -37,7 +37,9 @@ import { LAIR_THREAT_MUL, lairAnomalyOf, lairLevelOf } from '../src/lairs'
 import type { AnomalyDef, FoeShipDef } from '../src/types'
 import { anomaly, makeTestCtx } from './helpers'
 
-const ctx = makeTestCtx()
+const sourceCtx = makeTestCtx()
+// 本文件保留迁移前越线折扣的公式契约，新编成的固定规格另由扩编专项核验。
+const ctx = { ...sourceCtx, anomalies: new Map([...sourceCtx.anomalies].map(([id, card]) => [id, card.foeFormation?.baseline ?? card])) }
 const bal = ctx.balance.battle
 /** 现行配置（2026-09-15 起 = 150 阈值 ＋ 0.15 折扣率 = 开启） */
 const CAP = bal.foeDpsCap
@@ -215,7 +217,7 @@ describe('敌舰体火力越线折扣（2026-09-12「DPS 上限 150」→ 2026-0
 
   it('阈值以下零变化：未越线的卡逐字不动（66.5 DPS 不受影响）', () => {
     const base = shipCard('ano-overcap-base', [{ ship: GUNSHIP, count: 2 }])
-    expect(hullDps(base, bal)).toBeCloseTo(66.5, 6)
+    expect(hullDps(base, bal)).toBe(2 * Math.ceil(100 * 4 / 3) / 4)
     expect(hullDps(base, bal)).toBeCloseTo(hullDps(base, OFF_BOTH), 9)
   })
 
@@ -303,28 +305,28 @@ describe('敌舰体火力越线折扣（2026-09-12「DPS 上限 150」→ 2026-0
     // 越线：派生档实测（2026-09-15 探针）穹顶 L1 ≈ 164.8 ⇒ 折扣后 > 150 且 < 原值
     // ⚠ 判线用 `maxWaveDps`（逐波建档口径）：穹顶/虚海是单波卡（与 hullDps 同值），
     //   噬口是 3 波卡且**头目在第 3 波**——只看波 0（4 只小虫 ≈ 20 DPS）会得出"未越线"的错结论。
-    const vaultUncapped = maxWaveDps(lairAnomalyOf(vault, 1, bal), OFF_BOTH)
+    const vaultUncapped = maxWaveDps(lairAnomalyOf(vault, 1, bal, 0), OFF_BOTH)
     expect(vaultUncapped).toBeGreaterThan(150)
-    const vaultLive = maxWaveDps(lairAnomalyOf(vault, 1, bal), bal)
+    const vaultLive = maxWaveDps(lairAnomalyOf(vault, 1, bal, 0), bal)
     expect(vaultLive).toBeGreaterThan(150) // 不封顶
     expect(vaultLive).toBeLessThan(vaultUncapped)
     expect(Math.abs(vaultLive - overCapTarget(vaultUncapped))).toBeLessThan(1)
     // 虚海 lairLevel = 2 ⇒ 只有 1~2 档；2 档派生 ≈ 210 同样越线
     expect(lairLevelOf(voidedge)).toBe(2)
-    const voidUncapped2 = maxWaveDps(lairAnomalyOf(voidedge, 2, bal), OFF_BOTH)
+    const voidUncapped2 = maxWaveDps(lairAnomalyOf(voidedge, 2, bal, 0), OFF_BOTH)
     expect(voidUncapped2).toBeGreaterThan(150)
-    expect(maxWaveDps(lairAnomalyOf(voidedge, 2, bal), bal)).toBeLessThan(voidUncapped2)
-    expect(maxWaveDps(lairAnomalyOf(voidedge, 2, bal), bal)).toBeGreaterThan(150)
+    expect(maxWaveDps(lairAnomalyOf(voidedge, 2, bal, 0), bal)).toBeLessThan(voidUncapped2)
+    expect(maxWaveDps(lairAnomalyOf(voidedge, 2, bal, 0), bal)).toBeGreaterThan(150)
     // 噬口 L3（2026-09-11 虫群编成改造后新越线，旧注释未登记）：末波（头目 401 单发）≈ 215.5 ⇒ 只打 85 折
-    const mawL3 = lairAnomalyOf(maw, 3, bal)
+    const mawL3 = lairAnomalyOf(maw, 3, bal, 0)
     const mawUncapped = maxWaveDps(mawL3, OFF_BOTH)
     expect(mawUncapped).toBeGreaterThan(150)
     expect(maxWaveDps(mawL3, bal)).toBeLessThan(mawUncapped)
     expect(maxWaveDps(mawL3, bal)).toBeGreaterThan(150)
     // 未越线的档不受影响：坟场守墓者 1 档 ≈ 113.5（逐字相同）
-    const grave1 = maxWaveDps(lairAnomalyOf(grave, 1, bal), OFF_BOTH)
+    const grave1 = maxWaveDps(lairAnomalyOf(grave, 1, bal, 0), OFF_BOTH)
     expect(grave1).toBeLessThan(150)
-    expect(maxWaveDps(lairAnomalyOf(grave, 1, bal), bal)).toBeCloseTo(grave1, 9)
+    expect(maxWaveDps(lairAnomalyOf(grave, 1, bal, 0), bal)).toBeCloseTo(grave1, 9)
     void LAIR_THREAT_MUL // 派生比例由 lairAnomalyOf 内部按表取，这里只需保证表被引用到
   })
 })

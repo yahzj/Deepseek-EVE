@@ -15,9 +15,9 @@
  * 3. **洞外工业三件**：`matterTechUnboxCut` / `matterTechVoidYield` / `matterTechWreckYield` 由 `industry.ts`
  *    的三处挂点消费。
  *
- * **存档与迁移**：等级存在 `state.research.levels`（`Record<节点 id, 等级>`）；老档没有该字段 ⇒
- * `MIGRATIONS[28]`（v28→v29）补空树，读档即"一级未点"，**零行为变化**。
+ * **存档**：等级存在 `state.research.levels`（`Record<节点 id, 等级>`）；当前版本缺字段时补空树。
  */
+import { ceilFinalQuantity } from './quantity'
 import { addLog } from './state'
 import type { GameState } from './state'
 import { addWare, countWare, removeWare } from './inventory'
@@ -69,7 +69,7 @@ export function matterTechCostAt(
   const i = Math.max(0, Math.floor(level))
   const pick = (arr: readonly number[]): number =>
     arr.length === 0 ? 0 : (arr[Math.min(i, arr.length - 1)] ?? 0)
-  return { essence: pick(node.essence), isk: pick(node.isk) }
+  return { essence: ceilFinalQuantity(pick(node.essence)), isk: ceilFinalQuantity(pick(node.isk)) }
 }
 
 /** **前置缺口**（返回缺口描述；空数组 = 前置已满） */
@@ -243,6 +243,13 @@ export function matterTechBattleSpeedTiers(state: GameState, ctx: SimContext): n
 /** **扫描虫洞间隔削减**（0.05/级 ⇒ 0.25 = −25%；与技能链乘算） */
 export function matterTechScanCut(state: GameState, ctx: SimContext): number {
   return Math.min(0.9, matterTechSum(state, ctx, 'whScanCut'))
+}
+
+/** 未研究为0（不可派队），三级分别60%/70%/80%；与原收益科技乘区独立。 */
+export function matterTechSignalAutoYield(state: GameState, ctx: SimContext): number {
+  const bonus = matterTechNodes(ctx).filter(n => n.effect === 'signalAutoYield')
+    .reduce((sum, n) => sum + Math.max(0, Math.min(n.maxLevel, Math.floor(matterTechLevel(state, n.id)))) * n.per, 0)
+  return bonus > 0 ? Math.min(80, Math.round(50 + bonus * 100)) / 100 : 0
 }
 
 /** **货柜拆解周期削减**（0.25/级 ⇒ 满级 0.75；加法口径） */

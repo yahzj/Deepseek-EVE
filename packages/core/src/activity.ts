@@ -7,6 +7,7 @@
  */
 import type { GameState, TrainingItem } from './state'
 import { busyLabel, type BusyLabel } from './busyLabels'
+import { commandShipDeployed } from './combat/command/locks'
 import type { SimContext, SkillCatalog } from './types'
 import { trainingLevelProgress } from './training'
 import type { HeadTrainingInfo, QueueView } from './engine'
@@ -22,11 +23,12 @@ import { expeditionStatus, bountyCooldownRemainingMs, bountyCooldownMsFor, autoL
 import { standbyStatus, transitStatus } from './location'
 import { aiTaskView, aiCoreName } from './ai'
 import { shipDisplayName } from './instances'
-import { legMsFor, outboundLegMsFor, salvagerCyclesOf } from './salvaging'
+import { salvageReturnMs, outboundLegMsFor, salvagerCyclesOf } from './salvaging'
 import { haulEndpointName } from './hauling'
 import { travelMinutesEff } from './travel'
 import { weekendFoePoolOf } from './weekendEvent'
 import { pendingStationActivityView } from './stationActivityPending'
+import { departureView } from './departure'
 
 /** 活动种类（UI 据此渲染图标；新增耗时作业在此扩展） */
 export type ActivityKind =
@@ -177,7 +179,7 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
         remainingMs = Math.max(0, leg - svg.phaseAccMs)
       } else if (svg.phase === 'returning') {
         // 返航腿 = 满载返航 + 空船去程（去程并入返航）
-        const leg = Math.max(1, legMsFor(state, ctx, svg.galaxyId) + outboundLegMsFor(state, ctx, svg.galaxyId))
+        const leg = salvageReturnMs(state, ctx, svg.galaxyId)
         percent = Math.min(100, Math.round((svg.phaseAccMs / leg) * 100))
         remainingMs = Math.max(0, leg - svg.phaseAccMs)
       } else {
@@ -206,11 +208,12 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       id: 'hauling',
       kind: 'hauling',
       label: `长途运输 · 往「${haulEndpointName(ctx, hg.toSiteId)}」`,
+      ...(hg.fleetLeg?.returning ? { labelId: 'ui.industrial.007' } : {}),
       sub: `航线 ${haulEndpointName(ctx, hg.routeA)} ⇄ ${haulEndpointName(ctx, hg.routeB)} · 本段实际约 ${Math.max(1, travelMinutesEff(state, ctx, hg.legMinutes))} 分钟`,
       percent: Math.min(100, Math.round((hg.phaseAccMs / leg) * 100)),
       remainingMs: Math.max(0, leg - hg.phaseAccMs),
-      stopable: true,
-      stop: 'stop-hauling',
+      stopable: !hg.fleetLeg?.returning && !hg.fleetLeg?.abortAfterBattle,
+      stop: hg.fleetLeg?.returning || hg.fleetLeg?.abortAfterBattle ? null : 'stop-hauling',
     })
   }
 
@@ -261,7 +264,7 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       kind: 'whauto',
       label: '自动探索',
       labelId: run.expeditionRules === 2 ? 'ui.explorationName.011' : 'ui.explorationName.010',
-      subId: 'ui.explorationName.012',
+      subId: run.expeditionRules === undefined ? 'ui.signalAuto.003' : 'ui.explorationName.012',
       subParams: { p1: run.shipIds.length },
       /**
        * ⚠ **⟪文案调整 2026-10-01⟫（船长报障）**（原话：「自动探索虫洞的活动栏，还是显示各占一个 AI 核心
@@ -270,7 +273,7 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
        * 只有这句副标题还停在旧口径上 ⇒ 改成「整队占 1 枚」（只派 1 条舰时不必说"整队"）。
        */
       sub:
-        run.shipIds.length > 1
+        run.expeditionRules === undefined ? `${run.shipIds.length} 条舰` : run.shipIds.length > 1
           ? `${run.shipIds.length} 条舰 · 整队占 1 枚 AI 核心`
           : `${run.shipIds.length} 条舰 · 占 1 枚 AI 核心`,
       percent: Math.max(0, Math.min(100, Math.round((done / span) * 100))),
@@ -491,6 +494,7 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       '本次出击': 'core.busy.013', '采矿': 'core.busy.002', '残骸打捞': 'core.busy.005',
       '航行': 'ui.invasionLoop.006', '亲自开炉': 'core.activity.002', '亲自开线': 'core.activity.003',
       '实验室作业': 'core.busy.030',
+      '战前准备': 'ui.weekend.062',
     }
     out.push({
       // ⟪文案调整 2026-10-08⟫ 入侵类型交由标题前标签显示，不重复堆词。
@@ -671,6 +675,27 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     })
   }
 
+  const departure = departureView(state)
+  if (departure) {
+    if (departure.kind === 'flagship') out.push({ id: 'flagship-departure', kind: 'expedition',
+      label: state.encounter.name || (state.encounter.anomalyId ? ctx.anomalies.get(state.encounter.anomalyId)?.name ?? '' : ''),
+      sub: '', badge: 'invasion', percent: departure.percent, remainingMs: departure.remainingMs, stopable: false, stop: null })
+    const kind = { mining: 'mining', salvaging: 'salvage', expedition: 'expedition', hauling: 'hauling',
+      deliver: 'courier', siteDeliver: 'transit', wormhole: 'wormhole', flagship: 'expedition' }[departure.kind]
+    const row = out.find(item => item.kind === kind)
+    if (row) {
+      row.sub = ''
+      row.subId = departure.textId
+      delete row.subParams
+      row.percent = departure.percent
+      row.remainingMs = departure.remainingMs
+    }
+  }
+  // ⟪文案调整 2026-11-02⟫ 船长指定悬赏胜利返港显示补给状态；循环停止权限不变。
+  if (state.expedition.active && state.expedition.phase === 'back' && state.expedition.returnReason === 'victory') {
+    const row = out.find(item => item.id === 'expedition')
+    if (row) { row.sub = ''; row.subId = 'core.departure.003'; delete row.subParams }
+  }
   return out
 }
 
@@ -680,6 +705,8 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
  * 制造与技能训练不绑船，不算忙。UI 的货仓页船徽标与以后复用都走这里。
  */
 export function shipBusyLabel(state: GameState, ctx: SimContext, shipId: string): BusyLabel | null {
+  if (shipId !== state.shipId && commandShipDeployed(state, shipId)) return busyLabel('expedition')
+  if ((state.wormholeAuto ?? []).some(run => run.shipIds.includes(shipId))) return busyLabel('wormhole')
   if ((state.planetary?.deliveries ?? []).some(d => d.shipUid === shipId)) return busyLabel('planetDelivery')
   // **虫洞锁定**（船长 2026-09-13：「已经进洞的船将被锁定（包括货仓）」）——
   // 放在最前面：进了洞的船对外一律算"忙"（包括主控自己），于是 AI 指派、换驾驶、入洞门槛

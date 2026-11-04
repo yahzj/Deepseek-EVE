@@ -1,8 +1,9 @@
 /**
  * 国庆节审查续接复核：只建立合成状态和隔离夹具，不修业务、不碰个人存档。
  * 运行：tsx tools/guoqing-audit-recheck.ts
- * C01/C08 已修行为加确定性断言；其余已知问题只诊断。退出 0 不能当全报告修复通过。
- * 版本自检：游戏 v0.1.0、存档结构 v31；核对/运行日期 2026-10-03。
+ * C01/C02/C03/C04/C06/C07/C08/C09/C10 的已修行为加断言；C05沿已确认整数政策。
+ * 它覆盖指定合成路径，完整边界另见专项；不表示整库或真实浏览器手势验收。
+ * 版本自检：游戏 v0.1.0、存档结构 v31；核对/运行日期 2026-10-29。
  */
 import assert from 'node:assert/strict'
 import { constants, readFileSync, mkdirSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs'
@@ -174,6 +175,7 @@ async function main(): Promise<void> {
   const firstStock = long.warehouse.items['synaptic-accelerant']
   syncBoostRenew(long, ctx)
   syncBoostRenew(long, ctx)
+  assert.equal(long.warehouse.items['synaptic-accelerant'], firstStock)
   report('C03', { firstStock, afterSameTimeChecks: long.warehouse.items['synaptic-accelerant'], remain: long.skillBoostUntilMs - long.gameMs,
     renewLogs: long.logs.filter((row) => row.textId === 'core.consumable.013').length })
 
@@ -185,6 +187,7 @@ async function main(): Promise<void> {
   const small = structuredClone(big)
   advanceGame(big, 10_000, ctx)
   for (let i = 0; i < 10; i++) advanceGame(small, 1000, ctx)
+  assert.deepEqual(big.skills, small.skills)
   report('C04', { big: { level: big.skills.trained.mining ?? 0, queue: big.skills.queue }, small: { level: small.skills.trained.mining ?? 0, queue: small.skills.queue } })
 
   const frac = fresh()
@@ -195,7 +198,7 @@ async function main(): Promise<void> {
   const fracBack = loadSaveFile(serializeSaveFile(frac, 0)).state
   report('C05', { accepted, added, afterRoundtrip: fracBack.fleet[fracBack.shipId]!.cargo['wreck-a-hi'] ?? 0,
     currentTenRounds03: Array.from({ length: 10 }, () => wreckUnitsOf(0.3)).reduce((sum, n) => sum + n, 0),
-    note: '作业已改统一整数保底，报告要求的十轮 0.3 = 3 尚不成立，不能为重现擅改已确认单位政策' })
+    note: '原小数残骸建议已被整数政策替代，不作为未修问题；非法小数库存仍按现行规则清洗' })
 
   const lab = fresh()
   for (const site of ctx.stations.values()) lab.stationSites[site.id] = { stage: site.tiers.length, delivered: {} }
@@ -206,13 +209,16 @@ async function main(): Promise<void> {
   for (const material of recipe.materials) lab.warehouse.items[material.itemId] = material.units * 10
   const starts = [startLabRun(lab, ctx, recipe.id, 'basic'), startLabRun(lab, ctx, recipe.id, 'basic')]
   if (lab.labRuns?.length) { lab.gameMs = Math.max(...lab.labRuns.map((run) => run.finishAtGameMs)); advanceLab(lab, ctx) }
+  assert.equal(starts[0]!.ok, true)
+  assert.equal(starts[1]!.ok, false)
+  assert.deepEqual(labOutputStockOf(lab, recipe), { stock: 60_000, cap: 60_000 })
   report('C06', { starts, result: labOutputStockOf(lab, recipe) })
 
   // C07：真实导出、persist 与序列化方法，桥用合成对象替代。
   const exported: string[] = []
   const saves: string[] = []
   const exportProbe = execute<{ state: ReturnType<typeof fresh>; exportSaveToFile(): Promise<unknown> }>(
-    `class Probe { ${gameMethods(['persistSnapshot', 'persist', 'currentSaveText', 'exportSaveToFile'])}\n saveWriteState() { return 'ok' } }\nconst result = new Probe`, {
+    `class Probe { ${gameMethods(['createSaveSnapshot', 'persistSnapshot', 'persist', 'currentSaveText', 'exportSaveToFile'])}\n saveWriteState() { return 'ok' } }\nconst result = new Probe`, {
       bumpIronmanSeq, serializeSaveFile, saveBridge: { save: async (text: string) => { saves.push(text); return true },
         exportSaveToFile: async (text: string) => { exported.push(text); return { ok: true } } },
       requestPersistentStorage: async () => {}, noteSaveWriteFailed: () => {}, tr: (id: string) => id,
@@ -222,6 +228,7 @@ async function main(): Promise<void> {
   await bounded(exportProbe.exportSaveToFile(), '导出快照')
   const exportSeq = JSON.parse(exported[0]!).state.ironman.seq as number
   const saveSeq = JSON.parse(saves[0]!).state.ironman.seq as number
+  assert.equal(exported[0], saves[0])
   report('C07', { exportSeq, saveSeq, verdict: ironmanLoadVerdict({ ironman: true, incomingSeq: exportSeq, currentSeq: saveSeq, ledgerSeq: saveSeq,
     incomingSavedAtWallMs: 1000, nowWallMs: 1001 }), evidence: '真实导出方法 + 模拟桥；用户手势/真实对话框未验证' })
 
@@ -240,6 +247,7 @@ async function main(): Promise<void> {
   const hist = fresh()
   hist.market.priceHistory = { 'ore-olivine': Array.from({ length: 48 }, (_, i) => 100 + i) }
   const histBack = loadSaveFile(serializeSaveFile(hist, 0)).state
+  assert.deepEqual(histBack.market.priceHistory['ore-olivine'], hist.market.priceHistory['ore-olivine'])
   report('C09', { before: 48, after: histBack.market.priceHistory['ore-olivine']?.length, retained: histBack.market.priceHistory['ore-olivine'] })
 
   // C10：在自建目录里只放一份无效夹具，看正式工具是否正确传播失败。
@@ -251,14 +259,16 @@ async function main(): Promise<void> {
     const tsxCli = require.resolve('tsx/cli')
     const run = spawnSync(process.execPath, [tsxCli, join(ROOT, 'tools/save-roundtrip-audit.ts')], { cwd: dir, encoding: 'utf8', timeout: 10_000 })
     if (run.error) throw run.error
-    report('C10', { exitCode: run.status, falsePass: run.stdout.includes('✅ 存档往返体检通过'), output: run.stdout.trim() })
+    assert.equal(run.status, 1)
+    assert.equal(run.stdout.includes('PASS 存档往返'), false)
+    report('C10', { exitCode: run.status, falsePass: false, output: run.stdout.trim() })
   } finally {
     const absolute = resolve(dir)
     assert(absolute.startsWith(resolve(tmpdir()) + sep) && absolute.includes('whale-guoqing-recheck-'))
     rmSync(absolute, { recursive: true, force: true })
   }
   const baseline = execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim()
-  console.log(JSON.stringify({ baseline, evidence: '合成复核，不是修复通过，不读取个人档', rows }, null, 2))
+  console.log(JSON.stringify({ baseline, evidence: '指定合成路径断言通过，不代表完整报告/整库/实机验收，不读取个人档', rows }, null, 2))
 }
 
 main().catch((err) => { console.error(err); process.exitCode = 1 })

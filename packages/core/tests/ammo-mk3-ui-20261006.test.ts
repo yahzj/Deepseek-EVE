@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
 import { buildSimContext, L10N } from '@whale/data'
 import * as core from '../src/index'
 import { ROOT } from './helpers/save-shell'
+import { readImplementation } from '../../../tools/source-implementation'
 
 type Node = { type: string; props: Record<string, any>; children: unknown[] }
 const jsx = { createElement: (type: string, props: Record<string, unknown> | null, ...children: unknown[]): Node => ({ type, props: props ?? {}, children }) }
@@ -54,7 +55,7 @@ describe('三档弹药真实装配组件', () => {
     }
   })
   it('工业同一书架关闭不可出售入口、缺书时标明黑市来源，不把它当无市场渠道', () => {
-    const source = readFileSync(resolve(ROOT, 'apps/desktop/src/renderer/src/panels/Industry.tsx'), 'utf8')
+    const source = readImplementation(resolve(ROOT, 'apps/desktop/src/renderer/src/panels/Industry.tsx'))
     expect(source).toContain("marketGoodOf(engine.ctx, 'blueprint', id)")
     expect(source).toContain('const noResale = marketGood?.playerSellable === false')
     expect(source).toContain('{!su && !noResale ? (')

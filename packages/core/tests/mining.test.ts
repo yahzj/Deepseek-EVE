@@ -7,8 +7,15 @@ import type { GameState } from '../src/state'
 import { createInitialState } from '../src/state'
 import { advanceGame } from '../src/engine'
 import { countItem } from '../src/inventory'
-import { beltTravelMinutes, miningStatus, oneLegMs, richVeinP, setMiningAutoCycle, setMiningStopAfterTrip, startMining, stopMining, advanceShipReturns } from '../src/mining'
+import { beltTravelMinutes, miningStatus, oneLegMs, richVeinP, setMiningAutoCycle, setMiningStopAfterTrip, startMining as launchMining, stopMining, advanceShipReturns } from '../src/mining'
+import { finishDeparture } from './helpers/departure-ready'
 import { makeTestCtx, belt, ship , fittedOf } from './helpers'
+
+function startMining(...args: Parameters<typeof launchMining>) {
+  const result = launchMining(...args)
+  if (result.ok) finishDeparture(args[0], args[2])
+  return result
+}
 
 describe('采矿作业', () => {
   let state: GameState
@@ -50,9 +57,9 @@ describe('采矿作业', () => {
     }
   })
 
-  it('去程取消：指令即开始采掘，每 12 秒完成一个循环：10 单位矿石入舱', () => {
+  it('抵达后每 12 秒完成一个循环：10 单位矿石入舱', () => {
     startMining(state, 'belt-a', ctx)
-    // 去程已取消：指令下达即视为已抵达矿带，立即采掘（无出航等待）
+    // 帮助函数已通过真实引擎走完离港与星门等待。
     expect(state.mining.phase).toBe('mining')
     expect(countItem(state, 'ore-a')).toBe(0)
     advanceGame(state, 12_000, ctx)
@@ -65,11 +72,11 @@ describe('采矿作业', () => {
     expect(view.percent).toBeCloseTo(50, 0)
   })
 
-  it('采矿技术等级加成产量：Lv2 时每循环 11 单位', () => {
+  it('采矿技术等级加成产量：Lv2时11.2单位向上取整为12', () => {
     state.skills.trained['mining'] = 2 // balance.yieldSkillId = 'mining'
     startMining(state, 'belt-a', ctx)
     advanceGame(state, 12_000, ctx)
-    expect(countItem(state, 'ore-a')).toBe(11) // floor(10 × 1.12)
+    expect(countItem(state, 'ore-a')).toBe(12)
   })
 
   it('采集器入门学（原采矿护卫舰操作）缩短循环：Lv5 时循环 10.2 秒', () => {
@@ -126,6 +133,7 @@ describe('采矿作业', () => {
     expect(state.warehouse.items['ore-a']).toBe(800) // 全部进仓库
     expect(state.logs.some((l) => l.text.includes('卸入物品仓库'))).toBe(true)
     // 回到矿带：恢复采掘
+    finishDeparture(state, calmCtx)
     advanceGame(state, 12_000, calmCtx)
     expect(countItem(state, 'ore-a')).toBe(10)
   })
@@ -342,6 +350,7 @@ describe('富矿脉红利窗口（卷B2⑥：概率触发 + 连续 2 循环 ×3�
     expect(state.warehouse.items['ore-a']).toBe(10)
     expect(state.mining.rvLeft).toBe(1)
     expect(state.rng.count).toBe(0)
+    finishDeparture(state, ctx)
     advanceGame(state, 12_000, ctx) // 回带首个循环消耗窗口：×3 且不掷点
     expect(countItem(state, 'ore-a')).toBe(30)
     expect(state.mining.rvLeft).toBe(0)

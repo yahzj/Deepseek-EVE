@@ -9,19 +9,18 @@
  * `addWare(state, WEEKEND_BLACKBOX_ITEM_ID, 1)`，常量 = `blackbox-h`），而入侵有**两族**
  * （`WEEKEND_BOSS_FAMILIES = ['H', 'R']`，R 族「光环科技」2026-10-01 建族）⇒ **R 族打完自家旗舰，
  * 拿到的是墨潮那件**：名字、卖价、料值、图鉴归类全是 H 的（玩家报障现场）。
- * 三条发放入口都写死：击沉那一拍（`weekendApplyBattleOutcome`）· 结算补发
- * （`weekendSettleAndGrant`）· 对账补发（`weekendComms.reconcileWeekendBlackBox`）。
+ * 黑匣由本场击沉战果路径按族发放；结算只记录快照，不对未结清历史场次补发。
  *
  * ## 修法（按族取 · 唯一取数口）
  *
  * `blackbox.blackBoxItemIdOfFamily(族)` = 约定 `blackbox-<族小写>`（H ⇒ `blackbox-h`，R ⇒ `blackbox-r`），
- * 内容侧每族登记一件（`data/items.ts` 的 `WEEKEND_TROPHIES`）⇒ 三条入口、结算快照
+ * 内容侧每族登记一件（`data/items.ts` 的 `WEEKEND_TROPHIES`）⇒ 击沉战果入口、结算快照
  * （`WeekendResultSnapshot.blackBoxItemId`）与结算信（`weekendRewardLinesOf`）全部同源。
  * 12 张舰船插件图纸照旧只认"任意黑匣"（三件互为替代，`core/manufacturing.ts` 的 `MATERIAL_GROUPS`）。
  *
  * 本文件锁九件事：① 内容侧登记（物品/市场/稀有度/中英）② 取数口与"内容破损回落"③④ **两族各自
- * 端到端击杀**（R ⇒ 光环匣且墨潮匣为 0；H ⇒ 墨潮匣，回归）⑤ 结算补发路 ⑥ 结算信清单与老快照
- * ⑦ 对账补发路 ⑧ 存档往返与手改档白名单 ⑨ 装配侧（R 匣顶料 · 真扣 · 入库即解锁插件门类）
+ * 端到端击杀**（R ⇒ 光环匣且墨潮匣为 0；H ⇒ 墨潮匣，回归）⑤ 正常结算不重发 ⑥ 结算信清单与老快照
+ * ⑧ 存档往返与手改档白名单 ⑨ 装配侧（R 匣顶料 · 真扣 · 入库即解锁插件门类）
  * ⑩ 文案（12 张图纸说明 + 两条界面文案不再点名墨潮）。
  */
 import { describe, expect, it } from 'vitest'
@@ -47,12 +46,12 @@ import {
 } from '../src/blackbox'
 import { loadSaveFile, marketGoodOf, serializeSaveFile } from '../src/index'
 import { addWare, countWare } from '../src/inventory'
-import { materialGroupIdsOf, missingMaterials, startManufacturing } from '../src/manufacturing'
+import { cancelManufacturing, materialDisplayIdOf, materialGroupIdsOf, missingMaterials, startManufacturing } from '../src/manufacturing'
 import { WEEKEND_FLAGSHIP_POOL_HP, weekendCoreCandidates, weekendFlagshipView } from '../src/weekendEvent'
 import { weekendApplyBattleOutcome, weekendFlagshipSpecOf, weekendSettleAndGrant } from '../src/weekendBattle'
 import { weekendStartFlagshipBattle } from '../src/weekendLaunch'
 import { advanceBattleFor } from '../src/combat'
-import { reconcileWeekendBlackBox, weekendRewardLinesOf } from '../src/weekendComms'
+import { weekendRewardLinesOf } from '../src/weekendComms'
 
 const ctx = buildSimContext()
 const H = 3_600_000
@@ -120,7 +119,10 @@ function killFlagship(family: 'H' | 'R'): GameState {
   )
   expect(u, `${family} 族母舰在第 4 波压轴`).toBeTruthy()
   /** 扣掉最后那点血（台账量的是"单位 hpMax − hp" ⇒ 与真实开火同一条量法） */
-  u!.hp = { ...u!.hp, h: 0 }
+  u!.hp = { s: 0, a: 0, h: 0 }
+  // 合成击杀需补齐真实伤害入口的击沉观测，不能只靠池子取整宣称击沉。
+  battle.bossDownAtMs = s.gameMs
+  expect(battle.foeOverride?.bossShipId).toBe(mother)
   weekendApplyBattleOutcome(s, ctx, spec.cardId, true, NOW, battle, { galaxyId: core, kind: 'flagship' })
   return s
 }
@@ -194,16 +196,14 @@ describe('③④ 端到端：击杀旗舰发的是"这一族那件"', () => {
   })
 })
 
-describe('⑤⑥ 结算补发与结算信：快照记的是"真发的那一件"', () => {
-  it('⑤ 结算补发路：R 场"击杀了却没结清" ⇒ 补的是光环匣，且快照记下 id', () => {
-    const { s } = world('R')
-    const ev = s.weekendEvent!
-    ev.flagshipHpDone = 10
-    ev.flagshipDown = 'player'
-    ev.endedAtWallMs = NOW
+describe('⑤⑥ 正常结算与结算信：快照记的是"真发的那一件"', () => {
+  it('⑤ 真实击沉发奖后，结算快照记录光环匣且不再发第二枚', () => {
+    const s = killFlagship('R')
+    expect(countWare(s, 'blackbox-r'), '击沉已到账').toBe(1)
     expect(weekendSettleAndGrant(s, ctx, NOW)).not.toBeNull()
-    expect(countWare(s, 'blackbox-r'), '补 1 枚光环匣').toBe(1)
+    expect(countWare(s, 'blackbox-r'), '结算不重复发').toBe(1)
     expect(countWare(s, 'blackbox-h'), '不是墨潮匣').toBe(0)
+    expect(s.weekendLastResult?.blackBox).toBe(1)
     expect(s.weekendLastResult?.blackBoxItemId, '快照记下是哪一件').toBe('blackbox-r')
   })
 
@@ -221,34 +221,7 @@ describe('⑤⑥ 结算补发与结算信：快照记的是"真发的那一件"'
   })
 })
 
-describe('⑦ 对账补发：按本场族补', () => {
-  it('R 场"有留档 · 没结清" ⇒ 补光环匣，并把快照那一栏一起写上', () => {
-    const { s } = world('R')
-    const ev = s.weekendEvent!
-    ev.flagshipDown = 'player'
-    ev.endedAtWallMs = NOW
-    snapshotOf(s, 0)
-    expect(reconcileWeekendBlackBox(s), '该补').toBe(true)
-    expect(countWare(s, 'blackbox-r'), '补的是光环匣').toBe(1)
-    expect(s.weekendLastResult!.blackBox, '面板那一栏 +1').toBe(1)
-    expect(s.weekendLastResult!.blackBoxItemId, '面板也知道是哪一件').toBe('blackbox-r')
-    expect(reconcileWeekendBlackBox(s), '第二次 ⇒ 不再补').toBe(false)
-  })
-
-  it('⑦之补 占位族那套老口径（A/C/G）**没有**自己的匣 ⇒ 按落款墨潮匣发，不会"永远补不出去"', () => {
-    const { s } = world('R')
-    const ev = s.weekendEvent!
-    ;(ev as unknown as { family: string }).family = 'A'
-    ev.flagshipDown = 'player'
-    ev.endedAtWallMs = NOW
-    snapshotOf(s, 0)
-    expect(reconcileWeekendBlackBox(s), '该补').toBe(true)
-    expect(countWare(s, 'blackbox-h'), '落款墨潮匣（与本批改动之前逐字一致）').toBe(1)
-    expect(countWare(s, 'blackbox-r')).toBe(0)
-  })
-})
-
-describe('⑧ 存档：`blackBoxItemId` 随档往返 · 手改档白名单', () => {
+describe('⑦ 存档：`blackBoxItemId` 随档往返 · 手改档白名单', () => {
   it('随档往返（面板与信件读它）', () => {
     const { s } = world('R')
     snapshotOf(s, 1, 'blackbox-r')
@@ -283,9 +256,34 @@ describe('⑨ 装配侧：光环匣同样顶料 · 同样解锁插件门类', ()
     addWare(s, 'blackbox-r', 1)
     expect(missingMaterials(s, ctx, spec), '给一枚光环匣 ⇒ 不缺料').toEqual([])
     expect(materialGroupIdsOf('blackbox-h'), '同一等价组（组序仍是通用最先）').toContain('blackbox-r')
+    expect(materialGroupIdsOf('blackbox-h').at(-1), '守墓黑匣加入组尾，不改变既有扣料次序').toBe('blackbox-d')
     const start = startManufacturing(s, BP, 'pilot', ctx)
     expect(start.ok, `开工成功（错误：${start.ok ? '' : start.error}）`).toBe(true)
     expect(countWare(s, 'blackbox-r'), '真扣掉那一枚光环匣').toBe(0)
+  })
+
+  it('守墓旗舰黑匣也能顶插件图纸黑匣料，显示/扣料/取消退料均保留 D 匣', () => {
+    const s = createInitialState({ nowWallMs: 0, seed: 20261027 })
+    s.debugQuick = true
+    s.learnedRecipes.push(BP)
+    const bp = ctx.blueprints.get(BP)!
+    for (const m of bp.materials) {
+      if (m.itemId === 'blackbox-h') continue
+      addWare(s, m.itemId, m.count * 2)
+    }
+    const spec = { materials: bp.materials, buildSeconds: bp.buildSeconds, buildCostIsk: bp.buildCostIsk }
+    expect(materialGroupIdsOf('blackbox-h')).toContain('blackbox-d')
+    addWare(s, 'blackbox-d', 1)
+    expect(materialDisplayIdOf(s, 'blackbox-h')).toBe('blackbox-d')
+    expect(missingMaterials(s, ctx, spec)).toEqual([])
+    const started = startManufacturing(s, BP, 'pilot', ctx)
+    expect(started.ok).toBe(true)
+    const run = s.manufacturingRuns.at(-1)!
+    expect(run.spentMaterials).toContainEqual({ itemId: 'blackbox-d', count: 1 })
+    expect(countWare(s, 'blackbox-d')).toBe(0)
+    expect(cancelManufacturing(s, ctx, run.id).ok).toBe(true)
+    expect(countWare(s, 'blackbox-d')).toBe(1)
+    expect(countWare(s, 'blackbox-h')).toBe(0)
   })
 
   it('光环匣入库即解锁"舰船插件"门类；锁着时的拒因文案已泛化', () => {
@@ -302,9 +300,9 @@ describe('⑨ 装配侧：光环匣同样顶料 · 同样解锁插件门类', ()
 })
 
 describe('⑩ 文案：黑匣不再是"墨潮专属"', () => {
-  it('12 张插件图纸说明 = 「须先取得任意黑匣」（中英同步）', () => {
+  it('插件图纸说明均为「须先取得任意黑匣」（中英同步）', () => {
     const plugs = BLUEPRINTS.filter((b) => b.id.startsWith('bp-plug-'))
-    expect(plugs.length, '12 张').toBe(12)
+    expect(plugs.length).toBe(17)
     for (const bp of plugs) {
       expect(bp.description, `${bp.id} 中文说明`).toContain('须先取得任意黑匣')
       expect(bp.description.includes('墨潮'), `${bp.id} 不再点名墨潮`).toBe(false)

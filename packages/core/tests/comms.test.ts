@@ -230,7 +230,7 @@ describe('通讯 · 首匣那封信的「前往」必须带顶层 action（2026-
   })
 })
 
-describe('通讯 · 序章演出与老档迁移（2026-09-17）', () => {  it('开场信（start）：序章演出期间不送，演出结束即送达', () => {
+describe('通讯 · 序章演出与当前任务状态', () => {  it('开场信（start）：序章演出期间不送，演出结束即送达', () => {
     const { state, ctx } = world()
     state.onboarding.step = ONB_AWAKEN // 序章演出中：屏幕被演出盖住，此刻弹信没意义
     tick(state, ctx, 5000)
@@ -252,26 +252,34 @@ describe('通讯 · 序章演出与老档迁移（2026-09-17）', () => {  it('�
     }
   })
 
-  it('老档一次性判定：13 条「第一次」整体判为已完成，情报信随后补送（不发奖励）', () => {
+  it('v31 当前档已有的「第一次」完成记录保留，通讯按已完成任务送达', () => {
     const { state, ctx } = world(FIRST_TASK_MESSAGES)
     state.onboarding.step = ONB_DONE
-    // 伪造一份 v25 老档：结构没变，只是版本号更早、且**没有任何 first-* 记录**（老教程的两条记录保留）
-    const raw = JSON.parse(serializeSaveFile(state, 1)) as { version: number; state: Record<string, unknown> }
-    raw.version = 25
-    raw.state.importantTasks = { 'tut-ore-deliver': { done: true } }
-    const loaded = loadSaveFile(JSON.stringify(raw)).state
-    for (const def of FIRST_TASKS) {
-      expect(loaded.importantTasks[def.id]?.done, def.id).toBe(true)
-    }
-    // 老教程的记录不清洗（只是不再有人读它）
-    expect(loaded.importantTasks['tut-ore-deliver']?.done).toBe(true)
-    // 补发通讯：下一拍全部送达（按 id 幂等）
+    state.importantTasks['first-scan'] = { done: true }
+    const loaded = loadSaveFile(serializeSaveFile(state, 1)).state
+    expect(loaded.importantTasks['first-scan']?.done).toBe(true)
     advanceComms(loaded, ctx)
+    expect(loaded.commsDelivered?.['first-scan']).toBeDefined()
+  })
+
+  it('旧版存档由版本门拒绝，不再转换任务或发放追溯奖励', () => {
+    const { state } = world(FIRST_TASK_MESSAGES)
+    state.onboarding.step = ONB_DONE
+    const raw = JSON.parse(serializeSaveFile(state, 1)) as { version: number }
+    raw.version = 30
+    expect(() => loadSaveFile(JSON.stringify(raw))).toThrowError(/早于可读取下限/)
+  })
+
+  it('当前档中的完成任务通讯仍按状态送达', () => {
+    const { state, ctx } = world(FIRST_TASK_MESSAGES)
+    state.onboarding.step = ONB_DONE
+    state.importantTasks['first-scan'] = { done: true }
+    const loaded = loadSaveFile(serializeSaveFile(state, 1)).state
     for (const def of FIRST_TASKS) {
-      expect(loaded.commsDelivered?.[def.commsId], def.commsId).toBeDefined()
+      if (def.id !== 'first-scan') expect(loaded.importantTasks[def.id]?.done, def.id).not.toBe(true)
     }
-    // 奖励不补发：老档只送信（②那张蓝图不在老档仓库里）
-    expect(loaded.blueprintStock['bp-ammo-kinetic'] ?? 0).toBe(0)
+    advanceComms(loaded, ctx)
+    expect(loaded.commsDelivered?.[FIRST_TASKS.find((d) => d.id === 'first-scan')!.commsId]).toBeDefined()
   })
 })
 describe('通讯 · 触发条件', () => {

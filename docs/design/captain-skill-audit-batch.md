@@ -417,7 +417,7 @@ core 测试 + typecheck ×4 + 对应体检工具绿 → 合入 main（d2 侧解�
 > rank5 会落默认 60 秒档这件事；实际 rank3 = 11.2h、rank4 = 67.3h，都比 7.3h 长，与「低档快高档慢」
 > 相反。船长 2026-09-10 定：**无视 48h 栅栏，按之前 rank 的规则修正** → 补 rank5 档底 **742 秒**
 > （阶梯 ×2/×4/×6 的下一级 ×8，按比值外推 = r4 的 67.3h × 4/3）→ **满级 ≈89.7h**，r5 才真正成为
-> 全游戏最长档。口径以 `packages/core/src/training.ts` 头注与 `docs/design/skill-rank-dispersion.md`
+> 全游戏最长档。口径以 `packages/core/src/training.ts` 头注与 `docs/archive/retired-docs-20261029/skill-rank-dispersion.md`
 > 的阶梯表为准。
 - 新增技能 `ai-core-dispatch`「AI 核心调度学」（工程·rank5；名称/描述玩家向定稿）；效率
   累加接在 aiEfficiency 单点：eff' = 核心档位 + 0.02×级（balance aiCore

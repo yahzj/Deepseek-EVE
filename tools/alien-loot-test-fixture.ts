@@ -11,7 +11,6 @@ export function alienLootTestSave(now = Date.now()): string {
   const ctx = buildSimContext(), state = createInitialState({ nowWallMs: now, seed: 20261009 })
   state.modeChosen = true
   state.character.name = '异形装备验收'
-  state.standingClawbackDone = true
   state.standings.dsi = 100
   state.standingsEarned = { dsi: 100 }
   state.wallet.isk = 1e9

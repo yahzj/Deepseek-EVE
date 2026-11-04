@@ -105,14 +105,14 @@ describe('无人机护盾投射仪 · 战斗接线（只动护盾层）', () => 
   it('装一件 MK2：护盾层 ×1.7；装甲与结构一个数都不动', () => {
     const { state, uid } = worldWith(['mod-drone-shield-2'])
     expect(createPlayerSpec(state, ctx, uid)!.droneShieldBonusPct).toBeCloseTo(0.7, 10)
-    expect(poolOf(state, uid, HEAVY)).toEqual({ s: Math.round(60 * 1.7), a: 44, h: 90 })
-    expect(poolOf(state, uid, SENTRY)).toEqual({ s: Math.round(16 * 1.7), a: 10, h: 20 })
+    expect(poolOf(state, uid, HEAVY)).toEqual({ s: Math.ceil(60 * 1.7), a: 44, h: 90 })
+    expect(poolOf(state, uid, SENTRY)).toEqual({ s: Math.ceil(16 * 1.7), a: 10, h: 20 })
   })
 
   it('MK2 + MK3 同装：线性相加 +170%（不设上限），护盾层 ×2.7', () => {
     const { state, uid } = worldWith(['mod-drone-shield-2', 'mod-drone-shield-3'])
     expect(createPlayerSpec(state, ctx, uid)!.droneShieldBonusPct).toBeCloseTo(1.7, 10)
-    expect(poolOf(state, uid, HEAVY)).toEqual({ s: Math.round(60 * 2.7), a: 44, h: 90 })
-    expect(poolOf(state, uid, SENTRY)).toEqual({ s: Math.round(16 * 2.7), a: 10, h: 20 })
+    expect(poolOf(state, uid, HEAVY)).toEqual({ s: Math.ceil(60 * 2.7), a: 44, h: 90 })
+    expect(poolOf(state, uid, SENTRY)).toEqual({ s: Math.ceil(16 * 2.7), a: 10, h: 20 })
   })
 })

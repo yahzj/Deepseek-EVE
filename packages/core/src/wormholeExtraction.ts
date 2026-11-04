@@ -36,6 +36,7 @@ function extractionFingerprint(state: GameState, request: WormholeExtractionRequ
 }
 
 function extractionBlocked(state: GameState): WormholeExtractionPlan['code'] {
+  if (state.departure?.kind === 'wormhole') return 'unavailable'
   const run = state.wormhole.run
   if (run?.supplyVersion !== 1 || run.phase !== 'inside' || !run.attending || !run.supplies || run.fleet.length === 0 || run.fleet.some((id) => !state.fleet[id])) return 'unavailable'
   if (run.expeditionRules !== undefined && run.expeditionRules !== 2) return 'unavailable'

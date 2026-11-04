@@ -1,3 +1,4 @@
+import { ceilFinalQuantity } from './quantity'
 import type { PlanetActionResult, PlanetBill, PlanetCatalog, PlanetJob, PlanetState } from './planetTypes'
 import { planetConstructionCheck, planetClearanceCheck } from './planetGrid'
 import { planetEnvironmentOf, planetRulesSupported } from './planetRules'
@@ -6,8 +7,8 @@ import { planetProjectCheck, completePlanetProject } from './planetProjects'
 
 export function planetBillOf(planet: PlanetState, catalog: PlanetCatalog, bill: PlanetBill): PlanetBill {
   const multiplier = planetEnvironmentOf(planet, catalog)?.constructionMul ?? Infinity
-  return { items: Object.fromEntries(Object.entries(bill.items).map(([id, count]) => [id, Math.ceil(count * multiplier)])),
-    credits: Math.ceil(bill.credits * multiplier), durationMs: bill.durationMs }
+  return { items: Object.fromEntries(Object.entries(bill.items).map(([id, count]) => [id, ceilFinalQuantity(count * multiplier)])),
+    credits: ceilFinalQuantity(bill.credits * multiplier), durationMs: bill.durationMs }
 }
 export function planetMoveBillOf(planet: PlanetState, catalog: PlanetCatalog): PlanetBill {
   return planetBillOf(planet, catalog, { items: { 'min-tritanium': 20 }, credits: 500, durationMs: 60_000 })
@@ -64,8 +65,8 @@ export function cancelPlanetJob(planet: PlanetState, seq: number): PlanetActionR
   const c = planet.colony, job = c?.jobs.find(j => j.seq === seq)
   if (!c || !job) return { ok: false, reason: 'not-ready' }
   const refund = Math.max(0, Math.min(1, job.remainingMs / job.totalMs))
-  for (const [id, count] of Object.entries(job.spentItems)) c.items[id] = (c.items[id] ?? 0) + Math.floor(count * refund)
-  c.credits += Math.floor(job.spentCredits * refund)
+  for (const [id, count] of Object.entries(job.spentItems)) c.items[id] = (c.items[id] ?? 0) + ceilFinalQuantity(count * refund)
+  c.credits += ceilFinalQuantity(job.spentCredits * refund)
   if (job.spentResearch) c.supplies.research = (c.supplies.research ?? 0) + job.spentResearch * refund
   if (job.kind === 'build' && job.cellIndex !== undefined) delete planet.cells[job.cellIndex]?.building
   if (job.kind === 'move' && job.cellIndex !== undefined && planet.cells[job.cellIndex]?.building) planet.cells[job.cellIndex]!.building!.enabled = true

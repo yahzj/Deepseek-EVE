@@ -7,11 +7,12 @@
  * 两件事一起办：
  * ① **单位 = 信用点**：玩家可见文案一律用它；**引擎内部字段仍叫 `isk`**
  *    （船长选定「乙」——字段名是内部标识符、玩家不可见，全局改名要动 1833 行 + 存档迁移，收益为零）；
- * ② **位数分级**：{@link MONEY_WAN_THRESHOLD} 以下照旧千分位全写（**小数位一个不丢**）；
+ * ② **位数分级**：{@link MONEY_WAN_THRESHOLD} 以下千分位全写（最终金额向上取整）；
  *    到万位起改用「万」，到亿位起改用「亿」并保留小数。
  *    ⚠ **精确值不能丢**：用它的位置都把全精度值放进 `title`（全站 `title` 走自绘提示层），
  *    玩家悬停即见「1,234,567,890 信用点」——分级只是**首屏读得快**，不是**信息变少**。
  */
+import { ceilFinalQuantity } from './quantity'
 
 /** 到这一档（含）起改用「万」 */
 export const MONEY_WAN_THRESHOLD = 10_000
@@ -54,10 +55,10 @@ function unitWordOf(lang: MoneyLang, amount: number): string {
   return MONEY_UNIT
 }
 
-/** 千分位（全精度；不带单位）。⚠ 中英的千分位与小数点**逐位同值** ⇒ 语言只影响单位词，不影响本函数 */
+/** 千分位（最终整数；不带单位）。中英千分位同值，语言只影响单位词。 */
 export function moneyExact(amount: number): string {
   if (!Number.isFinite(amount)) return '0'
-  return Math.round(amount).toLocaleString('zh-CN')
+  return ceilFinalQuantity(amount).toLocaleString('zh-CN')
 }
 
 /** 去掉小数尾零（`1.20` → `1.2`；`2.00` → `2`） */
@@ -87,6 +88,7 @@ function formatScaled(scaled: number, decimals: number): string {
  */
 export function moneyAmount(amount: number, lang: MoneyLang = 'zh'): string {
   if (!Number.isFinite(amount)) return '0'
+  amount = ceilFinalQuantity(amount)
   const neg = amount < 0
   const abs = Math.abs(amount)
   const sign = neg ? '-' : ''
@@ -96,7 +98,7 @@ export function moneyAmount(amount: number, lang: MoneyLang = 'zh'): string {
   const topWord = lang === 'en' ? 'B' : '亿'
   const midDec = lang === 'en' ? MONEY_M_DECIMALS : MONEY_WAN_DECIMALS
   const topDec = lang === 'en' ? MONEY_B_DECIMALS : MONEY_LARGE_DECIMALS
-  if (abs < mid) return `${sign}${Math.round(abs).toLocaleString('zh-CN')}`
+  if (abs < mid) return `${sign}${abs.toLocaleString('zh-CN')}`
   if (abs < top) return `${sign}${formatScaled(abs / mid, midDec)} ${midWord}`
   return `${sign}${formatScaled(abs / top, topDec)} ${topWord}`
 }
@@ -133,7 +135,7 @@ function scaledAt(amount: number, div: number, word: string, decimals: number): 
  * @param lang `'zh'`（缺省）＝ 万/亿；`'en'` ＝ M/B
  */
 export function moneyFormatCandidates(amount: number, withUnit = false, lang: MoneyLang = 'zh'): string[] {
-  const safe = Number.isFinite(amount) ? amount : 0
+  const safe = Number.isFinite(amount) ? ceilFinalQuantity(amount) : 0
   const abs = Math.abs(safe)
   const unit = withUnit ? ` ${unitWordOf(lang, safe)}` : ''
   const mid = lang === 'en' ? MONEY_M_THRESHOLD : MONEY_WAN_THRESHOLD
@@ -194,7 +196,7 @@ export function moneyFitCandidates(amount: number, lang: MoneyLang = 'zh'): stri
  * 只给**宽度确实不受限**的位置用（当前 = 顶栏钱包；其余位置照旧走 `moneyFitCandidates`）。
  */
 export function moneyFullCandidates(amount: number, lang: MoneyLang = 'zh'): string[] {
-  const safe = Number.isFinite(amount) ? amount : 0
+  const safe = Number.isFinite(amount) ? ceilFinalQuantity(amount) : 0
   const withUnit = `${moneyExact(safe)} ${unitWordOf(lang, safe)}`
   const noUnit = moneyExact(safe)
   return withUnit === noUnit ? [withUnit] : [withUnit, noUnit]
@@ -202,7 +204,7 @@ export function moneyFullCandidates(amount: number, lang: MoneyLang = 'zh'): str
 
 /** **金额 + 单位**（玩家可见文案的统一写法；例：`1.2 万 信用点` / `1.2M credits`） */
 export function moneyText(amount: number, lang: MoneyLang = 'zh'): string {
-  return `${moneyAmount(amount, lang)} ${unitWordOf(lang, amount)}`
+  return `${moneyAmount(amount, lang)} ${unitWordOf(lang, ceilFinalQuantity(amount))}`
 }
 
 /**
@@ -210,7 +212,7 @@ export function moneyText(amount: number, lang: MoneyLang = 'zh'): string {
  * 保证"看得快"与"查得到"同时成立。
  */
 export function moneyExactText(amount: number, lang: MoneyLang = 'zh'): string {
-  return `${moneyExact(amount)} ${unitWordOf(lang, amount)}`
+  return `${moneyExact(amount)} ${unitWordOf(lang, ceilFinalQuantity(amount))}`
 }
 
 /**
@@ -218,6 +220,7 @@ export function moneyExactText(amount: number, lang: MoneyLang = 'zh'): string {
  * 分级口径与 {@link moneyAmount} 同源（含语言）。
  */
 export function moneyDelta(amount: number, lang: MoneyLang = 'zh'): string {
+  amount = ceilFinalQuantity(amount)
   const sign = amount >= 0 ? '+' : '−'
   return `${sign}${moneyAmount(Math.abs(amount), lang)}`
 }

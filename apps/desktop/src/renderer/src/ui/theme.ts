@@ -27,7 +27,7 @@ const THEME_KEY = 'whale-idle:ui-theme'
  *   疑与"识别色既当文字又当半透明底"有关）⇒ **修好前不从设置里露出**，免得玩家点到半成品。
  *   ⚠ 只有列在本表里的主题才读得进来（`readChoice()` 按本表校验，表外值回落深空）⇒ 体检某套前先确认它在表内。
  */
-export const THEME_CHOICES: readonly ThemeChoice[] = ['deepspace', 'daylight', 'contrast', 'warm', 'night', 'cb', 'auto'] as const
+export const THEME_CHOICES: readonly ThemeChoice[] = ['deepspace', 'contrast', 'warm', 'night', 'cb'] as const
 
 /** 文案 id（id 映射制：中文/英文都在 `packages/data/src/l10n/table.ts`） */
 export const THEME_LABEL_ID: Record<ThemeChoice, string> = {
@@ -61,8 +61,8 @@ export function systemPrefersLight(): boolean {
 
 /** 玩家选择 → 实际生效的主题 */
 export function resolveTheme(choice: ThemeChoice): ThemeId {
-  if (choice !== 'auto') return choice
-  return systemPrefersLight() ? 'daylight' : 'deepspace'
+  if (choice === 'auto' || choice === 'daylight') return 'deepspace'
+  return choice
 }
 
 /** 把主题写到 `<html data-theme>`（默认主题也写，方便 CSS 只写覆盖块） */

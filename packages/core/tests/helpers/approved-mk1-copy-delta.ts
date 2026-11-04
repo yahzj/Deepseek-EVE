@@ -3,22 +3,52 @@ import { execFileSync } from 'node:child_process'
 import { runInNewContext } from 'node:vm'
 import ts from 'typescript'
 
-let translatedSnapshot: Record<string, L10nEntry> | undefined
-function approvedTranslation(id: string): L10nEntry {
-  if (!translatedSnapshot) {
+const snapshots = new Map<string, Record<string, L10nEntry>>()
+function approvedTranslation(id: string, ref = 'af94a6af'): L10nEntry {
+  if (!snapshots.has(ref)) {
     const scope = { exports: {} as { L10N: Record<string, L10nEntry> } }
-    const source = execFileSync('git', ['show', 'af94a6af:packages/data/src/l10n/table.ts'], {
+    const source = execFileSync('git', ['show', `${ref}:packages/data/src/l10n/table.ts`], {
       encoding: 'utf8', windowsHide: true, maxBuffer: 8_000_000,
     })
     runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, scope)
-    translatedSnapshot = scope.exports.L10N
+    snapshots.set(ref, scope.exports.L10N)
   }
-  if (!translatedSnapshot[id]) throw new Error(`已批准翻译快照缺少${id}`)
-  return translatedSnapshot[id]!
+  const snapshot = snapshots.get(ref)!
+  if (!snapshot[id]) throw new Error(`已批准翻译快照缺少${id}`)
+  return snapshot[id]!
 }
 
 /** 船长确认MK1改名及扫描叠加规则后，历史词条守恒只放行这些精确变化。 */
 export function approvedMk1CopyDelta(id: string, entry: L10nEntry): L10nEntry {
+  // 2026-11-02 船长批准精简配色选项与文案，及字体两档说明；精确保护当前中英文本。
+  const approvedUiCopy: Readonly<Record<string, L10nEntry>> = {
+    'ui.App.132': {
+      zh: '深空为经典深色界面，高对比为近黑底加亮字，暖色偏暖且蓝光更少，纯黑夜间底为纯黑、字更柔和，色盲将识别色换为色觉安全色；即时生效，不写入存档。',
+      en: 'Deep Space is the original dark interface; High contrast uses a near-black background with brighter text; Warm shifts the palette warm to cut blue light; Night black uses a pure black background with softer text; Color-blind swaps the identity colors for a color-vision-safe set. Applies instantly and is not stored in the save.',
+    },
+    'ui.App.134': { zh: '暖色', en: 'Warm' },
+    'ui.App.136': { zh: '色盲', en: 'Color-blind safe' },
+    'ui.App.180': { zh: '默认提供现代清晰字形，复古提供经典像素点阵。即时生效，不写入存档。', en: '', enDeferred: true },
+  }
+  if (approvedUiCopy[id]) return approvedUiCopy[id]!
+  // 2026-10-19装备说明及百分号调整，仅放行已提交的十条精确文本。
+  if (['mod.copy.054', 'mod.gravekeeperGear.006', 'ui.gravekeeperGear.008', 'ui.gravekeeper.003',
+    'ui.alienLoot.002', 'ui.alienArmor.001', 'ui.alienArmor.002', 'ui.foeIntro.106', 'ui.shipInfo.047', 'ui.shipInfo.166'].includes(id)) {
+    return approvedTranslation(id, '7c43bc2d')
+  }
+  // 2026-10-18 船长报障：扫描提示同步同类不叠加，仅放行这三条精确变化。
+  if (id === 'ui.signalSpace.069') return {
+    zh: '信号空间扫描范围 +{p1} 圈；同类舰船取最高，侦察舰与电子舰可相加',
+    en: 'Signal Space scan range +{p1} rings; only the highest bonus in each ship class applies, and scout and EW bonuses add together',
+  }
+  if (id === 'ui.signalSpace.097') return {
+    zh: '本队进入信号空间后的扫描范围：基础 1 圈 ＋ 编队里侦察舰/电子舰的加成；同类舰船取最高，侦察舰与电子舰可相加；空间内捞到的谜质装置「测绘仪」还能再 +圈',
+    en: "The team's scan radius after entering: a base of 1 ring plus bonuses from scout and EW ships in the formation; only the highest bonus in each ship class applies, and scout and EW bonuses add together; the Enigma device Surveyor recovered inside adds one more ring",
+  }
+  if (id === 'ui.Wormhole.319') return {
+    zh: '本队入洞后的扫描范围：基础 1 圈 ＋ 编队里侦察舰/电子舰的加成；同类舰船取最高，侦察舰与电子舰可相加；洞内捞到的谜质装置「测绘仪」还能再 +圈',
+    en: "The team's scan radius after entering: a base of 1 ring plus bonuses from scout and EW ships in the formation; only the highest bonus in each ship class applies, and scout and EW bonuses add together; the Enigma device Surveyor recovered inside adds one more ring",
+  }
   // 船长已批准完成旧待译项；固定已提交快照逐字保护，不拿当前表反向充当期望值。
   if (entry.enDeferred || ['mod.copy.070', 'ui.shipInfo.074', 'ui.shipInfo.167'].includes(id)) return approvedTranslation(id)
   const names = new Set(['core.consumable.001', 'core.consumable.002', 'core.consumable.003', 'core.consumable.013', 'core.consumable.015',

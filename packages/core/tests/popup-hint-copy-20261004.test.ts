@@ -7,7 +7,7 @@ import { createInitialState } from '../src/state'
 import { gateMainActivity, ACTIVITY_LABEL_ID, HALT_COST_ID } from '../src/activityGate'
 import { fitModule, swapModuleAt } from '../src/equipment'
 import { goStandbyAt, originGalaxyOf } from '../src/location'
-import { installPlug, exchangePlugBlueprint, exchangeUniversalBlackBox } from '../src/plugs'
+import { installPlug, exchangePlugBlueprint, exchangeUniversalBlackBox, UNIVERSAL_BLACKBOX_COST, PLUG_BLUEPRINT_COST } from '../src/plugs'
 import { learnBlueprint, marketSellPreview, marketSellHolding, listSellHolding } from '../src/market'
 import { claimFirstTask } from '../src/firstRewards'
 import { signalSpaceTextId } from '../src/explorationText'
@@ -57,7 +57,8 @@ describe('真实错误入口不漏模板参数', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 7 })
     state.moduleBay = {}
     const gun = [...ctx.modules.values()].find((m) => m.slot === 'turret')!
-    const plug = [...ctx.modules.values()].find((m) => m.slot === 'plug')!
+    // 参数提示专项固定可兑换的通用插件；五件新势力插件另有暂不可获得的门禁。
+    const plug = ctx.modules.get('plug-shield-plate')!
     const unseen = [...ctx.galaxies.keys()].find((id) => !state.exploredGalaxies.includes(id))!
     const r = renderer(locale)
     const fixtures: Array<[string, () => any]> = [
@@ -74,11 +75,11 @@ describe('真实错误入口不漏模板参数', () => {
       [ctx.galaxies.get(originGalaxyOf(state, ctx))!.name, () => goStandbyAt(state, originGalaxyOf(state, ctx), ctx)],
       [gun.name, () => installPlug(state, ctx, gun.id)],
       [plug.name, () => installPlug(state, ctx, plug.id)],
-      ['30', () => exchangeUniversalBlackBox(state)],
+      [String(UNIVERSAL_BLACKBOX_COST), () => exchangeUniversalBlackBox(state)],
     ]
     const bp = BLUEPRINTS.find((b) => b.moduleId === plug.id)!
     const plugCtx = { ...ctx, blueprints: new Map(ctx.blueprints).set(bp.id, bp) }
-    fixtures.push(['8', () => exchangePlugBlueprint(state, plugCtx, plug.id)])
+    fixtures.push([String(PLUG_BLUEPRINT_COST), () => exchangePlugBlueprint(state, plugCtx, plug.id)])
     const accounts = () => JSON.stringify({ wallet: state.wallet, warehouse: state.warehouse, modules: state.moduleBay,
       standings: state.standings, learned: state.learnedRecipes, mining: state.mining, hauling: state.hauling,
       orders: state.orders, plugs: state.fleet[state.shipId]?.plugs })
@@ -156,7 +157,7 @@ describe('提示文案与实际显示上下文', () => {
     expect(L10N['ui.itemView.003']!.zh).toContain('已学会对应蓝图')
   })
   it.each(['zh','en'] as const)('%s 实际市场标题保留搜索、领域、类别、槽位、功能全部条件', (locale) => {
-    const text = readFileSync(new URL('../../../apps/desktop/src/renderer/src/pages/MarketPage.tsx', import.meta.url), 'utf8')
+    const text = readFileSync(new URL('../../../apps/desktop/src/renderer/src/features/market/MarketPage.tsx', import.meta.url), 'utf8')
     const ast = ts.createSourceFile('MarketPage.tsx', text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
     let expression: ts.Expression | undefined
     function visit(n: ts.Node): void {

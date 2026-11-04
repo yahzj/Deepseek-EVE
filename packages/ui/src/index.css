@@ -91,6 +91,11 @@
   --wui-rare: 244 201 93;
   --wui-red: 228 132 132;
   --wui-red-deep: 200 101 101;
+  /* 涨跌语义色单点（2026-11-03 股市批）：国内习惯「红涨绿跌」⇒ gain = 红系（涨/盈）、
+     loss = 绿系（跌/亏）。色值取本主题既有 red/green 档，与 HUD 同一色相；交易所页的
+     涨跌幅/盈亏/K 线/盘口买卖只引用这两个 token，禁止散写色值。 */
+  --wui-tone-gain: 228 132 132;
+  --wui-tone-loss: 111 220 143;
   --wui-role-armed: 232 111 111;
   --wui-role-armored: 232 164 90;
   --wui-role-hauler: 111 179 232;
@@ -462,6 +467,9 @@
   --wui-rare: 114 84 8;
   --wui-red: 123 27 27;
   --wui-red-deep: 154 55 55;
+  /* 亮白主题：红涨绿跌（取本主题深色档，保证亮底上对比度 ≥ 4.5） */
+  --wui-tone-gain: 123 27 27;
+  --wui-tone-loss: 25 103 48;
   --wui-role-armed: 144 23 23;
   --wui-role-armored: 129 76 18;
   --wui-role-hauler: 23 91 144;
@@ -750,7 +758,26 @@
 
 :root {
   /* 主题色板 */
-  --wui-mono: 'Cascadia Mono', 'Consolas', 'Courier New', monospace;
+  /**
+   * **全站唯一正文字体栈**（2026-11-02 船长令）。
+   *
+   * 历程：
+   * ① 船长报障「UI 上还有别的字体、全局字体应该统一」⇒ 先统一成系统雅黑栈（中文回落宋体根因见下）；
+   * ② 之后反复试排英文/数字字体（unscii-16 → unscii-8-tall → Oxanium），最终口径：
+   *    **「默认」= 微软雅黑（中文）＋ Oxanium（英文/数字）**；「复古」= GNU Unifont（中文）＋
+   *    Eunomia Bold（英文/数字），复古档由 `ui/fontChoice.ts` 在 `<html data-ui-font="retro">`
+   *    时用 `--ui-font` 覆盖（见 `panels/appSettings.css`）。
+   *
+   * 字形分工（CSS 字体栈逐字符回退的原生行为）：
+   * - 英文 / 数字 / ASCII → `Oxanium`（内嵌可变字重，@font-face 在 `panels/appSettings.css`）；
+   * - 中文 / 其余字符 → 系统微软雅黑栈；
+   * - emoji 等 → 系统字体兜底。
+   * ⚠ 族名依赖渲染层加载的 `@font-face`；`packages/ui` 单独被复用（无渲染层）时会自动落到
+   *   system-ui 等兜底，不会报错。
+   * ⚠ 等宽 `--wui-mono` 同样以 Oxanium 打头（与正文同一套外观），中文回退雅黑，Latin 等宽体兜底。
+   */
+  --wui-font: 'Oxanium', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans SC', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --wui-mono: 'Oxanium', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans SC', 'Cascadia Mono', 'Consolas', 'Courier New', monospace;
 
   /* ── **动效单点**（2026-09-25 UI 重置批新增；此前全站 97 处动画的时长/缓动写死在各自规则里，
         想整体调快调慢得改 97 处 —— 这是"动效没有单点"的缺口）。**只加不改**：现有规则仍用原值，
@@ -776,31 +803,35 @@
 
   /* ── **字阶**（2026-09-25 船长裁决「刻度贴着真实值改」后重定）：18 档，覆盖实测全部字号。
         ⚠ 命名即值：`--wui-fs-xs` = 11px、`--wui-fs-base` = 13px（**不再出现名字与值对不上**）。
-        ⚠ 字体族**不动**（系统雅黑栈 + `--wui-mono`），不引入外部字体。
-        ⚠ **值必须与实测分毫相同**：`calc(var(--ui-fs, 1) * Npx)`（32 处）是「设置→字体大小」的
-          缩放基准，N 一变玩家设置就叠出偏差；`--app-head-fs` 是全站标题缩放常量，另见 styles.css。── */
-  --wui-fs-2xs: 8.5px;
-  --wui-fs-2xsb: 9px;
-  --wui-fs-2xsc: 9.5px;
-  --wui-fs-2xsd: 10px;
-  --wui-fs-2xse: 10.5px;
-  --wui-fs-xs: 11px;
-  --wui-fs-xsb: 11.5px;
-  --wui-fs-s: 12px;
-  --wui-fs-sm: 12.5px;
-  --wui-fs-base: 13px;
-  --wui-fs-baseb: 13.5px;
-  --wui-fs-md: 14px;
-  --wui-fs-mdb: 14.5px;
-  --wui-fs-lg: 15px;
-  --wui-fs-lgb: 16px;
-  --wui-fs-xl: 17px;
-  --wui-fs-2xl: 18px;
-  --wui-fs-3xl: 19px;
-  --wui-fs-4xl: 20px;
-  --wui-fs-4xlb: 21px;
-  --wui-fs-4xlc: 22px;
-  --wui-fs-5xl: 36px;
+        ⚠ **2026-11-02 船长报障修复：「设置→字体大小」全量生效**——原先只有 6 个类（库存名/徽章/按钮）
+          额外乘 `--ui-fs`，其余 200+ 处 `font-size: var(--wui-fs-*)` 一动不动 ⇒ 玩家拖滑块几乎看不出变化。
+          现改为**字阶本身就是缩放基准**：每一档 = `calc(Npx * var(--ui-fs, 1))`，`--ui-fs` 由设置面板写在
+          `<html>`（`:root`）上 ⇒ 全站每一处 `font-size: var(--wui-fs-*)` 都跟着走；调用点**不许再自己乘**
+          `--ui-fs`（会叠成平方）。`--app-head-fs` 是全站标题缩放常量，同样带系数，另见 styles.css。
+        ⚠ 字体族：默认仍是系统雅黑栈 + `--wui-mono`；2026-11-02 船长令**新增可选内嵌字体**
+          （`ui/fontChoice.ts` 写 `--ui-font`），与本字阶互不干扰。── */
+  --wui-fs-2xs: calc(8.5px * var(--ui-fs, 1));
+  --wui-fs-2xsb: calc(9px * var(--ui-fs, 1));
+  --wui-fs-2xsc: calc(9.5px * var(--ui-fs, 1));
+  --wui-fs-2xsd: calc(10px * var(--ui-fs, 1));
+  --wui-fs-2xse: calc(10.5px * var(--ui-fs, 1));
+  --wui-fs-xs: calc(11px * var(--ui-fs, 1));
+  --wui-fs-xsb: calc(11.5px * var(--ui-fs, 1));
+  --wui-fs-s: calc(12px * var(--ui-fs, 1));
+  --wui-fs-sm: calc(12.5px * var(--ui-fs, 1));
+  --wui-fs-base: calc(13px * var(--ui-fs, 1));
+  --wui-fs-baseb: calc(13.5px * var(--ui-fs, 1));
+  --wui-fs-md: calc(14px * var(--ui-fs, 1));
+  --wui-fs-mdb: calc(14.5px * var(--ui-fs, 1));
+  --wui-fs-lg: calc(15px * var(--ui-fs, 1));
+  --wui-fs-lgb: calc(16px * var(--ui-fs, 1));
+  --wui-fs-xl: calc(17px * var(--ui-fs, 1));
+  --wui-fs-2xl: calc(18px * var(--ui-fs, 1));
+  --wui-fs-3xl: calc(19px * var(--ui-fs, 1));
+  --wui-fs-4xl: calc(20px * var(--ui-fs, 1));
+  --wui-fs-4xlb: calc(21px * var(--ui-fs, 1));
+  --wui-fs-4xlc: calc(22px * var(--ui-fs, 1));
+  --wui-fs-5xl: calc(36px * var(--ui-fs, 1));
 
   /* ── **间距节奏**（2026-09-25 船长裁决「刻度贴着真实值改」后重定）：12 档。
         实测本仓真实间距是 **2px 基数的手工刻度**（8×149 · 6×144 · 10×76 · 2×69 · 4×54），
@@ -1381,6 +1412,9 @@
   --wui-rare: 255 252 245;
   --wui-red: 254 245 245;
   --wui-red-deep: 253 247 247;
+  /* 高对比主题：黑底上要给足亮度的红/绿（本主题既有 red/green 是近白，专门另取一档） */
+  --wui-tone-gain: 255 120 120;
+  --wui-tone-loss: 120 255 160;
   --wui-role-armed: 255 245 245;
   --wui-role-armored: 255 250 245;
   --wui-role-hauler: 245 251 255;
@@ -1882,6 +1916,9 @@
   --wui-rare: 218 203 126;
   --wui-red: 223 154 144;
   --wui-red-deep: 213 145 135;
+  /* 暖色主题：红涨绿跌（沿用本主题 red/green 档） */
+  --wui-tone-gain: 223 154 144;
+  --wui-tone-loss: 121 216 161;
   --wui-role-armed: 219 141 131;
   --wui-role-armored: 214 178 114;
   --wui-role-hauler: 131 170 219;
@@ -2380,6 +2417,9 @@
   --wui-rare: 234 191 82;
   --wui-red: 214 102 102;
   --wui-red-deep: 199 117 117;
+  /* 夜间主题：红涨绿跌（沿用本主题 red/green 档） */
+  --wui-tone-gain: 214 102 102;
+  --wui-tone-loss: 105 211 136;
   --wui-role-armed: 221 95 95;
   --wui-role-armored: 224 161 92;
   --wui-role-hauler: 95 166 221;
@@ -2878,6 +2918,9 @@
   --wui-rare: 218 203 126;
   --wui-red: 223 154 144;
   --wui-red-deep: 213 145 135;
+  /* 暖色主题：红涨绿跌（沿用本主题 red/green 档） */
+  --wui-tone-gain: 223 154 144;
+  --wui-tone-loss: 121 216 161;
   --wui-role-armed: 219 141 131;
   --wui-role-armored: 214 178 114;
   --wui-role-hauler: 131 170 219;
@@ -3376,6 +3419,9 @@
   --wui-rare: 244 206 93;
   --wui-red: 228 132 196;
   --wui-red-deep: 211 121 181;
+  /* 色盲友好主题：沿用本主题的「红/绿」语义档（此主题下即粉/金，保持同一套色盲可辨色相） */
+  --wui-tone-gain: 228 132 196;
+  --wui-tone-loss: 220 193 111;
   --wui-role-armed: 232 111 111;
   --wui-role-armored: 232 164 90;
   --wui-role-hauler: 111 179 232;
@@ -3796,4 +3842,198 @@
   flex: 0 0 auto;
   padding: 8px 12px;
   border-top: 1px solid rgb(var(--wui-border));
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * **科幻未来（modern）布局的 HUD 语义色阶**（2026-11-02 船长报障修复批）
+ *
+ * 病根：新版 HUD 视觉块把 392 处颜色写成了 hex/rgba 字面量（深空一套天青 + 近黑面板），
+ *   于是「界面配色」切到亮白/高对比/暖色/纯黑/色盲时，HUD 区块仍钉死在深空色 ⇒ 半明半暗、
+ *   颜色全错。门禁 `npm run ui:theme-check` 的 ④ 字面量闸门也一直红着。
+ * 口径：每个 HUD 色都必须是主题令牌；六套主题各给一档（深空 = 改造前逐字同值，老玩家零变化）。
+ * ⚠ 只服务 `.app-root.is-layout-modern`（科幻未来）与 `.hud-*` 工业 HUD 页；旧版外壳走 `--wui-*` 原色板。
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+:root {
+  /* 主色 = 科幻天青；hover/active 给按钮、导航、进度条两级 */
+  --wui-hud-primary: 56 189 248;
+  --wui-hud-primary-hover: 14 165 233;
+  --wui-hud-primary-active: 2 132 199;
+  /* 语义色（良/警/暖橙/金/危/紫） */
+  --wui-hud-ok: 16 185 129;
+  --wui-hud-warn: 245 158 11;
+  --wui-hud-warn-soft: 251 146 60;
+  --wui-hud-gold: 250 204 21;
+  --wui-hud-danger: 239 68 68;
+  --wui-hud-accent: 168 85 247;
+  /* 文字四档（主/柔/弱/暗） */
+  --wui-hud-text: 240 249 255;
+  --wui-hud-text-soft: 224 242 254;
+  --wui-hud-text-muted: 148 163 184;
+  --wui-hud-text-dim: 100 116 139;
+  /* 白（按钮描边高光/图标） */
+  --wui-hud-ink: 255 255 255;
+  /* 表面进深：底 → 最深 → 软面板 → 面板 → 抬升 */
+  --wui-hud-bg-base: 6 9 16;
+  --wui-hud-surface-deep: 7 10 18;
+  --wui-hud-surface-soft: 11 16 26;
+  --wui-hud-surface: 14 20 32;
+  --wui-hud-surface-raised: 20 29 46;
+}
+
+[data-theme='daylight'] {
+  --wui-hud-primary: 2 132 199;
+  --wui-hud-primary-hover: 3 105 161;
+  --wui-hud-primary-active: 7 89 133;
+  --wui-hud-ok: 5 122 85;
+  --wui-hud-warn: 154 65 4;
+  --wui-hud-warn-soft: 194 65 12;
+  --wui-hud-gold: 133 88 0;
+  --wui-hud-danger: 185 28 28;
+  --wui-hud-accent: 109 40 217;
+  --wui-hud-text: 13 18 22;
+  --wui-hud-text-soft: 30 41 59;
+  --wui-hud-text-muted: 71 84 101;
+  --wui-hud-text-dim: 100 112 128;
+  --wui-hud-ink: 255 255 255;
+  --wui-hud-bg-base: 208 211 215;
+  --wui-hud-surface-deep: 215 218 222;
+  --wui-hud-surface-soft: 225 228 232;
+  --wui-hud-surface: 232 234 236;
+  --wui-hud-surface-raised: 240 242 244;
+}
+
+[data-theme='contrast'] {
+  --wui-hud-primary: 56 189 248;
+  --wui-hud-primary-hover: 125 211 252;
+  --wui-hud-primary-active: 14 165 233;
+  --wui-hud-ok: 74 222 128;
+  --wui-hud-warn: 251 191 36;
+  --wui-hud-warn-soft: 253 186 116;
+  --wui-hud-gold: 253 224 71;
+  --wui-hud-danger: 248 113 113;
+  --wui-hud-accent: 216 180 254;
+  --wui-hud-text: 255 255 255;
+  --wui-hud-text-soft: 240 249 255;
+  --wui-hud-text-muted: 203 213 225;
+  --wui-hud-text-dim: 148 163 184;
+  --wui-hud-ink: 255 255 255;
+  --wui-hud-bg-base: 0 0 0;
+  --wui-hud-surface-deep: 0 0 0;
+  --wui-hud-surface-soft: 8 9 12;
+  --wui-hud-surface: 12 13 16;
+  --wui-hud-surface-raised: 22 24 30;
+}
+
+[data-theme='warm'] {
+  --wui-hud-primary: 211 175 102;
+  --wui-hud-primary-hover: 224 190 120;
+  --wui-hud-primary-active: 178 143 72;
+  --wui-hud-ok: 111 190 130;
+  --wui-hud-warn: 217 160 90;
+  --wui-hud-warn-soft: 230 148 90;
+  --wui-hud-gold: 219 202 131;
+  --wui-hud-danger: 225 130 110;
+  --wui-hud-accent: 183 146 223;
+  --wui-hud-text: 245 247 249;
+  --wui-hud-text-soft: 240 232 218;
+  --wui-hud-text-muted: 178 168 152;
+  --wui-hud-text-dim: 138 128 114;
+  --wui-hud-ink: 255 255 255;
+  --wui-hud-bg-base: 15 13 11;
+  --wui-hud-surface-deep: 20 18 15;
+  --wui-hud-surface-soft: 34 30 25;
+  --wui-hud-surface: 45 40 33;
+  --wui-hud-surface-raised: 58 50 42;
+}
+
+[data-theme='night'] {
+  --wui-hud-primary: 56 189 248;
+  --wui-hud-primary-hover: 125 211 252;
+  --wui-hud-primary-active: 14 165 233;
+  --wui-hud-ok: 107 209 133;
+  --wui-hud-warn: 224 176 92;
+  --wui-hud-warn-soft: 230 148 90;
+  --wui-hud-gold: 247 207 95;
+  --wui-hud-danger: 246 96 76;
+  --wui-hud-accent: 150 115 211;
+  --wui-hud-text: 202 211 221;
+  --wui-hud-text-soft: 226 232 240;
+  --wui-hud-text-muted: 143 156 173;
+  --wui-hud-text-dim: 106 118 134;
+  --wui-hud-ink: 255 255 255;
+  --wui-hud-bg-base: 0 0 0;
+  --wui-hud-surface-deep: 4 6 9;
+  --wui-hud-surface-soft: 8 12 18;
+  --wui-hud-surface: 13 19 27;
+  --wui-hud-surface-raised: 22 30 40;
+}
+
+[data-theme='cb'] {
+  --wui-hud-primary: 104 153 222;
+  --wui-hud-primary-hover: 138 174 224;
+  --wui-hud-primary-active: 79 120 190;
+  --wui-hud-ok: 120 200 170;
+  --wui-hud-warn: 232 196 90;
+  --wui-hud-warn-soft: 217 179 66;
+  --wui-hud-gold: 252 224 141;
+  --wui-hud-danger: 251 119 207;
+  --wui-hud-accent: 138 174 224;
+  --wui-hud-text: 240 243 246;
+  --wui-hud-text-soft: 226 232 240;
+  --wui-hud-text-muted: 154 167 184;
+  --wui-hud-text-dim: 110 125 142;
+  --wui-hud-ink: 255 255 255;
+  --wui-hud-bg-base: 8 11 16;
+  --wui-hud-surface-deep: 7 10 18;
+  --wui-hud-surface-soft: 11 16 26;
+  --wui-hud-surface: 14 20 32;
+  --wui-hud-surface-raised: 20 29 46;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * **涨跌配色随语言切换**（2026-11-03 股市批 · 船长：「中文 = 红涨绿跌，英文 = 绿涨红跌」）
+ *
+ * 上方各主题块的 `--wui-tone-gain` / `--wui-tone-loss` 默认值 = 中文国内习惯（gain 红 / loss 绿），
+ * 所以 zh 不需要任何额外规则；英文（国际惯例）只需把这两个**语义 token 交换取值**。
+ * 各主题的红/绿档不同 ⇒ 一个主题一条，不能合成一条全局规则。
+ *
+ * 特异性：`html[data-theme='…'][data-locale='en']` = (0,2,1)，高于主题块自身的
+ * `[data-theme='…']` = (0,1,0)；且追加在文件末尾 ⇒ 特异性与书写顺序双保险。
+ *
+ * ⚠ 默认皮肤 `deepspace` 在 CSS 里没有自己的主题块（就是最上面的 `:root`），但 `ui/theme.ts`
+ *   会**显式**把 `data-theme='deepspace'` 写到 `<html>` ⇒ 这里必须单列一条，
+ *   否则英文下默认皮肤（最多人用的那套）不会切换。
+ * ⚠ 色盲友好（cb）主题本来就不用字面红绿（它的「红」= 品红、「绿」= 鸭黄，见上方主题块）：
+ *   英文仍交换这两个语义色（金涨品红跌），保持同一套色盲可辨色相，不硬塞红绿。
+ *
+ * 使用点（交易所页涨跌幅 / 盈亏 / K 线 / 盘口等）只引用 token，本文件之外零改动。
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+html[data-theme='deepspace'][data-locale='en'] {
+  --wui-tone-gain: 111 220 143; /* 绿涨（原 loss 值） */
+  --wui-tone-loss: 228 132 132; /* 红跌（原 gain 值） */
+}
+
+html[data-theme='daylight'][data-locale='en'] {
+  --wui-tone-gain: 25 103 48;
+  --wui-tone-loss: 123 27 27;
+}
+
+html[data-theme='contrast'][data-locale='en'] {
+  --wui-tone-gain: 120 255 160;
+  --wui-tone-loss: 255 120 120;
+}
+
+html[data-theme='warm'][data-locale='en'] {
+  --wui-tone-gain: 121 216 161;
+  --wui-tone-loss: 223 154 144;
+}
+
+html[data-theme='night'][data-locale='en'] {
+  --wui-tone-gain: 105 211 136;
+  --wui-tone-loss: 214 102 102;
+}
+
+html[data-theme='cb'][data-locale='en'] {
+  --wui-tone-gain: 220 193 111;
+  --wui-tone-loss: 228 132 196;
 }

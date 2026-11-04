@@ -5,7 +5,7 @@
  * - **抽地点**：按安全等级分区抽，**高安不派发**、排除高安后按候选数比例分 → 中安 2 席 + 低安 3 席
  *   （共 5 个地点/天）；各区独立抽、抽不满就少发（不跨区补位）；同一天不重复星系；
  * - **发档位**：档位由**该地点的地图级别封顶**（2026-09-10 船长定）——`AnomalyDef.lairLevel`
- *   1 = 只出外围、2 = 到核心、3 = 全档；逐卡独立掷、**没有三档保底**（当天候选全是低级图就可能没有深层席）；
+ *   1 = 只出外围、2 = 到核心、3 = 全档；候选和分区席位允许时三档各一条，候选不足不越级；
  *   族内越低级的地图出高档位赏金的概率越低；另有族级契约「每个敌族至少一张 3 级」；
  * - **B 族（武装拾荒者）取消**：不入窝点候选、不出赏金任务、不出稀有残骸与专属装备（词表留档）；
  * - 声望门槛（`AnomalyDef.standingReq`）= **接取条件**（不够也照刷，出发时拒）；
@@ -311,7 +311,7 @@ describe('赏金任务 · 日板抽地点与发档位（船长口径）', () => 
     expect(BOUNTY_TASKS_PER_ROUND).toBe(5)
   })
 
-  it('全图已探索：5 张 = 中安 2 + 低安 3；档位 ≤ 各地图级别（无三档保底）；高安与 B 族绝不出现', () => {
+  it('全图已探索：5 张 = 中安 2 + 低安 3；三档保底且不超过地图级别；高安与 B 族绝不出现', () => {
     const { state, ctx } = makeWorld()
     exploreAll(state)
     openBountyBoard(state, ctx)
@@ -329,6 +329,7 @@ describe('赏金任务 · 日板抽地点与发档位（船长口径）', () => 
     expect(board.some((t) => t.galaxyId === 'galaxy-high' || t.galaxyId === 'galaxy-bn')).toBe(false)
     // 档位：每席都 ≤ 该地点地图级别（本测试的卡都没标级 → 默认 3 = 全档）
     expect(board).toHaveLength(5)
+    expect(new Set(board.map(t => t.lairTier))).toEqual(new Set([1, 2, 3]))
     // 卡面口径：显示名/酬金随所发档位锁定
     for (const t of board) {
       const card = ctx.anomalies.get(t.anomalyId!)!
@@ -360,7 +361,7 @@ describe('赏金任务 · 日板抽地点与发档位（船长口径）', () => 
     expect(board.every((t) => t.galaxyId !== state.sideTasks.faction!.galaxyId)).toBe(true)
   })
 
-  it('2 个地点 → 2 席（档位可同可不同，不再靠保底凑档）；只剩 1 个星系时常规席为 0', () => {
+  it('2 个地点 → 2 席，不为三档保底增造地点；只剩 1 个星系时常规席为 0', () => {
     const two = makeWorld(5)
     markExplored(two.state, 'galaxy-hub') // 中安 1
     markExplored(two.state, 'galaxy-far') // 低安 1
@@ -520,7 +521,7 @@ describe('赏金任务 · 地图级别封顶档位（2026-09-10 船长定：族�
     expect([...seen].sort()).toEqual([1, 2])
   })
 
-  it('取消三档保底：同一天可能一张深层都没有（低级图占多数时必然出现）', () => {
+  it('保底仍遵守地图上限：没有三级图时不发深层任务', () => {
     // 只留 1 级图与 2 级图：任何一天的板都不该出现 3 档
     const state = createInitialState({ nowWallMs: 0, seed: 17 })
     const gals = [
@@ -540,7 +541,7 @@ describe('赏金任务 · 地图级别封顶档位（2026-09-10 船长定：族�
     for (let day = 0; day < 30; day += 1) {
       openBountyBoard(state, ctx, T0 + day * BOUNTY_BOARD_PERIOD_MS)
       const tiers = state.sideTasks.bounty.map((t) => t.lairTier!)
-      expect(tiers.every((t) => t <= 2)).toBe(true) // 保底已取消：没有深层也不会硬塞
+      expect(tiers.every((t) => t <= 2)).toBe(true)
       if (!tiers.includes(3)) noDeepDays += 1
     }
     expect(noDeepDays).toBe(30) // 世界内根本没有 3 级图 → 一天深层都不会有
@@ -635,6 +636,7 @@ describe('赏金任务 · 胜利结算（酬金 + 稀有残骸）', () => {
     const task = state.sideTasks.bounty[0]!
     expect(task, '板上应有常规席位（候选不足时补探索星系）').toBeTruthy()
     const tier = task.lairTier as 1 | 2 | 3
+    noteStandingEarned(state, DSI_FACTION_ID, ctx.anomalies.get(task.anomalyId!)!.standingReq)
     const r = startExpedition(state, task.anomalyId!, ctx, { lairTier: tier })
     expect(r.ok, r.error ?? '').toBe(true)
     return { state, ctx, task, tier, rewardIsk: task.rewardIsk, galaxyId: task.galaxyId! }
@@ -1023,6 +1025,8 @@ describe('敌对派系活跃（2026-09-10 船长定：每天一个中安/低安�
     for (let i = 0; i < runs; i += 1) {
       state.expedition.active = false
       state.expedition.battle = null
+      delete state.expedition.sortie
+      delete state.combatEscort
       const r = startExpedition(state, card.id, ctx)
       expect(r.ok, r.error ?? '').toBe(true)
       const before = rareWreckCountOf(state, f.galaxyId!)

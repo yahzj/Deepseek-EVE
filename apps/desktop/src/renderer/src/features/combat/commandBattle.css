@@ -1,0 +1,17 @@
+.app-command-control { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.app-command-control .app-note { margin: 0; }
+.app-command-modal { border-radius: 8px; }
+.app-command-modal .app-wh-cards { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); min-height: 0; max-height: none; overflow: visible; }
+.app-command-modal .app-wh-cards > li { min-width: 0; }
+.app-command-modal .app-wh-card { position: relative; box-sizing: border-box; min-width: 0; height: 156px; }
+.app-command-modal input[type="checkbox"] { position: absolute; top: 8px; left: 8px; width: 18px; height: 18px; }
+.app-command-modal .app-wh-card-name { max-width: 100%; overflow-wrap: anywhere; }
+.is-command-dense .app-bts-lane { min-height: 400px; }
+.is-command-dense .app-bts-col.is-foe { height: 370px; }
+.is-command-dense .app-bts-name { max-width: 110px; overflow: hidden; text-overflow: ellipsis; font-size: 11px; letter-spacing: 0; pointer-events: auto; }
+.is-command-dense .app-bts-hpWrap .app-battle-hp { width: 100%; }
+.is-command-dense .app-bts-hpWrap { max-width: none; }
+.is-command-dense .app-bts-unit.is-locked .app-sprite { filter: none; }
+.is-command-dense .app-bts-col.is-me.is-down { filter: none; }
+.is-command-dense .app-bts-fleet-lead { font-size: 10px; }
+.app-root.is-mobile-rot .is-command-dense .app-battle-cycles[data-battle-cycles] .app-bc-device-scroll.app-bts-reloads { height: 44px; max-height: 44px; }

@@ -1,0 +1,3 @@
+# 归档按原始字节保存，不让Git换行转换破坏SHA256。
+common-docs-20261029/** -text
+retired-docs-20261029/** -text

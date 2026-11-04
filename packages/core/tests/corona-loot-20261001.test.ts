@@ -99,13 +99,14 @@ describe('R 族势力特色装备：件定义', () => {
     )
   })
 
-  it('② 跃迁规避装置 = 中槽单件，朝期望距离最多2km，冷却16秒', () => {
+  it('② 短距离跃迁装置 = 中槽支援件，朝期望距离最多2km，冷却16秒', () => {
     const m = modOf(BLINK)!
     expect(m, '件应在装备目录里').toBeTruthy()
     expect(m.rack, '船长：闪现装置为中槽').toBe('mid')
+    expect(m.slot).toBe('support')
     expect(m.blink, '玩家16秒，敌方12秒保持').toEqual({ distanceM: 2000, cooldownMs: 16_000 })
-    expect(m.speedBonusPct, '它不是提速推进器（契约已开口子）').toBeUndefined()
-    console.log(`  [读数] 跃迁规避装置：${m.rack} 槽 · 拉开 ${m.blink!.distanceM}m · 冷却 ${m.blink!.cooldownMs / 1000}s`)
+    expect(m.speedBonusPct, '它是受击触发的战斗支援件，不是推进器').toBeUndefined()
+    console.log(`  [读数] ${m.name}：${m.rack} 槽 · 单次最多 ${m.blink!.distanceM}m · 冷却 ${m.blink!.cooldownMs / 1000}s`)
   })
 })
 

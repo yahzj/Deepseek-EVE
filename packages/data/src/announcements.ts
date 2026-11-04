@@ -37,6 +37,22 @@ const MECHANICS_BRIEF_IDS = [
 /** 全量公告（新的放最上方） */
 export const ANNOUNCEMENTS: readonly AnnouncementDef[] = [
   {
+    // 船长2026-10-19明确批准两篇现稿及推送，敌方不可见数值不列公告。
+    id: 'ann-equipment-retune-20261019',
+    title: L10N['ano.equipmentRetune.001']!.zh, titleId: 'ano.equipmentRetune.001',
+    date: '2026-10-19', tag: L10N['ano.equipmentRetune.002']!.zh, tagId: 'ano.equipmentRetune.002',
+    bullets: [L10N['ano.equipmentRetune.003']!.zh, L10N['ano.equipmentRetune.004']!.zh,
+      L10N['ano.equipmentRetune.005']!.zh, L10N['ano.equipmentRetune.006']!.zh, L10N['ano.equipmentRetune.007']!.zh],
+    bulletIds: ['ano.equipmentRetune.003', 'ano.equipmentRetune.004', 'ano.equipmentRetune.005', 'ano.equipmentRetune.006', 'ano.equipmentRetune.007'],
+  },
+  {
+    id: 'ann-depth-damage-retune-20261019',
+    title: L10N['ano.depthRetune.001']!.zh, titleId: 'ano.depthRetune.001',
+    date: '2026-10-19', tag: L10N['ano.depthRetune.002']!.zh, tagId: 'ano.depthRetune.002',
+    bullets: [L10N['ano.depthRetune.003']!.zh, L10N['ano.depthRetune.004']!.zh, L10N['ano.depthRetune.005']!.zh],
+    bulletIds: ['ano.depthRetune.003', 'ano.depthRetune.004', 'ano.depthRetune.005'],
+  },
+  {
     // ⟪文案调整 2026-10-18⟫ 船长批准合并公告并推送，敌方入侵数值不进入公告。
     id: 'ann-signal-beacons-exploration-20261018',
     title: L10N['ano.signalRelease.001']!.zh,

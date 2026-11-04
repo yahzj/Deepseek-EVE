@@ -10,6 +10,7 @@ import { shieldChargeStreamsOf, shieldFieldStreamsOf, SHIELD_FIELD_COST_PCT, SHI
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { battleDeviceCyclesOf } from '../src/battleDeviceView'
 import type { BattleShieldChargeLedger } from '../src/state'
+import { applyApprovedEquipmentRetune } from './helpers/approved-equipment-retune-20261019'
 
 const ctx = buildSimContext()
 
@@ -47,8 +48,9 @@ describe('护盾直接调参的数据与公式契约', () => {
       expected.groups[key].push(...rows)
     }
     expect(Object.values(expected.groups).flat().filter(row => additions.includes(row.id)).map(row => row.id)).toEqual(additions)
+    applyApprovedEquipmentRetune(expected)
     expect(modules).toEqual(expected)
-    expect(SHIELD_FIELD_COST_PCT).toBe(.067)
+    expect(SHIELD_FIELD_COST_PCT).toBe(.1)
     expect(ctx.balance.battle.shieldRegenPerSec).toBe(.012)
     expect(SHIELD_REGEN_FLOOR_PCT).toBe(.006)
   })
@@ -95,8 +97,8 @@ describe('在途护盾比例更新保留血量、冷却和随档账本', () => {
     expect(ledger.streams[1]!.nextPulseAtMs).toBe(200)
     state.gameMs = 200
     advanceBattleFor(state, w.local, battle, w.ids[0]!, 'ano-training')
-    const gain = 1500 * current.reduce((sum, s) => sum + s.pct, 0)
-    expect(battle.units.player!.hp.s).toBeCloseTo(kind === 'shield-charge' ? gain : 750 - 2 * 1500 * .067, 9)
+    const gain = current.reduce((sum, s) => sum + Math.ceil(1500 * s.pct), 0)
+    expect(battle.units.player!.hp.s).toBeCloseTo(kind === 'shield-charge' ? gain : 750 - 2 * Math.ceil(1500 * SHIELD_FIELD_COST_PCT), 9)
     expect(battle.units['ally-1']!.hp.s).toBeCloseTo(kind === 'shield-field' ? gain : 0, 9)
     expect(ledger.pulses).toBe(5)
     expect(ledger.streams.map(s => s.nextPulseAtMs)).toEqual(current.map((s, i) => 100 + i * 100 + s.ms))
@@ -127,7 +129,7 @@ describe('在途护盾比例更新保留血量、冷却和随档账本', () => {
     expect(ledger.streams[0]!.pct).toBeCloseTo(combined, 10)
     expect(ledger.streams[0]!.nextPulseAtMs).toBe(100 + Math.min(...current.map(s => s.ms)))
     expect(ledger.pulses).toBe(3)
-    expect(w.battle.units.player!.hp.s).toBeCloseTo(kind === 'shield-charge' ? 1500 * combined : 750 - 1500 * .067, 9)
-    expect(w.battle.units['ally-1']!.hp.s).toBeCloseTo(kind === 'shield-field' ? 1500 * combined : 0, 9)
+    expect(w.battle.units.player!.hp.s).toBeCloseTo(kind === 'shield-charge' ? Math.ceil(1500 * combined) : 750 - Math.ceil(1500 * SHIELD_FIELD_COST_PCT), 9)
+    expect(w.battle.units['ally-1']!.hp.s).toBeCloseTo(kind === 'shield-field' ? Math.ceil(1500 * combined) : 0, 9)
   })
 })

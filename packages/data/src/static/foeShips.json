@@ -666,6 +666,8 @@
       },
       {
         "id": "foe-pirate-raider",
+        "rangeEwBonus": 40,
+        "rangeEwEquipmentBonusPct": 0.25,
         "gunCount": 2,
         "hullClassTier": 1,
         "speedRatio": 1.1,
@@ -686,6 +688,8 @@
       },
       {
         "id": "foe-h-ink-jammer",
+        "rangeEwBonus": 40,
+        "rangeEwEquipmentBonusPct": 0.25,
         "gunCount": 3,
         "evasion": 0.18,
         "hullClassTier": 3,

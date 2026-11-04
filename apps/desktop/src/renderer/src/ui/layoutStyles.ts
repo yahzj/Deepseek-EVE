@@ -24,26 +24,9 @@
 import classicUrl from './layout-css/styles-classic.css?url'
 import modernUrl from './layout-css/styles-modern.css?url'
 
-export type LayoutKind = 'modern' | 'classic'
-
-const LAYOUT_KEY = 'whale-idle:layout'
-const LAYOUT_SET_KEY = 'whale-idle:layout-set'
+import { readLayoutPref, type LayoutKind } from './layoutPreference'
+export { readLayoutPref, type LayoutKind } from './layoutPreference'
 const LINK_ID = 'whale-layout-style'
-
-/**
- * 当前应采用的布局（没在设置里选过 ⇒ **classic**，见船长 2026-09-25 二次裁定
- * 「默认旧档采用旧界面，新界面需要去设置切换」＋「一律默认旧版」）。
- * ⚠ 与 `App.tsx` 里的 `readLayoutPref()` **同口径**（两处各自一份，因为 App 不能反向 import 本模块
- * 之外的启动期代码）；改口径时两处一起改。
- */
-export function readLayoutPref(): LayoutKind {
-  try {
-    if (localStorage.getItem(LAYOUT_SET_KEY) !== '1') return 'classic'
-    return localStorage.getItem(LAYOUT_KEY) === 'modern' ? 'modern' : 'classic'
-  } catch {
-    return 'classic'
-  }
-}
 
 /**
  * 装上当前布局的样式表。

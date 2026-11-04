@@ -38,9 +38,13 @@ describe('教程末段真实入口与存档往返', () => {
     state.dockedSite = null
     expect(startHauling(state, null, site.id, ctx).ok).toBe(true)
     expect(claimableFirstTasks(state, ctx).some((d) => d.id === 'first-haul')).toBe(false)
-    advanceHauling(state, state.hauling.legMs, ctx)
+    const finishLeg = () => {
+      const path = state.hauling.fleetLeg!.path.map(row => row.durationMs - row.progressMs)
+      for (const delta of path) advanceHauling(state, delta, ctx)
+    }
+    finishLeg()
     expect(claimableFirstTasks(state, ctx).some((d) => d.id === 'first-haul')).toBe(false)
-    advanceHauling(state, state.hauling.legMs, ctx)
+    finishLeg()
     expect(state.firstStats?.haulTrips).toBe(1)
     expect(claimFirstTask(state, ctx, 'first-haul').ok).toBe(true)
     advanceComms(state, ctx)

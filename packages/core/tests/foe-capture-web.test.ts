@@ -14,7 +14,7 @@
 import { describe, expect, it } from 'vitest'
 import { FOE_SHIPS, buildSimContext } from '@whale/data'
 import { addShipToFleet, advanceComms, createInitialState, createPlayerSpec, startFleetBattleFor } from '../src/index'
-import { advanceBattleFor, battleArcsFor, createFoeSpecs, WEB_BREAK_DIST_M, wormholeDerivedAnomaly } from '../src/combat'
+import { advanceBattleFor, applyMeJammerDebuff, applyMeWebDebuff, battleArcsFor, createFoeSpecs, resolvedBattleAnomaly, WEB_BREAK_DIST_M, wormholeDerivedAnomaly } from '../src/combat'
 
 const ctx = buildSimContext()
 const bal = ctx.balance.battle
@@ -135,10 +135,13 @@ describe('劫掠捕获网 · 触发与四层效果', () => {
     tick(2_000)
     expect(battle.meSpeedMps!, '被钉那一艘掉到一成 ⇒ 编队平均 ≈ 0.55×').toBe(Math.round((cleanPanel * 0.1 + cleanPanel) / 2))
     // 视图：锚舰射程带上限应比"干净规格"短 500（显式给视图上下文：本用例是"直接开卡"，不走洞外远征槽）
-    const cleanMax = Math.max(...clean.weapons.map((w) => w.maxRangeM))
-    const arcs = battleArcsFor(state, ctx, { battle, anomaly: ctx.anomalies.get(CARD)!, leaderShipId: state.shipId })!
-    // 视图里的武器条（含兜底基础舰炮）也逐条 −500：取其最远端与"干净规格最远端 − 500"对齐
-    expect(Math.max(...arcs.me.map((w) => w.maxM))).toBe(Math.max(2, cleanMax - 500))
+    const refs = { weaponRanges: [] as Array<{ baseM: number; bonusMul: number }> }
+    const expected = createPlayerSpec(state, ctx, state.shipId, undefined, refs)!
+    applyMeWebDebuff(expected, battle.meWebDebuffs.player!)
+    applyMeJammerDebuff(expected, battle.rangeEw?.meCut ?? 0, refs.weaponRanges)
+    const card = resolvedBattleAnomaly(ctx, battle, CARD)!
+    const arcs = battleArcsFor(state, ctx, { battle, anomaly: card, leaderShipId: state.shipId })!
+    expect(Math.max(...arcs.me.map((w) => w.maxM))).toBe(Math.max(...expected.weapons.map(w => w.maxRangeM)))
   })
 
   it('解除：击沉发动者 ⇒ 账本清空、效果消失', () => {
@@ -255,10 +258,11 @@ describe('劫掠捕获网 · 多艘同场：打空不算用掉（船长 2026-09-
 
   it('4 艘网船打同一个目标：**只记 1 艘已发放**（改前记 4 艘 = 3 张网白费）', () => {
     const w = inkBattle() // 我方只 1 艘 ⇒ 敌方全体只能瞄准它，4 张网必然全打同一目标
-    expect(w.foes.length, '骚扰舰队 = 墨潮突击舰 ×4').toBe(4)
+    expect(w.foes.length, '扩编后骚扰舰队共6艘').toBe(6)
+    expect(createFoeSpecs(ctx.anomalies.get('ink-harass')!, bal).filter(f => f.foeCaptureWeb), '仅原有4艘带网').toHaveLength(4)
     // 跑到"四艘都开过火"（每艘装填 4 秒 + 入场错峰 ⇒ 30 秒足够）
     w.runUntil(() => w.foes.every((f) => w.firedFoes.has(f.tag)), 30_000)
-    expect(w.foes.filter((f) => w.firedFoes.has(f.tag)).length, '四艘都开过火').toBe(4)
+    expect(w.foes.filter((f) => w.firedFoes.has(f.tag)).length, '六艘都开过火').toBe(6)
     expect(Object.keys(w.battle.meWebDebuffs ?? {}), '只有 1 个目标可钉').toHaveLength(1)
     /**
      * ⚠ **本用例就是报障判据**：改前这里是 4（每艘都在"第一次开火"时被记账，后 3 张静默作废）；

@@ -11,6 +11,11 @@ import { wormholePreparationPlan } from '../src/wormholePreparation'
 const ctx = buildSimContext()
 function world() {
   const state = createInitialState({ nowWallMs: 0, seed: 19 })
+  state.standingsEarned = { dsi: 100 }
+  state.skills.trained['fleet-command-basic'] = 5
+  state.skills.trained['fleet-command-coordination'] = 5
+  state.skills.trained['fleet-command-integration'] = 5
+  state.research!.levels['mt-explore-signal-auto-t3'] = 3
   const ships = Array.from({ length: 5 }, () => addShipToFleet(state, 'sh-thresher'))
   state.skills.trained['ai-expert'] = 2
   state.wormholeStock = [{ id: 'auto-memory', seed: 19, depth: 1, family: 'A', archetype: 'balanced', foundAtGameMs: 0 }]
@@ -22,10 +27,11 @@ describe('五类准备阵容随档记忆', () => {
     const { state, ships } = world()
     const before = structuredClone(state)
     for (const [index, kind] of PREPARATION_SQUAD_KINDS.entries()) {
-      const ordered = [ships[index]!, ...ships.filter(id => id !== ships[index])]
+      const first = ships[index % ships.length]!
+      const ordered = [first, ...ships.filter(id => id !== first)]
       expect(notePreparationSquad(state, kind, [ordered[0]!, ...ordered])).toBe(true)
-      expect(preparationSquadOf(state, kind)).toEqual(ordered.slice(0, 4))
-      expect(notePreparationSquad(state, kind, ordered.slice(0, 4))).toBe(false)
+      expect(preparationSquadOf(state, kind)).toEqual(ordered)
+      expect(notePreparationSquad(state, kind, ordered)).toBe(false)
     }
     const { preparationSquads: _memory, ...rest } = state
     expect(rest).toEqual(before)
@@ -36,7 +42,7 @@ describe('五类准备阵容随档记忆', () => {
 
   it('明确空不走默认，缺船全失效也不自动补位，忙船不丢', () => {
     const { state, ships } = world()
-    expect(preparationSquadOf(state, 'signal-auto', ships)).toEqual(ships.slice(0, 4))
+    expect(preparationSquadOf(state, 'signal-auto', ships)).toEqual(ships)
     notePreparationSquad(state, 'signal-auto', [])
     expect(preparationSquadOf(state, 'signal-auto', ships)).toEqual([])
     expect(loadSaveFile(serializeSaveFile(state, 0)).state.preparationSquads?.['signal-auto']).toEqual([])

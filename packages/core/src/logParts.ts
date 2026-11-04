@@ -76,8 +76,12 @@ export function composeLog(
   const start = Math.max(2, firstSegNo)
   const kept = segs.filter((s): s is LogSeg => !!s && s.text !== '')
   const textParams: Record<string, string | number> = {}
+  // 新子段日志另存标量目录；读档仅保留标量参数时仍能恢复根段顺序。
+  if (kept.some(seg => seg.subs?.length)) textParams.segCount = kept.length
   const walk = (seg: LogSeg, prefix: string): void => {
     if (seg.id !== undefined) textParams[`seg${prefix}Id`] = seg.id
+    // 精炼所得的子段序列填入父段p1；无p1的分类标题则在标题后追加。
+    if (seg.subs?.length) textParams[`seg${prefix}Subs`] = seg.subs.length
     let k = 0
     for (const [key, value] of Object.entries(seg.params ?? {})) {
       /**

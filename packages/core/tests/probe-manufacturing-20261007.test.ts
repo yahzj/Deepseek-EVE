@@ -25,6 +25,7 @@ import { skillLockMissing } from '../src/skillQueue'
 import { skillLicensePriceOf } from '../src/skillLicense'
 import { DEEP_SPACE_PROBE_ID } from '../src/stellarSearch'
 import { skipFirstSkillReward } from './helpers'
+import { ceilFinalQuantity } from '../src/quantity'
 
 const ctx = buildSimContext()
 const bpId = DEEP_SPACE_PROBE_BLUEPRINT_ID
@@ -145,15 +146,15 @@ describe('探测机制造需求与退料账', () => {
           state.skills.trained = { materials, 'component-standardization': standardization, 'probe-assembly': assembly }
           expect(probeMaterialFactor(state)).toBeCloseTo(1 - 0.04 * assembly)
           for (const m of baseMaterials) {
-            expect(matNeedCount(state, m.count, bpId)).toBe(Math.max(1, Math.floor(m.count * (1 - 0.015 * materials) * (1 - 0.008 * standardization) * (1 - 0.04 * assembly))))
-            expect(matNeedCount(state, m.count)).toBe(Math.max(1, Math.floor(m.count * materialFactor(state))))
+            expect(matNeedCount(state, m.count, bpId)).toBe(Math.max(1, ceilFinalQuantity(m.count * (1 - 0.015 * materials) * (1 - 0.008 * standardization) * (1 - 0.04 * assembly))))
+            expect(matNeedCount(state, m.count)).toBe(Math.max(1, ceilFinalQuantity(m.count * materialFactor(state))))
           }
           expect(matNeedCount(state, 1, bpId)).toBe(1)
         }
       }
     }
-    expect(needs(state).map(m => m.count)).toEqual([568, 568, 497, 142, 284, 284])
-    expect(valueOf(needs(state))).toBe(710_000)
+    expect(needs(state).map(m => m.count)).toEqual([569, 569, 498, 143, 285, 285])
+    expect(valueOf(needs(state))).toBe(712_175)
     state.skills.trained['probe-assembly'] = 99
     expect(probeMaterialFactor(state)).toBeCloseTo(0.8)
     state.skills.trained['probe-assembly'] = -1
@@ -186,7 +187,7 @@ describe('探测机制造需求与退料账', () => {
     for (const skill of SKILLS) state.skills.trained[skill.id] = 5
     stock(state)
     const expected = needs(state)
-    expect(valueOf(expected)).toBe(710_000)
+    expect(valueOf(expected)).toBe(712_175)
     expect(startManufacturing(state, bpId, 'pilot', ctx).ok).toBe(true)
     expect(state.manufacturingRuns[0]!.spentMaterials).toEqual(expected)
     expect(state.manufacturingRuns[0]!.durationMs).toBe(Math.round(calcBuildDurationMs(state, ctx, bp) * 0.75))
@@ -222,7 +223,7 @@ describe('探测机制造需求与退料账', () => {
       else haltActivityForSwitch(state, 'manufacturing')
       for (const m of expected) expect(countWare(state, m.itemId)).toBe(m.count)
       expect(countWare(state, DEEP_SPACE_PROBE_ID)).toBe(0)
-      expect(valueOf(expected)).toBe(710_000)
+      expect(valueOf(expected)).toBe(712_175)
     }
   })
 

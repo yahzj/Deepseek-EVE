@@ -121,7 +121,14 @@ describe('目标舰真实状态与实体命令', () => {
     expect(block).not.toBeNull()
     expect(changeShip(state, other, ctx)).toEqual({ ok: false, ...block })
     expect(state).toEqual(before)
-    expect(wormholeAutoMainHandover(state, ctx, [uid]).reason).toBeTruthy()
+    const handover = wormholeAutoMainHandover(state, ctx, [uid])
+    if (mode === 'battle') {
+      expect(handover.reason).toBeUndefined()
+      expect(handover.toId).toBeDefined()
+      expect(handover.toId).not.toBe(other)
+      expect(handover.toId).not.toBe(uid)
+      expect(changeShipBlockReason(state, handover.toId!, ctx)).toBeNull()
+    } else expect(handover.reason).toBeTruthy()
     expect(state).toEqual(before)
   })
   it('运输切换失败不停止运输，合法换船才执行即时返港', () => {

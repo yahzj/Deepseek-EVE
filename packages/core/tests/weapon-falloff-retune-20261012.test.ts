@@ -9,6 +9,8 @@ import { createPlayerSpec } from '../src/playerSpec'
 import { distFactor, droneHitChance, hitChance } from '../src/combatMath'
 import { createFoeSpecs } from '../src/foeSpecs'
 import modules from '../../data/src/static/modules.json'
+import { applyApprovedEquipmentRetune } from './helpers/approved-equipment-retune-20261019'
+import { applyApprovedEnemyEwDelta, addApprovedRepairDrone } from './helpers/approved-fleet-delta-20261101'
 
 const ctx = buildSimContext()
 const root = new URL('../../../', import.meta.url)
@@ -50,6 +52,7 @@ describe('玩家动能武器远端命中倍率调整', () => {
     const gravekeeper = JSON.parse(execFileSync('git', ['show', '0b17e83e:packages/data/src/static/modules.json'], { cwd: root, encoding: 'utf8' })) as typeof modules
     expected.groups.MODULES_0.push(...gravekeeper.groups.MODULES_0.filter(row =>
       ['mod-gravekeeper-rebirth', 'mod-gravekeeper-crisis', 'mod-gravekeeper-rail'].includes(row.id)))
+    applyApprovedEquipmentRetune(expected)
     expect(modules).toEqual(expected)
     expect([...ctx.modules.values()].filter(mod => mod.damageType === 'kinetic' && mod.falloff === .5)).toEqual([])
   })
@@ -97,8 +100,17 @@ describe('玩家动能武器远端命中倍率调整', () => {
     if (path.endsWith('/foeMounts.json')) expected.groups.parameters.splice(
       expected.groups.parameters.findIndex((row: { id: string }) => row.id === 'foe-mount-ink-range-debuff') + 1, 0,
       { id: 'foe-mount-d-range-debuff', rangeDebuff_pct: .15 })
+    if (path.endsWith('/foeMounts.json')) Object.assign(
+      expected.groups.parameters.find((row: { id: string }) => row.id === 'foe-mount-d-shield-capacitor'),
+      { shieldCapacitor_damageMul: 1.25 })
     if (path.endsWith('/items.json')) for (const family of ['r', 'c', 'h', 'd']) expected.groups.CONSUMABLES_0.push({
       id: `invasion-beacon-${family}`, kind: 'consumable', unitM3: .01, baseSellPriceIsk: 480000000 })
+    if (path.endsWith('/foeShips.json') || path.endsWith('/foeMounts.json')) applyApprovedEnemyEwDelta(expected.groups.parameters)
+    if (path.endsWith('/items.json')) addApprovedRepairDrone(expected.groups.DRONES_0)
+    // 已批准的五族加密箱固定增量；不从待测目录回填预期。
+    if (path.endsWith('/items.json')) expected.groups.BLUEPRINT_CONTAINERS_0.unshift(...[
+      'box-encrypted-a', 'box-encrypted-c', 'box-encrypted-d', 'box-encrypted-e', 'box-encrypted-g',
+    ].map(id => ({ id, kind: 'container', unitM3: 1000, baseSellPriceIsk: 1 })))
     expect(JSON.parse(readFileSync(new URL(path, root), 'utf8'))).toEqual(expected)
   })
 

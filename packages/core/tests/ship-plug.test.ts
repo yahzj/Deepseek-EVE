@@ -28,7 +28,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
-import { addModule, countModule } from '../src/equipment'
+import { addModule, countModule, stackingOf } from '../src/equipment'
 import { countWare, loadWarehouseToCargoFit, repairMisplacedWarehouseModules, unloadCargoToWarehouse } from '../src/inventory'
 import { shipSellable } from '../src/market'
 import { loseShip, shipStorable } from '../src/shipyard'
@@ -65,6 +65,16 @@ const PLUG_ARMOR = 'plug-armor-plate'
 const T1 = 'sandcat'
 const T1B = 'sh-falconet'
 const GAL = 'galaxy-grave'
+
+describe('插件多件惩罚分组', () => {
+  it('协处理、靶标、隐匿和势力插件保持全额；普通属性插件进入 weighted', () => {
+    expect(stackingOf(ctx.modules.get('plug-cpu-core')!)).toEqual({ group: 'flat', kind: 'plug' })
+    expect(stackingOf(ctx.modules.get('plug-target-beacon')!)).toEqual({ group: 'flat', kind: 'plug' })
+    expect(stackingOf(ctx.modules.get('plug-concealment')!)).toEqual({ group: 'flat', kind: 'plug' })
+    expect(stackingOf(ctx.modules.get('plug-shield-plate')!)).toEqual({ group: 'weighted', kind: 'plug-shield' })
+    expect(stackingOf(ctx.modules.get('plug-pirate-raider')!)).toEqual({ group: 'flat', kind: 'plug' })
+  })
+})
 
 function world(seed = 5): GameState {
   return createInitialState({ nowWallMs: 0, seed })
@@ -327,7 +337,7 @@ describe('选靶权重：靶标 ×3 / 隐匿 ×0.7（只改选靶，不改命中
     const { aHits, bHits } = tallyTargets(state, beacon, conceal)
     expect(aHits + bHits).toBe(600)
     expect(aHits / (aHits + bHits), '靶标那一艘应占明显多数').toBeGreaterThan(0.7)
-    console.log(`  [读数] 靶标 ${aHits} : 隐匿 ${bHits}（权重 2 : 0.4 = 5 : 1 ⇒ 理论 83.3%）`)
+    console.log(`  [读数] 靶标 ${aHits} : 隐匿 ${bHits}（同级权重 3 : 0.7，理论约81.1%）`)
   })
 
   it('对照组：两艘都没插件 ⇒ 各约一半（等权随机没被本批改写）', () => {
@@ -389,7 +399,7 @@ describe('随档往返（两处清洗器都要登记）', () => {
  * 老档兼容 = 先前换到的书照旧躺在书架上，玩家自己点「学会」。
  */
 describe('章鱼人兑换 · 兑换即学会（船长 2026-09-26 令）', () => {
-  it('兑换一张 ⇒ 声望扣 8 · 直接进已学 · **不发书**', () => {
+  it('兑换一张 ⇒ 声望按现价扣除 · 直接进已学 · **不发书**', () => {
     const state = world(917)
     const bpId = plugBlueprintIdOf(PLUG_SHIELD)
     state.standings[DSI_FACTION_ID] = PLUG_BLUEPRINT_COST + 5

@@ -406,7 +406,7 @@ export const WRECK_GROUPS: readonly WreckGroupDef[] = [
   },
 ]
 
-/** 卡 id → 组 key（由 `WRECK_GROUPS.members` 现算；旧档迁移与新产出共用一张索引） */
+/** 卡 id → 组 key（新产出与已有物品识别共用一张索引） */
 export const WRECK_GROUP_OF_MEMBER: ReadonlyMap<string, string> = new Map(
   WRECK_GROUPS.flatMap((g) => g.members.map((m) => [m, g.key] as const)),
 )
@@ -436,7 +436,7 @@ export function wreckGroupOfAnomaly(anomalyId: string): WreckGroupDef | null {
 /**
  * 残骸物品 id → 组定义。接受**四种**写法：
  * ① 新 id（`wreck-a-hi` / `wreck-rare-a-hi`）；② 旧 id（`wreck-ano-gravekeeper` / `wreck-rare-wh-grave-throne`，
- * 走 `members` 索引 ⇒ **存档迁移与旧档兼容共用这一条**）；③ 非残骸 id = null。
+ * 走 `members` 索引识别当前档仍持有的旧物品）；③ 非残骸 id = null。
  */
 export function wreckGroupOfItemId(itemId: string): WreckGroupDef | null {
   const rare = itemId.startsWith('wreck-rare-')
@@ -453,16 +453,6 @@ export function wreckGroupOfItemId(itemId: string): WreckGroupDef | null {
   if (direct) return direct
   const legacy = WRECK_GROUP_OF_MEMBER.get(key)
   return legacy === undefined ? null : (WRECK_GROUP_BY_KEY.get(legacy) ?? null)
-}
-
-/** 旧残骸 id → 新残骸 id（存档迁移单点；非残骸 id 或未知卡 ⇒ null，调用方原样保留） */
-export function migratedWreckItemId(oldItemId: string): string | null {
-  const rare = oldItemId.startsWith('wreck-rare-')
-  if (!rare && !oldItemId.startsWith('wreck-')) return null
-  const cardId = oldItemId.slice(rare ? 'wreck-rare-'.length : 'wreck-'.length)
-  const key = WRECK_GROUP_OF_MEMBER.get(cardId)
-  if (key === undefined) return null
-  return rare ? rareWreckItemIdOfKey(key) : wreckItemIdOfKey(key)
 }
 
 /* ═══════════ 出量梯度（2026-09-19 船长：「为了平衡价值，可以提高更危险地区的残骸出量」） ═══════════ */

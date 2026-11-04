@@ -27,6 +27,7 @@ import { factionGalaxyId, isFactionBounty, sideTaskBoard } from '../src/sideTask
 // 期望距离（2026-09-25 修：旗舰战也要认这个宿主）
 import { setBattleDesire } from '../src/expedition'
 import { desirePrefOf } from '../src/combat'
+import { battleCardRangeOf } from '../src/battleRangeMemory'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { WEEKEND_COMMS_SETTLE_ID, WEEKEND_COMMS_WARN_ID, weekendSyncComms } from '../src/weekendComms'
 import { weekendAssaultDrawOf, weekendNoteAssaultDispatch } from '../src/weekendBounty'
@@ -49,7 +50,6 @@ import {
   weekendBattleInvolvedOf,
   weekendSettleAndGrant,
   weekendSettlePlanOf,
-  weekendSyncReclaimRewards,
   /** 2026-09-25 船长令：稀有残骸「件 → 单位(m³)」换算（1 件 = 30 单位） */
   weekendRareWreckUnits,
 } from '../src/weekendBattle'
@@ -69,6 +69,7 @@ import {
   weekendNoteFlagshipDamage,
 } from '../src/weekendEvent'
 import type { WeekendEventState } from '../src/weekendEvent'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
 /** 用例共用的"被占星系"= 第一条不挂母港/核心的矿带所在星系（星系名不进断言，只作 id） */
@@ -131,7 +132,7 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     expect(ctx.galaxies.get(gid)?.security ?? 1, '本用例必须落在高安，否则证不了"破例"').toBeGreaterThan(
       ctx.balance.encounter.lowSecMax,
     )
-    /** 在该星系开工采矿 ⇒ 产生"暴露"（`collectExposures` 的输入；采矿指令即视为在带） */
+    /** 完成采矿离港后在该星系产生暴露，供遇袭判定消费。 */
     const run = (occupying: boolean): { spawned: boolean; s: ReturnType<typeof createInitialState> } => {
       const s = occupying ? invaded(gid) : createInitialState({ nowWallMs: 0, seed: 21 })
       s.debugQuick = true
@@ -139,6 +140,7 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
       s.shipId = uid
       s.exploredGalaxies = [...new Set([...(s.exploredGalaxies ?? []), gid])]
       expect(startMining(s, belt.id, ctx).ok, '开工采矿').toBe(true)
+      finishDeparture(s, ctx)
       let spawned = false
       for (let i = 0; i < 200 && !spawned; i++) {
         s.encounterZoneCooldown[gid] = 0 // 清区域冷却：让每一掷都独立（本用例只验"能不能掷出"）
@@ -152,10 +154,13 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     expect(['ink-harass', 'ink-raid'], '遭遇卡 ∈ 外围池').toContain(hit.s.encounter.anomalyId)
     expect(hit.s.encounter.foeStrengthMul, '真强度 ×0.75').toBe(0.75)
     expect([76, 91], '标签 = 缩放后实测价').toContain(hit.s.encounter.threat)
-    /** 文案：高安占领区里说「低安遭遇」就是错的 ⇒ 走「入侵遭遇」（id 制，`core.encounters.008`） */
-    const ambushLog = [...hit.s.logs].reverse().find((l) => l.text.includes('遭该编队伏击'))
-    expect(ambushLog?.textId).toBe('core.encounters.008')
-    expect(ambushLog?.text.includes('入侵遭遇'), '高安不写"低安遭遇"').toBe(true)
+    // 占领区仍排入侵遇袭，统一记录已应战；不走普通工业海盗生成路径。
+    const ambushLog = [...hit.s.logs].reverse().find(l => l.textId === 'core.encounters.006')
+    expect(ambushLog).toBeDefined()
+    expect(hit.s.encounter.automatic).toBe(true)
+    expect(hit.s.encounter.battle).toBeNull()
+    expect(hit.s.encounter.pirate).toBeUndefined()
+    expect(ambushLog?.text).not.toContain('低安遭遇')
     /** 破例**不进**"低安在场记录"：中安/高安占领区不记 `lowSecPresence`、也不弹"首次进入低安" */
     maintainPresence(hit.s, ctx)
     expect(Object.keys(hit.s.lowSecPresence).length, '高安占领区不记低安在场').toBe(0)
@@ -268,14 +273,14 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
      * **快照与结算信都要写明本期拿到的协会声望**（**2026-09-26 船长令**：「**关于入侵的结算界面和
      * 结束通讯处，需要提及玩家获得了多少声望**」）。
      *
-     * 口径：`round(占比 × WEEKEND_STANDING_MAX(15))`，与实发同一条公式 ⇒ 面板/信上的数 = 真加进账的数。
-     * 本处占比 0.4 ⇒ **6 点**，且信里多出 `core.weekend.037` 那一段（参数 `p4` = 点数）。
+     * 口径：向上取整(占比 × WEEKEND_STANDING_MAX)，与实发同一条公式 ⇒ 面板/信上的数 = 真加进账的数。
+     * 本处占比 0.4 ⇒ **12 点**，且信里多出 `core.weekend.037` 那一段（参数 `p4` = 点数）。
      */
-    expect(s.weekendLastResult?.standing, '快照带出本期声望（面板读它）').toBe(6)
+    expect(s.weekendLastResult?.standing, '快照带出本期声望（面板读它）').toBe(12)
     const settleMail = weekendSettleCommsOf(s, ctx, s.weekendLastResult!)
     expect(settleMail.bodyIds ?? [], '结算信正文追加声望那一段').toContain('core.weekend.037')
-    expect(settleMail.params?.['p4'], '参数 = 本期点数').toBe('6')
-    expect((settleMail.paragraphs ?? []).some((t) => t.includes('声望 +6')), '纯文本兜底段落也写了').toBe(true)
+    expect(settleMail.params?.['p4'], '参数 = 本期点数').toBe('12')
+    expect((settleMail.paragraphs ?? []).some((t) => t.includes('声望 +12')), '纯文本兜底段落也写了').toBe(true)
     expect(s.weekendEvent!.prizePaidAtWallMs, '随档幂等标记').toBe(now)
     /** 幂等：同一刻再调、以及**过一周再调**（离线补结的口径）都不再发 */
     expect(weekendSettleAndGrant(s, ctx, now)).toBeNull()
@@ -475,18 +480,18 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
      * —— 本场景玩家推了 90% ＋ 54h 铺底 ⇒ **已夺回**；旧口径下它挂在战斗结算那一拍，这里恒为 0。
      *
      * 🔴 **2026-09-29 船长令（乙案）**：金额再按"玩家在该处的投入比例"缩水 —— 本处投入 0.9
-     * ⇒ 残骸 `8 × 0.9 = 7.2` 件**四舍五入 = 7 件 = 210 m³**、ISK `200 万 × 0.9 = 180 万`
+     * ⇒ 残骸 `8 × 0.9` 件按2026-10-18确认的最终整数规则向上取整，ISK同口径。
      * （核心没夺回 ⇒ 不发全清；见 `weekendReclaimAwardOf`）。
      */
     expect(r1!.isk, '结算 = 贡献奖 2M（C 档）＋ 夺回 180 万（0.9 比例）＋ 进度收入').toBe(
       2_000_000 + Math.round(WEEKEND_RECLAIM_ISK * 0.9) + 90 * WEEKEND_PROGRESS_ISK_PER_PCT,
     )
-    expect(r1!.wreck, 'C 档 ×4 件 ＋ 夺回 7 件（= 210 m³）= 330 m³').toBe(
-      weekendRareWreckUnits(4 + Math.round(WEEKEND_RECLAIM_WRECK * 0.9)),
+    expect(r1!.wreck, 'C档4件加按贡献取整后的夺回奖励').toBe(
+      weekendRareWreckUnits(4 + Math.ceil(WEEKEND_RECLAIM_WRECK * 0.9)),
     )
     const row1 = onTime.weekendLastResult!.galaxies.find((g) => g.galaxyId === gid)
-    expect(row1?.wreck, '面板那一列读台账 ⇒ 也是缩水后的 210 m³').toBe(
-      weekendRareWreckUnits(Math.round(WEEKEND_RECLAIM_WRECK * 0.9)),
+    expect(row1?.wreck, '面板那一列与实际奖励同口径').toBe(
+      weekendRareWreckUnits(Math.ceil(WEEKEND_RECLAIM_WRECK * 0.9)),
     )
     expect(row1?.isk, '面板那一列 ISK 同样缩水').toBe(Math.round(WEEKEND_RECLAIM_ISK * 0.9))
     /** 离线五天后再上线补结（引擎每拍补发那条路径的形状）：读数必须与结束时**逐值一致** */
@@ -528,11 +533,11 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     expect(settle?.subjectId).toBe('core.weekend.013')
     /**
      * 有奖那一版正文 ＋ **声望那一段**（2026-09-26 船长令：结束通讯要写明拿到多少声望）——
-     * ⚠ 2026-09-28 起占比 = `0.6×BOSS输出 ＋ 0.4×清缴`，本场没打 BOSS ⇒ 0.4 ⇒ **6 点** > 0 ⇒ 仍追加
+     * ⚠ 2026-09-28 起占比 = `0.6×BOSS输出 ＋ 0.4×清缴`，本场没打 BOSS ⇒ 0.4 ⇒ **12 点** > 0 ⇒ 仍追加
      * `core.weekend.037`。
      */
     expect(settle?.bodyIds, '有奖那一版正文（＋声望段）').toEqual(['core.weekend.014', 'core.weekend.037'])
-    expect(settle?.textParams?.['p4'], '声望段的参数 = 本期点数').toBe('6')
+    expect(settle?.textParams?.['p4'], '声望段的参数 = 本期点数').toBe('12')
     expect(settle?.action, '结算信的跳转是"弹面板"').toBe('weekendSummary')
     expect(settle?.rewards?.length, '奖励清单结构化随信（残骸 ＋ 信用点）').toBe(2)
 
@@ -637,7 +642,7 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     const s = ready()
     const view = weekendFlagshipPrepView(s, ctx, now)
     expect(view, '核心条满 ⇒ 出准备视图').not.toBeNull()
-    expect(view!.maxShips, '上限 4（旗舰战 = 4 艘小队战）').toBe(4)
+    expect(view!.maxShips, '旗舰战沿统一12舰上限，出发仍受指挥预算约束').toBe(12)
     expect(view!.waves).toBeGreaterThan(0)
     expect(view!.candidates.length, '候选 = 舰队在编的全部船').toBe(Object.keys(s.fleet).length)
     expect(view!.pool.hpMax, '血池读数随视图给出').toBeGreaterThan(0)
@@ -646,13 +651,13 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     const early = invaded(gid)
     expect(weekendFlagshipPrepView(early, ctx, now), '核心没满 ⇒ 不出现').toBeNull()
 
-    /** 编队净化：不在编的 id 丢掉、去重、截 4 艘 */
+    /** 编队净化：不在编的 id 丢掉、去重、截12艘 */
     const all = Object.keys(s.fleet)
     const sanitized = weekendSanitizeFlagshipSquad(s, [all[0]!, all[0]!, 'ghost-ship', ...all, all[0]!])
     expect(sanitized[0]).toBe(all[0])
     expect(sanitized.filter((x) => x === all[0]).length, '去重').toBe(1)
     expect(sanitized).not.toContain('ghost-ship')
-    expect(sanitized.length).toBeLessThanOrEqual(4)
+    expect(sanitized.length).toBeLessThanOrEqual(12)
 
     /** 落盘：记住编队 ⇒ 下次默认就是它；落盘里的船退役后自动回落 */
     weekendNoteFlagshipSquad(s, sanitized)
@@ -663,9 +668,9 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     expect(weekendPrepSquadOf(s).length, '落盘全失效 ⇒ 回落自动编队').toBeGreaterThan(0)
     expect(weekendPrepSquadOf(s)).not.toContain('ghost-ship')
 
-    /** 按战力自动选：候选里战力最高的至多 4 艘、只含在编船 */
+    /** 按战力自动选：只含在编船且不超过统一数量上限。 */
     const best = weekendBestFlagshipSquad(s, ctx)
-    expect(best.length).toBeLessThanOrEqual(4)
+    expect(best.length).toBeLessThanOrEqual(12)
     expect(best.every((id) => s.fleet[id] !== undefined)).toBe(true)
 
     /** 缺口标记：新档自带的船没装武器 ⇒ 至少标一个缺口；装甲/结构满 ⇒ 不标那两条 */
@@ -732,6 +737,7 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
       deadlineGameMs: 0,
       battle,
     }
+    finishDeparture(s, ctx)
     return { s, battle }
   }
 
@@ -846,15 +852,14 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
    * **船长 2026-09-25 报障**：「可以斩杀敌方母舰的战斗进入后，**无法改变距离**，改变时显示"不在交火中"」。
    * 病根同"撤退"那一处：`setBattleDesire` 只认远征与虫洞两个宿主，不认**旗舰战（遭遇槽）**。
    */
-  it('㉑ 旗舰战里也能改期望距离（距离条/战术按钮不再报"不在交火中"）· 偏好写本场核心星系', () => {
-    const core = 'galaxy-kor'
+  it('㉑ 旗舰战里也能改期望距离，按实际旗舰卡记忆', () => {
     const { s, battle } = flagshipWorld()
     const before = battle.myDesireM
     const r = setBattleDesire(s, 2_200, ctx)
     expect(r.ok, '交火中 ⇒ 允许改').toBe(true)
     expect(battle.myDesireM, '期望距离真的落到本场战斗上').toBe(2_200)
     expect(battle.myDesireM).not.toBe(before)
-    expect(desirePrefOf(s, core), '偏好记在本场核心星系（下次该星系开战沿用）').toBe(2_200)
+    expect(battleCardRangeOf(s, 'ink-flagship')?.desireM, '按旗舰卡ID记忆').toBe(2_200)
     /** ⚠ 不能写到旗舰卡自带的母港去（隐藏卡的 `galaxyId` = `galaxy-hub`，与这一场无关） */
     expect(desirePrefOf(s, 'galaxy-hub'), '没有污染母港的偏好').toBeNull()
     /** 收场后 ⇒ 照旧拒绝（老口径不变） */
@@ -999,6 +1004,7 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
       deadlineGameMs: 0,
       battle,
     }
+    finishDeparture(s, ctx)
     const card = applyFoeOverride(ctx.anomalies.get('ink-flagship')!, battle.foeOverride!)
     /** 第 1 波（突击舰 · 期望 2,352）⇒ 滑条远端 = 它的开战距离；先把玩家期望设成"最远" */
     const far0 = battleOpenM(createPlayerSpec(s, ctx, leader)!, activeFoeSpecsOf(card, ctx.balance.battle, 0), ctx.balance.battle)
@@ -1217,7 +1223,7 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     const r = weekendSettleAndGrant(s, ctx, now)
     expect(r, '结束结算').not.toBeNull()
     expect(s.weekendEvent!.reclaimPaid, '该处已被结算拍记上夺回奖').toEqual([GID])
-    const wantWreck = weekendRareWreckUnits(Math.round(WEEKEND_RECLAIM_WRECK * 0.9))
+    const wantWreck = weekendRareWreckUnits(Math.ceil(WEEKEND_RECLAIM_WRECK * 0.9))
     const wantIsk = Math.round(WEEKEND_RECLAIM_ISK * 0.9)
     expect(r!.wreck, '夺回 ×7 件 = 210 m³ 并入结算').toBeGreaterThanOrEqual(wantWreck)
     expect(heldOf(s, 'wreck-rare-h-hi') - wrecks0, '残骸真到手').toBe(r!.wreck)
@@ -1225,18 +1231,11 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     /** 结算面板那一列：该处要显示"残骸 210 m³ · 180 万"，不再是「—」 */
     const row = s.weekendLastResult!.galaxies.find((g) => g.galaxyId === GID)
     expect(row?.reclaimed, '该处已夺回').toBe(true)
-    expect(row?.wreck, '面板那格 = 缩水后的实发（0.9 比例 ⇒ 7 件）').toBe(wantWreck)
+    expect(row?.wreck, '面板那格 = 按贡献比例向上取整后的实发').toBe(wantWreck)
     expect(row?.isk, '面板那格 ISK = 缩水后的实发').toBe(wantIsk)
   })
 
-  /**
-   * 🔴 **迟到补发**（**船长报障那一场**的形态：本场已结算过，夺回奖却从没记上）。
-   *
-   * 引擎每拍都调 `weekendSettleAndGrant`（幂等靠 `prizePaidAtWallMs`）⇒ 现在它在 early-return
-   * **之前**先跑一次夺回奖同步，发现「已夺回 ∧ 未记账」就补记并**当场补发**；
-   * `reclaimPaid` 标记保证只补一次。⇒ 老档进游戏即自动补齐，不需要一次性补丁脚本。
-   */
-  it('⑭ 迟到补发：已结算过的场次被查出"已夺回却漏记" ⇒ 补发一次且不重复', () => {
+  it('⑭ 已结算场次不追发后来发现的夺回奖励', () => {
     const now = Date.now()
     const s = invaded(GID)
     s.debugQuick = false
@@ -1252,47 +1251,41 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     const wrecks1 = heldOf(s, 'wreck-rare-h-hi')
     const again = weekendSettleAndGrant(s, ctx, now)
     expect(again, '已结算过 ⇒ 不再走正常结算').toBeNull()
-    expect(s.wallet.isk - isk1, '补发 ISK = 夺回那一份').toBe(WEEKEND_RECLAIM_ISK)
-    expect(heldOf(s, 'wreck-rare-h-hi') - wrecks1, '补发残骸 = 夺回那一份').toBe(
-      weekendRareWreckUnits(WEEKEND_RECLAIM_WRECK),
-    )
-    expect(s.weekendEvent!.reclaimPaid, '补记后打上标记').toEqual([GID])
-    /** 再调一拍：不重复补 */
-    const isk2 = s.wallet.isk
-    const wrecks2 = heldOf(s, 'wreck-rare-h-hi')
-    weekendSettleAndGrant(s, ctx, now)
-    expect(s.wallet.isk, '不重复补 ISK').toBe(isk2)
-    expect(heldOf(s, 'wreck-rare-h-hi'), '不重复补残骸').toBe(wrecks2)
+    expect(s.wallet.isk, '已结算后不再补发 ISK').toBe(isk1)
+    expect(heldOf(s, 'wreck-rare-h-hi'), '已结算后不再补发残骸').toBe(wrecks1)
+    expect(s.weekendEvent!.reclaimPaid, '已结算的账本保持原样').toBeUndefined()
+    const saved = loadSaveFile(serializeSaveFile(s, now)).state
+    const wallet = saved.wallet.isk
+    const wrecks = heldOf(saved, 'wreck-rare-h-hi')
+    weekendSettleAndGrant(saved, ctx, now + 1000)
+    expect(saved.wallet.isk, '重载后也不追补 ISK').toBe(wallet)
+    expect(heldOf(saved, 'wreck-rare-h-hi'), '重载后也不追补残骸').toBe(wrecks)
   })
 
-  /**
-   * 🔴 **夺回奖的两本账必须随档**（**2026-09-27 修漏**）。
-   *
-   * 原先 `reclaimPaid`（防重复标记）与 `reclaimPending`（待到账）**都没写进存档清洗** ⇒
-   * 前者不随档 = **读一次档就把"已发过奖"忘掉** ⇒ 下一次同步再发一遍（刷档即可无限刷夺回奖）；
-   * 后者不随档 = 夺回后读档那笔待到账**直接丢**（活动结束结算时少发）。
-   * 本用例把"夺回了、活动还没结束、玩家读了一次档"这条路走完，并**反证**读档后不会重复记。
-   */
-  it('⑮ 夺回奖的两本账随档：读档后标记与待到账都还在，且不会因读档而重复记', () => {
+  it('⑮ 首次结算发清夺回奖励，读档保留账本且不重发', () => {
     const now = Date.now()
     const s = invaded(GID)
     s.debugQuick = false
     s.weekendEvent!.startedAtWallMs = now - 54 * 3_600_000
     /** 满额参与（乙案下金额 = 全额 × 投入比例；取 1 便于两本账的断言与改前逐值可比） */
     weekendNoteContribution(s.weekendEvent!, GID, 1)
-    weekendSyncReclaimRewards(s, s.weekendEvent!, now)
+    endWeekendEvent(s, now)
+    expect(weekendSettleAndGrant(s, ctx, now)).not.toBeNull()
     expect(s.weekendEvent!.reclaimPaid, '该处已记过奖').toEqual([GID])
     const pending0 = { ...(s.weekendEvent!.reclaimPending ?? { isk: 0, wreck: 0 }) }
-    expect(pending0.wreck, '夺回奖已记进待到账').toBe(weekendRareWreckUnits(WEEKEND_RECLAIM_WRECK))
+    expect(pending0, '结算后待到账清零').toEqual({ isk: 0, wreck: 0 })
+    expect(s.weekendEvent!.rewardLedger?.byGalaxy[GID]?.wreck).toBe(weekendRareWreckUnits(WEEKEND_RECLAIM_WRECK))
 
     const back = loadSaveFile(serializeSaveFile(s, now)).state
     expect(back.weekendEvent!.reclaimPaid, '防重复标记随档').toEqual([GID])
-    expect(back.weekendEvent!.reclaimPending, '待到账随档').toEqual(pending0)
+    expect(back.weekendEvent!.reclaimPending ?? { isk: 0, wreck: 0 }, '空账不落键，读侧视为已结清').toEqual(pending0)
 
-    /** **反证**：读档后再同步一次 ⇒ 不该再记一遍（这正是"刷档无限刷奖"的入口） */
-    const before = { ...(back.weekendEvent!.reclaimPending ?? { isk: 0, wreck: 0 }) }
-    weekendSyncReclaimRewards(back, back.weekendEvent!, now)
-    expect(back.weekendEvent!.reclaimPending, '读档不导致重复记账').toEqual(before)
+    expect(back.weekendEvent!.prizePaidAtWallMs).toBe(now)
+    const wallet = back.wallet.isk
+    const wreck = heldOf(back, 'wreck-rare-h-hi')
+    expect(weekendSettleAndGrant(back, ctx, now + 1000)).toBeNull()
+    expect(back.wallet.isk).toBe(wallet)
+    expect(heldOf(back, 'wreck-rare-h-hi')).toBe(wreck)
   })
 })
 

@@ -8,16 +8,28 @@ import { createInitialState } from '../src/state'
 import { advanceGame } from '../src/engine'
 import { addModule, fitModule } from '../src/equipment'
 import {
-  advanceAutoLoopBounty,
+  advanceAutoLoopBounty as launchAutoLoop,
   advanceExpedition,
   battleTacticDesire,
   expeditionStatus,
   setBattleDesire,
-  startExpedition,
+  startExpedition as launchExpedition,
 } from '../src/expedition'
 import { battleWinPreview, battleArcsFor, bountyDamageForecast, bountyWinPercentGuarded, createFoeSpecs } from '../src/combat'
 import { anomaly, DEFAULT_TEST_ITEMS, makeTestCtx, moduleDef, ship } from './helpers'
 import { clearInitialStanding, setStanding } from './helpers'
+import { finishDeparture } from './helpers/departure-ready'
+
+function startExpedition(...args: Parameters<typeof launchExpedition>) {
+  const result = launchExpedition(...args)
+  if (result.ok) finishDeparture(args[0], args[2])
+  return result
+}
+function advanceAutoLoopBounty(...args: Parameters<typeof launchAutoLoop>) {
+  const result = launchAutoLoop(...args)
+  finishDeparture(...args)
+  return result
+}
 
 describe('远征 V12：两阶段', () => {
   let state: GameState
@@ -63,7 +75,7 @@ describe('远征 V12：两阶段', () => {
     expect(state.logs.some((l) => l.text.includes('已自动停止「开采」'))).toBe(true)
   })
 
-  it('去程取消：出发即开战（无 out 等待）；交火打完自动结算', () => {
+  it('完成出发等待后开战；交火打完自动结算', () => {
     // ano-a 在母港星系：即时进入交火
     expect(startExpedition(state, 'ano-a', ctx).ok).toBe(true)
     expect(state.expedition.phase).toBe('battle')
@@ -79,7 +91,7 @@ describe('远征 V12：两阶段', () => {
     expect(state.logs.some((l) => l.text.includes('战报'))).toBe(true)
   })
 
-  it('途中事件在出发瞬间触发一次（去程已取消，无中段等待）', () => {
+  it('途中事件在抵达时触发一次', () => {
     const farCtx = makeTestCtx({
       anomalies: [anomaly('ano-far0', 'galaxy-far', { threat: 4, reward: 5_000 })],
       balance: { ...makeTestCtx().balance, travelEventChance: 1 }, // 途中事件必触发（去随机）
@@ -190,15 +202,14 @@ describe('远征 V12：两阶段', () => {
     expect(report?.text ?? '').toMatch(/船体维修装置消耗 民用修理组件 ×\d+/)
   })
 
-  it('battleTacticDesire / setBattleDesire：战斗中可调期望距离并钳制；**按星系**记忆且出发时沿用', () => {
+  it('battleTacticDesire / setBattleDesire：可调期望距离并钳制，按实际卡记忆', () => {
     expect(startExpedition(state, 'ano-a', ctx).ok).toBe(true)
     advanceGame(state, 5_000, ctx) // 到港开战
-    const galaxy = ctx.anomalies.get('ano-a')!.galaxyId
     const desire = battleTacticDesire(state, ctx, 'kite')
     expect(desire).toBeGreaterThan(0)
     expect(setBattleDesire(state, desire, ctx).ok).toBe(true)
     expect(state.expedition.battle!.myDesireM).toBe(desire)
-    expect(state.expedition.desirePrefByGalaxy?.[galaxy]).toBe(desire) // 记忆 = 该星系的目标距离
+    expect(state.battleRangeByCard?.['ano-a']?.desireM).toBe(desire)
     // 巨大值被钳制到开战距离内
     expect(setBattleDesire(state, 1_000_000_000, ctx).ok).toBe(true)
     expect(state.expedition.battle!.myDesireM).toBeLessThan(1_000_000_000)
@@ -208,7 +219,7 @@ describe('远征 V12：两阶段', () => {
     expect(startExpedition(s2, 'ano-a', ctx, { desireM: 2_000 }).ok).toBe(true)
     advanceGame(s2, 5_000, ctx)
     expect(s2.expedition.battle!.myDesireM).toBe(2_000)
-    expect(s2.expedition.desirePrefByGalaxy?.[galaxy]).toBe(2_000)
+    expect(s2.battleRangeByCard?.['ano-a']?.desireM).toBe(2_000)
   })
 
   it('battleWinPreview 可用；远征面板：下达即交火（combat），交火中不展示预估胜率', () => {
@@ -268,7 +279,7 @@ describe('远征 V12：两阶段', () => {
   it('声望仅首胜发放：同一目标重复完成不再涨声望（防低威胁目标无限白刷）', () => {
     // 自定义母港目标：声望 +2/次
     const firstCtx = makeTestCtx({
-      anomalies: [anomaly('ano-first', 'galaxy-hub', { threat: 1, reward: 1_000, standingGain: 2 })],
+      anomalies: [{ ...anomaly('ano-first', 'galaxy-hub', { threat: 1, reward: 1_000, standingGain: 2 }), foeShotDmg: 0 }],
     })
     expect(startExpedition(state, 'ano-first', firstCtx).ok).toBe(true)
     advanceGame(state, 10 * 60_000, firstCtx) // 打赢（结算在 chunk 末尾）
@@ -285,7 +296,7 @@ describe('远征 V12：两阶段', () => {
     expect(state.standings['dsi']).toBe(2) // 未再涨
     expect(state.completedBounties).toEqual(['ano-first']) // 清单不重复
     expect(state.wallet.isk).toBeGreaterThan(walletAfterFirst) // 钱照给
-    expect(state.logs.some((l) => l.text.includes('无额外声望'))).toBe(true)
+    expect(state.battleReport?.summary).toContain('本次无额外声望')
   })
 })
 
@@ -475,7 +486,7 @@ describe('敌方能量=光束必中 + 普遍高命中/低命中特例（2026-09-
     }
     const wk = createFoeSpecs(kinetic, bal)[0]!.weapons[0]!
     expect(wk.hitRate).toBe(bal.foeHitRate)
-    expect(wk.shotDmg).toBe(Math.round(dps * (bal.foeReloadMs / 1000) * (bal.foeHitCompMul / bal.foeHitRate)))
+    expect(wk.shotDmg).toBe(Math.ceil(dps * (bal.foeReloadMs / 1000) * (bal.foeHitCompMul / bal.foeHitRate)))
   })
 })
 

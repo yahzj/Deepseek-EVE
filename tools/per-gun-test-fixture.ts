@@ -9,7 +9,6 @@ export function perGunTestSave(now = Date.now()) {
   const ctx = buildSimContext(), state = createInitialState({ nowWallMs: now, seed: 105105 })
   state.modeChosen = true
   state.character.name = '逐炮验收'
-  state.standingClawbackDone = true
   state.standingsEarned = { dsi: 200 }
   state.wallet.isk = 1e10
   state.exploredGalaxies = [...ctx.galaxies.keys()]

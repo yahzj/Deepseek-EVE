@@ -92,7 +92,6 @@ function createFixture() {
     before.completedBounties.push(card.id)
     core.noteStandingEarned(before, core.DSI_FACTION_ID, card.standingGain)
   }
-  core.repairStandingFromBountyProgress(before, ctx)
   before.onboarding = { ...before.onboarding, step: 99 }
   before.modeChosen = true
   assert(core.wormholeScanUnlocked(before), '合成悬赏首胜前提未满足入场声望')

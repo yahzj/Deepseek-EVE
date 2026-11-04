@@ -15,7 +15,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
-import { createInitialState } from '../src/state'
+import { createCommandReadyState as createInitialState } from './helpers/command-ready'
 import type { GameState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
 import { WORMHOLE_ORE_ITEM_ID as COMMON_ORE_FOR_TEST, WORMHOLE_TEMP_CELLS, WORMHOLE_TEMP_COLS, wormholeEnter, wormholeGridScan, wormholeScanBonusOf } from '../src/wormhole'
@@ -80,6 +80,7 @@ import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { RARE_BOX_DRONE_UNITS, rareWreckItemIdOfCard, wreckItemIdOfCard } from '../src/salvage'
 import { countWare } from '../src/inventory'
 import { rackOf } from '../src/labels'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
 /** 2026-09-19 残骸合并：卡 id → 该卡所属组的残骸物品 id（例：`wh-pirate-scout` → `wreck-a-wh`） */
@@ -105,6 +106,7 @@ function enterRun(rigs = 1, seed = 4242, miners = 0, ships = 1): GameState {
   const a = ids[0]!
   state.shipId = a
   expect(wormholeEnter(state, ctx, ids, seed).ok).toBe(true)
+  finishDeparture(state, ctx)
   for (const uid of ids) {
     const fitted = { ...(state.fleet[uid]!.fitted ?? {}) }
     // 直接改装配表（打捞器与采集器**都走 high 槽** —— 2026-09-14 船长「改回高槽」后作业装备归高槽）
@@ -879,6 +881,8 @@ describe('虫洞 · 遗迹收尾战与专属掉落（概率口径的边界）', 
         run.depth = 2
         const cell = standOn(state, 'ruins')
         wormholeEnsureSalvagePiles(state, cell)
+        // 留足堆数，隔离效率额外回收一堆；本例只验证首次打捞的守卫时机。
+        cell.piles!.push({ ...cell.piles![0]! }, { ...cell.piles![0]! })
         const r = wormholeSalvageAt(state, ctx)
         expect(r.finished).toBe(false) // 首捞（1 台 ⇒ 还有堆）
         if (r.effect?.kind === 'ruinsBattle') {

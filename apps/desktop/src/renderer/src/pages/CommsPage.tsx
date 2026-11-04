@@ -48,7 +48,7 @@ export function CommsPage({
   focus,
 }: PageProps & {
 /** 跳转出口（App 提供）：消息提示 → 对应一级页（可带星图标签 `tab`、任务中心内层标签 `taskTab`、舰船标签 `shipTab`） */
-  onGoto: (page: string, tab?: string, shipTab?: string, taskTab?: string) => void
+  onGoto: (page: string, tab?: string, shipTab?: string, taskTab?: string, skillBranch?: string) => void
   /** 「前往章鱼人兑换」出口（**2026-09-26 船长令**：首匣那封信的跳转要直达**章鱼人声望商店**）。
    *  走 App 的**唯一开窗入口**（它同时把组装机切到「舰船插件」档）⇒ 三条入口行为一致。 */
   onOpenPlugExchange?: () => void

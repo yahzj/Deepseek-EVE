@@ -106,7 +106,7 @@ describe('夺回奖按投入比例（2026-09-29 船长令 · 乙案）', () => {
     expect(s.wallet.isk - isk0, 'ISK 真进钱包 = 结算合计').toBe(r!.isk)
   })
 
-  it('③ 取整：残骸按"件"四舍五入（1 件 = 30 m³）· ISK 四舍五入到 1 元', () => {
+  it('③ 取整：正收益残骸按件向上取整，ISK向上取整到1元，零投入不发', () => {
     const ev = (put: number): WeekendEventState => ({
       seq: 1,
       startedAtWallMs: 0,
@@ -116,8 +116,8 @@ describe('夺回奖按投入比例（2026-09-29 船长令 · 乙案）', () => {
       contributed: { 'galaxy-home': put },
     })
     expect(weekendReclaimAwardOf(ev(0), 'galaxy-home'), '0 投入 ⇒ 两笔都 0').toEqual({ wreck: 0, isk: 0 })
-    expect(weekendReclaimAwardOf(ev(0.03), 'galaxy-home'), '0.24 件 ⇒ 0 件（半件以下不给）').toEqual({
-      wreck: 0,
+    expect(weekendReclaimAwardOf(ev(0.03), 'galaxy-home'), '0.24 件向上取整为1件').toEqual({
+      wreck: 30,
       isk: 60_000,
     })
     expect(weekendReclaimAwardOf(ev(0.07), 'galaxy-home'), '0.56 件 ⇒ 1 件 = 30 m³').toEqual({

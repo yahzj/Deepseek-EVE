@@ -29,7 +29,7 @@ describe('七池目标容量与旧档自然回归', () => {
     const state = createInitialState({ nowWallMs: 1791100000000, seed: 10403 })
     ensureMarket(state, ctx)
     expect(state.market.pools[key]!.q).toBe(target)
-    expect(marketQuote(state, ctx, key).sellQty).toBe(key === 'min-voidcrystal' ? 3000 : Math.max(1, Math.round(flow * 0.8)))
+    expect(marketQuote(state, ctx, key).sellQty).toBe(key === 'min-voidcrystal' ? 3000 : Math.max(1, Math.ceil(flow * 0.8)))
   })
 
   it.each(rows)('$key旧库存读档/开盘不补满，30分钟偏离新目标减半且钱包仓库不变', ({ key, old, target }) => {

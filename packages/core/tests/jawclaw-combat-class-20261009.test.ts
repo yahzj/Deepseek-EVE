@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process'
 import { describe, expect, it } from 'vitest'
-import { buildSimContext, FOE_DRONE_C_JAWCLAW, L10N, l10nEntryText, DRONE_ROLE_SPECS } from '@whale/data'
+import { ANOMALIES, buildSimContext, FOE_DRONE_C_JAWCLAW, L10N, l10nEntryText, DRONE_ROLE_SPECS } from '@whale/data'
+import { addApprovedRepairDrone } from './helpers/approved-fleet-delta-20261101'
 import itemData from '../../data/src/static/items.json'
 import foeData from '../../data/src/static/foeDrones.json'
 import marketData from '../../data/src/static/market.json'
@@ -38,7 +39,7 @@ describe('颚钳战斗机确认值与范围守恒', () => {
     expect(item.maxRangeM).toBeGreaterThanOrEqual(DRONE_ROLE_SPECS.combat.rangeM[0])
     expect(item.maxRangeM).toBeLessThanOrEqual(DRONE_ROLE_SPECS.combat.rangeM[1])
     expect(item.description).toBe(l10nEntryText(L10N['item.jawclaw.002']!, locale))
-    expect(item.description).toContain('动能战斗无人机')
+    expect(item.description).toContain(locale === 'zh' ? '动能战斗无人机' : 'kinetic combat drone')
   })
 
   it('静态源仅两行确认字段变化，市场/其他机型/图纸价格与料单不变', () => {
@@ -49,6 +50,7 @@ describe('颚钳战斗机确认值与范围守恒', () => {
     })
     items.groups.WEEKEND_TROPHIES_0.splice(items.groups.WEEKEND_TROPHIES_0.findIndex((row: { id: string }) => row.id === 'blackbox-universal'), 0,
       { id: 'blackbox-d', kind: 'blackbox', unitM3: 5, baseSellPriceIsk: 10000000 })
+    addApprovedRepairDrone(items.groups.DRONES_0)
     const beaconIds = ['invasion-beacon-r', 'invasion-beacon-c', 'invasion-beacon-h', 'invasion-beacon-d']
     const withoutNewBeacons = (data: typeof itemData) => ({ ...data, groups: { ...data.groups,
       CONSUMABLES_0: data.groups.CONSUMABLES_0.filter(row => !beaconIds.includes(row.id)) } })
@@ -60,10 +62,14 @@ describe('颚钳战斗机确认值与范围守恒', () => {
     expect(foeData).toEqual(foes)
     const withoutBeaconMarket = structuredClone(marketData)
     for (const rows of Object.values(withoutBeaconMarket.groups)) {
-      const newIds = [...beaconIds, 'blackbox-d', 'mod-gravekeeper-rebirth', 'mod-gravekeeper-crisis', 'mod-gravekeeper-rail']
+      const newIds = [...beaconIds, 'blackbox-d', 'mod-gravekeeper-rebirth', 'mod-gravekeeper-crisis', 'mod-gravekeeper-rail', 'drone-repair-mil']
       for (let i = rows.length - 1; i >= 0; i--) if (newIds.includes(rows[i]!.key)) rows.splice(i, 1)
     }
-    expect(withoutBeaconMarket).toEqual(baseline('packages/data/src/static/market.json'))
+    // 市场目录已批准重排，逐键核对所有字段；显示顺序由市场排序专项独立守护。
+    const byKey = (data: typeof marketData) => ({ ...data, groups: Object.fromEntries(
+      Object.entries(data.groups).map(([group, rows]) => [group, [...rows].sort((a, b) => a.key.localeCompare(b.key))]),
+    ) })
+    expect(byKey(withoutBeaconMarket)).toEqual(byKey(baseline('packages/data/src/static/market.json')))
     expect(ctx.marketGoods.get(id)!.basePrice).toBe(24000)
     expect(ctx.marketGoods.get('bp-faction-drone-jawclaw')!.basePrice).toBe(2400000)
     const book = ctx.blueprints.get('bp-faction-drone-jawclaw')!
@@ -72,7 +78,7 @@ describe('颚钳战斗机确认值与范围守恒', () => {
   })
 
   it.each(['alien-vanguard', 'alien-escort', 'alien-main', 'alien-broodmother'])('%s所有波次火力锚点与载体不变，仅目标机型命中射程变化', cardId => {
-    const card = ctx.anomalies.get(cardId)!
+    const card = ANOMALIES.find(card => card.id === cardId)!
     const before = { ...card, ships: card.ships!.map(slot => ({ ...slot, ship: {
       ...slot.ship, drones: slot.ship.drones?.map(ds => ds.drone.id === oldDrone.id ? { ...ds, drone: oldDrone } : ds),
     } })) }
@@ -97,14 +103,14 @@ describe('颚钳战斗机确认值与范围守恒', () => {
     battle.distanceM = 5000
     initFoeDronePools(battle, foes)
     const pool = battle.foeDronePools![carrier.tag]![0]!
-    expect(pool).toMatchObject({ s: 12 * 1.3, a: 30 * 1.3, h: 48 * 1.3, evasion: .25 })
+    expect(pool).toMatchObject({ s: 16, a: 39, h: 63, evasion: .25 })
     const weapon = carrier.weapons.find(w => w.artId === oldDrone.id)!
     expect(foeDroneRangeOf(battle, weapon)).toBe(7500)
     pool.alive = false; pool.s = pool.a = pool.h = 0
     advanceFoeHatcheries(battle, [carrier], 0)
     const loaded = cleanBattle(JSON.parse(JSON.stringify(battle)))!
     advanceFoeHatcheries(loaded, [carrier], carrier.foeHatchery!.cycleMs)
-    expect(loaded.foeDronePools![carrier.tag]![0]).toMatchObject({ s: 12 * 1.3, a: 30 * 1.3, h: 48 * 1.3, alive: true })
+    expect(loaded.foeDronePools![carrier.tag]![0]).toMatchObject({ s: 16, a: 39, h: 63, alive: true })
   })
 
   it('旧50m³装载10架保留，仅可出击5架，超限提示依据和卸回库存守恒', () => {

@@ -236,12 +236,14 @@ describe('光环科技 · 闪现：真实战斗里的触发与冷却', () => {
     const specOf = (tag: string) => specs.find((sp) => sp.tag === tag)
     const state = createInitialState({ nowWallMs: 0, seed: 11 })
     const ids: string[] = []
-    for (let i = 0; i < 24; i++) ids.push(addShipToFleet(state, 'sh-thresher'))
+    for (let i = 0; i < 12; i++) ids.push(addShipToFleet(state, 'sh-thresher'))
     state.shipId = ids[0]!
     for (const id of ids) state.fleet[id]!.fitted = { high: ['mod-turret-kin-2'], mid: [], low: [] }
     for (const a of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) state.warehouse.items[a] = 9_000
     const b = startFleetBattleFor(state, ctx, ids, 'corona-nexus', 0, null, { depth: 4, kind: 'node', waves: 1 }, { strengthMul: 2 })!
     expect(b, '开战应成功').toBeTruthy()
+    // 最多12舰；仅夹具加血维持多次闪现观察窗口，不改生产舰型。
+    for (const unit of Object.values(b.units)) if (unit.side === 'me') { unit.hp = { s: 1e8, a: 1e8, h: 1e8 }; unit.hpMax = { ...unit.hp } }
 
     /** 起始观察点：**采样循环之前**也记一次（否则第一拍（t=100）的闪现会被当成冷启动而漏掉） */
     const prevSeen = new Map<string, number>()

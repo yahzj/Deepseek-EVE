@@ -1,5 +1,62 @@
 # 测试门槛存档（Test Saves）
 
+新增五族插件独立验收见`faction-plugin-expansion-20261104.md`；`node --import tsx tools/make-faction-plugin-expansion-save.ts`已生成停港未战、14艘T1～T3舰船、六舰110/125预算、五件各3份库存及未使用一次图纸的独立档，通过正式存读往返。不读取个人档，已有上批验收档保持独立。
+
+生产研究所与五族加密货柜见`encrypted-research-20261103.md`；`node --import tsx tools/make-encrypted-research-save.ts`独立合成第8层首捞前现场与五族拆解库存，不读取个人档。
+
+三件势力插件调整与修理机图纸生产见`faction-repair-tuning-20261102.md`；`node --import tsx tools/make-faction-repair-tuning-save.ts`独立合成，停港未战、图纸未学习，不读取个人档。
+
+主控离港与星门等待见`departure-20261102.md`；`node --import tsx tools/make-departure-save.ts`独立生成，停港未出发，不读取个人档。
+
+信号空间自动探索估算档见`signal-auto-estimate-20261102.md`；独立合成四舰79/125预算、满技能/科技、10处信号，停港未出发，不读取个人档。
+
+编队支援与离线简报门槛档见`fleet-support-20261101.md`；独立合成五舰90/125预算，后勤预装新版力场、阵列与两架修理无人机，停港未出战，不读取个人档。
+
+修理无人机与后勤舰门槛档见`repair-drone-20261101.md`；五舰90/125预算，后勤预装2架40m³修理机，独立合成且停港未出战。
+
+皇带鱼五舰护航档见`oarfish-escort-20261101.md`；专用生成器独立合成110/125预算编队，停港未出发，不读取个人档。
+
+运输护航门槛档见`industrial-transport-20261101.md`；生成器只读取仓库定义和初始状态，不使用个人档。
+
+## 敌方编成调整
+
+- `node --import tsx tools/enemy-formation-journey.ts --save`生成单舰路线到20声望的门槛档，编队技能未训练；满技能编队沿用下列全船型生成器。
+- 文件位置、预置资金边界与常驻/入侵/信号复测步骤见`enemy-formation-20261031.md`。
+
+## 满技能全舰船编队
+
+- `npx tsx tools/make-command-fleet-all-ships-save.ts`独立合成全部已上线船型、全技能5级及合法12舰默认编队，不读取个人档、不代开战。
+- 当前46种船型共51艘，默认12舰成本122/125，装备与弹药备件齐备；加载、恢复及重型混编路线见`command-fleet-all-ships-20261031.md`。
+
+## 指挥编队
+
+- `npx tsx tools/make-command-fleet-saves.ts`独立合成声望19、声望20及满指挥技能十二舰三种门槛，不读取个人档，不代为出击。
+- 文件、加载及复测步骤见`command-fleet-20261030.md`。敌我十二舰与96架玩家无人机的表现压力档另由`battle-command-native-check.cjs`生成，额外血量只用于维持压力，不代表正常难度或收益。
+
+## 当前可读取范围（2026-10-27）
+
+只接受结构版本v31；v30及更早样本保留作拒读回归资料，不能直接载入当前游戏，不按文件日期判断。二号120份中44份v31可读、76份旧版按预期拒读；合入后主树目录136份为59可读、77预期拒读，额外样本未改写或入库。`npm run save:migrate`和`npm run save:roundtrip-audit`只读检查，不升级或改写样本。新验收优先按各功能生成器重建独立合成档，不用旧样本覆盖个人档。启动拒读会挂起写入，明确允许写入后才可能用新档替换旧文件；需要保留旧进度时不要放行覆盖。
+
+## 支援件与插件多件惩罚
+
+- `npx tsx tools/make-test-save.ts support-plug-stacking`：全新合成档，玄武级支援混装与十一艘双插件对照舰，不读取个人档。
+- 装配页查看第二件实际效果及单件原值；协处理、靶标、隐匿保持全额。加载与复核见 `support-plug-stacking-20261023.md`。
+
+## 信号空间T3自动探索科技
+
+- `npx tsx tools/make-test-save.ts signal-auto-tech`生成全新合成档，T3未研究、T1前置齐备；3处库存、4艘作业副船、100谜质和1亿信用点，AI技能0级，不读取个人档。
+- 先点击灰色自动探索核对研究提示，再到谜质科技探索线T3依次研究，核对60/70/80%与无AI占用；步骤及文件见`signal-auto-tech-20261022.md`。原生工具`signal-auto-tech-native-check.cjs`检查两布局0～3级和真实研究/IPC，不作实体手机或观感结论。
+
+## 按卡距离与射程确认
+
+- `npx tsx tools/make-test-save.ts battle-card-range`生成全新合成档，不读取或覆盖个人档。初始即停在换装后的射程确认，旧距离2500米；取消不进入战斗，重新导入可改距后确认迎战。
+- 先通过游戏内存档管理备份当前进度；完整步骤见`battle-card-range-20261021.md`。隔离操作检查为`node tools/battle-card-range-native-check.cjs`，需要先构建，不代表实体手机或观感验收。
+
+## 五族势力船插
+
+- `npx tsx tools/make-test-save.ts faction-ship-plugs`生成全新合成档，五艘单件对照舰与五件组合舰、插件备件和材料齐备，不读取或覆盖个人档；现有文件及步骤见`faction-ship-plugs-20261019.md`。
+- 势力图纸暂不进声望商店、不提供获取途径，不能用验收档的测试资产代表正常获取。核对装配富卡、镀膜跨场、打印返还和CPU拒装；原生检查用`node tools/faction-ship-plug-native-check.cjs`，中文桌面/英文手机仿真，不作实体手机或观感结论。
+
 ## 专属信号发射器与实验室筛选
 
 - `npx tsx tools/make-test-save.ts faction-beacons`：全新合成档，不读取或覆盖个人档，输出`test-save-faction-beacons-<生成时间>.json`。
@@ -642,7 +699,7 @@ npx tsx tools/make-test-save.ts b1
 ### 船体维修装置实测（hullrep）
 - 文件：`test-save-hullrep-*.json`（取最新一份）
 - 注入门槛（2026-09-09 新装备：中槽自动修复装甲/结构的消耗型装置，设计稿见
-  docs/design/hull-repair-module-20260909.md）：钱包 +500 万 ISK；协会声望 6；点亮 红环航道；
+  docs/archive/retired-docs-20261029/hull-repair-module-20260909.md）：钱包 +500 万 ISK；协会声望 6；点亮 红环航道；
   清空进行中的主控作业；灰鲭鲨级 ×2——「维修试验·MK2」（4×动能 MK2 + 中槽 船体维修装置 MK2 /
   盾抗 / 索敌，**设为驾驶**，带伤出场：装甲 55%、结构 75%——维修上限 = 出场满值，开战即可见
   装甲回升）与「无维修·对照」（同配装，中槽换陀螺）；两船货仓 军用组件 ×60 / 民用 ×20 + 三型弹药；

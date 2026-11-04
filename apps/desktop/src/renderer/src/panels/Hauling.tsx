@@ -11,16 +11,16 @@
  *   （列表内滚 ⇒ 守住「一级页不滚」红线）。
  */
 import {
-  cargoCapacityM3Of,
+  haulFleetLoadOf,
+  haulFleetPathOf,
+  combatRosterOf,
   dockedHaulEndpoint,
   haulEffectiveMinutes,
   haulEndpoints,
   haulExposureAt,
-  haulLegMinutesOf,
   haulRewardRange,
+  haulUnitRewardRange,
   shortestTravelMinutes,
-  travelMinutesEff,
-  shipDisplayName,
   stationActivityStartBlockReason,
   shipActuallyDocked,
 } from '@whale/core'
@@ -31,8 +31,10 @@ import type { ToastFn } from '../pages/common'
 import { isk } from '../pages/common'
 import { HintIcon } from '../ui/Hint'
 import { tr, cmdText } from '../i18n/locale'
+import { HaulingLoadModal, type HaulingRoute } from '../features/transport/HaulingLoadModal'
+import '../features/transport/hauling.css'
 
-interface RouteCard {
+interface RouteCard extends HaulingRoute {
   key: string
   aName: string
   bName: string
@@ -71,12 +73,14 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
    * 第一下只警告（**本趟报酬到站才结，中断就拿不到**），第二下才真停。
    */
   const [stopAsk, setStopAsk] = useState(false)
+  const [loadAsk, setLoadAsk] = useState<RouteCard | null>(null)
   const startBlock = stationActivityStartBlockReason(state, ctx, 'hauling')
   const dockedOk = shipActuallyDocked(state, ctx)
   const docked = dockedHaulEndpoint(state)
 
-  const cap = cargoCapacityM3Of(state, ctx, state.shipId)
-  const shipName = shipDisplayName(state, ctx, state.shipId)
+  const ids = h.fleetLeg?.shipIds ?? combatRosterOf(state)
+  const load = haulFleetLoadOf(state, ctx, ids.filter(id => !!state.fleet[id]), 0)
+  const capacity = load.capacityM3
 
   // 可行航线：任意两端点（跳过同星系零航程与同点）
   const routes: RouteCard[] = []
@@ -105,19 +109,22 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
       ? `${h.routeA ?? 'home'}<>${h.routeB ?? 'home'}`
       : null
 
-  function startTo(aId: string | null, bId: string | null): void {
-    const r = engine.startHaulingAt(aId, bId)
+  function startTo(aId: string | null, bId: string | null, amount: number): void {
+    const r = engine.startHaulingAt(aId, bId, amount)
     if (!r.ok) onToast(cmdText(r) || tr('ui.Hauling.030'), true)
-    else if (r.queued) onToast(tr('core.busy.020'))
-    else if (dockedOk && (docked === aId || docked === bId))
-      onToast(tr("ui.Hauling.004"))
-    else onToast(tr("ui.Hauling.005"))
+    else {
+      setLoadAsk(null)
+      if (r.queued) onToast(tr('core.busy.020'))
+      else if (dockedOk && (docked === aId || docked === bId)) onToast(tr('ui.Hauling.004'))
+      else onToast(tr('ui.Hauling.005'))
+    }
   }
 
   function stopNow(): void {
     const r = engine.stopHaulingNow()
     if (!r.ok) onToast(cmdText(r) || tr('ui.Hauling.031'), true)
-    else onToast(tr("ui.ActivityBar.050"))
+    // ⟪文案调整 2026-11-01⟫ 停运是实际折返，不再提示即时到港。
+    else onToast(tr(state.encounter.active ? 'ui.industrial.008' : h.fleetLeg?.returning ? 'ui.industrial.007' : 'ui.Hauling.006'))
   }
 
   /** 标题右的状态读数（与同级「残骸打捞」同款：一句，不长篇） */
@@ -128,11 +135,11 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
       : tr("ui.Hauling.007")
 
   return (
-    <Panel
+    <><Panel
       className="is-fill win-fixed-body"
       title={tr("ui.MapPage.006")}
       hint={
-        <HintIcon tip={tr("ui.Hauling.008")} />
+        <HintIcon tip={tr('ui.industrial.011')} />
       }
       right={
         <span className="app-dim">
@@ -150,23 +157,27 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
             {routes.map((rt) => {
               const isActive = rt.key === activeKey
               // 航段分钟走 core 同一处口径（×HAUL_LEG_TIME_MUL，船长 2026-09-11）；报酬按「有效距离 × 距离指数 1.5 × 每趟行情 5~10 倍」
-              const legMin = haulLegMinutesOf(rt.minutes)
-              const effMin = Math.max(1, travelMinutesEff(state, ctx, legMin))
+              const routePath = haulFleetPathOf(state, ctx, ids.filter(id => !!state.fleet[id]), rt.aGalaxyId, rt.bGalaxyId)
+              const effMin = Math.max(1, Math.ceil(routePath.reduce((sum, row) => sum + row.durationMs, 0) / 60_000))
               // 面板**只显示区间**（船长 2026-09-11：不预告本趟实际掷值）；基准用**有效距离**
               // （逐跳安全档加权，2026-09-12 船长定；面板不显示档位与系数，只让金额变）
-              const range = haulRewardRange(ctx, cap, haulEffectiveMinutes(ctx, rt.aGalaxyId, rt.bGalaxyId))
-              const hourlyMin = Math.round((range.min / effMin) * 60)
-              const hourlyMax = Math.round((range.max / effMin) * 60)
+              const effective = haulEffectiveMinutes(ctx, rt.aGalaxyId, rt.bGalaxyId)
+              const range = haulRewardRange(ctx, capacity, effective)
+              const unitRange = haulUnitRewardRange(ctx, effective)
+              const durationMs = routePath.reduce((sum, row) => sum + row.durationMs, 0)
+              const hourlyMin = durationMs > 0 ? Math.round(range.min * 3_600_000 / durationMs) : 0
+              const hourlyMax = durationMs > 0 ? Math.round(range.max * 3_600_000 / durationMs) : 0
               // 会遇袭标注（2026-09-13 船长「会遇袭的运输任务需要特意标注出该情况」）：
               // 任一端点在低安 ⇒ 那一段从低安出发、会被计为"当地停留"暴露；另外停靠站不在端点时，
               // 「就位段」从当前停靠星系出发 ⇒ 停靠站在低安也算。
               const dockGalaxyId = endpoints.find((e) => e.siteId === docked)?.galaxyId
               const positional = docked !== rt.aId && docked !== rt.bId
               const exposed =
+                routePath.some(row => haulExposureAt(ctx, row.galaxyId)) ||
                 haulExposureAt(ctx, rt.aGalaxyId) ||
                 haulExposureAt(ctx, rt.bGalaxyId) ||
                 (positional && dockGalaxyId !== undefined && haulExposureAt(ctx, dockGalaxyId))
-              const canStart = startBlock === null && !haulingActive
+              const canStart = startBlock === null && !haulingActive && capacity > 0
               return (
                 <div
                   key={rt.key}
@@ -179,34 +190,39 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
                       {exposed ? (
                         <span
                           className="app-chip is-warn"
-                          title={tr("ui.Hauling.013")}
+                          title={tr('ui.industrial.012')}
                         >
                           {tr("ui.Hauling.014")}
                         </span>
                       ) : null}
-                      {isActive ? <span className="app-chip app-haul-running">{tr("ui.Hauling.015")}</span> : null}
+                      {isActive ? <span className="app-chip app-haul-running">{tr(h.fleetLeg?.returning ? 'ui.industrial.007' : 'ui.Hauling.015')}</span> : null}
                     </span>
                     <span className="app-dim">{tr("ui.Hauling.016")} {effMin} {tr("ui.Hauling.017")}</span>
                   </div>
-                  <div className="app-haul-line app-dim">
-                    {shipName}{tr("ui.Hauling.018")} {cap.toLocaleString('zh-CN')} {tr("ui.Hauling.019")} {isk(range.min)} ~ {isk(range.max)} {tr('ui.FirstTasks.003')}
-                    {tr('ui.Hauling.029', { a: `${isk(range.min * 2)} ~ ${isk(range.max * 2)}` })}{" "}
-                    {tr("ui.Hauling.020")}
-                  </div>
+                  {/* ⟪文案调整 2026-11-01⟫ 航线卡仅显示全队满载及单位费率，输入移入确认弹窗。 */}
+                  <dl className="app-haul-card-stats">
+                    <div><dt>{tr('ui.haulLoad.003')}</dt><dd>{capacity.toLocaleString('zh-CN')} m³</dd></div>
+                    <div><dt>{tr('ui.haulLoad.004')}</dt><dd>{isk(range.min)}～{isk(range.max)}</dd></div>
+                    <div><dt>{tr('ui.haulLoad.005')}</dt><dd>{unitRange.min.toLocaleString('zh-CN', { maximumFractionDigits: 2 })}～{unitRange.max.toLocaleString('zh-CN', { maximumFractionDigits: 2 })} {tr('ui.haulLoad.022')}</dd></div>
+                  </dl>
                   {/* **时薪单独一行 + 金色 + 统一格式 `XXX~XXX 信用点/h`**（**2026-09-23 船长令**：
                       「长途运输，将时薪单独列一行，并染成金色字体，改为统一格式 XXX~XXX 信用点/h」）——
                       报酬每趟按行情浮动，故给区间；金色用独立类名，不走物品色调那套。 */}
                   <div className="app-haul-line app-haul-hourly">
-                    {isk(hourlyMin)}~{isk(hourlyMax)} {tr('ui.Hauling.036')}
+                    {tr('ui.haulLoad.006')} {isk(hourlyMin)}～{isk(hourlyMax)} {tr('ui.Hauling.036')}
                   </div>
                   {isActive ? (
                     <div className="app-haul-line">
+                      {h.fleetLeg ? <span className="app-dim">{tr(h.fleetLeg.positioning ? 'ui.industrial.006' : h.fleetLeg.returning ? 'ui.industrial.007' : state.encounter.active ? 'ui.industrial.008' : 'ui.industrial.005', { p1: h.fleetLeg.loadedM3, p2: h.fleetLeg.targetM3 })}</span> : null}
                       <ProgressBar
                         value={h.legMs > 0 ? Math.min(100, (h.phaseAccMs / h.legMs) * 100) : 0}
                         tone="warn"
                         label={tr("ui.Hauling.027", { p1: h.toSiteId === null ? tr("ui.Expedition.007") : ctx.stations.get(h.toSiteId!)?.name ?? tr('ui.Hauling.032'), p2: fmtMin(Math.max(0, h.legMs - h.phaseAccMs)) })}
                       />
-                      <button
+                      {h.fleetLeg && !h.fleetLeg.returning && !h.fleetLeg.abortAfterBattle ? <button className="app-btn is-small" disabled={h.fleetLeg.stopAtArrival} onClick={() => engine.stopHaulingAtArrival()}>
+                        {tr(h.fleetLeg.stopAtArrival ? 'ui.industrial.004' : 'ui.industrial.003')}
+                      </button> : null}
+                      {!h.fleetLeg?.returning && !h.fleetLeg?.abortAfterBattle ? <button
                         className="app-btn is-small"
                         onClick={() => {
                           /**
@@ -221,10 +237,10 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
                           setStopAsk(false)
                           stopNow()
                         }}
-                        title={stopAsk ? tr('ui.Hauling.035') : tr("ui.Hauling.021")}
+                        title={tr('ui.industrial.013')}
                       >
                         {stopAsk ? tr('ui.Hauling.034') : tr("ui.ActivityBar.014")}
-                      </button>
+                      </button> : null}
                     </div>
                   ) : (
                     <div className="app-haul-actions">
@@ -237,7 +253,7 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
                         <button
                           className="app-btn is-small is-primary"
                           title={tr("ui.Hauling.024", { p1: rt.aName, p2: rt.bName })}
-                          onClick={() => startTo(rt.aId, rt.bId)}
+                          onClick={event => { event.currentTarget.focus(); setLoadAsk(rt) }}
                         >
                           {tr("ui.Hauling.025")}
                         </button>
@@ -251,5 +267,9 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
         )}
       </div>
     </Panel>
+      {loadAsk ? <HaulingLoadModal state={state} ctx={ctx} ids={ids.filter(id => !!state.fleet[id])} route={loadAsk}
+        capacity={capacity} blocked={startBlock !== null || haulingActive}
+        onClose={() => setLoadAsk(null)} onConfirm={amount => startTo(loadAsk.aId, loadAsk.bId, amount)} /> : null}
+    </>
   )
 }

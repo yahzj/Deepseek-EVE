@@ -9,27 +9,31 @@
  */
 import type { GameState } from './state'
 import type { AnomalyDef, SimContext } from './types'
-import { startFleetBattleFor, desirePrefOf } from './combat'
+import { startFleetBattleFor, resolvedBattleAnomaly } from './combat'
+import { withBattleRangeCheck } from './battleRangeMemory'
 import { shipHasWeapon } from './equipment'
 import { weekendFlagshipEncounterOf, weekendFlagshipSpecOf } from './weekendBattle'
 import {
   WEEKEND_FLAGSHIP_POOL_HP,
   WEEKEND_FLAGSHIP_SHIP_ID,
   weekendBossPoolView,
-  weekendFlagshipHpRemaining,
   weekendFlagshipSlotOf,
   weekendFlagshipLayerCaps,
   weekendFlagshipLayersOf,
   weekendFlagshipView,
 } from './weekendEvent'
 import type { WeekendBossPoolView } from './weekendEvent'
+import { flagshipRawLeftOf } from './invasion/event/boss'
 import type { FoeOverride } from './combat'
 import { shipDisplayName } from './instances'
 import { calcPower } from './expedition'
 import { preparationSquadOf, notePreparationSquad } from './preparationSquads'
+import { combatShipLimit, commandBudgetOf } from './combat/command/rules'
+import { shipOperationBlockReason } from './shipActionPolicy'
+import { beginDeparture, departureOrigin } from './departure'
 
 /** 参战舰船**上限**（旗舰战 = 4 艘小队战；语义是上限、不是"必须带满"——与虫洞 `WORMHOLE_MAX_SHIPS` 同款口径） */
-export const WEEKEND_FLAGSHIP_MAX_SHIPS = 4
+export const WEEKEND_FLAGSHIP_MAX_SHIPS = combatShipLimit(true)
 /** 装甲 / 结构"偏低"的告警线（与既有文案「出征前把装甲与结构补到六成」同口径） */
 export const WEEKEND_PREP_LOW_HULL_FRAC = 0.6
 
@@ -187,11 +191,14 @@ export function weekendSanitizeFlagshipSquad(state: GameState, squad: readonly s
 
 /** **按战力自动选**（准备界面那颗按钮）：候选里战力最高的至多 4 艘（并列按舰队顺序，稳定） */
 export function weekendBestFlagshipSquad(state: GameState, ctx: SimContext): string[] {
-  return Object.keys(state.fleet)
+  const pool = Object.keys(state.fleet)
     .map((shipId) => ({ shipId, power: calcPower(state, ctx, shipId) }))
     .sort((a, b) => b.power - a.power)
     .slice(0, WEEKEND_FLAGSHIP_MAX_SHIPS)
     .map((c) => c.shipId)
+  const chosen: string[] = []
+  for (const id of pool) if (commandBudgetOf(state, ctx, [...chosen, id], true).ok) chosen.push(id)
+  return chosen
 }
 
 /** 旗舰的 4 波（每波 4 艘、各占 1/4 总血） */
@@ -205,7 +212,7 @@ export function weekendFlagshipSquadOf(state: GameState): string[] {
   for (const id of [state.shipId, ...Object.keys(state.fleet)]) {
     if (typeof id === 'string' && id.length > 0 && !ids.includes(id)) ids.push(id)
   }
-  return ids.slice(0, 4)
+  return ids.slice(0, WEEKEND_FLAGSHIP_MAX_SHIPS)
 }
 
 /**
@@ -224,14 +231,24 @@ export function weekendStartFlagshipBattle(
   nowWallMs: number,
   squad?: readonly string[],
 ): ReturnType<typeof startFleetBattleFor> {
+  const result = withBattleRangeCheck(state, { kind: 'flagship', squad, eventSeq: state.weekendEvent?.seq }, staged => {
+    const battle = weekendStartFlagshipBattleMutable(staged, ctx, nowWallMs, squad)
+    return { ok: battle !== null, battle }
+  })
+  return result.battle ?? null
+}
+
+function weekendStartFlagshipBattleMutable(state: GameState, ctx: SimContext, nowWallMs: number, squad?: readonly string[]): ReturnType<typeof startFleetBattleFor> {
   const spec = weekendFlagshipSpecOf(state, ctx, nowWallMs)
   if (!spec) return null
   const clean = squad !== undefined ? weekendSanitizeFlagshipSquad(state, squad) : []
-  if (clean.length > 0) weekendNoteFlagshipSquad(state, clean)
   const use = clean.length > 0 ? clean : weekendPrepSquadOf(state)
   if (use.length === 0) return null
+  if (!commandBudgetOf(state, ctx, squad ?? use, true).ok) return null
+  if (use.some(id => shipOperationBlockReason(state, ctx, id, 'configure') !== null)) return null
+  if (clean.length > 0) weekendNoteFlagshipSquad(state, clean)
   /**
-   * **母舰血条 = 池子剩余**（船长 2026-09-25 选「甲」）：开战这一刻把 `weekendFlagshipHpRemaining(ev)`
+   * 母舰血条取共享池实际剩余，保留跨场恢复小数。
    * 传进覆写口 ⇒ 战斗里母舰的满血就是池子剩余（单场不死名副其实；打空即击沉）。
    * 覆写随档存进 `BattleState.foeOverride` ⇒ 逐拍重建母舰、读档续战都吃同一份。
    *
@@ -247,7 +264,7 @@ export function weekendStartFlagshipBattle(
    *   它同时决定**每发的实收伤害**（`applyDamage` 逐层乘"层克制 × (1−该层该系抗性)"）。
    */
   const poolTotal = state.weekendEvent?.flagshipHpMax ?? WEEKEND_FLAGSHIP_POOL_HP
-  const bossHp = weekendFlagshipHpRemaining(state.weekendEvent)
+  const bossHp = Math.max(0, flagshipRawLeftOf(state.weekendEvent))
   /**
    * 🔴 **认母舰 = `weekendFlagshipSlotOf`（族无关 · 从本卡自身认 T5）** —— **2026-10-02 修**：
    * 原先把 `bossShipId` 与"取 `split` 的舰级"都写死成 H 族那艘 ⇒ **R 族（本期入侵族）**
@@ -255,7 +272,7 @@ export function weekendStartFlagshipBattle(
    * 成 H 族的 `split` ③ 战斗内血条分母回落成"单位自身满值"＝**满血**（玩家报障原话）。
    */
   const bossSlot = weekendFlagshipSlotOf(ctx.anomalies.get(spec.cardId))
-  const cap = weekendFlagshipLayerCaps(poolTotal, bossSlot?.ship.split ?? { s: 0.2, a: 0.55, h: 0.25 })
+  const cap = weekendFlagshipLayerCaps(poolTotal, bossSlot?.split ?? bossSlot?.ship.split ?? { s: 0.2, a: 0.55, h: 0.25 })
   const override: FoeOverride = {
     threat: spec.threat,
     waves: weekendFlagshipWavesOf(),
@@ -265,18 +282,11 @@ export function weekendStartFlagshipBattle(
     bossMaxLayers: cap,
     bossShipId: bossSlot?.ship.id ?? WEEKEND_FLAGSHIP_SHIP_ID,
   }
-  /**
-   * **该星系记住的期望距离**（**2026-09-28 玩家报障**：「**入侵和旗舰战，并不会记忆玩家选择的
-   * 期望距离**」）——写入端 2026-09-25 就补过（`setBattleDesire` 把旗舰战那一支写成
-   * `setDesirePrefOf(state, state.encounter.galaxyId)`），**开战这一处漏读** ⇒ 每场都回默认档。
-   * ⚠ 星系取 **`ev.coreId`**，与写入端逐字同源（`state.encounter.galaxyId` 正是开战时由 `ev.coreId`
-   * 填进去的）。**不能**指望引擎那层层回落：它按**卡自带星系**读，而旗舰卡是隐藏卡、母港是
-   * `galaxy-hub` ⇒ 会读到"母港那份悬赏偏好"这种**不相干**的值。
-   * ⚠ 所以没设过时传的是 **`null`**（= 引擎的"**强制默认档**"出口）而**不是** `undefined`：
-   * `undefined` 会掉回上面那个"按卡星系读"的回落（`desirePrefOf` 未命中本来就返回 `null` ⇒ 直传即可）。
-   */
-  const desire = desirePrefOf(state, state.weekendEvent?.coreId)
-  return startFleetBattleFor(state, ctx, use, spec.cardId, state.gameMs, desire, undefined, override, true)
+  // 船长2026-10-21：旗舰同样按实际卡ID记忆，核心星系不再决定距离。
+  const origin = departureOrigin(state, ctx)
+  const battle = startFleetBattleFor(state, ctx, use, spec.cardId, state.gameMs + (origin.docked ? 10_000 : 0), undefined, undefined, override, true)
+  if (battle) beginDeparture(state, ctx, 'flagship', state.weekendEvent!.coreId, origin)
+  return battle
 }
 
 /* ═══════════════ 旗舰战的"战斗宿主"解析（界面侧） ═══════════════
@@ -318,6 +328,7 @@ export interface WeekendFlagshipBattleView {
  * 判据 = 遭遇槽里挂着旗舰卡 + 那场战斗还在（`weekendFlagshipEncounterOf` + `enc.battle`）。
  */
 export function weekendFlagshipBattleActive(state: GameState): boolean {
+  if (state.departure?.kind === 'flagship') return false
   const enc = state.encounter
   if (!enc.active || !enc.battle) return false
   return weekendFlagshipEncounterOf(state, enc)
@@ -325,11 +336,12 @@ export function weekendFlagshipBattleActive(state: GameState): boolean {
 
 /** 旗舰战的战斗视图（无 / 还没开打 ⇒ `null`）。 */
 export function weekendFlagshipBattleViewOf(state: GameState, ctx: SimContext): WeekendFlagshipBattleView | null {
+  if (state.departure?.kind === 'flagship') return null
   const enc = state.encounter
   const battle = enc.battle
   if (!battle || !enc.active) return null
-  if (!weekendFlagshipEncounterOf(state, enc)) return null
-  const anomaly = enc.anomalyId !== null ? ctx.anomalies.get(enc.anomalyId) : undefined
+  if (!weekendFlagshipEncounterOf(state, enc) && !enc.pirate && !enc.automatic) return null
+  const anomaly = resolvedBattleAnomaly(ctx, battle, enc.anomalyId)
   if (!anomaly) return null
   const leaderShipId = battle.myFleet?.[0]?.shipId ?? enc.shipId ?? state.shipId
   const leaderRt = battle.units[battle.myFleet?.[0]?.tag ?? 'player']

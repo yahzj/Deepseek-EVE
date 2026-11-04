@@ -25,7 +25,7 @@ function world(high = ['mod-shieldfield-2'], count = 3) {
     return spec
   })
   const hp = (index: number) => battle.units[specs[index]!.tag]!.hp
-  const pulse = (pct = .067) => pulseShieldFieldFor(battle, specs, { pct }, specs[0]!)
+  const pulse = (pct = .1) => pulseShieldFieldFor(battle, specs, { pct }, specs[0]!)
   return { state, fleet, battle, specs, hp, pulse, local }
 }
 
@@ -37,18 +37,18 @@ describe('护盾力场转移与支付', () => {
     w.hp(2).s = 970
     w.specs[0]!.resists.shield = { kinetic: .9, explosive: .9, plasma: .9 }
     w.pulse()
-    expect([0, 1, 2].map(i => w.hp(i).s)).toEqual([433, 67, 1000])
+    expect([0, 1, 2].map(i => w.hp(i).s)).toEqual([400, 100, 1000])
   })
 
-  it.each([0, 66.99, 67, 67.01])('当前盾%s：不足不发动，恰好够可扣至零', shield => {
+  it.each([0, 99.99, 100, 100.01])('当前盾%s：不足不发动，恰好够可扣至零', shield => {
     const w = world()
     w.hp(0).s = shield
     w.hp(1).s = 0
     w.hp(2).s = 0
     const before = structuredClone(w.battle.units)
     w.pulse()
-    expect(w.hp(0).s).toBeCloseTo(shield < 67 ? shield : shield - 67)
-    expect(w.hp(1).s).toBe(shield < 67 ? 0 : 67)
+    expect(w.hp(0).s).toBeCloseTo(shield < 100 ? shield : shield - 100)
+    expect(w.hp(1).s).toBe(shield < 100 ? 0 : 100)
     for (const spec of w.specs) {
       expect(w.battle.units[spec.tag]!.hp.a).toBe(before[spec.tag]!.hp.a)
       expect(w.battle.units[spec.tag]!.hp.h).toBe(before[spec.tag]!.hp.h)
@@ -75,11 +75,11 @@ describe('护盾力场转移与支付', () => {
     w.hp(1).s = 0
     w.hp(2).s = 0
     w.pulse(.05)
-    expect([0, 1, 2].map(i => w.hp(i).s)).toEqual([533, 50, 50])
+    expect([0, 1, 2].map(i => w.hp(i).s)).toEqual([500, 50, 50])
     delete w.battle.units[w.specs[0]!.tag]!.hpMax
     w.specs[0]!.hp.s = 2000
     w.pulse()
-    expect([0, 1, 2].map(i => w.hp(i).s)).toEqual([399, 184, 184])
+    expect([0, 1, 2].map(i => w.hp(i).s)).toEqual([300, 250, 250])
   })
 
   it('施放者死亡、战斗结束、无效恢复比例不支付也不恢复', () => {
@@ -100,8 +100,8 @@ describe('护盾力场转移与支付', () => {
     const w = world()
     for (let i = 0; i < 3; i++) w.hp(i).s = 300
     w.pulse()
-    pulseShieldFieldFor(w.battle, w.specs, { pct: .067 }, w.specs[1]!)
-    expect([0, 1, 2].map(i => w.hp(i).s)).toEqual([300, 300, 434])
+    pulseShieldFieldFor(w.battle, w.specs, { pct: .1 }, w.specs[1]!)
+    expect([0, 1, 2].map(i => w.hp(i).s)).toEqual([300, 300, 500])
   })
 })
 
@@ -115,9 +115,9 @@ describe('力场真实排程与读档', () => {
       const streams = w.battle.shieldFieldBy!.player!.streams
       for (const stream of streams) stream.nextPulseAtMs = 100
       w.state.gameMs = 100
-      const expected = streams.reduce((sum, stream) => sum + 1000 * stream.pct, 0)
+      const expected = streams.reduce((sum, stream) => sum + Math.ceil(1000 * stream.pct), 0)
       advanceBattleFor(w.state, w.local, w.battle, w.state.shipId, 'ano-training')
-      expect(w.hp(0).s).toBeCloseTo(600 - streams.length * 67, 6)
+      expect(w.hp(0).s).toBeCloseTo(600 - streams.length * 100, 6)
       expect(w.hp(1).s).toBeCloseTo(expected, 6)
       expect(streams.every(stream => stream.nextPulseAtMs! > w.battle.lastTickGameMs)).toBe(true)
     }
@@ -133,7 +133,7 @@ describe('力场真实排程与读档', () => {
     w.state.gameMs = 100
     advanceBattleFor(w.state, w.local, w.battle, w.state.shipId, 'ano-training')
     expect(w.hp(1).s).toBe(0)
-    expect(ledger.streams[0]!.nextPulseAtMs).toBe(10100)
+    expect(ledger.streams[0]!.nextPulseAtMs).toBe(12100)
     w.state.expedition = { ...w.state.expedition, active: true, phase: 'battle', anomalyId: 'ano-training', battle: w.battle }
     const loaded = loadSaveFile(serializeSaveFile(w.state, 0)).state
     const battle = loaded.expedition.battle!
@@ -142,7 +142,7 @@ describe('力场真实排程与读档', () => {
     loaded.gameMs += 100
     advanceBattleFor(loaded, w.local, battle, loaded.shipId, 'ano-training')
     expect(battle.units[w.specs[1]!.tag]!.hp.s).toBe(0)
-    expect(battle.shieldFieldBy!.player!.streams[0]!.nextPulseAtMs).toBe(10100)
+    expect(battle.shieldFieldBy!.player!.streams[0]!.nextPulseAtMs).toBe(12100)
   })
 
   it('同拍两型号剩余盾只够第一路时，第二路跳过而不透支', () => {
@@ -153,8 +153,8 @@ describe('力场真实排程与读档', () => {
     for (const stream of w.battle.shieldFieldBy!.player!.streams) stream.nextPulseAtMs = 100
     w.state.gameMs = 100
     advanceBattleFor(w.state, w.local, w.battle, w.state.shipId, 'ano-training')
-    expect([0, 1, 2].map(i => w.hp(i).s)).toEqual([33, 67, 67])
-    expect(w.battle.shieldFieldBy!.player!.streams.map(stream => stream.nextPulseAtMs)).toEqual([10100, 8100])
+    expect([0, 1, 2].map(i => w.hp(i).s)).toEqual([0, 100, 100])
+    expect(w.battle.shieldFieldBy!.player!.streams.map(stream => stream.nextPulseAtMs)).toEqual([12100, 10100])
   })
 
   it('有效脉冲支付后完整存档往返保留血量和排程，下一拍不重复付费', () => {
@@ -172,8 +172,8 @@ describe('力场真实排程与读档', () => {
     expect(battle.shieldFieldBy).toEqual(w.battle.shieldFieldBy)
     loaded.gameMs += 100
     advanceBattleFor(loaded, w.local, battle, loaded.shipId, 'ano-training')
-    expect(battle.units.player!.hp.s).toBe(533)
-    expect(battle.units[w.specs[1]!.tag]!.hp.s).toBe(67)
+    expect(battle.units.player!.hp.s).toBe(500)
+    expect(battle.units[w.specs[1]!.tag]!.hp.s).toBe(100)
   })
 
   it('离线一段推进与逐拍推进的扣盾、恢复和周期账相同', () => {
@@ -192,6 +192,6 @@ describe('力场真实排程与读档', () => {
     advanceBattleFor(offline.state, offline.local, offline.battle, offline.state.shipId, 'ano-training')
     expect(offline.battle.units).toEqual(stepped.battle.units)
     expect(offline.battle.shieldFieldBy).toEqual(stepped.battle.shieldFieldBy)
-    expect(offline.hp(0).s).toBe(399)
+    expect(offline.hp(0).s).toBe(400)
   })
 })

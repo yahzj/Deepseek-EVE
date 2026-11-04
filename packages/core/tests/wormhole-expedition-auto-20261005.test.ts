@@ -10,6 +10,8 @@ import { shipLockedReason } from '../src/state'
 const ctx = buildSimContext()
 function setup() {
   const state = createInitialState({ nowWallMs: 0, seed: 19 })
+  state.standingsEarned = { dsi: 20 }
+  state.skills.trained['fleet-command-basic'] = 3
   const fleet = [addShipToFleet(state, 'sh-thresher'), addShipToFleet(state, 'sh-thresher')]
   state.skills.trained['ai-expert'] = 2
   state.wormholeStock = [{ id: 'auto-expedition', seed: 19, depth: 1, family: 'A', archetype: 'balanced', foundAtGameMs: 0 }]
@@ -65,6 +67,7 @@ describe('自动新模式 · 出发快照与旧模式隔离', () => {
     expect(wormholeAutoStop(state, runId, ctx).ok).toBe(false)
     expect(state.warehouse.items['repairkit-mil']).toBe(200)
     const old = setup()
+    old.state.research!.levels['mt-explore-signal-auto-t3'] = 3
     expect(wormholeAutoStart(old.state, ctx, 'auto-expedition', old.fleet).ok).toBe(true)
     expect(old.state.wormholeAuto![0]!.expeditionRules).toBeUndefined()
     expect(old.state.wormholeAuto![0]!.expeditionSnapshot).toBeUndefined()

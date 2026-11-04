@@ -45,16 +45,11 @@ function armorOf(low: string[] = []): number {
 
 describe('A 族窝点套：赃物强化舱（货舱 + 甲容量）', () => {
   it('**规则级**：全表带 `armorHpBonus` 的件**逐件都计入**（跨槽位那件也不例外）', () => {
-    const plain = armorOf()
     const withField = MODULES.filter((m) => (m.armorHpBonus ?? 0) > 0 && m.rack === 'low')
     expect(withField.length, '全表应有多件带甲容量字段的装备').toBeGreaterThan(1)
     // 逐件单独装上量增幅：必须恰好 = 1 + 该件 armorHpBonus（漏算即 1、重复计入即 > 1+值）
     for (const def of withField) {
-      const got = armorOf([def.id]) / plain
-      expect(got, `${def.name}（${def.id}，槽位 ${def.slot}）的甲容量未计入战斗建档`).toBeCloseTo(
-        1 + (def.armorHpBonus ?? 0),
-        6,
-      )
+      expect(armorOf([def.id]), def.id).toBe(Math.ceil(ctx.ships.get(SHIP)!.armorHp! * (1 + def.armorHpBonus!)))
     }
     // 其中必须有且仅有「赃物强化舱」这一件是**非装甲槽**（跨族样本，即本次报障件）
     const crossSlot = withField.filter((m) => m.slot !== 'armor')
@@ -69,7 +64,7 @@ describe('A 族窝点套：赃物强化舱（货舱 + 甲容量）', () => {
     // ② 甲容量 +15%（本批修的那一半）
     const specPlain = createPlayerSpec(plain, ctx, SHIP)!
     const specHold = createPlayerSpec(withHold, ctx, SHIP)!
-    expect(specHold.hp.a / specPlain.hp.a).toBeCloseTo(1.15, 6)
+    expect(specHold.hp.a).toBe(Math.ceil(ctx.ships.get(SHIP)!.armorHp! * 1.15))
     // ③ 结构层不吃这一件（说明里只承诺货舱与装甲）
     expect(specHold.hp.h).toBeCloseTo(specPlain.hp.h, 6)
     // ④ 盾层同档不动
@@ -77,10 +72,9 @@ describe('A 族窝点套：赃物强化舱（货舱 + 甲容量）', () => {
   })
 
   it('与装甲槽件**加算**（1 + 0.15 + 0.2 = 1.35）：不漏算跨槽位件、也不重复计入甲件', () => {
-    const plain = armorOf()
     const both = armorOf([HOLD, PLATE])
-    expect(both / plain).toBeCloseTo(1.35, 6)
+    expect(both).toBe(Math.ceil(ctx.ships.get(SHIP)!.armorHp! * 1.35))
     // 对照：只装甲件 = 1.20（与上面"逐件"那条同值 ⇒ 甲件没有被算两次）
-    expect(armorOf([PLATE]) / plain).toBeCloseTo(1.2, 6)
+    expect(armorOf([PLATE])).toBe(Math.ceil(ctx.ships.get(SHIP)!.armorHp! * 1.2))
   })
 })

@@ -103,11 +103,13 @@ function extract(state: GameState, ctx: SimContext): boolean {
 
 /** 只对已抵达且出口已知的守卫预估，独立采样不能读取实际未来随机序列。 */
 export function wormholeGuardRiskPreview(state: GameState, ctx: SimContext): { available: boolean; wins: number; samples: number; safe: boolean } {
+  if (state.departure?.kind === 'wormhole') return { available: false, wins: 0, samples: 0, safe: false }
   const run = state.wormhole.run
   if (run?.expeditionRules !== 2 || !run.grid?.exitKnown || run.battle || run.pendingNodeBattle || run.pendingRuinsBattle || run.grid.pos.q !== run.grid.exit.q || run.grid.pos.r !== run.grid.exit.r || (run.bossCleared ?? 0) >= run.depth) return { available: false, wins: 0, samples: 0, safe: false }
   let wins = 0
   for (let sample = 0; sample < 3; sample++) {
     const staged = structuredClone(state)
+    if (staged.wormhole.run) staged.wormhole.run.automaticBattleRanges = true
     staged.rng.seed = wormholeHash32((run.seed ?? 1) ^ Math.imul(run.depth, 7919) ^ Math.imul(sample + 1, 104729)) || 1
     if (!wormholeStartBattle(staged, ctx, 'boss').ok) continue
     for (let step = 0; staged.wormhole.run?.battle && step < 9000; step++) { staged.gameMs += 100; advanceWormhole(staged, ctx) }
@@ -122,6 +124,7 @@ export function wormholeRunExpeditionPolicy(
   opts?: { maxDepth?: number; policy?: 'deep' | 'recovery'; checkpoint?: (state: GameState) => GameState },
 ): WormholePolicyResult {
   let state = initial
+  if (state.wormhole.run) state.wormhole.run.automaticBattleRanges = true
   const out: WormholePolicyResult = { state, reachedDepth: state.wormhole.run?.depth ?? 0, guardClearedDepth: 0, extracted: false, battles: 0, steps: 0, layers: [] }
   const maxDepth = Math.max(1, Math.min(10, Math.floor(opts?.maxDepth ?? 10)))
   const entered = new Set<number>()

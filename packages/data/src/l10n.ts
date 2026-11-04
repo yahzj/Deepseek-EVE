@@ -262,6 +262,16 @@ export const EN_MODULES: EnTable = {
   'plug-rangefinder': { name: 'Range Plug', description: L10N['mod.copy.105']!.en },
   'plug-target-beacon': { name: 'Target Beacon Plug', description: L10N['mod.copy.107']!.en },
   'plug-concealment': { name: 'Concealment Plug', description: L10N['mod.copy.108']!.en },
+  'plug-pirate-raider': { name: 'Raider Plug', description: L10N['mod.factionPlug.001']!.en },
+  'plug-alien-shield-coating': { name: 'Shield Coating Plug', description: l10nEntryText(L10N['mod.factionPlug.008']!, 'en') },
+  'plug-gravekeeper-capacitor': { name: 'Shield Capacitor Plug', description: L10N['mod.factionPlug.003']!.en },
+  'plug-titan-compression': { name: 'Spatial Compression Plug', description: l10nEntryText(L10N['mod.factionPlug.009']!, 'en') },
+  'plug-deadarmy-printing': { name: 'Low-Cost Printing Plug', description: L10N['mod.factionPlug.005']!.en },
+  'plug-pirate-damage-management': { name: l10nEntryText(L10N['mod.factionPlug.010']!, 'en'), description: l10nEntryText(L10N['mod.factionPlug.011']!, 'en') },
+  'plug-alien-nanobiomass': { name: l10nEntryText(L10N['mod.factionPlug.012']!, 'en'), description: l10nEntryText(L10N['mod.factionPlug.013']!, 'en') },
+  'plug-gravekeeper-charge': { name: l10nEntryText(L10N['mod.factionPlug.014']!, 'en'), description: l10nEntryText(L10N['mod.factionPlug.015']!, 'en') },
+  'plug-titan-drone-command': { name: l10nEntryText(L10N['mod.factionPlug.016']!, 'en'), description: l10nEntryText(L10N['mod.factionPlug.017']!, 'en') },
+  'plug-deadarmy-reinforced-hull': { name: l10nEntryText(L10N['mod.factionPlug.018']!, 'en'), description: l10nEntryText(L10N['mod.factionPlug.019']!, 'en') },
 
   /* 损伤管制装置线（2026-09-25 船长令：低槽 · 结构三系减伤 +30/40/50 ＋ 每场一次"结构锁定 1 秒"）
      ⚠ 模块英文必须写在本表（`EN_MODULES`）——写进 `EN_ITEMS` 的话覆盖层查不到（`l10n-overlay` 用例会红）。 */
@@ -330,8 +340,8 @@ export const EN_MODULES: EnTable = {
   /* 护盾充能力场装置（2026-09-20 船长）：高槽 · 护盾族 —— 与上一条中槽「Shield Recharger」区分开：
      2026-10-07：本件只治其他舰船、按需消耗自身护盾，冷却按件自带。
      ⟪2026-09-25 船长令⟫ 恢复量改按**本舰（装件舰）的护盾量**算（旧 "each ship's max shield" 作废）。 */
-  'mod-shieldfield-2': { name: 'Shield Charge Field MK2', description: L10N['mod.copy.027']!.en },
-  'mod-shieldfield-3': { name: 'Shield Charge Field MK3', description: L10N['mod.copy.027']!.en },
+  'mod-shieldfield-2': { name: l10nEntryText(L10N['mod.fleetSupport.001']!, 'en'), description: l10nEntryText(L10N['mod.fleetSupport.003']!, 'en') },
+  'mod-shieldfield-3': { name: l10nEntryText(L10N['mod.fleetSupport.002']!, 'en'), description: l10nEntryText(L10N['mod.fleetSupport.003']!, 'en') },
   'mod-armor-kin-1': { name: 'Armor Plating MK1 · Kinetic', description: L10N['mod.copy.028']!.en },
   'mod-armor-exp-1': { name: 'Armor Plating MK1 · Explosive', description: L10N['mod.copy.029']!.en },
   'mod-armor-pla-1': { name: 'Armor Plating MK1 · Energy', description: L10N['mod.copy.030']!.en },
@@ -381,9 +391,9 @@ export const EN_MODULES: EnTable = {
   'mod-hullrep-civ': { name: 'Civilian Hull Repair Unit', description: L10N['mod.copy.045']!.en },
   'mod-hullrep-1': { name: 'Hull Repair Unit MK1', description: L10N['mod.copy.046']!.en },
   'mod-hullrep-2': { name: 'Hull Repair Unit MK2', description: L10N['mod.copy.046']!.en },
-  'mod-lock-1': { name: 'Target Lock Array MK1', description: L10N['mod.copy.047']!.en },
-  'mod-lock-2': { name: 'Target Lock Array MK2', description: L10N['mod.copy.047']!.en },
-  'mod-lock-3': { name: 'Target Lock Array MK3', description: L10N['mod.copy.047']!.en },
+  'mod-lock-1': { name: 'Target Lock Array MK1', description: l10nEntryText(L10N['mod.fleetSupport.004']!, 'en') },
+  'mod-lock-2': { name: 'Target Lock Array MK2', description: l10nEntryText(L10N['mod.fleetSupport.004']!, 'en') },
+  'mod-lock-3': { name: 'Target Lock Array MK3', description: l10nEntryText(L10N['mod.fleetSupport.004']!, 'en') },
   'mod-stealth-2': { name: 'Stealth Module MK2', description: L10N['mod.copy.048']!.en },
   'mod-stealth-3': { name: 'Stealth Module MK3', description: L10N['mod.copy.048']!.en },
   // 窝点专属（lair）
@@ -406,7 +416,8 @@ export const EN_MODULES: EnTable = {
   'mod-lair-web-h': { name: 'Ink Tide Capture Web', description: L10N['mod.copy.064']!.en },
   // **R 族（光环）势力特色装备**（船长 2026-10-01 令）：叠光激光炮 + 跃迁规避装置；⟪2026-10-02⟫ 再加 三叉戟光束炮（Trident Beam Cannon）+ PD激光（PD Laser）—— **四件**同出「光环稀有残骸的高级箱专属池」（与 AI 核心同一个池子）。
   'mod-lair-laser-r': { name: 'Overlay Laser Cannon', description: L10N['mod.copy.065']!.en },
-  'mod-lair-blink-r': { name: 'Blink Evasion Drive', description: L10N['mod.copy.066']!.en },
+  // ⟪文案调整 2026-10-19⟫ 与短距离跃迁装置成对定名。
+  'mod-lair-blink-r': { name: 'Short-Range Warp Device', description: L10N['mod.copy.066']!.en },
   'mod-lair-beam-r': { name: 'Trident Beam Cannon', description: L10N['mod.copy.067']!.en },
   'mod-lair-pd-r': { name: 'PD Laser', description: L10N['mod.copy.068']!.en },
   // 虫洞族专属（mod-wh-*）
@@ -423,7 +434,7 @@ export const EN_MODULES: EnTable = {
   'mod-wh-c-frame': { name: 'Chitin Frame Layer', description: L10N['mod.copy.079']!.en },
   'mod-wh-d-turret': { name: 'Tombwarden Linked Cannon', description: L10N['mod.copy.080']!.en },
   'mod-wh-d-shield': { name: 'Mausoleum Shield Core', description: L10N['mod.copy.081']!.en },
-  'mod-wh-d-lock': { name: 'Gravekeeper Death Knell', description: L10N['mod.copy.082']!.en },
+  'mod-wh-d-lock': { name: 'Gravekeeper Death Knell', description: l10nEntryText(L10N['mod.fleetSupport.004']!, 'en') },
   'mod-wh-d-laser': { name: 'Mausoleum Prism Cannon', description: L10N['mod.copy.083']!.en },
   'mod-wh-d-loader': { name: 'Gravekeeper Rapid Loader', description: L10N['mod.copy.084']!.en },
   'mod-wh-d-steady': { name: 'Mausoleum Ballistic Inscription', description: L10N['mod.copy.085']!.en },
@@ -444,6 +455,11 @@ export const EN_MODULES: EnTable = {
  * 物品英文名称保持冻结译名；说明与中文共用唯一表 id。
  */
 export const EN_ITEMS: EnTable = {
+  'box-encrypted-a': { name: l10nEntryText(L10N['item.encrypted.001']!, 'en'), description: l10nEntryText(L10N['item.encrypted.006']!, 'en') },
+  'box-encrypted-c': { name: l10nEntryText(L10N['item.encrypted.002']!, 'en'), description: l10nEntryText(L10N['item.encrypted.006']!, 'en') },
+  'box-encrypted-d': { name: l10nEntryText(L10N['item.encrypted.003']!, 'en'), description: l10nEntryText(L10N['item.encrypted.006']!, 'en') },
+  'box-encrypted-e': { name: l10nEntryText(L10N['item.encrypted.004']!, 'en'), description: l10nEntryText(L10N['item.encrypted.006']!, 'en') },
+  'box-encrypted-g': { name: l10nEntryText(L10N['item.encrypted.005']!, 'en'), description: l10nEntryText(L10N['item.encrypted.006']!, 'en') },
   'drone-jawclaw': {
     name: l10nEntryText(L10N['item.jawclaw.001']!, 'en'),
     description: l10nEntryText(L10N['item.jawclaw.002']!, 'en'),
@@ -490,6 +506,7 @@ export const EN_ITEMS: EnTable = {
   'ammo-explosive-3': { name: 'Explosive Ammo MK3', description: L10N['item.ammoMk3.002']!.en },
   'ammo-plasma-3': { name: 'Energy Ammo MK3', description: L10N['item.ammoMk3.003']!.en },
   // 无人机
+  'drone-repair-mil': { name: l10nEntryText(L10N['item.repairDrone.001']!, 'en'), description: l10nEntryText(L10N['item.repairDrone.002']!, 'en') },
   'drone-scout': { name: 'Hummingbird Scout Drone', description: L10N['item.copy.047']!.en },
   'drone-assault': { name: 'Redkite Combat Drone', description: L10N['item.copy.048']!.en },
   'drone-heavy': { name: 'Falcon Siege Drone', description: L10N['item.copy.049']!.en },
@@ -606,6 +623,9 @@ export const EN_SKILLS: EnTable = {
   'advanced-hull-salvage-engineering': { name: 'Advanced Hull Salvage Engineering', description: 'Further increases whole-ship recovery from player ship wrecks by ⟦4⟧ percentage points per level, additive with Hull Salvage Engineering.' },
   'wreck-equipment-preservation': { name: 'Equipment Preservation Engineering', description: 'On successful player ship recovery, increases ordinary equipment preservation by ⟦4⟧ percentage points per level, from ⟦80%⟧ to ⟦100%⟧ at maximum level; drones are unaffected.' },
   'spaceship-command': { name: 'Spaceship Command', description: 'Basic handling training for every hull. Travel speed-up: each level shortens star-map travel time by a further ⟦2%⟧ (multiplies with the three navigation skills; applies to all ships).' },
+  'fleet-command-basic': { name: l10nEntryText(L10N['skill.command.001']!, 'en'), description: l10nEntryText(L10N['skill.command.002']!, 'en') },
+  'fleet-command-coordination': { name: l10nEntryText(L10N['skill.command.003']!, 'en'), description: l10nEntryText(L10N['skill.command.004']!, 'en') },
+  'fleet-command-integration': { name: l10nEntryText(L10N['skill.command.005']!, 'en'), description: l10nEntryText(L10N['skill.command.006']!, 'en') },
   navigation: { name: 'Navigation', description: 'Faster route plotting and sublight maneuvering. Travel speed-up: each level shortens star-map travel time by ⟦4%⟧ (multiplies with skills of the same kind).' },
   'warp-drive-operation': { name: 'Warp Drive Operation', description: 'Tuning and maintenance of warp drives. Travel speed-up: each level shortens star-map travel time by ⟦4%⟧ (multiplies with skills of the same kind).' },
   'acceleration-control': { name: 'Acceleration Control', description: 'Acceleration and deceleration control in the warp entry and exit phases. Travel speed-up: each level shortens star-map travel time by ⟦4%⟧ (multiplies with skills of the same kind).' },
@@ -1420,11 +1440,27 @@ const BP_DESC_EN: Readonly<Record<string, string>> = {
   'bp-plug-rangefinder': 'Ship plug blueprint: requires any black box.',
   'bp-plug-target-beacon': 'Ship plug blueprint: requires any black box.',
   'bp-plug-concealment': 'Ship plug blueprint: requires any black box.',
+  'bp-plug-pirate-raider': 'Ship plug blueprint: requires any black box.',
+  'bp-plug-alien-shield-coating': 'Ship plug blueprint: requires any black box.',
+  'bp-plug-gravekeeper-capacitor': 'Ship plug blueprint: requires any black box.',
+  'bp-plug-titan-compression': 'Ship plug blueprint: requires any black box.',
+  'bp-plug-deadarmy-printing': 'Ship plug blueprint: requires any black box.',
 }
 
 export const EN_BLUEPRINTS: EnTable = (() => {
   // 船长2026-10-09确认中文名称/说明，英文未准备时回退中文，不自动生成新译名。
   const out: Record<string, EnText> = {
+    ...Object.fromEntries(BLUEPRINTS.filter(bp => bp.id.startsWith('bp-once-plug-')).map(bp => {
+      return [bp.id, { name: bp.name, description: l10nEntryText(L10N['bp.encrypted.002']!, 'en') }]
+    })),
+    ...Object.fromEntries(['plug-pirate-damage-management', 'plug-alien-nanobiomass', 'plug-gravekeeper-charge', 'plug-titan-drone-command', 'plug-deadarmy-reinforced-hull'].map(id => {
+      const bp = BLUEPRINTS.find(row => row.id === `bp-${id}`)!
+      return [bp.id, { name: bp.name, description: bp.description }]
+    })),
+    'bp-once-drone-repair-mil': { name: l10nEntryText(L10N['bp.repairDrone.001']!, 'en'), description: l10nEntryText(L10N['bp.repairDrone.003']!, 'en') },
+    'bp-drone-repair-mil': { name: l10nEntryText(L10N['bp.repairDrone.002']!, 'en'), description: l10nEntryText(L10N['bp.repairDrone.004']!, 'en') },
+    'bp-shieldfield-2': { name: l10nEntryText(L10N['bp.fleetSupport.001']!, 'en'), description: l10nEntryText(L10N['mod.fleetSupport.003']!, 'en') },
+    'bp-shieldfield-3': { name: l10nEntryText(L10N['bp.fleetSupport.002']!, 'en'), description: l10nEntryText(L10N['mod.fleetSupport.003']!, 'en') },
     'bp-drone-launch-1': { name: l10nEntryText(L10N['bp.launchCalibration.001']!, 'en'), description: l10nEntryText(L10N['mod.launchCalibration.006']!, 'en') },
     'bp-drone-launch-2': { name: l10nEntryText(L10N['bp.launchCalibration.002']!, 'en'), description: l10nEntryText(L10N['mod.launchCalibration.006']!, 'en') },
     'bp-drone-launch-3': { name: l10nEntryText(L10N['bp.launchCalibration.003']!, 'en'), description: l10nEntryText(L10N['mod.launchCalibration.006']!, 'en') },
@@ -1940,6 +1976,11 @@ function overlayMatterTech(
   if (locale === 'zh') return src
   let out: Map<string, MatterTechNodeDef> | null = null
   for (const [key, def] of src) {
+    if (def.id === 'mt-explore-signal-auto-t3') {
+      out ??= new Map(src)
+      out.set(key, { ...def, name: l10nEntryText(L10N['ui.signalAuto.001']!, locale), note: l10nEntryText(L10N['ui.signalAuto.002']!, locale) })
+      continue
+    }
     const name = en[def.id]?.name
     const note = notes[def.id]
     if (name === undefined && note === undefined) continue

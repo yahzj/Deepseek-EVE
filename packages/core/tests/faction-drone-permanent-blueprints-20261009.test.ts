@@ -143,7 +143,9 @@ describe('五种势力无人机永久图纸', () => {
     runInNewContext(ts.transpileModule(source.getText(), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, scope)
     // 后续获批新增不改变本批前已有蓝图，只检查原ID集合与相对顺序。
     const legacyIds = new Set(scope.exports.BLUEPRINTS.map(bp => bp.id))
-    expect(BLUEPRINTS.filter(bp => legacyIds.has(bp.id))).toEqual(scope.exports.BLUEPRINTS)
+    const expected = scope.exports.BLUEPRINTS.map(bp => /^bp-shieldfield-[23]$/.test(bp.id)
+      ? { ...bp, name: `护盾投送力场图纸 MK${bp.id.slice(-1)}（一次性）`, description: L10N['mod.fleetSupport.003']!.zh } : bp)
+    expect(BLUEPRINTS.filter(bp => legacyIds.has(bp.id))).toEqual(expected)
     for (const [file, document] of [['packages/data/src/static/items.json', itemData], ['packages/data/src/static/market.json', marketData]] as const) {
       const legacy = JSON.parse(old(file)) as typeof document
       const copy = structuredClone(document)
@@ -193,12 +195,12 @@ describe('五种势力无人机永久图纸', () => {
     expect(Object.values(loaded.expedition.battle!.dronePools ?? {}).filter(pool => pool.artId === item.id)).toHaveLength(5)
   })
 
-  it.each(['zh', 'en'] as const)('%s新名称/说明严格回退已批准中文，旧英文保留、待译登记完整', locale => {
+  it.each(['zh', 'en'] as const)('%s新名称/说明读取已完成的中英文，不回退或残留待译', locale => {
     const localized = buildSimContext(locale)
     for (const row of cases) {
       const prefix = `bp.factionDrone.${String(row.index).padStart(3, '0')}`
-      expect(localized.blueprints.get(row.id)!.name).toBe(L10N[prefix]!.zh)
-      expect(localized.blueprints.get(row.id)!.description).toBe(L10N[`bp.factionDrone.${String(row.index + 5).padStart(3, '0')}`]!.zh)
+      expect(localized.blueprints.get(row.id)!.name).toBe(l10nEntryText(L10N[prefix]!, locale))
+      expect(localized.blueprints.get(row.id)!.description).toBe(l10nEntryText(L10N[`bp.factionDrone.${String(row.index + 5).padStart(3, '0')}`]!, locale))
     }
     expect(localized.items.get('drone-jawclaw')!.name).toBe(l10nEntryText(L10N['item.jawclaw.001']!, locale))
     const backlog = readFileSync(new URL('docs/l10n-pending.md', root), 'utf8')

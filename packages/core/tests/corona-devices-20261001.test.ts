@@ -38,13 +38,15 @@ const CARD_T3 = 'corona-converge'
 function battleOf(card: string, ships: number, foeOverride?: { strengthMul?: number }) {
   const state = createInitialState({ nowWallMs: 0, seed: 11 })
   const ids: string[] = []
-  for (let i = 0; i < ships; i++) ids.push(addShipToFleet(state, 'sh-thresher'))
+  for (let i = 0; i < Math.min(12, ships); i++) ids.push(addShipToFleet(state, 'sh-thresher'))
   state.shipId = ids[0]!
   for (const id of ids) state.fleet[id]!.fitted = { high: ['mod-turret-kin-2'], mid: [], low: [] }
   for (const a of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) state.warehouse.items[a] = 9_000
   const battle = startFleetBattleFor(state, ctx, ids, card, 0, null, { depth: 4, kind: 'node', waves: 1 }, foeOverride)
   expect(battle, '开战应成功').toBeTruthy()
   const b = battle!
+  // 原超量编队只用于延长观察，现用12舰加血压力夹具替代。
+  if (ships > 12) for (const unit of Object.values(b.units)) if (unit.side === 'me') { unit.hp = { s: 1e8, a: 1e8, h: 1e8 }; unit.hpMax = { ...unit.hp } }
   return {
     b,
     tick: (toMs: number) => {
@@ -193,9 +195,10 @@ describe('叠光装置：真实战斗里的装填自加速', () => {
      * （`f` = 已开火发数（**含本发**）、`bs` = 已折算的闪现次数）⇒ 无论从第几发开始采样都成立。
      */
     const seq: Array<{ t: number; r: number; f: number; bs: number }> = []
+    const overlayTag = Object.values(b.units).find(unit => unit.foeShipId === 'foe-r-corona-overlay')!.tag
     for (let t = 250; t <= 400_000 && b.ended === null; t += 250) {
       tick(t)
-      const reg = b.foeOverlayReload?.['w0-foe-4']
+      const reg = b.foeOverlayReload?.[overlayTag]
       if (reg === undefined) continue
       if (seq.length === 0 || seq[seq.length - 1]!.r !== reg.r) seq.push({ t, r: reg.r, f: reg.f, bs: reg.bs })
       if (reg.r <= 500) break // 叠满（夹到下限）⇒ 后面不再变化，停
@@ -277,8 +280,8 @@ describe('闪烁过载装置：真实战斗里的护盾回满与结构代价', (
      */
     const st7 = createInitialState({ nowWallMs: 0, seed: 11 })
     const ids7: string[] = []
-    // 本批 T3 提速后 64 舰在 225.6s 战败，只够 19 次闪现；96 舰提供第 20 次的观察窗。
-    for (let i = 0; i < 96; i++) ids7.push(addShipToFleet(st7, 'sh-thresher'))
+    // 12舰加血仅延长闪现观察窗，不绕过生产数量上限。
+    for (let i = 0; i < 12; i++) ids7.push(addShipToFleet(st7, 'sh-thresher'))
     st7.shipId = ids7[0]!
     /** 长射程（7,000m 级）＋ **件必须入 `moduleBay` 才算装上**（缺了装配不生效） */
     for (const id of ids7) st7.fleet[id]!.fitted = { high: ['mod-laser-3'], mid: [], low: [] }
@@ -289,6 +292,7 @@ describe('闪烁过载装置：真实战斗里的护盾回满与结构代价', (
     })!
     expect(b7, '开战应成功').toBeTruthy()
     const b = b7
+    for (const unit of Object.values(b.units)) if (unit.side === 'me') { unit.hp = { s: 1e8, a: 1e8, h: 1e8 }; unit.hpMax = { ...unit.hp } }
     const tick = (toMs: number): void => {
       st7.gameMs = toMs
       advanceBattleFor(st7, ctx, b, ids7[0]!, CARD_T3)

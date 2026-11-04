@@ -1,7 +1,9 @@
 /**
  * 舰船页：我的舰队（耐久/维修/切换驾驶）+ AI 指挥中心 + 空间站商店。
  */
-import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
+import { Check, Plus, Wrench } from '../ui/layoutIcons'
+import { RangeEwFleet } from '../features/combat/RangeEwPanel'
 import type { ReactNode } from 'react'
 import {
   AI_CORE_ORDER,
@@ -36,9 +38,14 @@ import {
   createPlayerSpec,
   droneBayTotalM3,
   cleanShipDamage,
+  plugEffectsOf,
   // 2026-09-26 船长令「所有声望门槛改读累计声望」：本页矿带下拉的锁定判据走唯一入口
   standingOf,
   DSI_FACTION_ID,
+  markedIds,
+  commandBudgetOf,
+  combatRosterOf,
+  shipCommandCostOf,
   /** 2026-09-29 跃迁燃料批：活动清单与它们的文案 id（开关行的唯一出处） */
   JUMP_FUEL_ACTIVITY_TEXT_ID,
   type JumpFuelActivity,
@@ -53,7 +60,7 @@ import { FuelTank } from '../ui/FuelTank'
 import '../ui/layout-css/_hud-industry.css'
 // 2026-09-23 船长令：使用 AI 核心时默认选「当前拥有的最高级核心」
 import { bestAiCoreOf } from '@whale/core'
-import type { AiCoreType, FleetShipState, GameState, ShipRole } from '@whale/core'
+import type { AiCoreType, FleetShipState, GameState } from '@whale/core'
 import { durabilityOf, repairCostIsk, shipDisplayName } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { ShipHover } from '../ui/shipInfo'
@@ -66,7 +73,7 @@ import { AiTaskBar } from '../ui/aiProgress'
 import { AiWorkFx, industryWorkKindOf } from '../ui/aiWorkFx'
 import type { AiWorkKind } from '../ui/aiWorkFx'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
-import { MarkStar, pinMarked } from '../ui/marks'
+import { MarkStar } from '../ui/marks'
 import {
   FLEET_STATE_TABS,
   SHIP_DOMAIN_SUBS,
@@ -82,28 +89,10 @@ import { tr, cmdText } from '../i18n/locale'
 import { fmtCredits } from '../i18n/fmt'
 import { aiCoreText, shipRoleText, shipSubClassText } from '../ui/labelsText'
 
-// ── 舰队卡片左侧舰影（2026-09-10 船长：每艘船的舰船形象放在对应卡片最左侧展示；
-//    屏幕宽度不足时隐藏舰船图形）──
-/** 舰影列宽（固定尺寸，内容变化不引起卡片跳动） */
-const FLEET_ART_W = 132
-/** 舰影列与右侧信息列的间距（与 .app-ship-card.is-fleet 的 gap 保持一致） */
-const FLEET_ART_GAP = 10
-/** 右侧信息列可读下限（名称+徽章行 / 装配工具行 / 耐久与按钮行；再窄就藏舰影） */
-const FLEET_MAIN_MIN = 560
-
-/**
- * 舰队卡片舰影（置卡片最左侧）。
- * memo：引擎每 tick 触发整树重渲染（App 层订阅 force），舰影 props 恒定即整棵 SVG 子树跳过 diff，
- * 不为列表里的每艘船每 tick 重算——图形是纯展示件，与引擎状态无关。
- */
-const FleetArt = memo(function FleetArt({ shipId, role }: { shipId: string; role: ShipRole }) {
-  return (
-    <div className="app-ship-art" aria-hidden="true">
-      <ShipSprite shipId={shipId} role={role} size={FLEET_ART_W} engine={false} />
-    </div>
-  )
+/** 静态舰影不随引擎心跳重绘，卡牌始终保留同样的展示空间。 */
+const FleetArt = memo(function FleetArt({ shipId }: { shipId: string }) {
+  return <div className="app-fleet-card-art" aria-hidden="true"><ShipSprite shipId={shipId} size={192} engine={false} /></div>
 })
-
 function ShipDamageSummary({ engine, uid }: { engine: GameEngine; uid: string }) {
   const damage = cleanShipDamage(engine.state.fleet[uid]?.damagePlugs)
   if (!damage) return null
@@ -112,7 +101,7 @@ function ShipDamageSummary({ engine, uid }: { engine: GameEngine; uid: string })
       <span className="app-ship-damage-count">{tr('ui.shipDamage.013')} {damage.length}</span>
     </div>
     <div className="app-fit-icongrid">
-      <ShipDamageMods ids={damage} />
+      <ShipDamageMods ids={damage} management={plugEffectsOf(engine.state, engine.ctx, uid).find(mod => mod.damageManagement)?.damageManagement} />
     </div>
   </div>
 }
@@ -134,9 +123,9 @@ export type ShipTab = 'fleet' | 'ai' | 'store' | 'fuel'
  *  类别/级别判据也改读那里的唯一入口（`shipRolePasses` / `shipTierPasses`）。 */
 
 /** AI 指挥中心可指派的任务类型（2026-09-10 船长：统一全部 AI 可执行活动）——
- *  副船三类：采矿/打捞/掩护巡逻；站内工业两类：精炼炉与回收炉/组装机制造。
+ *  副船两类：采矿/打捞；站内工业两类：精炼炉与回收炉/组装机制造。
  *  远征不在其列（引擎软下线，一律拒绝受理）。 */
-type AiAssignMode = 'mining' | 'salvage' | 'standby' | 'refine' | 'craft'
+type AiAssignMode = 'mining' | 'salvage' | 'refine' | 'craft'
 /** 站内制造线可选的已学会蓝图（含材料单，供缺料判定与提示） */
 // l10n-keep-start：本段的中文全是**联合类型 key / 分组 key**（显示时走 CRAFT_GROUPS 的 id 取词），不是文案
 interface CraftOption {
@@ -208,7 +197,7 @@ function FleetShipHover({
       current={{
         spec,
         battle: engine.ctx.balance.battle,
-        droneBayTotal: droneBayTotalM3(ship, engine.state.fleet[uid]?.fitted, engine.ctx),
+        droneBayTotal: droneBayTotalM3(ship, engine.state.fleet[uid]?.fitted, engine.ctx, engine.state.fleet[uid]?.plugs),
       }}
     >
       {children}
@@ -452,48 +441,92 @@ export function ShipPage({
   const [fleetFilter, setFleetFilter] = useState<string>(SUB_ALL)
   const [fleetTier, setFleetTier] = useState<string>(SUB_ALL)
   const [fleetRole, setFleetRole] = useState<string>(SUB_ALL)
+  const [repairFleetOpen, setRepairFleetOpen] = useState(false)
+  const [repairFleetPlan, setRepairFleetPlan] = useState({
+    repairableShipIds: [] as string[],
+    totalCost: 0,
+    fullCount: 0,
+    blockedCount: 0,
+  })
+  const [repairFleetBalance, setRepairFleetBalance] = useState(state.wallet.isk)
+  const [repairFleetChanged, setRepairFleetChanged] = useState(false)
+  const displayedRepairPlanRef = useRef({ plan: repairFleetPlan, balance: repairFleetBalance })
 
-  // ── 舰影列自适应（2026-09-10 船长：每艘船的舰船形象置卡片最左侧；屏幕宽度不足时隐藏图形）──
-  // 判定取舰队列表容器的**实测宽**（clientWidth 已扣竖向滚动条），不用窗口宽猜：
-  // 卡片高由右侧信息列决定（舰影更矮），故舰影显示/隐藏不会反过来改变容器宽，无振荡。
   const fleetScrollRef = useRef<HTMLDivElement | null>(null)
   /**
    * **舰队列表滚动位置 · 会话级记忆**（2026-09-26 船长令：「记住…滚动条位置」，只做主要列表那一条）。
-   * 与上面那支量宽 ref **共用同一个 DOM 节点**（`useSessionScroll` 是"接手"ref、不新建）。
+   * 卡牌网格继续使用原来的舰队滚动容器。
    */
   useSessionScroll('ship.fleet.scroll', fleetScrollRef)
   /** 舰船仓库签的主列表滚动位置（同款记忆；仓库签自带一支容器） */
   const storeScrollRef = useRef<HTMLDivElement | null>(null)
   useSessionScroll('ship.store.scroll', storeScrollRef)
-  const [fleetArt, setFleetArt] = useState(false)
-  useLayoutEffect(() => {
-    const el = fleetScrollRef.current
-    if (!el) return
-    const update = (): void => {
-      const show = el.clientWidth >= FLEET_ART_W + FLEET_ART_GAP + FLEET_MAIN_MIN
-      setFleetArt((old) => (old === show ? old : show))
-    }
-    update() // 首帧先量一次（布局阶段、绘制前，无闪烁）
-    const ro = new ResizeObserver(update)
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [activeTab])
+  /** 编队页签本次打开后的排序快照：历史编队优先，之后只追加新舰，不因点选或状态刷新重排。 */
+  const fleetFormationOrderRef = useRef<string[] | null>(null)
+  const fleetFormationHistoryRef = useRef<Set<string> | null>(null)
 
-  /** 舰队里所有船实例（v17：同型多艘各自成卡；当前驾驶在前） */
+  /** 同型多艘各自成卡，未置顶舰船沿用级别与实例顺序。 */
   const fleetEntries = Object.entries(state.fleet)
     .map(([uid, entry]) => ({ uid, ship: entry, def: ctx.ships.get(entry.defId ?? uid) }))
     .filter((x): x is { uid: string; ship: FleetShipState; def: NonNullable<ReturnType<typeof ctx.ships.get>> } => x.def !== undefined)
-    .sort(
-      (a, b) =>
-        Number(b.uid === state.shipId) - Number(a.uid === state.shipId) ||
-        a.def.tier - b.def.tier ||
-        a.uid.localeCompare(b.uid),
-    )
+    .sort((a, b) => a.def.tier - b.def.tier || a.uid.localeCompare(b.uid))
+
+  const fleetFormationOrder = (() => {
+    const known = new Set(fleetEntries.map(entry => entry.uid))
+    const current = fleetFormationOrderRef.current
+    if (current === null) {
+      const history = state.preparationSquads?.combat ?? []
+      const historySet = new Set(history.filter(uid => known.has(uid)))
+      const favorites = markedIds(state, 'ships')
+      const pilot = state.shipId
+      const seen = new Set<string>()
+      const initialOrder: string[] = []
+      const append = (uid: string): void => {
+        if (known.has(uid) && !seen.has(uid)) {
+          seen.add(uid)
+          initialOrder.push(uid)
+        }
+      }
+      history.forEach(append)
+      append(pilot)
+      favorites.forEach(append)
+      fleetEntries.forEach(entry => append(entry.uid))
+      fleetFormationHistoryRef.current = historySet
+      fleetFormationOrderRef.current = initialOrder
+    } else {
+      const inOrder = new Set(current)
+      for (const entry of fleetEntries) {
+        if (inOrder.has(entry.uid)) continue
+        current.push(entry.uid)
+        inOrder.add(entry.uid)
+      }
+    }
+    return fleetFormationOrderRef.current ?? []
+  })()
+  const fleetBusy = state.awayGalaxy !== null || state.expedition.active || state.encounter.active || state.mining.active || state.salvaging.active || state.hauling.active || state.transit.active || state.standby.active || state.sideTasks.deliver !== null
+  const combatRoster = combatRosterOf(state)
+  const combatRosterSet = new Set(combatRoster)
+  const commandBudget = commandBudgetOf(state, ctx, combatRoster)
+  function toggleCombatShip(uid: string): void {
+    if (fleetBusy || uid === state.shipId) return
+    const roster = combatRosterOf(state)
+    const isSelected = roster.includes(uid)
+    if (!isSelected && shipOperationBlockReason(state, engine.ctx, uid, 'configure')) return
+    const maxShips = commandBudgetOf(state, engine.ctx, roster).maxShips
+    if (!isSelected && roster.length >= maxShips) {
+      onToast(tr('core.command.003', { p1: maxShips }), true)
+      return
+    }
+    const next = isSelected ? roster.filter(id => id !== uid) : [...roster, uid]
+    engine.rememberPreparationSquad('combat', next)
+  }
 
   /** 舰队检索结果（2026-09-10 船长：先按状态/关键词过滤；2026-09-11：叠加**舰船级别**与**类别**；
    *  2026-09-12 船长：**类别与级别对调顺序**（先类别、后级别），**两维各自独立判定、不再级联**；
-   *  顺序恒为机库序 + 收藏置顶） */
+   *  顺序使用本次打开时的历史编队与收藏快照） */
   const fleetTotal = Object.keys(state.fleet).length
+  const currentFleetRepairPlan = engine.fleetRepairPlan()
+  const repairShortfall = Math.max(0, repairFleetPlan.totalCost - repairFleetBalance)
   const fq = fleetQ.trim().toLowerCase()
   /** 任一维筛选或搜索词生效（标题行的计数据此在「N 艘 / 匹配 N / 共 M 艘」之间切换） */
   const fleetFiltered = fq.length > 0 || fleetFilter !== SUB_ALL || fleetTier !== SUB_ALL || fleetRole !== SUB_ALL
@@ -531,8 +564,9 @@ export function ShipPage({
       if (!shipTierPasses(shipDef, fleetTier)) return false
       return true
     })
-    // 2026-09-10 船长定：已标记（收藏）的船置顶（原「默认排序」口径；排序键已退场，恒走这一条）
-    return pinMarked(state, 'ships', list, (x) => x.uid)
+    // 筛选只取快照的子集，点选和收藏变化都不在本次窗口内重排。
+    const rank = new Map(fleetFormationOrder.map((uid, index) => [uid, index]))
+    return list.sort((a, b) => (rank.get(a.uid) ?? Number.MAX_SAFE_INTEGER) - (rank.get(b.uid) ?? Number.MAX_SAFE_INTEGER))
   })()
 
   function handleSwitch(id: string): void {
@@ -557,6 +591,52 @@ export function ShipPage({
     const r = engine.repairShipAt(id)
     if (!r.ok) onToast(cmdText(r) || tr('ui.ShipPage.190'), true)
     else onToast(tr("ui.ShipPage.153"))
+  }
+
+  function openFleetRepair(): void {
+    const plan = engine.fleetRepairPlan()
+    const balance = engine.state.wallet.isk
+    displayedRepairPlanRef.current = { plan, balance }
+    setRepairFleetPlan(plan)
+    setRepairFleetBalance(balance)
+    setRepairFleetChanged(false)
+    setRepairFleetOpen(true)
+  }
+
+  function confirmFleetRepair(): void {
+    const currentPlan = engine.fleetRepairPlan()
+    const currentBalance = engine.state.wallet.isk
+    const displayed = repairFleetChanged
+      ? { plan: repairFleetPlan, balance: repairFleetBalance }
+      : displayedRepairPlanRef.current
+    const samePlan =
+      currentPlan.repairableShipIds.length === displayed.plan.repairableShipIds.length &&
+      currentPlan.repairableShipIds.every((id, index) => id === displayed.plan.repairableShipIds[index]) &&
+      currentPlan.totalCost === displayed.plan.totalCost &&
+      currentPlan.fullCount === displayed.plan.fullCount &&
+      currentPlan.blockedCount === displayed.plan.blockedCount
+
+    if (!samePlan || currentBalance !== displayed.balance) {
+      setRepairFleetPlan(currentPlan)
+      setRepairFleetBalance(currentBalance)
+      setRepairFleetChanged(true)
+      return
+    }
+    if (currentPlan.repairableShipIds.length === 0 || currentBalance < currentPlan.totalCost) return
+
+    const result = engine.repairFleetAt()
+    if (!result.ok || !('repairedCount' in result)) {
+      onToast(cmdText(result) || tr('ui.shipPageFleetRepair.012'), true)
+      setRepairFleetOpen(false)
+      return
+    }
+    setRepairFleetOpen(false)
+    onToast(tr('ui.shipPageFleetRepair.011', {
+      p1: result.repairedCount,
+      p2: fmtCredits(result.totalCost),
+      p3: result.fullCount,
+      p4: result.blockedCount,
+    }))
   }
 
   /** T5：锁定/解锁（2026-09-14 起语义 = **防误移入舰船仓库**：舰队出售按钮已撤） */
@@ -627,10 +707,20 @@ export function ShipPage({
     if (!shipTierPasses(def, storeTier)) return false
     return true
   })
-  const fleetRoles = SHIP_DOMAIN_SUBS.filter((s) => fleetEntries.some((e) => shipRolePasses(e.def, s.key)))
-  const fleetTiers = SHIP_TIER_SUBS.filter((s) => fleetEntries.some((e) => shipRolePasses(e.def, fleetRole) && shipTierPasses(e.def, s.key)))
+  const fleetRoles = SHIP_DOMAIN_SUBS
+  const fleetTiers = SHIP_TIER_SUBS
   const storeRoles = SHIP_DOMAIN_SUBS.filter((s) => storeAll.some((def) => shipRolePasses(def, s.key)))
   const storeTiers = SHIP_TIER_SUBS.filter((s) => storeAll.some((def) => shipRolePasses(def, storeRole) && shipTierPasses(def, s.key)))
+    // DataDog / Mixpanel 风格：全舰队遥测核心指标
+  const totalFleetCount = fleetEntries.length
+  const pilotedCount = fleetEntries.filter((e) => e.uid === state.shipId).length
+  const workingCount = fleetEntries.filter((e) => e.uid in state.aiAssignments && e.uid !== state.shipId).length
+  const idleCount = Math.max(0, totalFleetCount - pilotedCount - workingCount)
+  const totalCargoM3 = fleetEntries.reduce((acc, e) => acc + (e.def.cargoM3 || 0), 0)
+  const avgDurabilityPct = totalFleetCount > 0
+    ? Math.round((fleetEntries.reduce((acc, e) => acc + durabilityOf(state, e.uid), 0) / totalFleetCount) * 100)
+    : 100
+
   const fleetRoleMissing = fleetRole !== SUB_ALL && !fleetRoles.some((s) => s.key === fleetRole)
   const fleetTierMissing = fleetTier !== SUB_ALL && !fleetTiers.some((s) => s.key === fleetTier)
   const storeRoleMissing = storeRole !== SUB_ALL && !storeRoles.some((s) => s.key === storeRole)
@@ -688,10 +778,12 @@ export function ShipPage({
         className="is-fill app-fleet-panel"
         title={tr("ui.ShipPage.001")}
         right={
-          // 搜索栏进标题行（2026-09-11 船长：「将搜索栏移到标题内，目前不够美观」）——
-          // 复刻仓库页 / 技能目录同一套写法（`.app-head-search-wrap` + `.app-head-search` + 灰字计数），
-          // 计数随筛选切换为「匹配 N / 共 M 艘」，搜索词清空且无筛选时只显示总数
-          <span className="app-head-search-wrap">
+          <span className="app-fleet-head-tools">
+            <span className={`app-fleet-command-summary${commandBudget.ok ? '' : ' is-over'}`} title={fleetBusy ? tr('ui.command.004') : undefined}>
+              <span>{tr('ui.command.002', { p1: commandBudget.cost, p2: commandBudget.capacity, p3: combatRoster.length, p4: commandBudget.maxShips })}</span>
+              <i aria-hidden="true"><b style={{ width: `${Math.min(100, commandBudget.capacity > 0 ? commandBudget.cost / commandBudget.capacity * 100 : 0)}%` }} /></i>
+              {fleetBusy ? <Glyph name="ico-lock" size={12} color={ICO_TONES['ico-lock']} /> : null}
+            </span>
             <input
               className="app-head-search"
               type="text"
@@ -700,7 +792,7 @@ export function ShipPage({
               onChange={(e) => setFleetQ(e.target.value)}
               spellCheck={false}
             />
-            <span className="app-dim">
+            <span className="app-dim app-fleet-count">
               {fleetFiltered ? tr('ui.ShipPage.107', { shown: fleetShown.length, total: fleetTotal }) : tr('ui.ShipPage.108', { total: fleetTotal })}
               {tr('ui.ShipPage.109')}
               <span className={`app-pilot-name${switchFxUid !== null ? ' is-pulse' : ''}`}>
@@ -710,6 +802,9 @@ export function ShipPage({
           </span>
         }
       >
+        {!commandBudget.ok ? <div className="app-warn app-fleet-command-warning">{cmdText(commandBudget)}</div> : null}
+        <RangeEwFleet state={state} ctx={ctx} ids={combatRoster} />
+        {fleetBusy ? <div className="app-dim app-fleet-command-warning">{tr('ui.command.004')}</div> : null}
         {/* 舰队工具条（2026-09-10 船长：搜索/状态筛选；样式与仓库、技能目录同款）——固定在列表上方不随滚动
             2026-09-11 船长：「移除排序选项，改为按照舰船级别划分的子筛选」⇒ 排序下拉退场，
             改挂**舰船级别**子筛选（复用组装机那套 `SHIP_TIER_SUBS` 单点表与次级标签样式）；
@@ -724,6 +819,16 @@ export function ShipPage({
         <div className="app-fleet-toolbar">
           <div className="app-fleet-row">
             <span className="app-dim">{tr("ui.ShipPage.003")}</span>
+            <button
+              type="button"
+              className="app-btn is-small is-warn"
+              disabled={currentFleetRepairPlan.repairableShipIds.length === 0}
+              title={currentFleetRepairPlan.repairableShipIds.length === 0 ? tr('ui.shipPageFleetRepair.013') : tr('ui.shipPageFleetRepair.001')}
+              onClick={openFleetRepair}
+            >
+              <Wrench size={13} aria-hidden="true" />
+              {tr('ui.shipPageFleetRepair.001')}
+            </button>
             <div className="app-task-tabs app-fleet-tabs" role="tablist">
               {FLEET_STATE_TABS.map((t) => (
                 <button
@@ -788,6 +893,48 @@ export function ShipPage({
             </div>
           </div>
         </div>
+        {/* DataDog / Mixpanel 风格：全舰队实时态势看板 */}
+        <div className="hud-kpi-banner" role="region" aria-label={tr('ui.fleetKpi.002')}>
+          <div className="hud-kpi-card">
+            <div className="hud-kpi-label">{tr('ui.fleetKpi.001')}</div>
+            <div className="hud-kpi-val">
+              {totalFleetCount} <span className="hud-kpi-unit">{tr('ui.fleetKpi.006')}</span>
+            </div>
+            <div className="hud-kpi-sub">
+              <span className="hud-status-dot is-live" />
+              <span>{tr('ui.fleetKpi.007')}</span>
+            </div>
+          </div>
+          <div className="hud-kpi-card">
+            <div className="hud-kpi-label">{tr('ui.fleetKpi.002')}</div>
+            <div className="hud-kpi-val">
+              {pilotedCount} <span className="hud-kpi-sep">/</span> {workingCount} <span className="hud-kpi-sep">/</span> {idleCount}
+            </div>
+            <div className="hud-kpi-sub">
+              {tr('ui.fleetKpi.005', { p1: pilotedCount, p2: workingCount, p3: idleCount })}
+            </div>
+          </div>
+          <div className="hud-kpi-card">
+            <div className="hud-kpi-label">{tr('ui.fleetKpi.003')}</div>
+            <div className="hud-kpi-val">
+              {totalCargoM3.toLocaleString('zh-CN')} <span className="hud-kpi-unit">m³</span>
+            </div>
+            <div className="hud-kpi-sub">
+              <span className="hud-kpi-tag">FLEET CARGO</span>
+            </div>
+          </div>
+          <div className="hud-kpi-card">
+            <div className="hud-kpi-label">{tr('ui.fleetKpi.004')}</div>
+            <div className={`hud-kpi-val${avgDurabilityPct < 80 ? ' is-warn' : ''}`}>
+              {avgDurabilityPct}%
+            </div>
+            <div className="hud-kpi-sub">
+              <div className="hud-mini-progress">
+                <div className="hud-mini-fill" style={{ width: `${avgDurabilityPct}%` }} />
+              </div>
+            </div>
+          </div>
+        </div>
         <div className="app-fleet-scroll" ref={fleetScrollRef}>
         {fleetShown.length === 0 ? (
           <div className="app-dim app-note">
@@ -798,7 +945,7 @@ export function ShipPage({
                 })}
           </div>
         ) : (
-        <div className="app-ship-list">
+        <div className="app-ship-list app-fleet-card-grid" data-fleet-card-grid>
           {fleetShown.map(({ uid, ship: shipState, def }) => {
             const dur = durabilityOf(state, uid)
             const armor = shipState.armorPct ?? 1 // P0 承伤持久化：装甲残余（跨场保留）
@@ -812,17 +959,35 @@ export function ShipPage({
             const displayName = shipDisplayName(state, engine.ctx, uid)
             const isRenaming = renameId === uid
             const storable = shipStorable(state, uid) // 入仓逐档判据（core 单点，与引擎同源）
+            const formationOn = combatRosterSet.has(uid)
+            const formationBlocked = isCurrent ? null : shipOperationBlockReason(state, ctx, uid, 'configure')
             return (
               <FleetShipHover key={uid} uid={uid} ship={def} engine={engine} block>
                 <div
-                  className={`app-ship-card is-fleet${isCurrent ? ' is-current' : ''}${switchFxUid === uid ? ' is-switch-pulse' : ''}`}
+                  className={`app-ship-card is-fleet${isCurrent ? ' is-current' : ''}${fleetFormationHistoryRef.current?.has(uid) ? ' is-formation-history' : ''}${combatRosterSet.has(uid) ? ' is-combat-selected' : ''}${switchFxUid === uid ? ' is-switch-pulse' : ''}`}
+                  data-fleet-ship={uid}
                 >
-                {/* 舰影列：固定尺寸、置卡片最左侧；容器过窄时整列不渲染（样式 .app-ship-card.is-fleet） */}
-                {fleetArt ? <FleetArt shipId={def.id} role={def.role} /> : null}
                 <div className="app-ship-main">
+                <div className="app-fleet-card-pickbar">
+                  <button
+                    type="button"
+                    className={`app-btn is-small app-fleet-select-btn${formationOn ? ' is-selected' : ''}`}
+                    disabled={fleetBusy || (!!formationBlocked && !formationOn) || isCurrent}
+                    aria-pressed={formationOn}
+                    data-command-ship={uid}
+                    title={fleetBusy ? tr('ui.command.004') : isCurrent ? tr('ui.ShipPage.010') : formationBlocked && !formationOn ? cmdText(formationBlocked) : formationOn ? tr('ui.Wormhole.024') : tr('ui.Wormhole.137')}
+                    onClick={() => toggleCombatShip(uid)}
+                  >
+                    {formationOn ? <Check size={13} aria-hidden /> : <Plus size={13} aria-hidden />}
+                    <span>{formationOn ? (isCurrent ? tr('ui.Wormhole.091') : tr('ui.command.006')) : tr('ui.Wormhole.204')}</span>
+                  </button>
+                  {isCurrent ? <span className="app-chip">{tr('ui.ShipPage.010')}</span> : isWorking ? <span className="app-chip">{tr('ui.ShipPage.011')}</span> : null}
+                  <MarkStar engine={engine} kind="ships" id={uid} />
+                </div>
+                <FleetArt shipId={def.id} />
                 <div className="app-ship-top">
                   <span className="app-ship-name">
-                    {displayName}
+                    {displayName} <span className="app-ship-callsign" title={`呼号 #${uid.slice(-4).toUpperCase()}`}>#{uid.slice(-4).toUpperCase()}</span>
                     {/* 2026-09-13 船长：子分类徽标（只有虫洞族专属舰船有 `subClass`）；样式复用同级角色 chip */}
                     {def.subClass ? <em className={`app-chip app-role-chip is-${def.role}`}>{shipSubClassText(def.subClass)}</em> : null}
                     <em className={`app-chip app-role-chip is-${shipCategoryKeyOf(def)}`}>{shipRoleText(shipCategoryKeyOf(def))}</em>
@@ -837,12 +1002,6 @@ export function ShipPage({
                     ) : null}
                   </span>
                   <span className="app-ship-top-right">
-                    <MarkStar engine={engine} kind="ships" id={uid} />
-                    {isCurrent ? (
-                      <span className="app-chip">{tr("ui.ShipPage.010")}</span>
-                    ) : isWorking ? (
-                      <span className="app-chip">{tr("ui.ShipPage.011")}</span>
-                    ) : null}
                     <button
                       className="app-btn is-small"
                       title={tr("ui.ShipPage.159", { displayName: displayName })}
@@ -911,6 +1070,7 @@ export function ShipPage({
                     </button>
                   </div>
                 ) : null}
+                <div className="app-fleet-card-cost"><span>{tr('ui.command.003')}</span><strong>{shipCommandCostOf(def)}</strong><span>T{def.tier}</span></div>
                 <div className="app-ship-spec">
                   {tr("ui.ShipPage.019")} {def.cargoM3.toLocaleString('zh-CN')} {tr("ui.ShipPage.020")} {def.cycleSeconds} {tr("ui.ShipPage.021")} {def.oreUnitsPerCycle} {tr("ui.Handbook.012")} {Math.round(def.agility * 100)}%
                 </div>
@@ -1019,6 +1179,51 @@ export function ShipPage({
         </div>
         )}
         </div>
+        {repairFleetOpen ? (
+          <div className="app-modal-mask" onClick={() => setRepairFleetOpen(false)}>
+            <section
+              className="app-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="fleet-repair-title"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="app-modal-head">
+                <strong id="fleet-repair-title">{tr('ui.shipPageFleetRepair.002')}</strong>
+              </div>
+              <div className="app-modal-body">
+                <div>{tr('ui.shipPageFleetRepair.003', { p1: repairFleetPlan.repairableShipIds.length })}</div>
+                <div>{tr('ui.shipPageFleetRepair.004', { p1: repairFleetPlan.fullCount })}</div>
+                <div>{tr('ui.shipPageFleetRepair.005', { p1: repairFleetPlan.blockedCount })}</div>
+                <div>{tr('ui.shipPageFleetRepair.006', { p1: fmtCredits(repairFleetPlan.totalCost) })}</div>
+                <div>{tr('ui.shipPageFleetRepair.007', { p1: fmtCredits(repairFleetBalance) })}</div>
+                {repairShortfall > 0 ? (
+                  <div className="app-warn" role="alert">
+                    {tr('ui.shipPageFleetRepair.008', { p1: fmtCredits(repairShortfall) })}
+                  </div>
+                ) : null}
+                {repairFleetChanged ? (
+                  <div className="app-warn" role="status">
+                    {tr('ui.shipPageFleetRepair.009')}
+                  </div>
+                ) : null}
+                <div className="app-save-actions" style={{ marginTop: 'var(--wui-sp-10)' }}>
+                  <button className="app-btn" onClick={() => setRepairFleetOpen(false)}>
+                    {tr('ui.shipPageFleetRepair.014')}
+                  </button>
+                  <button
+                    className="app-btn is-primary"
+                    disabled={repairFleetPlan.repairableShipIds.length === 0 || repairFleetBalance < repairFleetPlan.totalCost}
+                    title={repairFleetBalance < repairFleetPlan.totalCost ? tr('ui.shipPageFleetRepair.008', { p1: fmtCredits(repairShortfall) }) : undefined}
+                    onClick={confirmFleetRepair}
+                  >
+                    {tr('ui.shipPageFleetRepair.010')}
+                  </button>
+                </div>
+              </div>
+            </section>
+          </div>
+        ) : null}
       </Panel>
       </>
       ) : null}
@@ -1268,7 +1473,6 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
   const [mode, setMode] = useState<AiAssignMode>('mining')
   const [beltId, setBeltId] = useState(engine.belts[0]?.id ?? '')
   const [salvageGalaxyId, setSalvageGalaxyId] = useState('')
-  const [standbyGalaxyId, setStandbyGalaxyId] = useState('')
   const [refineItemId, setRefineItemId] = useState('')
   const [craftBpId, setCraftBpId] = useState('')
   // 2026-09-08 紧急修复（玩家反馈"无法用伽马 AI 核心采矿"）：核心下拉只列有库存类型，
@@ -1353,9 +1557,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
           : tr("ui.ShipPage.132")
         : effMode === 'salvage' && !salvageGalaxyId
           ? tr("ui.ShipPage.133")
-          : effMode === 'standby' && !standbyGalaxyId
-            ? tr("ui.ShipPage.134")
-            : effMode === 'refine' && !effRefineId
+          : effMode === 'refine' && !effRefineId
               ? tr("ui.ShipPage.135")
               : effMode === 'refine' && refineHave <= 0
                 ? tr("ui.ShipPage.169", { p1: selRefine?.name ?? '' })
@@ -1410,12 +1612,9 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
       onToast(tr("ui.ShipPage.175"), true)
       return
     }
-    const r =
-      effMode === 'mining'
-        ? engine.assignAiMiningAt(shipId, effCore, beltId)
-        : effMode === 'salvage'
-          ? engine.assignAiSalvageAt(shipId, effCore, salvageGalaxyId)
-          : engine.assignAiStandbyAt(shipId, effCore, standbyGalaxyId)
+    const r = effMode === 'mining'
+      ? engine.assignAiMiningAt(shipId, effCore, beltId)
+      : engine.assignAiSalvageAt(shipId, effCore, salvageGalaxyId)
     if (!r.ok) onToast(cmdText(r) || tr('ui.ShipPage.196'), true)
     else onToast(tr("ui.ShipPage.176"))
   }
@@ -1512,9 +1711,6 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
             <option value="salvage" disabled={!shipTasksOk}>
               {tr("ui.ShipPage.074")}{shipTasksOk ? '' : tr("ui.ShipPage.073")}
             </option>
-            <option value="standby" disabled={!shipTasksOk}>
-              {tr("ui.ShipPage.075")}{shipTasksOk ? '' : tr("ui.ShipPage.073")}
-            </option>
             <option value="refine">{tr("ui.ShipPage.076")}</option>
             <option value="craft">{tr("ui.ShipPage.077")}</option>
           </select>
@@ -1541,22 +1737,6 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
               <option value="">{tr("ui.ShipPage.078")}</option>
               {[...engine.ctx.galaxies.values()]
                 .filter((g) => isExplored(state, g.id) && engine.anomalies.some((a) => a.galaxyId === g.id))
-                .map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.name}
-                  </option>
-                ))}
-            </select>
-          ) : effMode === 'standby' ? (
-            <select
-              className="app-select"
-              value={standbyGalaxyId}
-              onChange={(e) => setStandbyGalaxyId(e.target.value)}
-              title={tr("ui.ShipPage.079")}
-            >
-              <option value="">{tr("ui.ShipPage.080")}</option>
-              {[...engine.ctx.galaxies.values()]
-                .filter((g) => isExplored(state, g.id))
                 .map((g) => (
                   <option key={g.id} value={g.id}>
                     {g.name}

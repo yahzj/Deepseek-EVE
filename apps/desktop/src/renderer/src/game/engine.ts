@@ -1,3 +1,4 @@
+import { combatRosterOf, encounterCombatRosterOf } from '@whale/core'
 /**
  * 界面侧引擎封装（胶水层）——M1 版。
  *
@@ -41,12 +42,10 @@ import {
   fleeEncounter,
   itemReleased, // 2026-09-13 施工期闸门：未上线内容不进"给玩家看的"目录枚举
   assignAiExpedition,
-  assignAiStandby,
   assignAiMining,
   assignAiSalvage,
   buyAtMarket,
   buyBasicAiCore,
-  buyShip,
   cancelAiTask,
   cancelManufacturing,
   cancelOrder,
@@ -54,7 +53,6 @@ import {
   claimFirstTask,
   cancelStandby,
   changeShip,
-  clearSkillQueue,
   noteLabOpened as markLabOpened,
   createInitialState,
   buySkillLicense,
@@ -109,6 +107,8 @@ import {
   migrateDeprecatedAmmo,
   repairDeprecatedModules,
   repairShip,
+  fleetRepairPlan as fleetRepairPlanCore,
+  repairFleet,
   useOneRepairKit,
   /* 2026-09-30 实验室后续内容：道具「使用」（突触加速剂 / 信号发射器） */
   useSynapticAccelerant,
@@ -134,6 +134,9 @@ import {
   storeShip,
   unstoreShip,
   setBattleDesire,
+  pendingBattleRangeView,
+  confirmBattleRange,
+  cancelBattleRange,
   setMiningAutoCycle,
   setMiningStopAfterTrip,
   simulateOffline,
@@ -171,8 +174,6 @@ import {
   // 导航「任务中心」的推进提醒（2026-09-20 船长令）：判定与记账单点都在 core
   firstTaskNotice,
   firstTasksMarkSeen,
-  courierTaskUnlocked,
-  courierDelivering,
   startCourierDelivery,
   // 主控活动切换的单点判据（2026-09-21 船长令；见 `withActivitySwitch`）
   ACTIVITY_CONFIRM_ID,
@@ -187,7 +188,6 @@ import {
   autoLoopInvasionGalaxy,
   setAutoLoopInvasion,
   advanceAutoLoopInvasion,
-  unfitSlot,
   unfitAt,
   // 2026-09-11 协处理器：CPU 预算总额（含扩容）/ 超载预演 / 原子换装
   cpuOverloadText,
@@ -218,9 +218,6 @@ import {
   bumpIronmanSeq,
   // 2026-09-23 周末入侵（M1-b：引擎每拍推进入侵时间轴）
   weekendTick,
-  // 2026-10-02 船长令「入侵补偿批」：判一次（makeup/beacon）＋ 暗期开一场光环补场（幂等，每拍调）
-  applyWeekendCompensation,
-  openWeekendMakeupIfDue,
   // 2026-09-25 修「快进不刷新入侵」：入侵时钟 = 真实墙钟与游戏模拟墙钟取大者（见周末模块的 weekendClockOf）
   weekendClockOf,
   weekendBountyCardsOf,
@@ -232,7 +229,6 @@ import {
   weekendNoteAssaultDispatch,
   weekendZoneLiveAt,
   weekendFlagshipSpecOf,
-  weekendFlagshipSquadOf,
   weekendStartFlagshipBattle,
   weekendFlagshipPrepView,
   /** 2026-09-25：旗舰战的战斗宿主（心跳变速 / 分桶 / 撤退分流 / 战斗屏都用它） */
@@ -264,7 +260,6 @@ import {
   wormholeHoldCapacityOf,
   wormholeTempUsage,
   wormholeTempStowPiece,
-  wormholeTempDiscardPiece,
   wormholeTempStowAll,
   wormholeTempDiscardAll,
   wormholeTempPending,
@@ -272,9 +267,6 @@ import {
   wormholeNormalizeLegacyTemp,
   // 2026-09-26 玩家报障：误落进物品仓库的装备（插件装货仓再卸货）搬回装备库
   repairMisplacedWarehouseModules,
-  // 2026-09-26 船长两令：读档后削减被抬高的累计声望 ＋ 给打完入侵没拿到黑匣的档补发
-  repairStandingFromBountyProgress,
-  compensateMissingWeekendBlackBox,
   wormholeScanStart,
   wormholeScanStop,
   wormholeScanWindowMs,
@@ -315,7 +307,6 @@ import {
   holdCompact,
   holdDropWithGrab,
   holdSwap,
-  holdMove,
   wormholeGridScan,
   wormholeScanBonusOf,
   wormholeTravelTo,
@@ -352,7 +343,6 @@ import type {
   GameState,
   LairTier,
   MarkKind,
-  ModuleSlot,
   RackSlot,
   RefineRunView,
   UnboxResultRow,
@@ -412,6 +402,7 @@ type Listener = () => void
 
 /** 离线结算前的快照（只抄需要对比的字段，避免大对象） */
 interface OfflineSnapshot {
+  haulingActive: boolean
   gameMs: number
   isk: number
   trained: Record<string, number>
@@ -427,6 +418,8 @@ interface OfflineSnapshot {
 
 /** 离线简报：启动时若有离线结算则生成一次，展示给玩家看 */
 export interface OfflineReport {
+  /** 本次离线汇总，不保存逐场记录。 */
+  combatLines?: string[]
   /** 真实离开时长（墙钟毫秒） */
   wallAwayMs: number
   /** 本次结算推进的游戏时长（毫秒） */
@@ -458,6 +451,7 @@ export interface OfflineReport {
 function snapshotBasics(state: GameState): OfflineSnapshot {
   const cur = state.fleet[state.shipId]
   return {
+    haulingActive: state.hauling.active,
     gameMs: state.gameMs,
     isk: state.wallet.isk,
     trained: { ...state.skills.trained },
@@ -492,6 +486,25 @@ function buildOfflineReport(
 ): OfflineReport | null {
   const settledMs = state.gameMs - before.gameMs
   if (settledMs < 60_000) return null
+  const combatLines: string[] = []
+  const combat = stats?.combat
+  if (combat) {
+    const fighting = state.encounter.active && !!state.encounter.battle ? 1 : 0
+    if (combat.encounters || fighting) combatLines.push(tr('ui.offlineCombat.001', {
+      p1: combat.encounters, p2: combat.wins, p3: combat.defeats, p4: combat.escapes, p5: fighting,
+    }))
+    if (combat.encounters || combat.ammoUsed || combat.kitsUsed || combat.shipsLost) combatLines.push(tr('ui.offlineCombat.002', {
+      p1: combat.ammoUsed, p2: combat.kitsUsed, p3: combat.shipsLost,
+    }))
+    if (before.haulingActive || state.hauling.active || combat.deliveries || combat.stopReason) {
+      combatLines.push(tr('ui.offlineCombat.003', { p1: combat.deliveries, p2: combat.deliveredM3.toLocaleString('zh-CN'), p3: combat.transportIncome.toLocaleString('zh-CN') }))
+      const reasonIds = { arrival: 'ui.offlineCombat.007', interrupted: 'ui.offlineCombat.008', capacity: 'ui.offlineCombat.009', defeat: 'ui.offlineCombat.010', damage: 'ui.offlineCombat.011', loss: 'ui.offlineCombat.012' } as const
+      const statusId = state.hauling.active
+        ? state.encounter.active ? 'ui.offlineCombat.014' : state.hauling.fleetLeg?.returning ? 'ui.offlineCombat.006' : 'ui.offlineCombat.005'
+        : combat.stopReason ? reasonIds[combat.stopReason] : 'ui.offlineCombat.013'
+      combatLines.push(tr('ui.offlineCombat.004', { p1: tr(statusId) }))
+    }
+  }
 
   const itemDeltas = positiveDeltas(before.warehouse, state.warehouse.items)
   // 当前船货仓也可能有离线进账（远征战利品入舱）
@@ -571,6 +584,7 @@ function buildOfflineReport(
 
   return {
     wallAwayMs,
+    combatLines,
     settledMs,
     overflowMs,
     iskDelta: state.wallet.isk - before.isk,
@@ -606,6 +620,7 @@ function offlineReportLogText(r: OfflineReport): string {
   if (r.skillsUp.length > 0) parts.push(tr("ui.engine.015", { p1: r.skillsUp.join(tr("ui.MatterTechTab.017")) }))
   if (r.learnedIn.length > 0) parts.push(tr("ui.engine.016", { p1: r.learnedIn.join(tr("ui.MatterTechTab.017")) }))
   if (r.coreJobs.length > 0) parts.push(tr("ui.engine.017", { p1: r.coreJobs.join('；') }))
+  parts.push(...(r.combatLines ?? []))
   return tr("ui.engine.018", { p1: parts.join('；') })
 }
 
@@ -775,6 +790,7 @@ export class GameEngine {
   private savePaused = false
   private reconnectChoice: ReconnectChoice | null = null
   private reconnectResolving = false
+  private loadResolving = false
   /** 非战斗期推进余额（累计满 1s 才推进一次，保持旧节奏；战斗中改 100ms 切片实时推进） */
   private pendingMs = 0
   /** 心跳周期毫秒（2026-09-08 降频优化：挂机 500ms；战斗/教学加速/远征去程边界保持 100ms） */
@@ -819,12 +835,17 @@ export class GameEngine {
 
   /** 手动开战软确认；首次不动活动/库存，同一缺口再次点击才继续，自动core路径不弹窗。 */
   private withBattleAmmoWarning(key: string, ships: readonly string[], run: () => CommandResult, supplies?: Readonly<Record<string, number>>, preflight?: (snapshot: GameState) => CommandResult, inWormhole = false): CommandResult {
+    const finish = () => {
+      const result = run()
+      if (this.state.pendingBattleRange) { this.notify(); void this.persist() }
+      return result
+    }
     const plan = battleAmmoPreloadPlan(this.state, this.ctx, ships, supplies, inWormhole)
     const short = plan.rows.filter(row => row.missing > 0)
-    if (!short.length) { this.ammoAsk = null; return run() }
+    if (!short.length) { this.ammoAsk = null; return finish() }
     if (preflight) {
       const checked = preflight(structuredClone(this.state))
-      if (!checked.ok && checked.errorId !== ACTIVITY_CONFIRM_ID) { this.ammoAsk = null; return run() }
+      if (!checked.ok && checked.errorId !== ACTIVITY_CONFIRM_ID) { this.ammoAsk = null; return finish() }
     }
     const ammoStock = (stock: Readonly<Record<string, number>>) => Object.entries(stock)
       .filter(([id]) => this.ctx.items.get(id)?.kind === 'ammo').sort(([a], [b]) => a.localeCompare(b))
@@ -837,7 +858,7 @@ export class GameEngine {
     }), this.state.skills.trained, inWormhole ? this.state.wormhole.run?.hold : null])
     const now = Date.now()
     if (this.ammoAsk?.state === this.state && this.ammoAsk.signature === signature && now >= this.ammoAsk.at && now - this.ammoAsk.at <= 30_000) {
-      const result = run()
+      const result = finish()
       if (result.errorId !== ACTIVITY_CONFIRM_ID) this.ammoAsk = null
       return result
     }
@@ -850,7 +871,7 @@ export class GameEngine {
   }
 
   /** 活动切换的两段确认外包装（见 `switchAsk` 的说明）；`key` = 发起切换的那颗按钮 */
-  private withActivitySwitch(key: string, run: () => CommandResult): CommandResult {
+  private withActivitySwitch(key: string, run: (confirmed?: boolean) => CommandResult): CommandResult {
     const first = run()
     if (first.ok || first.errorId !== ACTIVITY_CONFIRM_ID) return first
     const now = Date.now()
@@ -860,6 +881,7 @@ export class GameEngine {
       return first // 首击：把警告交给调用点照旧 toast 出来
     }
     this.switchAsk = null
+    if (key === 'expedition') return run(true)
     if (haltCurrentActivity(this.state) !== null) {
       void this.persist()
       this.notify()
@@ -881,7 +903,7 @@ export class GameEngine {
     const tr = st.skills.trained
     let sk = ''
     for (const k of Object.keys(tr).sort()) sk += `${k}:${tr[k]};`
-    return `${uid}|${f?.defId}|${f?.armorPct ?? 1}|${f?.durability ?? 1}|${JSON.stringify(f?.fitted ?? {})}|${JSON.stringify(f?.droneLoad ?? null)}|${JSON.stringify(f?.ammoPref ?? null)}|${st.resupplyFromWarehouse !== false ? 1 : 0}|${JSON.stringify(st.winRecord ?? null)}|${st.expedition.lairTier ?? 0}|${st.expedition.factionActive === true ? 1 : 0}|${sk}`
+    return `${uid}|${f?.defId}|${JSON.stringify(combatRosterOf(st).map(id => [id, st.fleet[id]]))}|${st.resupplyFromWarehouse !== false ? 1 : 0}|${JSON.stringify(st.winRecord ?? null)}|${st.expedition.lairTier ?? 0}|${st.expedition.factionActive === true ? 1 : 0}|${sk}`
   }
 
   /** 每个空闲心跳只派发一张卡，完整推演由后台执行，主线程不作同步回退。 */
@@ -914,7 +936,7 @@ export class GameEngine {
   /** 按当前局面重排心跳周期（只在需要变速时才重建定时器，避免每拍 clearInterval 抖动） */
   private ensurePump(): void {
     if (this.stopped) return
-    const want = this.wantsFastPump() ? 100 : 500
+    const want = this.wantsFastPump() ? 100 : 250
     if (want === this.pumpMs) return
     this.pumpMs = want
     if (this.intervalId !== null) window.clearInterval(this.intervalId)
@@ -1030,10 +1052,6 @@ export class GameEngine {
     return matterTechBattleSpeedTiers(this.state, this.ctx)
   }
 
-  /** 本会话玩家选的档位（`0` = 还没选过） */
-  wormholeSpeedPickValue(): number {
-    return this.wormholeSpeedPick
-  }
 
   /**
    * **本拍实际生效的档位**（界面高亮同一把尺）：玩家选过且仍解锁 ⇒ 用选的；否则 = 已解锁最高档；
@@ -1112,32 +1130,12 @@ export class GameEngine {
     if (rec) perfHub.recordNotify(bucket, performance.now() - t0)
   }
 
-  /**
-   * **读档后的一次性账本修复**（**2026-09-26 船长两令**；两条都内置幂等，见各自函数头注）：
-   *
-   * ① `repairStandingFromBountyProgress` —— 按**悬赏进度**削减被抬高过的累计声望
-   *    （初始赠送的 40 与老档回填的 40 下界），并把可支配夹到 ≤ 累计；
-   * ② `compensateMissingWeekendBlackBox` —— 给"推送前打完入侵却没拿到黑匣"的档补发 1 枚
-   *    （判据 = 结算信 ＋ 快照实发数 0 ＋ 至今无黑匣/无插件实物）。
-   *
-   * ⏳ **待删 · 但船长 2026-09-27 复令「先不删」**（原令 2026-09-26：「**备注下，明天删除这个修正，
-   * 防止之后出错**」）：这两条都是**一次性修正**，原定 2026-09-27 删，**现日期不再是删除条件**——
-   * 判据改成"**确认受影响的所有档都登录过、修正已生效/补发已落地**"再删（要删先问船长）。
-   * 删除清单见 `expedition.ts` / `weekendComms.ts` 里那两段同名横幅；`git grep 明日删除` 一次列全。
-   *
-   * **位置**：两条都必须在**离线结算之前**跑完 —— ① 决定声望门槛（离线远征/入侵按它判），
-   * ② 决定黑匣是否入仓（离线期间的入库日志顺序也会跟着对）。
-   */
-  private applyLoadLedgerRepairs(state: GameState): void {
-    repairStandingFromBountyProgress(state, this.ctx)
-    compensateMissingWeekendBlackBox(state, this.ctx)
-  }
-
   /** 启动引擎：读档 → 离线结算 → 每秒推进 + 自动保存 */
   async start(): Promise<void> {
     this.stopped = false
     this.winCache.reset()
     let lastSavedWall: number | null = null
+    let rescued = false
     /** 甲：启动体检结果（`main.tsx` 在 start 之前 await 过一次）——不通 ⇒ 本局所有写入直接短路 */
     const guard = saveStorageProbe()
     this.saveUnavailable = guard !== null && !guard.ok
@@ -1145,14 +1143,18 @@ export class GameEngine {
       const raw = await saveBridge.load()
       if (raw !== null) {
         const parsed = loadSaveFile(raw)
-        this.state = parsed.state
-        // V18 口径取消：旧重型弹 1:1 并入通用弹（含挂单撤销）；见 core/equipment.migrateDeprecatedAmmo
-        migrateDeprecatedAmmo(this.state)
-        // 临时空间换账本（2026-09-14）：老档 `run.temp`（一种物品一条的列表）→ `run.tempGrid`（4×8 格子）
-        wormholeNormalizeLegacyTemp(this.state, this.ctx)
-        // 声望两条账的削减 ＋ 入侵黑匣补发（2026-09-26 船长两令；幂等）
-        this.applyLoadLedgerRepairs(this.state)
-        lastSavedWall = parsed.savedAtWallMs
+        const gate = await this.ironmanLoadCheck(raw, parsed.savedAtWallMs, false)
+        if (!gate.ok) {
+          this.savePaused = true
+          addLog(this.state, 'warn', gate.error)
+        } else {
+          if (ironmanOn(parsed.state)) await this.syncIronmanHead(parsed.state)
+          this.state = parsed.state
+          migrateDeprecatedAmmo(this.state)
+          wormholeNormalizeLegacyTemp(this.state, this.ctx)
+          lastSavedWall = parsed.savedAtWallMs
+          rescued = gate.rescue
+        }
       }
     } catch (err) {
       console.error(tr("ui.engine.019"), err)
@@ -1223,7 +1225,8 @@ export class GameEngine {
      */
     if (this.saveWriteState() === 'ok') this.ensureSaveInterval()
 
-    await this.persist()
+    const saved = await this.persist()
+    if (saved && rescued) await saveBridge.ironmanNoteRescue().catch(() => {})
     this.notify()
     this.installWormholeTestApi()
     this.installPlanetaryTestApi()
@@ -1312,7 +1315,7 @@ export class GameEngine {
    * - `ok` = 正常。
    */
   saveWriteState(): 'ok' | 'paused' | 'unavailable' {
-    if (!canWriteSave() || this.reconnectResolving) return 'paused'
+    if (!canWriteSave() || this.reconnectResolving || this.loadResolving) return 'paused'
     if (this.saveUnavailable) return 'unavailable'
     if (this.savePaused) return 'paused'
     return 'ok'
@@ -1364,29 +1367,16 @@ export class GameEngine {
      */
     this.settleWeekendPrize(wallNow)
     /**
-     * **入侵补偿批 · 判定与发放**（**船长 2026-10-02 令**）：每拍一次、**幂等** ——
-     * 第一次判成哪条路就落盘（`weekendCompensation.track`）；`beacon` 那条当场入仓 1 枚信号发射器
-     * ＋ 一条系统日志。位置放在 `weekendTick` **之前**：这样同一拍里补场（`makeup` 那条，
-     * 见下面 `openWeekendMakeupIfDue`）读到的一定是"已判定"的状态。
-     */
-    applyWeekendCompensation(this.state, wallNow)
-    /**
      * ⚠ **第 5 参 = 旗舰战是否正在进行**（**船长 2026-09-27 令**：「**到点的延期到玩家打完1分钟后**」）：
      * 窗口到点那一刻还有没打完的旗舰战 ⇒ `weekendTick` ④ 不结束本场、改为顺延到"打完 + 60 秒"
      * （判据与战斗界面、章鱼停工同源：`weekendFlagshipBattleActive`），顺延期间章鱼人也不判得手。
      */
     const weekend = weekendTick(this.state, this.ctx, wallNow, lastSeenWallMs, weekendFlagshipBattleActive(this.state))
     const endedEvent = weekend.ended ? this.state.weekendEvent : undefined
-    // 本拍刚收场的旧场也要先结清，随后补场开局才能替换事件对象。
+    // 本拍刚收场的事件先结清，避免下一场替换事件对象。
     this.settleWeekendPrize(wallNow)
-    /**
-     * **入侵补偿批 · 补场**（**船长 2026-10-02 令**「**下周三增设一次光环的入侵**」）：放在 `weekendTick`
-     * **之后** —— 本拍刚收场的那一场（`endedAtWallMs` 已写）不该挡住补场；开出时走与常规开局
-     * **同一套**日志与警报演出（下面的 `weekend.started || makeupStarted`）。幂等：开过一次就不再开。
-     */
-    const makeupStarted = openWeekendMakeupIfDue(this.state, this.ctx, wallNow)
     this.refreshAnomaliesView() // 被占星系在界面侧换成入侵舰队（每拍刷新，开销极小）
-    if (weekend.started || makeupStarted) {
+    if (weekend.started) {
       addLog(this.state, 'system', tr('ui.weekend.001'), 'ui.weekend.001')
       /** **入侵警报演出**（船长 2026-09-25 令）：开局立一次性待办 ⇒ 界面放红灯闪烁，演完再弹通讯 */
       this.invasionAlarmPending = 'start'
@@ -1444,7 +1434,7 @@ export class GameEngine {
   private tick(): void {
     if (this.stopped) return
     if (this.wormholeTestEnabled()) { this.winCache.pause(); this.lastRealMs = Date.now(); return }
-    if (!canWriteSave() || this.reconnectResolving) { this.winCache.pause(); this.lastRealMs = Date.now(); return }
+    if (!canWriteSave() || this.reconnectResolving || this.loadResolving) { this.winCache.pause(); this.lastRealMs = Date.now(); return }
     const now = Date.now()
     const dt = Math.max(1, now - this.lastRealMs)
     this.lastRealMs = now
@@ -1516,7 +1506,7 @@ export class GameEngine {
         return // 下一拍起进入 inBattle 泵，余额按 100ms 分片追平
       }
     }
-    if (this.pendingMs >= 1000) {
+    if (this.pendingMs >= this.pumpMs) {
       this.advanceSlice(this.pendingMs)
       this.pendingMs = 0
       this.notify()
@@ -1526,14 +1516,14 @@ export class GameEngine {
       const wasActive = this.state.expedition.active
       const reason = advanceAutoLoopBounty(this.state, this.ctx)
       if (!wasActive && this.state.expedition.active) this.autoSortie = true // 本次由讨伐自动发起
-      if (reason !== null || (!wasActive && this.state.expedition.active)) this.notify()
+      if (reason !== null || (!wasActive && this.state.expedition.active) || this.state.pendingBattleRange) this.notify()
     }
     // 入侵「重复出击」（2026-09-25 船长令）：同一拍推进；出发走手动出击那条路（每场重抽 ＋ 星系覆写）
     if (autoLoopInvasionGalaxy(this.state) !== null) {
       const wasActive = this.state.expedition.active
       const reason = advanceAutoLoopInvasion(this.state, this.ctx, this.wallNowOf())
       if (!wasActive && this.state.expedition.active) this.autoSortie = true
-      if (reason !== null || (!wasActive && this.state.expedition.active)) this.notify()
+      if (reason !== null || (!wasActive && this.state.expedition.active) || this.state.pendingBattleRange) this.notify()
     }
     // 讨伐远征结束后复位标记（下一场手动出击照常自动弹战场）
     if (this.autoSortie && !this.state.expedition.active) this.autoSortie = false
@@ -1550,15 +1540,29 @@ export class GameEngine {
     return (await this.persistSnapshot()) !== null
   }
 
-  /** 只序列化一次；成功后把本次确切文本交给备份，避免后一次保存偷换快照。 */
-  private async persistSnapshot(): Promise<string | null> {
-    if (this.saveWriteState() !== 'ok') return null
+  private saveSequence = 0
+
+  /** 预留并发请求的代次，失败不改变当前游戏的已提交代次。 */
+  private createSaveSnapshot(state: GameState = this.state): { state: GameState; text: string; seq: number } {
+    const out = { ...state, logs: [], ...(state.ironman ? { ironman: { ...state.ironman } } : {}) }
+    if (out.ironman?.on) {
+      out.ironman.seq = Math.max(this.saveSequence ?? 0, out.ironman.seq)
+      this.saveSequence = bumpIronmanSeq(out)
+    }
+    return { state, text: serializeSaveFile(out), seq: out.ironman?.seq ?? 0 }
+  }
+
+  /** 成功后返回本次确切文本；旧请求回执不能降低后续已提交代次。 */
+  private async persistSnapshot(snapshot?: { state: GameState; text: string; seq: number }, loading = false): Promise<string | null> {
+    if (loading ? !canWriteSave() || this.saveUnavailable || this.savePaused : this.saveWriteState() !== 'ok') return null
     try {
-      bumpIronmanSeq(this.state) // 铁人档：每次落盘代次 +1（普通档/已关闭 ⇒ 冻结）
-      const out: GameState = this.state.logs.length > 0 ? { ...this.state, logs: [] } : this.state
-      const text = serializeSaveFile(out)
+      const prepared = snapshot ?? this.createSaveSnapshot()
+      const { text, state, seq } = prepared
       const ok = await saveBridge.save(text)
-      if (ok) void requestPersistentStorage()
+      if (ok) {
+        if (state.ironman?.on) state.ironman.seq = Math.max(state.ironman.seq, seq)
+        void requestPersistentStorage()
+      }
       else noteSaveWriteFailed()
       return ok ? text : null
     } catch (err) {
@@ -1566,6 +1570,23 @@ export class GameEngine {
       noteSaveWriteFailed()
       return null
     }
+  }
+
+  /** 复用重连提交锁：候选写入期间不推进旧状态或追加旧快照。 */
+  private async commitLoadedSave(candidate: GameState, report: OfflineReport | null, rescue: boolean): Promise<boolean> {
+    // 调用方持有全链载入锁；这里只拒绝另一个提交，不能因自身的 loadResolving 拒绝候选。
+    if (!canWriteSave() || this.saveUnavailable || this.savePaused || this.reconnectResolving) return false
+    this.reconnectResolving = true
+    try {
+      if (await this.persistSnapshot(this.createSaveSnapshot(candidate), true) === null) return false
+      this.state = candidate
+      this.offlineReport = report
+      this.lastRealMs = Date.now()
+      this.pendingMs = 0
+      if (rescue) await saveBridge.ironmanNoteRescue().catch(() => {})
+      this.notify()
+      return true
+    } finally { this.reconnectResolving = false }
   }
 
   /* ─────────────── 存档备份 / 恢复（B5） ─────────────── */
@@ -1866,7 +1887,7 @@ export class GameEngine {
     const ev = this.state.weekendEvent!
     this.state.encounter = {
       active: true,
-      shipId: weekendFlagshipSquadOf(this.state)[0] ?? this.state.shipId,
+      shipId: battle.myFleet?.[0]?.shipId ?? this.state.shipId,
       galaxyId: ev.coreId,
       name: spec.name,
       threat: spec.threat,
@@ -1909,6 +1930,8 @@ export class GameEngine {
   }
 
   async restoreBackup(name: string): Promise<{ ok: boolean; error?: string }> {
+    if (this.loadResolving || this.reconnectResolving) return { ok: false, error: tr('ui.engine.027') }
+    this.loadResolving = true
     try {
       const read = await saveBridge.readBackup(name)
       if (!read.ok || read.text === undefined) return { ok: false, error: read.error ?? tr('ui.engine.049') }
@@ -1918,36 +1941,15 @@ export class GameEngine {
       } catch (err) {
         return { ok: false, error: tr("ui.engine.026", { p1: err instanceof Error ? err.message : String(err) }) }
       }
-      const gate = await this.ironmanLoadCheck(read.text, parsed.savedAtWallMs)
+      const gate = await this.ironmanLoadCheck(read.text, parsed.savedAtWallMs, false)
       if (!gate.ok) return { ok: false, error: gate.error }
       await this.syncIronmanHead(parsed.state)
-      const restore = await saveBridge.restore(name)
-      if (!restore.ok) return { ok: false, error: restore.error ?? tr('ui.engine.050') }
-      // 2026-09-09（船长定）：恢复备份与导入/启动同口径——按"档内保存墙钟 → 现在"补算离线进度
-      // （≥60 秒且简报非空则弹出离线简报卡；墙钟在未来则跳过）。日志仍会话级不落盘。
-      const now = Date.now()
-      const wallFrom = parsed.savedAtWallMs
-      if (wallFrom > 0 && now > wallFrom) {
-        const before = snapshotBasics(parsed.state)
-        const stats = newSettleStats()
-        const { overflowMs } = offlineSplit(now - wallFrom, offlineCapMsOf(parsed.state))
-        simulateOffline(parsed.state, wallFrom, now, this.ctx, undefined, { stats })
-        this.offlineReport = buildOfflineReport(before, parsed.state, this.ctx, now - wallFrom, overflowMs, stats)
-        if (this.offlineReport !== null) {
-          addLog(parsed.state, 'system', offlineReportLogText(this.offlineReport))
-        }
-      } else {
-        this.offlineReport = null
-      }
-      this.state = parsed.state
-      // 2026-09-08 船长定：日志会话级（写盘剥离）——恢复备份不做强制清空，本局日志接续显示
-      const saved = await this.persist() // 落盘（墙钟锚 = 现在 → 下次启动不会重复结算）
-      if (!saved) return { ok: false, error: tr("ui.engine.027") }
-      this.notify()
-      return { ok: true }
+      const report = this.prepareImportedState(parsed.state, parsed.savedAtWallMs)
+      return await this.commitLoadedSave(parsed.state, report, gate.rescue)
+        ? { ok: true } : { ok: false, error: tr('ui.engine.027') }
     } catch (err) {
       return { ok: false, error: String(err) }
-    }
+    } finally { this.loadResolving = false }
   }
 
   /* ─────────────── 存档导入 / 导出（外部文件；2026-09-08 船长定） ─────────────── */
@@ -1961,10 +1963,11 @@ export class GameEngine {
   /** 用户手势内先申请文件权限，授权本身不允许写入；不同内容一律交给玩家选择。 */
   async reconnectLocalSave(): Promise<{ ok: boolean; choice?: ReconnectChoice; error?: string }> {
     const api = saveBridge.saveFile
-    if (!api || this.reconnectResolving) return { ok: false }
-    const file = await api.reconnect()
-    if (!file.ok || file.text === undefined || file.token === undefined) return { ok: false, error: file.error }
+    if (!api || this.reconnectResolving || this.loadResolving) return { ok: false }
+    this.loadResolving = true
     try {
+      const file = await api.reconnect()
+      if (!file.ok || file.text === undefined || file.token === undefined) return { ok: false, error: file.error }
       const parsed = loadSaveFile(file.text)
       const browser = await saveBridge.load()
       const current = this.currentSaveText()
@@ -1979,6 +1982,7 @@ export class GameEngine {
       this.reconnectChoice = choice
       return { ok: true, choice }
     } catch (err) { return { ok: false, error: tr('ui.engine.028', { p1: String(err) }) } }
+    finally { this.loadResolving = false }
   }
 
   private reconnectChanged(file: SaveFileReconnectResult): { ok: boolean; choice?: ReconnectChoice; error?: string } {
@@ -1999,7 +2003,8 @@ export class GameEngine {
   }> {
     const api = saveBridge.saveFile
     const selected = this.reconnectChoice
-    if (!api || !selected || this.reconnectResolving || !canWriteSave()) return { ok: false }
+    if (!api || !selected || this.reconnectResolving || this.loadResolving || !canWriteSave()) return { ok: false }
+    this.loadResolving = true
     this.reconnectResolving = true
     try {
       let candidate: GameState
@@ -2048,15 +2053,17 @@ export class GameEngine {
       this.reconnectChoice = null
       return { ok: true, loaded: choice === 'file' }
     } catch (err) { return { ok: false, error: String(err) } }
-    finally { this.reconnectResolving = false }
+    finally { this.reconnectResolving = false; this.loadResolving = false }
   }
 
   /** 沿现有导入链准备候选，返回简报；不提前修改当前内存。 */
   private prepareImportedState(imported: GameState, wallFrom: number): OfflineReport | null {
     repairDeprecatedModules(imported, this.ctx)
     migrateDeprecatedAmmo(imported)
+    wormholeNormalizeLegacyTemp(imported, this.ctx)
+    repairMisplacedWarehouseModules(imported, this.ctx)
+    repairHoldForbiddenCargo(imported, this.ctx)
     imported.logs = []
-    this.applyLoadLedgerRepairs(imported)
     const now = Date.now()
     if (wallFrom <= 0 || now <= wallFrom) return null
     const before = snapshotBasics(imported)
@@ -2073,9 +2080,22 @@ export class GameEngine {
    *  若先 `await persist()` 再调桥，iOS Safari 会因"已不是用户手势"静默拦掉（表现为点了没反应）。 */
   async exportSaveToFile(): Promise<{ ok: boolean; path?: string; shared?: boolean; canceled?: boolean; error?: string }> {
     try {
-      const r = await saveBridge.exportSaveToFile(this.currentSaveText())
-      void this.persist() // 落盘最新进度（与备份同口径）；不阻塞导出
+      if (this.saveWriteState() !== 'ok') return await saveBridge.exportSaveToFile(this.currentSaveText())
+      const snapshot = this.createSaveSnapshot()
+      // 同步发起分享/下载保留用户手势；主档立即入队，导出完成后不再创建更高代次。
+      const exported = saveBridge.exportSaveToFile(snapshot.text)
+      const [r] = await Promise.all([exported, this.persistSnapshot(snapshot)])
       return r
+    } catch (err) {
+      return { ok: false, error: String(err) }
+    }
+  }
+
+  /** 云端上传只取本地保存桥已确认写入的确切快照。 */
+  async exportCloudSave(): Promise<{ ok: boolean; text?: string; error?: string }> {
+    try {
+      const text = await this.persistSnapshot()
+      return text === null ? { ok: false, error: tr('ui.engine.027') } : { ok: true, text }
     } catch (err) {
       return { ok: false, error: String(err) }
     }
@@ -2095,35 +2115,42 @@ export class GameEngine {
   /** 从外部文件导入存档：**不备份当前档**（2026-09-17 船长）→ 校验可解析 → 按时间差补齐离线进度
    * （与正常启动同口径：repair 迁移 + simulateOffline + 离线简报）→ 落盘 → 热替换内存 */
   async importSaveFromFile(): Promise<{ ok: boolean; canceled?: boolean; error?: string }> {
+    if (this.loadResolving || this.reconnectResolving) return { ok: false, error: tr('ui.engine.027') }
+    this.loadResolving = true
     try {
       const picked = await saveBridge.pickImportSave()
       if (!picked.ok) return { ok: false, canceled: picked.canceled === true, error: picked.error }
-      const text = picked.text ?? ''
-      let parsed: ReturnType<typeof loadSaveFile>
-      try {
-        parsed = loadSaveFile(text)
-      } catch (err) {
-        return { ok: false, error: tr("ui.engine.028", { p1: err instanceof Error ? err.message : String(err) }) }
-      }
-      const imported = parsed.state
-      /**
-       * ⚠ **2026-09-17 船长**：「**导入或者恢复存档时，不要备份现有存档**」⇒ 原先这里会
-       * `persist()` ＋ `saveBridge.backup()` 给当前档留一份"防误操作"备份，现已删除（与恢复那条同口径）。
-       * 要留退路请在导入前点「备份当前档」——手动备份与备份列表功能照旧。
-       */
-      // 铁人档：装载闸门（见 `ironmanLoadCheck`）
-      const gate = await this.ironmanLoadCheck(text, parsed.savedAtWallMs)
-      if (!gate.ok) return { ok: false, error: gate.error }
-      await this.syncIronmanHead(imported)
-      this.offlineReport = this.prepareImportedState(imported, parsed.savedAtWallMs)
-      this.state = imported
-      const saved = await this.persist() // 落盘（写盘剥离日志；墙钟锚 = 现在 → 下次启动不会重复结算）
-      if (!saved) return { ok: false, error: tr("ui.engine.027") }
-      this.notify()
-      return { ok: true }
+      return await this.importSaveText(picked.text ?? '')
     } catch (err) {
       return { ok: false, error: String(err) }
+    } finally { this.loadResolving = false }
+  }
+
+  async importCloudSave(text: string): Promise<{ ok: boolean; error?: string }> {
+    if (this.loadResolving || this.reconnectResolving) return { ok: false, error: tr('ui.engine.027') }
+    this.loadResolving = true
+    try {
+      return await this.importSaveText(text)
+    } catch (err) {
+      return { ok: false, error: String(err) }
+    } finally { this.loadResolving = false }
+  }
+
+  /** 调用方持有全链载入锁；不自动备份，候选写成功后才替换内存。 */
+  private async importSaveText(text: string): Promise<{ ok: boolean; error?: string }> {
+    let parsed: ReturnType<typeof loadSaveFile>
+    try {
+      parsed = loadSaveFile(text)
+    } catch (err) {
+      return { ok: false, error: tr('ui.engine.028', { p1: err instanceof Error ? err.message : String(err) }) }
     }
+    const gate = await this.ironmanLoadCheck(text, parsed.savedAtWallMs, false)
+    if (!gate.ok) return { ok: false, error: gate.error }
+    const imported = parsed.state
+    await this.syncIronmanHead(imported)
+    const report = this.prepareImportedState(imported, parsed.savedAtWallMs)
+    return await this.commitLoadedSave(imported, report, gate.rescue)
+      ? { ok: true } : { ok: false, error: tr('ui.engine.027') }
   }
 
   /** 删除某份备份（只删备份文件，不影响当前档） */
@@ -2219,15 +2246,6 @@ export class GameEngine {
     return ok
   }
 
-  /** 清空训练队列 */
-  clearQueue(): number {
-    const count = clearSkillQueue(this.state)
-    if (count > 0) {
-      void this.persist()
-      this.notify()
-    }
-    return count
-  }
 
   /**
    * **记下"第一次进实验室页面"**（**2026-09-30 船长令**：第一次进实验室给玩家发一封黑市通讯）。
@@ -2472,15 +2490,6 @@ export class GameEngine {
     return this.sellCargo(itemId)
   }
 
-  /** 购买新舰船 */
-  buyShipAt(shipId: string): CommandResult {
-    const result = buyShip(this.state, shipId, this.ctx)
-    if (result.ok) {
-      void this.persist()
-      this.notify()
-    }
-    return result
-  }
 
   /** 学习蓝图书（消耗一本 → 永久学会配方） */
   learnBlueprintAt(blueprintId: string): CommandResult {
@@ -2530,6 +2539,21 @@ export class GameEngine {
     void this.persist()
     this.notify()
     return result
+  }
+
+  /**
+   * 交易所资金本地对账（2026-11-04 船长定案：存档币以本地为准，线上只记交易所账）。
+   * delta < 0 = 入金扣本地 ISK；delta > 0 = 出金/失败退款加回本地 ISK。
+   * 返回 false 表示非法金额或本地余额不足（入金前必须先扣成功再请求服务器）。
+   */
+  exchangeWalletDelta(delta: number): boolean {
+    if (!Number.isFinite(delta) || delta === 0) return false
+    const next = this.state.wallet.isk + delta
+    if (next < 0) return false
+    this.state.wallet.isk = next
+    void this.persist()
+    this.notify()
+    return true
   }
 
   /** 市价买入商品（默认 1 件；矿石/矿物传数量）。
@@ -2720,25 +2744,7 @@ export class GameEngine {
     })
   }
 
-  /** 把装备库里的装备装到对应槽位 */
-  fitModuleAt(moduleId: string): CommandResult {
-    const result = fitModule(this.state, moduleId, this.ctx)
-    if (result.ok) {
-      void this.persist()
-      this.notify()
-    }
-    return result
-  }
 
-  /** 卸下某槽位的装备（放回装备库；旧六槽语义的兼容入口） */
-  unfitSlotAt(slot: ModuleSlot): boolean {
-    const ok = unfitSlot(this.state, slot)
-    if (ok) {
-      void this.persist()
-      this.notify()
-    }
-    return ok
-  }
 
   /** V18：把装备装到 指定槽类+位序（shipId 缺省 = 当前驾驶船；2026-09-05 装配页可装配非驾驶船） */
   fitModuleTo(moduleId: string, rack: RackSlot, index: number, shipId?: string): CommandResult {
@@ -2908,17 +2914,18 @@ export class GameEngine {
    * `foeGalaxyId` = **界面上被点的那一行的星系**（常驻悬赏/星图列表都要传；不传 = 老口径按卡 id 反查）。
    */
   startExpeditionAt(anomalyId: string, foeGalaxyId?: string): CommandResult {
-    return this.withBattleAmmoWarning(`expedition:${anomalyId}:${foeGalaxyId ?? ''}`, [this.state.shipId], () => this.startExpeditionReady(anomalyId, foeGalaxyId), undefined,
+    return this.withBattleAmmoWarning(`expedition:${anomalyId}:${foeGalaxyId ?? ''}`, combatRosterOf(this.state), () => this.startExpeditionReady(anomalyId, foeGalaxyId), undefined,
       snapshot => startExpedition(snapshot, this.weekendDispatchOf(anomalyId, foeGalaxyId).cardId, this.ctx, { foeGalaxyId: this.foeGalaxyOf(anomalyId, foeGalaxyId) }))
   }
 
   private startExpeditionReady(anomalyId: string, foeGalaxyId?: string): CommandResult {
-    return this.withActivitySwitch('expedition', () => {
+    return this.withActivitySwitch('expedition', confirmed => {
       const galaxyId = this.foeGalaxyOf(anomalyId, foeGalaxyId)
       const dispatch = this.weekendDispatchOf(anomalyId, foeGalaxyId)
       const result = startExpedition(this.state, dispatch.cardId, this.ctx, {
         ...(galaxyId !== undefined ? { foeGalaxyId: galaxyId } : {}),
         ...(dispatch.rewardIskOverride !== undefined ? { rewardIskOverride: dispatch.rewardIskOverride } : {}),
+        ...(confirmed ? { confirmActivitySwitch: true } : {}),
       })
       if (result.ok) {
         /** 抽过才计数（`weekendDispatchOf` 是纯的、不改计数）⇒ 下一次出击换一支 */
@@ -2932,7 +2939,7 @@ export class GameEngine {
 
   /** T4 延后项：采矿中直接转战悬赏（UI 两步确认后调用；采矿终止、货随船、从矿带星系出发） */
   startExpeditionFromMiningAt(anomalyId: string, foeGalaxyId?: string): CommandResult {
-    return this.withBattleAmmoWarning(`mining-expedition:${anomalyId}:${foeGalaxyId ?? ''}`, [this.state.shipId], () => this.startExpeditionFromMiningReady(anomalyId, foeGalaxyId), undefined,
+    return this.withBattleAmmoWarning(`mining-expedition:${anomalyId}:${foeGalaxyId ?? ''}`, combatRosterOf(this.state), () => this.startExpeditionFromMiningReady(anomalyId, foeGalaxyId), undefined,
       snapshot => startExpeditionFromMining(snapshot, anomalyId, this.ctx, { foeGalaxyId: this.foeGalaxyOf(anomalyId, foeGalaxyId) }))
   }
 
@@ -2950,15 +2957,15 @@ export class GameEngine {
   /** 赏金任务·窝点出击（2026-09-10 船长定）：目标 = 派生窝点，档位随任务锁定
    *  （威胁/波次/僚机按档位强化、胜利后按窝点口径结算酬金与稀有残骸）。 */
   startLairExpeditionAt(anomalyId: string, lairTier: LairTier, fromMining = false): CommandResult {
-    return this.withBattleAmmoWarning(`lair:${anomalyId}:${lairTier}:${fromMining}`, [this.state.shipId], () => this.startLairExpeditionReady(anomalyId, lairTier, fromMining), undefined,
+    return this.withBattleAmmoWarning(`lair:${anomalyId}:${lairTier}:${fromMining}`, combatRosterOf(this.state), () => this.startLairExpeditionReady(anomalyId, lairTier, fromMining), undefined,
       snapshot => (fromMining ? startExpeditionFromMining : startExpedition)(snapshot, anomalyId, this.ctx, { lairTier, foeGalaxyId: this.foeGalaxyOf(anomalyId) }))
   }
 
   private startLairExpeditionReady(anomalyId: string, lairTier: LairTier, fromMining = false): CommandResult {
-    return this.withActivitySwitch('expedition', () => {
+    return this.withActivitySwitch('expedition', confirmed => {
       const result = fromMining
         ? startExpeditionFromMining(this.state, anomalyId, this.ctx, { lairTier, foeGalaxyId: this.foeGalaxyOf(anomalyId) })
-        : startExpedition(this.state, anomalyId, this.ctx, { lairTier, foeGalaxyId: this.foeGalaxyOf(anomalyId) })
+        : startExpedition(this.state, anomalyId, this.ctx, { lairTier, foeGalaxyId: this.foeGalaxyOf(anomalyId), ...(confirmed ? { confirmActivitySwitch: true } : {}) })
       if (result.ok) {
         void this.persist()
         this.notify()
@@ -3122,7 +3129,7 @@ export class GameEngine {
   }
 
   rememberPreparationSquad(kind: import('@whale/core').PreparationSquadKind, squad: readonly string[]): void {
-    if (notePreparationSquad(this.state, kind, squad)) void this.persist()
+    if (notePreparationSquad(this.state, kind, squad, this.ctx)) { this.notify(); void this.persist() }
   }
 
   wormholePrepareFromTemplate(shipIds: readonly string[], request: WormholePreparationRequest, id: string) {
@@ -3170,6 +3177,7 @@ export class GameEngine {
 
   wormholeResolveEvent(action: import('@whale/core').WormholeEventAction, expected?: import('@whale/core').WormholeEventPreview): import('@whale/core').WormholeEventPreview {
     const result = wormholeResolveEvent(this.state, this.ctx, action, expected)
+    if (this.state.pendingBattleRange) { this.notify(); void this.persist() }
     if (result.ok) { void this.persist(); this.notify() }
     return result
   }
@@ -3531,6 +3539,7 @@ export class GameEngine {
       { q, r },
       { confirmUnknown, confirmIntercept, deferAmbush: true, confirmLeaveCargo },
     )
+    if (this.state.pendingBattleRange) { this.notify(); void this.persist() }
     if (res.ok) {
       this.wormholeTickNow()
       void this.persist()
@@ -3566,6 +3575,7 @@ export class GameEngine {
   private wormholeActivateReady(): CommandResult {
     // 遗迹收尾战**先提示、玩家确认后再开打**（船长 2026-09-13）⇒ 界面这条走 defer
     const r = wormholeActivateAt(this.state, this.ctx, undefined, { deferRuinsBattle: true })
+    if (this.state.pendingBattleRange) { this.notify(); void this.persist() }
     if (r.ok) {
       this.wormholeTickNow()
       void this.persist()
@@ -3591,17 +3601,6 @@ export class GameEngine {
     return { ok: true, error: r.unplaced.length > 0 ? tr("ui.engine.040", { p1: r.unplaced.length }) : undefined }
   }
 
-  /** 虫洞：**移动一件形状件**（拖拽落点；非法落点 ⇒ 拒绝、位置不变） */
-  wormholeHoldMove(id: string, x: number, y: number): CommandResult {
-    const run = this.state.wormhole.run
-    if (!run?.hold) return { ok: false, error: tr("ui.engine.039") }
-    const r = holdMove(run.hold, id, x, y, wormholeHoldCapacityOf(this.state, this.ctx))
-    if (r.ok) {
-      void this.persist()
-      this.notify()
-    }
-    return { ok: r.ok, error: r.error }
-  }
 
   /**
    * 虫洞：**按抓取偏移落件**（界面拖拽的真正入口）。
@@ -3721,15 +3720,6 @@ export class GameEngine {
     return { ok: r.ok, error: r.error }
   }
 
-  /** 虫洞：**丢弃临时空间里的一件**（手动；与货仓抛货同一把尺） */
-  wormholeTempDiscard(id: string): CommandResult {
-    const r = wormholeTempDiscardPiece(this.state, this.ctx, id)
-    if (r.ok) {
-      void this.persist()
-      this.notify()
-    }
-    return { ok: r.ok, error: r.error }
-  }
 
   /** 虫洞：**临时空间全部放回货仓**（逐件尝试 ⇒ 报告放不下的那几件） */
   wormholeTempStowAll(): { ok: boolean; moved: number; stuck: string[] } {
@@ -3969,6 +3959,22 @@ export class GameEngine {
     return result
   }
 
+  battleRangePending() { return pendingBattleRangeView(this.state, this.ctx) }
+  confirmBattleRange(desireM: number): CommandResult {
+    const intent = this.state.pendingBattleRange?.intent
+    const result = confirmBattleRange(this.state, this.ctx, desireM, this.wallNowOf())
+    // 确认重放不经过自动出击心跳；成功后在通知界面前恢复本场来源。
+    if (result.ok && intent?.kind === 'expedition') this.autoSortie = intent.autoRepair === true
+    this.notify()
+    void this.persist()
+    return result
+  }
+  cancelBattleRange(): void {
+    cancelBattleRange(this.state)
+    this.notify()
+    void this.persist()
+  }
+
   /** 切换到船坞里的另一艘船 */
   changeShipAt(shipId: string): CommandResult {
     const result = changeShip(this.state, shipId, this.ctx)
@@ -3980,8 +3986,8 @@ export class GameEngine {
   }
 
   /** 2026-09-09 长途运输：开始（任选一条两端点航线；不要求当前停靠在端点——引擎先飞就位段） */
-  startHaulingAt(aSiteId: string | null, bSiteId: string | null): CommandResult {
-    const result = startHauling(this.state, aSiteId, bSiteId, this.ctx)
+  startHaulingAt(aSiteId: string | null, bSiteId: string | null, requestedM3?: number): CommandResult {
+    const result = startHauling(this.state, aSiteId, bSiteId, this.ctx, requestedM3)
     if (result.ok) {
       void this.persist()
       this.notify()
@@ -3997,6 +4003,14 @@ export class GameEngine {
       this.notify()
     }
     return result
+  }
+
+  stopHaulingAtArrival(): void {
+    if (this.state.hauling.fleetLeg) {
+      this.state.hauling.fleetLeg.stopAtArrival = true
+      void this.persist()
+      this.notify()
+    }
   }
 
   cancelPendingStationActivityNow(): boolean {
@@ -4069,18 +4083,9 @@ export class GameEngine {
     return result
   }
 
-  /** B1.5：指派副船前往星系掩护巡逻（占名额，可取消召回） */
-  assignAiStandbyAt(shipId: string, coreType: string, galaxyId: string): CommandResult {
-    const result = assignAiStandby(this.state, shipId, coreType as never, galaxyId, this.ctx)
-    if (result.ok) {
-      void this.persist()
-      this.notify()
-    }
-    return result
-  }
   /** B1 低安遭遇：迎战（进入实时战斗，自动打完） */
   fightEncounterNow(): CommandResult {
-    return this.withBattleAmmoWarning(`encounter:${this.state.encounter.invitedAtGameMs}`, [this.state.encounter.shipId ?? this.state.shipId], () => this.fightEncounterReady(), undefined,
+    return this.withBattleAmmoWarning(`encounter:${this.state.encounter.invitedAtGameMs}`, encounterCombatRosterOf(this.state), () => this.fightEncounterReady(), undefined,
       snapshot => fightEncounter(snapshot, this.ctx))
   }
 
@@ -4123,7 +4128,7 @@ export class GameEngine {
   /** T8：悬赏重复清剿开关（落档）；null = 停止 */
   bountyLoopAt(anomalyId: string | null): CommandResult {
     if (anomalyId === null) return this.bountyLoopReady(null)
-    return this.withBattleAmmoWarning(`bounty-loop:${anomalyId}`, [this.state.shipId], () => this.bountyLoopReady(anomalyId), undefined,
+    return this.withBattleAmmoWarning(`bounty-loop:${anomalyId}`, combatRosterOf(this.state), () => this.bountyLoopReady(anomalyId), undefined,
       snapshot => setAutoLoopBounty(snapshot, this.ctx, anomalyId))
   }
 
@@ -4142,7 +4147,7 @@ export class GameEngine {
    */
   invasionLoopAt(galaxyId: string | null): CommandResult {
     if (galaxyId === null) return this.invasionLoopReady(null)
-    return this.withBattleAmmoWarning(`invasion-loop:${galaxyId}`, [this.state.shipId], () => this.invasionLoopReady(galaxyId), undefined,
+    return this.withBattleAmmoWarning(`invasion-loop:${galaxyId}`, combatRosterOf(this.state), () => this.invasionLoopReady(galaxyId), undefined,
       snapshot => setAutoLoopInvasion(snapshot, this.ctx, galaxyId, this.wallNowOf()))
   }
 
@@ -4281,10 +4286,6 @@ export class GameEngine {
     firstTasksMarkSeen(this.state)
   }
 
-  /** 快递任务当前是否解锁（已建成任一副空间站——stage ≥ 档位数） */
-  courierTasksUnlocked(): boolean {
-    return courierTaskUnlocked(this.state, this.ctx)
-  }
 
   /**
    * **领取次数链奖金**（任务中心「第一次」卡片上的领奖；2026-09-17 教程重做批）。
@@ -4350,10 +4351,6 @@ export class GameEngine {
     return result
   }
 
-  /** 是否正在快递投送（在途；其余出航作业在此期间被拒绝） */
-  isCourierDelivering(): boolean {
-    return courierDelivering(this.state)
-  }
 
   /**
    * 2026-09-10 修复（船长定位：重复清剿中"退出战场"会打断连击）：
@@ -4476,6 +4473,21 @@ export class GameEngine {
   /** 维修指定船（满血） */
   repairShipAt(shipId: string): CommandResult {
     const result = repairShip(this.state, shipId, this.ctx)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** 当前舰队可执行的批量维修计划。 */
+  fleetRepairPlan(): ReturnType<typeof fleetRepairPlanCore> {
+    return fleetRepairPlanCore(this.state, this.ctx)
+  }
+
+  /** 批量维修舰队；失败时保持界面和存档不变。 */
+  repairFleetAt(): ReturnType<typeof repairFleet> {
+    const result = repairFleet(this.state, this.ctx)
     if (result.ok) {
       void this.persist()
       this.notify()

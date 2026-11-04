@@ -1,0 +1,16 @@
+.app-haul-list .app-haul-line { flex-wrap: wrap; }
+.app-haul-route { min-width: 0; overflow-wrap: anywhere; }
+.app-haul-card-stats, .app-haul-estimate { margin: 0; display: grid; gap: var(--wui-sp-6); }
+.app-haul-card-stats { grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); }
+.app-haul-card-stats dt, .app-haul-estimate dt { color: rgb(var(--wui-text-dim)); }
+.app-haul-card-stats dd, .app-haul-estimate dd { margin: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.app-haul-modal { width: 480px; border-radius: var(--wui-sp-8); }
+.app-haul-form { display: flex; flex-direction: column; gap: var(--wui-sp-8); }
+.app-haul-form input { width: 100%; min-width: 0; box-sizing: border-box; }
+.app-haul-presets, .app-haul-modal-actions { display: flex; flex-wrap: wrap; gap: var(--wui-sp-8); }
+.app-haul-modal-actions { justify-content: flex-end; }
+.app-haul-error { min-height: 1.4em; }
+.app-haul-estimate > div { display: flex; justify-content: space-between; gap: var(--wui-sp-8); flex-wrap: wrap; }
+.app-haul-estimate dt { display: flex; align-items: center; gap: var(--wui-sp-4); }
+.app-haul-estimate .app-haul-hourly dt { color: inherit; }
+.app-haul-form :is(input, button):focus-visible { outline: 2px solid rgb(var(--wui-accent)); outline-offset: 2px; }

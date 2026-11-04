@@ -102,12 +102,14 @@ describe('鱼雷舰强化批：数值落地 + 真进战斗公式', () => {
     // 2026-09-17：E 构件鱼雷舰归装甲舰（档位单发加成已移除）——**2026-09-24 船长裁决改判**：
     // 「**鱼雷舰排除出装甲舰不得带档位单发加成的范围内。**」⇒ 本舰按武装舰口径给：档位 T1 0.15 ＋ 子分类 0.2
     // 亡军鱼雷舰是武装舰、照旧 = 档位 T3 0.25 ＋ 子分类 0.2
-    expect(TORP_E.powerBonus, '鱼雷舰豁免装甲舰限制（档位 T1 0.15 ＋ 子分类 0.2 = 0.35）').toBe(0.35)
+    expect(TORP_E.powerBonus).toBe(.25)
+    expect(TORP_E.weaponFamilyBonus?.explosive).toBe(.3)
     expect(TORP_E.hitBonus).toBe(0.17) // 不动
     expect(TORP_E.evasion).toBe(0.105) // 不动
     expect(TORP_E.slots).toEqual({ high: 4, mid: 2, low: 2 }) // 已在线上，不动
 
-    expect(TORP_G.powerBonus, '武装舰 T3 档位 0.25 ＋ 子分类鱼雷舰 0.2').toBe(0.45)
+    expect(TORP_G.powerBonus).toBe(.25)
+    expect(TORP_G.weaponFamilyBonus?.explosive).toBe(.4)
     expect(TORP_G.hitBonus).toBe(0.11) // 0.21 − 0.10（代价）
     expect(TORP_G.evasion).toBe(0.005) // 0.105 − 0.10（代价：界面显示 1%）
     expect(TORP_G.slots).toEqual({ high: 6, mid: 4, low: 2 })
@@ -125,8 +127,8 @@ describe('鱼雷舰强化批：数值落地 + 真进战斗公式', () => {
       return base.shotDmg ?? -1 // WeaponSpec.shotDmg 为可选字段；本路径（炮台）必填，-1 让缺失时断言直接红
     }
     // 零技能、零装配 ⇒ dmgScale = (1+火力) ⇒ 基础舰炮基数 8
-    expect(baseShot(eUid)).toBe(Math.round(8 * 1.35)) // 鱼雷舰口径 0.35（2026-09-24 裁决后）⇒ 11
-    expect(baseShot(gUid)).toBe(Math.round(8 * 1.45)) // 武装舰 T3 0.25 ＋ 鱼雷舰 0.2 ⇒ 12
+    expect(baseShot(eUid)).toBe(Math.ceil(8 * 1.25))
+    expect(baseShot(gUid)).toBe(Math.ceil(8 * 1.25))
   })
 
   it('亡军的命中/回避代价真进战斗规格', () => {
@@ -145,8 +147,8 @@ describe('鱼雷舰强化批：数值落地 + 真进战斗公式', () => {
     const base = bal.basePower + bal.powerPerLevel * 0 // 零技能
     const eUid = addShipToFleet(state, 'sh-wh-e-frigate')
     const gUid = addShipToFleet(state, 'sh-wh-g-cruiser')
-    expect(calcPower(state, ctx, eUid)).toBe(Math.round(base * 1.35)) // 鱼雷舰口径 0.35（2026-09-24 裁决后）
-    expect(calcPower(state, ctx, gUid)).toBe(Math.round(base * 1.45)) // 武装舰 T3 0.25 ＋ 鱼雷舰 0.2
+    expect(calcPower(state, ctx, eUid)).toBe(Math.round(base * 1.25))
+    expect(calcPower(state, ctx, gUid)).toBe(Math.round(base * 1.25))
   })
 })
 

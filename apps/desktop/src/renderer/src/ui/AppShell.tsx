@@ -34,6 +34,7 @@ import { ActivityBarClassic } from '../panels/ActivityBarClassic'
 import { AnnouncementHub } from '../panels/Announcements'
 import { DebugButton } from '../panels/DebugPanel'
 import { Glyph } from './Glyphs'
+import { Book as CarbonBook, Settings as CarbonSettings } from '@carbon/icons-react'
 import { ICO_TONES, NAV_TONES } from './tones'
 import { MoneyFit } from './MoneyFit'
 import { ShipStatusWin } from './ShipStatusWin'
@@ -45,7 +46,7 @@ import type { PageKey } from '../App'
 import { tr, useL10n } from '../i18n/locale'
 import { fmtDate, fmtDuration, fmtDurationShort } from '../i18n/fmt'
 
-export type LayoutKind = 'modern' | 'classic'
+export type LayoutKind = 'modern' | 'classic' | 'cosmic'
 
 interface ShellNavItem { key: string; label: string; icon: string; onSelect?: () => void }
 
@@ -315,6 +316,7 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
               }}
               title={tr("ui.App.061")}
             >
+              <span className="app-ico"><CarbonBook size={14} fill="currentColor" /></span>
               {t('ui.App.028')}
             </button>
             <button
@@ -325,6 +327,7 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
               }}
               title={tr("ui.App.062")}
             >
+              <span className="app-ico"><CarbonSettings size={14} fill="currentColor" /></span>
               {t('ui.App.010')}
             </button>
             {/**
@@ -344,7 +347,7 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
               ⇒ 舰船窗在上、活动栏在下，同处左侧一列。
               先前把舰船窗放进主区上方的信息带，与船长要求不符，此处改回。 */}
           <div className="app-left-col">
-              <ShipStatusWin engine={engine} restore={windowRestore} />
+              <ShipStatusWin engine={engine} restore={windowRestore} onNavigateShip={() => changePage('ship')} />
           <ActivityBar
           engine={engine}
           onToast={showToast}
@@ -431,11 +434,11 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
          * 其余 9 项全挤到右组（无头实测：左组 children=1 且是空占位、右组 children=7）。
          * 现改为**把出港单独摘出、其余项按数量对半分成左右两组** ⇒ 与它在数组里的位置无关。
          */
+        /** 稳定槽位分槽：左组固定内政资产，右组固定成长社会，杜绝跨出港瞬移 */
+        const LEFT_KEYS = new Set(['ship', 'fit', 'items', 'market', 'industry', 'industryHud'])
         const feat = shown.find((it) => it.key === 'map') ?? null
-        const others = shown.filter((it) => it.key !== 'map')
-        const half = Math.ceil(others.length / 2)
-        const left = others.slice(0, half)
-        const right = others.slice(half)
+        const left = shown.filter((it) => LEFT_KEYS.has(it.key))
+        const right = shown.filter((it) => it.key !== 'map' && !LEFT_KEYS.has(it.key))
         return (
         <>
         <div className="app-nav-group is-left">
@@ -533,7 +536,7 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
           <nav ref={classicNavRef} id="classic-navigation" className={`app-nav-side${classicNav.collapsed ? ' is-compact' : ''}`}>
             <div ref={classicNavScrollRef} className="app-classic-nav-scroll">
             {/* 舰船状态小窗：2026-09-21 起同时是**窗口最小化后的还原按钮**（见 `windowRestore`） */}
-            <ShipStatusWin engine={engine} restore={windowRestore} />
+            <ShipStatusWin engine={engine} restore={windowRestore} onNavigateShip={() => changePage('ship')} />
             {classicNav.collapsed && windowRestore ? (
               <button className="app-btn app-classic-restore" onClick={windowRestore.onRestore}
                 title={windowRestore.title} aria-label={windowRestore.title}>

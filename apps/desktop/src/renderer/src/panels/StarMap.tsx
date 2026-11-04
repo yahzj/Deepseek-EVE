@@ -24,13 +24,15 @@ import { briefsOfPool, briefShipsOf, mountLabelText } from '../ui/foeBrief'
 import type { FoeBriefLine } from '../ui/foeBrief'
 import { hoverTipProps } from '../ui/Tooltip'
 import { ShipSprite } from '../ui/ShipSprite'
-import { aiCoreText, shipRoleText } from '../ui/labelsText'
+import { shipRoleText } from '../ui/labelsText'
 import { FoeDamageMix, ProfileChip } from '../ui/shipInfo'
 import { foeCardShipIdOf as coreFoeCardShipIdOf } from '@whale/core'
-import type { AiCoreType, AnomalyDef, GalaxyDef, SideTask } from '@whale/core'
+import type { AnomalyDef, GalaxyDef, SideTask } from '@whale/core'
 import {
   DSI_FACTION_ID,
   HIGH_SEC_PENALTY,
+  WEEKEND_MIN_STANDING,
+  weekendInvasionAllowedFor,
   INVASION_BEACON_ITEM_ID,
   availableInvasionBeacons,
   RARE_WRECK_VOLUME_M3,
@@ -38,15 +40,14 @@ import {
   autoLoopReopenBlockReason,
   beaconLaunchHighSecOf,
   beaconTargetBlocked,
-  bestAiCoreOf,
   bountyCooldownRemainingMs,
   bountyRewardFactor,
+  ceilFinalQuantity,
   expeditionStatus,
   factionGalaxyId,
   fleetDefOf,
   foeLayerSplit,
   frontierGalaxyIds,
-  idleAiShipIds,
   isExplored,
   scanStatus,
   scanWindowMsFor,
@@ -59,7 +60,6 @@ import {
   stationActivityStartBlockReason,
   siteDeliverFreeCargoM3,
   travelMinutesEff,
-  usableAiCoresOf,
   weekendBossPoolView,
   weekendCoreGateView,
   weekendFamilyNameId,
@@ -86,7 +86,14 @@ const MAP_H = 300
  */
 const MAP_PAD_TOP = 20
 const MAP_PAD_X = 8
-/** 敌对派系活跃"选中方框"边长（2026-09-10 船长：用方框选中目标星系）——34 足以框住最大 r=11 的母港形节点 */
+/**
+ * **母港节点圆点半径**（2026-11-02 船长：「红框标注的母港的圆要比所有人都大一号」）——
+ * 原为 11（比普通节点 r=8 / 未探索 r=7 已大 3），再加一级 ⇒ **13**：星图按容器整体缩放到约
+ * 2.3 倍显示，实际观感直径约 +4.6px，保证"母港比所有星系都显眼"仍成立。
+ * ⚠ `FACTION_BOX_M`（34）按它的倍数留边：方框半边长 17 > 13，仍框得住.
+ */
+const HUB_DOT_R = 17
+/** 敌对派系活跃"选中方框"边长（2026-09-10 船长：用方框选中目标星系）——34 足以框住最大 r=13 的母港形节点 */
 const FACTION_BOX_M = 34
 /** viewBox 与实际内容尺寸（拖拽换算用；getBoundingClientRect 覆盖的是含留白的可视范围） */
 const MAP_VB_W = MAP_W + MAP_PAD_X * 2
@@ -107,7 +114,7 @@ const MAP_DRAG_THRESHOLD_PX = 4
  * 16 是**实测安全上限**：20 个星系里除 `galaxy-vault`/`galaxy-nadir`（相距 10.2）之外最近的是 33.5，
  * 而 16+16 = 32 < 33.5 ⇒ 判定圆两两不重叠。
  */
-const MAP_HIT_R = 16
+const MAP_HIT_R = 20
 /**
  * 布局本地覆盖键（v2，2026-09-05）：船长本地排版坐标已合入内置默认（universe.ts，并整体左移 14），
  * 旧键 v1（whale-idle:starmap-layout，09-04 编辑器排版本）一律不再读取——
@@ -155,7 +162,7 @@ const FAM_CHIP_CHAR_W = 11
 const FAM_CHIP_PAD_X = 5
 const FAM_CHIP_GAP = 3
 const FAM_CHIP_H = 14
-const FAM_CHIP_Y = 12 // 标签顶边相对星系中心的高度（文字基线 ≈ 中心 +22.5，与名称基线 +21 同带）
+const FAM_CHIP_Y = 14.5 // 标签顶边相对星系中心的高度（文字基线 ≈ 中心 +25，与名称基线 +23 同带）
 const FAM_CHIP_BASE = 10.5 // 文字基线相对标签顶边（11px 字在 14 高里的垂直居中）
 const famChipW = (text: string): number => text.length * FAM_CHIP_CHAR_W + FAM_CHIP_PAD_X * 2
 
@@ -173,9 +180,9 @@ function readLayoutOverride(): LayoutMap {
 }
 
 /** 名称放在图标正下方（恒为两节点下方，同航道已按名宽留距） */
-function NodeLabel({ name, x, y, cls }: { name: string; x: number; y: number; cls?: string }) {
+function NodeLabel({ name, x, y, cls, dy = 23 }: { name: string; x: number; y: number; cls?: string; dy?: number }) {
   return (
-    <text x={x} y={y + 21} textAnchor="middle" className={`app-map-label${cls ?? ''}`}>
+    <text x={x} y={y + dy} textAnchor="middle" className={`app-map-label${cls ?? ''}`}>
       {name}
     </text>
   )
@@ -1275,23 +1282,25 @@ export function StarMap({
               <circle
                 cx={p.x}
                 cy={p.y}
-                r={frontier ? 7 : isHub ? 11 : 8}
+                r={frontier ? 9.5 : isHub ? HUB_DOT_R : 11}
                 className={`app-map-dot${cls}${isFactionNode ? ' is-faction' : ''}`}
                 /* 入侵标记的读数挂在圆点上（见上面 `invasionTip` 的说明）：圆点是节点最自然的悬停目标，
                    而那一组标记自己是 `pointer-events: none`（不挡点击）⇒ 只挂那边等于没挂 */
                 {...(invasionTip !== null ? { 'data-tip': invasionTip } : {})}
               />
-              {/* 悬赏情报徽标（协会共享情报：剪影也显示数量，帮助判断是否值得扫描） */}
+              {/* 悬赏情报徽标（协会共享情报：剪影也显示数量，帮助判断是否值得扫描）
+                  2026-11-02 船长：「英文和数字的字号要在大2号」⇒ 徽标字号 +2px 后基线同步上移 3 单位
+                  （-12 → -15），否则放大后的字腹会压到节点圆点上沿。 */}
               {bounty > 0 && frontier ? (
-                <text x={p.x} y={p.y - 12} textAnchor="middle" className="app-map-bounty">
+                <text x={p.x} y={p.y - 17} textAnchor="middle" className="app-map-bounty">
                   ⚔{bounty}
                 </text>
               ) : null}
               {/* 赏金任务徽标（2026-09-10 船长）：与悬赏情报同款样式，换符号（⚑）与配色区分。
                   2026-09-10 船长复查：**节点上不再显示倒计时**（h:mm 粒度看起来"不走"，
-                  精确倒计时留在任务中心头部与星系弹窗里）→ 只留 ⚑ 数量徽标 */}
+                  精确倒计时留在任务中心头部与星系弹窗里）→ 只留 ⚑ 数量徽标；同样上移 3 单位（字号 +2px） */}
               {(tasksByGalaxy.get(g.id)?.length ?? 0) > 0 ? (
-                <text x={p.x + stackDx(g, 14, -24, -10)} y={p.y - 12} textAnchor="middle" className="app-map-bounty is-task">
+                <text x={p.x + stackDx(g, 14, -27, -13)} y={p.y - 17} textAnchor="middle" className="app-map-bounty is-task">
                   ⚑{tasksByGalaxy.get(g.id)!.length}
                 </text>
               ) : null}
@@ -1310,6 +1319,7 @@ export function StarMap({
                   name={labelText}
                   x={p.x}
                   y={p.y}
+                  dy={isHub ? 31 : 23}
                   cls={
                     isHub
                       ? cls
@@ -1632,7 +1642,6 @@ export function GalaxyActions({
   engine,
   galaxy,
   onToast,
-  onOpenWormhole,
 }: {
   engine: GameEngine
   galaxy: GalaxyDef
@@ -1732,48 +1741,6 @@ export function GalaxyActions({
   const bountyRowCount =
     invadedHere !== null ? 1 : engine.anomalies.filter((a) => a.galaxyId === galaxy.id).length
 
-  // —— 主控掩护巡逻（原"待命"） ——
-  const inFlight = state.standby.active && state.standby.galaxyId === galaxy.id
-  const alreadyHere =
-    state.awayGalaxy === galaxy.id && !state.transit.active && !state.expedition.active && !state.mining.active
-  /**
-   * ⚠ **2026-09-21 船长令改口径**：`state.mining.active` **从这条里删掉**（原先采矿中 ⇒ 巡逻按钮直接置灰）——
-   * 采矿属"可自动停"那一档，点下去会先停采（统一日志）再转场；留着它就把统一口径又堵回去了。
-   * 仍留在里面的：远征（统一判据拒）、换港返航（锁定态）、别处的掩护巡逻（同一项，由 core 自己判）。
-   */
-  const pilotBusy = state.expedition.active || state.transit.active || (state.standby.active && !inFlight)
-  const standbyDisabled = inFlight || alreadyHere || pilotBusy || state.awayGalaxy === galaxy.id
-  const standbyTitle = inFlight
-    ? tr("ui.Expedition.205")
-    : alreadyHere
-      ? tr("ui.Expedition.258", { p1: galaxy.name })
-      : pilotBusy
-        ? tr("ui.Expedition.142")
-        : undefined
-  function handleStandby(): void {
-    const r = engine.goStandbyAt(galaxy.id)
-    if (!r.ok) onToast(cmdText(r) || tr('ui.Expedition.384'), true)
-    else onToast(tr("ui.Expedition.143", { p1: galaxy.name }))
-  }
-
-  // —— 副船掩护巡逻 ——
-  const idleShips = idleAiShipIds(state)
-  const [aiShip, setAiShip] = useState('')
-  const [aiCore, setAiCore] = useState<AiCoreType>(() => bestAiCoreOf(state) ?? 'basic')
-  // 2026-09-08 紧急修复：核心下拉与提交类型脱节（basic 无库存时仍按 basic 提交被拒）
-  const usableCores = usableAiCoresOf(state)
-  const effCore = usableCores.includes(aiCore) ? aiCore : (usableCores[usableCores.length - 1] ?? 'basic')
-  const aiCoreAvailable = usableCores.length > 0
-  function handleAiStandby(): void {
-    if (!aiShip) {
-      onToast(tr("ui.MapPage.102"), true)
-      return
-    }
-    const r = engine.assignAiStandbyAt(aiShip, effCore, galaxy.id)
-    if (!r.ok) onToast(cmdText(r) || tr('ui.Expedition.385'), true)
-    else onToast(tr("ui.Expedition.082"))
-  }
-
   // —— 该星系矿带 ——
   const belts = engine.belts.filter(
     (b) => b.galaxyId === galaxy.id || (galaxy.id === 'galaxy-hub' && !b.galaxyId),
@@ -1816,9 +1783,10 @@ export function GalaxyActions({
   const [beaconPick, setBeaconPick] = useState(INVASION_BEACON_ITEM_ID)
   const beaconItemId = beacons.some(row => row.itemId === beaconPick) ? beaconPick : (beacons[0]?.itemId ?? '')
   const beaconStock = beacons.reduce((sum, row) => sum + row.units, 0)
-  /** **指定星系那条路的唯一禁令**（船长 2026-09-30 令）：「该星系有空间站」⇒ 不能点火（信号被压制）。
-   *  ⚠ 不判"已探索/非高安/无副站"（那是**随机那条路**的候选集口径），也不判玩家在哪。 */
+  /** 指定目标有空间站时信号被压制；已探索/非高安属于随机候选规则，玩家所在地不参与判定。 */
   const beaconBlocked = beaconTargetBlocked(state, ctx, galaxy.id)
+  const beaconStandingMet = weekendInvasionAllowedFor(state)
+  const beaconStandingNote = tr('core.market.039', { p1: WEEKEND_MIN_STANDING, p2: standingOf(state, DSI_FACTION_ID) })
   /** 玩家位置**不判**（2026-09-30 船长报障：不该要求玩家先离开自己的空间站）；「不允许在空间站使用」
    *  指的是**目标星系**不能有空间站 ⇒ 由 `!beaconBlocked`（候选资格）管，就地提示走 `ui.beacon.005`。 */
   /** **玩家选定的目标星系属高安 ⇒ 二次警告 + 扣声望**（**2026-10-03 船长裁「乙」**：判据 = **目标星系**，
@@ -1964,13 +1932,17 @@ export function GalaxyActions({
           ) : (
             <button
               className="app-btn is-small is-warn"
-              aria-disabled={!beaconBlocked ? undefined : 'true'}
-              title={!beaconBlocked ? tr('ui.beacon.003', { p1: galaxy.name }) : tr('ui.beacon.005')}
+              aria-disabled={!beaconBlocked && beaconStandingMet ? undefined : 'true'}
+              title={beaconBlocked ? tr('ui.beacon.005') : !beaconStandingMet ? beaconStandingNote : tr('ui.beacon.003', { p1: galaxy.name })}
               onClick={() => {
                 /* 目标不合格（含"该星系有空间站"）⇒ 就地说明；合格 ⇒ 高安给二次警告、否则就地确认。
                    ⚠ **不判玩家在哪**（船长 2026-09-30 报障：不该要求先离开自己的空间站）。 */
                 if (!!beaconBlocked) {
                   onToast(tr('ui.beacon.005'), true)
+                  return
+                }
+                if (!beaconStandingMet) {
+                  onToast(beaconStandingNote, true)
                   return
                 }
                 if (beaconHighSec) {
@@ -1989,76 +1961,6 @@ export function GalaxyActions({
       {state.awayGalaxy === galaxy.id ? (
         <FieldKitRepair engine={engine} onToast={onToast} />
       ) : null}
-      {/* ① 前往掩护巡逻 */}
-      <div className="app-ga-row">
-        <span className="app-ga-main">
-          <span className="app-ico"><Glyph name="ico-flag" size={13} color={ICO_TONES["ico-flag"]} /></span>{tr("ui.Expedition.084")}
-          <span className="app-dim app-ga-desc">{tr("ui.Expedition.085")}</span>
-        </span>
-        <button
-          className="app-btn is-small is-primary"
-          disabled={standbyDisabled}
-          title={standbyDisabled ? standbyTitle : tr("ui.Expedition.086", { p1: galaxy.name })}
-          onClick={handleStandby}
-        >
-          {inFlight ? tr("ui.Expedition.087") : alreadyHere || state.awayGalaxy === galaxy.id ? tr("ui.Expedition.088") : tr("ui.Expedition.084")}
-        </button>
-      </div>
-      {/* ② 副船掩护巡逻 */}
-      <div className="app-ga-row app-ga-ai">
-        <select
-          className="app-select"
-          value={aiShip}
-          onChange={(e) => setAiShip(e.target.value)}
-          title={tr("ui.Expedition.261")}
-          disabled={idleShips.length === 0}
-        >
-          <option value="">{idleShips.length === 0 ? tr("ui.Expedition.206") : tr("ui.Expedition.022")}</option>
-          {idleShips.map((id) => (
-            <option key={id} value={id}>
-              {shipDisplayName(state, ctx, id)}
-            </option>
-          ))}
-        </select>
-        {/* 核心下拉常驻：无可用核心时置灰并在控件里直接写明（船长 2026-09-10） */}
-        <select
-          className="app-select"
-          value={usableCores.length === 0 ? '' : effCore}
-          onChange={(e) => setAiCore(e.target.value as AiCoreType)}
-          disabled={!aiCoreAvailable}
-          title={
-            aiCoreAvailable
-              ? tr("ui.Expedition.023")
-              : tr("ui.Expedition.207")
-          }
-        >
-          {usableCores.length === 0 ? (
-            <option value="">{tr("ui.ShipPage.070")}</option>
-          ) : (
-            usableCores.map((t) => (
-              <option key={t} value={t}>
-                {aiCoreText(t)}
-              </option>
-            ))
-          )}
-        </select>
-        <button
-          className="app-btn is-small"
-          disabled={!aiShip || !aiCoreAvailable}
-          onClick={handleAiStandby}
-          title={
-            !aiShip
-              ? idleShips.length === 0
-                ? tr("ui.Expedition.208")
-                : tr("ui.Expedition.024")
-              : !aiCoreAvailable
-                ? tr("ui.Expedition.209")
-                : undefined
-          }
-        >
-          {tr("ui.Expedition.210")}
-        </button>
-      </div>
       {/* ③ 矿带 */}
       <div className="app-bay-title app-ga-sub">{tr("ui.Expedition.262")}{belts.length}）</div>
       {belts.length === 0 ? (
@@ -2291,7 +2193,7 @@ export function GalaxyActions({
               <span className="app-ga-main">
                 <span className="app-ico"><Glyph name="nav-bounty" size={13} color={NAV_TONES["nav-bounty"]} /></span>{a.name}
                 <span className="app-dim app-ga-desc">
-                  {tr("ui.Expedition.089")} {a.threat}{tr('ui.Expedition.369')}{Math.round(a.rewardIsk * bountyRewardFactor(state)).toLocaleString('zh-CN')} {tr("ui.FirstTasks.003")}
+                  {tr("ui.Expedition.089")} {a.threat}{tr('ui.Expedition.369')}{ceilFinalQuantity(a.rewardIsk * bountyRewardFactor(state)).toLocaleString('zh-CN')} {tr("ui.FirstTasks.003")}
                   {state.completedBounties.includes(a.id) ? tr("ui.Expedition.354") : ''}
                   {/* 行内状态字（原先这些卡被过滤掉了，现在补上状态让玩家看得懂为什么按钮灰着） */}
                   {cdRemain > 0 ? ` · ${tr("ui.Expedition.037")} ${Math.max(1, Math.ceil(cdRemain / 1000))}${tr('ui.Expedition.418')}` : ''}
@@ -2469,7 +2371,7 @@ export function GalaxyActions({
           ? tr("ui.Expedition.029")
           : state.awayGalaxy !== null
             ? tr("ui.Expedition.266")
-            : pilotBusy || state.standby.active || state.transit.active
+            : state.expedition.active || state.standby.active || state.transit.active
               ? tr("ui.Expedition.316")
               : freeM3 <= 0
                 ? tr("ui.Expedition.267")

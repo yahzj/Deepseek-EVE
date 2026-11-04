@@ -35,11 +35,23 @@ const idAsName = (id: string): string => id
 export function CommsDeviceFrame(): ReactNode {
   return (
     <svg className="app-comms-frame" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">
-      {/* 机身 */}
-      <rect x="1.1" y="1.1" width="97.8" height="97.8" rx="5" vectorEffect="non-scaling-stroke" />
-      {/* 左侧两颗实体键（参考图侧键的抽象化，只留短线） */}
-      <path d="M2.4 34 L2.4 42" vectorEffect="non-scaling-stroke" />
-      <path d="M2.4 52 L2.4 58" vectorEffect="non-scaling-stroke" />
+      {/* 经典布局：大圆角机身外框 + 左侧两颗实体键 */}
+      <g className="app-comms-frame-classic">
+        <rect x="1.1" y="1.1" width="97.8" height="97.8" rx="5" vectorEffect="non-scaling-stroke" />
+        <path d="M2.4 34 L2.4 42" vectorEffect="non-scaling-stroke" />
+        <path d="M2.4 52 L2.4 58" vectorEffect="non-scaling-stroke" />
+      </g>
+      {/* 现代 HUD 布局：硬朗缺角战术终端机身 + 实体科技侧键 */}
+      <g className="app-comms-frame-modern">
+        <polygon
+          points="1.2,2.8 2.8,1.2 97.2,1.2 98.8,2.8 98.8,97.2 97.2,98.8 2.8,98.8 1.2,97.2"
+          vectorEffect="non-scaling-stroke"
+        />
+        <path d="M1.2 30 L3.5 30 L3.5 44 L1.2 44" vectorEffect="non-scaling-stroke" />
+        <path d="M1.2 50 L3.5 50 L3.5 60 L1.2 60" vectorEffect="non-scaling-stroke" />
+        <path d="M92 1.2 L98.8 8" vectorEffect="non-scaling-stroke" />
+        <path d="M1.2 92 L8 98.8" vectorEffect="non-scaling-stroke" />
+      </g>
     </svg>
   )
 }
@@ -137,7 +149,7 @@ export function CommsEave({
 }: {
   entry: CommsEntryView
   /** 跳转出口（可带星图标签 `tab`、任务中心内层标签 `taskTab`、舰船标签 `shipTab`） */
-  onGoto: (page: string, tab?: string, shipTab?: string, taskTab?: string) => void
+  onGoto: (page: string, tab?: string, shipTab?: string, taskTab?: string, skillBranch?: string) => void
   /**
    * **弹面板出口**（2026-09-25 加）：实例通讯可以只带 `action`（点开一个面板而不跳页）——
    * 例：周末入侵的结算信「查看详细奖励」⇒ `action: 'weekendSummary'`。
@@ -157,7 +169,7 @@ export function CommsEave({
           className="app-btn is-primary app-comms-goto"
           title={commsHintText(entry.hint.text)}
           onClick={() =>
-            action !== undefined ? onAction!(action) : onGoto(page!, entry.hint!.tab, entry.hint!.shipTab, entry.hint!.taskTab)
+            action !== undefined ? onAction!(action) : onGoto(page!, entry.hint!.tab, entry.hint!.shipTab, entry.hint!.taskTab, entry.hint!.skillBranch)
           }
         >
           <span className="app-comms-goto-text">{commsHintText(entry.hint.text)}</span>

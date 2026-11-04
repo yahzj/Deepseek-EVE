@@ -23,6 +23,7 @@
  * ⚠ **探索扫描不在开关里**：无人扫描艇**没有航行段**（`explore.ts`：总时长 = 就地扫描窗口），
  * 燃料对它无意义 —— 这一条已回报船长。
  */
+import { ceilFinalQuantity } from './quantity'
 import type { GameState } from './state'
 import type { AiCoreType } from './types'
 import { addLog, MAX_SKILL_LEVEL } from './state'
@@ -79,14 +80,14 @@ export const JUMP_FUEL_CAP_SKILLS: readonly { readonly id: string; readonly perL
   { id: 'orbital-fuel-depot', perLevel: 0.1 }, // 轨道储备库学（rank 4，前置储罐结构学）：上限每级再 +10%（与前者乘算）
 ]
 
-/** 燃料上限（单位，已含技能；向下取整到整数单位） */
+/** 燃料上限（单位，已含技能；最终向上取整到整数单位） */
 export function jumpFuelCapOf(state: GameState): number {
   let cap = JUMP_FUEL_CAP_BASE
   for (const s of JUMP_FUEL_CAP_SKILLS) {
     const lv = Math.min(MAX_SKILL_LEVEL, state.skills.trained[s.id] ?? 0)
     if (lv > 0) cap *= 1 + s.perLevel * lv
   }
-  return Math.floor(cap)
+  return ceilFinalQuantity(cap)
 }
 
 /** **物品仓库里的燃料量**（上限与读数唯一的一把尺；不含任何舰船库存） */

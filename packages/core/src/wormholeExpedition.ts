@@ -1,4 +1,5 @@
 import type { GameState } from './state'
+import { withBattleRangeCheck } from './battleRangeMemory'
 import type { SimContext } from './types'
 import { gridCellAt, hasLiveFoe, wormholeStream, type WormholeEventKey, type WormholeEventInstance } from './wormholeGrid'
 import { wormholeRelicBoxPoolOf } from './wormholeSalvage'
@@ -34,6 +35,7 @@ const ACTIONS: Readonly<Record<WormholeEventKey, readonly WormholeEventAction[]>
 }
 
 function currentEvent(state: GameState) {
+  if (state.departure?.kind === 'wormhole') return null
   const run = state.wormhole.run
   if (!run?.grid || run.expeditionRules !== 2 || run.supplyVersion !== 1) return null
   const cell = gridCellAt(run.grid, run.grid.pos)
@@ -42,7 +44,7 @@ function currentEvent(state: GameState) {
   return { run, cell, key: cell.eventKey }
 }
 
-function instanceOf(state: GameState, ctx: SimContext, hit: NonNullable<ReturnType<typeof currentEvent>>): WormholeEventInstance {
+function instanceOf(ctx: SimContext, hit: NonNullable<ReturnType<typeof currentEvent>>): WormholeEventInstance {
   const { run, cell, key } = hit
   const rng = wormholeStream((run.seed ?? 0) * 31 + run.depth * 7919 + cell.q * 131 + cell.r * 151)
   const pool = wormholeRelicBoxPoolOf(ctx, run.depth, run.family ?? wormholeFamilyOfSeed(run.seed ?? 0))
@@ -58,7 +60,7 @@ export function wormholeFreezeEvents(state: GameState, ctx: SimContext): void {
   const run = state.wormhole.run
   if (run?.expeditionRules !== 2 || !run.grid) return
   for (const cell of run.grid.cells) {
-    if (cell.eventKey) cell.event = instanceOf(state, ctx, { run, cell, key: cell.eventKey })
+    if (cell.eventKey) cell.event = instanceOf(ctx, { run, cell, key: cell.eventKey })
   }
 }
 
@@ -74,7 +76,7 @@ export function wormholeEventPreview(state: GameState, ctx: SimContext, action: 
   const { run, cell, key } = hit
   if (run.phase !== 'inside' || run.attending !== true || run.battle || run.pendingNodeBattle || run.pendingRuinsBattle || hasLiveFoe(cell) || cell.eventResolved || cell.event?.battle === 'pending') return { ...plan, resolved: cell.eventResolved === true, error: 'not-ready' }
   if (!ACTIONS[key].includes(action)) return { ...plan, error: 'invalid-action' }
-  const event = instanceOf(state, ctx, hit)
+  const event = instanceOf(ctx, hit)
   const free = action === 'bypass' || action === 'reject'
   plan.turns = free || (key === 'relay' && action === 'force') ? 0 : action === 'search' || action === 'wait' || (key === 'controller' && action === 'investigate') ? 2 : 1
   if (key === 'maintenance' && action === 'repair') plan.supply = { 'repairkit-mil': 20 }
@@ -109,13 +111,17 @@ function revealClue(state: GameState, key: string | undefined): void {
 }
 
 export function wormholeResolveEvent(state: GameState, ctx: SimContext, action: WormholeEventAction, expected?: WormholeEventPreview): WormholeEventPreview {
+  return withBattleRangeCheck(state, { kind: 'wormhole-event', action, expected }, staged => wormholeResolveEventMutable(staged, ctx, action, expected))
+}
+
+function wormholeResolveEventMutable(state: GameState, ctx: SimContext, action: WormholeEventAction, expected?: WormholeEventPreview): WormholeEventPreview {
   const plan = wormholeEventPreview(state, ctx, action)
   if (!plan.ok) return plan
   if (expected && (expected.action !== action || expected.fingerprint !== plan.fingerprint || expected.cellKey !== plan.cellKey)) return { ...plan, ok: false, error: 'stale-plan' }
   const staged = structuredClone(state)
   const hit = currentEvent(staged)!
   const { run, cell, key } = hit
-  const event = cell.event = instanceOf(staged, ctx, hit)
+  const event = cell.event = instanceOf(ctx, hit)
   if (action === 'bypass' || action === 'reject') {
     delete run.pendingEvent
     Object.assign(state, staged)

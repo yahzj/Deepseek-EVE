@@ -7,7 +7,7 @@ import type { SimContext } from '../src/types'
 import { createInitialState } from '../src/state'
 import { advanceGame } from '../src/engine'
 import { RETURN_LEG_MUL } from '../src/balance'
-import { loadSaveFile, MIN_MIGRATABLE_VERSION, SAVE_FORMAT, serializeSaveFile } from '../src/save'
+import { loadSaveFile, MIN_SUPPORTED_SAVE_VERSION, SAVE_FORMAT, serializeSaveFile } from '../src/save'
 import {
   advanceAutoLoopBounty,
   bountyCooldownRemainingMs,
@@ -27,7 +27,7 @@ import { setStanding } from './helpers'
 function worldWithFarBounty() {
   const ctx: SimContext = makeTestCtx({
     ships: [ship('sh-falconet', { cargo: 120 })],
-    anomalies: [anomaly('ano-far-easy', 'galaxy-far', { threat: 1, reward: 2_000, combatSeconds: 2, loot: [{ itemId: 'ore-a', units: 5 }] })],
+    anomalies: [{ ...anomaly('ano-far-easy', 'galaxy-far', { threat: 1, reward: 2_000, combatSeconds: 2, loot: [{ itemId: 'ore-a', units: 5 }] }), foeShotDmg: 0 }],
     quietEvents: true,
   })
   const state: GameState = createInitialState({ nowWallMs: 0, seed: 3 })
@@ -255,7 +255,7 @@ describe('T8 存档（v16.1 兼容字段）', () => {
 
     const raw = JSON.stringify({
       format: SAVE_FORMAT,
-      version: MIN_MIGRATABLE_VERSION,
+      version: MIN_SUPPORTED_SAVE_VERSION,
       savedAtWallMs: 0,
       state: {
         awayGalaxy: 'junk',

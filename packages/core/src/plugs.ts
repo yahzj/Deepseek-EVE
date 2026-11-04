@@ -17,8 +17,8 @@
  * ## 与既有装备的关系
  * 插件**共用 `ModuleDef`**（船长：「**是一种类似装备的东西**」），但**不走高/中/低槽位数组** ——
  * 它有自己的槽位（`ShipDef.plugSlots`，按船型档 T1=5 / T2=4 / T3=3 / T4=2 / T5=1）。
- * 因此 `allFittedModules`（只扫 `fitted`）**看不见插件**，插件效果由战斗建档侧单独一段累加
- * （⇒ 天然**不吃多件递减**，与船长「**③不吃**」一致）。
+ * 因此 `allFittedModules`（只扫 `fitted`）**看不见插件**，效果由 `plugEffectsOf` 投影。
+ * 2026-10-23 船长确认指定八件插件按效果独立折权；协处理/选靶及原不叠加规则不变。
  */
 import type { GameState } from './state'
 import type { ModuleDef, ShipSlots, SimContext } from './types'
@@ -28,6 +28,8 @@ import { addWare } from './inventory'
 import { shipSlotsOf } from './labels'
 import { fleetDefOf } from './instances'
 import { moduleAllowedOnShip } from './shipFitting'
+import { cpuBudgetOf, fittedCpuUsed, droneCpuUsed } from './equipmentCpu'
+import { plugEffectPartsOf } from './plugEffects'
 // ⚠ 本模块被 `combat.ts`（建档）· `shipyard.ts` / `market.ts`（入仓与挂卖的闸门）反向引用
 //   ⇒ 依赖方向要保守：**只依赖 `state` / `types`**。原先还 import 了 `equipment.countModule`，
 //   但那只是一行取表（`state.moduleBay[id] ?? 0`），为省掉 `equipment → labels → …` 这条可能成环的
@@ -59,6 +61,11 @@ export function plugModulesOf(state: GameState, ctx: SimContext, shipId: string)
     if (def && isPlugOf(def)) out.push(def)
   }
   return out
+}
+
+/** 效果去重与折权不改变实际安装列表与已占槽数。 */
+export function plugEffectsOf(state: GameState, ctx: SimContext, shipId: string): ModuleDef[] {
+  return plugEffectPartsOf(plugsOf(state, shipId), ctx).map(part => part.effective)
 }
 
 /** 插件扩槽类型：中槽扩展与低槽扩展各自只允许一件；其它插件不受此限制。 */
@@ -205,6 +212,11 @@ export function installPlug(
   if ((state.moduleBay[moduleId] ?? 0) < 1) {
     return { ok: false, error: `装备库里没有「${def.name}」，先去组装机造一件。`, errorId: 'core.equipment.002', errorParams: { p1: def.name } }
   }
+  if ((def.cpuPenalty ?? 0) > 0) {
+    const budget = cpuBudgetOf(state, ctx, shipId, undefined, [...have, moduleId])
+    const used = fittedCpuUsed(ship.fitted, ctx, fleetDefOf(state, ctx, shipId)) + droneCpuUsed(ship.droneLoad, ctx)
+    if (used > budget) return { ok: false, errorId: 'core.equipment.032', errorParams: { p1: used, p2: budget } }
+  }
   // 扣库 + 装入（复用装备库的扣减单点口径：够就减 1）
   const rest = (state.moduleBay[moduleId] ?? 0) - 1
   if (rest === 0) delete state.moduleBay[moduleId]
@@ -287,20 +299,16 @@ export function plugsToBlackBoxesOf(plugIds: readonly string[]): number {
   return Math.max(0, plugIds.filter((id) => id.length > 0).length)
 }
 
-/* ═══════════ 章鱼人兑换（**2026-09-26 船长令**）═══════════
- * 船长原话：「**找章鱼人用声望兑换**」＋「**声望真扣**」
- * ⇒ 单张图纸 **8 点声望**、**真扣**（只扣可支配那本；累计那本不动 ⇒ 门槛不会被扣回去）。
- * ⚠ **2026-09-26 晚船长改判**：「**我从来没有说过"开局能换 5 张"，所以要清理，并且还要削减累计声望**」
- * ⇒ 新档**不再赠送初始声望**（两条账都从 0 起步）⇒ 第一张图纸要自己攒到 8 点；单张 8 点的价目不变。 */
+/* 章鱼人兑换：只扣可支配声望，累计获得不回退；新档不赠送声望。 */
 
-/** 单张插件图纸的声望价（**8 点**；真扣可支配那本，累计那本不动） */
-export const PLUG_BLUEPRINT_COST = 8
+/** 单张插件图纸的可支配声望价。 */
+export const PLUG_BLUEPRINT_COST = 20
 
 /**
- * **通用黑匣的声望价**（**2026-09-27 船长令**：「**玩家可以用30声望换一个通用黑匣**」）——
+ * 通用黑匣的声望价。
  * 与图纸同口径：**只扣可支配那本**、门槛仍读累计；**可无限次兑换**（不像图纸会"已学会即隐藏"）。
  */
-export const UNIVERSAL_BLACKBOX_COST = 30
+export const UNIVERSAL_BLACKBOX_COST = 60
 
 /** 通用黑匣的物品 id（**2026-09-27 船长令**；与 `blackbox-h` 互为制造替代料，见 `manufacturing.MATERIAL_GROUPS`） */
 export const UNIVERSAL_BLACKBOX_ITEM_ID = 'blackbox-universal'
@@ -308,7 +316,7 @@ export const UNIVERSAL_BLACKBOX_ITEM_ID = 'blackbox-universal'
 /**
  * **用声望换一枚通用黑匣**（唯一入口；兑换窗口那张卡调它）。
  *
- * 三道校验：① 可支配声望够不够（不够则一点不动）⇒ ② 扣 30 点 ⇒ ③ **入物品仓库**
+ * 三道校验：① 可支配声望够不够（不够则一点不动）⇒ ② 按价扣款 ⇒ ③ **入物品仓库**
  * （`addWare`；与"黑匣入库"同口径 —— 玩家在「物品」页就能看到，不进驾驶船货舱）。
  * ⚠ 与图纸那支**不是一回事**：图纸是"兑换即学会"（消耗品性质），本件是**实物**（进仓库的制造料）。
  */
@@ -351,7 +359,7 @@ export function plugBlueprintIdOf(moduleId: string): string {
  *
  * 四道校验：① 是插件吗 ⇒ ② 图纸在不在目录里 ⇒ ③ **已经学会了吗**（学会了就不该再花声望）
  * ⇒ ④ **可支配声望够不够**（不够则两本账都不动）。
- * 成功 = 扣 8 点可支配声望 ＋ **图纸直接学会**（`learnedRecipes`，2026-09-26 船长令「兑换即学会」）
+ * 成功 = 按价扣可支配声望 ＋ **图纸直接学会**（`learnedRecipes`，2026-09-26 船长令「兑换即学会」）
  * ＋ 一条 `trade` 日志。⚠ 不再发"蓝图书"⇒ 蓝图书架上不会出现插件图纸。
  */
 export function exchangePlugBlueprint(
@@ -360,8 +368,11 @@ export function exchangePlugBlueprint(
   moduleId: string,
 ): { ok: true; blueprintId: string } | { ok: false; errorId: string; error: string; errorParams?: Readonly<Record<string, string | number>> } {
   const def = ctx.modules.get(moduleId)
-  if (!isPlugOf(def)) {
+  if (!def || !isPlugOf(def)) {
     return { ok: false, errorId: 'core.plug.002', error: `「${moduleId}」不是舰船插件。`, errorParams: { p1: moduleId } }
+  }
+  if (def.blueprintExchangeDisabled === true) {
+    return { ok: false, errorId: 'core.plug.016', error: '该势力插件图纸暂不可获得。' }
   }
   const bpId = plugBlueprintIdOf(moduleId)
   const bp = ctx.blueprints.get(bpId)
@@ -418,12 +429,12 @@ export interface PlugExchangeRow {
   affordable: boolean
 }
 
-/** **兑换窗口的 12 行**（顺序 = `ctx.modules` 里插件的登记顺序；只列真的是插件的那些） */
+/** **兑换窗口的可获取行**（暂不可获取的势力插件不出现在这里）。 */
 export function plugExchangeRowsOf(state: GameState, ctx: SimContext): PlugExchangeRow[] {
   const have = spendableStandingOf(state)
   const rows: PlugExchangeRow[] = []
   for (const def of ctx.modules.values()) {
-    if (!isPlugOf(def)) continue
+    if (!isPlugOf(def) || def.blueprintExchangeDisabled === true) continue
     const blueprintId = plugBlueprintIdOf(def.id)
     const bp = ctx.blueprints.get(blueprintId)
     if (!bp) continue

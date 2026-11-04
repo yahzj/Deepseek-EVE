@@ -1,7 +1,7 @@
 /**
  * 页面公共：Toast 回调类型与通用展示小件。
  */
-import { marketQuote, wreckGroupOfItemId } from '@whale/core'
+import { ceilFinalQuantity, marketQuote, wreckGroupOfItemId } from '@whale/core'
 import type { SimContext } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import { tr } from '../i18n/locale'
@@ -17,7 +17,7 @@ export interface PageProps {
 
 /** 千分位 信用点 显示 */
 export function isk(n: number): string {
-  return n.toLocaleString('zh-CN')
+  return ceilFinalQuantity(n).toLocaleString('zh-CN')
 }
 
 /**
@@ -32,22 +32,7 @@ export function m3(n: number): string {
   return `${Math.floor(n).toLocaleString('zh-CN')} m³`
 }
 
-/** 货仓/仓库里按物品表汇总体积（供没有 SimContext 处调用——页面用 engine.ctx） */
-export function sumVolume(
-  engine: GameEngine,
-  items: Record<string, number>,
-): number {
-  let total = 0
-  for (const [id, units] of Object.entries(items)) {
-    total += units * (engine.ctx.items.get(id)?.unitM3 ?? 0)
-  }
-  return total
-}
 
-/** 船状态卡里的货仓占用（m³） */
-export function cargoVolumeOf(engine: GameEngine, cargo: Record<string, number>): number {
-  return sumVolume(engine, cargo)
-}
 
 /** 某物品当前市场收购价（NPC 收玩家价）；不在市场目录/簿为空时返回 undefined */
 export function itemBuyQuote(engine: GameEngine, itemId: string): number | undefined {

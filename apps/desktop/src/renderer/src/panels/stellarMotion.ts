@@ -1,7 +1,6 @@
 import type { StellarBody, StellarSystem } from '@whale/core'
 import { STELLAR_MAP_CENTER } from './stellarMapView'
 
-export const STELLAR_SPIN_MS = 40000
 export const STELLAR_INNER_ORBIT_MS = 180000
 export const STELLAR_OUTER_ORBIT_MS = 480000
 export const stellarDynamicBody = (_system: StellarSystem, _body: StellarBody): boolean => true

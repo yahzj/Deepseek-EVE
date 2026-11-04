@@ -191,7 +191,7 @@
 |---|---|---|
 | `packages/data/src/announcements.ts:38`（公告 `2026-09-10-drone-rework` 第 2 条，**已上线**） | 「战斗结束后会回收一部分损坏机体（**基础一成**，「无人机回收学」练满可到五成）」 | 实现已是 **两成**（满级五成不变）→ 玩家看到的一成与实际不符 |
 | `docs/design/announcement-draft-20260910-drone-losses.md:23`（同文待审稿） | 同上 | 同步即可 |
-| `docs/review/announcement-factcheck-20260910.md:61`（三号核验件） | 「回收 10% → 满级 50%（每级 +8%）」 | 核验记录已过时（现 20%、每级 +6%） |
+| `docs/archive/retired-docs-20261029/announcement-factcheck-20260910.md:61`（三号核验件） | 「回收 10% → 满级 50%（每级 +8%）」 | 核验记录已过时（现 20%、每级 +6%） |
 
 - **为什么没直接改**：公告文本的写入/修改需船长明确批准（AGENTS.md §7），且公告由一号负责，
   二号不擅自改公告数据 —— 故只报告不动手。
@@ -201,7 +201,7 @@
 > **✅ 结案（2026-09-10，一号执行；船长已批准「照建议改」）**：已改 **两处**——
 > `packages/data/src/announcements.ts`（公告 `2026-09-10-drone-rework` 第 2 条：「基础一成」→「基础**两成**」）
 > 与同文待审稿 `docs/design/announcement-draft-20260910-drone-losses.md`；核验件
-> `docs/review/announcement-factcheck-20260910.md` 已补变更注（基础 10% → 20%、每级 +8% → +6%，满级仍 50%）。
+> `docs/archive/retired-docs-20261029/announcement-factcheck-20260910.md` 已补变更注（基础 10% → 20%、每级 +8% → +6%，满级仍 50%）。
 > 同批另按船长批准清理了三处**已发布**公告里的开发词（`2026-09-08-vein-ai-batch` 的「同口径」、
 > `2026-09-08-manufacturing-labor` 的「同一套参数 / 原耗时公式」、`2026-09-06-refine-digest` 标题的「产出口径」），
 > 详见 `docs/roadmap.md` 同日条。

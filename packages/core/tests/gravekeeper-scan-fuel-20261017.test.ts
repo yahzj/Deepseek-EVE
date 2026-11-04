@@ -4,7 +4,7 @@ import { runInNewContext } from 'node:vm'
 import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
 import { ANNOUNCEMENTS, buildSimContext, L10N } from '@whale/data'
-import { createInitialState } from '../src/state'
+import { createCommandReadyState as createInitialState } from './helpers/command-ready'
 import { addShipToFleet } from '../src/shipyard'
 import { activeFoeSpecsOf, createBattleState, createPlayerSpec } from '../src/combat'
 import { foeRangeDebuffOf, meJammerNetOf, applyMeJammerDebuff } from '../src/foeRange'
@@ -136,9 +136,11 @@ describe('燃料罐真实SVG几何与公告', () => {
     }
   })
 
-  it('合并公告位于首条，中文发布与待译状态有效，敌方入侵数值不进入公告', () => {
-    const ann = ANNOUNCEMENTS[0]!
-    expect(ann.id).toBe('ann-signal-beacons-exploration-20261018')
+  it('合并公告按稳定ID保留，允许新公告置前，中英有效且不列敌方数值', () => {
+    const index = ANNOUNCEMENTS.findIndex(ann => ann.id === 'ann-signal-beacons-exploration-20261018')
+    expect(index).toBeGreaterThanOrEqual(0)
+    const ann = ANNOUNCEMENTS[index]!
+    expect(ANNOUNCEMENTS[index + 1]!.id).toBe('ann-ship-hp-station-20261013')
     expect(ann.bullets).toHaveLength(5)
     for (const id of [ann.titleId!, ann.tagId!, ...ann.bulletIds!]) {
       expect(L10N[id]!.zh).not.toBe('')

@@ -1,0 +1,2 @@
+/** 兼容旧引用路径；实现归战斗域。 */
+export { battleCardKey, battleCardRangeOf, playerFleetMaxRangeOf, battleRangeSnapshot, rememberBattleRange, withBattleRangeCheck, confirmedBattleDesire, withBattleRangeConsent, cancelBattleRange, pendingBattleRangeView, cleanBattleRangeRecords, cleanBattleRangeSnapshot, cleanPendingBattleRange, type BattleRangeRecord, type BattleRangeSnapshot, type BattleRangeIntent, type PendingBattleRange } from './combat/battleRangeMemory'

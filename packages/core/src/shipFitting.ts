@@ -4,7 +4,7 @@ const DRONE_SLOTS = new Set<ModuleDef['slot']>(['drone-rack', 'drone-tac', 'dron
 const COMBAT_FIELDS: readonly (keyof ModuleDef)[] = [
   'droneBayBonusM3', 'droneDmgBonus', 'droneRangeBonusPct', 'droneHullHpBonusPct',
   'droneShieldHpBonusPct', 'droneHitGapPct', 'droneReviveCycleMs', 'droneCycleCutPct',
-  'captureWebCycleMs', 'captureWebRangeM', 'foeRangeDebuffPct', 'lockDmgBonus',
+  'captureWebCycleMs', 'captureWebRangeM', 'foeRangeDebuffPct', 'rangeEwStrength', 'lockDmgBonus',
   'shieldFieldPct', 'shieldFieldMs', 'secondaryDamagePct', 'hitsAllFoes', 'overlayDrive', 'burst',
   'droneLaunchCutPct', 'laserFalloffBonus',
   'crisisOverload', 'railCharge',

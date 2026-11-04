@@ -2,7 +2,7 @@
 
 > **状态：船长已确认并实施**。船长指令（原话）：「调整完后开始实施无人机可被击落。」
 > 损失持久性**船长选乙：永久损失（耗材流）**——被点防击落的无人机战后从清单永久扣除，需重新补充。
-> 定位契约（`docs/design/drone-roles-20260910.md`）已先落地：四型的血量/闪避/抗性现在**真正参与战斗**。
+> 定位契约（`docs/archive/retired-docs-20261029/drone-roles-20260910.md`）已先落地：四型的血量/闪避/抗性现在**真正参与战斗**。
 > 经办：引擎与平衡 = 二号；表现层（机群递减/被击落演出）= 三号（待对接，见 §六 数据契约）。
 
 ## 一、要解决的问题
@@ -121,7 +121,7 @@
 ### 6.1 点防「六项参数」定稿（2026-09-11 一号补齐 · 现行值已逐项与代码核对）
 
 > **为什么补这一节**：四份交接件（`handover-d3-20260910.md` §3、`handover-verify-20260910.md` §5、
-> `handover-d2-next-20260910.md` §7、`docs/review/announcement-factcheck-20260910.md`）都把待核定项写作
+> `handover-d2-next-20260910.md` §7、`docs/archive/retired-docs-20261029/announcement-factcheck-20260910.md`）都把待核定项写作
 > 「点防 PD 六参数（**二号设计稿 §八**）」，但 `docs/design/` 里没有以"§八"记参数的定稿件——
 > **参数本体一直在这份稿子的 §一 表与 §六 实施记录里**。本节把它收口成一处，**四份引用统一改指本节**。
 > 核对方式：逐项读 `packages/core/src/balance.ts`（`pdThreatFloor / pdJudgementMs / pdAcc / pdDmg`）

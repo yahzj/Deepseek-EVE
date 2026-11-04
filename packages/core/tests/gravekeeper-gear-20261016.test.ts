@@ -81,11 +81,13 @@ describe('守墓三件目录与获取', () => {
     repairDeprecatedModules(state,ctx)
     expect(state.fleet[sid]!.fitted.low.filter(id=>id && ctx.modules.get(id)?.unique)).toHaveLength(1)
   })
-  it('中文与延期英文均可达，不改数值或擅自翻译', () => {
+  it('已批准中英文均可达，名称读取同一词条', () => {
     const en=buildSimContext('en')
     for(const [i,id] of ids.entries()) {
-      expect(en.modules.get(id)!.name).toBe(ctx.modules.get(id)!.name)
-      expect(L10N[`mod.gravekeeperGear.${String(i*2+1).padStart(3,'0')}`]!.enDeferred).toBe(true)
+      const copy = L10N[`mod.gravekeeperGear.${String(i*2+1).padStart(3,'0')}`]!
+      expect(en.modules.get(id)!.name).toBe(copy.en)
+      expect(ctx.modules.get(id)!.name).toBe(copy.zh)
+      expect(copy.enDeferred).toBeUndefined()
     }
   })
   it('真实开箱只抽守墓入侵三件，未集齐时不重复，旧D池保持原件', () => {
@@ -196,7 +198,7 @@ describe('危机超载', () => {
     const {spec,battle:b,rt}=one([ids[1]])
     const ally={...spec,tag:'ally-1'}
     b.units[ally.tag]={...rt,tag:ally.tag,hp:{s:0,a:100,h:100},hpMax:{s:100,a:100,h:100},weapons:[1000]}
-    rt.hp.s=rt.hpMax!.s*SHIELD_FIELD_COST_PCT
+    rt.hp.s=Math.ceil(rt.hpMax!.s*SHIELD_FIELD_COST_PCT)
     pulseShieldFieldFor(b,[spec,ally],{pct:.1},spec)
     expect(rt.hp.s).toBe(0)
     expect(b.meCrisisActive!.player).toBe(true)
@@ -211,8 +213,9 @@ describe('危机超载', () => {
     const before=JSON.stringify(spec)
     const fx=crisisEffectsOf([ctx.modules.get(ids[1])!,ctx.modules.get(ids[1])!])!
     expect(fx.rangeMul).toBeCloseTo(1.4*(1+.4*stackWeight(2)))
-    expect(fx.damageMul).toBeCloseTo(1.3*(1+.3*stackWeight(2)))
-    expect(fx.speedMul).toBeCloseTo(.4*(1-.6*stackWeight(2)))
+    expect(fx.damageMul).toBeCloseTo(1.25*(1+.25*stackWeight(2)))
+    expect(fx.speedMul).toBeCloseTo(.6*(1-.4*stackWeight(2)))
+    expect(crisisEffectsOf([ctx.modules.get(ids[1])!])!.speedMul).toBeCloseTo(.6)
     expect(stackingOf(ctx.modules.get(ids[1])!).group).toBe('curve')
     syncPlayerCrisis(b,[spec]);expect(b.meCrisisActive).toBeUndefined()
     b.units.player!.hp.s=0;syncPlayerCrisis(b,[spec])
@@ -242,10 +245,10 @@ describe('危机超载', () => {
     expect(b.droneLaunchBy.player!.gapMs).toBe(250)
     expect(b.droneLaunchBy.player!.reviveGapMs).toBe(500)
     syncPlayerCrisis(b,[spec]);expect(rt.weapons[0]).toBe(2200)
-    expect(playerGravekeeperSpecOf(b,spec).weapons[0]!.reloadMs).toBe(2640)
+    expect(playerGravekeeperSpecOf(b,spec).weapons[0]!.reloadMs).toBe(3300)
     expect(playerGravekeeperSpecOf(b,{...spec,tag:'ally-1'}).weapons[0]!.reloadMs).toBe(4400)
   })
-  it('真实无人机首轮计时减半，成功出击后的攻击周期乘0.6而非单发增伤', () => {
+  it('真实无人机首轮计时减半，成功出击后的攻击周期乘0.75而非单发增伤', () => {
     const {state,sid,card,use}=shooting()
     state.fleet[sid]!.fitted={high:[],mid:[ids[1]],low:[]}
     state.fleet[sid]!.droneLoad={'drone-scout':2}
@@ -263,7 +266,7 @@ describe('危机超载', () => {
       state.gameMs=t;advanceBattleFor(state,use,fresh,sid,card.id)
     }
     expect(fresh.dronePools![`player:${index}`]!.launched).toBe(true)
-    expect(fresh.units.player!.weapons[index]).toBe(Math.round(spec.weapons[index]!.reloadMs*.6))
+    expect(fresh.units.player!.weapons[index]).toBe(Math.round(spec.weapons[index]!.reloadMs*.75))
     const active=playerGravekeeperSpecOf(fresh,spec)
     expect(active.weapons[index]!.shotDmg).toBe(spec.weapons[index]!.shotDmg)
     expect(active.weapons[index]!.maxRangeM).toBe(spec.weapons[index]!.maxRangeM)
@@ -293,14 +296,14 @@ describe('磁轨附伤与随档', () => {
     const spec=playerGravekeeperSpecOf({...b,meCrisisActive:{player:true},meRailStacks:{'player#0':5}},original)
     const raw=spec.weapons[0]!.shotsByType!.kinetic!
     const baseDamage=original.weapons[0]!.shotsByType!.kinetic!
-    expect(raw).toBe(Math.round(baseDamage*1.3))
+    expect(raw).toBe(Math.ceil(baseDamage*1.25))
     b.meCrisisActive={player:true};b.meRailStacks={'player#0':5}
     const rt=b.units['foe-0']!
     rt.hp={s:layer==='s'?1e8:0,a:layer==='a'?1e8:0,h:1e8}
     rt.hpMax={...rt.hp}
     const hpBefore={...rt.hp}
     const first=applyDamage(hpBefore,{},raw,'kinetic')
-    const second=applyDamage(first.hp,{},Math.round(raw*1.5),'plasma')
+    const second=applyDamage(first.hp,{},Math.ceil(raw*1.5),'plasma')
     state.gameMs=10;advanceBattleFor(state,use,b,sid,card.id)
     expect(b.stats.meDmg).toBeCloseTo(first.dealt+second.dealt,5)
     expect(b.ammo.kin).toBe(999)

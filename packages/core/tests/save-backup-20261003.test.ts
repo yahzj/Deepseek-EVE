@@ -13,7 +13,7 @@ interface Probe {
   saveWriteState(): string
 }
 function engineProbe(save: (text: string) => Promise<boolean>, backup: (text?: string) => Promise<{ ok: boolean }>) {
-  const probe = gameSaveMethods(['persistSnapshot', 'persist', 'backupNow'], {
+  const probe = gameSaveMethods(['createSaveSnapshot', 'persistSnapshot', 'persist', 'backupNow'], {
     bumpIronmanSeq, serializeSaveFile, saveBridge: { save, backup },
     canWriteSave: () => true,
     requestPersistentStorage: async () => {}, noteSaveWriteFailed: vi.fn(), tr: (id: string) => id,

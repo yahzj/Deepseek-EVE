@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { createInitialState, type WreckLogEntry, type ShipFitPreset } from '../src/state'
 import { addShipToFleet, loseShip } from '../src/shipyard'
-import { cpuBudgetOf, repairDeprecatedModules } from '../src/equipment'
+import { cpuBudgetOf, repairDeprecatedModules, stackWeight } from '../src/equipment'
 import { installPlug, plugModulesOf, shipSlotsWithPlugsOf } from '../src/plugs'
 import { createPlayerSpec } from '../src/playerSpec'
 import { cleanPlugIds, PLUG_LIST_MAX } from '../src/saveBattleClean'
@@ -73,14 +73,14 @@ describe('重复插件安装/效果/库存/快照', () => {
     expect(back.fleet[uid]!.plugs).toEqual([id, otherId])
     expect(back.moduleBay).toEqual(state.moduleBay)
   })
-  it('护盾/CPU固定值逐件加，命中/选靶沿用乘算，未知和空插件仍清洗', () => {
+  it('护盾固定值按效果池折权，CPU/选靶例外仍全额，未知和空插件仍清洗', () => {
     const { state, uid } = world()
     const before = createPlayerSpec(state, ctx, uid)!
     const cpu = cpuBudgetOf(state, ctx, uid)
     state.moduleBay['plug-shield-plate'] = 2
     state.moduleBay['plug-cpu-core'] = 2
     for (const id of ['plug-shield-plate', 'plug-shield-plate', 'plug-cpu-core', 'plug-cpu-core']) expect(installPlug(state, ctx, id, uid).ok).toBe(true)
-    expect(createPlayerSpec(state, ctx, uid)!.hp.s - before.hp.s).toBeCloseTo(2 * ctx.modules.get('plug-shield-plate')!.shieldHpAdd!, 8)
+    expect(createPlayerSpec(state, ctx, uid)!.hp.s - before.hp.s).toBe(Math.ceil(ctx.modules.get('plug-shield-plate')!.shieldHpAdd! * (1 + stackWeight(2))))
     expect(cpuBudgetOf(state, ctx, uid) - cpu).toBe(2 * ctx.modules.get('plug-cpu-core')!.cpuBonus!)
     state.fleet[uid]!.plugs = ['plug-concealment', 'plug-concealment']
     expect(createPlayerSpec(state, ctx, uid)!.targetWeightMul).toBeCloseTo(ctx.modules.get('plug-concealment')!.targetWeightMul! ** 2, 8)

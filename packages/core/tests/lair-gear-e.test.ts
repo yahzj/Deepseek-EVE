@@ -125,8 +125,8 @@ describe('E 族巨构三件（2026-09-10 船长逐件过审）', () => {
 
     const plain = createPlayerSpec(makeState(), ctx, SHIP)!
     const withFrame = createPlayerSpec(makeState([], [], ['mod-lair-frame-e']), ctx, SHIP)!
-    expect(withFrame.hp.a / plain.hp.a).toBeCloseTo(1.3, 6)
-    expect(withFrame.hp.h / plain.hp.h).toBeCloseTo(1.6, 6)
+    expect(withFrame.hp.a).toBe(Math.ceil(ctx.ships.get(SHIP)!.armorHp! * 1.3))
+    expect(withFrame.hp.h).toBe(Math.ceil(ctx.ships.get(SHIP)!.hullHp! * 1.6))
     expect(withFrame.hp.s).toBeCloseTo(plain.hp.s, 6) // 盾层不受影响
   })
 
@@ -135,9 +135,11 @@ describe('E 族巨构三件（2026-09-10 船长逐件过审）', () => {
     const e3 = createPlayerSpec(makeState([], [], ['mod-lair-frame-e']), ctx, SHIP)!
     const d3 = createPlayerSpec(makeState([], [], ['mod-lair-armor-d']), ctx, SHIP)!
     // 裸船三层按1.5倍逐层取整：261/131/158；模块百分比保持。
-    expect(ehp(mk3)).toBeCloseTo(654.8, 3)
-    expect(ehp(e3)).toBeCloseTo(684.1, 3)
-    expect(ehp(d3)).toBeCloseTo(694.1, 3)
+    const hull = ctx.ships.get(SHIP)!
+    const total = (armor: number, structure: number) => Math.ceil(hull.shieldHp!) + Math.ceil(hull.armorHp! * armor) + Math.ceil(hull.hullHp! * structure)
+    expect(ehp(mk3)).toBe(total(1.8, 1))
+    expect(ehp(e3)).toBe(total(1.3, 1.6))
+    expect(ehp(d3)).toBe(total(2.1, 1))
     expect(ehp(e3)).toBeGreaterThan(ehp(mk3))
     expect(ehp(e3)).toBeLessThan(ehp(d3))
   })
@@ -146,16 +148,14 @@ describe('E 族巨构三件（2026-09-10 船长逐件过审）', () => {
     const two = makeState([], [], ['mod-lair-frame-e'])
     two.fleet[two.shipId]!.fitted.low[1] = 'mod-lair-frame-e'
     const spec = createPlayerSpec(two, ctx, two.shipId)!
-    const plain = createPlayerSpec(makeState(), ctx, SHIP)!
-    expect(spec.hp.h / plain.hp.h).toBeCloseTo(2.2, 6)
-    expect(spec.hp.a / plain.hp.a).toBeCloseTo(1.6, 6)
+    expect(spec.hp.h).toBe(Math.ceil(ctx.ships.get(SHIP)!.hullHp! * 2.2))
+    expect(spec.hp.a).toBe(Math.ceil(ctx.ships.get(SHIP)!.armorHp! * 1.6))
   })
 
   it('E3 结构容量与技能乘算：船体加固理论 +4%/级（满级再 ×1.2）', () => {
     const state = makeState([], [], ['mod-lair-frame-e'])
     state.skills.trained['hull-upgrades'] = 5
     const spec = createPlayerSpec(state, ctx, state.shipId)!
-    const plain = createPlayerSpec(makeState(), ctx, SHIP)!
-    expect(spec.hp.h / plain.hp.h).toBeCloseTo(1.6 * 1.2, 6)
+    expect(spec.hp.h).toBe(Math.ceil(ctx.ships.get(SHIP)!.hullHp! * 1.6 * 1.2))
   })
 })

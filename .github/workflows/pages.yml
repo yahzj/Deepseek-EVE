@@ -1,50 +1,46 @@
-name: Deploy Web (GitHub Pages)
+name: Build Web (Internal)
 
 on:
-  push:
-    branches: [main]
-  workflow_dispatch:
+  workflow_call:
+    inputs:
+      source_sha:
+        required: true
+        type: string
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
+        with:
+          ref: ${{ github.sha }}
+          path: pipeline
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_sha }}
+          path: source
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: web/package-lock.json
-
-      - name: Install dependencies (web 独立工程，不装 Electron)
-        working-directory: web
+          cache-dependency-path: source/web/package-lock.json
+      - name: Install web dependencies
+        working-directory: source/web
         run: npm ci --no-audit --no-fund
-
       - name: Build web bundle
-        working-directory: web
+        working-directory: source/web
         run: npm run build
-
-      - name: Upload Pages artifact
+      - name: Record source and artifact checksums
+        env:
+          RELEASE_SHA: ${{ inputs.source_sha }}
+        run: node pipeline/.github/scripts/release-plan.cjs manifest web source/web/dist
+      - name: Upload Pages artifact (no deployment)
         uses: actions/upload-pages-artifact@v3
         with:
-          path: web/dist
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+          path: source/web/dist
+          retention-days: 7

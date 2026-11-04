@@ -17,9 +17,10 @@ import {
   HOME_GALAXY_ID,
   MAX_SKILL_LEVEL,
 } from './state'
+import { cleanBattleRangeRecords, cleanPendingBattleRange } from './battleRangeMemory'
+import { cleanDeparture, reconcileDeparture } from './departure'
 import type { BattleState, GameState,     LogEntry, LogKind, MarksState, SideTask, WormholeArchetype, WormholeFamily } from './state'
-import type { AchievementEarned } from './state'
-import { CHAIN_TIERS, CHAIN_TIERS_LEGACY_ORDERS, FIRST_TASKS } from './firstTasks'
+import type { AchievementEarned, WorkReturnProgress } from './state'
 import type { CommsInstanceEntry, CommsJumpPage, CommsKind, CommsRewardLine, FittedModules, RackSlot } from './types'
 import type { ShipFitPreset } from './state'
 import type { WormholeGridState } from './wormholeGrid'
@@ -33,6 +34,8 @@ import { WORMHOLE_ARCHETYPES, WORMHOLE_GRID_SAVE_MAX_R, isWormholeEventKey, worm
 import { cleanWormholeEventInstance, cleanWormholeExpeditionRun } from './wormholeExpeditionSave'
 import { cleanWormholePreparationTemplates } from './wormholePreparationTemplates'
 import { cleanPreparationSquads } from './preparationSquads'
+import { cleanCommandExpedition, cleanWeekendSquad } from './combat/command/save'
+import { cleanCombatSortie } from './combat/command/roster'
 import { WORMHOLE_FAMILY_ORDER, wormholeFamilyOfSeed } from './wormholeFoes'
 import type { WormholeHoldState } from './wormholeHold'
 import { emptyFitted, uidDefId } from './labels'
@@ -40,8 +43,6 @@ import { normalizeBlackMarket } from './blackMarket'
 import { maxScanWindowMs } from './explore'
 import { pruneMarks } from './marks'
 import { FIT_PRESET_MAX, FIT_PRESET_NAME_MAX } from './fitPresets'
-// v27→v28 残骸合并（2026-09-19）：旧"每卡一种"残骸 id → 新「族 × 地区」组 id
-import { migratedWreckItemId } from './wreckGroups'
 /** 实验室产线的劳动者类型（洗完的 `worker` 字段用） */
 import type { AiCoreType } from './types'
 // 章鱼人削血的**旧字段迁移**（2026-09-25：`octopusDrainedMs` 时长 → `octopusHpDone` 血量）
@@ -54,6 +55,10 @@ import { normalizeWeekendWreckRecord } from './weekendWreckLedger'
 import { cleanPlanetaryState } from './planetSave'
 import { normalizeTrainingProgress } from './training'
 import { cleanPendingStationActivity } from './stationActivityPending'
+import { PRICE_HISTORY_LIMIT } from './market/constants'
+import { cleanHaulFleetLeg } from './hauling/types'
+import { cleanPirateEncounter } from './encounters/save'
+import { cleanSignalAutoEstimate } from './signalAuto/save'
 
 /** 存档文件格式标识（防止拿别的游戏的 JSON 硬读） */
 export const SAVE_FORMAT = 'whale-idle-save'
@@ -73,316 +78,24 @@ export class SaveError extends Error {
 /** 合法的日志类型白名单（**2026-09-26 新分类**：+combat/industry/fleet/salvage；`queue` 留作老档兼容） */
 const LOG_KINDS: ReadonlySet<string> = new Set(['system', 'info', 'queue', 'levelup', 'warn', 'trade', 'event', 'combat', 'industry', 'fleet', 'salvage']) // ⚠ 新增日志类型**必须**同步这份白名单，否则读档会把该类型的行降级成 info
 
-/** 迁移脚本的输入/输出：只保证"是个对象"，具体字段由每个迁移自己处理 */
+/** 清洗前的原始对象，各字段由归一化函数校验。 */
 export type RawState = Record<string, unknown>
 
-/**
- * **可迁移下限**（船长 2026-09-19：「**删除过旧的版本迁移，仅保留虫洞之后的**。假如之后玩家的存档版本
- * 过旧，则提示玩家新开一个存档。」）：**低于本版本的档不再迁移**，读档时抛 `SaveError('VERSION')`
- * ⇒ `engine.start()` 开新档并写一条日志（旧档文件原样留在盘上、不覆盖）。
- *
- * 为什么定在 24：v24→v25 正是"加虫洞状态"那一跳（虫洞 = v25），保它下来，v24 档仍能升上来；
- * v0~v23 那 24 级老迁移（开发早期的采矿/制造/远征/舰队重构/市场/槽位/舰船实例化…）已整段删除，
- * 细节以 git 历史兜底。
- */
-export const MIN_MIGRATABLE_VERSION = 24
-
-/**
- * 版本迁移表：key = 旧版本号，value = 把该版本变成下一版本的函数。
- * 读取时从档里的版本一路迁移到 CURRENT_STATE_VERSION，每级迁移只负责自己该转的部分，
- * 缺的字段由后面的 normalizeState 兜底补默认值。
- *
- * ⚠ **本表只覆盖 `MIN_MIGRATABLE_VERSION`（v24）起的版本**——更早的档没有脚本可走，按拒载入处理。
- */
-const MIGRATIONS: Record<number, (raw: RawState) => RawState> = {
-  24: (raw) => {
-    // v24 -> v25（2026-09-13 虫洞副本开工）：补 `wormhole` 空状态（run: null）——
-    // **字段纯新增、零行为变化**；老档不在洞里，故无需迁移进行中的副本。
-    // ✅ 2026-09-14 船长解除不可见（虫洞已上线）：入口常驻、数据全部上线；玩家侧门槛 = 协会声望 ≥ 40。
-    const next: RawState = { ...raw }
-    const wh = asRaw(next.wormhole)
-    if (wh === null || typeof wh !== 'object') next.wormhole = { run: null, lastFleetLost: 0 }
-    return next
-  },
-  25: (raw) => {
-    /**
-     * v25 -> v26（2026-09-17 教程重做）：「第一次」任务系列的**一次性老档判定**。
-     *
-     * 口径（船长）：「**老档一次性判定与补发通讯**」⇒
-     * - 老档（v25 及更早）**一律把 13 条「第一次」判为已完成**——「第一次」是新玩家的引导清单，
-     *   老档早已越过这一步；判定后任务中心直接显示后续次数任务（能推导的计数按真值算：
-     *   扫描 = 已点亮星系、技能 = Σ 等级；其余终身计数老档没有 ⇒ 链从 0 起）；
-     * - **不发奖励**（奖励只发给真正"第一次"完成的当下）；
-     * - **补发通讯**不需要本迁移动手：`{ kind: 'firstTask' }` 触发器在下一拍看到 done 即送达（按 id 幂等），
-     *   13 封情报信会陆续进收件箱，老档也能回看；
-     * - **不倒退**：页面/页签前置（工业/市场/星图四项）因此**只对新档生效**，老档的入口照旧开着。
-     *
-     * ⚠ 结构没变（`firstStats` 仍是可选字段），升版只为让这段判定**只跑一次**。
-     */
-    const next: RawState = { ...raw }
-    const its = asRaw(next.importantTasks)
-    const merged: RawState = its === null ? {} : { ...its }
-    for (const def of FIRST_TASKS) {
-      const prev = asRaw(merged[def.id])
-      // 保留既有的 delivered/allExplored 等附带字段，只把 done 置真
-      merged[def.id] = { ...(prev ?? {}), done: true }
-    }
-    next.importantTasks = merged
-    return next
-  },
-  26: (raw) => {
-    /**
-     * v26 -> v27（2026-09-18 船长）：**市场链换口径的一次性老档折算**。
-     *
-     * 口径（船长）：「挂单按照市场交易收入计数，最高档按 1000 亿算」＋「老档已有的'挂单张数'给一次性折算」。
-     * 本条按**级别对齐**折算（不是拍一个"每张多少 ISK"的汇率）：
-     * ① 用**旧表** `CHAIN_TIERS_LEGACY_ORDERS` 由 `firstStats.orders`（挂单张数）算出老档已达级数 N；
-     * ② 把 `firstStats.marketIncome` 写成**新表 `CHAIN_TIERS.marketIncome` 第 N 级**的门槛值
-     *    ⇒ 折算后已达级数 **= N，一点不倒退**（旧 L10=3,000 张 ⇒ 新表第 10 级 1,000 亿）。
-     * ③ 挂单 0 张的老档**不写**该键（保持"可选字段、零迁移"）；已有 `marketIncome` 的档不覆盖（幂等）。
-     */
-    const next: RawState = { ...raw }
-    const fs = asRaw(next.firstStats)
-    const stats: RawState = fs === null ? {} : { ...fs }
-    const orders = typeof stats.orders === 'number' && Number.isFinite(stats.orders) ? Math.max(0, Math.floor(stats.orders)) : 0
-    const legacy = CHAIN_TIERS_LEGACY_ORDERS
-    const tiers = CHAIN_TIERS.marketIncome ?? []
-    if (orders > 0 && typeof stats.marketIncome !== 'number') {
-      let level = 0
-      for (const t of legacy) if (orders >= t) level += 1
-      // 级别对齐：老档的第 N 级 ⇒ 直接给新表第 N 级的门槛值（N=0 写 0 之外什么都不写）
-      const aligned = level > 0 ? (tiers[level - 1] ?? 0) : 0
-      if (aligned > 0) {
-        stats.marketIncome = aligned
-        next.firstStats = stats
-      }
-    }
-    return next
-  },
-  27: (raw) => {
-    /**
-     * v27 -> v28（2026-09-19 船长定）：「**残骸按来源种族 × 来源地区合并**」的一次性老档折算。
-     *
-     * 口径（船长六答：合并粒度 = 族×地区 · 保值合并 · 组内主流档 · 稀有一起合并 · **写存档迁移** ·
-     * 族称取完整名）：旧档里"每卡一种"的残骸（普通 42 + 稀有 37 = 79 种）全部折进**所属组**的残骸，
-     * 数量**同组累加**——玩家一件不丢，只是同族同地区的箱子并成一件（映射表 = `WRECK_GROUP_OF_MEMBER`，
-     * 与运行时新产出同一张索引，见 `core/wreckGroups.ts`）。
-     *
-     * 折算范围（键 = 残骸物品 id）：
-     * ① 持有：`warehouse.items` · 各舰 `cargo` · 挂卖锁仓 `escrowItems`（**同组累加**）；
-     * ② 稀有残骸三本账：`rareBurnUnits` / `rareBoxesOpened` / `rareOpenedUnits`（同组累加）；
-     * ③ 炉子：`refineRuns[].itemId`（只换 id，**多炉不合并**——两台烧同一种料是合法状态）；
-     * ④ 我的挂单：`orders[].good`（只换 key，**不同价的挂单各自保留**）；
-     * ⑤ 洞内趟内：`run.bag` / `run.grid.cells[].piles` / `run.hold.placements[].itemId`
-     *    与自动探索报告 `gains[].itemId`（只换 id，堆不合并）；
-     * ⑥ 市场派生量（`pools` / `npcBuy` / `npcSell` / `digest` / `priceHistory` 里的**旧残骸键**）**直接删**：
-     *    NPC 簿与池由 `ensureMarket` 按目录惰性重建（合并后的 8 行开盘即有），旧键留着只是垃圾；
-     * ⑦ **不动**：`galaxyWrecks[].rareBy`（按卡记账 ⇒ 星图「稀有残骸 ×N（来源窝点名）」照旧）与 `rare` 计数。
-     *
-     * 幂等：新 id（`wreck-a-hi`）不是 `WRECK_GROUP_OF_MEMBER` 的键 ⇒ 再跑一遍是空操作
-     * （合成卡的旧 id 也查不到 ⇒ 原样保留，只影响测试夹具）。
-     */
-    const next: RawState = { ...raw }
-
-    /** 数量表折算：残骸键同组累加，非残骸键原样保留 */
-    const remapCounts = (src: unknown): { out: Record<string, unknown>; changed: boolean } => {
-      const table = asRaw(src)
-      const out: Record<string, unknown> = {}
-      let changed = false
-      for (const [key, value] of Object.entries(table)) {
-        const mapped = migratedWreckItemId(key)
-        if (mapped === null) {
-          out[key] = value
-          continue
-        }
-        changed = true
-        const add = typeof value === 'number' && Number.isFinite(value) ? value : 0
-        const prev = typeof out[mapped] === 'number' ? (out[mapped] as number) : 0
-        out[mapped] = prev + add
-      }
-      return { out, changed }
-    }
-    /** 单键折算（对象/记录里的 id 字段） */
-    const remapId = (v: unknown): string | null => {
-      if (typeof v !== 'string' || v.length === 0) return null
-      return migratedWreckItemId(v)
-    }
-    /** 堆数组折算（`{itemId, units}` 列表；只换 id，不合并堆） */
-    const remapPiles = (src: unknown): { out: unknown[]; changed: boolean } => {
-      if (!Array.isArray(src)) return { out: [], changed: false }
-      let changed = false
-      const out = src.map((row) => {
-        const o = asRaw(row)
-        const mapped = remapId(o.itemId)
-        if (mapped === null) return row
-        changed = true
-        return { ...o, itemId: mapped }
-      })
-      return { out, changed }
-    }
-
-    // ① 持有（仓库 / 货舱 / 挂卖锁仓）
-    const warehouse = asRaw(next.warehouse)
-    const ware = remapCounts(warehouse.items)
-    if (ware.changed) next.warehouse = { ...warehouse, items: ware.out }
-    const escrow = remapCounts(next.escrowItems)
-    if (escrow.changed) next.escrowItems = escrow.out
-    const fleet = asRaw(next.fleet)
-    const fleetOut: Record<string, unknown> = {}
-    let fleetChanged = false
-    for (const [shipId, shipRaw] of Object.entries(fleet)) {
-      const ship = asRaw(shipRaw)
-      const cargo = remapCounts(ship.cargo)
-      if (cargo.changed) {
-        fleetOut[shipId] = { ...ship, cargo: cargo.out }
-        fleetChanged = true
-      } else {
-        fleetOut[shipId] = shipRaw
-      }
-    }
-    if (fleetChanged) next.fleet = fleetOut
-
-    // ② 稀有残骸三本账
-    for (const field of ['rareBurnUnits', 'rareBoxesOpened', 'rareOpenedUnits'] as const) {
-      const r = remapCounts(next[field])
-      if (r.changed) next[field] = r.out
-    }
-
-    // ③ 炉子（只换 id：`claimedUnits` 等炉内料账随行）
-    if (Array.isArray(next.refineRuns)) {
-      next.refineRuns = (next.refineRuns as unknown[]).map((row) => {
-        const o = asRaw(row)
-        const mapped = remapId(o.itemId)
-        return mapped === null ? row : { ...o, itemId: mapped }
-      })
-    }
-
-    // ④ 我的挂单
-    if (Array.isArray(next.orders)) {
-      next.orders = (next.orders as unknown[]).map((row) => {
-        const o = asRaw(row)
-        const mapped = remapId(o.good)
-        return mapped === null ? row : { ...o, good: mapped }
-      })
-    }
-
-    // ⑤ 洞内趟内（背包 / 格内堆 / 货仓格排布）
-    const wh = asRaw(next.wormhole)
-    const run = asRaw(wh.run)
-    if (Object.keys(run).length > 0) {
-      let runChanged = false
-      const bag = remapPiles(run.bag)
-      if (bag.changed) {
-        run.bag = bag.out
-        runChanged = true
-      }
-      const grid = asRaw(run.grid)
-      if (Array.isArray(grid.cells)) {
-        let cellsChanged = false
-        const cells = (grid.cells as unknown[]).map((cellRaw) => {
-          const cell = asRaw(cellRaw)
-          const piles = remapPiles(cell.piles)
-          if (!piles.changed) return cellRaw
-          cellsChanged = true
-          return { ...cell, piles: piles.out }
-        })
-        if (cellsChanged) {
-          run.grid = { ...grid, cells }
-          runChanged = true
-        }
-      }
-      const hold = asRaw(run.hold)
-      if (Array.isArray(hold.placements)) {
-        let holdChanged = false
-        const placements = (hold.placements as unknown[]).map((row) => {
-          const o = asRaw(row)
-          const mapped = remapId(o.itemId)
-          if (mapped === null) return row
-          holdChanged = true
-          return { ...o, itemId: mapped }
-        })
-        if (holdChanged) {
-          run.hold = { ...hold, placements }
-          runChanged = true
-        }
-      }
-      if (runChanged) next.wormhole = { ...wh, run }
-    }
-    // 自动探索报告（历史读数：不折算会在报告里显示成裸 id）
-    if (Array.isArray(next.wormholeAutoReports)) {
-      let reportsChanged = false
-      const reports = (next.wormholeAutoReports as unknown[]).map((row) => {
-        const o = asRaw(row)
-        const gains = remapPiles(o.gains)
-        if (!gains.changed) return row
-        reportsChanged = true
-        return { ...o, gains: gains.out }
-      })
-      if (reportsChanged) next.wormholeAutoReports = reports
-    }
-
-    // ⑥ 市场派生量：删掉旧残骸键（池/簿/消化队列/价格小史），新键由 ensureMarket 惰性重建
-    const market = asRaw(next.market)
-    if (Object.keys(market).length > 0) {
-      let marketChanged = false
-      for (const field of ['pools', 'npcBuy', 'npcSell', 'digest', 'priceHistory'] as const) {
-        const table = asRaw(market[field])
-        const keys = Object.keys(table).filter((k) => migratedWreckItemId(k) !== null)
-        if (keys.length === 0) continue
-        const out: Record<string, unknown> = { ...table }
-        for (const k of keys) delete out[k]
-        market[field] = out
-        marketChanged = true
-      }
-      if (marketChanged) next.market = market
-    }
-
-    return next
-  },
-  /**
-   * v28 -> v29（2026-09-19 船长：「消耗谜质升级的研究科技树」）：**纯新增字段** ——
-   * 补 `research.levels = {}`（一级未点）⇒ 老档读进来就是"科技树全空"，
-   * 所有科技效果项为 0 ⇒ **零行为变化**（唯一例外 = 本批同时改的基础回合 100 → 80，那是难度改动、
-   * 与迁移无关）。幂等：已有 `research` 的档原样保留。
-   */
-  28: (raw) => {
-    if (raw.research !== undefined) return raw
-    return { ...raw, research: { levels: {} } }
-  },
-  /**
-   * v29 -> v30（2026-09-20 船长：「继续之前的成就系统」）：**纯新增字段** —— 补 `achievements.earned = {}`。
-   *
-   * ⚠ **补发不在这里做，也不需要在这里做**：本层拿不到内容表（`MIGRATIONS` 只吃 raw state，无 ctx），
-   * 而"老档已达成者补发"由 `core/achievements.ts` 的 `advanceAchievements` **在载入后的第一拍现算补上**
-   * （判据是 `state` 现状、幂等 ⇒ 老档一进游戏，够格的徽章就自动到手）。
-   * 好处：① core 不必反向依赖数据层 ② 补发逻辑只有**一份**（不在迁移里再抄一遍判定）
-   * ③ 以后新增判定支线时，老档照样自愈。
-   *
-   * 代价（已接受）：补发时刻记的是"载入后第一拍的 `gameMs`"，不是当年真实达成时间——
-   * 老档无从知道真实时刻，且徽章**纯展示、不影响任何行为**（船长 2026-09-20 裁定）⇒ 无影响。
-   *
-   * 幂等：已有 `achievements` 的档原样保留（不覆盖玩家已到手的徽章）。
-   */
-  29: (raw) => {
-    if (raw.achievements !== undefined) return raw
-    return { ...raw, achievements: { earned: {} } }
-  },
-  /**
-   * v30 -> v31（**2026-09-21 船长令**：**「第一次」任务不再自动完成，玩家回任务中心点「完成」才推进**
-   * ＋「老档直接完成」）：**纯新增字段** —— 给**老档**打一个一次性收口标记 `firstTaskAutoClaim = true`。
-   *
-   * 为什么标记而不是在这里直接改 `importantTasks`：本层拿不到内容表（`MIGRATIONS` 只吃 raw state、无 ctx），
-   * 而"这条判据满没满"要跑 `judge(state, ctx)` ⇒ 与 v29→v30 的成就补发同款做法：
-   * **迁移只打标记，真正的收口在载入后第一拍由 `engine` 现算完成**（按点击同款发奖发信、进下一条，
-   * 跑完即删键）。这样 ① core 不反向依赖数据层 ② 收口逻辑只有一份（不在迁移里再抄一遍判定）
-   * ③ 新档不带这个键 ⇒ 一律走手动流程。
-   */
-  30: (raw) => ({ ...raw, firstTaskAutoClaim: true }),
-}
+/** 只接受当前存档结构；旧档保留在磁盘，但不再自动转换。 */
+export const MIN_SUPPORTED_SAVE_VERSION = CURRENT_STATE_VERSION
 
 /** 战斗档清洗整簇（2026-10-02 批次 4m 迁到 saveBattleClean.ts；本文件借回 + 再导出） */
 import { asRaw, cleanAmmoIdMap, cleanBattle, cleanPlugIds, RACK_MAX } from './saveBattleClean'
 export { BATTLE_PERSIST_KEYS } from './saveBattleClean'
+
+/** 方案与残骸快照共用：保留槽序，净化后仅裁尾部空位。 */
+function cleanRack(v: unknown): Array<string | null> {
+  if (!Array.isArray(v)) return []
+  const out: Array<string | null> = []
+  for (const x of v.slice(0, RACK_MAX)) out.push(typeof x === 'string' && x.length > 0 ? x : null)
+  while (out.length > 0 && out[out.length - 1] === null) out.pop()
+  return out
+}
 
 /**
  * 把一份任意来源的原始存档数据"整容"成合法、完整的当前版本状态。
@@ -480,7 +193,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     const t = v.trim()
     const chars = [...t]
     if (chars.length === 0) return null
-    return chars.slice(0, 10).join('')
+    return chars.slice(0, 10).join('').trimEnd()
   }
   const freshShip = (
     defId: string,
@@ -628,7 +341,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     }
   }
 
-  // --- AI 副船任务（v8）：条目或字段非法则丢弃（核心归还由引擎推进时保证一致性） ---
+  // --- AI 副船任务（v8）：非法任务丢弃；旧巡逻任务归还核心并移除 ---
   const aiAssignmentsRaw = asRaw(src.aiAssignments)
   const aiAssignments: Record<string, unknown> = {}
   /**
@@ -677,27 +390,8 @@ for (const [key, value] of Object.entries(licensesRaw)) {
         },
       }
     } else if (taskRaw.kind === 'standby') {
-      const galaxyId = typeof taskRaw.galaxyId === 'string' ? taskRaw.galaxyId : ''
-      if (!galaxyId) continue
-      const phaseRaw = taskRaw.phase
-      const phase: 'out' | 'stand' = phaseRaw === 'stand' ? 'stand' : 'out'
-      aiAssignments[shipKey] = {
-        coreType: a.coreType,
-        startedAtGameMs: startedAt,
-        task: {
-          kind: 'standby',
-          galaxyId,
-          finishAtGameMs:
-            typeof taskRaw.finishAtGameMs === 'number' && Number.isFinite(taskRaw.finishAtGameMs)
-              ? Math.max(0, Math.floor(taskRaw.finishAtGameMs))
-              : 0,
-          outMs:
-            typeof taskRaw.outMs === 'number' && Number.isFinite(taskRaw.outMs)
-              ? Math.max(0, Math.floor(taskRaw.outMs))
-              : 0,
-          phase,
-        },
-      }
+      aiCores[a.coreType] += 1
+      continue
     } else if (taskRaw.kind === 'expedition') {
       const anomalyId = typeof taskRaw.anomalyId === 'string' ? taskRaw.anomalyId : ''
       if (!anomalyId) continue
@@ -887,13 +581,6 @@ for (const [key, value] of Object.entries(licensesRaw)) {
       const name = typeof item.name === 'string' ? item.name.trim().slice(0, FIT_PRESET_NAME_MAX) : ''
       if (name.length === 0) continue
       const fitRaw = asRaw(item.fitted)
-      const cleanRack = (v: unknown): Array<string | null> => {
-        if (!Array.isArray(v)) return []
-        const out: Array<string | null> = []
-        for (const x of v.slice(0, RACK_MAX)) out.push(typeof x === 'string' && x.length > 0 ? x : null)
-        while (out.length > 0 && out[out.length - 1] === null) out.pop()
-        return out
-      }
       const fitted = { high: cleanRack(fitRaw.high), mid: cleanRack(fitRaw.mid), low: cleanRack(fitRaw.low) }
       const plugs = cleanPlugIds(item.plugs)
       const droneLoad: Record<string, number> = {}
@@ -1004,7 +691,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     for (const v of value) {
       if (typeof v === 'number' && Number.isFinite(v) && v > 0) cleaned.push(Math.round(v))
     }
-    if (cleaned.length > 0) histories[key] = cleaned.slice(-24)
+    if (cleaned.length > 0) histories[key] = cleaned.slice(-PRICE_HISTORY_LIMIT)
   }
   // --- 我的挂单自增号不能低于现有订单 id（防未来挂单撞号） ---
   let maxOrderId = 0
@@ -1212,7 +899,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
    * `max(INITIAL_STANDING = 40, 旧声望)`，理由是"别让老玩家比新玩家少一档门槛"——船长否掉了：
    * 「**1算（初始 40 也算额外声望）…所以要清理，并且还要削减累计声望**」。
    * 那条下界正是玩家报障「更新后他原本 6 声望突然变成 41 声望」的根因（40 下界 ＋ 入侵贡献 1）。
-   * 存量档里已经被抬起来的那部分，由 `expedition.repairStandingFromBountyProgress` 在读档后削减。
+   * 低版本旧档不再载入；v31 档不进行历史声望回正。
    *
    * ⚠ **不从日志回填**：`logs` 会被 `logCap` 裁剪、且读档不保证带（`serializeSaveFile` 的剥离注释），
    * 拿它当账本只会得到"有时多、有时少"的假数。只在 `src.standingsEarned` **缺失**时回填（幂等）。
@@ -1235,113 +922,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
    * 在首次读取时按"仓库/任一舰队船的货仓里到底有没有黑匣"回填（那一处是唯一判据点）。
    */
   const blackboxSeen = src.blackboxSeen === true ? true : src.blackboxSeen === false ? false : undefined
-  /**
-   * --- **"按悬赏进度回正累计声望"走过没有**（2026-09-26 船长令，兼容字段无版本号）---
-   *
-   * 只认 `true`（**单程标记**）：走过一趟就带上它 ⇒ `expedition.repairStandingFromBountyProgress`
-   * 此后直接返回、**永不再削**（船长：「**只生效一次，已经削过的玩家不再削**」）。
-   * 缺省 / 非 `true` ⇒ 不落键（老档与"还没走过"等价）。
-   */
-  const standingClawbackDone = src.standingClawbackDone === true ? true : undefined
-  /**
-   * --- **入侵补偿批标记**（**船长 2026-10-02 令**，兼容字段无版本号）---
-   *
-   * 三格 = 判定结论（`track`）＋ 判定时刻 ＋ 两条路各自的落地时刻（幂等钥匙）。
-   * 判据与落地见 `weekendCompensation.ts`（唯一判定与落地处）。
-   *
-   * ⚠ **两个"落地时刻"缺键必须是 `undefined`，绝不能读成 0**（同 `prizePaidAtWallMs` 那次的教训）：
-   * 0 会被当成"已经发过/已经开过"⇒ 判成 `beacon` 的档永远不再发、判成 `makeup` 的档永远不开补场。
-   * `track` 非法（缺键 / 不是这两个值）⇒ **整块不落键**（老档零迁移）。
-   */
-  const weekendCompensation = ((): GameState['weekendCompensation'] => {
-    const raw = asRaw(src.weekendCompensation)
-    const track = raw.track === 'makeup' ? 'makeup' : raw.track === 'beacon' ? 'beacon' : undefined
-    if (track === undefined) return undefined
-    const at = (v: unknown): number | undefined =>
-      typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.floor(v) : undefined
-    const decidedAtWallMs = at(raw.decidedAtWallMs)
-    if (decidedAtWallMs === undefined) return undefined
-    const beaconGrantedAtWallMs = at(raw.beaconGrantedAtWallMs)
-    const makeupServedAtWallMs = at(raw.makeupServedAtWallMs)
-    const makeupSkippedAtWallMs = at(raw.makeupSkippedAtWallMs)
-    return {
-      track,
-      decidedAtWallMs,
-      ...(beaconGrantedAtWallMs !== undefined ? { beaconGrantedAtWallMs } : {}),
-      ...(makeupServedAtWallMs !== undefined ? { makeupServedAtWallMs } : {}),
-      ...(makeupSkippedAtWallMs !== undefined ? { makeupSkippedAtWallMs } : {}),
-    }
-  })()
-
-  // --- 远征作业（V12 两阶段：out → battle → back；battle 状态只存动态量） ---
-  const expRaw = asRaw(src.expedition)
-  const expAnomalyId = typeof expRaw.anomalyId === 'string' && expRaw.anomalyId.length > 0 ? expRaw.anomalyId : null
-  const expPhaseRaw = expRaw.phase
-  const expPhase: 'out' | 'battle' | 'back' =
-    expPhaseRaw === 'battle' || expPhaseRaw === 'back' ? expPhaseRaw : 'out'
-  const expBattle: BattleState | null = expPhase === 'battle' ? cleanBattle(expRaw.battle) : null
-  const expReturnReason: GameState['expedition']['returnReason'] =
-    expPhase === 'back' &&
-    (expRaw.returnReason === 'victory' || expRaw.returnReason === 'defeat' || expRaw.returnReason === 'retreat')
-      ? expRaw.returnReason
-      : undefined
-  const expedition = {
-    active: expRaw.active === true && expAnomalyId !== null,
-    anomalyId: expAnomalyId,
-    finishAtGameMs:
-      typeof expRaw.finishAtGameMs === 'number' && Number.isFinite(expRaw.finishAtGameMs)
-        ? Math.max(0, Math.floor(expRaw.finishAtGameMs))
-        : 0,
-    durationMs:
-      typeof expRaw.durationMs === 'number' && Number.isFinite(expRaw.durationMs)
-        ? Math.max(0, Math.floor(expRaw.durationMs))
-        : 0,
-    outMs:
-      typeof expRaw.outMs === 'number' && Number.isFinite(expRaw.outMs)
-        ? Math.max(0, Math.floor(expRaw.outMs))
-        : 0,
-    combatMs:
-      typeof expRaw.combatMs === 'number' && Number.isFinite(expRaw.combatMs)
-        ? Math.max(0, Math.floor(expRaw.combatMs))
-        : 0,
-    power:
-      typeof expRaw.power === 'number' && Number.isFinite(expRaw.power) ? Math.max(0, Math.floor(expRaw.power)) : 0,
-    eventId: typeof expRaw.eventId === 'string' && expRaw.eventId.length > 0 ? expRaw.eventId : null,
-    eventFired: expRaw.eventFired === true,
-    phase: expPhase === 'battle' && expBattle === null ? 'out' : expPhase,
-    battle: expBattle,
-    // 2026-09-11 船长：目标距离**按星系独立保存**（老档的全局 desirePrefM 不再沿用，一律回落射程中段）。
-    // 容错：键非空字符串、值为正有限数才收；全空则整字段省略（零迁移）。
-    ...(() => {
-      const raw = asRaw(expRaw.desirePrefByGalaxy)
-      const byGalaxy: Record<string, number> = {}
-      for (const [gid, v] of Object.entries(raw)) {
-        if (typeof gid !== 'string' || gid.length === 0) continue
-        if (typeof v !== 'number' || !Number.isFinite(v) || v <= 0) continue
-        byGalaxy[gid] = Math.round(v)
-      }
-      return Object.keys(byGalaxy).length > 0 ? { desirePrefByGalaxy: byGalaxy } : {}
-    })(),
-    // 2026-09-06 兼容字段：胜利自动返航（不可召回）/失利/撤退；仅 back 相位有效，其余清空
-    returnReason: expReturnReason,
-    /**
-     * **本场远征打的是哪个星系**（2026-09-25 周末入侵接线）：
-     * ⚠ 这一行原先**漏了**（只写了 `state.ts` 的类型与写入点）⇒ **读档即丢**，"战后归属/残骸注入不再落母港"
-     * 只在同一次会话里成立、一读档就退回老口径（本轮补上；同批还补了 `rewardIskOverride`）。
-     * 按约定 §二：随档字段必须**两处落笔**（写入点 ＋ 清洗器）。
-     */
-    ...(typeof expRaw.foeGalaxyId === 'string' && expRaw.foeGalaxyId.length > 0
-      ? { foeGalaxyId: expRaw.foeGalaxyId }
-      : {}),
-    /** **奖励基底覆写**（2026-09-25 · 主动出击每场重抽的价钱口径）：非负有限数才收，其余省略 */
-    ...(typeof expRaw.rewardIskOverride === 'number' &&
-    Number.isFinite(expRaw.rewardIskOverride) &&
-    expRaw.rewardIskOverride >= 0
-      ? { rewardIskOverride: Math.round(expRaw.rewardIskOverride) }
-      : {}),
-    /** **本趟返航的跃迁燃料倍率**（2026-09-29 跃迁燃料批）：>1 才收 —— 丢了它，已扣料的那一趟会变回原速 */
-    ...(fuelMulOf(expRaw.fuelMul) !== undefined ? { fuelMul: fuelMulOf(expRaw.fuelMul)! } : {}),
-  }
+  const expedition = cleanCommandExpedition(src.expedition)
 
   // --- 日志（逐条容错，超上限截掉最旧的） ---
   const logs: LogEntry[] = []
@@ -1511,12 +1092,14 @@ for (const [key, value] of Object.entries(licensesRaw)) {
   }
   // --- 长途运输（2026-09-09 两站运输：可选字段、旧档零迁移；active 需目标端点字段可读） ---
   const haulRaw = asRaw(src.hauling)
+  const fleetLeg = cleanHaulFleetLeg(haulRaw.fleetLeg)
   const haulTo = typeof haulRaw.toSiteId === 'string' || haulRaw.toSiteId === null ? haulRaw.toSiteId : null
   const haulFrom = typeof haulRaw.fromSiteId === 'string' || haulRaw.fromSiteId === null ? haulRaw.fromSiteId : null
   const haulA = typeof haulRaw.routeA === 'string' || haulRaw.routeA === null ? haulRaw.routeA : null
   const haulB = typeof haulRaw.routeB === 'string' || haulRaw.routeB === null ? haulRaw.routeB : null
   const hauling = {
-    active: haulRaw.active === true && haulTo !== undefined,
+    ...(fleetLeg ? { fleetLeg } : {}),
+    active: haulRaw.active === true && haulTo !== undefined && (haulRaw.fleetLeg === undefined || fleetLeg !== undefined),
     routeA: haulA ?? null,
     routeB: haulB ?? null,
     fromSiteId: haulFrom ?? null,
@@ -1630,18 +1213,28 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     typeof src.autoLoopAnomalyId === 'string' && src.autoLoopAnomalyId.length > 0
       ? src.autoLoopAnomalyId
       : null
-  /**
-   * **切活动停机标记**（**2026-10-02 加**，见 `GameState.haltedBySwitch` 头注）——
-   * 它是一条**瞬态信号**（`haltActivityForSwitch` 抛给"紧接着那次开工"看的，活不过同一拍）
-   * ⇒ **有意不入档**，读档一律清空（老档缺省也走这条）。字段可选、值恒为 `null` ⇒ 往返一致。
-   */
-  const pendingActivityReturn: { kind: 'mining' | 'salvaging'; id: string } | null =
-    (asRaw(src.pendingActivityReturn).kind === 'mining' || asRaw(src.pendingActivityReturn).kind === 'salvaging') &&
-    typeof asRaw(src.pendingActivityReturn).id === 'string' &&
-    (asRaw(src.pendingActivityReturn).id as string).length > 0
+  // 首拍前保存也保留作业航段快照，避免已点火的返航重载后再次扣料或丢掉倍率。
+  const pendingReturnRaw = asRaw(src.pendingActivityReturn)
+  const progressRaw = asRaw(pendingReturnRaw.progress)
+  const progressPhase = progressRaw.phase
+  const progressFuel = fuelMulOf(progressRaw.fuelMul)
+  const progress: WorkReturnProgress | undefined =
+    progressPhase === 'mining' || progressPhase === 'salvaging' || progressPhase === 'outbound' || progressPhase === 'returning'
       ? {
-          kind: asRaw(src.pendingActivityReturn).kind as 'mining' | 'salvaging',
-          id: asRaw(src.pendingActivityReturn).id as string,
+          phase: progressPhase,
+          phaseAccMs: typeof progressRaw.phaseAccMs === 'number' && Number.isFinite(progressRaw.phaseAccMs)
+            ? Math.max(0, Math.floor(progressRaw.phaseAccMs)) : 0,
+          ...(progressFuel !== undefined ? { fuelMul: progressFuel } : {}),
+          ...(progressRaw.originGalaxy === null || typeof progressRaw.originGalaxy === 'string' && progressRaw.originGalaxy.length > 0
+            ? { originGalaxy: progressRaw.originGalaxy as string | null } : {}),
+        } : undefined
+  const pendingActivityReturn: GameState['pendingActivityReturn'] =
+    (pendingReturnRaw.kind === 'mining' || pendingReturnRaw.kind === 'salvaging') &&
+    typeof pendingReturnRaw.id === 'string' && pendingReturnRaw.id.length > 0
+      ? {
+          kind: pendingReturnRaw.kind,
+          id: pendingReturnRaw.id,
+          ...(progress !== undefined ? { progress } : {}),
         }
       : null
   const haltedBySwitch: { kind: 'mining' | 'salvaging' } | null =
@@ -1761,18 +1354,11 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     if (typeof accRaw !== 'number' || !Number.isFinite(accRaw) || accRaw < 0) continue
     if (!Number.isFinite(density) || density <= 0) continue
     /** 装配快照：逐位净化（非空字符串留下、空位记 null、裁掉尾部空位；与 `fitPresets` 同一手法） */
-    const wreckRack = (v: unknown): Array<string | null> => {
-      if (!Array.isArray(v)) return []
-      const out: Array<string | null> = []
-      for (const x of v.slice(0, RACK_MAX)) out.push(typeof x === 'string' && x.length > 0 ? x : null)
-      while (out.length > 0 && out[out.length - 1] === null) out.pop()
-      return out
-    }
     const fitRaw = asRaw(r.fitted)
     const fitted: FittedModules = {
-      high: wreckRack(fitRaw.high),
-      mid: wreckRack(fitRaw.mid),
-      low: wreckRack(fitRaw.low),
+      high: cleanRack(fitRaw.high),
+      mid: cleanRack(fitRaw.mid),
+      low: cleanRack(fitRaw.low),
     }
     const droneLoad: Record<string, number> = {}
     for (const [droneId, n] of Object.entries(asRaw(r.droneLoad))) {
@@ -1840,11 +1426,17 @@ for (const [key, value] of Object.entries(licensesRaw)) {
   const encRaw = asRaw(src.encounter)
   const encShipId = typeof encRaw.shipId === 'string' && encRaw.shipId.length > 0 ? encRaw.shipId : null
   const encGalaxy = typeof encRaw.galaxyId === 'string' && encRaw.galaxyId.length > 0 ? encRaw.galaxyId : null
+  const pirateSnapshot = cleanPirateEncounter(encRaw.pirate)
+  const encounterBattle = cleanBattle(encRaw.battle)
+  if (pirateSnapshot && encounterBattle) encounterBattle.foeOverride = { generatedCard: pirateSnapshot.card }
   const encounter: GameState['encounter'] =
-    encRaw.active === true && encShipId !== null && encGalaxy !== null
+    encRaw.active === true && encShipId !== null && encGalaxy !== null && (encRaw.pirate === undefined || !!pirateSnapshot && !!encounterBattle?.foeOverride?.generatedCard)
       ? {
           active: true,
           shipId: encShipId,
+          ...(encRaw.automatic === true ? { automatic: true as const } : {}),
+          ...(pirateSnapshot ? { pirate: pirateSnapshot } : {}),
+          ...(typeof encRaw.foeStrengthMul === 'number' && Number.isFinite(encRaw.foeStrengthMul) && encRaw.foeStrengthMul > 0 ? { foeStrengthMul: encRaw.foeStrengthMul } : {}),
           galaxyId: encGalaxy,
           name: typeof encRaw.name === 'string' && encRaw.name.length > 0 ? encRaw.name : '巡逻队',
           threat: Math.max(1, Math.floor(num(encRaw.threat, 10))),
@@ -1852,7 +1444,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
           origin: typeof encRaw.origin === 'string' ? encRaw.origin : '',
           invitedAtGameMs: Math.max(0, Math.floor(num(encRaw.invitedAtGameMs))),
           deadlineGameMs: Math.max(0, Math.floor(num(encRaw.deadlineGameMs))),
-          battle: cleanBattle(encRaw.battle),
+          battle: encounterBattle,
         }
       : {
           active: false,
@@ -1925,13 +1517,6 @@ for (const [key, value] of Object.entries(licensesRaw)) {
    * （与 `shipWrecks` 同手法）。
    * ⚠ **漏登记就是"读档即丢"**（本文件头注那条老坑）⇒ 收发两处都要写。
    */
-  const wreckLogCleanRack = (v: unknown): Array<string | null> => {
-    if (!Array.isArray(v)) return []
-    const out: Array<string | null> = []
-    for (const x of v.slice(0, RACK_MAX)) out.push(typeof x === 'string' && x.length > 0 ? x : null)
-    while (out.length > 0 && out[out.length - 1] === null) out.pop()
-    return out
-  }
   const wreckLog: NonNullable<GameState['wreckLog']> = []
   for (const raw of Array.isArray(src.wreckLog) ? src.wreckLog : []) {
     if (wreckLog.length >= WRECK_LOG_MAX) break
@@ -1954,9 +1539,9 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     if (!Number.isFinite(atGameMs) || atGameMs < 0) continue
     const fitRaw = asRaw(r.fitted)
     const fitted: FittedModules = {
-      high: wreckLogCleanRack(fitRaw.high),
-      mid: wreckLogCleanRack(fitRaw.mid),
-      low: wreckLogCleanRack(fitRaw.low),
+      high: cleanRack(fitRaw.high),
+      mid: cleanRack(fitRaw.mid),
+      low: cleanRack(fitRaw.low),
     }
     const droneLoad: Record<string, number> = {}
     for (const [droneId, n] of Object.entries(asRaw(r.droneLoad))) {
@@ -2139,7 +1724,11 @@ for (const [key, value] of Object.entries(licensesRaw)) {
         return JSON.stringify(normalized)
       } catch { return undefined }
     })()
+    const estimate = o.estimateRules === 1 ? cleanSignalAutoEstimate(o.estimate) : undefined
     wormholeAuto.push({
+      ...(o.estimateRules !== undefined ? { estimateRules: typeof o.estimateRules === 'number' && Number.isSafeInteger(o.estimateRules) ? o.estimateRules : -1 } : {}),
+      ...(estimate ? { estimate } : {}),
+      ...(typeof o.yieldMul === 'number' && [0.6, 0.7, 0.8].includes(o.yieldMul) ? { yieldMul: o.yieldMul } : {}),
       ...(o.haulerFittingVersion === 1 ? { haulerFittingVersion: 1 as const } : {}),
       id,
       stockId,
@@ -2198,13 +1787,15 @@ for (const [key, value] of Object.entries(licensesRaw)) {
       depth: Number.isFinite(depth) ? o.expeditionRules === 2 ? Math.max(1, depth) : Math.min(9, Math.max(1, depth)) : 1,
       finishedAtGameMs: Number.isFinite(num(o.finishedAtGameMs)) ? Math.max(0, Math.floor(num(o.finishedAtGameMs))) : 0,
       shipIds,
-      /**
-       * 返航释放的核心数：**恒为 1**（2026-09-26 船长令「整队一趟只占 1 枚」）。
-       * 旧档该字段存的是"参与舰数"（旧口径每舰 1 枚）——读档**按新口径重算**，不做数值迁移
-       * （它只是报告里的一行读数，不参与占用计算；占用直接数在跑的趟数）。
-       */
-      coresReleased: 1,
+      // 该值仅供报告显示；信号空间已无核心占用，实验任务保持原读数，不补发实体核心。
+      coresReleased: o.expeditionRules === undefined ? 0 : 1,
       gains,
+      ...(Array.isArray(o.cores) ? { cores: o.cores.flatMap<{ type: 'gamma' | 'beta' | 'alpha'; n: number }>(value => {
+        const core = asRaw(value)
+        return (core.type === 'gamma' || core.type === 'beta' || core.type === 'alpha')
+          && typeof core.n === 'number' && Number.isSafeInteger(core.n) && core.n > 0
+          ? [{ type: core.type, n: core.n }] : []
+      }).slice(0, 3) } : {}),
       damage,
       confirmed: o.confirmed === true,
       ...(o.expeditionRules === 2 ? {
@@ -2217,12 +1808,6 @@ for (const [key, value] of Object.entries(licensesRaw)) {
         expeditionProgress: cleanWormholeExpeditionRun({ expeditionRules: 2, expeditionProgress: o.expeditionProgress }).expeditionProgress,
       } : {}),
     })
-  }
-
-  // --- 限时促销的一次性领取记录（2026-09-16 · 可选字段 ⇒ 零迁移）：只收"键非空 + 值恒 true"的项 ---
-  const promoClaimed: Record<string, true> = {}
-  for (const [key, val] of Object.entries(asRaw(src.promoClaimed))) {
-    if (key.length > 0 && val === true) promoClaimed[key] = true
   }
 
   // --- 需弹窗的通讯队列（2026-09-14 · 可选字段 ⇒ 零迁移）：只收非空字符串、去重保序 ---
@@ -2289,6 +1874,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
       worker,
       recipeId,
       batchUnits: Math.max(1, Math.floor(num(r.batchUnits) || 0)),
+      ...(r.deliveryBlocked === true ? { deliveryBlocked: true } : {}),
       cycleMs: Math.max(1, Math.floor(num(r.cycleMs) || 0)),
       finishAtGameMs: Math.max(0, Math.floor(num(r.finishAtGameMs) || 0)),
       /**
@@ -2421,7 +2007,6 @@ for (const [key, value] of Object.entries(licensesRaw)) {
    */
   const firstTaskReadyIdRaw = src.firstTaskReadyId
   const firstTaskReadyId = typeof firstTaskReadyIdRaw === 'string' && firstTaskReadyIdRaw.length > 0 ? firstTaskReadyIdRaw : undefined
-  const firstTaskAutoClaim = src.firstTaskAutoClaim === true ? true : undefined
   /**
    * **铁人模式**（**2026-09-23 船长令**：「**和玩家讨论了下，发现好像搞一个铁人模式更受欢迎**」）。
    *
@@ -2482,16 +2067,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     isk: Math.max(0, Math.floor(num(reclaimPendingRaw.isk) || 0)),
     wreck: Math.max(0, Math.floor(num(reclaimPendingRaw.wreck) || 0)),
   }
-  /**
-   * **到手台账**（**2026-09-28 船长令「按你推荐来」⇒ 甲案：落盘**）—— 与上面那两本账**同一类漏**：
-   * 它原先**根本没进这个清洗器**（本文件 0 引用）⇒ 读一次档这本账就归零。两处实际后果：
-   * - `weekendSettleAndGrant` 的"迟到补发"（`boxAtSettle` ＝ 台账里没有黑匣 ∧ 掷骰掷中了）**只靠它幂等**
-   *   ⇒「击沉 → 发匣（台账记 1）→ 关游戏 → 读档（台账归 0、`flagshipBlackBox` 仍是 `true`）→ 结算」
-   *   这条路会**再发一枚黑匣**（实测口径见工作文档 `docs/design/weekend-blackbox-payout-20260928.md`）；
-   * - 结算面板与结算通讯的奖励清单读它（"说的与发的逐值一致"）⇒ 读档后清单整片归零。
-   * 口径：三格走 `weekendKeep`（**0 是合法值** = 一项都没发），`byGalaxy` 逐项清洗（星系 id 非空、两格 ≥ 0）；
-   * **缺键 ⇒ 不写键**（老档零迁移，读侧照旧 `??=` 兜底）。
-   */
+  /** 到手台账供结算面板与通讯读取；0 为合法值，缺键不写，不能凭计划奖改写实发记录。 */
   const rewardLedger = ((): NonNullable<GameState['weekendEvent']>['rewardLedger'] => {
     const raw = asRaw(weekendRaw.rewardLedger)
     if (Object.keys(raw).length === 0) return undefined
@@ -2528,7 +2104,11 @@ for (const [key, value] of Object.entries(licensesRaw)) {
            * 而它的唯一合法值就是池子常量 ⇒ 0/坏值一律当"还没锁池"。
            */
           const hpMax = weekendNum(weekendRaw.flagshipHpMax)
-          const hpDone = weekendKeep(weekendRaw.flagshipHpDone)
+          const continuousHp = (value: unknown): number | undefined => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined
+          const hpDone = continuousHp(weekendRaw.flagshipHpDone)
+          const hpRecovered = continuousHp(weekendRaw.flagshipHpRecovered)
+          const settledRuns = Array.isArray(weekendRaw.flagshipSettledRuns)
+            ? [...new Set(weekendRaw.flagshipSettledRuns.filter((value): value is number => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0))] : undefined
           /**
            * ⚠ **幂等标记 / 身份键 / 心跳基准：缺键必须是 `undefined`，绝不能读成 0**
            * （**2026-09-25 船长报障**：「**摧毁入侵母舰后，没有结算通讯发来**」——根因就在这一行）。
@@ -2554,7 +2134,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
            */
           const drainedLegacy = strictKeep(weekendRaw.octopusDrainedMs)
           const octopusHp =
-            strictKeep(weekendRaw.octopusHpDone) ??
+            continuousHp(weekendRaw.octopusHpDone) ??
             (drainedLegacy !== undefined && drainedLegacy > 0 && hpMax > 0
               ? Math.floor((hpMax * drainedLegacy) / weekendFlagshipWindowMs({ debugQuick }))
               : undefined)
@@ -2619,6 +2199,8 @@ for (const [key, value] of Object.entries(licensesRaw)) {
               : {}),
             ...(hpMax > 0 ? { flagshipHpMax: hpMax } : {}),
             ...(hpDone !== undefined ? { flagshipHpDone: hpDone } : {}),
+            ...(hpRecovered !== undefined ? { flagshipHpRecovered: hpRecovered } : {}),
+            ...(settledRuns?.length ? { flagshipSettledRuns: settledRuns } : {}),
             ...(octopusHp !== undefined ? { octopusHpDone: octopusHp } : {}),
             ...(runId !== undefined ? { flagshipRunId: runId } : {}),
             ...(bossTick !== undefined ? { bossTickWallMs: bossTick } : {}),
@@ -2632,19 +2214,14 @@ for (const [key, value] of Object.entries(licensesRaw)) {
             /** 夺回奖的两本账（2026-09-27 修漏）：空 ⇒ 不写键（老档零迁移），读侧有 `??=` 兜底 */
             ...(reclaimPaid.length > 0 ? { reclaimPaid } : {}),
             ...(reclaimPending.isk > 0 || reclaimPending.wreck > 0 ? { reclaimPending } : {}),
-            /** 到手台账（**2026-09-28 甲案：随档**）—— 结算的"迟到补发"靠它幂等、面板与通讯的清单读它 */
+            /** 到手台账随档，面板与通讯的奖励清单读它。 */
             ...(rewardLedger !== undefined ? { rewardLedger } : {}),
           }
         })()
       : undefined
 
-  /** **旗舰战参战编队**（2026-09-25 · 战前准备界面）：只留字符串、去重、截 4 艘；空 = 不写键 */
-  const weekendPrepSquad: string[] = []
-  for (const id of Array.isArray(src.weekendPrepSquad) ? src.weekendPrepSquad : []) {
-    if (typeof id !== 'string' || id.length === 0 || weekendPrepSquad.includes(id)) continue
-    weekendPrepSquad.push(id)
-    if (weekendPrepSquad.length >= 4) break
-  }
+  /** 旗舰准备名单只做形状清洗；新出击再按当前预算与玩法上限预检。 */
+  const weekendPrepSquad = cleanWeekendSquad(src.weekendPrepSquad)
 
   /**
    * **上一场入侵的战果快照**（2026-09-25 · 结算面板读它）：**结构对不上就整条丢**——
@@ -2883,6 +2460,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
       galaxyId,
       departAtGameMs: Number.isFinite(departAt) && departAt >= 0 ? departAt : 0,
       arriveAtGameMs: arriveAt,
+      ...(typeof d.flightDurationMs === 'number' && Number.isFinite(d.flightDurationMs) && d.flightDurationMs > 0 ? { flightDurationMs: d.flightDurationMs } : {}),
       rewardIsk: Number.isFinite(rewardIsk) ? Math.max(0, rewardIsk) : 0,
     }
     if (virtual) out.volumeM3 = volumeM3
@@ -3061,6 +2639,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
         q: Math.floor(num(row.q)),
         r: Math.floor(num(row.r)),
         place: placeOk,
+        ...(row.researchLab === true && placeOk === 'ruins' ? { researchLab: true as const } : {}),
         ...(isWormholeEventKey(row.eventKey) ? { eventKey: row.eventKey } : {}),
         ...(row.eventResolved === true ? { eventResolved: true } : {}),
         ...(cleanWormholeEventInstance(row.event) ? { event: cleanWormholeEventInstance(row.event) } : {}),
@@ -3205,6 +2784,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
             ...(Math.floor(num(rRaw.leftAtGameMs)) > 0 ? { leftAtGameMs: Math.floor(num(rRaw.leftAtGameMs)) } : {}),
             // 本趟期望交距偏好（洞内拖距离条选的；0/坏值不写）
             ...(num(rRaw.desireM) > 0 ? { desireM: Math.round(num(rRaw.desireM)) } : {}),
+            ...(rRaw.automaticBattleRanges === true ? { automaticBattleRanges: true as const } : {}),
             // 本趟确定性种子（F3b：层内产出的生成按它散列；坏值/缺省 ⇒ 不写，退回全局种子）
             ...(Math.floor(num(rRaw.seed)) !== 0 ? { seed: Math.floor(num(rRaw.seed)) } : {}),
             /**
@@ -3381,7 +2961,13 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     catch { throw new SaveError('VERSION', '存档中的星球运行规则高于当前支持范围，请升级游戏。') }
   })()
   const pendingStationActivity = cleanPendingStationActivity(src.pendingStationActivity)
+  const departure = cleanDeparture(src.departure)
+  const battleRangeByCard = cleanBattleRangeRecords(src.battleRangeByCard)
+  const pendingBattleRange = cleanPendingBattleRange(src.pendingBattleRange)
   const normalized: GameState = {
+    ...(departure && departure.shipId === shipId && fleet[departure.shipId] ? { departure } : {}),
+    ...(battleRangeByCard ? { battleRangeByCard } : {}),
+    ...(pendingBattleRange ? { pendingBattleRange } : {}),
     ...(pendingStationActivity && fleet[pendingStationActivity.shipId] ? { pendingStationActivity } : {}),
     ...(planetary ? { planetary } : {}),
     version: CURRENT_STATE_VERSION,
@@ -3414,6 +3000,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     ...(Object.keys(fitPresets).length > 0 ? { fitPresets } : {}),
     ...(wormholePreparationTemplates.length > 0 ? { wormholePreparationTemplates } : {}),
     ...(preparationSquads !== undefined ? { preparationSquads } : {}),
+    ...(cleanCombatSortie(src.combatEscort) ? { combatEscort: cleanCombatSortie(src.combatEscort) } : {}),
     blueprintStock,
     market,
     ...(blackMarket ? { blackMarket } : {}),
@@ -3431,10 +3018,6 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     standingsEarned,
     // 见过黑匣没有（三态；缺省 = 老档 ⇒ 不落键，由 `blackbox.blackboxSeenOf` 回填）
     ...(blackboxSeen !== undefined ? { blackboxSeen } : {}),
-    // 声望回正走过没有（单程标记；缺省不落键 ⇒ 与"还没走过"等价）
-    ...(standingClawbackDone !== undefined ? { standingClawbackDone } : {}),
-    // 入侵补偿批标记（2026-10-02 船长令；缺省不落键 ⇒ 老档形状不变）
-    ...(weekendCompensation !== undefined ? { weekendCompensation } : {}),
     expedition,
     events,
     exploredGalaxies,
@@ -3445,8 +3028,6 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     wormholeStock,
     wormholeAuto,
     wormholeAutoReports,
-    // 限时促销领取记录（2026-09-16 · 可选字段 ⇒ 老档没有就是"还没领过"；空表不落键，保持老档形状）
-    ...(Object.keys(promoClaimed).length > 0 ? { promoClaimed } : {}),
     debugQuick,
     completedBounties,
     awayGalaxy,
@@ -3467,6 +3048,13 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     // 非负整数，缺省 0（老档从零攒）
     rareWreckDryStreak: Math.max(0, Math.floor(num(src.rareWreckDryStreak))),
     encounter,
+    ...(src.industrialFleetRiskSeen === true ? { industrialFleetRiskSeen: true as const } : {}),
+    ...(src.industrialProtection && typeof src.industrialProtection === 'object' ? { industrialProtection: {
+      version: 1 as const,
+      entryRemainingMs: Math.max(0, num(asRaw(src.industrialProtection).entryRemainingMs)),
+      dockedMs: Math.max(0, num(asRaw(src.industrialProtection).dockedMs)),
+      postBattleUntilMs: Math.max(0, num(asRaw(src.industrialProtection).postBattleUntilMs)),
+    } } : {}),
     lowSecNotified,
     encounterZoneCooldown,
     lowSecPresence,
@@ -3518,9 +3106,8 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     ...(Object.keys(firstStats).length > 0 ? { firstStats } : {}),
     // 导航「任务中心」推进提醒的记账：**没记过账就不写键**（同款零迁移口径）
     ...(firstTaskSeenId !== undefined ? { firstTaskSeenId } : {}),
-    // 「已达成」播报记账 ＋ 老档一次性收口标记：同样只在有值时写键
+    // 「已达成」播报记账，只在有值时写键。
     ...(firstTaskReadyId !== undefined ? { firstTaskReadyId } : {}),
-    ...(firstTaskAutoClaim !== undefined ? { firstTaskAutoClaim } : {}),
     ironman,
     // 周末入侵活动：**只在"有入侵"时写键**（老档 / 无入侵 ⇒ 键不出现，读回 undefined）
     ...(weekendEvent !== undefined ? { weekendEvent } : {}),
@@ -3532,6 +3119,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
   }
   // 玩家标记收尾：去重 + 剪掉已不在舰队的船（fleet 此时已建好）
   pruneMarks(normalized)
+  reconcileDeparture(normalized)
   normalizeTrainingProgress(normalized)
   return normalized
 }
@@ -3568,7 +3156,7 @@ export function serializeSaveFile(state: GameState, nowWallMs: number = Date.now
   })
 }
 
-/** 读取：解析 + 校验 + 迁移 + 容错，返回可用的状态与"上次保存的墙钟时间" */
+/** 读取：解析、版本校验与字段清洗，返回状态与上次保存的墙钟时间。 */
 export function loadSaveFile(text: string): { state: GameState; savedAtWallMs: number } {
   let parsed: unknown
   try {
@@ -3581,31 +3169,17 @@ export function loadSaveFile(text: string): { state: GameState; savedAtWallMs: n
     throw new SaveError('FORMAT', `不是本游戏的存档（格式标识不符：${String(file.format)}）。`)
   }
   const fileVersion =
-    typeof file.version === 'number' && Number.isFinite(file.version) ? Math.floor(file.version) : 0
+    typeof file.version === 'number' && Number.isFinite(file.version) ? file.version : 0
   const savedAtWallMs =
     typeof file.savedAtWallMs === 'number' && Number.isFinite(file.savedAtWallMs) ? file.savedAtWallMs : 0
 
-  // 版本迁移链：v 逐级升到当前版本
-  let current = asRaw(file.state)
-  let v = fileVersion
-  // 过旧档：直接拒（不再尝试逐级迁移）——玩家侧由 engine 开新档并写日志，本错误串只进控制台
-  if (v < MIN_MIGRATABLE_VERSION) {
-    throw new SaveError('VERSION', `存档版本 v${v} 早于可迁移下限 v${MIN_MIGRATABLE_VERSION}：不再提供迁移脚本，请新开存档。`)
+  if (fileVersion < MIN_SUPPORTED_SAVE_VERSION) {
+    throw new SaveError('VERSION', `存档版本 v${fileVersion} 早于可读取下限 v${MIN_SUPPORTED_SAVE_VERSION}：不再提供旧档迁移，请新开存档。`)
   }
-  while (v < CURRENT_STATE_VERSION) {
-    const migrate = MIGRATIONS[v]
-    if (!migrate) {
-      // 兜底：下限之内出现断代（正常不该发生）——与"过旧"同一码，便于工具/用例统一识别
-      throw new SaveError('VERSION', `存档版本 v${v} 在可迁移区间内缺少迁移脚本（v${MIN_MIGRATABLE_VERSION}~v${CURRENT_STATE_VERSION}）。`)
-    }
-    current = asRaw(migrate(current))
-    v += 1
+  if (fileVersion > CURRENT_STATE_VERSION) {
+    throw new SaveError('VERSION', `存档版本 v${fileVersion} 高于当前支持的 v${CURRENT_STATE_VERSION}，请升级游戏。`)
   }
-  if (v > CURRENT_STATE_VERSION) {
-    throw new SaveError('VERSION', `存档版本 v${v} 高于当前支持的 v${CURRENT_STATE_VERSION}，请升级游戏。`)
-  }
-
-  const state = normalizeState(current)
+  const state = normalizeState(file.state)
   // 离线结算以文件头的保存时间为准（而不是状态内部字段，双保险）
   state.savedAtWallMs = savedAtWallMs
   return { state, savedAtWallMs }

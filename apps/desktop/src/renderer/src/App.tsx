@@ -40,6 +40,11 @@ import { WeekendSummaryView } from './panels/WeekendSummary'
 import { PlugExchangeModal } from './panels/PlugExchange'
 import { InvasionAlarm, InvasionFireworks, ALARM_TOTAL_MS, FIREWORKS_MS } from './panels/InvasionFx'
 import { playSfx } from './game/sfx'
+/**
+ * 场景音频（2026-11-02 追加批）：引擎状态 + 战场是否上屏 → BGM/环境场景。
+ * 挂在 `battleOnStage` 定义之后（该行之上不能有早退分支，本 hook 无条件调用）。
+ */
+import { useSceneAudio } from './game/audio/useSceneAudio'
 import { FitPage } from './pages/FitPage'
 import { ShipPage, type ShipTab } from './pages/ShipPage'
 import { ItemsPage } from './pages/ItemsPage'
@@ -49,9 +54,12 @@ import { IndustryHudPage } from './pages/IndustryHudPage'
 import { SkillsTreePage } from './pages/SkillsTreePage'
 import { MapPage, MAP_TABS, TAB_UNLOCK_KEY } from './pages/MapPage'
 import { CommsPage } from './pages/CommsPage'
+import { OnlineChatPage } from './pages/OnlineChatPage'
 import { CommsEave, CommsScreen } from './panels/CommsReader'
 import { TaskCenterPage } from './pages/TaskCenterPage'
 import { AchievementsPage } from './pages/AchievementsPage'
+import { ExchangePage } from './pages/ExchangePage'
+import { useOnlineChat } from './features/cloud/useOnlineChat'
 import type { MapGotoTarget, MapTab, TaskFocusTarget } from './pages/MapPage'
 import type { ToastFn } from './pages/common'
 import type { GameEngine } from './game/engine'
@@ -60,6 +68,7 @@ import { SaveReconnect } from './panels/SaveReconnect'
 import type { ReconnectChoice } from './game/saveReconnect'
 import { Handbook } from './panels/Handbook'
 import { BattleScreen } from './panels/BattleScreen'
+import { BattleRangeConfirm } from './panels/BattleRangeConfirm'
 import { debugEnabled as readDebugEnabled } from './panels/DebugPanel'
 import { WormholePanel } from './panels/Wormhole'
 import { SignalSpacePanel } from './panels/SignalSpace'
@@ -70,6 +79,7 @@ import { Glyph, NAV_TONES, ICO_TONES } from './ui/Glyphs'
 import { ActivityScreen, activityKindOf } from './ui/ActivityScreen'
 import { AppShell } from './ui/AppShell'
 import type { LayoutKind } from './ui/AppShell'
+import { LAYOUT_KEY, LAYOUT_SET_KEY, readLayoutPref } from './ui/layoutPreference'
 import { setSessionPick, sessionPick } from './ui/sessionView'
 import { cmdText, logText, tr } from './i18n/locale'
 import { fmtDuration } from './i18n/fmt'
@@ -96,6 +106,18 @@ const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
   { key: 'achieve', label: 'ui.App.119', icon: 'ach-first' },
   // 2026-09-11 船长定：新增「通讯」页（NPC 消息 = 剧情与任务提示；邮件形图标，未读时闪烁 + 计数）
   { key: 'comms', label: 'ui.App.009', icon: 'nav-mail' },
+  { key: 'chat', label: 'ui.chat.019', icon: 'nav-chat' },
+  /**
+   * **证券交易所（F0 可点击原型）·「股市」**（2026-11-03 船长：「先做可点击原型」；
+   * 同日追加反馈：「看不到股市入口」——原先放在 `DEBUG_NAV_ITEMS` 里，而调试模式在打包版/公网
+   * 域名下恒禁用（`debugAllowed()` 只放行 localhost/内网）⇒ 玩家永远看不见）。
+   * **原型期临时上正式导航**（本数组末位 = 现代布局右下角最右），验收后再决定是否加解锁门禁、
+   * 转正或替换；`unlocked()` 对表外 key 恒真（`packages/core/src/firstTasks.ts`）⇒ 开局即可见。
+   * label 仍用中文原文：`AppShell` 的 `t()` 查不到词条时原样返回（见 `i18n/locale.tsx`），
+   * 转正登记 `ui.exchange.*` 后再换 id。图标 = Carbon `ChartCandlestick`（`nav-exchange`）。
+   * **现代布局专属**：旧版 classic 外壳不显示本项（在下方传 `navItems` 前就地过滤；不改 AppShell）。
+   */
+  { key: 'exchange', label: '股市', icon: 'nav-exchange' },
 ]
 
 /**
@@ -128,9 +150,11 @@ export type PageKey =
   | 'task'
   | 'achieve'
   | 'comms'
+  | 'chat'
+  | 'exchange'
 
 /** 已转换"一级页不滚"的页面（每完成一页在此登记；见 docs/design/page-scroll-layout.md 实施清单） */
-const PAGE_NO_SCROLL = new Set<string>(['ship', 'fit', 'market', 'map', 'industry', 'industryHud', 'skills', 'items', 'task', 'achieve', 'comms'])
+const PAGE_NO_SCROLL = new Set<string>(['ship', 'fit', 'market', 'map', 'industry', 'industryHud', 'skills', 'items', 'task', 'achieve', 'comms', 'chat', 'exchange'])
 
 /**
  * 手机自绘下拉面板「最短出现间隔」（毫秒 · 2026-09-13 船长定）。
@@ -473,7 +497,7 @@ export function App({ engine }: { engine: GameEngine }) {
    * 「第一次学习技能」的跳转按钮与那封情报信的「前往」都落到「技能 · 工程」——
    * 口径同 `taskFocus`：`seq` 变化即应用一次（人已经在技能页时再点一次也能重新落位）。
    */
-  const [skillsFocus, setSkillsFocus] = useState<{ group: string; seq: number } | null>(null)
+  const [skillsFocus, setSkillsFocus] = useState<{ group: string; branch?: string; seq: number } | null>(null)
   /**
    * **虫洞面板**（终局玩法 · ✅ 2026-09-14 已上线：入口常驻，玩家侧门槛 = 协会声望 ≥ 40）：
    * 面板挂在 App 这一层、**不依赖星图选中哪个星系**——原先只挂在星图行动区的入口行里，
@@ -515,7 +539,7 @@ export function App({ engine }: { engine: GameEngine }) {
     setWhOpen(true)
   }
   useEffect(() => {
-    if (page !== 'fit') setFitShipId(null)
+    // 保持 fitShipId 的会话记忆（2026-11-02 优化）：离开装配页采购配件再回，不强行重置为旗舰
     // 页面切换时隐藏残留悬停浮层（卸载不会触发 hover leave；如舰队卡 hover 中点「装配」跳转后悬浮窗残留）
     hideTip()
   }, [page])
@@ -557,17 +581,6 @@ export function App({ engine }: { engine: GameEngine }) {
  * 而这张卡挂上来的时机常常正好是"玩家刚点完战场 / 刚在别处点过一下"⇒ 不设防就会一挂上就被点掉。
  */
 const POPUP_ARM_MS = 450
-const LAYOUT_KEY = 'whale-idle:layout'
-const LAYOUT_SET_KEY = 'whale-idle:layout-set'
-
-function readLayoutPref(): LayoutKind {
-  try {
-    if (localStorage.getItem(LAYOUT_SET_KEY) !== '1') return 'classic'
-    return localStorage.getItem(LAYOUT_KEY) === 'modern' ? 'modern' : 'classic'
-  } catch {
-    return 'classic'
-  }
-}
 const [layoutKind] = useState<LayoutKind>(readLayoutPref)
 /** 玩家已点选、但**还没重启**的布局（null = 没有待应用项）—— 弹框问过之后才写盘并关游戏 */
 const [layoutPending, setLayoutPending] = useState<LayoutKind | null>(null)
@@ -645,6 +658,7 @@ async function applyLayoutAndReload(): Promise<void> {
     setToast({ text, warn })
     toastTimer.current = window.setTimeout(() => setToast(null), warn && text.includes('\n') ? 15_000 : 3200)
   }
+  const onlineChat = useOnlineChat(locale, showToast)
   /**
    * **点击底部提示条立即关闭**（2026-09-13 船长：「屏幕下方的错误提示，允许玩家通过点击快速关闭。」）——
    * 两种底部提示（操作提示 `.app-toast` 与随机事件小弹卡 `.app-event-toast`）**整条可点**：
@@ -782,6 +796,7 @@ async function applyLayoutAndReload(): Promise<void> {
   const [modeChoiceImportHold, setModeChoiceImportHold] = useState(false)
   const [showHandbook, setShowHandbook] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [settingsInitialPage, setSettingsInitialPage] = useState<'interface' | 'save'>('interface')
   const [battleOpen, setBattleOpen] = useState(false)
   /** 新档模式选择（铁人 S4b）：重置档案确认后弹一次，选普通/铁人再开局 */
 
@@ -810,7 +825,7 @@ async function applyLayoutAndReload(): Promise<void> {
   const inBattle =
     (state.expedition.active && state.expedition.phase === 'battle') ||
     !!state.wormhole.run?.battle ||
-    weekendFlagshipBattleActive(state)
+    weekendFlagshipBattleActive(state) || !!(state.encounter.active && state.encounter.battle && (state.encounter.pirate || state.encounter.automatic))
 
   /**
    * ── 观战屏：**挂载**与**上屏**是两件事（2026-09-22 回归修复）──
@@ -829,12 +844,12 @@ async function applyLayoutAndReload(): Promise<void> {
   const [battleMounted, setBattleMounted] = useState(false)
   const prevInBattleRef = useRef(false)
   const battleWatchedRef = useRef(false)
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (inBattle && !prevInBattleRef.current) {
       setBattleMounted(true)
       battleWatchedRef.current = false
-      // 优化：重复清剿自动发起的远征默认最小化战斗界面（仍可用「⚔ 战斗中」主动进入）
-      if (!engine.autoSortieNow()) setBattleOpen(true)
+      // 新场绘制前设置显隐，连续出击不能继承上一场的展开状态。
+      setBattleOpen(!engine.autoSortieNow() && !state.encounter.pirate && !state.encounter.automatic)
     }
     prevInBattleRef.current = inBattle
   }, [inBattle])
@@ -978,11 +993,11 @@ async function applyLayoutAndReload(): Promise<void> {
    * **2026-09-24 船长令**：再加一档 `{page:'skills', tab:'工程'}` ⇒ 技能页自动选中该大类
    * （「第一次学习技能」那封信的「前往」直接落在「工程」）。
    */
-  function gotoFromComms(p: string, tab?: string, shipTab?: string, taskTab?: string): void {
+  function gotoFromComms(p: string, tab?: string, shipTab?: string, taskTab?: string, skillBranch?: string): void {
     if (p === 'map' && tab) changeMapTab(tab as MapTab)
     if ((p === 'task' || (p === 'map' && tab === 'task')) && taskTab) focusTaskTab(taskTab)
     if (p === 'ship' && shipTab) changeShipTab(shipTab as ShipTab)
-    if (p === 'skills' && tab) focusSkillGroup(tab)
+    if (p === 'skills' && tab) focusSkillGroup(tab, skillBranch)
     changePage(p as PageKey)
   }
 
@@ -1007,6 +1022,8 @@ async function applyLayoutAndReload(): Promise<void> {
   const [prepOpen, setPrepOpen] = useState(false)
   /** 战场是否正盖在界面上（挂载 ≠ 上屏：`battleOpen` 为假时战场什么都不渲染，不算盖着） */
   const battleOnStage = battleMounted && battleOpen
+  /** BGM / 环境音（2026-11-02 追加批）：场景变化才切曲；隐藏/最小化由内部生命周期暂停 */
+  useSceneAudio({ state: engine.state, battleOnStage })
   /**
    * **入侵警报演出**（**船长 2026-09-25 令**：「当入侵发生时，游戏屏幕的正上方和正下方出现警告式的红灯
    * 闪烁……**警告灯闪烁数次后，再弹出通讯**」＋ 同日补定「**开局 ＋ 旗舰现身各闪一次**」）。
@@ -1058,6 +1075,15 @@ async function applyLayoutAndReload(): Promise<void> {
     const t = window.setTimeout(() => setFireworksOn(false), FIREWORKS_MS)
     return () => window.clearTimeout(t)
   }, [fireworksOn])
+  /**
+   * **通讯送达提示音**（2026-11-02 声音系统）：弹窗**真正上台**那一刻播一次
+   * —— 与上面"战场让位 / 离线简报优先 / 警报期间压住弹窗"同一套排队，等它上台再响。
+   */
+  useEffect(() => {
+    if (popupMsg === null) return
+    playSfx('comms-received')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [popupMsg?.id])
   /** 结算面板（弹窗里的「查看详细奖励」**直接弹它**；通讯页那一处入口照旧） */
   const [sumOpen, setSumOpen] = useState(false)
   /**
@@ -1281,8 +1307,8 @@ async function applyLayoutAndReload(): Promise<void> {
    * **技能页大类定位**（**2026-09-24 船长令**：「跳到技能页并自动选中工程」）：与 `focusTaskTab` 同款
    * ——技能页的大类是页内状态（会记住玩家上次选的），跳转必须显式发一次请求，`seq` 变化才应用。
    */
-  const focusSkillGroup = (group: string): void => {
-    setSkillsFocus((p) => ({ group, seq: (p?.seq ?? 0) + 1 }))
+  const focusSkillGroup = (group: string, branch?: string): void => {
+    setSkillsFocus((p) => ({ group, branch, seq: (p?.seq ?? 0) + 1 }))
   }
   const changeShipTab = (t: ShipTab): void => {
     setShipTab(t)
@@ -1300,6 +1326,16 @@ async function applyLayoutAndReload(): Promise<void> {
     window.addEventListener('whale-planetary-open', open)
     return () => window.removeEventListener('whale-planetary-open', open)
   }, [])
+  useEffect(() => {
+    const onPageChange = (e: Event): void => {
+      const ce = e as CustomEvent<{ page: PageKey }>
+      if (ce.detail?.page) {
+        changePage(ce.detail.page)
+      }
+    }
+    window.addEventListener('whale-page-change', onPageChange)
+    return () => window.removeEventListener('whale-page-change', onPageChange)
+  }, [changePage])
   useEffect(() => {
     const s = engine.state.onboarding.step
     if (prevObStep.current === ONB_AWAKEN && s !== ONB_AWAKEN) {
@@ -1339,7 +1375,7 @@ async function applyLayoutAndReload(): Promise<void> {
         firstTaskNew={firstTaskNew}
         navBeat={navBeat}
         page={page}
-        setShowSettings={setShowSettings}
+        setShowSettings={(open) => { setSettingsInitialPage('interface'); setShowSettings(open) }}
         mobileLog={mobileLayout ? { open: mobileLogOpen, onToggle: () => setMobileLogOpen((open) => !open) } : null}
         setShowHandbook={setShowHandbook}
         copyQqGroup={copyQqGroup}
@@ -1350,7 +1386,14 @@ async function applyLayoutAndReload(): Promise<void> {
         promosNow={promosNow}
         tuningsNow={tuningsNow}
         tuningTick={tuningTick}
-        navItems={NAV_ITEMS}
+        /**
+         * **股市入口：modern-only**（2026-11-03 船长令）：
+         * 已从 `DEBUG_NAV_ITEMS` 移入 `NAV_ITEMS` 末位（现代布局右下角最右侧、不需要调试模式），
+         * 但旧版 classic 布局一个字都不动 ⇒ 在交给 `AppShell` 之前就地过滤掉 exchange。
+         * 不在 AppShell 里加 `modernOnly` 标记，是因为该文件当前有在途改动（硬约束）；
+         * 调试项（工业 HUD、stellar）保持原样，两类布局都可见。
+         */
+        navItems={layoutKind === 'classic' ? NAV_ITEMS.filter((item) => item.key !== 'exchange') : NAV_ITEMS}
         debugNavItems={[...DEBUG_NAV_ITEMS, { key: 'stellar', label: 'ui.stellar.054', icon: 'nav-map',
           onSelect: () => { if (planetaryEnabled()) { hideActivityWin(); setPlanetOpen(true) } } }]}
         readDebugEnabled={readDebugEnabled}
@@ -1439,15 +1482,16 @@ async function applyLayoutAndReload(): Promise<void> {
             />
             ) : null}
             {page === 'industryHud' ? (
-            /* **工业 HUD 页（调试）**（2026-09-30 船长令）：另起一页，现有工业页一字不动 */
-            <IndustryHudPage
-            {...pageProps}
-            onGotoMarket={(goodKey) => {
-            setMktFocus((p) => ({ key: goodKey, seq: (p?.seq ?? 0) + 1 }))
-            changePage('market')
-            }}
-            />
+              /* **工业 HUD 页（调试）**（2026-09-30 船长令）：另起一页，现有工业页一字不动 */
+              <IndustryHudPage
+                {...pageProps}
+                onGotoMarket={(goodKey) => {
+                  setMktFocus((p) => ({ key: goodKey, seq: (p?.seq ?? 0) + 1 }))
+                  changePage('market')
+                }}
+              />
             ) : null}
+            {page === 'exchange' ? <ExchangePage {...pageProps} /> : null}
             {page === 'industry' ? (
             <IndustryPage
             {...pageProps}
@@ -1535,6 +1579,9 @@ async function applyLayoutAndReload(): Promise<void> {
              */
             onOpenPlugExchange={openPlugExchange}
             />
+            ) : null}
+            {page === 'chat' ? (
+              <OnlineChatPage chat={onlineChat} onToast={showToast} onOpenSettings={() => { setSettingsInitialPage('save'); setShowSettings(true); hideActivityWin() }} />
             ) : null}
             </div>
           </>
@@ -1743,6 +1790,7 @@ async function applyLayoutAndReload(): Promise<void> {
                 <div className="app-dim app-report-tail">{tr("ui.App.097")}</div>
               </>
             ) : null}
+            {(offlineReport.combatLines ?? []).map((line, i) => <div key={`combat-${i}`} className="app-report-line">{line}</div>)}
             {offlineReport.highlights.map((h, i) => (
               <div key={i} className={`app-report-highlight is-${h.kind}`}>
                 {h.kind === 'warn' ? '⚠' : '¥'} {h.text}
@@ -1763,9 +1811,9 @@ async function applyLayoutAndReload(): Promise<void> {
               <CommsScreen entry={popupMsg} itemNameOf={(id) => engine.ctx.items.get(id)?.name ?? id} />
               <CommsEave
                 entry={popupMsg}
-                onGoto={(p, tab, shipTab, taskTab) => {
+                onGoto={(p, tab, shipTab, taskTab, skillBranch) => {
                   engine.dismissCommsPopup(popupMsg.id)
-                  gotoFromComms(p, tab, shipTab, taskTab)
+                  gotoFromComms(p, tab, shipTab, taskTab, skillBranch)
                 }}
                 /**
                  * **弹面板的动作**（2026-09-25 · 入侵结算信「查看详细奖励」）——
@@ -1843,6 +1891,7 @@ async function applyLayoutAndReload(): Promise<void> {
         </div>
       ) : null}
       {/* 战前准备弹层：从上面那枚弹窗直达（组件自包含；活动框与星系详细里各挂一份自己的） */}
+      {state.pendingBattleRange ? <BattleRangeConfirm key={state.pendingBattleRange.signature} engine={engine} /> : null}
       {prepOpen ? <WeekendFlagshipPrepModal engine={engine} onClose={() => setPrepOpen(false)} /> : null}
       {/**
        * **入侵结算面板**（船长 2026-09-25 令：「玩家点击下方的跳转时应该直接弹出结算公告」）：
@@ -1944,6 +1993,7 @@ async function applyLayoutAndReload(): Promise<void> {
       ) : null}
       {showSettings ? (
         <SettingsPanel
+          initialPage={settingsInitialPage}
           root={rootRef}
           onClose={() => setShowSettings(false)}
           engine={engine}

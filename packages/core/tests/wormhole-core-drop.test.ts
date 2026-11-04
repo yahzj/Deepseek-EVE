@@ -18,7 +18,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
-import { createInitialState } from '../src/state'
+import { createCommandReadyState as createInitialState } from './helpers/command-ready'
 import type { GameState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
 import { wormholeEnter } from '../src/wormhole'
@@ -193,6 +193,7 @@ describe('虫洞 · 遗迹掉落 AI 核心（2026-09-14 船长定）', () => {
     expect(WORMHOLE_AUTO_MANUAL.cores).toBeCloseTo(0.1, 6) // 层 1 命中率 = 10%/趟
     const hit = (seed: number): { cores: number; seesReport: boolean } => {
       const state = createInitialState({ nowWallMs: 0, seed })
+      state.research!.levels['mt-explore-signal-auto-t3'] = 3
       const uids = [0, 1, 2, 3].map(() => addShipToFleet(state, T3))
       state.skills.trained['ai-expert'] = 6
       state.wormholeStock = []

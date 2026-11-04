@@ -26,9 +26,11 @@ import {
   countWare,
   cpuBudgetOf,
   cpuUseOf,
+  ceilFinalQuantity,
   createPlayerSpec,
   /** 2026-09-26 船长令：装配页插件槽只读区（core 单点给槽位上限 + 已装清单） */
   plugInfoOf,
+  plugEffectsOf,
   cleanShipDamage,
   /** 2026-09-27 船长报障：装入入口（空槽可点，弹层选装，二次确认，installPlug） */
   installPlug,
@@ -79,7 +81,7 @@ import { ShipSprite } from '../ui/ShipSprite'
 import { rackText, slotText } from '../ui/labelsText'
 import type { PageProps } from './common'
 import { tr, cmdText } from '../i18n/locale'
-import { Crosshair } from 'lucide-react'
+import { Crosshair } from '../ui/layoutIcons'
 import { FittingRange } from '../panels/FittingRange'
 
 
@@ -225,7 +227,7 @@ function diffSegs(
   for (const k of ['s', 'a', 'h'] as const) {
     const c = cur.hp[k]
     const n = next.hp[k]
-    if (n !== c) hpPairs.push({ lab: HP_KEY_LABEL[k], c: Math.round(c), n: Math.round(n) })
+    if (n !== c) hpPairs.push({ lab: HP_KEY_LABEL[k], c: ceilFinalQuantity(c), n: ceilFinalQuantity(n) })
   }
   hpPairs.sort((x, y) => Math.abs(y.n - y.c) - Math.abs(x.n - x.c))
   for (const p of hpPairs.slice(0, 2)) add(`${p.lab} ${fmt(p.c)}→${fmt(p.n)}`, dir(p.n - p.c))
@@ -349,9 +351,9 @@ function rangeShort(m: ModuleDef): string {
 function CpuStrip({ used, total }: { used: number; total: number }): ReactNode {
   const rem = total - used
   const over = rem < 0
-  const remPct = total > 0 ? Math.max(0, Math.min(100, (rem / total) * 100)) : 0
-  // 醒目分级：剩余充足青绿 → ≤15% 琥珀告警（含"刚好装满"）→ 超载危险红
-  const cls = over ? 'is-full' : remPct <= 15 ? 'is-warn' : 'is-ok'
+  const usedPct = total > 0 ? (over ? 100 : Math.max(0, Math.min(100, (used / total) * 100))) : 0
+  // 醒目分级：未超载且使用率 < 90% 充足青绿 → ≥90% 琥珀告警（含"刚好装满"）→ 超载危险红
+  const cls = over ? 'is-full' : (total > 0 && used / total >= 0.9) ? 'is-warn' : 'is-ok'
   return (
     <div
       className={`app-fit-cpustrip ${cls}`}
@@ -359,13 +361,13 @@ function CpuStrip({ used, total }: { used: number; total: number }): ReactNode {
     >
       <span className="app-fit-cpustrip-label">{tr("ui.FitPage.020")}</span>
       <span className="app-fit-cpustrip-num">
-        {minus(rem)} / {total}
+        {used} / {total} <span style={{ fontSize: 'var(--wui-fs-xs)', color: 'rgb(var(--wui-dim))', fontWeight: 'normal' }}>(剩 {minus(rem)})</span>
       </span>
       <span className="app-fit-cpustrip-pct">
-        {over ? tr("ui.FitPage.128", { p1: -rem }) : rem === 0 ? tr("ui.FitPage.021") : `${Math.round(remPct)}%`}
+        {over ? tr("ui.FitPage.128", { p1: -rem }) : rem === 0 ? tr("ui.FitPage.021") : `${Math.round(usedPct)}%`}
       </span>
-      <span className={`app-fit-cpustrip-track ${cls}`} role="progressbar" aria-valuenow={Math.round(remPct)} aria-valuemin={0} aria-valuemax={100}>
-        <i style={{ width: `${remPct}%` }} />
+      <span className={`app-fit-cpustrip-track ${cls}`} role="progressbar" aria-valuenow={Math.round(usedPct)} aria-valuemin={0} aria-valuemax={100}>
+        <i style={{ width: `${usedPct}%` }} />
       </span>
     </div>
   )
@@ -376,7 +378,12 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
   const state = engine.state
   // 装配目标船（船长 2026-09-05：入口在舰船页舰队卡片——onGotoFit 带入目标船；直接进入默认当前驾驶船）
   const piloted = state.shipId
-  const [targetId] = useState<string>(fitShipId && state.fleet[fitShipId] ? fitShipId : piloted)
+  const [targetId, setTargetId] = useState<string>(fitShipId && state.fleet[fitShipId] ? fitShipId : piloted)
+  useEffect(() => {
+    if (fitShipId && state.fleet[fitShipId]) {
+      setTargetId(fitShipId)
+    }
+  }, [fitShipId, state.fleet])
   const effectiveTarget = state.fleet[targetId] ? targetId : piloted
   const isPiloted = effectiveTarget === piloted
   const configurationBlock = shipOperationBlockReason(state, engine.ctx, effectiveTarget, 'configure')
@@ -391,6 +398,40 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
   const slots = shipDef ? shipSlotsWithPlugsOf(state, engine.ctx, effectiveTarget) : { high: 1, mid: 1, low: 1 }
   // 装后合成（与战斗引擎同源：血量含容量件、抗性含乘入缺口、速度含加力曲线、回避含陀螺缺口）
   const spec = shipDef ? createPlayerSpec(state, engine.ctx, effectiveTarget) : null
+  // DataDog / 航电风格战术指标（火力总览与综合有效承伤）
+  let weaponDps = 0
+  let droneDps = 0
+  if (spec) {
+    for (const w of spec.weapons) {
+      if (w.label === '基础舰炮') continue
+      const per = w.kind === 'gun' ? Object.values(w.shotsByType ?? {})[0] ?? 0 : (w.shotDmg ?? 0)
+      const d = (per * (w.count ?? 1)) / Math.max(0.1, w.reloadMs / 1000)
+      if (w.src === 'drone') {
+        droneDps += d
+      } else {
+        weaponDps += d
+      }
+    }
+  }
+  const totalNominalDps = weaponDps + droneDps
+
+  let shieldEhp = 0
+  let armorEhp = 0
+  let hullEhp = 0
+  if (spec) {
+    const sRes = spec.resists.shield ?? {}
+    const avgSRes = Math.min(0.95, ((sRes.kinetic ?? 0) + (sRes.explosive ?? 0) + (sRes.plasma ?? 0)) / 3)
+    shieldEhp = Math.round(spec.hp.s / Math.max(0.05, 1 - avgSRes))
+
+    const aRes = spec.resists.armor ?? {}
+    const avgARes = Math.min(0.95, ((aRes.kinetic ?? 0) + (aRes.explosive ?? 0) + (aRes.plasma ?? 0)) / 3)
+    armorEhp = Math.round(spec.hp.a / Math.max(0.05, 1 - avgARes))
+
+    const hRes = spec.resists.hull ?? {}
+    const avgHRes = Math.min(0.95, ((hRes.kinetic ?? 0) + (hRes.explosive ?? 0) + (hRes.plasma ?? 0)) / 3)
+    hullEhp = Math.round(spec.hp.h / Math.max(0.05, 1 - avgHRes))
+  }
+  const totalBaseEhp = shieldEhp + armorEhp + hullEhp
   // 命中率（2026-09-19 船长：「装配界面的舰船属性里，少了命中率属性」）：整机读数 + 括号明细
   // （船体加成 / 索敌件 / 推进失稳）——口径见 meanHitRateOf
   const hitRead = spec ? meanHitRateOf(spec) : null
@@ -670,16 +711,21 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
   /** 空位候选下拉文案：V18.1 收敛件标注"第 N 件衰减"（避免玩家误以为全效线性叠加） */
   function fitOptionLabel(m: ModuleDef): string {
     const base = `${m.name}（×${countModule(state, m.id)} · ${moduleShortEffect(m)}）${stealthTraitNote(m)}`
+    // ⟪文案调整 2026-10-19⟫ 唯一限制与收益递减分开显示，不改叠加算法。
+    if (m.unique === true) return tr("ui.FitPage.194", { base })
     if (!fitted) return base
     const st = stackingOf(m)
     // `flat` = 加算不收敛 ⇒ 不挂"第 N 件衰减"尾注；
     // ⚠ **2026-09-29 起墨潮电子舱改归 `fleetDecay`（全队折权缺口乘法）** ⇒ 它**会**挂尾注
     //   （旧 `sum` 组"同舰加和、上限内不打折"已作废——那条不衰减，故当时被排除在外）。
     if (st.group === 'flat') return base
-    const n = sameKindCount(fitted, engine.ctx, m)
+    // 按属性分别排强弱，双属性件没有统一的“第几件”权重；最终属性预览仍由 core 计算。
+    if (st.kind === 'support-damage' || st.kind === 'reload') return base
+    const remaining = pickBay ? { ...fitted, [pickBay.rack]: fitted[pickBay.rack].filter((_, i) => i !== pickBay.index) } : fitted
+    const n = sameKindCount(remaining, engine.ctx, m)
     if (n === 0) return base
     // 2026-09-15 隐秘行动装置（`max` 组）：多件**取最长一件**——明说"不叠加"，免得玩家以为能叠到 50 秒
-    if (st.group === 'max') return tr("ui.FitPage.139", { base: base, p2: n + 1 })
+    if (st.group === 'max') return tr(st.kind === 'blink' ? "ui.FitPage.193" : st.kind === 'capture-web' ? "ui.FitPage.195" : "ui.FitPage.139", { base: base, p2: n + 1 })
     if (st.group === 'curve' || st.group === 'weighted' || st.group === 'fleetDecay') { // 折权加算 / EVE 曲线 / 全队折权缺口乘法同文案：写明第 N 件按权重百分比生效
       return tr("ui.FitPage.140", { base: base, p2: n + 1, p3: Math.round(stackWeight(n + 1) * 100) })
     }
@@ -689,7 +735,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
   // 无人机舱总量（船体 + 已装「甲板扩展」= 清单容量上限；装入入口在低槽组下方无人机舱区——
   // 2026-09-08 无人机舱大改：只放飞已装入清单，仓库余量不自动出战）
   // 2026-09-26：求和改用 core 单点 `droneBayTotalM3`（舰队页悬停卡同源，防两处口径漂移）
-  const droneBayTotal = droneBayTotalM3(shipDef, fitted, engine.ctx)
+  const droneBayTotal = droneBayTotalM3(shipDef, fitted, engine.ctx, engine.state.fleet[effectiveTarget]?.plugs)
 
   /**
    * **当前（装后）货舱容量**（m³）——core 单点：船体 ×（1 + 货舱扩展件）× 深空物流学 × 货舱管理学 ×（货舰）货舰操作。
@@ -738,7 +784,24 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
             {tr("ui.FitPage.026")}
             {isPiloted ? <em className="app-belt-flag is-run">{tr("ui.FitPage.027")}</em> : <em className="app-belt-flag">{tr("ui.FitPage.028")}</em>}
           </span>
-          <span className="app-fit-target-ship">{shipName}</span>
+          <select
+            className="app-fit-target-select"
+            value={effectiveTarget}
+            onChange={(e) => setTargetId(e.target.value)}
+            title="就地切换当前装配的目标战舰"
+          >
+            {Object.keys(state.fleet).map((sId) => {
+              const sDef = fleetDefOf(state, engine.ctx, sId)
+              const sName = shipDisplayName(state, engine.ctx, sId)
+              const isCur = sId === piloted
+              const callsign = `#${sId.slice(-4).toUpperCase()}`
+              return (
+                <option key={sId} value={sId}>
+                  {sName} ({sDef?.name ?? sId}) {callsign} {isCur ? `[${tr('ui.FitPage.029')}]` : `[${tr('ui.FitPage.030')}]`}
+                </option>
+              )
+            })}
+          </select>
           <button className="app-btn is-small" data-fitting-range onClick={() => setRangeOpen(true)} disabled={!shipDef}><Crosshair size={16} aria-hidden="true" />{tr('ui.fittingRange.001')}</button>
           <span className="app-dim app-fit-target-hint">
             {isPiloted
@@ -767,6 +830,33 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
           <div className="app-fit-col-left">
         {shipDef ? (
           <>
+            {/* 顶尖航电 / DataDog 看板：火力与综合有效承伤（EHP）大屏条 */}
+            <div className="hud-fit-summary-strip">
+              <div className="hud-fit-kpi is-dps">
+                <div className="hud-fit-kpi-header">
+                  <span className="hud-fit-kpi-tag">{tr('ui.fitKpi.001')} // FIREPOWER</span>
+                  <span className="hud-fit-kpi-sub">
+                    {droneDps > 0 ? `主炮 ${Math.round(weaponDps)} + 无人机 ${Math.round(droneDps)}` : '主炮/导弹/激光'}
+                  </span>
+                </div>
+                <div className="hud-fit-kpi-body">
+                  <span className="hud-fit-kpi-val">{totalNominalDps > 0 ? fmt(Math.round(totalNominalDps)) : '0'}</span>
+                  <span className="hud-fit-kpi-unit">DPS</span>
+                </div>
+              </div>
+              <div className="hud-fit-kpi is-ehp">
+                <div className="hud-fit-kpi-header">
+                  <span className="hud-fit-kpi-tag">{tr('ui.fitKpi.002')} // DEFENSE</span>
+                  <span className="hud-fit-kpi-sub">
+                    {`盾 ${fmt(shieldEhp)} · 甲 ${fmt(armorEhp)} · 体 ${fmt(hullEhp)}`}
+                  </span>
+                </div>
+                <div className="hud-fit-kpi-body">
+                  <span className="hud-fit-kpi-val">{totalBaseEhp > 0 ? fmt(totalBaseEhp) : '0'}</span>
+                  <span className="hud-fit-kpi-unit">EHP</span>
+                </div>
+              </div>
+            </div>
             {/* 舰船形象 + 间接属性（船长 2026-09-09：左栏顶部插入独立舰影，间接属性移其右侧；
                 窄窗优先缩小舰影，图缩至下限仍不够时隐藏间接列——高度守恒：原底部间接块整体上移占位） */}
             <div className="app-fit-stage" ref={stageRef}>
@@ -787,7 +877,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                 {combatBadges(
                   shipDef,
                   spec
-                    ? { hp: { s: Math.round(spec.hp.s), a: Math.round(spec.hp.a), h: Math.round(spec.hp.h) }, resists: spec.resists }
+                    ? { hp: { s: ceilFinalQuantity(spec.hp.s), a: ceilFinalQuantity(spec.hp.a), h: ceilFinalQuantity(spec.hp.h) }, resists: spec.resists }
                     : undefined,
                 )}
               </span>
@@ -1334,6 +1424,7 @@ function AmmoTierSection({
   target: string
 }) {
   const state = engine.state
+  const resupplyFromWh = engine.state.resupplyFromWarehouse !== false
   const ctx = engine.ctx
   const ship = state.fleet[target]
   /**
@@ -1407,6 +1498,19 @@ function AmmoTierSection({
       <div className="app-fit-dronebay-head">
         <span className="app-fit-dronebay-title">{tr("ui.FitPage.093")}</span>
         <span className="app-dim">{tr("ui.FitPage.094")}</span>
+        <button
+          type="button"
+          className={`app-btn is-small hud-resupply-toggle${resupplyFromWh ? ' is-primary' : ''}`}
+          onClick={() => {
+            const next = !resupplyFromWh
+            engine.state.resupplyFromWarehouse = next
+            void engine.persist()
+            onToast(next ? tr('ui.fitKpi.006') : tr('ui.fitKpi.007'))
+          }}
+          title="点击就地切换补给来源（从母港仓库直接取用 / 仅从舰船货仓取用）"
+        >
+          {resupplyFromWh ? tr('ui.fitKpi.004') : tr('ui.fitKpi.005')}
+        </button>
       </div>
       {rows}
     </div>
@@ -1550,7 +1654,8 @@ function PluginSlotsSection({ engine, target }: { engine: PageProps['engine']; t
               className="app-fit-slot-icon is-filled is-readonly"
               {...hoverTipProps(
                 /* 插件槽（只读展示）：同批 —— 也给本舰上下文（插件里的维修类效果按同一把尺显示） */
-                moduleHoverContent(def, tr('ui.Expedition.443'), engine, target),
+                moduleHoverContent(def, tr('ui.Expedition.443'), engine, target,
+                  installed.slice(0, i + 1).filter(p => p.id === def.id).length),
               )}
             >
               <span className="app-fit-slot-icon-glyph">
@@ -1561,7 +1666,7 @@ function PluginSlotsSection({ engine, target }: { engine: PageProps['engine']; t
             </span>
           )
         })}
-        <ShipDamageMods ids={damage} />
+        <ShipDamageMods ids={damage} management={plugEffectsOf(state, ctx, target).find(mod => mod.damageManagement)?.damageManagement} />
       </div>
       {/* **装入弹层**（2026-09-27 补）：复用本页既有的 `.app-fit-overlay` / `.app-fit-modal` 一族，
           不另造样式；二次确认在同一弹层内完成（第一次点「装入」⇒ 该行变成「确认装入」＋「取消」） */}
@@ -1690,7 +1795,7 @@ function DroneBaySection({
   const load = entry?.droneLoad ?? {}
   const configurationBlock = shipOperationBlockReason(state, ctx, target, 'configure')
   // 舱上限 = 船体 droneBayM3 + 已装甲板扩展（rack 高槽件）
-  const cap = droneBayTotalM3(shipDef, fitted, ctx)
+  const cap = droneBayTotalM3(shipDef, fitted, ctx, entry?.plugs)
   if (cap <= 0 && Object.keys(load).length === 0) return null // 无舱不显示（与机舱平衡表一致）
   const droneTypes = [...ctx.items.values()].filter((d) => d.kind === 'drone')
   const usedM3 = droneLoadM3(load, ctx)

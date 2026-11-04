@@ -19,7 +19,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
-import { signalSpaceTextId } from '../src/explorationText'
 import type { GameState } from '../src/state'
 import { addWare } from '../src/inventory'
 import { addShipToFleet } from '../src/shipyard'
@@ -28,7 +27,7 @@ import {  aiCoreShipUsed, aiCoreUsed, assignAiMining } from '../src/ai'
 import { shipLockedReason } from '../src/state'
 import { shipBusyLabel } from '../src/activity'
 import { wormholeStockPush, wormholeStockOf } from '../src/wormholeScan'
-import { wormholeAdmission, WORMHOLE_TOTAL_MASS_CAP, WORMHOLE_ADMISSION_TEXT } from '../src/wormhole'
+import { wormholeAdmission, wormholeBagSlotsOfFleet, WORMHOLE_TOTAL_MASS_CAP, WORMHOLE_ADMISSION_TEXT } from '../src/wormhole'
 import { MATTER_TECH_ESSENCE_ITEM_ID, matterTechNodes, researchMatterTech } from '../src/matterTech'
 import {
   WORMHOLE_AUTO_DAMAGE_MAX,
@@ -63,6 +62,9 @@ const T3 = 'sh-thresher'
 /** 一条可派船的测试档：主控 + 若干副船（默认给 6 条，够挑 4 条）+ 一项已发现的虫洞 */
 function fresh(opts?: { ships?: number; seed?: number; aiCoreSkill?: number }): GameState {
   const state = createInitialState({ nowWallMs: 0, seed: opts?.seed ?? 4242 })
+  state.standingsEarned = { dsi: 100 }
+  for (const id of ['fleet-command-basic', 'fleet-command-coordination', 'fleet-command-integration']) state.skills.trained[id] = 5
+  state.research!.levels['mt-explore-signal-auto-t3'] = 3
   const n = opts?.ships ?? 6
   for (let i = 0; i < n; i++) addShipToFleet(state, T3)
   // AI 核心共用上限技能 = ctx.balance.aiCore.skillId（'ai-expert'：LvN = 可同时启用 N 枚）
@@ -107,7 +109,7 @@ describe('虫洞 · 自动探索（批次 3）', () => {
     const rows = wormholeAutoCandidates(state, ctx)
     expect(rows.find(row => row.shipId === titan)!.blocked?.error).toBe(WORMHOLE_ADMISSION_TEXT['tier-too-high'])
     expect(rows.find(row => row.shipId === titan)!.picked).toBe(false)
-    expect(rows.find(row => row.shipId === alternative)!).toMatchObject({ picked: false, blocked: null })
+    expect(rows.find(row => row.shipId === alternative)!).toMatchObject({ picked: true, blocked: null })
   })
 
   it('未推荐舰仍受在途任务占用限制，超重手动队不消耗库存或切换主控', () => {
@@ -159,7 +161,8 @@ describe('虫洞 · 自动探索（批次 3）', () => {
     expect(main.blocked?.errorId).toBe('core.wormholeAuto.005')
     // 默认选中 = 最多 4 条
     const picked = wormholeAutoDefaultShips(state, ctx)
-    expect(picked).toHaveLength(WORMHOLE_AUTO_MAX_SHIPS)
+    expect(picked).toHaveLength(5) // 四巡洋加一轻舰满足质量和指挥预算。
+    expect(picked.length).toBeLessThanOrEqual(WORMHOLE_AUTO_MAX_SHIPS)
     expect(picked).not.toContain(state.shipId)
     // 已在别的 AI 任务里的船不可派
     const target = picked[0]!
@@ -172,19 +175,19 @@ describe('虫洞 · 自动探索（批次 3）', () => {
     expect(after.blocked?.errorId).toBe('core.wormholeAuto.007')
   })
 
-  it('**每次自动探索占 1 枚 AI 核心**（同一本账：占用计入、名额不足拒绝、锁定期不能再接 AI 任务）', () => {
+  it('信号空间自动队不占AI核心，锁定期仍不能再接AI任务', () => {
     const state = fresh({ ships: 6, aiCoreSkill: 2 })
     const stockId = stockOne(state)
     const picked = wormholeAutoDefaultShips(state, ctx)
     // 2026-09-26 船长令「整队一趟只占 1 枚」：编队规模**不再**被核心余量卡住（改前上限 2 枚 ⇒ 只挑 2 条）
-    expect(picked).toHaveLength(4)
+    expect(picked).toHaveLength(5)
     const before = aiCoreUsed(state)
     expect(wormholeAutoStart(state, ctx, stockId, picked).ok).toBe(true)
-    // 占 1 枚（不是"每条 1 枚"）：核心账 +1
-    expect(aiCoreUsed(state)).toBe(before + 1)
-    expect(aiCoreShipUsed(state)).toBe(1)
+    // 科技解锁，不占AI共享名额。
+    expect(aiCoreUsed(state)).toBe(before)
+    expect(aiCoreShipUsed(state)).toBe(0)
     // 该本账里那 1 枚**不再**按参与舰数重复计（4 条船也只占 1）
-    expect(picked.length).toBe(4)
+    expect(picked.length).toBe(5)
     // 锁定期：不能再接 AI 副船任务，且给出锁定原因
     const beltId = [...ctx.belts.keys()][0]!
     const r = assignAiMining(state, picked[0]!, 'basic', beltId, ctx)
@@ -192,16 +195,16 @@ describe('虫洞 · 自动探索（批次 3）', () => {
     expect(shipLockedReason(state, picked[0]!, '驾驶它')).toContain('自动探索')
   })
 
-  it('**核心不够就开不了第二趟**（1 枚/趟：上限 2 时两趟刚好占满，第三趟被拒）', () => {
+  it('信号空间自动队并行只受空闲舰船与库存约束，不受AI名额限制', () => {
     // 船要够多：两趟满编 8 条 + 1 条主控 ⇒ 12 条，免得先撞上"没船可派"（本条只验核心账）
     const state = fresh({ ships: 12, aiCoreSkill: 2 })
     expect(wormholeAutoStart(state, ctx, stockOne(state), wormholeAutoDefaultShips(state, ctx)).ok).toBe(true)
     expect(wormholeAutoStart(state, ctx, stockOne(state), wormholeAutoDefaultShips(state, ctx)).ok).toBe(true)
-    expect(aiCoreShipUsed(state)).toBe(2)
-    // 已占满（2/2）⇒ 第三趟拒，理由里点明"每次占用 1 枚"
+    expect(aiCoreShipUsed(state)).toBe(0)
+    // 第三队有空闲舰船，因此照常出发。
     const third = wormholeAutoStart(state, ctx, stockOne(state), wormholeAutoDefaultShips(state, ctx))
-    expect(third.ok).toBe(false)
-    expect(third.errorId).toBe('core.wormholeAuto.010')
+    expect(third.ok).toBe(true)
+    expect(aiCoreShipUsed(state)).toBe(0)
   })
 
   it('**时长 5 分钟**：不到点不结算；到点结算并释放 AI 与舰船（离线大步长同样适用）', () => {
@@ -210,7 +213,7 @@ describe('虫洞 · 自动探索（批次 3）', () => {
     const run = wormholeAutoStart(state, ctx, stockId, wormholeAutoDefaultShips(state, ctx))
     expect(run.ok).toBe(true)
     expect(wormholeAutoRunsOf(state)).toHaveLength(1)
-    expect(aiCoreShipUsed(state)).toBe(1) // 整队一趟占 1 枚（原「每条 1 枚」⇒ 4）
+    expect(aiCoreShipUsed(state)).toBe(0)
     // 差 1 毫秒不结算
     state.gameMs = WORMHOLE_AUTO_DURATION_MS - 1
     advanceWormholeAuto(state, ctx)
@@ -234,6 +237,7 @@ describe('虫洞 · 自动探索（批次 3）', () => {
       const stockId = stockOne(state)
       const before = { ...state.warehouse.items }
       const ships = wormholeAutoDefaultShips(state, ctx)
+      for (const uid of ships) state.fleet[uid]!.fitted.high = ['mod-laser-1', 'mod-miner-1', 'mod-salvager-1']
       const cargoBefore = ships.map((id) => JSON.stringify(state.fleet[id]!.cargo ?? {}))
       expect(wormholeAutoStart(state, ctx, stockId, ships).ok).toBe(true)
       state.gameMs = WORMHOLE_AUTO_DURATION_MS + 1
@@ -465,7 +469,7 @@ describe('虫洞 · 自动探索吃谜质科技（船长 2026-09-19 甲案）', 
   function fullTech(state: GameState): void {
     for (const node of matterTechNodes(ctx)) {
       if (node.branch === 'industry') continue
-      for (let i = 0; i < node.maxLevel; i++) {
+      for (let i = state.research!.levels[node.id] ?? 0; i < node.maxLevel; i++) {
         const r = researchMatterTech(state, ctx, node.id)
         expect(r.ok, `${node.id}：${r.error ?? ''}`).toBe(true)
       }
@@ -501,10 +505,10 @@ describe('虫洞 · 自动探索吃谜质科技（船长 2026-09-19 甲案）', 
     const ships = wormholeAutoDefaultShips(state, ctx)
     expect(wormholeAutoStart(state, ctx, stockOne(state), ships).ok).toBe(true)
 
-    const dep = state.logs.filter((l) => l.textId === 'core.wormholeAuto.020').at(-1)
+    const dep = state.logs.filter((l) => l.textId === 'core.signalAuto.002').at(-1)
     expect(dep, '出发日志必须挂 textId').toBeDefined()
     // ④ 正文与改造前同款（原型名 · 条数 · 顿号连接的名单 · 分钟数）
-    expect(dep!.text).toMatch(/^🛰 自动探索队出发：.+ · \d+ 条舰（.+）——约 \d+ 分钟后返航（每次自动探索占 1 枚 AI 核心）。$/)
+    expect(dep!.text).toMatch(/^🛰 自动探索队出发：.+ · \d+ 条舰（.+）——约 \d+ 分钟后返航。$/)
     const dtp = dep!.textParams as Record<string, unknown>
     expect(String(dtp.p1Id)).toMatch(/^core\.wormholeArch\.\d{3}$/) // ③ 原型名 = 槽译文
     expect(dtp.p3List).toEqual(ships.map((id) => shipNameOf(state, ctx, id))) // ② 名单 = 列表槽
@@ -512,7 +516,7 @@ describe('虫洞 · 自动探索吃谜质科技（船长 2026-09-19 甲案）', 
 
     state.gameMs = WORMHOLE_AUTO_DURATION_MS + 1
     advanceWormholeAuto(state, ctx)
-    const back = state.logs.filter((l) => l.textId === signalSpaceTextId('core.wormholeAuto.021')).at(-1)
+    const back = state.logs.filter((l) => l.textId === 'core.signalAuto.003').at(-1)
     expect(back, '返航日志必须挂 textId').toBeDefined()
     const tp = back!.textParams as Record<string, unknown>
     const report = wormholeAutoReportsOf(state)[0]!
@@ -535,14 +539,14 @@ describe('虫洞 · 自动探索吃谜质科技（船长 2026-09-19 甲案）', 
   it('满树 ⇒ 回合（按本队实际基础回合）/ 货仓 / 打捞与采集效率 / 战斗线完成度 逐项对上', () => {
     const state = rich({ ships: 5 })
     const ships = wormholeAutoDefaultShips(state, ctx)
-    expect(ships).toHaveLength(WORMHOLE_AUTO_MAX_SHIPS)
+    expect(ships).toHaveLength(5)
     fullTech(state)
     const f = wormholeAutoTechFactors(state, ctx, ships)
-    // 4×长尾鲨 = 14,000 折合质量 ⇒ 基础回合 42（不含科技那一份）；货仓 4×2,600 m³ ÷ 500 = 20 格
-    expect(f.baseTurns).toBe(42)
-    expect(f.baseHold).toBe(20)
-    expect(f.turnMul).toBeCloseTo(1 + 100 / 42, 6) // 时序锚定器 10 级 × +10
-    expect(f.holdMul).toBeCloseTo(1 + 12 / 20, 6) // 折叠货舱 3 级 × +4 格
+    // 基础回合按编队质量向上取整，货仓按最多能容纳的完整格数计算。
+    expect(f.baseTurns).toBe(wormholeAdmission(ctx, ships).turnBudget)
+    expect(f.baseHold).toBe(wormholeBagSlotsOfFleet(state, ctx, ships))
+    expect(f.turnMul).toBeCloseTo(1 + 100 / f.baseTurns, 6)
+    expect(f.holdMul).toBeCloseTo(1 + 12 / f.baseHold, 6)
     expect(f.total).toBeCloseTo(f.turnMul * f.holdMul, 6)
     expect(f.salvageEff).toBeCloseTo(0.6, 6) // 引力吊臂 3 级 × 20%
     expect(f.collectEff).toBeCloseTo(0.6, 6) // 富集钻头 3 级 × 20%
@@ -559,8 +563,8 @@ describe('虫洞 · 自动探索吃谜质科技（船长 2026-09-19 甲案）', 
      * ⚠ **货仓那条同款护栏**：容量 = 实有格数 × 每格 m³，**与 `total` 无关**。
      * 旧写法 `… × tf.total` 把 `holdMul` 算了两遍、还把回合系数混进了船舱 ⇒ 满科技档放大 5.41 倍。
      */
-    expect(wormholeAutoHoldM3Of(f)).toBeCloseTo(32 * 50, 6)
-    expect(wormholeAutoHoldM3Of(f)).not.toBeCloseTo(32 * 50 * f.total, 6)
+    expect(wormholeAutoHoldM3Of(f)).toBeCloseTo((f.baseHold + 12) * 50, 6)
+    expect(wormholeAutoHoldM3Of(f)).not.toBeCloseTo((f.baseHold + 12) * 50 * f.total, 6)
     expect(f.battleProgress).toBe(1)
     expect(f.damage).toBeCloseTo(0.5, 6) // 战斗线点满 ⇒ 损伤减半
     expect(wormholeAutoTechIsNeutral(f)).toBe(false)
@@ -574,6 +578,8 @@ describe('虫洞 · 自动探索吃谜质科技（船长 2026-09-19 甲案）', 
     const stockB = stockOne(teched)
     const shipsA = wormholeAutoDefaultShips(plain, ctx)
     const shipsB = wormholeAutoDefaultShips(teched, ctx)
+    for (const uid of shipsA) plain.fleet[uid]!.fitted.high = ['mod-laser-1', 'mod-miner-1', 'mod-salvager-1']
+    for (const uid of shipsB) teched.fleet[uid]!.fitted.high = ['mod-laser-1', 'mod-miner-1', 'mod-salvager-1']
     expect(wormholeAutoStart(plain, ctx, stockA, shipsA).ok).toBe(true)
     expect(wormholeAutoStart(teched, ctx, stockB, shipsB).ok).toBe(true)
     plain.gameMs = WORMHOLE_AUTO_DURATION_MS + 1

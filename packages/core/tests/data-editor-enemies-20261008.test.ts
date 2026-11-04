@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { FOE_SHIPS, FOE_DRONES, ANOMALIES } from '@whale/data'
+import { FOE_SHIPS, FOE_DRONES, ANOMALIES, buildSimContext } from '@whale/data'
+import { activeFoeSpecsOf, applyFoeOverride } from '../src/combat'
 import { FOE_MOUNTS, enemyParameterOf } from '../src/index'
 import { ENEMY_FILES, ENEMY_TABLES, ENEMY_FIELDS } from '../../../tools/data-editor-enemy-schema'
 import { planDocuments, rowsOf, validateDocument } from '../../../tools/data-editor-schema'
@@ -33,7 +34,15 @@ describe('敌人编辑契约与真实引擎', () => {
   it('入侵遇袭与旗舰血池读数使用当前引擎覆写', () => {
     const base = enemyEnginePreview(request('invasionFleets', 'corona-nexus'))
     const ambush = enemyEnginePreview(request('invasionFleets', 'corona-nexus', 'ambush'))
-    expect(ambush.rows.reduce((n, row) => n + row.hp, 0)).toBeCloseTo(base.rows.reduce((n, row) => n + row.hp, 0) * 0.75)
+    const ctx = buildSimContext()
+    const card = ctx.anomalies.get('corona-nexus')!
+    const hpSum = (strength: number) => {
+      const current = strength === 1 ? card : applyFoeOverride(card, { strengthMul: strength, patrolFormation: true })
+      return current.waves!.reduce((sum, _, wave) => sum + activeFoeSpecsOf(current, ctx.balance.battle, wave)
+        .reduce((n, unit) => n + unit.hp.s + unit.hp.a + unit.hp.h, 0), 0)
+    }
+    expect(base.rows.reduce((n, row) => n + row.hp, 0)).toBe(hpSum(1))
+    expect(ambush.rows.reduce((n, row) => n + row.hp, 0)).toBe(hpSum(.75))
     const flagship = enemyEnginePreview(request('invasionFleets', 'corona-nexus', 'flagship'))
     expect(flagship.rows.some(row => row.hp === 300000)).toBe(true)
     expect(flagship.rows.some(row => row.wave === 4)).toBe(true)

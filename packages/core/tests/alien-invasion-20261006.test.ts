@@ -15,6 +15,8 @@ import { cleanBattle } from '../src/saveBattleClean'
 import type { AnomalyDef } from '../src/types'
 
 const ctx = buildSimContext()
+// 原入侵基线的能力与区域接线；扩编规则另有逐卡专项。
+ctx.anomalies = new Map([...ctx.anomalies].map(([id, card]) => [id, card.foeFormation?.baseline ?? card]))
 const now = new Date(2026, 9, 9, 20).getTime()
 const cardIds = ['alien-vanguard', 'alien-escort', 'alien-main', 'alien-broodmother']
 
@@ -27,7 +29,9 @@ describe('异形入侵真实接线', () => {
     for (const id of cardIds) {
       expect(ctx.anomalies.get(id)?.hidden).toBe(true)
       expect(WRECK_GROUP_OF_MEMBER.get(id)).toBe('c-inv')
-      expect(ctx.anomalies.get(id)?.threat).toBe(foeThreatOfAnomaly(ctx.anomalies.get(id)!, id === 'alien-broodmother' ? 10 : 3, ctx.balance.battle))
+      expect(ctx.anomalies.get(id)?.threat).toBe({ 'alien-vanguard': 104, 'alien-escort': 123, 'alien-main': 150, 'alien-broodmother': 207 }[id])
+      expect(foeThreatOfAnomaly(ctx.anomalies.get(id)!, id === 'alien-broodmother' ? 10 : 3, ctx.balance.battle)).toBe(
+        { 'alien-vanguard': 104, 'alien-escort': 123, 'alien-main': 151, 'alien-broodmother': 207 }[id])
     }
   })
   it('两载体炮数/火力/机群加成与孵化挂载真实消费', () => {

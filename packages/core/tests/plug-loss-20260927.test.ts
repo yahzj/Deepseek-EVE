@@ -105,8 +105,8 @@ describe('舰船插件两条缺陷（2026-09-27 船长报障）', () => {
 
   it('④ 接线护栏：虫洞那两处 `loseShip` **之前**都调了折黑匣', () => {
     // ⚠ vitest 的工作目录通常是包目录（`packages/core`）⇒ 两种根都试一下
-    const rootA = join(process.cwd(), 'src/wormholeBattle.ts')
-    const rootB = join(process.cwd(), 'packages/core/src/wormholeBattle.ts')
+    const rootA = join(process.cwd(), 'src/wormhole/battle/outcome.ts')
+    const rootB = join(process.cwd(), 'packages/core/src/wormhole/battle/outcome.ts')
     const src = readFileSync(existsSync(rootA) ? rootA : rootB, 'utf8')
     /** 两处调用点：被击沉 / 失联 */
     expect(src.includes('salvagePlugsOnSink(state, ctx, uid)'), '应当调用折黑匣单点').toBe(true)

@@ -501,6 +501,8 @@ export interface WormholeGridCell {
   r: number
   /** 真相：到达后才知道 */
   place: WormholePlace
+  /** 深层生产研究所复用遗迹打捞与警戒，真相仅在抵达后显示。 */
+  researchLab?: true
   /** 新趟第二批的确定性地点事件；到达前只显示信号，事件结果在选择后随档。 */
   eventKey?: WormholeEventKey
   eventResolved?: boolean
@@ -677,6 +679,22 @@ export function revealNearestMatterCell(
   return { cell: best, nebulaDispersed }
 }
 
+/** 清除覆盖后补执行信标效果；与到达分支共用入口/谜质揭示和星云穿透规则。 */
+export function triggerBeaconEffect(
+  grid: WormholeGridState,
+  cell: WormholeGridCell,
+): { kind: 'exit' } | { kind: 'matter'; cell: WormholeGridCell; nebulaDispersed: boolean } | { kind: 'empty' } {
+  if (cell.place !== 'beacon' || grid.activated.includes(cell.key)) return { kind: 'empty' }
+  const beaconNo = grid.activated.filter(key => grid.cells.find(c => c.key === key)?.place === 'beacon').length + 1
+  grid.activated.push(cell.key)
+  if (beaconNo <= 1) {
+    markExitKnown(grid)
+    return { kind: 'exit' }
+  }
+  const reveal = revealNearestMatterCell(grid, cell)
+  return reveal ? { kind: 'matter', ...reveal } : { kind: 'empty' }
+}
+
 /* ═══════════ 三之二之二、围剿者（2026-09-23 船长新机制：7 层起逐回合刷怪） ═══════════ */
 
 /**
@@ -719,6 +737,7 @@ export function spawnTargetsOf(grid: WormholeGridState): WormholeGridCell[] {
     if (c.key === exitKey) return false
     if (hasLiveFoe(c)) return false
     if (c.place === 'ship' && !grid.activated.includes(c.key)) return false
+    if (c.foe?.cleared === true) return false
     return true
   })
 }
@@ -961,7 +980,7 @@ export function pickPlace(signal: WormholeSignal, rnd: number, ruinsShare: numbe
  *    不够就从"资源/谜质"借残骸信号；舰船与信标不动）；
  * 6. **层 4 起点星云**（`WORMHOLE_NEBULA_MIN_DEPTH`）：只点有信号的地点、配额 15%、独立随机流。
  */
-export function wormholeMakeGrid(seed: number, depth: number, extraScanRadius = 0, blankShareFactor = 1, expeditionRules?: number): WormholeGridState {
+export function wormholeMakeGrid(seed: number, depth: number, extraScanRadius = 0, blankShareFactor = 1, expeditionRules?: number, legacyAuto = false): WormholeGridState {
   const rng = wormholeStream(seed * 7919 + depth * 104729)
   const radius = expeditionRules === 2 ? (depth <= 2 ? 2 : depth <= 4 ? 3 : 4) : wormholeGridRadiusFor(depth)
   const all = hexDiskCells(radius)
@@ -1217,6 +1236,15 @@ export function wormholeMakeGrid(seed: number, depth: number, extraScanRadius = 
       const elite = candidates[2]!
       elite.place = 'ship'
       elite.elite = true
+    }
+  }
+  if (depth >= 8 && expeditionRules === undefined && !legacyAuto) {
+    const labRng = wormholeStream(seed * 9973 + depth * 8647 + 501)
+    const eligible = cells.filter(c => c.place === 'empty' && !c.eventKey && c.key !== startKey && c.key !== hexKey(exit.q, exit.r))
+    if (labRng() < 0.2 && eligible.length > 0) {
+      const cell = eligible[Math.floor(labRng() * eligible.length)]!
+      cell.place = 'ruins'
+      cell.researchLab = true
     }
   }
   return {

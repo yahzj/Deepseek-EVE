@@ -7,6 +7,7 @@
  * `ai.ts` 原样再导出（先例：fitted.ts），存量引用零改动；`shipyard` / `encounters`
  * 改从本模块读（不留在 ai 再导出——那会让运行期边原样保留）。
  */
+import { ceilFinalQuantity } from './quantity'
 import { peakFirst } from './firstTasks'
 import { shipDisplayName } from './instances'
 import { addLog } from './state'
@@ -41,7 +42,8 @@ export function countAiCore(state: GameState, type: AiCoreType): number {
 
 /** 入库 */
 export function gainAiCore(state: GameState, type: AiCoreType, count = 1): void {
-  state.aiCores[type] = (state.aiCores[type] ?? 0) + count
+  if (!Number.isFinite(count) || count <= 0) return
+  state.aiCores[type] = (state.aiCores[type] ?? 0) + ceilFinalQuantity(count)
   /**
    * **里程碑「AI 核心」的计数点**（成就系统第二批 · 船长 2026-09-20）。
    *
@@ -64,8 +66,9 @@ export function spendAiCore(state: GameState, type: AiCoreType): boolean {
 
 /** 批量出库 N 枚（市场挂卖/出售锁定用；库存不足整批不动并返回 false） */
 export function spendAiCores(state: GameState, type: AiCoreType, count: number): boolean {
+  count = ceilFinalQuantity(count)
   const current = state.aiCores[type] ?? 0
-  if (count <= 0 || current < count) return false
+  if (!Number.isFinite(count) || count <= 0 || current < count) return false
   state.aiCores[type] = current - count
   return true
 }

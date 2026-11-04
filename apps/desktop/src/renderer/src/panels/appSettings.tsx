@@ -1,13 +1,13 @@
 /**
  * 主界面 · 设置与日志/性能浮层域（2026-10-02 从 `App.tsx` 拆出 · 批次 4t · 零行为变化）。
  *
- * 本文件 = 事件日志的偏好域（时钟/分类表/过滤偏好，localStorage 落盘）、设置面板（缩放/字号/背景/配色/
- * 存档/调试/布局）、性能浮层（PerfListener / PerfHud）。`App.tsx` 借回使用（先例：fitted.ts），
- * 本模块不 import App ⇒ 运行期零回边。
+ * 本文件 = 事件日志的偏好域（时钟/分类表/过滤偏好，localStorage 落盘）、设置面板（缩放/字号/界面字体/
+ * 背景/配色/声音/存档/调试/布局）、许可与授权全文弹窗、性能浮层（PerfListener / PerfHud）。
+ * `App.tsx` 借回使用（先例：fitted.ts），本模块不 import App ⇒ 运行期零回边。
  */
 import { useEffect, useReducer, useState } from 'react'
 import type { RefObject } from 'react'
-import { flushSync } from 'react-dom'
+import { createPortal, flushSync } from 'react-dom'
 import type { LogKind } from '@whale/core'
 import { perfHub } from '../game/perf'
 import type { SaveStorageProbe } from '../game/saveGuard'
@@ -18,9 +18,94 @@ import { currentSpaceBg, rerollSpaceBg } from '../ui/spaceBg'
 import type { SpaceBgInfo } from '../ui/spaceBg'
 import type { LayoutKind } from '../ui/AppShell'
 import { tr, useL10n } from '../i18n/locale'
+/** 声音（2026-11-02）：音量偏好 + 本机音效台入口 */
+import { SFX_CATEGORIES, SFX_CATEGORY_NAME_ID } from '../game/audio/cues'
+import { useSfxPrefs } from '../game/audio/prefs'
+import { SfxConsole } from './SfxConsole'
 /** 客户端版本三件套与运行形态（**2026-10-02 船长令**；构建时注入，见 `game/buildInfo.ts`） */
 import { BUILD, BUILD_FORM } from '../game/buildInfo'
 import type { GameEngine } from '../game/engine'
+import { CloudSavePanel } from '../features/cloud/CloudSavePanel'
+import './appSettings.css'
+/**
+ * **界面字体**（**2026-11-02 船长令**，多轮迭代后的最终口径）：
+ * · 默认 = 微软雅黑（中文）＋ Oxanium（英文/数字）；
+ * · 复古 = 统一只用 GNU Unifont（中文 + 英文/数字）。
+ * 偏好读写/应用收在 `ui/fontChoice.ts`（点选即落盘，下次启动读回）；**启动时应用**在
+ * `game/boot.ts` 的 `prebootRenderer()`；`@font-face` 在本文件同目录的 `appSettings.css` 注册，
+ * 默认字体栈单点在 `packages/ui/src/index.css`。
+ */
+import { FONT_CHOICES, chooseFont, readFontChoice } from '../ui/fontChoice'
+import type { FontChoice } from '../ui/fontChoice'
+/**
+ * **许可与授权全文**（**2026-11-02 船长令**：「这个字体是GNU授权，记得在设置的最最下方增加一个许可按钮
+ * 把这些授权书内容统统都写进入」）：`?raw` 由 Vite 内联（桌面/网页两入口同一套），正文照录原文、不译不改。
+ * - GNU Unifont 18.0.01 官方授权原文（2026-11-02 取自 <https://unifoundry.com/LICENSE.txt>）；
+ * - Oxanium 官方授权全文（SIL Open Font License 1.1；版权 2019 The Oxanium Project Authors，
+ *   取自字体 name 表与 Google Fonts / 上游仓库；全文见 `assets/licenses/oxanium-LICENSE.txt`）；
+ * - 根目录 `LICENSE.txt`（项目版权与授权声明）与 `LICENSE`（双许可与商业使用条款，含 AGPLv3 全文）。
+ * ⚠ **游戏内不展示「原项目 / 原站」两条外部链接**（船长 2026-11-02 追加要求；连带英文条款里的
+ * 原仓库链接）：`assets/licenses/` 内的两份项目声明副本已按令删去这几行，**根目录原文不改**
+ * （发行包 / `release-rights` 仍用根目录原文）。字体与 AGPLv3 等许可正文未做任何删改。
+ * ⚠ 同一批船长裁定（2026-11-02）：个人主页署名链接**保留**；声明里「请通过原项目联系作者」因链接
+ * 删除而指代悬空 ⇒ 游戏内副本改为「请联系作者」（仍只改副本，根目录原文不动）。
+ */
+import unifontLicenseText from '../assets/licenses/unifont-18.0.01-LICENSE.txt?raw'
+import oxaniumLicenseText from '../assets/licenses/oxanium-LICENSE.txt?raw'
+import projectLicenseStatement from '../assets/licenses/project-LICENSE-statement.txt?raw'
+import projectLicenseDual from '../assets/licenses/project-LICENSE-dual-licensing.txt?raw'
+/**
+ * **界面缩放 / 字号偏好**（2026-11-02 收成单点）：读取、钳制、应用都在 `ui/uiScale.ts`，
+ * 启动应用在 `game/boot.ts` 的 `prebootRenderer()`；本面板只负责「面板显示 + 拖动时写一次」。
+ */
+import {
+  FS_KEY,
+  FS_MAX,
+  FS_MIN,
+  ZOOM_KEY,
+  ZOOM_MAX,
+  ZOOM_MIN,
+  applyFontScale,
+  applyZoom,
+  readFontScale,
+  readZoom,
+} from '../ui/uiScale'
+
+type SettingsPage = 'interface' | 'sound' | 'game' | 'save' | 'developer'
+
+const SETTINGS_PAGES: ReadonlyArray<{ id: SettingsPage; labelId: string }> = [
+  { id: 'interface', labelId: 'ui.settingsTab.001' },
+  { id: 'sound', labelId: 'ui.settingsTab.002' },
+  { id: 'game', labelId: 'ui.settingsTab.003' },
+  { id: 'save', labelId: 'ui.settingsTab.004' },
+  { id: 'developer', labelId: 'ui.settingsTab.005' },
+]
+
+/* ═══════════ GNU Unifont 18.0.01 的元信息（2026-11-02 核对） ═══════════
+   口径来源：官方发布页 <https://unifoundry.com/unifont/>（18.0.01 / 2026-09-16 发布）与
+   字体文件自身的 name 表（版权、许可描述、许可 URL）。下面三条英文**照录字体文件内嵌原文**：
+   版权与许可是法律文字，不译、不改写、不缩写（与授权书正文同一条纪律）。 */
+const UNIFONT_VERSION = '18.0.01'
+const UNIFONT_FONT_FILE = 'unifont-18.0.01.otf'
+const UNIFONT_HOME_URL = 'https://unifoundry.com/unifont/'
+const UNIFONT_LICENSE_URL = 'https://unifoundry.com/LICENSE.txt'
+const UNIFONT_COPYRIGHT =
+  'Copyright © 1998-2026 Roman Czyborra, Paul Hardy, Qianqian Fang, Andrew Miller, Johnnie Weaver, David Corbett, Ælla Chiana Moskopp, Rebecca Bettencourt, Ho-Seok Ee, et al.'
+const UNIFONT_EMBEDDED_LICENSE =
+  'Dual license: SIL Open Font License version 1.1, and GNU GPL version 2 or later with the GNU Font Embedding Exception.'
+const UNIFONT_LICENSE_URLS = 'https://gnu.org/licenses/gpl.html, https://scripts.sil.org/OFL'
+
+/* ═══════════ Oxanium 的元信息（2026-11-02 核对；船长令：英文/数字用该字体） ═══════════
+   口径来源：字体文件自身 name 表（nameID 0 版权 / 5 版本 / 13 许可描述 / 14 许可 URL）与
+   Google Fonts 项目页 <https://fonts.google.com/specimen/Oxanium>；上游仓库
+   <https://github.com/sevmeyer/oxanium>。版权与许可是法律文字，照录原文、不译不改写。
+   字体为可变字重（wght 轴）TTF，默认实例 ExtraLight、版本 2.000。 */
+const OXANIUM_VERSION = '2.000'
+const OXANIUM_FONT_FILE = 'oxanium-variable.ttf'
+const OXANIUM_COPYRIGHT =
+  'Copyright 2019 The Oxanium Project Authors (https://github.com/sevmeyer/oxanium)'
+const OXANIUM_HOME_URL = 'https://fonts.google.com/specimen/Oxanium'
+const OXANIUM_LICENSE_URL = 'https://scripts.sil.org/OFL'
 
 /** 游戏内时钟（HH:MM，日志前缀用） */
 export function gameClock(gameMs: number): string {
@@ -129,28 +214,18 @@ export function readLogPrefs(): LogPrefs {
   }
 }
 
-/** 读取数字偏好（带范围钳制；损坏回默认） */
-function readNum(key: string, def: number, min: number, max: number): number {
-  try {
-    const v = Number.parseFloat(localStorage.getItem(key) ?? '')
-    return Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : def
-  } catch {
-    return def
-  }
-}
-
-const ZOOM_KEY = 'whale-idle:ui-zoom'
-const FS_KEY = 'whale-idle:ui-fs'
-/** 字号上限（2026-09-22 船长令「按推荐来」：读数显示 82% 的文字 ≤12px，先把上限从 125% 放到 150%，
- *  **不动默认字号** ⇒ 排版与"一级页不滚"零风险） */
-const ZOOM_MAX_FS = 1.5
+/**
+ * **界面缩放 / 字号偏好**：读写与应用的单点统一在 `ui/uiScale.ts`（启动时由 `game/boot.ts` 的
+ * `prebootRenderer()` 应用，设置面板挂载/拖动时再写一次）。本文件不再自带 `readNum` 与键名常量
+ * —— 2026-11-02 之前这里另有一份实现，和启动路径各写各的，正是"字号重启后不生效"的温床。
+ */
 
 /** 设置面板（船长 2026-09-05）：界面缩放 = 整窗 zoom；字体大小 = 字号族 CSS 系数 --ui-fs；
  *  宇宙背景（2026-09-10 船长）：铺在界面最底层的无缝星图，可在此换一张；
  *  界面配色（2026-09-22 船长令）：深空/亮白/跟随系统，存本机、即时生效 */
 export function SettingsPanel({
   root,
-  onClose,
+  onClose: onRequestClose,
   engine,
   onSave,
   onReset,
@@ -171,6 +246,7 @@ export function SettingsPanel({
   onReconnectSaveFile,
   onUnbindSaveFile,
   onRefreshSaveFileStatus,
+  initialPage = 'interface',
 }: {
   root: RefObject<HTMLDivElement>
   onClose: () => void
@@ -204,10 +280,29 @@ export function SettingsPanel({
   onUnbindSaveFile: () => void
   /** 打开设置时自报一次绑定状态（权限可能被浏览器收回） */
   onRefreshSaveFileStatus: () => void
+  initialPage?: SettingsPage
 }) {
   const { locale, setLocale, t } = useL10n()
-  const [zoom, setZoom] = useState(() => readNum(ZOOM_KEY, 1, 0.8, 1.25))
-  const [fs, setFs] = useState(() => readNum(FS_KEY, 1, 0.85, ZOOM_MAX_FS))
+  const [settingsPage, setSettingsPage] = useState<SettingsPage>(initialPage)
+  const [cloudApplying, setCloudApplying] = useState(false)
+  function onClose(): void {
+    if (!cloudApplying) onRequestClose()
+  }
+  const visibleSettingsPages = SETTINGS_PAGES.filter((page) => page.id !== 'developer' || debugAllowed())
+  const [zoom, setZoom] = useState(readZoom)
+  const [fs, setFs] = useState(readFontScale)
+  /**
+   * **界面字体**（**2026-11-02 船长令**最终口径）：本机偏好、即时生效、不进存档。
+   * 默认 = 微软雅黑 + Oxanium（英文/数字）；复古 = 统一只用 GNU Unifont。
+   * 挂载时读一次（`readFontChoice`），切换时写一次（`selectFont` ⇒ `chooseFont` 落盘 + 应用）；
+   * 启动时的应用由 `game/boot.ts` 的 `prebootRenderer()` 统一接线，这里不重复。
+   */
+  const [font, setFont] = useState<FontChoice>(() => readFontChoice())
+  /** 「许可与授权」全文弹窗（2026-11-02 船长令：设置最下方一枚按钮 ⇒ 完整授权书） */
+  const [licenseOpen, setLicenseOpen] = useState(false)
+  /** 声音（2026-11-02 船长令）：总音量/静音/分类音量，本机偏好、即时生效、不进存档 */
+  const sfx = useSfxPrefs()
+  const [sfxConsoleOpen, setSfxConsoleOpen] = useState(false)
   /* 界面配色（2026-09-22 船长令「添加几套配色供玩家切换」）：存本机、即时生效、支持跟随系统 */
   const [theme, setTheme, effectiveTheme] = useTheme()
   /**
@@ -220,6 +315,11 @@ export function SettingsPanel({
     setResupply(next)
     engine.state.resupplyFromWarehouse = next
     void engine.persist()
+  }
+  /** 点选界面字体：先更新面板显示，再走 `ui/fontChoice.ts` 的「落盘 + 即时应用」单点 */
+  function selectFont(next: FontChoice): void {
+    setFont(next)
+    chooseFont(next)
   }
 
   /** 打开设置时自报一次「本地存档文件」绑定状态（浏览器可能已收回权限 ⇒ 界面要如实显示） */
@@ -258,11 +358,16 @@ export function SettingsPanel({
     setCopiedVersion(true)
     window.setTimeout(() => setCopiedVersion(false), 1800)
   }
+  /**
+   * 整窗缩放写在 `.app-root` 上；**字号系数 `--ui-fs` 必须落在 `<html>`（`:root`）**——
+   * 2026-11-02 起 `--wui-fs-*` 字阶令牌改成 `calc(Npx * var(--ui-fs, 1))`，变量要在令牌声明处
+   * （`:root`）能解析；写在 `.app-root` 上解析不到，字号滑块会失效。两处写法都收在 `ui/uiScale.ts`。
+   */
   useEffect(() => {
     const el = root.current
+    applyFontScale(fs)
     if (!el) return
-    ;(el.style as { zoom?: string }).zoom = String(zoom)
-    el.style.setProperty('--ui-fs', String(fs))
+    applyZoom(el, zoom)
   }, [zoom, fs, root])
   function persist(): void {
     try {
@@ -275,31 +380,63 @@ export function SettingsPanel({
   return (
     <div className="app-modal-mask" onClick={onClose}>
       <div className="app-modal app-settings-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="app-settings-title">{t('ui.App.010')}</div>
+        <div className="app-settings-heading">
+          <div className="app-settings-title">{t('ui.App.010')}</div>
+          <div className="app-settings-version">
+            <span title={`${t('ui.App.170')} ${clientVersionLine()}`}>{t('ui.App.168')}: {BUILD.version}</span>
+            <button className="app-btn is-small" onClick={() => void copyClientVersion()}>
+              {copiedVersion ? tr('ui.App.044') : tr('ui.App.171')}
+            </button>
+          </div>
+        </div>
         <div className="app-settings-sub">
           {t('ui.App.011')}
         </div>
-        <div className="app-settings-list">
-          {/**
-           * **客户端版本**（**2026-10-02 船长令**：「**建议在设置里给游戏添加版本号，否则无法判断玩家
-           * 当前版本**」）—— 船长三问裁定：值 = 版本号 · 构建 sha · 构建日期 · 运行形态；本批只做显示；
-           * 命名用「客户端版本」（避开游戏内已有的「版本号」＝铁人档世代号）；**放最上方**（第一眼就能读到）。
-           * 值由构建时注入（`game/buildInfo.ts` 读、`tools/build-info.ts` 注入）；
-           * 「复制」走与性能 HUD 同一套写法（`navigator.clipboard` ＋ execCommand 兜底），
-           * 复制成功的提示**复用 `ui.App.044`「✓ 已复制」**（不新造同义串）。
-           */}
-          <div className="app-settings-row">
-            <div className="app-settings-head">
-              <span className="app-settings-label">{t('ui.App.168')}</span>
-              <span className="app-settings-val">{clientVersionLine()}</span>
-            </div>
-            <div className="app-settings-btns">
-              <button className="app-btn is-small" onClick={() => void copyClientVersion()}>
-                {copiedVersion ? tr('ui.App.044') : tr('ui.App.171')}
-              </button>
-            </div>
-            <div className="app-settings-desc">{t('ui.App.170')}</div>
-          </div>
+        <div className="app-subtabs app-settings-tabs" role="tablist" aria-label={t('ui.App.010')} aria-orientation="horizontal">
+          {visibleSettingsPages.map((page, index) => (
+            <button
+              key={page.id}
+              id={`settings-tab-${page.id}`}
+              type="button"
+              role="tab"
+              aria-selected={settingsPage === page.id}
+              aria-controls={settingsPage === page.id ? `settings-panel-${page.id}` : undefined}
+              tabIndex={settingsPage === page.id ? 0 : -1}
+              className={`app-subtab${settingsPage === page.id ? ' is-active' : ''}`}
+              disabled={cloudApplying}
+              onClick={() => { if (!cloudApplying) setSettingsPage(page.id) }}
+              onKeyDown={(event) => {
+                if (cloudApplying) return
+                const lastIndex = visibleSettingsPages.length - 1
+                const nextIndex = event.key === 'ArrowRight'
+                  ? (index + 1) % visibleSettingsPages.length
+                  : event.key === 'ArrowLeft'
+                    ? (index - 1 + visibleSettingsPages.length) % visibleSettingsPages.length
+                    : event.key === 'Home'
+                      ? 0
+                      : event.key === 'End'
+                        ? lastIndex
+                        : -1
+                if (nextIndex < 0) return
+                event.preventDefault()
+                const nextPage = visibleSettingsPages[nextIndex]!
+                setSettingsPage(nextPage.id)
+                document.getElementById(`settings-tab-${nextPage.id}`)?.focus()
+              }}
+            >
+              {t(page.labelId)}
+            </button>
+          ))}
+        </div>
+        <div
+          key={settingsPage}
+          className="app-settings-list"
+          id={`settings-panel-${settingsPage}`}
+          role="tabpanel"
+          aria-labelledby={`settings-tab-${settingsPage}`}
+          tabIndex={0}
+        >
+          {settingsPage === 'interface' ? <>
           {/* 语言（2026-09-19 船长令「英语本地化」）：默认跟随系统，这里可随时覆盖；语言不进存档 */}
           <div className="app-settings-row">
             <div className="app-settings-head">
@@ -321,18 +458,19 @@ export function SettingsPanel({
               </button>
             </div>
             <div className="app-settings-desc">{t('ui.App.026')}</div>
-          {/* 界面布局（2026-09-25 船长令：新旧两套界面允许玩家在设置内切换）：本机偏好、即时生效、不进存档 */}
+          </div>
+          {/* 界面布局（2026-09-25 船长令；2026-11-02 优化：新版全面升级为科幻未来）：本机偏好、即时生效、不进存档 */}
           <div className="app-settings-row">
             <div className="app-settings-head">
               <span className="app-settings-label">{t('ui.App.146')}</span>
-              <span className="app-settings-val">{layoutKind === 'classic' ? tr('ui.App.148') : tr('ui.App.147')}</span>
+              <span className="app-settings-val">{layoutKind === 'classic' ? tr('ui.App.148') : tr('ui.App.177')}</span>
             </div>
             <div className="app-settings-btns">
               <button
-                className={`app-btn is-small${layoutKind === 'modern' ? ' is-primary' : ''}`}
+                className={`app-btn is-small${layoutKind === 'modern' || layoutKind === 'cosmic' ? ' is-primary' : ''}`}
                 onClick={() => onLayoutChange('modern')}
               >
-                {`${tr('ui.App.147')}${tr('ui.App.153')}`}
+                {tr('ui.App.177')}
               </button>
               <button
                 className={`app-btn is-small${layoutKind === 'classic' ? ' is-primary' : ''}`}
@@ -343,35 +481,12 @@ export function SettingsPanel({
             </div>
             <div className="app-settings-desc">{t('ui.App.149')}</div>
           </div>
-          </div>
-          {/* 弹药 / 修理组件取用来源（2026-09-23 船长令）：随档开关，洞内同理 */}
-          <div className="app-settings-row">
-            <div className="app-settings-head">
-              <span className="app-settings-label">{t('ui.App.137')}</span>
-              <span className="app-settings-val">{resupply ? tr('ui.App.138') : tr('ui.App.139')}</span>
-            </div>
-            <div className="app-settings-btns">
-              <button
-                className={`app-btn is-small${resupply ? ' is-primary' : ''}`}
-                onClick={() => toggleResupply(true)}
-              >
-                {tr('ui.App.138')}
-              </button>
-              <button
-                className={`app-btn is-small${!resupply ? ' is-primary' : ''}`}
-                onClick={() => toggleResupply(false)}
-              >
-                {tr('ui.App.139')}
-              </button>
-            </div>
-            <div className="app-settings-desc">{t('ui.App.140')}</div>
-          </div>
           <div className="app-settings-row">
             <div className="app-settings-head">
               <span className="app-settings-label">{t('ui.App.012')}</span>
               <span className="app-settings-val">{Math.round(zoom * 100)}%</span>
             </div>
-            <input className="app-settings-slider" type="range" min={0.8} max={1.25} step={0.05} value={zoom} onChange={(e) => setZoom(Number(e.target.value))} />
+            <input className="app-settings-slider" type="range" min={ZOOM_MIN} max={ZOOM_MAX} step={0.05} value={zoom} onChange={(e) => setZoom(Number(e.target.value))} />
             <div className="app-settings-desc">{t('ui.App.013')}</div>
           </div>
           <div className="app-settings-row">
@@ -379,8 +494,32 @@ export function SettingsPanel({
               <span className="app-settings-label">{t('ui.App.014')}</span>
               <span className="app-settings-val">{Math.round(fs * 100)}%</span>
             </div>
-            <input className="app-settings-slider" type="range" min={0.85} max={ZOOM_MAX_FS} step={0.05} value={fs} onChange={(e) => setFs(Number(e.target.value))} />
+            <input className="app-settings-slider" type="range" min={FS_MIN} max={FS_MAX} step={0.05} value={fs} onChange={(e) => setFs(Number(e.target.value))} />
             <div className="app-settings-desc">{t('ui.App.015')}</div>
+          </div>
+          {/**
+           * **界面字体**（**2026-11-02 船长令**最终口径）：「字体大小」正下方，交互与同页「语言 / 界面布局 /
+           * 界面配色」三行一致（`app-settings-row` ＋ `app-btn is-small`，选中项 `is-primary`）。
+           * 两项：默认（中文 = 微软雅黑，英文/数字 = Oxanium）／复古（统一只用 GNU Unifont）。
+           * 授权全文见本页最下方「许可与授权」；本机偏好、即时生效、不进存档（点选即保存，下次启动读回）。
+           */}
+          <div className="app-settings-row">
+            <div className="app-settings-head">
+              <span className="app-settings-label">{t('ui.App.178')}</span>
+              <span className="app-settings-val">{font === 'retro' ? t('ui.App.195') : t('ui.App.179')}</span>
+            </div>
+            <div className="app-settings-btns">
+              {FONT_CHOICES.map((c) => (
+                <button
+                  key={c}
+                  className={`app-btn is-small${font === c ? ' is-primary' : ''}`}
+                  onClick={() => selectFont(c)}
+                >
+                  {c === 'default' ? t('ui.App.179') : t('ui.App.195')}
+                </button>
+              ))}
+            </div>
+            <div className="app-settings-desc">{t('ui.App.180')}</div>
           </div>
           {/* 界面配色（2026-09-22 船长令）：与上一行「语言」同款按钮组；三套主题见 ui/theme.ts */}
           <div className="app-settings-row">
@@ -424,6 +563,136 @@ export function SettingsPanel({
                   : t('ui.App.021')}
             </div>
           </div>
+          </> : null}
+          {settingsPage === 'sound' ? <>
+          {/**
+           * **声音**（**2026-11-02 船长令**：「现在这个项目没有声音介入…方便我接入我做的音效」）：
+           * 总音量 + 一键静音 + 四类分类音量；本机偏好（`localStorage`，与语言/缩放/主题同族），
+           * **不进存档**。本机调试门禁放行时多一枚「音效台」入口（拖入素材即生效，见 `SfxConsole`）。
+           */}
+          <div className="app-settings-row">
+            <div className="app-settings-head">
+              <span className="app-settings-label">{t('ui.sfx.030')}</span>
+              <span className="app-settings-val">
+                {sfx.prefs.muted ? t('ui.sfx.033') : `${Math.round(sfx.prefs.master * 100)}%`}
+              </span>
+            </div>
+            <div className="app-settings-btns">
+              <button
+                className={`app-btn is-small${sfx.prefs.muted ? ' is-warn' : ''}`}
+                onClick={() => sfx.setMuted(!sfx.prefs.muted)}
+              >
+                {t('ui.sfx.032')}
+              </button>
+              {debugAllowed() ? (
+                <button className="app-btn is-small" onClick={() => setSfxConsoleOpen(true)}>
+                  {t('ui.sfx.037')}
+                </button>
+              ) : null}
+            </div>
+            <div className="app-settings-desc">{t('ui.sfx.036')}</div>
+          </div>
+          <div className="app-settings-row">
+            <div className="app-settings-head">
+              <span className="app-settings-label">{t('ui.sfx.031')}</span>
+              <span className="app-settings-val">{Math.round(sfx.prefs.master * 100)}%</span>
+            </div>
+            <input
+              className="app-settings-slider"
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={sfx.prefs.master}
+              disabled={sfx.prefs.muted}
+              onChange={(e) => sfx.setMaster(Number(e.target.value))}
+            />
+            <div className="app-settings-desc">{t('ui.sfx.035')}</div>
+          </div>
+          {SFX_CATEGORIES.map((cat) => (
+            <div className="app-settings-row" key={cat}>
+              <div className="app-settings-head">
+                <span className="app-settings-label">{t(SFX_CATEGORY_NAME_ID[cat])}</span>
+                <span className="app-settings-val">{Math.round(sfx.prefs.categories[cat] * 100)}%</span>
+              </div>
+              <input
+                className="app-settings-slider"
+                type="range"
+                min={0}
+                max={1}
+                step={0.05}
+                value={sfx.prefs.categories[cat]}
+                disabled={sfx.prefs.muted}
+                onChange={(e) => sfx.setCategory(cat, Number(e.target.value))}
+              />
+            </div>
+          ))}
+          {/**
+           * **战斗音效音高随机**（**2026-11-02 追加批 · 船长口径**：「1200 音分的八度里上下浮动 100 音分」）：
+           * 只作用于战斗里重复发生的音效（开火 / 命中 / 受击 / 未命中 / 敌方开火 / 机群击落）；
+           * 一次性重音与 BGM/环境不抖。0 = 关闭，默认 ±100 音分（= ±1 个半音），滑条可调小。
+           */}
+          <div className="app-settings-row">
+            <div className="app-settings-head">
+              <span className="app-settings-label">{t('ui.sfx.060')}</span>
+              <span className="app-settings-val">
+                {sfx.prefs.pitchJitterCents > 0
+                  ? t('ui.sfx.065', { p1: sfx.prefs.pitchJitterCents, p2: (sfx.prefs.pitchJitterCents / 100).toFixed(2) })
+                  : t('ui.sfx.063')}
+              </span>
+            </div>
+            <div className="app-settings-btns">
+              <button
+                className={`app-btn is-small${sfx.prefs.pitchJitterCents > 0 ? ' is-primary' : ''}`}
+                onClick={() => sfx.setPitchJitter(100)}
+              >
+                {t('ui.sfx.062')}
+              </button>
+              <button
+                className={`app-btn is-small${sfx.prefs.pitchJitterCents === 0 ? ' is-primary' : ''}`}
+                onClick={() => sfx.setPitchJitter(0)}
+              >
+                {t('ui.sfx.063')}
+              </button>
+            </div>
+            <input
+              className="app-settings-slider"
+              type="range"
+              min={0}
+              max={100}
+              step={5}
+              value={sfx.prefs.pitchJitterCents}
+              disabled={sfx.prefs.muted}
+              onChange={(e) => sfx.setPitchJitter(Number(e.target.value))}
+            />
+            <div className="app-settings-desc">{t('ui.sfx.061')}</div>
+          </div>
+          </> : null}
+          {settingsPage === 'game' ? <>
+          {/* 弹药 / 修理组件取用来源（2026-09-23 船长令）：随档开关，洞内同理 */}
+          <div className="app-settings-row">
+            <div className="app-settings-head">
+              <span className="app-settings-label">{t('ui.App.137')}</span>
+              <span className="app-settings-val">{resupply ? tr('ui.App.138') : tr('ui.App.139')}</span>
+            </div>
+            <div className="app-settings-btns">
+              <button
+                className={`app-btn is-small${resupply ? ' is-primary' : ''}`}
+                onClick={() => toggleResupply(true)}
+              >
+                {tr('ui.App.138')}
+              </button>
+              <button
+                className={`app-btn is-small${!resupply ? ' is-primary' : ''}`}
+                onClick={() => toggleResupply(false)}
+              >
+                {tr('ui.App.139')}
+              </button>
+            </div>
+            <div className="app-settings-desc">{t('ui.App.140')}</div>
+          </div>
+          </> : null}
+          {settingsPage === 'developer' ? <>
           {/*
            * **开发者：调试模式**（2026-09-25 加）：船长反馈「已开启调试模式，调试按钮依旧不可见」
            * —— 根因是开关设在**另一个 origin**（DevTools 里那行 localStorage 落在浏览器侧，桌面端读不到）。
@@ -454,6 +723,8 @@ export function SettingsPanel({
             </div>
           ) : null}
           {debugAllowed() && debugOnState ? <div className="app-settings-row"><div className="app-settings-head"><label className="app-settings-label"><input type="checkbox" checked={futureWormholeEnabled()} onChange={e => { setFutureWormholeEnabled(e.target.checked); onDebugChange(debugOnState) }} />{tr('ui.explorationName.019')}</label></div><div className="app-settings-desc">{tr('ui.explorationName.018')}</div></div> : null}
+          </> : null}
+          {settingsPage === 'save' ? <>
           {/**
            * **存档一组**（2026-09-25 船长令：「将存档管理，重置档案，保存移动到设置内」）
            * —— 这三个按钮原先在顶栏右侧，与本组功能同类（都作用于存档）⇒ 归到设置里。
@@ -524,13 +795,15 @@ export function SettingsPanel({
               <span className="app-settings-label">{tr('ui.App.063')}</span>
             </div>
             <div className="app-settings-btns">
-              <button className="app-btn is-small" onClick={onSave}>
+              <button className="app-btn is-small" onClick={onSave} disabled={cloudApplying}>
                 {tr('ui.App.063')}
               </button>
               <button
                 className="app-btn is-small"
+                disabled={cloudApplying}
                 title={tr('ui.App.064')}
                 onClick={() => {
+                  if (cloudApplying) return
                   onOpenSaveManager()
                   onClose()
                 }}
@@ -539,7 +812,9 @@ export function SettingsPanel({
               </button>
               <button
                 className="app-btn is-small is-danger"
+                disabled={cloudApplying}
                 onClick={() => {
+                  if (cloudApplying) return
                   onClose()
                   onReset()
                 }}
@@ -548,6 +823,8 @@ export function SettingsPanel({
               </button>
             </div>
           </div>
+          <CloudSavePanel engine={engine} onApplyingChange={setCloudApplying} />
+          </> : null}
         </div>
         {/* **切换界面布局 ⇒ 提示重开**（2026-09-25 船长令）：确认后存档并关游戏；取消则什么都不做 */}
         {layoutPending !== null ? (
@@ -573,12 +850,17 @@ export function SettingsPanel({
         <div className="app-settings-foot">
           <span className="app-dim">{t('ui.App.022')}</span>
           <span className="app-settings-btns">
-            <button className="app-btn is-small" onClick={() => { setZoom(1); setFs(1) }}>
+            <button className="app-btn is-small" onClick={() => setLicenseOpen(true)}>
+              {t('ui.App.181')}
+            </button>
+            <button className="app-btn is-small" disabled={cloudApplying} onClick={() => { if (cloudApplying) return; setZoom(1); setFs(1); selectFont('default') }}>
               {t('ui.App.023')}
             </button>
             <button
               className="app-btn is-small is-primary"
+              disabled={cloudApplying}
               onClick={() => {
+                if (cloudApplying) return
                 persist()
                 onClose()
               }}
@@ -586,6 +868,107 @@ export function SettingsPanel({
               {t('ui.App.024')}
             </button>
           </span>
+        </div>
+        {/**
+         * 本机音效台（2026-11-02）：仅本机调试门禁放行时才有入口（`debugAllowed()`），发布版不渲染。
+         * ⚠ **必须用 Portal 挂到 `document.body`**：设置弹窗在「科幻未来 / 宇宙」布局下有 `clip-path`
+         * （见 `styles.css` 的 `.app-root.is-layout-modern .app-settings-modal`），嵌套的 fixed 弹层
+         * 会被父级裁掉 ⇒ 同款问题另一批的许可全文弹窗已踩过（`appSettings.css` 头注）。
+         */}
+        {sfxConsoleOpen ? createPortal(<SfxConsole onClose={() => setSfxConsoleOpen(false)} />, document.body) : null}
+      </div>
+      {/**
+       * 许可与授权全文弹窗（2026-11-02 船长令）：渲染在设置弹窗**之外的兄弟层**（仍在本遮罩内），
+       * 避免「科幻未来」布局给 `.app-settings-modal` 加的 `clip-path` 把嵌套弹层裁掉；
+       * 点击遮罩先 `stopPropagation`，否则会顺带把设置面板一起关掉。
+       */}
+      {licenseOpen ? <LicenseModal onClose={() => setLicenseOpen(false)} /> : null}
+    </div>
+  )
+}
+
+/* ═══════════════ 许可与授权（2026-11-02 船长令：设置最下方按钮 ＋ 授权书全文弹窗） ═══════════════ */
+
+/**
+ * **许可与授权全文弹窗**（只读；内容可滚动、不塞摘要、不拿外链顶替正文）。
+ *
+ * 船长原话：「这个字体是GNU授权，记得在设置的最最下方增加一个许可按钮把这些授权书内容统统都写进入」。
+ * 正文**照录原文**（法律文字不译、不改写、不缩写）；中文只用于小节标题与「版本 / 来源 URL / 日期」。
+ *
+ * 采用的授权口径（2026-11-02 核实）：
+ * ① **GNU Unifont 18.0.01**（内嵌 `unifont-18.0.01.otf`）——编译字体为**双许可**：
+ *    SIL Open Font License 1.1 ＋ GNU GPL 第 2 版或更高版本（附 GNU 字体嵌入例外）。
+ *    依据：官方发布页 <https://unifoundry.com/unifont/> 与官方授权原文
+ *    <https://unifoundry.com/LICENSE.txt>（该文件同时收录 GPLv2 全文、字体嵌入例外与 OFL 1.1 全文，
+ *    本弹窗整份照录）；字体文件 name 表内嵌的版权与许可描述也一并在弹窗里给出（见常量）。
+ * ② **本项目自身**：根目录 `LICENSE.txt`（版权与授权声明）与根目录 `LICENSE`
+ *    （双许可与商业使用条款：AGPLv3 开源 ＋ 商业许可，含 AGPLv3 全文）。
+ *    ⚠ 按船长 2026-11-02 追加要求，游戏内这两份声明的**副本**不展示「原项目 / 原站」外部链接
+ *    （含英文条款里的原仓库链接），其余照录；根目录原文不改，发行包仍用原文。
+ *    ⚠ 同批裁定：个人主页署名链接保留；声明里指代「原项目」的那句改为「请联系作者」（只改副本）。
+ * ③ 第三方组件（React、React DOM、Scheduler、Lucide、PixelPlanets 素材等）分别遵循各自的许可证。
+ *
+ * 文本以 `?raw` 内联（Vite 会随桌面/网页两个入口一起打包），不额外发网络请求。
+ */
+function LicenseModal({ onClose }: { onClose: () => void }) {
+  const { t } = useL10n()
+  return (
+    <div
+      className="app-modal-mask app-license-mask"
+      onClick={(e) => {
+        e.stopPropagation()
+        onClose()
+      }}
+    >
+      <div className="app-modal app-license-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="app-modal-head">
+          <span className="app-report-title">{t('ui.App.181')}</span>
+          <button className="app-btn is-small" onClick={onClose}>
+            {t('ui.App.183')}
+          </button>
+        </div>
+        <div className="app-modal-body app-license-body">
+          <div className="app-license-intro">{t('ui.App.182')}</div>
+          <section className="app-license-section">
+            <h3 className="app-license-h">{t('ui.App.184')}</h3>
+            <div className="app-license-meta">
+              {t('ui.App.185', {
+                p1: UNIFONT_VERSION,
+                p2: UNIFONT_FONT_FILE,
+                p3: UNIFONT_COPYRIGHT,
+                p4: UNIFONT_HOME_URL,
+                p5: UNIFONT_LICENSE_URL,
+              })}
+            </div>
+            <h4 className="app-license-subh">{t('ui.App.186')}</h4>
+            <pre className="app-license-pre">{`${UNIFONT_EMBEDDED_LICENSE}\n${UNIFONT_LICENSE_URLS}`}</pre>
+            <h4 className="app-license-subh">{t('ui.App.187')}</h4>
+            <pre className="app-license-pre">{unifontLicenseText}</pre>
+          </section>
+          {/** Oxanium（船长 2026-11-02 追加：默认档英文/数字用该字体）—— 独立小节，口径与 Unifont 同：
+              上游说明原文照录，中文只作小节标题与元信息。 */}
+          <section className="app-license-section">
+            <h3 className="app-license-h">{t('ui.App.192')}</h3>
+            <div className="app-license-meta">
+              {t('ui.App.193', {
+                p1: OXANIUM_VERSION,
+                p2: OXANIUM_FONT_FILE,
+                p3: OXANIUM_COPYRIGHT,
+                p4: OXANIUM_HOME_URL,
+                p5: OXANIUM_LICENSE_URL,
+              })}
+            </div>
+            <h4 className="app-license-subh">{t('ui.App.194')}</h4>
+            <pre className="app-license-pre">{oxaniumLicenseText}</pre>
+          </section>
+          <section className="app-license-section">
+            <h3 className="app-license-h">{t('ui.App.188')}</h3>
+            <h4 className="app-license-subh">{t('ui.App.189')}</h4>
+            <pre className="app-license-pre">{projectLicenseStatement}</pre>
+            <h4 className="app-license-subh">{t('ui.App.190')}</h4>
+            <pre className="app-license-pre">{projectLicenseDual}</pre>
+            <div className="app-license-note">{t('ui.App.191')}</div>
+          </section>
         </div>
       </div>
     </div>

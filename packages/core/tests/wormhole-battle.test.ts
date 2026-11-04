@@ -17,13 +17,16 @@
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
-import { createInitialState } from '../src/state'
+import { createCommandReadyState as createInitialState } from './helpers/command-ready'
 import type { GameState } from '../src/state'
 import { addShipToFleet, loseShip } from '../src/shipyard'
 import { pilotUnavailableReason } from '../src/activityGate'
 import { addWare, countWare } from '../src/inventory'
-import { advanceBattleFor, battleOpenM, createFoeSpecs, createPlayerSpec, desiredRangeFor, foeDesiredRange, foeHpOfThreat, foeShipTierOf, foeUnitNameOf, startFleetBattleFor, wormholeDerivedAnomaly } from '../src/combat'
+import { advanceBattleFor, battleOpenM, createFoeSpecs, createPlayerSpec, desiredRangeFor, foeDesiredRange, foeShipTierOf, foeUnitNameOf, startFleetBattleFor, wormholeDerivedAnomaly } from '../src/combat'
 import { battleTacticDesire } from '../src/expedition'
+import { buildMyUnitSpecs } from '../src/combat/fleetSpecs'
+import { foeRangeEwSpecsOf } from '../src/combat/foeRange'
+import { resolvedBattleAnomaly } from '../src/combat/cards'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import {
   WORMHOLE_BOSS_TARGETING_CHANCE,
@@ -339,7 +342,7 @@ describe('虫洞 · 洞内敌卡按层派生（F 批）', () => {
     const threatAt = (card: (typeof cards)[number]): number => {
       let hp = 0
       let dps = 0
-      for (const f of createFoeSpecs(wormholeDerivedAnomaly(ctx, card, { depth: 4, kind: 'node', waves: 1 }), ctx.balance.battle)) {
+      for (const f of createFoeSpecs(wormholeDerivedAnomaly(ctx, card, { depth: 4, kind: 'node', waves: 1 }, 0), ctx.balance.battle)) {
         hp += f.hp.s + f.hp.a + f.hp.h
         for (const w of f.weapons) dps += ((w.shotDmg ?? 0) * (w.count ?? 1) * 1000) / Math.max(1, w.reloadMs)
       }
@@ -1068,21 +1071,16 @@ describe('虫洞 · 开战距离与派生一致性（船长 2026-09-13 两条口
     standOnPlace(run, 'ship') // F3a-2：洞内战由**地点**触发（等价旧「当前节点是战斗节点」）
     expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
     const battle = run.battle!
-    const card = ctx.anomalies.get(battle.wormhole!.cardId)!
-    const me = createPlayerSpec(state, ctx, run.fleet[0]!)!
-    const foes = createFoeSpecs(
-      wormholeAnomalyOf(card, 1, 'node', 1, {
-        hpBudget: foeHpOfThreat(wormholeLayerThreat(1), ctx.balance.battle) * 10,
-      }),
-      ctx.balance.battle,
-    )
+    const card = resolvedBattleAnomaly(ctx, battle, battle.wormhole!.cardId)!
+    const foes = createFoeSpecs(card, ctx.balance.battle)
+    const me = buildMyUnitSpecs(state, ctx, battle, run.fleet[0]!, card.id, foes)[0]!
     const anyBrawl = foes.some((f) => f.foeTactic === 'brawl')
     // ⚠ 近战怪那一支走**独立的洞内开局档** `wormholeBrawlOpenBand`（0.5 中段）——船长 2026-09-15 选定「乙」：
     // 默认期望抬到 0.8，但"贴脸怪一开场就在你脸上"（2026-09-13）保留 ⇒ 不许写成 `desiredRangeFor(me,'mid',bal)`
     const expected = anyBrawl
       ? desiredRangeFor(me, 'mid', ctx.balance.battle, ctx.balance.battle.wormholeBrawlOpenBand)
-      : foeDesiredRange(me, foes, ctx.balance.battle)
-    const openM = battleOpenM(me, foes, ctx.balance.battle)
+      : foeDesiredRange(me, foes, ctx.balance.battle, battle.rangeEw?.foeCut ?? 0, battle)
+    const openM = battleOpenM(me, foeRangeEwSpecsOf(battle, foes), ctx.balance.battle)
     // 常规口径是"最远射程 + 缓冲"（= openM）；洞内口径落在**目标距离**上（被 openM 钳制的场合取钳制值）
     expect(battle.distanceM).toBe(
       Math.max(ctx.balance.battle.minDistanceM, Math.min(openM, Math.round(expected))),

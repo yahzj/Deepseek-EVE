@@ -1,3 +1,4 @@
+import { ceilFinalQuantity } from './quantity'
 import type { GameState } from './state'
 import type { SimContext } from './types'
 import { addWare, cargoCapacityM3Of, cargoHoldForbidden } from './inventory'
@@ -65,7 +66,7 @@ export function wormholePreparationPlan(
     const ship = state.fleet[uid]
     if (!ship) { invalid.push(uid); continue }
     const def = fleetDefOf(state, ctx, uid)
-    if (cpuOverloadText(state, ctx, uid) || droneLoadM3(ship.droneLoad, ctx) > droneBayTotalM3(def, ship.fitted, ctx)) {
+    if (cpuOverloadText(state, ctx, uid) || droneLoadM3(ship.droneLoad, ctx) > droneBayTotalM3(def, ship.fitted, ctx, ship.plugs)) {
       invalid.push(uid)
     }
     for (const [id, n] of Object.entries(ship.droneLoad ?? {})) {
@@ -164,11 +165,11 @@ export function wormholeSupplyPackageOf(
   }
   const pack: Record<string, number> = {}
   for (const [id, count] of Object.entries(nominal)) {
-    const n = Math.min(Math.floor((plan.items[id] ?? 0) * 0.25), count)
+    const n = Math.min(ceilFinalQuantity((plan.items[id] ?? 0) * 0.25), count)
     if (n > 0) pack[id] = n
   }
   for (const [id, count] of Object.entries(plan.deployedDrones)) {
-    const n = Math.floor(count * 0.25)
+    const n = ceilFinalQuantity(count * 0.25)
     if (n > 0) pack[id] = n
   }
   pack['repairkit-mil'] = 20
@@ -184,7 +185,7 @@ export function wormholeEnterPrepared(
   seed: number,
   plan: WormholePreparationPlan,
   stockId?: string,
-  opts?: { expeditionRules?: 2; goal?: 'deep' | 'ruins' | 'survey' },
+  opts?: { expeditionRules?: 2; goal?: 'deep' | 'ruins' | 'survey'; automatic?: true },
 ): WormholePreparedResult {
   const current = wormholePreparationPlan(state, ctx, fleet, plan.request)
   if (!current.ok) return { ok: false, code: 'invalid-plan' }
@@ -193,7 +194,7 @@ export function wormholeEnterPrepared(
   const staged = structuredClone(state)
   const stock = stockId === undefined ? undefined : staged.wormholeStock?.find((s) => s.id === stockId)
   if (stockId !== undefined && !stock) return { ok: false, code: 'stock-missing' }
-  const started = wormholeEnter(staged, ctx, fleet, seed, { ...stock, ...(opts?.expeditionRules === 2 ? { expeditionRules: 2 } : {}) })
+  const started = wormholeEnter(staged, ctx, fleet, seed, { ...stock, ...(opts?.expeditionRules === 2 ? { expeditionRules: 2 } : {}), ...(opts?.automatic ? { automatic: true as const } : {}) })
   if (!started.ok || !started.run) return started
   const afterStop = wormholePreparationPlan(staged, ctx, fleet, plan.request)
   if (!afterStop.ok || JSON.stringify(afterStop.items) !== JSON.stringify(current.items)) {

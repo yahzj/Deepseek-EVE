@@ -16,6 +16,7 @@
  * 用法：npm run content:check（或 npx tsx tools/content-check.ts）
  */
 
+import { readImplementation } from './source-implementation'
 import {
   PLANET_DEFS, PLANET_TRAITS, PLANET_BUILDINGS, buildPlanetCatalog,
   BLUEPRINTS,
@@ -86,10 +87,12 @@ import {
   MATTER_TECH_NODES,
   FACTION_CODEX,
   FACTION_CODEX_ORDER,
+  buildFactionCards,
   FOE_SHIPS,
   // 2026-09-30 文案审核批：开发侧残留契约要逐条扫公告正文（此前本文件没读过公告表）
   ANNOUNCEMENTS,
 } from '@whale/data'
+import { enumerateShipUnits } from '../packages/core/src/foeCard'
 import staticShips from '../packages/data/src/static/ships.json'
 import staticModules from '../packages/data/src/static/modules.json'
 import staticPlugs from '../packages/data/src/static/plugs.json'
@@ -264,6 +267,7 @@ securityZoneOf,
   wormholeAllCardIds,
   wormholeTierOfCard,
   WORMHOLE_SCAN_UNLOCK_STANDING,
+  COMMAND_STANDING_REQUIRED,
   DSI_FACTION_ID,
   // 2026-09-15 虫洞战利品与经济扩充（契约块见文件中部）：谜质 / 奢侈品 / 两个新货柜 / 打捞掷骰
   WORMHOLE_ESSENCE_ITEM_ID,
@@ -368,13 +372,13 @@ const DMG_TYPES = new Set(['kinetic', 'explosive', 'plasma'])
 //   +4（折跃等离子 / 低温跃迁浆 / 曲率凝析物 / 超空间折跃燃料）→ 物品总数 104→**108**、原材料 8→**11**
 // 2026-09-30（实验室后续内容批 · 船长令「信号发射器和技能加速剂」）：+2（信号发射器 / 突触加速剂，
 //   走奇货档 · 施工期 `unreleased`）→ 物品总数 108→**110**
-check(itemDefs.length === 122, `物品总数应为122（含四族专属发射器），实际 ${itemDefs.length}`)
+check(itemDefs.length === 128, `物品总数应为128（含五族加密货柜），实际 ${itemDefs.length}`)
 check(ores.length === 8, `原矿应为 8 种（含虫洞线的虚空母矿），实际 ${ores.length}`)
 check(minerals.length === 11, `原材料应为 11 种（2026-09-29 跃迁燃料链 +3），实际 ${minerals.length}`)
 check(gases.length === 4, `气体应为 4 种，实际 ${gases.length}`)
 check(ices.length === 3, `冰矿应为 3 种，实际 ${ices.length}`)
 check(ammos.length === 9, `弹药应为 9 种（每族基础弹 + MK2 + MK3），实际 ${ammos.length}`)
-check(drones.length === 9, `无人机应为 9 种（四型制式锚点 + 五种势力机型），实际 ${drones.length}`)
+check(drones.length === 10, `无人机应为10种（四型制式锚点、五种势力机型、修理机），实际 ${drones.length}`)
 
 /* ── 市场目录 ── */
 const goodKeys = new Set<string>()
@@ -421,9 +425,9 @@ console.log(`· 市场商品卡：${MARKET_GOODS.length} 张`)
 
 /* ── 数字稀有度表（2026-09-09 船长拍板：稀有度入物品本体 RARITY_TIER）──
  * ⚠ **2026-09-20 合并**（船长：「两个稀有度表没有区别就合并，并删除多余的表」）：原先拆出去的
- * `OFF_MARKET_RARITY_TIER`（残骸/碎片）已并入本表 ⇒ 本表**同时装两类键**：
- * ① 市场商品的 refId ② **市场外物品的物品 id**（残骸 `wreck-*` / 碎片 `frag-*`）。
- * 因此下面**不再有**「键数 = 市场卡数」与「多余键」两条（它们的前提已不存在），改为按两类键分别核对。 */
+ * `OFF_MARKET_RARITY_TIER`（残骸/碎片）已并入本表 ⇒ 本表**同时装三类键**：
+ * ① 市场商品的 refId ② **市场外物品的物品 id**（残骸 `wreck-*` / 碎片 `frag-*`）③ 真实蓝图 id。
+ * 不要求键数等于市场卡数；市场外键仍须能在物品或蓝图目录解析，防止留下死键。 */
 {
   const tableKeys = new Set(Object.keys(RARITY_TIER))
   const refSet = new Set(MARKET_GOODS.map((g) => g.refId))
@@ -435,7 +439,7 @@ console.log(`· 市场商品卡：${MARKET_GOODS.length} 张`)
     check(Number.isInteger(v) && v >= 1 && v <= 5, `稀有度表 ${k} 值非法：${v}（应为 1~5 整数，2026-09-16 上沿 4 → 5）`)
   }
   /**
-   * **"表里有、市场没有"的键 = 市场外物品**（残骸 / 碎片）：必须真的是某件物品的 id。
+   * **"表里有、市场没有"的键**：须为真实物品或蓝图 id，获取渠道不决定是否允许登记稀有度。
    * 物品 id 有**三族来源**，只查静态物品表会把派生 id 全判死键（2026-09-20 首次跑就抓到两族）：
    * ① 静态物品表 `ITEMS`；② **碎片**（`frag-<moduleId>`，由 `FRAGMENT_RECIPES` 派生）；
    * ③ **残骸**（`wreck-<组键>` / `wreck-rare-<组键>`，由 `WRECK_GROUPS` 的组键派生）。
@@ -446,9 +450,10 @@ console.log(`· 市场商品卡：${MARKET_GOODS.length} 张`)
     itemIds.add(wreckItemIdOfKey(g.key))
     itemIds.add(rareWreckItemIdOfKey(g.key))
   }
+  const blueprintIds = new Set([...BLUEPRINTS, ...SHIP_BLUEPRINTS].map(bp => bp.id))
   for (const k of tableKeys) {
     if (refSet.has(k)) continue // 市场商品的键（上一条已核）
-    check(itemIds.has(k) || k === 'bp-deep-space-probe' && BLUEPRINTS.some(bp => bp.id === k && bp.unreleased), `稀有度表多余键 ${k}：既不是任何市场卡的 refId，也不是任何物品的 id（改名/删除后留下的死键？）`)
+    check(itemIds.has(k) || blueprintIds.has(k), `稀有度表多余键 ${k}：既不是任何市场卡的 refId，也不是任何物品或蓝图的 id（改名/删除后留下的死键？）`)
   }
   /** 反向：**残骸必须有档**（它们不在市场里，漏配就永远没有稀有度 ⇒ 静默半成品） */
   for (const d of itemDefs) {
@@ -494,6 +499,7 @@ const hasRareBulk = (g: MarketGoodDef): boolean =>
   g.rareQtyMul !== undefined && g.rareWeightMul !== undefined && g.absorbQtyPerWindow !== undefined
 for (const item of itemDefs) {
   const good = itemGoods.get(item.id)
+  if (/^box-encrypted-[acdeg]$/.test(item.id)) continue // 船长确认：仅研究所获取，不进入市场。
   if (item.id === 'deep-space-probe' && item.unreleased && !good) continue
   if (item.exclusive === true) {
     check(
@@ -638,6 +644,7 @@ for (const item of itemDefs) {
  * - AI 核心（实物形态）：指到它的**核心市场卡**（kind `aicore`）⇒ 撤离即入核心账本。
  */
 const containerIds = new Set<string>([
+  ...['a', 'c', 'd', 'e', 'g'].map(f => `box-encrypted-${f}`),
   ...WORMHOLE_FAMILIES.map((f) => `box-relic-${f.toLowerCase()}`),
   ...WORMHOLE_BP_BOX_IDS,
   // 2026-09-15 船长确认的两个新货柜（贵重品 2 格 / 军用备货 4 格）：同样"带回后拆解"⇒ 无配方但登记在册
@@ -1163,6 +1170,7 @@ for (const sbp of SHIP_BLUEPRINTS) {
       if (v && typeof v === 'object') collect(v, path ? `${path}.${k}` : k)
   }
   collect(DEFAULT_BALANCE, 'balance');
+  for (const skill of COMMAND_SKILLS) pairs.push({ skill: skill.id, per: skill.perLevel, from: 'combat/command/config.json' })
   // ② 引擎导出的无人机技能参数
   pairs.push(
     { skill: WRECK_RECOVERY_SKILL.hullSkillId, per: WRECK_RECOVERY_SKILL.hullPerLevel, from: 'shipWrecks.WRECK_RECOVERY_SKILL.hullPerLevel' },
@@ -1310,7 +1318,7 @@ for (const sbp of SHIP_BLUEPRINTS) {
     let text = srcCache.get(rel)
     if (text === undefined) {
       try {
-        text = readFileSync(join(root, rel), 'utf8')
+        text = readImplementation(join(root, rel))
       } catch {
         return
       }
@@ -1402,6 +1410,13 @@ for (const sbp of SHIP_BLUEPRINTS) {
     let withPre = 0
     let edges = 0
     for (const s of SKILLS) {
+      if (s.licensePriceIsk !== undefined) {
+        check(Number.isSafeInteger(s.licensePriceIsk) && s.licensePriceIsk > 0, `训练许可定价非法：${s.id}`)
+      }
+      if (s.licenseStandingReq !== undefined) {
+        check(Number.isSafeInteger(s.licenseStandingReq) && s.licenseStandingReq >= 0, `训练许可声望门槛非法：${s.id}`)
+        check(s.licensePriceIsk !== undefined || s.rank >= 4, `低阶技能设置许可声望门槛但没有显式定价：${s.id}`)
+      }
       if (s.branch === undefined || s.branch.length === 0) {
         check(false, `技能书契约：技能「${s.name}」(${s.id}) 没有登记 branch（树页会落到"未分类"兜底本）`)
         continue
@@ -1502,7 +1517,7 @@ for (const m of MODULES) {
         const t = l.trim()
         return !(t.startsWith('*') || t.startsWith('//') || t.startsWith('/*'))
       })
-  const bsPath = 'apps/desktop/src/renderer/src/panels/BattleScreen.tsx'
+    const bsPath = 'apps/desktop/src/renderer/src/features/combat/resolveBattleHost.tsx'
   const bsLines = stripComments(readSrc(bsPath))
   const badAnomaly = bsLines.filter((l) => l.includes('expedition.anomalyId')).length
   check(
@@ -1532,7 +1547,7 @@ for (const m of MODULES) {
    * 本契约挡"日后被简化掉"：四处必须保留旗舰战分支（判据 = core `weekendFlagshipBattleActive`）。
    */
   for (const [rel, needle] of [
-    ['apps/desktop/src/renderer/src/panels/BattleScreen.tsx', 'weekendFlagshipBattleViewOf'],
+    ['apps/desktop/src/renderer/src/features/combat/resolveBattleHost.tsx', 'weekendFlagshipBattleViewOf'],
     ['apps/desktop/src/renderer/src/App.tsx', 'weekendFlagshipBattleActive'],
     ['apps/desktop/src/renderer/src/game/engine.ts', 'weekendFlagshipBattleActive'],
     ['apps/desktop/src/renderer/src/ui/ShipStatusWin.tsx', 'weekendFlagshipBattleActive'],
@@ -1589,15 +1604,15 @@ for (const m of MODULES) {
     return out.join('\n')
   }
   check(
-    bodyOf(readSource('packages/core/src/combatReport.ts'), 'export function sunkShipIdsOfBattle').includes('myFleet'),
+    bodyOf(readSource('packages/core/src/combat/combatReport.ts'), 'export function sunkShipIdsOfBattle').includes('myFleet'),
     '结算口径契约：`combatReport.sunkShipIdsOfBattle`（沉船判据单点）不见了或不再看编队 —— 三套宿主会各判各的',
   )
   /** 我方"船真会沉"的编队战收场路径：每条都必须判沉船（单点本身，或包着它的助手） */
   for (const [rel, head, why] of [
-    ['packages/core/src/wormholeBattle.ts', 'function settleWormholeBattle', '洞内收口（沉了就真丢 ＋ 插件折黑匣）'],
-    ['packages/core/src/encounters.ts', 'function loseSunkShipsOfBattle', '遭遇槽的沉船助手（它必须调判据单点）'],
-    ['packages/core/src/encounters.ts', 'function settleEscape', '遭遇槽 · 撤退 / 自动脱离'],
-    ['packages/core/src/encounters.ts', 'function settleFight', '遭遇槽 · 分胜负'],
+    ['packages/core/src/wormhole/battle/outcome.ts', 'function settleWormholeBattle', '洞内收口（沉了就真丢 ＋ 插件折黑匣）'],
+    ['packages/core/src/encounters/outcome.ts', 'function loseSunkShipsOfBattle', '遭遇槽的沉船助手（它必须调判据单点）'],
+    ['packages/core/src/encounters/outcome.ts', 'function settleEscape', '遭遇槽 · 撤退 / 自动脱离'],
+    ['packages/core/src/encounters/outcome.ts', 'function settleFight', '遭遇槽 · 分胜负'],
   ] as const) {
     const body = bodyOf(readSource(rel), head)
     /**
@@ -1612,7 +1627,7 @@ for (const m of MODULES) {
     )
   }
   check(
-    bodyOf(readSource('packages/core/src/expedition.ts'), 'export function resolveBattleOutcome').includes('abandoned = true'),
+    bodyOf(readSource('packages/core/src/expedition/outcome.ts'), 'export function resolveBattleOutcome').includes('abandoned = true'),
     '结算口径契约：远征 / 入侵主动出击那条路的「耐久归零 ⇒ 必弃船」不见了 —— ' +
       '那是它那套损失模型（弃船骰）的底线，删了等于"输了也不丢船"',
   )
@@ -1635,7 +1650,7 @@ for (const m of MODULES) {
    * ③ **不许**再出现 `droneHomeStation(dm, …)`（把机型模型直接喂"主控布局"的旧写法）。
    */
   {
-    const uiSrc = readFileSync(join(process.cwd(), 'apps/desktop/src/renderer/src/panels/BattleScreen.tsx'), 'utf8')
+    const uiSrc = readFileSync(join(process.cwd(), 'apps/desktop/src/renderer/src/features/combat/consumeBattleEvents.tsx'), 'utf8')
     /**
      * ⚠ **必须先剥注释**（口径同上面那条「战斗宿主双口径契约」）：本批的修复说明里就**原样引用了**
      * 旧写法 `droneHomeStation(dm, …)`——不剥注释的话，契约会被自己的解释文字绊倒（实测踩过一次）。
@@ -1747,21 +1762,20 @@ for (const m of MODULES) {
     console.log('· 入侵演出契约：警报/烟火两层不吃点击（z 110）· 声效两处调用点在 · 弹窗跳转直开结算面板')
   }
 
-  /* ── 入侵声望前提契约（2026-09-25 船长令：「给入侵触发加一个前提，需要拥有至少40声望」）──
+  /* ── 入侵声望前提契约（2026-10-30船长确认提高门槛）──
    *
-   * 四答：协会（DSI）声望 ≥ 40 · **只在开新场那一刻判** · 不足**静默不开** · **调试模式不受限**。
+   * 协会累计声望 ≥ 60 · 只在开新场时检查 · 自然场不足静默不开 · 调试豁免。
    *
-   * ⚠ 为什么要有这条源码级契约：判据本身在 `weekend-event` 用例里测得动，但**接线**测不动 ——
-   * 当前 `WEEKEND_DEBUG_ONLY = true` ⇒ `ensureWeekendEvent` 的**正常模式那一段根本走不到**
-   * （第一行就把非调试情形挡掉了）⇒ 门槛有没有接上、接在调试分支的**前面还是后面**，
-   * 只有扫源码才看得见。等船长解除调试限定时，这条契约就是"门槛还在、还在正确位置"的保证。
+   * 专项覆盖真实边界，本契约另核查门槛、判据接线和调试分支位置，防止入口旁路。
    */
   {
     const wePath = 'packages/core/src/weekendEvent.ts'
-    const weSrc = readSrc(wePath)
+    const weSrc = readSrc('packages/core/src/invasion/event/constants.ts') + '\n'
+      + readSrc('packages/core/src/invasion/event/occupation.ts') + '\n'
+      + readSrc('packages/core/src/invasion/event/lifecycle.ts')
     check(
-      /export const WEEKEND_MIN_STANDING = 40/.test(weSrc),
-      `入侵声望前提契约：${wePath} 必须定义 \`WEEKEND_MIN_STANDING = 40\`（船长令的"至少 40 声望"）`,
+      /export const WEEKEND_MIN_STANDING = 60/.test(weSrc),
+      `入侵声望前提契约：${wePath} 必须定义 \`WEEKEND_MIN_STANDING = 60\``,
     )
     const fn = weSrc.slice(weSrc.indexOf('export function ensureWeekendEvent'))
     check(
@@ -1791,7 +1805,9 @@ for (const m of MODULES) {
       weSrc.includes('export function weekendInvasionAllowedFor('),
       `入侵声望前提契约：判据必须单独成口（\`weekendInvasionAllowedFor\`）——界面/工具与用例读同一份`,
     )
-    console.log('· 入侵声望前提契约：门槛 = 协会声望 ≥ 40、落在调试分支之后（调试不受限）、判据单独成口')
+    check(readSrc('packages/core/src/consumables.ts').includes('if (!weekendInvasionAllowedFor(state))'),
+      '发射器使用必须复用入侵累计声望判据')
+    console.log('· 入侵声望前提契约：累计声望 ≥ 60，自然排期/发射器共用，调试豁免')
   }
 
   /* ── 入侵标记悬停可达契约（2026-09-25 船长令「② 修」）──
@@ -1844,7 +1860,7 @@ for (const m of MODULES) {
    * 现在还关着 ⇒ 只打印一行状态（不拦），提醒这份稿子还在等着。
    */
   {
-    const weSrc = readSrc('packages/core/src/weekendEvent.ts')
+    const weSrc = readSrc('packages/core/src/invasion/event/constants.ts')
     const invasionOpen = /export const WEEKEND_DEBUG_ONLY = false/.test(weSrc)
     if (invasionOpen) {
       const annSrc = readSrc('packages/data/src/announcements.ts')
@@ -1872,12 +1888,12 @@ for (const m of MODULES) {
    * 契约（源码级扫描）：`combat.ts` 的引擎取数行必须是**当前波**，且净削减函数必须滤掉已阵亡者。
    */
   {
-    const combatPath = 'packages/core/src/combat.ts'
-    const combatSrc = readSrc(combatPath)
+    const combatPath = 'packages/core/src/combat/advance.ts'
+    const combatSrc = readSrc(combatPath) + '\n' + readSrc('packages/core/src/combat/arcs.ts')
     // 2026-10-02 批次 4g：createPlayerSpec 迁到 playerSpec.ts ⇒ 基准账入账点随它搬家，契约改扫新家
-    const playerSpecSrc = readSrc('packages/core/src/playerSpec.ts')
+    const playerSpecSrc = readSrc('packages/core/src/combat/player/create.ts')
     // 2026-10-02 批次 4k：meJammerNetOf / applyMeJammerDebuff 迁到 foeRange.ts ⇒ 这两条契约改扫新家
-    const foeRangeSrc = readSrc('packages/core/src/foeRange.ts')
+    const foeRangeSrc = readSrc('packages/core/src/combat/foeRange.ts')
     const debuffLines = combatSrc.split('\n').filter((l) => l.includes('const foesForDebuff ='))
     check(
       debuffLines.length === 1 && debuffLines[0]!.includes('activeFoeSpecsOf(anomaly, bal, battle.waveIdx)'),
@@ -1931,7 +1947,7 @@ for (const m of MODULES) {
       `波次取数契约：${combatPath} 的 \`foeDesire\` / \`desireCapM\` 初值必须取**当前波**（\`curFoes\`）——` +
         `取第 0 波会让第 2 波起敌人按上一波的期望距离机动（界面读数与实际行为对不上）`,
     )
-    const expeditionPath = 'packages/core/src/expedition.ts'
+    const expeditionPath = 'packages/core/src/expedition/tactics.ts'
     const expeditionSrc = readSrc(expeditionPath)
     check(
       expeditionSrc.includes('activeFoeSpecsOf(anomaly, ctx.balance.battle, battle.waveIdx)') &&
@@ -2040,7 +2056,7 @@ for (const m of MODULES) {
    * 口径依据：货柜（`container`）自本批起与「残骸」（2026-09-08 独立）、「消耗品」（2026-09-11 独立）同级；
    * 奢侈品（`luxury`）作为「货物」的**二级子分类**（不是一级类型）。 */
   {
-    const mpPath = 'apps/desktop/src/renderer/src/pages/MarketPage.tsx'
+    const mpPath = 'apps/desktop/src/renderer/src/features/market/MarketPage.tsx'
     const mpSrc = stripComments(readSrc(mpPath)).join('\n')
     /**
      * 取「某键的文案」：本地化后合法写法有两种——中文源串（未接线）或 `tr('ui.x.001')`（已接线）。
@@ -2544,6 +2560,12 @@ for (const t of DMG_TYPES) {
 /** 射程豁免机型（船长 2026-09-13「专属无人机开豁免」）——只登记并打印，不参与断言 */
 const exclusiveRangeNotes: string[] = []
 for (const d of drones) {
+  if (d.repairDrone === true) {
+    check(d.droneClass === 'repair' && d.unitM3 === 40 && d.cpuUse === 8, `修理无人机${d.id}装载字段不符`)
+    check(d.repairArmorHp === 10 && d.repairHullHp === 10 && d.repairIntervalMs === 10000 && d.repairKit === 'repairkit-mil', `修理无人机${d.id}维修参数不符`)
+    check(!d.dmg && d.defense !== undefined && droneTotalHp(d) > 0, `修理无人机${d.id}不应有攻击力且必须具备生存池`)
+    continue
+  }
   check(d.damageType !== undefined && DMG_TYPES.has(d.damageType), `无人机 ${d.id} damageType 缺失或非法`)
   check((d.dmg ?? 0) > 0 && Number.isFinite(d.dmg), `无人机 ${d.id} dmg 缺失或非正`)
   check((d.cpuUse ?? 0) > 0 && Number.isInteger(d.cpuUse), `无人机 ${d.id} cpuUse 缺失或非法（V10.5b 放飞占 CPU）`)
@@ -2763,21 +2785,7 @@ for (const m of MODULES) {
     }
   } else if (m.slot === 'propulsion') {
     // 2026-09-08 船长：取消 speedBonusPct ≤0.9 上限护栏（推进器提速档位改由设计定；命中代价 hitPenalty 仍受检）
-    /**
-     * ⚠ **2026-10-01 开一个口子：带 `blink` 的推进器豁免"必须有速度加成"** ——
-     * R 族「跃迁规避装置」（中槽）不是提速件：它给的是**挨打时拉开交战距离**（闪现），
-     * 没有 `speedBonusPct`。豁免只认 `blink` 这一个字段（别的推进器照旧必须有正的速度加成）。
-     */
-    if (m.blink === undefined) {
-      check(m.speedBonusPct !== undefined && m.speedBonusPct > 0, `推进器 ${m.id} speedBonusPct 非法（需为正）`)
-    }
-    // 闪现件自己的值域：距离 > 0、冷却 > 0（缺省/非正即红）
-    if (m.blink !== undefined) {
-      check(
-        m.blink.distanceM > 0 && m.blink.cooldownMs > 0,
-        `闪现件 ${m.id} blink 非法（距离与冷却都需为正）`,
-      )
-    }
+    check(m.speedBonusPct !== undefined && m.speedBonusPct > 0, `推进器 ${m.id} speedBonusPct 非法（需为正）`)
     check(m.hitPenalty === undefined || (m.hitPenalty >= 0 && m.hitPenalty <= 0.5), `推进器 ${m.id} hitPenalty 非法（需 [0, 0.5]，V17.1 命中代价）`)
   } else if (m.slot === 'missile') {
     // V18B-1 导弹架：爆炸系武器形态——追踪命中（不随距离衰减）+ 近盲安全射距（防自爆）
@@ -2824,6 +2832,7 @@ for (const m of MODULES) {
     const hasEcm = m.foeRangeDebuffPct !== undefined
     const hasWeb = m.captureWebCycleMs !== undefined
     const hasRepair = (m.repairArmorHp ?? 0) > 0 || (m.repairHullHp ?? 0) > 0
+    const hasBlink = m.blink !== undefined
     /**
      * **2026-09-26 新增第十类：损管（`hullSaveKit`）**——损伤管制装置 MK1~MK3（低槽支援件：
      * 结构层三系减伤 ＋ 每场一次"结构锁定 1 秒"）。船长同日令「**损管装置和修理装置是同一类型装备分类**」
@@ -2832,8 +2841,8 @@ for (const m of MODULES) {
      */
     const hasDc = m.hullSaveKit !== undefined
     const kinds =
-      (stabKeys > 0 ? 1 : 0) + (hasRof ? 1 : 0) + (hasHit ? 1 : 0) + (hasEva ? 1 : 0) + (hasRepair ? 1 : 0) + (hasWarp ? 1 : 0) + (hasStealth ? 1 : 0) + (hasEcm ? 1 : 0) + (hasWeb ? 1 : 0) + (hasDc ? 1 : 0) + (hasCalibration ? 1 : 0) + (hasSpeedRamp ? 1 : 0) + (m.crisisOverload ? 1 : 0)
-    check(kinds === 1, `支援件 ${m.id} 必须且只能给一类效果（伤害系/射速/命中/闪避/修复/跃迁/隐身/射程压制/捕获网/损管）`)
+      (stabKeys > 0 ? 1 : 0) + (hasRof ? 1 : 0) + (hasHit ? 1 : 0) + (hasEva ? 1 : 0) + (hasRepair ? 1 : 0) + (hasWarp ? 1 : 0) + (hasStealth ? 1 : 0) + (hasEcm ? 1 : 0) + (hasWeb ? 1 : 0) + (hasDc ? 1 : 0) + (hasCalibration ? 1 : 0) + (hasSpeedRamp ? 1 : 0) + (m.crisisOverload ? 1 : 0) + (hasBlink ? 1 : 0)
+    check(kinds === 1, `支援件 ${m.id} 必须且只能给一类效果（伤害系/射速/命中/闪避/修复/跃迁/隐身/射程压制/捕获网/损管/短距离跃迁）`)
     if (hasRepair) {
       // 修复系：装甲/结构修复值 ∈ [1, 100]、周期缺省 5 秒（2000~60_000 毫秒）、必须指明消耗的修理组件
       check((m.repairArmorHp ?? 0) >= 0 && (m.repairArmorHp ?? 0) <= 100 && (m.repairHullHp ?? 0) >= 0 && (m.repairHullHp ?? 0) <= 100,
@@ -2870,12 +2879,14 @@ for (const m of MODULES) {
         const cyc = m.captureWebCycleMs ?? 0
         check(Number.isInteger(cyc) && cyc >= 5_000 && cyc <= 120_000, `支援件 ${m.id} captureWebCycleMs 非法（需 5000~120000 毫秒的整数）`)
       }
+      if (hasBlink) check(Number.isInteger(m.blink!.distanceM) && m.blink!.distanceM > 0 && Number.isInteger(m.blink!.cooldownMs) && m.blink!.cooldownMs > 0, `支援件 ${m.id} blink 参数非法`)
       // 归槽语义：伤害/射速/**跃迁** = 低槽；命中/闪避 = 中槽；**隐身 = 高槽**（数据显式 rack，rackOf 已校验一致）
       if (stabKeys > 0 || hasRof || hasWarp) check(m.rack === 'low', `支援件 ${m.id}（伤害/射速/跃迁）应为低槽，实际 ${m.rack}`)
       if (hasHit || hasEva) check(m.rack === 'mid', `支援件 ${m.id}（命中/闪避）应为中槽，实际 ${m.rack}`)
       if (hasStealth) check(m.rack === 'high', `支援件 ${m.id}（隐身）应为高槽，实际 ${m.rack}`)
       // 2026-09-26：射程压制与捕获网都是**高槽**（船长：「分别占据高槽，高槽」）
       if (hasEcm || hasWeb) check(m.rack === 'high', `支援件 ${m.id}（射程压制/捕获网）应为高槽，实际 ${m.rack}`)
+      if (hasBlink) check(m.rack === 'mid', `支援件 ${m.id}（短距离跃迁）应为中槽，实际 ${m.rack}`)
     }
     check(m.bonus === undefined, `支援件 ${m.id} 不应携带工业 bonus`)
     check(m.maxRangeM === undefined && m.damageType === undefined, `支援件 ${m.id} 不应携带炮台武器参数`)
@@ -2949,22 +2960,29 @@ for (const m of MODULES) {
     if (!s) continue
     check(s.subClass === '电子舰', `${id} 的子分类应为「电子舰」，实际 ${s.subClass ?? '(无)'}`)
     check(
-      s.foeRangeDebuffPct === 0.15,
-      `${id} 的敌舰射程削减应为 0.15（船长给定「削减敌人15%的武器射程」），实际 ${s.foeRangeDebuffPct}`,
+      s.rangeEwBonus === 40 && s.rangeEwEquipmentBonusPct === .25,
+      `${id} 新电子战特性须为额外40强度、本舰电子舱25%加成`,
     )
+    check(s.rangeEwBonus === 40 && s.rangeEwEquipmentBonusPct === .25,
+      `${id} 新电子战特性须为额外40强度、本舰电子舱25%加成`)
   }
+  const pirateEw = FOE_SHIPS.find(ship => ship.id === 'foe-pirate-raider')
+  const inkEw = FOE_SHIPS.find(ship => ship.id === 'foe-h-ink-jammer')
+  check(pirateEw?.rangeEwBonus === 40 && pirateEw.rangeEwEquipmentBonusPct === .25,
+    '劫掠电子舰需接入额外40强度与本舰装备25%加成')
+  check(inkEw?.rangeEwBonus === 40 && inkEw.rangeEwEquipmentBonusPct === .25,
+    '墨潮干扰舰需接入额外40强度与本舰阵列25%加成')
   const extra = SHIPS.filter(
-    (s) => !(EW_SHIPS as readonly string[]).includes(s.id) && (s.foeRangeDebuffPct ?? 0) > 0,
+    (s) => !(EW_SHIPS as readonly string[]).includes(s.id) && ((s.rangeEwBonus ?? 0) > 0 || (s.rangeEwEquipmentBonusPct ?? 0) > 0),
   )
   check(
     extra.length === 0,
     `只有「电子舰」那两艘能带该特性，实际多出：${extra.map((s) => `${s.name}(${s.id})`).join(' · ')}`,
   )
-  const floorOwner = SHIPS.find((s) => (s.foeRangeDebuffPct ?? 0) > 0)
-  check(floorOwner !== undefined, '电子舰特性契约：没有任何船带 foeRangeDebuffPct（船长给定的特性凭空消失）')
+  const floorOwner = SHIPS.find((s) => (s.rangeEwBonus ?? 0) > 0)
+  check(floorOwner !== undefined, '电子舰特性契约：没有舰船提供额外射程电子战强度')
   console.log(
-    `· 电子舰特性契约：${EW_SHIPS.map((id) => byId.get(id)?.name ?? id).join(' · ')} ⇒ 削减敌舰武器射程 15%` +
-      `（编队乘法叠加：2 艘 27.75% · 与敌方增程做加法 · 基础 <3000m 不削、削后下限 3000m）· 其余 ${SHIPS.length - EW_SHIPS.length} 艘船一律不带`,
+    `· 电子舰特性契约：${EW_SHIPS.map((id) => byId.get(id)?.name ?? id).join(' · ')} ⇒ 额外40强度、本舰电子舱25%加成；旧压制字段仅供旧战斗兼容· 其余 ${SHIPS.length - EW_SHIPS.length} 艘船一律不带专属特性`,
   )
 }
 
@@ -4418,11 +4436,14 @@ for (const m of MODULES) {
          * ⑦ **支援舰船召唤装置归属**（2026-09-25 船长令「给入侵母舰添加类似D族挂载件的独立挂载件，
          *    只不过改为复活被摧毁的友军……」）：这件是**通用件**，但**只允许**挂在
          *    已确认的入侵旗舰条目上，旧墨潮定额与永陵全部复活各自校验——
-         *    ① 舰级一概不许挂（写舰级会波及同舰级的其它卡）；
+         *    ① 永陵按2026-10-18船长令自带重构，其余舰级维持原归属；
          *    ② 其余任何卡的条目也不许挂（免得普通悬赏莫名其妙开始复活）。
          */
         for (const s of FOE_SHIPS) {
-          if (resolveFoeMounts(s.mounts).foeReviveEscort !== undefined && s.id !== 'foe-alien-broodmother') {
+          const revive = resolveFoeMounts(s.mounts).foeReviveEscort
+          const eternal = s.id === 'foe-d-invasion-eternal-tomb' && s.mounts?.includes(FOE_MOUNT_IDS.dReconstruction)
+            && revive?.all === true && revive.everyMs === 60000 && revive.count === undefined
+          if (revive !== undefined && s.id !== 'foe-alien-broodmother' && !eternal) {
             bad.push(`舰级 ${s.name}（${s.id}）挂了支援舰船召唤装置——该件只允许写在 ink-flagship 的母舰条目上`)
           }
         }
@@ -4446,7 +4467,7 @@ for (const m of MODULES) {
             const validInk = a.id === 'ink-flagship' && sl.ship.id === 'foe-h-ink-flagship' && eff.foeReviveEscort.all === undefined
             const validEternal = a.id === 'gravekeeper-flagship' && sl.ship.id === 'foe-d-invasion-eternal-tomb' &&
               eff.foeReviveEscort.all === true && eff.foeReviveEscort.everyMs === 60000 && eff.foeReviveEscort.count === undefined &&
-              (sl.mounts ?? []).includes(FOE_MOUNT_IDS.dReconstruction)
+              (sl.mounts ?? sl.ship.mounts ?? []).includes(FOE_MOUNT_IDS.dReconstruction)
             if (!validInk && !validEternal) {
               bad.push(
                 `卡 ${a.id} 的条目 ${sl.ship.name}（${sl.ship.id}）挂了支援舰船召唤装置——` +
@@ -4611,7 +4632,14 @@ for (const m of MODULES) {
             `机群与防空契约：${def.name} 写了总火力锚点 ⇒ 实收总单发须等于锚点合计（实际 ${withShare} vs 锚点 ${anchorSum}）`,
           )
         } else {
-          const without = sumShots(stripShare(def) as typeof def)
+          const withoutCard = stripShare(def) as typeof def
+          const withoutSpecs = createFoeSpecs(withoutCard, shareCtx.balance.battle)
+          const activeAnchors = enumerateShipUnits(def, 0).filter(unit => unit.slot.firepowerAnchor !== undefined)
+          const anchoredTags = new Set(activeAnchors.map(unit => unit.tag))
+          const activeAnchorSum = [...new Set(activeAnchors.map(unit => unit.slot))].reduce((sum, slot) => sum + (slot.firepowerAnchor ?? 0), 0)
+          // 部分条目有固定锚点时，该条目按锚点守恒，其余按未拆分实际总量守恒。
+          const without = withoutSpecs.filter(unit => !anchoredTags.has(unit.tag)).reduce((sum, unit) => sum +
+            unit.weapons.reduce((n, weapon) => n + (weapon.reserve ? 0 : weapon.shotDmg ?? 0), 0), activeAnchorSum)
           check(
             withShare === without,
             `机群与防空契约：${def.name} 写了机群火力占比后**总单发不守恒**（${withShare} vs 去掉比例 ${without}）——` +
@@ -6067,6 +6095,8 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
     }
     // ② 可获得内容必须有市场行（例外表逐条写理由）
     const NO_ROW_OK: ReadonlyArray<readonly [string, string]> = [
+      ...['a', 'c', 'd', 'e', 'g'].map(f => [`box-encrypted-${f}`, '生产研究所专属货柜，不开放市场交易'] as const),
+      ...['pirate-raider', 'alien-shield-coating', 'gravekeeper-capacitor', 'titan-compression', 'deadarmy-printing'].map(id => [`bp-once-plug-${id}`, '加密货柜专属一次性插件图纸，不开放市场交易'] as const),
       ['sandcat', '协会保底艇（开局船）：不给市场行，防"卖光起步资产"把新档卡死'],
       ['sh-dunkleosteus', '邓氏鱼级壳体：无蓝图、无掉落、无任何获取渠道（内容未做）⇒ 补行等于给拿不到的东西标价'],
       ['sbp-sandcat', '磷虾级舰船蓝图：只作「第一次生产」的任务奖励发放，不进市场（船长 2026-09-18）'],
@@ -6128,7 +6158,9 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
    * **整类图鉴的按钮静默消失**——玩家看不见"少了个按钮"，只有这条契约会点名。 */
   {
     const jumpCtx = buildSimContext()
-    const handNoJumpOk = new Set(['sandcat', 'sh-dunkleosteus', 'sbp-sandcat', 'bp-part-circuit', 'bp-part-armor-plate', 'bp-part-frame', 'bp-part-cable', 'bp-part-coolant', 'bp-part-gyro', 'bp-part-lens'])
+    const handNoJumpOk = new Set(['sandcat', 'sh-dunkleosteus', 'sbp-sandcat', 'bp-part-circuit', 'bp-part-armor-plate', 'bp-part-frame', 'bp-part-cable', 'bp-part-coolant', 'bp-part-gyro', 'bp-part-lens',
+      ...['a', 'c', 'd', 'e', 'g'].map(f => `box-encrypted-${f}`),
+      ...['pirate-raider', 'alien-shield-coating', 'gravekeeper-capacitor', 'titan-compression', 'deadarmy-printing'].map(id => `bp-once-plug-${id}`)])
     const unreleasedRowIds = new Set(
       MARKET_GOODS.filter((g) => (g as { unreleased?: boolean }).unreleased === true).map((g) => g.refId),
     )
@@ -6795,10 +6827,10 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
       `基准速度 ${([1, 2, 3, 4, 5] as const).map((t) => HULL_CLASS_BASE_SPEED[t]).join("/")}` +
       // 后勤舰特性（2026-09-16 船长：进「船体特性」栏）——读数放这儿，日后加第二艘后勤舰一眼能看见
       (() => {
-        const logi = SHIPS.filter((x) => x.repairPulseTargetsFleet === true)
+        const logi = SHIPS.filter((x) => (x.repairOutputBonusPct ?? 0) > 0)
         return logi.length > 0
-          ? ` · 后勤舰特性（维修脉冲修编队最缺血者）${logi.length} 艘（${logi.map((x) => x.name).join('、')}）`
-          : ' · 后勤舰特性（维修脉冲修编队最缺血者）**0 艘**'
+          ? ` · 后勤舰维修输出加成${logi.length}艘（${logi.map((x) => x.name).join('、')}）`
+          : ' · 后勤舰维修输出加成0艘'
       })(),
   )
 }
@@ -6853,7 +6885,7 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
    *   则改为同等数值的无人机伤害加成。移除每条船的50动能抗性**」＋
    * 「**装甲舰T~T5获得装甲的动能和能量抗性加成，分别为30/30/35/35/35。移除之前获得的单发伤害加成。
    *   （这里所有的移除都不会影响舰船子类型和种族给予的额外属性。）**」＋（同日追加）
-   * 「**所有炮舰伤害倍率额外+0.15。鱼雷舰获得伤害倍率+0.2。**」
+   * 「**所有炮舰伤害倍率额外+0.15。鱼雷舰获得伤害倍率+0.2。**」；2026-10-19鱼雷舰加成改为通用火力25%，差额转爆炸伤害族。
    *
    * 契约五条：
    * ① **武装舰**：`powerBonus`（无人机船看 `droneDmgBonus`）= 档位阶梯 0.15/0.20/0.25/0.35/0.50
@@ -6873,6 +6905,7 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
     const ARMED_DMG: Record<number, number> = { 1: 0.15, 2: 0.2, 3: 0.25, 4: 0.35, 5: 0.5 }
     const ARMOR_RES: Record<number, number> = { 1: 0.3, 2: 0.3, 3: 0.35, 4: 0.35, 5: 0.35 }
     const SUBCLASS_DMG: Record<string, number> = { 炮舰: 0.15, 鱼雷舰: 0.2 }
+    const TORPEDO_POWER = new Set(['sh-wh-e-frigate', 'sh-wh-g-cruiser'])
     const FLOAT = 0.05
     /** 装甲舰甲层能量抗被船长点名移除的两艘（C 族截击舰） */
     const NO_ARMOR_PLASMA = new Set(['sh-wh-c-frigate', 'sh-wh-c-destroyer'])
@@ -6885,12 +6918,12 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
         armedN++
         const droneShip = s.powerBonus === undefined && s.droneDmgBonus !== undefined
         const v = droneShip ? s.droneDmgBonus! : (s.powerBonus ?? NaN)
-        const want = (ARMED_DMG[s.tier] ?? NaN) + subExtra
+        const want = TORPEDO_POWER.has(s.id) ? .25 : (ARMED_DMG[s.tier] ?? NaN) + subExtra
         if (ARMED_DMG[s.tier] === undefined) bad.push(`${s.name}（${s.id}）档位 T${s.tier} 不在阶梯表里`)
         else if (!(Math.abs(v - want) <= FLOAT + 1e-9))
           bad.push(
             `${s.name}（${s.id}）${droneShip ? '无人机伤害' : '单发'}加成 ${v} ∉ ${want}±${FLOAT}` +
-              `（T${s.tier} 档位 ${ARMED_DMG[s.tier]}${subExtra > 0 ? ` ＋ 子分类 ${s.subClass} ${subExtra}` : ''}）`,
+              `（${TORPEDO_POWER.has(s.id) ? '2026-10-19鱼雷舰通用火力25%' : `T${s.tier} 档位 ${ARMED_DMG[s.tier]}${subExtra > 0 ? ` ＋ 子分类 ${s.subClass} ${subExtra}` : ''}`}）`,
           )
         if (droneShip && s.powerBonus !== undefined) bad.push(`${s.name}（${s.id}）是无人机船却又带 powerBonus（应改给 droneDmgBonus）`)
       } else if (cat === 'armored') {
@@ -6910,7 +6943,7 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
          * （T1 ⇒ 0.15 ＋ 0.2 = 0.35）。其余装甲舰照旧只允许子分类那笔。
          */
         const torpedo = s.subClass === '鱼雷舰'
-        const allowed = torpedo ? (ARMED_DMG[s.tier] ?? 0) + subExtra : subExtra
+        const allowed = torpedo ? .25 : subExtra
         const got = s.powerBonus ?? 0
         if (Math.abs(got - allowed) > 1e-9)
           bad.push(
@@ -6918,6 +6951,11 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
               torpedo ? `鱼雷舰口径 ${allowed}（档位 ＋ 子分类）` : `子分类给的 ${allowed}`
             }（现 ${s.powerBonus ?? '无'}）`,
           )
+      }
+      if (TORPEDO_POWER.has(s.id)) {
+        const explosive = s.weaponFamilyBonus?.explosive
+        const expectedExplosive = s.id === 'sh-wh-e-frigate' ? .3 : .4
+        if (explosive !== expectedExplosive) bad.push(`${s.name}（${s.id}）爆炸伤害族加成 ${explosive ?? '未写'} 应为 ${expectedExplosive}`)
       }
       for (const [layer, r] of [['盾', s.shieldResist], ['甲', s.armorResist], ['壳', s.hullResist]] as const) {
         if (r?.kinetic === 0.5) bad.push(`${s.name}（${s.id}）${layer}层仍有 50 动能抗（船长：「移除每条船的 50 动能抗性」）`)
@@ -7957,6 +7995,7 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
   /** 任务中心内层标签（`hint.taskTab`；与 panels/Expedition.tsx 的 TaskTabKey 同口径） */
   const TASK_TABS = new Set(['important', 'resource', 'courier', 'bounty'])
   const TRIGGER_KINDS = new Set([
+    'industrialFleetRisk',
     'start', 'day', 'explored', 'galaxy', 'skill', 'isk', 'siteBuilt',
     // 2026-09-12 星系机制通讯：低安空域（**低安 = sec ≤ 0，含 0**，与伏击掷骰同源）· 某族敌人所在的星系
     'lowSec', 'foeFamily',
@@ -8145,6 +8184,7 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
         const unlockStanding: Readonly<Record<string, number>> = {
           'msg-wormhole-unlock': WORMHOLE_SCAN_UNLOCK_STANDING,
           'msg-black-market-unlock': BLACK_MARKET_STANDING_REQ,
+          'msg-fleet-command-unlock': COMMAND_STANDING_REQUIRED,
         }
         check(m.trigger.min > 0, `通讯 ${m.id} 的 standing 触发门槛必须为正：${m.trigger.min}`)
         check(
@@ -8221,6 +8261,11 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
       if (m.hint.shipTab !== undefined) {
         check(m.hint.page === 'ship', `通讯 ${m.id} 只有舰船页支持标签跳转，实际页：${m.hint.page}`)
         check(SHIP_TABS.has(m.hint.shipTab), `通讯 ${m.id} 舰船标签非法：${m.hint.shipTab}`)
+      }
+      if (m.hint.skillBranch !== undefined) {
+        const branch = SKILL_BRANCHES.find(row => row.id === m.hint!.skillBranch)
+        check(m.hint.page === 'skills', `通讯 ${m.id} 的技能书跳转必须指向技能页`)
+        check(branch !== undefined && branch.group === m.hint.tab, `通讯 ${m.id} 技能书与目标大类不一致：${m.hint.skillBranch}`)
       }
     }
     for (const p of [m.subject, ...m.body, ...(m.hint ? [m.hint.text] : [])]) {
@@ -8413,21 +8458,7 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
   }
   console.log(`· 限时倍率契约：${ruleCount} 条规则 · 白名单 ${known.size} 个开关逐个核对「已被引擎消费」`)
 
-  /**
-   * **限时促销契约**（`packages/core/src/tuning.ts` 的 `PROMOS`，2026-09-16 船长「虫洞大量生成」）。
-   *
-   * 七条判据（每条都对应一种"静默失效"）：
-   * ① `id` 非空且唯一（id 是 `state.promoClaimed` 的键 ⇒ 重复 id = 两个活动抢同一次领取记录）；
-   * ② `label` / `detail` 非空（这是**玩家可见文案**，空着等于活动栏只剩一个没字的徽标）；
-   * ③ 日期合法且 `from ≤ until`（写反 = 永不生效）；
-   * ④ `scanMul`（若写）> 0 且有限（0/负/NaN 会把扫描窗口算成 0 或崩）；
-   * ⑤ `giftWormholes`（若写）是正整数（小数/负数 = 发不出或发错数）；
-   * ⑥ **至少有一项效果**（`scanMul` 或 `giftWormholes`）——都没有就是空转的活动；
-   * ⑦ `claims` 里的键必须在白名单，且**认领 `wormholeScanMs` 就必须写 `scanMul`**
-   *    （否则活动栏会把一条与本活动无关的倍率徽标藏起来，玩家看不到）。
-   *
-   * ⚠ 与限时倍率表同款：**已过期的促销允许留档**（不报错）——收口靠 `npm run tuning:expired` 手动跑。
-   */
+  /** 促销数据契约：验证玩家可见文本、日期、扫描倍率与徽标认领关系。 */
   const promoIds = new Set<string>()
   /** 促销徽标的**已知去向**（与 `PromoRule.open` 的联合类型同源；加新去向时这里与 UI 一起改） */
   const PROMO_OPEN_TARGETS: readonly string[] = ['wormhole-scan']
@@ -8446,15 +8477,9 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
     if (p.scanMul !== undefined) {
       check(Number.isFinite(p.scanMul) && p.scanMul > 0, `限时促销契约：${id} 的 scanMul ${String(p.scanMul)} 非法（必须 > 0 且有限）`)
     }
-    if (p.giftWormholes !== undefined) {
-      check(
-        Number.isFinite(p.giftWormholes) && Number.isInteger(p.giftWormholes) && p.giftWormholes > 0,
-        `限时促销契约：${id} 的 giftWormholes ${String(p.giftWormholes)} 非法（必须是正整数）`,
-      )
-    }
     check(
-      p.scanMul !== undefined || p.giftWormholes !== undefined,
-      `限时促销契约：${id} 既没有 scanMul 也没有 giftWormholes（空转的活动：徽标会显示，但什么都不发生）`,
+      p.scanMul !== undefined,
+      `限时促销契约：${id} 没有扫描倍率（活动徽标会显示，但没有效果）`,
     )
     for (const k of p.claims ?? []) {
       check(known.has(String(k)), `限时促销契约：${id} 认领了未知开关「${String(k)}」（白名单里没有它）`)
@@ -8473,7 +8498,7 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
       )
     }
   }
-  console.log(`· 限时促销契约：${PROMOS.length} 条促销 · id/文案/日期/两项效果/认领开关/去向逐个核对`)
+  console.log(`· 限时促销契约：${PROMOS.length} 条促销 · id/文案/日期/扫描倍率/认领开关/去向逐个核对`)
 }
 
 /* ── 支援件三分契约（2026-09-26 船长令：支援件筛选拆成三个同级）───────────────────────
@@ -8529,7 +8554,8 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
  * 重复登记（两族都列 ⇒ 归属口径不一致）**一律报红**。覆盖面：
  *   ① `mod-wh-*` 与 `sh-wh-*`（虫洞专属件与专属舰；数据侧**没有族字段**，登记表就是唯一依据）；
  *   ② `exclusive: true` 的无人机（图鉴里的「专属装备」含它们）；
- *   ③ 被登记表引用的**图纸 id** 必须在册（`bp-*` / `sbp-*`），防写错 id 静默变成一行空名。
+ *   ③ 最终展示清单的件型、引用、归属与唯一性；窝点池必须全部进入对应栏位；
+ *   ④ 虫洞图纸及专属产物的生产图纸全部收录。
  */
 function checkFactionExclusive(): void {
   const owner = new Map<string, string>()
@@ -8567,11 +8593,43 @@ function checkFactionExclusive(): void {
   )
   // ③ 重复登记
   check(dup.length === 0, `势力专属登记契约：${dup.join('；')}`)
+  const cards = buildFactionCards(FOE_SHIPS, undefined)
+  const displayed = new Map<string, string>()
+  const moduleIds = new Set(MODULES.map(m => m.id))
+  const itemIds = new Set(ITEMS.map(item => item.id))
+  const shipIds = new Set(SHIPS.map(ship => ship.id))
+  const blueprintIds = new Set([...BLUEPRINTS, ...SHIP_BLUEPRINTS].map(bp => bp.id))
+  for (const card of cards) {
+    for (const [kind, ids] of [['装备', card.modules], ['舰船', card.ships], ['图纸', card.blueprints]] as const) {
+      const valid = kind === '装备' ? (id: string) => moduleIds.has(id) || itemIds.has(id)
+        : kind === '舰船' ? (id: string) => shipIds.has(id) : (id: string) => blueprintIds.has(id)
+      for (const id of ids) {
+        check(valid(id), `势力图鉴展示契约：${card.family}/${kind}/${id} 无对应定义或放错栏位`)
+        check(!displayed.has(id), `势力图鉴展示契约：${id} 在${displayed.get(id)}与${card.family}/${kind}重复展示`)
+        displayed.set(id, `${card.family}/${kind}`)
+      }
+    }
+    for (const id of FOE_LAIR_GEAR[card.family]) {
+      const list = blueprintIds.has(id) ? card.blueprints : card.modules
+      check(list.includes(id), `势力图鉴展示契约：${card.family}的窝点专属${id}未进入对应展示栏`)
+    }
+    for (const bp of BLUEPRINTS) {
+      const output = bp.moduleId ?? bp.itemId
+      if (output && card.modules.includes(output)) check(card.blueprints.includes(bp.id), `势力图鉴展示契约：${card.family}的专属产物${output}缺生产图纸${bp.id}`)
+    }
+    for (const bp of SHIP_BLUEPRINTS) {
+      if (card.ships.includes(bp.shipId)) check(card.blueprints.includes(bp.id), `势力图鉴展示契约：${card.family}的专属舰${bp.shipId}缺图纸${bp.id}`)
+    }
+  }
+  for (const bp of [...BLUEPRINTS, ...SHIP_BLUEPRINTS].filter(bp => /^(?:bp-wh-|sbp-wh-|bp-lair-)/.test(bp.id))) {
+    check(displayed.has(bp.id), `势力图鉴展示契约：专属图纸${bp.id}未展示`)
+  }
   console.log(
     `· 势力专属登记契约：${FACTION_CODEX_ORDER.length} 族 · ` +
-      FACTION_CODEX_ORDER.map((f) => `${f} ${FACTION_CODEX[f]!.modules.length + FACTION_CODEX[f]!.ships.length + FACTION_CODEX[f]!.blueprints.length}`).join(' / ') +
+      cards.map(card => `${card.family} ${card.modules.length + card.ships.length + card.blueprints.length}`).join(' / ') +
       ` 件（mod-wh ${whMods.length} 全覆盖 · sh-wh ${whShips.length} 全覆盖 · exclusive 无人机 ${exDrones.length} 全覆盖 · 无重复）`,
   )
+  console.log(`· 势力图鉴展示契约：${displayed.size}条最终卡片引用可解析，窝点池${Object.values(FOE_LAIR_GEAR).flat().length}条已按件型收录，专属产物图纸齐备`)
 }
 
 checkFactionExclusive()
@@ -8646,6 +8704,10 @@ checkFactionCodexArchive()
  *    找到读取点（登记了却没人读 ⇒ 红 —— 正是 CPU / 扩槽那两次的形态）。
  */
 const PLUG_EFFECT_FIELDS: readonly string[] = [
+  'plugNonStacking', 'stealthWithPropulsion', 'shieldArmorConversionPct', 'shieldCapacityRetainedPct', 'shieldPassiveBonusPct',
+  'cargoCapacityBonusPct', 'droneBayBonusM3', 'cpuPenalty', 'dronePrinting',
+  'damageManagement', 'armorCapacityPenaltyPct', 'armorRegenPerSec', 'chargedWeapons', 'droneCommand',
+  'hullCapacityBonusPct', 'recoveryDamageImmune',
   'shieldHpAdd',
   'armorHpAdd',
   'hullHpAdd', // 三层血固定值
@@ -8661,7 +8723,7 @@ const PLUG_EFFECT_FIELDS: readonly string[] = [
 ]
 
 /** 数据侧插件的**非效果**字段（结构 / 成本 / 文案）——不参与"core 里谁读它"的接线检查 */
-const PLUG_PLAIN_FIELDS = new Set(['id', 'name', 'slot', 'rack', 'cpuUse', 'description'])
+const PLUG_PLAIN_FIELDS = new Set(['id', 'name', 'slot', 'rack', 'cpuUse', 'description', 'blueprintExchangeDisabled'])
 
 function checkPlugEffectWiring(): void {
   const used = new Set<string>()
@@ -8683,12 +8745,12 @@ function checkPlugEffectWiring(): void {
   const stripComments = (s: string): string =>
     s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')
   const dir = join(process.cwd(), 'packages/core/src')
-  const coreText = stripComments(
-    readdirSync(dir)
-      .filter((f) => f.endsWith('.ts') && f !== 'types.ts')
-      .map((f) => readFileSync(join(dir, f), 'utf8'))
-      .join('\n'),
-  )
+  const sourceTexts = (folder: string): string[] => readdirSync(folder, { withFileTypes: true }).flatMap(entry => {
+    const file = join(folder, entry.name)
+    if (entry.isDirectory()) return sourceTexts(file)
+    return entry.name.endsWith('.ts') && entry.name !== 'types.ts' ? [readFileSync(file, 'utf8')] : []
+  })
+  const coreText = stripComments(sourceTexts(dir).join('\n'))
   const dead = PLUG_EFFECT_FIELDS.filter((f) => !coreText.includes(f))
   check(
     dead.length === 0,
@@ -8775,3 +8837,4 @@ if (errors.length > 0) {
   process.exit(1)
 }
 console.log('\n✅ 内容体检通过：全部交叉引用可解析，无死物品。')
+import { COMMAND_SKILLS } from '../packages/core/src/combat/command/rules'

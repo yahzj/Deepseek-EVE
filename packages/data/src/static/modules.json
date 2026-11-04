@@ -513,17 +513,17 @@
         "id": "mod-shieldfield-2",
         "slot": "shield-field",
         "rack": "high",
-        "shieldFieldPct": 0.067,
-        "shieldFieldMs": 10000,
-        "cpuUse": 63
+        "shieldFieldPct": 0.1,
+        "shieldFieldMs": 12000,
+        "cpuUse": 50
       },
       {
         "id": "mod-shieldfield-3",
         "slot": "shield-field",
         "rack": "high",
-        "shieldFieldPct": 0.067,
-        "shieldFieldMs": 8000,
-        "cpuUse": 91
+        "shieldFieldPct": 0.1,
+        "shieldFieldMs": 10000,
+        "cpuUse": 75
       },
       {
         "id": "mod-armor-kin-1",
@@ -955,21 +955,24 @@
         "slot": "target-lock",
         "rack": "high",
         "cpuUse": 6,
-        "lockDmgBonus": 0.08
+        "lockDmgBonus": 0.08,
+        "lockTargetChance": 0.6
       },
       {
         "id": "mod-lock-2",
         "slot": "target-lock",
         "rack": "high",
         "cpuUse": 14,
-        "lockDmgBonus": 0.12
+        "lockDmgBonus": 0.12,
+        "lockTargetChance": 0.7
       },
       {
         "id": "mod-lock-3",
         "slot": "target-lock",
         "rack": "high",
         "cpuUse": 26,
-        "lockDmgBonus": 0.2
+        "lockDmgBonus": 0.2,
+        "lockTargetChance": 0.8
       },
       {
         "id": "mod-stealth-2",
@@ -1031,7 +1034,7 @@
           "explosive": 0.1,
           "plasma": 0.1
         },
-        "repairArmorHp": 6,
+        "repairArmorHp": 10,
         "repairIntervalMs": 5000,
         "repairFree": true,
         "repairIgnoresCapacityAmp": true,
@@ -1058,12 +1061,13 @@
         "rack": "high",
         "damageType": "plasma",
         "ammoPerEngagement": 24,
-        "maxRangeM": 2800,
+        "maxRangeM": 2500,
         "minRangeM": 0,
         "hitRate": 1,
         "falloff": 0.35,
-        "reloadMs": 2800,
+        "reloadMs": 3800,
         "dmgMult": 4.4,
+        "acidOnHit": { "cutPct": 0.05, "durationMs": 15000 },
         "cpuUse": 34
       },
       {
@@ -1144,6 +1148,7 @@
       },
       {
         "id": "mod-lair-ecm-h",
+        "rangeEwStrength": 40,
         "slot": "support",
         "rack": "high",
         "foeRangeDebuffPct": 0.15,
@@ -1179,7 +1184,7 @@
       },
       {
         "id": "mod-lair-blink-r",
-        "slot": "propulsion",
+        "slot": "support",
         "rack": "mid",
         "blink": {
           "distanceM": 2000,
@@ -1274,7 +1279,7 @@
         "rack": "mid",
         "shieldHpBonus": 0.8,
         "rangeCutPct": 0.25,
-        "cpuUse": 46
+        "cpuUse": 36
       },
       {
         "id": "mod-wh-c-laser",
@@ -1360,6 +1365,8 @@
         "slot": "target-lock",
         "rack": "high",
         "lockDmgBonus": 0.3,
+        "lockTargetChance": 0.6,
+        "lockSharedBonus": 0.2,
         "cpuUse": 40
       },
       {
@@ -1529,7 +1536,7 @@
       },
       {
         "id": "mod-gravekeeper-crisis", "slot": "support", "rack": "mid", "cpuUse": 40,
-        "crisisOverload": { "rangeBonusPct": 0.4, "damageBonusPct": 0.3, "speedPenaltyPct": 0.6, "droneInitialCutPct": 0.5, "droneCycleCutPct": 0.4 }
+        "crisisOverload": { "rangeBonusPct": 0.4, "damageBonusPct": 0.25, "speedPenaltyPct": 0.4, "droneInitialCutPct": 0.5, "droneCycleCutPct": 0.25 }
       },
       {
         "id": "mod-gravekeeper-rail", "slot": "turret", "rack": "high", "cpuUse": 62,
