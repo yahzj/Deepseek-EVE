@@ -347,6 +347,7 @@ export const T = {
 
 /** 带参数文案（集中在一处，组件只拼函数） */
 export const TF = {
+  dataLoadFailed: (reason: string) => `行情数据加载失败：${reason}`,
   changePct: (v: string) => `${v}`,
   liqLong: (liq: string, dist: string) => `价格跌到 ${liq} 会强平，距现价 ${dist}`,
   liqShort: (liq: string, dist: string) => `价格涨到 ${liq} 会强平，距现价 ${dist}`,

@@ -125,10 +125,15 @@ function ExchangeBody({
       const side = call.side === 'long' ? T.posSideLong : T.posSideShort
       toastRef.current(TF.marginCalled(call.code, side, amount(call.qty)), true)
     })
+    // 数据链路错误可见化：bootstrap/WS 失败时明确弹提示，避免页面只剩「没数据」看不出原因。
+    const stopError = client.on('error', (payload) => {
+      toastRef.current(TF.dataLoadFailed(payload instanceof Error ? payload.message : String(payload)), true)
+    })
     client.start()
     return () => {
       stopTick()
       stopMargin()
+      stopError()
       client.stop()
     }
   }, [client])
