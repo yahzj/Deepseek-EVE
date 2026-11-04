@@ -559,6 +559,7 @@ export class HttpExchangeClient implements ExchangeClient {
       this.emit('error', err)
     } finally {
       this.bootstrapping = false
+    }
   }
 
   private async loadMeta(): Promise<void> {
