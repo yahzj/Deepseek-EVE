@@ -332,6 +332,7 @@ export function TooltipLayer(): ReactNode {
   const [displayState, setDisplayState] = useState<TipState | null>(null)
   const [isLeaving, setIsLeaving] = useState(false)
   const leaveTimerRef = useRef<number>(0)
+  const shownRef = useRef(false)
   const ref = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -358,24 +359,31 @@ export function TooltipLayer(): ReactNode {
    * 悬停提示平滑淡出与防闪烁治理：
    * 移出时通过 displayState 维持 DOM 节点并追加 .is-leaving 进行平滑淡出；
    * 140ms 后安全卸载，杜绝指针掠过时的硬切骤闪。
-   */
+   *
+   * 注意：依赖只能是 [state]。此前把 displayState/isLeaving 也放进依赖，
+   * 会导致「state 非空 → setDisplayState(state) → 布局精修改 displayState →
+   * effect 再次执行又把 displayState 覆盖回 state」的无限 setState 循环
+   * （实测控制台 Maximum update depth exceeded，整页反复重渲染）。 */
   useEffect(() => {
     if (state !== null) {
+      shownRef.current = true
       if (leaveTimerRef.current !== 0) {
         window.clearTimeout(leaveTimerRef.current)
         leaveTimerRef.current = 0
       }
       setDisplayState(state)
       setIsLeaving(false)
-    } else if (displayState !== null && !isLeaving) {
-      setIsLeaving(true)
-      leaveTimerRef.current = window.setTimeout(() => {
-        leaveTimerRef.current = 0
-        setDisplayState(null)
-        setIsLeaving(false)
-      }, 140)
+      return
     }
-  }, [state, displayState, isLeaving])
+    if (!shownRef.current) return
+    shownRef.current = false
+    setIsLeaving(true)
+    leaveTimerRef.current = window.setTimeout(() => {
+      leaveTimerRef.current = 0
+      setDisplayState(null)
+      setIsLeaving(false)
+    }, 140)
+  }, [state])
 
   useEffect(() => {
     return () => {
