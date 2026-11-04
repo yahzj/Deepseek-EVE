@@ -9,8 +9,8 @@
 ### 当前现场与验证范围
 
 - 既有设计文档已提交 `3354c0234`，已同步 main `f82ca8f14`。core 市场、UI、隔离 controller 及 server schema 已有少量 WIP；main 保持无本轮代码，server 未打开 DB、未部署。
-- core 的 index 引用了尚缺失的 `relay.ts`，server http-api 导入了尚缺失的 `market-relay.ts`。工作树当前不可构建，不可启动或合入；保留其他会话现场，不回滚。
-- 曾运行隔离 controller 专项 `npm run test -w @whale/core -- tests/player-market-relay-client.test.ts`，11/11 通过；不代表 core 整体、server 或接入口通过。双方 diff check 通过；本轮未运行其他测试或构建。
+- core relay、renderer controller/runtime 与 server relay WIP 已补齐；本工作树当前可通过四包 typecheck、桌面 build，以及 relay 专项 22/22 测试。后台 relay/debug 市场实现位于独立仓库，typecheck 与完整 155/155 测试通过。
+- 上述结果只证明隔离专项与构建链路，不代表 core 全量回归、真实服务器联调、数据库迁移、玩家验收或生产安全审查通过；relay 仍保持未验收 WIP，不得部署。
 - 开发约定 §十八要求生产单文件超过 800 行先提交拆分方案并获确认后再改；上一轮方案现已获确认，实施须严格按本稿拆分边界，不因批准而扩大到其他职责。此前 `state`、`index` 的少量 WIP 保留并按获批边界整理。
 - 数据静态表只读评估：`MARKET_GOODS_RAW` 共 571 项，`playerBuyable: false` 为 163 项；按基础价 5 倍计算有 9 项超过 10 亿。relay 价格与数量使用安全整数校验，不沿用旧 strict market 的 `MAX_PRICE=1e9`；获批 5 倍参数不改变旧 strict market。
 
