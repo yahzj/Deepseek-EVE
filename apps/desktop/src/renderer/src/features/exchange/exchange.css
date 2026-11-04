@@ -4258,58 +4258,71 @@
 
 .ex-simple-trade-tabs {
   display: flex;
-  gap: 6px;
+  gap: 10px;
+  width: 100%;
 }
 
 .ex-simple-trade-tab {
   flex: 1;
-  padding: 8px 0;
-  border: 1px solid rgb(var(--wui-border));
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 4px;
-  background: rgb(var(--wui-bg-field));
-  color: rgb(var(--wui-text-dim));
   font-size: var(--wui-fs-base);
   font-weight: 800;
-  letter-spacing: 1px;
+  letter-spacing: 2px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  box-sizing: border-box;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
 }
 
 .ex-simple-trade-tab.is-buy {
-  border-color: rgb(var(--wui-tone-gain) / 0.35);
-  color: rgb(var(--wui-tone-gain) / 0.7);
+  background: rgb(var(--wui-tone-gain) / 0.2);
+  border: 2px solid rgb(var(--wui-tone-gain) / 0.75);
+  color: rgb(var(--wui-tone-gain));
+  box-shadow: inset 0 0 10px rgb(var(--wui-tone-gain) / 0.15);
 }
 
 .ex-simple-trade-tab.is-buy:hover {
-  border-color: rgb(var(--wui-tone-gain) / 0.6);
-  color: rgb(var(--wui-tone-gain));
+  background: rgb(var(--wui-tone-gain) / 0.35);
+  border-color: rgb(var(--wui-tone-gain));
+  box-shadow: 0 0 12px rgb(var(--wui-tone-gain) / 0.4);
+  transform: translateY(-1px);
 }
 
 .ex-simple-trade-tab.is-buy.is-on {
-  background: rgb(var(--wui-tone-gain) / 0.22);
+  background: linear-gradient(135deg, rgb(var(--wui-tone-gain)), rgb(var(--wui-tone-gain) / 0.85));
   border-color: rgb(var(--wui-tone-gain));
-  color: rgb(var(--wui-tone-gain));
-  box-shadow: 0 0 12px rgb(var(--wui-tone-gain) / 0.35);
+  color: rgb(var(--wui-chip-ink));
+  box-shadow: 0 0 16px rgb(var(--wui-tone-gain) / 0.5), inset 0 1px 0 rgb(255 255 255 / 0.35);
+  transform: translateY(-1px);
 }
 
 .ex-simple-trade-tab.is-short,
 .ex-simple-trade-tab.is-sell {
-  border-color: rgb(var(--wui-tone-loss) / 0.35);
-  color: rgb(var(--wui-tone-loss) / 0.7);
+  background: rgb(var(--wui-tone-loss) / 0.2);
+  border: 2px solid rgb(var(--wui-tone-loss) / 0.75);
+  color: rgb(var(--wui-tone-loss));
+  box-shadow: inset 0 0 10px rgb(var(--wui-tone-loss) / 0.15);
 }
 
 .ex-simple-trade-tab.is-short:hover,
 .ex-simple-trade-tab.is-sell:hover {
-  border-color: rgb(var(--wui-tone-loss) / 0.6);
-  color: rgb(var(--wui-tone-loss));
+  background: rgb(var(--wui-tone-loss) / 0.35);
+  border-color: rgb(var(--wui-tone-loss));
+  box-shadow: 0 0 12px rgb(var(--wui-tone-loss) / 0.4);
+  transform: translateY(-1px);
 }
 
 .ex-simple-trade-tab.is-short.is-on,
 .ex-simple-trade-tab.is-sell.is-on {
-  background: rgb(var(--wui-tone-loss) / 0.22);
+  background: linear-gradient(135deg, rgb(var(--wui-tone-loss)), rgb(var(--wui-tone-loss) / 0.85));
   border-color: rgb(var(--wui-tone-loss));
-  color: rgb(var(--wui-tone-loss));
-  box-shadow: 0 0 12px rgb(var(--wui-tone-loss) / 0.35);
+  color: rgb(var(--wui-chip-ink));
+  box-shadow: 0 0 16px rgb(var(--wui-tone-loss) / 0.5), inset 0 1px 0 rgb(255 255 255 / 0.35);
+  transform: translateY(-1px);
 }
 
 .ex-simple-trade-body {
@@ -5778,6 +5791,7 @@
 }
 
 /* ── cb（色弱/红绿友好模式）多维度形态与边框辨识强化 ── */
+[data-theme='cb'] .ex-simple-trade-tab.is-buy,
 [data-theme='cb'] .ex-stock-pct-pill.is-up,
 [data-theme='cb'] .ex-simple-card-change.is-up,
 [data-theme='cb'] .ex-market-index-pill.is-up,
@@ -5788,6 +5802,8 @@
   font-weight: 700;
 }
 
+[data-theme='cb'] .ex-simple-trade-tab.is-short,
+[data-theme='cb'] .ex-simple-trade-tab.is-sell,
 [data-theme='cb'] .ex-stock-pct-pill.is-down,
 [data-theme='cb'] .ex-simple-card-change.is-down,
 [data-theme='cb'] .ex-market-index-pill.is-down,
