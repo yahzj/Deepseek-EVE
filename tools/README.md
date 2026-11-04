@@ -4,6 +4,7 @@
 
 - 音效台点「导出正式入库包」下载 `whale-sfx-pack-<时间戳>.zip` 后，在仓库根运行 `npm run audio:install`（`tsx tools/audio-install.ts`）：校验 zip 内 `manifest.json`（`whale-idle-sfx-pack` v1）与 `assets` 路径映射，按语义 id 写入 `apps/desktop/src/renderer/src/assets/{sfx,bgm,ambient}/`；默认清理同一事件的旧扩展名/变体，`--dry-run` 只预览、`--keep-variants` 保留变体并警告；可传包路径或 `--pack=`，缺省自动找仓库根/下载目录最新包。只读包、不读个人档；体积超限（sfx 300KB / bgm 5MB / ambient 2MB）与非 mp3 仅警告不阻断。
 - 入库后跑 `npm run audio:check`（语义清单/素材目录/本地化/入库包往返与非法包拒绝/纯规则）；运行期另用 `npm run audio:smoke`（网页构建+无头浏览器，含导出捕获）与 `npm run audio:smoke:desktop`（桌面构建，file:// 与发布门禁）。
+- 2026-11-04 调试批：音效台改居中大窗 + 四页签（素材清单/场景预演/实时触发/入库）+ 底部工具条与可收起悬浮条；桌面开发版「一键入库（写入仓库）」经主进程 `audio:install-pack` 调本安装器（`--json` 回显），成功后自动清除已入库的本机覆盖，网页版按钮置灰并提示改用导出 + 命令。`npm run audio:check` 增「五、音效调试台」用例（淡变常量/场景强切/实时日志）；`audio:smoke` 增页签、场景预演、实时触发、收起条与网页版兜底断言；`audio:smoke:desktop` 增 installPack 桥与非法入库包拒绝检查。
 
 ## 势力图鉴与非推进器速度（2026-11-03）
 

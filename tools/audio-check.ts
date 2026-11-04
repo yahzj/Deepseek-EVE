@@ -11,7 +11,7 @@
  *
  * 用法：`npm run audio:check`
  *
- * **版本自检**：游戏版本 v0.1.0 · 存档结构 **v31** · 最后核对 2026-11-02 · 最后跑过 2026-11-02
+ * **版本自检**：游戏版本 v0.1.0 · 存档结构 **v31** · 最后核对 2026-11-04 · 最后跑过 2026-11-04
  * 判据：档结构版本跨一个大版本，或本域文案/清单/构建入口改动后必须重跑并更新本行。
  */
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
@@ -24,8 +24,11 @@ import {
   SFX_CUE_IDS,
 } from '../apps/desktop/src/renderer/src/game/audio/cues'
 import {
+  AMBIENT_CROSSFADE_MS,
+  BGM_CROSSFADE_MS,
   LOG_CUE_RULES,
   PITCH_JITTER_MAX_CENTS,
+  VOLUME_FADE_MS,
   clampPitchJitter,
   clampVolume,
   defaultSfxPrefs,
@@ -43,11 +46,22 @@ import {
 } from '../apps/desktop/src/renderer/src/game/audio/rules'
 import {
   AMBIENT_BLIP_IDS,
+  SCENE_RELATED_CUES,
+  SFX_SCENE_NAME_ID,
+  SFX_SCENE_ORDER,
+  effectiveSfxScene,
   resolveSfxScene,
   sceneAmbientOf,
   sceneBgmOf,
   sceneFlagsFromState,
 } from '../apps/desktop/src/renderer/src/game/audio/scene'
+import {
+  SFX_PLAY_LOG_MAX,
+  clearSfxPlayLog,
+  recordSfxPlay,
+  setSfxPlayLogPaused,
+  sfxPlayLog,
+} from '../apps/desktop/src/renderer/src/game/audio/playLog'
 import {
   SFX_PACK_FORMAT,
   SFX_PACK_VERSION,
@@ -287,6 +301,12 @@ const UI_L10N_IDS = [
   'ui.sfx.047', 'ui.sfx.048', 'ui.sfx.049', 'ui.sfx.050', 'ui.sfx.051', 'ui.sfx.052', 'ui.sfx.054',
   'ui.sfx.060', 'ui.sfx.061', 'ui.sfx.062', 'ui.sfx.063', 'ui.sfx.065', 'ui.sfx.066', 'ui.sfx.069',
   'ui.sfx.070', 'ui.sfx.071', 'ui.sfx.072', 'ui.sfx.073', 'ui.sfx.074', 'ui.sfx.075',
+  'ui.sfx.098', 'ui.sfx.099', 'ui.sfx.100', 'ui.sfx.101', 'ui.sfx.102', 'ui.sfx.103',
+  'ui.sfx.104', 'ui.sfx.105', 'ui.sfx.106', 'ui.sfx.107', 'ui.sfx.108', 'ui.sfx.109',
+  'ui.sfx.110', 'ui.sfx.111', 'ui.sfx.112', 'ui.sfx.113', 'ui.sfx.114', 'ui.sfx.115',
+  'ui.sfx.116', 'ui.sfx.117', 'ui.sfx.118', 'ui.sfx.119', 'ui.sfx.120', 'ui.sfx.121',
+  'ui.sfx.122', 'ui.sfx.123', 'ui.sfx.124', 'ui.sfx.125', 'ui.sfx.126', 'ui.sfx.127',
+  'ui.sfx.128', 'ui.sfx.129', 'ui.sfx.130',
 ]
 const allL10nIds = new Set<string>([...SFX_CUE_IDS.map((id) => SFX_CUES[id].nameId), ...SFX_CATEGORIES.map((c) => SFX_CATEGORY_NAME_ID[c]), ...UI_L10N_IDS])
 
@@ -385,6 +405,50 @@ check(productionCompletedCount(nextSnap, nextLab) === 1, '生产进度：实验�
 const newRun = productionSnapshot({ refineRuns: [{ id: 1, batchesDone: 3 }, { id: 2, batchesDone: 0 }], labRuns: [{ id: 5, finishAtGameMs: 2000 }, { id: 6, finishAtGameMs: 500 }] })
 check(productionCompletedCount(nextLab, newRun) === 0, '生产进度：新开台不应算完成')
 check(productionCompletedCount(null, newRun) === 0, '生产进度：首次基线不应补播')
+
+/* ═══════════ 五、音效调试台（2026-11-04 调试批） ═══════════ */
+
+/* 淡变时长：BGM 2.5s / 环境底噪 1.5s / 音量短淡变 250ms（music.ts / ambient.ts / loops.ts 共用） */
+check(BGM_CROSSFADE_MS === 2500, `BGM 交叉淡变应为 2.5s，实际 ${BGM_CROSSFADE_MS}ms`)
+check(AMBIENT_CROSSFADE_MS === 1500, `环境底噪交叉淡变应保持 1.5s，实际 ${AMBIENT_CROSSFADE_MS}ms`)
+check(VOLUME_FADE_MS === 250, `音量短淡变应为 250ms，实际 ${VOLUME_FADE_MS}ms`)
+check(VOLUME_FADE_MS < BGM_CROSSFADE_MS, '音量短淡变必须明显短于 BGM 换曲淡变（拖滑条不能跟着慢）')
+
+/* 场景预演：强制场景只改音频，不参与真实场景判定，可清除 */
+check(effectiveSfxScene('space', null) === 'space', '场景预演：未强制时应等于真实场景')
+check(effectiveSfxScene('space', 'battle') === 'battle', '场景预演：强制场景应优先于真实场景')
+check(effectiveSfxScene('docked', 'space') === 'space', '场景预演：强制场景覆盖真实停靠')
+check(SFX_SCENE_ORDER.length === 5 && new Set(SFX_SCENE_ORDER).size === 5, `场景顺序应有 5 个互不重复场景，实际 ${SFX_SCENE_ORDER.length}`)
+check(SFX_SCENE_ORDER.every((scene) => typeof SFX_SCENE_NAME_ID[scene] === 'string' && SFX_SCENE_NAME_ID[scene] !== ''), '每个场景都要有中文名 id')
+const sceneRelatedIds = new Set<string>()
+for (const scene of SFX_SCENE_ORDER) {
+  const cues = SCENE_RELATED_CUES[scene]
+  check(cues.length > 0, `场景 ${scene} 应列出相关事件（音效台参考用）`)
+  check(new Set(cues).size === cues.length, `场景 ${scene} 的相关事件有重复`)
+  for (const cueId of cues) {
+    check(SFX_CUE_IDS.includes(cueId), `场景 ${scene} 的相关事件不是合法语义 id：${cueId}`)
+    sceneRelatedIds.add(cueId)
+  }
+}
+check(sceneRelatedIds.size > 0 && sceneRelatedIds.size <= SFX_CUE_IDS.length, '场景相关事件并集应落在 33 条语义清单内')
+
+/* 实时触发日志：只记真实播放、可暂停、环形上限、可清空 */
+clearSfxPlayLog()
+check(sfxPlayLog().length === 0, '实时日志：清空后应为空')
+setSfxPlayLogPaused(false)
+recordSfxPlay('ui-click', 'ui', 1000)
+recordSfxPlay('combat-fire', 'combat', 1100)
+const logged = sfxPlayLog()
+check(logged.length === 2, `实时日志：应记录 2 条，实际 ${logged.length}`)
+check(logged[logged.length - 1]?.cueId === 'combat-fire' && logged[logged.length - 1]?.category === 'combat', '实时日志：按旧→新记录，最新一条在末尾（面板倒序显示）')
+setSfxPlayLogPaused(true)
+recordSfxPlay('invasion-alarm', 'alarm', 1200)
+check(sfxPlayLog().length === 2, '实时日志：暂停记录后不再新增')
+setSfxPlayLogPaused(false)
+for (let i = 0; i < 70; i++) recordSfxPlay('ui-click', 'ui', 2000 + i)
+check(sfxPlayLog().length === SFX_PLAY_LOG_MAX, `实时日志：环形上限应为 ${SFX_PLAY_LOG_MAX}，实际 ${sfxPlayLog().length}`)
+clearSfxPlayLog()
+check(sfxPlayLog().length === 0, '实时日志：再次清空应为空')
 
 /* ═══════════ 输出 ═══════════ */
 

@@ -33,6 +33,7 @@ import { ActivityBar } from '../panels/ActivityBar'
 import { ActivityBarClassic } from '../panels/ActivityBarClassic'
 import { AnnouncementHub } from '../panels/Announcements'
 import { DebugButton } from '../panels/DebugPanel'
+import { SfxConsoleButton } from '../panels/SfxConsole'
 import { Glyph } from './Glyphs'
 import { Book as CarbonBook, Settings as CarbonSettings } from '@carbon/icons-react'
 import { ICO_TONES, NAV_TONES } from './tones'
@@ -286,6 +287,7 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
             {debugOn ? (
               <>
                 <DebugButton engine={engine} onFastForwarded={() => setReportDismissed(false)} />
+                <SfxConsoleButton />
                 <button
                   className="app-btn"
                   onClick={() => setPerfOpen((v) => !v)}
@@ -484,6 +486,7 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
             {debugOn ? (
               <>
                 <DebugButton engine={engine} onFastForwarded={() => setReportDismissed(false)} />
+                <SfxConsoleButton />
                 <button
                   className="app-btn"
                   onClick={() => setPerfOpen((v) => !v)}

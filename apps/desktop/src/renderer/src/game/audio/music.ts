@@ -1,5 +1,6 @@
 /**
- * **BGM 层**（2026-11-02 追加批）——按场景循环 + 1.2s 交叉淡入淡出。
+ * **BGM 层**（2026-11-02 追加批）——按场景循环 + **2.5s 交叉淡入淡出**
+ * （2026-11-04 船长令：切场景要自动交叉淡变，否则切歌突兀；同曲调音量走 250ms 短淡变）。
  *
  * 场景来源：`scene.ts`（App 的 `useSceneAudio` 每帧把场景推进来，只在场景变化时才切曲）。
  * 素材：`assets/bgm/<id>.mp3`，本机覆盖（音效台导入）优先；**缺素材 = 静音**（不占位、不报错）。
@@ -13,6 +14,7 @@ import { LoopChannel } from './loops'
 import { builtinSfxUrls } from './manifest'
 import { getSfxOverrideUrl } from './overrides'
 import { readSfxPrefs } from './prefs'
+import { BGM_CROSSFADE_MS, VOLUME_FADE_MS } from './rules'
 import { sceneBgmOf } from './scene'
 import type { SfxScene } from './scene'
 
@@ -23,7 +25,7 @@ let gestureArmed = false
 function ensureChannel(): LoopChannel | null {
   try {
     if (typeof Audio === 'undefined') return null
-    channel ??= new LoopChannel(1200)
+    channel ??= new LoopChannel(BGM_CROSSFADE_MS, VOLUME_FADE_MS)
     return channel
   } catch {
     return null
@@ -81,6 +83,17 @@ export function pauseMusic(): void {
 export function resumeMusic(): void {
   apply()
   channel?.resume()
+}
+
+/** 调试台「重播场景音乐」：销毁通道后按当前场景重新起播（从 0 开始，不是续播） */
+export function restartMusic(): void {
+  try {
+    channel?.destroy()
+  } catch {
+    /* 忽略 */
+  }
+  channel = null
+  apply()
 }
 
 /** 首次用户手势后重试（网页自动播放策略）；只挂一次 */

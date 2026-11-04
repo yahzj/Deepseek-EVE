@@ -76,3 +76,58 @@ export const AMBIENT_BLIP_IDS: readonly SfxCueId[] = [
   'ambient-blip-metal',
   'ambient-blip-static',
 ] as const
+
+/* ═══════════ 调试台（音效台「场景预演」）═══════════ */
+
+/** 五个场景（展示顺序 = 音效台账单顺序；优先级另见 `resolveSfxScene`） */
+export const SFX_SCENE_ORDER: readonly SfxScene[] = ['docked', 'space', 'battle', 'wormhole', 'invasion'] as const
+
+/** 场景中文名 id（音效台场景预演卡片） */
+export const SFX_SCENE_NAME_ID: Record<SfxScene, string> = {
+  docked: 'ui.sfx.102',
+  space: 'ui.sfx.103',
+  battle: 'ui.sfx.104',
+  wormhole: 'ui.sfx.105',
+  invasion: 'ui.sfx.106',
+}
+
+/**
+ * 实际生效场景 = 强制预演场景 ?? 真实场景。
+ * 音效台「切到此场景的声音」只锁定 BGM/环境底噪，不动存档、画面与引擎状态。
+ */
+export function effectiveSfxScene(real: SfxScene, forced: SfxScene | null): SfxScene {
+  return forced ?? real
+}
+
+/**
+ * 场景相关事件（音效台场景预演**参考展示**用；不影响真实触发）。
+ * 只作"这个场景大概会响哪些声音"的锚定提示，允许与真实触发顺序不同。
+ */
+export const SCENE_RELATED_CUES: Record<SfxScene, readonly SfxCueId[]> = {
+  docked: ['ambient-docked', 'ui-click', 'trade-done', 'industry-done', 'skill-done'],
+  space: [
+    'bgm-space',
+    'ambient-space',
+    'scan-done',
+    'comms-received',
+    'combat-fire',
+    'combat-hit',
+    'combat-foe-down',
+  ],
+  battle: [
+    'combat-fire',
+    'combat-fire-kinetic',
+    'combat-fire-explosive',
+    'combat-fire-plasma',
+    'combat-hit',
+    'combat-hurt',
+    'combat-miss',
+    'combat-foe-fire',
+    'combat-foe-down',
+    'combat-me-down',
+    'combat-win',
+    'combat-lose',
+  ],
+  wormhole: ['bgm-wormhole', 'comms-received', 'scan-done', 'combat-hurt', 'ui-error'],
+  invasion: ['invasion-alarm', 'invasion-end', 'combat-foe-fire', 'ambient-blip-comms', 'ui-error'],
+}

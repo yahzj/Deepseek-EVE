@@ -1,7 +1,8 @@
 /**
- * **循环音频通道（BGM / 环境底噪共用的交叉淡变引擎）** —— 2026-11-02 追加批。
+ * **循环音频通道（BGM / 环境底噪共用的交叉淡变引擎）** —— 2026-11-02 追加批；
+ * 2026-11-04 调试批：换曲淡变时长可配（BGM 2.5s / 环境底噪 1.5s），同曲调音量改走短淡变（250ms）。
  *
- * 做法：同一通道最多两个 `HTMLAudioElement`（`loop=true`）——旧曲淡出、新曲淡入（默认 1.2s），
+ * 做法：同一通道最多两个 `HTMLAudioElement`（`loop=true`）——旧曲淡出、新曲淡入（`fadeMs`），
  * 用 40ms 定时器线性推音量；同一 URL 再设置只调音量、不重启（切场景来回不打断）。
  * 不用 Web Audio：桌面打包后页面是 `file://`，`decodeAudioData` 取不到字节；`<audio>` 两端同款。
  *
@@ -14,6 +15,8 @@ interface Slot {
   level: number
   target: number
   dying: boolean
+  /** 每 tick 的音量步长（换曲 = 长淡变，同曲调音量 = 短淡变） */
+  step: number
 }
 
 const TICK_MS = 40
@@ -23,7 +26,10 @@ export class LoopChannel {
   private timer: ReturnType<typeof setInterval> | null = null
   private paused = false
 
-  constructor(private readonly fadeMs = 1200) {}
+  constructor(
+    private readonly fadeMs = 1200,
+    private readonly volumeFadeMs = 250,
+  ) {}
 
   /** 当前正在（或正在淡入）的 URL */
   get currentUrl(): string | null {
@@ -37,10 +43,12 @@ export class LoopChannel {
       this.paused = false
       const vol = Math.min(1, Math.max(0, Number.isFinite(volume) ? volume : 0))
       const current = this.slots.find((s) => !s.dying)
+      const fadeStep = this.stepFor(this.fadeMs)
       if (url === null) {
         for (const slot of this.slots) {
           slot.dying = true
           slot.target = 0
+          slot.step = fadeStep
         }
         this.ensureTimer()
         return
@@ -56,12 +64,13 @@ export class LoopChannel {
         if (existing !== current) continue
         existing.dying = true
         existing.target = 0
+        existing.step = fadeStep
       }
       const el = new Audio(url)
       el.loop = true
       el.preload = 'auto'
       el.volume = 0
-      const next: Slot = { el, url, level: 0, target: vol, dying: false }
+      const next: Slot = { el, url, level: 0, target: vol, dying: false, step: fadeStep }
       this.slots.push(next)
       const p = el.play()
       if (p !== undefined && typeof p.catch === 'function') p.catch(() => undefined)
@@ -71,11 +80,12 @@ export class LoopChannel {
     }
   }
 
-  /** 只调音量（设置拖动时） */
+  /** 只调音量（设置拖动时；不重启播放，走短淡变） */
   setVolume(volume: number): void {
     const live = this.slots.find((s) => !s.dying)
     if (live === undefined) return
     live.target = Math.min(1, Math.max(0, Number.isFinite(volume) ? volume : 0))
+    live.step = this.stepFor(this.volumeFadeMs)
     this.ensureTimer()
   }
 
@@ -120,9 +130,15 @@ export class LoopChannel {
     this.slots = []
   }
 
+  /** 同曲调音量：把 level 拉回当前实际音量，避免从错误起点插值；并改用短淡变步长 */
   private resetFade(slot: Slot): void {
-    // 同一 URL 调音量：把 level 拉回当前实际音量，避免从错误起点插值
     slot.level = Math.min(1, Math.max(0, slot.el.volume))
+    slot.step = this.stepFor(this.volumeFadeMs)
+  }
+
+  /** 某个时长（毫秒）对应的每 tick 步长（至少 1 tick 完成） */
+  private stepFor(ms: number): number {
+    return 1 / Math.max(1, ms / TICK_MS)
   }
 
   private ensureTimer(): void {
@@ -138,12 +154,11 @@ export class LoopChannel {
   }
 
   private tick(): void {
-    const step = 1 / Math.max(1, this.fadeMs / TICK_MS)
     let busy = false
     for (const slot of this.slots) {
       const delta = slot.target - slot.level
-      if (Math.abs(delta) <= step) slot.level = slot.target
-      else slot.level += Math.sign(delta) * step
+      if (Math.abs(delta) <= slot.step) slot.level = slot.target
+      else slot.level += Math.sign(delta) * slot.step
       try {
         slot.el.volume = Math.min(1, Math.max(0, slot.level))
       } catch {

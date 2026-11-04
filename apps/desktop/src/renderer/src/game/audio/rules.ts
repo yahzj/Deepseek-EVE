@@ -34,6 +34,17 @@ export interface SfxPrefs {
 /** 音高随机幅度上限（音分）：= 1 个半音 */
 export const PITCH_JITTER_MAX_CENTS = 100
 
+/**
+ * **淡变时长（毫秒）——音频层唯一来源**（2026-11-04 调音效台批次）：
+ * - BGM 场景切换 2.5s 自动交叉淡入淡出（船长原话「否则切歌突兀」）；
+ * - 环境底噪保持 1.5s（原值，跟 BGM 同款引擎）；
+ * - 同曲调音量/静音 250ms 短淡变（拖滑条不跟着慢淡变）。
+ * `music.ts` / `ambient.ts` / `loops.ts` 与 `tools/audio-check.ts` 共用这三个常量。
+ */
+export const BGM_CROSSFADE_MS = 2500
+export const AMBIENT_CROSSFADE_MS = 1500
+export const VOLUME_FADE_MS = 250
+
 /** 默认偏好（船长 2026-11-02 确认：总音量 70%、初始不静音；音乐 55% / 环境 45%；战斗音高 ±100 音分） */
 export function defaultSfxPrefs(): SfxPrefs {
   return {

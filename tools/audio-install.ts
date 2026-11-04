@@ -216,6 +216,8 @@ interface CliArgs {
   readonly dryRun: boolean
   readonly keepVariants: boolean
   readonly help: boolean
+  /** 内部用：额外打一行结构化结果（桌面音效台一键入库经 IPC 读取） */
+  readonly json: boolean
 }
 
 function parseArgs(argv: readonly string[]): CliArgs {
@@ -223,15 +225,17 @@ function parseArgs(argv: readonly string[]): CliArgs {
   let dryRun = false
   let keepVariants = false
   let help = false
+  let json = false
   for (const arg of argv) {
     if (arg === '--help' || arg === '-h') help = true
     else if (arg === '--dry-run') dryRun = true
     else if (arg === '--keep-variants') keepVariants = true
+    else if (arg === '--json') json = true
     else if (arg.startsWith('--pack=')) packPath = arg.slice('--pack='.length)
     else if (!arg.startsWith('--')) packPath = arg
-    else throw new Error(`未知选项：${arg}（可用：--dry-run / --keep-variants / --help）`)
+    else throw new Error(`未知选项：${arg}（可用：--dry-run / --keep-variants / --json / --help）`)
   }
-  return { packPath, dryRun, keepVariants, help }
+  return { packPath, dryRun, keepVariants, help, json }
 }
 
 function printUsage(): void {
@@ -240,7 +244,8 @@ function printUsage(): void {
   不带路径时，自动在仓库根、用户「下载」目录里找最新的 whale-sfx-pack-*.zip。
   入库包由 设置 →「声音」→「音效台」→「导出正式入库包」生成。
   --dry-run        只预览，不写文件
-  --keep-variants  保留同一事件的旧扩展名/变体文件（默认移除）`)
+  --keep-variants  保留同一事件的旧扩展名/变体文件（默认移除）
+  --json           内部用：额外打一行 @@WHALE_SFX_REPORT@@ + JSON（桌面音效台一键入库读取）`)
 }
 
 function printReport(report: InstallReport): void {
@@ -322,6 +327,8 @@ function main(argv: readonly string[]): number {
     return 1
   }
   printReport(report)
+  // 桌面音效台「一键入库」经 IPC 读取这一行结构化结果（人读日志照旧保留，方便失败时显示原因）
+  if (args.json) console.log(`@@WHALE_SFX_REPORT@@${JSON.stringify(report)}`)
   if (!report.dryRun) {
     console.log(`\n下一步：`)
     console.log(`  1) npm run audio:check            声音系统自检（素材目录/清单/本地化）`)
