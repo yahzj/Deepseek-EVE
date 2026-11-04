@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { CloudApiError, cloudChatSocketUrl, createCloudApi, normalizeCloudServerURL } from '../../../apps/desktop/src/renderer/src/features/cloud/api'
-import { readCloudPreferences, saveCloudServer, saveCloudSession } from '../../../apps/desktop/src/renderer/src/features/cloud/preferences'
+import { DEFAULT_CLOUD_SERVER, FALLBACK_CLOUD_SERVER, readCloudPreferences, saveCloudServer, saveCloudSession } from '../../../apps/desktop/src/renderer/src/features/cloud/preferences'
 import type { CloudStorage } from '../../../apps/desktop/src/renderer/src/features/cloud/preferences'
 import type { CloudAuthResponse } from '../../../apps/desktop/src/renderer/src/features/cloud/types'
 
@@ -81,6 +81,60 @@ describe('cloud API', () => {
     const fetchImpl = fetchMock(jsonResponse(profile))
     await createCloudApi({ server: 'https://cloud.example', token: 'explicit', fetchImpl }).profile()
     expect(new Headers(fetchImpl.mock.calls[0]![1]?.headers).get('authorization')).toBe('Bearer explicit')
+  })
+
+  it('retries default IP network failures on the fallback without changing the IP session', async () => {
+    saveCloudServer(DEFAULT_CLOUD_SERVER)
+    saveCloudSession(DEFAULT_CLOUD_SERVER, auth)
+    saveCloudSession(FALLBACK_CLOUD_SERVER, { ...auth, token: 'other-token' })
+    const fetchImpl = vi.fn<typeof fetch>().mockRejectedValueOnce(new TypeError('network')).mockResolvedValueOnce(jsonResponse(profile))
+    await expect(createCloudApi({ server: DEFAULT_CLOUD_SERVER, fetchImpl }).profile()).resolves.toEqual(profile)
+    expect(fetchImpl.mock.calls.map(([url]) => String(url))).toEqual([
+      `${DEFAULT_CLOUD_SERVER}/api/profile`, `${FALLBACK_CLOUD_SERVER}/api/profile`,
+    ])
+    for (const [, init] of fetchImpl.mock.calls) {
+      expect(new Headers(init?.headers).get('authorization')).toBe('Bearer secret-token')
+    }
+    expect(readCloudPreferences()).toMatchObject({ server: DEFAULT_CLOUD_SERVER, session: { token: auth.token } })
+    expect(new URL(cloudChatSocketUrl(readCloudPreferences().server, readCloudPreferences().session!.token)).toString())
+      .toBe('wss://shit.fuckrapper.online/api/chat/ws?token=secret-token')
+  })
+
+  it.each([401, 500])('does not retry a default IP HTTP %i response', async status => {
+    const fetchImpl = fetchMock(jsonResponse({ code: 'failure' }, status))
+    await expect(createCloudApi({ server: DEFAULT_CLOUD_SERVER, fetchImpl }).profile()).rejects.toMatchObject({ status, code: 'failure' })
+    expect(fetchImpl).toHaveBeenCalledOnce()
+  })
+
+  it('does not retry malformed responses or custom server network failures', async () => {
+    const malformed = fetchMock(jsonResponse({ playerId: 'bad' }))
+    await expect(createCloudApi({ server: DEFAULT_CLOUD_SERVER, fetchImpl: malformed }).profile()).rejects.toMatchObject({ code: 'malformed_response' })
+    expect(malformed).toHaveBeenCalledOnce()
+    const network = vi.fn<typeof fetch>().mockRejectedValue(new TypeError('network'))
+    await expect(createCloudApi({ server: 'https://custom.example', fetchImpl: network }).profile()).rejects.toMatchObject({ code: 'network_error' })
+    expect(network).toHaveBeenCalledOnce()
+  })
+
+  it('retries a default IP timeout but not a caller cancellation', async () => {
+    vi.useFakeTimers()
+    const fetchImpl = vi.fn<typeof fetch>()
+      .mockImplementationOnce((_input, init) => new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')), { once: true })
+      }))
+      .mockResolvedValueOnce(jsonResponse(profile))
+    const pending = createCloudApi({ server: DEFAULT_CLOUD_SERVER, timeoutMs: 15, fetchImpl }).profile()
+    await vi.advanceTimersByTimeAsync(15)
+    await expect(pending).resolves.toEqual(profile)
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+
+    const caller = new AbortController()
+    const cancelledFetch = vi.fn<typeof fetch>((_input, init) => new Promise((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')), { once: true })
+    }))
+    const cancelled = createCloudApi({ server: DEFAULT_CLOUD_SERVER, fetchImpl: cancelledFetch }).profile(caller.signal)
+    caller.abort()
+    await expect(cancelled).rejects.toMatchObject({ code: 'timeout' })
+    expect(cancelledFetch).toHaveBeenCalledOnce()
   })
 
   it.each(['login', 'signup'] as const)('isolates %s credentials from redirects, cookies, cache and referrers', async method => {
@@ -188,6 +242,30 @@ describe('cloud API', () => {
     })
     expect(String(fetchImpl.mock.calls[0]![0])).toBe('https://shit.fuckrapper.online/api/chat/history?channel=zh&limit=100&beforeId=10')
     expect(new Headers(fetchImpl.mock.calls[0]![1]?.headers).get('Authorization')).toBe('Bearer session-token')
+  })
+
+  it('maps only the default IP socket to WSS and preserves loopback behavior', () => {
+    expect(cloudChatSocketUrl(`${DEFAULT_CLOUD_SERVER}/`, 'ip&token'))
+      .toBe('wss://shit.fuckrapper.online/api/chat/ws?token=ip%26token')
+    expect(cloudChatSocketUrl('http://127.0.0.1:8787', 'local'))
+      .toBe('ws://127.0.0.1:8787/api/chat/ws?token=local')
+    expect(cloudChatSocketUrl('http://[::1]:8787', 'local'))
+      .toBe('ws://[::1]:8787/api/chat/ws?token=local')
+    expect(() => cloudChatSocketUrl('http://123.207.188.193', 'token'))
+      .toThrowError(expect.objectContaining({ code: 'insecure_server' }))
+  })
+
+  it.each([false, true])('bounds chat history on the primary and fallback attempt (fallback: %s)', async fallback => {
+    const cancel = vi.fn()
+    const chunk = new Uint8Array(512 * 1024 + 1).fill(32)
+    const response = new Response(new ReadableStream({ pull(controller) { controller.enqueue(chunk) }, cancel }))
+    const fetchImpl = vi.fn<typeof fetch>()
+    if (fallback) fetchImpl.mockRejectedValueOnce(new TypeError('network'))
+    fetchImpl.mockResolvedValueOnce(response)
+    const error = await createCloudApi({ server: DEFAULT_CLOUD_SERVER, fetchImpl }).chatHistory('zh').catch(reason => reason)
+    expect(error.code).toBe(fallback ? 'network_error' : 'response_too_large')
+    expect(cancel).toHaveBeenCalledOnce()
+    expect(fetchImpl).toHaveBeenCalledTimes(fallback ? 2 : 1)
   })
 
   it('rejects invalid chat cursors before any request and keeps token encoding inside the socket query', () => {
@@ -341,7 +419,7 @@ describe('cloud API', () => {
     expect(preferences.readCloudPreferences().session).toBeNull()
   })
 
-  it('defaults only absent configuration to loopback and preserves explicit configured servers', async () => {
+  it('defaults only absent configuration to the default server and preserves explicit configured servers', async () => {
     vi.resetModules()
     const preferences = await import('../../../apps/desktop/src/renderer/src/features/cloud/preferences')
     const values = new Map<string, string>()
@@ -350,7 +428,8 @@ describe('cloud API', () => {
       setItem: (key: string, value: string) => { values.set(key, value) },
       removeItem: (key: string) => { values.delete(key) },
     })
-    expect(preferences.DEFAULT_CLOUD_SERVER).toBe('https://shit.fuckrapper.online')
+    expect(preferences.DEFAULT_CLOUD_SERVER).toBe('http://123.207.188.192')
+    expect(preferences.FALLBACK_CLOUD_SERVER).toBe('https://shit.fuckrapper.online')
     expect(preferences.readCloudPreferences()).toEqual({ server: preferences.DEFAULT_CLOUD_SERVER, session: null })
     values.set('whale.cloud.server', 'https://configured.example')
     expect(preferences.readCloudPreferences().server).toBe('https://configured.example')
@@ -370,10 +449,16 @@ describe('cloud API', () => {
     expect(directives.slice(0, -1)).toEqual([
       "default-src 'self'", "script-src 'self'", "style-src 'self' 'unsafe-inline'", "img-src 'self' data:", "media-src 'self' blob:",
     ])
-    expect(directives.at(-1)?.split(' ')).toEqual([
-      'connect-src', "'self'", 'https://shit.fuckrapper.online', 'wss://shit.fuckrapper.online',
-      'http://localhost:*', 'http://127.0.0.1:*', 'http://[::1]:*',
-      'ws://localhost:*', 'ws://127.0.0.1:*', 'ws://[::1]:*',
-    ])
+    const connect = directives.at(-1)?.split(' ') ?? []
+    expect(connect).toContain('https:')
+    if (path.startsWith('apps/')) expect(connect).toContain('ws:')
+    else expect(connect).not.toContain('ws:')
+    expect(connect).toContain('wss://shit.fuckrapper.online')
+    expect(connect).toContain('http://123.207.188.192')
+    expect(connect).toContain(DEFAULT_CLOUD_SERVER)
+    expect(connect.some(value => value === 'https:' || value === FALLBACK_CLOUD_SERVER)).toBe(true)
+    expect(connect.some(value => value === 'wss:' || value === FALLBACK_CLOUD_SERVER.replace('https:', 'wss:'))).toBe(true)
+    expect(connect).toEqual(expect.arrayContaining(['connect-src', "'self'", 'http://localhost:*', 'http://127.0.0.1:*', 'http://[::1]:*']))
+    expect(connect.includes('ws:') || ['ws://localhost:*', 'ws://127.0.0.1:*', 'ws://[::1]:*'].every(value => connect.includes(value))).toBe(true)
   })
 })

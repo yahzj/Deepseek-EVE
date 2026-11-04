@@ -16,6 +16,19 @@ export class ExchangeOfflineError extends ExchangeError {
   }
 }
 
+/**
+ * 未登录 / 令牌失效（2026-11-03 联机批）。
+ *
+ * 为什么单独一个类型：引导态要能区分「服务器没配」和「登录没做」——前者让玩家去填地址，
+ * 后者让玩家去登录；两者都**不允许**静默回退到模拟盘。服务端 401 也归到这里。
+ */
+export class ExchangeAuthError extends ExchangeError {
+  constructor(message = '尚未登录：请先在云端设置里登录账号，再进入股市') {
+    super('unauthorized', message)
+    this.name = 'ExchangeAuthError'
+  }
+}
+
 export interface TransportRequest {
   method: 'GET' | 'POST' | 'DELETE'
   /** 服务器相对路径（如 `/api/exchange/stocks`）；由 Transport 负责拼 baseUrl 与鉴权头 */

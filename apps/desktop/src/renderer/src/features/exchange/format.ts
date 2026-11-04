@@ -11,6 +11,16 @@ export function money(n: number): string {
   return n.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+
+/** 盈亏金额：带明确正负号（正数显式加号），千分位、2 位小数（+12,345.67 / -12,345.67 / 0.00） */
+export function pnlMoney(n: number): string {
+  if (!Number.isFinite(n)) return '—'
+  const formatted = Math.abs(n).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  if (n > 0) return `+${formatted}`
+  if (n < 0) return `-${formatted}`
+  return '0.00'
+}
+
 /** 金额但不要小数（成交量、股数等整数量级） */
 export function amount(n: number): string {
   if (!Number.isFinite(n)) return '—'
@@ -53,4 +63,13 @@ export function shortTime(ts: number): string {
 export function round(n: number, digits = 2): number {
   const f = 10 ** digits
   return Math.round(n * f) / f
+}
+
+/** 成交额规范格式化：如 99.45M ISK / 1.25B ISK / 850.00K ISK */
+export function turnover(n: number): string {
+  if (!Number.isFinite(n) || n <= 0) return '0.00 ISK'
+  if (n >= 1e9) return `${(n / 1e9).toFixed(2)}B ISK`
+  if (n >= 1e6) return `${(n / 1e6).toFixed(2)}M ISK`
+  if (n >= 1e3) return `${(n / 1e3).toFixed(2)}K ISK`
+  return `${n.toFixed(2)} ISK`
 }

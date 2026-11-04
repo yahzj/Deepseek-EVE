@@ -2,6 +2,18 @@
 
 > 本页记录当前规则维护，不是开工必读。历史流水已移入`docs/archive/`；无船长明确查阅要求禁止读取或检索，包括Git历史。
 
+## 2026-11-04 Serena 成为主代理与全部子代理的默认代码增删改查工具
+
+- 依据：船长指示「现在所有的子代理和你，都要用serena作为默认增删改查的工具」。
+- 生效范围：`AGENTS.md` §5、§5.1。
+- 现行规则：
+  1. 主代理与所有子代理，凡代码符号的查定义、查引用、符号级替换/插入/删除，**默认且优先**使用对应仓库的 Serena MCP 实例，不得一上来就全文 grep 或盲读；
+  2. 一仓一实例，派工任务书必须写明前缀：本仓 `mcp__serena-eve__*`、whale-server `mcp__serena-server__*`、whale-server-go `mcp__serena-go__*`、Border-Pioneer-2 `mcp__serena-border__*`；
+  3. 非代码文件（JSON/CSV/MD/配置）不适用 Serena，按普通 read/edit 处理；
+  4. Serena 不可用时必须**明确报告原因与降级范围**，再降级 read/grep，不得静默退化；
+  5. 超过 500 行的代码/数据文件禁止盲目全文通读，先用 Serena 定位。
+- 环境变更（2026-11-04）：`~/.dsh/cordis.patch.yml` 由双实例扩为**四实例**，原 `mcp-serena`（Border-Pioneer-2）改名 `serena-border`，新增 `serena-server`（whale-server）与 `serena-go`（whale-server-go）；备份 `cordis.patch.yml.bak-20261104-003308`。重启 DSH 后四个实例实测均可读各自仓库符号（含 Go 语言服务）。
+
 ## 2026-11-03 子代理默认使用 Serena MCP（含环境缺口登记）
 
 - 依据：船长指示「子代理用的工具不齐全啊默认也要用serena mcp」。

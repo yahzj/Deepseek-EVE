@@ -2539,6 +2539,21 @@ export class GameEngine {
     return result
   }
 
+  /**
+   * 交易所资金本地对账（2026-11-04 船长定案：存档币以本地为准，线上只记交易所账）。
+   * delta < 0 = 入金扣本地 ISK；delta > 0 = 出金/失败退款加回本地 ISK。
+   * 返回 false 表示非法金额或本地余额不足（入金前必须先扣成功再请求服务器）。
+   */
+  exchangeWalletDelta(delta: number): boolean {
+    if (!Number.isFinite(delta) || delta === 0) return false
+    const next = this.state.wallet.isk + delta
+    if (next < 0) return false
+    this.state.wallet.isk = next
+    void this.persist()
+    this.notify()
+    return true
+  }
+
   /** 市价买入商品（默认 1 件；矿石/矿物传数量）。
    *  2026-09-11 船长实测反馈修复：买不到时**按真实原因分别报错**（此前一律报「供应簿只剩 0 件」，
    *  实测钱包不足时 141 个有货商品里 104 个会这样说、声望不足时 3 个 MK3 会这样说——全是误导）；

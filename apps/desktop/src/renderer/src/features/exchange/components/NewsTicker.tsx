@@ -57,11 +57,19 @@ function getNewsImpact(item: NewsItem): {
   }
 }
 
-export function NewsTicker({ news }: { news: NewsItem[] }) {
+export function NewsTicker({
+  news,
+  onSelectCode,
+}: {
+  news: NewsItem[]
+  onSelectCode?: (code: string) => void
+}) {
   if (news.length === 0) {
     return (
       <div className="ex-ticker ex-ticker-empty" role="status">
-        <span className="ex-ticker-tag"><Bullhorn size={13} /> {T.newFlash}</span>
+        <span className="ex-ticker-tag">
+          <Bullhorn size={13} /> {T.newFlash}
+        </span>
         <span className="ex-ticker-text">{T.noNews}</span>
       </div>
     )
@@ -69,20 +77,38 @@ export function NewsTicker({ news }: { news: NewsItem[] }) {
   const loop = news.slice(0, 8)
   return (
     <div className="ex-ticker" role="status" aria-live="off">
-      <span className="ex-ticker-tag"><Bullhorn size={13} /> {T.newFlash}</span>
+      <span className="ex-ticker-tag">
+        <Bullhorn size={13} /> {T.newFlash}
+      </span>
       <div className="ex-ticker-viewport">
         <div className="ex-ticker-track">
           {[0, 1].map((copy) => (
             <div className="ex-ticker-group" key={copy} aria-hidden={copy === 1}>
               {loop.map((item) => {
                 const impact = getNewsImpact(item)
-                const impactTag = TF.newsImpactTag(impact.dirText, impact.pctText, impact.primaryCode)
                 const toneClass =
                   impact.isUp === true ? 'is-bull' : impact.isUp === false ? 'is-bear' : 'is-neutral'
 
                 return (
                   <span className={`ex-ticker-item is-${item.tone}`} key={`${copy}-${item.id}`}>
-                    <span className={`ex-ticker-impact ${toneClass}`}>{impactTag}</span>
+                    <span className={`ex-ticker-impact ${toneClass}`}>
+                      <span className="ex-ticker-impact-dir">{impact.dirText}</span>
+                      <span className="ex-ticker-impact-pct">{impact.pctText}</span>
+                    </span>
+                    {impact.primaryCode ? (
+                      <button
+                        type="button"
+                        className="ex-ticker-code-btn"
+                        title={TF.newsSwitchSymbol(impact.primaryCode)}
+                        aria-label={TF.newsSwitchSymbol(impact.primaryCode)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onSelectCode?.(impact.primaryCode!)
+                        }}
+                      >
+                        {impact.primaryCode}
+                      </button>
+                    ) : null}
                     <span className="ex-ticker-time">{clock(item.ts)}</span>
                     <b className="ex-ticker-title">{item.title}</b>
                     <span className="ex-ticker-sep">：</span>

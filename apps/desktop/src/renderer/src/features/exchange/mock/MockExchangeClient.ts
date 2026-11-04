@@ -30,6 +30,7 @@ import type {
   ExchangePosition,
   ExchangeSnapshot,
   ExchangeTopic,
+  FundPlayResult,
   IndexQuote,
   Kline,
   MarginCallPayload,
@@ -1423,7 +1424,7 @@ export class MockExchangeClient implements ExchangeClient {
       const upper = Number(params.upperPct ?? 6)
       const grids = Math.round(Number(params.grids ?? 4))
       const qty = Math.round(Number(params.qty ?? 100))
-      if (!(lower < upper) || grids < 2 || grids > 12 || !(qty > 0)) {
+      if (!(lower < upper) || grids < 2 || grids > 50 || !(qty > 0)) {
         throw new ExchangeError('bad_strategy', T.strategyParamsInvalid)
       }
       params.lowerPct = lower
@@ -1503,6 +1504,34 @@ export class MockExchangeClient implements ExchangeClient {
     this.bond = { principal: 0, accrued: 0, purchasedAt: null, rateDaily: BOND_DAILY_RATE }
     return total
   }
+
+  /** 保底基金（模拟盘）：用 nonce 哈希决定输赢，规则与线上一致（盈 3×、亏 1× 债券分钟利息）。 */
+  async playFund(amountValue: number, nonce: string): Promise<FundPlayResult> {
+    const amountValueFloor = Math.floor(amountValue)
+    if (!(amountValueFloor > 0)) throw new ExchangeError('bad_amount', T.cashierInvalidAmount)
+    if (amountValueFloor > this.cash) throw new ExchangeError('insufficient_cash', T.fundNoCash)
+    const rateBp = Math.round(BOND_DAILY_RATE * 10_000)
+    // FNV-1a：确定性、无 Math.random（引擎禁用裸随机）。
+    let hash = 2_166_136_261
+    const seed = `${nonce}:${this.ts()}`
+    for (let i = 0; i < seed.length; i += 1) {
+      hash ^= seed.charCodeAt(i)
+      hash = Math.imul(hash, 16_777_619) >>> 0
+    }
+    const win = hash % 2 === 0
+    const interest = Math.floor((amountValueFloor * rateBp) / 10_000)
+    const profit = win ? interest * 3 : -interest
+    this.cash += profit
+    return {
+      win,
+      amount: amountValueFloor,
+      profit,
+      rateBp,
+      evidence: `mock/nonce=${nonce.slice(0, 8)}`,
+      cash: this.cash,
+    }
+  }
+
 
   private maybePayDividends(ts: number): void {
     if (this.tick % DIVIDEND_INTERVAL_TICKS !== 0) return
@@ -1707,10 +1736,10 @@ export class MockExchangeClient implements ExchangeClient {
 
   async withdraw(amountValue: number, nonce: string): Promise<{ nonce: string; amount: number; fee: number; availableAt: number; receiptHash: string }> {
     if (!(amountValue > 0)) throw new ExchangeError('bad_amount', '出金金额必须大于 0')
-    const fee = amountValue * 0.001
-    if (amountValue + fee > this.cash) throw new ExchangeError('insufficient_cash', T.toastNoCash)
-    this.cash -= amountValue + fee
-    return { nonce, amount: amountValue, fee, availableAt: this.ts() + 60_000, receiptHash: `mock-${nonce}` }
+    // 与真实服务器 deductForWithdraw 对齐：出金只校验 cash >= amount，不额外收手续费
+    if (amountValue > this.cash) throw new ExchangeError('insufficient_cash', T.toastNoCash)
+    this.cash -= amountValue
+    return { nonce, amount: amountValue, fee: 0, availableAt: this.ts() + 60_000, receiptHash: `mock-${nonce}` }
   }
 
   async cancelOrder(id: string): Promise<void> {

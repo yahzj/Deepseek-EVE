@@ -16,21 +16,24 @@ import type { ExchangeClientBundle, ExchangeSourceInfo } from './factory'
 import { createExchangeClient } from './factory'
 import { amount, money, pct, pctAbs } from './format'
 import { T, TF } from './texts'
+import { Cashier } from './components/Cashier'
+import {
+  getExchangeSelectedCode,
+  setExchangeSelectedCode,
+  subscribeExchangeSelectedCode,
+} from './selectedCode'
 import { NewsTicker } from './components/NewsTicker'
 import { SimpleExchange } from './components/SimpleExchange'
 import { ProExchange } from './components/ProExchange'
+import { RoundBadge } from './components/RoundBadge'
 import './exchange.css'
 
-const DEFAULT_CODE = 'SMHI'
 const VIEW_MODE_KEY = 'whale-idle:exch-view-mode'
 
-/** 切页返回后保持选中标的（Spatial Memory） */
-let rememberedCode = DEFAULT_CODE
-
-export function ExchangePage({ onToast }: PageProps) {
+export function ExchangePage({ engine, onToast }: PageProps) {
   const bundle = useMemo(() => createExchangeClient(), [])
   if (bundle.error) return <ExchangeGuide bundle={bundle} />
-  return <ExchangeBody bundle={bundle} onToast={onToast} />
+  return <ExchangeBody bundle={bundle} engine={engine} onToast={onToast} />
 }
 
 /** 数据源徽标（模拟盘 / 服务器） */
@@ -70,15 +73,29 @@ function ExchangeGuide({ bundle }: { bundle: ExchangeClientBundle }) {
 
 function ExchangeBody({
   bundle,
+  engine,
   onToast,
 }: {
   bundle: ExchangeClientBundle
+  engine: PageProps['engine']
   onToast: PageProps['onToast']
 }) {
   const client = bundle.client
   const [tick, bump] = useReducer((n: number) => n + 1, 0)
-  const [code, setCode] = useState(rememberedCode)
+  const [code, setCode] = useState(getExchangeSelectedCode)
+  const codeRef = useRef(code)
+  codeRef.current = code
   const [pickedPrice, setPickedPrice] = useState<{ value: number; seq: number } | null>(null)
+
+  // 响应外部（如活动栏快捷监控微卡片）的标的高亮切换
+  useEffect(() => {
+    return subscribeExchangeSelectedCode((nextCode) => {
+      setCode(nextCode)
+      setPickedPrice(null)
+    })
+  }, [])
+  // 入金 / 出金弹窗：null = 关闭
+  const [cashier, setCashier] = useState<'deposit' | 'withdraw' | null>(null)
 
   // 极简 / 专业 双模式状态（默认极简）
   const [viewMode, setViewMode] = useState<'simple' | 'pro'>(() => {
@@ -110,15 +127,46 @@ function ExchangeBody({
       const side = call.side === 'long' ? T.posSideLong : T.posSideShort
       toastRef.current(TF.marginCalled(call.code, side, amount(call.qty)), true)
     })
+    // 数据链路错误可见化：bootstrap/WS 失败时明确弹提示，避免页面只剩「没数据」看不出原因。
+    const stopError = client.on('error', (payload) => {
+      toastRef.current(TF.dataLoadFailed(payload instanceof Error ? payload.message : String(payload)), true)
+      window.setTimeout(() => client.retryBootstrap?.(), 1200)
+    })
+    // 行情看门狗：HMR 半更新/首拉失败时页面会停在空数据，自动重试而不是等玩家重启客户端。
+    const watchdog = window.setInterval(() => {
+      if (client.getSnapshot(codeRef.current).stocks.length === 0) client.retryBootstrap?.()
+    }, 3000)
     client.start()
     return () => {
+      window.clearInterval(watchdog)
       stopTick()
       stopMargin()
+      stopError()
       client.stop()
     }
   }, [client])
 
   const snap = useMemo(() => client.getSnapshot(code), [client, code, tick])
+
+  // 行情空数据兜底：首拉失败/HMR 半更新时 4 秒后显示提示与手动重试（看门狗同时自动重试）。
+  const [dataStale, setDataStale] = useState(false)
+  useEffect(() => {
+    if (snap.stocks.length > 0) {
+      setDataStale(false)
+      return
+    }
+    const timer = window.setTimeout(() => setDataStale(true), 4000)
+    return () => window.clearTimeout(timer)
+  }, [snap.stocks.length])
+
+  // 切换标的补拉图表/盘口：联机模式 bootstrap 只拉了首只标的，其余切过去会一直「行情初始化中…」。
+  useEffect(() => {
+    if (snap.stocks.length === 0) return
+    const hasChart = client.getChartSeries(code, 'm1').length > 0
+    const hasBook = snap.book.bids.length + snap.book.asks.length > 0
+    if (hasChart && hasBook) return
+    client.ensureSymbolData?.(code)
+  }, [client, code, tick, snap.book.bids.length, snap.book.asks.length])
 
   const marginUsed = snap.account.positions.reduce((sum, p) => sum + p.margin, 0)
   const marginRatio = marginUsed > 0 ? pctAbs(snap.account.marginRatio * 100) : '—'
@@ -141,7 +189,7 @@ function ExchangeBody({
   const pnlUp = totalUnrealizedPnl >= 0
 
   const selectCode = (next: string): void => {
-    rememberedCode = next
+    setExchangeSelectedCode(next)
     setCode(next)
     setPickedPrice(null)
   }
@@ -162,7 +210,24 @@ function ExchangeBody({
   return (
     <div className={`page-stack page-fill ex-page ex-mode-${viewMode}`}>
       {/* 财经快讯走马灯 */}
-      <NewsTicker news={snap.news} />
+      <NewsTicker news={snap.news} onSelectCode={selectCode} />
+
+      {/* 行情空数据提示：4 秒仍无 stocks 时显示原因入口，避免只剩空面板 */}
+      {dataStale ? (
+        <div className="ex-guide" role="alert">
+          <p className="ex-guide-text">{T.dataEmptyHint}</p>
+          <button
+            type="button"
+            className="ex-mini-btn"
+            onClick={() => {
+              client.retryBootstrap?.()
+              window.setTimeout(bump, 600)
+            }}
+          >
+            {T.dataRetry}
+          </button>
+        </div>
+      ) : null}
 
       {/* 顶栏 */}
       <header className="ex-topbar">
@@ -254,9 +319,17 @@ function ExchangeBody({
           </>
         )}
 
-        {/* 顶栏右侧：数据源徽标 + 重置按钮 */}
+        {/* 顶栏右侧：入金 / 出金 + 数据源徽标 + 重置按钮 */}
         <div className="ex-top-actions">
+          <button type="button" className="ex-mini-btn" onClick={() => setCashier('deposit')}>
+            {T.deposit}
+          </button>
+          <button type="button" className="ex-mini-btn" onClick={() => setCashier('withdraw')}>
+            {T.withdraw}
+          </button>
           <SourceBadge source={bundle.source} />
+          {/* 回合倒计时 + 本回合委托配额：回合一变触发 bump，重拉页面快照 */}
+          <RoundBadge client={client} onNewRound={bump} />
           {bundle.source.mode === 'mock' ? (
             <button
               type="button"
@@ -278,6 +351,9 @@ function ExchangeBody({
           code={code}
           onSelectCode={selectCode}
           onToast={onToast}
+          engine={engine}
+          isServer={bundle.source.mode !== 'mock'}
+          onRefresh={bump}
         />
       ) : (
         <ProExchange
@@ -290,6 +366,20 @@ function ExchangeBody({
           onToast={onToast}
         />
       )}
+
+      {/* 入金 / 出金弹窗：资金闸门，关闭后回到原模式 */}
+      {cashier !== null ? (
+        <Cashier
+          mode={cashier}
+          cash={snap.account.cash}
+          client={client}
+          localIsk={engine.state.wallet.isk}
+          onLocalDelta={(delta) => engine.exchangeWalletDelta(delta)}
+          onToast={onToast}
+          onClose={() => setCashier(null)}
+          onRefresh={bump}
+        />
+      ) : null}
     </div>
   )
 }

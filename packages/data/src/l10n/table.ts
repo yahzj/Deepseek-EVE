@@ -3776,6 +3776,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.CargoPage.058": { zh: "×{p1} · 计入货舱 {p2}", en: "×{p1} · {p2} against the hold" },
   "ui.CargoPage.059": { zh: "船载仅携带：装配台取料自装备库，船载装备需先卸回。", en: "Carried aboard only: the fitting bay draws from Module Storage, so modules aboard have to be unloaded first." },
   "ui.CargoPage.060": { zh: "该船闲置中", en: "That ship is idle" },
+  "ui.CargoPage.061": { zh: "总体积", en: "", enDeferred: true },
+  "ui.CargoPage.062": { zh: "总估值", en: "", enDeferred: true },
+  "ui.CargoPage.063": { zh: "整理", en: "", enDeferred: true },
   "ui.CommsPage.001": { zh: "已把 {n} 封通讯标为已读。", en: "Marked {n} messages as read." },
   "ui.CommsPage.002": { zh: "收件箱里没有未读通讯。", en: "No unread messages in the inbox." },
   "ui.CommsPage.003": { zh: "协会各部门与合作方有事会直接发到这里。带「前往」的通讯只是提示你该去哪儿，具体事务仍要在对应页面上办。", en: "Association departments and partners message you here directly. A message with Go to only points you at the right page; the real business still happens there." },
@@ -6637,6 +6640,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipInfo.255": { zh: "同类型扩槽插件仅限一件", en: "One slot-expansion plug per type" },
   // ⟪文案调整 2026-11-03⟫ 非推进器速度效果独立于点火周期；保留旧模板和既有英文。
   "ui.shipInfo.256": { zh: "战斗机动 +{p1}", en: "", enDeferred: true },
+  "ui.shipInfo.257": { zh: "所属势力", en: "", enDeferred: true },
+  "ui.shipInfo.258": { zh: "总估值", en: "", enDeferred: true },
   "ui.shipInfo.079": { zh: "多装递减", en: "Diminishing returns when stacked" },
   "ui.shipInfo.080": { zh: "放飞 CPU", en: "Launch CPU" },
   "ui.shipInfo.081": { zh: "占用舱容", en: "Cargo space used" },

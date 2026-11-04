@@ -39,15 +39,17 @@ function MarketSentimentBar({ book }: { book: ExchangeSnapshot['book'] }) {
   const askRatio = 100 - bidRatio
   const diff = bidRatio - askRatio
   const statusLabel =
-    Math.abs(diff) < 3
-      ? '[力量均衡]'
-      : diff > 15
-        ? '[多方强势]'
-        : diff > 0
-          ? '[多方占优]'
-          : diff < -15
-            ? '[空方抛压]'
-            : '[空方占优]'
+    total === 0
+      ? '[等待盘口挂单]'
+      : Math.abs(diff) < 3
+        ? '[力量均衡]'
+        : diff > 15
+          ? '[多方强势]'
+          : diff > 0
+            ? '[多方占优]'
+            : diff < -15
+              ? '[空方抛压]'
+              : '[空方占优]'
 
   return (
     <div className="ex-pro-sentiment" title={`买方挂单 ${sumBids} 股 / 卖方挂单 ${sumAsks} 股`}>

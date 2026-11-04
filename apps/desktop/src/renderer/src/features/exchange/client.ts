@@ -110,7 +110,19 @@ export interface ExchangeOrder {
   qty: number
   qtyRemaining: number
   leverage: number
-  status: 'open' | 'partial' | 'filled' | 'cancelled' | 'rejected' | 'trigger_pending'
+  /**
+   * 回合制（2026-11-03）新增 `queued`（已进本回合队列、尚未撮合）与 `expired`
+   * （回合结算未成交部分撤销并解冻）。Mock 仍只用原有状态，HTTP 适配器按服务端原样透传。
+   */
+  status:
+    | 'open'
+    | 'partial'
+    | 'filled'
+    | 'cancelled'
+    | 'rejected'
+    | 'trigger_pending'
+    | 'queued'
+    | 'expired'
   createdAt: number
   /** 以下为原型扩展（真机响应同样会带，界面用来显示来源与成交均价） */
   source?: OrderSource
@@ -118,6 +130,37 @@ export interface ExchangeOrder {
   avgFillPrice?: number
   triggerPrice?: number
   reduceOnly?: boolean
+}
+
+/**
+ * 回合时钟（Go `GET /api/exchange/round` 与 WS `round` 帧）。
+ * 字段名照服务端 `RoundView`；`usedOrders` 只在 REST 响应里出现（WS 广播是公共视图，不含配额）。
+ */
+export interface RoundInfo {
+  roundNo: number
+  startedAt: number
+  nextRoundAt: number
+  locked: boolean
+  maxOrders: number
+  /** 本回合已提交笔数（撤单不返还；WS 公共帧不带，缺省按 0 处理） */
+  usedOrders?: number
+  /** 回合长度（秒），服务端下发，默认 300 */
+  roundSec: number
+  /** 回合末锁定窗口（秒），默认 10 */
+  lockSec: number
+  /** 服务器毫秒时间，客户端据此校正倒计时 */
+  serverTime: number
+}
+
+/** 批量提交结果（Go `POST /api/exchange/orders/batch`） */
+export interface BatchOrderResult {
+  roundNo: number
+  /** 服务端返回的批量状态，当前恒为 `queued` */
+  status: string
+  accepted: number
+  maxOrders: number
+  usedOrders: number
+  orders: ExchangeOrder[]
 }
 
 export interface StrategySpec {
@@ -151,6 +194,21 @@ export type ChartPeriod = 'intraday' | 'm1' | 'h1' | 'd1' | 'd7' | 'd30'
 
 export interface DepositResult { nonce: string; applied: number; fee: number; cash: number; receiptHash: string }
 export interface WithdrawResult { nonce: string; amount: number; fee: number; availableAt: number; receiptHash: string }
+
+/** 基金单期结算结果：服务端用实盘数据 + nonce 决定输赢，盈利 = 3×债券分钟利息，亏损 = 1×。 */
+export interface FundPlayResult {
+  win: boolean
+  amount: number
+  /** 净盈亏（正=盈利、负=亏损），单位信用点 */
+  profit: number
+  /** 本单使用的债券分钟利率（基点） */
+  rateBp: number
+  /** 结算依据（实盘数据摘要，展示给玩家） */
+  evidence: string
+  /** 结算后的交易所可用现金 */
+  cash: number
+  replayed?: boolean
+}
 export type Unsubscribe = () => void
 
 /** 公共成交流水的「吃单方」：`mm` = 做市商主动成交（玩家挂单被吃） */
@@ -276,10 +334,20 @@ export interface ExchangeClient {
   getKlines(code: string, interval: '1m' | '5m' | '1h', limit?: number): Promise<Kline[]>
   getAccount(): Promise<ExchangeAccount>
   getOrders(): Promise<ExchangeOrder[]>
+  /**
+   * 回合时钟（可选：只有联机客户端实现；Mock 不实现）。
+   * 未来 UI 接入点见 `round.ts` 里的 `RoundClock`。
+   */
+  getRound?(): Promise<RoundInfo>
   // 交易
   deposit(amount: number, nonce: string): Promise<DepositResult>
   withdraw(amount: number, nonce: string): Promise<WithdrawResult>
   placeOrder(req: PlaceOrderRequest): Promise<ExchangeOrder>
+  /**
+   * 批量提交（可选：只有联机客户端实现；Go `POST /orders/batch` 全成全败，单批 ≤ 每回合配额）。
+   * 未来 UI 接入点见 `round.ts` 里的 `OrderQueue`。
+   */
+  batchPlaceOrders?(reqs: PlaceOrderRequest[]): Promise<BatchOrderResult>
   cancelOrder(id: string): Promise<void>
   closePosition(code: string, side: 'long' | 'short', qty?: number): Promise<void>
   // 量化
@@ -298,6 +366,10 @@ export interface ExchangeClient {
    */
   start(): void
   stop(): void
+  /** 可选：重试首屏数据（HTTP 模式实现；Mock 不需要）。页面看门狗用它自愈空数据。 */
+  retryBootstrap?(): void
+  /** 可选：切换标的后补拉该标的 K 线/盘口（HTTP 模式实现；首屏只拉了首只标的）。 */
+  ensureSymbolData?(code: string): void
   onTick(cb: () => void): Unsubscribe
   getSnapshot(code: string): ExchangeSnapshot
   /** 六周期图表数据（同步读缓存：Mock 内存直读；HTTP 由订阅缓存提供，未连上时为空数组） */
@@ -306,6 +378,8 @@ export interface ExchangeClient {
   resetAccount(): void
   buyBond(amount: number): BondHolding
   redeemBond(): number
+  /** 基金：投入交易所现金，服务端按实盘数据 50/50 结算（盈利 3× 债券分钟利息，亏损 1×） */
+  playFund(amount: number, nonce: string): Promise<FundPlayResult>
   /** 下单预览（保证金/名义/手续费/强平价/距强平/上限/不可下单原因） */
   previewOrder(req: PlaceOrderRequest): OrderPreview
 }

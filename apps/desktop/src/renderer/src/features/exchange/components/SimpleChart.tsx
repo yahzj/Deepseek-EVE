@@ -64,9 +64,9 @@ export function SimpleChart({ client, code, quote, tick }: SimpleChartProps) {
 
   // SVG 视口尺寸
   const width = 640
-  const height = 170
+  const height = 150
   const padX = 14
-  const padY = 16
+  const padY = 14
   const usableW = width - padX * 2
   const usableH = height - padY * 2
 
@@ -76,12 +76,13 @@ export function SimpleChart({ client, code, quote, tick }: SimpleChartProps) {
     }
     const min = Math.min(...points.map((p) => p.p))
     const max = Math.max(...points.map((p) => p.p))
-    const span = max - min || 1
+    const isFlat = max === min
+    const span = isFlat ? 1 : max - min
     const stepX = usableW / (points.length - 1)
 
     const cs = points.map((pt, i) => {
       const x = padX + i * stepX
-      const y = height - padY - ((pt.p - min) / span) * usableH
+      const y = isFlat ? height / 2 : height - padY - ((pt.p - min) / span) * usableH
       return [x, y] as [number, number]
     })
 
@@ -132,86 +133,113 @@ export function SimpleChart({ client, code, quote, tick }: SimpleChartProps) {
         onMouseMove={(e) => {
           if (coords.length === 0) return
           const rect = e.currentTarget.getBoundingClientRect()
-          const relX = e.clientX - rect.left
-          const ratio = Math.max(0, Math.min(1, (relX - padX) / usableW))
+          if (!rect || rect.width <= 0) return
+          // 物理屏幕坐标转换为 SVG viewBox 视口坐标（消除屏幕宽度与 viewBox 尺寸差异导致的映射漂移）
+          const svgX = ((e.clientX - rect.left) / rect.width) * width
+          const ratio = Math.max(0, Math.min(1, (svgX - padX) / usableW))
           const idx = Math.round(ratio * (coords.length - 1))
           setHoverIndex(idx)
         }}
+        onTouchMove={(e) => {
+          if (coords.length === 0) return
+          const touch = e.touches[0]
+          if (!touch) return
+          const rect = e.currentTarget.getBoundingClientRect()
+          if (!rect || rect.width <= 0) return
+          const svgX = ((touch.clientX - rect.left) / rect.width) * width
+          const ratio = Math.max(0, Math.min(1, (svgX - padX) / usableW))
+          const idx = Math.round(ratio * (coords.length - 1))
+          setHoverIndex(idx)
+        }}
+        onTouchEnd={() => setHoverIndex(null)}
       >
         {points.length < 2 ? (
           <div className="ex-simple-chart-empty">{T.chartNoData}</div>
         ) : (
-          <svg className="ex-simple-svg" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
-            <defs>
-              <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={strokeColor} stopOpacity="0.25" />
-                <stop offset="100%" stopColor={strokeColor} stopOpacity="0.0" />
-              </linearGradient>
-            </defs>
+          <>
+            {/* 顶底参考刻度（HTML 排版，不受 SVG preserveAspectRatio="none" 导致的字体横向形变影响） */}
+            <div className="ex-simple-axis-badge is-max ex-num">{price(maxP)}</div>
+            <div className="ex-simple-axis-badge is-min ex-num">{price(minP)}</div>
 
-            {/* 上下界辅助网格线与读数 */}
-            <line
-              x1={padX}
-              y1={padY}
-              x2={padX + usableW}
-              y2={padY}
-              stroke="rgb(var(--wui-border))"
-              strokeWidth="0.8"
-              strokeDasharray="4 4"
-            />
-            <text x={padX + usableW} y={padY - 4} textAnchor="end" className="ex-simple-axis-text">
-              {price(maxP)}
-            </text>
-
-            <line
-              x1={padX}
-              y1={height - padY}
-              x2={padX + usableW}
-              y2={height - padY}
-              stroke="rgb(var(--wui-border))"
-              strokeWidth="0.8"
-              strokeDasharray="4 4"
-            />
-            <text x={padX + usableW} y={height - padY + 11} textAnchor="end" className="ex-simple-axis-text">
-              {price(minP)}
-            </text>
-
-            {/* 背景发光渐变区域 */}
-            <path d={pathArea} fill={`url(#${gradId})`} />
-
-            {/* 主曲线 */}
-            <path
-              d={pathLine}
-              fill="none"
-              stroke={strokeColor}
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-
-            {/* 悬停竖线与十字光标 */}
-            {hoverIndex !== null && coords[hoverIndex] ? (
-              <g className="ex-simple-cursor">
-                <line
-                  x1={coords[hoverIndex][0]}
-                  y1={padY}
-                  x2={coords[hoverIndex][0]}
-                  y2={height - padY}
-                  stroke="rgb(var(--wui-text-dim))"
-                  strokeWidth="1"
-                  strokeDasharray="3 3"
-                />
-                <circle
-                  cx={coords[hoverIndex][0]}
-                  cy={coords[hoverIndex][1]}
-                  r="4"
-                  fill="rgb(var(--wui-bg-deep))"
-                  stroke={strokeColor}
-                  strokeWidth="2"
-                />
-              </g>
+            {/* 悬停光标微型读数胶囊（就近显示，缩短视线跳跃） */}
+            {hoverIndex !== null && coords[hoverIndex] && activePoint ? (
+              <div
+                className={`ex-simple-cursor-bubble ex-num${coords[hoverIndex][1] < 45 ? ' is-flip' : ''}`}
+                style={{
+                  left: `${(coords[hoverIndex][0] / width) * 100}%`,
+                  top: `${coords[hoverIndex][1]}px`,
+                }}
+              >
+                <span className="ex-bubble-price">{price(activePoint.p)}</span>
+                <span className="ex-bubble-time">{activePoint.formattedTime}</span>
+              </div>
             ) : null}
-          </svg>
+
+            <svg className="ex-simple-svg" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
+              <defs>
+                <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={strokeColor} stopOpacity="0.25" />
+                  <stop offset="100%" stopColor={strokeColor} stopOpacity="0.0" />
+                </linearGradient>
+              </defs>
+
+              {/* 上下界辅助网格线 */}
+              <line
+                x1={padX}
+                y1={padY}
+                x2={padX + usableW}
+                y2={padY}
+                stroke="rgb(var(--wui-border))"
+                strokeWidth="0.8"
+                strokeDasharray="4 4"
+              />
+              <line
+                x1={padX}
+                y1={height - padY}
+                x2={padX + usableW}
+                y2={height - padY}
+                stroke="rgb(var(--wui-border))"
+                strokeWidth="0.8"
+                strokeDasharray="4 4"
+              />
+
+              {/* 背景发光渐变区域 */}
+              <path d={pathArea} fill={`url(#${gradId})`} />
+
+              {/* 主曲线 */}
+              <path
+                d={pathLine}
+                fill="none"
+                stroke={strokeColor}
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+
+              {/* 悬停竖线与十字光标 */}
+              {hoverIndex !== null && coords[hoverIndex] ? (
+                <g className="ex-simple-cursor">
+                  <line
+                    x1={coords[hoverIndex][0]}
+                    y1={padY}
+                    x2={coords[hoverIndex][0]}
+                    y2={height - padY}
+                    stroke="rgb(var(--wui-text-dim))"
+                    strokeWidth="1"
+                    strokeDasharray="3 3"
+                  />
+                  <circle
+                    cx={coords[hoverIndex][0]}
+                    cy={coords[hoverIndex][1]}
+                    r="4"
+                    fill="rgb(var(--wui-bg-deep))"
+                    stroke={strokeColor}
+                    strokeWidth="2"
+                  />
+                </g>
+              ) : null}
+            </svg>
+          </>
         )}
       </div>
     </div>

@@ -9,7 +9,7 @@
  * - ≥10x 二次确认，确认框里再显示一次强平价与最大亏损。
  */
 import { useEffect, useRef, useState } from 'react'
-import { ArrowDownRight, ArrowUpRight, Checkmark, Portfolio, SendAlt } from '@carbon/icons-react'
+import { ArrowDownRight, ArrowUpRight, Checkmark, CheckmarkFilled, Locked, Portfolio, SendAlt, WarningAlt } from '@carbon/icons-react'
 import type { ExchangeClient, ExchangeSnapshot, PlaceOrderRequest, Side } from '../client'
 import type { ToastFn } from '../../../pages/common'
 import { amount, money, pctAbs, price as fmtPrice } from '../format'
@@ -144,42 +144,51 @@ export function TradePanel({
       try {
         const order = await client.placeOrder(req)
         const filled = order.filledQty ?? 0
-        if (protection && mode !== 'spot' && filled > 0) {
-          const protSide: Side = mode === 'long' ? 'sell' : 'buy'
-          const stop = Number(stopText)
-          const tp = Number(takeProfitText)
-          try {
-            if (stopText.trim() !== '' && stop > 0) {
-              await client.placeOrder({
-                clientOrderId: `${req.clientOrderId}-sl`,
-                code,
-                side: protSide,
-                type: 'stop',
-                tif: 'GTC',
-                qty: filled,
-                leverage: lev,
-                reduceOnly: true,
-                triggerPrice: stop,
-              })
+        // 回合制下开仓单提交时 status=queued、filledQty=0，回合末集合竞价才成交。
+        // 保护单不能依赖「本次响应已有成交」，否则会静默不挂；未成交时必须明确提示玩家。
+        const pendingFill = filled <= 0 || order.status === 'queued'
+        if (protection && mode !== 'spot') {
+          if (pendingFill) {
+            onToast(T.protectionRoundPending, true)
+          } else {
+            const protSide: Side = mode === 'long' ? 'sell' : 'buy'
+            const stop = Number(stopText)
+            const tp = Number(takeProfitText)
+            try {
+              if (stopText.trim() !== '' && stop > 0) {
+                await client.placeOrder({
+                  clientOrderId: `${req.clientOrderId}-sl`,
+                  code,
+                  side: protSide,
+                  type: 'stop',
+                  tif: 'GTC',
+                  qty: filled,
+                  leverage: lev,
+                  reduceOnly: true,
+                  triggerPrice: stop,
+                })
+              }
+              if (takeProfitText.trim() !== '' && tp > 0) {
+                await client.placeOrder({
+                  clientOrderId: `${req.clientOrderId}-tp`,
+                  code,
+                  side: protSide,
+                  type: 'take_profit',
+                  tif: 'GTC',
+                  qty: filled,
+                  leverage: lev,
+                  reduceOnly: true,
+                  triggerPrice: tp,
+                })
+              }
+            } catch (err) {
+              onToast(err instanceof Error ? err.message : String(err), true)
             }
-            if (takeProfitText.trim() !== '' && tp > 0) {
-              await client.placeOrder({
-                clientOrderId: `${req.clientOrderId}-tp`,
-                code,
-                side: protSide,
-                type: 'take_profit',
-                tif: 'GTC',
-                qty: filled,
-                leverage: lev,
-                reduceOnly: true,
-                triggerPrice: tp,
-              })
-            }
-          } catch (err) {
-            onToast(err instanceof Error ? err.message : String(err), true)
           }
         }
-        onToast(`${T.toastOrderPlaced}：${order.code} ${order.side === 'buy' ? T.buy : T.sell} ${amount(filled)} 股`)
+        // 回合制委托提交后尚未成交：展示委托数量，避免「已提交 0 股」的误导。
+        const shownQty = filled > 0 ? filled : order.qty
+        onToast(`${T.toastOrderPlaced}：${order.code} ${order.side === 'buy' ? T.buy : T.sell} ${amount(shownQty)} 股`)
       } catch (err) {
         onToast(err instanceof Error ? err.message : String(err), true)
       } finally {
@@ -224,6 +233,9 @@ export function TradePanel({
   const liqDistance = preview.liquidationDistancePct
   const liqDanger = liqDistance !== null && liqDistance < DANGER_DISTANCE_PCT
 
+  const activeFormError = (priceTouched && priceError) || (qtyTouched && qtyError) || preview.blockReason || protectionError || null
+  const isReadyToSubmit = !priceError && !qtyError && !preview.blockReason && !protectionError && !busy
+
   return (
     <section className="ex-panel ex-trade" aria-label={T.orderTitle}>
       <header className="ex-panel-head">
@@ -231,6 +243,7 @@ export function TradePanel({
         <span className="ex-dim">{code}</span>
       </header>
       <div className="ex-trade-body">
+        {/* 交易模式三段切换 */}
         <div className="ex-seg ex-seg-wide ex-trade-mode-seg" role="tablist" aria-label={T.orderTitle}>
           {(['spot', 'long', 'short'] as const).map((m) => {
             const Icon = m === 'spot' ? Portfolio : m === 'long' ? ArrowUpRight : ArrowDownRight
@@ -251,9 +264,10 @@ export function TradePanel({
             )
           })}
         </div>
-        <p className="ex-mode-hint">{modeHint(mode)}</p>
+        <p className={`ex-mode-hint is-${mode}`}>{modeHint(mode)}</p>
 
-        <div className="ex-seg ex-seg-wide" role="tablist" aria-label={T.orderTypeLimit}>
+        {/* 订单类型切换 */}
+        <div className="ex-seg ex-seg-wide ex-trade-kind-seg" role="tablist" aria-label={T.orderTypeLimit}>
           {(['limit', 'market'] as const).map((k) => (
             <button
               type="button"
@@ -270,40 +284,67 @@ export function TradePanel({
 
         {/* 单列垂直：价格 */}
         <div className={`ex-field${priceError && priceTouched ? ' is-bad' : ''}`}>
-          <label className="ex-label" htmlFor="ex-price-input">
-            {T.fieldPrice}
-          </label>
+          <div className="ex-field-header">
+            <label className="ex-label" htmlFor="ex-price-input">
+              {T.fieldPrice}
+            </label>
+            {kind === 'market' ? (
+              <span className="ex-field-tag is-market">
+                <Locked size={11} /> {T.marketPriceLocked}
+              </span>
+            ) : null}
+          </div>
           <div className="ex-input-row">
             <input
               id="ex-price-input"
-              className="ex-input ex-num"
+              className={`ex-input ex-num${kind === 'market' ? ' is-market-locked' : ''}`}
               inputMode="decimal"
               value={kind === 'market' ? '' : priceText}
-              placeholder={kind === 'market' ? T.orderTypeMarket : fmtPrice(quote.price)}
+              placeholder={kind === 'market' ? T.marketPriceNote : fmtPrice(quote.price)}
               disabled={kind === 'market'}
               onChange={(e) => setPriceText(e.target.value)}
               onBlur={() => setPriceTouched(true)}
             />
-            <button
-              type="button"
-              className="ex-mini-btn is-accent"
-              onClick={() => {
-                setPriceText(quote.price.toFixed(2))
-                setKind('limit')
-                setPriceTouched(false)
-              }}
-            >
-              {T.useBookPrice}
-            </button>
+            {kind === 'market' ? (
+              <button
+                type="button"
+                className="ex-mini-btn is-market-switch"
+                title={T.useBookPrice}
+                onClick={() => {
+                  setPriceText(quote.price.toFixed(2))
+                  setKind('limit')
+                  setPriceTouched(false)
+                }}
+              >
+                {T.useBookPrice}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="ex-mini-btn is-accent"
+                title={T.useBookPrice}
+                aria-label={T.useBookPrice}
+                onClick={() => {
+                  setPriceText(quote.price.toFixed(2))
+                  setKind('limit')
+                  setPriceTouched(false)
+                }}
+              >
+                {T.useBookPrice}
+              </button>
+            )}
           </div>
           {priceError && priceTouched ? <div className="ex-field-error">{priceError}</div> : null}
         </div>
 
-        {/* 数量 */}
+        {/* 数量与快捷比例选择（25%、50%、75%、MAX） */}
         <div className={`ex-field${qtyError && qtyTouched ? ' is-bad' : ''}`}>
-          <label className="ex-label" htmlFor="ex-qty-input">
-            {T.fieldQty}
-          </label>
+          <div className="ex-field-header">
+            <label className="ex-label" htmlFor="ex-qty-input">
+              {T.fieldQty}
+            </label>
+            <span className="ex-max-hint">{TF.maxQty(amount(preview.maxQty))}</span>
+          </div>
           <div className="ex-input-row">
             <input
               id="ex-qty-input"
@@ -316,38 +357,55 @@ export function TradePanel({
             />
           </div>
           <div className="ex-quick-row">
-            {([0.25, 0.5, 1] as const).map((ratio) => (
-              <button
-                type="button"
-                key={ratio}
-                className={`ex-mini-btn${ratio === 1 ? ' is-accent' : ''}`}
-                onClick={() => setQtyByRatio(ratio)}
-                title={TF.maxQty(amount(preview.maxQty))}
-              >
-                {ratio === 0.25 ? T.quickQty25 : ratio === 0.5 ? T.quickQty50 : T.quickQtyMax}
-              </button>
-            ))}
-            <span className="ex-max-hint">{TF.maxQty(amount(preview.maxQty))}</span>
+            {([0.25, 0.5, 0.75, 1] as const).map((ratio) => {
+              const cap = Math.max(0, Math.floor(preview.maxQty * ratio))
+              const isSelected = qtyNum > 0 && qtyNum === cap
+              const label =
+                ratio === 0.25
+                  ? T.quickQty25
+                  : ratio === 0.5
+                    ? T.quickQty50
+                    : ratio === 0.75
+                      ? T.quickQty75
+                      : T.quickQtyMax
+              return (
+                <button
+                  type="button"
+                  key={ratio}
+                  className={`ex-mini-btn ex-quick-btn${ratio === 1 ? ' is-accent' : ''}${isSelected ? ' is-active' : ''}`}
+                  onClick={() => setQtyByRatio(ratio)}
+                  title={TF.maxQty(amount(preview.maxQty))}
+                >
+                  {label}
+                </button>
+              )
+            })}
           </div>
           {qtyError && qtyTouched ? <div className="ex-field-error">{qtyError}</div> : null}
         </div>
 
-        {/* 杠杆档：仅杠杆模式显示；超范围档位灰显但可点，点了说明原因 */}
+        {/* 杠杆倍数选择器（数值胶囊） */}
         {mode !== 'spot' ? (
-          <div className="ex-field">
-            <span className="ex-label" id="ex-lev-label">
-              {T.fieldLeverage}
-            </span>
-            <div className="ex-seg ex-seg-leverage" role="group" aria-labelledby="ex-lev-label">
+          <div className="ex-field ex-field-leverage">
+            <div className="ex-field-header">
+              <span className="ex-label" id="ex-lev-label">
+                {T.fieldLeverage}
+              </span>
+              <span className="ex-lev-cur-badge">
+                {leverage}x{leverage >= 10 ? ' · ' + TF.leverageRequireConfirm(`${leverage}x`) : ''}
+              </span>
+            </div>
+            <div className="ex-lev-capsules" role="group" aria-labelledby="ex-lev-label">
               {LEVERAGES.map((l) => {
                 const allowed = l <= quote.maxLeverage
+                const isSelected = leverage === l
                 return (
                   <button
                     type="button"
                     key={l}
-                    aria-pressed={leverage === l}
+                    aria-pressed={isSelected}
                     aria-disabled={!allowed}
-                    className={`ex-seg-btn${leverage === l ? ' is-on' : ''}${allowed ? '' : ' is-off'}`}
+                    className={`ex-lev-pill is-${mode}${isSelected ? ' is-on' : ''}${allowed ? '' : ' is-off'}`}
                     title={allowed ? TF.leverageLabel(String(l)) : `${T.leverageUnavailable}（最高 ${quote.maxLeverage}x）`}
                     onClick={() => {
                       if (!allowed) {
@@ -357,18 +415,16 @@ export function TradePanel({
                       setLeverage(l)
                     }}
                   >
-                    {l}x
+                    <span className="ex-lev-pill-val">{l}x</span>
+                    {l >= 10 ? <span className="ex-lev-pill-dot" title="高杠杆二次确认" /> : null}
                   </button>
                 )
               })}
             </div>
-            <div className="ex-field-note">
-              {leverage >= 10 ? TF.leverageRequireConfirm(`${leverage}x`) : null}
-            </div>
           </div>
         ) : null}
 
-        {/* 前馈读数：现货看金额与到账，杠杆看保证金与强平 */}
+        {/* 前馈读数：财务与风险预估明细 */}
         <div className="ex-preview" aria-live="polite">
           <div className="ex-preview-row">
             <span>{mode === 'spot' ? T.previewAmount : T.previewMargin}</span>
@@ -393,12 +449,15 @@ export function TradePanel({
             <span className="ex-num">{mode === 'spot' ? T.dailyCostFree : `${money(preview.notional * 0.0003)} / 日`}</span>
           </div>
           {mode !== 'spot' && preview.liquidationPrice !== null && liqDistance !== null ? (
-            <>
-              <div className={`ex-preview-row${liqDanger ? ' is-danger' : ''}`}>
-                <span>{T.previewLiqPrice}</span>
+            <div className={`ex-liq-block${liqDanger ? ' is-danger' : ''}`}>
+              <div className="ex-preview-row">
+                <span className="ex-liq-label">
+                  {liqDanger ? <WarningAlt size={12} className="ex-liq-warn-icon" /> : null}
+                  {T.previewLiqPrice}
+                </span>
                 <b className="ex-num">{fmtPrice(preview.liquidationPrice)}</b>
               </div>
-              <div className={`ex-preview-row${liqDanger ? ' is-danger' : ''}`}>
+              <div className="ex-preview-row">
                 <span>{T.previewLiqDistance}</span>
                 <b className="ex-num">{pctAbs(liqDistance)}</b>
               </div>
@@ -407,7 +466,7 @@ export function TradePanel({
                   ? TF.liqLong(fmtPrice(preview.liquidationPrice), pctAbs(liqDistance))
                   : TF.liqShort(fmtPrice(preview.liquidationPrice), pctAbs(liqDistance))}
               </p>
-            </>
+            </div>
           ) : null}
           <div className="ex-preview-row ex-preview-dim">
             <span>{side === 'sell' ? T.previewProceeds : T.previewCost}</span>
@@ -458,8 +517,30 @@ export function TradePanel({
           </div>
         ) : null}
 
-        <button type="button" className={`ex-primary is-${mode}`} onClick={primaryAction}>
-          <SendAlt size={16} /> {busy ? T.submitting : T.submit}
+        {/* 防呆校验状态栏 */}
+        <div className={`ex-submit-guard-bar${isReadyToSubmit ? ' is-ready' : activeFormError ? ' is-blocked' : ''}`}>
+          {isReadyToSubmit ? (
+            <span className="ex-guard-text">
+              <CheckmarkFilled size={12} /> {T.orderValidationPassed}
+            </span>
+          ) : activeFormError ? (
+            <span className="ex-guard-text">
+              <WarningAlt size={12} /> {activeFormError}
+            </span>
+          ) : (
+            <span className="ex-guard-text ex-dim">{TF.maxQty(amount(preview.maxQty))}</span>
+          )}
+        </div>
+
+        {/* 确认下单大按钮 */}
+        <button
+          type="button"
+          className={`ex-primary is-${mode}${!isReadyToSubmit ? ' is-blocked' : ''}`}
+          aria-disabled={!isReadyToSubmit}
+          title={activeFormError || undefined}
+          onClick={primaryAction}
+        >
+          <SendAlt size={16} /> {busy ? T.submitting : `${T.submit} · ${modeLabel(mode)}`}
         </button>
       </div>
 

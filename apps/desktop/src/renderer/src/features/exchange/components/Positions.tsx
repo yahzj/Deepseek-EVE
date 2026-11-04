@@ -11,7 +11,7 @@ import { useRef, useState } from 'react'
 import { Close, TrashCan } from '@carbon/icons-react'
 import type { ExchangeClient, ExchangeOrder, ExchangeSnapshot, OrderSource } from '../client'
 import type { ToastFn } from '../../../pages/common'
-import { amount, money, pct, pctAbs, price, shortTime } from '../format'
+import { amount, money, pct, pctAbs, pnlMoney, price, shortTime } from '../format'
 import { T, TF } from '../texts'
 
 type Tab = 'positions' | 'orders'
@@ -154,10 +154,16 @@ export function Positions({
 
                     <div className="ex-pos-head-right">
                       <div className="ex-pos-pnl">
-                        <b className={`ex-num ${pnl >= 0 ? 'is-up' : 'is-down'}`}>{money(pnl)}</b>
+                        <b className={`ex-num ${pnl >= 0 ? 'is-up' : 'is-down'}`}>{pnlMoney(pnl)}</b>
                         <span className={`ex-num ${pnl >= 0 ? 'is-up' : 'is-down'}`}>{pct(pnlPct)}</span>
                       </div>
-                      <button type="button" className="ex-mini-btn is-close" onClick={() => sellSpot(h.code, h.availableQty ?? h.qty)}>
+                      <button
+                        type="button"
+                        className="ex-mini-btn is-close"
+                        title={`${T.posSell} ${h.code}`}
+                        aria-label={`${T.posSell} ${h.code}`}
+                        onClick={() => sellSpot(h.code, h.availableQty ?? h.qty)}
+                      >
                         <Close size={12} /> {T.posSell}
                       </button>
                     </div>
@@ -235,12 +241,18 @@ export function Positions({
 
                     <div className="ex-pos-head-right">
                       <div className="ex-pos-pnl">
-                        <b className={`ex-num ${up ? 'is-up' : 'is-down'}`}>{money(p.unrealizedPnl)}</b>
+                        <b className={`ex-num ${up ? 'is-up' : 'is-down'}`}>{pnlMoney(p.unrealizedPnl)}</b>
                         <span className={`ex-num ${up ? 'is-up' : 'is-down'}`}>
                           {pct((p.unrealizedPnl / Math.max(1, p.margin)) * 100)}
                         </span>
                       </div>
-                      <button type="button" className="ex-mini-btn is-close" onClick={() => closeLeverage(p.code, p.side)}>
+                      <button
+                        type="button"
+                        className="ex-mini-btn is-close"
+                        title={`${T.posClose} ${p.code} ${p.side}`}
+                        aria-label={`${T.posClose} ${p.code} ${p.side}`}
+                        onClick={() => closeLeverage(p.code, p.side)}
+                      >
                         <Close size={12} /> {T.posClose}
                       </button>
                     </div>
@@ -294,7 +306,13 @@ export function Positions({
                   <span className="ex-dim">{shortTime(o.createdAt)}</span>
                 </span>
                 <span className="ex-badge">{sourceLabel(o.source)}</span>
-                <button type="button" className="ex-mini-btn is-cancel" onClick={() => cancelOrder(o.id)}>
+                <button
+                  type="button"
+                  className="ex-mini-btn is-cancel"
+                  title={`${T.orderCancel} ${o.code}`}
+                  aria-label={`${T.orderCancel} ${o.code}`}
+                  onClick={() => cancelOrder(o.id)}
+                >
                   <TrashCan size={12} /> {T.orderCancel}
                 </button>
               </div>
