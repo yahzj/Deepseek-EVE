@@ -34,12 +34,14 @@ function readState(): LocalBondState | null {
   }
 }
 
-function writeState(state: LocalBondState | null): void {
+function writeState(state: LocalBondState | null): boolean {
   try {
     if (state === null) localStorage.removeItem(BOND_STORAGE_KEY)
     else localStorage.setItem(BOND_STORAGE_KEY, JSON.stringify(state))
+    return true
   } catch {
-    // localStorage 不可用时静默降级：本地产品只是保底玩法，不阻塞交易。
+    // 返回失败而不是静默吞掉：调用方必须回滚资金，否则会丢本金/重复赎回。
+    return false
   }
 }
 
@@ -67,7 +69,11 @@ export function buyLocalBond(engine: GameEngine, amount: number): BondHolding {
   const prev = readState()
   const startedAt = prev?.startedAt ?? Date.now()
   const principal = (prev?.principal ?? 0) + value
-  writeState({ principal, startedAt })
+  if (!writeState({ principal, startedAt })) {
+    // 写盘失败：退回刚扣的 ISK，避免「钱扣了、持仓没登记」。
+    engine.exchangeWalletDelta(value)
+    throw new Error('本地存储不可用，债券购买未完成')
+  }
   return localBondHolding()
 }
 
@@ -76,7 +82,11 @@ export function redeemLocalBond(engine: GameEngine, now: number = Date.now()): n
   const view = localBondHolding(now)
   const total = Math.floor(view.principal + view.accrued)
   if (total <= 0) return 0
-  writeState(null)
-  engine.exchangeWalletDelta(total)
+  // 先入账成功再清持仓；任何一步失败都回滚，避免丢本金或重复赎回。
+  if (!engine.exchangeWalletDelta(total)) throw new Error('本地存档入账失败，请稍后重试')
+  if (!writeState(null)) {
+    engine.exchangeWalletDelta(-total)
+    throw new Error('本地存储不可用，赎回未完成')
+  }
   return total
 }

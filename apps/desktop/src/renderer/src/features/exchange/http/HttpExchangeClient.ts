@@ -973,7 +973,7 @@ export class HttpExchangeClient implements ExchangeClient {
   /* ═══════════════ 原型扩展（同步读缓存） ═══════════════ */
 
   getSnapshot(code: string): ExchangeSnapshot {
-    const quote = this.stocks.find((stock) => stock.code === code) ?? this.stocks[0] ?? emptyQuote(code)
+    const quote = this.stocks.find((stock) => stock.code === code) ?? emptyQuote(code)
     return {
       ts: this.ts,
       tick: this.tick,
@@ -1028,23 +1028,47 @@ export class HttpExchangeClient implements ExchangeClient {
   }
 
   /**
-   * 下单前馈：联机应以服务器返回为准（保证金/强平公式只能有一个实现）。
-   * 这里只做界面不崩的保守占位；`blockReason` 明确写出「待服务器确认」。
+   * 下单前馈：联机模式真正的保证金/强平/费率以实现只有服务端一份，
+   * 这里只按账户快照给界面可用的**估算**（不参与下单校验，服务器才是权威）。
+   * 关键：不能用 blockReason 表达「未实现预览」——那会把专业视图的下单按钮整体拦死。
    */
   previewOrder(req: PlaceOrderRequest): OrderPreview {
     const quote = this.stocks.find((stock) => stock.code === req.code)
     const price = req.price ?? quote?.price ?? 0
-    const notional = price * req.qty
+    const qty = Number.isFinite(req.qty) ? Math.max(0, Math.round(req.qty)) : 0
+    const notional = price * qty
     const leverage = Math.max(1, Math.round(req.leverage ?? 1))
+    const margin = leverage > 1 ? notional / leverage : notional
+    const feeRate = Number.isFinite(this.feeRate) && this.feeRate > 0 ? this.feeRate : 0
+    const fee = notional * feeRate
+    // 现金影响估算：买入=支出（杠杆开仓只占保证金）；现货卖出=到账扣费；
+    // 杠杆平仓真实金额取决于开仓价，界面按释放保证金近似。
+    const settleAmount =
+      req.side === 'sell' ? (leverage > 1 ? margin - fee : notional - fee) : -(margin + fee)
+    const account = this.account
+    const cash = account ? Math.max(0, account.cash) : 0
+    let maxQty = 0
+    if (price > 0) {
+      if (req.side === 'sell' && leverage > 1) {
+        const position = account?.positions.find((p) => p.code === req.code && p.side === 'long')
+        maxQty = position ? Math.max(0, Math.floor(position.qty)) : 0
+      } else if (req.side === 'sell') {
+        const holding = account?.holdings.find((h) => h.code === req.code)
+        maxQty = holding ? Math.max(0, Math.floor(holding.availableQty ?? holding.qty)) : 0
+      } else {
+        const budgetPerShare = leverage > 1 ? price / leverage + price * feeRate : price * (1 + feeRate)
+        maxQty = budgetPerShare > 0 ? Math.max(0, Math.floor(cash / budgetPerShare)) : 0
+      }
+    }
     return {
       notional,
-      margin: leverage > 1 ? notional / leverage : notional,
-      fee: notional * this.feeRate,
-      settleAmount: req.side === 'buy' ? -notional : notional,
+      margin,
+      fee,
+      settleAmount,
       liquidationPrice: null,
       liquidationDistancePct: null,
-      maxQty: 0,
-      blockReason: '联机模式下由服务器计算保证金与强平价',
+      maxQty,
+      blockReason: null,
     }
   }
 }

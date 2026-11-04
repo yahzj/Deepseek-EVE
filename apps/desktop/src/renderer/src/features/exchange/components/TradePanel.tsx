@@ -144,42 +144,51 @@ export function TradePanel({
       try {
         const order = await client.placeOrder(req)
         const filled = order.filledQty ?? 0
-        if (protection && mode !== 'spot' && filled > 0) {
-          const protSide: Side = mode === 'long' ? 'sell' : 'buy'
-          const stop = Number(stopText)
-          const tp = Number(takeProfitText)
-          try {
-            if (stopText.trim() !== '' && stop > 0) {
-              await client.placeOrder({
-                clientOrderId: `${req.clientOrderId}-sl`,
-                code,
-                side: protSide,
-                type: 'stop',
-                tif: 'GTC',
-                qty: filled,
-                leverage: lev,
-                reduceOnly: true,
-                triggerPrice: stop,
-              })
+        // 回合制下开仓单提交时 status=queued、filledQty=0，回合末集合竞价才成交。
+        // 保护单不能依赖「本次响应已有成交」，否则会静默不挂；未成交时必须明确提示玩家。
+        const pendingFill = filled <= 0 || order.status === 'queued'
+        if (protection && mode !== 'spot') {
+          if (pendingFill) {
+            onToast(T.protectionRoundPending, true)
+          } else {
+            const protSide: Side = mode === 'long' ? 'sell' : 'buy'
+            const stop = Number(stopText)
+            const tp = Number(takeProfitText)
+            try {
+              if (stopText.trim() !== '' && stop > 0) {
+                await client.placeOrder({
+                  clientOrderId: `${req.clientOrderId}-sl`,
+                  code,
+                  side: protSide,
+                  type: 'stop',
+                  tif: 'GTC',
+                  qty: filled,
+                  leverage: lev,
+                  reduceOnly: true,
+                  triggerPrice: stop,
+                })
+              }
+              if (takeProfitText.trim() !== '' && tp > 0) {
+                await client.placeOrder({
+                  clientOrderId: `${req.clientOrderId}-tp`,
+                  code,
+                  side: protSide,
+                  type: 'take_profit',
+                  tif: 'GTC',
+                  qty: filled,
+                  leverage: lev,
+                  reduceOnly: true,
+                  triggerPrice: tp,
+                })
+              }
+            } catch (err) {
+              onToast(err instanceof Error ? err.message : String(err), true)
             }
-            if (takeProfitText.trim() !== '' && tp > 0) {
-              await client.placeOrder({
-                clientOrderId: `${req.clientOrderId}-tp`,
-                code,
-                side: protSide,
-                type: 'take_profit',
-                tif: 'GTC',
-                qty: filled,
-                leverage: lev,
-                reduceOnly: true,
-                triggerPrice: tp,
-              })
-            }
-          } catch (err) {
-            onToast(err instanceof Error ? err.message : String(err), true)
           }
         }
-        onToast(`${T.toastOrderPlaced}：${order.code} ${order.side === 'buy' ? T.buy : T.sell} ${amount(filled)} 股`)
+        // 回合制委托提交后尚未成交：展示委托数量，避免「已提交 0 股」的误导。
+        const shownQty = filled > 0 ? filled : order.qty
+        onToast(`${T.toastOrderPlaced}：${order.code} ${order.side === 'buy' ? T.buy : T.sell} ${amount(shownQty)} 股`)
       } catch (err) {
         onToast(err instanceof Error ? err.message : String(err), true)
       } finally {

@@ -8,11 +8,20 @@
 import { useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import type { ExchangeClient } from '../client'
+import { ExchangeError } from '../errors'
 import type { ToastFn } from '../../../pages/common'
 import { amount, money } from '../format'
 import { T, TF } from '../texts'
 
 export type CashierMode = 'deposit' | 'withdraw'
+
+/** 结果未知（服务器可能已生效）的错误码：超时/网络/5xx/响应解析失败。 */
+const AMBIGUOUS_ERROR_CODES = new Set(['timeout', 'network_error', 'internal_error', 'malformed_response', 'server_error'])
+
+/** 业务明确拒绝才算「确定未生效」；其余一律按结果未知处理，避免钱两边都消失或双花。 */
+function isAmbiguousFailure(err: unknown): boolean {
+  return !(err instanceof ExchangeError) || AMBIGUOUS_ERROR_CODES.has(err.code)
+}
 
 /** 入金快捷档：整数信用点（上限定多少由服务器日配额决定，这里只给常用档） */
 const DEPOSIT_PRESETS: ReadonlyArray<{ value: number; label: string }> = [
@@ -81,6 +90,9 @@ export function Cashier({
   const value = Number(amountText)
   const valid = Number.isSafeInteger(value) && value > 0
   const allCash = Math.floor(cash)
+  /** 结果未知的流水记住 nonce：重试复用同一笔，服务端幂等不会重复入账/出金。 */
+  const pendingDeposit = useRef<{ nonce: string; amount: number } | null>(null)
+  const pendingWithdraw = useRef<{ nonce: string; amount: number } | null>(null)
 
   const submit = (): void => {
     if (busy) return
@@ -88,8 +100,13 @@ export function Cashier({
       onToast(T.cashierInvalidAmount, true)
       return
     }
+    const pendingRef = mode === 'deposit' ? pendingDeposit : pendingWithdraw
+    if (pendingRef.current !== null && pendingRef.current.amount !== value) {
+      // 上一笔结果未知时保持金额不变重试（同 nonce 幂等）；换金额会另开流水导致对不上账。
+      onToast(T.cashierPendingMismatch, true)
+      return
+    }
     setBusy(true)
-    const nonce = crypto.randomUUID()
     // 资金动作后补拉账户再刷新：联机客户端的现金缓存只在回合末推送，
     // 不补拉会让「入金成功但顶栏现金没变」看起来像没到账。
     const refresh = async (): Promise<void> => {
@@ -100,23 +117,51 @@ export function Cashier({
       try {
         if (mode === 'deposit') {
           // 船长定案：存档币以本地为准——先从本地存档扣 ISK，服务器只记交易所账。
-          if (!onLocalDelta(-value)) {
+          const replay = pendingDeposit.current !== null
+          if (!replay && !onLocalDelta(-value)) {
             onToast(T.cashierLocalInsufficient, true)
             return
           }
+          const nonce = pendingDeposit.current?.nonce ?? crypto.randomUUID()
+          if (!replay) pendingDeposit.current = { nonce, amount: value }
           try {
             const result = await client.deposit(value, nonce)
+            pendingDeposit.current = null
             onToast(TF.cashierDepositDone(amount(result.applied)))
           } catch (err) {
-            // 服务器未入账：把本地扣款退回，避免钱两边都消失。
-            onLocalDelta(value)
+            if (isAmbiguousFailure(err)) {
+              // 结果未知：保留本地扣款与同一 nonce，提示原样重试（服务端按 nonce 幂等）。
+              onToast(T.cashierDepositPending, true)
+              return
+            }
+            // 服务器明确拒绝：退回本地扣款，避免钱两边都消失。
+            if (pendingDeposit.current !== null) onLocalDelta(pendingDeposit.current.amount)
+            pendingDeposit.current = null
             throw err
           }
         } else {
-          const result = await client.withdraw(value, nonce)
-          // 服务器已受理：把 ISK 加回本地存档。
-          onLocalDelta(result.amount)
-          onToast(TF.cashierWithdrawDone(amount(result.amount)))
+          const replay = pendingWithdraw.current !== null
+          const nonce = pendingWithdraw.current?.nonce ?? crypto.randomUUID()
+          if (!replay) pendingWithdraw.current = { nonce, amount: value }
+          try {
+            const result = await client.withdraw(value, nonce)
+            pendingWithdraw.current = null
+            const credited =
+              Number.isFinite(result.amount) && result.amount > 0 ? onLocalDelta(result.amount) : false
+            if (!credited) {
+              // 服务器已出金但本地加不回来：明确告警，不能让玩家以为钱没丢而重复出金。
+              onToast(T.cashierWithdrawLocalFail, true)
+              return
+            }
+            onToast(TF.cashierWithdrawDone(amount(result.amount)))
+          } catch (err) {
+            if (isAmbiguousFailure(err)) {
+              onToast(T.cashierWithdrawPending, true)
+              return
+            }
+            pendingWithdraw.current = null
+            throw err
+          }
         }
         await refresh()
         closeRef.current()
