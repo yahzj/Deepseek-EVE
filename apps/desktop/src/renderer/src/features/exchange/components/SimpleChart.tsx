@@ -18,15 +18,25 @@ interface SimpleChartProps {
   tick: number
 }
 
-type SimplePeriod = 'intraday'
+type SimplePeriod = 'intraday' | 'm1' | 'm5' | 'h1' | 'd1' | 'd7'
+
+const SIMPLE_PERIODS: SimplePeriod[] = ['intraday', 'm1', 'm5', 'h1', 'd1', 'd7']
+
+function periodText(p: SimplePeriod): string {
+  if (p === 'intraday') return T.simplePeriodIntraday
+  if (p === 'm1') return T.simplePeriodM1
+  if (p === 'm5') return T.simplePeriodM5
+  if (p === 'h1') return T.simplePeriodH1
+  if (p === 'd1') return T.simplePeriodD1
+  return T.simplePeriodD7
+}
 
 export function SimpleChart({ client, code, quote, tick }: SimpleChartProps) {
-  // 简单投资默认且固定为分时走势（10秒高频刷新），精简去除专业K线周期选项
-  const period: ChartPeriod = 'intraday'
+  const [period, setPeriod] = useState<SimplePeriod>('intraday')
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
 
-  const isCandle = false
-  const clientPeriod: ChartPeriod = 'intraday'
+  const isCandle = period !== 'intraday'
+  const clientPeriod: ChartPeriod = period
 
   // 切到未缓存的周期时补拉（否则 H1/日线/周线永远空白、M5 预加载失败也不重试）
   useEffect(() => {
@@ -196,9 +206,20 @@ export function SimpleChart({ client, code, quote, tick }: SimpleChartProps) {
           )}
         </div>
 
-        {/* 分时图模式徽标（固定 10 秒刷新） */}
-        <div className="ex-simple-chart-badge" title="分时行情每 10 秒刷新一次">
-          {T.simpleIntradayTag}
+        {/* 周期切换：分时 / M1 / M5 / H1 / 日线 / 周线（切到未缓存周期时按需拉取） */}
+        <div className="ex-simple-chart-periods" role="tablist" aria-label={T.simplePeriodLabel}>
+          {SIMPLE_PERIODS.map((p) => (
+            <button
+              key={p}
+              type="button"
+              role="tab"
+              aria-selected={period === p}
+              className={`ex-simple-period-btn${period === p ? ' is-on' : ''}`}
+              onClick={() => setPeriod(p)}
+            >
+              {periodText(p)}
+            </button>
+          ))}
         </div>
       </div>
 
