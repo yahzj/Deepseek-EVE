@@ -95,6 +95,8 @@ export function TradePanel({
     ...(kind === 'limit' && priceText.trim() !== '' && Number.isFinite(priceNum) ? { price: priceNum } : {}),
     qty: Number.isFinite(qtyNum) ? qtyNum : 0,
     leverage: lev,
+    // 做空模式必须显式带 short：服务端把「side=sell + 杠杆」默认当平多。
+    ...(mode === 'short' ? { short: true } : {}),
   }
   const preview = client.previewOrder(previewReq)
   const refPrice = kind === 'limit' && Number.isFinite(priceNum) && priceNum > 0 ? priceNum : quote.price

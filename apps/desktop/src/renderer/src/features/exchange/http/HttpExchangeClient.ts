@@ -54,6 +54,7 @@ import type {
 } from '../client'
 import { bucketStart } from '../chartPeriods'
 import { ExchangeError } from '../errors'
+import { T } from '../texts'
 import type { Transport } from './transport'
 
 const CONTRACT_VERSION = 1
@@ -1195,15 +1196,27 @@ export class HttpExchangeClient implements ExchangeClient {
     const margin = leverage > 1 ? notional / leverage : notional
     const feeRate = Number.isFinite(this.feeRate) && this.feeRate > 0 ? this.feeRate : 0
     const fee = notional * feeRate
-    // 现金影响估算：买入=支出（杠杆开仓只占保证金）；现货卖出=到账扣费；
+    // 开空 = side=sell + 杠杆 + short=true（与 Go `checkShortOpenLocked` 同口径）；
+    // 不带 short 的杠杆卖单是「平多」，可平上限只能是现有多头持仓。
+    const shortOpen = req.short === true && req.side === 'sell' && leverage > 1
+    // 现金影响估算：买入/开空=支出（杠杆开仓只占保证金）；现货卖出=到账扣费；
     // 杠杆平仓真实金额取决于开仓价，界面按释放保证金近似。
-    const settleAmount =
-      req.side === 'sell' ? (leverage > 1 ? margin - fee : notional - fee) : -(margin + fee)
+    const settleAmount = shortOpen
+      ? -(margin + fee)
+      : req.side === 'sell'
+        ? leverage > 1
+          ? margin - fee
+          : notional - fee
+        : -(margin + fee)
     const account = this.account
     const cash = account ? Math.max(0, account.cash) : 0
     let maxQty = 0
     if (price > 0) {
-      if (req.side === 'sell' && leverage > 1) {
+      if (shortOpen) {
+        // 开空按「每股占用 = 名义/杠杆 + 卖出档手续费」估算可开股数
+        const budgetPerShare = price / leverage + price * feeRate
+        maxQty = budgetPerShare > 0 ? Math.max(0, Math.floor(cash / budgetPerShare)) : 0
+      } else if (req.side === 'sell' && leverage > 1) {
         const position = account?.positions.find((p) => p.code === req.code && p.side === 'long')
         maxQty = position ? Math.max(0, Math.floor(position.qty)) : 0
       } else if (req.side === 'sell') {
@@ -1214,6 +1227,8 @@ export class HttpExchangeClient implements ExchangeClient {
         maxQty = budgetPerShare > 0 ? Math.max(0, Math.floor(cash / budgetPerShare)) : 0
       }
     }
+    // 前端只拦「确定不可能成功」的情况：未纳入券源池直接挡下，券源余量交给服务端。
+    const blockReason = shortOpen && quote !== undefined && !quote.shortable ? T.noShort : null
     return {
       notional,
       margin,
@@ -1222,7 +1237,7 @@ export class HttpExchangeClient implements ExchangeClient {
       liquidationPrice: null,
       liquidationDistancePct: null,
       maxQty,
-      blockReason: null,
+      blockReason,
     }
   }
 }

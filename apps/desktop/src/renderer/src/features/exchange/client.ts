@@ -95,6 +95,11 @@ export interface PlaceOrderRequest {
   qty: number
   /** 1 = 现货；2/5/10/20/50 = 逐仓杠杆 */
   leverage?: number
+  /**
+   * 开空标记（对应 Go `PlaceOrderRequest.Short`）：side=sell + leverage>1 且 short=true 才是开空；
+   * 不传或 false 时，杠杆卖单按「平多」处理（无多头持仓会被服务端 409 拒绝）。
+   */
+  short?: boolean
   reduceOnly?: boolean
   postOnly?: boolean
   triggerPrice?: number

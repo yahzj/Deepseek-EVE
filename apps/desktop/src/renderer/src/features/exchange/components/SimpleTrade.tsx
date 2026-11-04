@@ -99,6 +99,8 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
     disableReason = isEn() ? `Amount exceeds available cash (limit ${money(cash)})` : `投入金额超过可用资金（可用上限 ${money(cash)}）`
   } else if (tab === 'buy' && estBuyQty <= 0) {
     disableReason = isEn() ? `Amount insufficient to buy 1 share (mark ${price(currentPrice)})` : `金额不足以买入 1 股（现价 ${price(currentPrice)}）`
+  } else if (tab === 'short' && quote !== undefined && !quote.shortable) {
+    disableReason = T.noShort
   } else if (tab === 'short' && estShortQty <= 0) {
     disableReason = isEn() ? `Margin insufficient to short 1 share (mark ${price(currentPrice)})` : `保证金不足以做空 1 股（现价 ${price(currentPrice)}）`
   }
@@ -159,6 +161,9 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
         tif: 'IOC',
         qty: estShortQty,
         leverage: 2,
+        // 必须显式标记开空：服务端把「side=sell + 杠杆」默认当平多，缺这个字段会报
+        // 「没有可平的杠杆多头持仓」。
+        short: true,
       })
       onToast(TF.simpleOrderDone(code, T.sell, amount(order.filledQty ?? estShortQty)))
       setCashAmount('')
