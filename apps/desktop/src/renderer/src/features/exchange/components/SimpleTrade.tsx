@@ -46,10 +46,9 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
 
   // 看跌换算：1x 全额融券，投入多少占用多少（与看涨对称）
   const estShortQty = currentPrice > 0 ? Math.floor(effectiveCash / currentPrice) : 0
-  const estShortMargin = estShortQty * currentPrice
 
-  // 预估手续费：与服务器下发的真实费率一致（费率为 0 即免佣，不再补 1 信用点）
-  const estDisplayFee = inputCashNum > 0 ? Math.round(inputCashNum * feeRate) : 0
+  // 预估手续费：与服务器成交口径一致（Go feeOf 为向下取整，1bp = 0.01%）
+  const estDisplayFee = inputCashNum > 0 ? Math.floor(inputCashNum * feeRate) : 0
 
   // 步进微调资金基数（按 1 股换算所需资金，含手续费；两侧同为全额）
   const stepCash = Math.max(1, Math.ceil(currentPrice * (1 + feeRate)))
@@ -356,10 +355,6 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
               <div className="ex-simple-preview-row">
                 <span className="ex-dim">{isEn() ? 'Est. Fall' : '预计看跌'}</span>
                 <b className="ex-num ex-highlight-red">{amount(estShortQty)} {T.sharesSuffix}</b>
-              </div>
-              <div className="ex-simple-preview-row">
-                <span className="ex-dim">{T.simpleEstMargin}</span>
-                <span className="ex-num">{money(estShortMargin)}</span>
               </div>
               <div className="ex-simple-preview-row">
                 <span className="ex-dim">{T.estFeeLabel} {hasFee ? `(${(feeRate * 100).toFixed(2)}%)` : `(${T.freeFee})`}</span>
