@@ -430,6 +430,9 @@ export class HttpExchangeClient implements ExchangeClient {
   private bondProduct: BondProduct = { ...EMPTY_BOND_PRODUCT }
   private news: NewsItem[] = []
   private feeRate = DEFAULT_FEE_RATE
+  /** bootstrap 进行中/最近一次时间：看门狗重试防止并发风暴 */
+  private bootstrapping = false
+  private lastBootstrapAt = 0
 
   constructor(transport: Transport, basePath = '/api/exchange') {
     this.transport = transport
@@ -471,6 +474,16 @@ export class HttpExchangeClient implements ExchangeClient {
     this.streamUnsub = null
   }
 
+  /**
+   * 手动/看门狗重试首屏数据：HMR 半更新或首拉失败时，页面不必重启客户端即可恢复。
+   * 4 秒节流 + 并发保护，避免页面空数据时每帧重试打爆服务器。
+   */
+  retryBootstrap(): void {
+    if (this.bootstrapping) return
+    if (Date.now() - this.lastBootstrapAt < 4000) return
+    void this.bootstrap()
+  }
+
   onTick(cb: () => void): Unsubscribe {
     this.tickListeners.add(cb)
     return () => {
@@ -510,6 +523,9 @@ export class HttpExchangeClient implements ExchangeClient {
   }
 
   private async bootstrap(): Promise<void> {
+    if (this.bootstrapping) return
+    this.bootstrapping = true
+    this.lastBootstrapAt = Date.now()
     try {
       // 快讯不依赖行情：首屏就并发补拉（WS `event` 只推本回合增量）。
       // 失败只丢弃快讯、不阻塞主快照，也不向页面抛错。
@@ -541,7 +557,8 @@ export class HttpExchangeClient implements ExchangeClient {
     } catch (err) {
       // 连不上：界面由数据源徽标 + 引导态兜底；这里只上报，不伪造数据
       this.emit('error', err)
-    }
+    } finally {
+      this.bootstrapping = false
   }
 
   private async loadMeta(): Promise<void> {

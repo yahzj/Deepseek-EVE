@@ -345,6 +345,8 @@ export const T = {
   cashierSubmitting: '提交中…',
   simplePendingTitle: '本回合待成交委托',
   simplePendingNote: '回合末集合竞价统一成交',
+  dataEmptyHint: '行情暂未加载：正在自动重试，也可以点「立即重试」。',
+  dataRetry: '立即重试',
 } as const
 
 /** 带参数文案（集中在一处，组件只拼函数） */

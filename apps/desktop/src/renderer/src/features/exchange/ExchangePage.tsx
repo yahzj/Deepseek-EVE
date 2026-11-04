@@ -83,6 +83,8 @@ function ExchangeBody({
   const client = bundle.client
   const [tick, bump] = useReducer((n: number) => n + 1, 0)
   const [code, setCode] = useState(getExchangeSelectedCode)
+  const codeRef = useRef(code)
+  codeRef.current = code
   const [pickedPrice, setPickedPrice] = useState<{ value: number; seq: number } | null>(null)
 
   // 响应外部（如活动栏快捷监控微卡片）的标的高亮切换
@@ -128,9 +130,15 @@ function ExchangeBody({
     // 数据链路错误可见化：bootstrap/WS 失败时明确弹提示，避免页面只剩「没数据」看不出原因。
     const stopError = client.on('error', (payload) => {
       toastRef.current(TF.dataLoadFailed(payload instanceof Error ? payload.message : String(payload)), true)
+      window.setTimeout(() => client.retryBootstrap?.(), 1200)
     })
+    // 行情看门狗：HMR 半更新/首拉失败时页面会停在空数据，自动重试而不是等玩家重启客户端。
+    const watchdog = window.setInterval(() => {
+      if (client.getSnapshot(codeRef.current).stocks.length === 0) client.retryBootstrap?.()
+    }, 3000)
     client.start()
     return () => {
+      window.clearInterval(watchdog)
       stopTick()
       stopMargin()
       stopError()
@@ -139,6 +147,17 @@ function ExchangeBody({
   }, [client])
 
   const snap = useMemo(() => client.getSnapshot(code), [client, code, tick])
+
+  // 行情空数据兜底：首拉失败/HMR 半更新时 4 秒后显示提示与手动重试（看门狗同时自动重试）。
+  const [dataStale, setDataStale] = useState(false)
+  useEffect(() => {
+    if (snap.stocks.length > 0) {
+      setDataStale(false)
+      return
+    }
+    const timer = window.setTimeout(() => setDataStale(true), 4000)
+    return () => window.clearTimeout(timer)
+  }, [snap.stocks.length])
 
   const marginUsed = snap.account.positions.reduce((sum, p) => sum + p.margin, 0)
   const marginRatio = marginUsed > 0 ? pctAbs(snap.account.marginRatio * 100) : '—'
@@ -183,6 +202,23 @@ function ExchangeBody({
     <div className={`page-stack page-fill ex-page ex-mode-${viewMode}`}>
       {/* 财经快讯走马灯 */}
       <NewsTicker news={snap.news} onSelectCode={selectCode} />
+
+      {/* 行情空数据提示：4 秒仍无 stocks 时显示原因入口，避免只剩空面板 */}
+      {dataStale ? (
+        <div className="ex-guide" role="alert">
+          <p className="ex-guide-text">{T.dataEmptyHint}</p>
+          <button
+            type="button"
+            className="ex-mini-btn"
+            onClick={() => {
+              client.retryBootstrap?.()
+              window.setTimeout(bump, 600)
+            }}
+          >
+            {T.dataRetry}
+          </button>
+        </div>
+      ) : null}
 
       {/* 顶栏 */}
       <header className="ex-topbar">
