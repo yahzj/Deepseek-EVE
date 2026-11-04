@@ -93,15 +93,22 @@ export function RoundBadge({ client, onNewRound }: RoundBadgeProps) {
   const maxOrders = Math.max(1, Math.round(round.maxOrders))
 
   return (
-    <span
-      className={`ex-source-badge ex-round-badge${locked ? ' is-locked' : ''}`}
-      title={locked ? T.roundLockedHint : T.roundBadgeHint}
-      role="timer"
-    >
-      <span className="ex-round-clock">
-        {locked ? `${T.roundLocked} ${mmss}` : `${T.roundSettleIn} ${mmss}`}
+    <div className="ex-round-badge-group">
+      <span
+        className={`ex-source-badge ex-round-clock-badge${locked ? ' is-locked' : ''}`}
+        title={locked ? T.roundLockedHint : T.roundBadgeHint}
+        role="timer"
+      >
+        <span className="ex-round-clock">
+          {locked ? `${T.roundLocked} ${mmss}` : `${T.roundSettleIn} ${mmss}`}
+        </span>
       </span>
-      <span className="ex-round-quota">{TF.roundQuota(usedOrders, maxOrders)}</span>
-    </span>
+      <span
+        className="ex-source-badge ex-round-quota-badge"
+        title="本回合剩余委托笔数（每回合上限 10 笔）"
+      >
+        <span className="ex-round-quota">{TF.roundQuota(usedOrders, maxOrders)}</span>
+      </span>
+    </div>
   )
 }

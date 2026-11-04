@@ -1706,6 +1706,7 @@ export class MockExchangeClient implements ExchangeClient {
       bonds: { ...this.bond },
       bondProduct: { ...BOND_PRODUCT },
       news: this.news.slice(0, 12),
+      agents: [],
       feeRate: FEE_RATE,
     }
   }

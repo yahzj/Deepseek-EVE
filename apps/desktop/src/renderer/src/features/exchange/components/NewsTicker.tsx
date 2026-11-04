@@ -1,7 +1,7 @@
 /**
  * 财经快讯 · 竖向播报（2026-11-04 船长：不要横向走马灯，要竖向，一分钟一行）。
  *
- * - 每 60 秒最多追加一行，首屏先显示最新一条；最多保留 4 行；
+ * - 每 60 秒最多追加一行，首屏先显示最新一条；最多保留 2 行（2026-11-04 船长指令：快讯最多显示两行，释放垂直视野）；
  * - 只展示玩家向信息：强度话术与影响回合已由服务端写进文案；四象/冲击基点/小盘系数不展示；
  * - 兼容历史快讯：旧文案括号里的内部元信息在前端再兜底剥掉。
  */
@@ -36,13 +36,13 @@ export function NewsTicker({
   const [rows, setRows] = useState<NewsItem[]>([])
   const lastIdRef = useRef('')
 
-  // 每分钟只追加一行：即使 tick 频繁让 news 变化，也不会刷屏。
+  // 每分钟只追加一行：即使 tick 频繁让 news 变化，也不会刷屏（最多保留两行）。
   useEffect(() => {
     const appendLatest = (): void => {
       const latest = newsRef.current[0]
       if (latest === undefined || latest.id === lastIdRef.current) return
       lastIdRef.current = latest.id
-      setRows((prev) => [latest, ...prev].slice(0, 4))
+      setRows((prev) => [latest, ...prev].slice(0, 2))
     }
     appendLatest()
     const timer = window.setInterval(appendLatest, 60_000)

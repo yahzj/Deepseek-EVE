@@ -129,6 +129,10 @@ export interface ExchangeOrder {
     | 'queued'
     | 'expired'
   createdAt: number
+  /** 回合号（Go OrderView 下发；Mock 没有回合概念，缺省不显示） */
+  roundNo?: number
+  /** 开空标记：side=sell 且 short=true 才是开空，缺省表示卖出/平多 */
+  short?: boolean
   /** 以下为原型扩展（真机响应同样会带，界面用来显示来源与成交均价） */
   source?: OrderSource
   filledQty?: number
@@ -247,6 +251,49 @@ export interface DividendRecord {
   amount: number
 }
 
+/** 六人格持仓（对手盘公开快照，字段对齐 Go `AgentHoldingView`） */
+export interface AgentHolding {
+  code: string
+  qty: number
+  avgCost: number
+  price: number
+  value: number
+}
+
+/** 六人格最近动作（字段对齐 Go `AgentActionView`） */
+export interface AgentAction {
+  id: number
+  roundNo: number
+  code: string
+  side: string
+  qty: number
+  price: number
+  reason: string
+  createdAt: number
+}
+
+/**
+ * 六人格公开摘要（`GET /agents` 与 WS `agents` 帧，字段对齐 Go `AgentView`）。
+ * 只在回合末广播一次；人格是玩家的对手盘，用于让玩家读出「谁在场、谁在动」。
+ */
+export interface AgentView {
+  persona: string
+  name: string
+  callsign: string
+  role: string
+  mood: string
+  cash: number
+  frozen: number
+  initialCash: number
+  positionValue: number
+  equity: number
+  pnl: number
+  lastRound: number
+  lastActionAt: number
+  holdings: AgentHolding[]
+  recentActions: AgentAction[]
+}
+
 export interface BondProduct {
   id: string
   name: string
@@ -313,6 +360,8 @@ export interface ExchangeSnapshot {
   bonds: BondHolding
   bondProduct: BondProduct
   news: NewsItem[]
+  /** 六人格公开摘要（WS `agents` 帧，回合末更新；模拟盘为空数组） */
+  agents: AgentView[]
   /** 手续费率（界面预览用，避免把数字写死在组件里） */
   feeRate: number
 }

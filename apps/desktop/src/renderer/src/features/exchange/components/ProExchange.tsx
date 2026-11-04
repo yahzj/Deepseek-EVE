@@ -133,7 +133,7 @@ export function ProExchange({
             {midTab === 'positions' ? (
               <Positions client={client} snap={snap} code={code} onSelect={onSelectCode} onToast={onToast} />
             ) : (
-              <Records snap={snap} />
+              <Records client={client} snap={snap} onToast={onToast} />
             )}
           </div>
         </div>

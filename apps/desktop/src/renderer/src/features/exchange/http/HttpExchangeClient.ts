@@ -22,6 +22,7 @@
  *   - 价格/金额**不做缩放**：服务器整数单位就是信用点，显示交给现有 UI（`format.ts`）。
  */
 import type {
+  AgentView,
   BatchOrderResult,
   BookLevel,
   BondHolding,
@@ -172,7 +173,10 @@ function normalizeOrder(raw: unknown): ExchangeOrder | null {
   if (typeof raw.triggerPrice === 'number' && Number.isFinite(raw.triggerPrice)) {
     order.triggerPrice = raw.triggerPrice
   }
-  // 服务端 OrderView 带 roundNo（回合制），前端 DTO 暂不外扩字段，避免 UI 跟着改名。
+  // 委托管理列表要按回合分组、区分「开空」与「卖出」，这两个字段不能丢。
+  const roundNo = num(raw.roundNo, 0)
+  if (roundNo > 0) order.roundNo = Math.round(roundNo)
+  if (raw.short === true) order.short = true
   return order
 }
 
@@ -325,6 +329,51 @@ function normalizeNews(raw: unknown): NewsItem | null {
   }
 }
 
+/** 人格摘要（`agents` 帧）：字段缺失时用空值兜底，不让单个人格脏数据拖垮整帧。 */
+function normalizeAgent(raw: unknown): AgentView | null {
+  if (!isRecord(raw)) return null
+  const persona = text(raw.persona)
+  if (persona === '') return null
+  const holdings = Array.isArray(raw.holdings)
+    ? raw.holdings.filter(isRecord).map((item) => ({
+        code: text(item.code),
+        qty: num(item.qty),
+        avgCost: num(item.avgCost),
+        price: num(item.price),
+        value: num(item.value),
+      }))
+    : []
+  const recentActions = Array.isArray(raw.recentActions)
+    ? raw.recentActions.filter(isRecord).map((item) => ({
+        id: num(item.id),
+        roundNo: num(item.roundNo),
+        code: text(item.code),
+        side: text(item.side),
+        qty: num(item.qty),
+        price: num(item.price),
+        reason: text(item.reason),
+        createdAt: num(item.createdAt),
+      }))
+    : []
+  return {
+    persona,
+    name: text(raw.name),
+    callsign: text(raw.callsign),
+    role: text(raw.role),
+    mood: text(raw.mood),
+    cash: num(raw.cash),
+    frozen: num(raw.frozen),
+    initialCash: num(raw.initialCash),
+    positionValue: num(raw.positionValue),
+    equity: num(raw.equity),
+    pnl: num(raw.pnl),
+    lastRound: num(raw.lastRound),
+    lastActionAt: num(raw.lastActionAt),
+    holdings,
+    recentActions,
+  }
+}
+
 function normalizeStrategy(raw: unknown): StrategySpec | null {
   if (!isRecord(raw)) return null
   const template = text(raw.template)
@@ -452,6 +501,8 @@ export class HttpExchangeClient implements ExchangeClient {
   private bond: BondHolding = { ...EMPTY_BOND }
   private bondProduct: BondProduct = { ...EMPTY_BOND_PRODUCT }
   private news: NewsItem[] = []
+  /** 六人格公开摘要：只在回合末 `agents` 帧到达时更新，其余时间保持上一回合。 */
+  private agents: AgentView[] = []
   private feeRate = DEFAULT_FEE_RATE
   /** bootstrap 进行中/最近一次时间：看门狗重试防止并发风暴 */
   private bootstrapping = false
@@ -604,6 +655,8 @@ export class HttpExchangeClient implements ExchangeClient {
       // 快讯不依赖行情：首屏就并发补拉（WS `event` 只推本回合增量）。
       // 失败只丢弃快讯、不阻塞主快照，也不向页面抛错。
       const newsTask = this.loadNews().catch(() => undefined)
+      // 人格摘要同理：WS `agents` 只在回合末推一次，首屏补拉，否则「对手盘」要等 5 分钟。
+      const agentsTask = this.loadAgents().catch(() => undefined)
       const stocks = await this.getStocks()
       const code = stocks[0]?.code
       // 行情图/盘口尽早并行：不再等 account/orders 往返后才开始拉 5 个周期 K 线，首屏更快。
@@ -630,7 +683,7 @@ export class HttpExchangeClient implements ExchangeClient {
       this.account = account
       this.orders = orders
       this.strategies = strategies
-      await Promise.all([...chartTasks, roundTask, metaTask, newsTask])
+      await Promise.all([...chartTasks, roundTask, metaTask, newsTask, agentsTask])
       this.emitTick()
     } catch (err) {
       // 连不上：界面由数据源徽标 + 引导态兜底；这里只上报，不伪造数据
@@ -666,6 +719,18 @@ export class HttpExchangeClient implements ExchangeClient {
       .filter(isPresent)
       .slice(0, NEWS_FETCH_LIMIT)
     this.mergeNews(items, false)
+  }
+
+  /**
+   * 首屏人格摘要：`GET /agents` 返回 `{roundNo, agents[]}`（六人格公开视图）。
+   * WS `agents` 只在回合末推一次，打开页面时补拉一次，否则「对手盘」页签要等下一回合才有内容。
+   * 失败由调用方 `.catch` 吞掉：人格面板是辅助信息，不能拖垮行情/账户快照。
+   */
+  private async loadAgents(): Promise<void> {
+    const raw = await this.get<unknown>('/agents')
+    if (!isRecord(raw) || !Array.isArray(raw.agents)) return
+    this.agents = raw.agents.map(normalizeAgent).filter(isPresent)
+    this.emitTick()
   }
 
   /**
@@ -742,6 +807,12 @@ export class HttpExchangeClient implements ExchangeClient {
             ? data.orders
             : null
         if (list !== null) this.orders = list.map(normalizeOrder).filter(isPresent)
+        break
+      }
+      case 'agents': {
+        // 回合末广播一次的六人格摘要：{roundNo, agents[]}
+        const list = isRecord(data) && Array.isArray(data.agents) ? data.agents : null
+        if (list !== null) this.agents = list.map(normalizeAgent).filter(isPresent)
         break
       }
       case 'event': {
@@ -1153,6 +1224,7 @@ export class HttpExchangeClient implements ExchangeClient {
       bonds: this.bond,
       bondProduct: this.bondProduct,
       news: this.news,
+      agents: this.agents,
       feeRate: this.feeRate,
     }
   }
