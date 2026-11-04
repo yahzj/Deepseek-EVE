@@ -91,7 +91,7 @@ export function ProExchange({
     <div className="ex-grid ex-pro-grid">
       {/* 左栏：标的列表与市场战况仪表 */}
       <aside className="ex-col ex-col-left">
-        <StockList snap={snap} selected={code} onSelect={onSelectCode} />
+        <StockList client={client} snap={snap} selected={code} onSelect={onSelectCode} />
         <MarketOverview snap={snap} />
       </aside>
 

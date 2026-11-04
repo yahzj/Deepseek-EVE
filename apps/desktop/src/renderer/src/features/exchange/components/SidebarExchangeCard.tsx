@@ -92,8 +92,8 @@ export function SidebarExchangeCard({ onGoPage }: SidebarExchangeCardProps) {
   const quoteChgPct = activeQuote?.changePct ?? 0
 
   const tooltipTitle = hasPositions
-    ? `已持仓标的：${uniqueCodes.join('、')}\n当前总浮动盈亏：${totalPnl >= 0 ? '+' : ''}${amount(totalPnl)} ISK (${pct(pnlPct)})\n主力标的：${primaryCode}（现价 ${price(quotePrice)} ISK，涨跌幅 ${pct(quoteChgPct)}）\n点击直达交易所并定位该标的`
-    : `深空证券交易所实时监控中\n参考标的：${primaryCode}（现价 ${price(quotePrice)} ISK，涨跌幅 ${pct(quoteChgPct)}）\n当前未建仓，点击直达交易大厅选股`
+    ? `已持仓股票：${uniqueCodes.join('、')}\n当前总浮动盈亏：${totalPnl >= 0 ? '+' : ''}${amount(totalPnl)} ISK (${pct(pnlPct)})\n主力股票：${primaryCode}（现价 ${price(quotePrice)} ISK，涨跌幅 ${pct(quoteChgPct)}）\n点击直达交易所并定位该股票`
+    : `深空证券交易所实时监控中\n参考股票：${primaryCode}（现价 ${price(quotePrice)} ISK，涨跌幅 ${pct(quoteChgPct)}）\n当前未建仓，点击直达交易大厅选股`
 
   return (
     <button
@@ -109,7 +109,7 @@ export function SidebarExchangeCard({ onGoPage }: SidebarExchangeCardProps) {
         <div className="exch-sb-head-left">
           <span className="exch-sb-code">{primaryCode}</span>
           {uniqueCodes.length > 1 ? (
-            <span className="exch-sb-badge" title={`共持有 ${uniqueCodes.length} 支标的`}>
+            <span className="exch-sb-badge" title={`共持有 ${uniqueCodes.length} 只股票`}>
               +{uniqueCodes.length - 1}
             </span>
           ) : null}

@@ -3,7 +3,6 @@
  *
  * 用于左栏企业卡片，提取近期分时价格走势，以 SVG 微光折线呈现。
  */
-import { useMemo } from 'react'
 import type { ExchangeClient } from '../client'
 
 interface SparklineProps {
@@ -15,17 +14,18 @@ interface SparklineProps {
 }
 
 export function Sparkline({ client, code, isUp, width = 76, height = 24 }: SparklineProps) {
-  const points = useMemo(() => {
-    try {
-      const series = client.getChartSeries(code, 'intraday')
-      if (!series || series.length === 0) return []
+  // 直接读缓存：父组件每次行情 tick 都会重渲染，这里不能再 useMemo 锁死
+  // （否则第一次拿到空数组后永远不重算，小曲线就「消失」了——2026-11-04 船长反馈）。
+  let points: number[] = []
+  try {
+    const series = client.getChartSeries(code, 'intraday')
+    if (series && series.length > 0) {
       // 取最近 24 根采样点
-      const sample = series.slice(-24)
-      return sample.map((k) => k.c)
-    } catch {
-      return []
+      points = series.slice(-24).map((k) => k.c)
     }
-  }, [client, code])
+  } catch {
+    points = []
+  }
 
   if (points.length < 2) {
     return <div className="ex-sparkline-empty" style={{ width, height }} />

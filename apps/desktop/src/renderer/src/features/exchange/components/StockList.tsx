@@ -2,20 +2,24 @@
  * 左栏标的列表：双行高密度现代金融行情卡片（代码/名称/板块/现价/涨跌/持仓徽标）。
  *
  * 核心设计：
- * - 废除生硬挤压的 4 列 grid，改为左右两栏 flex 流式卡片；
+ * - 废除生硬挤压的 4 列 grid，改为现代紧凑三栏行情卡片；
  * - 左栏：代码（加粗金） + 板块微标签 + 持仓徽标 / 第二行公司全名（单行省略，绝不折行叠字）；
+ * - 中栏：十秒分时迷你走势图（Sparkline），消解死黑空洞；
  * - 右栏：现价（加粗等宽） / 第二行涨跌幅微胶囊（涨多绿跌空红）；
  * - 鼠标悬停青蓝微光，选中态左侧高能光条。
  */
-import type { ExchangeSnapshot } from '../client'
+import type { ExchangeClient, ExchangeSnapshot } from '../client'
 import { amount, pct, price } from '../format'
 import { T } from '../texts'
+import { Sparkline } from './Sparkline'
 
 export function StockList({
+  client,
   snap,
   selected,
   onSelect,
 }: {
+  client: ExchangeClient
   snap: ExchangeSnapshot
   selected: string
   onSelect: (code: string) => void
@@ -81,6 +85,11 @@ export function StockList({
                     {q.nameKey}
                   </span>
                 </div>
+              </div>
+
+              {/* 中栏：十秒分时迷你图（Sparkline） */}
+              <div className="ex-stock-card-spark">
+                <Sparkline client={client} code={q.code} isUp={up} width={64} height={22} />
               </div>
 
               {/* 右栏：当前现价 / 涨跌幅微胶囊 */}

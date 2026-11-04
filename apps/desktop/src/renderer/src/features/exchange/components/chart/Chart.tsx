@@ -11,7 +11,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { MouseEvent as ReactMouseEvent } from 'react'
 import { Reset, ZoomIn, ZoomOut } from '@carbon/icons-react'
 import type { ChartPeriod, ExchangeClient, StockQuote } from '../../client'
-import { CHART_PERIODS, INTRADAY_MAX_POINTS, chartPeriodSpec, sampleSeries } from '../../chartPeriods'
+import { INTRADAY_MAX_POINTS, PRO_CHART_PERIODS, chartPeriodSpec, sampleSeries } from '../../chartPeriods'
 import { amount, pct, price } from '../../format'
 import { T } from '../../texts'
 import { hideTip, moveTip, showTip } from '../../../../ui/Tooltip'
@@ -52,14 +52,20 @@ export function Chart({
   code,
   quote,
   tick,
+  initialPeriod,
 }: {
   client: ExchangeClient
   code: string
   quote: StockQuote
   /** 行情拍号：即使现价恰好没变，也要让图表重新取最新一根 */
   tick: number
+  /** 可选：初始周期（验收/测试用；页面不传，走空间记忆） */
+  initialPeriod?: ChartPeriod
 }) {
-  const [period, setPeriod] = useState<ChartPeriod>(() => rememberedPeriod)
+  const [period, setPeriod] = useState<ChartPeriod>(() => {
+    const wanted = initialPeriod ?? rememberedPeriod
+    return PRO_CHART_PERIODS.some((spec) => spec.id === wanted) ? wanted : 'm1'
+  })
   const [toggles, setToggles] = useState(() => ({ ...rememberedToggles }))
   const [size, setSize] = useState<ChartSize>({ w: 660, h: 320 })
   const [point, setPoint] = useState<CrosshairPoint | null>(null)
@@ -300,7 +306,7 @@ export function Chart({
         </div>
         <div className="ex-chart-tools">
           <div className="ex-seg ex-chart-periods" role="tablist" aria-label={T.chartTitle}>
-            {CHART_PERIODS.map((spec) => (
+            {PRO_CHART_PERIODS.map((spec) => (
               <button
                 type="button"
                 key={spec.id}
@@ -635,3 +641,4 @@ function RsiPane({
     </g>
   )
 }
+

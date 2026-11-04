@@ -57,3 +57,7 @@ steam/depot_build_*.vdf
 
 # Serena 项目记忆（本地知识，含服务器地址/测试账号等运维信息，不进公开仓库）
 /.serena/memories/project/
+
+# 个人工作流（本地使用，不进公开仓库）
+/FAST_WORKFLOW.md
+
