@@ -1,16 +1,13 @@
 import { calcBuildDurationMs, countWare, manufacturingLoopOf, manufacturingRunViews, marketLockedReason, matNeedCount, missingMaterials, ownsBlueprint, usableAiCoresOf, recipeCapability, canStartBlueprint, WORMHOLE_SCAN_UNLOCK_STANDING, standingOf, DSI_FACTION_ID, materialDisplayIdOf, materialGroupIdsOf } from '@whale/core'
 import { bestAiCoreOf } from '@whale/core'
-import { itemRarityTierOf } from '@whale/data'
 import type { AiCoreType, MaterialNeed } from '@whale/core'
-import { memo, useId, useMemo, useState } from 'react'
+import { memo, useId, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { GameEngine } from '../../game/engine'
 import type { ToastFn } from '../../pages/common'
 import { MarkStar } from '../../ui/marks'
-import { aiCoreText, crestFamOf, crestLabelOf, kindLabelText, ownedWhereText } from '../../ui/labelsText'
+import { aiCoreText, kindLabelText, ownedWhereText } from '../../ui/labelsText'
 import { RowGlyph } from '../../ui/itemView'
-import { Glyph, itemGlyphName } from '../../ui/Glyphs'
-import { FOE_ACCENT } from '../../ui/tones'
 import { GoodsLine, marginPctOf, marketPriceOf, NetIncomeLine } from '../../ui/yieldView'
 import { MatSourceLink } from '../../ui/matSourceLink'
 import { MATS_COLLAPSE_OVER, MatListToggle } from '../../ui/matList'
@@ -258,50 +255,6 @@ export const BlueprintCard = memo(function BlueprintCard({
    * 味数 > `MATS_COLLAPSE_OVER` 时材料块只留一行开关，点开才拉开全部行（公共件 `ui/matList.tsx`）。
    * 状态**不落盘**（每张卡各自的 `useState`，切页/重挂载即回到折叠）；缺料味数取 `short`（本卡那把尺）。
    */
-  const crest = crestFamOf(productRef?.refId ?? blueprintId)
-    ?? crestFamOf(
-      (bpDef && 'moduleId' in bpDef ? bpDef.moduleId : undefined)
-      ?? (bpDef && 'shipId' in bpDef ? (bpDef as { shipId?: string }).shipId : undefined)
-      ?? (bpDef && 'itemId' in bpDef ? bpDef.itemId : undefined)
-    )
-
-  const techTier = useMemo(() => {
-    if (productRef?.kind === 'ship') {
-      const shipTier = engine.ctx.ships.get(productRef.refId)?.tier
-      if (shipTier !== undefined) return shipTier
-    }
-    const r = itemRarityTierOf(productRef?.refId ?? blueprintId)
-    if (r !== undefined) return r
-    if (bpDef && 'partTier' in bpDef) {
-      if (bpDef.partTier === 'advanced') return 2
-      if (bpDef.partTier === 'basic') return 1
-    }
-    return undefined
-  }, [productRef, bpDef, engine.ctx, blueprintId])
-
-  const maxAffordable = useMemo(() => {
-    if (materials.length === 0) return 999
-    let m = Infinity
-    for (const need of materials) {
-      const needCount = matNeedCount(state, need.count, blueprintId)
-      if (needCount <= 0) continue
-      const groupIds = materialGroupIdsOf(need.itemId)
-      const have = groupIds.reduce((sum, id) => sum + countWare(state, id), 0)
-      const can = Math.floor(have / needCount)
-      if (can < m) m = can
-    }
-    return Number.isFinite(m) ? Math.max(0, m) : 0
-  }, [materials, state, blueprintId])
-
-  const [batchCount, setBatchCount] = useState(1)
-
-  function runBatchWith(worker: AiCoreType | 'pilot'): void {
-    if (batchCount > 1) {
-      engine.setManufacturingLoopAt(blueprintId, true, batchCount)
-    }
-    runWith(worker)
-  }
-
   const matsListId = useId()
   const [matsOpen, setMatsOpen] = useState(false)
   const matsCollapsible = materials.length > MATS_COLLAPSE_OVER
@@ -333,21 +286,6 @@ export const BlueprintCard = memo(function BlueprintCard({
       <div className="app-belt-head">
         <span className="app-belt-name">
           <RowGlyph glyph={productGlyph} tone={productTone} /> {name}
-          {crest ? (
-            <span
-              className={`app-mfg-crest is-fam-${crest}`}
-              aria-label={crestLabelOf(crest)}
-              title={crestLabelOf(crest)}
-              style={{ color: FOE_ACCENT[crest] ?? 'inherit' }}
-            >
-              <Glyph name={`fam-${crest.toLowerCase()}`} size={12} color="currentColor" />
-            </span>
-          ) : null}
-          {techTier !== undefined ? (
-            <span className={`app-mfg-tier is-t${techTier}`}>
-              T{techTier}
-            </span>
-          ) : null}
           {running ? (
             <em className="app-belt-flag is-run">
               {kindLabel === '舰船' ? tr("ui.Industry.037") : tr("ui.Industry.038")} {/* l10n-keep：kindLabel 是内容层联合 key（不是文案），渲染处照 id 取词 */}
@@ -436,24 +374,27 @@ export const BlueprintCard = memo(function BlueprintCard({
               : ''
           // 空闲态才标红缺口；制造中仓库余量只影响「加开一条线」，红色会误读成故障
           return (
-            <li key={need.itemId} className={`app-bp-mat${!enough && !running ? ' is-short' : ''}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--wui-sp-3) var(--wui-sp-6)' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--wui-sp-4)' }}>
-                <RowGlyph glyph={itemGlyphName(displayId, engine.ctx.items.get(displayId)?.kind ?? 'item')} />
-                <span>{matName}</span>
-                <span className={`app-mfg-ratio ${enough ? 'is-gain' : 'is-loss'}`}>
-                  <span className="app-mfg-num">{have.toLocaleString('zh-CN')}</span> / <span className="app-mfg-num">{needCount.toLocaleString('zh-CN')}</span>
-                </span>
-                {needCount !== need.count ? (
-                  <span className="app-dim">
-                    ({tr("ui.Industry.046")}<span className="app-mfg-num">{need.count.toLocaleString('zh-CN')}</span>{tr('ui.Industry.123')})
-                  </span>
-                ) : null}
-                {split !== '' ? (
-                  <span className="app-dim">
-                    （{split}）
-                  </span>
-                ) : null}
+            <li key={need.itemId} className={`app-bp-mat${!enough && !running ? ' is-short' : ''}`}>
+              {matName} ×{needCount.toLocaleString('zh-CN')}
+              {needCount !== need.count ? (
+                <span className="app-dim">{tr("ui.Industry.046")}{need.count.toLocaleString('zh-CN')}{tr('ui.Industry.123')}</span>
+              ) : null}
+              <span className="app-dim">
+                {tr("ui.IndustryPage.029")} {have.toLocaleString('zh-CN')}
+                {split !== '' ? `（${split}）` : ''}）
               </span>
+              {/* 2026-09-22 船长令：「组装机和造船厂需要零件时，提示不是去组装机，而是去市场」⇒
+                 「希望提示玩家去组装机生产零件，不要提示去市场」＋「高级零件依旧去相应的组装机」。
+                 四支（优先级从上到下）：**声望商店有 ⇒ 去声望商店** · 有精炼源 ⇒ 去精炼炉 ·
+                 **能在这台机器上造出来（如零件）⇒ 去组装机** · 既炼不出也造不出 ⇒ 去市场。
+                 文案按 §十三.5 不写原因解释（旧文案那句「无法经精炼炉产出」属解释，已随本次改写删掉）。
+                 ⚠ **新增第一支的由来**（**2026-09-29 船长报障**）：「通用黑匣」只有章鱼人声望商店
+                 一条来路（市场**只收不卖**、价格表里没有它的卖单）⇒ 原先落进第四支、显示
+                 「要到市场购买——点击跳转」是**指错路**（点过去只会看到一个空行情）。
+                 ⚠ 判据按**等价组**（`groupIds.includes(通用黑匣)`）而不是 `need.itemId === …`：
+                 配方里写的是 `blackbox-h`，直接比 id 永远不成立（实测踩到，读数照旧"去市场"）。
+                 **2026-10-01**：这四支连同 `refineSourcesOf` 已搬进公共件 `ui/matSourceLink.tsx`
+                 （实验室卡要对齐同一套 ⇒ 两处各写一份必然漂），本卡行为逐字不变。 */}
               <MatSourceLink
                 engine={engine}
                 itemId={need.itemId}
@@ -559,96 +500,44 @@ export const BlueprintCard = memo(function BlueprintCard({
             </span>
           </div>
         ) : null}
-        {/* 该蓝图逐条制造线名册（动态进度条、倒计时跳字、完成高光） */}
+        {/* 该蓝图逐条制造线名册（每行：劳动者 + 剩余 + 进度 + 取消）——精炼炉运转名册同款结构；
+            2026-09-10 起循环开关已在卡片级，行内不再各带一份 */}
         {runs.length > 0 ? (
-          <div className="app-belt-workers" style={{ marginTop: 'var(--wui-sp-3)', display: 'flex', flexDirection: 'column', gap: 'var(--wui-sp-3)' }}>
-            {runs.map((v) => {
-              const isComplete = v.percent >= 99.8 || v.remainingMs <= 300
-              return (
-                <div key={v.id} className={`app-mfg-run-card${isComplete ? ' is-complete' : ''}`}>
-                  <span
-                    className="app-belt-worker-name"
-                    title={tr("ui.Industry.114", { p1: fmtDuration(v.durationMs), p2: kindLabel === '舰船' ? tr("ui.Industry.064") : tr("ui.Industry.065"), p3: v.worker === null ? tr("ui.Industry.066") : '' })}
-                  >
-                    {v.worker === null ? tr("ui.Industry.067") : v.worker === 'pilot' ? tr("ui.Industry.068") : tr("ui.Industry.115", { p1: v.workerLabel })}
-                  </span>
-                  <div className="app-mfg-progress-track" title={tr("ui.Industry.116", { p1: v.percent })}>
-                    <div className="app-mfg-progress-bar" style={{ width: `${Math.min(100, Math.max(0, v.percent))}%` }} />
-                  </div>
-                  <span className="app-mfg-countdown">
-                    {isComplete ? tr('ui.Industry.044') : fmtDuration(v.remainingMs)}
-                  </span>
-                  <button
-                    className="app-btn is-small is-warn"
-                    onClick={() => handleCancel(v.id)}
-                    title={tr('ui.Industry.147')}
-                  >
-                    {tr("ui.Industry.070")}
-                  </button>
-                </div>
-              )
-            })}
+          <div className="app-belt-workers" style={{ marginTop: 'var(--wui-sp-2)' }}>
+            {runs.map((v) => (
+              <span key={v.id} className="app-belt-worker">
+                <span
+                  className="app-belt-worker-name"
+                  // l10n-keep：下面比较用的 kindLabel（'舰船'/'装备'/'消耗品'）是**内容层联合 key**，不是文案
+                  title={tr("ui.Industry.114", { p1: fmtDuration(v.durationMs), p2: kindLabel === '舰船' ? tr("ui.Industry.064") : tr("ui.Industry.065"), p3: v.worker === null ? tr("ui.Industry.066") : '' })}
+                >
+                  {v.worker === null ? tr("ui.Industry.067") : v.worker === 'pilot' ? tr("ui.Industry.068") : tr("ui.Industry.115", { p1: v.workerLabel })}
+                  {tr('ui.Industry.137', { p1: fmtDuration(v.remainingMs) })}
+                </span>
+                <span className="app-progress-mini" title={tr("ui.Industry.116", { p1: v.percent })}>
+                  <i style={{ width: `${v.percent}%` }} />
+                </span>
+                <button
+                  className="app-btn is-small is-warn"
+                  onClick={() => handleCancel(v.id)}
+                  title={tr('ui.Industry.147')}
+                >
+                  {tr("ui.Industry.070")}
+                </button>
+              </span>
+            ))}
           </div>
         ) : null}
 
         {canBuild ? (
           <>
-            <div className="app-mfg-batch-box">
-              <div className="app-mfg-stepper">
-                <button
-                  type="button"
-                  className="app-mfg-stepper-btn"
-                  disabled={batchCount <= 1}
-                  onClick={() => setBatchCount((c) => Math.max(1, c - 1))}
-                  title="减少制造批次"
-                >
-                  -
-                </button>
-                <input
-                  type="number"
-                  className="app-mfg-stepper-input"
-                  min={1}
-                  max={Math.max(1, maxAffordable)}
-                  value={batchCount}
-                  onChange={(e) => {
-                    const val = parseInt(e.target.value, 10)
-                    if (!isNaN(val)) setBatchCount(Math.max(1, Math.min(Math.max(1, maxAffordable), val)))
-                  }}
-                />
-                <button
-                  type="button"
-                  className="app-mfg-stepper-btn"
-                  disabled={batchCount >= Math.max(1, maxAffordable)}
-                  onClick={() => setBatchCount((c) => Math.min(Math.max(1, maxAffordable), c + 1))}
-                  title="增加制造批次"
-                >
-                  +
-                </button>
-              </div>
-              <button
-                type="button"
-                className="app-mfg-max-btn"
-                disabled={maxAffordable <= 1}
-                onClick={() => setBatchCount(Math.max(1, maxAffordable))}
-                title="按当前材料最大可制造批次"
-              >
-                MAX ({maxAffordable})
-              </button>
-              <div className="app-mfg-duration-view">
-                <span>单次: <span className="app-mfg-num">{fmtDuration(buildMs)}</span></span>
-                {batchCount > 1 ? (
-                  <span>合计: <span className="app-mfg-num">{fmtDuration(buildMs * batchCount)}</span></span>
-                ) : null}
-              </div>
-            </div>
-
             <button
               className="app-btn is-small is-primary"
               disabled={manualNote !== null || short.length > 0}
               title={oneTimeNote ?? manualTitle}
-              onClick={() => runBatchWith('pilot')}
+              onClick={() => runWith('pilot')}
             >
-              {batchCount > 1 ? `批量制造 (${batchCount})` : tr("ui.Industry.071")}
+              {tr("ui.Industry.071")}
             </button>
             {/* AI 工位：核心下拉常驻（无可用核心时置灰并在控件里写明，卡面不跳动；船长 2026-09-10）——
                 2026-10-02 起走公共件 `ui/aiCoreSelect.tsx`（行为与旧实现逐字一致） */}
@@ -665,17 +554,11 @@ export const BlueprintCard = memo(function BlueprintCard({
                 className="app-btn is-small"
                 disabled={!core || short.length > 0}
                 title={oneTimeNote ?? (core ? aiTitle : tr("ui.IndustryPage.055"))}
-                onClick={() => core && runBatchWith(core)}
+                onClick={() => core && runWith(core)}
               >
-                {batchCount > 1 ? `AI 批量 (${batchCount})` : tr("ui.Industry.073")}
+                {tr("ui.Industry.073")}
               </button>
             </div>
-            {short.length > 0 ? (
-              <div className="app-mfg-short-alert">
-                <Glyph name="ico-warn" size={12} color="currentColor" />
-                <span>缺失材料：{short.join('、')}</span>
-              </div>
-            ) : null}
           </>
         ) : !singleUse && bookCount > 0 ? (
           /* 书已在书架（尚未学习）：就地学习（2026-09-14 船长裁定「乙」）——与「蓝图书架」的「学习」

@@ -17,7 +17,7 @@ import { commandBudgetOf } from '@whale/core'
  * 未扫描的格子在图上用**蓝灰虚线边框**区分，且不按信号上色（免得漏真相）。
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { holdTone, hexRingOf, explorationNumber as n, useCountUp, grabOffsetOf, WhGlyph, WhNebulaGlyph, WhWaveformResonance, WhSettleSlots } from './explorationShared'
+import { holdTone, hexRingOf, explorationNumber as n, useCountUp, grabOffsetOf, WhGlyph, WhNebulaGlyph } from './explorationShared'
 // 洞内底图固定（船长 2026-09-13）：进洞时把当前那张无缝星云图钉住，本趟不随全站换图而变
 import { currentSpaceBg, spaceBgUrlAt } from '../ui/spaceBg'
 import { HintIcon } from '../ui/Hint'
@@ -249,8 +249,6 @@ export function SignalSpacePanel({
   )
   /** 自动探索：选了主控船 ⇒ 派队前先弹确认（写明主控要换给谁） */
   const [mainAsk, setMainAsk] = useState(false)
-  /** 危险跳跃/跃迁深入的二次确认防呆状态 */
-  const [dangerJumpAsk, setDangerJumpAsk] = useState(false)
   /**
    * 待确认的"前往未知地点"目标（船长 2026-09-13：前往未扫描的地方**需要警告**）。
    * 口径：点未扫描的格 **不直接走**（也不扣回合），先把警告摆出来，等玩家点「确认前往」。
@@ -1173,17 +1171,6 @@ export function SignalSpacePanel({
         ) : (
           <div className="app-dim app-note">{PLACE_NOTE[hereCell.place]}</div>
         )}
-        {/* 波形共振与矩阵解密小游戏（第 16 轮专项：遗迹/数据/货柜节点交互） */}
-        {(hereCell.place === 'matter' || shapedPiles.length > 0 || canActivate || canWork) && !grid.activated.includes(hereKey) ? (
-          <WhWaveformResonance
-            targetFreq={160 + (grid.pos.q * 15 + grid.pos.r * 25 + run.depth * 20) % 150}
-            targetAmp={65 + (Math.abs(grid.pos.q) * 10 + run.depth * 5) % 30}
-            disabled={!!run.battle || workBlocked !== null || run.turnsLeft < 1 || fxBusy}
-            onResonanceLock={() => {
-              if (canWork || canActivate) doActivate()
-            }}
-          />
-        ) : null}
       </>
     )
   }
@@ -2029,28 +2016,6 @@ export function SignalSpacePanel({
                     <div className="app-wh-status">
                       <span className="app-wh-cell">{tr("ui.Wormhole.078")} <b>{run.turnsLeft}</b> / {run.turnsTotal}</span>
                       <span className="app-wh-cell">{tr("ui.CargoPage.004")} <b>{usage?.used ?? 0}</b> / {usage?.capacity ?? 0}{tr('ui.Wormhole.346')}</span>
-                      <div className="app-wh-capsules">
-                        <span
-                          className={`app-wh-capsule ${
-                            run.turnsLeft / Math.max(1, run.turnsTotal) >= 0.5
-                              ? 'is-stable'
-                              : run.turnsLeft / Math.max(1, run.turnsTotal) >= 0.2
-                                ? 'is-collapsing'
-                                : 'is-closing'
-                          }`}
-                        >
-                          <span className="app-wh-capsule-dot" />
-                          {run.turnsLeft / Math.max(1, run.turnsTotal) >= 0.5
-                            ? '生命周期: 稳定'
-                            : run.turnsLeft / Math.max(1, run.turnsTotal) >= 0.2
-                              ? '生命周期: 崩塌中'
-                              : '生命周期: 即将闭合'}
-                        </span>
-                        <span className={`app-wh-capsule ${outOfTurns ? 'is-depleted' : 'is-mass-safe'}`}>
-                          <span className="app-wh-capsule-dot" />
-                          {outOfTurns ? '质量状态: 坍缩耗尽' : '质量状态: 充裕'}
-                        </span>
-                      </div>
                     </div>
                     <div className="app-wh-priority">
                     <div className="app-wh-commands">
@@ -2096,30 +2061,19 @@ export function SignalSpacePanel({
                         * 修改为必须在下一层入口才可以前往」）——与"作业按钮只在真能用的时候才出现"同一套做法；
                         * 核心侧 `wormholeDescend` 有同款判据（不只是界面收口）。
                         */}
-                      {bossDone && atExit ? (() => {
-                        const isDangerJump = run.turnsLeft <= 5 || run.turnsLeft / Math.max(1, run.turnsTotal) < 0.2
-                        return (
-                          <button
-                            className={`app-btn app-wh-work ${isDangerJump ? 'is-danger-jump is-warn' : 'is-primary'}`}
-                            disabled={!!run.battle || workBlocked !== null || run.turnsLeft <= 0 || fxBusy}
-                            onClick={() => {
-                              if (isDangerJump && !dangerJumpAsk) {
-                                setDangerJumpAsk(true)
-                                onToast('虫洞引力极不稳定，再次跃迁可能无法返航，请再次点击确认深入！', true)
-                                return
-                              }
-                              setDangerJumpAsk(false)
-                              doDescend()
-                            }}
-                            title={isDangerJump ? '虫洞引力极不稳定！点击进行二次确认跃迁' : tr("ui.Wormhole.108")}
-                          >
-                            {dangerJumpAsk ? '确认强行跃迁？(防呆)' : tr("ui.Wormhole.213")}
-                            <span className="app-wh-scan-sub">
-                              {isDangerJump ? '引力崩塌风险' : `${tr('ui.Wormhole.349', { p1: run.depth + 1 })} ${tr("ui.Wormhole.109")} ${wormholeDisplayThreat(wormholeLayerThreat(run.depth + 1))}`}
-                            </span>
-                          </button>
-                        )
-                      })() : null}
+                      {bossDone && atExit ? (
+                        <button
+                          className="app-btn is-primary app-wh-work"
+                          disabled={!!run.battle || workBlocked !== null || run.turnsLeft <= 0 || fxBusy}
+                          onClick={doDescend}
+                          title={tr("ui.Wormhole.108")}
+                        >
+                          {tr("ui.Wormhole.213")}
+                          <span className="app-wh-scan-sub">
+                            {tr('ui.Wormhole.349', { p1: run.depth + 1 })} {tr("ui.Wormhole.109")} {wormholeDisplayThreat(wormholeLayerThreat(run.depth + 1))}
+                          </span>
+                        </button>
+                      ) : null}
                     </div>
                     {renderExploreConfirmations()}
                     </div>
@@ -2349,22 +2303,6 @@ function SettleView({ settle, onConfirm }: { settle: WormholeSettleRecord; onCon
           </div>
         ))}
       </div>
-      <WhSettleSlots
-        boxesCount={settle.boxes.length}
-        relicsCount={settle.relics.length}
-        cores={settle.cores}
-        essences={settle.essences}
-      />
-      <div className="app-wh-settle-metrics is-pop" style={{ animationDelay: `${(cells.length + 1) * STEP}ms` }}>
-        <div className="app-wh-settle-metric-row">
-          <span className="app-dim">考古/遗迹破译收益</span>
-          <span className="app-wh-settle-metric-val">{n(settle.wreckIsk)} ISK</span>
-        </div>
-        <div className="app-wh-settle-metric-row">
-          <span className="app-dim">资源采集与精炼估值</span>
-          <span className="app-wh-settle-metric-val">{n(settle.oreIsk)} ISK</span>
-        </div>
-      </div>
       <div className="app-wh-settle-total is-pop" style={{ animationDelay: `${(cells.length + 1) * STEP}ms` }}>
         {tr("ui.Wormhole.159")} <b>{n(total)}</b> {tr("ui.FirstTasks.003")}
         {settle.boxes.length > 0 ? tr('ui.Wormhole.323', { p1: settle.boxes.length }) : ''}
@@ -2508,9 +2446,9 @@ function WhGridMap({
       {/* 舰影底下的柔光（氛围光效；SVG 渐变，不是 CSS 拼形状） */}
       <defs>
         <radialGradient id="app-wh-ship-glow">
-          <stop offset="0%" stopColor="rgb(var(--wui-accent) / 0.3)" />
-          <stop offset="55%" stopColor="rgb(var(--wui-accent) / 0.1)" />
-          <stop offset="100%" stopColor="rgb(var(--wui-accent) / 0)" />
+          <stop offset="0%" stopColor="rgba(79,216,196,0.30)" />
+          <stop offset="55%" stopColor="rgba(79,216,196,0.10)" />
+          <stop offset="100%" stopColor="rgba(79,216,196,0)" />
         </radialGradient>
       </defs>
       {/**
@@ -2531,27 +2469,6 @@ function WhGridMap({
        * **路径预览线**（船长 2026-09-16）：画在**所有格子之下**（格子照旧压在线上，不挡图标/舰影）。
        * `is-blocked` = 拦截格还没扫描（甲案：不指名那一格，只把整条线置为警示色）。
        */}
-      {/* 深空同心雷达扫描圆环与十字刻度 */}
-      <g className="app-wh-radar-grid" pointerEvents="none">
-        {Array.from({ length: R }, (_, i) => (
-          <circle
-            key={`radar-ring-${i}`}
-            className="app-wh-radar-ring"
-            cx={cx.toFixed(1)}
-            cy={cy.toFixed(1)}
-            r={((i + 1) * Math.sqrt(3) * size).toFixed(1)}
-          />
-        ))}
-        <line className="app-wh-radar-axis" x1={cx - R * Math.sqrt(3) * size} y1={cy} x2={cx + R * Math.sqrt(3) * size} y2={cy} />
-        <line className="app-wh-radar-axis" x1={cx} y1={cy - R * Math.sqrt(3) * size} x2={cx} y2={cy + R * Math.sqrt(3) * size} />
-      </g>
-      {/* 探针球范围指示器（以玩家舰船为中心的矩阵探测范围） */}
-      <circle
-        className="app-wh-probe-sphere"
-        cx={hereX.toFixed(1)}
-        cy={hereY.toFixed(1)}
-        r={(Math.sqrt(3) * size * 2.2).toFixed(1)}
-      />
       {pathPoints ? (
         <polyline
           className={`app-wh-path${pathPreview?.hush === true ? ' is-blocked' : ''}`}

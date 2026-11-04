@@ -375,26 +375,6 @@ export function SettingsPanel({
       // 忽略
     }
   }
-
-  /** 键盘 ESC 退出体系：支持关闭确认弹窗及主面板 */
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') {
-        if (licenseOpen || sfxConsoleOpen) return
-        if (layoutPending !== null) {
-          e.preventDefault()
-          e.stopPropagation()
-          onCancelLayout()
-          return
-        }
-        e.preventDefault()
-        e.stopPropagation()
-        onClose()
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [licenseOpen, sfxConsoleOpen, layoutPending, onClose])
   return (
     <div className="app-modal-mask" onClick={onClose}>
       <div className="app-modal app-settings-modal" onClick={(e) => e.stopPropagation()}>
@@ -545,11 +525,10 @@ export function SettingsPanel({
               <span className="app-settings-label">{t('ui.App.127')}</span>
               <span className="app-settings-val">{t(THEME_LABEL_ID[theme])}</span>
             </div>
-            <div className="app-settings-btns is-theme-group">
+            <div className="app-settings-btns">
               {THEME_CHOICES.map((c) => (
                 <button
                   key={c}
-                  data-theme-choice={c}
                   className={`app-btn is-small${theme === c ? ' is-primary' : ''}`}
                   onClick={() => setTheme(c)}
                 >
@@ -931,17 +910,6 @@ export function SettingsPanel({
  */
 function LicenseModal({ onClose }: { onClose: () => void }) {
   const { t } = useL10n()
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        e.stopPropagation()
-        onClose()
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onClose])
   return (
     <div
       className="app-modal-mask app-license-mask"

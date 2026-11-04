@@ -134,8 +134,6 @@ export interface ItemGridCell {
    * `toLowerCase` 崩整页 —— 2026-09-27 船长报障过的那次）。
    */
   crest?: string
-  /** 当前槽位是否为选定态（选定态高亮轮廓） */
-  selected?: boolean
 }
 
 /** 分类补充说明（仓库/货仓列表与图标模式共用；2026-09-08 船长反馈弹药/无人机存放含义） */
@@ -188,8 +186,7 @@ export function ItemGlyphGrid({ cells, onPick }: { cells: ItemGridCell[]; onPick
         return (
           <div
             key={c.key}
-            className={`app-hand-cell${c.rarity !== undefined ? ` is-r${c.rarity}` : ''}${c.selected ? ' is-selected' : ''}`}
-            aria-selected={c.selected ? 'true' : undefined}
+            className="app-hand-cell"
             /* `position: relative`：两枚角标（左上族徽 / 右上稀有度）都绝对定位 */
             style={{ '--tone': tone, position: 'relative' } as CSSProperties}
             title={tip === null ? c.title : undefined}

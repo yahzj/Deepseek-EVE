@@ -49,7 +49,6 @@ import {
   foeLayerSplit,
   frontierGalaxyIds,
   isExplored,
-  isSiteBuilt,
   scanStatus,
   scanWindowMsFor,
   shipDisplayName,
@@ -86,7 +85,6 @@ const MAP_H = 300
  * （布局数据 / 本地覆盖 / 编辑器坐标一律不变，只改 viewBox 的可视范围）。
  */
 const MAP_PAD_TOP = 20
-const MAP_PAD_BOTTOM = 28
 const MAP_PAD_X = 8
 /**
  * **母港节点圆点半径**（2026-11-02 船长：「红框标注的母港的圆要比所有人都大一号」）——
@@ -99,7 +97,7 @@ const HUB_DOT_R = 17
 const FACTION_BOX_M = 34
 /** viewBox 与实际内容尺寸（拖拽换算用；getBoundingClientRect 覆盖的是含留白的可视范围） */
 const MAP_VB_W = MAP_W + MAP_PAD_X * 2
-const MAP_VB_H = MAP_H + MAP_PAD_TOP + MAP_PAD_BOTTOM
+const MAP_VB_H = MAP_H + MAP_PAD_TOP
 /**
  * **星图缩放**（**2026-10-02 船长令**，转玩家反馈：「手机端，星图界面各个星系判定范围过小（尤其是未探索的
  * 星系），几乎点不中/点了没反应。建议星图和虫洞探索一样允许放大」）—— 手感与虫洞探索地图同一套：
@@ -251,154 +249,6 @@ export function secTone(v: number | undefined): string {
 export function secCls(v: number | undefined): string {
   const t = secTone(v)
   return t ? ` app-sec-${t}` : ''
-}
-
-/**
- * 星系情报悬停卡（2026-11-04 专项优化）：
- * 鼠标悬停时的星系情报卡（安全等级、所属主权、势力族徽、矿藏丰富度、空间站哨站与入侵战况）；
- * 采用严格对齐的键值行与等宽数字。
- */
-function GalaxyIntelTip({
-  galaxy,
-  explored,
-  engine,
-  bounty,
-  primaryFam,
-  isFaction,
-  factionName,
-  invasionActive,
-  mothershipFrac,
-  hasStation,
-  stationName,
-  rareCount,
-}: {
-  galaxy: GalaxyDef
-  explored: boolean
-  engine: GameEngine
-  bounty: number
-  primaryFam?: string
-  isFaction: boolean
-  factionName: string
-  invasionActive: boolean
-  mothershipFrac: number
-  hasStation: boolean
-  stationName?: string
-  rareCount: number
-}) {
-  const isHub = galaxy.id === 'galaxy-hub'
-  const sec = galaxy.security
-  const secToneVal = secTone(sec)
-
-  let secCategory = '未知空域'
-  let secColor = 'rgb(var(--wui-dim))'
-  if (sec !== undefined && explored) {
-    if (sec >= 0.5) {
-      secCategory = '高安区'
-      secColor = 'rgb(var(--wui-tone-gain))'
-    } else if (sec >= 0) {
-      secCategory = '低安区'
-      secColor = 'rgb(var(--wui-amber))'
-    } else {
-      secCategory = '零安/法外之地'
-      secColor = 'rgb(var(--wui-tone-loss))'
-    }
-  }
-
-  let sovText = '未知主权'
-  if (isHub) {
-    sovText = 'DSI 统合领地'
-  } else if (!explored) {
-    sovText = '未勘测空域'
-  } else if (invasionActive) {
-    sovText = '敌对侵占交火'
-  } else if (hasStation) {
-    sovText = '探险协会辖区'
-  } else if (sec !== undefined && sec >= 0.5) {
-    sovText = '统合护航区'
-  } else if (sec !== undefined && sec >= 0) {
-    sovText = '自由贸易空域'
-  } else {
-    sovText = '无主管辖法外区'
-  }
-
-  let famText = '无敌对活动'
-  if (!explored) {
-    famText = '未知信号'
-  } else if (isFaction) {
-    famText = factionName ? `派系活跃 · ${factionName}` : '敌对派系活跃'
-  } else if (primaryFam) {
-    famText = `${FOE_FAMILY_LABEL[primaryFam] ?? primaryFam} 势力`
-  }
-
-  const belts = [...engine.ctx.belts.values()].filter((b) => b.galaxyId === galaxy.id)
-  let beltText = '无稳定矿脉'
-  if (!explored) {
-    beltText = '未勘探'
-  } else if (belts.length > 0) {
-    beltText = `${belts.length} 处矿带`
-  }
-
-  return (
-    <div className="app-starmap-tt">
-      <div className="app-starmap-tt-head">
-        <div className="app-starmap-tt-title">
-          <strong>{explored ? galaxy.name : tr('ui.ActivityBar.015')}</strong>
-          {isHub ? <span className="app-chip is-gold">{tr('ui.Expedition.007')}</span> : null}
-        </div>
-        {sec !== undefined && explored ? (
-          <span className={`app-sec-chip app-sec-chip-${secToneVal}`}>
-            {secText(sec)}
-          </span>
-        ) : null}
-      </div>
-      <div className="app-starmap-tt-body">
-        <div className="app-starmap-tt-row">
-          <span className="app-starmap-tt-lbl">{tr('ui.Handbook.065')}</span>
-          <span className="app-starmap-tt-val" style={{ color: secColor }}>
-            {sec !== undefined && explored ? `${secText(sec)} (${secCategory})` : '未知'}
-          </span>
-        </div>
-        <div className="app-starmap-tt-row">
-          <span className="app-starmap-tt-lbl">主权归属</span>
-          <span className="app-starmap-tt-val">{sovText}</span>
-        </div>
-        <div className="app-starmap-tt-row">
-          <span className="app-starmap-tt-lbl">所属势力</span>
-          <span className="app-starmap-tt-val">{famText}</span>
-        </div>
-        <div className="app-starmap-tt-row">
-          <span className="app-starmap-tt-lbl">矿藏丰富度</span>
-          <span className="app-starmap-tt-val">{beltText}</span>
-        </div>
-        {hasStation && stationName ? (
-          <div className="app-starmap-tt-row">
-            <span className="app-starmap-tt-lbl">空间站设施</span>
-            <span className="app-starmap-tt-val" style={{ color: 'rgb(var(--wui-accent))' }}>{stationName}</span>
-          </div>
-        ) : null}
-        {bounty > 0 ? (
-          <div className="app-starmap-tt-row">
-            <span className="app-starmap-tt-lbl">悬赏异常点</span>
-            <span className="app-starmap-tt-val" style={{ color: 'rgb(var(--wui-gold))' }}>{bounty} 处</span>
-          </div>
-        ) : null}
-        {rareCount > 0 ? (
-          <div className="app-starmap-tt-row">
-            <span className="app-starmap-tt-lbl">稀有战果残骸</span>
-            <span className="app-starmap-tt-val" style={{ color: 'rgb(var(--wui-tone-gain))' }}>{rareCount} 处</span>
-          </div>
-        ) : null}
-        {invasionActive ? (
-          <div className="app-starmap-tt-row is-invasion">
-            <span className="app-starmap-tt-lbl">周末入侵</span>
-            <span className="app-starmap-tt-val" style={{ color: 'rgb(var(--wui-tone-loss))' }}>
-              {mothershipFrac < 1 ? `母舰血量 ${Math.round(mothershipFrac * 100)}%` : '交火侵占中'}
-            </span>
-          </div>
-        ) : null}
-      </div>
-    </div>
-  )
 }
 
 /* ─────────── 通路交叉检测与整理（布局编辑器辅助） ─────────── */
@@ -1187,32 +1037,6 @@ export function StarMap({
             <stop offset="75%" style={{ stopColor: 'rgb(var(--wui-danger-strong))' }} stopOpacity="0.16" />
             <stop offset="100%" style={{ stopColor: 'rgb(var(--wui-danger-strong))' }} stopOpacity="0" />
           </radialGradient>
-          {/* 天体光晕径向渐变（按安全等级高安/低安/零安、母港金辉与未探索） */}
-          <radialGradient id="app-starglow-high">
-            <stop offset="0%" style={{ stopColor: 'rgb(var(--wui-tone-gain))' }} stopOpacity="0.45" />
-            <stop offset="50%" style={{ stopColor: 'rgb(var(--wui-tone-gain))' }} stopOpacity="0.15" />
-            <stop offset="100%" style={{ stopColor: 'rgb(var(--wui-tone-gain))' }} stopOpacity="0" />
-          </radialGradient>
-          <radialGradient id="app-starglow-low">
-            <stop offset="0%" style={{ stopColor: 'rgb(var(--wui-amber))' }} stopOpacity="0.45" />
-            <stop offset="50%" style={{ stopColor: 'rgb(var(--wui-amber))' }} stopOpacity="0.15" />
-            <stop offset="100%" style={{ stopColor: 'rgb(var(--wui-amber))' }} stopOpacity="0" />
-          </radialGradient>
-          <radialGradient id="app-starglow-null">
-            <stop offset="0%" style={{ stopColor: 'rgb(var(--wui-tone-loss))' }} stopOpacity="0.45" />
-            <stop offset="50%" style={{ stopColor: 'rgb(var(--wui-tone-loss))' }} stopOpacity="0.15" />
-            <stop offset="100%" style={{ stopColor: 'rgb(var(--wui-tone-loss))' }} stopOpacity="0" />
-          </radialGradient>
-          <radialGradient id="app-starglow-hub">
-            <stop offset="0%" style={{ stopColor: 'rgb(var(--wui-gold))' }} stopOpacity="0.55" />
-            <stop offset="55%" style={{ stopColor: 'rgb(var(--wui-gold))' }} stopOpacity="0.2" />
-            <stop offset="100%" style={{ stopColor: 'rgb(var(--wui-gold))' }} stopOpacity="0" />
-          </radialGradient>
-          <radialGradient id="app-starglow-frontier">
-            <stop offset="0%" style={{ stopColor: 'rgb(var(--wui-map-minor))' }} stopOpacity="0.3" />
-            <stop offset="60%" style={{ stopColor: 'rgb(var(--wui-map-minor))' }} stopOpacity="0.08" />
-            <stop offset="100%" style={{ stopColor: 'rgb(var(--wui-map-minor))' }} stopOpacity="0" />
-          </radialGradient>
         </defs>
         {/* 航线（V13 迷雾）：双亮实线带分钟；涉及剪影暗化无分钟；剪影连向更深处只画半段虚化提示 */}
         {mapEdges.map((e, idx) => {
@@ -1225,7 +1049,6 @@ export function StarMap({
           const aVis = aExp || aFront
           const bVis = bExp || bFront
           const crossed = editing && crossedEdge.has(idx)
-          const isSelectedRoute = selectedId !== null && (e.from.id === selectedId || e.to.id === selectedId)
           const halfX = pa.x + (pb.x - pa.x) * 0.5
           const halfY = pa.y + (pb.y - pa.y) * 0.5
           if (!aVis && !bVis) return null // 迷雾深处：不渲染
@@ -1238,7 +1061,7 @@ export function StarMap({
                 y1={pa.y}
                 x2={halfX}
                 y2={halfY}
-                className={`app-map-edge is-hint${isSelectedRoute ? ' is-selected-route' : ''}`}
+                className="app-map-edge is-hint"
               />
             )
           }
@@ -1250,7 +1073,7 @@ export function StarMap({
                 y1={pb.y}
                 x2={halfX}
                 y2={halfY}
-                className={`app-map-edge is-hint${isSelectedRoute ? ' is-selected-route' : ''}`}
+                className="app-map-edge is-hint"
               />
             )
           }
@@ -1263,7 +1086,7 @@ export function StarMap({
                 y1={pa.y}
                 x2={pb.x}
                 y2={pb.y}
-                className={`app-map-edge is-fog${isSelectedRoute ? ' is-selected-route' : ''}`}
+                className="app-map-edge is-fog"
               />
             )
           }
@@ -1280,17 +1103,8 @@ export function StarMap({
                 y1={pa.y}
                 x2={pb.x}
                 y2={pb.y}
-                className={`app-map-edge${crossed ? ' is-cross' : ''}${isSelectedRoute ? ' is-selected-route' : ''}`}
+                className={`app-map-edge${crossed ? ' is-cross' : ''}`}
               />
-              {isSelectedRoute ? (
-                <line
-                  x1={pa.x}
-                  y1={pa.y}
-                  x2={pb.x}
-                  y2={pb.y}
-                  className="app-map-edge-flow"
-                />
-              ) : null}
               {/* 悬停说明：SVG 元素用 **`data-tip`**（React 的 SVG 类型不接受 `title` 属性；而 SVG 的
                   `<title>` 子元素会被浏览器弹**系统默认**提示）——两者都由全局接管层 `ui/Tooltip.tsx`
                   换成站内自绘提示（2026-09-14 船长报障后统一） */}
@@ -1325,39 +1139,23 @@ export function StarMap({
           const cls = isHub ? ' is-hub' : isSel ? ' is-sel' : frontier ? ' is-frontier' : ''
           const bounty = bountyByGalaxy.get(g.id) ?? 0
           const isFactionNode = factionGalaxy === g.id
-          const station = [...engine.ctx.stations.values()].find((s) => s.galaxyId === g.id)
-          const hasStation = isHub || (station !== undefined && isSiteBuilt(state, station))
-          const stationName = isHub ? tr('ui.Expedition.007') : station ? station.name : undefined
-          const gRare = rareWreckRefsOf(engine, g.id)
-          const glowId = isHub
-            ? 'app-starglow-hub'
-            : frontier
-              ? 'app-starglow-frontier'
-              : g.security !== undefined && g.security >= 0.5
-                ? 'app-starglow-high'
-                : g.security !== undefined && g.security >= 0
-                  ? 'app-starglow-low'
-                  : 'app-starglow-null'
+          /**
+           * **入侵标记的悬停读数**（**船长 2026-09-25 令「② 修」**）——原来它只挂在
+           * `<g className="app-map-invasion" data-tip=…>` 上，而那一组是 `pointer-events: none`
+           * （2026-09-23 为"不挡点击"而设）⇒ **悬停事件落到下面的圆点上、`closest('[data-tip]')`
+           * 找不到那一组，提示永远弹不出来**（018 / 099 从上线起就是死的）。
+           * 修法 = 把这个读数**同时挂到节点圆点**（最自然的悬停目标）＋ 让进度条/★ 自己可悬停
+           * （见 `styles.css` 那两条 `pointer-events`）；点击照旧冒泡给节点 ⇒ 不影响选星系。
+           */
+          const invasionTip = invasionProgress.has(g.id)
+            ? tr('ui.weekend.018')
+            : g.id === invasionCoreHeld
+              ? tr('ui.weekend.101', { p1: String(Math.round(mothershipFrac * 100)) })
+              : null
           // 显示模式（2026-09-11）：名称 / 安全等级 / 敌对派系（母港恒显名称与金色徽标，不参与族色）
           const famChips = labelMode === 'faction' && !isHub ? familyChipsOf(g.id, explored) : []
           const famRowW = famChips.reduce((s, c) => s + famChipW(c.text), 0) + FAM_CHIP_GAP * Math.max(0, famChips.length - 1)
           const primaryFam = labelMode === 'faction' && !isHub ? primaryFamilyOf(g.id) : undefined
-          const intelTip = (
-            <GalaxyIntelTip
-              galaxy={g}
-              explored={explored}
-              engine={engine}
-              bounty={bounty}
-              primaryFam={primaryFam}
-              isFaction={isFactionNode}
-              factionName={factionName}
-              invasionActive={invasionProgress.has(g.id) || g.id === invasionCoreHeld}
-              mothershipFrac={mothershipFrac}
-              hasStation={hasStation}
-              stationName={stationName}
-              rareCount={gRare.count}
-            />
-          )
           /** 节点下方那条信息带的文字与配色（三态各自的取法） */
           const labelText =
             isHub || frontier
@@ -1371,7 +1169,6 @@ export function StarMap({
             <g
               key={g.id}
               className="app-map-node"
-              {...hoverTipProps(intelTip)}
               onClick={() => {
                 // 刚拖过星图 ⇒ 这一次 click 是拖动的尾巴，不吃（免得"拖完顺手选中一个星系"）
                 if (mapAteClickRef.current) return
@@ -1392,7 +1189,7 @@ export function StarMap({
                * 读数另挂一份在**节点圆点**上（见上 `invasionTip`），进度条与 ★ 由 `styles.css` 放行悬停。
                */}
               {invasionProgress.has(g.id) || g.id === invasionCoreHeld ? (
-                <g className="app-map-invasion">
+                <g className="app-map-invasion" data-tip={invasionTip ?? undefined}>
                   <circle cx={p.x} cy={p.y} r={46} fill="url(#app-invglow)" className="app-map-invasion-glow" />
                   {/**
                    * 节点上方那根条（30×3.5 圆角）：**仍被占** = 夺回进度；**核心旗舰期** = 母舰血量
@@ -1481,36 +1278,15 @@ export function StarMap({
                * ⚠ 画在圆点**之前**（同组内靠后的元素在重叠处优先）⇒ 不挡圆点、徽标与标签自己的悬停。
                * 半径取 16 的实测依据见 `MAP_HIT_R` 的注释。
                */}
-              {/* 天体光晕层（高安绿/低安黄/零安红/母港金/未探索微光） */}
-              <circle
-                cx={p.x}
-                cy={p.y}
-                r={isHub ? 25 : frontier ? 15 : 18}
-                fill={`url(#${glowId})`}
-                className="app-map-star-glow"
-                pointerEvents="none"
-              />
-              {/* 空间站/母港枢纽轨道环 */}
-              {isHub ? (
-                <g className="app-map-hub-ring" pointerEvents="none">
-                  <circle cx={p.x} cy={p.y} r={22} className="app-map-orbit-ring" />
-                  <path
-                    d={`M ${p.x - 26} ${p.y} L ${p.x - 20} ${p.y} M ${p.x + 20} ${p.y} L ${p.x + 26} ${p.y} M ${p.x} ${p.y - 26} L ${p.x} ${p.y - 20} M ${p.x} ${p.y + 20} L ${p.x} ${p.y + 26}`}
-                    className="app-map-orbit-cross"
-                  />
-                </g>
-              ) : hasStation ? (
-                <circle cx={p.x} cy={p.y} r={14.5} className="app-map-station-ring" pointerEvents="none" />
-              ) : null}
-              {/**
-               * **判定圆**（2026-10-02 船长令）：扩大判定范围吃点击
-               */}
               <circle cx={p.x} cy={p.y} r={MAP_HIT_R} className="app-map-hit" />
               <circle
                 cx={p.x}
                 cy={p.y}
                 r={frontier ? 9.5 : isHub ? HUB_DOT_R : 11}
                 className={`app-map-dot${cls}${isFactionNode ? ' is-faction' : ''}`}
+                /* 入侵标记的读数挂在圆点上（见上面 `invasionTip` 的说明）：圆点是节点最自然的悬停目标，
+                   而那一组标记自己是 `pointer-events: none`（不挡点击）⇒ 只挂那边等于没挂 */
+                {...(invasionTip !== null ? { 'data-tip': invasionTip } : {})}
               />
               {/* 悬赏情报徽标（协会共享情报：剪影也显示数量，帮助判断是否值得扫描）
                   2026-11-02 船长：「英文和数字的字号要在大2号」⇒ 徽标字号 +2px 后基线同步上移 3 单位

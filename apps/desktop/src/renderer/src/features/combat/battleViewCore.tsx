@@ -530,7 +530,7 @@ function ringPath(r: number): string {
   return `M${fanSegs(r).join(' L')}`
 }
 
-/** 三层垂直血量条：自上而下 护盾(蓝) / 装甲(黄) / 结构(红)，各层按自身满值比例独立显示。
+/** 三层垂直血量条：自上而下 护盾(蓝) / 装甲(红) / 结构(黄)，各层按自身满值比例独立显示。
  *  布局与配色全部内联（不依赖样式表加载顺序），确保任何环境下条均可见。
  *  ⚠ 2026-09-22 起色值走 `ui/tones.ts`（`var(--wui-tone-hp-*)`）⇒ 随主题切换 */
 const HP_LAYER_COLOR = { s: UI_TONES.hpShield, a: UI_TONES.hpArmor, h: UI_TONES.hpHull } as const
@@ -540,15 +540,8 @@ function HpTri({ hp, max, label }: { hp: { s: number; a: number; h: number }; ma
     { k: 'a' as const, zh: tr("ui.FitPage.003") },
     { k: 'h' as const, zh: tr("ui.ShipPage.023") },
   ]
-  const hullCur = Math.max(0, ceilFinalQuantity(hp.h))
-  const hullFull = max?.h ?? 0
-  const isLowHull = hullFull > 0 && (hullCur / hullFull) < 0.25 && hullCur > 0
-
   return (
-    <div
-      className={`app-combat-hp-tri${isLowHull ? ' is-low-hull' : ''}`}
-      style={{ display: 'flex', flexDirection: 'column', gap: 'var(--wui-sp-2)', width: '100%' }}
-    >
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--wui-sp-2)', width: '100%' }}>
       {label ? <span style={{ fontSize: 'var(--wui-fs-2xsd)', color: 'rgb(var(--wui-dim))', lineHeight: 1.2 }}>{label}</span> : null}
       {layers.map((ly) => {
         const cur = Math.max(0, ceilFinalQuantity(hp[ly.k]))
@@ -556,10 +549,10 @@ function HpTri({ hp, max, label }: { hp: { s: number; a: number; h: number }; ma
         const ratio = full > 0 ? Math.min(100, Math.max(0, (cur / full) * 100)) : 0
         const color = HP_LAYER_COLOR[ly.k]
         return (
-          <div key={ly.k} title={`${ly.zh} ${cur}/${ceilFinalQuantity(full)} (${Math.round(ratio)}%)`} style={{ display: 'flex', alignItems: 'center', gap: 'var(--wui-sp-4)', height: 10 }}>
+          <div key={ly.k} title={`${ly.zh} ${cur}/${ceilFinalQuantity(full)}`} style={{ display: 'flex', alignItems: 'center', gap: 'var(--wui-sp-4)', height: 10 }}>
             <span style={{ flex: '0 0 24px', fontSize: 'var(--wui-fs-2xsc)', color: 'rgb(var(--wui-dim))', textAlign: 'right' }}>{ly.zh}</span>
             <span style={{ flex: 1, height: '100%', background: 'rgb(var(--wui-well) / 0.45)', borderRadius: 'var(--wui-sp-2)', overflow: 'hidden' }}>
-              <i style={{ display: 'block', height: '100%', width: `${ratio}%`, background: color, boxShadow: `0 0 4px ${color}`, transition: 'width .4s cubic-bezier(0.2, 0.8, 0.2, 1)' }} />
+              <i style={{ display: 'block', height: '100%', width: `${ratio}%`, background: color, boxShadow: `0 0 4px ${color}`, transition: 'width .4s' }} />
             </span>
             <span style={{ minWidth: 34, flex: '0 0 auto', fontSize: 'var(--wui-fs-2xsb)', fontFamily: 'var(--wui-mono)', fontVariantNumeric: 'tabular-nums', color: 'rgb(var(--wui-dim))', textAlign: 'right', whiteSpace: 'nowrap' }}>{cur}</span>
           </div>

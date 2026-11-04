@@ -107,28 +107,9 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
     if (categoryMissing) { setCategory('all'); setSub(SUB_ALL) }
     if (subMissing) setSub(SUB_ALL)
   }, [categoryMissing, subMissing])
-  const [tidySort, setTidySort] = useState(false)
-  const filteredRows = allRows.filter(([id]) => itemBucketPasses(engine.ctx, id, category) && itemSubPasses(engine.ctx, id, category, sub))
-  const rows = tidySort
-    ? [...filteredRows].sort((a, b) => {
-        const rDiff = (itemRarityTierOf(b[0]) ?? 0) - (itemRarityTierOf(a[0]) ?? 0)
-        if (rDiff !== 0) return rDiff
-        const valB = (itemBuyQuote(engine, b[0]) ?? (engine.ctx.items.get(b[0])?.baseSellPriceIsk ?? 0)) * b[1]
-        const valA = (itemBuyQuote(engine, a[0]) ?? (engine.ctx.items.get(a[0])?.baseSellPriceIsk ?? 0)) * a[1]
-        return valB - valA
-      })
-    : filteredRows
+  const rows = allRows.filter(([id]) => itemBucketPasses(engine.ctx, id, category) && itemSubPasses(engine.ctx, id, category, sub))
   // 2026-09-09（船长口径 A）：装备（模块）也可入货仓携带——单列「船载」组；按 1 m³/件 计入货舱
   const modRows = rows.filter(([id]) => engine.ctx.modules.get(id) !== undefined)
-  const totalCargoUnits = allRows.reduce((acc, [, n]) => acc + n, 0)
-  const totalCargoVol = allRows.reduce((acc, [id, n]) => acc + n * (engine.ctx.items.get(id)?.unitM3 ?? 1), 0)
-  const totalCargoValue = allRows.reduce((acc, [id, n]) => {
-    const quote = itemBuyQuote(engine, id) ?? (engine.ctx.items.get(id)?.baseSellPriceIsk ?? 0)
-    return acc + n * quote
-  }, 0)
-  const occTotal = used + haulOcc + courierOcc
-  const cargoRatio = cap > 0 ? occTotal / cap : 0
-  const cargoTone: 'normal' | 'warn' | 'danger' = cargoRatio >= 1 ? 'danger' : cargoRatio > 0.9 ? 'warn' : haulOcc + courierOcc > 0 ? 'warn' : 'normal'
 
   // 图标/列表切换（手册同款；网格为浏览视图）
   const [view, setView] = useItemView('cargo')
@@ -266,9 +247,9 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
         </div>
         <div className="app-cargo-head">
           <ProgressBar
-            value={cap > 0 ? (occTotal / cap) * 100 : 0}
-            tone={cargoTone}
-            label={tr("ui.CargoPage.056", { targetName: targetName, p2: m3(occTotal), p3: cap > 0 ? cap.toLocaleString('zh-CN') : '—' })}
+            value={cap > 0 ? ((used + haulOcc + courierOcc) / cap) * 100 : 0}
+            tone={haulOcc + courierOcc > 0 ? 'warn' : cap > 0 && used / cap > 0.85 ? 'danger' : cap > 0 && used / cap > 0.6 ? 'warn' : 'normal'}
+            label={tr("ui.CargoPage.056", { targetName: targetName, p2: m3(used + haulOcc + courierOcc), p3: cap > 0 ? cap.toLocaleString('zh-CN') : '—' })}
           />
           {haulOcc > 0 ? (
             <div className="app-dim" style={{ marginTop: 'var(--wui-sp-2)' }}>
@@ -296,36 +277,9 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
             </button>
           ) : null}
         </div>
-        {allRows.length > 0 ? (
-          <div className="app-cargo-stats">
-            <span className="app-cargo-stat-item">
-              <span className="app-dim">{tr("ui.CargoPage.061")}:</span>
-              <span className="app-cargo-stat-val">{m3(totalCargoVol)}</span>
-            </span>
-            <span className="app-cargo-stat-item">
-              <span className="app-dim">{tr("ui.CargoPage.062")}:</span>
-              <span className="app-cargo-stat-val">{isk(totalCargoValue)}</span>
-            </span>
-            <span className="app-cargo-stat-item">
-              <span className="app-dim">{tr("ui.ItemsPage.021")}:</span>
-              <span className="app-cargo-stat-val">{allRows.length} 种 · {totalCargoUnits.toLocaleString('zh-CN')} 件</span>
-            </span>
-          </div>
-        ) : null}
       </Panel>
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--wui-sp-8)', marginBottom: 'var(--wui-sp-6)' }}>
-        <ItemViewBar mode={view} onChange={setView} />
-        {allRows.length > 0 ? (
-          <button
-            className={`app-btn is-small is-tidy${tidySort ? ' is-active' : ''}`}
-            onClick={() => setTidySort((prev) => !prev)}
-            title={tr('ui.CargoPage.063')}
-          >
-            {tr('ui.CargoPage.063')}
-          </button>
-        ) : null}
-      </div>
+      <ItemViewBar mode={view} onChange={setView} />
       <div className="app-fleet-toolbar">
         <div className="app-fleet-row">
           <span className="app-dim">{tr('ui.ItemsPage.021')}</span>
@@ -384,8 +338,6 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                       as="li"
                       item={def}
                       nameOf={(pid) => engine.ctx.items.get(pid)?.name}
-                      quantity={units}
-                      unitPrice={buy}
                       className="app-inv-row"
                     >
                       <div className="app-inv-main">
@@ -524,20 +476,18 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                 /** **族徽角标**（**2026-09-27 船长报障**：「物品仓库内的势力装备，左上角没有角标」）
                  *  —— 判据走单点 `crestFamOf(id)`（与手册图鉴同一把尺）；非专属件恒不标。 */
                 const crest = crestFamOf(id)
-                const buy = itemBuyQuote(engine, id)
                 return {
                   key: id,
                   glyph: itemGlyphName(def?.id ?? id, def?.kind ?? 'item'),
                   name: def?.name ?? id,
                   sub: `×${units.toLocaleString('zh-CN')} · ${m3(units * (def?.unitM3 ?? 1))}`,
                   title: def?.description,
-                  // 富卡悬停（含数量与估值，与列表模式的 ItemHover 同一内容）
-                  hover: def ? itemHoverContent(def, (pid) => engine.ctx.items.get(pid)?.name, undefined, units, buy) : undefined,
+                  // 富卡悬停（与列表模式的 ItemHover 同一内容；2026-09-19 与仓库同步）
+                  hover: def ? itemHoverContent(def, (pid) => engine.ctx.items.get(pid)?.name) : undefined,
                   // 稀有残骸上稀有金（船长 2026-09-19）；其余物品照旧按大类取色
                   tone: inventoryItemTone(id, def?.kind ?? 'item'),
                   // 稀有度小标签（2026-09-20 船长）：物品按 id 查档（含市场外档表与 AI 核心的映射）
                   rarity: itemRarityTierOf(id),
-                  selected: pickId === id,
                   ...(crest !== undefined ? { crest } : {}),
                 }
               })
@@ -576,7 +526,6 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                     hover: def
                       ? moduleHoverContent(def, tr('ui.CargoPage.059'))
                       : undefined,
-                    selected: pickMod === id,
                     ...(crest !== undefined ? { crest } : {}),
                   }
                 })}

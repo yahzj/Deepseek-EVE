@@ -17,7 +17,7 @@ multiMe: boolean
 meAnchorByTag: Map<string, Anchor>
 arcs: NonNullable<ReturnType<typeof battleArcsFor>>
 tr: (id: string, params?: Record<string, string | number>) => string
-popupsRef: import('react').MutableRefObject<{ key: number; target: string; slot: number; x: number; y: number; born: number; amount: number; type: DamageType; miss: boolean; crit?: boolean; }[]>
+popupsRef: import('react').MutableRefObject<{ key: number; target: string; slot: number; x: number; y: number; born: number; amount: number; type: DamageType; miss: boolean; }[]>
 dims: Dims
 popupClock: number
 boltsRef: import('react').MutableRefObject<BoltV[]>
@@ -66,11 +66,10 @@ flashRef: import('react').MutableRefObject<FlashV[]>
   const popupEls = popupsRef.current.map((p) => {
     // `miss` = 本拍该目标**一点伤害都没有**（真未命中）；有伤害就出数字（同拍里夹杂未命中也不影响）
     const miss = p.miss
-    const crit = !miss && Boolean(p.crit)
     return (
       <span
         key={`pop-${p.key}`}
-        className={`app-bts-pop${miss ? ' is-miss' : ''}${crit ? ' is-crit' : ''}`}
+        className={`app-bts-pop${miss ? ' is-miss' : ''}`}
         style={{
           left: `${Math.max(60, Math.min(dims.W - 60, p.x + ((p.slot % 3) - 1) * 100))}px`,
           top: `${Math.max(24, p.y - 76 - Math.floor(p.slot / 3) * 34)}px`,
@@ -81,7 +80,7 @@ flashRef: import('react').MutableRefObject<FlashV[]>
           animationPlayState: 'paused',
         }}
       >
-        {miss ? tr('ui.BattleScreen.107') : `${crit ? 'CRIT ' : ''}-${p.amount.toLocaleString('zh-CN')}`}
+        {miss ? tr('ui.BattleScreen.107') : `-${p.amount.toLocaleString('zh-CN')}`}
       </span>
     )
   })

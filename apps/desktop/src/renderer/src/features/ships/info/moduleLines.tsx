@@ -4,7 +4,7 @@ import { type InfoLine, pct, resistAddLine, repairAmountText, repairKitName, fmt
 import { tr } from '../../../i18n/locale'
 import type { GameEngine } from '../../../game/engine'
 import { moduleSubKeyOf, MODULE_SUBS, subText } from '../../../ui/itemSubs'
-import { slotText, rackText, crestFamOf, crestLabelOf } from '../../../ui/labelsText'
+import { slotText, rackText } from '../../../ui/labelsText'
 import { moduleShortEffect } from './moduleEffects'
 
 /**
@@ -145,10 +145,6 @@ export function moduleInfoLines(mod: ModuleDef, engine?: GameEngine, shipId?: st
   const subOpt = MODULE_SUBS.find((s) => s.key === subKey)
   const typeText = mod.slot === 'support' && subOpt ? subText(subOpt) : slotText(mod.slot)
   const lines: InfoLine[] = [{ k: tr("ui.shipInfo.036"), v: `${typeText}（${rackText(rackOf(mod))}）` }]
-  const crest = crestFamOf(mod.id)
-  if (crest) {
-    lines.push({ k: tr("ui.shipInfo.257"), v: crestLabelOf(crest) })
-  }
   if (mod.slot === 'miner') {
     lines.push({ k: tr("ui.shipInfo.037"), v: `+${pctOpt(mod.bonus)}` })
   } else if (mod.slot === 'cargo') {

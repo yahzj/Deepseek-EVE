@@ -37,9 +37,8 @@ export function HudManufacturing({ manuRuns, engine, core, usableCores, setCoreS
                   const mats = bp?.materials ?? []
                   const ready = readinessOf(engine, mats, v.blueprintId ?? undefined)
                   const readyPct = Math.round(ready.pct * 100)
-                  const isComplete = v.remainingMs <= 300 || v.percent >= 99.8
                   return (
-                    <div className={`hud-card${isComplete ? ' is-complete' : ''}`} key={v.id}>
+                    <div className="hud-card" key={v.id}>
                       <div className="hud-row between">
                         <span className="hud-row" style={{ gap: 7, minWidth: 0 }}>
                           {/* **AI 指挥中心那套动画**（**2026-10-01 船长令**：动画一并应用）：组装机恒画 `craft`，与 AI 指挥中心那一行同一个组件 */}
@@ -51,7 +50,7 @@ export function HudManufacturing({ manuRuns, engine, core, usableCores, setCoreS
                       </div>
                       <div className="hud-row between" style={{ marginTop: 5 }}>
                         <span className="hud-tiny">{bp?.name ?? ''}</span>
-                        <span className="hud-tiny app-mfg-countdown">{isComplete ? tr('ui.Industry.044') : durText(v.remainingMs)}</span>
+                        <span className="hud-tiny">{durText(v.remainingMs)}</span>
                       </div>
                       <span className="hud-bar">
                         <i style={{ ['--v' as string]: Math.round(v.percent) }} />
