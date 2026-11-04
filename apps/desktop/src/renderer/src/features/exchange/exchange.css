@@ -6013,6 +6013,8 @@ html body .app-root.is-layout-modern .ex-page .ex-simple-big-action-btn:disabled
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+  /* 固定两行高度：只有一条快讯时也不塌，避免顶栏下方跳动（船长令） */
+  min-height: calc(18px * 2 + 2px);
 }
 .ex-ticker-feed-row {
   display: flex;

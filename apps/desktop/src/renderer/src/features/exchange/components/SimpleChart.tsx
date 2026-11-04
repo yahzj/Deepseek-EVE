@@ -42,6 +42,21 @@ export function SimpleChart({ client, code, quote, tick }: SimpleChartProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [client, code, clientPeriod, tick])
 
+  // 空图时按时间推进进度（0→92%，加载完成即消失）：让玩家看到「行情初始化 42%」而不是干等
+  const ready = series.length >= 2
+  const [loadPct, setLoadPct] = useState(0)
+  useEffect(() => {
+    if (ready) {
+      setLoadPct(100)
+      return
+    }
+    setLoadPct(4)
+    const timer = window.setInterval(() => {
+      setLoadPct((p) => (p >= 92 ? p : Math.min(92, p + Math.max(1, Math.round((92 - p) * 0.07)))))
+    }, 160)
+    return () => window.clearInterval(timer)
+  }, [ready, code])
+
   // SVG 视口尺寸
   const width = 640
   const height = 150
@@ -213,7 +228,7 @@ export function SimpleChart({ client, code, quote, tick }: SimpleChartProps) {
         onTouchEnd={() => setHoverIndex(null)}
       >
         {coords.length < 2 ? (
-          <div className="ex-simple-chart-empty">{T.chartNoData}</div>
+          <div className="ex-simple-chart-empty">{`${T.chartLoading} ${loadPct}%`}</div>
         ) : (
           <>
             {/* 顶底参考刻度（平盘保护与 12% 呼吸区自动比例） */}

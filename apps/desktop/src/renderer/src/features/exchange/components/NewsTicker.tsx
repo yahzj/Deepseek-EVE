@@ -8,7 +8,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Bullhorn } from '@carbon/icons-react'
 import type { NewsItem } from '../client'
-import { clock } from '../format'
 import { T, TF } from '../texts'
 
 /** 历史快讯里的内部元信息兜底清理（新快讯由服务端直接输出玩家向措辞） */
@@ -51,6 +50,19 @@ function shortText(text: string, max: number): string {
   return text.length > max ? `${text.slice(0, max)}…` : text
 }
 
+/** 每条快讯一个稳定的伪随机秒（01-59）：船长令「秒数在 60 秒里选一个随机数」 */
+function newsSecond(id: string): number {
+  let h = 0
+  for (let i = 0; i < id.length; i += 1) h = (h * 31 + id.charCodeAt(i)) % 1_000_003
+  return (h % 59) + 1
+}
+
+function newsClock(ts: number, id: string): string {
+  const d = new Date(ts)
+  const p2 = (n: number): string => (n < 10 ? `0${n}` : String(n))
+  return `${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(newsSecond(id))}`
+}
+
 export function NewsTicker({
   news,
   onSelectCode,
@@ -71,7 +83,8 @@ export function NewsTicker({
       const latest = filtered[0]
       if (latest === undefined || latest.id === lastIdRef.current) return
       lastIdRef.current = latest.id
-      setRows((prev) => [latest, ...prev.filter((p) => !isPersonalityNews(p))].slice(0, 2))
+      // 时间早的在上方：新行追加到底部，超出两行时丢掉最上面那条
+      setRows((prev) => [...prev.filter((p) => !isPersonalityNews(p)), latest].slice(-2))
     }
     appendLatest()
     const timer = window.setInterval(appendLatest, 60_000)
@@ -102,7 +115,7 @@ export function NewsTicker({
           return (
             <div className={`ex-ticker-feed-row is-${item.tone}`} key={item.id}>
               <span className={`ex-ticker-impact ${toneClass}`}>{toneLabel(item.tone)}</span>
-              <span className="ex-ticker-time">{clock(item.ts)}</span>
+              <span className="ex-ticker-time">{newsClock(item.ts, item.id)}</span>
               <b className="ex-ticker-title">{playerText(item.title)}</b>
               {code !== null ? (
                 <button
