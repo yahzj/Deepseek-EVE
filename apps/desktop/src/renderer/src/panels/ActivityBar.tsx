@@ -541,7 +541,7 @@ export function ActivityBar({
 
       {/* ── 交易所活动监控（副AI活动最下方，独立展示股票、债券与基金） ── */}
       <div className="app-activitybar-group app-activitybar-group-exchange">
-        <div className="app-activitybar-gtitle">{isEn() ? 'Exchange' : '深空证券交易所'}</div>
+        <div className="app-activitybar-gtitle">{isEn() ? 'Exchange' : '交易所'}</div>
         <div className="app-ai-act-list">
           {/* ① 股票条目（单独一行展示） */}
           <button
