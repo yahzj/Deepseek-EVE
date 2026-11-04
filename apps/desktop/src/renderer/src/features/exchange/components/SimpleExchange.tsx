@@ -56,7 +56,7 @@ export function SimpleExchange({
     <div className="ex-simple-layout ex-simple-grid">
       {/* 左栏：星际企业榜 */}
       <aside className="ex-simple-col-left" aria-label="行情列表">
-        <SimpleStockList snap={snap} selected={code} onSelect={onSelectCode} />
+        <SimpleStockList client={client} snap={snap} selected={code} onSelect={onSelectCode} />
       </aside>
 
       {/* 中栏：行情主视区 + 现货/融券买卖舱 */}
@@ -118,4 +118,5 @@ export function SimpleExchange({
     </div>
   )
 }
+
 

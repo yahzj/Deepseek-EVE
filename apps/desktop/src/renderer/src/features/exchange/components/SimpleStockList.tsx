@@ -2,20 +2,22 @@
  * 极简模式 · 左栏星际企业榜（约 250px）。
  *
  * 紧凑卡片式展示 4 位代码股票（SMHI、UGMC、OJLS、ABSI）：
- * - 4 位代码 + 公司名 + 现价大字 + 今日涨跌（2026-11-04 船长：名字右侧不再显示小曲线）；
+ * - 4 位代码 + 公司名 + 现价大字 + 今日涨跌 + 名字右侧 Sparkline 小走势（2026-11-04 船长：必须保留）；
  * - 若持有该公司股票，卡片右上角显示精致角标「持仓 X 股」。
  */
-import type { ExchangeSnapshot } from '../client'
+import type { ExchangeClient, ExchangeSnapshot } from '../client'
 import { amount, pct, price } from '../format'
 import { T } from '../texts'
+import { Sparkline } from './Sparkline'
 
 interface SimpleStockListProps {
+  client: ExchangeClient
   snap: ExchangeSnapshot
   selected: string
   onSelect: (code: string) => void
 }
 
-export function SimpleStockList({ snap, selected, onSelect }: SimpleStockListProps) {
+export function SimpleStockList({ client, snap, selected, onSelect }: SimpleStockListProps) {
   // 统计每只股票的持仓明细（现货、做多杠杆、做空杠杆）
   const holdMap = new Map<string, { spotQty: number; longQty: number; shortQty: number }>()
   for (const h of snap.account.holdings) {
@@ -100,13 +102,17 @@ export function SimpleStockList({ snap, selected, onSelect }: SimpleStockListPro
                 <span className="ex-simple-card-sector">{q.sector}</span>
               </div>
 
-              {/* 卡片中间：现价、涨跌幅 */}
+              {/* 卡片中间与右侧：现价、涨跌幅、Sparkline */}
               <div className="ex-simple-card-main">
                 <div className="ex-simple-card-price-col">
                   <div className="ex-simple-card-price ex-num">{price(q.price)}</div>
                   <div className={`ex-simple-card-change ex-num ${up ? 'is-up' : 'is-down'}`}>
                     {pct(q.changePct)}
                   </div>
+                </div>
+
+                <div className="ex-simple-card-spark">
+                  <Sparkline client={client} code={q.code} isUp={up} width={72} height={24} />
                 </div>
               </div>
             </div>
