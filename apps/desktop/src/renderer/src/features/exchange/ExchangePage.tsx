@@ -229,8 +229,14 @@ function ExchangeBody({
         {/* 左区：品牌名称 + 核心双模式 Segmented Tabs */}
         <div className="ex-topbar-left">
           <div className="ex-title">
-            <h2 className="ex-title-text">{T.simpleTopTitle}</h2>
-            <SourceBadge source={bundle.source} />
+            <h2 className="ex-title-row">
+              <span className="ex-title-prefix">{T.titlePrefix}</span>
+              <span className="ex-title-suffix">{T.titleSuffix}</span>
+            </h2>
+            <div className="ex-title-sub-row">
+              <span className="ex-title-spacer" aria-hidden="true">{T.titlePrefix}</span>
+              <SourceBadge source={bundle.source} />
+            </div>
           </div>
 
           <div className="ex-mode-tabs" role="tablist" aria-label={T.viewModeSimple}>

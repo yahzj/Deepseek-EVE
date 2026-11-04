@@ -14,15 +14,17 @@ import { T, TF } from '../texts'
 /** 历史快讯里的内部元信息兜底清理（新快讯由服务端直接输出玩家向措辞） */
 const LEGACY_META = /（[^（）]*(?:强度|冲击|影响|回合|bp|×)[^（）]*）/g
 
-/** 人格相关的专有名词与括号标记匹配（2026-11-04 船长令：快讯中关于人格的文案都要去掉） */
+/** 人格相关的专有名词与开发原型/AI味标记清洗（2026-11-04 船长令：无AI味新闻稿风格） */
 const PERSONALITY_REGEX = /(?:六大|六|主力|AI|对手盘)?人格/g
-const PERSONALITY_BRACKETS = /[（(【\[][^（）()【】\[\]]*(?:人格|铁砧|红隼|磐石|夜枭|群星|深潮|黑隐者)[^（）()【】\[\]]*[）)】\]]/g
+const PERSONALITY_BRACKETS = /[（(【\[][^（）()【】\[\]]*(?:人格|铁砧|红隼|磐石|夜枭|群星|深潮|黑隐者|随机游走|虚拟资金)[^（）()【】\[\]]*[）)】\]]/g
+const DEV_AI_FLUFF = /(?:本页为原型|虚拟资金不写入存档|行情按随机(?:走势|游走)推进[，。]?)/g
 
 function playerText(text: string): string {
   return text
     .replace(LEGACY_META, '')
     .replace(PERSONALITY_BRACKETS, '')
     .replace(PERSONALITY_REGEX, '')
+    .replace(DEV_AI_FLUFF, '')
     .replace(/\s+/g, ' ')
     .trim()
 }

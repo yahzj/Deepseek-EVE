@@ -610,6 +610,8 @@ export class HttpExchangeClient implements ExchangeClient {
       await Promise.all([
         this.loadNews().catch(() => undefined),
         this.loadBond().catch(() => undefined),
+        // 对手盘面板跟着行情一起刷：WS `agents` 帧只在回合末来一次，页面开着不动会像卡死。
+        this.loadAgents().catch(() => undefined),
         code === ''
           ? Promise.resolve()
           : this.getBook(code)

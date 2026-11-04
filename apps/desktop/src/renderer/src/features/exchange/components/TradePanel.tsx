@@ -15,6 +15,7 @@ import type { ExchangeClient, ExchangeSnapshot, PlaceOrderRequest, Side } from '
 import type { ToastFn } from '../../../pages/common'
 import { amount, money, pctAbs, price as fmtPrice } from '../format'
 import { T, TF } from '../texts'
+import { progressStyle, useActionProgress } from '../useActionProgress'
 
 type Mode = 'spot' | 'long' | 'short'
 type OrderKind = 'limit' | 'market'
@@ -58,6 +59,7 @@ export function TradePanel({
   const [confirm, setConfirm] = useState<PlaceOrderRequest | null>(null)
   const [busy, setBusy] = useState(false)
   const orderSeq = useRef(0)
+  const submitProgress = useActionProgress()
 
   // 点盘口档位 → 填入价格（seq 保证连点同一档也能再次生效）
   useEffect(() => {
@@ -141,10 +143,9 @@ export function TradePanel({
     setQtyTouched(true)
   }
 
-  const submit = (req: PlaceOrderRequest): void => {
+  const submit = async (req: PlaceOrderRequest): Promise<void> => {
     setBusy(true)
-    void (async () => {
-      try {
+    try {
         const order = await client.placeOrder(req)
         const filled = order.filledQty ?? 0
         // 回合制下开仓单提交时 status=queued、filledQty=0，回合末集合竞价才成交。
@@ -197,7 +198,6 @@ export function TradePanel({
       } finally {
         setBusy(false)
       }
-    })()
   }
 
   const primaryAction = (): void => {
@@ -230,7 +230,8 @@ export function TradePanel({
       setConfirm(req)
       return
     }
-    submit(req)
+    submitProgress.start()
+    void submit(req).finally(() => submitProgress.finish())
   }
 
   const liqDistance = preview.liquidationDistancePct
@@ -538,9 +539,10 @@ export function TradePanel({
         {/* 确认下单大按钮 */}
         <button
           type="button"
-          className={`ex-primary is-${mode}${!isReadyToSubmit ? ' is-blocked' : ''}`}
+          className={`ex-primary is-${mode}${!isReadyToSubmit ? ' is-blocked' : ''} ex-btn-progress`}
           aria-disabled={!isReadyToSubmit}
           title={activeFormError || undefined}
+          style={progressStyle(submitProgress)}
           onClick={primaryAction}
         >
           <SendAlt size={16} /> {busy ? T.submitting : `${T.submit} · ${modeLabel(mode)}`}
@@ -578,11 +580,13 @@ export function TradePanel({
               </button>
               <button
                 type="button"
-                className="ex-primary ex-primary-small"
+                className="ex-primary ex-primary-small ex-btn-progress"
+                style={progressStyle(submitProgress)}
                 onClick={() => {
                   const req = confirm
                   setConfirm(null)
-                  submit(req)
+                  submitProgress.start()
+                  void submit(req).finally(() => submitProgress.finish())
                 }}
               >
                 <Checkmark size={14} /> {T.confirmOk}

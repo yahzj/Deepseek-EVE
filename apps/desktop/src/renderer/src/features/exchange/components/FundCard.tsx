@@ -12,9 +12,10 @@ import type { ExchangeClient, ExchangeSnapshot, FundPosition } from '../client'
 import type { ToastFn } from '../../../pages/common'
 import { money } from '../format'
 import { T, TF } from '../texts'
+import { progressStyle, useActionProgress } from '../useActionProgress'
 
-/** 持仓刷新间隔：服务端惰性按分钟结算，60 秒拉一次即可。 */
-const POSITION_REFRESH_MS = 60_000
+/** 持仓刷新间隔：服务端惰性按分钟结算，跟行情一起 10 秒拉一次（船长 2026-11-04 定）。 */
+const POSITION_REFRESH_MS = 10_000
 
 export function FundCard({
   client,
@@ -30,6 +31,8 @@ export function FundCard({
   const [position, setPosition] = useState<FundPosition | null>(null)
   const [amountText, setAmountText] = useState('100000')
   const [busy, setBusy] = useState(false)
+  const openProgress = useActionProgress()
+  const redeemProgress = useActionProgress()
 
   const availableCash = snap.account.cash
   const principal = position?.principal ?? 0
@@ -68,45 +71,41 @@ export function FundCard({
     setAmountText(String(Math.max(1, target)))
   }
 
-  const submit = (): void => {
+  const submit = async (): Promise<void> => {
     if (!canSubmit) {
       onToast(isOverCash ? T.fundNoCash : T.cashierInvalidAmount, true)
       return
     }
     setBusy(true)
     const amount = numericAmount
-    void (async () => {
-      try {
-        const next = await client.openFund(amount, crypto.randomUUID())
-        setPosition(next)
-        setAmountText('')
-        onToast(TF.fundOpened(money(amount)), false)
-        onRefresh()
-      } catch (err) {
-        onToast(err instanceof Error ? err.message : String(err), true)
-      } finally {
-        setBusy(false)
-      }
-    })()
+    try {
+      const next = await client.openFund(amount, crypto.randomUUID())
+      setPosition(next)
+      setAmountText('')
+      onToast(TF.fundOpened(money(amount)), false)
+      onRefresh()
+    } catch (err) {
+      onToast(err instanceof Error ? err.message : String(err), true)
+    } finally {
+      setBusy(false)
+    }
   }
 
-  const redeem = (): void => {
+  const redeem = async (): Promise<void> => {
     if (busy || !hasPosition) return
     const payout = Math.max(0, principal + accrued)
     const lost = accrued < 0
     setBusy(true)
-    void (async () => {
-      try {
-        const next = await client.redeemFund(crypto.randomUUID())
-        setPosition(next)
-        onToast(TF.fundRedeemed(money(payout)), lost)
-        onRefresh()
-      } catch (err) {
-        onToast(err instanceof Error ? err.message : String(err), true)
-      } finally {
-        setBusy(false)
-      }
-    })()
+    try {
+      const next = await client.redeemFund(crypto.randomUUID())
+      setPosition(next)
+      onToast(TF.fundRedeemed(money(payout)), lost)
+      onRefresh()
+    } catch (err) {
+      onToast(err instanceof Error ? err.message : String(err), true)
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -238,11 +237,29 @@ export function FundCard({
         </div>
 
         <div className="ex-bond-actions">
-          <button type="button" className="ex-mini-btn is-bond-buy" disabled={!canSubmit} onClick={submit}>
+          <button
+            type="button"
+            className="ex-mini-btn is-bond-buy ex-btn-progress"
+            disabled={!canSubmit}
+            style={progressStyle(openProgress)}
+            onClick={() => {
+              openProgress.start()
+              void submit().finally(() => openProgress.finish())
+            }}
+          >
             {busy ? T.fundCalculating : hasPosition ? T.fundAddBtn : T.fundPlayBtn}
           </button>
           {hasPosition ? (
-            <button type="button" className="ex-mini-btn" disabled={busy} onClick={redeem}>
+            <button
+              type="button"
+              className="ex-mini-btn ex-btn-progress"
+              disabled={busy}
+              style={progressStyle(redeemProgress)}
+              onClick={() => {
+                redeemProgress.start()
+                void redeem().finally(() => redeemProgress.finish())
+              }}
+            >
               {T.fundRedeemBtn}
             </button>
           ) : null}

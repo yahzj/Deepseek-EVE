@@ -11,6 +11,7 @@ import type { ToastFn } from '../../../pages/common'
 import { isEn } from '../../../i18n/locale'
 import { money, pctAbs } from '../format'
 import { T } from '../texts'
+import { progressStyle, useActionProgress } from '../useActionProgress'
 
 export function BondCard({
   client,
@@ -29,17 +30,21 @@ export function BondCard({
   const [busy, setBusy] = useState(false)
   const [isAccruing, setIsAccruing] = useState(false)
   const nonceSeq = useRef(0)
+  const buyProgress = useActionProgress()
+  const redeemProgress = useActionProgress()
 
   const product = snap.bondProduct
-  const held = bond.principal + bond.accrued
   const available = snap.account.cash
+  // 收益跟行情一起刷新（10 秒一次，船长 2026-11-04 定），不做本地插值，避免与结算口径不一致。
+  const accruedLive = bond.accrued
+  const held = bond.principal + accruedLive
 
   // 快照更新（行情/账户轮询）时同步服务端持仓
   useEffect(() => {
     setBond(snap.bonds)
   }, [snap.bonds])
 
-  // 利息按分钟结算：每分钟主动拉一次，避免界面长时间不刷新
+  // 利息按分钟结算：行情轮询（10 秒）已带 loadBond，这里 30 秒兜底，防止上游轮询停摆。
   useEffect(() => {
     let alive = true
     const pull = (): void => {
@@ -50,8 +55,7 @@ export function BondCard({
         })
         .catch(() => undefined)
     }
-    pull()
-    const timer = window.setInterval(pull, 60_000)
+    const timer = window.setInterval(pull, 30_000)
     return () => {
       alive = false
       window.clearInterval(timer)
@@ -240,18 +244,26 @@ export function BondCard({
         <div className="ex-bond-actions">
           <button
             type="button"
-            className="ex-mini-btn is-bond-buy"
+            className="ex-mini-btn is-bond-buy ex-btn-progress"
             disabled={!canBuy}
-            onClick={() => void buy()}
+            style={progressStyle(buyProgress)}
+            onClick={() => {
+              buyProgress.start()
+              void buy().finally(() => buyProgress.finish())
+            }}
           >
             {T.bondBuyBtn}
           </button>
           <button
             type="button"
-            className="ex-mini-btn is-bond-redeem"
+            className="ex-mini-btn is-bond-redeem ex-btn-progress"
             disabled={!canRedeem}
             title={!canRedeem ? T.bondHoldingEmptyTip : undefined}
-            onClick={() => void redeem()}
+            style={progressStyle(redeemProgress)}
+            onClick={() => {
+              redeemProgress.start()
+              void redeem().finally(() => redeemProgress.finish())
+            }}
           >
             {T.bondRedeemAll}
           </button>

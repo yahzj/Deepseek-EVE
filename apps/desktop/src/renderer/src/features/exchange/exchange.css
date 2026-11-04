@@ -159,25 +159,43 @@
 
 .ex-title {
   display: flex;
-  /* 船长令：数据源徽标放到标题下方，与「交易所」三字左对齐并带边框 */
   flex-direction: column;
+  justify-content: center;
   align-items: flex-start;
   gap: 2px;
   flex: 0 0 auto;
 }
 
-.ex-title > .ex-source-badge {
-  /* 标题「深空证券交易所」前四字宽度 = 4 × (字号 + 字距 2px) */
-  margin-left: calc(4 * (var(--wui-fs-lg) + 2px));
-  padding: 0 6px;
-}
-
-.ex-title-text {
+.ex-title-row {
   margin: 0;
+  display: flex;
+  align-items: baseline;
   font-size: var(--wui-fs-lg);
+  font-weight: 700;
   letter-spacing: 2px;
   color: rgb(var(--wui-gold));
+  line-height: 1.2;
   white-space: nowrap;
+}
+
+.ex-title-prefix,
+.ex-title-suffix {
+  color: rgb(var(--wui-gold));
+}
+
+.ex-title-sub-row {
+  display: flex;
+  align-items: center;
+  line-height: 1;
+}
+
+.ex-title-spacer {
+  visibility: hidden;
+  font-size: var(--wui-fs-lg);
+  font-weight: 700;
+  letter-spacing: 2px;
+  user-select: none;
+  pointer-events: none;
 }
 
 .ex-topbar-status {
@@ -4187,6 +4205,20 @@
   align-items: center;
 }
 
+.ex-simple-chart-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: var(--wui-fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: rgb(var(--wui-accent));
+  background: rgb(var(--wui-accent) / 0.12);
+  border: 1px solid rgb(var(--wui-accent) / 0.35);
+  user-select: none;
+}
+
 .ex-simple-chart-periods {
   display: inline-flex;
   align-items: center;
@@ -4390,69 +4422,81 @@
 }
 
 /* 涨（买多）按钮：高权重保障红涨色板生效，彻底抵消全局现代布局覆盖 */
-.app-root .ex-page .ex-simple-trade-tab.is-buy,
-.ex-page .ex-simple-trade-tab.is-buy {
-  background: rgb(var(--wui-tone-gain) / 0.22) !important;
-  border: 2px solid rgb(var(--wui-tone-gain) / 0.75) !important;
-  color: rgb(var(--wui-tone-gain)) !important;
-  box-shadow: inset 0 0 10px rgb(var(--wui-tone-gain) / 0.15) !important;
+html body .app-root.is-layout-modern .ex-page .ex-simple-trade-tabs button.ex-simple-trade-tab.is-buy,
+html body .app-root .ex-page .ex-simple-trade-tabs button.ex-simple-trade-tab.is-buy,
+html body .ex-page .ex-simple-trade-tabs button.ex-simple-trade-tab.is-buy,
+.ex-page .ex-simple-trade-tabs button.ex-simple-trade-tab.is-buy,
+.ex-simple-trade-tab.is-buy {
+  background: rgba(220, 53, 69, 0.18) !important;
+  border: 2px solid rgba(235, 75, 75, 0.75) !important;
+  color: #ff7875 !important;
+  box-shadow: inset 0 0 10px rgba(220, 53, 69, 0.2) !important;
+  clip-path: none !important;
 }
 
-.app-root .ex-page .ex-simple-trade-tab.is-buy:hover,
-.ex-page .ex-simple-trade-tab.is-buy:hover {
-  background: rgb(var(--wui-tone-gain) / 0.38) !important;
-  border-color: rgb(var(--wui-tone-gain)) !important;
-  color: rgb(var(--wui-text-bright)) !important;
-  box-shadow: 0 0 12px rgb(var(--wui-tone-gain) / 0.4) !important;
+html body .app-root.is-layout-modern .ex-page .ex-simple-trade-tabs button.ex-simple-trade-tab.is-buy:hover,
+html body .app-root .ex-page .ex-simple-trade-tabs button.ex-simple-trade-tab.is-buy:hover,
+.ex-page .ex-simple-trade-tabs button.ex-simple-trade-tab.is-buy:hover,
+.ex-simple-trade-tab.is-buy:hover {
+  background: rgba(220, 53, 69, 0.35) !important;
+  border-color: #ff4d4f !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 14px rgba(255, 77, 79, 0.5) !important;
   transform: translateY(-1px);
 }
 
-.app-root .ex-page .ex-simple-trade-tab.is-buy.is-on,
-.app-root .ex-page .ex-simple-trade-tab.is-buy[aria-selected="true"],
-.ex-page .ex-simple-trade-tab.is-buy.is-on,
-.ex-page .ex-simple-trade-tab.is-buy[aria-selected="true"] {
-  background: linear-gradient(135deg, rgb(var(--wui-tone-gain)), rgb(var(--wui-tone-gain) / 0.85)) !important;
-  border-color: rgb(var(--wui-tone-gain)) !important;
-  color: rgb(var(--wui-chip-ink)) !important;
-  box-shadow: 0 0 16px rgb(var(--wui-tone-gain) / 0.5), inset 0 1px 0 rgb(255 255 255 / 0.35) !important;
+html body .app-root.is-layout-modern .ex-page .ex-simple-trade-tabs button.ex-simple-trade-tab.is-buy.is-on,
+html body .app-root.is-layout-modern .ex-page .ex-simple-trade-tabs button.ex-simple-trade-tab.is-buy[aria-selected="true"],
+html body .app-root.is-layout-modern .ex-page .ex-simple-trade-tabs button.ex-simple-trade-tab.is-buy.is-active,
+html body .app-root .ex-page .ex-simple-trade-tabs button.ex-simple-trade-tab.is-buy.is-on,
+html body .app-root .ex-page .ex-simple-trade-tabs button.ex-simple-trade-tab.is-buy[aria-selected="true"],
+html body .ex-page .ex-simple-trade-tabs button.ex-simple-trade-tab.is-buy.is-on,
+.ex-simple-trade-tab.is-buy.is-on {
+  background: linear-gradient(135deg, #e03131 0%, #c92a2a 100%) !important;
+  border-color: #ff8787 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 18px rgba(235, 75, 75, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
   transform: translateY(-1px);
+  font-weight: 900 !important;
 }
 
 /* 跌（卖空）按钮：高权重保障绿跌色板生效，彻底抵消全局现代布局覆盖 */
-.app-root .ex-page .ex-simple-trade-tab.is-short,
-.app-root .ex-page .ex-simple-trade-tab.is-sell,
-.ex-page .ex-simple-trade-tab.is-short,
-.ex-page .ex-simple-trade-tab.is-sell {
-  background: rgb(var(--wui-tone-loss) / 0.22) !important;
-  border: 2px solid rgb(var(--wui-tone-loss) / 0.75) !important;
-  color: rgb(var(--wui-tone-loss)) !important;
-  box-shadow: inset 0 0 10px rgb(var(--wui-tone-loss) / 0.15) !important;
+html body .app-root.is-layout-modern .ex-page .ex-simple-trade-tabs button.ex-simple-trade-tab.is-short,
+html body .app-root .ex-page .ex-simple-trade-tabs button.ex-simple-trade-tab.is-short,
+html body .ex-page .ex-simple-trade-tabs button.ex-simple-trade-tab.is-short,
+.ex-page .ex-simple-trade-tabs button.ex-simple-trade-tab.is-short,
+.ex-simple-trade-tab.is-short {
+  background: rgba(40, 167, 69, 0.18) !important;
+  border: 2px solid rgba(56, 195, 97, 0.75) !important;
+  color: #51cf66 !important;
+  box-shadow: inset 0 0 10px rgba(40, 167, 69, 0.2) !important;
+  clip-path: none !important;
 }
 
-.app-root .ex-page .ex-simple-trade-tab.is-short:hover,
-.app-root .ex-page .ex-simple-trade-tab.is-sell:hover,
-.ex-page .ex-simple-trade-tab.is-short:hover,
-.ex-page .ex-simple-trade-tab.is-sell:hover {
-  background: rgb(var(--wui-tone-loss) / 0.38) !important;
-  border-color: rgb(var(--wui-tone-loss)) !important;
-  color: rgb(var(--wui-chip-ink)) !important;
-  box-shadow: 0 0 12px rgb(var(--wui-tone-loss) / 0.4) !important;
+html body .app-root.is-layout-modern .ex-page .ex-simple-trade-tabs button.ex-simple-trade-tab.is-short:hover,
+html body .app-root .ex-page .ex-simple-trade-tabs button.ex-simple-trade-tab.is-short:hover,
+.ex-page .ex-simple-trade-tabs button.ex-simple-trade-tab.is-short:hover,
+.ex-simple-trade-tab.is-short:hover {
+  background: rgba(40, 167, 69, 0.35) !important;
+  border-color: #40c057 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 14px rgba(64, 192, 87, 0.5) !important;
   transform: translateY(-1px);
 }
 
-.app-root .ex-page .ex-simple-trade-tab.is-short.is-on,
-.app-root .ex-page .ex-simple-trade-tab.is-short[aria-selected="true"],
-.app-root .ex-page .ex-simple-trade-tab.is-sell.is-on,
-.app-root .ex-page .ex-simple-trade-tab.is-sell[aria-selected="true"],
-.ex-page .ex-simple-trade-tab.is-short.is-on,
-.ex-page .ex-simple-trade-tab.is-short[aria-selected="true"],
-.ex-page .ex-simple-trade-tab.is-sell.is-on,
-.ex-page .ex-simple-trade-tab.is-sell[aria-selected="true"] {
-  background: linear-gradient(135deg, rgb(var(--wui-tone-loss)), rgb(var(--wui-tone-loss) / 0.85)) !important;
-  border-color: rgb(var(--wui-tone-loss)) !important;
-  color: rgb(var(--wui-chip-ink)) !important;
-  box-shadow: 0 0 16px rgb(var(--wui-tone-loss) / 0.5), inset 0 1px 0 rgb(255 255 255 / 0.35) !important;
+html body .app-root.is-layout-modern .ex-page .ex-simple-trade-tabs button.ex-simple-trade-tab.is-short.is-on,
+html body .app-root.is-layout-modern .ex-page .ex-simple-trade-tabs button.ex-simple-trade-tab.is-short[aria-selected="true"],
+html body .app-root.is-layout-modern .ex-page .ex-simple-trade-tabs button.ex-simple-trade-tab.is-short.is-active,
+html body .app-root .ex-page .ex-simple-trade-tabs button.ex-simple-trade-tab.is-short.is-on,
+html body .app-root .ex-page .ex-simple-trade-tabs button.ex-simple-trade-tab.is-short[aria-selected="true"],
+html body .ex-page .ex-simple-trade-tabs button.ex-simple-trade-tab.is-short.is-on,
+.ex-simple-trade-tab.is-short.is-on {
+  background: linear-gradient(135deg, #2b8a3e 0%, #237032 100%) !important;
+  border-color: #69db7c !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 18px rgba(40, 167, 69, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
   transform: translateY(-1px);
+  font-weight: 900 !important;
 }
 
 .ex-simple-trade-body {
@@ -4690,57 +4734,54 @@
   color: rgb(var(--wui-tone-loss));
 }
 
+/* 立即下注主按钮：高亮橙黄色板，文案精简为立即下注 */
+html body .app-root.is-layout-modern .ex-page .ex-simple-big-action-btn,
+html body .app-root .ex-page .ex-simple-big-action-btn,
 .ex-simple-big-action-btn {
   width: 100%;
-  height: 32px;
+  height: 38px;
   box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0;
-  border: 0;
   border-radius: 4px;
-  font-size: var(--wui-fs-sm);
-  font-weight: 700;
+  font-size: var(--wui-fs-base);
+  font-weight: 800;
+  letter-spacing: 2px;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  background: linear-gradient(135deg, #f59f00 0%, #d97706 100%) !important;
+  border: 2px solid #fbbf24 !important;
+  color: #1e1b18 !important;
+  box-shadow: 0 0 16px rgba(245, 159, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+  clip-path: none !important;
 }
 
+html body .app-root.is-layout-modern .ex-page .ex-simple-big-action-btn:hover:not(:disabled),
+html body .app-root .ex-page .ex-simple-big-action-btn:hover:not(:disabled),
+.ex-simple-big-action-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59f00 100%) !important;
+  border-color: #fef08a !important;
+  color: #0f0d0b !important;
+  box-shadow: 0 0 22px rgba(251, 191, 36, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+  transform: translateY(-1px);
+}
+
+html body .app-root.is-layout-modern .ex-page .ex-simple-big-action-btn:active:not(:disabled),
 .ex-simple-big-action-btn:active:not(:disabled) {
-  transform: scale(0.98);
+  transform: translateY(1px);
+  box-shadow: 0 0 10px rgba(245, 159, 0, 0.4) !important;
 }
 
-.ex-simple-big-action-btn.is-buy {
-  background: linear-gradient(135deg, rgb(var(--wui-tone-gain)), rgb(var(--wui-cyan)));
-  color: rgb(var(--wui-black));
-  box-shadow: 0 2px 10px rgb(var(--wui-tone-gain) / 0.35);
-}
-
-.ex-simple-big-action-btn.is-buy:hover:not(:disabled) {
-  filter: brightness(1.15);
-  box-shadow: 0 4px 16px rgb(var(--wui-tone-gain) / 0.5);
-  transform: translateY(-1px);
-}
-
-.ex-simple-big-action-btn.is-short,
-.ex-simple-big-action-btn.is-sell {
-  background: linear-gradient(135deg, rgb(var(--wui-tone-loss)), rgb(var(--wui-danger-deep)));
-  color: rgb(var(--wui-text));
-  box-shadow: 0 2px 10px rgb(var(--wui-tone-loss) / 0.35);
-}
-
-.ex-simple-big-action-btn.is-short:hover:not(:disabled),
-.ex-simple-big-action-btn.is-sell:hover:not(:disabled) {
-  filter: brightness(1.15);
-  box-shadow: 0 4px 16px rgb(var(--wui-tone-loss) / 0.5);
-  transform: translateY(-1px);
-}
-
+html body .app-root.is-layout-modern .ex-page .ex-simple-big-action-btn:disabled,
 .ex-simple-big-action-btn:disabled {
-  opacity: 0.45;
+  background: rgba(180, 115, 20, 0.18) !important;
+  border-color: rgba(180, 115, 20, 0.35) !important;
+  color: rgba(220, 175, 100, 0.45) !important;
+  box-shadow: none !important;
   cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
+  transform: none !important;
 }
 
 .ex-simple-trade-guard-hint {

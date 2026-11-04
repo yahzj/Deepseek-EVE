@@ -18,25 +18,15 @@ interface SimpleChartProps {
   tick: number
 }
 
-type SimplePeriod = 'intraday' | 'm1' | 'm5' | 'h1' | 'd1' | 'd7'
-
-const PERIOD_LABELS: Record<SimplePeriod, string> = {
-  intraday: '分时',
-  m1: 'M1',
-  m5: 'M5',
-  h1: 'H1',
-  d1: '日线',
-  d7: '周线',
-}
-
-const SIMPLE_PERIODS: SimplePeriod[] = ['intraday', 'm1', 'm5', 'h1', 'd1', 'd7']
+type SimplePeriod = 'intraday'
 
 export function SimpleChart({ client, code, quote, tick }: SimpleChartProps) {
-  const [period, setPeriod] = useState<SimplePeriod>('intraday')
+  // 简单投资默认且固定为分时走势（10秒高频刷新），精简去除专业K线周期选项
+  const period: ChartPeriod = 'intraday'
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
 
-  const isCandle = period !== 'intraday'
-  const clientPeriod: ChartPeriod = period
+  const isCandle = false
+  const clientPeriod: ChartPeriod = 'intraday'
 
   // 切到未缓存的周期时补拉（否则 H1/日线/周线永远空白、M5 预加载失败也不重试）
   useEffect(() => {
@@ -191,23 +181,9 @@ export function SimpleChart({ client, code, quote, tick }: SimpleChartProps) {
           )}
         </div>
 
-        {/* 周期切换按钮组 */}
-        <div className="ex-simple-chart-periods" role="tablist">
-          {SIMPLE_PERIODS.map((p) => (
-            <button
-              key={p}
-              type="button"
-              role="tab"
-              aria-selected={period === p}
-              className={`ex-simple-period-btn${period === p ? ' is-on' : ''}`}
-              onClick={() => {
-                setPeriod(p)
-                setHoverIndex(null)
-              }}
-            >
-              {PERIOD_LABELS[p]}
-            </button>
-          ))}
+        {/* 分时图模式徽标（固定 10 秒刷新） */}
+        <div className="ex-simple-chart-badge" title="分时行情每 10 秒刷新一次">
+          {T.simpleIntradayTag}
         </div>
       </div>
 
