@@ -534,6 +534,20 @@ export class HttpExchangeClient implements ExchangeClient {
       const newsTask = this.loadNews().catch(() => undefined)
       const stocks = await this.getStocks()
       const code = stocks[0]?.code
+      // 行情图/盘口尽早并行：不再等 account/orders 往返后才开始拉 5 个周期 K 线，首屏更快。
+      const chartTasks: Promise<unknown>[] = []
+      if (code) {
+        chartTasks.push(
+          this.getBook(code).then((book) => this.books.set(code, book)),
+          this.loadChart(code, 'm1'),
+          this.loadChart(code, 'h1'),
+          this.loadChart(code, 'd1'),
+          this.loadChart(code, 'd7'),
+          this.loadChart(code, 'd30'),
+        )
+      }
+      const roundTask = this.getRound().catch(() => null)
+      const metaTask = this.loadMeta().catch(() => undefined)
       const [account, orders, strategies] = await Promise.all([
         this.getAccount(),
         this.getOrders().catch((): ExchangeOrder[] => []),
@@ -542,19 +556,7 @@ export class HttpExchangeClient implements ExchangeClient {
       this.account = account
       this.orders = orders
       this.strategies = strategies
-      const roundTask = this.getRound().catch(() => null)
-      const metaTask = this.loadMeta().catch(() => undefined)
-      if (code) {
-        await Promise.all([
-          this.getBook(code).then((book) => this.books.set(code, book)),
-          this.loadChart(code, 'm1'),
-          this.loadChart(code, 'h1'),
-          this.loadChart(code, 'd1'),
-          this.loadChart(code, 'd7'),
-          this.loadChart(code, 'd30'),
-        ])
-      }
-      await Promise.all([roundTask, metaTask, newsTask])
+      await Promise.all([...chartTasks, roundTask, metaTask, newsTask])
       this.emitTick()
     } catch (err) {
       // 连不上：界面由数据源徽标 + 引导态兜底；这里只上报，不伪造数据
@@ -719,8 +721,9 @@ export class HttpExchangeClient implements ExchangeClient {
 
   private async loadChart(code: string, period: ChartPeriod): Promise<void> {
     const interval = this.intervalOf(period)
+    // 图表可视最多 180 根；200 根足够，且能把 5 个周期的首屏流量从 ~135KB 降到 ~68KB。
     const rows = await this.get<unknown>(
-      `/klines/${encodeURIComponent(code)}?interval=${interval}&limit=400`,
+      `/klines/${encodeURIComponent(code)}?interval=${interval}&limit=200`,
     )
     const bars = Array.isArray(rows) ? (rows as Kline[]) : []
     this.chartCache.set(`${code}:${period}`, bars)
@@ -746,7 +749,8 @@ export class HttpExchangeClient implements ExchangeClient {
     const tasks: Promise<unknown>[] = []
     if (needChart) {
       tasks.push(
-        this.loadChart(code, 'm1'),
+        // m1 先到先渲染，其余周期后台补齐，切标的时图表不必等 5 个请求全回来。
+        this.loadChart(code, 'm1').then(() => this.emitTick()),
         this.loadChart(code, 'h1'),
         this.loadChart(code, 'd1'),
         this.loadChart(code, 'd7'),
@@ -754,7 +758,12 @@ export class HttpExchangeClient implements ExchangeClient {
       )
     }
     if (needBook) {
-      tasks.push(this.getBook(code).then((book) => this.books.set(code, book)))
+      tasks.push(
+        this.getBook(code).then((book) => {
+          this.books.set(code, book)
+          this.emitTick()
+        }),
+      )
     }
     void Promise.all(tasks)
       .catch(() => undefined)

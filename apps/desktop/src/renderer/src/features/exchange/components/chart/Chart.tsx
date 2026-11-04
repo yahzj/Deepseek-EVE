@@ -190,12 +190,19 @@ export function Chart({
     tipShown.current = false
   }
 
-  // 滚轮缩放时间轴
-  const handleWheel = (e: React.WheelEvent): void => {
-    e.preventDefault()
-    const step = e.deltaY < 0 ? -6 : 6
-    setVisibleCount((prev) => Math.max(15, Math.min(180, prev + step)))
-  }
+  // 滚轮缩放时间轴：React 的 onWheel 在根节点是 passive，preventDefault 会报
+  // “Unable to preventDefault inside passive event listener”，改为容器上挂原生非 passive 监听。
+  useEffect(() => {
+    const el = wrapRef.current
+    if (el === null) return
+    const onWheel = (event: WheelEvent): void => {
+      event.preventDefault()
+      const step = event.deltaY < 0 ? -6 : 6
+      setVisibleCount((prev) => Math.max(15, Math.min(180, prev + step)))
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [])
 
   // 拖拽平移时间轴
   const handleMouseDown = (e: React.MouseEvent): void => {
@@ -403,7 +410,6 @@ export function Chart({
       <div
         className={`ex-chart-wrap${isDragging ? ' is-dragging' : ''}`}
         ref={wrapRef}
-        onWheel={handleWheel}
       >
         {bars.length < 2 ? (
           <div className="ex-empty">{T.chartNoData}</div>
