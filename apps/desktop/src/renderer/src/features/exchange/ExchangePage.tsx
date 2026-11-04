@@ -268,7 +268,7 @@ function ExchangeBody({
           {viewMode === 'pro' ? (
             <div className="ex-index" title={T.indexName}>
               <span className="ex-dim">{T.indexName}</span>
-              <b className="ex-num">{snap.index.value.toFixed(2)}</b>
+              <b className="ex-num">{Math.round(snap.index.value).toLocaleString('zh-CN')}</b>
               <span className={`ex-num ${up ? 'is-up' : 'is-down'}`}>{pct(snap.index.changePct)}</span>
             </div>
           ) : null}

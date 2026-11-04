@@ -2,24 +2,24 @@ import { isEn } from '../../i18n/locale'
 /**
  * 交易所原型的数字格式化（集中，保证所有面板同一把尺）。
  *
- * 为什么不用现成的 `isk()`：市场页那个会把金额取整到整数，而股价与保证金需要 2 位小数；
- * 这里保持「金额千分位 + 2 位小数、股价固定 2 位、数量整数千分位」三套，界面按语义选。
+ * 2026-11-04 船长令：游戏货币没有小数，信用点一律整数显示。
+ * 价格、金额、盈亏全部四舍五入到整数并带千分位；只有百分比（涨跌幅、费率）保留两位。
  */
 
-/** 金额：千分位、最多 2 位小数（10,000,000 / 12,345.67） */
+/** 金额：千分位、整数（10,000,000 / 12,346） */
 export function money(n: number): string {
   if (!Number.isFinite(n)) return '—'
-  return n.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return Math.round(n).toLocaleString('zh-CN')
 }
 
 
-/** 盈亏金额：带明确正负号（正数显式加号），千分位、2 位小数（+12,345.67 / -12,345.67 / 0.00） */
+/** 盈亏金额：带明确正负号（正数显式加号），千分位、整数（+12,346 / -12,346 / 0） */
 export function pnlMoney(n: number): string {
   if (!Number.isFinite(n)) return '—'
-  const formatted = Math.abs(n).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const formatted = Math.abs(Math.round(n)).toLocaleString('zh-CN')
   if (n > 0) return `+${formatted}`
   if (n < 0) return `-${formatted}`
-  return '0.00'
+  return '0'
 }
 
 /** 金额但不要小数（成交量、股数等整数量级） */
@@ -28,10 +28,10 @@ export function amount(n: number): string {
   return Math.round(n).toLocaleString('zh-CN')
 }
 
-/** 价格：固定 2 位小数 */
+/** 价格：整数、千分位（信用点没有小数） */
 export function price(n: number): string {
   if (!Number.isFinite(n)) return '—'
-  return n.toFixed(2)
+  return Math.round(n).toLocaleString('zh-CN')
 }
 
 /** 涨跌幅：带正负号、2 位小数 */
@@ -79,14 +79,14 @@ export function periodIndex(roundNo: number, roundSec = 300): number {
   return Math.floor((startSec - dayStart) / roundSec) + 1
 }
 
-/** 成交额规范格式化：如 99.45M 信用点 / 1.25B 信用点 / 850.00K 信用点 */
+/** 成交额规范格式化：如 99M 信用点 / 1B 信用点 / 850K 信用点（整数，不带小数） */
 export function turnover(n: number): string {
   const unit = isEn() ? ' Credits' : ' 信用点'
-  if (!Number.isFinite(n) || n <= 0) return `0.00${unit}`
-  if (n >= 1e9) return `${(n / 1e9).toFixed(2)}B${unit}`
-  if (n >= 1e6) return `${(n / 1e6).toFixed(2)}M${unit}`
-  if (n >= 1e3) return `${(n / 1e3).toFixed(2)}K${unit}`
-  return `${n.toFixed(2)}${unit}`
+  if (!Number.isFinite(n) || n <= 0) return `0${unit}`
+  if (n >= 1e9) return `${Math.round(n / 1e9).toLocaleString('zh-CN')}B${unit}`
+  if (n >= 1e6) return `${Math.round(n / 1e6).toLocaleString('zh-CN')}M${unit}`
+  if (n >= 1e3) return `${Math.round(n / 1e3).toLocaleString('zh-CN')}K${unit}`
+  return `${Math.round(n).toLocaleString('zh-CN')}${unit}`
 }
 
 export function creditUnit(): string {
