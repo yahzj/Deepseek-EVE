@@ -13,6 +13,7 @@
  */
 import { addLog, HOME_GALAXY_ID } from './state'
 import { applyActivityGate, gateMainActivity, type MainActivityKind } from './activityGate'
+import { beginDeparture, cancelDeparture, departureOrigin } from './departure'
 import type { CoreBlockReason } from './engine'
 import { shipActuallyDocked } from './shipActionPolicy'
 import { queueStationActivity, stationActivityWaitsForReturn } from './stationActivityPending'
@@ -489,6 +490,7 @@ export function startSiteDeliverTrip(state: GameState, ctx: SimContext, siteId: 
   const fromName = ctx.galaxies.get(from)?.name ?? '空间站'
   const toGalaxyName = ctx.galaxies.get(site.galaxyId)?.name ?? site.galaxyId
   const legMs = travelLegMs(state, ctx, mins)
+  const departureMs = beginDeparture(state, ctx, 'siteDeliver', site.galaxyId, departureOrigin(state, ctx))
   // 出发：驶离泊位进入航线（野外标记 = 出发星系，防航行中误用站内功能）
   state.dockedSite = null
   state.awayGalaxy = from
@@ -496,7 +498,7 @@ export function startSiteDeliverTrip(state: GameState, ctx: SimContext, siteId: 
   t.active = true
   t.fromGalaxy = from
   t.toGalaxy = site.galaxyId
-  t.finishAtGameMs = state.gameMs + legMs
+  t.finishAtGameMs = state.gameMs + departureMs + legMs
   t.legMs = legMs
   t.delivery = { siteId: site.id, phase: 'to-site', loaded }
   const durTxt = legMs <= 1000 ? '约片刻' : `约 ${Math.max(1, Math.round(legMs / 60_000))} 分钟`
@@ -522,6 +524,8 @@ export function startSiteDeliverTrip(state: GameState, ctx: SimContext, siteId: 
 export function cancelSiteDeliverTrip(state: GameState, ctx: SimContext): CommandResult {
   const t = state.transit
   if (!t.active || !t.delivery) return { ok: false, error: '当前没有进行中的建站交付航线。', errorId: 'core.location.022' }
+  const departure = state.departure?.kind === 'siteDeliver' ? { ...state.departure } : undefined
+  const stayedAtPort = cancelDeparture(state, 'siteDeliver')
   const phase = t.delivery.phase
   const site = ctx.stations.get(t.delivery.siteId)
   // 取消落点 = 最近已建成空间站（相对本次航线所在位置）
@@ -535,6 +539,12 @@ export function cancelSiteDeliverTrip(state: GameState, ctx: SimContext): Comman
   t.delivery = null
   state.awayGalaxy = null
   state.dockedSite = null
+  if (stayedAtPort && departure) {
+    state.dockedSite = departure.fromSite
+    unloadCargoOfShipToWarehouse(state, ctx, state.shipId)
+    delete state.combatEscort
+    return { ok: true }
+  }
   let dockedName: string | null = null
   for (const s of ctx.stations.values()) {
     const prog = state.stationSites[s.id]

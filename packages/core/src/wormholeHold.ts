@@ -73,6 +73,11 @@ export const WORMHOLE_HOLD_SHAPES: Readonly<Record<string, WormholeHoldShape>> =
   'box-bp-shallow': WORMHOLE_SHAPE_BPBOX,
   'box-bp-mid': WORMHOLE_SHAPE_BPBOX,
   'box-bp-deep': WORMHOLE_SHAPE_BPBOX,
+  'box-encrypted-a': WORMHOLE_SHAPE_BPBOX,
+  'box-encrypted-c': WORMHOLE_SHAPE_BPBOX,
+  'box-encrypted-d': WORMHOLE_SHAPE_BPBOX,
+  'box-encrypted-e': WORMHOLE_SHAPE_BPBOX,
+  'box-encrypted-g': WORMHOLE_SHAPE_BPBOX,
   // AI 核心（遗迹打捞掉落；每种核心各占 1 格 —— 与 `AI_CORE_ITEMS` 三处同序）
   'ai-core-gamma': WORMHOLE_SHAPE_CORE,
   'ai-core-beta': WORMHOLE_SHAPE_CORE,

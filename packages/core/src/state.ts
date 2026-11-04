@@ -1912,6 +1912,8 @@ export type GameState = GameStateV31 & {
   pendingBattleRange?: import('./battleRangeMemory').PendingBattleRange
   /** 船长2026-10-13批准：单条到港接续待办；老档缺省无待办，不预扣材料。 */
   pendingStationActivity?: import('./stationActivityPending').PendingStationActivity
+  /** 主控实际离港与协会星门行程；AI 独立任务不使用。 */
+  departure?: import('./departure').DepartureState
   /** 星球规则原型，缺省不生成星球；首次显式发现才写入，老档零迁移。 */
   planetary?: PlanetaryState
   /** 黑市货架，缺失的旧档在解锁后首次正常推进初始化。 */

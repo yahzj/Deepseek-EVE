@@ -8,6 +8,7 @@ import { startFleetBattleFor } from '../src/combat/startFleet'
 import { advanceBattleFor } from '../src/combat/advance'
 import { pulseRepairDroneFor, repairStatsFor, pulseShieldChargeFor, pulseShieldFieldFor, repairUsageText } from '../src/combat/combatRepair'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
+import { rarityTierOf } from '../../data/src/rarityTier'
 
 const ctx = buildSimContext()
 const droneId = 'drone-repair-mil'
@@ -41,6 +42,12 @@ function advance(state: ReturnType<typeof world>['state'], ms: number) {
 }
 
 describe('修理无人机与后勤输出', () => {
+  it('军用修理无人机为R2稀有订单成品，价格与维修参数保持不变', () => {
+    expect(rarityTierOf(droneId)).toBe(2)
+    expect(ctx.marketGoods.get(droneId)).toMatchObject({ kind: 'item', refId: droneId, rarity: 'rare', rarityTier: 2, basePrice: 42000 })
+    expect(ctx.marketGoods.get(droneId)!.playerBuyable).not.toBe(false)
+    expect(ctx.items.get(droneId)).toMatchObject({ unitM3: 40, cpuUse: 8, repairArmorHp: 10, repairHullHp: 10, repairIntervalMs: 10000 })
+  })
   it('40m³和8CPU进入正式装载校验，80m³后勤可装2架而不能装3架', () => {
     const { state, lead } = world()
     expect(ctx.ships.get('sh-wh-g-destroyer')!.droneBayM3).toBe(80)

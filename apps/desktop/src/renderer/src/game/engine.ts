@@ -110,6 +110,8 @@ import {
   migrateDeprecatedAmmo,
   repairDeprecatedModules,
   repairShip,
+  fleetRepairPlan as fleetRepairPlanCore,
+  repairFleet,
   useOneRepairKit,
   /* 2026-09-30 实验室后续内容：道具「使用」（突触加速剂 / 信号发射器） */
   useSynapticAccelerant,
@@ -4501,6 +4503,21 @@ export class GameEngine {
   /** 维修指定船（满血） */
   repairShipAt(shipId: string): CommandResult {
     const result = repairShip(this.state, shipId, this.ctx)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** 当前舰队可执行的批量维修计划。 */
+  fleetRepairPlan(): ReturnType<typeof fleetRepairPlanCore> {
+    return fleetRepairPlanCore(this.state, this.ctx)
+  }
+
+  /** 批量维修舰队；失败时保持界面和存档不变。 */
+  repairFleetAt(): ReturnType<typeof repairFleet> {
+    const result = repairFleet(this.state, this.ctx)
     if (result.ok) {
       void this.persist()
       this.notify()

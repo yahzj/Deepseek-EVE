@@ -19,6 +19,7 @@ import type { SimContext } from './types'
 import { advanceMining, advanceShipReturns, retireMiningShip } from './mining'
 import { advanceStandby, advanceTransit, reconcileDockSanity, startSiteDeliverTrip, stationActivityReturnSite } from './location'
 import { shipActuallyDocked } from './shipActionPolicy'
+import { consumeDeparture, departureView, reconcileDeparture } from './departure'
 import { mainActivityOf, manualSlotOf } from './activityGate'
 import type { StationAction } from './stationActivityPending'
 import { reconcilePilotShip } from './shipyard'
@@ -199,10 +200,13 @@ export function advanceGame(
   if (!Number.isFinite(left) || left <= 0) return
   // 深空连续搜索与探测机交付在同一时间轴上结算；无搜索时保留既有整段推进。
   while (left > 0) {
+    reconcileDeparture(state)
     ensureEventSchedule(state, ctx)
     resolveActivityReturn(state, ctx)
     advancePendingStationActivity(state, ctx, opts?.onStationActivityStarted)
     let step = left
+    const departing = departureView(state)
+    if (departing) step = Math.min(step, Math.max(1, departing.remainingMs))
     const exposedNow = collectExposures(state, ctx, opts?.nowWallMs ?? state.wallMs ?? Date.now()).length > 0
     const industrialActive = state.hauling.active || state.encounter.active || state.sideTasks.deliver !== null || exposedNow
     if (industrialActive) {
@@ -280,6 +284,11 @@ function advanceGameStep(state: GameState, deltaMs: number, ctx: SimContext, opt
   advanceIndustrialProtection(state, ctx, d, collectExposures(state, ctx).some(row => row.shipId === state.shipId && row.kind !== '扫描'))
   const pausedEncounter = (!!state.encounter.pirate || state.encounter.automatic === true) && state.encounter.active
   state.gameMs += d
+  // 采矿/打捞自行消费余量以支持内部续趟，其余活动在共享时间轴消费。
+  const departing = state.departure
+  if (departing && departing.kind !== 'mining' && departing.kind !== 'salvaging' && departing.kind !== 'hauling') {
+    consumeDeparture(state, departing.kind, d)
+  }
   if (pausedEncounter) {
     if (state.transit.active) state.transit.finishAtGameMs += d
     if (state.standby.active) state.standby.finishAtGameMs += d

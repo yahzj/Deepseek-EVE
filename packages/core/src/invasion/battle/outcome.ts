@@ -56,8 +56,7 @@ export function weekendApplyBattleOutcome(
         : weekendAssaultSpecOf(state, ctx, involved.galaxyId)
   if (!spec) return null
   /**
-   * **旗舰 BOSS：这一场对母舰的原始伤害**（船长 2026-09-24 第二轮令）。
-   * 从 `battle.units` 的 `hpMax − hp` 量（`flagshipBattleLedger`；认舰靠单位上的 `foeShipId`）。
+   * 旗舰本场净损失从开战剩余基线 hpMax 减当前 hp 量；负数须透传以补回跨场共享盾池。
    * ⚠ 2026-09-25：池子总量改成**固定常量**（船长「BOSS 血条 15 万来算」）⇒ 不再算"下限"。
    */
   let flagshipDmg = 0
@@ -81,7 +80,7 @@ export function weekendApplyBattleOutcome(
           && unit.hp.s + unit.hp.a + unit.hp.h <= 0)
       if (led.flagshipSeq === 1 && killedBoss && roundingGap > 0 && roundingGap <= 1) flagshipDmg += 1
       // 入场HP及伤害取整不能代替击沉观测；仍存活时至少保留共享池最后一格。
-      if (!killedBoss && poolLeft > 0) flagshipDmg = Math.min(flagshipDmg, Math.max(0, ceilFinalQuantity(poolLeft) - 1))
+      if (!killedBoss && poolLeft > 0 && flagshipDmg > 0) flagshipDmg = Math.min(flagshipDmg, Math.max(0, ceilFinalQuantity(poolLeft) - 1))
     }
   }
   /**

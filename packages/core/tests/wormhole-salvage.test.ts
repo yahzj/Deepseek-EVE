@@ -80,6 +80,7 @@ import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { RARE_BOX_DRONE_UNITS, rareWreckItemIdOfCard, wreckItemIdOfCard } from '../src/salvage'
 import { countWare } from '../src/inventory'
 import { rackOf } from '../src/labels'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
 /** 2026-09-19 残骸合并：卡 id → 该卡所属组的残骸物品 id（例：`wh-pirate-scout` → `wreck-a-wh`） */
@@ -105,6 +106,7 @@ function enterRun(rigs = 1, seed = 4242, miners = 0, ships = 1): GameState {
   const a = ids[0]!
   state.shipId = a
   expect(wormholeEnter(state, ctx, ids, seed).ok).toBe(true)
+  finishDeparture(state, ctx)
   for (const uid of ids) {
     const fitted = { ...(state.fleet[uid]!.fitted ?? {}) }
     // 直接改装配表（打捞器与采集器**都走 high 槽** —— 2026-09-14 船长「改回高槽」后作业装备归高槽）

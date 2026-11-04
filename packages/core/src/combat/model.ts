@@ -109,9 +109,15 @@ export interface WeaponSpec {
 export interface UnitSpec {
   /** 本轮新增护航不扩大既有复活/主动召唤可用阵位。 */
   foeFormationAdded?: boolean
-  /** 每场重建的镀膜装甲，仅用于开场残余与跨场损伤结算。 */
+  /** 护盾转换的装甲容量；新场次连同原甲按总剩余比例持久化。 */
   shieldArmorHp?: number
   shieldPassiveBonusPct?: number
+  armorRegenPerSec?: number
+  droneDamageBonusPct?: number
+  droneCommand?: { sharePct: number; targetWeightPerM3: number }
+  /** 旗舰共享池覆写前的卡面护盾基准及共享池原始容量。 */
+  shieldRegenMax?: number
+  shieldRegenCap?: number
   droneHpMul?: number
   rebirthRepair?: import('../types').ModuleDef['rebirthRepair']
   crisisOverload?: { rangeMul: number; damageMul: number; speedMul: number; droneInitialMul: number; droneCycleMul: number }
@@ -512,8 +518,8 @@ export interface FoeOverride {
    */
   bossHpLayers?: { s: number; a: number; h: number }
   /**
-   * **母舰三层血的容量**（= 池子总量 × 卡面 `split`）：**界面血条三行的分母**（恒为池子口径，
-   * 不随剩余缩水）——与"当前值"（`bossHpLayers`）分开给，界面**不许**拿当前值反推分母。
+   * 母舰共享池三层容量（池子总量 × 卡面 split）：血条分母与被动回盾封顶。
+   * 与开战当前值 bossHpLayers、单位本场结算基线 hpMax 分开处理。
    */
   bossMaxLayers?: { s: number; a: number; h: number }
   /** 哪一条舰级当 BOSS（配 `bossHp` 用；缺省 = 不覆写） */

@@ -18,6 +18,7 @@ import {
   MAX_SKILL_LEVEL,
 } from './state'
 import { cleanBattleRangeRecords, cleanPendingBattleRange } from './battleRangeMemory'
+import { cleanDeparture, reconcileDeparture } from './departure'
 import type { BattleState, GameState,     LogEntry, LogKind, MarksState, SideTask, WormholeArchetype, WormholeFamily } from './state'
 import type { AchievementEarned, WorkReturnProgress } from './state'
 import type { CommsInstanceEntry, CommsJumpPage, CommsKind, CommsRewardLine, FittedModules, RackSlot } from './types'
@@ -2111,7 +2112,11 @@ for (const [key, value] of Object.entries(licensesRaw)) {
            * 而它的唯一合法值就是池子常量 ⇒ 0/坏值一律当"还没锁池"。
            */
           const hpMax = weekendNum(weekendRaw.flagshipHpMax)
-          const hpDone = weekendKeep(weekendRaw.flagshipHpDone)
+          const continuousHp = (value: unknown): number | undefined => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined
+          const hpDone = continuousHp(weekendRaw.flagshipHpDone)
+          const hpRecovered = continuousHp(weekendRaw.flagshipHpRecovered)
+          const settledRuns = Array.isArray(weekendRaw.flagshipSettledRuns)
+            ? [...new Set(weekendRaw.flagshipSettledRuns.filter((value): value is number => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0))] : undefined
           /**
            * ⚠ **幂等标记 / 身份键 / 心跳基准：缺键必须是 `undefined`，绝不能读成 0**
            * （**2026-09-25 船长报障**：「**摧毁入侵母舰后，没有结算通讯发来**」——根因就在这一行）。
@@ -2137,7 +2142,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
            */
           const drainedLegacy = strictKeep(weekendRaw.octopusDrainedMs)
           const octopusHp =
-            strictKeep(weekendRaw.octopusHpDone) ??
+            continuousHp(weekendRaw.octopusHpDone) ??
             (drainedLegacy !== undefined && drainedLegacy > 0 && hpMax > 0
               ? Math.floor((hpMax * drainedLegacy) / weekendFlagshipWindowMs({ debugQuick }))
               : undefined)
@@ -2202,6 +2207,8 @@ for (const [key, value] of Object.entries(licensesRaw)) {
               : {}),
             ...(hpMax > 0 ? { flagshipHpMax: hpMax } : {}),
             ...(hpDone !== undefined ? { flagshipHpDone: hpDone } : {}),
+            ...(hpRecovered !== undefined ? { flagshipHpRecovered: hpRecovered } : {}),
+            ...(settledRuns?.length ? { flagshipSettledRuns: settledRuns } : {}),
             ...(octopusHp !== undefined ? { octopusHpDone: octopusHp } : {}),
             ...(runId !== undefined ? { flagshipRunId: runId } : {}),
             ...(bossTick !== undefined ? { bossTickWallMs: bossTick } : {}),
@@ -2640,6 +2647,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
         q: Math.floor(num(row.q)),
         r: Math.floor(num(row.r)),
         place: placeOk,
+        ...(row.researchLab === true && placeOk === 'ruins' ? { researchLab: true as const } : {}),
         ...(isWormholeEventKey(row.eventKey) ? { eventKey: row.eventKey } : {}),
         ...(row.eventResolved === true ? { eventResolved: true } : {}),
         ...(cleanWormholeEventInstance(row.event) ? { event: cleanWormholeEventInstance(row.event) } : {}),
@@ -2961,9 +2969,11 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     catch { throw new SaveError('VERSION', '存档中的星球运行规则高于当前支持范围，请升级游戏。') }
   })()
   const pendingStationActivity = cleanPendingStationActivity(src.pendingStationActivity)
+  const departure = cleanDeparture(src.departure)
   const battleRangeByCard = cleanBattleRangeRecords(src.battleRangeByCard)
   const pendingBattleRange = cleanPendingBattleRange(src.pendingBattleRange)
   const normalized: GameState = {
+    ...(departure && departure.shipId === shipId && fleet[departure.shipId] ? { departure } : {}),
     ...(battleRangeByCard ? { battleRangeByCard } : {}),
     ...(pendingBattleRange ? { pendingBattleRange } : {}),
     ...(pendingStationActivity && fleet[pendingStationActivity.shipId] ? { pendingStationActivity } : {}),
@@ -3117,6 +3127,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
   }
   // 玩家标记收尾：去重 + 剪掉已不在舰队的船（fleet 此时已建好）
   pruneMarks(normalized)
+  reconcileDeparture(normalized)
   normalizeTrainingProgress(normalized)
   return normalized
 }

@@ -4,6 +4,8 @@ import type { UnitSpec, WeaponSpec } from '../combat/model'
 import { createPlayerSpec } from '../combat/player/create'
 import { applyFleetDamageAura, applyMatterPlayerBuffs, fleetDamageAuraOf } from '../combat/fleetSpecs'
 import { applyFleetLockAura } from '../combat/lockAura'
+import { applyDroneCommandAura } from '../combat/droneCommand'
+import { passiveShieldRateOf } from '../combat/passiveRecovery'
 import { activeFoeSpecsOf } from '../combat/foes/catalog'
 import { wormholeDerivedAnomaly } from '../combat/cards'
 import { hitChance, playerBlindDamageMul, playerWeaponInRange, typeLayerMult } from '../combat/combatMath'
@@ -72,7 +74,9 @@ function supportHp(state: GameState, ctx: SimContext, units: UnitSpec[]): number
   for (const unit of units) {
     const uid = unit.shipId!, output = 1 + (unit.repairOutputBonusPct ?? 0)
     // 回盾按半盾参考状态估计；破盾停充与实际缺损由全队支援上限约束。
-    total += unit.hp.s * ctx.balance.battle.shieldRegenPerSec * .5 * seconds * (1 + (unit.shieldPassiveBonusPct ?? 0)) * output
+    total += passiveShieldRateOf(unit.hp.s * .5, unit.hp.s, ctx.balance.battle.shieldRegenPerSec,
+      (1 + (unit.shieldPassiveBonusPct ?? 0)) * output) * seconds
+    total += Math.min(unit.hp.a, unit.hp.a * Math.max(0, unit.armorRegenPerSec ?? 0) * seconds)
     for (const stream of shieldChargeStreamsOf(state, ctx, uid)) total += Math.min(unit.hp.s, unit.hp.s * stream.pct * output * seconds * 1000 / stream.ms)
     const repairs = repairStatsFor(state, ctx, uid)
     for (const repair of repairs?.units ?? []) {
@@ -109,7 +113,7 @@ export function signalAutoCombatRatio(state: GameState, ctx: SimContext, ids: re
     activeFoeSpecsOf(card, ctx.balance.battle, i).filter(unit => skip === null || unit.foeReinforceBranch !== skip))
   const foes = waves.flat()
   if (!foes.length) return 0
-  const units = ids.flatMap((id, i) => {
+  let units = ids.flatMap((id, i) => {
     const spec = createPlayerSpec(state, ctx, id)
     if (!spec) return []
     spec.tag = `auto-${i}`
@@ -119,6 +123,7 @@ export function signalAutoCombatRatio(state: GameState, ctx: SimContext, ids: re
   if (!units.length) return 0
   applyFleetDamageAura(units, 1 + fleetDamageAuraOf(state, ctx, ids))
   applyFleetLockAura(units)
+  units = applyDroneCommandAura(units, undefined, ctx)
   const ew = rangeEwContestOf(playerRangeEwOf(state, ctx, ids), (waves[0] ?? []).map(foeRangeEwOf))
   const support = supportHp(state, ctx, units)
   let best = 0
@@ -149,7 +154,14 @@ export function signalAutoCombatRatio(state: GameState, ctx: SimContext, ids: re
       const ship = state.fleet[unit.shipId!]!
       return n + effectiveHp(unit, theirs, { a: ship.armorPct ?? 1, h: ship.durability })
     }, 0)
-    const enemyHp = foes.reduce((n, unit) => n + effectiveHp(unit, mine) * (unit.foeRepairPulse || unit.repairPct || unit.foeReviveEscort || unit.foeSummonEscort ? 1.25 : 1), 0)
+    const enemyHp = foes.reduce((n, unit) => {
+      const cap = unit.shieldRegenCap ?? unit.hp.s
+      const recovered = unit.hp.a > 0 || unit.hp.h > 0
+        ? Math.min(cap * SIGNAL_AUTO_COMBAT.supportCap, passiveShieldRateOf(unit.hp.s * .5, unit.shieldRegenMax ?? cap,
+          ctx.balance.battle.shieldRegenPerSec, 1, cap) * SIGNAL_AUTO_COMBAT.referenceSeconds) : 0
+      const shieldSupport = effectiveHp({ ...unit, hp: { s: recovered, a: 0, h: 0 } }, mine)
+      return n + (effectiveHp(unit, mine) + shieldSupport) * (unit.foeRepairPulse || unit.repairPct || unit.foeReviveEscort || unit.foeSummonEscort ? 1.25 : 1)
+    }, 0)
     best = Math.max(best, Math.sqrt(dps * (hp + Math.min(support, hp * SIGNAL_AUTO_COMBAT.supportCap)) / Math.max(1, enemyDps * enemyHp)))
   }
   return best

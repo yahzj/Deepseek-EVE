@@ -25,6 +25,7 @@ import { equipmentCycleMsOf } from '../equipment'
 import { COMBAT_MAX_SHIPS } from './command/rules'
 import { isFirstBountyBattle, applyFirstBountyBuff } from '../firstTasks'
 import { syncRangeEw } from './rangeEw'
+import { applyDroneCommandAura, droneCommandVolumeM3Of } from './droneCommand'
 
 /**
  * **多舰编队开战**（虫洞 D 批 · 船长 2026-09-13：「4 艘同时参战」）——与 `startBattleFor` 并列的
@@ -120,7 +121,7 @@ export function startFleetBattleFor(
     ordered.splice(leaderIdx, 1)
     ordered.unshift(state.shipId)
   }
-  const specs: UnitSpec[] = []
+  let specs: UnitSpec[] = []
   const fleet: NonNullable<import('../state').BattleState['myFleet']> = []
   /** 逐船规格（弹药装载要按船各算一次，故留一份） */
   const specOf = new Map<string, UnitSpec>()
@@ -153,8 +154,7 @@ export function startFleetBattleFor(
     if (fleetShip) {
       const armorMul = Math.min(1, Math.max(0, fleetShip.armorPct ?? 1))
       const hullMul = Math.min(1, Math.max(0, fleetShip.durability ?? 1))
-      spec.hp.a = Math.max(0, ceilFinalQuantity((spec.hp.a - (spec.shieldArmorHp ?? 0)) * armorMul)) + (spec.shieldArmorHp ?? 0)
-      if (spec.shieldArmorHp !== undefined) spec.hp.coating = { armor: spec.hp.a - spec.shieldArmorHp, maxArmor: fullHpOf.get(spec.tag)!.a - spec.shieldArmorHp }
+      spec.hp.a = Math.max(0, ceilFinalQuantity(spec.hp.a * armorMul))
       spec.hp.h = Math.max(0, ceilFinalQuantity(spec.hp.h * hullMul))
     }
     if (i === 0 && isFirstBountyBattle(state, anomalyId, sid)) applyFirstBountyBuff(spec)
@@ -203,6 +203,11 @@ export function startFleetBattleFor(
   if (formationVersion === 1) battle.enemyFormationVersion = 1
   battle.rangeEwVersion = 1
   battle.myFleet = fleet
+  // 无机群的参战船也保留空初装账，开战总体积包含本舰及维修机，整场不随损失变化。
+  battle.droneLoadAtStartBy = Object.fromEntries(fleet.map(entry => [entry.tag, { ...(state.fleet[entry.shipId]?.droneLoad ?? {}) }]))
+  battle.droneLoadAtStart = { ...battle.droneLoadAtStartBy.player }
+  droneCommandVolumeM3Of(battle, ctx)
+  specs = applyDroneCommandAura(specs, battle, ctx)
   battle.rangeEw = ewTemplate.rangeEw
   if (ewTemplate.meFoeRangeDebuff !== undefined) battle.meFoeRangeDebuff = ewTemplate.meFoeRangeDebuff
   syncRangeEw(state, ctx, battle, foes, ordered[0]!)
@@ -312,11 +317,6 @@ export function startFleetBattleFor(
     initDroneLaunch(battle, specs)
     battle.droneLost = {}
     battle.droneLostBy = {}
-    // 开战清单快照：**逐舰**一份（战后按舰扣各自的机舱清单）；老字段 `droneLoadAtStart` 仍是主控那份
-    const by: Record<string, Record<string, number>> = {}
-    for (const e of fleet) by[e.tag] = { ...(state.fleet[e.shipId]?.droneLoad ?? {}) }
-    battle.droneLoadAtStartBy = by
-    battle.droneLoadAtStart = { ...(state.fleet[fleet[0]!.shipId]?.droneLoad ?? {}) }
     // **无人机储备甲板建档**（2026-09-27 船长令）：**逐舰**一份（每舰各自的复位周期与队列）
     // ⚠ 预算快照**全队只拍一本**（`initDroneReviveStock`）——按舰各拍一份会从同一只仓库里超补
     initDroneReviveStock(state, ctx, battle, fleet.map((e) => e.shipId))

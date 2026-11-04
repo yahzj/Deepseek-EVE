@@ -71,6 +71,7 @@ export function fightEncounterMutable(state: GameState, ctx: SimContext): Comman
  * - 再 `settleEscape(mode='manual')` 收场（措辞为"主动脱离"，且**不**记"因袭击自动撤离"那笔账）。
  */
 export function retreatEncounterBattle(state: GameState, ctx: SimContext): CommandResult {
+  if (state.departure?.kind === 'flagship') return { ok: false, errorId: 'core.departure.001' }
   const enc = state.encounter
   if (!enc.active || !enc.battle) {
     return { ok: false, error: '当前不在交火中，无法脱离。', errorId: 'core.encounters.009' }

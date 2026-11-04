@@ -54,7 +54,8 @@ describe('物品装备说明双语与数据守恒', () => {
     })
     const strip = (entries: typeof ITEMS) => entries.map(({ description: _description, ...rest }) => rest)
     const added = new Set(['ammo-kinetic-3', 'ammo-explosive-3', 'ammo-plasma-3', 'blackbox-c', 'blackbox-d', 'deep-space-probe', 'drone-jawclaw', 'drone-repair-mil',
-      'invasion-beacon-r', 'invasion-beacon-c', 'invasion-beacon-h', 'invasion-beacon-d'])
+      'invasion-beacon-r', 'invasion-beacon-c', 'invasion-beacon-h', 'invasion-beacon-d',
+      ...['a', 'c', 'd', 'e', 'g'].map(f => `box-encrypted-${f}`)])
     expect(ITEMS.filter(item => added.has(item.id)).map(item => item.id).sort()).toEqual([...added].sort())
     expect(strip(ITEMS.filter(item => !added.has(item.id)))).toEqual(strip(adjusted))
   })
@@ -199,7 +200,7 @@ describe('真实参数行承接说明数字', () => {
     expect(ballistic).not.toContain(L10N['ui.shipInfo.069']![locale])
     const compression = fitted('plug-titan-compression')
     expect(compression).toContain(L10N['ui.Handbook.010']![locale])
-    expect(compression).toContain(L10N['ui.Handbook.030']![locale])
+    expect(compression).not.toContain(L10N['ui.Handbook.030']![locale])
     expect(compression).toContain('m³')
     expect(compression).toContain('m/s')
     expect(compression).not.toMatch(/ui\.[a-zA-Z]|\{p\d+\}/)

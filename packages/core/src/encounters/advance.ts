@@ -18,6 +18,7 @@ import { resolveTextual } from './textual'
  * 触发判定不在此处——由随机事件线到点时调用 rollLowSecAmbush（遭遇占用事件机会，船长 2026-09-04 定）。
  */
 export function advanceEncounterWatch(state: GameState, ctx: SimContext, _deltaMs: number, freezeBattle = false): void {
+  if (state.departure?.kind === 'flagship') return
   maintainPresence(state, ctx)
   const enc = state.encounter
   if (enc.active) {

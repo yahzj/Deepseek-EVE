@@ -293,6 +293,7 @@ export function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance,
       name,
       side: 'foe' as const,
       hp,
+      ...(u.slot.shieldRegenMax !== undefined ? { shieldRegenMax: u.slot.shieldRegenMax, shieldRegenCap: u.slot.shieldRegenCap } : {}),
       /**
        * **层位抗性**（2026-09-15 船长：「我现暂时只打给 **C 族**添加**全血条 25% 爆炸抗性**」）：
        * 从**舰级**读，护盾允许编成条目按伤害类型覆写；三条都缺省 ⇒ `{}`，

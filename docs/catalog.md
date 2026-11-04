@@ -30,7 +30,7 @@
 | 本地市场异步玩家订单 | `docs/design/player-market-relay-20261104.md`；本地 NPC 市场优先、抽样转发玩家订单，机制方向已确认；价格、投放数量和同步协议待定，尚未实施，不改普通/铁人模式与导入导出 |
 | 数值与经济 | 开发约定§一、§二，对应设计稿及校准工具 |
 | 玩家文案与公告 | 开发约定§十一、§十二、§十三；公告待审稿未经批准不落库 |
-| 第二阶段空间站 | `docs/design/human-revival-station.md`、`docs/design/human-revival-station-research-20261018.md`；未决方案不能当已实现 |
+| 第二阶段空间站 | `docs/design/human-revival-station.md`看既有框架 → `docs/design/human-revival-station-research-20261018.md`看总览摘要与六份主题稿；玩家站仍仅设计，未决方案不能当已实现 |
 | 第三方审查跟进 | `docs/review/guoqing-audit-followup.md`；旧报告需船长点名查阅 |
 | 复现门槛与合成档 | `docs/test-saves/README.md`及该功能说明 |
 | B类提交审批 | `docs/git-gate-approval.md` |

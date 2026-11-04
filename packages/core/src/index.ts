@@ -4,6 +4,7 @@
  */
 
 export { battleWeaponCyclesOf } from './battleWeaponView'
+export { departureView, departureDurationMs } from './departure'
 export type { GravekeeperStatus } from './gravekeeperCombat'
 export { crisisEffectsOf, playerGravekeeperSpecOf } from './gravekeeperGear'
 export { foeFamilyHpMulOf } from './foePower'
@@ -649,6 +650,8 @@ export {
   durabilityOf,
   repairCostIsk,
   repairShip,
+  fleetRepairPlan,
+  repairFleet,
   isShipLocked,
   lockShip,
   repairWithKits,
@@ -663,6 +666,7 @@ export {
   storeShip,
   unstoreShip,
 } from './shipyard'
+export type { FleetRepairPlan, FleetRepairResult } from './shipyard'
 
 // 装配方案（预设）：保存当前装配 / 按方案换装（2026-09-14 船长）
 export {
@@ -1085,6 +1089,7 @@ export {
   plugSlotsOf,
   plugsOf,
   plugModulesOf,
+  plugEffectsOf,
   plugInfoOf,
   normalizePlugSlotExpansions,
   plugSlotExpansionKindOf,
@@ -1100,6 +1105,7 @@ export {
   UNIVERSAL_BLACKBOX_ITEM_ID,
   exchangeUniversalBlackBox,
 } from './plugs'
+export { plugEffectPartsOf } from './plugEffects'
 /** **拆船回收**（2026-09-27 船长令）：预览 ＋ 执行（唯一取数口：界面两次警告与实际发放同一份算术） */
 export { shipScrapPreviewOf, scrapShip, SHIP_SCRAP_MATERIAL_SHARE } from './scrap'
 export type { ShipScrapPreview } from './scrap'

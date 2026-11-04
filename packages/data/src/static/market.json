@@ -937,7 +937,7 @@
         "key": "drone-repair-mil",
         "kind": "item",
         "refId": "drone-repair-mil",
-        "rarity": "common",
+        "rarity": "rare",
         "basePrice": 42000,
         "demandMultiplier": 0.6,
         "poolTarget": 9000,
@@ -2586,6 +2586,22 @@
         "demandMultiplier": 0.65
       },
       {
+        "key": "bp-once-drone-repair-mil",
+        "kind": "blueprint",
+        "refId": "bp-once-drone-repair-mil",
+        "rarity": "rare",
+        "basePrice": 840000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-drone-repair-mil",
+        "kind": "blueprint",
+        "refId": "bp-drone-repair-mil",
+        "rarity": "exotic",
+        "basePrice": 16800000,
+        "demandMultiplier": 0.65
+      },
+      {
         "key": "bp-drone-assault",
         "kind": "blueprint",
         "refId": "bp-drone-assault",
@@ -3702,6 +3718,21 @@
       }
     ],
     "MARKET_GOODS_0": [
+      { "key": "plug-pirate-damage-management", "kind": "module", "refId": "plug-pirate-damage-management", "rarity": "exotic", "basePrice": 0, "demandMultiplier": 0, "playerBuyable": false, "blackMarketBuyable": false, "unreleased": true },
+      { "key": "bp-plug-pirate-damage-management", "kind": "blueprint", "refId": "bp-plug-pirate-damage-management", "rarity": "exotic", "basePrice": 0, "demandMultiplier": 0, "playerBuyable": false, "blackMarketBuyable": false, "unreleased": true },
+      { "key": "bp-once-plug-pirate-damage-management", "kind": "blueprint", "refId": "bp-once-plug-pirate-damage-management", "rarity": "exotic", "basePrice": 0, "demandMultiplier": 0, "playerBuyable": false, "blackMarketBuyable": false, "unreleased": true },
+      { "key": "plug-alien-nanobiomass", "kind": "module", "refId": "plug-alien-nanobiomass", "rarity": "exotic", "basePrice": 0, "demandMultiplier": 0, "playerBuyable": false, "blackMarketBuyable": false, "unreleased": true },
+      { "key": "bp-plug-alien-nanobiomass", "kind": "blueprint", "refId": "bp-plug-alien-nanobiomass", "rarity": "exotic", "basePrice": 0, "demandMultiplier": 0, "playerBuyable": false, "blackMarketBuyable": false, "unreleased": true },
+      { "key": "bp-once-plug-alien-nanobiomass", "kind": "blueprint", "refId": "bp-once-plug-alien-nanobiomass", "rarity": "exotic", "basePrice": 0, "demandMultiplier": 0, "playerBuyable": false, "blackMarketBuyable": false, "unreleased": true },
+      { "key": "plug-gravekeeper-charge", "kind": "module", "refId": "plug-gravekeeper-charge", "rarity": "exotic", "basePrice": 0, "demandMultiplier": 0, "playerBuyable": false, "blackMarketBuyable": false, "unreleased": true },
+      { "key": "bp-plug-gravekeeper-charge", "kind": "blueprint", "refId": "bp-plug-gravekeeper-charge", "rarity": "exotic", "basePrice": 0, "demandMultiplier": 0, "playerBuyable": false, "blackMarketBuyable": false, "unreleased": true },
+      { "key": "bp-once-plug-gravekeeper-charge", "kind": "blueprint", "refId": "bp-once-plug-gravekeeper-charge", "rarity": "exotic", "basePrice": 0, "demandMultiplier": 0, "playerBuyable": false, "blackMarketBuyable": false, "unreleased": true },
+      { "key": "plug-titan-drone-command", "kind": "module", "refId": "plug-titan-drone-command", "rarity": "exotic", "basePrice": 0, "demandMultiplier": 0, "playerBuyable": false, "blackMarketBuyable": false, "unreleased": true },
+      { "key": "bp-plug-titan-drone-command", "kind": "blueprint", "refId": "bp-plug-titan-drone-command", "rarity": "exotic", "basePrice": 0, "demandMultiplier": 0, "playerBuyable": false, "blackMarketBuyable": false, "unreleased": true },
+      { "key": "bp-once-plug-titan-drone-command", "kind": "blueprint", "refId": "bp-once-plug-titan-drone-command", "rarity": "exotic", "basePrice": 0, "demandMultiplier": 0, "playerBuyable": false, "blackMarketBuyable": false, "unreleased": true },
+      { "key": "plug-deadarmy-reinforced-hull", "kind": "module", "refId": "plug-deadarmy-reinforced-hull", "rarity": "exotic", "basePrice": 0, "demandMultiplier": 0, "playerBuyable": false, "blackMarketBuyable": false, "unreleased": true },
+      { "key": "bp-plug-deadarmy-reinforced-hull", "kind": "blueprint", "refId": "bp-plug-deadarmy-reinforced-hull", "rarity": "exotic", "basePrice": 0, "demandMultiplier": 0, "playerBuyable": false, "blackMarketBuyable": false, "unreleased": true },
+      { "key": "bp-once-plug-deadarmy-reinforced-hull", "kind": "blueprint", "refId": "bp-once-plug-deadarmy-reinforced-hull", "rarity": "exotic", "basePrice": 0, "demandMultiplier": 0, "playerBuyable": false, "blackMarketBuyable": false, "unreleased": true },
       {
         "key": "sbp-wh-a-frigate",
         "kind": "blueprint",

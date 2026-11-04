@@ -680,10 +680,11 @@ function startPreparedAuto(
   sim.expedition = idle.expedition; sim.encounter = idle.encounter; sim.transit = idle.transit
   sim.scanning = idle.scanning; sim.standby = idle.standby; sim.wormholeScan = idle.wormholeScan
   sim.awayGalaxy = null; sim.dockedSite = null
+  delete sim.departure
   const beforeWare = { ...sim.warehouse.items }
   const beforeModules = { ...sim.moduleBay }
   const simPlan = wormholePreparationPlan(sim, ctx, ships, current.request)
-  const entered = wormholeEnterPrepared(sim, ctx, ships, stock.seed, simPlan, stockId, { expeditionRules: 2, goal: opts.goal ?? 'deep' })
+  const entered = wormholeEnterPrepared(sim, ctx, ships, stock.seed, simPlan, stockId, { expeditionRules: 2, goal: opts.goal ?? 'deep', automatic: true })
   if (!entered.ok) return { ok: false, errorId: entered.errorId }
   for (const id of new Set([...Object.keys(beforeWare), ...Object.keys(sim.warehouse.items)])) {
     const delta = (sim.warehouse.items[id] ?? 0) - (beforeWare[id] ?? 0)

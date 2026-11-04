@@ -1034,7 +1034,7 @@
           "explosive": 0.1,
           "plasma": 0.1
         },
-        "repairArmorHp": 6,
+        "repairArmorHp": 10,
         "repairIntervalMs": 5000,
         "repairFree": true,
         "repairIgnoresCapacityAmp": true,
@@ -1536,7 +1536,7 @@
       },
       {
         "id": "mod-gravekeeper-crisis", "slot": "support", "rack": "mid", "cpuUse": 40,
-        "crisisOverload": { "rangeBonusPct": 0.4, "damageBonusPct": 0.3, "speedPenaltyPct": 0.6, "droneInitialCutPct": 0.5, "droneCycleCutPct": 0.4 }
+        "crisisOverload": { "rangeBonusPct": 0.4, "damageBonusPct": 0.25, "speedPenaltyPct": 0.4, "droneInitialCutPct": 0.5, "droneCycleCutPct": 0.25 }
       },
       {
         "id": "mod-gravekeeper-rail", "slot": "turret", "rack": "high", "cpuUse": 62,

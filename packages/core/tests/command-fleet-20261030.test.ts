@@ -3,7 +3,9 @@ import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import { addShipToFleet } from '../src/fleetBook'
 import { commandBudgetOf, commandCapacityOf, shipCommandCostOf } from '../src/combat/command/rules'
-import { startExpedition } from '../src/expedition/launch'
+import { startExpedition as launchExpedition } from '../src/expedition/launch'
+import { finishDeparture } from './helpers/departure-ready'
+import { reconcileDeparture } from '../src/departure'
 import { advanceExpedition } from '../src/expedition/advance'
 import { resolveBattleOutcome } from '../src/expedition/outcome'
 import { retreatBattle } from '../src/expedition/retreat'
@@ -29,6 +31,11 @@ import { weekendStartFlagshipBattle } from '../src/weekendLaunch'
 import { weekendNoteContribution } from '../src/weekendEvent'
 
 const ctx = buildSimContext()
+function startExpedition(...args: Parameters<typeof launchExpedition>) {
+  const result = launchExpedition(...args)
+  if (result.ok) finishDeparture(args[0], args[2])
+  return result
+}
 function world(count = 2) {
   const state = createInitialState({ nowWallMs: 0, seed: 8 })
   state.fleet = {}
@@ -211,10 +218,11 @@ describe('统一指挥预算', () => {
   it('整队全损不接管AI或洞内舰，保底驾驶舰不继承返航与扣损', () => {
     const { state, ids } = world()
     const busy = addShipToFleet(state, 'sh-thresher')
-    state.aiAssignments[busy] = { coreType: 'basic', startedAtGameMs: 0, task: {
+    expect(startExpedition(state, 'ano-training', ctx).ok).toBe(true)
+    // 离港推进会清退废弃巡逻；本例只在战败收口前注入占用，核对保底选船。
+    state.aiAssignments[busy] = { coreType: 'basic', startedAtGameMs: state.gameMs, task: {
       kind: 'standby', phase: 'stand', galaxyId: 'galaxy-kor', finishAtGameMs: 0, legMs: 1,
     } } as never
-    expect(startExpedition(state, 'ano-training', ctx).ok).toBe(true)
     for (const row of state.expedition.battle!.myFleet!) state.expedition.battle!.units[row.tag]!.hp = { s: 0, a: 0, h: 0 }
     state.expedition.battle!.ended = 'foe'
     resolveBattleOutcome(state, ctx)
@@ -314,6 +322,7 @@ describe('统一指挥预算', () => {
     expect(hole.wormholeEnter(state, ctx, ids.slice(0, 4), 11).ok).toBe(true)
     expect(hole.wormholeAdmission(ctx, ids).ok).toBe(false)
     state.wormhole.run = null
+    reconcileDeparture(state)
     const now = Date.now()
     state.weekendEvent = { seq: 1, startedAtWallMs: now, coreId: 'galaxy-kor', peripheryIds: ['galaxy-redring'], family: 'H', contributed: {} }
     weekendNoteContribution(state.weekendEvent, 'galaxy-redring', 1)

@@ -355,6 +355,7 @@ export function gateMainActivity(state: GameState, next: MainActivityKind): Gate
  * 但同样要"先把手上的活收掉"）⇒ 不适用"同项直接放行"那一条。
  */
 function verdictOf(state: GameState, next: MainActivityKind | null): GateVerdict {
+  if (state.departure) return { action: 'reject', message: 'departure-in-progress', messageId: state.departure.progressMs < state.departure.undockMs ? 'core.departure.001' : 'core.departure.002' }
   if (state.hauling.active && state.hauling.fleetLeg && next !== 'hauling') return { action: 'reject', message: 'hauling-return-required', messageId: 'core.industrial.006' }
   const locked = cannotInterruptReason(state)
   if (locked !== null) {

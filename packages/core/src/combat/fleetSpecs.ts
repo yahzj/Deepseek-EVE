@@ -12,6 +12,7 @@ import { applyMeJammerDebuff, meJammerNetOf } from './foeRange'
 import { isFirstBountyBattle, applyFirstBountyBuff } from '../firstTasks'
 import { applyAlienCorrosion } from './alienCombat'
 import { applyFleetLockAura } from './lockAura'
+import { applyDroneCommandAura } from './droneCommand'
 export { applyFleetLockAura } from './lockAura'
 
 /**
@@ -175,6 +176,8 @@ export function buildMyUnitSpecs(
   if (!fleet || fleet.length === 0) {
     const me = createPlayerSpec(state, ctx, shipId, battleAmmoIdsFor(battle, 'player'), jammerRefs)
     if (!me) return []
+    // 旧镀膜场次按独立原甲账识别，不能在中场获得新版护盾或护盾恢复。
+    if (battle.units.player?.hp.coating) me.hp.s = 0
     if (matterBuffs) applyMatterPlayerBuffs(me, matterBuffs, matterFoeMain)
     // **捕获网**（船长 2026-09-16）：每拍重建后重新施加（否则下一拍就"复活"）
     const web0 = battle.meWebDebuffs?.[me.tag]
@@ -187,13 +190,14 @@ export function buildMyUnitSpecs(
     // **指挥舰全舰单发光环**（2026-09-17 修：原先只在开战那一刻乘 ⇒ 被每拍重建冲掉、从未生效）
     applyFleetDamageAura([me], 1 + fleetDamageAuraOf(state, ctx, [shipId]))
     applyAlienCorrosion(me, battle.alienCorrosion ?? 0)
-    return applyFleetLockAura([me], battle)
+    return applyDroneCommandAura(applyFleetLockAura([me], battle), battle, ctx)
   }
   const out: UnitSpec[] = []
   for (const entry of fleet) {
     const shipRefs = { weaponRanges: [] as Array<{ baseM: number; bonusMul: number }>, legacyWeaponCount: battle.units[entry.tag]?.weapons.length }
     const spec = createPlayerSpec(state, ctx, entry.shipId, battleAmmoIdsFor(battle, entry.tag), shipRefs)
     if (!spec) continue
+    if (battle.units[entry.tag]?.hp.coating) spec.hp.s = 0
     if (matterBuffs) applyMatterPlayerBuffs(spec, matterBuffs, matterFoeMain)
     spec.tag = entry.tag
     if (entry.tag === 'player' && isFirstBountyBattle(state, anomalyId, entry.shipId)) {
@@ -209,7 +213,7 @@ export function buildMyUnitSpecs(
   // **指挥舰全舰单发光环**：全队取最高一份、不叠加（同批修：见 `applyFleetDamageAura` 的注释）
   applyFleetDamageAura(out, 1 + fleetDamageAuraOf(state, ctx, fleet.map((e) => e.shipId)))
   for (const spec of out) applyAlienCorrosion(spec, battle.alienCorrosion ?? 0)
-  return applyFleetLockAura(out, battle)
+  return applyDroneCommandAura(applyFleetLockAura(out, battle), battle, ctx)
 }
 
 /**

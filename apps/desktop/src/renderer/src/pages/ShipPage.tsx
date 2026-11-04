@@ -2,7 +2,7 @@
  * 舰船页：我的舰队（耐久/维修/切换驾驶）+ AI 指挥中心 + 空间站商店。
  */
 import { memo, useEffect, useRef, useState } from 'react'
-import { Check, Plus } from '../ui/layoutIcons'
+import { Check, Plus, Wrench } from '../ui/layoutIcons'
 import { RangeEwFleet } from '../features/combat/RangeEwPanel'
 import type { ReactNode } from 'react'
 import {
@@ -38,6 +38,7 @@ import {
   createPlayerSpec,
   droneBayTotalM3,
   cleanShipDamage,
+  plugEffectsOf,
   // 2026-09-26 船长令「所有声望门槛改读累计声望」：本页矿带下拉的锁定判据走唯一入口
   standingOf,
   DSI_FACTION_ID,
@@ -100,7 +101,7 @@ function ShipDamageSummary({ engine, uid }: { engine: GameEngine; uid: string })
       <span className="app-ship-damage-count">{tr('ui.shipDamage.013')} {damage.length}</span>
     </div>
     <div className="app-fit-icongrid">
-      <ShipDamageMods ids={damage} />
+      <ShipDamageMods ids={damage} management={plugEffectsOf(engine.state, engine.ctx, uid).find(mod => mod.damageManagement)?.damageManagement} />
     </div>
   </div>
 }
@@ -440,6 +441,16 @@ export function ShipPage({
   const [fleetFilter, setFleetFilter] = useState<string>(SUB_ALL)
   const [fleetTier, setFleetTier] = useState<string>(SUB_ALL)
   const [fleetRole, setFleetRole] = useState<string>(SUB_ALL)
+  const [repairFleetOpen, setRepairFleetOpen] = useState(false)
+  const [repairFleetPlan, setRepairFleetPlan] = useState({
+    repairableShipIds: [] as string[],
+    totalCost: 0,
+    fullCount: 0,
+    blockedCount: 0,
+  })
+  const [repairFleetBalance, setRepairFleetBalance] = useState(state.wallet.isk)
+  const [repairFleetChanged, setRepairFleetChanged] = useState(false)
+  const displayedRepairPlanRef = useRef({ plan: repairFleetPlan, balance: repairFleetBalance })
 
   const fleetScrollRef = useRef<HTMLDivElement | null>(null)
   /**
@@ -514,6 +525,8 @@ export function ShipPage({
    *  2026-09-12 船长：**类别与级别对调顺序**（先类别、后级别），**两维各自独立判定、不再级联**；
    *  顺序使用本次打开时的历史编队与收藏快照） */
   const fleetTotal = Object.keys(state.fleet).length
+  const currentFleetRepairPlan = engine.fleetRepairPlan()
+  const repairShortfall = Math.max(0, repairFleetPlan.totalCost - repairFleetBalance)
   const fq = fleetQ.trim().toLowerCase()
   /** 任一维筛选或搜索词生效（标题行的计数据此在「N 艘 / 匹配 N / 共 M 艘」之间切换） */
   const fleetFiltered = fq.length > 0 || fleetFilter !== SUB_ALL || fleetTier !== SUB_ALL || fleetRole !== SUB_ALL
@@ -578,6 +591,52 @@ export function ShipPage({
     const r = engine.repairShipAt(id)
     if (!r.ok) onToast(cmdText(r) || tr('ui.ShipPage.190'), true)
     else onToast(tr("ui.ShipPage.153"))
+  }
+
+  function openFleetRepair(): void {
+    const plan = engine.fleetRepairPlan()
+    const balance = engine.state.wallet.isk
+    displayedRepairPlanRef.current = { plan, balance }
+    setRepairFleetPlan(plan)
+    setRepairFleetBalance(balance)
+    setRepairFleetChanged(false)
+    setRepairFleetOpen(true)
+  }
+
+  function confirmFleetRepair(): void {
+    const currentPlan = engine.fleetRepairPlan()
+    const currentBalance = engine.state.wallet.isk
+    const displayed = repairFleetChanged
+      ? { plan: repairFleetPlan, balance: repairFleetBalance }
+      : displayedRepairPlanRef.current
+    const samePlan =
+      currentPlan.repairableShipIds.length === displayed.plan.repairableShipIds.length &&
+      currentPlan.repairableShipIds.every((id, index) => id === displayed.plan.repairableShipIds[index]) &&
+      currentPlan.totalCost === displayed.plan.totalCost &&
+      currentPlan.fullCount === displayed.plan.fullCount &&
+      currentPlan.blockedCount === displayed.plan.blockedCount
+
+    if (!samePlan || currentBalance !== displayed.balance) {
+      setRepairFleetPlan(currentPlan)
+      setRepairFleetBalance(currentBalance)
+      setRepairFleetChanged(true)
+      return
+    }
+    if (currentPlan.repairableShipIds.length === 0 || currentBalance < currentPlan.totalCost) return
+
+    const result = engine.repairFleetAt()
+    if (!result.ok || !('repairedCount' in result)) {
+      onToast(cmdText(result) || tr('ui.shipPageFleetRepair.012'), true)
+      setRepairFleetOpen(false)
+      return
+    }
+    setRepairFleetOpen(false)
+    onToast(tr('ui.shipPageFleetRepair.011', {
+      p1: result.repairedCount,
+      p2: fmtCredits(result.totalCost),
+      p3: result.fullCount,
+      p4: result.blockedCount,
+    }))
   }
 
   /** T5：锁定/解锁（2026-09-14 起语义 = **防误移入舰船仓库**：舰队出售按钮已撤） */
@@ -648,8 +707,8 @@ export function ShipPage({
     if (!shipTierPasses(def, storeTier)) return false
     return true
   })
-  const fleetRoles = SHIP_DOMAIN_SUBS.filter((s) => fleetEntries.some((e) => shipRolePasses(e.def, s.key)))
-  const fleetTiers = SHIP_TIER_SUBS.filter((s) => fleetEntries.some((e) => shipRolePasses(e.def, fleetRole) && shipTierPasses(e.def, s.key)))
+  const fleetRoles = SHIP_DOMAIN_SUBS
+  const fleetTiers = SHIP_TIER_SUBS
   const storeRoles = SHIP_DOMAIN_SUBS.filter((s) => storeAll.some((def) => shipRolePasses(def, s.key)))
   const storeTiers = SHIP_TIER_SUBS.filter((s) => storeAll.some((def) => shipRolePasses(def, storeRole) && shipTierPasses(def, s.key)))
     // DataDog / Mixpanel 风格：全舰队遥测核心指标
@@ -760,6 +819,16 @@ export function ShipPage({
         <div className="app-fleet-toolbar">
           <div className="app-fleet-row">
             <span className="app-dim">{tr("ui.ShipPage.003")}</span>
+            <button
+              type="button"
+              className="app-btn is-small is-warn"
+              disabled={currentFleetRepairPlan.repairableShipIds.length === 0}
+              title={currentFleetRepairPlan.repairableShipIds.length === 0 ? tr('ui.shipPageFleetRepair.013') : tr('ui.shipPageFleetRepair.001')}
+              onClick={openFleetRepair}
+            >
+              <Wrench size={13} aria-hidden="true" />
+              {tr('ui.shipPageFleetRepair.001')}
+            </button>
             <div className="app-task-tabs app-fleet-tabs" role="tablist">
               {FLEET_STATE_TABS.map((t) => (
                 <button
@@ -1110,6 +1179,51 @@ export function ShipPage({
         </div>
         )}
         </div>
+        {repairFleetOpen ? (
+          <div className="app-modal-mask" onClick={() => setRepairFleetOpen(false)}>
+            <section
+              className="app-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="fleet-repair-title"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="app-modal-head">
+                <strong id="fleet-repair-title">{tr('ui.shipPageFleetRepair.002')}</strong>
+              </div>
+              <div className="app-modal-body">
+                <div>{tr('ui.shipPageFleetRepair.003', { p1: repairFleetPlan.repairableShipIds.length })}</div>
+                <div>{tr('ui.shipPageFleetRepair.004', { p1: repairFleetPlan.fullCount })}</div>
+                <div>{tr('ui.shipPageFleetRepair.005', { p1: repairFleetPlan.blockedCount })}</div>
+                <div>{tr('ui.shipPageFleetRepair.006', { p1: fmtCredits(repairFleetPlan.totalCost) })}</div>
+                <div>{tr('ui.shipPageFleetRepair.007', { p1: fmtCredits(repairFleetBalance) })}</div>
+                {repairShortfall > 0 ? (
+                  <div className="app-warn" role="alert">
+                    {tr('ui.shipPageFleetRepair.008', { p1: fmtCredits(repairShortfall) })}
+                  </div>
+                ) : null}
+                {repairFleetChanged ? (
+                  <div className="app-warn" role="status">
+                    {tr('ui.shipPageFleetRepair.009')}
+                  </div>
+                ) : null}
+                <div className="app-save-actions" style={{ marginTop: 'var(--wui-sp-10)' }}>
+                  <button className="app-btn" onClick={() => setRepairFleetOpen(false)}>
+                    {tr('ui.shipPageFleetRepair.014')}
+                  </button>
+                  <button
+                    className="app-btn is-primary"
+                    disabled={repairFleetPlan.repairableShipIds.length === 0 || repairFleetBalance < repairFleetPlan.totalCost}
+                    title={repairFleetBalance < repairFleetPlan.totalCost ? tr('ui.shipPageFleetRepair.008', { p1: fmtCredits(repairShortfall) }) : undefined}
+                    onClick={confirmFleetRepair}
+                  >
+                    {tr('ui.shipPageFleetRepair.010')}
+                  </button>
+                </div>
+              </div>
+            </section>
+          </div>
+        ) : null}
       </Panel>
       </>
       ) : null}

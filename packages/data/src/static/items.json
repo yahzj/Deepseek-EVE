@@ -190,6 +190,11 @@
       }
     ],
     "BLUEPRINT_CONTAINERS_0": [
+      { "id": "box-encrypted-a", "kind": "container", "unitM3": 1000, "baseSellPriceIsk": 1 },
+      { "id": "box-encrypted-c", "kind": "container", "unitM3": 1000, "baseSellPriceIsk": 1 },
+      { "id": "box-encrypted-d", "kind": "container", "unitM3": 1000, "baseSellPriceIsk": 1 },
+      { "id": "box-encrypted-e", "kind": "container", "unitM3": 1000, "baseSellPriceIsk": 1 },
+      { "id": "box-encrypted-g", "kind": "container", "unitM3": 1000, "baseSellPriceIsk": 1 },
       {
         "id": "box-bp-shallow",
         "kind": "container",

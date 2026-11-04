@@ -38,7 +38,8 @@ describe('市场域目录与兼容契约', () => {
     for (const [rows, map] of [[raw, bindings.MARKET_GOODS_RAW_0_TEXT_BINDINGS], [extra, bindings.MARKET_GOODS_0_TEXT_BINDINGS]] as const) {
       expect(Object.keys(map).sort()).toEqual(rows.map(row => row.key).sort())
     }
-    expect([...raw, ...extra].filter(row => row.key !== 'drone-repair-mil')).toHaveLength(570)
+    const added = new Set(['drone-repair-mil', 'bp-once-drone-repair-mil', 'bp-drone-repair-mil'])
+    expect([...raw, ...extra].filter(row => !added.has(row.key))).toHaveLength(570)
     expect([...raw, ...extra].filter(row => row.key === 'drone-repair-mil')).toHaveLength(1)
     expect(catalog.MARKET_GOODS_RAW.map(row => row.key)).toEqual(raw.map(row => row.key))
     const offset = raw.length + publicCatalog.WRECK_BUY_GOODS.length

@@ -903,8 +903,22 @@ export interface ModuleDef {
   speedPenaltyMps?: number
   /** 势力船插：整件效果只计一次，仍可重复安装占格。 */
   plugNonStacking?: boolean
+  /** 战损逐件减轻惩罚；不同类型各贡献一次结构抗性百分点。 */
+  damageManagement?: { penaltyReductionPct: number; hullResistPerKind: number; maxKinds: number }
+  /** 合并镀膜转换甲后的最终装甲容量代价。 */
+  armorCapacityPenaltyPct?: number
+  /** 每秒恢复最终最大装甲的比例。 */
+  armorRegenPerSec?: number
+  /** 舰载动能与激光武器的周期、伤害及距离衰减修正。 */
+  chargedWeapons?: { reloadMul: number; damageMul: number; falloffReductionPct: number }
+  droneCommand?: { sharePct: number; targetWeightPerM3: number }
+  hullCapacityBonusPct?: number
+  /** 整船回收成功时保留旧战损，不再掷新增战损。 */
+  recoveryDamageImmune?: boolean
   stealthWithPropulsion?: boolean
   shieldArmorConversionPct?: number
+  /** 镀膜转换后保留的最终护盾容量比例。 */
+  shieldCapacityRetainedPct?: number
   shieldPassiveBonusPct?: number
   cargoCapacityBonusPct?: number
   cpuPenalty?: number

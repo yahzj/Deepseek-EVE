@@ -8,6 +8,7 @@ import { aiCoreCapBlock, aiCoreName, aiEfficiency, countAiCore, occupyAiCore } f
 import { stationIndustryBlocked, stationActivityStartBlockReason } from '../../location'
 import { queueStationActivity } from '../../stationActivityPending'
 import { industryAvailable, UNBOX_CYCLE_MS } from './params'
+import { encryptedBlueprintGroups, encryptedFamilyOf } from '../../encryptedContainer'
 
 /**
  * 玩家指令：**拆解一件虫洞货柜**（F4d · 船长 2026-09-13 定案；2026-09-14 增图纸货柜）。
@@ -28,6 +29,8 @@ export function startUnboxRun(
   if (def.kind !== 'container') {
     return { ok: false, error: `「${def.name}」不是货柜——「货柜拆解」只拆虫洞带回来的货柜（安全货柜 / 图纸货柜）。`, errorId: 'core.industry.008', errorParams: { p1: def.name } }
   }
+  const encryptedFamily = encryptedFamilyOf(boxItemId)
+  if (encryptedFamily && !encryptedBlueprintGroups(ctx, encryptedFamily)) return { ok: false, errorId: 'core.encrypted.001' }
   if (industryAvailable(state, ctx, boxItemId, worker === 'pilot' ? worker : undefined) <= 0) {
     return { ok: false, error: `货仓与仓库里都没有 ${def.name}。`, errorId: 'core.industry.004', errorParams: { p1: def.name } }
   }

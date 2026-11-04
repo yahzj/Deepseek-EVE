@@ -115,7 +115,7 @@ export function cleanBattle(raw: unknown): BattleState | null {
      * 池子剩余那份覆写凭空消失（"单场不死/跨场累计"当场失真）。三格都取正数/非空串。
      */
     const bh = foeOverrideRaw.bossHp
-    if (typeof bh === 'number' && Number.isFinite(bh) && bh > 0) out.bossHp = Math.round(bh)
+    if (typeof bh === 'number' && Number.isFinite(bh) && bh > 0) out.bossHp = bh
     const bhm = foeOverrideRaw.bossHpMax
     if (typeof bhm === 'number' && Number.isFinite(bhm) && bhm > 0) out.bossHpMax = Math.round(bhm)
     /**
@@ -428,6 +428,8 @@ export function cleanBattle(raw: unknown): BattleState | null {
     ...(foeDronePools !== undefined ? { foeDronePools } : {}),
     ...(droneLost !== undefined ? { droneLost } : {}),
     ...(droneLoadAtStart !== undefined ? { droneLoadAtStart } : {}),
+    ...(typeof b.droneCommandVolumeM3 === 'number' && Number.isFinite(b.droneCommandVolumeM3) && b.droneCommandVolumeM3 >= 0
+      ? { droneCommandVolumeM3: b.droneCommandVolumeM3 } : {}),
     ...(droneLostBy !== undefined ? { droneLostBy } : {}),
     ...(droneLoadAtStartBy !== undefined ? { droneLoadAtStartBy } : {}),
     ...(droneRevive !== undefined ? { droneRevive } : {}),

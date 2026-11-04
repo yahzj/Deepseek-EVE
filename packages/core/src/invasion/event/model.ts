@@ -72,11 +72,15 @@ export interface WeekendEventState {
   flagshipHpMax?: number
   /** **玩家已造成的伤害**（跨场累计；只算打进母舰的原始伤害） */
   flagshipHpDone?: number
+  /** 跨场净恢复量，独立于玩家历史伤害贡献；保留小数。 */
+  flagshipHpRecovered?: number
   /** **章鱼人累计削掉的血量**（**2026-09-25 共享血条口径**：与玩家的 `flagshipHpDone` **加在同一条血**上；
    *  只累计"在线且非战斗"的时长 —— 战斗中/离线都暂停，速率 = `池子总量 ÷ 窗口`） */
   octopusHpDone?: number
   /** **上一场记账的战斗身份**（= `battle.startedAtGameMs`；同一场重复结算据此幂等） */
   flagshipRunId?: number
+  /** 本次入侵已经结清的旗舰场次；旧档仍以上一场身份兜底。 */
+  flagshipSettledRuns?: number[]
   /** **上一拍章鱼削血的心跳墙钟**（只用于算拍间增量；缺省 = 本拍只立基线、不累计） */
   bossTickWallMs?: number
   /**
@@ -261,7 +265,7 @@ export interface WeekendTickResult {
 }
 
 /** **BOSS 池读数**（供界面血条：剩余 / 总量 / 玩家进度 / 章鱼进度；非 BOSS 族 ⇒ `null`）。
- *  ⚠ **2026-09-25 共享血条**：`hpLeft = 总量 −（玩家 ＋ 章鱼）`（两者都真实减少同一条血）；
+ * 共享血条：hpLeft = 总量 − 玩家历史伤害 − 章鱼历史削血 ＋ 跨场净恢复。
  *  `playerFrac` / `octopusFrac` = 各自占**血条总量**的份额（`octopusFrac` 只留给内部读数，
  *  界面上**不再单独显示**——船长：「不需要显示章鱼人削减进度和倒计时」）。 */
 export interface WeekendBossPoolView {

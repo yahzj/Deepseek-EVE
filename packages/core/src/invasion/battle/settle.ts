@@ -39,7 +39,7 @@ export function weekendResolveBattle(
   outcome: WeekendOutcome,
   nowWallMs: number,
   /**
-   * **BOSS 池：这一场对母舰造成的原始伤害**（2026-09-24 第二轮令；缺省 0 = 该场没打到母舰 ⇒ 0 进度）。
+   * BOSS 池本场净损失；负数为补回此前失去的护盾，历史玩家贡献账保持独立。
    * 由引擎用 `combat.flagshipBattleLedger` 量出来（"按对母舰造成的伤害决定"）。
    */
   flagshipDmg = 0,

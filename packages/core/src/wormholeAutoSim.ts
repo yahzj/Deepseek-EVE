@@ -188,7 +188,7 @@ export function wormholeAutoDescend(opts: {
   let holdUsed = 0
 
   for (let depth = Math.max(1, startDepth); depth <= 9; depth++) {
-    const grid = wormholeMakeGrid(seed * 31 + depth * 7919, depth, 0, blankShareFactor)
+    const grid = wormholeMakeGrid(seed * 31 + depth * 7919, depth, 0, blankShareFactor, undefined, true)
     const mul = wormholeLayerRewardMul(depth)
     const radius = wormholeGridRadiusFor(depth)
 

@@ -6,7 +6,8 @@
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
-import { advanceSalvageOp, assayChanceOf, pullOneWreck, salvagerCyclesOf, setSalvageAutoCycle, setSalvageStopAfterTrip, startSalvageOp, stopSalvageOp } from '../src/salvaging'
+import { advanceSalvageOp, assayChanceOf, pullOneWreck, salvagerCyclesOf, setSalvageAutoCycle, setSalvageStopAfterTrip, startSalvageOp as launchSalvage, stopSalvageOp } from '../src/salvaging'
+import { finishDeparture } from './helpers/departure-ready'
 import { injectWreckDensity, wreckDensityOf } from '../src/salvage'
 import { assignAiSalvage, advanceAi, cancelAiTask } from '../src/ai'
 import { advanceShipReturns } from '../src/mining'
@@ -14,6 +15,12 @@ import { changeShip } from '../src/shipyard'
 import { DEFAULT_BALANCE } from '../src/balance'
 import { anomaly, galaxy, makeTestCtx, moduleDef, ship } from './helpers'
 import { countItem, countWare } from '../src/inventory'
+
+function startSalvageOp(...args: Parameters<typeof launchSalvage>) {
+  const result = launchSalvage(...args)
+  if (result.ok) finishDeparture(args[0], args[2])
+  return result
+}
 
 function ctxOf(cargo = 800) {
   return makeTestCtx({
@@ -38,7 +45,7 @@ function fittedState(seed: number) {
   return state
 }
 
-describe('打捞作业（采矿式自动循环：去程取消，指令即打捞）', () => {
+describe('打捞作业（抵达后的采矿式自动循环）', () => {
   it('没有打捞器不能出发；装上打捞器即可合法开捞（下达即打捞）', () => {
     const state = fittedState(1)
     const ctx = ctxOf()

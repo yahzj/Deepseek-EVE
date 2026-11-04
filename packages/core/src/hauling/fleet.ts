@@ -15,6 +15,7 @@ import { haulEndpoints, haulEndpointName, haulLegMinutesOf, haulBaseReward, haul
 import { ceilFinalQuantity } from '../quantity'
 import { nextRandom } from '../rng'
 import { bumpFirst } from '../firstTasks'
+import { beginDeparture, consumeDeparture, cancelDeparture } from '../departure'
 import { noteOfflineDelivery, noteOfflineTransportStop } from '../offlineCombatStats'
 
 function galaxy(ctx: SimContext, site: string | null): string {
@@ -52,6 +53,7 @@ function setFleetLeg(state: GameState, ctx: SimContext, from: string | null, to:
   h.legMs = path.reduce((sum, row) => sum + row.durationMs, 0)
   h.legMinutes = haulLegMinutesOf(shortestTravelPath(ctx, galaxy(ctx, from), galaxy(ctx, to)).hopMinutes.reduce((sum, n) => sum + n, 0))
   h.phaseAccMs = 0
+  beginDeparture(state, ctx, 'hauling', galaxy(ctx, to), { galaxy: galaxy(ctx, from), site: from, docked: true })
   const baseRewardIsk = positioning ? 0 : haulBaseReward(ctx, load.loadedM3, haulEffectiveMinutes(ctx, galaxy(ctx, from), galaxy(ctx, to)))
   h.fleetLeg = { version: 1, targetM3, shipIds: [...ids], loadedByShip: load.byShip.map(row => ({ shipId: row.shipId, loadedM3: row.loadedM3 })), loadedM3: load.loadedM3, baseRewardIsk,
     positioning, stopAtArrival: false, returning: false, path, pathIndex: 0 }
@@ -101,6 +103,13 @@ export function stopFleetHauling(state: GameState, ctx: SimContext, atArrival = 
   const h = state.hauling, f = h.fleetLeg
   if (!h.active || !f) return { ok: false, errorId: 'core.hauling.018', error: 'hauling-inactive' }
   if (atArrival) { f.stopAtArrival = true; return { ok: true } }
+  if (cancelDeparture(state, 'hauling')) {
+    state.dockedSite = h.fromSiteId
+    h.active = false
+    delete h.fleetLeg
+    delete state.combatEscort
+    return { ok: true }
+  }
   if (state.encounter.active) { f.abortAfterBattle = true; return { ok: true } }
   if (f.returning) return { ok: true }
   const reverse = f.path.slice(0, f.pathIndex + 1).reverse().flatMap(row => row.progressMs > 0 ? [{ galaxyId: row.galaxyId, durationMs: row.progressMs, progressMs: 0 }] : [])
@@ -124,6 +133,8 @@ export function stopFleetHauling(state: GameState, ctx: SimContext, atArrival = 
 export function advanceFleetHauling(state: GameState, deltaMs: number, ctx: SimContext): void {
   const h = state.hauling, f = h.fleetLeg
   if (!h.active || !f || state.encounter.active) return
+  deltaMs = consumeDeparture(state, 'hauling', deltaMs)
+  if (deltaMs <= 0) return
   const row = f.path[f.pathIndex]
   if (!row) { h.active = false; return }
   const step = Math.min(deltaMs, Math.max(0, row.durationMs - row.progressMs))
