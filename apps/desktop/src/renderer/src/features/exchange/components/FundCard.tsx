@@ -101,7 +101,7 @@ export function FundCard({
         <div className="ex-preview-row">
           <span>{T.strategyAvailCash}</span>
           <b className="ex-num">
-            {money(availableCash)} <span className="ex-unit">ISK</span>
+            {money(availableCash)} <span className="ex-unit">信用点</span>
           </b>
         </div>
 
@@ -112,7 +112,7 @@ export function FundCard({
               <span>{last.win ? T.fundResultWin : T.fundResultLose}</span>
               <b className={`ex-num ${last.win ? 'is-up ex-fund-result-win' : 'is-down ex-fund-result-lose'}`}>
                 {last.win ? '+' : '−'}
-                {money(Math.abs(last.profit))} <span className="ex-unit">ISK</span>
+                {money(Math.abs(last.profit))} <span className="ex-unit">信用点</span>
               </b>
             </div>
             <div className="ex-preview-row">
@@ -171,7 +171,7 @@ export function FundCard({
               onChange={(e) => setAmountText(e.target.value)}
               onBlur={handleBlur}
             />
-            <span className="ex-input-unit">ISK</span>
+            <span className="ex-input-unit">信用点</span>
           </div>
           {/* 防呆提示 */}
           {isOverCash ? (

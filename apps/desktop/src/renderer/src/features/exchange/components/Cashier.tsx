@@ -116,7 +116,7 @@ export function Cashier({
     void (async () => {
       try {
         if (mode === 'deposit') {
-          // 船长定案：存档币以本地为准——先从本地存档扣 ISK，服务器只记交易所账。
+          // 船长定案：存档币以本地为准——先从本地存档扣 信用点，服务器只记交易所账。
           const replay = pendingDeposit.current !== null
           if (!replay && !onLocalDelta(-value)) {
             onToast(T.cashierLocalInsufficient, true)
@@ -256,9 +256,9 @@ export function Cashier({
             )}
           </div>
           {mode === 'withdraw' && value > cash ? (
-            <div className="ex-cashier-warn is-warn">超过交易所可用现金（上限 {money(cash)} ISK）</div>
+            <div className="ex-cashier-warn is-warn">超过交易所可用现金（上限 {money(cash)} 信用点）</div>
           ) : mode === 'deposit' && value > localIsk ? (
-            <div className="ex-cashier-warn is-warn">超过本地钱包可用余额（上限 {money(localIsk)} ISK）</div>
+            <div className="ex-cashier-warn is-warn">超过本地钱包可用余额（上限 {money(localIsk)} 信用点）</div>
           ) : null}
         </div>
 

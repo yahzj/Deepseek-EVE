@@ -92,8 +92,8 @@ export function SidebarExchangeCard({ onGoPage }: SidebarExchangeCardProps) {
   const quoteChgPct = activeQuote?.changePct ?? 0
 
   const tooltipTitle = hasPositions
-    ? `已持仓股票：${uniqueCodes.join('、')}\n当前总浮动盈亏：${totalPnl >= 0 ? '+' : ''}${amount(totalPnl)} ISK (${pct(pnlPct)})\n主力股票：${primaryCode}（现价 ${price(quotePrice)} ISK，涨跌幅 ${pct(quoteChgPct)}）\n点击直达交易所并定位该股票`
-    : `深空证券交易所实时监控中\n参考股票：${primaryCode}（现价 ${price(quotePrice)} ISK，涨跌幅 ${pct(quoteChgPct)}）\n当前未建仓，点击直达交易大厅选股`
+    ? `已持仓股票：${uniqueCodes.join('、')}\n当前总浮动盈亏：${totalPnl >= 0 ? '+' : ''}${amount(totalPnl)} 信用点 (${pct(pnlPct)})\n主力股票：${primaryCode}（现价 ${price(quotePrice)} 信用点，涨跌幅 ${pct(quoteChgPct)}）\n点击直达交易所并定位该股票`
+    : `深空证券交易所实时监控中\n参考股票：${primaryCode}（现价 ${price(quotePrice)} 信用点，涨跌幅 ${pct(quoteChgPct)}）\n当前未建仓，点击直达交易大厅选股`
 
   return (
     <button

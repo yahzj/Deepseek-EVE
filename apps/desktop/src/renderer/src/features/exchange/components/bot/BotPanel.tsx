@@ -141,7 +141,7 @@ function GridVisualizer({
           <div
             className={`ex-bot-pin ${isBelow ? 'is-left' : isAbove ? 'is-right' : 'is-mid'}`}
             style={{ left: `${clampedPos}%` }}
-            title={`现价: ${formatNum(cur)} ISK (${clampedPos.toFixed(1)}%)`}
+            title={`现价: ${formatNum(cur)} 信用点 (${clampedPos.toFixed(1)}%)`}
           >
             <div className="ex-bot-pin-line" />
             <div className="ex-bot-pin-head" />
@@ -155,7 +155,7 @@ function GridVisualizer({
           网格密度: <b className="font-mono">{validGrids} 格</b>
         </span>
         <span className="ex-bot-stat-pill">
-          单格价差: <b className="font-mono">{formatNum(stepPrice)} ISK</b>
+          单格价差: <b className="font-mono">{formatNum(stepPrice)} 信用点</b>
         </span>
         <span className="ex-bot-stat-pill">
           预估单格净利: <b className="font-mono">{estProfitPerGrid.toFixed(2)}%</b>
@@ -278,7 +278,7 @@ function StrategyCardItem({
             <div className="ex-bot-metric-col">
               <span className="ex-bot-metric-lbl">已实现利润</span>
               <span className="ex-bot-metric-val font-mono is-profit">
-                +{formatNum(realizedProfit)} ISK
+                +{formatNum(realizedProfit)} 信用点
               </span>
             </div>
             <div className="ex-bot-metric-col">
@@ -292,7 +292,7 @@ function StrategyCardItem({
           <>
             <div className="ex-bot-metric-col">
               <span className="ex-bot-metric-lbl">{T.strategyAmount}</span>
-              <span className="ex-bot-metric-val font-mono">{amount(Number(p.amount ?? 0))} ISK</span>
+              <span className="ex-bot-metric-val font-mono">{amount(Number(p.amount ?? 0))} 信用点</span>
             </div>
             <div className="ex-bot-metric-col">
               <span className="ex-bot-metric-lbl">{T.strategyInterval}</span>
@@ -403,7 +403,7 @@ export function BotPanel({
         errs.qty = '每格委托数量至少为 1 股'
       }
       if (estTotalGridInvestment > availableCash) {
-        errs.cash = `预估总投入 (${formatNum(estTotalGridInvestment)} ISK) 超出可用资金 (${formatNum(availableCash)} ISK)`
+        errs.cash = `预估总投入 (${formatNum(estTotalGridInvestment)} 信用点) 超出可用资金 (${formatNum(availableCash)} 信用点)`
       }
     } else if (template === 'dca') {
       const amt = Number(dcaAmountText)
@@ -411,7 +411,7 @@ export function BotPanel({
       if (!Number.isFinite(amt) || amt <= 0) {
         errs.dcaAmount = '定投金额必须大于 0'
       } else if (amt > availableCash) {
-        errs.dcaAmount = `定投金额超出当前可用资金 (${formatNum(availableCash)} ISK)`
+        errs.dcaAmount = `定投金额超出当前可用资金 (${formatNum(availableCash)} 信用点)`
       }
       if (!Number.isFinite(intv) || intv < 3) {
         errs.dcaInterval = '定投执行间隔至少为 3 秒'
@@ -566,7 +566,7 @@ export function BotPanel({
             <div className="ex-bot-form-title-row">
               <h4 className="ex-subtitle">{T.strategyCreateTitle}</h4>
               <span className="ex-bot-cash-hint">
-                {T.strategyAvailCash}: <b className="font-mono">{formatNum(availableCash)} ISK</b>
+                {T.strategyAvailCash}: <b className="font-mono">{formatNum(availableCash)} 信用点</b>
               </span>
             </div>
 
@@ -591,7 +591,7 @@ export function BotPanel({
               <div className="ex-bot-grid-form">
                 <div className="ex-form-grid">
                   <label className="ex-field" htmlFor={`${uniquePrefix}-lower`}>
-                    <span className="ex-label">{T.strategyLower} (ISK)</span>
+                    <span className="ex-label">{T.strategyLower} (信用点)</span>
                     <input
                       id={`${uniquePrefix}-lower`}
                       className={`ex-input ex-num${touched.lowerPrice && errors.lowerPrice ? ' has-error' : ''}`}
@@ -606,7 +606,7 @@ export function BotPanel({
                   </label>
 
                   <label className="ex-field" htmlFor={`${uniquePrefix}-upper`}>
-                    <span className="ex-label">{T.strategyUpper} (ISK)</span>
+                    <span className="ex-label">{T.strategyUpper} (信用点)</span>
                     <input
                       id={`${uniquePrefix}-upper`}
                       className={`ex-input ex-num${touched.upperPrice && errors.upperPrice ? ' has-error' : ''}`}
@@ -657,12 +657,12 @@ export function BotPanel({
                     <span className="ex-dim">
                       <Information size={12} /> {T.strategySingleGrid}:
                     </span>
-                    <span className="font-mono">{formatNum(singleGridAmount)} ISK</span>
+                    <span className="font-mono">{formatNum(singleGridAmount)} 信用点</span>
                   </div>
                   <div className="ex-bot-fund-row">
                     <span className="ex-dim">{T.strategyEstTotal}:</span>
                     <span className={`font-mono${errors.cash ? ' is-cash-overflow' : ''}`}>
-                      {formatNum(estTotalGridInvestment)} ISK
+                      {formatNum(estTotalGridInvestment)} 信用点
                     </span>
                   </div>
                   {errors.cash ? <div className="ex-field-error">{errors.cash}</div> : null}
@@ -682,7 +682,7 @@ export function BotPanel({
             {template === 'dca' ? (
               <div className="ex-form-grid">
                 <label className="ex-field" htmlFor={`${uniquePrefix}-dca-amt`}>
-                  <span className="ex-label">{T.strategyAmount} (ISK)</span>
+                  <span className="ex-label">{T.strategyAmount} (信用点)</span>
                   <input
                     id={`${uniquePrefix}-dca-amt`}
                     className={`ex-input ex-num${touched.dcaAmount && errors.dcaAmount ? ' has-error' : ''}`}

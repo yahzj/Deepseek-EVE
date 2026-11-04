@@ -90,7 +90,7 @@ export function BondCard({
       } else {
         client.buyBond(numericAmount)
       }
-      onToast(`${T.toastBondBought} ${money(numericAmount)} ISK`)
+      onToast(`${T.toastBondBought} ${money(numericAmount)} 信用点`)
     } catch (err) {
       onToast(err instanceof Error ? err.message : String(err), true)
     }
@@ -103,7 +103,7 @@ export function BondCard({
     }
     try {
       const total = local ? redeemLocalBond(engine) : client.redeemBond()
-      if (total > 0) onToast(`${T.toastBondRedeemed} ${money(total)} ISK`)
+      if (total > 0) onToast(`${T.toastBondRedeemed} ${money(total)} 信用点`)
     } catch (err) {
       onToast(err instanceof Error ? err.message : String(err), true)
     }
@@ -127,25 +127,25 @@ export function BondCard({
         <div className="ex-preview-row">
           <span>{T.bondPrincipal}</span>
           <b className="ex-num">
-            {money(bond.principal)} <span className="ex-unit">ISK</span>
+            {money(bond.principal)} <span className="ex-unit">信用点</span>
           </b>
         </div>
         <div className="ex-preview-row is-bond-highlight">
           <span>{T.bondAccrued}</span>
           <b className={`ex-num is-up ex-bond-accrued ${isAccruing ? 'is-pulse' : ''}`}>
-            +{money(bond.accrued)} <span className="ex-unit">ISK</span>
+            +{money(bond.accrued)} <span className="ex-unit">信用点</span>
           </b>
         </div>
         <div className="ex-preview-row">
           <span>{T.bondValue}</span>
           <b className="ex-num">
-            {money(held)} <span className="ex-unit">ISK</span>
+            {money(held)} <span className="ex-unit">信用点</span>
           </b>
         </div>
         <div className="ex-preview-row">
           <span>{local ? T.cashierLocalWallet : T.strategyAvailCash}</span>
           <b className="ex-num">
-            {money(availableIsk)} <span className="ex-unit">ISK</span>
+            {money(availableIsk)} <span className="ex-unit">信用点</span>
           </b>
         </div>
 
@@ -197,7 +197,7 @@ export function BondCard({
               onChange={(e) => setAmountText(e.target.value)}
               onBlur={handleBlur}
             />
-            <span className="ex-input-unit">ISK</span>
+            <span className="ex-input-unit">信用点</span>
           </div>
           {/* 防呆提示 */}
           {isOverCash ? (

@@ -253,7 +253,7 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
                 className="ex-simple-input ex-num"
                 type="text"
                 inputMode="numeric"
-                placeholder={tab === 'buy' ? '输入买多金额 (ISK)' : '输入卖空保证金 (ISK)'}
+                placeholder={tab === 'buy' ? '输入买多金额 (信用点)' : '输入卖空保证金 (信用点)'}
                 value={cashAmount}
                 onChange={handleCashChange}
                 onKeyDown={handleKeyDown}
@@ -270,7 +270,7 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
                   ×
                 </button>
               )}
-              <span className="ex-simple-input-unit">ISK</span>
+              <span className="ex-simple-input-unit">信用点</span>
               <button
                 type="button"
                 className="ex-simple-step-btn is-plus"

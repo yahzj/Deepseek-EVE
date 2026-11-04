@@ -65,11 +65,11 @@ export function round(n: number, digits = 2): number {
   return Math.round(n * f) / f
 }
 
-/** 成交额规范格式化：如 99.45M ISK / 1.25B ISK / 850.00K ISK */
+/** 成交额规范格式化：如 99.45M 信用点 / 1.25B 信用点 / 850.00K 信用点 */
 export function turnover(n: number): string {
-  if (!Number.isFinite(n) || n <= 0) return '0.00 ISK'
-  if (n >= 1e9) return `${(n / 1e9).toFixed(2)}B ISK`
-  if (n >= 1e6) return `${(n / 1e6).toFixed(2)}M ISK`
-  if (n >= 1e3) return `${(n / 1e3).toFixed(2)}K ISK`
-  return `${n.toFixed(2)} ISK`
+  if (!Number.isFinite(n) || n <= 0) return '0.00 信用点'
+  if (n >= 1e9) return `${(n / 1e9).toFixed(2)}B 信用点`
+  if (n >= 1e6) return `${(n / 1e6).toFixed(2)}M 信用点`
+  if (n >= 1e3) return `${(n / 1e3).toFixed(2)}K 信用点`
+  return `${n.toFixed(2)} 信用点`
 }
