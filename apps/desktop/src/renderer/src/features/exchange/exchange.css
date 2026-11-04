@@ -1794,6 +1794,16 @@
   color: rgb(var(--wui-red));
 }
 
+.ex-cashier-warn {
+  font-size: 11px;
+  margin-top: 4px;
+  padding: 3px 6px;
+  border-radius: 3px;
+  background: rgb(var(--wui-amber) / 0.12);
+  color: rgb(var(--wui-amber));
+  border: 1px dashed rgb(var(--wui-amber) / 0.35);
+}
+
 .ex-modal-actions {
   display: flex;
   justify-content: flex-end;

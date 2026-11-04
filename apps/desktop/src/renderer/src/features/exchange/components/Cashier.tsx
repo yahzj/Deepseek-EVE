@@ -226,14 +226,24 @@ export function Cashier({
                 </button>
               ))
             ) : (
-              <button
-                type="button"
-                className="ex-mini-btn is-accent"
-                disabled={busy || allCash < 1}
-                onClick={() => setAmountText(allCash > 0 ? String(allCash) : '')}
-              >
-                {T.cashierAll}
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="ex-mini-btn"
+                  disabled={busy || allCash < 2}
+                  onClick={() => setAmountText(allCash > 1 ? String(Math.floor(allCash * 0.5)) : '')}
+                >
+                  50%
+                </button>
+                <button
+                  type="button"
+                  className="ex-mini-btn is-accent"
+                  disabled={busy || allCash < 1}
+                  onClick={() => setAmountText(allCash > 0 ? String(allCash) : '')}
+                >
+                  {T.cashierAll}
+                </button>
+              </>
             )}
             {mode === 'withdraw' ? (
               <span className="ex-dim">
@@ -245,6 +255,11 @@ export function Cashier({
               </span>
             )}
           </div>
+          {mode === 'withdraw' && value > cash ? (
+            <div className="ex-cashier-warn is-warn">超过交易所可用现金（上限 {money(cash)} ISK）</div>
+          ) : mode === 'deposit' && value > localIsk ? (
+            <div className="ex-cashier-warn is-warn">超过本地钱包可用余额（上限 {money(localIsk)} ISK）</div>
+          ) : null}
         </div>
 
         <div className="ex-modal-actions">
