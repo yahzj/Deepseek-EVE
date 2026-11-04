@@ -5,7 +5,7 @@ import { isEn } from '../../../i18n/locale'
  * 核心设计：
  * - 全面支持【看涨 · 买多】与【看跌 · 卖空】双向交易；
  * - 两个 Tab 均以【投入资金 ISK】为输入口径，支持 25% / 50% / 75% / 全仓 快捷筹码；
- * - 做空按 2x 杠杆融券市价即时开空，无需持有现货，零门槛借券卖出；
+ * - 看跌按 1x 全额融券市价开空（投入多少占用多少，只收手续费），无需持有现货；
  * - 实时换算预计股数 / 占用保证金 / 手续费，提示价格上涨增值或下跌赚差价；
  * - 纯市价委托提交后进入本回合队列，回合末集合竞价统一成交（不是即时 IOC）；
  */
@@ -41,15 +41,13 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
   const estBuyQty = currentPrice > 0 ? Math.floor(effectiveCash / currentPrice) : 0
   const estBuyFee = effectiveCash * feeRate
 
-  // 卖空换算：融券 2x 杠杆
-  const estShortQty = currentPrice > 0 ? Math.floor((effectiveCash * 2) / currentPrice) : 0
-  const estShortMargin = (estShortQty * currentPrice) / 2
-  const estShortFee = (estShortQty * currentPrice) * feeRate
+  // 看跌换算：1x 全额融券，投入多少占用多少（与看涨对称）
+  const estShortQty = currentPrice > 0 ? Math.floor(effectiveCash / currentPrice) : 0
+  const estShortMargin = estShortQty * currentPrice
+  const estShortFee = estShortMargin * feeRate
 
-  // 步进微调资金基数（按 1 股换算所需资金，含手续费与杠杆）
-  const stepCash = tab === 'buy'
-    ? Math.max(1, Math.ceil(currentPrice * (1 + feeRate)))
-    : Math.max(1, Math.ceil((currentPrice / 2) * (1 + feeRate)))
+  // 步进微调资金基数（按 1 股换算所需资金，含手续费；两侧同为全额）
+  const stepCash = Math.max(1, Math.ceil(currentPrice * (1 + feeRate)))
 
   const isRatioActive = (r: number) => {
     if (activeRatio === r) return true
@@ -160,7 +158,8 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
         type: 'market',
         tif: 'IOC',
         qty: estShortQty,
-        leverage: 2,
+        // 1x 全额：投入多少占用多少，只收卖出档手续费，与看涨对称。
+        leverage: 1,
         // 必须显式标记开空：服务端把「side=sell + 杠杆」默认当平多，缺这个字段会报
         // 「没有可平的杠杆多头持仓」。
         short: true,
@@ -350,7 +349,7 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
           ) : (
             <div className="ex-simple-trade-preview">
               <div className="ex-simple-preview-row">
-                <span className="ex-dim">{isEn() ? 'Est. Fall (2x)' : '预计看跌 (2x)'}</span>
+                <span className="ex-dim">{isEn() ? 'Est. Fall' : '预计看跌'}</span>
                 <b className="ex-num ex-highlight-red">{amount(estShortQty)} {T.sharesSuffix}</b>
               </div>
               <div className="ex-simple-preview-row">

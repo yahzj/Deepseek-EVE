@@ -934,7 +934,8 @@ export class MockExchangeClient implements ExchangeClient {
       }
     }
     const leverage = Math.max(1, Math.round(req.leverage ?? 1))
-    const isLeverage = leverage > 1
+    // 1x + short=true 也是开空（与联机 Go 口径一致），只是不放大盈亏。
+    const isLeverage = leverage > 1 || req.short === true
     const posSide: 'long' | 'short' = req.side === 'sell' ? 'short' : 'long'
     const marketPrice = this.refPriceFor(st, req.side)
     const price = req.type === 'market' ? marketPrice : (req.price ?? marketPrice)
@@ -958,7 +959,7 @@ export class MockExchangeClient implements ExchangeClient {
       : req.side === 'buy'
         ? -(notional + fee)
         : notional - fee
-    const liq = isLeverage ? M.liquidationPrice(posSide, safePrice, leverage) : null
+    const liq = leverage > 1 ? M.liquidationPrice(posSide, safePrice, leverage) : null
     const distance = liq !== null ? M.liquidationDistancePct(posSide, safePrice, liq) : null
     let blockReason: string | null = null
     const existing = this.positions.get(`${req.code}:${posSide}`)
@@ -997,7 +998,7 @@ export class MockExchangeClient implements ExchangeClient {
     if (leverage > st.def.maxLeverage) {
       throw new ExchangeError('leverage_not_allowed', `${T.leverageUnavailable}（${st.def.code} 最高 ${st.def.maxLeverage}x）`)
     }
-    if (leverage > 1 && req.side === 'sell' && !st.def.shortable) {
+    if ((leverage > 1 || req.short === true) && req.side === 'sell' && !st.def.shortable) {
       throw new ExchangeError('not_shortable', T.noShort)
     }
     if (req.type === 'stop' || req.type === 'take_profit') {
@@ -1005,7 +1006,7 @@ export class MockExchangeClient implements ExchangeClient {
     }
     if (req.type === 'market') {
       const marketPrice = this.refPriceFor(st, req.side)
-      return leverage > 1
+      return leverage > 1 || req.short === true
         ? this.placeLeverage(req, st, leverage, marketPrice, source, true)
         : this.placeSpot(req, st, marketPrice, source, true)
     }
@@ -1014,7 +1015,7 @@ export class MockExchangeClient implements ExchangeClient {
       throw new ExchangeError('bad_price', T.toastInvalidPrice)
     }
     const safePrice = round(price, 2)
-    return leverage > 1
+    return leverage > 1 || req.short === true
       ? this.placeLeverage(req, st, leverage, safePrice, source, false)
       : this.placeSpot(req, st, safePrice, source, false)
   }

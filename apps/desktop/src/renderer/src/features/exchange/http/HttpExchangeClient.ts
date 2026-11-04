@@ -1329,9 +1329,9 @@ export class HttpExchangeClient implements ExchangeClient {
     const margin = leverage > 1 ? notional / leverage : notional
     const feeRate = Number.isFinite(this.feeRate) && this.feeRate > 0 ? this.feeRate : 0
     const fee = notional * feeRate
-    // 开空 = side=sell + 杠杆 + short=true（与 Go `checkShortOpenLocked` 同口径）；
-    // 不带 short 的杠杆卖单是「平多」，可平上限只能是现有多头持仓。
-    const shortOpen = req.short === true && req.side === 'sell' && leverage > 1
+    // 开空 = side=sell + short=true（1x 全额也算，与 Go `checkShortOpenLocked` 同口径）；
+    // 不带 short 的卖单是「卖出持有/平多」。
+    const shortOpen = req.short === true && req.side === 'sell'
     // 现金影响估算：买入/开空=支出（杠杆开仓只占保证金）；现货卖出=到账扣费；
     // 杠杆平仓真实金额取决于开仓价，界面按释放保证金近似。
     const settleAmount = shortOpen
