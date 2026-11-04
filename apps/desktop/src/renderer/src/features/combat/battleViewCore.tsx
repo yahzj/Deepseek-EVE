@@ -554,7 +554,7 @@ function HpTri({ hp, max, label }: { hp: { s: number; a: number; h: number }; ma
             <span style={{ flex: 1, height: '100%', background: 'rgb(var(--wui-well) / 0.45)', borderRadius: 'var(--wui-sp-2)', overflow: 'hidden' }}>
               <i style={{ display: 'block', height: '100%', width: `${ratio}%`, background: color, boxShadow: `0 0 4px ${color}`, transition: 'width .4s' }} />
             </span>
-            <span style={{ flex: '0 0 26px', fontSize: 'var(--wui-fs-2xsb)', fontFamily: 'var(--wui-mono)', color: 'rgb(var(--wui-dim))', textAlign: 'right' }}>{cur}</span>
+            <span style={{ minWidth: 34, flex: '0 0 auto', fontSize: 'var(--wui-fs-2xsb)', fontFamily: 'var(--wui-mono)', fontVariantNumeric: 'tabular-nums', color: 'rgb(var(--wui-dim))', textAlign: 'right', whiteSpace: 'nowrap' }}>{cur}</span>
           </div>
         )
       })}

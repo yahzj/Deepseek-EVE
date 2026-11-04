@@ -163,6 +163,7 @@ async function child() {
   await page.text('.app-wh-modal .app-modal-head',t('ui.Wormhole.015'))
   await page.command('persist')
   await page.text('.app-header',t('ui.App.010'))
+  await page.tap('#settings-tab-save')
   await page.text('.app-settings-modal',t('ui.App.065'))
   await page.text('.app-save-actions',t('ui.SaveManager.016'))
   for (let i=0;i<100&&!fs.existsSync(path.join(profile,'template-export.json'));i++) await sleep(50)

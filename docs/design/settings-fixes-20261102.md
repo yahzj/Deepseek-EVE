@@ -1,6 +1,6 @@
 # 设置界面四项报障修复（字号 / 配色 / 宇宙背景 / 选中按钮）· 2026-11-02
 
-> 状态：**待船长验收**（2026-11-02 已按船长授权整批本地提交 `d47f2f39`，**未推送**）
+> 状态：**已落地 · 船长验收完成**（2026-11-02 已推送 main）
 > 归档契约：遵守 `AGENTS.md` §8 与开发约定 §十五；船长验收并合入 main 后把关键结论并入现行文档、本文件移入 `docs/design/archive/`。
 
 ---
@@ -184,3 +184,102 @@
   desktop 与网页版构建通过。
 - 取舍：数字/代码读数**仍保留等宽**（表格对齐与刷新不跳动是刻意设计）；若船长要求连数字也统一到雅黑，
   只需改 `--wui-mono` 一个 token，不必再散改规则。
+
+---
+
+## 九、界面字体两档：默认（雅黑＋Oxanium）／复古（统一 GNU Unifont）（2026-11-02 追加 · 待船长验收）
+
+> 船长原话（照抄）：
+> ①「我想试试，英文和数字用这个 "D:\Downloads\unscii-16 (1).otf" 字体显示，行不行呀」
+> ②「不是我的意思这不是单独的，是跟unifont一起显示，不用单独做选项，并且设置里，的选项不要叫GNU Unifont，叫复古」
+> ③「这个16的字体不太行，换成 "D:\Downloads\unscii-8-tall.otf" 这个看看」
+> ④「unscii-8-tall效果太差了，我想换成 "D:\Downloads\Oxanium-VariableFont_wght.ttf"」
+> ⑤「现在这个效果很好，但是不适合复古这个选项，可以把这个中英字体跟默认做到一块去。」
+> ⑥「我不是这个意思，默认是微软雅黑+Oxanium（英文/数字），复古是GNU Unifont "D:\Downloads\Eunomia-Bold.otf"（英文/数字）」
+> ⑦「可以了，复古这个选项里，还是统一只用unifont这个字体吧，字体选择是会默认保存这个配置的把，下次再打开的时候会是我选的那一个。」
+> ⇒ 迭代链：unscii-16 → unscii-8-tall → Oxanium（并入默认）→ Eunomia（试掉）→ **最终双档**：
+> **默认 = 微软雅黑（中文）+ Oxanium（英文/数字）；复古 = 统一只用 GNU Unifont（中文 + 英文/数字）**。
+
+### 最终口径（按第⑥⑦条）
+- 设置「界面字体」两档：**默认** / **复古**（不做第三个单独选项）。
+- **默认**：不挂字体属性 ⇒ `packages/ui/src/index.css` 的 `--wui-font` / `--wui-mono` 生效
+  （Oxanium 英文/数字 + 系统微软雅黑中文；emoji 系统兜底）。
+- **复古**：`<html data-ui-font="retro">` + `--ui-font`（**GNU Unifont 全包**：中文 + 英文/数字都是
+  它的像素点阵字形，系统中文栈兜底）；同时覆盖 `--wui-mono` / `.hud` 的 `--hud-mono`（读数也统一 Unifont）。
+- **保存**：点选即写 `localStorage['whale-idle:ui-font']`（本机偏好、不进存档），启动由
+  `prebootRenderer()` 读回并应用 ⇒ 刷新/重启后仍是玩家选的那一档（已在无头浏览器验证：点选复古后刷新仍为复古）。
+- 兼容旧值：早期版本存过 `'unifont'` / `'unscii'`，读到自动迁移为 `retro`。
+
+### 落地
+- 字体资产（二进制原样复制）：`assets/fonts/oxanium-variable.ttf`（43,108B，可变字重 wght 200–800）、
+  `assets/fonts/unifont-18.0.01.otf`（GNU Unifont，含 CJK；复古档全字体）；试排的 unscii 两版与
+  Eunomia Bold 均已移除；
+- 授权文件：`oxanium-LICENSE.txt`（OFL 1.1 全文）、`unifont-18.0.01-LICENSE.txt`（双许可全文）；
+- `packages/ui/src/index.css`：默认 `--wui-font` / `--wui-mono` = Oxanium + 微软雅黑；
+- `panels/appSettings.css`：两枚 `@font-face`；`[data-ui-font]` 覆盖 body/表单控件；
+  `[data-ui-font='retro']` 覆盖 `--wui-mono` 与 `.hud` 的 `--hud-mono`（均以 GNU Unifont 打头）；
+- `ui/fontChoice.ts`：`FontChoice = 'default' | 'retro'`；点选即落盘，启动读回（持久化实现单点）；
+- `panels/appSettings.tsx`：恢复「界面字体」行（默认/复古两按钮）与「恢复默认」一并重置字体；
+  授权弹窗两个字体小节（Unifont / Oxanium，l10n `ui.App.192`–`194`）；
+- `_hud-industry.css`：默认 `--hud-mono` 以 Oxanium + 雅黑打头；
+- `tools/release-rights`：`THIRD-PARTY-NOTICES.txt` 收录 `===== GNU Unifont 18.0.01 =====` 与
+  `===== Oxanium / The Oxanium Project Authors =====`（OFL 1.1 全文），专项测试与 README 输入清单同步；
+- 文案：`ui.App.178`–`195`（字体行 + 授权弹窗），登记 `docs/l10n-pending.md`。
+
+### 验证
+- 无头 Chrome 实测（CDP `CSS.getPlatformFontsForNode`）：
+  · 默认档（不设偏好）：英文/数字混合文本 = **Oxanium（数字/英文）+ 微软雅黑（中文）**；
+  · 复古档（点选「复古」）：**全部文本 = GNU Unifont**（英文/数字/中文同一套点阵字形）；
+  · 点选即时生效；刷新后 `data-ui-font='retro'` 与 `localStorage['whale-idle:ui-font']='retro'` 都保持；
+- `typecheck` / `content:check` / `l10n:check` / `release:rights:test` / `ui:tokens` / `ui:theme-check`
+  / `ui:layout-css:check`：全绿；desktop 与网页版构建通过，产物内两枚字体齐全；
+- 取舍：默认档 Oxanium 为矢量字体（任意字号清晰）；复古档 Unifont 是 16px 网格点阵，12–13px 会缩放，
+  字号拉到 ~125%（≈16px）最锐利。观感由船长裁定。
+
+---
+
+## 十、出击地图（星图）观感微调（2026-11-02 追加 · 待船长验收）
+
+> 船长原话（照抄）：「红框标注的母港的圆要比所有人都大一号，然后绿框标注，没有标注全，但是类似的这些标题的字号都要再小2号。这个出击地图的英文和数字的字号要在大2号」
+
+### 口径
+- 「号」按**星图 SVG 单位 2 个单位**落地（星图按容器整体缩放到约 1.95～2.3 倍显示 ⇒ 观感约 ±4～5px）。
+- 母港圆：**r 11 → 13**（普通星系 8、未探索 7），保证"母港比所有星系都显眼"。
+- 星系名（`.app-map-label`，含母港名）：**11px → 9px**。
+- 地图上的英文/数字：边线分钟读数 `.app-map-min` **9px → 11px**；⚔/⚑ 数量徽标 `.app-map-bounty`
+  **10px → 12px**；缩放读数 `.app-map-zoom-val` **10.5px → 12.5px**。
+- 徽标放大后基线上移 3 单位（y−12 → y−15）、避让带同步（-24..-10 → -27..-13），避免字腹压住圆点。
+
+### 落地
+- `panels/StarMap.tsx`：新增 `HUB_DOT_R = 13` 并用在节点 `r=`；两处徽标基线/避让带调整；
+  `FACTION_BOX_M` 注释同步（34 仍框得住 r=13）。
+- `styles.css`：上述 4 条字号（均用 `calc(var(--wui-fs-*) ± 2px)` 保留字号滑块的 `--ui-fs` 系数）——
+  **改完已跑 `npm run ui:layout-css` 重生成两份布局样式**。
+- 未改：名称带避让的几何常量（名称变小只让排布更松、不会更挤）。
+
+### 验证
+- 无头 Chrome（1600×1000 · modern · 深空）实测：`hubR=13`（其余 8）、名称计算字号 9px（渲染 ≈17.6px）、
+  分钟读数 11px（渲染 ≈21.5px）、徽标 12px；截图 `tools/_ui-artifacts/fixprobe/map-1-default.png`。
+- `typecheck` / desktop 构建通过；`ui:rot-check` 通过。
+- 待船长看观感：若「2号」指别的量级（如 +/- 4px），只需改这 4 条 CSS + `HUB_DOT_R` 一处。
+
+---
+
+## 十一、界面配色精简与文案两字化（2026-11-02 追加）
+
+> 船长原话（照抄）：「设置里的“界面配色”中的跟随系统选项不要了。还有亮白太丑了，这个亮色模式还不如不做，真的丑的不要不要的，”暖色护眼“和“色盲友好”的文案不对，尽量改成两个字」
+
+### 调整项
+1. **移除「跟随系统」选项**：从 `THEME_CHOICES` 移除 `'auto'`，不再向玩家提供系统跟随。若本地偏好为 `auto` 则平滑回落默认 `deepspace`。
+2. **移除「亮白」选项**：从 `THEME_CHOICES` 移除 `'daylight'`。若本地偏好为 `daylight` 自动回落 `deepspace`。
+3. **文案两字化**：
+   - 「暖色护眼」精简为：**「暖色」**（`ui.App.134`）。
+   - 「色盲友好」精简为：**「色盲」**（`ui.App.136`）。
+4. **说明文案同步**：更新 `ui.App.132`，消除已废除的“亮白”与“跟随系统”描述，同步新的两字名称。
+
+### 验证
+- `npm run typecheck`：通过。
+- `npm run content:check`：通过。
+- `npm run ui:theme-check`：通过。
+- `npm run ui:rot-check`：通过。
+

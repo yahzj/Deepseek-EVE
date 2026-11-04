@@ -34,6 +34,7 @@ import { ActivityBarClassic } from '../panels/ActivityBarClassic'
 import { AnnouncementHub } from '../panels/Announcements'
 import { DebugButton } from '../panels/DebugPanel'
 import { Glyph } from './Glyphs'
+import { Book as CarbonBook, Settings as CarbonSettings } from '@carbon/icons-react'
 import { ICO_TONES, NAV_TONES } from './tones'
 import { MoneyFit } from './MoneyFit'
 import { ShipStatusWin } from './ShipStatusWin'
@@ -315,6 +316,7 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
               }}
               title={tr("ui.App.061")}
             >
+              <span className="app-ico"><CarbonBook size={14} fill="currentColor" /></span>
               {t('ui.App.028')}
             </button>
             <button
@@ -325,6 +327,7 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
               }}
               title={tr("ui.App.062")}
             >
+              <span className="app-ico"><CarbonSettings size={14} fill="currentColor" /></span>
               {t('ui.App.010')}
             </button>
             {/**
@@ -344,7 +347,7 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
               ⇒ 舰船窗在上、活动栏在下，同处左侧一列。
               先前把舰船窗放进主区上方的信息带，与船长要求不符，此处改回。 */}
           <div className="app-left-col">
-              <ShipStatusWin engine={engine} restore={windowRestore} />
+              <ShipStatusWin engine={engine} restore={windowRestore} onNavigateShip={() => changePage('ship')} />
           <ActivityBar
           engine={engine}
           onToast={showToast}
@@ -533,7 +536,7 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
           <nav ref={classicNavRef} id="classic-navigation" className={`app-nav-side${classicNav.collapsed ? ' is-compact' : ''}`}>
             <div ref={classicNavScrollRef} className="app-classic-nav-scroll">
             {/* 舰船状态小窗：2026-09-21 起同时是**窗口最小化后的还原按钮**（见 `windowRestore`） */}
-            <ShipStatusWin engine={engine} restore={windowRestore} />
+            <ShipStatusWin engine={engine} restore={windowRestore} onNavigateShip={() => changePage('ship')} />
             {classicNav.collapsed && windowRestore ? (
               <button className="app-btn app-classic-restore" onClick={windowRestore.onRestore}
                 title={windowRestore.title} aria-label={windowRestore.title}>

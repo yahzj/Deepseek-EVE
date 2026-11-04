@@ -20,6 +20,7 @@ import type { GameEngine } from '../game/engine'
 import { ShipSprite } from './ShipSprite'
 import { mountsOf } from './shipMounts'
 import { toneOf } from './Glyphs'
+import { tr } from '../i18n/locale'
 
 /**
  * 状态窗配色（船长 2026-09-10「作业时整窗统一到工作色」）：
@@ -123,15 +124,18 @@ const STAR_COUNT: Record<ShipwinScene, number> = {
 export function ShipStatusWin({
   engine,
   restore,
+  onNavigateShip,
 }: {
   engine: GameEngine
   /**
    * **有窗口被最小化时的还原入口**（2026-09-21 船长令：与小窗合并）。
-   * `null` = 没有待还原的窗口 ⇒ 小窗保持只读、点击不做事。
+   * `null` = 没有待还原的窗口 ⇒ 点击跳转至机库/舰船页。
    * 文案（`title`）由 `App.tsx` 按"是哪个窗口"给（本组件只管把它挂上去）。
    * ⚠ 战斗与活动**同时**最小化时由 `App.tsx` 定优先级（当前：战斗优先——那是正在打的一仗）。
    */
   restore?: { title: string; onRestore: () => void } | null
+  /** 平时点击小窗快速导航到舰船/机库的回调 */
+  onNavigateShip?: () => void
 }) {
   const state = engine.state
   const def = fleetDefOf(state, engine.ctx, state.shipId)
@@ -245,21 +249,29 @@ export function ShipStatusWin({
     )
   }
 
+  const handleClick = () => {
+    if (restore) {
+      restore.onRestore()
+    } else if (onNavigateShip) {
+      onNavigateShip()
+    } else {
+      window.dispatchEvent(new CustomEvent('whale-page-change', { detail: { page: 'ship' } }))
+    }
+  }
+  const winTitle = restore?.title ?? tr('ui.App.002')
+
   return (
     /**
-     * **小窗 = 还原按钮**（2026-09-21 船长令：「将左上角的小窗动画和右下角的最小化相关的按钮合并」）。
-     *
-     * 有窗口被最小化时（`restore` 非空）：整块小窗包一层 `<button>`，右上角出一枚「⤢」角标（脉冲提示），
-     * 点它即把那个窗口展开回来；**平时 button 被禁用 ⇒ 点它不做事**（小窗本体是展示件，不该有别的行为）。
-     * 用真 `<button>` 而不是"div + onClick"：键盘可聚焦、语义正确（样式已在 `.app-shipwin-wrap` 里归零）。
+     * **小窗 = 还原与机库快捷入口**（2026-09-21 船长令与 2026-11-03 工效学优化）：
+     * 有窗口被最小化时（`restore` 非空）：整块小窗右上角出一枚「⤢」角标（脉冲提示），点它还原活动；
+     * 平时无最小化时：作为一等公民的可点击元素，点击快速直达机库/舰船页。
      */
     <button
       type="button"
       className={`app-shipwin-wrap${restore ? ' is-restore' : ''}`}
-      onClick={restore ? restore.onRestore : undefined}
-      disabled={!restore}
-      title={restore?.title}
-      aria-label={restore?.title}
+      onClick={handleClick}
+      title={winTitle}
+      aria-label={winTitle}
     >
       <div className={`app-shipwin is-${cls}`} aria-hidden="true">
         {/* 背景氛围层（换场景交叉过渡） */}

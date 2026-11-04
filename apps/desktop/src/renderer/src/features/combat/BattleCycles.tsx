@@ -1,6 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, KeyboardEvent } from 'react'
-import { ChevronDown, List, Pin } from 'lucide-react'
+import { ChevronDown, List, Pin } from '../../ui/layoutIcons'
 import type { BattleDeviceCycleView, BattleWeaponCycleView } from '@whale/core'
 import { tr } from '../../i18n/locale'
 import { TIP_DELAY_MS } from '../../ui/Tooltip'

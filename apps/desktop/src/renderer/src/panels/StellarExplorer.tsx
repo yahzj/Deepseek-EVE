@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Copy, Crosshair, Play, Pause, Radar, Search, Trash2, X, Factory, Globe2 } from 'lucide-react'
+import { Copy, Crosshair, Play, Pause, Radar, Search, Trash2, X, Factory, Globe2 } from '../ui/layoutIcons'
 import { stellarCapacity, stellarCandidateCount, stellarSystemDeveloped, stellarPlanetDeveloped, stellarSystemId, parseStellarSeed,
   stellarSearchDuration, stellarPlanetCatalog, planetSurveyView, manufacturingRunViews, DEEP_SPACE_PROBE_BLUEPRINT_ID,
   type PlanetActionResult, type PlanetCatalog } from '@whale/core'

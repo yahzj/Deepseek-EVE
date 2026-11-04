@@ -208,6 +208,7 @@ async function main() {
    assert.equal(await page.js(`localStorage.getItem('whale-idle:log-prefs')`), pref, '手机抽屉污染桌面偏好')
    drawerChecks.push({ locale,layout,width,height,defaultClosed:true,noLayoutShift:true,touchToggle:true,focusReturn:true,tabContained:true,filter:true,escape:true,backdrop:true,desktopPreferenceUnchanged:true })
    for(const nav of (locale==='zh'?['设置','存档管理','手册']:['Settings','Save management','Handbook'])){
+    if(nav==='存档管理'||nav==='Save management')await page.tap('#settings-tab-save')
     await page.tapText(nav==='存档管理'||nav==='Save management'?'.app-settings-modal':'.app-header-right',nav)
     await sleep(250);rows.push({locale,layout,width,height,view:nav,reading:await page.js(measure)})
     if(nav==='设置'||nav==='Settings')await page.tap('.app-settings-foot button.is-primary')

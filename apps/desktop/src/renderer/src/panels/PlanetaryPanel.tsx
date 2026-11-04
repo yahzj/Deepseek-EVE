@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react'
-import { Check, Circle, CircleHelp, CirclePause, Hammer, HardHat, MoveRight, Play, Plus, PowerOff, ShieldAlert, Trash2, UserRound, UsersRound, Wrench, X, Zap, type LucideIcon } from 'lucide-react'
+import { Check, Circle, CircleHelp, CirclePause, Hammer, HardHat, MoveRight, Play, Plus, PowerOff, ShieldAlert, Trash2, UserRound, UsersRound, Wrench, X, Zap, type LucideIcon } from '../ui/layoutIcons'
 import {
   planetAdjacencyOf, planetBillOf, planetMoveBillOf, planetMoveCheck, planetClearanceCheck, planetColonyView, planetConstructionCheck,
   planetEnvironmentOf, planetNeighborIndices, planetSurveyView, shipDisplayName,

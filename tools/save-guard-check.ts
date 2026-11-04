@@ -112,7 +112,7 @@ const SNAPSHOT = `(() => {
     探针残键: probeKey,
   }
 })()`
-const OPEN_SETTINGS = `(() => { const b = [...document.querySelectorAll('button')].find((x) => (x.textContent || '').trim() === '设置'); if (b) { b.click(); return true } return false })()`
+const OPEN_SETTINGS = `(async () => { const b = [...document.querySelectorAll('button')].find((x) => (x.textContent || '').trim() === '设置'); if (!b) return false; b.click(); await new Promise(r => setTimeout(r, 100)); document.querySelector('#settings-tab-save')?.click(); await new Promise(r => setTimeout(r, 100)); return !!document.querySelector('#settings-panel-save') })()`
 const CLOSE_SETTINGS = `(() => { const b = [...document.querySelectorAll('.app-modal-head button, .app-modal button')].find((x) => /✕|关闭/.test(x.textContent || '')); if (b) { b.click(); return true } return false })()`
 const CLICK_ALLOW = `(() => {
   const rows = [...document.querySelectorAll('.app-settings-row')]

@@ -298,6 +298,7 @@ async function exportThroughUI(page, text, destination, nativeExport) {
   await page.wait('!document.querySelector(".app-wh-modal")')
   stage(page, 'exportThroughUI:open-settings')
   await page.text('.app-header', text('ui.App.010'))
+  await page.tap('#settings-tab-save')
   stage(page, 'exportThroughUI:open-save-manager')
   await page.text('.app-settings-modal', text('ui.App.065'))
   if (!nativeExport) await page.send('Browser.setDownloadBehavior', { behavior: 'allow', downloadPath: destination })

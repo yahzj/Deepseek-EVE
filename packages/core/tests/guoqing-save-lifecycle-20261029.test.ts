@@ -34,7 +34,7 @@ function fixture(options: { save?: () => Promise<boolean>; exported?: () => Prom
   }
   const repair = vi.fn()
   const probe = gameSaveMethods(['start', 'persistSnapshot', 'createSaveSnapshot', 'persist', 'currentSaveText', 'exportSaveToFile',
-    'ironmanLoadCheck', 'syncIronmanHead', 'prepareImportedState', 'commitLoadedSave', 'restoreBackup', 'importSaveFromFile'], {
+    'ironmanLoadCheck', 'syncIronmanHead', 'prepareImportedState', 'commitLoadedSave', 'restoreBackup', 'importSaveFromFile', 'importSaveText'], {
     createInitialState, loadSaveFile, SaveError, serializeSaveFile, bumpIronmanSeq, ironmanLoadVerdict, ironmanOn, ironmanSeq,
     saveBridge: bridge, debugEnabled: () => false, canWriteSave: () => true, saveStorageProbe: () => ({ ok: true }),
     repairDeprecatedModules: repair, migrateDeprecatedAmmo: vi.fn(), wormholeNormalizeLegacyTemp: vi.fn(),

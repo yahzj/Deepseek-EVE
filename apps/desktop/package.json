@@ -6,6 +6,7 @@
   "author": "大鲸鱼-深空放置 / Great Whale Idle",
   "description": "桌面外壳（Electron）：窗口、存档读写，界面与游戏逻辑都来自各 packages。",
   "devDependencies": {
+    "@carbon/icons-react": "^11.91.0",
     "@types/node": "^20.14.15",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",

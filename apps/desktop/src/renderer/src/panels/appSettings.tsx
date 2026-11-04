@@ -25,19 +25,24 @@ import { SfxConsole } from './SfxConsole'
 /** 客户端版本三件套与运行形态（**2026-10-02 船长令**；构建时注入，见 `game/buildInfo.ts`） */
 import { BUILD, BUILD_FORM } from '../game/buildInfo'
 import type { GameEngine } from '../game/engine'
+import { CloudSavePanel } from '../features/cloud/CloudSavePanel'
 import './appSettings.css'
 /**
- * **界面字体**（**2026-11-02 船长令**：「增加一个字体选择的功能在设置界面……把字体
- * `D:\Downloads\unifont-18.0.01 (1).otf` 嵌入到项目里，作为可选字体之一」）：
- * 偏好读写/应用到 `<html>` 的逻辑收在 `ui/fontChoice.ts`；**启动时应用**在 `game/boot.ts` 的
- * `prebootRenderer()`（两个入口共用的启动点，本文件不碰）。
+ * **界面字体**（**2026-11-02 船长令**，多轮迭代后的最终口径）：
+ * · 默认 = 微软雅黑（中文）＋ Oxanium（英文/数字）；
+ * · 复古 = 统一只用 GNU Unifont（中文 + 英文/数字）。
+ * 偏好读写/应用收在 `ui/fontChoice.ts`（点选即落盘，下次启动读回）；**启动时应用**在
+ * `game/boot.ts` 的 `prebootRenderer()`；`@font-face` 在本文件同目录的 `appSettings.css` 注册，
+ * 默认字体栈单点在 `packages/ui/src/index.css`。
  */
-import { chooseFont, readFontChoice } from '../ui/fontChoice'
+import { FONT_CHOICES, chooseFont, readFontChoice } from '../ui/fontChoice'
 import type { FontChoice } from '../ui/fontChoice'
 /**
  * **许可与授权全文**（**2026-11-02 船长令**：「这个字体是GNU授权，记得在设置的最最下方增加一个许可按钮
  * 把这些授权书内容统统都写进入」）：`?raw` 由 Vite 内联（桌面/网页两入口同一套），正文照录原文、不译不改。
  * - GNU Unifont 18.0.01 官方授权原文（2026-11-02 取自 <https://unifoundry.com/LICENSE.txt>）；
+ * - Oxanium 官方授权全文（SIL Open Font License 1.1；版权 2019 The Oxanium Project Authors，
+ *   取自字体 name 表与 Google Fonts / 上游仓库；全文见 `assets/licenses/oxanium-LICENSE.txt`）；
  * - 根目录 `LICENSE.txt`（项目版权与授权声明）与 `LICENSE`（双许可与商业使用条款，含 AGPLv3 全文）。
  * ⚠ **游戏内不展示「原项目 / 原站」两条外部链接**（船长 2026-11-02 追加要求；连带英文条款里的
  * 原仓库链接）：`assets/licenses/` 内的两份项目声明副本已按令删去这几行，**根目录原文不改**
@@ -46,6 +51,7 @@ import type { FontChoice } from '../ui/fontChoice'
  * 删除而指代悬空 ⇒ 游戏内副本改为「请联系作者」（仍只改副本，根目录原文不动）。
  */
 import unifontLicenseText from '../assets/licenses/unifont-18.0.01-LICENSE.txt?raw'
+import oxaniumLicenseText from '../assets/licenses/oxanium-LICENSE.txt?raw'
 import projectLicenseStatement from '../assets/licenses/project-LICENSE-statement.txt?raw'
 import projectLicenseDual from '../assets/licenses/project-LICENSE-dual-licensing.txt?raw'
 /**
@@ -65,6 +71,16 @@ import {
   readZoom,
 } from '../ui/uiScale'
 
+type SettingsPage = 'interface' | 'sound' | 'game' | 'save' | 'developer'
+
+const SETTINGS_PAGES: ReadonlyArray<{ id: SettingsPage; labelId: string }> = [
+  { id: 'interface', labelId: 'ui.settingsTab.001' },
+  { id: 'sound', labelId: 'ui.settingsTab.002' },
+  { id: 'game', labelId: 'ui.settingsTab.003' },
+  { id: 'save', labelId: 'ui.settingsTab.004' },
+  { id: 'developer', labelId: 'ui.settingsTab.005' },
+]
+
 /* ═══════════ GNU Unifont 18.0.01 的元信息（2026-11-02 核对） ═══════════
    口径来源：官方发布页 <https://unifoundry.com/unifont/>（18.0.01 / 2026-09-16 发布）与
    字体文件自身的 name 表（版权、许可描述、许可 URL）。下面三条英文**照录字体文件内嵌原文**：
@@ -78,6 +94,18 @@ const UNIFONT_COPYRIGHT =
 const UNIFONT_EMBEDDED_LICENSE =
   'Dual license: SIL Open Font License version 1.1, and GNU GPL version 2 or later with the GNU Font Embedding Exception.'
 const UNIFONT_LICENSE_URLS = 'https://gnu.org/licenses/gpl.html, https://scripts.sil.org/OFL'
+
+/* ═══════════ Oxanium 的元信息（2026-11-02 核对；船长令：英文/数字用该字体） ═══════════
+   口径来源：字体文件自身 name 表（nameID 0 版权 / 5 版本 / 13 许可描述 / 14 许可 URL）与
+   Google Fonts 项目页 <https://fonts.google.com/specimen/Oxanium>；上游仓库
+   <https://github.com/sevmeyer/oxanium>。版权与许可是法律文字，照录原文、不译不改写。
+   字体为可变字重（wght 轴）TTF，默认实例 ExtraLight、版本 2.000。 */
+const OXANIUM_VERSION = '2.000'
+const OXANIUM_FONT_FILE = 'oxanium-variable.ttf'
+const OXANIUM_COPYRIGHT =
+  'Copyright 2019 The Oxanium Project Authors (https://github.com/sevmeyer/oxanium)'
+const OXANIUM_HOME_URL = 'https://fonts.google.com/specimen/Oxanium'
+const OXANIUM_LICENSE_URL = 'https://scripts.sil.org/OFL'
 
 /** 游戏内时钟（HH:MM，日志前缀用） */
 export function gameClock(gameMs: number): string {
@@ -197,7 +225,7 @@ export function readLogPrefs(): LogPrefs {
  *  界面配色（2026-09-22 船长令）：深空/亮白/跟随系统，存本机、即时生效 */
 export function SettingsPanel({
   root,
-  onClose,
+  onClose: onRequestClose,
   engine,
   onSave,
   onReset,
@@ -218,6 +246,7 @@ export function SettingsPanel({
   onReconnectSaveFile,
   onUnbindSaveFile,
   onRefreshSaveFileStatus,
+  initialPage = 'interface',
 }: {
   root: RefObject<HTMLDivElement>
   onClose: () => void
@@ -251,12 +280,20 @@ export function SettingsPanel({
   onUnbindSaveFile: () => void
   /** 打开设置时自报一次绑定状态（权限可能被浏览器收回） */
   onRefreshSaveFileStatus: () => void
+  initialPage?: SettingsPage
 }) {
   const { locale, setLocale, t } = useL10n()
+  const [settingsPage, setSettingsPage] = useState<SettingsPage>(initialPage)
+  const [cloudApplying, setCloudApplying] = useState(false)
+  function onClose(): void {
+    if (!cloudApplying) onRequestClose()
+  }
+  const visibleSettingsPages = SETTINGS_PAGES.filter((page) => page.id !== 'developer' || debugAllowed())
   const [zoom, setZoom] = useState(readZoom)
   const [fs, setFs] = useState(readFontScale)
   /**
-   * **界面字体**（**2026-11-02 船长令**）：本机偏好、即时生效、不进存档。
+   * **界面字体**（**2026-11-02 船长令**最终口径）：本机偏好、即时生效、不进存档。
+   * 默认 = 微软雅黑 + Oxanium（英文/数字）；复古 = 统一只用 GNU Unifont。
    * 挂载时读一次（`readFontChoice`），切换时写一次（`selectFont` ⇒ `chooseFont` 落盘 + 应用）；
    * 启动时的应用由 `game/boot.ts` 的 `prebootRenderer()` 统一接线，这里不重复。
    */
@@ -343,31 +380,63 @@ export function SettingsPanel({
   return (
     <div className="app-modal-mask" onClick={onClose}>
       <div className="app-modal app-settings-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="app-settings-title">{t('ui.App.010')}</div>
+        <div className="app-settings-heading">
+          <div className="app-settings-title">{t('ui.App.010')}</div>
+          <div className="app-settings-version">
+            <span title={`${t('ui.App.170')} ${clientVersionLine()}`}>{t('ui.App.168')}: {BUILD.version}</span>
+            <button className="app-btn is-small" onClick={() => void copyClientVersion()}>
+              {copiedVersion ? tr('ui.App.044') : tr('ui.App.171')}
+            </button>
+          </div>
+        </div>
         <div className="app-settings-sub">
           {t('ui.App.011')}
         </div>
-        <div className="app-settings-list">
-          {/**
-           * **客户端版本**（**2026-10-02 船长令**：「**建议在设置里给游戏添加版本号，否则无法判断玩家
-           * 当前版本**」）—— 船长三问裁定：值 = 版本号 · 构建 sha · 构建日期 · 运行形态；本批只做显示；
-           * 命名用「客户端版本」（避开游戏内已有的「版本号」＝铁人档世代号）；**放最上方**（第一眼就能读到）。
-           * 值由构建时注入（`game/buildInfo.ts` 读、`tools/build-info.ts` 注入）；
-           * 「复制」走与性能 HUD 同一套写法（`navigator.clipboard` ＋ execCommand 兜底），
-           * 复制成功的提示**复用 `ui.App.044`「✓ 已复制」**（不新造同义串）。
-           */}
-          <div className="app-settings-row">
-            <div className="app-settings-head">
-              <span className="app-settings-label">{t('ui.App.168')}</span>
-              <span className="app-settings-val">{clientVersionLine()}</span>
-            </div>
-            <div className="app-settings-btns">
-              <button className="app-btn is-small" onClick={() => void copyClientVersion()}>
-                {copiedVersion ? tr('ui.App.044') : tr('ui.App.171')}
-              </button>
-            </div>
-            <div className="app-settings-desc">{t('ui.App.170')}</div>
-          </div>
+        <div className="app-subtabs app-settings-tabs" role="tablist" aria-label={t('ui.App.010')} aria-orientation="horizontal">
+          {visibleSettingsPages.map((page, index) => (
+            <button
+              key={page.id}
+              id={`settings-tab-${page.id}`}
+              type="button"
+              role="tab"
+              aria-selected={settingsPage === page.id}
+              aria-controls={settingsPage === page.id ? `settings-panel-${page.id}` : undefined}
+              tabIndex={settingsPage === page.id ? 0 : -1}
+              className={`app-subtab${settingsPage === page.id ? ' is-active' : ''}`}
+              disabled={cloudApplying}
+              onClick={() => { if (!cloudApplying) setSettingsPage(page.id) }}
+              onKeyDown={(event) => {
+                if (cloudApplying) return
+                const lastIndex = visibleSettingsPages.length - 1
+                const nextIndex = event.key === 'ArrowRight'
+                  ? (index + 1) % visibleSettingsPages.length
+                  : event.key === 'ArrowLeft'
+                    ? (index - 1 + visibleSettingsPages.length) % visibleSettingsPages.length
+                    : event.key === 'Home'
+                      ? 0
+                      : event.key === 'End'
+                        ? lastIndex
+                        : -1
+                if (nextIndex < 0) return
+                event.preventDefault()
+                const nextPage = visibleSettingsPages[nextIndex]!
+                setSettingsPage(nextPage.id)
+                document.getElementById(`settings-tab-${nextPage.id}`)?.focus()
+              }}
+            >
+              {t(page.labelId)}
+            </button>
+          ))}
+        </div>
+        <div
+          key={settingsPage}
+          className="app-settings-list"
+          id={`settings-panel-${settingsPage}`}
+          role="tabpanel"
+          aria-labelledby={`settings-tab-${settingsPage}`}
+          tabIndex={0}
+        >
+          {settingsPage === 'interface' ? <>
           {/* 语言（2026-09-19 船长令「英语本地化」）：默认跟随系统，这里可随时覆盖；语言不进存档 */}
           <div className="app-settings-row">
             <div className="app-settings-head">
@@ -412,28 +481,6 @@ export function SettingsPanel({
             </div>
             <div className="app-settings-desc">{t('ui.App.149')}</div>
           </div>
-          {/* 弹药 / 修理组件取用来源（2026-09-23 船长令）：随档开关，洞内同理 */}
-          <div className="app-settings-row">
-            <div className="app-settings-head">
-              <span className="app-settings-label">{t('ui.App.137')}</span>
-              <span className="app-settings-val">{resupply ? tr('ui.App.138') : tr('ui.App.139')}</span>
-            </div>
-            <div className="app-settings-btns">
-              <button
-                className={`app-btn is-small${resupply ? ' is-primary' : ''}`}
-                onClick={() => toggleResupply(true)}
-              >
-                {tr('ui.App.138')}
-              </button>
-              <button
-                className={`app-btn is-small${!resupply ? ' is-primary' : ''}`}
-                onClick={() => toggleResupply(false)}
-              >
-                {tr('ui.App.139')}
-              </button>
-            </div>
-            <div className="app-settings-desc">{t('ui.App.140')}</div>
-          </div>
           <div className="app-settings-row">
             <div className="app-settings-head">
               <span className="app-settings-label">{t('ui.App.012')}</span>
@@ -451,29 +498,26 @@ export function SettingsPanel({
             <div className="app-settings-desc">{t('ui.App.015')}</div>
           </div>
           {/**
-           * **界面字体**（**2026-11-02 船长令**：「增加一个字体选择的功能在设置界面」）：放「字体大小」正下方，
-           * 交互与同页「语言 / 界面布局 / 界面配色」三行一致（`app-settings-row` ＋ `app-btn is-small`，
-           * 选中项 `is-primary`）。两项：默认（现有系统字体栈，行为与改动前一致）与 GNU Unifont
-           * （内嵌像素点阵全字库，授权全文见本页最下方「许可与授权」）。本机偏好、即时生效、不进存档。
+           * **界面字体**（**2026-11-02 船长令**最终口径）：「字体大小」正下方，交互与同页「语言 / 界面布局 /
+           * 界面配色」三行一致（`app-settings-row` ＋ `app-btn is-small`，选中项 `is-primary`）。
+           * 两项：默认（中文 = 微软雅黑，英文/数字 = Oxanium）／复古（统一只用 GNU Unifont）。
+           * 授权全文见本页最下方「许可与授权」；本机偏好、即时生效、不进存档（点选即保存，下次启动读回）。
            */}
           <div className="app-settings-row">
             <div className="app-settings-head">
               <span className="app-settings-label">{t('ui.App.178')}</span>
-              <span className="app-settings-val">{font === 'unifont' ? 'GNU Unifont' : t('ui.App.179')}</span>
+              <span className="app-settings-val">{font === 'retro' ? t('ui.App.195') : t('ui.App.179')}</span>
             </div>
             <div className="app-settings-btns">
-              <button
-                className={`app-btn is-small${font === 'default' ? ' is-primary' : ''}`}
-                onClick={() => selectFont('default')}
-              >
-                {t('ui.App.179')}
-              </button>
-              <button
-                className={`app-btn is-small${font === 'unifont' ? ' is-primary' : ''}`}
-                onClick={() => selectFont('unifont')}
-              >
-                GNU Unifont
-              </button>
+              {FONT_CHOICES.map((c) => (
+                <button
+                  key={c}
+                  className={`app-btn is-small${font === c ? ' is-primary' : ''}`}
+                  onClick={() => selectFont(c)}
+                >
+                  {c === 'default' ? t('ui.App.179') : t('ui.App.195')}
+                </button>
+              ))}
             </div>
             <div className="app-settings-desc">{t('ui.App.180')}</div>
           </div>
@@ -496,6 +540,31 @@ export function SettingsPanel({
             </div>
             <div className="app-settings-desc">{t('ui.App.132')}</div>
           </div>
+          <div className="app-settings-row">
+            <div className="app-settings-head">
+              <span className="app-settings-label">{t('ui.App.016')}</span>
+              <span className="app-settings-val">{bg ? currentSpaceBg()?.label : t('ui.App.017')}</span>
+            </div>
+            <div className="app-settings-btns">
+              <button
+                className="app-btn is-small"
+                onClick={() => setBg(rerollSpaceBg())}
+                disabled={!bg || !themeUsesSpacePhoto(effectiveTheme)}
+                title={t('ui.App.019')}
+              >
+                {t('ui.App.018')}
+              </button>
+            </div>
+            <div className="app-settings-desc">
+              {!themeUsesSpacePhoto(effectiveTheme)
+                ? t('ui.App.133')
+                : bg
+                  ? t('ui.App.020', { n: bg.total })
+                  : t('ui.App.021')}
+            </div>
+          </div>
+          </> : null}
+          {settingsPage === 'sound' ? <>
           {/**
            * **声音**（**2026-11-02 船长令**：「现在这个项目没有声音介入…方便我接入我做的音效」）：
            * 总音量 + 一键静音 + 四类分类音量；本机偏好（`localStorage`，与语言/缩放/主题同族），
@@ -598,29 +667,32 @@ export function SettingsPanel({
             />
             <div className="app-settings-desc">{t('ui.sfx.061')}</div>
           </div>
+          </> : null}
+          {settingsPage === 'game' ? <>
+          {/* 弹药 / 修理组件取用来源（2026-09-23 船长令）：随档开关，洞内同理 */}
           <div className="app-settings-row">
             <div className="app-settings-head">
-              <span className="app-settings-label">{t('ui.App.016')}</span>
-              <span className="app-settings-val">{bg ? currentSpaceBg()?.label : t('ui.App.017')}</span>
+              <span className="app-settings-label">{t('ui.App.137')}</span>
+              <span className="app-settings-val">{resupply ? tr('ui.App.138') : tr('ui.App.139')}</span>
             </div>
             <div className="app-settings-btns">
               <button
-                className="app-btn is-small"
-                onClick={() => setBg(rerollSpaceBg())}
-                disabled={!bg || !themeUsesSpacePhoto(effectiveTheme)}
-                title={t('ui.App.019')}
+                className={`app-btn is-small${resupply ? ' is-primary' : ''}`}
+                onClick={() => toggleResupply(true)}
               >
-                {t('ui.App.018')}
+                {tr('ui.App.138')}
+              </button>
+              <button
+                className={`app-btn is-small${!resupply ? ' is-primary' : ''}`}
+                onClick={() => toggleResupply(false)}
+              >
+                {tr('ui.App.139')}
               </button>
             </div>
-            <div className="app-settings-desc">
-              {!themeUsesSpacePhoto(effectiveTheme)
-                ? t('ui.App.133')
-                : bg
-                  ? t('ui.App.020', { n: bg.total })
-                  : t('ui.App.021')}
-            </div>
+            <div className="app-settings-desc">{t('ui.App.140')}</div>
           </div>
+          </> : null}
+          {settingsPage === 'developer' ? <>
           {/*
            * **开发者：调试模式**（2026-09-25 加）：船长反馈「已开启调试模式，调试按钮依旧不可见」
            * —— 根因是开关设在**另一个 origin**（DevTools 里那行 localStorage 落在浏览器侧，桌面端读不到）。
@@ -651,6 +723,8 @@ export function SettingsPanel({
             </div>
           ) : null}
           {debugAllowed() && debugOnState ? <div className="app-settings-row"><div className="app-settings-head"><label className="app-settings-label"><input type="checkbox" checked={futureWormholeEnabled()} onChange={e => { setFutureWormholeEnabled(e.target.checked); onDebugChange(debugOnState) }} />{tr('ui.explorationName.019')}</label></div><div className="app-settings-desc">{tr('ui.explorationName.018')}</div></div> : null}
+          </> : null}
+          {settingsPage === 'save' ? <>
           {/**
            * **存档一组**（2026-09-25 船长令：「将存档管理，重置档案，保存移动到设置内」）
            * —— 这三个按钮原先在顶栏右侧，与本组功能同类（都作用于存档）⇒ 归到设置里。
@@ -721,13 +795,15 @@ export function SettingsPanel({
               <span className="app-settings-label">{tr('ui.App.063')}</span>
             </div>
             <div className="app-settings-btns">
-              <button className="app-btn is-small" onClick={onSave}>
+              <button className="app-btn is-small" onClick={onSave} disabled={cloudApplying}>
                 {tr('ui.App.063')}
               </button>
               <button
                 className="app-btn is-small"
+                disabled={cloudApplying}
                 title={tr('ui.App.064')}
                 onClick={() => {
+                  if (cloudApplying) return
                   onOpenSaveManager()
                   onClose()
                 }}
@@ -736,7 +812,9 @@ export function SettingsPanel({
               </button>
               <button
                 className="app-btn is-small is-danger"
+                disabled={cloudApplying}
                 onClick={() => {
+                  if (cloudApplying) return
                   onClose()
                   onReset()
                 }}
@@ -745,6 +823,8 @@ export function SettingsPanel({
               </button>
             </div>
           </div>
+          <CloudSavePanel engine={engine} onApplyingChange={setCloudApplying} />
+          </> : null}
         </div>
         {/* **切换界面布局 ⇒ 提示重开**（2026-09-25 船长令）：确认后存档并关游戏；取消则什么都不做 */}
         {layoutPending !== null ? (
@@ -770,16 +850,17 @@ export function SettingsPanel({
         <div className="app-settings-foot">
           <span className="app-dim">{t('ui.App.022')}</span>
           <span className="app-settings-btns">
-            {/* 许可与授权（2026-11-02 船长令：设置最下方一枚按钮，弹窗列出授权书全文） */}
             <button className="app-btn is-small" onClick={() => setLicenseOpen(true)}>
               {t('ui.App.181')}
             </button>
-            <button className="app-btn is-small" onClick={() => { setZoom(1); setFs(1); selectFont('default') }}>
+            <button className="app-btn is-small" disabled={cloudApplying} onClick={() => { if (cloudApplying) return; setZoom(1); setFs(1); selectFont('default') }}>
               {t('ui.App.023')}
             </button>
             <button
               className="app-btn is-small is-primary"
+              disabled={cloudApplying}
               onClick={() => {
+                if (cloudApplying) return
                 persist()
                 onClose()
               }}
@@ -863,6 +944,22 @@ function LicenseModal({ onClose }: { onClose: () => void }) {
             <pre className="app-license-pre">{`${UNIFONT_EMBEDDED_LICENSE}\n${UNIFONT_LICENSE_URLS}`}</pre>
             <h4 className="app-license-subh">{t('ui.App.187')}</h4>
             <pre className="app-license-pre">{unifontLicenseText}</pre>
+          </section>
+          {/** Oxanium（船长 2026-11-02 追加：默认档英文/数字用该字体）—— 独立小节，口径与 Unifont 同：
+              上游说明原文照录，中文只作小节标题与元信息。 */}
+          <section className="app-license-section">
+            <h3 className="app-license-h">{t('ui.App.192')}</h3>
+            <div className="app-license-meta">
+              {t('ui.App.193', {
+                p1: OXANIUM_VERSION,
+                p2: OXANIUM_FONT_FILE,
+                p3: OXANIUM_COPYRIGHT,
+                p4: OXANIUM_HOME_URL,
+                p5: OXANIUM_LICENSE_URL,
+              })}
+            </div>
+            <h4 className="app-license-subh">{t('ui.App.194')}</h4>
+            <pre className="app-license-pre">{oxaniumLicenseText}</pre>
           </section>
           <section className="app-license-section">
             <h3 className="app-license-h">{t('ui.App.188')}</h3>

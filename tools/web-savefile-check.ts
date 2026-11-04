@@ -110,7 +110,7 @@ const READ = `(async () => {
   }
 })()`
 
-const OPEN_SETTINGS = `(() => { const b = [...document.querySelectorAll('button')].find((x) => (x.textContent || '').trim() === '设置'); if (b) { b.click(); return true } return false })()`
+const OPEN_SETTINGS = `(async () => { const b = [...document.querySelectorAll('button')].find((x) => (x.textContent || '').trim() === '设置'); if (!b) return false; b.click(); await new Promise(r => setTimeout(r, 100)); document.querySelector('#settings-tab-save')?.click(); await new Promise(r => setTimeout(r, 100)); return !!document.querySelector('#settings-panel-save') })()`
 const CLOSE_SETTINGS = `(() => { const b = [...document.querySelectorAll('.app-modal-head button, .app-modal button')].find((x) => /✕|关闭/.test(x.textContent || '')); if (b) { b.click(); return true } return false })()`
 /** 点设置里某一枚按钮（按文案匹配） */
 const clickBtn = (label: string): string => `(() => {

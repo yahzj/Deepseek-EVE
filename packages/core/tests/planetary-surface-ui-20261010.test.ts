@@ -21,7 +21,7 @@ function harness(locale:'zh'|'en'='zh'){
     if(id==='react')return {useState:(initial:any)=>{const i=cursor++;if(!(i in values))values[i]=typeof initial==='function'?initial():initial;return [values[i],(value:any)=>{values[i]=typeof value==='function'?value(values[i]):value}]},useRef:(initial:any)=>{const i=refCursor++;return refs[i]??(refs[i]={current:initial})},useId:()=> 'surface-test',useEffect:()=>{}}
     if(id==='react/jsx-runtime')return {jsx,jsxs,Fragment}
     if(id==='@whale/core')return core
-    if(id==='lucide-react')return new Proxy({}, {get:(_target,key)=>String(key)})
+    if(id==='lucide-react'||id.endsWith('layoutIcons'))return new Proxy({}, {get:(_target,key)=>String(key)})
     if(id==='../ui/Glyphs')return {Glyph:'glyph'}
     if(id==='../ui/planetSurfaceView')return surface
     if(id==='../ui/PlanetRadialMenu')return {PlanetRadialMenu:'radial-menu'}
