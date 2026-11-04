@@ -38,7 +38,7 @@
 - 日志：`sudo journalctl -u whale-exchange -f` / `-u whale-server`；nginx `/var/log/nginx/access.log`。
 - systemd 环境变量（**以 `systemctl cat whale-exchange` 现场为准**）：
   `EXCHANGE_ROUND_SEC=300`、`EXCHANGE_HISTORY_BARS=2016`、`EXCHANGE_LOCAL_SAVE_MODE=1`、`EXCHANGE_ROUND_LIMIT_BP=300`、`EXCHANGE_ROUND_EVENT_LIMIT_BP=800`、`EXCHANGE_SHORT_ENABLED=1`、`EXCHANGE_BORROW_POOL=100000`、`EXCHANGE_BORROW_RATE_BP=5`；新增默认 `EXCHANGE_INTRA_TICK_SEC=10`（0=关闭回合内行情）。
-- 本地网络限制（排查时先知道）：本机 SNI TLS 直连服务器 IP 会被拦；腾讯云对未备案域名 HTTP 有阻断；因此「IP 直连 + 明文 HTTP」是船长选定的通路。
+- 本地网络限制（排查时先知道）：本机 SNI TLS 直连服务器 IP 会被拦；腾讯云对未备案域名 HTTP 有阻断（80 返回备案 302 页、443 带 SNI 的 TLS 被 RST）；因此「IP 直连 + 明文 HTTP」是船长最初选定的通路。**2026-11-05 更新**：nginx 已增开 8443 并复用同一 Let's Encrypt 证书，`https://game.bajibaji.party:8443` 的 HTTPS/WSS 可用（客户端默认入口已切 8443），详见 `cloud-8443-20261105.md`。
 
 ---
 
