@@ -152,7 +152,13 @@ export function Chart({
   if (bars.length > 0) {
     hi = bars.reduce((m, b) => Math.max(m, b.h), bars[0]!.h)
     lo = bars.reduce((m, b) => Math.min(m, b.l), bars[0]!.l)
-    const pad = Math.max((hi - lo) * 0.06, hi * 0.002)
+    const mid = (hi + lo) / 2
+    // 船长 2026-11-04：上下轴自适应比例自动调节
+    // 1. 平盘/极小振幅保护：至少按基准价格 1.5% 视窗展开，避免几分钱波动假性撑满画布
+    // 2. 上下呼吸安全边距：各留 12% 安全区，蜡烛柱与极值标记绝不撞顶踩底
+    const minSpan = Math.max(1, mid * 0.015)
+    const effectiveSpan = Math.max(hi - lo, minSpan)
+    const pad = effectiveSpan * 0.12
     hi += pad
     lo = Math.max(0, lo - pad)
   }

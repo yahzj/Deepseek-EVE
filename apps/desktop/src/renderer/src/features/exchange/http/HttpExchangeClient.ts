@@ -808,8 +808,10 @@ export class HttpExchangeClient implements ExchangeClient {
     const key = `${code}:${period}`
     this.chartCache.set(key, bars)
     this.chartCachedAt.set(key, Date.now())
-    if (period === 'm1') {
-      this.chartCache.set(`${code}:intraday`, bars)
+    if (period === 'm1' && !this.chartCache.has(`${code}:intraday`)) {
+      // 分时图初始用 m1 历史切片做底，独立数组，后续由 10 秒行情步进独立追加高频点
+      const initIntraday = bars.slice(-60).map((b) => ({ ...b }))
+      this.chartCache.set(`${code}:intraday`, initIntraday)
       this.chartCachedAt.set(`${code}:intraday`, Date.now())
     }
     this.schedulePersistCharts()

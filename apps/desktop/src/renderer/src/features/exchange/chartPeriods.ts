@@ -69,16 +69,16 @@ export const CHART_PERIODS: ChartPeriodSpec[] = [
   {
     id: 'intraday',
     label: '分时',
-    bucketMs: MINUTE_MS,
+    bucketMs: 10_000,
     historyCount: INTRADAY_MAX_POINTS,
-    barSeconds: 60,
+    barSeconds: 10,
     axisLabel: (ts) => {
       const d = new Date(ts)
       return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`
     },
     tipLabel: (ts) => {
       const d = new Date(ts)
-      return `${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`
+      return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`
     },
   },
   {

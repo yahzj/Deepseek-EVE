@@ -4176,6 +4176,50 @@
   user-select: none;
 }
 
+/* ── 极简看盘蜡烛图 ── */
+.ex-simple-candles {
+  shape-rendering: geometricPrecision;
+}
+
+.ex-simple-candle {
+  color: rgb(var(--wui-text));
+}
+
+.ex-simple-candle.is-up {
+  color: rgb(var(--wui-tone-gain));
+}
+
+.ex-simple-candle.is-down {
+  color: rgb(var(--wui-tone-loss));
+}
+
+.ex-simple-candle-wick {
+  stroke: currentColor;
+  stroke-width: 1;
+  opacity: 0.85;
+}
+
+.ex-simple-candle-body {
+  stroke: currentColor;
+}
+
+.ex-simple-candle.is-up .ex-simple-candle-body {
+  fill: rgb(var(--wui-tone-gain) / 0.15);
+  stroke-width: 1;
+}
+
+.ex-simple-candle.is-down .ex-simple-candle-body {
+  fill: currentColor;
+  stroke-width: 1;
+}
+
+.ex-simple-chart-ohlc {
+  font-family: var(--wui-mono);
+  font-size: 10px;
+  color: rgb(var(--wui-text-dim));
+  white-space: nowrap;
+}
+
 .ex-simple-chart-empty {
   display: flex;
   align-items: center;
