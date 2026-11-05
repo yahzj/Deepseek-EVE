@@ -4805,7 +4805,6 @@ html body .app-root .ex-page .ex-simple-big-action-btn,
   border: 2px solid rgb(var(--ex-action-tone)) !important;
   color: rgb(var(--ex-action-ink)) !important;
   box-shadow: 0 0 16px rgb(var(--ex-action-tone) / 0.35) !important;
-  clip-path: none !important;
 }
 
 html body .app-root.is-layout-modern .ex-page .ex-simple-big-action-btn.is-short,
