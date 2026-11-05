@@ -320,9 +320,13 @@ for (const id of allL10nIds) {
   const line = tableSrc.split('\n').find((l) => l.trimStart().startsWith(`'${id}':`))
   check(line !== undefined, `本地化表缺条目：${id}`)
   if (line === undefined) continue
-  check(line.includes('enDeferred: true'), `${id}：未授权英文时应写 en: '' + enDeferred: true`)
-  const pendingRow = new RegExp(`^\\| \`${id.replace(/\./g, '\\.')}\` \\|[^\\n]*\\| 待本地化 \\|\\s*$`, 'm')
-  check(pendingRow.test(pendingSrc), `${id}：enDeferred 未在 docs/l10n-pending.md 登记为「待本地化」`)
+  if (line.includes('enDeferred: true')) {
+    check(line.includes("en: ''"), `${id}：延期英文不得包含占位或已准备译文`)
+    const pendingRow = new RegExp(`^\\| \`${id.replace(/\./g, '\\.')}\` \\|[^\\n]*\\| 待本地化 \\|\\s*$`, 'm')
+    check(pendingRow.test(pendingSrc), `${id}：enDeferred 未在 docs/l10n-pending.md 登记为「待本地化」`)
+  } else {
+    check(line.includes("en: '") && !line.includes("en: ''"), `${id}：已完成英文时应有有效英文翻译`)
+  }
 }
 
 /* ═══════════ 四、纯规则确定性用例 ═══════════ */
@@ -331,16 +335,16 @@ const defaults = defaultSfxPrefs()
 const muted = { ...defaults, muted: true }
 check(effectiveGain('combat-fire', defaults) === 0.5, `默认增益：combat-fire 应为 0.5，实际 ${effectiveGain('combat-fire', defaults)}`)
 check(effectiveGain('invasion-alarm', defaults) === 0.7, `默认增益：invasion-alarm 应为 0.7，实际 ${effectiveGain('invasion-alarm', defaults)}`)
-// 默认音量表（船长 2026-11-05 指定）：总 100% / 音乐 15% / 环境 50% / 警报 70% / 战斗 100% / 生产 50% / 界面 50%
+// 默认音量表（船长 2026-11-05 指定）：总 100% / 音乐 25% / 环境 55% / 警报 70% / 战斗 100% / 生产 50% / 界面 50%
 check(
   defaults.master === 1 &&
-    defaults.categories.music === 0.15 &&
-    defaults.categories.ambient === 0.5 &&
+    defaults.categories.music === 0.25 &&
+    defaults.categories.ambient === 0.55 &&
     defaults.categories.alarm === 0.7 &&
     defaults.categories.combat === 1 &&
     defaults.categories.progress === 0.5 &&
     defaults.categories.ui === 0.5,
-  `默认音量表应为 总100/音乐15/环境50/警报70/战斗100/生产50/界面50，实际 ${JSON.stringify({ master: defaults.master, ...defaults.categories })}`,
+  `默认音量表应为 总100/音乐25/环境55/警报70/战斗100/生产50/界面50，实际 ${JSON.stringify({ master: defaults.master, ...defaults.categories })}`,
 )
 check(effectiveGain('combat-fire', muted) === 0, '静音时所有音效增益必须为 0')
 check(clampVolume(-1) === 0 && clampVolume(2) === 1 && clampVolume(Number.NaN) === 0, '音量钳制边界错误')
