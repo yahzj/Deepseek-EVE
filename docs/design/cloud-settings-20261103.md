@@ -10,7 +10,7 @@
 
 ## 实施依据与范围
 
-本篇记录verify工作区的整个账号/云存档接入批次，涵盖API、偏好、引擎、设置UI、连接策略及统一验证，不再按子代理拆分结论。依据为后端 `H:\大鲸鱼\deepseek-EVE-Background\docs\account-system-design.md` §7 已批准规则。
+本篇记录verify工作区的整个账号/云存档接入批次，涵盖API、偏好、引擎、设置UI、连接策略及统一验证，不再按子代理拆分结论。依据为后端 `D:\Documents\GitHub\deepseek-EVE-Background\docs\account-system-design.md` §7 已批准规则。
 
 - 设置的save分类尾部增加账号区与手动云档区，不新增一级tab；未登录不影响本地游戏。布局沿用app-settings-row/head/label/btns/app-btn，区内用分隔线，不套多层卡片。
 - preferences.ts唯一可替换的入口是「默认 HTTPS 域名，失败回退明文 IP」（2026-11-04 换新域名、2026-11-05 起走 8443：DEFAULT_CLOUD_SERVER = https://game.bajibaji.party:8443，Let's Encrypt 正式证书、nginx 直连源站不经 Cloudflare；8443 端口原因为腾讯云拦截未备案域名的 80/443——80 返回备案 302 页、443 带 SNI 的 TLS 被 RST；FALLBACK_CLOUD_SERVER = http://123.207.188.192，nginx 80 反代；后者只在网络层失败时单次兜底，成功也不写回偏好、不切换可见服务器），仅无saved server时使用；保留已存server及内部saveCloudServer供配置和自动化测试挂载前注入动态服务。玩家UI无地址label/input/apply，不提供URL/query/window地址设置。未登录不自动请求，有已存会话时首次显示仅核验profile，不自动上传、下载或载入；会话仍按server隔离。

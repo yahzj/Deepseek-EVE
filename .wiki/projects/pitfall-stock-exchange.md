@@ -180,7 +180,7 @@ updated: 2026-11-04T10:42:39.378Z
 
 ### 坑 21：检查项本身有盲区，交接还带着遗留物
 - **现象**：根 `npm run typecheck` 绿但 `apps/server` 有类型错误；股票静态定义放 `content-csv/` 读空导致市场空目录；交接环境残留测试账号与债务。
-- **根因**：根 typecheck 不包含 `apps/server`；`content-csv/` 被 `.gitignore` 且仓库中不存在；测试账号 `smoke*/bot*/e2e*`、账号 17 债务 383,394、Node/Go 两仓库无远端，都是交接时的真实状态。
+- **根因**：根 typecheck 不包含 `apps/server`；`content-csv/` 被 `.gitignore` 且仓库中不存在；测试账号 `smoke*/bot*/e2e*`、账号 17 债务 383,394、Node/Go 两仓库无远端，都是交接时的真实状态。（2026-11-05 更新：Node 端已迁到 `deepseek-EVE-Background` 并推送到 GitHub；Go 端在其中的 `exchange-server-go` 子目录，仍是父仓未跟踪的独立 `.git`，详见 [[证券交易所-仓库结构与生产部署-2026-11-05]]。）
 - **解法 / 规避**：服务端单独跑 `npm run typecheck -w @whale/server`；股票静态定义放 `apps/server/src/exchange/stocks.ts`（随代码提交）；清理测试账号时避开船长账号（`dadadada` id 18）；交接清单写明无远端与生产冒烟命令（`/health`、`stocks`、journalctl 查 panic/error）。
 - **复发检查点**：改完服务端代码确认跑了 `-w @whale/server`；`git check-ignore -v content-csv/`；交接前对账号表与远端做一次盘点。
 - **来源**：`docs/design/stock-exchange-server-20261103.md:66-69`、`docs/design/stock-exchange-handoff-20261104.md:148-152`、`docs/design/stock-exchange-handoff-20261104.md:190-191`

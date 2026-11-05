@@ -11,7 +11,7 @@
 
 ## 冲突处理
 
-- `apps/server/README.md` 保留远端新增的迁出提醒，改为简短指路：后端独立位于 `H:\大鲸鱼\deepseek-EVE-Background`，不属于本仓库的 npm workspace；不恢复旧部署或旧账号说明。
+- `apps/server/README.md` 保留远端新增的迁出提醒，改为简短指路：后端独立位于 `D:\Documents\GitHub\deepseek-EVE-Background`，不属于本仓库的 npm workspace；不恢复旧部署或旧账号说明。
 - `docs/INDEX.md` 用 `npm run docs:index` 重建解决，不手改索引内容。
 - 既有设置整合保留远端科幻 HUD、字体和许可内容，以及本地五类标签、右上角版本号和底栏许可入口；已发布 `ui.App.192–195` 原义不变，分类使用 `ui.settingsTab.001–005`。
 

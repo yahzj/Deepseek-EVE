@@ -27,7 +27,7 @@
 | 设置子页面分类 | `docs/design/settings-subpages-20261103.md`；仅重组现有设置项，实施期间为现行工作稿 |
 | 账号与手动云存档设置 | `docs/design/cloud-settings-20261103.md`；本批仅本地合入、不推送；端到端桌面 smoke、全量回归、观感验收未完成，首次注册令牌撤销尚未验证；公网 HTTPS 入口 2026-11-05 起走 8443（见下条） |
 | 云端入口 8443（绕过腾讯云未备案拦截） | `docs/design/cloud-8443-20261105.md`；现行部署拓扑、验证读数与回滚方式 |
-| 独立在线聊天 | `docs/design/online-chat-20261103.md`；独立导航、只显示聊天记录与在线总人数，桌面/网页端本机验证已完成；后端增强在 `H:\大鲸鱼\deepseek-EVE-Background\docs\chat-deploy-handoff-20261103.md`，待玩家验收与服务器部署联调 |
+| 独立在线聊天 | `docs/design/online-chat-20261103.md`；独立导航、只显示聊天记录与在线总人数，桌面/网页端本机验证已完成；后端增强在 `D:\Documents\GitHub\deepseek-EVE-Background\docs\chat-deploy-handoff-20261103.md`，待玩家验收与服务器部署联调 |
 | 数值与经济 | 开发约定§一、§二，对应设计稿及校准工具 |
 | 玩家文案与公告 | 开发约定§十一、§十二、§十三；公告待审稿未经批准不落库 |
 | 第二阶段空间站 | `docs/design/human-revival-station.md`、`docs/design/human-revival-station-research-20261018.md`；未决方案不能当已实现 |

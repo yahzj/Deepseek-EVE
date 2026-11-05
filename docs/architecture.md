@@ -69,6 +69,14 @@
 - 虫洞整备、有限物资、地点实物、撤离、巡逻及事件账有独立状态与清洗；页面只读视图和发命令。
 - 离线上限读取`simulation.ts`和相关技能、模式加成，不使用旧里程碑中的固定读数。时钟回拨不补负时间。
 
-## 预留方向
+## 服务端与仓库
 
-服务端已部分上线（2026-11-04 更新）：独立仓库 `deepseek-EVE-Background`（原 whale-server，已迁移至 `H:\大鲸鱼\deepseek-EVE-Background`）提供云存档、聊天、现货订单簿市场、双分录账本与账号体系（用户名密码 + 多设备会话），游戏客户端已接入云存档与在线聊天。权威模型仍是**混合权威**：存档由客户端演算，物品与信用点的进出走服务器账本；服务器权威演算（含证券交易所）未启动。旧版 `apps/server/` 仅历史快照，见该目录 README。
+（2026-11-05 更新）服务端拆成两部分，都不在游戏主树内：
+
+| 仓库 | 本地路径 | 远端 | 职责 |
+|---|---|---|---|
+| 游戏主仓 | `D:\Documents\GitHub\Deepseek-EVE` | `https://github.com/yahzj/Deepseek-EVE.git` | Electron 客户端 + core/data/ui |
+| 云端服务（Node） | `D:\Documents\GitHub\deepseek-EVE-Background` | `https://github.com/yahzj/deepseek-EVE-Background.git` | 云存档、聊天、账号、现货订单簿、双分录账本（端口 8787） |
+| 股市引擎（Go） | `D:\Documents\GitHub\deepseek-EVE-Background\exchange-server-go` | 内含独立 `.git`，父仓尚未跟踪 | 回合制撮合、行情引擎、事件、AI 人格、债券/基金（端口 8788） |
+
+权威模型仍是**混合权威**：存档由客户端演算，物品与信用点的进出走服务器账本；证券交易所由 Go 服务按真实墙钟 7×24 运行，资金侧 `EXCHANGE_LOCAL_SAVE_MODE=1`（存档币本地为准）。旧版 `apps/server/` 仅历史快照，见该目录 README。
