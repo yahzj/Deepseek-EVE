@@ -1455,7 +1455,7 @@ export const EN_BLUEPRINTS: EnTable = (() => {
     })),
     ...Object.fromEntries(['plug-pirate-damage-management', 'plug-alien-nanobiomass', 'plug-gravekeeper-charge', 'plug-titan-drone-command', 'plug-deadarmy-reinforced-hull'].map(id => {
       const bp = BLUEPRINTS.find(row => row.id === `bp-${id}`)!
-      return [bp.id, { name: bp.name, description: bp.description }]
+      return [bp.id, { name: bp.name, description: l10nEntryText(L10N['bp.factionPlug.001']!, 'en') }]
     })),
     'bp-once-drone-repair-mil': { name: l10nEntryText(L10N['bp.repairDrone.001']!, 'en'), description: l10nEntryText(L10N['bp.repairDrone.003']!, 'en') },
     'bp-drone-repair-mil': { name: l10nEntryText(L10N['bp.repairDrone.002']!, 'en'), description: l10nEntryText(L10N['bp.repairDrone.004']!, 'en') },

@@ -22,6 +22,7 @@ import { changeShip, repairShip } from '../src/shipyard'
 import { startMining } from '../src/mining'
 import { advanceGame } from '../src/engine'
 import { makeTestCtx } from './helpers'
+import { finishDeparture } from './helpers/departure-ready'
 
 /** 迷你建站点：挂在 galaxy-far，两档（100 / 150），收 ore-a */
 function siteDef(): StationSiteDef {
@@ -390,6 +391,7 @@ describe('建站交付航线 v2（2026-09-08 船长定稿：物理载货 + 自�
     const { state, ctx } = tripWorld(120) // 首档 100 + 档 2 并入 20
     expect(startSiteDeliverTrip(state, ctx, 'site-test').ok).toBe(true)
     expect(cargo(state)['ore-a']).toBe(120)
+    finishDeparture(state, ctx)
     advanceGame(state, 900, ctx) // 去程未到点：货物仍在船
     expect(state.transit.active).toBe(true)
     expect(cargo(state)['ore-a']).toBe(120)
@@ -414,6 +416,7 @@ describe('建站交付航线 v2（2026-09-08 船长定稿：物理载货 + 自�
     expect(startSiteDeliverTrip(state, ctx, 'site-test').ok).toBe(true)
     expect(cargo(state)['ore-a']).toBe(250) // 上限 = 全站需求 100+150，不多装
     expect(state.warehouse.items['ore-a']).toBe(250)
+    finishDeparture(state, ctx)
     advanceGame(state, 1_100, ctx) // 去程到点（1000ms）+ 余量
     expect(isSiteBuilt(state, ctx.stations.get('site-test')!)).toBe(true)
     expect(state.awayGalaxy).toBeNull()
@@ -428,6 +431,7 @@ describe('建站交付航线 v2（2026-09-08 船长定稿：物理载货 + 自�
     expect(startSiteDeliverTrip(state, ctx, 'site-test').ok).toBe(true)
     let guard = 0
     while (!isSiteBuilt(state, ctx.stations.get('site-test')!) && guard++ < 40) {
+      finishDeparture(state, ctx)
       advanceGame(state, 1_500, ctx)
     }
     expect(isSiteBuilt(state, ctx.stations.get('site-test')!)).toBe(true)
@@ -441,6 +445,7 @@ describe('建站交付航线 v2（2026-09-08 船长定稿：物理载货 + 自�
   it('途中取消（去程）：无惩罚、停止循环不再自动续趟、本趟装载随进港卸回仓库', () => {
     const { state, ctx } = tripWorld(200)
     expect(startSiteDeliverTrip(state, ctx, 'site-test').ok).toBe(true)
+    finishDeparture(state, ctx)
     advanceGame(state, 300, ctx) // 仍在途
     const r = cancelSiteDeliverTrip(state, ctx)
     expect(r.ok).toBe(true)
@@ -485,6 +490,7 @@ describe('建站交付航线 v2（2026-09-08 船长定稿：物理载货 + 自�
   it('反过来：交付循环在跑 ⇒ 直接开始别的活动会把它停掉（货留船上、无惩罚）', () => {
     const { state, ctx } = tripWorld(200)
     expect(startSiteDeliverTrip(state, ctx, 'site-test').ok).toBe(true)
+    finishDeparture(state, ctx)
     advanceGame(state, 300, ctx) // 仍在途
     const aboard = { ...cargo(state) }
     expect(Object.keys(aboard).length).toBeGreaterThan(0)

@@ -3,7 +3,9 @@ import { readFileSync } from 'node:fs'
 import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import { addShipToFleet } from '../src/fleetBook'
-import { startExpedition, setBattleDesire, setAutoLoopInvasion, advanceAutoLoopInvasion } from '../src/expedition'
+import { setBattleDesire, setAutoLoopInvasion, advanceAutoLoopInvasion } from '../src/expedition'
+import { startExpeditionArrived as startExpedition } from './helpers/command-arrived'
+import { finishDeparture } from './helpers/departure-ready'
 import { advanceBattleFor, battleArcsFor, createPlayerSpec, desiredRangeFor, desirePrefOf, setDesirePrefOf, startBattleFor, startFleetBattleFor } from '../src/combat'
 import { buildMyUnitSpecs } from '../src/combat/fleetSpecs'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
@@ -80,6 +82,7 @@ describe('入侵目标距离不因首波量程缩小', () => {
     const cards = new Set<string>()
     for (let i = 0; i < 12; i++) {
       advanceAutoLoopInvasion(state, ctx, NOW)
+      finishDeparture(state, ctx)
       expect(state.expedition.foeGalaxyId).toBe(PER)
       expect(state.expedition.battle!.myDesireM).toBe(battleCardRangeOf(state, state.expedition.anomalyId!)!.desireM)
       cards.add(state.expedition.anomalyId!)
@@ -88,6 +91,7 @@ describe('入侵目标距离不因首波量程缩小', () => {
     expect(cards.size).toBe(2)
     state.weekendEvent!.contributed[PER] = 1
     advanceAutoLoopInvasion(state, ctx, NOW)
+    finishDeparture(state, ctx)
     expect(state.expedition.foeGalaxyId).toBe(CORE)
     expect(state.expedition.battle!.myDesireM).toBe(battleCardRangeOf(state, state.expedition.anomalyId!)!.desireM)
     expect(battleCardRangeOf(state, 'alien-harass')?.desireM).toBe(8250)

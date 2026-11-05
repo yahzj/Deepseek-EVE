@@ -111,6 +111,8 @@ const DATA_TABLES: readonly string[] = [
  */
 const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; exported: boolean }[] = [
   { concept: '势力加密货柜蓝图分组', symbol: 'encryptedBlueprintGroups', file: 'packages/core/src/encryptedContainer.ts', exported: true },
+  { concept: '势力加密货柜实际奖池', symbol: 'encryptedBlueprintPool', file: 'packages/core/src/encryptedContainer.ts', exported: true },
+  { concept: '势力插件身份判据', symbol: 'isFactionPlugId', file: 'packages/data/src/plugs.ts', exported: true },
   { concept: '势力加密货柜抽取', symbol: 'encryptedBlueprintDraw', file: 'packages/core/src/encryptedContainer.ts', exported: true },
   { concept: '生产研究所首捞货柜', symbol: 'wormholeResearchBox', file: 'packages/core/src/wormholeSalvage.ts', exported: true },
   { concept: '主控离港与星门阶段', symbol: 'departureView', file: 'packages/core/src/departure.ts', exported: true },
@@ -301,6 +303,7 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
   { concept: '黑市锁定交付数量与旧货架兼容', symbol: 'blackMarketOfferQuantity', file: 'packages/core/src/blackMarket.ts', exported: true },
   { concept: '可选弹药档位与同族合法性', symbol: 'ammoTiersOf', file: 'packages/core/src/ammoTiers.ts', exported: true },
   { concept: '普通市场可流通商品目录', symbol: 'marketTradingGoods', file: 'packages/core/src/market/access.ts', exported: true },
+  { concept: '独占产物的玩家交易定义', symbol: 'PLAYER_ONLY_GOODS', file: 'packages/data/src/market/playerGoods.ts', exported: true },
   { concept: '沉船快照保存装配方案', symbol: 'saveWreckFitPreset', file: 'packages/core/src/fitPresets.ts', exported: true },
   { concept: '沉船逐位装备与重复扩槽明细', symbol: 'wreckFitDetailOf', file: 'packages/core/src/fitPresets.ts', exported: true },
   { concept: '市场商品可读名称', symbol: 'marketGoodDisplayName', file: 'apps/desktop/src/renderer/src/ui/marketGoodHover.tsx', exported: true },
@@ -404,6 +407,30 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
     concept: '音高随机换速率（音分 → playbackRate · 2026-11-02 追加批）',
     symbol: 'pitchRateFor',
     file: 'apps/desktop/src/renderer/src/game/audio/rules.ts',
+    exported: true,
+  },
+  {
+    concept: '音效正式入库包格式与素材路径映射（音效台导出、audio:install 与 audio:check 共用 · 2026-11-04）',
+    symbol: 'sfxPackAssetPath',
+    file: 'apps/desktop/src/renderer/src/game/audio/sfxPack.ts',
+    exported: true,
+  },
+  {
+    concept: 'BGM/环境底噪交叉淡变时长（换曲 2.5s / 1.5s、同曲调音量 250ms · 2026-11-04 调试批）',
+    symbol: 'BGM_CROSSFADE_MS',
+    file: 'apps/desktop/src/renderer/src/game/audio/rules.ts',
+    exported: true,
+  },
+  {
+    concept: '场景音频强切（真实场景 + 调试预演；只切声音 · 2026-11-04 调试批）',
+    symbol: 'forceSfxScene',
+    file: 'apps/desktop/src/renderer/src/game/audio/sceneSwitch.ts',
+    exported: true,
+  },
+  {
+    concept: '实时触发日志（环形缓冲，试听不计 · 2026-11-04 调试批）',
+    symbol: 'recordSfxPlay',
+    file: 'apps/desktop/src/renderer/src/game/audio/playLog.ts',
     exported: true,
   },
 ]

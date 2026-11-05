@@ -6,6 +6,7 @@ import { runInNewContext } from 'node:vm'
 import ts from 'typescript'
 import { applyApprovedTorpedoShipDelta } from './helpers/approved-torpedo-ship-delta-20261019'
 import { applyApprovedFleetShipDelta } from './helpers/approved-fleet-delta-20261101'
+import { APPROVED_ENCRYPTED_BOX_IDS, APPROVED_NEW_FACTION_PLUG_IDS } from './helpers/approved-static-content-20261104'
 import { describe, expect, it } from 'vitest'
 import {
   buildSimContext, EN_ANOMALIES, EN_ITEMS, EN_MATTER_TECH_NOTES, EN_MODULES, EN_SHIPS, EN_SKILLS,
@@ -198,8 +199,13 @@ describe('信号空间内容 · 固定来源与纯文案边界', () => {
   })
 
   it('旧资产数值与配方不变；模块及谜质装置说明取新ID，历史正文仍可读取', () => {
-    const addedItems = new Set(['ammo-kinetic-3', 'ammo-explosive-3', 'ammo-plasma-3', 'blackbox-c', 'blackbox-d', 'deep-space-probe', 'drone-jawclaw', 'drone-repair-mil', 'invasion-beacon-r', 'invasion-beacon-c', 'invasion-beacon-h', 'invasion-beacon-d'])
+    const addedItems = new Set(['ammo-kinetic-3', 'ammo-explosive-3', 'ammo-plasma-3', 'blackbox-c', 'blackbox-d', 'deep-space-probe', 'drone-jawclaw', 'drone-repair-mil', 'invasion-beacon-r', 'invasion-beacon-c', 'invasion-beacon-h', 'invasion-beacon-d', ...APPROVED_ENCRYPTED_BOX_IDS])
     expect(ITEMS.filter(item => addedItems.has(item.id)).map(item => item.id).sort()).toEqual([...addedItems].sort())
+    for (const id of APPROVED_ENCRYPTED_BOX_IDS) {
+      expect(without(ITEMS.find(item => item.id === id)!, ['name', 'description'])).toEqual({
+        id, kind: 'container', unitM3: 1000, baseSellPriceIsk: 1,
+      })
+    }
     sameData(ITEMS.filter(item => !addedItems.has(item.id)), baseItems, ['name', 'description'])
     expect(EN_ITEMS['mat-wh-essence']!.name).toBe('Signal Enigma')
     for (const [id, text] of Object.entries(EN_ITEMS)) {
@@ -207,7 +213,7 @@ describe('信号空间内容 · 固定来源与纯文案边界', () => {
       expect(text.name, id).toBe(id === 'mat-wh-essence' ? 'Signal Enigma' : id === 'synaptic-accelerant' ? 'Synaptic Accelerant MK1' : baseEn.EN_ITEMS[id]!.name)
     }
     const approvedNewModules = new Set(['mod-drone-launch-1', 'mod-drone-launch-2', 'mod-drone-launch-3', 'mod-laser-calibration-2', 'mod-laser-calibration-3', 'mod-gravekeeper-rebirth', 'mod-gravekeeper-crisis', 'mod-gravekeeper-rail', 'mod-alien-acid-launcher', 'mod-alien-pressure-chamber',
-      'plug-pirate-raider', 'plug-alien-shield-coating', 'plug-gravekeeper-capacitor', 'plug-titan-compression', 'plug-deadarmy-printing'])
+      'plug-pirate-raider', 'plug-alien-shield-coating', 'plug-gravekeeper-capacitor', 'plug-titan-compression', 'plug-deadarmy-printing', ...APPROVED_NEW_FACTION_PLUG_IDS])
     for (const [id, text] of Object.entries(EN_MODULES)) {
       if (approvedNewModules.has(id)) continue
       if (/^mod-shieldfield-[23]$/.test(id)) {

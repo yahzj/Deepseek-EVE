@@ -18,6 +18,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { createCommandReadyState as createInitialState } from './helpers/command-ready'
+import { finishDeparture } from './helpers/departure-ready'
 import type { GameState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
 import { countWare } from '../src/inventory'
@@ -53,6 +54,7 @@ function enterRun(seed = 21): { state: GameState; run: WormholeRunState; leader:
   const b = addShipToFleet(state, T3)
   state.shipId = a
   expect(wormholeEnter(state, ctx, [a, b], seed).ok).toBe(true)
+  finishDeparture(state, ctx)
   return { state, run: state.wormhole.run!, leader: a, wing: b }
 }
 
@@ -66,7 +68,7 @@ function standOnPlace(run: WormholeRunState, place: WormholePlace): void {
 /** 开一场洞内节点战并返回 battle */
 function startBattle(state: GameState, run: WormholeRunState): NonNullable<WormholeRunState['battle']> {
   standOnPlace(run, 'ship')
-  const r = wormholeStartBattle(state, ctx, 'node', 0)
+  const r = wormholeStartBattle(state, ctx, 'node', state.gameMs)
   expect(r.ok, r.error ?? '').toBe(true)
   return run.battle!
 }

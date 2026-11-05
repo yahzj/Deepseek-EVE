@@ -309,12 +309,20 @@ describe('开场装填专项（2026-10-08）', () => {
       family: 'H', contributed: { 'galaxy-kor': 1, 'galaxy-home': 1 },
     }
     const normal = startBattleFor(state, realCtx, ships[0]!, 'ano-training', state.gameMs)!
+    expect(normal.startedAtGameMs).toBe(75_000)
+    expect(normal.lastTickGameMs).toBe(75_000)
     const wormhole = startFleetBattleFor(state, realCtx, ships, 'wh-alien-swarm', state.gameMs, null, { depth: 1, kind: 'node', waves: 1 })!
+    expect(wormhole.startedAtGameMs).toBe(75_000)
+    expect(wormhole.lastTickGameMs).toBe(75_000)
     const beforeArrival = wormhole.myFleet!.map(entry => [...wormhole.units[entry.tag]!.weapons])
     stampFoeArrivalFx(wormhole)
     expect(wormhole.myFleet!.map(entry => wormhole.units[entry.tag]!.weapons)).toEqual(beforeArrival)
     expect(Object.values(wormhole.units).filter(unit => unit.side === 'foe').every(unit => unit.enteredAtMs !== undefined)).toBe(true)
     const flagship = weekendStartFlagshipBattle(state, realCtx, new Date(2026, 9, 9, 20).getTime(), ships)!
+    expect(state.gameMs, '建档不会推进游戏时钟').toBe(75_000)
+    expect(state.departure).toMatchObject({ kind: 'flagship', undockMs: 10_000, gateMs: 0, progressMs: 0 })
+    expect(flagship.startedAtGameMs, '旗舰开战时刻包含离港十秒').toBe(85_000)
+    expect(flagship.lastTickGameMs).toBe(85_000)
     expect(normal.myFleet).toBeUndefined()
     expect(wormhole.wormhole).toMatchObject({ depth: 1, kind: 'node' })
     expect(wormhole.myFleet).toHaveLength(4)
@@ -322,8 +330,6 @@ describe('开场装填专项（2026-10-08）', () => {
     expect(flagship.myFleet).toHaveLength(4)
     expect(flagship.foeOverride?.waves).toHaveLength(4)
     for (const battle of [normal, wormhole, flagship]) {
-      expect(battle.startedAtGameMs).toBe(state.gameMs)
-      expect(battle.lastTickGameMs).toBe(state.gameMs)
       expect(battle.stats.meShots).toBe(0)
       const fleet = battle.myFleet ?? [{ tag: 'player', shipId: ships[0]! }]
       for (const entry of fleet) {

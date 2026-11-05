@@ -95,6 +95,11 @@ export interface PlaceOrderRequest {
   qty: number
   /** 1 = 现货；2/5/10/20/50 = 逐仓杠杆 */
   leverage?: number
+  /**
+   * 开空标记（对应 Go `PlaceOrderRequest.Short`）：side=sell + leverage>1 且 short=true 才是开空；
+   * 不传或 false 时，杠杆卖单按「平多」处理（无多头持仓会被服务端 409 拒绝）。
+   */
+  short?: boolean
   reduceOnly?: boolean
   postOnly?: boolean
   triggerPrice?: number
@@ -124,6 +129,10 @@ export interface ExchangeOrder {
     | 'queued'
     | 'expired'
   createdAt: number
+  /** 回合号（Go OrderView 下发；Mock 没有回合概念，缺省不显示） */
+  roundNo?: number
+  /** 开空标记：side=sell 且 short=true 才是开空，缺省表示卖出/平多 */
+  short?: boolean
   /** 以下为原型扩展（真机响应同样会带，界面用来显示来源与成交均价） */
   source?: OrderSource
   filledQty?: number
@@ -169,6 +178,10 @@ export interface StrategySpec {
   code: string
   params: Record<string, number | string | boolean>
   enabled: boolean
+  runtime?: {
+    lastRound: number
+    events: Array<{ roundNo: number; ts: number; status: string; reason: string; side?: Side; qty?: number; filledQty?: number; orderId?: number }>
+  }
 }
 
 export type ExchangeTopic = 'book' | 'trade' | 'price' | 'kline' | 'position' | 'margin' | 'event'
@@ -195,19 +208,36 @@ export type ChartPeriod = 'intraday' | 'm1' | 'm5' | 'h5' | 'd5' | 'd35' | 'h1' 
 export interface DepositResult { nonce: string; applied: number; fee: number; cash: number; receiptHash: string }
 export interface WithdrawResult { nonce: string; amount: number; fee: number; availableAt: number; receiptHash: string }
 
-/** 基金单期结算结果：服务端用实盘数据 + nonce 决定输赢，盈利 = 3×债券分钟利息，亏损 = 1×。 */
-export interface FundPlayResult {
-  win: boolean
-  amount: number
-  /** 净盈亏（正=盈利、负=亏损），单位信用点 */
-  profit: number
-  /** 本单使用的债券分钟利率（基点） */
-  rateBp: number
-  /** 结算依据（实盘数据摘要，展示给玩家） */
-  evidence: string
-  /** 结算后的交易所可用现金 */
+/**
+ * 保底基金持仓（放置型）：申购后本金锁定，按真实分钟逐分钟结算，随时可赎。
+ * 每分钟 70% 概率 +16bp、30% 概率 −7bp，期望 +9bp/分钟 ≈ 债券（3bp/分钟）的 3 倍。
+ * 亏损真实发生，赎回额 = 本金 + 累计收益（accrued 可为负）。
+ */
+export interface FundPosition {
+  /** 本金（申购金额的累计值） */
+  principal: number
+  /** 累计已结算收益，可为负 */
+  accrued: number
+  /** 当前价值 = 本金 + 累计收益 */
+  value: number
+  /** 已计息到的分钟索引（UTC 分钟） */
+  settledMinute: number
+  /** 建仓时间（毫秒） */
+  openedAt: number
+  /** 已计息分钟数 */
+  minutes: number
+  /** 盈利分钟的收益率（基点） */
+  winBp: number
+  /** 亏损分钟的收益率（基点，负数） */
+  loseBp: number
+  /** 盈利分钟占比（0~100） */
+  winPercent: number
+  /** 每分钟期望收益（基点） */
+  expectedBp: number
+  /** 对照用的债券分钟利率（基点） */
+  bondBp: number
+  /** 查询时的交易所可用现金 */
   cash: number
-  replayed?: boolean
 }
 export type Unsubscribe = () => void
 
@@ -242,6 +272,49 @@ export interface DividendRecord {
   amount: number
 }
 
+/** 六人格持仓（对手盘公开快照，字段对齐 Go `AgentHoldingView`） */
+export interface AgentHolding {
+  code: string
+  qty: number
+  avgCost: number
+  price: number
+  value: number
+}
+
+/** 六人格最近动作（字段对齐 Go `AgentActionView`） */
+export interface AgentAction {
+  id: number
+  roundNo: number
+  code: string
+  side: string
+  qty: number
+  price: number
+  reason: string
+  createdAt: number
+}
+
+/**
+ * 六人格公开摘要（`GET /agents` 与 WS `agents` 帧，字段对齐 Go `AgentView`）。
+ * 只在回合末广播一次；人格是玩家的对手盘，用于让玩家读出「谁在场、谁在动」。
+ */
+export interface AgentView {
+  persona: string
+  name: string
+  callsign: string
+  role: string
+  mood: string
+  cash: number
+  frozen: number
+  initialCash: number
+  positionValue: number
+  equity: number
+  pnl: number
+  lastRound: number
+  lastActionAt: number
+  holdings: AgentHolding[]
+  recentActions: AgentAction[]
+}
+
 export interface BondProduct {
   id: string
   name: string
@@ -257,6 +330,26 @@ export interface BondHolding {
   rateDaily: number
 }
 
+/** 低风险理财·债券持仓（服务端放置型，2026-11-04 船长令：债券也用入金后的交易所现金购买）。 */
+export interface BondPosition {
+  /** 本金 */
+  principal: number
+  /** 累计已结算利息（单利，不滚本） */
+  accrued: number
+  /** 当前价值 = 本金 + 已结算利息 */
+  value: number
+  /** 已计息到的分钟索引（服务端墙钟） */
+  settledMinute: number
+  /** 建仓时间（毫秒） */
+  openedAt: number
+  /** 已计息分钟数 */
+  minutes: number
+  /** 每分钟利率（基点）：3 = 0.03% */
+  minuteBp: number
+  /** 申购/赎回后的可用现金 */
+  cash: number
+}
+
 export interface IndexQuote {
   value: number
   changePct: number
@@ -270,6 +363,7 @@ export interface IndexQuote {
  * 界面自己再算一遍迟早与撮合口径分叉。
  */
 export interface OrderPreview {
+  qty?: number
   notional: number
   margin: number
   fee: number
@@ -305,9 +399,13 @@ export interface ExchangeSnapshot {
   myTrades: TradeRecord[]
   dividends: DividendRecord[]
   strategies: StrategySpec[]
-  bonds: BondHolding
+  bonds: BondPosition
+  /** 保底基金持仓（放置型；空仓时本金与收益均为 0） */
+  funds: FundPosition
   bondProduct: BondProduct
   news: NewsItem[]
+  /** 六人格公开摘要（WS `agents` 帧，回合末更新；模拟盘为空数组） */
+  agents: AgentView[]
   /** 手续费率（界面预览用，避免把数字写死在组件里） */
   feeRate: number
 }
@@ -339,6 +437,8 @@ export interface ExchangeClient {
    * 未来 UI 接入点见 `round.ts` 里的 `RoundClock`。
    */
   getRound?(): Promise<RoundInfo>
+  /** 操作期间保留账户与委托显示；进度满格后释放最新快照。 */
+  holdAccountUpdates?(): () => void
   // 交易
   deposit(amount: number, nonce: string): Promise<DepositResult>
   withdraw(amount: number, nonce: string): Promise<WithdrawResult>
@@ -370,6 +470,8 @@ export interface ExchangeClient {
   retryBootstrap?(): void
   /** 可选：切换标的后补拉该标的 K 线/盘口（HTTP 模式实现；首屏只拉了首只标的）。 */
   ensureSymbolData?(code: string): void
+  /** 可选：按需补拉单个图表周期（HTTP 模式实现；未缓存的周期切过去时调用）。 */
+  ensureChartData?(code: string, period: ChartPeriod): void
   /** 可选：每分钟刷新行情/账户/委托/快讯（HTTP 模式实现）。 */
   refreshMarketData?(code: string): void
   onTick(cb: () => void): Unsubscribe
@@ -378,12 +480,21 @@ export interface ExchangeClient {
   getChartSeries(code: string, period: ChartPeriod): Kline[]
   /** 「重置模拟账户」：回到 1,000 万启动资金；HTTP 实现没有本地账户可重置 */
   resetAccount(): void
-  buyBond(amount: number): BondHolding
-  redeemBond(): number
-  /** 基金：投入交易所现金，服务端按实盘数据 50/50 结算（盈利 3× 债券分钟利息，亏损 1×） */
-  playFund(amount: number, nonce: string): Promise<FundPlayResult>
+  /** 债券：查询持仓（服务端惰性结算到当前分钟） */
+  getBondPosition(): Promise<BondPosition>
+  /** 债券：申购，把交易所现金换成本金（可多次追加） */
+  openBond(amount: number, nonce: string): Promise<BondPosition>
+  /** 债券：赎回本金 + 累计利息 */
+  redeemBond(nonce: string): Promise<BondPosition>
+  /** 基金：查询持仓（服务端惰性结算到当前分钟，随时可看） */
+  getFundPosition(): Promise<FundPosition>
+  /** 基金：申购，把交易所现金换成本金；本金锁定、随时可赎 */
+  openFund(amount: number, nonce: string): Promise<FundPosition>
+  /** 基金：赎回本金 + 累计收益（累计收益可为负） */
+  redeemFund(nonce: string): Promise<FundPosition>
   /** 下单预览（保证金/名义/手续费/强平价/距强平/上限/不可下单原因） */
   previewOrder(req: PlaceOrderRequest): OrderPreview
+  fetchOrderPreview?(req: PlaceOrderRequest & { investment?: number }): Promise<OrderPreview>
 }
 
 /**

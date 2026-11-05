@@ -8,6 +8,7 @@ import { addShipToFleet } from '../src/fleetBook'
 import { injectRareWreck, injectWeekendRareWreck, injectWeekendWreck, weekendRareWreckCountOf,
   weekendWreckDensityOf, weekendWreckPoolsOf, wreckGroupOfCard } from '../src/salvage'
 import { invasionWreckRowsOf } from '../../../apps/desktop/src/renderer/src/pages/wreckCards'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
 const galaxyId = 'galaxy-redring'
@@ -106,6 +107,7 @@ describe('入侵稀有捞完后普通池继续扣量', () => {
     state.fleet[shipId]!.fitted = { high: ['mod-salvager-1'], mid: [], low: [] }
     if (owner === 'pilot') {
       expect(startSalvageOp(state, galaxyId, ctx).ok).toBe(true)
+      finishDeparture(state, ctx)
       state.salvaging.targetGroup = residentGroup.key // 模拟仍在作业的旧档。
     } else {
       state.aiCores.basic = 1

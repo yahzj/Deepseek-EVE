@@ -193,6 +193,16 @@ function ExchangeBody({
 
   const pnlUp = totalUnrealizedPnl >= 0
 
+  // 现货持仓市值：总资产已在游戏左上角显示，顶栏改为看「钱变成了多少股票」
+  const holdingsValue = useMemo(() => {
+    let sum = 0
+    for (const h of snap.account.holdings) {
+      const q = snap.stocks.find((s) => s.code === h.code)
+      if (q) sum += q.price * h.qty
+    }
+    return sum
+  }, [snap])
+
   const selectCode = (next: string): void => {
     setExchangeSelectedCode(next)
     setCode(next)
@@ -214,8 +224,109 @@ function ExchangeBody({
 
   return (
     <div className={`page-stack page-fill ex-page ex-mode-${viewMode}`}>
-      {/* 财经快讯走马灯 */}
-      <NewsTicker news={snap.news} onSelectCode={selectCode} />
+      {/* 顶栏：三段式逻辑架构（左：品牌与模式；中：市场与回合状态；右：个人核心资产与出入金操作） */}
+      <header className="ex-topbar">
+        {/* 左区：品牌名称 + 核心双模式 Segmented Tabs */}
+        <div className="ex-topbar-left">
+          <div className="ex-title">
+            <h2 className="ex-title-row">
+              <span className="ex-title-prefix">{T.titlePrefix}</span>
+              <span className="ex-title-suffix">{T.titleSuffix}</span>
+            </h2>
+            <div className="ex-title-sub-row">
+              <SourceBadge source={bundle.source} />
+            </div>
+          </div>
+
+          <div className="ex-mode-tabs" role="tablist" aria-label={T.viewModeSimple}>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={viewMode === 'simple'}
+              className={`ex-mode-tab ex-mode-tab-simple${viewMode === 'simple' ? ' is-active' : ''}`}
+              onClick={() => switchViewMode('simple')}
+            >
+              <span className="ex-mode-tab-title"><Portfolio size={14} /> {T.viewModeSimple}</span>
+              <span className="ex-mode-tab-sub">{T.modeSpotSub}</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={viewMode === 'pro'}
+              className={`ex-mode-tab ex-mode-tab-pro${viewMode === 'pro' ? ' is-active' : ''}`}
+              onClick={() => switchViewMode('pro')}
+            >
+              <span className="ex-mode-tab-title"><Analytics size={14} /> {T.viewModePro}</span>
+              <span className="ex-mode-tab-sub">{T.modeProSub}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 中区：交易所运行状态（回合倒计时 + 本回合委托配额）及专业模式大盘指数 */}
+        <div className="ex-topbar-status">
+          <RoundBadge client={client} onNewRound={bump} />
+          {viewMode === 'pro' ? (
+            <div className="ex-index" title={T.indexName}>
+              <span className="ex-dim">{T.indexName}</span>
+              <b className="ex-num">{Math.round(snap.index.value).toLocaleString('zh-CN')}</b>
+              <span className={`ex-num ${up ? 'is-up' : 'is-down'}`}>{pct(snap.index.changePct)}</span>
+            </div>
+          ) : null}
+        </div>
+
+        {/* 右区：个人账户核心资产看板 + 出入金操作（两模式像素级绝对一致，零跳动） */}
+        <div className="ex-topbar-right">
+          <div className="ex-topbar-stats">
+            <div className="ex-stat">
+              <span className="ex-dim">{T.availableCash}</span>
+              <b className="ex-num">{money(snap.account.cash)}</b>
+            </div>
+            <div className="ex-stat">
+              <span className="ex-dim">{T.holdingsValue}</span>
+              <b className="ex-num">{money(holdingsValue)}</b>
+            </div>
+            <div className="ex-stat">
+              <span className="ex-dim">{T.unrealizedPnl}</span>
+              <b className={`ex-num ${pnlUp ? 'is-up' : 'is-down'}`}>
+                {pnlUp ? '+' : ''}{money(totalUnrealizedPnl)}
+              </b>
+            </div>
+            {viewMode === 'simple' ? (
+              <div className="ex-stat">
+                <span className="ex-dim">{T.bondValue}</span>
+                <b className="ex-num">{money(bondTotal)}</b>
+              </div>
+            ) : (
+              <div className="ex-stat">
+                <span className="ex-dim">{T.marginRatio}</span>
+                <b className="ex-num">{marginRatio}</b>
+              </div>
+            )}
+          </div>
+
+          <div className="ex-topbar-actions">
+            <button type="button" className="ex-mini-btn is-deposit" onClick={() => setCashier('deposit')}>
+              {T.deposit}
+            </button>
+            <button type="button" className="ex-mini-btn is-withdraw" onClick={() => setCashier('withdraw')}>
+              {T.withdraw}
+            </button>
+            {bundle.source.mode === 'mock' ? (
+              <button
+                type="button"
+                className="ex-mini-btn ex-reset-btn"
+                title={T.resetMockHint}
+                onClick={resetMock}
+              >
+                <Reset size={12} /> {T.resetMock}
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </header>
+
+      {/* 财经快讯：紧随顶栏下方，第一行市场事件、第二行对手盘动作（2026-11-04 船长口径） */}
+      <NewsTicker news={snap.news} agents={snap.agents} onSelectCode={selectCode} />
 
       {/* 行情空数据提示：4 秒仍无 stocks 时显示原因入口，避免只剩空面板 */}
       {dataStale ? (
@@ -233,120 +344,6 @@ function ExchangeBody({
           </button>
         </div>
       ) : null}
-
-      {/* 顶栏 */}
-      <header className="ex-topbar">
-        <div className="ex-title">
-          <h2 className="ex-title-text">{T.simpleTopTitle}</h2>
-          
-        </div>
-
-        {/* 核心双模式 Segmented Tabs：醒目清晰，直观切换 */}
-        <div className="ex-mode-tabs" role="tablist" aria-label={T.viewModeSimple}>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={viewMode === 'simple'}
-            className={`ex-mode-tab ex-mode-tab-simple${viewMode === 'simple' ? ' is-active' : ''}`}
-            onClick={() => switchViewMode('simple')}
-          >
-            <span className="ex-mode-tab-title"><Portfolio size={14} /> {T.viewModeSimple}</span>
-            <span className="ex-mode-tab-sub">{T.modeSpotSub}</span>
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={viewMode === 'pro'}
-            className={`ex-mode-tab ex-mode-tab-pro${viewMode === 'pro' ? ' is-active' : ''}`}
-            onClick={() => switchViewMode('pro')}
-          >
-            <span className="ex-mode-tab-title"><Analytics size={14} /> {T.viewModePro}</span>
-            <span className="ex-mode-tab-sub">{T.modeProSub}</span>
-          </button>
-        </div>
-
-        {/* 极简模式顶栏资产指标：总资产、可用现金、理财总值、浮动盈亏 */}
-        {viewMode === 'simple' ? (
-          <div className="ex-simple-top-stats">
-            <div className="ex-stat ex-stat-big">
-              <span className="ex-dim">{T.totalAssets}</span>
-              <b className="ex-num ex-val-highlight">{money(snap.account.equity)}</b>
-            </div>
-            <div className="ex-stat">
-              <span className="ex-dim">{T.availableCash}</span>
-              <b className="ex-num">{money(snap.account.cash)}</b>
-            </div>
-            <div className="ex-stat">
-              <span className="ex-dim">{T.bondValue}</span>
-              <b className="ex-num">{money(bondTotal)}</b>
-            </div>
-            <div className="ex-stat">
-              <span className="ex-dim">{T.unrealizedPnl}</span>
-              <b className={`ex-num ${pnlUp ? 'is-up' : 'is-down'}`}>
-                {pnlUp ? '+' : ''}{money(totalUnrealizedPnl)}
-              </b>
-            </div>
-          </div>
-        ) : (
-          /* 专业模式顶栏指标：指数 + 6 项财务指标 */
-          <>
-            <div className="ex-index">
-              <span className="ex-dim">{T.indexName}</span>
-              <b className="ex-num">{snap.index.value.toFixed(2)}</b>
-              <span className={`ex-num ${up ? 'is-up' : 'is-down'}`}>{pct(snap.index.changePct)}</span>
-            </div>
-            <div className="ex-stats">
-              <div className="ex-stat">
-                <span>{T.accountEquity}</span>
-                <b className="ex-num">{money(snap.account.equity)}</b>
-              </div>
-              <div className="ex-stat">
-                <span>{T.availableCash}</span>
-                <b className="ex-num">{money(snap.account.cash)}</b>
-              </div>
-              <div className="ex-stat">
-                <span>{T.frozen}</span>
-                <b className="ex-num">{money(snap.account.frozen)}</b>
-              </div>
-              <div className="ex-stat">
-                <span>{T.marginUsed}</span>
-                <b className="ex-num">{money(marginUsed)}</b>
-              </div>
-              <div className="ex-stat">
-                <span>{T.marginRatio}</span>
-                <b className="ex-num">{marginRatio}</b>
-              </div>
-              <div className="ex-stat">
-                <span>{T.bondValue}</span>
-                <b className="ex-num">{money(bondTotal)}</b>
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* 顶栏右侧：入金 / 出金 + 数据源徽标 + 重置按钮 */}
-        <div className="ex-top-actions">
-          <button type="button" className="ex-mini-btn" onClick={() => setCashier('deposit')}>
-            {T.deposit}
-          </button>
-          <button type="button" className="ex-mini-btn" onClick={() => setCashier('withdraw')}>
-            {T.withdraw}
-          </button>
-          <SourceBadge source={bundle.source} />
-          {/* 回合倒计时 + 本回合委托配额：回合一变触发 bump，重拉页面快照 */}
-          <RoundBadge client={client} onNewRound={bump} />
-          {bundle.source.mode === 'mock' ? (
-            <button
-              type="button"
-              className="ex-mini-btn ex-reset-btn"
-              title={T.resetMockHint}
-              onClick={resetMock}
-            >
-              <Reset size={12} /> {T.resetMock}
-            </button>
-          ) : null}
-        </div>
-      </header>
 
       {/* 主视图区：根据当前模式渲染 */}
       {viewMode === 'simple' ? (

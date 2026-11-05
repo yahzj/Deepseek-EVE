@@ -7,44 +7,23 @@ import { BLACK_MARKET_EXCLUSIVE_REFS } from '../blackMarketGoods'
 import { MARKET_GOODS_RAW_0_TEXT_BINDINGS, MARKET_GOODS_0_TEXT_BINDINGS } from './bindings'
 import { BM_MK3_KEYS } from './channels'
 import { WRECK_BUY_GOODS } from './wreckGoods'
+import { PLAYER_ONLY_GOODS } from './playerGoods'
 
 export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   ...staticDataGroup<MarketGoodDef>(staticDocument as unknown as DataDocument, 'MARKET_GOODS_RAW_0', MARKET_GOODS_RAW_0_TEXT_BINDINGS),
 ]
 
-export const MARKET_GOODS: readonly MarketGoodDef[] = [
+const NPC_MARKET_GOODS: readonly MarketGoodDef[] = [
   ...MARKET_GOODS_RAW.map((g) => (BM_MK3_KEYS.has(g.key) ? { ...g, bmStanding: 11 } : g)),
   ...WRECK_BUY_GOODS,
   ...staticDataGroup<MarketGoodDef>(staticDocument as unknown as DataDocument, 'MARKET_GOODS_0', MARKET_GOODS_0_TEXT_BINDINGS),
-  ...([
-    'plug-shield-plate', 'plug-armor-plate', 'plug-hull-plate', 'plug-mid-bay', 'plug-low-bay', 'plug-cpu-core',
-    'plug-firepower', 'plug-sight', 'plug-thruster', 'plug-rangefinder', 'plug-target-beacon', 'plug-concealment',
-    'plug-pirate-raider', 'plug-alien-shield-coating', 'plug-gravekeeper-capacitor', 'plug-titan-compression', 'plug-deadarmy-printing',
-  ] as const).map((id) => ({
-    key: id,
-    kind: 'module' as const,
-    refId: id,
-    rarity: 'exotic' as const,
-    basePrice: 0,
-    demandMultiplier: 0,
-    playerBuyable: false,
-    unreleased: true,
-  })),
-  ...([
-    'bp-plug-shield-plate', 'bp-plug-armor-plate', 'bp-plug-hull-plate', 'bp-plug-mid-bay', 'bp-plug-low-bay',
-    'bp-plug-cpu-core', 'bp-plug-firepower', 'bp-plug-sight', 'bp-plug-thruster', 'bp-plug-rangefinder',
-    'bp-plug-target-beacon', 'bp-plug-concealment',
-    'bp-plug-pirate-raider', 'bp-plug-alien-shield-coating', 'bp-plug-gravekeeper-capacitor', 'bp-plug-titan-compression', 'bp-plug-deadarmy-printing',
-  ] as const).map((id) => ({
-    key: id,
-    kind: 'blueprint' as const,
-    refId: id,
-    rarity: 'exotic' as const,
-    basePrice: 0,
-    demandMultiplier: 0,
-    playerBuyable: false,
-    unreleased: true,
-  })),
+]
+
+// 已有条目仍读静态权威参数；只补齐原先没有市场定义的独占产物。
+const npcKeys = new Set(NPC_MARKET_GOODS.map(good => good.key))
+export const MARKET_GOODS: readonly MarketGoodDef[] = [
+  ...NPC_MARKET_GOODS,
+  ...PLAYER_ONLY_GOODS.filter(good => !npcKeys.has(good.key)),
 ]
 
 /** 构建市场商品目录（数字稀有度按物品表 RARITY_TIER 填充——2026-09-09 船长拍板：

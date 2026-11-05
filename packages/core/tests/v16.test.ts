@@ -7,9 +7,10 @@ import type { BeltDef, SimContext } from '../src/types'
 import { createInitialState } from '../src/state'
 import { advanceGame } from '../src/engine'
 import { countItem, countWare } from '../src/inventory'
-import {  rollBeltOutput, startMining } from '../src/mining'
+import { rollBeltOutput, startMining } from '../src/mining'
 import { assignAiMining, gainAiCore } from '../src/ai'
 import { belt, makeTestCtx, ore , fittedOf } from './helpers'
+import { finishDeparture } from './helpers/departure-ready'
 
 function mixedBelt(): BeltDef {
   return {
@@ -48,7 +49,11 @@ describe('V16 复合矿带：按权重抽取产出', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 7 })
     state.debugQuick = true // 1 秒/循环
     expect(startMining(state, 'belt-mix', ctx).ok).toBe(true)
-    advanceGame(state, 550_000, ctx)
+    // 离港等待另行推进，统计窗保留 550 秒作业与返航时间。
+    for (let i = 0; i < 550; i++) {
+      finishDeparture(state, ctx)
+      advanceGame(state, 1_000, ctx)
+    }
     const totalOf = (id: string): number => countItem(state, id) + countWare(state, id)
     const a = totalOf('ore-a')
     const b = totalOf('ore-b')

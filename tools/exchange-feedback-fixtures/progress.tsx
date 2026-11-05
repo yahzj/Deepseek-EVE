@@ -1,0 +1,4 @@
+import React,{useState} from 'react';import {createRoot} from 'react-dom/client';
+import {useActionProgress,progressStyle} from '../../apps/desktop/src/renderer/src/features/exchange/useActionProgress';
+let visibleCash=1000,holds=0;const client={holdAccountUpdates(){holds++;return ()=>{holds--;visibleCash=900}}};
+function Fixture(){const p=useActionProgress(client);window.fixture={start:p.start,finish:p.finish,cash:()=>visibleCash,holds:()=>holds};return <button className="ex-btn-progress" style={progressStyle(p)}>{p.active?p.pct+'%':'买入'}</button>}createRoot(document.getElementById('root')).render(<Fixture/>);

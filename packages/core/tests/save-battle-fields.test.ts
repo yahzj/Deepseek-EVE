@@ -16,6 +16,7 @@ import { startBattleFor } from '../src/combat'
 import { BATTLE_PERSIST_KEYS } from '../src/save'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import type { SimContext } from '../src/types'
+import { cleanBattle } from '../src/saveBattleClean'
 
 /** 真数据上下文（与 `foe-drone.test.ts` 同款）：`makeTestCtx` 的夹具里没有真船/真卡，建不出战斗 */
 const base = buildSimContext()
@@ -78,6 +79,24 @@ function battleWithAllFields(): { state: GameState; ctx: SimContext; battle: Bat
 }
 
 describe('战斗字段随档往返（审计 A3 登记表）', () => {
+  it('逐舰装载快照保留明确的空舰，读档不误用主控装载回落', () => {
+    const { state, battle } = battleWithAllFields()
+    battle.droneLoadAtStartBy = { player: {}, 'ally-1': { 'drone-x': 2 } }
+    const back = loadSaveFile(serializeSaveFile(state, 1)).state.expedition.battle!
+    expect(back.droneLoadAtStartBy).toEqual({ player: {}, 'ally-1': { 'drone-x': 2 } })
+  })
+
+  it('坏装载快照不能变成合法空舰，损失表仍省略空表', () => {
+    const { battle } = battleWithAllFields()
+    const back = cleanBattle({ ...battle,
+      droneLoadAtStartBy: { player: {}, 'ally-1': { 'drone-x': 2 }, nullValue: null,
+        textValue: 'bad', arrayValue: [], badCount: { 'drone-x': -1 } },
+      droneLostBy: { player: {}, 'ally-1': { 'drone-x': 1 } },
+    })!
+    expect(back.droneLoadAtStartBy).toEqual({ player: {}, 'ally-1': { 'drone-x': 2 } })
+    expect(back.droneLostBy).toEqual({ 'ally-1': { 'drone-x': 1 } })
+  })
+
   it('登记为 persist 的每个字段都能往返、值一字不漂', () => {
     const { state, battle } = battleWithAllFields()
     const loaded = loadSaveFile(serializeSaveFile(state, 1)).state

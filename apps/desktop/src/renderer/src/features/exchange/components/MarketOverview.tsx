@@ -1,4 +1,5 @@
 import { T } from '../texts'
+import { tr } from '../../../i18n/locale'
 import { isEn } from '../../../i18n/locale'
 /**
  * 市场战况仪表（MarketOverview）。
@@ -17,9 +18,9 @@ export function MarketOverview({ snap }: { snap: ExchangeSnapshot }) {
   const downCount = stocks.filter((s) => s.changePct < 0).length
   const flatCount = stocks.filter((s) => s.changePct === 0).length
   const totalStocks = stocks.length
-  const upRatio = totalStocks > 0 ? (upCount / totalStocks) * 100 : 50
+  const upRatio = totalStocks > 0 ? (upCount / totalStocks) * 100 : 0
   const flatRatio = totalStocks > 0 ? (flatCount / totalStocks) * 100 : 0
-  const downRatio = totalStocks > 0 ? (downCount / totalStocks) * 100 : 50
+  const downRatio = totalStocks > 0 ? (downCount / totalStocks) * 100 : 0
 
   const totalTurnover = stocks.reduce((sum, s) => sum + s.volume24h * s.price, 0)
   const totalVolume = stocks.reduce((sum, s) => sum + s.volume24h, 0)
@@ -29,7 +30,6 @@ export function MarketOverview({ snap }: { snap: ExchangeSnapshot }) {
   const indexBase = indexPct !== -100 ? indexVal / (1 + indexPct / 100) : indexVal
   const indexChangeVal = indexVal - indexBase
   const indexUp = indexPct >= 0
-  const sentiment = upCount > downCount ? T.sentimentBulls : downCount > upCount ? T.sentimentBears : T.sentimentBalanced
 
   return (
     <section className="ex-panel ex-market-overview" aria-label={T.marketBattleTitle}>
@@ -42,12 +42,12 @@ export function MarketOverview({ snap }: { snap: ExchangeSnapshot }) {
         <div className="ex-market-index-row">
           <div className="ex-market-index-main">
             <span className="ex-market-index-name">{T.indexShortName}</span>
-            <span className="ex-market-index-val ex-num">{indexVal.toFixed(1)}</span>
+            <span className="ex-market-index-val ex-num">{Math.round(indexVal).toLocaleString('zh-CN')}</span>
           </div>
           <div className="ex-market-index-sub">
             <div className={`ex-market-index-pill ex-num ${indexUp ? 'is-up' : 'is-down'}`}>
               <span className="ex-market-index-chg-val">
-                {indexChangeVal >= 0 ? '+' : ''}{indexChangeVal.toFixed(1)}
+                {indexChangeVal >= 0 ? '+' : ''}{Math.round(indexChangeVal).toLocaleString('zh-CN')}
               </span>
               <span className="ex-market-index-chg-pct">
                 ({pct(indexPct)})
@@ -58,17 +58,14 @@ export function MarketOverview({ snap }: { snap: ExchangeSnapshot }) {
 
         {/* 高低范围微标注 */}
         <div className="ex-market-range-row ex-dim">
-          <span>{T.highShort} {snap.index.high.toFixed(1)}</span>
-          <span>{T.lowShort} {snap.index.low.toFixed(1)}</span>
+          <span>{T.highShort} {Math.round(snap.index.high).toLocaleString('zh-CN')}</span>
+          <span>{T.lowShort} {Math.round(snap.index.low).toLocaleString('zh-CN')}</span>
         </div>
 
         {/* 多空情绪双色槽 */}
         <div className="ex-market-ratio-box">
           <div className="ex-market-ratio-header">
             <span className="ex-dim">{T.sentimentTitle}</span>
-            <span className={`ex-market-sentiment-tag ${upCount > downCount ? 'is-up' : downCount > upCount ? 'is-down' : 'is-flat'}`}>
-              {sentiment}
-            </span>
           </div>
           <div className="ex-market-ratio-labels">
             <span className="ex-ratio-label is-up">{T.countUp} {upCount} ({Math.round(upRatio)}%)</span>
@@ -88,7 +85,7 @@ export function MarketOverview({ snap }: { snap: ExchangeSnapshot }) {
         {/* 全市场成交统计 */}
         <div className="ex-market-stats-group">
           <div className="ex-market-stats-row">
-            <span className="ex-dim">全市场成交额</span>
+            <span className="ex-dim">{tr('ui.exchange.003')}</span>
             <span className="ex-num ex-market-stat-num is-highlight">{turnover(totalTurnover)}</span>
           </div>
           <div className="ex-market-stats-row">

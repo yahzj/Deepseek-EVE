@@ -4,6 +4,7 @@ import type { RngState } from './state'
 
 export const ENCRYPTED_FAMILIES = ['A', 'C', 'D', 'E', 'G'] as const
 export type EncryptedFamily = typeof ENCRYPTED_FAMILIES[number]
+export const ENCRYPTED_BLUEPRINT_COUNT = { min: 1, max: 3 } as const
 const PLUGS: Readonly<Record<EncryptedFamily, readonly string[]>> = {
   A: ['bp-once-plug-pirate-raider', 'bp-once-plug-pirate-damage-management'],
   C: ['bp-once-plug-alien-shield-coating', 'bp-once-plug-alien-nanobiomass'],
@@ -28,9 +29,14 @@ export function encryptedFamilyOf(boxId: string): EncryptedFamily | null {
   return ENCRYPTED_FAMILIES.find(family => id === `BOX-ENCRYPTED-${family}`) ?? null
 }
 
+/** 开柜和市场期望估值共用的类别等权奖池。 */
+export function encryptedBlueprintPool(family: EncryptedFamily): readonly (readonly string[])[] {
+  return [PLUGS[family], WEAPONS[family], SHIPS[family]]
+}
+
 /** 显式登记首批一次性池；未来永久蓝图须单独批准后扩展。 */
 export function encryptedBlueprintGroups(ctx: SimContext, family: EncryptedFamily): readonly (readonly string[])[] | null {
-  const groups = [PLUGS[family], WEAPONS[family], SHIPS[family]]
+  const groups = encryptedBlueprintPool(family)
   for (const [index, group] of groups.entries()) for (const id of group) {
     const bp = index === 2 ? ctx.shipBlueprints.get(id) : ctx.blueprints.get(id)
     if (!bp || bp.singleUse !== true || bp.unreleased === true) return null
@@ -47,7 +53,7 @@ export function encryptedBlueprintGroups(ctx: SimContext, family: EncryptedFamil
 export function encryptedBlueprintDraw(ctx: SimContext, family: EncryptedFamily, rng: RngState): string[] | null {
   const groups = encryptedBlueprintGroups(ctx, family)
   if (!groups) return null
-  const count = 1 + nextInt(rng, 3)
+  const count = ENCRYPTED_BLUEPRINT_COUNT.min + nextInt(rng, ENCRYPTED_BLUEPRINT_COUNT.max - ENCRYPTED_BLUEPRINT_COUNT.min + 1)
   return Array.from({ length: count }, () => {
     const group = groups[nextInt(rng, groups.length)]!
     return group[nextInt(rng, group.length)]!

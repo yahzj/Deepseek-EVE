@@ -22,6 +22,7 @@ import { wormholeEnter, wormholeGridTravel } from '../src/wormhole'
 import { hexDistance, hexDiskAround, hexKey, hexLine, wormholePathInterceptAt } from '../src/wormholeGrid'
 import type { HexCell, WormholeGridState, WormholePlace } from '../src/wormholeGrid'
 import { wormholeTravelTo } from '../src/wormholeBattle'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
 
@@ -30,6 +31,7 @@ function run(seed = 20260916) {
   const state = createInitialState({ nowWallMs: 0, seed })
   const ship = addShipToFleet(state, 'sh-thresher')
   expect(wormholeEnter(state, ctx, [ship], seed, { depth: 1 }).ok).toBe(true)
+  finishDeparture(state, ctx)
   const r = state.wormhole.run!
   const g = r.grid!
   return { state, run: r, grid: g }

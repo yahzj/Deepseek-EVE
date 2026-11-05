@@ -20,7 +20,7 @@ import { ceilFinalQuantity } from './quantity'
 import { tuningMul } from './tuning'
 import { addLog, HOME_GALAXY_ID, miningHalt } from './state'
 import { applyActivityGate } from './activityGate'
-import { beginDeparture, consumeDeparture, cancelDeparture, departureOrigin, departureArrivalLog } from './departure'
+import { beginDeparture, consumeDeparture, cancelDeparture, departureOrigin, departureArrivalLog, reconcileDeparture } from './departure'
 import { bumpFirst } from './firstTasks'
 import { pilotUnavailableReason } from './activityGate'
 import type { CommandResult } from './engine'
@@ -317,6 +317,7 @@ function miningPreflight(state: GameState, beltId: string, ctx: SimContext): Com
 
 /** 玩家指令：开始在指定采集点开采（矿石/气体/冰矿；高价值采集点有协会声望门槛） */
 export function startMining(state: GameState, beltId: string, ctx: SimContext): CommandResult {
+  reconcileDeparture(state)
   if (state.departure) return { ok: false, errorId: 'core.departure.001' }
   const departureFrom = departureOrigin(state, ctx)
   const pre = miningPreflight(state, beltId, ctx)

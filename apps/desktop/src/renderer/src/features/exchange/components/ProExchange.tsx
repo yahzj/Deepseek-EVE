@@ -19,6 +19,7 @@ import { TradePanel } from './TradePanel'
 import { Positions } from './Positions'
 import { AutoTrade } from './AutoTrade'
 import { Records } from './Records'
+import { tr } from '../../../i18n/locale'
 
 interface ProExchangeProps {
   client: ExchangeClient
@@ -37,31 +38,18 @@ function MarketSentimentBar({ book }: { book: ExchangeSnapshot['book'] }) {
   const total = sumAsks + sumBids
   const bidRatio = total > 0 ? (sumBids / total) * 100 : 50
   const askRatio = 100 - bidRatio
-  const diff = bidRatio - askRatio
-  const statusLabel =
-    total === 0
-      ? '[等待盘口挂单]'
-      : Math.abs(diff) < 3
-        ? '[力量均衡]'
-        : diff > 15
-          ? '[多方强势]'
-          : diff > 0
-            ? '[多方占优]'
-            : diff < -15
-              ? '[空方抛压]'
-              : '[空方占优]'
 
   return (
     <div className="ex-pro-sentiment" title={`买方挂单 ${sumBids} 股 / 卖方挂单 ${sumAsks} 股`}>
       <div className="ex-pro-sentiment-info">
         <span className="ex-pro-sentiment-tag is-bid">
-          多方买盘 {bidRatio.toFixed(1)}%
+          {tr('ui.exchange.004')} {total > 0 ? `${bidRatio.toFixed(1)}%` : '—'}
         </span>
         <span className="ex-pro-sentiment-status ex-dim">
-          {statusLabel}
+            {tr('ui.exchange.006')}
         </span>
         <span className="ex-pro-sentiment-tag is-ask">
-          空方卖盘 {askRatio.toFixed(1)}%
+          {tr('ui.exchange.005')} {total > 0 ? `${askRatio.toFixed(1)}%` : '—'}
         </span>
       </div>
       <div className="ex-pro-sentiment-track">
@@ -133,7 +121,7 @@ export function ProExchange({
             {midTab === 'positions' ? (
               <Positions client={client} snap={snap} code={code} onSelect={onSelectCode} onToast={onToast} />
             ) : (
-              <Records snap={snap} />
+              <Records client={client} snap={snap} onToast={onToast} />
             )}
           </div>
         </div>

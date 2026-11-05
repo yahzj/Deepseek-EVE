@@ -29,6 +29,7 @@ import {
   type WormholeRunState,
 } from '../src/index'
 import { createCommandReadyState as createInitialState } from './helpers/command-ready'
+import { finishDeparture } from './helpers/departure-ready'
 import { createBattleState, createFoeSpecs, hitChance, wormholeDerivedAnomaly } from '../src/combat'
 import { foeJudgedThreatOf } from '../src/foePower'
 
@@ -53,12 +54,13 @@ function wormholeNode(family: 'A' | 'G'): { state: GameState; run: WormholeRunSt
   for (const a of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) state.warehouse.items[a] = 9_000
   expect(wormholeFamilyOfSeed(seed), `本用例要求 ${family} 族洞`).toBe(family)
   expect(wormholeEnter(state, ctx, ids, seed).ok).toBe(true)
+  finishDeparture(state, ctx)
   const run = state.wormhole.run!
   expect(run.depth, '新开趟恒层 1').toBe(1)
   const g = run.grid!
   const cell = g.cells.find((c) => c.key === `${g.pos.q},${g.pos.r}`)!
   cell.place = 'ship'
-  const r = wormholeStartBattle(state, ctx, 'node', 0)
+  const r = wormholeStartBattle(state, ctx, 'node', state.gameMs)
   expect(r.ok, r.error ?? '').toBe(true)
   return { state, run }
 }

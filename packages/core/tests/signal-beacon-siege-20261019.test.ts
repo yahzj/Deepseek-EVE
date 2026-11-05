@@ -10,6 +10,7 @@ import { makeHoldState } from '../src/wormholeHold'
 import { wormholeCollectOreAt, wormholeEnsureArrivalPiles, wormholeSalvageAt } from '../src/wormholeSalvage'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import type { WormholeGridCell } from '../src/wormholeGrid'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
 function world(depth: number) {
@@ -17,6 +18,7 @@ function world(depth: number) {
   const uid = addShipToFleet(state, 'sh-thresher')
   state.shipId = uid
   expect(wormholeEnter(state, ctx, [uid], 7).ok).toBe(true)
+  finishDeparture(state, ctx)
   const run = state.wormhole.run!
   run.depth = depth
   run.family = 'A'

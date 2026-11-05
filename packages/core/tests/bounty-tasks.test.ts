@@ -78,7 +78,7 @@ import {
   settleBountyTaskVictory,
   sideTaskBoard,
   sideTasksMarkBountySeen,
-  startExpedition,
+  startExpedition as launchExpedition,
   startRecycleRun,
   factionPoolOf,
   factionGalaxyId,
@@ -87,11 +87,18 @@ import {
 import { resolveBattleOutcome, noteStandingEarned, standingOf } from '../src/expedition'
 import { advanceRefining } from '../src/industry'
 import { anomaly, clearInitialStanding, galaxy, makeTestCtx } from './helpers'
+import { finishDeparture } from './helpers/departure-ready'
 
 /** 20 分钟板周期（资源/快递仍在用） */
 const PERIOD = DEFAULT_BALANCE.market.orderLifeMs.common
 /** 窝点派生要的 `bal`（2026-10-02 起 `lairAnomalyOf` 的第三参：标签要用血曲线反解） */
 const BAL = makeTestCtx().balance.battle
+
+function startExpedition(...args: Parameters<typeof launchExpedition>) {
+  const result = launchExpedition(...args)
+  if (result.ok) finishDeparture(args[0], args[2])
+  return result
+}
 /**
  * 赏金日板的基准墙钟 = 某个"**本地正午**"：先取任意时刻的本地日界再 +12h。
  * 这样任何时区下它都落在该自然日的中段——"当天稍晚（+6h）不换板 / 次日（+24h）换板"两断言都不受时区影响

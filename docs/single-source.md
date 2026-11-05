@@ -126,6 +126,8 @@
 | 黑市大宗原料排除 | `isBlackMarketBulkResource()` · `blackMarket.ts`，候选/购买和旧货架视图共用真实物品类型 | 原矿/原材料/气体/冰矿候选不进入、旧条目隐藏且拒买、不补抽/不改锁价、普通市场与无人机组货保持专项 |
 | 黑市新货架组数量、锁定交付数与老货架单件兼容 | `blackMarketLotQuantity()` / `blackMarketOfferQuantity()` · `blackMarket.ts` | `black-market-drone-lots-20261006.test.ts`：四机型、总价/库存/售罄守恒、旧报价和读档 |
 | 弹药可选档与设置合法性、普通市场可流通目录 | `ammoTiersOf()` · `ammoTiers.ts`；`marketTradingGoods()` · `market/access.ts` | MK3三系、设置/装配同源、黑市图纸渠道隔离回归 |
+| 独占产物玩家交易定义与后台目录导出 | `PLAYER_ONLY_GOODS` · `packages/data/src/market/playerGoods.ts`；最终资格读 `marketTradingGoods()`，后台快照由 `tools/export-market-relay-metadata.ts` 导出 | 插件成品料价×10、势力插件图纸1亿、加密柜按实际奖池整柜期望×30%；非势力插件图纸不进市场；NPC货源与兑换资格不变 |
+| 势力插件判据与加密柜估值输入 | `isFactionPlugId()` · `packages/data/src/plugs.ts`；`encryptedBlueprintPool()`、`ENCRYPTED_BLUEPRINT_COUNT` · `packages/core/src/encryptedContainer.ts` | 势力图纸生成与市场共用身份判据；开柜和估值共用奖池及张数范围，不另抄池或按成员总数平摊类别概率 |
 | 沉船快照保存方案、重复插件参考及覆盖确认 | `saveWreckFitPreset()` / `wreckFitDetailOf()` · `fitPresets.ts`；明细沿用`fitPresetDetailOf()`，插件参考不参与自动安装 | 重复插件/第九格/沉船记录读档、保存纯副作用及套用守恒回归 |
 | 虫洞整备库存/容量预览、补给占格与撤离核对 | `wormholePreparationPlan()` · `wormholePreparation.ts`；`wormholeSupplyCells()` · `wormholeSupplies.ts`；`wormholeExtractionPlan()` · `wormholeExtraction.ts` | `wormhole-supplies-20261004.test.ts` / `wormhole-cargo-flow-20261004.test.ts`；`arch:guard` F2/F3 |
 | 虫洞当前地点实物格板（不建立免费随行空间） | `wormholeGroundBoard()` · `wormholeGround.ts` | `wormhole-cargo-flow-20261004.test.ts`：地点隔离、往返不复制、深入确认与数量守恒 |
@@ -204,13 +206,16 @@
 | 日志→音效触发规则与素材文件名匹配 | `matchLogCue` / `matchSfxFileName` · `game/audio/rules.ts` | `npm run audio:check`；`arch:guard` F2/F3 |
 | BGM/环境场景解析（战斗>虫洞>入侵>停靠>太空） | `resolveSfxScene` · `game/audio/scene.ts` | `npm run audio:check`；`arch:guard` F2/F3 |
 | 音高随机换速率（音分 → playbackRate） | `pitchRateFor` · `game/audio/rules.ts` | `npm run audio:check`；`arch:guard` F2/F3 |
+| 音效正式入库包格式与素材路径映射（音效台导出、`audio:install` 与自检共用） | `buildSfxPack` / `sfxPackAssetPath` · `game/audio/sfxPack.ts` | `npm run audio:check`；`arch:guard` F2/F3 |
+| BGM/环境底噪交叉淡变时长（换曲 2.5s / 1.5s、同曲调音量 250ms） | `BGM_CROSSFADE_MS` / `AMBIENT_CROSSFADE_MS` / `VOLUME_FADE_MS` · `game/audio/rules.ts` | `npm run audio:check`；`arch:guard` F2/F3 |
+| 场景音频强切（真实场景 + 调试预演；只切声音，不动存档与画面） | `reportRealSfxScene` / `forceSfxScene` / `effectiveSfxScene` · `game/audio/sceneSwitch.ts` | `npm run audio:check`；`arch:guard` F2/F3 |
+| 实时触发日志（环形缓冲 60 条，试听不计） | `recordSfxPlay` / `sfxPlayLog` · `game/audio/playLog.ts` | `npm run audio:check`；`arch:guard` F2/F3 |
 
 ## 四、工具与文档层（`tools/` · `docs/`）
 
 | 关注点 | 唯一实现 | 护栏 |
 |---|---|---|
 | 正式工具与临时探针的区分与收尾 | 约定 §十（`tools/xxx.ts` vs `tools/_*.ts`） | `npm run tools:audit` |
-| 提交钩子B类审批范围与暂存内容绑定 | `tools/git-gate-approval.cjs`；本工作树Git目录审批记录，`.githooks/pre-commit` / `post-commit`调用 | `git-gate-approval-20261004.test.ts`：精确批准、变更失效、技术失败拒绝与成功消费 |
 | 非归档文档索引 | `docs/INDEX.md`（仅由 `npm run docs:index` 生成） | `docs:index --check`；读取前跳过archive目录 |
 | 过程归档与历史禁读 | 开发约定§十五、`AGENTS.md` | 当前结论与未决摘要人工核对，归档原文按字节校验 |
 | 工作文档 → 归档三步 | 约定 §十五 | 人工核（本批列出） |

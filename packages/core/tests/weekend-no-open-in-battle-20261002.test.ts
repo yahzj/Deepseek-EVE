@@ -32,6 +32,7 @@ import {
 } from '../src/weekendEvent'
 import { weekendFlagshipSpecOf } from '../src/weekendBattle'
 import { weekendFlagshipBattleActive, weekendStartFlagshipBattle } from '../src/weekendLaunch'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
 const H = 3_600_000
@@ -67,6 +68,8 @@ function intoFlagshipBattle(s: GameState): void {
   const ev = s.weekendEvent!
   const spec = weekendFlagshipSpecOf(s, ctx, NOW)!
   const battle = weekendStartFlagshipBattle(s, ctx, NOW, [s.shipId])!
+  expect(battle, '旗舰建档成功').not.toBeNull()
+  expect(s.departure).toMatchObject({ kind: 'flagship', undockMs: 10_000, gateMs: 0, progressMs: 0 })
   s.encounter = {
     active: true,
     shipId: s.shipId,
@@ -79,6 +82,9 @@ function intoFlagshipBattle(s: GameState): void {
     deadlineGameMs: s.gameMs + 60_000,
     battle,
   }
+  expect(weekendFlagshipBattleActive(s), '离港期间不算在战').toBe(false)
+  finishDeparture(s, ctx)
+  expect(s.gameMs, '真实离港完成时才到开战时刻').toBe(battle.startedAtGameMs)
   expect(weekendFlagshipBattleActive(s), '遭遇槽里挂着旗舰战 ⇒ 在打').toBe(true)
 }
 

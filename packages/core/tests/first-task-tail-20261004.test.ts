@@ -7,6 +7,7 @@ import { advanceComms } from '../src/comms'
 import { advanceHauling, startHauling, stopHauling } from '../src/hauling'
 import { deliverStationResources, billNeedOf } from '../src/station'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
 function tailState() {
@@ -39,6 +40,7 @@ describe('教程末段真实入口与存档往返', () => {
     expect(startHauling(state, null, site.id, ctx).ok).toBe(true)
     expect(claimableFirstTasks(state, ctx).some((d) => d.id === 'first-haul')).toBe(false)
     const finishLeg = () => {
+      finishDeparture(state, ctx)
       const path = state.hauling.fleetLeg!.path.map(row => row.durationMs - row.progressMs)
       for (const delta of path) advanceHauling(state, delta, ctx)
     }

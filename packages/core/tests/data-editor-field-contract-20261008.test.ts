@@ -6,6 +6,23 @@ import { planDocuments, validateDocument } from '../../../tools/data-editor-sche
 import type { DataDocument, DataTable } from '../../../tools/data-editor-contract'
 
 describe('独立编辑器项目字段契约', () => {
+  it('零基价仅用于明确关闭NPC双向和黑市货源的玩家商品，普通市场仍校验正价', () => {
+    const doc: DataDocument = { format: 'whale-static-data', version: 1, table: 'market', groups: {
+      test: [{ key: 'player-only', kind: 'item', refId: 'player-only', rarity: 'exotic', basePrice: 0,
+        playerBuyable: false, playerSellable: false, blackMarketBuyable: false, demandMultiplier: 0 }],
+    } }
+    expect(validateDocument(doc, 'market')).toEqual([])
+    for (const changed of [{ playerBuyable: true }, { playerSellable: true }, { blackMarketBuyable: true },
+      { demandMultiplier: 1 }, { basePrice: -1 }, { basePrice: Infinity }, { basePrice: NaN }]) {
+      const invalid = structuredClone(doc)
+      Object.assign(invalid.groups.test![0]!, changed)
+      expect(validateDocument(invalid, 'market').length, JSON.stringify(changed)).toBeGreaterThan(0)
+    }
+    const ordinary = structuredClone(doc)
+    ordinary.groups.test![0] = { key: 'ordinary', kind: 'item', refId: 'ordinary', rarity: 'common', basePrice: 0 }
+    expect(validateDocument(ordinary, 'market').some(issue => issue.path === 'basePrice')).toBe(true)
+  })
+
   it('最新市场允许出售及黑市字段可读，错误类型和未知字段仍拒绝', () => {
     expect(validateDocument(market, 'market')).toEqual([])
     const doc = structuredClone(market) as DataDocument

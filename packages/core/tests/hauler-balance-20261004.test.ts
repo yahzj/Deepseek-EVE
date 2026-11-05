@@ -17,6 +17,7 @@ import { applyFitPreset } from '../src/fitPresets'
 import { advanceWormholeAuto, wormholeAutoStop } from '../src/wormholeAuto'
 import { droneReviveCyclesOf } from '../src/droneRevive'
 import { advanceManufacturing, cancelManufacturing, startManufacturing } from '../src/manufacturing'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
 const ids = ['sh-flyingfish', 'sh-sailfish', 'sh-manatee', 'sh-swordfish', 'sh-bowhead']
@@ -153,6 +154,7 @@ describe('纯货舰修订', () => {
   it('旧虫洞趟保留旧规格到撤离，出洞即整理，兼容标记往返保留', () => {
     const { s, uid } = world()
     expect(wormholeEnter(s, ctx, [uid], 9).ok).toBe(true)
+    finishDeparture(s, ctx)
     expect(s.wormhole.run?.haulerFittingVersion).toBe(1)
     const fresh = loadSaveFile(serializeSaveFile(s, 0)).state
     expect(fresh.wormhole.run?.haulerFittingVersion).toBe(1)

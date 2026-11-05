@@ -25,8 +25,10 @@ import {
   createFoeSpecs,
   foeDesiredRange,
   wormholeDerivedAnomaly,
+  resolvedBattleAnomaly,
 } from '../src/combat'
 import { FOE_MOUNT_IDS, FOE_MOUNTS, resolveFoeMounts } from '../src/foeMounts'
+import { BATTLE_STEP_MS } from '../src/combat/constants'
 
 const ctx = buildSimContext()
 const bal = ctx.balance.battle
@@ -226,14 +228,6 @@ describe('光环科技 · 闪现：真实战斗里的触发与冷却', () => {
     const stepCap = blinkDef.distanceM
     expect(stepCap, '件上应写着单次位移上限').toBeGreaterThan(0)
 
-    const derived = wormholeDerivedAnomaly(ctx, ctx.anomalies.get('corona-nexus')!, {
-      depth: 4,
-      kind: 'node',
-      waves: 1,
-    })!
-    const specs = createFoeSpecs(derived, bal, {})
-    /** 同上：**按 tag 精确匹配**（多波卡的建档案 tag 是连续的 `w0-foe-1..14`，不是"每波一小段"） */
-    const specOf = (tag: string) => specs.find((sp) => sp.tag === tag)
     const state = createInitialState({ nowWallMs: 0, seed: 11 })
     const ids: string[] = []
     for (let i = 0; i < 12; i++) ids.push(addShipToFleet(state, 'sh-thresher'))
@@ -242,6 +236,10 @@ describe('光环科技 · 闪现：真实战斗里的触发与冷却', () => {
     for (const a of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) state.warehouse.items[a] = 9_000
     const b = startFleetBattleFor(state, ctx, ids, 'corona-nexus', 0, null, { depth: 4, kind: 'node', waves: 1 }, { strengthMul: 2 })!
     expect(b, '开战应成功').toBeTruthy()
+    // 与真实推进读取同一张派生卡，包含本场强度覆写和编成版本。
+    const derived = resolvedBattleAnomaly(ctx, b, 'corona-nexus')!
+    const specs = createFoeSpecs(derived, bal)
+    const specOf = (tag: string) => specs.find((sp) => sp.tag === tag)
     // 最多12舰；仅夹具加血维持多次闪现观察窗口，不改生产舰型。
     for (const unit of Object.values(b.units)) if (unit.side === 'me') { unit.hp = { s: 1e8, a: 1e8, h: 1e8 }; unit.hpMax = { ...unit.hp } }
 
@@ -256,7 +254,9 @@ describe('光环科技 · 闪现：真实战斗里的触发与冷却', () => {
      * 本仓实测踩过这个坑：`corona-nexus` 开场同拍 6 舰各闪一格 ⇒ 聚合位移 2,678 m，
      * 用聚合值会误报"一跳超 2,000m"（实际每舰都合规）。
      */
-    for (let t = 100; t <= 400_000 && b.ended === null; t += 100) {
+    for (let t = BATTLE_STEP_MS; t <= 400_000 && b.ended === null; t += BATTLE_STEP_MS) {
+      // 逐内部子步采样；本步击沉敌舰后电子战压制会刷新，不能拿刷新后的值解释此前那一跳。
+      const rangeCutAtTrigger = b.meFoeRangeDebuff ?? 0
       state.gameMs = t
       advanceBattleFor(state, ctx, b, ids[0]!, 'corona-nexus')
       for (const [tag, until] of Object.entries(b.foeBlinks ?? {})) {
@@ -264,7 +264,7 @@ describe('光环科技 · 闪现：真实战斗里的触发与冷却', () => {
         prevSeen.set(tag, until)
         const own = specOf(tag)
         expect(own, `${tag} 应在建档案里找得到（否则判据无意义）`).toBeTruthy()
-        const want = foeDesiredRange(own!, [own!], bal, b.meFoeRangeDebuff ?? 0)
+        const want = foeDesiredRange(own!, [own!], bal, rangeCutAtTrigger)
         /** 本舰这一跳：起点 / 幅度 / 方向（引擎旁路记账那笔，**不是** `distanceM` 的整体变化） */
         const rec = b.foeBlinkJumps?.[tag]
         expect(rec, `${tag} 应有本跳的旁路记账`).toBeTruthy()

@@ -8,6 +8,7 @@ import * as core from '../src/index'
 import { weightedSum } from '../src/equipment'
 import { idLiteralsIn, stripComments } from '../../../tools/text-scan'
 import { applyApprovedFleetModuleDelta } from './helpers/approved-fleet-delta-20261101'
+import { APPROVED_NEW_FACTION_PLUG_IDS } from './helpers/approved-static-content-20261104'
 
 function historical<T>(file: string, symbol: string, bindings: Record<string, unknown> = {}): T {
   const text = execFileSync('git', ['show', `d2ab64f1:${file}`], { encoding: 'utf8' })
@@ -82,14 +83,17 @@ describe('物品装备说明双语与数据守恒', () => {
       if (mod.id === 'mod-lair-blink-r') return { ...mod, name: '短距离跃迁装置', slot: 'support' as const, blink: { ...mod.blink!, cooldownMs: 16000 } }
       if (mod.id === 'mod-lair-laser-c') return { ...mod, maxRangeM: 2500, reloadMs: 3800, acidOnHit: { cutPct: .05, durationMs: 15000 } }
       if (mod.id === 'mod-wh-a-shield') return { ...mod, cpuUse: 36 }
+      if (mod.id === 'mod-lair-armor-c') return { ...mod, repairArmorHp: 10, repairIntervalMs: 5000, repairFree: true, repairIgnoresCapacityAmp: true }
       if (mod.id === 'mod-lair-laser-r') return { ...mod, dmgMult: 2.1, maxRangeM: 6000 }
       return mod.id === 'mod-wh-a-hangar' ? { ...mod, droneCycleCutPct: .2 } : mod
     })
     applyApprovedFleetModuleDelta(adjusted)
     const newIds = new Set(['mod-drone-launch-1', 'mod-drone-launch-2', 'mod-drone-launch-3', 'mod-laser-calibration-2', 'mod-laser-calibration-3', 'mod-alien-acid-launcher', 'mod-alien-pressure-chamber',
       'mod-gravekeeper-rebirth', 'mod-gravekeeper-crisis', 'mod-gravekeeper-rail',
-      'plug-pirate-raider', 'plug-alien-shield-coating', 'plug-gravekeeper-capacitor', 'plug-titan-compression', 'plug-deadarmy-printing'])
-    expect(MODULES.filter(mod => newIds.has(mod.id))).toHaveLength(15)
+      'plug-pirate-raider', 'plug-alien-shield-coating', 'plug-gravekeeper-capacitor', 'plug-titan-compression', 'plug-deadarmy-printing',
+      ...APPROVED_NEW_FACTION_PLUG_IDS])
+    expect(MODULES.filter(mod => newIds.has(mod.id)).map(mod => mod.id).sort()).toEqual([...newIds].sort())
+    expect(newIds.size).toBe(20)
     const current = strip(MODULES.filter(mod => !newIds.has(mod.id)))
     expect(current.map(mod => mod.id)).toEqual(adjusted.map(mod => mod.id))
     for (const expected of strip(adjusted)) {

@@ -17,6 +17,8 @@
  */
 
 import { readImplementation } from './source-implementation'
+import { isFactionPlugId, FACTION_PLUG_BLUEPRINT_PRICE } from '../packages/data/src/plugs'
+import { PLAYER_ONLY_GOODS } from '../packages/data/src/market/playerGoods'
 import {
   PLANET_DEFS, PLANET_TRAITS, PLANET_BUILDINGS, buildPlanetCatalog,
   BLUEPRINTS,
@@ -499,7 +501,7 @@ const hasRareBulk = (g: MarketGoodDef): boolean =>
   g.rareQtyMul !== undefined && g.rareWeightMul !== undefined && g.absorbQtyPerWindow !== undefined
 for (const item of itemDefs) {
   const good = itemGoods.get(item.id)
-  if (/^box-encrypted-[acdeg]$/.test(item.id)) continue // 船长确认：仅研究所获取，不进入市场。
+  if (/^box-encrypted-[acdeg]$/.test(item.id)) continue // 研究所产出，玩家可交易但NPC不供货；估值另守独占产物契约。
   if (item.id === 'deep-space-probe' && item.unreleased && !good) continue
   if (item.exclusive === true) {
     check(
@@ -771,7 +773,9 @@ for (const bp of BLUEPRINTS) {
   // 它**不上市场**（不能买入/不能学），来源由后续裁定指定（掉落/奖励），故不要求市场卡。
   // **隐式蓝图豁免**（2026-09-20 零件体系：基础零件无需学习，无书、不上市场）。
   check(
-    bp.singleUse === true || bp.learnless === true || MARKET_GOODS.some((g) => g.kind === 'blueprint' && g.refId === bp.id),
+    bp.singleUse === true || bp.learnless === true ||
+      (bp.moduleId?.startsWith('plug-') === true && !isFactionPlugId(bp.moduleId)) ||
+      MARKET_GOODS.some((g) => g.kind === 'blueprint' && g.refId === bp.id),
     `装备蓝图 ${bp.id} 没有市场卡（无法购书学习）`,
   )
   // 一次性图纸**不得进逆向研究**（否则碎片能刷出永久配方；船长同日裁定「6 不进」）
@@ -6083,7 +6087,15 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
   {
     // 2026-10-06 船长确认：MK3弹药三张生产线图纸只在黑市获取，不允许转售；其余沿用全表可卖。
     const noResale = new Set(['bp-ammo-kinetic-3', 'bp-ammo-explosive-3', 'bp-ammo-plasma-3'])
-    const notSellable = MARKET_GOODS.filter((g) => g.playerSellable === false && !noResale.has(g.key)).map((g) => g.key)
+    // 2026-11-05船长确认：玩家独占交易的参考价不产生NPC货源。
+    const playerOnly = PLAYER_ONLY_GOODS
+    for (const expected of playerOnly) {
+      const actual = MARKET_GOODS.find(g => g.key === expected.key)
+      check(actual?.basePrice === expected.basePrice && actual.playerBuyable === false && actual.playerSellable === false && actual.blackMarketBuyable === false && actual.demandMultiplier === 0,
+        `独占产物估值契约：${expected.key}应为${expected.basePrice}，且不由NPC供应或收购`)
+    }
+    const playerOnlyKeys = new Set(playerOnly.map(g => g.key))
+    const notSellable = MARKET_GOODS.filter((g) => g.playerSellable === false && !noResale.has(g.key) && !playerOnlyKeys.has(g.key)).map((g) => g.key)
     check(
       notSellable.length === 0,
       `挂卖可达契约：${notSellable.join(' · ')} 标了 playerSellable: false——2026-09-14 船长「维持所有物品允许玩家挂卖」`,
@@ -6095,8 +6107,8 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
     }
     // ② 可获得内容必须有市场行（例外表逐条写理由）
     const NO_ROW_OK: ReadonlyArray<readonly [string, string]> = [
-      ...['a', 'c', 'd', 'e', 'g'].map(f => [`box-encrypted-${f}`, '生产研究所专属货柜，不开放市场交易'] as const),
-      ...['pirate-raider', 'alien-shield-coating', 'gravekeeper-capacitor', 'titan-compression', 'deadarmy-printing'].map(id => [`bp-once-plug-${id}`, '加密货柜专属一次性插件图纸，不开放市场交易'] as const),
+      ...BLUEPRINTS.filter(bp => bp.moduleId?.startsWith('plug-') && !isFactionPlugId(bp.moduleId)).map(bp =>
+        [bp.id, '2026-11-05船长指定：非势力插件图纸移出市场，保留学习制造及原声望兑换'] as const),
       ['sandcat', '协会保底艇（开局船）：不给市场行，防"卖光起步资产"把新档卡死'],
       ['sh-dunkleosteus', '邓氏鱼级壳体：无蓝图、无掉落、无任何获取渠道（内容未做）⇒ 补行等于给拿不到的东西标价'],
       ['sbp-sandcat', '磷虾级舰船蓝图：只作「第一次生产」的任务奖励发放，不进市场（船长 2026-09-18）'],
@@ -6141,7 +6153,7 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
       `挂卖可达契约：专属内容的市场行必须"只收不卖"（playerBuyable: false）——${sellableExclusive.slice(0, 8).join(' · ')} 在卖现货`,
     )
     console.log(
-      `· 挂卖可达契约：市场 ${MARKET_GOODS.length} 行除${noResale.size}张黑市独占MK3弹药图纸外均允许挂卖 · 可获得内容无市场行的仅 ${NO_ROW_OK.length} 条有意例外（${NO_ROW_OK.map(([id]) => id).join(' / ')}）· 专属内容 ${exclusiveRows} 行**全部只收不卖**`,
+      `· 挂卖可达契约：市场 ${MARKET_GOODS.length} 行，${playerOnly.length} 条玩家独占交易定义采用专属参考价、无NPC买卖 · 可获得内容无市场行的仅 ${NO_ROW_OK.length} 条有意例外（${NO_ROW_OK.map(([id]) => id).join(' / ')}）· 专属内容 ${exclusiveRows} 行均不由NPC供货`,
     )
   }
   /* **图鉴市场跳转契约**（2026-09-14 船长：「玩家查看图鉴内的道具时，添加一个跳转市场的按钮」）：
@@ -6158,9 +6170,8 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
    * **整类图鉴的按钮静默消失**——玩家看不见"少了个按钮"，只有这条契约会点名。 */
   {
     const jumpCtx = buildSimContext()
-    const handNoJumpOk = new Set(['sandcat', 'sh-dunkleosteus', 'sbp-sandcat', 'bp-part-circuit', 'bp-part-armor-plate', 'bp-part-frame', 'bp-part-cable', 'bp-part-coolant', 'bp-part-gyro', 'bp-part-lens',
-      ...['a', 'c', 'd', 'e', 'g'].map(f => `box-encrypted-${f}`),
-      ...['pirate-raider', 'alien-shield-coating', 'gravekeeper-capacitor', 'titan-compression', 'deadarmy-printing'].map(id => `bp-once-plug-${id}`)])
+    const handNoJumpOk = new Set(['sandcat', 'sh-dunkleosteus', 'sbp-sandcat', 'bp-part-circuit', 'bp-part-armor-plate', 'bp-part-frame', 'bp-part-cable', 'bp-part-coolant', 'bp-part-gyro', 'bp-part-lens'])
+    for (const bp of BLUEPRINTS) if (bp.moduleId?.startsWith('plug-') && !isFactionPlugId(bp.moduleId)) handNoJumpOk.add(bp.id)
     const unreleasedRowIds = new Set(
       MARKET_GOODS.filter((g) => (g as { unreleased?: boolean }).unreleased === true).map((g) => g.refId),
     )
@@ -6185,7 +6196,7 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
         if (handMarketKeyOf(jumpCtx, g.tab, id) !== null) continue
         if (handNoJumpOk.has(id)) continue
         const marketRow = [...jumpCtx.marketGoods.values()].find(row => row.refId === id)
-        if (marketRow?.playerBuyable === false && marketRow.playerSellable === false) continue
+        if (marketRow?.unreleased === true) continue
         if (unreleasedRowIds.has(id)) {
           skippedGated += 1
           continue
@@ -6257,7 +6268,8 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
     for (const g of MARKET_GOODS) {
       if (!boxIds.has(g.refId)) continue
       if (g.playerBuyable !== false) boxBad.push(`${g.key}（在卖现货）`)
-      if ((g.basePrice ?? 0) <= 1) boxBad.push(`${g.key}（basePrice 还是 ${g.basePrice}）`)
+      const playerOnly = g.playerSellable === false && g.blackMarketBuyable === false && g.basePrice === 0
+      if (!playerOnly && (g.basePrice ?? 0) <= 1) boxBad.push(`${g.key}（basePrice 还是 ${g.basePrice}）`)
     }
     check(
       boxBad.length === 0,
@@ -7874,6 +7886,7 @@ const MATERIAL_RATIO_REGISTERED: Readonly<Record<string, string>> = {
     const exclusiveOnce = bp.singleUse === true && good?.playerBuyable === false
     if (exclusiveOnce) exclusiveOnceBp += 1
     if (!good) {
+      if (bp.moduleId?.startsWith('plug-') && !isFactionPlugId(bp.moduleId)) continue
       /* **一次性图纸豁免**（2026-09-13 船长：「不掉永久图纸」⇒ 虫洞专属装备/舰船只出一次性图纸）：
        * 它**不上市场**（2026-09-12 船长裁定「来源由掉落/奖励指定」），故"没有市场行"不是错；
        * 但也**不参与**档位系数与料/价比对（没有产物现货价可比），单独计数留痕。 */
@@ -7894,6 +7907,13 @@ const MATERIAL_RATIO_REGISTERED: Readonly<Record<string, string>> = {
         `蓝图价格口径：${bp.id}（${label}）blueprints.ts 书价 = ${bp.priceIsk.toLocaleString('zh-CN')}，市场行 basePrice = ${(good.basePrice ?? 0).toLocaleString('zh-CN')}（两处必须同值）`,
       )
       mismatchPrice += 1
+    }
+    // 船长2026-11-05指定的势力插件图纸固定价，不套通用成品倍率或一次性同值规则。
+    if (isFactionPlugId(bp.moduleId ?? '')) {
+      check(bp.priceIsk === FACTION_PLUG_BLUEPRINT_PRICE && good.basePrice === FACTION_PLUG_BLUEPRINT_PRICE,
+        `势力插件图纸估值契约：${bp.id}书价与市场基础价均须为1亿`)
+      okCoef += 1
+      continue
     }
     // 专属一次性图纸：只核「书价 = 产物价」（不套系数、不比料/价带），核过就继续
     if (exclusiveOnce) {
@@ -7917,6 +7937,11 @@ const MATERIAL_RATIO_REGISTERED: Readonly<Record<string, string>> = {
       bp.moduleId !== undefined
         ? (marketOfModule.get(bp.moduleId)?.basePrice ?? 0)
         : (marketOfItem.get(bp.itemId ?? '')?.basePrice ?? 0) * (bp.outputUnits ?? 1)
+    // 玩家独占条目的零基价表示尚无参考价，不能用兑换书价推定NPC市值。
+    if (good.basePrice === 0 && good.playerBuyable === false && good.playerSellable === false && good.blackMarketBuyable === false) {
+      unpriceableReleases += 1
+      continue
+    }
     const { coef, label: tierLabel } = blueprintTierCoefOf(bp.id, good.rarity)
     tiers[tierLabel] = (tiers[tierLabel] ?? 0) + 1
     /**

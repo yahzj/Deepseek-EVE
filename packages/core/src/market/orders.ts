@@ -11,9 +11,10 @@ import { bumpFirstMarketTrade, placeOrderLogText, goodName } from './labels'
 import { goodLockedReason, bmGateLocked, marketLockNote, bmGateNote, playerTradingGood } from './access'
 import { ensureMarket } from './initialize'
 import { refundToStorage } from './stock'
+import { relayPriceQty } from './relayTypes'
 
 export function placeSellOrder(state: GameState, ctx: SimContext, goodKey: string, price: number, qty: number): PlayerOrder | null {
-  if (qty <= 0 || price <= 0) return null
+  if (!relayPriceQty(ceilFinalQuantity(price), qty)) return null
   if (typeof goodKey !== 'string' || !ctx.marketGoods.has(goodKey)) return null
   if (!playerTradingGood(ctx, ctx.marketGoods.get(goodKey)!)) return null
   const order = pushSellOrder(state, goodKey, price, qty)
@@ -57,7 +58,7 @@ export function pushSellOrder(state: GameState, goodKey: string, price: number, 
  */
 export function placeBuyOrder(state: GameState, ctx: SimContext, goodKey: string, price: number, qty: number): PlayerOrder | null {
   const def = ctx.marketGoods.get(goodKey)
-  if (!def || qty <= 0 || price <= 0) return null
+  if (!def || !relayPriceQty(ceilFinalQuantity(price), Math.floor(qty))) return null
   if (goodLockedReason(state, def) !== null) return null
   if (bmGateLocked(state, def)) return null // P2：声望闸内不开放常驻买单（暗市单现买即可）
   if (!playerTradingGood(ctx, def)) return null
@@ -98,7 +99,7 @@ export function buyOrderBlockedReason(
   qty: number,
 ): CoreBlockReason | null {
   const def = ctx.marketGoods.get(goodKey)
-  if (!def || qty <= 0 || price <= 0) return { error: '价格或数量无效。', errorId: 'core.market.041' }
+  if (!def || !relayPriceQty(ceilFinalQuantity(price), Math.floor(qty))) return { error: '价格或数量无效。', errorId: 'core.market.041' }
   /* 锁标走**结构化孪生**（2026-09-30 加的那条先例）：同一条文案同一个 id ⇒ 界面按语言渲染 */
   const lockNote = marketLockNote(state, def)
   if (lockNote !== null) return { error: lockNote.text, errorId: lockNote.textId, errorParams: lockNote.params }

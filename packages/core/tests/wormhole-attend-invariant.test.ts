@@ -25,6 +25,7 @@ import { addWare } from '../src/inventory'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { wormholeEnter } from '../src/wormhole'
 import { advanceWormhole, wormholeStartBattle } from '../src/wormholeBattle'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
 
@@ -35,6 +36,7 @@ function battleInFlightSave(): { state: GameState; text: string } {
   const b = addShipToFleet(state, 'sh-thresher')
   state.shipId = a
   expect(wormholeEnter(state, ctx, [a, b], 21).ok).toBe(true)
+  finishDeparture(state, ctx)
   for (const uid of [a, b]) state.fleet[uid]!.fitted = { high: ['mod-turret-kin-1'], mid: [], low: [] }
   addWare(state, 'ammo-kinetic-l', 20_000)
   state.wormhole.run!.family = 'A'
@@ -102,6 +104,7 @@ describe('虫洞存档不变量：在途战斗 ⇔ 人在洞里', () => {
     const a = addShipToFleet(state, 'sh-thresher')
     state.shipId = a
     expect(wormholeEnter(state, ctx, [a], 21).ok).toBe(true)
+    finishDeparture(state, ctx)
     const text = serializeSaveFile(state, 0)
     // 缺字段（旧档）与坏值（非布尔）两条都要落 false
     for (const bad of [text.replace(/"attending":true,?/, ''), text.replace(/"attending":true/, '"attending":"yes"')]) {

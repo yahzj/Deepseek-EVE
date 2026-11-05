@@ -193,7 +193,7 @@ export function cleanBattle(raw: unknown): BattleState | null {
   const droneLoadAtStart = cleanCountMap(b.droneLoadAtStart)
   /** 逐舰账本（键 = 舰 tag；值是 `机型 → 架数`）：2026-09-14「逐舰机群」新增，老档没有 ⇒ undefined */
   const droneLostBy = cleanCountMapBy(b.droneLostBy)
-  const droneLoadAtStartBy = cleanCountMapBy(b.droneLoadAtStartBy)
+  const droneLoadAtStartBy = cleanCountMapBy(b.droneLoadAtStartBy, true)
   /**
    * **无人机储备甲板的复位账**（2026-09-27 船长令）：逐舰一份，**坏值整条丢**（与其余账本同款口径）——
    * `q` 只收非空字符串、`t` 只收**有限非负数或 null**（null = 空闲）、`c` 只收**正数**（周期毫秒）、

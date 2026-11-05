@@ -17,8 +17,8 @@
 | 仓库 | 路径 | 远端 | 说明 |
 |---|---|---|---|
 | 游戏主仓（Electron + Vite + core/data/ui） | `D:\Documents\GitHub\Deepseek-EVE` | `https://github.com/yahzj/Deepseek-EVE.git`，分支 `main` | 最新提交 `011c94eb`（恢复 Sparkline），已推送 |
-| Go 交易引擎 | `D:\Documents\GitHub\whale-server-go` | **无远端**（本地仓库） | 最新提交 `b59d974`（10 秒行情步进 + 快讯措辞） |
-| Node 云端服务 | `D:\Documents\GitHub\whale-server` | **无远端** | 账号/会话/存档云同步，端口 8787 |
+| Go 交易引擎 | `D:\Documents\GitHub\deepseek-EVE-Background\exchange-server-go` | 已并入父仓并推送（`bd367e1`） | 模块名仍是 `whale-server-go`；并入前 26 条历史备份在 `D:\Documents\GitHub\_archive\exchange-server-go-history-20261105.bundle` |
+| Node 云端服务 | `D:\Documents\GitHub\deepseek-EVE-Background` | `https://github.com/yahzj/deepseek-EVE-Background.git`，分支 `main` | 账号/会话/存档云同步，端口 8787；2026-11-05 已推送 |
 
 > 注意：主工作树同时被「UI review AI」改写 UI 文件；不要覆盖他人在途修改。遇到疑似重叠改动先停写、报告证据。`FAST_WORKFLOW.md` 声明优先级高于 `AGENTS.md`；汇报第一行固定「册那，侬帮帮忙啦。」（船长要求）。
 
@@ -38,7 +38,7 @@
 - 日志：`sudo journalctl -u whale-exchange -f` / `-u whale-server`；nginx `/var/log/nginx/access.log`。
 - systemd 环境变量（**以 `systemctl cat whale-exchange` 现场为准**）：
   `EXCHANGE_ROUND_SEC=300`、`EXCHANGE_HISTORY_BARS=2016`、`EXCHANGE_LOCAL_SAVE_MODE=1`、`EXCHANGE_ROUND_LIMIT_BP=300`、`EXCHANGE_ROUND_EVENT_LIMIT_BP=800`、`EXCHANGE_SHORT_ENABLED=1`、`EXCHANGE_BORROW_POOL=100000`、`EXCHANGE_BORROW_RATE_BP=5`；新增默认 `EXCHANGE_INTRA_TICK_SEC=10`（0=关闭回合内行情）。
-- 本地网络限制（排查时先知道）：本机 SNI TLS 直连服务器 IP 会被拦；腾讯云对未备案域名 HTTP 有阻断；因此「IP 直连 + 明文 HTTP」是船长选定的通路。
+- 本地网络限制（排查时先知道）：本机 SNI TLS 直连服务器 IP 会被拦；腾讯云对未备案域名 HTTP 有阻断（80 返回备案 302 页、443 带 SNI 的 TLS 被 RST）；因此「IP 直连 + 明文 HTTP」是船长最初选定的通路。**2026-11-05 更新**：nginx 已增开 8443 并复用同一 Let's Encrypt 证书，`https://game.bajibaji.party:8443` 的 HTTPS/WSS 可用（客户端默认入口已切 8443），详见 `cloud-8443-20261105.md`。
 
 ---
 
@@ -67,21 +67,29 @@
 
 ### 3.5 做空 / 借券
 - 券源池每标的 10 万股，借券费 5bp/回合（利用率越高越贵）；空头持仓、强平价、平空归还券源。
-- 黑隐者按「跌幅/高估」逻辑 2x 开空；玩家可 `POST /orders {side:sell, leverage:2, short:true}` 开空，`POST /positions/:code/short/close` 平空。`GET /api/exchange/borrow` 查券池。
+- 杠杆档 2/5/10/20/50/90；**1x 为全额保证金**（2026-11-04 船长令：简单界面「看跌」与「看涨」对称，投入多少占用多少）。`POST /orders {side:sell, leverage, short:true}` 开空，`POST /positions/:code/short/close` 平空，`GET /api/exchange/borrow` 查券池。
+- 1x 空头不设强平价（`shortLiqPrice` 返回 0），强平改为「无强平价时只看权益线」；1x 平空不冻结现金、结算按 `CommissionBp` 计费，与现货同源。
+- 黑隐者仍按「跌幅/高估」逻辑用 2x 开空。
 - 生产当前仍有黑隐者 SMHI 空头持仓（持久化验证过跨重启恢复）。
 
 ### 3.6 资金模型（LocalSaveMode）
 - 游戏存档币**本地为准**：前端入金扣本地 ISK（`engine.exchangeWalletDelta`），服务端只记交易所账；出金反向加回本地。作弊不设防，线上算法保证公平（船长原话）。
 - 回滚开关：`EXCHANGE_LOCAL_SAVE_MODE=0` → 恢复旧「Node 钱包桥」模式。
 
+### 3.6.1 手续费
+- 生产 `commissionBp = 1`、`stampBp = 1`（systemd `EXCHANGE_COMMISSION_BP` / `EXCHANGE_STAMP_BP`），即买卖各 **0.01%**；`/api/exchange/meta` 下发 `feeRate = 0.0001`。
+- 杠杆档 2x+ 仍走 `leverageFeeBp`（≤20x 买 5bp / 卖 10bp；>20x 且 ≤50x 买 3bp / 卖 6bp；>50x 买 2bp / 卖 4bp）；1x 与现货按 `CommissionBp` 计（当前生产 1bp = 0.01%，买卖同价），成交用 `feeOf`（向下取整）、冻结用 `ceilFeeOf`（向上取整）。
+- 代码默认值仍是 0（`Defaults()`），生产以环境变量为准；重装机器时须一并写入 systemd。
+
 ### 3.7 极简模式保底产品
-- 债券：本地计算，0.03%/分钟（`localProducts.ts`，localStorage `whale-idle:exch-bond-local:v1`），不请求服务器。
-- 基金：服务端 `/api/exchange/fund/play`，SHA-256 熵源（四只收盘价 + 回合号 + nonce）→ 50% 亏（1×债券分钟利息）/50% 赢（3×），前端含「计算中…」动画；audit 走 `exchange_transfers.kind=fund_play`。
+- 债券：**交易所现金**申购（2026-11-04 修订，船长原话「债券也要用入金的钱包购买」）。`GET /bond` 查持仓、`POST /bond/open` 申购、`POST /bond/redeem` 赎回；单利 3bp/分钟、不滚本，服务端一次乘法惰性结算，表 `exchange_bond_positions`。
+- 基金：**放置型**（2026-11-04 修订）。`GET /fund` 查持仓、`POST /fund/open` 申购、`POST /fund/redeem` 赎回；本金锁定，按真实分钟逐分钟结算（70% +16bp / 30% −7bp，期望 +9bp ≈ 债券 3 倍），亏损真实发生、随时可赎；逐分钟结果由 `HMAC(fundSecret, "fund|<account>|<minute>")` 决定，可重放；audit 走 `exchange_transfers.kind=fund_open/fund_redeem`。
+- 两者都在左侧活动栏交易所卡片显示收益（有持仓才显示），跟随行情轮询 10 秒刷新。
 
 ### 3.8 API 与数据表（摘要）
-- 主要接口：`/api/exchange/{meta,round,stocks,book/:code,trades/:code,klines/:code,account,orders,positions,trades/mine,news,events,agents,borrow,strategies,deposit,withdraw,fund/play,stream(WS)}`。
+- 主要接口：`/api/exchange/{meta,round,stocks,book/:code,trades/:code,klines/:code,account,orders,positions,trades/mine,news,events,agents,borrow,strategies,deposit,withdraw,bond,bond/open,bond/redeem,fund,fund/open,fund/redeem,stream(WS)}`。
 - K 线 interval 支持 `1m/5m/1h/1d/1w/1mo`，单次上限 2016 根；1 周历史用 5m×2016 拉满。
-- 关键表：`exchange_accounts, exchange_orders, exchange_trades, exchange_holdings, exchange_positions, exchange_agents, exchange_agent_positions, exchange_events, exchange_news, exchange_klines, exchange_transfers`；券池在 meta `borrow_pool`。
+- 关键表：`exchange_accounts, exchange_orders, exchange_trades, exchange_holdings, exchange_positions, exchange_agents, exchange_agent_positions, exchange_events, exchange_news, exchange_klines, exchange_transfers, exchange_bond_positions, exchange_fund_positions`；券池在 meta `borrow_pool`。
 
 ---
 
@@ -126,7 +134,7 @@ Go 仓（本地，无远端）：
 
 ## 6. 验证方法（接手先跑一遍）
 
-Go（`D:\Documents\GitHub\whale-server-go`）：
+Go（`D:\Documents\GitHub\deepseek-EVE-Background\exchange-server-go`）：
 ```powershell
 go vet ./...
 go test -count=1 ./...                    # 全绿约 7s
@@ -190,10 +198,12 @@ cp -f whale-exchange.prev whale-exchange && sudo systemctl restart whale-exchang
 4. 测试账号残留：`smoke*`/`bot*`/`e2e*` 以及账号 17 有债务 383,394；可清理但注意别删船长账号（`dadadada` id 18）。
 5. Node/Go 两个仓库**没有远端**，交接时需拷贝或建远端。
 6. 生产 IP 明文通道 allowlist 仅限 `127.0.0.1`/`124.90.21.128`；换网络/换人需改 nginx allowlist。
-7. 交易所文档：`docs/design/stock-exchange-integration-20261103.md` §8.6–8.11 有部署/回滚/E2E/机器人试玩证据；事件目录/设计稿在 `stock-exchange-events-64-*`、`stock-exchange-short-selling-20261103.md`、`stock-exchange-products-20261104.md`、`stock-exchange-round-model-20261103.md`。本次 10 秒行情/图表五周期/快讯竖向/缓存改动**尚未补写设计文档**，接手可补。
+7. 交易所文档：`docs/design/stock-exchange-integration-20261103.md` §8.6–8.11 有部署/回滚/E2E/机器人试玩证据；事件目录/设计稿在 `stock-exchange-events-64-*`、`stock-exchange-short-selling-20261103.md`、`stock-exchange-products-20261104.md`、`stock-exchange-round-model-20261103.md`。2026-11-04 晚间的保底产品放置型、债券改交易所现金、1x 做空、手续费 1bp、左侧栏收益、快讯两行、按钮进度条、行情百分比已补进本文件 §3.5–3.8 与 products 文档。
 8. 已知 UI 冲突：UI review AI 会持续改交易所组件（本轮已回滚全局 UI 且保持交易所功能）；改前先 `git status`，别覆盖在途文件。
 9. Tooltip 死循环已修（`TooltipLayer` effect 依赖问题），但 UI 层若有类似「displayState 进依赖」模式要注意同类回归。
 10. 安全边界：本地存档作弊不设防（船长允许）；IP 明文 HTTP 风险船长已接受；token 存在客户端 localStorage。
+11. 简单界面图表已**固定为「分时」**（原 M1/M5/H1/日线/周线切换入口已移除）；`HttpExchangeClient.ensureChartData(code, period)` 的按需加载仍在，恢复周期切换时直接接回即可。
+12. 微光纳米（SPRK）低价股 `priceTick = 1` 曾让 5 分钟 K 线常出现四价相同。2026-11-04 船长选 A：锚定从 60 抬到 500（`internal/exchange/stocks.go`，一个价位 = 0.2%），生产 K 线按 25/3 等比缩放、行情状态 `x=0` 重新锚定；成交量仍只在回合末出现（回合内不撮合的已知分层）。
 
 ---
 

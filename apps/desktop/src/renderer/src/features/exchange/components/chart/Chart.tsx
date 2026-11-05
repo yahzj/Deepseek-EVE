@@ -68,6 +68,12 @@ export function Chart({
     return PRO_CHART_PERIODS.some((spec) => spec.id === wanted) ? wanted : 'intraday'
   })
   const [toggles, setToggles] = useState(() => ({ ...rememberedToggles }))
+  useEffect(() => {
+    const load = (): void => client.ensureChartData?.(code, period)
+    load()
+    const timer = window.setInterval(load, 10_000)
+    return () => window.clearInterval(timer)
+  }, [client, code, period])
   const [size, setSize] = useState<ChartSize>({ w: 660, h: 320 })
   const [point, setPoint] = useState<CrosshairPoint | null>(null)
   const wrapRef = useRef<HTMLDivElement | null>(null)

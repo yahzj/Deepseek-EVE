@@ -18,8 +18,9 @@ import { addShipToFleet } from '../src/shipyard'
 import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
 import type { SimContext } from '../src/types'
-import { DSI_FACTION_ID, resolveBattleOutcome, startExpedition } from '../src/expedition'
+import { DSI_FACTION_ID, resolveBattleOutcome } from '../src/expedition'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
+import { startExpeditionArrived as startExpedition } from './helpers/command-arrived'
 
 const ctx = buildSimContext()
 const CARD = 'ano-pirate-post'

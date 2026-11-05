@@ -43,21 +43,22 @@ describe('三档弹药真实装配组件', () => {
     }
     expect(core.loadSaveFile(core.serializeSaveFile(state)).state.fleet[state.shipId]!.ammoPref).toEqual(state.fleet[state.shipId]!.ammoPref)
   })
-  it('普通市场与图鉴跳转均排除独占图纸，成品及旧商品跳转保留', () => {
+  it('独占图纸保留NPC禁售，玩家市场和图鉴跳转开放', () => {
     const ctx = buildSimContext()
-    const jump = load('ui/marketJump.ts', 'handMarketKeyOf', { marketGoodOf: core.marketGoodOf })
+    const jump = load('ui/marketJump.ts', 'handMarketKeyOf', { marketGoodOf: core.marketGoodOf, marketTradingGoods: core.marketTradingGoods })
     for (const type of ['kinetic', 'explosive', 'plasma']) {
       const bp = `bp-ammo-${type}-3`, item = `ammo-${type}-3`
-      expect(core.marketTradingGoods(ctx).some(g => g.key === bp)).toBe(false)
-      expect(jump(ctx, 'blueprints', bp)).toBeNull()
+      expect(core.marketTradingGoods(ctx).some(g => g.key === bp)).toBe(true)
+      expect(core.marketGoodOf(ctx, 'blueprint', bp)).toMatchObject({ playerBuyable: false, playerSellable: false })
+      expect(jump(ctx, 'blueprints', bp)).toBe(bp)
       expect(jump(ctx, 'items', item)).toBe(item)
       expect(jump(ctx, 'blueprints', `bp-ammo-${type}-2`)).toBe(`bp-ammo-${type}-2`)
     }
   })
-  it('工业同一书架关闭不可出售入口、缺书时标明黑市来源，不把它当无市场渠道', () => {
+  it('工业书架按玩家资格显示出售入口，缺书时仍保留黑市原始来源', () => {
     const source = readImplementation(resolve(ROOT, 'apps/desktop/src/renderer/src/panels/Industry.tsx'))
     expect(source).toContain("marketGoodOf(engine.ctx, 'blueprint', id)")
-    expect(source).toContain('const noResale = marketGood?.playerSellable === false')
+    expect(source).toContain('const noResale = !marketGood || !marketTradingGoods(engine.ctx).some(row => row.key === marketGood.key)')
     expect(source).toContain('{!su && !noResale ? (')
     expect(source).toContain("tr(noResale ? 'ui.ammoMk3.002' : 'ui.Industry.012')")
     expect(source).toContain(') : blackMarketBlueprint ? (')

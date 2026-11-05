@@ -24,11 +24,28 @@ const deferredRepairBooks: Readonly<Record<string, { name: string; description: 
 const deferredPlugDescriptions: Readonly<Record<string, string>> = {
   'plug-alien-shield-coating': 'mod.factionPlug.008',
   'plug-titan-compression': 'mod.factionPlug.009',
+  'plug-pirate-damage-management': 'mod.factionPlug.011',
+  'plug-alien-nanobiomass': 'mod.factionPlug.013',
+  'plug-gravekeeper-charge': 'mod.factionPlug.015',
+  'plug-titan-drone-command': 'mod.factionPlug.017',
+  'plug-deadarmy-reinforced-hull': 'mod.factionPlug.019',
+}
+const deferredPlugBlueprints: Readonly<Record<string, { name: string; description: string }>> = {
+  'bp-plug-pirate-damage-management': { name: 'mod.factionPlug.010', description: 'bp.factionPlug.001' },
+  'bp-plug-alien-nanobiomass': { name: 'mod.factionPlug.012', description: 'bp.factionPlug.001' },
+  'bp-plug-gravekeeper-charge': { name: 'mod.factionPlug.014', description: 'bp.factionPlug.001' },
+  'bp-plug-titan-drone-command': { name: 'mod.factionPlug.016', description: 'bp.factionPlug.001' },
+  'bp-plug-deadarmy-reinforced-hull': { name: 'mod.factionPlug.018', description: 'bp.factionPlug.001' },
 }
 function expectDeferredText(value: string | undefined, id: string): void {
   expect(L10N[id]!.enDeferred, id).toBe(true)
   expect(L10N[id]!.en, id).toBe('')
   expect(value, id).toBe(L10N[id]!.zh)
+}
+function expectDeferredBlueprintName(value: string | undefined, moduleNameId: string): void {
+  expect(L10N[moduleNameId]!.enDeferred, moduleNameId).toBe(true)
+  expect(L10N[moduleNameId]!.en, moduleNameId).toBe('')
+  expect(value).toBe(`${L10N[moduleNameId]!.zh}${L10N['bp.factionPlug.002']!.zh}`)
 }
 const translatedLegacyIds = new Set([
   'mod-alien-acid-launcher', 'mod-alien-pressure-chamber', 'drone-jawclaw',
@@ -240,6 +257,8 @@ describe('英文覆盖层（P2）', () => {
       const index = deferredDroneBooks[bp.id]
       const repair = deferredRepairBooks[bp.id]
       if (repair) { expectDeferredText(en.blueprints.get(bp.id)?.name, repair.name); return false }
+      const plug = deferredPlugBlueprints[bp.id]
+      if (plug) { expectDeferredBlueprintName(en.blueprints.get(bp.id)?.name, plug.name); return false }
       if (index !== undefined) {
         if (translatedLegacyIds.has(bp.id)) {
           expect(en.blueprints.get(bp.id)?.name).not.toBe(zh.blueprints.get(bp.id)?.name)
@@ -542,6 +561,8 @@ describe('英文覆盖层（P2）', () => {
       if (id.startsWith('bp-once-plug-')) { expectDeferredText(other.description, 'bp.encrypted.002'); continue }
       const deferredRepair = deferredRepairBooks[id]
       if (deferredRepair) { expectDeferredText(other.description, deferredRepair.description); continue }
+      const deferredPlug = deferredPlugBlueprints[id]
+      if (deferredPlug) { expect(other.description).toBe(l10nEntryText(L10N[deferredPlug.description]!, 'en')); continue }
       if (!other.description) {
         noDesc.push(id)
         continue

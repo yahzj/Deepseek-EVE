@@ -25,17 +25,17 @@ export function cleanCountMap(raw: unknown): Record<string, number> | undefined 
   return out
 }
 
-/** **两层计数表**（`舰tag → (机型 id → 架数)`；2026-09-14「逐舰机群」）：
- *  逐层清洗，空的一律省掉（读不到该字段的老档 = undefined ⇒ 调用方按"只有主控那一份"回落）。 */
-export function cleanCountMapBy(raw: unknown): Record<string, Record<string, number>> | undefined {
+/** 两层计数表：默认省掉空表；开战装载快照可保留明确的空对象，不把坏值当成空快照。 */
+export function cleanCountMapBy(raw: unknown, preserveEmpty = false): Record<string, Record<string, number>> | undefined {
   const r = asRaw(raw)
   let out: Record<string, Record<string, number>> | undefined
   for (const [k, v] of Object.entries(r)) {
     if (!k) continue
     const inner = cleanCountMap(v)
-    if (!inner) continue
+    const emptyRecord = v !== null && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length === 0
+    if (!inner && !(preserveEmpty && emptyRecord)) continue
     if (!out) out = {}
-    out[k] = inner
+    out[k] = inner ?? {}
   }
   return out
 }

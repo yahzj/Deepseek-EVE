@@ -5,6 +5,7 @@ import { RARE_DRAW_PERIOD_MS } from './constants'
 import { seedCommonBook, refreshLimitedSupplyBook } from './supply'
 import { priceLevel } from './pricing'
 import { pruneRelayOffers } from './relayLedger'
+import { refundToStorage } from './stock'
 
 /* ═══════════ 初始化 ═══════════ */
 
@@ -13,6 +14,19 @@ import { pruneRelayOffers } from './relayLedger'
  * 离线结算时由 advanceMarket 传"离线起点"，使整段离线也按窗口推进（订单过期/补单/撮合）。 */
 export function ensureMarket(state: GameState, ctx: SimContext, opts?: { openAtGameMs?: number }): void {
   const mk = state.market
+  // 图纸退出目录时结清尚未成交的本地托管；重复初始化不会重复退还。
+  for (let i = state.orders.length - 1; i >= 0; i--) {
+    const order = state.orders[i]!
+    const bp = ctx.blueprints.get(order.good)
+    if (ctx.marketGoods.has(order.good) || ctx.modules.get(bp?.moduleId ?? '')?.slot !== 'plug') continue
+    if (order.side === 'buy') state.wallet.isk += order.escrowIsk ?? 0
+    else {
+      const held = Math.min(order.qty, state.escrowItems[order.good] ?? 0)
+      refundToStorage(state, ctx, order.good, held)
+      state.escrowItems[order.good] = Math.max(0, (state.escrowItems[order.good] ?? 0) - held)
+    }
+    state.orders.splice(i, 1)
+  }
   pruneRelayOffers(state, opts?.openAtGameMs ?? state.gameMs)
   const freshInit = mk.lastTickGameMs === 0 && mk.orderSeq === 0 && Object.keys(mk.pools).length === 0
   const openAt = opts?.openAtGameMs !== undefined ? Math.max(0, Math.floor(opts.openAtGameMs)) : state.gameMs
@@ -51,7 +65,7 @@ export function ensureMarket(state: GameState, ctx: SimContext, opts?: { openAtG
      */
     for (const def of ctx.marketGoods.values()) {
       const hist = mk.priceHistory[def.key]
-      if (hist && hist.length === 0) hist.push(priceLevel(state, ctx, def, mk.pools[def.key]?.q ?? 0))
+      if (def.basePrice > 0 && !(def.playerBuyable === false && def.playerSellable === false && def.blackMarketBuyable === false && def.demandMultiplier === 0) && hist && hist.length === 0) hist.push(priceLevel(state, ctx, def, mk.pools[def.key]?.q ?? 0))
     }
     mk.lastTickGameMs = openAt
   }

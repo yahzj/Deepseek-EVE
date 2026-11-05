@@ -34,6 +34,7 @@ import { createPlayerSpec, startBattleFor } from '../src/combat'
 import { setCardDistance } from './helpers/battle-card-memory'
 import { makeTestCtx, anomaly, moduleDef, ship } from './helpers'
 import { setStanding } from './helpers'
+import { finishDeparture } from './helpers/departure-ready'
 
 describe('目标距离按卡保存，旧星系字段兼容留存', () => {
   const ctx = buildSimContext()
@@ -93,6 +94,7 @@ describe('目标距离按卡保存，旧星系字段兼容留存', () => {
     const state = fresh()
     setCardDistance(state, ctx, A.id, 1_500)
     expect(startExpedition(state, A.id, ctx).ok).toBe(true)
+    finishDeparture(state, ctx)
     expect(state.expedition.battle?.myDesireM).toBe(1_500)
   })
 

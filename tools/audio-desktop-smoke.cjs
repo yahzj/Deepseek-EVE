@@ -93,6 +93,16 @@ app.whenReady().then(async () => {
       try { await a2.play(); await new Promise(r => setTimeout(r, 120)); a2.pause(); out.blobPlay = 'ok' }
       catch (e) { out.blobPlay = 'fail:' + (e && e.name) }
       finally { URL.revokeObjectURL(url) }
+
+      // 一键入库桥（2026-11-04 调试批）：只验证桥存在 + 非法包被拒绝，不写真仓库
+      out.installApi = typeof (window.whale && window.whale.audio && window.whale.audio.installPack)
+      if (out.installApi === 'function') {
+        try {
+          const bad = new Uint8Array([1, 2, 3, 4])
+          const res = await window.whale.audio.installPack(bad.buffer, { dryRun: true })
+          out.installReject = res && res.ok === false && typeof res.output === 'string' ? 'ok' : JSON.stringify(res)
+        } catch (e) { out.installReject = 'throw:' + (e && e.message) }
+      }
       return out
     })()`,
     true,
@@ -102,6 +112,8 @@ app.whenReady().then(async () => {
   check(result.sfxApi === 'undefined', `发布门禁下 window.__whaleSfx 不暴露（实际 ${result.sfxApi}）`)
   check(result.filePlay === 'ok', `file:// 内置音频可起播（实际 ${result.filePlay}）`)
   check(result.blobPlay === 'ok', `file:// 下 blob 音频可起播（本机覆盖用，实际 ${result.blobPlay}）`)
+  check(result.installApi === 'function', `桌面桥暴露一键入库 installPack（实际 ${result.installApi}）`)
+  check(result.installReject === 'ok', `非法入库包应被拒绝且不写仓库（实际 ${result.installReject}）`)
   check(consoleErrors.length === 0, `无 console error（实际 ${consoleErrors.length}${consoleErrors.length ? '：' + consoleErrors.slice(0, 3).join(' | ') : ''}）`)
 
   fs.rmSync(probeWavPath, { force: true })

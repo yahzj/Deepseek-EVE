@@ -13,6 +13,7 @@ import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { advanceWormhole, battleFoeAnomaly, wormholeStartBattle, wormholeActivateAt } from '../src/wormholeBattle'
 import { battleArcsFor } from '../src/combat'
 import { setBattleDesire } from '../src/expedition'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
 function setup(key: WormholeEventKey = 'maintenance') {
@@ -24,6 +25,7 @@ function setup(key: WormholeEventKey = 'maintenance') {
   Object.assign(state.warehouse.items, targets)
   const plan = wormholePreparationPlan(state, ctx, [uid], { targets, unload: [] })
   expect(wormholeEnterPrepared(state, ctx, [uid], 19, plan, undefined, { expeditionRules: 2 }).ok).toBe(true)
+  finishDeparture(state, ctx)
   const run = state.wormhole.run!
   const cell = gridCellAt(run.grid!, run.grid!.pos)!
   cell.place = 'empty'

@@ -33,6 +33,7 @@ import {
   wormholeNodePiles,
 } from '../src/wormhole'
 import { wormholeHoldSyncCargo, wormholeHoldUsage, wormholeTakePileAt,  wormholeTempUsage } from '../src/wormholeSalvage'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
 const T3 = 'sh-thresher'
@@ -86,6 +87,7 @@ describe('虫洞 · 入洞（E 批）', () => {
     // 合法：2×T3（7,000 质量 ⇒ 回合 80×(1−0.4375×0.53) = 61；基础 2026-09-19 由 100 降为 80）
     const r = wormholeEnter(state, ctx, [a, b], 20260913)
     expect(r.ok).toBe(true)
+    finishDeparture(state, ctx)
     expect(state.wormhole.run).not.toBeNull()
     expect(state.wormhole.run!.fleet).toEqual([a, b])
     expect(state.wormhole.run!.totalMass).toBe(7_000)
@@ -130,6 +132,7 @@ describe('虫洞 · 拾取堆（E 批；F5 收口：网格层退场、只留老�
     const state = fresh()
     const a = addShipToFleet(state, T3)
     wormholeEnter(state, ctx, [a], 7)
+    finishDeparture(state, ctx)
     const run = state.wormhole.run!
     putPiles(state, wormholeNodePiles(7, 1, 1, 3))
     const turnsBefore = run.turnsLeft
@@ -146,6 +149,7 @@ describe('虫洞 · 拾取堆（E 批；F5 收口：网格层退场、只留老�
     const state = fresh()
     const a = addShipToFleet(state, T3)
     wormholeEnter(state, ctx, [a], 7)
+    finishDeparture(state, ctx)
     const run = state.wormhole.run!
     // 堆的生成器照旧用 `wormholeNodePiles`（原矿堆；F3b 由矿脉采集调用它，残骸堆另有生成器）
     const piles = wormholeNodePiles(7, 1, 1, 3)
@@ -170,6 +174,7 @@ describe('虫洞 · 拾取堆（E 批；F5 收口：网格层退场、只留老�
     const state = fresh()
     const a = addShipToFleet(state, T3) // 货仓 2,600 m³ ⇒ 5 格
     wormholeEnter(state, ctx, [a], 9)
+    finishDeparture(state, ctx)
     const run = state.wormhole.run!
     const cap = wormholeBagSlotsOfFleet(state, ctx, run.fleet)
     expect(cap).toBe(5)
@@ -219,6 +224,7 @@ describe('虫洞 · 拾取堆（E 批；F5 收口：网格层退场、只留老�
     expect(wormholeTakePileAt(state, ctx, 0).error).toContain('不在虫洞内')
     const a = addShipToFleet(state, T3)
     wormholeEnter(state, ctx, [a], 11)
+    finishDeparture(state, ctx)
     // 网格层：先被"逐堆拾取已退场"拦下（与"有没有堆"无关）
     expect(cellPiles(state).length).toBe(0)
     expect(wormholeTakePileAt(state, ctx, 0).ok).toBe(false)
@@ -235,6 +241,7 @@ describe('虫洞 · E 批随档', () => {
     const state = fresh()
     const a = addShipToFleet(state, T3)
     wormholeEnter(state, ctx, [a], 13)
+    finishDeparture(state, ctx)
     enterLegacy(state, 13, wormholeNodePiles(13, 1, 1, 2))
     const taken = wormholeTakePileAt(state, ctx, 0).taken!
     const left = nodePiles(state).length

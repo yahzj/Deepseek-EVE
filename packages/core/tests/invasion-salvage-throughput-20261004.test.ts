@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
-import { advanceSalvageOp, pullOneWreck, salvagerCyclesOf, startSalvageOp, wreckUnitsOf } from '../src/salvaging'
+import { advanceSalvageOp, pullOneWreck, salvagerCyclesOf, wreckUnitsOf } from '../src/salvaging'
 import { injectWeekendWreck, injectWeekendRareWreck, weekendWreckDensityOf, WRECK_FLOOR, advanceWreckDrift, WEEKEND_WRECK_DECAY_MS } from '../src/salvage'
 import { addShipToFleet } from '../src/shipyard'
 import { assignAiSalvage, advanceAi } from '../src/ai'
 import { countItem } from '../src/inventory'
+import { startSalvageArrived } from './helpers/command-arrived'
 
 const ctx = buildSimContext()
 const galaxy = 'galaxy-hub'
@@ -116,7 +117,7 @@ describe('入侵普通打捞：基准速度与有限库存分离', () => {
     const pilot = state.fleet[state.shipId]!
     pilot.fitted.high = [rig,rig]
     const expected = pullOneWreck(world(galaxy, 1e6), ctx, galaxy, 10_000)!.volumeM3
-    expect(startSalvageOp(state, galaxy, ctx).ok).toBe(true)
+    expect(startSalvageArrived(state, galaxy, ctx).ok).toBe(true)
     const cycles = salvagerCyclesOf(state, ctx, state.shipId)
     advanceSalvageOp(state, cycles[0]!, ctx)
     expect(countItem(state, 'wreck-h-hi')).toBe(expected * 2)

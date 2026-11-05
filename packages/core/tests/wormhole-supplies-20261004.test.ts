@@ -15,6 +15,7 @@ import { wormholeHoldUsage, wormholeHoldStow, wormholeTempAddShape, wormholeTemp
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { droneReviveNoteLoss, resolveDroneRevive } from '../src/droneRevive'
 import { wormholeGroundBoard } from '../src/wormholeGround'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
 const BASE = 'ammo-kinetic-l'
@@ -34,6 +35,7 @@ function prepare(state: GameState, fleet: string[], targets: Record<string, numb
   expect(plan.ok, JSON.stringify(plan)).toBe(true)
   const result = wormholeEnterPrepared(state, ctx, fleet, 7, plan)
   expect(result.ok).toBe(true)
+  finishDeparture(state, ctx)
   return state.wormhole.run!
 }
 
@@ -521,6 +523,7 @@ describe('虫洞有限物资 · 维修与兼容', () => {
     state.fleet[fleet[0]!]!.droneLoad = { 'drone-scout': 1 }
     state.warehouse.items['drone-scout'] = 1
     expect(wormholeEnter(state, ctx, fleet, 7).ok).toBe(true)
+    finishDeparture(state, ctx)
     const battle = start(state)
     const key = Object.keys(battle.dronePools!)[0]!
     loseDrone(state, battle, key, 0)
@@ -818,6 +821,7 @@ describe('虫洞有限物资 · 维修与兼容', () => {
     const { state, fleet, need } = setup(1)
     state.warehouse.items[BASE] = need
     expect(wormholeEnter(state, ctx, fleet, 7).ok).toBe(true)
+    finishDeparture(state, ctx)
     const battle = start(state)
     expect(state.wormhole.run!.supplyVersion).toBeUndefined()
     expect(battle.expeditionAmmo!.stock[BASE]).toBe(need)

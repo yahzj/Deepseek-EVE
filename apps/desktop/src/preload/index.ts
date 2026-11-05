@@ -33,6 +33,14 @@ contextBridge.exposeInMainWorld('whale', {
    * 而语言偏好存在渲染进程的 `localStorage` ⇒ 主进程读不到，只能由渲染层推。
    */
   setLocale: (locale: 'zh' | 'en'): Promise<boolean> => ipcRenderer.invoke('l10n:set-locale', locale),
+  /**
+   * 音效台「一键入库」（2026-11-04 调试批）：主进程把入库包写到临时文件，再调仓库根
+   * `tools/audio-install.ts` 校验并写入 assets。仅桌面开发版可用；网页版保留导出 + 命令。
+   */
+  audio: {
+    installPack: (pack: ArrayBuffer, options?: { dryRun?: boolean }): Promise<{ ok: boolean; code: number | null; output: string }> =>
+      ipcRenderer.invoke('audio:install-pack', pack, options),
+  },
 })
 
 // 性能自动采集（2026-09-08 诊断工具）：主进程环境变量 WHALE_AUTOPERF 注入场景 JSON；

@@ -12,8 +12,9 @@ import { useEffect, useRef } from 'react'
 import type { GameState } from '@whale/core'
 import { resolveSfxScene, sceneFlagsFromState } from './scene'
 import type { SfxScene } from './scene'
-import { installMusicGestureRetry, pauseMusic, refreshMusicVolume, resumeMusic, setMusicScene } from './music'
-import { pauseAmbient, refreshAmbientVolume, resumeAmbient, setAmbientScene } from './ambient'
+import { installMusicGestureRetry, pauseMusic, refreshMusicVolume, resumeMusic } from './music'
+import { pauseAmbient, refreshAmbientVolume, resumeAmbient } from './ambient'
+import { reportRealSfxScene } from './sceneSwitch'
 import { subscribeSfxPrefs } from './prefs'
 
 let lifecycleInstalled = false
@@ -48,7 +49,7 @@ export function useSceneAudio({ state, battleOnStage }: { state: GameState; batt
     const scene = resolveSfxScene(sceneFlagsFromState(state, battleOnStage))
     if (scene === lastSceneRef.current) return
     lastSceneRef.current = scene
-    setMusicScene(scene)
-    setAmbientScene(scene)
+    // 真实场景交给 sceneSwitch：音效台「场景预演」可强制别的场景声音（只切声音，不动画面）
+    reportRealSfxScene(scene)
   })
 }
