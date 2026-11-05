@@ -3093,7 +3093,7 @@
 }
 
 .ex-chart-wrap {
-  height: clamp(250px, 34vh, 330px);
+  height: 280px;
   min-height: 220px;
 }
 
@@ -4136,9 +4136,9 @@
   font-size: var(--wui-fs-2xs);
 }
 
-/* ── 极简走势图卡片（支持全屏自适应垂直伸展，填满中栏视口） ── */
+/* 图表保持常规高度，扩大窗口不拉伸走势。 */
 .ex-simple-chart-section {
-  flex: 1 1 240px;
+  flex: 0 1 240px;
   min-height: 180px;
   display: flex;
   flex-direction: column;
@@ -5349,7 +5349,7 @@ html body .app-root.is-layout-modern .ex-page .ex-simple-big-action-btn:disabled
 }
 
 .ex-pro-chart-wrap {
-  flex: 1 1 360px;
+  flex: 0 1 360px;
   min-height: 240px;
   display: flex;
   flex-direction: column;
@@ -5421,7 +5421,7 @@ html body .app-root.is-layout-modern .ex-page .ex-simple-big-action-btn:disabled
 
 /* ── 中栏下半部：持仓与流水二级 Tab ── */
 .ex-pro-mid-bottom {
-  flex: 0 1 240px;
+  flex: 1 1 240px;
   min-height: 180px;
   display: flex;
   flex-direction: column;
@@ -5429,6 +5429,13 @@ html body .app-root.is-layout-modern .ex-page .ex-simple-big-action-btn:disabled
   border: 1px solid rgb(var(--wui-border));
   border-radius: 6px;
   overflow: hidden;
+}
+
+/* 任意钱包动作共用反馈，覆盖主按钮的既有渐变背景。 */
+.ex-page .ex-btn-progress[style*='--ex-progress'] {
+  background: linear-gradient(to right, rgb(var(--wui-tone-gain) / 0.65) var(--ex-progress), rgb(var(--wui-bg-field)) var(--ex-progress)) !important;
+  color: rgb(var(--wui-text)) !important;
+  font-variant-numeric: tabular-nums;
 }
 
 .ex-pro-mid-tabs {
@@ -6618,3 +6625,6 @@ html body .app-root.is-layout-modern .ex-page .ex-simple-big-action-btn:disabled
 .ex-agent-action .ex-agent-side.is-down {
   color: rgb(var(--wui-tone-loss));
 }
+
+.ex-strategy-events { border-top: 1px solid rgb(var(--wui-border)); padding: 8px 0; margin-top: 8px; font-size: var(--wui-fs-xs); }
+.ex-strategy-event { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; padding: 4px 0; align-items: start; }

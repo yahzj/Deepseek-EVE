@@ -14,6 +14,7 @@ import type { ExchangeClient, ExchangeOrder, ExchangeSnapshot, OrderSource } fro
 import type { ToastFn } from '../../../pages/common'
 import { amount, money, pct, pctAbs, pnlMoney, price, shortTime } from '../format'
 import { T, TF } from '../texts'
+import { progressStyle, useActionProgress } from '../useActionProgress'
 
 type Tab = 'positions' | 'orders'
 
@@ -57,6 +58,25 @@ export function Positions({
   onToast: ToastFn
 }) {
   const [tab, setTab] = useState<Tab>('positions')
+  const [busyTarget, setBusyTarget] = useState<string | null>(null)
+  const actionProgress = useActionProgress(client)
+  const busyRef = useRef(false)
+  const runAction = async (target: string, action: () => Promise<void>): Promise<void> => {
+    if (busyRef.current) return
+    busyRef.current = true
+    setBusyTarget(target)
+    actionProgress.start()
+    try {
+      await action()
+      await actionProgress.finish()
+    } catch (err) {
+      await actionProgress.finish(false)
+      onToast(err instanceof Error ? err.message : String(err), true)
+    } finally {
+      busyRef.current = false
+      setBusyTarget(null)
+    }
+  }
   const seq = useRef(0)
   const nextId = (): string => {
     seq.current += 1
@@ -72,22 +92,22 @@ export function Positions({
       onToast(T.toastNoHolding, true)
       return
     }
-    void client
+    void runAction(`spot-${target}`, () => client
       .placeOrder({ clientOrderId: nextId(), code: target, side: 'sell', type: 'market', tif: 'IOC', qty, leverage: 1 })
       .then((o) => onToast(`${TF.positionClosed(o.code, amount(o.filledQty ?? qty))}`))
-      .catch((err: unknown) => onToast(err instanceof Error ? err.message : String(err), true))
+    )
   }
   const closeLeverage = (target: string, side: 'long' | 'short'): void => {
-    void client
+    void runAction(`${side}-${target}`, () => client
       .closePosition(target, side)
       .then(() => onToast(TF.positionClosedAll(target)))
-      .catch((err: unknown) => onToast(err instanceof Error ? err.message : String(err), true))
+    )
   }
   const cancelOrder = (id: string): void => {
-    void client
+    void runAction(id, () => client
       .cancelOrder(id)
       .then(() => onToast(T.toastOrderCancelled))
-      .catch((err: unknown) => onToast(err instanceof Error ? err.message : String(err), true))
+    )
   }
 
   return (
@@ -160,12 +180,15 @@ export function Positions({
                       </div>
                       <button
                         type="button"
-                        className="ex-mini-btn is-close"
+                        className="ex-mini-btn is-close ex-btn-progress"
+                        disabled={busyTarget !== null}
+                        style={busyTarget === `spot-${h.code}` ? progressStyle(actionProgress) : undefined}
                         title={`${T.posSell} ${h.code}`}
                         aria-label={`${T.posSell} ${h.code}`}
                         onClick={() => sellSpot(h.code, h.availableQty ?? h.qty)}
                       >
                         <Close size={12} /> {T.posSell}
+                        {busyTarget === `spot-${h.code}` ? ` ${actionProgress.pct}%` : ''}
                       </button>
                     </div>
                   </div>
@@ -249,12 +272,15 @@ export function Positions({
                       </div>
                       <button
                         type="button"
-                        className="ex-mini-btn is-close"
+                        className="ex-mini-btn is-close ex-btn-progress"
+                        disabled={busyTarget !== null}
+                        style={busyTarget === `${p.side}-${p.code}` ? progressStyle(actionProgress) : undefined}
                         title={`${T.posClose} ${p.code} ${p.side}`}
                         aria-label={`${T.posClose} ${p.code} ${p.side}`}
                         onClick={() => closeLeverage(p.code, p.side)}
                       >
                         <Close size={12} /> {T.posClose}
+                        {busyTarget === `${p.side}-${p.code}` ? ` ${actionProgress.pct}%` : ''}
                       </button>
                     </div>
                   </div>

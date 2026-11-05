@@ -56,6 +56,7 @@ import type {
 import { bucketStart } from '../chartPeriods'
 import { ExchangeError } from '../errors'
 import { T } from '../texts'
+import { tr } from '../../../i18n/locale'
 import type { Transport } from './transport'
 
 const CONTRACT_VERSION = 1
@@ -418,6 +419,15 @@ function normalizeStrategy(raw: unknown): StrategySpec | null {
     enabled: raw.enabled === true,
   }
   if (typeof raw.id === 'string' && raw.id !== '') strategy.id = raw.id
+  if (isRecord(raw.runtime)) {
+    strategy.runtime = {
+      lastRound: num(raw.runtime.lastRound),
+      events: Array.isArray(raw.runtime.events) ? raw.runtime.events.filter(isRecord).map((event) => ({
+        roundNo: num(event.roundNo), ts: num(event.ts), status: text(event.status), reason: text(event.reason),
+        side: event.side === 'sell' ? 'sell' : 'buy', qty: num(event.qty), filledQty: num(event.filledQty), orderId: num(event.orderId),
+      })) : [],
+    }
+  }
   return strategy
 }
 
@@ -523,6 +533,12 @@ export class HttpExchangeClient implements ExchangeClient {
   private chartCache = new Map<string, Kline[]>()
   private account: ExchangeAccount = emptyAccount()
   private orders: ExchangeOrder[] = []
+  private accountHolds = 0
+  private heldAccount: ExchangeAccount | null = null
+  private heldOrders: ExchangeOrder[] | null = null
+  private heldTrades: TradeRecord[] | null = null
+  private heldBond: BondPosition | null = null
+  private heldFund: FundPosition | null = null
   private round: RoundInfo | null = null
   private myTrades: TradeRecord[] = []
   private dividends: DividendRecord[] = []
@@ -541,6 +557,7 @@ export class HttpExchangeClient implements ExchangeClient {
   private symbolLoading = new Set<string>()
   /** 正在按需补拉的周期（key = code:period）：切到未缓存周期时只发一次请求 */
   private chartLoading = new Set<string>()
+  private chartRequestedAt = new Map<string, number>()
   /** K 线本地缓存（7 天 TTL，跨重启秒开图表）；key = code:period */
   private chartCachedAt = new Map<string, number>()
   private chartPersistTimer = 0
@@ -947,14 +964,18 @@ export class HttpExchangeClient implements ExchangeClient {
   }
 
   /**
-   * 按需补拉单个周期（2026-11-04 船长报障「M5 图载入不出来」）：
-   * 图表组件只读缓存、不发起请求，预加载又只覆盖 m1/m5/h5/d5/d35 ⇒ h1/d1/d7 永远空白、
-   * m5 一旦预加载失败也不会重试。切周期时调用本方法补拉，成功后 emitTick 触发重绘。
+   * 按需补拉当前周期；有效缓存一分钟内复用，空缓存和失败请求五秒后可重试。
+   * 配合图表周期 effect，覆盖预加载未包含的 H1/日/周线，并防止请求风暴。
    */
   ensureChartData(code: string, period: ChartPeriod): void {
     if (code === '') return
     const key = `${code}:${period}`
-    if (this.chartCache.has(key) || this.chartLoading.has(key)) return
+    if (this.chartLoading.has(key)) return
+    const now = Date.now()
+    const bars = this.chartCache.get(key)
+    if (bars && bars.length > 0 && now - (this.chartCachedAt.get(key) ?? 0) < 60_000) return
+    if (now - (this.chartRequestedAt.get(key) ?? 0) < 5_000) return
+    this.chartRequestedAt.set(key, now)
     this.chartLoading.add(key)
     void this.loadChart(code, period)
       .then(() => this.emitTick())
@@ -1122,7 +1143,7 @@ export class HttpExchangeClient implements ExchangeClient {
     const rows = Array.isArray(raw) ? raw : isRecord(raw) && Array.isArray(raw.orders) ? raw.orders : null
     if (rows === null) throw new ExchangeError('malformed_response', '委托列表响应格式不正确')
     this.orders = rows.map(normalizeOrder).filter(isPresent)
-    return this.orders
+    return this.heldOrders ?? this.orders
   }
 
   /** 回合时钟（可选接口）：拉取当前回合，WS `round` 帧也会刷新同一份缓存。 */
@@ -1149,6 +1170,29 @@ export class HttpExchangeClient implements ExchangeClient {
     return this.post<WithdrawResult>('/withdraw', { amount, nonce })
   }
 
+  holdAccountUpdates(): () => void {
+    if (this.accountHolds++ === 0) {
+      this.heldAccount = this.account
+      this.heldOrders = this.orders
+      this.heldTrades = this.myTrades
+      this.heldBond = this.bond
+      this.heldFund = this.funds
+    }
+    let released = false
+    return () => {
+      if (released) return
+      released = true
+      if (--this.accountHolds === 0) {
+        this.heldAccount = null
+        this.heldOrders = null
+        this.heldTrades = null
+        this.heldBond = null
+        this.heldFund = null
+        this.emitTick()
+      }
+    }
+  }
+
   async placeOrder(req: PlaceOrderRequest): Promise<ExchangeOrder> {
     const raw = await this.post<unknown>('/orders', req)
     if (!isRecord(raw)) throw new ExchangeError('malformed_response', '下单响应格式不正确')
@@ -1159,7 +1203,12 @@ export class HttpExchangeClient implements ExchangeClient {
     if (order === null) throw new ExchangeError('malformed_response', '下单响应缺少委托字段')
     this.upsertOrder(order)
     if (Array.isArray(raw.trades)) this.appendMyTrades(raw.trades)
-    this.emitTick()
+    try {
+      await this.refreshAccount()
+    } finally {
+      // 账户刷新失败也保留服务器已受理的订单，不把成功提交丢成未知状态。
+      this.emitTick()
+    }
     return order
   }
 
@@ -1217,13 +1266,17 @@ export class HttpExchangeClient implements ExchangeClient {
     if (fresh.length > 0) this.myTrades = [...fresh, ...this.myTrades].slice(0, 200)
   }
 
-  /** 撤单/批量提交/平仓后的账户刷新：失败不覆盖已成功的业务结果，等下一帧再更新。 */
+  /** 业务已受理后单独重试读取；不重发交易，避免重复扣款。 */
   private async refreshAccount(): Promise<void> {
-    try {
-      await this.getAccount()
-    } catch {
-      /* 成败只看业务动作；刷新失败留给回合广播 */
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        await this.getAccount()
+        return
+      } catch {
+        if (attempt < 2) await new Promise<void>((resolve) => setTimeout(resolve, 300))
+      }
     }
+    throw new ExchangeError('account_sync_pending', tr('ui.exchange.007'))
   }
 
   /* ═══════════════ 量化 ═══════════════ */
@@ -1232,6 +1285,7 @@ export class HttpExchangeClient implements ExchangeClient {
     const raw = await this.get<unknown>('/strategies')
     const rows = Array.isArray(raw) ? raw : []
     this.strategies = rows.map(normalizeStrategy).filter(isPresent)
+    this.emitTick()
     return this.strategies
   }
 
@@ -1240,12 +1294,16 @@ export class HttpExchangeClient implements ExchangeClient {
     const saved = normalizeStrategy(raw)
     if (saved === null) throw new ExchangeError('malformed_response', '策略保存响应格式不正确')
     this.strategies = [...this.strategies.filter((item) => item.id !== saved.id), saved]
+    this.emitTick()
     return saved
   }
 
   async deleteStrategy(id: string): Promise<void> {
     await this.del<void>(`/strategies/${encodeURIComponent(id)}`)
     this.strategies = this.strategies.filter((item) => item.id !== id)
+    await this.refreshAccount()
+    await this.getOrders()
+    this.emitTick()
   }
 
   /* ═══════════════ 实时订阅 ═══════════════ */
@@ -1282,20 +1340,20 @@ export class HttpExchangeClient implements ExchangeClient {
       book: this.books.get(code) ?? { code, bids: [], asks: [], ts: this.ts },
       trades: this.trades.get(code) ?? [],
       klines: this.chartCache.get(`${code}:m1`) ?? [],
-      account: this.account,
+      account: this.heldAccount ?? this.account,
       // 回合制：`queued`（已在服务端本回合队列里、等撮合）也要显示为「当前委托」。
-      orders: this.orders.filter(
+      orders: (this.heldOrders ?? this.orders).filter(
         (order) =>
           order.status === 'queued' ||
           order.status === 'open' ||
           order.status === 'partial' ||
           order.status === 'trigger_pending',
       ),
-      myTrades: this.myTrades,
+      myTrades: this.heldTrades ?? this.myTrades,
       dividends: this.dividends,
       strategies: this.strategies,
-      bonds: this.bond,
-      funds: this.funds,
+      bonds: this.heldBond ?? this.bond,
+      funds: this.heldFund ?? this.funds,
       bondProduct: this.bondProduct,
       news: this.news,
       agents: this.agents,
@@ -1316,15 +1374,25 @@ export class HttpExchangeClient implements ExchangeClient {
    * 2026-11-04 船长令：债券也走交易所现金（入金后的钱），不再用本地存档直接买。
    */
   async getBondPosition(): Promise<BondPosition> {
-    return this.get<BondPosition>('/bond')
+    const position = await this.get<BondPosition>('/bond')
+    this.bond = position
+    return this.heldBond ?? position
   }
 
   async openBond(amount: number, nonce: string): Promise<BondPosition> {
-    return this.post<BondPosition>('/bond/open', { amount, nonce })
+    const position = await this.post<BondPosition>('/bond/open', { amount, nonce })
+    await this.refreshAccount()
+    this.bond = position
+    this.emitTick()
+    return position
   }
 
   async redeemBond(nonce: string): Promise<BondPosition> {
-    return this.post<BondPosition>('/bond/redeem', { nonce })
+    const position = await this.post<BondPosition>('/bond/redeem', { nonce })
+    await this.refreshAccount()
+    this.bond = position
+    this.emitTick()
+    return position
   }
 
   /**
@@ -1332,22 +1400,35 @@ export class HttpExchangeClient implements ExchangeClient {
    * 查询时惰性结算到当前分钟；本金锁定，随时可赎。
    */
   async getFundPosition(): Promise<FundPosition> {
-    return this.get<FundPosition>('/fund')
+    const position = await this.get<FundPosition>('/fund')
+    this.funds = position
+    return this.heldFund ?? position
   }
 
   async openFund(amount: number, nonce: string): Promise<FundPosition> {
-    return this.post<FundPosition>('/fund/open', { amount, nonce })
+    const position = await this.post<FundPosition>('/fund/open', { amount, nonce })
+    await this.refreshAccount()
+    this.funds = position
+    this.emitTick()
+    return position
   }
 
   async redeemFund(nonce: string): Promise<FundPosition> {
-    return this.post<FundPosition>('/fund/redeem', { nonce })
+    const position = await this.post<FundPosition>('/fund/redeem', { nonce })
+    await this.refreshAccount()
+    this.funds = position
+    this.emitTick()
+    return position
   }
 
   /**
    * 下单前馈：联机模式真正的保证金/强平/费率以实现只有服务端一份，
-   * 这里只按账户快照给界面可用的**估算**（不参与下单校验，服务器才是权威）。
-   * 关键：不能用 blockReason 表达「未实现预览」——那会把专业视图的下单按钮整体拦死。
+   * fetchOrderPreview 读取服务器真实冻结校验；同步 previewOrder 仅用于等待回执前的占位估算。
    */
+  async fetchOrderPreview(req: PlaceOrderRequest & { investment?: number }): Promise<OrderPreview> {
+    return this.post<OrderPreview>('/orders/preview', req)
+  }
+
   previewOrder(req: PlaceOrderRequest): OrderPreview {
     const quote = this.stocks.find((stock) => stock.code === req.code)
     const price = req.price ?? quote?.price ?? 0

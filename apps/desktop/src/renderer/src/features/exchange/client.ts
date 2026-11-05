@@ -178,6 +178,10 @@ export interface StrategySpec {
   code: string
   params: Record<string, number | string | boolean>
   enabled: boolean
+  runtime?: {
+    lastRound: number
+    events: Array<{ roundNo: number; ts: number; status: string; reason: string; side?: Side; qty?: number; filledQty?: number; orderId?: number }>
+  }
 }
 
 export type ExchangeTopic = 'book' | 'trade' | 'price' | 'kline' | 'position' | 'margin' | 'event'
@@ -359,6 +363,7 @@ export interface IndexQuote {
  * 界面自己再算一遍迟早与撮合口径分叉。
  */
 export interface OrderPreview {
+  qty?: number
   notional: number
   margin: number
   fee: number
@@ -432,6 +437,8 @@ export interface ExchangeClient {
    * 未来 UI 接入点见 `round.ts` 里的 `RoundClock`。
    */
   getRound?(): Promise<RoundInfo>
+  /** 操作期间保留账户与委托显示；进度满格后释放最新快照。 */
+  holdAccountUpdates?(): () => void
   // 交易
   deposit(amount: number, nonce: string): Promise<DepositResult>
   withdraw(amount: number, nonce: string): Promise<WithdrawResult>
@@ -487,6 +494,7 @@ export interface ExchangeClient {
   redeemFund(nonce: string): Promise<FundPosition>
   /** 下单预览（保证金/名义/手续费/强平价/距强平/上限/不可下单原因） */
   previewOrder(req: PlaceOrderRequest): OrderPreview
+  fetchOrderPreview?(req: PlaceOrderRequest & { investment?: number }): Promise<OrderPreview>
 }
 
 /**

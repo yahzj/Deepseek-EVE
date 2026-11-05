@@ -4,6 +4,8 @@
  *
  * 场景来源：`scene.ts`（App 的 `useSceneAudio` 每帧把场景推进来，只在场景变化时才切曲）。
  * 素材：`assets/bgm/<id>.mp3`，本机覆盖（音效台导入）优先；**缺素材 = 静音**（不占位、不报错）。
+ * 同一场景可放多份变体（`bgm-battle.mp3` + `bgm-battle.2.mp3`）：切到该场景时随机取一条并缓存，
+ * 音量/静音刷新不会重选（否则循环曲会被切来切去）；「重播」与重新进场景会重新随机。
  * 音量：总音量 ×「音乐」分类 × 单曲增益；静音/拖滑条即时生效。
  * 后台：最小化/切标签页由 `index.ts` 的 visibility 生命周期暂停、恢复时从暂停处继续。
  * 网页首次自动播放被拒：由 `installMusicGestureRetry()` 在首次点击/按键后重试当前场景。
@@ -14,13 +16,16 @@ import { LoopChannel } from './loops'
 import { builtinSfxUrls } from './manifest'
 import { getSfxOverrideUrl } from './overrides'
 import { readSfxPrefs } from './prefs'
-import { BGM_CROSSFADE_MS, VOLUME_FADE_MS } from './rules'
+import { BGM_CROSSFADE_MS, VOLUME_FADE_MS, pickVariant } from './rules'
 import { sceneBgmOf } from './scene'
 import type { SfxScene } from './scene'
 
 let channel: LoopChannel | null = null
 let currentScene: SfxScene | null = null
 let gestureArmed = false
+/** 当前已选中的 BGM 变体（语义 id + url）：同场景内保持稳定，切换场景/重播才重新随机 */
+let chosenCue: SfxCueId | null = null
+let chosenUrl: string | null = null
 
 function ensureChannel(): LoopChannel | null {
   try {
@@ -32,11 +37,23 @@ function ensureChannel(): LoopChannel | null {
   }
 }
 
-/** 某个语义 id 的有效素材 URL（本机覆盖优先） */
+/**
+ * 某个语义 id 的有效素材 URL：本机覆盖优先；内置有多个变体时随机取一条并缓存。
+ * 缓存必须：`apply()` 也会被音量/静音变化调用，每次重新随机会让正在循环的曲子被换掉。
+ */
 function urlOf(cueId: SfxCueId): string | null {
   const override = getSfxOverrideUrl(cueId)
-  if (override !== null) return override
-  return builtinSfxUrls(cueId)[0] ?? null
+  if (override !== null) {
+    chosenCue = cueId
+    chosenUrl = override
+    return override
+  }
+  const urls = builtinSfxUrls(cueId)
+  if (chosenCue === cueId && chosenUrl !== null && urls.includes(chosenUrl)) return chosenUrl
+  const picked = pickVariant(urls, Math.random)
+  chosenCue = cueId
+  chosenUrl = picked
+  return picked
 }
 
 function bgmVolumeOf(cueId: SfxCueId): number {
@@ -85,7 +102,7 @@ export function resumeMusic(): void {
   channel?.resume()
 }
 
-/** 调试台「重播场景音乐」：销毁通道后按当前场景重新起播（从 0 开始，不是续播） */
+/** 调试台「重播场景音乐」：销毁通道后按当前场景重新起播（从 0 开始，不是续播；并重新随机一条变体） */
 export function restartMusic(): void {
   try {
     channel?.destroy()
@@ -93,6 +110,8 @@ export function restartMusic(): void {
     /* 忽略 */
   }
   channel = null
+  chosenCue = null
+  chosenUrl = null
   apply()
 }
 

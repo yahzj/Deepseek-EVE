@@ -31,8 +31,8 @@ export function FundCard({
   const [position, setPosition] = useState<FundPosition | null>(null)
   const [amountText, setAmountText] = useState('100000')
   const [busy, setBusy] = useState(false)
-  const openProgress = useActionProgress()
-  const redeemProgress = useActionProgress()
+  const openProgress = useActionProgress(client)
+  const redeemProgress = useActionProgress(client)
 
   const availableCash = snap.account.cash
   const principal = position?.principal ?? 0
@@ -77,14 +77,17 @@ export function FundCard({
       return
     }
     setBusy(true)
+    openProgress.start()
     const amount = numericAmount
     try {
       const next = await client.openFund(amount, crypto.randomUUID())
+      await openProgress.finish()
       setPosition(next)
       setAmountText('')
       onToast(TF.fundOpened(money(amount)), false)
       onRefresh()
     } catch (err) {
+      await openProgress.finish(false)
       onToast(err instanceof Error ? err.message : String(err), true)
     } finally {
       setBusy(false)
@@ -96,12 +99,15 @@ export function FundCard({
     const payout = Math.max(0, principal + accrued)
     const lost = accrued < 0
     setBusy(true)
+    redeemProgress.start()
     try {
       const next = await client.redeemFund(crypto.randomUUID())
+      await redeemProgress.finish()
       setPosition(next)
       onToast(TF.fundRedeemed(money(payout)), lost)
       onRefresh()
     } catch (err) {
+      await redeemProgress.finish(false)
       onToast(err instanceof Error ? err.message : String(err), true)
     } finally {
       setBusy(false)
@@ -241,12 +247,10 @@ export function FundCard({
             className="ex-mini-btn is-bond-buy ex-btn-progress"
             disabled={!canSubmit}
             style={progressStyle(openProgress)}
-            onClick={() => {
-              openProgress.start()
-              void submit().finally(() => openProgress.finish())
-            }}
+            onClick={() => void submit()}
           >
             {busy ? T.fundCalculating : hasPosition ? T.fundAddBtn : T.fundPlayBtn}
+            {openProgress.active ? ` ${openProgress.pct}%` : ''}
           </button>
           {hasPosition ? (
             <button
@@ -254,12 +258,10 @@ export function FundCard({
               className="ex-mini-btn ex-btn-progress"
               disabled={busy}
               style={progressStyle(redeemProgress)}
-              onClick={() => {
-                redeemProgress.start()
-                void redeem().finally(() => redeemProgress.finish())
-              }}
+              onClick={() => void redeem()}
             >
               {T.fundRedeemBtn}
+              {redeemProgress.active ? ` ${redeemProgress.pct}%` : ''}
             </button>
           ) : null}
         </div>

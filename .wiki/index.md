@@ -75,3 +75,4 @@
 - [[pitfall-wormhole-signal]] 虫洞与信号空间：踩坑与经验 — 虫洞与信号空间踩坑：扫描/信标、燃料与跃迁、遭遇与打捞（docs 蒸馏，非现行规则）
 - [[project-overview]] 项目架构与模块边界 — 仓库分 apps 与 packages（core、data、ui）：core 不依赖 DOM 与界面，data 持静态内容，ui 持共享组件，renderer 管存档；四目标 typecheck 见 package.json。
 - [[verification-and-commit]] 验证检查与提交纪律 — 专项测试与全量回归的分工、固定检查矩阵、提交钩子四项技术与 B 类审批、构建冒烟与真档保护的操作索引。
+- [[证券交易所-仓库结构与生产部署-2026-11-05]] 证券交易所：仓库结构与生产部署（2026-11-05） — 大鲸鱼证券交易所三仓结构与生产部署事实：游戏主仓、Background（Node 云端）、exchange-server-go（Go 股市，父仓未跟踪的子仓），端口 8787/8788 与 systemd 部署步骤。
