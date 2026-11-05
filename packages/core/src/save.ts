@@ -60,6 +60,7 @@ import { cleanHaulFleetLeg } from './hauling/types'
 import { cleanPirateEncounter } from './encounters/save'
 import { cleanSignalAutoEstimate } from './signalAuto/save'
 import { cleanMarketRelayState } from './market/relaySave'
+import { applyLegacyCommandCompensation } from './combat/command/compensation'
 
 /** 存档文件格式标识（防止拿别的游戏的 JSON 硬读） */
 export const SAVE_FORMAT = 'whale-idle-save'
@@ -2986,7 +2987,9 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     logCap,
     character,
     rng,
-    skills: { trained, queue, savedProgress, licenses, ...(skillsRaw.progressVersion === 1 ? { progressVersion: 1 as const } : {}) },
+    skills: { trained, queue, savedProgress, licenses,
+      ...(skillsRaw.commandCompensationVersion === 1 ? { commandCompensationVersion: 1 as const } : {}),
+      ...(skillsRaw.progressVersion === 1 ? { progressVersion: 1 as const } : {}) },
     wallet,
     shipId,
     fleet,
@@ -3129,6 +3132,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
   pruneMarks(normalized)
   reconcileDeparture(normalized)
   normalizeTrainingProgress(normalized)
+  applyLegacyCommandCompensation(normalized)
   return normalized
 }
 

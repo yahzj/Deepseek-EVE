@@ -1,7 +1,8 @@
 # 文档目录
 
 > 本页负责按任务指路；`docs/INDEX.md`是机器生成的现行文档清册。
-> 旧记录集中在`docs/archive/`与`docs/design/archive/`。**没有船长明确的查阅要求，平时工作禁止阅读、检索、批量扫描或自动载入旧记录，也不得转查Git历史绕过。**历史链接、普通开发请求和会话续接不授予查阅权限。
+> **归档区** = `H:\大鲸鱼\_docs-archive-20261105\Deepseek-EVE\`（2026-11-05 外迁，独立 git 仓库，默认禁读）；文中「归档区/…」与历史文档里的旧 `docs/archive/`、`docs/design/archive/` 都指该处对应路径。
+> 旧记录集中在`归档区/docs/archive/`与`归档区/docs/design/archive/`。**没有船长明确的查阅要求，平时工作禁止阅读、检索、批量扫描或自动载入旧记录，也不得转查Git历史绕过。**历史链接、普通开发请求和会话续接不授予查阅权限。
 
 ## 工作入口
 
@@ -22,6 +23,7 @@
 | 中文术语、机制名 | `docs/glossary.md` |
 | 已获授权的英文工作 | `docs/glossary-en.md`、`docs/l10n-pending.md` |
 | 静态参数与内容编辑 | `docs/data-map.md`、`docs/data-editor.md`、`docs/content-workbench.md` |
+| 数据微调（改既有价格 / 下架市场卡） | `AGENTS.md` §2.2 T0 快速通道 → `npm run data:quick`；不改 `content-csv/` |
 | 页面、表现与动画 | 开发约定§九、§十四，再读本域实现与对应现行设计稿 |
 | 深空证券交易所（极简双向/专业重构/标准K线） | `docs/design/deep-space-exchange-pro-refinement-20261103.md`；现行设计稿与视觉/交互规范 |
 | 设置子页面分类 | `docs/design/settings-subpages-20261103.md`；仅重组现有设置项，实施期间为现行工作稿 |
@@ -32,7 +34,7 @@
 | 玩家文案与公告 | 开发约定§十一、§十二、§十三；公告待审稿未经批准不落库 |
 | 第二阶段空间站 | `docs/design/human-revival-station.md`看既有框架 → `docs/design/human-revival-station-research-20261018.md`看总览摘要与六份主题稿；玩家站仍仅设计，未决方案不能当已实现 |
 | 第三方审查跟进 | `docs/review/guoqing-audit-followup.md`；旧报告需船长点名查阅 |
-| 复现门槛与合成档 | `docs/test-saves/README.md`及该功能说明 |
+| 复现门槛与合成档 | `docs/test-saves/README.md`（现行手册 + 32 份外迁说明索引表）；149 个 .json 夹具原位不动 |
 | 找当前文档 | `npm run docs:index`生成的`docs/INDEX.md`；索引不授予实施或历史阅读权限 |
 
 ## 维护

@@ -30,6 +30,8 @@
 
 统一指挥预算：`combat/command/rules.ts`的`commandCapacityOf`、`shipCommandCostOf`、`commandBudgetOf`分别负责容量、船型成本和入口校验；常驻战斗名单归`combat/command/roster.ts:combatRosterOf`，出勤快照清洗归同域。旧4舰规则只经独立配置恢复，不另抄预算算法。
 
+旧档编队技能补偿归`combat/command/compensation.ts:applyLegacyCommandCompensation`：仅当前可读且缺少`skills.commandCompensationVersion`的存档，在首次载入时按累计协会声望40/60/80/100补至编队协同指挥1/2/3/4级。新档直接登记已处理；已有更高等级不降级，不改声望或额外赠送前置技能。护栏为补偿与存档往返专项。
+
 每日赏金：`expedition/bountyBoard.ts:rollBountyBoard`统一候选、分区席位、地图上限与三档匹配；`bountyTaskStandingGain`提供完成和收益展示共用的分档声望。护栏为赏金生成/结算专项及F2/F3检查。
 
 `lab.ts:labOutputCapped`按产物聚合有效线锁定的`batchUnits`，起线、续做与燃料供应读数共用；交付按真实余量整批入库，仓满保留原线/退款账与`deliveryBlocked`随档标记。`market/constants.ts:PRICE_HISTORY_LIMIT`为行情采样和存档清洗共用窗口常量，不导入运行层。护栏为国庆专项及F2/F3检查。

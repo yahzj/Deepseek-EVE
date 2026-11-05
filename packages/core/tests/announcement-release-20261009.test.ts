@@ -71,7 +71,9 @@ describe('船长获批两篇公告发布', () => {
       expect(L10N[id]!.en).not.toMatch(/[\u3400-\u9fff]|\{\w+\}/)
       expect(L10N[id]!.enDeferred).not.toBe(true)
     }
-    expect(ANNOUNCEMENTS.slice(0, 2).map(row => row.id)).toEqual(currentReleases.map(row => row.id))
+    const first = ANNOUNCEMENTS.findIndex(row => row.id === currentReleases[0]!.id)
+    expect(first).toBeGreaterThanOrEqual(0)
+    expect(ANNOUNCEMENTS.slice(first, first + 2).map(row => row.id)).toEqual(currentReleases.map(row => row.id))
   })
   it.each(releases)('$id按原获批稿或船长本次短句裁定接线', release => {
     const announcement = ANNOUNCEMENTS.find(row => row.id === release.id)!

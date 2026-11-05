@@ -1,7 +1,8 @@
 /**
  * 存档往返审计：只读仓内测试档，逐元素/长度/值比较第一次与第二次归一；
  * 另用真实引擎合成当前状态，对资源、训练、行情、奖励标记与实验线作首读保真检查。
- * 用法：npm run save:roundtrip-audit。低于当前版本的VERSION拒读单列；意外失败退出1。
+ * 用法：npm run save:roundtrip-audit；加 --synthetic-only 仅验证内存合成状态，不扫描或读取存档文件。
+ * 低于当前版本的VERSION拒读单列；意外失败退出1。
  * 历史原档可能含非法值或退役字段，首读不作整对象相等断言；不读取个人存档。
  */
 import { readdirSync, readFileSync } from 'node:fs'
@@ -14,7 +15,8 @@ import { startLabRun } from '../packages/core/src/lab'
 import { compareSaveValues } from './save-roundtrip-compare'
 
 const DIR = 'docs/test-saves'
-const files = readdirSync(DIR).filter(f => f.endsWith('.json'))
+const syntheticOnly = process.argv.includes('--synthetic-only')
+const files = syntheticOnly ? [] : readdirSync(DIR).filter(f => f.endsWith('.json'))
 const differences = new Map<string, number>()
 let ok = 0, failed = 0, rejected = 0
 

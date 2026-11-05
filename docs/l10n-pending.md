@@ -11,6 +11,42 @@
 | `ui.fitOverview.004` | 无无人机时的现有武器类别摘要 | 待本地化 |
 | `ui.fitOverview.005` | 现有护盾、装甲、结构承伤分项 | 待本地化 |
 
+## 本次更新公告（2026-11-05）
+
+船长批准按指定删减后的六篇公告写入游戏，未授权准备英文。以下29条均使用`en: ''`、`enDeferred: true`，英文界面沿既有规则回退中文。
+
+| ID | 中文依据与范围 | 状态 |
+| --- | --- | --- |
+| `ano.fleetCommandUpdate.001` | 舰队与编队指挥标题 | 待本地化 |
+| `ano.fleetCommandUpdate.002` | 系统分类 | 待本地化 |
+| `ano.fleetCommandUpdate.003` | 20累计声望开放多舰与解锁通讯 | 待本地化 |
+| `ano.fleetCommandUpdate.004` | 12舰与指挥成本限制 | 待本地化 |
+| `ano.fleetCommandUpdate.005` | 基础25、满技125容量 | 待本地化 |
+| `ano.fleetSupportUpdate.001` | 舰队支援与出击流程标题 | 待本地化 |
+| `ano.fleetSupportUpdate.002` | 系统分类 | 待本地化 |
+| `ano.fleetSupportUpdate.003` | 护盾投送力场更名与双舰支援 | 待本地化 |
+| `ano.fleetSupportUpdate.004` | 阵列共享与概率集火 | 待本地化 |
+| `ano.cloudSaveUpdate.001` | 账号与手动云存档标题 | 待本地化 |
+| `ano.cloudSaveUpdate.002` | 系统分类 | 待本地化 |
+| `ano.cloudSaveUpdate.003` | 设置分类与版本位置 | 待本地化 |
+| `ano.cloudSaveUpdate.004` | 注册登录恢复码与独立账号名 | 待本地化 |
+| `ano.cloudSaveUpdate.005` | 手动上传下载与历史版本 | 待本地化 |
+| `ano.cloudSaveUpdate.006` | 覆盖确认与离线可用 | 待本地化 |
+| `ano.onlineChatUpdate.001` | 独立聊天页面标题 | 待本地化 |
+| `ano.onlineChatUpdate.002` | 系统分类 | 待本地化 |
+| `ano.onlineChatUpdate.003` | 独立导航与账号 | 待本地化 |
+| `ano.onlineChatUpdate.004` | 双频道与历史消息 | 待本地化 |
+| `ano.marketTradingUpdate.001` | 市场交易与定价调整标题 | 待本地化 |
+| `ano.marketTradingUpdate.002` | 系统分类 | 待本地化 |
+| `ano.marketTradingUpdate.003` | 原市场同步与本地规则 | 待本地化 |
+| `ano.marketTradingUpdate.004` | 插件图纸与货柜交易 | 待本地化 |
+| `ano.marketTradingUpdate.005` | 非势力图纸下架与退款 | 待本地化 |
+| `ano.commandCompensation.001` | 旧存档补偿标题 | 待本地化 |
+| `ano.commandCompensation.002` | 系统分类 | 待本地化 |
+| `ano.commandCompensation.003` | 旧档首次载入补偿 | 待本地化 |
+| `ano.commandCompensation.004` | 累计声望四档与1至4级 | 待本地化 |
+| `ano.commandCompensation.005` | 保留高等级与一次性限制 | 待本地化 |
+
 ## 舰队全部修理界面（2026-11-04）
 
 - 来源：船长确认在「我的舰队」增加全部修理预览与二次确认；未授权准备英文，按中文回退登记。
