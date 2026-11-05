@@ -88,6 +88,8 @@ function check(ok: boolean, message: string): void {
 /* ═══════════ 一、语义清单 ═══════════ */
 
 const ID_RE = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/
+/** 动态 data-sfx 里只认带连字符的名字（语义 id 都形如 `exchange-sell`；比较字面量一般不带连字符）。 */
+const DYN_ID_RE = /^[a-z][a-z0-9]*(-[a-z0-9]+)+$/
 const CATEGORY_SET = new Set<string>(SFX_CATEGORIES)
 for (const id of SFX_CUE_IDS) {
   const cue = SFX_CUES[id]
@@ -314,6 +316,15 @@ function walkRenderer(dir: string): void {
       // 只统计合法 id 形态（注释里用占位符说明机制，不当作声明）
       const id = matched[1]!
       if (ID_RE.test(id)) buttonSfxIds.add(id)
+    }
+    // 动态写法 `data-sfx={cond ? 'exchange-sell' : 'exchange-buy'}`：花括号内出现的字面量 id 同样登记，
+    // 否则条件分支里拼错不会在自检里暴露（听感上是「有时响有时不响」）。
+    // 只收带连字符的形态，避免把 `mode === 'deposit'` 这类比较字面量误当 id。
+    for (const matched of src.matchAll(/data-sfx=\{([^}]*)\}/g)) {
+      for (const lit of matched[1]!.matchAll(/'([^']+)'/g)) {
+        const id = lit[1]!
+        if (DYN_ID_RE.test(id)) buttonSfxIds.add(id)
+      }
     }
   }
 }
