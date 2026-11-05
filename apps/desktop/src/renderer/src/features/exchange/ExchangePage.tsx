@@ -4,8 +4,8 @@
  * 核心升级：
  * - 极简 / 专业 双模式 Segmented Tabs 一览无遗，一键切换（持久化到 `localStorage['whale-idle:exch-view-mode']`）；
  * - 纯净硬核科幻 HUD 视觉，彻底去除 emoji；
- * - 极简模式：双栏清爽布局，4位代码股票，Sparkline，流光渐变面积图，傻瓜现货买卖舱，当前持仓战报，零门槛；
- * - 专业模式：三栏全功能 HUD PRO，逐仓杠杆，五档深度盘口（含买卖量不平衡条），量化网格与流水；
+ * - 极简模式：三栏布局，4 位代码股票，面积走势图，看涨/看跌下注舱，我的下注与委托，零门槛；
+ * - 专业模式：三栏 HUD PRO，逐仓杠杆，多空张力槽，K 线、持仓与流水双 Tab，双核战术交易舱；
  * - 共享同一个 Client 单例与快照，切换模式零延迟、状态零丢失。
  */
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react'

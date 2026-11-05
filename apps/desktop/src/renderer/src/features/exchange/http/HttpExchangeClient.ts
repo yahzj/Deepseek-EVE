@@ -564,6 +564,8 @@ export class HttpExchangeClient implements ExchangeClient {
   private chartsHydrated = false
   private refreshing = false
   private refreshCount = 0
+  /** 上次看到的 24h 累计成交量：用增量推算本拍成交量，喂给当前 K 线桶 */
+  private lastVolume24h = new Map<string, number>()
   private static readonly CHART_CACHE_KEY = 'whale-idle:exch-charts:v1'
   private static readonly CHART_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000
 
@@ -1035,6 +1037,10 @@ export class HttpExchangeClient implements ExchangeClient {
     for (const quote of quotes) {
       const p = quote.price
       if (!Number.isFinite(p) || p <= 0) continue
+      // ponytail: 用 24h 累计量增量推算本拍量，跨桶调用会记到当前桶；要逐笔精确需服务端推送成交量
+      const prevVolume = this.lastVolume24h.get(quote.code) ?? quote.volume24h
+      const volumeDelta = Math.max(0, quote.volume24h - prevVolume)
+      this.lastVolume24h.set(quote.code, quote.volume24h)
       for (const [key, bars] of this.chartCache) {
         if (!key.startsWith(`${quote.code}:`) || bars.length === 0) continue
         const periodStr = key.slice(quote.code.length + 1) as ChartPeriod
@@ -1045,8 +1051,9 @@ export class HttpExchangeClient implements ExchangeClient {
           last.h = Math.max(last.h, p)
           last.l = Math.min(last.l, p)
           last.c = p
+          last.v += volumeDelta
         } else if (bucket > last.t) {
-          bars.push({ t: bucket, o: p, h: p, l: p, c: p, v: 0 })
+          bars.push({ t: bucket, o: p, h: p, l: p, c: p, v: volumeDelta })
           if (bars.length > 200) bars.shift()
         }
       }

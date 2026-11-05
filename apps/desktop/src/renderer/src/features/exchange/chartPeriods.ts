@@ -214,7 +214,7 @@ export function intradayBarCount(now: number): number {
   return Math.max(2, minutes)
 }
 
-/** 均匀抽样（保留首尾），分时显示最多 240 点；抽样只影响画图，不改数据源 */
+/** 均匀抽样（保留首尾），分时显示最多 240 点；价格取桶末根，成交量按桶合并，不丢量 */
 export function sampleSeries(bars: readonly Kline[], max: number): Kline[] {
   if (bars.length <= max) return bars.slice()
   const out: Kline[] = []
@@ -223,7 +223,9 @@ export function sampleSeries(bars: readonly Kline[], max: number): Kline[] {
   for (let i = 0; i < max; i++) {
     const idx = Math.round(i * step)
     if (idx === prev) continue
-    out.push(bars[idx]!)
+    let v = 0
+    for (let j = prev + 1; j <= idx; j++) v += bars[j]!.v
+    out.push({ ...bars[idx]!, v })
     prev = idx
   }
   return out

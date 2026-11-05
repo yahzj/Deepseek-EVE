@@ -4430,7 +4430,7 @@
   user-select: none;
 }
 
-/* 涨（买多）按钮：高权重保障红涨色板生效，彻底抵消全局现代布局覆盖 */
+/* 涨（买多）按钮：高权重保障看涨色板生效，彻底抵消全局现代布局覆盖 */
 .app-root .ex-page .ex-simple-trade-tab.is-buy,
 .ex-page .ex-simple-trade-tab.is-buy {
   background: rgb(var(--wui-tone-gain) / 0.22) !important;
@@ -4731,10 +4731,12 @@
   color: rgb(var(--wui-tone-loss));
 }
 
-/* 立即下注主按钮：高亮橙黄色板，文案精简为立即下注 */
+/* 立即下注主按钮：看涨用涨色、看跌用跌色，两态不再同色 */
 html body .app-root.is-layout-modern .ex-page .ex-simple-big-action-btn,
 html body .app-root .ex-page .ex-simple-big-action-btn,
 .ex-simple-big-action-btn {
+  --ex-action-tone: var(--wui-tone-gain);
+  --ex-action-ink: var(--wui-chip-ink);
   width: 100%;
   height: 38px;
   box-sizing: border-box;
@@ -4748,34 +4750,41 @@ html body .app-root .ex-page .ex-simple-big-action-btn,
   letter-spacing: 2px;
   cursor: pointer;
   transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
-  background: linear-gradient(135deg, #f59f00 0%, #d97706 100%) !important;
-  border: 2px solid #fbbf24 !important;
-  color: #1e1b18 !important;
-  box-shadow: 0 0 16px rgba(245, 159, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+  background: linear-gradient(135deg, rgb(var(--ex-action-tone) / 0.95), rgb(var(--ex-action-tone) / 0.8)) !important;
+  border: 2px solid rgb(var(--ex-action-tone)) !important;
+  color: rgb(var(--ex-action-ink)) !important;
+  box-shadow: 0 0 16px rgb(var(--ex-action-tone) / 0.35) !important;
   clip-path: none !important;
+}
+
+html body .app-root.is-layout-modern .ex-page .ex-simple-big-action-btn.is-short,
+html body .app-root .ex-page .ex-simple-big-action-btn.is-short,
+.ex-simple-big-action-btn.is-short {
+  --ex-action-tone: var(--wui-tone-loss);
+  --ex-action-ink: var(--wui-text-bright);
 }
 
 html body .app-root.is-layout-modern .ex-page .ex-simple-big-action-btn:hover:not(:disabled),
 html body .app-root .ex-page .ex-simple-big-action-btn:hover:not(:disabled),
 .ex-simple-big-action-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #fbbf24 0%, #f59f00 100%) !important;
-  border-color: #fef08a !important;
-  color: #0f0d0b !important;
-  box-shadow: 0 0 22px rgba(251, 191, 36, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+  background: linear-gradient(135deg, rgb(var(--ex-action-tone)), rgb(var(--ex-action-tone) / 0.9)) !important;
+  border-color: rgb(var(--ex-action-tone)) !important;
+  color: rgb(var(--ex-action-ink)) !important;
+  box-shadow: 0 0 22px rgb(var(--ex-action-tone) / 0.5) !important;
   transform: translateY(-1px);
 }
 
 html body .app-root.is-layout-modern .ex-page .ex-simple-big-action-btn:active:not(:disabled),
 .ex-simple-big-action-btn:active:not(:disabled) {
   transform: translateY(1px);
-  box-shadow: 0 0 10px rgba(245, 159, 0, 0.4) !important;
+  box-shadow: 0 0 10px rgb(var(--ex-action-tone) / 0.3) !important;
 }
 
 html body .app-root.is-layout-modern .ex-page .ex-simple-big-action-btn:disabled,
 .ex-simple-big-action-btn:disabled {
-  background: rgba(180, 115, 20, 0.18) !important;
-  border-color: rgba(180, 115, 20, 0.35) !important;
-  color: rgba(220, 175, 100, 0.45) !important;
+  background: rgb(var(--wui-text-dim) / 0.12) !important;
+  border-color: rgb(var(--wui-text-dim) / 0.3) !important;
+  color: rgb(var(--wui-text-dim)) !important;
   box-shadow: none !important;
   cursor: not-allowed;
   transform: none !important;

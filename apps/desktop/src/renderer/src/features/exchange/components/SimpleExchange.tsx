@@ -19,7 +19,7 @@ import type { ExchangeClient, ExchangeSnapshot } from '../client'
 import type { ToastFn } from '../../../pages/common'
 import type { GameEngine } from '../../../game/engine'
 import { amount, pct, price } from '../format'
-import { T } from '../texts'
+import { T, stockName } from '../texts'
 import { SimpleStockList } from './SimpleStockList'
 import { BondCard } from './BondCard'
 import { FundCard } from './FundCard'
@@ -65,12 +65,12 @@ export function SimpleExchange({
       </aside>
 
       {/* 中栏：行情主视区 + 现货/融券买卖舱 */}
-      <main className="ex-col ex-col-mid ex-simple-col-mid" aria-label={`${quote.nameKey} 交易主视区`}>
+      <main className="ex-col ex-col-mid ex-simple-col-mid" aria-label={`${stockName(quote.code, quote.nameKey)} 交易主视区`}>
         {/* 标的抬头横幅 */}
         <header className="ex-simple-header">
           <div className="ex-simple-head-identity">
             <div className="ex-simple-stock-title">
-              <span className="ex-simple-stock-name">{quote.nameKey}</span>
+              <span className="ex-simple-stock-name">{stockName(quote.code, quote.nameKey)}</span>
               <span className="ex-simple-stock-code">{quote.code}</span>
               <span className="ex-simple-stock-sector">{quote.sector}</span>
             </div>

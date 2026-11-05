@@ -85,7 +85,7 @@ export function SimplePosition({ client, snap, onToast }: SimplePositionProps) {
     lines.push({
       key: p.id || `pos-${p.code}-${p.side}`,
       code: p.code,
-      tag: isShort ? `${T.orderSideShort} · ${p.leverage}x` : `${T.marginLongLabel} · ${p.leverage}x`,
+      tag: isShort ? `${T.simpleLeverageShort} · ${p.leverage}x` : `${T.simpleLeverageLong} · ${p.leverage}x`,
       tone: isShort ? 'short' : 'long',
       qty: p.qty,
       avgPrice: p.avgEntry,
@@ -224,8 +224,8 @@ export function SimplePosition({ client, snap, onToast }: SimplePositionProps) {
               type="button"
               className="ex-simple-close-cancel-btn"
               onClick={cancelConfirm}
-              title="取消全部平仓"
-              aria-label="取消全部平仓"
+              title="取消全部结算"
+              aria-label="取消全部结算"
             >
               取消
             </button>
@@ -287,7 +287,7 @@ export function SimplePosition({ client, snap, onToast }: SimplePositionProps) {
                 style={isThisBusy ? progressStyle(closeProgress) : undefined}
                 disabled={isBusy}
                 onClick={() => void handleCloseLine(line)}
-                title={isEn() ? `Market close ${line.code}` : `市价全平 ${line.code}`}
+                title={isEn() ? `Market close ${line.code}` : `结算 ${line.code} 下注`}
               >
                 {isThisBusy ? (
                   <span className="ex-simple-pos-loading">{T.closingPos} {closeProgress.pct}%</span>

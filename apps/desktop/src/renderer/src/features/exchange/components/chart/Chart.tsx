@@ -13,7 +13,7 @@ import { Reset, ZoomIn, ZoomOut } from '@carbon/icons-react'
 import type { ChartPeriod, ExchangeClient, StockQuote } from '../../client'
 import { INTRADAY_MAX_POINTS, PRO_CHART_PERIODS, chartPeriodSpec, sampleSeries } from '../../chartPeriods'
 import { amount, pct, price } from '../../format'
-import { T } from '../../texts'
+import { T, stockName } from '../../texts'
 import { isEn } from '../../../../i18n/locale'
 import { hideTip, moveTip, showTip } from '../../../../ui/Tooltip'
 import { averageLine, lastDefined, movingAverage, rsi } from './indicators'
@@ -312,7 +312,7 @@ export function Chart({
       <header className="ex-panel-head ex-chart-head">
         <div className="ex-chart-title">
           <h3 className="ex-panel-title">
-            {quote.code} <span className="ex-dim">{quote.nameKey}</span>
+            {quote.code} <span className="ex-dim">{stockName(quote.code, quote.nameKey)}</span>
           </h3>
           <span className={`ex-chart-price ${up ? 'is-up' : 'is-down'}`}>{price(quote.price)}</span>
           <span className={`ex-chart-change ${up ? 'is-up' : 'is-down'}`}>{pct(quote.changePct)}</span>

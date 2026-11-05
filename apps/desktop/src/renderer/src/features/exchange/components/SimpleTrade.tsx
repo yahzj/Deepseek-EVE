@@ -373,7 +373,7 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
             </div>
           )}
 
-          {/* 操作按钮：文案固定为立即下注，高对比橙黄外观 */}
+          {/* 操作按钮：文案固定为立即下注，按看涨/看跌方向切换色板 */}
           <button
             type="button"
             className={`ex-simple-big-action-btn ${tab === 'buy' ? 'is-buy' : 'is-short'} ex-btn-progress`}
