@@ -264,7 +264,15 @@ function ExchangeBody({
 
         {/* 中区：交易所运行状态（回合倒计时 + 本回合委托配额）及专业模式大盘指数 */}
         <div className="ex-topbar-status">
-          <RoundBadge client={client} onNewRound={bump} />
+          <RoundBadge
+            client={client}
+            onNewRound={bump}
+            onRefreshMarket={
+              typeof client.refreshMarketData === 'function'
+                ? () => { void client.refreshMarketData?.(codeRef.current) }
+                : undefined
+            }
+          />
           {viewMode === 'pro' ? (
             <div className="ex-index" title={T.indexName}>
               <span className="ex-dim">{T.indexName}</span>
