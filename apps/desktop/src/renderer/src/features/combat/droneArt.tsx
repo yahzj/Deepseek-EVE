@@ -12,6 +12,8 @@ import type { ReactNode } from 'react'
 import { FOE_ACCENT } from '../../ui/shipArt'
 import { ROLE_ACCENT, UI_TONES } from '../../ui/tones'
 import { tr } from '../../i18n/locale'
+// 2026-11-05：弹道系数移到无 JSX 的 attackTiming.ts，画面与音效排期共用同一份来源。
+import { DRONE_SENTRY_FLY_MUL } from './attackTiming'
 
 export interface DroneSlot {
   x: number
@@ -124,7 +126,7 @@ export const DRONE_MODELS: Record<string, DroneModel> = {
     slots: [{ x: 30, y: -22 }],
     // 哨戒：仿主舰攻击的**细曳光条**（2026-09-10 船长九次定：不发单发小弹点），线宽更细；
     // 飞行时长更长（flyMul 1.6 = 主舰基础 ×1.6，2026-09-10 船长十一次定"哨戒弹道持续时间长一些"）
-    bolt: { style: 'beam', len: 9, width: 2, tail: false, flyMul: 1.6 },
+    bolt: { style: 'beam', len: 9, width: 2, tail: false, flyMul: DRONE_SENTRY_FLY_MUL },
     art: (
       <g>
         <circle cx="0" cy="0" r="4.4" />
@@ -218,7 +220,7 @@ export const DRONE_MODELS: Record<string, DroneModel> = {
     tint: FOE_ACCENT.E,
     resident: true,
     slots: [{ x: 30, y: -22 }],
-    bolt: { style: 'beam', len: 12, width: 1.8, tail: false, flyMul: 1.6 },
+    bolt: { style: 'beam', len: 12, width: 1.8, tail: false, flyMul: DRONE_SENTRY_FLY_MUL },
     art: (
       <g>
         <circle cx="0" cy="0" r="4.4" />
@@ -326,8 +328,8 @@ export const DRONE_SORTIE_OUT_MS = 560
 export const DRONE_SORTIE_BACK_MS = 620
 /** 出击制：到位后的驻留时长（ms）——保证"到位才开火"有个稳定的开火窗口，也让机体/弹道位置一致 */
 export const DRONE_DWELL_MS = 220
-/** 无人机弹道提速系数（2026-09-10 船长九次定"弹道速度加快"；乘在弹型基础飞行时长上） */
-export const DRONE_FLY_MUL = 0.55
+/** 无人机弹道提速系数（2026-09-10 船长九次定"弹道速度加快"；数值在 attackTiming.ts） */
+export { DRONE_FLY_MUL } from './attackTiming'
 
 /**
  * 出击制单轮时序（2026-09-10 船长七次定："每次飞出时 Y 轴随机分布、到达位置后开火、开火结束立刻返回"）：
