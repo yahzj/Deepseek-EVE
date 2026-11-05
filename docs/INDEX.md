@@ -13,28 +13,28 @@
 
 ## 统计
 
-- 非归档文档 **410** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4750** KB · **53675** 行
-- 状态分布：**未标注** 204 · **已确认/已实现** 138 · **进行中** 47 · **待裁定** 20 · **历史留档** 1
-- 孤儿文档（0 引用）**213** 份 · 状态未标注 **204** 份
+- 非归档文档 **378** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4686** KB · **52872** 行
+- 状态分布：**未标注** 181 · **已确认/已实现** 130 · **进行中** 47 · **待裁定** 19 · **历史留档** 1
+- 孤儿文档（0 引用）**211** 份 · 状态未标注 **181** 份
 - 一、常用文档（按任务查阅）：**11** 份
 - 七、评审与体检（review）：**4** 份
 - 三、设计与工作文档（需核实状态）：**352** 份
 - 二、其它（docs 根目录）：**2** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
-- 八、测试档说明（test-saves）：**33** 份
+- 八、测试档说明（test-saves）：**1** 份
 - 六、专题：舰船美术（design/ship-battle-art）：**7** 份
 
 ## 一、常用文档（按任务查阅） —— 11 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档） |
 |---|---|---|---|---|---|
-| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定 | 未标注 | — | 20 KB / 120 行 | 35 |
+| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定 | 未标注 | — | 22 KB / 129 行 | 37 |
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 7 KB / 83 行 | 16 |
-| `docs/catalog.md` | 文档目录 | 未标注 | — | 4 KB / 45 行 | 9 |
+| `docs/catalog.md` | 文档目录 | 未标注 | — | 5 KB / 47 行 | 10 |
 | `docs/content-workbench.md` | 内容工作台 | 未标注 | — | 3 KB / 35 行 | 2 |
 | `docs/data-editor.md` | 大鲸鱼数据编辑器 | 未标注 | — | 4 KB / 45 行 | 6 |
 | `docs/data-map.md` | 数据速查页 | 未标注 | — | 3 KB / 38 行 | 5 |
-| `docs/development-conventions.md` | 开发约定 | 未标注 | — | 24 KB / 170 行 | 21 |
+| `docs/development-conventions.md` | 开发约定 | 未标注 | — | 25 KB / 171 行 | 21 |
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（现行译名表） | — | 46 KB / 810 行 | 9 |
 | `docs/glossary.md` | 术语词典 | 未标注 | — | 23 KB / 204 行 | 64 |
 | `docs/roadmap.md` | 当前待办与实施边界 | 未标注 | — | 8 KB / 70 行 | 62 |
@@ -55,12 +55,12 @@
 |---|---|---|---|---|---|
 | `docs/design/announcement-draft-update-20261105.md` | 本次更新公告修订稿 | 未标注（船长2026-11-05明确要求“将） | 2026-11-05 | 4 KB / 60 行 | 2 |
 | `docs/design/cloud-8443-20261105.md` | 云端入口切 8443（2026-11-05） | 未标注（已上线、本地合入） | 2026-11-05 | 5 KB / 55 行 | 2 |
-| `docs/design/exchange-feedback-20261105.md` | 股市交易反馈与界面修复 | 未标注（实施中） | 2026-11-05 | 7 KB / 57 行 | 1 |
+| `docs/design/exchange-feedback-20261105.md` | 股市交易反馈与界面修复 | 未标注（实施中） | 2026-11-05 | 7 KB / 53 行 | 1 |
 | `docs/design/fleet-command-compensation-20261105.md` | 旧存档编队协同指挥补偿 | 未标注（船长明确指定） | 2026-11-05 | 4 KB / 46 行 | 0 |
 | `docs/design/player-market-exclusive-20261105.md` | 独占产物的玩家交易接入 | 已确认/已实现（本地实现与验证已完成） | 2026-11-05 | 5 KB / 37 行 | 3 |
 | `docs/design/audio-ingest-20261104.md` | 音效正式入库（音效台导出 → audio:install） | 已确认/已实现（已实现、专项自测通过） | 2026-11-04 | 5 KB / 64 行 | 2 |
 | `docs/design/exchange-ui-ux-audit-20261104.md` | 证券交易所 UI/UX 深度体验审核与逐轮优化（2026-11-04） | 已确认/已实现（已完成） | 2026-11-04 | 3 KB / 40 行 | 0 |
-| `docs/design/faction-plugin-expansion-20261104.md` | 阵营插件扩充与回复规则 · 2026-11-04 | 已确认/已实现（危机超载速度惩罚追加已落地） | 2026-11-04 | 23 KB / 204 行 | 1 |
+| `docs/design/faction-plugin-expansion-20261104.md` | 阵营插件扩充与回复规则 · 2026-11-04 | 已确认/已实现（危机超载速度惩罚追加已落地） | 2026-11-04 | 23 KB / 204 行 | 2 |
 | `docs/design/fleet-repair-all-20261104.md` | 舰队全部修理 | 未标注 | 2026-11-04 | 2 KB / 48 行 | 0 |
 | `docs/design/player-market-relay-20261104.md` | 玩家市场异步转发设计 | 进行中（进行中 - 方案已批准） | 2026-11-04 | 19 KB / 205 行 | 2 |
 | `docs/design/sfx-console-20261104.md` | 音效台调试批：大窗页签 / 场景预演 / 实时触发 / 一键入库 · 2026-11-04 工作文档 | 已确认/已实现（已实现自测） | 2026-11-04 | 8 KB / 83 行 | 2 |
@@ -104,7 +104,7 @@
 | `docs/design/modern-ui-industry-hud-20261102.md` | 设计工作文档：新版 UI 整体重塑 · 星际飞船控制台与航电 HUD（2026-11-02） | 进行中（进行中 · 船长授权全部实施与整体 ） | 2026-11-02 | 9 KB / 130 行 | 0 |
 | `docs/design/repair-drone-market-20261102.md` | 军用修理无人机市场与图纸 | 未标注（船长授权由二号决定参数并一起执行） | 2026-11-02 | 5 KB / 56 行 | 0 |
 | `docs/design/settings-fixes-20261102.md` | 设置界面四项报障修复（字号 / 配色 / 宇宙背景 / 选中按钮）· 2026-11-02 | 已确认/已实现（已落地 · 船长验收完成） | 2026-11-02 | 22 KB / 286 行 | 1 |
-| `docs/design/signal-auto-estimate-20261102.md` | 信号空间自动探索估算方案 | 未标注（船长2026-11-02回复「按你推） | 2026-11-02 | 11 KB / 105 行 | 1 |
+| `docs/design/signal-auto-estimate-20261102.md` | 信号空间自动探索估算方案 | 未标注（船长2026-11-02回复「按你推） | 2026-11-02 | 11 KB / 105 行 | 2 |
 | `docs/design/signal-auto-yield-comparison-20261102.md` | 信号自动探索新旧收益对照 | 未标注（二号完成正式配对对照） | 2026-11-02 | 9 KB / 83 行 | 0 |
 | `docs/design/sortie-departure-20261102.md` | 主控离港与出击阶段 | 未标注（船长已明确“确认”完整实施方案） | 2026-11-02 | 8 KB / 80 行 | 0 |
 | `docs/design/sound-layers-20261102.md` | 声音系统追加批：BGM / 环境音 / 战斗细分 / 音高随机 · 2026-11-02 工作文档 | 未标注（实施中） | 2026-11-02 | 9 KB / 110 行 | 2 |
@@ -153,7 +153,7 @@
 | `docs/design/loop-range-confirm-minimize-20261026.md` | 连续战斗确认距离后默认最小化 | 已确认/已实现（已确认） | 2026-10-26 | 4 KB / 33 行 | 0 |
 | `docs/design/battle-range-confirm-clarity-20261023.md` | 射程确认原因与距离滑条 | 已确认/已实现（已确认） | 2026-10-23 | 3 KB / 32 行 | 1 |
 | `docs/design/support-and-plug-stacking-20261023.md` | 支援件与舰船插件多件惩罚 | 已确认/已实现（已确认） | 2026-10-23 | 5 KB / 56 行 | 0 |
-| `docs/design/signal-auto-tech-20261022.md` | 信号空间自动探索科技与收益读数（2026-10-22） | 未标注（已本地合入主树） | 2026-10-22 | 13 KB / 98 行 | 2 |
+| `docs/design/signal-auto-tech-20261022.md` | 信号空间自动探索科技与收益读数（2026-10-22） | 未标注（已本地合入主树） | 2026-10-22 | 13 KB / 98 行 | 3 |
 | `docs/design/battle-card-range-memory-20261021.md` | 按卡距离记忆与射程变化确认 | 已确认/已实现（已实现） | 2026-10-21 | 7 KB / 60 行 | 0 |
 | `docs/design/signal-auto-ore-audit-20261021.md` | 自动探索母矿缺失核查 | 已确认/已实现（已实现） | 2026-10-21 | 9 KB / 78 行 | 0 |
 | `docs/design/signal-beacon-siege-torpedo-20261019.md` | 信标围剿核查与鱼雷舰加成调整 | 未标注（实现完成） | 2026-10-19 | 4 KB / 40 行 | 0 |
@@ -187,7 +187,7 @@
 | `docs/design/announcement-draft-corona-reinforcement-20261008.md` | 公告待审稿：光环中枢增援与装置调整 | 待裁定（待船长审字） | 2026-10-08 | 1 KB / 23 行 | 1 |
 | `docs/design/announcement-draft-shield-field-20261007.md` | 护盾力场、装备代价与一次性舰船蓝图调整公告待审 | 未标注（已按船长要求整合） | 2026-10-07 | 5 KB / 42 行 | 0 |
 | `docs/design/announcement-draft-wreck-loot-buy-20261007.md` | 残骸回收与装备收购公告待审 | 待裁定（待船长审核） | 2026-10-07 | 2 KB / 23 行 | 0 |
-| `docs/design/planetary-habitation-20261007.md` | 星球勘探、改造与人类家园建设方案 | 已确认/已实现（已实现并合入） | 2026-10-07 | 40 KB / 402 行 | 2 |
+| `docs/design/planetary-habitation-20261007.md` | 星球勘探、改造与人类家园建设方案 | 已确认/已实现（已实现并合入） | 2026-10-07 | 40 KB / 402 行 | 1 |
 | `docs/design/planetary-system-search-20261007.md` | 深空星系搜索与种子坐标方案 | 已确认/已实现（已实现并合入） | 2026-10-07 | 32 KB / 282 行 | 4 |
 | `docs/design/announcement-draft-signal-space-20261006.md` | 信号空间公告待审稿 | 待裁定（待船长明确批准） | 2026-10-06 | 1 KB / 26 行 | 0 |
 | `docs/design/drone-launch-preview-20261005.md` | 无人机队列出击隔离预演 | 待裁定（待船长审查） | 2026-10-05 | 5 KB / 67 行 | 0 |
@@ -373,7 +373,7 @@
 | `docs/design/foe-unit-naming-20260909.md` | 敌舰单位显示名（舰种名 × 规格词缀） | 已确认/已实现（已确认·已实现） | 2026-09-09 | 3 KB / 42 行 | 0 |
 | `docs/design/market-rarity-tier-20260909.md` | 市场数字稀有度（隐藏档 · 稀有订单分层）设计稿 | 已确认/已实现（已确认并落地） | 2026-09-09 | 5 KB / 65 行 | 0 |
 | `docs/design/wave-battles-20260909.md` | 多波次敌人设定(低安顶段悬赏)设计稿(2026-09-09;已确认并实现·待验收/待发布) | 未标注 | 2026-09-09 | 12 KB / 131 行 | 3 |
-| `docs/design/assets/stellar-samples-20261009/README.md` | PixelPlanets 三类天体样片 | 未标注（原静态审查样片保留） | — | 2 KB / 29 行 | 27 |
+| `docs/design/assets/stellar-samples-20261009/README.md` | PixelPlanets 三类天体样片 | 未标注（原静态审查样片保留） | — | 2 KB / 29 行 | 29 |
 | `docs/design/b3-flavor-content.md` | B3.1 星系/敌群特色残骸产出 · 数值表（2026-09-08 已确认，收尾归档） | 已确认/已实现（已收尾归档） | — | 7 KB / 82 行 | 0 |
 | `docs/design/b3-salvage.md` | B3 残骸打捞与回收系统（设计总结 · 已实现，2026-09-05 全链落地） | 未标注 | — | 12 KB / 122 行 | 3 |
 | `docs/design/bounty-insurance.md` | 连续作战保险：带伤预警 + 战内自动撤退（已确认 2026-09-08） | 已确认/已实现（已确认并落地） | — | 5 KB / 65 行 | 0 |
@@ -410,7 +410,7 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档） |
 |---|---|---|---|---|---|
-| `docs/development-conventions-changelog.md` | 开发约定维护记录 | 未标注 | — | 9 KB / 80 行 | 6 |
+| `docs/development-conventions-changelog.md` | 开发约定维护记录 | 未标注 | — | 11 KB / 92 行 | 6 |
 | `docs/l10n-pending.md` | 待英文本地化记录 | 未标注 | — | 45 KB / 747 行 | 29 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
@@ -419,43 +419,11 @@
 |---|---|---|---|---|---|
 | `docs/design/battle-data/p41-drone-readings-20260912.md` | P-41 机群批标定轮 · 读数（2026-09-12 · 二号 d2） | 未标注 | 2026-09-12 | 7 KB / 88 行 | 1 |
 
-## 八、测试档说明（test-saves） —— 33 份
+## 八、测试档说明（test-saves） —— 1 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档） |
 |---|---|---|---|---|---|
-| `docs/test-saves/faction-plugin-expansion-20261104.md` | 阵营插件扩充独立验收档 | 已确认/已实现（已实现自测） | 2026-11-04 | 7 KB / 59 行 | 1 |
-| `docs/test-saves/encrypted-research-20261103.md` | 生产研究所与加密货柜验收 | 未标注 | 2026-11-03 | 2 KB / 21 行 | 1 |
-| `docs/test-saves/departure-20261102.md` | 主控离港阶段验收 | 未标注 | 2026-11-02 | 2 KB / 28 行 | 2 |
-| `docs/test-saves/faction-repair-tuning-20261102.md` | 插件调整与修理无人机生产验收 | 未标注 | 2026-11-02 | 2 KB / 21 行 | 2 |
-| `docs/test-saves/signal-auto-estimate-20261102.md` | 信号空间自动探索估算测试档 | 未标注 | 2026-11-02 | 2 KB / 16 行 | 1 |
-| `docs/test-saves/fleet-support-20261101.md` | 编队支援与离线简报测试档 | 未标注 | 2026-11-01 | 2 KB / 14 行 | 2 |
-| `docs/test-saves/industrial-transport-20261101.md` | 运输护航门槛档 | 未标注 | 2026-11-01 | 1 KB / 10 行 | 2 |
-| `docs/test-saves/oarfish-escort-20261101.md` | 皇带鱼五舰运输护航测试档 | 未标注 | 2026-11-01 | 2 KB / 23 行 | 1 |
-| `docs/test-saves/repair-drone-20261101.md` | 修理无人机与后勤测试档 | 未标注 | 2026-11-01 | 1 KB / 14 行 | 1 |
-| `docs/test-saves/command-fleet-all-ships-20261031.md` | 满技能全舰船编队档 | 未标注 | 2026-10-31 | 3 KB / 32 行 | 1 |
-| `docs/test-saves/enemy-formation-20261031.md` | 敌方编成调整验收 | 未标注 | 2026-10-31 | 2 KB / 28 行 | 2 |
-| `docs/test-saves/command-fleet-20261030.md` | 指挥编队门槛档 | 已确认/已实现（已实现） | 2026-10-30 | 2 KB / 26 行 | 2 |
-| `docs/test-saves/support-plug-stacking-20261023.md` | 支援件与舰船插件多件惩罚验收 | 未标注 | 2026-10-23 | 1 KB / 10 行 | 2 |
-| `docs/test-saves/signal-auto-tech-20261022.md` | 信号空间T3自动探索科技验收档 | 已确认/已实现（已实现自测） | 2026-10-22 | 1 KB / 11 行 | 2 |
-| `docs/test-saves/battle-card-range-20261021.md` | 按卡距离与射程变化确认验收档 | 未标注（实现自测） | 2026-10-21 | 1 KB / 11 行 | 2 |
-| `docs/test-saves/faction-ship-plugs-20261019.md` | 五件势力船插验收档 | 未标注（船长批准本地合入主树） | 2026-10-19 | 2 KB / 30 行 | 2 |
-| `docs/test-saves/ship-hp-blind-20261013.md` | 舰船血量与近盲开火验收 | 已确认/已实现（规则、直接恢复参数及公告已确认并本地） | 2026-10-13 | 2 KB / 20 行 | 2 |
-| `docs/test-saves/station-action-20261013.md` | 停靠与远程管理验收档 | 未标注 | 2026-10-13 | 2 KB / 27 行 | 2 |
-| `docs/test-saves/alien-loot-20261009.md` | 异形入侵装备验收档 | 未标注 | 2026-10-09 | 1 KB / 15 行 | 0 |
-| `docs/test-saves/fitting-range-20261009.md` | 装配靶场验收 | 未标注 | 2026-10-09 | 1 KB / 14 行 | 1 |
-| `docs/test-saves/stellar-ready-20261008.md` | 新星系即用档 | 未标注 | 2026-10-08 | 2 KB / 33 行 | 1 |
-| `docs/test-saves/planetary-20261007.md` | 星球第一批规则原型验收 | 未标注（核心规则原型） | 2026-10-07 | 1 KB / 16 行 | 1 |
-| `docs/test-saves/planetary-runtime-20261007.md` | 星球建设完整运行验收 | 未标注（隐藏实验系统） | 2026-10-07 | 2 KB / 30 行 | 2 |
-| `docs/test-saves/ship-recovery-20261007.md` | 整船回收与战损插件验收 | 已确认/已实现（随已确认功能交付） | 2026-10-07 | 2 KB / 18 行 | 2 |
-| `docs/test-saves/stellar-search-20261007.md` | 深空星系与并列战损验收 | 已确认/已实现（已确认方案的本机测试说明） | 2026-10-07 | 3 KB / 58 行 | 3 |
-| `docs/test-saves/wreck-fit-20261007.md` | 重复插件与沉船装配验收档 | 已确认/已实现（随已确认功能交付） | 2026-10-07 | 1 KB / 15 行 | 2 |
-| `docs/test-saves/alien-invasion-20261006.md` | 异形入侵验收档 | 未标注 | 2026-10-06 | 2 KB / 22 行 | 1 |
-| `docs/test-saves/ammo-mk3-20261006.md` | MK3弹药生产线验收档 | 已确认/已实现（随已确认功能交付） | 2026-10-06 | 1 KB / 21 行 | 2 |
-| `docs/test-saves/per-gun-20261005.md` | 逐炮齐射验收档 | 未标注 | 2026-10-05 | 1 KB / 12 行 | 0 |
-| `docs/test-saves/black-market-20261004.md` | 黑市页面验收档 | 待裁定（随功能待船长验收） | 2026-10-04 | 1 KB / 15 行 | 1 |
-| `docs/test-saves/hauler-20261004.md` | 纯货舰修订验收档 | 未标注（已验收） | 2026-10-04 | 2 KB / 25 行 | 2 |
-| `docs/test-saves/whexpedition-20261004.md` | 虫洞第一批合成测试档 | 未标注（未来虫洞整备/事件/警戒的隔离验收材） | 2026-10-04 | 10 KB / 78 行 | 1 |
-| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 84 KB / 848 行 | 27 |
+| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 81 KB / 798 行 | 29 |
 
 ## 六、专题：舰船美术（design/ship-battle-art） —— 7 份
 
@@ -467,9 +435,9 @@
 | `docs/design/ship-battle-art/battle-sprite-tier-20260911.md` | 战斗画面「舰种体积」（舰身大小随舰种档，2026-09-11 船长定；状态：已实现，但按船长裁决暂时关闭 —— 显示还原、系统保留） | 已确认/已实现（已实现） | 2026-09-11 | 14 KB / 177 行 | 4 |
 | `docs/design/ship-battle-art/mounts-20260910.md` | 舰船战斗图形·挂点对齐（引擎喷口 + 真实炮口）2026-09-10 | 已确认/已实现（已确认） | 2026-09-10 | 6 KB / 94 行 | 1 |
 | `docs/design/ship-battle-art/acceptance-visual-20260909.md` | 舰船战斗图形 · 真机目测与细节验收清单（2026-09-09 三号，给船长） | 未标注 | 2026-09-09 | 4 KB / 54 行 | 2 |
-| `docs/design/ship-battle-art/README.md` | 舰船战斗图形重设计(三号 · 样稿阶段,2026-09-09) | 未标注 | — | 8 KB / 87 行 | 27 |
+| `docs/design/ship-battle-art/README.md` | 舰船战斗图形重设计(三号 · 样稿阶段,2026-09-09) | 未标注 | — | 8 KB / 87 行 | 29 |
 
-## 附：孤儿文档（0 引用，213 份）
+## 附：孤儿文档（0 引用，211 份）
 
 > 仅表示没有其他收录文档提到本文件名，不能据此删除、归档或批准阅读历史。
 
@@ -543,7 +511,6 @@
 - `docs/design/raider-fragment-ammo-audit-20261009.md`（2026-10-09 · 5 KB）—— 掠袭破片炮弹药显示检查
 - `docs/design/ship-cpu-audit-20261009.md`（2026-10-09 · 7 KB）—— 全船CPU预算检查
 - `docs/design/synaptic-accelerant-audit-20261009.md`（2026-10-09 · 21 KB）—— 突触加速剂玩家报障检查
-- `docs/test-saves/alien-loot-20261009.md`（2026-10-09 · 1 KB）—— 异形入侵装备验收档
 - `docs/design/announcement-draft-shield-field-20261007.md`（2026-10-07 · 5 KB）—— 护盾力场、装备代价与一次性舰船蓝图调整公告待审
 - `docs/design/announcement-draft-wreck-loot-buy-20261007.md`（2026-10-07 · 2 KB）—— 残骸回收与装备收购公告待审
 - `docs/design/announcement-draft-signal-space-20261006.md`（2026-10-06 · 1 KB）—— 信号空间公告待审稿
@@ -551,7 +518,6 @@
 - `docs/design/real-playthrough-bug-test-20261005.md`（2026-10-05 · 5 KB）—— 三目标实机式全流程BUG测试
 - `docs/design/small-ship-preview-20261005.md`（2026-10-05 · 11 KB）—— 插件小船混编与命中曲线隔离预演
 - `docs/design/small-ship-survival-proposal-20261005.md`（2026-10-05 · 5 KB）—— 势力护卫与驱逐舰的生存优化方案
-- `docs/test-saves/per-gun-20261005.md`（2026-10-05 · 1 KB）—— 逐炮齐射验收档
 - `docs/design/item-filter-hint-audit-20261004.md`（2026-10-04 · 23 KB）—— 分类相关提示文本筛查
 - `docs/design/beacon-target-highsec-20261003.md`（2026-10-03 · 5 KB）—— 信号发射器：高安判据改看「玩家选定的目标星系」
 - `docs/design/corona-mounts-20261002.md`（2026-10-02 · 16 KB）—— R 族两件新挂载件：垂暮级「待机护盾阵列」· 旗舰「聚焦阵列」（2026-10-03 · 二号 · 已落码 · 待船长验收）
@@ -687,7 +653,7 @@
 - `docs/design/v18.1-support.md`（无日期 · 9 KB）—— V18.1 设计总结：支援装备 + 叠加收敛（取消同类唯一 · 已确认实施）
 - `docs/design/v18b2-lasers.md`（无日期 · 5 KB）—— V18B-2 设计总结：激光炮武器族（能量系形态 · 已确认实施）
 
-## 附：状态未标注（204 份，待补一行 `状态：…`）
+## 附：状态未标注（181 份，待补一行 `状态：…`）
 
 - `docs/design/announcement-draft-update-20261105.md`（2026-11-05）—— 本次更新公告修订稿
 - `docs/design/cloud-8443-20261105.md`（2026-11-05）—— 云端入口切 8443（2026-11-05）
@@ -715,7 +681,6 @@
 - `docs/design/stock-exchange-round-model-20261103.md`（2026-11-03）—— 股市 · 回合制行情与撮合模型（5 分钟一轮，可配）
 - `docs/design/ui-ux-ergonomics-audit-20261103.md`（2026-11-03）—— 设计文档：UI/UX 工效学与视觉硬伤全面修复 (2026-11-03)
 - `docs/design/whale-server-1000ccu-20261103.md`（2026-11-03）—— whale-server · 1000 人在线容量评估与重构方案
-- `docs/test-saves/encrypted-research-20261103.md`（2026-11-03）—— 生产研究所与加密货柜验收
 - `docs/design/carbon-icons-modern-layout-20261102.md`（2026-11-02）—— 现代布局 Carbon Icons 升级方案（科幻未来专供 · 2026-11-02）
 - `docs/design/cosmic-hud-layout-20261102.md`（2026-11-02）—— 界面外壳：第三套可选布局「深空 HUD / Cosmic」设计方案
 - `docs/design/d2-main-integration-20261102.md`（2026-11-02）—— 二号与主树整合及上传核验
@@ -730,9 +695,6 @@
 - `docs/design/sound-layers-20261102.md`（2026-11-02）—— 声音系统追加批：BGM / 环境音 / 战斗细分 / 音高随机 · 2026-11-02 工作文档
 - `docs/design/ui-activitybar-and-bottom-nav-20261102.md`（2026-11-02）—— 左侧活动栏排版重构与底部导航栏字号优化 · 2026-11-02
 - `docs/design/ui-comms-chamfer-modern-20261102.md`（2026-11-02）—— 通讯界面科幻未来 HUD 缺角风格统一改造 · 2026-11-02
-- `docs/test-saves/departure-20261102.md`（2026-11-02）—— 主控离港阶段验收
-- `docs/test-saves/faction-repair-tuning-20261102.md`（2026-11-02）—— 插件调整与修理无人机生产验收
-- `docs/test-saves/signal-auto-estimate-20261102.md`（2026-11-02）—— 信号空间自动探索估算测试档
 - `docs/design/enemy-compact-trapezoid-20261101.md`（2026-11-01）—— 敌舰紧凑梯形排列
 - `docs/design/fleet-support-final-20261101.md`（2026-11-01）—— 编队支援装备与离线简报收尾
 - `docs/design/hauling-load-dialog-20261101.md`（2026-11-01）—— 运输承运弹窗与收益去重
@@ -741,10 +703,6 @@
 - `docs/design/oarfish-escort-readings-20261101.md`（2026-11-01）—— 皇带鱼满载多波遇袭与护航实测
 - `docs/design/oarfish-support-calibration-20261101.md`（2026-11-01）—— 新版支援皇带鱼护航复测
 - `docs/design/oarfish-transport-readings-20261101.md`（2026-11-01）—— 单皇带鱼满载运输遇袭读数
-- `docs/test-saves/fleet-support-20261101.md`（2026-11-01）—— 编队支援与离线简报测试档
-- `docs/test-saves/industrial-transport-20261101.md`（2026-11-01）—— 运输护航门槛档
-- `docs/test-saves/oarfish-escort-20261101.md`（2026-11-01）—— 皇带鱼五舰运输护航测试档
-- `docs/test-saves/repair-drone-20261101.md`（2026-11-01）—— 修理无人机与后勤测试档
 - `docs/design/command-fleet-all-ships-save-20261031.md`（2026-10-31）—— 满技能全舰船编队验收档
 - `docs/design/d2-electron-startup-20261031.md`（2026-10-31）—— 二号Electron开发启动修复
 - `docs/design/enemy-fleet-comparison-20261031.md`（2026-10-31）—— 敌卡新旧血量与输出逐卡对照
@@ -755,8 +713,6 @@
 - `docs/design/fleet-command-standing-unlock-20261031.md`（2026-10-31）—— 编队技能分类与20声望解锁通讯
 - `docs/design/range-ew-strength-proposal-20261031.md`（2026-10-31）—— 射程电子战强度统一方案
 - `docs/design/refining-yield-params-20261031.md`（2026-10-31）—— 精炼所得日志参数修复
-- `docs/test-saves/command-fleet-all-ships-20261031.md`（2026-10-31）—— 满技能全舰船编队档
-- `docs/test-saves/enemy-formation-20261031.md`（2026-10-31）—— 敌方编成调整验收
 - `docs/design/combat-command-implementation-20261030.md`（2026-10-30）—— 统一指挥预算与12舰战斗实施
 - `docs/design/d2-integration-20261030.md`（2026-10-30）—— 二号修复与声望调整合入
 - `docs/design/industry-domain-folders-20261030.md`（2026-10-30）—— 工业功能域分目录与拆分
@@ -766,32 +722,19 @@
 - `docs/design/skills-domain-folders-20261030.md`（2026-10-30）—— 技能功能域分目录与拆分
 - `docs/design/history-doc-cleanup-20261029.md`（2026-10-29）—— 常用文档历史内容清理
 - `docs/design/domain-folders-20261027.md`（2026-10-27）—— 功能域分目录与战斗拆分
-- `docs/test-saves/support-plug-stacking-20261023.md`（2026-10-23）—— 支援件与舰船插件多件惩罚验收
 - `docs/design/signal-auto-tech-20261022.md`（2026-10-22）—— 信号空间自动探索科技与收益读数（2026-10-22）
-- `docs/test-saves/battle-card-range-20261021.md`（2026-10-21）—— 按卡距离与射程变化确认验收档
 - `docs/design/signal-beacon-siege-torpedo-20261019.md`（2026-10-19）—— 信标围剿核查与鱼雷舰加成调整
-- `docs/test-saves/faction-ship-plugs-20261019.md`（2026-10-19）—— 五件势力船插验收档
 - `docs/design/gravekeeper-flagship-finish-20261018.md`（2026-10-18）—— 永陵舰级挂载与旗舰残余血池核查
 - `docs/design/l10n-en-release-20261018.md`（2026-10-18）—— 英文本地化批次：发射器、信号空间与守墓内容
 - `docs/design/l10n-settings-native-audit-20261018.md`（2026-10-18）—— 设置切换英文实机巡检
 - `docs/design/scan-stacking-richtext-20261018.md`（2026-10-18）—— 扫描加成富文本同步
-- `docs/test-saves/station-action-20261013.md`（2026-10-13）—— 停靠与远程管理验收档
 - `docs/design/workspace-release-20261011.md`（2026-10-11）—— 多工作区合并与推送
 - `docs/design/drone-hull-start-fix-20261009.md`（2026-10-09）—— 无人机舰固有启动时间补齐
 - `docs/design/pressure-chamber-cycle-fix-20261009.md`（2026-10-09）—— 增压加速腔误接推进周期
 - `docs/design/raider-fragment-ammo-audit-20261009.md`（2026-10-09）—— 掠袭破片炮弹药显示检查
 - `docs/design/ship-cpu-audit-20261009.md`（2026-10-09）—— 全船CPU预算检查
-- `docs/test-saves/alien-loot-20261009.md`（2026-10-09）—— 异形入侵装备验收档
-- `docs/test-saves/fitting-range-20261009.md`（2026-10-09）—— 装配靶场验收
-- `docs/test-saves/stellar-ready-20261008.md`（2026-10-08）—— 新星系即用档
 - `docs/design/announcement-draft-shield-field-20261007.md`（2026-10-07）—— 护盾力场、装备代价与一次性舰船蓝图调整公告待审
-- `docs/test-saves/planetary-20261007.md`（2026-10-07）—— 星球第一批规则原型验收
-- `docs/test-saves/planetary-runtime-20261007.md`（2026-10-07）—— 星球建设完整运行验收
-- `docs/test-saves/alien-invasion-20261006.md`（2026-10-06）—— 异形入侵验收档
 - `docs/design/real-playthrough-bug-test-20261005.md`（2026-10-05）—— 三目标实机式全流程BUG测试
-- `docs/test-saves/per-gun-20261005.md`（2026-10-05）—— 逐炮齐射验收档
-- `docs/test-saves/hauler-20261004.md`（2026-10-04）—— 纯货舰修订验收档
-- `docs/test-saves/whexpedition-20261004.md`（2026-10-04）—— 虫洞第一批合成测试档
 - `docs/design/beacon-target-highsec-20261003.md`（2026-10-03）—— 信号发射器：高安判据改看「玩家选定的目标星系」
 - `docs/design/trident-beam-cannon-20261003.md`（2026-10-03）—— 三叉戟光束炮（R 族势力能量武器 · 三连射）（2026-10-03 · 二号 · 进行中）
 - `docs/design/corona-mounts-20261002.md`（2026-10-02）—— R 族两件新挂载件：垂暮级「待机护盾阵列」· 旗舰「聚焦阵列」（2026-10-03 · 二号 · 已落码 · 待船长验收）
