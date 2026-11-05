@@ -44,6 +44,7 @@ import { playSfx } from './game/sfx'
  * 场景音频（2026-11-02 追加批）：引擎状态 + 战场是否上屏 → BGM/环境场景。
  * 挂在 `battleOnStage` 定义之后（该行之上不能有早退分支，本 hook 无条件调用）。
  */
+import { notifyUiError } from './game/audio/uiFeedback'
 import { useSceneAudio } from './game/audio/useSceneAudio'
 import { FitPage } from './pages/FitPage'
 import { ShipPage, type ShipTab } from './pages/ShipPage'
@@ -656,6 +657,12 @@ async function applyLayoutAndReload(): Promise<void> {
   const [toast, setToast] = useState<{ text: string; warn: boolean } | null>(null)
   const toastTimer = useRef<number | null>(null)
   const showToast: ToastFn = (text, warn = false) => {
+    /**
+     * **界面错误提示 → `ui-error`**（2026-11-05 船长要求扩大覆盖）：通用 toast 是**所有**命令被拒
+     * 与保存/连接错误的统一出口；只靠 `LOG_CUE_RULES` 的 6 条日志白名单会漏掉绝大多数拒绝。
+     * 节流在播放层（`minGapMs` / `maxConcurrent`），这里只做「错误提示就响一声」的语义。
+     */
+    if (warn) notifyUiError()
     if (toastTimer.current !== null) window.clearTimeout(toastTimer.current)
     setToast({ text, warn })
     toastTimer.current = window.setTimeout(() => setToast(null), warn && text.includes('\n') ? 15_000 : 3200)

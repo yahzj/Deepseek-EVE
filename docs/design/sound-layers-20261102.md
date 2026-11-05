@@ -33,9 +33,9 @@
 | `music.ts` | BGM 场景引擎：素材优先本机覆盖；同一场景多个变体时**切场景随机取一条并缓存**（音量/静音刷新不重选，「重播」重新随机）；**战斗每场新战斗重抽一条不同变体**（`rerollBgmVariant`，交叉淡变）；缺素材=静音；首次手势重试自动播放 |
 | `ambient.ts` | 环境底噪（同款交叉淡变）＋ 20–90 秒随机点缀（走环境音量与节流） |
 | `useSceneAudio.ts` | App 顶层挂载：每帧投影场景、变化才切；**只在场景变化时切曲**；visibility 生命周期暂停/恢复；偏好变化即时调音量 |
-| `uiFeedback.ts` | 全局按钮点击 → `ui-click`（捕获阶段旁听、音效台内部不响） |
+| `uiFeedback.ts` | 全局按钮点击 → `ui-click`（捕获阶段旁听、音效台内部不响）；错误 toast → `ui-error`（2026-11-05 扩为全量错误提示，`notifyUiError()`） |
 
-扩展：`cues.ts`（33 个语义事件 / 6 分类 / `loop` / `pitchJitter` / `fallback`）、`rules.ts`（6 类音量、`pitchJitterCents`、`pitchRateFor`、`ui-error` 白名单）、`player.ts`（音高随机、按弹种回落、loop 试听）、`manifest.ts`（三目录 glob）、`battleSfx.ts`（按弹种/未命中/敌方开火）、`appSettings.tsx`（6 类滑条 + 音高行）、`SfxConsole.tsx`（音效 / 音乐 / 环境三组）。
+扩展：`cues.ts`（33 个语义事件 / 6 分类 / `loop` / `pitchJitter` / `fallback`）、`rules.ts`（6 类音量、`pitchJitterCents`、`pitchRateFor`、日志补充白名单 `LOG_CUE_RULES`；`ui-error` 主通道在 App 错误 toast 出口）、`player.ts`（音高随机、按弹种回落、loop 试听）、`manifest.ts`（三目录 glob）、`battleSfx.ts`（按弹种/未命中/敌方开火）、`appSettings.tsx`（6 类滑条 + 音高行）、`SfxConsole.tsx`（音效 / 音乐 / 环境三组）。
 
 **战斗音高随机**：`playbackRate = 2^(均匀随机(±100)/1200)` 且 `preservesPitch = false`（浏览器默认 true 只变速不变调，2026-11-02 在 Chromium 实测：`preservesPitch` 存在、默认 true；`playbackRate = 1.0005777895065548` 原值保留）。1 音分 ≈ 0.058% 频率差；100 音分 = 1 个半音。一次性重音（击毁/沉没/胜负）与 BGM/环境不加抖动，避免仪式感破坏与循环漂移。
 
@@ -50,7 +50,7 @@
 | 音乐 | 5 | `bgm-docked` / `bgm-space` / `bgm-battle` / `bgm-wormhole` / `bgm-invasion` |
 | 环境 | 6 | 底噪 `ambient-docked` / `ambient-space` / `ambient-battle`；点缀 `ambient-blip-comms` / `ambient-blip-metal` / `ambient-blip-static` |
 
-默认音量（**2026-11-05 船长改为**）：总 100%；音乐 15% / 环境 50% / 警报 70% / 战斗 100% / 生产 50% / 界面 50%。偏好存本机 `whale-idle:sfx`，不进存档；已存过偏好的机器沿用其保存值。
+默认音量（**2026-11-05 船长改为**）：总 100%；音乐 15% / 环境 50% / 警报 70% / 战斗 100% / 生产 50% / 界面 50%。偏好存本机 `whale-idle:sfx`，不进存档；已存过偏好的机器沿用其保存值。设置声音页提供「恢复默认音量」按钮（`ui.sfx.131`，2026-11-05 加），点按写回上表默认值。
 
 ## 五、素材约定
 
@@ -117,5 +117,15 @@
 | 触发链路审计 | ✅ 24 个有素材事件全部有挂载点：BGM/环境按场景引擎；战斗 12 条全部走 `battleSfx`（仅战场屏上屏出声，装配页/后台静音）；警报/通讯走 App 事件；生产/成交/扫描/建成/界面走 `LOG_CUE_RULES` 37 条日志规则；缺 9 个均为「有触发点、无素材」的预留口 |
 | `npm --prefix web run build` | ✅ |
 | `npm run audio:smoke` | ✅ 全绿（覆盖 24、缺素材 9、BGM/点缀变体数、命中音预览与真实播放进日志、音效台四页签等断言） |
+
+### 2026-11-05 恢复默认音量与界面错误音扩大覆盖
+
+| 检查 | 结果 |
+|---|---|
+| `ui-error` 覆盖 | ✅ 主通道改 `App.showToast(text, warn=true)` → `notifyUiError()`，所有命令被拒/错误提示统一出声；`LOG_CUE_RULES` 6 条保留为无 toast 场景的补充 |
+| 设置「恢复默认音量」 | ✅ 声音页按钮（`ui.sfx.131`）→ `sfx.reset()` 写回默认音量 |
+| `npm run audio:check` | ✅ 33 事件 / 29 个音频文件 / 覆盖 24/33 / 本域 107 条 id |
+| `npm run l10n:check`、`npm run typecheck` | ✅ |
+| `npm --prefix web run build` + `npm run audio:smoke` | ✅ 全绿（含「恢复默认音量」按钮存在、点击后八条滑条读数 1/.15/.5/.7/1/.5/.5/100 断言） |
 
 测试档：无随档字段，不需要生成器/门槛档与迁移验证。

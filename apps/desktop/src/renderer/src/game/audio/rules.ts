@@ -199,7 +199,9 @@ export const LOG_CUE_RULES: Readonly<Record<string, LogCueRule>> = {
   'core.weekend.001': { cue: 'trade-done' },
   'core.weekend.002': { cue: 'trade-done' },
   'core.weekend.043': { cue: 'trade-done' },
-  // 操作被拒（2026-11-02 追加 · UI 反馈）：只登记**玩家操作被拒**类 warn 日志，不铺全部 warn
+  // 操作被拒（2026-11-02 追加 · UI 反馈）：只登记**玩家操作被拒**类 warn 日志，不铺全部 warn。
+  // 2026-11-05 船长要求扩大覆盖：主通道改为 `App.showToast(text, warn=true)` → `ui-error`
+  //（见 game/audio/uiFeedback.ts 的 notifyUiError）；此白名单保留，服务没有 toast 的读档/自动停止等场景。
   'core.engine.009': { cue: 'ui-error' },
   'core.engine.010': { cue: 'ui-error' },
   'core.skillLicense.005': { cue: 'ui-error' },

@@ -8110,6 +8110,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ui.sfx.128': { zh: '立即播放环境点缀', en: '', enDeferred: true },
   'ui.sfx.129': { zh: '仓库内置素材：{p1}/{p2} 条', en: '', enDeferred: true },
   'ui.sfx.130': { zh: '一键入库仅桌面开发版可用；网页版请用「导出正式入库包」再运行 npm run audio:install。', en: '', enDeferred: true },
+  // ⟪音效设置补充 2026-11-05⟫ 船长要求设置里加「恢复默认音量」；英文未授权，按约定留空并登记待译。
+  'ui.sfx.131': { zh: '恢复默认音量', en: '', enDeferred: true },
   'ui.exchange.001': { zh: '对手盘', en: '', enDeferred: true },
   'ui.exchange.002': { zh: '全市场涨跌分布', en: '', enDeferred: true },
   'ui.exchange.003': { zh: '估算成交额', en: '', enDeferred: true },

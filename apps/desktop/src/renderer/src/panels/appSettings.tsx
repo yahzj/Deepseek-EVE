@@ -584,6 +584,9 @@ export function SettingsPanel({
               >
                 {t('ui.sfx.032')}
               </button>
+              <button className="app-btn is-small" onClick={() => sfx.reset()} title={t('ui.sfx.131')}>
+                {t('ui.sfx.131')}
+              </button>
               {debugAllowed() ? (
                 <button className="app-btn is-small" onClick={() => setSfxConsoleOpen(true)}>
                   {t('ui.sfx.037')}

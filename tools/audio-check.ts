@@ -307,7 +307,7 @@ const UI_L10N_IDS = [
   'ui.sfx.110', 'ui.sfx.111', 'ui.sfx.112', 'ui.sfx.113', 'ui.sfx.114', 'ui.sfx.115',
   'ui.sfx.116', 'ui.sfx.117', 'ui.sfx.118', 'ui.sfx.119', 'ui.sfx.120', 'ui.sfx.121',
   'ui.sfx.122', 'ui.sfx.123', 'ui.sfx.124', 'ui.sfx.125', 'ui.sfx.126', 'ui.sfx.127',
-  'ui.sfx.128', 'ui.sfx.129', 'ui.sfx.130',
+  'ui.sfx.128', 'ui.sfx.129', 'ui.sfx.130', 'ui.sfx.131',
 ]
 const allL10nIds = new Set<string>([...SFX_CUE_IDS.map((id) => SFX_CUES[id].nameId), ...SFX_CATEGORIES.map((c) => SFX_CATEGORY_NAME_ID[c]), ...UI_L10N_IDS])
 

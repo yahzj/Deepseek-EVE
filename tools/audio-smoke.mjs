@@ -290,12 +290,25 @@ async function main() {
     modal: !!document.querySelector('.app-settings-modal'),
     sliders: document.querySelectorAll('.app-settings-slider').length,
     hasPitchRow: [...document.querySelectorAll('.app-settings-label')].some(x => x.textContent.includes('音高随机')),
-    hasConsoleBtn: [...document.querySelectorAll('button')].some(x => x.textContent.trim() === '音效台')
+    hasConsoleBtn: [...document.querySelectorAll('button')].some(x => x.textContent.trim() === '音效台'),
+    hasResetBtn: [...document.querySelectorAll('button')].some(x => x.textContent.trim() === '恢复默认音量')
   })`)
   check(settings.modal === true, '设置面板已打开')
   check(settings.sliders === 8, `声音页滑条为 8（总音量/6 类分类/音高，实际 ${settings.sliders}）`)
   check(settings.hasPitchRow === true, '设置里出现「战斗音效音高随机」一行')
   check(settings.hasConsoleBtn === true, '设置内出现「音效台」入口（本机调试门禁放行）')
+  check(settings.hasResetBtn === true, '设置里出现「恢复默认音量」按钮')
+  // 恢复默认：点一下后八条滑条应回到船长指定默认值（总100 / 音乐15 / 环境50 / 警报70 / 战斗100 / 生产50 / 界面50 / 音高100）
+  const resetClicked = await evaluate(`(() => {
+    const b = [...document.querySelectorAll('button')].find(x => x.textContent.trim() === '恢复默认音量')
+    if (!b) return 'no-btn'
+    b.click()
+    return 'ok'
+  })()`)
+  check(resetClicked === 'ok', '「恢复默认音量」按钮可点')
+  await sleep(250)
+  const resetValues = await evaluate(`[...document.querySelectorAll('.app-settings-slider')].map(x => Number(x.value))`)
+  check(JSON.stringify(resetValues) === JSON.stringify([1, 0.15, 0.5, 0.7, 1, 0.5, 0.5, 100]), `恢复默认后音量读数（实际 ${JSON.stringify(resetValues)}）`)
 
   const openConsole = await evaluate(`(() => {
     const b = [...document.querySelectorAll('button')].find(x => x.textContent.trim() === '音效台')
