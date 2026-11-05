@@ -213,6 +213,31 @@ async function main() {
     check(builtinPreview === true, '内置素材可试听（Audio 起播未抛错）')
   }
 
+  // 首批成品素材（2026-11-05）：内置覆盖 8 个事件；BGM 场景有变体、点缀与点击各就位
+  const coverage = await evaluate(`(() => {
+    const rows = window.__whaleSfx.status()
+    const count = (id) => {
+      const row = rows.find(s => s.id === id)
+      return row === undefined ? 0 : row.builtinCount
+    }
+    return {
+      covered: rows.filter(s => s.builtinCount > 0).length,
+      bgm: ['bgm-docked','bgm-space','bgm-battle','bgm-wormhole','bgm-invasion'].map(count),
+      blips: ['ambient-blip-static','ambient-blip-metal','ambient-blip-comms'].map(count),
+      click: count('ui-click')
+    }
+  })()`)
+  check(coverage.covered === 8, `内置素材覆盖 8 个事件（实际 ${coverage.covered}）`)
+  check(
+    JSON.stringify(coverage.bgm) === JSON.stringify([1, 2, 2, 2, 1]),
+    `BGM 变体数（停靠1/太空2/战斗2/虫洞2/入侵1，实际 ${coverage.bgm.join('/')}）`,
+  )
+  check(
+    JSON.stringify(coverage.blips) === JSON.stringify([2, 2, 0]),
+    `环境点缀变体数（杂音2/金属2/通讯0，实际 ${coverage.blips.join('/')}）`,
+  )
+  check(coverage.click === 1, `ui-click 素材 1 条（实际 ${coverage.click}）`)
+
   const WAV_FN = `function makeWav(){
     const rate=8000, secs=0.2, n=Math.floor(rate*secs), bytes=new Uint8Array(44+n*2), dv=new DataView(bytes.buffer)
     const ws=(o,s)=>{for(let i=0;i<s.length;i++)dv.setUint8(o+i,s.charCodeAt(i))}
