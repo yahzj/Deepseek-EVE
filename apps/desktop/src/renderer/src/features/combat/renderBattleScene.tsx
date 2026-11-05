@@ -19,6 +19,7 @@ import { BattleMountLines } from './battleMounts'
 import { BattleCycles } from './BattleCycles'
 import { RangeEwPanel } from './RangeEwPanel'
 import './commandBattle.css'
+import './battleDistanceAxis.css'
 
 export function renderBattleScene({
     rangeMode, screenRef, stage, onClose, tr, inWormhole,

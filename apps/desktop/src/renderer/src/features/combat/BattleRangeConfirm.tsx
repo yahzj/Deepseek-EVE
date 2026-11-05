@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { GameEngine } from '../../game/engine'
 import { tr, cmdText } from '../../i18n/locale'
+import './battleDistanceAxis.css'
 
 export function BattleRangeConfirm({ engine }: { engine: GameEngine }) {
   const view = engine.battleRangePending()
