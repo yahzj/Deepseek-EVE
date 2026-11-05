@@ -17,7 +17,7 @@
 | 仓库 | 路径 | 远端 | 说明 |
 |---|---|---|---|
 | 游戏主仓（Electron + Vite + core/data/ui） | `D:\Documents\GitHub\Deepseek-EVE` | `https://github.com/yahzj/Deepseek-EVE.git`，分支 `main` | 最新提交 `011c94eb`（恢复 Sparkline），已推送 |
-| Go 交易引擎 | `D:\Documents\GitHub\deepseek-EVE-Background\exchange-server-go` | 独立 Git 仓（内含 `.git`），父仓里仍是未跟踪目录 | 最新提交 `c4bf88e`（微光纳米锚点 500）；模块名仍是 `whale-server-go` |
+| Go 交易引擎 | `D:\Documents\GitHub\deepseek-EVE-Background\exchange-server-go` | 已并入父仓并推送（`bd367e1`） | 模块名仍是 `whale-server-go`；并入前 26 条历史备份在 `D:\Documents\GitHub\_archive\exchange-server-go-history-20261105.bundle` |
 | Node 云端服务 | `D:\Documents\GitHub\deepseek-EVE-Background` | `https://github.com/yahzj/deepseek-EVE-Background.git`，分支 `main` | 账号/会话/存档云同步，端口 8787；2026-11-05 已推送 |
 
 > 注意：主工作树同时被「UI review AI」改写 UI 文件；不要覆盖他人在途修改。遇到疑似重叠改动先停写、报告证据。`FAST_WORKFLOW.md` 声明优先级高于 `AGENTS.md`；汇报第一行固定「册那，侬帮帮忙啦。」（船长要求）。

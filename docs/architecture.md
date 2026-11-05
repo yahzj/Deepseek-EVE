@@ -77,6 +77,6 @@
 |---|---|---|---|
 | 游戏主仓 | `D:\Documents\GitHub\Deepseek-EVE` | `https://github.com/yahzj/Deepseek-EVE.git` | Electron 客户端 + core/data/ui |
 | 云端服务（Node） | `D:\Documents\GitHub\deepseek-EVE-Background` | `https://github.com/yahzj/deepseek-EVE-Background.git` | 云存档、聊天、账号、现货订单簿、双分录账本（端口 8787） |
-| 股市引擎（Go） | `D:\Documents\GitHub\deepseek-EVE-Background\exchange-server-go` | 内含独立 `.git`，父仓尚未跟踪 | 回合制撮合、行情引擎、事件、AI 人格、债券/基金（端口 8788） |
+| 股市引擎（Go） | `D:\Documents\GitHub\deepseek-EVE-Background\exchange-server-go` | 随 Background 父仓一起推送（`bd367e1`） | 回合制撮合、行情引擎、事件、AI 人格、债券/基金（端口 8788） |
 
 权威模型仍是**混合权威**：存档由客户端演算，物品与信用点的进出走服务器账本；证券交易所由 Go 服务按真实墙钟 7×24 运行，资金侧 `EXCHANGE_LOCAL_SAVE_MODE=1`（存档币本地为准）。旧版 `apps/server/` 仅历史快照，见该目录 README。
