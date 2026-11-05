@@ -42,12 +42,12 @@ export function MarketOverview({ snap }: { snap: ExchangeSnapshot }) {
         <div className="ex-market-index-row">
           <div className="ex-market-index-main">
             <span className="ex-market-index-name">{T.indexShortName}</span>
-            <span className="ex-market-index-val ex-num">{indexVal.toFixed(1)}</span>
+            <span className="ex-market-index-val ex-num">{Math.round(indexVal).toLocaleString('zh-CN')}</span>
           </div>
           <div className="ex-market-index-sub">
             <div className={`ex-market-index-pill ex-num ${indexUp ? 'is-up' : 'is-down'}`}>
               <span className="ex-market-index-chg-val">
-                {indexChangeVal >= 0 ? '+' : ''}{indexChangeVal.toFixed(1)}
+                {indexChangeVal >= 0 ? '+' : ''}{Math.round(indexChangeVal).toLocaleString('zh-CN')}
               </span>
               <span className="ex-market-index-chg-pct">
                 ({pct(indexPct)})
@@ -58,8 +58,8 @@ export function MarketOverview({ snap }: { snap: ExchangeSnapshot }) {
 
         {/* 高低范围微标注 */}
         <div className="ex-market-range-row ex-dim">
-          <span>{T.highShort} {snap.index.high.toFixed(1)}</span>
-          <span>{T.lowShort} {snap.index.low.toFixed(1)}</span>
+          <span>{T.highShort} {Math.round(snap.index.high).toLocaleString('zh-CN')}</span>
+          <span>{T.lowShort} {Math.round(snap.index.low).toLocaleString('zh-CN')}</span>
         </div>
 
         {/* 多空情绪双色槽 */}

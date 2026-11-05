@@ -206,6 +206,10 @@
 | 日志→音效触发规则与素材文件名匹配 | `matchLogCue` / `matchSfxFileName` · `game/audio/rules.ts` | `npm run audio:check`；`arch:guard` F2/F3 |
 | BGM/环境场景解析（战斗>虫洞>入侵>停靠>太空） | `resolveSfxScene` · `game/audio/scene.ts` | `npm run audio:check`；`arch:guard` F2/F3 |
 | 音高随机换速率（音分 → playbackRate） | `pitchRateFor` · `game/audio/rules.ts` | `npm run audio:check`；`arch:guard` F2/F3 |
+| 音效正式入库包格式与素材路径映射（音效台导出、`audio:install` 与自检共用） | `buildSfxPack` / `sfxPackAssetPath` · `game/audio/sfxPack.ts` | `npm run audio:check`；`arch:guard` F2/F3 |
+| BGM/环境底噪交叉淡变时长（换曲 2.5s / 1.5s、同曲调音量 250ms） | `BGM_CROSSFADE_MS` / `AMBIENT_CROSSFADE_MS` / `VOLUME_FADE_MS` · `game/audio/rules.ts` | `npm run audio:check`；`arch:guard` F2/F3 |
+| 场景音频强切（真实场景 + 调试预演；只切声音，不动存档与画面） | `reportRealSfxScene` / `forceSfxScene` / `effectiveSfxScene` · `game/audio/sceneSwitch.ts` | `npm run audio:check`；`arch:guard` F2/F3 |
+| 实时触发日志（环形缓冲 60 条，试听不计） | `recordSfxPlay` / `sfxPlayLog` · `game/audio/playLog.ts` | `npm run audio:check`；`arch:guard` F2/F3 |
 
 ## 四、工具与文档层（`tools/` · `docs/`）
 

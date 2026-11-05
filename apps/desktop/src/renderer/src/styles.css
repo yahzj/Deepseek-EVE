@@ -221,6 +221,15 @@ html[data-locale='en'] body {
   max-width: calc(100vh - 24px);
 }
 
+/* 音效台大窗（2026-11-04 调试批）：旋转模式下宽按**虚拟横屏宽**（100vh - 24px，占满逻辑空间），
+   高按逻辑空间 `--mob-h` 收；由 `npm run ui:rot-check` 的物理单位契约点名要求（见本段开头口径）。 */
+.app-root.is-mobile-rot .app-sfx-modal {
+  width: min(1180px, calc(100vh - 24px));
+  max-width: calc(100vh - 24px);
+  height: min(860px, calc(var(--mob-h, 100vw) - 24px));
+  max-height: min(860px, calc(var(--mob-h, 100vw) - 24px));
+}
+
 /* ── 虫洞弹层在旋转模式下的定尺寸：**2026-10-02 已迁走**，见本文件 `is-mobile-rot` 段里的
    「手机旋转模式 · 虫洞探索界面」那一块（同特异性、位置更靠后 ⇒ 由那一条生效）。
    沿革：这里原先写的是 `width: min(1060px, calc(100vh - 40px))` —— 旋转下 `100vh` 量的是**手机竖屏高
@@ -15049,8 +15058,135 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
   border-color: rgb(var(--wui-hud-primary) / 0.4);
 }
 
-/* ═══════════ 本机音效台（2026-11-02 声音系统 · 仅本机调试可见，发布版不渲染入口） ═══════════ */
-.app-sfx-modal { width: 780px; }
+/* ═══════════ 本机音效台（2026-11-02 声音系统 · 仅本机调试可见，发布版不渲染入口）
+ * 2026-11-04 调试批：居中大窗 + 页签（素材 / 场景预演 / 实时触发 / 入库）+ 底部工具条 + 可收起悬浮条 ═══════════ */
+.app-sfx-modal {
+  width: min(1180px, 96vw);
+  height: min(860px, 90vh);
+  max-height: min(860px, 90vh);
+  display: flex;
+  flex-direction: column;
+}
+.app-sfx-head { gap: var(--wui-sp-8); }
+.app-sfx-scene-chip {
+  margin-left: auto;
+  font-size: var(--wui-fs-2xsd);
+  padding: var(--wui-sp-1) var(--wui-sp-8);
+  border: 1px solid rgb(var(--wui-accent) / 0.5);
+  border-radius: var(--wui-sp-4);
+  color: rgb(var(--wui-accent));
+  white-space: nowrap;
+}
+.app-sfx-head-actions { display: flex; align-items: center; gap: var(--wui-sp-4); }
+.app-sfx-tabs {
+  display: flex;
+  gap: var(--wui-sp-2);
+  padding: 0 var(--wui-sp-12);
+  border-bottom: 1px solid rgb(var(--wui-map-minor) / 0.3);
+  flex-wrap: wrap;
+}
+.app-sfx-tab {
+  appearance: none;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: var(--wui-sp-6) var(--wui-sp-8);
+  font: inherit;
+  font-size: var(--wui-fs-s);
+  color: rgb(var(--wui-text-dim));
+  cursor: pointer;
+}
+.app-sfx-tab:hover { color: rgb(var(--wui-text)); }
+.app-sfx-tab.is-active { color: rgb(var(--wui-accent)); border-bottom-color: rgb(var(--wui-accent)); }
+.app-sfx-panels {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--wui-sp-8);
+  padding: var(--wui-sp-10) var(--wui-sp-12);
+}
+.app-sfx-scene-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--wui-sp-8);
+}
+.app-sfx-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wui-sp-4);
+  padding: var(--wui-sp-8) var(--wui-sp-10);
+  border: 1px solid rgb(var(--wui-map-minor) / 0.28);
+  border-radius: var(--wui-sp-6);
+  background: rgb(var(--wui-bg-field) / 0.45);
+}
+.app-sfx-card.is-forced { border-color: rgb(var(--wui-accent) / 0.6); }
+.app-sfx-card-title { font-weight: 600; }
+.app-sfx-card-meta { font-size: var(--wui-fs-2xsd); color: rgb(var(--wui-text-dim)); }
+.app-sfx-card .app-dim { font-size: var(--wui-fs-2xsd); }
+.app-sfx-card-cues { display: flex; flex-wrap: wrap; gap: var(--wui-sp-2); }
+.app-sfx-card-cue {
+  font-size: var(--wui-fs-2xsd);
+  padding: 0 var(--wui-sp-4);
+  border: 1px solid rgb(var(--wui-map-minor) / 0.4);
+  border-radius: var(--wui-sp-2);
+  color: rgb(var(--wui-text-dim));
+}
+.app-sfx-log-actions { display: flex; flex-wrap: wrap; gap: var(--wui-sp-4); }
+.app-sfx-log { display: flex; flex-direction: column; gap: 2px; }
+.app-sfx-log-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--wui-sp-8);
+  padding: 2px var(--wui-sp-4);
+  font-size: var(--wui-fs-s);
+  border-bottom: 1px solid rgb(var(--wui-map-minor) / 0.18);
+}
+.app-sfx-log-time { color: rgb(var(--wui-text-dim)); font-variant-numeric: tabular-nums; }
+.app-sfx-log-cue { color: rgb(var(--wui-accent)); font-family: var(--wui-font-mono, monospace); }
+.app-sfx-install-actions { display: flex; flex-wrap: wrap; gap: var(--wui-sp-6); }
+.app-sfx-install-out {
+  margin: 0;
+  padding: var(--wui-sp-8);
+  max-height: 240px;
+  overflow: auto;
+  font-size: var(--wui-fs-2xsd);
+  white-space: pre-wrap;
+  border: 1px solid rgb(var(--wui-map-minor) / 0.3);
+  border-radius: var(--wui-sp-4);
+  background: rgb(var(--wui-bg-field) / 0.45);
+  color: rgb(var(--wui-text-dim));
+}
+.app-sfx-result {
+  margin: 0 14px 8px;
+  overflow-wrap: anywhere;
+}
+.app-sfx-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--wui-sp-8);
+  flex-wrap: wrap;
+  padding: var(--wui-sp-8) var(--wui-sp-12);
+  border-top: 1px dashed rgb(var(--wui-map-minor) / 0.3);
+}
+.app-sfx-toolbar-group { display: flex; align-items: center; gap: var(--wui-sp-4); flex-wrap: wrap; }
+.app-sfx-bar {
+  position: fixed;
+  right: var(--wui-sp-16);
+  bottom: var(--wui-sp-24);
+  z-index: 130;
+  display: flex;
+  align-items: center;
+  gap: var(--wui-sp-8);
+  padding: var(--wui-sp-6) var(--wui-sp-10);
+  border: 1px solid rgb(var(--wui-accent) / 0.5);
+  border-radius: var(--wui-sp-8);
+  background: rgb(var(--wui-bg-field) / 0.98);
+  box-shadow: 0 6px 24px rgb(0 0 0 / 0.45);
+}
 .app-sfx-body { display: flex; flex-direction: column; gap: var(--wui-sp-8); }
 .app-sfx-drop {
   border: 1px dashed rgb(var(--wui-accent) / 0.45);

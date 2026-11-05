@@ -5,7 +5,8 @@
  * 原档也完好无损，最多丢一次保存间隔的内容。
  */
 import { app, BrowserWindow, dialog, ipcMain, screen } from 'electron'
-import { constants, promises as fs } from 'node:fs'
+import { spawn } from 'node:child_process'
+import { constants, existsSync, promises as fs } from 'node:fs'
 import { join } from 'node:path'
 import { L10N, l10nEntryText } from '@whale/data'
 import { createSaveQueue } from '../shared/saveQueue'
@@ -254,6 +255,115 @@ function registerSaveHandlers(): void {
   })
 }
 
+/* ───────── 音效台「一键入库」（2026-11-04 调试批）：主进程调仓库里的安装器 ───────── */
+
+/**
+ * 仓库根：从应用目录向上找同时含 `tools/audio-install.ts` 与根 `package.json` 的目录。
+ * 为什么由主进程做：渲染层拿不到仓库路径也不能写任意文件；桌面开发版经 IPC 让主进程
+ * 跑仓库根已有的 `tsx tools/audio-install.ts`，等于把「导出包 + 命令行」缩成一次点击。
+ * 网页版没有 preload，自然没有这个能力，保留导出 + 命令（船长已确认）。
+ */
+function findRepoRoot(): string | null {
+  let dir = app.getAppPath()
+  for (let i = 0; i < 8; i++) {
+    if (existsSync(join(dir, 'tools/audio-install.ts')) && existsSync(join(dir, 'package.json'))) return dir
+    const parent = join(dir, '..')
+    if (parent === dir) break
+    dir = parent
+  }
+  return null
+}
+
+interface InstallerResult {
+  readonly ok: boolean
+  readonly code: number | null
+  readonly output: string
+}
+
+/** 跑 `node node_modules/tsx/dist/cli.mjs tools/audio-install.ts <pack> [--dry-run] --json`，收集输出 */
+function runSfxInstaller(packPath: string, dryRun: boolean): Promise<InstallerResult> {
+  return new Promise((resolve) => {
+    const root = findRepoRoot()
+    if (root === null) {
+      resolve({ ok: false, code: null, output: '找不到仓库根（缺少 tools/audio-install.ts）：请在仓库里运行桌面开发版' })
+      return
+    }
+    const tsxCli = join(root, 'node_modules', 'tsx', 'dist', 'cli.mjs')
+    if (!existsSync(tsxCli)) {
+      resolve({ ok: false, code: null, output: `找不到 tsx：${tsxCli}（先在仓库根 npm install）` })
+      return
+    }
+    const args = [tsxCli, join(root, 'tools', 'audio-install.ts'), packPath, '--json']
+    if (dryRun) args.push('--dry-run')
+    let output = ''
+    let settled = false
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const finish = (code: number | null, extra = ''): void => {
+      if (settled) return
+      settled = true
+      if (timer !== null) clearTimeout(timer)
+      resolve({ ok: code === 0, code, output: (output + extra).slice(0, 20_000) })
+    }
+    let child: ReturnType<typeof spawn>
+    try {
+      child = spawn(process.platform === 'win32' ? 'node.exe' : 'node', args, { cwd: root, windowsHide: true })
+    } catch (err) {
+      finish(null, `\n启动安装器失败：${err instanceof Error ? err.message : String(err)}`)
+      return
+    }
+    child.stdout?.on('data', (chunk: Buffer) => {
+      output += String(chunk)
+    })
+    child.stderr?.on('data', (chunk: Buffer) => {
+      output += String(chunk)
+    })
+    child.on('error', (err) => finish(null, `\n启动安装器失败：${err.message}`))
+    child.on('close', (code) => finish(code))
+    timer = setTimeout(() => {
+      try {
+        child.kill()
+      } catch {
+        /* 忽略 */
+      }
+      finish(null, '\n安装器超时（30 秒）')
+    }, 30_000)
+  })
+}
+
+/** 注册音效台一键入库（仅桌面版桥；网页版没有 preload，自然没有这个能力） */
+function registerAudioHandlers(): void {
+  ipcMain.handle('audio:install-pack', async (_event, pack: unknown, options: unknown) => {
+    const dryRun = typeof options === 'object' && options !== null && (options as { dryRun?: unknown }).dryRun === true
+    let bytes: Uint8Array | null = null
+    try {
+      if (pack instanceof ArrayBuffer) bytes = new Uint8Array(pack)
+      else if (ArrayBuffer.isView(pack)) bytes = new Uint8Array(pack.buffer, pack.byteOffset, pack.byteLength)
+    } catch {
+      bytes = null
+    }
+    if (bytes === null || bytes.byteLength === 0 || bytes.byteLength > 64 * 1024 * 1024) {
+      return { ok: false, code: null, output: '入库包数据不合法（需 ArrayBuffer，且 1B–64MB）' }
+    }
+    let tempDir: string | null = null
+    try {
+      tempDir = await fs.mkdtemp(join(app.getPath('temp'), 'whale-sfx-'))
+      const packPath = join(tempDir, 'pack.zip')
+      await fs.writeFile(packPath, bytes)
+      return await runSfxInstaller(packPath, dryRun)
+    } catch (err) {
+      return { ok: false, code: null, output: `写入临时入库包失败：${err instanceof Error ? err.message : String(err)}` }
+    } finally {
+      if (tempDir !== null) {
+        try {
+          await fs.rm(tempDir, { recursive: true, force: true })
+        } catch {
+          /* 忽略 */
+        }
+      }
+    }
+  })
+}
+
 /** 创建主窗口 */
 function createWindow(): void {
   /**
@@ -317,6 +427,7 @@ app.commandLine.appendSwitch('disable-renderer-backgrounding')
 
 app.whenReady().then(() => {
   registerSaveHandlers()
+  registerAudioHandlers()
   createWindow()
 
   // macOS 惯例：点 Dock 图标且没有窗口时重新开窗

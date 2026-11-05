@@ -132,88 +132,176 @@
   .ex-ticker-viewport { overflow-x: auto; }
 }
 
-/* ── 顶栏：标题 + 指数 + 账户读数 ── */
+/* ── 顶栏：三段式逻辑架构（左：品牌与模式；中：市场运行与回合状态；右：个人资产与出入金操作） ── */
 
 .ex-topbar {
   flex: 0 0 auto;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 6px 20px;
-  padding: 7px 12px;
+  justify-content: space-between;
+  gap: 12px;
+  height: 66px;
+  min-height: 66px;
+  max-height: 66px;
+  padding: 0 16px;
   border: 1px solid rgb(var(--wui-border));
   border-radius: 6px;
-  background: linear-gradient(180deg, rgb(var(--wui-bg-panel) / 0.8), rgb(var(--wui-bg-deep) / 0.6));
+  background: linear-gradient(180deg, rgb(var(--wui-bg-panel) / 0.85), rgb(var(--wui-bg-deep) / 0.7));
+  box-sizing: border-box;
+}
+
+.ex-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
 }
 
 .ex-title {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: stretch;
+  gap: 3px;
   flex: 0 0 auto;
 }
 
-.ex-title-text {
+.ex-title-row {
   margin: 0;
+  display: flex;
+  align-items: baseline;
   font-size: var(--wui-fs-lg);
+  font-weight: 700;
   letter-spacing: 2px;
+  color: rgb(var(--wui-gold));
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.ex-title-prefix,
+.ex-title-suffix {
   color: rgb(var(--wui-gold));
 }
 
-.ex-prototype {
-  padding: 1px 7px;
-  border: 1px dashed rgb(var(--wui-amber) / 0.6);
-  border-radius: 3px;
-  color: rgb(var(--wui-amber));
-  font-size: var(--wui-fs-2xs);
+/* 船长令（2026-11-04）：服务器微标挪到绿框（标题）下方，与「交易所」三个字末尾严格对齐 */
+.ex-title-sub-row {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  line-height: 1;
+}
+
+.ex-topbar-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .ex-index {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: 6px;
   flex: 0 0 auto;
+  padding-left: 8px;
+  border-left: 1px solid rgb(var(--wui-border) / 0.5);
 }
 
 .ex-index b {
-  font-size: var(--wui-fs-md);
+  font-size: var(--wui-fs-sm);
   color: rgb(var(--wui-text));
+  font-family: var(--wui-mono);
+  font-variant-numeric: tabular-nums;
 }
 
-.ex-stats {
+.ex-topbar-right {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px 18px;
+  align-items: center;
+  gap: 14px;
   margin-left: auto;
+  flex-shrink: 0;
+}
+
+.ex-topbar-stats {
+  display: flex;
+  align-items: center;
+  gap: 14px;
 }
 
 .ex-stat {
   display: flex;
   flex-direction: column;
   gap: 1px;
-  min-width: 82px;
+  min-width: 78px;
 }
 
 .ex-stat span {
   color: rgb(var(--wui-text-dim));
   font-size: var(--wui-fs-2xs);
+  white-space: nowrap;
 }
 
 .ex-stat b {
   color: rgb(var(--wui-text));
   font-size: var(--wui-fs-s);
-  font-weight: 500;
+  font-weight: 600;
+  font-family: var(--wui-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ex-stat.ex-stat-big .ex-val-highlight {
+  font-size: var(--wui-fs-base);
+  color: rgb(var(--wui-cyan));
+  font-weight: 700;
+  text-shadow: 0 0 8px rgb(var(--wui-cyan) / 0.35);
+}
+
+.ex-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 10px;
+  border-left: 1px solid rgb(var(--wui-border) / 0.5);
+}
+
+.ex-topbar-actions .ex-mini-btn.is-deposit {
+  border-color: rgb(var(--wui-gold) / 0.7);
+  color: rgb(var(--wui-gold));
+  background: rgb(var(--wui-gold) / 0.12);
+  font-weight: 600;
+}
+
+.ex-topbar-actions .ex-mini-btn.is-deposit:hover {
+  background: rgb(var(--wui-gold) / 0.22);
+  border-color: rgb(var(--wui-gold));
+  box-shadow: 0 0 10px rgb(var(--wui-gold) / 0.3);
+}
+
+.ex-topbar-actions .ex-mini-btn.is-withdraw {
+  border-color: rgb(var(--wui-border-bright));
+  color: rgb(var(--wui-text));
+}
+
+.ex-topbar-actions .ex-mini-btn.is-withdraw:hover {
+  border-color: rgb(var(--wui-cyan));
+  color: rgb(var(--wui-cyan));
 }
 
 /* ── 三栏主区 ── */
 
-.ex-grid {
+.ex-grid,
+.ex-pro-grid,
+.ex-simple-grid {
   flex: 1 1 auto;
   min-height: 0;
+  height: 100%;
   display: grid;
-  grid-template-columns: 272px minmax(0, 1fr) 366px;
+  grid-template-columns: 264px minmax(0, 1fr) 360px;
   grid-template-rows: minmax(0, 1fr);
   gap: 8px;
+  padding: 0;
+  box-sizing: border-box;
 }
 
 .ex-col {
@@ -2757,8 +2845,12 @@
 /* ── 窄屏兜底（原型不追求手机旋转布局，只保证不炸） ── */
 
 @media (max-width: 1320px) {
-  .ex-grid {
-    grid-template-columns: 248px minmax(0, 1fr) 344px;
+  .ex-grid,
+  .ex-pro-grid,
+  .ex-simple-grid {
+    grid-template-columns: 244px minmax(0, 1fr) 336px;
+    gap: 8px;
+    padding: 0;
   }
 
   .ex-mid-bottom {
@@ -2796,21 +2888,50 @@
   background: rgb(var(--wui-gold) / 0.08);
 }
 
-/* 回合倒计时徽标：复用 .ex-source-badge 盒模型，只补两段排列与锁定态 */
-.ex-round-badge {
+/* ── 回合倒计时与委托配额徽标组：统一 HUD 胶囊规范 ── */
+.ex-round-badge-group {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
-.ex-round-badge .ex-round-quota {
+.ex-round-clock-badge {
+  border-color: rgb(var(--wui-border-bright));
   color: rgb(var(--wui-text-dim));
+  background: rgb(var(--wui-bg-field) / 0.6);
+  font-family: var(--wui-mono);
+  font-variant-numeric: tabular-nums;
+  /* 船长令：距结算读数是回合制的主时钟，字号按 HUD 主读数放大 */
+  font-size: var(--wui-fs-md, 13px);
+  padding: 2px 10px;
 }
 
-.ex-round-badge.is-locked {
-  border-color: rgb(var(--wui-danger-deep) / 0.8);
-  color: rgb(var(--wui-danger-deep));
-  background: rgb(var(--wui-danger-deep) / 0.12);
+.ex-round-clock {
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+/* 锁定前 30 秒：黄色提醒，不闪（闪烁只留给锁定档，避免长时间闪屏） */
+.ex-round-clock-badge.is-warn {
+  border-color: rgb(var(--wui-gold) / 0.8);
+  color: rgb(var(--wui-gold));
+  background: rgb(var(--wui-gold) / 0.14);
+}
+
+.ex-round-clock-badge.is-locked {
+  border-color: rgb(var(--wui-tone-loss) / 0.8);
+  color: rgb(var(--wui-tone-loss));
+  background: rgb(var(--wui-tone-loss) / 0.15);
+  box-shadow: 0 0 8px rgb(var(--wui-tone-loss) / 0.3);
+  animation: ex-pulse 1.2s ease-in-out infinite;
+}
+
+.ex-round-quota-badge {
+  border-color: rgb(var(--wui-border));
+  color: rgb(var(--wui-text-dim));
+  background: rgb(var(--wui-bg-field) / 0.4);
+  font-family: var(--wui-mono);
+  font-variant-numeric: tabular-nums;
 }
 
 .ex-reset-btn {
@@ -3421,6 +3542,14 @@
   box-shadow: 0 0 4px rgb(var(--wui-cyan) / 0.15);
 }
 
+/* 第二行对手盘动作：与市场事件的利多/利空区分开 */
+.ex-ticker-impact.is-agent {
+  background: rgb(var(--wui-gold) / 0.16);
+  color: rgb(var(--wui-gold));
+  border: 1px solid rgb(var(--wui-gold) / 0.45);
+  box-shadow: 0 0 4px rgb(var(--wui-gold) / 0.15);
+}
+
 .ex-ticker-code-btn {
   display: inline-flex;
   align-items: center;
@@ -3644,23 +3773,12 @@
    ========================================================================== */
 .ex-simple-layout,
 .ex-simple-grid {
-  display: grid;
-  grid-template-columns: 240px 1fr 340px;
-  gap: 10px;
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
-  padding: 8px 12px 10px;
+  height: 100%;
+  padding: 0;
   overflow: hidden;
   box-sizing: border-box;
-}
-
-@media (max-width: 1200px) {
-  .ex-simple-layout,
-  .ex-simple-grid {
-    grid-template-columns: 220px 1fr 310px;
-    gap: 8px;
-    padding: 6px 8px 8px;
-  }
 }
 
 /* ── 极简模式左栏：星际企业榜 ── */
@@ -3668,6 +3786,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  height: 100%;
   min-height: 0;
   overflow: hidden;
 }
@@ -3681,7 +3800,8 @@
   border-radius: 6px;
   padding: 10px;
   min-height: 0;
-  flex: 1;
+  height: 100%;
+  flex: 1 1 auto;
 }
 
 .ex-simple-side-head {
@@ -3928,12 +4048,13 @@
   border-bottom: 1px dashed rgb(var(--wui-border));
 }
 
-/* ── 极简中栏：标的概览横幅 + 走势图 + 买卖舱 ── */
+/* ── 极简中栏：标的概览横幅 + 走势图 + 买卖舱（全屏高度自适应拉伸） ── */
 .ex-simple-col-mid,
 .ex-simple-main {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  height: 100%;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
@@ -4015,12 +4136,17 @@
   font-size: var(--wui-fs-2xs);
 }
 
-/* ── 极简走势图卡片 ── */
+/* ── 极简走势图卡片（支持全屏自适应垂直伸展，填满中栏视口） ── */
 .ex-simple-chart-section {
-  flex-shrink: 0;
+  flex: 1 1 240px;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
 }
 
 .ex-simple-chart-card {
+  flex: 1 1 auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   padding: 8px 12px;
@@ -4086,6 +4212,20 @@
   align-items: center;
 }
 
+.ex-simple-chart-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: var(--wui-fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: rgb(var(--wui-accent));
+  background: rgb(var(--wui-accent) / 0.12);
+  border: 1px solid rgb(var(--wui-accent) / 0.35);
+  user-select: none;
+}
+
 .ex-simple-chart-periods {
   display: inline-flex;
   align-items: center;
@@ -4124,7 +4264,9 @@
 .ex-simple-svg-wrap {
   position: relative;
   width: 100%;
-  height: 145px;
+  height: 100%;
+  flex: 1 1 auto;
+  min-height: 120px;
 }
 
 .ex-simple-axis-badge {
@@ -4589,57 +4731,54 @@
   color: rgb(var(--wui-tone-loss));
 }
 
+/* 立即下注主按钮：高亮橙黄色板，文案精简为立即下注 */
+html body .app-root.is-layout-modern .ex-page .ex-simple-big-action-btn,
+html body .app-root .ex-page .ex-simple-big-action-btn,
 .ex-simple-big-action-btn {
   width: 100%;
-  height: 32px;
+  height: 38px;
   box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0;
-  border: 0;
   border-radius: 4px;
-  font-size: var(--wui-fs-sm);
-  font-weight: 700;
+  font-size: var(--wui-fs-base);
+  font-weight: 800;
+  letter-spacing: 2px;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  background: linear-gradient(135deg, #f59f00 0%, #d97706 100%) !important;
+  border: 2px solid #fbbf24 !important;
+  color: #1e1b18 !important;
+  box-shadow: 0 0 16px rgba(245, 159, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+  clip-path: none !important;
 }
 
+html body .app-root.is-layout-modern .ex-page .ex-simple-big-action-btn:hover:not(:disabled),
+html body .app-root .ex-page .ex-simple-big-action-btn:hover:not(:disabled),
+.ex-simple-big-action-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59f00 100%) !important;
+  border-color: #fef08a !important;
+  color: #0f0d0b !important;
+  box-shadow: 0 0 22px rgba(251, 191, 36, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+  transform: translateY(-1px);
+}
+
+html body .app-root.is-layout-modern .ex-page .ex-simple-big-action-btn:active:not(:disabled),
 .ex-simple-big-action-btn:active:not(:disabled) {
-  transform: scale(0.98);
+  transform: translateY(1px);
+  box-shadow: 0 0 10px rgba(245, 159, 0, 0.4) !important;
 }
 
-.ex-simple-big-action-btn.is-buy {
-  background: linear-gradient(135deg, rgb(var(--wui-tone-gain)), rgb(var(--wui-cyan)));
-  color: rgb(var(--wui-black));
-  box-shadow: 0 2px 10px rgb(var(--wui-tone-gain) / 0.35);
-}
-
-.ex-simple-big-action-btn.is-buy:hover:not(:disabled) {
-  filter: brightness(1.15);
-  box-shadow: 0 4px 16px rgb(var(--wui-tone-gain) / 0.5);
-  transform: translateY(-1px);
-}
-
-.ex-simple-big-action-btn.is-short,
-.ex-simple-big-action-btn.is-sell {
-  background: linear-gradient(135deg, rgb(var(--wui-tone-loss)), rgb(var(--wui-danger-deep)));
-  color: rgb(var(--wui-text));
-  box-shadow: 0 2px 10px rgb(var(--wui-tone-loss) / 0.35);
-}
-
-.ex-simple-big-action-btn.is-short:hover:not(:disabled),
-.ex-simple-big-action-btn.is-sell:hover:not(:disabled) {
-  filter: brightness(1.15);
-  box-shadow: 0 4px 16px rgb(var(--wui-tone-loss) / 0.5);
-  transform: translateY(-1px);
-}
-
+html body .app-root.is-layout-modern .ex-page .ex-simple-big-action-btn:disabled,
 .ex-simple-big-action-btn:disabled {
-  opacity: 0.45;
+  background: rgba(180, 115, 20, 0.18) !important;
+  border-color: rgba(180, 115, 20, 0.35) !important;
+  color: rgba(220, 175, 100, 0.45) !important;
+  box-shadow: none !important;
   cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
+  transform: none !important;
 }
 
 .ex-simple-trade-guard-hint {
@@ -4685,11 +4824,12 @@
   white-space: nowrap;
 }
 
-/* ── 极简模式右栏：持仓战报 + 理财债券 + 保底基金 ── */
+/* ── 极简模式右栏：持仓战报 + 理财债券 + 保底基金（高度撑满到底部） ── */
 .ex-simple-col-right {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  height: 100%;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
@@ -5146,10 +5286,9 @@
    专业模式 (ProExchange) · 星舰战术交易舱重构专属样式 (2026-11-03)
    ========================================================================== */
 
-/* ── 三栏栅格优化（左栏 260px 舒适双行卡片，右栏 360px 战术交易舱） ── */
+/* ── 三栏栅格优化（简单与专业双模式统一样式规范，零位移） ── */
 .ex-pro-grid {
-  grid-template-columns: 260px 1fr 360px;
-  gap: 10px;
+  padding: 0;
 }
 
 /* ── K 线图时间轴缩放工具组（24px 高度与周期/指标胶囊像素级对齐） ── */
@@ -5627,9 +5766,34 @@
   font-weight: 600;
 }
 
+.app-activitybar-exch-btn .app-ai-act-sub.is-up {
+  color: rgb(var(--wui-tone-gain));
+  font-weight: 600;
+}
+
 .app-activitybar-exch-btn .app-ai-act-sub.is-down {
   color: rgb(var(--wui-tone-loss));
   font-weight: 600;
+}
+
+.app-activitybar-exch-btn.is-bond {
+  border-color: rgb(var(--wui-gold) / 0.4);
+  background: linear-gradient(135deg, rgb(var(--wui-gold) / 0.12), rgb(var(--wui-bg-panel)));
+}
+
+.app-activitybar-exch-btn.is-bond:hover {
+  border-color: rgb(var(--wui-gold));
+  box-shadow: 0 0 10px rgb(var(--wui-gold) / 0.35);
+}
+
+.app-activitybar-exch-btn.is-fund {
+  border-color: rgb(var(--wui-purple) / 0.4);
+  background: linear-gradient(135deg, rgb(var(--wui-purple) / 0.12), rgb(var(--wui-bg-panel)));
+}
+
+.app-activitybar-exch-btn.is-fund:hover {
+  border-color: rgb(var(--wui-purple));
+  box-shadow: 0 0 10px rgb(var(--wui-purple) / 0.35);
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -5874,10 +6038,15 @@
 .ex-ticker.ex-ticker-feed {
   align-items: flex-start;
   height: auto;
-  min-height: 30px;
-  padding: 5px 0;
-  overflow: visible;
+  max-height: 48px;
+  min-height: 26px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgb(var(--wui-bg-panel) / 0.4);
+  border: 1px solid rgb(var(--wui-border) / 0.4);
+  overflow: hidden;
   white-space: normal;
+  box-sizing: border-box;
 }
 .ex-ticker-feed-list {
   display: flex;
@@ -5885,6 +6054,8 @@
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+  /* 固定两行高度：只有一条快讯时也不塌，避免顶栏下方跳动（船长令） */
+  min-height: calc(18px * 2 + 2px);
 }
 .ex-ticker-feed-row {
   display: flex;
@@ -5899,4 +6070,551 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* ── 我的委托（MyOrders）：回合制下统一的委托管理列表 ── */
+/* 预操作（本回合排队等集合竞价）与已操作（成交/未成交/已撤/被拒）同表管理。 */
+
+.ex-myorders {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.ex-myorders.is-table {
+  height: 100%;
+}
+
+.ex-myorders.is-compact {
+  height: 100%;
+}
+
+.ex-myorders-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ex-myorders-filters {
+  display: flex;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ex-myorders-filter {
+  padding: 3px 7px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: none;
+  color: rgb(var(--wui-text-dim));
+  font: inherit;
+  font-size: var(--wui-fs-2xs);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ex-myorders-filter:hover {
+  color: rgb(var(--wui-text));
+}
+
+.ex-myorders-filter.is-active {
+  border-color: rgb(var(--wui-border));
+  background: rgb(var(--wui-bg-panel));
+  color: rgb(var(--wui-text));
+}
+
+.ex-myorders-bulk {
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  border: 1px solid rgb(var(--wui-border));
+  border-radius: 4px;
+  background: none;
+  color: rgb(var(--wui-text-dim));
+  font: inherit;
+  font-size: var(--wui-fs-2xs);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ex-myorders-bulk:hover:not(:disabled) {
+  border-color: rgb(var(--wui-red) / 0.55);
+  color: rgb(var(--wui-red));
+}
+
+.ex-myorders-bulk.is-confirm {
+  border-color: rgb(var(--wui-red));
+  background: rgb(var(--wui-red) / 0.12);
+  color: rgb(var(--wui-red));
+}
+
+.ex-myorders-bulk:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.ex-myorders-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* 表格版（专业模式）：11 列，回合号在最前，操作列贴右 */
+.ex-myorders-row {
+  display: grid;
+  grid-template-columns: 58px 58px 52px 44px 52px 72px 64px 64px 60px 56px 44px;
+  gap: 6px;
+  align-items: center;
+  padding: 3px 6px;
+  border-bottom: 1px solid rgb(var(--wui-border) / 0.25);
+  font-size: var(--wui-fs-2xs);
+}
+
+.ex-myorders-row > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ex-myorders-row.is-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  border-bottom: 1px solid rgb(var(--wui-border));
+  background: rgb(var(--wui-bg-deep));
+  color: rgb(var(--wui-text-dim));
+}
+
+.ex-myorders-row.is-filled {
+  color: rgb(var(--wui-text));
+}
+
+.ex-myorders-row.is-cancelled,
+.ex-myorders-row.is-expired,
+.ex-myorders-row.is-rejected {
+  opacity: 0.72;
+}
+
+/* 方向：开空与卖出同为 sell 侧，仍用看跌色；买入用看涨色 */
+.ex-myorders-row .is-buy {
+  color: rgb(var(--wui-tone-gain));
+}
+
+.ex-myorders-row .is-sell,
+.ex-myorders-row .is-short {
+  color: rgb(var(--wui-tone-loss));
+}
+
+/* 状态徽标：queued 金色（还没成交）、filled 绿、其余转灰 */
+.ex-myorders-status {
+  justify-self: start;
+  padding: 0 5px;
+  border-radius: 3px;
+  line-height: 16px;
+}
+
+.ex-myorders-status.is-queued {
+  background: rgb(var(--wui-gold) / 0.14);
+  color: rgb(var(--wui-gold));
+}
+
+.ex-myorders-status.is-filled {
+  background: rgb(var(--wui-tone-gain) / 0.14);
+  color: rgb(var(--wui-tone-gain));
+}
+
+.ex-myorders-status.is-partial,
+.ex-myorders-status.is-open,
+.ex-myorders-status.is-trigger_pending {
+  color: rgb(var(--wui-accent));
+}
+
+.ex-myorders-status.is-cancelled,
+.ex-myorders-status.is-expired {
+  color: rgb(var(--wui-text-dim));
+}
+
+.ex-myorders-status.is-rejected {
+  color: rgb(var(--wui-red));
+}
+
+.ex-myorders-cancel {
+  padding: 1px 6px;
+  border: 1px solid rgb(var(--wui-border));
+  border-radius: 3px;
+  background: none;
+  color: rgb(var(--wui-text-dim));
+  font: inherit;
+  font-size: var(--wui-fs-2xs);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ex-myorders-cancel:hover:not(:disabled) {
+  border-color: rgb(var(--wui-red) / 0.55);
+  color: rgb(var(--wui-red));
+}
+
+.ex-myorders-cancel:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* 紧凑版（极简模式 340px 右栏）：窄列分两层，不硬挤表格 */
+.ex-myorders.is-compact .ex-myorders-body {
+  gap: 5px;
+  padding-right: 2px;
+}
+
+.ex-myorders-card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 8px;
+  border: 1px solid rgb(var(--wui-border));
+  border-left: 2px solid rgb(var(--wui-border));
+  border-radius: 5px;
+  background: rgb(var(--wui-bg-panel) / 0.55);
+}
+
+.ex-myorders-card.is-queued {
+  border-left-color: rgb(var(--wui-gold));
+}
+
+.ex-myorders-card.is-filled {
+  border-left-color: rgb(var(--wui-tone-gain));
+}
+
+.ex-myorders-card.is-rejected {
+  border-left-color: rgb(var(--wui-red));
+}
+
+.ex-myorders-card-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: var(--wui-fs-2xs);
+}
+
+.ex-myorders-card-top > .ex-num {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ex-myorders-code {
+  flex: 0 0 auto;
+  font-size: var(--wui-fs-xs);
+  letter-spacing: 0.4px;
+}
+
+.ex-myorders-card-top .ex-myorders-status {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.ex-myorders-card-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+  font-size: var(--wui-fs-2xs);
+}
+
+.ex-myorders-card-bottom > .ex-dim {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ex-myorders-side {
+  flex: 0 0 auto;
+  padding: 0 4px;
+  border-radius: 3px;
+  line-height: 15px;
+}
+
+.ex-myorders-side.is-buy {
+  background: rgb(var(--wui-tone-gain) / 0.14);
+  color: rgb(var(--wui-tone-gain));
+}
+
+.ex-myorders-side.is-sell,
+.ex-myorders-side.is-short {
+  background: rgb(var(--wui-tone-loss) / 0.14);
+  color: rgb(var(--wui-tone-loss));
+}
+
+/* ── 极简模式右栏二级切换：我的委托 / 理财与基金 ── */
+.ex-simple-side-switch {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid rgb(var(--wui-border));
+  border-radius: 6px;
+  background: rgb(var(--wui-bg-deep) / 0.6);
+}
+
+.ex-simple-side-tab {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 5px 6px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: rgb(var(--wui-text-dim));
+  font: inherit;
+  font-size: var(--wui-fs-xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.ex-simple-side-tab:hover {
+  color: rgb(var(--wui-text));
+}
+
+.ex-simple-side-tab.is-on {
+  background: rgb(var(--wui-bg-panel));
+  color: rgb(var(--wui-text));
+  box-shadow: inset 0 -2px 0 rgb(var(--wui-accent));
+}
+
+.ex-simple-side-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 整合面板：持仓（全部股票，单行紧凑）+ 委托（全部股票）同框，右栏统一自适应撑满 */
+.ex-simple-book {
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid rgb(var(--wui-border));
+  border-radius: 6px;
+  background: rgb(var(--wui-bg-panel) / 0.5);
+  overflow: hidden;
+}
+
+.ex-simple-book .ex-simple-pos-card {
+  flex: 0 1 auto;
+  max-height: 50%;
+  overflow-y: auto;
+  padding: 8px 10px 6px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+
+.ex-simple-book-orders {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 6px 8px 8px;
+  border-top: 1px solid rgb(var(--wui-border) / 0.6);
+  overflow: hidden;
+}
+
+/* 面板内支持自适应撑满与内部滚动 */
+.ex-simple-book .ex-myorders.is-compact {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.ex-simple-book .ex-myorders-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* 单行持仓：徽标 · 代码 · 数量 · 浮动盈亏 · 风险图标 · 结算 */
+.ex-simple-pos-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px 0;
+  border-bottom: 1px solid rgb(var(--wui-border) / 0.2);
+  font-size: var(--wui-fs-2xs);
+}
+
+.ex-simple-pos-line:last-child {
+  border-bottom: 0;
+}
+
+.ex-simple-pos-line > .ex-num {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ex-simple-pos-line .ex-simple-pos-badge {
+  flex: 0 0 auto;
+  max-width: 66px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ex-simple-pos-line .ex-simple-pos-code {
+  flex: 0 0 auto;
+  font-size: var(--wui-fs-2xs);
+  letter-spacing: 0.3px;
+}
+
+.ex-simple-pos-line .ex-simple-pos-pnl-val {
+  margin-left: auto;
+}
+
+.ex-simple-pos-line .ex-simple-sub-close-btn {
+  flex: 0 0 auto;
+  padding: 1px 5px;
+}
+
+.ex-simple-pos-line.is-liq-danger {
+  background: rgb(var(--wui-red) / 0.05);
+}
+
+.ex-simple-pos-line.is-liq-critical {
+  background: rgb(var(--wui-red) / 0.1);
+}
+
+.ex-simple-pos-count {
+  color: rgb(var(--wui-text-dim));
+  font-size: var(--wui-fs-2xs);
+}
+
+.ex-simple-finance {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ── 六人格对手盘（右栏「对手盘」页签） ── */
+.ex-agents {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.ex-agents-empty {
+  padding: 18px 8px;
+  text-align: center;
+  color: rgb(var(--wui-text-dim));
+  font-size: var(--wui-fs-xs);
+  border: 1px dashed rgb(var(--wui-border));
+  border-radius: 6px;
+}
+
+.ex-agent-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 7px 9px;
+  background: rgb(var(--wui-bg-panel));
+  border: 1px solid rgb(var(--wui-border));
+  border-radius: 6px;
+}
+
+.ex-agent-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ex-agent-name {
+  font-size: var(--wui-fs-xs);
+  font-weight: 700;
+  color: rgb(var(--wui-text));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ex-agent-tag {
+  flex: 0 0 auto;
+  padding: 0 5px;
+  border: 1px solid rgb(var(--wui-border));
+  border-radius: 999px;
+  color: rgb(var(--wui-text-dim));
+  font-size: var(--wui-fs-2xs);
+  line-height: 1.5;
+}
+
+/* 情绪只做低饱和提示，不抢盈亏数字的注意力 */
+.ex-agent-tag.is-mood-greedy,
+.ex-agent-tag.is-mood-euphoric {
+  color: rgb(var(--wui-tone-gain));
+  border-color: rgb(var(--wui-tone-gain) / 0.45);
+}
+
+.ex-agent-tag.is-mood-fearful {
+  color: rgb(var(--wui-tone-loss));
+  border-color: rgb(var(--wui-tone-loss) / 0.45);
+}
+
+.ex-agent-pnl {
+  margin-left: auto;
+  font-size: var(--wui-fs-xs);
+}
+
+.ex-agent-pnl.is-up {
+  color: rgb(var(--wui-tone-gain));
+}
+
+.ex-agent-pnl.is-down {
+  color: rgb(var(--wui-tone-loss));
+}
+
+.ex-agent-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: var(--wui-fs-2xs);
+}
+
+.ex-agent-action {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--wui-fs-2xs);
+}
+
+.ex-agent-action .ex-agent-side {
+  font-weight: 700;
+}
+
+.ex-agent-action .ex-agent-side.is-up {
+  color: rgb(var(--wui-tone-gain));
+}
+
+.ex-agent-action .ex-agent-side.is-down {
+  color: rgb(var(--wui-tone-loss));
 }

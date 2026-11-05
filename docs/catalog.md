@@ -25,9 +25,10 @@
 | 页面、表现与动画 | 开发约定§九、§十四，再读本域实现与对应现行设计稿 |
 | 深空证券交易所（极简双向/专业重构/标准K线） | `docs/design/deep-space-exchange-pro-refinement-20261103.md`；现行设计稿与视觉/交互规范 |
 | 设置子页面分类 | `docs/design/settings-subpages-20261103.md`；仅重组现有设置项，实施期间为现行工作稿 |
-| 账号与手动云存档设置 | `docs/design/cloud-settings-20261103.md`；本批仅本地合入、不推送；端到端桌面 smoke、全量回归、观感验收未完成，首次注册令牌撤销和公网 HTTPS 尚未验证 |
+| 账号与手动云存档设置 | `docs/design/cloud-settings-20261103.md`；本批仅本地合入、不推送；端到端桌面 smoke、全量回归、观感验收未完成，首次注册令牌撤销尚未验证；公网 HTTPS 入口 2026-11-05 起走 8443（见下条） |
+| 云端入口 8443（绕过腾讯云未备案拦截） | `docs/design/cloud-8443-20261105.md`；现行部署拓扑、验证读数与回滚方式 |
 | 独立在线聊天 | `docs/design/online-chat-20261103.md`；独立导航、只显示聊天记录与在线总人数，桌面/网页端本机验证已完成；后端增强在 `H:\大鲸鱼\deepseek-EVE-Background\docs\chat-deploy-handoff-20261103.md`，待玩家验收与服务器部署联调 |
-| 本地市场异步玩家订单 | `docs/design/player-market-relay-20261104.md`；本地 NPC 市场优先、抽样转发玩家订单，机制方向已确认；价格、投放数量和同步协议待定，尚未实施，不改普通/铁人模式与导入导出 |
+| 本地市场异步玩家订单 | `docs/design/player-market-relay-20261104.md`；本地NPC市场优先、抽样转发玩家订单，代码已本地接入；独占商品资格、参考价和验证见`docs/design/player-market-exclusive-20261105.md`；未推送或部署，真实双客户端联调待完成，不改普通/铁人模式与导入导出 |
 | 数值与经济 | 开发约定§一、§二，对应设计稿及校准工具 |
 | 玩家文案与公告 | 开发约定§十一、§十二、§十三；公告待审稿未经批准不落库 |
 | 第二阶段空间站 | `docs/design/human-revival-station.md`看既有框架 → `docs/design/human-revival-station-research-20261018.md`看总览摘要与六份主题稿；玩家站仍仅设计，未决方案不能当已实现 |

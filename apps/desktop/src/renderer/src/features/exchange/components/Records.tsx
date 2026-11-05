@@ -1,13 +1,18 @@
 /**
- * 底部二级窗口：当前委托 / 历史成交 / 分红流水（固定高、内部滚动）。
+ * 底部二级窗口：我的委托 / 历史成交 / 分红流水（固定高、内部滚动）。
  *
  * 一级页不滚红线：这一块是页面里唯一"整页常驻的第二窗口"，用固定高度 + 内部滚动，
  * 加载更多由滚动完成，不做分页（原型数据量 < 200 条）。
+ *
+ * 委托页签交给 MyOrders：回合制下要把本回合排队的预操作与已成交/未成交/已撤单放在
+ * 同一张表里管理（含逐笔与批量撤单），而快照里的 `snap.orders` 只含活跃单。
  */
 import { useState } from 'react'
-import type { ExchangeOrder, ExchangeSnapshot, OrderSource, TradeSource } from '../client'
+import type { ExchangeClient, ExchangeSnapshot, OrderSource, TradeSource } from '../client'
+import type { ToastFn } from '../../../pages/common'
 import { amount, clock, money, price, shortTime } from '../format'
 import { T } from '../texts'
+import { MyOrders } from './MyOrders'
 
 type Tab = 'orders' | 'trades' | 'dividends'
 
@@ -19,25 +24,14 @@ function sourceLabel(source: TradeSource | OrderSource | undefined): string {
   return T.orderSourceManual
 }
 
-function statusLabel(order: ExchangeOrder): string {
-  if (order.status === 'filled') return T.orderStatusFilled
-  if (order.status === 'partial') return T.orderStatusPartial
-  if (order.status === 'cancelled') return T.orderStatusCancelled
-  if (order.status === 'rejected') return T.orderStatusRejected
-  if (order.status === 'trigger_pending') return T.orderStatusTriggerPending
-  return T.orderStatusOpen
+interface RecordsProps {
+  client: ExchangeClient
+  snap: ExchangeSnapshot
+  onToast: ToastFn
 }
 
-function typeLabel(order: ExchangeOrder): string {
-  if (order.type === 'stop') return T.orderTypeStop
-  if (order.type === 'take_profit') return T.orderTypeTakeProfit
-  if (order.type === 'market') return T.orderTypeMarket
-  return T.orderTypeLimit
-}
-
-export function Records({ snap }: { snap: ExchangeSnapshot }) {
+export function Records({ client, snap, onToast }: RecordsProps) {
   const [tab, setTab] = useState<Tab>('orders')
-  const orders = snap.orders
   const trades = snap.myTrades
   const dividends = snap.dividends
   return (
@@ -65,36 +59,7 @@ export function Records({ snap }: { snap: ExchangeSnapshot }) {
       </div>
       <div className="ex-records-body">
         {tab === 'orders' ? (
-          orders.length === 0 ? (
-            <div className="ex-empty">{T.recordsEmptyOrders}</div>
-          ) : (
-            <>
-              <div className="ex-records-row is-head">
-                <span>{T.recordsTime}</span>
-                <span>{T.recordsCode}</span>
-                <span>{T.recordsSide}</span>
-                <span>{T.recordsType}</span>
-                <span>{T.recordsPrice}</span>
-                <span>{T.recordsQty}</span>
-                <span>{T.recordsFilled}</span>
-                <span>{T.recordsStatus}</span>
-                <span>{T.recordsSource}</span>
-              </div>
-              {orders.map((o) => (
-                <div className="ex-records-row" key={o.id}>
-                  <span className="ex-dim">{shortTime(o.createdAt)}</span>
-                  <span>{o.code}</span>
-                  <span className={o.side === 'buy' ? 'is-up' : 'is-down'}>{o.side === 'buy' ? T.buy : T.sell}</span>
-                  <span>{typeLabel(o)}</span>
-                  <span className="ex-num">{o.price !== null ? price(o.price) : T.orderTypeMarket}</span>
-                  <span className="ex-num">{amount(o.qty)}</span>
-                  <span className="ex-num">{amount(o.filledQty ?? 0)}</span>
-                  <span>{statusLabel(o)}</span>
-                  <span className="ex-badge">{sourceLabel(o.source)}</span>
-                </div>
-              ))}
-            </>
-          )
+          <MyOrders client={client} onToast={onToast} variant="table" />
         ) : null}
         {tab === 'trades' ? (
           trades.length === 0 ? (

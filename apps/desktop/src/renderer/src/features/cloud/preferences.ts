@@ -8,10 +8,12 @@ export interface CloudPreferences {
 const SERVER_KEY = 'whale.cloud.server'
 export const CLOUD_SESSION_CHANGE_EVENT = 'whale-cloud-session-change'
 /**
- * 默认入口（2026-11-04 换新域名）：`https://game.bajibaji.party` 直连源站 nginx
+ * 默认入口（2026-11-05 起走 8443）：`https://game.bajibaji.party:8443` 直连源站 nginx
  * （Let's Encrypt 正式证书，不经 Cloudflare），全程 HTTPS 加密。
+ * 原因：腾讯云对未备案域名拦截 80/443（80 返回备案 302，443 带 SNI 的 TLS 收到 RST），
+ * 8443 未被拦截；详见 docs/design/cloud-8443-20261105.md。
  */
-export const DEFAULT_CLOUD_SERVER = 'https://game.bajibaji.party'
+export const DEFAULT_CLOUD_SERVER = 'https://game.bajibaji.party:8443'
 /**
  * 兜底入口（源站 IP 明文 HTTP，经 nginx 80 反代）：仅在**请求遇到网络层失败**时用一次，
  * 不写回偏好、不替换 `DEFAULT_CLOUD_SERVER`，所以玩家可见的「服务器」始终是默认地址。

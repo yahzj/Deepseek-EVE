@@ -32,6 +32,16 @@ interface RuntimeOverride {
   fileName: string
   updatedAt: number
   url: string
+  /** 保留 Blob：音效台「导出正式入库包」要读原始字节（内存模式下也没了 IndexedDB 这份） */
+  blob: Blob
+}
+
+/** 导出给「正式入库包」的一条覆盖（音效台专用；含原始字节） */
+export interface SfxOverrideFile {
+  cueId: SfxCueId
+  fileName: string
+  updatedAt: number
+  blob: Blob
 }
 
 const runtime = new Map<string, RuntimeOverride>()
@@ -71,7 +81,7 @@ function revokeRuntime(cueId: string): void {
 function setRuntime(cueId: string, fileName: string, updatedAt: number, blob: Blob): void {
   revokeRuntime(cueId)
   try {
-    runtime.set(cueId, { fileName, updatedAt, url: URL.createObjectURL(blob) })
+    runtime.set(cueId, { fileName, updatedAt, url: URL.createObjectURL(blob), blob })
   } catch {
     runtime.delete(cueId)
   }
@@ -151,6 +161,13 @@ export function getSfxOverrideUrl(cueId: SfxCueId): string | null {
 export function listSfxOverrides(): SfxOverrideInfo[] {
   return [...runtime.entries()]
     .map(([cueId, r]) => ({ cueId, fileName: r.fileName, updatedAt: r.updatedAt }))
+    .sort((a, b) => a.cueId.localeCompare(b.cueId))
+}
+
+/** 导出用的本机覆盖（含原始 Blob；音效台「导出正式入库包」唯一取数口） */
+export function listSfxOverrideFiles(): SfxOverrideFile[] {
+  return [...runtime.entries()]
+    .map(([cueId, r]) => ({ cueId: cueId as SfxCueId, fileName: r.fileName, updatedAt: r.updatedAt, blob: r.blob }))
     .sort((a, b) => a.cueId.localeCompare(b.cueId))
 }
 

@@ -19,7 +19,7 @@
  * 随机源：全部走 `createRng(seed)`，禁止 `Math.random()`；同种子可复现整条剧情。
  */
 import type {
-  BondHolding,
+  BondPosition,
   BondProduct,
   ChartPeriod,
   DividendRecord,
@@ -30,7 +30,7 @@ import type {
   ExchangePosition,
   ExchangeSnapshot,
   ExchangeTopic,
-  FundPlayResult,
+  FundPosition,
   IndexQuote,
   Kline,
   MarginCallPayload,
@@ -69,8 +69,14 @@ const FEE_RATE = 0.0005
 const START_CASH = 10_000_000
 /** 债券日化 0.03%（原型观感值，不代表最终经济数值） */
 const BOND_DAILY_RATE = 0.0003
-/** 债券计息：游戏内 60 秒 = 1 日（原型示意，非最终数值） */
-const TICKS_PER_GAME_DAY = 60
+/** 债券分钟利率（基点）：3 = 0.03%/分钟，单利不滚本 */
+const BOND_MINUTE_BP = 3
+// 保底基金（放置型，与线上 Go 侧一致）：每分钟 70% +16bp / 30% −7bp，期望 +9bp ≈ 债券 3bp 的 3 倍。
+const FUND_WIN_BP = 16
+const FUND_LOSE_BP = -7
+const FUND_WIN_PERCENT = 70
+const FUND_EXPECTED_BP = 9
+const FUND_BOND_BP = 3
 /** 分红：每 60 秒按现货持仓市值象征性派 0.04%（原型观感值） */
 const DIVIDEND_INTERVAL_TICKS = 60
 const DIVIDEND_RATE = 0.0004
@@ -213,7 +219,9 @@ interface PersistedMockState {
     gridSellCount: number
     lastError: string
   }>
-  bond: BondHolding
+  bond: BondPosition
+  /** 保底基金持仓（放置型）；旧存档没有该字段时按空仓处理 */
+  fund?: { principal: number; accrued: number; settledMinute: number; openedAt: number }
   news: NewsItem[]
   seq: { order: number; strategy: number; trade: number; news: number }
   nextEventTick: number
@@ -234,55 +242,55 @@ interface EventTemplate {
 const EVENT_TEMPLATES: EventTemplate[] = [
   {
     title: '边境战事升级',
-    body: '边境冲突扩大，军工订单排到明年；多条货运航线被迫绕行。',
+    body: '军工长单激增，部分干线货运航路绕行。',
     tone: 'warn',
     effects: [{ code: 'SMHI', pct: 0.05 }, { code: 'OJLS', pct: -0.025 }],
   },
   {
     title: '星际信贷评级调整',
-    body: '银河信托资产质量获主流评级机构上调，跨星系流动性回暖。',
+    body: '跨星系信贷评级调升，市场流动性持续宽松。',
     tone: 'good',
     effects: [{ code: 'GBCI', pct: 0.04 }],
     flippable: true,
   },
   {
     title: '能源管网波动',
-    body: '主要恒星聚变管网出力异常，能源板块现货供给预期震荡。',
+    body: '恒星聚变管网出力异常，能源现货供给收紧。',
     tone: 'bad',
     effects: [{ code: 'UGMC', pct: -0.04 }],
     flippable: true,
   },
   {
-    title: '虫洞蓝图流出',
-    body: '一份虫洞构造蓝图在黑市出现，科技板块估值被重新想象。',
+    title: '折跃专利公开',
+    body: '前沿折跃专利披露，装备重估提振科技板块。',
     tone: 'good',
     effects: [{ code: 'ABSI', pct: 0.055 }],
     flippable: true,
   },
   {
     title: '量子算力突破',
-    body: '新一代量子跃迁算法通过实证检验，全网算力需求集中爆发。',
+    body: '新一代跃迁算法落地，算力采购订单爆发。',
     tone: 'good',
     effects: [{ code: 'NVSC', pct: 0.06 }],
     flippable: true,
   },
   {
-    title: '基因编辑合规争议',
-    body: '多星系道德委员会联合审查克隆技术，部分实验项目面临暂停。',
+    title: '基因编辑合规排查',
+    body: '多星区启动专项排查，部分管线研发进度放缓。',
     tone: 'bad',
     effects: [{ code: 'CLON', pct: -0.05 }],
     flippable: true,
   },
   {
-    title: '航路安全事件',
-    body: '深空航路安全等级调整，物流企业保费与交付周期同步变化。',
+    title: '航路安全预警',
+    body: '航路安全等级调整，干线物流保费相应上浮。',
     tone: 'bad',
     effects: [{ code: 'OJLS', pct: -0.035 }],
     flippable: true,
   },
   {
-    title: '纳米合成工艺革新',
-    body: '微光纳米公布低成本分子组装新工艺，超导材料量产预期大增。',
+    title: '超导合成工艺革新',
+    body: '分子组装工艺突破，超导材料量产全面提速。',
     tone: 'good',
     effects: [{ code: 'SPRK', pct: 0.07 }],
     flippable: true,
@@ -338,12 +346,14 @@ export class MockExchangeClient implements ExchangeClient {
   private readonly onVisibilityChange = (): void => {
     if (typeof document !== 'undefined' && document.visibilityState === 'visible') this.catchUp()
   }
-  private bond: BondHolding = {
-    principal: 0,
-    accrued: 0,
-    purchasedAt: null,
-    rateDaily: BOND_DAILY_RATE,
-  }
+  /** 低风险理财持仓（放置型）：本金 / 累计利息 / 已结算分钟 / 建仓时间 */
+  private bond = { principal: 0, accrued: 0, settledMinute: 0, openedAt: 0 }
+  /** 债券 nonce 幂等表：nonce → 申购金额（赎回记 0） */
+  private readonly bondNonces = new Map<string, number>()
+  /** 保底基金持仓（放置型）：本金 / 累计收益 / 已结算分钟 / 建仓时间 */
+  private fund = { principal: 0, accrued: 0, settledMinute: 0, openedAt: 0 }
+  /** 基金 nonce 幂等表：nonce → 申购金额（赎回记 0） */
+  private readonly fundNonces = new Map<string, number>()
 
   constructor(seed = 20261103) {
     this.seed = seed
@@ -481,8 +491,8 @@ export class MockExchangeClient implements ExchangeClient {
     this.news.push({
       id: 'NEWS-0',
       ts: this.ts(),
-      title: '证券交易所开始试营业',
-      body: '八家上市公司挂牌，行情每 1 秒刷新一次。本页为原型，虚拟资金不写入存档。',
+      title: '深空证券交易所正式开市',
+      body: '首批八家龙头企业挂牌上市，全网撮合交易系统平稳运转。',
       tone: 'info',
       codes: STOCK_DEFS.map((s) => s.code),
     })
@@ -544,6 +554,7 @@ export class MockExchangeClient implements ExchangeClient {
       })
     }
     if (saved.bond && Number.isFinite(saved.bond.principal)) this.bond = { ...saved.bond }
+    if (saved.fund && Number.isFinite(saved.fund.principal)) this.fund = { ...saved.fund }
     this.news.length = 0
     if (Array.isArray(saved.news)) this.news.push(...saved.news.slice(0, 12))
     if (this.news.length === 0) this.seedOpeningNews()
@@ -592,7 +603,8 @@ export class MockExchangeClient implements ExchangeClient {
       myTrades: this.myTrades.slice(0, 100),
       dividends: this.dividends.slice(0, 60),
       strategies: [...this.strategies.values()],
-      bond: { ...this.bond },
+      bond: this.bondView(),
+      fund: { ...this.fund },
       news: this.news.slice(0, 12),
       seq: {
         order: this.orderSeq,
@@ -658,7 +670,7 @@ export class MockExchangeClient implements ExchangeClient {
     this.dividends.length = 0
     this.news.length = 0
     this.strategies.clear()
-    this.bond = { principal: 0, accrued: 0, purchasedAt: null, rateDaily: BOND_DAILY_RATE }
+    this.bond = { principal: 0, accrued: 0, settledMinute: 0, openedAt: 0 }
     this.buildStocks(this.startTs, null)
     this.indexOpen = this.indexValue()
     this.indexHigh = this.indexOpen
@@ -757,7 +769,7 @@ export class MockExchangeClient implements ExchangeClient {
     this.runConditionalOrders(ts)
     this.runStrategies(ts)
     this.checkLiquidations(ts)
-    this.accrueBond()
+    this.settleBond()
     this.maybePayDividends(ts)
     const index = this.indexValue()
     this.indexHigh = Math.max(this.indexHigh, index)
@@ -922,7 +934,8 @@ export class MockExchangeClient implements ExchangeClient {
       }
     }
     const leverage = Math.max(1, Math.round(req.leverage ?? 1))
-    const isLeverage = leverage > 1
+    // 1x + short=true 也是开空（与联机 Go 口径一致），只是不放大盈亏。
+    const isLeverage = leverage > 1 || req.short === true
     const posSide: 'long' | 'short' = req.side === 'sell' ? 'short' : 'long'
     const marketPrice = this.refPriceFor(st, req.side)
     const price = req.type === 'market' ? marketPrice : (req.price ?? marketPrice)
@@ -946,7 +959,7 @@ export class MockExchangeClient implements ExchangeClient {
       : req.side === 'buy'
         ? -(notional + fee)
         : notional - fee
-    const liq = isLeverage ? M.liquidationPrice(posSide, safePrice, leverage) : null
+    const liq = leverage > 1 ? M.liquidationPrice(posSide, safePrice, leverage) : null
     const distance = liq !== null ? M.liquidationDistancePct(posSide, safePrice, liq) : null
     let blockReason: string | null = null
     const existing = this.positions.get(`${req.code}:${posSide}`)
@@ -985,7 +998,7 @@ export class MockExchangeClient implements ExchangeClient {
     if (leverage > st.def.maxLeverage) {
       throw new ExchangeError('leverage_not_allowed', `${T.leverageUnavailable}（${st.def.code} 最高 ${st.def.maxLeverage}x）`)
     }
-    if (leverage > 1 && req.side === 'sell' && !st.def.shortable) {
+    if ((leverage > 1 || req.short === true) && req.side === 'sell' && !st.def.shortable) {
       throw new ExchangeError('not_shortable', T.noShort)
     }
     if (req.type === 'stop' || req.type === 'take_profit') {
@@ -993,7 +1006,7 @@ export class MockExchangeClient implements ExchangeClient {
     }
     if (req.type === 'market') {
       const marketPrice = this.refPriceFor(st, req.side)
-      return leverage > 1
+      return leverage > 1 || req.short === true
         ? this.placeLeverage(req, st, leverage, marketPrice, source, true)
         : this.placeSpot(req, st, marketPrice, source, true)
     }
@@ -1002,7 +1015,7 @@ export class MockExchangeClient implements ExchangeClient {
       throw new ExchangeError('bad_price', T.toastInvalidPrice)
     }
     const safePrice = round(price, 2)
-    return leverage > 1
+    return leverage > 1 || req.short === true
       ? this.placeLeverage(req, st, leverage, safePrice, source, false)
       : this.placeSpot(req, st, safePrice, source, false)
   }
@@ -1514,54 +1527,170 @@ export class MockExchangeClient implements ExchangeClient {
 
   /* ═══════════════ 债券 / 分红 ═══════════════ */
 
-  private accrueBond(): void {
-    if (this.bond.principal <= 0) return
-    this.bond.accrued += (this.bond.principal * BOND_DAILY_RATE) / TICKS_PER_GAME_DAY
+  /**
+   * 低风险理财（模拟盘）：规则与线上一致——交易所现金申购、固定 3bp/分钟单利、
+   * 本金锁定、随时可赎；利息按真实分钟惰性结算（2026-11-04 船长令：不再用本地存档直接买）。
+   */
+  private settleBond(): void {
+    const nowMinute = Math.floor(this.ts() / 60_000)
+    if (this.bond.principal <= 0) {
+      this.bond.settledMinute = nowMinute
+      return
+    }
+    if (this.bond.settledMinute === 0) this.bond.settledMinute = Math.floor(this.bond.openedAt / 60_000)
+    const minutes = nowMinute - this.bond.settledMinute
+    if (minutes <= 0) return
+    this.bond.accrued += Math.floor((this.bond.principal * BOND_MINUTE_BP * minutes) / 10_000)
+    this.bond.settledMinute = nowMinute
   }
 
-  buyBond(amountValue: number): BondHolding {
-    const value = round(amountValue, 2)
+  private bondView(): BondPosition {
+    const minutes =
+      this.bond.principal > 0
+        ? Math.max(0, this.bond.settledMinute - Math.floor(this.bond.openedAt / 60_000))
+        : 0
+    return {
+      principal: this.bond.principal,
+      accrued: this.bond.accrued,
+      value: this.bond.principal + this.bond.accrued,
+      settledMinute: this.bond.settledMinute,
+      openedAt: this.bond.openedAt,
+      minutes,
+      minuteBp: BOND_MINUTE_BP,
+      cash: this.cash,
+    }
+  }
+
+  async getBondPosition(): Promise<BondPosition> {
+    this.settleBond()
+    return this.bondView()
+  }
+
+  async openBond(amountValue: number, nonce: string): Promise<BondPosition> {
+    const value = Math.floor(amountValue)
     if (!(value > 0)) throw new ExchangeError('bad_amount', T.toastBondInvalid)
+    const replayed = this.bondNonces.get(nonce)
+    if (replayed !== undefined) {
+      if (replayed !== value) throw new ExchangeError('nonce_conflict', T.toastBondInvalid)
+      this.settleBond()
+      return this.bondView()
+    }
     if (value > this.cash) throw new ExchangeError('insufficient_cash', TF.bondNoCash)
-    this.cash -= value
+    this.settleBond()
+    if (this.bond.principal <= 0) {
+      this.bond.openedAt = this.ts()
+      this.bond.settledMinute = Math.floor(this.ts() / 60_000)
+    }
     this.bond.principal += value
-    if (this.bond.purchasedAt === null) this.bond.purchasedAt = this.ts()
-    return { ...this.bond }
+    this.cash -= value
+    this.bondNonces.set(nonce, value)
+    return this.bondView()
   }
 
-  redeemBond(): number {
-    const total = this.bond.principal + this.bond.accrued
-    if (total <= 0) return 0
-    this.cash += total
-    this.bond = { principal: 0, accrued: 0, purchasedAt: null, rateDaily: BOND_DAILY_RATE }
-    return total
+  async redeemBond(nonce: string): Promise<BondPosition> {
+    const replayed = this.bondNonces.get(nonce)
+    if (replayed !== undefined) {
+      this.settleBond()
+      return this.bondView()
+    }
+    if (this.bond.principal <= 0) throw new ExchangeError('no_bond_position', T.toastBondInvalid)
+    this.settleBond()
+    const payout = Math.max(0, this.bond.principal + this.bond.accrued)
+    this.cash += payout
+    this.bond = { principal: 0, accrued: 0, settledMinute: 0, openedAt: 0 }
+    this.bondNonces.set(nonce, 0)
+    return this.bondView()
   }
 
-  /** 保底基金（模拟盘）：用 nonce 哈希决定输赢，规则与线上一致（盈 3×、亏 1× 债券分钟利息）。 */
-  async playFund(amountValue: number, nonce: string): Promise<FundPlayResult> {
-    const amountValueFloor = Math.floor(amountValue)
-    if (!(amountValueFloor > 0)) throw new ExchangeError('bad_amount', T.cashierInvalidAmount)
-    if (amountValueFloor > this.cash) throw new ExchangeError('insufficient_cash', T.fundNoCash)
-    const rateBp = Math.round(BOND_DAILY_RATE * 10_000)
+  /**
+   * 保底基金（模拟盘）：放置型持仓，规则与线上一致——
+   * 每分钟 70% +16bp / 30% −7bp，期望 +9bp/分钟 ≈ 债券（3bp/分钟）的 3 倍；
+   * 本金锁定，随时可赎，亏损真实发生。
+   */
+  private fundMinuteBp(minute: number): number {
     // FNV-1a：确定性、无 Math.random（引擎禁用裸随机）。
     let hash = 2_166_136_261
-    const seed = `${nonce}:${this.ts()}`
+    const seed = `fund:${minute}`
     for (let i = 0; i < seed.length; i += 1) {
       hash ^= seed.charCodeAt(i)
       hash = Math.imul(hash, 16_777_619) >>> 0
     }
-    const win = hash % 2 === 0
-    const interest = Math.floor((amountValueFloor * rateBp) / 10_000)
-    const profit = win ? interest * 3 : -interest
-    this.cash += profit
+    return hash % 100 < FUND_WIN_PERCENT ? FUND_WIN_BP : FUND_LOSE_BP
+  }
+
+  /** 惰性结算到当前分钟（不落盘，可重复调用）。 */
+  private settleFund(): void {
+    const nowMinute = Math.floor(this.ts() / 60_000)
+    if (this.fund.principal <= 0) {
+      this.fund.settledMinute = nowMinute
+      return
+    }
+    if (this.fund.settledMinute === 0) this.fund.settledMinute = nowMinute - 0
+    const from = this.fund.settledMinute + 1
+    for (let minute = from; minute <= nowMinute; minute += 1) {
+      const bp = this.fundMinuteBp(minute)
+      this.fund.accrued += Math.floor((this.fund.principal * bp) / 10_000)
+    }
+    this.fund.settledMinute = Math.max(this.fund.settledMinute, nowMinute)
+  }
+
+  private fundView(): FundPosition {
+    const minutes = this.fund.principal > 0 ? Math.max(0, this.fund.settledMinute - Math.floor(this.fund.openedAt / 60_000)) : 0
     return {
-      win,
-      amount: amountValueFloor,
-      profit,
-      rateBp,
-      evidence: `mock/nonce=${nonce.slice(0, 8)}`,
+      principal: this.fund.principal,
+      accrued: this.fund.accrued,
+      value: this.fund.principal + this.fund.accrued,
+      settledMinute: this.fund.settledMinute,
+      openedAt: this.fund.openedAt,
+      minutes,
+      winBp: FUND_WIN_BP,
+      loseBp: FUND_LOSE_BP,
+      winPercent: FUND_WIN_PERCENT,
+      expectedBp: FUND_EXPECTED_BP,
+      bondBp: FUND_BOND_BP,
       cash: this.cash,
     }
+  }
+
+  async getFundPosition(): Promise<FundPosition> {
+    this.settleFund()
+    return this.fundView()
+  }
+
+  async openFund(amountValue: number, nonce: string): Promise<FundPosition> {
+    const amountValueFloor = Math.floor(amountValue)
+    if (!(amountValueFloor > 0)) throw new ExchangeError('bad_amount', T.cashierInvalidAmount)
+    const replayed = this.fundNonces.get(nonce)
+    if (replayed !== undefined) {
+      if (replayed !== amountValueFloor) throw new ExchangeError('nonce_conflict', T.fundNoCash)
+      this.settleFund()
+      return this.fundView()
+    }
+    if (amountValueFloor > this.cash) throw new ExchangeError('insufficient_cash', T.fundNoCash)
+    this.settleFund()
+    if (this.fund.principal <= 0) {
+      this.fund.openedAt = this.ts()
+      this.fund.accrued = 0
+    }
+    this.fund.principal += amountValueFloor
+    this.cash -= amountValueFloor
+    this.fundNonces.set(nonce, amountValueFloor)
+    return this.fundView()
+  }
+
+  async redeemFund(nonce: string): Promise<FundPosition> {
+    const replayed = this.fundNonces.get(nonce)
+    if (replayed !== undefined) {
+      this.settleFund()
+      return this.fundView()
+    }
+    if (this.fund.principal <= 0) throw new ExchangeError('no_fund_position', T.fundNoCash)
+    this.settleFund()
+    const payout = Math.max(0, this.fund.principal + this.fund.accrued)
+    this.cash += payout
+    this.fund = { principal: 0, accrued: 0, settledMinute: 0, openedAt: 0 }
+    this.fundNonces.set(nonce, 0)
+    return this.fundView()
   }
 
 
@@ -1666,7 +1795,15 @@ export class MockExchangeClient implements ExchangeClient {
         availableQty: Math.max(0, hold.qty - this.lockedSharesOf(code)),
       })
     }
-    const equity = this.cash + this.frozen + holdingsValue + positionsEquity + this.bond.principal + this.bond.accrued
+    const equity =
+      this.cash +
+      this.frozen +
+      holdingsValue +
+      positionsEquity +
+      this.bond.principal +
+      this.bond.accrued +
+      this.fund.principal +
+      this.fund.accrued
     return {
       cash: this.cash,
       frozen: this.frozen,
@@ -1703,9 +1840,11 @@ export class MockExchangeClient implements ExchangeClient {
       myTrades: this.myTrades.slice(0, 100),
       dividends: this.dividends.slice(0, 60),
       strategies: [...this.strategies.values()].map((s) => s.spec),
-      bonds: { ...this.bond },
+      bonds: this.bondView(),
+      funds: this.fundView(),
       bondProduct: { ...BOND_PRODUCT },
       news: this.news.slice(0, 12),
+      agents: [],
       feeRate: FEE_RATE,
     }
   }

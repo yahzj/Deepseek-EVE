@@ -48,8 +48,8 @@ function templateLabel(template: StrategySpec['template']): string {
 }
 
 /** 格式化货币或价格 */
-function formatNum(val: number, decimals = 2): string {
-  if (!Number.isFinite(val)) return '0.00'
+function formatNum(val: number, decimals = 0): string {
+  if (!Number.isFinite(val)) return '0'
   return val.toLocaleString('en-US', {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
@@ -346,8 +346,8 @@ export function BotPanel({
   const availableCash = snap.account?.cash ?? 0
 
   // 网格输入字段状态
-  const [lowerPriceText, setLowerPriceText] = useState(() => (currentPrice * 0.94).toFixed(2))
-  const [upperPriceText, setUpperPriceText] = useState(() => (currentPrice * 1.06).toFixed(2))
+  const [lowerPriceText, setLowerPriceText] = useState(() => String(Math.round(currentPrice * 0.94)))
+  const [upperPriceText, setUpperPriceText] = useState(() => String(Math.round(currentPrice * 1.06)))
   const [gridsText, setGridsText] = useState('6')
   const [qtyText, setQtyText] = useState('100')
 
@@ -366,8 +366,8 @@ export function BotPanel({
   // 当标的切换时，如果下限/上限尚未被人工修改，自动平滑调整为当前标的的默认参考区间
   useEffect(() => {
     if (!touched.lowerPrice && !touched.upperPrice && currentPrice > 0) {
-      setLowerPriceText((currentPrice * 0.94).toFixed(2))
-      setUpperPriceText((currentPrice * 1.06).toFixed(2))
+      setLowerPriceText(String(Math.round(currentPrice * 0.94)))
+      setUpperPriceText(String(Math.round(currentPrice * 1.06)))
     }
   }, [code, currentPrice, touched.lowerPrice, touched.upperPrice])
 
@@ -457,7 +457,7 @@ export function BotPanel({
       const lowerPct = ((numLower - base) / base) * 100
       const upperPct = ((numUpper - base) / base) * 100
 
-      params.basePrice = Number(base.toFixed(2))
+      params.basePrice = Math.round(base)
       params.lowerPct = Number(lowerPct.toFixed(2))
       params.upperPct = Number(upperPct.toFixed(2))
       params.lowerPrice = numLower

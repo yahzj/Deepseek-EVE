@@ -20,6 +20,8 @@ import { SFX_CUES, SFX_CUE_IDS } from './cues'
 import { installUiSfx } from './uiFeedback'
 import { currentBgmCue } from './music'
 import { currentAmbientCue } from './ambient'
+import { activeSfxScene, clearForcedSfxScene, forceSfxScene, forcedSfxScene, realSfxScene } from './sceneSwitch'
+import { clearSfxPlayLog, setSfxPlayLogPaused, sfxPlayLog, sfxPlayLogPaused } from './playLog'
 
 let installed = false
 let engineAttached = false
@@ -58,6 +60,20 @@ function exposeDebugApi(): void {
       overrideMode: sfxOverrideStorageMode,
       currentBgm: currentBgmCue,
       currentAmbient: currentAmbientCue,
+      /** 音效台调试批（2026-11-04）：真实/强制/实际场景 + 实时触发日志 */
+      sceneState: () => ({
+        real: realSfxScene(),
+        forced: forcedSfxScene(),
+        active: activeSfxScene(),
+        bgm: currentBgmCue(),
+        ambient: currentAmbientCue(),
+      }),
+      forceScene: forceSfxScene,
+      clearForcedScene: clearForcedSfxScene,
+      playLog: sfxPlayLog,
+      clearPlayLog: clearSfxPlayLog,
+      logPaused: sfxPlayLogPaused,
+      setLogPaused: setSfxPlayLogPaused,
     }
   } catch {
     /* 忽略 */

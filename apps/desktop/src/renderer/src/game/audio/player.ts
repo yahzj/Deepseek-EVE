@@ -21,6 +21,7 @@ import { effectiveGain, pickVariant, pitchRateFor, shouldPlay } from './rules'
 import { readSfxPrefs } from './prefs'
 import { builtinSfxUrls } from './manifest'
 import { getSfxOverrideUrl } from './overrides'
+import { recordSfxPlay } from './playLog'
 
 /** 同一音效上次播放时刻（performance.now 口径） */
 const lastAtMs = new Map<string, number>()
@@ -108,6 +109,8 @@ function playCueUnsafe(cueId: SfxCueId): void {
   if (audio === null) return
   set.add(audio)
   active.set(cueId, set)
+  // 音效台「实时触发」：只记真实起播成功（试听走 previewCue，不进这里）
+  recordSfxPlay(cueId, cue.category)
   audio.addEventListener(
     'ended',
     () => {

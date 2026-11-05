@@ -11,10 +11,11 @@
  *
  * 用法：`npm run audio:check`
  *
- * **版本自检**：游戏版本 v0.1.0 · 存档结构 **v31** · 最后核对 2026-11-02 · 最后跑过 2026-11-02
+ * **版本自检**：游戏版本 v0.1.0 · 存档结构 **v31** · 最后核对 2026-11-04 · 最后跑过 2026-11-04
  * 判据：档结构版本跨一个大版本，或本域文案/清单/构建入口改动后必须重跑并更新本行。
  */
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
   SFX_CATEGORIES,
@@ -23,8 +24,11 @@ import {
   SFX_CUE_IDS,
 } from '../apps/desktop/src/renderer/src/game/audio/cues'
 import {
+  AMBIENT_CROSSFADE_MS,
+  BGM_CROSSFADE_MS,
   LOG_CUE_RULES,
   PITCH_JITTER_MAX_CENTS,
+  VOLUME_FADE_MS,
   clampPitchJitter,
   clampVolume,
   defaultSfxPrefs,
@@ -42,11 +46,35 @@ import {
 } from '../apps/desktop/src/renderer/src/game/audio/rules'
 import {
   AMBIENT_BLIP_IDS,
+  SCENE_RELATED_CUES,
+  SFX_SCENE_NAME_ID,
+  SFX_SCENE_ORDER,
+  effectiveSfxScene,
   resolveSfxScene,
   sceneAmbientOf,
   sceneBgmOf,
   sceneFlagsFromState,
 } from '../apps/desktop/src/renderer/src/game/audio/scene'
+import {
+  SFX_PLAY_LOG_MAX,
+  clearSfxPlayLog,
+  recordSfxPlay,
+  setSfxPlayLogPaused,
+  sfxPlayLog,
+} from '../apps/desktop/src/renderer/src/game/audio/playLog'
+import {
+  SFX_PACK_FORMAT,
+  SFX_PACK_VERSION,
+  SfxPackError,
+  buildSfxPack,
+  parseSfxPack,
+  sfxPackAssetPath,
+  sfxPackDirOf,
+  writeSfxPackZip,
+} from '../apps/desktop/src/renderer/src/game/audio/sfxPack'
+import type { SfxPackSourceFile } from '../apps/desktop/src/renderer/src/game/audio/sfxPack'
+import type { SfxCueId } from '../apps/desktop/src/renderer/src/game/audio/cues'
+import { installSfxPack } from './audio-install'
 
 const ROOT = process.cwd()
 const failures: string[] = []
@@ -104,6 +132,123 @@ if (missing.length > 0) {
   console.log(`· 未接入素材的语义 id（缺 = 静音，不算错误）：${missing.join('、')}`)
 }
 
+/* ═══════════ 二·六、音效正式入库包（音效台导出 → audio:install 写入）═══════════ */
+
+/** 构造一条合成覆盖（包格式不解析音频内容，字节只需可辨认） */
+function packSource(cueId: SfxCueId, fileName: string, seed: number): SfxPackSourceFile {
+  return { cueId, fileName, updatedAt: 1_761_000_000_000, data: new Uint8Array([seed, seed + 1, seed + 2, seed + 3]) }
+}
+
+/** 断言某段逻辑必须抛 `SfxPackError`（非法包绝不能写进素材目录） */
+function expectPackError(run: () => unknown, label: string): void {
+  try {
+    run()
+    check(false, `入库包：${label}本应被拒绝，实际通过`)
+  } catch (err) {
+    check(err instanceof SfxPackError && err.errors.length > 0, `入库包：${label}应抛出 SfxPackError（实际 ${err instanceof Error ? err.name : typeof err}）`)
+  }
+}
+
+const PACK_CREATED_AT = '2026-11-04T00:00:00.000Z'
+const packSources: SfxPackSourceFile[] = [
+  packSource('invasion-alarm', 'invasion-alarm.wav', 10),
+  packSource('bgm-docked', 'bgm-docked.mp3', 20),
+  packSource('ambient-blip-comms', 'ambient-blip-comms.ogg', 30),
+]
+const packBytes = buildSfxPack(packSources, { createdAt: PACK_CREATED_AT })
+check(packBytes.length > 0 && packBytes[0] === 0x50 && packBytes[1] === 0x4b, '入库包应是 zip（PK 魔数）')
+
+const parsedPack = parseSfxPack(packBytes)
+check(parsedPack.files.length === 3, `入库包解析出 3 条素材（实际 ${parsedPack.files.length}）`)
+check(parsedPack.manifest.createdAt === PACK_CREATED_AT && parsedPack.manifest.version === SFX_PACK_VERSION, '入库包 manifest 的版本/生成时间不正确')
+const parsedPaths = parsedPack.files.map((entry) => entry.file.path).sort()
+check(
+  parsedPaths.join(',') === 'ambient/ambient-blip-comms.ogg,bgm/bgm-docked.mp3,sfx/invasion-alarm.wav',
+  `入库包路径映射错误（实际 ${parsedPaths.join(',')}）`,
+)
+for (const id of SFX_CUE_IDS) {
+  const category = SFX_CUES[id].category
+  const expectedDir = category === 'music' ? 'bgm' : category === 'ambient' ? 'ambient' : 'sfx'
+  check(sfxPackDirOf(id) === expectedDir, `${id}：入库目录应为 ${expectedDir}（实际 ${sfxPackDirOf(id)}）`)
+}
+check(sfxPackAssetPath('bgm-docked', 'mp3') === 'bgm/bgm-docked.mp3', '入库包路径约定错误（bgm）')
+check(sfxPackAssetPath('ambient-blip-static', 'm4a') === 'ambient/ambient-blip-static.m4a', '入库包路径约定错误（ambient）')
+
+expectPackError(() => buildSfxPack([packSource('nope' as SfxCueId, 'nope.wav', 1)], { createdAt: PACK_CREATED_AT }), '未知语义 id ')
+expectPackError(() => buildSfxPack([packSource('invasion-alarm', 'invasion-alarm.txt', 1)], { createdAt: PACK_CREATED_AT }), '非音频扩展名 ')
+expectPackError(
+  () => buildSfxPack([packSource('invasion-alarm', 'invasion-alarm.wav', 1), packSource('invasion-alarm', 'invasion-alarm.mp3', 2)], { createdAt: PACK_CREATED_AT }),
+  '同一语义 id 重复打包',
+)
+expectPackError(() => parseSfxPack(packBytes.subarray(0, Math.floor(packBytes.length / 2))), '截断的入库包')
+
+const emptyManifestObject = {
+  format: SFX_PACK_FORMAT,
+  version: SFX_PACK_VERSION,
+  createdAt: PACK_CREATED_AT,
+  generator: 'whale-idle-sfx-console',
+  assetsRoot: 'apps/desktop/src/renderer/src/assets',
+  files: [],
+}
+const emptyManifest = new TextEncoder().encode(JSON.stringify(emptyManifestObject))
+check(parseSfxPack(writeSfxPackZip([{ path: 'manifest.json', data: emptyManifest }])).files.length === 0, '空入库包（0 条）应能解析')
+expectPackError(
+  () =>
+    parseSfxPack(
+      writeSfxPackZip([{ path: 'manifest.json', data: new TextEncoder().encode(JSON.stringify({ ...emptyManifestObject, version: 99 })) }]),
+    ),
+  '不支持的包版本',
+)
+expectPackError(
+  () =>
+    parseSfxPack(
+      writeSfxPackZip([
+        { path: 'manifest.json', data: emptyManifest },
+        { path: 'sfx/invasion-alarm.mp3', data: new Uint8Array([1, 2, 3]) },
+      ]),
+    ),
+  '包内有清单未登记的音频文件',
+)
+
+/* 安装到临时目录：只测真实写盘/覆盖/变体清理/预览，不碰仓库素材 */
+const installTempRoot = mkdtempSync(join(tmpdir(), 'whale-audio-install-'))
+try {
+  const first = installSfxPack(packBytes, { assetsRoot: installTempRoot })
+  check(first.written.length === 3 && first.overwritten.length === 0, `安装：首次应新增 3 条（实际新增 ${first.written.length} / 覆盖 ${first.overwritten.length}）`)
+  check(first.coverage.covered === 3 && first.coverage.total === SFX_CUE_IDS.length, '安装：覆盖度统计错误')
+  check(readFileSync(join(installTempRoot, 'sfx', 'invasion-alarm.wav')).length === 4, '安装：素材字节未写入临时目录')
+
+  const second = installSfxPack(packBytes, { assetsRoot: installTempRoot })
+  check(second.skipped.length === 3 && second.written.length === 0 && second.overwritten.length === 0, '安装：字节一致应跳过（不重写）')
+
+  // 旧扩展名/变体：写入不同字节时默认清理，避免新旧素材被 manifest 当成多份变体随机混播
+  writeFileSync(join(installTempRoot, 'sfx', 'invasion-alarm.1.mp3'), new Uint8Array([9, 9]))
+  const changedPack = buildSfxPack([packSource('invasion-alarm', 'invasion-alarm.wav', 11)], { createdAt: PACK_CREATED_AT })
+  const changed = installSfxPack(changedPack, { assetsRoot: installTempRoot })
+  check(changed.overwritten.includes('sfx/invasion-alarm.wav'), '安装：不同字节应覆盖')
+  check(changed.removedVariants.includes('sfx/invasion-alarm.1.mp3'), '安装：默认应移除同事件旧扩展名变体')
+  check(!existsSync(join(installTempRoot, 'sfx', 'invasion-alarm.1.mp3')), '安装：旧变体文件应已删除')
+
+  // --keep-variants 保留手工变体（并警告混播）
+  writeFileSync(join(installTempRoot, 'sfx', 'invasion-alarm.2.mp3'), new Uint8Array([8, 8]))
+  const kept = installSfxPack(buildSfxPack([packSource('invasion-alarm', 'invasion-alarm.wav', 12)], { createdAt: PACK_CREATED_AT }), {
+    assetsRoot: installTempRoot,
+    keepVariants: true,
+  })
+  check(kept.removedVariants.length === 0 && existsSync(join(installTempRoot, 'sfx', 'invasion-alarm.2.mp3')), '安装：--keep-variants 应保留旧变体')
+  check(kept.warnings.some((warning) => warning.includes('保留旧变体')), '安装：--keep-variants 应给出混播警告')
+
+  // --dry-run 只预览不写
+  const dry = installSfxPack(buildSfxPack([packSource('invasion-alarm', 'invasion-alarm.wav', 13)], { createdAt: PACK_CREATED_AT }), {
+    assetsRoot: installTempRoot,
+    dryRun: true,
+  })
+  check(dry.dryRun === true && dry.overwritten.includes('sfx/invasion-alarm.wav'), '安装：--dry-run 应报告将覆盖')
+  check(readFileSync(join(installTempRoot, 'sfx', 'invasion-alarm.wav'))[0] === 12, '安装：--dry-run 不应写文件')
+} finally {
+  rmSync(installTempRoot, { recursive: true, force: true })
+}
+
 /* ═══════════ 二·五、日志规则必须指向真实 addLog 写入点 ═══════════ */
 
 /**
@@ -155,6 +300,13 @@ const UI_L10N_IDS = [
   'ui.sfx.040', 'ui.sfx.041', 'ui.sfx.042', 'ui.sfx.043', 'ui.sfx.044', 'ui.sfx.045', 'ui.sfx.046',
   'ui.sfx.047', 'ui.sfx.048', 'ui.sfx.049', 'ui.sfx.050', 'ui.sfx.051', 'ui.sfx.052', 'ui.sfx.054',
   'ui.sfx.060', 'ui.sfx.061', 'ui.sfx.062', 'ui.sfx.063', 'ui.sfx.065', 'ui.sfx.066', 'ui.sfx.069',
+  'ui.sfx.070', 'ui.sfx.071', 'ui.sfx.072', 'ui.sfx.073', 'ui.sfx.074', 'ui.sfx.075',
+  'ui.sfx.098', 'ui.sfx.099', 'ui.sfx.100', 'ui.sfx.101', 'ui.sfx.102', 'ui.sfx.103',
+  'ui.sfx.104', 'ui.sfx.105', 'ui.sfx.106', 'ui.sfx.107', 'ui.sfx.108', 'ui.sfx.109',
+  'ui.sfx.110', 'ui.sfx.111', 'ui.sfx.112', 'ui.sfx.113', 'ui.sfx.114', 'ui.sfx.115',
+  'ui.sfx.116', 'ui.sfx.117', 'ui.sfx.118', 'ui.sfx.119', 'ui.sfx.120', 'ui.sfx.121',
+  'ui.sfx.122', 'ui.sfx.123', 'ui.sfx.124', 'ui.sfx.125', 'ui.sfx.126', 'ui.sfx.127',
+  'ui.sfx.128', 'ui.sfx.129', 'ui.sfx.130',
 ]
 const allL10nIds = new Set<string>([...SFX_CUE_IDS.map((id) => SFX_CUES[id].nameId), ...SFX_CATEGORIES.map((c) => SFX_CATEGORY_NAME_ID[c]), ...UI_L10N_IDS])
 
@@ -253,6 +405,50 @@ check(productionCompletedCount(nextSnap, nextLab) === 1, '生产进度：实验�
 const newRun = productionSnapshot({ refineRuns: [{ id: 1, batchesDone: 3 }, { id: 2, batchesDone: 0 }], labRuns: [{ id: 5, finishAtGameMs: 2000 }, { id: 6, finishAtGameMs: 500 }] })
 check(productionCompletedCount(nextLab, newRun) === 0, '生产进度：新开台不应算完成')
 check(productionCompletedCount(null, newRun) === 0, '生产进度：首次基线不应补播')
+
+/* ═══════════ 五、音效调试台（2026-11-04 调试批） ═══════════ */
+
+/* 淡变时长：BGM 2.5s / 环境底噪 1.5s / 音量短淡变 250ms（music.ts / ambient.ts / loops.ts 共用） */
+check(BGM_CROSSFADE_MS === 2500, `BGM 交叉淡变应为 2.5s，实际 ${BGM_CROSSFADE_MS}ms`)
+check(AMBIENT_CROSSFADE_MS === 1500, `环境底噪交叉淡变应保持 1.5s，实际 ${AMBIENT_CROSSFADE_MS}ms`)
+check(VOLUME_FADE_MS === 250, `音量短淡变应为 250ms，实际 ${VOLUME_FADE_MS}ms`)
+check(VOLUME_FADE_MS < BGM_CROSSFADE_MS, '音量短淡变必须明显短于 BGM 换曲淡变（拖滑条不能跟着慢）')
+
+/* 场景预演：强制场景只改音频，不参与真实场景判定，可清除 */
+check(effectiveSfxScene('space', null) === 'space', '场景预演：未强制时应等于真实场景')
+check(effectiveSfxScene('space', 'battle') === 'battle', '场景预演：强制场景应优先于真实场景')
+check(effectiveSfxScene('docked', 'space') === 'space', '场景预演：强制场景覆盖真实停靠')
+check(SFX_SCENE_ORDER.length === 5 && new Set(SFX_SCENE_ORDER).size === 5, `场景顺序应有 5 个互不重复场景，实际 ${SFX_SCENE_ORDER.length}`)
+check(SFX_SCENE_ORDER.every((scene) => typeof SFX_SCENE_NAME_ID[scene] === 'string' && SFX_SCENE_NAME_ID[scene] !== ''), '每个场景都要有中文名 id')
+const sceneRelatedIds = new Set<string>()
+for (const scene of SFX_SCENE_ORDER) {
+  const cues = SCENE_RELATED_CUES[scene]
+  check(cues.length > 0, `场景 ${scene} 应列出相关事件（音效台参考用）`)
+  check(new Set(cues).size === cues.length, `场景 ${scene} 的相关事件有重复`)
+  for (const cueId of cues) {
+    check(SFX_CUE_IDS.includes(cueId), `场景 ${scene} 的相关事件不是合法语义 id：${cueId}`)
+    sceneRelatedIds.add(cueId)
+  }
+}
+check(sceneRelatedIds.size > 0 && sceneRelatedIds.size <= SFX_CUE_IDS.length, '场景相关事件并集应落在 33 条语义清单内')
+
+/* 实时触发日志：只记真实播放、可暂停、环形上限、可清空 */
+clearSfxPlayLog()
+check(sfxPlayLog().length === 0, '实时日志：清空后应为空')
+setSfxPlayLogPaused(false)
+recordSfxPlay('ui-click', 'ui', 1000)
+recordSfxPlay('combat-fire', 'combat', 1100)
+const logged = sfxPlayLog()
+check(logged.length === 2, `实时日志：应记录 2 条，实际 ${logged.length}`)
+check(logged[logged.length - 1]?.cueId === 'combat-fire' && logged[logged.length - 1]?.category === 'combat', '实时日志：按旧→新记录，最新一条在末尾（面板倒序显示）')
+setSfxPlayLogPaused(true)
+recordSfxPlay('invasion-alarm', 'alarm', 1200)
+check(sfxPlayLog().length === 2, '实时日志：暂停记录后不再新增')
+setSfxPlayLogPaused(false)
+for (let i = 0; i < 70; i++) recordSfxPlay('ui-click', 'ui', 2000 + i)
+check(sfxPlayLog().length === SFX_PLAY_LOG_MAX, `实时日志：环形上限应为 ${SFX_PLAY_LOG_MAX}，实际 ${sfxPlayLog().length}`)
+clearSfxPlayLog()
+check(sfxPlayLog().length === 0, '实时日志：再次清空应为空')
 
 /* ═══════════ 输出 ═══════════ */
 

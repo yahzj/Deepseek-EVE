@@ -1,5 +1,11 @@
 # 工具区台账（tools/）
 
+## 声音正式入库（2026-11-04）
+
+- 音效台点「导出正式入库包」下载 `whale-sfx-pack-<时间戳>.zip` 后，在仓库根运行 `npm run audio:install`（`tsx tools/audio-install.ts`）：校验 zip 内 `manifest.json`（`whale-idle-sfx-pack` v1）与 `assets` 路径映射，按语义 id 写入 `apps/desktop/src/renderer/src/assets/{sfx,bgm,ambient}/`；默认清理同一事件的旧扩展名/变体，`--dry-run` 只预览、`--keep-variants` 保留变体并警告；可传包路径或 `--pack=`，缺省自动找仓库根/下载目录最新包。只读包、不读个人档；体积超限（sfx 300KB / bgm 5MB / ambient 2MB）与非 mp3 仅警告不阻断。
+- 入库后跑 `npm run audio:check`（语义清单/素材目录/本地化/入库包往返与非法包拒绝/纯规则）；运行期另用 `npm run audio:smoke`（网页构建+无头浏览器，含导出捕获）与 `npm run audio:smoke:desktop`（桌面构建，file:// 与发布门禁）。
+- 2026-11-04 调试批：音效台改居中大窗 + 四页签（素材清单/场景预演/实时触发/入库）+ 底部工具条与可收起悬浮条；桌面开发版「一键入库（写入仓库）」经主进程 `audio:install-pack` 调本安装器（`--json` 回显），成功后自动清除已入库的本机覆盖，网页版按钮置灰并提示改用导出 + 命令。`npm run audio:check` 增「五、音效调试台」用例（淡变常量/场景强切/实时日志）；`audio:smoke` 增页签、场景预演、实时触发、收起条与网页版兜底断言；`audio:smoke:desktop` 增 installPack 桥与非法入库包拒绝检查。
+
 ## 势力图鉴与非推进器速度（2026-11-03）
 
 - 先`npm run build`，再`node tools/faction-codex-native-check.cjs`：读取当前内容目录和独立合成遭遇档，使用隐藏Electron核对中英七族装备/舰船/图纸分栏和计数、逐一打开补回的14件模块及1张图纸详情，检查正式存盘未改变遭遇、装备及图纸库存；结果输出控制台，不读取个人档，不代替观感验收。
@@ -211,10 +217,11 @@
 （提案字段对真卡无效、读数一格不变，极易被误读成"提案无效"＝假结论）。工具不会自己报错，
 只会**安静地给你一个过时的数**。
 
-## 二、台账（32 个工具）
+## 二、台账（33 个工具）
 
 | 工具 | npm script | 挂牌状态 |
 |---|---|---|
+| `audio-install.ts` | `audio:install` | **已登记**（v0.1.0 · 核对/跑过 2026-11-04；音效入库包校验与写盘：store-only zip → manifest v1、路径/目录/扩展名/重复/体积校验，默认清理同事件旧扩展名与变体，`--dry-run` / `--keep-variants`，不读个人档） |
 | `battle-ammo-warning-desktop-check.cjs` | 构建后 `node tools/battle-ammo-warning-desktop-check.cjs`，`--portrait-only`仅查手机旋转 | 合成档/隔离userData/隐藏Electron，两布局双语回退、桌面/手机旋转，技能连用与缺弹首击不写/二击开战；v31，2026-10-09，不作观感结论 |
 | `synaptic-accelerant-check.ts` | 直接 `npx tsx tools/synaptic-accelerant-check.ts` | 合成状态检查手动续时、训练切换及离线8/32/64h；v31，核对/运行2026-10-09，诊断不符退出1，不读个人档 |
 | `synaptic-accelerant-desktop-smoke.cjs` | 构建后 `node tools/synaptic-accelerant-desktop-smoke.cjs` | 隔离userData、隐藏Electron，合成旧档32h离线及IPC重载；v31，2026-10-09，不作观感结论 |
