@@ -17,6 +17,7 @@ import type { ExchangeClient, ExchangeSnapshot } from '../client'
 import type { ToastFn } from '../../../pages/common'
 import { amount, pct, pnlMoney, price } from '../format'
 import { T, TF } from '../texts'
+import { progressStyle, useActionProgress } from '../useActionProgress'
 
 interface SimplePositionProps {
   client: ExchangeClient
@@ -49,6 +50,7 @@ export function SimplePosition({ client, snap, onToast }: SimplePositionProps) {
   const [countdown, setCountdown] = useState(3)
   const countdownTimer = useRef<number | null>(null)
   const orderSeq = useRef(0)
+  const closeProgress = useActionProgress(client)
 
   const priceOf = (code: string): number => snap.stocks.find((s) => s.code === code)?.price ?? 0
 
@@ -150,11 +152,14 @@ export function SimplePosition({ client, snap, onToast }: SimplePositionProps) {
   const handleCloseLine = async (line: HoldingLine): Promise<void> => {
     if (isBusy) return
     setClosingTarget(line.key)
+    closeProgress.start()
     try {
       if (line.tone === 'spot') await closeSpot(line.code, line.qty)
       else await client.closePosition(line.code, line.tone)
+      await closeProgress.finish()
       onToast(TF.closePosDone(line.code, line.tag, amount(line.qty)))
     } catch (err) {
+      await closeProgress.finish(false)
       onToast(err instanceof Error ? err.message : String(err), true)
     } finally {
       setClosingTarget(null)
@@ -163,6 +168,7 @@ export function SimplePosition({ client, snap, onToast }: SimplePositionProps) {
 
   const executeCloseAll = async (): Promise<void> => {
     setClosingTarget('all')
+    closeProgress.start()
     let failed = 0
     for (const line of lines) {
       try {
@@ -172,6 +178,7 @@ export function SimplePosition({ client, snap, onToast }: SimplePositionProps) {
         failed += 1
       }
     }
+    await closeProgress.finish(failed === 0)
     setClosingTarget(null)
     if (failed === 0) onToast(TF.simpleBookCloseAllDone(lines.length))
     else onToast(TF.simpleBookCloseAllFailed(failed), true)
@@ -225,13 +232,14 @@ export function SimplePosition({ client, snap, onToast }: SimplePositionProps) {
           )}
           <button
             type="button"
-            className={`ex-simple-close-all-btn${confirmCloseAll ? ' is-confirming' : ''}${closingTarget === 'all' ? ' is-busy' : ''}`}
+            className={`ex-simple-close-all-btn ex-btn-progress${confirmCloseAll ? ' is-confirming' : ''}${closingTarget === 'all' ? ' is-busy' : ''}`}
+            style={closingTarget === 'all' ? progressStyle(closeProgress) : undefined}
             disabled={isBusy}
             onClick={handleClickCloseAll}
             title={confirmCloseAll ? T.confirmCloseAllTooltip : T.confirmCloseAllHelp}
           >
             {closingTarget === 'all' ? (
-              <span className="ex-simple-pos-loading">{T.closing}</span>
+              <span className="ex-simple-pos-loading">{T.closing} {closeProgress.pct}%</span>
             ) : confirmCloseAll ? (
               <>
                 <WarningAlt size={13} />
@@ -275,13 +283,14 @@ export function SimplePosition({ client, snap, onToast }: SimplePositionProps) {
               )}
               <button
                 type="button"
-                className={`ex-simple-sub-close-btn is-close${isThisBusy ? ' is-busy' : ''}`}
+                className={`ex-simple-sub-close-btn is-close ex-btn-progress${isThisBusy ? ' is-busy' : ''}`}
+                style={isThisBusy ? progressStyle(closeProgress) : undefined}
                 disabled={isBusy}
                 onClick={() => void handleCloseLine(line)}
                 title={isEn() ? `Market close ${line.code}` : `市价全平 ${line.code}`}
               >
                 {isThisBusy ? (
-                  <span className="ex-simple-pos-loading">{T.closingPos}</span>
+                  <span className="ex-simple-pos-loading">{T.closingPos} {closeProgress.pct}%</span>
                 ) : (
                   <>
                     <Close size={12} /> {T.simpleClose}

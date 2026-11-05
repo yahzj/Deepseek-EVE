@@ -27,7 +27,6 @@ import { SimpleChart } from './SimpleChart'
 import { SimpleTrade } from './SimpleTrade'
 import { SimplePosition } from './SimplePosition'
 import { MyOrders } from './MyOrders'
-import { AgentRoster } from './AgentRoster'
 
 interface SimpleExchangeProps {
   client: ExchangeClient
@@ -55,9 +54,8 @@ export function SimpleExchange({
 }: SimpleExchangeProps) {
   const quote = snap.stocks.find((s) => s.code === code) ?? snap.quote
   const isUp = quote.changePct >= 0
-  // 右栏二级切换：回合制下「我的委托」是高频操作，理财与基金退到第二个页签；
-  // 「对手盘」只读展示六人格公开摘要（WS agents 帧），帮助玩家判断该不该跟。
-  const [sideTab, setSideTab] = useState<'orders' | 'finance' | 'agents'>('orders')
+  // 默认理财与基金；对手盘公开动态统一由快讯第二行显示。
+  const [sideTab, setSideTab] = useState<'orders' | 'finance'>('finance')
 
   return (
     <div className="ex-grid ex-simple-grid">
@@ -133,16 +131,6 @@ export function SimpleExchange({
           >
             {T.myOrdersFinance}
           </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={sideTab === 'agents'}
-            className={`ex-simple-side-tab${sideTab === 'agents' ? ' is-on' : ''}`}
-            onClick={() => setSideTab('agents')}
-            title={T.agentsTab}
-          >
-            {T.agentsTab}
-          </button>
         </div>
 
         <div className="ex-simple-side-body">
@@ -154,13 +142,11 @@ export function SimpleExchange({
                 <MyOrders client={client} onToast={onToast} variant="compact" />
               </div>
             </div>
-          ) : sideTab === 'finance' ? (
+          ) : (
             <div className="ex-simple-finance">
               <BondCard client={client} snap={snap} onToast={onToast} onRefresh={onRefresh} />
               <FundCard client={client} snap={snap} onToast={onToast} onRefresh={onRefresh} />
             </div>
-          ) : (
-            <AgentRoster agents={snap.agents} />
           )}
         </div>
       </aside>
