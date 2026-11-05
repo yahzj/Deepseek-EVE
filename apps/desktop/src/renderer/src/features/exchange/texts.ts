@@ -5,7 +5,7 @@
  * - 英文模式返回 EN_T / 英文版 TF
  * - 中文模式返回 ZH_T / 中文版 TF
  */
-import { isEn } from '../../i18n/locale'
+import { isEn, tr } from '../../i18n/locale'
 
 /** 中文静态文案 */
 export const ZH_T = {
@@ -327,7 +327,8 @@ export const ZH_T = {
   "newsBull": "利多",
   "newsBear": "利空",
   "newsNeutral": "中性",
-  "newsAgentTag": "动作",
+  // ⟪文案调整 2026-11-05⟫ 船长要求明确公开快讯归属。
+  get newsAgentTag() { return tr('ui.exchange.001') },
   "bookImbalance": "买卖深度差",
   "imbalanceBuyAdv": "多头占优",
   "imbalanceSellAdv": "空头占优",
@@ -382,7 +383,7 @@ export const ZH_T = {
   "marketBattleTitle": "市场战况",
   "marketBroad": "星深大盘",
   "indexShortName": "星深综指",
-  "sentimentTitle": "多空情绪",
+  get sentimentTitle() { return tr('ui.exchange.002') },
   "sentimentBulls": "多头占优",
   "sentimentBears": "空头占优",
   "sentimentBalanced": "多空平衡",
@@ -944,6 +945,8 @@ export const EN_T: Record<keyof typeof ZH_T, string> = {
 /** 静态文案代理：依据当前语言自动在中英文之间切换 */
 export const T: typeof ZH_T = new Proxy(ZH_T, {
   get(target, prop: string) {
+    if (prop === 'newsAgentTag') return tr('ui.exchange.001')
+    if (prop === 'sentimentTitle') return tr('ui.exchange.002')
     if (isEn() && prop in EN_T) {
       return (EN_T as Record<string, string>)[prop]
     }

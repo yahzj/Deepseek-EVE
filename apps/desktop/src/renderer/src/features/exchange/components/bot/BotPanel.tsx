@@ -1,4 +1,4 @@
-import { isEn } from '../../../../i18n/locale'
+import { isEn, tr } from '../../../../i18n/locale'
 /**
  * 自动量化交易机器人面板（网格 / 定投 / 移动止盈）。
  *
@@ -23,6 +23,7 @@ import type { ExchangeClient, ExchangeSnapshot, StrategySpec } from '../../clien
 import type { ToastFn } from '../../../../pages/common'
 import { amount } from '../../format'
 import { T } from '../../texts'
+import { StrategyRunLog } from './StrategyRunLog'
 
 export type BotTemplate = 'dca' | 'grid' | 'trailing_tp'
 
@@ -85,8 +86,6 @@ function GridVisualizer({
   // 单格间距与单格理论利润
   const validGrids = Math.max(2, Math.min(50, Math.round(grids) || 4))
   const stepPrice = span / validGrids
-  const stepPct = lowerPrice > 0 ? (stepPrice / lowerPrice) * 100 : 0
-  const estProfitPerGrid = Math.max(0, stepPct * 0.98) // 扣除预估交易摩擦
 
   // 生成网格线分布 (显示密度感，最多渲染 30 根以防视觉过密)
   const lineCount = Math.min(validGrids, 30)
@@ -158,9 +157,6 @@ function GridVisualizer({
         <span className="ex-bot-stat-pill">
           {T.botStepDiff}: <b className="font-mono">{formatNum(stepPrice)} {T.creditUnit}</b>
         </span>
-        <span className="ex-bot-stat-pill">
-          {T.botEstNetProfit}: <b className="font-mono">{estProfitPerGrid.toFixed(2)}%</b>
-        </span>
       </div>
     </div>
   )
@@ -193,7 +189,6 @@ function StrategyCardItem({
   const isDca = spec.template === 'dca'
   const isTp = spec.template === 'trailing_tp'
 
-  const grids = Math.round(Number(p.grids ?? 4))
   const qty = Number(p.qty ?? 100)
   const basePrice = Number(p.basePrice ?? currentPrice)
   const lowerPct = Number(p.lowerPct ?? -6)
@@ -201,11 +196,6 @@ function StrategyCardItem({
   const lowerPrice = Number(p.lowerPrice ?? (basePrice * (1 + lowerPct / 100)))
   const upperPrice = Number(p.upperPrice ?? (basePrice * (1 + upperPct / 100)))
 
-  // 预估年化收益率与套利参数（等宽字体展示）
-  const stepPct = grids > 0 ? (upperPct - lowerPct) / grids : 3
-  const estApr = Math.max(0, stepPct * 52 * 0.85).toFixed(1)
-  const tradeMatches = Number(p.matchedCount ?? 0)
-  const realizedProfit = Number(p.realizedProfit ?? 0)
 
   return (
     <div className={`ex-bot-card${spec.enabled ? ' is-active' : ' is-idle'}`}>
@@ -273,18 +263,8 @@ function StrategyCardItem({
               </span>
             </div>
             <div className="ex-bot-metric-col">
-              <span className="ex-bot-metric-lbl">{T.botTradeMatches}</span>
-              <span className="ex-bot-metric-val font-mono">{tradeMatches} {isEn() ? 'trades' : '笔'}</span>
-            </div>
-            <div className="ex-bot-metric-col">
-              <span className="ex-bot-metric-lbl">{T.botRealizedProfit}</span>
-              <span className="ex-bot-metric-val font-mono is-profit">
-                +{formatNum(realizedProfit)} {T.creditUnit}
-              </span>
-            </div>
-            <div className="ex-bot-metric-col">
-              <span className="ex-bot-metric-lbl">{T.botEstApy}</span>
-              <span className="ex-bot-metric-val font-mono is-apr">{estApr}%</span>
+              <span className="ex-bot-metric-lbl">{T.strategyQty}</span>
+              <span className="ex-bot-metric-val font-mono">{amount(qty)} {T.sharesSuffix}</span>
             </div>
           </>
         ) : null}
@@ -301,7 +281,7 @@ function StrategyCardItem({
             </div>
             <div className="ex-bot-metric-col">
               <span className="ex-bot-metric-lbl">{T.botStatus}</span>
-              <span className="ex-bot-metric-val font-mono">{T.botDcaRunning}</span>
+              <span className="ex-bot-metric-val font-mono">{spec.enabled ? T.strategyEnabled : T.strategyDisabled}</span>
             </div>
           </>
         ) : null}
@@ -323,6 +303,7 @@ function StrategyCardItem({
           </>
         ) : null}
       </div>
+      <StrategyRunLog spec={spec} />
     </div>
   )
 }
@@ -339,6 +320,12 @@ export function BotPanel({
   const [open, setOpen] = useState(alwaysOpen)
   const [template, setTemplate] = useState<BotTemplate>('grid')
   const [busy, setBusy] = useState(false)
+  useEffect(() => {
+    const pull = (): void => { void client.listStrategies().catch(() => undefined) }
+    pull()
+    const timer = window.setInterval(pull, 10_000)
+    return () => window.clearInterval(timer)
+  }, [client])
 
   // 标的信息与当前市价
   const stock = snap.stocks.find((s) => s.code === code)
@@ -378,38 +365,38 @@ export function BotPanel({
   // 校验解析计算
   const numLower = Number(lowerPriceText)
   const numUpper = Number(upperPriceText)
-  const numGrids = Math.round(Number(gridsText))
-  const numQty = Math.round(Number(qtyText))
+  const numGrids = Number(gridsText)
+  const numQty = Number(qtyText)
 
   // 网格单格金额与预估总投入资金
   const singleGridAmount = (currentPrice > 0 ? currentPrice : numLower) * numQty
-  const estTotalGridInvestment = numGrids * singleGridAmount
+  const estTotalGridInvestment = singleGridAmount
 
   // 前置拦截校验字典
   const errors = useMemo(() => {
     const errs: Record<string, string> = {}
     if (template === 'grid') {
-      if (!Number.isFinite(numLower) || numLower <= 0) {
+      if (!Number.isInteger(numLower) || numLower <= 0) {
         errs.lowerPrice = T.botGridErrLower
       }
-      if (!Number.isFinite(numUpper) || numUpper <= 0) {
+      if (!Number.isInteger(numUpper) || numUpper <= 0) {
         errs.upperPrice = T.botGridErrUpper
       } else if (Number.isFinite(numLower) && numUpper <= numLower) {
         errs.upperPrice = T.botGridErrUpperGtLower
       }
-      if (!Number.isFinite(numGrids) || numGrids < 2 || numGrids > 50) {
+      if (!Number.isInteger(numGrids) || numGrids < 2 || numGrids > 50) {
         errs.grids = T.botGridErrGrids
       }
-      if (!Number.isFinite(numQty) || numQty < 1) {
+      if (!Number.isInteger(numQty) || numQty < 1) {
         errs.qty = T.botGridErrQty
       }
       if (estTotalGridInvestment > availableCash) {
-        errs.cash = isEn() ? `Est. total investment (${formatNum(estTotalGridInvestment)} Credits) exceeds available cash (${formatNum(availableCash)} Credits)` : `预估总投入 (${formatNum(estTotalGridInvestment)} {T.creditUnit}) 超出可用资金 (${formatNum(availableCash)} 信用点)`
+        errs.cash = tr('ui.exchange.025')
       }
     } else if (template === 'dca') {
       const amt = Number(dcaAmountText)
       const intv = Number(dcaIntervalText)
-      if (!Number.isFinite(amt) || amt <= 0) {
+      if (!Number.isInteger(amt) || amt <= 0) {
         errs.dcaAmount = T.botDcaErrAmount
       } else if (amt > availableCash) {
         errs.dcaAmount = isEn() ? `DCA amount exceeds available cash (${formatNum(availableCash)} Credits)` : `定投金额超出当前可用资金 (${formatNum(availableCash)} 信用点)`
@@ -420,7 +407,7 @@ export function BotPanel({
     } else {
       const act = Number(tpActivateText)
       const tr = Number(tpTrailText)
-      const q = Math.round(Number(tpQtyText))
+      const q = Number(tpQtyText)
       if (!Number.isFinite(act) || act <= 0) {
         errs.tpActivate = T.botTpErrActivate
       }
@@ -429,7 +416,7 @@ export function BotPanel({
       } else if (Number.isFinite(act) && tr >= act) {
         errs.tpTrail = T.botTpErrTrailLt
       }
-      if (!Number.isFinite(q) || q < 1) {
+      if (!Number.isInteger(q) || q < 1) {
         errs.tpQty = T.botTpErrQty
       }
     }
@@ -477,6 +464,7 @@ export function BotPanel({
 
   // 部署策略
   const handleDeploy = (): void => {
+    if (busy) return
     // 标记全部字段为 touched 以便即时展示红框与错误
     setTouched({
       lowerPrice: true,
@@ -505,18 +493,22 @@ export function BotPanel({
   }
 
   const handleToggle = (spec: StrategySpec): void => {
-    if (!spec.id) return
+    if (!spec.id || busy) return
+    setBusy(true)
     void client
       .saveStrategy({ ...spec, enabled: !spec.enabled })
       .catch((err: unknown) => onToast(err instanceof Error ? err.message : String(err), true))
+      .finally(() => setBusy(false))
   }
 
   const handleDelete = (spec: StrategySpec): void => {
-    if (!spec.id) return
+    if (!spec.id || busy) return
+    setBusy(true)
     void client
       .deleteStrategy(spec.id)
       .then(() => onToast(T.toastStrategyDeleted))
       .catch((err: unknown) => onToast(err instanceof Error ? err.message : String(err), true))
+      .finally(() => setBusy(false))
   }
 
   const strategies = snap.strategies.filter((s) => s.code === code)
@@ -545,6 +537,7 @@ export function BotPanel({
 
       {open ? (
         <div className="ex-auto-body ex-bot-body">
+          <p className="ex-dim">{tr('ui.exchange.010')}</p>
           {/* 已运行的策略列表卡片 */}
           <div className="ex-bot-list">
             {strategies.length === 0 ? (

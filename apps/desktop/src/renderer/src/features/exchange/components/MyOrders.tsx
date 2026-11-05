@@ -17,6 +17,7 @@ import type { ExchangeClient, ExchangeOrder, OrderSource, RoundInfo } from '../c
 import type { ToastFn } from '../../../pages/common'
 import { amount, periodIndex, price, shortTime } from '../format'
 import { T, TF } from '../texts'
+import { tr } from '../../../i18n/locale'
 
 type Filter = 'pending' | 'done' | 'all'
 type Variant = 'table' | 'compact'
@@ -90,8 +91,8 @@ function sideTone(order: ExchangeOrder): 'buy' | 'sell' | 'short' {
 
 export function MyOrders({ client, onToast, variant }: MyOrdersProps) {
   const [orders, setOrders] = useState<ExchangeOrder[]>([])
-  // 默认看全部：回合制下「本回合排队的预操作」与「上几回合的操作结果」要看在同一张表里
-  const [filter, setFilter] = useState<Filter>('all')
+  // 简单界面进入时先看待提交；专业流水仍可查看全部结果。
+  const [filter, setFilter] = useState<Filter>(variant === 'compact' ? 'pending' : 'all')
   const [loading, setLoading] = useState(true)
   const [locked, setLocked] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -124,6 +125,22 @@ export function MyOrders({ client, onToast, variant }: MyOrdersProps) {
       if (confirmTimer.current !== null) window.clearTimeout(confirmTimer.current)
     }
   }, [refresh])
+
+  // 交易完成释放快照后立即刷新列表，不让委托比可用资金晚一个轮询周期。
+  useEffect(() => {
+    let timer: number | null = null
+    const unsub = client.onTick(() => {
+      if (timer !== null) return
+      timer = window.setTimeout(() => {
+        timer = null
+        void refresh()
+      }, 100)
+    })
+    return () => {
+      unsub()
+      if (timer !== null) window.clearTimeout(timer)
+    }
+  }, [client, refresh])
 
   // 回合锁定窗口：撤单按钮置灰，避免玩家点了才吃到 409
   useEffect(() => {
@@ -211,7 +228,7 @@ export function MyOrders({ client, onToast, variant }: MyOrdersProps) {
   })
 
   const filters: ReadonlyArray<[Filter, string]> = [
-    ['pending', T.myOrdersFilterPending],
+    ['pending', variant === 'compact' ? tr('ui.exchange.028') : T.myOrdersFilterPending],
     ['done', T.myOrdersFilterDone],
     ['all', T.myOrdersFilterAll],
   ]

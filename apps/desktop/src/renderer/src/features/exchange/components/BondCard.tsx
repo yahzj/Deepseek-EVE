@@ -30,8 +30,8 @@ export function BondCard({
   const [busy, setBusy] = useState(false)
   const [isAccruing, setIsAccruing] = useState(false)
   const nonceSeq = useRef(0)
-  const buyProgress = useActionProgress()
-  const redeemProgress = useActionProgress()
+  const buyProgress = useActionProgress(client)
+  const redeemProgress = useActionProgress(client)
 
   const product = snap.bondProduct
   const available = snap.account.cash
@@ -106,12 +106,15 @@ export function BondCard({
     }
     nonceSeq.current += 1
     setBusy(true)
+    buyProgress.start()
     try {
       const next = await client.openBond(numericAmount, `bond-open-${Date.now()}-${nonceSeq.current}`)
+      await buyProgress.finish()
       setBond(next)
       onToast(`${T.toastBondBought} ${money(numericAmount)} ${T.creditUnit}`)
       onRefresh?.()
     } catch (err) {
+      await buyProgress.finish(false)
       onToast(err instanceof Error ? err.message : String(err), true)
     } finally {
       setBusy(false)
@@ -125,13 +128,16 @@ export function BondCard({
     }
     nonceSeq.current += 1
     setBusy(true)
+    redeemProgress.start()
     try {
       const next = await client.redeemBond(`bond-redeem-${Date.now()}-${nonceSeq.current}`)
       const total = Math.max(0, next.value)
+      await redeemProgress.finish()
       setBond(next)
       if (total > 0) onToast(`${T.toastBondRedeemed} ${money(total)} ${T.creditUnit}`)
       onRefresh?.()
     } catch (err) {
+      await redeemProgress.finish(false)
       onToast(err instanceof Error ? err.message : String(err), true)
     } finally {
       setBusy(false)
@@ -247,12 +253,9 @@ export function BondCard({
             className="ex-mini-btn is-bond-buy ex-btn-progress"
             disabled={!canBuy}
             style={progressStyle(buyProgress)}
-            onClick={() => {
-              buyProgress.start()
-              void buy().finally(() => buyProgress.finish())
-            }}
+            onClick={() => void buy()}
           >
-            {T.bondBuyBtn}
+            {T.bondBuyBtn}{buyProgress.active ? ` ${buyProgress.pct}%` : ''}
           </button>
           <button
             type="button"
@@ -260,12 +263,9 @@ export function BondCard({
             disabled={!canRedeem}
             title={!canRedeem ? T.bondHoldingEmptyTip : undefined}
             style={progressStyle(redeemProgress)}
-            onClick={() => {
-              redeemProgress.start()
-              void redeem().finally(() => redeemProgress.finish())
-            }}
+            onClick={() => void redeem()}
           >
-            {T.bondRedeemAll}
+            {T.bondRedeemAll}{redeemProgress.active ? ` ${redeemProgress.pct}%` : ''}
           </button>
         </div>
       </div>

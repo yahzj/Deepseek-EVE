@@ -1,0 +1,5 @@
+import React,{useState} from 'react';import {createRoot} from 'react-dom/client';
+import {MockExchangeClient} from '../../apps/desktop/src/renderer/src/features/exchange/mock/MockExchangeClient';
+import {SimpleExchange} from '../../apps/desktop/src/renderer/src/features/exchange/components/SimpleExchange';
+import {ProExchange} from '../../apps/desktop/src/renderer/src/features/exchange/components/ProExchange';
+const client=new MockExchangeClient(); function Fixture(){const [mode,setMode]=useState('simple');window.fixture={setMode};const snap=client.getSnapshot('SPRK');const props={client,snap,code:'SPRK',onSelectCode:()=>{},onToast:()=>{},engine:{},isServer:false,onRefresh:()=>{}};return <div className="ex-page" style={{height:'100vh',display:'flex',flexDirection:'column'}}>{mode==='simple'?<SimpleExchange {...props}/>:<ProExchange {...props} pickedPrice={null}/>}</div>}createRoot(document.getElementById('root')).render(<Fixture/>);

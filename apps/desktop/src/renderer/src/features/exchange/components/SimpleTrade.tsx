@@ -29,8 +29,8 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
   const [activeRatio, setActiveRatio] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
   const orderSeq = useRef(0)
-  const buyProgress = useActionProgress()
-  const shortProgress = useActionProgress()
+  const buyProgress = useActionProgress(client)
+  const shortProgress = useActionProgress(client)
 
   const quote = snap.stocks.find((s) => s.code === code)
   const currentPrice = quote?.price ?? 1
@@ -122,6 +122,7 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
     }
 
     setBusy(true)
+    buyProgress.start()
     orderSeq.current += 1
     try {
       const order = await client.placeOrder({
@@ -133,10 +134,12 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
         qty: estBuyQty,
         leverage: 1,
       })
-      onToast(TF.simpleOrderDone(code, T.buy, amount(order.filledQty ?? estBuyQty)))
+      await buyProgress.finish()
+      onToast(TF.simpleOrderDone(code, T.buy, amount(order.filledQty || order.qty)))
       setCashAmount('')
       setActiveRatio(null)
     } catch (err) {
+      await buyProgress.finish(false)
       onToast(err instanceof Error ? err.message : String(err), true)
     } finally {
       setBusy(false)
@@ -155,6 +158,7 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
     }
 
     setBusy(true)
+    shortProgress.start()
     orderSeq.current += 1
     try {
       const order = await client.placeOrder({
@@ -170,10 +174,12 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
         // 「没有可平的杠杆多头持仓」。
         short: true,
       })
-      onToast(TF.simpleOrderDone(code, T.sell, amount(order.filledQty ?? estShortQty)))
+      await shortProgress.finish()
+      onToast(TF.simpleOrderDone(code, T.sell, amount(order.filledQty || order.qty)))
       setCashAmount('')
       setActiveRatio(null)
     } catch (err) {
+      await shortProgress.finish(false)
       onToast(err instanceof Error ? err.message : String(err), true)
     } finally {
       setBusy(false)
@@ -212,6 +218,7 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
           type="button"
           role="tab"
           aria-selected={tab === 'buy'}
+            disabled={busy}
           className={`ex-simple-trade-tab is-buy${tab === 'buy' ? ' is-on is-active' : ''}`}
           onClick={() => {
             setTab('buy')
@@ -227,6 +234,7 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
           type="button"
           role="tab"
           aria-selected={tab === 'short'}
+            disabled={busy}
           className={`ex-simple-trade-tab is-short${tab === 'short' ? ' is-on is-active' : ''}`}
           onClick={() => {
             setTab('short')
@@ -371,15 +379,11 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
             className={`ex-simple-big-action-btn ${tab === 'buy' ? 'is-buy' : 'is-short'} ex-btn-progress`}
             disabled={!canSubmit}
             style={progressStyle(tab === 'buy' ? buyProgress : shortProgress)}
-            onClick={() => {
-              const progress = tab === 'buy' ? buyProgress : shortProgress
-              progress.start()
-              const task = tab === 'buy' ? handleBuy() : handleShort()
-              void task.finally(() => progress.finish())
-            }}
+            onClick={() => void (tab === 'buy' ? handleBuy() : handleShort())}
             title={canSubmit ? `${tab === 'buy' ? '提交看涨下注' : '提交看跌下注'}（回合末集合竞价成交）(Enter)` : (disableReason ?? '')}
           >
             {busy ? (tab === 'buy' ? T.submittingBuy : T.submittingShort) : T.simplePlaceBet}
+            {(tab === 'buy' ? buyProgress : shortProgress).active ? ` ${(tab === 'buy' ? buyProgress : shortProgress).pct}%` : ''}
           </button>
 
           {/* 防呆提示与就绪反馈 */}
