@@ -439,7 +439,7 @@ check(Math.abs(pitchRateFor(100, () => 1) - Math.pow(2, 100 / 1200)) < 1e-12, '�
 check(pitchRateFor(100, () => 0.5) === 1, '音高：中值随机应原调')
 check(pitchRateFor(100, () => Number.NaN) === 1, '音高：异常随机源应原调')
 check(parseSfxPrefs('{"pitchJitterCents":250}').pitchJitterCents === PITCH_JITTER_MAX_CENTS, '音高偏好：越界应钳到上限')
-check(parseSfxPrefs('{}').pitchJitterCents === 100, '音高偏好：默认 ±100 音分')
+check(parseSfxPrefs('{}').pitchJitterCents === 50, '音高偏好：默认 ±50 音分（船长 2026-11-06）')
 
 /* UI 点击音固定 ±50 音分（2026-11-05 船长口径；不受战斗滑条影响） */
 check(SFX_CUES['ui-click'].pitchJitterCents === 50, 'UI 点击音应固定 ±50 音分')

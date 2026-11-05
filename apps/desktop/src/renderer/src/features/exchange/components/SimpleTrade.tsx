@@ -17,6 +17,7 @@ import type { ToastFn } from '../../../pages/common'
 import { amount, estimateSimpleBet, money, price } from '../format'
 import { T, TF } from '../texts'
 import { progressStyle, useActionProgress } from '../useActionProgress'
+import { notifyUiAction } from '../../../game/audio/uiFeedback'
 
 interface SimpleTradeProps {
   client: ExchangeClient
@@ -136,6 +137,9 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
         qty: estBuyQty,
         leverage: 1,
       })
+      // 成功回执才响下注音（2026-11-06 船长）：失败分支只走 toast → ui-error，绝不能叠一声动作音；
+      // 放在进度满格动画之前，声音跟着回执走，不被动画挡住。
+      notifyUiAction('exchange-bet')
       await buyProgress.finish()
       onToast(TF.simpleOrderDone(code, T.buy, amount(order.filledQty || order.qty)))
       setCashAmount('')
@@ -176,6 +180,8 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
         // 「没有可平的杠杆多头持仓」。
         short: true,
       })
+      // 与买多同口径：服务端确认才响，失败只留 ui-error。
+      notifyUiAction('exchange-bet')
       await shortProgress.finish()
       onToast(TF.simpleOrderDone(code, T.sell, amount(order.filledQty || order.qty)))
       setCashAmount('')
@@ -374,10 +380,13 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
           </div>
 
           {/* 主按钮分向动宾：方向由文字与符号共同承载，不只靠色相 */}
+          {/* 音效：data-sfx-on="success" = 点击这一拍不排队，成功回执后才由 handleBuy/handleShort 响 exchange-bet；
+              被本地校验或服务端拒绝时只剩 ui-error，不会叠两声。 */}
           <button
             type="button"
             className={`ex-simple-big-action-btn ${tab === 'buy' ? 'is-buy' : 'is-short'} ex-btn-progress`}
             data-sfx="exchange-bet"
+            data-sfx-on="success"
             aria-disabled={!canSubmit}
             style={progressStyle(tab === 'buy' ? buyProgress : shortProgress)}
             onClick={() => {

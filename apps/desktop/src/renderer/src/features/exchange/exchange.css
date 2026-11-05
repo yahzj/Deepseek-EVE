@@ -462,6 +462,8 @@
   gap: 6px;
   min-width: 0;
   flex-wrap: nowrap;
+  /* 兜底：持仓徽标已移到第二行，首行只剩代码与板块，极窄时直接裁掉也不许溢出压住小曲线 */
+  overflow: hidden;
 }
 
 .ex-stock-code {
@@ -533,6 +535,15 @@
   text-overflow: ellipsis;
   min-width: 0;
   width: 100%;
+}
+
+/* 持仓徽标独占一行：装不下就换行，绝不横向溢出盖住公司名或中栏小曲线 */
+.ex-stock-card-holds {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .ex-stock-card-spark {
@@ -798,6 +809,14 @@
 
 .ex-chart {
   flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 5px 6px 6px;
+  /* 契合新版 UI 主题风格：采用统一面板色板，避免生硬死黑 */
+  background: rgb(var(--wui-bg-panel));
+  border: 1px solid rgb(var(--wui-border));
+  border-radius: 6px;
 }
 
 .ex-chart-title {
@@ -819,26 +838,111 @@
   font-size: var(--wui-fs-s);
 }
 
+/* HUD 仪表型行情读数条（光标悬停即时联动） */
 .ex-chart-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 2px 14px;
-  padding: 3px 10px 0;
-  color: rgb(var(--wui-text-dim));
+  align-items: center;
+  gap: 4px 12px;
+  padding: 4px 10px;
+  background: rgb(var(--wui-bg-deep) / 0.55);
+  border: 1px solid rgb(var(--wui-border) / 0.45);
+  border-radius: 4px;
   font-size: var(--wui-fs-2xs);
+  min-height: 26px;
+  box-sizing: border-box;
 }
 
-.ex-chart-meta b {
+.ex-chart-meta-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.ex-chart-meta-lbl {
+  color: rgb(var(--wui-text-dim) / 0.7);
+  font-size: 10px;
+  user-select: none;
+}
+
+.ex-chart-meta-item .ex-num {
   color: rgb(var(--wui-text));
   font-family: var(--wui-mono);
-  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.ex-chart-meta-item.is-highlight .ex-num.is-up {
+  color: rgb(var(--wui-tone-gain));
+  font-weight: 700;
+}
+
+.ex-chart-meta-item.is-highlight .ex-num.is-down {
+  color: rgb(var(--wui-tone-loss));
+  font-weight: 700;
+}
+
+.ex-chart-meta-badge {
+  font-family: var(--wui-mono);
+  font-size: 9px;
+  font-weight: 700;
+  padding: 0 4px;
+  border-radius: 2px;
+  line-height: 1.3;
+}
+
+.ex-chart-meta-badge.is-up {
+  color: rgb(var(--wui-tone-gain));
+  background: rgb(var(--wui-tone-gain) / 0.18);
+  border: 1px solid rgb(var(--wui-tone-gain) / 0.35);
+}
+
+.ex-chart-meta-badge.is-down {
+  color: rgb(var(--wui-tone-loss));
+  background: rgb(var(--wui-tone-loss) / 0.18);
+  border: 1px solid rgb(var(--wui-tone-loss) / 0.35);
+}
+
+.ex-chart-meta-item.is-boll .ex-num {
+  color: rgb(var(--wui-gold));
+}
+
+.ex-chart-meta-item.is-rsi .ex-num {
+  color: rgb(var(--wui-purple));
+}
+
+.ex-chart-close {
+  margin-left: auto;
+  color: rgb(var(--wui-text-dim) / 0.65);
+  font-family: var(--wui-mono);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  user-select: none;
 }
 
 .ex-chart-wrap {
   position: relative;
   height: 220px;
-  margin: 4px 8px 6px;
+  margin: 0;
   min-height: 150px;
+}
+
+/* klinecharts 宿主（2026-11-05 船长令：专业终端换库，旧 SVG 已移除） */
+.ex-kline-chart {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  /* 契合新版 UI 主题风格：铺底与外层面板统一步调 */
+  background: rgb(var(--wui-bg-panel));
+}
+
+.ex-kline-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
 }
 
 .ex-chart-svg {
@@ -1452,19 +1556,32 @@
   font-weight: 600;
   cursor: pointer;
   user-select: none;
-  transition: all 0.16s ease;
+  /* 只过渡真正变化的属性；高频点击用 120ms，避免每次都有“慢半拍”感 */
+  transition:
+    background-color 120ms cubic-bezier(0.2, 0, 0, 1),
+    border-color 120ms cubic-bezier(0.2, 0, 0, 1),
+    color 120ms cubic-bezier(0.2, 0, 0, 1),
+    box-shadow 120ms cubic-bezier(0.2, 0, 0, 1),
+    transform 120ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.ex-lev-pill:focus-visible {
+  outline: 2px solid rgb(var(--wui-accent));
+  outline-offset: 2px;
+}
+
+.ex-lev-pill:active:not(.is-off) {
+  transform: scale(0.96);
 }
 
 .ex-lev-pill:hover:not(.is-off) {
   border-color: rgb(var(--wui-border-bright));
   background: rgb(var(--wui-bg-hover));
   color: rgb(var(--wui-text));
-  transform: translateY(-1px);
 }
 
 .ex-lev-pill.is-on {
   font-weight: 700;
-  transform: translateY(-1px);
 }
 
 .ex-lev-pill.is-long.is-on {
@@ -3090,9 +3207,57 @@ button.ex-round-clock-badge:disabled {
   margin-left: auto;
 }
 
+.ex-chart-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px 12px;
+}
+
 .ex-chart-periods {
+  display: inline-flex;
+  align-items: stretch;
   height: 24px;
   box-sizing: border-box;
+  border: 1px solid rgb(var(--wui-border));
+  border-radius: 4px;
+  overflow: hidden;
+  background: rgb(var(--wui-bg-deep) / 0.6);
+}
+
+.ex-chart-period-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 2px 8px;
+  border: 0;
+  border-right: 1px solid rgb(var(--wui-border));
+  background: transparent;
+  color: rgb(var(--wui-text-dim));
+  font-family: var(--wui-mono);
+  font-size: var(--wui-fs-2xs);
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.18s ease-in-out, background-color 0.18s ease-in-out, box-shadow 0.18s ease-in-out;
+}
+
+.ex-chart-period-btn:last-child {
+  border-right: 0;
+}
+
+.ex-chart-period-btn:hover {
+  color: rgb(var(--wui-text));
+  background: rgb(var(--wui-accent) / 0.08);
+}
+
+.ex-chart-period-btn.is-on {
+  color: rgb(var(--wui-gold));
+  background: rgb(var(--wui-gold) / 0.16);
+  box-shadow: inset 0 0 0 1px rgb(var(--wui-gold) / 0.6);
 }
 
 .ex-chart-periods .ex-seg-btn {
@@ -3154,18 +3319,11 @@ button.ex-round-clock-badge:disabled {
   font-weight: 600;
 }
 
-/* MA5 激活：黄金色微光与边框 */
-.ex-chart-toggle-btn.is-ma5.is-on {
+/* BOLL 激活：黄金色微光与边框 */
+.ex-chart-toggle-btn.is-boll.is-on {
   color: rgb(var(--wui-gold));
   background: rgb(var(--wui-gold) / 0.16);
   box-shadow: inset 0 0 0 1px rgb(var(--wui-gold) / 0.6), 0 0 8px rgb(var(--wui-gold) / 0.25);
-}
-
-/* MA20 激活：科技紫微光与边框 */
-.ex-chart-toggle-btn.is-ma20.is-on {
-  color: rgb(var(--wui-purple));
-  background: rgb(var(--wui-purple) / 0.16);
-  box-shadow: inset 0 0 0 1px rgb(var(--wui-purple) / 0.6), 0 0 8px rgb(var(--wui-purple) / 0.25);
 }
 
 /* 成交量 激活：琥珀金微光 */
@@ -3175,7 +3333,7 @@ button.ex-round-clock-badge:disabled {
   box-shadow: inset 0 0 0 1px rgb(var(--wui-amber) / 0.6), 0 0 8px rgb(var(--wui-amber) / 0.25);
 }
 
-/* RSI14 激活：冰青色微光与边框 */
+/* RSI21 激活：冰青色微光与边框 */
 .ex-chart-toggle-btn.is-rsi.is-on {
   color: rgb(var(--wui-cyan));
   background: rgb(var(--wui-cyan) / 0.16);
@@ -3201,7 +3359,7 @@ button.ex-round-clock-badge:disabled {
 
 .ex-chart-wrap {
   height: 280px;
-  min-height: 220px;
+  min-height: 240px;
 }
 
 .ex-chart-svg {
@@ -4243,9 +4401,9 @@ button.ex-round-clock-badge:disabled {
   font-size: var(--wui-fs-2xs);
 }
 
-/* 图表保持常规高度，扩大窗口不拉伸走势。 */
+/* 全屏与大视口下自适应纵向延展撑满，买卖舱稳重沉底并与两侧底边对齐 */
 .ex-simple-chart-section {
-  flex: 0 1 240px;
+  flex: 1 1 240px;
   min-height: 180px;
   display: flex;
   flex-direction: column;
@@ -4677,7 +4835,7 @@ button.ex-round-clock-badge:disabled {
   padding: 0;
   border: 1px solid rgb(var(--wui-border));
   border-radius: 3px;
-  background: rgb(var(--wui-bg-panel) / 0.8);
+  background: rgb(var(--wui-bg-panel) / 0.58);
   color: rgb(var(--wui-text-dim));
   font-size: 13px;
   font-weight: 700;
@@ -5423,9 +5581,72 @@ html body .app-root.is-layout-modern .ex-page .ex-simple-big-action-btn:disabled
    专业模式 (ProExchange) · 星舰战术交易舱重构专属样式 (2026-11-03)
    ========================================================================== */
 
-/* ── 三栏栅格优化（简单与专业双模式统一样式规范，零位移） ── */
+/* ── 三栏栅格优化（专业模式采用更深沉邃密的太空曜石黑，全功能面板统一变深，与简单模式拉开专业质感） ── */
 .ex-pro-grid {
   padding: 0;
+  --ex-pro-panel-bg: color-mix(in srgb, rgb(var(--wui-bg-deep)) 72%, rgb(var(--wui-bg-panel)) 28%);
+  --ex-pro-panel-inner: color-mix(in srgb, rgb(var(--wui-bg-deep)) 82%, rgb(var(--wui-bg-panel)) 18%);
+  --ex-pro-chart-bg: color-mix(in srgb, rgb(var(--wui-bg-deep)) 86%, rgb(var(--wui-bg-panel)) 14%);
+  --ex-pro-border: rgb(var(--wui-border) / 0.5);
+  --ex-pro-border-sub: rgb(var(--wui-border) / 0.35);
+}
+
+/* 专业模式下所有主面板：外框统一变深沉曜石色板 */
+.ex-pro-grid .ex-panel,
+.ex-pro-grid .ex-stock-list,
+.ex-pro-grid .ex-market-overview,
+.ex-pro-grid .ex-positions,
+.ex-pro-grid .ex-records,
+.ex-pro-grid .ex-chart,
+.ex-pro-grid .ex-pro-sentiment,
+.ex-pro-grid .ex-pro-dock,
+.ex-pro-grid .ex-pro-dock-body .ex-trade,
+.ex-pro-grid .ex-pro-dock-body .ex-auto,
+.ex-pro-grid .ex-pro-side-tabs {
+  background: var(--ex-pro-panel-bg) !important;
+  border-color: var(--ex-pro-border) !important;
+}
+
+/* 专业模式面板头部与二级切换栏 */
+.ex-pro-grid .ex-panel-head,
+.ex-pro-grid .ex-records-head,
+.ex-pro-grid .ex-pro-dock-tabs {
+  background: color-mix(in srgb, var(--ex-pro-panel-bg) 85%, rgb(var(--wui-bg-deep)) 15%) !important;
+  border-color: var(--ex-pro-border-sub) !important;
+}
+
+/* 专业模式 K 线图画布 */
+.ex-pro-grid .ex-kline-chart {
+  background: var(--ex-pro-chart-bg) !important;
+}
+
+/* 专业模式左栏股票卡片：采用更深沉邃密的底色，鼠标悬停与选中微光更分明 */
+.ex-pro-grid .ex-stock-card {
+  background: var(--ex-pro-panel-inner) !important;
+  border-color: var(--ex-pro-border-sub) !important;
+}
+
+.ex-pro-grid .ex-stock-card:hover {
+  background: color-mix(in srgb, var(--ex-pro-panel-inner) 70%, rgb(var(--wui-bg-panel)) 30%) !important;
+  border-color: rgb(var(--wui-border-bright) / 0.7) !important;
+}
+
+.ex-pro-grid .ex-stock-card.is-sel {
+  background: linear-gradient(135deg, rgb(var(--wui-accent) / 0.18), var(--ex-pro-panel-inner)) !important;
+  border-color: rgb(var(--wui-accent)) !important;
+  box-shadow: 0 0 12px rgb(var(--wui-accent) / 0.25), inset 2px 0 0 rgb(var(--wui-accent)) !important;
+}
+
+/* 专业模式右栏持仓与流水行 */
+.ex-pro-grid .ex-pos-card-item,
+.ex-pro-grid .ex-pos-item,
+.ex-pro-grid .ex-records-row:not(.is-head) {
+  background: var(--ex-pro-panel-inner) !important;
+  border-color: var(--ex-pro-border-sub) !important;
+}
+
+.ex-pro-grid .ex-records-row.is-head {
+  background: color-mix(in srgb, var(--ex-pro-panel-bg) 85%, rgb(var(--wui-bg-deep)) 15%) !important;
 }
 
 /* ── K 线图时间轴缩放工具组（24px 高度与周期/指标胶囊像素级对齐） ── */
@@ -5486,15 +5707,442 @@ html body .app-root.is-layout-modern .ex-page .ex-simple-big-action-btn:disabled
 }
 
 .ex-pro-chart-wrap {
-  flex: 0 1 360px;
-  min-height: 240px;
+  flex: 1 1 auto;
+  overflow: hidden;
+  min-height: 280px;
   display: flex;
   flex-direction: column;
+}
+
+/* 中栏下单区：挂单与自动量化折成 Tab（2026-11-06 船长令：小视口一屏放下） */
+.ex-pro-dock {
+  /* 高度跟着内容走，空间不够时可被压缩；超出时表单内部滚，提交键固定在底部 */
+  flex: 0 1 auto;
+  max-height: 58%;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: rgb(var(--wui-bg-panel));
+  border: 1px solid rgb(var(--wui-border));
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.ex-pro-dock-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  flex-shrink: 0;
+  background: rgb(var(--wui-bg-deep));
+  border-bottom: 1px solid rgb(var(--wui-border));
+}
+
+.ex-pro-dock-tab {
+  flex: 1 1 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 26px;
+  padding: 4px 10px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: rgb(var(--wui-text-dim));
+  font-size: var(--wui-fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ex-pro-dock-tab:hover {
+  color: rgb(var(--wui-text));
+  background: rgb(var(--wui-bg-hover));
+}
+
+.ex-pro-dock-tab.is-active {
+  color: rgb(var(--wui-accent));
+  background: rgb(var(--wui-accent) / 0.15);
+  border-color: rgb(var(--wui-accent) / 0.4);
+}
+
+.ex-pro-dock-badge {
+  min-width: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: rgb(var(--wui-accent) / 0.25);
+  color: rgb(var(--wui-accent));
+  font-size: 10px;
+  font-family: var(--wui-mono);
+  text-align: center;
+}
+
+.ex-pro-dock-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  padding: 4px 8px 6px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 表单自己滚，提交键留在面板底部（2026-11-06：1366×768 不必滚到底就能下单） */
+.ex-pro-dock-body .ex-trade {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.ex-pro-dock-body .ex-trade-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* grid 行按内容高度排，容器放不下时自己滚，不压扁控件 */
+  align-content: start;
+  grid-auto-rows: min-content;
+}
+
+.ex-pro-dock-body .ex-trade-footer {
+  flex-shrink: 0;
+  padding-top: 6px;
+}
+
+.ex-pro-dock-body .ex-panel-head,
+.ex-pro-dock-body .ex-submit-guard-bar {
+  display: none;
+}
+
+.ex-pro-dock-body .ex-lev-capsules {
+  /* 7 档一行放下：1x 即原现货，后面依次放大 */
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.ex-pro-dock-body .ex-lev-pill {
+  flex: 0 0 auto;
+  min-width: 30px;
+  min-height: 18px;
+  padding: 0 7px;
+  font-size: 10px;
+  line-height: 1;
+}
+
+.ex-pro-dock-body .ex-trade,
+.ex-pro-dock-body .ex-auto {
+  border: 0 !important;
+  background: transparent !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+}
+
+/* 表单两列：数量在左、类型与价格在右，把 420px 的表单压到 ~280px */
+.ex-pro-dock-body .ex-trade-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas:
+    "lev lev"
+    "qty price"
+    "preview preview"
+    "protect protect";
+  gap: 4px 12px;
+  align-items: start;
+}
+
+.ex-pro-dock-body .ex-trade-mode-seg {
+  display: none !important;
+}
+.ex-pro-dock-body .ex-mode-hint {
+  display: none !important;
+}
+.ex-pro-dock-body .ex-field-leverage { grid-area: lev; }
+.ex-pro-dock-body .ex-field-qty { grid-area: qty; }
+.ex-pro-dock-body .ex-trade-kind-seg { grid-area: kind; }
+.ex-pro-dock-body .ex-field-price { grid-area: price; }
+.ex-pro-dock-body .ex-preview { grid-area: preview; }
+.ex-pro-dock-body .ex-protect { grid-area: protect; }
+
+/* 专业模式确认下单按钮容器：紧凑排布在表单底部，腾出垂直空间 */
+.ex-pro-dock-body .ex-trade-footer {
+  flex-shrink: 0;
+  padding-top: 4px;
+  display: flex;
+  justify-content: center;
+}
+
+.ex-pro-dock-body .ex-trade-submit {
+  width: 100%;
+  max-width: 360px;
+  height: 46px !important;
+  min-height: 46px !important;
+  box-sizing: border-box;
+  padding: 0 24px !important;
+  margin: 0 auto !important;
+  border-radius: 6px !important;
+  font-size: var(--wui-fs-s) !important;
+  font-weight: 700 !important;
+  cursor: pointer;
+  transition:
+    background-color 120ms cubic-bezier(0.2, 0, 0, 1),
+    border-color 120ms cubic-bezier(0.2, 0, 0, 1),
+    box-shadow 120ms cubic-bezier(0.2, 0, 0, 1),
+    transform 120ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* 矮视口（1366×768 桌面）再压一档：提示行让位给表单本体 */
+
+
+.ex-pro-dock-body .ex-preview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px 14px;
+}
+
+.ex-pro-dock-body .ex-liq-block {
+  grid-column: 1 / -1;
+}
+
+/* 右栏窄卡：信息行内排，压掉多余的竖排高度（2026-11-06 船长反馈） */
+.ex-pro-side-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.ex-pro-side-panel .ex-positions,
+.ex-pro-side-panel .ex-records {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.ex-pro-side-panel .ex-pos-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  /* 面板原来的 262px 上限会留一大截空白，右栏里让它吃满 */
+  max-height: none;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.ex-pro-side-panel .ex-pos-card-list {
+  flex: 0 0 auto;
+  padding-bottom: 2px;
+}
+
+.ex-pro-side-panel .ex-pos-card-list {
+  padding: 0;
+  gap: 2px;
+}
+
+.ex-pro-side-panel .ex-pos-card-item {
+  padding: 4px 7px;
+  gap: 1px;
+}
+
+.ex-pro-side-panel .ex-pos-head-left {
+  gap: 4px;
+  min-width: 0;
+}
+
+.ex-pro-side-panel .ex-pos-detail-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px 10px;
+  padding-top: 3px;
+}
+
+.ex-pro-side-panel .ex-pos-detail-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ex-pro-side-panel .ex-pos-detail-item > b {
+  white-space: nowrap;
+}
+
+.ex-pro-side-panel .ex-pos-human-item {
+  flex-basis: 100%;
+}
+
+/* 右栏底部账户概览：把余下空间用起来 */
+.ex-pro-side-foot {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 10px;
+  padding: 6px 8px;
+  border-top: 1px solid rgb(var(--wui-border));
+  background: rgb(var(--wui-bg-deep) / 0.6);
+}
+
+.ex-pro-side-stat {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  font-size: var(--wui-fs-2xs);
+  color: rgb(var(--wui-text-dim));
+}
+
+.ex-pro-side-stat > b {
+  font-family: var(--wui-mono);
+  font-variant-numeric: tabular-nums;
+  color: rgb(var(--wui-text));
+  white-space: nowrap;
+}
+
+.ex-pro-side-usage {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ex-pro-side-usage-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: var(--wui-fs-2xs);
+  color: rgb(var(--wui-text-dim));
+}
+
+.ex-pro-side-usage-head > b {
+  font-family: var(--wui-mono);
+  color: rgb(var(--wui-text));
+}
+
+.ex-pro-side-usage-track {
+  height: 4px;
+  border-radius: 2px;
+  background: rgb(var(--wui-bg-deep));
+  overflow: hidden;
+}
+
+.ex-pro-side-usage-fill {
+  height: 100%;
+  background: rgb(var(--wui-accent) / 0.75);
+  transition: width 0.2s ease;
+}
+
+.ex-pro-side-usage-fill.is-danger {
+  background: rgb(var(--wui-tone-gain));
+}
+
+.ex-pro-side-stat > b.is-danger {
+  color: rgb(var(--wui-tone-gain));
+}
+
+/* 右栏：持仓、委托与流水 */
+.ex-pro-side-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  flex-shrink: 0;
+  background: rgb(var(--wui-bg-deep));
+  border-bottom: 1px solid rgb(var(--wui-border));
+}
+
+.ex-pro-side-tab {
+  flex: 1 1 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: rgb(var(--wui-text-dim));
+  font-size: var(--wui-fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ex-pro-side-tab:hover {
+  color: rgb(var(--wui-text));
+  background: rgb(var(--wui-bg-hover));
+}
+
+.ex-pro-side-tab.is-active {
+  color: rgb(var(--wui-accent));
+  background: rgb(var(--wui-accent) / 0.15);
+  border-color: rgb(var(--wui-accent) / 0.4);
+}
+
+.ex-pro-side-panel {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.ex-pro-side-panel .ex-positions,
+.ex-pro-side-panel .ex-records {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+/* 悬浮读数卡：只显示当前这根蜡烛，其他信息留在各自面板里 */
+.ex-kline-tip {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  min-width: 118px;
+  padding: 6px 8px;
+  border: 1px solid rgb(var(--wui-border));
+  border-radius: 4px;
+  background: rgb(var(--wui-bg-panel) / 0.97);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.55);
+  font-family: var(--wui-mono);
+  font-size: var(--wui-fs-2xs);
+  line-height: 1.55;
+  font-variant-numeric: tabular-nums;
+  color: rgb(var(--wui-text));
+}
+
+.ex-kline-tip-time {
+  margin-bottom: 2px;
+  color: rgb(var(--wui-text-dim));
+}
+
+.ex-kline-tip-row {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  align-items: baseline;
+  column-gap: 6px;
+}
+
+.ex-kline-tip-row > span {
+  color: rgb(var(--wui-text-dim));
+}
+
+.ex-kline-tip-row > b {
+  font-weight: 600;
+  white-space: nowrap;
+  text-align: left;
 }
 
 .ex-pro-chart-wrap .ex-chart {
   flex: 1;
   min-height: 0;
+}
+
+/* 专业界面的图表吃掉中栏剩余高度（内层 .ex-chart-wrap 在简单界面仍是固定 220） */
+.ex-pro-chart-wrap .ex-chart-wrap {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 220px;
 }
 
 /* ── 多空博弈张力槽 ── */
@@ -6555,7 +7203,7 @@ html body .app-root.is-layout-modern .ex-page .ex-simple-big-action-btn:disabled
   min-width: 0;
   border: 1px solid rgb(var(--wui-border));
   border-radius: 6px;
-  background: rgb(var(--wui-bg-panel) / 0.5);
+  background: rgb(var(--wui-bg-panel));
   overflow: hidden;
 }
 
@@ -6652,9 +7300,54 @@ html body .app-root.is-layout-modern .ex-page .ex-simple-big-action-btn:disabled
 }
 
 .ex-simple-finance {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.ex-simple-finance .ex-bond {
+  /* 按内容高度排，不随右栏拉伸：否则全屏下内容顶上、按钮沉底，中间空一大块 */
+  flex: 0 0 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: rgb(var(--wui-bg-panel)) !important;
+  border: 1px solid rgb(var(--wui-border)) !important;
+}
+
+.ex-simple-finance .ex-bond-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ex-simple-finance .ex-bond-actions {
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+.ex-simple-finance .ex-preview-row {
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgb(var(--wui-bg-field) / 0.55);
+  border: 1px solid rgb(var(--wui-border) / 0.4);
+}
+
+.ex-simple-finance .ex-preview-row.is-bond-highlight {
+  background: rgb(var(--wui-tone-gain) / 0.12);
+}
+
+.ex-simple-finance .ex-bond-hint {
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: rgb(var(--wui-bg-field) / 0.5);
+  border-left: 2px solid rgb(var(--wui-accent));
 }
 
 /* ── 六人格对手盘（右栏「对手盘」页签） ── */
@@ -6765,3 +7458,558 @@ html body .app-root.is-layout-modern .ex-page .ex-simple-big-action-btn:disabled
 
 .ex-strategy-events { border-top: 1px solid rgb(var(--wui-border)); padding: 8px 0; margin-top: 8px; font-size: var(--wui-fs-xs); }
 .ex-strategy-event { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; padding: 4px 0; align-items: start; }
+
+/* 矮视口适配放文件末尾，确保覆盖前面的同优先级规则 */
+@media (max-height: 820px) {
+  .ex-pro-dock-body { padding: 4px 6px 6px; }
+  .ex-pro-dock-body .ex-trade-body { gap: 2px 10px; }
+  .ex-pro-dock-body .ex-mode-hint { display: none; }
+  /* 1366×768：盘口条让位，图表保 210，其余给下单区 */
+  .ex-pro-sentiment { display: none; }
+  .ex-pro-chart-wrap { flex: 1 1 auto; min-height: 150px; }
+  .ex-pro-chart-wrap .ex-chart-wrap { min-height: 110px; }
+  .ex-chart-meta { display: none; }
+  .ex-pro-dock-body .ex-field-leverage .ex-field-header { display: none; }
+  .ex-pro-dock-body .ex-input { height: 30px; }
+}
+
+/* 1366×768：理财与基金一屏放全（船长 2026-11-06：不能出现滚动条） */
+@media (max-height: 820px) {
+  .ex-simple-finance {
+    gap: 6px;
+  }
+
+  .ex-simple-finance .ex-panel-head {
+    display: none;
+  }
+
+  /* 2026-11-06 船长令：字段精简后单列即可一屏放下，不再做两列 */
+  .ex-simple-finance .ex-bond-body {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding-bottom: 2px;
+  }
+
+  .ex-simple-finance .ex-bond-body > .ex-preview-row {
+    padding: 3px 6px;
+    gap: 4px;
+  }
+
+  .ex-simple-finance .ex-bond-name {
+    gap: 6px;
+  }
+
+  .ex-simple-finance .ex-bond-field-head {
+    gap: 4px;
+  }
+
+  .ex-simple-finance .ex-bond-actions {
+    padding-top: 2px;
+  }
+
+  .ex-simple-finance .ex-input {
+    height: 26px;
+  }
+
+  .ex-simple-finance .ex-bond-hint {
+    padding: 3px 6px;
+  }
+
+  .ex-simple-finance .ex-bond-name {
+    font-size: var(--wui-fs-xs);
+  }
+
+  .ex-simple-finance .ex-input {
+    height: 24px;
+  }
+
+  .ex-simple-finance .ex-bond-actions button {
+    height: 26px;
+  }
+}
+
+/* 1366×768：简单界面中栏一屏放下（图表让一档，买卖舱收紧凑） */
+@media (max-height: 820px) {
+  .ex-simple-col-mid,
+  .ex-simple-main {
+    gap: 6px;
+    overflow-y: hidden;
+  }
+
+  .ex-simple-chart-section {
+    flex: 1 1 160px;
+    min-height: 140px;
+  }
+
+  .ex-simple-trade-card {
+    gap: 4px;
+    padding: 6px 10px;
+  }
+
+  .ex-simple-trade-tab {
+    height: 34px;
+  }
+
+  .ex-simple-trade-body,
+  .ex-simple-trade-form {
+    gap: 4px;
+  }
+
+  /* 四行前馈两两并排，省一半高度 */
+  .ex-simple-trade-preview {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 1px 10px;
+  }
+
+  .ex-simple-trade-hint {
+    padding: 2px 6px;
+    font-size: var(--wui-fs-2xs);
+  }
+
+  .ex-simple-big-action-btn {
+    height: 38px;
+  }
+}
+
+/* 2026-11-06 船长令：简单界面背景与其他页面统一（0.55，styles-modern 常用值） */
+.ex-simple-sidebar,
+.ex-simple-header,
+.ex-simple-chart-card,
+.ex-simple-trade-card,
+.ex-simple-pos-card,
+.ex-simple-book,
+.ex-simple-finance .ex-bond {
+  background: rgb(var(--wui-bg-panel) / 0.84) !important;
+}
+
+/* 与舰船页同一套叠法：整页先垫一层柔和底，卡片再叠半透明，星空只在页边露出 */
+.ex-page {
+  background: rgb(var(--wui-bg-panel) / 0.58);
+}
+
+/* ── 专业终端下单区：一屏放满，不出滚动条（2026-11-06 船长令） ── */
+.ex-pro-dock-body .ex-field-leverage {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ex-pro-dock-body .ex-field-leverage .ex-field-header {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  min-width: 44px;
+  margin: 0;
+}
+
+.ex-pro-dock-body .ex-field-leverage .ex-lev-capsules {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ex-pro-dock-body .ex-preview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 2px 10px;
+}
+
+/* 每行默认横跨两列，只有纯读数行两两并排 */
+.ex-pro-dock-body .ex-preview > * {
+  grid-column: 1 / -1;
+}
+
+.ex-pro-dock-body .ex-preview > .ex-preview-row {
+  grid-column: auto;
+}
+
+.ex-pro-dock-body .ex-liq-block {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 2px 10px;
+}
+
+.ex-pro-dock-body .ex-liq-block > .ex-preview-row {
+  grid-column: auto;
+}
+
+.ex-pro-dock-body .ex-liq-block > .ex-liq-sentence {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.ex-pro-dock-body .ex-preview-row {
+  padding: 0;
+  line-height: 1.5;
+}
+
+.ex-pro-dock-body .ex-field-qty .ex-quick-row {
+  gap: 3px;
+}
+
+.ex-pro-dock-body .ex-quick-btn {
+  min-height: 20px;
+  height: 20px;
+}
+
+.ex-pro-dock-body .ex-trade-kind-seg {
+  min-height: 26px;
+}
+
+/* 下单区改成「内容多高就多高」，图表让位，彻底不出现滚动条 */
+.ex-pro-dock {
+  flex: 0 0 auto;
+  max-height: none;
+}
+
+/* 杠杆倍数并进胶囊行：省掉一行标题，当前倍数由选中态与右侧徽标表达 */
+.ex-pro-dock-body .ex-field-leverage .ex-field-header {
+  display: none;
+}
+
+/* 下单区 tab：高频切换，只给颜色与缩放，120ms */
+.ex-pro-dock-tab {
+  transition:
+    background-color 120ms cubic-bezier(0.2, 0, 0, 1),
+    border-color 120ms cubic-bezier(0.2, 0, 0, 1),
+    color 120ms cubic-bezier(0.2, 0, 0, 1),
+    transform 120ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.ex-pro-dock-tab:active {
+  transform: scale(0.96);
+}
+
+.ex-pro-dock-tab:focus-visible {
+  outline: 2px solid rgb(var(--wui-accent));
+  outline-offset: 2px;
+}
+
+/* 专业模式确认下单主按钮（2026-11-06：融入星舰 HUD 主题，实体亮金橙黄边框 + 实心不透明文字 + 深邃温润发光金黄底） */
+.ex-pro-side-cta {
+  flex: 0 0 auto;
+  padding: 6px 8px 8px;
+  border-top: 1px solid rgb(var(--wui-border));
+}
+
+.ex-pro-side-cta .ex-trade-submit,
+.ex-pro-dock-body .ex-trade-submit {
+  width: 100%;
+  height: 46px !important;
+  min-height: 46px !important;
+  border-radius: 6px !important;
+  font-size: var(--wui-fs-s) !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.5px !important;
+  padding: 0 24px !important;
+  box-sizing: border-box;
+}
+
+.ex-pro-side-cta .ex-trade-submit:not(:disabled):not(.is-blocked),
+.ex-pro-dock-body .ex-trade-submit:not(:disabled):not(.is-blocked) {
+  border: 1px solid rgb(var(--wui-amber-3)) !important;
+  background:
+    linear-gradient(180deg, rgb(var(--wui-amber-3) / 0.28) 0%, rgb(var(--wui-amber-strong) / 0.12) 100%),
+    rgb(var(--wui-bg-field)) !important;
+  color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+  box-shadow:
+    0 0 10px rgb(var(--wui-amber-strong) / 0.35),
+    inset 0 1px 0 rgb(255 255 255 / 0.35),
+    inset 0 0 12px rgb(var(--wui-amber-3) / 0.2) !important;
+  cursor: pointer;
+  transition:
+    background-color 120ms cubic-bezier(0.2, 0, 0, 1),
+    border-color 120ms cubic-bezier(0.2, 0, 0, 1),
+    box-shadow 120ms cubic-bezier(0.2, 0, 0, 1),
+    transform 120ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.ex-pro-side-cta .ex-trade-submit:hover:not(:disabled):not(.is-blocked),
+.ex-pro-dock-body .ex-trade-submit:hover:not(:disabled):not(.is-blocked) {
+  border-color: rgb(var(--wui-flag)) !important;
+  background:
+    linear-gradient(180deg, rgb(var(--wui-amber-3) / 0.38) 0%, rgb(var(--wui-amber-strong) / 0.18) 100%),
+    rgb(var(--wui-bg-hover)) !important;
+  color: #ffffff !important;
+  box-shadow:
+    0 0 16px rgb(var(--wui-amber-strong) / 0.5),
+    inset 0 1px 0 rgb(255 255 255 / 0.5),
+    inset 0 0 16px rgb(var(--wui-amber-3) / 0.3) !important;
+}
+
+.ex-pro-side-cta .ex-trade-submit:active:not(:disabled):not(.is-blocked),
+.ex-pro-dock-body .ex-trade-submit:active:not(:disabled):not(.is-blocked) {
+  transform: scale(0.98);
+  border-color: rgb(var(--wui-amber-strong)) !important;
+  background:
+    linear-gradient(180deg, rgb(var(--wui-amber-strong) / 0.2) 0%, rgb(var(--wui-amber-3) / 0.08) 100%),
+    rgb(var(--wui-bg-deep)) !important;
+  box-shadow:
+    0 0 6px rgb(var(--wui-amber-strong) / 0.3),
+    inset 0 1px 2px rgba(0, 0, 0, 0.4) !important;
+}
+
+.ex-pro-side-cta .ex-trade-submit:disabled,
+.ex-pro-side-cta .ex-trade-submit.is-blocked,
+.ex-pro-dock-body .ex-trade-submit:disabled,
+.ex-pro-dock-body .ex-trade-submit.is-blocked {
+  background: rgb(var(--wui-text-dim) / 0.1) !important;
+  border: 1px solid rgb(var(--wui-border)) !important;
+  color: rgb(var(--wui-text-dim)) !important;
+  box-shadow: none !important;
+  cursor: not-allowed;
+  transform: none !important;
+  text-shadow: none !important;
+}
+
+/* 订单类型并进价格标题行：省一行，语义也更近（2026-11-06） */
+.ex-pro-dock-body .ex-kind-seg {
+  display: inline-flex;
+  border: 1px solid rgb(var(--wui-border));
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.ex-pro-dock-body .ex-kind-btn {
+  min-height: 20px;
+  padding: 0 9px;
+  border: 0;
+  background: transparent;
+  color: rgb(var(--wui-text-dim));
+  font-family: var(--wui-font);
+  font-size: var(--wui-fs-2xs);
+  cursor: pointer;
+  transition: background-color 120ms cubic-bezier(0.2, 0, 0, 1), color 120ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.ex-pro-dock-body .ex-kind-btn:hover {
+  color: rgb(var(--wui-text));
+}
+
+.ex-pro-dock-body .ex-kind-btn.is-on {
+  background: rgb(var(--wui-accent) / 0.18);
+  color: rgb(var(--wui-accent));
+}
+
+/* 下单表单：数量行内并排快捷比例（2026-11-06 重排） */
+.ex-pro-dock-body .ex-input-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ex-pro-dock-body .ex-quick-row {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 4px;
+  margin: 0;
+}
+
+.ex-pro-dock-body .ex-quick-btn {
+  min-width: 46px;
+  padding: 0 8px;
+}
+
+.ex-pro-dock-body .ex-input-row .ex-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* 1366×768：下单区再收紧，把高度让给 K 线（2026-11-06 船长令） */
+@media (max-height: 820px) {
+  .ex-pro-dock-body .ex-field-qty .ex-dim {
+    display: none;
+  }
+
+  .ex-pro-dock-body .ex-field-qty,
+  .ex-pro-dock-body .ex-field-price {
+    gap: 2px;
+  }
+
+  .ex-pro-dock-body .ex-input {
+    height: 26px;
+    padding: 3px 8px;
+  }
+
+  .ex-pro-dock-body .ex-liq-sentence {
+    display: none;
+  }
+
+  .ex-pro-dock-body .ex-lev-pill {
+    min-height: 20px;
+  }
+
+  .ex-pro-dock-body .ex-trade-body {
+    gap: 3px 10px;
+  }
+
+  .ex-pro-dock-body .ex-preview-row {
+    line-height: 1.4;
+  }
+}
+
+/* 1366×768：强平价这行让位（下单前确认弹窗仍会列出），保证字段全部可见 */
+@media (max-height: 820px) {
+  .ex-pro-dock-body .ex-liq-block {
+    display: none;
+  }
+}
+
+/* 再收一点点，让「本次花费」下面那个框的底边完整露出来 */
+.ex-pro-dock-body .ex-preview {
+  gap: 1px 10px;
+}
+
+.ex-pro-dock-body .ex-preview-row {
+  line-height: 1.35;
+}
+
+.ex-pro-dock-body .ex-liq-block {
+  margin: 0;
+}
+
+.ex-pro-dock {
+  padding-bottom: 2px;
+}
+
+/* 再挤 10px 出来，让强平价框的底边完整可见（2026-11-06 船长要求） */
+.ex-pro-dock-body {
+  padding: 3px 6px 4px !important;
+}
+
+.ex-pro-dock-body .ex-preview-row {
+  padding-top: 1px;
+  padding-bottom: 1px;
+}
+
+.ex-pro-dock-body .ex-liq-block {
+  padding: 2px 4px;
+}
+
+/* 修：杠杆胶囊/快捷比例被压扁 —— 输入行给足高度，子项各自锁定身高 */
+.ex-pro-dock-body .ex-input-row {
+  min-height: 34px;
+  align-items: center;
+}
+
+.ex-pro-dock-body .ex-input-row .ex-lev-inline {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 3px;
+  padding: 2px;
+  height: 32px;
+  box-sizing: border-box;
+}
+
+.ex-pro-dock-body .ex-input-row .ex-lev-inline .ex-lev-pill {
+  height: 26px;
+  min-height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ex-pro-dock-body .ex-input-row .ex-quick-row {
+  height: 34px;
+  align-items: center;
+}
+
+/* 回滚：杠杆恢复独立一行（塞进输入行在窄屏会挤爆） */
+.ex-pro-dock-body .ex-trade-body {
+  grid-template-areas:
+    "lev"
+    "qty"
+    "price"
+    "preview"
+    "protect";
+}
+
+/* 整体上移：贴近顶部三个 tab */
+.ex-pro-dock-body {
+  padding-top: 0 !important;
+}
+
+.ex-pro-dock-body .ex-trade-body {
+  row-gap: 3px;
+}
+
+/* 矮一点点的窗口也别裁：强平说明句收起，只留数字行 */
+@media (max-height: 940px) {
+  .ex-pro-dock-body .ex-liq-sentence {
+    display: none;
+  }
+}
+
+.ex-pro-dock-body {
+  padding-bottom: 2px !important;
+}
+
+/* 最后 6px：tab 高度与预览间距各收一点 */
+.ex-pro-dock-tabs .ex-pro-dock-tab {
+  min-height: 26px;
+}
+
+.ex-pro-dock-body .ex-preview {
+  gap: 0 10px;
+}
+
+/* 1366×768 桌面端：利用中栏宽度并排输入，完整显示且不在表单内滚动 */
+@media (max-height: 940px) and (min-width: 1100px) {
+  .ex-pro-dock {
+    flex: 0 0 auto;
+    max-height: none;
+  }
+
+  .ex-pro-chart-wrap {
+    flex: 1 1 auto;
+    min-height: 150px;
+  }
+
+  .ex-pro-dock-body {
+    padding-top: 4px !important;
+    padding-bottom: 6px !important;
+  }
+
+  .ex-pro-dock-body .ex-trade-body {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      "lev lev"
+      "qty price"
+      "preview preview"
+      "protect protect";
+    gap: 4px 12px;
+    overflow: visible;
+  }
+
+  .ex-pro-dock-body .ex-input-row,
+  .ex-pro-dock-body .ex-input-row .ex-quick-row {
+    min-height: 26px;
+    height: 26px;
+  }
+
+  .ex-pro-dock-body .ex-input-row .ex-quick-row {
+    flex-wrap: nowrap;
+  }
+
+  .ex-pro-dock-body .ex-quick-btn {
+    min-width: 36px;
+    height: 26px;
+    padding: 0 5px;
+  }
+
+  .ex-pro-dock-body .ex-preview {
+    padding: 4px 6px;
+  }
+
+  /* 覆盖前面的矮屏隐藏规则，强平数字与说明都保留 */
+  .ex-pro-dock-body .ex-liq-block {
+    display: grid;
+  }
+
+  .ex-pro-dock-body .ex-liq-sentence {
+    display: block;
+  }
+}
