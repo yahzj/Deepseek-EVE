@@ -45,12 +45,16 @@ export const BGM_CROSSFADE_MS = 2500
 export const AMBIENT_CROSSFADE_MS = 1500
 export const VOLUME_FADE_MS = 250
 
-/** 默认偏好（船长 2026-11-02 确认：总音量 70%、初始不静音；音乐 55% / 环境 45%；战斗音高 ±100 音分） */
+/**
+ * 默认偏好（**船长 2026-11-05 指定**：总音量 100%、初始不静音；
+ * 音乐 15% / 环境 50% / 警报 70% / 战斗 100% / 生产 50% / 界面 50%；战斗音高 ±100 音分）。
+ * 已存过偏好的档沿用存档值，这里只影响首次安装与「恢复默认」。
+ */
 export function defaultSfxPrefs(): SfxPrefs {
   return {
     muted: false,
-    master: 0.7,
-    categories: { music: 0.55, ambient: 0.45, alarm: 1, combat: 0.6, progress: 0.7, ui: 0.5 },
+    master: 1,
+    categories: { music: 0.15, ambient: 0.5, alarm: 0.7, combat: 1, progress: 0.5, ui: 0.5 },
     pitchJitterCents: PITCH_JITTER_MAX_CENTS,
   }
 }

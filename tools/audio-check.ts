@@ -323,8 +323,19 @@ for (const id of allL10nIds) {
 
 const defaults = defaultSfxPrefs()
 const muted = { ...defaults, muted: true }
-check(effectiveGain('combat-fire', defaults) === 0.21, `默认增益：combat-fire 应为 0.21，实际 ${effectiveGain('combat-fire', defaults)}`)
+check(effectiveGain('combat-fire', defaults) === 0.5, `默认增益：combat-fire 应为 0.5，实际 ${effectiveGain('combat-fire', defaults)}`)
 check(effectiveGain('invasion-alarm', defaults) === 0.7, `默认增益：invasion-alarm 应为 0.7，实际 ${effectiveGain('invasion-alarm', defaults)}`)
+// 默认音量表（船长 2026-11-05 指定）：总 100% / 音乐 15% / 环境 50% / 警报 70% / 战斗 100% / 生产 50% / 界面 50%
+check(
+  defaults.master === 1 &&
+    defaults.categories.music === 0.15 &&
+    defaults.categories.ambient === 0.5 &&
+    defaults.categories.alarm === 0.7 &&
+    defaults.categories.combat === 1 &&
+    defaults.categories.progress === 0.5 &&
+    defaults.categories.ui === 0.5,
+  `默认音量表应为 总100/音乐15/环境50/警报70/战斗100/生产50/界面50，实际 ${JSON.stringify({ master: defaults.master, ...defaults.categories })}`,
+)
 check(effectiveGain('combat-fire', muted) === 0, '静音时所有音效增益必须为 0')
 check(clampVolume(-1) === 0 && clampVolume(2) === 1 && clampVolume(Number.NaN) === 0, '音量钳制边界错误')
 
