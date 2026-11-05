@@ -33,7 +33,6 @@
 | 第二阶段空间站 | `docs/design/human-revival-station.md`看既有框架 → `docs/design/human-revival-station-research-20261018.md`看总览摘要与六份主题稿；玩家站仍仅设计，未决方案不能当已实现 |
 | 第三方审查跟进 | `docs/review/guoqing-audit-followup.md`；旧报告需船长点名查阅 |
 | 复现门槛与合成档 | `docs/test-saves/README.md`及该功能说明 |
-| B类提交审批 | `docs/git-gate-approval.md` |
 | 找当前文档 | `npm run docs:index`生成的`docs/INDEX.md`；索引不授予实施或历史阅读权限 |
 
 ## 维护

@@ -46,8 +46,11 @@ ui-ux-pro-max 缺失；wiki MCP 未注入，按文件查询。Serena 调用期�
 
 - 收尾检查：arch:guard、scope:check及docs:index通过；生产运行状态0条、既有占位策略2条，未自动执行；部署后panic/fatal/settle aborted日志0条。
 - 公告待审草稿（未写入announcements）：交易百分比与账户同步；简易理财和委托入口调整；专业历史行情和全屏布局修复；杠杆预算预览、三种量化策略及真实运行记录。
+<<<<<<< Updated upstream
 
 ## Git交付验证（2026-11-05）
 船长明确要求git上去，并在并行工作区变动后再次授权继续提交。为保留主工作区314项其他暂存内容，本批从GitHub Desktop暂存备份精确恢复32个股市相关文件，在独立工作树基于origin/main提交。
 稳定快照完整core回归：527个文件，525通过、2失败；7286项中7272通过、5失败、9跳过。失败为desktop-background-pump四项缺node:child_process隔离、tooltip-readability一项visibility字段断言。未加本批修改的origin/main同两组复测，重现全部5项失败，属于基线现状，本批不扩域修改。
 四项固定检查、股市5专项、隐藏Electron3组与build全部通过。提交与推送不等同于观感或真实账户跨回合验收；原stash保留以免删除其他人的规则改动。
+=======
+>>>>>>> Stashed changes

@@ -216,7 +216,6 @@
 | 关注点 | 唯一实现 | 护栏 |
 |---|---|---|
 | 正式工具与临时探针的区分与收尾 | 约定 §十（`tools/xxx.ts` vs `tools/_*.ts`） | `npm run tools:audit` |
-| 提交钩子B类审批范围与暂存内容绑定 | `tools/git-gate-approval.cjs`；本工作树Git目录审批记录，`.githooks/pre-commit` / `post-commit`调用 | `git-gate-approval-20261004.test.ts`：精确批准、变更失效、技术失败拒绝与成功消费 |
 | 非归档文档索引 | `docs/INDEX.md`（仅由 `npm run docs:index` 生成） | `docs:index --check`；读取前跳过archive目录 |
 | 过程归档与历史禁读 | 开发约定§十五、`AGENTS.md` | 当前结论与未决摘要人工核对，归档原文按字节校验 |
 | 工作文档 → 归档三步 | 约定 §十五 | 人工核（本批列出） |

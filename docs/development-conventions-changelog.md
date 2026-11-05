@@ -2,6 +2,13 @@
 
 > 本页记录当前规则维护，不是开工必读。历史流水已移入`docs/archive/`；无船长明确查阅要求禁止读取或检索，包括Git历史。
 
+## 2026-11-05 移除提交闸门与B类审批工具（船长指示）
+
+- 依据：船长指示「git的闸门去掉吧」，并确认「连仓库规则一起删」。
+- 生效范围：删除`.githooks/pre-commit`、`.githooks/post-commit`、`tools/git-gate-approval.cjs`、`docs/git-gate-approval.md`、`packages/core/tests/git-gate-approval-20261004.test.ts`；移除`package.json`的`commit:approval`脚本；更新`AGENTS.md`§3、`docs/development-conventions.md`§二、`docs/catalog.md`、`docs/single-source.md`。
+- 现行规则：提交不再有pre-commit钩子拦截；`typecheck`、`content:check`、`l10n:check`、`ui:rot-check`四项技术检查仍须在提交前由经办人手动跑完；原B类路径审批（存档/测试档/铁人/标定表）不再有工具登记，涉及高风险路径的改动继续按§一确认闸门与船长裁定执行。
+- 取代：2026-09-27「提交闸门」与2026-10-04「Git提交审批放行」两条机制自本日起失效；原文归档不因此获得查阅授权。
+
 ## 2026-11-04 接入 Obsidian `.wiki` 知识库（必须调用）
 
 - 依据：船长指示「Obsidian的.wiki知识库也要加入到agent.md要调用起来」。
