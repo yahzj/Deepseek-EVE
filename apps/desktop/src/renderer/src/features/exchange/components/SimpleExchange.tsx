@@ -137,8 +137,10 @@ export function SimpleExchange({
           {sideTab === 'orders' ? (
             /* 持仓与委托合成一块：列表都覆盖全部股票，不随选中标的切换 */
             <div className="ex-simple-book">
+              <div className="ex-simple-group-title">{T.simpleBookTitle}</div>
               <SimplePosition client={client} snap={snap} onToast={onToast} />
               <div className="ex-simple-book-orders">
+                <div className="ex-simple-group-title">{T.myOrdersTitle}</div>
                 <MyOrders client={client} onToast={onToast} variant="compact" />
               </div>
             </div>

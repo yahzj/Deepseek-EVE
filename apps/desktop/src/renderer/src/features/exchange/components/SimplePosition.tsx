@@ -131,6 +131,13 @@ export function SimplePosition({ client, snap, onToast }: SimplePositionProps) {
         <div className="ex-simple-pos-empty-inner">
           <div className="ex-simple-pos-empty-title">{T.simpleBookEmptyTitle}</div>
           <span className="ex-dim">{T.simpleEmptyPosHint}</span>
+          <button
+            type="button"
+            className="app-btn is-small ex-simple-pos-go-trade"
+            onClick={() => document.getElementById('ex-simple-cash-amount')?.focus()}
+          >
+            {T.simpleGoTrade}
+          </button>
         </div>
       </div>
     )

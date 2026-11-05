@@ -4393,6 +4393,28 @@
   font-size: var(--wui-fs-xs);
 }
 
+/* 2026-11-05 wiki UI/UX 整改：空态可恢复、分组降密度、可点主按钮的光标提示 */
+.ex-simple-chart-empty {
+  flex-direction: column;
+  gap: 8px;
+}
+.ex-simple-chart-retry,
+.ex-simple-pos-go-trade {
+  flex: 0 0 auto;
+  margin-top: 4px;
+}
+.ex-simple-group-title {
+  flex: 0 0 auto;
+  padding: 6px 8px 2px;
+  color: rgb(var(--wui-text-dim));
+  font-size: var(--wui-fs-2xs);
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+.ex-simple-big-action-btn[aria-disabled='true'] {
+  cursor: help;
+}
+
 /* ── 极简中栏买卖舱 ── */
 .ex-simple-trade-section {
   flex-shrink: 0;

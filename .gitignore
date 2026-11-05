@@ -61,3 +61,4 @@ steam/depot_build_*.vdf
 # 个人工作流（本地使用，不进公开仓库）
 /FAST_WORKFLOW.md
 
+/.codebuddy

@@ -105,3 +105,50 @@ P2 未写独立用例（需构造 transport 与缓存），由 typecheck、静�
 ### 新增待裁决
 9. `mock/history.ts` 成交量口径三选一：①历史合成量改线性时间口径（一根 = 桶内逐笔之和，与 24h 累计自洽）②实时累加改按历史合成量缩放 ③保持现状仅补口径说明。本批未擅自选。
 10. 是否立项引入开源图表库（本批只出对比、未落码、未加依赖）。
+
+## 追加批：简单投资界面 wiki UI/UX 整改（2026-11-05）
+
+状态：实施中，未验收、未发布；经办主代理，分支 main。与在途股市批次合并（船长裁定③「合并」）。
+
+### 授权与一轮裁定
+
+船长原话（对上轮三问）：「1、一起改 2、回合末集合竞价 3、合并」。据此：范围＝文案/反馈/口径 **＋** 方向色与右栏信息密度一起改；现行成交口径＝回合末集合竞价；本批与在途 exchange 批次合并交付。
+
+### 依据与工具
+
+wiki 分层检索（`.wiki/index.md` → 标题/frontmatter 命中 → 精准读；双链仅扩一跳 Enders→诺曼）：`.wiki/references/designing-ux-forms-enders.md`（verified，禁用主按钮是「静默的暴政」、失焦校验、双向实时结算前馈）、`.wiki/references/norman-design-of-everyday-things.md` 与 `.wiki/concepts/human-centered-design.md`（verified，系统表象/评估鸿沟、警告疲劳、撤销优于确认）、`.wiki/references/designing-interfaces-tidwell.md`（verified，Preview / Safe Exploration / 良好默认值）、`.wiki/references/universal-principles-of-design.md`（verified，Forgiveness / 渐进呈现 / 信噪比）、`.wiki/references/color-theory-dan-scott.md`（verified，明度为骨、灰度化仍可辨）、`.wiki/projects/pitfall-stock-exchange.md`（extracted，提交只报「本回合待成交」）、`.wiki/projects/pitfall-ui-ux-perf.md`（extracted，`tabular-nums`）。两页自标非现行规则，冲突时以现行 docs 与代码为准。
+`ui-ux-pro-max` 未注入（§九之八），如实记录并按 wiki＋现行稿替代依据；`dsh-knj-obsidian`、`mcp__serena-eve__*` 未注入，降级 read/grep 只读取证。
+
+### 方案、边界与取舍
+
+- 只改 modern 布局下 `features/exchange/` 与共享 l10n 表；不动 classic、core、服务端、真档、公告、数值与经济。
+- **回合末集合竞价**：依据 `docs/design/stock-exchange-round-model-20261103.md:11,14,36`，服务端统一回合末批量撮合。`SimpleTrade.tsx` 的 `tif:'IOC'` 只是客户端兼容占位、不代表即时成交；本批只统一注释与玩家可见文案，**不改交易契约**（沿用 `exchange-ui-ux-audit-20261104.md` 已完成批次「不改后端协议」边界）。
+- **确认机制**：按 wiki「警告疲劳／Preview／Forgiveness」，不新增确认弹窗，也不接 `round.ts` 未接线的本地队列；撤销能力复用既有「我的委托」撤单（`MyOrders.tsx` 仅 `queued` 可撤、锁定窗口置灰、配额不返还），并在待成交区明确告知。
+- **方向冗余**：`▲/▼` 符号 ＋ 分向动宾文字；不改现行方向色板（上一批刚改、待实机取色与船长观感验收）。
+- **右栏密度**：保留默认「理财与基金」（`exchange-feedback-20261105.md` 在途裁定，不推翻已确认设计），只给 orders 页的持仓/委托加分组标题，不折叠隐藏内容（§九「内容必须完整可达」）。
+
+### 改动清单
+
+| 文件 | 行为变化 |
+| --- | --- |
+| `format.ts` | 新增 `estimateSimpleBet` 单点：股数/手续费/费后实际支出/提交后可用（含全仓费后取整差额），供买卖舱就地前馈 |
+| `SimpleTrade.tsx` | 主按钮改 `aria-disabled` 保持可点，点击时聚焦输入框并说明原因；分向动宾文案＋方向符号；金额前馈明细；待成交列表与 title 统一走 id 的回合末口径；去掉串域校验文案与内联硬编码 |
+| `SimpleChart.tsx` | 12 秒停表改「行情暂未加载」并给「立即重试」按钮（`ensureChartData`） |
+| `SimplePosition.tsx` | 空持仓加「去下注舱」按钮，聚焦中栏输入框 |
+| `SimpleExchange.tsx` / `exchange.css` | orders 页持仓/委托分组标题、空态按钮与分组样式；未改方向色值 |
+| `texts.ts` / `table.ts` | 中文文案调整（见下）+ 新增 `ui.exchangeTexts.462–465` |
+| `tools/exchange-simple-ux.test.ts` | 新增金额前馈 5 条确定性用例 |
+
+**⟪文案调整 2026-11-05⟫**：`272/273`「立即下注·涨/跌」→「提交看涨下注/提交看跌下注」（去即时成交误导、动宾分向）；`283`「左侧下注舱」→「中栏下注舱」（方位纠正）；`TF.simpleOrderDone` 中文「委托」→「下注」（两域隔离）；英文侧按规则保留，既有中英漂移仍列待裁决。
+
+### 验证
+
+- 通过：`npm run typecheck`、`content:check`、`ui:rot-check`（4 子）、`ui:theme-check`（3 子）、`l10n:check`、`arch:guard`、`scope:check`、`npm run build`、股市专项 `exchange-feedback.test.ts` 5/5、新增 `exchange-simple-ux.test.ts` 5/5、`read_lints` 0 诊断。
+- `l10n:check` 曾因他人在途英文迁移批次（清掉 300+ 条 `enDeferred` 并补齐英文、待译登记未同步）临时判红；对方会话自行完成收口，本批只撤回自己新增的 4 条待译登记（4 个新 id 已被对方补上英文），最终重跑通过。期间本批未回滚、未抢修他人内容。
+- 未跑：全量 core 回归（留集中验收）、隐藏 Electron 几何/实机取色、浏览器观感验收、真档。
+
+### 在途冲突与待裁决
+
+1. 开工时 `.gitignore`、`NewsTicker.tsx`、`HttpExchangeClient.ts`、`texts.ts`、`table.ts` 有他人未提交改动；工作期间 `table.ts` 曾出现 `},,` 语法损坏中间态，随后对方会话自行修复并补齐英文。本批未回滚、未抢修他人内容。`docs/design/exchange-feedback-20261105.md:49,55,56` 的未解决冲突标记本批未碰，等待协调。
+2. 合并批次仍含他人未提交文件（英文迁移、快讯轮播、`.gitignore`），本批未擅自提交、未推送；是否由本批一并本地提交需与对方会话/船长确认。
+3. 方向色是否补明度/形状冗余通道（本批只加符号与文字）；提交后短撤销窗口是否要接 `round.ts` 本地队列。

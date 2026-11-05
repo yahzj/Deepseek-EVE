@@ -240,7 +240,18 @@ export function SimpleChart({ client, code, quote, tick }: SimpleChartProps) {
       >
         {coords.length < 2 ? (
           <div className="ex-simple-chart-empty">
-            {stalled ? T.chartNoData : `${T.chartLoading} ${loadPct}%`}
+            {stalled ? (
+              <>
+                <span className="ex-dim">{T.dataEmptyHint}</span>
+                <button
+                  type="button"
+                  className="app-btn is-small ex-simple-chart-retry"
+                  onClick={() => { void client.ensureChartData?.(code, clientPeriod) }}
+                >
+                  {T.dataRetry}
+                </button>
+              </>
+            ) : `${T.chartLoading} ${loadPct}%`}
           </div>
         ) : (
           <>
