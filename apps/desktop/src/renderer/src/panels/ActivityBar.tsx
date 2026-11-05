@@ -10,7 +10,7 @@
  */
 import { activityOverview, scanAwaitingView, scanStatus, SYNAPTIC_ACCELERANT_MUL } from '@whale/core'
 import type { ActivityView } from '@whale/core'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
@@ -23,6 +23,7 @@ import { stopLabel, doStop } from './activityStopLabel'
 import { fmtDuration } from '../i18n/fmt'
 import { explorationActivityText } from '../ui/explorationActivityText'
 import { createExchangeClient } from '../features/exchange/factory'
+import { CLOUD_SESSION_CHANGE_EVENT } from '../features/cloud/preferences'
 import type { BondPosition, FundPosition } from '../features/exchange/client'
 import { money, pct } from '../features/exchange/format'
 import '../styles-activity-invasion.css'
@@ -215,7 +216,14 @@ export function ActivityBar({
 
   // ── 深空证券交易所监控（副AI活动最下方，船长 2026-11-03 令） ──
   const [exchTick, bumpExchTick] = useState(0)
-  const exchBundle = useMemo(() => createExchangeClient(), [])
+  // 2026-11-05 游客行情批：登录/退出后换客户端实例（匿名连接的账户数据永远是空的）。
+  const [exchAuthTick, bumpExchAuth] = useReducer((n: number) => n + 1, 0)
+  useEffect(() => {
+    const onChange = (): void => bumpExchAuth()
+    window.addEventListener(CLOUD_SESSION_CHANGE_EVENT, onChange)
+    return () => window.removeEventListener(CLOUD_SESSION_CHANGE_EVENT, onChange)
+  }, [])
+  const exchBundle = useMemo(() => createExchangeClient(), [exchAuthTick])
   useEffect(() => {
     const unsub = exchBundle.client.onTick(() => bumpExchTick((t) => t + 1))
     return unsub

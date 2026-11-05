@@ -125,6 +125,12 @@ export interface RendererTransportOptions {
   reconnectMaxMs?: number
   /** 注入点（探针/测试）：默认用本模块共享的 localStorage 缓存 `marketCache` */
   cache?: MarketCache
+  /**
+   * 允许匿名只读（2026-11-05 游客行情批）：没有令牌时不带 `Authorization` 发 GET 与 WS 订阅，
+   * 拿服务端公开行情；**写请求仍然直接抛 `ExchangeAuthError`**，绝不匿名下单。
+   * 默认 false = 无令牌不产生任何网络请求（联机批原口径，探针/测试也靠它守住）。
+   */
+  allowAnonymous?: boolean
 }
 
 /** 单次 REST 请求超时：回合制下行情接口不该慢于这个值，卡住就报可重试错误 */
@@ -191,6 +197,7 @@ export class RendererTransport implements Transport {
   /** 备用地址；null = 不启用回退（未配置、配置非法或与主地址相同） */
   private readonly fallbackServerUrl: string | null
   private readonly tokenProvider: () => string | null | undefined
+  private readonly allowAnonymous: boolean
   private readonly fetchImpl: typeof fetch
   private readonly webSocketImpl: typeof WebSocket | null
   private readonly visibility: VisibilitySource
@@ -211,6 +218,7 @@ export class RendererTransport implements Transport {
     this.tokenProvider =
       options.tokenProvider ??
       (() => readCloudPreferences().session?.token ?? null)
+    this.allowAnonymous = options.allowAnonymous === true
     this.fetchImpl =
       options.fetchImpl ?? ((input: RequestInfo | URL, init?: RequestInit) => fetch(input, init))
     this.webSocketImpl =
@@ -228,8 +236,9 @@ export class RendererTransport implements Transport {
   /* ═══════════════ REST ═══════════════ */
 
   async request<T>(req: TransportRequest): Promise<T> {
-    // 先取令牌：未登录不该产生任何网络请求（也避免把匿名请求打到生产服务器）。
-    const token = this.requireToken()
+    // 先取令牌：游客（allowAnonymous）只放行只读，写请求仍需登录，绝不匿名产生副作用。
+    const token = this.allowAnonymous ? this.optionalToken() : this.requireToken()
+    if (token === '' && req.method !== 'GET') throw new ExchangeAuthError()
     /** 只有 GET 响应进缓存；下单/划转等写请求永远不缓存、也绝不回退。 */
     const cacheable = req.method === 'GET'
     /**
@@ -242,8 +251,8 @@ export class RendererTransport implements Transport {
       : [this.serverUrl, this.fallbackServerUrl]
     const headers: Record<string, string> = {
       Accept: 'application/json',
-      Authorization: `Bearer ${token}`,
     }
+    if (token !== '') headers.Authorization = `Bearer ${token}`
     if (req.body !== undefined) headers['Content-Type'] = 'application/json'
     for (let index = 0; index < servers.length; index += 1) {
       const serverUrl = servers[index]!
@@ -326,7 +335,8 @@ export class RendererTransport implements Transport {
   /* ═══════════════ WebSocket ═══════════════ */
 
   subscribe(path: string, onMessage: (payload: unknown) => void): Unsubscribe {
-    const token = this.requireToken()
+    // 游客连接不绑账户：服务端据此只推公开帧（account/orders 帧按账户投递，游客收不到）。
+    const token = this.allowAnonymous ? this.optionalToken() : this.requireToken()
     if (this.webSocketImpl === null) {
       throw new ExchangeOfflineError('当前运行环境不支持 WebSocket，无法接收交易所推送')
     }
@@ -375,10 +385,15 @@ export class RendererTransport implements Transport {
   }
 
   private requireToken(): string {
-    const raw = this.tokenProvider()
-    const token = typeof raw === 'string' ? raw.trim() : ''
+    const token = this.optionalToken()
     if (token === '') throw new ExchangeAuthError()
     return token
+  }
+
+  /** 令牌可能为空的版本（游客只读用）：调用方自己决定空令牌是否合法。 */
+  private optionalToken(): string {
+    const raw = this.tokenProvider()
+    return typeof raw === 'string' ? raw.trim() : ''
   }
 
   /** 备用地址归一化：非法或与主地址相同都视为「不启用」，不因一处配置笔误炸掉整个传输层。 */
@@ -400,8 +415,9 @@ export class RendererTransport implements Transport {
   private wsUrlOf(path: string, token: string, serverUrl: string = this.serverUrl): string {
     const url = new URL(path, `${serverUrl}/`)
     url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
-    // 保留调用方已有的 codes/topics/throttle，只补 token（Go 只从 query 读令牌）。
-    url.searchParams.set('token', token)
+    // 保留调用方已有的 codes/topics/throttle，只补 token（Go 只从 query 读令牌）；
+    // 游客没有令牌就不带 token 参数，服务端按匿名连接处理（只推公开帧）。
+    if (token !== '') url.searchParams.set('token', token)
     return url.toString()
   }
 

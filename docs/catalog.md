@@ -26,6 +26,7 @@
 | 深空证券交易所（极简双向/专业重构/标准K线） | `docs/design/deep-space-exchange-pro-refinement-20261103.md`；现行设计稿与视觉/交互规范 |
 | 设置子页面分类 | `docs/design/settings-subpages-20261103.md`；仅重组现有设置项，实施期间为现行工作稿 |
 | 账号与手动云存档设置 | `docs/design/cloud-settings-20261103.md`；本批仅本地合入、不推送；端到端桌面 smoke、全量回归、观感验收未完成，首次注册令牌撤销尚未验证；公网 HTTPS 入口 2026-11-05 起走 8443（见下条） |
+| 股市游客只读（模拟盘移除） | `docs/design/exchange-guest-readonly-20261105.md`；现行口径：未登录＝匿名公开行情只读，操作入口禁用并跳「设置 → 账户」 |
 | 云端入口 8443（绕过腾讯云未备案拦截） | `docs/design/cloud-8443-20261105.md`；现行部署拓扑、验证读数与回滚方式 |
 | 独立在线聊天 | `docs/design/online-chat-20261103.md`；独立导航、只显示聊天记录与在线总人数，桌面/网页端本机验证已完成；后端增强在 `H:\大鲸鱼\deepseek-EVE-Background\docs\chat-deploy-handoff-20261103.md`，待玩家验收与服务器部署联调 |
 | 数值与经济 | 开发约定§一、§二，对应设计稿及校准工具 |

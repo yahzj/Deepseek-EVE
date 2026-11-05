@@ -14,7 +14,9 @@
  *   3. 「理财与基金」内放 BondCard + FundCard。
  * - 紧凑高度，三栏一屏尽览，杜绝页面滚动。
  */
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
+import { Locked } from '@carbon/icons-react'
 import type { ExchangeClient, ExchangeSnapshot } from '../client'
 import type { ToastFn } from '../../../pages/common'
 import type { GameEngine } from '../../../game/engine'
@@ -36,10 +38,49 @@ interface SimpleExchangeProps {
   onToast: ToastFn
   /** 游戏引擎：联机模式下债券走本地存档 ISK + 本地计息 */
   engine: GameEngine
-  /** 当前是否联机模式（模拟盘债券仍走 Mock 客户端） */
-  isServer: boolean
+  /** 已废弃：2026-11-05 移除模拟盘后不再区分数据源，仅为 tools 夹具保留 */
+  isServer?: boolean
+  /** 游客态：交易与持仓/理财面板保留但禁用，点击提示登录（船长 2026-11-05） */
+  guest?: boolean
+  /** 游客点了被禁用的面板：提示登录并打开设置「账户」页 */
+  onRequireLogin?: () => void
   /** 刷新页面快照（基金结算后） */
   onRefresh: () => void
+}
+
+/**
+ * 游客禁用层：面板原样留在下面（变灰、不吃指针事件），整块可点，点了就提示登录。
+ * 键盘可达性靠 `inert`：React 18 的类型里没有这个属性，所以由 ref 直接落到 DOM 上。
+ */
+function GuestLock({
+  locked,
+  label,
+  onUnlock,
+  children,
+}: {
+  locked: boolean
+  label: string
+  onUnlock?: () => void
+  children: ReactNode
+}) {
+  const bodyRef = useRef<HTMLDivElement | null>(null)
+  // `inert` 浏览器早就支持，但 React 18 的类型里没有这个属性 ⇒ 用 ref 直接落属性：
+  // 否则遮罩只挡鼠标，键盘 Tab 仍能钻进被禁用的表单里。
+  useEffect(() => {
+    const el = bodyRef.current
+    if (!el) return
+    if (locked) el.setAttribute('inert', '')
+    else el.removeAttribute('inert')
+  }, [locked])
+  if (!locked) return <>{children}</>
+  return (
+    <div className="ex-guest-lock">
+      <div className="ex-guest-lock-body" ref={bodyRef} aria-hidden="true">{children}</div>
+      <button type="button" className="ex-guest-lock-veil" onClick={onUnlock}>
+        <Locked size={13} /> {label}
+      </button>
+    </div>
+  )
 }
 
 export function SimpleExchange({
@@ -49,7 +90,8 @@ export function SimpleExchange({
   onSelectCode,
   onToast,
   engine,
-  isServer,
+  guest = false,
+  onRequireLogin,
   onRefresh,
 }: SimpleExchangeProps) {
   const quote = snap.stocks.find((s) => s.code === code) ?? snap.quote
@@ -103,9 +145,11 @@ export function SimpleExchange({
           <SimpleChart client={client} code={code} quote={quote} tick={snap.tick} />
         </section>
 
-        {/* 傻瓜买卖舱 */}
+        {/* 傻瓜买卖舱（游客：保留面板但禁用，点击提示登录） */}
         <section className="ex-simple-trade-section">
-          <SimpleTrade client={client} snap={snap} code={code} onToast={onToast} />
+          <GuestLock locked={guest} label={T.guestLockLabel} onUnlock={onRequireLogin}>
+            <SimpleTrade client={client} snap={snap} code={code} onToast={onToast} />
+          </GuestLock>
         </section>
       </main>
 
@@ -134,22 +178,24 @@ export function SimpleExchange({
         </div>
 
         <div className="ex-simple-side-body">
-          {sideTab === 'orders' ? (
-            /* 持仓与委托合成一块：列表都覆盖全部股票，不随选中标的切换 */
-            <div className="ex-simple-book">
-              <div className="ex-simple-group-title">{T.simpleBookTitle}</div>
-              <SimplePosition client={client} snap={snap} onToast={onToast} />
-              <div className="ex-simple-book-orders">
-                <div className="ex-simple-group-title">{T.myOrdersTitle}</div>
-                <MyOrders client={client} onToast={onToast} variant="compact" />
+          <GuestLock locked={guest} label={T.guestLockLabel} onUnlock={onRequireLogin}>
+            {sideTab === 'orders' ? (
+              /* 持仓与委托合成一块：列表都覆盖全部股票，不随选中标的切换 */
+              <div className="ex-simple-book">
+                <div className="ex-simple-group-title">{T.simpleBookTitle}</div>
+                <SimplePosition client={client} snap={snap} onToast={onToast} />
+                <div className="ex-simple-book-orders">
+                  <div className="ex-simple-group-title">{T.myOrdersTitle}</div>
+                  <MyOrders client={client} onToast={onToast} variant="compact" />
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="ex-simple-finance">
-              <BondCard client={client} snap={snap} onToast={onToast} onRefresh={onRefresh} />
-              <FundCard client={client} snap={snap} onToast={onToast} onRefresh={onRefresh} />
-            </div>
-          )}
+            ) : (
+              <div className="ex-simple-finance">
+                <BondCard client={client} snap={snap} onToast={onToast} onRefresh={onRefresh} />
+                <FundCard client={client} snap={snap} onToast={onToast} onRefresh={onRefresh} />
+              </div>
+            )}
+          </GuestLock>
         </div>
       </aside>
     </div>

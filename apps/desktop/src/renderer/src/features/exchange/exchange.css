@@ -2882,16 +2882,94 @@
   white-space: nowrap;
 }
 
-.ex-source-badge.is-mock {
-  border-color: rgb(var(--wui-accent) / 0.65);
-  color: rgb(var(--wui-accent));
-  background: rgb(var(--wui-accent) / 0.08);
+.ex-source-badge.is-guest {
+  border-color: rgb(var(--wui-border-bright));
+  color: rgb(var(--wui-text-dim));
+  background: rgb(var(--wui-bg-hover) / 0.35);
 }
 
 .ex-source-badge.is-server {
   border-color: rgb(var(--wui-gold) / 0.65);
   color: rgb(var(--wui-gold));
   background: rgb(var(--wui-gold) / 0.08);
+}
+
+/* ── 游客只读提示条：紧贴顶栏下方的一整行说明（2026-11-05 游客行情批） ── */
+.ex-guest-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border: 1px solid rgb(var(--wui-gold) / 0.45);
+  border-radius: 5px;
+  background: rgb(var(--wui-gold) / 0.06);
+  color: rgb(var(--wui-text-dim));
+  font-size: var(--wui-fs-xs);
+}
+
+.ex-guest-banner-text {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── 游客禁用层：面板原样保留但压暗、不吃指针事件，整块可点提示登录 ── */
+.ex-guest-lock {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.ex-guest-lock-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  opacity: 0.55;
+  filter: grayscale(0.45);
+  pointer-events: none;
+  user-select: none;
+}
+
+.ex-guest-lock-veil {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0;
+  border: 1px dashed rgb(var(--wui-gold) / 0.5);
+  border-radius: 6px;
+  background: rgb(var(--wui-bg-deep) / 0.32);
+  color: rgb(var(--wui-gold));
+  font-size: var(--wui-fs-xs);
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.ex-guest-lock-veil:hover {
+  background: rgb(var(--wui-gold) / 0.1);
+  border-color: rgb(var(--wui-gold) / 0.85);
+}
+
+.ex-mode-tab.is-guest-locked {
+  opacity: 0.55;
+}
+
+.ex-mode-tab.is-guest-locked:hover {
+  background: transparent;
+}
+
+.ex-mini-btn.is-guest-locked {
+  opacity: 0.62;
+  border-style: dashed;
 }
 
 /* ── 回合倒计时与委托配额徽标组：统一 HUD 胶囊规范 ── */

@@ -63,7 +63,7 @@ import { ExchangePage } from './pages/ExchangePage'
 import { useOnlineChat } from './features/cloud/useOnlineChat'
 import { useMarketRelay } from './features/market/relay/useMarketRelay'
 import type { MapGotoTarget, MapTab, TaskFocusTarget } from './pages/MapPage'
-import type { ToastFn } from './pages/common'
+import type { SettingsPageId, ToastFn } from './pages/common'
 import type { GameEngine } from './game/engine'
 import { SaveManager } from './panels/SaveManager'
 import { SaveReconnect } from './panels/SaveReconnect'
@@ -805,7 +805,7 @@ async function applyLayoutAndReload(): Promise<void> {
   const [modeChoiceImportHold, setModeChoiceImportHold] = useState(false)
   const [showHandbook, setShowHandbook] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
-  const [settingsInitialPage, setSettingsInitialPage] = useState<'interface' | 'save'>('interface')
+  const [settingsInitialPage, setSettingsInitialPage] = useState<SettingsPageId>('interface')
   const [battleOpen, setBattleOpen] = useState(false)
   /** 新档模式选择（铁人 S4b）：重置档案确认后弹一次，选普通/铁人再开局 */
 
@@ -1200,7 +1200,16 @@ async function applyLayoutAndReload(): Promise<void> {
     showToast(tr("ui.App.109"))
   }
 
-  const pageProps = { engine, onToast: showToast }
+  /**
+   * **设置子页直达**（2026-11-05 股市游客批）：页面里遇到「需要登录」的操作时，直接把设置面板
+   * 停在「账户」子页（登入入口在那里），而不是只弹一句提示让玩家自己找。
+   */
+  const openSettingsPage = (page: SettingsPageId = 'interface'): void => {
+    setSettingsInitialPage(page)
+    setShowSettings(true)
+  }
+
+  const pageProps = { engine, onToast: showToast, onOpenSettings: openSettingsPage }
 
   /**
    * **序章·苏醒只剩"演出"**（2026-09-17 教程重做）：线性七步（采集→交付→出售→修复→试炼→技能→分身）、
@@ -1590,7 +1599,7 @@ async function applyLayoutAndReload(): Promise<void> {
             />
             ) : null}
             {page === 'chat' ? (
-              <OnlineChatPage chat={onlineChat} onToast={showToast} onOpenSettings={() => { setSettingsInitialPage('save'); setShowSettings(true); hideActivityWin() }} />
+              <OnlineChatPage chat={onlineChat} onToast={showToast} onOpenSettings={() => { setSettingsInitialPage('account'); setShowSettings(true); hideActivityWin() }} />
             ) : null}
             </div>
           </>

@@ -26,6 +26,7 @@ import { SfxConsole } from './SfxConsole'
 import { BUILD, BUILD_FORM } from '../game/buildInfo'
 import type { GameEngine } from '../game/engine'
 import { CloudSavePanel } from '../features/cloud/CloudSavePanel'
+import type { SettingsPageId } from '../pages/common'
 import './appSettings.css'
 /**
  * **界面字体**（**2026-11-02 船长令**，多轮迭代后的最终口径）：
@@ -71,13 +72,14 @@ import {
   readZoom,
 } from '../ui/uiScale'
 
-type SettingsPage = 'interface' | 'sound' | 'game' | 'save' | 'developer'
+/** 子页 id 与 `pages/common` 的 SettingsPageId 同一口径（账户页 2026-11-05 由「存档」改名并改成登入为主） */
+type SettingsPage = SettingsPageId
 
 const SETTINGS_PAGES: ReadonlyArray<{ id: SettingsPage; labelId: string }> = [
   { id: 'interface', labelId: 'ui.settingsTab.001' },
   { id: 'sound', labelId: 'ui.settingsTab.002' },
   { id: 'game', labelId: 'ui.settingsTab.003' },
-  { id: 'save', labelId: 'ui.settingsTab.004' },
+  { id: 'account', labelId: 'ui.settingsTab.004' },
   { id: 'developer', labelId: 'ui.settingsTab.005' },
 ]
 
@@ -727,14 +729,19 @@ export function SettingsPanel({
           ) : null}
           {debugAllowed() && debugOnState ? <div className="app-settings-row"><div className="app-settings-head"><label className="app-settings-label"><input type="checkbox" checked={futureWormholeEnabled()} onChange={e => { setFutureWormholeEnabled(e.target.checked); onDebugChange(debugOnState) }} />{tr('ui.explorationName.019')}</label></div><div className="app-settings-desc">{tr('ui.explorationName.018')}</div></div> : null}
           </> : null}
-          {settingsPage === 'save' ? <>
+          {settingsPage === 'account' ? <>
+          {/* **账户页以登入为主**（2026-11-05 船长令：「设置里的存档tab的文案，改成账户，这个界面做成
+              登入位置，存档为辅」）⇒ 顺序：账号 → 云存档 → 本地存档。 */}
+          <CloudSavePanel engine={engine} onApplyingChange={setCloudApplying} />
           {/**
-           * **存档一组**（2026-09-25 船长令：「将存档管理，重置档案，保存移动到设置内」）
+           * **本地存档一组**（2026-09-25 船长令：「将存档管理，重置档案，保存移动到设置内」）
            * —— 这三个按钮原先在顶栏右侧，与本组功能同类（都作用于存档）⇒ 归到设置里。
+           * 2026-11-05 起排到账号与云存档之后（账户为主、存档为辅）。
            *
            * 2026-09-25 追加（船长令 · 甲/丁）：本组顶部加一行**存储状态**——网页版的存档在浏览器里，
            * 浏览器不给写时必须让玩家看见（MacBook · Safari 报障那批）；旧档读不出来时在这里放行写入。
            */}
+          <h3 className="app-settings-label">{tr('ui.saveGuard.028')}</h3>
           <div className="app-settings-row">
             <div className="app-settings-head">
               <span className="app-settings-label">{tr('ui.saveGuard.001')}</span>
@@ -826,7 +833,6 @@ export function SettingsPanel({
               </button>
             </div>
           </div>
-          <CloudSavePanel engine={engine} onApplyingChange={setCloudApplying} />
           </> : null}
         </div>
         {/* **切换界面布局 ⇒ 提示重开**（2026-09-25 船长令）：确认后存档并关游戏；取消则什么都不做 */}
