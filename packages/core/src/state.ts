@@ -164,6 +164,8 @@ export interface TrainingItem {
 
 /** 技能相关的状态 */
 export interface SkillsState {
+  /** 1 = 已完成编队协同指挥旧档补偿判定；新档直接登记，不参与补偿。 */
+  commandCompensationVersion?: 1
   /** 1 = 稳定基础工作量；旧档缺失由训练单点换算一次。 */
   progressVersion?: 1
   /** 已学等级：技能编号 -> 等级 */
@@ -2734,6 +2736,7 @@ export function createInitialState(opts?: {
       count: 0,
     },
     skills: {
+      commandCompensationVersion: 1,
       progressVersion: 1,
       trained: {},
       queue: [],

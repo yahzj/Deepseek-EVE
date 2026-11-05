@@ -36,6 +36,50 @@ const MECHANICS_BRIEF_IDS = [
 
 /** 全量公告（新的放最上方） */
 export const ANNOUNCEMENTS: readonly AnnouncementDef[] = [
+  // 船长2026-11-05批准修订稿写入游戏；支援与聊天按指定删减保留两条。
+  {
+    id: 'ann-fleet-command-20261105',
+    title: L10N['ano.fleetCommandUpdate.001']!.zh, titleId: 'ano.fleetCommandUpdate.001',
+    date: '2026-11-05', tag: L10N['ano.fleetCommandUpdate.002']!.zh, tagId: 'ano.fleetCommandUpdate.002',
+    bullets: [L10N['ano.fleetCommandUpdate.003']!.zh, L10N['ano.fleetCommandUpdate.004']!.zh, L10N['ano.fleetCommandUpdate.005']!.zh],
+    bulletIds: ['ano.fleetCommandUpdate.003', 'ano.fleetCommandUpdate.004', 'ano.fleetCommandUpdate.005'],
+  },
+  {
+    id: 'ann-fleet-support-20261105',
+    title: L10N['ano.fleetSupportUpdate.001']!.zh, titleId: 'ano.fleetSupportUpdate.001',
+    date: '2026-11-05', tag: L10N['ano.fleetSupportUpdate.002']!.zh, tagId: 'ano.fleetSupportUpdate.002',
+    bullets: [L10N['ano.fleetSupportUpdate.003']!.zh, L10N['ano.fleetSupportUpdate.004']!.zh],
+    bulletIds: ['ano.fleetSupportUpdate.003', 'ano.fleetSupportUpdate.004'],
+  },
+  {
+    id: 'ann-cloud-save-20261105',
+    title: L10N['ano.cloudSaveUpdate.001']!.zh, titleId: 'ano.cloudSaveUpdate.001',
+    date: '2026-11-05', tag: L10N['ano.cloudSaveUpdate.002']!.zh, tagId: 'ano.cloudSaveUpdate.002',
+    bullets: [L10N['ano.cloudSaveUpdate.003']!.zh, L10N['ano.cloudSaveUpdate.004']!.zh,
+      L10N['ano.cloudSaveUpdate.005']!.zh, L10N['ano.cloudSaveUpdate.006']!.zh],
+    bulletIds: ['ano.cloudSaveUpdate.003', 'ano.cloudSaveUpdate.004', 'ano.cloudSaveUpdate.005', 'ano.cloudSaveUpdate.006'],
+  },
+  {
+    id: 'ann-online-chat-20261105',
+    title: L10N['ano.onlineChatUpdate.001']!.zh, titleId: 'ano.onlineChatUpdate.001',
+    date: '2026-11-05', tag: L10N['ano.onlineChatUpdate.002']!.zh, tagId: 'ano.onlineChatUpdate.002',
+    bullets: [L10N['ano.onlineChatUpdate.003']!.zh, L10N['ano.onlineChatUpdate.004']!.zh],
+    bulletIds: ['ano.onlineChatUpdate.003', 'ano.onlineChatUpdate.004'],
+  },
+  {
+    id: 'ann-market-trading-20261105',
+    title: L10N['ano.marketTradingUpdate.001']!.zh, titleId: 'ano.marketTradingUpdate.001',
+    date: '2026-11-05', tag: L10N['ano.marketTradingUpdate.002']!.zh, tagId: 'ano.marketTradingUpdate.002',
+    bullets: [L10N['ano.marketTradingUpdate.003']!.zh, L10N['ano.marketTradingUpdate.004']!.zh, L10N['ano.marketTradingUpdate.005']!.zh],
+    bulletIds: ['ano.marketTradingUpdate.003', 'ano.marketTradingUpdate.004', 'ano.marketTradingUpdate.005'],
+  },
+  {
+    id: 'ann-fleet-command-compensation-20261105',
+    title: L10N['ano.commandCompensation.001']!.zh, titleId: 'ano.commandCompensation.001',
+    date: '2026-11-05', tag: L10N['ano.commandCompensation.002']!.zh, tagId: 'ano.commandCompensation.002',
+    bullets: [L10N['ano.commandCompensation.003']!.zh, L10N['ano.commandCompensation.004']!.zh, L10N['ano.commandCompensation.005']!.zh],
+    bulletIds: ['ano.commandCompensation.003', 'ano.commandCompensation.004', 'ano.commandCompensation.005'],
+  },
   {
     // 船长2026-10-19明确批准两篇现稿及推送，敌方不可见数值不列公告。
     id: 'ann-equipment-retune-20261019',

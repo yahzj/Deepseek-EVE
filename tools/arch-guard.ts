@@ -304,6 +304,7 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
   { concept: '可选弹药档位与同族合法性', symbol: 'ammoTiersOf', file: 'packages/core/src/ammoTiers.ts', exported: true },
   { concept: '普通市场可流通商品目录', symbol: 'marketTradingGoods', file: 'packages/core/src/market/access.ts', exported: true },
   { concept: '独占产物的玩家交易定义', symbol: 'PLAYER_ONLY_GOODS', file: 'packages/data/src/market/playerGoods.ts', exported: true },
+  { concept: '旧档编队协同指挥一次性补偿', symbol: 'applyLegacyCommandCompensation', file: 'packages/core/src/combat/command/compensation.ts', exported: true },
   { concept: '沉船快照保存装配方案', symbol: 'saveWreckFitPreset', file: 'packages/core/src/fitPresets.ts', exported: true },
   { concept: '沉船逐位装备与重复扩槽明细', symbol: 'wreckFitDetailOf', file: 'packages/core/src/fitPresets.ts', exported: true },
   { concept: '市场商品可读名称', symbol: 'marketGoodDisplayName', file: 'apps/desktop/src/renderer/src/ui/marketGoodHover.tsx', exported: true },

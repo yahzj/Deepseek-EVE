@@ -39,11 +39,12 @@ function slicedOffline(s: ReturnType<typeof fresh>, duration: number, step = 30_
 describe('技能加速：稳定工作量', () => {
   it('技能随档白名单覆盖全部字段，进度标记往返不丢失', () => {
     const allKeys: Record<keyof SkillsState, true> = {
-      trained: true, queue: true, savedProgress: true, licenses: true, progressVersion: true,
+      trained: true, queue: true, savedProgress: true, licenses: true, progressVersion: true, commandCompensationVersion: true,
     }
     const back = loadSaveFile(serializeSaveFile(fresh(), 0)).state
     for (const key of Object.keys(allKeys)) expect(Object.hasOwn(back.skills, key)).toBe(true)
     expect(back.skills.progressVersion).toBe(1)
+    expect(back.skills.commandCompensationVersion).toBe(1)
   })
 
   it.each([false, true])('学习倍率升级与药效切换：分片结果一致（铁人=%s）', (ironman) => {
