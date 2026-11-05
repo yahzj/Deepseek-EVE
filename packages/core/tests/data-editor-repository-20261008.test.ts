@@ -21,7 +21,7 @@ let root: string
 let repo: DataEditorRepository
 
 function git(cwd: string, ...args: string[]): string {
-  return execFileSync('git', ['-c', 'core.hooksPath=disabled-hooks', '-c', 'core.fsmonitor=false', '-C', cwd, ...args], {
+  return execFileSync('git', ['-c', 'core.hooksPath=disabled-hooks', '-c', 'core.fsmonitor=false', '-c', `safe.directory=${cwd}`, '-C', cwd, ...args], {
     encoding: 'utf8', windowsHide: true,
   }).trim()
 }

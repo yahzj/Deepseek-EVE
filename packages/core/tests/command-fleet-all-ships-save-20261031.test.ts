@@ -3,7 +3,7 @@ import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { commandBudgetOf } from '../src/combat/command/rules'
-import { startExpedition } from '../src/expedition/launch'
+import { startExpeditionArrived as startExpedition } from './helpers/command-arrived'
 import { retreatBattle } from '../src/expedition/retreat'
 import { injectCommandFleetAllShipsFixture, assertCommandFleetAllShipsFixture } from '../../../tools/command-fleet-all-ships-fixture'
 

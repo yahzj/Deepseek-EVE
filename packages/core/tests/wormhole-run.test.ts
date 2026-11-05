@@ -33,7 +33,7 @@ import {
   shipBusyForWormhole,
   wormholeAdvanceNode,
   wormholeDescend,
-  wormholeEnter,
+  wormholeEnter as enterWormhole,
   wormholeExtract,
   wormholeGridActivate,
   wormholeGridScan,
@@ -51,11 +51,18 @@ import {
 import type { WormholeRunState } from '../src/wormhole'
 import type { WormholeGridCell, WormholePlace } from '../src/wormholeGrid'
 import {  hexDistance, hexNeighbors, wormholeGridRadiusFor } from '../src/wormholeGrid'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
 const T1 = 'sandcat'
 const T3 = 'sh-thresher'
 const T5 = 'sh-colossal'
+
+function wormholeEnter(...args: Parameters<typeof enterWormhole>) {
+  const result = enterWormhole(...args)
+  if (result.ok) finishDeparture(args[0], args[1])
+  return result
+}
 
 /**
  * 起一趟（**层内动作**用例的公共前置）：跳过入洞门槛，只要一个"人在洞里 + 本层网格就位"的现场。
@@ -240,7 +247,7 @@ describe('虫洞 · 并行战斗与忙态口径（船长 2026-09-13）', () => {
     expect(wormholeEnter(state, ctx, [a, b], 7).ok).toBe(true)
     const run = state.wormhole.run!
     standOnPlace(run, 'ship') // F3a-2：洞内战由地点触发（等价旧「当前节点是战斗节点」）
-    expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
+    expect(wormholeStartBattle(state, ctx, 'node', state.gameMs).ok).toBe(true)
     const battle = run.battle!
     const tick0 = battle.lastTickGameMs
     const hp0 = JSON.stringify(battle.units['player']!.hp)

@@ -3,7 +3,7 @@ import { addLog } from '../state'
 import type { GameState } from '../state'
 import type { SimContext } from '../types'
 import { shipStoredCount } from '../fleetBook'
-import { marketGoodOf, playerTradingGood } from './access'
+import { marketTradingGoods, playerTradingGood } from './access'
 import { relayAvailableQty, relayTradable } from './relayLedger'
 import { sellStoredShipAtMarket, pushStoredShipSellOrder } from './ships'
 import { naturalHoldings, lockNaturalStock, unlockNaturalStock } from './stock'
@@ -27,7 +27,7 @@ export function learnBlueprint(state: GameState, ctx: SimContext, blueprintId: s
   const count = state.blueprintStock[blueprintId] ?? 0
   if (count <= 0) return { ok: false, error: '没有可学习的蓝图书。', errorId: 'core.market.003' }
   if (state.learnedRecipes.includes(blueprintId)) {
-    if (marketGoodOf(ctx, 'blueprint', blueprintId)?.playerSellable === false) {
+    if (!marketTradingGoods(ctx).some(good => good.kind === 'blueprint' && good.refId === blueprintId)) {
       return { ok: false, error: '该配方已学会。', errorId: 'core.ammoMk3.001' }
     }
     return { ok: false, error: '该配方已学会——多余的蓝图书可以挂到市场出售。', errorId: 'core.market.004' }
@@ -185,7 +185,9 @@ export function listSellHolding(
       errorId: isShip ? 'core.market.011' : 'core.market.008',
     }
   }
-  if (price <= 0 || price > def.basePrice * ctx.balance.market.maxPriceRatio) {
+  const unit = ceilFinalQuantity(price)
+  if (!Number.isSafeInteger(unit) || unit <= 0 || !Number.isSafeInteger(unit * Math.min(want, available)) ||
+    (def.basePrice > 0 && unit > def.basePrice * ctx.balance.market.maxPriceRatio)) {
     return { ok: false, error: '挂单价异常（需为 0 以上的信用点，且不超过限价上限）。', errorId: 'core.market.012' }
   }
   const n = Math.min(want, available)

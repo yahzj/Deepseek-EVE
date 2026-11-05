@@ -49,6 +49,7 @@ import { wormholeCardIdForRun } from '../src/wormholeFoes'
 import { createFoeSpecs, wormholeDerivedAnomaly } from '../src/combat'
 import { WORMHOLE_MATTER_BUFFS_NONE } from '../src/wormholeMatter'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
 const T3 = 'sh-thresher'
@@ -60,6 +61,7 @@ function enterRun(ships = 4, seed = 777): GameState {
   for (let i = 0; i < ships; i++) ids.push(addShipToFleet(state, T3))
   state.shipId = ids[0]!
   expect(wormholeEnter(state, ctx, ids, seed).ok).toBe(true)
+  finishDeparture(state, ctx)
   return state
 }
 

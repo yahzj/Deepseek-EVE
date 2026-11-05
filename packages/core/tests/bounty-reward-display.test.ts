@@ -9,10 +9,11 @@
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { createInitialState, addShipToFleet } from '../src/index'
-import { bountyRewardFactor, DSI_FACTION_ID, resolveBattleOutcome, startExpedition } from '../src/expedition'
+import { bountyRewardFactor, DSI_FACTION_ID, resolveBattleOutcome } from '../src/expedition'
 import { lairBaseRewardIsk } from '../src/lairs'
 import type { GameState } from '../src/state'
 import type { SimContext } from '../src/types'
+import { startExpeditionArrived as startExpedition } from './helpers/command-arrived'
 
 const ctx = buildSimContext()
 
@@ -61,9 +62,8 @@ describe('悬赏奖金口径：展示 = 到账（2026-09-10 船长）', () => {
     const shown = Math.round(lairBaseRewardIsk(anomaly, 1) * factor)
     const delta = fightAndSettle(state)
     const egg = Math.round(shown * 0.1)
-    // 另有赏金任务酬金入账（板上任务存在时），故到账 ≥ 窝点奖金（允许彩蛋）
-    expect(delta).toBeGreaterThanOrEqual(shown)
-    expect(delta).toBeGreaterThanOrEqual(shown + egg)
+    expect(state.sideTasks.bounty).toEqual([])
+    expect([shown, shown + egg]).toContain(delta)
   })
 
   it('无技能时系数 = 1：到账严格等于卡面基础奖金（或 +10% 彩蛋）', () => {

@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process'
 import { describe, expect, it } from 'vitest'
 import { ANOMALIES, buildSimContext, FOE_DRONE_C_JAWCLAW, L10N, l10nEntryText, DRONE_ROLE_SPECS } from '@whale/data'
 import { addApprovedRepairDrone } from './helpers/approved-fleet-delta-20261101'
+import { APPROVED_ENCRYPTED_BOX_IDS, APPROVED_NEW_FACTION_PLUG_IDS } from './helpers/approved-static-content-20261104'
 import itemData from '../../data/src/static/items.json'
 import foeData from '../../data/src/static/foeDrones.json'
 import marketData from '../../data/src/static/market.json'
@@ -51,6 +52,9 @@ describe('颚钳战斗机确认值与范围守恒', () => {
     items.groups.WEEKEND_TROPHIES_0.splice(items.groups.WEEKEND_TROPHIES_0.findIndex((row: { id: string }) => row.id === 'blackbox-universal'), 0,
       { id: 'blackbox-d', kind: 'blackbox', unitM3: 5, baseSellPriceIsk: 10000000 })
     addApprovedRepairDrone(items.groups.DRONES_0)
+    items.groups.BLUEPRINT_CONTAINERS_0.unshift(...APPROVED_ENCRYPTED_BOX_IDS.map(id => ({
+      id, kind: 'container', unitM3: 1000, baseSellPriceIsk: 1,
+    })))
     const beaconIds = ['invasion-beacon-r', 'invasion-beacon-c', 'invasion-beacon-h', 'invasion-beacon-d']
     const withoutNewBeacons = (data: typeof itemData) => ({ ...data, groups: { ...data.groups,
       CONSUMABLES_0: data.groups.CONSUMABLES_0.filter(row => !beaconIds.includes(row.id)) } })
@@ -62,7 +66,9 @@ describe('颚钳战斗机确认值与范围守恒', () => {
     expect(foeData).toEqual(foes)
     const withoutBeaconMarket = structuredClone(marketData)
     for (const rows of Object.values(withoutBeaconMarket.groups)) {
-      const newIds = [...beaconIds, 'blackbox-d', 'mod-gravekeeper-rebirth', 'mod-gravekeeper-crisis', 'mod-gravekeeper-rail', 'drone-repair-mil']
+      const newIds = [...beaconIds, 'blackbox-d', 'mod-gravekeeper-rebirth', 'mod-gravekeeper-crisis', 'mod-gravekeeper-rail',
+        'drone-repair-mil', 'bp-drone-repair-mil', 'bp-once-drone-repair-mil',
+        ...APPROVED_NEW_FACTION_PLUG_IDS.flatMap(id => [id, `bp-${id}`, `bp-once-${id}`])]
       for (let i = rows.length - 1; i >= 0; i--) if (newIds.includes(rows[i]!.key)) rows.splice(i, 1)
     }
     // 市场目录已批准重排，逐键核对所有字段；显示顺序由市场排序专项独立守护。

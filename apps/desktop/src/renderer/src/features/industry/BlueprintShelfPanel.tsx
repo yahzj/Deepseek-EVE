@@ -1,4 +1,4 @@
-import { marketGoodOf, ownsBlueprint } from '@whale/core'
+import { marketGoodOf, marketTradingGoods, ownsBlueprint } from '@whale/core'
 import { RedeemFragmentButton } from '../../ui/fragmentRedeem'
 import { Panel } from '@whale/ui'
 import { useEffect, useState } from 'react'
@@ -272,7 +272,7 @@ export function BlueprintShelfPanel({
           // 2026-09-20 零件体系：舰船书「去造船厂」、其余「去组装机」
           const isShipBook = kindShip
           const marketGood = marketGoodOf(engine.ctx, 'blueprint', id)
-          const noResale = marketGood?.playerSellable === false
+          const noResale = !marketGood || !marketTradingGoods(engine.ctx).some(row => row.key === marketGood.key)
           return (
             <div
               key={id}
@@ -325,7 +325,7 @@ export function BlueprintShelfPanel({
                   </button>
                 ) : null}
                 {/* ⟪文案调整 2026-10-08⟫ 复用市场查看入口，可交易的一次性图纸同样可达。 */}
-                {onGotoMarket && marketGood && marketGood.unreleased !== true && marketGood.playerSellable !== false ? (
+                {onGotoMarket && marketGood && marketTradingGoods(engine.ctx).some(row => row.key === marketGood.key) ? (
                   <button
                     className="app-btn is-small"
                     title={tr('ui.CargoPage.002')}

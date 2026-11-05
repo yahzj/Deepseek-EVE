@@ -19,6 +19,7 @@ import { describe, expect, it } from 'vitest'
 import { BLUEPRINTS, MARKET_GOODS, SHIP_BLUEPRINTS } from '@whale/data'
 import { itemReleased } from '../src/inventory'
 import { MANU_KIND_ORDER, sortManuRows, type ManuOrderRow } from '../src/manufacturing'
+import { APPROVED_FACTION_PLUG_IDS } from './helpers/approved-static-content-20261104'
 
 /** 书价（市场目录 basePrice；无行 = 0 ⇒ 沉底） */
 const bookPriceOf = (bpId: string): number =>
@@ -93,8 +94,13 @@ describe('组装机卡片排序（2026-09-14 船长：一次性图纸和原图�
     //      + 鹦鹉螺级 1（2026-09-14 随虫洞上线放开 `unreleased` 后进了可见目录）
     //      + 3 张专属无人机一次性图纸（2026-09-14 船长「专属无人机出一次性蓝图」，每次 50 架）
     // + 2 = 2026-09-20「护盾充能力场装置」MK2/MK3 的一次性图纸（同样是"只有一次性、没有原图纸"）
-    expect(adjacentPairs(next).total).toBe(67) // 2026-10-04：+海牛级一次性图
-    expect(adjacentPairs(legacy).adjacent).toBe(0) // 旧口径：一对都不相邻（这就是船长看到的"散落"）
+    const addedIds = ['bp-once-drone-repair-mil', ...APPROVED_FACTION_PLUG_IDS.map(id => `bp-once-${id}`)]
+    expect(BLUEPRINTS.filter(bp => addedIds.includes(bp.id)).map(bp => bp.id).sort()).toEqual([...addedIds].sort())
+    expect(addedIds).toHaveLength(11)
+    expect(adjacentPairs(next).total).toBe(67 + addedIds.length)
+    const addedProducts = new Set(['item:drone-repair-mil', ...APPROVED_FACTION_PLUG_IDS.map(id => `module:${id}`)])
+    // 新增插件的中英文名称相同，旧排序也可能碰巧相邻；旧基线只比较原目录。
+    expect(adjacentPairs(legacy.filter(row => !addedProducts.has(row.productKey))).adjacent).toBe(0)
     /**
      * ⚠ **虫洞那 43 张是"只有一次性、没有原图纸"的掉落专属图纸**（一次到手即用，不存在可反复买的原图纸）
      * ⇒ 它们的 `mate` 找不到，本就进不了"紧邻"计数；能配对的 **15** 张（原 14 + 鹦鹉螺级，
@@ -102,7 +108,7 @@ describe('组装机卡片排序（2026-09-14 船长：一次性图纸和原图�
      */
     const paired = rows.filter(row => row.singleUse && rows.some(other => !other.singleUse && other.productKey === row.productKey)).length
     expect(adjacentPairs(next).adjacent).toBe(paired)
-    expect(paired).toBe(22) // 船长确认永久无人机书后新增三组可配对图纸。
+    expect(paired).toBe(22 + addedIds.length)
   })
 
   it('② 真实目录：**非一次性卡**的相对位次与 09-08 口径逐格一致（新口径只搬一次性卡）', () => {

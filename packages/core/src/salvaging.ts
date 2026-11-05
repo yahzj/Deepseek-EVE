@@ -18,7 +18,7 @@ import { ceilFinalQuantity } from './quantity'
 import { tuningMul } from './tuning'
 import { addLog, HOME_GALAXY_ID, salvageHalt } from './state'
 import { applyActivityGate, pilotUnavailableReason } from './activityGate'
-import { beginDeparture, consumeDeparture, cancelDeparture, departureOrigin, departureArrivalLog } from './departure'
+import { beginDeparture, consumeDeparture, cancelDeparture, departureOrigin, departureArrivalLog, reconcileDeparture } from './departure'
 import type { CommandResult } from './engine'
 import type { GameState, WorkReturnProgress } from './state'
 import type { SimContext } from './types'
@@ -303,6 +303,7 @@ export function startSalvageOp(
   ctx: SimContext,
   targetGroup?: string,
 ): CommandResult {
+  reconcileDeparture(state)
   if (state.departure) return { ok: false, errorId: 'core.departure.001' }
   const departureFrom = departureOrigin(state, ctx)
   const galaxy = ctx.galaxies.get(galaxyId)

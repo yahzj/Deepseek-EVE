@@ -61,7 +61,7 @@ describe('离线战斗单份简报统计', () => {
     expect(startHauling(state, null, 'site-cinder', local, 100).ok).toBe(true)
     state.hauling.fleetLeg!.stopAtArrival = true
     const loaded = loadSaveFile(serializeSaveFile(state)).state
-    const before = loaded.wallet.isk, duration = loaded.hauling.legMs
+    const before = loaded.wallet.isk, duration = loaded.hauling.legMs + loaded.departure!.undockMs
     const stats = newSettleStats()
     simulateOffline(loaded, 0, duration + 1000, local, undefined, { stats })
     expect(stats.combat).toMatchObject({ deliveries: 1, deliveredM3: 100, transportIncome: loaded.wallet.isk - before, stopReason: 'arrival' })

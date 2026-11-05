@@ -92,7 +92,10 @@ export function validateDocument(value: unknown, table: DataTable, contract?: St
         if (typeof item === 'number') {
           const field = fieldOf(table, path)
           if (!Number.isFinite(item) || (field.integer && !Number.isSafeInteger(item))) issue('数值必须有限，整数不得超出安全范围', id, path)
-          if (field.min !== undefined && item < field.min && !(path === 'basePrice' && item === 0 && row.unreleased === true)) issue(`不得小于${field.min}`, id, path)
+          const unpricedMarket = table === 'market' && path === 'basePrice' && item === 0 &&
+            (row.unreleased === true || row.playerBuyable === false && row.playerSellable === false &&
+              row.blackMarketBuyable === false && row.demandMultiplier === 0)
+          if (field.min !== undefined && item < field.min && !unpricedMarket) issue(`不得小于${field.min}`, id, path)
           if (field.max !== undefined && item > field.max) issue(`不得大于${field.max}`, id, path)
         } else if (item && typeof item === 'object') {
           for (const [key, child] of Object.entries(item)) { if (['__proto__', 'constructor', 'prototype'].includes(key)) issue('禁止的字段名', id, path); walk(child, path ? `${path}.${key}` : key) }

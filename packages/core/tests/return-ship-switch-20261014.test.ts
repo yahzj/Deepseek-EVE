@@ -10,6 +10,7 @@ import { startRefineRun } from '../src/industry'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { pendingStationActivityView } from '../src/stationActivityPending'
 import { makeTestCtx, moduleDef, ship } from './helpers'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = makeTestCtx({ quietEvents: true,
   ships: [ship('sandcat', { cargo: 800, warpSpeedAus: 2 }), ship('switch-fast', { cargo: 2000, warpSpeedAus: 8 })],
@@ -74,10 +75,12 @@ describe('当前驾驶船独立返航可换其他船', () => {
     const w = world()
     if (mode === 'mining') {
       expect(startMining(w.state, 'belt-a', ctx).ok).toBe(true)
+      finishDeparture(w.state, ctx)
       expect(stopMining(w.state, ctx)).toBe(true)
     } else {
       w.state.fleet[w.oldShip]!.fitted.high = ['switch-salvager']
       expect(startSalvageOp(w.state, 'galaxy-hub', ctx).ok).toBe(true)
+      finishDeparture(w.state, ctx)
       expect(stopSalvageOp(w.state, ctx)).toBe(true)
     }
     expect(w.state.shipReturns[w.oldShip]).toBeDefined()
@@ -108,6 +111,7 @@ describe('站内待办返航的换驾驶交接', () => {
       state.fleet[oldShip]!.fitted.high = ['switch-salvager']
       expect(startSalvageOp(state, 'galaxy-hub', ctx).ok).toBe(true)
     }
+    finishDeparture(state, ctx)
     expect(startRefineRun(state, 'ore-a', 'pilot', ctx)).toMatchObject({ ok: true, queued: true })
     expect(state.pendingActivityReturn?.kind).toBe(mode)
     const control = structuredClone(state)
@@ -167,6 +171,7 @@ describe('站内待办返航的换驾驶交接', () => {
       w.state.fleet[w.oldShip]!.fitted.high = ['switch-salvager']
       expect(startSalvageOp(w.state, 'galaxy-hub', ctx).ok).toBe(true)
     }
+    finishDeparture(w.state, ctx)
     expect(startRefineRun(w.state, 'ore-a', 'pilot', ctx)).toMatchObject({ ok: true, queued: true })
     const state = loadSaveFile(serializeSaveFile(w.state, 0)).state
     expect(state.pendingActivityReturn?.kind).toBe(mode)
@@ -188,6 +193,7 @@ describe('站内待办返航的换驾驶交接', () => {
       state.fleet[oldShip]!.fitted.high = ['switch-salvager']
       expect(startSalvageOp(state, 'galaxy-hub', ctx).ok).toBe(true)
     }
+    finishDeparture(state, ctx)
     expect(startRefineRun(state, 'ore-a', 'pilot', ctx)).toMatchObject({ ok: true, queued: true })
     state.shipReturns[nextShip] = { beltId: null, legMs: 8000, phaseAccMs: 1000 }
     const before = structuredClone(state)

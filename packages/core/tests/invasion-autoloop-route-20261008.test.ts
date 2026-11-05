@@ -9,6 +9,7 @@ import { simulateOffline } from '../src/simulation'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { weekendProgressAt, weekendWreckPenaltyFracOf, weekendGarrisonFoeCardId } from '../src/weekendEvent'
 import { shortestTravelMinutes, travelLegMs } from '../src/travel'
+import { finishDeparture } from './helpers/departure-ready'
 
 const NOW = new Date(2026, 9, 9, 20).getTime()
 const A = 'galaxy-redring', B = 'galaxy-grave', C = 'galaxy-kor'
@@ -143,6 +144,7 @@ describe('入侵循环路线与安全边界', () => {
       const { state } = world()
       setAutoLoopInvasion(state, ctx, A, NOW)
       advanceAutoLoopInvasion(state, ctx, NOW)
+      finishDeparture(state, ctx)
       if (outcome === 'defeat') {
         state.expedition.battle!.ended = 'foe'
         resolveBattleOutcome(state, ctx)
@@ -156,6 +158,7 @@ describe('入侵循环路线与安全边界', () => {
     setAutoLoopInvasion(state, ctx, B, NOW)
     advanceAutoLoopInvasion(state, ctx, NOW)
     expect(state.expedition.outMs).toBe(travelLegMs(state, ctx, shortestTravelMinutes(ctx, 'galaxy-hub', B)))
+    finishDeparture(state, ctx)
     state.expedition.battle!.ended = 'me'
     resolveBattleOutcome(state, ctx)
     expect(state.expedition.finishAtGameMs - state.expedition.returnAtGameMs!).toBe(state.expedition.outMs)

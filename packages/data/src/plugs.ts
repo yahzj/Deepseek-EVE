@@ -96,6 +96,11 @@ const SHIP_PLUGS_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
 
 import type { ModuleDef } from '@whale/core'
 import { L10N } from './l10n/table'
+export const FACTION_PLUG_BLUEPRINT_PRICE = 100_000_000
+
+export function isFactionPlugId(id: string): boolean {
+  return ['pirate', 'alien', 'gravekeeper', 'titan', 'deadarmy'].some(family => id.startsWith(`plug-${family}-`))
+}
 // ⟪文案调整 2026-10-04⟫ 船长授权整批说明重写，数值与功能不变。
 
 /** 插件模块 id 常量（数据/用例引用它，写错当场编译不过） */

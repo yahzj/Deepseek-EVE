@@ -1,6 +1,7 @@
 import { addLog, type GameState, type LogEntry, type LogKind, type LogParams } from './state'
 import type { SimContext } from './types'
 import { shortestTravelMinutes } from './travel'
+export { reconcileDeparture } from './departureReconcile'
 
 export type DepartureKind = 'mining' | 'salvaging' | 'expedition' | 'hauling' | 'deliver' | 'siteDeliver' | 'wormhole' | 'flagship'
 export interface DepartureState {
@@ -30,17 +31,6 @@ export function departureOrigin(state: GameState, ctx: SimContext): { galaxy: st
   return { galaxy: galaxy ?? (site ? ctx.stations.get(site)?.galaxyId : undefined) ?? 'galaxy-hub', site,
     docked: !m.active && !s.active && !state.expedition.active && !state.hauling.active && !state.transit.active
       && !state.sideTasks.deliver && !state.shipReturns[state.shipId] && state.awayGalaxy === null }
-}
-
-/** 读档、损毁或调试收口后，不能让无宿主的出发记录永久锁住主控。 */
-export function reconcileDeparture(state: GameState): void {
-  const leg = state.departure
-  if (!leg) return
-  const active = { mining: state.mining.active, salvaging: state.salvaging.active,
-    expedition: state.expedition.active && state.expedition.phase === 'out', hauling: state.hauling.active,
-    deliver: state.sideTasks.deliver !== null, siteDeliver: state.transit.active && state.transit.delivery?.phase === 'to-site',
-    wormhole: !!state.wormhole.run, flagship: state.encounter.active && !!state.encounter.battle }[leg.kind]
-  if (leg.shipId !== state.shipId || !state.fleet[leg.shipId] || !active) delete state.departure
 }
 
 export function beginDeparture(state: GameState, ctx: SimContext, kind: DepartureKind, toGalaxy: string,

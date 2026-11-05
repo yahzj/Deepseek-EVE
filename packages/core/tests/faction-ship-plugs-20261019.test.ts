@@ -52,7 +52,8 @@ describe('五族船插确认参数与真实接线', () => {
     expect(exchangePlugBlueprint(state, ctx, id)).toMatchObject({ ok: false, errorId: 'core.plug.016' })
     expect(state.standings.dsi).toBe(beforeStanding)
     expect(buildSimContext('en').modules.get(id)!.name).not.toBe(mod!.name)
-    expect(ctx.marketGoods.has(id)).toBe(false)
+    expect(ctx.marketGoods.has(id)).toBe(true)
+    expect(ctx.marketGoods.get(id)).toMatchObject({ basePrice: 111_745_000, playerBuyable: false, playerSellable: false, blackMarketBuyable: false })
     for (const mat of bp.materials) state.warehouse.items[mat.itemId] = mat.count
     state.learnedRecipes.push(bp.id)
     expect(startManufacturing(state, bp.id, 'pilot', ctx).ok).toBe(true)

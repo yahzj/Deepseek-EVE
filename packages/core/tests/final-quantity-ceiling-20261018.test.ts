@@ -19,6 +19,7 @@ import { grantFirstReward } from '../src/firstRewards'
 import { moneyAmount, moneyDelta, moneyExact, moneyExactText } from '../src/money'
 import { gainAiCore, spendAiCores } from '../src/aiCores'
 import { noteStandingEarned, spendStanding } from '../src/standing'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
 describe('最终整数数量向上取整，连续量与比例不混用', () => {
@@ -108,6 +109,7 @@ describe('最终整数数量向上取整，连续量与比例不混用', () => {
     const a = createInitialState({ nowWallMs: 0, seed: 42 })
     a.skills.trained.mining = 1
     expect(startMining(a, 'belt-a', c).ok).toBe(true)
+    finishDeparture(a, c)
     const b = structuredClone(a)
     const p = getMiningParams(a, c, { beltId: 'belt-a' })!
     expect(p.unitsPerCycle).toBe(11)

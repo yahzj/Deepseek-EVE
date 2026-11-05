@@ -9,6 +9,7 @@ import { wormholeEnter } from '../src/wormhole'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { advanceWormhole, wormholeStartBattle } from '../src/wormholeBattle'
 import { activityOverview } from '../src/activity'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
 describe('信号空间旧来源与未来虫洞身份隔离', () => {
@@ -117,6 +118,7 @@ describe('信号空间旧来源与未来虫洞身份隔离', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 19 })
     const originalShip = state.shipId
     expect(wormholeEnter(state, ctx, [originalShip], 19, { expeditionRules: rules }).ok).toBe(true)
+    finishDeparture(state, ctx)
     const run = state.wormhole.run!
     if (rules === 2) run.supplyVersion = 1
     const activity = activityOverview(state, ctx).find(a => a.kind === 'wormhole')!

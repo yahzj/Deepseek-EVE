@@ -15,6 +15,7 @@ import { wormholeEventPreview, wormholeResolveEvent } from '../src/wormholeExped
 import { wormholeMakeGrid, gridTally } from '../src/wormholeGrid'
 import { wormholePatrolAfterAction, wormholeRaiseAlert } from '../src/wormholePatrol'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
 const BASE = 'ammo-kinetic-l'
@@ -26,10 +27,14 @@ function setup(targets: Record<string, number> = {}, count = 2, old = false, rul
   state.shipId = fleet[0]!
   for (const id of fleet) state.fleet[id]!.fitted = { high: ['mod-miner-1'], mid: [], low: [] }
   for (const [id, n] of Object.entries(targets)) state.warehouse.items[id] = n + 100
-  if (old) expect(wormholeEnter(state, ctx, fleet, 7).ok).toBe(true)
+  if (old) {
+    expect(wormholeEnter(state, ctx, fleet, 7).ok).toBe(true)
+    finishDeparture(state, ctx)
+  }
   else {
     const plan = wormholePreparationPlan(state, ctx, fleet, { targets, unload: [] })
     expect(wormholeEnterPrepared(state, ctx, fleet, 7, plan, undefined, rules ? { expeditionRules: rules } : undefined).ok).toBe(true)
+    finishDeparture(state, ctx)
   }
   const run = state.wormhole.run!
   for (const cell of run.grid!.cells) { cell.place = 'empty'; delete cell.foe }

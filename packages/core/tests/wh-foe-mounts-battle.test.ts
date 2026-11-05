@@ -15,6 +15,7 @@ import { buildSimContext } from '@whale/data'
 import { addShipToFleet, createPlayerSpec, wormholeEnter, wormholeStartBattle, advanceWormhole, wormholeFamilyOfSeed } from '../src/index'
 import { createCommandReadyState as createInitialState } from './helpers/command-ready'
 import { createFoeSpecs, wormholeDerivedAnomaly } from '../src/combat'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
 const bal = ctx.balance.battle
@@ -34,17 +35,18 @@ function wormholeNode(fit: string[], thrusters: string[] = []) {
   for (const a of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) state.warehouse.items[a] = 9_000
   expect(wormholeFamilyOfSeed(A_SEED), '本用例要求 A 族洞').toBe('A')
   expect(wormholeEnter(state, ctx, ids, A_SEED).ok).toBe(true)
+  finishDeparture(state, ctx)
   const run = state.wormhole.run!
   const g = run.grid!
   const cell = g.cells.find((c) => c.key === `${g.pos.q},${g.pos.r}`)!
   cell.place = 'ship'
-  const r = wormholeStartBattle(state, ctx, 'node', 0)
+  const r = wormholeStartBattle(state, ctx, 'node', state.gameMs)
   expect(r.ok, r.error ?? '').toBe(true)
   return {
     state,
     battle: run.battle!,
     tick: (toMs: number) => {
-      state.gameMs = toMs
+      state.gameMs = run.battle!.startedAtGameMs + toMs
       advanceWormhole(state, ctx)
     },
   }

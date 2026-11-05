@@ -108,7 +108,7 @@ describe('蓝图书架市场入口', () => {
       const buttons = nodesOf(card).filter(node => node.type === 'button')
       const jump = buttons.find(node => textOf(node) === L10N['ui.CargoPage.001']![locale])
       const good = core.marketGoodOf(view.ctx, 'blueprint', bp.id)
-      const canJump = !!good && good.unreleased !== true && good.playerSellable !== false
+      const canJump = !!good && core.marketTradingGoods(view.ctx).some(row => row.key === good.key)
       expect(!!jump, bp.id).toBe(canJump)
       if (jump) {
         expect(jump.props.title).toBe(L10N['ui.CargoPage.002']![locale])
@@ -116,7 +116,7 @@ describe('蓝图书架市场入口', () => {
         expect(view.jumps.at(-1)).toBe(good!.key)
         expected++
       }
-      expect(buttons.some(node => textOf(node) === L10N['ui.Industry.018']![locale]), bp.id).toBe(!bp.singleUse && good?.playerSellable !== false)
+      expect(buttons.some(node => textOf(node) === L10N['ui.Industry.018']![locale]), bp.id).toBe(!bp.singleUse && canJump)
       expect(buttons.some(node => textOf(node) === L10N['ui.Industry.016']![locale]), bp.id).toBe(!bp.singleUse && !core.ownsBlueprint(view.state, bp.id))
     }
     expect(expected).toBeGreaterThan(100)
@@ -125,7 +125,7 @@ describe('蓝图书架市场入口', () => {
     expect(JSON.stringify(view.state)).toBe(before)
   })
 
-  it('使用市场key而非假设key等于蓝图ID，缺导航/无市场/未上线/不可卖/碎片不出入口', () => {
+  it('使用市场key而非假设key等于蓝图ID，NPC禁收不挡跳转，缺导航/无市场/未上线/碎片不出入口', () => {
     const view = shelf('zh')
     const sample = view.blueprints.find(bp => !bp.singleUse && core.marketGoodOf(view.ctx, 'blueprint', bp.id))!
     const original = core.marketGoodOf(view.ctx, 'blueprint', sample.id)!
@@ -135,10 +135,10 @@ describe('蓝图书架市场入口', () => {
     const jump = () => view.render().find(node => node.type === 'button' && textOf(node) === L10N['ui.CargoPage.001']!.zh)
     jump()!.props.onClick()
     expect(view.jumps).toEqual(['different-market-key'])
-    for (const blocked of [{ unreleased: true }, { playerSellable: false }]) {
-      view.ctx.marketGoods.set('different-market-key', { ...original, key: 'different-market-key', ...blocked })
-      expect(jump()).toBeUndefined()
-    }
+    view.ctx.marketGoods.set('different-market-key', { ...original, key: 'different-market-key', playerSellable: false, playerBuyable: false })
+    expect(jump()).toBeDefined()
+    view.ctx.marketGoods.set('different-market-key', { ...original, key: 'different-market-key', unreleased: true })
+    expect(jump()).toBeUndefined()
     view.ctx.marketGoods.delete('different-market-key')
     expect(jump()).toBeUndefined()
     expect(shelf('zh', false).render().some(node => node.type === 'button' && textOf(node) === L10N['ui.CargoPage.001']!.zh)).toBe(false)

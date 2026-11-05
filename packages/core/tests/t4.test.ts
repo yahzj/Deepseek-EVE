@@ -9,9 +9,11 @@ import { createInitialState } from '../src/state'
 import { advanceGame } from '../src/engine'
 import { loadSaveFile, MIN_SUPPORTED_SAVE_VERSION, SAVE_FORMAT } from '../src/save'
 import { countItem, countWare } from '../src/inventory'
-import { miningStatus, oneLegMs, oneOutboundLegMs, startMining, startMiningFromExpedition } from '../src/mining'
+import { miningStatus, oneLegMs, oneOutboundLegMs, startMiningFromExpedition } from '../src/mining'
 import { changeShip } from '../src/shipyard'
-import { startExpedition, startExpeditionFromMining } from '../src/expedition'
+import { startExpeditionFromMining } from '../src/expedition'
+import { startExpeditionArrived as startExpedition, startMiningArrived as startMining } from './helpers/command-arrived'
+import { finishDeparture } from './helpers/departure-ready'
 import { miningReturnLegMs } from '../src/location'
 import { scaledReturnMs } from '../src/trips'
 import { makeTestCtx, belt, ship } from './helpers'
@@ -182,6 +184,7 @@ describe('T4 延后项：采矿 ↔ 远征 转场', () => {
     startLocalMining(state, ctx)
     state.fleet[state.shipId]!.cargo['ore-a'] = 5 // 船上已有货
     expect(startExpeditionFromMining(state, 'ano-a', ctx).ok).toBe(true)
+    finishDeparture(state, ctx)
     expect(state.mining.active).toBe(false)
     expect(state.expedition.active).toBe(true)
     expect(state.expedition.anomalyId).toBe('ano-a')
@@ -202,6 +205,7 @@ describe('T4 延后项：采矿 ↔ 远征 转场', () => {
     expect(state.mining.phase).toBe('mining') // 去程取消：立即在远带采掘
     expect(startExpeditionFromMining(state, 'ano-a', ctx2).ok).toBe(true) // 目标在母港星系
     expect(state.expedition.active).toBe(true)
+    finishDeparture(state, ctx2)
     // 出发点 = 矿带星系：远征出发日志带起点名（startExpedition 会清空 awayGalaxy 表达）
     expect(state.expedition.outMs).toBeGreaterThan(0) // 从 far 飞回 hub 有航程
     expect(state.logs.some((l) => l.text.includes('自「远方」'))).toBe(true)

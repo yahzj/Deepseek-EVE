@@ -8,6 +8,7 @@ import { commandBudgetOf } from '../packages/core/src/combat/command/rules'
 import { notePreparationSquad } from '../packages/core/src/preparationSquads'
 import { startExpedition } from '../packages/core/src/expedition/launch'
 import { advanceExpedition } from '../packages/core/src/expedition/advance'
+import { consumeDeparture } from '../packages/core/src/departure'
 import { advanceAutoLoopBounty, setAutoLoopBounty } from '../packages/core/src/expedition/loop'
 import { bountyCooldownRemainingMs } from '../packages/core/src/expedition/cooldown'
 import { advanceBattleFor } from '../packages/core/src/combat/advance'
@@ -135,13 +136,19 @@ export function runSustainCampaign(ctx: SimContext, profile: SustainProfile, car
     const open = () => policy === 'continuous' ? advanceAutoLoopBounty(state, ctx) : startExpedition(state, cardId, ctx)
     let launch = open()
     if (state.pendingBattleRange) launch = withBattleRangeConsent(state, state.pendingBattleRange.desireM, open)
+    if (state.expedition.active && state.expedition.phase === 'out') {
+      const wait = state.expedition.finishAtGameMs - state.gameMs
+      state.gameMs += wait
+      consumeDeparture(state, 'expedition', wait)
+      advanceExpedition(state, ctx)
+    }
     if (!state.expedition.battle) {
       stopped = typeof launch === 'string' ? launch : '未能再次开战，或触发正式停环保护'
       break
     }
     const battle = state.expedition.battle
     if (version === 0) delete battle.enemyFormationVersion
-    state.gameMs = started + ctx.balance.battle.maxBattleMs + 30_000 + waveGapTotalMs(card, ctx.balance.battle)
+    state.gameMs = battle.startedAtGameMs + ctx.balance.battle.maxBattleMs + 30_000 + waveGapTotalMs(card, ctx.balance.battle)
     advanceBattleFor(state, ctx, battle, roster[0]!, cardId)
     assert(battle.ended || battle.autoEscaped, `${profile.id}/${cardId}/战斗未收束`)
     const seconds = (battle.lastTickGameMs - battle.startedAtGameMs) / 1000

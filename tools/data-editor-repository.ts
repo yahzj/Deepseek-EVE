@@ -150,7 +150,7 @@ function fieldContract(value: unknown): StaticFieldTypes {
   return contract
 }
 async function git(root: string, args: string[]): Promise<string> {
-  const result = await gitExec('git', ['-c', 'core.fsmonitor=false', '-C', root, ...args], {
+  const result = await gitExec('git', ['-c', 'core.fsmonitor=false', '-c', `safe.directory=${root}`, '-C', root, ...args], {
     encoding: 'utf8', windowsHide: true, timeout: 30_000, maxBuffer: MAX_BYTES,
   })
   return result.stdout
@@ -175,6 +175,22 @@ function names(bytes: Buffer, file: string, localized = new Map<string, string>(
   const unwrap = (expression: ts.Expression): ts.Expression => {
     while (ts.isAsExpression(expression) || ts.isSatisfiesExpression(expression) || ts.isParenthesizedExpression(expression) || ts.isNonNullExpression(expression)) expression = expression.expression
     return expression
+  }
+  const textValue = (expression: ts.Expression, depth = 0): string | undefined => {
+    if (depth > 20) return undefined
+    expression = unwrap(expression)
+    if (ts.isStringLiteralLike(expression)) return expression.text
+    if (ts.isPropertyAccessExpression(expression) && expression.name.text === 'zh') {
+      const access = unwrap(expression.expression)
+      if (ts.isElementAccessExpression(access) && ts.isIdentifier(access.expression) && access.expression.text === 'L10N' && ts.isStringLiteralLike(access.argumentExpression)) {
+        return localized.get(access.argumentExpression.text)
+      }
+    }
+    if (ts.isBinaryExpression(expression) && expression.operatorToken.kind === ts.SyntaxKind.PlusToken) {
+      const left = textValue(expression.left, depth + 1), right = textValue(expression.right, depth + 1)
+      if (left !== undefined && right !== undefined) return left + right
+    }
+    return undefined
   }
   const numeric = (expression: ts.Expression, depth = 0): number | undefined => {
     if (depth > 20) return undefined
@@ -206,11 +222,7 @@ function names(bytes: Buffer, file: string, localized = new Map<string, string>(
       const key = propertyName(field.name)
       if (!key || ['__proto__', 'constructor', 'prototype'].includes(key)) continue
       const path = prefix + key, label = unwrap(field.initializer)
-      if (!prefix && key === 'name' && (ts.isStringLiteral(label) || ts.isNoSubstitutionTemplateLiteral(label))) binding.name = label.text
-      else if (!prefix && key === 'name' && ts.isPropertyAccessExpression(label) && label.name.text === 'zh') {
-        const access = unwrap(label.expression)
-        if (ts.isElementAccessExpression(access) && ts.isIdentifier(access.expression) && access.expression.text === 'L10N' && ts.isStringLiteralLike(access.argumentExpression)) binding.name = localized.get(access.argumentExpression.text)
-      }
+      if (!prefix && key === 'name') binding.name = textValue(label)
       else if (ts.isObjectLiteralExpression(label)) collect(label, binding, `${path}.`)
       else {
         binding.codePaths.add(path)
@@ -235,7 +247,7 @@ function names(bytes: Buffer, file: string, localized = new Map<string, string>(
         }
         continue
       }
-      if (!decl.name.text.endsWith('_TEXT_BINDINGS')) continue
+      if (!decl.name.text.endsWith('_TEXT_BINDINGS') && decl.name.text !== 'BLUEPRINT_NAME_TEXT_BINDINGS') continue
       if (!ts.isObjectLiteralExpression(object)) continue
       for (const property of object.properties) {
         if (!ts.isPropertyAssignment(property) || (!ts.isStringLiteral(property.name) && !ts.isIdentifier(property.name))) continue

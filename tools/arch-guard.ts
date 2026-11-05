@@ -111,6 +111,8 @@ const DATA_TABLES: readonly string[] = [
  */
 const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; exported: boolean }[] = [
   { concept: '势力加密货柜蓝图分组', symbol: 'encryptedBlueprintGroups', file: 'packages/core/src/encryptedContainer.ts', exported: true },
+  { concept: '势力加密货柜实际奖池', symbol: 'encryptedBlueprintPool', file: 'packages/core/src/encryptedContainer.ts', exported: true },
+  { concept: '势力插件身份判据', symbol: 'isFactionPlugId', file: 'packages/data/src/plugs.ts', exported: true },
   { concept: '势力加密货柜抽取', symbol: 'encryptedBlueprintDraw', file: 'packages/core/src/encryptedContainer.ts', exported: true },
   { concept: '生产研究所首捞货柜', symbol: 'wormholeResearchBox', file: 'packages/core/src/wormholeSalvage.ts', exported: true },
   { concept: '主控离港与星门阶段', symbol: 'departureView', file: 'packages/core/src/departure.ts', exported: true },
@@ -301,6 +303,7 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
   { concept: '黑市锁定交付数量与旧货架兼容', symbol: 'blackMarketOfferQuantity', file: 'packages/core/src/blackMarket.ts', exported: true },
   { concept: '可选弹药档位与同族合法性', symbol: 'ammoTiersOf', file: 'packages/core/src/ammoTiers.ts', exported: true },
   { concept: '普通市场可流通商品目录', symbol: 'marketTradingGoods', file: 'packages/core/src/market/access.ts', exported: true },
+  { concept: '独占产物的玩家交易定义', symbol: 'PLAYER_ONLY_GOODS', file: 'packages/data/src/market/playerGoods.ts', exported: true },
   { concept: '沉船快照保存装配方案', symbol: 'saveWreckFitPreset', file: 'packages/core/src/fitPresets.ts', exported: true },
   { concept: '沉船逐位装备与重复扩槽明细', symbol: 'wreckFitDetailOf', file: 'packages/core/src/fitPresets.ts', exported: true },
   { concept: '市场商品可读名称', symbol: 'marketGoodDisplayName', file: 'apps/desktop/src/renderer/src/ui/marketGoodHover.tsx', exported: true },

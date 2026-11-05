@@ -22,6 +22,7 @@ import { goStandbyAt, startTransitHome } from '../src/location'
 import { shortestTravelMinutes, travelLegMs } from '../src/travel'
 import { makeTestCtx, anomaly, mineral, moduleDef, ship } from './helpers'
 import { setStanding } from './helpers'
+import { finishDeparture } from './helpers/departure-ready'
 
 /** 远星系低威胁悬赏（快速可胜）：2026-09-06 起胜利自动返航母港（不再停留目标星系） */
 function worldWithFarBounty() {
@@ -64,6 +65,7 @@ describe('T8（2026-09-06 语义：胜利自动返航）与重复冷却', () => 
     // 冷却已过（返航远超 10s）→ 可从母港再次出发（付出真实返航路程）
     expect(bountyCooldownRemainingMs(state, 'ano-far-easy')).toBe(0)
     expect(startExpedition(state, 'ano-far-easy', ctx).ok).toBe(true)
+    finishDeparture(state, ctx)
     expect(state.expedition.phase).toBe('battle')
     expect(state.awayGalaxy).toBeNull()
   })

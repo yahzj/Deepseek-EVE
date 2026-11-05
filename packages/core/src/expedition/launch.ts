@@ -24,7 +24,7 @@ import { shipDisplayName } from '../instances'
 import { weekendBattleInvolvedOf } from '../weekendBattle'
 import { startBattleFor, createPlayerSpec } from '../combat'
 import { autoLoopInvasionGalaxy } from './loopState'
-import { beginDeparture, departureOrigin, departureArrivalLog } from '../departure'
+import { beginDeparture, departureOrigin, departureArrivalLog, reconcileDeparture } from '../departure'
 
 /**
  * 出征通用前置检查（startExpedition 与"采矿转战"入口共用）：
@@ -32,6 +32,7 @@ import { beginDeparture, departureOrigin, departureArrivalLog } from '../departu
  * 不含"采矿/远征进行中"互斥（由各入口自己裁决）与起点可达性（由各入口按自身起点检查）。
  */
 export function expeditionPreflight(state: GameState, ctx: SimContext, anomalyId: string, galaxyId?: string): CommandResult {
+  reconcileDeparture(state)
   if (state.departure) return { ok: false, errorId: state.departure.progressMs < state.departure.undockMs ? 'core.departure.001' : 'core.departure.002' }
   if (!state.expedition.active && state.expedition.sortie) return { ok: false, error: '远征进行中，等战报回来再说吧。', errorId: 'core.expedition.011' }
   const anomaly = ctx.anomalies.get(anomalyId)
@@ -79,6 +80,10 @@ export function startExpedition(
 
 export function startExpeditionMutable(state: GameState, anomalyId: string, ctx: SimContext,
   opts?: { desireM?: number; lairTier?: LairTier; foeGalaxyId?: string; rewardIskOverride?: number; confirmActivitySwitch?: boolean }): CommandResult {
+  // 虫洞对主控的锁定优先于普通出发校验；进洞当拍也有 departure，不能把明确锁定理由压成通用离港提示。
+  if (shipLockedInWormhole(state, state.shipId)) {
+    return { ok: false, error: '主控在虫洞里（已锁定）：先暂停并召回整队，才能出击。', errorId: 'core.expedition.013' }
+  }
   const departureFrom = departureOrigin(state, ctx)
   const pre = expeditionPreflight(state, ctx, anomalyId, opts?.foeGalaxyId)
   if (!pre.ok) return pre
@@ -100,9 +105,6 @@ export function startExpeditionMutable(state: GameState, anomalyId: string, ctx:
   if (state.expedition.active) return { ok: false, error: '远征进行中，等战报回来再说吧。', errorId: 'core.expedition.011' }
   // 虫洞锁定（船长 2026-09-13：「已经进洞的船将被锁定」＋「洞内战斗时，洞外可以开新战斗」）：
   // 洞外这场战斗的锚点只能是**洞外的船**——主控若在洞里，先暂停并召回整队再出击。
-  if (shipLockedInWormhole(state, state.shipId)) {
-    return { ok: false, error: '主控在虫洞里（已锁定）：先暂停并召回整队，才能出击。', errorId: 'core.expedition.013' }
-  }
   /**
    * **其余主控活动 ⇒ 走统一判据**（**2026-09-21 船长令**：能直接切就自动取消当前活动，只有长途运输
    * 那一档先警告；远征/快递/战斗中/洞里/返航途中一律拒）——原先这里散着 6 条硬拒，现已收进

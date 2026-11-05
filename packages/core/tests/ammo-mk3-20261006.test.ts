@@ -15,6 +15,7 @@ import { wormholeEnterPrepared, wormholePreparationPlan } from '../src/wormholeP
 import { wormholeStartBattle } from '../src/wormholeBattle'
 import { battleAmmoIdsFor, consumeBattleAmmo, settleWormholeBattleAmmo } from '../src/combatAmmo'
 import { injectAmmoMk3TestState } from '../../../tools/ammo-mk3-test-fixture'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
 const now = new Date(2026, 9, 6, 12).getTime()
@@ -130,7 +131,7 @@ describe('MK3三系定稿数据和黑市唯一供货', () => {
     state.blueprintStock[bpId] = 1
     expect(learnBlueprint(state, ctx, bpId).ok).toBe(true)
     state.blueprintStock[bpId] = 1
-    expect(learnBlueprint(state, ctx, bpId).errorId).toBe('core.ammoMk3.001')
+    expect(learnBlueprint(state, ctx, bpId).errorId).toBe('core.market.004')
     state.warehouse.items['min-darkiron'] = 5
     const missing = JSON.stringify(state)
     expect(startManufacturing(state, bpId, 'pilot', ctx).ok).toBe(false)
@@ -151,6 +152,7 @@ describe('MK3三系定稿数据和黑市唯一供货', () => {
     const plan = wormholePreparationPlan(state, ctx, [a, b], { targets: { 'ammo-kinetic-3': 100, 'ammo-kinetic-2': 100 }, unload: [] })
     expect(plan.ok).toBe(true)
     expect(wormholeEnterPrepared(state, ctx, [a, b], 7, plan).ok).toBe(true)
+    finishDeparture(state, ctx)
     const run = state.wormhole.run!
     const cell = run.grid!.cells.find(c => c.key === `${run.grid!.pos.q},${run.grid!.pos.r}`)!
     cell.place = 'ship'

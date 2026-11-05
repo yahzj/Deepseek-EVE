@@ -180,6 +180,8 @@ describe('专属内容上市场（2026-09-14 船长「允许玩家挂卖」批�
     // 2026-09-18 船长裁定新建的磷虾级舰船蓝图只作「第一次生产」的任务奖励发放，不进市场
     expect(rowKeys.has('sbp-sandcat')).toBe(false)
     const noRowOk = [
+      // 2026-11-05船长指定：非势力插件图纸移出市场，学习与声望兑换不变。
+      ...BLUEPRINTS.filter(bp => bp.moduleId?.startsWith('plug-') && !bp.singleUse && bp.priceIsk === 0).map(bp => bp.id),
       'sandcat',
       'sh-dunkleosteus',
       'sbp-sandcat',

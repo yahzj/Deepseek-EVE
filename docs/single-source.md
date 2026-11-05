@@ -126,6 +126,8 @@
 | 黑市大宗原料排除 | `isBlackMarketBulkResource()` · `blackMarket.ts`，候选/购买和旧货架视图共用真实物品类型 | 原矿/原材料/气体/冰矿候选不进入、旧条目隐藏且拒买、不补抽/不改锁价、普通市场与无人机组货保持专项 |
 | 黑市新货架组数量、锁定交付数与老货架单件兼容 | `blackMarketLotQuantity()` / `blackMarketOfferQuantity()` · `blackMarket.ts` | `black-market-drone-lots-20261006.test.ts`：四机型、总价/库存/售罄守恒、旧报价和读档 |
 | 弹药可选档与设置合法性、普通市场可流通目录 | `ammoTiersOf()` · `ammoTiers.ts`；`marketTradingGoods()` · `market/access.ts` | MK3三系、设置/装配同源、黑市图纸渠道隔离回归 |
+| 独占产物玩家交易定义与后台目录导出 | `PLAYER_ONLY_GOODS` · `packages/data/src/market/playerGoods.ts`；最终资格读 `marketTradingGoods()`，后台快照由 `tools/export-market-relay-metadata.ts` 导出 | 插件成品料价×10、势力插件图纸1亿、加密柜按实际奖池整柜期望×30%；非势力插件图纸不进市场；NPC货源与兑换资格不变 |
+| 势力插件判据与加密柜估值输入 | `isFactionPlugId()` · `packages/data/src/plugs.ts`；`encryptedBlueprintPool()`、`ENCRYPTED_BLUEPRINT_COUNT` · `packages/core/src/encryptedContainer.ts` | 势力图纸生成与市场共用身份判据；开柜和估值共用奖池及张数范围，不另抄池或按成员总数平摊类别概率 |
 | 沉船快照保存方案、重复插件参考及覆盖确认 | `saveWreckFitPreset()` / `wreckFitDetailOf()` · `fitPresets.ts`；明细沿用`fitPresetDetailOf()`，插件参考不参与自动安装 | 重复插件/第九格/沉船记录读档、保存纯副作用及套用守恒回归 |
 | 虫洞整备库存/容量预览、补给占格与撤离核对 | `wormholePreparationPlan()` · `wormholePreparation.ts`；`wormholeSupplyCells()` · `wormholeSupplies.ts`；`wormholeExtractionPlan()` · `wormholeExtraction.ts` | `wormhole-supplies-20261004.test.ts` / `wormhole-cargo-flow-20261004.test.ts`；`arch:guard` F2/F3 |
 | 虫洞当前地点实物格板（不建立免费随行空间） | `wormholeGroundBoard()` · `wormholeGround.ts` | `wormhole-cargo-flow-20261004.test.ts`：地点隔离、往返不复制、深入确认与数量守恒 |

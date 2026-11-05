@@ -10,6 +10,7 @@ import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { makeHoldState } from '../src/wormholeHold'
 import type { GameState } from '../src/state'
 import type { WormholeGridCell } from '../src/wormholeGrid'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
 const ore = 'ore-voidmother'
@@ -19,6 +20,7 @@ function world(depth = 7) {
   const uid = addShipToFleet(state, 'sh-thresher')
   state.shipId = uid
   expect(wormholeEnter(state, ctx, [uid], 7).ok).toBe(true)
+  finishDeparture(state, ctx)
   state.fleet[uid]!.fitted = { high: ['mod-miner-1'], mid: [], low: [] }
   const run = state.wormhole.run!
   run.depth = depth

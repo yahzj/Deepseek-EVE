@@ -28,7 +28,10 @@ function bedCtx(mods: ReturnType<typeof moduleDef>[]) {
     powerBonus: 0,
     evasion: 0.1,
   })
-  return makeTestCtx({ ships: [bed], modules: mods })
+  const ctx = makeTestCtx({ ships: [bed], modules: mods })
+  // 只验证开火与耗弹，不让靶舰的巨额护盾回复抹掉基础炮伤害。
+  ctx.balance = { ...ctx.balance, battle: { ...ctx.balance.battle, shieldRegenPerSec: 0 } }
+  return ctx
 }
 type BedCtx = ReturnType<typeof bedCtx>
 
@@ -57,6 +60,7 @@ function bedWithGuns(n: number, def: ReturnType<typeof moduleDef>, ammoId = 'amm
   const ctx = bedCtx([def])
   state.fleet[state.shipId]!.defId = 'bed'
   repairDeprecatedModules(state, ctx)
+  state.fleet[state.shipId]!.fitted = { high: [], mid: [], low: [] }
   if (n > 0) {
     state.moduleBay[def.id] = n
     for (let i = 0; i < n; i++) expect(fitModule(state, def.id, ctx).ok).toBe(true)

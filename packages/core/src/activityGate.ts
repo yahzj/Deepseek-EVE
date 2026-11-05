@@ -28,6 +28,7 @@ import { addLog, haltActivityForSwitch } from './state'
 import { combatEscortBlock } from './combat/command/locks'
 import { combatRosterOf, makeCombatSortie } from './combat/command/roster'
 import { commandBudgetOf } from './combat/command/rules'
+import { reconcileDeparture } from './departureReconcile'
 
 /** 主控活动（10 项；与活动栏、`pilotUnavailableReason`、各 `start*` 入口一一对应） */
 export type MainActivityKind =
@@ -355,8 +356,7 @@ export function gateMainActivity(state: GameState, next: MainActivityKind): Gate
  * 但同样要"先把手上的活收掉"）⇒ 不适用"同项直接放行"那一条。
  */
 function verdictOf(state: GameState, next: MainActivityKind | null): GateVerdict {
-  if (state.departure) return { action: 'reject', message: 'departure-in-progress', messageId: state.departure.progressMs < state.departure.undockMs ? 'core.departure.001' : 'core.departure.002' }
-  if (state.hauling.active && state.hauling.fleetLeg && next !== 'hauling') return { action: 'reject', message: 'hauling-return-required', messageId: 'core.industrial.006' }
+  reconcileDeparture(state)
   const locked = cannotInterruptReason(state)
   if (locked !== null) {
     /** 三种锁定态各有自己的 id（界面按当前语言渲染；`error` 那份中文原串只作兜底） */
@@ -367,6 +367,8 @@ function verdictOf(state: GameState, next: MainActivityKind | null): GateVerdict
         : 'core.activityGate.006'
     return { action: 'reject', message: locked, messageId: id }
   }
+  if (state.departure) return { action: 'reject', message: 'departure-in-progress', messageId: state.departure.progressMs < state.departure.undockMs ? 'core.departure.001' : 'core.departure.002' }
+  if (state.hauling.active && state.hauling.fleetLeg && next !== 'hauling') return { action: 'reject', message: 'hauling-return-required', messageId: 'core.industrial.006' }
   const current = mainActivityOf(state)
   if (current === null) return { action: 'ok' }
   if (next !== null && current === next) return { action: 'ok' }

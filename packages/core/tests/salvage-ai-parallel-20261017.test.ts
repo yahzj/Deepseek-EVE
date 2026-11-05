@@ -6,9 +6,10 @@ import { describe, expect, it, vi } from 'vitest'
 import { L10N } from '@whale/data'
 import { assignAiSalvage, advanceAi, idleAiShipIds } from '../src/ai'
 import { createInitialState } from '../src/state'
-import { advanceSalvageOp, startSalvageOp } from '../src/salvaging'
+import { advanceSalvageOp } from '../src/salvaging'
 import { anomaly, galaxy, makeTestCtx, moduleDef, ship } from './helpers'
 import { ROOT } from './helpers/save-shell'
+import { startSalvageArrived } from './helpers/command-arrived'
 
 type UiNode = { type: unknown; props: Record<string, any>; children: unknown[] }
 
@@ -73,7 +74,7 @@ function setup() {
     durability: 1, cargo: {}, fitted: { high: ['mod-salvager-1'], mid: [], low: [] },
   }
   state.galaxyWrecks['galaxy-scrap'] = { density: 20, rare: 0 }
-  expect(startSalvageOp(state, 'galaxy-scrap', ctx).ok).toBe(true)
+  expect(startSalvageArrived(state, 'galaxy-scrap', ctx).ok).toBe(true)
   return { state, ctx }
 }
 

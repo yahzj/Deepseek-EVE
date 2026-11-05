@@ -13,6 +13,7 @@ import { wormholeDescend, wormholeEnter, wormholeGridScan, wormholeScanBonusOf }
 import { hexDistance, wormholeMakeGrid } from '../src/wormholeGrid'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { ROOT } from './helpers/save-shell'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
 const radiusIds = ['mt-explore-signal-radius-t1', 'mt-explore-signal-radius-t4']
@@ -81,6 +82,7 @@ describe('扫描半径两类舰船与单级科技', () => {
     const ew = addShipToFleet(state, 'sh-wh-d-frigate')
     state.research = { levels: Object.fromEntries(radiusIds.map(id => [id, 1])) }
     expect(wormholeEnter(state, ctx, [state.shipId, ew], 17, rules ? { expeditionRules: rules } : undefined).ok).toBe(true)
+    finishDeparture(state, ctx)
     const run = state.wormhole.run!
     expect(run.grid!.scanRadius).toBe(4)
     run.grid = wormholeMakeGrid(17, 15, 3, 1, rules)

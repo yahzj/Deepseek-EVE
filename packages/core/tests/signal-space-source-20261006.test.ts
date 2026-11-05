@@ -23,6 +23,7 @@ import {
   wormholeTempAddShape,
 } from '../src/index'
 import { createCommandReadyState as createInitialState } from './helpers/command-ready'
+import { finishDeparture } from './helpers/departure-ready'
 
 // 船长 2026-10-06 指定：旧玩法取 verify 的 c5f8be83，不取二号旧版本或零号新模式。
 const SOURCE_COMMIT = 'c5f8be8346e2bde9b1e738e7ddbfd5ca4740d519'
@@ -185,6 +186,7 @@ describe('信号空间 · legacy 核心集成', () => {
     state.shipId = fleet[0]!
     const warehouse = structuredClone(state.warehouse)
     expect(wormholeEnter(state, ctx, fleet, 19, { depth: 1, archetype: 'balanced', family: 'A' }).ok).toBe(true)
+    finishDeparture(state, ctx)
     const run = state.wormhole.run!
     expect(run.expeditionRules).toBeUndefined()
     expect(run.supplyVersion).toBeUndefined()
@@ -202,6 +204,7 @@ describe('信号空间 · legacy 核心集成', () => {
     const { state, fleet } = legacyFleet()
     state.shipId = fleet[0]!
     expect(wormholeEnter(state, ctx, fleet, 19).ok).toBe(true)
+    finishDeparture(state, ctx)
     expect(wormholeTempAddShape(state, ctx, 'ai-core-gamma').ok).toBe(true)
     const run = state.wormhole.run!
     const temporary = structuredClone(run.tempGrid)

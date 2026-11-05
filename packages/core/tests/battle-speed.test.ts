@@ -23,6 +23,7 @@ import { BATTLE_ARRIVAL_FLY_MS, battleShowWindowMs, battleSpeedOf } from '../src
 import { wormholeEnter } from '../src/wormhole'
 import { advanceWormhole, wormholeStartBattle } from '../src/wormholeBattle'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
 const T3 = 'sh-thresher'
@@ -39,6 +40,7 @@ function battleReady(techLevel = 0, seed = 77): GameState {
   const b = addShipToFleet(state, T3)
   state.shipId = a
   expect(wormholeEnter(state, ctx, [a, b], seed).ok).toBe(true)
+  finishDeparture(state, ctx)
   // 时间压缩矩阵的前置链：锚定器 ≥2 ⇒ 谐振信号滤波阵列 ≥1 ⇒ 时间压缩矩阵
   for (let i = 0; i < (techLevel > 0 ? 2 : 0); i++) {
     expect(researchMatterTech(state, ctx, 'mt-explore-turn').ok).toBe(true)
@@ -53,7 +55,7 @@ function battleReady(techLevel = 0, seed = 77): GameState {
   const cell = grid.cells.find((c) => c.key === `${grid.pos.q},${grid.pos.r}`)!
   cell.place = 'ship'
   grid.activated = grid.activated.filter((k) => k !== cell.key)
-  expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
+  expect(wormholeStartBattle(state, ctx, 'node', state.gameMs).ok).toBe(true)
   return state
 }
 

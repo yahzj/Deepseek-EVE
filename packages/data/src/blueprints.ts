@@ -15,7 +15,7 @@
 
 import type { BlueprintDef, MarketRarity } from '@whale/core'
 import { L10N } from './l10n/table'
-import { SHIP_PLUGS } from './plugs'
+import { SHIP_PLUGS, isFactionPlugId, FACTION_PLUG_BLUEPRINT_PRICE } from './plugs'
 
 /**
  * 装备/物品蓝图的**档位系数**（2026-09-11 船长裁决「甲」+ 同日复核补正）：
@@ -3308,6 +3308,18 @@ const BASE_BLUEPRINTS: readonly BlueprintDef[] = [
 
 // 新件沿获批参照配方取料单和工期，旧配方保持单一来源和原顺序。
 const BLUEPRINT_NAME_TEXT_BINDINGS = {
+  'bp-once-drone-repair-mil': { name: L10N['bp.repairDrone.001']!.zh },
+  'bp-drone-repair-mil': { name: L10N['bp.repairDrone.002']!.zh },
+  'bp-plug-pirate-damage-management': { name: L10N['mod.factionPlug.010']!.zh + L10N['bp.factionPlug.002']!.zh },
+  'bp-plug-alien-nanobiomass': { name: L10N['mod.factionPlug.012']!.zh + L10N['bp.factionPlug.002']!.zh },
+  'bp-plug-gravekeeper-charge': { name: L10N['mod.factionPlug.014']!.zh + L10N['bp.factionPlug.002']!.zh },
+  'bp-plug-titan-drone-command': { name: L10N['mod.factionPlug.016']!.zh + L10N['bp.factionPlug.002']!.zh },
+  'bp-plug-deadarmy-reinforced-hull': { name: L10N['mod.factionPlug.018']!.zh + L10N['bp.factionPlug.002']!.zh },
+  'bp-once-plug-pirate-damage-management': { name: L10N['mod.factionPlug.010']!.zh + L10N['bp.encrypted.001']!.zh },
+  'bp-once-plug-alien-nanobiomass': { name: L10N['mod.factionPlug.012']!.zh + L10N['bp.encrypted.001']!.zh },
+  'bp-once-plug-gravekeeper-charge': { name: L10N['mod.factionPlug.014']!.zh + L10N['bp.encrypted.001']!.zh },
+  'bp-once-plug-titan-drone-command': { name: L10N['mod.factionPlug.016']!.zh + L10N['bp.encrypted.001']!.zh },
+  'bp-once-plug-deadarmy-reinforced-hull': { name: L10N['mod.factionPlug.018']!.zh + L10N['bp.encrypted.001']!.zh },
   'bp-drone-launch-1': { name: L10N['bp.launchCalibration.001']!.zh },
   'bp-drone-launch-2': { name: L10N['bp.launchCalibration.002']!.zh },
   'bp-drone-launch-3': { name: L10N['bp.launchCalibration.003']!.zh },
@@ -3316,16 +3328,15 @@ const BLUEPRINT_NAME_TEXT_BINDINGS = {
 } as const
 export const BLUEPRINTS: readonly BlueprintDef[] = [
   ...BASE_BLUEPRINTS,
-  ...SHIP_PLUGS.filter(mod => mod.id.startsWith('plug-pirate-') || mod.id.startsWith('plug-alien-') ||
-    mod.id.startsWith('plug-gravekeeper-') || mod.id.startsWith('plug-titan-') || mod.id.startsWith('plug-deadarmy-')).map(mod => ({
+  ...SHIP_PLUGS.filter(mod => isFactionPlugId(mod.id)).map(mod => ({
     ...BASE_BLUEPRINTS.find(bp => bp.id === 'bp-plug-shield-plate')!,
-    id: `bp-once-${mod.id}`, moduleId: mod.id, singleUse: true,
+    id: `bp-once-${mod.id}`, moduleId: mod.id, singleUse: true, priceIsk: FACTION_PLUG_BLUEPRINT_PRICE,
     name: `${mod.name}${L10N['bp.encrypted.001']!.zh}`, description: L10N['bp.encrypted.002']!.zh,
   })),
-  ...SHIP_PLUGS.filter(mod => mod.id.startsWith('plug-pirate-') || mod.id.startsWith('plug-alien-') ||
-    mod.id.startsWith('plug-gravekeeper-') || mod.id.startsWith('plug-titan-') || mod.id.startsWith('plug-deadarmy-')).map(mod => ({
+  ...SHIP_PLUGS.filter(mod => isFactionPlugId(mod.id)).map(mod => ({
     ...BASE_BLUEPRINTS.find(bp => bp.id === 'bp-plug-shield-plate')!,
-    id: `bp-${mod.id}`, moduleId: mod.id, name: `${mod.name}${L10N['bp.factionPlug.002']!.zh}`, description: L10N['bp.factionPlug.001']!.zh,
+    id: `bp-${mod.id}`, moduleId: mod.id, priceIsk: FACTION_PLUG_BLUEPRINT_PRICE,
+    name: `${mod.name}${L10N['bp.factionPlug.002']!.zh}`, description: L10N['bp.factionPlug.001']!.zh,
   })),
   ...[
     ['bp-drone-launch-1', 'mod-drone-launch-1', 'bp-drone-tac-1', 'bp.launchCalibration.001'],

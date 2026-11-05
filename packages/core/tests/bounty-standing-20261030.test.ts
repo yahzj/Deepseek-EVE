@@ -5,8 +5,9 @@ import { advanceSideTasks, settleBountyTaskVictory } from '../src/sideTasks'
 import { createInitialState, type SideTask } from '../src/state'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { noteStandingEarned, standingOf, spendableStandingOf } from '../src/standing'
-import { resolveBattleOutcome, startExpedition, retreatBattle } from '../src/expedition'
+import { resolveBattleOutcome, retreatBattle } from '../src/expedition'
 import { anomaly, galaxy, makeTestCtx } from './helpers'
+import { startExpeditionArrived as startExpedition } from './helpers/command-arrived'
 
 const NOW = new Date(2026, 9, 30, 12).getTime()
 function world(levels: number[], midCount = 2, seed = 1) {

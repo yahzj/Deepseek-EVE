@@ -52,6 +52,7 @@ import { weekendApplyBattleOutcome, weekendFlagshipSpecOf, weekendSettleAndGrant
 import { weekendStartFlagshipBattle } from '../src/weekendLaunch'
 import { advanceBattleFor } from '../src/combat'
 import { weekendRewardLinesOf } from '../src/weekendComms'
+import { APPROVED_NEW_FACTION_PLUG_IDS } from './helpers/approved-static-content-20261104'
 
 const ctx = buildSimContext()
 const H = 3_600_000
@@ -300,13 +301,24 @@ describe('⑨ 装配侧：光环匣同样顶料 · 同样解锁插件门类', ()
 })
 
 describe('⑩ 文案：黑匣不再是"墨潮专属"', () => {
-  it('插件图纸说明均为「须先取得任意黑匣」（中英同步）', () => {
+  it('原17张与新增5张插件图纸均使用任意黑匣中英说明', () => {
     const plugs = BLUEPRINTS.filter((b) => b.id.startsWith('bp-plug-'))
-    expect(plugs.length).toBe(17)
-    for (const bp of plugs) {
+    const added = new Set(APPROVED_NEW_FACTION_PLUG_IDS.map(id => `bp-${id}`))
+    expect(plugs.filter(bp => added.has(bp.id)).map(bp => bp.id).sort()).toEqual([...added].sort())
+    expect(plugs).toHaveLength(22)
+    const original = plugs.filter(bp => !added.has(bp.id))
+    expect(original).toHaveLength(17)
+    for (const bp of original) {
       expect(bp.description, `${bp.id} 中文说明`).toContain('须先取得任意黑匣')
       expect(bp.description.includes('墨潮'), `${bp.id} 不再点名墨潮`).toBe(false)
       expect(EN_BLUEPRINTS[bp.id]?.description, `${bp.id} 英文说明`).toContain('any black box')
+    }
+    const entry = L10N['bp.factionPlug.001']!
+    expect(entry.en).toContain('any black box')
+    for (const bp of plugs.filter(bp => added.has(bp.id))) {
+      expect(bp.description, bp.id).toBe(entry.zh)
+      expect(bp.description, bp.id).toContain('任意黑匣')
+      expect(EN_BLUEPRINTS[bp.id]?.description, bp.id).toBe(entry.en)
     }
   })
 

@@ -127,7 +127,7 @@ describe('新增阵营插件获取与一次性制造', () => {
     expect(startManufacturing(back, blueprintId, 'pilot', ctx).ok).toBe(false)
   })
 
-  it.each(ENCRYPTED_FAMILIES)('%s插件不能声望兑换或从普通市场获取', family => {
+  it.each(ENCRYPTED_FAMILIES)('%s插件不能声望兑换，玩家市场开放但NPC不供货', family => {
     const moduleId = added[family]
     const state = createInitialState({ nowWallMs: 0, seed: 20261104 })
     state.standings.dsi = 1000
@@ -137,6 +137,8 @@ describe('新增阵营插件获取与一次性制造', () => {
     expect(state.standings.dsi).toBe(1000)
     expect(state.learnedRecipes).not.toContain(`bp-${moduleId}`)
     const ids = [moduleId, `bp-${moduleId}`, `bp-once-${moduleId}`]
-    expect(marketTradingGoods(ctx).filter(row => ids.includes(row.refId))).toEqual([])
+    const goods = marketTradingGoods(ctx).filter(row => ids.includes(row.refId))
+    expect(goods.map(row => row.refId).sort()).toEqual([...ids].sort())
+    for (const good of goods) expect(good).toMatchObject({ playerBuyable: false, playerSellable: false, blackMarketBuyable: false })
   })
 })

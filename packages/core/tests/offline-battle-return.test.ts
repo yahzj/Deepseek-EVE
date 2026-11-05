@@ -11,6 +11,7 @@ import { advanceGame } from '../src/engine'
 import { simulateOffline } from '../src/simulation'
 import { startExpedition } from '../src/expedition'
 import { makeTestCtx, anomaly } from './helpers'
+import { finishDeparture } from './helpers/departure-ready'
 
 function world(seed = 7): { state: GameState; ctx: SimContext } {
   const ctx: SimContext = makeTestCtx({ quietEvents: true, anomalies: [anomaly('ano-weak3', 'galaxy-hub', { threat: 1, reward: 1_000 })] })
@@ -21,6 +22,7 @@ function world(seed = 7): { state: GameState; ctx: SimContext } {
 /** 打到"交火中"（母港目标零航程：推进 1s 进入 battle，未分胜负） */
 function enterBattle(state: GameState, ctx: SimContext): void {
   expect(startExpedition(state, 'ano-weak3', ctx).ok).toBe(true)
+  finishDeparture(state, ctx)
   advanceGame(state, 1_000, ctx)
   expect(state.expedition.phase).toBe('battle')
   expect(state.expedition.battle).not.toBeNull()

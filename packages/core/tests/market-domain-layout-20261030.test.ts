@@ -15,6 +15,8 @@ import document from '../../data/src/static/market.json'
 import { tableOf } from '../../../tools/content-schema'
 import { readImplementation } from '../../../tools/source-implementation'
 import { ROOT } from './helpers/save-shell'
+import { APPROVED_NEW_FACTION_PLUG_IDS } from './helpers/approved-static-content-20261104'
+import { PLAYER_ONLY_GOODS } from '../../data/src/market/playerGoods'
 
 describe('市场域目录与兼容契约', () => {
   it('旧入口与实际实现保持同一函数和目录身份', () => {
@@ -30,7 +32,7 @@ describe('市场域目录与兼容契约', () => {
     expect(readImplementation(resolve(ROOT, 'packages/data/src/marketCatalog.ts'))).toContain('function buildMarketGoodsCatalog')
   })
 
-  it('绑定精确覆盖JSON分组，新增修理机与原始目录保持原序', () => {
+  it('绑定精确覆盖JSON分组，仅追加3条修理机和15条新插件占位，原始目录保持原序', () => {
     const raw = document.groups.MARKET_GOODS_RAW_0
     const extra = document.groups.MARKET_GOODS_0
     expect([...Object.keys(bindings.MARKET_GOODS_RAW_0_TEXT_BINDINGS)]).toHaveLength(raw.length)
@@ -38,15 +40,21 @@ describe('市场域目录与兼容契约', () => {
     for (const [rows, map] of [[raw, bindings.MARKET_GOODS_RAW_0_TEXT_BINDINGS], [extra, bindings.MARKET_GOODS_0_TEXT_BINDINGS]] as const) {
       expect(Object.keys(map).sort()).toEqual(rows.map(row => row.key).sort())
     }
-    const added = new Set(['drone-repair-mil', 'bp-once-drone-repair-mil', 'bp-drone-repair-mil'])
+    const added = new Set(['drone-repair-mil', 'bp-once-drone-repair-mil', 'bp-drone-repair-mil',
+      ...APPROVED_NEW_FACTION_PLUG_IDS.flatMap(id => [id, `bp-${id}`, `bp-once-${id}`])])
+    expect([...raw, ...extra].filter(row => added.has(row.key)).map(row => row.key).sort()).toEqual([...added].sort())
+    expect([...raw, ...extra]).toHaveLength(588)
     expect([...raw, ...extra].filter(row => !added.has(row.key))).toHaveLength(570)
     expect([...raw, ...extra].filter(row => row.key === 'drone-repair-mil')).toHaveLength(1)
     expect(catalog.MARKET_GOODS_RAW.map(row => row.key)).toEqual(raw.map(row => row.key))
     const offset = raw.length + publicCatalog.WRECK_BUY_GOODS.length
     expect(catalog.MARKET_GOODS.slice(offset, offset + extra.length).map(row => row.key)).toEqual(extra.map(row => row.key))
     const plugs = catalog.MARKET_GOODS.slice(offset + extra.length)
-    expect(plugs).toHaveLength(34)
-    expect(plugs.every(row => row.unreleased && (row.key.startsWith('plug-') || row.key.startsWith('bp-plug-')))).toBe(true)
+    expect(plugs).toHaveLength(32)
+    expect(PLAYER_ONLY_GOODS).toHaveLength(47)
+    const staticKeys = new Set([...raw, ...extra].map(row => row.key))
+    expect(plugs.map(row => row.key)).toEqual(PLAYER_ONLY_GOODS.filter(row => !staticKeys.has(row.key)).map(row => row.key))
+    expect(plugs.every(row => !row.unreleased && row.playerBuyable === false && row.playerSellable === false)).toBe(true)
     expect(catalog.MARKET_GOODS).toHaveLength(raw.length + extra.length + publicCatalog.WRECK_BUY_GOODS.length + plugs.length)
   })
 

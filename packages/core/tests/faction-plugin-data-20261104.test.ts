@@ -80,8 +80,9 @@ describe('五族新插件数据与玩家参数接线', () => {
     expect(core.exchangePlugBlueprint(state, ctx, mod.id)).toMatchObject({ ok: false, errorId: 'core.plug.016' })
     expect(state.standings.dsi).toBe(1000)
     for (const id of [mod.id, `bp-${mod.id}`, `bp-once-${mod.id}`]) {
-      expect(MARKET_GOODS.find(row => row.refId === id)).toMatchObject({ unreleased: true, playerBuyable: false, blackMarketBuyable: false })
-      expect([...ctx.marketGoods.values()].some(row => row.refId === id)).toBe(false)
+      expect(MARKET_GOODS.find(row => row.refId === id)).toMatchObject({ playerBuyable: false, playerSellable: false, blackMarketBuyable: false })
+      expect(ctx.marketGoods.get(id)?.unreleased).not.toBe(true)
+      expect([...ctx.marketGoods.values()].some(row => row.refId === id)).toBe(true)
     }
   })
 

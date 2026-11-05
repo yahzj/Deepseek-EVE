@@ -22,6 +22,7 @@ import type { BattleReportRecord, GameState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
 import { advanceBattleFor, battleVerdictOf, captureBattleReport, startBattleFor, startFleetBattleFor } from '../src/combat'
 import { wormholeEnter } from '../src/wormhole'
+import { finishDeparture } from './helpers/departure-ready'
 import type { WormholeRunState } from '../src/wormhole'
 import { advanceWormhole, wormholeStartBattle } from '../src/wormholeBattle'
 import type { SimContext } from '../src/types'
@@ -193,6 +194,7 @@ describe('战报 · 结构化记录（captureBattleReport 唯一构造点）', (
     const b = addShipToFleet(state, 'sh-thresher')
     state.shipId = a
     expect(wormholeEnter(state, ctx, [a, b], 21).ok).toBe(true)
+    finishDeparture(state, ctx)
     // 站到"下一层入口"格（层末守卫守在那里）→ 开守卫战
     const run: WormholeRunState = state.wormhole.run!
     const g = run.grid!
