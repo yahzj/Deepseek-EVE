@@ -24,6 +24,7 @@ import type { BattleFx, BattleState } from '@whale/core'
 import { battleFxArrivals } from './battleFxCursor'
 import type { BattleFxCursor } from './battleFxCursor'
 import { playCue } from '../../game/audio/player'
+import { rerollBgmVariant } from '../../game/audio/music'
 
 interface Track {
   battle: BattleState
@@ -91,6 +92,8 @@ export function useBattleSfx({
     }
     let track = trackRef.current
     if (track === null || track.battle !== battle) {
+      // 新一场战斗（清剿连打=新 battle 对象）：重新随机战斗 BGM 变体并交叉淡变（船长 2026-11-05 裁定 B）
+      if (track !== null && track.battle !== battle && visible) rerollBgmVariant('bgm-battle')
       track = createTrack(battle)
       trackRef.current = track
       cursorRef.current = { seq: -1 }

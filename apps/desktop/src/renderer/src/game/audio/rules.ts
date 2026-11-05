@@ -262,6 +262,22 @@ export function pickVariant<T>(items: readonly T[], random: () => number): T | n
   return items[Math.min(items.length - 1, Math.max(0, i))] ?? null
 }
 
+/**
+ * 重抽变体：尽量给一条**与当前不同**的（只有一条候选时原样返回，`current` 不在表里时全表随机）。
+ * 用于 BGM「每场新战斗重新随机换曲」（2026-11-05 船长裁定 B），避免抽到原曲导致听感上「没换」。
+ */
+export function pickOtherVariant<T>(
+  items: readonly T[],
+  current: T | null,
+  random: () => number = Math.random,
+): T | null {
+  if (items.length === 0) return null
+  if (items.length === 1) return items[0] ?? null
+  const index = current === null ? -1 : items.indexOf(current)
+  const pool = index >= 0 ? items.filter((_, i) => i !== index) : items
+  return pickVariant(pool, random)
+}
+
 /* ═══════════════ 触发匹配：生产进度 ═══════════════ */
 
 /** 只读投影：精炼炉的已完成批数（按台 id）与实验室当前批的到点时刻（按台 id） */

@@ -11,7 +11,7 @@
  *
  * 用法：`npm run audio:check`
  *
- * **版本自检**：游戏版本 v0.1.0 · 存档结构 **v31** · 最后核对 2026-11-04 · 最后跑过 2026-11-04
+ * **版本自检**：游戏版本 v0.1.0 · 存档结构 **v31** · 最后核对 2026-11-05 · 最后跑过 2026-11-05
  * 判据：档结构版本跨一个大版本，或本域文案/清单/构建入口改动后必须重跑并更新本行。
  */
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
@@ -37,6 +37,7 @@ import {
   matchLogCue,
   matchSfxFileName,
   parseSfxPrefs,
+  pickOtherVariant,
   pickVariant,
   pitchRateFor,
   productionCompletedCount,
@@ -373,6 +374,14 @@ check(sfxFileBase('A.1.MP3') === 'a.1', '文件名基名去扩展名错误')
 check(pickVariant(['a', 'b'], () => 0) === 'a', '变体随机：0 → 第一份')
 check(pickVariant(['a', 'b'], () => 0.999) === 'b', '变体随机：接近 1 → 最后一份')
 check(pickVariant([], () => 0) === null, '变体随机：空表 → null')
+
+/* BGM 每场新战斗重抽变体（2026-11-05 船长裁定 B）：务必避开当前曲目，否则听感上等于没换 */
+check(pickOtherVariant(['a', 'b'], 'a', () => 0) === 'b', '重抽变体：两选一时必须给另一条（避开当前）')
+check(pickOtherVariant(['a', 'b'], 'b', () => 0) === 'a', '重抽变体：当前是最后一条时给第一条')
+check(pickOtherVariant(['a', 'b'], null, () => 0) === 'a', '重抽变体：没有当前曲目时按全表随机')
+check(pickOtherVariant(['a', 'b'], 'x', () => 0.9) === 'b', '重抽变体：当前不在表内时按全表随机')
+check(pickOtherVariant(['a'], 'a', () => 0) === 'a', '重抽变体：只有一条时原样返回')
+check(pickOtherVariant([], null, () => 0) === null, '重抽变体：空表 → null')
 
 /* 音高随机（船长 2026-11-02：1200 音分八度里上下浮动 100 音分） */
 check(SFX_CATEGORIES.length === 6, `分类应为 6 类，实际 ${SFX_CATEGORIES.length}`)
