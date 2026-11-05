@@ -439,7 +439,8 @@ export function trySalvagePlayerWreckOf(
       const droneLoad = rec.recoveryRules === 2 ? Object.fromEntries(Object.entries(rec.droneLoad ?? {})
         .filter(([id, n]) => ctx.items.has(id) && n > 0 && nextRandom(state.rng) < WRECK_RECOVERY_RATE.drone)) : undefined
       const count = (fit: FittedModules | undefined): number => fit ? [...fit.high, ...fit.mid, ...fit.low].filter(Boolean).length : 0
-      const damagePlugs = rec.recoveryRules === 2 ? rollShipDamage(state, rec.damagePlugs) : cleanShipDamage(rec.damagePlugs)
+      const damageImmune = rec.plugs?.some(id => ctx.modules.get(id)?.slot === 'plug' && ctx.modules.get(id)?.recoveryDamageImmune)
+      const damagePlugs = rec.recoveryRules === 2 && !damageImmune ? rollShipDamage(state, rec.damagePlugs) : cleanShipDamage(rec.damagePlugs)
       return {
         kind: 'ship',
         wreckName: rec.name,

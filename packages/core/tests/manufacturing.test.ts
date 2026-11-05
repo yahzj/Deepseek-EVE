@@ -17,6 +17,7 @@ import { miningStatus, startMining } from '../src/mining'
 import { startRefineRun } from '../src/industry'
 import { calcPower } from '../src/expedition'
 import { learnBlueprint } from '../src/market'
+import { startMiningArrived } from './helpers/command-arrived'
 import {
   cancelManufacturing,
   manufacturingLoopOf,
@@ -402,7 +403,7 @@ describe('装备装配与加成', () => {
   it('采集器加成接入采矿：+50% 产量 → 每循环 15 单位', () => {
     state.moduleBay['mod-a'] = 1
     fitModule(state, 'mod-a', ctx)
-    startMining(state, 'belt-a', ctx)
+    startMiningArrived(state, 'belt-a', ctx)
     expect(miningStatus(state, ctx).unitsPerCycle).toBe(15) // floor(10 × 1.5)
     advanceGame(state, 12_000, ctx) // 去程取消：指令即采掘 → 1 个循环
     expect(countItem(state, 'ore-a')).toBe(15)

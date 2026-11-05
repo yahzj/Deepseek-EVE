@@ -11,6 +11,7 @@ import { fitModule } from '../packages/core/src/equipment'
 import { goodLockedReason, marketGoodOf } from '../packages/core/src/market/access'
 import { startExpedition } from '../packages/core/src/expedition/launch'
 import { advanceExpedition } from '../packages/core/src/expedition/advance'
+import { consumeDeparture } from '../packages/core/src/departure'
 import { advanceBattleFor } from '../packages/core/src/combat/advance'
 import { waveGapTotalMs } from '../packages/core/src/combat/combatMath'
 import { repairCostIsk, repairShip } from '../packages/core/src/shipyard'
@@ -85,6 +86,10 @@ function cycle(source: GameState, local: SimContext, id: string, version: 0 | 1)
   const ammoBefore = source.warehouse.items['ammo-explosive-l'] ?? 0
   const launched = startExpedition(source, id, local)
   assert(launched.ok, `${id}:${launched.error}`)
+  const wait = source.expedition.finishAtGameMs - source.gameMs
+  source.gameMs += wait
+  consumeDeparture(source, 'expedition', wait)
+  advanceExpedition(source, local)
   const battle = source.expedition.battle!
   // 旧上下文已用原卡建首波，随后保留旧版本；正式结算和返航仍走远征链。
   if (version === 0) delete battle.enemyFormationVersion

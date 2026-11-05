@@ -1,13 +1,13 @@
 /** 战斗域：cards，从原引擎按职责迁移，保持结算顺序。 */
 import type { GameState } from '../state'
-import type { AnomalyDef, SimContext } from '../types'
+import type { AnomalyDef, SimContext, FoeShipSlot } from '../types'
 import { type LairTier, lairAnomalyOf, factionAnomalyOf } from '../lairs'
 import type { FoeOverride } from './model'
-import type { Hp3 } from './combatMath'
 import { type WormholeExpeditionFoeCard, wormholeExpeditionCard, wormholeExpeditionModifyCard } from '../wormholeExpeditionFoes'
 import { WORMHOLE_TIER_THREAT_MUL, wormholeTierOfCard, wormholeSkippedBranch, wormholeAnomalyOf, wormholeCardThreatOf, WORMHOLE_FOE_BASE_STRENGTH_MUL } from '../wormholeFoes'
 import { createFoeSpecs } from './foes/catalog'
-import { foeHpOfThreat } from './foePower'
+import { foeHpOfThreat, foeShipHpMulOf } from './foePower'
+import { ceilFinalQuantity } from '../quantity'
 import { enemyFormationCard } from './formation'
 import { SIGNAL_FORMATION_COUNTS } from './formation-plans'
 
@@ -151,10 +151,14 @@ export function applyFoeOverride<T>(anomaly: T, override?: FoeOverride): T {
   if (bossHp !== undefined && Number.isFinite(bossHp) && bossHp > 0 && typeof bossShipId === 'string' && bossShipId.length > 0) {
     const ships = next.ships
     if (Array.isArray(ships)) {
-      next.ships = ships.map((raw) => {
-        const slot = raw as { ship?: { id?: string; hp?: number; split?: Hp3 }; split?: Hp3 }
+      next.ships = ships.map((raw, index) => {
+        const slot = raw as FoeShipSlot
         if (slot.ship?.id !== bossShipId) return raw
         const classHp = Math.max(1, slot.ship.hp ?? 1)
+        const fixed = (next.foeFormation as AnomalyDef['foeFormation'])?.units[index]
+        const shieldRegenMax = slot.shieldRegenMax ?? (slot.hpOverride?.s ?? (fixed
+          ? ceilFinalQuantity(fixed.spec.hp.s * (slot.hpMul ?? 1) / fixed.hpMul)
+          : ceilFinalQuantity(classHp * (slot.hpMul ?? 1) * (slot.split ?? slot.ship.split).s * foeShipHpMulOf(slot.ship.family))))
         /**
          * ⚠ **三层血按 护盾 → 装甲 → 结构 的顺序扣**（船长 2026-09-25）：`bossHpLayers` 是"当前值"，
          * 拆成 `split` 覆写 ⇒ 建档后 `hp = bossHp × split` 逐层等于它；没给 ⇒ 保持卡面 `split`（等比分摊）。
@@ -168,7 +172,8 @@ export function applyFoeOverride<T>(anomaly: T, override?: FoeOverride): T {
         const hpOverride = layers !== undefined
           ? { s: Math.max(0, layers.s), a: Math.max(0, layers.a), h: Math.max(0, layers.h) }
           : { s: bossHp * split.s, a: bossHp * split.a, h: bossHp * split.h }
-        return { ...(raw as object), hpMul: bossHp / classHp, hpOverride, ...(layerSplit !== undefined ? { split: layerSplit } : {}) }
+        return { ...(raw as object), shieldRegenMax, shieldRegenCap: override.bossMaxLayers?.s ?? hpOverride.s,
+          hpMul: bossHp / classHp, hpOverride, ...(layerSplit !== undefined ? { split: layerSplit } : {}) }
       })
     }
   }

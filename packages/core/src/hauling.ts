@@ -7,6 +7,7 @@ import { cargoCapacityM3Of } from './inventory'
 import { startFleetHauling, advanceFleetHauling, stopFleetHauling } from './hauling/fleet'
 import { haulLegReward, haulEffectiveMinutes, haulEndpointName, HAUL_TRIP_MUL_MIN } from './hauling/routes'
 import { noteOfflineDelivery, noteOfflineTransportStop } from './offlineCombatStats'
+import { consumeDeparture } from './departure'
 export { HAUL_RATE_PER_M3_MIN, HAUL_LEG_TIME_MUL, HAUL_TRIP_MUL_MIN, HAUL_TRIP_MUL_MAX, haulLegMinutesOf, haulSecurityMulOf, haulExposureAt, haulEffectiveMinutes, haulBaseReward, haulLegReward, haulRewardRange, haulUnitRewardRange, haulEndpoints, haulEndpointName, dockedHaulEndpoint } from './hauling/routes'
 export type { HaulEndpoint } from './hauling/routes'
 
@@ -26,6 +27,8 @@ export function advanceHauling(state: GameState, deltaMs: number, ctx: SimContex
   const h = state.hauling
   if (!h.active || deltaMs <= 0 || state.encounter.active) return
   if (h.fleetLeg) { advanceFleetHauling(state, deltaMs, ctx); return }
+  deltaMs = consumeDeparture(state, 'hauling', deltaMs)
+  if (deltaMs <= 0) return
   h.phaseAccMs += Math.min(deltaMs, Math.max(0, h.legMs - h.phaseAccMs))
   if (h.phaseAccMs < h.legMs) return
   const g = (id: string | null) => id === null ? HOME_GALAXY_ID : ctx.stations.get(id)?.galaxyId ?? ''

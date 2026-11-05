@@ -78,19 +78,19 @@ describe('离线结算：采矿产出与摘要', () => {
     const ctx = calmCtx()
     startMining(state, 'belt-a', ctx)
 
-    // 时间线：0s 立即采掘 → 972s 满舱转返航 → 1152s 满载到港卸货（800 入仓库）→ 回带再采掘
-    // 到 1200s 时已采 4 循环（40 单位，仍在船上）
+    // 首趟离港和星门15秒：987s满舱转返航，1167s卸货，再等15秒回带。
+    // 1200s时第二趟采掘18秒，完成1循环（10单位）。
     simulateOffline(state, 1_000, 1_000 + 1_200_000, ctx)
 
     expect(state.warehouse.items['ore-a']).toBe(800) // 第一趟已卸入仓库
-    expect(countItem(state, 'ore-a')).toBe(40) // 卸货后回带又采了 4 循环
+    expect(countItem(state, 'ore-a')).toBe(10)
     expect(state.mining.active).toBe(true)
     expect(state.mining.phase).toBe('mining')
     expect(state.gameMs).toBe(1_200_000)
     const summary = state.logs.find((l) => l.text.includes('离线结算完成'))
     expect(summary).toBeDefined()
     expect(summary!.text).toContain('离线采集')
-    expect(summary!.text).toContain('矿甲×840')
+    expect(summary!.text).toContain('矿甲×810')
   })
 
   it('离线 40 分钟：完成两趟自动卸货并开始第三趟采掘，货仓+仓库合计入账', () => {
@@ -98,17 +98,17 @@ describe('离线结算：采矿产出与摘要', () => {
     const ctx = calmCtx()
     startMining(state, 'belt-a', ctx)
 
-    // 0s 采掘 → 972s 满舱 → 1152s 卸货（第一趟）→ 2124s 满舱 → 2304s 卸货（第二趟）
-    // → 回到矿带采掘至 2400s = 96s（8 循环 = 80 单位，仍在船上）
+    // 三趟各有15秒出发等待：第二次卸货在2334s，第三趟2349s回带。
+    // 2400s时第三趟采掘51秒，完成4循环（40单位）。
     simulateOffline(state, 1_000, 1_000 + 2_400_000, ctx)
 
     expect(state.warehouse.items['ore-a']).toBe(1_600) // 前两趟已卸入仓库
-    expect(countItem(state, 'ore-a')).toBe(80) // 第三趟采掘中
+    expect(countItem(state, 'ore-a')).toBe(40)
     expect(state.mining.active).toBe(true)
     expect(state.mining.phase).toBe('mining')
     const summary = state.logs.find((l) => l.text.includes('离线结算完成'))
     expect(summary!.text).toContain('离线采集')
-    expect(summary!.text).toContain('矿甲×1680')
+    expect(summary!.text).toContain('矿甲×1640')
   })
 
   it('离线关闭自动循环（玩家设定）时仍遵守：满舱即停', () => {

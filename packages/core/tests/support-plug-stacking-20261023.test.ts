@@ -124,7 +124,9 @@ describe('插件独立效果池与例外', () => {
     expect(rows.map(p => p.weight)).toEqual([1, 1, 1, stackWeight(2), 1, stackWeight(2), stackWeight(2), 1])
     const armor = rows[3]!, capacity = rows[6]!
     expect(armor.effective.speedPenaltyMps).toBe(20 * stackWeight(2))
-    for (const key of ['cargoCapacityBonusPct', 'droneBayBonusM3', 'cpuPenalty', 'speedPenaltyMps'] as const) {
+    expect(capacity.mod.cpuPenalty).toBeUndefined()
+    expect(capacity.effective.cpuPenalty).toBeUndefined()
+    for (const key of ['cargoCapacityBonusPct', 'droneBayBonusM3', 'speedPenaltyMps'] as const) {
       expect(capacity.effective[key]! / capacity.mod[key]!).toBeCloseTo(stackWeight(2), 12)
     }
   })
@@ -149,7 +151,7 @@ describe('插件独立效果池与例外', () => {
     expect(w.spec().weapons[0]!.eqHitMul).toBeCloseTo(1.15 * (1 + .15 * stackWeight(2)), 12)
     w.state.fleet[w.uid]!.plugs = ['plug-titan-compression', 'plug-titan-compression']
     const before = JSON.stringify(w.state)
-    expect(cpuBudgetOf(w.state, w.local, w.uid)).toBeCloseTo(10000 - 20 * sumWeights(2), 12)
+    expect(cpuBudgetOf(w.state, w.local, w.uid)).toBe(10000)
     expect(droneBayTotalM3(w.local.ships.get('sh-wh-a-frigate'), w.state.fleet[w.uid]!.fitted, w.local, w.state.fleet[w.uid]!.plugs))
       .toBeCloseTo(10 + 120 * sumWeights(2), 12)
     expect(cargoCapacityM3Of(w.state, w.local, w.uid)).toBe(Math.ceil(ctx.ships.get('sh-wh-a-frigate')!.cargoM3 * (1 + .25 * sumWeights(2))))

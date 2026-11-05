@@ -48,9 +48,11 @@ for (const f of files) {
 
 /** 只选有明确保真契约且本合成状态实际覆盖的字段，不把补默认值当成错误。 */
 function projection(s: GameState) {
+  // 无参考价的玩家商品没有行情，空数组由读档按既有规则省略；非空价格仍逐项严格比较。
+  const priceHistory = Object.fromEntries(Object.entries(s.market.priceHistory).filter(([, prices]) => prices.length > 0))
   return {
     wallet: s.wallet, warehouse: s.warehouse, moduleBay: s.moduleBay, aiCores: s.aiCores,
-    skills: s.skills, priceHistory: s.market.priceHistory, importantTasks: s.importantTasks,
+    skills: s.skills, priceHistory, importantTasks: s.importantTasks,
     labRuns: s.labRuns, labLoops: s.labLoops,
   }
 }

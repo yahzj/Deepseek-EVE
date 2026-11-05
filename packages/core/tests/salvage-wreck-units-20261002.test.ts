@@ -29,6 +29,7 @@ import {
   weekendWreckDensityOf,
 } from '../src/salvage'
 import { advanceSalvageOp, pullOneWreck, salvagerCyclesOf, startSalvageOp, wreckUnitsOf } from '../src/salvaging'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext('zh')
 /** 一个"本来就有可见悬赏"的星系（池底 = 它的原卡） */
@@ -79,6 +80,7 @@ describe('① 入舱件数：出了量就至少 1 件（2026-10-02 船长令「�
     injectWeekendWreck(s, GID, 0.6, 'R')
     expect(countItem(s, R_WRECK), '开捞前舱里 0 件').toBe(0)
     expect(startSalvageOp(s, GID, ctx, WEEKEND_WRECK_TARGET).ok, '开工（真门槛：装了打捞器）').toBe(true)
+    finishDeparture(s, ctx)
     /** 推进**正好一个打捞周期**（真打捞器的周期从数据取，别写死 1000） */
     const cycle = salvagerCyclesOf(s, ctx, s.shipId)[0]!
     advanceSalvageOp(s, cycle, ctx)

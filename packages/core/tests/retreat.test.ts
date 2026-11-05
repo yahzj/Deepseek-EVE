@@ -18,11 +18,12 @@ import type { GameState } from '../src/state'
 import type { SimContext } from '../src/types'
 import { createInitialState } from '../src/state'
 import { advanceGame } from '../src/engine'
-import { retreatBattle, startExpedition } from '../src/expedition'
+import { retreatBattle } from '../src/expedition'
 import { durabilityOf, hullLayerCaps } from '../src/shipyard'
 import { applyArmorFirstDamage, firepowerHitHp } from '../src/hullDamage'
 import { LAIR_THREAT_MUL } from '../src/lairs'
 import { anomaly, makeTestCtx } from './helpers'
+import { startExpeditionArrived as startExpedition } from './helpers/command-arrived'
 
 function world() {
   const ctx: SimContext = makeTestCtx({ quietEvents: true })

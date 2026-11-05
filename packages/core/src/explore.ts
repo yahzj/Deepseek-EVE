@@ -148,14 +148,14 @@ export function actionBlockReason(state: GameState, galaxyId: string | null | un
 
 /** 引擎内部：在途作业兜底点亮（读档恢复/老档迁移后，船已经在路上的星系视为已探明航路） */
 export function ensureTransitExplored(state: GameState, ctx: SimContext): void {
-  if (state.mining.active) {
+  if (state.mining.active && state.departure?.kind !== 'mining') {
     const belt = state.mining.beltId ? ctx.belts.get(state.mining.beltId) : undefined
     if (belt?.galaxyId) markExplored(state, belt.galaxyId)
   }
-  if (state.salvaging.active && state.salvaging.galaxyId) {
+  if (state.salvaging.active && state.salvaging.galaxyId && state.departure?.kind !== 'salvaging') {
     markExplored(state, state.salvaging.galaxyId)
   }
-  if (state.expedition.active && state.expedition.anomalyId) {
+  if (state.expedition.active && state.expedition.anomalyId && state.departure?.kind !== 'expedition') {
     const anomaly = ctx.anomalies.get(state.expedition.anomalyId)
     if (anomaly?.galaxyId) markExplored(state, anomaly.galaxyId)
   }

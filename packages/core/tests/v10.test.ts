@@ -17,6 +17,8 @@ import { loadSaveFile,  serializeSaveFile } from '../src/save'
 import type { BeltDef, ItemDef, MarketGoodDef, ModuleDef, ShipDef, SimContext } from '../src/types'
 import { belt, fittedOf, makeTestCtx, moduleDef, ship } from './helpers'
 import { clearInitialStanding, setStanding } from './helpers'
+import { startMiningArrived } from './helpers/command-arrived'
+import { finishDeparture } from './helpers/departure-ready'
 
 /** 测试用气体（可采集可精炼 → 矿粉甲） */
 const GAS_X: ItemDef = {
@@ -76,16 +78,17 @@ describe('V10：气体/冰矿接入采集与精炼循环', () => {
   it('矿船可以开采气体（kind=gas）并产出入舱', () => {
     expect(startMining(state, 'belt-a', ctx).ok).toBe(true)
     // 把 belt-a 改指向气体：直接验证"矿带产物类型无关"路径
+    finishDeparture(state, ctx)
     stopMining(state, ctx)
     const gasCtx = ctxWithExtras({ belts: [belt('belt-gasx', 'gas-x')] })
-    expect(startMining(state, 'belt-gasx', gasCtx).ok).toBe(true)
+    expect(startMiningArrived(state, 'belt-gasx', gasCtx).ok).toBe(true)
     advanceGame(state, 12_000, gasCtx) // 去程取消：指令即采掘 → 1 个循环
     expect(countItem(state, 'gas-x')).toBe(10)
   })
 
   it('矿船可以开采冰矿（kind=ice）', () => {
     const iceCtx = ctxWithExtras({ belts: [belt('belt-icex', 'ice-x')] })
-    expect(startMining(state, 'belt-icex', iceCtx).ok).toBe(true)
+    expect(startMiningArrived(state, 'belt-icex', iceCtx).ok).toBe(true)
     advanceGame(state, 12_000, iceCtx) // 去程取消：指令即采掘 → 1 个循环
     expect(countItem(state, 'ice-x')).toBe(10)
   })
@@ -249,6 +252,7 @@ describe('V10：占位槽位（shield/armor/propulsion）装配', () => {
     expect(bonuses.miner).toBe(0)
     // 采矿参数不受护盾模块影响
     expect(startMining(state, 'belt-a', ctx).ok).toBe(true)
+    finishDeparture(state, ctx)
     stopMining(state, ctx)
     const returnLeg = state.shipReturns[state.shipId]!.legMs
     advanceGame(state, returnLeg, ctx)

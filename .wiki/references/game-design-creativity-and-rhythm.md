@@ -121,7 +121,7 @@ flowchart LR
     A[按下交互按键: 0ms] --> B[按键瞬时物理回弹反馈: <16ms 1帧]
     B --> C[界面元素缓动展开: 120ms Cubic-Bezier]
     C --> D[核心数据渲染到位: <150ms]
-    
+<br>
     style A fill:#1a233a,stroke:#00f0ff,stroke-width:2px
     style B fill:#1a233a,stroke:#ffaa00,stroke-width:2px
     style C fill:#1a233a,stroke:#00f0ff,stroke-width:2px

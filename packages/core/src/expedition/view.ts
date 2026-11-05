@@ -5,6 +5,7 @@ import { lairAnomalyOf } from '../lairs'
 import { RETURN_LEG_MUL } from '../balance'
 import { bountyWinPercentGuarded } from '../combat'
 import { familyModules } from '../equipment'
+import { departureView } from '../departure'
 
 /** 远征状态快照（界面用；battle 阶段显示交火信息） */
 export interface ExpeditionView {
@@ -75,9 +76,15 @@ export function expeditionStatus(state: GameState, ctx: SimContext): ExpeditionV
   let remainingMs = 0
   let totalMs = 1
   if (exp.phase === 'out') {
+    const departure = departureView(state)
     remainingMs = Math.max(0, exp.finishAtGameMs - state.gameMs)
     totalMs = exp.outMs
     percent = Math.min(100, Math.max(0, ((totalMs - remainingMs) / Math.max(1, totalMs)) * 100))
+    if (departure?.kind === 'expedition') {
+      remainingMs = departure.remainingMs
+      percent = departure.percent
+      totalMs = departure.undocking ? state.departure!.undockMs : state.departure!.gateMs
+    }
   } else if (exp.phase === 'back') {
     remainingMs = Math.max(0, exp.finishAtGameMs - state.gameMs)
     // 2026-09-08：进度分母 = 返航段实际时长（returnAtGameMs 兼容字段；

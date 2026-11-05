@@ -42,6 +42,7 @@ import { addLog, HOME_GALAXY_ID } from './state'
 import { applyActivityGate } from './activityGate'
 import type { CourierDeliveryState, GameState, SideTask, SideTasksState } from './state'
 import type { CommandResult } from './engine'
+import { beginDeparture } from './departure'
 import type { BeltDef, MarketGoodDef, SimContext, StationSiteDef } from './types'
 import { nextInt, nextRandom } from './rng'
 import { marketQuote, levelOf } from './market'
@@ -1387,7 +1388,8 @@ export function startCourierDelivery(state: GameState, ctx: SimContext, id: numb
       { p1: fromName },
     )
   }
-  const departAt = state.gameMs
+  const departAt = state.gameMs + beginDeparture(state, ctx, 'deliver', targetSite.galaxyId,
+    { galaxy: HOME_GALAXY_ID, site: null, docked: true })
   const arriveAt = departAt + travelLegMs(state, ctx, travelMin)
   const deadlineAt = task.timed === true && task.timeLimitMs !== undefined ? departAt + task.timeLimitMs : undefined
   const d: CourierDeliveryState = {
@@ -1407,7 +1409,7 @@ export function startCourierDelivery(state: GameState, ctx: SimContext, id: numb
   }
   const siteName = ctx.stations.get(targetSite.id)?.name ?? targetSite.id
   const galaxyName = ctx.galaxies.get(targetSite.galaxyId)?.name ?? targetSite.galaxyId
-  if (arriveAt <= departAt) {
+  if (arriveAt <= state.gameMs) {
     // 零航程（已停靠目标副站所在星系）：立即到站结算
     board.deliver = d
     settleCourierDelivery(state, ctx, d)

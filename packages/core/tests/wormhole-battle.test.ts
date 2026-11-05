@@ -50,7 +50,7 @@ import {
   wormholeCardPoolAt,
   wormholeDescend,
   wormholeDisplayThreat,
-  wormholeEnter,
+  wormholeEnter as enterWormhole,
   wormholeExtract,
   wormholeExtractThreat,
   wormholeFleetCargoM3,
@@ -76,8 +76,14 @@ import {
 } from '../src/wormholeSalvage'
 import { holdTransferTo, makeHoldState } from '../src/wormholeHold'
 import { WORMHOLE_MATTER_DEVICE_IDS } from '../src/wormholeMatter'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
+function wormholeEnter(...args: Parameters<typeof enterWormhole>) {
+  const result = enterWormhole(...args)
+  if (result.ok) finishDeparture(args[0], args[1])
+  return result
+}
 /** 2026-09-19 残骸合并：卡 id → 该卡所属组的残骸物品 id（例：`wh-pirate-scout` → `wreck-a-wh`） */
 const commonWreckOf = (cardId: string): string => wreckItemIdOfCard(cardId)!
 const rareWreckOf = (cardId: string): string => rareWreckItemIdOfCard(cardId)!

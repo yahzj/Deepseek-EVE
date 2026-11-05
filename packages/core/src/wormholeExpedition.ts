@@ -35,6 +35,7 @@ const ACTIONS: Readonly<Record<WormholeEventKey, readonly WormholeEventAction[]>
 }
 
 function currentEvent(state: GameState) {
+  if (state.departure?.kind === 'wormhole') return null
   const run = state.wormhole.run
   if (!run?.grid || run.expeditionRules !== 2 || run.supplyVersion !== 1) return null
   const cell = gridCellAt(run.grid, run.grid.pos)

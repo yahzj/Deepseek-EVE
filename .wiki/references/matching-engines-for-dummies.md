@@ -73,15 +73,15 @@ updated: 2026-11-03T03:45:00.000Z
 ```mermaid
 flowchart TD
     O[新订单到达 Incoming Order] --> Type{订单类型判断}
-    
+<br>
     Type -->|市价单 Market Order| TakerAction[直接按当前反向最优价格扫簿]
     Type -->|限价单 Limit Order| CrossCheck{出价是否能与对向簿面交叉?}
-    
+<br>
     CrossCheck -->|是: 发生对冲| Match[即时消耗对手盘流动性 (Crossing)]
     Match --> QtyCheck{该订单是否还有剩余数量?}
     QtyCheck -->|是: 剩余量| Rest[作为挂单挂入订单簿 (Resting Limit Order)]
     QtyCheck -->|否: 完全成交| Finish[订单结束]
-    
+<br>
     CrossCheck -->|否: 无法对冲| Rest
     TakerAction --> Finish
 ```

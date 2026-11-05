@@ -16,6 +16,7 @@ import { startMining } from '../src/mining'
 import { startRefineRun } from '../src/industry'
 import { startManufacturing } from '../src/manufacturing'
 import { placeBuyOrder, learnBlueprint } from '../src/market'
+import { finishDeparture } from './helpers/departure-ready'
 
 /** 母港唯一矿带（丰饶之环）＋它产的矿（与 `first-tasks.test.ts` 同一组真 id） */
 const BELT = 'belt-fortune'
@@ -281,6 +282,7 @@ describe('存档往返：引擎跑过的档不许丢键（自动护栏）', () =
     const uid = addShipToFleet(state, 'sh-falconet')
     state.shipId = uid
     expect(startMining(state, BELT, simCtx).ok).toBe(true)
+    finishDeparture(state, simCtx)
     state.warehouse.items[BELT_ORE] = 500
     expect(startRefineRun(state, BELT_ORE, 'pilot', simCtx).ok).toBe(true)
     state.blueprintStock['sbp-sandcat'] = 1

@@ -13,6 +13,7 @@ import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { createInitialState, HOME_GALAXY_ID } from '../src/state'
 import { addWare, countWare } from '../src/inventory'
+import { startMiningArrived } from './helpers/command-arrived'
 import {
   HIGH_SEC_PENALTY,
   INVASION_BEACON_FAMILIES,
@@ -36,7 +37,6 @@ import { weekendWarnCommsOf } from '../src/weekendComms'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { securityZoneOf } from '../src/securityZone'
 import { DSI_FACTION_ID, noteStandingEarned } from '../src/expedition'
-import { startMining } from '../src/mining'
 
 const ctx = buildSimContext()
 
@@ -319,7 +319,7 @@ describe('信号发射器 · 使用与拒绝', () => {
     noteStandingEarned(s, DSI_FACTION_ID, 50)
     const VAULT = 'galaxy-vault' // 穹顶墓园（低安）
     const belt = [...ctx.belts.values()].find((b) => b.galaxyId === VAULT)!
-    expect(startMining(s, belt.id, ctx).ok, '脚手架自检：在穹顶墓园采上矿').toBe(true)
+    expect(startMiningArrived(s, belt.id, ctx).ok, '脚手架自检：在穹顶墓园采上矿').toBe(true)
     expect(s.awayGalaxy, '采矿期间 awayGalaxy 是 null（这正是旧判据踩的坑）').toBeNull()
     expect(securityZoneOf(ctx, VAULT), '穹顶墓园是低安').toBe('低安')
     expect(beaconLaunchHighSecOf(ctx, VAULT), '**目标低安 ⇒ 不警告**（旧口径这里是 true）').toBe(false)

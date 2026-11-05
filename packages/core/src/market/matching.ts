@@ -4,7 +4,8 @@ import type { MarketBalance, MarketGoodDef, SimContext } from '../types'
 import { nextRandom } from '../rng'
 import { settleSell, settleBuy, settleSnatchSell, settleSnatchBuy, settleStationTake } from './settlement'
 import { buyPrice, priceLevel, sellPrice, builtSellBoost } from './pricing'
-import { bmGateLocked } from './access'
+import { bmGateLocked, goodLockedReason, playerTradingGood } from './access'
+import { relayTradable } from './relayLedger'
 
 /** 巡游采购单次件数（2026-09-08 方案 B，船长定：越贴近收购价线惩罚越小——概率衰减之外，
  *  单次件数也随偏离收窄放大，且**与该商品池订单的每窗生成量挂钩**）：
@@ -42,12 +43,14 @@ export function snatchSellFill(def: MarketGoodDef | undefined, r: number): numbe
  */
 function eatBook(state: GameState, ctx: SimContext, order: PlayerOrder, atGameMs = state.gameMs): void {
   if (order.qty <= 0) return
-  if (!ctx.marketGoods.has(order.good)) return
+  const def = ctx.marketGoods.get(order.good)
+  if (!def || !playerTradingGood(ctx, def)) return
   if (order.side === 'sell') {
     const buyList = state.market.npcBuy[order.good] ?? []
     const sorted = [...buyList].sort((a, b) => b.price - a.price)
     for (const npc of sorted) {
       if (order.qty <= 0) break
+      if (!relayTradable(state, npc, atGameMs) || (!npc.relay && def.playerSellable === false)) continue
       if (npc.price < order.price) continue
       const idx = buyList.indexOf(npc)
       if (idx < 0) continue
@@ -58,6 +61,7 @@ function eatBook(state: GameState, ctx: SimContext, order: PlayerOrder, atGameMs
     const sorted = [...sellList].sort((a, b) => a.price - b.price)
     for (const npc of sorted) {
       if (order.qty <= 0) break
+      if (!relayTradable(state, npc, atGameMs)) continue
       if (npc.price > order.price) continue
       const idx = sellList.indexOf(npc)
       if (idx < 0) continue
@@ -109,7 +113,7 @@ export function matchPlayerOrders(state: GameState, ctx: SimContext, atGameMs = 
       // 越线抢单（买入侧）：簿吃不掉且挂价低于供应价线 → 巡游供货每窗掷骰
       if (order.qty > 0) {
         const bdef = ctx.marketGoods.get(order.good)
-        if (bdef && bdef.playerBuyable !== false && !bmGateLocked(state, bdef)) {
+        if (bdef && bdef.playerBuyable !== false && goodLockedReason(state, bdef) === null && !bmGateLocked(state, bdef)) {
           const Lp = priceLevel(state, ctx, bdef, state.market.pools[order.good]?.q ?? 0)
           // 2026-09-08 船长定（奇货专项·试跑口径，待实测复核）：奇货买侧越线基准 = 20L，
           // 取代供应价线 ≈1L——正常挂单（0.1L~1L）相对 20L 的偏离 s≈95%+，每窗命中率被
@@ -165,7 +169,7 @@ export function absorbViaStation(state: GameState, ctx: SimContext): void {
   for (const order of state.orders) {
     if (order.side !== 'sell' || order.qty <= 0) continue
     const def = ctx.marketGoods.get(order.good)
-    if (!def || def.playerSellable === false) continue
+    if (!def || !playerTradingGood(ctx, def)) continue
     const poolQ = state.market.pools[order.good]?.q ?? 0
     const L = priceLevel(state, ctx, def, poolQ)
     const buyBid = ceilFinalQuantity(buyPrice(def, L))

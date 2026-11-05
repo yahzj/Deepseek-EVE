@@ -4,6 +4,7 @@ import { addLog } from '../../state'
 import type { GameState } from '../../state'
 import { bumpFirst } from '../../firstTasks'
 import { wormholeDeliverRelics, wormholeRareBoxThemeGroupsOf, wormholeRareBoxThemePoolOf, wormholeUnboxRoll } from '../../wormholeSalvage'
+import { encryptedBlueprintGroups, encryptedFamilyOf } from '../../encryptedContainer'
 import type { SimContext } from '../../types'
 import { addWare, countItem, countWare, removeItem, removeWare } from '../../inventory'
 import { aiCoreName, gainAiCore, releaseAiCore } from '../../ai'
@@ -175,6 +176,14 @@ export function advanceRefining(
           p5: doneBatches,
           ...logParamsOf(composed),
         })
+        break
+      }
+      const encryptedFamily = isUnbox && r.itemId ? encryptedFamilyOf(r.itemId) : null
+      if (encryptedFamily && !encryptedBlueprintGroups(ctx, encryptedFamily)) {
+        refundClaimedUnits(state, r)
+        if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
+        state.refineRuns.splice(i, 1)
+        addLog(state, 'warn', '', 'core.encrypted.001')
         break
       }
       const qty = r.batchUnits // 每批整批扣料（不足一批已在上方停工，不再有小批）

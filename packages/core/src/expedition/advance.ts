@@ -24,6 +24,7 @@ export function advanceExpedition(state: GameState, ctx: SimContext, freezeBattl
   for (let guard = 0; guard < 6; guard++) {
     if (!exp.active) return
     if (exp.phase === 'out') {
+      if (state.departure?.kind === 'expedition') return
       maybeFireTravelEvent(state, ctx)
       if (state.gameMs < exp.finishAtGameMs) return
       const ok = beginBattleAt(state, ctx, exp.anomalyId ?? '', state.shipId, exp.finishAtGameMs)

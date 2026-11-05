@@ -18,6 +18,7 @@ import { weekendFlagshipSpecOf } from '../src/weekendBattle'
 import { weekendStartFlagshipBattle } from '../src/weekendLaunch'
 import { weekendNoteContribution, WEEKEND_FLAGSHIP_SHIP_ID } from '../src/weekendEvent'
 import type { WeekendEventState } from '../src/weekendEvent'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
 const GID = 'galaxy-alkali'
@@ -60,6 +61,7 @@ function openFlagship(s: S): B {
     deadlineGameMs: 0,
     battle,
   }
+  finishDeparture(s, ctx)
   return battle
 }
 

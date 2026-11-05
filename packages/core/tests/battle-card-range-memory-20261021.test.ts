@@ -2,10 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { createCommandReadyState as createInitialState } from './helpers/command-ready'
 import { addShipToFleet } from '../src/fleetBook'
-import { startExpedition, setBattleDesire, advanceAutoLoopBounty, advanceAutoLoopInvasion } from '../src/expedition'
+import { startExpedition as launchExpedition, setBattleDesire, advanceAutoLoopBounty, advanceAutoLoopInvasion } from '../src/expedition'
+import { finishDeparture } from './helpers/departure-ready'
 import { createPlayerSpec, startBattleFor } from '../src/combat'
 import { battleCardRangeOf, cancelBattleRange, playerFleetMaxRangeOf } from '../src/battleRangeMemory'
-import { confirmBattleRange } from '../src/battleRangeConfirm'
+import { confirmBattleRange as confirmRange } from '../src/battleRangeConfirm'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { fightEncounter, advanceEncounterWatch } from '../src/encounters'
 import { weekendStartFlagshipBattle } from '../src/weekendLaunch'
@@ -18,6 +19,16 @@ import { simulateOffline } from '../src/simulation'
 import { buildMyUnitSpecs } from '../src/combat/fleetSpecs'
 
 const ctx = buildSimContext()
+function startExpedition(...args: Parameters<typeof launchExpedition>) {
+  const result = launchExpedition(...args)
+  if (result.ok) finishDeparture(args[0], args[2])
+  return result
+}
+function confirmBattleRange(...args: Parameters<typeof confirmRange>) {
+  const result = confirmRange(...args)
+  if (result.ok) finishDeparture(args[0], args[1])
+  return result
+}
 const NOW = new Date(2026, 9, 21, 12).getTime()
 function world() {
   const state = createInitialState({ nowWallMs: NOW, seed: 7 })
@@ -212,6 +223,7 @@ describe('按实际卡ID记忆距离并确认射程变化', () => {
     expect(one).not.toBeNull()
     expect(state.battleRangeByCard!['ink-flagship']!.maxRangeM).toBe(playerFleetMaxRangeOf([createPlayerSpec(state, ctx, state.shipId)!, createPlayerSpec(state, ctx, ally)!]))
     expect(state.battleRangeByCard!['ink-harass']).toBeUndefined()
+    finishDeparture(state, ctx)
     state.fleet[ally]!.fitted.high = ['mod-missile-3']
     expect(weekendStartFlagshipBattle(state, ctx, NOW, [state.shipId, ally])).toBeNull()
     expect(state.pendingBattleRange!.cardId).toBe('ink-flagship')
@@ -323,6 +335,7 @@ function space() {
   const targets = { 'ammo-plasma-l': 1000 }
   const plan = wormholePreparationPlan(state, ctx, [state.shipId], { targets, unload: [] })
   expect(wormholeEnterPrepared(state, ctx, [state.shipId], 19, plan, undefined, { expeditionRules: 2 }).ok).toBe(true)
+  finishDeparture(state, ctx)
   const run = state.wormhole.run!
   const here = gridCellAt(run.grid!, run.grid!.pos)!
   here.place = 'ship'

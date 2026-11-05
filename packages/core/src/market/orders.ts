@@ -8,14 +8,15 @@ import { emptyFitted } from '../labels'
 import { hasLimitedSupply } from '../marketLimitedSupply'
 import { crossOnPlacement } from './matching'
 import { bumpFirstMarketTrade, placeOrderLogText, goodName } from './labels'
-import { goodLockedReason, bmGateLocked, marketLockNote, bmGateNote } from './access'
+import { goodLockedReason, bmGateLocked, marketLockNote, bmGateNote, playerTradingGood } from './access'
 import { ensureMarket } from './initialize'
 import { refundToStorage } from './stock'
+import { relayPriceQty } from './relayTypes'
 
 export function placeSellOrder(state: GameState, ctx: SimContext, goodKey: string, price: number, qty: number): PlayerOrder | null {
-  if (qty <= 0 || price <= 0) return null
+  if (!relayPriceQty(ceilFinalQuantity(price), qty)) return null
   if (typeof goodKey !== 'string' || !ctx.marketGoods.has(goodKey)) return null
-  if (ctx.marketGoods.get(goodKey)!.playerSellable === false) return null
+  if (!playerTradingGood(ctx, ctx.marketGoods.get(goodKey)!)) return null
   const order = pushSellOrder(state, goodKey, price, qty)
   state.escrowItems[goodKey] = (state.escrowItems[goodKey] ?? 0) + qty
   // 挂单瞬间先吃簿（2026-09-10 船长定）：与现有收购单对冲的部分立即成交，剩余才挂着
@@ -57,10 +58,10 @@ export function pushSellOrder(state: GameState, goodKey: string, price: number, 
  */
 export function placeBuyOrder(state: GameState, ctx: SimContext, goodKey: string, price: number, qty: number): PlayerOrder | null {
   const def = ctx.marketGoods.get(goodKey)
-  if (!def || qty <= 0 || price <= 0) return null
+  if (!def || !relayPriceQty(ceilFinalQuantity(price), Math.floor(qty))) return null
   if (goodLockedReason(state, def) !== null) return null
   if (bmGateLocked(state, def)) return null // P2：声望闸内不开放常驻买单（暗市单现买即可）
-  if (def.playerBuyable === false) return null // 只收不卖商品（如残骸）：不开放挂买单
+  if (!playerTradingGood(ctx, def)) return null
   if (hasLimitedSupply(def)) ensureMarket(state, ctx)
   const unit = ceilFinalQuantity(price)
   // 预扣口径：按余额缩量（向下取整到件；轮不到 1 件就拒绝）
@@ -98,7 +99,7 @@ export function buyOrderBlockedReason(
   qty: number,
 ): CoreBlockReason | null {
   const def = ctx.marketGoods.get(goodKey)
-  if (!def || qty <= 0 || price <= 0) return { error: '价格或数量无效。', errorId: 'core.market.041' }
+  if (!def || !relayPriceQty(ceilFinalQuantity(price), Math.floor(qty))) return { error: '价格或数量无效。', errorId: 'core.market.041' }
   /* 锁标走**结构化孪生**（2026-09-30 加的那条先例）：同一条文案同一个 id ⇒ 界面按语言渲染 */
   const lockNote = marketLockNote(state, def)
   if (lockNote !== null) return { error: lockNote.text, errorId: lockNote.textId, errorParams: lockNote.params }
@@ -106,7 +107,7 @@ export function buyOrderBlockedReason(
       const note = bmGateNote(state, def)
       return note ? { error: note.text, errorId: note.textId, errorParams: note.params } : { error: '声望未达', errorId: 'core.market.042' }
     }
-  if (def.playerBuyable === false)
+  if (!playerTradingGood(ctx, def))
       return { error: '该商品只收不卖，市场不出售现货。', errorId: 'core.market.043' }
   const unit = ceilFinalQuantity(price)
   if (state.wallet.isk < unit) {

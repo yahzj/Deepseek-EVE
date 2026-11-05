@@ -25,6 +25,7 @@ import { addWare } from '../src/inventory'
 import { wormholeEnter } from '../src/wormhole'
 import { advanceWormhole, wormholeStartBattle } from '../src/wormholeBattle'
 import type { WormholeRunState } from '../src/wormhole'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
 
@@ -35,6 +36,7 @@ function battleInFlight(seed = 21): GameState {
   const b = addShipToFleet(state, 'sh-thresher')
   state.shipId = a
   expect(wormholeEnter(state, ctx, [a, b], seed).ok).toBe(true)
+  finishDeparture(state, ctx)
   for (const uid of [a, b]) state.fleet[uid]!.fitted = { high: ['mod-turret-kin-1'], mid: [], low: [] }
   addWare(state, 'ammo-kinetic-l', 20_000)
   state.wormhole.run!.family = 'A'
@@ -42,7 +44,7 @@ function battleInFlight(seed = 21): GameState {
   const cell = g.cells.find((c) => c.key === `${g.pos.q},${g.pos.r}`)!
   cell.place = 'ship'
   g.activated = g.activated.filter((k) => k !== cell.key)
-  expect(wormholeStartBattle(state, ctx, 'node').ok).toBe(true)
+  expect(wormholeStartBattle(state, ctx, 'node', state.gameMs).ok).toBe(true)
   return state
 }
 
@@ -156,6 +158,7 @@ describe('虫洞 · 冻结窗口不得把战斗时钟落在后面', () => {
     const a = addShipToFleet(state, 'sh-thresher')
     state.shipId = a
     expect(wormholeEnter(state, ctx, [a], 21).ok).toBe(true)
+    finishDeparture(state, ctx)
     const run: WormholeRunState = state.wormhole.run!
     expect(run.battle ?? null).toBeNull()
     state.gameMs += 3600 * 1000

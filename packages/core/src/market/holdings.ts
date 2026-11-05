@@ -3,7 +3,8 @@ import { addLog } from '../state'
 import type { GameState } from '../state'
 import type { SimContext } from '../types'
 import { shipStoredCount } from '../fleetBook'
-import { marketGoodOf } from './access'
+import { marketTradingGoods, playerTradingGood } from './access'
+import { relayAvailableQty, relayTradable } from './relayLedger'
 import { sellStoredShipAtMarket, pushStoredShipSellOrder } from './ships'
 import { naturalHoldings, lockNaturalStock, unlockNaturalStock } from './stock'
 import { sellAtMarket } from './trading'
@@ -26,7 +27,7 @@ export function learnBlueprint(state: GameState, ctx: SimContext, blueprintId: s
   const count = state.blueprintStock[blueprintId] ?? 0
   if (count <= 0) return { ok: false, error: '没有可学习的蓝图书。', errorId: 'core.market.003' }
   if (state.learnedRecipes.includes(blueprintId)) {
-    if (marketGoodOf(ctx, 'blueprint', blueprintId)?.playerSellable === false) {
+    if (!marketTradingGoods(ctx).some(good => good.kind === 'blueprint' && good.refId === blueprintId)) {
       return { ok: false, error: '该配方已学会。', errorId: 'core.ammoMk3.001' }
     }
     return { ok: false, error: '该配方已学会——多余的蓝图书可以挂到市场出售。', errorId: 'core.market.004' }
@@ -58,7 +59,7 @@ export function marketSellHolding(
 } {
   const def = ctx.marketGoods.get(goodKey)
   if (!def) return { ok: false, error: `未知商品：${goodKey}`, errorId: 'core.market.005', errorParams: { p1: goodKey }, sold: 0, total: 0, remaining: 0 }
-  if (def.playerSellable === false) return { ok: false, error: '该商品不支持玩家出售。', errorId: 'core.market.006', sold: 0, total: 0, remaining: 0 }
+  if (!playerTradingGood(ctx, def)) return { ok: false, error: '该商品不支持玩家出售。', errorId: 'core.market.006', sold: 0, total: 0, remaining: 0 }
   if (def.kind === 'ship') {
     // 2026-09-14 船长报障「市场依旧无法挂单或者直接出售舰船」⇒ 卖出侧对舰船放行：
     // **可卖 = 舰船仓库里的艘数**（机库里的船要先在舰船页移入仓库），走仓库出售单点
@@ -118,7 +119,7 @@ export function marketSellPreview(
   const def = ctx.marketGoods.get(goodKey)
   const zero = { avail: 0, want: 0, fillable: 0, orders: 0, gross: 0, tax: 0, net: 0, leftover: 0 }
   if (!def) return { ok: false, error: `未知商品：${goodKey}`, errorId: 'core.market.005', errorParams: { p1: goodKey }, ...zero }
-  if (def.playerSellable === false) return { ok: false, error: '该商品不支持玩家出售。', errorId: 'core.market.006', ...zero }
+  if (!playerTradingGood(ctx, def)) return { ok: false, error: '该商品不支持玩家出售。', errorId: 'core.market.006', ...zero }
   // 舰船（2026-09-14 船长报障后放行）：可卖 = 舰船仓库艘数；估价口径与「市价卖出」逐条同源
   // （成交走 settleSell ⇒ **只有声望加成、无营销学加成**，故这里也不乘 marketSellSkillMult）
   const avail = def.kind === 'ship' ? shipStoredCount(state, def.refId) : naturalHoldings(state, def)
@@ -141,7 +142,8 @@ export function marketSellPreview(
   const sorted = [...buyList].sort((a, b) => b.price - a.price)
   for (const npc of sorted) {
     if (remaining <= 0) break
-    const take = Math.min(remaining, npc.qty)
+    if (!relayTradable(state, npc) || (!npc.relay && def.playerSellable === false)) continue
+    const take = Math.min(remaining, relayAvailableQty(state, npc))
     total += take * npc.price
     remaining -= take
     orders += 1
@@ -172,7 +174,7 @@ export function listSellHolding(
 } {
   const def = ctx.marketGoods.get(goodKey)
   if (!def) return { ok: false, error: `未知商品：${goodKey}`, errorId: 'core.market.005', errorParams: { p1: goodKey } }
-  if (def.playerSellable === false) return { ok: false, error: '该商品不支持玩家出售。', errorId: 'core.market.006' }
+  if (!playerTradingGood(ctx, def)) return { ok: false, error: '该商品不支持玩家出售。', errorId: 'core.market.006' }
   const isShip = def.kind === 'ship'
   const available = isShip ? shipStoredCount(state, def.refId) : naturalHoldings(state, def)
   const want = qty === undefined ? available : Math.max(0, Math.floor(qty))
@@ -183,7 +185,9 @@ export function listSellHolding(
       errorId: isShip ? 'core.market.011' : 'core.market.008',
     }
   }
-  if (price <= 0 || price > def.basePrice * ctx.balance.market.maxPriceRatio) {
+  const unit = ceilFinalQuantity(price)
+  if (!Number.isSafeInteger(unit) || unit <= 0 || !Number.isSafeInteger(unit * Math.min(want, available)) ||
+    (def.basePrice > 0 && unit > def.basePrice * ctx.balance.market.maxPriceRatio)) {
     return { ok: false, error: '挂单价异常（需为 0 以上的信用点，且不超过限价上限）。', errorId: 'core.market.012' }
   }
   const n = Math.min(want, available)

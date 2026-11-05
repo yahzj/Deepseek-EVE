@@ -34,6 +34,10 @@ export function fixedFormationSpecs(card: AnomalyDef, opts: FoeSpecOpts): UnitSp
     const damage = (slot.dmgMul ?? 1) / fixed.dmgMul
     scale(spec, slot.hpOverride ? 1 : hp, damage)
     if (slot.hpOverride) spec.hp = { ...slot.hpOverride }
+    if (slot.shieldRegenMax !== undefined) {
+      spec.shieldRegenMax = slot.shieldRegenMax
+      spec.shieldRegenCap = slot.shieldRegenCap
+    }
     const summon = spec.foeSummonEscort
     if (summon && spec.foeSummonTemplate) {
       const source = formation.units.findIndex(unit => !unit.added && unit.spec.foeShipId === summon.shipId)

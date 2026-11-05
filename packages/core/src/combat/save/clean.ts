@@ -115,7 +115,7 @@ export function cleanBattle(raw: unknown): BattleState | null {
      * 池子剩余那份覆写凭空消失（"单场不死/跨场累计"当场失真）。三格都取正数/非空串。
      */
     const bh = foeOverrideRaw.bossHp
-    if (typeof bh === 'number' && Number.isFinite(bh) && bh > 0) out.bossHp = Math.round(bh)
+    if (typeof bh === 'number' && Number.isFinite(bh) && bh > 0) out.bossHp = bh
     const bhm = foeOverrideRaw.bossHpMax
     if (typeof bhm === 'number' && Number.isFinite(bhm) && bhm > 0) out.bossHpMax = Math.round(bhm)
     /**
@@ -193,7 +193,7 @@ export function cleanBattle(raw: unknown): BattleState | null {
   const droneLoadAtStart = cleanCountMap(b.droneLoadAtStart)
   /** 逐舰账本（键 = 舰 tag；值是 `机型 → 架数`）：2026-09-14「逐舰机群」新增，老档没有 ⇒ undefined */
   const droneLostBy = cleanCountMapBy(b.droneLostBy)
-  const droneLoadAtStartBy = cleanCountMapBy(b.droneLoadAtStartBy)
+  const droneLoadAtStartBy = cleanCountMapBy(b.droneLoadAtStartBy, true)
   /**
    * **无人机储备甲板的复位账**（2026-09-27 船长令）：逐舰一份，**坏值整条丢**（与其余账本同款口径）——
    * `q` 只收非空字符串、`t` 只收**有限非负数或 null**（null = 空闲）、`c` 只收**正数**（周期毫秒）、
@@ -428,6 +428,8 @@ export function cleanBattle(raw: unknown): BattleState | null {
     ...(foeDronePools !== undefined ? { foeDronePools } : {}),
     ...(droneLost !== undefined ? { droneLost } : {}),
     ...(droneLoadAtStart !== undefined ? { droneLoadAtStart } : {}),
+    ...(typeof b.droneCommandVolumeM3 === 'number' && Number.isFinite(b.droneCommandVolumeM3) && b.droneCommandVolumeM3 >= 0
+      ? { droneCommandVolumeM3: b.droneCommandVolumeM3 } : {}),
     ...(droneLostBy !== undefined ? { droneLostBy } : {}),
     ...(droneLoadAtStartBy !== undefined ? { droneLoadAtStartBy } : {}),
     ...(droneRevive !== undefined ? { droneRevive } : {}),

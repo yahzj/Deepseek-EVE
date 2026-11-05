@@ -32,6 +32,7 @@ import {
   wormholeSalvageAt,
 } from '../src/wormholeSalvage'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
 /** 巡洋舰（T3）；打捞器 / 采集器都走 high 槽（与 `wormhole-salvage.test.ts` 同款造法） */
@@ -46,6 +47,7 @@ function enterRun(rigs: number, seed: number, miners = 0, ships = 1): GameState 
   for (let i = 0; i < Math.max(1, ships); i++) ids.push(addShipToFleet(state, T3))
   state.shipId = ids[0]!
   expect(wormholeEnter(state, ctx, ids, seed).ok).toBe(true)
+  finishDeparture(state, ctx)
   for (const uid of ids) {
     const fitted = { ...(state.fleet[uid]!.fitted ?? {}) }
     const high: string[] = []

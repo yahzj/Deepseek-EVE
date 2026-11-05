@@ -12,8 +12,8 @@ updated: 2026-11-04T00:00:00.000Z
 ---
 # 大鲸鱼证券交易所：理论到落地的工程实施白皮书
 
-> 关联索引：[知识库总览](../README.md) | [[balance-master-game-economy|平衡掌控者]] | [[matching-engines-for-dummies|撮合引擎入门]] | [[tschonsen-stocksim|StockSim]]  
-> 适用版本：Deepseek-EVE `packages/core` 架构演进  
+> 关联索引：[知识库总览](../README.md) | [[balance-master-game-economy|平衡掌控者]] | [[matching-engines-for-dummies|撮合引擎入门]] | [[tschonsen-stocksim|StockSim]]<br>
+> 适用版本：Deepseek-EVE `packages/core` 架构演进<br>
 > 核心目标：构建高拟真、抗作弊、纯本地确定性驱动并与游戏核心经济闭环强绑定的宇宙二级证券交易系统。
 
 ---

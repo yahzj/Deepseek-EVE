@@ -65,6 +65,7 @@ function lowWorld() {
 
 /** 把采矿状态机直接拨到"在带采掘"（绕过行程，专注遭遇逻辑） */
 function forceAtBelt(state: GameState): void {
+  delete state.departure
   state.mining.phase = 'mining'
   state.mining.originGalaxy = null
   state.awayGalaxy = null

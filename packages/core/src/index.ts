@@ -4,6 +4,7 @@
  */
 
 export { battleWeaponCyclesOf } from './battleWeaponView'
+export { departureView, departureDurationMs } from './departure'
 export type { GravekeeperStatus } from './gravekeeperCombat'
 export { crisisEffectsOf, playerGravekeeperSpecOf } from './gravekeeperGear'
 export { foeFamilyHpMulOf } from './foePower'
@@ -120,6 +121,8 @@ export { battleCardRangeOf, pendingBattleRangeView, cancelBattleRange } from './
 export { confirmBattleRange } from './battleRangeConfirm'
 export type { BattleAmmoPreloadRow, BattleAmmoPreloadPlan } from './battleAmmoPreflight'
 export { marketTradingGoods } from './market'
+export type { MarketRelayRequest, MarketRelayResponse, MarketRelayPolicy, MarketRelayOffer, MarketRelaySettlement } from './market/relayTypes'
+export { prepareMarketRelayRequest, applyMarketRelayResponse, marketRelayPendingRequest } from './market/relay'
 export { volleyGunCountOf, volleyDamageShareOf } from './combatVolley'
 export type { BlackMarketState, BlackMarketOffer } from './state'
 export { enemyFormationCard, rangeEwFlagshipCard } from './combat/formation'
@@ -647,6 +650,8 @@ export {
   durabilityOf,
   repairCostIsk,
   repairShip,
+  fleetRepairPlan,
+  repairFleet,
   isShipLocked,
   lockShip,
   repairWithKits,
@@ -661,6 +666,7 @@ export {
   storeShip,
   unstoreShip,
 } from './shipyard'
+export type { FleetRepairPlan, FleetRepairResult } from './shipyard'
 
 // 装配方案（预设）：保存当前装配 / 按方案换装（2026-09-14 船长）
 export {
@@ -1083,6 +1089,7 @@ export {
   plugSlotsOf,
   plugsOf,
   plugModulesOf,
+  plugEffectsOf,
   plugInfoOf,
   normalizePlugSlotExpansions,
   plugSlotExpansionKindOf,
@@ -1098,6 +1105,7 @@ export {
   UNIVERSAL_BLACKBOX_ITEM_ID,
   exchangeUniversalBlackBox,
 } from './plugs'
+export { plugEffectPartsOf } from './plugEffects'
 /** **拆船回收**（2026-09-27 船长令）：预览 ＋ 执行（唯一取数口：界面两次警告与实际发放同一份算术） */
 export { shipScrapPreviewOf, scrapShip, SHIP_SCRAP_MATERIAL_SHARE } from './scrap'
 export type { ShipScrapPreview } from './scrap'
@@ -2223,3 +2231,4 @@ export { ceilFinalQuantity } from './quantity'
 export { commandBudgetOf, commandCapacityOf, shipCommandCostOf, combatShipLimit, COMBAT_MAX_SHIPS, COMMAND_SKILLS, COMMAND_STANDING_REQUIRED } from './combat/command/rules'
 export { combatRosterOf } from './combat/command/roster'
 export { encounterCombatRosterOf } from './combat/command/locks'
+export { encryptedBlueprintPool, encryptedFamilyOf, ENCRYPTED_BLUEPRINT_COUNT } from './encryptedContainer'

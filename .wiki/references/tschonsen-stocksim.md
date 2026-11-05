@@ -13,7 +13,7 @@ updated: 2026-11-03
 
 # 开源项目解构：Tschonsen/StockSim 宏大拟真股市模拟器
 
-> 关联体系：[[whale-stock-market-architecture|证券交易所设计方案]] | [[lagback-corleonemarket]] | [[intrepidkarthi-orderbook]]  
+> 关联体系：[[whale-stock-market-architecture|证券交易所设计方案]] | [[lagback-corleonemarket]] | [[intrepidkarthi-orderbook]]<br>
 > 源码基线：`Tschonsen/StockSim` (C# .NET Core + Electron / React 宏观多智能体金融模拟器)
 
 ---
@@ -129,7 +129,7 @@ $$\sigma_t^2 = \omega + \alpha \cdot \epsilon_{t-1}^2 + \beta \cdot \sigma_{t-1}
 - $\beta$：GARCH 项系数（衡量波动的持续性/记忆深度）。约束条件：$\alpha + \beta < 1$ 保证过程协方差平稳。
 
 > [!NOTE]
-> **波动率聚集效应**：  
+> **波动率聚集效应**：<br>
 > 一旦市场发生剧烈震荡（$\epsilon_{t-1}^2$ 极大），$\sigma_t^2$ 将在未来多期内维持高位，形成“大波动跟随大波动、平静期跟随平静期”的真实股市心理体验。
 
 ---
@@ -141,7 +141,7 @@ $$\sigma_t^2 = \omega + \alpha \cdot \epsilon_{t-1}^2 + \beta \cdot \sigma_{t-1}
 ```mermaid
 graph TD
     Market["交易所订单簿"]
-    
+<br>
     subgraph LiquidityProviders["流动性提供者 (Maker)"]
         MM["做市商 (Market Maker)\n双边挂单，吃买卖价差"]
         Scalper["高频黄牛 (HFT Scalper)\n极短周期剥头皮，毫秒撤单"]
@@ -200,7 +200,7 @@ graph TD
 ```mermaid
 flowchart TD
     Upstream["上游：稀土矿难 / 钛矿开采基地停产\n(供给短缺 +50%, 现货原料价暴涨)"]
-    
+<br>
     Midstream1["中游：曲率引擎精炼厂\n(原材料成本激增，毛利率从 35% 跌至 8%)"]
     Midstream2["中游：高分子装甲锻造厂\n(缺料减产，交付周期延长 180 天)"]
 

@@ -30,6 +30,7 @@ import {
 } from '../src/combat'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { wormholeEnter } from '../src/wormhole'
+import { finishDeparture } from './helpers/departure-ready'
 import { advanceWormhole, wormholeStartBattle } from '../src/wormholeBattle'
 import type { AnomalyDef, FoeShipDef, SimContext } from '../src/types'
 
@@ -279,6 +280,7 @@ describe('入场窗口：动画没结束不开火（船长 2026-09-14）', () =>
     const uid = addShipToFleet(state, 'sh-thresher')
     state.shipId = uid
     expect(wormholeEnter(state, ctx, [uid], 21).ok).toBe(true)
+    finishDeparture(state, ctx)
     const run = state.wormhole.run!
     // 站到"舰船信号"格上（`wormholeStartBattle('node')` 的前提；与 `wormhole-battle.test.ts` 同款手法）
     const cell = run.grid!.cells.find((c) => c.key === `${run.grid!.pos.q},${run.grid!.pos.r}`)!

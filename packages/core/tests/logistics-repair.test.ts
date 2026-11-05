@@ -36,6 +36,7 @@ import { wormholeEnter } from '../src/wormhole'
 import type { WormholeRunState } from '../src/wormhole'
 import { advanceWormhole, wormholeStartBattle } from '../src/wormholeBattle'
 import type { AnomalyDef, SimContext } from '../src/types'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
 /** 舰级个体从聚合表取（data 包只导出 FOE_SHIPS 聚合 + 少数个体） */
@@ -67,6 +68,7 @@ function enterRunWithLogi(seed = 21): {
   const wingB = addShipToFleet(state, T3)
   state.shipId = logi
   expect(wormholeEnter(state, ctx, [logi, wingA, wingB], seed).ok).toBe(true)
+  finishDeparture(state, ctx)
   /** 后勤舰 + wingB 各装一台民用维修装置（wingA 不装 ⇒ 只能被别人修） */
   for (const id of [logi, wingB]) state.fleet[id]!.fitted = { ...(state.fleet[id]!.fitted ?? {}), mid: [REP_CIV] }
   /** 民用修理组件给足（每跳耗 1 枚） */

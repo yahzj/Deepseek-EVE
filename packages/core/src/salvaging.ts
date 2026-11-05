@@ -18,6 +18,7 @@ import { ceilFinalQuantity } from './quantity'
 import { tuningMul } from './tuning'
 import { addLog, HOME_GALAXY_ID, salvageHalt } from './state'
 import { applyActivityGate, pilotUnavailableReason } from './activityGate'
+import { beginDeparture, consumeDeparture, cancelDeparture, departureOrigin, departureArrivalLog, reconcileDeparture } from './departure'
 import type { CommandResult } from './engine'
 import type { GameState, WorkReturnProgress } from './state'
 import type { SimContext } from './types'
@@ -302,6 +303,9 @@ export function startSalvageOp(
   ctx: SimContext,
   targetGroup?: string,
 ): CommandResult {
+  reconcileDeparture(state)
+  if (state.departure) return { ok: false, errorId: 'core.departure.001' }
+  const departureFrom = departureOrigin(state, ctx)
   const galaxy = ctx.galaxies.get(galaxyId)
   if (!galaxy) return { ok: false, error: `未知星系：${galaxyId}。`, errorId: 'core.salvaging.001', errorParams: { p1: galaxyId } }
   /**
@@ -371,6 +375,11 @@ export function startSalvageOp(
     (oldReturn?.reason === 'miningStop' || oldReturn?.reason === 'salvageStop')
   const gateSkip = applyActivityGate(state, 'salvaging', ctx)
   if (gateSkip) return gateSkip
+  if (!departureFrom.docked && state.pendingActivityReturn) {
+    delete state.shipReturns[state.shipId]
+    state.pendingActivityReturn = null
+    state.haltedBySwitch = null
+  }
   if (restartingReturn) { state.pendingActivityReturn = null; state.haltedBySwitch = null }
   /**
    * **新指令取消"停止返航"**（**船长 2026-10-02** 报障的连带，与 `mining.startMining` 同款）——
@@ -399,7 +408,7 @@ export function startSalvageOp(
   s.autoCycle = s.autoCycle !== false // 偏好持久：默认开，除非玩家关过（旧档缺省 = 开）
   s.stopAfterTrip = s.stopAfterTrip === true
   // 船即时到目标星系：点亮探索（与采矿同口径；目标本就要求已探索，此处兜底）
-  markExplored(state, galaxyId)
+  beginDeparture(state, ctx, 'salvaging', galaxyId, departureFrom)
   const shipName = shipDisplayName(state, ctx, state.shipId)
   const density = wreckDensityOf(state, galaxyId, ctx)
   const salvagers = salvagerCyclesOf(state, ctx, state.shipId).length
@@ -415,7 +424,7 @@ export function startSalvageOp(
    * 甲案·两步渲染：`loopNote` 是"自带 id 的派生串"⇒ 用 `p6Id` 把它的 id 一并交给渲染层
    * （`logText` 会先渲染 `p6Id` 再喂进外层文案的 `{p6}`）；`p6` 照传中文，作未改造路径的兜底。
    */
-  addLog(
+  departureArrivalLog(
     state,
     'salvage',
     `开始打捞：${galaxy.name}（残骸密度 ${density.toFixed(1)}）。${shipName} 已抵达目标空域，立即开始持续打捞` +
@@ -477,6 +486,7 @@ function armReturnLeg(
 
 /** 手动停止（任何阶段；未返航的货物留在船上） */
 export function stopSalvageOp(state: GameState, ctx: SimContext): boolean {
+  const stayedAtPort = cancelDeparture(state, 'salvaging')
   /** 状态改动走 `state.ts` 的单点 `salvageHalt`（**进洞前自动停捞**也用它）⇒ 两条停捞路径不会各写一份 */
   const info = salvageHalt(state)
   if (info === null) return false
@@ -493,7 +503,7 @@ export function stopSalvageOp(state: GameState, ctx: SimContext): boolean {
    * 现在建返航账本 ⇒ 与换船善后同链：飞回来、到港整仓卸货、写「已随打捞善后返航到港」日志。
    * ⚠ `tripM3` 归零（同旧行为）：它已被下面那条日志消费过了。
    */
-  const remainSec = info.galaxyId === null ? null : armReturnLeg(state, ctx, info.galaxyId, info)
+  const remainSec = info.galaxyId === null || stayedAtPort ? null : armReturnLeg(state, ctx, info.galaxyId, info)
   state.salvaging.tripM3 = 0
   addLog(
     state,
@@ -942,6 +952,8 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
   let remaining = deltaMs
   let guard = 0
   while (s.active && remaining > 0) {
+    remaining = consumeDeparture(state, 'salvaging', remaining)
+    if (remaining <= 0) break
     if (++guard > 100_000) break // 防失控（离线大步长多循环）
     const galaxyId = s.galaxyId
     if (!galaxyId) {
@@ -991,6 +1003,7 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
         s.tripM3 = 0
         s.deviceAccMs = {}
         delete s.fuelMul
+        beginDeparture(state, ctx, 'salvaging', galaxyId, { galaxy: HOME_GALAXY_ID, site: null, docked: true })
         continue
       }
       // 旧档遗留的出航相位到点：抵达目标星系（点亮探索）后直接打捞

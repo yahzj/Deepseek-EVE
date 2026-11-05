@@ -313,6 +313,9 @@ export interface FoeShipSlot {
   shieldResist?: DamageResists;
   /** 派生战斗卡的绝对三层血量；共享旗舰池覆盖最终族格加成，不写静态参数或个人存档。 */
   hpOverride?: { s: number; a: number; h: number };
+  /** 共享池覆写前的完整卡面护盾，仅供本场被动回充取速率。 */
+  shieldRegenMax?: number;
+  shieldRegenCap?: number;
   /** **期望作战距离覆写**（米；条目级优先于舰级，见 `FoeShipDef.desireRangeM`） */
   desireRangeM?: number;
   /**

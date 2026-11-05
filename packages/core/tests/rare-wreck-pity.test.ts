@@ -15,9 +15,9 @@ import {
   createInitialState,
   loadSaveFile,
   serializeSaveFile,
-  startExpedition,
 } from '../src/index'
 import { anomaly, galaxy, makeTestCtx } from './helpers'
+import { startExpeditionArrived as startExpedition } from './helpers/command-arrived'
 
 /** 世界：一张低安常驻悬赏（派系活跃目标）+ 一张另一星系的普通悬赏 + 一张可作窝点的卡 */
 function world(seed = 4242): { state: GameState; ctx: SimContext } {

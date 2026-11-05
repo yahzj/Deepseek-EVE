@@ -67,14 +67,14 @@ Option Explicit
 Sub Simulate_Wash_Point()
     Dim st As Worksheet
     Set st = ThisWorkbook.Sheets("洗点模拟")
-    
+<br>
     ' 读取策划配置的基础参数
     Dim playerLevel As Integer
     Dim initialHP As Double, targetHP As Double
     Dim round1_down As Integer, round1_up As Integer
     Dim singlePillCost As Double, singleGoldCost As Double
     Dim simTimes As Long, i As Long
-    
+<br>
     playerLevel = st.Range("B2").Value
     initialHP = st.Range("B3").Value
     targetHP = st.Range("B4").Value
@@ -83,47 +83,47 @@ Sub Simulate_Wash_Point()
     singlePillCost = st.Range("B7").Value  ' 单次洗炼丹消耗 (如 2 颗)
     singleGoldCost = st.Range("B8").Value  ' 单次金币消耗 (如 1000 金币)
     simTimes = st.Range("B9").Value        ' 模拟抽样样本量 (如 10000 次)
-    
+<br>
     ' 初始化结果输出区域
     Dim resultRow As Long
     resultRow = 2
     st.Range("D2:G" & (simTimes + 10)).ClearContents
-    
+<br>
     Randomize  ' 激活高随机性种子
-    
+<br>
     ' 开始蒙特卡洛大样本循环
     For i = 1 To simTimes
         Dim currentHP As Double
         Dim washCount As Long
         currentHP = initialHP
         washCount = 0
-        
+<br>
         ' 单个玩家的洗点探索循环，直至达成目标属性
         Do While currentHP < targetHP
             washCount = washCount + 1
-            
+<br>
             ' 生成随机浮动增量: Int((upper - lower + 1) * Rnd + lower)
             Dim deltaHP As Integer
             deltaHP = Int((round1_up - round1_down + 1) * Rnd + round1_down)
-            
+<br>
             ' 模拟玩家决策：唯有属性正向提升时才确认保存
             If (currentHP + deltaHP) > currentHP Then
                 currentHP = currentHP + deltaHP
             End If
-            
+<br>
             ' 设定防死循环安全阈值
             If washCount > 50000 Then Exit Do
         Loop
-        
+<br>
         ' 记录该样本的模拟统计数据
         st.Cells(resultRow, 4).Value = i                     ' 样本编号
         st.Cells(resultRow, 5).Value = washCount             ' 洗点消耗次数
         st.Cells(resultRow, 6).Value = washCount * singlePillCost  ' 洗炼丹总消耗
         st.Cells(resultRow, 7).Value = washCount * singleGoldCost  ' 金币总消耗
-        
+<br>
         resultRow = resultRow + 1
     Next i
-    
+<br>
     MsgBox "蒙特卡洛模拟完成！共执行 " & simTimes & " 次样本推演。", vbInformation, "系统提示"
 End Sub
 ```
@@ -187,45 +187,45 @@ Public Sub Run_Macro_Economic_Simulation()
     Dim playerIndex As Integer, totalPlayers As Integer
     Dim serverTotalGoldInflow As Double, serverTotalGoldSink As Double
     Dim serverTotalGoldStock As Double
-    
+<br>
     totalDays = 365      ' 推演全服运营 1 整年
     totalPlayers = 1000  ' 模拟全服 1000 名核心留存玩家
     serverTotalGoldStock = 0
-    
+<br>
     ' 按自然天进行宏观时间推进
     For dayIndex = 1 To totalDays
         serverTotalGoldInflow = 0
         serverTotalGoldSink = 0
-        
+<br>
         ' 遍历全服所有活跃玩家
         For playerIndex = 1 To totalPlayers
             Dim dailyGoldEarned As Double, dailyGoldSpent As Double
-            
+<br>
             ' 1. 执行日常跑环任务产出 (按等级动态缩放)
             dailyGoldEarned = Execute_Daily_Quests(playerIndex)
-            
+<br>
             ' 2. 模拟野外打怪与副本掉落
             dailyGoldEarned = dailyGoldEarned + Simulate_Combat_Drops(playerIndex)
-            
+<br>
             ' 3. 模拟日常刚性消耗 (装备耐久修理 + 购买药水)
             dailyGoldSpent = Calculate_Daily_Maintenance(playerIndex)
-            
+<br>
             ' 4. 模拟战力进阶追求 (大R与中R根据财富积累触发装备精炼与合宝石)
             If Should_Player_Upgrade(playerIndex) Then
                 dailyGoldSpent = dailyGoldSpent + Execute_Gear_Refinement(playerIndex)
             End If
-            
+<br>
             ' 5. 模拟拍卖行交易税流转抽水 (5% 系统销毁)
             dailyGoldSpent = dailyGoldSpent + Simulate_Market_Tax(playerIndex)
-            
+<br>
             ' 汇总全服单日流水
             serverTotalGoldInflow = serverTotalGoldInflow + dailyGoldEarned
             serverTotalGoldSink = serverTotalGoldSink + dailyGoldSpent
         Next playerIndex
-        
+<br>
         ' 更新全服资产总存量: Stock(t) = Stock(t-1) + Inflow - Sink
         serverTotalGoldStock = serverTotalGoldStock + serverTotalGoldInflow - serverTotalGoldSink
-        
+<br>
         ' 将第 t 天的宏观指标记录在案
         Record_Telemetry_Snapshot dayIndex, serverTotalGoldStock, serverTotalGoldInflow, serverTotalGoldSink
     Next dayIndex

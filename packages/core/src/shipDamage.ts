@@ -1,4 +1,5 @@
 import type { GameState } from './state'
+import type { ModuleDef } from './types'
 import { nextInt, nextRandom } from './rng'
 
 export type ShipDamageKind = 'shield' | 'armor' | 'hull' | 'speed' | 'cargo' | 'range'
@@ -25,10 +26,21 @@ export function cleanShipDamage(raw: unknown): ShipDamageKind[] | undefined {
 }
 
 /** 战损作用于加成后的最终属性；同种逐件乘算，无玩法上限，不进入普通插件叠加池。 */
-export function shipDamageEffects(ids: readonly ShipDamageKind[] | undefined): Record<ShipDamageKind, number> {
+export function shipDamageEffects(
+  ids: readonly ShipDamageKind[] | undefined,
+  management?: ModuleDef['damageManagement'],
+): Record<ShipDamageKind, number> {
   const effects = Object.fromEntries(SHIP_DAMAGE_DEFS.map(def => [def.id, 1])) as Record<ShipDamageKind, number>
-  for (const id of cleanShipDamage(ids) ?? []) effects[id] *= 1 - SHIP_DAMAGE_PENALTY
+  const penalty = SHIP_DAMAGE_PENALTY * (1 - Math.max(0, Math.min(1, management?.penaltyReductionPct ?? 0)))
+  for (const id of cleanShipDamage(ids) ?? []) effects[id] *= 1 - penalty
   return effects
+}
+
+/** 只对抗性贡献按类型计数；原数组与每件战损的属性惩罚均保留。 */
+export function shipDamageHullResistOf(ids: readonly ShipDamageKind[] | undefined, management?: ModuleDef['damageManagement']): number {
+  if (!management) return 0
+  const kinds = Math.min(new Set(cleanShipDamage(ids) ?? []).size, Math.max(0, Math.floor(management.maxKinds)))
+  return kinds * management.hullResistPerKind
 }
 
 export function rollShipDamage(state: GameState, previous?: readonly ShipDamageKind[]): ShipDamageKind[] {

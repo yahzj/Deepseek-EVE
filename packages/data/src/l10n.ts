@@ -263,10 +263,15 @@ export const EN_MODULES: EnTable = {
   'plug-target-beacon': { name: 'Target Beacon Plug', description: L10N['mod.copy.107']!.en },
   'plug-concealment': { name: 'Concealment Plug', description: L10N['mod.copy.108']!.en },
   'plug-pirate-raider': { name: 'Raider Plug', description: L10N['mod.factionPlug.001']!.en },
-  'plug-alien-shield-coating': { name: 'Shield Coating Plug', description: L10N['mod.factionPlug.002']!.en },
+  'plug-alien-shield-coating': { name: 'Shield Coating Plug', description: l10nEntryText(L10N['mod.factionPlug.008']!, 'en') },
   'plug-gravekeeper-capacitor': { name: 'Shield Capacitor Plug', description: L10N['mod.factionPlug.003']!.en },
-  'plug-titan-compression': { name: 'Spatial Compression Plug', description: L10N['mod.factionPlug.004']!.en },
+  'plug-titan-compression': { name: 'Spatial Compression Plug', description: l10nEntryText(L10N['mod.factionPlug.009']!, 'en') },
   'plug-deadarmy-printing': { name: 'Low-Cost Printing Plug', description: L10N['mod.factionPlug.005']!.en },
+  'plug-pirate-damage-management': { name: l10nEntryText(L10N['mod.factionPlug.010']!, 'en'), description: l10nEntryText(L10N['mod.factionPlug.011']!, 'en') },
+  'plug-alien-nanobiomass': { name: l10nEntryText(L10N['mod.factionPlug.012']!, 'en'), description: l10nEntryText(L10N['mod.factionPlug.013']!, 'en') },
+  'plug-gravekeeper-charge': { name: l10nEntryText(L10N['mod.factionPlug.014']!, 'en'), description: l10nEntryText(L10N['mod.factionPlug.015']!, 'en') },
+  'plug-titan-drone-command': { name: l10nEntryText(L10N['mod.factionPlug.016']!, 'en'), description: l10nEntryText(L10N['mod.factionPlug.017']!, 'en') },
+  'plug-deadarmy-reinforced-hull': { name: l10nEntryText(L10N['mod.factionPlug.018']!, 'en'), description: l10nEntryText(L10N['mod.factionPlug.019']!, 'en') },
 
   /* 损伤管制装置线（2026-09-25 船长令：低槽 · 结构三系减伤 +30/40/50 ＋ 每场一次"结构锁定 1 秒"）
      ⚠ 模块英文必须写在本表（`EN_MODULES`）——写进 `EN_ITEMS` 的话覆盖层查不到（`l10n-overlay` 用例会红）。 */
@@ -450,6 +455,11 @@ export const EN_MODULES: EnTable = {
  * 物品英文名称保持冻结译名；说明与中文共用唯一表 id。
  */
 export const EN_ITEMS: EnTable = {
+  'box-encrypted-a': { name: l10nEntryText(L10N['item.encrypted.001']!, 'en'), description: l10nEntryText(L10N['item.encrypted.006']!, 'en') },
+  'box-encrypted-c': { name: l10nEntryText(L10N['item.encrypted.002']!, 'en'), description: l10nEntryText(L10N['item.encrypted.006']!, 'en') },
+  'box-encrypted-d': { name: l10nEntryText(L10N['item.encrypted.003']!, 'en'), description: l10nEntryText(L10N['item.encrypted.006']!, 'en') },
+  'box-encrypted-e': { name: l10nEntryText(L10N['item.encrypted.004']!, 'en'), description: l10nEntryText(L10N['item.encrypted.006']!, 'en') },
+  'box-encrypted-g': { name: l10nEntryText(L10N['item.encrypted.005']!, 'en'), description: l10nEntryText(L10N['item.encrypted.006']!, 'en') },
   'drone-jawclaw': {
     name: l10nEntryText(L10N['item.jawclaw.001']!, 'en'),
     description: l10nEntryText(L10N['item.jawclaw.002']!, 'en'),
@@ -1440,6 +1450,15 @@ const BP_DESC_EN: Readonly<Record<string, string>> = {
 export const EN_BLUEPRINTS: EnTable = (() => {
   // 船长2026-10-09确认中文名称/说明，英文未准备时回退中文，不自动生成新译名。
   const out: Record<string, EnText> = {
+    ...Object.fromEntries(BLUEPRINTS.filter(bp => bp.id.startsWith('bp-once-plug-')).map(bp => {
+      return [bp.id, { name: bp.name, description: l10nEntryText(L10N['bp.encrypted.002']!, 'en') }]
+    })),
+    ...Object.fromEntries(['plug-pirate-damage-management', 'plug-alien-nanobiomass', 'plug-gravekeeper-charge', 'plug-titan-drone-command', 'plug-deadarmy-reinforced-hull'].map(id => {
+      const bp = BLUEPRINTS.find(row => row.id === `bp-${id}`)!
+      return [bp.id, { name: bp.name, description: l10nEntryText(L10N['bp.factionPlug.001']!, 'en') }]
+    })),
+    'bp-once-drone-repair-mil': { name: l10nEntryText(L10N['bp.repairDrone.001']!, 'en'), description: l10nEntryText(L10N['bp.repairDrone.003']!, 'en') },
+    'bp-drone-repair-mil': { name: l10nEntryText(L10N['bp.repairDrone.002']!, 'en'), description: l10nEntryText(L10N['bp.repairDrone.004']!, 'en') },
     'bp-shieldfield-2': { name: l10nEntryText(L10N['bp.fleetSupport.001']!, 'en'), description: l10nEntryText(L10N['mod.fleetSupport.003']!, 'en') },
     'bp-shieldfield-3': { name: l10nEntryText(L10N['bp.fleetSupport.002']!, 'en'), description: l10nEntryText(L10N['mod.fleetSupport.003']!, 'en') },
     'bp-drone-launch-1': { name: l10nEntryText(L10N['bp.launchCalibration.001']!, 'en'), description: l10nEntryText(L10N['mod.launchCalibration.006']!, 'en') },

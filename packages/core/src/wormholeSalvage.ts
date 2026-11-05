@@ -21,6 +21,7 @@
  * 而本文件经 `salvaging` 回头吃 `state` ⇒ 会成环，与 D/F 批两次踩过的坑同款）。
  */
 import { ceilFinalQuantity } from './quantity'
+import { encryptedBlueprintDraw, encryptedBlueprintGroups, encryptedFamilyOf } from './encryptedContainer'
 import { signalSpaceResourcePileBonus } from './wormholeFoes'
 import type { CommandResult } from './engine'
 import { rareDropRateMulOf, tuningMul } from './tuning'
@@ -1487,6 +1488,7 @@ export function wormholeTempBlockReason(state: GameState, ctx: SimContext): stri
  * ⚠ 顺序有意为之：临时空间那条更"卡脖子"（处理它就得进背包页，抛货也在那一页），故优先报它。
  */
 export function wormholeActionBlockReason(state: GameState, ctx: SimContext): string | null {
+  if (state.departure?.kind === 'wormhole') return '正在离港'
   return wormholeTempBlockReason(state, ctx) ?? wormholeOverloadBlockReason(state, ctx)
 }
 
@@ -1896,6 +1898,9 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
   const cell = gridCellAt(grid, grid.pos)
   if (!cell) return { ok: false, error: '当前位置不在网格里。', errorId: 'core.wormhole.018' }
   if (cell.place !== 'graveyard' && cell.place !== 'ruins') return { ok: false, error: '这个地点没有可打捞的残骸。', errorId: 'core.wormholeSalvage.018' }
+  if (cell.researchLab && !(grid.ruinsRolled ?? []).includes(cell.key) && !wormholeResearchBox(state, ctx, cell)) {
+    return { ok: false, errorId: 'core.researchLab.001' }
+  }
   const baseRigs = wormholeSalvagersOf(state, ctx)
   if (baseRigs <= 0) {
     return { ok: false, error: '编队里没有打捞器：打捞作业干不了（至少装 1 台）。', errorId: 'core.wormholeSalvage.020' }
@@ -1965,7 +1970,7 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
      * 每收走一堆掷一次 5%（2026-09-23 起）、一次打捞最多 1 个；落格走**与遗迹货柜同一套「收货阶梯」**
      * （货仓 → 临时空间 → 散落该格）。掷骰走独立盐值的流 ⇒ 旧读数逐字不变（见 `wormholeRollSalvageBox`）。
      */
-    if (boxFound < WORMHOLE_SALVAGE_BOX_MAX) {
+    if (!cell.researchLab && boxFound < WORMHOLE_SALVAGE_BOX_MAX) {
       const boxId = wormholeRollSalvageBox(state, ctx, cell, piles.length)
       if (boxId) {
         boxFound += 1
@@ -2044,7 +2049,7 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
   if (ruinsFirstPull) {
     grid.ruinsRolled = [...(grid.ruinsRolled ?? []), cell.key]
     // ① 遗迹专属掉落 = 一个「遗迹安全货柜」（层 2 起 70%）——落地走收货阶梯（货仓 → 临时空间 → 散落该格）
-    const ruinsBoxId = wormholeRollRelicBox(state, ctx, cell)
+    const ruinsBoxId = cell.researchLab ? wormholeResearchBox(state, ctx, cell) : wormholeRollRelicBox(state, ctx, cell)
     if (ruinsBoxId) {
       const name = ctx.items.get(ruinsBoxId)?.name ?? ruinsBoxId
       const shp = wormholeShapeOf(ruinsBoxId)
@@ -2127,6 +2132,22 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
  */
 export function wormholeRelicBoxIdOf(family: string): string {
   return `box-relic-${family.toLowerCase()}`
+}
+
+/** 研究所首捞恰好一个保底货柜，加密柜仅属于本趟势力。 */
+export function wormholeResearchBox(state: GameState, ctx: SimContext, cell: WormholeGridCell): string | undefined {
+  const run = state.wormhole.run
+  if (!run || run.depth < 8 || !cell.researchLab || cell.place !== 'ruins') return undefined
+  const family = (run.family ?? familyOfCard(ctx, wormholeCellCardIdOf(run, cell))).toUpperCase()
+  const rng = wormholeStream(runSeedOf(state) * 739 + run.depth * 947 + (cell.q * 61 + cell.r * 83) * 17)
+  const encrypted = `box-encrypted-${family.toLowerCase()}`
+  if (rng() < .15) {
+    const own = encryptedFamilyOf(encrypted)
+    return own && ctx.items.get(encrypted)?.kind === 'container' && encryptedBlueprintGroups(ctx, own) ? encrypted : undefined
+  }
+  const others = wormholeRelicBoxPoolOf(ctx, run.depth, family).filter(id => id !== WORMHOLE_VALUABLES_BOX_ID)
+  const selected = others[Math.floor(rng() * others.length)]
+  return selected && ctx.items.get(selected)?.kind === 'container' ? selected : undefined
 }
 
 /**
@@ -2233,6 +2254,14 @@ export function wormholeUnboxRoll(
   const rng: RngState = {
     seed: (state.rng.seed ^ Math.imul((state.rng.box ?? 0) + 1, 0x9e3779b9)) >>> 0,
     count: 0,
+  }
+  const encryptedFamily = encryptedFamilyOf(boxItemId)
+  if (encryptedFamily) {
+    const ids = encryptedBlueprintDraw(ctx, encryptedFamily, rng)
+    if (!ids?.length) return null
+    state.rng.box = (state.rng.box ?? 0) + 1
+    return { itemId: ids[0]!, units: 1, source: 'once',
+      ...(ids.length > 1 ? { extra: ids.slice(1).map(itemId => ({ itemId, units: 1 })) } : {}) }
   }
   state.rng.box = (state.rng.box ?? 0) + 1 // 每次拆解一件 ⇒ N 前进一格（本箱的"序位"就此定下）
   // ① 图纸货柜：按层档过滤的两个池（先掷永久 / 一次性）

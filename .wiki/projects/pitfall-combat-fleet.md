@@ -231,4 +231,3 @@ updated: 2026-11-04T10:39:45.927Z
 **大编队、存档与界面**：`docs/design/combat-command-budget-20261030.md`（grep 定点） · `docs/design/combat-command-implementation-20261030.md` · `docs/design/weekend-invasion.md`（grep 定点） · `docs/design/industrial-fleet-ambush-20261101.md`（grep 定点） · `docs/design/battle-card-range-memory-20261021.md`
 
 **弹药、支援、旗舰与审查**：`docs/design/raider-fragment-ammo-audit-20261009.md` · `docs/design/fleet-support-final-20261101.md` · `docs/design/gravekeeper-flagship-finish-20261018.md` · `docs/archive/retired-docs-20261029/hull-repair-module-20260909.md`（**历史档案**） · `docs/review/guoqing-audit-followup.md`
-

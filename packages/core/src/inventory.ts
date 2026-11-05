@@ -202,10 +202,12 @@ export function cargoCapacityM3Of(state: GameState, ctx: SimContext, shipId: str
     const haulerLv = Math.min(5, state.skills.trained['hauler-ops'] ?? 0)
     if (haulerLv > 0) capMult *= 1 + 0.05 * haulerLv
   }
-  for (const { effective: p } of plugEffectPartsOf(state.fleet[shipId]?.plugs ?? [], ctx)) {
+  const plugDefs = plugEffectPartsOf(state.fleet[shipId]?.plugs ?? [], ctx).map(part => part.effective)
+  for (const p of plugDefs) {
     bonus += p.cargoCapacityBonusPct ?? 0
   }
-  return ceilFinalQuantity(ship.cargoM3 * (1 + bonus) * capMult * shipDamageEffects(state.fleet[shipId]?.damagePlugs).cargo)
+  const damage = shipDamageEffects(state.fleet[shipId]?.damagePlugs, plugDefs.find(p => p.damageManagement)?.damageManagement)
+  return ceilFinalQuantity(ship.cargoM3 * (1 + bonus) * capMult * damage.cargo)
 }
 
 /** 当前驾驶船货仓已占用体积（m³） */

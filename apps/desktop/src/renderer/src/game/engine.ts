@@ -79,6 +79,9 @@ import {
   lockShip,
   marketQuote,
   goodName,
+  prepareMarketRelayRequest,
+  marketRelayPendingRequest,
+  applyMarketRelayResponse,
   marketSellHolding,
   marketSellPreview,
   newSettleStats,
@@ -107,6 +110,8 @@ import {
   migrateDeprecatedAmmo,
   repairDeprecatedModules,
   repairShip,
+  fleetRepairPlan as fleetRepairPlanCore,
+  repairFleet,
   useOneRepairKit,
   /* 2026-09-30 实验室后续内容：道具「使用」（突触加速剂 / 信号发射器） */
   useSynapticAccelerant,
@@ -339,6 +344,8 @@ import type {
   UnfitAllResult,
   DamageType,
   GameState,
+  MarketRelayRequest,
+  MarketRelayResponse,
   LairTier,
   MarkKind,
   RackSlot,
@@ -1536,6 +1543,31 @@ export class GameEngine {
    * 落盘成功后顺手再申请一次持久化存储（乙）。挂起/不可写时直接返回 false（丁）。 */
   async persist(): Promise<boolean> {
     return (await this.persistSnapshot()) !== null
+  }
+
+  marketRelayReady(state: GameState): boolean {
+    return this.state === state && this.saveWriteState() === 'ok'
+  }
+
+  marketRelayPending(state: GameState, scope: string): MarketRelayRequest | null {
+    return this.marketRelayReady(state) ? marketRelayPendingRequest(state, scope) : null
+  }
+
+  async persistMarketRelay(state: GameState): Promise<boolean> {
+    if (!this.marketRelayReady(state)) return false
+    const saved = await this.persist()
+    return saved && this.state === state && this.saveWriteState() === 'ok'
+  }
+
+  prepareMarketRelay(state: GameState, scope: string, ids: { saveId: string; requestId: string; orderId: () => string }): MarketRelayRequest | null {
+    return this.marketRelayReady(state) ? prepareMarketRelayRequest(state, this.ctx, scope, ids) : null
+  }
+
+  applyMarketRelay(state: GameState, scope: string, requestId: string, response: MarketRelayResponse): boolean {
+    if (!this.marketRelayReady(state)) return false
+    const applied = applyMarketRelayResponse(state, this.ctx, scope, requestId, response)
+    if (applied) this.notify()
+    return applied
   }
 
   private saveSequence = 0
@@ -4471,6 +4503,21 @@ export class GameEngine {
   /** 维修指定船（满血） */
   repairShipAt(shipId: string): CommandResult {
     const result = repairShip(this.state, shipId, this.ctx)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** 当前舰队可执行的批量维修计划。 */
+  fleetRepairPlan(): ReturnType<typeof fleetRepairPlanCore> {
+    return fleetRepairPlanCore(this.state, this.ctx)
+  }
+
+  /** 批量维修舰队；失败时保持界面和存档不变。 */
+  repairFleetAt(): ReturnType<typeof repairFleet> {
+    const result = repairFleet(this.state, this.ctx)
     if (result.ok) {
       void this.persist()
       this.notify()

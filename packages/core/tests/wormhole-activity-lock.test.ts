@@ -24,7 +24,7 @@ import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
-import { wormholeEnter, wormholeEntryBlockReason, wormholeEntryAutoStops, wormholeLeave } from '../src/wormhole'
+import { wormholeEnter as enterWormhole, wormholeEntryBlockReason, wormholeEntryAutoStops, wormholeLeave } from '../src/wormhole'
 import { shipBusyForWormhole, shipActivityBusy } from '../src/wormhole'
 import { shipBusyLabel } from '../src/activity'
 import { wormholePilotHoldReason } from '../src/state'
@@ -36,9 +36,16 @@ import { HOME_GALAXY_ID, startExpedition } from '../src/expedition'
 import { shortestTravelMinutes } from '../src/travel'
 import { goStandbyAt } from '../src/location'
 import { setStanding } from './helpers'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
 const T1 = 'sh-falconet'
+
+function wormholeEnter(...args: Parameters<typeof enterWormhole>) {
+  const result = enterWormhole(...args)
+  if (result.ok) finishDeparture(args[0], args[1])
+  return result
+}
 /** 主控活动现场（按各命令写入的字段构造；名字与界面活动栏同类目）——**2026-09-21 起：这一批全部"进洞自动停"** */
 const ACTIVITIES: Array<[string, (s: GameState) => void]> = [
   // ⚠ 「扫描星系」**2026-09-15 起不在这张表里**（船长：无人扫描艇不占主控）——见 ⑤ 那条对照用例
@@ -71,12 +78,13 @@ const ACTIVITIES: Array<[string, (s: GameState) => void]> = [
 
 /** **进洞时会自动停掉**的那一档（船长 2026-09-14「进洞自动停止」；2026-09-21 扩到七项） */
 function startWormholeScan(s: GameState): void {
-  s.wormholeScan = { active: true, progressMs: 7 * 60_000 }
+  s.wormholeScan = { active: true, progressMs: 7 * 60_000, welcomed: true }
 }
 
 /** 远征在途（真命令；2026-09-21 起属于"不可中断"那一档 ⇒ 照旧拦进洞） */
 function startExpeditionHere(s: GameState): void {
-  void startExpedition(s, 'ano-training', ctx)
+  const result = startExpedition(s, 'ano-training', ctx)
+  if (result.ok) finishDeparture(s, ctx)
 }
 
 function fresh(): { state: GameState; pilot: string; mate: string } {
@@ -400,7 +408,10 @@ describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 
     expect(state.wormholeScan!.progressMs).toBe(7 * 60_000) // 进度保留
     expect(state.logs.some((l) => l.text.includes('已自动停止「扫描虫洞」'))).toBe(true)
     // 远征：开矿在跑 ⇒ 自动停采后照常出发（战争优先）
-    expect(startExpedition(state, 'ano-training', ctx).ok).toBe(true)
+    finishDeparture(state, ctx)
+    const expedition = startExpedition(state, 'ano-training', ctx)
+    expect(expedition.ok, expedition.error ?? '').toBe(true)
+    finishDeparture(state, ctx)
     expect(state.mining.active).toBe(false)
     // 远征在途（且已交火）⇒ **拒**（不可中断那一档：此刻的拒因是"战斗中"）
     const whscan = wormholeScanStart(state, ctx)

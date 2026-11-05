@@ -39,7 +39,7 @@ describe('共享悬浮窗宽度与边缘布局',()=>{
     expect(state.maxWidth).toBe(304);expect(state.maxHeight).toBe(192)
     layouts.length=0;tree=scope.exports.TooltipLayer();layouts[0]!()
     tree=scope.exports.TooltipLayer()
-    expect(tree.props.style).toEqual({left:218,top:190,maxWidth:304,maxHeight:192})
+    expect(tree.props.style).toEqual({left:218,top:190,maxWidth:304,maxHeight:192,visibility:'visible'})
     expect(scope.exports.TIP_DELAY_MS).toBe(500)
     listener.resize!();expect(state).toBeNull()
   })

@@ -2,13 +2,20 @@
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/state'
 import { advanceGame } from '../src/engine'
-import { startHauling, stopHauling, haulBaseReward, haulLegReward, haulEffectiveMinutes, haulingOccupiedM3, HAUL_RATE_PER_M3_MIN, HAUL_LEG_TIME_MUL, HAUL_TRIP_MUL_MIN, HAUL_TRIP_MUL_MAX } from '../src/hauling'
+import { startHauling as launchHauling, stopHauling, haulBaseReward, haulLegReward, haulEffectiveMinutes, haulingOccupiedM3, HAUL_RATE_PER_M3_MIN, HAUL_LEG_TIME_MUL, HAUL_TRIP_MUL_MIN, HAUL_TRIP_MUL_MAX } from '../src/hauling'
+import { finishDeparture } from './helpers/departure-ready'
 import { cargoCapacityM3Of } from '../src/inventory'
 import { changeShip, addShipToFleet } from '../src/shipyard'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { makeTestCtx } from './helpers'
 import { haulFleetLoadOf } from '../src/hauling/load'
 import type { StationSiteDef } from '../src/types'
+
+function startHauling(...args: Parameters<typeof launchHauling>) {
+  const result = launchHauling(...args)
+  if (result.ok && !result.queued) finishDeparture(args[0], args[3])
+  return result
+}
 
 const site: StationSiteDef = { id: 'site-test', name: '测试前哨站', galaxyId: 'galaxy-far', standingReq: 0,
   tiers: [{ name: '建成', bill: [], unlockDesc: '' }], introDialogueId: '', doneDialogueId: null, description: '' }
@@ -57,6 +64,7 @@ describe('长途运输现行编队规则', () => {
     expect(state.wallet.isk - wallet).toBe(due)
     expect(state.hauling.toSiteId).toBeNull()
     expect(state.hauling.tripMul).toBe(mul)
+    finishDeparture(state, ctx)
     advanceGame(state, 1000, ctx)
     expect(state.wallet.isk - wallet).toBe(due * 2)
     expect(state.hauling.tripLegsLeft).toBe(2)
@@ -115,6 +123,7 @@ describe('长途运输现行编队规则', () => {
     advanceGame(state, 1000, ctx)
     expect(haulingOccupiedM3(state, ctx)).toBe(200)
     state.hauling.fleetLeg!.targetM3 = 1_000_000
+    finishDeparture(state, ctx)
     advanceGame(state, 1000, ctx)
     expect(state.hauling.active).toBe(false)
   })

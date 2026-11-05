@@ -21,7 +21,7 @@ import type { GameState } from './state'
 import type { MarketGoodDef, SimContext } from './types'
 import { nextInt, nextRandom, pickWeighted } from './rng'
 import { rollLowSecAmbush } from './encounters'
-import { ensureMarket, goodName, levelOf, marketTradingGoods } from './market'
+import { ensureMarket, goodName, levelOf } from './market'
 import { DSI_FACTION_ID, standingOf } from './standing'
 
 /** 事件日志前缀（桌面端用它在新增日志里识别事件弹卡） */
@@ -258,7 +258,8 @@ function poolGoods(ctx: SimContext): MarketGoodDef[] {
 
 /** 稀有/限定商品（模块/蓝图/船，不含 AI 核心）：市场奇货对象 */
 function rareGoods(ctx: SimContext): MarketGoodDef[] {
-  return marketTradingGoods(ctx).filter((g) => g.kind !== 'aicore' && g.rarity !== 'common' && g.kind !== 'item')
+  return [...ctx.marketGoods.values()].filter((g) => !g.unreleased && g.kind !== 'aicore' && g.rarity !== 'common' && g.kind !== 'item' &&
+    (g.playerBuyable !== false || g.playerSellable !== false))
 }
 /**
  * 市场大类 A：行情突变动（公开导出，测试可直接调用）。
@@ -303,12 +304,12 @@ export function fireMarketShockEvent(state: GameState, ctx: SimContext, offline 
     const qty = Math.max(10, ceilFinalQuantity(flow * (30 + nextRandom(state.rng) * 30)))
     const level = levelOf(state, ctx, def.key)
     const buy = nextInt(state.rng, 2) === 0
-    if (buy) {
+    if (buy && def.playerSellable !== false) {
       const price = clampPrice(ctx, def, ceilFinalQuantity(level * (0.99 + nextRandom(state.rng) * 0.02)))
       if (offline) return
       mk.npcBuy[def.key]!.push({ price, qty, expiresAtGameMs: state.gameMs + bal.orderLifeMs.common })
       logEvent(state, `突现大宗收购：有人以 ${price.toLocaleString('zh-CN')} 信用点/单位求购「${goodName(ctx, def.key)}」×${qty.toLocaleString('zh-CN')}（20 分钟内有效）。`, undefined, 'core.events.087', { p1p1: price.toLocaleString('zh-CN'), p1p2: goodName(ctx, def.key), p1p3: qty.toLocaleString('zh-CN') })
-    } else {
+    } else if (!buy && def.playerBuyable !== false) {
       const price = clampPrice(ctx, def, Math.max(ceilFinalQuantity(level * (1.05 + nextRandom(state.rng) * 0.02)), level + 1))
       if (offline) return
       mk.npcSell[def.key]!.push({ price, qty, expiresAtGameMs: state.gameMs + bal.orderLifeMs.common })
@@ -349,8 +350,10 @@ export function fireMarketOrderEvent(state: GameState, ctx: SimContext, offline 
    * 也给专属货留了销路；两支各消耗一次 `nextRandom` ⇒ **随机序列与改前逐位一致**（同种子的老档不受扰动）。
    */
   const wantsSupply = nextInt(state.rng, 2) === 0
-  // 未达累计门槛沿用只收不卖的降级支，额外不掷骰，随机序列不变。
-  if (wantsSupply && def.playerBuyable !== false && standingOf(state, DSI_FACTION_ID) >= BLACK_MARKET_STANDING_REQ) {
+  const canSupply = def.playerBuyable !== false && standingOf(state, DSI_FACTION_ID) >= BLACK_MARKET_STANDING_REQ
+  const canBuy = def.playerSellable !== false
+  // Prefer the requested side, falling back only to the other NPC-permitted direction.
+  if (canSupply && (wantsSupply || !canBuy)) {
     // 变体 0：黑市溢价现货——价格 ≈行情价 ×1.8~2.0（高溢价应急渠道），仅存 8 分钟
     const mul = 1.8 + nextRandom(state.rng) * 0.2
     const price = clampPrice(ctx, def, ceilFinalQuantity(level * mul))
@@ -363,7 +366,7 @@ export function fireMarketOrderEvent(state: GameState, ctx: SimContext, offline 
       'core.events.089',
       { p1p1: name, p1p2: price.toLocaleString('zh-CN'), p1p3: mul.toFixed(1), p1p4: Math.round(BLACK_MARKET_LIFE_MS / 60_000) },
     )
-  } else {
+  } else if (canBuy) {
     const lifeMs = ctx.balance.market.orderLifeMs[def.rarity]
     const price = clampPrice(ctx, def, ceilFinalQuantity(level * (1.0 + nextRandom(state.rng) * 0.35)))
     if (offline) return // 静默模式：同上

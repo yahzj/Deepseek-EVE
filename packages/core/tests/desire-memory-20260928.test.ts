@@ -65,11 +65,13 @@ function bossWorld(): { s: GameState; ev: WeekendEventState } {
 describe('旧记忆报障回归：现按实际卡ID保存', () => {
   it('① 旗舰战按自身卡ID记录，下次同卡读取', () => {
     const { s } = bossWorld()
-    const first = weekendStartFlagshipBattle(s, ctx, NOW)
+    // 两场使用独立的同状态存档，避免上一场的出发门禁干扰距离读取。
+    const firstState = structuredClone(s)
+    const first = weekendStartFlagshipBattle(firstState, ctx, NOW)
     expect(first, '第一场开得起来').not.toBeNull()
-    expect(first!.myDesireM, '头一场没设过 ⇒ 引擎缺省档').toBe(defaultDesire(s, first!))
+    expect(first!.myDesireM, '头一场没设过 ⇒ 引擎缺省档').toBe(defaultDesire(firstState, first!))
 
-    /** 模拟"玩家在战斗里把距离条拖到 3000"：写入端写的就是**核心星系**这一格 */
+    /** 写入旗舰卡的距离记录，再用未占用的同状态存档验证读取。 */
     setCardDistance(s, ctx, 'ink-flagship', PLAYER_DESIRE)
     expect(battleCardRangeOf(s, 'ink-flagship')?.desireM).toBe(PLAYER_DESIRE)
 
@@ -82,11 +84,15 @@ describe('旧记忆报障回归：现按实际卡ID保存', () => {
     const { s } = bossWorld()
     /** 只往"卡自带星系"写（旗舰卡的母港 = galaxy-hub）：那一份**不该**影响旗舰战 */
     setDesirePrefOf(s, 'galaxy-hub', PLAYER_DESIRE)
-    const b = weekendStartFlagshipBattle(s, ctx, NOW)
-    expect(b!.myDesireM, '核心星系没设过 ⇒ 仍是缺省档').toBe(defaultDesire(s, b!))
-    /** 再写核心星系那一份 ⇒ 立刻按它站 */
+    const firstState = structuredClone(s)
+    const b = weekendStartFlagshipBattle(firstState, ctx, NOW)
+    expect(b, '旧母港偏好不妨碍开场').not.toBeNull()
+    expect(b!.myDesireM, '旗舰卡没设过 ⇒ 仍是缺省档').toBe(defaultDesire(firstState, b!))
+    /** 同状态存档写入旗舰卡距离，不受上一场的出发门禁影响。 */
     setCardDistance(s, ctx, 'ink-flagship', PLAYER_DESIRE)
-    expect(weekendStartFlagshipBattle(s, ctx, NOW)!.myDesireM).toBe(PLAYER_DESIRE)
+    const second = weekendStartFlagshipBattle(s, ctx, NOW)
+    expect(second, '记录距离后也开得起来').not.toBeNull()
+    expect(second!.myDesireM).toBe(PLAYER_DESIRE)
   })
 
   it('③ 低层预览读取实际卡ID记录但不写回真实存档', () => {

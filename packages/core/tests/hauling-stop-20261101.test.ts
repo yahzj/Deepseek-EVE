@@ -8,6 +8,7 @@ import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { spawnIndustrialEncounter } from '../src/encounters/industrial'
 import { settleEncounterBattle } from '../src/encounters/outcome'
 import { simulateOffline } from '../src/simulation'
+import { finishDeparture } from './helpers/departure-ready'
 
 function world() {
   const ctx = buildSimContext()
@@ -16,6 +17,7 @@ function world() {
   const state = createInitialState({ nowWallMs: 0, seed: 19 })
   for (const site of ctx.stations.values()) state.stationSites[site.id] = { stage: site.tiers.length, delivered: {} }
   expect(startHauling(state, null, 'site-cinder', ctx, 100).ok).toBe(true)
+  finishDeparture(state, ctx)
   return { state, ctx }
 }
 

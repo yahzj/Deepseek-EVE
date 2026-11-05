@@ -1,6 +1,6 @@
 /**
  * 无消耗自愈 + 结构抗性（2026-09-10 船长：C 族异形件）：
- * - C1 生体甲壳板：装甲层三系抗 +10%（缺口复合）+ 每 5 秒**无消耗**修甲 6 点
+ * - C1 生体甲壳板：装甲层三系抗 +10%（缺口复合）+ 每 5 秒**无消耗**修甲 10 点
  * - C2 生体损管腔：**结构层**三系抗 +25%（模块侧新入口 hullResistAdd）+ 每 5 秒无消耗修结构 4 点
  * - C3 酸液喷吐器：必中能量件，命中附加逐层独立到期的装甲酸蚀。
  * - 无消耗修复量在**同型多件间按 EVE 曲线收敛**（权重 100%/87%/57%/28%/11%），不吃组件也永不停机。
@@ -52,13 +52,13 @@ describe('C 族异形件：无消耗自愈 + 结构抗性（2026-09-10 船长）
     }
   })
 
-  it('无消耗自愈：装 C1 即获每跳修甲 6 点、不预载组件、永不停机', () => {
+  it('无消耗自愈：装 C1 即获每跳修甲 10 点、不预载组件、永不停机', () => {
     const state = makeState([], [], ['mod-lair-armor-c'])
     const repair = preloadRepairFor(state, ctx, state.shipId, ctx.balance.battle.maxBattleMs)!
     expect(repair.units).toHaveLength(1)
     const u = repair.units[0]!
     expect(u.free).toBe(true)
-    expect(u.armorPerPulse).toBe(6)
+    expect(u.armorPerPulse).toBe(10)
     expect(u.hullPerPulse).toBe(0)
     expect(u.stopped).toBe(false)
     expect(Object.keys(repair.kits)).toHaveLength(0) // 不预载任何组件
@@ -77,11 +77,11 @@ describe('C 族异形件：无消耗自愈 + 结构抗性（2026-09-10 船长）
      * ⚠ **2026-09-21**：折减改为**按位次逐台取**（同型号三台的权重是 1 / 0.869 / 0.571）——
      * 第一版我按 `modelId` 建映射 ⇒ 三台都拿到第 3 件的权重（全 3 点/跳）。用例的下标断言正是守这条。
      */
-    expect(per[0]).toBe(Math.ceil(6 * stackWeight(1)))
-    expect(per[1]).toBe(Math.ceil(6 * stackWeight(2)))
-    expect(per[2]).toBe(Math.ceil(6 * stackWeight(3)))
+    expect(per[0]).toBe(Math.ceil(10 * stackWeight(1)))
+    expect(per[1]).toBe(Math.ceil(10 * stackWeight(2)))
+    expect(per[2]).toBe(Math.ceil(10 * stackWeight(3)))
     const sum = per.reduce((s, n) => s + n, 0)
-    expect(sum).toBeLessThan(18) // 收敛后低于线性
+    expect(sum).toBeLessThan(30) // 收敛后低于线性
     // **逐台各有自己的计时器**（2026-09-21 船长令：不同型号独立回转；同型号也一样逐台）
     for (const u of repair.units) expect(u.nextPulseAtMs).toBeUndefined() // 预载阶段还没排首跳
   })
@@ -97,7 +97,7 @@ describe('C 族异形件：无消耗自愈 + 结构抗性（2026-09-10 船长）
      * ⚠ **2026-09-21 起维修全族同池**（船长「包括船体维修装置的不同型号也一样的规则」）：
      * 装配序 = MK1 在前、甲壳板在后 ⇒ MK1 满值、甲壳板按第2件折减后向上取整。
      */
-    expect(free.armorPerPulse).toBe(Math.ceil(6 * stackWeight(2)))
+    expect(free.armorPerPulse).toBe(Math.ceil(10 * stackWeight(2)))
     expect(kit.armorPerPulse).toBe(Math.ceil(10 * stackWeight(1)))
     expect(kit.kitId).toBe('repairkit-mil')
     /**
@@ -112,7 +112,7 @@ describe('C 族异形件：无消耗自愈 + 结构抗性（2026-09-10 船长）
    * **2026-09-17 船长**：「**生体甲壳板的维修量，我希望不吃装甲容量的加成**」→ 当日追加
    * 「**损管腔也一同修改**」——09-16 那条「维修量统一吃层容量加成」的**两件例外**
    * （数据字段 `repairIgnoresCapacityAmp`；两件都是**无消耗自愈**）。
-   * 本用例把三件事一起钉住：① 甲壳板平值 6（哪怕甲容 +20%）；② 损管腔平值 4（哪怕结构 +75%）；
+   * 本用例把三件事一起钉住：① 甲壳板平值 10（哪怕甲容 +20%）；② 损管腔平值 4（哪怕结构 +75%）；
    * ③ **耗组件装置照旧吃**加成（对照，防误伤——09-16 那条对它们仍然有效）。
    */
   it('**报障修复（船长）**：生体甲壳板/损管腔不吃层容量加成；耗组件装置照旧吃（**折减按全族位次**）', () => {
@@ -127,10 +127,10 @@ describe('C 族异形件：无消耗自愈 + 结构抗性（2026-09-10 船长）
     /**
      * ⚠ **2026-09-21 折减按位次**：本例装配序 = 损管腔(1) / MK1(2) / 甲壳板(3)
      * ⇒ 甲壳板拿第 3 件权重。**"不吃层容量加成"这条判据只能看"没被 amp 放大"**：
-     * 平值口径下甲壳板 = `ceil(6 × w₃)`，不乘层容量增益。
+     * 平值口径下甲壳板 = `ceil(10 × w₃)`，不乘层容量增益。
      */
     expect(shell.free).toBe(true)
-    expect(shell.armorPerPulse, '甲壳板的自愈量不该吃装甲容量加成').toBe(Math.ceil(6 * stackWeight(3)))
+    expect(shell.armorPerPulse, '甲壳板的自愈量不该吃装甲容量加成').toBe(Math.ceil(10 * stackWeight(3)))
     expect(shell.hullPerPulse).toBe(0)
     // ② 损管腔：平值（第 1 件 ⇒ 满值 4；若误吃 ×1.75 会变成 7）
     expect(dc.free).toBe(true)

@@ -13,7 +13,7 @@ updated: 2026-11-03
 
 # 开源项目解构：LagBack/corleonemarket 实时模拟股市
 
-> 关联体系：[[whale-stock-market-architecture|证券交易所设计方案]] | [[save-architecture]] | [[project-overview]]  
+> 关联体系：[[whale-stock-market-architecture|证券交易所设计方案]] | [[save-architecture]] | [[project-overview]]<br>
 > 源码基线：`LagBack/corleonemarket` (Node.js + Express + MySQL / Real-time Virtual Stock Exchange)
 
 ---
@@ -112,15 +112,15 @@ function tickPrice(stock: StockState, eventImpact: number = 0): number {
 
   // 5. 边界保护约束
   nextPrice = Math.max(stock.minPrice, Math.min(stock.maxPrice, nextPrice));
-  
+<br>
   return Number(nextPrice.toFixed(2));
 }
 ```
 
 > [!TIP]
-> **均值回归的动态平衡之美**：  
-> 当 $P_t > \mu$ 时，$(\mu - P_t) < 0$，漂移项为负，产生做空回踩拉力；  
-> 当 $P_t < \mu$ 时，$(\mu - P_t) > 0$，漂移项为正，产生超跌反弹推力。  
+> **均值回归的动态平衡之美**：<br>
+> 当 $P_t > \mu$ 时，$(\mu - P_t) < 0$，漂移项为负，产生做空回踩拉力；<br>
+> 当 $P_t < \mu$ 时，$(\mu - P_t) > 0$，漂移项为正，产生超跌反弹推力。<br>
 > 这使得股票走势在宏观上始终围绕企业内在价值波动，具有极高的人类心理拟真感。
 
 ---

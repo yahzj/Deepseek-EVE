@@ -15,6 +15,7 @@ import { gameSaveMethods, ROOT } from './helpers/save-shell'
 import type { CommandResult } from '../src/engine'
 import { combatRosterOf } from '../src/combat/command/roster'
 import { encounterCombatRosterOf } from '../src/combat/command/locks'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
 const BASE = 'ammo-kinetic-l'
@@ -93,6 +94,7 @@ describe('预警装弹读数与真实装载同源', () => {
     const { state, fleet } = setup()
     state.warehouse.items = { [BASE]: 10000 }
     expect(wormholeEnter(state, ctx, fleet, 7).ok).toBe(true)
+    finishDeparture(state, ctx)
     expect(wormholeHoldStow(state, ctx, 'mat-reload').ok).toBe(true)
     const normal = battleAmmoPreloadPlan(state, ctx, fleet)
     const preview = battleAmmoPreloadPlan(state, ctx, fleet, undefined, true)
@@ -109,6 +111,7 @@ describe('预警装弹读数与真实装载同源', () => {
     const prep = wormholePreparationPlan(state, ctx, fleet, { targets: { [BASE]: 5, [MK2]: 6 }, unload: [] })
     expect(prep.ok).toBe(true)
     expect(wormholeEnterPrepared(state, ctx, fleet, 7, prep).ok).toBe(true)
+    finishDeparture(state, ctx)
     const run = state.wormhole.run!
     const before = structuredClone(state)
     const plan = battleAmmoPreloadPlan(state, ctx, fleet, run.supplies!.items, true)

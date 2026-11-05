@@ -10,6 +10,7 @@ export type ShipOperation = 'cargo' | 'repair' | 'configure'
 
 /** 只读目标舰账本，不调用库存、位置切换或战斗模块。 */
 function physicalBusy(state: GameState, shipId: string, ctx?: SimContext): CoreBlockReason | null {
+  if (state.departure?.shipId === shipId) return { error: 'departure-in-progress', errorId: state.departure.progressMs < state.departure.undockMs ? 'core.departure.001' : 'core.departure.002' }
   if (commandShipDeployed(state, shipId)) return busyLabel('expedition')
   if ((state.planetary?.deliveries ?? []).some(d => d.shipUid === shipId)) return busyLabel('planetDelivery')
   if ((state.wormhole.run?.fleet ?? []).includes(shipId) || shipId === state.shipId && state.wormhole.run != null) return busyLabel('wormhole')

@@ -18,6 +18,7 @@ export const BATTLE_FIELDS = {
   rangeEwVersion: { kind: 'persist' },
   rangeEw: { kind: 'runtime', why: '当前在场存活来源与净优势逐拍重算，不读入旧缓存' },
   enemyFormationVersion: { kind: 'persist' },
+  droneCommandVolumeM3: { kind: 'persist' },
   rangeMemory: { kind: 'persist' },
   foeAcidLayers: { kind: 'persist' },
   foeRebirths: { kind: 'persist' },

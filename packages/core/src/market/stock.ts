@@ -28,7 +28,13 @@ export function depositGood(state: GameState, ctx: SimContext, goodKey: string, 
 export function refundToStorage(state: GameState, ctx: SimContext, goodKey: string, qty: number): void {
   if (qty <= 0) return
   const def = ctx.marketGoods.get(goodKey)
-  if (!def) return
+  if (!def) {
+    // 已停售的蓝图仍可从旧挂单退回书架，但不恢复交易资格。
+    if (ctx.blueprints.has(goodKey) || ctx.shipBlueprints.has(goodKey)) {
+      state.blueprintStock[goodKey] = (state.blueprintStock[goodKey] ?? 0) + qty
+    }
+    return
+  }
   if (def.kind === 'item') addWare(state, def.refId, qty)
   else if (def.kind === 'module') addModule(state, def.refId, qty)
   else if (def.kind === 'blueprint') state.blueprintStock[def.refId] = (state.blueprintStock[def.refId] ?? 0) + qty

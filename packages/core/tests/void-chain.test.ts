@@ -14,7 +14,7 @@ import { ITEMS } from '@whale/data'
 import { createInitialState, placeBuyOrder } from '../src/index'
 import { addWare } from '../src/inventory'
 import { advanceRefining, refineRate, startRefineRun } from '../src/industry'
-import { buyAtMarket, ensureMarket } from '../src/market'
+import { buyAtMarket, cancelOrder, ensureMarket } from '../src/market'
 import { buildSimContext } from '@whale/data'
 
 function world(): { state: ReturnType<typeof createInitialState>; ctx: ReturnType<typeof buildSimContext> } {
@@ -86,12 +86,18 @@ describe('洞内产出链：母矿只收不卖、虚空晶限额慢补货，精�
     expect(bookQty(state.market.npcBuy, 'box-relic-a')).toBeGreaterThan(0)
   })
 
-  it('母矿买入与挂买单仍被拦；虚空晶可买入', () => {
+  it('母矿无NPC卖单且市价买入受限，但玩家可挂买单；虚空晶可买入', () => {
     const { state, ctx } = world()
     expect(buyAtMarket(state, ctx, 'ore-voidmother', 1).blocked).toBe('not-buyable')
     state.wallet.isk = 10_000_000
     expect(buyAtMarket(state, ctx, 'min-voidcrystal', 1).bought).toBe(1)
-    expect(placeBuyOrder(state, ctx, 'ore-voidmother', 1_000, 10), '只收不卖商品不开放玩家挂买单').toBeNull()
+    expect(bookQty(state.market.npcSell, 'ore-voidmother')).toBe(0)
+    const walletBeforeOrder = state.wallet.isk
+    const order = placeBuyOrder(state, ctx, 'ore-voidmother', 1_000, 10)
+    expect(order).toMatchObject({ side: 'buy', good: 'ore-voidmother', price: 1_000, qty: 10, escrowIsk: 10_000 })
+    expect(state.wallet.isk).toBe(walletBeforeOrder - 10_000)
+    expect(cancelOrder(state, ctx, order!.id)).toBe(true)
+    expect(state.wallet.isk).toBe(walletBeforeOrder)
   })
 
   it('端到端精炼：100 单位母矿 ⇒ 虚空晶 = floor(100 × 0.25 × 精炼率)', () => {

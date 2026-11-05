@@ -7,6 +7,7 @@ import { advanceSalvageOp, salvagerCyclesOf, startSalvageOp } from '../src/salva
 import { advanceAi, aiEfficiency, assignAiSalvage } from '../src/ai'
 import { addShipToFleet } from '../src/fleetBook'
 import { cargoCapacityM3Of } from '../src/inventory'
+import { finishDeparture } from './helpers/departure-ready'
 import { advanceWeekendWreckDecay, chargeWeekendWreckByVolume, injectWeekendRareWreck, injectWeekendWreck,
   pullRareWreck, weekendRareWreckCountOf, weekendWreckDensityOf, weekendWreckPoolsOf, WEEKEND_WRECK_DECAY_MS } from '../src/salvage'
 
@@ -162,8 +163,10 @@ describe('入侵残骸按来源族分账', () => {
     const sid = owner === 'pilot' ? s.shipId : addShipToFleet(s, 'sh-thresher')
     const salvager = [...ctx.modules.values()].find((m) => m.slot === 'salvager')!.id
     s.fleet[sid]!.fitted = { high: [salvager], mid: [], low: [] }
-    if (owner === 'pilot') expect(startSalvageOp(s, GID, ctx).ok).toBe(true)
-    else {
+    if (owner === 'pilot') {
+      expect(startSalvageOp(s, GID, ctx).ok).toBe(true)
+      finishDeparture(s, ctx)
+    } else {
       s.aiCores.basic = 1
       expect(assignAiSalvage(s, sid, 'basic', GID, ctx).ok).toBe(true)
       const task = s.aiAssignments[sid]!.task

@@ -13,7 +13,7 @@ updated: 2026-11-03
 
 # 开源项目解构：intrepidkarthi/orderbook 高性能确定性撮合引擎
 
-> 关联体系：[[whale-stock-market-architecture|证券交易所设计方案]] | [[save-architecture]] | [[verification-and-commit]]  
+> 关联体系：[[whale-stock-market-architecture|证券交易所设计方案]] | [[save-architecture]] | [[verification-and-commit]]<br>
 > 源码基线：`intrepidkarthi/orderbook` (Go 高性能、低延迟、确定性纯内存撮合系统)
 
 ---

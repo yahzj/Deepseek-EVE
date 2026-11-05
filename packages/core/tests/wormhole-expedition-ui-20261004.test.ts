@@ -4,6 +4,7 @@ import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
 import { buildSimContext, L10N } from '@whale/data'
 import * as core from '../src/index'
+import { finishDeparture } from './helpers/departure-ready'
 
 type Node = { type: unknown; props: Record<string, any>; children: unknown[] }
 const ctx = buildSimContext()
@@ -278,6 +279,7 @@ describe('虫洞撤离组件 · 冻结确认清单', () => {
     view.state.warehouse.items['repairkit-mil'] = 3000
     const enter = core.wormholePreparationPlan(view.state, ctx, [view.ship], { targets: { 'repairkit-mil': 1000 }, unload: [] })
     expect(core.wormholeEnterPrepared(view.state, ctx, [view.ship], 7, enter).ok).toBe(true)
+    finishDeparture(view.state, ctx)
     const run = view.state.wormhole.run!
     let cancelled = 0
     const props = { onCancel: () => cancelled++ }
@@ -303,6 +305,7 @@ describe('第二批事件组件 · 风险与拒因', () => {
     const view = harness('WhEventChoices', language)
     const plan = core.wormholePreparationPlan(view.state, ctx, [view.ship], { targets: {}, unload: [] })
     expect(core.wormholeEnterPrepared(view.state, ctx, [view.ship], 19, plan, undefined, { expeditionRules: 2 }).ok).toBe(true)
+    finishDeparture(view.state, ctx)
     const run = view.state.wormhole.run!, cell = run.grid!.cells.find(c => c.key === `${run.grid!.pos.q},${run.grid!.pos.r}`)!
     cell.eventKey = 'maintenance'; cell.event = {}; run.pendingEvent = { key: 'maintenance', cellKey: cell.key }
     const props = { onToast: () => {} }
@@ -319,6 +322,7 @@ describe('第二批事件组件 · 风险与拒因', () => {
     const view = harness('WhEventChoices')
     const plan = core.wormholePreparationPlan(view.state, ctx, [view.ship], { targets: {}, unload: [] })
     expect(core.wormholeEnterPrepared(view.state, ctx, [view.ship], 19, plan, undefined, { expeditionRules: 2 }).ok).toBe(true)
+    finishDeparture(view.state, ctx)
     const run = view.state.wormhole.run!, cell = run.grid!.cells.find(c => c.key === `${run.grid!.pos.q},${run.grid!.pos.r}`)!
     cell.eventKey = 'distress'; cell.event = { identity: 'ambush' }; run.pendingEvent = { key: 'distress', cellKey: cell.key }
     const props = { onToast: () => {} }

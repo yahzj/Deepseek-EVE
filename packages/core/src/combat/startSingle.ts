@@ -21,6 +21,7 @@ import { foeJudgedThreatOf } from './foePower'
 import { preloadRepairFor, REPAIR_PULSE_MS, preloadShieldChargeFor, preloadShieldFieldFor } from './combatRepair'
 import { equipmentCycleMsOf } from '../equipment'
 import { syncRangeEw } from './rangeEw'
+import { applyDroneCommandAura, droneCommandVolumeM3Of } from './droneCommand'
 
 export function startBattleFor(
   state: GameState,
@@ -45,7 +46,7 @@ export function startBattleFor(
   if (!anomaly) return null
   const bal = ctx.balance.battle
   const refs = { weaponRanges: [] as Array<{ baseM: number; bonusMul: number }> }
-  const me = createPlayerSpec(state, ctx, shipId, undefined, refs)
+  let me = createPlayerSpec(state, ctx, shipId, undefined, refs)
   if (!me) return null
   /**
    * **满值上限**（血条分母）——必须在**承伤持久化之前**留一份。
@@ -62,8 +63,7 @@ export function startBattleFor(
   if (fleetShip) {
     const armorMul = Math.min(1, Math.max(0, fleetShip.armorPct ?? 1))
     const hullMul = Math.min(1, Math.max(0, fleetShip.durability ?? 1))
-    me.hp.a = Math.max(0, ceilFinalQuantity((me.hp.a - (me.shieldArmorHp ?? 0)) * armorMul)) + (me.shieldArmorHp ?? 0)
-    if (me.shieldArmorHp !== undefined) me.hp.coating = { armor: me.hp.a - me.shieldArmorHp, maxArmor: meFullHp.a - me.shieldArmorHp }
+    me.hp.a = Math.max(0, ceilFinalQuantity(me.hp.a * armorMul))
     me.hp.h = Math.max(0, ceilFinalQuantity(me.hp.h * hullMul))
   }
   // 照会战加成（开战规格重建处也注入，命中/回避影响后续弹道与 UI 读到的克制无涉）
@@ -100,6 +100,11 @@ export function startBattleFor(
   const battle = createBattleState(me, foes, atGameMs, desire)
   battle.enemyFormationVersion = 1
   battle.rangeEwVersion = 1
+  const load = { ...(state.fleet[shipId]?.droneLoad ?? {}) }
+  battle.droneLoadAtStart = load
+  battle.droneLoadAtStartBy = { [me.tag]: load }
+  droneCommandVolumeM3Of(battle, ctx)
+  me = applyDroneCommandAura([me], battle, ctx)[0]!
   battle.rangeEw = rangeTemplate.rangeEw
   if (rangeTemplate.meFoeRangeDebuff !== undefined) battle.meFoeRangeDebuff = rangeTemplate.meFoeRangeDebuff
   syncRangeEw(state, ctx, battle, foes, shipId)
@@ -186,10 +191,6 @@ export function startBattleFor(
     initDroneLaunch(battle, [me])
     battle.droneLost = {}
     battle.droneLostBy = {}
-    // 开战清单快照（战后判定"机群战损过半"→ 停重复清剿用）：单船路径只有主控一份
-    const load = { ...(state.fleet[shipId]?.droneLoad ?? {}) }
-    battle.droneLoadAtStart = load
-    battle.droneLoadAtStartBy = { [me.tag ?? 'player']: load }
     // **无人机储备甲板建档**（2026-09-27 船长令）：装了这件才开账（没装 ⇒ 一个字段都不写）
     // ⚠ **先拍库存快照**（复活预算，全队一本），再建逐舰的队列/周期账 —— 快照要读 `battle.dronePools`
     initDroneReviveStock(state, ctx, battle, [shipId])

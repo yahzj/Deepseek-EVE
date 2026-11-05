@@ -37,13 +37,13 @@ export function npcPushBuy(
   if (qty <= 0 || def.playerSellable === false) return
   const key = def.key
   const buyList = state.market.npcBuy[key]!
-  const lowest = bestSell(state.market.npcSell[key]!)
+  const lowest = bestSell(state.market.npcSell[key]!.filter(o => !o.relay))
   if (lowest !== undefined && price > lowest) {
     digestAdd(state, ctx, key, qty, price, lowest) // 与簿上供应单冲突 → 内部消化
     return
   }
   buyList.push({ price, qty, bm: bm || undefined, expiresAtGameMs: now + lifeMs })
-  if (buyList.length > 10) buyList.splice(0, 1)
+  if (buyList.filter(o => !o.relay).length > 10) buyList.splice(buyList.findIndex(o => !o.relay), 1)
 }
 
 /** NPC 簿入单（共用）：供应单（玩家买入对手盘）。池快干涸断供/撞价冲突；簿上限 10 张 */
@@ -64,13 +64,13 @@ export function npcPushSell(
   // 池商品：池快干涸时站里没货可卖（短缺断供；冲击可短期透支库存）
   if (def.poolTarget && def.poolTarget > 0 && poolQ < def.poolTarget * 0.05 && pool.shock <= 0) return
   const sellList = state.market.npcSell[key]!
-  const highest = bestBuy(state.market.npcBuy[key]!)
+  const highest = bestBuy(state.market.npcBuy[key]!.filter(o => !o.relay))
   if (highest !== undefined && price < highest) {
     digestAdd(state, ctx, key, qty, highest, price)
     return
   }
   sellList.push({ price, qty, bm: bm || undefined, expiresAtGameMs: now + lifeMs })
-  if (sellList.length > 10) sellList.splice(0, 1)
+  if (sellList.filter(o => !o.relay).length > 10) sellList.splice(sellList.findIndex(o => !o.relay), 1)
 }
 
 /** 冲突订单入内部消化队列（不瞬消：按 perWindow/窗口 随时间消化） */

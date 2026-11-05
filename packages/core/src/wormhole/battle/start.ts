@@ -35,6 +35,7 @@ export function wormholeStartBattle(
 
 export function wormholeStartBattleMutable(state: GameState, ctx: SimContext, kind: Exclude<WormholeFoeKind, 'extract'>,
   atGameMs: number, opts?: { strengthMul?: number }): CommandResult {
+  if (state.departure?.kind === 'wormhole') return { ok: false, errorId: 'core.departure.001' }
   const run = state.wormhole.run
   if (!run) return { ok: false, error: '不在虫洞内。', errorId: 'core.wormholeBattle.001' }
   if (run.expeditionRules !== undefined && run.expeditionRules !== 2) return { ok: false, code: 'unsupported-rules' }

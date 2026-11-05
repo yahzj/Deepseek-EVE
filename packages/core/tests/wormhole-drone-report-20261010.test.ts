@@ -7,6 +7,7 @@ import { wormholeStartBattle, advanceWormhole } from '../src/wormholeBattle'
 import { wormholeEnter } from '../src/wormhole'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { droneReviveNoteLoss, resolveDroneRevive } from '../src/droneRevive'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
 
@@ -29,6 +30,7 @@ function world(loads: Array<Record<string, number>>, reserve: Record<string, num
     expect(plan.ok, JSON.stringify(plan)).toBe(true)
     expect(wormholeEnterPrepared(state, ctx, fleet, 7, plan).ok).toBe(true)
   }
+  finishDeparture(state, ctx)
   start(state)
   return { state, fleet, battle: state.wormhole.run!.battle! }
 }

@@ -12,7 +12,7 @@
  * 其余页签（玩法速览 / 航行须知 / 技能速查）不涉市场 ⇒ 返回 `null`。
  * **没有市场行的条目也返回 `null`**（照物品页口径：那枚按钮**不渲染**，而不是置灰）。
  */
-import { marketGoodOf } from '@whale/core'
+import { marketGoodOf, marketTradingGoods } from '@whale/core'
 import type { MarketGoodKind, SimContext } from '@whale/core'
 
 export function handMarketKeyOf(ctx: SimContext, tab: string, key: string): string | null {
@@ -28,5 +28,5 @@ export function handMarketKeyOf(ctx: SimContext, tab: string, key: string): stri
             : null
   if (kind === null) return null
   const good = marketGoodOf(ctx, kind, key)
-  return good && (good.playerBuyable !== false || good.playerSellable !== false) ? good.key : null
+  return good && marketTradingGoods(ctx).some(row => row.key === good.key) ? good.key : null
 }

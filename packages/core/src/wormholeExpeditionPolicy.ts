@@ -103,6 +103,7 @@ function extract(state: GameState, ctx: SimContext): boolean {
 
 /** 只对已抵达且出口已知的守卫预估，独立采样不能读取实际未来随机序列。 */
 export function wormholeGuardRiskPreview(state: GameState, ctx: SimContext): { available: boolean; wins: number; samples: number; safe: boolean } {
+  if (state.departure?.kind === 'wormhole') return { available: false, wins: 0, samples: 0, safe: false }
   const run = state.wormhole.run
   if (run?.expeditionRules !== 2 || !run.grid?.exitKnown || run.battle || run.pendingNodeBattle || run.pendingRuinsBattle || run.grid.pos.q !== run.grid.exit.q || run.grid.pos.r !== run.grid.exit.r || (run.bossCleared ?? 0) >= run.depth) return { available: false, wins: 0, samples: 0, safe: false }
   let wins = 0

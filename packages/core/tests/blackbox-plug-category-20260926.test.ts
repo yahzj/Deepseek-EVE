@@ -20,6 +20,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { ITEMS, L10N, MODULES, buildSimContext } from '@whale/data'
 import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, isBlackboxItem, marketGoodOf } from '../src/index'
+import { APPROVED_NEW_FACTION_PLUG_IDS } from './helpers/approved-static-content-20261104'
 
 /** 仓根（与 `new-battleships-20260926.test.ts` 同一套取法：`__dirname` 往上三层） */
 const ROOT = join(__dirname, '..', '..', '..')
@@ -98,7 +99,10 @@ describe('黑匣独立成类（船长报障：入侵获得的黑匣在仓库内�
 describe('装备归属档新增「舰船插件」（船长令：和高中低槽同级）', () => {
   it('插件是独立槽位的装备，数据里声明的 `rack` 仍是 low（故必须走归属档单点）', () => {
     const plugs = MODULES.filter((m) => m.slot === 'plug')
-    expect(plugs.length).toBe(17)
+    const added = new Set<string>(APPROVED_NEW_FACTION_PLUG_IDS)
+    expect(plugs.filter(p => added.has(p.id)).map(p => p.id).sort()).toEqual([...added].sort())
+    expect(plugs.filter(p => !added.has(p.id))).toHaveLength(17)
+    expect(plugs).toHaveLength(22)
     for (const p of plugs) expect(p.rack, `${p.id} 的 raw rack（历史声明，勿直接拿来筛选）`).toBe('low')
   })
 

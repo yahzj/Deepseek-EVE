@@ -8,6 +8,7 @@ import { RARE_DRAW_PERIOD_MS, PRICE_SAMPLE_MS, PRICE_HISTORY_LIMIT } from './con
 import { matchPlayerOrders, absorbViaStation } from './matching'
 import { priceLevel } from './pricing'
 import { referenceVol } from './book'
+import { pruneRelayOffers } from './relayLedger'
 
 /* ═══════════ 内部消化与刷单（窗口推进） ═══════════ */
 
@@ -36,6 +37,7 @@ function processWindow(state: GameState, ctx: SimContext): void {
   const bal = ctx.balance.market
   const dt = bal.tickMs
   const nextNow = mk.lastTickGameMs + dt
+  pruneRelayOffers(state, nextNow)
   const regenK = 1 - Math.pow(0.5, dt / bal.poolRegenHalfMs)
   const decayK = 1 - Math.pow(0.5, dt / bal.shockDecayHalfMs)
   const noiseK = 1 - Math.pow(0.5, dt / bal.noiseHalfLifeMs)
@@ -50,6 +52,9 @@ function processWindow(state: GameState, ctx: SimContext): void {
     // 过期清理
     for (let i = buyList.length - 1; i >= 0; i--) if (buyList[i]!.expiresAtGameMs <= nextNow) buyList.splice(i, 1)
     for (let i = sellList.length - 1; i >= 0; i--) if (sellList[i]!.expiresAtGameMs <= nextNow) sellList.splice(i, 1)
+
+    // 无NPC买卖的玩家交易条目只维护报价寿命，参考基价不生成虚构NPC行情。
+    if (def.playerBuyable === false && def.playerSellable === false && def.blackMarketBuyable === false && def.demandMultiplier === 0) continue
 
     // 池向目标回归（站内吸收/补给）+ 冲击衰减
     if (def.poolTarget && def.poolTarget > 0) pool.q += (def.poolTarget - pool.q) * regenK
@@ -105,6 +110,7 @@ function processWindow(state: GameState, ctx: SimContext): void {
     const pool = mk.pools[key]!
     // 记当前均衡价 L（含慢速噪声/压力/冲击）。不用 bestBuy：其是"20 窗移动最大值"，
     // 旧高单会在下行时压制，掩盖噪声波动（尤其便宜货整数取整后钉死）——L 每窗重算，更能即时反映行情趋势。
+    if (def.playerBuyable === false && def.playerSellable === false && def.blackMarketBuyable === false && def.demandMultiplier === 0) continue
     const hist = mk.priceHistory[key]!
     // ⚠ **历史为空时先补一个起点**（老档/非 freshInit 路径也能立刻有基线；否则折线图要空等 30 分钟）
     if (sampleNow || hist.length === 0) {

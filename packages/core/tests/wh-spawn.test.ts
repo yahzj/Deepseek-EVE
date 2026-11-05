@@ -15,6 +15,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
+import { finishDeparture } from './helpers/departure-ready'
 import type { GameState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
 import { wormholeEnter } from '../src/wormhole'
@@ -46,6 +47,7 @@ function enterAt(depth: number, seed = 7): GameState {
   const uid = addShipToFleet(state, T3)
   state.shipId = uid
   expect(wormholeEnter(state, ctx, [uid], seed).ok).toBe(true)
+  finishDeparture(state, ctx)
   const run = state.wormhole.run!
   run.depth = depth
   run.grid = wormholeMakeGrid(seed, depth)

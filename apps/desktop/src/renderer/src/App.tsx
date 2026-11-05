@@ -60,6 +60,7 @@ import { TaskCenterPage } from './pages/TaskCenterPage'
 import { AchievementsPage } from './pages/AchievementsPage'
 import { ExchangePage } from './pages/ExchangePage'
 import { useOnlineChat } from './features/cloud/useOnlineChat'
+import { useMarketRelay } from './features/market/relay/useMarketRelay'
 import type { MapGotoTarget, MapTab, TaskFocusTarget } from './pages/MapPage'
 import type { ToastFn } from './pages/common'
 import type { GameEngine } from './game/engine'
@@ -195,6 +196,7 @@ const MOB_BIG_CHANGE_PX = 96
 const MOB_RESIZE_SETTLE_MS = 300
 
 export function App({ engine }: { engine: GameEngine }) {
+  useMarketRelay(engine)
   // 兜底套用界面配色（任何入口都经过 App；桌面/网页版入口另在首帧前各调一次）
   useThemeBootstrap()
 

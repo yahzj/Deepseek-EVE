@@ -1,5 +1,13 @@
 # 测试门槛存档（Test Saves）
 
+新增五族插件独立验收见`faction-plugin-expansion-20261104.md`；`node --import tsx tools/make-faction-plugin-expansion-save.ts`已生成停港未战、14艘T1～T3舰船、六舰110/125预算、五件各3份库存及未使用一次图纸的独立档，通过正式存读往返。不读取个人档，已有上批验收档保持独立。
+
+生产研究所与五族加密货柜见`encrypted-research-20261103.md`；`node --import tsx tools/make-encrypted-research-save.ts`独立合成第8层首捞前现场与五族拆解库存，不读取个人档。
+
+三件势力插件调整与修理机图纸生产见`faction-repair-tuning-20261102.md`；`node --import tsx tools/make-faction-repair-tuning-save.ts`独立合成，停港未战、图纸未学习，不读取个人档。
+
+主控离港与星门等待见`departure-20261102.md`；`node --import tsx tools/make-departure-save.ts`独立生成，停港未出发，不读取个人档。
+
 信号空间自动探索估算档见`signal-auto-estimate-20261102.md`；独立合成四舰79/125预算、满技能/科技、10处信号，停港未出发，不读取个人档。
 
 编队支援与离线简报门槛档见`fleet-support-20261101.md`；独立合成五舰90/125预算，后勤预装新版力场、阵列与两架修理无人机，停港未出战，不读取个人档。

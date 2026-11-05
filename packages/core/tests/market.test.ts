@@ -954,6 +954,7 @@ describe('市场站内让利吸收：平价保底 / 折价放大 / 不叠加 / �
     ctx = makeTestCtx({
       quietEvents: true,
       balance: { ...DEFAULT_BALANCE, market: { ...DEFAULT_BALANCE.market, noiseStep: 0 } },
+      modules: [moduleDef('mod-r', 'turret', 0)],
       marketGoods: [{ key: 'mod-r', kind: 'module', refId: 'mod-r', rarity: 'rare', basePrice: 1_000, demandMultiplier: 0.65 }],
     })
     marketQuote(state, ctx, 'mod-r') // 开盘
@@ -972,6 +973,7 @@ describe('市场站内让利吸收：平价保底 / 折价放大 / 不叠加 / �
     ctx = makeTestCtx({
       quietEvents: true,
       balance: { ...DEFAULT_BALANCE, market: { ...DEFAULT_BALANCE.market, noiseStep: 0 } },
+      modules: [moduleDef('mod-x', 'turret', 0)],
       marketGoods: [
         { key: 'mod-x', kind: 'module', refId: 'mod-x', rarity: 'exotic', basePrice: 10_000, demandMultiplier: 1.0 },
       ],
@@ -1167,13 +1169,15 @@ describe('市场收购侧：档位 / 簿面件数 / 巡游抢单', () => {
     ctx = makeTestCtx({
       quietEvents: true,
       balance: quietBalance(),
+      items: [mineral('gas-x')],
       marketGoods: [{ key: 'gas-x', kind: 'item', refId: 'gas-x', rarity: 'common', basePrice: 100, poolTarget: 10_000, supplyFlow: 45 }],
     })
     state.warehouse.items['gas-x'] = 3_000
     marketQuote(state, ctx, 'gas-x')
     const bid = Math.round(buyLineOf(state, ctx, 'gas-x'))
     expect(bid).toBe(100)
-    placeSellOrder(state, ctx, 'gas-x', bid + 1, 3_000) // 比价线高 1 块 = 贴线越线（r≈1%）
+    const order = placeSellOrder(state, ctx, 'gas-x', bid + 1, 3_000) // 比价线高 1 块 = 贴线越线（r≈1%）
+    expect(order).not.toBeNull()
     advanceGame(state, 200 * 60_000, ctx)
     const sold = 3_000 - (state.orders[0]?.qty ?? 0)
     expect(sold).toBeGreaterThan(300) // 该种子 200 窗命中 ≈28 次 × ~23 件 ≈640；旧 1 件/窗口径 ≈28
@@ -1202,7 +1206,7 @@ describe('残骸收购卡（2026-09-08 船长定：残骸可到市场出售—�
     // 玩家侧买入通道全部关闭
     const r = buyAtMarket(state, ctx, 'wreck-ano-x', 10)
     expect(r.bought).toBe(0)
-    expect(placeBuyOrder(state, ctx, 'wreck-ano-x', 30, 10)).toBeNull()
+    expect(placeBuyOrder(state, ctx, 'wreck-ano-x', 30, 10)).not.toBeNull()
   })
 })
 

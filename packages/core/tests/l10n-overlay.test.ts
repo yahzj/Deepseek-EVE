@@ -17,6 +17,36 @@ const deferredDroneBooks: Readonly<Record<string, number>> = {
   'bp-faction-drone-bee': 1, 'bp-faction-drone-hiveguard': 2, 'bp-faction-drone-construct': 3,
   'bp-faction-drone-ink': 4, 'bp-faction-drone-jawclaw': 5,
 }
+const deferredRepairBooks: Readonly<Record<string, { name: string; description: string }>> = {
+  'bp-once-drone-repair-mil': { name: 'bp.repairDrone.001', description: 'bp.repairDrone.003' },
+  'bp-drone-repair-mil': { name: 'bp.repairDrone.002', description: 'bp.repairDrone.004' },
+}
+const deferredPlugDescriptions: Readonly<Record<string, string>> = {
+  'plug-alien-shield-coating': 'mod.factionPlug.008',
+  'plug-titan-compression': 'mod.factionPlug.009',
+  'plug-pirate-damage-management': 'mod.factionPlug.011',
+  'plug-alien-nanobiomass': 'mod.factionPlug.013',
+  'plug-gravekeeper-charge': 'mod.factionPlug.015',
+  'plug-titan-drone-command': 'mod.factionPlug.017',
+  'plug-deadarmy-reinforced-hull': 'mod.factionPlug.019',
+}
+const deferredPlugBlueprints: Readonly<Record<string, { name: string; description: string }>> = {
+  'bp-plug-pirate-damage-management': { name: 'mod.factionPlug.010', description: 'bp.factionPlug.001' },
+  'bp-plug-alien-nanobiomass': { name: 'mod.factionPlug.012', description: 'bp.factionPlug.001' },
+  'bp-plug-gravekeeper-charge': { name: 'mod.factionPlug.014', description: 'bp.factionPlug.001' },
+  'bp-plug-titan-drone-command': { name: 'mod.factionPlug.016', description: 'bp.factionPlug.001' },
+  'bp-plug-deadarmy-reinforced-hull': { name: 'mod.factionPlug.018', description: 'bp.factionPlug.001' },
+}
+function expectDeferredText(value: string | undefined, id: string): void {
+  expect(L10N[id]!.enDeferred, id).toBe(true)
+  expect(L10N[id]!.en, id).toBe('')
+  expect(value, id).toBe(L10N[id]!.zh)
+}
+function expectDeferredBlueprintName(value: string | undefined, moduleNameId: string): void {
+  expect(L10N[moduleNameId]!.enDeferred, moduleNameId).toBe(true)
+  expect(L10N[moduleNameId]!.en, moduleNameId).toBe('')
+  expect(value).toBe(`${L10N[moduleNameId]!.zh}${L10N['bp.factionPlug.002']!.zh}`)
+}
 const translatedLegacyIds = new Set([
   'mod-alien-acid-launcher', 'mod-alien-pressure-chamber', 'drone-jawclaw',
   'bp-faction-drone-bee', 'bp-faction-drone-hiveguard', 'bp-faction-drone-construct', 'bp-faction-drone-ink', 'bp-faction-drone-jawclaw',
@@ -212,6 +242,11 @@ describe('英文覆盖层（P2）', () => {
     expect(en.shipBlueprints.get('sbp-pioneer')?.name).toBe('Narwhal-class Blueprint')
     // 派生覆盖率：能反查到产物的蓝图都必须有英文名（否则说明产物表缺名）
     const noEn = [...zh.blueprints.values()].filter((bp) => {
+      if (bp.id.startsWith('bp-once-plug-')) {
+        expect(L10N['bp.encrypted.001']!.enDeferred).toBe(true)
+        expect(en.blueprints.get(bp.id)?.name).toBe(zh.blueprints.get(bp.id)?.name)
+        return false
+      }
       const support = mappedSupport[bp.id]
       if (support?.name) {
         expectMappedEnglish(en.blueprints.get(bp.id)?.name, support.name)
@@ -220,6 +255,10 @@ describe('英文覆盖层（P2）', () => {
       const pending = deferredCalibration[bp.id]
       if (pending) return en.blueprints.get(bp.id)?.name === zh.blueprints.get(bp.id)?.name
       const index = deferredDroneBooks[bp.id]
+      const repair = deferredRepairBooks[bp.id]
+      if (repair) { expectDeferredText(en.blueprints.get(bp.id)?.name, repair.name); return false }
+      const plug = deferredPlugBlueprints[bp.id]
+      if (plug) { expectDeferredBlueprintName(en.blueprints.get(bp.id)?.name, plug.name); return false }
       if (index !== undefined) {
         if (translatedLegacyIds.has(bp.id)) {
           expect(en.blueprints.get(bp.id)?.name).not.toBe(zh.blueprints.get(bp.id)?.name)
@@ -390,6 +429,11 @@ describe('英文覆盖层（P2）', () => {
     const noDesc: string[] = []
     for (const it of ITEMS) {
       const other = en.items.get(it.id)!
+      if (it.id.startsWith('box-encrypted-')) {
+        expectDeferredText(other.description, 'item.encrypted.006')
+        expect(other.name).toBe(it.name)
+        continue
+      }
       if (!other.description) {
         noDesc.push(it.id)
         continue
@@ -420,6 +464,8 @@ describe('英文覆盖层（P2）', () => {
     const noDesc: string[] = []
     for (const [id] of zh.modules) {
       const other = en.modules.get(id)!
+      const deferredPlug = deferredPlugDescriptions[id]
+      if (deferredPlug) { expectDeferredText(other.description, deferredPlug); continue }
       if (!other.description) {
         noDesc.push(id)
         continue
@@ -512,6 +558,11 @@ describe('英文覆盖层（P2）', () => {
     const noDesc: string[] = []
     for (const [id] of zh.blueprints) {
       const other = en.blueprints.get(id)!
+      if (id.startsWith('bp-once-plug-')) { expectDeferredText(other.description, 'bp.encrypted.002'); continue }
+      const deferredRepair = deferredRepairBooks[id]
+      if (deferredRepair) { expectDeferredText(other.description, deferredRepair.description); continue }
+      const deferredPlug = deferredPlugBlueprints[id]
+      if (deferredPlug) { expect(other.description).toBe(l10nEntryText(L10N[deferredPlug.description]!, 'en')); continue }
       if (!other.description) {
         noDesc.push(id)
         continue

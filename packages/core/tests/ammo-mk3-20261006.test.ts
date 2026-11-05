@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildSimContext, BLUEPRINT_PRICE_OVERRIDES, L10N, rarityTierOf } from '@whale/data'
 import { createInitialState } from '../src/state'
 import { blackMarketBuy, blackMarketCandidateGoods, blackMarketDayStart, ensureBlackMarket } from '../src/blackMarket'
-import { advanceMarket, buyAtMarket, ensureMarket, learnBlueprint, listSellHolding, placeBuyOrder, placeSellOrder } from '../src/market'
+import { advanceMarket, buyAtMarket, cancelOrder, ensureMarket, learnBlueprint, listSellHolding, placeBuyOrder } from '../src/market'
 import { fireMarketOrderEvent } from '../src/events'
 import { advanceManufacturing, calcBuildDurationMs, startManufacturing } from '../src/manufacturing'
 import { fitModule, setAmmoTier } from '../src/equipment'
@@ -15,6 +15,7 @@ import { wormholeEnterPrepared, wormholePreparationPlan } from '../src/wormholeP
 import { wormholeStartBattle } from '../src/wormholeBattle'
 import { battleAmmoIdsFor, consumeBattleAmmo, settleWormholeBattleAmmo } from '../src/combatAmmo'
 import { injectAmmoMk3TestState } from '../../../tools/ammo-mk3-test-fixture'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
 const now = new Date(2026, 9, 6, 12).getTime()
@@ -92,12 +93,17 @@ describe('MK3三系定稿数据和黑市唯一供货', () => {
       expect(state.market.npcSell[bpId] ?? []).toEqual([])
       expect(state.market.npcBuy[bpId] ?? []).toEqual([])
       state.blueprintStock[bpId] = 1
-      const before = JSON.stringify(state)
+      const beforeBuyAtMarket = JSON.stringify(state)
       expect(buyAtMarket(state, ctx, bpId, 1).bought).toBe(0)
-      expect(placeBuyOrder(state, ctx, bpId, 1e9, 1)).toBeNull()
-      expect(placeSellOrder(state, ctx, bpId, 1e9, 1)).toBeNull()
+      expect(JSON.stringify(state)).toBe(beforeBuyAtMarket)
+      const buyOrder = placeBuyOrder(state, ctx, bpId, 1e9, 1)
+      expect(buyOrder).not.toBeNull()
+      expect(buyOrder).toMatchObject({ side: 'buy', good: bpId, price: 1e9, qty: 1, filled: 0, escrowIsk: 1e9 })
+      expect(state.orders).toContain(buyOrder)
+      expect(cancelOrder(state, ctx, buyOrder!.id)).toBe(true)
+      const beforeSellFromInventory = JSON.stringify(state)
       expect(listSellHolding(state, ctx, bpId, 1e9, 1).ok).toBe(false)
-      expect(JSON.stringify(state)).toBe(before)
+      expect(JSON.stringify(state)).toBe(beforeSellFromInventory)
       expect(Object.values(FRAGMENT_RECIPES).some(r => r.blueprintId === bpId)).toBe(false)
       for (const family of ['A', 'C', 'D', 'E', 'G']) expect(wormholeFamilyPoolOf(ctx, family).moduleBlueprints).not.toContain(bpId)
     }
@@ -125,7 +131,7 @@ describe('MK3三系定稿数据和黑市唯一供货', () => {
     state.blueprintStock[bpId] = 1
     expect(learnBlueprint(state, ctx, bpId).ok).toBe(true)
     state.blueprintStock[bpId] = 1
-    expect(learnBlueprint(state, ctx, bpId).errorId).toBe('core.ammoMk3.001')
+    expect(learnBlueprint(state, ctx, bpId).errorId).toBe('core.market.004')
     state.warehouse.items['min-darkiron'] = 5
     const missing = JSON.stringify(state)
     expect(startManufacturing(state, bpId, 'pilot', ctx).ok).toBe(false)
@@ -146,6 +152,7 @@ describe('MK3三系定稿数据和黑市唯一供货', () => {
     const plan = wormholePreparationPlan(state, ctx, [a, b], { targets: { 'ammo-kinetic-3': 100, 'ammo-kinetic-2': 100 }, unload: [] })
     expect(plan.ok).toBe(true)
     expect(wormholeEnterPrepared(state, ctx, [a, b], 7, plan).ok).toBe(true)
+    finishDeparture(state, ctx)
     const run = state.wormhole.run!
     const cell = run.grid!.cells.find(c => c.key === `${run.grid!.pos.q},${run.grid!.pos.r}`)!
     cell.place = 'ship'

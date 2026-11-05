@@ -17,6 +17,7 @@ export function advanceWormhole(
   freezeBattle = false,
   battleSpeedX = 1,
 ): void {
+  if (state.departure?.kind === 'wormhole') return
   const run = state.wormhole.run
   if (run?.expeditionRules !== undefined && run.expeditionRules !== 2) return
   if (!run) return

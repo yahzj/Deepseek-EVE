@@ -65,8 +65,7 @@ export function MarketDetail({ engine, onToast, good }: { engine: PageProps['eng
   const sortedHist = hist.length ? [...hist].sort((a, b) => a - b) : []
   const median = sortedHist.length ? sortedHist[Math.floor(sortedHist.length / 2)]! : undefined
   const name = goodDisplayName(engine.ctx, good.key)
-  const buyable = good.playerBuyable !== false // 只收不卖商品（残骸等）：不可买入
-  const [tab, setTab] = useState<'buy' | 'sell'>(buyable ? 'buy' : 'sell')
+  const [tab, setTab] = useState<'buy' | 'sell'>('buy')
   const [qty, setQty] = useState(1)
   const [price, setPrice] = useState(1)
   const [confirmSell, setConfirmSell] = useState<{
@@ -81,12 +80,9 @@ export function MarketDetail({ engine, onToast, good }: { engine: PageProps['eng
   } | null>(null)
 
   // 打开详情时按初始页签预填一次默认价/数量（此后切换页签保留手填值，2026-09-08 船长定）
-  const initRef = useRef<'buy' | 'sell'>(buyable ? 'buy' : 'sell')
   useEffect(() => {
-    initRef.current = buyable ? 'buy' : 'sell'
-    const side = initRef.current
-    setPrice(Math.max(1, side === 'buy' ? quote.sell ?? askLineOf(state, engine.ctx, good.key) : buyLineOf(state, engine.ctx, good.key)))
-    setQty(side === 'sell' ? Math.max(1, holdings) : 1)
+    setPrice(Math.max(1, quote.sell ?? askLineOf(state, engine.ctx, good.key)))
+    setQty(1)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [good.key])
   /**
@@ -284,7 +280,7 @@ export function MarketDetail({ engine, onToast, good }: { engine: PageProps['eng
               {tr("ui.MarketPage.029")} <b className="app-gold">{quote.buy !== undefined ? isk(quote.buy) : '—'}</b>
             </div>
             <div className="app-mkt-quote">
-              {tr("ui.MarketPage.030")} <b className={quote.sell !== undefined ? 'app-price-sell' : ''}>{quote.sell !== undefined ? isk(quote.sell) : buyable ? tr("ui.MarketPage.032") : tr("ui.MarketPage.031")}</b>
+              {tr("ui.MarketPage.030")} <b className={quote.sell !== undefined ? 'app-price-sell' : ''}>{quote.sell !== undefined ? isk(quote.sell) : tr("ui.MarketPage.032")}</b>
             </div>
             <div className="app-mkt-quote">
               {tr("ui.MarketPage.043")} {good.poolTarget && good.poolTarget > 0 ? Math.floor(state.market.pools[good.key]?.q ?? 0).toLocaleString('zh-CN') : '—'}
@@ -298,7 +294,7 @@ export function MarketDetail({ engine, onToast, good }: { engine: PageProps['eng
               <div
                 key={`b${i}`}
                 className="app-mkt-depth is-click"
-                title={tr("ui.MarketPage.045")}
+                title={`${tr("ui.MarketPage.045")} · ${isk(o.price)} × ${o.qty.toLocaleString('zh-CN')} = ${isk(o.price * o.qty)}`}
                 onClick={() => fillFromBook('sell', o.price, o.qty)}
               >
                 <span className="app-mkt-depth-price">{isk(o.price)}</span>
@@ -316,7 +312,7 @@ export function MarketDetail({ engine, onToast, good }: { engine: PageProps['eng
               <div
                 key={`s${i}`}
                 className="app-mkt-depth is-click"
-                title={tr("ui.MarketPage.048")}
+                title={`${tr("ui.MarketPage.048")} · ${isk(o.price)} × ${o.qty.toLocaleString('zh-CN')} = ${isk(o.price * o.qty)}`}
                 onClick={() => fillFromBook('buy', o.price, o.qty)}
               >
                 <span className="app-mkt-depth-price">{isk(o.price)}</span>
@@ -327,7 +323,7 @@ export function MarketDetail({ engine, onToast, good }: { engine: PageProps['eng
               </div>
             ))}
             {sellOrders.length === 0 ? (
-              <div className="app-dim app-sr-eta">{buyable ? tr("ui.MarketPage.049") : tr("ui.MarketPage.050")}</div>
+              <div className="app-dim app-sr-eta">{tr("ui.MarketPage.049")}</div>
             ) : null}
           </div>
         </div>
@@ -341,10 +337,8 @@ export function MarketDetail({ engine, onToast, good }: { engine: PageProps['eng
                   <button
                     role="tab"
                     aria-selected={tab === 'buy'}
-                    disabled={!buyable}
-                    className={`app-mkt-side is-buy${tab === 'buy' ? ' is-active' : ''}${buyable ? '' : ' is-disabled'}`}
+                    className={`app-mkt-side is-buy${tab === 'buy' ? ' is-active' : ''}`}
                     onClick={() => setTab('buy')}
-                    title={buyable ? undefined : tr("ui.MarketPage.051")}
                   >
                     {tr("ui.MarketPage.052")}
                   </button>

@@ -37,6 +37,7 @@ import {
 } from '../src/weekendEvent'
 import type { WeekendEventState } from '../src/weekendEvent'
 import type { GameState } from '../src/state'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
 const GID = 'galaxy-alkali'
@@ -162,6 +163,8 @@ describe('旗舰战后的章鱼人冷却（2026-09-26 船长令）', () => {
     weekendNoteContribution(ev, CORE, 1)
     const spec = weekendFlagshipSpecOf(s, ctx, now)!
     const battle = weekendStartFlagshipBattle(s, ctx, now, [s.shipId])!
+    expect(battle, '旗舰建档成功').not.toBeNull()
+    expect(s.departure).toMatchObject({ kind: 'flagship', undockMs: 10_000, gateMs: 0, progressMs: 0 })
     s.encounter = {
       active: true,
       shipId: s.shipId,
@@ -174,6 +177,9 @@ describe('旗舰战后的章鱼人冷却（2026-09-26 船长令）', () => {
       deadlineGameMs: 0,
       battle,
     }
+    expect(weekendFlagshipBattleActive(s), '离港期间不算在战').toBe(false)
+    finishDeparture(s, ctx)
+    expect(s.gameMs, '宿主挂好后由真实引擎完成离港').toBe(battle.startedAtGameMs)
     expect(weekendFlagshipBattleActive(s), '战斗在打 ⇒ 判据为真').toBe(true)
     const t0 = 1_000_000
     advanceGame(s, 100, ctx, { nowWallMs: t0 })

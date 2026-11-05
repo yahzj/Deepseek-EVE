@@ -158,10 +158,10 @@ flowchart TD
     A[单次武器命中判定: 造成 DMG] --> B{是否处于合并窗口? 0.15s 内}
     B -->|是| C[累加至当前 FloatingNumber 存量]
     B -->|否| D[创建新 FloatingNumber 节点]
-    
+<br>
     C --> E[更新文字: DMG 总量]
     E --> F[触发微缩放脉冲: Scale = 1.0 -> 1.3 -> 1.1]
-    
+<br>
     D --> G{伤害类型与目标判定}
     G -->|护盾抗性吸收| H[电子蓝 #00f0ff: 规整上升]
     G -->|装甲贯穿爆破| I[高亮金黄 #ffaa00: 弹跳放大]
@@ -201,7 +201,7 @@ export class CombatFeelDispatcher {
 
     // 局部冻结物理状态机更新
     GlobalPhysicsEngine.pauseTemporarily(freezeMs);
-    
+<br>
     // 受击者 Shader 白闪
     EffectPipeline.flashMeshWhite(config.targetLayer, freezeMs * 0.5);
   }

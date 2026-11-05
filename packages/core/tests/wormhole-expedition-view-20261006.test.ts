@@ -10,6 +10,7 @@ import { wormholeEventPreview } from '../src/wormholeExpedition'
 import { wormholeRaiseAlert } from '../src/wormholePatrol'
 import { wormholeStartBattle, battleFoeAnomaly } from '../src/wormholeBattle'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
+import { finishDeparture } from './helpers/departure-ready'
 
 const ctx = buildSimContext()
 function setup() {
@@ -19,6 +20,7 @@ function setup() {
   state.warehouse.items['repairkit-mil'] = 10
   const plan = wormholePreparationPlan(state, ctx, fleet, { targets: { 'repairkit-mil': 10 }, unload: [] })
   expect(wormholeEnterPrepared(state, ctx, fleet, 19, plan, undefined, { expeditionRules: 2 }).ok).toBe(true)
+  finishDeparture(state, ctx)
   return state
 }
 

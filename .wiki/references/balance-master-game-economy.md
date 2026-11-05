@@ -264,7 +264,7 @@ export function evaluateMacroEconomy(
   if (burnRatio < 0.70) {
     // 提升交易税与股市印花税，最高加成至 5%
     state.currentTaxRate = Math.min(0.05, state.currentTaxRate + 0.002);
-    
+<br>
     // 启动悬赏阻尼器，抑制源头放水 (最低降至 60%)
     state.bountyDampener = Math.max(0.60, state.bountyDampener - 0.05);
   } else if (burnRatio > 1.20) {

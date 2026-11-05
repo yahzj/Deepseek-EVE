@@ -7,7 +7,7 @@ import { buildSimContext, L10N } from '@whale/data'
 import { createInitialState } from '../src/state'
 import { activityOverview, type ActivityView } from '../src/activity'
 import { autoLoopInvasionPlanOf, setAutoLoopInvasion, bountyCooldownMsFor } from '../src/expedition'
-import { startExpedition } from '../src/expedition'
+import { startExpeditionArrived as startExpedition } from './helpers/command-arrived'
 import { addShipToFleet } from '../src/fleetBook'
 import { ROOT } from './helpers/save-shell'
 
