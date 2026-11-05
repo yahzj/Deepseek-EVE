@@ -295,8 +295,35 @@ for (const id of Object.keys(LOG_CUE_RULES)) {
 }
 console.log(`· 日志规则：${Object.keys(LOG_CUE_RULES).length} 条，逐条核对 core 写入点（addLog / 命令 errorId）`)
 
-/* ═══════════ 三、本地化 ═══════════ */
+/* ═══════════ 二点五、按钮自带音效（data-sfx） ═══════════
+ * 2026-11-05 船长素材批：交易所按钮用 data-sfx 属性声明语义 id，点它时用该音效替代 `ui-click`。
+ * 判据：渲染层出现的每个字面量 data-sfx 都必须已在 cues.ts 登记——拼错会静默退回点击音，听感上像"没生效"。
+ */
+const RENDERER_SRC = join(ROOT, 'apps/desktop/src/renderer/src')
+const buttonSfxIds = new Set<string>()
+function walkRenderer(dir: string): void {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name)
+    if (entry.isDirectory()) {
+      walkRenderer(full)
+      continue
+    }
+    if (!/\.tsx?$/.test(entry.name)) continue
+    const src = readFileSync(full, 'utf8')
+    for (const matched of src.matchAll(/data-sfx="([^"]+)"/g)) {
+      // 只统计合法 id 形态（注释里用占位符说明机制，不当作声明）
+      const id = matched[1]!
+      if (ID_RE.test(id)) buttonSfxIds.add(id)
+    }
+  }
+}
+walkRenderer(RENDERER_SRC)
+for (const id of buttonSfxIds) {
+  check(Object.prototype.hasOwnProperty.call(SFX_CUES, id), `按钮 data-sfx 指向未登记的语义 id：${id}`)
+}
+console.log(`· 按钮自带音效：${buttonSfxIds.size} 个 id（data-sfx 全部已登记）`)
 
+/* ═══════════ 三、本地化 ═══════════ */
 const tableSrc = readFileSync(join(ROOT, 'packages/data/src/l10n/table.ts'), 'utf8')
 const pendingSrc = readFileSync(join(ROOT, 'docs/l10n-pending.md'), 'utf8')
 

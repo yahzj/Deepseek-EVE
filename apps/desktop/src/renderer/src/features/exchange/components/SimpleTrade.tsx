@@ -377,6 +377,7 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
           <button
             type="button"
             className={`ex-simple-big-action-btn ${tab === 'buy' ? 'is-buy' : 'is-short'} ex-btn-progress`}
+            data-sfx="exchange-bet"
             aria-disabled={!canSubmit}
             style={progressStyle(tab === 'buy' ? buyProgress : shortProgress)}
             onClick={() => {

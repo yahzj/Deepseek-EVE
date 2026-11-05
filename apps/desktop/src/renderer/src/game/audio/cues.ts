@@ -79,6 +79,15 @@ const SFX_CUE_DEFS = {
   'comms-received': { category: 'ui', gain: 0.6, minGapMs: 500, maxConcurrent: 1, nameId: 'ui.sfx.015' },
   'ui-click': { category: 'ui', gain: 0.35, minGapMs: 60, maxConcurrent: 2, nameId: 'ui.sfx.096', pitchJitterCents: 50 },
   'ui-error': { category: 'ui', gain: 0.5, minGapMs: 1000, maxConcurrent: 1, nameId: 'ui.sfx.097' },
+  // 交易所动作音（2026-11-05 船长素材批）：按在按钮上替代 ui-click，被拒时仍由错误音接管。
+  // 顶栏入金/出金用「新建文件夹」版素材；钱庄确认入金/出金保留「股市」版素材，故分成两组 id。
+  'exchange-deposit': { category: 'ui', gain: 0.6, minGapMs: 300, maxConcurrent: 1, nameId: 'ui.sfx.132' },
+  'exchange-withdraw': { category: 'ui', gain: 0.6, minGapMs: 300, maxConcurrent: 1, nameId: 'ui.sfx.133' },
+  'exchange-deposit-confirm': { category: 'ui', gain: 0.6, minGapMs: 300, maxConcurrent: 1, nameId: 'ui.sfx.137' },
+  'exchange-withdraw-confirm': { category: 'ui', gain: 0.6, minGapMs: 300, maxConcurrent: 1, nameId: 'ui.sfx.138' },
+  'exchange-bet': { category: 'ui', gain: 0.55, minGapMs: 250, maxConcurrent: 2, nameId: 'ui.sfx.134' },
+  'exchange-buy': { category: 'ui', gain: 0.55, minGapMs: 250, maxConcurrent: 2, nameId: 'ui.sfx.135' },
+  'exchange-sell': { category: 'ui', gain: 0.55, minGapMs: 250, maxConcurrent: 2, nameId: 'ui.sfx.136' },
 
   // ── BGM（循环，5 场景；交叉淡入淡出由 `music.ts` 管）──
   'bgm-docked': { category: 'music', gain: 1, minGapMs: 0, maxConcurrent: 1, nameId: 'ui.sfx.080', loop: true },

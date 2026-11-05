@@ -560,6 +560,7 @@ export function TradePanel({
         <button
           type="button"
           className={`ex-primary is-${mode}${!isReadyToSubmit ? ' is-blocked' : ''} ex-btn-progress`}
+          data-sfx={side === 'sell' ? 'exchange-sell' : 'exchange-buy'}
           aria-disabled={!isReadyToSubmit}
           disabled={busy}
           title={activeFormError || undefined}
@@ -603,6 +604,7 @@ export function TradePanel({
               <button
                 type="button"
                 className="ex-primary ex-primary-small ex-btn-progress"
+                data-sfx={confirm.side === 'sell' ? 'exchange-sell' : 'exchange-buy'}
                 style={progressStyle(submitProgress)}
                 onClick={() => {
                   if (previewPending || previewFailed || preview.blockReason || confirm.qty !== effectiveQty) { setConfirm(null); onToast(tr('ui.exchange.024'), true); return }

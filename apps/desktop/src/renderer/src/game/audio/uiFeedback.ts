@@ -12,7 +12,10 @@
  * - **两音互斥（2026-11-05 船长反馈）**：点击按钮被拒时，`ui-click` 与 `ui-error` 几乎同时响会糊成一声。
  *   点击音改为**延后一拍**排入队列：等本次点击的 onClick（含它同步/微任务里弹的 toast）跑完，
  *   若这期间触发过错误提示，就只留错误音、不再补点击音。
+ * - **按钮自带音效（2026-11-05 船长素材批）**：按钮写 `data-sfx="<语义 id>"`，点它时用该音效**替代**
+ *   `ui-click`（同样的延后一拍 + 错误互斥：被拒时只留 `ui-error`）。用于交易所入金/出金/下注/买入/卖出。
  */
+import { SFX_CUES, type SfxCueId } from './cues'
 import { playCue } from './player'
 import { shouldPlayClickCue } from './rules'
 
@@ -51,12 +54,16 @@ export function installUiSfx(): void {
           const button = target.closest('button, [role="button"]')
           if (button === null) return
           if (button.closest('.app-sfx-modal') !== null) return
+          // 按钮自带动作音（交易所下单/入金等）：替代点击音，仍走同一拍延后与错误互斥。
+          const declared = button.getAttribute('data-sfx')
+          const actionCue =
+            declared !== null && Object.prototype.hasOwnProperty.call(SFX_CUES, declared) ? (declared as SfxCueId) : null
           const clickAtMs = nowMs()
           // 延后一拍再判断：本次点击若被拒并弹出错误提示，就只留 ui-error（见文件头「两音互斥」）
           setTimeout(() => {
             try {
               if (!shouldPlayClickCue(clickAtMs, lastErrorAtMs)) return
-              playCue('ui-click')
+              playCue(actionCue ?? 'ui-click')
             } catch {
               /* 忽略 */
             }

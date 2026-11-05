@@ -245,6 +245,7 @@ export function FundCard({
           <button
             type="button"
             className="ex-mini-btn is-bond-buy ex-btn-progress"
+            data-sfx="exchange-buy"
             disabled={!canSubmit}
             style={progressStyle(openProgress)}
             onClick={() => void submit()}
@@ -256,6 +257,7 @@ export function FundCard({
             <button
               type="button"
               className="ex-mini-btn ex-btn-progress"
+              data-sfx="exchange-sell"
               disabled={busy}
               style={progressStyle(redeemProgress)}
               onClick={() => void redeem()}

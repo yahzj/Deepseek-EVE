@@ -8141,6 +8141,14 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ui.sfx.130': { zh: '一键入库仅桌面开发版可用；网页版请用「导出正式入库包」再运行 npm run audio:install。', en: 'One-click import is desktop dev builds only; on the web build, use Export release asset pack and then run npm run audio:install.' },
   // ⟪音效设置补充 2026-11-05⟫ 船长要求设置里加「恢复默认音量」；英文未授权，按约定留空并登记待译。
   'ui.sfx.131': { zh: '恢复默认音量', en: 'Restore default volume' },
+  // ⟪交易所动作音 2026-11-05⟫ 船长提供素材：入金/出金/下注/买入/卖出，按在按钮上替代点击音。
+  'ui.sfx.132': { zh: '入金', en: 'Deposit' },
+  'ui.sfx.133': { zh: '出金', en: 'Withdraw' },
+  'ui.sfx.134': { zh: '下注', en: 'Place bet' },
+  'ui.sfx.135': { zh: '买入', en: 'Buy' },
+  'ui.sfx.136': { zh: '卖出', en: 'Sell' },
+  'ui.sfx.137': { zh: '确认入金', en: 'Confirm deposit' },
+  'ui.sfx.138': { zh: '确认出金', en: 'Confirm withdrawal' },
   'ui.exchange.001': { zh: '对手盘', en: 'Rivals' },
   'ui.exchange.002': { zh: '全市场涨跌分布', en: 'Market-wide gain/loss distribution' },
   'ui.exchange.003': { zh: '估算成交额', en: 'Estimated turnover' },

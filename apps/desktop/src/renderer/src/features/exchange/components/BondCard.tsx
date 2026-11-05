@@ -251,6 +251,7 @@ export function BondCard({
           <button
             type="button"
             className="ex-mini-btn is-bond-buy ex-btn-progress"
+            data-sfx="exchange-buy"
             disabled={!canBuy}
             style={progressStyle(buyProgress)}
             onClick={() => void buy()}
@@ -260,6 +261,7 @@ export function BondCard({
           <button
             type="button"
             className="ex-mini-btn is-bond-redeem ex-btn-progress"
+            data-sfx="exchange-sell"
             disabled={!canRedeem}
             title={!canRedeem ? T.bondHoldingEmptyTip : undefined}
             style={progressStyle(redeemProgress)}

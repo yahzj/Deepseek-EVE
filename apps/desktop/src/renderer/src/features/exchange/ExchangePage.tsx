@@ -349,6 +349,7 @@ function ExchangeBody({
             <button
               type="button"
               className={`ex-mini-btn is-deposit${guest ? ' is-guest-locked' : ''}`}
+              data-sfx="exchange-deposit"
               aria-disabled={guest || undefined}
               onClick={() => (guest ? requireLogin() : setCashier('deposit'))}
             >
@@ -357,6 +358,7 @@ function ExchangeBody({
             <button
               type="button"
               className={`ex-mini-btn is-withdraw${guest ? ' is-guest-locked' : ''}`}
+              data-sfx="exchange-withdraw"
               aria-disabled={guest || undefined}
               onClick={() => (guest ? requireLogin() : setCashier('withdraw'))}
             >
