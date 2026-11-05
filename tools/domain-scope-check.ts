@@ -223,6 +223,8 @@ const SHARED: readonly string[] = [
   'apps/desktop/src/renderer/src/ui/sessionView.ts',
   'apps/desktop/src/renderer/src/ui/layoutStyles.ts',
   'apps/desktop/src/renderer/src/pages/common.ts',
+  // 2026-11-04 音效台调试批：调试入口跨布局/跨功能域复用，读全部音频语义与素材状态，不表达玩法
+  'apps/desktop/src/renderer/src/panels/SfxConsole.tsx',
 ]
 
 /** glob → 正则（支持 `**` / `*` / `?` / `{a,b}`；够用即可，不引依赖） */

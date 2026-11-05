@@ -8,7 +8,7 @@
 ## 一、部署拓扑（生产服务器 123.207.188.192）
 
 ```
-客户端 ──HTTPS──▶ nginx:443（game.bajibaji.party，Let's Encrypt 正式证书，2026-11-04 起）
+客户端 ──HTTPS──▶ nginx:8443（game.bajibaji.party:8443，Let's Encrypt 正式证书；80/443 被腾讯云按未备案域名拦截，2026-11-05 起走 8443）
                      │
                      ├─ /api/exchange/*  ──▶ Go 交易所 127.0.0.1:8788（WS 升级同样支持）
                      ├─ /internal/*      ──▶ 404（外部一律拒绝）
@@ -89,7 +89,7 @@ Node 内部接口（**仅 localhost + 共享密钥**）：
 ## 六、验收
 
 1. `go test -race ./...`、`go vet` 全绿；Node `npm test` 全绿（新增内部接口用例）。
-2. 生产：`curl https://game.bajibaji.party/api/exchange/stocks` 返回 4 标的；`/internal/*` 外部 404。
+2. 生产：`curl https://game.bajibaji.party:8443/api/exchange/stocks` 返回 4 标的；`/internal/*` 外部 404。
 3. 端到端：登录账号 → 入金 → 限价挂单 → 另一账号成交 → 双方钱包/持仓/账本一致 → 撤单/出金；WS 每秒收到行情。
 4. 故障演练：停 Go → 前端显示离线错误、Node 其他功能不受影响；起 Go → 恢复挂单。
 5. 回滚：nginx 去掉 exchange location 即回到纯 Node，游戏功能无损。
@@ -164,7 +164,7 @@ Node 内部接口（**仅 localhost + 共享密钥**）：
 - **回合涨跌幅限制**（±3% 普通 / ±8% 事件，按波动档缩放）：已部署；部署后第一个结算回合（01:20）SMHI +0.15%、UGMC −3.75%、OJLS +4.49%、ABSI +3.75%，全部在限制内。
 - **64 事件四象分类 + 六人格 EVE 风改名**（星门局 K7A0 / 截击者 F4B1 / 锚定者 A2C7 / 黑隐者 C3A8 / 克隆潮 H5D6 / 利维坦 L2F9）：已部署；`/agents` 实测新名 + callsign；`/events` 新增 xiang/xiangName/intensity。
 - **本地记账模式**（`EXCHANGE_LOCAL_SAVE_MODE=1`）：空钱包新账号直接入金 300 万验证通过；出金只扣交易所现金。
-- **保底基金**（`POST /api/exchange/fund/play`）：部署后 4 次结算验证（输赢各现、重放幂等、现金守恒、审核行 kind=fund_play）。
+- **保底基金**（`POST /api/exchange/fund/play`）：部署后 4 次结算验证（输赢各现、重放幂等、现金守恒、审核行 kind=fund_play）。—— 该即时开奖版本已于 2026-11-04 改为放置型（`fund/open`、`fund/redeem`），现行规则见 `stock-exchange-products-20261104.md` 第三节。
 - **K 线单次上限 1000→2016**（5m 约一周）：实测一次返回 2016 根。
 - **前端**：默认 IP 直连 + 失败回退域名、7 天离线缓存、回合倒计时徽标、入金/出金弹窗（本地存档扣加）、本地债券、保底基金。
 - **回滚**：每批部署前备份 `/home/ubuntu/whale-exchange/whale-exchange.prev`；环境变量开关：`EXCHANGE_LOCAL_SAVE_MODE=0` 回旧钱包桥、`EXCHANGE_ROUND_LIMIT_BP=0` 关涨跌幅限制。

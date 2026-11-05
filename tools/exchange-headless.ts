@@ -935,6 +935,8 @@ async function executeAction(
       tif: 'IOC',
       qty,
       leverage,
+      // 开空必须显式 short：服务端把「side=sell + 杠杆」默认当平多（409 没有可平的杠杆多头持仓）。
+      ...(action.action === 'buy_short' ? { short: true } : {}),
     })
     return orderOutcome(order, `市价开${action.action === 'buy_long' ? '多' : '空'} ${leverage}x`)
   }

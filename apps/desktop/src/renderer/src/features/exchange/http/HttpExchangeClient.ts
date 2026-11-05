@@ -22,9 +22,10 @@
  *   - 价格/金额**不做缩放**：服务器整数单位就是信用点，显示交给现有 UI（`format.ts`）。
  */
 import type {
+  AgentView,
   BatchOrderResult,
   BookLevel,
-  BondHolding,
+  BondPosition,
   BondProduct,
   ChartPeriod,
   DepositResult,
@@ -35,7 +36,7 @@ import type {
   ExchangeOrder,
   ExchangeSnapshot,
   ExchangeTopic,
-  FundPlayResult,
+  FundPosition,
   IndexQuote,
   Kline,
   NewsItem,
@@ -54,6 +55,7 @@ import type {
 } from '../client'
 import { bucketStart } from '../chartPeriods'
 import { ExchangeError } from '../errors'
+import { T } from '../texts'
 import type { Transport } from './transport'
 
 const CONTRACT_VERSION = 1
@@ -67,7 +69,32 @@ const NEWS_CACHE_LIMIT = 30
 
 const EMPTY_INDEX: IndexQuote = { value: 1000, changePct: 0, high: 1000, low: 1000 }
 
-const EMPTY_BOND: BondHolding = { principal: 0, accrued: 0, purchasedAt: null, rateDaily: 0.0003 }
+const EMPTY_BOND_POSITION: BondPosition = {
+  principal: 0,
+  accrued: 0,
+  value: 0,
+  settledMinute: 0,
+  openedAt: 0,
+  minutes: 0,
+  minuteBp: 3,
+  cash: 0,
+}
+
+/** 基金空仓占位：本金与收益为 0，供左侧活动栏判断「是否已申购」 */
+const EMPTY_FUND_POSITION: FundPosition = {
+  principal: 0,
+  accrued: 0,
+  value: 0,
+  settledMinute: 0,
+  openedAt: 0,
+  minutes: 0,
+  winBp: 16,
+  loseBp: -7,
+  winPercent: 70,
+  expectedBp: 9,
+  bondBp: 3,
+  cash: 0,
+}
 
 const EMPTY_BOND_PRODUCT: BondProduct = {
   id: 'WHALE-BOND',
@@ -171,7 +198,10 @@ function normalizeOrder(raw: unknown): ExchangeOrder | null {
   if (typeof raw.triggerPrice === 'number' && Number.isFinite(raw.triggerPrice)) {
     order.triggerPrice = raw.triggerPrice
   }
-  // 服务端 OrderView 带 roundNo（回合制），前端 DTO 暂不外扩字段，避免 UI 跟着改名。
+  // 委托管理列表要按回合分组、区分「开空」与「卖出」，这两个字段不能丢。
+  const roundNo = num(raw.roundNo, 0)
+  if (roundNo > 0) order.roundNo = Math.round(roundNo)
+  if (raw.short === true) order.short = true
   return order
 }
 
@@ -306,8 +336,12 @@ function normalizeRound(raw: unknown): RoundInfo | null {
 function normalizeNews(raw: unknown): NewsItem | null {
   if (!isRecord(raw)) return null
   const id = typeof raw.id === 'string' ? raw.id : ''
+  // 船长指令（2026-11-04）：快讯中关于人格的文案都要去掉，AG- 开头的人格行为快讯直接不接收
+  if (id.startsWith('AG-')) return null
   const title = text(raw.title)
+  const body = text(raw.body)
   if (id === '' && title === '') return null
+  if (title.includes('人格') || body.includes('人格')) return null
   // 后端 tone ∈ good/bad/neutral；前端 DTO 只有 good/bad/warn/info，
   // `neutral` 与未知值一并归到 `info`（快讯栏按中性色渲染，不引入新 tone）。
   const tone =
@@ -321,6 +355,51 @@ function normalizeNews(raw: unknown): NewsItem | null {
     body: text(raw.body),
     tone,
     codes: Array.isArray(raw.codes) ? raw.codes.filter((code): code is string => typeof code === 'string') : [],
+  }
+}
+
+/** 人格摘要（`agents` 帧）：字段缺失时用空值兜底，不让单个人格脏数据拖垮整帧。 */
+function normalizeAgent(raw: unknown): AgentView | null {
+  if (!isRecord(raw)) return null
+  const persona = text(raw.persona)
+  if (persona === '') return null
+  const holdings = Array.isArray(raw.holdings)
+    ? raw.holdings.filter(isRecord).map((item) => ({
+        code: text(item.code),
+        qty: num(item.qty),
+        avgCost: num(item.avgCost),
+        price: num(item.price),
+        value: num(item.value),
+      }))
+    : []
+  const recentActions = Array.isArray(raw.recentActions)
+    ? raw.recentActions.filter(isRecord).map((item) => ({
+        id: num(item.id),
+        roundNo: num(item.roundNo),
+        code: text(item.code),
+        side: text(item.side),
+        qty: num(item.qty),
+        price: num(item.price),
+        reason: text(item.reason),
+        createdAt: num(item.createdAt),
+      }))
+    : []
+  return {
+    persona,
+    name: text(raw.name),
+    callsign: text(raw.callsign),
+    role: text(raw.role),
+    mood: text(raw.mood),
+    cash: num(raw.cash),
+    frozen: num(raw.frozen),
+    initialCash: num(raw.initialCash),
+    positionValue: num(raw.positionValue),
+    equity: num(raw.equity),
+    pnl: num(raw.pnl),
+    lastRound: num(raw.lastRound),
+    lastActionAt: num(raw.lastActionAt),
+    holdings,
+    recentActions,
   }
 }
 
@@ -448,15 +527,20 @@ export class HttpExchangeClient implements ExchangeClient {
   private myTrades: TradeRecord[] = []
   private dividends: DividendRecord[] = []
   private strategies: StrategySpec[] = []
-  private bond: BondHolding = { ...EMPTY_BOND }
+  private bond: BondPosition = { ...EMPTY_BOND_POSITION }
+  private funds: FundPosition = { ...EMPTY_FUND_POSITION }
   private bondProduct: BondProduct = { ...EMPTY_BOND_PRODUCT }
   private news: NewsItem[] = []
+  /** 六人格公开摘要：只在回合末 `agents` 帧到达时更新，其余时间保持上一回合。 */
+  private agents: AgentView[] = []
   private feeRate = DEFAULT_FEE_RATE
   /** bootstrap 进行中/最近一次时间：看门狗重试防止并发风暴 */
   private bootstrapping = false
   private lastBootstrapAt = 0
   /** 正在补拉数据的标的（防止切换标的时重复请求） */
   private symbolLoading = new Set<string>()
+  /** 正在按需补拉的周期（key = code:period）：切到未缓存周期时只发一次请求 */
+  private chartLoading = new Set<string>()
   /** K 线本地缓存（7 天 TTL，跨重启秒开图表）；key = code:period */
   private chartCachedAt = new Map<string, number>()
   private chartPersistTimer = 0
@@ -542,6 +626,10 @@ export class HttpExchangeClient implements ExchangeClient {
       await stocksTask
       await Promise.all([
         this.loadNews().catch(() => undefined),
+        this.loadBond().catch(() => undefined),
+        this.loadFund().catch(() => undefined),
+        // 对手盘面板跟着行情一起刷：WS `agents` 帧只在回合末来一次，页面开着不动会像卡死。
+        this.loadAgents().catch(() => undefined),
         code === ''
           ? Promise.resolve()
           : this.getBook(code)
@@ -603,6 +691,12 @@ export class HttpExchangeClient implements ExchangeClient {
       // 快讯不依赖行情：首屏就并发补拉（WS `event` 只推本回合增量）。
       // 失败只丢弃快讯、不阻塞主快照，也不向页面抛错。
       const newsTask = this.loadNews().catch(() => undefined)
+      // 人格摘要同理：WS `agents` 只在回合末推一次，首屏补拉，否则「对手盘」要等 5 分钟。
+      const agentsTask = this.loadAgents().catch(() => undefined)
+      // 债券持仓：顶部「债券价值」与理财卡片都要用，首屏补拉（之后按分钟随行情刷新）。
+      const bondTask = this.loadBond().catch(() => undefined)
+      // 基金持仓：左侧活动栏要显示收益，首屏补拉（之后与行情同频刷新）。
+      const fundTask = this.loadFund().catch(() => undefined)
       const stocks = await this.getStocks()
       const code = stocks[0]?.code
       // 行情图/盘口尽早并行：不再等 account/orders 往返后才开始拉 5 个周期 K 线，首屏更快。
@@ -629,7 +723,7 @@ export class HttpExchangeClient implements ExchangeClient {
       this.account = account
       this.orders = orders
       this.strategies = strategies
-      await Promise.all([...chartTasks, roundTask, metaTask, newsTask])
+      await Promise.all([...chartTasks, roundTask, metaTask, newsTask, agentsTask, bondTask, fundTask])
       this.emitTick()
     } catch (err) {
       // 连不上：界面由数据源徽标 + 引导态兜底；这里只上报，不伪造数据
@@ -665,6 +759,31 @@ export class HttpExchangeClient implements ExchangeClient {
       .filter(isPresent)
       .slice(0, NEWS_FETCH_LIMIT)
     this.mergeNews(items, false)
+  }
+
+  /**
+   * 首屏人格摘要：`GET /agents` 返回 `{roundNo, agents[]}`（六人格公开视图）。
+   * WS `agents` 只在回合末推一次，打开页面时补拉一次，否则「对手盘」页签要等下一回合才有内容。
+   * 失败由调用方 `.catch` 吞掉：人格面板是辅助信息，不能拖垮行情/账户快照。
+   */
+  private async loadAgents(): Promise<void> {
+    const raw = await this.get<unknown>('/agents')
+    if (!isRecord(raw) || !Array.isArray(raw.agents)) return
+    this.agents = raw.agents.map(normalizeAgent).filter(isPresent)
+    this.emitTick()
+  }
+
+  /**
+   * 债券持仓：首屏与每轮行情刷新时拉一次，写入 `this.bond` 供顶部「债券价值」读。
+   * 申购/赎回后的即时反馈由 `BondCard` 直接使用接口返回值，不依赖这里。
+   */
+  private async loadBond(): Promise<void> {
+    this.bond = await this.get<BondPosition>('/bond')
+  }
+
+  /** 基金持仓：与债券同口径（首屏 + 每轮行情刷新），供左侧活动栏与卡片读。 */
+  private async loadFund(): Promise<void> {
+    this.funds = await this.get<FundPosition>('/fund')
   }
 
   /**
@@ -743,6 +862,12 @@ export class HttpExchangeClient implements ExchangeClient {
         if (list !== null) this.orders = list.map(normalizeOrder).filter(isPresent)
         break
       }
+      case 'agents': {
+        // 回合末广播一次的六人格摘要：{roundNo, agents[]}
+        const list = isRecord(data) && Array.isArray(data.agents) ? data.agents : null
+        if (list !== null) this.agents = list.map(normalizeAgent).filter(isPresent)
+        break
+      }
       case 'event': {
         const news = normalizeNews(data)
         if (news !== null) this.mergeNews([news], true)
@@ -819,6 +944,26 @@ export class HttpExchangeClient implements ExchangeClient {
 
   getChartSeries(code: string, period: ChartPeriod): Kline[] {
     return this.chartCache.get(`${code}:${period}`) ?? []
+  }
+
+  /**
+   * 按需补拉单个周期（2026-11-04 船长报障「M5 图载入不出来」）：
+   * 图表组件只读缓存、不发起请求，预加载又只覆盖 m1/m5/h5/d5/d35 ⇒ h1/d1/d7 永远空白、
+   * m5 一旦预加载失败也不会重试。切周期时调用本方法补拉，成功后 emitTick 触发重绘。
+   */
+  ensureChartData(code: string, period: ChartPeriod): void {
+    if (code === '') return
+    const key = `${code}:${period}`
+    if (this.chartCache.has(key) || this.chartLoading.has(key)) return
+    this.chartLoading.add(key)
+    void this.loadChart(code, period)
+      .then(() => this.emitTick())
+      .catch(() => {
+        /* 失败保留空缓存，下次切到该周期会重试 */
+      })
+      .finally(() => {
+        this.chartLoading.delete(key)
+      })
   }
 
   /** 启动时把 7 天内的本地 K 线缓存灌回内存：先出图，再由网络刷新覆盖。 */
@@ -1150,8 +1295,10 @@ export class HttpExchangeClient implements ExchangeClient {
       dividends: this.dividends,
       strategies: this.strategies,
       bonds: this.bond,
+      funds: this.funds,
       bondProduct: this.bondProduct,
       news: this.news,
+      agents: this.agents,
       feeRate: this.feeRate,
     }
   }
@@ -1164,21 +1311,36 @@ export class HttpExchangeClient implements ExchangeClient {
     throw new ExchangeError('not_supported', '联机账户由服务器管理，没有可重置的本地模拟账户')
   }
 
-  /** 联机债券走服务器；本轮 Go 未提供债券接口，同步接口先明确拒绝（页面有引导态兜底） */
-  buyBond(_amount: number): BondHolding {
-    throw new ExchangeError('not_supported', '联机模式暂未开放债券')
+  /**
+   * 债券：放置型持仓，服务端按真实分钟固定 3bp 单利结算；本金锁定、随时可赎。
+   * 2026-11-04 船长令：债券也走交易所现金（入金后的钱），不再用本地存档直接买。
+   */
+  async getBondPosition(): Promise<BondPosition> {
+    return this.get<BondPosition>('/bond')
   }
 
-  redeemBond(): number {
-    throw new ExchangeError('not_supported', '联机模式暂未开放债券')
+  async openBond(amount: number, nonce: string): Promise<BondPosition> {
+    return this.post<BondPosition>('/bond/open', { amount, nonce })
+  }
+
+  async redeemBond(nonce: string): Promise<BondPosition> {
+    return this.post<BondPosition>('/bond/redeem', { nonce })
   }
 
   /**
-   * 基金：服务端按实盘数据结算（盈利 3× 债券分钟利息、亏损 1×）。
-   * 前端只等结果；「计算中…」动画在 FundCard 里做。
+   * 基金：放置型持仓。服务端按真实分钟逐分钟结算（70% +16bp / 30% −7bp），
+   * 查询时惰性结算到当前分钟；本金锁定，随时可赎。
    */
-  async playFund(amount: number, nonce: string): Promise<FundPlayResult> {
-    return this.post<FundPlayResult>('/fund/play', { amount, nonce })
+  async getFundPosition(): Promise<FundPosition> {
+    return this.get<FundPosition>('/fund')
+  }
+
+  async openFund(amount: number, nonce: string): Promise<FundPosition> {
+    return this.post<FundPosition>('/fund/open', { amount, nonce })
+  }
+
+  async redeemFund(nonce: string): Promise<FundPosition> {
+    return this.post<FundPosition>('/fund/redeem', { nonce })
   }
 
   /**
@@ -1194,16 +1356,30 @@ export class HttpExchangeClient implements ExchangeClient {
     const leverage = Math.max(1, Math.round(req.leverage ?? 1))
     const margin = leverage > 1 ? notional / leverage : notional
     const feeRate = Number.isFinite(this.feeRate) && this.feeRate > 0 ? this.feeRate : 0
-    const fee = notional * feeRate
-    // 现金影响估算：买入=支出（杠杆开仓只占保证金）；现货卖出=到账扣费；
+    // 与 Go `feeOf` 同口径：成交名义 × 费率后向下取整（matching.go:69-74），
+    // 预览里保留整数，避免显示 99.9999 被格式化成 100.00 与成交差 1 点。
+    const fee = Math.floor(notional * feeRate)
+    // 开空 = side=sell + short=true（1x 全额也算，与 Go `checkShortOpenLocked` 同口径）；
+    // 不带 short 的卖单是「卖出持有/平多」。
+    const shortOpen = req.short === true && req.side === 'sell'
+    // 现金影响估算：买入/开空=支出（杠杆开仓只占保证金）；现货卖出=到账扣费；
     // 杠杆平仓真实金额取决于开仓价，界面按释放保证金近似。
-    const settleAmount =
-      req.side === 'sell' ? (leverage > 1 ? margin - fee : notional - fee) : -(margin + fee)
+    const settleAmount = shortOpen
+      ? -(margin + fee)
+      : req.side === 'sell'
+        ? leverage > 1
+          ? margin - fee
+          : notional - fee
+        : -(margin + fee)
     const account = this.account
     const cash = account ? Math.max(0, account.cash) : 0
     let maxQty = 0
     if (price > 0) {
-      if (req.side === 'sell' && leverage > 1) {
+      if (shortOpen) {
+        // 开空按「每股占用 = 名义/杠杆 + 卖出档手续费」估算可开股数
+        const budgetPerShare = price / leverage + price * feeRate
+        maxQty = budgetPerShare > 0 ? Math.max(0, Math.floor(cash / budgetPerShare)) : 0
+      } else if (req.side === 'sell' && leverage > 1) {
         const position = account?.positions.find((p) => p.code === req.code && p.side === 'long')
         maxQty = position ? Math.max(0, Math.floor(position.qty)) : 0
       } else if (req.side === 'sell') {
@@ -1214,6 +1390,8 @@ export class HttpExchangeClient implements ExchangeClient {
         maxQty = budgetPerShare > 0 ? Math.max(0, Math.floor(cash / budgetPerShare)) : 0
       }
     }
+    // 前端只拦「确定不可能成功」的情况：未纳入券源池直接挡下，券源余量交给服务端。
+    const blockReason = shortOpen && quote !== undefined && !quote.shortable ? T.noShort : null
     return {
       notional,
       margin,
@@ -1222,7 +1400,7 @@ export class HttpExchangeClient implements ExchangeClient {
       liquidationPrice: null,
       liquidationDistancePct: null,
       maxQty,
-      blockReason: null,
+      blockReason,
     }
   }
 }

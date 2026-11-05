@@ -8,11 +8,13 @@
  *   2. 平滑流光渐变走势图（SimpleChart，分时/日走势/周线，呼吸微光，辅助刻度线）；
  *   3. 傻瓜多空买卖舱（SimpleTrade，买多/卖空快捷筹码输入与市价执行）；
  * - 右栏（340px）：
- *   1. 当前持仓战报（SimplePosition，现货/杠杆多头/融券空头盈亏战报与一键平仓）；
- *   2. 低风险稳健债券理财（BondCard）；
- *   3. 保底基金（FundCard）。
+ *   1. 一级切换：我的委托 / 理财与基金；
+ *   2. 「我的委托」是一整块：我的下注（全部持仓，单行紧凑，可逐笔结算/一键全平）
+ *      + 委托列表（全部股票，回合排队 / 已成交 / 未成交 / 已撤，可逐笔与批量撤单）；
+ *   3. 「理财与基金」内放 BondCard + FundCard。
  * - 紧凑高度，三栏一屏尽览，杜绝页面滚动。
  */
+import { useState } from 'react'
 import type { ExchangeClient, ExchangeSnapshot } from '../client'
 import type { ToastFn } from '../../../pages/common'
 import type { GameEngine } from '../../../game/engine'
@@ -24,6 +26,8 @@ import { FundCard } from './FundCard'
 import { SimpleChart } from './SimpleChart'
 import { SimpleTrade } from './SimpleTrade'
 import { SimplePosition } from './SimplePosition'
+import { MyOrders } from './MyOrders'
+import { AgentRoster } from './AgentRoster'
 
 interface SimpleExchangeProps {
   client: ExchangeClient
@@ -51,16 +55,19 @@ export function SimpleExchange({
 }: SimpleExchangeProps) {
   const quote = snap.stocks.find((s) => s.code === code) ?? snap.quote
   const isUp = quote.changePct >= 0
+  // 右栏二级切换：回合制下「我的委托」是高频操作，理财与基金退到第二个页签；
+  // 「对手盘」只读展示六人格公开摘要（WS agents 帧），帮助玩家判断该不该跟。
+  const [sideTab, setSideTab] = useState<'orders' | 'finance' | 'agents'>('orders')
 
   return (
-    <div className="ex-simple-layout ex-simple-grid">
+    <div className="ex-grid ex-simple-grid">
       {/* 左栏：星际企业榜 */}
-      <aside className="ex-simple-col-left" aria-label="行情列表">
+      <aside className="ex-col ex-col-left ex-simple-col-left" aria-label="行情列表">
         <SimpleStockList client={client} snap={snap} selected={code} onSelect={onSelectCode} />
       </aside>
 
       {/* 中栏：行情主视区 + 现货/融券买卖舱 */}
-      <main className="ex-simple-col-mid" aria-label={`${quote.nameKey} 交易主视区`}>
+      <main className="ex-col ex-col-mid ex-simple-col-mid" aria-label={`${quote.nameKey} 交易主视区`}>
         {/* 标的抬头横幅 */}
         <header className="ex-simple-header">
           <div className="ex-simple-head-identity">
@@ -104,16 +111,58 @@ export function SimpleExchange({
         </section>
       </main>
 
-      {/* 右栏：当前持仓战报 + 低风险理财债券 + 保底基金 */}
-      <aside className="ex-simple-col-right" aria-label="持仓与理财">
-        <SimplePosition client={client} snap={snap} code={code} onToast={onToast} />
-        <BondCard
-          client={client}
-          snap={snap}
-          onToast={onToast}
-          engine={isServer ? engine : undefined}
-        />
-        <FundCard client={client} snap={snap} onToast={onToast} onRefresh={onRefresh} />
+      {/* 右栏：「我的下注与委托 / 理财与基金」二级切换 */}
+      <aside className="ex-col ex-col-right ex-simple-col-right" aria-label="下注、委托与理财">
+        <div className="ex-simple-side-switch" role="tablist" aria-label={T.myOrdersTitle}>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={sideTab === 'orders'}
+            className={`ex-simple-side-tab${sideTab === 'orders' ? ' is-on' : ''}`}
+            onClick={() => setSideTab('orders')}
+          >
+            {T.myOrdersTitle}
+            {snap.orders.length > 0 ? ` (${snap.orders.length})` : ''}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={sideTab === 'finance'}
+            className={`ex-simple-side-tab${sideTab === 'finance' ? ' is-on' : ''}`}
+            onClick={() => setSideTab('finance')}
+          >
+            {T.myOrdersFinance}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={sideTab === 'agents'}
+            className={`ex-simple-side-tab${sideTab === 'agents' ? ' is-on' : ''}`}
+            onClick={() => setSideTab('agents')}
+            title={T.agentsTab}
+          >
+            {T.agentsTab}
+          </button>
+        </div>
+
+        <div className="ex-simple-side-body">
+          {sideTab === 'orders' ? (
+            /* 持仓与委托合成一块：列表都覆盖全部股票，不随选中标的切换 */
+            <div className="ex-simple-book">
+              <SimplePosition client={client} snap={snap} onToast={onToast} />
+              <div className="ex-simple-book-orders">
+                <MyOrders client={client} onToast={onToast} variant="compact" />
+              </div>
+            </div>
+          ) : sideTab === 'finance' ? (
+            <div className="ex-simple-finance">
+              <BondCard client={client} snap={snap} onToast={onToast} onRefresh={onRefresh} />
+              <FundCard client={client} snap={snap} onToast={onToast} onRefresh={onRefresh} />
+            </div>
+          ) : (
+            <AgentRoster agents={snap.agents} />
+          )}
+        </div>
       </aside>
     </div>
   )

@@ -6,7 +6,7 @@
  * - 【M1 / M5 / H1 / 日线 / 周线】：现代标准 K 线蜡烛图（红涨绿跌、实体影线、开高低收完整刻度）；
  * - 【上下轴自适应比例】：平盘基准 1.5% 视窗保护 + 上下各 12% 呼吸安全区，绝不撑满画布贴边。
  */
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { ChartPeriod, ExchangeClient, StockQuote } from '../client'
 import { pct, price } from '../format'
 import { T } from '../texts'
@@ -18,25 +18,20 @@ interface SimpleChartProps {
   tick: number
 }
 
-type SimplePeriod = 'intraday' | 'm1' | 'm5' | 'h1' | 'd1' | 'd7'
-
-const PERIOD_LABELS: Record<SimplePeriod, string> = {
-  intraday: '分时',
-  m1: 'M1',
-  m5: 'M5',
-  h1: 'H1',
-  d1: '日线',
-  d7: '周线',
-}
-
-const SIMPLE_PERIODS: SimplePeriod[] = ['intraday', 'm1', 'm5', 'h1', 'd1', 'd7']
+type SimplePeriod = 'intraday'
 
 export function SimpleChart({ client, code, quote, tick }: SimpleChartProps) {
-  const [period, setPeriod] = useState<SimplePeriod>('intraday')
+  // 简单投资默认且固定为分时走势（10秒高频刷新），精简去除专业K线周期选项
+  const period: ChartPeriod = 'intraday'
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
 
-  const isCandle = period !== 'intraday'
-  const clientPeriod: ChartPeriod = period
+  const isCandle = false
+  const clientPeriod: ChartPeriod = 'intraday'
+
+  // 切到未缓存的周期时补拉（否则 H1/日线/周线永远空白、M5 预加载失败也不重试）
+  useEffect(() => {
+    client.ensureChartData?.(code, clientPeriod)
+  }, [client, code, clientPeriod])
 
   const series = useMemo(() => {
     try {
@@ -46,6 +41,32 @@ export function SimpleChart({ client, code, quote, tick }: SimpleChartProps) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [client, code, clientPeriod, tick])
+
+  // 空图时按时间推进进度（0→92%，加载完成即消失）：让玩家看到「行情初始化 42%」而不是干等；
+  // 12 秒仍无数据就停表改「暂无行情」，不再空转定时器（子代理 review 2026-11-04 建议 6）。
+  const ready = series.length >= 2
+  const [loadPct, setLoadPct] = useState(0)
+  const [stalled, setStalled] = useState(false)
+  useEffect(() => {
+    if (ready) {
+      setLoadPct(100)
+      setStalled(false)
+      return
+    }
+    setLoadPct(4)
+    setStalled(false)
+    const timer = window.setInterval(() => {
+      setLoadPct((p) => Math.min(92, p + Math.max(1, Math.round((92 - p) * 0.07))))
+    }, 160)
+    const guard = window.setTimeout(() => {
+      window.clearInterval(timer)
+      setStalled(true)
+    }, 12_000)
+    return () => {
+      window.clearInterval(timer)
+      window.clearTimeout(guard)
+    }
+  }, [ready, code])
 
   // SVG 视口尺寸
   const width = 640
@@ -186,23 +207,9 @@ export function SimpleChart({ client, code, quote, tick }: SimpleChartProps) {
           )}
         </div>
 
-        {/* 周期切换按钮组 */}
-        <div className="ex-simple-chart-periods" role="tablist">
-          {SIMPLE_PERIODS.map((p) => (
-            <button
-              key={p}
-              type="button"
-              role="tab"
-              aria-selected={period === p}
-              className={`ex-simple-period-btn${period === p ? ' is-on' : ''}`}
-              onClick={() => {
-                setPeriod(p)
-                setHoverIndex(null)
-              }}
-            >
-              {PERIOD_LABELS[p]}
-            </button>
-          ))}
+        {/* 分时图模式徽标（固定 10 秒刷新） */}
+        <div className="ex-simple-chart-badge" title="分时行情每 10 秒刷新一次">
+          {T.simpleIntradayTag}
         </div>
       </div>
 
@@ -232,7 +239,9 @@ export function SimpleChart({ client, code, quote, tick }: SimpleChartProps) {
         onTouchEnd={() => setHoverIndex(null)}
       >
         {coords.length < 2 ? (
-          <div className="ex-simple-chart-empty">{T.chartNoData}</div>
+          <div className="ex-simple-chart-empty">
+            {stalled ? T.chartNoData : `${T.chartLoading} ${loadPct}%`}
+          </div>
         ) : (
           <>
             {/* 顶底参考刻度（平盘保护与 12% 呼吸区自动比例） */}
@@ -245,7 +254,7 @@ export function SimpleChart({ client, code, quote, tick }: SimpleChartProps) {
                 className={`ex-simple-cursor-bubble ex-num${coords[hoverIndex][1] < 45 ? ' is-flip' : ''}`}
                 style={{
                   left: `${(coords[hoverIndex][0] / width) * 100}%`,
-                  top: `${coords[hoverIndex][1]}px`,
+                  top: `${(coords[hoverIndex][1] / height) * 100}%`,
                 }}
               >
                 <span className="ex-bubble-price">{price(displayPrice)}</span>

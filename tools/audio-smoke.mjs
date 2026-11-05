@@ -2,9 +2,10 @@
  * **声音系统冒烟（网页构建 · 无头 Chrome）** —— 2026-11-02 入库的正式工具。
  *
  * 用途：改音效相关代码/素材后，一条命令验证整条链路真的通（不是只看类型）：
- * 安装入口 → 15 条语义清单 → blob 音频可播（CSP `media-src blob:`）→ 设置「声音」分组 →
+ * 安装入口 → 33 条语义清单 → blob 音频可播（CSP `media-src blob:`）→ 设置「声音」分组 →
  * 本机音效台（**强制「科幻未来」布局**，验证弹层不被设置弹窗 `clip-path` 裁切）→
- * 拖入文件按文件名自动配对 → IndexedDB 落盘 → 试听 → 全部清除 → 无 console error。
+ * 拖入文件按文件名自动配对 → IndexedDB 落盘 → 试听 → 导出正式入库包（捕获 Blob 校验 zip，
+ * 不依赖下载目录）→ 全部清除 → 无 console error。
  *
  * 前置：① `npm --prefix web run build`（本工具自起静态服务托管 `web/dist`；
  *          用 `AUDIO_SMOKE_DIST=<相对仓库根的目录>` 可改托管别的构建产物）；
@@ -306,6 +307,118 @@ async function main() {
   check((dropResult.badge ?? '').includes('本机覆盖'), `面板状态徽标已切到本机覆盖（实际「${dropResult.badge}」）`)
   check(dropResult.overrides === 1, `IndexedDB 本机覆盖 1 条（实际 ${dropResult.overrides}）`)
   check(dropResult.preview === true, '本机覆盖可试听（Audio 起播未抛错）')
+
+  // 导出正式入库包：hook createObjectURL 捕获 Blob（校验格式即可，不依赖无头浏览器的下载目录）
+  const packExport = await evaluate(`(async () => {
+    const btn = [...document.querySelectorAll('.app-sfx-modal button')].find(x => x.textContent.trim() === '导出正式入库包')
+    if (!btn) return { ok: false, reason: 'no-btn' }
+    if (btn.disabled) return { ok: false, reason: 'disabled' }
+    window.__packCapture = null
+    const origCreate = URL.createObjectURL
+    URL.createObjectURL = function (obj) {
+      try { if (obj instanceof Blob && obj.type === 'application/zip') window.__packCapture = obj } catch (e) { /* 忽略 */ }
+      return origCreate.call(URL, obj)
+    }
+    try {
+      btn.click()
+      for (let i = 0; i < 40 && !window.__packCapture; i++) await new Promise(r => setTimeout(r, 100))
+      const blob = window.__packCapture
+      if (!blob) return { ok: false, reason: 'no-blob' }
+      const bytes = new Uint8Array(await blob.arrayBuffer())
+      const text = new TextDecoder().decode(bytes)
+      const modal = document.querySelector('.app-sfx-modal')
+      return {
+        ok: true,
+        size: bytes.length,
+        magic: bytes[0] === 0x50 && bytes[1] === 0x4b,
+        manifest: text.includes('"format": "whale-idle-sfx-pack"') && text.includes('"version": 1'),
+        path: text.includes('sfx/invasion-alarm.wav'),
+        notice: (modal ? modal.textContent : document.body.textContent).includes('已生成'),
+      }
+    } finally { URL.createObjectURL = origCreate }
+  })()`)
+  check(packExport.ok === true, `音效台可导出正式入库包（实际 ${JSON.stringify(packExport)}）`)
+  check(packExport.magic === true && packExport.size > 200, `入库包是 zip 且非空（实际 ${packExport.size} 字节）`)
+  check(packExport.manifest === true && packExport.path === true, '入库包含 manifest v1 与正确素材路径')
+  check(packExport.notice === true, '导出后给出成功提示')
+
+  /* ── 2026-11-04 调试批：页签 / 场景预演 / 实时触发 / 收起条 / 网页版一键入库兜底 ── */
+  const tabs = await evaluate(`({
+    count: document.querySelectorAll('.app-sfx-tab').length,
+    active: document.querySelector('.app-sfx-tab.is-active')?.textContent.trim() ?? '',
+    panels: !!document.querySelector('.app-sfx-panels')
+  })`)
+  check(tabs.count === 4, `音效台有 4 个页签（实际 ${tabs.count}）`)
+  check(tabs.active === '素材清单', `默认页签 = 素材清单（实际「${tabs.active}」）`)
+  check(tabs.panels === true, '音效台正文区存在（页签切换容器）')
+
+  const scenes = await evaluate(`(async () => {
+    const tab = [...document.querySelectorAll('.app-sfx-tab')].find(x => x.textContent.trim() === '场景预演')
+    if (!tab) return { ok: false, reason: 'no-tab' }
+    tab.click()
+    await new Promise(r => setTimeout(r, 150))
+    const cards = document.querySelectorAll('.app-sfx-card').length
+    const firstCard = document.querySelector('.app-sfx-card')
+    const forceBtn = firstCard ? [...firstCard.querySelectorAll('button')].find(x => x.textContent.trim() === '切到此场景的声音') : null
+    if (!forceBtn) return { ok: false, reason: 'no-force-btn', cards }
+    forceBtn.click()
+    await new Promise(r => setTimeout(r, 150))
+    const forced = window.__whaleSfx.sceneState()
+    const restore = [...document.querySelectorAll('.app-sfx-panels button')].find(x => x.textContent.trim() === '恢复真实场景')
+    if (restore) restore.click()
+    await new Promise(r => setTimeout(r, 150))
+    const restored = window.__whaleSfx.sceneState()
+    return { ok: true, cards, forced, restored }
+  })()`)
+  check(scenes.ok === true && scenes.cards === 5, `场景预演页签有 5 张场景卡片（实际 ${JSON.stringify({ ok: scenes.ok, cards: scenes.cards, reason: scenes.reason })}）`)
+  check(typeof scenes.forced?.forced === 'string' && scenes.forced.forced === scenes.forced.active, `「切到此场景的声音」后强制场景生效（实际 ${JSON.stringify(scenes.forced)}）`)
+  check(scenes.restored?.forced === null, `「恢复真实场景」应清除强制（实际 ${scenes.restored?.forced}）`)
+
+  const liveLog = await evaluate(`(async () => {
+    // 用刚拖入的 invasion-alarm（有本机素材）触发真实播放；无素材的 cue 按设计静默、不会进日志
+    window.__whaleSfx.play('invasion-alarm')
+    const tab = [...document.querySelectorAll('.app-sfx-tab')].find(x => x.textContent.trim() === '实时触发')
+    if (!tab) return { ok: false, reason: 'no-tab' }
+    tab.click()
+    await new Promise(r => setTimeout(r, 200))
+    return { ok: true, rows: document.querySelectorAll('.app-sfx-log-row').length, entries: window.__whaleSfx.playLog().length }
+  })()`)
+  check(liveLog.ok === true, '「实时触发」页签可打开')
+  check(liveLog.entries >= 1, `调试口 play() 属于真实触发并进入日志（实际 ${liveLog.entries} 条）`)
+  check(liveLog.rows >= 1, `实时触发页签显示日志行（实际 ${liveLog.rows} 行）`)
+
+  const ingest = await evaluate(`(async () => {
+    const tab = [...document.querySelectorAll('.app-sfx-tab')].find(x => x.textContent.trim() === '入库')
+    if (!tab) return { ok: false, reason: 'no-tab' }
+    tab.click()
+    await new Promise(r => setTimeout(r, 150))
+    const oneClick = [...document.querySelectorAll('.app-sfx-modal button')].find(x => x.textContent.trim() === '一键入库（写入仓库）')
+    return {
+      ok: true,
+      oneClick: !!oneClick,
+      disabled: oneClick ? oneClick.disabled : null,
+      note: (document.querySelector('.app-sfx-panels')?.textContent ?? '').includes('桌面开发版'),
+    }
+  })()`)
+  check(ingest.ok === true && ingest.oneClick === true, '入库页签有「一键入库（写入仓库）」按钮')
+  check(ingest.disabled === true, '网页版一键入库按钮应置灰（没有 window.whale.audio 桥）')
+  check(ingest.note === true, '网页版入库页签提示改用「导出 + 命令」')
+
+  const collapse = await evaluate(`(async () => {
+    const b = [...document.querySelectorAll('.app-sfx-head button')].find(x => x.textContent.trim() === '收起')
+    if (!b) return { ok: false, reason: 'no-btn' }
+    b.click()
+    await new Promise(r => setTimeout(r, 100))
+    const bar = !!document.querySelector('.app-sfx-bar')
+    const modal = !!document.querySelector('.app-sfx-modal')
+    const expand = [...document.querySelectorAll('.app-sfx-bar button')].find(x => x.textContent.trim() === '展开')
+    if (!expand) return { ok: false, reason: 'no-expand', bar, modal }
+    expand.click()
+    await new Promise(r => setTimeout(r, 100))
+    return { ok: true, bar, modal, reopened: !!document.querySelector('.app-sfx-modal') }
+  })()`)
+  check(collapse.bar === true && collapse.modal === false, '收起后只留右下角悬浮条（大窗关闭）')
+  check(collapse.reopened === true, '「展开」回到音效台大窗')
 
   const clearResult = await evaluate(`(async () => {
     const b = [...document.querySelectorAll('button')].find(x => x.textContent.trim() === '全部清除')

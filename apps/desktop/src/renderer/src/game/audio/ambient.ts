@@ -12,6 +12,7 @@ import { builtinSfxUrls } from './manifest'
 import { getSfxOverrideUrl } from './overrides'
 import { readSfxPrefs } from './prefs'
 import { playCue } from './player'
+import { AMBIENT_CROSSFADE_MS, VOLUME_FADE_MS } from './rules'
 import { AMBIENT_BLIP_IDS, sceneAmbientOf } from './scene'
 import type { SfxScene } from './scene'
 
@@ -28,7 +29,7 @@ let nextBlipAt = 0
 function ensureChannel(): LoopChannel | null {
   try {
     if (typeof Audio === 'undefined') return null
-    channel ??= new LoopChannel(1500)
+    channel ??= new LoopChannel(AMBIENT_CROSSFADE_MS, VOLUME_FADE_MS)
     return channel
   } catch {
     return null

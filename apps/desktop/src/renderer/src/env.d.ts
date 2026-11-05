@@ -71,6 +71,17 @@ declare global {
     fileSaved?: boolean
   }
 
+  /** 桌面开发版：音效台「一键入库」（主进程调 tools/audio-install.ts 写入仓库素材） */
+  interface WhaleAudioInstallResult {
+    ok: boolean
+    code: number | null
+    output: string
+  }
+  interface WhaleAudioApi {
+    /** 校验并写入仓库 assets；pack = 入库包 zip 字节（成功后渲染层清掉已入库的本机覆盖） */
+    installPack(pack: ArrayBuffer, options?: { dryRun?: boolean }): Promise<WhaleAudioInstallResult>
+  }
+
   interface WhaleApi {
     /** 读取存档文本；从未保存过返回 null */
     load(): Promise<string | null>
@@ -97,6 +108,8 @@ declare global {
     exportSaveToFile(text: string): Promise<{ ok: boolean; path?: string; shared?: boolean; canceled?: boolean; error?: string }>
     /** **网页版独有**：绑定/重连/解绑「本地存档文件」（桌面端不存在这一组） */
     saveFile?: SaveFileApi
+    /** **桌面开发版独有**：音效台一键入库（网页版不存在这一组；网页保留导出 + 命令） */
+    audio?: WhaleAudioApi
   }
 
   /**

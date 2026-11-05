@@ -406,6 +406,30 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
     file: 'apps/desktop/src/renderer/src/game/audio/rules.ts',
     exported: true,
   },
+  {
+    concept: '音效正式入库包格式与素材路径映射（音效台导出、audio:install 与 audio:check 共用 · 2026-11-04）',
+    symbol: 'sfxPackAssetPath',
+    file: 'apps/desktop/src/renderer/src/game/audio/sfxPack.ts',
+    exported: true,
+  },
+  {
+    concept: 'BGM/环境底噪交叉淡变时长（换曲 2.5s / 1.5s、同曲调音量 250ms · 2026-11-04 调试批）',
+    symbol: 'BGM_CROSSFADE_MS',
+    file: 'apps/desktop/src/renderer/src/game/audio/rules.ts',
+    exported: true,
+  },
+  {
+    concept: '场景音频强切（真实场景 + 调试预演；只切声音 · 2026-11-04 调试批）',
+    symbol: 'forceSfxScene',
+    file: 'apps/desktop/src/renderer/src/game/audio/sceneSwitch.ts',
+    exported: true,
+  },
+  {
+    concept: '实时触发日志（环形缓冲，试听不计 · 2026-11-04 调试批）',
+    symbol: 'recordSfxPlay',
+    file: 'apps/desktop/src/renderer/src/game/audio/playLog.ts',
+    exported: true,
+  },
 ]
 
 /** F4：渲染层一级页/面板不许自己建仿真上下文（那是 `engine.ts` 的活） */

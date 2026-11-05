@@ -97,7 +97,7 @@ describe('cloud API', () => {
     }
     expect(readCloudPreferences()).toMatchObject({ server: DEFAULT_CLOUD_SERVER, session: { token: auth.token } })
     expect(new URL(cloudChatSocketUrl(readCloudPreferences().server, readCloudPreferences().session!.token)).toString())
-      .toBe('wss://game.bajibaji.party/api/chat/ws?token=secret-token')
+      .toBe('wss://game.bajibaji.party:8443/api/chat/ws?token=secret-token')
   })
 
   it.each([401, 500])('does not retry a default IP HTTP %i response', async status => {
@@ -246,7 +246,7 @@ describe('cloud API', () => {
 
   it('maps the default HTTPS socket to WSS and preserves loopback behavior', () => {
     expect(cloudChatSocketUrl(`${DEFAULT_CLOUD_SERVER}/`, 'ip&token'))
-      .toBe('wss://game.bajibaji.party/api/chat/ws?token=ip%26token')
+      .toBe('wss://game.bajibaji.party:8443/api/chat/ws?token=ip%26token')
     expect(cloudChatSocketUrl('http://127.0.0.1:8787', 'local'))
       .toBe('ws://127.0.0.1:8787/api/chat/ws?token=local')
     expect(cloudChatSocketUrl('http://[::1]:8787', 'local'))
@@ -428,7 +428,7 @@ describe('cloud API', () => {
       setItem: (key: string, value: string) => { values.set(key, value) },
       removeItem: (key: string) => { values.delete(key) },
     })
-    expect(preferences.DEFAULT_CLOUD_SERVER).toBe('https://game.bajibaji.party')
+    expect(preferences.DEFAULT_CLOUD_SERVER).toBe('https://game.bajibaji.party:8443')
     expect(preferences.FALLBACK_CLOUD_SERVER).toBe('http://123.207.188.192')
     expect(preferences.readCloudPreferences()).toEqual({ server: preferences.DEFAULT_CLOUD_SERVER, session: null })
     values.set('whale.cloud.server', 'https://configured.example')
@@ -453,12 +453,13 @@ describe('cloud API', () => {
     expect(connect).toContain('https:')
     if (path.startsWith('apps/')) expect(connect).toContain('ws:')
     else expect(connect).not.toContain('ws:')
-    expect(connect).toContain('wss://game.bajibaji.party')
+    expect(connect).toContain('wss://game.bajibaji.party:8443')
     expect(connect).toContain('http://123.207.188.192')
     expect(connect).toContain(DEFAULT_CLOUD_SERVER)
     expect(connect.some(value => value === 'https:' || value === FALLBACK_CLOUD_SERVER)).toBe(true)
     expect(connect.some(value => value === 'wss:' || value === FALLBACK_CLOUD_SERVER.replace('https:', 'wss:'))).toBe(true)
-    expect(connect).toEqual(expect.arrayContaining(['connect-src', "'self'", 'http://localhost:*', 'http://127.0.0.1:*', 'http://[::1]:*']))
+    // IPv6 通配不是合法 CSP source（383f1ac9 已从桌面 HTML 移除）；网页版仍有历史遗留，测试不强制要求。
+    expect(connect).toEqual(expect.arrayContaining(['connect-src', "'self'", 'http://localhost:*', 'http://127.0.0.1:*']))
     expect(connect.includes('ws:') || ['ws://localhost:*', 'ws://127.0.0.1:*', 'ws://[::1]:*'].every(value => connect.includes(value))).toBe(true)
   })
 })
