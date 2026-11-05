@@ -6,7 +6,7 @@ import { shipActuallyDocked, shipOperationBlockReason } from '../src/shipActionP
 import { stationActivityStartBlockReason, isAtHomeLike, startSiteDeliverTrip } from '../src/location'
 import { industryAvailable, redeemFragments, fragmentRedeemRowsOf, startRefineRun, advanceRefining, sellCargoItem, sellCargoItemQty } from '../src/industry'
 import { loadWarehouseToCargoFit, unloadCargoToWarehouse, unloadShipCargo } from '../src/inventory'
-import { fitModule, unfitAt, adjustDroneLoad } from '../src/equipment'
+import { fitModule, unfitAt, adjustDroneLoad, setAmmoTier } from '../src/equipment'
 import { installPlug } from '../src/plugs'
 import { applyFitPreset, unfitAllModules, clearDroneLoad } from '../src/fitPresets'
 import { repairShip, changeShipBlockReason, changeShip } from '../src/shipyard'
@@ -81,6 +81,7 @@ describe('目标舰真实状态与实体命令', () => {
     expect(clearDroneLoad(state, ctx, uid)).toBe(0)
     expect(installPlug(state, ctx, 'plug-shield-plate', uid).ok).toBe(false)
     expect(applyFitPreset(state, ctx, uid, 0).ok).toBe(false)
+    expect(setAmmoTier(state, ctx, 'kinetic', 'ammo-kinetic-2', uid).ok).toBe(false)
     expect(state).toEqual(before)
   })
   it('主控野外不限制空闲副船维修与配置，忙碌副船才被阻止', () => {
@@ -93,8 +94,10 @@ describe('目标舰真实状态与实体命令', () => {
     state.moduleBay['mod-turret-kin-1'] = 1
     expect(repairShip(state, other, ctx).ok).toBe(true)
     expect(fitModule(state, 'mod-turret-kin-1', ctx, { shipId: other }).ok).toBe(true)
+    expect(setAmmoTier(state, ctx, 'kinetic', 'ammo-kinetic-2', other).ok).toBe(true)
     state.aiAssignments[other] = { task: { kind: 'mining' } } as never
     expect(shipOperationBlockReason(state, ctx, other, 'cargo')).not.toBeNull()
+    expect(setAmmoTier(state, ctx, 'kinetic', null, other).ok).toBe(false)
   })
   it('站内手动生产不虚构出勤，但禁止改装该主控舰', () => {
     const { state, uid } = world()
@@ -102,6 +105,7 @@ describe('目标舰真实状态与实体命令', () => {
     expect(shipActuallyDocked(state, ctx, uid)).toBe(true)
     expect(shipOperationBlockReason(state, ctx, uid, 'cargo')).toBeNull()
     expect(shipOperationBlockReason(state, ctx, uid, 'configure')).not.toBeNull()
+    expect(setAmmoTier(state, ctx, 'kinetic', 'ammo-kinetic-2', uid).ok).toBe(false)
   })
   it('入侵编队僚舰不能被主控以外的操作入口改装', () => {
     const { state, uid } = world()

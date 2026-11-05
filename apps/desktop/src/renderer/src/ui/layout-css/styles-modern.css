@@ -14285,21 +14285,7 @@ body.no-fx .app-root.is-layout-modern .app-fit-cpustrip-track i {
   box-shadow: 0 0 8px rgb(var(--wui-hud-danger));
 }
 
-/* 战术火控距离标尺控制台 */
-.app-root.is-layout-modern .app-bts-axisTrack {
-  border: 1px solid rgb(var(--wui-hud-primary) / 0.25);
-  border-radius: 0;
-  background: rgb(var(--wui-hud-surface-deep) / 0.9);
-  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.6);
-}
-.app-root.is-layout-modern .app-bts-cur-chip {
-  background: rgb(var(--wui-hud-primary) / 0.95);
-  color: rgb(var(--wui-hud-surface-deep));
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  box-shadow: 0 0 10px rgb(var(--wui-hud-primary) / 0.6);
-  border-radius: 0;
-}
+/* 战斗距离轴统一沿用旧版外观，不叠加新版控制台皮肤。 */
 .app-root.is-layout-modern .app-battle-tacs .app-btn {
   border-radius: 0;
   /* 战术键文字是中文 ⇒ 继承正文栈（裸 monospace 会让中文落宋体） */
@@ -14424,9 +14410,9 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
 
 /* ── 强制全量消除圆角（Zero Border Radius 铁律） ── */
 .app-root.is-layout-modern,
-.app-root.is-layout-modern *,
-.app-root.is-layout-modern *::before,
-.app-root.is-layout-modern *::after {
+.app-root.is-layout-modern *:where(:not(.app-bts-axisTrack, .app-bts-axisTrack *)),
+.app-root.is-layout-modern *:where(:not(.app-bts-axisTrack, .app-bts-axisTrack *))::before,
+.app-root.is-layout-modern *:where(:not(.app-bts-axisTrack, .app-bts-axisTrack *))::after {
   border-radius: 0 !important;
 }
 
@@ -14591,13 +14577,13 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
   letter-spacing: 0.05em;
 }
 
-/* ── 范围滑块（消除原生圆形 Thumb，改为锐利战术方块） ── */
-.app-root.is-layout-modern input[type="range"] {
+/* 战斗距离滑块保留旧版透明轨道与金色抓手，其余滑块沿用新版皮肤。 */
+.app-root.is-layout-modern input[type="range"]:where(:not(.app-bts-knob)) {
   -webkit-appearance: none;
   appearance: none;
   background: transparent;
 }
-.app-root.is-layout-modern input[type="range"]::-webkit-slider-thumb {
+.app-root.is-layout-modern input[type="range"]:where(:not(.app-bts-knob))::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
   width: 12px;
@@ -14609,13 +14595,13 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
   cursor: pointer;
   border-radius: 0;
 }
-.app-root.is-layout-modern input[type="range"]::-webkit-slider-runnable-track {
+.app-root.is-layout-modern input[type="range"]:where(:not(.app-bts-knob))::-webkit-slider-runnable-track {
   height: 8px;
   background: rgb(var(--wui-hud-surface) / 0.95);
   border: 1px solid rgb(var(--wui-hud-primary) / 0.35);
   border-radius: 0;
 }
-.app-root.is-layout-modern input[type="range"]::-moz-range-thumb {
+.app-root.is-layout-modern input[type="range"]:where(:not(.app-bts-knob))::-moz-range-thumb {
   width: 12px;
   height: 20px;
   background: rgb(var(--wui-hud-primary));
@@ -14624,7 +14610,7 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
   cursor: pointer;
   border-radius: 0;
 }
-.app-root.is-layout-modern input[type="range"]::-moz-range-track {
+.app-root.is-layout-modern input[type="range"]:where(:not(.app-bts-knob))::-moz-range-track {
   height: 8px;
   background: rgb(var(--wui-hud-surface) / 0.95);
   border: 1px solid rgb(var(--wui-hud-primary) / 0.35);
@@ -14731,113 +14717,6 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
  * 16. 深空数据看板与复杂后台监控大屏（DataDog / Mixpanel 风格体系）
  * 船长令（2026-11-02）：在有限空间内，优雅、清晰地呈现大量图表和高密度数据表格
  * ═══════════════════════════════════════════════════════════════════════════════ */
-
-/* ── 全局/舰船总览 KPI 指标大屏条（Telemetry Summary Banner） ── */
-.app-root.is-layout-modern .hud-kpi-banner,
-.app-root.is-layout-cosmic .hud-kpi-banner {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin-bottom: 10px;
-  width: 100%;
-}
-.app-root.is-layout-modern .hud-kpi-card,
-.app-root.is-layout-cosmic .hud-kpi-card {
-  background: rgb(var(--wui-hud-surface-soft) / 0.88);
-  border: 1px solid rgb(var(--wui-hud-primary) / 0.25);
-  border-left: 3px solid rgb(var(--wui-hud-primary));
-  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
-  padding: 6px 10px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgb(var(--wui-hud-primary) / 0.05);
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-.app-root.is-layout-modern .hud-kpi-label,
-.app-root.is-layout-cosmic .hud-kpi-label {
-  font-size: var(--wui-fs-2xsd);
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  color: rgb(var(--wui-hud-primary) / 0.75);
-  text-transform: uppercase;
-}
-.app-root.is-layout-modern .hud-kpi-val,
-.app-root.is-layout-cosmic .hud-kpi-val {
-  font-size: var(--wui-fs-xl);
-  font-weight: 700;
-  font-family: var(--wui-mono);
-  font-variant-numeric: tabular-nums;
-  color: rgb(var(--wui-hud-text));
-  letter-spacing: 0.03em;
-  line-height: 1.25;
-  margin: 2px 0;
-}
-.app-root.is-layout-modern .hud-kpi-val.is-warn,
-.app-root.is-layout-cosmic .hud-kpi-val.is-warn {
-  color: rgb(var(--wui-hud-warn));
-}
-.app-root.is-layout-modern .hud-kpi-unit,
-.app-root.is-layout-cosmic .hud-kpi-unit {
-  font-size: var(--wui-fs-xs);
-  font-weight: normal;
-  color: rgb(var(--wui-hud-text-muted));
-  margin-left: 3px;
-}
-.app-root.is-layout-modern .hud-kpi-sep,
-.app-root.is-layout-cosmic .hud-kpi-sep {
-  font-size: var(--wui-fs-s);
-  color: rgb(var(--wui-hud-primary) / 0.4);
-  margin: 0 3px;
-}
-.app-root.is-layout-modern .hud-kpi-sub,
-.app-root.is-layout-cosmic .hud-kpi-sub {
-  font-size: var(--wui-fs-2xse);
-  color: rgb(var(--wui-hud-text-muted));
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.app-root.is-layout-modern .hud-kpi-tag,
-.app-root.is-layout-cosmic .hud-kpi-tag {
-  font-size: var(--wui-fs-2xsb);
-  letter-spacing: 0.08em;
-  color: rgb(var(--wui-hud-primary) / 0.6);
-  font-family: var(--wui-mono);
-}
-
-/* 战术微型状态方块（零圆角指示灯） */
-.app-root.is-layout-modern .hud-status-dot,
-.app-root.is-layout-cosmic .hud-status-dot {
-  width: 6px;
-  height: 6px;
-  flex: 0 0 6px;
-  background: rgb(var(--wui-hud-primary));
-  box-shadow: 0 0 6px rgb(var(--wui-hud-primary));
-}
-.app-root.is-layout-modern .hud-status-dot.is-live,
-.app-root.is-layout-cosmic .hud-status-dot.is-live {
-  background: rgb(var(--wui-hud-ok));
-  box-shadow: 0 0 6px rgb(var(--wui-hud-ok));
-}
-
-/* 战术微型指标条 */
-.app-root.is-layout-modern .hud-mini-progress,
-.app-root.is-layout-cosmic .hud-mini-progress {
-  width: 100%;
-  height: 4px;
-  background: rgb(var(--wui-hud-primary) / 0.15);
-  border: 1px solid rgb(var(--wui-hud-primary) / 0.25);
-  overflow: hidden;
-}
-.app-root.is-layout-modern .hud-mini-fill,
-.app-root.is-layout-cosmic .hud-mini-fill {
-  height: 100%;
-  background: rgb(var(--wui-hud-primary));
-  box-shadow: 0 0 6px rgb(var(--wui-hud-primary) / 0.6);
-}
 
 /* ── 舰船列表（我的舰队）：高密度遥测监控行 ── */
 .app-root.is-layout-modern .app-ship-card.is-fleet,

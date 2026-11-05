@@ -3,6 +3,7 @@ import type { DamageType, SimContext } from '../../types'
 import { type GameState, addLog } from '../../state'
 import type { CommandResult } from '../../engine'
 import { ammoTiersOf } from '../../ammoTiers'
+import { shipOperationBlockReason } from '../../shipActionPolicy'
 
 /** 弹药 MK2 档位三族键 */
 export const AMMO_TYPES: readonly DamageType[] = ['kinetic', 'explosive', 'plasma']
@@ -23,6 +24,8 @@ export function setAmmoTier(
 ): CommandResult {
   const fleet = state.fleet[shipId]
   if (!fleet) return { ok: false, error: '舰队里找不到该舰船，无法设置弹药档位。', errorId: 'core.equipment.006' }
+  const blocked = shipOperationBlockReason(state, ctx, shipId, 'configure')
+  if (blocked) return { ok: false, ...blocked }
   if (!AMMO_TYPES.includes(type)) return { ok: false, error: '未知弹药类型。', errorId: 'core.equipment.017' }
   if (itemId !== null) {
     const def = ctx.items.get(itemId)
