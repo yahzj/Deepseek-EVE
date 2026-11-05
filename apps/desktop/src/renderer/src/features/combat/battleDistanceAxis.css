@@ -1,0 +1,32 @@
+/* 读数、刻度与滑块各自占位；滑块只与刻度同轴，不以含留白的外层高度居中。 */
+.app-root .app-bts-axisTrack {
+  --bts-axis-height: 12px;
+  --bts-knob-height: 30px;
+  --bts-axis-bottom: calc((var(--bts-knob-height) - var(--bts-axis-height)) / 2 + 4px);
+  display: flow-root;
+  padding-top: calc(1lh + var(--bts-knob-height) / 2 + 8px);
+  padding-bottom: var(--bts-axis-bottom);
+  isolation: isolate;
+}
+
+.app-root.is-mobile-rot .app-bts-axisTrack {
+  --bts-axis-height: 10px;
+  --bts-knob-height: 46px;
+}
+
+.app-root .app-bts-axisTrack > .app-bts-scale {
+  box-sizing: border-box;
+  height: var(--bts-axis-height);
+  margin-top: 0;
+}
+
+.app-root .app-bts-axisTrack > .app-bts-knob {
+  top: calc(100% - var(--bts-axis-bottom) - var(--bts-axis-height) / 2);
+  height: var(--bts-knob-height);
+  z-index: 1;
+}
+
+.app-root .app-bts-axisTrack .app-bts-cur-chip {
+  bottom: calc(50% + var(--bts-knob-height) / 2 + 4px);
+  z-index: 2;
+}

@@ -221,6 +221,7 @@
 
 | 工具 | npm script | 挂牌状态 |
 |---|---|---|
+| `battle-distance-axis-check.cjs` | `node tools/battle-distance-axis-check.cjs` | 合成状态挂载真实BattleScreen、隐藏隔离Electron；双布局桌面/横屏/手机旋转，18组读数与滑块间距及键盘/拖动检查，截图和JSON输出至`tools/_ui-artifacts/battle-distance-axis-20261105/`；v31，2026-11-05，不读取个人档或代替观感验收 |
 | `audio-install.ts` | `audio:install` | **已登记**（v0.1.0 · 核对/跑过 2026-11-04；音效入库包校验与写盘：store-only zip → manifest v1、路径/目录/扩展名/重复/体积校验，默认清理同事件旧扩展名与变体，`--dry-run` / `--keep-variants`，不读个人档） |
 | `battle-ammo-warning-desktop-check.cjs` | 构建后 `node tools/battle-ammo-warning-desktop-check.cjs`，`--portrait-only`仅查手机旋转 | 合成档/隔离userData/隐藏Electron，两布局双语回退、桌面/手机旋转，技能连用与缺弹首击不写/二击开战；v31，2026-10-09，不作观感结论 |
 | `synaptic-accelerant-check.ts` | 直接 `npx tsx tools/synaptic-accelerant-check.ts` | 合成状态检查手动续时、训练切换及离线8/32/64h；v31，核对/运行2026-10-09，诊断不符退出1，不读个人档 |
