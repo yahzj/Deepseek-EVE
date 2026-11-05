@@ -58,6 +58,8 @@
     "data:editor-test": "npm --prefix ../数据编辑器 run test",
     "data:migration-check": "tsx tools/data-migration-check.ts",
     "data:quick": "tsx tools/data-quick-check.ts",
+    "tier": "tsx tools/change-tier.ts",
+    "verify": "tsx tools/change-tier.ts --run",
     "ship:hp": "tsx tools/ship-hp-table.ts",
     "battle:calibrate": "tsx tools/battle-calibrate.ts",
     "bounty:stats": "tsx tools/bounty-stats.ts",
