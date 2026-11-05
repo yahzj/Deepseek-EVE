@@ -14,6 +14,9 @@
  * 对带 `pitchJitter` 标记的战斗重复音，每次播放随机 `±prefs.pitchJitterCents` 音分：
  * `playbackRate = 2^(音分/1200)` 且 `preservesPitch = false`（浏览器默认 true 只变速不变调，已实测）；
  * 1 音分 ≈ 0.058% 频率差、100 音分 = 1 个半音。一次性重音与 BGM/环境不加标记。
+ *
+ * **UI 点击音**（2026-11-05 船长口径「UI点击的音效也要有50个音分的上下浮动」）：
+ * `ui-click` 按清单里的固定 ±50 音分抖动，不跟随战斗滑条。
  */
 import { SFX_CUES } from './cues'
 import type { SfxCategory, SfxCueId } from './cues'
@@ -62,10 +65,12 @@ export function sfxCueSource(cueId: SfxCueId): SfxCueStatus['source'] {
   return resolvePlayable(cueId)?.source ?? 'none'
 }
 
-/** 该 cue 当前是否适用音高随机（战斗重复音 + 全局幅度 > 0；BGM/环境 loop 永不抖） */
+/** 该 cue 当前适用的音高随机幅度（0 = 不抖）：固定幅度优先，战斗重复音跟随设置；loop 永不抖 */
 function pitchCentsOf(cueId: SfxCueId): number {
   const cue = SFX_CUES[cueId]
-  if (cue.pitchJitter !== true || cue.loop === true) return 0
+  if (cue.loop === true) return 0
+  if (cue.pitchJitterCents !== undefined) return cue.pitchJitterCents
+  if (cue.pitchJitter !== true) return 0
   return readSfxPrefs().pitchJitterCents
 }
 

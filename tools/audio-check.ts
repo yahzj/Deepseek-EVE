@@ -96,6 +96,10 @@ for (const id of SFX_CUE_IDS) {
   check(Number.isFinite(cue.minGapMs) && cue.minGapMs >= 0, `${id}：minGapMs 必须 ≥ 0，实际 ${cue.minGapMs}`)
   check(Number.isInteger(cue.maxConcurrent) && cue.maxConcurrent >= 1, `${id}：maxConcurrent 必须是正整数，实际 ${cue.maxConcurrent}`)
   check(typeof cue.nameId === 'string' && cue.nameId !== '', `${id}：缺中文名 id`)
+  if (cue.pitchJitterCents !== undefined) {
+    check(Number.isInteger(cue.pitchJitterCents) && cue.pitchJitterCents > 0 && cue.pitchJitterCents <= PITCH_JITTER_MAX_CENTS,
+      `${id}：固定音高幅度必须是 1～${PITCH_JITTER_MAX_CENTS} 的整数音分`)
+  }
 }
 for (const category of SFX_CATEGORIES) {
   check(typeof SFX_CATEGORY_NAME_ID[category] === 'string' && SFX_CATEGORY_NAME_ID[category] !== '', `分类 ${category}：缺中文名 id`)
@@ -393,6 +397,12 @@ check(pitchRateFor(100, () => 0.5) === 1, '音高：中值随机应原调')
 check(pitchRateFor(100, () => Number.NaN) === 1, '音高：异常随机源应原调')
 check(parseSfxPrefs('{"pitchJitterCents":250}').pitchJitterCents === PITCH_JITTER_MAX_CENTS, '音高偏好：越界应钳到上限')
 check(parseSfxPrefs('{}').pitchJitterCents === 100, '音高偏好：默认 ±100 音分')
+
+/* UI 点击音固定 ±50 音分（2026-11-05 船长口径；不受战斗滑条影响） */
+check(SFX_CUES['ui-click'].pitchJitterCents === 50, 'UI 点击音应固定 ±50 音分')
+check(SFX_CUES['ui-error'].pitchJitterCents === undefined && SFX_CUES['comms-received'].pitchJitterCents === undefined, '其他界面音不应抖动')
+check(Math.abs(pitchRateFor(50, () => 0) - Math.pow(2, -50 / 1200)) < 1e-12, '音高：-50 音分速率错误')
+check(Math.abs(pitchRateFor(50, () => 1) - Math.pow(2, 50 / 1200)) < 1e-12, '音高：+50 音分速率错误')
 
 /* 场景解析（BGM/环境层） */
 const noScene = { battleOnStage: false, wormholeActive: false, invasionActive: false, docked: false }

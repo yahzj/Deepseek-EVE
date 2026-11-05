@@ -34,6 +34,11 @@ export interface SfxCueDef {
    * 一次性重音（胜负/沉没/击毁）与 BGM/环境不加，避免仪式感与循环漂移。
    */
   readonly pitchJitter?: true
+  /**
+   * 固定音高随机幅度（音分）：每次播放随机 ±该值，不跟随设置里的战斗滑条。
+   * 目前只用于 UI 点击音（±50 音分，2026-11-05 船长口径）；与 `pitchJitter` 二选一。
+   */
+  readonly pitchJitterCents?: number
   /** 本音效没素材时回落的语义 id（目前只用于「按弹种拆分的开火音」回落旧 `combat-fire`） */
   readonly fallback?: 'combat-fire'
 }
@@ -72,7 +77,7 @@ const SFX_CUE_DEFS = {
 
   // ── 界面 ──
   'comms-received': { category: 'ui', gain: 0.6, minGapMs: 500, maxConcurrent: 1, nameId: 'ui.sfx.015' },
-  'ui-click': { category: 'ui', gain: 0.35, minGapMs: 60, maxConcurrent: 2, nameId: 'ui.sfx.096' },
+  'ui-click': { category: 'ui', gain: 0.35, minGapMs: 60, maxConcurrent: 2, nameId: 'ui.sfx.096', pitchJitterCents: 50 },
   'ui-error': { category: 'ui', gain: 0.5, minGapMs: 1000, maxConcurrent: 1, nameId: 'ui.sfx.097' },
 
   // ── BGM（循环，5 场景；交叉淡入淡出由 `music.ts` 管）──
