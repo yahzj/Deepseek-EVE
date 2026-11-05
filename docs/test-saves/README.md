@@ -45,6 +45,55 @@
 
 ---
 
+## 已清理测试档（37 份，2026-11-05）
+
+> 第二批瘦身：下列 `test-save-*` 合成档超过一个月、零引用，已从本目录**删除**。
+> 它们全部在主树 git 中，并在归档区 `Deepseek-EVE/docs/test-saves/` 留有 SHA256 副本，可按需恢复。
+> 下文「档案清单」「再生成」里这些 case 的**说明与生成命令继续有效**，需要复测时按对应命令重新生成档即可。
+> 62 个 `user-backup-*` / `save-*.json.json` 真档备份按本文件「其余真档备份一律不删」裁决原位保留；16 个工具硬引用档与 34 个近一月档也全部保留。
+
+```
+test-save-abyssgate-20260911-090943.json
+test-save-b1-20260904-182854.json
+test-save-battleship-20260924-230042.json
+test-save-battleship-20260924-231344.json
+test-save-battleship-20260924-231744.json
+test-save-bp-cancel-20260920-102449.json
+test-save-cruiser-20260909-111734.json
+test-save-dfamily-20260911-202438.json
+test-save-drone-20260908-214746.json
+test-save-drone-20260909-000208.json
+test-save-drone-20260912-174550.json
+test-save-etier-20260910-233010.json
+test-save-gswarm-20260912-164955.json
+test-save-hauling-20260909-195325.json
+test-save-hullrep-20260909-220854.json
+test-save-lairgear-20260910-233013.json
+test-save-lockrep-20260909-225118.json
+test-save-pd-20260911-223058.json
+test-save-pd-20260912-072510.json
+test-save-rarebox-20260910-224146.json
+test-save-redtide-20260907-234825.json
+test-save-redtide-20260908-000638.json
+test-save-shipart-20260909-164103.json
+test-save-shipwreck-20260926-120117.json
+test-save-wave-20260909-195500.json
+test-save-weekend-20260925-171234.json
+test-save-weekendkill-20260925-171235.json
+test-save-wh-bag-20260914-150050.json
+test-save-wh-ewar-20260917-141937.json
+test-save-wh-holdfull-20260923-160044.json
+test-save-wh-intercept-20260916-124604.json
+test-save-wh-layer4-20260914-145911.json
+test-save-wh-overload-20260913-222235.json
+test-save-wh-overload-20260914-150051.json
+test-save-whexpedition-ground-20261004.json
+test-save-whexpedition-overload-20261004.json
+test-save-wormhole-20260913-092736.json
+```
+
+---
+
 ## 命名规则（2026-09-08 船长定）
 
 测试存档命名必须符合用途：文件名 `<feature>` 段 = `make-test-save.ts` 中注册的
@@ -613,7 +662,7 @@ npx tsx tools/make-test-save.ts b1
   ①锤头鲨·炮击巡洋（5×动能 MK3 + 支援，**设为驾驶**）、②牛鲨·突击巡洋（5×动能 MK3）、
   ③玄武·重装战列舰、④皇带鱼·旗舰货舰、⑤座头鲸·矿舰（③~⑤ = 动能 MK2 可战配置）；
   装备库备 MK2/MK3 三族武器与支援件 ×3 可换装；仓库三型弹药 ×5000；全舰耐久回满。
-- 建议测试路径（目测重点见 docs/design/ship-battle-art/acceptance-visual-20260909.md）：
+- 建议测试路径（目测重点见 归档区/docs/design/ship-battle-art/acceptance-visual-20260909.md）：
   星图·战斗悬赏逐敌族开战对照造型——**A 海盗舰系**（赤潮/碎晶/灰霾/蜃影/边境海盗/信标猎手）、
   **B 武装拾荒者**（演习场驱逐令/新港护航/占港拾荒）、**C 异形生物**（裂谷畸变/星髓/噬口/深渊之门）、
   **D 守墓古舰**（坟场/虚海/穹顶/幽灵舰）、**E 泰坦巨构**（泰坦残骸/奥罗残骸）、**F 制式巡逻**

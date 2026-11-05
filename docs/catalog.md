@@ -3,6 +3,7 @@
 > 本页负责按任务指路；`docs/INDEX.md`是机器生成的现行文档清册。
 > **归档区** = `H:\大鲸鱼\_docs-archive-20261105\Deepseek-EVE\`（2026-11-05 外迁，独立 git 仓库，默认禁读）；文中「归档区/…」与历史文档里的旧 `docs/archive/`、`docs/design/archive/` 都指该处对应路径。
 > 旧记录集中在`归档区/docs/archive/`与`归档区/docs/design/archive/`。**没有船长明确的查阅要求，平时工作禁止阅读、检索、批量扫描或自动载入旧记录，也不得转查Git历史绕过。**历史链接、普通开发请求和会话续接不授予查阅权限。
+> 2026-11-05 第二批外迁的 11 份历史验收/基线文档见 `归档区/README.md`；37 个已清理测试档见 `docs/test-saves/README.md`。
 
 ## 工作入口
 
@@ -23,7 +24,8 @@
 | 中文术语、机制名 | `docs/glossary.md` |
 | 已获授权的英文工作 | `docs/glossary-en.md`、`docs/l10n-pending.md` |
 | 静态参数与内容编辑 | `docs/data-map.md`、`docs/data-editor.md`、`docs/content-workbench.md` |
-| 数据微调（改既有价格 / 下架市场卡） | `AGENTS.md` §2.2 T0 快速通道 → `npm run data:quick`；不改 `content-csv/` |
+| 改动判档与验证（提交前） | `npm run tier` 看档位 → `npm run verify` 按档执行；`--tier=T1/T2` 只能升档 |
+| 数据微调（改既有价格 / 下架市场卡） | `AGENTS.md` §2.2 T0-data → `npm run data:quick`；不改 `content-csv/` |
 | 页面、表现与动画 | 开发约定§九、§十四，再读本域实现与对应现行设计稿 |
 | 深空证券交易所（极简双向/专业重构/标准K线） | `docs/design/deep-space-exchange-pro-refinement-20261103.md`；现行设计稿与视觉/交互规范 |
 | 设置子页面分类 | `docs/design/settings-subpages-20261103.md`；仅重组现有设置项，实施期间为现行工作稿 |
