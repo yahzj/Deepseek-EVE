@@ -1,8 +1,9 @@
 import { isEn } from '../../../i18n/locale'
 import { T } from '../texts'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useReducer, useState } from 'react'
 import { ChevronRight } from '@carbon/icons-react'
 import { createExchangeClient } from '../factory'
+import { CLOUD_SESSION_CHANGE_EVENT } from '../../cloud/preferences'
 import { price, pct, amount } from '../format'
 import { DEFAULT_EXCHANGE_CODE, setExchangeSelectedCode } from '../selectedCode'
 import '../exchange.css'
@@ -20,7 +21,15 @@ interface SidebarExchangeCardProps {
  */
 export function SidebarExchangeCard({ onGoPage }: SidebarExchangeCardProps) {
   const [tick, bumpTick] = useState(0)
-  const bundle = useMemo(() => createExchangeClient(), [])
+  // 2026-11-05 游客行情批：登录/退出后必须换客户端实例——游客连接是匿名的，
+  // 不换就一直读不到自己的持仓（侧栏持仓永远显示 0）。
+  const [authTick, bumpAuth] = useReducer((n: number) => n + 1, 0)
+  useEffect(() => {
+    const onChange = (): void => bumpAuth()
+    window.addEventListener(CLOUD_SESSION_CHANGE_EVENT, onChange)
+    return () => window.removeEventListener(CLOUD_SESSION_CHANGE_EVENT, onChange)
+  }, [])
+  const bundle = useMemo(() => createExchangeClient(), [authTick])
 
   useEffect(() => {
     const unsub = bundle.client.onTick(() => bumpTick((t) => t + 1))

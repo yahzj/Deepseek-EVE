@@ -1,186 +1,103 @@
 /**
- * 交易所装配点（**双轨数据源**，2026-11-03 船长追加；同日追加「真实传输自动装配」）。
+ * 交易所装配点（2026-11-05 游客行情批：**移除模拟盘**，未登录只能看公开行情）。
  *
- * 解析顺序（2026-11-04 可玩性批修订；与设计稿 §八 一致，新增云账号默认）：
- *   ① 显式 `opts.mode`（最高优先，联调/探针用）
- *   ② `localStorage['whale-idle:exch-src']`（玩家的显式选择：值为 `mock` / `http`，或 JSON
- *      `{"mode","serverUrl"}`；显式写 `mock` 就恒走模拟盘，尊重调试/演示意图）
- *   ③ 无显式值：**云账号已登录（会话有 token）⇒ 默认 `http`**，服务器地址取
- *      `readCloudPreferences().server`（未配置时 preferences 自己已回落到 `DEFAULT_CLOUD_SERVER`）；
- *      未登录 ⇒ 默认 `mock`
- * `http` 模式下：
- *   - 有服务器地址 + 已登录 ⇒ **自动创建 `RendererTransport`**（真实 fetch/WS，见其文件头），
- *     `ExchangePage` 一行不用改就能吃到真数据；
- *   - 没有服务器地址 / 没登录 / 显式注入了传输层时才按注入走 ⇒ 返回**引导态错误**，
- *     **不静默回退**到模拟盘。
+ * 船长 2026-11-05 令：「股市系统的模拟盘可以去掉了，做成没有登录就只能看，不能操作。」
+ * 因此数据源只剩真实服务器一条路，按登录态分成两种身份：
+ *   - `account`：云账号已登录（会话有 token）⇒ Bearer 令牌，账户/委托/回合/理财/策略全可用；
+ *   - `guest`：未登录 ⇒ 匿名只读：REST 不带 `Authorization`、WS 不带 `token`，只收公开行情帧；
+ *     需要登录的接口（account/orders/round/bond/fund/strategies）**根本不发**
+ *     （见 `HttpExchangeClient` 的 `guest` 分支），写接口由传输层直接拒绝。
  *
- * 为什么登录后默认 http（2026-11-04）：页面没有切换数据源的按钮（只有 mock 下的重置按钮），
- * 默认继续 mock 会让玩家永远进不了真实服务器，联机批次等于不可玩；登录态本身就是「要用云端」
- * 的信号。`origin = 'default'` 因此包含两种默认来源：登录后的 http 与未登录的 mock（枚举不变）。
+ * 服务器地址：`opts.serverUrl` → 云存档设置里的 server → `DEFAULT_CLOUD_SERVER`；
+ * 地址解析失败才返回引导态错误（`ExchangePage` 的 <ExchangeGuide>），不再有「未登录 ⇒ 引导页」。
  *
- * 为什么 Mock 用模块级单例：调试页切导航会被卸载重挂（`key={page}`），若每次进页都新建客户端，
- * 资金/持仓/策略全丢。单例构造即启动行情引擎，页面卸载只退订、不停止（挂机语义）。
- * HTTP 客户端同样按「服务器地址 + 传输层类型」复用，避免切页重建连接。
+ * 为什么 HTTP 客户端按「地址 + 身份」复用：切页会重新调 `createExchangeClient()`，
+ * 不复用会把 WS 和行情缓存全丢；但登录前后身份不同，必须换实例——否则登录后仍复用匿名连接。
+ * `MockExchangeClient` 不再进运行时装配（`mock/` 模块本身保留：tools 的夹具与回放仍在用）。
  */
 import type { ExchangeClient } from './client'
 import { DEFAULT_CLOUD_SERVER, FALLBACK_CLOUD_SERVER, readCloudPreferences } from '../cloud/preferences'
-import { MockExchangeClient } from './mock/MockExchangeClient'
 import { HttpExchangeClient } from './http/HttpExchangeClient'
 import { RendererTransport } from './http/RendererTransport'
 import { ExchangeOfflineError, NotConnectedTransport, type Transport } from './http/transport'
 
-/** 数据源选择键（与游戏 v31 存档完全隔离） */
-export const EXCHANGE_SOURCE_KEY = 'whale-idle:exch-src'
-/** 服务器地址键（可选；与数据源选择分开，方便只切模式不改地址） */
-export const EXCHANGE_SERVER_KEY = 'whale-idle:exch-server'
-
-export type ExchangeMode = 'mock' | 'http'
+/** 当前会话身份：登录后用账号令牌，未登录只读公开行情 */
+export type ExchangeAuth = 'account' | 'guest'
 
 export interface ExchangeSourceInfo {
-  mode: ExchangeMode
-  serverUrl: string | null
-  /**
-   * 数据源决定的来源。`default` = 没有任何显式配置时的解析结果：
-   * 云账号已登录 ⇒ `http`，未登录 ⇒ `mock`（详见文件头）。
-   */
-  origin: 'localStorage' | 'explicit' | 'default'
+  serverUrl: string
+  /** `account` = 已登录可操作；`guest` = 未登录，页面只读 */
+  auth: ExchangeAuth
 }
 
 export interface ExchangeClientOptions {
-  mode?: ExchangeMode
   serverUrl?: string | null
-  /**
-   * 显式注入传输层（联调/探针/将来主进程 IPC 代理）。不传时 `http` 模式会自动装配
-   * `RendererTransport`；未登录/无地址仍返回引导态，不产生网络。
-   */
+  /** 显式注入传输层（联调/探针/将来主进程 IPC 代理） */
   transport?: Transport
+  /** 强制游客只读（探针/测试）；默认按云账号会话里有没有 token 判断 */
+  guest?: boolean
 }
 
 export interface ExchangeClientBundle {
   client: ExchangeClient
   source: ExchangeSourceInfo
-  /** 非空 = 页面应显示引导态（服务器未配置 / 传输层未接入） */
+  /** 非空 = 页面应显示引导态（服务器地址不可用 / 传输层未接入） */
   error: ExchangeOfflineError | null
 }
 
-interface StoredSource {
-  mode: ExchangeMode
-  serverUrl: string | null
-}
-
-function readStoredSource(): StoredSource | null {
-  if (typeof window === 'undefined') return null
-  try {
-    const raw = window.localStorage.getItem(EXCHANGE_SOURCE_KEY)
-    if (!raw) return null
-    const fallbackUrl = window.localStorage.getItem(EXCHANGE_SERVER_KEY)
-    if (raw === 'mock' || raw === 'http') return { mode: raw, serverUrl: fallbackUrl }
-    const parsed = JSON.parse(raw) as { mode?: unknown; serverUrl?: unknown }
-    const mode = parsed?.mode === 'http' ? 'http' : parsed?.mode === 'mock' ? 'mock' : null
-    if (!mode) return null
-    const url =
-      typeof parsed.serverUrl === 'string' && parsed.serverUrl.trim() !== ''
-        ? parsed.serverUrl.trim()
-        : fallbackUrl
-    return { mode, serverUrl: url }
-  } catch {
-    return null
-  }
-}
-
 /**
- * 没有任何显式数据源时，按云账号登录态给出默认值：已登录 ⇒ `http` + 云端地址，未登录 ⇒ null。
+ * 解析当前数据源（不创建客户端；页面/工具可单独调用做徽标与游客判断）。
  *
- * 只判断会话里**是否有 token**，不读取、不打印令牌内容。地址只做去空白；空地址/格式错误不在
- * 解析层兜底成模拟盘，仍返回 `http` 交给装配层报引导态（否则玩家会以为自己在联机）。
- * `readCloudPreferences()` 对「从未配置过服务器」已回落到 `DEFAULT_CLOUD_SERVER`，这里不重复。
+ * 只判断会话里**是否有 token**，不读取、不打印令牌内容；地址为空时回落默认服务器，
+ * 保证「未登录也能看到真实公开行情」不会因为没填地址而变成空白页。
  */
-function resolveAccountDefault(): StoredSource | null {
-  const prefs = readCloudPreferences()
-  if (!prefs.session?.token) return null
-  const server = typeof prefs.server === 'string' ? prefs.server.trim() : ''
-  return { mode: 'http', serverUrl: server === '' ? null : server }
-}
-
-/** 解析当前数据源（不创建客户端；页面/工具可单独调用做徽标与引导判断） */
 export function resolveExchangeSource(opts: ExchangeClientOptions = {}): ExchangeSourceInfo {
-  const stored = readStoredSource()
-  // 显式 opts.mode / localStorage 已表态时不再掺入账号默认，避免覆盖玩家的显式选择。
-  const accountDefault = opts.mode === undefined && stored === null ? resolveAccountDefault() : null
-  const mode: ExchangeMode = opts.mode ?? stored?.mode ?? accountDefault?.mode ?? 'mock'
-  let serverUrl: string | null = opts.serverUrl ?? stored?.serverUrl ?? null
-  // 显式 http 但没给地址（且 localStorage 也没有）时，登录态可作为地址来源；未登录仍留给引导态。
-  if (serverUrl === null && mode === 'http' && accountDefault) {
-    serverUrl = accountDefault.serverUrl
-  }
-  // 2026-11-04：http 模式下解析不到地址就用默认 IP 直连——空地址不再等于「引导态」。
-  if (mode === 'http' && (serverUrl === null || serverUrl.trim() === '')) {
-    serverUrl = DEFAULT_CLOUD_SERVER
-  }
-  return {
-    mode,
-    serverUrl,
-    origin: opts.mode !== undefined ? 'explicit' : stored ? 'localStorage' : 'default',
-  }
+  const prefs = readCloudPreferences()
+  const configured =
+    typeof opts.serverUrl === 'string' ? opts.serverUrl.trim() : prefs.server.trim()
+  const serverUrl = configured === '' ? DEFAULT_CLOUD_SERVER : configured
+  const guest = opts.guest ?? !prefs.session?.token
+  return { serverUrl, auth: guest ? 'guest' : 'account' }
 }
 
-let sharedMock: MockExchangeClient | null = null
 let sharedHttp: { key: string; client: HttpExchangeClient } | null = null
 
 /**
  * 创建/复用交易所客户端。
- * - `mock`：全进程唯一实例；构造即启动 1 秒行情，页面卸载不停止。
- * - `http`：有地址且已登录时**自动装配** `RendererTransport`；否则返回引导态错误。
+ * - 已登录/游客都走 `RendererTransport`（`allowAnonymous` 在游客时放行只读）；
+ * - 地址不可解析时返回引导态错误，不静默回退到任何本地行情。
  */
 export function createExchangeClient(opts: ExchangeClientOptions = {}): ExchangeClientBundle {
   const source = resolveExchangeSource(opts)
-  if (source.mode === 'http') {
-    if (!source.serverUrl) {
+  const guest = source.auth === 'guest'
+
+  let transport = opts.transport
+  if (!transport) {
+    try {
+      transport = new RendererTransport({
+        serverUrl: source.serverUrl,
+        // 默认 IP 直连失败时换域名各试一次（不写回设置，见 RendererTransport.request）。
+        fallbackServerUrl: FALLBACK_CLOUD_SERVER,
+        // 游客只读：没令牌也允许 GET/WS，写请求仍抛 ExchangeAuthError。
+        allowAnonymous: true,
+      })
+    } catch (err) {
       return {
-        client: new HttpExchangeClient(new NotConnectedTransport()),
+        client: new HttpExchangeClient(new NotConnectedTransport(), '/api/exchange', true),
         source,
-        error: new ExchangeOfflineError('尚未配置交易所服务器地址：请先在云端设置里填写服务器地址'),
+        error:
+          err instanceof ExchangeOfflineError
+            ? err
+            : new ExchangeOfflineError('交易所服务器地址不可用：请检查云端设置里的服务器地址'),
       }
     }
-
-    let transport = opts.transport
-    if (!transport) {
-      // 渲染层真实传输（2026-11-03 联机批）：有地址还得先登录——交易所全部私有接口都要
-      // 与云存档同一个 Bearer token；没登录就进股市只会拿到 401，不如直接给引导态。
-      const token = readCloudPreferences().session?.token
-      if (!token) {
-        return {
-          client: new HttpExchangeClient(new NotConnectedTransport()),
-          source,
-          error: new ExchangeOfflineError(
-            '尚未登录：请先在云端设置里登录账号，再进入股市（联机交易需要账号令牌）',
-          ),
-        }
-      }
-      try {
-        transport = new RendererTransport({
-          serverUrl: source.serverUrl,
-          // 默认 IP 直连失败时换域名各试一次（不写回设置，见 RendererTransport.request）。
-          fallbackServerUrl: FALLBACK_CLOUD_SERVER,
-        })
-      } catch (err) {
-        return {
-          client: new HttpExchangeClient(new NotConnectedTransport()),
-          source,
-          error:
-            err instanceof ExchangeOfflineError
-              ? err
-              : new ExchangeOfflineError('交易所服务器地址不可用：请检查云端设置里的服务器地址'),
-        }
-      }
-    }
-
-    const key = `${source.serverUrl}|${transport.constructor.name}`
-    if (sharedHttp === null || sharedHttp.key !== key) {
-      sharedHttp = { key, client: new HttpExchangeClient(transport) }
-    }
-    return { client: sharedHttp.client, source, error: null }
   }
-  if (sharedMock === null) sharedMock = new MockExchangeClient()
-  return { client: sharedMock, source, error: null }
+
+  // 身份进 key：登录/退出后必须换新实例，否则会继续复用上一个身份的连接与快照。
+  const playerId = readCloudPreferences().session?.playerId ?? 'anon'
+  const key = `${source.serverUrl}|${source.auth}|${playerId}|${transport.constructor.name}`
+  if (sharedHttp === null || sharedHttp.key !== key) {
+    sharedHttp = { key, client: new HttpExchangeClient(transport, '/api/exchange', guest) }
+  }
+  return { client: sharedHttp.client, source, error: null }
 }

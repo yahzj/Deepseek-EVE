@@ -6,6 +6,8 @@
  * 素材：`assets/bgm/<id>.mp3`，本机覆盖（音效台导入）优先；**缺素材 = 静音**（不占位、不报错）。
  * 同一场景可放多份变体（`bgm-battle.mp3` + `bgm-battle.2.mp3`）：切到该场景时随机取一条并缓存，
  * 音量/静音刷新不会重选（否则循环曲会被切来切去）；「重播」与重新进场景会重新随机。
+ * **战斗场景额外**：每场新战斗开始时由战斗音效桥调用 `rerollBgmVariant('bgm-battle')` 换一条不同变体
+ * （船长 2026-11-05 裁定 B：清剿连打也要重新随机，交叉淡变过去）。
  * 音量：总音量 ×「音乐」分类 × 单曲增益；静音/拖滑条即时生效。
  * 后台：最小化/切标签页由 `index.ts` 的 visibility 生命周期暂停、恢复时从暂停处继续。
  * 网页首次自动播放被拒：由 `installMusicGestureRetry()` 在首次点击/按键后重试当前场景。
@@ -16,7 +18,7 @@ import { LoopChannel } from './loops'
 import { builtinSfxUrls } from './manifest'
 import { getSfxOverrideUrl } from './overrides'
 import { readSfxPrefs } from './prefs'
-import { BGM_CROSSFADE_MS, VOLUME_FADE_MS, pickVariant } from './rules'
+import { BGM_CROSSFADE_MS, VOLUME_FADE_MS, pickOtherVariant, pickVariant } from './rules'
 import { sceneBgmOf } from './scene'
 import type { SfxScene } from './scene'
 
@@ -113,6 +115,26 @@ export function restartMusic(): void {
   chosenCue = null
   chosenUrl = null
   apply()
+}
+
+/**
+ * 同场景重抽 BGM 变体（2026-11-05 船长裁定 B：**每场新战斗也重新随机换曲**）。
+ *
+ * 由战斗音效桥在一场新战斗开始时调用：若该场景音乐正在播，就换一条**与当前不同**的变体并
+ * 交叉淡变过去；若当前场景不是它，只作废变体缓存，下次进场景时重新随机。本机覆盖优先，不参与随机。
+ */
+export function rerollBgmVariant(cueId: SfxCueId): void {
+  try {
+    if (getSfxOverrideUrl(cueId) !== null) return
+    const urls = builtinSfxUrls(cueId)
+    const picked = pickOtherVariant(urls, chosenCue === cueId ? chosenUrl : null)
+    if (picked === null) return
+    chosenCue = cueId
+    chosenUrl = picked
+    if (currentScene !== null && sceneBgmOf(currentScene) === cueId) apply()
+  } catch {
+    /* 音频层事故不许影响游戏 */
+  }
 }
 
 /** 首次用户手势后重试（网页自动播放策略）；只挂一次 */

@@ -65,13 +65,13 @@
 | `docs/design/player-market-relay-20261104.md` | 玩家市场异步转发设计 | 进行中（进行中 - 方案已批准） | 2026-11-04 | 19 KB / 205 行 | 2 |
 | `docs/design/sfx-console-20261104.md` | 音效台调试批：大窗页签 / 场景预演 / 实时触发 / 一键入库 · 2026-11-04 工作文档 | 已确认/已实现（已实现自测） | 2026-11-04 | 8 KB / 84 行 | 3 |
 | `docs/design/stock-exchange-events-64-20261104.md` | 股市 · 64 事件四象分类与六人格改名（实施规格） | 已确认/已实现（已获船长确认） | 2026-11-04 | 5 KB / 94 行 | 1 |
-| `docs/design/stock-exchange-handoff-20261104.md` | 股票交易所系统交接文档（Handoff） | 未标注 | 2026-11-04 | 17 KB / 223 行 | 1 |
+| `docs/design/stock-exchange-handoff-20261104.md` | 股票交易所系统交接文档（Handoff） | 未标注 | 2026-11-04 | 17 KB / 223 行 | 3 |
 | `docs/design/stock-exchange-products-20261104.md` | 股市 · 保底产品与本地资金模型（2026-11-04） | 已确认/已实现（已实现并部署　｜　依据：船长 202） | 2026-11-04 | 5 KB / 62 行 | 3 |
 | `docs/design/ui-ux-20-rounds-audit-20261104.md` | 全局 UI/UX 20 轮深度审核与自动化修复全记录（2026-11-04） | 未标注（全部 20 轮圆满完成） | 2026-11-04 | 33 KB / 398 行 | 0 |
 | `docs/design/activitybar-progress-smoothness-20261103.md` | 设计文档：左侧活动栏进度条刷新率与平滑度优化 (2026-11-03) | 未标注 | 2026-11-03 | 4 KB / 63 行 | 0 |
-| `docs/design/cloud-settings-20261103.md` | 账号与云存档设置（2026-11-03） | 未标注（本批仅本地合入） | 2026-11-03 | 9 KB / 69 行 | 2 |
+| `docs/design/cloud-settings-20261103.md` | 账号与云存档设置（2026-11-03） | 未标注（本批仅本地合入） | 2026-11-03 | 10 KB / 69 行 | 3 |
 | `docs/design/deep-space-exchange-dual-mode-20261103.md` | 设计文档：深空证券交易所（DSSE）双模式 UI/UX 重构 (2026-11-03) | 未标注 | 2026-11-03 | 4 KB / 57 行 | 0 |
-| `docs/design/deep-space-exchange-pro-refinement-20261103.md` | 深空证券交易所 · 专业界面重构与活动栏常驻监控设计（2026-11-03） | 已确认/已实现（已获船长授权实施完毕并通过全量验收） | 2026-11-03 | 14 KB / 129 行 | 2 |
+| `docs/design/deep-space-exchange-pro-refinement-20261103.md` | 深空证券交易所 · 专业界面重构与活动栏常驻监控设计（2026-11-03） | 已确认/已实现（已获船长授权实施完毕并通过全量验收） | 2026-11-03 | 14 KB / 129 行 | 3 |
 | `docs/design/main-git-sync-20261103.md` | 主树 Git 同步工作记录（2026-11-03） | 未标注（本地第三次 merge 待完成、待验） | 2026-11-03 | 2 KB / 26 行 | 1 |
 | `docs/design/online-chat-20261103.md` | 在线聊天接入（2026-11-03） | 未标注（2026-11-04 已在本地将 f） | 2026-11-03 | 10 KB / 118 行 | 2 |
 | `docs/design/settings-subpages-20261103.md` | 设置子页面分类（2026-11-03） | 未标注（设置分类及第一轮远端同步已包含在本地） | 2026-11-03 | 4 KB / 44 行 | 2 |
@@ -87,15 +87,15 @@
 | `docs/design/stock-exchange-playtest-20261103.md` | 证券交易所 · 可玩性算法验证（P0：建造前筛参数） | 未标注（设计并实施中　｜　日期：2026-1） | 2026-11-03 | 6 KB / 105 行 | 2 |
 | `docs/design/stock-exchange-playtest-v2-20261103.md` | 证券交易所 · 可玩性验证 v2：赌桌级动力学验证 | 未标注（设计并实施中　｜　日期：2026-1） | 2026-11-03 | 12 KB / 206 行 | 0 |
 | `docs/design/stock-exchange-prototype-20261103.md` | 证券交易所 · 可点击原型（F0）工作文档 | 未标注（实施中） | 2026-11-03 | 15 KB / 202 行 | 0 |
-| `docs/design/stock-exchange-round-model-20261103.md` | 股市 · 回合制行情与撮合模型（5 分钟一轮，可配） | 未标注（设计已定） | 2026-11-03 | 6 KB / 93 行 | 4 |
-| `docs/design/stock-exchange-server-20261103.md` | 证券交易所（服务端真股市）设计方案 | 待裁定（待裁决） | 2026-11-03 | 43 KB / 615 行 | 6 |
+| `docs/design/stock-exchange-round-model-20261103.md` | 股市 · 回合制行情与撮合模型（5 分钟一轮，可配） | 未标注（设计已定） | 2026-11-03 | 6 KB / 93 行 | 5 |
+| `docs/design/stock-exchange-server-20261103.md` | 证券交易所（服务端真股市）设计方案 | 待裁定（待裁决） | 2026-11-03 | 43 KB / 615 行 | 7 |
 | `docs/design/stock-exchange-short-selling-20261103.md` | 股市 · 做空与借券（回合制 B2） | 已确认/已实现（v1 已实现并灰度上线） | 2026-11-03 | 6 KB / 84 行 | 1 |
 | `docs/design/stock-market-system-20261103.md` | 证券交易所（股市系统）设计方案与技术架构 | 待裁定（设计方案待裁决） | 2026-11-03 | 13 KB / 198 行 | 4 |
 | `docs/design/ui-scifi-hud-refinement-20261103.md` | 科幻未来（Modern HUD）UI/UX 全维规范化修复与体验优化 · 2026-11-03 | 待裁定（已完成 · 待船长验收） | 2026-11-03 | 3 KB / 43 行 | 1 |
 | `docs/design/ui-ux-ergonomics-audit-20261103.md` | 设计文档：UI/UX 工效学与视觉硬伤全面修复 (2026-11-03) | 未标注 | 2026-11-03 | 3 KB / 59 行 | 0 |
 | `docs/design/whale-server-1000ccu-20261103.md` | whale-server · 1000 人在线容量评估与重构方案 | 未标注（方案稿） | 2026-11-03 | 12 KB / 209 行 | 1 |
 | `docs/design/carbon-icons-modern-layout-20261102.md` | 现代布局 Carbon Icons 升级方案（科幻未来专供 · 2026-11-02） | 未标注（已结合船长两次指令深化） | 2026-11-02 | 7 KB / 88 行 | 0 |
-| `docs/design/cosmic-hud-layout-20261102.md` | 界面外壳：第三套可选布局「深空 HUD / Cosmic」设计方案 | 未标注（船长已裁定并下达优化令） | 2026-11-02 | 10 KB / 155 行 | 0 |
+| `docs/design/cosmic-hud-layout-20261102.md` | 界面外壳：第三套可选布局「深空 HUD / Cosmic」设计方案 | 未标注（船长已裁定并下达优化令） | 2026-11-02 | 10 KB / 155 行 | 2 |
 | `docs/design/d2-main-integration-20261102.md` | 二号与主树整合及上传核验 | 未标注（本地整合与冲突处理完成） | 2026-11-02 | 6 KB / 72 行 | 0 |
 | `docs/design/datadog-dashboard-ui-20261102.md` | 深空数据看板与复杂后台监控大屏（DataDog / Mixpanel 风格）三轮 UX 审查与全量修复落地记录（2026-11-02） | 未标注（待验收） | 2026-11-02 | 8 KB / 85 行 | 1 |
 | `docs/design/encrypted-container-research-20261102.md` | 生产研究所与加密货柜 | 未标注（船长确认20%研究所、15%加密柜、） | 2026-11-02 | 5 KB / 47 行 | 0 |
@@ -442,7 +442,6 @@
 - `docs/design/stock-exchange-prototype-20261103.md`（2026-11-03 · 15 KB）—— 证券交易所 · 可点击原型（F0）工作文档
 - `docs/design/ui-ux-ergonomics-audit-20261103.md`（2026-11-03 · 3 KB）—— 设计文档：UI/UX 工效学与视觉硬伤全面修复 (2026-11-03)
 - `docs/design/carbon-icons-modern-layout-20261102.md`（2026-11-02 · 7 KB）—— 现代布局 Carbon Icons 升级方案（科幻未来专供 · 2026-11-02）
-- `docs/design/cosmic-hud-layout-20261102.md`（2026-11-02 · 10 KB）—— 界面外壳：第三套可选布局「深空 HUD / Cosmic」设计方案
 - `docs/design/d2-main-integration-20261102.md`（2026-11-02 · 6 KB）—— 二号与主树整合及上传核验
 - `docs/design/encrypted-container-research-20261102.md`（2026-11-02 · 5 KB）—— 生产研究所与加密货柜
 - `docs/design/manual-publish-20261102.md`（2026-11-02 · 3 KB）—— 统一手动发布
@@ -595,6 +594,7 @@
 
 - `docs/design/announcement-draft-update-20261105.md`（2026-11-05）—— 本次更新公告修订稿
 - `docs/design/cloud-8443-20261105.md`（2026-11-05）—— 云端入口切 8443（2026-11-05）
+- `docs/design/exchange-demand-adaptive-20261105.md`（2026-11-05）—— 深空证券交易所 · 玩家需求自适应流动性（2026-11-05）
 - `docs/design/exchange-feedback-20261105.md`（2026-11-05）—— 股市交易反馈与界面修复
 - `docs/design/fleet-command-compensation-20261105.md`（2026-11-05）—— 旧存档编队协同指挥补偿
 - `docs/review/acceptance-20261105.md`（2026-11-05）—— 待验收项批量验收台账 · 2026-11-05
@@ -765,7 +765,7 @@
 - `docs/development-conventions.md`（无日期）—— 开发约定
 - `docs/glossary-en.md`（无日期）—— 英文术语与专名译名表（English Glossary & Naming Table）
 - `docs/glossary.md`（无日期）—— 术语词典
-- `docs/l10n-pending.md`（无日期）—— 待英文本地化记录
+- `docs/l10n-pending.md`（无日期）—— 英文本地化记录
 - `docs/review/guoqing-audit-followup.md`（无日期）—— 国庆节审查当前跟进
 - `docs/roadmap.md`（无日期）—— 当前待办与实施边界
 - `docs/single-source.md`（无日期）—— 单点索引（谁有权算、谁只能读）

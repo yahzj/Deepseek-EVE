@@ -257,6 +257,12 @@
   text-shadow: 0 0 8px rgb(var(--wui-cyan) / 0.35);
 }
 
+/* 顶栏资产读数：标签与数值一律末尾对齐，长短数值不再参差 */
+.ex-topbar-stats .ex-stat {
+  align-items: flex-end;
+  text-align: right;
+}
+
 .ex-topbar-actions {
   display: flex;
   align-items: center;
@@ -2876,16 +2882,94 @@
   white-space: nowrap;
 }
 
-.ex-source-badge.is-mock {
-  border-color: rgb(var(--wui-accent) / 0.65);
-  color: rgb(var(--wui-accent));
-  background: rgb(var(--wui-accent) / 0.08);
+.ex-source-badge.is-guest {
+  border-color: rgb(var(--wui-border-bright));
+  color: rgb(var(--wui-text-dim));
+  background: rgb(var(--wui-bg-hover) / 0.35);
 }
 
 .ex-source-badge.is-server {
   border-color: rgb(var(--wui-gold) / 0.65);
   color: rgb(var(--wui-gold));
   background: rgb(var(--wui-gold) / 0.08);
+}
+
+/* ── 游客只读提示条：紧贴顶栏下方的一整行说明（2026-11-05 游客行情批） ── */
+.ex-guest-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border: 1px solid rgb(var(--wui-gold) / 0.45);
+  border-radius: 5px;
+  background: rgb(var(--wui-gold) / 0.06);
+  color: rgb(var(--wui-text-dim));
+  font-size: var(--wui-fs-xs);
+}
+
+.ex-guest-banner-text {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── 游客禁用层：面板原样保留但压暗、不吃指针事件，整块可点提示登录 ── */
+.ex-guest-lock {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.ex-guest-lock-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  opacity: 0.55;
+  filter: grayscale(0.45);
+  pointer-events: none;
+  user-select: none;
+}
+
+.ex-guest-lock-veil {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0;
+  border: 1px dashed rgb(var(--wui-gold) / 0.5);
+  border-radius: 6px;
+  background: rgb(var(--wui-bg-deep) / 0.32);
+  color: rgb(var(--wui-gold));
+  font-size: var(--wui-fs-xs);
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.ex-guest-lock-veil:hover {
+  background: rgb(var(--wui-gold) / 0.1);
+  border-color: rgb(var(--wui-gold) / 0.85);
+}
+
+.ex-mode-tab.is-guest-locked {
+  opacity: 0.55;
+}
+
+.ex-mode-tab.is-guest-locked:hover {
+  background: transparent;
+}
+
+.ex-mini-btn.is-guest-locked {
+  opacity: 0.62;
+  border-style: dashed;
 }
 
 /* ── 回合倒计时与委托配额徽标组：统一 HUD 胶囊规范 ── */
@@ -2909,6 +2993,29 @@
 .ex-round-clock {
   font-weight: 600;
   letter-spacing: 1px;
+}
+
+/* 手动刷新行情：默认与读数徽标完全一致，悬停才显出按钮形态；冷却中禁用 */
+button.ex-round-clock-badge {
+  appearance: none;
+  cursor: default;
+}
+
+button.ex-round-clock-badge:hover:not(:disabled) {
+  cursor: pointer;
+  outline: 1px solid rgb(var(--wui-cyan) / 0.7);
+  outline-offset: 2px;
+}
+
+button.ex-round-clock-badge:not(.is-locked):not(.is-warn):hover:not(:disabled) {
+  border-color: rgb(var(--wui-cyan) / 0.8);
+  background: rgb(var(--wui-cyan) / 0.12);
+  color: rgb(var(--wui-cyan));
+}
+
+button.ex-round-clock-badge:disabled {
+  cursor: default;
+  opacity: 0.62;
 }
 
 /* 锁定前 30 秒：黄色提醒，不闪（闪烁只留给锁定档，避免长时间闪屏） */
@@ -4393,6 +4500,28 @@
   font-size: var(--wui-fs-xs);
 }
 
+/* 2026-11-05 wiki UI/UX 整改：空态可恢复、分组降密度、可点主按钮的光标提示 */
+.ex-simple-chart-empty {
+  flex-direction: column;
+  gap: 8px;
+}
+.ex-simple-chart-retry,
+.ex-simple-pos-go-trade {
+  flex: 0 0 auto;
+  margin-top: 4px;
+}
+.ex-simple-group-title {
+  flex: 0 0 auto;
+  padding: 6px 8px 2px;
+  color: rgb(var(--wui-text-dim));
+  font-size: var(--wui-fs-2xs);
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+.ex-simple-big-action-btn[aria-disabled='true'] {
+  cursor: help;
+}
+
 /* ── 极简中栏买卖舱 ── */
 .ex-simple-trade-section {
   flex-shrink: 0;
@@ -4430,7 +4559,7 @@
   user-select: none;
 }
 
-/* 涨（买多）按钮：高权重保障红涨色板生效，彻底抵消全局现代布局覆盖 */
+/* 涨（买多）按钮：高权重保障看涨色板生效，彻底抵消全局现代布局覆盖 */
 .app-root .ex-page .ex-simple-trade-tab.is-buy,
 .ex-page .ex-simple-trade-tab.is-buy {
   background: rgb(var(--wui-tone-gain) / 0.22) !important;
@@ -4731,10 +4860,12 @@
   color: rgb(var(--wui-tone-loss));
 }
 
-/* 立即下注主按钮：高亮橙黄色板，文案精简为立即下注 */
+/* 立即下注主按钮：看涨用涨色、看跌用跌色，两态不再同色 */
 html body .app-root.is-layout-modern .ex-page .ex-simple-big-action-btn,
 html body .app-root .ex-page .ex-simple-big-action-btn,
 .ex-simple-big-action-btn {
+  --ex-action-tone: var(--wui-tone-gain);
+  --ex-action-ink: var(--wui-chip-ink);
   width: 100%;
   height: 38px;
   box-sizing: border-box;
@@ -4748,34 +4879,40 @@ html body .app-root .ex-page .ex-simple-big-action-btn,
   letter-spacing: 2px;
   cursor: pointer;
   transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
-  background: linear-gradient(135deg, #f59f00 0%, #d97706 100%) !important;
-  border: 2px solid #fbbf24 !important;
-  color: #1e1b18 !important;
-  box-shadow: 0 0 16px rgba(245, 159, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
-  clip-path: none !important;
+  background: linear-gradient(135deg, rgb(var(--ex-action-tone) / 0.5), rgb(var(--ex-action-tone) / 0.35)) !important;
+  border: 2px solid rgb(var(--ex-action-tone)) !important;
+  color: rgb(var(--ex-action-ink)) !important;
+  box-shadow: 0 0 16px rgb(var(--ex-action-tone) / 0.35) !important;
+}
+
+html body .app-root.is-layout-modern .ex-page .ex-simple-big-action-btn.is-short,
+html body .app-root .ex-page .ex-simple-big-action-btn.is-short,
+.ex-simple-big-action-btn.is-short {
+  --ex-action-tone: var(--wui-tone-loss);
+  --ex-action-ink: var(--wui-text-bright);
 }
 
 html body .app-root.is-layout-modern .ex-page .ex-simple-big-action-btn:hover:not(:disabled),
 html body .app-root .ex-page .ex-simple-big-action-btn:hover:not(:disabled),
 .ex-simple-big-action-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #fbbf24 0%, #f59f00 100%) !important;
-  border-color: #fef08a !important;
-  color: #0f0d0b !important;
-  box-shadow: 0 0 22px rgba(251, 191, 36, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+  background: linear-gradient(135deg, rgb(var(--ex-action-tone) / 0.7), rgb(var(--ex-action-tone) / 0.55)) !important;
+  border-color: rgb(var(--ex-action-tone)) !important;
+  color: rgb(var(--ex-action-ink)) !important;
+  box-shadow: 0 0 22px rgb(var(--ex-action-tone) / 0.5) !important;
   transform: translateY(-1px);
 }
 
 html body .app-root.is-layout-modern .ex-page .ex-simple-big-action-btn:active:not(:disabled),
 .ex-simple-big-action-btn:active:not(:disabled) {
   transform: translateY(1px);
-  box-shadow: 0 0 10px rgba(245, 159, 0, 0.4) !important;
+  box-shadow: 0 0 10px rgb(var(--ex-action-tone) / 0.3) !important;
 }
 
 html body .app-root.is-layout-modern .ex-page .ex-simple-big-action-btn:disabled,
 .ex-simple-big-action-btn:disabled {
-  background: rgba(180, 115, 20, 0.18) !important;
-  border-color: rgba(180, 115, 20, 0.35) !important;
-  color: rgba(220, 175, 100, 0.45) !important;
+  background: rgb(var(--wui-text-dim) / 0.12) !important;
+  border-color: rgb(var(--wui-text-dim) / 0.3) !important;
+  color: rgb(var(--wui-text-dim)) !important;
   box-shadow: none !important;
   cursor: not-allowed;
   transform: none !important;

@@ -45,12 +45,16 @@ export const BGM_CROSSFADE_MS = 2500
 export const AMBIENT_CROSSFADE_MS = 1500
 export const VOLUME_FADE_MS = 250
 
-/** 默认偏好（船长 2026-11-02 确认：总音量 70%、初始不静音；音乐 55% / 环境 45%；战斗音高 ±100 音分） */
+/**
+ * 默认偏好（**船长 2026-11-05 指定**：总音量 100%、初始不静音；
+ * 音乐 15% / 环境 50% / 警报 70% / 战斗 100% / 生产 50% / 界面 50%；战斗音高 ±100 音分）。
+ * 已存过偏好的档沿用存档值，这里只影响首次安装与「恢复默认」。
+ */
 export function defaultSfxPrefs(): SfxPrefs {
   return {
     muted: false,
-    master: 0.7,
-    categories: { music: 0.55, ambient: 0.45, alarm: 1, combat: 0.6, progress: 0.7, ui: 0.5 },
+    master: 1,
+    categories: { music: 0.15, ambient: 0.5, alarm: 0.7, combat: 1, progress: 0.5, ui: 0.5 },
     pitchJitterCents: PITCH_JITTER_MAX_CENTS,
   }
 }
@@ -121,6 +125,17 @@ export function pitchRateFor(cents: number, random: () => number): number {
 export function shouldPlay(lastAtMs: number | undefined, nowMs: number, minGapMs: number): boolean {
   if (lastAtMs === undefined) return true
   return nowMs - lastAtMs >= Math.max(0, minGapMs)
+}
+
+/**
+ * **点击音要不要补**（2026-11-05 船长反馈「ui-error 出现时 ui-click 也会触发」）：
+ * 点击按钮会先排一声 `ui-click`；若这一击随后弹出错误提示（`ui-error`），两音几乎同时响会糊成一声。
+ * 契约：**错误提示的时刻不早于点击时刻，就只留错误音、不再补点击音**。
+ * 调用方先把点击音延后一拍，让本次点击的 onClick 跑完，再拿这条判定决定是否发声。
+ */
+export function shouldPlayClickCue(clickAtMs: number, lastErrorAtMs: number | undefined): boolean {
+  if (lastErrorAtMs === undefined) return true
+  return lastErrorAtMs < clickAtMs
 }
 
 /** 分类名 id（音效台/设置展示用） */
@@ -195,7 +210,9 @@ export const LOG_CUE_RULES: Readonly<Record<string, LogCueRule>> = {
   'core.weekend.001': { cue: 'trade-done' },
   'core.weekend.002': { cue: 'trade-done' },
   'core.weekend.043': { cue: 'trade-done' },
-  // 操作被拒（2026-11-02 追加 · UI 反馈）：只登记**玩家操作被拒**类 warn 日志，不铺全部 warn
+  // 操作被拒（2026-11-02 追加 · UI 反馈）：只登记**玩家操作被拒**类 warn 日志，不铺全部 warn。
+  // 2026-11-05 船长要求扩大覆盖：主通道改为 `App.showToast(text, warn=true)` → `ui-error`
+  //（见 game/audio/uiFeedback.ts 的 notifyUiError）；此白名单保留，服务没有 toast 的读档/自动停止等场景。
   'core.engine.009': { cue: 'ui-error' },
   'core.engine.010': { cue: 'ui-error' },
   'core.skillLicense.005': { cue: 'ui-error' },
@@ -256,6 +273,22 @@ export function pickVariant<T>(items: readonly T[], random: () => number): T | n
   const raw = random()
   const i = Math.floor((Number.isFinite(raw) ? raw : 0) * items.length)
   return items[Math.min(items.length - 1, Math.max(0, i))] ?? null
+}
+
+/**
+ * 重抽变体：尽量给一条**与当前不同**的（只有一条候选时原样返回，`current` 不在表里时全表随机）。
+ * 用于 BGM「每场新战斗重新随机换曲」（2026-11-05 船长裁定 B），避免抽到原曲导致听感上「没换」。
+ */
+export function pickOtherVariant<T>(
+  items: readonly T[],
+  current: T | null,
+  random: () => number = Math.random,
+): T | null {
+  if (items.length === 0) return null
+  if (items.length === 1) return items[0] ?? null
+  const index = current === null ? -1 : items.indexOf(current)
+  const pool = index >= 0 ? items.filter((_, i) => i !== index) : items
+  return pickVariant(pool, random)
 }
 
 /* ═══════════════ 触发匹配：生产进度 ═══════════════ */

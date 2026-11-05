@@ -16,6 +16,8 @@ import { T, TF } from '../texts'
 
 /** 轮询间隔：与倒计时刷新同频，1 秒一次 */
 const POLL_MS = 1_000
+/** 手动刷新行情冷却：复用每秒的 now 读数计时，不另开定时器 */
+const REFRESH_CD_MS = 10_000
 
 /** 剩余毫秒 → mm:ss（向上取整，避免刚进新回合就显示少 1 秒） */
 function formatMmss(remainingMs: number): string {
@@ -29,12 +31,15 @@ export interface RoundBadgeProps {
   client: ExchangeClient
   /** 进入新回合：页面重拉快照 / 重渲染（复用 ExchangePage 的 bump） */
   onNewRound: () => void
+  /** 手动刷新行情缓存；仅联机模式传，模拟盘保持纯读数 */
+  onRefreshMarket?: () => void
 }
 
-export function RoundBadge({ client, onNewRound }: RoundBadgeProps) {
+export function RoundBadge({ client, onNewRound, onRefreshMarket }: RoundBadgeProps) {
   const supportsRound = typeof client.getRound === 'function'
   const [round, setRound] = useState<RoundInfo | null>(null)
   const [now, setNow] = useState(() => Date.now())
+  const [lastRefreshAt, setLastRefreshAt] = useState(0)
   /** 服务器时间 − 本机时间（毫秒）：首次成功响应校准一次，之后沿用 */
   const offsetRef = useRef<number | null>(null)
   const lastRoundNoRef = useRef<number | null>(null)
@@ -94,17 +99,37 @@ export function RoundBadge({ client, onNewRound }: RoundBadgeProps) {
   const usedOrders = Math.max(0, Math.round(round.usedOrders ?? 0))
   const maxOrders = Math.max(1, Math.round(round.maxOrders))
 
+  const refreshable = typeof onRefreshMarket === 'function'
+  const cooling = refreshable && now - lastRefreshAt < REFRESH_CD_MS
+  const badgeClass = `ex-source-badge ex-round-clock-badge${locked ? ' is-locked' : warn ? ' is-warn' : ''}`
+  const badgeTitle = locked ? T.roundLockedHint : T.roundBadgeHint
+  const clock = (
+    <span className="ex-round-clock">
+      {locked ? `${T.roundLocked} ${mmss}` : `${T.roundSettleIn} ${mmss}`}
+    </span>
+  )
+
   return (
     <div className="ex-round-badge-group">
-      <span
-        className={`ex-source-badge ex-round-clock-badge${locked ? ' is-locked' : warn ? ' is-warn' : ''}`}
-        title={locked ? T.roundLockedHint : T.roundBadgeHint}
-        role="timer"
-      >
-        <span className="ex-round-clock">
-          {locked ? `${T.roundLocked} ${mmss}` : `${T.roundSettleIn} ${mmss}`}
+      {refreshable ? (
+        <button
+          type="button"
+          className={badgeClass}
+          title={badgeTitle}
+          disabled={cooling}
+          onClick={() => {
+            if (cooling) return
+            setLastRefreshAt(Date.now())
+            onRefreshMarket?.()
+          }}
+        >
+          {clock}
+        </button>
+      ) : (
+        <span className={badgeClass} title={badgeTitle} role="timer">
+          {clock}
         </span>
-      </span>
+      )}
       <span
         className="ex-source-badge ex-round-quota-badge"
         title="本回合剩余委托笔数（每回合上限 10 笔）"

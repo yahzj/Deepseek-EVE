@@ -4,16 +4,17 @@
  * 核心升级：
  * - 极简 / 专业 双模式 Segmented Tabs 一览无遗，一键切换（持久化到 `localStorage['whale-idle:exch-view-mode']`）；
  * - 纯净硬核科幻 HUD 视觉，彻底去除 emoji；
- * - 极简模式：双栏清爽布局，4位代码股票，Sparkline，流光渐变面积图，傻瓜现货买卖舱，当前持仓战报，零门槛；
- * - 专业模式：三栏全功能 HUD PRO，逐仓杠杆，五档深度盘口（含买卖量不平衡条），量化网格与流水；
+ * - 极简模式：三栏布局，4 位代码股票，面积走势图，看涨/看跌下注舱，我的下注与委托，零门槛；
+ * - 专业模式：三栏 HUD PRO，逐仓杠杆，多空张力槽，K 线、持仓与流水双 Tab，双核战术交易舱；
  * - 共享同一个 Client 单例与快照，切换模式零延迟、状态零丢失。
  */
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
-import { Analytics, Portfolio, Reset } from '@carbon/icons-react'
+import { Analytics, Portfolio } from '@carbon/icons-react'
 import type { PageProps } from '../../pages/common'
 import type { MarginCallPayload } from './client'
 import type { ExchangeClientBundle, ExchangeSourceInfo } from './factory'
 import { createExchangeClient } from './factory'
+import { CLOUD_SESSION_CHANGE_EVENT } from '../cloud/preferences'
 import { amount, money, pct, pctAbs } from './format'
 import { T, TF } from './texts'
 import { Cashier } from './components/Cashier'
@@ -30,21 +31,40 @@ import './exchange.css'
 
 const VIEW_MODE_KEY = 'whale-idle:exch-view-mode'
 
-export function ExchangePage({ engine, onToast }: PageProps) {
-  const bundle = useMemo(() => createExchangeClient(), [])
+export function ExchangePage({ engine, onToast, onOpenSettings }: PageProps) {
+  // 2026-11-05 游客行情批：登录/退出后必须换客户端实例——游客连接是匿名的（不带 token），
+  // 登录后要换成带令牌的那条；不换就会一直用匿名连接看自己的空白账户。
+  const [authTick, bumpAuth] = useReducer((n: number) => n + 1, 0)
+  useEffect(() => {
+    const onChange = (): void => bumpAuth()
+    window.addEventListener(CLOUD_SESSION_CHANGE_EVENT, onChange)
+    return () => window.removeEventListener(CLOUD_SESSION_CHANGE_EVENT, onChange)
+  }, [])
+  const bundle = useMemo(() => createExchangeClient(), [authTick])
   if (bundle.error) return <ExchangeGuide bundle={bundle} />
-  return <ExchangeBody bundle={bundle} engine={engine} onToast={onToast} />
+  return (
+    <ExchangeBody
+      key={bundle.source.auth}
+      bundle={bundle}
+      engine={engine}
+      onToast={onToast}
+      onOpenSettings={onOpenSettings}
+    />
+  )
 }
 
-/** 数据源徽标（模拟盘 / 服务器） */
+/**
+ * 数据源徽标（已登录 / 游客只读）。
+ * 2026-11-05 起没有「模拟盘」：未登录也连真实服务器看公开行情，只是不能交易。
+ */
 function SourceBadge({ source }: { source: ExchangeSourceInfo }) {
-  const mock = source.mode === 'mock'
+  const guest = source.auth === 'guest'
   return (
     <span
-      className={`ex-source-badge${mock ? ' is-mock' : ' is-server'}`}
-      title={source.serverUrl ? `${T.sourceBadgeHint}：${source.serverUrl}` : T.sourceBadgeHint}
+      className={`ex-source-badge${guest ? ' is-guest' : ' is-server'}`}
+      title={`${T.sourceBadgeHint}：${source.serverUrl}`}
     >
-      {mock ? T.sourceMock : T.sourceServer}
+      {guest ? T.sourceGuest : T.sourceAccount}
     </span>
   )
 }
@@ -75,12 +95,24 @@ function ExchangeBody({
   bundle,
   engine,
   onToast,
+  onOpenSettings,
 }: {
   bundle: ExchangeClientBundle
   engine: PageProps['engine']
   onToast: PageProps['onToast']
+  onOpenSettings?: PageProps['onOpenSettings']
 }) {
   const client = bundle.client
+  /** 未登录：只能看公开行情（账户/委托/回合/理财都不拉，见 HttpExchangeClient 的 guest 分支） */
+  const guest = bundle.source.auth === 'guest'
+  /**
+   * 未登录玩家点了需要账号的操作（船长 2026-11-05：「用户操作了就提醒他要登入，弹到设置的
+   * 存档那个界面给他，那边有登入入口」）⇒ 提示 + 直接把设置停在「账户」子页。
+   */
+  const requireLogin = (): void => {
+    onToast(T.guestNeedLogin, true)
+    onOpenSettings?.('account')
+  }
   const [tick, bump] = useReducer((n: number) => n + 1, 0)
   const [code, setCode] = useState(getExchangeSelectedCode)
   const codeRef = useRef(code)
@@ -108,6 +140,11 @@ function ExchangeBody({
   })
 
   const switchViewMode = (mode: 'simple' | 'pro') => {
+    // 未登录不能进专业投资（船长 2026-11-05：「不能进入专业投资的界面里」）
+    if (mode === 'pro' && guest) {
+      requireLogin()
+      return
+    }
     if (viewMode === mode) return
     setViewMode(mode)
     try {
@@ -116,6 +153,9 @@ function ExchangeBody({
       // ignore
     }
   }
+
+  /** 实际渲染的模式：游客只保留极简模式（存档里的 pro 偏好不生效，但不清除，登录后自动恢复） */
+  const shownMode: 'simple' | 'pro' = guest ? 'simple' : viewMode
 
   const toastRef = useRef(onToast)
   toastRef.current = onToast
@@ -213,17 +253,8 @@ function ExchangeBody({
     setPickedPrice((prev) => ({ value, seq: (prev?.seq ?? 0) + 1 }))
   }
 
-  const resetMock = (): void => {
-    try {
-      client.resetAccount()
-      onToast(T.resetMockDone)
-    } catch (err) {
-      onToast(err instanceof Error ? err.message : String(err), true)
-    }
-  }
-
   return (
-    <div className={`page-stack page-fill ex-page ex-mode-${viewMode}`}>
+    <div className={`page-stack page-fill ex-page ex-mode-${shownMode}`}>
       {/* 顶栏：三段式逻辑架构（左：品牌与模式；中：市场与回合状态；右：个人核心资产与出入金操作） */}
       <header className="ex-topbar">
         {/* 左区：品牌名称 + 核心双模式 Segmented Tabs */}
@@ -242,8 +273,8 @@ function ExchangeBody({
             <button
               type="button"
               role="tab"
-              aria-selected={viewMode === 'simple'}
-              className={`ex-mode-tab ex-mode-tab-simple${viewMode === 'simple' ? ' is-active' : ''}`}
+              aria-selected={shownMode === 'simple'}
+              className={`ex-mode-tab ex-mode-tab-simple${shownMode === 'simple' ? ' is-active' : ''}`}
               onClick={() => switchViewMode('simple')}
             >
               <span className="ex-mode-tab-title"><Portfolio size={14} /> {T.viewModeSimple}</span>
@@ -252,8 +283,10 @@ function ExchangeBody({
             <button
               type="button"
               role="tab"
-              aria-selected={viewMode === 'pro'}
-              className={`ex-mode-tab ex-mode-tab-pro${viewMode === 'pro' ? ' is-active' : ''}`}
+              aria-selected={shownMode === 'pro'}
+              aria-disabled={guest || undefined}
+              title={guest ? T.guestProLocked : undefined}
+              className={`ex-mode-tab ex-mode-tab-pro${shownMode === 'pro' ? ' is-active' : ''}${guest ? ' is-guest-locked' : ''}`}
               onClick={() => switchViewMode('pro')}
             >
               <span className="ex-mode-tab-title"><Analytics size={14} /> {T.viewModePro}</span>
@@ -264,8 +297,16 @@ function ExchangeBody({
 
         {/* 中区：交易所运行状态（回合倒计时 + 本回合委托配额）及专业模式大盘指数 */}
         <div className="ex-topbar-status">
-          <RoundBadge client={client} onNewRound={bump} />
-          {viewMode === 'pro' ? (
+          <RoundBadge
+            client={client}
+            onNewRound={bump}
+            onRefreshMarket={
+              typeof client.refreshMarketData === 'function'
+                ? () => { void client.refreshMarketData?.(codeRef.current) }
+                : undefined
+            }
+          />
+          {shownMode === 'pro' ? (
             <div className="ex-index" title={T.indexName}>
               <span className="ex-dim">{T.indexName}</span>
               <b className="ex-num">{Math.round(snap.index.value).toLocaleString('zh-CN')}</b>
@@ -291,7 +332,7 @@ function ExchangeBody({
                 {pnlUp ? '+' : ''}{money(totalUnrealizedPnl)}
               </b>
             </div>
-            {viewMode === 'simple' ? (
+            {shownMode === 'simple' ? (
               <div className="ex-stat">
                 <span className="ex-dim">{T.bondValue}</span>
                 <b className="ex-num">{money(bondTotal)}</b>
@@ -305,25 +346,35 @@ function ExchangeBody({
           </div>
 
           <div className="ex-topbar-actions">
-            <button type="button" className="ex-mini-btn is-deposit" onClick={() => setCashier('deposit')}>
+            <button
+              type="button"
+              className={`ex-mini-btn is-deposit${guest ? ' is-guest-locked' : ''}`}
+              aria-disabled={guest || undefined}
+              onClick={() => (guest ? requireLogin() : setCashier('deposit'))}
+            >
               {T.deposit}
             </button>
-            <button type="button" className="ex-mini-btn is-withdraw" onClick={() => setCashier('withdraw')}>
+            <button
+              type="button"
+              className={`ex-mini-btn is-withdraw${guest ? ' is-guest-locked' : ''}`}
+              aria-disabled={guest || undefined}
+              onClick={() => (guest ? requireLogin() : setCashier('withdraw'))}
+            >
               {T.withdraw}
             </button>
-            {bundle.source.mode === 'mock' ? (
-              <button
-                type="button"
-                className="ex-mini-btn ex-reset-btn"
-                title={T.resetMockHint}
-                onClick={resetMock}
-              >
-                <Reset size={12} /> {T.resetMock}
-              </button>
-            ) : null}
           </div>
         </div>
       </header>
+
+      {/* 游客横幅：行情照常看，交易/持仓/理财要登录（2026-11-05 船长令） */}
+      {guest ? (
+        <div className="ex-guest-banner" role="status">
+          <span className="ex-guest-banner-text">{T.guestBanner}</span>
+          <button type="button" className="ex-mini-btn is-accent" onClick={requireLogin}>
+            {T.guestBannerAction}
+          </button>
+        </div>
+      ) : null}
 
       {/* 财经快讯：紧随顶栏下方，第一行市场事件、第二行对手盘动作（2026-11-04 船长口径） */}
       <NewsTicker news={snap.news} agents={snap.agents} onSelectCode={selectCode} />
@@ -345,8 +396,8 @@ function ExchangeBody({
         </div>
       ) : null}
 
-      {/* 主视图区：根据当前模式渲染 */}
-      {viewMode === 'simple' ? (
+      {/* 主视图区：根据当前模式渲染（游客强制极简模式，见 shownMode） */}
+      {shownMode === 'simple' ? (
         <SimpleExchange
           client={client}
           snap={snap}
@@ -354,7 +405,8 @@ function ExchangeBody({
           onSelectCode={selectCode}
           onToast={onToast}
           engine={engine}
-          isServer={bundle.source.mode !== 'mock'}
+          guest={guest}
+          onRequireLogin={requireLogin}
           onRefresh={bump}
         />
       ) : (
