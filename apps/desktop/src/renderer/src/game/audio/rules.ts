@@ -127,6 +127,17 @@ export function shouldPlay(lastAtMs: number | undefined, nowMs: number, minGapMs
   return nowMs - lastAtMs >= Math.max(0, minGapMs)
 }
 
+/**
+ * **点击音要不要补**（2026-11-05 船长反馈「ui-error 出现时 ui-click 也会触发」）：
+ * 点击按钮会先排一声 `ui-click`；若这一击随后弹出错误提示（`ui-error`），两音几乎同时响会糊成一声。
+ * 契约：**错误提示的时刻不早于点击时刻，就只留错误音、不再补点击音**。
+ * 调用方先把点击音延后一拍，让本次点击的 onClick 跑完，再拿这条判定决定是否发声。
+ */
+export function shouldPlayClickCue(clickAtMs: number, lastErrorAtMs: number | undefined): boolean {
+  if (lastErrorAtMs === undefined) return true
+  return lastErrorAtMs < clickAtMs
+}
+
 /** 分类名 id（音效台/设置展示用） */
 export function categoryIds(): readonly SfxCategory[] {
   return SFX_CATEGORIES

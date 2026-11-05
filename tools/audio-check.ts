@@ -43,6 +43,7 @@ import {
   productionCompletedCount,
   productionSnapshot,
   shouldPlay,
+  shouldPlayClickCue,
   sfxFileBase,
 } from '../apps/desktop/src/renderer/src/game/audio/rules'
 import {
@@ -403,6 +404,11 @@ check(SFX_CUES['ui-click'].pitchJitterCents === 50, 'UI 点击音应固定 ±50 
 check(SFX_CUES['ui-error'].pitchJitterCents === undefined && SFX_CUES['comms-received'].pitchJitterCents === undefined, '其他界面音不应抖动')
 check(Math.abs(pitchRateFor(50, () => 0) - Math.pow(2, -50 / 1200)) < 1e-12, '音高：-50 音分速率错误')
 check(Math.abs(pitchRateFor(50, () => 1) - Math.pow(2, 50 / 1200)) < 1e-12, '音高：+50 音分速率错误')
+
+/* 点击音与错误音互斥（2026-11-05 船长反馈：ui-error 出现时 ui-click 不应叠响） */
+check(shouldPlayClickCue(1000, undefined), '点击互斥：本次会话未响过错误音时应补点击音')
+check(!shouldPlayClickCue(1000, 1000) && !shouldPlayClickCue(1000, 1003), '点击互斥：同一击随后弹出错误提示时只留错误音')
+check(shouldPlayClickCue(1000, 900), '点击互斥：错误提示早于本次点击时仍应补点击音')
 
 /* 场景解析（BGM/环境层） */
 const noScene = { battleOnStage: false, wormholeActive: false, invasionActive: false, docked: false }

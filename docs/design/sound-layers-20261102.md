@@ -33,9 +33,9 @@
 | `music.ts` | BGM 场景引擎：素材优先本机覆盖；同一场景多个变体时**切场景随机取一条并缓存**（音量/静音刷新不重选，「重播」重新随机）；**战斗每场新战斗重抽一条不同变体**（`rerollBgmVariant`，交叉淡变）；缺素材=静音；首次手势重试自动播放 |
 | `ambient.ts` | 环境底噪（同款交叉淡变）＋ 20–90 秒随机点缀（走环境音量与节流） |
 | `useSceneAudio.ts` | App 顶层挂载：每帧投影场景、变化才切；**只在场景变化时切曲**；visibility 生命周期暂停/恢复；偏好变化即时调音量 |
-| `uiFeedback.ts` | 全局按钮点击 → `ui-click`（捕获阶段旁听、音效台内部不响）；错误 toast → `ui-error`（2026-11-05 扩为全量错误提示，`notifyUiError()`） |
+| `uiFeedback.ts` | 全局按钮点击 → `ui-click`（捕获阶段旁听、音效台内部不响）；错误 toast → `ui-error`（2026-11-05 扩为全量错误提示，`notifyUiError()`）。**两音互斥**（2026-11-05 船长反馈）：点击音延后一拍再排，本次点击若弹出错误提示就只留 `ui-error` |
 
-扩展：`cues.ts`（33 个语义事件 / 6 分类 / `loop` / `pitchJitter` / `fallback`）、`rules.ts`（6 类音量、`pitchJitterCents`、`pitchRateFor`、日志补充白名单 `LOG_CUE_RULES`；`ui-error` 主通道在 App 错误 toast 出口）、`player.ts`（音高随机、按弹种回落、loop 试听）、`manifest.ts`（三目录 glob）、`battleSfx.ts`（按弹种/未命中/敌方开火）、`appSettings.tsx`（6 类滑条 + 音高行）、`SfxConsole.tsx`（音效 / 音乐 / 环境三组）。
+扩展：`cues.ts`（33 个语义事件 / 6 分类 / `loop` / `pitchJitter` / `fallback`）、`rules.ts`（6 类音量、`pitchJitterCents`、`pitchRateFor`、点击音/错误音互斥判定 `shouldPlayClickCue`、日志补充白名单 `LOG_CUE_RULES`；`ui-error` 主通道在 App 错误 toast 出口）、`player.ts`（音高随机、按弹种回落、loop 试听）、`manifest.ts`（三目录 glob）、`battleSfx.ts`（按弹种/未命中/敌方开火）、`appSettings.tsx`（6 类滑条 + 音高行）、`SfxConsole.tsx`（音效 / 音乐 / 环境三组）。
 
 **战斗音高随机**：`playbackRate = 2^(均匀随机(±100)/1200)` 且 `preservesPitch = false`（浏览器默认 true 只变速不变调，2026-11-02 在 Chromium 实测：`preservesPitch` 存在、默认 true；`playbackRate = 1.0005777895065548` 原值保留）。1 音分 ≈ 0.058% 频率差；100 音分 = 1 个半音。一次性重音（击毁/沉没/胜负）与 BGM/环境不加抖动，避免仪式感破坏与循环漂移。
 
