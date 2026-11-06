@@ -159,9 +159,8 @@ export const CHART_PERIODS: ChartPeriodSpec[] = [
   },
 ]
 
-/** 专业终端周期切换按钮（2026-11-04 船长：分时、M1、M5、H1、日线、周线） */
+/** 专业终端周期切换按钮（2026-11-05 船长：专业界面不展示分时，最小就到 M1；分时仍留给简单界面的迷你走势） */
 export const PRO_CHART_PERIODS: ChartPeriodSpec[] = [
-  'intraday',
   'm1',
   'm5',
   'h1',

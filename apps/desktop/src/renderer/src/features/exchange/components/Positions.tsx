@@ -181,6 +181,7 @@ export function Positions({
                       <button
                         type="button"
                         className="ex-mini-btn is-close ex-btn-progress"
+                        data-sfx="exchange-sell"
                         disabled={busyTarget !== null}
                         style={busyTarget === `spot-${h.code}` ? progressStyle(actionProgress) : undefined}
                         title={`${T.posSell} ${h.code}`}
@@ -273,6 +274,7 @@ export function Positions({
                       <button
                         type="button"
                         className="ex-mini-btn is-close ex-btn-progress"
+                        data-sfx="exchange-sell"
                         disabled={busyTarget !== null}
                         style={busyTarget === `${p.side}-${p.code}` ? progressStyle(actionProgress) : undefined}
                         title={`${T.posClose} ${p.code} ${p.side}`}

@@ -240,6 +240,7 @@ export function SimplePosition({ client, snap, onToast }: SimplePositionProps) {
           <button
             type="button"
             className={`ex-simple-close-all-btn ex-btn-progress${confirmCloseAll ? ' is-confirming' : ''}${closingTarget === 'all' ? ' is-busy' : ''}`}
+            data-sfx="exchange-sell"
             style={closingTarget === 'all' ? progressStyle(closeProgress) : undefined}
             disabled={isBusy}
             onClick={handleClickCloseAll}
@@ -291,6 +292,7 @@ export function SimplePosition({ client, snap, onToast }: SimplePositionProps) {
               <button
                 type="button"
                 className={`ex-simple-sub-close-btn is-close ex-btn-progress${isThisBusy ? ' is-busy' : ''}`}
+                data-sfx="exchange-sell"
                 style={isThisBusy ? progressStyle(closeProgress) : undefined}
                 disabled={isBusy}
                 onClick={() => void handleCloseLine(line)}

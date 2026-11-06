@@ -158,7 +158,13 @@ export function BondCard({
           </span>
         </div>
 
-        {/* 债券资产概览：等宽排版对齐 */}
+        {/* 债券资产概览：可用现金 → 本金 → 已计息（2026-11-06 船长令统一排序） */}
+        <div className="ex-preview-row">
+          <span>{T.strategyAvailCash}</span>
+          <b className="ex-num">
+            {money(available)} <span className="ex-unit">{T.creditUnit}</span>
+          </b>
+        </div>
         <div className="ex-preview-row">
           <span>{T.bondPrincipal}</span>
           <b className="ex-num">
@@ -169,18 +175,6 @@ export function BondCard({
           <span>{T.bondAccrued}</span>
           <b className={`ex-num is-up ex-bond-accrued ${isAccruing ? 'is-pulse' : ''}`}>
             +{money(bond.accrued)} <span className="ex-unit">{T.creditUnit}</span>
-          </b>
-        </div>
-        <div className="ex-preview-row">
-          <span>{T.bondValue}</span>
-          <b className="ex-num">
-            {money(held)} <span className="ex-unit">{T.creditUnit}</span>
-          </b>
-        </div>
-        <div className="ex-preview-row">
-          <span>{T.strategyAvailCash}</span>
-          <b className="ex-num">
-            {money(available)} <span className="ex-unit">{T.creditUnit}</span>
           </b>
         </div>
 
@@ -251,6 +245,7 @@ export function BondCard({
           <button
             type="button"
             className="ex-mini-btn is-bond-buy ex-btn-progress"
+            data-sfx="exchange-buy"
             disabled={!canBuy}
             style={progressStyle(buyProgress)}
             onClick={() => void buy()}
@@ -260,6 +255,7 @@ export function BondCard({
           <button
             type="button"
             className="ex-mini-btn is-bond-redeem ex-btn-progress"
+            data-sfx="exchange-sell"
             disabled={!canRedeem}
             title={!canRedeem ? T.bondHoldingEmptyTip : undefined}
             style={progressStyle(redeemProgress)}

@@ -26,9 +26,13 @@ import { SimpleStockList } from './SimpleStockList'
 import { BondCard } from './BondCard'
 import { FundCard } from './FundCard'
 import { SimpleChart } from './SimpleChart'
+import { EXCHANGE_PREF_EVENT, EXCH_PREF, readExchangeChoice, writeExchangePref } from '../viewPrefs'
 import { SimpleTrade } from './SimpleTrade'
 import { SimplePosition } from './SimplePosition'
 import { MyOrders } from './MyOrders'
+
+/** 简单界面右栏一级切换：我的下注 / 我的委托 / 理财与基金（2026-11-06 船长令拆开） */
+type SimpleSideTab = 'bets' | 'orders' | 'finance'
 
 interface SimpleExchangeProps {
   client: ExchangeClient
@@ -97,7 +101,25 @@ export function SimpleExchange({
   const quote = snap.stocks.find((s) => s.code === code) ?? snap.quote
   const isUp = quote.changePct >= 0
   // 默认理财与基金；对手盘公开动态统一由快讯第二行显示。
-  const [sideTab, setSideTab] = useState<'orders' | 'finance'>('finance')
+  // 2026-11-06 船长令：我的下注与我的委托拆成两个 tab，不再堆在同一块里。
+  const [sideTab, setSideTab] = useState<SimpleSideTab>(() =>
+    readExchangeChoice(EXCH_PREF.simpleSide, ['bets', 'orders', 'finance'] as const, 'finance'),
+  )
+  const betCount = snap.account.holdings.length + snap.account.positions.length
+  const orderCount = snap.orders.length
+
+  useEffect(() => {
+    writeExchangePref(EXCH_PREF.simpleSide, sideTab)
+  }, [sideTab])
+
+  // 外部入口（活动栏「债券/基金」）要求直达理财页时，已挂载的页面跟着切
+  useEffect(() => {
+    const onPref = (): void => {
+      setSideTab(readExchangeChoice(EXCH_PREF.simpleSide, ['bets', 'orders', 'finance'] as const, 'finance'))
+    }
+    window.addEventListener(EXCHANGE_PREF_EVENT, onPref)
+    return () => window.removeEventListener(EXCHANGE_PREF_EVENT, onPref)
+  }, [])
 
   return (
     <div className="ex-grid ex-simple-grid">
@@ -159,12 +181,22 @@ export function SimpleExchange({
           <button
             type="button"
             role="tab"
+            aria-selected={sideTab === 'bets'}
+            className={`ex-simple-side-tab${sideTab === 'bets' ? ' is-on' : ''}`}
+            onClick={() => setSideTab('bets')}
+          >
+            {T.simpleBookTitle}
+            {betCount > 0 ? ` (${betCount})` : ''}
+          </button>
+          <button
+            type="button"
+            role="tab"
             aria-selected={sideTab === 'orders'}
             className={`ex-simple-side-tab${sideTab === 'orders' ? ' is-on' : ''}`}
             onClick={() => setSideTab('orders')}
           >
             {T.myOrdersTitle}
-            {snap.orders.length > 0 ? ` (${snap.orders.length})` : ''}
+            {orderCount > 0 ? ` (${orderCount})` : ''}
           </button>
           <button
             type="button"
@@ -179,15 +211,15 @@ export function SimpleExchange({
 
         <div className="ex-simple-side-body">
           <GuestLock locked={guest} label={T.guestLockLabel} onUnlock={onRequireLogin}>
-            {sideTab === 'orders' ? (
-              /* 持仓与委托合成一块：列表都覆盖全部股票，不随选中标的切换 */
+            {sideTab === 'bets' ? (
+              /* 我的下注：全部持仓，不随选中标的切换 */
               <div className="ex-simple-book">
-                <div className="ex-simple-group-title">{T.simpleBookTitle}</div>
                 <SimplePosition client={client} snap={snap} onToast={onToast} />
-                <div className="ex-simple-book-orders">
-                  <div className="ex-simple-group-title">{T.myOrdersTitle}</div>
-                  <MyOrders client={client} onToast={onToast} variant="compact" />
-                </div>
+              </div>
+            ) : sideTab === 'orders' ? (
+              /* 我的委托：全部委托，不随选中标的切换 */
+              <div className="ex-simple-book-orders">
+                <MyOrders client={client} onToast={onToast} variant="compact" />
               </div>
             ) : (
               <div className="ex-simple-finance">

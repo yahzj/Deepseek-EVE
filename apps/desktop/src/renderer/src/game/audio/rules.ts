@@ -25,14 +25,17 @@ export interface SfxPrefs {
   master: number
   categories: SfxCategoryVolumes
   /**
-   * 战斗重复音的**音高随机幅度（音分）**：0 = 关；默认 100（= ±1 个半音，船长 2026-11-02 口径
-   * 「1200 音分的单位里上下浮动 100 音分」）。只作用于带 `pitchJitter` 标记的 cue。
+   * 战斗重复音的**音高随机幅度（音分）**：0 = 关；默认 50（船长 2026-11-06 口径，
+   * 上限仍是 100 音分）。只作用于带 `pitchJitter` 标记的 cue。
    */
   pitchJitterCents: number
 }
 
 /** 音高随机幅度上限（音分）：= 1 个半音 */
 export const PITCH_JITTER_MAX_CENTS = 100
+
+/** 默认音高随机幅度（音分）：船长 2026-11-06 从 100 下调到 50，设置滑条仍可拉到 100 */
+export const DEFAULT_PITCH_JITTER_CENTS = 50
 
 /**
  * **淡变时长（毫秒）——音频层唯一来源**（2026-11-04 调音效台批次）：
@@ -47,15 +50,16 @@ export const VOLUME_FADE_MS = 250
 
 /**
  * 默认偏好（**船长 2026-11-05 指定**：总音量 100%、初始不静音；
- * 音乐 15% / 环境 50% / 警报 70% / 战斗 100% / 生产 50% / 界面 50%；战斗音高 ±100 音分）。
+ * 音乐 25% / 环境 55% / 警报 70% / 战斗 100% / 生产 50% / 界面 50%；
+ * 战斗音高 ±50 音分，2026-11-06 船长从 ±100 下调）。
  * 已存过偏好的档沿用存档值，这里只影响首次安装与「恢复默认」。
  */
 export function defaultSfxPrefs(): SfxPrefs {
   return {
     muted: false,
     master: 1,
-    categories: { music: 0.15, ambient: 0.5, alarm: 0.7, combat: 1, progress: 0.5, ui: 0.5 },
-    pitchJitterCents: PITCH_JITTER_MAX_CENTS,
+    categories: { music: 0.25, ambient: 0.55, alarm: 0.7, combat: 1, progress: 0.5, ui: 0.5 },
+    pitchJitterCents: DEFAULT_PITCH_JITTER_CENTS,
   }
 }
 
@@ -132,10 +136,31 @@ export function shouldPlay(lastAtMs: number | undefined, nowMs: number, minGapMs
  * 点击按钮会先排一声 `ui-click`；若这一击随后弹出错误提示（`ui-error`），两音几乎同时响会糊成一声。
  * 契约：**错误提示的时刻不早于点击时刻，就只留错误音、不再补点击音**。
  * 调用方先把点击音延后一拍，让本次点击的 onClick 跑完，再拿这条判定决定是否发声。
+ *
+ * 2026-11-06 追加第三参数：同一击里若业务已调 `notifyUiAction` 播了动作音（成功回执），
+ * 也不再补点击音——「一个动作只留一声」对成功路径同样成立。
  */
-export function shouldPlayClickCue(clickAtMs: number, lastErrorAtMs: number | undefined): boolean {
-  if (lastErrorAtMs === undefined) return true
-  return lastErrorAtMs < clickAtMs
+export function shouldPlayClickCue(
+  clickAtMs: number,
+  lastErrorAtMs: number | undefined,
+  lastActionAtMs?: number,
+): boolean {
+  if (lastErrorAtMs !== undefined && !(lastErrorAtMs < clickAtMs)) return false
+  if (lastActionAtMs !== undefined && !(lastActionAtMs < clickAtMs)) return false
+  return true
+}
+
+/**
+ * **点击这一刻该排什么音**（2026-11-06 船长：「下注按钮不能下注只播 ui-error，成功了才响它自己的声音」）：
+ * - `successOnly`（按钮写了 `data-sfx-on="success"`）→ `null`：点击这一拍**完全不排队**，
+ *   声音由业务在服务端确认成功后调 `notifyUiAction` 播放；失败只剩 toast 触发的 `ui-error`。
+ * - 写了 `data-sfx` 且是已登记语义 id → 用该动作音替代 `ui-click`（点击即响，被拒时由点击音互斥拦）。
+ * - 其余（未声明 / id 拼错）→ `ui-click`，与既有按钮行为一致。
+ */
+export function clickCueFor(declared: string | null, successOnly: boolean): SfxCueId | null {
+  if (successOnly) return null
+  if (declared !== null && Object.prototype.hasOwnProperty.call(SFX_CUES, declared)) return declared as SfxCueId
+  return 'ui-click'
 }
 
 /** 分类名 id（音效台/设置展示用） */

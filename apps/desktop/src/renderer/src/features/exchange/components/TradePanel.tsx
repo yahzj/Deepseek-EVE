@@ -9,18 +9,21 @@ import { isEn, tr } from '../../../i18n/locale'
  * - 强平价旁写人话「跌到 X 会强平，距现价 Y%」；
  * - ≥10x 二次确认，确认框里再显示一次强平价与最大亏损。
  */
-import { useEffect, useRef, useState } from 'react'
-import { ArrowDownRight, ArrowUpRight, Checkmark, CheckmarkFilled, Locked, Portfolio, SendAlt, WarningAlt } from '@carbon/icons-react'
+import { useContext, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { ArrowDownRight, ArrowUpRight, Checkmark, CheckmarkFilled, Portfolio, SendAlt, WarningAlt } from '@carbon/icons-react'
 import type { ExchangeClient, ExchangeSnapshot, PlaceOrderRequest, Side, OrderPreview } from '../client'
 import type { ToastFn } from '../../../pages/common'
 import { amount, money, pctAbs, price as fmtPrice } from '../format'
 import { T, TF } from '../texts'
 import { progressStyle, useActionProgress } from '../useActionProgress'
+import { OrderCtaSlotContext } from '../orderCta'
 
 type Mode = 'spot' | 'long' | 'short'
 type OrderKind = 'limit' | 'market'
 
-const LEVERAGES = [2, 5, 10, 20, 50, 90] as const
+// 1x 即原「现货」：全额保证金、不放大（2026-11-06 船长令：现货并入杠杆，省一段高度）
+const LEVERAGES = [1, 2, 5, 10, 20, 50, 90] as const
 /** 距强平低于这个百分比就转警示色（设计稿 6.1） */
 const DANGER_DISTANCE_PCT = 15
 
@@ -38,16 +41,20 @@ export function TradePanel({
   code,
   pickedPrice,
   onToast,
+  fixedMode,
 }: {
   client: ExchangeClient
   snap: ExchangeSnapshot
   code: string
   pickedPrice: { value: number; seq: number } | null
   onToast: ToastFn
+  /** 由外层 Tab 固定方向时，不再渲染方向切换段（2026-11-06 船长令） */
+  fixedMode?: 'long' | 'short'
 }) {
   const quote = snap.quote
-  const [mode, setMode] = useState<Mode>('spot')
-  const [kind, setKind] = useState<OrderKind>('limit')
+  const [innerMode, setInnerMode] = useState<Mode>('spot')
+  const mode: Mode = fixedMode ?? innerMode
+  const [kind, setKind] = useState<OrderKind>('market')
   const [priceText, setPriceText] = useState('')
   const [qtyText, setQtyText] = useState('')
   const [investmentText, setInvestmentText] = useState('')
@@ -91,6 +98,9 @@ export function TradePanel({
 
   const lev = mode === 'spot' ? 1 : leverage
   const side: Side = mode === 'short' ? 'sell' : 'buy'
+  // 市价单按对手盘成交：买吃卖一、卖砸买一，没有档位时退回现价
+  const bookPrice =
+    side === 'buy' ? (snap.book.asks[0]?.price ?? quote.price) : (snap.book.bids[0]?.price ?? quote.price)
   const priceNum = Number(priceText)
   const refPrice = kind === 'limit' && Number.isFinite(priceNum) && priceNum > 0 ? priceNum : quote.price
   const investment = Number(investmentText)
@@ -267,14 +277,35 @@ export function TradePanel({
   const activeFormError = (priceTouched && priceError) || (qtyTouched && qtyError) || (previewFailed ? tr('ui.exchange.024') : null) || preview.blockReason || protectionError || null
   const isReadyToSubmit = !priceError && !qtyError && !preview.blockReason && !protectionError && !busy && !previewPending && !previewFailed
 
+  const ctaTarget = useContext(OrderCtaSlotContext)
+
+  const submitButton = (
+    <button
+      type="button"
+      className={`ex-primary ex-trade-submit is-${mode}${!isReadyToSubmit ? ' is-blocked' : ''} ex-btn-progress`}
+      data-sfx={side === 'sell' ? 'exchange-sell' : 'exchange-buy'}
+      aria-disabled={!isReadyToSubmit}
+      disabled={busy}
+      title={activeFormError || undefined}
+      style={progressStyle(submitProgress)}
+      onClick={primaryAction}
+    >
+      <SendAlt size={16} /> {busy ? T.submitting : `${T.submit} · ${modeLabel(mode)}`}
+      {submitProgress.active ? ` ${submitProgress.pct}%` : ''}
+    </button>
+  )
+
   return (
     <section className="ex-panel ex-trade" aria-label={T.orderTitle}>
-      <header className="ex-panel-head">
-        <h3 className="ex-panel-title">{T.orderTitle}</h3>
-        <span className="ex-dim">{code}</span>
-      </header>
+      {fixedMode === undefined ? (
+        <header className="ex-panel-head">
+          <h3 className="ex-panel-title">{T.orderTitle}</h3>
+          <span className="ex-dim">{code}</span>
+        </header>
+      ) : null}
       <div className="ex-trade-body">
-        {/* 交易模式三段切换 */}
+        {/* 交易模式三段切换（外层固定方向时不渲染） */}
+        {fixedMode === undefined ? (
         <div className="ex-seg ex-seg-wide ex-trade-mode-seg" role="tablist" aria-label={T.orderTitle}>
           {(['spot', 'long', 'short'] as const).map((m) => {
             const Icon = m === 'spot' ? Portfolio : m === 'long' ? ArrowUpRight : ArrowDownRight
@@ -285,7 +316,7 @@ export function TradePanel({
                 role="tab"
                 aria-selected={mode === m}
                 className={`ex-seg-btn is-${m}${mode === m ? ' is-on' : ''}`}
-                onClick={() => setMode(m)}
+                onClick={() => setInnerMode(m)}
               >
                 <span className="ex-trade-mode-btn-content">
                   <Icon size={13} />
@@ -295,7 +326,10 @@ export function TradePanel({
             )
           })}
         </div>
-        <p className={`ex-mode-hint is-${mode}`}>{modeHint(mode)}</p>
+        ) : null}
+        {fixedMode === undefined ? (
+          <p className={`ex-mode-hint is-${mode}`}>{modeHint(mode)}</p>
+        ) : null}
 
         {/* 杠杆倍数选择器（数值胶囊） */}
         {mode !== 'spot' ? (
@@ -308,7 +342,7 @@ export function TradePanel({
                 {leverage}x{leverage >= 10 ? ' · ' + TF.leverageRequireConfirm(`${leverage}x`) : ''}
               </span>
             </div>
-            <div className="ex-lev-capsules" role="group" aria-labelledby="ex-lev-label">
+            <div className="ex-lev-capsules" role="group" aria-label={T.fieldLeverage}>
               {LEVERAGES.map((l) => {
                 const allowed = l <= quote.maxLeverage
                 const isSelected = leverage === l
@@ -338,12 +372,17 @@ export function TradePanel({
         ) : null}
 
         {/* 数量与快捷比例选择（25%、50%、75%、MAX） */}
-        <div className={`ex-field${qtyError && qtyTouched ? ' is-bad' : ''}`}>
+        <div className={`ex-field ex-field-qty${qtyError && qtyTouched ? ' is-bad' : ''}`}>
           <div className="ex-field-header">
             <label className="ex-label" htmlFor="ex-qty-input">
               {mode === 'spot' ? T.fieldQty : tr('ui.exchange.022')}
             </label>
-            <span className="ex-max-hint">{TF.maxQty(amount(preview.maxQty))}</span>
+            <span className="ex-max-hint">
+              {TF.maxQty(amount(preview.maxQty))}
+              {mode !== 'spot'
+                ? ` · ${tr('ui.exchange.023')} ${amount(Number.isFinite(effectiveQty) ? effectiveQty : 0)} ${T.sharesSuffix}`
+                : ''}
+            </span>
           </div>
           <div className="ex-input-row">
             <input
@@ -355,8 +394,7 @@ export function TradePanel({
               onChange={(e) => mode === 'spot' ? setQtyText(e.target.value) : setInvestmentText(e.target.value)}
               onBlur={() => setQtyTouched(true)}
             />
-          </div>
-          <div className="ex-quick-row">
+            <div className="ex-quick-row">
             {([0.25, 0.5, 0.75, 1] as const).map((ratio) => {
               const cap = Math.max(0, Math.floor(preview.maxQty * ratio))
               const isSelected = qtyNum > 0 && qtyNum === cap
@@ -380,64 +418,44 @@ export function TradePanel({
                 </button>
               )
             })}
+            </div>
           </div>
           {qtyError && qtyTouched ? <div className="ex-field-error">{qtyError}</div> : null}
-          {mode !== 'spot' ? <div className="ex-dim">{tr('ui.exchange.023')} {amount(Number.isFinite(effectiveQty) ? effectiveQty : 0)} {T.sharesSuffix}</div> : null}
-        </div>
-
-        {/* 订单类型切换 */}
-        <div className="ex-seg ex-seg-wide ex-trade-kind-seg" role="tablist" aria-label={T.orderTypeLimit}>
-          {(['limit', 'market'] as const).map((k) => (
-            <button
-              type="button"
-              key={k}
-              role="tab"
-              aria-selected={kind === k}
-              className={`ex-seg-btn${kind === k ? ' is-on' : ''}`}
-              onClick={() => setKind(k)}
-            >
-              {k === 'limit' ? T.orderTypeLimit : T.orderTypeMarket}
-            </button>
-          ))}
         </div>
 
         {/* 单列垂直：价格 */}
-        <div className={`ex-field${priceError && priceTouched ? ' is-bad' : ''}`}>
+        <div className={`ex-field ex-field-price${priceError && priceTouched ? ' is-bad' : ''}`}>
           <div className="ex-field-header">
             <label className="ex-label" htmlFor="ex-price-input">
               {T.fieldPrice}
             </label>
-            {kind === 'market' ? (
-              <span className="ex-field-tag is-market">
-                <Locked size={11} /> {T.marketPriceLocked}
-              </span>
-            ) : null}
+            <div className="ex-kind-seg" role="tablist" aria-label={T.orderTypeLimit}>
+              {(['limit', 'market'] as const).map((k) => (
+                <button
+                  type="button"
+                  key={k}
+                  role="tab"
+                  aria-selected={kind === k}
+                  className={`ex-kind-btn${kind === k ? ' is-on' : ''}`}
+                  onClick={() => setKind(k)}
+                >
+                  {k === 'limit' ? T.orderTypeLimit : T.orderTypeMarket}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="ex-input-row">
             <input
               id="ex-price-input"
               className={`ex-input ex-num${kind === 'market' ? ' is-market-locked' : ''}`}
               inputMode="decimal"
-              value={kind === 'market' ? '' : priceText}
-              placeholder={kind === 'market' ? T.marketPriceNote : fmtPrice(quote.price)}
-              disabled={kind === 'market'}
+              value={kind === 'market' ? fmtPrice(bookPrice) : priceText}
+              placeholder={fmtPrice(bookPrice)}
+              readOnly={kind === 'market'}
               onChange={(e) => setPriceText(e.target.value)}
               onBlur={() => setPriceTouched(true)}
             />
-            {kind === 'market' ? (
-              <button
-                type="button"
-                className="ex-mini-btn is-market-switch"
-                title={T.useBookPrice}
-                onClick={() => {
-                  setPriceText(quote.price.toFixed(2))
-                  setKind('limit')
-                  setPriceTouched(false)
-                }}
-              >
-                {T.useBookPrice}
-              </button>
-            ) : (
+            {kind === 'market' ? null : (
               <button
                 type="button"
                 className="ex-mini-btn is-accent"
@@ -472,6 +490,10 @@ export function TradePanel({
             <span>{T.previewFee}</span>
             <b className="ex-num">{money(preview.fee)}</b>
           </div>
+          <div className="ex-preview-row ex-preview-dim">
+            <span>{side === 'sell' && mode === 'spot' ? T.previewProceeds : T.previewCost}</span>
+            <b className="ex-num">{money(Math.abs(preview.settleAmount))}</b>
+          </div>
           {mode !== 'spot' && preview.liquidationPrice !== null && liqDistance !== null ? (
             <div className={`ex-liq-block${liqDanger ? ' is-danger' : ''}`}>
               <div className="ex-preview-row">
@@ -492,10 +514,6 @@ export function TradePanel({
               </p>
             </div>
           ) : null}
-          <div className="ex-preview-row ex-preview-dim">
-            <span>{side === 'sell' && mode === 'spot' ? T.previewProceeds : T.previewCost}</span>
-            <b className="ex-num">{money(Math.abs(preview.settleAmount))}</b>
-          </div>
         </div>
 
         {/* 保护单（仅杠杆）：成交后在同一链路挂条件单 */}
@@ -556,20 +574,12 @@ export function TradePanel({
           )}
         </div>
 
-        {/* 确认下单大按钮 */}
-        <button
-          type="button"
-          className={`ex-primary is-${mode}${!isReadyToSubmit ? ' is-blocked' : ''} ex-btn-progress`}
-          aria-disabled={!isReadyToSubmit}
-          disabled={busy}
-          title={activeFormError || undefined}
-          style={progressStyle(submitProgress)}
-          onClick={primaryAction}
-        >
-          <SendAlt size={16} /> {busy ? T.submitting : `${T.submit} · ${modeLabel(mode)}`}
-          {submitProgress.active ? ` ${submitProgress.pct}%` : ''}
-        </button>
       </div>
+
+      {/* 确认下单大按钮：有插槽时挂到右栏面板右下角（2026-11-06 船长令），否则留在原位 */}
+      {ctaTarget
+        ? createPortal(submitButton, ctaTarget)
+        : <div className="ex-trade-footer">{submitButton}</div>}
 
       {confirm !== null ? (
         <div className="ex-modal-mask" role="dialog" aria-modal="true" aria-label={T.confirmTitle}>
@@ -603,6 +613,7 @@ export function TradePanel({
               <button
                 type="button"
                 className="ex-primary ex-primary-small ex-btn-progress"
+                data-sfx={confirm.side === 'sell' ? 'exchange-sell' : 'exchange-buy'}
                 style={progressStyle(submitProgress)}
                 onClick={() => {
                   if (previewPending || previewFailed || preview.blockReason || confirm.qty !== effectiveQty) { setConfirm(null); onToast(tr('ui.exchange.024'), true); return }

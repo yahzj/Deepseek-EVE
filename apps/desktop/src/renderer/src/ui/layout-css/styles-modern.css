@@ -9495,7 +9495,9 @@ html[data-locale='en'] body {
      多出的部分被 `.app-workspace` 的 hidden 直接裁掉。
      正解：**可收缩**（`flex: 0 1 auto`）+ `max-height: 100%` 把高度约束在左列内 ⇒ 超出即列内滚动。 */
 
-  flex: 0 1 auto;
+  /* 2026-11-06 船长令：「活动栏可以跟右边一样高，显示更多内容」——改为吃满左列剩余高度，
+     内容不足时底部就是同一块深底（与右栏等高），超出时仍在栏内滚动。 */
+  flex: 1 1 auto;
 
   min-height: 0;
 
@@ -15458,4 +15460,58 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
   .app-online-chat-message { max-width: 94%; }
   .app-online-chat-history { padding-inline: var(--wui-sp-3); }
   .app-online-chat-input { min-height: 56px; }
+}
+
+/* 交易所逐只持仓明细（2026-11-06）：150px 窄栏一行放下「代码 杠杆 数量 盈亏」 */
+.app-activitybar-exch-hold {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 2px 4px 2px 8px;
+  border: 0;
+  border-left: 2px solid rgb(var(--wui-cyan) / 0.45);
+  border-radius: 0 3px 3px 0;
+  background: rgb(var(--wui-bg-field) / 0.35);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--wui-mono);
+  font-size: 10px;
+  line-height: 1.4;
+  color: rgb(var(--wui-text) / 0.72);
+}
+
+.app-activitybar-exch-hold:hover {
+  background: rgb(var(--wui-bg-hover) / 0.35);
+}
+
+.app-activitybar-exch-hold .exh-code {
+  color: rgb(var(--wui-text));
+  font-weight: 600;
+}
+
+.app-activitybar-exch-hold .exh-lev {
+  color: rgb(var(--wui-cyan));
+  font-size: 9px;
+}
+
+.app-activitybar-exch-hold .exh-qty {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.app-activitybar-exch-hold .exh-pnl {
+  min-width: 54px;
+  text-align: right;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.app-activitybar-exch-hold .exh-pnl.is-up {
+  color: rgb(var(--wui-tone-gain));
+}
+
+.app-activitybar-exch-hold .exh-pnl.is-down {
+  color: rgb(var(--wui-tone-loss));
 }

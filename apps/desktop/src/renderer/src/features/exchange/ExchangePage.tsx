@@ -15,6 +15,7 @@ import type { MarginCallPayload } from './client'
 import type { ExchangeClientBundle, ExchangeSourceInfo } from './factory'
 import { createExchangeClient } from './factory'
 import { CLOUD_SESSION_CHANGE_EVENT } from '../cloud/preferences'
+import { EXCH_PREF, EXCHANGE_PREF_EVENT } from './viewPrefs'
 import { amount, money, pct, pctAbs } from './format'
 import { T, TF } from './texts'
 import { Cashier } from './components/Cashier'
@@ -29,7 +30,7 @@ import { ProExchange } from './components/ProExchange'
 import { RoundBadge } from './components/RoundBadge'
 import './exchange.css'
 
-const VIEW_MODE_KEY = 'whale-idle:exch-view-mode'
+const VIEW_MODE_KEY = EXCH_PREF.viewMode
 
 export function ExchangePage({ engine, onToast, onOpenSettings }: PageProps) {
   // 2026-11-05 游客行情批：登录/退出后必须换客户端实例——游客连接是匿名的（不带 token），
@@ -138,6 +139,20 @@ function ExchangeBody({
       return 'simple'
     }
   })
+
+  // 外部入口（活动栏「债券/基金」）改了模式偏好时，已挂载的页面要跟着切
+  useEffect(() => {
+    const onPref = (): void => {
+      try {
+        const saved = localStorage.getItem(VIEW_MODE_KEY)
+        setViewMode(saved === 'pro' ? 'pro' : 'simple')
+      } catch {
+        // ignore
+      }
+    }
+    window.addEventListener(EXCHANGE_PREF_EVENT, onPref)
+    return () => window.removeEventListener(EXCHANGE_PREF_EVENT, onPref)
+  }, [])
 
   const switchViewMode = (mode: 'simple' | 'pro') => {
     // 未登录不能进专业投资（船长 2026-11-05：「不能进入专业投资的界面里」）
@@ -349,6 +364,7 @@ function ExchangeBody({
             <button
               type="button"
               className={`ex-mini-btn is-deposit${guest ? ' is-guest-locked' : ''}`}
+              data-sfx="exchange-deposit"
               aria-disabled={guest || undefined}
               onClick={() => (guest ? requireLogin() : setCashier('deposit'))}
             >
@@ -357,6 +373,7 @@ function ExchangeBody({
             <button
               type="button"
               className={`ex-mini-btn is-withdraw${guest ? ' is-guest-locked' : ''}`}
+              data-sfx="exchange-withdraw"
               aria-disabled={guest || undefined}
               onClick={() => (guest ? requireLogin() : setCashier('withdraw'))}
             >

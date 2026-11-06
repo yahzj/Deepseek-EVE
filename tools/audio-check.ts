@@ -88,6 +88,8 @@ function check(ok: boolean, message: string): void {
 /* ═══════════ 一、语义清单 ═══════════ */
 
 const ID_RE = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/
+/** 动态 data-sfx 里只认带连字符的名字（语义 id 都形如 `exchange-sell`；比较字面量一般不带连字符）。 */
+const DYN_ID_RE = /^[a-z][a-z0-9]*(-[a-z0-9]+)+$/
 const CATEGORY_SET = new Set<string>(SFX_CATEGORIES)
 for (const id of SFX_CUE_IDS) {
   const cue = SFX_CUES[id]
@@ -295,8 +297,44 @@ for (const id of Object.keys(LOG_CUE_RULES)) {
 }
 console.log(`· 日志规则：${Object.keys(LOG_CUE_RULES).length} 条，逐条核对 core 写入点（addLog / 命令 errorId）`)
 
-/* ═══════════ 三、本地化 ═══════════ */
+/* ═══════════ 二点五、按钮自带音效（data-sfx） ═══════════
+ * 2026-11-05 船长素材批：交易所按钮用 data-sfx 属性声明语义 id，点它时用该音效替代 `ui-click`。
+ * 判据：渲染层出现的每个字面量 data-sfx 都必须已在 cues.ts 登记——拼错会静默退回点击音，听感上像"没生效"。
+ */
+const RENDERER_SRC = join(ROOT, 'apps/desktop/src/renderer/src')
+const buttonSfxIds = new Set<string>()
+function walkRenderer(dir: string): void {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name)
+    if (entry.isDirectory()) {
+      walkRenderer(full)
+      continue
+    }
+    if (!/\.tsx?$/.test(entry.name)) continue
+    const src = readFileSync(full, 'utf8')
+    for (const matched of src.matchAll(/data-sfx="([^"]+)"/g)) {
+      // 只统计合法 id 形态（注释里用占位符说明机制，不当作声明）
+      const id = matched[1]!
+      if (ID_RE.test(id)) buttonSfxIds.add(id)
+    }
+    // 动态写法 `data-sfx={cond ? 'exchange-sell' : 'exchange-buy'}`：花括号内出现的字面量 id 同样登记，
+    // 否则条件分支里拼错不会在自检里暴露（听感上是「有时响有时不响」）。
+    // 只收带连字符的形态，避免把 `mode === 'deposit'` 这类比较字面量误当 id。
+    for (const matched of src.matchAll(/data-sfx=\{([^}]*)\}/g)) {
+      for (const lit of matched[1]!.matchAll(/'([^']+)'/g)) {
+        const id = lit[1]!
+        if (DYN_ID_RE.test(id)) buttonSfxIds.add(id)
+      }
+    }
+  }
+}
+walkRenderer(RENDERER_SRC)
+for (const id of buttonSfxIds) {
+  check(Object.prototype.hasOwnProperty.call(SFX_CUES, id), `按钮 data-sfx 指向未登记的语义 id：${id}`)
+}
+console.log(`· 按钮自带音效：${buttonSfxIds.size} 个 id（data-sfx 全部已登记）`)
 
+/* ═══════════ 三、本地化 ═══════════ */
 const tableSrc = readFileSync(join(ROOT, 'packages/data/src/l10n/table.ts'), 'utf8')
 const pendingSrc = readFileSync(join(ROOT, 'docs/l10n-pending.md'), 'utf8')
 
@@ -320,9 +358,13 @@ for (const id of allL10nIds) {
   const line = tableSrc.split('\n').find((l) => l.trimStart().startsWith(`'${id}':`))
   check(line !== undefined, `本地化表缺条目：${id}`)
   if (line === undefined) continue
-  check(line.includes('enDeferred: true'), `${id}：未授权英文时应写 en: '' + enDeferred: true`)
-  const pendingRow = new RegExp(`^\\| \`${id.replace(/\./g, '\\.')}\` \\|[^\\n]*\\| 待本地化 \\|\\s*$`, 'm')
-  check(pendingRow.test(pendingSrc), `${id}：enDeferred 未在 docs/l10n-pending.md 登记为「待本地化」`)
+  if (line.includes('enDeferred: true')) {
+    check(line.includes("en: ''"), `${id}：延期英文不得包含占位或已准备译文`)
+    const pendingRow = new RegExp(`^\\| \`${id.replace(/\./g, '\\.')}\` \\|[^\\n]*\\| 待本地化 \\|\\s*$`, 'm')
+    check(pendingRow.test(pendingSrc), `${id}：enDeferred 未在 docs/l10n-pending.md 登记为「待本地化」`)
+  } else {
+    check(line.includes("en: '") && !line.includes("en: ''"), `${id}：已完成英文时应有有效英文翻译`)
+  }
 }
 
 /* ═══════════ 四、纯规则确定性用例 ═══════════ */
@@ -331,16 +373,16 @@ const defaults = defaultSfxPrefs()
 const muted = { ...defaults, muted: true }
 check(effectiveGain('combat-fire', defaults) === 0.5, `默认增益：combat-fire 应为 0.5，实际 ${effectiveGain('combat-fire', defaults)}`)
 check(effectiveGain('invasion-alarm', defaults) === 0.7, `默认增益：invasion-alarm 应为 0.7，实际 ${effectiveGain('invasion-alarm', defaults)}`)
-// 默认音量表（船长 2026-11-05 指定）：总 100% / 音乐 15% / 环境 50% / 警报 70% / 战斗 100% / 生产 50% / 界面 50%
+// 默认音量表（船长 2026-11-05 指定）：总 100% / 音乐 25% / 环境 55% / 警报 70% / 战斗 100% / 生产 50% / 界面 50%
 check(
   defaults.master === 1 &&
-    defaults.categories.music === 0.15 &&
-    defaults.categories.ambient === 0.5 &&
+    defaults.categories.music === 0.25 &&
+    defaults.categories.ambient === 0.55 &&
     defaults.categories.alarm === 0.7 &&
     defaults.categories.combat === 1 &&
     defaults.categories.progress === 0.5 &&
     defaults.categories.ui === 0.5,
-  `默认音量表应为 总100/音乐15/环境50/警报70/战斗100/生产50/界面50，实际 ${JSON.stringify({ master: defaults.master, ...defaults.categories })}`,
+  `默认音量表应为 总100/音乐25/环境55/警报70/战斗100/生产50/界面50，实际 ${JSON.stringify({ master: defaults.master, ...defaults.categories })}`,
 )
 check(effectiveGain('combat-fire', muted) === 0, '静音时所有音效增益必须为 0')
 check(clampVolume(-1) === 0 && clampVolume(2) === 1 && clampVolume(Number.NaN) === 0, '音量钳制边界错误')
@@ -397,7 +439,7 @@ check(Math.abs(pitchRateFor(100, () => 1) - Math.pow(2, 100 / 1200)) < 1e-12, '�
 check(pitchRateFor(100, () => 0.5) === 1, '音高：中值随机应原调')
 check(pitchRateFor(100, () => Number.NaN) === 1, '音高：异常随机源应原调')
 check(parseSfxPrefs('{"pitchJitterCents":250}').pitchJitterCents === PITCH_JITTER_MAX_CENTS, '音高偏好：越界应钳到上限')
-check(parseSfxPrefs('{}').pitchJitterCents === 100, '音高偏好：默认 ±100 音分')
+check(parseSfxPrefs('{}').pitchJitterCents === 50, '音高偏好：默认 ±50 音分（船长 2026-11-06）')
 
 /* UI 点击音固定 ±50 音分（2026-11-05 船长口径；不受战斗滑条影响） */
 check(SFX_CUES['ui-click'].pitchJitterCents === 50, 'UI 点击音应固定 ±50 音分')

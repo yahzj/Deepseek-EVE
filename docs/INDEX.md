@@ -13,12 +13,12 @@
 
 ## 统计
 
-- 非归档文档 **368** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4621** KB · **52177** 行
-- 状态分布：**未标注** 177 · **已确认/已实现** 124 · **进行中** 47 · **待裁定** 19 · **历史留档** 1
-- 孤儿文档（0 引用）**159** 份 · 状态未标注 **177** 份
+- 非归档文档 **372** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4673** KB · **52662** 行
+- 状态分布：**未标注** 180 · **已确认/已实现** 125 · **进行中** 47 · **待裁定** 19 · **历史留档** 1
+- 孤儿文档（0 引用）**159** 份 · 状态未标注 **180** 份
 - 一、常用文档（按任务查阅）：**11** 份
 - 七、评审与体检（review）：**4** 份
-- 三、设计与工作文档（需核实状态）：**343** 份
+- 三、设计与工作文档（需核实状态）：**347** 份
 - 二、其它（docs 根目录）：**2** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
 - 八、测试档说明（test-saves）：**1** 份
@@ -28,15 +28,15 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档） |
 |---|---|---|---|---|---|
-| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定 | 未标注 | — | 23 KB / 134 行 | 40 |
-| `docs/architecture.md` | 架构文档 | 未标注 | — | 8 KB / 90 行 | 16 |
-| `docs/catalog.md` | 文档目录 | 未标注 | — | 5 KB / 49 行 | 11 |
+| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定 | 未标注 | — | 23 KB / 134 行 | 45 |
+| `docs/architecture.md` | 架构文档 | 未标注 | — | 8 KB / 90 行 | 17 |
+| `docs/catalog.md` | 文档目录 | 未标注 | — | 5 KB / 50 行 | 11 |
 | `docs/content-workbench.md` | 内容工作台 | 未标注 | — | 3 KB / 35 行 | 2 |
 | `docs/data-editor.md` | 大鲸鱼数据编辑器 | 未标注 | — | 4 KB / 45 行 | 6 |
 | `docs/data-map.md` | 数据速查页 | 未标注 | — | 3 KB / 38 行 | 5 |
-| `docs/development-conventions.md` | 开发约定 | 未标注 | — | 25 KB / 171 行 | 20 |
-| `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（现行译名表） | — | 46 KB / 810 行 | 9 |
-| `docs/glossary.md` | 术语词典 | 未标注 | — | 23 KB / 204 行 | 63 |
+| `docs/development-conventions.md` | 开发约定 | 未标注 | — | 25 KB / 171 行 | 25 |
+| `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（现行译名表） | — | 46 KB / 810 行 | 17 |
+| `docs/glossary.md` | 术语词典 | 未标注 | — | 23 KB / 204 行 | 65 |
 | `docs/roadmap.md` | 当前待办与实施边界 | 未标注 | — | 9 KB / 76 行 | 62 |
 | `docs/single-source.md` | 单点索引（谁有权算、谁只能读） | 未标注 | — | 43 KB / 298 行 | 21 |
 
@@ -49,17 +49,21 @@
 | `docs/review/pending-decisions-20260910.md` | 待船长裁决清单（2026-09-10 · 二号整理，供逐条审核） | 未标注 | 2026-09-10 | 29 KB / 374 行 | 2 |
 | `docs/review/guoqing-audit-followup.md` | 国庆节审查当前跟进 | 未标注（已复核修复） | — | 3 KB / 22 行 | 4 |
 
-## 三、设计与工作文档（需核实状态） —— 343 份
+## 三、设计与工作文档（需核实状态） —— 347 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档） |
 |---|---|---|---|---|---|
 | `docs/design/announcement-draft-update-20261105.md` | 本次更新公告修订稿 | 未标注（船长2026-11-05明确要求“将） | 2026-11-05 | 4 KB / 60 行 | 2 |
 | `docs/design/cloud-8443-20261105.md` | 云端入口切 8443（2026-11-05） | 未标注（已上线、本地合入） | 2026-11-05 | 5 KB / 55 行 | 2 |
-| `docs/design/exchange-feedback-20261105.md` | 股市交易反馈与界面修复 | 未标注（实施中） | 2026-11-05 | 7 KB / 53 行 | 1 |
+| `docs/design/exchange-demand-adaptive-20261105.md` | 深空证券交易所 · 玩家需求自适应流动性（2026-11-05） | 未标注（已部署生产） | 2026-11-05 | 13 KB / 124 行 | 0 |
+| `docs/design/exchange-feedback-20261105.md` | 股市交易反馈与界面修复 | 未标注（实施中） | 2026-11-05 | 7 KB / 53 行 | 5 |
+| `docs/design/exchange-guest-readonly-20261105.md` | 股市游客只读（移除模拟盘）· 2026-11-05 | 未标注 | 2026-11-05 | 5 KB / 65 行 | 3 |
+| `docs/design/exchange-ui-copy-20261105.md` | 证券交易所界面文案与方向配色整改（2026-11-05） | 未标注（实施中） | 2026-11-05 | 19 KB / 155 行 | 1 |
 | `docs/design/fleet-command-compensation-20261105.md` | 旧存档编队协同指挥补偿 | 未标注（船长明确指定） | 2026-11-05 | 4 KB / 46 行 | 0 |
+| `docs/design/l10n-exchange-and-en-20261105.md` | 交易所文案迁表与英文准备收口（2026-11-05） | 已确认/已实现（已合入并推送） | 2026-11-05 | 7 KB / 66 行 | 0 |
 | `docs/design/player-market-exclusive-20261105.md` | 独占产物的玩家交易接入 | 已确认/已实现（本地实现与验证已完成） | 2026-11-05 | 5 KB / 37 行 | 3 |
 | `docs/design/audio-ingest-20261104.md` | 音效正式入库（音效台导出 → audio:install） | 已确认/已实现（已实现、专项自测通过） | 2026-11-04 | 6 KB / 65 行 | 3 |
-| `docs/design/exchange-ui-ux-audit-20261104.md` | 证券交易所 UI/UX 深度体验审核与逐轮优化（2026-11-04） | 已确认/已实现（已完成） | 2026-11-04 | 3 KB / 40 行 | 0 |
+| `docs/design/exchange-ui-ux-audit-20261104.md` | 证券交易所 UI/UX 深度体验审核与逐轮优化（2026-11-04） | 已确认/已实现（已完成） | 2026-11-04 | 3 KB / 40 行 | 1 |
 | `docs/design/faction-plugin-expansion-20261104.md` | 阵营插件扩充与回复规则 · 2026-11-04 | 已确认/已实现（危机超载速度惩罚追加已落地） | 2026-11-04 | 24 KB / 205 行 | 3 |
 | `docs/design/fleet-repair-all-20261104.md` | 舰队全部修理 | 未标注 | 2026-11-04 | 2 KB / 48 行 | 0 |
 | `docs/design/player-market-relay-20261104.md` | 玩家市场异步转发设计 | 进行中（进行中 - 方案已批准） | 2026-11-04 | 19 KB / 205 行 | 2 |
@@ -77,7 +81,7 @@
 | `docs/design/settings-subpages-20261103.md` | 设置子页面分类（2026-11-03） | 未标注（设置分类及第一轮远端同步已包含在本地） | 2026-11-03 | 4 KB / 44 行 | 2 |
 | `docs/design/stock-exchange-ai-ecosystem-20261103.md` | 证券交易所 · AI 市场生态设计（让市场「活」起来） | 未标注（设计稿） | 2026-11-03 | 9 KB / 175 行 | 3 |
 | `docs/design/stock-exchange-backend-b0-20261103.md` | 证券交易所 · 后端 B0 工作文档（订单簿/撮合/账户/REST） | 已确认/已实现（B0-1 已实现） | 2026-11-03 | 5 KB / 66 行 | 4 |
-| `docs/design/stock-exchange-backend-spec-20261103.md` | 证券交易所 · 后端契约级设计（P0 实施基线） | 未标注（待开工确认） | 2026-11-03 | 26 KB / 461 行 | 5 |
+| `docs/design/stock-exchange-backend-spec-20261103.md` | 证券交易所 · 后端契约级设计（P0 实施基线） | 未标注（待开工确认） | 2026-11-03 | 26 KB / 461 行 | 6 |
 | `docs/design/stock-exchange-economy-pvp-20261103.md` | 证券交易所 · 经济闭环与 PvP/AI 博弈设计 | 未标注（设计稿　｜　日期：2026-11-0） | 2026-11-03 | 11 KB / 169 行 | 2 |
 | `docs/design/stock-exchange-go-migration-20261103.md` | 全量迁 Go · 迁移计划与阶段划分 | 已确认/已实现（已获船长方向批准） | 2026-11-03 | 5 KB / 82 行 | 1 |
 | `docs/design/stock-exchange-go-stack-20261103.md` | 证券交易所 · Go 技术栈与开源参考调研 | 未标注（调研稿） | 2026-11-03 | 11 KB / 153 行 | 1 |
@@ -107,8 +111,8 @@
 | `docs/design/signal-auto-estimate-20261102.md` | 信号空间自动探索估算方案 | 未标注（船长2026-11-02回复「按你推） | 2026-11-02 | 11 KB / 106 行 | 3 |
 | `docs/design/signal-auto-yield-comparison-20261102.md` | 信号自动探索新旧收益对照 | 未标注（二号完成正式配对对照） | 2026-11-02 | 9 KB / 83 行 | 0 |
 | `docs/design/sortie-departure-20261102.md` | 主控离港与出击阶段 | 未标注（船长已明确“确认”完整实施方案） | 2026-11-02 | 8 KB / 81 行 | 1 |
-| `docs/design/sound-layers-20261102.md` | 声音系统追加批：BGM / 环境音 / 战斗细分 / 音高随机 · 2026-11-02 工作文档 | 未标注（实施中） | 2026-11-02 | 9 KB / 111 行 | 3 |
-| `docs/design/sound-system-20261102.md` | 声音系统（本机音效台）· 2026-11-02 工作文档 | 已确认/已实现（已实现 + 独立审查修复完毕） | 2026-11-02 | 14 KB / 133 行 | 4 |
+| `docs/design/sound-layers-20261102.md` | 声音系统追加批：BGM / 环境音 / 战斗细分 / 音高随机 · 2026-11-02 工作文档 | 未标注（实施中） | 2026-11-02 | 12 KB / 133 行 | 3 |
+| `docs/design/sound-system-20261102.md` | 声音系统（本机音效台）· 2026-11-02 工作文档 | 已确认/已实现（已实现 + 独立审查修复完毕） | 2026-11-02 | 18 KB / 174 行 | 4 |
 | `docs/design/ui-activitybar-and-bottom-nav-20261102.md` | 左侧活动栏排版重构与底部导航栏字号优化 · 2026-11-02 | 未标注 | 2026-11-02 | 5 KB / 52 行 | 0 |
 | `docs/design/ui-comms-chamfer-modern-20261102.md` | 通讯界面科幻未来 HUD 缺角风格统一改造 · 2026-11-02 | 未标注 | 2026-11-02 | 3 KB / 43 行 | 0 |
 | `docs/design/enemy-compact-trapezoid-20261101.md` | 敌舰紧凑梯形排列 | 未标注（船长回复「按你推荐来） | 2026-11-01 | 11 KB / 86 行 | 0 |
@@ -402,7 +406,7 @@
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档） |
 |---|---|---|---|---|---|
 | `docs/development-conventions-changelog.md` | 开发约定维护记录 | 未标注 | — | 13 KB / 103 行 | 6 |
-| `docs/l10n-pending.md` | 待英文本地化记录 | 未标注 | — | 45 KB / 758 行 | 30 |
+| `docs/l10n-pending.md` | 英文本地化记录 | 未标注 | — | 45 KB / 769 行 | 33 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -431,9 +435,10 @@
 
 > 仅表示没有其他收录文档提到本文件名，不能据此删除、归档或批准阅读历史。
 
+- `docs/design/exchange-demand-adaptive-20261105.md`（2026-11-05 · 13 KB）—— 深空证券交易所 · 玩家需求自适应流动性（2026-11-05）
 - `docs/design/fleet-command-compensation-20261105.md`（2026-11-05 · 4 KB）—— 旧存档编队协同指挥补偿
+- `docs/design/l10n-exchange-and-en-20261105.md`（2026-11-05 · 7 KB）—— 交易所文案迁表与英文准备收口（2026-11-05）
 - `docs/review/acceptance-20261105.md`（2026-11-05 · 15 KB）—— 待验收项批量验收台账 · 2026-11-05
-- `docs/design/exchange-ui-ux-audit-20261104.md`（2026-11-04 · 3 KB）—— 证券交易所 UI/UX 深度体验审核与逐轮优化（2026-11-04）
 - `docs/design/fleet-repair-all-20261104.md`（2026-11-04 · 2 KB）—— 舰队全部修理
 - `docs/design/ui-ux-20-rounds-audit-20261104.md`（2026-11-04 · 33 KB）—— 全局 UI/UX 20 轮深度审核与自动化修复全记录（2026-11-04）
 - `docs/design/activitybar-progress-smoothness-20261103.md`（2026-11-03 · 4 KB）—— 设计文档：左侧活动栏进度条刷新率与平滑度优化 (2026-11-03)
@@ -590,12 +595,14 @@
 - `docs/design/v18.1-support.md`（无日期 · 9 KB）—— V18.1 设计总结：支援装备 + 叠加收敛（取消同类唯一 · 已确认实施）
 - `docs/design/v18b2-lasers.md`（无日期 · 5 KB）—— V18B-2 设计总结：激光炮武器族（能量系形态 · 已确认实施）
 
-## 附：状态未标注（177 份，待补一行 `状态：…`）
+## 附：状态未标注（180 份，待补一行 `状态：…`）
 
 - `docs/design/announcement-draft-update-20261105.md`（2026-11-05）—— 本次更新公告修订稿
 - `docs/design/cloud-8443-20261105.md`（2026-11-05）—— 云端入口切 8443（2026-11-05）
 - `docs/design/exchange-demand-adaptive-20261105.md`（2026-11-05）—— 深空证券交易所 · 玩家需求自适应流动性（2026-11-05）
 - `docs/design/exchange-feedback-20261105.md`（2026-11-05）—— 股市交易反馈与界面修复
+- `docs/design/exchange-guest-readonly-20261105.md`（2026-11-05）—— 股市游客只读（移除模拟盘）· 2026-11-05
+- `docs/design/exchange-ui-copy-20261105.md`（2026-11-05）—— 证券交易所界面文案与方向配色整改（2026-11-05）
 - `docs/design/fleet-command-compensation-20261105.md`（2026-11-05）—— 旧存档编队协同指挥补偿
 - `docs/review/acceptance-20261105.md`（2026-11-05）—— 待验收项批量验收台账 · 2026-11-05
 - `docs/design/fleet-repair-all-20261104.md`（2026-11-04）—— 舰队全部修理
