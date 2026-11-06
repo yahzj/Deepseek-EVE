@@ -478,8 +478,6 @@ export interface ExchangeClient {
   getSnapshot(code: string): ExchangeSnapshot
   /** 六周期图表数据（同步读缓存：Mock 内存直读；HTTP 由订阅缓存提供，未连上时为空数组） */
   getChartSeries(code: string, period: ChartPeriod): Kline[]
-  /** 「重置模拟账户」：回到 1,000 万启动资金；HTTP 实现没有本地账户可重置 */
-  resetAccount(): void
   /** 债券：查询持仓（服务端惰性结算到当前分钟） */
   getBondPosition(): Promise<BondPosition>
   /** 债券：申购，把交易所现金换成本金（可多次追加） */
@@ -498,7 +496,7 @@ export interface ExchangeClient {
 }
 
 /**
- * 装配点（2026-11-03 双轨数据源批）：已迁到 `factory.ts` —— `createExchangeClient({ mode, serverUrl })`
- * 按 `localStorage['whale-idle:exch-src']` 解析 Mock / HTTP，并保证 Mock 引擎是**模块单例**。
+ * 装配点（2026-11-05 游客行情批）：`factory.ts` 的 `createExchangeClient({ serverUrl, guest })`
+ * 按云账号是否登录在「真实服务器游客只读 / 联机账户」之间切换，并按「地址 + 身份」复用客户端。
  * 页面与组件只 import 本文件的接口与 DTO，不 import `mock/` 或 `http/` 具体实现。
  */

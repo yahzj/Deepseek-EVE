@@ -16,4 +16,3 @@ export interface CloudSave {
   size?: number
   createdAt?: number
 }
-

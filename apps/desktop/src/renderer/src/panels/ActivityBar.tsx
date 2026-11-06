@@ -10,7 +10,7 @@
  */
 import { activityOverview, scanAwaitingView, scanStatus, SYNAPTIC_ACCELERANT_MUL } from '@whale/core'
 import type { ActivityView } from '@whale/core'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
@@ -23,6 +23,8 @@ import { stopLabel, doStop } from './activityStopLabel'
 import { fmtDuration } from '../i18n/fmt'
 import { explorationActivityText } from '../ui/explorationActivityText'
 import { createExchangeClient } from '../features/exchange/factory'
+import { jumpExchangePage } from '../features/exchange/viewPrefs'
+import { CLOUD_SESSION_CHANGE_EVENT } from '../features/cloud/preferences'
 import type { BondPosition, FundPosition } from '../features/exchange/client'
 import { money, pct } from '../features/exchange/format'
 import '../styles-activity-invasion.css'
@@ -215,7 +217,14 @@ export function ActivityBar({
 
   // ── 深空证券交易所监控（副AI活动最下方，船长 2026-11-03 令） ──
   const [exchTick, bumpExchTick] = useState(0)
-  const exchBundle = useMemo(() => createExchangeClient(), [])
+  // 2026-11-05 游客行情批：登录/退出后换客户端实例（匿名连接的账户数据永远是空的）。
+  const [exchAuthTick, bumpExchAuth] = useReducer((n: number) => n + 1, 0)
+  useEffect(() => {
+    const onChange = (): void => bumpExchAuth()
+    window.addEventListener(CLOUD_SESSION_CHANGE_EVENT, onChange)
+    return () => window.removeEventListener(CLOUD_SESSION_CHANGE_EVENT, onChange)
+  }, [])
+  const exchBundle = useMemo(() => createExchangeClient(), [exchAuthTick])
   useEffect(() => {
     const unsub = exchBundle.client.onTick(() => bumpExchTick((t) => t + 1))
     return unsub
@@ -289,6 +298,40 @@ export function ActivityBar({
       funds,
     }
   }, [exchSnap, savingsLive])
+
+  /**
+   * 逐只持仓明细（2026-11-06 船长令：「活动栏可以跟右边一样高，可以显示更多内容」）：
+   * 交易所分组原来只有一行汇总，左栏下半截空着；改为汇总行 + 每只现货/杠杆持仓各一行，
+   * 数量与浮动盈亏直接在栏内可读，不必先点进交易所。
+   */
+  const stockRows = useMemo(() => {
+    const rows: Array<{ key: string; code: string; tag: string; qty: string; pnl: string; up: boolean }> = []
+    const priceOf = (code: string): number | null => exchSnap.stocks.find((s) => s.code === code)?.price ?? null
+    for (const h of exchSnap.account.holdings) {
+      if (h.qty <= 0) continue
+      const price = priceOf(h.code)
+      const pnl = price === null ? 0 : (price - h.avgCost) * h.qty
+      rows.push({
+        key: `hold-${h.code}`,
+        code: h.code,
+        tag: '',
+        qty: isEn() ? `${h.qty} sh` : `${h.qty}股`,
+        pnl: `${pnl >= 0 ? '+' : ''}${money(pnl)}`,
+        up: pnl >= 0,
+      })
+    }
+    for (const p of exchSnap.account.positions) {
+      rows.push({
+        key: `pos-${p.code}-${p.side}`,
+        code: p.code,
+        tag: `${p.side === 'short' ? (isEn() ? 'S' : '空') : (isEn() ? 'L' : '多')}${p.leverage}x`,
+        qty: isEn() ? `${p.qty} sh` : `${p.qty}股`,
+        pnl: `${p.unrealizedPnl >= 0 ? '+' : ''}${money(p.unrealizedPnl)}`,
+        up: p.unrealizedPnl >= 0,
+      })
+    }
+    return rows
+  }, [exchSnap])
 
   const renderItem = (v: ActivityView) => {
     const target = goFor(v.kind)
@@ -579,6 +622,22 @@ export function ActivityBar({
             </span>
           </button>
 
+          {/* ①-b 逐只持仓明细：150px 窄栏里压成一行「代码 数量 盈亏」 */}
+          {stockRows.map((row) => (
+            <button
+              key={row.key}
+              type="button"
+              className="app-activitybar-exch-hold"
+              title={`${row.code}：${row.qty}，${row.pnl}`}
+              onClick={() => onGoPage?.('exchange')}
+            >
+              <span className="exh-code">{row.code}</span>
+              <span className="exh-lev">{row.tag}</span>
+              <span className="exh-qty">{row.qty}</span>
+              <span className={`exh-pnl ${row.up ? 'is-up' : 'is-down'}`}>{row.pnl}</span>
+            </button>
+          ))}
+
           {/* ② 债券条目（仅在已购买且本金 > 0 时单独一行显示收益，没有购买不显示） */}
           {exchSummary.bonds && exchSummary.bonds.principal > 0 ? (
             <button
@@ -589,7 +648,11 @@ export function ActivityBar({
                   ? `Bonds: Principal ${money(exchSummary.bonds.principal)}, Accrued +${money(exchSummary.bonds.accrued)}. Click to manage`
                   : `稳健型债券：本金 ${money(exchSummary.bonds.principal)}，累计计息 +${money(exchSummary.bonds.accrued)}。点击直达交易所理财`
               }
-              onClick={() => onGoPage?.('exchange')}
+              onClick={() => {
+                // 2026-11-06 船长令：左侧点债券/基金要直接落到「简单投资 · 理财与基金」
+                jumpExchangePage('simple', 'finance')
+                onGoPage?.('exchange')
+              }}
             >
               <span className="app-activitybar-icon">
                 <Glyph name="nav-market" size={14} color="rgb(var(--wui-gold))" />
@@ -613,7 +676,10 @@ export function ActivityBar({
                   ? `Hedge Fund: Principal ${money(exchSummary.funds.principal)}, Accrued ${exchSummary.funds.accrued >= 0 ? '+' : ''}${money(exchSummary.funds.accrued)}. Click to manage`
                   : `深空对冲基金：本金 ${money(exchSummary.funds.principal)}，累计收益 ${exchSummary.funds.accrued >= 0 ? '+' : ''}${money(exchSummary.funds.accrued)}。点击直达交易所基金`
               }
-              onClick={() => onGoPage?.('exchange')}
+              onClick={() => {
+                jumpExchangePage('simple', 'finance')
+                onGoPage?.('exchange')
+              }}
             >
               <span className="app-activitybar-icon">
                 <Glyph name="nav-skills" size={14} color="rgb(var(--wui-purple))" />

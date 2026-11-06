@@ -38,8 +38,6 @@ export function FundCard({
   const principal = position?.principal ?? 0
   const hasPosition = principal > 0
   const accrued = position?.accrued ?? 0
-  const value = position?.value ?? 0
-  const minutes = position?.minutes ?? 0
 
   // 首屏拉一次持仓，之后每 10 秒刷新（与行情轮询同节奏，收益才会随分钟跳动）。
   useEffect(() => {
@@ -133,7 +131,7 @@ export function FundCard({
           </b>
         </div>
 
-        {/* 持仓区：本金 / 累计收益 / 当前价值 / 已计息分钟 */}
+        {/* 持仓区：本金 → 累计收益（2026-11-06 船长令：与债券同一排序，去掉无意义读数） */}
         {hasPosition ? (
           <>
             <div className="ex-preview-row">
@@ -151,18 +149,6 @@ export function FundCard({
               >
                 {accrued > 0 ? '+' : accrued < 0 ? '−' : ''}
                 {money(Math.abs(accrued))} <span className="ex-unit">{T.creditUnit}</span>
-              </b>
-            </div>
-            <div className="ex-preview-row">
-              <span>{T.fundValue}</span>
-              <b className="ex-num">
-                {money(value)} <span className="ex-unit">{T.creditUnit}</span>
-              </b>
-            </div>
-            <div className="ex-preview-row">
-              <span>{T.fundMinutes}</span>
-              <b className="ex-num">
-                {minutes} {T.fundMinuteUnit}
               </b>
             </div>
           </>
@@ -245,6 +231,7 @@ export function FundCard({
           <button
             type="button"
             className="ex-mini-btn is-bond-buy ex-btn-progress"
+            data-sfx="exchange-buy"
             disabled={!canSubmit}
             style={progressStyle(openProgress)}
             onClick={() => void submit()}
@@ -256,6 +243,7 @@ export function FundCard({
             <button
               type="button"
               className="ex-mini-btn ex-btn-progress"
+              data-sfx="exchange-sell"
               disabled={busy}
               style={progressStyle(redeemProgress)}
               onClick={() => void redeem()}

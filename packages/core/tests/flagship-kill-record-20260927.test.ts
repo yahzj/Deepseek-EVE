@@ -106,6 +106,9 @@ function armFleet(s: GameState): string[] {
 
 /** 走引擎真路径开一场旗舰战（与 `engine.challengeWeekendFlagship` 同形挂进遭遇槽） */
 function launchFlagship(s: GameState, now: number, squad: readonly string[]): void {
+  // 留档专项从已到核心星系的编队开战，不让离港等待改变战斗夹具时序。
+  s.awayGalaxy = CORE
+  s.dockedSite = null
   const spec = weekendFlagshipSpecOf(s, ctx, now)!
   const battle = weekendStartFlagshipBattle(s, ctx, now, squad)!
   s.encounter = {

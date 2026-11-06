@@ -10,6 +10,7 @@ import { advanceBattleFor, ammoLoadTotals, createPlayerSpec, startBattleFor } fr
 import { countWare } from '../src/inventory'
 import { resolveAmmoTier } from '../src/combatAmmo'
 import { ammoTiersOf } from '../src/ammoTiers'
+import { shipOperationBlockReason } from '../src/shipActionPolicy'
 import type { BattleFx } from '../src/state'
 import type { AnomalyDef, FoeShipDef } from '../src/types'
 
@@ -49,7 +50,7 @@ function display(state: ReturnType<typeof world>) {
   const tr = (id: string, params?: Record<string, string | number>) => (L10N[id]?.zh ?? id)
     .replace(/\{(\w+)\}/g, (raw, key: string) => String(params?.[key] ?? raw))
   const bindings = {
-    createPlayerSpec, ammoLoadTotals, ammoTiersOf, countWare, resolveAmmoTier, tr, cmdText: String,
+    createPlayerSpec, ammoLoadTotals, ammoTiersOf, countWare, resolveAmmoTier, shipOperationBlockReason, tr, cmdText: String,
     DMG_LABEL: { kinetic: '动能', explosive: '爆炸', plasma: '能量' },
     DmgChip: 'DmgChip', exports: {},
     React: { createElement: (type: unknown, props: Record<string, unknown> | null, ...children: unknown[]): Node =>

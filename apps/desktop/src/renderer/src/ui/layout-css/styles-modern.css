@@ -14227,6 +14227,17 @@ body.no-fx .app-root.is-layout-modern .app-fit-slot-icon::after {
   filter: drop-shadow(0 0 4px rgb(var(--wui-hud-primary) / 0.8));
 }
 
+/* 船长令（2026-11-05）：新版 UI 战术星图节点名称，除母港外全部小 2 号（11px → 9px），母港保持大字号突出显眼 */
+.app-root.is-layout-modern .app-map-label {
+  font-size: var(--wui-fs-2xsb);
+}
+.app-root.is-layout-modern .app-map-label.is-hub {
+  font-size: var(--wui-fs-xs);
+}
+.app-root.is-layout-modern .app-map-famchip-text {
+  font-size: var(--wui-fs-2xsb);
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════════
  * 11. 能量流动与战术微动效
  * ═══════════════════════════════════════════════════════════════════════════════ */

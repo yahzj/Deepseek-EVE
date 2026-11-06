@@ -339,12 +339,12 @@ function normalizeRound(raw: unknown): RoundInfo | null {
 function normalizeNews(raw: unknown): NewsItem | null {
   if (!isRecord(raw)) return null
   const id = typeof raw.id === 'string' ? raw.id : ''
-  // 船长指令（2026-11-04）：快讯中关于人格的文案都要去掉，AG- 开头的人格行为快讯直接不接收
-  if (id.startsWith('AG-')) return null
   const title = text(raw.title)
   const body = text(raw.body)
   if (id === '' && title === '') return null
-  if (title.includes('人格') || body.includes('人格')) return null
+  // 船长令（2026-11-04）保留：快讯不出现「人格」字样；2026-11-05 追加：AI 买卖要通报，
+  // AG- 开头的对手盘行为快讯放行，措辞清洗交给 NewsTicker.playerText，不再整条丢弃。
+  if (!id.startsWith('AG-') && (title.includes('人格') || body.includes('人格'))) return null
   // 后端 tone ∈ good/bad/neutral；前端 DTO 只有 good/bad/warn/info，
   // `neutral` 与未知值一并归到 `info`（快讯栏按中性色渲染，不引入新 tone）。
   const tone =
@@ -568,10 +568,20 @@ export class HttpExchangeClient implements ExchangeClient {
   private chartsHydrated = false
   private refreshing = false
   private refreshCount = 0
+  /** 上次看到的 24h 累计成交量：用增量推算本拍成交量，喂给当前 K 线桶 */
+  private lastVolume24h = new Map<string, number>()
   private static readonly CHART_CACHE_KEY = 'whale-idle:exch-charts:v1'
   private static readonly CHART_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000
 
-  constructor(transport: Transport, basePath = '/api/exchange') {
+  constructor(
+    transport: Transport,
+    basePath = '/api/exchange',
+    /**
+     * 游客只读（2026-11-05 游客行情批）：跳过 account/orders/round/bond/fund/strategies
+     * 这些**需要登录**的接口，只拉公开行情；写接口由传输层直接拒绝（无令牌 ⇒ ExchangeAuthError）。
+     */
+    private readonly guest = false,
+  ) {
     this.transport = transport
     this.basePath = basePath
   }
@@ -638,17 +648,27 @@ export class HttpExchangeClient implements ExchangeClient {
       const withCharts = this.refreshCount % 3 === 0
       this.refreshCount += 1
       const stocksTask = this.getStocks().catch(() => undefined)
-      const [account, orders] = await Promise.all([
-        this.getAccount().catch(() => null),
-        this.getOrders().catch((): ExchangeOrder[] => []),
-      ])
-      if (account !== null) this.account = account
-      this.orders = orders
+      // 账户/委托是私有接口，游客不拉（否则每 10 秒一次 401）。
+      if (!this.guest) {
+        const [account, orders] = await Promise.all([
+          this.getAccount().catch(() => null),
+          this.getOrders().catch((): ExchangeOrder[] => []),
+        ])
+        if (account !== null) this.account = account
+        this.orders = orders
+      }
       await stocksTask
+      // 后台补齐每个标的的图表缓存（不依赖玩家点选）：bootstrap 只预载首只标的，
+      // 其余标的在这里补拉 m1/盘口，之后分时线与蜡烛都随每 10 秒节拍刷新。
+      for (const stock of this.stocks) {
+        if (!this.chartCache.has(`${stock.code}:m1`) || !this.chartCache.has(`${stock.code}:intraday`)) {
+          this.ensureSymbolData(stock.code)
+        }
+      }
       await Promise.all([
         this.loadNews().catch(() => undefined),
-        this.loadBond().catch(() => undefined),
-        this.loadFund().catch(() => undefined),
+        this.guest ? Promise.resolve() : this.loadBond().catch(() => undefined),
+        this.guest ? Promise.resolve() : this.loadFund().catch(() => undefined),
         // 对手盘面板跟着行情一起刷：WS `agents` 帧只在回合末来一次，页面开着不动会像卡死。
         this.loadAgents().catch(() => undefined),
         code === ''
@@ -715,9 +735,10 @@ export class HttpExchangeClient implements ExchangeClient {
       // 人格摘要同理：WS `agents` 只在回合末推一次，首屏补拉，否则「对手盘」要等 5 分钟。
       const agentsTask = this.loadAgents().catch(() => undefined)
       // 债券持仓：顶部「债券价值」与理财卡片都要用，首屏补拉（之后按分钟随行情刷新）。
-      const bondTask = this.loadBond().catch(() => undefined)
+      // 游客没有账户，`/bond` 与 `/fund` 需要登录 ⇒ 不拉（loadBond/loadFund 内部也早退，双保险）。
+      const bondTask = this.guest ? Promise.resolve() : this.loadBond().catch(() => undefined)
       // 基金持仓：左侧活动栏要显示收益，首屏补拉（之后与行情同频刷新）。
-      const fundTask = this.loadFund().catch(() => undefined)
+      const fundTask = this.guest ? Promise.resolve() : this.loadFund().catch(() => undefined)
       const stocks = await this.getStocks()
       const code = stocks[0]?.code
       // 行情图/盘口尽早并行：不再等 account/orders 往返后才开始拉 5 个周期 K 线，首屏更快。
@@ -734,16 +755,19 @@ export class HttpExchangeClient implements ExchangeClient {
       }
       // 其余三只标的的图表后台预载，玩家切股票时不再等网络。
       for (const stock of stocks.slice(1)) this.ensureSymbolData(stock.code)
-      const roundTask = this.getRound().catch(() => null)
+      // 回合读数需要登录（`/round` 在受保护路由里）；游客靠结算时的公开 `round` 帧更新。
+      const roundTask = this.guest ? Promise.resolve(null) : this.getRound().catch(() => null)
       const metaTask = this.loadMeta().catch(() => undefined)
-      const [account, orders, strategies] = await Promise.all([
-        this.getAccount(),
-        this.getOrders().catch((): ExchangeOrder[] => []),
-        this.listStrategies().catch((): StrategySpec[] => []),
-      ])
-      this.account = account
-      this.orders = orders
-      this.strategies = strategies
+      if (!this.guest) {
+        const [account, orders, strategies] = await Promise.all([
+          this.getAccount(),
+          this.getOrders().catch((): ExchangeOrder[] => []),
+          this.listStrategies().catch((): StrategySpec[] => []),
+        ])
+        this.account = account
+        this.orders = orders
+        this.strategies = strategies
+      }
       await Promise.all([...chartTasks, roundTask, metaTask, newsTask, agentsTask, bondTask, fundTask])
       this.emitTick()
     } catch (err) {
@@ -799,11 +823,13 @@ export class HttpExchangeClient implements ExchangeClient {
    * 申购/赎回后的即时反馈由 `BondCard` 直接使用接口返回值，不依赖这里。
    */
   private async loadBond(): Promise<void> {
+    if (this.guest) return
     this.bond = await this.get<BondPosition>('/bond')
   }
 
   /** 基金持仓：与债券同口径（首屏 + 每轮行情刷新），供左侧活动栏与卡片读。 */
   private async loadFund(): Promise<void> {
+    if (this.guest) return
     this.funds = await this.get<FundPosition>('/fund')
   }
 
@@ -1031,26 +1057,60 @@ export class HttpExchangeClient implements ExchangeClient {
   }
 
   /**
-   * 回合内 10 秒行情步进时，实时更新内存缓存中正在生成的当前 K 线（M1 / M5 / intraday 等）。
-   * 让图表最右侧的活跃蜡烛针头实时上下伸缩，不需等待 30 秒 HTTP 轮询即可平滑反应价格变动。
+   * 用刚收到的最新行情补齐内存缓存最右侧的点/蜡烛。
+   *
+   * - 分时（intraday）：每拍按**真实最新成交价**续一个 10 秒时间点；没有成交时就是平线延伸
+   *   （价格不涨不跌，成交量记 0），让极简界面的 10 秒走势图保持走动，绝不编造价格波动。
+   * - 蜡烛（M1 / M5 / …）：只在成交量相比上一拍确有增加（即本拍确有真实成交）时更新，
+   *   不允许用行情快照拉伸出一根没有成交量的价格波动（船长 2026-11-06 要求）。
    */
   private updateIntraCandles(quotes: StockQuote[]): void {
     const now = Date.now()
     for (const quote of quotes) {
       const p = quote.price
       if (!Number.isFinite(p) || p <= 0) continue
+      // 尚未建过图表缓存的标的（玩家没点选过）：用已有 m1 序列补出分时线。
+      // 这样列表小图与详情大图都随 10 秒节拍继续延伸，不必先点选该标的才刷新。
+      if (!this.chartCache.has(`${quote.code}:intraday`)) {
+        const m1 = this.chartCache.get(`${quote.code}:m1`)
+        if (m1 !== undefined && m1.length > 0) {
+          this.chartCache.set(
+            `${quote.code}:intraday`,
+            m1.slice(-60).map((bar) => ({ ...bar })),
+          )
+        }
+      }
+      // 用 24h 累计量增量判断本拍是否真有成交；增量为 0 时蜡烛保持不动。
+      const prevVolume = this.lastVolume24h.get(quote.code) ?? quote.volume24h
+      const volumeDelta = Math.max(0, quote.volume24h - prevVolume)
+      this.lastVolume24h.set(quote.code, quote.volume24h)
       for (const [key, bars] of this.chartCache) {
         if (!key.startsWith(`${quote.code}:`) || bars.length === 0) continue
         const periodStr = key.slice(quote.code.length + 1) as ChartPeriod
         const last = bars[bars.length - 1]
         if (!last) continue
         const bucket = bucketStart(periodStr, now)
+        if (periodStr === 'intraday') {
+          // 分时线沿时间轴延续：新桶追加，同桶刷新；无成交时 c 与上一拍相同，只是平线变长。
+          if (bucket > last.t) {
+            bars.push({ t: bucket, o: last.c, h: Math.max(last.c, p), l: Math.min(last.c, p), c: p, v: volumeDelta })
+            if (bars.length > 200) bars.shift()
+          } else if (bucket === last.t) {
+            last.h = Math.max(last.h, p)
+            last.l = Math.min(last.l, p)
+            last.c = p
+            last.v += volumeDelta
+          }
+          continue
+        }
+        if (volumeDelta <= 0) continue
         if (last.t === bucket) {
           last.h = Math.max(last.h, p)
           last.l = Math.min(last.l, p)
           last.c = p
+          last.v += volumeDelta
         } else if (bucket > last.t) {
-          bars.push({ t: bucket, o: p, h: p, l: p, c: p, v: 0 })
+          bars.push({ t: bucket, o: p, h: p, l: p, c: p, v: volumeDelta })
           if (bars.length > 200) bars.shift()
         }
       }
@@ -1134,6 +1194,8 @@ export class HttpExchangeClient implements ExchangeClient {
   }
 
   async getAccount(): Promise<ExchangeAccount> {
+    // 游客没有账户：返回本地空账户，不产生请求（顶栏/持仓区据此显示空数据）。
+    if (this.guest) return this.account
     const raw = await this.get<unknown>('/account')
     const account = normalizeAccount(raw)
     if (account === null) throw new ExchangeError('malformed_response', '账户信息响应格式不正确')
@@ -1142,6 +1204,7 @@ export class HttpExchangeClient implements ExchangeClient {
   }
 
   async getOrders(): Promise<ExchangeOrder[]> {
+    if (this.guest) return this.heldOrders ?? this.orders
     const raw = await this.get<unknown>('/orders')
     // 契约是裸数组；兼容 G0 别名 `{orders: []}`（服务端同时保留 /orders/mine）。
     const rows = Array.isArray(raw) ? raw : isRecord(raw) && Array.isArray(raw.orders) ? raw.orders : null
@@ -1152,6 +1215,11 @@ export class HttpExchangeClient implements ExchangeClient {
 
   /** 回合时钟（可选接口）：拉取当前回合，WS `round` 帧也会刷新同一份缓存。 */
   async getRound(): Promise<RoundInfo> {
+    // 游客读不到 /round（受保护）：只用结算时公开广播的 round 帧，还没收到就让它保持空。
+    if (this.guest) {
+      if (this.round !== null) return this.round
+      throw new ExchangeError('login_required', '尚未登录：登录后可以查询交易所回合读数')
+    }
     const raw = await this.get<unknown>('/round')
     const round = normalizeRound(raw)
     if (round === null) throw new ExchangeError('malformed_response', '回合信息响应格式不正确')
@@ -1286,6 +1354,8 @@ export class HttpExchangeClient implements ExchangeClient {
   /* ═══════════════ 量化 ═══════════════ */
 
   async listStrategies(): Promise<StrategySpec[]> {
+    // 策略属于账号数据：游客空列表，不请求。
+    if (this.guest) return this.strategies
     const raw = await this.get<unknown>('/strategies')
     const rows = Array.isArray(raw) ? raw : []
     this.strategies = rows.map(normalizeStrategy).filter(isPresent)
@@ -1366,18 +1436,11 @@ export class HttpExchangeClient implements ExchangeClient {
   }
 
   /**
-   * 联机账户由服务器管理，没有「本地模拟账户」可重置 ⇒ 明确拒绝，不假装成功。
-   * 页面只在 `模拟盘` 徽标下显示重置按钮，正常走不到这里。
-   */
-  resetAccount(): void {
-    throw new ExchangeError('not_supported', '联机账户由服务器管理，没有可重置的本地模拟账户')
-  }
-
-  /**
    * 债券：放置型持仓，服务端按 UTC 日收益档计提；本金锁定、随时可赎。
    * 2026-11-04 船长令：债券也走交易所现金（入金后的钱），不再用本地存档直接买。
    */
   async getBondPosition(): Promise<BondPosition> {
+    if (this.guest) return this.heldBond ?? this.bond
     const position = await this.get<BondPosition>('/bond')
     this.bond = position
     return this.heldBond ?? position
@@ -1404,6 +1467,7 @@ export class HttpExchangeClient implements ExchangeClient {
    * 查询时惰性结算到当前时间；本金锁定，随时可赎。
    */
   async getFundPosition(): Promise<FundPosition> {
+    if (this.guest) return this.heldFund ?? this.funds
     const position = await this.get<FundPosition>('/fund')
     this.funds = position
     return this.heldFund ?? position

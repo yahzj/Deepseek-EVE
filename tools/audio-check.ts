@@ -11,7 +11,7 @@
  *
  * 用法：`npm run audio:check`
  *
- * **版本自检**：游戏版本 v0.1.0 · 存档结构 **v31** · 最后核对 2026-11-04 · 最后跑过 2026-11-04
+ * **版本自检**：游戏版本 v0.1.0 · 存档结构 **v31** · 最后核对 2026-11-05 · 最后跑过 2026-11-05
  * 判据：档结构版本跨一个大版本，或本域文案/清单/构建入口改动后必须重跑并更新本行。
  */
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
@@ -37,11 +37,13 @@ import {
   matchLogCue,
   matchSfxFileName,
   parseSfxPrefs,
+  pickOtherVariant,
   pickVariant,
   pitchRateFor,
   productionCompletedCount,
   productionSnapshot,
   shouldPlay,
+  shouldPlayClickCue,
   sfxFileBase,
 } from '../apps/desktop/src/renderer/src/game/audio/rules'
 import {
@@ -86,6 +88,8 @@ function check(ok: boolean, message: string): void {
 /* ═══════════ 一、语义清单 ═══════════ */
 
 const ID_RE = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/
+/** 动态 data-sfx 里只认带连字符的名字（语义 id 都形如 `exchange-sell`；比较字面量一般不带连字符）。 */
+const DYN_ID_RE = /^[a-z][a-z0-9]*(-[a-z0-9]+)+$/
 const CATEGORY_SET = new Set<string>(SFX_CATEGORIES)
 for (const id of SFX_CUE_IDS) {
   const cue = SFX_CUES[id]
@@ -95,6 +99,10 @@ for (const id of SFX_CUE_IDS) {
   check(Number.isFinite(cue.minGapMs) && cue.minGapMs >= 0, `${id}：minGapMs 必须 ≥ 0，实际 ${cue.minGapMs}`)
   check(Number.isInteger(cue.maxConcurrent) && cue.maxConcurrent >= 1, `${id}：maxConcurrent 必须是正整数，实际 ${cue.maxConcurrent}`)
   check(typeof cue.nameId === 'string' && cue.nameId !== '', `${id}：缺中文名 id`)
+  if (cue.pitchJitterCents !== undefined) {
+    check(Number.isInteger(cue.pitchJitterCents) && cue.pitchJitterCents > 0 && cue.pitchJitterCents <= PITCH_JITTER_MAX_CENTS,
+      `${id}：固定音高幅度必须是 1～${PITCH_JITTER_MAX_CENTS} 的整数音分`)
+  }
 }
 for (const category of SFX_CATEGORIES) {
   check(typeof SFX_CATEGORY_NAME_ID[category] === 'string' && SFX_CATEGORY_NAME_ID[category] !== '', `分类 ${category}：缺中文名 id`)
@@ -289,8 +297,44 @@ for (const id of Object.keys(LOG_CUE_RULES)) {
 }
 console.log(`· 日志规则：${Object.keys(LOG_CUE_RULES).length} 条，逐条核对 core 写入点（addLog / 命令 errorId）`)
 
-/* ═══════════ 三、本地化 ═══════════ */
+/* ═══════════ 二点五、按钮自带音效（data-sfx） ═══════════
+ * 2026-11-05 船长素材批：交易所按钮用 data-sfx 属性声明语义 id，点它时用该音效替代 `ui-click`。
+ * 判据：渲染层出现的每个字面量 data-sfx 都必须已在 cues.ts 登记——拼错会静默退回点击音，听感上像"没生效"。
+ */
+const RENDERER_SRC = join(ROOT, 'apps/desktop/src/renderer/src')
+const buttonSfxIds = new Set<string>()
+function walkRenderer(dir: string): void {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name)
+    if (entry.isDirectory()) {
+      walkRenderer(full)
+      continue
+    }
+    if (!/\.tsx?$/.test(entry.name)) continue
+    const src = readFileSync(full, 'utf8')
+    for (const matched of src.matchAll(/data-sfx="([^"]+)"/g)) {
+      // 只统计合法 id 形态（注释里用占位符说明机制，不当作声明）
+      const id = matched[1]!
+      if (ID_RE.test(id)) buttonSfxIds.add(id)
+    }
+    // 动态写法 `data-sfx={cond ? 'exchange-sell' : 'exchange-buy'}`：花括号内出现的字面量 id 同样登记，
+    // 否则条件分支里拼错不会在自检里暴露（听感上是「有时响有时不响」）。
+    // 只收带连字符的形态，避免把 `mode === 'deposit'` 这类比较字面量误当 id。
+    for (const matched of src.matchAll(/data-sfx=\{([^}]*)\}/g)) {
+      for (const lit of matched[1]!.matchAll(/'([^']+)'/g)) {
+        const id = lit[1]!
+        if (DYN_ID_RE.test(id)) buttonSfxIds.add(id)
+      }
+    }
+  }
+}
+walkRenderer(RENDERER_SRC)
+for (const id of buttonSfxIds) {
+  check(Object.prototype.hasOwnProperty.call(SFX_CUES, id), `按钮 data-sfx 指向未登记的语义 id：${id}`)
+}
+console.log(`· 按钮自带音效：${buttonSfxIds.size} 个 id（data-sfx 全部已登记）`)
 
+/* ═══════════ 三、本地化 ═══════════ */
 const tableSrc = readFileSync(join(ROOT, 'packages/data/src/l10n/table.ts'), 'utf8')
 const pendingSrc = readFileSync(join(ROOT, 'docs/l10n-pending.md'), 'utf8')
 
@@ -306,7 +350,7 @@ const UI_L10N_IDS = [
   'ui.sfx.110', 'ui.sfx.111', 'ui.sfx.112', 'ui.sfx.113', 'ui.sfx.114', 'ui.sfx.115',
   'ui.sfx.116', 'ui.sfx.117', 'ui.sfx.118', 'ui.sfx.119', 'ui.sfx.120', 'ui.sfx.121',
   'ui.sfx.122', 'ui.sfx.123', 'ui.sfx.124', 'ui.sfx.125', 'ui.sfx.126', 'ui.sfx.127',
-  'ui.sfx.128', 'ui.sfx.129', 'ui.sfx.130',
+  'ui.sfx.128', 'ui.sfx.129', 'ui.sfx.130', 'ui.sfx.131',
 ]
 const allL10nIds = new Set<string>([...SFX_CUE_IDS.map((id) => SFX_CUES[id].nameId), ...SFX_CATEGORIES.map((c) => SFX_CATEGORY_NAME_ID[c]), ...UI_L10N_IDS])
 
@@ -314,17 +358,32 @@ for (const id of allL10nIds) {
   const line = tableSrc.split('\n').find((l) => l.trimStart().startsWith(`'${id}':`))
   check(line !== undefined, `本地化表缺条目：${id}`)
   if (line === undefined) continue
-  check(line.includes('enDeferred: true'), `${id}：未授权英文时应写 en: '' + enDeferred: true`)
-  const pendingRow = new RegExp(`^\\| \`${id.replace(/\./g, '\\.')}\` \\|[^\\n]*\\| 待本地化 \\|\\s*$`, 'm')
-  check(pendingRow.test(pendingSrc), `${id}：enDeferred 未在 docs/l10n-pending.md 登记为「待本地化」`)
+  if (line.includes('enDeferred: true')) {
+    check(line.includes("en: ''"), `${id}：延期英文不得包含占位或已准备译文`)
+    const pendingRow = new RegExp(`^\\| \`${id.replace(/\./g, '\\.')}\` \\|[^\\n]*\\| 待本地化 \\|\\s*$`, 'm')
+    check(pendingRow.test(pendingSrc), `${id}：enDeferred 未在 docs/l10n-pending.md 登记为「待本地化」`)
+  } else {
+    check(line.includes("en: '") && !line.includes("en: ''"), `${id}：已完成英文时应有有效英文翻译`)
+  }
 }
 
 /* ═══════════ 四、纯规则确定性用例 ═══════════ */
 
 const defaults = defaultSfxPrefs()
 const muted = { ...defaults, muted: true }
-check(effectiveGain('combat-fire', defaults) === 0.21, `默认增益：combat-fire 应为 0.21，实际 ${effectiveGain('combat-fire', defaults)}`)
+check(effectiveGain('combat-fire', defaults) === 0.5, `默认增益：combat-fire 应为 0.5，实际 ${effectiveGain('combat-fire', defaults)}`)
 check(effectiveGain('invasion-alarm', defaults) === 0.7, `默认增益：invasion-alarm 应为 0.7，实际 ${effectiveGain('invasion-alarm', defaults)}`)
+// 默认音量表（船长 2026-11-05 指定）：总 100% / 音乐 25% / 环境 55% / 警报 70% / 战斗 100% / 生产 50% / 界面 50%
+check(
+  defaults.master === 1 &&
+    defaults.categories.music === 0.25 &&
+    defaults.categories.ambient === 0.55 &&
+    defaults.categories.alarm === 0.7 &&
+    defaults.categories.combat === 1 &&
+    defaults.categories.progress === 0.5 &&
+    defaults.categories.ui === 0.5,
+  `默认音量表应为 总100/音乐25/环境55/警报70/战斗100/生产50/界面50，实际 ${JSON.stringify({ master: defaults.master, ...defaults.categories })}`,
+)
 check(effectiveGain('combat-fire', muted) === 0, '静音时所有音效增益必须为 0')
 check(clampVolume(-1) === 0 && clampVolume(2) === 1 && clampVolume(Number.NaN) === 0, '音量钳制边界错误')
 
@@ -363,6 +422,14 @@ check(pickVariant(['a', 'b'], () => 0) === 'a', '变体随机：0 → 第一份'
 check(pickVariant(['a', 'b'], () => 0.999) === 'b', '变体随机：接近 1 → 最后一份')
 check(pickVariant([], () => 0) === null, '变体随机：空表 → null')
 
+/* BGM 每场新战斗重抽变体（2026-11-05 船长裁定 B）：务必避开当前曲目，否则听感上等于没换 */
+check(pickOtherVariant(['a', 'b'], 'a', () => 0) === 'b', '重抽变体：两选一时必须给另一条（避开当前）')
+check(pickOtherVariant(['a', 'b'], 'b', () => 0) === 'a', '重抽变体：当前是最后一条时给第一条')
+check(pickOtherVariant(['a', 'b'], null, () => 0) === 'a', '重抽变体：没有当前曲目时按全表随机')
+check(pickOtherVariant(['a', 'b'], 'x', () => 0.9) === 'b', '重抽变体：当前不在表内时按全表随机')
+check(pickOtherVariant(['a'], 'a', () => 0) === 'a', '重抽变体：只有一条时原样返回')
+check(pickOtherVariant([], null, () => 0) === null, '重抽变体：空表 → null')
+
 /* 音高随机（船长 2026-11-02：1200 音分八度里上下浮动 100 音分） */
 check(SFX_CATEGORIES.length === 6, `分类应为 6 类，实际 ${SFX_CATEGORIES.length}`)
 check(clampPitchJitter(-5) === 0 && clampPitchJitter(999) === PITCH_JITTER_MAX_CENTS && clampPitchJitter(77.6) === 78, '音高幅度钳制错误')
@@ -372,7 +439,18 @@ check(Math.abs(pitchRateFor(100, () => 1) - Math.pow(2, 100 / 1200)) < 1e-12, '�
 check(pitchRateFor(100, () => 0.5) === 1, '音高：中值随机应原调')
 check(pitchRateFor(100, () => Number.NaN) === 1, '音高：异常随机源应原调')
 check(parseSfxPrefs('{"pitchJitterCents":250}').pitchJitterCents === PITCH_JITTER_MAX_CENTS, '音高偏好：越界应钳到上限')
-check(parseSfxPrefs('{}').pitchJitterCents === 100, '音高偏好：默认 ±100 音分')
+check(parseSfxPrefs('{}').pitchJitterCents === 50, '音高偏好：默认 ±50 音分（船长 2026-11-06）')
+
+/* UI 点击音固定 ±50 音分（2026-11-05 船长口径；不受战斗滑条影响） */
+check(SFX_CUES['ui-click'].pitchJitterCents === 50, 'UI 点击音应固定 ±50 音分')
+check(SFX_CUES['ui-error'].pitchJitterCents === undefined && SFX_CUES['comms-received'].pitchJitterCents === undefined, '其他界面音不应抖动')
+check(Math.abs(pitchRateFor(50, () => 0) - Math.pow(2, -50 / 1200)) < 1e-12, '音高：-50 音分速率错误')
+check(Math.abs(pitchRateFor(50, () => 1) - Math.pow(2, 50 / 1200)) < 1e-12, '音高：+50 音分速率错误')
+
+/* 点击音与错误音互斥（2026-11-05 船长反馈：ui-error 出现时 ui-click 不应叠响） */
+check(shouldPlayClickCue(1000, undefined), '点击互斥：本次会话未响过错误音时应补点击音')
+check(!shouldPlayClickCue(1000, 1000) && !shouldPlayClickCue(1000, 1003), '点击互斥：同一击随后弹出错误提示时只留错误音')
+check(shouldPlayClickCue(1000, 900), '点击互斥：错误提示早于本次点击时仍应补点击音')
 
 /* 场景解析（BGM/环境层） */
 const noScene = { battleOnStage: false, wormholeActive: false, invasionActive: false, docked: false }

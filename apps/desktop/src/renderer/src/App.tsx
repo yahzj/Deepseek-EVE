@@ -44,6 +44,7 @@ import { playSfx } from './game/sfx'
  * 场景音频（2026-11-02 追加批）：引擎状态 + 战场是否上屏 → BGM/环境场景。
  * 挂在 `battleOnStage` 定义之后（该行之上不能有早退分支，本 hook 无条件调用）。
  */
+import { notifyUiError } from './game/audio/uiFeedback'
 import { useSceneAudio } from './game/audio/useSceneAudio'
 import { FitPage } from './pages/FitPage'
 import { ShipPage, type ShipTab } from './pages/ShipPage'
@@ -62,7 +63,7 @@ import { ExchangePage } from './pages/ExchangePage'
 import { useOnlineChat } from './features/cloud/useOnlineChat'
 import { useMarketRelay } from './features/market/relay/useMarketRelay'
 import type { MapGotoTarget, MapTab, TaskFocusTarget } from './pages/MapPage'
-import type { ToastFn } from './pages/common'
+import type { SettingsPageId, ToastFn } from './pages/common'
 import type { GameEngine } from './game/engine'
 import { SaveManager } from './panels/SaveManager'
 import { SaveReconnect } from './panels/SaveReconnect'
@@ -118,7 +119,7 @@ const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
    * 转正登记 `ui.exchange.*` 后再换 id。图标 = Carbon `ChartCandlestick`（`nav-exchange`）。
    * **两套布局都显示**：旧版左侧导航与现代版主导航共用该项。
    */
-  { key: 'exchange', label: '股市', icon: 'nav-exchange' },
+  { key: 'exchange', label: '股市 [测试]', icon: 'nav-exchange' },
 ]
 
 /**
@@ -656,6 +657,12 @@ async function applyLayoutAndReload(): Promise<void> {
   const [toast, setToast] = useState<{ text: string; warn: boolean } | null>(null)
   const toastTimer = useRef<number | null>(null)
   const showToast: ToastFn = (text, warn = false) => {
+    /**
+     * **界面错误提示 → `ui-error`**（2026-11-05 船长要求扩大覆盖）：通用 toast 是**所有**命令被拒
+     * 与保存/连接错误的统一出口；只靠 `LOG_CUE_RULES` 的 6 条日志白名单会漏掉绝大多数拒绝。
+     * 节流在播放层（`minGapMs` / `maxConcurrent`），这里只做「错误提示就响一声」的语义。
+     */
+    if (warn) notifyUiError()
     if (toastTimer.current !== null) window.clearTimeout(toastTimer.current)
     setToast({ text, warn })
     toastTimer.current = window.setTimeout(() => setToast(null), warn && text.includes('\n') ? 15_000 : 3200)
@@ -798,7 +805,7 @@ async function applyLayoutAndReload(): Promise<void> {
   const [modeChoiceImportHold, setModeChoiceImportHold] = useState(false)
   const [showHandbook, setShowHandbook] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
-  const [settingsInitialPage, setSettingsInitialPage] = useState<'interface' | 'save'>('interface')
+  const [settingsInitialPage, setSettingsInitialPage] = useState<SettingsPageId>('interface')
   const [battleOpen, setBattleOpen] = useState(false)
   /** 新档模式选择（铁人 S4b）：重置档案确认后弹一次，选普通/铁人再开局 */
 
@@ -1193,7 +1200,16 @@ async function applyLayoutAndReload(): Promise<void> {
     showToast(tr("ui.App.109"))
   }
 
-  const pageProps = { engine, onToast: showToast }
+  /**
+   * **设置子页直达**（2026-11-05 股市游客批）：页面里遇到「需要登录」的操作时，直接把设置面板
+   * 停在「账户」子页（登入入口在那里），而不是只弹一句提示让玩家自己找。
+   */
+  const openSettingsPage = (page: SettingsPageId = 'interface'): void => {
+    setSettingsInitialPage(page)
+    setShowSettings(true)
+  }
+
+  const pageProps = { engine, onToast: showToast, onOpenSettings: openSettingsPage }
 
   /**
    * **序章·苏醒只剩"演出"**（2026-09-17 教程重做）：线性七步（采集→交付→出售→修复→试炼→技能→分身）、
@@ -1576,7 +1592,7 @@ async function applyLayoutAndReload(): Promise<void> {
             />
             ) : null}
             {page === 'chat' ? (
-              <OnlineChatPage chat={onlineChat} onToast={showToast} onOpenSettings={() => { setSettingsInitialPage('save'); setShowSettings(true); hideActivityWin() }} />
+              <OnlineChatPage chat={onlineChat} onToast={showToast} onOpenSettings={() => { setSettingsInitialPage('account'); setShowSettings(true); hideActivityWin() }} />
             ) : null}
             </div>
           </>

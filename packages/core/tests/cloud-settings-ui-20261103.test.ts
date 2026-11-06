@@ -42,13 +42,12 @@ describe('cloud settings controls', () => {
     expect(panel).not.toContain('applyServer')
   })
 
-  it('mounts only at the end of the save fragment without a new settings tab', () => {
+  it('mounts once in the account tab before local-save controls without a new settings tab', () => {
     const settings = source('apps/desktop/src/renderer/src/panels/appSettings.tsx')
     const save = settings.indexOf("{settingsPage === 'save' ? <>")
     const panel = settings.indexOf('<CloudSavePanel engine={engine} onApplyingChange={setCloudApplying} />')
     expect(panel).toBeGreaterThan(save)
-    expect(settings.indexOf('onReset()', save)).toBeLessThan(panel)
-    expect(settings.slice(panel)).toMatch(/^<CloudSavePanel engine=\{engine\} onApplyingChange=\{setCloudApplying\} \/>\s*<\/> : null\}/)
+    expect(panel).toBeLessThan(settings.indexOf('onReset()', save))
     expect(settings.match(/<CloudSavePanel /g)).toHaveLength(1)
     expect(settings).not.toContain("id: 'cloud'")
   })

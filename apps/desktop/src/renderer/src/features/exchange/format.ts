@@ -92,3 +92,37 @@ export function turnover(n: number): string {
 export function creditUnit(): string {
   return isEn() ? 'Credits' : '信用点'
 }
+
+/**
+ * 极简下注金额前馈单点（2026-11-05）：投入金额含手续费，先折出可成交本金再按现价取整股数。
+ * 判据：gross = qty × price，fee = floor(gross × feeRate)（服务端 Go feeOf 向下取整），
+ * spend = gross + fee ≤ inputCash；unusedInput 即「全仓」时费后取整留下的差额。
+ */
+export interface SimpleBetEstimate {
+  qty: number
+  gross: number
+  fee: number
+  spend: number
+  remainCash: number
+  unusedInput: number
+}
+
+export function estimateSimpleBet(inputCash: number, currentPrice: number, feeRate: number, cash: number): SimpleBetEstimate {
+  const safeCash = Number.isFinite(cash) ? Math.max(0, cash) : 0
+  if (!(Number.isFinite(inputCash) && inputCash > 0) || !(Number.isFinite(currentPrice) && currentPrice > 0)) {
+    return { qty: 0, gross: 0, fee: 0, spend: 0, remainCash: safeCash, unusedInput: 0 }
+  }
+  const rate = Number.isFinite(feeRate) && feeRate > 0 ? feeRate : 0
+  const qty = Math.floor(inputCash / (1 + rate) / currentPrice)
+  const gross = qty * currentPrice
+  const fee = gross > 0 ? Math.floor(gross * rate) : 0
+  const spend = gross + fee
+  return {
+    qty,
+    gross,
+    fee,
+    spend,
+    remainCash: Math.max(0, safeCash - spend),
+    unusedInput: Math.max(0, inputCash - spend),
+  }
+}

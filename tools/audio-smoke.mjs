@@ -213,7 +213,7 @@ async function main() {
     check(builtinPreview === true, '内置素材可试听（Audio 起播未抛错）')
   }
 
-  // 首批成品素材（2026-11-05）：内置覆盖 8 个事件；BGM 场景有变体、点缀与点击各就位
+  // 素材状态（2026-11-05 船长/DanJuan 素材提交后）：29 个音频文件，覆盖 24/33；缺 9 个按设计静音（缺=不占位）
   const coverage = await evaluate(`(() => {
     const rows = window.__whaleSfx.status()
     const count = (id) => {
@@ -222,21 +222,39 @@ async function main() {
     }
     return {
       covered: rows.filter(s => s.builtinCount > 0).length,
+      missing: rows.filter(s => s.builtinCount === 0).map(s => s.id).sort(),
       bgm: ['bgm-docked','bgm-space','bgm-battle','bgm-wormhole','bgm-invasion'].map(count),
       blips: ['ambient-blip-static','ambient-blip-metal','ambient-blip-comms'].map(count),
-      click: count('ui-click')
+      click: count('ui-click'),
+      hit: count('combat-hit'),
     }
   })()`)
-  check(coverage.covered === 8, `内置素材覆盖 8 个事件（实际 ${coverage.covered}）`)
+  const EXPECTED_MISSING = [
+    'invasion-end',
+    'combat-fire',
+    'combat-miss',
+    'combat-win',
+    'combat-lose',
+    'industry-done',
+    'skill-done',
+    'trade-done',
+    'build-done',
+  ].sort()
+  check(coverage.covered === 24, `内置素材覆盖 24 个事件（实际 ${coverage.covered}）`)
+  check(
+    JSON.stringify(coverage.missing) === JSON.stringify(EXPECTED_MISSING),
+    `缺素材的 9 个事件与预期一致（实际 ${coverage.missing.join('/')}）`,
+  )
   check(
     JSON.stringify(coverage.bgm) === JSON.stringify([1, 2, 2, 2, 1]),
     `BGM 变体数（停靠1/太空2/战斗2/虫洞2/入侵1，实际 ${coverage.bgm.join('/')}）`,
   )
   check(
-    JSON.stringify(coverage.blips) === JSON.stringify([2, 2, 0]),
-    `环境点缀变体数（杂音2/金属2/通讯0，实际 ${coverage.blips.join('/')}）`,
+    JSON.stringify(coverage.blips) === JSON.stringify([2, 2, 1]),
+    `环境点缀变体数（杂音2/金属2/通讯1，实际 ${coverage.blips.join('/')}）`,
   )
   check(coverage.click === 1, `ui-click 素材 1 条（实际 ${coverage.click}）`)
+  check(coverage.hit === 1, `combat-hit（命中）素材已随包内置（实际 ${coverage.hit}）`)
 
   const WAV_FN = `function makeWav(){
     const rate=8000, secs=0.2, n=Math.floor(rate*secs), bytes=new Uint8Array(44+n*2), dv=new DataView(bytes.buffer)
@@ -272,12 +290,25 @@ async function main() {
     modal: !!document.querySelector('.app-settings-modal'),
     sliders: document.querySelectorAll('.app-settings-slider').length,
     hasPitchRow: [...document.querySelectorAll('.app-settings-label')].some(x => x.textContent.includes('音高随机')),
-    hasConsoleBtn: [...document.querySelectorAll('button')].some(x => x.textContent.trim() === '音效台')
+    hasConsoleBtn: [...document.querySelectorAll('button')].some(x => x.textContent.trim() === '音效台'),
+    hasResetBtn: [...document.querySelectorAll('button')].some(x => x.textContent.trim() === '恢复默认音量')
   })`)
   check(settings.modal === true, '设置面板已打开')
   check(settings.sliders === 8, `声音页滑条为 8（总音量/6 类分类/音高，实际 ${settings.sliders}）`)
   check(settings.hasPitchRow === true, '设置里出现「战斗音效音高随机」一行')
   check(settings.hasConsoleBtn === true, '设置内出现「音效台」入口（本机调试门禁放行）')
+  check(settings.hasResetBtn === true, '设置里出现「恢复默认音量」按钮')
+  // 恢复默认：点一下后八条滑条应回到船长指定默认值（总100 / 音乐25 / 环境55 / 警报70 / 战斗100 / 生产50 / 界面50 / 音高100）
+  const resetClicked = await evaluate(`(() => {
+    const b = [...document.querySelectorAll('button')].find(x => x.textContent.trim() === '恢复默认音量')
+    if (!b) return 'no-btn'
+    b.click()
+    return 'ok'
+  })()`)
+  check(resetClicked === 'ok', '「恢复默认音量」按钮可点')
+  await sleep(250)
+  const resetValues = await evaluate(`[...document.querySelectorAll('.app-settings-slider')].map(x => Number(x.value))`)
+  check(JSON.stringify(resetValues) === JSON.stringify([1, 0.25, 0.55, 0.7, 1, 0.5, 0.5, 100]), `恢复默认后音量读数（实际 ${JSON.stringify(resetValues)}）`)
 
   const openConsole = await evaluate(`(() => {
     const b = [...document.querySelectorAll('button')].find(x => x.textContent.trim() === '音效台')
@@ -411,6 +442,18 @@ async function main() {
   check(liveLog.ok === true, '「实时触发」页签可打开')
   check(liveLog.entries >= 1, `调试口 play() 属于真实触发并进入日志（实际 ${liveLog.entries} 条）`)
   check(liveLog.rows >= 1, `实时触发页签显示日志行（实际 ${liveLog.rows} 行）`)
+
+  // 命中音（2026-11-05 船长报障「命中/击中不触发」的运行时证据）：素材在包内、可试听、真实播放进日志
+  const battleCue = await evaluate(`(async () => {
+    const preview = window.__whaleSfx.preview('combat-hit')
+    const before = window.__whaleSfx.playLog().length
+    window.__whaleSfx.play('combat-hit')
+    await new Promise(r => setTimeout(r, 150))
+    const entries = window.__whaleSfx.playLog()
+    return { preview, before, now: entries.length, hasHit: entries.some(e => e.cueId === 'combat-hit') }
+  })()`)
+  check(battleCue.preview === true, '命中音（combat-hit）内置素材可试听')
+  check(battleCue.hasHit === true, `命中音可经真实播放链路起播并进日志（实际 ${JSON.stringify(battleCue)}）`)
 
   const ingest = await evaluate(`(async () => {
     const tab = [...document.querySelectorAll('.app-sfx-tab')].find(x => x.textContent.trim() === '入库')

@@ -3,7 +3,7 @@ import { isEn } from '../../i18n/locale'
  * 图表周期定义（**单点**）——`分时 / M1 / M5 / H1 / 日线 / 周线`。
  *
  * 周期分类标准规范（2026-11-04 船长口径）：
- * - 「分时」（intraday）：10 秒实时行情的动态走势线
+ * - 「分时」（intraday）：10 秒时间轴的实时走势线（价格=最新真实成交价，无成交时平线延伸）
  * - 「M1」（m1）：1 分钟蜡烛（回合内 5 根微观蜡烛）
  * - 「M5」（m5）：5 分钟蜡烛（核心回合线，一回合一根）
  * - 「H1」（h1）：1 小时蜡烛（12 回合）
@@ -159,9 +159,8 @@ export const CHART_PERIODS: ChartPeriodSpec[] = [
   },
 ]
 
-/** 专业终端周期切换按钮（2026-11-04 船长：分时、M1、M5、H1、日线、周线） */
+/** 专业终端周期切换按钮（2026-11-05 船长：专业界面不展示分时，最小就到 M1；分时仍留给简单界面的迷你走势） */
 export const PRO_CHART_PERIODS: ChartPeriodSpec[] = [
-  'intraday',
   'm1',
   'm5',
   'h1',
@@ -214,7 +213,7 @@ export function intradayBarCount(now: number): number {
   return Math.max(2, minutes)
 }
 
-/** 均匀抽样（保留首尾），分时显示最多 240 点；抽样只影响画图，不改数据源 */
+/** 均匀抽样（保留首尾），分时显示最多 240 点；价格取桶末根，成交量按桶合并，不丢量 */
 export function sampleSeries(bars: readonly Kline[], max: number): Kline[] {
   if (bars.length <= max) return bars.slice()
   const out: Kline[] = []
@@ -223,7 +222,9 @@ export function sampleSeries(bars: readonly Kline[], max: number): Kline[] {
   for (let i = 0; i < max; i++) {
     const idx = Math.round(i * step)
     if (idx === prev) continue
-    out.push(bars[idx]!)
+    let v = 0
+    for (let j = prev + 1; j <= idx; j++) v += bars[j]!.v
+    out.push({ ...bars[idx]!, v })
     prev = idx
   }
   return out
