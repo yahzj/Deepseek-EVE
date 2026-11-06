@@ -263,7 +263,7 @@ interface HookView {
   setMode(value: string): void
   setPassword(value: string): void
   submitAuth(): void
-  previewDownload(version?: number): void
+  previewDownload(): void
   confirmDownload(): void
   refresh(): void
   logout(): void
@@ -315,8 +315,7 @@ function hookFixture(stored = true, server = target.server) {
     redeemRecovery: vi.fn(async () => ({ ...profile, token: 'recovery-token' })),
     logout: vi.fn(async () => {}),
     saveLatest: vi.fn(async (_signal?: AbortSignal): Promise<{ version: number; data: string | null }> => ({ version: 0, data: null })),
-    saveVersions: vi.fn(async () => []),
-    saveVersion: vi.fn(), uploadSave: vi.fn(async () => ({ version: 1, size: 100 })), rotateRecovery: vi.fn(),
+    uploadSave: vi.fn(async () => ({ version: 1, size: 100 })), rotateRecovery: vi.fn(),
     chatHistory: vi.fn(async () => ({ channel: 'zh' as const, messages: [], nextBeforeId: null })),
     marketRelaySync: vi.fn(async () => ({
       protocolVersion: 1 as const, requestId: '', serverTime: 0,
@@ -415,7 +414,6 @@ describe('actual cloud hook workflow', () => {
     await f.flush()
     expect(f.api.profile).toHaveBeenCalledTimes(1)
     expect(f.api.saveLatest).not.toHaveBeenCalled()
-    expect(f.api.saveVersions).not.toHaveBeenCalled()
     expect(f.engine.exportCloudSave).not.toHaveBeenCalled()
     expect(f.view().profile?.nickname).toBe('Pilot')
     f.render(); await f.flush()

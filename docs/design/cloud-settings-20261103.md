@@ -25,7 +25,7 @@
 - engine.exportCloudSave先将确切当前快照通过本地保存桥写成功，才返回同一text供上传；本地保存失败不发PUT。
 - engine.importCloudSave与文件导入共用importSaveText旧读档链：loadSaveFile校验、铁人检查、修复/迁移、离线结算、候选落盘成功后替换内存。载入全链互斥，保存与tick遵守载入锁；不自动备份，不改游戏save schema或core数值。
 - 上传先GET latest预览并显示目标账号、baseVersion；明确确认后保存本地快照，再PUT且必带预览baseVersion，包括0。已有云档需确认替换；409作废确认并只刷新元信息，不覆盖、不自动重试写。超时/断网只报告结果不明，要求刷新状态。
-- 元信息与历史列表手动刷新。下载latest或历史版本先检查10MB限制并用loadSaveFile严格预检格式/版本，显示候选版本、飞行员、保存时间与铁人标记；确认后再次核验token、账号、请求代次与写状态，再进入引擎，不自动上传。
+- 元信息手动刷新。每个账号只保留一份当前云存档；新上传覆盖旧内容并递增版本号。下载当前存档先检查10MB限制并用loadSaveFile严格预检格式/版本，显示候选版本、飞行员、保存时间与铁人标记；确认后再次核验token、账号、请求代次与写状态，再进入引擎，不自动上传。
 - 服务切换、失效token或卸载使网络请求和旧候选失效；写入非ok时禁上传和载入，保留云元信息读取。confirmDownload finally重新读取saveWriteState，避免载入锁释放后UI残留paused。
 - 本地commit期间applying阻止设置遮罩关闭、完成、分类点击及键盘切换、恢复默认和存档管理/重置。普通网络busy仍可关闭取消，readonly/paused等其他原因不锁设置，不把已开始的本地写入伪称取消；玩家侧地址输入与应用入口已删除。
 

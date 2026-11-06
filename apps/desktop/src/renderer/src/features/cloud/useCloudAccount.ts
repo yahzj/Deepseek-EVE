@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { CloudApiError, createCloudApi } from './api'
 import type { CloudApi } from './api'
-import type { CloudAuthResponse, CloudProfile, CloudSave, CloudSaveVersion } from './types'
+import type { CloudAuthResponse, CloudProfile, CloudSave } from './types'
 import { readCloudPreferences, saveCloudSession } from './preferences'
 import type { GameEngine } from '../../game/engine'
 import { CLOUD_MAX_TIMER_MS, CloudRequestScope, cloudDownloadPreview, cloudErrorNotice, cloudRetryDelay, matchesCloudTarget, pendingRecoveryCode, rememberRecoveryCode } from './cloudState'
@@ -22,7 +22,6 @@ export function useCloudAccount(engine: GameEngine) {
   const [freshRecoveryCode, setRecoveryCodeState] = useState(() => pendingRecoveryCode(server, session?.playerId))
   const [available, setAvailable] = useState<boolean | null>(null)
   const [latest, setLatest] = useState<Omit<CloudSave, 'data'> | null>(null)
-  const [versions, setVersions] = useState<CloudSaveVersion[]>([])
   const [busy, setBusy] = useState(false)
   const [applying, setApplying] = useState(false)
   const [status, setStatus] = useState<CloudNotice | null>(null)
@@ -43,7 +42,7 @@ export function useCloudAccount(engine: GameEngine) {
     scope.current.cancel(); precheck.current = null; busyRef.current = false
   }, [])
   const resetCloud = useCallback(() => {
-    setProfile(null); setLatest(null); setVersions([])
+    setProfile(null); setLatest(null)
     setUploadConfirm(null); setDownloadCandidate(null); setLocalExitOffered(false)
   }, [])
   const clearSession = useCallback(() => {
@@ -190,9 +189,9 @@ export function useCloudAccount(engine: GameEngine) {
   }, [clearSession, handleError, run])
 
   const readMetadata = useCallback(async (api: CloudApi, ticket: Ticket) => {
-    const [save, history] = await Promise.all([api.saveLatest(ticket.signal), api.saveVersions(ticket.signal)])
+    const save = await api.saveLatest(ticket.signal)
     if (!ticket.current() || !mounted.current) return
-    setLatest({ version: save.version, createdAt: save.createdAt, size: save.size }); setVersions(history); setUploadConfirm(null)
+    setLatest({ version: save.version, createdAt: save.createdAt, size: save.size }); setUploadConfirm(null)
   }, [])
   const refresh = useCallback(() => { if (profile) void run(readMetadata) }, [profile, readMetadata, run])
   const previewUpload = useCallback(() => {
@@ -216,7 +215,7 @@ export function useCloudAccount(engine: GameEngine) {
       try {
         const uploaded = await api.uploadSave(snapshot.text, confirmation.baseVersion, ticket.signal)
         if (!ticket.current() || !mounted.current) return
-        setLatest({ version: uploaded.version, size: uploaded.size }); setVersions([])
+        setLatest({ version: uploaded.version, size: uploaded.size })
         setStatus({ id: 'ui.cloud.125', params: { p1: uploaded.version } })
       } catch (error) {
         if (!ticket.current() || !mounted.current) return
@@ -227,11 +226,11 @@ export function useCloudAccount(engine: GameEngine) {
       }
     }, true)
   }, [engine, profile, readMetadata, run, server, uploadConfirm])
-  const previewDownload = useCallback((version?: number) => {
+  const previewDownload = useCallback(() => {
     if (!profile) return
     setDownloadCandidate(null); setUploadConfirm(null)
     void run(async (api, ticket) => {
-      const save = version === undefined ? await api.saveLatest(ticket.signal) : await api.saveVersion(version, ticket.signal)
+      const save = await api.saveLatest(ticket.signal)
       if (!ticket.current() || !mounted.current) return
       setDownloadCandidate(cloudDownloadPreview(save, { server, playerId: profile.playerId }))
     })
@@ -276,7 +275,7 @@ export function useCloudAccount(engine: GameEngine) {
 
   return {
     serverConfigured: server !== '', session, profile, mode, setMode, username, setUsername, password, setPassword,
-    recoveryCode, setRecoveryCode, freshRecoveryCode, dismissRecovery, available, busy, applying, status, latest, versions,
+    recoveryCode, setRecoveryCode, freshRecoveryCode, dismissRecovery, available, busy, applying, status, latest,
     uploadConfirm, downloadCandidate, setUploadConfirm, setDownloadCandidate, submitAuth, logout, localLogout, localExitOffered,
     refresh, previewUpload, confirmUpload, previewDownload, confirmDownload, copyRecovery, savePaused, coolingDown: cooldownUntil > Date.now(),
   }
