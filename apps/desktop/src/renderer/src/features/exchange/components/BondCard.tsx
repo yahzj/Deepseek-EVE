@@ -154,7 +154,7 @@ export function BondCard({
         <div className="ex-bond-name">
           <b>{product.name}</b>
           <span className="ex-bond-rate">
-            {T.bondRateLabel} {pctAbs(product.dailyRate * 100)}
+            {T.bondRateLabel} {product.dailyRate > 0 ? `${(product.dailyRate * 100 * 365).toFixed(2)}%` : pctAbs(0)}
           </span>
         </div>
 
@@ -167,8 +167,8 @@ export function BondCard({
         </div>
         <div className="ex-preview-row is-bond-highlight">
           <span>{T.bondAccrued}</span>
-          <b className={`ex-num is-up ex-bond-accrued ${isAccruing ? 'is-pulse' : ''}`}>
-            +{money(bond.accrued)} <span className="ex-unit">{T.creditUnit}</span>
+          <b className={`ex-num ${bond.accrued > 0 ? 'is-up' : bond.accrued < 0 ? 'is-down' : ''} ex-bond-accrued ${isAccruing ? 'is-pulse' : ''}`}>
+            {bond.accrued > 0 ? '+' : bond.accrued < 0 ? '−' : ''}{money(Math.abs(bond.accrued))} <span className="ex-unit">{T.creditUnit}</span>
           </b>
         </div>
         <div className="ex-preview-row">

@@ -18,6 +18,7 @@ import { useState } from 'react'
 import { fmtDuration } from '../../i18n/fmt'
 import { Glyph, toneOf } from '../../ui/Glyphs'
 import { skillBranchText, skillGroupText } from '../../ui/labelsText'
+import { hoverTipProps } from '../../ui/Tooltip'
 import { hexPathAt } from './layout'
 
 /** 把技能说明里的 ⟦效果数值⟧ 渲染成高亮段（符号本身不显示） */
@@ -55,6 +56,21 @@ function QueueHexBadge({ group }: { group: string }) {
         </g>
       </svg>
     </span>
+  )
+}
+
+/** 队列技能的完整说明，复用技能详情弹窗的说明渲染与统一悬停层。 */
+function queueSkillTip(def: { name: string; description: string; group: string; branch?: string }, targetLevel: number) {
+  return (
+    <>
+      <span className="app-ship-hover-title">{def.name}</span>
+      <div className="app-skill-queue-tip-meta">
+        {skillGroupText(def.group)}
+        {def.branch !== undefined ? ` · ${skillBranchText(def.branch)}` : ''}
+        {` · Lv${targetLevel}`}
+      </div>
+      <div className="app-skill-queue-tip-desc"><SkillDescText text={def.description} /></div>
+    </>
   )
 }
 
@@ -120,7 +136,12 @@ export function QueueBlock({ engine }: { engine: PageProps['engine'] }) {
            */}
           {view.head !== null ? (
             <span className="app-chip app-train-chip is-head">
-              <span className="app-train-chip-main">
+              <span
+                className="app-train-chip-main"
+                {...(engine.ctx.skills.get(view.head.skillId) !== undefined
+                  ? hoverTipProps(queueSkillTip(engine.ctx.skills.get(view.head.skillId)!, view.head.intoLevel))
+                  : {})}
+              >
                 <QueueHexBadge group={defOf(view.head.skillId).group} />
                 <span className="app-dim">{tr('ui.SkillsPage.027')}</span>
                 <span className="app-train-name">
@@ -180,9 +201,13 @@ export function QueueBlock({ engine }: { engine: PageProps['engine'] }) {
             const planDown = atTail ? null : queueMovePlan(state, p.queueIndex, p.queueIndex + 1, engine.ctx.skills)
             /** 队尾的 ↓ 与"挪不动"的箭头同一副长相（暗一档 + 不给手型），点一下都会就地说明 */
             const downOff = atTail || (planDown !== null && !planDown.ok)
+            const def = engine.ctx.skills.get(p.skillId)
             return (
             <span key={`${p.skillId}-${p.targetLevel}`} className="app-chip app-train-chip">
-              <span className="app-train-chip-main">
+              <span
+                className="app-train-chip-main"
+                {...(def !== undefined ? hoverTipProps(queueSkillTip(def, p.targetLevel)) : {})}
+              >
                 <QueueHexBadge group={defOf(p.skillId).group} />
                 <span className="app-train-name">
                   {tr('ui.SkillsPage.040', { n: p.queueIndex + 1, name: p.skillName, lv: p.targetLevel })}

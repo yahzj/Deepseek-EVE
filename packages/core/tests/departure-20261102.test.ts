@@ -4,7 +4,7 @@ import { advanceGame } from '../src/engine'
 import { startMining, stopMining, advanceMining } from '../src/mining'
 import { startExpedition } from '../src/expedition'
 import { activityOverview } from '../src/activity'
-import { associationGateMs, departureView } from '../src/departure'
+import { GATE_ENABLED, associationGateMs, departureView } from '../src/departure'
 import { makeTestCtx, moduleDef } from './helpers'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { startHauling, stopHauling } from '../src/hauling'
@@ -21,6 +21,9 @@ import { L10N, l10nEntryText } from '../../data/src/l10n/table'
 import { addShipToFleet } from '../src/fleetBook'
 import { weekendStartFlagshipBattle, weekendFlagshipBattleActive } from '../src/weekendLaunch'
 
+const GATE = GATE_ENABLED ? 2500 : 0
+const TOTAL = 5000 + GATE
+
 const site: StationSiteDef = { id: 'departure-site', name: '测试站', galaxyId: 'galaxy-far', standingReq: 0,
   tiers: [{ name: '建成', bill: [], unlockDesc: '' }], introDialogueId: '', doneDialogueId: null, description: '' }
 function ready() {
@@ -32,22 +35,26 @@ function ready() {
 }
 
 describe('主控实际离港与星门', () => {
-  it('距离为同星系5秒，远程封顶20秒', () => {
+  it('距离为同星系2.5秒，远程封顶10秒', () => {
     const { ctx } = ready()
-    expect(associationGateMs(ctx, 'galaxy-hub', 'galaxy-hub')).toBe(5000)
+    expect(associationGateMs(ctx, 'galaxy-hub', 'galaxy-hub')).toBe(2500)
     const far = { ...ctx, galaxyEdges: [{ from: 'galaxy-hub', to: 'galaxy-far', travelMinutes: 50 }] }
-    expect(associationGateMs(far, 'galaxy-hub', 'galaxy-far')).toBe(20000)
+    expect(associationGateMs(far, 'galaxy-hub', 'galaxy-far')).toBe(10000)
   })
-  it('采矿先离港10秒再星门5秒，不能提前产矿或重启绕过', () => {
+  it('采矿先离港再前往，不能提前产矿或重启绕过', () => {
     const { state, ctx } = ready()
     expect(startMining(state, 'belt-a', ctx).ok).toBe(true)
-    advanceGame(state, 5000, ctx)
-    expect(activityOverview(state, ctx).find(row => row.kind === 'mining')).toMatchObject({ subId: 'core.departure.001', percent: 50, remainingMs: 5000 })
+    advanceGame(state, 2500, ctx)
+    expect(activityOverview(state, ctx).find(row => row.kind === 'mining')).toMatchObject({ subId: 'core.departure.001', percent: 50, remainingMs: 2500 })
     expect(state.mining.cycleAccMs).toBe(0)
     expect(startMining(state, 'belt-a', ctx).ok).toBe(false)
-    advanceGame(state, 5000, ctx)
-    expect(departureView(state)).toMatchObject({ textId: 'core.departure.002', remainingMs: 5000 })
-    advanceGame(state, 5000, ctx)
+    advanceGame(state, 2500, ctx)
+    if (GATE_ENABLED) {
+      expect(departureView(state)).toMatchObject({ textId: 'core.departure.002', remainingMs: GATE })
+      advanceGame(state, GATE, ctx)
+    } else {
+      expect(departureView(state)).toBeNull()
+    }
     expect(state.departure).toBeUndefined()
     expect(state.mining.cycleAccMs).toBe(0)
     advanceGame(state, 1000, ctx)
@@ -65,29 +72,45 @@ describe('主控实际离港与星门', () => {
   it('等待中存读档保留进度', () => {
     const { state, ctx } = ready()
     startMining(state, 'belt-a', ctx)
-    advanceGame(state, 12000, ctx)
+    advanceGame(state, GATE_ENABLED ? 7000 : 4000, ctx)
     const loaded = loadSaveFile(serializeSaveFile(state, 100)).state
     expect(loaded.departure).toEqual(state.departure)
-    advanceGame(loaded, 3000, ctx)
+    advanceGame(loaded, GATE_ENABLED ? 500 : 1000, ctx)
     expect(loaded.departure).toBeUndefined()
     expect(loaded.mining.cycleAccMs).toBe(0)
+  })
+  it.each([[4_000, 4_000], [12_000, 12_000]])('更新前行程进度%s时读档保留原出发时长', (now, progressMs) => {
+    const { state, ctx } = ready()
+    expect(startExpedition(state, 'ano-a', ctx).ok).toBe(true)
+    state.gameMs = now
+    state.departure = { ...state.departure!, undockMs: 10_000, gateMs: 7_000, progressMs }
+    state.expedition.finishAtGameMs = 17_000
+
+    const loaded = loadSaveFile(serializeSaveFile(state, now)).state
+    expect(loaded.departure).toMatchObject({ undockMs: 10_000, gateMs: 7_000, progressMs })
+    advanceGame(loaded, 17_000 - now - 1, ctx)
+    expect(loaded.departure?.progressMs).toBe(16_999)
+    expect(loaded.expedition.battle).toBeNull()
+    advanceGame(loaded, 1, ctx)
+    expect(loaded.departure).toBeUndefined()
+    expect(loaded.expedition.battle?.startedAtGameMs).toBe(17_000)
   })
   it('悬赏到达后才开战', () => {
     const { state, ctx } = ready()
     expect(startExpedition(state, 'ano-a', ctx).ok).toBe(true)
     expect(state.expedition.phase).toBe('out')
     expect(state.expedition.battle).toBeNull()
-    advanceGame(state, 14999, ctx)
+    advanceGame(state, TOTAL - 1, ctx)
     expect(state.expedition.battle).toBeNull()
     advanceGame(state, 1, ctx)
     expect(state.expedition.battle).not.toBeNull()
-    expect(state.expedition.battle!.startedAtGameMs).toBe(15000)
+    expect(state.expedition.battle!.startedAtGameMs).toBe(TOTAL)
   })
   it('运输只离港，原航段不提前累计；离港中可取消', () => {
     const { state, ctx } = ready()
     state.debugQuick = true
     expect(startHauling(state, null, site.id, ctx, 100).ok).toBe(true)
-    advanceGame(state, 9999, ctx)
+    advanceGame(state, 4999, ctx)
     expect(state.hauling.phaseAccMs).toBe(0)
     expect(state.departure?.gateMs).toBe(0)
     expect(stopHauling(state, ctx).ok).toBe(true)
@@ -115,9 +138,13 @@ describe('主控实际离港与星门', () => {
     advanceGame(state, 27000, ctx)
     const cargo = structuredClone(state.fleet[state.shipId]!.cargo)
     expect(startExpedition(state, 'ano-a', ctx).ok).toBe(true)
-    expect(state.departure).toMatchObject({ undockMs: 0, gateMs: 5000 })
+    if (GATE_ENABLED) {
+      expect(state.departure).toMatchObject({ undockMs: 0, gateMs: GATE })
+      advanceGame(state, GATE - 1, ctx)
+    } else {
+      expect(state.departure).toBeUndefined()
+    }
     expect(state.shipReturns[state.shipId]).toBeUndefined()
-    advanceGame(state, 4999, ctx)
     expect(state.fleet[state.shipId]!.cargo).toEqual(cargo)
     expect(state.expedition.battle).toBeNull()
   })
@@ -125,12 +152,12 @@ describe('主控实际离港与星门', () => {
     const { state, ctx } = ready()
     state.debugQuick = true
     startMining(state, 'belt-a', ctx)
-    advanceGame(state, 15000, ctx)
+    advanceGame(state, TOTAL, ctx)
     state.fleet[state.shipId]!.cargo = { 'ore-a': 800 }
     state.mining.phase = 'returning'
     state.mining.phaseAccMs = 0
     advanceMining(state, 2000, ctx)
-    expect(state.departure).toMatchObject({ kind: 'mining', progressMs: 0, undockMs: 10000, gateMs: 5000 })
+    expect(state.departure).toMatchObject({ kind: 'mining', progressMs: 0, undockMs: 5000, gateMs: GATE })
     const batch = structuredClone(state), slices = structuredClone(state)
     advanceGame(batch, 30000, ctx)
     for (let i = 0; i < 30; i++) advanceGame(slices, 1000, ctx)
@@ -143,8 +170,8 @@ describe('主控实际离港与星门', () => {
     ctx.stations = new Map(ctx.stations).set(construction.id, construction)
     state.warehouse.items['min-a'] = 50
     expect(startSiteDeliverTrip(state, ctx, construction.id).ok).toBe(true)
-    expect(state.departure).toMatchObject({ kind: 'siteDeliver', undockMs: 10000, gateMs: 0 })
-    advanceGame(state, 9999, ctx)
+    expect(state.departure).toMatchObject({ kind: 'siteDeliver', undockMs: 5000, gateMs: 0 })
+    advanceGame(state, 4999, ctx)
     expect(state.stationSites[construction.id]?.stage ?? 0).toBe(0)
     expect(cancelSiteDeliverTrip(state, ctx).ok).toBe(true)
     expect(state.warehouse.items['min-a']).toBe(50)
@@ -157,10 +184,10 @@ describe('主控实际离港与星门', () => {
     state.sideTasks.accepted = [{ id: 42, kind: 'courier', goodKey: '', refId: '', need: 0, rewardIsk: 123,
       volumeM3: 1, stationId: site.id, galaxyId: site.galaxyId, level: 1, timed: true, warpReqAus: 0, timeLimitMs: 1000 }]
     expect(startCourierDelivery(state, ctx, 42).ok).toBe(true)
-    expect(state.sideTasks.deliver).toMatchObject({ departAtGameMs: 10000, arriveAtGameMs: 11000, deadlineAtGameMs: 11000 })
+    expect(state.sideTasks.deliver).toMatchObject({ departAtGameMs: 5000, arriveAtGameMs: 6000, deadlineAtGameMs: 6000 })
     const restored = loadSaveFile(serializeSaveFile(state, 0)).state
     const wallet = restored.wallet.isk
-    simulateOffline(restored, 0, 10999, ctx)
+    simulateOffline(restored, 0, 5999, ctx)
     expect(restored.sideTasks.deliver).not.toBeNull()
     expect(restored.wallet.isk).toBe(wallet)
     advanceGame(restored, 1, ctx)
@@ -174,9 +201,9 @@ describe('主控实际离港与星门', () => {
     expect(wormholeEnter(state, ctx, [state.shipId], 19).ok).toBe(true)
     expect(state.departure).toMatchObject({ kind: 'wormhole', gateMs: 0 })
     expect(wormholeGridScan(state, ctx).ok).toBe(false)
-    advanceGame(state, 9000, ctx)
+    advanceGame(state, 4000, ctx)
     const restored = loadSaveFile(serializeSaveFile(state, 0)).state
-    expect(restored.departure?.progressMs).toBe(9000)
+    expect(restored.departure?.progressMs).toBe(4000)
     advanceGame(restored, 1000, ctx)
     expect(restored.departure).toBeUndefined()
   })
@@ -211,8 +238,8 @@ describe('主控实际离港与星门', () => {
     expect(weekendFlagshipBattleActive(state)).toBe(false)
     expect(activityOverview(state, ctx).find(row => row.id === 'flagship-departure')).toMatchObject({ subId: 'core.departure.001' })
     const restored = loadSaveFile(serializeSaveFile(state, now)).state
-    advanceGame(restored, 9999, ctx)
-    expect(restored.encounter.battle!.lastTickGameMs).toBe(10000)
+    advanceGame(restored, 4999, ctx)
+    expect(restored.encounter.battle!.lastTickGameMs).toBe(5000)
     advanceGame(restored, 1, ctx)
     expect(restored.departure).toBeUndefined()
     expect(weekendFlagshipBattleActive(restored)).toBe(true)

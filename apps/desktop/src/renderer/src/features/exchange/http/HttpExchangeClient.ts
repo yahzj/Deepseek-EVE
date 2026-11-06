@@ -59,7 +59,7 @@ import { T } from '../texts'
 import { tr } from '../../../i18n/locale'
 import type { Transport } from './transport'
 
-const CONTRACT_VERSION = 1
+const CONTRACT_VERSION = 3
 /** 与 Mock 同口径的默认手续费率（服务器 `meta` 下发时以服务器为准） */
 const DEFAULT_FEE_RATE = 0.0005
 /** 回合制默认配额（服务器 `/round`、`/meta` 下发时以服务器为准） */
@@ -77,7 +77,9 @@ const EMPTY_BOND_POSITION: BondPosition = {
   settledMinute: 0,
   openedAt: 0,
   minutes: 0,
-  minuteBp: 3,
+  winDailyPpb: 22_000,
+  loseDailyPpb: -1_978_000,
+  winPermille: 999,
   cash: 0,
 }
 
@@ -89,18 +91,16 @@ const EMPTY_FUND_POSITION: FundPosition = {
   settledMinute: 0,
   openedAt: 0,
   minutes: 0,
-  winBp: 16,
-  loseBp: -7,
+  winDailyPpb: 300_000,
+  loseDailyPpb: -500_000,
   winPercent: 70,
-  expectedBp: 9,
-  bondBp: 3,
   cash: 0,
 }
 
 const EMPTY_BOND_PRODUCT: BondProduct = {
   id: 'WHALE-BOND',
   name: '舰船债券 · 稳健型',
-  dailyRate: 0.0003,
+  dailyRate: 0.00002,
   note: '联机产品以服务器配置为准',
 }
 
@@ -310,6 +310,8 @@ function normalizeAccount(raw: unknown): ExchangeAccount | null {
       ? (raw.pendingWithdrawals.filter(isRecord) as unknown as ExchangeAccount['pendingWithdrawals'])
       : [],
     holdings: Array.isArray(raw.holdings) ? raw.holdings.map(normalizeHolding).filter(isPresent) : [],
+    dailyTradeLimit: num(raw.dailyTradeLimit, 50_000_000),
+    dailyTradeUsed: num(raw.dailyTradeUsed),
   }
 }
 
@@ -471,6 +473,8 @@ function emptyAccount(): ExchangeAccount {
     positions: [],
     pendingWithdrawals: [],
     holdings: [],
+    dailyTradeLimit: 50_000_000,
+    dailyTradeUsed: 0,
   }
 }
 
@@ -1370,7 +1374,7 @@ export class HttpExchangeClient implements ExchangeClient {
   }
 
   /**
-   * 债券：放置型持仓，服务端按真实分钟固定 3bp 单利结算；本金锁定、随时可赎。
+   * 债券：放置型持仓，服务端按 UTC 日收益档计提；本金锁定、随时可赎。
    * 2026-11-04 船长令：债券也走交易所现金（入金后的钱），不再用本地存档直接买。
    */
   async getBondPosition(): Promise<BondPosition> {
@@ -1396,8 +1400,8 @@ export class HttpExchangeClient implements ExchangeClient {
   }
 
   /**
-   * 基金：放置型持仓。服务端按真实分钟逐分钟结算（70% +16bp / 30% −7bp），
-   * 查询时惰性结算到当前分钟；本金锁定，随时可赎。
+   * 基金：放置型持仓。服务端按 UTC 日收益档计提（70% +0.03% / 30% −0.05%），
+   * 查询时惰性结算到当前时间；本金锁定，随时可赎。
    */
   async getFundPosition(): Promise<FundPosition> {
     const position = await this.get<FundPosition>('/fund')

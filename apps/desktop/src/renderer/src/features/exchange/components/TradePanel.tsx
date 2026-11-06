@@ -90,12 +90,14 @@ export function TradePanel({
   }, [code])
 
   const lev = mode === 'spot' ? 1 : leverage
+  const dailyTurnoverLeft = Math.max(0, snap.account.dailyTradeLimit - snap.account.dailyTradeUsed)
   const side: Side = mode === 'short' ? 'sell' : 'buy'
   const priceNum = Number(priceText)
   const refPrice = kind === 'limit' && Number.isFinite(priceNum) && priceNum > 0 ? priceNum : quote.price
   const investment = Number(investmentText)
   const feeRate = lev > 1 ? (lev <= 20 ? (mode === 'short' ? 0.001 : 0.0005) : lev <= 50 ? (mode === 'short' ? 0.0006 : 0.0003) : (mode === 'short' ? 0.0004 : 0.0002)) : (snap.feeRate ?? 0)
-  const qtyNum = mode === 'spot' ? Number(qtyText) : (refPrice > 0 ? Math.floor(investment / (refPrice / lev + refPrice * feeRate)) : 0)
+  const requestedQty = mode === 'spot' ? Number(qtyText) : (refPrice > 0 ? Math.floor(investment / (refPrice / lev + refPrice * feeRate)) : 0)
+  const qtyNum = refPrice > 0 ? Math.min(requestedQty, Math.floor(dailyTurnoverLeft / refPrice)) : requestedQty
   const previewReq: PlaceOrderRequest = {
     clientOrderId: 'preview',
     code,
@@ -111,7 +113,7 @@ export function TradePanel({
   const previewQuery = { ...previewReq, ...(mode !== 'spot' ? { investment: Number.isInteger(investment) && investment > 0 ? investment : 1 } : {}) }
   const previewKey = JSON.stringify(previewQuery)
   const preview = serverPreview?.key === previewKey ? serverPreview.value : client.previewOrder(previewReq)
-  const effectiveQty = mode === 'spot' ? qtyNum : (preview.qty ?? qtyNum)
+  const effectiveQty = mode === 'spot' ? qtyNum : Math.min(qtyNum, preview.qty ?? qtyNum)
   const previewPending = Boolean(client.fetchOrderPreview && serverPreview?.key !== previewKey)
   useEffect(() => {
     if (!client.fetchOrderPreview) return
@@ -134,6 +136,8 @@ export function TradePanel({
   const qtyError =
     (mode === 'spot' ? qtyText : investmentText).trim() === ''
       ? T.emptyQtyHint
+      : Number.isFinite(requestedQty) && requestedQty > qtyNum
+        ? T.exchangeDailyLimit
       : !Number.isFinite(qtyNum) || effectiveQty <= 0 || (mode === 'spot' && !Number.isInteger(qtyNum)) || (mode !== 'spot' && (!Number.isInteger(investment) || investment <= 0 || investment > snap.account.cash))
         ? T.toastInvalidQty
         : null
@@ -274,6 +278,10 @@ export function TradePanel({
         <span className="ex-dim">{code}</span>
       </header>
       <div className="ex-trade-body">
+        <div className="ex-preview-row ex-daily-turnover">
+          <span>{T.exchangeDailyLimit}</span>
+          <b className="ex-num">{money(snap.account.dailyTradeUsed)} / {money(snap.account.dailyTradeLimit)}</b>
+        </div>
         {/* 交易模式三段切换 */}
         <div className="ex-seg ex-seg-wide ex-trade-mode-seg" role="tablist" aria-label={T.orderTitle}>
           {(['spot', 'long', 'short'] as const).map((m) => {

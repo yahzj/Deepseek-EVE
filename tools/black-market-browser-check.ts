@@ -133,6 +133,7 @@ async function main() {
       assert.equal(await js(`document.querySelector('.app-bm-card-meta .app-dim').textContent`), groupLabel, '无人机组数量未显示')
       await sleep(250)
       await dismissNotice()
+      assert(await js(`[...document.querySelectorAll('.app-bm-select')].every(button=>{const name=button.querySelector('.app-bm-name').getBoundingClientRect(),box=button.getBoundingClientRect();return name.left>=box.left+5&&Math.abs((name.top+name.bottom-box.top-box.bottom)/2)<=1})`), '商品名称未在标题按钮内居中或进入切角区域')
       const logOverlay = await js(`(()=>{const a=document.querySelector('.app-bm-monitor-art').getBoundingClientRect(),log=document.querySelector('.app-log-side'),b=log.getBoundingClientRect();return getComputedStyle(log).display!=='none'&&Math.min(a.right,b.right)>Math.max(a.left,b.left)&&Math.min(a.bottom,b.bottom)>Math.max(a.top,b.top)})()`)
       // 新版展开日志按已确认外壳规则覆盖主区；收起后再验证监视器无遮挡。
       if (layout === 'modern' && !mobile) {

@@ -2796,6 +2796,22 @@ html[data-locale='en'] body {
 
 }
 
+.app-tip .app-skill-queue-tip-meta {
+
+  color: rgb(var(--wui-text-dim));
+
+  font-size: var(--wui-fs-2xse);
+
+  margin-bottom: var(--wui-sp-4);
+
+}
+
+.app-tip .app-skill-queue-tip-desc {
+
+  line-height: 1.55;
+
+}
+
 .app-train-chip-act {
 
   display: flex;
@@ -11748,16 +11764,14 @@ html[data-locale='en'] body {
 }
 /* ═══════════ 侧边栏点击 / 一级页切换反馈（船长 2026-09-14：「点击左边侧边栏的时候，中间主窗口进行切换时
    最好给予玩家一个反馈，哪怕点的是当前窗口」） ═══════════
-   两种情形各有反馈，都只动 opacity / transform（第十四章）：
-   ① **换页** ⇒ 内容区随 `key={page}` 重挂载，播一次入场淡入（`.app-page-content` 基类，170ms）；
+   两种情形各有反馈：
+   ① **换页** ⇒ 内容区立即显示，导航选中态反馈落点，不再叠加整页淡入延迟；
    ② **点当前页** ⇒ **不重挂载**（页面内的检索词 / 滚动位置 / 弹层状态不受打扰），改播一次 220ms 脉冲：
       内容区一次明暗脉冲 + 该项图标一次缩放脉冲（与「未读闪烁」同族手感，见上一条）。
    ⚠ 内容区**不做位移**：页内可能有 `position: fixed` 的弹层（`.app-modal-mask`），
    祖先一旦有 transform 就会改掉它们的定位基准 ⇒ 这里只动 opacity。
    无动画偏好（prefers-reduced-motion: reduce）：不播动画，改为 220ms 的**静态**高亮（描边/边框变 accent 色），
    仍然明确"这一下点到了"（与 `.is-unread` 退化为静态红点同款做法）。 */
-.app-page-content { animation: app-page-in 0.17s ease-out; }
-@keyframes app-page-in { from { opacity: 0; } to { opacity: 1; } }
 .app-page-content.is-beat { animation: app-page-beat 0.22s ease-out; }
 @keyframes app-page-beat { 0% { opacity: 0.55; } 55% { opacity: 1; } 100% { opacity: 1; } }
 .app-nav-item.is-beat .app-nav-icon { animation: app-nav-beat 0.22s ease-out; }
@@ -13486,7 +13500,7 @@ input.app-wh-template-name { min-height: 36px; padding: var(--wui-sp-6) var(--wu
 .app-bm-card { box-sizing: border-box; height: 100%; min-width: 0; display: grid; grid-template-rows: 36px 36px 28px 26px 24px; gap: 2px; padding: 5px; border: 1px solid rgb(var(--wui-border)); border-top-color: var(--bm-good-tone); border-radius: 6px; background: rgb(var(--wui-bg-panel) / 0.88); }
 .app-bm-card.is-selected { border-color: rgb(var(--wui-accent)); }
 .app-bm-card.is-sold { opacity: 0.6; }
-.app-bm-select { border: 0; padding: 0; background: transparent; color: inherit; display: flex; align-items: flex-start; text-align: left; min-width: 0; min-height: 0; }
+.app-bm-select { box-sizing: border-box; border: 0; padding: 0 6px; background: transparent; color: inherit; display: flex; align-items: center; justify-content: flex-start; text-align: left; min-width: 0; min-height: 0; }
 .app-bm-name { font-size: 12px; line-height: 12px; overflow-wrap: anywhere; min-width: 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .app-bm-card .app-dim { font-size: 10px; line-height: 1.3; overflow-wrap: anywhere; }
 .app-bm-card-identity { display: grid; grid-template-columns: 32px minmax(0, 1fr); grid-template-rows: 18px 18px; align-items: center; position: relative; column-gap: 4px; }

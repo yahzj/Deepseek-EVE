@@ -1,6 +1,6 @@
 # 股市 · 保底产品与本地资金模型（2026-11-04）
 
-> 状态：已实现并部署　｜　依据：船长 2026-11-04 口径
+> 状态：资金模型已实现并部署；日收益与成交额度规则调整实施中　｜　依据：船长 2026-11-04 资金口径及 2026-11-06 新裁定
 > 关联：`stock-exchange-integration-20261103.md` §8.9/§8.10、`stock-exchange-round-model-20261103.md`
 
 ## 一、资金模型（船长定案）
@@ -21,19 +21,19 @@
 > 旧版从本地存档 ISK 扣款、只存 `localStorage`、不经过服务器；已整批替换为交易所现金 + 服务端记账。
 
 - 入口：极简模式左栏「低风险理财 · 舰船债券」。
-- 规则：固定利率 **3bp/分钟（0.03%）**，按分钟单利累积、不滚入本金（`internal/exchange/bond.go`：`bondMinuteBp = 3`）。
+- 规则：按真实墙钟 UTC 自然日确定收益档，按持有时长比例计提，不滚入本金：每日 **99.9% +0.0022% / 0.1% −0.1978%**，期望日化约 **0.002%**、简单年化约 **0.73%**。年化是长期数学期望，不是收益承诺。
 - 资金：从**交易所现金**申购，本金锁定在持仓里，现金当场扣减；赎回 = 本金 + 累计收益。
 - 接口：
   - `GET  /api/exchange/bond` → 持仓（顺带惰性结算到当前分钟）；
   - `POST /api/exchange/bond/open {amount, nonce}` → 申购 / 追加；
   - `POST /api/exchange/bond/redeem {nonce}` → 赎回本金 + 累计收益。
-- 结算：惰性一次乘法 `accrued += principal × 3bp × minutes`，不逐分钟循环；离线照常累积。
-- 存储：表 `exchange_bond_positions`（`account_id / principal / accrued / settled_minute / opened_at`）；审计行 `exchange_transfers.kind = bond_open / bond_redeem`。
+- 结算：读取、申购和赎回时惰性结算；按 UTC 日切段，离线照常累积。SQLite 保存精确结算时间和小数信用点余数，避免查询频率改变收益。
+- 存储：表 `exchange_bond_positions`（`account_id / principal / accrued / accrued_remainder / settled_minute / settled_at / opened_at`）；审计行 `exchange_transfers.kind = bond_open / bond_redeem`。
 - 幂等：同一 nonce 重放返回当前持仓；换金额重放 409 `nonce_conflict`；空仓赎回 409 `no_bond_position`。
 - 前端：`BondCard` 跟随行情 10 秒刷新，30 秒兜底拉取；空仓时输入金额申购，有仓时显示本金 / 累计收益 / 当前价值 / 已计息分钟。
-- 模拟盘：`MockExchangeClient` 用同一单利规则本地复现。
+- 模拟盘：`MockExchangeClient` 用同一 UTC 日概率、分时比例计提和余数规则本地复现。
 
-## 三、保底基金（放置型，服务端按分钟结算）
+## 三、保底基金（放置型，服务端按 UTC 日结算）
 
 > 2026-11-04 修订，船长原话：「要比债券高是正常的啊起码3倍收益，但是有概率亏，随时可赎」。
 > 旧版是「点一次结算一次、不扣本金」的即时开奖：只有正期望、没有放置，已整批替换。
@@ -41,20 +41,26 @@
 - 入口：极简模式左栏「保底基金」→ 理财页签。
 - 投入：交易所现金（不是本地存档）申购基金份额，**本金锁定在持仓里**，现金当场扣减。
 - 接口：
-  - `GET  /api/exchange/fund` → 持仓（顺带惰性结算到当前分钟）；
+  - `GET  /api/exchange/fund` → 持仓（顺带惰性结算到当前时间）；
   - `POST /api/exchange/fund/open {amount, nonce}` → 申购 / 追加；
   - `POST /api/exchange/fund/redeem {nonce}` → 赎回本金 + 累计收益。
-- 结算：按**真实时间逐分钟**独立结算，每分钟一次：
-  - 70% 概率 `+16bp`、30% 概率 `−7bp`（按本金计）；
-  - 每分钟期望 `+9bp`，约为债券（3bp/分钟）的 **3 倍**；
+- 结算：按真实墙钟 UTC 自然日结算，按持有时长比例计提：
+  - 70% 概率 `+0.03%`、30% 概率 `−0.05%`（按本金计）；
+  - 期望日化约 `+0.006%`，简单年化约 **2.19%**。年化是长期数学期望，不是收益承诺；
   - 亏损真实发生、不保本；赎回额 = 本金 + 累计收益（`accrued` 可为负）。
-- 确定性：`HMAC(fundSecret, "fund|<accountID>|<minute>")` 前 8 字节 `%100 < 70` → +16bp，否则 −7bp；同一账户同一分钟可重放，离线照常累积。
-- 长离线：单次最多逐分钟结算 7 天（`fundMaxSettleMinutes`），超出部分按期望 9bp 折算，避免超长离线卡死。
+- 确定性：`HMAC(dailyReturnSecret, "fund|<accountID>|<utcDay>")` 前 8 字节 `%1000 < 700` → +0.03%，否则 −0.05%；密钥保存在交易所 SQLite，重启后每日结果保持不变，离线照常累积。
 - 幂等：同一 nonce 重放返回当前持仓，不重复扣款/加钱；审计行 `exchange_transfers.kind = fund_open / fund_redeem`（赎回行 `Fee` 存累计收益）。
 - 前端：`FundCard` 空仓时显示申购输入；有仓时显示本金 / 累计收益 / 当前价值 / 已计息分钟，并提供「追加」「全部赎回」；持仓跟随行情轮询 10 秒刷新。
-- 模拟盘：`MockExchangeClient` 用 FNV-1a(分钟) 复现同一规则，持仓写入 `whale-idle:exch-mock` 存档。
+- 模拟盘：`MockExchangeClient` 按 UTC 日确定结果并复现分时比例计提，持仓写入 `whale-idle:exch-mock` 存档。
 
-## 四、边界
+## 四、股票日成交额度
+
+- 每个玩家账户每个 UTC 自然日的股票实际成交名义额上限为 **50,000,000 信用点**；买入和卖出分别计入自己的额度，多只股票合并计算。
+- 额度只按成交额扣减，不按挂单金额扣减；服务端集合竞价选价和成交分配都执行约束，并把用量与成交放在同一 SQLite 事务提交，重启不刷新。
+- 系统做市及 AI 人格账户不受玩家额度约束；系统强制强平豁免额度，确保风险仓位可退出。
+- 客户端显示当日已用/上限并限制可提交股数，最终以服务端成交为准。
+
+## 五、边界
 
 - 赎回额下限 0：累计收益亏穿本金时按 0 赎回，不会把交易所现金打成负数。
 - 收益只与**本金 × 时间**有关，点击不能加速；因此不需要次数、额度或冷却限制。

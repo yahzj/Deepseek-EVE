@@ -10,6 +10,7 @@ import { createInitialState } from '../src/state'
 import { addShipToFleet, changeShip } from '../src/shipyard'
 import { belt, makeTestCtx, ship } from './helpers'
 import { oneLegMs } from '../src/mining'
+import { GATE_ENABLED } from '../src/departure'
 import { startExpedition } from '../src/expedition'
 import { travelLegMs, travelMinutesEff, travelTimeFactor, warpSpeedAus } from '../src/travel'
 import { setStanding } from './helpers'
@@ -142,9 +143,9 @@ describe('远征出发锁定（V12.1）', () => {
     // 升级航行技能：本次已锁定不变
     state.skills.trained['navigation'] = 5
     expect(state.expedition.outMs).toBe(120_000)
-    // 离港10秒 + 两分钟标称航程对应星门7秒；途中升级不重算已锁定的等待。
-    expect(state.expedition.finishAtGameMs - state.gameMs).toBe(17_000)
-    expect(state.departure).toMatchObject({ undockMs: 10_000, gateMs: 7_000, progressMs: 0 })
+    // 离港 5 秒 + 两分钟标称航程对应星门 3.5 秒；星门临时关闭时只剩离港。途中升级不重算已锁定的等待。
+    expect(state.expedition.finishAtGameMs - state.gameMs).toBe(GATE_ENABLED ? 8_500 : 5_000)
+    expect(state.departure).toMatchObject({ undockMs: 5_000, gateMs: GATE_ENABLED ? 3_500 : 0, progressMs: 0 })
   })
 
   it('出发前已练满技能：outMs 按 ×0.8 锁定', () => {

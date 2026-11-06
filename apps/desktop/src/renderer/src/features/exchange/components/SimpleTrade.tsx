@@ -35,6 +35,7 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
   const quote = snap.stocks.find((s) => s.code === code)
   const currentPrice = quote?.price ?? 1
   const cash = snap.account.cash
+  const dailyTurnoverLeft = Math.max(0, snap.account.dailyTradeLimit - snap.account.dailyTradeUsed)
 
   const inputCashNum = Number(cashAmount) || 0
   const feeRate = snap.feeRate ?? 0
@@ -42,10 +43,13 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
   const effectiveCash = inputCashNum > 0 ? inputCashNum / (1 + feeRate) : 0
 
   // 买多换算：现货 1x
-  const estBuyQty = currentPrice > 0 ? Math.floor(effectiveCash / currentPrice) : 0
+  const requestedBuyQty = currentPrice > 0 ? Math.floor(effectiveCash / currentPrice) : 0
 
   // 看跌换算：1x 全额融券，投入多少占用多少（与看涨对称）
-  const estShortQty = currentPrice > 0 ? Math.floor(effectiveCash / currentPrice) : 0
+  const requestedShortQty = currentPrice > 0 ? Math.floor(effectiveCash / currentPrice) : 0
+  const tradeCapQty = currentPrice > 0 ? Math.floor(dailyTurnoverLeft / currentPrice) : 0
+  const estBuyQty = Math.min(requestedBuyQty, tradeCapQty)
+  const estShortQty = Math.min(requestedShortQty, tradeCapQty)
 
   // 预估手续费：服务器按成交名义（成交价×股数）向下取整收费（Go feeOf），
   // 这里用 gross 而不是投入金额——投入额已经含了手续费，直接用会把费算大。
@@ -101,6 +105,8 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
     disableReason = T.enterAmountPrompt
   } else if (inputCashNum > cash) {
     disableReason = isEn() ? `Amount exceeds available cash (limit ${money(cash)})` : `投入金额超过可用资金（可用上限 ${money(cash)}）`
+  } else if (tradeCapQty <= 0) {
+    disableReason = T.exchangeDailyLimit
   } else if (tab === 'buy' && estBuyQty <= 0) {
     disableReason = isEn() ? `Amount insufficient to buy 1 share (mark ${price(currentPrice)})` : `金额不足以买入 1 股（现价 ${price(currentPrice)}）`
   } else if (tab === 'short' && quote !== undefined && !quote.shortable) {
@@ -131,7 +137,7 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
         side: 'buy',
         type: 'market',
         tif: 'IOC',
-        qty: estBuyQty,
+        qty: Math.min(estBuyQty, tradeCapQty),
         leverage: 1,
       })
       await buyProgress.finish()
@@ -167,7 +173,7 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
         side: 'sell',
         type: 'market',
         tif: 'IOC',
-        qty: estShortQty,
+        qty: Math.min(estShortQty, tradeCapQty),
         // 1x 全额：投入多少占用多少，只收卖出档手续费，与看涨对称。
         leverage: 1,
         // 必须显式标记开空：服务端把「side=sell + 杠杆」默认当平多，缺这个字段会报
@@ -254,6 +260,7 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
             <span className="ex-dim">{T.availCashShort}: <b className="ex-num">{money(cash)}</b></span>
             <span className="ex-dim">{T.marketPriceShort}: <b className="ex-num">{price(currentPrice)}</b></span>
           </div>
+          <div className="ex-dim">{T.exchangeDailyLimit}: <span className="ex-num">{money(snap.account.dailyTradeUsed)} / {money(snap.account.dailyTradeLimit)}</span></div>
 
           <div className="ex-simple-input-group">
             <div className="ex-simple-input-wrap">

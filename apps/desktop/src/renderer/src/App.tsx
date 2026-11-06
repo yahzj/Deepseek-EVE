@@ -116,7 +116,7 @@ const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
    * 转正或替换；`unlocked()` 对表外 key 恒真（`packages/core/src/firstTasks.ts`）⇒ 开局即可见。
    * label 仍用中文原文：`AppShell` 的 `t()` 查不到词条时原样返回（见 `i18n/locale.tsx`），
    * 转正登记 `ui.exchange.*` 后再换 id。图标 = Carbon `ChartCandlestick`（`nav-exchange`）。
-   * **现代布局专属**：旧版 classic 外壳不显示本项（在下方传 `navItems` 前就地过滤；不改 AppShell）。
+   * **两套布局都显示**：旧版左侧导航与现代版主导航共用该项。
    */
   { key: 'exchange', label: '股市', icon: 'nav-exchange' },
 ]
@@ -1245,7 +1245,7 @@ async function applyLayoutAndReload(): Promise<void> {
     /**
      * **点导航的"这一下"必须有反馈**（船长 2026-09-14：「点击左边侧边栏的时候，中间主窗口进行切换时最好
      * 给予玩家一个反馈，**哪怕点的是当前窗口**」）：
-     * - **换页**：内容区随 `key={page}` 重挂载 ⇒ 播一次入场淡入（`.app-page-content` 基类），不必另加东西；
+     * - **换页**：内容区随 `key={page}` 重挂载后立即显示，反馈由导航选中态提供；
      * - **点当前页**：**不重挂载**（页面里的检索词 / 滚动位置 / 弹层状态一律不受打扰），改播一次 220ms 脉冲
      *   （内容区明暗脉冲 + 该导航项图标缩放脉冲）；计时器到点摘掉 class ⇒ 连点也能一次次重播。
      */
@@ -1388,14 +1388,7 @@ async function applyLayoutAndReload(): Promise<void> {
         promosNow={promosNow}
         tuningsNow={tuningsNow}
         tuningTick={tuningTick}
-        /**
-         * **股市入口：modern-only**（2026-11-03 船长令）：
-         * 已从 `DEBUG_NAV_ITEMS` 移入 `NAV_ITEMS` 末位（现代布局右下角最右侧、不需要调试模式），
-         * 但旧版 classic 布局一个字都不动 ⇒ 在交给 `AppShell` 之前就地过滤掉 exchange。
-         * 不在 AppShell 里加 `modernOnly` 标记，是因为该文件当前有在途改动（硬约束）；
-         * 调试项（工业 HUD、stellar）保持原样，两类布局都可见。
-         */
-        navItems={layoutKind === 'classic' ? NAV_ITEMS.filter((item) => item.key !== 'exchange') : NAV_ITEMS}
+        navItems={NAV_ITEMS}
         debugNavItems={[...DEBUG_NAV_ITEMS, { key: 'stellar', label: 'ui.stellar.054', icon: 'nav-map',
           onSelect: () => { if (planetaryEnabled()) { hideActivityWin(); setPlanetOpen(true) } } }]}
         readDebugEnabled={readDebugEnabled}
@@ -1429,7 +1422,7 @@ async function applyLayoutAndReload(): Promise<void> {
             ) : null}
             </div>
             {/* 一级页不滚：已按 docs/design/page-scroll-layout.md 完成转换的页进 no-scroll（整页不滚，滚动在二级窗）。
-            `key={page}` ⇒ 换页即重挂载 = 入场淡入（切页反馈）；点当前页不重挂载，走 `is-beat` 的脉冲（见 pulseNav）。 */}
+            `key={page}` ⇒ 换页即重挂载并立即显示；点当前页不重挂载，走 `is-beat` 的脉冲（见 pulseNav）。 */}
             <div
             className={`app-page-content${PAGE_NO_SCROLL.has(page) ? ' no-scroll' : ''}${navBeat?.key === page ? ' is-beat' : ''}${winOnStage ? ' is-win-hidden' : ''}`}
             key={page}

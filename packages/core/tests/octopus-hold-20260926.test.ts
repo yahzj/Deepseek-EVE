@@ -164,7 +164,7 @@ describe('旗舰战后的章鱼人冷却（2026-09-26 船长令）', () => {
     const spec = weekendFlagshipSpecOf(s, ctx, now)!
     const battle = weekendStartFlagshipBattle(s, ctx, now, [s.shipId])!
     expect(battle, '旗舰建档成功').not.toBeNull()
-    expect(s.departure).toMatchObject({ kind: 'flagship', undockMs: 10_000, gateMs: 0, progressMs: 0 })
+    expect(s.departure).toMatchObject({ kind: 'flagship', undockMs: 5_000, gateMs: 0, progressMs: 0 })
     s.encounter = {
       active: true,
       shipId: s.shipId,

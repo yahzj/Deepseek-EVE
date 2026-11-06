@@ -96,155 +96,152 @@ export function PlugExchangeBody({ engine, onToast }: { engine: GameEngine; onTo
 
   return (
     <>
-      {rows.length === 0 ? (
-            <div className="app-dim app-exp-idle">{tr('ui.IndustryPage.137')}</div>
-          ) : (
-            <div className="app-belt-grid">
-              {/* **通用黑匣卡**：摆在图纸卡前面（它是所有插件共用的料） */}
-              <div className="app-belt-card app-shelf-card">
-                <div className="app-belt-head">
-                  <span className="app-belt-name">
-                    <Glyph name="plug" size={15} /> {tr('ui.IndustryPage.141')}
-                  </span>
-                  <span className="app-belt-head-right">
+      {rows.length === 0 ? <div className="app-dim app-exp-idle">{tr('ui.IndustryPage.137')}</div> : null}
+      <div className="app-belt-grid">
+        {/* **通用黑匣卡**：图纸兑完仍可购买；它是所有插件共用的料 */}
+        <div className="app-belt-card app-shelf-card">
+          <div className="app-belt-head">
+            <span className="app-belt-name">
+              <Glyph name="plug" size={15} /> {tr('ui.IndustryPage.141')}
+            </span>
+            <span className="app-belt-head-right">
+              <span className="app-chip is-exotic" title={tr('ui.IndustryPage.120')}>
+                {boxPrice}
+              </span>
+            </span>
+          </div>
+          {/* ⟪文案调整 2026-10-02⟫ 「与墨潮旗舰黑匣互为替代」→「与各族的旗舰黑匣互为替代」
+              （依据 = 船长 2026-10-02 令「甲」：黑匣一件族一件，光环那件同样顶料） */}
+          <div className="app-belt-feat is-strong">{tr('ui.IndustryPage.142')}</div>
+          <div className="app-belt-ore">
+            {tr('ui.IndustryPage.143')}
+            <span className="app-dim"> {boxOwned.toLocaleString('zh-CN')}</span>
+          </div>
+          <div>
+            {/* ⚠ 2026-09-29 船长报障后改：**先确认再扣声望**（与图纸卡同一套口径），不再一步直扣 */}
+            <button
+              className="app-btn is-small is-primary"
+              disabled={spendable < boxPrice}
+              onClick={() => setAsk({ kind: 'box', name: tr('ui.IndustryPage.141') })}
+            >
+              {tr('ui.IndustryPage.145')}
+            </button>
+          </div>
+        </div>
+        {rows.map((row) => {
+          /**
+           * 卡面要用的三份现算读数（都走 core 单点，不在界面里自己数）：
+           * - `mod`：产物插件定义（图标 / 短效果 / 材料清单的来源）；
+           * - `bp`：图纸定义（材料清单在这里）；蓝图目录用**全目录**（`ctx.blueprints`）——
+           *   兑换来的书还没学会时也必须在卡上列出材料；
+           * - `owned`：这件插件当前持有数（装备库），让玩家看清"已经有两件了"。
+           */
+          const mod = engine.ctx.modules.get(row.moduleId)
+          const bp = engine.ctx.blueprints.get(row.blueprintId)
+          const owned = countModule(engine.state, row.moduleId)
+          return (
+            /**
+             * ⚠ 卡面类名的两个**实测注意点**（这一版踩过）：
+             * - **不挂 `is-assembler`**：那条规则带 `content-visibility: auto`（组装机 151 张卡的屏外跳过），
+             *   弹层里只有十来张卡，不需要它；且它会把产物行从金色改回正文色 —— 与"金产物"口径相冲。
+             * - **已学会走 `.app-shelf-card.is-learned`**：`.app-belt-card.is-learned` **不存在**
+             *   （styles.css 里只有书架那一条）；两个类都是全仓卡面族，叠着用才是"学会了"的既有观感。
+             *   状态徽标同理走 `.app-chip.is-learned`（薄荷色，全仓既有）。
+             */
+            <div key={row.moduleId} className={`app-belt-card app-shelf-card${row.learned ? ' is-learned' : ''}`}>
+              {/**
+               * ⚠ **卡头 = 插件名，不是图纸名**（**2026-09-26 船长令**：「**兑换商品内应该重点强调插件的
+               * 效果，而不是消耗材料**」＋「**你将产物和图纸的位置弄反了**」）。
+               *
+               * 上一版照搬组装机那张卡的"卡头＝图纸名"口径 —— 那在组装机里是对的（一张图纸 = 一个配方，
+               * 产物在下面 `产物：` 行），**在本窗口是错的**：玩家来这里挑的是"要哪枚插件"，
+               * 图纸只是兑换的凭据 ⇒ 卡头给插件名，图纸降成下面一行。
+               */}
+              <div className="app-belt-head">
+                <span className="app-belt-name">
+                  <Glyph name="plug" size={15} /> {row.name}
+                </span>
+                <span className="app-belt-head-right">
+                  {row.learned ? (
+                    <span className="app-chip is-learned">{tr('ui.IndustryPage.122')}</span>
+                  ) : (
                     <span className="app-chip is-exotic" title={tr('ui.IndustryPage.120')}>
-                      {boxPrice}
+                      {row.cost}
                     </span>
-                  </span>
-                </div>
-                {/* ⟪文案调整 2026-10-02⟫ 「与墨潮旗舰黑匣互为替代」→「与各族的旗舰黑匣互为替代」
-                    （依据 = 船长 2026-10-02 令「甲」：黑匣一件族一件，光环那件同样顶料） */}
-                <div className="app-belt-feat is-strong">{tr('ui.IndustryPage.142')}</div>
-                <div className="app-belt-ore">
-                  {tr('ui.IndustryPage.143')}
-                  <span className="app-dim"> {boxOwned.toLocaleString('zh-CN')}</span>
-                </div>
-                <div>
-                  {/* ⚠ 2026-09-29 船长报障后改：**先确认再扣声望**（与图纸卡同一套口径），不再一步直扣 */}
-                  <button
-                    className="app-btn is-small is-primary"
-                    disabled={spendable < boxPrice}
-                    onClick={() => setAsk({ kind: 'box', name: tr('ui.IndustryPage.141') })}
-                  >
-                    {tr('ui.IndustryPage.145')}
-                  </button>
-                </div>
+                  )}
+                </span>
               </div>
-              {rows.map((row) => {
-                /**
-                 * 卡面要用的三份现算读数（都走 core 单点，不在界面里自己数）：
-                 * - `mod`：产物插件定义（图标 / 短效果 / 材料清单的来源）；
-                 * - `bp`：图纸定义（材料清单在这里）；蓝图目录用**全目录**（`ctx.blueprints`）——
-                 *   兑换来的书还没学会时也必须在卡上列出材料；
-                 * - `owned`：这件插件当前持有数（装备库），让玩家看清"已经有两件了"。
-                 */
-                const mod = engine.ctx.modules.get(row.moduleId)
-                const bp = engine.ctx.blueprints.get(row.blueprintId)
-                const owned = countModule(engine.state, row.moduleId)
-                return (
-                  /**
-                   * ⚠ 卡面类名的两个**实测注意点**（这一版踩过）：
-                   * - **不挂 `is-assembler`**：那条规则带 `content-visibility: auto`（组装机 151 张卡的屏外跳过），
-                   *   弹层里只有十来张卡，不需要它；且它会把产物行从金色改回正文色 —— 与"金产物"口径相冲。
-                   * - **已学会走 `.app-shelf-card.is-learned`**：`.app-belt-card.is-learned` **不存在**
-                   *   （styles.css 里只有书架那一条）；两个类都是全仓卡面族，叠着用才是"学会了"的既有观感。
-                   *   状态徽标同理走 `.app-chip.is-learned`（薄荷色，全仓既有）。
-                   */
-                  <div key={row.moduleId} className={`app-belt-card app-shelf-card${row.learned ? ' is-learned' : ''}`}>
-                    {/**
-                     * ⚠ **卡头 = 插件名，不是图纸名**（**2026-09-26 船长令**：「**兑换商品内应该重点强调插件的
-                     * 效果，而不是消耗材料**」＋「**你将产物和图纸的位置弄反了**」）。
-                     *
-                     * 上一版照搬组装机那张卡的"卡头＝图纸名"口径 —— 那在组装机里是对的（一张图纸 = 一个配方，
-                     * 产物在下面 `产物：` 行），**在本窗口是错的**：玩家来这里挑的是"要哪枚插件"，
-                     * 图纸只是兑换的凭据 ⇒ 卡头给插件名，图纸降成下面一行。
-                     */}
-                    <div className="app-belt-head">
-                      <span className="app-belt-name">
-                        <Glyph name="plug" size={15} /> {row.name}
-                      </span>
-                      <span className="app-belt-head-right">
-                        {row.learned ? (
-                          <span className="app-chip is-learned">{tr('ui.IndustryPage.122')}</span>
-                        ) : (
-                          <span className="app-chip is-exotic" title={tr('ui.IndustryPage.120')}>
-                            {row.cost}
-                          </span>
-                        )}
-                      </span>
-                    </div>
 
-                    {/**
-                     * **这枚插件的实际效果——本窗口信息层级里的主角**（船长令：「**重点强调插件的效果，
-                     * 而不是消耗材料**」）。`.app-belt-feat` 是全仓卡面族里的"特性/效果"行（比说明行更亮），
-                     * `is-strong` 再压一档字重 ⇒ "换了它能强多少"第一眼就看到；材料清单排在它后面、字号更小。
-                     */}
-                    <div className="app-belt-feat is-strong">{mod ? moduleShortEffect(mod) : ''}</div>
+              {/**
+               * **这枚插件的实际效果——本窗口信息层级里的主角**（船长令：「**重点强调插件的效果，
+               * 而不是消耗材料**」）。`.app-belt-feat` 是全仓卡面族里的"特性/效果"行（比说明行更亮），
+               * `is-strong` 再压一档字重 ⇒ "换了它能强多少"第一眼就看到；材料清单排在它后面、字号更小。
+               */}
+              <div className="app-belt-feat is-strong">{mod ? moduleShortEffect(mod) : ''}</div>
 
-                    {/* 图纸行（**凭据**，不是主角）：图纸名 ＋ 已造件数 */}
-                    <div className="app-belt-ore">
-                      {tr('ui.Industry.135')}
-                      {row.blueprintName}
-                      <span className="app-dim">
-                        （{tr('ui.IndustryPage.125')} {owned.toLocaleString('zh-CN')}）
-                      </span>
-                    </div>
+              {/* 图纸行（**凭据**，不是主角）：图纸名 ＋ 已造件数 */}
+              <div className="app-belt-ore">
+                {tr('ui.Industry.135')}
+                {row.blueprintName}
+                <span className="app-dim">
+                  （{tr('ui.IndustryPage.125')} {owned.toLocaleString('zh-CN')}）
+                </span>
+              </div>
 
-                    {/* 材料清单（整批所需 ＋ 各项现有）——**次要信息**：换之前能估"造不造得起"即可
-                        ⚠ **等价组同尺**（2026-09-29 船长报障同批）：名字走 `materialDisplayIdOf`、
-                        "现有"读数走组内合计 —— 与组装机那张卡、与引擎的缺料提示**完全同一把尺**，
-                        免得这里说"墨潮旗舰黑匣"、那儿说"通用黑匣"。 */}
-                    {bp ? (
-                      <ul className="app-bp-mats">
-                        {bp.materials.map((need) => {
-                          const needCount = matNeedCount(engine.state, need.count)
-                          const groupIds = materialGroupIdsOf(need.itemId)
-                          const displayId = materialDisplayIdOf(engine.state, need.itemId)
-                          const have = groupIds.reduce((sum, id) => sum + countWare(engine.state, id), 0)
-                          const matName = engine.ctx.items.get(displayId)?.name ?? displayId
-                          const split =
-                            groupIds.length > 1
-                              ? groupIds
-                                  .map((id) => ({ id, n: countWare(engine.state, id) }))
-                                  .filter((x) => x.n > 0)
-                                  .map((x) => `${engine.ctx.items.get(x.id)?.name ?? x.id} ${x.n.toLocaleString('zh-CN')}`)
-                                  .join(tr('ui.MatterTechTab.017'))
-                              : ''
-                          return (
-                            <li key={need.itemId} className={`app-bp-mat${have < needCount ? ' is-short' : ''}`}>
-                              {matName} ×{needCount.toLocaleString('zh-CN')}
-                              <span className="app-dim">
-                                （{tr('ui.IndustryPage.029')} {have.toLocaleString('zh-CN')}
-                                {split !== '' ? `（${split}）` : ''}）
-                              </span>
-                            </li>
-                          )
-                        })}
-                      </ul>
-                    ) : null}
+              {/* 材料清单（整批所需 ＋ 各项现有）——**次要信息**：换之前能估"造不造得起"即可
+                  ⚠ **等价组同尺**（2026-09-29 船长报障同批）：名字走 `materialDisplayIdOf`、
+                  "现有"读数走组内合计 —— 与组装机那张卡、与引擎的缺料提示**完全同一把尺**，
+                  免得这里说"墨潮旗舰黑匣"、那儿说"通用黑匣"。 */}
+              {bp ? (
+                <ul className="app-bp-mats">
+                  {bp.materials.map((need) => {
+                    const needCount = matNeedCount(engine.state, need.count)
+                    const groupIds = materialGroupIdsOf(need.itemId)
+                    const displayId = materialDisplayIdOf(engine.state, need.itemId)
+                    const have = groupIds.reduce((sum, id) => sum + countWare(engine.state, id), 0)
+                    const matName = engine.ctx.items.get(displayId)?.name ?? displayId
+                    const split =
+                      groupIds.length > 1
+                        ? groupIds
+                            .map((id) => ({ id, n: countWare(engine.state, id) }))
+                            .filter((x) => x.n > 0)
+                            .map((x) => `${engine.ctx.items.get(x.id)?.name ?? x.id} ${x.n.toLocaleString('zh-CN')}`)
+                            .join(tr('ui.MatterTechTab.017'))
+                        : ''
+                    return (
+                      <li key={need.itemId} className={`app-bp-mat${have < needCount ? ' is-short' : ''}`}>
+                        {matName} ×{needCount.toLocaleString('zh-CN')}
+                        <span className="app-dim">
+                          （{tr('ui.IndustryPage.029')} {have.toLocaleString('zh-CN')}
+                          {split !== '' ? `（${split}）` : ''}）
+                        </span>
+                      </li>
+                    )
+                  })}
+                </ul>
+              ) : null}
 
-                    <div className="app-belt-actions">
-                      {/**
-                       * **点「兑换图纸」先弹确认**（**2026-09-26 船长令**：
-                       * 「玩家兑换时弹出一个确认，告诉玩家会扣除声望」）——
-                       * 行内不再有"已学会"分支（学过的行已经被过滤掉了）⇒ 这里只剩两种状态：
-                       * 声望够（主行动）／不够（写明还差多少，且不可点）。
-                       */}
-                      <button
-                        className={`app-btn is-small${row.affordable ? ' is-primary' : ''}`}
-                        disabled={!row.affordable}
-                        onClick={() => setAsk({ kind: 'blueprint', moduleId: row.moduleId, name: row.name })}
-                      >
-                        {row.affordable
-                          ? tr('ui.IndustryPage.120')
-                          : tr('ui.IndustryPage.121', { p1: row.cost - spendable })}
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
+              <div className="app-belt-actions">
+                {/**
+                 * **点「兑换图纸」先弹确认**（**2026-09-26 船长令**：
+                 * 「玩家兑换时弹出一个确认，告诉玩家会扣除声望」）——
+                 * 行内不再有"已学会"分支（学过的行已经被过滤掉了）⇒ 这里只剩两种状态：
+                 * 声望够（主行动）／不够（写明还差多少，且不可点）。
+                 */}
+                <button
+                  className={`app-btn is-small${row.affordable ? ' is-primary' : ''}`}
+                  disabled={!row.affordable}
+                  onClick={() => setAsk({ kind: 'blueprint', moduleId: row.moduleId, name: row.name })}
+                >
+                  {row.affordable
+                    ? tr('ui.IndustryPage.120')
+                    : tr('ui.IndustryPage.121', { p1: row.cost - spendable })}
+                </button>
+              </div>
             </div>
-          )}
+          )
+        })}
+      </div>
       {/**
        * **确认层**（船长令）：标题 = 兑换哪一件；正文两行 = 扣多少 / 扣完还剩多少 ＋ 一句说明
        * （声望不退）。样式整族复用 `.app-mkt-confirm*`（市场卖单那套）。

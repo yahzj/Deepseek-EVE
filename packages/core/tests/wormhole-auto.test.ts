@@ -371,7 +371,7 @@ describe('虫洞 · 自动探索（批次 3）', () => {
     expect(wormholeAutoReportsOf(cleaned)[0]!.gains).toEqual([])
     expect(wormholeAutoReportsOf(cleaned)[0]!.damage).toEqual([])
     expect(wormholeAutoReportsOf(cleaned)[0]!.depth).toBe(9)
-    expect(WORMHOLE_AUTO_REPORT_MAX).toBeGreaterThan(0)
+    expect(WORMHOLE_AUTO_REPORT_MAX).toBe(10)
   })
 
   it('**界面守卫**：该处已在自动探索中 / 没船可派 / 参与舰不可派 都给出理由', () => {

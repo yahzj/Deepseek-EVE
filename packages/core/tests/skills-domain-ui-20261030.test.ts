@@ -15,7 +15,8 @@ const renderer = resolve(ROOT, 'apps/desktop/src/renderer/src')
 const nodes = (value: unknown): Tree[] => Array.isArray(value) ? value.flatMap(nodes) : value && typeof value === 'object' && 'type' in value
   ? [value as Tree, ...nodes((value as Tree).children)] : []
 const text = (value: unknown): string => Array.isArray(value) ? value.map(text).join('') : value && typeof value === 'object' && 'children' in value
-  ? text((value as Tree).children) : typeof value === 'string' || typeof value === 'number' ? String(value) : ''
+  ? text((value as Tree).children) : value && typeof value === 'object' && 'props' in value
+    ? text((value as { props?: { children?: unknown } }).props?.children) : typeof value === 'string' || typeof value === 'number' ? String(value) : ''
 
 function harness(locale: 'zh' | 'en') {
   const ctx = buildSimContext(locale), state = core.createInitialState({ nowWallMs: 0, seed: 7 })
@@ -67,6 +68,7 @@ function harness(locale: 'zh' | 'en') {
       if (target === resolve(renderer, 'i18n/fmt')) return { fmtDuration: (ms: number) => `${Math.round(ms)}ms` }
       if (target === resolve(renderer, 'ui/Glyphs')) return { Glyph: 'Glyph', toneOf: () => 'currentColor', itemGlyphName: String }
       if (target === resolve(renderer, 'ui/labelsText')) return { skillBranchText: String, skillGroupText: String }
+      if (target === resolve(renderer, 'ui/Tooltip')) return { hoverTipProps: (tip: unknown) => ({ 'data-tip-hover': '1', richTip: tip }) }
       if (target === resolve(renderer, 'ui/sessionView')) return { sessionPick: (key: string) => session.get(key) ?? null,
         setSessionPick: (key: string, value: string) => session.set(key, value), useSessionScroll: () => {} }
       if (target === resolve(renderer, 'ui/itemView')) return { RowGlyph: 'Glyph', useItemView: () => useState('grid'),
@@ -240,5 +242,25 @@ describe('技能域真实组件接线', () => {
     expect(tree.filter(n => n.props.role === 'status')).toHaveLength(1)
     h.click(h.button(tree, h.format('ui.boost.011')))
     expect(h.state.boostAutoRenew).toBe(true)
+  })
+
+  it.each(['zh', 'en'] as const)('%s技能队列悬停显示完整技能说明', locale => {
+    const h = harness(locale)
+    const skill = h.ctx.skills.get('accelerated-learning')!
+    h.state.skills.queue = [
+      { skillId: skill.id, targetLevel: 1, progressMs: 0 },
+      { skillId: skill.id, targetLevel: 2, progressMs: 0 },
+    ]
+    let tree = h.render()
+    h.click(h.button(tree, h.format('ui.SkillsPage.001')))
+    tree = h.render()
+    const rows = tree.filter(n => n.props.className === 'app-train-chip-main')
+    expect(rows).toHaveLength(2)
+    for (const [index, row] of rows.entries()) {
+      expect(row.props['data-tip-hover']).toBe('1')
+      expect(text(row.props.richTip)).toContain(skill.name)
+      expect(JSON.stringify(row.props.richTip)).toContain(skill.description)
+      expect(text(row.props.richTip)).toContain(`Lv${index + 1}`)
+    }
   })
 })

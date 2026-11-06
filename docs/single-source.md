@@ -62,7 +62,7 @@
 
 待启动活动显示：`pendingStationActivityView`（`stationActivityPending.ts`）读取同一待办和实际返航账本，目标/进度/剩余时长/取消动作供两套活动栏共用；不把排队当作已经开工。
 
-主控离港与星门阶段：`departure.ts:departureView` 统一活动栏的阶段、倒计时与进度；`associationGateMs` 按既有最短航程计算 5 至 20 秒。入口登记出发行程，作业推进消费等待，存档清洗保留剩余阶段，不影响 AI 独立任务。
+主控离港与星门阶段：`departure.ts:departureView` 统一活动栏的阶段、倒计时与进度；新行程离港 5 秒，星门按既有最短航程公式计算 2.5 至 10 秒但暂不启用。读档保留已登记行程的原阶段时长与进度，避免与所属活动到达时刻脱节；作业推进消费等待，不影响 AI 独立任务。
 
 生产研究所首捞：`wormholeSalvage.ts:wormholeResearchBox` 使用整趟势力与独立随机流，只出非贵重品柜；加密柜不加入普通货柜池。`encryptedContainer.ts:encryptedBlueprintGroups` 为五族首批插件/武器/舰船一次性图纸显式登记与校验单点，`encryptedBlueprintDraw` 统一1至3张、类别等权及允许重复抽取。
 出发等待总长由同文件 `departureDurationMs` 计算，活动入口和悬赏收益估算共用；星门仅用于悬赏、采矿、打捞。

@@ -3,6 +3,17 @@ import type { SimContext } from './types'
 import { shortestTravelMinutes } from './travel'
 export { reconcileDeparture } from './departureReconcile'
 
+/** 主控离港演出/等待时长。船长 2026-11-05 由 10 秒下调为 5 秒；读档夹取与旗舰战开战偏移共用此值。 */
+export const UNDOCK_MS = 5_000
+/** 协会跃迁星门等待：同星系基数、每标称航程分钟增量、总上限。读档夹取共用 GATE_MAX_MS。 */
+export const GATE_BASE_MS = 2_500
+export const GATE_STEP_MS = 500
+export const GATE_MAX_MS = 10_000
+/** 临时开关：船长 2026-11-05 令「先暂时关闭星门相关的读条」。改回 true 即恢复原 2.5–10 秒，公式与常量原样保留。 */
+export const GATE_ENABLED = false
+const SAVED_UNDOCK_MAX_MS = 10_000
+const SAVED_GATE_MAX_MS = 20_000
+
 export type DepartureKind = 'mining' | 'salvaging' | 'expedition' | 'hauling' | 'deliver' | 'siteDeliver' | 'wormhole' | 'flagship'
 export interface DepartureState {
   kind: DepartureKind
@@ -16,10 +27,14 @@ export interface DepartureState {
   arrivalLog?: Pick<LogEntry, 'kind' | 'text' | 'textId' | 'textParams'>
 }
 
-/** 船长确认：同星系 5 秒，每标称航程分钟增加 1 秒，上限 20 秒。 */
+/**
+ * 船长确认（2026-11-02）：同星系 5 秒，每标称航程分钟增加 1 秒，上限 20 秒。
+ * 船长 2026-11-05 令整体下调 50% ⇒ 同星系 2.5 秒，每标称航程分钟增加 0.5 秒，上限 10 秒。
+ */
 export function associationGateMs(ctx: SimContext, from: string, to: string): number {
   const minutes = shortestTravelMinutes(ctx, from, to)
-  return Math.round(5_000 + Math.min(15, Math.max(0, Number.isFinite(minutes) ? minutes : 15)) * 1_000)
+  const steps = Math.min(15, Math.max(0, Number.isFinite(minutes) ? minutes : 15))
+  return Math.min(GATE_MAX_MS, Math.round(GATE_BASE_MS + steps * GATE_STEP_MS))
 }
 
 /** 在入口尚未清位置前取快照；作业或停止返航中不虚构停靠。 */
@@ -43,8 +58,9 @@ export function beginDeparture(state: GameState, ctx: SimContext, kind: Departur
 }
 
 export function departureDurationMs(ctx: SimContext, kind: DepartureKind, from: string, to: string, docked = true) {
-  const undockMs = docked ? 10_000 : 0
-  const gateMs = kind === 'mining' || kind === 'salvaging' || kind === 'expedition' ? associationGateMs(ctx, from, to) : 0
+  const undockMs = docked ? UNDOCK_MS : 0
+  const gateMs = GATE_ENABLED && (kind === 'mining' || kind === 'salvaging' || kind === 'expedition')
+    ? associationGateMs(ctx, from, to) : 0
   return { undockMs, gateMs, totalMs: undockMs + gateMs }
 }
 
@@ -72,6 +88,7 @@ export function departureView(state: GameState) {
   const leg = state.departure
   if (!leg) return null
   const undocking = leg.progressMs < leg.undockMs
+  if (!undocking && leg.gateMs <= 0) return null
   const totalMs = undocking ? leg.undockMs : leg.gateMs
   const elapsed = undocking ? leg.progressMs : leg.progressMs - leg.undockMs
   return { kind: leg.kind, undocking, textId: undocking ? 'core.departure.001' : 'core.departure.002',
@@ -95,8 +112,9 @@ export function cleanDeparture(raw: unknown): DepartureState | undefined {
   if (typeof r.shipId !== 'string' || !r.shipId || typeof r.fromGalaxy !== 'string' || !r.fromGalaxy
     || typeof r.toGalaxy !== 'string' || !r.toGalaxy || !(r.fromSite === null || typeof r.fromSite === 'string')) return undefined
   if (![r.undockMs, r.gateMs, r.progressMs].every(v => typeof v === 'number' && Number.isFinite(v) && v >= 0)) return undefined
-  const undockMs = Math.min(10_000, Math.floor(r.undockMs as number))
-  const gateMs = Math.min(20_000, Math.floor(r.gateMs as number))
+  // 已登记的行程与所属活动共用绝对到达时刻，不能按新规则改写在途阶段。
+  const undockMs = Math.min(SAVED_UNDOCK_MAX_MS, Math.floor(r.undockMs as number))
+  const gateMs = Math.min(SAVED_GATE_MAX_MS, Math.floor(r.gateMs as number))
   if (undockMs + gateMs <= 0) return undefined
   const log = r.arrivalLog && typeof r.arrivalLog === 'object' ? r.arrivalLog as Record<string, unknown> : undefined
   const validLog = log && ['core.mining.016', 'core.salvaging.015', 'core.expedition.040'].includes(String(log.textId))

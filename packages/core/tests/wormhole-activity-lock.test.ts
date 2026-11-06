@@ -37,6 +37,7 @@ import { shortestTravelMinutes } from '../src/travel'
 import { goStandbyAt } from '../src/location'
 import { setStanding } from './helpers'
 import { finishDeparture } from './helpers/departure-ready'
+import { advanceGame } from '../src/engine'
 
 const ctx = buildSimContext()
 const T1 = 'sh-falconet'
@@ -412,6 +413,7 @@ describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 
     const expedition = startExpedition(state, 'ano-training', ctx)
     expect(expedition.ok, expedition.error ?? '').toBe(true)
     finishDeparture(state, ctx)
+    advanceGame(state, 1, ctx) // 跨过相位边界：星门临时关闭时总等待只剩离港，需补一拍落地
     expect(state.mining.active).toBe(false)
     // 远征在途（且已交火）⇒ **拒**（不可中断那一档：此刻的拒因是"战斗中"）
     const whscan = wormholeScanStart(state, ctx)

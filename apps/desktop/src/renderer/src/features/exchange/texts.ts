@@ -174,8 +174,8 @@ export const ZH_T = {
   "strategyParamsInvalid": "参数不合理，请检查后再创建",
   "bondTitle": "低风险理财",
   "bondNameHint": "舰船债券",
-  "bondRateLabel": "分钟收益",
-  "bondGameDay": "交易所现金申购 · 每 60 秒 +0.03%",
+  "bondRateLabel": "期望年化",
+  "bondGameDay": "99.9% +0.0022% · 0.1% −0.1978%",
   "bondBuy": "买入金额",
   "bondBuyBtn": "买入债券",
   "bondRedeem": "赎回本息",
@@ -189,7 +189,8 @@ export const ZH_T = {
   "fundCalculating": "处理中…",
   "fundResultWin": "基金盈利",
   "fundResultLose": "基金亏损",
-  "fundRateHint": "每分钟 70% +0.16% / 30% −0.07%",
+  "fundRateHint": "每日 70% +0.03% / 30% −0.05% · 期望年化 2.19%",
+  "exchangeDailyLimit": "今日股票成交额",
   "fundNoCash": "交易所可用现金不足",
   "bondBuyMax": "全买",
   "bondRedeemAll": "全部赎回",
@@ -476,7 +477,7 @@ export const ZH_T = {
 } as const
 
 /** 英文静态文案 */
-export const EN_T: Record<keyof typeof ZH_T, string> = {
+export const EN_T: Partial<Record<keyof typeof ZH_T, string>> = {
   "pageTitle": "Securities Exchange",
   "prototypeBadge": "Prototype · Virtual Funds · Not Saved",
   "accountEquity": "Account Equity",
@@ -642,8 +643,6 @@ export const EN_T: Record<keyof typeof ZH_T, string> = {
   "strategyParamsInvalid": "Invalid parameters, please check before creating",
   "bondTitle": "Low-Risk Finance",
   "bondNameHint": "Ship Bonds",
-  "bondRateLabel": "Minute Yield",
-  "bondGameDay": "+0.03% every 60s",
   "bondBuy": "Buy Amount",
   "bondBuyBtn": "Buy Bonds",
   "bondRedeem": "Redeem",
@@ -657,7 +656,6 @@ export const EN_T: Record<keyof typeof ZH_T, string> = {
   "fundCalculating": "Processing...",
   "fundResultWin": "Fund Profit",
   "fundResultLose": "Fund Loss",
-  "fundRateHint": "70% +0.16% / 30% −0.07% per minute",
   "fundNoCash": "Insufficient exchange cash",
   "bondBuyMax": "MAX",
   "bondRedeemAll": "Redeem All",
