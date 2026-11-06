@@ -97,12 +97,6 @@ export function CloudSavePanel({ engine, onApplyingChange }: { engine: GameEngin
               <button className="app-btn is-small" onClick={cloud.previewUpload} disabled={blocked || cloud.savePaused}><CloudUpload size={14} />{t('ui.cloud.031')}</button>
               <button className="app-btn is-small" onClick={() => cloud.previewDownload()} disabled={blocked || cloud.latest?.version === 0}><CloudDownload size={14} />{t('ui.cloud.032')}</button>
             </div>
-          <div className="app-cloud-versions" aria-label={t('ui.cloud.033')}>
-            {cloud.versions.map(version => <div className="app-cloud-version" key={version.version}>
-              <span>v{version.version}</span><time>{timeLabel(version.createdAt)}</time>
-              <button className="app-btn is-small" title={`${t('ui.cloud.032')} v${version.version}`} aria-label={`${t('ui.cloud.032')} v${version.version}`} onClick={() => cloud.previewDownload(version.version)} disabled={blocked}><CloudDownload size={14} /></button>
-            </div>)}
-          </div>
           {cloud.uploadConfirm ? (
             <div className="app-cloud-confirm" role="group" aria-label={t('ui.cloud.034')}>
               <p>{t('ui.cloud.035', { p1: profile.nickname, p2: profile.username ?? '-', p3: cloud.uploadConfirm.baseVersion })}</p>

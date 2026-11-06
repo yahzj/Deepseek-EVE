@@ -3,7 +3,7 @@ import {
   FALLBACK_CLOUD_SERVER,
   readCloudPreferences,
 } from './preferences'
-import type { CloudAuthResponse, CloudProfile, CloudSave, CloudSaveVersion } from './types'
+import type { CloudAuthResponse, CloudProfile, CloudSave } from './types'
 import type { MarketRelayRequest, MarketRelayResponse } from '@whale/core'
 import { MARKET_RELAY_MAX_BYTES, marketRelayJsonWithinLimit, marketRelayRequestShape, marketRelayResponseShape } from '../market/relay/protocol'
 
@@ -41,9 +41,7 @@ export interface CloudApi {
   redeemRecovery(code: string, deviceCode?: string, signal?: AbortSignal): Promise<CloudAuthResponse>
   rotateRecovery(signal?: AbortSignal): Promise<{ recoveryCode: string }>
   saveLatest(signal?: AbortSignal): Promise<CloudSave>
-  saveVersions(signal?: AbortSignal): Promise<CloudSaveVersion[]>
-  saveVersion(version: number, signal?: AbortSignal): Promise<CloudSave>
-  uploadSave(data: string, baseVersion: number, signal?: AbortSignal): Promise<Pick<CloudSaveVersion, 'version' | 'size'>>
+  uploadSave(data: string, baseVersion: number, signal?: AbortSignal): Promise<{ version: number; size: number }>
   chatHistory(channel: 'zh' | 'en', limit?: number, beforeId?: number, signal?: AbortSignal): Promise<CloudChatHistory>
   marketRelaySync(payload: MarketRelayRequest, signal?: AbortSignal): Promise<MarketRelayResponse>
 }
@@ -141,11 +139,6 @@ function saveShape(value: unknown): value is CloudSave {
       : typeof value.data === 'string' && value.data.length > 0 && utf8Size(value.data) <= MAX_SAVE_BYTES)
     && (value.size === undefined || finiteInteger(value.size))
     && (value.createdAt === undefined || finiteInteger(value.createdAt))
-}
-
-function saveVersionShape(value: unknown): value is CloudSaveVersion {
-  return object(value) && finiteInteger(value.version)
-    && finiteInteger(value.size) && finiteInteger(value.createdAt)
 }
 
 function utf8Size(value: string): number {
@@ -297,20 +290,11 @@ export function createCloudApi(options: CloudApiOptions): CloudApi {
     rotateRecovery: (signal) => request('/api/auth/recovery/rotate', json('POST'),
       (body): body is { recoveryCode: string } => object(body) && typeof body.recoveryCode === 'string', signal),
     saveLatest: (signal) => request('/api/saves/latest', { method: 'GET' }, saveShape, signal),
-    saveVersions: async (signal) => {
-      const body = await request('/api/saves/versions', { method: 'GET' },
-        (value): value is { versions: CloudSaveVersion[] } => object(value) && Array.isArray(value.versions) && value.versions.every(saveVersionShape), signal)
-      return body.versions
-    },
-    saveVersion: (version, signal) => {
-      if (!finiteInteger(version)) throw new CloudApiError(0, 'invalid_version', 'invalid_version')
-      return request(`/api/saves/versions/${version}`, { method: 'GET' }, saveShape, signal)
-    },
     uploadSave: (data, baseVersion, signal) => {
       if (typeof data !== 'string' || utf8Size(data) > MAX_SAVE_BYTES) throw new CloudApiError(0, 'save_too_large', 'save_too_large')
       if (!finiteInteger(baseVersion)) throw new CloudApiError(0, 'invalid_base_version', 'invalid_base_version')
       return request('/api/saves', json('PUT', { data, baseVersion }),
-        (body): body is Pick<CloudSaveVersion, 'version' | 'size'> => object(body)
+        (body): body is { version: number; size: number } => object(body)
           && finiteInteger(body.version) && finiteInteger(body.size), signal)
     },
     chatHistory: (channel, limit = 100, beforeId, signal) => {
