@@ -487,15 +487,15 @@ const MODULES_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
   },
   "mod-lock-1": {
     name: '目标锁定阵列 MK1',
-    description: L10N['mod.fleetSupport.004']!.zh,
+    description: L10N['mod.fleetSupport.005']!.zh,
   },
   "mod-lock-2": {
     name: '目标锁定阵列 MK2',
-    description: L10N['mod.fleetSupport.004']!.zh,
+    description: L10N['mod.fleetSupport.005']!.zh,
   },
   "mod-lock-3": {
     name: '目标锁定阵列 MK3',
-    description: L10N['mod.fleetSupport.004']!.zh,
+    description: L10N['mod.fleetSupport.005']!.zh,
   },
   "mod-stealth-2": {
     name: '隐秘行动装置 MK2',
@@ -672,7 +672,7 @@ const MODULES_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
   },
   "mod-wh-d-lock": {
     name: '守墓者丧钟',
-    description: L10N['mod.fleetSupport.004']!.zh,
+    description: L10N['mod.fleetSupport.005']!.zh,
   },
   "mod-wh-d-laser": {
     name: '陵寝棱镜炮',

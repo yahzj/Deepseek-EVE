@@ -425,7 +425,7 @@ export function moduleInfoLines(mod: ModuleDef, engine?: GameEngine, shipId?: st
       }
     }
   } else if (mod.slot === 'target-lock') {
-    // 概率、本舰和共享增伤由同一短行展示。
+    // 概率与全队增伤由同一短行展示。
     lines.push({ k: tr('ui.shipInfo.061'), v: moduleShortEffect(mod) })
   } else if (mod.slot === 'cpu') {
     // 2026-09-11 协处理器（低槽）：装配 CPU 预算扩容；**本件自身不占 CPU**（船长定）——
@@ -566,7 +566,8 @@ export function moduleInfoLines(mod: ModuleDef, engine?: GameEngine, shipId?: st
   const st = stackingOf(mod)
   // ⟪文案调整 2026-10-19⟫ 安装限制和独立运作不是加算收益，单独说明。
   if (mod.slot === 'target-lock') {
-    lines.push({ k: tr('ui.shipInfo.076'), v: tr('ui.fleetSupport.003') })
+    // ⟪文案调整 2026-11-06⟫ 移除共享减半、上限与丧钟特例。
+    lines.push({ k: tr('ui.shipInfo.076'), v: tr('ui.fleetSupport.005') })
   } else if (mod.rangeEwStrength !== undefined) {
     lines.push({ k: tr('ui.shipInfo.076'), v: tr('ui.rangeEw.019') })
   } else if (mod.plugNonStacking) {

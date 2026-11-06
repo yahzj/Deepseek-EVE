@@ -16,7 +16,6 @@ import { crisisEffectsOf } from '../gravekeeperGear'
 import { droneLaunchGapMsOf } from '../droneLaunch'
 import { playerRangeEwOf } from '../rangeEw'
 import { quickRepairFactor } from '../../repair'
-import { LOCK_SHARED_SCALE, LOCK_SHARED_CAP } from '../lockAura'
 
 export function createPlayerSpec(
   state: GameState,
@@ -734,11 +733,10 @@ export function createPlayerSpec(
     weapons,
     droneLaunchGapMs: Math.max(10, Math.round(droneLaunchGapMsOf(allFittedModules(fitted, ctx), ship.droneLaunchCutPct) * (printing?.launchMul ?? 1))),
     droneReviveGapMs: droneLaunchGapMsOf(allFittedModules(fitted, ctx), 0, true),
-    // 锁定装置（2026-09-09）：被锁目标受击加深等效比例（>0 同时开启集火模式）
+    // 本舰多件先递减合成，再由编队光环取存活来源最高值；集火概率独立取最高。
     ...(lockEq > 1 ? { lockedDmgBonus: lockEq - 1, lockOwnDmgBonus: lockEq - 1,
       lockTargetChance: Math.max(...targetLockDefs.map(m => m.lockTargetChance ?? 1)),
       lockOwnTargetChance: Math.max(...targetLockDefs.map(m => m.lockTargetChance ?? 1)),
-      lockSharedBonus: Math.max(Math.min(LOCK_SHARED_CAP, (lockEq - 1) * LOCK_SHARED_SCALE), ...targetLockDefs.map(m => m.lockSharedBonus ?? 0)),
     } : {}),
     // **隐秘行动装置**（2026-09-15 船长）：隐身窗口取所装件里**最长**的一件；
     // **装了任何推进器 ⇒ 直接解除**（船长同日追加的禁令）⇒ 这里不写字段（= 无隐身）。

@@ -1366,7 +1366,6 @@
         "rack": "high",
         "lockDmgBonus": 0.3,
         "lockTargetChance": 0.6,
-        "lockSharedBonus": 0.2,
         "cpuUse": 40
       },
       {

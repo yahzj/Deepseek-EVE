@@ -39,7 +39,7 @@ export function applyApprovedFleetModuleDelta(rows: Array<{ id: string }>): void
     'mod-lock-1': { lockTargetChance: .6 },
     'mod-lock-2': { lockTargetChance: .7 },
     'mod-lock-3': { lockTargetChance: .8 },
-    'mod-wh-d-lock': { lockTargetChance: .6, lockSharedBonus: .2 },
+    'mod-wh-d-lock': { lockTargetChance: .6 },
     'mod-lair-ecm-h': { rangeEwStrength: 40 },
   }
   for (const row of rows) Object.assign(row, changes[row.id] ?? {})

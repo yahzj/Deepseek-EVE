@@ -146,7 +146,6 @@
     "repairKit": "string",
     "lockDmgBonus": "number",
     "lockTargetChance": "number",
-    "lockSharedBonus": "number",
     "stealthMs": "number",
     "ammoPerShot": "number",
     "repairIntervalMs": "number",

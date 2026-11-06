@@ -1,5 +1,5 @@
 /** 功能域职责拆分，保持原计算与顺序。 */
-import { type ModuleDef, SHIELD_FIELD_COST_PCT, SHIELD_PULSE_MS, LOCK_SHARED_SCALE, LOCK_SHARED_CAP, type DamageType, FOE_RANGE_DEBUFF_FLOOR_M, MY_WEB_RANGE_M, stackingOf, type ModuleSlot } from '@whale/core'
+import { type ModuleDef, SHIELD_FIELD_COST_PCT, SHIELD_PULSE_MS, type DamageType, FOE_RANGE_DEBUFF_FLOOR_M, MY_WEB_RANGE_M, stackingOf, type ModuleSlot } from '@whale/core'
 import { tr } from '../../../i18n/locale'
 import { pctOpt, turretAmmoText, rangeText, recoveryPct, pct, resistGapText, thrusterCycleShort, fmt, salvageCycleSecs, reviveCycleSecs, DMG_LABEL, repairShortText, hullResistShortText } from './primitives'
 
@@ -183,8 +183,8 @@ export function moduleShortEffect(mod: ModuleDef): string {
       break
     }
     case 'target-lock':
-      // 本舰与共享增伤分别显示，集火概率读取装备定义。
-      body = tr('ui.fleetSupport.002', { p1: pct(mod.lockTargetChance ?? 1), p2: pctOpt(mod.lockDmgBonus), p3: pct(mod.lockSharedBonus ?? Math.min(LOCK_SHARED_CAP, (mod.lockDmgBonus ?? 0) * LOCK_SHARED_SCALE)) })
+      // ⟪文案调整 2026-11-06⟫ 全队统一取最高增伤，不再区分本舰与队友。
+      body = tr('ui.fleetSupport.004', { p1: pct(mod.lockTargetChance ?? 1), p2: pctOpt(mod.lockDmgBonus) })
       break
     case 'cpu':
       // 2026-09-11 协处理器：装配 CPU 预算扩容（本件自身不占 CPU——说清，否则玩家会以为要占 0 是 bug）

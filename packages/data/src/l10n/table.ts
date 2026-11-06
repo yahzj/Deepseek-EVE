@@ -214,6 +214,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'bp.fleetSupport.001': { zh: '护盾投送力场图纸 MK2（一次性）', en: 'Shield Projection Field Blueprint MK2 (Single-use)' },
   'bp.fleetSupport.002': { zh: '护盾投送力场图纸 MK3（一次性）', en: 'Shield Projection Field Blueprint MK3 (Single-use)' },
   'mod.fleetSupport.004': { zh: '引导编队优先攻击敌方首位目标，提高对锁定目标的伤害；本舰与队友共享增伤取较高值，不相加。', en: 'Directs the fleet to prioritize the enemy primary target, increasing damage dealt to locked targets; ship and ally shared damage bonuses take the higher value and do not stack.' },
+  // ⟪文案调整 2026-11-06⟫ 船长要求移除队友共享衰减，全队统一取最高增伤；旧译文保留。
+  'mod.fleetSupport.005': { zh: '引导编队优先攻击敌方首位目标，提高全队对锁定目标的伤害；全队使用最高一份增伤，不相加。', en: '', enDeferred: true },
+  'ui.fleetSupport.004': { zh: '锁定目标攻击概率{p1} · 全队增伤{p2}', en: '', enDeferred: true },
+  'ui.fleetSupport.005': { zh: '本舰多件增伤递减合成，全队取存活提供舰中的最高值，不再衰减或相加。概率取最高、不相加；提供舰被摧毁后，其效果失效。', en: '', enDeferred: true },
   'ui.fleetSupport.001': { zh: '每{p1}秒消耗本舰最大护盾的{p3}，为最多2艘缺盾队友各投送本舰最大护盾的{p2}；不恢复自身', en: 'Every {p1}s, consumes {p3} of ship max shields to project {p2} of ship max shields to up to 2 shield-depleted allies; does not repair self' },
   'ui.fleetSupport.002': { zh: '锁定目标攻击概率{p1} · 本舰增伤{p2} · 队友共享增伤{p3}', en: 'Locked target attack chance {p1} · Ship damage bonus {p2} · Ally shared damage bonus {p3}' },
   'ui.fleetSupport.003': { zh: '本舰多件增伤递减；队友共享取最高一份，常规共享为本舰合成值的50%、最高15%，丧钟共享20%。概率取最高、不相加；提供舰被摧毁后共享失效。', en: 'Multiple ship damage bonuses suffer diminishing returns; ally sharing takes the highest value, with standard sharing being 50% of ship composite value up to 15%, and Deathknell sharing 20%. Chance takes the highest value and does not stack; shared bonus ceases if provider ship is destroyed.' },

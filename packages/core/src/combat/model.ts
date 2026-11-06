@@ -230,13 +230,11 @@ export interface UnitSpec {
    */
   thrusterBoostMs?: number
   thrusterCooldownMs?: number
-  /** 锁定装置（2026-09-09）：被锁定目标受本舰伤害加深等效比例（多件 EVE 曲线收敛）；
-   *  >0 同时表示"本场集火模式"——全部武器打存活编队首位（替代每发随机分散） */
+  /** 对锁定目标的增伤：各舰多件递减合成后，全队取存活来源最高值。 */
   lockedDmgBonus?: number;
   lockTargetChance?: number
   lockOwnDmgBonus?: number
   lockOwnTargetChance?: number
-  lockSharedBonus?: number
   /**
    * **本单位的隐身窗口时长（ms）**（2026-09-15 船长：「隐秘行动装置」——高槽，**自身武器开火前
    * 隐身 20/30 秒**：不被锁定、不被攻击）。

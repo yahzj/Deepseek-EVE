@@ -164,13 +164,12 @@ describe('目标锁定阵列 · 全队生效（2026-09-17 船长）', () => {
     return { battle, wingTargets, perHit }
   }
 
-  it('僚舰共享减半而本舰保持原增伤，混编每发收益处于10%至20%之间', () => {
+  it('主控装MK3时全队使用20%增伤，每发均值与无锁对照之比约为1.2', () => {
     const withLock = runFleet('mod-lock-3', null)
     const plain = runFleet(null, null)
     const ratio = withLock.perHit / plain.perHit
     expect(withLock.battle.ended, '敌舰没活满 15 秒 ⇒ 本用例读数口径失效').toBeFalsy()
-    expect(ratio, `每发均值比 ${ratio.toFixed(3)}`).toBeGreaterThan(1.09)
-    expect(ratio, `每发均值比 ${ratio.toFixed(3)}`).toBeLessThan(1.25)
+    expect(ratio, `每发均值比 ${ratio.toFixed(3)}`).toBeCloseTo(1.2, 1)
   })
 
   it('**集火也全队生效**：阵列装在主控 ⇒ 没装阵列的僚舰也只打存活编队首位（不再随机分散）', () => {

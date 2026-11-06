@@ -181,6 +181,21 @@ function textOf(value: unknown): string {
   return typeof value === 'string' || typeof value === 'number' ? String(value) : ''
 }
 describe('真实参数行承接说明数字', () => {
+  it.each(['zh', 'en'] as const)('%s 锁定阵列只显示全队增伤，不再显示共享衰减或上限', locale => {
+    language.value = locale
+    const ctx = buildSimContext(locale)
+    for (const [id, bonus] of [['mod-lock-1', '8%'], ['mod-lock-2', '12%'], ['mod-lock-3', '20%'], ['mod-wh-d-lock', '30%']] as const) {
+      const mod = ctx.modules.get(id)!
+      const short = display.moduleShortEffect(mod)
+      expect(short).toContain(`全队增伤${bonus}`)
+      expect(short).not.toMatch(/本舰增伤|共享增伤|\{p\d+\}/)
+      const rows = display.moduleInfoLines(mod)
+      const stack = textOf(rows.find(row => row.k === l10nEntryText(L10N['ui.shipInfo.076']!, locale))!.v)
+      expect(stack).toContain('全队取存活提供舰中的最高值')
+      expect(stack).not.toMatch(/50%|15%|丧钟共享/)
+      expect(mod.description).toContain('全队使用最高一份增伤，不相加')
+    }
+  })
   it.each(['zh', 'en'] as const)('%s 支援件与插件递减卡面读取真实折权值，例外保持原标签', locale => {
     language.value = locale
     const ctx = buildSimContext(), state = core.createInitialState({ nowWallMs: 0 })

@@ -72,10 +72,10 @@ const deferredGravekeeperCards: Readonly<Record<string, string>> = {
 const mappedSupport: Readonly<Record<string, { name?: string; description: string }>> = {
   'mod-shieldfield-2': { name: 'mod.fleetSupport.001', description: 'mod.fleetSupport.003' },
   'mod-shieldfield-3': { name: 'mod.fleetSupport.002', description: 'mod.fleetSupport.003' },
-  'mod-lock-1': { description: 'mod.fleetSupport.004' },
-  'mod-lock-2': { description: 'mod.fleetSupport.004' },
-  'mod-lock-3': { description: 'mod.fleetSupport.004' },
-  'mod-wh-d-lock': { description: 'mod.fleetSupport.004' },
+  'mod-lock-1': { description: 'mod.fleetSupport.005' },
+  'mod-lock-2': { description: 'mod.fleetSupport.005' },
+  'mod-lock-3': { description: 'mod.fleetSupport.005' },
+  'mod-wh-d-lock': { description: 'mod.fleetSupport.005' },
   'drone-repair-mil': { name: 'item.repairDrone.001', description: 'item.repairDrone.002' },
   'bp-shieldfield-2': { name: 'bp.fleetSupport.001', description: 'mod.fleetSupport.003' },
   'bp-shieldfield-3': { name: 'bp.fleetSupport.002', description: 'mod.fleetSupport.003' },
@@ -473,7 +473,8 @@ describe('英文覆盖层（P2）', () => {
       const pending = deferredCalibration[id]
       const support = mappedSupport[id]
       if (support) {
-        expectMappedEnglish(other.description, support.description)
+        if (support.description === 'mod.fleetSupport.005') expectDeferredText(other.description, support.description)
+        else expectMappedEnglish(other.description, support.description)
         if (support.name) expectMappedEnglish(other.name, support.name)
         else expect(other.name).not.toBe(zh.modules.get(id)!.name)
       } else if (pending) expect(other.description).not.toBe(zh.modules.get(id)!.description)

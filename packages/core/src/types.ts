@@ -1213,12 +1213,10 @@ export interface ModuleDef {
    * 多件缺口复合 1−Π(1−xᵢ)，见 equipment.gapCombine */
   evasionGapPct?: number
   /* ═══ 2026-09-09 锁定装置（target-lock 家族·高槽；集火 + 被锁目标受击加深） ═══ */
-  /** 锁定加深（0.08 = 被锁定目标受本舰伤害 ×1.08；多件 EVE 曲线收敛见 stackingOf/curveMult；
-   *  装上任意一件即触发集火：本舰全部武器不再随机分散，改打存活编队首位（主舰优先、击毁自动接力） */
+  /** 锁定增伤（0.08 = 对锁定目标伤害 ×1.08）；本舰多件 EVE 曲线合成，全队取存活来源最高值。 */
   lockDmgBonus?: number
   /** 锁定倾向与共享增伤独立，多件概率取最高、不相加。 */
   lockTargetChance?: number
-  lockSharedBonus?: number
   /**
    * **隐身窗口时长**（ms；2026-09-15 船长定：「隐秘行动装置」——高槽支援件，两档 MK2/MK3 =
    * **20 / 30 秒**，**极度吃 CPU**）。

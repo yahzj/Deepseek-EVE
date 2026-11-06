@@ -4,6 +4,7 @@ import { createInitialState } from '../src/state'
 import { addShipToFleet } from '../src/fleetBook'
 import { createPlayerSpec } from '../src/combat/player/create'
 import { applyFleetLockAura } from '../src/combat/lockAura'
+import { curveMult } from '../src/equipment'
 import { lockAwareFoe } from '../src/combat/targeting'
 import { createBattleState } from '../src/combat/foes/state'
 import { pulseShieldFieldFor, SHIELD_FIELD_COST_PCT } from '../src/combat/combatRepair'
@@ -46,35 +47,51 @@ describe('编队支援最终参数', () => {
     expect(specs.map(s => battle.units[s.tag]!.hp.s)).toEqual([900, 300, 200, 200, 200])
   })
 
-  it.each([['mod-lock-1', .08, .04, .6], ['mod-lock-2', .12, .06, .7], ['mod-lock-3', .2, .1, .8], ['mod-wh-d-lock', .3, .2, .6]] as const)('%s本舰原增伤、队友共享和概率分别生效', (id, own, shared, chance) => {
+  it.each([['mod-lock-1', .08, .6], ['mod-lock-2', .12, .7], ['mod-lock-3', .2, .8], ['mod-wh-d-lock', .3, .6]] as const)('%s增伤全队等值生效，重复施加不累乘，概率不变', (id, bonus, chance) => {
     const { specs } = world([[id], []])
     applyFleetLockAura(specs)
-    expect(specs[0]!.lockedDmgBonus).toBeCloseTo(own)
-    expect(specs[1]!.lockedDmgBonus).toBeCloseTo(shared)
+    expect(specs[0]!.lockedDmgBonus).toBeCloseTo(bonus)
+    expect(specs[1]!.lockedDmgBonus).toBeCloseTo(bonus)
     expect(specs.map(s => s.lockTargetChance)).toEqual([chance, chance])
     applyFleetLockAura(specs)
-    expect(specs[1]!.lockedDmgBonus).toBeCloseTo(shared)
+    expect(specs[1]!.lockedDmgBonus).toBeCloseTo(bonus)
   })
 
-  it('多件常规共享封顶15%，丧钟共享20%，概率不相加，自身与共享只取高', () => {
+  it('各舰先递减合成，全队只取最高且无共享上限；来源阵亡后降到剩余最高值', () => {
     const { specs, battle } = world([['mod-lock-3', 'mod-lock-3', 'mod-lock-3'], ['mod-wh-d-lock'], ['mod-lock-1'], []])
+    const best = curveMult([.2, .2, .2]) - 1
     applyFleetLockAura(specs, battle)
-    expect(specs[0]!.lockedDmgBonus).toBeGreaterThan(.2)
-    expect(specs[1]!.lockedDmgBonus).toBeCloseTo(.3)
-    expect(specs[2]!.lockedDmgBonus).toBeCloseTo(.2)
-    expect(specs[3]!.lockedDmgBonus).toBeCloseTo(.2)
+    expect(best).toBeGreaterThan(.3)
+    for (const spec of specs) expect(spec.lockedDmgBonus).toBeCloseTo(best)
     expect(specs.map(s => s.lockTargetChance)).toEqual([.8, .8, .8, .8])
-    battle.units['ally-1']!.hp = { s: 0, a: 0, h: 0 }
-    applyFleetLockAura(specs, battle)
-    expect(specs[3]!.lockedDmgBonus).toBeCloseTo(.15)
     battle.units.player!.hp = { s: 0, a: 0, h: 0 }
     applyFleetLockAura(specs, battle)
-    expect(specs[3]!.lockedDmgBonus).toBeCloseTo(.04)
+    for (const spec of specs) expect(spec.lockedDmgBonus).toBeCloseTo(.3)
+    expect(specs[3]!.lockTargetChance).toBe(.6)
+    battle.units['ally-1']!.hp = { s: 0, a: 0, h: 0 }
+    applyFleetLockAura(specs, battle)
+    for (const spec of specs) expect(spec.lockedDmgBonus).toBeCloseTo(.08)
     expect(specs[3]!.lockTargetChance).toBe(.6)
     battle.units['ally-2']!.hp = { s: 0, a: 0, h: 0 }
     applyFleetLockAura(specs, battle)
-    expect(specs[3]!.lockedDmgBonus).toBe(0)
+    for (const spec of specs) expect(spec.lockedDmgBonus).toBe(0)
     expect(specs[3]!.lockTargetChance).toBe(0)
+  })
+
+  it('混编MK1/MK2/MK3/丧钟只取30%，不相加，也不把不同舰的装备合成', () => {
+    const { specs } = world([['mod-lock-1'], ['mod-lock-2'], ['mod-lock-3'], ['mod-wh-d-lock'], []])
+    applyFleetLockAura(specs)
+    for (const spec of specs) expect(spec.lockedDmgBonus).toBeCloseTo(.3)
+    expect(specs.map(s => s.lockTargetChance)).toEqual([.8, .8, .8, .8, .8])
+  })
+
+  it('无阵列编队保持零增伤，单舰仍保留本舰递减合成值', () => {
+    const plain = world([[], []])
+    applyFleetLockAura(plain.specs)
+    expect(plain.specs.map(s => s.lockedDmgBonus)).toEqual([0, 0])
+    const solo = world([['mod-lock-1', 'mod-lock-3']])
+    applyFleetLockAura(solo.specs)
+    expect(solo.specs[0]!.lockedDmgBonus).toBeCloseTo(curveMult([.08, .2]) - 1)
   })
 
   it.each([.6, .7, .8])('%s概率选首位，余下概率只选其他目标，可复现且不会必定集火', chance => {
