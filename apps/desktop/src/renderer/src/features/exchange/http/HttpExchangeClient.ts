@@ -654,6 +654,13 @@ export class HttpExchangeClient implements ExchangeClient {
         this.orders = orders
       }
       await stocksTask
+      // 后台补齐每个标的的图表缓存（不依赖玩家点选）：bootstrap 只预载首只标的，
+      // 其余标的在这里补拉 m1/盘口，之后分时线与蜡烛都随每 10 秒节拍刷新。
+      for (const stock of this.stocks) {
+        if (!this.chartCache.has(`${stock.code}:m1`) || !this.chartCache.has(`${stock.code}:intraday`)) {
+          this.ensureSymbolData(stock.code)
+        }
+      }
       await Promise.all([
         this.loadNews().catch(() => undefined),
         this.guest ? Promise.resolve() : this.loadBond().catch(() => undefined),
@@ -1058,6 +1065,17 @@ export class HttpExchangeClient implements ExchangeClient {
     for (const quote of quotes) {
       const p = quote.price
       if (!Number.isFinite(p) || p <= 0) continue
+      // 尚未建过图表缓存的标的（玩家没点选过）：用已有 m1 序列补出分时线。
+      // 这样列表小图与详情大图都随 10 秒节拍继续延伸，不必先点选该标的才刷新。
+      if (!this.chartCache.has(`${quote.code}:intraday`)) {
+        const m1 = this.chartCache.get(`${quote.code}:m1`)
+        if (m1 !== undefined && m1.length > 0) {
+          this.chartCache.set(
+            `${quote.code}:intraday`,
+            m1.slice(-60).map((bar) => ({ ...bar })),
+          )
+        }
+      }
       // 用 24h 累计量增量判断本拍是否真有成交；增量为 0 时蜡烛保持不动。
       const prevVolume = this.lastVolume24h.get(quote.code) ?? quote.volume24h
       const volumeDelta = Math.max(0, quote.volume24h - prevVolume)
