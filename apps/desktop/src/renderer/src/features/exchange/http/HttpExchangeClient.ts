@@ -1046,26 +1046,42 @@ export class HttpExchangeClient implements ExchangeClient {
   }
 
   /**
-   * 用刚收到的最新行情补齐内存缓存里最右侧的活跃 K 线（M1 / M5 / intraday 等）。
-   * 只在成交量相比上一拍确有增加（即本拍确有真实成交）时更新：
-   * 不允许用行情快照拉伸出一根没有成交量的价格波动（船长 2026-11-06 要求）。
+   * 用刚收到的最新行情补齐内存缓存最右侧的点/蜡烛。
+   *
+   * - 分时（intraday）：每拍按**真实最新成交价**续一个 10 秒时间点；没有成交时就是平线延伸
+   *   （价格不涨不跌，成交量记 0），让极简界面的 10 秒走势图保持走动，绝不编造价格波动。
+   * - 蜡烛（M1 / M5 / …）：只在成交量相比上一拍确有增加（即本拍确有真实成交）时更新，
+   *   不允许用行情快照拉伸出一根没有成交量的价格波动（船长 2026-11-06 要求）。
    */
   private updateIntraCandles(quotes: StockQuote[]): void {
     const now = Date.now()
     for (const quote of quotes) {
       const p = quote.price
       if (!Number.isFinite(p) || p <= 0) continue
-      // 用 24h 累计量增量判断本拍是否真有成交；增量为 0 时保持蜡烛不动。
+      // 用 24h 累计量增量判断本拍是否真有成交；增量为 0 时蜡烛保持不动。
       const prevVolume = this.lastVolume24h.get(quote.code) ?? quote.volume24h
       const volumeDelta = Math.max(0, quote.volume24h - prevVolume)
       this.lastVolume24h.set(quote.code, quote.volume24h)
-      if (volumeDelta <= 0) continue
       for (const [key, bars] of this.chartCache) {
         if (!key.startsWith(`${quote.code}:`) || bars.length === 0) continue
         const periodStr = key.slice(quote.code.length + 1) as ChartPeriod
         const last = bars[bars.length - 1]
         if (!last) continue
         const bucket = bucketStart(periodStr, now)
+        if (periodStr === 'intraday') {
+          // 分时线沿时间轴延续：新桶追加，同桶刷新；无成交时 c 与上一拍相同，只是平线变长。
+          if (bucket > last.t) {
+            bars.push({ t: bucket, o: last.c, h: Math.max(last.c, p), l: Math.min(last.c, p), c: p, v: volumeDelta })
+            if (bars.length > 200) bars.shift()
+          } else if (bucket === last.t) {
+            last.h = Math.max(last.h, p)
+            last.l = Math.min(last.l, p)
+            last.c = p
+            last.v += volumeDelta
+          }
+          continue
+        }
+        if (volumeDelta <= 0) continue
         if (last.t === bucket) {
           last.h = Math.max(last.h, p)
           last.l = Math.min(last.l, p)

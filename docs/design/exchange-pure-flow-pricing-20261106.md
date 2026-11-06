@@ -1,6 +1,6 @@
 # 股市纯流量价：价格水平只由真实买卖盘决定（2026-11-06 · 一号 · main）
 
-> **状态：已落码 · 待船长验收**（Go 服务端 `exchange-server-go`；本地提交、未推送、未部署）。
+> **状态：已落码 · 已推送 · 已部署生产（2026-11-06 13:52）· 待船长验收**。
 > **前情**：上一批 [`exchange-trade-driven-kline-20261106.md`](exchange-trade-driven-kline-20261106.md) 已让**显示价/量只来自真实成交**，但做市参考价仍由 OU 模型随机引导，价格水平并未真正由买卖盘决定。
 > **本批授权**：船长 m00705——纯流量价 + **一次性事件基准价**，明确要求防「棘轮式」漂移。
 
@@ -43,6 +43,7 @@
 - `events.go`：删除 `eventImpulseLocked`，新增 `strongestEventForCodeLocked(code, roundNo)`（同码窗口内 `ImpactBp` 最大的活跃事件）；头注释改为「一次性基准价 × 冲击幅度，防棘轮」。
 - `service.go`：删除 `intraTickAt` 字段；`IntraTickSeconds` 标注已弃用（保留字段兼容旧配置）；`TickInterval`/`roundPrevClose` 注释同步。
 - 测试：`limits_test` 的旧随机步进用例改为 `TestQuoteRefRespectsRoundLimit`；`round_test` 改为 `TestMarketStepAdvancesOncePerSettlement`；`market_test` 的回合内用例改为断言参考价/最新价/K 线都不动；`trade_driven_test` 新增 `TestQuoteRefFollowsRealTrades` 与 `TestEventBaselineDoesNotRatchet`；`events_test` 重构为「事件回合开盘读参考价 → 无成交最新价不动 → 按参考价真实成交落价」；`demand_scenarios_test` 夹具改为「围绕最新价越价 0.3%（低价股至少 1 个价位）」的可成交委托。
+- **游戏仓客户端**（2026-11-06 补充，见 §7）：`HttpExchangeClient.updateIntraCandles` 的「分时」（intraday）序列每拍按真实最新成交价续一个 10 秒点（无成交即平线延伸、成交量记 0）；M1/M5 等蜡烛仍只在 24h 累计量确有增加时更新；`SimpleChart.tsx`/`chartPeriods.ts` 注释同步。
 
 ## §4 不做与取舍
 
@@ -52,17 +53,29 @@
 - 随机行情快讯取消：快讯只来自真实成交、剧本事件、监管与踩踏，不再出现「没成交却报价格异动」。
 - `marketStep` 语义变更（原每标的每回合 +1，现每结算回合 +1）；只影响 ID 生成，不影响对外行情。
 - 历史 K 线不回刷（改变的是之后的生成规则）。
+- 极简界面「分时」线按真实最新成交价每 10 秒平线延伸（无成交时价格不变、成交量记 0），避免图表看起来「卡死」；这不是价格变动，蜡烛仍受成交量增量门控。
 
 ## §5 验证
 
 - `go build ./...`、`go vet ./internal/exchange/` 通过；`go test ./internal/exchange/ -count=1` → `ok 13.175s` 全绿。
 - 新增/改写用例：`TestQuoteRefRespectsRoundLimit`（事件参考价落在事件限幅内、最新价不动）、`TestQuoteRefFollowsRealTrades`（无事件参考价=最新价；成交后跟随成交价）、`TestEventBaselineDoesNotRatchet`（同一事件连续两轮成交，参考价保持恒定；事件过期后回到最新价）、`TestMarketStepAdvancesOncePerSettlement`、`TestIntraRoundLeavesPriceAndKlineUntouched`、`TestScriptedEventAppliesNextRoundShockAndPersists`（含真实成交落价与 K 线量价）、`TestPriceMovesOnlyWithTrades`。
 - 60 回合离线观察（`DefaultConfig` + `AgentsEnabled` + `DemandEnabled`，未用个人真档）：15 个回合出现价格变动、合计 29 笔成交，全部发生在事件回合；期末价 SMHI 50525、GBCI 25161、UGMC 8012、ABSI 3008、NVSC 1202、CLON 506、OJLS 203、SPRK 501。
-- 本轮无客户端代码改动；未跑完整 `npm run test -w @whale/core`（按约定留到船长明确开始集中验收时）。
-- 待验收口径：回合内价格与报价完全静止；玩家/AI 主动吃价差才成交并推动最新价；事件回合开盘盘口一次性偏移、窗口内不再叠加；事件结束后参考价回到最新成交价。
+- 生产部署后（2026-11-06 13:52 换二进制）观察：13:55 结算前 10 秒采样 8 只标的价格/24h 量零漂移；无成交回合最新价与 1m/5m K 线保持平盘零量；快讯中不再出现随机行情异动。
+- 游戏仓客户端改动（分时线延续）：`npm run tier` → T1；`npm run verify` → typecheck / content:check / l10n:check / ui:rot-check 全部通过。未跑完整 `npm run test -w @whale/core`（按约定留到船长明确开始集中验收时）。
+- 待验收口径：回合内价格与报价完全静止；玩家/AI 主动吃价差才成交并推动最新价；事件回合开盘盘口一次性偏移、窗口内不再叠加；事件结束后参考价回到最新成交价；极简界面分时线每 10 秒向前延伸、无成交时为平线。
 
 ## §6 待裁决与后续
 
 1. **活跃度**：纯流量价下日常大部分回合无成交（事件概率 25% 才有 AI 交易）。是否提高事件概率、或给 AI 人格加「主动吃价差」策略以增加真实成交，请船长定。
 2. 另一会话的**做市储备补丁**（无限做市账户 → 8 亿创世储备）是否合并仍待定；本批已核验该补丁可干净叠加到本批之上、build/vet/全量测试通过（补丁自身无测试）。
-3. 部署生产：待船长验收后按 `exchange-server-go/HANDOFF.md` 的流程换二进制、重启 `whale-exchange`。
+3. **部署生产**：已于 2026-11-06 13:52 完成（Linux 二进制 12,001,442 字节、sha256 `C4BEE4E6…C98AF9`；旧二进制存为 `/home/ubuntu/whale-exchange/whale-exchange.prev`；重启后 `systemctl is-active` 为 `active`、日志无报错）。回滚：换回 `whale-exchange.prev` 并 `sudo -n systemctl restart whale-exchange`。
+
+---
+
+## §7 补充（2026-11-06）：极简界面「分时」线延续
+
+- 船长 m01086：「**简单投资界面下的10秒图数据是不是不更新了，能修好吗？**」
+- 原因：纯流量价后服务端回合内不再产生新价格；客户端 `updateIntraCandles` 只在 24h 累计成交量增加时追加序列，于是「分时」（intraday，10 秒/点）在两次结算之间没有新点，看起来「不更新」。
+- 处理：分时序列改为每拍按**真实最新成交价**沿 10 秒时间轴续点——无成交时价格不变（平线）、成交量记 0；M1/M5 等蜡烛仍只在真实成交量增加时更新；历史序列不做任何编造。
+- 边界：若要让线在无成交时也上下波动，只能引入回合内真实撮合；在没有任何真实成交的情况下让价格变化，即违反 m00242「不能骗玩家」。
+- 验证：游戏仓 `npm run tier` → T1；`npm run verify` → 4 条命令全部通过（typecheck / content:check / l10n:check / ui:rot-check）。
