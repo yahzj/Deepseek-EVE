@@ -27,6 +27,7 @@ function boot(env: Record<string, string | undefined> = {}) {
     electron: { app, BrowserWindow, dialog: {}, ipcMain: { handle: vi.fn() },
       screen: { getPrimaryDisplay: () => ({ workAreaSize: { width: 1920, height: 1080 } }) } },
     'node:fs': { constants: {}, promises: {} },
+    'node:child_process': { spawn: vi.fn() },
     'node:path': { join },
     '@whale/data': { L10N: {}, l10nEntryText: vi.fn() },
     '../shared/saveQueue': { createSaveQueue: () => vi.fn() },
