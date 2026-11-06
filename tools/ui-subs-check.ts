@@ -142,8 +142,8 @@ for (const root of ROOTS) {
       if (keys.length === 0) continue // 不是"选项表"（普通数组 / 对象数组）
       tableCount++
       const labels = [
-        ...body.matchAll(LABEL_LITERAL).map((x) => ({ v: x[1], kind: 'literal' })),
-        ...body.matchAll(LABEL_ID).map((x) => ({ v: x[1], kind: 'id' })),
+        ...Array.from(body.matchAll(LABEL_LITERAL), (x) => ({ v: x[1], kind: 'literal' })),
+        ...Array.from(body.matchAll(LABEL_ID), (x) => ({ v: x[1], kind: 'id' })),
       ]
       for (const l of labels) styleCount.set(l.kind, (styleCount.get(l.kind) ?? 0) + 1)
       const ids = [...body.matchAll(ID_FIELD)].map((x) => x[1])
