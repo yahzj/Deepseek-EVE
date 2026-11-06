@@ -354,7 +354,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ano.equipmentRetune.007': { zh: '装备叠加说明按实际规则修正，部分当前战斗提示改用%，近盲说明移除自伤备注。', en: 'Equipment stacking descriptions now reflect the actual rules. Some current combat tooltips use %, and close-range blind spot descriptions no longer include the self-damage remark.' },
   // ⟪文案调整 2026-10-18⟫ 设置切英文实机漏译修复；保留中文及原有规格。
   'ui.App.176': { zh: '（暂无事件，航线静悄悄）', en: '(No events; the route is quiet.)' },
-    'ui.App.177': { zh: '科幻未来', en: 'Sci-Fi Future' },
+    'ui.App.177': { zh: '新版 [Beta]', en: 'Sci-Fi Future' },
     'ui.fitKpi.001': { zh: '战术火力', en: 'Tactical Firepower' },
     'ui.fitKpi.002': { zh: '综合有效承伤', en: 'Comprehensive EHP' },
   'ui.fitOverview.001': { zh: '正在活动', en: '', enDeferred: true },
