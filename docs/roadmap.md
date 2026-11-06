@@ -6,6 +6,7 @@
 
 ## 正在推进
 
+- 旧战斗性能测试待下次更新：船长2026-11-06确认`packages/core/tests/perf.test.ts`已过期、不适配新版本，仅本次`0.1.1`发布略过。后续须按当前战斗场景与CI负载重新设计测量，版本变化后本次豁免自动失效；不将旧1500ms门槛的超时直接判作代码退化。
 - 常用文档清理已落地，待船长审阅：现行结论与旧过程分离，旧记录默认禁读。本批清单见`docs/design/history-doc-cleanup-20261029.md`。
 - 国庆审查遗留已修复并自测，待船长验收；当前问题状态见`docs/review/guoqing-audit-followup.md`，验证与边界见`docs/design/guoqing-audit-closeout-20261029.md`。
 - 每日赏金分档声望与合法候选三档保底、入侵门槛/奖励及声望商店调价已实现，专项自测通过，待验收与公告审核；见`docs/design/bounty-standing-20261030.md`。

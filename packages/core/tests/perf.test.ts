@@ -5,10 +5,14 @@
  * - 主控链路含 去程→开战→战斗→结算（含远征状态机），贴近真实离线场景。
  */
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
 import { createInitialState } from '../src/state'
 import { advanceGame } from '../src/engine'
 import { startExpedition } from '../src/expedition'
 import { anomaly, makeTestCtx, ship , fittedOf } from './helpers'
+
+// 船长2026-11-06批准仅0.1.1略过过期性能测试；下次更新场景与测量方式，不沿用本次豁免。
+const skipLegacyPerf = JSON.parse(readFileSync(new URL('../../../apps/desktop/package.json', import.meta.url), 'utf8')).version === '0.1.1'
 
 function bossAnomaly(name: string): ReturnType<typeof anomaly> {
   const a = anomaly(name, 'galaxy-hub', { threat: 60, reward: 500_000 })
@@ -16,7 +20,7 @@ function bossAnomaly(name: string): ReturnType<typeof anomaly> {
 }
 
 describe('V12 战斗性能回归', () => {
-  it('12 场 1v3 连续离线推进：总墙钟在宽松上限内且全部结束', () => {
+  it.skipIf(skipLegacyPerf)('12 场 1v3 连续离线推进：总墙钟在宽松上限内且全部结束', () => {
     const start = performance.now()
     let finished = 0
     for (let i = 0; i < 12; i++) {
