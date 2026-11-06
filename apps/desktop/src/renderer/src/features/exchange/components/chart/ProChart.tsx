@@ -98,7 +98,9 @@ function BarTooltip({
 
   const tipWidth = 150
   const tipHeight = 108
-  const left = x + 16 + tipWidth > width ? Math.max(4, x - tipWidth - 16) : x + 16
+  // 读数卡跟着鼠标走，但夹在画布内：旧实现靠近右边界会翻到鼠标左侧，
+  // 卡片从准星旁边跳到远处（14:30 那格看起来像读错了行）。
+  const left = Math.max(4, Math.min(x + 16, Math.max(4, width - tipWidth - 4)))
   const top = Math.min(Math.max(4, y - tipHeight / 2), Math.max(4, height - tipHeight - 4))
 
   return (
@@ -567,10 +569,13 @@ export function ProChart({
             const y = Math.round(event.clientY - rect.top)
             const chart = chartRef.current
             if (chart === null) return
-            // 只用主图 pane 做换算：副图上的鼠标不弹蜡烛读数
-            const point = chart.convertFromPixel([{ x, y }], { paneId: 'candle_pane' })
-            const stamp = (Array.isArray(point) ? point[0] : point)?.timestamp
-            const bar = stamp === undefined ? undefined : barsRef.current.find((item) => item.timestamp === stamp)
+            // 只用主图 pane 做换算；y 用 absolute 让它按容器坐标算（默认按 pane 坐标，
+            // 传容器 y 会算出错误的 value）。蜡烛优先按 dataIndex 取，避免时间戳四舍五入时找不到。
+            const point = chart.convertFromPixel([{ x, y }], { paneId: 'candle_pane', absolute: true })
+            const first = Array.isArray(point) ? point[0] : point
+            const index = first?.dataIndex
+            const list = barsRef.current
+            const bar = index === undefined || index < 0 || index >= list.length ? undefined : list[index]
             setHover(bar === undefined ? null : { x, y, bar })
           }}
           onMouseLeave={() => setHover(null)}
