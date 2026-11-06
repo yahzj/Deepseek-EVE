@@ -42,13 +42,12 @@ describe('cloud settings controls', () => {
     expect(panel).not.toContain('applyServer')
   })
 
-  it('mounts only at the end of the save fragment without a new settings tab', () => {
+  it('mounts once in the account tab before local-save controls without a new settings tab', () => {
     const settings = source('apps/desktop/src/renderer/src/panels/appSettings.tsx')
     const save = settings.indexOf("{settingsPage === 'save' ? <>")
     const panel = settings.indexOf('<CloudSavePanel engine={engine} onApplyingChange={setCloudApplying} />')
     expect(panel).toBeGreaterThan(save)
-    expect(settings.indexOf('onReset()', save)).toBeLessThan(panel)
-    expect(settings.slice(panel)).toMatch(/^<CloudSavePanel engine=\{engine\} onApplyingChange=\{setCloudApplying\} \/>\s*<\/> : null\}/)
+    expect(panel).toBeLessThan(settings.indexOf('onReset()', save))
     expect(settings.match(/<CloudSavePanel /g)).toHaveLength(1)
     expect(settings).not.toContain("id: 'cloud'")
   })
@@ -263,7 +262,7 @@ interface HookView {
   setMode(value: string): void
   setPassword(value: string): void
   submitAuth(): void
-  previewDownload(version?: number): void
+  previewDownload(): void
   confirmDownload(): void
   refresh(): void
   logout(): void
@@ -315,8 +314,7 @@ function hookFixture(stored = true, server = target.server) {
     redeemRecovery: vi.fn(async () => ({ ...profile, token: 'recovery-token' })),
     logout: vi.fn(async () => {}),
     saveLatest: vi.fn(async (_signal?: AbortSignal): Promise<{ version: number; data: string | null }> => ({ version: 0, data: null })),
-    saveVersions: vi.fn(async () => []),
-    saveVersion: vi.fn(), uploadSave: vi.fn(async () => ({ version: 1, size: 100 })), rotateRecovery: vi.fn(),
+    uploadSave: vi.fn(async () => ({ version: 1, size: 100 })), rotateRecovery: vi.fn(),
     chatHistory: vi.fn(async () => ({ channel: 'zh' as const, messages: [], nextBeforeId: null })),
     marketRelaySync: vi.fn(async () => ({
       protocolVersion: 1 as const, requestId: '', serverTime: 0,
@@ -415,7 +413,6 @@ describe('actual cloud hook workflow', () => {
     await f.flush()
     expect(f.api.profile).toHaveBeenCalledTimes(1)
     expect(f.api.saveLatest).not.toHaveBeenCalled()
-    expect(f.api.saveVersions).not.toHaveBeenCalled()
     expect(f.engine.exportCloudSave).not.toHaveBeenCalled()
     expect(f.view().profile?.nickname).toBe('Pilot')
     f.render(); await f.flush()

@@ -30,7 +30,7 @@ import { calcPower } from './expedition'
 import { preparationSquadOf, notePreparationSquad } from './preparationSquads'
 import { combatShipLimit, commandBudgetOf } from './combat/command/rules'
 import { shipOperationBlockReason } from './shipActionPolicy'
-import { beginDeparture, departureOrigin } from './departure'
+import { beginDeparture, departureOrigin, UNDOCK_MS } from './departure'
 
 /** 参战舰船**上限**（旗舰战 = 4 艘小队战；语义是上限、不是"必须带满"——与虫洞 `WORMHOLE_MAX_SHIPS` 同款口径） */
 export const WEEKEND_FLAGSHIP_MAX_SHIPS = combatShipLimit(true)
@@ -284,7 +284,7 @@ function weekendStartFlagshipBattleMutable(state: GameState, ctx: SimContext, no
   }
   // 船长2026-10-21：旗舰同样按实际卡ID记忆，核心星系不再决定距离。
   const origin = departureOrigin(state, ctx)
-  const battle = startFleetBattleFor(state, ctx, use, spec.cardId, state.gameMs + (origin.docked ? 10_000 : 0), undefined, undefined, override, true)
+  const battle = startFleetBattleFor(state, ctx, use, spec.cardId, state.gameMs + (origin.docked ? UNDOCK_MS : 0), undefined, undefined, override, true)
   if (battle) beginDeparture(state, ctx, 'flagship', state.weekendEvent!.coreId, origin)
   return battle
 }

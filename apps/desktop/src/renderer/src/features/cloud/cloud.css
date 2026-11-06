@@ -14,9 +14,6 @@
 .app-cloud p, .app-cloud span, .app-cloud strong, .app-cloud code { overflow-wrap: anywhere; min-width: 0; }
 .app-cloud-confirm, .app-cloud-recovery { display: flex; flex-direction: column; gap: var(--wui-sp-8); padding-block: var(--wui-sp-8); border-top: 1px solid rgb(var(--wui-border)); }
 .app-cloud-recovery code { user-select: all; font-family: var(--wui-mono); }
-.app-cloud-versions { max-height: 180px; overflow-y: auto; overscroll-behavior: contain; }
-.app-cloud-version { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; align-items: center; gap: var(--wui-sp-8); padding-block: var(--wui-sp-4); }
-.app-cloud-version time { overflow-wrap: anywhere; }
 .app-cloud-ok { color: rgb(var(--wui-accent)); }
 .app-cloud-error { color: rgb(var(--wui-log-warn)); }
 .app-cloud-muted, .app-cloud-status { color: rgb(var(--wui-text-dim)); }

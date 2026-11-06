@@ -12,7 +12,7 @@
 
 本篇记录verify工作区的整个账号/云存档接入批次，涵盖API、偏好、引擎、设置UI、连接策略及统一验证，不再按子代理拆分结论。依据为后端 `D:\Documents\GitHub\deepseek-EVE-Background\docs\account-system-design.md` §7 已批准规则。
 
-- 设置的save分类尾部增加账号区与手动云档区，不新增一级tab；未登录不影响本地游戏。布局沿用app-settings-row/head/label/btns/app-btn，区内用分隔线，不套多层卡片。
+- 设置的save分类尾部增加账号区与手动云档区，不新增一级tab；未登录不影响本地游戏。布局沿用app-settings-row/head/label/btns/app-btn，区内用分隔线，不套多层卡片。**2026-11-05 船长令更新**：该子页改名「账户」（`ui.settingsTab.004`），顺序改为账号 → 云存档 → 本地存档（账户为主、存档为辅）；股市游客点操作跳到这里登录。详见 `docs/design/exchange-guest-readonly-20261105.md`。
 - preferences.ts唯一可替换的入口是「默认 HTTPS 域名，失败回退明文 IP」（2026-11-04 换新域名、2026-11-05 起走 8443：DEFAULT_CLOUD_SERVER = https://game.bajibaji.party:8443，Let's Encrypt 正式证书、nginx 直连源站不经 Cloudflare；8443 端口原因为腾讯云拦截未备案域名的 80/443——80 返回备案 302 页、443 带 SNI 的 TLS 被 RST；FALLBACK_CLOUD_SERVER = http://123.207.188.192，nginx 80 反代；后者只在网络层失败时单次兜底，成功也不写回偏好、不切换可见服务器），仅无saved server时使用；保留已存server及内部saveCloudServer供配置和自动化测试挂载前注入动态服务。玩家UI无地址label/input/apply，不提供URL/query/window地址设置。未登录不自动请求，有已存会话时首次显示仅核验profile，不自动上传、下载或载入；会话仍按server隔离。
 - 地址统一由normalizeCloudServerURL处理：域名必须HTTPS，IP字面量与回环允许HTTP；HTTPS网页不拒绝明文IP（浏览器会以混合内容拦截，正好落到域名回退），但拒绝明文域名。请求禁止重定向、不携带站点cookie、不缓存响应、不自动重试（唯一例外：默认地址网络层失败时对备用域名单次重试）。桌面和网页CSP允许HTTPS、域名（https/wss://game.bajibaji.party 与 https/wss://game.bajibaji.party:8443）、回退IP（http://123.207.188.192）与回环HTTP连接，脚本策略仍限自身。
 - 注册、登录、恢复入口在设置内，用户名初值为空，切换注册清空而非重填飞行员；账号名与存档名独立，不读取或写入character.name。350ms防抖占用预检保留；恢复走redeemRecovery再profile，核验成功才持久化token/profile。密码与恢复码不持久化；恢复码按server/playerId仅驻留renderer内存，标明owner、可复制、手动确认关闭，切分类不丢失。
@@ -25,7 +25,7 @@
 - engine.exportCloudSave先将确切当前快照通过本地保存桥写成功，才返回同一text供上传；本地保存失败不发PUT。
 - engine.importCloudSave与文件导入共用importSaveText旧读档链：loadSaveFile校验、铁人检查、修复/迁移、离线结算、候选落盘成功后替换内存。载入全链互斥，保存与tick遵守载入锁；不自动备份，不改游戏save schema或core数值。
 - 上传先GET latest预览并显示目标账号、baseVersion；明确确认后保存本地快照，再PUT且必带预览baseVersion，包括0。已有云档需确认替换；409作废确认并只刷新元信息，不覆盖、不自动重试写。超时/断网只报告结果不明，要求刷新状态。
-- 元信息与历史列表手动刷新。下载latest或历史版本先检查10MB限制并用loadSaveFile严格预检格式/版本，显示候选版本、飞行员、保存时间与铁人标记；确认后再次核验token、账号、请求代次与写状态，再进入引擎，不自动上传。
+- 元信息手动刷新。每个账号只保留一份当前云存档；新上传覆盖旧内容并递增版本号。下载当前存档先检查10MB限制并用loadSaveFile严格预检格式/版本，显示候选版本、飞行员、保存时间与铁人标记；确认后再次核验token、账号、请求代次与写状态，再进入引擎，不自动上传。
 - 服务切换、失效token或卸载使网络请求和旧候选失效；写入非ok时禁上传和载入，保留云元信息读取。confirmDownload finally重新读取saveWriteState，避免载入锁释放后UI残留paused。
 - 本地commit期间applying阻止设置遮罩关闭、完成、分类点击及键盘切换、恢复默认和存档管理/重置。普通网络busy仍可关闭取消，readonly/paused等其他原因不锁设置，不把已开始的本地写入伪称取消；玩家侧地址输入与应用入口已删除。
 

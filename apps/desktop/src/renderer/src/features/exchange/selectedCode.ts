@@ -3,9 +3,12 @@
  * 支持从侧边栏微卡片、全局路由或内部列表高亮选中指定标的。
  */
 
+import { EXCH_PREF, readExchangeCode, writeExchangePref } from './viewPrefs'
+
 export const DEFAULT_EXCHANGE_CODE = 'SMHI'
 
-let currentSelectedCode = DEFAULT_EXCHANGE_CODE
+/** 重启后回到上次看的标的（2026-11-06 船长令） */
+let currentSelectedCode = readExchangeCode(DEFAULT_EXCHANGE_CODE)
 type CodeListener = (code: string) => void
 const listeners = new Set<CodeListener>()
 
@@ -18,6 +21,7 @@ export function getExchangeSelectedCode(): string {
 export function setExchangeSelectedCode(code: string): void {
   if (!code) return
   currentSelectedCode = code
+  writeExchangePref(EXCH_PREF.code, code)
   for (const fn of listeners) {
     try {
       fn(code)

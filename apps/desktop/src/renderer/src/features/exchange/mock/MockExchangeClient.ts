@@ -62,21 +62,19 @@ import { OrderBook } from './book'
 import * as M from './margin'
 
 /** 契约版本（与后端 `/api/exchange/meta` 对齐；现为版本 2） */
-const CONTRACT_VERSION = 2
+const CONTRACT_VERSION = 3
 /** 手续费率（原型统一 5 bp，买/卖/开/平都收） */
 const FEE_RATE = 0.0005
 /** 原型专用虚拟资金：1000 万 ISK，不入存档 */
 const START_CASH = 10_000_000
-/** 债券日化 0.03%（原型观感值，不代表最终经济数值） */
-const BOND_DAILY_RATE = 0.0003
-/** 债券分钟利率（基点）：3 = 0.03%/分钟，单利不滚本 */
-const BOND_MINUTE_BP = 3
-// 保底基金（放置型，与线上 Go 侧一致）：每分钟 70% +16bp / 30% −7bp，期望 +9bp ≈ 债券 3bp 的 3 倍。
-const FUND_WIN_BP = 16
-const FUND_LOSE_BP = -7
+const DAILY_TRADE_LIMIT = 50_000_000
+const UTC_DAY_MS = 86_400_000
+const BOND_WIN_DAILY_PPB = 22_000
+const BOND_LOSE_DAILY_PPB = -1_978_000
+const BOND_DAILY_RATE = 0.00002
+const FUND_WIN_DAILY_PPB = 300_000
+const FUND_LOSE_DAILY_PPB = -500_000
 const FUND_WIN_PERCENT = 70
-const FUND_EXPECTED_BP = 9
-const FUND_BOND_BP = 3
 /** 分红：每 60 秒按现货持仓市值象征性派 0.04%（原型观感值） */
 const DIVIDEND_INTERVAL_TICKS = 60
 const DIVIDEND_RATE = 0.0004
@@ -88,6 +86,49 @@ const MOCK_SAVE_KEY = 'whale-idle:exch-mock'
 const MOCK_SAVE_VERSION = 2
 /** 离开页面/标签页后台后按流逝时间补算，单次上限 3600 拍（约 1 小时），避免恢复时长时间卡顿 */
 const MAX_CATCHUP_TICKS = 3600
+
+function dailyRatePpb(seed: string, day: number, threshold: number, win: number, loss: number): number {
+  let hash = 2_166_136_261
+  const text = `${seed}:${day}`
+  for (let i = 0; i < text.length; i += 1) {
+    hash ^= text.charCodeAt(i)
+    hash = Math.imul(hash, 16_777_619) >>> 0
+  }
+  return hash % 1000 < threshold ? win : loss
+}
+
+function accrueDaily(
+  principal: number,
+  accrued: number,
+  remainder: bigint,
+  fromMs: number,
+  toMs: number,
+  rateOf: (day: number) => number,
+): { accrued: number; remainder: bigint } {
+  if (principal <= 0 || toMs <= fromMs) return { accrued, remainder }
+  const denominator = 86_400_000n * 1_000_000_000n
+  let residual = remainder
+  let total = BigInt(accrued)
+  for (let cursor = fromMs; cursor < toMs;) {
+    const day = Math.floor(cursor / UTC_DAY_MS)
+    const end = Math.min(toMs, (day + 1) * UTC_DAY_MS)
+    const numerator = BigInt(principal) * BigInt(rateOf(day)) * BigInt(end - cursor) + residual
+    let whole = numerator / denominator
+    residual = numerator % denominator
+    if (residual < 0n) {
+      whole -= 1n
+      residual += denominator
+    }
+    total += whole
+    cursor = end
+  }
+  return { accrued: Number(total), remainder: residual }
+}
+
+function visibleAccrued(accrued: number, remainder: bigint): number {
+  const denominator = 86_400_000n * 1_000_000_000n
+  return Number((BigInt(accrued) * denominator + remainder) / denominator)
+}
 /** 每 5 拍落一次盘（localStorage 写太频繁会拖慢 1 秒 tick；pagehide 时另会补落一次） */
 const SAVE_EVERY_TICKS = 5
 
@@ -197,6 +238,8 @@ interface PersistedMockState {
   tick: number
   cash: number
   frozen: number
+  dailyTurnoverDay?: number
+  dailyTurnoverUsed?: number
   spot: Array<{ code: string; qty: number; avgCost: number }>
   positions: Array<{
     id: string
@@ -219,9 +262,9 @@ interface PersistedMockState {
     gridSellCount: number
     lastError: string
   }>
-  bond: BondPosition
+  bond: BondPosition & { accruedRemainder?: string; settledAt?: number }
   /** 保底基金持仓（放置型）；旧存档没有该字段时按空仓处理 */
-  fund?: { principal: number; accrued: number; settledMinute: number; openedAt: number }
+  fund?: { principal: number; accrued: number; accruedRemainder?: string; settledMinute: number; settledAt?: number; openedAt: number }
   news: NewsItem[]
   seq: { order: number; strategy: number; trade: number; news: number }
   nextEventTick: number
@@ -301,7 +344,7 @@ const BOND_PRODUCT: BondProduct = {
   id: 'WHALE-BOND',
   name: '舰船债券 · 稳健型',
   dailyRate: BOND_DAILY_RATE,
-  note: '原型示意：游戏内 60 秒按 1 日计息，不代表最终经济数值',
+  note: '每日 99.9% +0.0022% / 0.1% −0.1978%',
 }
 
 const clampPrice = (p: number): number => Math.max(0.01, round(p, 2))
@@ -326,6 +369,9 @@ export class MockExchangeClient implements ExchangeClient {
 
   private cash = START_CASH
   private frozen = 0
+  private dailyTurnoverDay = -1
+  private dailyTurnoverUsed = 0
+  private quotaExemptDepth = 0
   private tick = 0
   private timer: number | null = null
   private orderSeq = 0
@@ -347,11 +393,11 @@ export class MockExchangeClient implements ExchangeClient {
     if (typeof document !== 'undefined' && document.visibilityState === 'visible') this.catchUp()
   }
   /** 低风险理财持仓（放置型）：本金 / 累计利息 / 已结算分钟 / 建仓时间 */
-  private bond = { principal: 0, accrued: 0, settledMinute: 0, openedAt: 0 }
+  private bond: { principal: number; accrued: number; accruedRemainder: bigint; settledMinute: number; settledAt: number; openedAt: number } = { principal: 0, accrued: 0, accruedRemainder: 0n, settledMinute: 0, settledAt: 0, openedAt: 0 }
   /** 债券 nonce 幂等表：nonce → 申购金额（赎回记 0） */
   private readonly bondNonces = new Map<string, number>()
   /** 保底基金持仓（放置型）：本金 / 累计收益 / 已结算分钟 / 建仓时间 */
-  private fund = { principal: 0, accrued: 0, settledMinute: 0, openedAt: 0 }
+  private fund: { principal: number; accrued: number; accruedRemainder: bigint; settledMinute: number; settledAt: number; openedAt: number } = { principal: 0, accrued: 0, accruedRemainder: 0n, settledMinute: 0, settledAt: 0, openedAt: 0 }
   /** 基金 nonce 幂等表：nonce → 申购金额（赎回记 0） */
   private readonly fundNonces = new Map<string, number>()
 
@@ -485,6 +531,27 @@ export class MockExchangeClient implements ExchangeClient {
         volume: savedStock?.volume ?? 0,
       })
     }
+    for (const state of this.stocks.values()) {
+      state.book.setPlayerFillQuota((price, requestedQty) =>
+        this.quotaExemptDepth > 0 ? requestedQty : this.consumeDailyTurnover(price, requestedQty),
+      )
+    }
+  }
+
+  private consumeDailyTurnover(price: number, requestedQty: number): number {
+    const day = Math.floor(this.ts() / UTC_DAY_MS)
+    this.refreshDailyTurnoverDay(day)
+    const capacity = Math.floor((DAILY_TRADE_LIMIT - this.dailyTurnoverUsed) / price)
+    const qty = Math.min(requestedQty, Math.max(0, capacity))
+    this.dailyTurnoverUsed += price * qty
+    return qty
+  }
+
+  private refreshDailyTurnoverDay(day = Math.floor(this.ts() / UTC_DAY_MS)): void {
+    if (day !== this.dailyTurnoverDay) {
+      this.dailyTurnoverDay = day
+      this.dailyTurnoverUsed = 0
+    }
   }
 
   private seedOpeningNews(): void {
@@ -514,6 +581,8 @@ export class MockExchangeClient implements ExchangeClient {
   private applyPersisted(saved: PersistedMockState): void {
     if (Number.isFinite(saved.cash)) this.cash = saved.cash
     if (Number.isFinite(saved.frozen)) this.frozen = saved.frozen
+    this.dailyTurnoverDay = Number.isFinite(saved.dailyTurnoverDay) ? saved.dailyTurnoverDay! : Math.floor(Date.now() / UTC_DAY_MS)
+    this.dailyTurnoverUsed = Math.min(DAILY_TRADE_LIMIT, Math.max(0, saved.dailyTurnoverUsed ?? 0))
     for (const s of Array.isArray(saved.spot) ? saved.spot : []) {
       if (!s || typeof s.code !== 'string' || !(s.qty > 0)) continue
       this.spot.set(s.code, { qty: s.qty, avgCost: s.avgCost })
@@ -553,8 +622,8 @@ export class MockExchangeClient implements ExchangeClient {
         lastError: s.lastError ?? '',
       })
     }
-    if (saved.bond && Number.isFinite(saved.bond.principal)) this.bond = { ...saved.bond }
-    if (saved.fund && Number.isFinite(saved.fund.principal)) this.fund = { ...saved.fund }
+    if (saved.bond && Number.isFinite(saved.bond.principal)) this.bond = { principal: saved.bond.principal, accrued: saved.bond.accrued, accruedRemainder: BigInt(saved.bond.accruedRemainder ?? '0'), settledMinute: saved.bond.settledMinute, settledAt: saved.bond.settledAt ?? saved.bond.settledMinute * 60_000, openedAt: saved.bond.openedAt }
+    if (saved.fund && Number.isFinite(saved.fund.principal)) this.fund = { ...saved.fund, accruedRemainder: BigInt(saved.fund.accruedRemainder ?? '0'), settledAt: saved.fund.settledAt ?? saved.fund.settledMinute * 60_000 }
     this.news.length = 0
     if (Array.isArray(saved.news)) this.news.push(...saved.news.slice(0, 12))
     if (this.news.length === 0) this.seedOpeningNews()
@@ -589,6 +658,8 @@ export class MockExchangeClient implements ExchangeClient {
       tick: this.tick,
       cash: this.cash,
       frozen: this.frozen,
+      dailyTurnoverDay: this.dailyTurnoverDay,
+      dailyTurnoverUsed: this.dailyTurnoverUsed,
       spot: [...this.spot.entries()].map(([code, hold]) => ({ code, qty: hold.qty, avgCost: hold.avgCost })),
       positions: [...this.positions.values()].map((p) => ({
         id: p.id,
@@ -603,8 +674,8 @@ export class MockExchangeClient implements ExchangeClient {
       myTrades: this.myTrades.slice(0, 100),
       dividends: this.dividends.slice(0, 60),
       strategies: [...this.strategies.values()],
-      bond: this.bondView(),
-      fund: { ...this.fund },
+      bond: { ...this.bondView(), accrued: this.bond.accrued, accruedRemainder: this.bond.accruedRemainder.toString(), settledAt: this.bond.settledAt },
+      fund: { ...this.fund, accruedRemainder: this.fund.accruedRemainder.toString() },
       news: this.news.slice(0, 12),
       seq: {
         order: this.orderSeq,
@@ -655,6 +726,8 @@ export class MockExchangeClient implements ExchangeClient {
     this.rng = createRng(this.seed)
     this.cash = START_CASH
     this.frozen = 0
+    this.dailyTurnoverDay = Math.floor(Date.now() / UTC_DAY_MS)
+    this.dailyTurnoverUsed = 0
     this.tick = 0
     this.startTs = Date.now()
     this.lastStepWall = this.startTs
@@ -670,7 +743,8 @@ export class MockExchangeClient implements ExchangeClient {
     this.dividends.length = 0
     this.news.length = 0
     this.strategies.clear()
-    this.bond = { principal: 0, accrued: 0, settledMinute: 0, openedAt: 0 }
+    this.bond = { principal: 0, accrued: 0, accruedRemainder: 0n, settledMinute: 0, settledAt: 0, openedAt: 0 }
+    this.fund = { principal: 0, accrued: 0, accruedRemainder: 0n, settledMinute: 0, settledAt: 0, openedAt: 0 }
     this.buildStocks(this.startTs, null)
     this.indexOpen = this.indexValue()
     this.indexHigh = this.indexOpen
@@ -1252,23 +1326,33 @@ export class MockExchangeClient implements ExchangeClient {
     const st = this.stocks.get(code)
     if (!st) throw new ExchangeError('unknown_code', `未知标的：${code}`)
     const takerSide: Side = side === 'long' ? 'sell' : 'buy'
-    const res = st.book.submit(takerSide, closeQty, null, 'player', source, ts, false)
+    if (source === 'liquidation') this.quotaExemptDepth += 1
+    let res: ReturnType<typeof st.book.submit>
+    try {
+      res = st.book.submit(takerSide, closeQty, null, 'player', source, ts, false)
+    } finally {
+      if (source === 'liquidation') this.quotaExemptDepth -= 1
+    }
     let filledQty = closeQty - res.order.qty
     let filledValue = 0
     for (const f of res.fills) filledValue += f.price * f.qty
     if (filledQty < closeQty) {
-      // 盘口不够深：剩余按标记价结算（原型不追求逐笔滑点归因）
+      // 盘口不够深：剩余按标记价结算；普通平仓仍消耗日额度。
       const rest = closeQty - filledQty
-      filledValue += rest * st.price
-      filledQty = closeQty
+      const fallbackQty = source === 'liquidation'
+        ? rest
+        : this.consumeDailyTurnover(st.price, rest)
+      filledValue += fallbackQty * st.price
+      filledQty += fallbackQty
     }
-    const avg = filledValue / closeQty
-    const pnl = M.unrealizedPnl(side, pos.entry, avg, closeQty)
-    const marginRelease = (pos.margin * closeQty) / pos.qty
-    const fee = avg * closeQty * FEE_RATE
+    if (filledQty <= 0) return { qty: 0, avg: pos.entry }
+    const avg = filledValue / filledQty
+    const pnl = M.unrealizedPnl(side, pos.entry, avg, filledQty)
+    const marginRelease = (pos.margin * filledQty) / pos.qty
+    const fee = avg * filledQty * FEE_RATE
     this.cash += marginRelease + pnl - fee
     pos.margin -= marginRelease
-    pos.qty -= closeQty
+    pos.qty -= filledQty
     if (pos.qty <= 1e-9) this.positions.delete(key)
     this.tradeSeq += 1
     this.myTrades.unshift({
@@ -1276,12 +1360,12 @@ export class MockExchangeClient implements ExchangeClient {
       ts,
       code,
       price: round(avg, 2),
-      qty: closeQty,
+      qty: filledQty,
       side: takerSide,
       source,
     })
     if (this.myTrades.length > 200) this.myTrades.splice(200)
-    return { qty: closeQty, avg }
+    return { qty: filledQty, avg }
   }
 
   private checkLiquidations(ts: number): void {
@@ -1527,36 +1611,41 @@ export class MockExchangeClient implements ExchangeClient {
 
   /* ═══════════════ 债券 / 分红 ═══════════════ */
 
-  /**
-   * 低风险理财（模拟盘）：规则与线上一致——交易所现金申购、固定 3bp/分钟单利、
-   * 本金锁定、随时可赎；利息按真实分钟惰性结算（2026-11-04 船长令：不再用本地存档直接买）。
-   */
+  /** 债券收益按 UTC 日随机档位计提，部分日按真实时长比例折算。 */
   private settleBond(): void {
-    const nowMinute = Math.floor(this.ts() / 60_000)
+    const now = this.ts()
+    const nowMinute = Math.floor(now / 60_000)
     if (this.bond.principal <= 0) {
       this.bond.settledMinute = nowMinute
+      this.bond.settledAt = now
       return
     }
-    if (this.bond.settledMinute === 0) this.bond.settledMinute = Math.floor(this.bond.openedAt / 60_000)
-    const minutes = nowMinute - this.bond.settledMinute
-    if (minutes <= 0) return
-    this.bond.accrued += Math.floor((this.bond.principal * BOND_MINUTE_BP * minutes) / 10_000)
+    const from = Math.max(this.bond.settledAt || Math.floor(this.bond.openedAt / 60_000) * 60_000, this.bond.openedAt)
+    if (now <= from) return
+    const settled = accrueDaily(this.bond.principal, this.bond.accrued, this.bond.accruedRemainder, from, now,
+      (day) => dailyRatePpb('bond', day, 999, BOND_WIN_DAILY_PPB, BOND_LOSE_DAILY_PPB))
+    this.bond.accrued = settled.accrued
+    this.bond.accruedRemainder = settled.remainder
     this.bond.settledMinute = nowMinute
+    this.bond.settledAt = now
   }
 
   private bondView(): BondPosition {
+    const accrued = visibleAccrued(this.bond.accrued, this.bond.accruedRemainder)
     const minutes =
       this.bond.principal > 0
         ? Math.max(0, this.bond.settledMinute - Math.floor(this.bond.openedAt / 60_000))
         : 0
     return {
       principal: this.bond.principal,
-      accrued: this.bond.accrued,
-      value: this.bond.principal + this.bond.accrued,
+      accrued,
+      value: this.bond.principal + accrued,
       settledMinute: this.bond.settledMinute,
       openedAt: this.bond.openedAt,
       minutes,
-      minuteBp: BOND_MINUTE_BP,
+      winDailyPpb: BOND_WIN_DAILY_PPB,
+      loseDailyPpb: BOND_LOSE_DAILY_PPB,
+      winPermille: 999,
       cash: this.cash,
     }
   }
@@ -1580,6 +1669,7 @@ export class MockExchangeClient implements ExchangeClient {
     if (this.bond.principal <= 0) {
       this.bond.openedAt = this.ts()
       this.bond.settledMinute = Math.floor(this.ts() / 60_000)
+      this.bond.settledAt = this.ts()
     }
     this.bond.principal += value
     this.cash -= value
@@ -1595,59 +1685,45 @@ export class MockExchangeClient implements ExchangeClient {
     }
     if (this.bond.principal <= 0) throw new ExchangeError('no_bond_position', T.toastBondInvalid)
     this.settleBond()
-    const payout = Math.max(0, this.bond.principal + this.bond.accrued)
+    const payout = Math.max(0, this.bond.principal + visibleAccrued(this.bond.accrued, this.bond.accruedRemainder))
     this.cash += payout
-    this.bond = { principal: 0, accrued: 0, settledMinute: 0, openedAt: 0 }
+    this.bond = { principal: 0, accrued: 0, accruedRemainder: 0n, settledMinute: 0, settledAt: 0, openedAt: 0 }
     this.bondNonces.set(nonce, 0)
     return this.bondView()
   }
 
-  /**
-   * 保底基金（模拟盘）：放置型持仓，规则与线上一致——
-   * 每分钟 70% +16bp / 30% −7bp，期望 +9bp/分钟 ≈ 债券（3bp/分钟）的 3 倍；
-   * 本金锁定，随时可赎，亏损真实发生。
-   */
-  private fundMinuteBp(minute: number): number {
-    // FNV-1a：确定性、无 Math.random（引擎禁用裸随机）。
-    let hash = 2_166_136_261
-    const seed = `fund:${minute}`
-    for (let i = 0; i < seed.length; i += 1) {
-      hash ^= seed.charCodeAt(i)
-      hash = Math.imul(hash, 16_777_619) >>> 0
-    }
-    return hash % 100 < FUND_WIN_PERCENT ? FUND_WIN_BP : FUND_LOSE_BP
-  }
-
-  /** 惰性结算到当前分钟（不落盘，可重复调用）。 */
+  /** 基金收益按 UTC 日随机档位计提，部分日按真实时长比例折算。 */
   private settleFund(): void {
-    const nowMinute = Math.floor(this.ts() / 60_000)
+    const now = this.ts()
+    const nowMinute = Math.floor(now / 60_000)
     if (this.fund.principal <= 0) {
       this.fund.settledMinute = nowMinute
+      this.fund.settledAt = now
       return
     }
-    if (this.fund.settledMinute === 0) this.fund.settledMinute = nowMinute - 0
-    const from = this.fund.settledMinute + 1
-    for (let minute = from; minute <= nowMinute; minute += 1) {
-      const bp = this.fundMinuteBp(minute)
-      this.fund.accrued += Math.floor((this.fund.principal * bp) / 10_000)
-    }
-    this.fund.settledMinute = Math.max(this.fund.settledMinute, nowMinute)
+    const from = Math.max(this.fund.settledAt || Math.floor(this.fund.openedAt / 60_000) * 60_000, this.fund.openedAt)
+    if (now <= from) return
+    const settled = accrueDaily(this.fund.principal, this.fund.accrued, this.fund.accruedRemainder, from, now,
+      (day) => dailyRatePpb('fund', day, FUND_WIN_PERCENT * 10, FUND_WIN_DAILY_PPB, FUND_LOSE_DAILY_PPB))
+    this.fund.accrued = settled.accrued
+    this.fund.accruedRemainder = settled.remainder
+    this.fund.settledMinute = nowMinute
+    this.fund.settledAt = now
   }
 
   private fundView(): FundPosition {
+    const accrued = visibleAccrued(this.fund.accrued, this.fund.accruedRemainder)
     const minutes = this.fund.principal > 0 ? Math.max(0, this.fund.settledMinute - Math.floor(this.fund.openedAt / 60_000)) : 0
     return {
       principal: this.fund.principal,
-      accrued: this.fund.accrued,
-      value: this.fund.principal + this.fund.accrued,
+      accrued,
+      value: this.fund.principal + accrued,
       settledMinute: this.fund.settledMinute,
       openedAt: this.fund.openedAt,
       minutes,
-      winBp: FUND_WIN_BP,
-      loseBp: FUND_LOSE_BP,
+      winDailyPpb: FUND_WIN_DAILY_PPB,
+      loseDailyPpb: FUND_LOSE_DAILY_PPB,
       winPercent: FUND_WIN_PERCENT,
-      expectedBp: FUND_EXPECTED_BP,
-      bondBp: FUND_BOND_BP,
       cash: this.cash,
     }
   }
@@ -1671,6 +1747,9 @@ export class MockExchangeClient implements ExchangeClient {
     if (this.fund.principal <= 0) {
       this.fund.openedAt = this.ts()
       this.fund.accrued = 0
+      this.fund.accruedRemainder = 0n
+      this.fund.settledAt = this.ts()
+      this.fund.settledMinute = Math.floor(this.ts() / 60_000)
     }
     this.fund.principal += amountValueFloor
     this.cash -= amountValueFloor
@@ -1686,9 +1765,9 @@ export class MockExchangeClient implements ExchangeClient {
     }
     if (this.fund.principal <= 0) throw new ExchangeError('no_fund_position', T.fundNoCash)
     this.settleFund()
-    const payout = Math.max(0, this.fund.principal + this.fund.accrued)
+    const payout = Math.max(0, this.fund.principal + visibleAccrued(this.fund.accrued, this.fund.accruedRemainder))
     this.cash += payout
-    this.fund = { principal: 0, accrued: 0, settledMinute: 0, openedAt: 0 }
+    this.fund = { principal: 0, accrued: 0, accruedRemainder: 0n, settledMinute: 0, settledAt: 0, openedAt: 0 }
     this.fundNonces.set(nonce, 0)
     return this.fundView()
   }
@@ -1759,6 +1838,7 @@ export class MockExchangeClient implements ExchangeClient {
   }
 
   private buildAccount(): ExchangeAccount {
+    this.refreshDailyTurnoverDay()
     const positions: ExchangePosition[] = []
     let usedMargin = 0
     let positionsEquity = 0
@@ -1814,6 +1894,8 @@ export class MockExchangeClient implements ExchangeClient {
       positions,
       pendingWithdrawals: [],
       holdings,
+      dailyTradeLimit: DAILY_TRADE_LIMIT,
+      dailyTradeUsed: this.dailyTurnoverUsed,
     }
   }
 

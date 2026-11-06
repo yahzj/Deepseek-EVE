@@ -1,10 +1,10 @@
 /**
- * 保底基金（放置型）：本金锁定，按真实分钟逐分钟结算，随时可赎回。
+ * 保底基金（放置型）：本金锁定，按 UTC 自然日收益档计提，随时可赎回。
  *
  * 规则（船长 2026-11-04 定案：「起码 3 倍收益，但是有概率亏，随时可赎」）：
- * - 每分钟独立结算：70% 概率 +16bp、30% 概率 −7bp，期望 +9bp ≈ 债券（3bp/分钟）的 3 倍；
+ * - 每日结算档：70% 概率 +0.03%、30% 概率 −0.05%；
  * - 亏损真实发生，不保本；赎回额 = 本金 + 累计收益（可为负）；
- * - 结算由服务端按分钟决定（HMAC 确定性可重放），前端只负责展示与触发，不参与计算。
+ * - 每日结果由服务端决定，前端只负责展示与触发，不参与计算。
  */
 import { useEffect, useState } from 'react'
 import { isEn } from '../../../i18n/locale'
@@ -38,8 +38,6 @@ export function FundCard({
   const principal = position?.principal ?? 0
   const hasPosition = principal > 0
   const accrued = position?.accrued ?? 0
-  const value = position?.value ?? 0
-  const minutes = position?.minutes ?? 0
 
   // 首屏拉一次持仓，之后每 10 秒刷新（与行情轮询同节奏，收益才会随分钟跳动）。
   useEffect(() => {
@@ -133,7 +131,7 @@ export function FundCard({
           </b>
         </div>
 
-        {/* 持仓区：本金 / 累计收益 / 当前价值 / 已计息分钟 */}
+        {/* 持仓区：本金 → 累计收益（2026-11-06 船长令：与债券同一排序，去掉无意义读数） */}
         {hasPosition ? (
           <>
             <div className="ex-preview-row">
@@ -151,18 +149,6 @@ export function FundCard({
               >
                 {accrued > 0 ? '+' : accrued < 0 ? '−' : ''}
                 {money(Math.abs(accrued))} <span className="ex-unit">{T.creditUnit}</span>
-              </b>
-            </div>
-            <div className="ex-preview-row">
-              <span>{T.fundValue}</span>
-              <b className="ex-num">
-                {money(value)} <span className="ex-unit">{T.creditUnit}</span>
-              </b>
-            </div>
-            <div className="ex-preview-row">
-              <span>{T.fundMinutes}</span>
-              <b className="ex-num">
-                {minutes} {T.fundMinuteUnit}
               </b>
             </div>
           </>
@@ -245,6 +231,7 @@ export function FundCard({
           <button
             type="button"
             className="ex-mini-btn is-bond-buy ex-btn-progress"
+            data-sfx="exchange-buy"
             disabled={!canSubmit}
             style={progressStyle(openProgress)}
             onClick={() => void submit()}
@@ -256,6 +243,7 @@ export function FundCard({
             <button
               type="button"
               className="ex-mini-btn ex-btn-progress"
+              data-sfx="exchange-sell"
               disabled={busy}
               style={progressStyle(redeemProgress)}
               onClick={() => void redeem()}

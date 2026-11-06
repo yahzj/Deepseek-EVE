@@ -311,7 +311,7 @@ describe('cloud API', () => {
   it('rejects decoded UTF-8 saves over 10 MiB on download and upload', async () => {
     const data = '\u00e9'.repeat(5 * 1024 * 1024) + 'x'
     const fetchImpl = fetchMock(jsonResponse({ version: 1, data }))
-    await expect(createCloudApi({ server: 'https://cloud.example', fetchImpl }).saveVersion(1))
+    await expect(createCloudApi({ server: 'https://cloud.example', fetchImpl }).saveLatest())
       .rejects.toMatchObject({ code: 'malformed_response' })
     const upload = vi.fn<typeof fetch>()
     expect(() => createCloudApi({ server: 'https://cloud.example', fetchImpl: upload }).uploadSave(data, 0))

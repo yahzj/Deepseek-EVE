@@ -16,9 +16,3 @@ export interface CloudSave {
   size?: number
   createdAt?: number
 }
-
-export interface CloudSaveVersion {
-  version: number
-  size: number
-  createdAt: number
-}

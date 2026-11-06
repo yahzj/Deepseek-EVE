@@ -9,10 +9,21 @@ import { tr } from '../i18n/locale'
 /** 全局浮动提示回调（App 提供） */
 export type ToastFn = (text: string, warn?: boolean) => void
 
+/**
+ * 设置面板的子页 id（与 `panels/appSettings.tsx` 的 SettingsPage 同一口径）。
+ * 页面需要把玩家直接送到某个子页时（如股市游客点「登录」）用它，避免各自写字符串。
+ */
+export type SettingsPageId = 'interface' | 'sound' | 'game' | 'account' | 'developer'
+
 /** 页面组件统一签名 */
 export interface PageProps {
   engine: GameEngine
   onToast: ToastFn
+  /**
+   * 打开设置面板（可选：不给就只能靠活动栏进设置）。
+   * 2026-11-05 股市游客批：未登录时点交易操作 → 提示 + 打开「设置 → 账户」的登入入口。
+   */
+  onOpenSettings?: (page?: SettingsPageId) => void
 }
 
 /** 千分位 信用点 显示 */

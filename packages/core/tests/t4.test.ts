@@ -185,6 +185,7 @@ describe('T4 延后项：采矿 ↔ 远征 转场', () => {
     state.fleet[state.shipId]!.cargo['ore-a'] = 5 // 船上已有货
     expect(startExpeditionFromMining(state, 'ano-a', ctx).ok).toBe(true)
     finishDeparture(state, ctx)
+    advanceGame(state, 1, ctx) // 跨过相位边界：星门临时关闭时总等待只剩离港，需补一拍落地
     expect(state.mining.active).toBe(false)
     expect(state.expedition.active).toBe(true)
     expect(state.expedition.anomalyId).toBe('ano-a')

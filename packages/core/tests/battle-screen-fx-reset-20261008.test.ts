@@ -29,6 +29,8 @@ beforeAll(async () => {
       builder.onLoad({ filter: /[\\/]features[\\/]combat[\\/]battleFit\.ts$/ }, () => ({ loader: 'js', contents: 'export const useBattleFit=()=>{};' }))
       // 渲染专项保留真实音效桥的Hook，不在Node夹具中加载Vite音频素材和浏览器播放器。
       builder.onLoad({ filter: /[\\/]game[\\/]audio[\\/]player\.ts$/ }, () => ({ loader: 'js', contents: 'export const playCue=()=>{};' }))
+      builder.onLoad({ filter: /[\\/]game[\\/]audio[\\/]music\.ts$/ }, () => ({ loader: 'js', contents: 'export const rerollBgmVariant=()=>{};' }))
+      builder.onLoad({ filter: /[\\/]game[\\/]audio[\\/]music\.ts$/ }, () => ({ loader: 'js', contents: 'export const rerollBgmVariant=()=>{};' }))
       builder.onLoad({ filter: /\.css$/ }, () => ({ loader: 'js', contents: '' }))
     } }],
   })

@@ -320,9 +320,9 @@ describe('开场装填专项（2026-10-08）', () => {
     expect(Object.values(wormhole.units).filter(unit => unit.side === 'foe').every(unit => unit.enteredAtMs !== undefined)).toBe(true)
     const flagship = weekendStartFlagshipBattle(state, realCtx, new Date(2026, 9, 9, 20).getTime(), ships)!
     expect(state.gameMs, '建档不会推进游戏时钟').toBe(75_000)
-    expect(state.departure).toMatchObject({ kind: 'flagship', undockMs: 10_000, gateMs: 0, progressMs: 0 })
-    expect(flagship.startedAtGameMs, '旗舰开战时刻包含离港十秒').toBe(85_000)
-    expect(flagship.lastTickGameMs).toBe(85_000)
+    expect(state.departure).toMatchObject({ kind: 'flagship', undockMs: 5_000, gateMs: 0, progressMs: 0 })
+    expect(flagship.startedAtGameMs, '旗舰开战时刻包含离港五秒').toBe(80_000)
+    expect(flagship.lastTickGameMs).toBe(80_000)
     expect(normal.myFleet).toBeUndefined()
     expect(wormhole.wormhole).toMatchObject({ depth: 1, kind: 'node' })
     expect(wormhole.myFleet).toHaveLength(4)

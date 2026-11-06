@@ -9,6 +9,7 @@ import { shipDisplayName } from '../src/instances'
 import { anomaly, belt, galaxy, makeTestCtx, moduleDef, ship } from './helpers'
 import { finishDeparture } from './helpers/departure-ready'
 import { scaledReturnMs } from '../src/trips'
+import { GATE_ENABLED } from '../src/departure'
 
 function ctxOf() {
   return makeTestCtx({
@@ -43,7 +44,8 @@ describe('野外采矿与打捞转场及最终返航', () => {
     expect(startMining(state, 'belt-a', ctx).ok).toBe(true)
     expect(state.salvaging.active, '打捞应已被自动停掉').toBe(false)
     // 已确认的野外转场：只走星门，不让旧返航账本提前卸走新作业的货。
-    expect(state.departure).toMatchObject({ undockMs: 0, gateMs: 7000, fromGalaxy: 'galaxy-scrap' })
+    if (GATE_ENABLED) expect(state.departure).toMatchObject({ undockMs: 0, gateMs: 3500, fromGalaxy: 'galaxy-scrap' })
+    else expect(state.departure).toBeUndefined()
     advanceGame(state, 1, ctx)
     expect(state.pendingActivityReturn).toBeNull()
     expect(state.shipReturns[state.shipId]).toBeUndefined()
@@ -85,7 +87,8 @@ describe('野外采矿与打捞转场及最终返航', () => {
     const before = countWare(state, 'ore-a')
     expect(startSalvageOp(state, 'galaxy-scrap', ctx).ok).toBe(true)
     expect(state.mining.active, '采矿应已被自动停掉').toBe(false)
-    expect(state.departure).toMatchObject({ undockMs: 0, gateMs: 7000, fromGalaxy: 'galaxy-hub' })
+    if (GATE_ENABLED) expect(state.departure).toMatchObject({ undockMs: 0, gateMs: 3500, fromGalaxy: 'galaxy-hub' })
+    else expect(state.departure).toBeUndefined()
     advanceGame(state, 1, ctx)
     expect(state.pendingActivityReturn).toBeNull()
     expect(state.shipReturns[state.shipId]).toBeUndefined()

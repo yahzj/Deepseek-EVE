@@ -223,7 +223,7 @@ export const WORMHOLE_AUTO_DAMAGE_MIN = 0.4
 export const WORMHOLE_AUTO_DAMAGE_MAX = 0.8
 
 /** 报告保留条数（超出的丢最旧；避免随档无限增长） */
-export const WORMHOLE_AUTO_REPORT_MAX = 20
+export const WORMHOLE_AUTO_REPORT_MAX = 10
 
 /* ═══════════ 谜质科技 → 自动探索（船长 2026-09-19 四条裁定） ═══════════
  *

@@ -44,6 +44,7 @@ import { playSfx } from './game/sfx'
  * 场景音频（2026-11-02 追加批）：引擎状态 + 战场是否上屏 → BGM/环境场景。
  * 挂在 `battleOnStage` 定义之后（该行之上不能有早退分支，本 hook 无条件调用）。
  */
+import { notifyUiError } from './game/audio/uiFeedback'
 import { useSceneAudio } from './game/audio/useSceneAudio'
 import { FitPage } from './pages/FitPage'
 import { ShipPage, type ShipTab } from './pages/ShipPage'
@@ -62,7 +63,7 @@ import { ExchangePage } from './pages/ExchangePage'
 import { useOnlineChat } from './features/cloud/useOnlineChat'
 import { useMarketRelay } from './features/market/relay/useMarketRelay'
 import type { MapGotoTarget, MapTab, TaskFocusTarget } from './pages/MapPage'
-import type { ToastFn } from './pages/common'
+import type { SettingsPageId, ToastFn } from './pages/common'
 import type { GameEngine } from './game/engine'
 import { SaveManager } from './panels/SaveManager'
 import { SaveReconnect } from './panels/SaveReconnect'
@@ -116,9 +117,9 @@ const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
    * 转正或替换；`unlocked()` 对表外 key 恒真（`packages/core/src/firstTasks.ts`）⇒ 开局即可见。
    * label 仍用中文原文：`AppShell` 的 `t()` 查不到词条时原样返回（见 `i18n/locale.tsx`），
    * 转正登记 `ui.exchange.*` 后再换 id。图标 = Carbon `ChartCandlestick`（`nav-exchange`）。
-   * **现代布局专属**：旧版 classic 外壳不显示本项（在下方传 `navItems` 前就地过滤；不改 AppShell）。
+   * **两套布局都显示**：旧版左侧导航与现代版主导航共用该项。
    */
-  { key: 'exchange', label: '股市', icon: 'nav-exchange' },
+  { key: 'exchange', label: '股市 [测试]', icon: 'nav-exchange' },
 ]
 
 /**
@@ -656,6 +657,12 @@ async function applyLayoutAndReload(): Promise<void> {
   const [toast, setToast] = useState<{ text: string; warn: boolean } | null>(null)
   const toastTimer = useRef<number | null>(null)
   const showToast: ToastFn = (text, warn = false) => {
+    /**
+     * **界面错误提示 → `ui-error`**（2026-11-05 船长要求扩大覆盖）：通用 toast 是**所有**命令被拒
+     * 与保存/连接错误的统一出口；只靠 `LOG_CUE_RULES` 的 6 条日志白名单会漏掉绝大多数拒绝。
+     * 节流在播放层（`minGapMs` / `maxConcurrent`），这里只做「错误提示就响一声」的语义。
+     */
+    if (warn) notifyUiError()
     if (toastTimer.current !== null) window.clearTimeout(toastTimer.current)
     setToast({ text, warn })
     toastTimer.current = window.setTimeout(() => setToast(null), warn && text.includes('\n') ? 15_000 : 3200)
@@ -798,7 +805,7 @@ async function applyLayoutAndReload(): Promise<void> {
   const [modeChoiceImportHold, setModeChoiceImportHold] = useState(false)
   const [showHandbook, setShowHandbook] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
-  const [settingsInitialPage, setSettingsInitialPage] = useState<'interface' | 'save'>('interface')
+  const [settingsInitialPage, setSettingsInitialPage] = useState<SettingsPageId>('interface')
   const [battleOpen, setBattleOpen] = useState(false)
   /** 新档模式选择（铁人 S4b）：重置档案确认后弹一次，选普通/铁人再开局 */
 
@@ -1193,7 +1200,16 @@ async function applyLayoutAndReload(): Promise<void> {
     showToast(tr("ui.App.109"))
   }
 
-  const pageProps = { engine, onToast: showToast }
+  /**
+   * **设置子页直达**（2026-11-05 股市游客批）：页面里遇到「需要登录」的操作时，直接把设置面板
+   * 停在「账户」子页（登入入口在那里），而不是只弹一句提示让玩家自己找。
+   */
+  const openSettingsPage = (page: SettingsPageId = 'interface'): void => {
+    setSettingsInitialPage(page)
+    setShowSettings(true)
+  }
+
+  const pageProps = { engine, onToast: showToast, onOpenSettings: openSettingsPage }
 
   /**
    * **序章·苏醒只剩"演出"**（2026-09-17 教程重做）：线性七步（采集→交付→出售→修复→试炼→技能→分身）、
@@ -1245,7 +1261,7 @@ async function applyLayoutAndReload(): Promise<void> {
     /**
      * **点导航的"这一下"必须有反馈**（船长 2026-09-14：「点击左边侧边栏的时候，中间主窗口进行切换时最好
      * 给予玩家一个反馈，**哪怕点的是当前窗口**」）：
-     * - **换页**：内容区随 `key={page}` 重挂载 ⇒ 播一次入场淡入（`.app-page-content` 基类），不必另加东西；
+     * - **换页**：内容区随 `key={page}` 重挂载后立即显示，反馈由导航选中态提供；
      * - **点当前页**：**不重挂载**（页面里的检索词 / 滚动位置 / 弹层状态一律不受打扰），改播一次 220ms 脉冲
      *   （内容区明暗脉冲 + 该导航项图标缩放脉冲）；计时器到点摘掉 class ⇒ 连点也能一次次重播。
      */
@@ -1388,14 +1404,7 @@ async function applyLayoutAndReload(): Promise<void> {
         promosNow={promosNow}
         tuningsNow={tuningsNow}
         tuningTick={tuningTick}
-        /**
-         * **股市入口：modern-only**（2026-11-03 船长令）：
-         * 已从 `DEBUG_NAV_ITEMS` 移入 `NAV_ITEMS` 末位（现代布局右下角最右侧、不需要调试模式），
-         * 但旧版 classic 布局一个字都不动 ⇒ 在交给 `AppShell` 之前就地过滤掉 exchange。
-         * 不在 AppShell 里加 `modernOnly` 标记，是因为该文件当前有在途改动（硬约束）；
-         * 调试项（工业 HUD、stellar）保持原样，两类布局都可见。
-         */
-        navItems={layoutKind === 'classic' ? NAV_ITEMS.filter((item) => item.key !== 'exchange') : NAV_ITEMS}
+        navItems={NAV_ITEMS}
         debugNavItems={[...DEBUG_NAV_ITEMS, { key: 'stellar', label: 'ui.stellar.054', icon: 'nav-map',
           onSelect: () => { if (planetaryEnabled()) { hideActivityWin(); setPlanetOpen(true) } } }]}
         readDebugEnabled={readDebugEnabled}
@@ -1429,7 +1438,7 @@ async function applyLayoutAndReload(): Promise<void> {
             ) : null}
             </div>
             {/* 一级页不滚：已按 docs/design/page-scroll-layout.md 完成转换的页进 no-scroll（整页不滚，滚动在二级窗）。
-            `key={page}` ⇒ 换页即重挂载 = 入场淡入（切页反馈）；点当前页不重挂载，走 `is-beat` 的脉冲（见 pulseNav）。 */}
+            `key={page}` ⇒ 换页即重挂载并立即显示；点当前页不重挂载，走 `is-beat` 的脉冲（见 pulseNav）。 */}
             <div
             className={`app-page-content${PAGE_NO_SCROLL.has(page) ? ' no-scroll' : ''}${navBeat?.key === page ? ' is-beat' : ''}${winOnStage ? ' is-win-hidden' : ''}`}
             key={page}
@@ -1583,7 +1592,7 @@ async function applyLayoutAndReload(): Promise<void> {
             />
             ) : null}
             {page === 'chat' ? (
-              <OnlineChatPage chat={onlineChat} onToast={showToast} onOpenSettings={() => { setSettingsInitialPage('save'); setShowSettings(true); hideActivityWin() }} />
+              <OnlineChatPage chat={onlineChat} onToast={showToast} onOpenSettings={() => { setSettingsInitialPage('account'); setShowSettings(true); hideActivityWin() }} />
             ) : null}
             </div>
           </>

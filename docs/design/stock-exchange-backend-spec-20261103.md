@@ -435,7 +435,7 @@ export type Unsubscribe = () => void
 |---|---|---|
 | 代码位置 | 服务端已**移出游戏主树**，成为独立仓库 `whale-server`（HANDOFF 记为 `D:\Documents\GitHub\deepseek-EVE-Background`）；游戏主树内 `apps/server/` 是**旧版快照** | 股市必须写在独立仓库的 `src/exchange/`，**不能再改 `apps/server/`** |
 | 账号体系 | 用户名/密码（scrypt）+ `sessions` 多设备会话（30 天滑动）+ 恢复码；设备码通道 deprecated 保留 | 股市接口复用同一 `authenticate()`；**无需新建账号体系** |
-| 登录策略 | **登录非强制**：未登录可正常单机游玩；线上聊天/交易点击后提示登录 | 股市按「线上交易」同类处理：未登录可看引导页，不可交易；**不做遮罩强制跳转** |
+| 登录策略 | **登录非强制**：未登录可正常单机游玩；线上聊天/交易点击后提示登录 | 股市按「线上交易」同类处理。**2026-11-05 船长令更新**：模拟盘移除，未登录＝游客只读——匿名连真实服务器看公开行情，买卖/持仓/理财入口保留但禁用，点击提示后直接打开「设置 → 账户」；仍不整页遮盖。详见 `docs/design/exchange-guest-readonly-20261105.md` |
 | 数据锚点 | saves / wallets / item_stacks / items / orders / trades / ledger / production 全部以 `account_id` 为键 | 新增 `exchange_*` 表全部用 `account_id` 外键；多设备天然共享同一证券账户 |
 | 认证 | `Authorization: Bearer <token>`；WS 用 `?token=`；统一 401 | 交易所 REST/WS 同一套 |
 | 账本 | 双分录 + 哈希链 + 禁负余额，`account_id` 可空（系统科目） | 入金/出金/成交/税/资金费全部走 `appendEntry`，新增 `ref_type=exchange_*` |

@@ -49,6 +49,11 @@ export class OrderBook {
   private tradeLog: TradeRecord[] = []
   /** 做市商净库存（正 = 多头）；用于报价偏斜与库存上限 */
   private mmInventory = 0
+  private playerFillQuota?: (price: number, requestedQty: number) => number
+
+  setPlayerFillQuota(consume: (price: number, requestedQty: number) => number): void {
+    this.playerFillQuota = consume
+  }
 
   constructor(code: string) {
     this.code = code
@@ -114,7 +119,11 @@ export class OrderBook {
       }
       while (order.qty > 0 && queue.length > 0) {
         const maker = queue[0]!
-        const qty = Math.min(order.qty, maker.qty)
+        let qty = Math.min(order.qty, maker.qty)
+        if (maker.owner !== 'mm' || order.owner !== 'mm') {
+          qty = this.playerFillQuota?.(fromCents(maker.priceCents), qty) ?? qty
+          if (qty <= 0) return fills
+        }
         order.qty -= qty
         maker.qty -= qty
         if (maker.owner === 'mm') this.mmInventory += order.side === 'buy' ? -qty : qty
@@ -211,6 +220,7 @@ export class OrderBook {
       owner: 'mm',
     }
     const opp = side === 'buy' ? this.asks : this.bids
+    let quotaBlocked = false
     while (order.qty > 0) {
       const best = this.bestPriceCents(opp, side === 'buy' ? 'sell' : 'buy')
       if (best === null) break
@@ -223,7 +233,14 @@ export class OrderBook {
       }
       while (order.qty > 0 && queue.length > 0) {
         const maker = queue[0]!
-        const fillQty = Math.min(order.qty, maker.qty)
+        let fillQty = Math.min(order.qty, maker.qty)
+        if (maker.owner !== 'mm') {
+          fillQty = this.playerFillQuota?.(fromCents(maker.priceCents), fillQty) ?? fillQty
+          if (fillQty <= 0) {
+            quotaBlocked = true
+            break
+          }
+        }
         order.qty -= fillQty
         maker.qty -= fillQty
         this.mmInventory += side === 'buy' ? fillQty : -fillQty
@@ -238,9 +255,10 @@ export class OrderBook {
         this.pushTrade(maker.priceCents, fillQty, side, 'mm', ts)
         if (maker.qty <= 0) queue.shift()
       }
+      if (quotaBlocked) break
       if (queue.length === 0) opp.delete(best)
     }
-    if (order.qty > 0) this.insertResting(order)
+    if (order.qty > 0 && !quotaBlocked) this.insertResting(order)
     return fills
   }
 

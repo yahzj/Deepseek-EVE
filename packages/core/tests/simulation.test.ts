@@ -2,6 +2,7 @@
  * 离线结算与时间格式化的单元测试（M1：含离线采矿摘要）。
  */
 import { describe, expect, it } from 'vitest'
+import { GATE_ENABLED } from '../src/departure'
 import type { SimContext } from '../src/types'
 import { createInitialState } from '../src/state'
 import { enqueueSkill } from '../src/engine'
@@ -78,19 +79,18 @@ describe('离线结算：采矿产出与摘要', () => {
     const ctx = calmCtx()
     startMining(state, 'belt-a', ctx)
 
-    // 首趟离港和星门15秒：987s满舱转返航，1167s卸货，再等15秒回带。
-    // 1200s时第二趟采掘18秒，完成1循环（10单位）。
+    // 出港 10→5 秒、星门 5→2.5 秒后，每趟出发等待由 15 秒变为 7.5 秒；1200s 时第二趟完成 2 个循环（20 单位）。
     simulateOffline(state, 1_000, 1_000 + 1_200_000, ctx)
 
     expect(state.warehouse.items['ore-a']).toBe(800) // 第一趟已卸入仓库
-    expect(countItem(state, 'ore-a')).toBe(10)
+    expect(countItem(state, 'ore-a')).toBe(GATE_ENABLED ? 20 : 30)
     expect(state.mining.active).toBe(true)
     expect(state.mining.phase).toBe('mining')
     expect(state.gameMs).toBe(1_200_000)
     const summary = state.logs.find((l) => l.text.includes('离线结算完成'))
     expect(summary).toBeDefined()
     expect(summary!.text).toContain('离线采集')
-    expect(summary!.text).toContain('矿甲×810')
+    expect(summary!.text).toContain(GATE_ENABLED ? '矿甲×820' : '矿甲×830')
   })
 
   it('离线 40 分钟：完成两趟自动卸货并开始第三趟采掘，货仓+仓库合计入账', () => {
@@ -98,17 +98,16 @@ describe('离线结算：采矿产出与摘要', () => {
     const ctx = calmCtx()
     startMining(state, 'belt-a', ctx)
 
-    // 三趟各有15秒出发等待：第二次卸货在2334s，第三趟2349s回带。
-    // 2400s时第三趟采掘51秒，完成4循环（40单位）。
+    // 出港 10→5 秒、星门 5→2.5 秒后，每趟出发等待由 15 秒变为 7.5 秒；2400s 时第三趟完成 6 个循环（60 单位）。
     simulateOffline(state, 1_000, 1_000 + 2_400_000, ctx)
 
     expect(state.warehouse.items['ore-a']).toBe(1_600) // 前两趟已卸入仓库
-    expect(countItem(state, 'ore-a')).toBe(40)
+    expect(countItem(state, 'ore-a')).toBe(60)
     expect(state.mining.active).toBe(true)
     expect(state.mining.phase).toBe('mining')
     const summary = state.logs.find((l) => l.text.includes('离线结算完成'))
     expect(summary!.text).toContain('离线采集')
-    expect(summary!.text).toContain('矿甲×1640')
+    expect(summary!.text).toContain('矿甲×1660')
   })
 
   it('离线关闭自动循环（玩家设定）时仍遵守：满舱即停', () => {

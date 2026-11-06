@@ -60,32 +60,36 @@ export function StockList({
               aria-pressed={isSel}
               title={`${stockName(q.code, q.nameKey)} · ${stockSector(q.sector)}`}
             >
-              {/* 左栏：代码 + 板块 + 持仓徽标 / 公司全称 */}
+              {/* 左栏：代码 + 板块 / 公司全称 / 持仓徽标（2026-11-05 船长：徽标不得与代码、公司名、小曲线挤在同一行，独占一行并允许换行） */}
               <div className="ex-stock-card-left">
                 <div className="ex-stock-card-row1">
                   <span className="ex-stock-code">{q.code}</span>
                   <span className="ex-stock-sector">{stockSector(q.sector)}</span>
-                  {hold.longQty > 0 ? (
-                    <span className="ex-stock-hold-badge is-long" title={isEn() ? `Long: ${amount(hold.longQty)} shs` : `做多持仓 ${amount(hold.longQty)} 股`}>
-                      {T.badgeLong} {amount(hold.longQty)}
-                    </span>
-                  ) : null}
-                  {hold.shortQty > 0 ? (
-                    <span className="ex-stock-hold-badge is-short" title={isEn() ? `Short: ${amount(hold.shortQty)} shs` : `做空持仓 ${amount(hold.shortQty)} 股`}>
-                      {T.badgeShort} {amount(hold.shortQty)}
-                    </span>
-                  ) : null}
-                  {hold.spotQty > 0 ? (
-                    <span className="ex-stock-hold-badge is-spot" title={isEn() ? `Spot: ${amount(hold.spotQty)} shs` : `现货持仓 ${amount(hold.spotQty)} 股`}>
-                      {T.badgeSpot} {amount(hold.spotQty)}
-                    </span>
-                  ) : null}
                 </div>
                 <div className="ex-stock-card-row2">
                   <span className="ex-stock-fullname" title={stockName(q.code, q.nameKey)}>
                     {stockName(q.code, q.nameKey)}
                   </span>
                 </div>
+                {hold.longQty > 0 || hold.shortQty > 0 || hold.spotQty > 0 ? (
+                  <div className="ex-stock-card-holds">
+                    {hold.longQty > 0 ? (
+                      <span className="ex-stock-hold-badge is-long" title={isEn() ? `Long: ${amount(hold.longQty)} shs` : `做多持仓 ${amount(hold.longQty)} 股`}>
+                        {T.badgeLong} {amount(hold.longQty)}
+                      </span>
+                    ) : null}
+                    {hold.shortQty > 0 ? (
+                      <span className="ex-stock-hold-badge is-short" title={isEn() ? `Short: ${amount(hold.shortQty)} shs` : `做空持仓 ${amount(hold.shortQty)} 股`}>
+                        {T.badgeShort} {amount(hold.shortQty)}
+                      </span>
+                    ) : null}
+                    {hold.spotQty > 0 ? (
+                      <span className="ex-stock-hold-badge is-spot" title={isEn() ? `Spot: ${amount(hold.spotQty)} shs` : `现货持仓 ${amount(hold.spotQty)} 股`}>
+                        {T.badgeSpot} {amount(hold.spotQty)}
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
 
               {/* 中栏：十秒分时迷你图（Sparkline） */}

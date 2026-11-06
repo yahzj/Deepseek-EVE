@@ -83,6 +83,9 @@ export interface ExchangeAccount {
   pendingWithdrawals: Array<{ id: string; amount: number; availableAt: number }>
   /** 原型扩展：现货持仓 */
   holdings: SpotHolding[]
+  /** UTC 自然日股票成交额上限与已用额度 */
+  dailyTradeLimit: number
+  dailyTradeUsed: number
 }
 
 export interface PlaceOrderRequest {
@@ -209,8 +212,8 @@ export interface DepositResult { nonce: string; applied: number; fee: number; ca
 export interface WithdrawResult { nonce: string; amount: number; fee: number; availableAt: number; receiptHash: string }
 
 /**
- * 保底基金持仓（放置型）：申购后本金锁定，按真实分钟逐分钟结算，随时可赎。
- * 每分钟 70% 概率 +16bp、30% 概率 −7bp，期望 +9bp/分钟 ≈ 债券（3bp/分钟）的 3 倍。
+ * 保底基金持仓（放置型）：申购后本金锁定，按 UTC 自然日收益档计提，随时可赎。
+ * 每日 70% 概率 +0.03%、30% 概率 −0.05%。
  * 亏损真实发生，赎回额 = 本金 + 累计收益（accrued 可为负）。
  */
 export interface FundPosition {
@@ -226,16 +229,12 @@ export interface FundPosition {
   openedAt: number
   /** 已计息分钟数 */
   minutes: number
-  /** 盈利分钟的收益率（基点） */
-  winBp: number
-  /** 亏损分钟的收益率（基点，负数） */
-  loseBp: number
-  /** 盈利分钟占比（0~100） */
+  /** 每日正收益档位（十亿分率） */
+  winDailyPpb: number
+  /** 每日亏损档位（十亿分率，负数） */
+  loseDailyPpb: number
+  /** 每日盈利概率（0~100） */
   winPercent: number
-  /** 每分钟期望收益（基点） */
-  expectedBp: number
-  /** 对照用的债券分钟利率（基点） */
-  bondBp: number
   /** 查询时的交易所可用现金 */
   cash: number
 }
@@ -318,7 +317,7 @@ export interface AgentView {
 export interface BondProduct {
   id: string
   name: string
-  /** 日化利率（0.0003 = 0.03%） */
+  /** 期望日化比例（0.00002 = 0.002%） */
   dailyRate: number
   note: string
 }
@@ -344,8 +343,9 @@ export interface BondPosition {
   openedAt: number
   /** 已计息分钟数 */
   minutes: number
-  /** 每分钟利率（基点）：3 = 0.03% */
-  minuteBp: number
+  winDailyPpb: number
+  loseDailyPpb: number
+  winPermille: number
   /** 申购/赎回后的可用现金 */
   cash: number
 }
@@ -478,8 +478,6 @@ export interface ExchangeClient {
   getSnapshot(code: string): ExchangeSnapshot
   /** 六周期图表数据（同步读缓存：Mock 内存直读；HTTP 由订阅缓存提供，未连上时为空数组） */
   getChartSeries(code: string, period: ChartPeriod): Kline[]
-  /** 「重置模拟账户」：回到 1,000 万启动资金；HTTP 实现没有本地账户可重置 */
-  resetAccount(): void
   /** 债券：查询持仓（服务端惰性结算到当前分钟） */
   getBondPosition(): Promise<BondPosition>
   /** 债券：申购，把交易所现金换成本金（可多次追加） */
@@ -498,7 +496,7 @@ export interface ExchangeClient {
 }
 
 /**
- * 装配点（2026-11-03 双轨数据源批）：已迁到 `factory.ts` —— `createExchangeClient({ mode, serverUrl })`
- * 按 `localStorage['whale-idle:exch-src']` 解析 Mock / HTTP，并保证 Mock 引擎是**模块单例**。
+ * 装配点（2026-11-05 游客行情批）：`factory.ts` 的 `createExchangeClient({ serverUrl, guest })`
+ * 按云账号是否登录在「真实服务器游客只读 / 联机账户」之间切换，并按「地址 + 身份」复用客户端。
  * 页面与组件只 import 本文件的接口与 DTO，不 import `mock/` 或 `http/` 具体实现。
  */

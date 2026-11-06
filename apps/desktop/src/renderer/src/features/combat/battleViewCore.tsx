@@ -5,6 +5,9 @@
  */
 import type { ReactNode } from 'react'
 import { denseBattleLayout } from './battleDenseGeometry'
+// 2026-11-05：弹道飞时与弹型表移到无 JSX 的 attackTiming.ts，
+// 让音效排期（battleSfxPlan）与画面共用同一份时基（纯 node 测试也能加载）。
+import { BOLT_LOOK, FLY_MS } from './attackTiming'
 import type { DamageType } from '@whale/core'
 import { ceilFinalQuantity } from '@whale/core'
 import { tr } from '../../i18n/locale'
@@ -82,8 +85,6 @@ const NOSE_MAIN = noseOf(LAY.MAIN)
 /** 回落轻装尺寸的舰艏偏移（42）：同上 */
 const NOSE_ESC = noseOf(LAY.ESC)
 
-/** 弹道飞行时长 ms（撞点特效靠 CSS 动画延迟到此刻出现） */
-const FLY_MS = 420
 /** 弹道/闪光元素存活时间（略长于自身动画；渲染时惰性清理） */
 const BOLT_LIFE = FLY_MS + 500
 const FLASH_LIFE = 340
@@ -589,15 +590,9 @@ interface FlashV {
   delay?: number
 }
 
-/** 攻击形态演出参数（2026-09-05 船长：三族弹道观感分家）：
- * - kinetic 动能炮：快速曳光（默认 420ms）；
- * - explosive 导弹：慢速、虚线尾焰（760ms）——视觉上“追着飞”；
- * - plasma 激光/能量：近瞬光束（130ms）+ 细长光束线。 */
-export const BOLT_LOOK: Record<DamageType, { fly: number; dash: number | null }> = {
-  kinetic: { fly: 420, dash: null },
-  explosive: { fly: 760, dash: 14 },
-  plasma: { fly: 130, dash: null },
-}
+/** 攻击形态演出参数（2026-09-05 船长：三族弹道观感分家；数值 2026-11-05 移到
+ *  `attackTiming.ts`，与音效排期共用同一份时基）——这里保持原导出名，调用点不变。 */
+export { BOLT_LOOK }
 
 /**
  * **开火事件 → 弹道两端的锚点**（纯函数 · 2026-09-14 抽出，为的是**可测**）。

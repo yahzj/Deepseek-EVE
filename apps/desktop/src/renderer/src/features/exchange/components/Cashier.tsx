@@ -269,6 +269,7 @@ export function Cashier({
           <button
             type="button"
             className="ex-primary ex-primary-small"
+            data-sfx={mode === 'deposit' ? 'exchange-deposit-confirm' : 'exchange-withdraw-confirm'}
             disabled={busy}
             onClick={submit}
           >
