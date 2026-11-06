@@ -1046,18 +1046,20 @@ export class HttpExchangeClient implements ExchangeClient {
   }
 
   /**
-   * 回合内 10 秒行情步进时，实时更新内存缓存中正在生成的当前 K 线（M1 / M5 / intraday 等）。
-   * 让图表最右侧的活跃蜡烛针头实时上下伸缩，不需等待 30 秒 HTTP 轮询即可平滑反应价格变动。
+   * 用刚收到的最新行情补齐内存缓存里最右侧的活跃 K 线（M1 / M5 / intraday 等）。
+   * 只在成交量相比上一拍确有增加（即本拍确有真实成交）时更新：
+   * 不允许用行情快照拉伸出一根没有成交量的价格波动（船长 2026-11-06 要求）。
    */
   private updateIntraCandles(quotes: StockQuote[]): void {
     const now = Date.now()
     for (const quote of quotes) {
       const p = quote.price
       if (!Number.isFinite(p) || p <= 0) continue
-      // ponytail: 用 24h 累计量增量推算本拍量，跨桶调用会记到当前桶；要逐笔精确需服务端推送成交量
+      // 用 24h 累计量增量判断本拍是否真有成交；增量为 0 时保持蜡烛不动。
       const prevVolume = this.lastVolume24h.get(quote.code) ?? quote.volume24h
       const volumeDelta = Math.max(0, quote.volume24h - prevVolume)
       this.lastVolume24h.set(quote.code, quote.volume24h)
+      if (volumeDelta <= 0) continue
       for (const [key, bars] of this.chartCache) {
         if (!key.startsWith(`${quote.code}:`) || bars.length === 0) continue
         const periodStr = key.slice(quote.code.length + 1) as ChartPeriod
