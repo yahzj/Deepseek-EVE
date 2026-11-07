@@ -13,12 +13,12 @@
 
 ## 统计
 
-- 非归档文档 **377** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4709** KB · **52980** 行
-- 状态分布：**未标注** 183 · **已确认/已实现** 126 · **进行中** 47 · **待裁定** 20 · **历史留档** 1
-- 孤儿文档（0 引用）**161** 份 · 状态未标注 **183** 份
+- 非归档文档 **381** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4718** KB · **53071** 行
+- 状态分布：**未标注** 184 · **已确认/已实现** 129 · **进行中** 47 · **待裁定** 20 · **历史留档** 1
+- 孤儿文档（0 引用）**165** 份 · 状态未标注 **184** 份
 - 一、常用文档（按任务查阅）：**11** 份
 - 七、评审与体检（review）：**4** 份
-- 三、设计与工作文档（需核实状态）：**351** 份
+- 三、设计与工作文档（需核实状态）：**355** 份
 - 二、其它（docs 根目录）：**2** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
 - 八、测试档说明（test-saves）：**2** 份
@@ -29,7 +29,7 @@
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档） |
 |---|---|---|---|---|---|
 | `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定 | 未标注 | — | 23 KB / 134 行 | 45 |
-| `docs/architecture.md` | 架构文档 | 未标注 | — | 8 KB / 90 行 | 18 |
+| `docs/architecture.md` | 架构文档 | 未标注 | — | 8 KB / 90 行 | 19 |
 | `docs/catalog.md` | 文档目录 | 未标注 | — | 5 KB / 50 行 | 11 |
 | `docs/content-workbench.md` | 内容工作台 | 未标注 | — | 3 KB / 35 行 | 2 |
 | `docs/data-editor.md` | 大鲸鱼数据编辑器 | 未标注 | — | 4 KB / 45 行 | 6 |
@@ -38,7 +38,7 @@
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（现行译名表） | — | 46 KB / 810 行 | 17 |
 | `docs/glossary.md` | 术语词典 | 未标注 | — | 23 KB / 204 行 | 65 |
 | `docs/roadmap.md` | 当前待办与实施边界 | 未标注 | — | 9 KB / 77 行 | 62 |
-| `docs/single-source.md` | 单点索引（谁有权算、谁只能读） | 未标注 | — | 43 KB / 297 行 | 21 |
+| `docs/single-source.md` | 单点索引（谁有权算、谁只能读） | 未标注 | — | 44 KB / 299 行 | 21 |
 
 ## 七、评审与体检（review） —— 4 份
 
@@ -49,11 +49,15 @@
 | `docs/review/pending-decisions-20260910.md` | 待船长裁决清单（2026-09-10 · 二号整理，供逐条审核） | 未标注 | 2026-09-10 | 29 KB / 374 行 | 2 |
 | `docs/review/guoqing-audit-followup.md` | 国庆节审查当前跟进 | 未标注（已复核修复） | — | 3 KB / 22 行 | 4 |
 
-## 三、设计与工作文档（需核实状态） —— 351 份
+## 三、设计与工作文档（需核实状态） —— 355 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档） |
 |---|---|---|---|---|---|
+| `docs/design/black-market-coating-20261107.md` | 黑市名称裁切与护盾镀膜零盾 | 已确认/已实现（二号已实现自测） | 2026-11-07 | 2 KB / 21 行 | 0 |
 | `docs/design/courier-fleet-presets-20261107.md` | 快递免遇袭与编队预设 | 已确认/已实现（二号已实现自测） | 2026-11-07 | 3 KB / 29 行 | 0 |
+| `docs/design/faction-blueprint-hints-20261107.md` | 势力插件制造卡获取提示 | 已确认/已实现（二号已实现自测） | 2026-11-07 | 1 KB / 13 行 | 0 |
+| `docs/design/flagship-current-fleet-20261107.md` | 旗舰战沿用当前编队 | 未标注（船长明确授权） | 2026-11-07 | 3 KB / 25 行 | 0 |
+| `docs/design/ship-tier-range-20261107.md` | 舰级额外武器射程 | 已确认/已实现（二号已实现自测） | 2026-11-07 | 2 KB / 22 行 | 0 |
 | `docs/design/exchange-intra-persona-trading-20261106.md` | 人格盘中主动交易：让市场靠真实成交“活”起来（2026-11-06 · 一号 · main） | 未标注（已落码 · 本地提交 · 尚未部署生） | 2026-11-06 | 9 KB / 71 行 | 0 |
 | `docs/design/exchange-pure-flow-pricing-20261106.md` | 股市纯流量价：价格水平只由真实买卖盘决定（2026-11-06 · 一号 · main） | 未标注（已落码 · 已推送 · 已部署生产） | 2026-11-06 | 10 KB / 82 行 | 1 |
 | `docs/design/exchange-trade-driven-kline-20261106.md` | 股市成交驱动：K 线与最新价只认真实成交（2026-11-06 · 一号 · main） | 待裁定（已落码 · 待船长验收） | 2026-11-06 | 6 KB / 65 行 | 3 |
@@ -410,7 +414,7 @@
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档） |
 |---|---|---|---|---|---|
 | `docs/development-conventions-changelog.md` | 开发约定维护记录 | 未标注 | — | 13 KB / 103 行 | 6 |
-| `docs/l10n-pending.md` | 英文本地化记录 | 未标注 | — | 50 KB / 821 行 | 33 |
+| `docs/l10n-pending.md` | 英文本地化记录 | 未标注 | — | 50 KB / 829 行 | 33 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -436,11 +440,15 @@
 | `docs/design/ship-battle-art/mounts-20260910.md` | 舰船战斗图形·挂点对齐（引擎喷口 + 真实炮口）2026-09-10 | 已确认/已实现（已确认） | 2026-09-10 | 6 KB / 94 行 | 1 |
 | `docs/design/ship-battle-art/README.md` | 舰船战斗图形重设计(三号 · 样稿阶段,2026-09-09) | 未标注 | — | 8 KB / 87 行 | 30 |
 
-## 附：孤儿文档（0 引用，161 份）
+## 附：孤儿文档（0 引用，165 份）
 
 > 仅表示没有其他收录文档提到本文件名，不能据此删除、归档或批准阅读历史。
 
+- `docs/design/black-market-coating-20261107.md`（2026-11-07 · 2 KB）—— 黑市名称裁切与护盾镀膜零盾
 - `docs/design/courier-fleet-presets-20261107.md`（2026-11-07 · 3 KB）—— 快递免遇袭与编队预设
+- `docs/design/faction-blueprint-hints-20261107.md`（2026-11-07 · 1 KB）—— 势力插件制造卡获取提示
+- `docs/design/flagship-current-fleet-20261107.md`（2026-11-07 · 3 KB）—— 旗舰战沿用当前编队
+- `docs/design/ship-tier-range-20261107.md`（2026-11-07 · 2 KB）—— 舰级额外武器射程
 - `docs/design/exchange-intra-persona-trading-20261106.md`（2026-11-06 · 9 KB）—— 人格盘中主动交易：让市场靠真实成交“活”起来（2026-11-06 · 一号 · main）
 - `docs/design/exchange-demand-adaptive-20261105.md`（2026-11-05 · 13 KB）—— 深空证券交易所 · 玩家需求自适应流动性（2026-11-05）
 - `docs/design/fleet-command-compensation-20261105.md`（2026-11-05 · 4 KB）—— 旧存档编队协同指挥补偿
@@ -602,8 +610,9 @@
 - `docs/design/v18.1-support.md`（无日期 · 9 KB）—— V18.1 设计总结：支援装备 + 叠加收敛（取消同类唯一 · 已确认实施）
 - `docs/design/v18b2-lasers.md`（无日期 · 5 KB）—— V18B-2 设计总结：激光炮武器族（能量系形态 · 已确认实施）
 
-## 附：状态未标注（183 份，待补一行 `状态：…`）
+## 附：状态未标注（184 份，待补一行 `状态：…`）
 
+- `docs/design/flagship-current-fleet-20261107.md`（2026-11-07）—— 旗舰战沿用当前编队
 - `docs/test-saves/fleet-presets-20261107.md`（2026-11-07）—— 编队预设验证档
 - `docs/design/exchange-intra-persona-trading-20261106.md`（2026-11-06）—— 人格盘中主动交易：让市场靠真实成交“活”起来（2026-11-06 · 一号 · main）
 - `docs/design/exchange-pure-flow-pricing-20261106.md`（2026-11-06）—— 股市纯流量价：价格水平只由真实买卖盘决定（2026-11-06 · 一号 · main）

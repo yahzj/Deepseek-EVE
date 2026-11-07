@@ -23,12 +23,10 @@ import {
   weekendReclaimedAt,
 } from '@whale/core'
 import { tr } from '../i18n/locale'
-import { WeekendFlagshipPrepModal } from './WeekendFlagshipPrep'
+import { FlagshipFleetActions } from '../features/combat/FlagshipFleetActions'
 
 export function WeekendInvasionLogRow({ engine, onGoto }: { engine: GameEngine; onGoto: () => void }) {
   const [, force] = useState(0)
-  /** 战前准备弹层开合（2026-09-25 船长令：入侵窗口里点「发现敌方旗舰」进来） */
-  const [prepOpen, setPrepOpen] = useState(false)
   /**
    * 血条/进度每秒都在动（章鱼人也在削）⇒ 自己开一个 1 秒心跳刷新读数（卸载即清）。
    * ⚠ 原先这条心跳是给"旗舰倒计时"走的；倒计时撤了，但**入侵进度条**同样需要它。
@@ -118,18 +116,9 @@ export function WeekendInvasionLogRow({ engine, onGoto }: { engine: GameEngine; 
       {flagship.shown && !flagship.down ? (
         <div className="app-weekend-box-row">
           <span className="app-weekend-box-warn">{tr('ui.weekend.060')}</span>
-          <button
-            className="app-btn is-small is-primary"
-            onClick={(e) => {
-              e.stopPropagation()
-              setPrepOpen(true)
-            }}
-          >
-            {tr('ui.weekend.062')}
-          </button>
+          <FlagshipFleetActions engine={engine} />
         </div>
       ) : null}
-      {prepOpen ? <WeekendFlagshipPrepModal engine={engine} onClose={() => setPrepOpen(false)} /> : null}
     </div>
   )
 }

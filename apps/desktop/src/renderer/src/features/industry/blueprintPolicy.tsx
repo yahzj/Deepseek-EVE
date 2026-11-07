@@ -1,5 +1,5 @@
 import { manualSlotOf, stationActivityStartBlockReason } from '@whale/core'
-import type { GameState } from '@whale/core'
+import type { GameState, SimContext } from '@whale/core'
 import type { GameEngine } from '../../game/engine'
 import { cmdText } from '../../i18n/locale'
 import { tr } from '../../i18n/locale'
@@ -20,6 +20,21 @@ import { tr } from '../../i18n/locale'
  */
 export function isWormholeBlueprint(bpId: string): boolean {
   return /^(bp|sbp)-wh-/.test(bpId)
+}
+
+/** 势力插件禁用声望兑换；一次性版本从信号空间取得，永久版本暂无投放。 */
+export function factionPlugBlueprintKind(ctx: SimContext, bpId: string): 'single' | 'unavailable' | null {
+  const bp = ctx.blueprints.get(bpId)
+  const mod = bp?.moduleId ? ctx.modules.get(bp.moduleId) : undefined
+  if (mod?.slot !== 'plug' || mod.blueprintExchangeDisabled !== true) return null
+  return bp?.singleUse === true ? 'single' : 'unavailable'
+}
+
+/** 不可获取的永久图纸不占目录；老档已有图纸、配方或在制生产线仍可访问。 */
+export function manufacturingBlueprintVisible(state: GameState, ctx: SimContext, bpId: string): boolean {
+  return factionPlugBlueprintKind(ctx, bpId) !== 'unavailable'
+    || state.learnedRecipes.includes(bpId) || (state.blueprintStock[bpId] ?? 0) > 0
+    || state.manufacturingRuns.some(run => run.active && run.blueprintId === bpId)
 }
 
 /** 主控此刻不能"亲自再开一条制造线"的原因（null = 可开；AI 核心驱动不受此限；

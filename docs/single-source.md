@@ -109,6 +109,8 @@
 | 敌舰受击增程的独立挂载件触发提示 | `announceFoeGunRangeBuff()` · `foeRange.ts`；说明继续走`mountEffectText()` | 主/副目标、独立文案、中英参数及原增程判定专项；`arch:guard` F2/F3 |
 | 五类准备阵容清洗、恢复与记忆 | `cleanPreparationSquads()` / `preparationSquadOf()` / `notePreparationSquad()` · `preparationSquads.ts` | 五类隔离、实例顺序、缺船/忙态、显式空、旧档兼容与往返；页面通过统一选择hook接入；`arch:guard` F2/F3 |
 | 我的舰队多套预设 | `cleanFleetPresets()` / `applyFleetPreset()` · `fleetPresets.ts` | 保存主控与成员顺序、停港预检、缺船/忙碌/超预算无部分切换、可选字段双轮往返 |
+| 舰级与船体武器射程加成 | `shipWeaponRangeBonusesOf()` · `ships/range.ts` | T1～T5额外0/5/10/15/20%，与原船体特性加算；战前武器规格与舰船信息共用，不影响无人机和基础炮 |
+| 制造卡势力插件图纸获取与隐藏 | `factionPlugBlueprintKind()` / `manufacturingBlueprintVisible()` · `features/industry/blueprintPolicy.tsx` | 一次性指向信号空间，永久未投放默认隐藏，已有配方/图纸/在制线保留；两套工业页共用 |
 | 护盾力场排除自身、有效目标与最大护盾代价 | `pulseShieldFieldFor()` / `SHIELD_FIELD_COST_PCT` · `combatRepair.ts` | 力场专项：费用与目标数无关、足量/不足/无目标、周期/混装/读档；详情费用读取同一常量；`arch:guard` F2/F3 |
 | 双方护盾自然回复与旗舰速率映射 | `passiveShieldRateOf()` · `combat/passiveRecovery.ts` | 当前盾比例、满盾托底、零盾不回；旗舰卡面速率基准与共享容量分离；战斗推进和估算共用 |
 | 恒定承伤下护盾回复与装甲自愈的破层时间 | `passiveShieldBreakSeconds()` / `passiveArmorBreakSeconds()` · `combat/passiveRecovery.ts` | 解析估算共用回复规则；无法破层返回无限时长，装甲自愈独立于修复输出加成 |

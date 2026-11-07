@@ -30,7 +30,7 @@ function world(ship = 'sh-wh-e-destroyer', plugs: string[] = []) {
 describe('五族船插确认参数与真实接线', () => {
   it('静态值与船长最后确认一致，其余通用插件不受影响', () => {
     expect(ctx.modules.get(ids[0]!)).toMatchObject({ speedPenaltyMps: 20, stealthWithPropulsion: true, plugNonStacking: true })
-    expect(ctx.modules.get(ids[1]!)).toMatchObject({ shieldArmorConversionPct: .5, shieldCapacityRetainedPct: .1, plugNonStacking: true })
+    expect(ctx.modules.get(ids[1]!)).toMatchObject({ shieldArmorConversionPct: .5, shieldCapacityRetainedPct: 0, plugNonStacking: true })
     expect(ctx.modules.get(ids[2]!)).toMatchObject({ shieldPassiveBonusPct: .5, plugNonStacking: true })
     expect(ctx.modules.get(ids[3]!)).toMatchObject({ cargoCapacityBonusPct: .25, droneBayBonusM3: 120, speedPenaltyMps: 20 })
     expect(ctx.modules.get(ids[3]!)!.cpuPenalty).toBeUndefined()
@@ -103,10 +103,10 @@ describe('五族船插确认参数与真实接线', () => {
     expect(w.state.fleet[w.uid]!.fitted.low.every(id => id === null)).toBe(true)
   })
 
-  it('镀膜保留10%最终盾，总装甲按半甲开场，结算和重载不补满转换层', () => {
+  it('镀膜护盾上限归零，总装甲按半甲开场，结算和重载不补满转换层', () => {
     const base = world(), w = world('sh-wh-e-destroyer', [ids[1]!])
     const converted = Math.ceil(base.spec.hp.s * .5)
-    expect(w.spec.hp).toEqual({ ...base.spec.hp, s: Math.ceil(base.spec.hp.s * .1), a: base.spec.hp.a + converted })
+    expect(w.spec.hp).toEqual({ ...base.spec.hp, s: 0, a: base.spec.hp.a + converted })
     w.state.fleet[w.uid]!.armorPct = .5
     const b = startBattleFor(w.state, ctx, w.uid, 'ano-training')!
     expect(b.units.player!.hp.a).toBe(Math.ceil(w.spec.hp.a * .5))
@@ -265,7 +265,7 @@ describe('五族船插确认参数与真实接线', () => {
     expect(createPlayerSpec(w.state, ctx, w.uid)!.weapons.filter(w => w.src === 'drone')).toHaveLength(12)
   })
 
-  it('镀膜与蓄能同装保留少量护盾，真实换波不再次增加转换装甲', () => {
+  it('镀膜与蓄能同装仍为零盾，真实换波不再次增加转换装甲', () => {
     const w = world('sh-wh-e-destroyer', [ids[1]!, ids[2]!])
     const card = { ...ctx.anomalies.get('ano-training')!, id: 'ano-coating-waves',
       waves: [{ units: 1, hpShare: .5 }, { units: 1, hpShare: .5 }] }
@@ -282,7 +282,7 @@ describe('五族船插确认参数与真实接线', () => {
     expect(b.waveIdx).toBe(1)
     expect(rt.hp).toEqual(before)
     expect(rt.hpMax!.s).toBe(w.spec.hp.s)
-    expect(rt.hpMax!.s).toBeGreaterThan(0)
+    expect(rt.hpMax!.s).toBe(0)
   })
 
   it('被动恢复未来来源与蓄能同区相加，50%加20%合成70%', () => {

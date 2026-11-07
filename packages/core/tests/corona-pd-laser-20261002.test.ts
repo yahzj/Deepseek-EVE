@@ -127,7 +127,7 @@ describe('PD激光：建档（必中 + 打机群 + 零行为变化）', () => {
     expect(pd!.canHitDrones, '防空属性 ⇒ 能筛到敌方机群').toBe(true)
     expect(pd!.antiDroneMul, '对机群伤害 ×2（对舰伤害不受影响）').toBe(2)
     expect(pd!.reloadMs).toBe(1_800)
-    expect(pd!.maxRangeM).toBe(3_000)
+    expect(pd!.maxRangeM).toBe(3_300) // T3 舰级射程 +10%
     /**
      * **端到端锁一次真实单发**：走完整建档链（长尾鲨 T3 有 `powerBonus` 0.25）
      * ⇒ 单发 = round(能量弹 9 × 2.75 × 1.25) = round(30.9375) = **31**。

@@ -12,6 +12,7 @@ import { bookPriceOf } from './blueprintValue'
 import { tr, cmdText, useL10n } from '../../i18n/locale'
 import type { HudTab, HudShelfKind, FeedTab, HudShelfRow } from './hudTypes'
 import { matRowsOf, readinessOf } from './hudMaterials'
+import { manufacturingBlueprintVisible } from './blueprintPolicy'
 
 export function useIndustryHud({ engine, onToast, onGotoMarket }: PageProps & {
   onGotoMarket?: (goodKey: string) => void
@@ -181,10 +182,11 @@ export function useIndustryHud({ engine, onToast, onGotoMarket }: PageProps & {
    * **二级子类候选：只列本门类下真有图纸的档**（与旧页同一套现算口径 `presentSubs`；「全部」常显）——
    * 选进一个必然空的档是船长 2026-09-14 点名的坑，所以按本页真数据现算。
    */
+  const availableShelfRows = shelfRows.filter(row => manufacturingBlueprintVisible(state, ctx, row.id))
   const shelfSubOptions = presentSubs(shelfKind === SUB_ALL ? [] : manuSubsOf(shelfKind), (key) =>
-    shelfRows.some((r) => r.keys.tab === shelfKind && r.keys.subKey === key),
+    availableShelfRows.some((r) => r.keys.tab === shelfKind && r.keys.subKey === key),
   )
-  const shelfShown = shelfRows.filter((r) => {
+  const shelfShown = availableShelfRows.filter((r) => {
     if (shelfKind !== SUB_ALL && r.keys.tab !== shelfKind) return false
     if (shelfSub !== SUB_ALL && r.keys.subKey !== shelfSub) return false
     if (shelfLearned !== SUB_ALL && shelfLearnedOf(r) !== (shelfLearned === 'learned')) return false
@@ -530,7 +532,7 @@ export function useIndustryHud({ engine, onToast, onGotoMarket }: PageProps & {
     setShelfKwRaw,
     shelfFilterActive,
     shelfShown,
-    shelfRows,
+    shelfRows: availableShelfRows,
     state,
     shelfKind,
     setShelfKind,

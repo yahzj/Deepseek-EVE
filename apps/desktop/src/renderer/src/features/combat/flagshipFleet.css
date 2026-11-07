@@ -1,0 +1,4 @@
+.app-flagship-fleet { display: flex; flex-direction: column; gap: 6px; min-width: 0; width: 100%; overflow-wrap: anywhere; }
+.app-flagship-fleet-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.app-flagship-fleet-tools .app-select { flex: 0 1 180px; width: 180px; max-width: 100%; min-width: 0; }
+.app-flagship-fleet .app-battle-ammo-warning { white-space: pre-line; }

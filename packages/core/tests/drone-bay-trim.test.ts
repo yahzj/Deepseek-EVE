@@ -10,7 +10,7 @@ import { droneLoadM3 } from '../src/equipment'
 
 const ctx = buildSimContext()
 
-/** 梭鱼：机巢 160；甲板扩展 MK2 ×2 → 230。清单 220 m³（赤鸢×10 + 猎鹰×4 + 雷鸥×1）。 */
+/** 梭鱼：机巢 200；甲板扩展 MK2 ×2 → 270。清单 220 m³（赤鸢×10 + 猎鹰×4 + 雷鸥×1）。 */
 function world() {
   const state = createInitialState({ nowWallMs: 0, seed: 5 })
   const uid = addShipToFleet(state, 'sh-swarm')
@@ -32,23 +32,23 @@ describe('机舱容量联动：卸下甲板扩展自动卸下超出的无人机�
     expect(droneLoadM3(state.fleet[uid]!.droneLoad, ctx)).toBe(220) // 10×10+4×20+1×40
     expect(countWare(state, 'drone-sentry')).toBe(0)
 
-    expect(unfitAt(state, 'high', 0, uid, ctx)).toBe(true) // 卸下第 1 位甲板扩展 → 容量 195
+    expect(unfitAt(state, 'high', 0, uid, ctx)).toBe(true) // 卸下一件甲板扩展 → 容量 235
 
-    // 逆序剔除：先卸清单末位的雷鸥（40 m³）→ 180 ≤ 195
-    expect(state.fleet[uid]!.droneLoad).toEqual({ 'drone-assault': 10, 'drone-heavy': 4 })
-    expect(countWare(state, 'drone-sentry')).toBe(1) // 退回仓库
-    expect(state.logs.some((l) => l.text.includes('无人机舱容量缩小'))).toBe(true)
-    expect(state.droneLossNotice).toContain('机舱容量不足')
+    // 逆序剔除：当前 220 m³ 未超 235 m³，不应卸载任何机群。
+    expect(state.fleet[uid]!.droneLoad).toEqual({ 'drone-assault': 10, 'drone-heavy': 4, 'drone-sentry': 1 })
+    expect(countWare(state, 'drone-sentry')).toBe(0)
+    expect(state.logs.some((l) => l.text.includes('无人机舱容量缩小'))).toBe(false)
+    expect(state.droneLossNotice).toBeUndefined()
   })
 
   it('卸到只剩船体机巢（195→160 m³ 再卸第二件）→ 继续自动卸下，直到装得下', () => {
     const { state, uid } = world()
-    unfitAt(state, 'high', 0, uid, ctx) // 230→195（卸雷鸥后 180）
-    unfitAt(state, 'high', 1, uid, ctx) // 195→160 → 180 仍超 → 再卸猎鹰（20）→ 160 装得下
+    unfitAt(state, 'high', 0, uid, ctx) // 270→235
+    unfitAt(state, 'high', 1, uid, ctx) // 235→200；机群 220 m³ 超容，逆序卸雷鸥
     const load = state.fleet[uid]!.droneLoad!
-    expect(droneLoadM3(load, ctx)).toBeLessThanOrEqual(160)
+    expect(droneLoadM3(load, ctx)).toBeLessThanOrEqual(200)
     expect(countWare(state, 'drone-sentry')).toBe(1)
-    expect(countWare(state, 'drone-heavy')).toBe(1) // 卸下 1 架猎鹰退回仓库
+    expect(countWare(state, 'drone-heavy')).toBe(0) // 卸下雷鸥后 180 m³ 已装得下
   })
 
   it('卸不影响机舱的件（战术导控）→ 不触发任何卸下', () => {

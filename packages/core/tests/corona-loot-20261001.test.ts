@@ -54,14 +54,15 @@ function freshState(ships: number, fitted: { high?: string[]; mid?: string[]; lo
 }
 
 describe('R 族势力特色装备：件定义', () => {
-  it('叠光激光炮在新6000米边界内开火，6001米及旧射程段不再开火', () => {
+  it('叠光激光炮按舰级射程加成后的边界开火', () => {
     const { state, ids } = freshState(1, { high: [LASER] })
-    for (const distance of [5900, 6000, 6001, 7000]) {
+    const effectiveRange = Math.round(ctx.modules.get(LASER)!.maxRangeM! * 1.1)
+    for (const distance of [5900, 6000, effectiveRange, effectiveRange + 1]) {
       const range = createFittingRange(state, ctx, ids[0]!, '测试靶', distance, 'a')!
       expect(range).not.toBeNull()
       advanceFittingRange(range, 10000)
       const weapon = fittingRangeStats(range).weapons.find(row => row.moduleId === LASER)
-      if (distance <= 6000) {
+      if (distance <= effectiveRange) {
         expect(weapon!.shots).toBeGreaterThan(0)
         expect(weapon!.damage).toBeGreaterThan(0)
       } else {

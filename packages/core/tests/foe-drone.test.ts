@@ -110,6 +110,7 @@ function runBattleWithState(
   const c = ctxWith(card);
   const state = high ? makeState(5, high) : makeState();
   const battle = startBattleFor(state, c, state.shipId, card.id, 0)!;
+  battle.distanceM = 3_000;
   state.expedition.active = true;
   state.expedition.phase = "battle";
   state.expedition.anomalyId = card.id;
@@ -134,6 +135,7 @@ function runBattleDrain(
   const c = ctxWith(card);
   const state = high ? makeState(5, high) : makeState();
   const battle = startBattleFor(state, c, state.shipId, card.id, 0)!;
+  battle.distanceM = 3_000;
   state.expedition.active = true;
   state.expedition.phase = "battle";
   state.expedition.anomalyId = card.id;
@@ -231,7 +233,7 @@ describe("敌方机群：生存池与开火", () => {
     const card = testCard(
       testShip([{ drone: FOE_DRONE_E_ALERT, count: 3 }], 1),
     );
-    const battle = runBattle(card);
+    const battle = runBattleWithState(card).battle;
     const droneFx = battle.fx.filter((e) => e.src === "drone");
     expect(droneFx.length).toBeGreaterThan(0);
     expect(droneFx.every((e) => e.artId === FOE_DRONE_E_ALERT.id)).toBe(true);
@@ -274,9 +276,8 @@ describe("防空选靶（船长 A1：只有带防空属性的武器能打敌机�
     const card = testCard(
       testShip([{ drone: FOE_DRONE_E_ALERT, count: 3 }], 1),
     );
-    const battle = runBattle(card);
+    const { state, battle } = runBattleWithState(card, 1_000);
     const foes = createFoeSpecs(card, bal);
-    const state = makeState();
 
     const first = pickFoeDroneTarget(state, battle, foes, 3000, RANGED);
     expect(first).toBeTruthy();

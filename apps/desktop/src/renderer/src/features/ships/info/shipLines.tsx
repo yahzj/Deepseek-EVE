@@ -1,6 +1,6 @@
 /** 功能域职责拆分，保持原计算与顺序。 */
 import { tr } from '../../../i18n/locale'
-import { type UnitSpec, type BattleBalance, battleSpeedBonusOf, thrusterCycleNote, type ShipDef, shipCategoryKeyOf, type DamageType, rangeEwBaseOf } from '@whale/core'
+import { type UnitSpec, type BattleBalance, battleSpeedBonusOf, thrusterCycleNote, type ShipDef, shipCategoryKeyOf, type DamageType, rangeEwBaseOf, shipWeaponRangeBonusesOf } from '@whale/core'
 import { type InfoLine, fmt, resistsText, DMG_LABEL, DmgChip, pct, slotListText, warpChargePct } from './primitives'
 import { shipSubClassText, shipRoleText, shipTierText } from '../../../ui/labelsText'
 
@@ -217,7 +217,7 @@ export function shipInfoLines(ship: ShipDef): InfoLine[] {
     // 2026-09-13 船长点名的三条**船体固有新机制**（只虫洞族专属舰船有；没有就不占行）
     ...(() => {
       const bits: string[] = []
-      const rangeText = Object.entries(ship.weaponRangeBonusPct ?? {})
+      const rangeText = Object.entries(shipWeaponRangeBonusesOf(ship))
         .map(([t, v]) => tr("ui.shipInfo.123", { p1: DMG_LABEL[t as keyof typeof DMG_LABEL] ?? t, p2: Math.round((v ?? 0) * 100) }))
         .join(' · ')
       if (rangeText) bits.push(rangeText)

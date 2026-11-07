@@ -17,6 +17,7 @@ import { tr } from '../../i18n/locale'
 import { productBaseOf, bookPriceOf } from './blueprintValue'
 import { cardLiveKeyOf } from './cardLiveKey'
 import { BlueprintCard } from './BlueprintCard'
+import { manufacturingBlueprintVisible } from './blueprintPolicy'
 
 /**
  * **组装机目录条目**（2026-09-22 第 3 步）。
@@ -369,7 +370,8 @@ export function ManufacturingPanel({
    * **二级子类候选：只列本门类下真有卡片的档**（2026-09-20 船长「明显不存在的子类筛选隐藏」）——
    * 与蓝图书架同一套现算口径（`presentSubs`）；「全部」档常显（基线②）。
    */
-  const subOptions = presentSubs(manuSubsOf(tab), (key) => items.some((it) => inTab(it.kindLabel) && it.subKey === key))
+  const availableItems = items.filter(it => manufacturingBlueprintVisible(state, engine.ctx, it.id))
+  const subOptions = presentSubs(manuSubsOf(tab), (key) => availableItems.some((it) => inTab(it.kindLabel) && it.subKey === key))
   /**
    * ⚠ **2026-09-26：三级「图纸」那一维连同它的现算表 `usesShown` 一起删除**
    * （船长令：「**删除原先的图纸筛选**」）——"一次性/永久"两轴已并进「蓝图」维度（`learn`）。
@@ -388,7 +390,7 @@ export function ManufacturingPanel({
     return missingMaterials(state, engine.ctx, { materials, buildSeconds, buildCostIsk: 0 }, blueprintId).length === 0
   }
 
-  const visible = items
+  const visible = availableItems
     /** 搜索命中（名称 ＋ 产物/材料 ＋ 说明）：`kq` 为空 ⇒ 恒真；与筛选取「与」 */
     .filter((it) => {
       if (kq.length === 0) return true

@@ -246,7 +246,10 @@ describe('出击加速、激光校准与协处理器5%', () => {
     const scope = { exports: {} as { shipInfoLines: (ship: unknown) => Array<{ k: string; v: string }> },
       tr: (id: string, p?: Record<string, unknown>) => l10nEntryText(L10N[id]!, 'zh').replace(/\{(\w+)\}/g, (m,k) => String(p?.[k] ?? m)),
       fmt: String, shipRoleText: () => '', shipSubClassText: (value: string) => value, shipCategoryKeyOf: () => '', shipTierText: () => '', DMG_LABEL: {}, shipSlotsOf: (ship: any) => ship.slots,
-      pct: (v: number) => `${Math.round(v * 100)}%`, resistsText: () => '', shipCategoryLabelOf: () => '', slotListText: () => '', shipCommandCostOf, rangeEwBaseOf }
+      pct: (v: number) => `${Math.round(v * 100)}%`, resistsText: () => '', shipCategoryLabelOf: () => '', slotListText: () => '', shipCommandCostOf, rangeEwBaseOf,
+      shipWeaponRangeBonusesOf: (ship: any) => ({ ...ship.weaponRangeBonusPct, kinetic: (ship.weaponRangeBonusPct?.kinetic ?? 0) + ((ship.tier ?? 1) - 1) * .05,
+        explosive: (ship.weaponRangeBonusPct?.explosive ?? 0) + ((ship.tier ?? 1) - 1) * .05,
+        plasma: (ship.weaponRangeBonusPct?.plasma ?? 0) + ((ship.tier ?? 1) - 1) * .05 }) }
     runInNewContext(ts.transpileModule(fn.getText(source), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React }, fileName: 'shipInfo.tsx' }).outputText, scope)
     for (const id of droneHulls) {
       const rows = scope.exports.shipInfoLines(ctx.ships.get(id))

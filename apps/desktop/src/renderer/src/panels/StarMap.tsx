@@ -18,7 +18,7 @@ import { invasionWreckRowsOf } from '../pages/wreckCards'
 import { Glyph, NAV_TONES, ICO_TONES, itemGlyphName } from '../ui/Glyphs'
 import { BeaconHighSecPrompt } from '../ui/beaconPrompt'
 import { UI_TONES } from '../ui/tones'
-import { WeekendFlagshipPrepModal } from './WeekendFlagshipPrep'
+import { FlagshipFleetActions } from '../features/combat/FlagshipFleetActions'
 import { FOE_ACCENT, FOE_FAMILY_LABEL, foeFamilyOf } from '../ui/shipArt'
 import { briefsOfPool, briefShipsOf, mountLabelText } from '../ui/foeBrief'
 import type { FoeBriefLine } from '../ui/foeBrief'
@@ -1669,7 +1669,6 @@ export function GalaxyActions({
    * 判据全在 core（`weekendFlagshipPrep()` 非空 = 旗舰已现身、未落定局、本族是 BOSS 族），
    * 这里再要求**选中的正是本场核心星系** —— 外围星系不摆这个按钮，免得玩家以为哪儿都能打。
    */
-  const [prepOpen, setPrepOpen] = useState(false)
   const flagshipPrep = state.weekendEvent?.coreId === galaxy.id ? engine.weekendFlagshipPrep() : null
   /**
    * **旗舰编成一览**（**2026-09-26 船长报障**：「**入侵的星系详细里，发现敌方旗舰卡牌并没有介绍
@@ -1841,8 +1840,6 @@ export function GalaxyActions({
           }}
         />
       ) : null}
-      {/* 旗舰战战前准备弹层（2026-09-25）：本地状态开合，弹层自包含 */}
-      {prepOpen ? <WeekendFlagshipPrepModal engine={engine} onClose={() => setPrepOpen(false)} /> : null}
       <div className="app-bay-title">{tr("ui.Expedition.083")}</div>
       {/* ⑨ 入侵旗舰（2026-09-25 船长令）：核心星系的星系详细里摆入口 ⇒ 点开战前准备界面。
           ⚠ 同日第二条：「找不到是因为**不明显**，给容器加一个**红色圆边背景**」⇒ 行容器挂
@@ -1880,9 +1877,7 @@ export function GalaxyActions({
               </span>
             ) : null}
           </span>
-          <button className="app-btn is-small is-primary" style={{ padding: '4px 18px', fontSize: 15 }} onClick={() => setPrepOpen(true)}>
-            {tr('ui.weekend.062')}
-          </button>
+          <FlagshipFleetActions engine={engine} />
         </div>
       ) : null}
       {/**

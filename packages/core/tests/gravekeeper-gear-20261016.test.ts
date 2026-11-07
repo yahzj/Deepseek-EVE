@@ -181,6 +181,32 @@ describe('玩家苏生', () => {
 })
 
 describe('危机超载', () => {
+  it('镀膜令护盾上限为零时，未受击的首个战斗步进即触发危机超载，读档不丢失', () => {
+    const { state, sid, card, use } = shooting()
+    state.fleet[sid]!.plugs = ['plug-alien-shield-coating']
+    state.fleet[sid]!.fitted.mid = [ids[1]]
+    const spec = createPlayerSpec(state, use, sid)!
+    expect(spec.hp.s).toBe(0)
+    const battle = startBattleFor(state, use, sid, card.id, 0, 1000)!
+    expect(battle.units.player!.hpMax!.s).toBe(0)
+    const hp = { ...battle.units.player!.hp }
+    for (const unit of Object.values(battle.units)) unit.weapons.fill(1e9)
+    state.gameMs = 10
+    advanceBattleFor(state, use, battle, sid, card.id)
+    expect(battle.units.player!.hp).toEqual(hp)
+    expect(battle.meCrisisActive?.player).toBe(true)
+    const active = playerGravekeeperSpecOf(battle, spec)
+    expect(active.speedMps).toBeCloseTo(spec.speedMps * .6)
+    const turret = spec.weapons.findIndex(w => w.src === 'turret')
+    expect(turret).toBeGreaterThanOrEqual(0)
+    expect(active.weapons[turret]!.maxRangeM).toBe(Math.round(spec.weapons[turret]!.maxRangeM * 1.4))
+    state.expedition.battle = battle
+    state.expedition.active = true
+    state.expedition.phase = 'battle'
+    state.expedition.anomalyId = 'ano-training'
+    const loaded = loadSaveFile(serializeSaveFile(state)).state.expedition.battle!
+    expect(loaded.meCrisisActive?.player).toBe(true)
+  })
   it('未装新件的动态规格与原对象一致，普通损管不生成苏生/危机/蓄能状态', () => {
     const {state,sid}=world(['mod-turret-kin-3'],[],['mod-dc-3'])
     const spec=createPlayerSpec(state,ctx,sid)!
