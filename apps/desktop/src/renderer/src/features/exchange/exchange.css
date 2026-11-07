@@ -5184,7 +5184,7 @@ html body .app-root .ex-page .ex-simple-big-action-btn,
   justify-content: center;
   padding: 0;
   border-radius: 4px;
-  font-size: var(--wui-fs-base);
+  font-size: calc(var(--wui-fs-base) + 2px);
   font-weight: 800;
   letter-spacing: 2px;
   cursor: pointer;

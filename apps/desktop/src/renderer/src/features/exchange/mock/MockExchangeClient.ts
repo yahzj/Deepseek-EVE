@@ -67,7 +67,7 @@ const CONTRACT_VERSION = 3
 const FEE_RATE = 0.0005
 /** 原型专用虚拟资金：1000 万 ISK，不入存档 */
 const START_CASH = 10_000_000
-const DAILY_TRADE_LIMIT = 50_000_000
+const DAILY_TRADE_LIMIT = 1_000_000_000
 const UTC_DAY_MS = 86_400_000
 /** 高息分段的本金上限：前 1 亿按风险档，超出部分按固定低息。 */
 const SAVINGS_PRINCIPAL_CAP = 100_000_000

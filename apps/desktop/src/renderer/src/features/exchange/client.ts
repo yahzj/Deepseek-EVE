@@ -430,6 +430,8 @@ export interface ExchangeSnapshot {
   agents: AgentView[]
   /** 手续费率（界面预览用，避免把数字写死在组件里） */
   feeRate: number
+  /** 当前回合（含本回合委托配额；Mock 或尚未同步时为 null） */
+  round?: RoundInfo | null
 }
 
 export interface MarginCallPayload {

@@ -432,6 +432,7 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
             className={`ex-simple-big-action-btn ${tab === 'buy' ? 'is-buy' : 'is-short'} ex-btn-progress`}
             data-sfx="exchange-bet"
             data-sfx-on="success"
+            aria-label={tab === 'buy' ? T.simpleBuyAction : T.simpleShortAction}
             aria-disabled={!canSubmit}
             style={progressStyle(tab === 'buy' ? buyProgress : shortProgress)}
             onClick={() => {
@@ -444,8 +445,8 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
             }}
             title={canSubmit ? `${tab === 'buy' ? T.simpleBuyAction : T.simpleShortAction}（${T.simplePendingNote}）(Enter)` : (disableReason ?? '')}
           >
-            <span aria-hidden="true">{tab === 'buy' ? '▲' : '▼'}</span>{' '}
-            {busy ? (tab === 'buy' ? T.submittingBuy : T.submittingShort) : (tab === 'buy' ? T.simpleBuyAction : T.simpleShortAction)}
+            <span aria-hidden="true">{tab === 'buy' ? '↗' : '↘'}</span>{' '}
+            {T.betAction}
             {(tab === 'buy' ? buyProgress : shortProgress).active ? ` ${(tab === 'buy' ? buyProgress : shortProgress).pct}%` : ''}
           </button>
 

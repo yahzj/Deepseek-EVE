@@ -8691,6 +8691,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ui.exchangeTexts.482': { zh: '+2.4%/日', en: '+2.4%/day' },
   'ui.exchangeTexts.483': { zh: '3 亿/日', en: '300M/day' },
   'ui.exchangeTexts.484': { zh: '专业投资暂未开放', en: 'Pro investing is not available yet' },
+  'ui.exchangeTexts.485': { zh: '下注', en: 'BET' },
 
   'ui.exchangeStock.001': { zh: '星海重工', en: 'Star Heavy Industries' },
   'ui.exchangeStock.002': { zh: '银河信托', en: 'Galactic Trust' },

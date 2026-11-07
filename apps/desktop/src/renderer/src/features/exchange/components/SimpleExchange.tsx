@@ -107,7 +107,8 @@ export function SimpleExchange({
   )
   const [allInFx, setAllInFx] = useState(false)
   const betCount = snap.account.holdings.length + snap.account.positions.length
-  const orderCount = snap.orders.length
+  const usedOrders = Math.max(0, Math.round(snap.round?.usedOrders ?? 0))
+  const maxOrders = Math.max(1, Math.round(snap.round?.maxOrders ?? 10))
 
   useEffect(() => {
     writeExchangePref(EXCH_PREF.simpleSide, sideTab)
@@ -201,8 +202,7 @@ export function SimpleExchange({
             className={`ex-simple-side-tab${sideTab === 'orders' ? ' is-on' : ''}`}
             onClick={() => setSideTab('orders')}
           >
-            {T.myOrdersTitle}
-            {orderCount > 0 ? ` (${orderCount})` : ''}
+            {T.myOrdersTitle} {usedOrders}/{maxOrders}
           </button>
           <button
             type="button"

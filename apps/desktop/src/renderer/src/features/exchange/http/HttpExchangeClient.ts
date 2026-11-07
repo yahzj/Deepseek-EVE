@@ -321,7 +321,7 @@ function normalizeAccount(raw: unknown): ExchangeAccount | null {
       ? (raw.pendingWithdrawals.filter(isRecord) as unknown as ExchangeAccount['pendingWithdrawals'])
       : [],
     holdings: Array.isArray(raw.holdings) ? raw.holdings.map(normalizeHolding).filter(isPresent) : [],
-    dailyTradeLimit: num(raw.dailyTradeLimit, 50_000_000),
+    dailyTradeLimit: num(raw.dailyTradeLimit, 1_000_000_000),
     dailyTradeUsed: num(raw.dailyTradeUsed),
   }
 }
@@ -484,7 +484,7 @@ function emptyAccount(): ExchangeAccount {
     positions: [],
     pendingWithdrawals: [],
     holdings: [],
-    dailyTradeLimit: 50_000_000,
+    dailyTradeLimit: 1_000_000_000,
     dailyTradeUsed: 0,
   }
 }
@@ -1277,6 +1277,8 @@ export class HttpExchangeClient implements ExchangeClient {
     const round = normalizeRound(raw)
     if (round === null) throw new ExchangeError('malformed_response', '回合信息响应格式不正确')
     this.round = round
+    // 回合配额是快照的一部分：拉取后通知页面刷新「我的委托 0/10」。
+    this.emitTick()
     return round
   }
 
@@ -1485,6 +1487,7 @@ export class HttpExchangeClient implements ExchangeClient {
       news: this.news,
       agents: this.agents,
       feeRate: this.feeRate,
+      round: this.round,
     }
   }
 
