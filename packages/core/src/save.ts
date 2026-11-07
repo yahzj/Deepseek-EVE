@@ -34,6 +34,7 @@ import { WORMHOLE_ARCHETYPES, WORMHOLE_GRID_SAVE_MAX_R, isWormholeEventKey, worm
 import { cleanWormholeEventInstance, cleanWormholeExpeditionRun } from './wormholeExpeditionSave'
 import { cleanWormholePreparationTemplates } from './wormholePreparationTemplates'
 import { cleanPreparationSquads } from './preparationSquads'
+import { cleanFleetPresets } from './fleetPresets'
 import { cleanCommandExpedition, cleanWeekendSquad } from './combat/command/save'
 import { cleanCombatSortie } from './combat/command/roster'
 import { WORMHOLE_FAMILY_ORDER, wormholeFamilyOfSeed } from './wormholeFoes'
@@ -575,6 +576,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
   const fitPresets: Record<string, ShipFitPreset[]> = {}
   const wormholePreparationTemplates = cleanWormholePreparationTemplates(src.wormholePreparationTemplates)
   const preparationSquads = cleanPreparationSquads(src.preparationSquads)
+  const fleetPresets = cleanFleetPresets(src.fleetPresets)
   for (const [defId, listRaw] of Object.entries(asRaw(src.fitPresets))) {
     if (defId.length === 0 || !Array.isArray(listRaw)) continue
     const list: ShipFitPreset[] = []
@@ -3011,6 +3013,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     ...(Object.keys(fitPresets).length > 0 ? { fitPresets } : {}),
     ...(wormholePreparationTemplates.length > 0 ? { wormholePreparationTemplates } : {}),
     ...(preparationSquads !== undefined ? { preparationSquads } : {}),
+    ...(fleetPresets.length ? { fleetPresets } : {}),
     ...(cleanCombatSortie(src.combatEscort) ? { combatEscort: cleanCombatSortie(src.combatEscort) } : {}),
     blueprintStock,
     market,

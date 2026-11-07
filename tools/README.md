@@ -1,5 +1,10 @@
 # 工具区台账（tools/）
 
+## 编队预设（2026-11-07）
+
+- `npx tsx tools/make-fleet-presets-save.ts`：从全新状态生成三艘同型实例及两套不同主控/顺序的预设，经双轮读档核对后独占创建`docs/test-saves/test-save-fleet-presets-<上海时间>.json`；加载步骤见`docs/test-saves/fleet-presets-20261107.md`，不读取个人档。
+- `npm run build`后运行`node tools/fleet-presets-browser-check.cjs`：全新合成档及自有无头Chrome验证两种布局、1366×768与390×844尺寸的保存、改名、套用、覆盖/删除确认与重载，输出截图和几何读数至`tools/_ui-artifacts/fleet-presets/`。不读个人档，结束关闭自有PID并清理已校验的独立临时目录；不代替桌面观感验收。
+
 ## 声音正式入库（2026-11-04）
 
 - 音效台点「导出正式入库包」下载 `whale-sfx-pack-<时间戳>.zip` 后，在仓库根运行 `npm run audio:install`（`tsx tools/audio-install.ts`）：校验 zip 内 `manifest.json`（`whale-idle-sfx-pack` v1）与 `assets` 路径映射，按语义 id 写入 `apps/desktop/src/renderer/src/assets/{sfx,bgm,ambient}/`；默认清理同一事件的旧扩展名/变体，`--dry-run` 只预览、`--keep-variants` 保留变体并警告；可传包路径或 `--pack=`，缺省自动找仓库根/下载目录最新包。只读包、不读个人档；体积超限（sfx 300KB / bgm 5MB / ambient 2MB）与非 mp3 仅警告不阻断。

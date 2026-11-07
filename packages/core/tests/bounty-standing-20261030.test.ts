@@ -99,12 +99,12 @@ describe('每日赏金声望', () => {
     noteStandingEarned(state, 'dsi', 10)
     state.standings.dsi = 4
     state.sideTasks.bounty = [task(tier)]
-    expect(bountyTaskStandingGain(tier)).toBe(tier - 1)
+    expect(bountyTaskStandingGain(tier)).toBe(tier)
     settleBountyTaskVictory(state, ctx, 'a-0', tier)
     const back = loadSaveFile(serializeSaveFile(state, NOW)).state
     settleBountyTaskVictory(back, ctx, 'a-0', tier)
-    expect(standingOf(back, 'dsi')).toBe(10 + tier - 1)
-    expect(spendableStandingOf(back, 'dsi')).toBe(4 + tier - 1)
+    expect(standingOf(back, 'dsi')).toBe(10 + tier)
+    expect(spendableStandingOf(back, 'dsi')).toBe(4 + tier)
     expect(back.sideTasks.bounty).toHaveLength(0)
   })
   it('首胜声望与每日任务奖励叠加，已首胜仍可领取新日任务奖励', () => {
@@ -116,8 +116,8 @@ describe('每日赏金声望', () => {
       expect(startExpedition(state, 'a-0', ctx, { lairTier: 3 }).ok).toBe(true)
       state.expedition.battle!.ended = 'me'
       resolveBattleOutcome(state, ctx)
-      expect(standingOf(state, 'dsi') - before).toBe(2 + (first ? cards[0]!.standingGain : 0))
-      expect(state.logs.some(row => row.text.includes(`协会声望 +${2 + (first ? cards[0]!.standingGain : 0)}`))).toBe(true)
+      expect(standingOf(state, 'dsi') - before).toBe(3 + (first ? cards[0]!.standingGain : 0))
+      expect(state.logs.some(row => row.text.includes(`协会声望 +${3 + (first ? cards[0]!.standingGain : 0)}`))).toBe(true)
     }
   })
   it('战败不发，任务过期或普通悬赏不发每日奖励', () => {

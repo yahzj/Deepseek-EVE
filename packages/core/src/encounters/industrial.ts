@@ -24,11 +24,12 @@ export function industrialActivityOf(state: GameState): IndustrialActivity {
 
 /** 只有主控实际出勤进入新海盗路径，敌人完整配置同时写入战斗覆写。 */
 export function spawnIndustrialEncounter(state: GameState, ctx: SimContext, exp: Exposure): boolean {
+  if (state.sideTasks.deliver !== null) return false
   const base = industrialBaseThreatOf(ctx, exp.galaxyId)
   if (base === null) return false
   const config = ctx.balance.encounter.industrial
   const ids = industrialSortieOf(state)
-  const virtualCargo = state.hauling.active ? state.hauling.fleetLeg?.loadedM3 ?? 0 : state.sideTasks.deliver?.volumeM3 ?? 0
+  const virtualCargo = state.hauling.active ? state.hauling.fleetLeg?.loadedM3 ?? 0 : 0
   const fleet = industrialFleetSnapshotOf(state, ctx, ids, virtualCargo)
   const activity = industrialActivityOf(state)
   const view = industrialThreatOf(base, fleet.industrialMassKg, fleet.cargoM3, config.threat.profiles[activity])

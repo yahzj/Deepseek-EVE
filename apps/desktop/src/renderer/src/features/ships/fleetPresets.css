@@ -1,0 +1,8 @@
+.app-fleet-presets { flex: 0 0 auto; min-width: 0; border-bottom: 1px solid rgb(var(--wui-border)); padding: 8px 0; }
+.app-fleet-presets-toolbar, .app-fleet-preset-actions, .app-fleet-preset-confirm { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.app-fleet-presets-toolbar input { width: 180px; min-width: 0; max-width: 100%; flex: 0 1 180px; }
+.app-fleet-preset-icon { width: 30px; height: 30px; padding: 0; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 30px; }
+.app-fleet-presets-list { max-height: 200px; overflow: auto; margin-top: 8px; }
+.app-fleet-preset-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 8px 0; border-top: 1px solid rgb(var(--wui-border)); }
+.app-fleet-preset-detail { display: grid; gap: 3px; flex: 1 1 220px; min-width: 0; overflow-wrap: anywhere; font-size: 12px; }
+.app-fleet-preset-confirm { flex: 1 1 100%; overflow-wrap: anywhere; }

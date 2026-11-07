@@ -1,4 +1,5 @@
 import { combatRosterOf, encounterCombatRosterOf } from '@whale/core'
+import { saveFleetPreset, renameFleetPreset, deleteFleetPreset, applyFleetPreset } from '@whale/core'
 /**
  * 界面侧引擎封装（胶水层）——M1 版。
  *
@@ -3160,6 +3161,30 @@ export class GameEngine {
 
   rememberPreparationSquad(kind: import('@whale/core').PreparationSquadKind, squad: readonly string[]): void {
     if (notePreparationSquad(this.state, kind, squad, this.ctx)) { this.notify(); void this.persist() }
+  }
+
+  fleetPresetSave(name: string, replaceId?: string): CommandResult {
+    const result = saveFleetPreset(this.state, this.ctx, name, replaceId)
+    if (result.ok) { this.notify(); void this.persist() }
+    return result
+  }
+
+  fleetPresetRename(id: string, name: string): CommandResult {
+    const result = renameFleetPreset(this.state, id, name)
+    if (result.ok) { this.notify(); void this.persist() }
+    return result
+  }
+
+  fleetPresetDelete(id: string): CommandResult {
+    const result = deleteFleetPreset(this.state, id)
+    if (result.ok) { this.notify(); void this.persist() }
+    return result
+  }
+
+  fleetPresetApply(id: string): CommandResult {
+    const result = applyFleetPreset(this.state, this.ctx, id)
+    if (result.ok) { this.notify(); void this.persist() }
+    return result
   }
 
   wormholePrepareFromTemplate(shipIds: readonly string[], request: WormholePreparationRequest, id: string) {

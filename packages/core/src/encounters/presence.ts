@@ -8,8 +8,6 @@ import { nextRandom, pickOne } from '../rng'
 import { shipDisplayName } from '../instances'
 import { spawnIndustrialEncounter, industrialSortieOf } from './industrial'
 import { industrialFleetSnapshotOf, industrialFrequencyOf } from './risk'
-import { timedRouteExposureOf } from './travelExposure'
-import { HOME_GALAXY_ID } from '../state'
 
 /** 旧档遗留兜底档位（data ANOMALIES hidden 条目）：仅无 anomalyId 的旧遭遇应战/命名用；
  * 新伏击一律抽当地可见悬赏敌群，不再走此表。
@@ -103,6 +101,8 @@ export interface Exposure {
  * 那条提示（那条文案讲的是低安，与占领区无关）。
  */
 export function collectExposures(state: GameState, ctx: SimContext, includeOccupiedAt?: number): Exposure[] {
+  // 快递途中不参与随机遇袭；已有遭遇由原结算路径继续处理。
+  if (state.sideTasks.deliver !== null) return []
   const bal = ctx.balance.encounter
   const out = new Map<string, Exposure>()
   const push = (e: Exposure): void => {
@@ -120,13 +120,6 @@ export function collectExposures(state: GameState, ctx: SimContext, includeOccup
   if (state.hauling.active && state.hauling.fleetLeg) {
     const leg = state.hauling.fleetLeg
     const current = leg.path[leg.pathIndex]
-    if (current) push({ galaxyId: current.galaxyId, shipId: state.shipId, kind: '停留' })
-    return [...out.values()]
-  }
-  if (state.sideTasks.deliver) {
-    const d = state.sideTasks.deliver
-    const duration = d.flightDurationMs ?? d.arriveAtGameMs - d.departAtGameMs
-    const current = timedRouteExposureOf(ctx, HOME_GALAXY_ID, d.galaxyId, duration, duration - (d.arriveAtGameMs - state.gameMs))
     if (current) push({ galaxyId: current.galaxyId, shipId: state.shipId, kind: '停留' })
     return [...out.values()]
   }

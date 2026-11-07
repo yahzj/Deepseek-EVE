@@ -1,5 +1,33 @@
 # 英文本地化记录
 
+## 编队预设（2026-11-07）
+
+| ID | 内容 | 状态 |
+|---|---|---|
+| `core.fleetPreset.001` | 停港空闲限制 | 待本地化 |
+| `core.fleetPreset.002` | 空名称 | 待本地化 |
+| `core.fleetPreset.003` | 预设不存在 | 待本地化 |
+| `core.fleetPreset.004` | 同名限制 | 待本地化 |
+| `core.fleetPreset.005` | 数量上限p1 | 待本地化 |
+| `core.fleetPreset.006` | 缺失忙碌舰船p1 | 待本地化 |
+| `ui.fleetPreset.001` | 编队预设 | 待本地化 |
+| `ui.fleetPreset.002` | 名称输入 | 待本地化 |
+| `ui.fleetPreset.003` | 保存当前编队 | 待本地化 |
+| `ui.fleetPreset.004` | 套用编队 | 待本地化 |
+| `ui.fleetPreset.005` | 重命名 | 待本地化 |
+| `ui.fleetPreset.006` | 覆盖 | 待本地化 |
+| `ui.fleetPreset.007` | 删除 | 待本地化 |
+| `ui.fleetPreset.008` | 确认 | 待本地化 |
+| `ui.fleetPreset.009` | 取消 | 待本地化 |
+| `ui.fleetPreset.010` | 覆盖确认p1 | 待本地化 |
+| `ui.fleetPreset.011` | 删除确认p1 | 待本地化 |
+| `ui.fleetPreset.012` | 保存反馈 | 待本地化 |
+| `ui.fleetPreset.013` | 套用反馈 | 待本地化 |
+| `ui.fleetPreset.014` | 改名反馈 | 待本地化 |
+| `ui.fleetPreset.015` | 删除反馈 | 待本地化 |
+| `ui.fleetPreset.016` | 主控/成本/数量p1～p4 | 待本地化 |
+| `ui.fleetPreset.017` | 空列表 | 待本地化 |
+
 > 2026-11-05 船长明确启动英文准备：既有 336 条延期英文按 `docs/glossary-en.md` 补译并清除 `enDeferred` 标记，本页对应历史登记状态统一改为「已完成」以保留追溯；之后新增且仍标记 `enDeferred` 的条目继续登记为「待本地化」。同批将 `features/exchange/texts.ts` 的双语文案迁入唯一表（新增 481 条表项），源码不再内联中文字面量。
 
 ## 装配概览与活动舰选择（2026-11-05）

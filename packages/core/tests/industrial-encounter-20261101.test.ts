@@ -15,6 +15,7 @@ import { startMining } from '../src/mining'
 import { weekendFlagshipBattleViewOf } from '../src/weekendLaunch'
 import { notePreparationSquad } from '../src/preparationSquads'
 import { advanceComms } from '../src/comms'
+import { weekendEncounterAllowedIn } from '../src/weekendBounty'
 
 function world() {
   const original = buildSimContext()
@@ -30,6 +31,35 @@ function world() {
 }
 
 describe('工业遇袭接线与时间账本', () => {
+  it('快递在低安与占领区均无暴露、不抽遇袭，直接生成入口也拒绝，其他驻留仍暴露', () => {
+    const { state, ctx, galaxy } = world()
+    state.sideTasks.deliver = { taskId: 123, goodKey: '', refId: '', need: 0, stationId: 'site-redring', galaxyId: galaxy,
+      departAtGameMs: 0, arriveAtGameMs: 600_000, flightDurationMs: 600_000, rewardIsk: 100, volumeM3: 500 }
+    const rng = { ...state.rng }
+    expect(collectExposures(state, ctx)).toEqual([])
+    const now = new Date(2026, 10, 7, 12).getTime()
+    state.weekendEvent = { seq: 1, startedAtWallMs: now, coreId: galaxy, peripheryIds: [], family: 'A', contributed: {} }
+    expect(weekendEncounterAllowedIn(state, galaxy, now)).toBe(true)
+    expect(collectExposures(state, ctx, now)).toEqual([])
+    expect(rollLowSecAmbush(state, ctx, 1, now)).toBe(false)
+    expect(rollLowSecAmbush(state, ctx)).toBe(false)
+    expect(spawnIndustrialEncounter(state, ctx, { galaxyId: galaxy, shipId: state.shipId, kind: '停留' })).toBe(false)
+    expect(state.rng).toEqual(rng)
+    expect(state.encounter.active).toBe(false)
+    state.sideTasks.deliver = null
+    expect(collectExposures(state, ctx)).toHaveLength(1)
+  })
+
+  it('已开始的快递遭遇仍正常结算，胜利后保留原快递批次', () => {
+    const { state, ctx, galaxy } = world()
+    spawnIndustrialEncounter(state, ctx, { galaxyId: galaxy, shipId: state.shipId, kind: '停留' })
+    state.sideTasks.deliver = { taskId: 123, goodKey: '', refId: '', need: 0, stationId: 'site-redring', galaxyId: galaxy,
+      departAtGameMs: 0, arriveAtGameMs: 600_000, rewardIsk: 100, volumeM3: 500 }
+    state.encounter.battle!.ended = 'me'
+    settleEncounterBattle(state, ctx, state.encounter)
+    expect(state.encounter.active).toBe(false)
+    expect(state.sideTasks.deliver?.taskId).toBe(123)
+  })
   it('独立AI不提供暴露，主控在港不受影响', () => {
     const { state, ctx, galaxy } = world()
     const aiShip = addShipToFleet(state, 'sh-shrike')

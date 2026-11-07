@@ -4,6 +4,7 @@
 import { memo, useEffect, useRef, useState } from 'react'
 import { Check, Plus, Wrench } from '../ui/layoutIcons'
 import { RangeEwFleet } from '../features/combat/RangeEwPanel'
+import { FleetPresets } from '../features/ships/FleetPresets'
 import type { ReactNode } from 'react'
 import {
   AI_CORE_ORDER,
@@ -793,6 +794,7 @@ export function ShipPage({
         }
       >
         {!commandBudget.ok ? <div className="app-warn app-fleet-command-warning">{cmdText(commandBudget)}</div> : null}
+        <FleetPresets engine={engine} busy={fleetBusy} onToast={onToast} />
         <RangeEwFleet state={state} ctx={ctx} ids={combatRoster} />
         {fleetBusy ? <div className="app-dim app-fleet-command-warning">{tr('ui.command.004')}</div> : null}
         {/* 舰队工具条（2026-09-10 船长：搜索/状态筛选；样式与仓库、技能目录同款）——固定在列表上方不随滚动

@@ -905,6 +905,8 @@ export interface GameStateV9 extends Omit<GameStateV8, 'version' | 'blueprints'>
   wormholePreparationTemplates?: import('./wormholePreparationTemplates').WormholePreparationTemplate[]
   /** 各准备界面分别记忆实例与顺序；空数组是玩家明确清空，缺省才走默认。 */
   preparationSquads?: import('./preparationSquads').PreparationSquads
+  /** 我的舰队预设：只保存实例、主控和顺序；旧档缺省无预设。 */
+  fleetPresets?: import('./fleetPresets').FleetPreset[]
   /** 主控出发作业时锁定的实际护航舰名单；旧在途缺省不临时召来基地舰。 */
   combatEscort?: import('./combat/command/types').CombatSortie
 }

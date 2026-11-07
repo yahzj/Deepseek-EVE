@@ -10,7 +10,7 @@ export const BOUNTY_ZONE_PLAN: ReadonlyArray<{ zone: SecurityZone; count: number
 ]
 export const BOUNTY_TASKS_PER_ROUND = BOUNTY_ZONE_PLAN.reduce((sum, plan) => sum + plan.count, 0)
 
-const BOUNTY_STANDING: Readonly<Record<LairTier, number>> = { 1: 0, 2: 1, 3: 2 }
+const BOUNTY_STANDING: Readonly<Record<LairTier, number>> = { 1: 1, 2: 2, 3: 3 }
 
 /** 每日任务的额外声望，独立于目标卡首胜奖励。 */
 export function bountyTaskStandingGain(tier: LairTier): number {
