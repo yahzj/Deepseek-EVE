@@ -15,6 +15,9 @@ import type { ChartPeriod, Kline } from './client'
 /** 分时图最多显示的点数（船长规格：最多抽样 240 点） */
 export const INTRADAY_MAX_POINTS = 240
 
+/** 简单界面分时图的显示窗口（10 秒一点 ≈ 最近 20 分钟）：中栏大图与左栏小图共用，避免两处漂移 */
+export const INTRADAY_VIEW_POINTS = 120
+
 /** 合成历史根数（每个周期都铺满 400 根，保证一进页就有图） */
 export const HISTORY_BARS = 400
 

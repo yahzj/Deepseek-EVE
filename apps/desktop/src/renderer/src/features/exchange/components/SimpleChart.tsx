@@ -8,6 +8,7 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import type { ChartPeriod, ExchangeClient, StockQuote } from '../client'
+import { INTRADAY_VIEW_POINTS } from '../chartPeriods'
 import { pct, price } from '../format'
 import { T } from '../texts'
 
@@ -137,8 +138,8 @@ export function SimpleChart({ client, code, quote, tick }: SimpleChartProps) {
       const coords = candleBars.map((c) => [c.cx, c.top] as [number, number])
       return { minP, maxP, coords, candleBars, points: [], pathLine: '', pathArea: '' }
     } else {
-      // 分时折线模式（10 秒高频走势，最多取最近 120 点）
-      const sample = series.slice(-120)
+      // 分时折线模式（10 秒高频走势，取最近 INTRADAY_VIEW_POINTS 点 ≈ 20 分钟，与左栏小图同窗口）
+      const sample = series.slice(-INTRADAY_VIEW_POINTS)
       if (sample.length < 2) {
         return { minP: 0, maxP: 0, coords: [], candleBars: [], points: [], pathLine: '', pathArea: '' }
       }
