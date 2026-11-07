@@ -77,9 +77,13 @@ const EMPTY_BOND_POSITION: BondPosition = {
   settledMinute: 0,
   openedAt: 0,
   minutes: 0,
-  winDailyPpb: 22_000,
-  loseDailyPpb: -1_978_000,
-  winPermille: 999,
+  winDailyPpb: 120_000_000,
+  loseDailyPpb: -120_000_000,
+  winPermille: 998,
+  lowDailyPpb: 12_000_000,
+  principalCap: 100_000_000,
+  dailyCap: 200_000_000,
+  capUsed: 0,
   cash: 0,
 }
 
@@ -91,16 +95,23 @@ const EMPTY_FUND_POSITION: FundPosition = {
   settledMinute: 0,
   openedAt: 0,
   minutes: 0,
-  winDailyPpb: 300_000,
-  loseDailyPpb: -500_000,
+  winDailyPpb: 514_300_000,
+  loseDailyPpb: -400_000_000,
   winPercent: 70,
+  lowDailyPpb: 24_000_000,
+  principalCap: 100_000_000,
+  dailyCap: 300_000_000,
+  capUsed: 0,
   cash: 0,
 }
 
 const EMPTY_BOND_PRODUCT: BondProduct = {
   id: 'WHALE-BOND',
   name: '舰船债券 · 稳健型',
-  dailyRate: 0.00002,
+  dailyRate: 0.11952,
+  lowDailyRate: 0.012,
+  principalCap: 100_000_000,
+  dailyCap: 200_000_000,
   note: '联机产品以服务器配置为准',
 }
 

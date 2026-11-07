@@ -2727,6 +2727,7 @@
 }
 
 .ex-bond-name {
+  position: relative;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -2737,6 +2738,85 @@
 .ex-bond-name b {
   color: rgb(var(--wui-gold));
   font-size: var(--wui-fs-s);
+}
+
+.ex-savings-anchor {
+  padding: 0 3px;
+  margin: 0 -3px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  cursor: default;
+  user-select: none;
+  transition: border-color 0.12s ease, background-color 0.12s ease;
+}
+
+.ex-help-mark {
+  margin-left: 3px;
+  color: rgb(var(--wui-text-dim));
+  font-size: 0.7em;
+  line-height: 1;
+  vertical-align: super;
+  user-select: none;
+}
+
+.ex-savings-anchor:hover {
+  border-color: rgb(var(--wui-border));
+  background: rgb(var(--wui-bg-panel) / 0.55);
+}
+
+.ex-savings-pop {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 40;
+  padding-top: 8px;
+}
+
+.ex-savings-pop-line {
+  position: absolute;
+  top: 0;
+  left: 16px;
+  width: 1px;
+  height: 8px;
+  background: rgb(var(--wui-border));
+}
+
+.ex-savings-pop-body {
+  min-width: 210px;
+  padding: 7px 9px;
+  border: 1px solid rgb(var(--wui-border));
+  border-radius: 5px;
+  background: rgb(var(--wui-bg-panel));
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.3);
+}
+
+.ex-savings-tip {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 210px;
+  line-height: 1.45;
+}
+
+.ex-savings-tip-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.ex-savings-tip-label {
+  color: rgb(var(--wui-text-dim));
+}
+
+.ex-savings-tip-value {
+  color: rgb(var(--wui-text));
+  font-weight: 600;
+}
+
+.ex-savings-tip-cap {
+  color: rgb(var(--wui-gold));
+  font-weight: 600;
 }
 
 .ex-bond-rate {
@@ -7312,7 +7392,8 @@ html body .app-root.is-layout-modern .ex-page .ex-simple-big-action-btn:disabled
   /* 按内容高度排，不随右栏拉伸：否则全屏下内容顶上、按钮沉底，中间空一大块 */
   flex: 0 0 auto;
   min-height: 0;
-  overflow: hidden;
+  /* 收益悬浮窗从卡片内向下展开，不能被卡片裁掉 */
+  overflow: visible;
   display: flex;
   flex-direction: column;
   background: rgb(var(--wui-bg-panel)) !important;

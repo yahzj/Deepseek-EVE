@@ -31,6 +31,7 @@ export function FundCard({
   const [position, setPosition] = useState<FundPosition | null>(null)
   const [amountText, setAmountText] = useState('100000')
   const [busy, setBusy] = useState(false)
+  const [tipOpen, setTipOpen] = useState(false)
   const openProgress = useActionProgress(client)
   const redeemProgress = useActionProgress(client)
 
@@ -62,6 +63,22 @@ export function FundCard({
   const isInvalid = !Number.isFinite(numericAmount) || numericAmount <= 0
   const isOverCash = !isInvalid && numericAmount > availableCash
   const canSubmit = !busy && !isInvalid && !isOverCash && availableCash > 0
+  const tip = (
+    <div className="ex-savings-tip">
+      <div className="ex-savings-tip-row">
+        <span className="ex-savings-tip-label">{T.savingsHighLabel}</span>
+        <b className="ex-savings-tip-value">{T.fundTipHighValue}</b>
+      </div>
+      <div className="ex-savings-tip-row">
+        <span className="ex-savings-tip-label">{T.savingsLowLabel}</span>
+        <b className="ex-savings-tip-value">{T.fundTipLowValue}</b>
+      </div>
+      <div className="ex-savings-tip-row">
+        <span className="ex-savings-tip-label">{T.savingsCapLabel}</span>
+        <b className="ex-savings-tip-cap">{T.fundTipCapValue}</b>
+      </div>
+    </div>
+  )
 
   const setRatio = (ratio: number): void => {
     if (availableCash <= 0 || busy) return
@@ -116,11 +133,23 @@ export function FundCard({
     <section className="ex-panel ex-bond ex-fund" aria-label={T.fundTitle}>
       <header className="ex-panel-head">
         <h3 className="ex-panel-title">{T.fundTitle}</h3>
-        <span className="ex-dim">{T.fundRateHint}</span>
       </header>
       <div className="ex-bond-body">
-        <div className="ex-bond-name">
-          <b>{T.fundName}</b>
+        <div
+          className="ex-bond-name"
+          onMouseEnter={() => setTipOpen(true)}
+          onMouseLeave={() => setTipOpen(false)}
+        >
+          <b className="ex-savings-anchor">
+            {T.fundName}
+            <span className="ex-help-mark">?</span>
+          </b>
+          {tipOpen ? (
+            <div className="ex-savings-pop" role="tooltip">
+              <span className="ex-savings-pop-line" />
+              <div className="ex-savings-pop-body">{tip}</div>
+            </div>
+          ) : null}
         </div>
 
         {/* 账户可用资金：等宽排版 */}
