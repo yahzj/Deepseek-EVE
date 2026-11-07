@@ -29,6 +29,7 @@ import { SimpleChart } from './SimpleChart'
 import { EXCHANGE_PREF_EVENT, EXCH_PREF, readExchangeChoice, writeExchangePref } from '../viewPrefs'
 import { SimpleTrade } from './SimpleTrade'
 import { SimplePosition } from './SimplePosition'
+import { SimpleTutorial } from './SimpleTutorial'
 import { MyOrders } from './MyOrders'
 
 /** 简单界面右栏一级切换：我的下注 / 我的委托 / 理财与基金（2026-11-06 船长令拆开） */
@@ -236,6 +237,8 @@ export function SimpleExchange({
           </GuestLock>
         </div>
       </aside>
+
+      <SimpleTutorial />
     </div>
   )
 }

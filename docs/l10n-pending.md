@@ -824,3 +824,11 @@
 | --- | --- | --- |
 
 | `ui.exchange.029` | 今日股票成交额 | 待本地化 |
+| `ui.exchangeTexts.486` | 新手引导：选股票 | 待本地化 |
+| `ui.exchangeTexts.487` | 新手引导：看走势 | 待本地化 |
+| `ui.exchangeTexts.488` | 新手引导：选涨跌 | 待本地化 |
+| `ui.exchangeTexts.489` | 新手引导：输入金额 | 待本地化 |
+| `ui.exchangeTexts.490` | 新手引导：下注 | 待本地化 |
+| `ui.exchangeTexts.491` | 新手引导：看持仓委托 | 待本地化 |
+| `ui.exchangeTexts.492` | 新手引导：风险提醒 | 待本地化 |
+| `ui.exchangeTexts.497` | 新手引导：规则速记（回合/笔数/额度/手续费） | 待本地化 |
