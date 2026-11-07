@@ -8224,3 +8224,294 @@ html body .app-root.is-layout-modern .ex-page .ex-simple-big-action-btn:disabled
     display: block;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   星舰 HUD 方向舱门 + 下注 CTA（2026-11-08 船长视觉方案）
+   - 涨/跌：对称 45° 切角，未选中深色待机，选中霓虹通电
+   - 下注：四角切角、顶边光刃、45° 扫描纹理、SEC//READY 标
+   ══════════════════════════════════════════════════════════════ */
+
+html body .app-root .ex-page .ex-simple-trade-tab {
+  position: relative;
+  border-radius: 0 !important;
+  background: rgb(13 22 33 / 0.75) !important;
+  border: 1px solid rgb(120 150 180 / 0.2) !important;
+  color: rgb(160 180 200 / 0.5) !important;
+  text-shadow: none !important;
+  filter: none;
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    color 0.18s ease !important;
+}
+
+html body .app-root .ex-page .ex-simple-trade-tab.is-buy,
+html body .app-root .ex-page .ex-simple-trade-tab.is-short {
+  border-radius: 2px !important;
+}
+
+html body .app-root .ex-page .ex-simple-trade-tab.is-buy:hover:not(.is-on):not([aria-selected='true']),
+html body .app-root .ex-page .ex-simple-trade-tab.is-short:hover:not(.is-on):not([aria-selected='true']) {
+  background: rgb(20 34 50 / 0.85) !important;
+  border-color: rgb(120 150 180 / 0.4) !important;
+  color: rgb(220 235 250 / 0.85) !important;
+}
+
+html body .app-root .ex-page .ex-simple-trade-tab.is-buy.is-on,
+html body .app-root .ex-page .ex-simple-trade-tab.is-buy[aria-selected='true'] {
+  background: rgb(224 108 101 / 0.16) !important;
+  border-color: #e06c65 !important;
+  color: #f78c85 !important;
+  text-shadow: none !important;
+  box-shadow:
+    inset 3px 0 0 #e06c65,
+    inset 0 0 8px rgb(224 108 101 / 0.15) !important;
+  filter: none !important;
+}
+
+html body .app-root .ex-page .ex-simple-trade-tab.is-short.is-on,
+html body .app-root .ex-page .ex-simple-trade-tab.is-short[aria-selected='true'] {
+  background: rgb(78 201 130 / 0.16) !important;
+  border-color: #4ec982 !important;
+  color: #6be09b !important;
+  text-shadow: none !important;
+  box-shadow:
+    inset 3px 0 0 #4ec982,
+    inset 0 0 8px rgb(78 201 130 / 0.15) !important;
+  filter: none !important;
+}
+
+/* 未选中的方向舱门：彻底断电，沉入底板 */
+html body .app-root .ex-page .ex-simple-trade-tab.is-buy:not(.is-on):not([aria-selected='true']),
+html body .app-root .ex-page .ex-simple-trade-tab.is-short:not(.is-on):not([aria-selected='true']) {
+  background: rgb(13 22 33 / 0.75) !important;
+  border-color: rgb(120 150 180 / 0.2) !important;
+  color: rgb(160 180 200 / 0.5) !important;
+  text-shadow: none !important;
+  filter: none !important;
+}
+
+html body .app-root .ex-page .ex-simple-big-action-btn {
+  position: relative;
+  border-radius: 0 !important;
+  border-radius: 2px !important;
+  /* 默认是「未就绪 / 锁死」待机态：冷灰深底 + 细灰边 + 低灰度文字 */
+  background-color: rgb(13 22 33 / 0.5) !important;
+  background-image: none !important;
+  border: 1px solid rgb(120 150 180 / 0.15) !important;
+  color: rgb(160 180 200 / 0.35) !important;
+  text-shadow: none !important;
+  box-shadow: none !important;
+  filter: none !important;
+}
+
+/* 通电激活：纯色平涂，复用界面原生红绿 */
+html body .app-root .ex-page .ex-simple-big-action-btn.is-buy:not([aria-disabled='true']) {
+  background-color: rgb(224 108 101 / 0.22) !important;
+  background-image: none !important;
+  border-color: #e06c65 !important;
+  color: #fff !important;
+  text-shadow: none !important;
+  box-shadow: inset 3px 0 0 #e06c65 !important;
+  filter: none !important;
+}
+
+html body .app-root .ex-page .ex-simple-big-action-btn.is-short:not([aria-disabled='true']) {
+  background-color: rgb(78 201 130 / 0.22) !important;
+  background-image: none !important;
+  border-color: #4ec982 !important;
+  color: #fff !important;
+  text-shadow: none !important;
+  box-shadow: inset 3px 0 0 #4ec982 !important;
+  filter: none !important;
+}
+
+html body .app-root .ex-page .ex-simple-big-action-btn.is-buy:not([aria-disabled='true']):hover:not(:disabled) {
+  background-color: rgb(224 108 101 / 0.32) !important;
+}
+
+html body .app-root .ex-page .ex-simple-big-action-btn.is-short:not([aria-disabled='true']):hover:not(:disabled) {
+  background-color: rgb(78 201 130 / 0.32) !important;
+}
+
+html body .app-root .ex-page .ex-simple-big-action-btn::after {
+  content: 'SEC//READY';
+  position: absolute;
+  right: 10px;
+  bottom: 3px;
+  color: rgb(255 255 255 / 0.42);
+  font-family: var(--wui-mono);
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: 0;
+  pointer-events: none;
+}
+
+html body .app-root .ex-page .ex-simple-big-action-btn[aria-disabled='true'] {
+  background-image: none !important;
+  background-color: rgb(13 22 33 / 0.5) !important;
+  border-color: rgb(120 150 180 / 0.15) !important;
+  color: rgb(160 180 200 / 0.35) !important;
+  box-shadow: none !important;
+  filter: none !important;
+}
+
+/* 提示栏与预计股数同步界面原生红绿 */
+html body .app-root .ex-page .ex-simple-trade-hint.is-buy {
+  background: rgb(224 108 101 / 0.06) !important;
+  border-color: rgb(224 108 101 / 0.45) !important;
+  color: #f78c85 !important;
+}
+
+html body .app-root .ex-page .ex-simple-trade-hint.is-short {
+  background: rgb(78 201 130 / 0.06) !important;
+  border-color: rgb(78 201 130 / 0.45) !important;
+  color: #6be09b !important;
+}
+
+html body .app-root .ex-page .ex-simple-trade-preview .ex-highlight-green {
+  color: #e06c65 !important;
+}
+
+html body .app-root .ex-page .ex-simple-trade-preview .ex-highlight-red {
+  color: #4ec982 !important;
+}
+
+/* HUD 字距与微型战术英文 */
+html body .app-root .ex-page .ex-simple-trade-tab {
+  letter-spacing: 3px !important;
+}
+
+html body .app-root .ex-page .ex-simple-big-action-btn {
+  letter-spacing: 3px !important;
+}
+
+.ex-hud-en {
+  margin-left: 4px;
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  opacity: 0.45;
+  text-shadow: none;
+}
+
+
+
+/* ══════════════════════════════════════════════════════════════
+   对齐装配台 5 个视觉基因（2026-11-08）
+   ══════════════════════════════════════════════════════════════ */
+
+/* 1. 顶栏 KPI 小卡：左侧色条 + 中英双语微标 */
+html body .app-root .ex-page .ex-topbar-stats {
+  gap: 8px;
+}
+
+html body .app-root .ex-page .ex-stat {
+  min-width: 0;
+  padding: 4px 9px 4px 11px;
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.16);
+  border-radius: 2px;
+  background: linear-gradient(90deg, rgb(var(--wui-hud-primary) / 0.06), transparent);
+  box-shadow: inset 3px 0 0 rgb(var(--wui-hud-primary) / 0.75);
+}
+
+html body .app-root .ex-page .ex-stat.is-pnl.is-up {
+  box-shadow: inset 3px 0 0 #e06c65;
+}
+
+html body .app-root .ex-page .ex-stat.is-pnl.is-down {
+  box-shadow: inset 3px 0 0 #4ec982;
+}
+
+html body .app-root .ex-page .ex-stat-tag {
+  color: rgb(var(--wui-hud-primary) / 0.8) !important;
+  font-family: var(--wui-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+html body .app-root .ex-page .ex-stat-tag small {
+  opacity: 0.5;
+}
+
+html body .app-root .ex-page .ex-stat b {
+  font-size: var(--wui-fs-md);
+}
+
+/* 2. 图表工程方格网 + 战术微标 */
+html body .app-root .ex-page .ex-simple-svg-wrap {
+  background-image:
+    linear-gradient(90deg, rgb(var(--wui-hud-primary) / 0.05) 1px, transparent 1px),
+    linear-gradient(0deg, rgb(var(--wui-hud-primary) / 0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+html body .app-root .ex-page .ex-simple-svg-wrap::before {
+  content: 'MARKET FEED // REALTIME TELEMETRY';
+  position: absolute;
+  top: 4px;
+  left: 6px;
+  z-index: 1;
+  color: rgb(var(--wui-hud-primary) / 0.35);
+  font-family: var(--wui-mono);
+  font-size: 8px;
+  letter-spacing: 0.15em;
+  pointer-events: none;
+}
+
+/* 3. 区块抬头：左侧亮青竖线 + 青黑渐变带 */
+html body .app-root .ex-page .ex-panel-head {
+  border-left: 3px solid rgb(var(--wui-hud-primary) / 0.7);
+  background: linear-gradient(90deg, rgb(var(--wui-hud-primary) / 0.08), transparent);
+  padding-left: 8px;
+}
+
+html body .app-root .ex-page .ex-bond-name {
+  box-shadow: inset 3px 0 0 rgb(var(--wui-hud-primary) / 0.7);
+  padding-left: 7px;
+}
+
+/* 4. 成交额工业仪表条 */
+.ex-turnover-meter {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ex-turnover-meter-head {
+  display: flex;
+  justify-content: space-between;
+  color: rgb(var(--wui-hud-text-muted));
+  font-size: var(--wui-fs-2xs);
+}
+
+.ex-turnover-meter-track {
+  height: 4px;
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.18);
+  background: rgb(var(--wui-hud-primary) / 0.12);
+}
+
+.ex-turnover-meter-fill {
+  display: block;
+  height: 100%;
+  background: rgb(var(--wui-hud-primary) / 0.7);
+  box-shadow: 0 0 6px rgb(var(--wui-hud-primary) / 0.4);
+}
+
+/* 5. 提示框改实线微光暗底，替掉虚线 */
+html body .app-root .ex-page .ex-simple-trade-hint.is-buy,
+html body .app-root .ex-page .ex-simple-trade-hint.is-short {
+  border-style: solid !important;
+}
+
+/* 1366x768：底部提示下移；理财区背景撑满右栏到底 */
+html body .app-root .ex-page .ex-simple-trade-guard-hint {
+  margin-top: 6px;
+}
+
+html body .app-root .ex-page .ex-simple-finance {
+  background: rgb(var(--wui-bg-panel) / 0.6);
+  border: 1px solid rgb(var(--wui-border) / 0.6);
+  border-radius: 6px;
+}

@@ -161,29 +161,23 @@ export function FundCard({
         </div>
 
         {/* 持仓区：本金 → 累计收益（2026-11-06 船长令：与债券同一排序，去掉无意义读数） */}
-        {hasPosition ? (
-          <>
-            <div className="ex-preview-row">
-              <span>{T.fundPrincipal}</span>
-              <b className="ex-num">
-                {money(principal)} <span className="ex-unit">{T.creditUnit}</span>
-              </b>
-            </div>
-            <div className={`ex-preview-row ${accrued > 0 ? 'is-bond-highlight' : ''}`}>
-              <span>{T.fundAccrued}</span>
-              <b
-                className={`ex-num ${
-                  accrued > 0 ? 'is-up ex-fund-result-win' : accrued < 0 ? 'is-down ex-fund-result-lose' : ''
-                }`}
-              >
-                {accrued > 0 ? '+' : accrued < 0 ? '−' : ''}
-                {money(Math.abs(accrued))} <span className="ex-unit">{T.creditUnit}</span>
-              </b>
-            </div>
-          </>
-        ) : (
-          <div className="ex-bond-hint">{T.fundEmpty}</div>
-        )}
+        <div className="ex-preview-row">
+          <span>{T.fundPrincipal}</span>
+          <b className="ex-num">
+            {money(principal)} <span className="ex-unit">{T.creditUnit}</span>
+          </b>
+        </div>
+        <div className={`ex-preview-row ${accrued > 0 ? 'is-bond-highlight' : ''}`}>
+          <span>{T.fundAccrued}</span>
+          <b
+            className={`ex-num ${
+              accrued > 0 ? 'is-up ex-fund-result-win' : accrued < 0 ? 'is-down ex-fund-result-lose' : ''
+            }`}
+          >
+            {accrued > 0 ? '+' : accrued < 0 ? '−' : ''}
+            {money(Math.abs(accrued))} <span className="ex-unit">{T.creditUnit}</span>
+          </b>
+        </div>
 
         {/* 申购 / 追加金额 */}
         <div className="ex-bond-field">
@@ -268,19 +262,17 @@ export function FundCard({
             {busy ? T.fundCalculating : hasPosition ? T.fundAddBtn : T.fundPlayBtn}
             {openProgress.active ? ` ${openProgress.pct}%` : ''}
           </button>
-          {hasPosition ? (
-            <button
-              type="button"
-              className="ex-mini-btn ex-btn-progress"
-              data-sfx="exchange-sell"
-              disabled={busy}
-              style={progressStyle(redeemProgress)}
-              onClick={() => void redeem()}
-            >
-              {T.fundRedeemBtn}
-              {redeemProgress.active ? ` ${redeemProgress.pct}%` : ''}
-            </button>
-          ) : null}
+          <button
+            type="button"
+            className="ex-mini-btn ex-btn-progress"
+            data-sfx="exchange-sell"
+            disabled={busy || !hasPosition}
+            style={progressStyle(redeemProgress)}
+            onClick={() => void redeem()}
+          >
+            {T.fundRedeemBtn}
+            {redeemProgress.active ? ` ${redeemProgress.pct}%` : ''}
+          </button>
         </div>
       </div>
     </section>

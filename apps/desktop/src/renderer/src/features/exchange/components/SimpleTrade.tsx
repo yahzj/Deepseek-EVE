@@ -45,6 +45,10 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
   const currentPrice = quote?.price ?? 1
   const cash = snap.account.cash
   const dailyTurnoverLeft = Math.max(0, snap.account.dailyTradeLimit - snap.account.dailyTradeUsed)
+  const turnoverPct =
+    snap.account.dailyTradeLimit > 0
+      ? Math.max(0, Math.min(100, (snap.account.dailyTradeUsed / snap.account.dailyTradeLimit) * 100))
+      : 0
 
   const inputCashNum = Number(cashAmount) || 0
   const feeRate = snap.feeRate ?? 0
@@ -306,7 +310,15 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
             <span className="ex-dim">{T.availCashShort}: <b className="ex-num">{money(cash)}</b></span>
             <span className="ex-dim">{T.marketPriceShort}: <b className="ex-num">{price(currentPrice)}</b></span>
           </div>
-          <div className="ex-dim">{T.exchangeDailyLimit}: <span className="ex-num">{money(snap.account.dailyTradeUsed)} / {money(snap.account.dailyTradeLimit)}</span></div>
+          <div className="ex-turnover-meter">
+            <div className="ex-turnover-meter-head">
+              <span>{T.exchangeDailyLimit}</span>
+              <span className="ex-num">{money(snap.account.dailyTradeUsed)} / {money(snap.account.dailyTradeLimit)}</span>
+            </div>
+            <div className="ex-turnover-meter-track">
+              <span className="ex-turnover-meter-fill" style={{ width: `${turnoverPct}%` }} />
+            </div>
+          </div>
 
           <div className="ex-simple-input-group">
             <div className="ex-simple-input-wrap">
@@ -447,6 +459,7 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
           >
             <span aria-hidden="true">{tab === 'buy' ? '↗' : '↘'}</span>{' '}
             {T.betAction}
+            <span className="ex-hud-en" aria-hidden="true">// EXECUTE</span>
             {(tab === 'buy' ? buyProgress : shortProgress).active ? ` ${(tab === 'buy' ? buyProgress : shortProgress).pct}%` : ''}
           </button>
 

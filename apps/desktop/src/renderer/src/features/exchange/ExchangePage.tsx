@@ -345,28 +345,28 @@ function ExchangeBody({
         {/* 右区：个人账户核心资产看板 + 出入金操作（两模式像素级绝对一致，零跳动） */}
         <div className="ex-topbar-right">
           <div className="ex-topbar-stats">
-            <div className="ex-stat">
-              <span className="ex-dim">{T.availableCash}</span>
+            <div className="ex-stat is-cash">
+              <span className="ex-stat-tag">{T.availableCash}<small> // CASH</small></span>
               <b className="ex-num">{money(snap.account.cash)}</b>
             </div>
-            <div className="ex-stat">
-              <span className="ex-dim">{T.holdingsValue}</span>
+            <div className="ex-stat is-holdings">
+              <span className="ex-stat-tag">{T.holdingsValue}<small> // HOLDINGS</small></span>
               <b className="ex-num">{money(holdingsValue)}</b>
             </div>
-            <div className="ex-stat">
-              <span className="ex-dim">{T.unrealizedPnl}</span>
+            <div className={`ex-stat is-pnl ${pnlUp ? 'is-up' : 'is-down'}`}>
+              <span className="ex-stat-tag">{T.unrealizedPnl}<small> // PNL</small></span>
               <b className={`ex-num ${pnlUp ? 'is-up' : 'is-down'}`}>
                 {pnlUp ? '+' : ''}{money(totalUnrealizedPnl)}
               </b>
             </div>
             {shownMode === 'simple' ? (
-              <div className="ex-stat">
-                <span className="ex-dim">{T.bondValue}</span>
+              <div className="ex-stat is-bond">
+                <span className="ex-stat-tag">{T.bondValue}<small> // BOND</small></span>
                 <b className="ex-num">{money(bondTotal)}</b>
               </div>
             ) : (
-              <div className="ex-stat">
-                <span className="ex-dim">{T.marginRatio}</span>
+              <div className="ex-stat is-margin">
+                <span className="ex-stat-tag">{T.marginRatio}<small> // MARGIN</small></span>
                 <b className="ex-num">{marginRatio}</b>
               </div>
             )}
