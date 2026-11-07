@@ -17,11 +17,13 @@ interface SimpleChartProps {
   code: string
   quote?: StockQuote
   tick: number
+  /** 全仓下注反馈：卡片边缘黄色光效顺时针旋转 */
+  allInFx?: boolean
 }
 
 type SimplePeriod = 'intraday'
 
-export function SimpleChart({ client, code, quote, tick }: SimpleChartProps) {
+export function SimpleChart({ client, code, quote, tick, allInFx = false }: SimpleChartProps) {
   // 简单投资默认且固定为分时走势（10秒高频刷新），精简去除专业K线周期选项
   const period: ChartPeriod = 'intraday'
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
@@ -190,7 +192,12 @@ export function SimpleChart({ client, code, quote, tick }: SimpleChartProps) {
   const gradId = `ex-simple-grad-${code}`
 
   return (
-    <div className="ex-simple-chart-card">
+    <div className={`ex-simple-chart-card${allInFx ? ' is-allin' : ''}`}>
+      {allInFx ? (
+        <div className="ex-allin-glow" aria-hidden="true">
+          <div className="ex-allin-glow-beam" />
+        </div>
+      ) : null}
       <div className="ex-simple-chart-top">
         <div className="ex-simple-chart-hud">
           <div className="ex-simple-chart-price ex-num">

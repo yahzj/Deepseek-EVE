@@ -95,7 +95,7 @@ export function creditUnit(): string {
 
 /**
  * 极简下注金额前馈单点（2026-11-05）：投入金额含手续费，先折出可成交本金再按现价取整股数。
- * 判据：gross = qty × price，fee = floor(gross × feeRate)（服务端 Go feeOf 向下取整），
+ * 判据：gross = qty × price，fee = ceil(gross × feeRate)（服务端下单冻结走 ceilFeeOf 向上取整），
  * spend = gross + fee ≤ inputCash；unusedInput 即「全仓」时费后取整留下的差额。
  */
 export interface SimpleBetEstimate {
@@ -113,9 +113,11 @@ export function estimateSimpleBet(inputCash: number, currentPrice: number, feeRa
     return { qty: 0, gross: 0, fee: 0, spend: 0, remainCash: safeCash, unusedInput: 0 }
   }
   const rate = Number.isFinite(feeRate) && feeRate > 0 ? feeRate : 0
-  const qty = Math.floor(inputCash / (1 + rate) / currentPrice)
+  let qty = Math.floor(inputCash / (1 + rate) / currentPrice)
+  // 手续费冻结按向上取整；「全仓」时若末尾差 1 个信用点，回退一股保证可下单。
+  while (qty > 0 && qty * currentPrice + Math.ceil(qty * currentPrice * rate) > inputCash) qty -= 1
   const gross = qty * currentPrice
-  const fee = gross > 0 ? Math.floor(gross * rate) : 0
+  const fee = gross > 0 ? Math.ceil(gross * rate) : 0
   const spend = gross + fee
   return {
     qty,

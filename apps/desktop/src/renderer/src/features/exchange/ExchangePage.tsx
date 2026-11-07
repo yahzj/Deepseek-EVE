@@ -32,6 +32,9 @@ import './exchange.css'
 
 const VIEW_MODE_KEY = EXCH_PREF.viewMode
 
+/** 生产包暂时关闭专业投资入口；本地 `npm run dev` 保留，便于调试。 */
+const PRO_MODE_ENABLED = import.meta.env.DEV
+
 export function ExchangePage({ engine, onToast, onOpenSettings }: PageProps) {
   // 2026-11-05 游客行情批：登录/退出后必须换客户端实例——游客连接是匿名的（不带 token），
   // 登录后要换成带令牌的那条；不换就会一直用匿名连接看自己的空白账户。
@@ -132,6 +135,7 @@ function ExchangeBody({
 
   // 极简 / 专业 双模式状态（默认极简）
   const [viewMode, setViewMode] = useState<'simple' | 'pro'>(() => {
+    if (!PRO_MODE_ENABLED) return 'simple'
     try {
       const saved = localStorage.getItem(VIEW_MODE_KEY)
       return saved === 'pro' ? 'pro' : 'simple'
@@ -143,6 +147,10 @@ function ExchangeBody({
   // 外部入口（活动栏「债券/基金」）改了模式偏好时，已挂载的页面要跟着切
   useEffect(() => {
     const onPref = (): void => {
+      if (!PRO_MODE_ENABLED) {
+        setViewMode('simple')
+        return
+      }
       try {
         const saved = localStorage.getItem(VIEW_MODE_KEY)
         setViewMode(saved === 'pro' ? 'pro' : 'simple')
@@ -155,6 +163,8 @@ function ExchangeBody({
   }, [])
 
   const switchViewMode = (mode: 'simple' | 'pro') => {
+    // 生产包暂时关闭专业投资入口；本地开发保留（船长 2026-11-07）
+    if (mode === 'pro' && !PRO_MODE_ENABLED) return
     // 未登录不能进专业投资（船长 2026-11-05：「不能进入专业投资的界面里」）
     if (mode === 'pro' && guest) {
       requireLogin()
@@ -169,8 +179,9 @@ function ExchangeBody({
     }
   }
 
-  /** 实际渲染的模式：游客只保留极简模式（存档里的 pro 偏好不生效，但不清除，登录后自动恢复） */
-  const shownMode: 'simple' | 'pro' = guest ? 'simple' : viewMode
+  /** 实际渲染的模式：游客与生产包只保留极简模式（存档里的 pro 偏好不生效，但不清除） */
+  const shownMode: 'simple' | 'pro' = guest || !PRO_MODE_ENABLED ? 'simple' : viewMode
+  const proLocked = guest || !PRO_MODE_ENABLED
 
   const toastRef = useRef(onToast)
   toastRef.current = onToast
@@ -299,9 +310,10 @@ function ExchangeBody({
               type="button"
               role="tab"
               aria-selected={shownMode === 'pro'}
-              aria-disabled={guest || undefined}
-              title={guest ? T.guestProLocked : undefined}
-              className={`ex-mode-tab ex-mode-tab-pro${shownMode === 'pro' ? ' is-active' : ''}${guest ? ' is-guest-locked' : ''}`}
+              aria-disabled={proLocked || undefined}
+              disabled={!PRO_MODE_ENABLED || undefined}
+              title={!PRO_MODE_ENABLED ? T.proModeLocked : guest ? T.guestProLocked : undefined}
+              className={`ex-mode-tab ex-mode-tab-pro${shownMode === 'pro' ? ' is-active' : ''}${proLocked ? ' is-guest-locked' : ''}`}
               onClick={() => switchViewMode('pro')}
             >
               <span className="ex-mode-tab-title"><Analytics size={14} /> {T.viewModePro}</span>
@@ -364,7 +376,7 @@ function ExchangeBody({
             <button
               type="button"
               className={`ex-mini-btn is-deposit${guest ? ' is-guest-locked' : ''}`}
-              data-sfx="exchange-deposit"
+              data-sfx="exchange-withdraw"
               aria-disabled={guest || undefined}
               onClick={() => (guest ? requireLogin() : setCashier('deposit'))}
             >
@@ -373,7 +385,7 @@ function ExchangeBody({
             <button
               type="button"
               className={`ex-mini-btn is-withdraw${guest ? ' is-guest-locked' : ''}`}
-              data-sfx="exchange-withdraw"
+              data-sfx="exchange-deposit"
               aria-disabled={guest || undefined}
               onClick={() => (guest ? requireLogin() : setCashier('withdraw'))}
             >

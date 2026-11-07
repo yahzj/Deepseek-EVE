@@ -105,12 +105,18 @@ export function SimpleExchange({
   const [sideTab, setSideTab] = useState<SimpleSideTab>(() =>
     readExchangeChoice(EXCH_PREF.simpleSide, ['bets', 'orders', 'finance'] as const, 'finance'),
   )
+  const [allInFx, setAllInFx] = useState(false)
   const betCount = snap.account.holdings.length + snap.account.positions.length
   const orderCount = snap.orders.length
 
   useEffect(() => {
     writeExchangePref(EXCH_PREF.simpleSide, sideTab)
   }, [sideTab])
+
+  // 重新上线或从别的页面切回：强制把大图与左栏小图的分时线换成最新切片。
+  useEffect(() => {
+    client.refreshCharts?.()
+  }, [client])
 
   // 外部入口（活动栏「债券/基金」）要求直达理财页时，已挂载的页面跟着切
   useEffect(() => {
@@ -164,13 +170,13 @@ export function SimpleExchange({
 
         {/* 走势图 */}
         <section className="ex-simple-chart-section">
-          <SimpleChart client={client} code={code} quote={quote} tick={snap.tick} />
+          <SimpleChart client={client} code={code} quote={quote} tick={snap.tick} allInFx={allInFx} />
         </section>
 
         {/* 傻瓜买卖舱（游客：保留面板但禁用，点击提示登录） */}
         <section className="ex-simple-trade-section">
           <GuestLock locked={guest} label={T.guestLockLabel} onUnlock={onRequireLogin}>
-            <SimpleTrade client={client} snap={snap} code={code} onToast={onToast} />
+            <SimpleTrade client={client} snap={snap} code={code} onToast={onToast} onAllInFx={setAllInFx} />
           </GuestLock>
         </section>
       </main>

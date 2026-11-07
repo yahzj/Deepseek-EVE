@@ -10,6 +10,11 @@
   overflow: hidden;
 }
 
+/* 简单投资：页面底色再压深一档，让三栏卡片与行情更突出 */
+.ex-page.ex-mode-simple {
+  background: rgb(var(--wui-bg-deep) / 0.6);
+}
+
 .ex-dim {
   color: rgb(var(--wui-text-dim));
   font-size: var(--wui-fs-xs);
@@ -3157,7 +3162,8 @@
 }
 
 .ex-mode-tab.is-guest-locked {
-  opacity: 0.55;
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .ex-mode-tab.is-guest-locked:hover {
@@ -4490,6 +4496,7 @@ button.ex-round-clock-badge:disabled {
 }
 
 .ex-simple-chart-card {
+  position: relative;
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
@@ -4499,6 +4506,71 @@ button.ex-round-clock-badge:disabled {
   border: 1px solid rgb(var(--wui-border));
   border-radius: 6px;
   box-shadow: 0 4px 16px rgb(0 0 0 / 0.2);
+}
+
+/* 全仓下注：老虎机式激光走圈。光束高频切割 3px 边框，辉光收在 14px 内，音效结束即移除。 */
+.ex-allin-glow {
+  position: absolute;
+  inset: 0;
+  padding: 3px;
+  box-sizing: border-box;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 1;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: ex-allin-fade 1.5s ease-out both;
+}
+
+/* 前 1.2 秒保持满亮，最后 0.3 秒淡出，避免光效突然消失 */
+@keyframes ex-allin-fade {
+  0%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.ex-allin-glow-beam {
+  position: absolute;
+  top: -75%;
+  left: -75%;
+  width: 250%;
+  height: 250%;
+  will-change: transform;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg 280deg,
+    #ff9f00 315deg,
+    #ffe27a 345deg,
+    #ffffff 360deg
+  );
+  filter: drop-shadow(0 0 2px #ffffff) drop-shadow(0 0 6px #ffe27a)
+    drop-shadow(0 0 14px rgb(255 170 0 / 0.7));
+  animation: ex-allin-rotate 0.18s linear infinite;
+}
+
+@keyframes ex-allin-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ex-simple-chart-card.is-allin {
+  box-shadow: 0 4px 20px rgb(0 0 0 / 0.5);
+}
+
+.ex-simple-chart-card.is-allin > :not(.ex-allin-glow) {
+  position: relative;
+  z-index: 2;
 }
 
 .ex-simple-chart-top {
@@ -6617,6 +6689,64 @@ html body .app-root.is-layout-modern .ex-page .ex-simple-big-action-btn:disabled
   gap: var(--wui-sp-1);
   font-size: 10px;
   font-weight: 500;
+}
+
+/* 逐只持仓明细：150px 窄栏一行「代码 方向杠杆 数量 盈亏」 */
+.app-activitybar-exch-hold {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: rgb(var(--wui-text));
+  font-family: var(--wui-mono);
+  font-size: var(--wui-fs-2xs);
+  line-height: 1.35;
+  text-align: left;
+  cursor: pointer;
+}
+
+.app-activitybar-exch-hold:hover {
+  background: rgb(var(--wui-bg-panel) / 0.65);
+}
+
+.exh-code {
+  flex: 0 0 auto;
+  color: rgb(var(--wui-cyan));
+  font-weight: 600;
+}
+
+.exh-lev {
+  flex: 0 0 auto;
+  color: rgb(var(--wui-text-dim));
+}
+
+.exh-qty {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: rgb(var(--wui-text-dim));
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.exh-pnl {
+  flex: 0 0 auto;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.exh-pnl.is-up {
+  color: rgb(var(--wui-tone-gain));
+}
+
+.exh-pnl.is-down {
+  color: rgb(var(--wui-tone-loss));
 }
 
 /* 兼容旧类名保留 */

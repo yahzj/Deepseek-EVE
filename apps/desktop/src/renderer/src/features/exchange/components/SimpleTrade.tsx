@@ -11,28 +11,33 @@ import { isEn } from '../../../i18n/locale'
  *   `tif:'IOC'` 只是客户端兼容占位字段，不代表即时成交；服务端按
  *   `docs/design/stock-exchange-round-model-20261103.md:11,14,36` 统一回合末批量撮合。
  */
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ExchangeClient, ExchangeSnapshot } from '../client'
 import type { ToastFn } from '../../../pages/common'
 import { amount, estimateSimpleBet, money, price } from '../format'
 import { T, TF } from '../texts'
 import { progressStyle, useActionProgress } from '../useActionProgress'
 import { notifyUiAction } from '../../../game/audio/uiFeedback'
+import { playCue } from '../../../game/audio/player'
 
 interface SimpleTradeProps {
   client: ExchangeClient
   snap: ExchangeSnapshot
   code: string
   onToast: ToastFn
+  /** 全仓快捷筹码：触发 K 线卡片的黄色旋转光效（音效结束时关闭） */
+  onAllInFx?: (on: boolean) => void
 }
 
-export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
+export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTradeProps) {
   const [tab, setTab] = useState<'buy' | 'short'>('buy')
   const [cashAmount, setCashAmount] = useState<string>('')
   const [activeRatio, setActiveRatio] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
   const orderSeq = useRef(0)
   const inputRef = useRef<HTMLInputElement | null>(null)
+  const allInSeq = useRef(0)
+  const allInTimer = useRef<number | null>(null)
   const buyProgress = useActionProgress(client)
   const shortProgress = useActionProgress(client)
 
@@ -63,6 +68,38 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
     const val = Math.floor(cash * ratio)
     setCashAmount(val > 0 ? String(val) : '')
     setActiveRatio(ratio)
+  }
+
+  useEffect(
+    () => () => {
+      if (allInTimer.current !== null) window.clearTimeout(allInTimer.current)
+    },
+    [],
+  )
+
+  /** 全仓下注成功回执后：播放 ALL IN 音效并触发 K 线卡片黄色旋转光效。 */
+  const triggerAllInFx = () => {
+    allInSeq.current += 1
+    const seq = allInSeq.current
+    onAllInFx?.(true)
+    const stop = (): void => {
+      if (allInSeq.current === seq) onAllInFx?.(false)
+    }
+    const audio = playCue('exchange-allin')
+    // 光效与音效统一 1.2 秒收尾：不等整段音效播完，避免转圈拖沓。
+    if (allInTimer.current !== null) window.clearTimeout(allInTimer.current)
+    allInTimer.current = window.setTimeout(() => {
+      if (audio !== null) {
+        try {
+          audio.pause()
+          // 提前暂停不会触发 ended，手动派发一次让播放器释放并发槽位，避免下次全仓静音。
+          audio.dispatchEvent(new Event('ended'))
+        } catch {
+          /* 忽略 */
+        }
+      }
+      stop()
+    }, 1500)
   }
 
   const handleCashChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -128,6 +165,7 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
       return
     }
 
+    const allIn = isRatioActive(1.0)
     setBusy(true)
     buyProgress.start()
     orderSeq.current += 1
@@ -141,9 +179,9 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
         qty: Math.min(estBuyQty, tradeCapQty),
         leverage: 1,
       })
-      // 成功回执才响下注音（2026-11-06 船长）：失败分支只走 toast → ui-error，绝不能叠一声动作音；
-      // 放在进度满格动画之前，声音跟着回执走，不被动画挡住。
-      notifyUiAction('exchange-bet')
+      // 成功回执才响动作音（2026-11-06 船长）：全仓换成 ALL IN 音效 + 光效，其余保持下注音。
+      if (allIn) triggerAllInFx()
+      else notifyUiAction('exchange-bet')
       await buyProgress.finish()
       onToast(TF.simpleOrderDone(code, T.buy, amount(order.filledQty || order.qty)))
       setCashAmount('')
@@ -167,6 +205,7 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
       return
     }
 
+    const allIn = isRatioActive(1.0)
     setBusy(true)
     shortProgress.start()
     orderSeq.current += 1
@@ -184,8 +223,9 @@ export function SimpleTrade({ client, snap, code, onToast }: SimpleTradeProps) {
         // 「没有可平的杠杆多头持仓」。
         short: true,
       })
-      // 与买多同口径：服务端确认才响，失败只留 ui-error。
-      notifyUiAction('exchange-bet')
+      // 与买多同口径：服务端确认才响；全仓换成 ALL IN 音效 + 光效。
+      if (allIn) triggerAllInFx()
+      else notifyUiAction('exchange-bet')
       await shortProgress.finish()
       onToast(TF.simpleOrderDone(code, T.sell, amount(order.filledQty || order.qty)))
       setCashAmount('')

@@ -494,6 +494,8 @@ export interface ExchangeClient {
   ensureSymbolData?(code: string): void
   /** 可选：按需补拉单个图表周期（HTTP 模式实现；未缓存的周期切过去时调用）。 */
   ensureChartData?(code: string, period: ChartPeriod): void
+  /** 可选：页面重新挂载时强制把所有标的的分时线替换为最新切片（HTTP 模式实现）。 */
+  refreshCharts?(): void
   /** 可选：每分钟刷新行情/账户/委托/快讯（HTTP 模式实现）。 */
   refreshMarketData?(code: string): void
   onTick(cb: () => void): Unsubscribe
