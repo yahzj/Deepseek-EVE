@@ -213,6 +213,7 @@ const PLACE_ID: Readonly<Record<WormholePlace, string>> = {
   empty: 'ui.Wormhole.223', // 空信息 / Empty information
   graveyard: 'core.wormholePlace.001', // 舰船墓场 / Graveyard
   ruins: 'core.wormholePlace.002', // 遗迹 / Ruins
+  research: 'ui.researchLab.001',
   ship: 'ui.Wormhole.221', // 舰船信号 / Ship signal
   vein: 'core.wormholePlace.003', // 矿脉 / Ore Vein
   matter: 'ui.MatterTechTab.005', // 虫洞谜质 / Wormhole Enigma

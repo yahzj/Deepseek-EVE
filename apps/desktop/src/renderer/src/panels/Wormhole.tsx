@@ -2754,6 +2754,7 @@ function WhGridMap({
 /** 信号名（图例与悬浮提示共用；与 `WORMHOLE_PLACE_TEXT` 分开：信号 ≠ 地点真相） */
 const SIGNAL_TEXT: Readonly<Record<WormholeSignal, string>> = {
   get wreck() { return tr("ui.Wormhole.165") },
+  get research() { return tr('ui.researchLab.004') },
   get ship() { return tr("ui.Wormhole.221") },
   get resource() { return tr("ui.Wormhole.222") },
   get radar() { return tr("ui.Wormhole.271") },
@@ -2787,6 +2788,7 @@ const PLACE_NOTE: Readonly<Record<WormholePlace, string>> = {
   empty: "ui.Wormhole.224",
   graveyard: "ui.Wormhole.225",
   ruins: "ui.Wormhole.272",
+  research: 'ui.researchLab.002',
   ship: "ui.Wormhole.226",
   vein: "ui.Wormhole.168",
   matter: "ui.Wormhole.227",

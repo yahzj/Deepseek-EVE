@@ -326,6 +326,7 @@ export function SignalSpacePanel({
   const bossDone = !!run && (run.bossCleared ?? 0) >= run.depth
   /** **打捞现场**（F3b：墓场/遗迹）——它的"激活"是打捞作业（要打捞器、按台数回收） */
   const salvageCell = !!hereCell && (hereCell.place === 'graveyard' || hereCell.place === 'ruins')
+  const researchCell = hereCell?.place === 'research'
   /**
    * **矿脉**（F5 · 船长 2026-09-13：「资源点和墓场遗迹改为不用激活」「虚空母矿要求玩家携带采集器。
    * 规则同虫洞打捞」）：走到就铺好母矿堆，打捞/采集各按"台数 × 回合"回收 ⇒ 与墓场同一套交互。
@@ -469,9 +470,10 @@ export function SignalSpacePanel({
   /** 矿脉：没采集器就挖不动；有采集器但堆已空 ⇒ 也采不了 */
   const canCollect = veinCell && miners > 0 && bulkPiles > 0 && (run?.turnsLeft ?? 0) >= 1
   /** **免激活的两个作业格**（打捞 / 采集）：界面按钮走同一个引擎入口，标签与拒因按地点分流 */
-  const workCell = salvageCell || veinCell
-  const canWork = salvageCell ? canSalvage : veinCell ? canCollect : false
-  const rigs = salvageCell ? salvagers : miners
+  const workCell = salvageCell || veinCell || researchCell
+  const canWork = researchCell ? salvagers > 0 && (run?.turnsLeft ?? 0) >= 1 && !grid?.activated.includes(hereKey)
+    : salvageCell ? canSalvage : veinCell ? canCollect : false
+  const rigs = salvageCell || researchCell ? salvagers : miners
   const rigName = veinCell ? tr("ui.Wormhole.238") : tr("ui.Wormhole.001")
   /**
    * **进洞门槛**（核心同一把尺 `wormholeEntryBlockReason`）——**不再用界面徽标 `shipBusyLabel` 自己判**：
@@ -929,6 +931,11 @@ export function SignalSpacePanel({
       return
     }
     if (exitNow || place === 'ship') return // 已开战：交给战斗界面
+    if (place === 'research') {
+      playJob(tr('ui.Wormhole.070'), tr('ui.researchLab.001'))
+      onToast(tr('ui.researchLab.005'))
+      return
+    }
     if (place === 'graveyard' || place === 'ruins') {
       playJob(tr("ui.Wormhole.070"), tr("ui.Wormhole.126", { p1: res.taken ?? 0 }))
       onToast(tr("ui.Wormhole.071", { p1: res.taken ?? 0 }))
@@ -1033,7 +1040,7 @@ export function SignalSpacePanel({
   }
 
   /** 打捞/采集按钮的悬浮说明（只在真能用时才渲染按钮，故这里只讲"这一批能回收多少"） */
-  const workTitle = veinCell
+  const workTitle = researchCell ? tr('ui.researchLab.002') : veinCell
     ? tr("ui.Wormhole.242", { rigs: rigs, p2: Math.min(rigs, herePiles.length) })
     : tr("ui.Wormhole.075", { rigs: rigs, p2: Math.min(rigs, herePiles.length) })
 
@@ -1047,7 +1054,7 @@ export function SignalSpacePanel({
       <>
         <SignalRangeEwPreview state={state} ctx={ctx} />
         <div className="app-wh-node-title">
-          {atExit ? tr("ui.Wormhole.007") : hereCell.researchLab ? tr('ui.researchLab.001') : placeText(hereCell.place)}
+          {atExit ? tr("ui.Wormhole.007") : placeText(hereCell.place)}
           {/* 地点说明**不进 ⓘ**（2026-09-14 船长裁定：「地点卡的说明不要进 ⓘ」）：它跟着当前格子变，
               属于"这一格现在是什么"的读数 ⇒ 按 2026-09-13 口径（常驻说明进 ⓘ、状态读数留眼前）留在卡里 */}
           <span className="app-dim">
@@ -1055,7 +1062,7 @@ export function SignalSpacePanel({
             {grid.activated.includes(hereKey) ? tr('ui.Wormhole.303') : ''}
           </span>
         </div>
-        {hereCell.researchLab ? <div className="app-dim app-note">{tr('ui.researchLab.002')}</div> : null}
+        {researchCell && herePiles.length > 0 ? <div className="app-dim app-note">{tr('ui.researchLab.002')}</div> : null}
         {/* **作业进度条**（F2b · 纯表现 380ms）：摆在堆清单正上方——卡片"向下移出"的同时，这条在走 */}
         {jobFx ? (
           <div className="app-wh-jobrow" key={jobFx.nonce}>
@@ -1170,7 +1177,7 @@ export function SignalSpacePanel({
             </div>
           </>
         ) : (
-          <div className="app-dim app-note">{hereCell.researchLab ? tr('ui.researchLab.002') : PLACE_NOTE[hereCell.place]}</div>
+          <div className="app-dim app-note">{PLACE_NOTE[hereCell.place]}</div>
         )}
       </>
     )
@@ -2038,7 +2045,7 @@ export function SignalSpacePanel({
                         >
                           {veinCell ? tr("ui.Wormhole.261") : tr("ui.Wormhole.107")}
                           <span className="app-wh-scan-sub">
-                            {tr("ui.Wormhole.036")} {Math.min(Math.max(rigs, 0), herePiles.length)}{tr('ui.Wormhole.342')}
+                            {researchCell ? tr('ui.researchLab.002') : <>{tr("ui.Wormhole.036")} {Math.min(Math.max(rigs, 0), herePiles.length)}{tr('ui.Wormhole.342')}</>}
                           </span>
                         </button>
                       ) : null}
@@ -2523,7 +2530,7 @@ function WhGridMap({
          */
         const activated = grid.activated.includes(c.key)
         const hasLeftover = (c.piles ?? []).length > 0
-        const cleared = activated || (visited && !hasLeftover)
+        const cleared = activated || (visited && !hasLeftover && c.place !== 'research')
         const iconGone = cleared && !isExit
         const dim = visited && (cleared || hasLeftover)
         /** 这一格是不是"这一批刚被驱散"的星云（动画期间单独画云散开；动画结束 `dissolving` 清空 ⇒ 自动落回信号档） */
@@ -2568,7 +2575,7 @@ function WhGridMap({
               : isExit
                 ? tr('ui.Wormhole.324', { p1: cleared ? tr("ui.Wormhole.269") : tr("ui.Wormhole.270") })
                 : visited
-                  ? tr('ui.Wormhole.325', { p1: c.researchLab ? tr('ui.researchLab.001') : placeText(c.place), p2: cleared ? tr('ui.Wormhole.303') : '' }) +
+                  ? tr('ui.Wormhole.325', { p1: placeText(c.place), p2: cleared ? tr('ui.Wormhole.303') : '' }) +
                     `${hasLeftover ? ` · 还有 ${(c.piles ?? []).length} 堆没拿` : ''}`
                   : nebula
                     ? tr("ui.Wormhole.163")
@@ -2692,6 +2699,7 @@ function WhGridMap({
 /** 信号名（图例与悬浮提示共用；与 `WORMHOLE_PLACE_TEXT` 分开：信号 ≠ 地点真相） */
 const SIGNAL_TEXT: Readonly<Record<WormholeSignal, string>> = {
   get wreck() { return tr("ui.Wormhole.165") },
+  get research() { return tr('ui.researchLab.004') },
   get ship() { return tr("ui.Wormhole.221") },
   get resource() { return tr("ui.Wormhole.222") },
   get radar() { return tr("ui.Wormhole.271") },
@@ -2713,6 +2721,7 @@ const GRID_LEGEND: ReadonlyArray<{
   { key: 'nebula', get text() { return tr("ui.Wormhole.167") }, signal: null, none: true, nebula: true },
   { key: 'visited', get text() { return tr("ui.Wormhole.119") }, signal: null, none: true, done: true },
   { key: 'wreck', get text() { return SIGNAL_TEXT.wreck }, signal: 'wreck' },
+  { key: 'research', get text() { return SIGNAL_TEXT.research }, signal: 'research' },
   { key: 'ship', get text() { return SIGNAL_TEXT.ship }, signal: 'ship' },
   { key: 'resource', get text() { return SIGNAL_TEXT.resource }, signal: 'resource' },
   { key: 'radar', get text() { return SIGNAL_TEXT.radar }, signal: 'radar' },
@@ -2725,6 +2734,7 @@ const PLACE_NOTE: Readonly<Record<WormholePlace, string>> = {
   get empty() { return tr("ui.Wormhole.224") },
   get graveyard() { return tr("ui.Wormhole.225") },
   get ruins() { return tr("ui.Wormhole.272") },
+  get research() { return tr('ui.researchLab.002') },
   get ship() { return tr("ui.Wormhole.226") },
   get vein() { return tr("ui.Wormhole.168") },
   get matter() { return tr("ui.Wormhole.227") },

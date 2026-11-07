@@ -1363,7 +1363,7 @@ export function wormholeGridActivate(state: GameState): WormholeGridActionResult
    * 走到那一格就铺好产出（`wormholeEnsureArrivalPiles`），玩家直接**采集/打捞**——
    * 故这三个地点在"激活"这条路上**直接拒绝**。
    */
-  if (!atExit && (cell.place === 'vein' || cell.place === 'graveyard' || cell.place === 'ruins')) {
+  if (!atExit && (cell.place === 'vein' || cell.place === 'graveyard' || cell.place === 'ruins' || cell.place === 'research')) {
     return { ok: false, error: '这个地点不用激活：直接采集/打捞就行。', errorId: 'core.wormhole.022' }
   }
   if (atExit && (run.bossCleared ?? 0) >= run.depth) {
@@ -1388,6 +1388,7 @@ export function wormholeGridActivate(state: GameState): WormholeGridActionResult
   empty: '空信息地点',
   graveyard: '舰船墓场',
   ruins: '遗迹',
+  research: '生产研究所',
   ship: '舰船信号',
   vein: '矿脉',
   matter: '虫洞谜质',

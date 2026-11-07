@@ -50,6 +50,9 @@ export function grabOffsetOf(el: HTMLElement, w: number, h: number, clientX: num
 export function WhGlyph({ signal, exit }: { signal: WormholeSignal | null; exit?: boolean }) {
   if (exit) return <path d="M-7,0 L6,0 M1,-5 L7,0 L1,5" />
   if (signal === 'wreck') return <path d="M-8,3 L-4,-3 L0,2 L4,-4 L8,3" />
+  if (signal === 'research') return <>
+    <path d="M-8,7 H8 M-7,7 V-3 H1 M-4,-3 V-7 H1 M-4,1 H-2 M-4,4 H-2 M3,-7 H7 M4,-7 V-1 L1,5 Q0,7 3,7 H7 Q10,7 9,5 L6,-1 V-7 M3,3 H8" />
+  </>
   if (signal === 'ship') return <path d="M-7,-5 L8,0 L-7,5 Z" />
   if (signal === 'resource') return <path d="M0,-7 L7,0 L0,7 L-7,0 Z" />
   if (signal === 'radar')

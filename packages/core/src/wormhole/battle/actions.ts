@@ -67,9 +67,9 @@ export function wormholeActivateAtMutable(state: GameState, ctx: SimContext, atG
 
   // **打捞格**（墓场/遗迹 · F5 起不用激活）：打捞一批 + 遗迹捞空时的收尾战 —— 合成一次调用
   const hereCell = run?.grid ? gridCellAt(run.grid, run.grid.pos) : undefined
-  if (hereCell && (hereCell.place === 'graveyard' || hereCell.place === 'ruins')) {
+  if (hereCell && (hereCell.place === 'graveyard' || hereCell.place === 'ruins' || hereCell.place === 'research')) {
     const s = wormholeSalvageAt(state, ctx)
-    if (!s.ok) return { ok: false, error: s.error }
+    if (!s.ok) return { ok: false, error: s.error, errorId: s.errorId, errorParams: s.errorParams }
     const effect = s.effect
     if (!effect || effect.kind !== 'ruinsBattle') return { ok: true, spent: s.spent, taken: s.taken?.length ?? 0 }
     /**

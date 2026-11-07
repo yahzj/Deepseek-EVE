@@ -2628,8 +2628,8 @@ for (const [key, value] of Object.entries(licensesRaw)) {
       const key = typeof row.key === 'string' ? row.key : ''
       const place = typeof row.place === 'string' ? row.place : ''
       if (key.length === 0 || place.length === 0) continue
-      const placeOk =
-        place === 'empty' || place === 'graveyard' || place === 'ruins' || place === 'ship' || place === 'vein' || place === 'matter' || place === 'beacon'
+      const placeOk = place === 'ruins' && row.researchLab === true ? 'research' :
+        place === 'empty' || place === 'graveyard' || place === 'ruins' || place === 'ship' || place === 'vein' || place === 'matter' || place === 'beacon' || place === 'research'
         ? (place as WormholeGridState['cells'][number]['place'])
         : undefined
       if (!placeOk) continue
@@ -2650,7 +2650,6 @@ for (const [key, value] of Object.entries(licensesRaw)) {
         q: Math.floor(num(row.q)),
         r: Math.floor(num(row.r)),
         place: placeOk,
-        ...(row.researchLab === true && placeOk === 'ruins' ? { researchLab: true as const } : {}),
         ...(isWormholeEventKey(row.eventKey) ? { eventKey: row.eventKey } : {}),
         ...(row.eventResolved === true ? { eventResolved: true } : {}),
         ...(cleanWormholeEventInstance(row.event) ? { event: cleanWormholeEventInstance(row.event) } : {}),
@@ -2687,7 +2686,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
       scanRadius: Math.max(0, Math.floor(num(g.scanRadius)) || 1),
       scanned: keys(g.scanned),
       visited: keys(g.visited),
-      activated: keys(g.activated),
+      activated: [...new Set([...keys(g.activated), ...cells.filter(c => c.place === 'research' && keys(g.ruinsRolled).includes(c.key)).map(c => c.key)])],
       // 已结算「首捞掉落」的遗迹格（船长 2026-09-16「时间点改为遗迹第一次打捞」）：
       // 空数组不写（老档/没首捞过 ⇒ 零迁移）
       ...(keys(g.ruinsRolled).length > 0 ? { ruinsRolled: keys(g.ruinsRolled) } : {}),

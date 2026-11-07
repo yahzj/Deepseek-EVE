@@ -12307,6 +12307,7 @@ html[data-locale='en'] body {
 /* 信号分色：舰船（暖橙）· 残骸（冷灰蓝）· 资源（琥珀）· 雷达（紫）· 空信息（暗） */
 .app-wh-hex.is-ship, .app-wh-legend-glyph.is-ship { color: rgb(var(--wui-x08)); }
 .app-wh-hex.is-wreck, .app-wh-legend-glyph.is-wreck { color: rgb(var(--wui-text-2)); }
+.app-wh-hex.is-research, .app-wh-legend-glyph.is-research { color: rgb(var(--wui-cyan)); }
 .app-wh-hex.is-resource, .app-wh-legend-glyph.is-resource { color: rgb(var(--wui-rare)); }
 .app-wh-hex.is-radar, .app-wh-legend-glyph.is-radar { color: rgb(var(--wui-x146)); }
 .app-wh-hex.is-blank, .app-wh-legend-glyph.is-blank { color: rgb(var(--wui-dim)); }

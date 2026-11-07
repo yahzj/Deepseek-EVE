@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
-import { wormholeMakeGrid } from '../src/wormholeGrid'
+import { wormholeMakeGrid, revealOf, signalOfCell } from '../src/wormholeGrid'
 import { ENCRYPTED_FAMILIES, encryptedBlueprintGroups, encryptedFamilyOf } from '../src/encryptedContainer'
 import { wormholeUnboxRoll, wormholeResearchBox, wormholeRelicBoxPoolOf, wormholeSalvageAt, wormholeHoldCapacityOf } from '../src/wormholeSalvage'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
@@ -13,7 +13,6 @@ import { addShipToFleet } from '../src/fleetBook'
 import { wormholeShapeOf } from '../src/wormholeHold'
 import { startManufacturing, advanceManufacturing, cancelManufacturing } from '../src/manufacturing'
 import { learnBlueprint } from '../src/market'
-import { rareWreckItemIdOfCard } from '../src/salvage'
 
 const ctx = buildSimContext()
 function researchWorld(seed = 19) {
@@ -27,11 +26,10 @@ function researchWorld(seed = 19) {
   run.grid = wormholeMakeGrid(seed, 8)
   const grid = run.grid
   const cell = grid.cells.find(row => row.key !== `${grid.start.q},${grid.start.r}` && row.key !== `${grid.exit.q},${grid.exit.r}`)!
-  cell.place = 'ruins'; cell.researchLab = true
+  cell.place = 'research'
   grid.pos = { q: cell.q, r: cell.r }
   grid.visited.push(cell.key)
-  cell.piles = Array.from({ length: 5 }, () => ({ itemId: rareWreckItemIdOfCard('wh-pirate-scout')!, units: 1 }))
-  cell.resourcePilesGenerated = true
+  cell.piles = []
   return { state, run, grid, cell }
 }
 describe('生产研究所与势力加密货柜', () => {
@@ -40,17 +38,17 @@ describe('生产研究所与势力加密货柜', () => {
     for (let seed = 1; seed <= 1000; seed++) {
       for (const depth of [7, 8, 9]) {
         const grid = wormholeMakeGrid(seed, depth)
-        const found = grid.cells.filter(cell => cell.researchLab)
+        const found = grid.cells.filter(cell => cell.place === 'research')
         expect(found.length).toBeLessThanOrEqual(1)
         if (depth === 7) expect(found).toHaveLength(0)
         if (depth === 8) labs += found.length
         for (const cell of found) {
-          expect(cell.place).toBe('ruins')
+          expect(signalOfCell(cell)).toBe('research')
           expect(cell.key).not.toBe(`${grid.start.q},${grid.start.r}`)
           expect(cell.key).not.toBe(`${grid.exit.q},${grid.exit.r}`)
         }
       }
-      expect(wormholeMakeGrid(seed, 8, 0, 1, 2).cells.some(cell => cell.researchLab)).toBe(false)
+      expect(wormholeMakeGrid(seed, 8, 0, 1, 2).cells.some(cell => cell.place === 'research')).toBe(false)
     }
     expect(labs).toBeGreaterThan(150)
     expect(labs).toBeLessThan(250)
@@ -75,21 +73,20 @@ describe('生产研究所与势力加密货柜', () => {
     expect([...counts].sort()).toEqual([1, 2, 3])
     expect(duplicate).toBe(true)
   })
-  it('研究所保底非贵重品，约15%为本趟势力加密柜', () => {
+  it.each(ENCRYPTED_FAMILIES)('研究所仅出%s势力安全柜和加密柜，约15%为加密柜', family => {
     const state = createInitialState({ nowWallMs: 0, seed: 7 })
-    expect(wormholeEnter(state, ctx, [state.shipId], 7, { family: 'C' }).ok).toBe(true)
+    expect(wormholeEnter(state, ctx, [state.shipId], 7, { family }).ok).toBe(true)
     finishDeparture(state, ctx)
     state.wormhole.run!.depth = 8
     const cell = state.wormhole.run!.grid!.cells[0]!
-    cell.place = 'ruins'
-    cell.researchLab = true
+    cell.place = 'research'
     let encrypted = 0
     for (let seed = 1; seed <= 1000; seed++) {
       state.wormhole.run!.seed = seed
       const box = wormholeResearchBox(state, ctx, cell)!
       expect(box).toBeTruthy()
-      expect(box).not.toBe('box-valuables')
-      if (box.startsWith('box-encrypted-')) { expect(box).toBe('box-encrypted-c'); encrypted++ }
+      expect([`box-relic-${family.toLowerCase()}`, `box-encrypted-${family.toLowerCase()}`]).toContain(box)
+      if (box.startsWith('box-encrypted-')) encrypted++
     }
     expect(encrypted).toBeGreaterThan(110)
     expect(encrypted).toBeLessThan(190)
@@ -99,10 +96,9 @@ describe('生产研究所与势力加密货柜', () => {
     expect(wormholeEnter(state, ctx, [state.shipId], 42, { family: 'A' }).ok).toBe(true)
     finishDeparture(state, ctx)
     const grid = state.wormhole.run!.grid!
-    grid.cells[0]!.place = 'ruins'
-    grid.cells[0]!.researchLab = true
+    grid.cells[0]!.place = 'research'
     let loaded = loadSaveFile(serializeSaveFile(state, 0)).state
-    expect(loaded.wormhole.run!.grid!.cells[0]!.researchLab).toBe(true)
+    expect(loaded.wormhole.run!.grid!.cells[0]!.place).toBe('research')
     loaded.wormhole.run = null
     loaded.warehouse.items['box-encrypted-a'] = 1
     expect(startUnboxRun(loaded, ctx, 'box-encrypted-a', 'pilot').ok).toBe(true)
@@ -131,9 +127,17 @@ describe('生产研究所与势力加密货柜', () => {
     expect(state.refineRuns).toHaveLength(0)
   })
   it('真实首捞保底一柜，继续打捞和读档后不重复领取，正常地点不出加密柜', () => {
-    const { state, cell } = researchWorld()
+    const { state, run, cell } = researchWorld()
+    const turns = run.turnsLeft
+    const bag = structuredClone(run.bag)
     const first = wormholeSalvageAt(state, ctx)
     expect(first.ok).toBe(true)
+    expect(first.taken).toEqual([])
+    expect(first.cores).toBeUndefined()
+    expect(first.effect).toBeUndefined()
+    expect(run.pendingRuinsBattle).not.toBe(true)
+    expect(run.turnsLeft).toBe(turns - 1)
+    expect(run.bag).toEqual(bag)
     expect(first.relics).toHaveLength(1)
     expect(first.relics![0]).not.toBe('box-valuables')
     expect(first.boxes).toHaveLength(1)
@@ -141,12 +145,13 @@ describe('生产研究所与势力加密货柜', () => {
     restored.wormhole.run!.pendingRuinsBattle = false
     for (const candidate of restored.wormhole.run!.grid!.cells) delete candidate.foe
     const again = wormholeSalvageAt(restored, ctx)
-    expect(again.ok).toBe(true)
+    expect(again.ok).toBe(false)
     expect(again.relics ?? []).toHaveLength(0)
-    expect(restored.wormhole.run!.grid!.ruinsRolled).toContain(cell.key)
+    expect(restored.wormhole.run!.grid!.activated).toContain(cell.key)
+    expect(restored.wormhole.run!.grid!.ruinsRolled ?? []).not.toContain(cell.key)
     for (const family of ENCRYPTED_FAMILIES) expect(wormholeRelicBoxPoolOf(ctx, 9, family).some(id => id.startsWith('box-encrypted-'))).toBe(false)
   })
-  it('缺失保底奖励时不扣回合、不收走残骸、不记首捞', () => {
+  it('缺失保底奖励时不扣回合、不改地点、不记完成', () => {
     const { state, run, grid, cell } = researchWorld()
     const selected = wormholeResearchBox(state, ctx, cell)!
     expect(selected).toBeTruthy()
@@ -156,7 +161,7 @@ describe('生产研究所与势力加密货柜', () => {
     expect(wormholeSalvageAt(state, broken)).toMatchObject({ ok: false, errorId: 'core.researchLab.001' })
     expect(run.turnsLeft).toBe(turns)
     expect(cell.piles).toEqual(piles)
-    expect(grid.ruinsRolled ?? []).not.toContain(cell.key)
+    expect(grid.activated).not.toContain(cell.key)
     expect(wormholeSalvageAt(state, ctx).relics).toHaveLength(1)
   })
   it('空动作不浪费首捞，货柜满仓则留在临时空间或原地而不丢失', () => {
@@ -165,7 +170,7 @@ describe('生产研究所与势力加密货柜', () => {
     run.bag = [{ itemId: 'ore-voidmother', units: 1_000_000 }]
     const blocked = wormholeSalvageAt(state, ctx)
     expect(blocked.taken ?? []).toHaveLength(0)
-    expect(grid.ruinsRolled ?? []).not.toContain(cell.key)
+    expect(grid.activated).not.toContain(cell.key)
     const loaded = loadSaveFile(serializeSaveFile(snapshot, 0)).state
     const small = { ...ctx, ships: new Map(ctx.ships) }
     const defId = loaded.fleet[loaded.shipId]!.defId!
@@ -178,6 +183,53 @@ describe('生产研究所与势力加密货柜', () => {
     const all = [...(lr.hold?.placements ?? []), ...(lr.tempGrid?.placements ?? []), ...(lr.grid!.cells.find(c => c.key === cell.key)?.piles ?? [])]
     expect(all.filter(p => p.itemId === box)).toHaveLength(1)
     expect(wormholeShapeOf(box).w * wormholeShapeOf(box).h).toBeGreaterThan(1)
+  })
+  it('独立信号遵守扫描与星云遮蔽，抵达后显示独立地点', () => {
+    const { grid, cell } = researchWorld()
+    grid.visited = grid.visited.filter(key => key !== cell.key)
+    grid.scanned = grid.scanned.filter(key => key !== cell.key)
+    delete cell.foe
+    delete cell.eventKey
+    expect(revealOf(grid, cell)).toEqual({ kind: 'unknown' })
+    grid.scanned.push(cell.key)
+    cell.nebula = true
+    expect(revealOf(grid, cell)).toEqual({ kind: 'nebula' })
+    grid.dispersed = [...(grid.dispersed ?? []), cell.key]
+    expect(revealOf(grid, cell)).toEqual({ kind: 'signal', signal: 'research' })
+    grid.visited.push(cell.key)
+    expect(revealOf(grid, cell)).toEqual({ kind: 'known', signal: 'research', place: 'research' })
+  })
+  it.each([false, true])('旧版研究所迁移为独立地点，已领=%s的记录不丢', claimed => {
+    const { state, cell } = researchWorld()
+    const raw = JSON.parse(serializeSaveFile(state, 0))
+    const grid = raw.state.wormhole.run.grid
+    const old = grid.cells.find((row: { key: string }) => row.key === cell.key)
+    old.place = 'ruins'
+    old.researchLab = true
+    old.piles = [{ itemId: 'box-relic-a', units: 1 }]
+    grid.activated = grid.activated.filter((key: string) => key !== cell.key)
+    grid.ruinsRolled = claimed ? [cell.key] : []
+    const migrated = loadSaveFile(JSON.stringify(raw)).state
+    const restoredGrid = migrated.wormhole.run!.grid!
+    const restoredCell = restoredGrid.cells.find(row => row.key === cell.key)!
+    expect(restoredCell.place).toBe('research')
+    expect(restoredCell).not.toHaveProperty('researchLab')
+    expect(restoredCell.piles).toEqual(old.piles)
+    expect(restoredGrid.activated.includes(cell.key)).toBe(claimed)
+    if (claimed) expect(wormholeSalvageAt(migrated, ctx).ok).toBe(false)
+    const roundtrip = loadSaveFile(serializeSaveFile(migrated, 0)).state
+    expect(roundtrip.wormhole.run!.grid!.cells.find(row => row.key === cell.key)!.place).toBe('research')
+  })
+  it('研究所需要打捞器和回合，不消费失败动作', () => {
+    const { state, run, grid, cell } = researchWorld()
+    state.fleet[state.shipId]!.fitted.high = []
+    const turns = run.turnsLeft
+    expect(wormholeSalvageAt(state, ctx)).toMatchObject({ ok: false, errorId: 'core.wormholeSalvage.020' })
+    expect(run.turnsLeft).toBe(turns)
+    state.fleet[state.shipId]!.fitted.high = ['mod-salvager-1']
+    run.turnsLeft = 0
+    expect(wormholeSalvageAt(state, ctx)).toMatchObject({ ok: false, errorId: 'core.wormhole.002' })
+    expect(grid.activated).not.toContain(cell.key)
   })
   it.each(ENCRYPTED_FAMILIES)('%s插件新图纸只造一次，取消还书，原永久图纸不变', family => {
     const id = encryptedBlueprintGroups(ctx, family)![0]![0]!

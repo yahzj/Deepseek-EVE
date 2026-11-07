@@ -143,10 +143,10 @@ export function hexLine(a: HexCell, b: HexCell): HexCell[] {
  * 会告诉玩家终点位置。」⇒ 它是**导航手段**：给"入口在下潜点随机位置、默认不标出来"这条口径
  * 配一个玩家能主动找到的指路环节（找到信标 ⇒ 地图上标出下一层入口）。
  */
-export type WormholeSignal = 'wreck' | 'ship' | 'resource' | 'radar' | 'beacon'
+export type WormholeSignal = 'wreck' | 'ship' | 'resource' | 'radar' | 'beacon' | 'research'
 
 /** **到达后才知道的真相**：空地点 / 舰船墓场 / 遗迹 / 舰船 / 矿脉 / 谜质 / 漂浮信标 */
-export type WormholePlace = 'empty' | 'graveyard' | 'ruins' | 'ship' | 'vein' | 'matter' | 'beacon'
+export type WormholePlace = 'empty' | 'graveyard' | 'ruins' | 'ship' | 'vein' | 'matter' | 'beacon' | 'research'
 
 /** 第二批新趟地点事件；只在规则版本2的生成盘使用，旧盘不解释这些字段。 */
 export type WormholeEventKey = 'maintenance' | 'transport' | 'controller' | 'relay' | 'storm' | 'distress'
@@ -171,6 +171,7 @@ export const WORMHOLE_SIGNAL_WEIGHTS: Readonly<Record<WormholeSignal, number>> =
   resource: 22,
   radar: 12,
   beacon: 10,
+  research: 0, // 研究所使用深层独立生成流，不参与普通地点配额。
 }
 
 /* ═══════════ 内容原型（丙 · 船长 2026-09-14 定案：只改"口味"，不动强度曲线） ═══════════ */
@@ -243,7 +244,7 @@ export function wormholeArchetypeOf(seed: number): WormholeArchetype {
  */
 export function wormholeSignalWeightsFor(archetype: WormholeArchetype): Readonly<Record<WormholeSignal, number>> {
   const base = WORMHOLE_SIGNAL_WEIGHTS
-  const mul: Record<WormholeSignal, number> =
+  const mul: Record<Exclude<WormholeSignal, 'research'>, number> =
     archetype === 'wreck'
       ? { ship: 1, wreck: 2, resource: 1, radar: 1, beacon: 1 }
       : archetype === 'ruins'
@@ -259,7 +260,7 @@ export function wormholeSignalWeightsFor(archetype: WormholeArchetype): Readonly
    *  ① 信标的权重/份额/取整与改动前**逐格一致**（信标数不会因原型漂移）；
    *  ② 四类总和也不变（= 90）⇒ 空占比与"每格价值"照旧。
    */
-  const keys: WormholeSignal[] = ['ship', 'wreck', 'resource', 'radar']
+  const keys = ['ship', 'wreck', 'resource', 'radar'] as const
   const raw = keys.map((k) => base[k] * mul[k])
   const rawTotal = raw.reduce((s, v) => s + v, 0)
   const target = base.ship + base.wreck + base.resource + base.radar
@@ -408,6 +409,8 @@ export function signalOfPlace(place: WormholePlace): WormholeSignal | null {
     case 'graveyard':
     case 'ruins':
       return 'wreck'
+    case 'research':
+      return 'research'
     case 'ship':
       return 'ship'
     case 'vein':
@@ -501,8 +504,6 @@ export interface WormholeGridCell {
   r: number
   /** 真相：到达后才知道 */
   place: WormholePlace
-  /** 深层生产研究所复用遗迹打捞与警戒，真相仅在抵达后显示。 */
-  researchLab?: true
   /** 新趟第二批的确定性地点事件；到达前只显示信号，事件结果在选择后随档。 */
   eventKey?: WormholeEventKey
   eventResolved?: boolean
@@ -963,6 +964,8 @@ export function pickPlace(signal: WormholeSignal, rnd: number, ruinsShare: numbe
       return 'matter'
     case 'beacon':
       return 'beacon'
+    case 'research':
+      return 'research'
     case 'wreck':
       return rnd < ruinsShare ? 'ruins' : 'graveyard'
   }
@@ -1243,8 +1246,7 @@ export function wormholeMakeGrid(seed: number, depth: number, extraScanRadius = 
     const eligible = cells.filter(c => c.place === 'empty' && !c.eventKey && c.key !== startKey && c.key !== hexKey(exit.q, exit.r))
     if (labRng() < 0.2 && eligible.length > 0) {
       const cell = eligible[Math.floor(labRng() * eligible.length)]!
-      cell.place = 'ruins'
-      cell.researchLab = true
+      cell.place = 'research'
     }
   }
   return {
@@ -1272,8 +1274,8 @@ export function gridTally(grid: WormholeGridState): {
   bySignal: Record<WormholeSignal, number>
   byPlace: Record<WormholePlace, number>
 } {
-  const bySignal: Record<WormholeSignal, number> = { wreck: 0, ship: 0, resource: 0, radar: 0, beacon: 0 }
-  const byPlace: Record<WormholePlace, number> = { empty: 0, graveyard: 0, ruins: 0, ship: 0, vein: 0, matter: 0, beacon: 0 }
+  const bySignal: Record<WormholeSignal, number> = { wreck: 0, ship: 0, resource: 0, radar: 0, beacon: 0, research: 0 }
+  const byPlace: Record<WormholePlace, number> = { empty: 0, graveyard: 0, ruins: 0, ship: 0, vein: 0, matter: 0, beacon: 0, research: 0 }
   for (const c of grid.cells) {
     byPlace[c.place] += 1
     const s = signalOfPlace(c.place)
