@@ -41,7 +41,39 @@ function filters(fleetEntries: Array<{ def: { role: string; tier: number } }>, f
   return scope
 }
 
+function selectRole(role: string, tier: string) {
+  let handler: ts.Expression | undefined
+  const selected = `fleetRole === ${role === '__all__' ? 'SUB_ALL' : 's.key'}`
+  const visit = (node: ts.Node): void => {
+    if (ts.isJsxOpeningElement(node) && node.tagName.getText(ast) === 'button') {
+      const attributes = node.attributes.properties.filter(ts.isJsxAttribute)
+      const selection = attributes.find(attribute => attribute.name.getText(ast) === 'aria-selected')?.initializer
+      const click = attributes.find(attribute => attribute.name.getText(ast) === 'onClick')?.initializer
+      if (selection && ts.isJsxExpression(selection) && selection.expression?.getText(ast) === selected && click && ts.isJsxExpression(click)) {
+        handler = click.expression
+      }
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(page)
+  expect(handler, selected).toBeDefined()
+  const state = { role: role === 'armed' ? 'industrial' : 'armed', tier }
+  runInNewContext(`(${handler!.getText(ast)})()`, {
+    SUB_ALL: '__all__',
+    s: { key: role },
+    setFleetRole: (value: string) => { state.role = value },
+    setFleetTier: (value: string) => { state.tier = value },
+  })
+  return state
+}
+
 describe('我的舰队完整筛选标签', () => {
+  it.each(['__all__', ...roles.map(role => role.key)])('切换类别到%s时重置级别筛选', role => {
+    for (const tier of ['__all__', ...tiers.map(tier => tier.key)]) {
+      expect(selectRole(role, tier)).toEqual({ role, tier: '__all__' })
+    }
+  })
+
   it.each([
     { name: '空舰队', entries: [] },
     { name: '仅有T1采矿舰', entries: [{ def: { role: 'industrial', tier: 1 } }] },

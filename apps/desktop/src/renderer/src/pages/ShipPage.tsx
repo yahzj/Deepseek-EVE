@@ -805,8 +805,8 @@ export function ShipPage({
             ⚠ **2026-09-12 船长（本批）：「将我的舰队中，级别和类别筛选对调，玩家先选择类别，再选级别」**
             ⇒ **上述「选中级别后才出类别」的旧口径作废**：工具条改为 **第 1 行 状态**、
             **第 2 行 类别**（`SHIP_SUBS`：全部 / 采矿舰 / 货运舰 / 武装舰 / 重装舰）、
-            **第 3 行 级别**（`SHIP_TIER_SUBS`：全部 / T1~T5），**两行都常显**（不再隐藏、不再级联重置），
-            两维各自独立与其它条件取「与」；
+            **第 3 行 级别**（`SHIP_TIER_SUBS`：全部 / T1~T5），**两行都常显**；
+            切换类别（包括「全部」）时将级别重置为「全部」，各维筛选与其它条件取「与」；
             每行各带灰字前缀，避免多个「全部」混淆（前缀写法同星图页「矿带排序：」） */}
         <div className="app-fleet-toolbar">
           <div className="app-fleet-row">
@@ -843,7 +843,7 @@ export function ShipPage({
                 role="tab"
                 aria-selected={fleetRole === SUB_ALL}
                 className={`app-tasktab${fleetRole === SUB_ALL ? ' is-active' : ''}`}
-                onClick={() => setFleetRole(SUB_ALL)}
+                onClick={() => { setFleetRole(SUB_ALL); setFleetTier(SUB_ALL) }}
               >
                 {tr("ui.IndustryPage.001")}
               </button>
