@@ -55,8 +55,8 @@ describe('短距离跃迁、护盾笼与酸液喷吐器', () => {
     state.fleet[uid]!.fitted.mid = [hit[0]!.id, hit[0]!.id, hit[1]!.id]
     expect(sameKindCount(state.fleet[uid]!.fitted, ctx, hit[0]!)).toBe(3)
   })
-  it('喷吐器基础射程2500米，巨齿鲨的20%舰船射程加成仍正常生效', () => {
-    for (const [ship, range] of [['sh-hammerhead', 2500], ['sh-megalodon', 3000]] as const) {
+  it('喷吐器基础射程2500米，T3额外10%，巨齿鲨原20%与T4额外15%加算', () => {
+    for (const [ship, range] of [['sh-hammerhead', 2750], ['sh-megalodon', 3375]] as const) {
       const { state, uid } = world([acidId], [], ship)
       expect(createPlayerSpec(state, ctx, uid)!.weapons[0]!.maxRangeM).toBe(range)
     }
@@ -69,7 +69,7 @@ describe('短距离跃迁、护盾笼与酸液喷吐器', () => {
       foeHpOverride: undefined }
     const local: SimContext = { ...ctx, anomalies: new Map(ctx.anomalies).set(card.id, card) }
     const spec = createPlayerSpec(state, local, uid)!
-    expect(spec.weapons[0]).toMatchObject({ kind: 'beam', fixedType: 'plasma', maxRangeM: 3000, reloadMs: 3800,
+    expect(spec.weapons[0]).toMatchObject({ kind: 'beam', fixedType: 'plasma', maxRangeM: 3375, reloadMs: 3800,
       acidOnHit: { cutPct: .05, durationMs: 15000 } })
     const b = startBattleFor(state, local, uid, card.id, 0, 1000)!
     expect(b.units['foe-0']!.hp.s).toBe(0)

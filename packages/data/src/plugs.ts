@@ -33,7 +33,7 @@ import { staticDataGroup } from './staticData'
 
 const SHIP_PLUGS_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
   'plug-pirate-raider': { name: '袭击者插件', description: L10N['mod.factionPlug.001']!.zh },
-  // ⟪文案调整 2026-11-02⟫ 船长调整：保留少量护盾，总装甲按比例跨场保留。
+  // ⟪文案调整 2026-11-07⟫ 护盾上限归零，总装甲仍按比例跨场保留。
   'plug-alien-shield-coating': { name: '护盾镀膜插件', description: L10N['mod.factionPlug.008']!.zh },
   'plug-gravekeeper-capacitor': { name: '护盾蓄能插件', description: L10N['mod.factionPlug.003']!.zh },
   // ⟪文案调整 2026-11-02⟫ 船长移除CPU代价，保留速度代价。

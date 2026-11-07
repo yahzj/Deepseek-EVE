@@ -35,7 +35,7 @@ import { Communicator } from './panels/Expedition'
 import { PrologueScreen } from './panels/PrologueScreen'
 import { ModeChoice } from './panels/ModeChoice'
 import { WeekendInvasionLogRow } from './panels/WeekendInvasionLog'
-import { WeekendFlagshipPrepModal } from './panels/WeekendFlagshipPrep'
+import { FlagshipFleetActions } from './features/combat/FlagshipFleetActions'
 import { WeekendSummaryView } from './panels/WeekendSummary'
 import { PlugExchangeModal } from './panels/PlugExchange'
 import { InvasionAlarm, InvasionFireworks, ALARM_TOTAL_MS, FIREWORKS_MS } from './panels/InvasionFx'
@@ -1027,8 +1027,6 @@ async function applyLayoutAndReload(): Promise<void> {
    * 队首那封仍在 `commsPopups` 里等着，战场一收起它才上台；再配下面的"上膛延时"防误点。
    */
   const popupId = engine.commsPopups()[0] ?? null
-  /** 战前准备弹层开合（2026-09-25：旗舰现身弹窗可直达） */
-  const [prepOpen, setPrepOpen] = useState(false)
   /** 战场是否正盖在界面上（挂载 ≠ 上屏：`battleOpen` 为假时战场什么都不渲染，不算盖着） */
   const battleOnStage = battleMounted && battleOpen
   /** BGM / 环境音（2026-11-02 追加批）：场景变化才切曲；隐藏/最小化由内部生命周期暂停 */
@@ -1884,15 +1882,7 @@ async function applyLayoutAndReload(): Promise<void> {
                 })}
               </div>
               <div className="app-wh-actions">
-                <button
-                  className="app-btn is-primary"
-                  onClick={() => {
-                    engine.dismissFlagshipPopup()
-                    setPrepOpen(true)
-                  }}
-                >
-                  {tr('ui.weekend.062')}
-                </button>
+                <FlagshipFleetActions engine={engine} onStarted={() => engine.dismissFlagshipPopup()} />
                 <button className="app-btn is-small" onClick={() => engine.dismissFlagshipPopup()}>
                   {tr('ui.App.100')}
                 </button>
@@ -1901,9 +1891,8 @@ async function applyLayoutAndReload(): Promise<void> {
           </div>
         </div>
       ) : null}
-      {/* 战前准备弹层：从上面那枚弹窗直达（组件自包含；活动框与星系详细里各挂一份自己的） */}
+      {/* 旗舰沿用当前编队；距离变化仍需原有独立确认。 */}
       {state.pendingBattleRange ? <BattleRangeConfirm key={state.pendingBattleRange.signature} engine={engine} /> : null}
-      {prepOpen ? <WeekendFlagshipPrepModal engine={engine} onClose={() => setPrepOpen(false)} /> : null}
       {/**
        * **入侵结算面板**（船长 2026-09-25 令：「玩家点击下方的跳转时应该直接弹出结算公告」）：
        * 从**通讯弹窗**的「查看详细奖励」直接开到这里（组件与通讯页那一处同源：`WeekendSummaryView`）；

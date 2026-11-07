@@ -16,6 +16,7 @@ import { crisisEffectsOf } from '../gravekeeperGear'
 import { droneLaunchGapMsOf } from '../droneLaunch'
 import { playerRangeEwOf } from '../rangeEw'
 import { quickRepairFactor } from '../../repair'
+import { shipWeaponRangeBonusesOf } from '../../ships/range'
 
 export function createPlayerSpec(
   state: GameState,
@@ -279,8 +280,8 @@ export function createPlayerSpec(
     rangeBonus[type] = supportEffectPartsOf(allDefs, `range:${type}`).reduce((sum, part) => sum + part.value * part.weight, 0)
     for (const m of allDefs) if (m.slot !== 'support') rangeBonus[type] += m.rangeTypeBonusPct?.[type] ?? 0
   }
-  // **船体固有按系射程加成**（2026-09-13 船长：炮艇「动能武器射程 +30%」）——与模块同链加算
-  for (const [rt, v] of Object.entries(ship.weaponRangeBonusPct ?? {})) rangeBonus[rt as DamageType] += v ?? 0
+  // 舰级额外射程与船体固有特性、模块和插件同池加算。
+  for (const [rt, v] of Object.entries(shipWeaponRangeBonusesOf(ship))) rangeBonus[rt as DamageType] += v ?? 0
   /** 武器**基准射程** = 装备自带射程 × (1−削减)；下限 500 m（不许被压成 0）。
    *  ⚠ 与"实际射程"分家只为**干扰压制**：船长的加法口径要按"基准 + 加成"拆开算
    *  （见 `meRangeMulOf`；`refs.weaponRanges` 记的就是这两份数）。 */

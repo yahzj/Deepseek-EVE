@@ -102,7 +102,7 @@ describe('D 族守墓古舰专属装备（2026-09-10 船长）', () => {
     expect(w.label).toBe('守墓者长炮')
     expect(w.hitRate).toBe(1)
     expect(w.falloff).toBeCloseTo(0.6, 6)
-    expect(w.maxRangeM).toBe(12_000)
+    expect(w.maxRangeM).toBe(12_600) // T2 舰级射程 +5%
     expect(w.minRangeM).toBe(1300)
     expect(w.reloadMs).toBe(7350)
     expect(w.shotsByType?.kinetic).toBeGreaterThan(0)

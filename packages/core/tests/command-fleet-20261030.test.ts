@@ -352,6 +352,35 @@ describe('统一指挥预算', () => {
   })
 })
 
+describe('旗舰沿用当前编队', () => {
+  function ready() {
+    const w = world(5)
+    const now = Date.now()
+    w.state.weekendEvent = { seq: 1, startedAtWallMs: now, coreId: 'galaxy-kor', peripheryIds: ['galaxy-redring'], family: 'H', contributed: {} }
+    weekendNoteContribution(w.state.weekendEvent, 'galaxy-redring', 1)
+    weekendNoteContribution(w.state.weekendEvent, 'galaxy-kor', 1)
+    w.state.preparationSquads = { combat: [w.ids[0]!, w.ids[2]!, w.ids[1]!], weekend: [w.ids[3]!] }
+    w.state.weekendPrepSquad = [w.ids[4]!]
+    return { ...w, now }
+  }
+  it('缺省使用当前主控及成员顺序，忽略旧旗舰记忆和其他基地舰', () => {
+    const { state, ids, now } = ready()
+    const battle = weekendStartFlagshipBattle(state, ctx, now)!
+    expect(battle).not.toBeNull()
+    expect(battle.myFleet!.map(entry => entry.shipId)).toEqual([ids[0], ids[2], ids[1]])
+    expect(state.preparationSquads!.weekend).toEqual([ids[3]])
+    expect(state.weekendPrepSquad).toEqual([ids[4]])
+  })
+  it.each(['budget', 'busy', 'empty'] as const)('%s整体拒绝，不回退旧阵容或自动补船', failure => {
+    const { state, ids, now } = ready()
+    if (failure === 'budget') state.skills.trained = {}
+    if (failure === 'busy') state.shipReturns[ids[1]!] = { beltId: null, legMs: 1000, phaseAccMs: 0, reason: 'expedition' }
+    const before = structuredClone(state)
+    expect(weekendStartFlagshipBattle(state, ctx, now, failure === 'empty' ? [] : undefined)).toBeNull()
+    expect(state).toEqual(before)
+  })
+})
+
 describe('12对12几何与敌方候补', () => {
   it('12舰矩阵无左右越界，敌我锚点均完整', () => {
     for (const W of [1200, 1280, 1600, 1920]) {

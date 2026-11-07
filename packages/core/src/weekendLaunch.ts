@@ -31,6 +31,7 @@ import { preparationSquadOf, notePreparationSquad } from './preparationSquads'
 import { combatShipLimit, commandBudgetOf } from './combat/command/rules'
 import { shipOperationBlockReason } from './shipActionPolicy'
 import { beginDeparture, departureOrigin, UNDOCK_MS } from './departure'
+import { combatRosterOf } from './combat/command/roster'
 
 /** 参战舰船**上限**（旗舰战 = 4 艘小队战；语义是上限、不是"必须带满"——与虫洞 `WORMHOLE_MAX_SHIPS` 同款口径） */
 export const WEEKEND_FLAGSHIP_MAX_SHIPS = combatShipLimit(true)
@@ -216,14 +217,9 @@ export function weekendFlagshipSquadOf(state: GameState): string[] {
 }
 
 /**
- * **挑战旗舰**（准备界面的「开战」调它）：核心条满才成立；返回 battle 表示开打成功
- * （`null` = 条件不满足/无法开战）。
- *
- * `squad`（2026-09-25 加）：**玩家在战前准备界面选的编队** —— 会过 `weekendSanitizeFlagshipSquad`
- * 净化（只认在编船只 · 去重 · 截 4 艘）并**落盘**（下次进来默认还是这几艘）；
- * 缺省 / 净化后为空 ⇒ 回落 `weekendPrepSquadOf`（落盘编队或自动编队）⇒ 老调用方逐字不变。
- *
- * ⚠ 只负责"开战"——结果结算走 `weekendApplyBattleOutcome`（引擎在战斗收尾时调）。
+ * 挑战旗舰：缺省使用我的舰队当前主控与成员顺序，不读取旧旗舰阵容或自动拉入基地舰。
+ * 显式squad供距离确认重放与兼容调用使用，原始名单仍过预算、重复和缺舰校验；空名单不回退。
+ * 只负责开战，结果结算仍走weekendApplyBattleOutcome。
  */
 export function weekendStartFlagshipBattle(
   state: GameState,
@@ -242,7 +238,7 @@ function weekendStartFlagshipBattleMutable(state: GameState, ctx: SimContext, no
   const spec = weekendFlagshipSpecOf(state, ctx, nowWallMs)
   if (!spec) return null
   const clean = squad !== undefined ? weekendSanitizeFlagshipSquad(state, squad) : []
-  const use = clean.length > 0 ? clean : weekendPrepSquadOf(state)
+  const use = squad === undefined ? combatRosterOf(state) : clean
   if (use.length === 0) return null
   if (!commandBudgetOf(state, ctx, squad ?? use, true).ok) return null
   if (use.some(id => shipOperationBlockReason(state, ctx, id, 'configure') !== null)) return null

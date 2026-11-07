@@ -10,7 +10,7 @@ import { saveFleetPreset, renameFleetPreset, deleteFleetPreset, applyFleetPreset
  * 3. 状态一变就通知界面刷新（subscribe）。
  */
 import { blackMarketBuy, ensureBlackMarket } from '@whale/core'
-import { battleAmmoPreloadPlan, weekendPrepSquadOf, weekendSanitizeFlagshipSquad } from '@whale/core'
+import { battleAmmoPreloadPlan } from '@whale/core'
 import {
   MAX_SKILL_LEVEL,
   preparationSquadOf,
@@ -1901,11 +1901,10 @@ export class GameEngine {
    * 战后由 `encounters.settleFight` 调 `weekendApplyBattleOutcome` ⇒ 击毁旗舰、黑匣、贡献结算自动闭环。
    */
   challengeWeekendFlagship(squad?: readonly string[]): CommandResult {
-    const clean = squad !== undefined ? weekendSanitizeFlagshipSquad(this.state, squad) : []
-    const ships = clean.length ? clean : weekendPrepSquadOf(this.state)
+    const ships = squad !== undefined ? [...squad] : combatRosterOf(this.state)
     const now = Date.now()
-    return this.withBattleAmmoWarning(`flagship:${ships.join(',')}`, ships, () => this.challengeWeekendFlagshipReady(squad), undefined,
-      snapshot => ({ ok: !!weekendStartFlagshipBattle(snapshot, this.ctx, now, squad) }))
+    return this.withBattleAmmoWarning(`flagship:${ships.join(',')}`, ships, () => this.challengeWeekendFlagshipReady(ships), undefined,
+      snapshot => ({ ok: !!weekendStartFlagshipBattle(snapshot, this.ctx, now, ships) }))
   }
 
   private challengeWeekendFlagshipReady(squad?: readonly string[]): CommandResult {

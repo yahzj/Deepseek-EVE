@@ -87,13 +87,15 @@ describe('敌卡持续作战校准账本', () => {
   })
 
   it('连续路线遇到僚舰损伤门禁会停下，不把首场胜利当成可连续五场', () => {
-    const result = runSustainCampaign(ctx, mixed, 'ano-vault-sentinel', 13, 1, 'continuous', 5)
+    const result = runSustainCampaign(ctx, mixed, 'ano-vault-sentinel', 21, 1, 'continuous', 5)
     expect(result.rounds).toBe(1)
     expect(result.wins).toBe(1)
     expect(result.stopped).toBe('编队舰船耐久不足')
     expect(result.repairDebt).toBeGreaterThan(0)
     expect(result.sunk).toEqual([])
-    expect(result.records[0]!.after.find(ship => ship.uid === 'sh-wh-g-destroyer')!.armor).toBeLessThan(.5)
+    const damagedEscort = result.records[0]!.after.find(ship => ship.uid === 'sh-wh-d-frigate')!
+    expect(damagedEscort.armor).toBe(0)
+    expect(damagedEscort.hull).toBeLessThan(1)
   })
 
   it('港内全修也不补回实战沉船，船体与装配单独计损且停止路线', () => {

@@ -22,7 +22,11 @@ function renderer(locale: 'zh' | 'en') {
   const scope = { exports: {} as { shipInfoLines: (ship: ShipDef) => Array<{ k: string; v: string }> },
     tr: exports.tr, fmt: String, pct: (value: number) => `${Math.round(value * 100)}%`,
     shipRoleText: () => '', shipSubClassText: () => '', shipCategoryKeyOf, shipTierText: () => '',
-    DMG_LABEL: {}, shipSlotsOf, shipCommandCostOf, rangeEwBaseOf, resistsText: () => '', slotListText: () => '',
+    DMG_LABEL: {}, shipSlotsOf, shipCommandCostOf, rangeEwBaseOf,
+    shipWeaponRangeBonusesOf: (ship: ShipDef) => ({ ...ship.weaponRangeBonusPct, kinetic: (ship.weaponRangeBonusPct?.kinetic ?? 0) + ((ship.tier ?? 1) - 1) * .05,
+      explosive: (ship.weaponRangeBonusPct?.explosive ?? 0) + ((ship.tier ?? 1) - 1) * .05,
+      plasma: (ship.weaponRangeBonusPct?.plasma ?? 0) + ((ship.tier ?? 1) - 1) * .05 }),
+    resistsText: () => '', slotListText: () => '',
   }
   runInNewContext(ts.transpileModule(fn.getText(ast), { fileName: 'shipInfo.tsx', compilerOptions: {
     module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.React,

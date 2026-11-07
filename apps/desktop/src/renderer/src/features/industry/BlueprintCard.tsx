@@ -17,7 +17,7 @@ import { cmdText } from '../../i18n/locale'
 import { tr } from '../../i18n/locale'
 import { fmtDuration } from '../../i18n/fmt'
 import { bpGoodKey } from './blueprintValue'
-import { isWormholeBlueprint, manualBuildNote } from './blueprintPolicy'
+import { factionPlugBlueprintKind, isWormholeBlueprint, manualBuildNote } from './blueprintPolicy'
 
 /**
  * 组装机 / 造船厂生产卡。**`memo` + `liveKey`**：父级每次心跳都会重渲染并算出新的 `liveKey`，
@@ -155,7 +155,9 @@ export const BlueprintCard = memo(function BlueprintCard({
   const bookBuyable = goodKey !== null && engine.ctx.marketGoods.get(goodKey)?.playerBuyable !== false
   const blackMarketBlueprint = !bookBuyable && goodKey !== null && engine.ctx.marketGoods.get(goodKey)?.blackMarketBuyable === true
     && engine.ctx.marketGoods.get(goodKey)?.playerSellable === false
-  const whBlueprint = isWormholeBlueprint(blueprintId)
+  // ⟪文案调整 2026-11-07⟫ 势力一次性插件图纸来自信号空间，不走声望兑换。
+  const factionPlugKind = factionPlugBlueprintKind(engine.ctx, blueprintId)
+  const whBlueprint = isWormholeBlueprint(blueprintId) || factionPlugKind === 'single'
   /**
    * **舰船插件图纸**（**2026-09-26 船长令**：「**没有蓝图的舰船插件组装机应该显示去商店兑换，
    * 点击后跳转到章鱼人声望商店。而不是无市场渠道（本来就不在市场购买）**」）。
@@ -165,7 +167,7 @@ export const BlueprintCard = memo(function BlueprintCard({
    * 原先会掉进兜底的「✕ 无市场渠道」死路 —— 船长点名的就是它。
    */
   const plugBlueprint =
-    engine.ctx.modules.get(engine.ctx.blueprints.get(blueprintId)?.moduleId ?? '')?.slot === 'plug'
+    engine.ctx.modules.get(engine.ctx.blueprints.get(blueprintId)?.moduleId ?? '')?.slot === 'plug' && factionPlugKind === null
   /** 虫洞解锁声望闸（与扫描虫洞页同一本账：**累计**协会声望 ≥ `WORMHOLE_SCAN_UNLOCK_STANDING`；
    *  2026-09-26 船长令「所有声望门槛改读累计声望」⇒ 走唯一入口 `standingOf`，不直读可支配那本） */
   const whStanding = standingOf(state, DSI_FACTION_ID)

@@ -20,6 +20,13 @@ export function applyApprovedFleetShipDelta(rows: Array<{ id: string }>): void {
     const cost = COMMAND_COSTS[value.id]
     if (cost === undefined) throw new Error(`指挥成本期望缺少舰船：${value.id}`)
     row.commandCost = cost
+    const droneHullChanges: Readonly<Record<string, Record<string, number>>> = {
+      'sh-swarm': { shieldHp: 310, cpu: 275, droneBayM3: 200, maxSpeedMps: 320 },
+      'sh-sentinel': { shieldHp: 515, cpu: 360, droneBayM3: 360, maxSpeedMps: 300 },
+      'sh-wh-e-destroyer': { cpu: 330 },
+      'sh-wh-e-carrier': { cpu: 480 },
+    }
+    Object.assign(row, droneHullChanges[value.id] ?? {})
     if (['sh-wh-a-frigate', 'sh-wh-d-frigate'].includes(value.id)) {
       row.rangeEwBonus = 40
       row.rangeEwEquipmentBonusPct = .25

@@ -19,10 +19,10 @@ const NOW = new Date(2026, 9, 9, 20).getTime()
 const CORE = 'galaxy-kor', PER = 'galaxy-redring'
 afterEach(() => vi.restoreAllMocks())
 
-function world(family = 'C') {
+function world(family = 'C', shipDefId = 'sh-megalodon') {
   vi.spyOn(Date, 'now').mockReturnValue(NOW)
   const state = createInitialState({ nowWallMs: NOW, seed: 7 })
-  const uid = addShipToFleet(state, 'sh-megalodon')
+  const uid = addShipToFleet(state, shipDefId)
   state.shipId = uid
   state.exploredGalaxies = [...ctx.galaxies.keys()]
   state.standings.dsi = 100
@@ -44,7 +44,7 @@ function idle(state: GameState) {
 
 describe('入侵目标距离不因首波量程缩小', () => {
   it.each(['alien-escort', 'alien-main', 'ink-raid', 'ink-main'])('同星系同卡%s后波选择在连续开局与读档后保持', cardId => {
-    const state = world(cardId.startsWith('alien') ? 'C' : 'H')
+    const state = world(cardId.startsWith('alien') ? 'C' : 'H', 'sh-falconet')
     expect(startExpedition(state, cardId, ctx, { foeGalaxyId: CORE }).ok).toBe(true)
     const first = state.expedition.battle!
     const firstMax = battleArcsFor(state, ctx)!.maxM
@@ -144,7 +144,7 @@ describe('入侵目标距离不因首波量程缩小', () => {
   it('无偏好仍为原主武器默认值，新的手动选择仍受当前波上限约束', () => {
     const state = world()
     startExpedition(state, 'alien-escort', ctx, { foeGalaxyId: PER })
-    expect(state.expedition.battle!.myDesireM).toBe(4416)
+    expect(state.expedition.battle!.myDesireM).toBe(4968) // T5 舰级射程 +20%
     const me = createPlayerSpec(state, ctx, state.shipId)!
     expect(me.weapons.length).toBeGreaterThan(0)
     const maxM = battleArcsFor(state, ctx)!.maxM

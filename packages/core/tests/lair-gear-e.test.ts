@@ -79,7 +79,7 @@ describe('E 族巨构三件（2026-09-10 船长逐件过审）', () => {
     expect(w.kind).toBe('gun')
     expect(w.hitRate).toBeCloseTo(0.7, 6)
     expect(w.falloff).toBeCloseTo(0.1, 6)
-    expect(w.maxRangeM).toBe(9600)
+    expect(w.maxRangeM).toBe(10_080) // T2 舰级射程 +5%
     expect(w.minRangeM).toBe(900)
     expect(w.reloadMs).toBe(10_000)
     expect(Object.keys(w.shotsByType ?? {})).toEqual(['explosive'])

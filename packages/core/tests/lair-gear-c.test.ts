@@ -156,7 +156,7 @@ describe('C 族异形件：无消耗自愈 + 结构抗性（2026-09-10 船长）
     expect(c3).toMatchObject({ dmgMult: 4.4, reloadMs: 3800, maxRangeM: 2500, acidOnHit: { cutPct: .05, durationMs: 15000 } })
     // 代价：射程只有攻坚激光炮的三成以下
     expect(c3.maxRangeM!).toBeLessThan(mk3.maxRangeM! / 3)
-    expect(w.maxRangeM).toBe(2500)
+    expect(w.maxRangeM).toBe(2625) // T2 舰级射程 +5%
     expect(w.acidOnHit).toEqual(c3.acidOnHit)
   })
 })

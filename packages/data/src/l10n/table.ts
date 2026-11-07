@@ -24,6 +24,9 @@ export function l10nEntryText(entry: L10nEntry, locale: 'zh' | 'en'): string {
 }
 
 export const L10N: Readonly<Record<string, L10nEntry>> = {
+  'ui.flagshipFleet.001': { zh: '当前编队{p1}艘 · 指挥成本{p2}/{p3}', en: '', enDeferred: true },
+  'ui.flagshipFleet.002': { zh: '选择编队预设', en: '', enDeferred: true },
+  'ui.flagshipFleet.003': { zh: '切换编队', en: '', enDeferred: true },
   'core.fleetPreset.001': { zh: '停港且主控空闲时才能保存或套用编队。', en: '', enDeferred: true },
   'core.fleetPreset.002': { zh: '预设名称不能为空。', en: '', enDeferred: true },
   'core.fleetPreset.003': { zh: '找不到这套编队预设。', en: '', enDeferred: true },
@@ -94,7 +97,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'bp.repairDrone.002': { zh: '军用修理无人机图纸', en: '', enDeferred: true },
   'bp.repairDrone.003': { zh: '制造军用修理无人机，开工消耗一张图纸。', en: '', enDeferred: true },
   'bp.repairDrone.004': { zh: '学习后可反复制造军用修理无人机。', en: '', enDeferred: true },
-  'mod.factionPlug.008': { zh: '开战时将部分护盾容量转为装甲，保留少量护盾容量。装甲损伤按总装甲的剩余比例保留。', en: '', enDeferred: true },
+  // ⟪文案调整 2026-11-07⟫ 船长要求镀膜后的护盾上限为零，转换率不变。
+  'mod.factionPlug.008': { zh: '开战时将部分护盾容量转为装甲，护盾上限归零。装甲损伤按总装甲的剩余比例保留。', en: '', enDeferred: true },
   'mod.factionPlug.009': { zh: '扩展货仓与无人机舱，降低最大速度。', en: '', enDeferred: true },
   'ui.factionPlug.008': { zh: '最终护盾的{p1}转为装甲，护盾上限保留{p2}', en: '', enDeferred: true },
   'mod.factionPlug.010': { zh: '战损管理插件', en: '', enDeferred: true },

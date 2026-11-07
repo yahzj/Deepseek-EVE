@@ -1,5 +1,11 @@
 # 工具区台账（tools/）
 
+## 黑市标题裁切（2026-11-07）
+
+- `node tools/modern-selection-style-check.cjs`：使用真实两套CSS和组件同类DOM，检查新版工业卡头去边框且矿带不变、按钮/复选框编队卡与舰队卡选中反馈，以及悬停/禁用状态不覆盖已选底色；两布局×1366/390宽度，输出`tools/_ui-artifacts/modern-selection-style/`。只启动自有无头Chrome，不读个人档；计算样式检查不等同游戏全流程或桌面观感验收。
+
+- `npm run build`后运行`node tools/black-market-title-check.cjs`：独立合成最长名称货架、自有无头Chrome，验证两种布局、默认/复古字体、1366/390宽度的三行标题、字形高度与行高、上下留量、说明不重叠和首张标题未被覆盖；截图/读数输出`tools/_ui-artifacts/black-market-title/`。不读个人档，结束仅关闭自有PID、清理经过路径检查的临时配置；不代替桌面实机观感验收。
+
 ## 编队预设（2026-11-07）
 
 - `npx tsx tools/make-fleet-presets-save.ts`：从全新状态生成三艘同型实例及两套不同主控/顺序的预设，经双轮读档核对后独占创建`docs/test-saves/test-save-fleet-presets-<上海时间>.json`；加载步骤见`docs/test-saves/fleet-presets-20261107.md`，不读取个人档。

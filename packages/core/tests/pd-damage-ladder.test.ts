@@ -71,7 +71,7 @@ describe('近防炮攻击口径（船长 2026-09-12 裁定「丙」：短射程 
       expect(ratio, `第 ${i + 1} 档 DPS 比`).toBeGreaterThanOrEqual(1.18)
       expect(ratio, `第 ${i + 1} 档 DPS 比`).toBeLessThanOrEqual(1.35)
       // 射程仍是短的那一档（远距离打不到 —— 这就是它换来高威力的代价）
-      expect(pd.maxRangeM).toBe(2500)
+      expect(pd.maxRangeM).toBe(2625) // T2 舰级射程 +5%
       expect(pd.maxRangeM).toBeLessThan(gun.maxRangeM)
     }
   })

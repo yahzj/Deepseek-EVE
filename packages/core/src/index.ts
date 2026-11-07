@@ -2202,6 +2202,7 @@ export { PREPARATION_SQUAD_KINDS, cleanPreparationSquads, preparationSquadOf, no
 export type { PreparationSquadKind, PreparationSquads } from './preparationSquads'
 export { FLEET_PRESET_MAX, FLEET_PRESET_NAME_MAX, cleanFleetPresets, saveFleetPreset, renameFleetPreset, deleteFleetPreset, applyFleetPreset } from './fleetPresets'
 export type { FleetPreset } from './fleetPresets'
+export { SHIP_TIER_RANGE_BONUS, shipWeaponRangeBonusesOf } from './ships/range'
 export type { WormholePreparationRequest, WormholePreparationPlan, WormholePreparedResult } from './wormholePreparation'
 export { WORMHOLE_TEMPLATE_MAX, WORMHOLE_TEMPLATE_NAME_MAX, cleanWormholePreparationTemplates, wormholeSavePreparationTemplate, wormholeRenamePreparationTemplate, wormholeDeletePreparationTemplate, wormholeTemplateFillPlan } from './wormholePreparationTemplates'
 export type { WormholePreparationTemplate, WormholeTemplateResult } from './wormholePreparationTemplates'

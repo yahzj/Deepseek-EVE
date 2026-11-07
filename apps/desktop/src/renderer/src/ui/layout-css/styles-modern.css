@@ -13499,13 +13499,13 @@ input.app-wh-template-name { min-height: 36px; padding: var(--wui-sp-6) var(--wu
 .app-bm-head > .app-gold { margin-left: auto; overflow-wrap: anywhere; min-width: 0; }
 .app-bm-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; flex: 1 1 0; min-height: 0; min-width: 0; }
 .app-bm-stock { min-height: 0; min-width: 0; overflow-y: auto; overflow-x: hidden; container: bm-stock / inline-size; }
-.app-bm-cardflow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: 170px; gap: 6px; align-content: start; box-sizing: border-box; }
+.app-bm-cardflow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: 190px; gap: 6px; align-content: start; box-sizing: border-box; }
 .app-bm-cardflow > * { min-width: 0; min-height: 0; display: block; }
-.app-bm-card { box-sizing: border-box; height: 100%; min-width: 0; display: grid; grid-template-rows: 36px 36px 28px 26px 24px; gap: 2px; padding: 5px; border: 1px solid rgb(var(--wui-border)); border-top-color: var(--bm-good-tone); border-radius: 6px; background: rgb(var(--wui-bg-panel) / 0.88); }
+.app-bm-card { box-sizing: border-box; height: 100%; min-width: 0; display: grid; grid-template-rows: 36px 56px 28px 26px 24px; gap: 2px; padding: 5px; border: 1px solid rgb(var(--wui-border)); border-top-color: var(--bm-good-tone); border-radius: 6px; background: rgb(var(--wui-bg-panel) / 0.88); }
 .app-bm-card.is-selected { border-color: rgb(var(--wui-accent)); }
 .app-bm-card.is-sold { opacity: 0.6; }
 .app-bm-select { box-sizing: border-box; border: 0; padding: 0 6px; background: transparent; color: inherit; display: flex; align-items: center; justify-content: flex-start; text-align: left; min-width: 0; min-height: 0; }
-.app-bm-name { font-size: 12px; line-height: 12px; overflow-wrap: anywhere; min-width: 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.app-bm-name { font-size: 12px; line-height: 16px; padding-block: 2px; overflow-wrap: anywhere; min-width: 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .app-bm-card .app-dim { font-size: 10px; line-height: 1.3; overflow-wrap: anywhere; }
 .app-bm-card-identity { display: grid; grid-template-columns: 32px minmax(0, 1fr); grid-template-rows: 18px 18px; align-items: center; position: relative; column-gap: 4px; }
 .app-bm-card-identity > svg { grid-row: 1 / 3; }
@@ -13926,6 +13926,13 @@ body.no-fx .app-root.is-layout-classic:not(.is-mobile-layout) .app-log-side { tr
 .app-root.is-layout-modern .app-belt-name {
   color: rgb(var(--wui-hud-primary));
   font-weight: 600;
+}
+
+/* 工业卡头不是独立面板，保留外层卡片边界即可；矿带卡头保持原样。 */
+.app-root.is-layout-modern .app-industry-page .app-belt-head {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 /* 关特效与减弱动画 */
@@ -14767,6 +14774,21 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
   border-left: 3px solid rgb(var(--wui-hud-primary));
   background: linear-gradient(90deg, rgb(var(--wui-hud-primary) / 0.08) 0%, rgb(var(--wui-hud-surface-soft) / 0.94) 100%);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), inset 0 0 16px rgb(var(--wui-hud-primary) / 0.05);
+}
+
+/* 选择态必须压过新版通用按钮及悬停皮肤，按钮卡与复选框卡共用同一反馈。 */
+.app-root.is-layout-modern .app-wh-card.is-picked,
+.app-root.is-layout-modern .app-wh-card.is-picked:hover {
+  border-color: rgb(var(--wui-hud-primary) / 0.85) !important;
+  background: rgb(var(--wui-hud-primary) / 0.16) !important;
+  box-shadow: inset 0 0 0 1px rgb(var(--wui-hud-primary) / 0.35) !important;
+}
+.app-root.is-layout-modern .app-ship-card.is-fleet.is-combat-selected:not(.is-current),
+.app-root.is-layout-modern .app-ship-card.is-fleet.is-combat-selected:not(.is-current):hover {
+  border-color: rgb(var(--wui-hud-primary) / 0.85);
+  border-left-color: rgb(var(--wui-hud-primary));
+  background: rgb(var(--wui-hud-primary) / 0.16);
+  box-shadow: inset 0 0 0 1px rgb(var(--wui-hud-primary) / 0.35);
 }
 
 /* 舰船名称行与角标 */
