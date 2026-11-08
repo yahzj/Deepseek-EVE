@@ -3169,6 +3169,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   /** ⟪文案调整 2026-10-02⟫ 船长令「**直接写成『加载存档文件』**」：本 id = 系统文件对话框里的**类型名**（导入/导出共用），
    *  「JSON」是文件格式名、玩家不必懂（whale-copy §2 第 4 条）⇒ 改「存档文件」。 */
   "ui.main.014": { zh: "存档文件", en: "Save file" },
+  /** ⟪网页版更新提示 2026-11-09 船长令⟫ 挂机玩家长期不关页面会一直跑旧包；只提示、不强制刷新。 */
+  "ui.webUpdate.001": { zh: "检测到新版本，刷新后才会用上最新玩法。", en: "", enDeferred: true },
+  "ui.webUpdate.002": { zh: "有更新，点我刷新", en: "", enDeferred: true },
   "ui.Achievements.001": { zh: "尚未获得", en: "Not earned yet" },
   "ui.Achievements.002": { zh: "已获得（时间未记录）", en: "Earned (time not recorded)" },
   "ui.Achievements.003": { zh: "获得于 {t}", en: "Earned {t} ago" },
