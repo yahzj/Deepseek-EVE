@@ -111,6 +111,10 @@ export interface PlaceOrderRequest {
   reduceOnly?: boolean
   postOnly?: boolean
   triggerPrice?: number
+  /** 简单模式：保证成交，回合末未撮合部分由系统做市商按显示价兜底 */
+  guaranteed?: boolean
+  /** 简单模式：下单时界面显示的现价（锁价），服务端校验与最新价偏差 ≤1% */
+  expectedPrice?: number
 }
 
 export interface ExchangeOrder {
@@ -478,7 +482,8 @@ export interface ExchangeClient {
    */
   batchPlaceOrders?(reqs: PlaceOrderRequest[]): Promise<BatchOrderResult>
   cancelOrder(id: string): Promise<void>
-  closePosition(code: string, side: 'long' | 'short', qty?: number): Promise<void>
+  /** expectedPrice 非空时简单模式保证成交（回合末按锁价兜底）；不传保持原有排队语义。 */
+  closePosition(code: string, side: 'long' | 'short', qty?: number, expectedPrice?: number): Promise<void>
   // 量化
   listStrategies(): Promise<StrategySpec[]>
   saveStrategy(spec: StrategySpec): Promise<StrategySpec>

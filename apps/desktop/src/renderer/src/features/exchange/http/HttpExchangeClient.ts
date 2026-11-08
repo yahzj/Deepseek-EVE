@@ -1375,8 +1375,9 @@ export class HttpExchangeClient implements ExchangeClient {
     this.emitTick()
   }
 
-  async closePosition(code: string, side: 'long' | 'short', qty?: number): Promise<void> {
-    await this.post<void>(`/positions/${encodeURIComponent(code)}/${side}/close`, { qty })
+  async closePosition(code: string, side: 'long' | 'short', qty?: number, expectedPrice?: number): Promise<void> {
+    // expectedPrice 非空 = 简单模式：服务端按锁价保证回合末成交；专业模式不传，保持排队。
+    await this.post<void>(`/positions/${encodeURIComponent(code)}/${side}/close`, { qty, expectedPrice })
     await this.refreshAccount()
     this.emitTick()
   }

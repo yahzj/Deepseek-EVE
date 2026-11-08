@@ -198,6 +198,9 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
             tif: 'IOC',
             qty,
             leverage: 1,
+            // 简单模式：按点击时的现价锁价，回合末未撮合部分由系统兜底，保证成交。
+            guaranteed: true,
+            expectedPrice: latestPrice,
           })
           break
         } catch (err) {
@@ -260,6 +263,9 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
             // 必须显式标记开空：服务端把「side=sell + 杠杆」默认当平多，缺这个字段会报
             // 「没有可平的杠杆多头持仓」。
             short: true,
+            // 简单模式：锁价 + 保证成交。
+            guaranteed: true,
+            expectedPrice: latestPrice,
           })
           break
         } catch (err) {
