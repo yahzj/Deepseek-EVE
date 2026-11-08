@@ -27,6 +27,7 @@ export function SimpleTutorial() {
   const [open, setOpen] = useState(false)
   const [index, setIndex] = useState(0)
   const [rect, setRect] = useState<DOMRect | null>(null)
+  const [blocked, setBlocked] = useState(true)
 
   useEffect(() => {
     try {
@@ -53,12 +54,31 @@ export function SimpleTutorial() {
     return () => window.removeEventListener('resize', update)
   }, [open, index])
 
+  // 有开场/设置等遮罩时先让位，遮罩关闭后自动恢复；目标区不可见时也不弹。
+  useEffect(() => {
+    if (!open) return
+    const check = (): void => {
+      const hasOverlay = document.querySelector('.app-prologue, .app-modal-mask') !== null
+      const target = document.querySelector('.ex-simple-col-left')
+      const visible = target !== null && target.getBoundingClientRect().width > 0
+      setBlocked(hasOverlay || !visible)
+    }
+    check()
+    const obs = new MutationObserver(check)
+    obs.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] })
+    window.addEventListener('resize', check)
+    return () => {
+      obs.disconnect()
+      window.removeEventListener('resize', check)
+    }
+  }, [open])
+
   const content = useMemo(() => {
     const lines = (STEPS[index]?.text ?? '').split('\n')
     return { title: lines[0] ?? '', body: lines.slice(1).join('\n') }
   }, [index])
 
-  if (!open) return null
+  if (!open || blocked) return null
 
   const finish = (): void => {
     setOpen(false)

@@ -153,7 +153,7 @@ export function FundCard({
         </div>
 
         {/* 账户可用资金：等宽排版 */}
-        <div className="ex-preview-row">
+        <div className="ex-preview-row is-avail-row">
           <span>{T.strategyAvailCash}</span>
           <b className="ex-num">
             {money(availableCash)} <span className="ex-unit">{T.creditUnit}</span>

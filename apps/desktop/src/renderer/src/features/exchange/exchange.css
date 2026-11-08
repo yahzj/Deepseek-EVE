@@ -4159,8 +4159,8 @@ button.ex-round-clock-badge:disabled {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  margin-bottom: 8px;
-  padding-bottom: 6px;
+  margin-bottom: 4px;
+  padding-bottom: 3px;
   border-bottom: 1px solid rgb(var(--wui-border));
 }
 
@@ -4175,7 +4175,7 @@ button.ex-round-clock-badge:disabled {
 .ex-simple-card-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   overflow-y: auto;
   min-height: 0;
   flex: 1 1 auto;
@@ -4205,8 +4205,8 @@ button.ex-round-clock-badge:disabled {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  padding: 8px 10px;
+  gap: 3px;
+  padding: 5px 8px;
   background: rgb(var(--wui-bg-field) / 0.5);
   border: 1px solid rgb(var(--wui-border));
   border-radius: 4px;
@@ -4416,7 +4416,7 @@ button.ex-round-clock-badge:disabled {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 14px;
+  padding: 5px 12px;
   background: rgb(var(--wui-bg-panel));
   border: 1px solid rgb(var(--wui-border));
   border-radius: 6px;
@@ -4476,7 +4476,7 @@ button.ex-round-clock-badge:disabled {
 
 .ex-simple-head-stats {
   display: flex;
-  gap: 16px;
+  gap: 10px;
 }
 
 .ex-simple-head-stat {
@@ -8603,4 +8603,189 @@ html body .app-root .ex-page .ex-simple-finance {
   border-color: rgb(var(--wui-hud-primary) / 0.8);
   background: rgb(var(--wui-hud-primary) / 0.18);
   color: #fff;
+}
+
+/* 旧版布局：股市是三栏宽界面，右侧事件日志在股市页让位；切回其他页面自动恢复 */
+.app-root.is-layout-classic:has(.ex-page) .app-log-side {
+  display: none;
+}
+
+/* 旧版布局 + 768 高度：中栏内容必须可达，并压缩到一屏 */
+@media (max-height: 820px) {
+  .app-root.is-layout-classic .ex-simple-col-mid {
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+
+  .app-root.is-layout-classic .ex-simple-trade-card {
+    gap: 4px;
+    padding: 6px 10px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-trade-tabs {
+    gap: 6px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-trade-tab {
+    height: 36px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-chips {
+    gap: 4px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-chip-btn {
+    height: 24px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-trade-hint {
+    display: none;
+  }
+
+  .app-root.is-layout-classic .ex-simple-trade-preview {
+    gap: 2px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-preview-row {
+    font-size: 10px;
+    line-height: 1.25;
+  }
+
+  .app-root.is-layout-classic .ex-simple-big-action-btn {
+    height: 34px;
+  }
+
+  /* 一屏兜底：隐藏辅助预览行与成交额仪表，保住 K 线与下注按钮 */
+  .app-root.is-layout-classic .ex-simple-trade-preview .ex-simple-preview-row:nth-child(3),
+  .app-root.is-layout-classic .ex-simple-trade-preview .ex-simple-preview-row:nth-child(4) {
+    display: none;
+  }
+
+  .app-root.is-layout-classic .ex-turnover-meter {
+    display: none;
+  }
+
+  .app-root.is-layout-classic .ex-simple-svg-wrap {
+    min-height: 90px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-chart-section {
+    min-height: 100px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-trade-guard-hint {
+    min-height: 0;
+    padding: 1px 4px;
+    font-size: 10px;
+  }
+
+  /* 顶部与右栏一起收紧，把高度让给主区 */
+  .app-root.is-layout-classic .ex-page {
+    gap: 4px;
+  }
+
+  .app-root.is-layout-classic .ex-guest-banner {
+    padding: 2px 8px;
+    font-size: 10px;
+  }
+
+  .app-root.is-layout-classic .ex-ticker-feed-row:nth-child(n+2) {
+    display: none;
+  }
+
+  .app-root.is-layout-classic .ex-topbar {
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-header {
+    padding-top: 3px;
+    padding-bottom: 3px;
+  }
+
+  .app-root.is-layout-classic .ex-preview-row {
+    padding-top: 2px;
+    padding-bottom: 2px;
+  }
+
+  /* 右栏两张理财卡再收紧，尽量一屏看到申购/赎回 */
+  .app-root.is-layout-classic .ex-simple-finance {
+    gap: 4px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-finance .ex-bond-body {
+    padding: 5px 8px 6px;
+    gap: 3px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-finance .ex-panel-head {
+    padding: 3px 8px;
+  }
+
+  .app-root.is-layout-classic .ex-bond-name {
+    margin-bottom: 0;
+  }
+
+  .app-root.is-layout-classic .ex-bond-field {
+    margin-top: 2px;
+    gap: 3px;
+  }
+
+  .app-root.is-layout-classic .ex-bond-actions {
+    margin-top: 2px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-finance .ex-mini-btn {
+    height: 26px;
+  }
+
+  /* 顶栏已显示可用资金，旧版矮屏里两张理财卡不再重复占行 */
+  .app-root.is-layout-classic .ex-simple-finance .is-avail-row {
+    display: none;
+  }
+
+  .app-root.is-layout-classic .ex-simple-side-switch {
+    padding: 1px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-side-tab {
+    height: 28px;
+    font-size: 10px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-finance {
+    gap: 3px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-finance .ex-bond-field {
+    gap: 2px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-finance .ex-bond-field-head {
+    margin-bottom: 2px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-finance .ex-bond-input-box .ex-input {
+    height: 22px;
+    padding: 0 6px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-finance .ex-preview-row {
+    font-size: 10px;
+    line-height: 1.2;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-finance .ex-panel-head {
+    padding: 2px 8px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-finance .ex-bond-input-box .ex-input {
+    height: 20px;
+  }
+
+  .app-root.is-layout-classic .ex-bond-name b {
+    font-size: 11px;
+  }
 }

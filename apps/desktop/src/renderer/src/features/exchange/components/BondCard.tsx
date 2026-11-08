@@ -184,7 +184,7 @@ export function BondCard({
         </div>
 
         {/* 债券资产概览：可用现金 → 本金 → 已计息（2026-11-06 船长令统一排序） */}
-        <div className="ex-preview-row">
+        <div className="ex-preview-row is-avail-row">
           <span>{T.strategyAvailCash}</span>
           <b className="ex-num">
             {money(available)} <span className="ex-unit">{T.creditUnit}</span>

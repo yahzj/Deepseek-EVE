@@ -97,7 +97,7 @@ export function SimpleStockList({ client, snap, selected, onSelect }: SimpleStoc
 
                 <div className="ex-simple-card-right-col">
                   <div className="ex-simple-card-spark">
-                    <Sparkline client={client} code={q.code} isUp={up} width={72} height={hasHolding ? 18 : 24} />
+                    <Sparkline client={client} code={q.code} isUp={up} width={72} height={hasHolding ? 14 : 20} />
                   </div>
                   {hasHolding ? (
                     <div className="ex-simple-holding-badges" aria-label="持仓">
