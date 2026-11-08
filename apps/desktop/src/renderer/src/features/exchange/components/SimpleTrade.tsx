@@ -160,16 +160,20 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
 
   const handleBuy = async () => {
     if (busy) return
-    if (estBuyQty <= 0) {
-      onToast(T.toastBondInvalid, true)
-      return
-    }
-    if (inputCashNum > cash) {
-      onToast(T.toastNoCash, true)
+    const allIn = activeRatio === 1
+    // 提交前按最新快照重算：全仓预留 2% 给价格跳动/滑点，避免服务端按最新价冻结时差一点点。
+    const latest = client.getSnapshot(code)
+    const latestCash = latest.account.cash
+    const latestPrice = latest.quote.price > 0 ? latest.quote.price : currentPrice
+    const baseCash = Math.min(inputCashNum, latestCash)
+    const usableCash = allIn ? Math.floor(baseCash * 0.98) : baseCash
+    const latestEst = estimateSimpleBet(usableCash, latestPrice, feeRate, latestCash)
+    const qty = Math.min(latestEst.qty, tradeCapQty)
+    if (qty <= 0) {
+      onToast(allIn ? T.toastNoCash : T.enterAmountPrompt, true)
       return
     }
 
-    const allIn = isRatioActive(1.0)
     setBusy(true)
     buyProgress.start()
     orderSeq.current += 1
@@ -180,7 +184,7 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
         side: 'buy',
         type: 'market',
         tif: 'IOC',
-        qty: Math.min(estBuyQty, tradeCapQty),
+        qty,
         leverage: 1,
       })
       // 成功回执才响动作音（2026-11-06 船长）：全仓换成 ALL IN 音效 + 光效，其余保持下注音。
@@ -200,16 +204,20 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
 
   const handleShort = async () => {
     if (busy) return
-    if (estShortQty <= 0) {
+    const allIn = activeRatio === 1
+    // 与买多同口径：提交前按最新快照重算，全仓预留 2% 滑点。
+    const latest = client.getSnapshot(code)
+    const latestCash = latest.account.cash
+    const latestPrice = latest.quote.price > 0 ? latest.quote.price : currentPrice
+    const baseCash = Math.min(inputCashNum, latestCash)
+    const usableCash = allIn ? Math.floor(baseCash * 0.98) : baseCash
+    const latestEst = estimateSimpleBet(usableCash, latestPrice, feeRate, latestCash)
+    const qty = Math.min(latestEst.qty, tradeCapQty)
+    if (qty <= 0) {
       onToast(T.enterAmountPrompt, true)
       return
     }
-    if (inputCashNum > cash) {
-      onToast(T.toastNoCash, true)
-      return
-    }
 
-    const allIn = isRatioActive(1.0)
     setBusy(true)
     shortProgress.start()
     orderSeq.current += 1
@@ -220,7 +228,7 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
         side: 'sell',
         type: 'market',
         tif: 'IOC',
-        qty: Math.min(estShortQty, tradeCapQty),
+        qty,
         // 1x 全额：投入多少占用多少，只收卖出档手续费，与看涨对称。
         leverage: 1,
         // 必须显式标记开空：服务端把「side=sell + 杠杆」默认当平多，缺这个字段会报
