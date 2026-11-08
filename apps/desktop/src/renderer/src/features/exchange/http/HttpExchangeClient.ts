@@ -324,7 +324,7 @@ function normalizeAccount(raw: unknown): ExchangeAccount | null {
       ? (raw.pendingWithdrawals.filter(isRecord) as unknown as ExchangeAccount['pendingWithdrawals'])
       : [],
     holdings: Array.isArray(raw.holdings) ? raw.holdings.map(normalizeHolding).filter(isPresent) : [],
-    dailyTradeLimit: num(raw.dailyTradeLimit, 1_000_000_000),
+    dailyTradeLimit: num(raw.dailyTradeLimit, 5_000_000_000),
     dailyTradeUsed: num(raw.dailyTradeUsed),
     // 2026-11-08 服务端把额度拆成买卖各 10 亿；旧服务端没有这两个字段，保持 undefined 让界面回退合计值。
     dailyBuyUsed:
@@ -468,7 +468,7 @@ function emptyAccount(): ExchangeAccount {
     positions: [],
     pendingWithdrawals: [],
     holdings: [],
-    dailyTradeLimit: 1_000_000_000,
+    dailyTradeLimit: 5_000_000_000,
     dailyTradeUsed: 0,
     dailyBuyUsed: 0,
     dailySellUsed: 0,
