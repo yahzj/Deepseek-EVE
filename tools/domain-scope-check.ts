@@ -50,7 +50,7 @@ const DOMAINS: readonly Domain[] = [
   { name: '远征与赏金', globs: ["packages/core/src/expedition/**","apps/desktop/src/renderer/src/features/expedition/**"] },
   { name: '低安遭遇', globs: ["packages/core/src/encounters/**"] },
   { name: '周末活动与入侵', globs: ["packages/core/src/invasion/**","packages/data/src/invasion/**"] },
-  { name: '虫洞', globs: ["packages/core/src/wormhole/**","packages/data/src/wormhole/**"] },
+  { name: '虫洞', globs: ["packages/core/src/wormhole/**","packages/core/src/signalAuto/**","packages/data/src/wormhole/**"] },
   { name: '舰船与装配', globs: ["packages/core/src/ships/**","apps/desktop/src/renderer/src/features/ships/**"] },
   { name: 'AI 核心', globs: ["packages/core/src/ai/**"] },
   { name: '站点与位置', globs: ["apps/desktop/src/renderer/src/features/stations/**"] },

@@ -2,8 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import { addShipToFleet } from '../src/fleetBook'
-import { fitModule, cpuOverloadText } from '../src/equipment'
-import { signalAutoEstimateOf } from '../src/signalAuto/estimate'
+import { fitModule, cpuOverloadText, adjustDroneLoad } from '../src/equipment'
+import { createPlayerSpec } from '../src/combat/player/create'
+import { signalAutoEstimateOf, signalAutoOrdinaryHoldShareOf } from '../src/signalAuto/estimate'
 import { signalAutoCombatRatio } from '../src/signalAuto/combat'
 import { cleanSignalAutoEstimate } from '../src/signalAuto/save'
 import { wormholeAutoTechFactors, wormholeAutoHoldM3Of, wormholeAutoStart, advanceWormholeAuto,
@@ -12,6 +13,7 @@ import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { simulateOffline } from '../src/simulation'
 import * as grids from '../src/wormholeGrid'
 import * as oldSim from '../src/wormholeAutoSim'
+import { signalAutoFixture } from '../../../tools/signal-auto-estimate-fixture'
 
 const ctx = buildSimContext()
 afterEach(() => vi.restoreAllMocks())
@@ -45,6 +47,14 @@ function finish(state: ReturnType<typeof world>['state']) {
 }
 
 describe('信号自动估算：能力推进与有界收成', () => {
+  it('普通作业目标从浅层四分之一随层深或剩余回合放宽', () => {
+    expect(signalAutoOrdinaryHoldShareOf(1, 100, 100)).toBe(.25)
+    expect(signalAutoOrdinaryHoldShareOf(5, 100, 100)).toBe(.625)
+    expect(signalAutoOrdinaryHoldShareOf(1, 50, 100)).toBe(.625)
+    expect(signalAutoOrdinaryHoldShareOf(9, 100, 100)).toBe(1)
+    expect(signalAutoOrdinaryHoldShareOf(1, 0, 100)).toBe(1)
+  })
+
   it('不生成地图或运行旧模拟器，不改变状态和全局随机流', () => {
     const w = world(), before = structuredClone(w.state)
     const map = vi.spyOn(grids, 'wormholeMakeGrid'), sim = vi.spyOn(oldSim, 'wormholeAutoDescend')
@@ -82,6 +92,48 @@ describe('信号自动估算：能力推进与有界收成', () => {
     }
     expect(samples[0]!.ordinaryUsedM3).toBeLessThan(samples[1]!.ordinaryUsedM3)
     expect(samples[1]!.ordinaryUsedM3).toBeLessThan(samples[2]!.ordinaryUsedM3)
+  })
+  it('普通作业省下的回合实际用于深层探索，不是只削减返航普通收成', () => {
+    const { state, ctx: fixtureCtx, roster } = signalAutoFixture('guns', true)
+    const tech = wormholeAutoTechFactors(state, fixtureCtx, roster)
+    const hold = wormholeAutoHoldM3Of(tech)
+    const run = (capacity: number) => signalAutoEstimateOf(state, fixtureCtx, roster,
+      { seed: 19, depth: 1, family: 'A', archetype: 'balanced' }, .8, tech, capacity)
+    const prioritized = run(hold)
+    // 无限容量不会触发普通作业限额，作为逐层全量作业的控制组。
+    const allSites = run(1e9)
+    const completed = (row: typeof prioritized) => row.layers.reduce((n, layer) => n + layer.completion, 0)
+    expect(completed(prioritized)).toBeGreaterThan(completed(allSites))
+    expect(prioritized.ordinaryUsedM3).toBeGreaterThan(hold * .79)
+    expect(prioritized.ordinaryUsedM3).toBeLessThanOrEqual(hold * .8)
+    expect(prioritized.gains.find(gain => gain.itemId === 'mat-wh-essence')!.units)
+      .toBeGreaterThanOrEqual(allSites.gains.find(gain => gain.itemId === 'mat-wh-essence')!.units)
+  })
+  it('被守卫挡住的队伍继续本层采集，不因为下潜预留而再次减少普通收成', () => {
+    const w = world(false)
+    const small = estimate(w, 19, 100), unlimited = estimate(w, 19, 1e9)
+    expect(small.layers).toEqual(unlimited.layers)
+    expect(small.layers).toHaveLength(1)
+    expect(small.ordinaryUsedM3).toBeGreaterThanOrEqual(78)
+    expect(small.ordinaryUsedM3).toBeLessThanOrEqual(80)
+    expect(small.gains.find(gain => gain.itemId === 'mat-wh-essence'))
+      .toEqual(unlimited.gains.find(gain => gain.itemId === 'mat-wh-essence'))
+  })
+  it('无人机按本舰真实装载计入估算，仓库有机体不等于自动参战', () => {
+    const w = world(false, false)
+    const baseline = signalAutoCombatRatio(w.state, ctx, w.ids, 'A', 1)
+    expect(baseline).toBe(0)
+    w.state.warehouse.items['drone-scout'] = 100
+    expect(signalAutoCombatRatio(w.state, ctx, w.ids, 'A', 1)).toBe(baseline)
+    for (const id of w.ids) {
+      expect(adjustDroneLoad(w.state, ctx, 'drone-scout', 2, id).ok).toBe(true)
+      const loaded = createPlayerSpec(w.state, ctx, id)!.weapons.filter(weapon => weapon.src === 'drone')
+      expect(loaded).toHaveLength(2)
+    }
+    const armed = signalAutoCombatRatio(w.state, ctx, w.ids, 'A', 1)
+    expect(armed).toBeGreaterThan(baseline)
+    for (const id of w.ids) expect(adjustDroneLoad(w.state, ctx, 'drone-scout', -1, id).ok).toBe(true)
+    expect(signalAutoCombatRatio(w.state, ctx, w.ids, 'A', 1)).toBeLessThan(armed)
   })
   it('武器升级提高解析战斗能力，出发残血降低承伤', () => {
     const w = world(), ratio = signalAutoCombatRatio(w.state, ctx, w.ids, 'A', 1)

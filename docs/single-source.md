@@ -292,6 +292,7 @@ _条目增删随代码走；规则变更仍按开发约定的工作文档与归�
 | `lockAwareFoe` | `packages/core/src/combat/targeting.ts` |
 | `beginOfflineCombatStats` | `packages/core/src/offlineCombatStats.ts` |
 | `signalAutoEstimateOf` | `packages/core/src/signalAuto/estimate.ts` |
+| `signalAutoOrdinaryHoldShareOf` | `packages/core/src/signalAuto/estimate.ts`；仅分配下潜途中普通作业回合，最终容量仍用完整货舱 |
 | `cleanSignalAutoEstimate` | `packages/core/src/signalAuto/save.ts` |
 | `signalAutoCombatRatio` | `packages/core/src/signalAuto/combat.ts` |
 | `SIGNAL_AUTO_COMBAT` | `packages/core/src/signalAuto/combat.ts` |

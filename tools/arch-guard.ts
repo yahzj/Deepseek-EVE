@@ -266,6 +266,7 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
   { concept: '锁定阵列概率选靶', symbol: 'lockAwareFoe', file: 'packages/core/src/combat/targeting.ts', exported: true },
   { concept: '离线战斗瞬时统计作用域', symbol: 'beginOfflineCombatStats', file: 'packages/core/src/offlineCombatStats.ts', exported: true },
   { concept: '信号自动探索确定性能力及奖励快照', symbol: 'signalAutoEstimateOf', file: 'packages/core/src/signalAuto/estimate.ts', exported: true },
+  { concept: '信号自动探索普通作业累计容量目标', symbol: 'signalAutoOrdinaryHoldShareOf', file: 'packages/core/src/signalAuto/estimate.ts', exported: true },
   { concept: '信号自动探索快照读档校验', symbol: 'cleanSignalAutoEstimate', file: 'packages/core/src/signalAuto/save.ts', exported: true },
   { concept: '信号自动探索解析战斗门槛', symbol: 'signalAutoCombatRatio', file: 'packages/core/src/signalAuto/combat.ts', exported: true },
   { concept: '信号自动探索参考交战参数', symbol: 'SIGNAL_AUTO_COMBAT', file: 'packages/core/src/signalAuto/combat.ts', exported: true },

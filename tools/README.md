@@ -1,5 +1,9 @@
 # 工具区台账（tools/）
 
+## 信号空间普通作业额度（2026-11-09）
+
+- `node tools/signal-auto-quota-check.cjs [--smoke]`：使用固定修前`c48bdb0c8`估算器和当前修复做同条件对照，四舰队×两科技×五族×五原型×32个散布种子，共6400组配对；`--smoke`每格3种子。逐类记录奖励、完成层数和普通产量下降样本，核验旧快照读档/结算、损伤不变及无重复发货。源码仅在内存编译，不读个人档；另写`tools/_ui-artifacts/signal-auto-quota-<时间戳>/report.json`，不冒称完整历史客户端或信用点净收益比较。
+
 ## 黑市标题裁切（2026-11-07）
 
 - `node tools/modern-selection-style-check.cjs`：使用真实两套CSS和组件同类DOM，检查新版工业卡头去边框且矿带不变、按钮/复选框编队卡与舰队卡选中反馈，以及悬停/禁用状态不覆盖已选底色；两布局×1366/390宽度，输出`tools/_ui-artifacts/modern-selection-style/`。只启动自有无头Chrome，不读个人档；计算样式检查不等同游戏全流程或桌面观感验收。
