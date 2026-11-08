@@ -348,7 +348,7 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
           </div>
           <div className="ex-turnover-meter">
             <div className="ex-turnover-meter-head">
-              <span>{T.exchangeDailyLimit}</span>
+              <span title={T.tipDailyTurnover}>{T.exchangeDailyLimit}</span>
               <span className="ex-num">{money(snap.account.dailyTradeUsed)} / {money(snap.account.dailyTradeLimit)}</span>
             </div>
             <div className="ex-turnover-meter-track">
@@ -459,7 +459,7 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
               <b className={`ex-num ${tab === 'buy' ? 'ex-highlight-green' : 'ex-highlight-red'}`}>{amount(est.qty)} {T.sharesSuffix}</b>
             </div>
             <div className="ex-simple-preview-row">
-              <span className="ex-dim">{T.estFeeLabel} {hasFee ? `(${(feeRate * 100).toFixed(2)}%)` : `(${T.freeFee})`}</span>
+              <span className="ex-dim" title={T.tipFee}>{T.estFeeLabel} {hasFee ? `(${(feeRate * 100).toFixed(2)}%)` : `(${T.freeFee})`}</span>
               <span className="ex-num">{money(est.fee)} {T.creditUnit}</span>
             </div>
             <div className="ex-simple-preview-row">

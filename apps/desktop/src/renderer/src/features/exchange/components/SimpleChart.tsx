@@ -216,7 +216,7 @@ export function SimpleChart({ client, code, quote, tick, allInFx = false }: Simp
         </div>
 
         {/* 分时图模式徽标（固定 10 秒刷新） */}
-        <div className="ex-simple-chart-badge" title="分时行情每 10 秒刷新一次">
+        <div className="ex-simple-chart-badge" title={T.tipIntraday}>
           {T.simpleIntradayTag}
         </div>
       </div>

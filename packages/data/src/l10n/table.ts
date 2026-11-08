@@ -8704,6 +8704,11 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ui.exchangeTexts.495': { zh: '下一步', en: 'Next' },
   'ui.exchangeTexts.496': { zh: '知道了，去下注', en: "Got it, let's bet" },
   'ui.exchangeTexts.497': { zh: '先记住几个数\n一回合 5 分钟；回合里价格每 10 秒跳一下，最后 10 秒不能下单。\n每回合最多下 10 笔；每天买入、卖出各最多 10 亿信用点。\n买卖各收 0.01% 手续费，下单前会先算给你看。\n理财按天算利息，随时能赎回。', en: '', enDeferred: true },
+  'ui.exchangeTexts.498': { zh: '每天买入、卖出各最多 10 亿信用点；只按实际成交额扣减。', en: '', enDeferred: true },
+  'ui.exchangeTexts.499': { zh: '买卖各收 0.01% 手续费，下单前会先算给你看。', en: '', enDeferred: true },
+  'ui.exchangeTexts.500': { zh: '一回合 5 分钟；回合内价格每 10 秒跳一次，最后 10 秒不能下单。', en: '', enDeferred: true },
+  'ui.exchangeTexts.501': { zh: '每回合最多 10 笔委托；回合结束统一撮合，未成交可以撤单。', en: '', enDeferred: true },
+  'ui.exchangeTexts.502': { zh: '单回合涨跌停 ±3%（事件回合 ±8%）；当日累计 ±15%，到板只允许平仓。', en: '', enDeferred: true },
 
   'ui.exchangeStock.001': { zh: '星海重工', en: 'Star Heavy Industries' },
   'ui.exchangeStock.002': { zh: '银河信托', en: 'Galactic Trust' },
