@@ -44,10 +44,16 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
   const quote = snap.stocks.find((s) => s.code === code)
   const currentPrice = quote?.price ?? 1
   const cash = snap.account.cash
-  const dailyTurnoverLeft = Math.max(0, snap.account.dailyTradeLimit - snap.account.dailyTradeUsed)
+  // 2026-11-08 船长令：买入与卖出各有独立的 10 亿日额度。
+  // 旧服务端没有分方向字段时回退到合计值（保守，不会超用）。
+  const dailyUsed =
+    tab === 'buy'
+      ? (snap.account.dailyBuyUsed ?? snap.account.dailyTradeUsed)
+      : (snap.account.dailySellUsed ?? snap.account.dailyTradeUsed)
+  const dailyTurnoverLeft = Math.max(0, snap.account.dailyTradeLimit - dailyUsed)
   const turnoverPct =
     snap.account.dailyTradeLimit > 0
-      ? Math.max(0, Math.min(100, (snap.account.dailyTradeUsed / snap.account.dailyTradeLimit) * 100))
+      ? Math.max(0, Math.min(100, (dailyUsed / snap.account.dailyTradeLimit) * 100))
       : 0
 
   const inputCashNum = Number(cashAmount) || 0
@@ -61,6 +67,9 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
 
   // 步进微调资金基数（按 1 股换算所需资金，含手续费；两侧同为全额）
   const stepCash = Math.max(1, Math.ceil(currentPrice * (1 + feeRate)))
+  // 待成交下注只算当前标的：snap.orders 是全市场活跃委托（含卖单与其它股票），
+  // 直接取 length 会把别处的单子算进这里，玩家看到的「下注数量」就对不上。
+  const pendingOrders = snap.orders.filter((order) => order.code === code)
 
   const isRatioActive = (r: number) => {
     if (activeRatio === r) return true
@@ -348,8 +357,8 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
           </div>
           <div className="ex-turnover-meter">
             <div className="ex-turnover-meter-head">
-              <span title={T.tipDailyTurnover}>{T.exchangeDailyLimit}</span>
-              <span className="ex-num">{money(snap.account.dailyTradeUsed)} / {money(snap.account.dailyTradeLimit)}</span>
+              <span title={T.tipDailyTurnover}>{tab === 'buy' ? T.buyTurnoverQuota : T.sellTurnoverQuota}</span>
+              <span className="ex-num">{money(dailyUsed)} / {money(snap.account.dailyTradeLimit)}</span>
             </div>
             <div className="ex-turnover-meter-track">
               <span className="ex-turnover-meter-fill" style={{ width: `${turnoverPct}%` }} />
@@ -508,13 +517,13 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
           </div>
 
           {/* 回合制待成交下注：明确「已提交、等回合末集合竞价」，并告知可撤销 */}
-          {snap.orders.length > 0 ? (
+          {pendingOrders.length > 0 ? (
             <div className="ex-simple-trade-preview" role="status" aria-label={T.simplePendingTitle}>
               <div className="ex-simple-preview-row">
                 <span className="ex-dim">{T.simplePendingTitle}（{T.simplePendingNote}）</span>
-                <b className="ex-num">{snap.orders.length} {isEn() ? 'orders' : '笔'}</b>
+                <b className="ex-num">{pendingOrders.length} {isEn() ? 'orders' : '笔'}</b>
               </div>
-              {snap.orders.slice(0, 3).map((order) => (
+              {pendingOrders.slice(0, 3).map((order) => (
                 <div className="ex-simple-preview-row" key={order.id}>
                   <span className="ex-dim">
                     {order.side === 'buy' ? '买' : '卖'} {order.code} ·{' '}

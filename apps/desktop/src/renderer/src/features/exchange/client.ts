@@ -83,9 +83,14 @@ export interface ExchangeAccount {
   pendingWithdrawals: Array<{ id: string; amount: number; availableAt: number }>
   /** 原型扩展：现货持仓 */
   holdings: SpotHolding[]
-  /** UTC 自然日股票成交额上限与已用额度 */
+  /** UTC 自然日股票成交额上限（买入、卖出各自一份） */
   dailyTradeLimit: number
+  /** 兼容字段：买卖合计已用（新服务端仍下发，供旧前端与降级回退使用） */
   dailyTradeUsed: number
+  /** 买入方向当日已用（旧服务端缺省时回退 dailyTradeUsed） */
+  dailyBuyUsed?: number
+  /** 卖出方向当日已用（旧服务端缺省时回退 dailyTradeUsed） */
+  dailySellUsed?: number
 }
 
 export interface PlaceOrderRequest {

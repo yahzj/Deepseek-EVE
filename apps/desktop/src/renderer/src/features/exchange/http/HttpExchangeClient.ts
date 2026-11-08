@@ -326,6 +326,15 @@ function normalizeAccount(raw: unknown): ExchangeAccount | null {
     holdings: Array.isArray(raw.holdings) ? raw.holdings.map(normalizeHolding).filter(isPresent) : [],
     dailyTradeLimit: num(raw.dailyTradeLimit, 1_000_000_000),
     dailyTradeUsed: num(raw.dailyTradeUsed),
+    // 2026-11-08 服务端把额度拆成买卖各 10 亿；旧服务端没有这两个字段，保持 undefined 让界面回退合计值。
+    dailyBuyUsed:
+      typeof raw.dailyBuyUsed === 'number' && Number.isFinite(raw.dailyBuyUsed)
+        ? num(raw.dailyBuyUsed)
+        : undefined,
+    dailySellUsed:
+      typeof raw.dailySellUsed === 'number' && Number.isFinite(raw.dailySellUsed)
+        ? num(raw.dailySellUsed)
+        : undefined,
   }
 }
 
@@ -461,6 +470,8 @@ function emptyAccount(): ExchangeAccount {
     holdings: [],
     dailyTradeLimit: 1_000_000_000,
     dailyTradeUsed: 0,
+    dailyBuyUsed: 0,
+    dailySellUsed: 0,
   }
 }
 
@@ -860,7 +871,18 @@ export class HttpExchangeClient implements ExchangeClient {
     switch (payload.type) {
       case 'round': {
         const round = normalizeRound(data)
-        if (round !== null) this.round = round
+        if (round !== null) {
+          // 公共回合帧（WS）不含 usedOrders：同一回合内必须保留已有配额，
+          // 否则每回合末的广播会把「我的委托 3/10」打回 0/10；跨回合才归零。
+          if (
+            round.usedOrders === undefined &&
+            this.round !== null &&
+            this.round.roundNo === round.roundNo
+          ) {
+            round.usedOrders = this.round.usedOrders
+          }
+          this.round = round
+        }
         break
       }
       case 'stocks': {
@@ -1313,6 +1335,8 @@ export class HttpExchangeClient implements ExchangeClient {
       // 账户刷新失败也保留服务器已受理的订单，不把成功提交丢成未知状态。
       this.emitTick()
     }
+    // 下单已计入本回合配额：立即拉一次回合读数，避免「我的委托 x/10」要等下一次轮询。
+    void this.getRound().catch(() => undefined)
     return order
   }
 
@@ -1325,12 +1349,18 @@ export class HttpExchangeClient implements ExchangeClient {
     for (const order of orders) this.upsertOrder(order)
     await this.refreshAccount()
     this.emitTick()
+    const maxOrders = Math.max(1, Math.round(num(raw.maxOrders, this.round?.maxOrders ?? DEFAULT_MAX_ORDERS)))
+    const usedOrders = Math.round(num(raw.usedOrders, Number.NaN))
+    // 批量响应自带本回合配额：直接更新，避免「我的委托 x/10」停在旧值。
+    if (this.round !== null && Number.isFinite(usedOrders)) {
+      this.round = { ...this.round, maxOrders, usedOrders }
+    }
     return {
       roundNo: num(raw.roundNo),
       status: text(raw.status) !== '' ? text(raw.status) : 'queued',
       accepted: Math.round(num(raw.accepted, orders.length)),
-      maxOrders: Math.max(1, Math.round(num(raw.maxOrders, this.round?.maxOrders ?? DEFAULT_MAX_ORDERS))),
-      usedOrders: Math.round(num(raw.usedOrders)),
+      maxOrders,
+      usedOrders: Number.isFinite(usedOrders) ? usedOrders : 0,
       orders,
     }
   }

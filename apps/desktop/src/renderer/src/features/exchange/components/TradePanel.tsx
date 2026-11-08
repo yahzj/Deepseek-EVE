@@ -97,8 +97,13 @@ export function TradePanel({
   }, [code])
 
   const lev = mode === 'spot' ? 1 : leverage
-  const dailyTurnoverLeft = Math.max(0, snap.account.dailyTradeLimit - snap.account.dailyTradeUsed)
   const side: Side = mode === 'short' ? 'sell' : 'buy'
+  // 2026-11-08 船长令：买卖额度各自独立；旧服务端缺分方向字段时回退到合计值（保守）。
+  const dailyUsed =
+    side === 'sell'
+      ? (snap.account.dailySellUsed ?? snap.account.dailyTradeUsed)
+      : (snap.account.dailyBuyUsed ?? snap.account.dailyTradeUsed)
+  const dailyTurnoverLeft = Math.max(0, snap.account.dailyTradeLimit - dailyUsed)
   // 市价单按对手盘成交：买吃卖一、卖砸买一，没有档位时退回现价
   const bookPrice =
     side === 'buy' ? (snap.book.asks[0]?.price ?? quote.price) : (snap.book.bids[0]?.price ?? quote.price)
@@ -309,8 +314,8 @@ export function TradePanel({
       ) : null}
       <div className="ex-trade-body">
         <div className="ex-preview-row ex-daily-turnover">
-          <span>{T.exchangeDailyLimit}</span>
-          <b className="ex-num">{money(snap.account.dailyTradeUsed)} / {money(snap.account.dailyTradeLimit)}</b>
+          <span>{side === 'sell' ? T.sellTurnoverQuota : T.buyTurnoverQuota}</span>
+          <b className="ex-num">{money(dailyUsed)} / {money(snap.account.dailyTradeLimit)}</b>
         </div>
         {/* 交易模式三段切换（外层固定方向时不渲染） */}
         {fixedMode === undefined ? (
