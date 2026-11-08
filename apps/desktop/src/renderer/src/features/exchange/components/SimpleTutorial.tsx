@@ -19,6 +19,7 @@ const STEPS: Step[] = [
   { selector: '.ex-simple-chips', text: T.tutStep4 },
   { selector: '.ex-simple-big-action-btn', text: T.tutStep5 },
   { selector: '.ex-topbar-status', text: T.tutRules },
+  { selector: '.ex-turnover-meter', text: T.tutMoneyRules },
   { selector: '.ex-simple-side-switch', text: T.tutStep6 },
   { selector: null, text: T.tutStep7 },
 ]

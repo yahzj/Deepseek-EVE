@@ -837,3 +837,4 @@
 | `ui.exchangeTexts.500` | 悬停提示：回合与刷新节奏 | 待本地化 |
 | `ui.exchangeTexts.501` | 悬停提示：每回合委托笔数 | 待本地化 |
 | `ui.exchangeTexts.502` | 悬停提示：当日涨跌停 | 待本地化 |
+| `ui.exchangeTexts.514` | 新手引导：钱有上限（额度/账户上限/手续费/涨跌停） | 待本地化 |
