@@ -1,11 +1,11 @@
 /**
  * 简单投资 · 新手引导。
- * 首次进入自动出现 7 步：遮罩挖孔高亮 + 气泡，全程大白话；可跳过，看完写 localStorage 不再弹。
+ * 首次进入自动出现 9 步：遮罩挖孔高亮 + 气泡，全程大白话；可跳过，看完写 localStorage 不再弹。
  */
 import { useEffect, useMemo, useState } from 'react'
 import { T } from '../texts'
 
-const TUTORIAL_KEY = 'whale-idle:exch-tutorial-v1'
+const TUTORIAL_KEY = 'whale-idle:exch-tutorial-v2'
 
 interface Step {
   selector: string | null
