@@ -61,7 +61,7 @@
 
 主要提交：逐炮`1a06c983`、周期/网显示`7500df58`及后续紧凑/换行修订、装备代价/力场`94cf04a7`/`f73fff1f`、近防续战`e2d6fc17`、首次出击`24131757`、闪现`979119a9`、步长/演出`71a4a788`、后台预热`85580256`、换波`76f6ee44`，均在main。归档只确认代码现状，不改其数值或补发公告。
 
-可复跑核心：`per-gun-volley-20261005`、`drone-launch-20261008`、`battle-readiness-20261008`、`battle-cycles-ui-20261008`、`equipment-penalty-stacking-20261008`、`shield-field-transfer-20261007`、`pd-resume-20261008`、`player-blink-desire-20261008`、`wave-cadence-20261008`和`bounty-win-worker-20261008`测试。原生工具见`tools/README.md`中的周期、准备阵容、逐炮、近防与启动Worker检查；均用隔离合成档，截图/几何不代替实体手机结论。换波合入后的主树完整419文件5493项通过、9项既有迁移专用跳过；这是该批读数，不冒称本次文档整理又运行了同一全量。
+可复跑核心：`per-gun-volley-20261005`、`drone-launch-20261008`、`battle-readiness-20261008`、`battle-cycles-ui-20261008`、`equipment-penalty-stacking-20261008`、`shield-field-transfer-20261007`、`pd-resume-20261008`、`player-blink-desire-20261008`、`wave-cadence-20261008`和`bounty-win-worker-20261008`测试。原生工具：周期`tools/battle-cycles-native-check.cjs`、准备阵容`tools/preparation-squad-native-check.cjs`、逐炮`tools/per-gun-desktop-smoke.cjs`、近防`tools/pd-vs-foe-drone.ts`/`tools/pd-tune.ts`、启动Worker`tools/startup-win-worker-check.cjs`；均用隔离合成档，截图/几何不代替实体手机结论。换波合入后的主树完整419文件5493项通过、9项既有迁移专用跳过；这是该批读数，不冒称本次文档整理又运行了同一全量。
 
 > **2026-09-05 更新（大鲸鱼二号）**：
 > - **随机目标**：我方多武器对多敌编队时每发武器在开火瞬间从存活敌人中独立随机抽取目标

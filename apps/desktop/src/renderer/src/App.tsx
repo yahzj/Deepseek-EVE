@@ -119,7 +119,7 @@ const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
    * 转正登记 `ui.exchange.*` 后再换 id。图标 = Carbon `ChartCandlestick`（`nav-exchange`）。
    * **两套布局都显示**：旧版左侧导航与现代版主导航共用该项。
    */
-  { key: 'exchange', label: '股市 [测试]', icon: 'nav-exchange' },
+  { key: 'exchange', label: '股市', icon: 'nav-exchange' },
 ]
 
 /**

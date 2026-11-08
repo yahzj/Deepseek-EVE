@@ -75,28 +75,28 @@ function pitchCentsOf(cueId: SfxCueId): number {
 }
 
 /** 播一个语义音效（未接素材/被静音/被节流时静默；**绝不抛错**） */
-export function playCue(cueId: SfxCueId): void {
+export function playCue(cueId: SfxCueId): HTMLAudioElement | null {
   try {
-    playCueUnsafe(cueId)
+    return playCueUnsafe(cueId)
   } catch {
-    /* 音频层的事故不许影响演出与游戏（2026-09-25 骨架约定） */
+    return null
   }
 }
 
-function playCueUnsafe(cueId: SfxCueId): void {
+function playCueUnsafe(cueId: SfxCueId): HTMLAudioElement | null {
   const cue = SFX_CUES[cueId]
-  if (cue === undefined) return
+  if (cue === undefined) return null
   const prefs = readSfxPrefs()
   const gain = effectiveGain(cueId, prefs)
-  if (gain <= 0.002) return
+  if (gain <= 0.002) return null
   const set = active.get(cueId) ?? new Set<HTMLAudioElement>()
-  if (set.size >= cue.maxConcurrent) return
+  if (set.size >= cue.maxConcurrent) return null
   const t = nowMs()
-  if (!shouldPlay(lastAtMs.get(cueId), t, cue.minGapMs)) return
+  if (!shouldPlay(lastAtMs.get(cueId), t, cue.minGapMs)) return null
   const playable = resolvePlayable(cueId)
-  if (playable === null) return
+  if (playable === null) return null
   const url = pickVariant(playable.urls, Math.random)
-  if (url === null) return
+  if (url === null) return null
   lastAtMs.set(cueId, t)
   let audio: HTMLAudioElement | null = null
   /** 起播被浏览器拒绝/解码失败：立刻把实例从并发表里摘掉（否则会被"幽灵实例"永久占满） */
@@ -111,7 +111,7 @@ function playCueUnsafe(cueId: SfxCueId): void {
     }
   }
   audio = startAudio(url, gain, { cents: pitchCentsOf(cueId), onFail })
-  if (audio === null) return
+  if (audio === null) return null
   set.add(audio)
   active.set(cueId, set)
   // 音效台「实时触发」：只记真实起播成功（试听走 previewCue，不进这里）
@@ -132,6 +132,7 @@ function playCueUnsafe(cueId: SfxCueId): void {
     },
     { once: true },
   )
+  return audio
 }
 
 /** 建一个 Audio 并起播（pitch 用 `preservesPitch=false` + playbackRate） */

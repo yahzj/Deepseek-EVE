@@ -85,7 +85,8 @@ export function SimplePosition({ client, snap, onToast }: SimplePositionProps) {
     lines.push({
       key: p.id || `pos-${p.code}-${p.side}`,
       code: p.code,
-      tag: isShort ? `${T.simpleLeverageShort} · ${p.leverage}x` : `${T.simpleLeverageLong} · ${p.leverage}x`,
+      // 1x 与现货同口径，不再附加「· 1x」后缀；只有真实高杠杆才显示倍数，避免一长一短。
+      tag: `${isShort ? T.simpleLeverageShort : T.simpleLeverageLong}${p.leverage > 1 ? ` · ${p.leverage}x` : ''}`,
       tone: isShort ? 'short' : 'long',
       qty: p.qty,
       avgPrice: p.avgEntry,

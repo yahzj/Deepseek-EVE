@@ -10,6 +10,11 @@
   overflow: hidden;
 }
 
+/* 简单投资：页面底色再压深一档，让三栏卡片与行情更突出 */
+.ex-page.ex-mode-simple {
+  background: rgb(var(--wui-bg-deep) / 0.6);
+}
+
 .ex-dim {
   color: rgb(var(--wui-text-dim));
   font-size: var(--wui-fs-xs);
@@ -2727,6 +2732,7 @@
 }
 
 .ex-bond-name {
+  position: relative;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -2737,6 +2743,85 @@
 .ex-bond-name b {
   color: rgb(var(--wui-gold));
   font-size: var(--wui-fs-s);
+}
+
+.ex-savings-anchor {
+  padding: 0 3px;
+  margin: 0 -3px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  cursor: default;
+  user-select: none;
+  transition: border-color 0.12s ease, background-color 0.12s ease;
+}
+
+.ex-help-mark {
+  margin-left: 3px;
+  color: rgb(var(--wui-text-dim));
+  font-size: 0.7em;
+  line-height: 1;
+  vertical-align: super;
+  user-select: none;
+}
+
+.ex-savings-anchor:hover {
+  border-color: rgb(var(--wui-border));
+  background: rgb(var(--wui-bg-panel) / 0.55);
+}
+
+.ex-savings-pop {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 40;
+  padding-top: 8px;
+}
+
+.ex-savings-pop-line {
+  position: absolute;
+  top: 0;
+  left: 16px;
+  width: 1px;
+  height: 8px;
+  background: rgb(var(--wui-border));
+}
+
+.ex-savings-pop-body {
+  min-width: 210px;
+  padding: 7px 9px;
+  border: 1px solid rgb(var(--wui-border));
+  border-radius: 5px;
+  background: rgb(var(--wui-bg-panel));
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.3);
+}
+
+.ex-savings-tip {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 210px;
+  line-height: 1.45;
+}
+
+.ex-savings-tip-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.ex-savings-tip-label {
+  color: rgb(var(--wui-text-dim));
+}
+
+.ex-savings-tip-value {
+  color: rgb(var(--wui-text));
+  font-weight: 600;
+}
+
+.ex-savings-tip-cap {
+  color: rgb(var(--wui-gold));
+  font-weight: 600;
 }
 
 .ex-bond-rate {
@@ -3077,7 +3162,8 @@
 }
 
 .ex-mode-tab.is-guest-locked {
-  opacity: 0.55;
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .ex-mode-tab.is-guest-locked:hover {
@@ -4073,8 +4159,8 @@ button.ex-round-clock-badge:disabled {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  margin-bottom: 8px;
-  padding-bottom: 6px;
+  margin-bottom: 4px;
+  padding-bottom: 3px;
   border-bottom: 1px solid rgb(var(--wui-border));
 }
 
@@ -4089,7 +4175,7 @@ button.ex-round-clock-badge:disabled {
 .ex-simple-card-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   overflow-y: auto;
   min-height: 0;
   flex: 1 1 auto;
@@ -4119,8 +4205,8 @@ button.ex-round-clock-badge:disabled {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  padding: 8px 10px;
+  gap: 3px;
+  padding: 5px 8px;
   background: rgb(var(--wui-bg-field) / 0.5);
   border: 1px solid rgb(var(--wui-border));
   border-radius: 4px;
@@ -4330,7 +4416,7 @@ button.ex-round-clock-badge:disabled {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 14px;
+  padding: 5px 12px;
   background: rgb(var(--wui-bg-panel));
   border: 1px solid rgb(var(--wui-border));
   border-radius: 6px;
@@ -4390,7 +4476,7 @@ button.ex-round-clock-badge:disabled {
 
 .ex-simple-head-stats {
   display: flex;
-  gap: 16px;
+  gap: 10px;
 }
 
 .ex-simple-head-stat {
@@ -4410,6 +4496,7 @@ button.ex-round-clock-badge:disabled {
 }
 
 .ex-simple-chart-card {
+  position: relative;
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
@@ -4419,6 +4506,71 @@ button.ex-round-clock-badge:disabled {
   border: 1px solid rgb(var(--wui-border));
   border-radius: 6px;
   box-shadow: 0 4px 16px rgb(0 0 0 / 0.2);
+}
+
+/* 全仓下注：老虎机式激光走圈。光束高频切割 3px 边框，辉光收在 14px 内，音效结束即移除。 */
+.ex-allin-glow {
+  position: absolute;
+  inset: 0;
+  padding: 3px;
+  box-sizing: border-box;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 1;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: ex-allin-fade 1.5s ease-out both;
+}
+
+/* 前 1.2 秒保持满亮，最后 0.3 秒淡出，避免光效突然消失 */
+@keyframes ex-allin-fade {
+  0%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.ex-allin-glow-beam {
+  position: absolute;
+  top: -75%;
+  left: -75%;
+  width: 250%;
+  height: 250%;
+  will-change: transform;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg 280deg,
+    #ff9f00 315deg,
+    #ffe27a 345deg,
+    #ffffff 360deg
+  );
+  filter: drop-shadow(0 0 2px #ffffff) drop-shadow(0 0 6px #ffe27a)
+    drop-shadow(0 0 14px rgb(255 170 0 / 0.7));
+  animation: ex-allin-rotate 0.18s linear infinite;
+}
+
+@keyframes ex-allin-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ex-simple-chart-card.is-allin {
+  box-shadow: 0 4px 20px rgb(0 0 0 / 0.5);
+}
+
+.ex-simple-chart-card.is-allin > :not(.ex-allin-glow) {
+  position: relative;
+  z-index: 2;
 }
 
 .ex-simple-chart-top {
@@ -5032,7 +5184,7 @@ html body .app-root .ex-page .ex-simple-big-action-btn,
   justify-content: center;
   padding: 0;
   border-radius: 4px;
-  font-size: var(--wui-fs-base);
+  font-size: calc(var(--wui-fs-base) + 2px);
   font-weight: 800;
   letter-spacing: 2px;
   cursor: pointer;
@@ -6539,6 +6691,64 @@ html body .app-root.is-layout-modern .ex-page .ex-simple-big-action-btn:disabled
   font-weight: 500;
 }
 
+/* 逐只持仓明细：150px 窄栏一行「代码 方向杠杆 数量 盈亏」 */
+.app-activitybar-exch-hold {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: rgb(var(--wui-text));
+  font-family: var(--wui-mono);
+  font-size: var(--wui-fs-2xs);
+  line-height: 1.35;
+  text-align: left;
+  cursor: pointer;
+}
+
+.app-activitybar-exch-hold:hover {
+  background: rgb(var(--wui-bg-panel) / 0.65);
+}
+
+.exh-code {
+  flex: 0 0 auto;
+  color: rgb(var(--wui-cyan));
+  font-weight: 600;
+}
+
+.exh-lev {
+  flex: 0 0 auto;
+  color: rgb(var(--wui-text-dim));
+}
+
+.exh-qty {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: rgb(var(--wui-text-dim));
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.exh-pnl {
+  flex: 0 0 auto;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.exh-pnl.is-up {
+  color: rgb(var(--wui-tone-gain));
+}
+
+.exh-pnl.is-down {
+  color: rgb(var(--wui-tone-loss));
+}
+
 /* 兼容旧类名保留 */
 .app-activitybar-exch-btn {
   border: 1px solid rgb(var(--wui-cyan) / 0.35);
@@ -7312,7 +7522,8 @@ html body .app-root.is-layout-modern .ex-page .ex-simple-big-action-btn:disabled
   /* 按内容高度排，不随右栏拉伸：否则全屏下内容顶上、按钮沉底，中间空一大块 */
   flex: 0 0 auto;
   min-height: 0;
-  overflow: hidden;
+  /* 收益悬浮窗从卡片内向下展开，不能被卡片裁掉 */
+  overflow: visible;
   display: flex;
   flex-direction: column;
   background: rgb(var(--wui-bg-panel)) !important;
@@ -8011,5 +8222,570 @@ html body .app-root.is-layout-modern .ex-page .ex-simple-big-action-btn:disabled
 
   .ex-pro-dock-body .ex-liq-sentence {
     display: block;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   星舰 HUD 方向舱门 + 下注 CTA（2026-11-08 船长视觉方案）
+   - 涨/跌：对称 45° 切角，未选中深色待机，选中霓虹通电
+   - 下注：四角切角、顶边光刃、45° 扫描纹理、SEC//READY 标
+   ══════════════════════════════════════════════════════════════ */
+
+html body .app-root .ex-page .ex-simple-trade-tab {
+  position: relative;
+  border-radius: 0 !important;
+  background: rgb(13 22 33 / 0.75) !important;
+  border: 1px solid rgb(120 150 180 / 0.2) !important;
+  color: rgb(160 180 200 / 0.5) !important;
+  text-shadow: none !important;
+  filter: none;
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    color 0.18s ease !important;
+}
+
+html body .app-root .ex-page .ex-simple-trade-tab.is-buy,
+html body .app-root .ex-page .ex-simple-trade-tab.is-short {
+  border-radius: 2px !important;
+}
+
+html body .app-root .ex-page .ex-simple-trade-tab.is-buy:hover:not(.is-on):not([aria-selected='true']),
+html body .app-root .ex-page .ex-simple-trade-tab.is-short:hover:not(.is-on):not([aria-selected='true']) {
+  background: rgb(20 34 50 / 0.85) !important;
+  border-color: rgb(120 150 180 / 0.4) !important;
+  color: rgb(220 235 250 / 0.85) !important;
+}
+
+html body .app-root .ex-page .ex-simple-trade-tab.is-buy.is-on,
+html body .app-root .ex-page .ex-simple-trade-tab.is-buy[aria-selected='true'] {
+  background: rgb(224 108 101 / 0.16) !important;
+  border-color: #e06c65 !important;
+  color: #f78c85 !important;
+  text-shadow: none !important;
+  box-shadow:
+    inset 3px 0 0 #e06c65,
+    inset 0 0 8px rgb(224 108 101 / 0.15) !important;
+  filter: none !important;
+}
+
+html body .app-root .ex-page .ex-simple-trade-tab.is-short.is-on,
+html body .app-root .ex-page .ex-simple-trade-tab.is-short[aria-selected='true'] {
+  background: rgb(78 201 130 / 0.16) !important;
+  border-color: #4ec982 !important;
+  color: #6be09b !important;
+  text-shadow: none !important;
+  box-shadow:
+    inset 3px 0 0 #4ec982,
+    inset 0 0 8px rgb(78 201 130 / 0.15) !important;
+  filter: none !important;
+}
+
+/* 未选中的方向舱门：彻底断电，沉入底板 */
+html body .app-root .ex-page .ex-simple-trade-tab.is-buy:not(.is-on):not([aria-selected='true']),
+html body .app-root .ex-page .ex-simple-trade-tab.is-short:not(.is-on):not([aria-selected='true']) {
+  background: rgb(13 22 33 / 0.75) !important;
+  border-color: rgb(120 150 180 / 0.2) !important;
+  color: rgb(160 180 200 / 0.5) !important;
+  text-shadow: none !important;
+  filter: none !important;
+}
+
+html body .app-root .ex-page .ex-simple-big-action-btn {
+  position: relative;
+  border-radius: 0 !important;
+  border-radius: 2px !important;
+  /* 默认是「未就绪 / 锁死」待机态：冷灰深底 + 细灰边 + 低灰度文字 */
+  background-color: rgb(13 22 33 / 0.5) !important;
+  background-image: none !important;
+  border: 1px solid rgb(120 150 180 / 0.15) !important;
+  color: rgb(160 180 200 / 0.35) !important;
+  text-shadow: none !important;
+  box-shadow: none !important;
+  filter: none !important;
+}
+
+/* 通电激活：纯色平涂，复用界面原生红绿 */
+html body .app-root .ex-page .ex-simple-big-action-btn.is-buy:not([aria-disabled='true']) {
+  background-color: rgb(224 108 101 / 0.22) !important;
+  background-image: none !important;
+  border-color: #e06c65 !important;
+  color: #fff !important;
+  text-shadow: none !important;
+  box-shadow: inset 3px 0 0 #e06c65 !important;
+  filter: none !important;
+}
+
+html body .app-root .ex-page .ex-simple-big-action-btn.is-short:not([aria-disabled='true']) {
+  background-color: rgb(78 201 130 / 0.22) !important;
+  background-image: none !important;
+  border-color: #4ec982 !important;
+  color: #fff !important;
+  text-shadow: none !important;
+  box-shadow: inset 3px 0 0 #4ec982 !important;
+  filter: none !important;
+}
+
+html body .app-root .ex-page .ex-simple-big-action-btn.is-buy:not([aria-disabled='true']):hover:not(:disabled) {
+  background-color: rgb(224 108 101 / 0.32) !important;
+}
+
+html body .app-root .ex-page .ex-simple-big-action-btn.is-short:not([aria-disabled='true']):hover:not(:disabled) {
+  background-color: rgb(78 201 130 / 0.32) !important;
+}
+
+html body .app-root .ex-page .ex-simple-big-action-btn::after {
+  content: 'SEC//READY';
+  position: absolute;
+  right: 10px;
+  bottom: 3px;
+  color: rgb(255 255 255 / 0.42);
+  font-family: var(--wui-mono);
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: 0;
+  pointer-events: none;
+}
+
+html body .app-root .ex-page .ex-simple-big-action-btn[aria-disabled='true'] {
+  background-image: none !important;
+  background-color: rgb(13 22 33 / 0.5) !important;
+  border-color: rgb(120 150 180 / 0.15) !important;
+  color: rgb(160 180 200 / 0.35) !important;
+  box-shadow: none !important;
+  filter: none !important;
+}
+
+/* 提示栏与预计股数同步界面原生红绿 */
+html body .app-root .ex-page .ex-simple-trade-hint.is-buy {
+  background: rgb(224 108 101 / 0.06) !important;
+  border-color: rgb(224 108 101 / 0.45) !important;
+  color: #f78c85 !important;
+}
+
+html body .app-root .ex-page .ex-simple-trade-hint.is-short {
+  background: rgb(78 201 130 / 0.06) !important;
+  border-color: rgb(78 201 130 / 0.45) !important;
+  color: #6be09b !important;
+}
+
+html body .app-root .ex-page .ex-simple-trade-preview .ex-highlight-green {
+  color: #e06c65 !important;
+}
+
+html body .app-root .ex-page .ex-simple-trade-preview .ex-highlight-red {
+  color: #4ec982 !important;
+}
+
+/* HUD 字距与微型战术英文 */
+html body .app-root .ex-page .ex-simple-trade-tab {
+  letter-spacing: 3px !important;
+}
+
+html body .app-root .ex-page .ex-simple-big-action-btn {
+  letter-spacing: 3px !important;
+}
+
+.ex-hud-en {
+  margin-left: 4px;
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  opacity: 0.45;
+  text-shadow: none;
+}
+
+
+
+/* ══════════════════════════════════════════════════════════════
+   对齐装配台 5 个视觉基因（2026-11-08）
+   ══════════════════════════════════════════════════════════════ */
+
+/* 1. 顶栏 KPI 小卡：左侧色条 + 中英双语微标 */
+html body .app-root .ex-page .ex-topbar-stats {
+  gap: 8px;
+}
+
+html body .app-root .ex-page .ex-stat {
+  min-width: 0;
+  padding: 4px 9px 4px 11px;
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.16);
+  border-radius: 2px;
+  background: linear-gradient(90deg, rgb(var(--wui-hud-primary) / 0.06), transparent);
+  box-shadow: inset 3px 0 0 rgb(var(--wui-hud-primary) / 0.75);
+}
+
+html body .app-root .ex-page .ex-stat.is-pnl.is-up {
+  box-shadow: inset 3px 0 0 #e06c65;
+}
+
+html body .app-root .ex-page .ex-stat.is-pnl.is-down {
+  box-shadow: inset 3px 0 0 #4ec982;
+}
+
+html body .app-root .ex-page .ex-stat-tag {
+  color: rgb(var(--wui-hud-primary) / 0.8) !important;
+  font-family: var(--wui-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+html body .app-root .ex-page .ex-stat-tag small {
+  opacity: 0.5;
+}
+
+html body .app-root .ex-page .ex-stat b {
+  font-size: var(--wui-fs-md);
+}
+
+/* 2. 图表工程方格网 + 战术微标 */
+html body .app-root .ex-page .ex-simple-svg-wrap {
+  background-image:
+    linear-gradient(90deg, rgb(var(--wui-hud-primary) / 0.05) 1px, transparent 1px),
+    linear-gradient(0deg, rgb(var(--wui-hud-primary) / 0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+html body .app-root .ex-page .ex-simple-svg-wrap::before {
+  content: 'MARKET FEED // REALTIME TELEMETRY';
+  position: absolute;
+  top: 4px;
+  left: 6px;
+  z-index: 1;
+  color: rgb(var(--wui-hud-primary) / 0.35);
+  font-family: var(--wui-mono);
+  font-size: 8px;
+  letter-spacing: 0.15em;
+  pointer-events: none;
+}
+
+/* 3. 区块抬头：左侧亮青竖线 + 青黑渐变带 */
+html body .app-root .ex-page .ex-panel-head {
+  border-left: 3px solid rgb(var(--wui-hud-primary) / 0.7);
+  background: linear-gradient(90deg, rgb(var(--wui-hud-primary) / 0.08), transparent);
+  padding-left: 8px;
+}
+
+html body .app-root .ex-page .ex-bond-name {
+  box-shadow: inset 3px 0 0 rgb(var(--wui-hud-primary) / 0.7);
+  padding-left: 7px;
+}
+
+/* 4. 成交额工业仪表条 */
+.ex-turnover-meter {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ex-turnover-meter-head {
+  display: flex;
+  justify-content: space-between;
+  color: rgb(var(--wui-hud-text-muted));
+  font-size: var(--wui-fs-2xs);
+}
+
+.ex-turnover-meter-track {
+  height: 4px;
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.18);
+  background: rgb(var(--wui-hud-primary) / 0.12);
+}
+
+.ex-turnover-meter-fill {
+  display: block;
+  height: 100%;
+  background: rgb(var(--wui-hud-primary) / 0.7);
+  box-shadow: 0 0 6px rgb(var(--wui-hud-primary) / 0.4);
+}
+
+/* 5. 提示框改实线微光暗底，替掉虚线 */
+html body .app-root .ex-page .ex-simple-trade-hint.is-buy,
+html body .app-root .ex-page .ex-simple-trade-hint.is-short {
+  border-style: solid !important;
+}
+
+/* 1366x768：底部提示下移；理财区背景撑满右栏到底 */
+html body .app-root .ex-page .ex-simple-trade-guard-hint {
+  margin-top: 6px;
+}
+
+html body .app-root .ex-page .ex-simple-finance {
+  background: rgb(var(--wui-bg-panel) / 0.6);
+  border: 1px solid rgb(var(--wui-border) / 0.6);
+  border-radius: 6px;
+}
+
+/* 新手引导：遮罩挖孔 + 战术气泡 */
+.ex-tutorial {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  pointer-events: none;
+}
+
+.ex-tutorial-dim {
+  position: absolute;
+  inset: 0;
+  background: rgb(4 10 18 / 0.72);
+}
+
+.ex-tutorial-spot {
+  position: absolute;
+  z-index: 1;
+  border: 2px solid rgb(var(--wui-hud-primary));
+  border-radius: 6px;
+  box-shadow:
+    0 0 0 9999px rgb(4 10 18 / 0.72),
+    0 0 24px rgb(var(--wui-hud-primary) / 0.45);
+  pointer-events: none;
+  transition: all 0.18s ease;
+}
+
+.ex-tutorial-bubble {
+  position: absolute;
+  z-index: 2;
+  padding: 14px 16px;
+  border: 1px solid rgb(var(--wui-hud-primary) / 0.55);
+  border-radius: 6px;
+  background: rgb(9 17 27 / 0.98);
+  box-shadow:
+    0 12px 40px rgb(0 0 0 / 0.65),
+    inset 0 1px 0 rgb(255 255 255 / 0.08);
+  pointer-events: auto;
+}
+
+.ex-tutorial-step {
+  color: rgb(var(--wui-hud-primary));
+  font-family: var(--wui-mono);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+}
+
+.ex-tutorial-title {
+  margin: 6px 0;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.ex-tutorial-body {
+  color: rgb(var(--wui-text-dim));
+  font-size: 12px;
+  line-height: 1.65;
+  white-space: pre-line;
+}
+
+.ex-tutorial-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.ex-tutorial-btn {
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid rgb(var(--wui-border));
+  border-radius: 3px;
+  background: rgb(var(--wui-bg-panel));
+  color: rgb(var(--wui-text-dim));
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.ex-tutorial-btn:hover {
+  border-color: rgb(var(--wui-hud-primary) / 0.6);
+  color: #fff;
+}
+
+.ex-tutorial-btn.is-primary {
+  border-color: rgb(var(--wui-hud-primary) / 0.8);
+  background: rgb(var(--wui-hud-primary) / 0.18);
+  color: #fff;
+}
+
+/* 旧版布局：股市是三栏宽界面，右侧事件日志在股市页让位；切回其他页面自动恢复 */
+.app-root.is-layout-classic:has(.ex-page) .app-log-side {
+  display: none;
+}
+
+/* 旧版布局 + 768 高度：中栏内容必须可达，并压缩到一屏 */
+@media (max-height: 820px) {
+  .app-root.is-layout-classic .ex-simple-col-mid {
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+
+  .app-root.is-layout-classic .ex-simple-trade-card {
+    gap: 4px;
+    padding: 6px 10px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-trade-tabs {
+    gap: 6px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-trade-tab {
+    height: 36px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-chips {
+    gap: 4px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-chip-btn {
+    height: 24px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-trade-hint {
+    display: none;
+  }
+
+  .app-root.is-layout-classic .ex-simple-trade-preview {
+    gap: 2px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-preview-row {
+    font-size: 10px;
+    line-height: 1.25;
+  }
+
+  .app-root.is-layout-classic .ex-simple-big-action-btn {
+    height: 34px;
+  }
+
+  /* 一屏兜底：隐藏辅助预览行与成交额仪表，保住 K 线与下注按钮 */
+  .app-root.is-layout-classic .ex-simple-trade-preview .ex-simple-preview-row:nth-child(3),
+  .app-root.is-layout-classic .ex-simple-trade-preview .ex-simple-preview-row:nth-child(4) {
+    display: none;
+  }
+
+  .app-root.is-layout-classic .ex-turnover-meter {
+    display: none;
+  }
+
+  .app-root.is-layout-classic .ex-simple-svg-wrap {
+    min-height: 90px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-chart-section {
+    min-height: 100px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-trade-guard-hint {
+    min-height: 0;
+    padding: 1px 4px;
+    font-size: 10px;
+  }
+
+  /* 顶部与右栏一起收紧，把高度让给主区 */
+  .app-root.is-layout-classic .ex-page {
+    gap: 4px;
+  }
+
+  .app-root.is-layout-classic .ex-guest-banner {
+    padding: 2px 8px;
+    font-size: 10px;
+  }
+
+  .app-root.is-layout-classic .ex-ticker-feed-row:nth-child(n+2) {
+    display: none;
+  }
+
+  .app-root.is-layout-classic .ex-topbar {
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-header {
+    padding-top: 3px;
+    padding-bottom: 3px;
+  }
+
+  .app-root.is-layout-classic .ex-preview-row {
+    padding-top: 2px;
+    padding-bottom: 2px;
+  }
+
+  /* 右栏两张理财卡再收紧，尽量一屏看到申购/赎回 */
+  .app-root.is-layout-classic .ex-simple-finance {
+    gap: 4px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-finance .ex-bond-body {
+    padding: 5px 8px 6px;
+    gap: 3px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-finance .ex-panel-head {
+    padding: 3px 8px;
+  }
+
+  .app-root.is-layout-classic .ex-bond-name {
+    margin-bottom: 0;
+  }
+
+  .app-root.is-layout-classic .ex-bond-field {
+    margin-top: 2px;
+    gap: 3px;
+  }
+
+  .app-root.is-layout-classic .ex-bond-actions {
+    margin-top: 2px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-finance .ex-mini-btn {
+    height: 26px;
+  }
+
+  /* 顶栏已显示可用资金，旧版矮屏里两张理财卡不再重复占行 */
+  .app-root.is-layout-classic .ex-simple-finance .is-avail-row {
+    display: none;
+  }
+
+  .app-root.is-layout-classic .ex-simple-side-switch {
+    padding: 1px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-side-tab {
+    height: 28px;
+    font-size: 10px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-finance {
+    gap: 3px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-finance .ex-bond-field {
+    gap: 2px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-finance .ex-bond-field-head {
+    margin-bottom: 2px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-finance .ex-bond-input-box .ex-input {
+    height: 22px;
+    padding: 0 6px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-finance .ex-preview-row {
+    font-size: 10px;
+    line-height: 1.2;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-finance .ex-panel-head {
+    padding: 2px 8px;
+  }
+
+  .app-root.is-layout-classic .ex-simple-finance .ex-bond-input-box .ex-input {
+    height: 20px;
+  }
+
+  .app-root.is-layout-classic .ex-bond-name b {
+    font-size: 11px;
   }
 }

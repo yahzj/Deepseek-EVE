@@ -213,7 +213,7 @@ export interface WithdrawResult { nonce: string; amount: number; fee: number; av
 
 /**
  * 保底基金持仓（放置型）：申购后本金锁定，按 UTC 自然日收益档计提，随时可赎。
- * 每日 70% 概率 +0.03%、30% 概率 −0.05%。
+ * 每日 1 亿以内 70% 概率 +51.43%、30% 概率 −40%；超出 1 亿部分固定 +2.4%。
  * 亏损真实发生，赎回额 = 本金 + 累计收益（accrued 可为负）。
  */
 export interface FundPosition {
@@ -235,6 +235,14 @@ export interface FundPosition {
   loseDailyPpb: number
   /** 每日盈利概率（0~100） */
   winPercent: number
+  /** 超出 1 亿部分的固定日利率（十亿分率，无风险） */
+  lowDailyPpb?: number
+  /** 高息分段本金上限（1 亿） */
+  principalCap?: number
+  /** 每日正收益封顶 */
+  dailyCap?: number
+  /** 当日已发放的正收益 */
+  capUsed?: number
   /** 查询时的交易所可用现金 */
   cash: number
 }
@@ -317,8 +325,14 @@ export interface AgentView {
 export interface BondProduct {
   id: string
   name: string
-  /** 期望日化比例（0.00002 = 0.002%） */
+  /** 期望日化比例（0.11952 = 11.952%） */
   dailyRate: number
+  /** 超出 1 亿部分的固定日利率（0.012 = 1.2%） */
+  lowDailyRate?: number
+  /** 高息分段本金上限（1 亿） */
+  principalCap?: number
+  /** 每日正收益封顶 */
+  dailyCap?: number
   note: string
 }
 
@@ -346,6 +360,14 @@ export interface BondPosition {
   winDailyPpb: number
   loseDailyPpb: number
   winPermille: number
+  /** 超出 1 亿部分的固定日利率（十亿分率，无风险） */
+  lowDailyPpb?: number
+  /** 高息分段本金上限（1 亿） */
+  principalCap?: number
+  /** 每日正收益封顶 */
+  dailyCap?: number
+  /** 当日已发放的正收益 */
+  capUsed?: number
   /** 申购/赎回后的可用现金 */
   cash: number
 }
@@ -408,6 +430,8 @@ export interface ExchangeSnapshot {
   agents: AgentView[]
   /** 手续费率（界面预览用，避免把数字写死在组件里） */
   feeRate: number
+  /** 当前回合（含本回合委托配额；Mock 或尚未同步时为 null） */
+  round?: RoundInfo | null
 }
 
 export interface MarginCallPayload {
@@ -472,6 +496,8 @@ export interface ExchangeClient {
   ensureSymbolData?(code: string): void
   /** 可选：按需补拉单个图表周期（HTTP 模式实现；未缓存的周期切过去时调用）。 */
   ensureChartData?(code: string, period: ChartPeriod): void
+  /** 可选：页面重新挂载时强制把所有标的的分时线替换为最新切片（HTTP 模式实现）。 */
+  refreshCharts?(): void
   /** 可选：每分钟刷新行情/账户/委托/快讯（HTTP 模式实现）。 */
   refreshMarketData?(code: string): void
   onTick(cb: () => void): Unsubscribe

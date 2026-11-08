@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { BondPosition, ExchangeClient, ExchangeSnapshot } from '../client'
 import type { ToastFn } from '../../../pages/common'
 import { isEn } from '../../../i18n/locale'
-import { money, pctAbs } from '../format'
+import { money } from '../format'
 import { T } from '../texts'
 import { progressStyle, useActionProgress } from '../useActionProgress'
 
@@ -27,13 +27,13 @@ export function BondCard({
 }) {
   const [amountText, setAmountText] = useState('100000')
   const [bond, setBond] = useState<BondPosition>(snap.bonds)
+  const [tipOpen, setTipOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [isAccruing, setIsAccruing] = useState(false)
   const nonceSeq = useRef(0)
   const buyProgress = useActionProgress(client)
   const redeemProgress = useActionProgress(client)
 
-  const product = snap.bondProduct
   const available = snap.account.cash
   // 收益跟行情一起刷新（10 秒一次，船长 2026-11-04 定），不做本地插值，避免与结算口径不一致。
   const accruedLive = bond.accrued
@@ -79,6 +79,22 @@ export function BondCard({
   const isOverCash = !isInvalid && numericAmount > available
   const canBuy = !busy && !isInvalid && !isOverCash && available > 0
   const canRedeem = !busy && held > 0
+  const tip = (
+    <div className="ex-savings-tip">
+      <div className="ex-savings-tip-row">
+        <span className="ex-savings-tip-label">{T.savingsHighLabel}</span>
+        <b className="ex-savings-tip-value">{T.bondTipHighValue}</b>
+      </div>
+      <div className="ex-savings-tip-row">
+        <span className="ex-savings-tip-label">{T.savingsLowLabel}</span>
+        <b className="ex-savings-tip-value">{T.bondTipLowValue}</b>
+      </div>
+      <div className="ex-savings-tip-row">
+        <span className="ex-savings-tip-label">{T.savingsCapLabel}</span>
+        <b className="ex-savings-tip-cap">{T.bondTipCapValue}</b>
+      </div>
+    </div>
+  )
 
   const handleBlur = (): void => {
     const raw = Number(amountText.replace(/,/g, ''))
@@ -148,18 +164,27 @@ export function BondCard({
     <section className="ex-panel ex-bond" aria-label={T.bondTitle}>
       <header className="ex-panel-head">
         <h3 className="ex-panel-title">{T.bondTitle}</h3>
-        <span className="ex-dim">{T.bondGameDay}</span>
       </header>
       <div className="ex-bond-body">
-        <div className="ex-bond-name">
-          <b>{product.name}</b>
-          <span className="ex-bond-rate">
-            {T.bondRateLabel} {product.dailyRate > 0 ? `${(product.dailyRate * 100 * 365).toFixed(2)}%` : pctAbs(0)}
-          </span>
+        <div
+          className="ex-bond-name"
+          onMouseEnter={() => setTipOpen(true)}
+          onMouseLeave={() => setTipOpen(false)}
+        >
+          <b className="ex-savings-anchor">
+            {T.bondName}
+            <span className="ex-help-mark">?</span>
+          </b>
+          {tipOpen ? (
+            <div className="ex-savings-pop" role="tooltip">
+              <span className="ex-savings-pop-line" />
+              <div className="ex-savings-pop-body">{tip}</div>
+            </div>
+          ) : null}
         </div>
 
         {/* 债券资产概览：可用现金 → 本金 → 已计息（2026-11-06 船长令统一排序） */}
-        <div className="ex-preview-row">
+        <div className="ex-preview-row is-avail-row">
           <span>{T.strategyAvailCash}</span>
           <b className="ex-num">
             {money(available)} <span className="ex-unit">{T.creditUnit}</span>

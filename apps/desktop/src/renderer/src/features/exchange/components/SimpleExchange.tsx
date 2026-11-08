@@ -29,6 +29,7 @@ import { SimpleChart } from './SimpleChart'
 import { EXCHANGE_PREF_EVENT, EXCH_PREF, readExchangeChoice, writeExchangePref } from '../viewPrefs'
 import { SimpleTrade } from './SimpleTrade'
 import { SimplePosition } from './SimplePosition'
+import { SimpleTutorial } from './SimpleTutorial'
 import { MyOrders } from './MyOrders'
 
 /** 简单界面右栏一级切换：我的下注 / 我的委托 / 理财与基金（2026-11-06 船长令拆开） */
@@ -105,12 +106,19 @@ export function SimpleExchange({
   const [sideTab, setSideTab] = useState<SimpleSideTab>(() =>
     readExchangeChoice(EXCH_PREF.simpleSide, ['bets', 'orders', 'finance'] as const, 'finance'),
   )
+  const [allInFx, setAllInFx] = useState(false)
   const betCount = snap.account.holdings.length + snap.account.positions.length
-  const orderCount = snap.orders.length
+  const usedOrders = Math.max(0, Math.round(snap.round?.usedOrders ?? 0))
+  const maxOrders = Math.max(1, Math.round(snap.round?.maxOrders ?? 10))
 
   useEffect(() => {
     writeExchangePref(EXCH_PREF.simpleSide, sideTab)
   }, [sideTab])
+
+  // 重新上线或从别的页面切回：强制把大图与左栏小图的分时线换成最新切片。
+  useEffect(() => {
+    client.refreshCharts?.()
+  }, [client])
 
   // 外部入口（活动栏「债券/基金」）要求直达理财页时，已挂载的页面跟着切
   useEffect(() => {
@@ -164,13 +172,13 @@ export function SimpleExchange({
 
         {/* 走势图 */}
         <section className="ex-simple-chart-section">
-          <SimpleChart client={client} code={code} quote={quote} tick={snap.tick} />
+          <SimpleChart client={client} code={code} quote={quote} tick={snap.tick} allInFx={allInFx} />
         </section>
 
         {/* 傻瓜买卖舱（游客：保留面板但禁用，点击提示登录） */}
         <section className="ex-simple-trade-section">
           <GuestLock locked={guest} label={T.guestLockLabel} onUnlock={onRequireLogin}>
-            <SimpleTrade client={client} snap={snap} code={code} onToast={onToast} />
+            <SimpleTrade client={client} snap={snap} code={code} onToast={onToast} onAllInFx={setAllInFx} />
           </GuestLock>
         </section>
       </main>
@@ -195,8 +203,7 @@ export function SimpleExchange({
             className={`ex-simple-side-tab${sideTab === 'orders' ? ' is-on' : ''}`}
             onClick={() => setSideTab('orders')}
           >
-            {T.myOrdersTitle}
-            {orderCount > 0 ? ` (${orderCount})` : ''}
+            {T.myOrdersTitle} {usedOrders}/{maxOrders}
           </button>
           <button
             type="button"
@@ -230,6 +237,8 @@ export function SimpleExchange({
           </GuestLock>
         </div>
       </aside>
+
+      <SimpleTutorial />
     </div>
   )
 }

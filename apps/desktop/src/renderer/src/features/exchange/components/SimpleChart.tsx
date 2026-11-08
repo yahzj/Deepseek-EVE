@@ -8,6 +8,7 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import type { ChartPeriod, ExchangeClient, StockQuote } from '../client'
+import { INTRADAY_VIEW_POINTS } from '../chartPeriods'
 import { pct, price } from '../format'
 import { T } from '../texts'
 
@@ -16,11 +17,13 @@ interface SimpleChartProps {
   code: string
   quote?: StockQuote
   tick: number
+  /** 全仓下注反馈：卡片边缘黄色光效顺时针旋转 */
+  allInFx?: boolean
 }
 
 type SimplePeriod = 'intraday'
 
-export function SimpleChart({ client, code, quote, tick }: SimpleChartProps) {
+export function SimpleChart({ client, code, quote, tick, allInFx = false }: SimpleChartProps) {
   // 简单投资默认且固定为分时走势（10秒高频刷新），精简去除专业K线周期选项
   const period: ChartPeriod = 'intraday'
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
@@ -137,8 +140,8 @@ export function SimpleChart({ client, code, quote, tick }: SimpleChartProps) {
       const coords = candleBars.map((c) => [c.cx, c.top] as [number, number])
       return { minP, maxP, coords, candleBars, points: [], pathLine: '', pathArea: '' }
     } else {
-      // 分时折线模式（10 秒高频走势，最多取最近 120 点）
-      const sample = series.slice(-120)
+      // 分时折线模式（10 秒高频走势，取最近 INTRADAY_VIEW_POINTS 点 ≈ 20 分钟，与左栏小图同窗口）
+      const sample = series.slice(-INTRADAY_VIEW_POINTS)
       if (sample.length < 2) {
         return { minP: 0, maxP: 0, coords: [], candleBars: [], points: [], pathLine: '', pathArea: '' }
       }
@@ -189,7 +192,12 @@ export function SimpleChart({ client, code, quote, tick }: SimpleChartProps) {
   const gradId = `ex-simple-grad-${code}`
 
   return (
-    <div className="ex-simple-chart-card">
+    <div className={`ex-simple-chart-card${allInFx ? ' is-allin' : ''}`}>
+      {allInFx ? (
+        <div className="ex-allin-glow" aria-hidden="true">
+          <div className="ex-allin-glow-beam" />
+        </div>
+      ) : null}
       <div className="ex-simple-chart-top">
         <div className="ex-simple-chart-hud">
           <div className="ex-simple-chart-price ex-num">

@@ -88,6 +88,7 @@ const SFX_CUE_DEFS = {
   'exchange-bet': { category: 'ui', gain: 0.55, minGapMs: 250, maxConcurrent: 2, nameId: 'ui.sfx.134' },
   'exchange-buy': { category: 'ui', gain: 0.55, minGapMs: 250, maxConcurrent: 2, nameId: 'ui.sfx.135' },
   'exchange-sell': { category: 'ui', gain: 0.55, minGapMs: 250, maxConcurrent: 2, nameId: 'ui.sfx.136' },
+  'exchange-allin': { category: 'ui', gain: 0.7, minGapMs: 300, maxConcurrent: 1, nameId: 'ui.sfx.139' },
 
   // ── BGM（循环，5 场景；交叉淡入淡出由 `music.ts` 管）──
   'bgm-docked': { category: 'music', gain: 1, minGapMs: 0, maxConcurrent: 1, nameId: 'ui.sfx.080', loop: true },

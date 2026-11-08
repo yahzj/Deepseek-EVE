@@ -31,6 +31,7 @@ export function FundCard({
   const [position, setPosition] = useState<FundPosition | null>(null)
   const [amountText, setAmountText] = useState('100000')
   const [busy, setBusy] = useState(false)
+  const [tipOpen, setTipOpen] = useState(false)
   const openProgress = useActionProgress(client)
   const redeemProgress = useActionProgress(client)
 
@@ -62,6 +63,22 @@ export function FundCard({
   const isInvalid = !Number.isFinite(numericAmount) || numericAmount <= 0
   const isOverCash = !isInvalid && numericAmount > availableCash
   const canSubmit = !busy && !isInvalid && !isOverCash && availableCash > 0
+  const tip = (
+    <div className="ex-savings-tip">
+      <div className="ex-savings-tip-row">
+        <span className="ex-savings-tip-label">{T.savingsHighLabel}</span>
+        <b className="ex-savings-tip-value">{T.fundTipHighValue}</b>
+      </div>
+      <div className="ex-savings-tip-row">
+        <span className="ex-savings-tip-label">{T.savingsLowLabel}</span>
+        <b className="ex-savings-tip-value">{T.fundTipLowValue}</b>
+      </div>
+      <div className="ex-savings-tip-row">
+        <span className="ex-savings-tip-label">{T.savingsCapLabel}</span>
+        <b className="ex-savings-tip-cap">{T.fundTipCapValue}</b>
+      </div>
+    </div>
+  )
 
   const setRatio = (ratio: number): void => {
     if (availableCash <= 0 || busy) return
@@ -116,15 +133,27 @@ export function FundCard({
     <section className="ex-panel ex-bond ex-fund" aria-label={T.fundTitle}>
       <header className="ex-panel-head">
         <h3 className="ex-panel-title">{T.fundTitle}</h3>
-        <span className="ex-dim">{T.fundRateHint}</span>
       </header>
       <div className="ex-bond-body">
-        <div className="ex-bond-name">
-          <b>{T.fundName}</b>
+        <div
+          className="ex-bond-name"
+          onMouseEnter={() => setTipOpen(true)}
+          onMouseLeave={() => setTipOpen(false)}
+        >
+          <b className="ex-savings-anchor">
+            {T.fundName}
+            <span className="ex-help-mark">?</span>
+          </b>
+          {tipOpen ? (
+            <div className="ex-savings-pop" role="tooltip">
+              <span className="ex-savings-pop-line" />
+              <div className="ex-savings-pop-body">{tip}</div>
+            </div>
+          ) : null}
         </div>
 
         {/* 账户可用资金：等宽排版 */}
-        <div className="ex-preview-row">
+        <div className="ex-preview-row is-avail-row">
           <span>{T.strategyAvailCash}</span>
           <b className="ex-num">
             {money(availableCash)} <span className="ex-unit">{T.creditUnit}</span>
@@ -132,29 +161,23 @@ export function FundCard({
         </div>
 
         {/* 持仓区：本金 → 累计收益（2026-11-06 船长令：与债券同一排序，去掉无意义读数） */}
-        {hasPosition ? (
-          <>
-            <div className="ex-preview-row">
-              <span>{T.fundPrincipal}</span>
-              <b className="ex-num">
-                {money(principal)} <span className="ex-unit">{T.creditUnit}</span>
-              </b>
-            </div>
-            <div className={`ex-preview-row ${accrued > 0 ? 'is-bond-highlight' : ''}`}>
-              <span>{T.fundAccrued}</span>
-              <b
-                className={`ex-num ${
-                  accrued > 0 ? 'is-up ex-fund-result-win' : accrued < 0 ? 'is-down ex-fund-result-lose' : ''
-                }`}
-              >
-                {accrued > 0 ? '+' : accrued < 0 ? '−' : ''}
-                {money(Math.abs(accrued))} <span className="ex-unit">{T.creditUnit}</span>
-              </b>
-            </div>
-          </>
-        ) : (
-          <div className="ex-bond-hint">{T.fundEmpty}</div>
-        )}
+        <div className="ex-preview-row">
+          <span>{T.fundPrincipal}</span>
+          <b className="ex-num">
+            {money(principal)} <span className="ex-unit">{T.creditUnit}</span>
+          </b>
+        </div>
+        <div className={`ex-preview-row ${accrued > 0 ? 'is-bond-highlight' : ''}`}>
+          <span>{T.fundAccrued}</span>
+          <b
+            className={`ex-num ${
+              accrued > 0 ? 'is-up ex-fund-result-win' : accrued < 0 ? 'is-down ex-fund-result-lose' : ''
+            }`}
+          >
+            {accrued > 0 ? '+' : accrued < 0 ? '−' : ''}
+            {money(Math.abs(accrued))} <span className="ex-unit">{T.creditUnit}</span>
+          </b>
+        </div>
 
         {/* 申购 / 追加金额 */}
         <div className="ex-bond-field">
@@ -239,19 +262,17 @@ export function FundCard({
             {busy ? T.fundCalculating : hasPosition ? T.fundAddBtn : T.fundPlayBtn}
             {openProgress.active ? ` ${openProgress.pct}%` : ''}
           </button>
-          {hasPosition ? (
-            <button
-              type="button"
-              className="ex-mini-btn ex-btn-progress"
-              data-sfx="exchange-sell"
-              disabled={busy}
-              style={progressStyle(redeemProgress)}
-              onClick={() => void redeem()}
-            >
-              {T.fundRedeemBtn}
-              {redeemProgress.active ? ` ${redeemProgress.pct}%` : ''}
-            </button>
-          ) : null}
+          <button
+            type="button"
+            className="ex-mini-btn ex-btn-progress"
+            data-sfx="exchange-sell"
+            disabled={busy || !hasPosition}
+            style={progressStyle(redeemProgress)}
+            onClick={() => void redeem()}
+          >
+            {T.fundRedeemBtn}
+            {redeemProgress.active ? ` ${redeemProgress.pct}%` : ''}
+          </button>
         </div>
       </div>
     </section>

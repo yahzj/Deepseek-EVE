@@ -48,7 +48,7 @@
 
 普通入侵速度用当地基础状态的平均普通吞吐，技能/周期/地区倍率不变，余额只封顶本轮量，不渐近减速，可捞光；普通密度恢复/保底及48小时闲置衰减不改。整数入舱按实量扣池，不足1m³仍至少1件的旧例外保留；满舱先验，普通能装部分才扣部分，稀有箱装不下不扣、稀有轮不扣普通池。存在入侵普通或稀有库存即清旧常驻`targetGroup`恢复自动优先，清空再回常驻；R族登记/分桶清洗同源，不用漏R的手写区间。
 
-实现证据：吞吐`a46a1c73`、旧筛选`603820d4`、路线`d96636ed`、标签`b4d01e02`、准备`fa986cdc`、腐蚀`988f1b4e`、巢母`caac8bc9`及族分账均在main。回归为入侵ledger/boundaries、throughput、ordinary-decrement、autoloop-route、preparation-squads、alien-command、broodmother-summon等对应核心测试。正式原生路线工具累计126次出击，两布局各59次完整路线及返航关环、首趟IPC保存重启通过；合法合成舰队与原版C卡，不代表普通玩家胜率。掉落/市场见`wreck-groups-20260919.md`。
+实现证据：吞吐`a46a1c73`、旧筛选`603820d4`、路线`d96636ed`、标签`b4d01e02`、准备`fa986cdc`、腐蚀`988f1b4e`、巢母`caac8bc9`及族分账均在main。回归为入侵ledger/boundaries、throughput、ordinary-decrement、autoloop-route、preparation-squads、alien-command、broodmother-summon等对应核心测试。正式原生路线工具`tools/invasion-autoloop-native-check.cjs`累计126次出击，两布局各59次完整路线及返航关环、首趟IPC保存重启通过；合法合成舰队与原版C卡，不代表普通玩家胜率。掉落/市场见`wreck-groups-20260919.md`。
 
 ## 发布与保留事项
 

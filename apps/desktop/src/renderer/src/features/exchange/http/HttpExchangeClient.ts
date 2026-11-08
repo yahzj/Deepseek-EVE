@@ -77,9 +77,13 @@ const EMPTY_BOND_POSITION: BondPosition = {
   settledMinute: 0,
   openedAt: 0,
   minutes: 0,
-  winDailyPpb: 22_000,
-  loseDailyPpb: -1_978_000,
-  winPermille: 999,
+  winDailyPpb: 120_000_000,
+  loseDailyPpb: -120_000_000,
+  winPermille: 998,
+  lowDailyPpb: 12_000_000,
+  principalCap: 100_000_000,
+  dailyCap: 200_000_000,
+  capUsed: 0,
   cash: 0,
 }
 
@@ -91,16 +95,23 @@ const EMPTY_FUND_POSITION: FundPosition = {
   settledMinute: 0,
   openedAt: 0,
   minutes: 0,
-  winDailyPpb: 300_000,
-  loseDailyPpb: -500_000,
+  winDailyPpb: 514_300_000,
+  loseDailyPpb: -400_000_000,
   winPercent: 70,
+  lowDailyPpb: 24_000_000,
+  principalCap: 100_000_000,
+  dailyCap: 300_000_000,
+  capUsed: 0,
   cash: 0,
 }
 
 const EMPTY_BOND_PRODUCT: BondProduct = {
   id: 'WHALE-BOND',
   name: '舰船债券 · 稳健型',
-  dailyRate: 0.00002,
+  dailyRate: 0.11952,
+  lowDailyRate: 0.012,
+  principalCap: 100_000_000,
+  dailyCap: 200_000_000,
   note: '联机产品以服务器配置为准',
 }
 
@@ -310,7 +321,7 @@ function normalizeAccount(raw: unknown): ExchangeAccount | null {
       ? (raw.pendingWithdrawals.filter(isRecord) as unknown as ExchangeAccount['pendingWithdrawals'])
       : [],
     holdings: Array.isArray(raw.holdings) ? raw.holdings.map(normalizeHolding).filter(isPresent) : [],
-    dailyTradeLimit: num(raw.dailyTradeLimit, 50_000_000),
+    dailyTradeLimit: num(raw.dailyTradeLimit, 1_000_000_000),
     dailyTradeUsed: num(raw.dailyTradeUsed),
   }
 }
@@ -473,7 +484,7 @@ function emptyAccount(): ExchangeAccount {
     positions: [],
     pendingWithdrawals: [],
     holdings: [],
-    dailyTradeLimit: 50_000_000,
+    dailyTradeLimit: 1_000_000_000,
     dailyTradeUsed: 0,
   }
 }
@@ -561,6 +572,10 @@ export class HttpExchangeClient implements ExchangeClient {
   private symbolLoading = new Set<string>()
   /** 正在按需补拉的周期（key = code:period）：切到未缓存周期时只发一次请求 */
   private chartLoading = new Set<string>()
+  /** 简单投资页重新挂载：待刷新所有标的分时线的标记 */
+  private pendingIntradayRefresh = false
+  /** 正在刷新分时线的标的（防止重复请求） */
+  private intradayRefreshing = new Set<string>()
   private chartRequestedAt = new Map<string, number>()
   /** K 线本地缓存（7 天 TTL，跨重启秒开图表）；key = code:period */
   private chartCachedAt = new Map<string, number>()
@@ -1017,6 +1032,43 @@ export class HttpExchangeClient implements ExchangeClient {
       })
   }
 
+  /**
+   * 页面重新挂载（重新上线 / 从别的页面切回）时调用：
+   * 清掉内存里的旧分时线，按最新 1 分钟数据重建，避免先显示 localStorage 里的旧曲线。
+   */
+  refreshCharts(): void {
+    this.pendingIntradayRefresh = true
+    if (this.stocks.length > 0) this.flushIntradayRefresh()
+  }
+
+  private flushIntradayRefresh(): void {
+    if (!this.pendingIntradayRefresh) return
+    this.pendingIntradayRefresh = false
+    for (const stock of this.stocks) {
+      void this.refreshIntraday(stock.code)
+    }
+  }
+
+  /** 单只标的分时线重建：只拉最近 240 根 1 分钟线，取最后 60 根作为新底。 */
+  private async refreshIntraday(code: string): Promise<void> {
+    if (this.intradayRefreshing.has(code)) return
+    this.intradayRefreshing.add(code)
+    try {
+      const rows = await this.get<unknown>(`/klines/${encodeURIComponent(code)}?interval=1m&limit=240`)
+      const bars = Array.isArray(rows) ? (rows as Kline[]) : []
+      if (bars.length === 0) return
+      this.chartCache.set(`${code}:intraday`, bars.slice(-60).map((b) => ({ ...b })))
+      this.chartCachedAt.set(`${code}:intraday`, Date.now())
+      this.chartRequestedAt.set(`${code}:intraday`, Date.now())
+      this.schedulePersistCharts()
+      this.emitTick()
+    } catch {
+      /* 失败保留旧缓存，等 10 秒行情轮询继续续点 */
+    } finally {
+      this.intradayRefreshing.delete(code)
+    }
+  }
+
   /** 启动时把 7 天内的本地 K 线缓存灌回内存：先出图，再由网络刷新覆盖。 */
   private hydrateCharts(): void {
     if (typeof window === 'undefined') return
@@ -1163,6 +1215,7 @@ export class HttpExchangeClient implements ExchangeClient {
     const rows = Array.isArray(raw) ? raw : isRecord(raw) && Array.isArray(raw.stocks) ? raw.stocks : null
     if (rows === null) throw new ExchangeError('malformed_response', '行情响应格式不正确')
     this.stocks = rows.map(normalizeStock).filter(isPresent)
+    this.flushIntradayRefresh()
     this.updateIntraCandles(this.stocks)
     return this.stocks
   }
@@ -1224,6 +1277,8 @@ export class HttpExchangeClient implements ExchangeClient {
     const round = normalizeRound(raw)
     if (round === null) throw new ExchangeError('malformed_response', '回合信息响应格式不正确')
     this.round = round
+    // 回合配额是快照的一部分：拉取后通知页面刷新「我的委托 0/10」。
+    this.emitTick()
     return round
   }
 
@@ -1432,6 +1487,7 @@ export class HttpExchangeClient implements ExchangeClient {
       news: this.news,
       agents: this.agents,
       feeRate: this.feeRate,
+      round: this.round,
     }
   }
 

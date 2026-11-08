@@ -67,14 +67,21 @@ const CONTRACT_VERSION = 3
 const FEE_RATE = 0.0005
 /** 原型专用虚拟资金：1000 万 ISK，不入存档 */
 const START_CASH = 10_000_000
-const DAILY_TRADE_LIMIT = 50_000_000
+const DAILY_TRADE_LIMIT = 1_000_000_000
 const UTC_DAY_MS = 86_400_000
-const BOND_WIN_DAILY_PPB = 22_000
-const BOND_LOSE_DAILY_PPB = -1_978_000
-const BOND_DAILY_RATE = 0.00002
-const FUND_WIN_DAILY_PPB = 300_000
-const FUND_LOSE_DAILY_PPB = -500_000
+/** 高息分段的本金上限：前 1 亿按风险档，超出部分按固定低息。 */
+const SAVINGS_PRINCIPAL_CAP = 100_000_000
+const BOND_WIN_DAILY_PPB = 120_000_000
+const BOND_LOSE_DAILY_PPB = -120_000_000
+const BOND_LOW_DAILY_PPB = 12_000_000
+const BOND_DAILY_CAP = 200_000_000
+/** 期望日化：99.8% × 12% + 0.2% × (−12%) = 11.952%。 */
+const BOND_DAILY_RATE = 0.11952
+const FUND_WIN_DAILY_PPB = 514_300_000
+const FUND_LOSE_DAILY_PPB = -400_000_000
 const FUND_WIN_PERCENT = 70
+const FUND_LOW_DAILY_PPB = 24_000_000
+const FUND_DAILY_CAP = 300_000_000
 /** 分红：每 60 秒按现货持仓市值象征性派 0.04%（原型观感值） */
 const DIVIDEND_INTERVAL_TICKS = 60
 const DIVIDEND_RATE = 0.0004
@@ -101,28 +108,55 @@ function accrueDaily(
   principal: number,
   accrued: number,
   remainder: bigint,
+  capDay: number,
+  capUsed: number,
   fromMs: number,
   toMs: number,
+  principalCap: number,
+  lowDailyPpb: number,
+  dailyCap: number,
   rateOf: (day: number) => number,
-): { accrued: number; remainder: bigint } {
-  if (principal <= 0 || toMs <= fromMs) return { accrued, remainder }
+): { accrued: number; remainder: bigint; capDay: number; capUsed: number } {
+  if (principal <= 0 || toMs <= fromMs) return { accrued, remainder, capDay, capUsed }
   const denominator = 86_400_000n * 1_000_000_000n
+  const highPrincipal = Math.min(principal, principalCap)
+  const lowPrincipal = principal - highPrincipal
   let residual = remainder
   let total = BigInt(accrued)
+  let used = BigInt(capUsed)
+  let currentCapDay = capDay
+  const cap = BigInt(dailyCap)
   for (let cursor = fromMs; cursor < toMs;) {
     const day = Math.floor(cursor / UTC_DAY_MS)
     const end = Math.min(toMs, (day + 1) * UTC_DAY_MS)
-    const numerator = BigInt(principal) * BigInt(rateOf(day)) * BigInt(end - cursor) + residual
+    if (currentCapDay !== day) {
+      currentCapDay = day
+      used = 0n
+    }
+    const duration = BigInt(end - cursor)
+    const numerator =
+      BigInt(highPrincipal) * BigInt(rateOf(day)) * duration +
+      BigInt(lowPrincipal) * BigInt(lowDailyPpb) * duration +
+      residual
     let whole = numerator / denominator
-    residual = numerator % denominator
-    if (residual < 0n) {
+    let nextResidual = numerator % denominator
+    if (nextResidual < 0n) {
       whole -= 1n
-      residual += denominator
+      nextResidual += denominator
+    }
+    if (whole > 0n) {
+      const remaining = cap - used
+      if (whole > remaining) {
+        whole = remaining > 0n ? remaining : 0n
+        nextResidual = 0n
+      }
+      used += whole
     }
     total += whole
+    residual = nextResidual
     cursor = end
   }
-  return { accrued: Number(total), remainder: residual }
+  return { accrued: Number(total), remainder: residual, capDay: currentCapDay, capUsed: Number(used) }
 }
 
 function visibleAccrued(accrued: number, remainder: bigint): number {
@@ -262,9 +296,9 @@ interface PersistedMockState {
     gridSellCount: number
     lastError: string
   }>
-  bond: BondPosition & { accruedRemainder?: string; settledAt?: number }
+  bond: BondPosition & { accruedRemainder?: string; settledAt?: number; capDay?: number }
   /** 保底基金持仓（放置型）；旧存档没有该字段时按空仓处理 */
-  fund?: { principal: number; accrued: number; accruedRemainder?: string; settledMinute: number; settledAt?: number; openedAt: number }
+  fund?: { principal: number; accrued: number; accruedRemainder?: string; capDay?: number; capUsed?: number; settledMinute: number; settledAt?: number; openedAt: number }
   news: NewsItem[]
   seq: { order: number; strategy: number; trade: number; news: number }
   nextEventTick: number
@@ -344,7 +378,10 @@ const BOND_PRODUCT: BondProduct = {
   id: 'WHALE-BOND',
   name: '舰船债券 · 稳健型',
   dailyRate: BOND_DAILY_RATE,
-  note: '每日 99.9% +0.0022% / 0.1% −0.1978%',
+  lowDailyRate: BOND_LOW_DAILY_PPB / 1_000_000_000,
+  principalCap: SAVINGS_PRINCIPAL_CAP,
+  dailyCap: BOND_DAILY_CAP,
+  note: '每日 99.8% +12% / 0.2% −12% · 超出 1 亿 +1.2% · 每日封顶 2 亿',
 }
 
 const clampPrice = (p: number): number => Math.max(0.01, round(p, 2))
@@ -393,11 +430,11 @@ export class MockExchangeClient implements ExchangeClient {
     if (typeof document !== 'undefined' && document.visibilityState === 'visible') this.catchUp()
   }
   /** 低风险理财持仓（放置型）：本金 / 累计利息 / 已结算分钟 / 建仓时间 */
-  private bond: { principal: number; accrued: number; accruedRemainder: bigint; settledMinute: number; settledAt: number; openedAt: number } = { principal: 0, accrued: 0, accruedRemainder: 0n, settledMinute: 0, settledAt: 0, openedAt: 0 }
+  private bond: { principal: number; accrued: number; accruedRemainder: bigint; capDay: number; capUsed: number; settledMinute: number; settledAt: number; openedAt: number } = { principal: 0, accrued: 0, accruedRemainder: 0n, capDay: 0, capUsed: 0, settledMinute: 0, settledAt: 0, openedAt: 0 }
   /** 债券 nonce 幂等表：nonce → 申购金额（赎回记 0） */
   private readonly bondNonces = new Map<string, number>()
   /** 保底基金持仓（放置型）：本金 / 累计收益 / 已结算分钟 / 建仓时间 */
-  private fund: { principal: number; accrued: number; accruedRemainder: bigint; settledMinute: number; settledAt: number; openedAt: number } = { principal: 0, accrued: 0, accruedRemainder: 0n, settledMinute: 0, settledAt: 0, openedAt: 0 }
+  private fund: { principal: number; accrued: number; accruedRemainder: bigint; capDay: number; capUsed: number; settledMinute: number; settledAt: number; openedAt: number } = { principal: 0, accrued: 0, accruedRemainder: 0n, capDay: 0, capUsed: 0, settledMinute: 0, settledAt: 0, openedAt: 0 }
   /** 基金 nonce 幂等表：nonce → 申购金额（赎回记 0） */
   private readonly fundNonces = new Map<string, number>()
 
@@ -622,8 +659,8 @@ export class MockExchangeClient implements ExchangeClient {
         lastError: s.lastError ?? '',
       })
     }
-    if (saved.bond && Number.isFinite(saved.bond.principal)) this.bond = { principal: saved.bond.principal, accrued: saved.bond.accrued, accruedRemainder: BigInt(saved.bond.accruedRemainder ?? '0'), settledMinute: saved.bond.settledMinute, settledAt: saved.bond.settledAt ?? saved.bond.settledMinute * 60_000, openedAt: saved.bond.openedAt }
-    if (saved.fund && Number.isFinite(saved.fund.principal)) this.fund = { ...saved.fund, accruedRemainder: BigInt(saved.fund.accruedRemainder ?? '0'), settledAt: saved.fund.settledAt ?? saved.fund.settledMinute * 60_000 }
+    if (saved.bond && Number.isFinite(saved.bond.principal)) this.bond = { principal: saved.bond.principal, accrued: saved.bond.accrued, accruedRemainder: BigInt(saved.bond.accruedRemainder ?? '0'), capDay: saved.bond.capDay ?? 0, capUsed: saved.bond.capUsed ?? 0, settledMinute: saved.bond.settledMinute, settledAt: saved.bond.settledAt ?? saved.bond.settledMinute * 60_000, openedAt: saved.bond.openedAt }
+    if (saved.fund && Number.isFinite(saved.fund.principal)) this.fund = { ...saved.fund, accruedRemainder: BigInt(saved.fund.accruedRemainder ?? '0'), capDay: saved.fund.capDay ?? 0, capUsed: saved.fund.capUsed ?? 0, settledAt: saved.fund.settledAt ?? saved.fund.settledMinute * 60_000 }
     this.news.length = 0
     if (Array.isArray(saved.news)) this.news.push(...saved.news.slice(0, 12))
     if (this.news.length === 0) this.seedOpeningNews()
@@ -674,7 +711,7 @@ export class MockExchangeClient implements ExchangeClient {
       myTrades: this.myTrades.slice(0, 100),
       dividends: this.dividends.slice(0, 60),
       strategies: [...this.strategies.values()],
-      bond: { ...this.bondView(), accrued: this.bond.accrued, accruedRemainder: this.bond.accruedRemainder.toString(), settledAt: this.bond.settledAt },
+      bond: { ...this.bondView(), accrued: this.bond.accrued, accruedRemainder: this.bond.accruedRemainder.toString(), capDay: this.bond.capDay, settledAt: this.bond.settledAt },
       fund: { ...this.fund, accruedRemainder: this.fund.accruedRemainder.toString() },
       news: this.news.slice(0, 12),
       seq: {
@@ -743,8 +780,8 @@ export class MockExchangeClient implements ExchangeClient {
     this.dividends.length = 0
     this.news.length = 0
     this.strategies.clear()
-    this.bond = { principal: 0, accrued: 0, accruedRemainder: 0n, settledMinute: 0, settledAt: 0, openedAt: 0 }
-    this.fund = { principal: 0, accrued: 0, accruedRemainder: 0n, settledMinute: 0, settledAt: 0, openedAt: 0 }
+    this.bond = { principal: 0, accrued: 0, accruedRemainder: 0n, capDay: 0, capUsed: 0, settledMinute: 0, settledAt: 0, openedAt: 0 }
+    this.fund = { principal: 0, accrued: 0, accruedRemainder: 0n, capDay: 0, capUsed: 0, settledMinute: 0, settledAt: 0, openedAt: 0 }
     this.buildStocks(this.startTs, null)
     this.indexOpen = this.indexValue()
     this.indexHigh = this.indexOpen
@@ -1622,10 +1659,23 @@ export class MockExchangeClient implements ExchangeClient {
     }
     const from = Math.max(this.bond.settledAt || Math.floor(this.bond.openedAt / 60_000) * 60_000, this.bond.openedAt)
     if (now <= from) return
-    const settled = accrueDaily(this.bond.principal, this.bond.accrued, this.bond.accruedRemainder, from, now,
-      (day) => dailyRatePpb('bond', day, 999, BOND_WIN_DAILY_PPB, BOND_LOSE_DAILY_PPB))
+    const settled = accrueDaily(
+      this.bond.principal,
+      this.bond.accrued,
+      this.bond.accruedRemainder,
+      this.bond.capDay,
+      this.bond.capUsed,
+      from,
+      now,
+      SAVINGS_PRINCIPAL_CAP,
+      BOND_LOW_DAILY_PPB,
+      BOND_DAILY_CAP,
+      (day) => dailyRatePpb('bond', day, 998, BOND_WIN_DAILY_PPB, BOND_LOSE_DAILY_PPB),
+    )
     this.bond.accrued = settled.accrued
     this.bond.accruedRemainder = settled.remainder
+    this.bond.capDay = settled.capDay
+    this.bond.capUsed = settled.capUsed
     this.bond.settledMinute = nowMinute
     this.bond.settledAt = now
   }
@@ -1645,7 +1695,11 @@ export class MockExchangeClient implements ExchangeClient {
       minutes,
       winDailyPpb: BOND_WIN_DAILY_PPB,
       loseDailyPpb: BOND_LOSE_DAILY_PPB,
-      winPermille: 999,
+      winPermille: 998,
+      lowDailyPpb: BOND_LOW_DAILY_PPB,
+      principalCap: SAVINGS_PRINCIPAL_CAP,
+      dailyCap: BOND_DAILY_CAP,
+      capUsed: this.bond.capUsed,
       cash: this.cash,
     }
   }
@@ -1687,7 +1741,7 @@ export class MockExchangeClient implements ExchangeClient {
     this.settleBond()
     const payout = Math.max(0, this.bond.principal + visibleAccrued(this.bond.accrued, this.bond.accruedRemainder))
     this.cash += payout
-    this.bond = { principal: 0, accrued: 0, accruedRemainder: 0n, settledMinute: 0, settledAt: 0, openedAt: 0 }
+    this.bond = { principal: 0, accrued: 0, accruedRemainder: 0n, capDay: 0, capUsed: 0, settledMinute: 0, settledAt: 0, openedAt: 0 }
     this.bondNonces.set(nonce, 0)
     return this.bondView()
   }
@@ -1703,10 +1757,23 @@ export class MockExchangeClient implements ExchangeClient {
     }
     const from = Math.max(this.fund.settledAt || Math.floor(this.fund.openedAt / 60_000) * 60_000, this.fund.openedAt)
     if (now <= from) return
-    const settled = accrueDaily(this.fund.principal, this.fund.accrued, this.fund.accruedRemainder, from, now,
-      (day) => dailyRatePpb('fund', day, FUND_WIN_PERCENT * 10, FUND_WIN_DAILY_PPB, FUND_LOSE_DAILY_PPB))
+    const settled = accrueDaily(
+      this.fund.principal,
+      this.fund.accrued,
+      this.fund.accruedRemainder,
+      this.fund.capDay,
+      this.fund.capUsed,
+      from,
+      now,
+      SAVINGS_PRINCIPAL_CAP,
+      FUND_LOW_DAILY_PPB,
+      FUND_DAILY_CAP,
+      (day) => dailyRatePpb('fund', day, FUND_WIN_PERCENT * 10, FUND_WIN_DAILY_PPB, FUND_LOSE_DAILY_PPB),
+    )
     this.fund.accrued = settled.accrued
     this.fund.accruedRemainder = settled.remainder
+    this.fund.capDay = settled.capDay
+    this.fund.capUsed = settled.capUsed
     this.fund.settledMinute = nowMinute
     this.fund.settledAt = now
   }
@@ -1724,6 +1791,10 @@ export class MockExchangeClient implements ExchangeClient {
       winDailyPpb: FUND_WIN_DAILY_PPB,
       loseDailyPpb: FUND_LOSE_DAILY_PPB,
       winPercent: FUND_WIN_PERCENT,
+      lowDailyPpb: FUND_LOW_DAILY_PPB,
+      principalCap: SAVINGS_PRINCIPAL_CAP,
+      dailyCap: FUND_DAILY_CAP,
+      capUsed: this.fund.capUsed,
       cash: this.cash,
     }
   }
@@ -1767,7 +1838,7 @@ export class MockExchangeClient implements ExchangeClient {
     this.settleFund()
     const payout = Math.max(0, this.fund.principal + visibleAccrued(this.fund.accrued, this.fund.accruedRemainder))
     this.cash += payout
-    this.fund = { principal: 0, accrued: 0, accruedRemainder: 0n, settledMinute: 0, settledAt: 0, openedAt: 0 }
+    this.fund = { principal: 0, accrued: 0, accruedRemainder: 0n, capDay: 0, capUsed: 0, settledMinute: 0, settledAt: 0, openedAt: 0 }
     this.fundNonces.set(nonce, 0)
     return this.fundView()
   }
