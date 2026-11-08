@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { buildSimContext } from '@whale/data'
+import { createFoeSpecs } from '../src/combat/foes/catalog'
 import { denseBattleLayout } from '../../../apps/desktop/src/renderer/src/features/combat/battleDenseGeometry'
 
 function scene(count: number, W: number, distance = 10000, mixed = false) {
@@ -51,7 +53,7 @@ describe('敌我镜像紧凑梯形布局', () => {
           if (i + rows < count) {
             const gap = lay.foe[i + rows]!.x - footprint(i + rows) / 2 - (point.x + footprint(i) / 2)
             expect(gap).toBeGreaterThanOrEqual(8 - 1e-8)
-            if (count > 4) expect(lay.foe[i + rows]!.x - point.x).toBeLessThanOrEqual(140 + 1e-8)
+            expect(lay.foe[i + rows]!.x - point.x).toBeLessThanOrEqual(140 + 1e-8)
           }
           if (i % rows > 0) expect(point.x - lay.foe[i - 1]!.x).toBeCloseTo(lay.formation.shift)
         })
@@ -59,14 +61,16 @@ describe('敌我镜像紧凑梯形布局', () => {
     }
   })
 
-  it('敌方1～4舰即使因玩家多舰进入密集模式，也不改变原有机位', () => {
+  it('密集模式的1～4舰保留首舰锚点，小编队同样使用紧凑列距与后移', () => {
     for (let count = 1; count <= 4; count++) for (const W of [760, 1100, 1540, 1920]) {
       const lay = scene(count, W)
       const cell = ((W - 84) / 2) / (count > 1 ? 2 : 1)
       const rows = lay.formation.rows
-      expect(lay.formation.shift).toBe(0)
+      const pitch = count > 1 ? Math.min(140, cell) : 0
+      const stagger = rows > 1 ? 24 : 0
+      expect(lay.formation.shift).toBe(stagger)
       lay.foe.forEach((point, i) => {
-        expect(point.x).toBeCloseTo(W / 2 + 24 + (Math.floor(i / rows) + .5) * cell)
+        expect(point.x).toBeCloseTo(W / 2 + 24 + cell / 2 + Math.floor(i / rows) * pitch + i % rows * stagger)
         expect(point.y).toBe(78 + i % rows * 104)
       })
     }
@@ -90,9 +94,9 @@ describe('敌我镜像紧凑梯形布局', () => {
         const rows = Math.ceil(count / cols), cell = available / cols
         const approachShift = (10000 - distance) / 9800 * Math.min(12, available * .04)
         const half = Math.max(...lay.mySizes, lay.myBarW) / 2
-        const pitch = count > 4 && cols > 1 ? Math.max(Math.min(cell, half * 2 + 8), Math.min(140, cell,
+        const pitch = cols > 1 ? Math.max(Math.min(cell, half * 2 + 8), Math.min(140, cell,
           (available - cell / 2 - half - (rows - 1) * 24) / (cols - 1))) : cell
-        const stagger = count > 4 && rows > 1 ? Math.max(0, Math.min(24,
+        const stagger = count > 1 && rows > 1 ? Math.max(0, Math.min(24,
           (available - cell / 2 - half - (cols - 1) * pitch) / (rows - 1))) : 0
         expect(lay.me).toEqual(lay.my[0])
         expect(lay.me.x).toBeCloseTo(18 + approachShift + available - cell / 2)
@@ -108,7 +112,7 @@ describe('敌我镜像紧凑梯形布局', () => {
             const width = Math.max(lay.mySizes[i]!, lay.myBarW)
             expect(point.x - lay.my[i + rows]!.x).toBeCloseTo(pitch)
             expect(point.x - width / 2 - lay.my[i + rows]!.x - nextWidth / 2).toBeGreaterThanOrEqual(8 - 1e-8)
-            if (count > 4) expect(pitch).toBeLessThanOrEqual(140)
+            expect(pitch).toBeLessThanOrEqual(140)
           }
         })
       }
@@ -163,6 +167,39 @@ describe('敌我镜像紧凑梯形布局', () => {
         expect(point.x - near.me.x).toBeCloseTo(far.my[i]!.x - far.me.x)
         expect(point.y).toBe(far.my[i]!.y)
       })
+    }
+  })
+
+  it('蜃影悬赏的5敌舰不会把我方2～4舰按半个战场宽度拉散', () => {
+    const ctx = buildSimContext()
+    const card = ctx.anomalies.get('ano-mirage-hijackers')!
+    const foes = createFoeSpecs(card, ctx.balance.battle)
+    expect(foes).toHaveLength(5)
+    for (const count of [2, 3, 4]) for (const W of [760, 1540, 1920, 2560]) for (const distance of [200, 10000]) {
+      const players = Array.from({ length: count }, (_, i) => [110, 240, 170, 140][i]!)
+      const lay = denseBattleLayout({ W, H: 430, meW: 170, foeW: 170 }, foes.map(() => 170), players, distance, 10000, 200)
+      const rows = Math.ceil(count / 2)
+      for (let i = 0; i + rows < count; i++) {
+        const pitch = lay.my[i]!.x - lay.my[i + rows]!.x
+        expect(pitch).toBeGreaterThanOrEqual(lay.myBarW + 8)
+        expect(pitch).toBeLessThanOrEqual(140)
+      }
+      const spread = Math.max(...lay.my.map(point => point.x)) - Math.min(...lay.my.map(point => point.x))
+      expect(spread).toBeLessThanOrEqual(140 + (rows - 1) * 24)
+    }
+  })
+
+  it.each([5, 7, 9, 12])('面对%i艘敌舰时，我方小编队不会随窗口宽度拉散', enemyCount => {
+    for (const count of [2, 3, 4]) for (const W of [760, 1540, 1920, 2560]) for (const distance of [200, 10000]) {
+      const players = Array.from({ length: count }, (_, i) => [110, 240, 170, 140][i]!)
+      const enemies = Array.from({ length: enemyCount }, (_, i) => [205, 140][i % 2]!)
+      const lay = denseBattleLayout({ W, H: 430, meW: 170, foeW: 170 }, enemies, players, distance, 10000, 200)
+      const rows = Math.ceil(count / 2)
+      for (let i = 0; i + rows < count; i++) {
+        expect(lay.my[i]!.x - lay.my[i + rows]!.x).toBeLessThanOrEqual(140)
+      }
+      const spread = Math.max(...lay.my.map(point => point.x)) - Math.min(...lay.my.map(point => point.x))
+      expect(spread).toBeLessThanOrEqual(140 + (rows - 1) * 24)
     }
   })
 })

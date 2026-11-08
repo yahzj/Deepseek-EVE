@@ -17,7 +17,8 @@ export function denseBattleLayout(d: Dims, foes: readonly number[], players: rea
     const sizes = input.map(size => Math.max(16, Math.round(Math.min(96, cell - 14) * size / max)))
     const rowH = 104
     const halfWidth = Math.max(...sizes, Math.min(112, cell - 8)) / 2
-    const compact = input.length > 4
+    // 对侧超过4舰也会启用本布局，不能让本侧2～4舰继续按半边窗口均分。
+    const compact = input.length > 1
     // 两侧共用列距和后排错位，只镜像方向；首排最前锚点不变。
     const minPitch = Math.min(cell, halfWidth * 2 + 8)
     const pitch = compact && cols > 1 ? Math.max(minPitch, Math.min(140, cell,
