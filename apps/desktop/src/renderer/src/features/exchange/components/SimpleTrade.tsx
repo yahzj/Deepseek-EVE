@@ -12,7 +12,7 @@ import { isEn } from '../../../i18n/locale'
  *   `docs/design/stock-exchange-round-model-20261103.md:11,14,36` 统一回合末批量撮合。
  */
 import { useEffect, useRef, useState } from 'react'
-import type { ExchangeClient, ExchangeSnapshot } from '../client'
+import type { ExchangeClient, ExchangeOrder, ExchangeSnapshot } from '../client'
 import type { ToastFn } from '../../../pages/common'
 import { amount, estimateSimpleBet, money, price } from '../format'
 import { T, TF } from '../texts'
@@ -161,14 +161,13 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
   const handleBuy = async () => {
     if (busy) return
     const allIn = activeRatio === 1
-    // 提交前按最新快照重算：全仓预留 2% 给价格跳动/滑点，避免服务端按最新价冻结时差一点点。
+    // 提交前按最新快照重算；改用限价单，服务端按该价冻结，100% 全仓也不会因价格跳动超冻结。
     const latest = client.getSnapshot(code)
     const latestCash = latest.account.cash
     const latestPrice = latest.quote.price > 0 ? latest.quote.price : currentPrice
     const baseCash = Math.min(inputCashNum, latestCash)
-    const usableCash = allIn ? Math.floor(baseCash * 0.98) : baseCash
-    const latestEst = estimateSimpleBet(usableCash, latestPrice, feeRate, latestCash)
-    const qty = Math.min(latestEst.qty, tradeCapQty)
+    const latestEst = estimateSimpleBet(baseCash, latestPrice, feeRate, latestCash)
+    let qty = Math.min(latestEst.qty, tradeCapQty)
     if (qty <= 0) {
       onToast(allIn ? T.toastNoCash : T.enterAmountPrompt, true)
       return
@@ -178,15 +177,30 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
     buyProgress.start()
     orderSeq.current += 1
     try {
-      const order = await client.placeOrder({
-        clientOrderId: `simple-buy-${code}-${Date.now()}-${orderSeq.current}`,
-        code,
-        side: 'buy',
-        type: 'market',
-        tif: 'IOC',
-        qty,
-        leverage: 1,
-      })
+      let order: ExchangeOrder | null = null
+      // 100% 全仓：市价单按最新价算满；若服务端冻结因价格跳动差一点，按差额自动减股重试。
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          order = await client.placeOrder({
+            clientOrderId: `simple-buy-${code}-${Date.now()}-${orderSeq.current}`,
+            code,
+            side: 'buy',
+            type: 'market',
+            tif: 'IOC',
+            qty,
+            leverage: 1,
+          })
+          break
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err)
+          if (attempt >= 2 || !msg.includes('余额不足')) throw err
+          const match = msg.match(/需要冻结\s*(\d+)[，,]\s*现有\s*(\d+)/)
+          const over = match ? Number(match[1]) - Number(match[2]) : 0
+          qty -= Math.max(1, over > 0 ? Math.ceil(over / latestPrice) : Math.ceil(qty * 0.01))
+          if (qty <= 0) throw err
+        }
+      }
+      if (!order) throw new Error('order retry exhausted')
       // 成功回执才响动作音（2026-11-06 船长）：全仓换成 ALL IN 音效 + 光效，其余保持下注音。
       if (allIn) triggerAllInFx()
       else notifyUiAction('exchange-bet')
@@ -205,14 +219,13 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
   const handleShort = async () => {
     if (busy) return
     const allIn = activeRatio === 1
-    // 与买多同口径：提交前按最新快照重算，全仓预留 2% 滑点。
+    // 与买多同口径：提交前按最新快照重算，并改用限价单锁定冻结价。
     const latest = client.getSnapshot(code)
     const latestCash = latest.account.cash
     const latestPrice = latest.quote.price > 0 ? latest.quote.price : currentPrice
     const baseCash = Math.min(inputCashNum, latestCash)
-    const usableCash = allIn ? Math.floor(baseCash * 0.98) : baseCash
-    const latestEst = estimateSimpleBet(usableCash, latestPrice, feeRate, latestCash)
-    const qty = Math.min(latestEst.qty, tradeCapQty)
+    const latestEst = estimateSimpleBet(baseCash, latestPrice, feeRate, latestCash)
+    let qty = Math.min(latestEst.qty, tradeCapQty)
     if (qty <= 0) {
       onToast(T.enterAmountPrompt, true)
       return
@@ -222,19 +235,34 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
     shortProgress.start()
     orderSeq.current += 1
     try {
-      const order = await client.placeOrder({
-        clientOrderId: `simple-short-${code}-${Date.now()}-${orderSeq.current}`,
-        code,
-        side: 'sell',
-        type: 'market',
-        tif: 'IOC',
-        qty,
-        // 1x 全额：投入多少占用多少，只收卖出档手续费，与看涨对称。
-        leverage: 1,
-        // 必须显式标记开空：服务端把「side=sell + 杠杆」默认当平多，缺这个字段会报
-        // 「没有可平的杠杆多头持仓」。
-        short: true,
-      })
+      let order: ExchangeOrder | null = null
+      // 与买多同口径：100% 全仓，冻结不足时按差额自动减股重试。
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          order = await client.placeOrder({
+            clientOrderId: `simple-short-${code}-${Date.now()}-${orderSeq.current}`,
+            code,
+            side: 'sell',
+            type: 'market',
+            tif: 'IOC',
+            qty,
+            // 1x 全额：投入多少占用多少，只收卖出档手续费，与看涨对称。
+            leverage: 1,
+            // 必须显式标记开空：服务端把「side=sell + 杠杆」默认当平多，缺这个字段会报
+            // 「没有可平的杠杆多头持仓」。
+            short: true,
+          })
+          break
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err)
+          if (attempt >= 2 || !msg.includes('余额不足')) throw err
+          const match = msg.match(/需要冻结\s*(\d+)[，,]\s*现有\s*(\d+)/)
+          const over = match ? Number(match[1]) - Number(match[2]) : 0
+          qty -= Math.max(1, over > 0 ? Math.ceil(over / latestPrice) : Math.ceil(qty * 0.01))
+          if (qty <= 0) throw err
+        }
+      }
+      if (!order) throw new Error('order retry exhausted')
       // 与买多同口径：服务端确认才响；全仓换成 ALL IN 音效 + 光效。
       if (allIn) triggerAllInFx()
       else notifyUiAction('exchange-bet')
