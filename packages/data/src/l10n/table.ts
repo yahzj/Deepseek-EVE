@@ -8716,8 +8716,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ui.exchangeTexts.507': { zh: '滚轮缩放：分时 ↔ 小时K', en: 'Scroll to zoom: intraday ↔ hourly candles' },
   'ui.exchangeTexts.508': { zh: '历史高', en: 'Hist High' },
   'ui.exchangeTexts.509': { zh: '历史低', en: 'Hist Low' },
-  'ui.exchangeTexts.510': { zh: '买入额度', en: 'Buy Limit' },
-  'ui.exchangeTexts.511': { zh: '卖出额度', en: 'Sell Limit' },
+  'ui.exchangeTexts.510': { zh: '买入额度', en: 'Daily Buy Quota' },
+  'ui.exchangeTexts.511': { zh: '卖出额度', en: 'Daily Sell Quota' },
   'ui.exchangeTexts.512': { zh: '1 亿', en: '100M' },
   'ui.exchangeTexts.513': { zh: '10 亿', en: '1B' },
 
