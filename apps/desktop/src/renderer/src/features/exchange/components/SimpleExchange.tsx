@@ -28,12 +28,13 @@ import { FundCard } from './FundCard'
 import { SimpleChart } from './SimpleChart'
 import { EXCHANGE_PREF_EVENT, EXCH_PREF, readExchangeChoice, writeExchangePref } from '../viewPrefs'
 import { SimpleTrade } from './SimpleTrade'
+import { CompanyPanel } from './CompanyPanel'
 import { SimplePosition } from './SimplePosition'
 import { SimpleTutorial } from './SimpleTutorial'
 import { MyOrders } from './MyOrders'
 
 /** 简单界面右栏一级切换：我的下注 / 我的委托 / 理财与基金（2026-11-06 船长令拆开） */
-type SimpleSideTab = 'bets' | 'orders' | 'finance'
+type SimpleSideTab = 'bets' | 'orders' | 'finance' | 'companies'
 
 interface SimpleExchangeProps {
   client: ExchangeClient
@@ -104,7 +105,7 @@ export function SimpleExchange({
   // 默认理财与基金；对手盘公开动态统一由快讯第二行显示。
   // 2026-11-06 船长令：我的下注与我的委托拆成两个 tab，不再堆在同一块里。
   const [sideTab, setSideTab] = useState<SimpleSideTab>(() =>
-    readExchangeChoice(EXCH_PREF.simpleSide, ['bets', 'orders', 'finance'] as const, 'finance'),
+    readExchangeChoice(EXCH_PREF.simpleSide, ['bets', 'orders', 'finance', 'companies'] as const, 'finance'),
   )
   const [allInFx, setAllInFx] = useState(false)
   const betCount = snap.account.holdings.length + snap.account.positions.length
@@ -123,7 +124,7 @@ export function SimpleExchange({
   // 外部入口（活动栏「债券/基金」）要求直达理财页时，已挂载的页面跟着切
   useEffect(() => {
     const onPref = (): void => {
-      setSideTab(readExchangeChoice(EXCH_PREF.simpleSide, ['bets', 'orders', 'finance'] as const, 'finance'))
+      setSideTab(readExchangeChoice(EXCH_PREF.simpleSide, ['bets', 'orders', 'finance', 'companies'] as const, 'finance'))
     }
     window.addEventListener(EXCHANGE_PREF_EVENT, onPref)
     return () => window.removeEventListener(EXCHANGE_PREF_EVENT, onPref)
@@ -215,27 +216,43 @@ export function SimpleExchange({
           >
             {T.myOrdersFinance}
           </button>
+          {/* 企业：公司账本周报（公开数据，游客也能看） */}
+          <button
+            type="button"
+            role="tab"
+            aria-selected={sideTab === 'companies'}
+            className={`ex-simple-side-tab${sideTab === 'companies' ? ' is-on' : ''}`}
+            onClick={() => setSideTab('companies')}
+          >
+            {T.companyTab}
+          </button>
         </div>
 
         <div className="ex-simple-side-body">
-          <GuestLock locked={guest} label={T.guestLockLabel} onUnlock={onRequireLogin}>
-            {sideTab === 'bets' ? (
-              /* 我的下注：全部持仓，不随选中标的切换 */
-              <div className="ex-simple-book">
-                <SimplePosition client={client} snap={snap} onToast={onToast} />
-              </div>
-            ) : sideTab === 'orders' ? (
-              /* 我的委托：全部委托，不随选中标的切换 */
-              <div className="ex-simple-book-orders">
-                <MyOrders client={client} onToast={onToast} variant="compact" />
-              </div>
-            ) : (
-              <div className="ex-simple-finance">
-                <BondCard client={client} snap={snap} onToast={onToast} onRefresh={onRefresh} />
-                <FundCard client={client} snap={snap} onToast={onToast} onRefresh={onRefresh} />
-              </div>
-            )}
-          </GuestLock>
+          {sideTab === 'companies' ? (
+            <div className="ex-simple-companies">
+              <CompanyPanel client={client} />
+            </div>
+          ) : (
+            <GuestLock locked={guest} label={T.guestLockLabel} onUnlock={onRequireLogin}>
+              {sideTab === 'bets' ? (
+                /* 我的下注：全部持仓，不随选中标的切换 */
+                <div className="ex-simple-book">
+                  <SimplePosition client={client} snap={snap} onToast={onToast} />
+                </div>
+              ) : sideTab === 'orders' ? (
+                /* 我的委托：全部委托，不随选中标的切换 */
+                <div className="ex-simple-book-orders">
+                  <MyOrders client={client} onToast={onToast} variant="compact" />
+                </div>
+              ) : (
+                <div className="ex-simple-finance">
+                  <BondCard client={client} snap={snap} onToast={onToast} onRefresh={onRefresh} />
+                  <FundCard client={client} snap={snap} onToast={onToast} onRefresh={onRefresh} />
+                </div>
+              )}
+            </GuestLock>
+          )}
         </div>
       </aside>
 

@@ -254,7 +254,7 @@ export function ActivityBar({
   }, [exchBundle.client, exchBundle.error])
 
   const exchSnap = useMemo(
-    () => exchBundle.client.getSnapshot('SMHI'),
+    () => exchBundle.client.getSnapshot('XJZG'),
     [exchBundle.client, exchTick],
   )
 

@@ -67,6 +67,8 @@ import { Panel } from '@whale/ui'
 import { ShipHover } from '../ui/shipInfo'
 import { ShipDamageMods } from '../ui/ShipDamageMods'
 import { useSessionScroll } from '../ui/sessionView'
+// 公司账本：修船支出计入星港维修的营收（docs/design/stock-gameplay-integration-20261109.md）。
+import { reportCompanyFlow } from '../features/exchange/companyReporter'
 import type { GameEngine } from '../game/engine'
 import type { ShipDef } from '@whale/core'
 import { ShipSprite } from '../ui/ShipSprite'
@@ -631,6 +633,8 @@ export function ShipPage({
       setRepairFleetOpen(false)
       return
     }
+    // 公司账本：修船支出计入星港维修（维修补给）的营收。
+    if (result.totalCost > 0) reportCompanyFlow('repair-service', 'buy', result.totalCost)
     setRepairFleetOpen(false)
     onToast(tr('ui.shipPageFleetRepair.011', {
       p1: result.repairedCount,

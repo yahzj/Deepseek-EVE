@@ -1,11 +1,13 @@
 /**
  * 简单投资 · 新手引导。
- * 首次进入自动出现 9 步：遮罩挖孔高亮 + 气泡，全程大白话；可跳过，看完写 localStorage 不再弹。
+ * 首次进入自动出现 11 步：遮罩挖孔高亮 + 气泡，全程大白话；可跳过，看完写 localStorage 不再弹。
+ * v3（2026-11-09）：新增「企业动态」与「你的玩法在改变股价」两步，讲清市场成交/修船/运输/交易税
+ * 如何记到对应公司账上并驱动股价（公司账本，docs/design/stock-gameplay-integration-20261109.md）。
  */
 import { useEffect, useMemo, useState } from 'react'
 import { T } from '../texts'
 
-const TUTORIAL_KEY = 'whale-idle:exch-tutorial-v2'
+const TUTORIAL_KEY = 'whale-idle:exch-tutorial-v3'
 
 interface Step {
   selector: string | null
@@ -21,6 +23,8 @@ const STEPS: Step[] = [
   { selector: '.ex-topbar-status', text: T.tutRules },
   { selector: '.ex-turnover-meter', text: T.tutMoneyRules },
   { selector: '.ex-simple-side-switch', text: T.tutStep6 },
+  { selector: '.ex-simple-side-switch', text: T.tutCompany },
+  { selector: null, text: T.tutImpact },
   { selector: null, text: T.tutStep7 },
 ]
 

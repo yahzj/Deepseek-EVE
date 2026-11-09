@@ -73,6 +73,8 @@ export const ZH_T = {
   "tutDone": zh("ui.exchangeTexts.496"),
   "tutRules": zh("ui.exchangeTexts.497"),
   "tutMoneyRules": zh("ui.exchangeTexts.514"),
+  "tutCompany": zh("ui.exchangeTexts.537"),
+  "tutImpact": zh("ui.exchangeTexts.538"),
   "tipDailyTurnover": zh("ui.exchangeTexts.498"),
   "tipFee": zh("ui.exchangeTexts.499"),
   "tipIntraday": zh("ui.exchangeTexts.500"),
@@ -527,7 +529,22 @@ export const ZH_T = {
   "agentMoodCalm": zh("ui.exchangeTexts.458"),
   "agentMoodGreedy": zh("ui.exchangeTexts.459"),
   "agentMoodFearful": zh("ui.exchangeTexts.460"),
-  "agentMoodEuphoric": zh("ui.exchangeTexts.461")
+  "agentMoodEuphoric": zh("ui.exchangeTexts.461"),
+  "companyTab": zh("ui.exchangeTexts.515"),
+  "companyTitle": zh("ui.exchangeTexts.516"),
+  "companyHint": zh("ui.exchangeTexts.524"),
+  "companyLoadFailed": zh("ui.exchangeTexts.525"),
+  "companyHot": zh("ui.exchangeTexts.526"),
+  "companySteady": zh("ui.exchangeTexts.527"),
+  "companyCooling": zh("ui.exchangeTexts.528"),
+  "companyLoss": zh("ui.exchangeTexts.529"),
+  "companyOutlookUp": zh("ui.exchangeTexts.530"),
+  "companyOutlookFlat": zh("ui.exchangeTexts.531"),
+  "companyOutlookDown": zh("ui.exchangeTexts.532"),
+  "companyNoReport": zh("ui.exchangeTexts.533"),
+  "companyReasonMore": zh("ui.exchangeTexts.534"),
+  "companyReasonSame": zh("ui.exchangeTexts.535"),
+  "companyReasonLess": zh("ui.exchangeTexts.536")
 } as const
 
 /** 英文静态文案 */
@@ -589,6 +606,8 @@ export const EN_T: Record<keyof typeof ZH_T, string> = {
   "tutDone": en("ui.exchangeTexts.496"),
   "tutRules": en("ui.exchangeTexts.497"),
   "tutMoneyRules": en("ui.exchangeTexts.514"),
+  "tutCompany": en("ui.exchangeTexts.537"),
+  "tutImpact": en("ui.exchangeTexts.538"),
   "tipDailyTurnover": en("ui.exchangeTexts.498"),
   "tipFee": en("ui.exchangeTexts.499"),
   "tipIntraday": en("ui.exchangeTexts.500"),
@@ -1039,7 +1058,22 @@ export const EN_T: Record<keyof typeof ZH_T, string> = {
   "agentMoodCalm": en("ui.exchangeTexts.458"),
   "agentMoodGreedy": en("ui.exchangeTexts.459"),
   "agentMoodFearful": en("ui.exchangeTexts.460"),
-  "agentMoodEuphoric": en("ui.exchangeTexts.461")
+  "agentMoodEuphoric": en("ui.exchangeTexts.461"),
+  "companyTab": en("ui.exchangeTexts.515"),
+  "companyTitle": en("ui.exchangeTexts.516"),
+  "companyHint": en("ui.exchangeTexts.524"),
+  "companyLoadFailed": en("ui.exchangeTexts.525"),
+  "companyHot": en("ui.exchangeTexts.526"),
+  "companySteady": en("ui.exchangeTexts.527"),
+  "companyCooling": en("ui.exchangeTexts.528"),
+  "companyLoss": en("ui.exchangeTexts.529"),
+  "companyOutlookUp": en("ui.exchangeTexts.530"),
+  "companyOutlookFlat": en("ui.exchangeTexts.531"),
+  "companyOutlookDown": en("ui.exchangeTexts.532"),
+  "companyNoReport": en("ui.exchangeTexts.533"),
+  "companyReasonMore": en("ui.exchangeTexts.534"),
+  "companyReasonSame": en("ui.exchangeTexts.535"),
+  "companyReasonLess": en("ui.exchangeTexts.536")
 }
 
 /** 静态文案代理：依据当前语言自动在中英文之间切换 */
@@ -1167,25 +1201,25 @@ export const TF = {
 } as const
 
 const EN_STOCK_NAMES: Record<string, string> = {
-  SMHI: en("ui.exchangeStock.001"),
-  GBCI: en("ui.exchangeStock.002"),
-  UGMC: en("ui.exchangeStock.003"),
-  ABSI: en("ui.exchangeStock.004"),
-  NVSC: en("ui.exchangeStock.005"),
-  CLON: en("ui.exchangeStock.006"),
-  OJLS: en("ui.exchangeStock.007"),
-  SPRK: en("ui.exchangeStock.008"),
+  XJZG: en("ui.exchangeStock.001"),
+  XGYH: en("ui.exchangeStock.002"),
+  XJKY: en("ui.exchangeStock.003"),
+  LTGF: en("ui.exchangeStock.004"),
+  ZHSL: en("ui.exchangeStock.005"),
+  XGWX: en("ui.exchangeStock.006"),
+  XMWL: en("ui.exchangeStock.007"),
+  NMCL: en("ui.exchangeStock.008"),
 }
 
 const ZH_STOCK_NAMES: Record<string, string> = {
-  SMHI: zh("ui.exchangeStock.001"),
-  GBCI: zh("ui.exchangeStock.002"),
-  UGMC: zh("ui.exchangeStock.003"),
-  ABSI: zh("ui.exchangeStock.004"),
-  NVSC: zh("ui.exchangeStock.005"),
-  CLON: zh("ui.exchangeStock.006"),
-  OJLS: zh("ui.exchangeStock.007"),
-  SPRK: zh("ui.exchangeStock.008"),
+  XJZG: zh("ui.exchangeStock.001"),
+  XGYH: zh("ui.exchangeStock.002"),
+  XJKY: zh("ui.exchangeStock.003"),
+  LTGF: zh("ui.exchangeStock.004"),
+  ZHSL: zh("ui.exchangeStock.005"),
+  XGWX: zh("ui.exchangeStock.006"),
+  XMWL: zh("ui.exchangeStock.007"),
+  NMCL: zh("ui.exchangeStock.008"),
 }
 
 /** 股票名称多语言映射 */

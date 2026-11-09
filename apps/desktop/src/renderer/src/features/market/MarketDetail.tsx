@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { askLineOf, buyLineOf, ceilFinalQuantity, marketLockNote, marketHistory, marketQuote, marketTrend, naturalHoldings, shipStoredCount } from '@whale/core'
+import { askLineOf, buyLineOf, ceilFinalQuantity, marketLockNote, marketHistory, marketQuote, marketTrend, naturalHoldings, salesTaxRate, shipStoredCount } from '@whale/core'
 import type { MarketGoodDef } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { marketGoodDisplayName as goodDisplayName } from '../../ui/marketGoodHover'
@@ -10,6 +10,8 @@ import { HintIcon } from '../../ui/Hint'
 import { tr, cmdText } from '../../i18n/locale'
 import { fleetCountOf, placeOrderToast, taxTipText } from './readouts'
 import { PriceChart } from './PriceChart'
+// 公司账本：市场即时成交会记入对应公司的营收/采购（docs/design/stock-gameplay-integration-20261109.md）。
+import { reportCompanyFlow } from '../exchange/companyReporter'
 
 /**
  * 买卖盘显示档数：**上限 12**、下限 5。
@@ -164,9 +166,14 @@ export function MarketDetail({ engine, onToast, good }: { engine: PageProps['eng
       return
     }
     const n = Math.max(1, Math.floor(qty || 1))
+    const iskBefore = engine.state.wallet.isk
     const r = engine.buyGoodAt(good.key, n)
     if (!r.ok) onToast(cmdText(r) || tr('ui.MarketPage.173'), true)
-    else onToast(tr("ui.MarketPage.148", { name: name, p2: n.toLocaleString('zh-CN') }))
+    else {
+      // 买入金额 = 玩家支付给公司的营收（钱包差值为准，含部分成交）。
+      reportCompanyFlow(good.key, 'buy', iskBefore - engine.state.wallet.isk)
+      onToast(tr("ui.MarketPage.148", { name: name, p2: n.toLocaleString('zh-CN') }))
+    }
   }
   function doSell(q?: number): void {
     const n = Math.max(1, Math.min(holdings, Math.floor(q ?? (qty || 1))))
@@ -174,18 +181,33 @@ export function MarketDetail({ engine, onToast, good }: { engine: PageProps['eng
       onToast(good.kind === 'ship' ? tr("ui.MarketPage.041") : tr("ui.MarketPage.042"), true)
       return
     }
+    const iskBefore = engine.state.wallet.isk
     const r = engine.sellHoldingAt(good.key, n)
     if (!r.ok) onToast(cmdText(r) || tr('ui.MarketPage.174'), true)
-    else if (good.kind === 'ship') {
-      // 舰船：即时成交的部分吃收购簿，其余**留簿挂着**（可撤销退回舰船仓库）——回执把两段都说清
-      const filled = r.sold ?? 0
-      const rest = r.remaining ?? 0
-      onToast(
-        rest > 0
-          ? `已提交出售 ${name}×${n} 艘：即时成交 ${filled} 艘${filled > 0 ? tr("ui.MarketPage.149", { p1: isk(r.total ?? 0) }) : ''}，余 ${rest} 艘已留簿挂单（可随时撤销退回舰船仓库）。`
-          : tr("ui.MarketPage.150", { name: name, filled: filled, p3: isk(r.total ?? 0) }),
-      )
-    } else onToast(tr("ui.MarketPage.151", { name: name, p2: n.toLocaleString('zh-CN') }))
+    else {
+      // 卖出到账 = 公司支付的采购支出（净到账口径，含即时成交部分）。
+      const net = engine.state.wallet.isk - iskBefore
+      reportCompanyFlow(good.key, 'sell', net)
+      reportMarketTax(engine, net)
+      if (good.kind === 'ship') {
+        // 舰船：即时成交的部分吃收购簿，其余**留簿挂着**（可撤销退回舰船仓库）——回执把两段都说清
+        const filled = r.sold ?? 0
+        const rest = r.remaining ?? 0
+        onToast(
+          rest > 0
+            ? `已提交出售 ${name}×${n} 艘：即时成交 ${filled} 艘${filled > 0 ? tr("ui.MarketPage.149", { p1: isk(r.total ?? 0) }) : ''}，余 ${rest} 艘已留簿挂单（可随时撤销退回舰船仓库）。`
+            : tr("ui.MarketPage.150", { name: name, filled: filled, p3: isk(r.total ?? 0) }),
+        )
+      } else onToast(tr("ui.MarketPage.151", { name: name, p2: n.toLocaleString('zh-CN') }))
+    }
+  }
+  /** 卖出交易税上报：税 = 净额 × 税率/(1−税率)，进星港银行（公司账本）。 */
+  function reportMarketTax(eng: PageProps['engine'], net: number): void {
+    if (net <= 0) return
+    const rate = salesTaxRate(eng.state, eng.ctx)
+    if (!(rate > 0) || rate >= 1) return
+    const tax = Math.round((net * rate) / (1 - rate))
+    if (tax > 0) reportCompanyFlow('market-tax', 'buy', tax)
   }
   /** 全部卖出：先预览（可成交件数/毛额/税/净到账）再弹确认——不直接执行（船长 2026-09-05） */
   function askSellAll(): void {
@@ -202,17 +224,24 @@ export function MarketDetail({ engine, onToast, good }: { engine: PageProps['eng
   }
   function doSellAll(): void {
     setConfirmSell(null)
+    const iskBefore = engine.state.wallet.isk
     const r = engine.sellHoldingAt(good.key, holdings)
     if (!r.ok) onToast(cmdText(r) || tr('ui.MarketPage.174'), true)
-    else if (good.kind === 'ship') {
-      const filled = r.sold ?? 0
-      const rest = r.remaining ?? 0
-      onToast(
-        rest > 0
-          ? `已提交出售 ${name}×${holdings} 艘：即时成交 ${filled} 艘${filled > 0 ? tr("ui.MarketPage.149", { p1: isk(r.total ?? 0) }) : ''}，余 ${rest} 艘已留簿挂单（可撤销退回舰船仓库）。`
-          : tr("ui.MarketPage.152", { name: name, filled: filled, p3: isk(r.total ?? 0) }),
-      )
-    } else onToast(tr("ui.MarketPage.153", { name: name, p2: holdings.toLocaleString('zh-CN') }))
+    else {
+      // 卖出到账 = 公司支付的采购支出（净到账口径，含即时成交部分）。
+      const net = engine.state.wallet.isk - iskBefore
+      reportCompanyFlow(good.key, 'sell', net)
+      reportMarketTax(engine, net)
+      if (good.kind === 'ship') {
+        const filled = r.sold ?? 0
+        const rest = r.remaining ?? 0
+        onToast(
+          rest > 0
+            ? `已提交出售 ${name}×${holdings} 艘：即时成交 ${filled} 艘${filled > 0 ? tr("ui.MarketPage.149", { p1: isk(r.total ?? 0) }) : ''}，余 ${rest} 艘已留簿挂单（可撤销退回舰船仓库）。`
+            : tr("ui.MarketPage.152", { name: name, filled: filled, p3: isk(r.total ?? 0) }),
+        )
+      } else onToast(tr("ui.MarketPage.153", { name: name, p2: holdings.toLocaleString('zh-CN') }))
+    }
   }
   function doPlace(): void {
     const n = Math.max(1, Math.floor(qty || 1))

@@ -28,6 +28,10 @@ import type {
   BondPosition,
   BondProduct,
   ChartPeriod,
+  CompanyFlowEntry,
+  CompanyFlowsResult,
+  CompanyInfo,
+  CompanyReport,
   DepositResult,
   DividendRecord,
   ExchangeAccount,
@@ -275,6 +279,23 @@ function normalizeStock(raw: unknown): StockQuote | null {
     halted: raw.halted === true,
     anchor: num(raw.anchor, price),
     floatShares: num(raw.floatShares),
+  }
+}
+
+function normalizeCompanyReport(raw: Record<string, unknown>): CompanyReport {
+  return {
+    id: text(raw.id),
+    ts: num(raw.ts),
+    weekKey: text(raw.weekKey),
+    company: text(raw.company),
+    name: text(raw.name),
+    revenue: num(raw.revenue),
+    cost: num(raw.cost),
+    gross: num(raw.gross),
+    prevAvgGross: num(raw.prevAvgGross),
+    grossDeltaBp: num(raw.grossDeltaBp),
+    anchorShiftBp: num(raw.anchorShiftBp),
+    trades: num(raw.trades),
   }
 }
 
@@ -1335,6 +1356,30 @@ export class HttpExchangeClient implements ExchangeClient {
     if (book === null) throw new ExchangeError('malformed_response', '盘口响应格式不正确')
     this.books.set(book.code, book)
     return book
+  }
+
+  async getCompanies(): Promise<CompanyInfo[]> {
+    const raw = await this.get<unknown>('/companies')
+    const rows = Array.isArray(raw) ? raw.filter(isRecord) : []
+    return rows.map((row) => ({
+      company: String(row.company ?? ''),
+      name: String(row.name ?? ''),
+      sector: String(row.sector ?? ''),
+      anchorShiftBp: Number(row.anchorShiftBp ?? 0),
+      anchorPrice: Number(row.anchorPrice ?? 0),
+      lastReport: isRecord(row.lastReport) ? normalizeCompanyReport(row.lastReport) : undefined,
+    }))
+  }
+
+  async submitCompanyFlows(flows: CompanyFlowEntry[]): Promise<CompanyFlowsResult> {
+    // 公司账本流水：游侧市场成交后批量上报，服务端按商品归属公司记账。
+    const raw = await this.post<unknown>('/company-flow', { flows })
+    if (!isRecord(raw)) return { accepted: 0, ignored: flows.length }
+    return {
+      accepted: Number(raw.accepted ?? 0),
+      ignored: Number(raw.ignored ?? 0),
+      companies: Array.isArray(raw.companies) ? raw.companies.map((code) => String(code)) : undefined,
+    }
   }
 
   async getTrades(code: string): Promise<TradeRecord[]> {

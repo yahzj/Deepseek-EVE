@@ -46,6 +46,47 @@ export interface StockQuote {
 export interface BookLevel { price: number; qty: number }
 export interface OrderBookSnapshot { code: string; bids: BookLevel[]; asks: BookLevel[]; ts: number }
 
+/** 公司周报（公司账本：玩家真实买卖驱动股价，见 docs/design/stock-gameplay-integration-20261109.md） */
+export interface CompanyReport {
+  id: string
+  ts: number
+  weekKey: string
+  company: string
+  name: string
+  revenue: number
+  cost: number
+  gross: number
+  prevAvgGross: number
+  grossDeltaBp: number
+  anchorShiftBp: number
+  trades: number
+}
+
+/** 公司视图：静态信息 + 当前锚点偏移 + 最近周报 */
+export interface CompanyInfo {
+  company: string
+  name: string
+  sector: string
+  anchorShiftBp: number
+  anchorPrice: number
+  lastReport?: CompanyReport
+}
+
+/** 玩家↔公司流水单条：商品 key + 方向 + 金额 + 笔数（公司账本上报载荷） */
+export interface CompanyFlowEntry {
+  good: string
+  /** buy = 玩家买入（公司营收）；sell = 玩家卖出（公司采购） */
+  side: 'buy' | 'sell'
+  amount: number
+  count: number
+}
+
+export interface CompanyFlowsResult {
+  accepted: number
+  ignored: number
+  companies?: string[]
+}
+
 /** 现货持仓（原型扩展：`ExchangeAccount` 的 `positions` 只装杠杆仓，现货另列） */
 export interface SpotHolding {
   code: string
@@ -463,6 +504,10 @@ export interface ExchangeClient {
   getBook(code: string): Promise<OrderBookSnapshot>
   getTrades(code: string): Promise<TradeRecord[]>
   getKlines(code: string, interval: '1m' | '5m' | '1h', limit?: number): Promise<Kline[]>
+  /** 公司账本视图（可选：联机客户端从 /companies 拉取；Mock 用演示数据）。 */
+  getCompanies?(): Promise<CompanyInfo[]>
+  /** 公司账本流水批量上报（可选：联机客户端 POST /company-flow；Mock 空实现）。 */
+  submitCompanyFlows?(flows: CompanyFlowEntry[]): Promise<CompanyFlowsResult>
   getAccount(): Promise<ExchangeAccount>
   getOrders(): Promise<ExchangeOrder[]>
   /**

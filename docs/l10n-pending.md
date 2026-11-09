@@ -845,3 +845,27 @@
 | `ui.exchangeTexts.501` | 悬停提示：每回合委托笔数 | 待本地化 |
 | `ui.exchangeTexts.502` | 悬停提示：当日涨跌停 | 待本地化 |
 | `ui.exchangeTexts.514` | 新手引导：钱有上限（额度/账户上限/手续费/涨跌停） | 待本地化 |
+| `ui.exchangeTexts.515` | 企业面板：标签名 | 待本地化 |
+| `ui.exchangeTexts.516` | 企业面板：标题 | 待本地化 |
+| `ui.exchangeTexts.517` | 企业面板：本周营收 | 待本地化 |
+| `ui.exchangeTexts.518` | 企业面板：本周支出 | 待本地化 |
+| `ui.exchangeTexts.519` | 企业面板：本周毛利 | 待本地化 |
+| `ui.exchangeTexts.520` | 企业面板：估值调整 | 待本地化 |
+| `ui.exchangeTexts.521` | 企业面板：暂无财报说明 | 待本地化 |
+| `ui.exchangeTexts.522` | 企业面板：交易笔数 | 待本地化 |
+| `ui.exchangeTexts.523` | 企业面板：内在价值 | 待本地化 |
+| `ui.exchangeTexts.524` | 企业面板：玩家买卖与公司账本说明 | 待本地化 |
+| `ui.exchangeTexts.525` | 企业面板：财报加载失败 | 待本地化 |
+| `ui.exchangeTexts.526` | 企业面板：生意红火 | 待本地化 |
+| `ui.exchangeTexts.527` | 企业面板：生意平稳 | 待本地化 |
+| `ui.exchangeTexts.528` | 企业面板：生意降温 | 待本地化 |
+| `ui.exchangeTexts.529` | 企业面板：生意亏损 | 待本地化 |
+| `ui.exchangeTexts.530` | 企业面板：前景看好 | 待本地化 |
+| `ui.exchangeTexts.531` | 企业面板：前景平稳 | 待本地化 |
+| `ui.exchangeTexts.532` | 企业面板：前景看淡 | 待本地化 |
+| `ui.exchangeTexts.533` | 企业面板：这周还没开张 | 待本地化 |
+| `ui.exchangeTexts.534` | 企业面板：玩家这周买得比平时多 | 待本地化 |
+| `ui.exchangeTexts.535` | 企业面板：玩家这周买得和平时差不多 | 待本地化 |
+| `ui.exchangeTexts.536` | 企业面板：玩家这周买得比平时少 | 待本地化 |
+| `ui.exchangeTexts.537` | 新手引导 v3：企业动态（八家公司业务） | 待本地化 |
+| `ui.exchangeTexts.538` | 新手引导 v3：你的玩法在改变股价 | 待本地化 |

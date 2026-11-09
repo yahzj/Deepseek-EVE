@@ -13,12 +13,12 @@
 
 ## 统计
 
-- 非归档文档 **387** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4750** KB · **53492** 行
-- 状态分布：**未标注** 190 · **已确认/已实现** 129 · **进行中** 47 · **待裁定** 20 · **历史留档** 1
-- 孤儿文档（0 引用）**169** 份 · 状态未标注 **190** 份
+- 非归档文档 **388** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4763** KB · **53688** 行
+- 状态分布：**未标注** 191 · **已确认/已实现** 129 · **进行中** 47 · **待裁定** 20 · **历史留档** 1
+- 孤儿文档（0 引用）**170** 份 · 状态未标注 **191** 份
 - 一、常用文档（按任务查阅）：**11** 份
 - 七、评审与体检（review）：**6** 份
-- 三、设计与工作文档（需核实状态）：**359** 份
+- 三、设计与工作文档（需核实状态）：**360** 份
 - 二、其它（docs 根目录）：**2** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
 - 八、测试档说明（test-saves）：**2** 份
@@ -51,12 +51,13 @@
 | `docs/review/hull-p2-preview-20260905.md` | 承伤持久化 P2：数值与甲抗/盾抗流派平衡预览（2026-09-05，供船长拍板） | 未标注 | 2026-09-05 | 3 KB / 40 行 | 0 |
 | `docs/review/guoqing-audit-followup.md` | 国庆节审查当前跟进 | 未标注（已复核修复） | — | 3 KB / 22 行 | 4 |
 
-## 三、设计与工作文档（需核实状态） —— 359 份
+## 三、设计与工作文档（需核实状态） —— 360 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档） |
 |---|---|---|---|---|---|
 | `docs/design/release-0.1.5-20261109.md` | 0.1.5 推送与部署 | 未标注（网页版已部署并核验） | 2026-11-09 | 4 KB / 37 行 | 1 |
 | `docs/design/signal-auto-ordinary-quota-20261109.md` | 信号空间自动探索普通资源额度修复 | 未标注（实现、专项、整库回归及网页版发布核验） | 2026-11-09 | 6 KB / 60 行 | 0 |
+| `docs/design/stock-gameplay-integration-20261109.md` | 证券交易所 · 与整体玩法联动设计（正式版） | 未标注（方案已由船长确认） | 2026-11-09 | 11 KB / 172 行 | 0 |
 | `docs/design/stock-exchange-bet-orders-fix-20261108.md` | 交易所下注与委托修复（2026-11-08） | 未标注 | 2026-11-08 | 9 KB / 107 行 | 0 |
 | `docs/design/black-market-coating-20261107.md` | 黑市名称裁切与护盾镀膜零盾 | 已确认/已实现（二号已实现自测） | 2026-11-07 | 2 KB / 21 行 | 0 |
 | `docs/design/courier-fleet-presets-20261107.md` | 快递免遇袭与编队预设 | 已确认/已实现（二号已实现自测） | 2026-11-07 | 3 KB / 29 行 | 0 |
@@ -65,7 +66,7 @@
 | `docs/design/flagship-current-fleet-20261107.md` | 旗舰战沿用当前编队 | 未标注（船长明确授权） | 2026-11-07 | 3 KB / 25 行 | 0 |
 | `docs/design/ship-tier-range-20261107.md` | 舰级额外武器射程 | 已确认/已实现（二号已实现自测） | 2026-11-07 | 2 KB / 22 行 | 0 |
 | `docs/design/exchange-intra-persona-trading-20261106.md` | 人格盘中主动交易：让市场靠真实成交“活”起来（2026-11-06 · 一号 · main） | 未标注（已落码 · 本地提交 · 尚未部署生） | 2026-11-06 | 9 KB / 71 行 | 0 |
-| `docs/design/exchange-pure-flow-pricing-20261106.md` | 股市纯流量价：价格水平只由真实买卖盘决定（2026-11-06 · 一号 · main） | 未标注（已落码 · 已推送 · 已部署生产） | 2026-11-06 | 10 KB / 82 行 | 1 |
+| `docs/design/exchange-pure-flow-pricing-20261106.md` | 股市纯流量价：价格水平只由真实买卖盘决定（2026-11-06 · 一号 · main） | 未标注（已落码 · 已推送 · 已部署生产） | 2026-11-06 | 10 KB / 82 行 | 2 |
 | `docs/design/exchange-trade-driven-kline-20261106.md` | 股市成交驱动：K 线与最新价只认真实成交（2026-11-06 · 一号 · main） | 待裁定（已落码 · 待船长验收） | 2026-11-06 | 6 KB / 65 行 | 3 |
 | `docs/design/announcement-draft-update-20261105.md` | 本次更新公告修订稿 | 未标注（船长2026-11-05明确要求“将） | 2026-11-05 | 4 KB / 60 行 | 2 |
 | `docs/design/cloud-8443-20261105.md` | 云端入口切 8443（2026-11-05） | 未标注（已上线、本地合入） | 2026-11-05 | 5 KB / 55 行 | 2 |
@@ -96,7 +97,7 @@
 | `docs/design/stock-exchange-ai-ecosystem-20261103.md` | 证券交易所 · AI 市场生态设计（让市场「活」起来） | 未标注（设计稿） | 2026-11-03 | 9 KB / 175 行 | 3 |
 | `docs/design/stock-exchange-backend-b0-20261103.md` | 证券交易所 · 后端 B0 工作文档（订单簿/撮合/账户/REST） | 已确认/已实现（B0-1 已实现） | 2026-11-03 | 5 KB / 66 行 | 4 |
 | `docs/design/stock-exchange-backend-spec-20261103.md` | 证券交易所 · 后端契约级设计（P0 实施基线） | 未标注（待开工确认） | 2026-11-03 | 26 KB / 461 行 | 6 |
-| `docs/design/stock-exchange-economy-pvp-20261103.md` | 证券交易所 · 经济闭环与 PvP/AI 博弈设计 | 未标注（设计稿　｜　日期：2026-11-0） | 2026-11-03 | 11 KB / 169 行 | 3 |
+| `docs/design/stock-exchange-economy-pvp-20261103.md` | 证券交易所 · 经济闭环与 PvP/AI 博弈设计 | 未标注（设计稿　｜　日期：2026-11-0） | 2026-11-03 | 11 KB / 169 行 | 4 |
 | `docs/design/stock-exchange-go-migration-20261103.md` | 全量迁 Go · 迁移计划与阶段划分 | 已确认/已实现（已获船长方向批准） | 2026-11-03 | 5 KB / 82 行 | 1 |
 | `docs/design/stock-exchange-go-stack-20261103.md` | 证券交易所 · Go 技术栈与开源参考调研 | 未标注（调研稿） | 2026-11-03 | 11 KB / 153 行 | 1 |
 | `docs/design/stock-exchange-integration-20261103.md` | 股市系统 · 联调部署契约（Go 交易所 ↔ Node 主服务 ↔ 桌面前端） | 未标注（执行中） | 2026-11-03 | 16 KB / 187 行 | 4 |
@@ -108,7 +109,7 @@
 | `docs/design/stock-exchange-round-model-20261103.md` | 股市 · 回合制行情与撮合模型（5 分钟一轮，可配） | 未标注（设计已定） | 2026-11-03 | 6 KB / 93 行 | 5 |
 | `docs/design/stock-exchange-server-20261103.md` | 证券交易所（服务端真股市）设计方案 | 待裁定（待裁决） | 2026-11-03 | 43 KB / 615 行 | 7 |
 | `docs/design/stock-exchange-short-selling-20261103.md` | 股市 · 做空与借券（回合制 B2） | 已确认/已实现（v1 已实现并灰度上线） | 2026-11-03 | 6 KB / 84 行 | 1 |
-| `docs/design/stock-market-system-20261103.md` | 证券交易所（股市系统）设计方案与技术架构 | 待裁定（设计方案待裁决） | 2026-11-03 | 13 KB / 198 行 | 4 |
+| `docs/design/stock-market-system-20261103.md` | 证券交易所（股市系统）设计方案与技术架构 | 待裁定（设计方案待裁决） | 2026-11-03 | 13 KB / 198 行 | 5 |
 | `docs/design/ui-scifi-hud-refinement-20261103.md` | 科幻未来（Modern HUD）UI/UX 全维规范化修复与体验优化 · 2026-11-03 | 待裁定（已完成 · 待船长验收） | 2026-11-03 | 3 KB / 43 行 | 1 |
 | `docs/design/ui-ux-ergonomics-audit-20261103.md` | 设计文档：UI/UX 工效学与视觉硬伤全面修复 (2026-11-03) | 未标注 | 2026-11-03 | 3 KB / 59 行 | 0 |
 | `docs/design/whale-server-1000ccu-20261103.md` | whale-server · 1000 人在线容量评估与重构方案 | 未标注（方案稿） | 2026-11-03 | 12 KB / 209 行 | 1 |
@@ -420,7 +421,7 @@
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档） |
 |---|---|---|---|---|---|
 | `docs/development-conventions-changelog.md` | 开发约定维护记录 | 未标注 | — | 13 KB / 103 行 | 6 |
-| `docs/l10n-pending.md` | 英文本地化记录 | 未标注 | — | 51 KB / 848 行 | 34 |
+| `docs/l10n-pending.md` | 英文本地化记录 | 未标注 | — | 53 KB / 872 行 | 34 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -446,11 +447,12 @@
 | `docs/design/ship-battle-art/mounts-20260910.md` | 舰船战斗图形·挂点对齐（引擎喷口 + 真实炮口）2026-09-10 | 已确认/已实现（已确认） | 2026-09-10 | 6 KB / 94 行 | 1 |
 | `docs/design/ship-battle-art/README.md` | 舰船战斗图形重设计(三号 · 样稿阶段,2026-09-09) | 未标注 | — | 8 KB / 87 行 | 29 |
 
-## 附：孤儿文档（0 引用，169 份）
+## 附：孤儿文档（0 引用，170 份）
 
 > 仅表示没有其他收录文档提到本文件名，不能据此删除、归档或批准阅读历史。
 
 - `docs/design/signal-auto-ordinary-quota-20261109.md`（2026-11-09 · 6 KB）—— 信号空间自动探索普通资源额度修复
+- `docs/design/stock-gameplay-integration-20261109.md`（2026-11-09 · 11 KB）—— 证券交易所 · 与整体玩法联动设计（正式版）
 - `docs/design/stock-exchange-bet-orders-fix-20261108.md`（2026-11-08 · 9 KB）—— 交易所下注与委托修复（2026-11-08）
 - `docs/design/black-market-coating-20261107.md`（2026-11-07 · 2 KB）—— 黑市名称裁切与护盾镀膜零盾
 - `docs/design/courier-fleet-presets-20261107.md`（2026-11-07 · 3 KB）—— 快递免遇袭与编队预设
@@ -620,10 +622,11 @@
 - `docs/design/v18.1-support.md`（无日期 · 9 KB）—— V18.1 设计总结：支援装备 + 叠加收敛（取消同类唯一 · 已确认实施）
 - `docs/design/v18b2-lasers.md`（无日期 · 5 KB）—— V18B-2 设计总结：激光炮武器族（能量系形态 · 已确认实施）
 
-## 附：状态未标注（190 份，待补一行 `状态：…`）
+## 附：状态未标注（191 份，待补一行 `状态：…`）
 
 - `docs/design/release-0.1.5-20261109.md`（2026-11-09）—— 0.1.5 推送与部署
 - `docs/design/signal-auto-ordinary-quota-20261109.md`（2026-11-09）—— 信号空间自动探索普通资源额度修复
+- `docs/design/stock-gameplay-integration-20261109.md`（2026-11-09）—— 证券交易所 · 与整体玩法联动设计（正式版）
 - `docs/design/stock-exchange-bet-orders-fix-20261108.md`（2026-11-08）—— 交易所下注与委托修复（2026-11-08）
 - `docs/design/exchange-savings-rate-20261107.md`（2026-11-07）—— 交易所理财收益率调整（2026-11-07）
 - `docs/design/flagship-current-fleet-20261107.md`（2026-11-07）—— 旗舰战沿用当前编队
