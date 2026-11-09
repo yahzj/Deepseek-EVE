@@ -83,19 +83,21 @@ describe('长途运输现行编队规则', () => {
     expect(haulBaseReward(ctx, cap, distance)).toBe(Math.ceil(cap * 0.6 * b.anchorNominalMinutes * Math.pow(distance / b.anchorEffectiveMinutes, b.distExp)))
   })
 
-  it('中断放弃报酬、真实折返且重复停止不重置进度', () => {
+  it('中断放弃报酬并立即回出发站，不创建返航航段', () => {
     const { state, ctx } = world()
     startHauling(state, null, site.id, ctx, 100)
     advanceGame(state, 500, ctx)
     const wallet = state.wallet.isk
     expect(stopHauling(state, ctx).ok).toBe(true)
-    expect(state.hauling.active).toBe(true)
-    expect(state.hauling.fleetLeg!.returning).toBe(true)
+    expect(state.hauling.active).toBe(false)
+    expect(state.hauling.fleetLeg).toBeUndefined()
+    expect(state.awayGalaxy).toBeNull()
+    expect(state.dockedSite).toBeNull()
+    expect(state.transit.active).toBe(false)
+    expect(state.departure).toBeUndefined()
     expect(haulingOccupiedM3(state, ctx)).toBe(0)
     advanceGame(state, 250, ctx)
     stopHauling(state, ctx)
-    expect(state.hauling.phaseAccMs).toBe(250)
-    advanceGame(state, 250, ctx)
     expect(state.hauling.active).toBe(false)
     expect(state.awayGalaxy).toBeNull()
     expect(state.wallet.isk).toBe(wallet)

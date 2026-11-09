@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import { addShipToFleet } from '../src/fleetBook'
-import { applyFleetPreset, cleanFleetPresets, deleteFleetPreset, FLEET_PRESET_MAX, renameFleetPreset, saveFleetPreset } from '../src/fleetPresets'
+import { applyFleetPreset, cleanFleetPresets, defaultFleetPresetName, deleteFleetPreset, FLEET_PRESET_MAX, renameFleetPreset, saveFleetPreset } from '../src/fleetPresets'
 import { combatRosterOf } from '../src/combat/command/roster'
 import { COMMAND_SKILLS } from '../src/combat/command/rules'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
@@ -21,6 +21,21 @@ function world() {
 }
 
 describe('我的舰队多套预设', () => {
+  it('空名保存自动命名并跳过现有编号；删除后不复用已有空位编号', () => {
+    const { state } = world()
+    expect(defaultFleetPresetName([])).toBe('预设编队1')
+    expect(saveFleetPreset(state, ctx, '').ok).toBe(true)
+    expect(state.fleetPresets![0]!.name).toBe('预设编队1')
+    expect(saveFleetPreset(state, ctx, '  ').ok).toBe(true)
+    expect(state.fleetPresets![1]!.name).toBe('预设编队2')
+    expect(saveFleetPreset(state, ctx, '战斗队').ok).toBe(true)
+    expect(saveFleetPreset(state, ctx, '').ok).toBe(true)
+    expect(state.fleetPresets![3]!.name).toBe('预设编队3')
+    expect(deleteFleetPreset(state, 'fleet-1').ok).toBe(true)
+    expect(saveFleetPreset(state, ctx, '').ok).toBe(true)
+    expect(state.fleetPresets!.at(-1)!.name).toBe('预设编队1')
+  })
+
   it('保存主控与实例顺序，套用不更改装配、无人机、货仓和其他准备队伍', () => {
     const { state, ids } = world()
     const ships = structuredClone(state.fleet)

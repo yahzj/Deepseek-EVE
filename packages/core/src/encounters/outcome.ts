@@ -14,6 +14,7 @@ import { ceilFinalQuantity } from '../quantity'
 import { weekendApplyBattleOutcome } from '../weekendBattle'
 import { settleCommandFleet, prepareCommandPilotAfterLoss } from '../combat/command/settlement'
 import { settleIndustrialEncounter } from './settlement'
+import { finishFleetHaulingAbortAfterEncounter } from '../hauling/fleet'
 
 /**
  * 战报尾巴：船体维修装置本场消耗（2026-09-11 船长「不单独显示日志，只把消耗组件数量
@@ -150,6 +151,7 @@ export function settleEscape(state: GameState, ctx: SimContext, mode: 'hull' | '
   clearEncounter(state)
   // 收场尾巴（2026-09-12 船长定：先修后判；自动脱离时结构已 <50%，修不动才返港）
   settleEncounterFleetTail(state, ctx, shipId, battle)
+  finishFleetHaulingAbortAfterEncounter(state, ctx)
 }
 
 /** 遭遇战（玩家应战后）推进与结算：胜 → 缴获；败 → 受损 + 大概率被抢 */
@@ -237,6 +239,7 @@ export function settleFight(state: GameState, ctx: SimContext): void {
   clearEncounter(state)
   // 收场尾巴（2026-09-12 船长定：先修后判）——应战胜、败两路共用
   settleEncounterFleetTail(state, ctx, shipId, battle)
+  finishFleetHaulingAbortAfterEncounter(state, ctx)
 }
 
 /**

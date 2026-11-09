@@ -1,4 +1,4 @@
-import { addLog, HOME_GALAXY_ID } from '../state'
+import { addLog, HOME_GALAXY_ID, haulingHalt } from '../state'
 import type { GameState } from '../state'
 import type { SimContext } from '../types'
 import type { CommandResult } from '../engine'
@@ -17,6 +17,10 @@ import { nextRandom } from '../rng'
 import { bumpFirst } from '../firstTasks'
 import { beginDeparture, consumeDeparture, cancelDeparture } from '../departure'
 import { noteOfflineDelivery, noteOfflineTransportStop } from '../offlineCombatStats'
+
+export function noteFleetHaulingStopped(state: GameState, ctx: SimContext, fromSiteId: string | null): void {
+  addLog(state, 'fleet', '', 'core.hauling.019', { p1: haulEndpointName(ctx, fromSiteId) })
+}
 
 function galaxy(ctx: SimContext, site: string | null): string {
   return site === null ? HOME_GALAXY_ID : ctx.stations.get(site)?.galaxyId ?? ''
@@ -103,30 +107,31 @@ export function stopFleetHauling(state: GameState, ctx: SimContext, atArrival = 
   const h = state.hauling, f = h.fleetLeg
   if (!h.active || !f) return { ok: false, errorId: 'core.hauling.018', error: 'hauling-inactive' }
   if (atArrival) { f.stopAtArrival = true; return { ok: true } }
-  if (cancelDeparture(state, 'hauling')) {
-    state.dockedSite = h.fromSiteId
-    h.active = false
-    delete h.fleetLeg
-    delete state.combatEscort
-    return { ok: true }
-  }
   if (state.encounter.active) { f.abortAfterBattle = true; return { ok: true } }
-  if (f.returning) return { ok: true }
-  const reverse = f.path.slice(0, f.pathIndex + 1).reverse().flatMap(row => row.progressMs > 0 ? [{ galaxyId: row.galaxyId, durationMs: row.progressMs, progressMs: 0 }] : [])
-  const origin = h.fromSiteId
-  f.loadedM3 = 0
-  f.loadedByShip.forEach(row => { row.loadedM3 = 0 })
-  f.returning = true
-  f.positioning = false
-  f.stopAtArrival = true
-  h.toSiteId = origin
-  h.phaseAccMs = 0
-  f.path = reverse.length ? reverse : [{ galaxyId: state.awayGalaxy ?? galaxy(ctx, origin), durationMs: 1, progressMs: 0 }]
-  f.pathIndex = 0
-  h.legMs = f.path.reduce((sum, row) => sum + row.durationMs, 0)
-  state.awayGalaxy = f.path[0]!.galaxyId
-  addLog(state, 'fleet', '', 'core.industrial.003', { p1: haulEndpointName(ctx, origin) })
+  const fromSiteId = h.fromSiteId
+  cancelDeparture(state, 'hauling')
+  if (!haulingHalt(state)) return { ok: false, errorId: 'core.hauling.018', error: 'hauling-inactive' }
+  noteOfflineTransportStop(state, 'interrupted')
+  noteFleetHaulingStopped(state, ctx, fromSiteId)
   return { ok: true }
+}
+
+/** 记录运输中断请求；当前遭遇正常结算后再即时停靠回运输起点。 */
+export function abortFleetHaulingAfterEncounter(state: GameState): boolean {
+  const leg = state.hauling.fleetLeg
+  if (!state.hauling.active || !leg || !state.encounter.active) return false
+  leg.abortAfterBattle = true
+  return true
+}
+
+/** 战斗完成后兑现停止请求；战损和战报先由遭遇战正常结算。 */
+export function finishFleetHaulingAbortAfterEncounter(state: GameState, ctx: SimContext): boolean {
+  if (!state.hauling.fleetLeg?.abortAfterBattle || !state.hauling.active) return false
+  const fromSiteId = state.hauling.fromSiteId
+  if (!haulingHalt(state)) return false
+  noteOfflineTransportStop(state, 'interrupted')
+  noteFleetHaulingStopped(state, ctx, fromSiteId)
+  return true
 }
 
 /** 正常推进只消费本段时间；战斗暂停由引擎共同时间轴保证。 */

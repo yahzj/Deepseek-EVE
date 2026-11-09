@@ -90,7 +90,7 @@ describe('纯清理等价性', () => {
       ['cancel-deliver-trip', 'cancelDeliverTripNow', [], 'ui.ActivityBar.048'],
       ['stop-loop', 'bountyLoopAt', [null], 'ui.ActivityBar.049'],
       ['stop-invasion-loop', 'invasionLoopAt', [null], 'core.weekend.034'],
-      ['stop-hauling', 'stopHaulingNow', [], 'ui.Hauling.006'],
+      ['stop-hauling', 'stopHaulingNow', [], 'core.hauling.019'],
     ]
     for (const [stop, method, args, text] of actions) {
       const fn = vi.fn(() => ({ ok: true })), toast = vi.fn()

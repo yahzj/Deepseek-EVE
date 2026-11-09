@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { FLEET_PRESET_MAX, FLEET_PRESET_NAME_MAX, commandBudgetOf, shipDisplayName } from '@whale/core'
+import { defaultFleetPresetName, FLEET_PRESET_MAX, FLEET_PRESET_NAME_MAX, commandBudgetOf, shipDisplayName } from '@whale/core'
 import type { CommandResult } from '@whale/core'
 import { Check, Copy, Play, Plus, Trash2, Wrench, X } from '../../ui/layoutIcons'
 import type { GameEngine } from '../../game/engine'
@@ -12,6 +12,7 @@ export function FleetPresets({ engine, busy, onToast }: { engine: GameEngine; bu
   const [editing, setEditing] = useState<string | null>(null)
   const [confirm, setConfirm] = useState<{ id: string; kind: 'replace' | 'delete' } | null>(null)
   const presets = engine.state.fleetPresets ?? []
+  const suggestedName = defaultFleetPresetName(presets)
   function finish(result: CommandResult, textId: string): void {
     onToast(result.ok ? tr(textId) : cmdText(result), !result.ok)
     if (result.ok) { setEditing(null); setName(''); setConfirm(null) }
@@ -21,10 +22,10 @@ export function FleetPresets({ engine, busy, onToast }: { engine: GameEngine; bu
       <button className="app-btn is-small" aria-expanded={open} aria-controls="fleet-preset-list" onClick={() => setOpen(!open)}>
         {tr('ui.fleetPreset.001')} {presets.length}/{FLEET_PRESET_MAX}
       </button>
-      <input className="app-head-search" aria-label={tr('ui.fleetPreset.002')} placeholder={tr('ui.fleetPreset.002')} value={name} maxLength={FLEET_PRESET_NAME_MAX} onChange={e => setName(e.target.value)} />
-      <button className="app-btn is-small app-fleet-preset-icon" disabled={!name.trim() || (!editing && (busy || presets.length >= FLEET_PRESET_MAX))}
+      <input className="app-head-search" aria-label={tr('ui.fleetPreset.002')} placeholder={editing ? tr('ui.fleetPreset.002') : suggestedName} value={name} maxLength={FLEET_PRESET_NAME_MAX} onChange={e => setName(e.target.value)} />
+      <button className="app-btn is-small app-fleet-preset-icon" disabled={!editing && (busy || presets.length >= FLEET_PRESET_MAX)}
         title={tr(editing ? 'ui.fleetPreset.005' : 'ui.fleetPreset.003')} aria-label={tr(editing ? 'ui.fleetPreset.005' : 'ui.fleetPreset.003')}
-        onClick={() => { setOpen(true); finish(editing ? engine.fleetPresetRename(editing, name) : engine.fleetPresetSave(name), editing ? 'ui.fleetPreset.014' : 'ui.fleetPreset.012') }}>
+        onClick={() => { setOpen(true); finish(editing ? engine.fleetPresetRename(editing, name) : engine.fleetPresetSave(name.trim() || suggestedName), editing ? 'ui.fleetPreset.014' : 'ui.fleetPreset.012') }}>
         {editing ? <Check size={15} aria-hidden /> : <Plus size={15} aria-hidden />}
       </button>
       {editing ? <button className="app-btn is-small app-fleet-preset-icon" title={tr('ui.fleetPreset.009')} aria-label={tr('ui.fleetPreset.009')} onClick={() => { setEditing(null); setName('') }}><X size={15} aria-hidden /></button> : null}

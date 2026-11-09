@@ -73,10 +73,10 @@ export function doStop(v: ActivityView, engine: GameEngine, onToast: ToastFn): v
       run(engine.invasionLoopAt(null), tr('core.weekend.034'))
       break
     case 'stop-hauling':
-      // ⟪文案调整 2026-11-01⟫ 停止承运与折返到港不是同一时刻。
       {
-        const result = engine.stopHaulingNow()
-        run(result, tr(engine.state?.encounter?.active ? 'ui.industrial.008' : engine.state?.hauling?.fleetLeg?.returning ? 'ui.industrial.007' : 'ui.Hauling.006'))
+        const fromSiteId = engine.state?.hauling?.fromSiteId
+        const fromName = fromSiteId ? engine.ctx?.stations.get(fromSiteId)?.name ?? fromSiteId : tr('ui.Expedition.007')
+        run(engine.stopHaulingNow(), tr(engine.state?.encounter?.active ? 'ui.industrial.008' : 'core.hauling.019', { p1: fromName }))
       }
       break
   }

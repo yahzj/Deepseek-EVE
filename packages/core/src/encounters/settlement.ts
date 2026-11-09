@@ -9,6 +9,7 @@ import { applyArmorFirstDamage, firepowerHitHp } from '../hullDamage'
 import { nearestStationGalaxyId } from '../location'
 import { shortestTravelMinutes, travelLegMs } from '../travel'
 import { noteOfflineEncounterOutcome, noteOfflineTransportStop, noteOfflineRepairKits } from '../offlineCombatStats'
+import { finishFleetHaulingAbortAfterEncounter } from '../hauling/fleet'
 
 /** 新普通海盗只结算真实战斗一次，旧文字/入侵结算路径不受影响。 */
 export function settleIndustrialEncounter(state: GameState, ctx: SimContext, helpers: {
@@ -54,7 +55,8 @@ export function settleIndustrialEncounter(state: GameState, ctx: SimContext, hel
       if (ship.durability < target || (ship.armorPct ?? 1) < target) ready = false
     }
   }
-  if (ready && !state.hauling.fleetLeg?.abortAfterBattle) return
+  if (finishFleetHaulingAbortAfterEncounter(state, ctx)) return
+  if (ready) return
   if (state.hauling.active) noteOfflineTransportStop(state, lost > 0 ? 'loss' : escaped || !won ? 'defeat' : state.hauling.fleetLeg?.abortAfterBattle ? 'interrupted' : 'damage')
   state.mining.active = false
   state.salvaging.active = false

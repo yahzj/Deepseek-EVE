@@ -11,6 +11,7 @@ import { weekendKindOfEncounter, clearEncounter, settleEncounterTail } from './r
 import { applyArmorFirstDamage } from '../hullDamage'
 import { ceilFinalQuantity } from '../quantity'
 import type { CommandResult } from '../engine'
+import { finishFleetHaulingAbortAfterEncounter } from '../hauling/fleet'
 
 /**
  * 文字三档结算（Q2 甲）：击退（缴获 ISK）/ 受损（耐久 −5%~15%，clamp 5%）/ 被抢（至多 30% 货）。
@@ -97,6 +98,7 @@ export function resolveTextual(state: GameState, ctx: SimContext, viaFlee: boole
   clearEncounter(state)
   // 收场尾巴（2026-09-12 船长定：先修后判）——胜、败、被抢三路共用
   settleEncounterTail(state, ctx, shipId)
+  finishFleetHaulingAbortAfterEncounter(state, ctx)
 }
 
 /** 玩家指令：快速脱离（立即按文字三档结算） */

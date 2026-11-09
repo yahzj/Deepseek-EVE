@@ -16,7 +16,9 @@ export function startHauling(state: GameState, aSiteId: string | null, bSiteId: 
 }
 
 export function stopHauling(state: GameState, ctx: SimContext): CommandResult {
-  if (state.hauling.fleetLeg) return stopFleetHauling(state, ctx)
+  if (state.hauling.fleetLeg) {
+    return stopFleetHauling(state, ctx)
+  }
   const info = haulingHalt(state)
   if (!info) return { ok: false, errorId: 'core.hauling.018', error: 'hauling-inactive' }
   addLog(state, 'fleet', '', 'core.hauling.019', { p1: haulEndpointName(ctx, info.fromSiteId) })

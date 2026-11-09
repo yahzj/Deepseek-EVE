@@ -2419,7 +2419,8 @@ export function salvageHalt(
 export function haulingHalt(state: GameState): { fromSiteId: string | null } | null {
   const h = state.hauling
   if (h.active !== true) return null
-  const info = { fromSiteId: h.fromSiteId }
+  const fromSiteId = h.fromSiteId
+  const abortAfterBattle = h.fleetLeg?.abortAfterBattle === true
   h.active = false
   h.routeA = null
   h.routeB = null
@@ -2428,10 +2429,20 @@ export function haulingHalt(state: GameState): { fromSiteId: string | null } | n
   h.legMinutes = 0
   h.legMs = 0
   h.phaseAccMs = 0
+  delete h.fleetLeg
+  if (state.departure?.kind === 'hauling') delete state.departure
+  delete state.combatEscort
+  if (abortAfterBattle && state.transit.active && !state.transit.delivery) {
+    state.transit.active = false
+    state.transit.fromGalaxy = null
+    state.transit.toGalaxy = null
+    state.transit.finishAtGameMs = 0
+    state.transit.legMs = 0
+  }
   // 2026-09-09（船长定）：终止即瞬时返港——不再安排真实折返航程，船直接停靠回出发站
   state.awayGalaxy = null
-  state.dockedSite = info.fromSiteId === null ? null : info.fromSiteId
-  return info
+  state.dockedSite = fromSiteId
+  return { fromSiteId }
 }
 /**
  * **退还一条制造线扣过的材料**（仓库入库；`state.ts` 侧实现，故**不依赖 ctx**）。

@@ -10,6 +10,12 @@ import { notePreparationSquad } from './preparationSquads'
 
 export const FLEET_PRESET_MAX = 10
 export const FLEET_PRESET_NAME_MAX = 32
+export function defaultFleetPresetName(presets: readonly Pick<FleetPreset, 'name'>[]): string {
+  let index = 1
+  while (presets.some(preset => preset.name === `预设编队${index}`)) index++
+  return `预设编队${index}`
+}
+
 export interface FleetPreset {
   id: string
   name: string
@@ -52,7 +58,8 @@ export function saveFleetPreset(state: GameState, ctx: SimContext, name: string,
   const idle = fleetIdle(state, ctx)
   if (!idle.ok) return idle
   const list = state.fleetPresets ?? []
-  const finalName = name.trim().slice(0, FLEET_PRESET_NAME_MAX)
+  const requestedName = name.trim().slice(0, FLEET_PRESET_NAME_MAX)
+  const finalName = requestedName || (replaceId ? '' : defaultFleetPresetName(list))
   if (!finalName) return reject('core.fleetPreset.002')
   if (replaceId && !list.some(p => p.id === replaceId)) return reject('core.fleetPreset.003')
   if (list.some(p => p.id !== replaceId && p.name === finalName)) return reject('core.fleetPreset.004')

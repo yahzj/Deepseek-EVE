@@ -212,8 +212,8 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       sub: `航线 ${haulEndpointName(ctx, hg.routeA)} ⇄ ${haulEndpointName(ctx, hg.routeB)} · 本段实际约 ${Math.max(1, travelMinutesEff(state, ctx, hg.legMinutes))} 分钟`,
       percent: Math.min(100, Math.round((hg.phaseAccMs / leg) * 100)),
       remainingMs: Math.max(0, leg - hg.phaseAccMs),
-      stopable: !hg.fleetLeg?.returning && !hg.fleetLeg?.abortAfterBattle,
-      stop: hg.fleetLeg?.returning || hg.fleetLeg?.abortAfterBattle ? null : 'stop-hauling',
+      stopable: !hg.fleetLeg?.abortAfterBattle,
+      stop: hg.fleetLeg?.abortAfterBattle ? null : 'stop-hauling',
     })
   }
 

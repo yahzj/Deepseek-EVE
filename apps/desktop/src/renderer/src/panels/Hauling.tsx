@@ -123,8 +123,7 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
   function stopNow(): void {
     const r = engine.stopHaulingNow()
     if (!r.ok) onToast(cmdText(r) || tr('ui.Hauling.031'), true)
-    // ⟪文案调整 2026-11-01⟫ 停运是实际折返，不再提示即时到港。
-    else onToast(tr(state.encounter.active ? 'ui.industrial.008' : h.fleetLeg?.returning ? 'ui.industrial.007' : 'ui.Hauling.006'))
+    else onToast(state.encounter.active ? tr('ui.industrial.008') : tr('core.hauling.019', { p1: h.fromSiteId ? ctx.stations.get(h.fromSiteId)?.name ?? h.fromSiteId : tr('ui.Expedition.007') }))
   }
 
   /** 标题右的状态读数（与同级「残骸打捞」同款：一句，不长篇） */
@@ -222,7 +221,7 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
                       {h.fleetLeg && !h.fleetLeg.returning && !h.fleetLeg.abortAfterBattle ? <button className="app-btn is-small" disabled={h.fleetLeg.stopAtArrival} onClick={() => engine.stopHaulingAtArrival()}>
                         {tr(h.fleetLeg.stopAtArrival ? 'ui.industrial.004' : 'ui.industrial.003')}
                       </button> : null}
-                      {!h.fleetLeg?.returning && !h.fleetLeg?.abortAfterBattle ? <button
+                      {h.fleetLeg && !h.fleetLeg.abortAfterBattle ? <button
                         className="app-btn is-small"
                         onClick={() => {
                           /**
