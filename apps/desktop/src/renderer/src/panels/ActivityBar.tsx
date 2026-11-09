@@ -27,6 +27,8 @@ import { jumpExchangePage } from '../features/exchange/viewPrefs'
 import { CLOUD_SESSION_CHANGE_EVENT } from '../features/cloud/preferences'
 import type { BondPosition, FundPosition } from '../features/exchange/client'
 import { money, pct } from '../features/exchange/format'
+// 交易所不可用时整组入口隐藏（一键关闭股票系统，见 features/exchange/availability.ts）。
+import { useExchangeAvailable } from '../features/exchange/availability'
 import '../styles-activity-invasion.css'
 
 const KIND_ICON: Record<string, string> = {
@@ -163,6 +165,7 @@ export function ActivityBar({
    */
   onOpenWormhole?: () => void
 }) {
+  const exchangeAvailable = useExchangeAvailable()
   const state = engine.state
   const all = activityOverview(state, engine.ctx).map(explorationActivityText)
   // 船长 2026-09-05：活动窗口垂直排布；「玩家活动」「技能训练」两个常驻分区，各自待机文案；AI 用徽标
@@ -582,7 +585,9 @@ export function ActivityBar({
         )}
       </div>
 
-      {/* ── 交易所活动监控（副AI活动最下方，独立展示股票、债券与基金） ── */}
+      {/* ── 交易所活动监控（副AI活动最下方，独立展示股票、债券与基金）；
+          交易所不可用（连续探测失败）时整组隐藏——「一键关闭股票系统」 ── */}
+      {exchangeAvailable ? (
       <div className="app-activitybar-group app-activitybar-group-exchange">
         <div className="app-activitybar-gtitle">{isEn() ? 'Exchange' : '交易所'}</div>
         <div className="app-ai-act-list">
@@ -698,6 +703,7 @@ export function ActivityBar({
           ) : null}
         </div>
       </div>
+      ) : null}
     </aside>
   )
 }
