@@ -1,6 +1,6 @@
 # 0.1.5 推送与部署
 
-状态：源码和标签已推送；双端发布因下载 504 失败且未上线，已按船长新指令暂停桌面版，转为网页单端发布。
+状态：网页版已部署并核验；桌面版按船长指令暂停，未创建 0.1.5 桌面 Release。
 
 经办：二号；工作区 `H:\大鲸鱼\Deepseek-EVE-d2`，分支 `d2/workspace`；日期：2026-11-09。
 
@@ -30,4 +30,7 @@
 - 原双端运行 `https://github.com/yahzj/Deepseek-EVE/actions/runs/42564947956` 的核心回归 549 文件通过，7623 项通过、9 项既有跳过、0 失败；网页构建通过。
 - Windows 打包外部下载连续返回 504，三次尝试均未通过；发布门槛正常拦截，两端均未上线，没有创建桌面 Release。
 - 船长新指令：「现在暂时不需要桌面版，直到我说明发布桌面版做为止，桌面版都暂停」。停止桌面打包排障和重试，不实施原拟打包重试补修；持续发布范围写入 `.github/RELEASING.md`。
-- 已对同一源码 SHA 触发 `web` 单端发布，`tag_name` 留空，运行地址为 `https://github.com/yahzj/Deepseek-EVE/actions/runs/42567808624`；待其完成后补记网页上线清单核验结果。
+- `web` 单端发布成功，`tag_name` 留空，运行地址为 `https://github.com/yahzj/Deepseek-EVE/actions/runs/42567808624`；核心回归再次通过 549 文件、7623 项，9 项既有跳过、0 失败，耗时 385.82 秒。Windows 构建和发布均跳过。
+- 线上 `https://yahzj.github.io/Deepseek-EVE/release-manifest.json` 的 `sourceSha` 为 `76087a613b08228fedf31e5f907f7f121f104044`，清单共 96 个文件；首页和主脚本均返回 200，实际 SHA-256 与清单逐项匹配。
+- 主脚本为 `assets/index-BbkG9fFY.js`，SHA-256 为 `cbed025eff1d1cf82c38251f8e2fa9056bcefc018505c9a8ca3dba45ab19c628`；本次未另开浏览器观感验收或读取真档。
+- 发布后再次确认不存在 `v0.1.5` Release，最近的桌面发行仍为 `v0.1.4`。桌面暂停要求已随文档提交 `252d672bc` 推送，版本标签与游戏源码提交不变。
