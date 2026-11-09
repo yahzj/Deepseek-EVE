@@ -8638,6 +8638,9 @@ html body .app-root .ex-page .ex-simple-finance {
   font-size: 12px;
   line-height: 1.65;
   white-space: pre-line;
+  /* 新手引导文案变长后仍要能在小窗里看全：气泡高度封顶，正文自己滚动。 */
+  max-height: 240px;
+  overflow-y: auto;
 }
 
 .ex-tutorial-actions {

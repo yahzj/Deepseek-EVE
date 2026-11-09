@@ -13,7 +13,7 @@
 
 ## 统计
 
-- 非归档文档 **386** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4742** KB · **53409** 行
+- 非归档文档 **386** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4743** KB · **53430** 行
 - 状态分布：**未标注** 189 · **已确认/已实现** 129 · **进行中** 47 · **待裁定** 20 · **历史留档** 1
 - 孤儿文档（0 引用）**169** 份 · 状态未标注 **189** 份
 - 一、常用文档（按任务查阅）：**11** 份
@@ -56,7 +56,7 @@
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档） |
 |---|---|---|---|---|---|
 | `docs/design/signal-auto-ordinary-quota-20261109.md` | 信号空间自动探索普通资源额度修复 | 未标注（实现、专项及桌面离线核验完成） | 2026-11-09 | 6 KB / 60 行 | 0 |
-| `docs/design/stock-exchange-bet-orders-fix-20261108.md` | 交易所下注与委托修复（2026-11-08） | 未标注 | 2026-11-08 | 5 KB / 72 行 | 0 |
+| `docs/design/stock-exchange-bet-orders-fix-20261108.md` | 交易所下注与委托修复（2026-11-08） | 未标注 | 2026-11-08 | 6 KB / 85 行 | 0 |
 | `docs/design/black-market-coating-20261107.md` | 黑市名称裁切与护盾镀膜零盾 | 已确认/已实现（二号已实现自测） | 2026-11-07 | 2 KB / 21 行 | 0 |
 | `docs/design/courier-fleet-presets-20261107.md` | 快递免遇袭与编队预设 | 已确认/已实现（二号已实现自测） | 2026-11-07 | 3 KB / 29 行 | 0 |
 | `docs/design/exchange-savings-rate-20261107.md` | 交易所理财收益率调整（2026-11-07） | 未标注（方案已由船长确认） | 2026-11-07 | 3 KB / 82 行 | 1 |
@@ -419,7 +419,7 @@
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档） |
 |---|---|---|---|---|---|
 | `docs/development-conventions-changelog.md` | 开发约定维护记录 | 未标注 | — | 13 KB / 103 行 | 6 |
-| `docs/l10n-pending.md` | 英文本地化记录 | 未标注 | — | 51 KB / 840 行 | 34 |
+| `docs/l10n-pending.md` | 英文本地化记录 | 未标注 | — | 51 KB / 848 行 | 34 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -450,7 +450,7 @@
 > 仅表示没有其他收录文档提到本文件名，不能据此删除、归档或批准阅读历史。
 
 - `docs/design/signal-auto-ordinary-quota-20261109.md`（2026-11-09 · 6 KB）—— 信号空间自动探索普通资源额度修复
-- `docs/design/stock-exchange-bet-orders-fix-20261108.md`（2026-11-08 · 5 KB）—— 交易所下注与委托修复（2026-11-08）
+- `docs/design/stock-exchange-bet-orders-fix-20261108.md`（2026-11-08 · 6 KB）—— 交易所下注与委托修复（2026-11-08）
 - `docs/design/black-market-coating-20261107.md`（2026-11-07 · 2 KB）—— 黑市名称裁切与护盾镀膜零盾
 - `docs/design/courier-fleet-presets-20261107.md`（2026-11-07 · 3 KB）—— 快递免遇袭与编队预设
 - `docs/design/faction-blueprint-hints-20261107.md`（2026-11-07 · 1 KB）—— 势力插件制造卡获取提示

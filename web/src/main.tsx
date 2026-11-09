@@ -12,6 +12,7 @@ import { GameEngine } from '../../apps/desktop/src/renderer/src/game/engine'
 import { prebootRenderer, startGameEngine } from '../../apps/desktop/src/renderer/src/game/boot'
 import { L10nProvider, tr } from '../../apps/desktop/src/renderer/src/i18n/locale'
 import { SaveWriterGate } from '../../apps/desktop/src/renderer/src/panels/SaveWriterGate'
+import { startUpdatePrompt } from './updatePrompt'
 
 /**
  * 网页端环境守卫：防范离线扒取、本地双击 (file://) 及未授权的第三方镜像
@@ -63,6 +64,8 @@ function checkWebEnvironment(): boolean {
 if (checkWebEnvironment()) {
   // 首帧渲染之前的固定动作（布局样式 / 宇宙背景 / 配色）
   prebootRenderer()
+  // 挂机玩家可能几天不刷新页面：定时比对线上入口脚本，有新版只提示、不强制刷新。
+  startUpdatePrompt()
 
   const engine = new GameEngine()
   const root = createRoot(document.getElementById('root')!)

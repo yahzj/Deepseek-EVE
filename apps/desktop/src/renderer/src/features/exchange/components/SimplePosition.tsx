@@ -154,6 +154,9 @@ export function SimplePosition({ client, snap, onToast }: SimplePositionProps) {
       tif: 'IOC',
       qty,
       leverage: 1,
+      // 简单模式结算：按点击时的现价锁价，回合末由系统兜底保证成交。
+      guaranteed: true,
+      expectedPrice: priceOf(code),
     })
   }
 
@@ -163,7 +166,7 @@ export function SimplePosition({ client, snap, onToast }: SimplePositionProps) {
     closeProgress.start()
     try {
       if (line.tone === 'spot') await closeSpot(line.code, line.qty)
-      else await client.closePosition(line.code, line.tone)
+      else await client.closePosition(line.code, line.tone, undefined, priceOf(line.code))
       await closeProgress.finish()
       onToast(TF.closePosDone(line.code, line.tag, amount(line.qty)))
     } catch (err) {
@@ -182,7 +185,7 @@ export function SimplePosition({ client, snap, onToast }: SimplePositionProps) {
     for (const line of lines) {
       try {
         if (line.tone === 'spot') await closeSpot(line.code, line.qty)
-        else await client.closePosition(line.code, line.tone)
+        else await client.closePosition(line.code, line.tone, undefined, priceOf(line.code))
       } catch (err) {
         failed += 1
         // 只报失败笔数会让玩家不知道卡在哪一条；带上首条服务端原因，便于自查。
