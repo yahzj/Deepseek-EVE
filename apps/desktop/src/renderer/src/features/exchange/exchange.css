@@ -4684,6 +4684,14 @@ button.ex-round-clock-badge:disabled {
   height: 100%;
   flex: 1 1 auto;
   min-height: 120px;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+.ex-simple-svg-wrap:active {
+  cursor: grabbing;
 }
 
 .ex-simple-axis-badge {
@@ -4784,20 +4792,76 @@ button.ex-round-clock-badge:disabled {
   stroke: currentColor;
 }
 
+/* 中国标准：阳线实心红、阴线实心绿，影线同色 */
 .ex-simple-candle.is-up .ex-simple-candle-body {
-  fill: rgb(var(--wui-tone-gain) / 0.15);
+  fill: rgb(var(--wui-tone-gain));
+  stroke: rgb(var(--wui-tone-gain));
   stroke-width: 1;
 }
 
 .ex-simple-candle.is-down .ex-simple-candle-body {
-  fill: currentColor;
+  fill: rgb(var(--wui-tone-loss));
+  stroke: rgb(var(--wui-tone-loss));
   stroke-width: 1;
+}
+
+/* 当前这一小时还在走：最后一根呼吸 + 实时价格 */
+.ex-simple-candle.is-live .ex-simple-candle-body {
+  animation: ex-live-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes ex-live-pulse {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.ex-simple-live-price {
+  fill: rgb(var(--wui-text-bright));
+  font-family: var(--wui-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.ex-simple-live-line line {
+  stroke: rgb(var(--wui-hud-primary) / 0.5);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+}
+
+/* 实时价格标签用 HTML 覆盖层，避免被 SVG 横向拉伸变形 */
+.ex-simple-live-label {
+  position: absolute;
+  right: 10px;
+  z-index: 2;
+  transform: translateY(-50%);
+  padding: 1px 5px;
+  border-radius: 2px;
+  background: rgb(var(--wui-bg-deep) / 0.85);
+  color: rgb(var(--wui-text-bright));
+  font-family: var(--wui-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  pointer-events: none;
+  white-space: nowrap;
 }
 
 .ex-simple-chart-ohlc {
   font-family: var(--wui-mono);
   font-size: 10px;
   color: rgb(var(--wui-text-dim));
+  white-space: nowrap;
+}
+
+.ex-simple-history-range {
+  font-family: var(--wui-mono);
+  font-size: 9px;
   white-space: nowrap;
 }
 
@@ -8603,6 +8667,99 @@ html body .app-root .ex-page .ex-simple-finance {
   border-color: rgb(var(--wui-hud-primary) / 0.8);
   background: rgb(var(--wui-hud-primary) / 0.18);
   color: #fff;
+}
+
+/* 1920x1080 大屏：三栏限宽居中，避免中栏和 K 线被无限拉伸 */
+@media (min-width: 1700px) {
+  .ex-simple-grid {
+    grid-template-columns: 360px minmax(0, 1fr) 480px;
+  }
+
+  .ex-simple-chart-section {
+    max-height: 340px;
+  }
+}
+
+/* 盘口押注比例 */
+.ex-simple-chart-side {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ex-simple-depth {
+  font-family: var(--wui-mono);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.ex-simple-depth.is-bid {
+  color: #e06c65;
+}
+
+.ex-simple-depth.is-ask {
+  color: #4ec982;
+}
+
+/* 滚轮缩放：分时线散开成逐根蜡烛 */
+/* 缩小到 K：分时线/面积淡出，蜡烛展开 */
+.ex-simple-svg-wrap.is-zooming.is-zoom-in .ex-simple-path-line,
+.ex-simple-svg-wrap.is-zooming.is-zoom-in .ex-simple-path-area {
+  animation: ex-line-fade-out 0.32s ease-out both;
+}
+
+.ex-simple-svg-wrap.is-zooming.is-zoom-in .ex-simple-candle {
+  animation: ex-candle-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* 放大回分时：蜡烛先收拢，分时线/面积再淡入 */
+.ex-simple-svg-wrap.is-zooming.is-zoom-out .ex-simple-candle {
+  animation: ex-candle-collapse 0.26s ease-in both;
+}
+
+.ex-simple-svg-wrap.is-zooming.is-zoom-out .ex-simple-path-line,
+.ex-simple-svg-wrap.is-zooming.is-zoom-out .ex-simple-path-area {
+  animation: ex-line-fade-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes ex-candle-collapse {
+  from {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+  to {
+    opacity: 0;
+    transform: scaleY(0);
+  }
+}
+
+@keyframes ex-line-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes ex-line-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ex-candle-rise {
+  from {
+    opacity: 0;
+    transform: scaleY(0);
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1);
+  }
 }
 
 /* 旧版布局：股市是三栏宽界面，右侧事件日志在股市页让位；切回其他页面自动恢复 */

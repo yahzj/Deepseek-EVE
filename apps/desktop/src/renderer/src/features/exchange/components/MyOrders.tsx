@@ -184,8 +184,9 @@ export function MyOrders({ client, onToast, variant }: MyOrdersProps) {
     }
   }
 
-  /** 本回合可撤的单：只有 queued；锁定窗口中一笔都不能撤 */
-  const cancellable = locked ? [] : orders.filter((order) => order.status === 'queued')
+  /** 本回合排队中的单：只有 queued；锁定窗口内按钮置灰但保留入口，避免玩家找不到撤单 */
+  const queuedOrders = orders.filter((order) => order.status === 'queued')
+  const cancellable = locked ? [] : queuedOrders
 
   const handleCancelAll = (): void => {
     if (bulkBusy || cancellable.length === 0) return
@@ -250,11 +251,11 @@ export function MyOrders({ client, onToast, variant }: MyOrdersProps) {
             </button>
           ))}
         </div>
-        {cancellable.length > 0 ? (
+        {queuedOrders.length > 0 ? (
           <button
             type="button"
             className={`ex-myorders-bulk${confirmingBulk ? ' is-confirm' : ''}`}
-            disabled={bulkBusy}
+            disabled={bulkBusy || locked}
             onClick={handleCancelAll}
             title={locked ? T.myOrdersLocked : T.myOrdersCancelAll}
           >
@@ -262,7 +263,7 @@ export function MyOrders({ client, onToast, variant }: MyOrdersProps) {
               ? T.myOrdersCancelling
               : confirmingBulk
                 ? T.myOrdersConfirmCancelAll
-                : `${T.myOrdersCancelAll} (${cancellable.length})`}
+                : `${T.myOrdersCancelAll} (${queuedOrders.length})`}
           </button>
         ) : null}
       </div>
@@ -289,7 +290,8 @@ export function MyOrders({ client, onToast, variant }: MyOrdersProps) {
             </div>
             {visible.map((order) => {
               const filled = order.filledQty ?? (order.status === 'filled' ? order.qty : 0)
-              const canCancel = order.status === 'queued' && !locked
+              const isQueued = order.status === 'queued'
+              const canCancel = isQueued && !locked
               return (
                 <div className={`ex-myorders-row is-${order.status}`} key={order.id}>
                   <span className="ex-dim">
@@ -307,11 +309,12 @@ export function MyOrders({ client, onToast, variant }: MyOrdersProps) {
                   <span className={`ex-myorders-status is-${order.status}`}>{statusLabel(order)}</span>
                   <span className="ex-badge">{sourceLabel(order.source)}</span>
                   <span>
-                    {canCancel ? (
+                    {isQueued ? (
                       <button
                         type="button"
                         className="ex-myorders-cancel"
-                        disabled={busyId === order.id || bulkBusy}
+                        disabled={!canCancel || busyId === order.id || bulkBusy}
+                        title={!canCancel ? T.myOrdersLocked : T.myOrdersCancel}
                         onClick={() => void cancelOne(order)}
                       >
                         {busyId === order.id ? T.myOrdersCancelling : T.myOrdersCancel}
@@ -324,14 +327,20 @@ export function MyOrders({ client, onToast, variant }: MyOrdersProps) {
           </>
         ) : (
           visible.map((order) => {
-            const canCancel = order.status === 'queued' && !locked
+            const isQueued = order.status === 'queued'
+            const canCancel = isQueued && !locked
+            // 窄列必须同时给出「成交 / 委托」两个数：只显示下单量会让玩家把委托量当成成交量。
+            const filled = order.filledQty ?? (order.status === 'filled' ? order.qty : 0)
             return (
               <div className={`ex-myorders-card is-${order.status}`} key={order.id}>
                 <div className="ex-myorders-card-top">
                   <span className={`ex-myorders-side is-${sideTone(order)}`}>{sideLabel(order)}</span>
                   <b className="ex-myorders-code">{order.code}</b>
-                  <span className="ex-num">
-                    {amount(order.qty)} {T.sharesSuffix}
+                  <span
+                    className="ex-num"
+                    title={`${T.recordsFilled} ${amount(filled)} / ${T.recordsQty} ${amount(order.qty)}`}
+                  >
+                    {amount(filled)}/{amount(order.qty)} {T.sharesSuffix}
                   </span>
                   <span className="ex-num ex-dim">
                     {order.price !== null ? price(order.price) : T.orderTypeMarket}
@@ -346,11 +355,12 @@ export function MyOrders({ client, onToast, variant }: MyOrdersProps) {
                     {shortTime(order.createdAt)}
                     {order.status === 'queued' ? ` · ${T.myOrdersQueued}` : ''}
                   </span>
-                  {canCancel ? (
+                  {isQueued ? (
                     <button
                       type="button"
                       className="ex-myorders-cancel"
-                      disabled={busyId === order.id || bulkBusy}
+                      disabled={!canCancel || busyId === order.id || bulkBusy}
+                      title={!canCancel ? T.myOrdersLocked : T.myOrdersCancel}
                       onClick={() => void cancelOne(order)}
                     >
                       {busyId === order.id ? T.myOrdersCancelling : T.myOrdersCancel}

@@ -92,7 +92,9 @@ test('SimpleTrade 契约：主按钮声明成功模式，动作音只在 placeOr
     const placeAt = block.indexOf('await client.placeOrder')
     const cueAt = block.indexOf("notifyUiAction('exchange-bet')")
     const doneAt = block.indexOf(`await ${progress}.finish()`)
-    const catchAt = block.indexOf('} catch')
+    // 全仓下注带内层「冻结不足减股重试」循环，它也有 catch；契约要检查的是
+    // 成功路径之后的**外层** catch（最后一个），否则会把成功分支误判成失败分支。
+    const catchAt = block.lastIndexOf('} catch')
     assert.ok(placeAt >= 0, `${label}：找不到 placeOrder 调用`)
     assert.ok(cueAt > placeAt, `${label}：动作音必须在 placeOrder 成功回执之后`)
     assert.ok(doneAt > cueAt, `${label}：动作音不能被进度满格动画挡住`)

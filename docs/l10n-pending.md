@@ -832,3 +832,8 @@
 | `ui.exchangeTexts.491` | 新手引导：看持仓委托 | 待本地化 |
 | `ui.exchangeTexts.492` | 新手引导：风险提醒 | 待本地化 |
 | `ui.exchangeTexts.497` | 新手引导：规则速记（回合/笔数/额度/手续费） | 待本地化 |
+| `ui.exchangeTexts.498` | 悬停提示：每日成交额度 | 待本地化 |
+| `ui.exchangeTexts.499` | 悬停提示：手续费 | 待本地化 |
+| `ui.exchangeTexts.500` | 悬停提示：回合与刷新节奏 | 待本地化 |
+| `ui.exchangeTexts.501` | 悬停提示：每回合委托笔数 | 待本地化 |
+| `ui.exchangeTexts.502` | 悬停提示：当日涨跌停 | 待本地化 |

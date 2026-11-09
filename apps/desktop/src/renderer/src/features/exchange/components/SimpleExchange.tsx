@@ -142,7 +142,7 @@ export function SimpleExchange({
         <header className="ex-simple-header">
           <div className="ex-simple-head-identity">
             <div className="ex-simple-stock-title">
-              <span className="ex-simple-stock-name">{stockName(quote.code, quote.nameKey)}</span>
+              <span className="ex-simple-stock-name" title={T.tipDayLimit}>{stockName(quote.code, quote.nameKey)}</span>
               <span className="ex-simple-stock-code">{quote.code}</span>
               <span className="ex-simple-stock-sector">{quote.sector}</span>
             </div>
@@ -200,6 +200,7 @@ export function SimpleExchange({
             type="button"
             role="tab"
             aria-selected={sideTab === 'orders'}
+            title={T.tipOrderQuota}
             className={`ex-simple-side-tab${sideTab === 'orders' ? ' is-on' : ''}`}
             onClick={() => setSideTab('orders')}
           >

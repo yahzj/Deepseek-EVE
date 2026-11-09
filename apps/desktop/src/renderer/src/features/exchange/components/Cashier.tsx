@@ -28,6 +28,8 @@ const DEPOSIT_PRESETS: ReadonlyArray<{ value: number; label: string }> = [
   { value: 1_000_000, label: T.cashierPreset1m },
   { value: 5_000_000, label: T.cashierPreset5m },
   { value: 10_000_000, label: T.cashierPreset10m },
+  { value: 100_000_000, label: T.cashierPreset100m },
+  { value: 1_000_000_000, label: T.cashierPreset1b },
 ]
 
 export function Cashier({

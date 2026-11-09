@@ -178,17 +178,21 @@ export function SimplePosition({ client, snap, onToast }: SimplePositionProps) {
     setClosingTarget('all')
     closeProgress.start()
     let failed = 0
+    let firstError = ''
     for (const line of lines) {
       try {
         if (line.tone === 'spot') await closeSpot(line.code, line.qty)
         else await client.closePosition(line.code, line.tone)
-      } catch {
+      } catch (err) {
         failed += 1
+        // 只报失败笔数会让玩家不知道卡在哪一条；带上首条服务端原因，便于自查。
+        if (firstError === '') firstError = err instanceof Error ? err.message : String(err)
       }
     }
     await closeProgress.finish(failed === 0)
     setClosingTarget(null)
     if (failed === 0) onToast(TF.simpleBookCloseAllDone(lines.length))
+    else if (firstError !== '') onToast(`${TF.simpleBookCloseAllFailed(failed)}：${firstError}`, true)
     else onToast(TF.simpleBookCloseAllFailed(failed), true)
   }
 

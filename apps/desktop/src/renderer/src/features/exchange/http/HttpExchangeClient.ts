@@ -70,6 +70,9 @@ const NEWS_CACHE_LIMIT = 30
 
 const EMPTY_INDEX: IndexQuote = { value: 1000, changePct: 0, high: 1000, low: 1000 }
 
+/** 指数连续点位状态：day = UTC 日，base = 今日基准点位，last = 最近一次点位。 */
+const INDEX_BASE_KEY = 'whale-idle:exchange-index-base-v1'
+
 const EMPTY_BOND_POSITION: BondPosition = {
   principal: 0,
   accrued: 0,
@@ -321,8 +324,17 @@ function normalizeAccount(raw: unknown): ExchangeAccount | null {
       ? (raw.pendingWithdrawals.filter(isRecord) as unknown as ExchangeAccount['pendingWithdrawals'])
       : [],
     holdings: Array.isArray(raw.holdings) ? raw.holdings.map(normalizeHolding).filter(isPresent) : [],
-    dailyTradeLimit: num(raw.dailyTradeLimit, 1_000_000_000),
+    dailyTradeLimit: num(raw.dailyTradeLimit, 5_000_000_000),
     dailyTradeUsed: num(raw.dailyTradeUsed),
+    // 2026-11-08 服务端把额度拆成买卖各 10 亿；旧服务端没有这两个字段，保持 undefined 让界面回退合计值。
+    dailyBuyUsed:
+      typeof raw.dailyBuyUsed === 'number' && Number.isFinite(raw.dailyBuyUsed)
+        ? num(raw.dailyBuyUsed)
+        : undefined,
+    dailySellUsed:
+      typeof raw.dailySellUsed === 'number' && Number.isFinite(raw.dailySellUsed)
+        ? num(raw.dailySellUsed)
+        : undefined,
   }
 }
 
@@ -444,34 +456,6 @@ function normalizeStrategy(raw: unknown): StrategySpec | null {
   return strategy
 }
 
-/**
- * 指数条：Go 不提供指数接口（`/stocks` 只有 4 只标的），这里按**等权价格比率**合成，
- * 基准 1000。只是读数的派生逻辑，不改 UI 结构；换成服务器指数接口时删掉本函数即可。
- */
-function deriveIndex(stocks: StockQuote[]): IndexQuote {
-  if (stocks.length === 0) return EMPTY_INDEX
-  const base = 1000
-  let ratioSum = 0
-  let highSum = 0
-  let lowSum = 0
-  let count = 0
-  for (const stock of stocks) {
-    const reference = stock.prevClose > 0 ? stock.prevClose : stock.price
-    if (reference <= 0) continue
-    ratioSum += stock.price / reference
-    highSum += (stock.high > 0 ? stock.high : stock.price) / reference
-    lowSum += (stock.low > 0 ? stock.low : stock.price) / reference
-    count += 1
-  }
-  if (count === 0) return EMPTY_INDEX
-  const ratio = ratioSum / count
-  return {
-    value: base * ratio,
-    changePct: (ratio - 1) * 100,
-    high: base * (highSum / count),
-    low: base * (lowSum / count),
-  }
-}
 
 function emptyAccount(): ExchangeAccount {
   return {
@@ -484,8 +468,10 @@ function emptyAccount(): ExchangeAccount {
     positions: [],
     pendingWithdrawals: [],
     holdings: [],
-    dailyTradeLimit: 1_000_000_000,
+    dailyTradeLimit: 5_000_000_000,
     dailyTradeUsed: 0,
+    dailyBuyUsed: 0,
+    dailySellUsed: 0,
   }
 }
 
@@ -542,6 +528,8 @@ export class HttpExchangeClient implements ExchangeClient {
   private tick = 0
   private ts = Date.now()
   private stocks: StockQuote[] = []
+  /** 连续指数状态：跨 UTC 日时用昨日最后点位作为今日基准，只让当日涨跌幅归零。 */
+  private indexState = this.loadIndexState()
   private books = new Map<string, OrderBookSnapshot>()
   private trades = new Map<string, TradeRecord[]>()
   /** 图表缓存：键 = `${code}:${period}`（六周期各一份；服务端不给指标，前端现算） */
@@ -883,7 +871,18 @@ export class HttpExchangeClient implements ExchangeClient {
     switch (payload.type) {
       case 'round': {
         const round = normalizeRound(data)
-        if (round !== null) this.round = round
+        if (round !== null) {
+          // 公共回合帧（WS）不含 usedOrders：同一回合内必须保留已有配额，
+          // 否则每回合末的广播会把「我的委托 3/10」打回 0/10；跨回合才归零。
+          if (
+            round.usedOrders === undefined &&
+            this.round !== null &&
+            this.round.roundNo === round.roundNo
+          ) {
+            round.usedOrders = this.round.usedOrders
+          }
+          this.round = round
+        }
         break
       }
       case 'stocks': {
@@ -1336,6 +1335,8 @@ export class HttpExchangeClient implements ExchangeClient {
       // 账户刷新失败也保留服务器已受理的订单，不把成功提交丢成未知状态。
       this.emitTick()
     }
+    // 下单已计入本回合配额：立即拉一次回合读数，避免「我的委托 x/10」要等下一次轮询。
+    void this.getRound().catch(() => undefined)
     return order
   }
 
@@ -1348,12 +1349,18 @@ export class HttpExchangeClient implements ExchangeClient {
     for (const order of orders) this.upsertOrder(order)
     await this.refreshAccount()
     this.emitTick()
+    const maxOrders = Math.max(1, Math.round(num(raw.maxOrders, this.round?.maxOrders ?? DEFAULT_MAX_ORDERS)))
+    const usedOrders = Math.round(num(raw.usedOrders, Number.NaN))
+    // 批量响应自带本回合配额：直接更新，避免「我的委托 x/10」停在旧值。
+    if (this.round !== null && Number.isFinite(usedOrders)) {
+      this.round = { ...this.round, maxOrders, usedOrders }
+    }
     return {
       roundNo: num(raw.roundNo),
       status: text(raw.status) !== '' ? text(raw.status) : 'queued',
       accepted: Math.round(num(raw.accepted, orders.length)),
-      maxOrders: Math.max(1, Math.round(num(raw.maxOrders, this.round?.maxOrders ?? DEFAULT_MAX_ORDERS))),
-      usedOrders: Math.round(num(raw.usedOrders)),
+      maxOrders,
+      usedOrders: Number.isFinite(usedOrders) ? usedOrders : 0,
       orders,
     }
   }
@@ -1458,12 +1465,67 @@ export class HttpExchangeClient implements ExchangeClient {
 
   /* ═══════════════ 原型扩展（同步读缓存） ═══════════════ */
 
+  private loadIndexState(): { day: number; base: number; last: number } {
+    if (typeof window === 'undefined') return { day: -1, base: 1000, last: 1000 }
+    try {
+      const raw = window.localStorage.getItem(INDEX_BASE_KEY)
+      if (raw !== null) {
+        const parsed = JSON.parse(raw) as { day?: number; base?: number; last?: number }
+        if (Number.isFinite(parsed.day) && Number.isFinite(parsed.base) && Number.isFinite(parsed.last)) {
+          return { day: parsed.day as number, base: parsed.base as number, last: parsed.last as number }
+        }
+      }
+    } catch {
+      /* 缓存损坏按 1000 起算 */
+    }
+    return { day: -1, base: 1000, last: 1000 }
+  }
+
+  /** 连续大盘：点位 = 今日基准 × 当日平均涨跌比例；跨日时基准取昨日最后点位。 */
+  private deriveIndexContinuous(stocks: StockQuote[]): IndexQuote {
+    if (stocks.length === 0) return EMPTY_INDEX
+    const day = Math.floor(Date.now() / 86_400_000)
+    let ratioSum = 0
+    let highSum = 0
+    let lowSum = 0
+    let count = 0
+    for (const stock of stocks) {
+      const reference = stock.prevClose > 0 ? stock.prevClose : stock.price
+      if (reference <= 0) continue
+      ratioSum += stock.price / reference
+      highSum += (stock.high > 0 ? stock.high : stock.price) / reference
+      lowSum += (stock.low > 0 ? stock.low : stock.price) / reference
+      count += 1
+    }
+    if (count === 0) return EMPTY_INDEX
+    if (this.indexState.day !== day) {
+      const base = this.indexState.last > 0 ? this.indexState.last : 1000
+      this.indexState = { day, base, last: base }
+    }
+    const ratio = ratioSum / count
+    const value = this.indexState.base * ratio
+    this.indexState.last = value
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.setItem(INDEX_BASE_KEY, JSON.stringify(this.indexState))
+      } catch {
+        /* ignore */
+      }
+    }
+    return {
+      value,
+      changePct: (ratio - 1) * 100,
+      high: this.indexState.base * (highSum / count),
+      low: this.indexState.base * (lowSum / count),
+    }
+  }
+
   getSnapshot(code: string): ExchangeSnapshot {
     const quote = this.stocks.find((stock) => stock.code === code) ?? emptyQuote(code)
     return {
       ts: this.ts,
       tick: this.tick,
-      index: deriveIndex(this.stocks),
+      index: this.deriveIndexContinuous(this.stocks),
       stocks: this.stocks,
       quote,
       book: this.books.get(code) ?? { code, bids: [], asks: [], ts: this.ts },
