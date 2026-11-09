@@ -1,13 +1,15 @@
 /**
  * 简单投资 · 新手引导。
- * 首次进入自动出现 11 步：遮罩挖孔高亮 + 气泡，全程大白话；可跳过，看完写 localStorage 不再弹。
+ * 首次进入自动出现 16 步：遮罩挖孔高亮 + 气泡，全程大白话；可跳过，看完写 localStorage 不再弹。
  * v3（2026-11-09）：新增「企业动态」与「你的玩法在改变股价」两步，讲清市场成交/修船/运输/交易税
  * 如何记到对应公司账上并驱动股价（公司账本，docs/design/stock-gameplay-integration-20261109.md）。
+ * v4（2026-11-09）：补齐界面缺口（入金/出金、快讯、平仓、理财与基金），并如实告诉玩家这是
+ * 全服真实市场、价格只随真实成交变动；规则文案同步纯流量价口径（回合内不再每 10 秒跳价）。
  */
 import { useEffect, useMemo, useState } from 'react'
 import { T } from '../texts'
 
-const TUTORIAL_KEY = 'whale-idle:exch-tutorial-v3'
+const TUTORIAL_KEY = 'whale-idle:exch-tutorial-v4'
 
 interface Step {
   selector: string | null
@@ -17,13 +19,18 @@ interface Step {
 const STEPS: Step[] = [
   { selector: '.ex-simple-col-left', text: T.tutStep1 },
   { selector: '.ex-simple-chart-card', text: T.tutStep2 },
+  { selector: '.ex-simple-chart-card', text: T.tutReal },
+  { selector: '.ex-topbar-actions', text: T.tutDeposit },
   { selector: '.ex-simple-trade-tabs', text: T.tutStep3 },
   { selector: '.ex-simple-chips', text: T.tutStep4 },
   { selector: '.ex-simple-big-action-btn', text: T.tutStep5 },
   { selector: '.ex-topbar-status', text: T.tutRules },
   { selector: '.ex-turnover-meter', text: T.tutMoneyRules },
+  { selector: '.ex-ticker', text: T.tutNews },
   { selector: '.ex-simple-side-switch', text: T.tutStep6 },
-  { selector: '.ex-simple-side-switch', text: T.tutCompany },
+  { selector: '.ex-simple-side-switch .ex-simple-side-tab:nth-child(1)', text: T.tutSell },
+  { selector: '.ex-simple-side-switch .ex-simple-side-tab:nth-child(3)', text: T.tutFinance },
+  { selector: '.ex-simple-side-switch .ex-simple-side-tab:nth-child(4)', text: T.tutCompany },
   { selector: null, text: T.tutImpact },
   { selector: null, text: T.tutStep7 },
 ]
