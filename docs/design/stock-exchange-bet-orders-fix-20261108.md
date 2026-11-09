@@ -82,3 +82,25 @@
    - 专业模式限价单保持回合末排队，不保证成交。
 3. **新手引导同步**：随时下注、下单锁价、回合末必定成交、额度与手续费、分时图 ↔ 小时 K 滚轮切换。
 4. **验证**：服务端 `go build ./...`、`go test ./... -count=1` 全绿（含保证成交、差价补贴、人格上限用例）；前端 `typecheck` + `verify` 通过；生产已部署并完成 `guaranteed/lock_price` 列迁移。
+
+## 八、追加修复：账户读数常驻刷新（2026-11-08 晚）
+
+**船长报障**：「股市系统中，我账号 id1 的下注显示有问题，明明一个下注都没有，说我有 3 个下注」；随后「刷新了一下好了」。
+
+**只读取证**（生产库 `mode=ro`，未改任何数据）：账号 1 现货持仓 0 行、`exchange_positions` 全为 `qty=0` 残留行、活跃委托 0 笔、当前回合计入 0 笔；17:40Z 前确有 SMHI/NVSC/CLON 三条现货持仓（回合 `5980519` 三笔锁价卖单成交后清零）。⇒ 服务端数据正确，是**客户端快照过期**。
+
+**根因**：账户/委托只在 `ExchangePage` 挂载期间由 10 秒定时器（`refreshMarketData`）刷新；页签卸载即 `client.stop()`，此后无人再拉 `/account`。活动栏卡片 `SidebarExchangeCard` 复用同一共享客户端、但自己从不刷新，于是徽标与「我的下注 / 我的委托」计数冻结在离页那一刻，只有刷新页面（重新 bootstrap）才归零。次要问题：`getAccount().catch(() => null)` 静默吞掉失败，失败也不会被看见。
+
+**改动**（前端，交易所域内）：
+
+| 文件 | 改动 |
+|---|---|
+| `features/exchange/http/HttpExchangeClient.ts` | `start()/stop()` 改为**引用计数**（页签与卡片各持一份，最后一个释放才断流）；新增 10 秒常驻私有数据刷新（`document.hidden` 时跳过）、`start(false)` 轻量模式（只拉行情/账户/回合，不预载 K 线）、`dispose()` 硬释放；私有接口连续失败 3 次上报一次 `error`，同段连失只报一次 |
+| `features/exchange/components/SidebarExchangeCard.tsx` | 自持生命周期：挂载 `start(false)`、卸载 `stop()`，未开过页签也有持仓与报价 |
+| `features/exchange/factory.ts` | 共享实例被替换（登录/退出/换服务器）前先 `dispose()`，避免旧实例带旧 token 后台轮询 |
+| `features/exchange/client.ts` | 接口注释补 `start(withBootstrap?)` 与可选 `dispose()` |
+| `tools/exchange-account-refresh.test.ts` | 新增 4 条确定性用例：常驻刷新节奏、引用计数不断流、轻量模式不预载 K 线、连续失败只上报一次 |
+
+**验证**：`npm run verify`（T1：typecheck + content + l10n + ui:rot）通过；新用例 4/4；`exchange-guest-mode` 2/2、`exchange-feedback` 5/5 通过。`tools/exchange-simple-ux.test.ts` 的「全仓费后取整」用例在**改动前同样失败**（既有问题，与本批无关，未处理）。
+
+**未做**：§六 那条「卖出挂单后整行消失（`availableQty=0` 被过滤）」仍待船长裁定，本批未动玩家可见口径。

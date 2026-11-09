@@ -97,6 +97,9 @@ export function createExchangeClient(opts: ExchangeClientOptions = {}): Exchange
   const playerId = readCloudPreferences().session?.playerId ?? 'anon'
   const key = `${source.serverUrl}|${source.auth}|${playerId}|${transport.constructor.name}`
   if (sharedHttp === null || sharedHttp.key !== key) {
+    // 旧实例必须硬释放：它可能还挂着引用计数（卡片或页签未卸载），
+    // 不释放会带着上一个身份的 token 继续后台轮询。
+    sharedHttp?.client.dispose()
     sharedHttp = { key, client: new HttpExchangeClient(transport, '/api/exchange', guest) }
   }
   return { client: sharedHttp.client, source, error: null }

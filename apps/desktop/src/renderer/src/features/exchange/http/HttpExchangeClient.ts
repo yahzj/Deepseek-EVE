@@ -67,6 +67,13 @@ const DEFAULT_MAX_ORDERS = 10
 /** 首屏快讯条数（`GET /news?limit=`）与缓存上限（WS 实时帧与首屏历史共用一份缓存） */
 const NEWS_FETCH_LIMIT = 20
 const NEWS_CACHE_LIMIT = 30
+/**
+ * 账户/委托的常驻刷新间隔（毫秒）：页签与活动栏卡片共用同一客户端，
+ * 但只有页签在拉 `/account`，页面一关卡片上的持仓计数就冻住。
+ */
+const PRIVATE_REFRESH_MS = 10_000
+/** 私有接口连续失败几次才上报：偶发一次断连不该弹提示，长期静默又会让界面停在旧数据。 */
+const PRIVATE_FAIL_ANNOUNCE = 3
 
 const EMPTY_INDEX: IndexQuote = { value: 1000, changePct: 0, high: 1000, low: 1000 }
 
@@ -524,6 +531,16 @@ export class HttpExchangeClient implements ExchangeClient {
   private readonly tickListeners = new Set<() => void>()
   private readonly handlers = new Map<ExchangeEventType, Set<(payload: unknown) => void>>()
   private streamUnsub: Unsubscribe | null = null
+  /**
+   * 生命周期引用计数：交易所页签与活动栏卡片各持一份（`start()`/`stop()` 成对调用）。
+   * 只计数，最后一个释放才真正断流——否则页签卸载会把卡片的连接一起关掉。
+   */
+  private lifecycleHolds = 0
+  /** 账户/委托常驻刷新定时器（仅登录态；游客没有私有接口） */
+  private privateTimer: ReturnType<typeof setInterval> | null = null
+  private privateRefreshing = false
+  /** 私有接口连续失败次数（成功即归零），用于「连失 3 次上报一次」 */
+  private privateFails = 0
 
   private tick = 0
   private ts = Date.now()
@@ -605,28 +622,115 @@ export class HttpExchangeClient implements ExchangeClient {
 
   /* ═══════════════ 生命周期 ═══════════════ */
 
-  start(): void {
-    if (!this.chartsHydrated) {
-      this.chartsHydrated = true
-      // 先灌 7 天内的本地 K 线缓存，图表秒开；随后 bootstrap 用网络数据覆盖。
-      this.hydrateCharts()
+  /**
+   * 挂载通知。`withBootstrap = false` 是活动栏卡片的轻量模式：
+   * 只拉行情价与账户读数，不预载 8 只标的的全套 K 线（那是开页签才需要的）。
+   */
+  start(withBootstrap = true): void {
+    this.lifecycleHolds += 1
+    if (this.lifecycleHolds === 1) {
+      if (!this.chartsHydrated) {
+        this.chartsHydrated = true
+        // 先灌 7 天内的本地 K 线缓存，图表秒开；随后 bootstrap 用网络数据覆盖。
+        this.hydrateCharts()
+      }
+      try {
+        // 不传 topics/codes：Go 侧默认订阅 round/stocks/book/trades/account/orders/event 全量；
+        // token 由 Transport 统一补进 query（渲染层不碰会话存储）。
+        this.streamUnsub = this.transport.subscribe(this.basePath + '/stream', (payload) =>
+          this.onFrame(payload),
+        )
+      } catch (err) {
+        this.emit('error', err)
+      }
+      this.startPrivateRefresh()
     }
-    if (this.streamUnsub !== null) return
-    try {
-      // 不传 topics/codes：Go 侧默认订阅 round/stocks/book/trades/account/orders/event 全量；
-      // token 由 Transport 统一补进 query（渲染层不碰会话存储）。
-      this.streamUnsub = this.transport.subscribe(this.basePath + '/stream', (payload) =>
-        this.onFrame(payload),
-      )
-    } catch (err) {
-      this.emit('error', err)
-    }
-    void this.bootstrap()
+    if (withBootstrap) void this.bootstrap()
+    else if (this.lifecycleHolds === 1) void this.refreshLight()
   }
 
   stop(): void {
+    if (this.lifecycleHolds === 0) return
+    this.lifecycleHolds -= 1
+    if (this.lifecycleHolds > 0) return
+    this.stopPrivateRefresh()
     this.streamUnsub?.()
     this.streamUnsub = null
+  }
+
+  /**
+   * 硬释放：实例被替换（登录/退出/换服务器）时用，清定时器与连接，
+   * 忽略引用计数（旧实例不应带着旧 token 继续后台轮询）。
+   */
+  dispose(): void {
+    this.lifecycleHolds = 0
+    this.stopPrivateRefresh()
+    this.streamUnsub?.()
+    this.streamUnsub = null
+  }
+
+  /**
+   * 账户/委托的常驻刷新：活动栏卡片与交易所页签共用同一客户端，
+   * 页面卸载后若无人再拉 `/account`，卡片与「我的下注 / 我的委托」计数会永远停在离页那一刻
+   * （2026-11-08 船长报障：清仓后仍显示 3 笔下注，刷新页面才归零）。
+   */
+  private startPrivateRefresh(): void {
+    if (this.guest || this.privateTimer !== null) return
+    this.privateTimer = setInterval(() => void this.refreshPrivateData(), PRIVATE_REFRESH_MS)
+  }
+
+  private stopPrivateRefresh(): void {
+    if (this.privateTimer === null) return
+    clearInterval(this.privateTimer)
+    this.privateTimer = null
+  }
+
+  private async refreshPrivateData(): Promise<void> {
+    if (this.privateRefreshing) return
+    // 窗口最小化/切到后台时不空转；回到前台的第一拍由下一次定时器补上。
+    if (typeof document !== 'undefined' && document.hidden === true) return
+    this.privateRefreshing = true
+    try {
+      await Promise.all([this.getAccount(), this.getOrders()])
+      this.notePrivateSync(false)
+      this.emitTick()
+    } catch (err) {
+      this.notePrivateSync(true, err)
+    } finally {
+      this.privateRefreshing = false
+    }
+  }
+
+  /**
+   * 轻量首屏（活动栏卡片用）：只要行情价、账户与回合读数，
+   * 不预载 8 只标的的全套 K 线——那是开交易所页签才付的成本。
+   */
+  private async refreshLight(): Promise<void> {
+    await Promise.all([
+      this.getStocks().catch(() => undefined),
+      this.guest ? Promise.resolve() : this.getRound().catch(() => null),
+      this.guest ? Promise.resolve() : this.refreshPrivateData(),
+    ])
+    this.emitTick()
+  }
+
+  /**
+   * 私有数据同步结果记账：成功归零；连续失败到阈值才 `emit('error')` 一次，
+   * 交给页面弹提示并自愈重试，避免「拉不到就静默保留旧持仓」这种看不出来的错。
+   */
+  private notePrivateSync(failed: boolean, err?: unknown): void {
+    if (!failed) {
+      this.privateFails = 0
+      return
+    }
+    // 同一段连续失败只报一次；直到拉成功（归零）后才会再报下一轮。
+    if (this.privateFails > PRIVATE_FAIL_ANNOUNCE) return
+    this.privateFails += 1
+    if (this.privateFails !== PRIVATE_FAIL_ANNOUNCE) return
+    this.emit(
+      'error',
+      err instanceof Error ? err : new ExchangeError('account_sync_pending', tr('ui.exchange.007')),
+    )
   }
 
   /**
@@ -654,10 +758,16 @@ export class HttpExchangeClient implements ExchangeClient {
       // 账户/委托是私有接口，游客不拉（否则每 10 秒一次 401）。
       if (!this.guest) {
         const [account, orders] = await Promise.all([
-          this.getAccount().catch(() => null),
+          this.getAccount().catch((err: unknown) => {
+            this.notePrivateSync(true, err)
+            return null
+          }),
           this.getOrders().catch((): ExchangeOrder[] => []),
         ])
-        if (account !== null) this.account = account
+        if (account !== null) {
+          this.account = account
+          this.notePrivateSync(false)
+        }
         this.orders = orders
       }
       await stocksTask

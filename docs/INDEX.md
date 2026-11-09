@@ -13,7 +13,7 @@
 
 ## 统计
 
-- 非归档文档 **387** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4747** KB · **53470** 行
+- 非归档文档 **387** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4750** KB · **53492** 行
 - 状态分布：**未标注** 190 · **已确认/已实现** 129 · **进行中** 47 · **待裁定** 20 · **历史留档** 1
 - 孤儿文档（0 引用）**169** 份 · 状态未标注 **190** 份
 - 一、常用文档（按任务查阅）：**11** 份
@@ -57,7 +57,7 @@
 |---|---|---|---|---|---|
 | `docs/design/release-0.1.5-20261109.md` | 0.1.5 推送与部署 | 未标注（网页版已部署并核验） | 2026-11-09 | 4 KB / 37 行 | 1 |
 | `docs/design/signal-auto-ordinary-quota-20261109.md` | 信号空间自动探索普通资源额度修复 | 未标注（实现、专项、整库回归及网页版发布核验） | 2026-11-09 | 6 KB / 60 行 | 0 |
-| `docs/design/stock-exchange-bet-orders-fix-20261108.md` | 交易所下注与委托修复（2026-11-08） | 未标注 | 2026-11-08 | 6 KB / 85 行 | 0 |
+| `docs/design/stock-exchange-bet-orders-fix-20261108.md` | 交易所下注与委托修复（2026-11-08） | 未标注 | 2026-11-08 | 9 KB / 107 行 | 0 |
 | `docs/design/black-market-coating-20261107.md` | 黑市名称裁切与护盾镀膜零盾 | 已确认/已实现（二号已实现自测） | 2026-11-07 | 2 KB / 21 行 | 0 |
 | `docs/design/courier-fleet-presets-20261107.md` | 快递免遇袭与编队预设 | 已确认/已实现（二号已实现自测） | 2026-11-07 | 3 KB / 29 行 | 0 |
 | `docs/design/exchange-savings-rate-20261107.md` | 交易所理财收益率调整（2026-11-07） | 未标注（方案已由船长确认） | 2026-11-07 | 3 KB / 82 行 | 1 |
@@ -451,7 +451,7 @@
 > 仅表示没有其他收录文档提到本文件名，不能据此删除、归档或批准阅读历史。
 
 - `docs/design/signal-auto-ordinary-quota-20261109.md`（2026-11-09 · 6 KB）—— 信号空间自动探索普通资源额度修复
-- `docs/design/stock-exchange-bet-orders-fix-20261108.md`（2026-11-08 · 6 KB）—— 交易所下注与委托修复（2026-11-08）
+- `docs/design/stock-exchange-bet-orders-fix-20261108.md`（2026-11-08 · 9 KB）—— 交易所下注与委托修复（2026-11-08）
 - `docs/design/black-market-coating-20261107.md`（2026-11-07 · 2 KB）—— 黑市名称裁切与护盾镀膜零盾
 - `docs/design/courier-fleet-presets-20261107.md`（2026-11-07 · 3 KB）—— 快递免遇袭与编队预设
 - `docs/design/faction-blueprint-hints-20261107.md`（2026-11-07 · 1 KB）—— 势力插件制造卡获取提示

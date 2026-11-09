@@ -497,9 +497,13 @@ export interface ExchangeClient {
    * 页面挂载通知：确保引擎在跑，并按真实流逝时间补算离页期间漏掉的拍。
    * 2026-11-03 挂机语义：Mock 引擎由模块单例持有（构造即启动），**离开页面不暂停**；
    * `stop()` 只表示页面卸载（Mock 里顺手落盘），**不停止行情**。
+   * 2026-11-08：HTTP 实现改为**引用计数**（页签与活动栏卡片各持一份），
+   * 最后一个释放才断流；`withBootstrap = false` 给卡片用的轻量模式（不预载全套 K 线）。
    */
-  start(): void
+  start(withBootstrap?: boolean): void
   stop(): void
+  /** 可选：硬释放（实例被替换时用：清定时器与连接，忽略引用计数）。 */
+  dispose?(): void
   /** 可选：重试首屏数据（HTTP 模式实现；Mock 不需要）。页面看门狗用它自愈空数据。 */
   retryBootstrap?(): void
   /** 可选：切换标的后补拉该标的 K 线/盘口（HTTP 模式实现；首屏只拉了首只标的）。 */
