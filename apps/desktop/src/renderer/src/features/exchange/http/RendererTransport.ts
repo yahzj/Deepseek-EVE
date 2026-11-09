@@ -237,7 +237,9 @@ export class RendererTransport implements Transport {
 
   async request<T>(req: TransportRequest): Promise<T> {
     // 先取令牌：游客（allowAnonymous）只放行只读，写请求仍需登录，绝不匿名产生副作用。
-    const token = this.allowAnonymous ? this.optionalToken() : this.requireToken()
+    // 公开只读接口即使已登录也按匿名发：响应与身份无关，带上 Authorization 只会多一次 CORS 预检。
+    const token =
+      req.anonymous === true ? '' : this.allowAnonymous ? this.optionalToken() : this.requireToken()
     if (token === '' && req.method !== 'GET') throw new ExchangeAuthError()
     /** 只有 GET 响应进缓存；下单/划转等写请求永远不缓存、也绝不回退。 */
     const cacheable = req.method === 'GET'
@@ -271,7 +273,9 @@ export class RendererTransport implements Transport {
             headers,
             body: req.body === undefined ? undefined : JSON.stringify(req.body),
             signal: controller.signal,
-            cache: 'no-store',
+            // GET 走浏览器 HTTP 缓存（服务端带 ETag + no-cache ⇒ 每次回源校验、没变只回 304）；
+            // 写请求永远不缓存。以前一律 no-store，K 线每次轮询都要重下 134KB。
+            cache: cacheable ? 'default' : 'no-store',
             credentials: 'omit',
             redirect: 'error',
           })
@@ -366,6 +370,11 @@ export class RendererTransport implements Transport {
       clearTimeout(this.resyncTimer)
       this.resyncTimer = null
     }
+  }
+
+  /** 读最近一次成功 GET 的本地缓存（限定时效，供首屏秒开）。 */
+  getCached<T>(path: string, maxAgeMs: number): T | undefined {
+    return this.cache.getFresh<T>(path, maxAgeMs)
   }
 
   /** 只读：当前是否在用本地缓存顶替实时数据（供「离线数据」徽标等读取）。 */
