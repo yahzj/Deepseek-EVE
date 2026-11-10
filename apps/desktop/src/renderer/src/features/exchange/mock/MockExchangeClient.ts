@@ -22,6 +22,9 @@ import type {
   BondPosition,
   BondProduct,
   ChartPeriod,
+  CompanyFlowEntry,
+  CompanyFlowsResult,
+  CompanyInfo,
   DividendRecord,
   ExchangeAccount,
   ExchangeClient,
@@ -190,14 +193,14 @@ interface StockDef {
  * 高波动成长/妖股更躁，大盘蓝筹更稳。
  */
 const STOCK_DEFS: StockDef[] = [
-  { code: 'SMHI', name: '星海重工', sector: '军工', anchor: 50_000, sigma: 0.0022, mu: 0.000004, theta: 0.00008, floatShares: 20_000_000, maxLeverage: 50, shortable: true, spreadBps: 30, levelQty: 5_000 },
-  { code: 'GBCI', name: '银河信托', sector: '银行', anchor: 25_000, sigma: 0.0010, mu: 0.000002, theta: 0.00010, floatShares: 32_000_000, maxLeverage: 30, shortable: true, spreadBps: 20, levelQty: 10_000 },
-  { code: 'UGMC', name: '联星能源', sector: '能源', anchor: 8_000, sigma: 0.0014, mu: 0.000003, theta: 0.00008, floatShares: 50_000_000, maxLeverage: 40, shortable: true, spreadBps: 30, levelQty: 30_000 },
-  { code: 'ABSI', name: '深空蓝图', sector: '科技', anchor: 3_000, sigma: 0.0018, mu: 0.000005, theta: 0.00007, floatShares: 60_000_000, maxLeverage: 50, shortable: true, spreadBps: 25, levelQty: 50_000 },
-  { code: 'NVSC', name: '量子算力', sector: '算力', anchor: 1_200, sigma: 0.0024, mu: 0.000006, theta: 0.00007, floatShares: 100_000_000, maxLeverage: 70, shortable: true, spreadBps: 35, levelQty: 80_000 },
-  { code: 'CLON', name: '克隆生科', sector: '医疗', anchor: 500, sigma: 0.0026, mu: 0.000005, theta: 0.00008, floatShares: 120_000_000, maxLeverage: 80, shortable: true, spreadBps: 40, levelQty: 120_000 },
-  { code: 'OJLS', name: '欧吉物流', sector: '物流', anchor: 200, sigma: 0.0012, mu: 0.000002, theta: 0.00009, floatShares: 200_000_000, maxLeverage: 60, shortable: false, spreadBps: 35, levelQty: 200_000 },
-  { code: 'SPRK', name: '微光纳米', sector: '材料', anchor: 60, sigma: 0.0028, mu: 0.000004, theta: 0.00008, floatShares: 400_000_000, maxLeverage: 90, shortable: true, spreadBps: 50, levelQty: 500_000 },
+  { code: 'XJZG', name: '星舰重工', sector: '军工', anchor: 50_000, sigma: 0.0022, mu: 0.000004, theta: 0.00008, floatShares: 20_000_000, maxLeverage: 50, shortable: true, spreadBps: 30, levelQty: 5_000 },
+  { code: 'XGYH', name: '星港银行', sector: '银行', anchor: 25_000, sigma: 0.0010, mu: 0.000002, theta: 0.00010, floatShares: 32_000_000, maxLeverage: 30, shortable: true, spreadBps: 20, levelQty: 10_000 },
+  { code: 'XJKY', name: '星际矿业', sector: '矿业', anchor: 8_000, sigma: 0.0014, mu: 0.000003, theta: 0.00008, floatShares: 50_000_000, maxLeverage: 40, shortable: true, spreadBps: 30, levelQty: 30_000 },
+  { code: 'LTGF', name: '蓝图工坊', sector: '科技', anchor: 3_000, sigma: 0.0018, mu: 0.000005, theta: 0.00007, floatShares: 60_000_000, maxLeverage: 50, shortable: true, spreadBps: 25, levelQty: 50_000 },
+  { code: 'ZHSL', name: '智核算力', sector: '算力', anchor: 1_200, sigma: 0.0024, mu: 0.000006, theta: 0.00007, floatShares: 100_000_000, maxLeverage: 70, shortable: true, spreadBps: 35, levelQty: 80_000 },
+  { code: 'XGWX', name: '星港维修', sector: '维修', anchor: 500, sigma: 0.0026, mu: 0.000005, theta: 0.00008, floatShares: 120_000_000, maxLeverage: 80, shortable: true, spreadBps: 40, levelQty: 120_000 },
+  { code: 'XMWL', name: '星门物流', sector: '物流', anchor: 200, sigma: 0.0012, mu: 0.000002, theta: 0.00009, floatShares: 200_000_000, maxLeverage: 60, shortable: false, spreadBps: 35, levelQty: 200_000 },
+  { code: 'NMCL', name: '纳米材料', sector: '材料', anchor: 60, sigma: 0.0028, mu: 0.000004, theta: 0.00008, floatShares: 400_000_000, maxLeverage: 90, shortable: true, spreadBps: 50, levelQty: 500_000 },
 ]
 
 const DEFAULT_CODE = STOCK_DEFS[0]!.code
@@ -321,55 +324,55 @@ const EVENT_TEMPLATES: EventTemplate[] = [
     title: '边境战事升级',
     body: '军工长单激增，部分干线货运航路绕行。',
     tone: 'warn',
-    effects: [{ code: 'SMHI', pct: 0.05 }, { code: 'OJLS', pct: -0.025 }],
+    effects: [{ code: 'XJZG', pct: 0.05 }, { code: 'XMWL', pct: -0.025 }],
   },
   {
     title: '星际信贷评级调整',
     body: '跨星系信贷评级调升，市场流动性持续宽松。',
     tone: 'good',
-    effects: [{ code: 'GBCI', pct: 0.04 }],
+    effects: [{ code: 'XGYH', pct: 0.04 }],
     flippable: true,
   },
   {
     title: '能源管网波动',
     body: '恒星聚变管网出力异常，能源现货供给收紧。',
     tone: 'bad',
-    effects: [{ code: 'UGMC', pct: -0.04 }],
+    effects: [{ code: 'XJKY', pct: -0.04 }],
     flippable: true,
   },
   {
     title: '折跃专利公开',
     body: '前沿折跃专利披露，装备重估提振科技板块。',
     tone: 'good',
-    effects: [{ code: 'ABSI', pct: 0.055 }],
+    effects: [{ code: 'LTGF', pct: 0.055 }],
     flippable: true,
   },
   {
-    title: '量子算力突破',
+    title: '智核算力突破',
     body: '新一代跃迁算法落地，算力采购订单爆发。',
     tone: 'good',
-    effects: [{ code: 'NVSC', pct: 0.06 }],
+    effects: [{ code: 'ZHSL', pct: 0.06 }],
     flippable: true,
   },
   {
     title: '基因编辑合规排查',
     body: '多星区启动专项排查，部分管线研发进度放缓。',
     tone: 'bad',
-    effects: [{ code: 'CLON', pct: -0.05 }],
+    effects: [{ code: 'XGWX', pct: -0.05 }],
     flippable: true,
   },
   {
     title: '航路安全预警',
     body: '航路安全等级调整，干线物流保费相应上浮。',
     tone: 'bad',
-    effects: [{ code: 'OJLS', pct: -0.035 }],
+    effects: [{ code: 'XMWL', pct: -0.035 }],
     flippable: true,
   },
   {
     title: '超导合成工艺革新',
     body: '分子组装工艺突破，超导材料量产全面提速。',
     tone: 'good',
-    effects: [{ code: 'SPRK', pct: 0.07 }],
+    effects: [{ code: 'NMCL', pct: 0.07 }],
     flippable: true,
   },
 ]
@@ -2006,6 +2009,22 @@ export class MockExchangeClient implements ExchangeClient {
 
   async getStocks(): Promise<StockQuote[]> {
     return [...this.stocks.values()].map((s) => this.quoteOf(s))
+  }
+
+  async getCompanies(): Promise<CompanyInfo[]> {
+    // 演示数据：偏移为 0、无周报（公司账本由联机服务端计算，Mock 只保证界面可渲染）。
+    return [...this.stocks.values()].map((st) => ({
+      company: st.def.code,
+      name: st.def.name,
+      sector: st.def.sector,
+      anchorShiftBp: 0,
+      anchorPrice: st.def.anchor,
+    }))
+  }
+
+  async submitCompanyFlows(flows: CompanyFlowEntry[]): Promise<CompanyFlowsResult> {
+    // Mock 不落库：公司账本只在联机服务端计算，演示模式直接丢弃。
+    return { accepted: 0, ignored: flows.length }
   }
 
   async getBook(code: string): Promise<OrderBookSnapshot> {

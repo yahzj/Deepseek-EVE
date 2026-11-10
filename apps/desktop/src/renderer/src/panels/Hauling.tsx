@@ -25,7 +25,9 @@ import {
   shipActuallyDocked,
 } from '@whale/core'
 import { Panel, ProgressBar } from '@whale/ui'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+// 公司账本：运输报酬计入星门物流的营收（docs/design/stock-gameplay-integration-20261109.md）。
+import { reportCompanyFlow } from '../features/exchange/companyReporter'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { isk } from '../pages/common'
@@ -74,6 +76,44 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
    */
   const [stopAsk, setStopAsk] = useState(false)
   const [loadAsk, setLoadAsk] = useState<RouteCard | null>(null)
+  /**
+   * 公司账本：运输报酬计入星门物流（物流）的营收。
+   * core 在每趟到站结算时会写一条 `core.industrial.004` 日志（p3 = 报酬），
+   * 这里按日志 id 游标增量扫描并上报；游标存 localStorage，离线段完成后回港打开本页补报。
+   */
+  useEffect(() => {
+    let cursor = 0
+    try {
+      cursor = Number(window.localStorage.getItem('exchange.haulLogCursor') ?? '0') || 0
+    } catch {
+      /* ignore */
+    }
+    const pump = (): void => {
+      let maxId = cursor
+      for (const entry of engine.state.logs) {
+        if (entry.id <= cursor) continue
+        if (entry.id > maxId) maxId = entry.id
+        if (entry.textId !== 'core.industrial.004') continue
+        const raw = entry.textParams?.p3
+        const reward = typeof raw === 'number' ? raw : Number(raw)
+        if (Number.isFinite(reward) && reward > 0) reportCompanyFlow('haul-service', 'buy', reward)
+      }
+      if (maxId !== cursor) {
+        cursor = maxId
+        try {
+          window.localStorage.setItem('exchange.haulLogCursor', String(cursor))
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+    pump()
+    const timer = window.setInterval(pump, 5000)
+    return () => {
+      pump()
+      window.clearInterval(timer)
+    }
+  }, [engine])
   const startBlock = stationActivityStartBlockReason(state, ctx, 'hauling')
   const dockedOk = shipActuallyDocked(state, ctx)
   const docked = dockedHaulEndpoint(state)

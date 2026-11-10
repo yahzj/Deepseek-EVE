@@ -61,6 +61,7 @@ function renderDetail(g: any, quote: TestQuote = { buy: 90, sell: 500, buyDepth:
       if (id === './readouts') return {
         fleetCountOf: () => 0, placeOrderToast: () => '', taxTipText: () => 'tax-scope',
       }
+      if (id === '../exchange/companyReporter') return { reportCompanyFlow: () => {} }
       if (id === './PriceChart') return { PriceChart: 'PriceChart' }
       throw new Error(`unexpected dependency: ${id}`)
     },

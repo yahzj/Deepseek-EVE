@@ -31,6 +31,14 @@ export function SidebarExchangeCard({ onGoPage }: SidebarExchangeCardProps) {
   }, [])
   const bundle = useMemo(() => createExchangeClient(), [authTick])
 
+  // 卡片常驻活动栏：自己持有一份生命周期（客户端按引用计数），
+  // 这样即使没开过交易所页签也能拿到行情与持仓；反之离开页签也不会把卡片的数据源一起断掉。
+  // 轻量模式：只拉行情/账户/回合，不预载全套 K 线（那是开页签才需要的）。
+  useEffect(() => {
+    bundle.client.start(false)
+    return () => bundle.client.stop()
+  }, [bundle.client])
+
   useEffect(() => {
     const unsub = bundle.client.onTick(() => bumpTick((t) => t + 1))
     return unsub

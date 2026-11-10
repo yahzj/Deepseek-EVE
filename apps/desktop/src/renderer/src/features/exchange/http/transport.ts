@@ -35,12 +35,19 @@ export interface TransportRequest {
   path: string
   body?: unknown
   signal?: AbortSignal
+  /**
+   * 公开只读请求：即使已登录也不带 Authorization。
+   * 跨源 GET 带上这个头会多一次 CORS 预检，首屏几十个请求会翻倍。
+   */
+  anonymous?: boolean
 }
 
 export interface Transport {
   request<T>(req: TransportRequest): Promise<T>
   /** 订阅服务端推送；返回退订函数。实现方负责重连与降频 */
   subscribe(path: string, onMessage: (payload: unknown) => void): Unsubscribe
+  /** 读最近一次成功 GET 的本地缓存（可限定时效）；实现方不支持时返回 undefined。 */
+  getCached?<T>(path: string, maxAgeMs: number): T | undefined
 }
 
 /**

@@ -51,6 +51,8 @@ import { ShipPage, type ShipTab } from './pages/ShipPage'
 import { ItemsPage } from './pages/ItemsPage'
 import { MarketPage } from './pages/MarketPage'
 import { IndustryPage } from './pages/IndustryPage'
+// 交易所不可用（服务器下线/故障）时隐藏导航入口——「一键关闭股票系统」。
+import { useExchangeAvailable } from './features/exchange/availability'
 import { IndustryHudPage } from './pages/IndustryHudPage'
 import { SkillsTreePage } from './pages/SkillsTreePage'
 import { MapPage, MAP_TABS, TAB_UNLOCK_KEY } from './pages/MapPage'
@@ -449,6 +451,7 @@ export function App({ engine }: { engine: GameEngine }) {
   // 通讯未读（2026-09-11 船长定）：导航图标闪烁 + 数字徽标；逐条已读，点开即读
   const commsUnread = engine.commsUnread()
   const [page, setPage] = useState<PageKey>('map')
+  const exchangeAvailable = useExchangeAvailable()
   /**
    * **点导航的"这一下"**（船长 2026-09-14：「点击左边侧边栏的时候，中间主窗口进行切换时最好给予玩家一个反馈，
    * 哪怕点的是当前窗口」）：只在**点当前页**时用（换页由内容区重挂载的入场淡入负责）——
@@ -1402,7 +1405,7 @@ async function applyLayoutAndReload(): Promise<void> {
         promosNow={promosNow}
         tuningsNow={tuningsNow}
         tuningTick={tuningTick}
-        navItems={NAV_ITEMS}
+        navItems={exchangeAvailable ? NAV_ITEMS : NAV_ITEMS.filter((item) => item.key !== 'exchange')}
         debugNavItems={[...DEBUG_NAV_ITEMS, { key: 'stellar', label: 'ui.stellar.054', icon: 'nav-map',
           onSelect: () => { if (planetaryEnabled()) { hideActivityWin(); setPlanetOpen(true) } } }]}
         readDebugEnabled={readDebugEnabled}

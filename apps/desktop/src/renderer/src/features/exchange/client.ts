@@ -46,6 +46,47 @@ export interface StockQuote {
 export interface BookLevel { price: number; qty: number }
 export interface OrderBookSnapshot { code: string; bids: BookLevel[]; asks: BookLevel[]; ts: number }
 
+/** 公司周报（公司账本：玩家真实买卖驱动股价，见 docs/design/stock-gameplay-integration-20261109.md） */
+export interface CompanyReport {
+  id: string
+  ts: number
+  weekKey: string
+  company: string
+  name: string
+  revenue: number
+  cost: number
+  gross: number
+  prevAvgGross: number
+  grossDeltaBp: number
+  anchorShiftBp: number
+  trades: number
+}
+
+/** 公司视图：静态信息 + 当前锚点偏移 + 最近周报 */
+export interface CompanyInfo {
+  company: string
+  name: string
+  sector: string
+  anchorShiftBp: number
+  anchorPrice: number
+  lastReport?: CompanyReport
+}
+
+/** 玩家↔公司流水单条：商品 key + 方向 + 金额 + 笔数（公司账本上报载荷） */
+export interface CompanyFlowEntry {
+  good: string
+  /** buy = 玩家买入（公司营收）；sell = 玩家卖出（公司采购） */
+  side: 'buy' | 'sell'
+  amount: number
+  count: number
+}
+
+export interface CompanyFlowsResult {
+  accepted: number
+  ignored: number
+  companies?: string[]
+}
+
 /** 现货持仓（原型扩展：`ExchangeAccount` 的 `positions` 只装杠杆仓，现货另列） */
 export interface SpotHolding {
   code: string
@@ -463,6 +504,10 @@ export interface ExchangeClient {
   getBook(code: string): Promise<OrderBookSnapshot>
   getTrades(code: string): Promise<TradeRecord[]>
   getKlines(code: string, interval: '1m' | '5m' | '1h', limit?: number): Promise<Kline[]>
+  /** 公司账本视图（可选：联机客户端从 /companies 拉取；Mock 用演示数据）。 */
+  getCompanies?(): Promise<CompanyInfo[]>
+  /** 公司账本流水批量上报（可选：联机客户端 POST /company-flow；Mock 空实现）。 */
+  submitCompanyFlows?(flows: CompanyFlowEntry[]): Promise<CompanyFlowsResult>
   getAccount(): Promise<ExchangeAccount>
   getOrders(): Promise<ExchangeOrder[]>
   /**
@@ -497,9 +542,13 @@ export interface ExchangeClient {
    * 页面挂载通知：确保引擎在跑，并按真实流逝时间补算离页期间漏掉的拍。
    * 2026-11-03 挂机语义：Mock 引擎由模块单例持有（构造即启动），**离开页面不暂停**；
    * `stop()` 只表示页面卸载（Mock 里顺手落盘），**不停止行情**。
+   * 2026-11-08：HTTP 实现改为**引用计数**（页签与活动栏卡片各持一份），
+   * 最后一个释放才断流；`withBootstrap = false` 给卡片用的轻量模式（不预载全套 K 线）。
    */
-  start(): void
+  start(withBootstrap?: boolean): void
   stop(): void
+  /** 可选：硬释放（实例被替换时用：清定时器与连接，忽略引用计数）。 */
+  dispose?(): void
   /** 可选：重试首屏数据（HTTP 模式实现；Mock 不需要）。页面看门狗用它自愈空数据。 */
   retryBootstrap?(): void
   /** 可选：切换标的后补拉该标的 K 线/盘口（HTTP 模式实现；首屏只拉了首只标的）。 */

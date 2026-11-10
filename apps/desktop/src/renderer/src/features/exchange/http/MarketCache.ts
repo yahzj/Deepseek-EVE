@@ -138,6 +138,24 @@ export class MarketCache {
     return entry.data as T
   }
 
+  /**
+   * 取「最近 maxAgeMs 内」写过的条目，用于首屏缓存秒开。
+   * 与 `get` 的区别：这里额外收紧时效——7 天缓存可以离线兜底，但不能拿来当今天的行情展示。
+   */
+  getFresh<T = unknown>(path: string, maxAgeMs: number): T | undefined {
+    this.load()
+    const entry = this.entries.get(path)
+    if (entry === undefined) return undefined
+    if (this.isExpired(entry.t)) {
+      this.entries.delete(path)
+      this.markDirty()
+      return undefined
+    }
+    const age = this.now() - entry.t
+    if (age < 0 || age > Math.max(0, maxAgeMs)) return undefined
+    return entry.data as T
+  }
+
   /** 供重连补拉用：按写入时间新→旧列出所有缓存 path（含 WS 帧伪键，调用方自行过滤）。 */
   paths(): string[] {
     this.load()

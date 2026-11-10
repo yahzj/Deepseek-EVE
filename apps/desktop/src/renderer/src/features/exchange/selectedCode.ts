@@ -5,7 +5,7 @@
 
 import { EXCH_PREF, readExchangeCode, writeExchangePref } from './viewPrefs'
 
-export const DEFAULT_EXCHANGE_CODE = 'SMHI'
+export const DEFAULT_EXCHANGE_CODE = 'XJZG'
 
 /** 重启后回到上次看的标的（2026-11-06 船长令） */
 let currentSelectedCode = readExchangeCode(DEFAULT_EXCHANGE_CODE)

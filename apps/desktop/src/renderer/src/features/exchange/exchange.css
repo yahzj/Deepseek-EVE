@@ -7607,6 +7607,114 @@ html body .app-root.is-layout-modern .ex-page .ex-simple-big-action-btn:disabled
   padding-top: 4px;
 }
 
+/* ── 企业动态（公司账本） ── */
+.ex-simple-companies {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.ex-company-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ex-company-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ex-company-title {
+  font-size: var(--wui-fs-sm);
+  font-weight: 600;
+}
+
+.ex-company-hint {
+  font-size: var(--wui-fs-2xs);
+  line-height: 1.5;
+}
+
+.ex-company-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ex-company-row {
+  border: 1px solid rgb(var(--wui-border));
+  background: rgb(var(--wui-bg-panel));
+  border-radius: 4px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ex-company-row-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ex-company-name {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: var(--wui-fs-sm);
+  font-weight: 600;
+}
+
+.ex-company-sector {
+  font-size: var(--wui-fs-2xs);
+  font-weight: 400;
+}
+
+.ex-company-mood {
+  font-size: var(--wui-fs-xs);
+  white-space: nowrap;
+}
+
+.ex-company-mood.is-hot,
+.ex-company-outlook.is-up {
+  color: rgb(var(--wui-tone-gain));
+}
+
+.ex-company-mood.is-cooling,
+.ex-company-mood.is-loss,
+.ex-company-outlook.is-down {
+  color: rgb(var(--wui-tone-loss));
+}
+
+.ex-company-mood.is-steady,
+.ex-company-mood.is-none,
+.ex-company-outlook.is-flat {
+  color: rgb(var(--wui-text-dim));
+}
+
+.ex-company-row-body {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: var(--wui-fs-2xs);
+}
+
+.ex-company-outlook {
+  white-space: nowrap;
+}
+
+.ex-company-empty {
+  font-size: var(--wui-fs-2xs);
+  line-height: 1.6;
+  padding: 8px 0;
+}
+
 .ex-simple-finance .ex-preview-row {
   padding: 4px 8px;
   border-radius: 4px;
