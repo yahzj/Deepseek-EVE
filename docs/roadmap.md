@@ -6,7 +6,7 @@
 
 ## 正在推进
 
-- 信号空间自动探索报告详情UI仍待此前中文标签审定；逐层数据及守卫实战推演已合并推送，网页版部署检查中，见`docs/design/web-publish-signal-auto-20261110.md`。当前探索与收益系数不改，旧在途任务保持冻结快照。
+- 信号空间自动探索报告详情UI仍待此前中文标签审定；逐层数据及守卫实战推演已部署网页版，见`docs/design/signal-auto-report-detail-20261109.md`。当前探索与收益系数不改，旧在途任务保持冻结快照。
 - 战斗性能测试已按当前场景与CI负载更新：`packages/core/tests/perf.test.ts` 保留12场1v3离线推进、完成性和40k步数守卫，墙钟门槛调整为5000ms；CI本次实测约2.8s，不再沿用旧1500ms门槛，也不再按版本临时豁免。
 - 常用文档清理已落地，待船长审阅：现行结论与旧过程分离，旧记录默认禁读。本批清单见`docs/design/history-doc-cleanup-20261029.md`。
 - 国庆审查遗留已修复并自测，待船长验收；当前问题状态见`docs/review/guoqing-audit-followup.md`，验证与边界见`docs/design/guoqing-audit-closeout-20261029.md`。
