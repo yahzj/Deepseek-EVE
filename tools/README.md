@@ -2,7 +2,7 @@
 
 ## 信号空间普通作业额度（2026-11-09）
 
-- `node tools/signal-auto-quota-check.cjs [--smoke]`：使用固定修前`c48bdb0c8`估算器和当前修复做同条件对照，四舰队×两科技×五族×五原型×32个散布种子，共6400组配对；`--smoke`每格3种子。逐类记录奖励、完成层数和普通产量下降样本，核验旧快照读档/结算、损伤不变及无重复发货。源码仅在内存编译，不读个人档；另写`tools/_ui-artifacts/signal-auto-quota-<时间戳>/report.json`，不冒称完整历史客户端或信用点净收益比较。
+- `node tools/signal-auto-quota-check.cjs [--smoke]`：原解析估算器普通额度对照工具；2026-11-10新任务已用正式守卫战，旧工具中“跨种子推进固定、推进不倒退”的断言不再适用，不作为当前规则验收入口。保留旧版研究能力，不在日常检查中运行。当前入口见下方`signal-auto-estimate-check.ts`。
 
 ## 黑市标题裁切（2026-11-07）
 
@@ -33,10 +33,11 @@
 
 ## 信号空间自动探索估算（2026-11-02）
 
+- 网页在`web/`执行`npm run build`后，运行`node tools/signal-auto-guard-browser-check.cjs`：独立合成停港档、自有隐藏Chrome与随机端口，验证两套布局后台守卫推演派队、关闭取消、重复点击、页面定时器响应和快照重载；独立输出`tools/_ui-artifacts/signal-auto-guard-browser-<时间戳>/`。不读取个人档，仅关闭自建PID并清理经边界核验的临时profile。
 - `node tools/signal-auto-yield-comparison.cjs`：四舰队×两科技×五族×五原型×256个散布配对种子，对照旧原样、仅阻止守卫绕过的内存诊断和新估算，共51,200组配对/153,600次结算；`--smoke`每格3种子。TypeScript语法树仅在内存追踪逐层收成，校验200个未插桩旧入口控制样本及生产源码SHA-256不变；不读个人档、旧文档或Git历史，不调参数。每次另写`tools/_ui-artifacts/signal-auto-yield-comparison-<时间戳>/report.json`和`paired-samples.jsonl`。同256种子跨条件复用，不冒称独立样本或玩家自然权重。
 - `node tools/signal-auto-yield-report.cjs <对照输出目录>`：只读取上述`report.json`，在该目录另写`comparison.md`，已有文件拒绝覆盖；包含分类均值、分位数、同条件波动和守卫诊断，不开箱或折现金。结果及已知收益目标缺口见`docs/design/signal-auto-yield-comparison-20261102.md`。
 
-- `npx tsx tools/signal-auto-estimate-check.ts`：四种合法合成舰队、两档科技、五族各100种子，共4000组；核对同配置推进固定、普通资源容量、合法奖励、正式派队不提前发货及快照读档。`--smoke`为每格5种子。每次新建`tools/_ui-artifacts/signal-auto-estimate-<时间戳>/readings.json`，分类数量不是信用点收益，不读取个人档；合成逻辑在`signal-auto-estimate-fixture.ts`。
+- `npx tsx tools/signal-auto-estimate-check.ts`：四种合法合成舰队、两档科技、五族各100个散布种子，共4000组；逐层使用正式守卫战，核对不越过失败守卫、普通资源容量、合法奖励、正式派队不提前发货及快照读档。记录层深、完成层数、分类奖励和单趟计算耗时；`--smoke`为每格5种子，共200趟。每次新建`tools/_ui-artifacts/signal-auto-estimate-<时间戳>/readings.json`，分类数量不是信用点收益，不读取个人档；合成逻辑在`signal-auto-estimate-fixture.ts`。
 - `npx tsx tools/make-signal-auto-estimate-save.ts`：独立合成满技能/科技的四舰79/125预算停港档、10处信号，正常速度且未代出发；正式装配及两轮读档、落盘回读，另写唯一`docs/test-saves/test-save-signal-auto-estimate-<上海时间>.json`，拒绝覆盖。加载与备份恢复见`docs/test-saves/signal-auto-estimate-20261102.md`。
 - 先`npm run build`，再`node tools/signal-auto-estimate-native-check.cjs`：最新生产文件、隐藏离屏Electron、独立临时userData，合成已派队任务回拨保存时间6分钟，经真实离线入口核对快照奖励、任务释放、仓库/核心入账与正式存盘。夹具仅关闭无关被动母矿产线，输出新建`tools/_ui-artifacts/signal-auto-native-<时间戳>/`；只关闭自有PID并删除已核验绝对边界的自建目录。不读取个人档，不作为观感或全局经济验收。
 

@@ -2,6 +2,19 @@ import type { GameState } from '../../state'
 import type { SimContext } from '../../types'
 import { deployedCombatEscorts } from './locks'
 
+/** 换驾驶后的旧队转入现有逐舰返航账本，避免旧名单占住新悬赏的远征槽。 */
+export function detachExpeditionReturn(state: GameState): void {
+  const exp = state.expedition, sortie = exp.sortie
+  if (exp.active || !sortie) return
+  const returning = state.shipReturns[sortie.leaderShipId]
+  if (!returning) return
+  for (const id of sortie.shipIds) {
+    if (state.fleet[id] && !state.shipReturns[id]) state.shipReturns[id] = { ...returning, reason: 'expedition' }
+  }
+  delete exp.sortie
+  if (state.combatEscort?.leaderShipId === sortie.leaderShipId) delete state.combatEscort
+}
+
 /** 活动不再占用实体舰船时释放随行快照；实体卸货由各活动到港路径处理。 */
 export function settleCommandEscortsAtPort(state: GameState, ctx: SimContext): void {
   const escort = state.combatEscort

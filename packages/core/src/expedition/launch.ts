@@ -7,6 +7,7 @@ import { standingOf, DSI_FACTION_ID } from '../standing'
 import { commandBudgetOf } from '../combat/command/rules'
 import { combatRosterOf, makeCombatSortie } from '../combat/command/roster'
 import { combatEscortBlock } from '../combat/command/locks'
+import { detachExpeditionReturn } from '../combat/command/return'
 import { startFleetBattleFor } from '../combat/startFleet'
 import { actionBlockReason, markExplored } from '../explore'
 import { bountyCooldownRemainingMs } from './cooldown'
@@ -34,6 +35,7 @@ import { beginDeparture, departureOrigin, departureArrivalLog, reconcileDepartur
 export function expeditionPreflight(state: GameState, ctx: SimContext, anomalyId: string, galaxyId?: string): CommandResult {
   reconcileDeparture(state)
   if (state.departure) return { ok: false, errorId: state.departure.progressMs < state.departure.undockMs ? 'core.departure.001' : 'core.departure.002' }
+  detachExpeditionReturn(state)
   if (!state.expedition.active && state.expedition.sortie) return { ok: false, error: '远征进行中，等战报回来再说吧。', errorId: 'core.expedition.011' }
   const anomaly = ctx.anomalies.get(anomalyId)
   if (!anomaly) return { ok: false, error: `未知目标：${anomalyId}。`, errorId: 'core.expedition.003', errorParams: { p1: anomalyId } }

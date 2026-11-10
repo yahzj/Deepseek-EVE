@@ -39,6 +39,7 @@
 双语时长分解归 `time.ts:durationParts`；方案/残骸/沉船记录槽位净化归 `save.ts:cleanRack`；手动与自动探索回合预算归 `wormhole/fleet/admission.ts:wormholeTurnBudget`。
 
 编队实体出勤锁归`combat/command/locks.ts:commandShipDeployed`，随行舰预检归同文件`combatEscortBlock`；敌方在场空位归`combat/foes/capacity.ts:enemyFleetRoom`；逐弹药ID退款归`combat/combatAmmo.ts:refundBattleAmmo`。
+远征返航换驾驶交接归`combat/command/return.ts:detachExpeditionReturn`：以旧主舰的剩余返航账为准，给存活僚舰建立独立同进度返航记录后释放远征槽；换驾驶、旧档出击和推进兼容共用，不提前卸货或重发战果。
 实际随行名单由`combat/command/locks.ts:deployedCombatEscorts`读取出发快照；旧在途无快照时不补入基地舰船。
 遭遇战开战与缺弹预警均调用同文件`encounterCombatRosterOf`，不拿基地意向名单代替实际随行舰。
 
@@ -64,7 +65,7 @@
 
 主控离港与星门阶段：`departure.ts:departureView` 统一活动栏的阶段、倒计时与进度；新行程离港 5 秒，星门按既有最短航程公式计算 2.5 至 10 秒但暂不启用。读档保留已登记行程的原阶段时长与进度，避免与所属活动到达时刻脱节；作业推进消费等待，不影响 AI 独立任务。
 
-生产研究所：独立地点/信号`research`；`wormholeSalvage.ts:wormholeResearchBox`使用整趟势力与独立随机流，85%本势力安全柜、15%本势力加密柜。研究所作业单独结算，不生成遗迹残骸、核心或收尾战；完成记`grid.activated`，旧`ruins+researchLab`及已领记录由存档清洗迁移。加密柜不加入普通货柜池。`encryptedContainer.ts:encryptedBlueprintGroups`为五族首批插件/武器/舰船一次性图纸显式登记与校验单点，`encryptedBlueprintDraw`统一1至3张、类别等权及允许重复抽取。
+生产研究所：独立地点/信号`research`；`wormholeGrid.ts:wormholeMakeGrid`在第8层起以每层40%概率生成，最多一处、无保底；`wormholeSalvage.ts:wormholeResearchBox`使用整趟势力与独立随机流，50%本势力安全柜、50%本势力加密柜。研究所作业单独结算，不生成遗迹残骸、核心或收尾战；完成记`grid.activated`，旧`ruins+researchLab`及已领记录由存档清洗迁移。加密柜不加入普通货柜池。`encryptedContainer.ts:encryptedBlueprintGroups`为五族首批插件/武器/舰船一次性图纸显式登记与校验单点，`encryptedBlueprintDraw`统一1至3张、类别等权及允许重复抽取。
 出发等待总长由同文件 `departureDurationMs` 计算，活动入口和悬赏收益估算共用；星门仅用于悬赏、采矿、打捞。
 
 交付安排空间：`siteDeliverFreeCargoM3`（`location.ts`）只读当前可用空间，采矿/打捞待返航时按到港自动卸货后的容量预检；页面和实际安排同源，不提前卸货。
@@ -294,6 +295,8 @@ _条目增删随代码走；规则变更仍按开发约定的工作文档与归�
 | `signalAutoEstimateOf` | `packages/core/src/signalAuto/estimate.ts` |
 | `signalAutoOrdinaryHoldShareOf` | `packages/core/src/signalAuto/estimate.ts`；仅分配下潜途中普通作业回合，最终容量仍用完整货舱 |
 | `cleanSignalAutoEstimate` | `packages/core/src/signalAuto/save.ts` |
-| `signalAutoCombatRatio` | `packages/core/src/signalAuto/combat.ts` |
+| `signalAutoCombatRatio`（旧解析对照，不供新任务放行） | `packages/core/src/signalAuto/combat.ts` |
+| `signalAutoGuardBattleOf`（新任务逐层正式守卫战隔离推演） | `packages/core/src/signalAuto/guard.ts` |
+| `signalAutoInputKey`（后台推演提交前输入一致性） | `packages/core/src/signalAuto/input.ts` |
 | `SIGNAL_AUTO_COMBAT` | `packages/core/src/signalAuto/combat.ts` |
 | `SIGNAL_AUTO_ESTIMATE_CONFIG` | `packages/core/src/signalAuto/estimate.ts` |

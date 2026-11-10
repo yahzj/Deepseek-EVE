@@ -59,6 +59,8 @@ import { repairCivilianFittings } from './equipment'
 import { combatShipLimit, commandBudgetOf } from './combat/command/rules'
 import { signalAutoEstimateOf } from './signalAuto/estimate'
 import { cleanSignalAutoEstimate } from './signalAuto/save'
+import { signalAutoInputKey } from './signalAuto/input'
+import type { SignalAutoEstimate } from './signalAuto/types'
 
 /** 货舱**每格**折合多少 m³（自动探索的"装得下多少"用；量级与货舱页的格位口径一致） */
 export const WORMHOLE_AUTO_HOLD_M3_PER_CELL = 50
@@ -583,7 +585,7 @@ export function wormholeAutoMainHandover(
  * 校验放行主控（`mainMayJoin`）通过后**真正换船走 `changeShip`**（守卫/日志/善后单一出处），
  * 再照常派队 —— 于是主控船以"普通副船"的身份随队出发。
  */
-export function wormholeAutoStart(state: GameState, ctx: SimContext, stockId: string, shipIds?: readonly string[], opts?: { prepared: WormholePreparationPlan; confirmLossRisk: true; goal?: import('./wormhole').WormholeRunState['expeditionGoal'] }): CommandResult {
+export function wormholeAutoStart(state: GameState, ctx: SimContext, stockId: string, shipIds?: readonly string[], opts?: { prepared: WormholePreparationPlan; confirmLossRisk: true; goal?: import('./wormhole').WormholeRunState['expeditionGoal'] }, computed?: { inputKey: string; estimate: SignalAutoEstimate }): CommandResult {
   if (opts) return startPreparedAuto(state, ctx, stockId, shipIds ?? [], opts)
   const pool = shipIds ?? wormholeAutoDefaultShips(state, ctx)
   const handover = wormholeAutoMainHandover(state, ctx, pool)
@@ -595,8 +597,10 @@ export function wormholeAutoStart(state: GameState, ctx: SimContext, stockId: st
   const picked = [...pool]
   const tech = wormholeAutoTechFactors(state, ctx, picked)
   const yieldMul = matterTechSignalAutoYield(state, ctx)
+  if (computed && (computed.inputKey !== signalAutoInputKey(state, ctx, picked, item)
+    || computed.estimate.version !== 2 || !cleanSignalAutoEstimate(computed.estimate))) return { ok: false }
   // 先冻结计算结果，成功后才交接主控和消耗信号，异常不能留下半次出发。
-  const estimate = signalAutoEstimateOf(state, ctx, picked, { seed: item.seed, depth: Math.max(1, Math.min(9, item.depth)),
+  const estimate = computed?.estimate ?? signalAutoEstimateOf(state, ctx, picked, { seed: item.seed, depth: Math.max(1, Math.min(9, item.depth)),
     ...wormholeRunMeta(item) }, yieldMul, tech, wormholeAutoHoldM3Of(tech))
   /** 交接：换船在**校验之后**才落（校验不过就一行状态都不动） */
   if (handover.needed && handover.toId) {
@@ -1042,6 +1046,7 @@ function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): voi
     shipIds: [...run.shipIds],
     coresReleased: 0,
     gains,
+    ...(run.estimateRules === 1 && run.estimate?.report ? { signalAuto: run.estimate.report } : {}),
     ...(coresGained !== null ? { cores: [coresGained] } : {}),
     damage,
     confirmed: false,

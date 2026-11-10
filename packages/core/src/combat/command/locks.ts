@@ -20,6 +20,7 @@ export function encounterCombatRosterOf(state: GameState): string[] {
 
 /** 只读快照，状态与实体操作门禁共用，不依赖战斗执行模块。 */
 export function commandShipDeployed(state: GameState, shipId: string): boolean {
+  if (state.shipReturns[shipId]?.reason === 'expedition') return true
   if ((state.expedition.active || !!state.shipReturns[state.expedition.sortie?.leaderShipId ?? '']) && state.expedition.sortie?.shipIds.includes(shipId)) return true
   if (state.encounter.active && state.encounter.battle?.myFleet?.some(row => row.shipId === shipId)) return true
   return shipId !== state.shipId && deployedCombatEscorts(state).includes(shipId)

@@ -2157,7 +2157,7 @@ export function wormholeResearchBox(state: GameState, ctx: SimContext, cell: Wor
   const family = (run.family ?? familyOfCard(ctx, wormholeCellCardIdOf(run, cell))).toUpperCase()
   const rng = wormholeStream(runSeedOf(state) * 739 + run.depth * 947 + (cell.q * 61 + cell.r * 83) * 17)
   const encrypted = `box-encrypted-${family.toLowerCase()}`
-  if (rng() < .15) {
+  if (rng() < .5) {
     const own = encryptedFamilyOf(encrypted)
     return own && ctx.items.get(encrypted)?.kind === 'container' && encryptedBlueprintGroups(ctx, own) ? encrypted : undefined
   }

@@ -59,7 +59,7 @@ import { cleanPendingStationActivity } from './stationActivityPending'
 import { PRICE_HISTORY_LIMIT } from './market/constants'
 import { cleanHaulFleetLeg } from './hauling/types'
 import { cleanPirateEncounter } from './encounters/save'
-import { cleanSignalAutoEstimate } from './signalAuto/save'
+import { cleanSignalAutoEstimate, cleanSignalAutoReportDetails } from './signalAuto/save'
 import { cleanMarketRelayState } from './market/relaySave'
 import { applyLegacyCommandCompensation } from './combat/command/compensation'
 
@@ -1792,6 +1792,14 @@ for (const [key, value] of Object.entries(licensesRaw)) {
       if (typeof sid === 'string' && sid.length > 0 && !shipIds.includes(sid)) shipIds.push(sid)
     }
     const depth = Math.floor(num(o.depth))
+    const signalAuto = o.expeditionRules === undefined && o.signalAuto !== undefined
+      ? cleanSignalAutoReportDetails(o.signalAuto)
+      : undefined
+    const reportTotals = new Map<string, number>()
+    for (const layer of signalAuto?.layers ?? []) for (const gain of layer.gains)
+      reportTotals.set(gain.itemId, (reportTotals.get(gain.itemId) ?? 0) + gain.units)
+    const signalAutoMatchesGains = signalAuto !== undefined && reportTotals.size === gains.length
+      && gains.every(gain => reportTotals.get(gain.itemId) === gain.units)
     wormholeAutoReports.push({
       id,
       stockId: typeof o.stockId === 'string' ? o.stockId : '',
@@ -1801,6 +1809,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
       // 该值仅供报告显示；信号空间已无核心占用，实验任务保持原读数，不补发实体核心。
       coresReleased: o.expeditionRules === undefined ? 0 : 1,
       gains,
+      ...(signalAutoMatchesGains ? { signalAuto } : {}),
       ...(Array.isArray(o.cores) ? { cores: o.cores.flatMap<{ type: 'gamma' | 'beta' | 'alpha'; n: number }>(value => {
         const core = asRaw(value)
         return (core.type === 'gamma' || core.type === 'beta' || core.type === 'alpha')

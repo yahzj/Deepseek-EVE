@@ -9,6 +9,7 @@ import { bumpFirst } from './firstTasks'
 import { addLog, DEFAULT_START_SHIP_ID, shipLockedReason } from './state'
 import { cannotInterruptReason } from './activityGate'
 import { shipOperationBlockReason } from './shipActionPolicy'
+import { detachExpeditionReturn } from './combat/command/return'
 import type { CommandResult, CoreBlockReason } from './engine'
 import type { GameState, WreckLogCause } from './state'
 import { noteWreckLog } from './shipWrecks'
@@ -219,6 +220,7 @@ export function changeShip(state: GameState, shipId: string, ctx: SimContext): C
     exp.phase = 'out'
     exp.finishAtGameMs = 0
     exp.returnReason = undefined
+    detachExpeditionReturn(state)
     addLog(
       state,
       'fleet',

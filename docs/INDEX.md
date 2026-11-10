@@ -13,12 +13,12 @@
 
 ## 统计
 
-- 非归档文档 **387** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4747** KB · **53470** 行
-- 状态分布：**未标注** 190 · **已确认/已实现** 129 · **进行中** 47 · **待裁定** 20 · **历史留档** 1
-- 孤儿文档（0 引用）**169** 份 · 状态未标注 **190** 份
+- 非归档文档 **390** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4759** KB · **53567** 行
+- 状态分布：**未标注** 192 · **已确认/已实现** 130 · **进行中** 47 · **待裁定** 20 · **历史留档** 1
+- 孤儿文档（0 引用）**170** 份 · 状态未标注 **192** 份
 - 一、常用文档（按任务查阅）：**11** 份
 - 七、评审与体检（review）：**6** 份
-- 三、设计与工作文档（需核实状态）：**359** 份
+- 三、设计与工作文档（需核实状态）：**362** 份
 - 二、其它（docs 根目录）：**2** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
 - 八、测试档说明（test-saves）：**2** 份
@@ -37,8 +37,8 @@
 | `docs/development-conventions.md` | 开发约定 | 未标注 | — | 25 KB / 171 行 | 25 |
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（现行译名表） | — | 46 KB / 810 行 | 17 |
 | `docs/glossary.md` | 术语词典 | 未标注 | — | 23 KB / 204 行 | 65 |
-| `docs/roadmap.md` | 当前待办与实施边界 | 未标注 | — | 9 KB / 78 行 | 62 |
-| `docs/single-source.md` | 单点索引（谁有权算、谁只能读） | 未标注 | — | 44 KB / 300 行 | 21 |
+| `docs/roadmap.md` | 当前待办与实施边界 | 未标注 | — | 10 KB / 79 行 | 62 |
+| `docs/single-source.md` | 单点索引（谁有权算、谁只能读） | 未标注 | — | 44 KB / 303 行 | 21 |
 
 ## 七、评审与体检（review） —— 6 份
 
@@ -51,12 +51,15 @@
 | `docs/review/hull-p2-preview-20260905.md` | 承伤持久化 P2：数值与甲抗/盾抗流派平衡预览（2026-09-05，供船长拍板） | 未标注 | 2026-09-05 | 3 KB / 40 行 | 0 |
 | `docs/review/guoqing-audit-followup.md` | 国庆节审查当前跟进 | 未标注（已复核修复） | — | 3 KB / 22 行 | 4 |
 
-## 三、设计与工作文档（需核实状态） —— 359 份
+## 三、设计与工作文档（需核实状态） —— 362 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档） |
 |---|---|---|---|---|---|
+| `docs/design/signal-auto-guard-simulation-20261110.md` | 自动探索守卫实战推演 | 未标注（实现、专项、T2检查、存档往返及双布） | 2026-11-10 | 4 KB / 30 行 | 4 |
+| `docs/design/web-publish-signal-auto-20261110.md` | 信号自动探索修复网页版发布 | 未标注（发布前检查与合并准备中） | 2026-11-10 | 2 KB / 23 行 | 0 |
 | `docs/design/release-0.1.5-20261109.md` | 0.1.5 推送与部署 | 未标注（网页版已部署并核验） | 2026-11-09 | 4 KB / 37 行 | 1 |
 | `docs/design/signal-auto-ordinary-quota-20261109.md` | 信号空间自动探索普通资源额度修复 | 未标注（实现、专项、整库回归及网页版发布核验） | 2026-11-09 | 6 KB / 60 行 | 0 |
+| `docs/design/signal-auto-report-detail-20261109.md` | 信号空间自动探索逐层报告 | 未标注（方案已由船长确认） | 2026-11-09 | 3 KB / 35 行 | 1 |
 | `docs/design/stock-exchange-bet-orders-fix-20261108.md` | 交易所下注与委托修复（2026-11-08） | 未标注 | 2026-11-08 | 6 KB / 85 行 | 0 |
 | `docs/design/black-market-coating-20261107.md` | 黑市名称裁切与护盾镀膜零盾 | 已确认/已实现（二号已实现自测） | 2026-11-07 | 2 KB / 21 行 | 0 |
 | `docs/design/courier-fleet-presets-20261107.md` | 快递免遇袭与编队预设 | 已确认/已实现（二号已实现自测） | 2026-11-07 | 3 KB / 29 行 | 0 |
@@ -116,13 +119,13 @@
 | `docs/design/cosmic-hud-layout-20261102.md` | 界面外壳：第三套可选布局「深空 HUD / Cosmic」设计方案 | 未标注（船长已裁定并下达优化令） | 2026-11-02 | 10 KB / 155 行 | 2 |
 | `docs/design/d2-main-integration-20261102.md` | 二号与主树整合及上传核验 | 未标注（本地整合与冲突处理完成） | 2026-11-02 | 6 KB / 72 行 | 0 |
 | `docs/design/datadog-dashboard-ui-20261102.md` | 深空数据看板与复杂后台监控大屏（DataDog / Mixpanel 风格）三轮 UX 审查与全量修复落地记录（2026-11-02） | 未标注（待验收） | 2026-11-02 | 8 KB / 85 行 | 1 |
-| `docs/design/encrypted-container-research-20261102.md` | 生产研究所与加密货柜 | 未标注（船长确认20%研究所、15%加密柜、） | 2026-11-02 | 5 KB / 47 行 | 0 |
+| `docs/design/encrypted-container-research-20261102.md` | 生产研究所与加密货柜 | 已确认/已实现（研究所与加密货柜已实现） | 2026-11-02 | 6 KB / 50 行 | 0 |
 | `docs/design/faction-plug-tuning-20261102.md` | 势力舰船插件调整 | 未标注（船长授权“由你决定） | 2026-11-02 | 6 KB / 58 行 | 1 |
 | `docs/design/manual-publish-20261102.md` | 统一手动发布 | 未标注（实现与本地专项验证完成） | 2026-11-02 | 3 KB / 25 行 | 0 |
 | `docs/design/modern-ui-industry-hud-20261102.md` | 设计工作文档：新版 UI 整体重塑 · 星际飞船控制台与航电 HUD（2026-11-02） | 进行中（进行中 · 船长授权全部实施与整体 ） | 2026-11-02 | 9 KB / 130 行 | 0 |
 | `docs/design/repair-drone-market-20261102.md` | 军用修理无人机市场与图纸 | 未标注（船长授权由二号决定参数并一起执行） | 2026-11-02 | 6 KB / 57 行 | 1 |
 | `docs/design/settings-fixes-20261102.md` | 设置界面四项报障修复（字号 / 配色 / 宇宙背景 / 选中按钮）· 2026-11-02 | 已确认/已实现（已落地 · 船长验收完成） | 2026-11-02 | 22 KB / 286 行 | 1 |
-| `docs/design/signal-auto-estimate-20261102.md` | 信号空间自动探索估算方案 | 未标注（船长2026-11-02回复「按你推） | 2026-11-02 | 11 KB / 106 行 | 4 |
+| `docs/design/signal-auto-estimate-20261102.md` | 信号空间自动探索估算方案 | 未标注（船长2026-11-02回复「按你推） | 2026-11-02 | 12 KB / 108 行 | 4 |
 | `docs/design/signal-auto-yield-comparison-20261102.md` | 信号自动探索新旧收益对照 | 未标注（二号完成正式配对对照） | 2026-11-02 | 9 KB / 83 行 | 0 |
 | `docs/design/sortie-departure-20261102.md` | 主控离港与出击阶段 | 未标注（船长已明确“确认”完整实施方案） | 2026-11-02 | 8 KB / 81 行 | 1 |
 | `docs/design/sound-layers-20261102.md` | 声音系统追加批：BGM / 环境音 / 战斗细分 / 音高随机 · 2026-11-02 工作文档 | 未标注（实施中） | 2026-11-02 | 12 KB / 133 行 | 3 |
@@ -446,10 +449,11 @@
 | `docs/design/ship-battle-art/mounts-20260910.md` | 舰船战斗图形·挂点对齐（引擎喷口 + 真实炮口）2026-09-10 | 已确认/已实现（已确认） | 2026-09-10 | 6 KB / 94 行 | 1 |
 | `docs/design/ship-battle-art/README.md` | 舰船战斗图形重设计(三号 · 样稿阶段,2026-09-09) | 未标注 | — | 8 KB / 87 行 | 29 |
 
-## 附：孤儿文档（0 引用，169 份）
+## 附：孤儿文档（0 引用，170 份）
 
 > 仅表示没有其他收录文档提到本文件名，不能据此删除、归档或批准阅读历史。
 
+- `docs/design/web-publish-signal-auto-20261110.md`（2026-11-10 · 2 KB）—— 信号自动探索修复网页版发布
 - `docs/design/signal-auto-ordinary-quota-20261109.md`（2026-11-09 · 6 KB）—— 信号空间自动探索普通资源额度修复
 - `docs/design/stock-exchange-bet-orders-fix-20261108.md`（2026-11-08 · 6 KB）—— 交易所下注与委托修复（2026-11-08）
 - `docs/design/black-market-coating-20261107.md`（2026-11-07 · 2 KB）—— 黑市名称裁切与护盾镀膜零盾
@@ -471,7 +475,7 @@
 - `docs/design/ui-ux-ergonomics-audit-20261103.md`（2026-11-03 · 3 KB）—— 设计文档：UI/UX 工效学与视觉硬伤全面修复 (2026-11-03)
 - `docs/design/carbon-icons-modern-layout-20261102.md`（2026-11-02 · 7 KB）—— 现代布局 Carbon Icons 升级方案（科幻未来专供 · 2026-11-02）
 - `docs/design/d2-main-integration-20261102.md`（2026-11-02 · 6 KB）—— 二号与主树整合及上传核验
-- `docs/design/encrypted-container-research-20261102.md`（2026-11-02 · 5 KB）—— 生产研究所与加密货柜
+- `docs/design/encrypted-container-research-20261102.md`（2026-11-02 · 6 KB）—— 生产研究所与加密货柜
 - `docs/design/manual-publish-20261102.md`（2026-11-02 · 3 KB）—— 统一手动发布
 - `docs/design/modern-ui-industry-hud-20261102.md`（2026-11-02 · 9 KB）—— 设计工作文档：新版 UI 整体重塑 · 星际飞船控制台与航电 HUD（2026-11-02）
 - `docs/design/signal-auto-yield-comparison-20261102.md`（2026-11-02 · 9 KB）—— 信号自动探索新旧收益对照
@@ -620,10 +624,13 @@
 - `docs/design/v18.1-support.md`（无日期 · 9 KB）—— V18.1 设计总结：支援装备 + 叠加收敛（取消同类唯一 · 已确认实施）
 - `docs/design/v18b2-lasers.md`（无日期 · 5 KB）—— V18B-2 设计总结：激光炮武器族（能量系形态 · 已确认实施）
 
-## 附：状态未标注（190 份，待补一行 `状态：…`）
+## 附：状态未标注（192 份，待补一行 `状态：…`）
 
+- `docs/design/signal-auto-guard-simulation-20261110.md`（2026-11-10）—— 自动探索守卫实战推演
+- `docs/design/web-publish-signal-auto-20261110.md`（2026-11-10）—— 信号自动探索修复网页版发布
 - `docs/design/release-0.1.5-20261109.md`（2026-11-09）—— 0.1.5 推送与部署
 - `docs/design/signal-auto-ordinary-quota-20261109.md`（2026-11-09）—— 信号空间自动探索普通资源额度修复
+- `docs/design/signal-auto-report-detail-20261109.md`（2026-11-09）—— 信号空间自动探索逐层报告
 - `docs/design/stock-exchange-bet-orders-fix-20261108.md`（2026-11-08）—— 交易所下注与委托修复（2026-11-08）
 - `docs/design/exchange-savings-rate-20261107.md`（2026-11-07）—— 交易所理财收益率调整（2026-11-07）
 - `docs/design/flagship-current-fleet-20261107.md`（2026-11-07）—— 旗舰战沿用当前编队
@@ -664,7 +671,6 @@
 - `docs/design/cosmic-hud-layout-20261102.md`（2026-11-02）—— 界面外壳：第三套可选布局「深空 HUD / Cosmic」设计方案
 - `docs/design/d2-main-integration-20261102.md`（2026-11-02）—— 二号与主树整合及上传核验
 - `docs/design/datadog-dashboard-ui-20261102.md`（2026-11-02）—— 深空数据看板与复杂后台监控大屏（DataDog / Mixpanel 风格）三轮 UX 审查与全量修复落地记录（2026-11-02）
-- `docs/design/encrypted-container-research-20261102.md`（2026-11-02）—— 生产研究所与加密货柜
 - `docs/design/faction-plug-tuning-20261102.md`（2026-11-02）—— 势力舰船插件调整
 - `docs/design/manual-publish-20261102.md`（2026-11-02）—— 统一手动发布
 - `docs/design/repair-drone-market-20261102.md`（2026-11-02）—— 军用修理无人机市场与图纸

@@ -249,6 +249,16 @@ export function SignalSpacePanel({
   )
   /** 自动探索：选了主控船 ⇒ 派队前先弹确认（写明主控要换给谁） */
   const [mainAsk, setMainAsk] = useState(false)
+  const [autoComputing, setAutoComputing] = useState(false)
+  const autoRequest = useRef<AbortController | null>(null)
+  useEffect(() => () => {
+    autoRequest.current?.abort()
+    autoRequest.current = null
+  }, [])
+  useEffect(() => {
+    autoRequest.current?.abort()
+    setAutoComputing(false)
+  }, [autoStockId, picked, engine.state])
   /**
    * 待确认的"前往未知地点"目标（船长 2026-09-13：前往未扫描的地方**需要警告**）。
    * 口径：点未扫描的格 **不直接走**（也不扣回合），先把警告摆出来，等玩家点「确认前往」。
@@ -795,15 +805,24 @@ export function SignalSpacePanel({
    * **自动探索 · 派队**（船长 2026-09-14）：准备页挑好队伍 ⇒ 出发。
    * 队里有主控 ⇒ **先弹确认**（写明主控要换给谁，见 `mainAsk`），确认后才真的派。
    */
-  function startAuto(): void {
-    if (autoStockId === null) return
-    const r = engine.wormholeAutoStart(autoStockId, picked)
-    if (!r.ok) onToast(cmdText(r) || tr('ui.Wormhole.297'), true)
-    else {
-      onToast(
-        tr("ui.Wormhole.184", { p1: Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000) }),
-      )
-      onClose()
+  async function startAuto(): Promise<void> {
+    if (autoStockId === null || autoRequest.current) return
+    const controller = new AbortController()
+    autoRequest.current = controller
+    setAutoComputing(true)
+    try {
+      const r = await engine.wormholeAutoStart(autoStockId, picked, controller.signal)
+      if (controller.signal.aborted) return
+      if (!r.ok) onToast(cmdText(r) || tr('ui.Wormhole.297'), true)
+      else {
+        onToast(tr("ui.Wormhole.184", { p1: Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000) }))
+        onClose()
+      }
+    } finally {
+      if (autoRequest.current === controller) {
+        autoRequest.current = null
+        setAutoComputing(false)
+      }
     }
   }
 
@@ -1269,6 +1288,7 @@ export function SignalSpacePanel({
   function handleClose(): void {
     /** **自动探索模式**：本面板只是"准备页"，关掉它**不碰洞内那一趟**（不 leave、不切页签） */
     if (auto) {
+      autoRequest.current?.abort()
       onClose()
       return
     }
@@ -1581,7 +1601,9 @@ export function SignalSpacePanel({
                 <div className="app-wh-prephead-go">
                   <button
                     className="app-btn is-primary app-wh-enter"
-                    disabled={auto ? picked.length === 0 || autoGate !== null : !admission.ok || !!run || entryGate !== null}
+                    style={{ position: 'relative' }}
+                    disabled={auto ? autoComputing || picked.length === 0 || autoGate !== null : !admission.ok || !!run || entryGate !== null}
+                    aria-busy={auto && autoComputing || undefined}
                     onClick={auto ? handleAutoStart : handleEnter}
                     title={
                       !auto && enterHaulAsk
@@ -1592,6 +1614,7 @@ export function SignalSpacePanel({
                             (autoStopText ? tr("ui.Wormhole.248", { autoStopText: autoStopText }) : undefined))
                     }
                   >
+                    {auto && autoComputing ? <span style={{ position: 'absolute', top: 6, right: 6 }}><Glyph name="ico-clock" size={16} /></span> : null}
                     {!auto && enterHaulAsk ? tr('ui.Hauling.034') : auto ? tr("ui.Wormhole.134") : tr("ui.Expedition.308")}
                   </button>
                   <span className="app-dim">
@@ -2187,11 +2210,11 @@ export function SignalSpacePanel({
        * 写明**主控从谁换到谁**；确认后才真的派（换船在 core 里走 `changeShip`）。
        */}
       {mainAsk && auto ? (
-        <div className="app-modal-mask" onClick={() => setMainAsk(false)}>
+        <div className="app-modal-mask" onClick={() => { autoRequest.current?.abort(); setMainAsk(false) }}>
           <div className="app-modal" onClick={(e) => e.stopPropagation()}>
             <div className="app-modal-head">
               <span className="app-report-title">{tr("ui.Wormhole.112")}{autoHandover?.toName ?? tr("ui.Wormhole.113")}{tr("ui.Wormhole.038")}</span>
-              <button className="app-btn is-small" onClick={() => setMainAsk(false)}>
+              <button className="app-btn is-small" onClick={() => { autoRequest.current?.abort(); setMainAsk(false) }}>
                 {tr("ui.App.086")}
               </button>
             </div>
@@ -2204,10 +2227,10 @@ export function SignalSpacePanel({
               </div>
               {autoGate !== null ? <div className="app-warn app-wh-gate">{cmdText(autoGate)}</div> : null}
               <div className="app-wh-scanbar-actions" style={{ marginTop: 'var(--wui-sp-10)' }}>
-                <button className="app-btn is-primary is-small" onClick={startAuto} disabled={autoGate !== null}>
+                <button className="app-btn is-primary is-small" onClick={startAuto} disabled={autoComputing || autoGate !== null} aria-busy={autoComputing || undefined}>
                   {tr("ui.Wormhole.214")}
                 </button>
-                <button className="app-btn is-small" onClick={() => setMainAsk(false)}>
+                <button className="app-btn is-small" onClick={() => { autoRequest.current?.abort(); setMainAsk(false) }}>
                   {tr("ui.Wormhole.041")}
                 </button>
               </div>

@@ -33,7 +33,7 @@ function researchWorld(seed = 19) {
   return { state, run, grid, cell }
 }
 describe('生产研究所与势力加密货柜', () => {
-  it('仅第8层起可生成，分布接近每层20%，不覆盖入口出口或旧玩法', () => {
+  it('仅第8层起可生成，分布接近每层40%，每层最多一处且不覆盖入口出口或旧玩法', () => {
     let labs = 0
     for (let seed = 1; seed <= 1000; seed++) {
       for (const depth of [7, 8, 9]) {
@@ -50,8 +50,8 @@ describe('生产研究所与势力加密货柜', () => {
       }
       expect(wormholeMakeGrid(seed, 8, 0, 1, 2).cells.some(cell => cell.place === 'research')).toBe(false)
     }
-    expect(labs).toBeGreaterThan(150)
-    expect(labs).toBeLessThan(250)
+    expect(labs).toBeGreaterThan(350)
+    expect(labs).toBeLessThan(450)
   })
   it.each(ENCRYPTED_FAMILIES)('%s柜仅出本族一次性图纸，1至3张且允许重复', family => {
     const box = `box-encrypted-${family.toLowerCase()}`
@@ -73,7 +73,7 @@ describe('生产研究所与势力加密货柜', () => {
     expect([...counts].sort()).toEqual([1, 2, 3])
     expect(duplicate).toBe(true)
   })
-  it.each(ENCRYPTED_FAMILIES)('研究所仅出%s势力安全柜和加密柜，约15%为加密柜', family => {
+  it.each(ENCRYPTED_FAMILIES)('研究所仅出%s势力安全柜和加密柜，约50%为加密柜', family => {
     const state = createInitialState({ nowWallMs: 0, seed: 7 })
     expect(wormholeEnter(state, ctx, [state.shipId], 7, { family }).ok).toBe(true)
     finishDeparture(state, ctx)
@@ -88,8 +88,8 @@ describe('生产研究所与势力加密货柜', () => {
       expect([`box-relic-${family.toLowerCase()}`, `box-encrypted-${family.toLowerCase()}`]).toContain(box)
       if (box.startsWith('box-encrypted-')) encrypted++
     }
-    expect(encrypted).toBeGreaterThan(110)
-    expect(encrypted).toBeLessThan(190)
+    expect(encrypted).toBeGreaterThan(440)
+    expect(encrypted).toBeLessThan(560)
   })
   it('研究所标记及拆解结果序号存读保真，实际产出入图纸库存', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 42 })

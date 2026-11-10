@@ -8,11 +8,12 @@ import { settleBattleRetreat } from './retreat'
 import { weekendApplyBattleOutcome } from '../weekendBattle'
 import { resolveBattleOutcome } from './outcome'
 import { unloadCargoOfShipToWarehouse } from '../inventory'
-import { settleCommandEscortsAtPort } from '../combat/command/return'
+import { detachExpeditionReturn, settleCommandEscortsAtPort } from '../combat/command/return'
 
 /** 引擎内部：按阶段推进远征（时间已由 gameMs 表达；同帧内阶段可连续跨越，离线大推进亦然） */
 export function advanceExpedition(state: GameState, ctx: SimContext, freezeBattle = false): void {
   const exp = state.expedition
+  detachExpeditionReturn(state)
   settleCommandEscortsAtPort(state, ctx)
   // 换驾驶后旧主舰沿既有善后账本返航；僚舰保持原出勤锁到同一到港时刻。
   if (!exp.active && exp.sortie) {

@@ -391,6 +391,9 @@ import { DEEP_SPACE_SKILL_IDS, probeManufacturingUnlocked } from '@whale/core'
 import { perfHub } from './perf'
 import type { PerfBucket } from './perf'
 import { BountyWinCache } from './bountyWinCache'
+import { computeSignalAuto } from './signalAutoWorker'
+import type { SignalAutoWorker } from './signalAutoWorker'
+import { signalAutoInputKey } from '../../../../../../packages/core/src/signalAuto/input'
 import { UnboxSessionLedger } from './unboxLedger'
 import type { UnboxBatchRecord } from './unboxLedger'
 import type { BountyWinWorker } from './bountyWinProtocol'
@@ -813,6 +816,9 @@ export class GameEngine {
   private wormholeSpeedPick = loadWormholeSpeedPick()
 
   private stopped = false
+  private signalAutoComputing = false
+  private signalAutoController: AbortController | null = null
+  private createSignalAutoWorker = (): SignalAutoWorker => new Worker(new URL('./signalAuto.worker.ts', import.meta.url), { type: 'module' }) as unknown as SignalAutoWorker
   private winCache = new BountyWinCache({
     createWorker: () => new Worker(new URL('./bountyWin.worker.ts', import.meta.url), { type: 'module' }) as unknown as BountyWinWorker,
     source: () => ({ state: this.state, ctx: this.ctx, fingerprint: this.winFingerprint(), locale: this.locale,
@@ -1247,6 +1253,7 @@ export class GameEngine {
   /** 停止自有心跳与后台推演，启动入口卸载或窗口退出时复用。 */
   stop = (): void => {
     this.stopped = true
+    this.signalAutoController?.abort()
     this.winCache.reset()
     if (this.intervalId !== null) window.clearInterval(this.intervalId)
     if (this.saveIntervalId !== null) window.clearInterval(this.saveIntervalId)
@@ -3441,14 +3448,36 @@ export class GameEngine {
   }
 
   /** 自动探索：开始一趟（消耗该处库存、**整队占 1 枚 AI 核心**、参与舰锁定到返航） */
-  wormholeAutoStart(stockId: string, shipIds: readonly string[]): CommandResult {
+  async wormholeAutoStart(stockId: string, shipIds: readonly string[], signal?: AbortSignal): Promise<CommandResult> {
     if (this.wormholeStock().find(s => s.id === stockId)?.expeditionRules !== undefined) return { ok: false, code: 'unsupported-rules' }
-    const r = wormholeAutoStart(this.state, this.ctx, stockId, shipIds)
-    if (r.ok) {
-      void this.persist()
-      this.notify()
+    if (this.signalAutoComputing || signal?.aborted || this.stopped) return { ok: false }
+    const handover = this.wormholeAutoMainHandover(shipIds)
+    if (handover.reason) return { ok: false, errorId: handover.reasonId, error: handover.reason, errorParams: handover.reasonParams }
+    const blocked = this.wormholeAutoBlockReason(stockId, shipIds, handover.needed)
+    if (blocked) return { ok: false, ...blocked }
+    const stock = this.wormholeStock().find(row => row.id === stockId)!
+    const sourceState = this.state, sourceCtx = this.ctx, leader = this.state.shipId
+    const inputKey = signalAutoInputKey(sourceState, sourceCtx, shipIds, stock)
+    const controller = new AbortController()
+    const cancel = () => controller.abort()
+    signal?.addEventListener('abort', cancel, { once: true })
+    this.signalAutoController = controller
+    this.signalAutoComputing = true
+    try {
+      const estimate = await computeSignalAuto(sourceState, stockId, shipIds, controller.signal,
+        () => this.createSignalAutoWorker())
+      if (!estimate || controller.signal.aborted || this.stopped || this.state !== sourceState || this.ctx !== sourceCtx || this.state.shipId !== leader)
+        return { ok: false }
+      const currentHandover = this.wormholeAutoMainHandover(shipIds)
+      if (currentHandover.reason || currentHandover.toId !== handover.toId) return { ok: false }
+      const result = wormholeAutoStart(this.state, this.ctx, stockId, shipIds, undefined, { inputKey, estimate })
+      if (result.ok) { void this.persist(); this.notify() }
+      return result
+    } finally {
+      signal?.removeEventListener('abort', cancel)
+      this.signalAutoController = null
+      this.signalAutoComputing = false
     }
-    return r
   }
 
   wormholeAutoStartPrepared(stockId: string, shipIds: readonly string[], plan: WormholePreparationPlan, goal: import('@whale/core').WormholeExpeditionGoal = 'deep'): CommandResult {

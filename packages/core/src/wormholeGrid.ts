@@ -1244,7 +1244,7 @@ export function wormholeMakeGrid(seed: number, depth: number, extraScanRadius = 
   if (depth >= 8 && expeditionRules === undefined && !legacyAuto) {
     const labRng = wormholeStream(seed * 9973 + depth * 8647 + 501)
     const eligible = cells.filter(c => c.place === 'empty' && !c.eventKey && c.key !== startKey && c.key !== hexKey(exit.q, exit.r))
-    if (labRng() < 0.2 && eligible.length > 0) {
+    if (labRng() < 0.4 && eligible.length > 0) {
       const cell = eligible[Math.floor(labRng() * eligible.length)]!
       cell.place = 'research'
     }

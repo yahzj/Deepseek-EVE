@@ -1,7 +1,7 @@
 import type { GameState, WormholeArchetype, WormholeFamily } from '../state'
 import type { SimContext } from '../types'
-import type { SignalAutoEstimate } from './types'
-import { signalAutoCombatRatio, SIGNAL_AUTO_COMBAT } from './combat'
+import type { SignalAutoEstimate, SignalAutoLayerReport, SignalAutoReportDetails } from './types'
+import { signalAutoGuardBattleOf } from './guard'
 import type { WormholeAutoTechFactors } from '../wormholeAuto'
 import { blankShareFactorOf, wormholeAdmission, wormholeScanBonusOf, wormholeStepCost, WORMHOLE_PILE_UNITS_BASE, WORMHOLE_ORE_ITEM_ID } from '../wormhole'
 import { matterTechWhBuffs } from '../matterTech'
@@ -16,7 +16,7 @@ import { RARE_WRECK_VOLUME_M3, wreckGroupOfCard, wreckItemIdOf, rareWreckItemIdO
 import { nextRandom, hashSeed, pickWeighted } from '../rng'
 import { tuningMul } from '../tuning'
 
-/** 仅新版本使用；过程没有随机项，旋钮不影响旧任务。 */
+/** 新任务探索与作业参数；既有在途任务按冻结快照结算。 */
 export const SIGNAL_AUTO_ESTIMATE_CONFIG = { reserveTurns: 2, movePerPlace: 1.25, workPerPlace: 1,
   exitRadiusCost: 1.5, ordinaryJitter: .1, relicChecks: 2, maxDepth: 9,
   ordinaryHoldShareMin: .25 } as const
@@ -33,6 +33,23 @@ export function signalAutoOrdinaryHoldShareOf(depth: number, remaining: number, 
     + (1 - SIGNAL_AUTO_ESTIMATE_CONFIG.ordinaryHoldShareMin) * progress
 }
 
+function allocateUnits(total: number, weights: readonly number[]): number[] {
+  if (total <= 0 || weights.length === 0) return weights.map(() => 0)
+  const weightTotal = weights.reduce((sum, weight) => sum + Math.max(0, weight), 0)
+  if (weightTotal <= 0) return weights.map((_, index) => index === 0 ? total : 0)
+  const exact = weights.map(weight => total * Math.max(0, weight) / weightTotal)
+  const units = exact.map(Math.floor)
+  let remainder = total - units.reduce((sum, value) => sum + value, 0)
+  const order = exact.map((value, index) => ({ index, fraction: value - units[index]! }))
+    .sort((a, b) => b.fraction - a.fraction || a.index - b.index)
+  for (const row of order) {
+    if (remainder <= 0) break
+    units[row.index] = units[row.index]! + 1
+    remainder--
+  }
+  return units
+}
+
 export function signalAutoEstimateOf(state: GameState, ctx: SimContext, ids: readonly string[],
   signal: { seed: number; depth: number; family: WormholeFamily; archetype: WormholeArchetype },
   yieldMul: number, tech: WormholeAutoTechFactors, holdM3: number): SignalAutoEstimate {
@@ -44,10 +61,13 @@ export function signalAutoEstimateOf(state: GameState, ctx: SimContext, ids: rea
   const mining = miners > 0 ? miners + wormholeWorkEfficiencyOfFleet(state, ctx, ids, 'miner') : 0
   const salvage = salvagers > 0 ? salvagers + wormholeWorkEfficiencyOfFleet(state, ctx, ids, 'salvager') : 0
   const recover = (throughput: number) => throughput / (1 + throughput)
-  const out: SignalAutoEstimate = { version: 1, tech, capability: { turns: admission.turnBudget, scanRadius, miners, salvagers, holdM3 },
+  const out: SignalAutoEstimate = { version: 2, tech, capability: { turns: admission.turnBudget, scanRadius, miners, salvagers, holdM3 },
     layers: [], depthReached: Math.max(1, Math.min(9, signal.depth)), ordinaryUsedM3: 0, gains: [], cores: [] }
   const expected = { wreck: 0, ore: 0, essence: 0 }
-  const opportunities: Array<{ depth: number; checks: number }> = []
+  const opportunities: Array<{ depth: number; checks: number; layerIndex: number }> = []
+  const ordinaryByLayer: Array<{ wreck: number; ore: number }> = []
+  const essenceByLayer: number[] = []
+  const layerTurns: number[] = []
   const budget = Math.max(0, admission.turnBudget - SIGNAL_AUTO_ESTIMATE_CONFIG.reserveTurns)
   let remaining = budget, ordinaryPlannedM3 = 0
   const oreId = WORMHOLE_ORE_ITEM_ID, oreM3 = ctx.items.get(oreId)?.unitM3 ?? 1
@@ -79,24 +99,31 @@ export function signalAutoEstimateOf(state: GameState, ctx: SimContext, ids: rea
     const ordinarySites = (salvagers > 0 ? graves : 0) + (miners > 0 ? veins : 0)
     const savedCost = baseSites * Math.min(1, ordinarySites / Math.max(1, sites)) * workCost * (1 - plannedWork)
     const plannedCost = fullCost - savedCost
-    const combatRatio = signalAutoCombatRatio(state, ctx, ids, signal.family, depth)
+    const guardBattle = signalAutoGuardBattleOf(state, ctx, ids, signal.family, depth, signal.seed)
+    const guardWon = guardBattle.outcome === 'victory'
     const descend = depth < SIGNAL_AUTO_ESTIMATE_CONFIG.maxDepth
-      && combatRatio >= SIGNAL_AUTO_COMBAT.guardRatio && remaining >= plannedCost
+      && guardWon && remaining >= plannedCost
     // 不能继续下潜时恢复本层普通作业，不因预留目标而空舱撤离。
     const ordinaryWork = descend ? plannedWork : 1
     const layerCost = descend ? plannedCost : fullCost
     const completion = Math.min(1, remaining / layerCost)
-    const guardPassed = completion === 1 && combatRatio >= SIGNAL_AUTO_COMBAT.guardRatio
-    out.layers.push({ depth, completion, combatRatio, guardPassed })
+    const guardPassed = completion === 1 && guardWon
+    const layerIndex = out.layers.length
+    out.layers.push({ depth, completion, guardBattle, guardPassed })
+    layerTurns.push(Math.min(remaining, layerCost))
     out.depthReached = depth
     const combatWreck = guardPassed ? rewardMul * WORMHOLE_WRECK_PILE_M3_BASE * ships * WORMHOLE_SHIP_SPOIL_COMMONS : 0
-    expected.wreck += completion * (common * recover(salvage) * ordinaryWork + combatWreck)
-    expected.ore += completion * ore * recover(mining) * ordinaryWork
+    const layerWreck = completion * (common * recover(salvage) * ordinaryWork + combatWreck)
+    const layerOre = completion * ore * recover(mining) * ordinaryWork
+    expected.wreck += layerWreck
+    expected.ore += layerOre
+    ordinaryByLayer.push({ wreck: layerWreck, ore: layerOre })
     ordinaryPlannedM3 += completion * (ordinaryVolume * ordinaryWork + combatWreck)
     expected.essence += completion * matter
-    if (salvagers > 0) opportunities.push({ depth, checks: completion * ruins * SIGNAL_AUTO_ESTIMATE_CONFIG.relicChecks * recover(salvage) })
+    essenceByLayer.push(completion * matter)
+    if (salvagers > 0) opportunities.push({ depth, checks: completion * ruins * SIGNAL_AUTO_ESTIMATE_CONFIG.relicChecks * recover(salvage), layerIndex })
     remaining = Math.max(0, remaining - layerCost)
-    if (!guardPassed) break
+    if (!guardPassed || remaining <= 0 || depth >= SIGNAL_AUTO_ESTIMATE_CONFIG.maxDepth) break
   }
   const stream = (line: string) => {
     const rng = { seed: hashSeed(`signal-auto-estimate-1/${signal.seed}/${signal.depth}/${line}`), count: 0 }
@@ -105,25 +132,42 @@ export function signalAutoEstimateOf(state: GameState, ctx: SimContext, ids: rea
   const round = (value: number, random: () => number) => Math.floor(value) + (random() < value % 1 ? 1 : 0)
   const gains = new Map<string, number>()
   const add = (id: string, n: number) => { if (n > 0) gains.set(id, (gains.get(id) ?? 0) + n) }
+  const layerGains = out.layers.map<SignalAutoLayerReport>(layer => ({ ...layer, turns: 0, gains: [] }))
+  const layerMaps = layerGains.map(() => new Map<string, number>())
+  const addLayer = (index: number, id: string, n: number) => {
+    if (n <= 0) return
+    const map = layerMaps[index]
+    if (map) map.set(id, (map.get(id) ?? 0) + n)
+  }
   const cardId = wormholeCardIdOfFamily(signal.family, signal.seed), key = wreckGroupOfCard(cardId, ctx)?.key ?? cardId
   const jitter = 1 + (stream('ordinary')() * 2 - 1) * SIGNAL_AUTO_ESTIMATE_CONFIG.ordinaryJitter
   const common = expected.wreck * jitter, ore = expected.ore * jitter
   const volume = common + ore * oreM3, scale = Math.min(1, holdM3 / Math.max(1, volume))
   // 收成系数在实际可装数量之后应用，否则满仓会抹平科技等级差异。
   const wreckN = Math.floor(common * scale * yieldMul), oreN = Math.floor(ore * scale * yieldMul)
+  const wreckByLayer = allocateUnits(wreckN, ordinaryByLayer.map(row => row.wreck))
+  const oreByLayer = allocateUnits(oreN, ordinaryByLayer.map(row => row.ore))
   out.ordinaryUsedM3 = wreckN + oreN * oreM3
-  add(wreckItemIdOf(key), wreckN); add(oreId, oreN)
+  const wreckId = wreckItemIdOf(key)
+  add(wreckId, wreckN); add(oreId, oreN)
+  wreckByLayer.forEach((units, index) => addLayer(index, wreckId, units))
+  oreByLayer.forEach((units, index) => addLayer(index, oreId, units))
   // 各奖励线独立取整：固定整数机会，只为小数部分多掷一次。
   for (const row of opportunities) {
-    add(rareWreckItemIdOf(key), round(row.checks * wormholeRelicChanceOf(row.depth) * yieldMul, stream(`rare/${row.depth}`)) * RARE_WRECK_VOLUME_M3 * tuningMul(state, 'rareWreckVolume'))
+    const rareId = rareWreckItemIdOf(key)
+    const rareUnits = round(row.checks * wormholeRelicChanceOf(row.depth) * yieldMul, stream(`rare/${row.depth}`)) * RARE_WRECK_VOLUME_M3 * tuningMul(state, 'rareWreckVolume')
+    add(rareId, rareUnits)
+    addLayer(row.layerIndex, rareId, rareUnits)
     const boxRandom = stream(`boxes/${row.depth}`)
     const boxes = round(row.checks * (1 - wormholeRelicChanceOf(row.depth)) * yieldMul, stream(`box-count/${row.depth}`))
     for (let i = 0; i < boxes; i++) {
       const box = wormholeRollRelicBoxKind(boxRandom, ctx, row.depth, signal.family)
-      if (box) add(box, 1)
+      if (box) { add(box, 1); addLayer(row.layerIndex, box, 1) }
     }
   }
-  add(WORMHOLE_ESSENCE_ITEM_ID, round(expected.essence * yieldMul, stream('essence')))
+  const essenceUnits = round(expected.essence * yieldMul, stream('essence'))
+  add(WORMHOLE_ESSENCE_ITEM_ID, essenceUnits)
+  allocateUnits(essenceUnits, essenceByLayer).forEach((units, index) => addLayer(index, WORMHOLE_ESSENCE_ITEM_ID, units))
   // 核心保持独立每趟一次规则；按已完成层加权，不以触达最深层放大全趟。
   const completed = out.layers.reduce((n, layer) => n + layer.completion, 0)
   const weightedDepth = out.layers.reduce((n, layer) => n + layer.depth * layer.completion, 0) / Math.max(1, completed)
@@ -133,5 +177,29 @@ export function signalAutoEstimateOf(state: GameState, ctx: SimContext, ids: rea
     out.cores.push({ type, n: 1 })
   }
   out.gains = [...gains].map(([itemId, units]) => ({ itemId, units: Math.floor(units) }))
+  const settledLayerMaps = layerMaps.map(() => new Map<string, number>())
+  for (const gain of out.gains) {
+    const allocation = allocateUnits(gain.units, layerMaps.map(map => map.get(gain.itemId) ?? 0))
+    allocation.forEach((units, index) => {
+      if (units > 0) settledLayerMaps[index]?.set(gain.itemId, units)
+    })
+  }
+  let returnReason: SignalAutoReportDetails['returnReason'] = 'max-depth'
+  const lastLayer = out.layers.at(-1)!
+  if (lastLayer.completion < 1) returnReason = 'budget'
+  else if (lastLayer.depth >= SIGNAL_AUTO_ESTIMATE_CONFIG.maxDepth) returnReason = 'max-depth'
+  else if (!lastLayer.guardPassed) returnReason = 'guard'
+  else returnReason = 'budget'
+  out.report = {
+    guardRules: 2,
+    availableTurns: budget,
+    spentTurns: layerTurns.reduce((sum, turns) => sum + turns, 0),
+    returnReason,
+    layers: layerGains.map((layer, index) => ({
+      ...layer,
+      turns: layerTurns[index] ?? 0,
+      gains: [...(settledLayerMaps[index] ?? new Map())].map(([itemId, units]) => ({ itemId, units })),
+    })),
+  }
   return out
 }

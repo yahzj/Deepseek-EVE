@@ -443,6 +443,8 @@ export interface WormholeAutoReport {
   coresReleased: number
   /** 收益清单（已入仓库） */
   gains: Array<{ itemId: string; units: number }>
+  /** 公开信号自动探索逐层报告；旧报告缺省，不能从总收益反推。 */
+  signalAuto?: import('./signalAuto/types').SignalAutoReportDetails
   /**
    * **本趟带回的 AI 核心**（2026-09-14 船长第四答：自动探索也吃遗迹核心掉落，按手动期望 ×40% 折算）。
    * ⚠ 与 `gains` 分开：核心**不进仓库**（直接进 `state.aiCores` 账本）⇒ 塞进 `gains` 会被入仓循环
