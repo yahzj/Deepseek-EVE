@@ -135,14 +135,17 @@ describe('信号空间 · 旧面板来源与隔离', () => {
     expect(source).toContain("tab === 'map' && run ? ' is-exploring' : ''")
   })
 
-  it('关闭先置 closingRef，leave 同步通知也不能被恢复 effect 抢回活动位，自动准备不碰旧趟', () => {
+  it('关闭先置 closingRef，leave 同步通知也不能被恢复 effect 抢回活动位，自动准备取消推演但不碰旧趟', () => {
     const resume = collect(declaration(ast, 'SignalSpacePanel'), ts.isCallExpression).find(
       (call) => ts.isIdentifier(call.expression) && call.expression.text === 'useEffect' && call.getText(ast).includes('engine.wormholeResume()'),
     )?.arguments[0]
     if (!resume) throw new Error('缺少恢复 effect')
     const state = { wormhole: { run: { attending: true, battle: null as object | null } } }
+    const controller = new AbortController()
+    const abort = vi.spyOn(controller, 'abort')
     const scope = {
       state, auto: false, closingRef: { current: false },
+      autoRequest: { current: controller },
       engine: { wormholeLeave: vi.fn(), wormholeResume: vi.fn(() => ({ ok: true })) },
       onClose: vi.fn(), onToast: vi.fn(), setResumeNote: vi.fn(), tr: (id: string) => id,
     }
@@ -158,6 +161,7 @@ describe('信号空间 · 旧面板来源与隔离', () => {
     expect(scope.engine.wormholeLeave).toHaveBeenCalledOnce()
     expect(scope.engine.wormholeResume).not.toHaveBeenCalled()
     expect(scope.onClose).toHaveBeenCalledOnce()
+    expect(abort).not.toHaveBeenCalled()
     scope.engine.wormholeLeave.mockClear()
     scope.closingRef.current = false
     state.wormhole.run.attending = true
@@ -167,6 +171,9 @@ describe('信号空间 · 旧面板来源与隔离', () => {
     expect(scope.engine.wormholeLeave).not.toHaveBeenCalled()
     expect(scope.engine.wormholeResume).not.toHaveBeenCalled()
     expect(state.wormhole.run.attending).toBe(true)
+    expect(abort).toHaveBeenCalledOnce()
+    expect(controller.signal.aborted).toBe(true)
+    expect(scope.onClose).toHaveBeenCalledTimes(2)
   })
 })
 
