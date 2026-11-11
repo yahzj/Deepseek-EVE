@@ -24,6 +24,15 @@ function installLifecycle(): void {
     if (lifecycleInstalled || typeof document === 'undefined') return
     lifecycleInstalled = true
     installMusicGestureRetry()
+    // 网页首次手势前底噪未建元素（见 gestureGate.ts），BGM 那条由 installMusicGestureRetry 恢复，
+    // 底噪在本层补一次同样的手势恢复；桌面 file:// 不受影响（resumeAmbient 幂等）。
+    const onGesture = (): void => {
+      document.removeEventListener('pointerdown', onGesture, true)
+      document.removeEventListener('keydown', onGesture, true)
+      resumeAmbient()
+    }
+    document.addEventListener('pointerdown', onGesture, true)
+    document.addEventListener('keydown', onGesture, true)
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') {
         pauseMusic()
