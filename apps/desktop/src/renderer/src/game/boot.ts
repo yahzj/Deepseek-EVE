@@ -14,6 +14,7 @@ import { applySpaceBg } from '../ui/spaceBg'
 import { bootstrapTheme } from '../ui/theme'
 import { applyFontScale } from '../ui/uiScale'
 import { applyFontChoice, readFontChoice } from '../ui/fontChoice'
+import { applyCrtEffect, readCrtEffect } from '../ui/crtEffect'
 import { installAudio, attachAudioEngine } from './audio'
 import { probeSaveStorage } from './saveGuard'
 import type { GameEngine } from './engine'
@@ -29,6 +30,7 @@ import { acquireSaveWriter } from './saveWriter'
  * - **界面字体**（2026-11-02 船长令最终口径）：默认 = 微软雅黑 + Oxanium（英文/数字）；
  *   复古 = 统一 GNU Unifont。选择写 `<html>` 的 `data-ui-font` + `--ui-font`，
  *   本机偏好 ⇒ 启动即应用，免得重启后打回默认。
+ * - **CRT 显示器效果**（2026-11-11 船长令）：开关写 `<html>` 的 `data-ui-crt`，本机偏好 ⇒ 启动即应用。
  */
 export function prebootRenderer(): void {
   installLayoutStyles()
@@ -36,6 +38,7 @@ export function prebootRenderer(): void {
   bootstrapTheme()
   applyFontScale()
   applyFontChoice(readFontChoice())
+  applyCrtEffect(readCrtEffect())
   /** 声音系统（2026-11-02）：首帧前注册播放器、挂手势解锁、装载本机音效覆盖（异步，不拦启动） */
   installAudio()
 }

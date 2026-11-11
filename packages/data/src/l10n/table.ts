@@ -8106,6 +8106,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ui.App.193': { zh: '版本 {p1} · 文件 {p2} · 版权 {p3} · 项目页 {p4} · 授权原文 {p5}', en: 'Version {p1} · File {p2} · Copyright {p3} · Project {p4} · License text {p5}' },
   'ui.App.194': { zh: '字体授权与来源说明（原文）', en: 'Font license and source notes (original text)' },
   'ui.App.195': { zh: '复古', en: 'Retro' },
+  'ui.App.196': { zh: 'CRT 显示器效果', en: '', enDeferred: true },
+  'ui.App.197': { zh: '关闭', en: '', enDeferred: true },
+  'ui.App.198': { zh: '开启', en: '', enDeferred: true },
+  'ui.App.199': { zh: '开启后整个界面叠加老式显示器的扫描线、暗角与荧光闪烁。', en: '', enDeferred: true },
   // ⟪声音系统追加批 2026-11-02⟫ BGM / 环境音 / 战斗细分 / UI 反馈 / 音高随机；英文未授权，按约定登记待译。
   'ui.sfx.024': { zh: '音乐', en: 'Music' },
   'ui.sfx.025': { zh: '环境', en: 'Ambience' },
