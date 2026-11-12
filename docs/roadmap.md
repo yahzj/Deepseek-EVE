@@ -6,7 +6,7 @@
 
 ## 正在推进
 
-- 普通采集/打捞实际出勤编队共同作业：已实现并通过专项/T2/网页构建/存档审计，船长2026-11-12要求合并推送部署，正在执行0.1.6网页版发布；公告草稿独立待审，见`docs/design/work-fleet-production-20261111.md`与`docs/design/release-0.1.6-20261112.md`。
+- 编队采集与打捞公告草稿待审；功能已随0.1.6部署网页版，完整核心回归与线上核验通过。草稿见`docs/design/work-fleet-production-20261111.md`，发布记录见`docs/design/release-0.1.6-20261112.md`。
 - 信号空间自动探索报告详情UI仍待此前中文标签审定；逐层数据及守卫实战推演已部署网页版，见`docs/design/signal-auto-report-detail-20261109.md`。当前探索与收益系数不改，旧在途任务保持冻结快照。
 - 战斗性能测试已按当前场景与CI负载更新：`packages/core/tests/perf.test.ts` 保留12场1v3离线推进、完成性和40k步数守卫，墙钟门槛调整为5000ms；CI本次实测约2.8s，不再沿用旧1500ms门槛，也不再按版本临时豁免。
 - 常用文档清理已落地，待船长审阅：现行结论与旧过程分离，旧记录默认禁读。本批清单见`docs/design/history-doc-cleanup-20261029.md`。
