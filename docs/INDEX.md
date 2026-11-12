@@ -13,7 +13,7 @@
 
 ## 统计
 
-- 非归档文档 **393** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4788** KB · **53902** 行
+- 非归档文档 **393** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4790** KB · **53911** 行
 - 状态分布：**未标注** 195 · **已确认/已实现** 130 · **进行中** 47 · **待裁定** 20 · **历史留档** 1
 - 孤儿文档（0 引用）**170** 份 · 状态未标注 **195** 份
 - 一、常用文档（按任务查阅）：**11** 份
@@ -28,13 +28,13 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档） |
 |---|---|---|---|---|---|
-| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定 | 未标注 | — | 23 KB / 134 行 | 46 |
+| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定 | 未标注 | — | 23 KB / 135 行 | 47 |
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 8 KB / 90 行 | 19 |
 | `docs/catalog.md` | 文档目录 | 未标注 | — | 5 KB / 51 行 | 11 |
 | `docs/content-workbench.md` | 内容工作台 | 未标注 | — | 3 KB / 35 行 | 2 |
 | `docs/data-editor.md` | 大鲸鱼数据编辑器 | 未标注 | — | 4 KB / 45 行 | 6 |
 | `docs/data-map.md` | 数据速查页 | 未标注 | — | 3 KB / 38 行 | 5 |
-| `docs/development-conventions.md` | 开发约定 | 未标注 | — | 25 KB / 171 行 | 25 |
+| `docs/development-conventions.md` | 开发约定 | 未标注 | — | 26 KB / 172 行 | 26 |
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（现行译名表） | — | 46 KB / 810 行 | 17 |
 | `docs/glossary.md` | 术语词典 | 未标注 | — | 23 KB / 204 行 | 65 |
 | `docs/roadmap.md` | 当前待办与实施边界 | 未标注 | — | 9 KB / 79 行 | 62 |
@@ -425,7 +425,7 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档） |
 |---|---|---|---|---|---|
-| `docs/development-conventions-changelog.md` | 开发约定维护记录 | 未标注 | — | 13 KB / 103 行 | 6 |
+| `docs/development-conventions-changelog.md` | 开发约定维护记录 | 未标注 | — | 14 KB / 110 行 | 6 |
 | `docs/l10n-pending.md` | 英文本地化记录 | 未标注 | — | 54 KB / 891 行 | 34 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
