@@ -22,7 +22,8 @@ import { beginDeparture, consumeDeparture, cancelDeparture, departureOrigin, dep
 import type { CommandResult } from './engine'
 import type { GameState, WorkReturnProgress } from './state'
 import type { SimContext } from './types'
-import { addItem, addWare, freeCargoM3, unloadCargoOfShipToWarehouse } from './inventory'
+import { addItem, addWare, freeCargoM3Of, unloadWorkFleetToWarehouse } from './inventory'
+import { workFleetShipIds, workFleetReturnMs } from './workFleet'
 import { shortestTravelMinutes, travelLegMs } from './travel'
 import { actionBlockReason, markExplored } from './explore'
 import { bumpFirst } from './firstTasks'
@@ -59,7 +60,7 @@ import {
   wreckGroupStockOf,
   wreckGroupStocksOf,
 } from './salvage'
-import { scaledReturnMs, workReturnLeg } from './trips'
+import { workReturnLeg } from './trips'
 import { beginJumpFuelLeg, jumpFuelLegMsOf } from './jumpFuel'
 
 /** 出航/返航共用腿（星系航程）：进出港基准（同采矿 localLegMs）+ 星系间航程（按船速换算） */
@@ -78,7 +79,7 @@ export function outboundLegMsFor(state: GameState, ctx: SimContext, galaxyId: st
 
 /** 主控打捞返航真实时长：引擎与活动栏、星图页共用，展示时不点火扣料。 */
 export function salvageReturnMs(state: GameState, ctx: SimContext, galaxyId: string, fuelMul = state.salvaging.fuelMul ?? 1): number {
-  return scaledReturnMs(legMsFor(state, ctx, galaxyId) + outboundLegMsFor(state, ctx, galaxyId), state, ctx, state.shipId, fuelMul)
+  return workFleetReturnMs(state, ctx, id => legMsFor(state, ctx, galaxyId, id) + outboundLegMsFor(state, ctx, galaxyId, id), fuelMul)
 }
 
 /** 该船装配的打捞器周期表（每台周期毫秒；无打捞器 = 空表）。
@@ -96,6 +97,11 @@ export function salvagerCyclesOf(state: GameState, ctx: SimContext, shipId: stri
     if (def.slot === 'salvager') cycles.push(Math.max(100, Math.round((def.salvageCycleMs ?? 10_000) * rigFactor)))
   }
   return cycles
+}
+
+/** 准备页及在途进度共用实际逐舰设备周期，不把主驾装配复制给僚舰。 */
+export function salvageFleetCyclesOf(state: GameState, ctx: SimContext, preview = false): number[] {
+  return workFleetShipIds(state, preview).flatMap(id => salvagerCyclesOf(state, ctx, id))
 }
 
 /**
@@ -334,7 +340,7 @@ export function startSalvageOp(
   /** ⚠ `wormholePilotHoldReason` 已撤（2026-09-21 统一批）：扫描虫洞 = 可自动停、人在洞里 = 拒，都归 `activityGate` */
   const pilotBlock = pilotUnavailableReason(state)
   if (pilotBlock) return { ok: false, error: pilotBlock }
-  if (salvagerCyclesOf(state, ctx, state.shipId).length === 0) {
+  if (salvageFleetCyclesOf(state, ctx, true).length === 0) {
     // 2026-09-20 船长令：提示里要**指明去处**（「添加让玩家去装配的提示」）⇒ 文案点到「装配」页
     return { ok: false, error: '打捞需要打捞器：先到「装配」页给驾驶船的高槽装一台（MK1/2/3）再出发。', errorId: 'core.salvaging.003' }
   }
@@ -403,6 +409,7 @@ export function startSalvageOp(
   s.cycleAccMs = 0
   s.tripM3 = 0
   s.deviceAccMs = {}
+  s.deviceClockVersion = 2
   /** **打捞对象**（2026-09-26）：非法/无存量的对象一律回落"全部"（不拒开工） */
   s.targetGroup = salvageTargetOkOf(state, ctx, galaxyId, targetGroup) ? targetGroup : undefined
   s.autoCycle = s.autoCycle !== false // 偏好持久：默认开，除非玩家关过（旧档缺省 = 开）
@@ -411,7 +418,7 @@ export function startSalvageOp(
   beginDeparture(state, ctx, 'salvaging', galaxyId, departureFrom)
   const shipName = shipDisplayName(state, ctx, state.shipId)
   const density = wreckDensityOf(state, galaxyId, ctx)
-  const salvagers = salvagerCyclesOf(state, ctx, state.shipId).length
+  const salvagers = salvageFleetCyclesOf(state, ctx).length
   const outSec = Math.max(1, Math.round(outboundLegMsFor(state, ctx, galaxyId) / 1000))
   const retSec = Math.max(1, Math.round(legMsFor(state, ctx, galaxyId) / 1000))
   const loopNote = s.stopAfterTrip
@@ -596,9 +603,8 @@ export function retireSalvageShip(
   if (opts?.galaxyId === undefined && (!s.active || !s.galaxyId)) return false
   const galaxyName = ctx.galaxies.get(galaxyId)?.name ?? galaxyId
   // 打捞返航腿 = 满载返航 + 空船去程（去程并入返航，与 advanceSalvageOp 返航腿同口径）
-  const fullLeg = legMsFor(state, ctx, galaxyId) + outboundLegMsFor(state, ctx, galaxyId)
   /** ⚠ allbackLegMs：调用方（state.haltActivityForSwitch，不能 import 本模块）给的兜底腿长 */
-  const baseMs = opts?.fallbackLegMs !== undefined ? Math.max(1, Math.round(opts.fallbackLegMs)) : scaledReturnMs(fullLeg, state, ctx, state.shipId)
+  const baseMs = opts?.fallbackLegMs !== undefined ? Math.max(1, Math.round(opts.fallbackLegMs)) : salvageReturnMs(state, ctx, galaxyId, 1)
   const { legMs, phaseAccMs } = workReturnLeg(state, 'salvage', baseMs, progress)
   const oldShip = state.fleet[state.shipId]
   const haveCargo = oldShip ? Object.keys(oldShip.cargo).some((k) => (oldShip.cargo[k] ?? 0) > 0) : false
@@ -977,7 +983,7 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
       remaining -= need
       s.phaseAccMs = 0
       if (s.phase === 'returning') {
-        const moved = unloadCargoOfShipToWarehouse(state, ctx, state.shipId)
+        const moved = unloadWorkFleetToWarehouse(state, ctx)
         const galaxyName = ctx.galaxies.get(galaxyId)?.name ?? galaxyId
         addLog(
           state,
@@ -1002,6 +1008,7 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
         s.cycleAccMs = 0
         s.tripM3 = 0
         s.deviceAccMs = {}
+        s.deviceClockVersion = 2
         delete s.fuelMul
         beginDeparture(state, ctx, 'salvaging', galaxyId, { galaxy: HOME_GALAXY_ID, site: null, docked: true })
         continue
@@ -1019,28 +1026,37 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
       addLog(state, 'warn', '该星系的敌群情报缺失，打捞作业已停止。', 'core.salvaging.025')
       return
     }
-    const cycles = salvagerCyclesOf(state, ctx, state.shipId)
-    if (cycles.length === 0) {
+    const devices = workFleetShipIds(state).flatMap(shipId => salvagerCyclesOf(state, ctx, shipId)
+      .map((cycleMs, index) => ({ shipId, cycleMs, key: JSON.stringify([shipId, index, cycleMs]) })))
+    if (devices.length === 0) {
       resetOp(state)
       addLog(state, 'warn', '未找到可用的打捞器，打捞作业已停止。', 'core.salvaging.026')
       return
     }
-    // 最短周期为统一推进步（多台各自维护相位）
-    const stepMs = Math.min(...cycles)
-    if (s.cycleAccMs < stepMs) {
-      const need = stepMs - s.cycleAccMs
-      const take = Math.min(remaining, need)
-      s.cycleAccMs += take
-      remaining -= take
-      if (s.cycleAccMs < stepMs) break
+    if (s.deviceClockVersion !== 2) {
+      const legacy = s.deviceAccMs
+      s.deviceAccMs = {}
+      for (const device of devices) {
+        // 旧在途只把原主驾的周期档进度迁入，随行设备从0开始，不补发过去产出。
+        s.deviceAccMs[device.key] = device.shipId === state.shipId
+          ? (legacy[String(device.cycleMs)] ?? 0) + s.cycleAccMs : 0
+      }
+      s.deviceClockVersion = 2
     }
-    s.cycleAccMs = 0
-    for (const cycleMs of cycles) {
-      const key = String(cycleMs)
-      s.deviceAccMs[key] = (s.deviceAccMs[key] ?? 0) + stepMs
+    const deviceKeys = new Set(devices.map(row => row.key))
+    for (const key of Object.keys(s.deviceAccMs)) if (!deviceKeys.has(key)) delete s.deviceAccMs[key]
+    for (const { key, cycleMs } of devices) s.deviceAccMs[key] = Math.min(cycleMs, Math.max(0, s.deviceAccMs[key] ?? 0))
+    const need = Math.min(...devices.map(({ key, cycleMs }) => Math.max(0, cycleMs - (s.deviceAccMs[key] ?? 0))))
+    const take = Math.min(remaining, need)
+    for (const { key } of devices) s.deviceAccMs[key] = (s.deviceAccMs[key] ?? 0) + take
+    remaining -= take
+    const stepMs = Math.min(...devices.map(row => row.cycleMs))
+    s.cycleAccMs = Math.min(...devices.filter(row => row.cycleMs === stepMs).map(row => s.deviceAccMs[row.key] ?? 0))
+    if (take < need) break
+    for (const { shipId, cycleMs, key } of devices) {
       while ((s.deviceAccMs[key] ?? 0) >= cycleMs) {
         s.deviceAccMs[key] = (s.deviceAccMs[key] ?? 0) - cycleMs
-        const freeM3 = freeCargoM3(state, ctx)
+        const freeM3 = freeCargoM3Of(state, ctx, shipId)
         const pulled = pullOneWreck(state, ctx, galaxyId, cycleMs, freeM3)
         if (pulled) bumpFirst(state, 'salvageRuns') // 第一次任务/链：打捞次数
         if (!pulled) {
@@ -1082,11 +1098,12 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
          * 会被 `Math.floor` 抹成 0 ⇒ 池子扣光、货舱一件没多（玩家报障「数字不变也打捞不到」）。
          * ⚠ `s.tripM3` 记的仍是**实际出的 m³**（池子与行程账不吃这个保底）。
          */
-        addItem(state, pulled.itemId, wreckUnitsOf(pulled.volumeM3))
+        addItem(state, pulled.itemId, wreckUnitsOf(pulled.volumeM3), shipId)
         s.tripM3 += pulled.volumeM3
       }
       if (s.phase === 'returning') break
     }
+    if (s.phase === 'salvaging') s.cycleAccMs = Math.min(...devices.filter(row => row.cycleMs === stepMs).map(row => s.deviceAccMs[row.key] ?? 0))
   }
 }
 
@@ -1099,6 +1116,7 @@ function resetOp(state: GameState): void {
   s.cycleAccMs = 0
   s.tripM3 = 0
   s.deviceAccMs = {}
+  delete s.deviceClockVersion
   s.targetGroup = undefined
   delete s.fuelMul
 }

@@ -86,12 +86,12 @@ export function builtSiteAtGalaxy(state: GameState, ctx: SimContext, galaxyId: s
  * 采矿"返航/出航基准腿"（与 mining.oneLegMs 同口径的站解析版，供 shipyard 等不引 mining 的场景使用）：
  * = 本地进出港基准 + 矿带星系与"最近空间站"的实际航程。
  */
-export function miningReturnLegMs(state: GameState, ctx: SimContext, beltId: string | null | undefined): number {
+export function miningReturnLegMs(state: GameState, ctx: SimContext, beltId: string | null | undefined, shipId = state.shipId): number {
   if (state.debugQuick) return 1000
   const belt = beltId ? ctx.belts.get(beltId) : undefined
   const stGal = belt?.galaxyId ? nearestStationGalaxyId(state, ctx, belt.galaxyId) : HOME_GALAXY_ID
   const mins = belt && belt.galaxyId ? shortestTravelMinutes(ctx, stGal, belt.galaxyId) : 0
-  const travel = Number.isFinite(mins) ? travelLegMs(state, ctx, mins) : 0
+  const travel = Number.isFinite(mins) ? travelLegMs(state, ctx, mins, shipId) : 0
   return Math.max(1, ctx.balance.mining.localLegMs + travel)
 }
 

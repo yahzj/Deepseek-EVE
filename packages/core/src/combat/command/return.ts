@@ -15,6 +15,18 @@ export function detachExpeditionReturn(state: GameState): void {
   if (state.combatEscort?.leaderShipId === sortie.leaderShipId) delete state.combatEscort
 }
 
+/** 采掘换驾驶后旧队各自挂返航账，避免新主控活动覆盖旧随行名单。 */
+export function detachWorkReturn(state: GameState): void {
+  const escort = state.combatEscort
+  if (!escort || escort.leaderShipId !== state.shipId) return
+  const returning = state.shipReturns[escort.leaderShipId]
+  if (!returning || !['miningStop', 'salvageStop', 'salvage'].includes(returning.reason ?? '')) return
+  for (const id of escort.shipIds) {
+    if (state.fleet[id] && !state.shipReturns[id]) state.shipReturns[id] = { ...returning }
+  }
+  delete state.combatEscort
+}
+
 /** 活动不再占用实体舰船时释放随行快照；实体卸货由各活动到港路径处理。 */
 export function settleCommandEscortsAtPort(state: GameState, ctx: SimContext): void {
   const escort = state.combatEscort

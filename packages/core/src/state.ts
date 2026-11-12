@@ -271,6 +271,8 @@ export interface MiningState {
   /** 富矿红利窗口剩余循环数（卷B2⑥，2026-09-08 船长定稿）：触发当轮置 1，下一循环消耗至 0；
    *  0/缺省 = 无窗口（旧档零迁移）。窗口与矿带绑定：换带/停止/结束清零；自动循环返航卸货后回原带保留。 */
   rvLeft?: number
+  /** 随行舰各自的采集循环与富矿窗口；主驾仍读原字段，旧档缺省从0开始。 */
+  shipProgress?: Record<string, { cycleAccMs: number; rvLeft: number }>
   /**
    * **本趟返航的跃迁燃料倍率**（**2026-09-29 船长令**）：`1`/缺省 = 没吃燃料；`10` = 这一趟返航速度 ×10。
    * ⚠ 只在**返航腿开始**那一刻由 `jumpFuel.beginJumpFuelLeg` 定一次（扣料也在那一刻），
@@ -680,7 +682,7 @@ export const EMPTY_REFINE_RUN: RefineRunState = {  active: false,
 
 /** B3 打捞作业（采矿式自动循环，2026-09-09 船长定：默认自动循环，满舱返航卸货后同星系自动续捞）：
  * 立即打捞 → 满仓自动返航（去程并入）→ 到港整仓卸入仓库 → 自动续捞（stopAfterTrip/关闭循环则收工）。
- * tripM3 = 本趟捞取体积当量累计（展示/日志）；deviceAccMs = 各周期档的打捞器相位（周期 ms → 累计）。
+ * tripM3 = 本趟全队捞取体积当量累计；deviceAccMs = 各舰各台打捞器相位（组合键 → 累计毫秒）。
  * autoCycle/stopAfterTrip = 作业偏好，跨趟持久（同采矿 MiningState 语义）；outbound 相位仅旧档遗留兼容。 */
 export interface SalvageOpState {
   active: boolean
@@ -693,8 +695,10 @@ export interface SalvageOpState {
   cycleAccMs: number
   /** 本趟累计捞取体积当量（m³） */
   tripM3: number
-  /** 打捞器相位账：周期 ms → 已累计 ms */
+  /** 打捞器相位账：舰船/设备序号/周期组合键 → 已累计ms；旧档兼容周期键。 */
   deviceAccMs: Record<string, number>
+  /** 2使用舰船/设备序号/周期组合键；缺省兼容旧周期键与统一步长余量。 */
+  deviceClockVersion?: 2
   /** 自动循环（默认开）：卸货后同星系自动续捞；关闭 = 本趟收工 */
   autoCycle: boolean
   /**
@@ -2385,6 +2389,7 @@ export function miningHalt(state: GameState): (WorkReturnProgress & { tripUnits:
   m.tripUnits = 0
   m.originGalaxy = null
   m.rvLeft = 0 // 停止开采：红利窗口随之清零（窗口绑定矿带）
+  delete m.shipProgress
   delete m.fuelMul
   return info
 }
@@ -2407,6 +2412,7 @@ export function salvageHalt(
   s.cycleAccMs = 0
   s.tripM3 = 0
   s.deviceAccMs = {}
+  delete s.deviceClockVersion
   delete s.fuelMul
   return info
 }

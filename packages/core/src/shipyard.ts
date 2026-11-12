@@ -9,7 +9,7 @@ import { bumpFirst } from './firstTasks'
 import { addLog, DEFAULT_START_SHIP_ID, shipLockedReason } from './state'
 import { cannotInterruptReason } from './activityGate'
 import { shipOperationBlockReason } from './shipActionPolicy'
-import { detachExpeditionReturn } from './combat/command/return'
+import { detachExpeditionReturn, detachWorkReturn } from './combat/command/return'
 import type { CommandResult, CoreBlockReason } from './engine'
 import type { GameState, WreckLogCause } from './state'
 import { noteWreckLog } from './shipWrecks'
@@ -243,6 +243,7 @@ export function changeShip(state: GameState, shipId: string, ctx: SimContext): C
   if (shipId in state.aiAssignments) {
     cancelAiTask(state, shipId, ctx)
   }
+  detachWorkReturn(state)
   state.shipId = shipId
   addLog(state, 'fleet', `已切换到驾驶 ${shipDisplayName(state, ctx, shipId)}。`, 'core.shipyard.018', {
     p1: shipDisplayName(state, ctx, shipId),

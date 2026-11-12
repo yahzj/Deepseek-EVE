@@ -23,7 +23,7 @@ import { expeditionStatus, bountyCooldownRemainingMs, bountyCooldownMsFor, autoL
 import { standbyStatus, transitStatus } from './location'
 import { aiTaskView, aiCoreName } from './ai'
 import { shipDisplayName } from './instances'
-import { salvageReturnMs, outboundLegMsFor, salvagerCyclesOf } from './salvaging'
+import { salvageReturnMs, outboundLegMsFor, salvageFleetCyclesOf } from './salvaging'
 import { haulEndpointName } from './hauling'
 import { travelMinutesEff } from './travel'
 import { weekendFoePoolOf } from './weekendEvent'
@@ -183,7 +183,7 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
         percent = Math.min(100, Math.round((svg.phaseAccMs / leg) * 100))
         remainingMs = Math.max(0, leg - svg.phaseAccMs)
       } else {
-        const cycles = salvagerCyclesOf(state, ctx, state.shipId)
+        const cycles = salvageFleetCyclesOf(state, ctx)
         const step = cycles.length > 0 ? Math.min(...cycles) : 0
         if (step > 0) percent = Math.min(100, Math.round((svg.cycleAccMs / step) * 100))
       }

@@ -499,6 +499,12 @@ for (const [key, value] of Object.entries(licensesRaw)) {
   const miningRaw = asRaw(src.mining)
   const phase: 'mining' | 'returning' | 'outbound' =
     miningRaw.phase === 'returning' || miningRaw.phase === 'outbound' ? miningRaw.phase : 'mining'
+  const miningShipProgress: NonNullable<GameState['mining']['shipProgress']> = {}
+  for (const [id, raw] of Object.entries(asRaw(miningRaw.shipProgress))) {
+    const row = asRaw(raw)
+    if (!fleet[id] || typeof row.cycleAccMs !== 'number' || !Number.isSafeInteger(row.cycleAccMs) || row.cycleAccMs < 0) continue
+    miningShipProgress[id] = { cycleAccMs: Math.floor(row.cycleAccMs as number), rvLeft: row.rvLeft === 1 ? 1 : 0 }
+  }
   const mining = {
     active: miningRaw.active === true,
     beltId: typeof miningRaw.beltId === 'string' && miningRaw.beltId.length > 0 ? miningRaw.beltId : null,
@@ -523,6 +529,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
         : null,
     // 卷B2⑥ 零迁移：富矿红利窗口剩余循环数（缺失按 0；不升存档版本号）
     rvLeft: miningRaw.rvLeft === 1 ? 1 : 0,
+    ...(Object.keys(miningShipProgress).length ? { shipProgress: miningShipProgress } : {}),
     ...(fuelMulOf(miningRaw.fuelMul) !== undefined ? { fuelMul: fuelMulOf(miningRaw.fuelMul)! } : {}),
   }
 
@@ -1266,6 +1273,11 @@ for (const [key, value] of Object.entries(licensesRaw)) {
   // autoCycle 缺省按开（!= false），stopAfterTrip 缺省关——与采矿读档口径一致 ---
   const slvRaw = asRaw(src.salvaging)
   const slvGalaxy = typeof slvRaw.galaxyId === 'string' && slvRaw.galaxyId.length > 0 ? slvRaw.galaxyId : null
+  const salvageDeviceAccMs: Record<string, number> = {}
+  for (const [key, value] of Object.entries(asRaw(slvRaw.deviceAccMs))) {
+    if (key.length > 0 && key.length <= 512 && typeof value === 'number' && Number.isSafeInteger(value) && value >= 0)
+      salvageDeviceAccMs[key] = Math.floor(value)
+  }
   const salvaging: GameState['salvaging'] =
     slvRaw.active === true && slvGalaxy !== null
       ? {
@@ -1275,7 +1287,8 @@ for (const [key, value] of Object.entries(licensesRaw)) {
           phaseAccMs: Math.max(0, Math.floor(num(slvRaw.phaseAccMs))),
           cycleAccMs: Math.max(0, Math.floor(num(slvRaw.cycleAccMs))),
           tripM3: Math.max(0, num(slvRaw.tripM3) || 0),
-          deviceAccMs: {}, // 相位账读档重建（以最短周期为步的推进自然重建）
+          deviceAccMs: salvageDeviceAccMs,
+          ...(slvRaw.deviceClockVersion === 2 ? { deviceClockVersion: 2 as const } : {}),
           autoCycle: slvRaw.autoCycle !== false,
           stopAfterTrip: slvRaw.stopAfterTrip === true,
           // **打捞对象**（2026-09-26 船长令）：非空串才收（合法性由开工/换对象那一层把关）

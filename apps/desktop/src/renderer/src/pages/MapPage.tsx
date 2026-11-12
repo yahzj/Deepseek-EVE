@@ -18,7 +18,7 @@ import {
   marketGoodOf,
   marketQuote,
   miningStatus,
-  salvagerCyclesOf,
+  salvageFleetCyclesOf,
   salvageReturnMs,
   outboundLegMsFor,
   shipDisplayName,
@@ -686,7 +686,7 @@ function salvageEstimate(
   density: number,
 ): { eff: string | null } {
   const ctx = engine.ctx
-  const cycles = salvagerCyclesOf(state, ctx, state.shipId)
+  const cycles = salvageFleetCyclesOf(state, ctx, !state.salvaging.active || state.salvaging.galaxyId !== galaxyId)
   const anomalies = [...engine.ctx.anomalies.values()].filter((a) => !a.hidden && a.galaxyId === galaxyId)
   if (cycles.length === 0 || anomalies.length === 0) {
     return { eff: cycles.length === 0 ? tr("ui.MapPage.049") : null }
@@ -1005,7 +1005,7 @@ function salvageProgressOf(engine: GameEngine): { percent: number; label: string
     const leg = salvageReturnMs(state, ctx, s.galaxyId)
     return { percent: Math.min(100, Math.round((s.phaseAccMs / leg) * 100)), label: tr("ui.MapPage.057"), travel: true }
   }
-  const cycles = salvagerCyclesOf(state, ctx, state.shipId)
+  const cycles = salvageFleetCyclesOf(state, ctx)
   const step = cycles.length > 0 ? Math.min(...cycles) : 0
   return {
     percent: step > 0 ? Math.min(100, Math.round((s.cycleAccMs / step) * 100)) : 0,

@@ -40,6 +40,9 @@
 
 编队实体出勤锁归`combat/command/locks.ts:commandShipDeployed`，随行舰预检归同文件`combatEscortBlock`；敌方在场空位归`combat/foes/capacity.ts:enemyFleetRoom`；逐弹药ID退款归`combat/combatAmmo.ts:refundBattleAmmo`。
 远征返航换驾驶交接归`combat/command/return.ts:detachExpeditionReturn`：以旧主舰的剩余返航账为准，给存活僚舰建立独立同进度返航记录后释放远征槽；换驾驶、旧档出击和推进兼容共用，不提前卸货或重发战果。
+
+采矿/打捞自动与停止返航卸货归`inventory.ts:unloadWorkFleetToWarehouse`：按实际随行快照逐舰分流入库，不读准备名单；无快照旧档只卸主舰。换驾驶时由`combat/command/return.ts:detachWorkReturn`将旧队转为现有逐舰返航账本，到港才卸货，不被新主控的活动快照覆盖。
+实际作业名单及全队返航腿归`workFleet.ts:workFleetShipIds/workFleetReturnMs`，仅预览读取准备名单；逐舰采集参数仍归`getMiningParams`，采集效率总量归`beltYieldRows`；全队实际打捞设备周期归`salvaging.ts:salvageFleetCyclesOf`，沿用`salvagerCyclesOf`逐舰计算，不复制主驾装配。
 实际随行名单由`combat/command/locks.ts:deployedCombatEscorts`读取出发快照；旧在途无快照时不补入基地舰船。
 遭遇战开战与缺弹预警均调用同文件`encounterCombatRosterOf`，不拿基地意向名单代替实际随行舰。
 

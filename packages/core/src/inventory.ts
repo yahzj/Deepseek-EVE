@@ -17,6 +17,7 @@ import type { ItemDef, SimContext } from './types'
 import { fleetDefOf } from './instances'
 import { shipLockedReason } from './state'
 import { shipOperationBlockReason } from './shipActionPolicy'
+import { deployedCombatEscorts } from './combat/command/locks'
 import { familyModules } from './fitted'
 import { plugEffectPartsOf } from './plugEffects'
 // ⚠ 依赖方向：`blackbox.ts` 只依赖 `state` / `plugs`，**不引 inventory** ⇒ 这边引它不成环
@@ -97,8 +98,8 @@ export function countItem(state: GameState, itemId: string): number {
   return cargoItemsOf(state)[itemId] ?? 0
 }
 
-/** 当前船货仓入库；**返回"是否真的写进去了"**（见下方 ⚠） */
-export function addItem(state: GameState, itemId: string, units: number): boolean {
+/** 货仓入库（缺省当前船）；返回是否真实写入，指定随行舰时不切换驾驶。 */
+export function addItem(state: GameState, itemId: string, units: number, shipId = state.shipId): boolean {
   if (!Number.isFinite(units) || units <= 0) return false
   /**
    * ⚠ **2026-09-26 修（船长报障「报告显示拿到黑匣、玩家手里却没有」）**：
@@ -110,7 +111,7 @@ export function addItem(state: GameState, itemId: string, units: number): boolea
    * ③ 「见过黑匣」只在**确实入库**之后置位（原先丢弃也置位 ⇒ 兑换商店 / 组装机「舰船插件」
    *    档被白解锁）。
    */
-  const cargo = currentShipState(state)?.cargo
+  const cargo = state.fleet[shipId]?.cargo
   if (cargo === undefined || Object.isFrozen(cargo)) return addWare(state, itemId, units)
   cargo[itemId] = (cargo[itemId] ?? 0) + ceilFinalQuantity(units)
   // 黑匣入库 ⇒ 置位「见过黑匣」（**唯一置位点**；见 `blackbox.ts` 的口径）
@@ -258,6 +259,15 @@ export function unloadCargoOfShipToWarehouse(state: GameState, ctx: SimContext, 
     moved += units
   }
   return moved
+}
+
+/** 采掘到港按实际随行快照卸货；缺快照的旧在途只卸该驾驶船。 */
+export function unloadWorkFleetToWarehouse(state: GameState, ctx: SimContext, leader = state.shipId): number {
+  const escort = state.combatEscort
+  const ids = escort?.leaderShipId === leader ? deployedCombatEscorts(state) : []
+  // 到港结算不受本队随行锁阻止；原状态的出勤快照仍保留，自动循环可继续使用。
+  const arrived = ids.length ? { ...state, combatEscort: undefined } : state
+  return [...new Set([leader, ...ids])].reduce((sum, id) => sum + unloadCargoOfShipToWarehouse(arrived, ctx, id), 0)
 }
 
 /** 货仓 → 仓库（卸货分流：装备回 moduleBay、其余回 warehouse.items）；返回搬入仓库的单位数 */

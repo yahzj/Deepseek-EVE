@@ -1134,7 +1134,7 @@ export {
   wreckGroupOfItemId,
 } from './wreckGroups'
 export type { WreckGroupDef, WreckRegion } from './wreckGroups'
-export { advanceSalvageOp, startSalvageOp, stopSalvageOp, retireSalvageShip, setSalvageAutoCycle, setSalvageStopAfterTrip, salvagerCyclesOf, pullOneWreck, wreckUnitsOf, legMsFor, outboundLegMsFor, salvageReturnMs, setSalvageTarget, wreckTargetsOf } from './salvaging'
+export { advanceSalvageOp, startSalvageOp, stopSalvageOp, retireSalvageShip, setSalvageAutoCycle, setSalvageStopAfterTrip, salvagerCyclesOf, salvageFleetCyclesOf, pullOneWreck, wreckUnitsOf, legMsFor, outboundLegMsFor, salvageReturnMs, setSalvageTarget, wreckTargetsOf } from './salvaging'
 export {
   setAutoLoopBounty,
   advanceAutoLoopBounty,

@@ -27,6 +27,7 @@ import type { StationAction } from './stationActivityPending'
 /* 技能加速「自动续用」（2026-10-01 船长令）：离线期间逐枚不写日志，只记账 ⇒ 结算那句汇总交代 */
 import { offlineBoostRenewCount, setOfflineBoostTally } from './consumables'
 import { beginOfflineCombatStats, newOfflineCombatStats } from './offlineCombatStats'
+import { workFleetShipIds } from './workFleet'
 
 // 兼容历史引用：formatDurationMs 现定义在 time.ts（避免模块循环依赖）
 export { formatDurationMs } from './time'
@@ -96,14 +97,15 @@ export function simulateOffline(
   const { deltaMs, overflowMs } = offlineSplit(rawGap, capEff)
   if (deltaMs <= 0) return
 
-  // 记录结算前的数量（当前船货仓 + 物品仓库），用于结算后对比出"离线得了什么"
+  // 记录主控实际作业队货仓与仓库，避免把尚未卸货的随行舰产出漏出离线汇总。
   const beforeCounts = new Map<string, number>()
   const snapshot = (map: Record<string, number>): void => {
     for (const [id, units] of Object.entries(map)) {
       if (units > 0) beforeCounts.set(id, (beforeCounts.get(id) ?? 0) + units)
     }
   }
-  snapshot(state.fleet[state.shipId]?.cargo ?? {})
+  const workShipIds = state.mining.active || state.salvaging.active ? workFleetShipIds(state) : [state.shipId]
+  for (const id of workShipIds) snapshot(state.fleet[id]?.cargo ?? {})
   snapshot(state.warehouse.items)
 
   // 记录结算前的日志条数（必须在写"离线归来"之前取，否则把这条也算进去）
@@ -206,7 +208,7 @@ export function simulateOffline(
       if (units > 0) after.set(id, (after.get(id) ?? 0) + units)
     }
   }
-  snapshotAfter(state.fleet[state.shipId]?.cargo ?? {})
+  for (const id of workShipIds) snapshotAfter(state.fleet[id]?.cargo ?? {})
   snapshotAfter(state.warehouse.items)
   for (const [id, unitsNow] of after) {
     const unitsBefore = beforeCounts.get(id) ?? 0
