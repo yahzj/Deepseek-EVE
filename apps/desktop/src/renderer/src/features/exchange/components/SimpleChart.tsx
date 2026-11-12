@@ -23,11 +23,17 @@ interface SimpleChartProps {
 
 type SimplePeriod = 'intraday' | 'h1'
 
-/** 图表缩放偏好：切页面、重开客户端后仍记得上次停在分时还是小时 K。 */
-const CHART_ZOOM_KEY = 'whale-idle:exch-chart-zoom-v1'
+/** 图表缩放偏好：切页面、重开客户端后仍记得上次停在分时还是小时 K。
+ *  v2（2026-11-12 船长令「K 线只显示 3 天」）：默认窗口从 7 天（168 根）改为 3 天（72 根），
+ *  换键让旧偏好不作数，确保默认视窗就是新口径。 */
+const CHART_ZOOM_KEY = 'whale-idle:exch-chart-zoom-v2'
+
+/** 小时 K 默认可视根数：3 天 = 72 根（2026-11-12 船长令；仍可滚轮/拖动看更早数据） */
+const DEFAULT_CANDLE_LIMIT = 72
+const MAX_CANDLE_LIMIT = 168
 
 function readChartZoom(): { zoom: number; candleLimit: number } {
-  if (typeof window === 'undefined') return { zoom: 0, candleLimit: 168 }
+  if (typeof window === 'undefined') return { zoom: 0, candleLimit: DEFAULT_CANDLE_LIMIT }
   try {
     const raw = window.localStorage.getItem(CHART_ZOOM_KEY)
     if (raw !== null) {
@@ -35,20 +41,20 @@ function readChartZoom(): { zoom: number; candleLimit: number } {
       const zoom = parsed.zoom === 1 ? 1 : 0
       const candleLimit =
         typeof parsed.candleLimit === 'number'
-          ? Math.max(24, Math.min(168, Math.round(parsed.candleLimit)))
-          : 168
+          ? Math.max(24, Math.min(MAX_CANDLE_LIMIT, Math.round(parsed.candleLimit)))
+          : DEFAULT_CANDLE_LIMIT
       return { zoom, candleLimit }
     }
   } catch {
     /* 缓存损坏按分时处理 */
   }
-  return { zoom: 0, candleLimit: 168 }
+  return { zoom: 0, candleLimit: DEFAULT_CANDLE_LIMIT }
 }
 
 export function SimpleChart({ client, code, quote, tick, allInFx = false }: SimpleChartProps) {
   const initialZoom = readChartZoom()
   const [zoom, setZoom] = useState(initialZoom.zoom)
-  /** 小时 K 默认直接铺满 7 天（168 根），向上滚逐步放大到 24 根。 */
+  /** 小时 K 默认铺满 3 天（72 根）；滚轮可放大到 1 天，往回拖可看更早的 400 根历史。 */
   const [candleLimit, setCandleLimit] = useState(initialZoom.candleLimit)
   const [pan, setPan] = useState(0)
   const dragRef = useRef<{ startX: number; startPan: number } | null>(null)
@@ -100,19 +106,19 @@ export function SimpleChart({ client, code, quote, tick, allInFx = false }: Simp
         setZoomDir('in')
         setZooming(true)
         setPan(0)
-        setCandleLimit(168)
+        setCandleLimit(DEFAULT_CANDLE_LIMIT)
         setZoom(1)
         window.setTimeout(() => setZooming(false), 900)
         return
       }
-      if (zoomIn && limitNow < 168) {
-        setCandleLimit(Math.min(168, limitNow + 48))
+      if (zoomIn && limitNow < MAX_CANDLE_LIMIT) {
+        setCandleLimit(Math.min(MAX_CANDLE_LIMIT, limitNow + 48))
         setPan(0)
         return
       }
       if (!zoomIn) {
-        // 默认 168 或已放大到 24：滚一格直接回分时；只有主动放大过才逐级。
-        if (limitNow < 168 && limitNow > 24) {
+        // 默认 72 或已放大到 24：滚一格直接回分时；只有主动放大过才逐级。
+        if (limitNow < MAX_CANDLE_LIMIT && limitNow > 24) {
           setCandleLimit(Math.max(24, limitNow - 48))
           setPan(0)
           return

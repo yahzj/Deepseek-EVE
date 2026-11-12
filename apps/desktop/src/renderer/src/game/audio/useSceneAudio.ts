@@ -16,6 +16,7 @@ import { installMusicGestureRetry, pauseMusic, refreshMusicVolume, resumeMusic }
 import { pauseAmbient, refreshAmbientVolume, resumeAmbient } from './ambient'
 import { reportRealSfxScene } from './sceneSwitch'
 import { subscribeSfxPrefs } from './prefs'
+import { setCrtBusy } from '../../ui/crtEffect'
 
 let lifecycleInstalled = false
 
@@ -61,4 +62,13 @@ export function useSceneAudio({ state, battleOnStage }: { state: GameState; batt
     // 真实场景交给 sceneSwitch：音效台「场景预演」可强制别的场景声音（只切声音，不动画面）
     reportRealSfxScene(scene)
   })
+  /**
+   * **战斗期间 CRT 降级**（2026-11-12 性能优化）：战场上屏时弹道与爆炸每帧重绘，
+   * 整屏曲面 `backdrop-filter` 会逐帧重算；先撤掉曲面滤镜（扫描线/暗角/黑边照常），
+   * 战场收起或战斗结束自动恢复。
+   */
+  useEffect(() => {
+    setCrtBusy('battle', battleOnStage)
+    return () => setCrtBusy('battle', false)
+  }, [battleOnStage])
 }
