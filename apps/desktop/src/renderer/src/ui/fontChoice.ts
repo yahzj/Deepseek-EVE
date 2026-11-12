@@ -8,9 +8,13 @@
  * ⑤「unscii-8-tall效果太差了，我想换成 `D:\Downloads\Oxanium-VariableFont_wght.ttf`」
  * ⑥「现在这个效果很好，但是不适合复古这个选项，可以把这个中英字体跟默认做到一块去」
  * ⑦「我不是这个意思，默认是微软雅黑+Oxanium（英文/数字），复古是 GNU Unifont + `D:\Downloads\Eunomia-Bold.otf`（英文/数字）」
- * ⑧「复古这个选项里，还是统一只用 unifont 这个字体吧」（并要求字体选择默认保存、下次打开保持）⇒ **最终两档**：
+ * ⑧「复古这个选项里，还是统一只用 unifont 这个字体吧」（并要求字体选择默认保存、下次打开保持）
+ * ⑨「能不能给我字体复古选项里的字体换成这个 `fusion-pixel-8px-monospaced-zh_hans.otf`，不用 unifont 了」
+ * ⑩「`fusion-pixel-10px-monospaced-zh_hans.otf` 还是换成这个吧 8px有点太小了」
+ * ⑪「`fusion-pixel-12px-monospaced-zh_hans.otf` 还是用这个吧」（以上均 2026-11-12）⇒ **最终两档**：
  *   · `default` —— 「默认」：中文用系统微软雅黑栈，**英文/数字用 Oxanium**；
- *   · `retro`   —— 「复古」：**统一只用 GNU Unifont**（中文 + 英文/数字都是它的像素点阵字形）。
+ *   · `retro`   —— 「复古」：**统一只用 Fusion Pixel 12px Mono zh-Hans**
+ *                 （中文 + 英文/数字都是它的像素点阵字形）。
  *
  * 口径：
  * - 本机偏好，存 `localStorage`（键 `whale-idle:ui-font`，与 `whale-idle:ui-zoom` / `:ui-fs` 同族），
@@ -41,13 +45,14 @@ export const FONT_CHOICES: readonly FontChoice[] = ['default', 'retro']
 
 /**
  * 「复古」档字体栈（写进 CSS 变量 `--ui-font`；逐字符回退）：
- * 1. `GNU Unifont` —— 内嵌 GNU Unifont 18.0.01 的全字库像素点阵（中文、英文、数字、符号全包）；
+ * 1. `Fusion Pixel 12px Mono zh-Hans` —— 内嵌 Fusion Pixel（缝合像素字体）的全字库像素点阵
+ *    （中文、英文、数字、符号全包；2026-11-12 船长令替换 GNU Unifont）；
  * 2. 系统中文栈兜底（字体文件缺失/个别字符未覆盖时仍可读）。
  * 族名是 `@font-face` 的自定义名（见 `panels/appSettings.css`）：自定义名避免与玩家系统里
  * 已安装的同名字体混用，保证「内嵌文件」而不是「系统字体」被使用。
  */
 const RETRO_STACK =
-  "'GNU Unifont', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans SC', sans-serif"
+  "'Fusion Pixel 12px Mono zh-Hans', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans SC', sans-serif"
 
 /** 选择 → CSS 字体栈（`default` = 不覆盖，返回 null ⇒ 用 index.css 的默认栈 Oxanium + 雅黑） */
 const STACK: Record<FontChoice, string | null> = {

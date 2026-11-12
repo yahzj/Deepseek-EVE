@@ -8078,8 +8078,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ui.sfx.051': { zh: '关闭', en: 'Close' },
   'ui.sfx.052': { zh: '本机覆盖只存在这台机器；发布版使用仓库内置音效。', en: 'Local overrides exist only on this device; released builds use the repository\'s built-in sounds.' },
   'ui.sfx.054': { zh: '存储不可用：本次会话内有效', en: 'Storage unavailable: this session only' },
-  // ⟪界面字体与许可与授权 2026-11-02⟫ 船长最终口径：默认 = 微软雅黑 + Oxanium（英文/数字）；
-  // 复古 = 统一只用 GNU Unifont。英文未授权准备，按约定留空并登记待译
+  // ⟪界面字体与许可与授权 2026-11-02；复古档换字 2026-11-12⟫ 船长最终口径：默认 = 微软雅黑 + Oxanium（英文/数字）；
+  // 复古 = 统一只用 Fusion Pixel 12px Mono zh-Hans（2026-11-12 起，替换 GNU Unifont）。英文未授权准备，按约定留空并登记待译
   // （docs/l10n-pending.md）。授权书正文是英文原文，照录、不译、不改写。
   'ui.App.178': { zh: '界面字体', en: 'Interface font' },
   'ui.App.179': { zh: '默认', en: 'Default' },
@@ -8087,10 +8087,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ui.App.181': { zh: '许可与授权', en: 'Licenses & permissions' },
   'ui.App.182': { zh: '以下为内嵌字体与本项目的授权书完整原文。', en: 'Full license texts for the bundled fonts and this project.' },
   'ui.App.183': { zh: '关闭', en: 'Close' },
-  'ui.App.184': { zh: 'GNU Unifont 字体', en: 'GNU Unifont' },
+  'ui.App.184': { zh: 'Fusion Pixel 字体', en: 'Fusion Pixel' },
   'ui.App.185': { zh: '版本 {p1} · 文件 {p2} · 版权 {p3} · 发布页 {p4} · 授权原文 {p5}', en: 'Version {p1} · File {p2} · Copyright {p3} · Release {p4} · License text {p5}' },
   'ui.App.186': { zh: '字体文件内嵌的版权与许可声明（原文）', en: 'Copyright and license notice embedded in the font file (original text)' },
-  'ui.App.187': { zh: '字体许可全文：GNU 通用公共许可证第 2 版（附 GNU 字体嵌入例外）与 SIL 开放字体许可 1.1（原文）', en: 'Full font licenses: GNU General Public License v2 (with GNU Font Embedding Exception) and SIL Open Font License 1.1 (original text)' },
+  'ui.App.187': { zh: '字体许可全文：SIL 开放字体许可 1.1（原文）', en: 'Full font license: SIL Open Font License 1.1 (original text)' },
   'ui.App.188': { zh: '本项目版权与授权声明', en: 'This project\'s copyright and license notice' },
   'ui.App.189': { zh: '版权与授权声明（原文）', en: 'Copyright and license notice (original text)' },
   'ui.App.190': { zh: '双许可与商业使用条款 · GNU AGPLv3（原文）', en: 'Dual licensing and commercial terms · GNU AGPLv3 (original text)' },
