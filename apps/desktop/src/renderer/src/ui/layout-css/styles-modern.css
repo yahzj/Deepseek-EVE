@@ -11450,7 +11450,9 @@ html[data-locale='en'] body {
 
 .app-pro-err { color: rgb(var(--wui-x09)); font-size: var(--wui-fs-base); margin-top: var(--wui-sp-8); }
 
-.app-pro-skip { position: fixed; top: 12px; right: 14px; z-index: 91; font-size: var(--wui-fs-s); color: rgb(var(--wui-pro-text)); background: rgb(var(--wui-x01) / 0.04); border: 1px solid rgb(var(--wui-x243)); border-radius: var(--wui-sp-5); padding: var(--wui-sp-5) var(--wui-sp-12); cursor: pointer; }
+/* 「跳过演出」常驻屏幕右上角。position 必须 !important：新版布局有一条通用按钮重置
+   （.app-root.is-layout-modern button…）把它改成 relative，会把按钮摆到序章内容旁边（2026-11-12 船长报障）。 */
+.app-pro-skip { position: fixed !important; top: 12px; right: 14px; z-index: 91; font-size: var(--wui-fs-s); color: rgb(var(--wui-pro-text)); background: rgb(var(--wui-x01) / 0.04); border: 1px solid rgb(var(--wui-x243)); border-radius: var(--wui-sp-5); padding: var(--wui-sp-5) var(--wui-sp-12); cursor: pointer; }
 
 .app-pro-skip:hover { color: rgb(var(--wui-x49)); border-color: rgb(var(--wui-x91)); }
 
