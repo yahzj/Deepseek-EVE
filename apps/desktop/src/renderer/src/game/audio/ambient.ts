@@ -7,6 +7,7 @@
  */
 import { SFX_CUES } from './cues'
 import type { SfxCueId } from './cues'
+import { webAwaitingFirstGesture } from './gestureGate'
 import { LoopChannel } from './loops'
 import { builtinSfxUrls } from './manifest'
 import { getSfxOverrideUrl } from './overrides'
@@ -50,6 +51,8 @@ function ambientVolumeOf(cueId: SfxCueId): number {
 
 function apply(): void {
   try {
+    // 网页首次手势前不建底噪元素（理由同 music.ts）；手势后 useSceneAudio 的 resumeAmbient 再 apply
+    if (webAwaitingFirstGesture()) return
     const ch = ensureChannel()
     if (ch === null) return
     if (currentScene === null) {

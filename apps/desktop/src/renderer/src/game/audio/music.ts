@@ -14,6 +14,7 @@
  */
 import { SFX_CUES } from './cues'
 import type { SfxCueId } from './cues'
+import { webAwaitingFirstGesture } from './gestureGate'
 import { LoopChannel } from './loops'
 import { builtinSfxUrls } from './manifest'
 import { getSfxOverrideUrl } from './overrides'
@@ -66,6 +67,8 @@ function bgmVolumeOf(cueId: SfxCueId): number {
 
 function apply(): void {
   try {
+    // 网页首次手势前不建 BGM 元素（避免首屏就下载数 MB 音频抢带宽）；手势后 resumeMusic 再 apply
+    if (webAwaitingFirstGesture()) return
     const ch = ensureChannel()
     if (ch === null) return
     if (currentScene === null) {

@@ -39,6 +39,13 @@ import './appSettings.css'
 import { FONT_CHOICES, chooseFont, readFontChoice } from '../ui/fontChoice'
 import type { FontChoice } from '../ui/fontChoice'
 /**
+ * **CRT 显示器效果**（**2026-11-11 船长令**：「设置加一个 CRT 效果，整体界面像看老式 CRT 显示器那种，
+ * 小丑牌那种效果」）：本机偏好、即时生效、不进存档；读写/应用收在 `ui/crtEffect.ts`，
+ * 启动时应用在 `game/boot.ts` 的 `prebootRenderer()`，覆层样式在 `styles.css` 的 CRT 一节。
+ */
+import { chooseCrtEffect, readCrtEffect } from '../ui/crtEffect'
+import type { CrtEffect } from '../ui/crtEffect'
+/**
  * **许可与授权全文**（**2026-11-02 船长令**：「这个字体是GNU授权，记得在设置的最最下方增加一个许可按钮
  * 把这些授权书内容统统都写进入」）：`?raw` 由 Vite 内联（桌面/网页两入口同一套），正文照录原文、不译不改。
  * - GNU Unifont 18.0.01 官方授权原文（2026-11-02 取自 <https://unifoundry.com/LICENSE.txt>）；
@@ -300,6 +307,8 @@ export function SettingsPanel({
    * 启动时的应用由 `game/boot.ts` 的 `prebootRenderer()` 统一接线，这里不重复。
    */
   const [font, setFont] = useState<FontChoice>(() => readFontChoice())
+  /** **CRT 显示器效果**（2026-11-11 船长令）：本机偏好、即时生效、不进存档；挂载时读一次，点选走 chooseCrtEffect */
+  const [crt, setCrt] = useState<CrtEffect>(() => readCrtEffect())
   /** 「许可与授权」全文弹窗（2026-11-02 船长令：设置最下方一枚按钮 ⇒ 完整授权书） */
   const [licenseOpen, setLicenseOpen] = useState(false)
   /** 声音（2026-11-02 船长令）：总音量/静音/分类音量，本机偏好、即时生效、不进存档 */
@@ -322,6 +331,11 @@ export function SettingsPanel({
   function selectFont(next: FontChoice): void {
     setFont(next)
     chooseFont(next)
+  }
+  /** 点选 CRT 效果：先更新面板显示，再走 `ui/crtEffect.ts` 的「落盘 + 即时应用」单点 */
+  function selectCrt(next: CrtEffect): void {
+    setCrt(next)
+    chooseCrtEffect(next)
   }
 
   /** 打开设置时自报一次「本地存档文件」绑定状态（浏览器可能已收回权限 ⇒ 界面要如实显示） */
@@ -522,6 +536,32 @@ export function SettingsPanel({
               ))}
             </div>
             <div className="app-settings-desc">{t('ui.App.180')}</div>
+          </div>
+          {/**
+           * **CRT 显示器效果**（**2026-11-11 船长令**「整体界面像看老式 CRT 显示器那种，小丑牌那种效果」）：
+           * 交互与同页按钮组一致；覆层是纯 CSS 双层伪元素（扫描线/暗角/反光/荧光带），
+           * 开关写 `<html data-ui-crt>`，本机偏好、即时生效、不进存档（见 `ui/crtEffect.ts`）。
+           */}
+          <div className="app-settings-row">
+            <div className="app-settings-head">
+              <span className="app-settings-label">{t('ui.App.196')}</span>
+              <span className="app-settings-val">{crt === 'on' ? t('ui.App.198') : t('ui.App.197')}</span>
+            </div>
+            <div className="app-settings-btns">
+              <button
+                className={`app-btn is-small${crt === 'off' ? ' is-primary' : ''}`}
+                onClick={() => selectCrt('off')}
+              >
+                {t('ui.App.197')}
+              </button>
+              <button
+                className={`app-btn is-small${crt === 'on' ? ' is-primary' : ''}`}
+                onClick={() => selectCrt('on')}
+              >
+                {t('ui.App.198')}
+              </button>
+            </div>
+            <div className="app-settings-desc">{t('ui.App.199')}</div>
           </div>
           {/* 界面配色（2026-09-22 船长令）：与上一行「语言」同款按钮组；三套主题见 ui/theme.ts */}
           <div className="app-settings-row">
