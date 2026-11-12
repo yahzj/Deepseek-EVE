@@ -185,6 +185,22 @@ html[data-locale='en'] body {
 
 }
 
+/* ── 手机物理横握（2026-11-12 船长报「iOS 横屏显示错位」）──
+   横屏时 `is-mobile-rot` 不成立，界面只能按 844×390 的窄矮窗口排 ⇒ 底栏被挤出、选择卡纵向溢出。
+   这里套同款「1200 逻辑宽」缩放，但**不旋转**：布局拿到 ≈1200×555 的空间（与桌面 1200 宽窗口
+   同构），scale 后正好铺满横屏可见区。--mob-* 变量由 App.tsx 同一套数字逻辑写入。 */
+.app-root.is-mobile-land {
+  --mob-w: 1200px;
+  position: fixed;
+  left: var(--mob-x, 0px);
+  top: var(--mob-y, 0px);
+  width: var(--mob-w);
+  height: var(--mob-h, 100vw);
+  transform-origin: 0 0;
+  transform: scale(var(--mob-scale, 1));
+  overflow: hidden;
+}
+
 /* 旋转后物理视口宽仍是竖屏宽(<1180)，会误触发 max-width:1180px 折叠——旋转时维持桌面横排布局 */
 
 .app-root.is-mobile-rot .app-mkt-split {
@@ -11395,6 +11411,10 @@ html[data-locale='en'] body {
 .app-pro-mode-title { font-size: var(--wui-fs-4xlc); font-weight: 800; }
 .app-pro-mode-li { font-size: var(--wui-fs-base); line-height: 1.5; color: rgb(var(--wui-x76)); }
 
+/* 横握缩放层（2026-11-12）：序章容器内容宽 675，两卡 330×2 + 18 间距 = 678 差 3px 会换行
+   ⇒ 纵向溢出矮视口（铁人模式卡被裁在屏外）。收紧间距让两张卡并排。 */
+.app-root.is-mobile-land .app-pro-mode { gap: var(--wui-sp-10); }
+
 @keyframes app-pro-breathe { 0%,100% { opacity: .55; transform: scale(.99); } 50% { opacity: 1; transform: scale(1.02); } }
 
 .app-pro-term { font-family: var(--wui-mono); font-size: var(--wui-fs-base); line-height: 1.9; }
@@ -13399,8 +13419,9 @@ input.app-wh-template-name { min-height: 36px; padding: var(--wui-sp-6) var(--wu
   .app-root select { font-size: max(16px, var(--wui-fs-base)); }
 }
 
-/* 手机专用外壳：桌面布局与冻结基准不变；抽屉不参与主区分配。 */
-.app-root.is-mobile-layout:not(.is-mobile-rot) { position: relative; width: 100%; overflow: hidden; }
+/* 手机专用外壳：桌面布局与冻结基准不变；抽屉不参与主区分配。
+   横握缩放层（is-mobile-land）自带 fixed/尺寸，交给它 ⇒ 这里排除。 */
+.app-root.is-mobile-layout:not(.is-mobile-rot):not(.is-mobile-land) { position: relative; width: 100%; overflow: hidden; }
 .app-root.is-mobile-layout .app-header {
   display: flex; flex-direction: column; align-items: stretch; gap: 4px;
   padding: 4px 8px; min-width: 0; box-sizing: border-box;
@@ -13411,6 +13432,22 @@ input.app-wh-template-name { min-height: 36px; padding: var(--wui-sp-6) var(--wu
 }
 .app-root.is-mobile-layout .app-header-left > *,
 .app-root.is-mobile-layout .app-header-right > * { flex-shrink: 0; }
+
+/* 横握缩放层（2026-11-12 船长：「顶栏要做成一行不是两行」）：
+   手机布局默认把顶栏拆成上下两排（竖持窄屏省宽），但横握的 1200 逻辑宽放得下一行
+   ⇒ 恢复左右两块横排，超出时各自横向滚动。 */
+.app-root.is-mobile-layout.is-mobile-land .app-header {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+}
+.app-root.is-mobile-layout.is-mobile-land .app-header-left,
+.app-root.is-mobile-layout.is-mobile-land .app-header-right {
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+.app-root.is-mobile-layout.is-mobile-land .app-header-right { margin-left: auto; }
 .app-root.is-mobile-layout .app-logo { font-size: 14px; letter-spacing: 0; }
 .app-root.is-mobile-layout .app-header-right .app-btn { min-height: 32px; }
 .app-root.is-mobile-layout .app-workspace { min-width: 0; min-height: 0; padding: 4px; gap: 6px; }
