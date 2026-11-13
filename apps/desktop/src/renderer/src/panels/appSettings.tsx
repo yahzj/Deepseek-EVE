@@ -29,9 +29,9 @@ import { CloudSavePanel } from '../features/cloud/CloudSavePanel'
 import type { SettingsPageId } from '../pages/common'
 import './appSettings.css'
 /**
- * **界面字体**（**2026-11-02 船长令**，多轮迭代后的最终口径）：
+ * **界面字体**（**2026-11-02 船长令**；2026-11-12 复古档换字后的口径）：
  * · 默认 = 微软雅黑（中文）＋ Oxanium（英文/数字）；
- * · 复古 = 统一只用 GNU Unifont（中文 + 英文/数字）。
+ * · 复古 = 统一只用 Fusion Pixel 12px Mono zh-Hans（中文 + 英文/数字）。
  * 偏好读写/应用收在 `ui/fontChoice.ts`（点选即落盘，下次启动读回）；**启动时应用**在
  * `game/boot.ts` 的 `prebootRenderer()`；`@font-face` 在本文件同目录的 `appSettings.css` 注册，
  * 默认字体栈单点在 `packages/ui/src/index.css`。
@@ -48,7 +48,9 @@ import type { CrtEffect } from '../ui/crtEffect'
 /**
  * **许可与授权全文**（**2026-11-02 船长令**：「这个字体是GNU授权，记得在设置的最最下方增加一个许可按钮
  * 把这些授权书内容统统都写进入」）：`?raw` 由 Vite 内联（桌面/网页两入口同一套），正文照录原文、不译不改。
- * - GNU Unifont 18.0.01 官方授权原文（2026-11-02 取自 <https://unifoundry.com/LICENSE.txt>）；
+ * - Fusion Pixel 12px Mono zh-Hans 官方授权原文（SIL OFL 1.1；版权 2022 TakWolf；
+ *   取自 <https://github.com/TakWolf/fusion-pixel-font/blob/master/LICENSE-OFL>，
+ *   全文见 `assets/licenses/fusion-pixel-12px-mono-zh-hans-LICENSE.txt`）；
  * - Oxanium 官方授权全文（SIL Open Font License 1.1；版权 2019 The Oxanium Project Authors，
  *   取自字体 name 表与 Google Fonts / 上游仓库；全文见 `assets/licenses/oxanium-LICENSE.txt`）；
  * - 根目录 `LICENSE.txt`（项目版权与授权声明）与 `LICENSE`（双许可与商业使用条款，含 AGPLv3 全文）。
@@ -58,7 +60,7 @@ import type { CrtEffect } from '../ui/crtEffect'
  * ⚠ 同一批船长裁定（2026-11-02）：个人主页署名链接**保留**；声明里「请通过原项目联系作者」因链接
  * 删除而指代悬空 ⇒ 游戏内副本改为「请联系作者」（仍只改副本，根目录原文不动）。
  */
-import unifontLicenseText from '../assets/licenses/unifont-18.0.01-LICENSE.txt?raw'
+import fusionPixelLicenseText from '../assets/licenses/fusion-pixel-12px-mono-zh-hans-LICENSE.txt?raw'
 import oxaniumLicenseText from '../assets/licenses/oxanium-LICENSE.txt?raw'
 import projectLicenseStatement from '../assets/licenses/project-LICENSE-statement.txt?raw'
 import projectLicenseDual from '../assets/licenses/project-LICENSE-dual-licensing.txt?raw'
@@ -90,19 +92,20 @@ const SETTINGS_PAGES: ReadonlyArray<{ id: SettingsPage; labelId: string }> = [
   { id: 'developer', labelId: 'ui.settingsTab.005' },
 ]
 
-/* ═══════════ GNU Unifont 18.0.01 的元信息（2026-11-02 核对） ═══════════
-   口径来源：官方发布页 <https://unifoundry.com/unifont/>（18.0.01 / 2026-09-16 发布）与
-   字体文件自身的 name 表（版权、许可描述、许可 URL）。下面三条英文**照录字体文件内嵌原文**：
-   版权与许可是法律文字，不译、不改写、不缩写（与授权书正文同一条纪律）。 */
-const UNIFONT_VERSION = '18.0.01'
-const UNIFONT_FONT_FILE = 'unifont-18.0.01.otf'
-const UNIFONT_HOME_URL = 'https://unifoundry.com/unifont/'
-const UNIFONT_LICENSE_URL = 'https://unifoundry.com/LICENSE.txt'
-const UNIFONT_COPYRIGHT =
-  'Copyright © 1998-2026 Roman Czyborra, Paul Hardy, Qianqian Fang, Andrew Miller, Johnnie Weaver, David Corbett, Ælla Chiana Moskopp, Rebecca Bettencourt, Ho-Seok Ee, et al.'
-const UNIFONT_EMBEDDED_LICENSE =
-  'Dual license: SIL Open Font License version 1.1, and GNU GPL version 2 or later with the GNU Font Embedding Exception.'
-const UNIFONT_LICENSE_URLS = 'https://gnu.org/licenses/gpl.html, https://scripts.sil.org/OFL'
+/* ═══════════ Fusion Pixel 12px Mono zh-Hans 的元信息（2026-11-12 船长令换字时核对） ═══════════
+   口径来源：字体文件自身 name 表（版权、版本、许可描述、许可 URL）与上游仓库
+   <https://github.com/TakWolf/fusion-pixel-font>、官方站 <https://fusion-pixel-font.takwolf.com>。
+   下面几条英文**照录字体文件内嵌原文**：版权与许可是法律文字，不译、不改写、不缩写
+   （与授权书正文同一条纪律）。 */
+const FUSION_PIXEL_VERSION = '2026.11.10'
+const FUSION_PIXEL_FONT_FILE = 'fusion-pixel-12px-mono-zh-hans.otf'
+const FUSION_PIXEL_HOME_URL = 'https://fusion-pixel-font.takwolf.com'
+const FUSION_PIXEL_LICENSE_URL =
+  'https://github.com/TakWolf/fusion-pixel-font/blob/master/LICENSE-OFL'
+const FUSION_PIXEL_COPYRIGHT = 'Copyright (c) 2022, TakWolf (https://takwolf.com)'
+const FUSION_PIXEL_EMBEDDED_LICENSE =
+  'This Font Software is licensed under the SIL Open Font License, Version 1.1.'
+const FUSION_PIXEL_LICENSE_URLS = 'https://github.com/TakWolf/fusion-pixel-font/blob/master/LICENSE-OFL'
 
 /* ═══════════ Oxanium 的元信息（2026-11-02 核对；船长令：英文/数字用该字体） ═══════════
    口径来源：字体文件自身 name 表（nameID 0 版权 / 5 版本 / 13 许可描述 / 14 许可 URL）与
@@ -302,7 +305,7 @@ export function SettingsPanel({
   const [fs, setFs] = useState(readFontScale)
   /**
    * **界面字体**（**2026-11-02 船长令**最终口径）：本机偏好、即时生效、不进存档。
-   * 默认 = 微软雅黑 + Oxanium（英文/数字）；复古 = 统一只用 GNU Unifont。
+   * 默认 = 微软雅黑 + Oxanium（英文/数字）；复古 = 统一只用 Fusion Pixel 12px Mono zh-Hans。
    * 挂载时读一次（`readFontChoice`），切换时写一次（`selectFont` ⇒ `chooseFont` 落盘 + 应用）；
    * 启动时的应用由 `game/boot.ts` 的 `prebootRenderer()` 统一接线，这里不重复。
    */
@@ -516,7 +519,7 @@ export function SettingsPanel({
           {/**
            * **界面字体**（**2026-11-02 船长令**最终口径）：「字体大小」正下方，交互与同页「语言 / 界面布局 /
            * 界面配色」三行一致（`app-settings-row` ＋ `app-btn is-small`，选中项 `is-primary`）。
-           * 两项：默认（中文 = 微软雅黑，英文/数字 = Oxanium）／复古（统一只用 GNU Unifont）。
+           * 两项：默认（中文 = 微软雅黑，英文/数字 = Oxanium）／复古（统一只用 Fusion Pixel 12px Mono zh-Hans）。
            * 授权全文见本页最下方「许可与授权」；本机偏好、即时生效、不进存档（点选即保存，下次启动读回）。
            */}
           <div className="app-settings-row">
@@ -944,12 +947,13 @@ export function SettingsPanel({
  * 船长原话：「这个字体是GNU授权，记得在设置的最最下方增加一个许可按钮把这些授权书内容统统都写进入」。
  * 正文**照录原文**（法律文字不译、不改写、不缩写）；中文只用于小节标题与「版本 / 来源 URL / 日期」。
  *
- * 采用的授权口径（2026-11-02 核实）：
- * ① **GNU Unifont 18.0.01**（内嵌 `unifont-18.0.01.otf`）——编译字体为**双许可**：
- *    SIL Open Font License 1.1 ＋ GNU GPL 第 2 版或更高版本（附 GNU 字体嵌入例外）。
- *    依据：官方发布页 <https://unifoundry.com/unifont/> 与官方授权原文
- *    <https://unifoundry.com/LICENSE.txt>（该文件同时收录 GPLv2 全文、字体嵌入例外与 OFL 1.1 全文，
- *    本弹窗整份照录）；字体文件 name 表内嵌的版权与许可描述也一并在弹窗里给出（见常量）。
+ * 采用的授权口径（2026-11-12 换字后核实）：
+ * ① **Fusion Pixel 12px Mono zh-Hans**（内嵌 `fusion-pixel-12px-mono-zh-hans.otf`，2026.11.10 版）——
+ *    SIL Open Font License 1.1（版权 2022 TakWolf）。
+ *    依据：上游仓库 <https://github.com/TakWolf/fusion-pixel-font> 与授权原文
+ *    <https://github.com/TakWolf/fusion-pixel-font/blob/master/LICENSE-OFL>（整份照录）；
+ *    字体文件 name 表内嵌的版权与许可描述也一并在弹窗里给出（见常量）。
+ *    （2026-11-12 船长令：复古档由 GNU Unifont 换成此字体，unifont 文件与授权已随批移除。）
  * ② **本项目自身**：根目录 `LICENSE.txt`（版权与授权声明）与根目录 `LICENSE`
  *    （双许可与商业使用条款：AGPLv3 开源 ＋ 商业许可，含 AGPLv3 全文）。
  *    ⚠ 按船长 2026-11-02 追加要求，游戏内这两份声明的**副本**不展示「原项目 / 原站」外部链接
@@ -982,17 +986,17 @@ function LicenseModal({ onClose }: { onClose: () => void }) {
             <h3 className="app-license-h">{t('ui.App.184')}</h3>
             <div className="app-license-meta">
               {t('ui.App.185', {
-                p1: UNIFONT_VERSION,
-                p2: UNIFONT_FONT_FILE,
-                p3: UNIFONT_COPYRIGHT,
-                p4: UNIFONT_HOME_URL,
-                p5: UNIFONT_LICENSE_URL,
+                p1: FUSION_PIXEL_VERSION,
+                p2: FUSION_PIXEL_FONT_FILE,
+                p3: FUSION_PIXEL_COPYRIGHT,
+                p4: FUSION_PIXEL_HOME_URL,
+                p5: FUSION_PIXEL_LICENSE_URL,
               })}
             </div>
             <h4 className="app-license-subh">{t('ui.App.186')}</h4>
-            <pre className="app-license-pre">{`${UNIFONT_EMBEDDED_LICENSE}\n${UNIFONT_LICENSE_URLS}`}</pre>
+            <pre className="app-license-pre">{`${FUSION_PIXEL_EMBEDDED_LICENSE}\n${FUSION_PIXEL_LICENSE_URLS}`}</pre>
             <h4 className="app-license-subh">{t('ui.App.187')}</h4>
-            <pre className="app-license-pre">{unifontLicenseText}</pre>
+            <pre className="app-license-pre">{fusionPixelLicenseText}</pre>
           </section>
           {/** Oxanium（船长 2026-11-02 追加：默认档英文/数字用该字体）—— 独立小节，口径与 Unifont 同：
               上游说明原文照录，中文只作小节标题与元信息。 */}

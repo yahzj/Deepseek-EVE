@@ -16,13 +16,20 @@ import { startUpdatePrompt } from './updatePrompt'
 
 /**
  * 网页端环境守卫：防范离线扒取、本地双击 (file://) 及未授权的第三方镜像
+ *
+ * 官方域名白名单（2026-11-12 船长令）：自建正式站 game.bajibaji.party 与本机 IP
+ * 同样属于官方入口，放行；其余未知域名仍按第三方镜像拦截。
  */
 function checkWebEnvironment(): boolean {
   if (typeof window === 'undefined') return true
   const proto = window.location.protocol
   const host = window.location.hostname
   const isDev = host === 'localhost' || host === '127.0.0.1' || host === ''
-  const isOfficial = host === 'yahzj.github.io' || host.endsWith('.github.io')
+  const isOfficial =
+    host === 'yahzj.github.io' ||
+    host.endsWith('.github.io') ||
+    host === 'game.bajibaji.party' ||
+    host === '123.207.188.192'
 
   // 本地离线文件协议 (file://) 或 非官方域名拦截
   if (proto === 'file:' || (!isDev && !isOfficial)) {

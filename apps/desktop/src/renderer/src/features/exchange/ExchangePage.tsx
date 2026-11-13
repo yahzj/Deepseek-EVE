@@ -25,6 +25,7 @@ import {
   subscribeExchangeSelectedCode,
 } from './selectedCode'
 import { NewsTicker } from './components/NewsTicker'
+import { setCrtBusy } from '../../ui/crtEffect'
 import { SimpleExchange } from './components/SimpleExchange'
 import { ProExchange } from './components/ProExchange'
 import { RoundBadge } from './components/RoundBadge'
@@ -36,6 +37,15 @@ const VIEW_MODE_KEY = EXCH_PREF.viewMode
 const PRO_MODE_ENABLED = import.meta.env.DEV
 
 export function ExchangePage({ engine, onToast, onOpenSettings }: PageProps) {
+  /**
+   * **交易所页 CRT 降级**（2026-11-12 性能优化）：本页行情/盘口/快讯持续刷新且有每帧动画，
+   * 整屏曲面滤镜会逐帧整屏重算（实测约 3–5ms/帧）；进入本页临时撤掉曲面滤镜，
+   * 离页自动恢复。扫描线、暗角、黑边不受影响。
+   */
+  useEffect(() => {
+    setCrtBusy('exchange', true)
+    return () => setCrtBusy('exchange', false)
+  }, [])
   // 2026-11-05 游客行情批：登录/退出后必须换客户端实例——游客连接是匿名的（不带 token），
   // 登录后要换成带令牌的那条；不换就会一直用匿名连接看自己的空白账户。
   const [authTick, bumpAuth] = useReducer((n: number) => n + 1, 0)

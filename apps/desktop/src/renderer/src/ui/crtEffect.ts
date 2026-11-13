@@ -187,6 +187,120 @@ function ensureWarpFilterDef(): void {
   }
 }
 
+/** 降级标记（styles.css 读取：曲面层淡出） */
+const BUSY_FLAG = 'data-ui-crt-scroll'
+/** 淡出完成后真正撤掉整屏滤镜用的标记（肉眼不可见的一步，只为把滚动/战斗期间的合成成本归零） */
+const WARP_OFF_FLAG = 'data-ui-crt-warp-off'
+/** 当前处于「整屏内容持续变化」的来源（滚动 / 战斗 / 交易所）；非空即进入降级 */
+const busySources = new Set<string>()
+let scrollIdleTimer: ReturnType<typeof setTimeout> | null = null
+let busyWatchInstalled = false
+let warpOffTimer: ReturnType<typeof setTimeout> | null = null
+let warpOnRaf = 0
+
+function clearBusyTimers(): void {
+  if (warpOffTimer !== null) {
+    clearTimeout(warpOffTimer)
+    warpOffTimer = null
+  }
+  if (warpOnRaf !== 0) {
+    cancelAnimationFrame(warpOnRaf)
+    warpOnRaf = 0
+  }
+}
+
+/**
+ * 降级的两段式切换（2026-11-12 船长反馈「自动降级画面变化有点大」）：
+ * - 进入降级：先让曲面层淡出 180ms（透明 = 滤镜结果与原始画面混合，看不到跳变），
+ *   淡出结束后再撤掉 `backdrop-filter` 本身（此时不可见，只为省掉整屏合成）；
+ * - 退出降级：先恢复 `backdrop-filter`（此时仍是全透明），下一帧再移除淡出标记 ⇒ 平滑淡入。
+ * 高刷屏上整个过渡约 0.2 秒，肉眼只看到曲率轻轻化开/收拢，而不是"啪"地切换。
+ */
+function syncBusyFlag(): void {
+  try {
+    const root = document.documentElement
+    if (root.dataset.uiCrt !== 'on') {
+      clearBusyTimers()
+      root.removeAttribute(BUSY_FLAG)
+      root.removeAttribute(WARP_OFF_FLAG)
+      return
+    }
+    if (busySources.size > 0) {
+      if (warpOnRaf !== 0) {
+        cancelAnimationFrame(warpOnRaf)
+        warpOnRaf = 0
+      }
+      if (root.getAttribute(BUSY_FLAG) !== '1') root.setAttribute(BUSY_FLAG, '1')
+      if (warpOffTimer === null) {
+        warpOffTimer = setTimeout(() => {
+          warpOffTimer = null
+          if (busySources.size > 0) document.documentElement.setAttribute(WARP_OFF_FLAG, '1')
+        }, 220)
+      }
+      return
+    }
+    if (warpOffTimer !== null) {
+      clearTimeout(warpOffTimer)
+      warpOffTimer = null
+    }
+    if (root.getAttribute(WARP_OFF_FLAG) === '1') {
+      // 先把滤镜恢复（此帧曲面容仍是全透明），下一帧再撤淡出标记，让透明度有过渡起点
+      root.removeAttribute(WARP_OFF_FLAG)
+      if (warpOnRaf === 0) {
+        warpOnRaf = requestAnimationFrame(() => {
+          warpOnRaf = 0
+          if (busySources.size === 0) document.documentElement.removeAttribute(BUSY_FLAG)
+        })
+      }
+      return
+    }
+    if (root.getAttribute(BUSY_FLAG) === '1') root.removeAttribute(BUSY_FLAG)
+  } catch {
+    /* 忽略：降级失败只是多花一点合成，不影响功能 */
+  }
+}
+
+/**
+ * 场景级降级开关（2026-11-12 性能优化）：
+ * 整屏 `backdrop-filter`（曲面位移）在背后内容每帧变化时逐帧整屏重算——滚动、战斗弹道、
+ * 交易所行情刷新都属于此类。这些时段让曲面层淡出并撤掉滤镜（扫描线/暗角/黑边照常），
+ * 退出场景自动淡入恢复；多个来源叠加时任一仍在忙就保持降级。
+ * 滚动由内部监听自动维护；战斗、交易所页等由调用方显式传入。
+ */
+export function setCrtBusy(source: string, busy: boolean): void {
+  if (busy) busySources.add(source)
+  else busySources.delete(source)
+  syncBusyFlag()
+}
+
+/**
+ * 滚动期间进入降级（2026-11-12 船长报障：舰队列表滚动卡顿）。
+ * 监听放在 document 捕获阶段：`scroll` 不冒泡，捕获阶段才能收到任意滚动容器的滚动。
+ * 停下 160ms 后退出降级（淡入恢复）。
+ */
+function installScrollDowngrade(): void {
+  if (busyWatchInstalled) return
+  if (typeof document === 'undefined') return
+  busyWatchInstalled = true
+  document.addEventListener(
+    'scroll',
+    () => {
+      try {
+        if (document.documentElement.dataset.uiCrt !== 'on') return
+        setCrtBusy('scroll', true)
+        if (scrollIdleTimer !== null) clearTimeout(scrollIdleTimer)
+        scrollIdleTimer = setTimeout(() => {
+          scrollIdleTimer = null
+          setCrtBusy('scroll', false)
+        }, 160)
+      } catch {
+        /* 忽略：降级失败只是多花一点合成，不影响功能 */
+      }
+    },
+    { capture: true, passive: true },
+  )
+}
+
 /** 把 CRT 效果应用到界面（**幂等**；非浏览器环境直接返回） */
 export function applyCrtEffect(effect: CrtEffect): void {
   if (typeof document === 'undefined') return
@@ -194,8 +308,16 @@ export function applyCrtEffect(effect: CrtEffect): void {
   if (!root) return
   if (effect === 'on') {
     ensureWarpFilterDef()
+    installScrollDowngrade()
     root.dataset.uiCrt = 'on'
-  } else delete root.dataset.uiCrt
+    syncBusyFlag()
+  } else {
+    busySources.clear()
+    clearBusyTimers()
+    delete root.dataset.uiCrt
+    root.removeAttribute(BUSY_FLAG)
+    root.removeAttribute(WARP_OFF_FLAG)
+  }
 }
 
 /** 玩家在设置里点选：**即时生效 + 本机落盘**（两步同一个入口，避免调用点各写一半） */

@@ -74,6 +74,22 @@ function toKPeriod(period: ChartPeriod): Period {
   }
 }
 
+/** 默认可视窗口（2026-11-12 船长令「K 线只显示 3 天」）：按周期换算成根数，长周期最少 2 根便于读数 */
+const DEFAULT_VIEW_MS = 3 * 86_400_000
+function defaultViewBars(period: ChartPeriod): number {
+  return Math.max(2, Math.ceil(DEFAULT_VIEW_MS / chartPeriodSpec(period).bucketMs))
+}
+
+/**
+ * 让「3 天窗口」正好铺满画布的每根蜡烛宽度（像素）。
+ * 数据不够 3 天就显示全部；钳在 [1, 12] —— 太窄看不清、太宽像柱状图。
+ */
+function defaultBarSpace(plotWidth: number, period: ChartPeriod, barCount: number): number {
+  const want = Math.min(defaultViewBars(period), Math.max(2, barCount))
+  const width = Math.max(240, plotWidth)
+  return Math.min(12, Math.max(1, width / want))
+}
+
 /** 悬浮读数小卡：只讲当前这根蜡烛，图面不常驻文字 */
 function BarTooltip({
   bar,
@@ -330,8 +346,9 @@ export function ProChart({
     chart.setDataLoader({
       getBars: ({ callback }) => {
         const { client: c, code: k, period: p } = queryRef.current
-        // 只交最近 320 根：全量（M1 有 2016 根）塞进 628px 会把蜡烛压成一条线
-        const data = toKLineData(c.getChartSeries(k, p)).slice(-320)
+        // 交最近「3 天窗口」所需的根数（长周期回退 320 根）；全量（M1 有 2016 根）塞进来没必要
+        const keep = Math.max(320, defaultViewBars(p))
+        const data = toKLineData(c.getChartSeries(k, p)).slice(-keep)
         barsRef.current = data
         callback(data, { backward: false, forward: false })
       },
@@ -417,8 +434,8 @@ export function ProChart({
     if (key !== consumedKeyRef.current) {
       consumedKeyRef.current = key
       chart.resetData()
-      // 默认把蜡烛压到 4px/根：628px 宽约看 150 根，比 fit 全量可读
-      chart.setBarSpace(4)
+      // 默认视窗 = 最近 3 天（船长 2026-11-12）：按周期换算根数，铺满画布宽度；数据不够就显示全部
+      chart.setBarSpace(defaultBarSpace(hostRef.current?.clientWidth ?? 628, period, data.length))
       chart.scrollToRealTime()
       return
     }

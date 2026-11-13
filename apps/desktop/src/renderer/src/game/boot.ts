@@ -27,8 +27,9 @@ import { acquireSaveWriter } from './saveWriter'
  * - 界面配色：把 `data-theme` 写上，免得先闪一下另一套配色。
  * - **界面字号**（2026-11-02 船长报障修复）：`--ui-fs` 是字阶 `--wui-fs-*` 的系数、必须落在 `<html>`，
  *   只在设置面板里应用会出现「重启后打回原样」⇒ 启动即应用（面板拖动时再写一次）。
- * - **界面字体**（2026-11-02 船长令最终口径）：默认 = 微软雅黑 + Oxanium（英文/数字）；
- *   复古 = 统一 GNU Unifont。选择写 `<html>` 的 `data-ui-font` + `--ui-font`，
+ * - **界面字体**（2026-11-02 船长令；复古档 2026-11-12 换成 Fusion Pixel 12px）：
+ *   默认 = 微软雅黑 + Oxanium（英文/数字）；
+ *   复古 = 统一 Fusion Pixel 12px Mono zh-Hans。选择写 `<html>` 的 `data-ui-font` + `--ui-font`，
  *   本机偏好 ⇒ 启动即应用，免得重启后打回默认。
  * - **CRT 显示器效果**（2026-11-11 船长令）：开关写 `<html>` 的 `data-ui-crt`，本机偏好 ⇒ 启动即应用。
  */

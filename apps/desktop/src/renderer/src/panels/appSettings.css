@@ -9,20 +9,22 @@
  * 设置里两档：「默认」与**「复古」**：
  * · 默认（不挂 data-ui-font）：中文 = 系统微软雅黑栈，**英文/数字 = Oxanium**（可变字重几何体）；
  *   字体栈写在 `packages/ui/src/index.css` 的 `--wui-font` / `--wui-mono`。
- * · 复古（`<html data-ui-font="retro">`）：**统一只用 GNU Unifont**（中文 + 英文/数字都是它的
- *   像素点阵字形）；由 `ui/fontChoice.ts` 写 `--ui-font` 覆盖。
+ * · 复古（`<html data-ui-font="retro">`）：**统一只用 Fusion Pixel 12px Mono zh-Hans**
+ *   （中文 + 英文/数字都是它的像素点阵字形）；由 `ui/fontChoice.ts` 写 `--ui-font` 覆盖。
  * 试排历程：unscii-16 → unscii-8-tall → Oxanium（保留给默认档）→ Eunomia Bold（试掉）
- * ⇒ 复古档最终统一 Unifont，其余试排字体已移除。两枚在用字体均 `@font-face` 内嵌、
- * Vite 按资源打包，桌面/网页两入口共用；授权原文见 `assets/licenses/` 与设置最下方「许可与授权」。
- * ⚠ Oxanium 是矢量字体（任意字号清晰）；Unifont 是 16px 网格点阵（复古档 12–13px 会缩放），
- *   复古档字号拉到 ~125%（≈16px）最锐利。观感由船长裁定。
+ * → GNU Unifont（2026-11-02 起）→ **Fusion Pixel 12px Mono zh-Hans**（2026-11-12 船长令：
+ * 先换 8px 版，随后「换成 10px 版吧，8px 有点太小了」，再「12px 还是用这个吧」），
+ * 其余试排字体已移除。两枚在用字体均 `@font-face` 内嵌、Vite 按资源打包，桌面/网页两入口共用；
+ * 授权原文见 `assets/licenses/` 与设置最下方「许可与授权」。
+ * ⚠ Oxanium 是矢量字体（任意字号清晰）；Fusion Pixel 是 12px 网格点阵（字号越接近 12px 的
+ *   整数倍越锐利）。观感由船长裁定。
  */
 @font-face {
-  font-family: 'GNU Unifont';
-  src: url('../assets/fonts/unifont-18.0.01.otf') format('opentype');
+  font-family: 'Fusion Pixel 12px Mono zh-Hans';
+  src: url('../assets/fonts/fusion-pixel-12px-mono-zh-hans.otf') format('opentype');
   font-weight: 400;
   font-style: normal;
-  /* 换字不拦渲染：先按兜底栈显示，字体到位再换（5MB 字体首次加载不应白屏） */
+  /* 换字不拦渲染：先按兜底栈显示，字体到位再换（5.1MB 字体首次加载不应白屏） */
   font-display: swap;
 }
 @font-face {
@@ -108,23 +110,23 @@
   }
 }
 
-/* 复古档覆盖：body / 表单控件改用 `--ui-font`（GNU Unifont → 系统中文栈兜底）；
+/* 复古档覆盖：body / 表单控件改用 `--ui-font`（Fusion Pixel → 系统中文栈兜底）；
    `default` 档不会挂 data-ui-font 属性 ⇒ 本条不命中，回到默认栈（Oxanium + 雅黑）。 */
 :root[data-ui-font] body,
 :root[data-ui-font] input,
 :root[data-ui-font] textarea,
 :root[data-ui-font] select {
-  font-family: var(--ui-font, 'GNU Unifont', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans SC', sans-serif);
+  font-family: var(--ui-font, 'Fusion Pixel 12px Mono zh-Hans', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans SC', sans-serif);
 }
 
-/* 复古档：等宽读数也统一用 Unifont（英文/数字/中文都是同一套点阵字形）：
+/* 复古档：等宽读数也统一用 Fusion Pixel（英文/数字/中文都是同一套点阵字形）：
    · `--wui-mono` 覆盖在 `:root` 上 ⇒ 全站等宽读数一起换；
    · `--hud-mono` 定义在 `.hud` 元素上，需同元素覆盖（工业 HUD 页）。 */
 :root[data-ui-font='retro'] {
-  --wui-mono: 'GNU Unifont', 'Cascadia Mono', 'Consolas', 'Courier New', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans SC', monospace;
+  --wui-mono: 'Fusion Pixel 12px Mono zh-Hans', 'Cascadia Mono', 'Consolas', 'Courier New', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans SC', monospace;
 }
 :root[data-ui-font='retro'] .hud {
-  --hud-mono: 'GNU Unifont', 'Fira Code', 'Consolas', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans SC', monospace;
+  --hud-mono: 'Fusion Pixel 12px Mono zh-Hans', 'Fira Code', 'Consolas', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans SC', monospace;
 }
 
 /* ── 二、许可与授权全文弹窗 ──

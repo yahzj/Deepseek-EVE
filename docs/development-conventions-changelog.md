@@ -2,6 +2,13 @@
 
 > 本页记录当前规则维护，不是开工必读。历史流水已移入`归档区/docs/archive/`；无船长明确查阅要求禁止读取或检索，包括Git历史。
 
+## 2026-11-12 自建服务器 7777 与 GitHub Pages 同批部署（船长令）
+
+- 依据：船长「以后记得顺手 部署github pages的时候也要同时部署服务器7777」「这个需要记到文档里」。
+- 生效范围：`AGENTS.md` §4、`docs/development-conventions.md` §三；配套基础设施为 2026-11-12 当日搭建的 nginx 站点 `whale-idle-6666`（stream 分流 6666/7777、game.bajibaji.party 证书、`/var/www/whale-idle-6666`）。
+- 现行规则：部署 GitHub Pages（正式发布或手动部署网页版）时，同一份 web 构建产物（`cd web && MSYS_NO_PATHCONV=1 npx vite build --base=/`，其中环境变量不可省）必须同时部署到自建服务器 `https://game.bajibaji.party:7777/`，两个入口保持同一版本；换域名时同步 `web/src/main.tsx` 官方域名白名单。端口口径：6666 被 Chrome/Edge 硬编码禁用（ERR_UNSAFE_PORT），浏览器只能走 7777；非标端口的 http 明文会被腾讯云 webblock 拦截，统一用 https 访问。
+- 验证：`npm run verify`（T2 档）、`docs:index --check` 按本批执行记录。
+
 ## 2026-11-05 晚 第二批瘦身与改动分档落地（船长「按你推荐来，落实调整分档」）
 
 - 依据：船长「`.wiki` 不动」「一些验收的文档和旧的数据对比文档也纳入瘦身范围」「超过一个月的旧的测试存档则纳入删除范围」「希望落实调整分档，避免一些小的调整演变成全量跑通」。

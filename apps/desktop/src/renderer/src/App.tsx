@@ -221,6 +221,14 @@ export function App({ engine }: { engine: GameEngine }) {
   //    🔴 2026-10-02 船长令「按你的建议先修」：给**尺寸**加方向不对称的滞回（见 MOB_*_ADOPT_PX），
   //    修玩家报障「手机端的战斗画面会忽大忽小（缩放）」——对齐偏移仍逐拍跟可见区走，只是尺寸不再抖） ──
   const [mobileRot, setMobileRot] = useState(false)
+  /**
+   * **手机物理横屏**（**2026-11-12 船长报「iOS 上用 Chrome 打开，横屏显示错位」**）：
+   * 横握时 `is-mobile-rot` 不成立（本来就横着），界面只能按 844×390 的桌面窄矮窗口排
+   * ⇒ 顶栏/底栏被挤出视口、选择卡纵向溢出。这里给横屏也套一层「1200 逻辑宽缩放」
+   * （与竖持旋转同一设计宽，但**不旋转**，只 `scale()`）——布局拿到 ≈1200×555 的空间，
+   * 与桌面 1200 宽窗口一致，不再错位。
+   */
+  const [mobileLand, setMobileLand] = useState(false)
   const [mobileLayout, setMobileLayout] = useState(false)
   const [mobileLogOpen, setMobileLogOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -240,10 +248,13 @@ export function App({ engine }: { engine: GameEngine }) {
       const orientation = window.screen.orientation?.type
       const portrait = orientation ? orientation.startsWith('portrait') : window.innerHeight > window.innerWidth
       const rot = coarse && portrait && window.innerWidth < 900
+      /** 手机物理横握：高不足（iPhone 横屏 ≈390，iPad 横屏 768 不命中）⇒ 走不旋转的缩放层 */
+      const land = coarse && !portrait && window.innerWidth < 1000 && window.innerHeight < 520
       setMobileRot(rot)
+      setMobileLand(land)
       const el = rootRef.current
       if (!el) return
-      if (!rot) {
+      if (!rot && !land) {
         el.style.removeProperty('--mob-w')
         el.style.removeProperty('--mob-h')
         el.style.removeProperty('--mob-scale')
@@ -310,17 +321,19 @@ export function App({ engine }: { engine: GameEngine }) {
       mobSizeRef.current = size
       // 虚拟横屏设计宽度：越大画面整体越小、看到越多（船长 2026-09-05：横屏后偏大，改 1200 放宽）
       const designW = 1200
-      const scale = size.h / designW
-      const vh = designW * size.w / size.h
+      // 旋转（竖持）：scale 挂在高（旋转后的逻辑宽）上；横握：scale 挂在宽上，不旋转
+      const scale = land ? size.w / designW : size.h / designW
+      const vh = land ? size.h / scale : designW * size.w / size.h
       // 布局坐标对齐：旋转(绕原点 -90°)后，元素的"右下"恰好落在可见区右下
       // 映射：物理 x = L + s·y，物理 y = T − s·x ⇒ 取 L=visX、T=visY+size.h 即铺满；
       // ⚠ 用 `visY + size.h`（而不是 `visY + visH`）：尺寸与可见区不一致的那一小段里**顶部对齐**
       //   ⇒ 已采纳的内容一个像素都不动，差量留在底部（不再"长大一下又缩回去"）。
+      // 横握不旋转：左上角对齐可见区左上，scale 后正好铺满可见宽。
       el.style.setProperty('--mob-w', `${designW}px`)
       el.style.setProperty('--mob-h', `${vh}px`)
       el.style.setProperty('--mob-scale', String(scale))
       el.style.setProperty('--mob-x', `${visX}px`)
-      el.style.setProperty('--mob-y', `${visY + size.h}px`)
+      el.style.setProperty('--mob-y', land ? `${visY}px` : `${visY + size.h}px`)
     }
     update()
     window.addEventListener('resize', update)
@@ -567,18 +580,16 @@ export function App({ engine }: { engine: GameEngine }) {
 
 /**
  * **布局偏好**（2026-09-25 船长令）：「新旧界面能否允许玩家在设置内切换？」⇒ 裁定甲（两套 DOM 并存）；
- * 随后二次裁定：**「默认旧档采用旧界面，新界面需要去设置切换」**＋「**一律默认旧版**」
- * ＋「**一旦点过就永远按他点的来，换档也不变**」；三次裁定：**「可以切换了，但是需要重启…
+ * 随后二次裁定：**「一旦点过就永远按他点的来，换档也不变」**；三次裁定：**「可以切换了，但是需要重启…
  * 建议在玩家切换时，弹出警告，让玩家重启游戏，玩家确认后关闭游戏。」**
+ * **2026-11-12 船长令更新默认**：「新玩家的默认配置应该做到新版界面、开启 CRT」⇒
+ * **没选过 ⇒ 默认 modern（新版界面，CRT 默认开）**；选过 ⇒ 永远按他选的。
  *
  * 故用**两个键**（职责分开，才分得清"没选过"与"选过"）：
  *   · `whale-idle:layout`      = 选中的布局（`modern` | `classic`）——**仅作记录**；
  *   · `whale-idle:layout-set`  = 玩家是否**在设置里明确选过**（`1` = 选过）。
- * 判据：**没选过 ⇒ 一律 classic（旧界面）**；选过 ⇒ 永远按他选的（与存档无关，换档/清档都不变）。
- *
- * ⚠ 迁移：本功能第一版缺省是 modern，只要跑过一次就会写下 `whale-idle:layout`，
- * 而第二版又从没写过 `layout-set` ⇒ **凡是没有 `layout-set` 的机器一律回落到 classic**，
- * 正是船长要的默认。两个键都进 `localStorage`（本机偏好、不进存档）。
+ * 判据：没选过 ⇒ modern；选过 ⇒ 按他选的（与存档无关，换档/清档都不变）。
+ * 两个键都进 `localStorage`（本机偏好、不进存档）。
  * ⚠ 读写全包 try/catch：桌面端存储被禁时不能让整树崩掉（读失败 ⇒ 用默认）。
  */
 /**
@@ -1368,7 +1379,7 @@ async function applyLayoutAndReload(): Promise<void> {
   }, [tutStep])
 
   return (
-    <div ref={rootRef} className={`app-root${mobileRot ? ' is-mobile-rot' : ''}${mobileLayout ? ' is-mobile-layout' : ''} is-layout-${layoutKind}`}>
+    <div ref={rootRef} className={`app-root${mobileRot ? ' is-mobile-rot' : ''}${mobileLand ? ' is-mobile-land' : ''}${mobileLayout ? ' is-mobile-layout' : ''} is-layout-${layoutKind}`}>
       {/* 引擎订阅：正常异步渲染；性能监测激活时改 flushSync 同步刷新并实测整树提交耗时 */}
       <PerfListener engine={engine} force={force} />
       {/* ───── 顶栏 ───── */}
