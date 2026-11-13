@@ -113,6 +113,8 @@ export interface BattleFx {
   /** 武器来源（2026-09-10 船长批：无人机动画差异化的展示字段；旧事件/测试构造缺省 →
    *  UI 按旧口径回退，不区分来源）。取值同 WeaponSpec.src */
   src?: 'turret' | 'missile' | 'laser' | 'drone' | 'base'
+  /** 友舰修理脉冲，恢复量为实际入账；不参与攻击与伤害表现。 */
+  repair?: { armor: number; hull: number; droneIndex: number }
   /** 爆虫本体爆发，不走通用武器弹道；伤害类型仍为动能。 */
   acidBurst?: true
   /** 无人机机型 id（src='drone' 时携带：drone-scout/assault/heavy/sentry） */

@@ -3,7 +3,7 @@ import { buildSimContext } from '@whale/data'
 import { addShipToFleet } from '../src/shipyard'
 import { createInitialState } from '../src/state'
 import { wormholeEnter } from '../src/wormhole'
-import { advanceWormhole, wormholeTravelTo } from '../src/wormholeBattle'
+import { advanceWormhole, wormholeActivateAt, wormholeStartBattle, wormholeTravelTo } from '../src/wormholeBattle'
 import { wormholeCollectOreAt, wormholeEnsureVeinPiles, wormholeEnsureSalvagePiles, wormholeEnsureArrivalPiles, wormholeGrantShipSpoils, wormholeHoldCapacityOf, wormholeSalvageAt } from '../src/wormholeSalvage'
 import { hasLiveFoe } from '../src/wormholeGrid'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
@@ -241,6 +241,97 @@ describe('信号空间被占矿点：覆盖和地点完成不能混用', () => {
     expect(loaded.wormhole.run!.grid!.ruinsRolled).toEqual(rolls)
   })
 
+  it.each(['direct', 'ambush', 'reload-battle', 'reload-victory'] as const)('被占研究所%s战后仍可首捞且不能重复领取', mode => {
+    const initial = world(8)
+    let state = initial.state
+    initial.vein.place = 'research'
+    state.fleet[state.shipId]!.fitted.high = ['mod-salvager-1']
+    if (mode === 'ambush') initial.run.grid!.scanned = ['0,0']
+    const travel = wormholeTravelTo(state, ctx, { q: 1, r: 0 }, { confirmUnknown: true, confirmIntercept: true, deferAmbush: mode === 'ambush' })
+    expect(travel.ok, travel.error).toBe(true)
+    if (mode === 'ambush') expect(wormholeStartBattle(state, ctx, 'node').ok).toBe(true)
+    if (mode === 'reload-battle') state = loadSaveFile(serializeSaveFile(state)).state
+    expect(state.wormhole.run!.grid!.activated).not.toContain(initial.vein.key)
+    settleWin(state)
+    if (mode === 'reload-victory') state = loadSaveFile(serializeSaveFile(state)).state
+    const run = state.wormhole.run!
+    const cell = run.grid!.cells.find(row => row.key === initial.vein.key)!
+    expect(cell.place).toBe('research')
+    expect(hasLiveFoe(cell)).toBe(false)
+    expect(run.grid!.activated).not.toContain(cell.key)
+    const turns = run.turnsLeft
+    expect(wormholeActivateAt(state, ctx)).toMatchObject({ ok: true, spent: 1 })
+    expect(run.turnsLeft).toBe(turns - 1)
+    expect(run.grid!.activated).toContain(cell.key)
+    expect(state.logs.filter(log => log.textId === 'core.researchLab.002')).toHaveLength(1)
+    const reloaded = loadSaveFile(serializeSaveFile(state)).state
+    expect(wormholeActivateAt(reloaded, ctx).ok).toBe(false)
+    expect(reloaded.logs.filter(log => log.textId === 'core.researchLab.002')).toHaveLength(1)
+  })
+
+  it.each([false, true])('研究所领取货柜后仍可回收围剿散落残骸，提前领取=%s', claimedBeforeBattle => {
+    const { state, run, vein: cell } = world(8)
+    cell.place = 'research'
+    state.fleet[state.shipId]!.fitted.high = ['mod-salvager-1']
+    state.wormhole.noCommonWreckSalvage = false
+    if (claimedBeforeBattle) {
+      // 仅留研究所为可刷地点；真实首捞触发脚下围剿，随后走正式开战和结算。
+      run.grid!.cells[0]!.place = 'ship'
+      run.grid!.pos = { q: cell.q, r: cell.r }
+      run.grid!.visited.push(cell.key)
+      delete cell.foe
+      expect(wormholeSalvageAt(state, ctx).relics).toHaveLength(1)
+      expect(hasLiveFoe(cell)).toBe(true)
+      advanceWormhole(state, ctx)
+      expect(run.battle!.wormhole!.kind).toBe('spawn')
+    } else arrive(state)
+    const capacity = wormholeHoldCapacityOf(state, ctx)
+    run.bag = [{ itemId: ore, units: (capacity + 32) * 500 }]
+    settleWin(state)
+    const original = structuredClone(cell.piles!)
+    expect(original.some(p => p.itemId.startsWith('wreck-'))).toBe(true)
+    run.bag = []
+    run.hold = makeHoldState()
+    if (!claimedBeforeBattle) expect(wormholeActivateAt(state, ctx).ok).toBe(true)
+    const loaded = loadSaveFile(serializeSaveFile(state)).state
+    const loadedRun = loaded.wormhole.run!
+    const loadedCell = loadedRun.grid!.cells.find(row => row.key === cell.key)!
+    const turns = loadedRun.turnsLeft
+    const salvage = wormholeSalvageAt(loaded, ctx)
+    expect(salvage.ok, salvage.error ?? salvage.errorId).toBe(true)
+    expect(salvage.taken).toEqual(original.filter(p => p.itemId.startsWith('wreck-')))
+    expect(salvage.relics).toBeUndefined()
+    expect(loadedRun.turnsLeft).toBe(turns - 1)
+    expect(loadedCell.place).toBe('research')
+    expect(loadedRun.grid!.activated).toContain(cell.key)
+    expect(loaded.logs.filter(log => log.textId === 'core.researchLab.002')).toHaveLength(1)
+    expect(wormholeSalvageAt(loaded, ctx).ok).toBe(false)
+  })
+
+  it('研究所已领货柜排在残骸前不阻塞打捞，不重掷奖励，普通残骸开关仍生效', () => {
+    const { state, run, vein: cell } = world(8)
+    cell.place = 'research'
+    cell.foe!.cleared = true
+    run.grid!.pos = { q: cell.q, r: cell.r }
+    run.grid!.activated.push(cell.key)
+    state.fleet[state.shipId]!.fitted.high = ['mod-salvager-1']
+    cell.piles = [{ itemId: 'box-encrypted-a', units: 1 }, { itemId: 'wreck-a-wh', units: 5 }]
+    const before = structuredClone(cell.piles)
+    const turns = run.turnsLeft
+    expect(wormholeSalvageAt(state, ctx)).toMatchObject({ ok: false, errorId: 'core.wormholeSalvage.044' })
+    expect(run.turnsLeft).toBe(turns)
+    expect(cell.piles).toEqual(before)
+    state.wormhole.noCommonWreckSalvage = false
+    expect(wormholeActivateAt(state, ctx)).toMatchObject({ ok: true, spent: 1, taken: 1 })
+    expect(run.turnsLeft).toBe(turns - 1)
+    expect(cell.piles).toEqual([before[0]])
+    expect(run.grid!.ruinsRolled ?? []).not.toContain(cell.key)
+    expect(run.pendingRuinsBattle).not.toBe(true)
+    const after = structuredClone(state)
+    expect(wormholeSalvageAt(state, ctx)).toMatchObject({ ok: false, errorId: 'core.wormholeSalvage.022' })
+    expect(state).toEqual(after)
+  })
+
   it('新虫洞不使用信号空间生成标记，原始资源逻辑不改', () => {
     const { state, run, vein } = world()
     run.expeditionRules = 2
@@ -301,8 +392,9 @@ describe('信号空间被占矿点：覆盖和地点完成不能混用', () => {
     }
   })
 
-  it('真炮火击败围剿者后直接采矿，不手写胜负或清除完成状态', () => {
+  it.each(['vein', 'research'] as const)('真炮火击败%s围剿者后可作业，不手写胜负或清除完成状态', place => {
     const { state, run, vein } = world(8)
+    vein.place = place
     const laser = ctx.modules.get('mod-laser-3')!
     const ship = ctx.ships.get('sh-thresher')!
     // 仅合成测试配装提高火力/耐久，排除平衡变量；正式移动、炮火、胜场收口和采矿连跑。
@@ -311,7 +403,7 @@ describe('信号空间被占矿点：覆盖和地点完成不能混用', () => {
       modules: new Map([...ctx.modules, [laser.id, { ...laser, dmgMult: 1000, reloadMs: 100, maxRangeM: 60000 }]]),
       ships: new Map([...ctx.ships, [ship.id, { ...ship, shieldHp: 100000, armorHp: 100000, hullHp: 100000 }]]),
     }
-    state.fleet[state.shipId]!.fitted.high = ['mod-miner-1', laser.id]
+    state.fleet[state.shipId]!.fitted.high = [place === 'vein' ? 'mod-miner-1' : 'mod-salvager-1', laser.id]
     state.warehouse.items['ammo-plasma-l'] = 10000
     const move = wormholeTravelTo(state, local, { q: 1, r: 0 }, { confirmIntercept: true })
     expect(move.ok, move.error).toBe(true)
@@ -326,8 +418,14 @@ describe('信号空间被占矿点：覆盖和地点完成不能混用', () => {
     expect(battle.stats.meDmg).toBeGreaterThan(0)
     expect(hasLiveFoe(vein)).toBe(false)
     expect(run.grid!.activated).not.toContain(vein.key)
-    const collect = wormholeCollectOreAt(state, local)
-    expect(collect.ok, collect.error).toBe(true)
-    expect(collect.taken!.some(p => p.itemId === ore)).toBe(true)
+    if (place === 'vein') {
+      const collect = wormholeCollectOreAt(state, local)
+      expect(collect.ok, collect.error).toBe(true)
+      expect(collect.taken!.some(p => p.itemId === ore)).toBe(true)
+    } else {
+      expect(wormholeSalvageAt(state, local).relics).toHaveLength(1)
+      expect(run.grid!.activated).toContain(vein.key)
+      expect(wormholeSalvageAt(state, local).ok).toBe(false)
+    }
   })
 })

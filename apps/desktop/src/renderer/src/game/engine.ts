@@ -3449,8 +3449,10 @@ export class GameEngine {
 
   /** 自动探索：开始一趟（消耗该处库存、**整队占 1 枚 AI 核心**、参与舰锁定到返航） */
   async wormholeAutoStart(stockId: string, shipIds: readonly string[], signal?: AbortSignal): Promise<CommandResult> {
-    if (this.wormholeStock().find(s => s.id === stockId)?.expeditionRules !== undefined) return { ok: false, code: 'unsupported-rules' }
-    if (this.signalAutoComputing || signal?.aborted || this.stopped) return { ok: false }
+    if (this.wormholeStock().find(s => s.id === stockId)?.expeditionRules !== undefined) return { ok: false, code: 'unsupported-rules', errorId: 'core.signalDispatch.005' }
+    if (this.signalAutoComputing) return { ok: false, errorId: 'core.signalDispatch.006' }
+    if (signal?.aborted) return { ok: false, errorId: 'core.signalDispatch.001' }
+    if (this.stopped) return { ok: false, errorId: 'core.signalDispatch.007' }
     const handover = this.wormholeAutoMainHandover(shipIds)
     if (handover.reason) return { ok: false, errorId: handover.reasonId, error: handover.reason, errorParams: handover.reasonParams }
     const blocked = this.wormholeAutoBlockReason(stockId, shipIds, handover.needed)
@@ -3464,13 +3466,17 @@ export class GameEngine {
     this.signalAutoController = controller
     this.signalAutoComputing = true
     try {
-      const estimate = await computeSignalAuto(sourceState, stockId, shipIds, controller.signal,
+      const computed = await computeSignalAuto(sourceState, stockId, shipIds, controller.signal,
         () => this.createSignalAutoWorker())
-      if (!estimate || controller.signal.aborted || this.stopped || this.state !== sourceState || this.ctx !== sourceCtx || this.state.shipId !== leader)
-        return { ok: false }
+      if (controller.signal.aborted) return { ok: false, errorId: 'core.signalDispatch.001' }
+      if (this.stopped) return { ok: false, errorId: 'core.signalDispatch.007' }
+      if (this.state !== sourceState || this.ctx !== sourceCtx || this.state.shipId !== leader)
+        return { ok: false, errorId: 'core.signalDispatch.008' }
+      if ('failure' in computed) return computed.failure
       const currentHandover = this.wormholeAutoMainHandover(shipIds)
-      if (currentHandover.reason || currentHandover.toId !== handover.toId) return { ok: false }
-      const result = wormholeAutoStart(this.state, this.ctx, stockId, shipIds, undefined, { inputKey, estimate })
+      if (currentHandover.reason) return { ok: false, error: currentHandover.reason, errorId: currentHandover.reasonId, errorParams: currentHandover.reasonParams }
+      if (currentHandover.toId !== handover.toId) return { ok: false, errorId: 'core.signalDispatch.009' }
+      const result = wormholeAutoStart(this.state, this.ctx, stockId, shipIds, undefined, { inputKey, estimate: computed.estimate })
       if (result.ok) { void this.persist(); this.notify() }
       return result
     } finally {

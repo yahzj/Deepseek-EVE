@@ -24,6 +24,16 @@ export function l10nEntryText(entry: L10nEntry, locale: 'zh' | 'en'): string {
 }
 
 export const L10N: Readonly<Record<string, L10nEntry>> = {
+  'core.signalDispatch.001': { zh: '自动探索派队已取消。', en: '', enDeferred: true },
+  'core.signalDispatch.002': { zh: '无法启动探索计算，请刷新后重试。', en: '', enDeferred: true },
+  'core.signalDispatch.003': { zh: '探索计算超过60秒，派队未完成，请重试。', en: '', enDeferred: true },
+  'core.signalDispatch.004': { zh: '探索计算出错，派队未完成，请重试。', en: '', enDeferred: true },
+  'core.signalDispatch.005': { zh: '该信号不支持此自动探索方式。', en: '', enDeferred: true },
+  'core.signalDispatch.006': { zh: '另一支探索队正在计算，请稍候。', en: '', enDeferred: true },
+  'core.signalDispatch.007': { zh: '游戏已停止运行，请重新进入后派队。', en: '', enDeferred: true },
+  'core.signalDispatch.008': { zh: '计算期间游戏状态或主控舰船发生变化，请重新派队。', en: '', enDeferred: true },
+  'core.signalDispatch.009': { zh: '计算期间接任主控的舰船发生变化，请重新派队。', en: '', enDeferred: true },
+  'core.signalDispatch.010': { zh: '计算期间信号、舰船、科技或补给发生变化，请重新派队。', en: '', enDeferred: true },
   'ui.flagshipFleet.001': { zh: '当前编队{p1}艘 · 指挥成本{p2}/{p3}', en: '', enDeferred: true },
   'ui.flagshipFleet.002': { zh: '选择编队预设', en: '', enDeferred: true },
   'ui.flagshipFleet.003': { zh: '切换编队', en: '', enDeferred: true },

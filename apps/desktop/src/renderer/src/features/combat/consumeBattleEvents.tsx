@@ -66,6 +66,7 @@ if (arrivals.length > 0) {
     // 本帧各机型的"击落落点游标"：同一拍被打掉两架时逐架往前取位（不叠在同一处）
     const downCursor = new Map<string, number>()
     for (const fx of arrivals) {
+      if (fx.repair) continue
       if (fx.acidBurst) {
         const anchors = resolveBoltAnchors({ side: 'foe', tag: fx.tag, to: fx.to, rowFxTags,
           meAnchors: meAnchorByTag, meFallback: layFx.me, foeAnchors: layFx.foe })

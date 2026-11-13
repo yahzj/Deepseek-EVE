@@ -111,6 +111,8 @@ export interface UnitSpec {
   foeFormationAdded?: boolean
   /** 护盾转换的装甲容量；新场次连同原甲按总剩余比例持久化。 */
   shieldArmorHp?: number
+  /** 维修目标的永久层容量倍率，不按战中残血缩放。 */
+  repairCapacityMul?: { a: number; h: number }
   shieldPassiveBonusPct?: number
   armorRegenPerSec?: number
   droneDamageBonusPct?: number

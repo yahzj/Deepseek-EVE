@@ -65,7 +65,7 @@ export function addApprovedRepairDrone(rows: Array<{ id: string }>): void {
   const at = rows.findIndex(row => row.id === 'drone-jawclaw')
   rows.splice(at < 0 ? rows.length : at, 0, {
     id: 'drone-repair-mil', kind: 'drone', droneClass: 'repair', unitM3: 40, baseSellPriceIsk: 42000, cpuUse: 8,
-    repairDrone: true, repairKit: 'repairkit-mil', repairArmorHp: 10, repairHullHp: 10, repairIntervalMs: 10000,
+    repairDrone: true, repairKit: 'repairkit-mil', repairArmorHp: 20, repairHullHp: 20, repairIntervalMs: 20000,
     defense: { shieldHp: 30, armorHp: 20, hullHp: 40, evasion: .2 },
   } as { id: string })
 }

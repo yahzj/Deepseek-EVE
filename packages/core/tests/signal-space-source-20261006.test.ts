@@ -135,6 +135,38 @@ describe('信号空间 · 旧面板来源与隔离', () => {
     expect(source).toContain("tab === 'map' && run ? ' is-exploring' : ''")
   })
 
+  it.each([
+    { claimed: false, piles: 0, expected: true },
+    { claimed: true, piles: 1, expected: true },
+    { claimed: true, piles: 0, expected: false },
+  ])('研究所领柜=$claimed、残骸=$piles时打捞按钮可用=$expected', ({ claimed, piles, expected }) => {
+    const names = ['researchUnclaimed', 'canSalvage', 'canWork']
+    const declarations = collect(declaration(ast, 'SignalSpacePanel'), ts.isVariableDeclaration)
+    const script = names.map(name => {
+      const row = declarations.find(node => node.name.getText(ast) === name)
+      if (!row?.initializer) throw new Error(`缺少研究所作业判据：${name}`)
+      return `const ${name} = ${row.initializer.getText(ast)};`
+    }).join('\n') + '\ncanWork'
+    const compiled = ts.transpileModule(script, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText
+    const scope = { researchCell: true, grid: { activated: claimed ? ['1,0'] : [] }, hereKey: '1,0',
+      salvageCell: false, salvagers: 1, bulkPiles: piles, run: { turnsLeft: 10 }, veinCell: false, canCollect: false }
+    expect(runInNewContext(compiled, scope)).toBe(expected)
+    expect(runInNewContext(compiled, { ...scope, salvagers: 0 })).toBe(false)
+    expect(runInNewContext(compiled, { ...scope, run: { turnsLeft: 0 } })).toBe(false)
+  })
+
+  it.each([false, true])('研究所领柜=$claimed时成功反馈区分领柜与残骸回收', claimed => {
+    const onToast = vi.fn(), playJob = vi.fn()
+    const scope = { hereCell: { place: 'research' }, atExit: false, holdShortBy: 0, researchUnclaimed: !claimed,
+      engine: { wormholeActivate: () => ({ ok: true, taken: claimed ? 1 : 0 }) }, onToast, playJob, tr: (id: string) => id }
+    const script = `${declaration(ast, 'doActivate').getText(ast)}\ndoActivate()`
+    const compiled = ts.transpileModule(script, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText
+    runInNewContext(compiled, scope)
+    expect(onToast).toHaveBeenCalledOnce()
+    expect(onToast).toHaveBeenCalledWith(claimed ? 'ui.Wormhole.071' : 'ui.researchLab.005')
+    expect(playJob).toHaveBeenCalledOnce()
+  })
+
   it('关闭先置 closingRef，leave 同步通知也不能被恢复 effect 抢回活动位，自动准备取消推演但不碰旧趟', () => {
     const resume = collect(declaration(ast, 'SignalSpacePanel'), ts.isCallExpression).find(
       (call) => ts.isIdentifier(call.expression) && call.expression.text === 'useEffect' && call.getText(ast).includes('engine.wormholeResume()'),

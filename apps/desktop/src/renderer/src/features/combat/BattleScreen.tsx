@@ -733,6 +733,7 @@ export function BattleScreen({
   })
 
   return renderBattleScene({
+    battle, simulationPaused,
     rangeMode, screenRef, stage, onClose, tr, inWormhole,
     retreatAsk, setRetreatAsk, onToast, engine, ended, defeat,
     sceneName, secs, meStats, speedOptions, speedActive, arcs,

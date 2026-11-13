@@ -13,6 +13,12 @@
 import type { GameState } from './state'
 import type { SimContext } from './types'
 
+/** 维修各层容量倍率；传入完整上限，不能传当前残余血量。 */
+export function repairCapacityMulOf(max: { a: number; h: number }, base: { armorHp?: number; hullHp?: number }): { a: number; h: number } {
+  return { a: (base.armorHp ?? 0) > 0 ? max.a / base.armorHp! : 1,
+    h: (base.hullHp ?? 0) > 0 ? max.h / base.hullHp! : 1 }
+}
+
 /** 修理组件恢复量系数：1 + Σ(该技能每级加成 × 等级)（各技能等级封顶 5）
  *  —— 2026-09-13 船长：**舰体快修学 + 维修工程学同效果、按级线性相加**（两条都满级 = +50%） */
 export function quickRepairFactor(state: GameState, ctx: SimContext): number {

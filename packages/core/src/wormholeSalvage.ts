@@ -1897,8 +1897,10 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
   if (run.battle) return { ok: false, error: '战斗中：先打完这一场。', errorId: 'core.wormholeSalvage.016' }
   const cell = gridCellAt(grid, grid.pos)
   if (!cell) return { ok: false, error: '当前位置不在网格里。', errorId: 'core.wormhole.018' }
-  if (cell.place === 'research') {
-    if (grid.activated.includes(cell.key)) return { ok: false, errorId: 'core.wormholeSalvage.022' }
+  if (cell.place === 'research' && grid.activated.includes(cell.key)
+    && !(cell.piles ?? []).some(p => !wormholeIsShapedItem(p.itemId))) return { ok: false, errorId: 'core.wormholeSalvage.022' }
+  // 研究所完成标记只阻止重复领柜，不阻止回收围剿战散落的残骸。
+  if (cell.place === 'research' && !grid.activated.includes(cell.key)) {
     const blocked = wormholeActionBlockReason(state, ctx)
     if (blocked) return { ok: false, error: blocked }
     if (wormholeSalvagersOf(state, ctx) <= 0) return { ok: false, errorId: 'core.wormholeSalvage.020' }
@@ -1916,7 +1918,7 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
     return { ok: true, spent: WORMHOLE_TURN_PER_WORK, taken: [], boxes: [boxId], relics: [boxId], finished: true,
       left: cell.piles?.length ?? 0, mustExtract: run.turnsLeft <= 0 }
   }
-  if (cell.place !== 'graveyard' && cell.place !== 'ruins') return { ok: false, error: '这个地点没有可打捞的残骸。', errorId: 'core.wormholeSalvage.018' }
+  if (cell.place !== 'graveyard' && cell.place !== 'ruins' && cell.place !== 'research') return { ok: false, error: '这个地点没有可打捞的残骸。', errorId: 'core.wormholeSalvage.018' }
   const baseRigs = wormholeSalvagersOf(state, ctx)
   if (baseRigs <= 0) {
     return { ok: false, error: '编队里没有打捞器：打捞作业干不了（至少装 1 台）。', errorId: 'core.wormholeSalvage.020' }
@@ -1961,7 +1963,8 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
      * （从数组里挑第一个稀有堆；取走后其余顺序不变）。关着时 `idx = 0` ⇒ 与旧写法
      * `piles.shift()` **逐字等价**（老行为零变化）。
      */
-    const idx = rareOnly ? piles.findIndex((p) => !wormholeIsShapedItem(p.itemId) && isRareWreck(p.itemId)) : 0
+    const idx = rareOnly ? piles.findIndex((p) => !wormholeIsShapedItem(p.itemId) && isRareWreck(p.itemId))
+      : cell.place === 'research' ? piles.findIndex(p => !wormholeIsShapedItem(p.itemId)) : 0
     if (idx < 0) break
     const pile = piles[idx]!
     /**

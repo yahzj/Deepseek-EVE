@@ -116,6 +116,7 @@
 | 舰级与船体武器射程加成 | `shipWeaponRangeBonusesOf()` · `ships/range.ts` | T1～T5额外0/5/10/15/20%，与原船体特性加算；战前武器规格与舰船信息共用，不影响无人机和基础炮 |
 | 制造卡势力插件图纸获取与隐藏 | `factionPlugBlueprintKind()` / `manufacturingBlueprintVisible()` · `features/industry/blueprintPolicy.tsx` | 一次性指向信号空间，永久未投放默认隐藏，已有配方/图纸/在制线保留；两套工业页共用 |
 | 护盾力场排除自身、有效目标与最大护盾代价 | `pulseShieldFieldFor()` / `SHIELD_FIELD_COST_PCT` · `combatRepair.ts` | 力场专项：费用与目标数无关、足量/不足/无目标、周期/混装/读档；详情费用读取同一常量；`arch:guard` F2/F3 |
+| 维修目标的装甲与结构容量倍率 | `repairCapacityMulOf()` · `repair.ts` | 普通维修与修理无人机共用；目标加成后最大值分别除以船型基础值，不按残血量计算 |
 | 双方护盾自然回复与旗舰速率映射 | `passiveShieldRateOf()` · `combat/passiveRecovery.ts` | 当前盾比例、满盾托底、零盾不回；旗舰卡面速率基准与共享容量分离；战斗推进和估算共用 |
 | 恒定承伤下护盾回复与装甲自愈的破层时间 | `passiveShieldBreakSeconds()` / `passiveArmorBreakSeconds()` · `combat/passiveRecovery.ts` | 解析估算共用回复规则；无法破层返回无限时长，装甲自愈独立于修复输出加成 |
 | 无人机指挥共享增幅与全队已装载体积快照 | `applyDroneCommandAura()` / `droneCommandVolumeM3Of()` · `combat/droneCommand.ts` | 活友舰只取最高来源一次、不递归且排除本舰；全舰队已装载体积在开战时建档，来源目标权重无上限 |
