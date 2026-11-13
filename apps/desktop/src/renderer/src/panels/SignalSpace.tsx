@@ -337,6 +337,7 @@ export function SignalSpacePanel({
   /** **打捞现场**（F3b：墓场/遗迹）——它的"激活"是打捞作业（要打捞器、按台数回收） */
   const salvageCell = !!hereCell && (hereCell.place === 'graveyard' || hereCell.place === 'ruins')
   const researchCell = hereCell?.place === 'research'
+  const researchUnclaimed = researchCell && !grid?.activated.includes(hereKey)
   /**
    * **矿脉**（F5 · 船长 2026-09-13：「资源点和墓场遗迹改为不用激活」「虚空母矿要求玩家携带采集器。
    * 规则同虫洞打捞」）：走到就铺好母矿堆，打捞/采集各按"台数 × 回合"回收 ⇒ 与墓场同一套交互。
@@ -476,13 +477,13 @@ export function SignalSpacePanel({
   /** 当前地点能不能激活：空信息地点/信标没作业、处理过的不重复、入口格守卫清掉后不再触发 */
   const canActivate = !!grid && !!hereCell && !grid.activated.includes(hereKey) && (atExit ? !bossDone : hereCell.place !== 'empty')
   /** 打捞格：没打捞器就打不了；有打捞器但堆已空 ⇒ 也打不了 */
-  const canSalvage = salvageCell && salvagers > 0 && bulkPiles > 0 && (run?.turnsLeft ?? 0) >= 1
+  const canSalvage = (salvageCell || (researchCell && !researchUnclaimed)) && salvagers > 0 && bulkPiles > 0 && (run?.turnsLeft ?? 0) >= 1
   /** 矿脉：没采集器就挖不动；有采集器但堆已空 ⇒ 也采不了 */
   const canCollect = veinCell && miners > 0 && bulkPiles > 0 && (run?.turnsLeft ?? 0) >= 1
   /** **免激活的两个作业格**（打捞 / 采集）：界面按钮走同一个引擎入口，标签与拒因按地点分流 */
   const workCell = salvageCell || veinCell || researchCell
-  const canWork = researchCell ? salvagers > 0 && (run?.turnsLeft ?? 0) >= 1 && !grid?.activated.includes(hereKey)
-    : salvageCell ? canSalvage : veinCell ? canCollect : false
+  const canWork = researchUnclaimed ? salvagers > 0 && (run?.turnsLeft ?? 0) >= 1
+    : salvageCell || researchCell ? canSalvage : veinCell ? canCollect : false
   const rigs = salvageCell || researchCell ? salvagers : miners
   const rigName = veinCell ? tr("ui.Wormhole.238") : tr("ui.Wormhole.001")
   /**
@@ -950,12 +951,12 @@ export function SignalSpacePanel({
       return
     }
     if (exitNow || place === 'ship') return // 已开战：交给战斗界面
-    if (place === 'research') {
+    if (place === 'research' && researchUnclaimed) {
       playJob(tr('ui.Wormhole.070'), tr('ui.researchLab.001'))
       onToast(tr('ui.researchLab.005'))
       return
     }
-    if (place === 'graveyard' || place === 'ruins') {
+    if (place === 'graveyard' || place === 'ruins' || place === 'research') {
       playJob(tr("ui.Wormhole.070"), tr("ui.Wormhole.126", { p1: res.taken ?? 0 }))
       onToast(tr("ui.Wormhole.071", { p1: res.taken ?? 0 }))
       return
@@ -1059,7 +1060,7 @@ export function SignalSpacePanel({
   }
 
   /** 打捞/采集按钮的悬浮说明（只在真能用时才渲染按钮，故这里只讲"这一批能回收多少"） */
-  const workTitle = researchCell ? tr('ui.researchLab.002') : veinCell
+  const workTitle = researchUnclaimed ? tr('ui.researchLab.002') : veinCell
     ? tr("ui.Wormhole.242", { rigs: rigs, p2: Math.min(rigs, herePiles.length) })
     : tr("ui.Wormhole.075", { rigs: rigs, p2: Math.min(rigs, herePiles.length) })
 
@@ -1081,7 +1082,7 @@ export function SignalSpacePanel({
             {grid.activated.includes(hereKey) ? tr('ui.Wormhole.303') : ''}
           </span>
         </div>
-        {researchCell && herePiles.length > 0 ? <div className="app-dim app-note">{tr('ui.researchLab.002')}</div> : null}
+        {researchUnclaimed && herePiles.length > 0 ? <div className="app-dim app-note">{tr('ui.researchLab.002')}</div> : null}
         {/* **作业进度条**（F2b · 纯表现 380ms）：摆在堆清单正上方——卡片"向下移出"的同时，这条在走 */}
         {jobFx ? (
           <div className="app-wh-jobrow" key={jobFx.nonce}>
@@ -2068,7 +2069,7 @@ export function SignalSpacePanel({
                         >
                           {veinCell ? tr("ui.Wormhole.261") : tr("ui.Wormhole.107")}
                           <span className="app-wh-scan-sub">
-                            {researchCell ? tr('ui.researchLab.002') : <>{tr("ui.Wormhole.036")} {Math.min(Math.max(rigs, 0), herePiles.length)}{tr('ui.Wormhole.342')}</>}
+                            {researchUnclaimed ? tr('ui.researchLab.002') : <>{tr("ui.Wormhole.036")} {Math.min(Math.max(rigs, 0), herePiles.length)}{tr('ui.Wormhole.342')}</>}
                           </span>
                         </button>
                       ) : null}

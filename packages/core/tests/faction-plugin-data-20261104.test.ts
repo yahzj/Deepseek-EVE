@@ -13,7 +13,7 @@ import { MARKET_GOODS_0_TEXT_BINDINGS } from '../../data/src/market/bindings'
 const ctx = buildSimContext()
 const cases = [
   { family: 'A', id: 'plug-pirate-damage-management', old: 'plug-pirate-raider', nameId: 'mod.factionPlug.010', descId: 'mod.factionPlug.011', fields: { damageManagement: { penaltyReductionPct: .8, hullResistPerKind: .03, maxKinds: 10 } } },
-  { family: 'C', id: 'plug-alien-nanobiomass', old: 'plug-alien-shield-coating', nameId: 'mod.factionPlug.012', descId: 'mod.factionPlug.013', fields: { armorCapacityPenaltyPct: .2, armorRegenPerSec: .006 } },
+  { family: 'C', id: 'plug-alien-nanobiomass', old: 'plug-alien-shield-coating', nameId: 'mod.factionPlug.012', descId: 'mod.factionPlug.013', fields: { armorCapacityPenaltyPct: .2, armorRegenPerSec: .01 } },
   { family: 'D', id: 'plug-gravekeeper-charge', old: 'plug-gravekeeper-capacitor', nameId: 'mod.factionPlug.014', descId: 'mod.factionPlug.015', fields: { chargedWeapons: { reloadMul: 2, damageMul: 2, falloffReductionPct: .5 } } },
   { family: 'E', id: 'plug-titan-drone-command', old: 'plug-titan-compression', nameId: 'mod.factionPlug.016', descId: 'mod.factionPlug.017', fields: { droneCommand: { sharePct: .5, targetWeightPerM3: .01 } } },
   { family: 'G', id: 'plug-deadarmy-reinforced-hull', old: 'plug-deadarmy-printing', nameId: 'mod.factionPlug.018', descId: 'mod.factionPlug.019', fields: { hullCapacityBonusPct: .4, recoveryDamageImmune: true } },
@@ -137,6 +137,7 @@ describe('五族新插件数据与玩家参数接线', () => {
     expect(rows({ ...mods(cases[0].id), damageManagement: { penaltyReductionPct: .7, hullResistPerKind: .04, maxKinds: 7 } })).toContain('70%')
     expect(rows({ ...mods(cases[0].id), damageManagement: { penaltyReductionPct: .7, hullResistPerKind: .04, maxKinds: 7 } })).toContain('4%')
     expect(rows({ ...mods(cases[1].id), armorCapacityPenaltyPct: .3, armorRegenPerSec: .009 })).toContain('0.9%')
+    expect(rows(mods(cases[1].id))).toContain('1.0%')
     expect(rows({ ...mods(cases[2].id), chargedWeapons: { damageMul: 3, reloadMul: 4, falloffReductionPct: .6 } })).toMatch(/×3.*×4.*60%/)
     expect(rows({ ...mods(cases[3].id), droneCommand: { sharePct: .4, targetWeightPerM3: .02 } })).toMatch(/40%.*2%/)
     expect(rows({ ...mods(cases[4].id), hullCapacityBonusPct: .6 })).toContain('+60%')

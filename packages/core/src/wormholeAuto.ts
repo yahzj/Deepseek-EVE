@@ -597,8 +597,8 @@ export function wormholeAutoStart(state: GameState, ctx: SimContext, stockId: st
   const picked = [...pool]
   const tech = wormholeAutoTechFactors(state, ctx, picked)
   const yieldMul = matterTechSignalAutoYield(state, ctx)
-  if (computed && (computed.inputKey !== signalAutoInputKey(state, ctx, picked, item)
-    || computed.estimate.version !== 2 || !cleanSignalAutoEstimate(computed.estimate))) return { ok: false }
+  if (computed && computed.inputKey !== signalAutoInputKey(state, ctx, picked, item)) return { ok: false, errorId: 'core.signalDispatch.010' }
+  if (computed && (computed.estimate.version !== 2 || !cleanSignalAutoEstimate(computed.estimate))) return { ok: false, errorId: 'core.signalDispatch.004' }
   // 先冻结计算结果，成功后才交接主控和消耗信号，异常不能留下半次出发。
   const estimate = computed?.estimate ?? signalAutoEstimateOf(state, ctx, picked, { seed: item.seed, depth: Math.max(1, Math.min(9, item.depth)),
     ...wormholeRunMeta(item) }, yieldMul, tech, wormholeAutoHoldM3Of(tech))

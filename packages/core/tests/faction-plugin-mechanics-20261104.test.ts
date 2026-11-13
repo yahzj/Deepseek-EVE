@@ -122,14 +122,14 @@ describe('势力插件 C/G：最终容量与恢复', () => {
     expect(after.hp.a).toBe(Math.ceil(before.hp.a * .8))
     expect(after.shieldArmorHp).toBe(Math.ceil(before.shieldArmorHp! * .8))
     expect(after.hp.s).toBe(before.hp.s)
-    expect(after.armorRegenPerSec).toBe(.006)
+    expect(after.armorRegenPerSec).toBe(.01)
     w.fleet.plugs = ['plug-alien-shield-coating', C]
     expect(w.spec()).toEqual(after)
     const exact = world([C, C])
     expect(exact.spec().hp.a).toBe(80)
   })
 
-  it('C每秒按战斗最终最大装甲的0.6%恢复，零甲活船可回、封顶，阵亡不复活', () => {
+  it('C每秒按战斗最终最大装甲的1%恢复，零甲活船可回、封顶，阵亡不复活', () => {
     const w = world([C, C, 'plug-alien-shield-coating'])
     const me = w.spec()
     me.weapons = []
@@ -140,7 +140,7 @@ describe('势力插件 C/G：最终容量与恢复', () => {
     rt.hp = { s: 0, a: 0, h: 1 }
     rt.hpMax!.a = 777
     stepBattle(w.state, b, [me], [foe], 1000, 1000, ctx.balance.battle, 1000)
-    expect(rt.hp.a).toBeCloseTo(777 * .006, 12)
+    expect(rt.hp.a).toBeCloseTo(777 * .01, 12)
     rt.hp.a = 776
     stepBattle(w.state, b, [me], [foe], 1000, 1000, ctx.balance.battle, 1000)
     expect(rt.hp.a).toBe(777)

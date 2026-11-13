@@ -1,5 +1,20 @@
 # 英文本地化记录
 
+## 信号空间自动探索派队提示（2026-11-12）
+
+| ID | 内容 | 状态 |
+|---|---|---|
+| `core.signalDispatch.001` | 派队取消提示 | 待本地化 |
+| `core.signalDispatch.002` | 无法启动计算提示 | 待本地化 |
+| `core.signalDispatch.003` | 计算超时提示 | 待本地化 |
+| `core.signalDispatch.004` | 计算出错提示 | 待本地化 |
+| `core.signalDispatch.005` | 信号不支持提示 | 待本地化 |
+| `core.signalDispatch.006` | 另一支探索队正在计算提示 | 待本地化 |
+| `core.signalDispatch.007` | 游戏停止运行提示 | 待本地化 |
+| `core.signalDispatch.008` | 游戏状态或主控变化提示 | 待本地化 |
+| `core.signalDispatch.009` | 接任主控变化提示 | 待本地化 |
+| `core.signalDispatch.010` | 信号、舰船、科技或补给变化提示 | 待本地化 |
+
 ## CRT 显示器效果（2026-11-11）
 
 | ID | 内容 | 状态 |

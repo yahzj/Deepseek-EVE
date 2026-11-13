@@ -245,7 +245,7 @@ describe('解析预估消费敌盾与C自愈', () => {
     const card = ctx.anomalies.get('ink-flagship')!
     const withC = steadyPreview(state, ctx, card, state.shipId, 1, 1)!
     const withoutC = steadyPreview(state, off, card, state.shipId, 1, 1)!
-    expect(createPlayerSpec(state, ctx, state.shipId)!.armorRegenPerSec).toBe(.006)
+    expect(createPlayerSpec(state, ctx, state.shipId)!.armorRegenPerSec).toBe(.01)
     expect(withC.ttrMe).toBeGreaterThan(withoutC.ttrMe)
     const forecast = bountyDamageForecast(state, ctx, card)
     expect(Number.isNaN(forecast.armorLoss)).toBe(false)
