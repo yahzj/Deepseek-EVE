@@ -164,6 +164,11 @@ export function cleanFx(raw: unknown, numf: (v: unknown, fallback: number) => nu
       ...(ev.src === 'turret' || ev.src === 'missile' || ev.src === 'laser' || ev.src === 'drone' || ev.src === 'base' ? { src: ev.src } : {}),
       ...(typeof ev.artId === 'string' && ev.artId.length > 0 ? { artId: ev.artId } : {}),
       ...(ev.web === true ? { web: true as const } : {}),
+      ...(ev.repair && typeof ev.repair === 'object' && side === 'me' && ev.src === 'drone'
+        && Number.isSafeInteger((ev.repair as RawState).droneIndex) && Number((ev.repair as RawState).droneIndex) >= 0
+        && Number.isFinite((ev.repair as RawState).armor) && Number((ev.repair as RawState).armor) >= 0
+        && Number.isFinite((ev.repair as RawState).hull) && Number((ev.repair as RawState).hull) >= 0
+        ? { repair: { armor: Number((ev.repair as RawState).armor), hull: Number((ev.repair as RawState).hull), droneIndex: Number((ev.repair as RawState).droneIndex) } } : {}),
       ...(ev.blink === true ? { blink: true as const } : {}),
       ...(ev.droneDown === true ? { droneDown: true } : {}),
       ...(ev.pd === true ? { pd: true } : {}),

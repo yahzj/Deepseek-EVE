@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
+import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { addShipToFleet } from '../src/shipyard'
 import { applyDamage } from '../src/combatMath'
 import type { Hp3 } from '../src/combatMath'
@@ -135,6 +136,94 @@ describe('玩家齐射保护按实际掉血结算', () => {
     expect(w.state.warehouse.items['repairkit-dc']).toBe(1)
   })
 
+  it.each(['mod-dc-3', 'mod-gravekeeper-rebirth'])('%s三层小数血量遇到致死伤害不因累计误差漏触发', id => {
+    for (const hp of [{ s: 100.1, a: .1, h: 10.1 }, { s: .1, a: 10.1, h: 100.1 }, { s: 0, a: 100.1, h: 10.1 }]) {
+      for (const mixed of [false, true]) {
+        const w = world()
+        w.spec.hullSaveKit = 'repairkit-dc'
+        w.spec.rebirthRepair = ctx.modules.get(id)!.rebirthRepair
+        w.state.warehouse.items['repairkit-dc'] = 2
+        w.rt.hp = { ...hp }
+        const weapon = { shotsByType: { kinetic: 60, plasma: 40 } } as WeaponSpec
+        const apply = mixed ? (raw: number) => applyFoeShot(w.rt.hp, w.spec.resists, weapon, raw, 'plasma') : undefined
+        expect(w.hit(1e6, 'plasma', apply)).toBeCloseTo(sum(hp) - 1, 6)
+        expect(w.rt.hp.h).toBeGreaterThanOrEqual(1)
+        expect(w.rt.hp.h).toBeLessThan(1.00001)
+        expect(w.battle.dc?.player?.used).toBe(true)
+        expect(w.battle.dcKitsUsed).toBe(1)
+        expect(w.state.warehouse.items['repairkit-dc']).toBe(1)
+        expect(!!w.battle.meRebirths?.player).toBe(id === 'mod-gravekeeper-rebirth')
+        expect(w.hit(1e6, 'plasma', apply)).toBeCloseTo(0, 6)
+        expect(w.rt.hp.h).toBeGreaterThanOrEqual(1)
+        expect(w.state.warehouse.items['repairkit-dc']).toBe(1)
+      }
+    }
+  })
+
+  it.each([.1, .5, .999999])('首次受击后结构低于1点（剩%s）也应启动损管', remaining => {
+    const w = world()
+    w.spec.hullSaveKit = 'repairkit-dc'
+    w.state.warehouse.items['repairkit-dc'] = 2
+    w.rt.hp = { s: 0, a: 0, h: 10 }
+    expect(w.hit(10 - remaining)).toBeCloseTo(9, 6)
+    expect(w.rt.hp.h).toBeGreaterThanOrEqual(1)
+    expect(w.battle.dcKitsUsed).toBe(1)
+    expect(w.state.warehouse.items['repairkit-dc']).toBe(1)
+  })
+
+  it.each(['warehouse', 'cargo', 'wormhole', 'missing'] as const)('小数血量损管遵守%s组件来源，不借其他库存或僚舰货仓', source => {
+    const w = world()
+    w.spec.hullSaveKit = 'repairkit-dc'
+    w.rt.hp = { s: 100.1, a: .1, h: 10.1 }
+    const other = addShipToFleet(w.state, 'sh-megalodon')
+    w.state.fleet[other]!.cargo['repairkit-dc'] = 9
+    w.state.warehouse.items['repairkit-dc'] = source === 'warehouse' || source === 'wormhole' ? 3 : 0
+    w.state.fleet[w.sid]!.cargo['repairkit-dc'] = source === 'cargo' || source === 'wormhole' ? 2 : 0
+    w.state.resupplyFromWarehouse = source !== 'cargo' && source !== 'missing'
+    if (source === 'wormhole') {
+      w.battle.wormhole = { cardId: 'wh-pirate-scout', depth: 8, kind: 'spawn', waves: 1 }
+      w.state.wormhole.run = { fleet: [w.sid], supplyVersion: 1, supplies: {
+        items: { 'repairkit-dc': 1 }, carried: {}, consumed: {}, deployed: {}, recovered: {}, leftBehind: {}, found: {},
+      } } as unknown as NonNullable<typeof w.state.wormhole.run>
+    }
+    w.hit(1e6)
+    expect(w.rt.hp.h).toBeCloseTo(source === 'missing' ? 0 : 1, 6)
+    expect(w.battle.dcKitsUsed ?? 0).toBe(source === 'missing' ? 0 : 1)
+    expect(w.state.warehouse.items['repairkit-dc']).toBe(source === 'warehouse' ? 2 : source === 'wormhole' ? 3 : 0)
+    expect(w.state.fleet[w.sid]!.cargo['repairkit-dc'] ?? 0).toBe(source === 'cargo' ? 1 : source === 'wormhole' ? 2 : 0)
+    expect(w.state.fleet[other]!.cargo['repairkit-dc']).toBe(9)
+    if (source === 'wormhole') {
+      expect(w.state.wormhole.run!.supplies!.items['repairkit-dc'] ?? 0).toBe(0)
+      expect(w.state.wormhole.run!.supplies!.consumed['repairkit-dc']).toBe(1)
+    }
+  })
+
+  it('主舰与僚舰各触发一次，小数血量保护窗口在战中读档后保留', () => {
+    const w = world()
+    w.state.warehouse.items['repairkit-dc'] = 3
+    w.spec.hullSaveKit = 'repairkit-dc'
+    w.rt.hp = { s: 100.1, a: .1, h: 10.1 }
+    const allyId = addShipToFleet(w.state, 'sh-megalodon')
+    const ally = { ...w.spec, tag: 'ally-1', shipId: allyId }
+    w.battle.myFleet = [{ tag: 'player', shipId: w.sid }, { tag: ally.tag, shipId: allyId }]
+    w.battle.units[ally.tag] = { ...w.rt, tag: ally.tag, hp: { ...w.rt.hp } }
+    w.hit(1e6)
+    applyPlayerUnitDamage(w.state, w.battle, ally.tag, ally, 1e6, 'plasma')
+    expect(w.battle.dcKitsUsed).toBe(2)
+    w.battle.distanceM = 5000
+    w.state.expedition = { ...w.state.expedition, active: true, phase: 'battle', anomalyId: 'ink-harass', battle: w.battle }
+    const loaded = loadSaveFile(serializeSaveFile(w.state, 0)).state
+    const b = loaded.expedition.battle!
+    for (const spec of [w.spec, ally]) {
+      expect(b.units[spec.tag]!.hp.h).toBeGreaterThanOrEqual(1)
+      expect(b.dc?.[spec.tag]?.used).toBe(true)
+      expect(applyPlayerUnitDamage(loaded, b, spec.tag, spec, 1e6, 'plasma')).toBeCloseTo(0, 6)
+      expect(b.units[spec.tag]!.hp.h).toBeGreaterThanOrEqual(1)
+    }
+    expect(b.dcKitsUsed).toBe(2)
+    expect(loaded.warehouse.items['repairkit-dc']).toBe(1)
+  })
+
   it('满血被80%保护挡住时不提前消耗损管；无组件仍可致死', () => {
     const w = world()
     w.spec.hullSaveKit = 'repairkit-dc'
@@ -171,7 +260,7 @@ describe('玩家齐射保护按实际掉血结算', () => {
   })
 })
 
-function engineWorld(kind: 'beam' | 'gun' | 'drone' | 'acid', raw: number, shieldOnly = false) {
+function engineWorld(kind: 'beam' | 'gun' | 'drone' | 'acid', raw: number, shieldOnly = false, dcId?: string) {
   const state = createInitialState({ nowWallMs: 0, seed: 19 })
   const enemy: FoeShipDef = { id: 'volley-test-foe', name: '承伤测试舰', family: 'A', hullClassTier: 1,
     hp: 1e9, split: { s: 0, a: 0, h: 1 }, speedRatio: 0, tactic: 'orbit', shotDmg: raw,
@@ -187,9 +276,10 @@ function engineWorld(kind: 'beam' | 'gun' | 'drone' | 'acid', raw: number, shiel
   const card = { ...anomaly('volley-test-card', 'galaxy-hub'), ships: [{ ship: enemy }] }
   const hull = { ...ship('sandcat', { shieldHp: shieldOnly ? 1000 : 0, armorHp: 0, hullHp: shieldOnly ? 0 : 1000, maxSpeedMps: 0, evasion: 0 }),
     hullResist: { plasma: .9, kinetic: .9 } }
-  const base = makeTestCtx({ ships: [hull], anomalies: [card] })
+  const base = makeTestCtx({ ships: [hull], anomalies: [card], ...(dcId ? { modules: [ctx.modules.get(dcId)!] } : {}) })
   const context: SimContext = { ...base, balance: { ...base.balance, battle: { ...base.balance.battle,
     hitMin: 1, hitMax: 1, shieldRegenPerSec: 0, cannotEngageMs: 1e9 } } }
+  if (dcId) state.fleet[state.shipId]!.fitted.low = [dcId]
   const battle = startBattleFor(state, context, state.shipId, card.id, 0, 1000)!
   const foe = activeFoeSpecsOf(card, context.balance.battle, 0)[0]!
   for (const rt of Object.values(battle.units)) { delete rt.enteredAtMs; rt.weapons.fill(1e9) }
@@ -202,6 +292,21 @@ function engineWorld(kind: 'beam' | 'gun' | 'drone' | 'acid', raw: number, shiel
 }
 
 describe('实际承伤的真引擎路径', () => {
+  it.each(['beam', 'gun', 'drone', 'acid'] as const)('%s实际开火对三层小数残血仍触发真实损管装置', kind => {
+    const w = engineWorld(kind, 1e6, false, 'mod-dc-3')
+    const before = { s: 100.1, a: .1, h: 10.1 }
+    w.battle.units.player!.hp = { ...before }
+    w.state.warehouse.items['repairkit-dc'] = 2
+    w.tick(10)
+    expect(w.battle.stats.foeHits).toBeGreaterThan(0)
+    expect(w.battle.units.player!.hp.h).toBeGreaterThanOrEqual(1)
+    expect(w.battle.units.player!.hp.h).toBeLessThan(1.00001)
+    expect(w.battle.dcKitsUsed).toBe(1)
+    expect(w.state.warehouse.items['repairkit-dc']).toBe(1)
+    expect(w.battle.meVolleyDmg!.player).toBeCloseTo(sum(before) - 1, 6)
+    expect(w.battle.ended).not.toBe('foe')
+  })
+
   it.each(['beam', 'gun', 'drone', 'acid'] as const)('%s原伤5000经90%抗性后实收500，飘字与账本一致', kind => {
     const w = engineWorld(kind, 5000)
     w.tick(10)

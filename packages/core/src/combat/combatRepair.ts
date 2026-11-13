@@ -14,7 +14,8 @@ import { allFittedModules, pulseStreamOf, stackWeight, equipmentCycleMsOf } from
 import { fleetDefOf } from '../instances'
 import { moduleAllowedOnShip } from '../shipFitting'
 import { addWare, cargoOfShip, countWare, removeCargoOfShip, removeWare } from '../inventory'
-import { quickRepairFactor } from '../repair'
+import { quickRepairFactor, repairCapacityMulOf } from '../repair'
+import { pushBattleFx } from './combatFx'
 import { createPlayerSpec } from './player/create'
 import type { UnitSpec } from './model'
 import { takeWormholeSupply, wormholeSupplyForBattle } from '../wormholeSupplies'
@@ -28,7 +29,7 @@ export const SHIELD_FIELD_COST_PCT = 0.1
 export const SHIELD_FIELD_MAX_TARGETS = 2
 
 /** 一架无人机一次有效修理；先选目标再取料，逐架执行避免过量预扣。 */
-export function pulseRepairDroneFor(state: GameState, b: import('../state').BattleState, myUnits: readonly UnitSpec[], owner: UnitSpec, repair: NonNullable<import('./model').WeaponSpec['repairDrone']>): void {
+export function pulseRepairDroneFor(state: GameState, b: import('../state').BattleState, myUnits: readonly UnitSpec[], owner: UnitSpec, repair: NonNullable<import('./model').WeaponSpec['repairDrone']>, drone?: { artId?: string; index: number }): void {
   if (b.ended || !isAlive(b, owner.tag) || repair.armor + repair.hull <= 0) return
   let target: { spec: UnitSpec; rt: NonNullable<typeof b.units[string]> } | undefined
   let best = Number.POSITIVE_INFINITY
@@ -42,18 +43,25 @@ export function pulseRepairDroneFor(state: GameState, b: import('../state').Batt
     if (ratio < best) { best = ratio; target = { spec, rt } }
   }
   if (!target) return
+  const max = target.rt.hpMax ?? target.spec.hp
+  const amp = target.spec.repairCapacityMul ?? { a: 1, h: 1 }
+  const armor = Math.min(Math.max(0, max.a - target.rt.hp.a), ceilFinalQuantity(repair.armor * amp.a))
+  const hull = Math.min(Math.max(0, max.h - target.rt.hp.h), ceilFinalQuantity(repair.hull * amp.h))
+  if (armor + hull <= 0) return
   const kit = repair.kitId
   const supply = wormholeSupplyForBattle(state, b)
   const available = supply ? takeWormholeSupply(supply, kit, 1) === 1 : state.resupplyFromWarehouse !== false ? countWare(state, kit) > 0 && (removeWare(state, kit, 1), true) : removeCargoOfShip(state, owner.shipId ?? state.shipId, kit, 1) > 0
   if (!available) return
-  const max = target.rt.hpMax ?? target.spec.hp
-  healArmorHp(target.rt.hp, Math.min(Math.max(0, max.a - target.rt.hp.a), repair.armor))
-  target.rt.hp.h = Math.min(max.h, target.rt.hp.h + repair.hull)
+  healArmorHp(target.rt.hp, armor)
+  target.rt.hp.h += hull
   const books = b.repairDroneBy ??= {}
   const ledger = books[owner.tag] ??= { pulses: 0, kitsUsed: 0, kitsUsedByType: {} }
   ledger.pulses += 1
   ledger.kitsUsed += 1
   ledger.kitsUsedByType[kit] = (ledger.kitsUsedByType[kit] ?? 0) + 1
+  if (drone) pushBattleFx(b, { atMs: b.lastTickGameMs, side: 'me', tag: owner.tag, to: target.spec.tag,
+    type: 'kinetic', hit: true, src: 'drone', artId: drone.artId,
+    repair: { armor, hull, droneIndex: drone.index }, speedX: b.speedX ?? 1 })
 }
 
 /* 以下为 2026-10-02 批次 4h 从 combat.ts 切接过来的整簇（layerAmpOf ~ pulseRepairsFor）。 */
@@ -71,12 +79,7 @@ function layerAmpOf(state: GameState, ctx: SimContext, shipId: string): { a: num
   const spec = createPlayerSpec(state, ctx, shipId)
   const def = fleetDefOf(state, ctx, shipId)
   if (!spec || !def) return { a: 1, h: 1 }
-  const baseA = def.armorHp ?? 0
-  const baseH = def.hullHp ?? 0
-  return {
-    a: baseA > 0 ? spec.hp.a / baseA : 1,
-    h: baseH > 0 ? spec.hp.h / baseH : 1,
-  }
+  return repairCapacityMulOf(spec.hp, def)
 }
 
 function repairOutputMulOf(state: GameState, ctx: SimContext, shipId: string): number {

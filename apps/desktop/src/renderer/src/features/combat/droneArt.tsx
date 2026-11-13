@@ -135,6 +135,13 @@ export const DRONE_MODELS: Record<string, DroneModel> = {
       </g>
     ),
   },
+  'drone-repair-mil': {
+    get name() { return tr('item.repairDrone.001') },
+    tint: 'rgb(var(--wui-green))',
+    slots: [{ x: -26, y: -20 }],
+    bolt: { style: 'beam', len: 8, width: 1.5, tail: false },
+    art: <g><path d="M-12-5 L4-7 L12 0 L4 7 L-12 5 L-7 0 Z M-3-4 V4 M-7 0 H1" /><circle cx="6" r="1.5" /></g>,
+  },
   /* ══════════ **敌方机群机型**（2026-09-11 机群批 S5 · 船长 A2「敌专属机型」） ══════════
    * 与我方四型**共用同一套机体资产与绘制口径**（细描边 / currentColor / viewBox −13..13），
    * 只换**族色**与**形体语言** ⇒ 玩家一眼能分清敌我。 */

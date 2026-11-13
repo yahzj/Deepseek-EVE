@@ -18,11 +18,12 @@ import { DRONE_DOWN_FREEZE_MS } from './battleDrones'
 import { BattleMountLines } from './battleMounts'
 import { BattleCycles } from './BattleCycles'
 import { RangeEwPanel } from './RangeEwPanel'
+import { RepairDroneEffects } from './RepairDroneEffects'
 import './commandBattle.css'
 import './battleDistanceAxis.css'
 
 export function renderBattleScene({
-    rangeMode, screenRef, stage, onClose, tr, inWormhole,
+    rangeMode, battle, simulationPaused, screenRef, stage, onClose, tr, inWormhole,
     retreatAsk, setRetreatAsk, onToast, engine, ended, defeat,
     sceneName, secs, meStats, speedOptions, speedActive, arcs,
     foeCharging, ammoChips, repairLedgers, repairRunning, repairDetail, repairTotal,
@@ -643,6 +644,7 @@ return (
           {/* 开火闪光 + 弹道 + 撞点特效（最上层） */}
           {muzzleEls}
           {boltEls}
+          <RepairDroneEffects battle={battle} anchors={meAnchorByTag} dims={dims} paused={simulationPaused} />
           <div className="app-bts-acid-layer" aria-hidden="true">
             {acidFxRef.current.map(effect => {
               const anchor = effect.kind === 'burst' ? effect : meAnchorByTag.get(effect.tag) ?? layFx.me

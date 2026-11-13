@@ -27,7 +27,7 @@ import { foeCapacitorMultiplierOf, noteFoeCapacitorAttack } from './gravekeeperC
  */
 function aliveDroneKeys(
   b: import('../state').BattleState,
-  sentryIds: ReadonlySet<string> = SENTRY_DRONE_IDS,
+  sentryIds: ReadonlySet<string> = PD_NEAR_DRONE_IDS,
   sentriesInRange = false,
   sentryOnly = false,
 ): string[] {
@@ -40,11 +40,7 @@ function aliveDroneKeys(
     if (p.artId && sentryIds.has(p.artId)) sentries.push(k)
     else others.push(k)
   }
-  // **船长 2026-09-11：关闭"哨戒机可被攻击"的机制**（代码保留、不删）——常驻伴飞的哨戒机停在
-  // 母舰旁、**从不飞到敌方** ⇒ **永不被攻击**；**只有出击型（会飞到敌舰旁的那些）才会挨打**。
-  // 置 `PD_TARGET_SENTRIES = true` 即恢复旧口径（非哨戒机全灭后转而打哨戒机）。
-  // **哨戒机：只在近防炮射程内才可被反击**（船长 2026-09-11 重新定义）——
-  // 出击型不受此限，它们的反击由"被攻击"驱动（令牌见 resolvePointDefense）。
+  // 哨戒与修理机只在2500米内暴露；攻击机反击令牌不能绕过这条射程门。
   if (sentryOnly) return sentries
   if (!sentriesInRange) return others
   return [...others, ...sentries]
@@ -71,8 +67,8 @@ const PD_REACTIVE_WINDOW_MS = 5_000
  */
 const PD_SENTRY_RANGE_M = 2_500
 
-/** 哨戒机机型 id（**2026-09-12 起为"优先打击"而非"排除"**；机型表变化时此处同步） */
-const SENTRY_DRONE_IDS: ReadonlySet<string> = new Set(['drone-sentry'])
+/** 近距离才暴露的机型；选靶优先级仍由pdPriorityOf独立决定。 */
+const PD_NEAR_DRONE_IDS: ReadonlySet<string> = new Set(['drone-sentry', 'drone-repair-mil'])
 
 /** 存活放飞条目**键**（近防炮选靶 / 开火跳过共用）——2026-09-14 起返回 `舰tag:下标`（逐舰机群）；
  *  `droneTotalCount` 已随"取消单场上限"移除用途 */
@@ -238,7 +234,7 @@ export function resolvePointDefense(
     foeHitAt !== undefined && b.lastTickGameMs - foeHitAt <= PD_REACTIVE_WINDOW_MS
   // 许可 b：**哨戒机在射程内**（不需令牌）
   const sentryOpen =
-    sentryOk && aliveDroneKeys(b, SENTRY_DRONE_IDS, true, true).length > 0
+    sentryOk && aliveDroneKeys(b, PD_NEAR_DRONE_IDS, true, true).length > 0
   // 船长2026-09-27：冷却独立推进，反击许可只管是否开火。
   const canFire = tokenOpen || sentryOpen
   // 船长2026-10-08确认：全队无人尝试还手时保留共用许可，仍受反击窗口限制。
@@ -255,7 +251,7 @@ export function resolvePointDefense(
       cd += Math.min(Number.MAX_SAFE_INTEGER, period * foeCapacitorMultiplierOf(b, foes[fi]!, 'pd', 'reloadMul'));
       if (!canFire) break // 闸门关：**冷却照推、判定不做**（2026-09-27 修）
       // 候选 = 存活放飞条目（哨戒机**只在射程内**可选）
-      const candsAll = aliveDroneKeys(b, SENTRY_DRONE_IDS, sentryOk)
+      const candsAll = aliveDroneKeys(b, PD_NEAR_DRONE_IDS, sentryOk)
       if (candsAll.length === 0) break
       /**
        * **逐舰各自挨打**（船长 2026-09-14）：本舰先选**一条舰**、再在该舰机群里按优先级选机。
