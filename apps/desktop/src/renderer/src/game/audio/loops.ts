@@ -1,6 +1,9 @@
 /**
  * **循环音频通道（BGM / 环境底噪共用的交叉淡变引擎）** —— 2026-11-02 追加批；
  * 2026-11-04 调试批：换曲淡变时长可配（BGM 2.5s / 环境底噪 1.5s），同曲调音量改走短淡变（250ms）。
+ * **2026-11-13 重叠修复**（船长问「BGM 有重叠播放的问题吗」）：同通道实例上限真正落实为
+ * 「一个正在淡出 + 一个当前」；切回正在淡出的同一首时**复活旧实例**而不是新建一份——
+ * 快速来回切场景/反复开关战场不再叠出 3 个以上实例或同一首双份（相位错开像回声）。
  *
  * 做法：同一通道最多两个 `HTMLAudioElement`（`loop=true`）——旧曲淡出、新曲淡入（`fadeMs`），
  * 用 40ms 定时器线性推音量；同一 URL 再设置只调音量、不重启（切场景来回不打断）。
@@ -59,12 +62,28 @@ export class LoopChannel {
         this.ensureTimer()
         return
       }
-      // 旧的全部淡出，新的从 0 淡入
-      for (const existing of this.slots) {
-        if (existing !== current) continue
-        existing.dying = true
-        existing.target = 0
-        existing.step = fadeStep
+      // 切回"正在淡出"的同一首：复活旧实例，不再新建第二份（否则同一首双份、相位错开像回声）
+      const dyingSame = this.slots.find((s) => s.dying && s.url === url)
+      // 同通道最多「一个淡出 + 一个当前」：先清掉此前就在途的淡出实例（保留要复活的这首）
+      for (const slot of [...this.slots]) {
+        if (slot.dying && slot !== dyingSame) this.dropSlot(slot)
+      }
+      // 当前曲开始淡出（保留为唯一的淡出实例）
+      if (current !== undefined) {
+        current.dying = true
+        current.target = 0
+        current.step = fadeStep
+      }
+      if (dyingSame !== undefined) {
+        dyingSame.dying = false
+        dyingSame.target = vol
+        // 从当前实际音量接着淡入，避免复活瞬间音量跳变
+        dyingSame.level = Math.min(1, Math.max(0, dyingSame.el.volume))
+        dyingSame.step = this.stepFor(this.volumeFadeMs)
+        const p = dyingSame.el.play()
+        if (p !== undefined && typeof p.catch === 'function') p.catch(() => undefined)
+        this.ensureTimer()
+        return
       }
       const el = new Audio(url)
       el.loop = true
@@ -78,6 +97,18 @@ export class LoopChannel {
     } catch {
       /* 忽略：音频层不打断游戏 */
     }
+  }
+
+  /** 立刻停掉并摘除一个实例（不吃淡变，用于把并发实例压回上限） */
+  private dropSlot(slot: Slot): void {
+    try {
+      slot.el.pause()
+      slot.el.src = ''
+    } catch {
+      /* 忽略 */
+    }
+    const i = this.slots.indexOf(slot)
+    if (i >= 0) this.slots.splice(i, 1)
   }
 
   /** 只调音量（设置拖动时；不重启播放，走短淡变） */
@@ -102,10 +133,14 @@ export class LoopChannel {
     }
   }
 
-  /** 恢复播放（浏览器拒绝时静默；上层会挂手势重试） */
+  /** 恢复播放（浏览器拒绝时静默；上层会挂手势重试）。淡出中的旧实例直接停掉，不跟着复活。 */
   resume(): void {
     this.paused = false
-    for (const slot of this.slots) {
+    for (const slot of [...this.slots]) {
+      if (slot.dying) {
+        this.dropSlot(slot)
+        continue
+      }
       try {
         const p = slot.el.play()
         if (p !== undefined && typeof p.catch === 'function') p.catch(() => undefined)
