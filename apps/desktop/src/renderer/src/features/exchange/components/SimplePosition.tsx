@@ -146,13 +146,16 @@ export function SimplePosition({ client, snap, onToast }: SimplePositionProps) {
 
   const closeSpot = async (code: string, qty: number): Promise<void> => {
     orderSeq.current += 1
+    // 单笔数量上限由服务端 /meta 下发（2026-11-14 从 100 万股放宽到 1000 万股）：
+    // 持仓超过上限时先平上限这一笔，余下需要再点一次。
+    const cappedQty = Math.min(qty, client.maxOrderQty ?? 10_000_000)
     await client.placeOrder({
       clientOrderId: `simple-close-spot-${code}-${Date.now()}-${orderSeq.current}`,
       code,
       side: 'sell',
       type: 'market',
       tif: 'IOC',
-      qty,
+      qty: cappedQty,
       leverage: 1,
       // 简单模式结算：按点击时的现价锁价，回合末由系统兜底保证成交。
       guaranteed: true,

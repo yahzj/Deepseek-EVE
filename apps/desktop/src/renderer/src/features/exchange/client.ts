@@ -499,6 +499,8 @@ export interface MarginCallPayload {
  */
 export interface ExchangeClient {
   readonly contractVersion: number
+  /** 单笔数量上限（股）：联机客户端取服务端 `/meta` 的 `maxQty`，缺省按契约默认值 */
+  readonly maxOrderQty?: number
   // 查询
   getStocks(): Promise<StockQuote[]>
   getBook(code: string): Promise<OrderBookSnapshot>

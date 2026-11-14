@@ -120,7 +120,7 @@ export function TradePanel({
     type: kind,
     tif: kind === 'market' ? 'IOC' : 'GTC',
     ...(kind === 'limit' && priceText.trim() !== '' && Number.isFinite(priceNum) ? { price: priceNum } : {}),
-    qty: Number.isFinite(qtyNum) ? Math.min(1_000_000, Math.max(0, qtyNum)) : 0,
+    qty: Number.isFinite(qtyNum) ? Math.min(client.maxOrderQty ?? 10_000_000, Math.max(0, qtyNum)) : 0,
     leverage: lev,
     // 做空模式必须显式带 short：服务端把「side=sell + 杠杆」默认当平多。
     ...(mode === 'short' ? { short: true } : {}),

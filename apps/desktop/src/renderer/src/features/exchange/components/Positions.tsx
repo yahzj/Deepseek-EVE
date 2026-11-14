@@ -92,9 +92,11 @@ export function Positions({
       onToast(T.toastNoHolding, true)
       return
     }
+    // 单笔数量上限取服务端 /meta（2026-11-14 从 100 万股放宽到 1000 万股）
+    const cappedQty = Math.min(qty, client.maxOrderQty ?? 10_000_000)
     void runAction(`spot-${target}`, () => client
-      .placeOrder({ clientOrderId: nextId(), code: target, side: 'sell', type: 'market', tif: 'IOC', qty, leverage: 1 })
-      .then((o) => onToast(`${TF.positionClosed(o.code, amount(o.filledQty ?? qty))}`))
+      .placeOrder({ clientOrderId: nextId(), code: target, side: 'sell', type: 'market', tif: 'IOC', qty: cappedQty, leverage: 1 })
+      .then((o) => onToast(`${TF.positionClosed(o.code, amount(o.filledQty ?? cappedQty))}`))
     )
   }
   const closeLeverage = (target: string, side: 'long' | 'short'): void => {

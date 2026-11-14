@@ -60,10 +60,12 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
   const feeRate = snap.feeRate ?? 0
   const hasFee = feeRate > 0
   const tradeCapQty = currentPrice > 0 ? Math.floor(dailyTurnoverLeft / currentPrice) : 0
+  /** 单笔数量上限（服务端 /meta 下发，默认 1000 万股；2026-11-14 上限从 100 万股放宽） */
+  const maxQtyPerOrder = client.maxOrderQty ?? 10_000_000
   const est = estimateSimpleBet(Math.min(inputCashNum, dailyTurnoverLeft * (1 + feeRate)), currentPrice, feeRate, cash)
   // 买多与看跌同为 1x 全额换算（看跌融券，投入多少占用多少）
-  const estBuyQty = est.qty
-  const estShortQty = est.qty
+  const estBuyQty = Math.min(est.qty, maxQtyPerOrder)
+  const estShortQty = Math.min(est.qty, maxQtyPerOrder)
 
   // 步进微调资金基数（按 1 股换算所需资金，含手续费；两侧同为全额）
   const stepCash = Math.max(1, Math.ceil(currentPrice * (1 + feeRate)))
@@ -176,7 +178,7 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
     const latestPrice = latest.quote.price > 0 ? latest.quote.price : currentPrice
     const baseCash = Math.min(inputCashNum, latestCash)
     const latestEst = estimateSimpleBet(baseCash, latestPrice, feeRate, latestCash)
-    let qty = Math.min(latestEst.qty, tradeCapQty)
+    let qty = Math.min(latestEst.qty, tradeCapQty, maxQtyPerOrder)
     if (qty <= 0) {
       onToast(allIn ? T.toastNoCash : T.enterAmountPrompt, true)
       return
@@ -237,7 +239,7 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
     const latestPrice = latest.quote.price > 0 ? latest.quote.price : currentPrice
     const baseCash = Math.min(inputCashNum, latestCash)
     const latestEst = estimateSimpleBet(baseCash, latestPrice, feeRate, latestCash)
-    let qty = Math.min(latestEst.qty, tradeCapQty)
+    let qty = Math.min(latestEst.qty, tradeCapQty, maxQtyPerOrder)
     if (qty <= 0) {
       onToast(T.enterAmountPrompt, true)
       return

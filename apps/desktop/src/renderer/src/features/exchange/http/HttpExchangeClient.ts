@@ -554,6 +554,8 @@ function aggregateKlines(rows: Kline[], factor: number): Kline[] {
 
 export class HttpExchangeClient implements ExchangeClient {
   readonly contractVersion = CONTRACT_VERSION
+  /** 单笔数量上限（股）：服务端 `/meta` 的 `maxQty`；首屏 meta 到达前用契约默认 1000 万股 */
+  maxOrderQty = 10_000_000
 
   private readonly transport: Transport
   private readonly basePath: string
@@ -1010,9 +1012,11 @@ export class HttpExchangeClient implements ExchangeClient {
     this.applyMeta(await this.get<unknown>('/meta', true))
   }
 
-  /** `/meta` 与 `/bootstrap` 共用的费率解析。 */
+  /** `/meta` 与 `/bootstrap` 共用的费率与数量上限解析。 */
   private applyMeta(raw: unknown): void {
     if (!isRecord(raw)) return
+    const maxQty = num(raw.maxQty, Number.NaN)
+    if (Number.isFinite(maxQty) && maxQty > 0) this.maxOrderQty = Math.floor(maxQty)
     const feeRate =
       typeof raw.feeRate === 'string' ? Number.parseFloat(raw.feeRate) : num(raw.feeRate, Number.NaN)
     if (Number.isFinite(feeRate) && feeRate >= 0) {
