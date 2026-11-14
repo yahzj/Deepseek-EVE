@@ -128,7 +128,7 @@
 | 星球注入目录参数和引用校验 | `planetCatalogIssues()` · `planetCatalog.ts` | 生成入口与内容检查共用；非法参数、冲突引用、重复相邻规则专项 |
 | 星球生成、勘探、环境、四向相邻、建设校验与存档 | `generatePlanet()` · `planetGeneration.ts`；`planetEnvironmentOf()` · `planetRules.ts`；`planetSurveyView()` · `planetSurvey.ts`；`planetAdjacencyOf()` / `planetConstructionCheck()` · `planetGrid.ts`；`cleanPlanetaryState()` · `planetSave.ts` | 独立种子、未知信息隔离、互斥、相邻封顶／断电与存档往返专项；`arch:guard` F2/F3 |
 | 玩家整船回收/装备保全与战损插件 | `hullRecoveryChanceOf()` / `wreckEquipmentRecoveryChanceOf()` · `shipWrecks.ts`；`shipDamageEffects()` / `rollShipDamage()` · `shipDamage.ts` | 工程技能加算、首次判定/往返不重掷、六类最终属性及普通插件隔离；旧残骸规则兼容 |
-| 战损管理按不同类型贡献动能与能量抗性 | `shipDamageHullResistOf()` · `shipDamage.ts` | 抗性按战损类型去重并受类型数上限约束；战损数组和每件属性惩罚仍保留 |
+| 战损管理按插件数量贡献动能与能量抗性 | `shipDamageHullResistOf()` · `shipDamage.ts` | 抗性按清洗后的战损数组数量计数并受数量上限约束；重复类型也各算一件，属性惩罚仍逐件计算 |
 | 爆虫触发、本场腐蚀、全队孵化与巢母加速 | `triggerAcidBurst()` / `applyAlienCorrosion()` / `advanceFoeHatcheries()` / `advanceFoeAbilityClocks()` / `foeFleetSpeedMulOf()` · `alienCombat.ts` | 异形入侵专项：距离边界、伤害顺序、死亡去重、随档、有限/无限额度、多载体去重、有效时长与死亡解除；`arch:guard` F2/F3 |
 | 限额慢补货：配置判据、初始化、周期进度、余额与统一核销 | `hasLimitedSupply()` / `ensureLimitedSupply()` / `advanceLimitedSupply()` / `limitedSupplyAvailable()` / `consumeLimitedSupply()` · `marketLimitedSupply.ts`；价格分档在`market/supply.ts:refreshLimitedSupplyBook()` | 市场限额专项、存档往返；`arch:guard` F2/F3；`content:check` 配置合法性 |
 | 武器组炮数与逐炮守恒分摊 | `volleyGunCountOf()` / `volleyDamageShareOf()` · `combatVolley.ts` | 逐炮齐射专项；`arch:guard` F2/F3 |

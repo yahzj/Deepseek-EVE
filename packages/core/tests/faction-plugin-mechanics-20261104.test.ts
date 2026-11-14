@@ -71,7 +71,7 @@ describe('势力插件 A：战损管理', () => {
     expect(after.speedMps).toBeCloseTo(before.speedMps * (kind === 'speed' ? .99 ** 2 : 1), 12)
     expect(cargoCapacityM3Of(w.state, ctx, w.uid)).toBe(Math.ceil(cargo * (kind === 'cargo' ? .99 ** 2 : 1)))
     after.weapons.forEach((weapon, i) => expect(weapon.maxRangeM).toBe(Math.round(before.weapons[i]!.maxRangeM * (kind === 'range' ? .99 ** 2 : 1))))
-    for (const type of ['kinetic', 'plasma'] as const) expect(after.resists.hull![type]).toBeCloseTo(before.resists.hull![type]! + .03, 12)
+    for (const type of ['kinetic', 'plasma'] as const) expect(after.resists.hull![type]).toBeCloseTo(Math.min(.9, before.resists.hull![type]! + .06), 12)
     expect(after.resists.hull!.explosive).toBe(before.resists.hull!.explosive)
     expect(w.fleet.damagePlugs).toBe(damage)
     expect(damage).toEqual([kind, kind])
@@ -79,7 +79,7 @@ describe('势力插件 A：战损管理', () => {
     expect(w.spec()).toEqual(after)
   })
 
-  it('抗性在装备、舰种技能和代价之后加百分点并封顶90%，不将重复件计为新类型', () => {
+  it('抗性在装备、舰种技能和代价之后加百分点并封顶90%，按战损插件数量计数', () => {
     const w = world()
     w.fleet.fitted.low = ['test-resist']
     w.state.skills.trained['cruiser-ops'] = 5
@@ -87,7 +87,7 @@ describe('势力插件 A：战损管理', () => {
     const before = w.spec()
     w.fleet.plugs = [A, A]
     const after = w.spec()
-    for (const type of ['kinetic', 'plasma'] as const) expect(after.resists.hull![type]).toBeCloseTo(before.resists.hull![type]! + .06, 12)
+    for (const type of ['kinetic', 'plasma'] as const) expect(after.resists.hull![type]).toBeCloseTo(Math.min(.9, before.resists.hull![type]! + .09), 12)
     expect(after.resists.shield).toEqual(before.resists.shield)
     expect(after.resists.armor).toEqual(before.resists.armor)
     w.fleet.damagePlugs = SHIP_DAMAGE_DEFS.flatMap(def => [def.id, def.id])
@@ -95,10 +95,10 @@ describe('势力插件 A：战损管理', () => {
     expect(w.spec().resists.hull!.explosive).toBe(before.resists.hull!.explosive)
   })
 
-  it('类型上限独立于战损件数，未装备时保留5%旧行为，改名定义仍生效', () => {
+  it('数量上限独立于战损种类，未装备时保留5%旧行为，改名定义仍生效', () => {
     const management = ctx.modules.get(A)!.damageManagement!
     const damage = SHIP_DAMAGE_DEFS.flatMap(def => Array(20).fill(def.id))
-    expect(shipDamageHullResistOf(damage, management)).toBeCloseTo(.18, 12)
+    expect(shipDamageHullResistOf(damage, management)).toBeCloseTo(.3, 12)
     expect(shipDamageHullResistOf(damage, { ...management, maxKinds: 2 })).toBe(.06)
     expect(shipDamageEffects(['shield', 'shield']).shield).toBeCloseTo(.95 ** 2, 12)
     expect(shipDamageEffects(Array(100).fill('shield'), management).shield).toBeCloseTo(.99 ** 100, 12)
@@ -107,7 +107,7 @@ describe('势力插件 A：战损管理', () => {
     const w = world([renamed.id, renamed.id])
     w.fleet.damagePlugs = ['cargo', 'cargo']
     expect(cargoCapacityM3Of(w.state, local, w.uid)).toBe(99)
-    expect(w.spec(local).resists.hull!.kinetic).toBeCloseTo(.43, 12)
+    expect(w.spec(local).resists.hull!.kinetic).toBeCloseTo(.46, 12)
   })
 })
 
