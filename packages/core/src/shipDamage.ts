@@ -36,11 +36,11 @@ export function shipDamageEffects(
   return effects
 }
 
-/** 只对抗性贡献按类型计数；原数组与每件战损的属性惩罚均保留。 */
+/** 结构抗性按战损插件数量计数；原数组与每件战损的属性惩罚均保留。 */
 export function shipDamageHullResistOf(ids: readonly ShipDamageKind[] | undefined, management?: ModuleDef['damageManagement']): number {
   if (!management) return 0
-  const kinds = Math.min(new Set(cleanShipDamage(ids) ?? []).size, Math.max(0, Math.floor(management.maxKinds)))
-  return kinds * management.hullResistPerKind
+  const count = Math.min((cleanShipDamage(ids) ?? []).length, Math.max(0, Math.floor(management.maxKinds)))
+  return count * management.hullResistPerKind
 }
 
 export function rollShipDamage(state: GameState, previous?: readonly ShipDamageKind[]): ShipDamageKind[] {
