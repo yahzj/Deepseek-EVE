@@ -50,6 +50,8 @@
 
 最终整数数量：`ceilFinalQuantity`（`quantity.ts`）统一向上取整，只在最终HP/单发/离散脉冲/产物/材料/收支/报价落地时调用；比例、倍率、持续累计、可装上限和分摊余数不调用。极小浮点整数邻域归一由单点处理；专项保护真实小数与守恒。
 
+抗性后实伤：`combat/combatMath.ts:applyDamageExact`保留混伤、附伤及跨层中间精度，`finalizeHitDamage`对单次命中总实伤向上取整且不超剩余血量；`applyDamage`为单系入口，`applyFoeShot`和`applyFoeUnitDamage`统一合并分量。玩家承伤仍先遵守80%齐射上限、损管保底后记账；持续恢复不取整。普通自动探索产出与稀有堆在生成末端取整，AI富矿最终装舱按可装整件封顶，原概率、搬运及在途冻结收益不重算。
+
 信号空间层深额外资源堆数：`signalSpaceResourcePileBonus`（`wormholeFoes.ts`）；矿脉、墓场普通残骸及自动探索共用，新虫洞实验规则不增加；稀有判定只读基础堆数。
 
 信号发射器：`invasionBeaconTypeOf`（`consumables.ts`）认物品与固定势力；`availableInvasionBeacons`从同表筛选有库存选项。使用命令、物品按钮与星图下拉共用，不在页面另造势力映射；护栏为专属发射器专项与F2/F3。

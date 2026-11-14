@@ -128,7 +128,8 @@ describe('逐炮齐射守恒与独立命中', () => {
       shotDmg: 13, shotsByType: { kinetic: 8, explosive: 5 }, hitRate: 1, reloadMs: 1000, minRangeM: 1, maxRangeM: 10000, falloff: 1 }
     let hp = { s: 0, a: 0, h: 1000 }
     for (let i = 0; i < 8; i++) hp = applyFoeShot(hp, { hull: { kinetic: 0.5 } }, w, volleyDamageShareOf(13, 8, i), 'kinetic')
-    expect(1000 - hp.h).toBeCloseTo(8 * 0.5 + 5, 6)
+    // 每门命中后才取整：前3门2点、后5门1点，混伤分量不单独取整。
+    expect(1000 - hp.h).toBe(13)
   })
   it('整拍80%齐射保险按八炮共用额度，不逐炮重开', () => {
     const run = setup(0, 1, 8, false, true)

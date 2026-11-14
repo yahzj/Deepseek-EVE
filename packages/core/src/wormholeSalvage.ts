@@ -764,7 +764,7 @@ export function wormholeEnsureSalvagePiles(state: GameState, cell: WormholeGridC
     const rolls = Math.floor(baseCommons / WORMHOLE_RARE_JUDGE_PER_COMMONS)
     for (let i = 0; i < rolls; i++) {
       // 限时倍率（2026-09-15）：`rareWreckRate` 乘判定概率、`rareWreckVolume` 乘每件单位数
-      if (rng() < Math.min(1, WORMHOLE_RARE_JUDGE_CHANCE * rareDropRateMulOf(state))) piles.push({ itemId: rare, units: RARE_WRECK_VOLUME_M3 * tuningMul(state, 'rareWreckVolume') })
+      if (rng() < Math.min(1, WORMHOLE_RARE_JUDGE_CHANCE * rareDropRateMulOf(state))) piles.push({ itemId: rare, units: ceilFinalQuantity(RARE_WRECK_VOLUME_M3 * tuningMul(state, 'rareWreckVolume')) })
     }
     for (let i = 0; i < commons; i++) {
       piles.push({ itemId: common, units: Math.max(1, ceilFinalQuantity(WORMHOLE_WRECK_PILE_M3_BASE * mul * (0.8 + rng() * 0.4))) })
@@ -772,7 +772,7 @@ export function wormholeEnsureSalvagePiles(state: GameState, cell: WormholeGridC
   } else {
     const span = WORMHOLE_RUINS_RARES_MAX - WORMHOLE_RUINS_RARES_MIN + 1
     const rares = WORMHOLE_RUINS_RARES_MIN + Math.floor(rng() * span)
-    for (let i = 0; i < rares; i++) piles.push({ itemId: rare, units: RARE_WRECK_VOLUME_M3 * tuningMul(state, 'rareWreckVolume') })
+    for (let i = 0; i < rares; i++) piles.push({ itemId: rare, units: ceilFinalQuantity(RARE_WRECK_VOLUME_M3 * tuningMul(state, 'rareWreckVolume')) })
   }
   // **稀有在前**：回收按数组顺序取 ⇒ "优先打捞稀有残骸"天然成立
   cell.piles = [...piles, ...(cell.piles ?? [])]

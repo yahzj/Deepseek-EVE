@@ -15,6 +15,7 @@ import { signalSpaceResourcePileBonus, wormholeLayerRewardMul, wormholeCardIdOfF
 import { RARE_WRECK_VOLUME_M3, wreckGroupOfCard, wreckItemIdOf, rareWreckItemIdOf } from '../salvage'
 import { nextRandom, hashSeed, pickWeighted } from '../rng'
 import { tuningMul } from '../tuning'
+import { ceilFinalQuantity } from '../quantity'
 
 /** 新任务探索与作业参数；既有在途任务按冻结快照结算。 */
 export const SIGNAL_AUTO_ESTIMATE_CONFIG = { reserveTurns: 2, movePerPlace: 1.25, workPerPlace: 1,
@@ -144,7 +145,8 @@ export function signalAutoEstimateOf(state: GameState, ctx: SimContext, ids: rea
   const common = expected.wreck * jitter, ore = expected.ore * jitter
   const volume = common + ore * oreM3, scale = Math.min(1, holdM3 / Math.max(1, volume))
   // 收成系数在实际可装数量之后应用，否则满仓会抹平科技等级差异。
-  const wreckN = Math.floor(common * scale * yieldMul), oreN = Math.floor(ore * scale * yieldMul)
+  const wreckN = Math.min(Math.floor(holdM3), ceilFinalQuantity(common * scale * yieldMul))
+  const oreN = Math.min(Math.floor(Math.max(0, holdM3 - wreckN) / oreM3), ceilFinalQuantity(ore * scale * yieldMul))
   const wreckByLayer = allocateUnits(wreckN, ordinaryByLayer.map(row => row.wreck))
   const oreByLayer = allocateUnits(oreN, ordinaryByLayer.map(row => row.ore))
   out.ordinaryUsedM3 = wreckN + oreN * oreM3
@@ -155,7 +157,8 @@ export function signalAutoEstimateOf(state: GameState, ctx: SimContext, ids: rea
   // 各奖励线独立取整：固定整数机会，只为小数部分多掷一次。
   for (const row of opportunities) {
     const rareId = rareWreckItemIdOf(key)
-    const rareUnits = round(row.checks * wormholeRelicChanceOf(row.depth) * yieldMul, stream(`rare/${row.depth}`)) * RARE_WRECK_VOLUME_M3 * tuningMul(state, 'rareWreckVolume')
+    const rareCount = round(row.checks * wormholeRelicChanceOf(row.depth) * yieldMul, stream(`rare/${row.depth}`))
+    const rareUnits = rareCount * ceilFinalQuantity(RARE_WRECK_VOLUME_M3 * tuningMul(state, 'rareWreckVolume'))
     add(rareId, rareUnits)
     addLayer(row.layerIndex, rareId, rareUnits)
     const boxRandom = stream(`boxes/${row.depth}`)
@@ -176,7 +179,7 @@ export function signalAutoEstimateOf(state: GameState, ctx: SimContext, ids: rea
     const type = pickWeighted(coreRng, ['gamma', 'beta', 'alpha'] as const, type => WORMHOLE_CORE_WEIGHTS[type])!
     out.cores.push({ type, n: 1 })
   }
-  out.gains = [...gains].map(([itemId, units]) => ({ itemId, units: Math.floor(units) }))
+  out.gains = [...gains].map(([itemId, units]) => ({ itemId, units }))
   const settledLayerMaps = layerMaps.map(() => new Map<string, number>())
   for (const gain of out.gains) {
     const allocation = allocateUnits(gain.units, layerMaps.map(map => map.get(gain.itemId) ?? 0))

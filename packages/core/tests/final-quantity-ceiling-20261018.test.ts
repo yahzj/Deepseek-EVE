@@ -64,11 +64,11 @@ describe('最终整数数量向上取整，连续量与比例不混用', () => {
     state.shipId = addShipToFleet(state, scout.id)
     expect(createPlayerSpec(state, ctx, state.shipId)!.evasion).toBeCloseTo(scout.evasion!, 12)
   })
-  it('抗性与混伤中间扣血保留精度；跨层扣血不超现有HP', () => {
+  it('抗性后整次命中向上取整；跨层扣血不超现有HP', () => {
     const res = { hull: { kinetic: .3 } }
     const hit = applyDamage({ s: 0, a: 0, h: 100 }, res, 1.1, 'kinetic')
-    expect(hit.dealt).toBeCloseTo(.77, 12)
-    expect(hit.hp.h).toBeCloseTo(99.23, 12)
+    expect(hit.dealt).toBe(1)
+    expect(hit.hp.h).toBe(99)
     expect(res.hull.kinetic).toBe(.3)
     const lethal = applyDamage({ s: .1, a: .2, h: .3 }, {}, 100, 'kinetic')
     expect(lethal.hp).toEqual({ s: 0, a: 0, h: 0 })
