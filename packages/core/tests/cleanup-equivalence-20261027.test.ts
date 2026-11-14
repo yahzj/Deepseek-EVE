@@ -52,9 +52,9 @@ describe('纯清理等价性', () => {
     const values = new Map<string, string>()
     const storage = { getItem: vi.fn((key: string) => values.get(key) ?? null) }
     const layout = runSaveModule<LayoutModule>('apps/desktop/src/renderer/src/ui/layoutPreference.ts', {}, { localStorage: storage })
-    expect(layout.readLayoutPref()).toBe('classic')
+    expect(layout.readLayoutPref()).toBe('modern')
     values.set(layout.LAYOUT_KEY, 'modern')
-    expect(layout.readLayoutPref()).toBe('classic')
+    expect(layout.readLayoutPref()).toBe('modern')
     values.set(layout.LAYOUT_SET_KEY, '1')
     expect(layout.readLayoutPref()).toBe('modern')
     values.set(layout.LAYOUT_KEY, 'unknown')

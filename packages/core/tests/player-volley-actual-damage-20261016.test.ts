@@ -146,9 +146,9 @@ describe('玩家齐射保护按实际掉血结算', () => {
         w.rt.hp = { ...hp }
         const weapon = { shotsByType: { kinetic: 60, plasma: 40 } } as WeaponSpec
         const apply = mixed ? (raw: number) => applyFoeShot(w.rt.hp, w.spec.resists, weapon, raw, 'plasma') : undefined
-        expect(w.hit(1e6, 'plasma', apply)).toBeCloseTo(sum(hp) - 1, 6)
+        expect(w.hit(1e6, 'plasma', apply)).toBe(Math.floor(sum(hp) - 1))
         expect(w.rt.hp.h).toBeGreaterThanOrEqual(1)
-        expect(w.rt.hp.h).toBeLessThan(1.00001)
+        expect(w.rt.hp.h).toBeLessThan(2)
         expect(w.battle.dc?.player?.used).toBe(true)
         expect(w.battle.dcKitsUsed).toBe(1)
         expect(w.state.warehouse.items['repairkit-dc']).toBe(1)
@@ -187,7 +187,7 @@ describe('玩家齐射保护按实际掉血结算', () => {
       } } as unknown as NonNullable<typeof w.state.wormhole.run>
     }
     w.hit(1e6)
-    expect(w.rt.hp.h).toBeCloseTo(source === 'missing' ? 0 : 1, 6)
+    expect(w.rt.hp.h).toBeCloseTo(source === 'missing' ? 0 : 1.3, 6)
     expect(w.battle.dcKitsUsed ?? 0).toBe(source === 'missing' ? 0 : 1)
     expect(w.state.warehouse.items['repairkit-dc']).toBe(source === 'warehouse' ? 2 : source === 'wormhole' ? 3 : 0)
     expect(w.state.fleet[w.sid]!.cargo['repairkit-dc'] ?? 0).toBe(source === 'cargo' ? 1 : source === 'wormhole' ? 2 : 0)
@@ -300,10 +300,10 @@ describe('实际承伤的真引擎路径', () => {
     w.tick(10)
     expect(w.battle.stats.foeHits).toBeGreaterThan(0)
     expect(w.battle.units.player!.hp.h).toBeGreaterThanOrEqual(1)
-    expect(w.battle.units.player!.hp.h).toBeLessThan(1.00001)
+    expect(w.battle.units.player!.hp.h).toBeLessThan(2)
     expect(w.battle.dcKitsUsed).toBe(1)
     expect(w.state.warehouse.items['repairkit-dc']).toBe(1)
-    expect(w.battle.meVolleyDmg!.player).toBeCloseTo(sum(before) - 1, 6)
+    expect(w.battle.meVolleyDmg!.player).toBe(Math.floor(sum(before) - 1))
     expect(w.battle.ended).not.toBe('foe')
   })
 

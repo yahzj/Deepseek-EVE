@@ -236,7 +236,8 @@ export function rawDamageToKill(hp: Hp3, resists: UnitSpec['resists'], type: Dam
   let hi = total * 12 + 8
   for (let i = 0; i < 32; i++) {
     const mid = (lo + hi) / 2
-    if (applyDamage(hp, resists, mid, type).dealt >= total - 1e-9) hi = mid
+    // 取整补出的实伤不能折回原伤继续溢火，否则会凭空增加后续目标的火力。
+    if (applyDamageExact(hp, resists, mid, type).dealt >= total - 1e-9) hi = mid
     else lo = mid
   }
   return hi
