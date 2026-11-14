@@ -22,17 +22,18 @@ function viewport() {
     matchMedia: () => ({ matches: true }), setTimeout: () => 1, clearTimeout: () => {} }
   let rotated = false
   let mobile = false
+  let landscape = false
   const size = { current: null as { w: number; h: number } | null }
   const bindings = { window, Date, screen: { orientation: { type: 'portrait-primary' } },
     setMobileRot: (next: boolean) => { rotated = next }, rootRef: { current: { style: {
       setProperty: (key: string, value: string) => { values.set(key, value) }, removeProperty: (key: string) => { values.delete(key) },
     } } }, mobSizeRef: size, mobPendRef: { current: null }, mobTimerRef: { current: 0 },
     MOB_BIG_CHANGE_PX: 96, MOB_SIZE_DEAD_PX: 8, MOB_RESIZE_SETTLE_MS: 300, result: undefined }
-  Object.assign(bindings, { setMobileLayout: (next: boolean) => { mobile = next } })
+  Object.assign(bindings, { setMobileLayout: (next: boolean) => { mobile = next }, setMobileLand: (next: boolean) => { landscape = next } })
   const js = ts.transpileModule(`const update = ${update.getText(source)}; globalThis.result = update`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText
   runInNewContext(js, bindings)
   const run = bindings.result as unknown as () => void
-  return { window, size, run, values, rotated: () => rotated, mobile: () => mobile }
+  return { window, size, run, values, rotated: () => rotated, mobile: () => mobile, landscape: () => landscape }
 }
 
 describe('手机旋转视口稳定性', () => {
@@ -69,6 +70,7 @@ describe('手机旋转视口稳定性', () => {
     p.run()
     expect(p.mobile()).toBe(true)
     expect(p.rotated()).toBe(false)
+    expect(p.landscape()).toBe(true)
     p.window.innerHeight = 200
     p.run()
     expect(p.mobile()).toBe(true)

@@ -248,8 +248,13 @@ for (const unit of myUnits) {
             const volleyLocked = unit.lockedDmgBonus && foeTarget!.tag === firstAliveFoe(foes, b)?.tag
               ? ceilFinalQuantity(targetVolleyDmg * (1 + unit.lockedDmgBonus)) : targetVolleyDmg
             const dmgLocked = ceilFinalQuantity(volleyDamageShareOf(volleyLocked, gunCount, gun) * blindMul)
-            /** 主段：走**敌舰伤害唯一收口**（血写回 ＋ 死亡观测；算术与消费顺序一字不变） */
-            const r = applyFoeUnitDamage(b, foeTarget!, dmgLocked, type, b.lastTickGameMs + dtMs)
+            // 附伤使用武器原伤，各吃各自克制和抗性；整次命中只取整一次。
+            const secPct = w.secondaryDamagePct ?? 0
+            const secondary = secPct > 0 ? {
+              type: w.secondaryDamageType ?? 'kinetic',
+              dmg: ceilFinalQuantity(volleyDamageShareOf(Math.max(1, ceilFinalQuantity(volleyLocked * secPct)), gunCount, gun) * blindMul),
+            } : undefined
+            const r = applyFoeUnitDamage(b, foeTarget!, dmgLocked, type, b.lastTickGameMs + dtMs, secondary)
             b.stats.meDmg += r.dealt
             selfDealt = r.dealt
             if (w.acidOnHit) addFoeAcidLayer(b, foeTarget!.tag, w.acidOnHit, b.lastTickGameMs)
@@ -259,24 +264,13 @@ for (const unit of myUnits) {
              * 「打空它所需原始伤害」的那一截转给下一艘存活敌舰（按那一艘自己的层克重重算）。
              * 只在本场带了该装置时生效（`battle.wormhole.volleyOverflow`）。
              */
-            if (b.wormhole?.volleyOverflow === true && rt.hp.s + rt.hp.a + rt.hp.h <= 0) {
+            const mainAfter = b.wormhole?.volleyOverflow === true
+              ? applyDamage(hpBefore, r.resistsUsed ?? {}, dmgLocked, type).hp : undefined
+            if (mainAfter && mainAfter.s + mainAfter.a + mainAfter.h <= 0 && rt.hp.s + rt.hp.a + rt.hp.h <= 0) {
               const carry = carryVolleyOverflow(b, foes, foeTarget!.tag, type, dmgLocked, hpBefore, 3, r.resistsUsed)
               if (carry.hits > 0) {
                 pushBattleNotice(b, `齐射协调：溢火结转 ${Math.round(carry.total)} 点伤害到下一艘敌舰`)
               }
-            }
-            // **附加伤害段**（2026-09-13 船长：掠袭破片炮「额外造成 50% 的动能伤害是附加伤害，
-            // 和弹种无关」）——口径（船长 2026-09-13 二次裁定）：「**伤害各自吃各自的制（克制）效果**」：
-            // 副段取**武器原伤害**（含锁定加深，不含主段已吃的克制）×比例，然后**两段各吃各自的层克制**。
-            // ⚠ 不能用主段实收做基数——那会把主系的克制乘进副段（实测该目标会从 +50% 放大到 +75%）。
-            const secPct = w.secondaryDamagePct ?? 0
-            if (secPct > 0 && rt.hp.s + rt.hp.a + rt.hp.h > 0) {
-              const secType = w.secondaryDamageType ?? 'kinetic'
-              const secDmg = ceilFinalQuantity(volleyDamageShareOf(Math.max(1, ceilFinalQuantity(volleyLocked * secPct)), gunCount, gun) * blindMul)
-              /** 附伤段：同走唯一收口（它也可能就是打沉那一发） */
-              const r2 = applyFoeUnitDamage(b, foeTarget!, secDmg, secType, b.lastTickGameMs + dtMs)
-              b.stats.meDmg += r2.dealt
-              selfDealt += r2.dealt
             }
             // **受击增程触发点（唯一）**——2026-09-11 船长：「受到攻击后，大幅提高无人机射程
             // （提高 400%）」：**母舰本体被命中** ⇒ 该舰全部机群射程 ×倍率（本场永久）。
@@ -358,18 +352,14 @@ for (const unit of myUnits) {
             if (oHit) {
               b.stats.meHits += 1
               /** 全体攻击主段：同走唯一收口 */
-              const rAll = applyFoeUnitDamage(b, other, dmg, type, b.lastTickGameMs + dtMs)
+              const secPctAll = w.secondaryDamagePct ?? 0
+              const secondaryAll = secPctAll > 0 ? {
+                type: w.secondaryDamageType ?? 'kinetic',
+                dmg: ceilFinalQuantity(volleyDamageShareOf(Math.max(1, ceilFinalQuantity(targetVolleyDmg * secPctAll)), gunCount, gun) * blindMul),
+              } : undefined
+              const rAll = applyFoeUnitDamage(b, other, dmg, type, b.lastTickGameMs + dtMs, secondaryAll)
               b.stats.meDmg += rAll.dealt
               oDealt = rAll.dealt
-              const secPctAll = w.secondaryDamagePct ?? 0
-              if (secPctAll > 0 && ort.hp.s + ort.hp.a + ort.hp.h > 0) {
-                const secTypeAll = w.secondaryDamageType ?? 'kinetic'
-                const secDmgAll = ceilFinalQuantity(volleyDamageShareOf(Math.max(1, ceilFinalQuantity(targetVolleyDmg * secPctAll)), gunCount, gun) * blindMul)
-                /** 全体攻击附伤段：同走唯一收口 */
-                const rAll2 = applyFoeUnitDamage(b, other, secDmgAll, secTypeAll, b.lastTickGameMs + dtMs)
-                b.stats.meDmg += rAll2.dealt
-                oDealt += rAll2.dealt
-              }
               if (markFoeDroneRangeBuff(other, b)) {
                 pushBattleNotice(b, '巨构残存程序过载：警戒机群解除射程限制')
               }

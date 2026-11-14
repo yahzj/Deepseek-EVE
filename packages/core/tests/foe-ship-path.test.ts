@@ -1457,9 +1457,9 @@ describe('C 族族抗性（2026-09-15 船长 · 全血条 25% 爆炸抗）', () 
    * 玩家打敌舰的四条伤害结算（主段 / 附加段 / 全体攻击两段）与 `carryVolleyOverflow` 都是
    * `applyDamage(hp, {}, …)` —— **传的是空抗性**，敌舰的抗性**从来没被消费过**
    * （此前敌舰 `resists` 恒为 `{}`，所以这个缺口一直没被发现）。
-   * 本条用"真打一场"钉住：同种子、同装配，只差敌舰有没有 25% 爆炸抗 ⇒ 实收伤害必须恰好 ×0.75。
+   * 同种子、同装配，只差25%爆炸抗；每次命中抗性后向上取整，不再要求累计精确乘0.75。
    */
-  it('④ 真打一场：敌舰的层抗必须被消费（实收伤害 = 无抗时的 ×0.75）', () => {
+  it('④ 真打一场：敌舰层抗被消费，每次抗性后实伤向上取整', () => {
     /** 只放护盾层（`split s:1`）⇒ 全部伤害落在护盾，比例可精确断言 */
     const mkFoe = (resisted: boolean): FoeShipDef => ({
       id: 't-resist-foe',
@@ -1493,7 +1493,7 @@ describe('C 族族抗性（2026-09-15 船长 · 全血条 25% 爆炸抗）', () 
       ammoPerEngagement: 20,
     })
     const bed = { ...ship('t-bed', { cpu: 300, slots: { high: 1, mid: 0, low: 0 } }), shieldHp: 5000, armorHp: 5000, hullHp: 5000 }
-    const run = (resisted: boolean): number => {
+    const run = (resisted: boolean) => {
       const card = { ...anomaly('t-ano-resist', 'galaxy-hub', { threat: 20 }), ships: [{ ship: mkFoe(resisted) }] }
       const ctx = makeTestCtx({ ships: [bed], modules: [explosiveGun], anomalies: [card] })
       const state = createInitialState({ nowWallMs: 0, seed: 4242 })
@@ -1504,11 +1504,15 @@ describe('C 族族抗性（2026-09-15 船长 · 全血条 25% 爆炸抗）', () 
       const battle = startBattleFor(state, ctx, state.shipId, 't-ano-resist', 0)!
       state.gameMs += 6_000 // 约 10 发；敌舰 20 万血，一段窗口内打不死 ⇒ RNG 流两边一致
       advanceBattleFor(state, ctx, battle, state.shipId, 't-ano-resist')
-      return battle.stats.meDmg
+      return { damage: battle.stats.meDmg, hits: battle.stats.meHits }
     }
     const control = run(false)
     const resisted = run(true)
-    expect(control, '对照组必须真打出伤害').toBeGreaterThan(0)
-    expect(resisted / control, '25% 爆炸抗 ⇒ 实收恰好 ×0.75').toBeCloseTo(0.75, 2)
+    expect(control.damage, '对照组必须真打出伤害').toBeGreaterThan(0)
+    expect(control.hits).toBeGreaterThan(0)
+    expect(resisted.hits).toBe(control.hits)
+    expect(Number.isInteger(control.damage / control.hits)).toBe(true)
+    expect(resisted.damage).toBe(Math.ceil(control.damage / control.hits * .75) * control.hits)
+    expect(resisted.damage).toBeLessThan(control.damage)
   })
 })

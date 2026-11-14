@@ -128,7 +128,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ui.factionPlug.009': { zh: '战损惩罚', en: '', enDeferred: true },
   'ui.factionPlug.010': { zh: '战损属性惩罚 −{p1}', en: '', enDeferred: true },
   'ui.factionPlug.011': { zh: '战损结构抗性', en: '', enDeferred: true },
-  'ui.factionPlug.012': { zh: '每种战损提高结构动能与能量抗性 {p1}，最多计入{p2}种', en: '', enDeferred: true },
+  'ui.factionPlug.012': { zh: '每件战损提高结构动能与能量抗性 {p1}，最多计入{p2}件', en: '', enDeferred: true },
   'ui.factionPlug.013': { zh: '装甲容量 −{p1}', en: '', enDeferred: true },
   'ui.factionPlug.014': { zh: '装甲自愈', en: '', enDeferred: true },
   'ui.factionPlug.015': { zh: '每秒修复自身最大装甲的{p1}', en: '', enDeferred: true },

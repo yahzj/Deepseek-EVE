@@ -167,6 +167,8 @@ export function advanceAiMining(
       task.rvLeft = 1
       addLog(state, 'fleet', `[AI·${shipName}] 富矿脉！连续 2 个循环产量 ×3。`, 'core.ai.022', { p1: shipName })
     }
+    // 富矿加成后的最终入舱量也受本舰剩余容量约束，与主控采矿一致。
+    units = Math.min(units, Math.floor(freeM3 / cargoUnitM3(state, oreNow ?? params.ore)))
     if (!oreNow) {
       // 记录缺失：按主产物入舱兜底（正常情况下 roll 不会返回 null）
       const cargoFallback = state.fleet[shipId]!.cargo

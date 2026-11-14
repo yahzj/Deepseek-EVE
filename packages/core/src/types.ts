@@ -903,7 +903,7 @@ export interface ModuleDef {
   speedPenaltyMps?: number
   /** 势力船插：整件效果只计一次，仍可重复安装占格。 */
   plugNonStacking?: boolean
-  /** 战损逐件减轻惩罚；不同类型各贡献一次结构抗性百分点。 */
+  /** 战损逐件减轻惩罚；每件战损贡献一次结构抗性百分点，受 maxKinds 限制。 */
   damageManagement?: { penaltyReductionPct: number; hullResistPerKind: number; maxKinds: number }
   /** 合并镀膜转换甲后的最终装甲容量代价。 */
   armorCapacityPenaltyPct?: number

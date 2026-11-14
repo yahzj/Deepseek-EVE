@@ -4,7 +4,7 @@ import type { DamageType, SimContext } from '../types'
 import { BATTLE_VOLLEY_WINDOW_MS } from './constants'
 import { gravekeeperResistsOf, advanceFoeRebirthRepair, activateFoeCapacitor } from './gravekeeperCombat'
 import { acidResistsOf } from './alienEquipment'
-import { type Hp3, applyDamage } from './combatMath'
+import { type Hp3, applyDamage, applyDamageExact, finalizeHitDamage } from './combatMath'
 import { triggerAcidBurst } from './alienCombat'
 import { type GameState, addLog } from '../state'
 import { wormholeSupplyForBattle, takeWormholeSupply } from '../wormholeSupplies'
@@ -108,8 +108,8 @@ export function snapshotFoeStandby(b: import('../state').BattleState, foes: read
  * `applyDamage(...)` 再各自写回三层血，**没有"死亡那一刻"**——全仓的生死判据是 `isAlive` 这个纯读取，
  * 每次要用就把三层血重算一遍（无人机的"击落"反倒是有事件点的：`pool.alive = false`）。
  *
- * 本函数把四＋一处收成一个口子，只做两件事、**不改算术**：
- * 1. 照旧 `applyDamage` 并写回三层血（层抗、层克制、随机数消费顺序一字不动）；
+ * 本函数统一单次命中、附伤及死亡观测：
+ * 1. 各伤害分量精确计算后统一向上取整，并写回三层血；
  * 2. **算完做观测**——这一发把它的三层血打空 ⇒ 在该单位上落 `downAtMs`（死亡时刻）；
  *    若它正是本场 BOSS（`foeOverride.bossShipId`）⇒ 顺带在本场落 `BattleState.bossDownAtMs`。
  *
@@ -153,6 +153,8 @@ export function applyFoeUnitDamage(
   type: DamageType,
   /** 这一发的时刻（缺省 = 本拍起点）；诊断用，不参与结算 */
   atMsOverride?: number,
+  /** 同次命中的附伤，各自吃克制和抗性，合计后只取整一次。 */
+  secondary?: { dmg: number; type: DamageType },
 ): { dealt: number; killedNow: boolean; resistsUsed?: UnitSpec['resists'] } {
   const rt = b.units[foe.tag]
   if (!rt || rt.hp.s + rt.hp.a + rt.hp.h <= 0) return { dealt: 0, killedNow: false }
@@ -166,7 +168,12 @@ export function applyFoeUnitDamage(
    * 没带该件的单位 ⇒ `foeResistsNow` 直接返回原引用 ⇒ **既有各族逐字不变**。
    */
   const resists = foeResistsNow(b, foe)
-  const apply = (raw: number): Hp3 => applyDamage(rt.hp, resists, raw, type).hp
+  const apply = (raw: number): Hp3 => {
+    const main = applyDamageExact(rt.hp, resists, raw, type).hp
+    const after = secondary && secondary.dmg > 0 && dmg > 0
+      ? applyDamageExact(main, resists, secondary.dmg * raw / dmg, secondary.type).hp : main
+    return finalizeHitDamage(rt.hp, after).hp
+  }
   const state = b.foeRebirths?.[foe.tag]
   const inRebirthLock = state?.lockUntilMs !== undefined && state.lockUntilMs > atMs
   const lethal = foe.foeRebirthProtocol !== undefined && dmg > 0 && apply(dmg).h <= 0
@@ -186,7 +193,8 @@ export function applyFoeUnitDamage(
     }
     appliedDmg = clampRawLeavingHull(apply, dmg)
   }
-  const r = applyDamage(rt.hp, resists, appliedDmg, type)
+  const afterHit = apply(appliedDmg)
+  const r = finalizeHitDamage(rt.hp, afterHit)
   rt.hp = r.hp
   if (foe.foeShieldCapacitor !== undefined && beforeHp.s > 0 && rt.hp.s <= 0) {
     activateFoeCapacitor(b, foe.tag)
@@ -228,7 +236,8 @@ export function rawDamageToKill(hp: Hp3, resists: UnitSpec['resists'], type: Dam
   let hi = total * 12 + 8
   for (let i = 0; i < 32; i++) {
     const mid = (lo + hi) / 2
-    if (applyDamage(hp, resists, mid, type).dealt >= total - 1e-9) hi = mid
+    // 取整补出的实伤不能折回原伤继续溢火，否则会凭空增加后续目标的火力。
+    if (applyDamageExact(hp, resists, mid, type).dealt >= total - 1e-9) hi = mid
     else lo = mid
   }
   return hi
@@ -333,7 +342,8 @@ export function cappedFoeDamage(
 ): number {
   if (dmg <= 0) return dmg
   const used = b.meVolleyDmg?.[tag] ?? 0
-  const out = Math.min(dmg, playerVolleyDamageRoomOf(b, tag, spec))
+  const room = playerVolleyDamageRoomOf(b, tag, spec)
+  const out = Math.min(dmg, Number.isFinite(room) ? Math.floor(room) : room)
   // ⚠ **必须无条件记账**（哪怕这一发全额放行）：额度是"本拍累计"口径，漏记就等于给下一发多开口子
   b.meVolleyDmg = { ...(b.meVolleyDmg ?? {}), [tag]: used + out }
   return out
@@ -352,10 +362,13 @@ export function applyPlayerUnitDamage(
   const rt = b.units[tag]
   if (!rt || raw <= 0) return 0
   const before = rt.hp
-  const after = applyRaw ? applyRaw(raw) : applyDamage(before, spec.resists, raw, type).hp
+  const hit = applyRaw ? finalizeHitDamage(before, applyRaw(raw)) : applyDamage(before, spec.resists, raw, type)
+  const after = hit.hp
   const loss = { s: Math.max(0, before.s - after.s), a: Math.max(0, before.a - after.a), h: Math.max(0, before.h - after.h) }
-  const total = loss.s + loss.a + loss.h
-  const amount = Math.min(total, playerVolleyDamageRoomOf(b, tag, spec))
+  const total = hit.dealt
+  // 齐射额度是上限，不能向上突破；不足一点的余额不再放出小数伤害。
+  const room = playerVolleyDamageRoomOf(b, tag, spec)
+  const amount = Math.min(total, Number.isFinite(room) ? Math.floor(room) : room)
   // 在已结算的掉血上按层截取，不重新计算原伤落点，避免限额反过来改变克制系数。
   const apply = (damage: number): Hp3 => {
     // 全额放行必须与最终写回同源，避免逐层减去小数后留下浮点残血而漏判损管。
@@ -370,8 +383,13 @@ export function applyPlayerUnitDamage(
     return hp
   }
   const guarded = applyDcGuard(state, b, tag, spec, before, amount, type, apply)
-  rt.hp = guarded === total ? after : apply(guarded)
-  return cappedFoeDamage(b, tag, spec, (before.s - rt.hp.s) + (before.a - rt.hp.a) + (before.h - rt.hp.h))
+  let finalAmount = guarded
+  if (guarded < amount) {
+    const candidate = Math.min(amount, Math.floor(guarded) + 1)
+    finalAmount = apply(candidate).h >= 1 ? candidate : Math.floor(guarded)
+  }
+  rt.hp = finalAmount === total ? after : apply(finalAmount)
+  return cappedFoeDamage(b, tag, spec, finalAmount)
 }
 
 /** **结构锁定窗口**（1 秒；船长改判「1 秒内结构锁定 1」）——`BattleState.dc[tag].lockUntilMs` 的时长 */
@@ -470,7 +488,7 @@ export function dcUsageText(
  * 结算敌人一发（2026-09-10 船长：窝点混伤）：
  * 武器带 `shotsByType`（混伤，主 60% / 副 40%）→ 按构成**逐系**调用 `applyDamage`
  * （各系吃各自的 `typeLayerMult` 与层抗，逐系依次消费 盾→甲→结构）；
- * 纯系武器（无 `shotsByType`）→ 与旧行为一字不差。
+ * 纯系武器（无 `shotsByType`）→ 单系结算；混伤全部分量完成后只取整一次。
  * `totalDmg` 是本次开火的总伤害（含近盲/距离折扣），按构成比例分摊、**总量不变**。
  * 返回更新后的三层血量（调用方直接赋值）。导出供回归测试直接验证"混伤绕过单系抗"。
  */
@@ -489,13 +507,13 @@ export function applyFoeShot(
   let next = hp
   let left = totalDmg
   entries.forEach(([t, v], i) => {
-    // 多炮拆小单发后不逐系取整，避免低伤炮把原混伤比例改成一半一半。
+    // 每系保留精度，避免低伤炮把原混伤比例改成一半一半。
     const share = (totalDmg * (v ?? 0)) / sum
-    const dmg = i === entries.length - 1 ? left : (weapon.gunCount ?? 1) > 1 ? share : Math.max(1, Math.round(share))
+    const dmg = i === entries.length - 1 ? left : share
     const take = Math.max(0, Math.min(left, dmg))
     if (take <= 0) return
-    next = applyDamage(next, resists, take, t as DamageType).hp
+    next = applyDamageExact(next, resists, take, t as DamageType).hp
     left -= take
   })
-  return next
+  return finalizeHitDamage(hp, next).hp
 }

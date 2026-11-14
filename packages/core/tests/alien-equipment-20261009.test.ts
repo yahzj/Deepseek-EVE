@@ -174,7 +174,7 @@ describe('酸蚀独立期限与恢复', () => {
     battle.units['foe-0']!.hp = { s: 0, a: 0, h: 0 }
     battle.units['foe-1']!.hp = { s: 1000, a: 0, h: 0 }
     const result = carryVolleyOverflow(battle, [first, second], 'foe-0', 'explosive', 200, { s: 0, a: 90, h: 0 })
-    expect(result.total).toBeCloseTo(37.5, 4)
+    expect(result.total).toBe(38)
     expireFoeAcidLayers(battle)
     expect(battle.foeAcidLayers).toBeUndefined()
   })

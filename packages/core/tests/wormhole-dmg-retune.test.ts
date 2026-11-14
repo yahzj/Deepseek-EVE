@@ -156,12 +156,12 @@ describe('我方"不被一击带走"保险（船长 2026-09-16：单次齐射 �
     expect(a).toBeCloseTo(full * 0.6, 3)
     // ② 第二发再来 60% ⇒ 只剩 20% 额度
     const b2 = cappedFoeDamage(battle, 'player', spec, full * 0.6)
-    expect(b2).toBeCloseTo(full * 0.2, 3)
+    expect(b2).toBe(Math.floor(full * .8 - a))
     // ③ 额度用尽 ⇒ 0
     expect(cappedFoeDamage(battle, 'player', spec, full)).toBe(0)
     // ④ 本拍账本清零后恢复
     battle.meVolleyDmg = {}
-    expect(cappedFoeDamage(battle, 'player', spec, full)).toBeCloseTo(full * 0.8, 3)
+    expect(cappedFoeDamage(battle, 'player', spec, full)).toBe(Math.floor(full * .8))
   })
 
   it('真引擎（洞外）：满血我方舰**绝不可能**在开场那一拍被带走（血条至少留 20%）', () => {

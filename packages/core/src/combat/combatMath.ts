@@ -8,6 +8,7 @@
  */
 import type { AnomalyDef, BattleBalance, DamageResists, DamageType } from '../types'
 import type { BattleState, GameState } from '../state'
+import { ceilFinalQuantity } from '../quantity'
 
 /** 三层血量形状 */
 export interface Hp3 {
@@ -162,6 +163,17 @@ export function applyDamage(
   type: DamageType,
   shieldDamageMul = 1,
 ): { hp: Hp3; dealt: number } {
+  return finalizeHitDamage(hp, applyDamageExact(hp, resists, dmg, type, shieldDamageMul).hp)
+}
+
+/** 混伤各分量先精确扣血，整次命中完成后再统一取整。 */
+export function applyDamageExact(
+  hp: Hp3,
+  resists: { shield?: DamageResists; armor?: DamageResists; hull?: DamageResists },
+  dmg: number,
+  type: DamageType,
+  shieldDamageMul = 1,
+): { hp: Hp3; dealt: number } {
   const next: Hp3 = { ...hp, ...(hp.coating ? { coating: { ...hp.coating } } : {}) }
   const rest0 = Math.max(0, dmg)
   const layerKey: Array<'s' | 'a' | 'h'> = ['s', 'a', 'h']
@@ -223,6 +235,26 @@ export function applyDamage(
   const after = next.s + next.a + next.h
   if (next.coating) next.coating.armor = Math.min(next.coating.armor, next.a)
   return { hp: next, dealt: Math.max(0, before - after) }
+}
+
+/** 只补整次实伤的尾差，沿盾→甲→结构扣除；不超过残血、不再乘抗性。 */
+export function finalizeHitDamage(before: Hp3, after: Hp3): { hp: Hp3; dealt: number } {
+  const hp = { ...after, ...(after.coating ? { coating: { ...after.coating } } : {}) }
+  const total = before.s + before.a + before.h
+  const exact = Math.max(0, (before.s - hp.s) + (before.a - hp.a) + (before.h - hp.h))
+  // 扣血相减的误差随原血量放大，不能把整数邻域噪声再当成额外一点伤害。
+  const nearest = Math.round(exact)
+  const tolerance = Math.min(1e-8, Number.EPSILON * Math.max(1, total) * 4)
+  const settled = nearest > 0 && Math.abs(exact - nearest) <= tolerance ? nearest : ceilFinalQuantity(exact)
+  const dealt = Math.min(total, settled)
+  let extra = Math.max(0, dealt - exact)
+  for (const key of ['s', 'a', 'h'] as const) {
+    const take = Math.min(hp[key], extra)
+    hp[key] -= take
+    extra -= take
+  }
+  if (hp.coating) hp.coating.armor = Math.min(hp.coating.armor, hp.a)
+  return { hp, dealt }
 }
 
 /** 修复先补原装甲，剩余修复量可补临时镀膜；损伤与修复均保留独立原甲账。 */

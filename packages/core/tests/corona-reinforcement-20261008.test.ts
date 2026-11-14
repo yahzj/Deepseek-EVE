@@ -217,7 +217,7 @@ describe('真实战斗闭环', () => {
     battle.lastTickGameMs = 11_000
     const current = () => foeStandbyReadyOf(battle, dusk) ? withStandbyShield(dusk.resists, dusk.foeStandbyShield!.resistPct) : dusk.resists
     const resists = current()
-    expect(applyDamage(hp, resists, 100, type).dealt).toBeCloseTo(base.dealt / 2)
+    expect(applyDamage(hp, resists, 100, type).dealt).toBe(Math.ceil(base.dealt / 2))
     expect(resists.armor).toEqual(dusk.resists.armor)
     expect(resists.hull).toEqual(dusk.resists.hull)
     battle.lastTickGameMs = ready
