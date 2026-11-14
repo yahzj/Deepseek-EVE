@@ -32,6 +32,13 @@ const CHART_ZOOM_KEY = 'whale-idle:exch-chart-zoom-v2'
 const DEFAULT_CANDLE_LIMIT = 72
 const MAX_CANDLE_LIMIT = 168
 
+/** 档位只允许 72 / 120 / 168 三档（与滚轮步进一致），旧偏好里的 24/48/96 归一到最近档，避免出现不存在的中间分级 */
+function snapCandleLimit(value: number): number {
+  if (value <= DEFAULT_CANDLE_LIMIT) return DEFAULT_CANDLE_LIMIT
+  if (value < 144) return 120
+  return MAX_CANDLE_LIMIT
+}
+
 function readChartZoom(): { zoom: number; candleLimit: number } {
   if (typeof window === 'undefined') return { zoom: 0, candleLimit: DEFAULT_CANDLE_LIMIT }
   try {
@@ -41,7 +48,7 @@ function readChartZoom(): { zoom: number; candleLimit: number } {
       const zoom = parsed.zoom === 1 ? 1 : 0
       const candleLimit =
         typeof parsed.candleLimit === 'number'
-          ? Math.max(24, Math.min(MAX_CANDLE_LIMIT, Math.round(parsed.candleLimit)))
+          ? snapCandleLimit(parsed.candleLimit)
           : DEFAULT_CANDLE_LIMIT
       return { zoom, candleLimit }
     }
@@ -112,14 +119,16 @@ export function SimpleChart({ client, code, quote, tick, allInFx = false }: Simp
         return
       }
       if (zoomIn && limitNow < MAX_CANDLE_LIMIT) {
-        setCandleLimit(Math.min(MAX_CANDLE_LIMIT, limitNow + 48))
+        // 低于默认档（旧偏好可能存过 24/48）先回默认档，再按 48 递增，不产生 96 之类不存在的分级
+        const next = limitNow < DEFAULT_CANDLE_LIMIT ? DEFAULT_CANDLE_LIMIT : Math.min(MAX_CANDLE_LIMIT, limitNow + 48)
+        setCandleLimit(next)
         setPan(0)
         return
       }
       if (!zoomIn) {
-        // 默认 72 或已放大到 24：滚一格直接回分时；只有主动放大过才逐级。
-        if (limitNow < MAX_CANDLE_LIMIT && limitNow > 24) {
-          setCandleLimit(Math.max(24, limitNow - 48))
+        // 只有比默认档更"放大"（120/168）时才逐级收；默认档（或旧偏好的 24/48）再往外滚一格直接回分时。
+        if (limitNow > DEFAULT_CANDLE_LIMIT) {
+          setCandleLimit(Math.max(DEFAULT_CANDLE_LIMIT, limitNow - 48))
           setPan(0)
           return
         }
