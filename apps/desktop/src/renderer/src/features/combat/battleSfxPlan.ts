@@ -50,7 +50,7 @@ function isDroneShot(fx: BattleFx): boolean {
  * - 命中/未命中只对**我方**出落点音：敌方落空（未命中我方）画面上没有 puff，也不该响。
  */
 export function planBattleFx(fx: BattleFx): PlannedCue[] {
-  if (fx.web === true || fx.blink === true || fx.acidBurst === true) return []
+  if (fx.repair || fx.web === true || fx.blink === true || fx.acidBurst === true) return []
   if (fx.droneDown === true) {
     return fx.side === 'foe' ? [{ cue: 'combat-foe-down', delayMs: 0 }] : []
   }

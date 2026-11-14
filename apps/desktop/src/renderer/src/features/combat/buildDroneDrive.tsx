@@ -48,7 +48,7 @@ foeSortieRef: import('react').MutableRefObject<Map<string, import('../../ui/dron
    *   出击状态表、上一帧机体数表与弹道侧**四处必须用同一个键**，否则击落演出会找不到机体。
    */
   const droneWings = arcs.myUnits.flatMap((u) =>
-    (u.drones ?? []).filter(d => (d.deployed ?? d.count) > 0).map((d) => {
+    (u.drones ?? []).filter(d => d.artId !== 'drone-repair-mil' && (d.deployed ?? d.count) > 0).map((d) => {
       const key = `${u.tag}:${d.artId}`
       // **兜底取机型**（2026-09-12）：漏登记机型时画"未知机型"灰机体 + 名字回退成 id，
       // 不再静默消失（G 族蜂群机曾因漏登记而在战斗里看不见）。

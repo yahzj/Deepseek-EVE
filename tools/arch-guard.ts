@@ -263,6 +263,7 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
   { concept: '编队预设停港预检与原子套用', symbol: 'applyFleetPreset', file: 'packages/core/src/fleetPresets.ts', exported: true },
   { concept: '护盾力场每次有效脉冲的最大护盾代价', symbol: 'SHIELD_FIELD_COST_PCT', file: 'packages/core/src/combat/combatRepair.ts', exported: true },
   { concept: '护盾力场排除自身与按需支付恢复', symbol: 'pulseShieldFieldFor', file: 'packages/core/src/combat/combatRepair.ts', exported: true },
+  { concept: '维修按目标最大装甲与结构容量折算', symbol: 'repairCapacityMulOf', file: 'packages/core/src/repair.ts', exported: true },
   { concept: '双方护盾自然回复与旗舰基准映射速率', symbol: 'passiveShieldRateOf', file: 'packages/core/src/combat/passiveRecovery.ts', exported: true },
   { concept: '护盾自然回复下恒定承伤破盾时间', symbol: 'passiveShieldBreakSeconds', file: 'packages/core/src/combat/passiveRecovery.ts', exported: true },
   { concept: '装甲自愈下恒定承伤破甲时间', symbol: 'passiveArmorBreakSeconds', file: 'packages/core/src/combat/passiveRecovery.ts', exported: true },

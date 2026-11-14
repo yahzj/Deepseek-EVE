@@ -140,7 +140,7 @@ export function useBattleSfx({
     if (visible) {
       for (const fx of events) {
         // 与画面 `lastHitTypeRef` 同口径：只记我方命中的弹型（攻击方弹型决定爆炸延迟）
-        if (fx.side === 'me' && fx.hit && fx.to !== undefined) track.lastHitType.set(fx.to, fx.type)
+        if (!fx.repair && fx.side === 'me' && fx.hit && fx.to !== undefined) track.lastHitType.set(fx.to, fx.type)
         for (const planned of planBattleFx(fx)) schedule(planned.cue, planned.delayMs)
       }
     }

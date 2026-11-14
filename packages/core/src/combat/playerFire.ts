@@ -46,7 +46,7 @@ for (const unit of myUnits) {
         const cd = meRt.weapons[wi] ?? 0
         if (cd > 0) { meRt.weapons[wi] = Math.max(0, cd - dtMs); continue }
         if (!releaseDroneLaunch(b, unit, wi)) continue
-        pulseRepairDroneFor(state, b, myUnits, unit, w.repairDrone)
+        pulseRepairDroneFor(state, b, myUnits, unit, w.repairDrone, { artId: w.artId, index: wi })
         meRt.weapons[wi] = w.reloadMs
         continue
       }

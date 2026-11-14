@@ -143,7 +143,7 @@ describe('报障：阵亡单位不可被修活（船长 2026-09-19 转述玩家�
     bRt.hp = { ...bRt.hp, a: Math.max(1, Math.floor(bRt.hp.a * 0.3)) }
     const bBefore = bRt.hp.a
     sink(battle, 'ally-1')
-    tickSeconds(state, 12)
+    tickSeconds(state, 22)
     expect(hpSum(battle, 'ally-1'), '阵亡僚舰被后勤舰修活了').toBe(0)
     expect(battle.units['ally-2']!.hp.a, '后勤舰本该去修活着的重伤僚舰').toBeGreaterThan(bBefore)
   })

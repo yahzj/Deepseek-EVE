@@ -15,7 +15,7 @@ import { supportEffectPartsOf } from '../../stacking'
 import { crisisEffectsOf } from '../gravekeeperGear'
 import { droneLaunchGapMsOf } from '../droneLaunch'
 import { playerRangeEwOf } from '../rangeEw'
-import { quickRepairFactor } from '../../repair'
+import { quickRepairFactor, repairCapacityMulOf } from '../../repair'
 import { shipWeaponRangeBonusesOf } from '../../ships/range'
 
 export function createPlayerSpec(
@@ -589,7 +589,7 @@ export function createPlayerSpec(
         for (let i = 0; i < n; i++) {
           refs?.weaponRanges?.push({ baseM: 0, bonusMul: 1 })
           weapons.push({ label: def.name, kind: 'fixed', src: 'drone', artId: droneId,
-            repairDrone: { armor: ceilFinalQuantity((def.repairArmorHp ?? 0) * output), hull: ceilFinalQuantity((def.repairHullHp ?? 0) * output), kitId: def.repairKit ?? 'repairkit-mil' },
+            repairDrone: { armor: (def.repairArmorHp ?? 0) * output, hull: (def.repairHullHp ?? 0) * output, kitId: def.repairKit ?? 'repairkit-mil' },
             shotDmg: 0, maxRangeM: 0, minRangeM: 0, hitRate: 0, falloff: 1,
             reloadMs: Math.max(1, Math.round((def.repairIntervalMs ?? 10000) * penalties.reload)) })
         }
@@ -678,6 +678,7 @@ export function createPlayerSpec(
     ...(dcDevice?.rebirthRepair ? { rebirthRepair: dcDevice.rebirthRepair } : {}),
     ...(crisisOverload ? { crisisOverload } : {}),
     hp,
+    repairCapacityMul: repairCapacityMulOf(hp, ship),
     ...(plugDefs.some(p => (p.armorRegenPerSec ?? 0) > 0)
       ? { armorRegenPerSec: plugDefs.reduce((rate, p) => rate + (p.armorRegenPerSec ?? 0), 0) } : {}),
     ...(coatingPct > 0 ? { shieldArmorHp } : {}),

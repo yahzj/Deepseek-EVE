@@ -370,6 +370,8 @@ export function applyPlayerUnitDamage(
   const amount = Math.min(total, Number.isFinite(room) ? Math.floor(room) : room)
   // 在已结算的掉血上按层截取，不重新计算原伤落点，避免限额反过来改变克制系数。
   const apply = (damage: number): Hp3 => {
+    // 全额放行必须与最终写回同源，避免逐层减去小数后留下浮点残血而漏判损管。
+    if (damage >= total) return after
     const hp = { ...before, ...(before.coating ? { coating: { ...before.coating } } : {}) }
     for (const key of ['s', 'a', 'h'] as const) {
       const take = Math.min(loss[key], damage)
@@ -397,7 +399,7 @@ export const DC_LOCK_MS = 1_000
  *
  * 实战由`applyPlayerUnitDamage`先限制实际承伤，再调用本函数判定保底；最终掉血才计入齐射账本。
  * - **窗口内**（`lockUntilMs > 本拍时刻`）：把本发原始伤害夹到"结算后结构 ≥ 1"⇒ **同拍/同秒多段都破不了**；
- * - **窗口外且未用过**：若本发会导致结构 ≤ 0 ⇒ ①扣 1 枚组件（没组件 ⇒ 不启动，仅记一条日志）
+ * - **窗口外且未用过**：若本发会导致结构 < 1 ⇒ ①扣 1 枚组件（没组件 ⇒ 不启动，仅记一条日志）
  *   ②开窗 1 秒 ③本场标记已用 ④把本发夹到结构 = 1 ⑤日志 ＋ 战斗提示；
  * - **已用过且出窗** ⇒ 原样放行（照常被打死 —— 丁案的既定后果）。
  *
@@ -419,12 +421,12 @@ export function applyDcGuard(
   const apply = (r: number): Hp3 => (applyRaw ? applyRaw(r) : applyDamage(hpNow, spec.resists, r, type ?? 'kinetic').hp)
   const st = b.dc?.[tag]
   const inWindow = st?.lockUntilMs !== undefined && st.lockUntilMs > b.lastTickGameMs
-  const lethal = apply(raw).h <= 0
+  const belowFloor = apply(raw).h < 1
   if (inWindow) {
     // 窗口内：结构不许掉到 1 以下（本发可能直接致死 ⇒ 夹住）
-    return lethal || apply(raw).h < 1 ? clampRawLeavingHull(apply, raw) : raw
+    return belowFloor ? clampRawLeavingHull(apply, raw) : raw
   }
-  if (!lethal) return raw
+  if (!belowFloor) return raw
   if (st?.used === true) return raw
   /** 启动：扣 1 枚损管修理组件（仓库优先/关掉开关则走本舰货仓，与修理组件同一口径） */
   const kitId = spec.hullSaveKit
