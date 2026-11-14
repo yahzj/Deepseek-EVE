@@ -6,13 +6,26 @@
  * - 亏损真实发生，不保本；赎回额 = 本金 + 累计收益（可为负）；
  * - 每日结果由服务端决定，前端只负责展示与触发，不参与计算。
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { isEn } from '../../../i18n/locale'
 import type { ExchangeClient, ExchangeSnapshot, FundPosition } from '../client'
 import type { ToastFn } from '../../../pages/common'
 import { money } from '../format'
 import { T, TF } from '../texts'
 import { progressStyle, useActionProgress } from '../useActionProgress'
+
+/** 高收益档本金上限（与服务端 `savingsPrincipalCap` 同口径）：1 亿以内是最高收益档，超出只有固定低息 */
+const SAVINGS_SWEET_CAP = 100_000_000
+/**
+ * 「每日收益摸到上限」所需的本金（与服务端结算同口径）：
+ * 赢的一天收益 = 51.43%×min(本金,1亿) + 2.4%×超出部分，正收益每天封顶 9 亿（2026-11-13 船长令：3 亿放开到 9 亿）⇒
+ * 本金到 1亿 + (9亿 − 5143万)/2.4% ≈ 363.6 亿时，赢的一天刚好赚满 9 亿；
+ * 再多的本金当天不会多赚。「最优」按这个数字算，而不是按 1 亿。
+ */
+const FUND_DAILY_CAP = 900_000_000
+const FUND_CAP_PRINCIPAL = Math.ceil(
+  SAVINGS_SWEET_CAP + Math.max(0, (FUND_DAILY_CAP - SAVINGS_SWEET_CAP * 0.5143) / 0.024),
+)
 
 /** 持仓刷新间隔：服务端惰性按分钟结算，跟行情一起 10 秒拉一次（船长 2026-11-04 定）。 */
 const POSITION_REFRESH_MS = 10_000
@@ -30,6 +43,8 @@ export function FundCard({
 }) {
   const [position, setPosition] = useState<FundPosition | null>(null)
   const [amountText, setAmountText] = useState('100000')
+  /** 玩家手动改过输入框后不再自动填写「钱包最优金额」 */
+  const amountDirtyRef = useRef(false)
   const [busy, setBusy] = useState(false)
   const [tipOpen, setTipOpen] = useState(false)
   const openProgress = useActionProgress(client)
@@ -59,6 +74,14 @@ export function FundCard({
     }
   }, [client])
 
+  // 金额默认值按「钱包最优」：投到每日收益摸到上限所需的本金为止，钱包不够就全投；玩家手动改过后不再覆盖
+  useEffect(() => {
+    if (amountDirtyRef.current) return
+    const gap = FUND_CAP_PRINCIPAL - principal
+    if (availableCash <= 0 || gap <= 0) return
+    setAmountText(String(Math.floor(Math.min(availableCash, gap))))
+  }, [availableCash, principal])
+
   const numericAmount = Math.floor(Number(amountText.replace(/,/g, '')))
   const isInvalid = !Number.isFinite(numericAmount) || numericAmount <= 0
   const isOverCash = !isInvalid && numericAmount > availableCash
@@ -77,13 +100,33 @@ export function FundCard({
         <span className="ex-savings-tip-label">{T.savingsCapLabel}</span>
         <b className="ex-savings-tip-cap">{T.fundTipCapValue}</b>
       </div>
+      <div className="ex-savings-tip-note">{T.savingsNote}</div>
     </div>
   )
 
   const setRatio = (ratio: number): void => {
     if (availableCash <= 0 || busy) return
+    amountDirtyRef.current = true
     const target = Math.floor(availableCash * ratio)
     setAmountText(String(Math.max(1, target)))
+  }
+
+  /** 「1 亿」：把本金补到 1 亿高收益档上限（钱包不够补满时不动作，由「最优」按钱包投） */
+  const fillToSweetCap = (): void => {
+    if (busy || availableCash <= 0) return
+    const gap = SAVINGS_SWEET_CAP - principal
+    if (gap <= 0 || availableCash < gap) return
+    amountDirtyRef.current = true
+    setAmountText(String(gap))
+  }
+
+  /** 「最优」：按钱包与收益上限——投到「每日收益摸到上限」所需的本金为止，钱包不够就全投 */
+  const fillOptimal = (): void => {
+    if (busy || availableCash <= 0) return
+    const gap = FUND_CAP_PRINCIPAL - principal
+    if (gap <= 0) return
+    amountDirtyRef.current = true
+    setAmountText(String(Math.max(1, Math.min(availableCash, gap))))
   }
 
   const submit = async (): Promise<void> => {
@@ -212,13 +255,23 @@ export function FundCard({
               </button>
               <button
                 type="button"
-                className="ex-bond-ratio-btn"
-                title={isEn() ? 'Quick invest max cash' : '快捷投入全部可用资金'}
-                aria-label={isEn() ? 'Quick invest max cash' : '快捷投入全部可用资金'}
-                disabled={busy || availableCash <= 0}
-                onClick={() => setRatio(1)}
+                className="ex-bond-ratio-btn is-sweet"
+                title={T.savingsFillCapTip}
+                aria-label={T.savingsFillCapTip}
+                disabled={busy || availableCash <= 0 || principal >= SAVINGS_SWEET_CAP || availableCash < SAVINGS_SWEET_CAP - principal}
+                onClick={fillToSweetCap}
               >
-                {T.fundAllIn}
+                {T.savingsOneCap}
+              </button>
+              <button
+                type="button"
+                className="ex-bond-ratio-btn"
+                title={T.savingsOptimalTip}
+                aria-label={T.savingsOptimalTip}
+                disabled={busy || availableCash <= 0 || principal >= FUND_CAP_PRINCIPAL}
+                onClick={fillOptimal}
+              >
+                {T.savingsOptimal}
               </button>
             </div>
           </div>
@@ -229,7 +282,10 @@ export function FundCard({
               inputMode="numeric"
               value={amountText}
               disabled={busy}
-              onChange={(e) => setAmountText(e.target.value)}
+              onChange={(e) => {
+                amountDirtyRef.current = true
+                setAmountText(e.target.value)
+              }}
               onBlur={() => {
                 const raw = Number(amountText.replace(/,/g, ''))
                 if (!Number.isFinite(raw) || raw <= 0) {

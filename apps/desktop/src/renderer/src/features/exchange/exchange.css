@@ -2824,6 +2824,16 @@
   font-weight: 600;
 }
 
+/* 收益说明的补充一行（按天结算、不滚利、可能亏损）——2026-11-13 船长令：玩家反映原说明看不懂 */
+.ex-savings-tip-note {
+  margin-top: 3px;
+  padding-top: 5px;
+  border-top: 1px dashed rgb(var(--wui-border));
+  color: rgb(var(--wui-text-dim));
+  font-size: var(--wui-fs-2xs);
+  line-height: 1.5;
+}
+
 .ex-bond-rate {
   color: rgb(var(--wui-tone-gain));
   font-family: var(--wui-mono);
@@ -2923,6 +2933,16 @@
 .ex-bond-ratio-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* 「投满 1 亿」快捷键（2026-11-13 船长令）：高收益档的甜点金额，金色描边与其它比例键区分 */
+.ex-bond-ratio-btn.is-sweet {
+  border-color: rgb(var(--wui-gold) / 0.55);
+  color: rgb(var(--wui-gold));
+}
+
+.ex-bond-ratio-btn.is-sweet:hover:not(:disabled) {
+  background: rgb(var(--wui-gold) / 0.18);
 }
 
 .ex-bond-input-box {

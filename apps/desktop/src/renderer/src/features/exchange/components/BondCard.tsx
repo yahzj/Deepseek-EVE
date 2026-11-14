@@ -13,6 +13,19 @@ import { money } from '../format'
 import { T } from '../texts'
 import { progressStyle, useActionProgress } from '../useActionProgress'
 
+/** 高收益档本金上限（与服务端 `savingsPrincipalCap` 同口径）：1 亿以内是最高收益档，超出只有固定低息 */
+const SAVINGS_SWEET_CAP = 100_000_000
+/**
+ * 「每日收益摸到上限」所需的本金（与服务端结算同口径）：
+ * 赢的一天收益 = 12%×min(本金,1亿) + 1.2%×超出部分，正收益每天封顶 2 亿 ⇒
+ * 本金到 1亿 + (2亿 − 1200万)/1.2% ≈ 157.7 亿时，赢的一天刚好赚满 2 亿；
+ * 再多的本金当天不会多赚。「最优」按这个数字算，而不是按 1 亿。
+ */
+const BOND_DAILY_CAP = 200_000_000
+const BOND_CAP_PRINCIPAL = Math.ceil(
+  SAVINGS_SWEET_CAP + Math.max(0, (BOND_DAILY_CAP - SAVINGS_SWEET_CAP * 0.12) / 0.012),
+)
+
 export function BondCard({
   client,
   snap,
@@ -26,6 +39,8 @@ export function BondCard({
   onRefresh?: () => void
 }) {
   const [amountText, setAmountText] = useState('100000')
+  /** 玩家手动改过输入框后不再自动填写「钱包最优金额」 */
+  const amountDirtyRef = useRef(false)
   const [bond, setBond] = useState<BondPosition>(snap.bonds)
   const [tipOpen, setTipOpen] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -43,6 +58,14 @@ export function BondCard({
   useEffect(() => {
     setBond(snap.bonds)
   }, [snap.bonds])
+
+  // 金额默认值按「钱包最优」：投到每日收益摸到上限所需的本金为止，钱包不够就全投；玩家手动改过后不再覆盖
+  useEffect(() => {
+    if (amountDirtyRef.current) return
+    const gap = BOND_CAP_PRINCIPAL - bond.principal
+    if (available <= 0 || gap <= 0) return
+    setAmountText(String(Math.floor(Math.min(available, gap))))
+  }, [available, bond.principal])
 
   // 利息按分钟结算：行情轮询（10 秒）已带 loadBond，这里 30 秒兜底，防止上游轮询停摆。
   useEffect(() => {
@@ -93,6 +116,7 @@ export function BondCard({
         <span className="ex-savings-tip-label">{T.savingsCapLabel}</span>
         <b className="ex-savings-tip-cap">{T.bondTipCapValue}</b>
       </div>
+      <div className="ex-savings-tip-note">{T.savingsNote}</div>
     </div>
   )
 
@@ -107,8 +131,27 @@ export function BondCard({
 
   const setRatio = (ratio: number): void => {
     if (available <= 0) return
+    amountDirtyRef.current = true
     const target = Math.floor(available * ratio)
     setAmountText(String(Math.max(1, target)))
+  }
+
+  /** 「1 亿」：把本金补到 1 亿高收益档上限（钱包不够补满时不动作，由「最优」按钱包投） */
+  const fillToSweetCap = (): void => {
+    if (busy || available <= 0) return
+    const gap = SAVINGS_SWEET_CAP - bond.principal
+    if (gap <= 0 || available < gap) return
+    amountDirtyRef.current = true
+    setAmountText(String(gap))
+  }
+
+  /** 「最优」：按钱包与收益上限——投到「每日收益摸到上限」所需的本金为止，钱包不够就全投 */
+  const fillOptimal = (): void => {
+    if (busy || available <= 0) return
+    const gap = BOND_CAP_PRINCIPAL - bond.principal
+    if (gap <= 0) return
+    amountDirtyRef.current = true
+    setAmountText(String(Math.max(1, Math.min(available, gap))))
   }
 
   const buy = async (): Promise<void> => {
@@ -236,13 +279,23 @@ export function BondCard({
               </button>
               <button
                 type="button"
-                className="ex-bond-ratio-btn"
-                title={isEn() ? 'Quick buy max cash' : '快捷买入全部可用资金'}
-                aria-label={isEn() ? 'Quick buy max cash' : '快捷买入全部可用资金'}
-                disabled={available <= 0}
-                onClick={() => setRatio(1)}
+                className="ex-bond-ratio-btn is-sweet"
+                title={T.savingsFillCapTip}
+                aria-label={T.savingsFillCapTip}
+                disabled={busy || available <= 0 || bond.principal >= SAVINGS_SWEET_CAP || available < SAVINGS_SWEET_CAP - bond.principal}
+                onClick={fillToSweetCap}
               >
-                {T.bondBuyMax}
+                {T.savingsOneCap}
+              </button>
+              <button
+                type="button"
+                className="ex-bond-ratio-btn"
+                title={T.savingsOptimalTip}
+                aria-label={T.savingsOptimalTip}
+                disabled={busy || available <= 0 || bond.principal >= BOND_CAP_PRINCIPAL}
+                onClick={fillOptimal}
+              >
+                {T.savingsOptimal}
               </button>
             </div>
           </div>
@@ -252,7 +305,10 @@ export function BondCard({
               className="ex-input ex-num"
               inputMode="decimal"
               value={amountText}
-              onChange={(e) => setAmountText(e.target.value)}
+              onChange={(e) => {
+                amountDirtyRef.current = true
+                setAmountText(e.target.value)
+              }}
               onBlur={handleBlur}
             />
             <span className="ex-input-unit">{T.creditUnit}</span>
