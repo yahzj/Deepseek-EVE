@@ -3,7 +3,7 @@
  *
  * 为什么单独一个组件：两种模式只差标题、快捷金额与提示文案，弹层结构与请求链路完全相同；
  * 复用 `ex-modal*` / `ex-field` / `ex-quick-row` / `ex-mini-btn` / `ex-primary`，
- * 不另造一套视觉体系（「全部」按当前快照的交易所现金取值）。
+ * 不另造一套视觉体系（出金「全部」按当前快照的交易所现金取值，入金「全部」按本地钱包 ISK 取值）。
  */
 import { useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
@@ -216,17 +216,28 @@ export function Cashier({
           />
           <div className="ex-quick-row">
             {mode === 'deposit' ? (
-              DEPOSIT_PRESETS.map((preset) => (
+              <>
+                {DEPOSIT_PRESETS.map((preset) => (
+                  <button
+                    key={preset.value}
+                    type="button"
+                    className="ex-mini-btn"
+                    disabled={busy}
+                    onClick={() => setAmountText(String(preset.value))}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+                {/* 「全部」：把本地钱包 ISK 全数入金（2026-11-16 船长令）；超过服务端单笔/日配额时由服务端拒绝并提示 */}
                 <button
-                  key={preset.value}
                   type="button"
-                  className="ex-mini-btn"
-                  disabled={busy}
-                  onClick={() => setAmountText(String(preset.value))}
+                  className="ex-mini-btn is-accent"
+                  disabled={busy || localIsk < 1}
+                  onClick={() => setAmountText(localIsk > 0 ? String(Math.floor(localIsk)) : '')}
                 >
-                  {preset.label}
+                  {T.cashierAll}
                 </button>
-              ))
+              </>
             ) : (
               <>
                 <button
