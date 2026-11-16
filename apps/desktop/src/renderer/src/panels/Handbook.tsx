@@ -259,8 +259,6 @@ function collectFoeShips(engine: GameEngine): Map<string, FoeShipDef> {
 const NAV: Array<{ key: Tab; label: string }> = [
   { key: 'guide', get label() { return tr("ui.Handbook.186") } },
   { key: 'rules', get label() { return tr("ui.Handbook.187") } },
-  // 2026-11-16 船长令：股市单独一页，详细讲玩法与限制
-  { key: 'exchange', get label() { return tr("ui.Handbook.424") } },
   { key: 'items', get label() { return tr("ui.Handbook.188") } },
   { key: 'modules', get label() { return tr("ui.Handbook.254") } },
   { key: 'ships', get label() { return tr("ui.Handbook.189") } },
@@ -268,6 +266,8 @@ const NAV: Array<{ key: Tab; label: string }> = [
   // 2026-09-26 船长：「敌族图鉴单独列出吧，放在蓝图图鉴下方，叫『势力图鉴』」
   { key: 'factions', get label() { return tr("ui.codex.001") } },
   { key: 'skills', get label() { return tr("ui.Handbook.124") } },
+  // 2026-11-16 船长令：股市单独一页，放在手册最后
+  { key: 'exchange', get label() { return tr("ui.Handbook.424") } },
 ]
 /** 各页搜索框占位词（按当前页给出，玩家一眼知道搜的是哪一页） */
 const SEARCH_PLACEHOLDER: Record<Tab, string> = {
