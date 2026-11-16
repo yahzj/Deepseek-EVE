@@ -62,7 +62,7 @@ import { ShipSprite } from '../ui/ShipSprite'
 import { slotName, roleName, CellDetail, GroupSection, moduleCellOf, shipCellOf, itemCellOf, blueprintCellOf, shipBlueprintCellOf } from './handbookDetail'
 import { handbookContentOrderOf } from '../ui/handbookOrder'
 
-type Tab = 'guide' | 'rules' | 'items' | 'modules' | 'ships' | 'blueprints' | 'skills' | 'factions'
+type Tab = 'guide' | 'rules' | 'exchange' | 'items' | 'modules' | 'ships' | 'blueprints' | 'skills' | 'factions'
 /**
  * **详情窗的卡片类型**（= 导航页 `Tab` ＋ `'foe'`）：势力图鉴的敌人卡也走同一条 `CellDetail` 路
  * （2026-09-26 船长令「敌人卡和其他图鉴中一样，可以点开」），但 `foe` 不是导航页
@@ -259,6 +259,8 @@ function collectFoeShips(engine: GameEngine): Map<string, FoeShipDef> {
 const NAV: Array<{ key: Tab; label: string }> = [
   { key: 'guide', get label() { return tr("ui.Handbook.186") } },
   { key: 'rules', get label() { return tr("ui.Handbook.187") } },
+  // 2026-11-16 船长令：股市单独一页，详细讲玩法与限制
+  { key: 'exchange', get label() { return tr("ui.Handbook.424") } },
   { key: 'items', get label() { return tr("ui.Handbook.188") } },
   { key: 'modules', get label() { return tr("ui.Handbook.254") } },
   { key: 'ships', get label() { return tr("ui.Handbook.189") } },
@@ -271,6 +273,7 @@ const NAV: Array<{ key: Tab; label: string }> = [
 const SEARCH_PLACEHOLDER: Record<Tab, string> = {
   get guide() { return tr("ui.Handbook.125") },
   get rules() { return tr("ui.Handbook.126") },
+  get exchange() { return tr("ui.Handbook.425") },
   get items() { return tr("ui.Handbook.127") },
   get modules() { return tr("ui.Handbook.128") },
   get ships() { return tr("ui.Handbook.129") },
@@ -282,6 +285,7 @@ const SEARCH_PLACEHOLDER: Record<Tab, string> = {
 const COUNT_UNIT: Record<Tab, string> = {
   get guide() { return tr("ui.Handbook.190") },
   get rules() { return tr("ui.Handbook.190") },
+  get exchange() { return tr("ui.Handbook.190") },
   get items() { return tr("ui.Handbook.191") },
   get modules() { return tr("ui.MarketPage.117") },
   get ships() { return tr("ui.MarketPage.116") },
@@ -307,6 +311,7 @@ const BP_MAIN: SubOption[] = [
 const FILTER_LABEL: Record<Tab, string> = {
   guide: '',
   rules: '',
+  exchange: '',
   get items() { return tr("ui.Handbook.003") },
   get modules() { return tr("ui.Handbook.192") },
   get ships() { return tr("ui.Handbook.193") },
@@ -532,6 +537,104 @@ function guideGroupsOf(): HandGroup[] { return [
 ]
 
 }
+
+/**
+ * **股市手册**（2026-11-16 船长令：「专门新开一个单独介绍股市系统的，详细的限制、玩法都要告诉玩家」）
+ * —— 手册左侧一级导航「股市」的内容：只讲怎么用和限制，不写设计原因。
+ */
+function exchangeGroupsOf(): HandGroup[] { return [
+  {
+    title: tr("ui.Handbook.390"),
+    entries: [
+      {
+        title: tr("ui.Handbook.391"),
+        paras: [
+          [tr("ui.Handbook.392"), tr("ui.Handbook.393")],
+          [tr("ui.Handbook.394"), tr("ui.Handbook.395")],
+        ],
+      },
+      {
+        title: tr("ui.Handbook.462"),
+        paras: [
+          [tr("ui.Handbook.463"), tr("ui.Handbook.464")],
+          [tr("ui.Handbook.465"), tr("ui.Handbook.466")],
+          [tr("ui.Handbook.467"), tr("ui.Handbook.468")],
+        ],
+      },
+      {
+        title: tr("ui.Handbook.426"),
+        paras: [
+          [tr("ui.Handbook.427"), tr("ui.Handbook.428")],
+          [tr("ui.Handbook.434"), tr("ui.Handbook.435")],
+        ],
+      },
+      {
+        title: tr("ui.Handbook.396"),
+        paras: [
+          [tr("ui.Handbook.397"), tr("ui.Handbook.398")],
+          [tr("ui.Handbook.399"), tr("ui.Handbook.400")],
+        ],
+      },
+      {
+        title: tr("ui.Handbook.429"),
+        paras: [
+          [tr("ui.Handbook.430"), tr("ui.Handbook.431")],
+          [tr("ui.Handbook.432"), tr("ui.Handbook.433")],
+        ],
+      },
+      {
+        title: tr("ui.Handbook.403"),
+        paras: [
+          [tr("ui.Handbook.404"), tr("ui.Handbook.405")],
+          [tr("ui.Handbook.406"), tr("ui.Handbook.407")],
+        ],
+      },
+      {
+        title: tr("ui.Handbook.417"),
+        paras: [
+          [tr("ui.Handbook.418"), tr("ui.Handbook.419")],
+          [tr("ui.Handbook.401"), tr("ui.Handbook.402")],
+          [tr("ui.Handbook.436"), tr("ui.Handbook.437")],
+          [tr("ui.Handbook.420"), tr("ui.Handbook.421")],
+        ],
+      },
+      {
+        title: tr("ui.Handbook.408"),
+        paras: [
+          [tr("ui.Handbook.409"), tr("ui.Handbook.410")],
+          [tr("ui.Handbook.411"), tr("ui.Handbook.412")],
+          [tr("ui.Handbook.413"), tr("ui.Handbook.414")],
+          [tr("ui.Handbook.415"), tr("ui.Handbook.416")],
+        ],
+      },
+      {
+        title: tr("ui.Handbook.441"),
+        paras: [
+          [tr("ui.Handbook.442"), tr("ui.Handbook.443")],
+          [tr("ui.Handbook.422"), tr("ui.Handbook.423")],
+          [tr("ui.Handbook.444"), tr("ui.Handbook.445")],
+        ],
+      },
+      {
+        title: tr("ui.Handbook.453"),
+        paras: [
+          [tr("ui.Handbook.454"), tr("ui.Handbook.455")],
+          [tr("ui.Handbook.456"), tr("ui.Handbook.457")],
+          [tr("ui.Handbook.458"), tr("ui.Handbook.459")],
+          [tr("ui.Handbook.460"), tr("ui.Handbook.461")],
+        ],
+      },
+      {
+        title: tr("ui.Handbook.446"),
+        paras: [
+          [tr("ui.Handbook.447"), tr("ui.Handbook.448")],
+          [tr("ui.Handbook.449"), tr("ui.Handbook.450")],
+          [tr("ui.Handbook.451"), tr("ui.Handbook.452")],
+        ],
+      },
+    ],
+  },
+] }
 
 /** 「小贴士」子页的 key（它不是词条，单独占一页） */
 const TIPS_KEY = '__tips'
@@ -1037,8 +1140,10 @@ export function Handbook({
      `cur` 是当前该显示的**一页**：玩家点的子页；点的那条被关键词滤掉时自动落到第一条命中的（搜索即跳页）。 */
   const guideGroups = guideGroupsOf()
   const RULE_SECTS = ruleGroupsOf()
+  const EXCHANGE_SECTS = exchangeGroupsOf()
   const guideNotes = guideNotesOf()
-  const sects: HandGroup[] = tab === 'guide' ? guideGroups : tab === 'rules' ? RULE_SECTS : []
+  const sects: HandGroup[] =
+    tab === 'guide' ? guideGroups : tab === 'rules' ? RULE_SECTS : tab === 'exchange' ? EXCHANGE_SECTS : []
   const flat = sects.flatMap((g) => g.entries.map((e) => ({ g, e })))
   const matched = flat.filter((x) => handEntryHits(x.e, q) > 0)
   const onTips = tab === 'guide' && pageKey === TIPS_KEY
@@ -1331,11 +1436,12 @@ export function Handbook({
   function navCount(t: Tab): number {
     if (t === 'guide') return guideGroups.reduce((n, g) => n + g.entries.filter((e) => handEntryHits(e, q) > 0).length, 0)
     if (t === 'rules') return RULE_SECTS.reduce((n, g) => n + g.entries.filter((e) => handEntryHits(e, q) > 0).length, 0)
+    if (t === 'exchange') return EXCHANGE_SECTS.reduce((n, g) => n + g.entries.filter((e) => handEntryHits(e, q) > 0).length, 0)
     return codexCells[t].filter(hitCell).length
   }
   /** 当前页命中计数文案（搜索/筛选态与全量态） */
   const countText = (): string => {
-    if (tab === 'guide' || tab === 'rules') {
+    if (tab === 'guide' || tab === 'rules' || tab === 'exchange') {
       const n = navCount(tab)
       return q === '' ? `${n} ${COUNT_UNIT[tab]}` : tr("ui.Handbook.182", { n: n, p2: COUNT_UNIT[tab] })
     }
@@ -1599,7 +1705,7 @@ export function Handbook({
           </nav>
           {/* 子页面导航（2026-09-14 船长：给「玩法速览 / 航行须知」的解释分页）
               组名作分组小标题、每个词条一个按钮；搜索时右侧显示该条命中段数、未命中置灰（搜索仍作用于整章）。 */}
-          {tab === 'guide' || tab === 'rules' ? (
+          {tab === 'guide' || tab === 'rules' || tab === 'exchange' ? (
             <nav className="app-hand-subnav">
               {sects.map((g) => (
                 <div key={g.title} className="app-hand-subgroup">
@@ -1726,7 +1832,7 @@ export function Handbook({
               </div>
             ) : null}
             <div className="app-hand-scroll">
-              {tab === 'guide' || tab === 'rules' ? renderPage() : null}
+              {tab === 'guide' || tab === 'rules' || tab === 'exchange' ? renderPage() : null}
               {isCodex ? (
                 codexEmpty ? (
                   /**

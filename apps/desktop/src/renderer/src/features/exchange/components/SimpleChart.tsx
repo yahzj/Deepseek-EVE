@@ -28,16 +28,8 @@ type SimplePeriod = 'intraday' | 'h1'
  *  换键让旧偏好不作数，确保默认视窗就是新口径。 */
 const CHART_ZOOM_KEY = 'whale-idle:exch-chart-zoom-v2'
 
-/** 小时 K 默认可视根数：3 天 = 72 根（2026-11-12 船长令；仍可滚轮/拖动看更早数据） */
+/** 小时 K 固定显示最近 3 天 = 72 根（2026-11-12 船长令；更早的数据靠拖动回看，不再有 5/7 天分级） */
 const DEFAULT_CANDLE_LIMIT = 72
-const MAX_CANDLE_LIMIT = 168
-
-/** 档位只允许 72 / 120 / 168 三档（与滚轮步进一致），旧偏好里的 24/48/96 归一到最近档，避免出现不存在的中间分级 */
-function snapCandleLimit(value: number): number {
-  if (value <= DEFAULT_CANDLE_LIMIT) return DEFAULT_CANDLE_LIMIT
-  if (value < 144) return 120
-  return MAX_CANDLE_LIMIT
-}
 
 function readChartZoom(): { zoom: number; candleLimit: number } {
   if (typeof window === 'undefined') return { zoom: 0, candleLimit: DEFAULT_CANDLE_LIMIT }
@@ -46,11 +38,8 @@ function readChartZoom(): { zoom: number; candleLimit: number } {
     if (raw !== null) {
       const parsed = JSON.parse(raw) as { zoom?: unknown; candleLimit?: unknown }
       const zoom = parsed.zoom === 1 ? 1 : 0
-      const candleLimit =
-        typeof parsed.candleLimit === 'number'
-          ? snapCandleLimit(parsed.candleLimit)
-          : DEFAULT_CANDLE_LIMIT
-      return { zoom, candleLimit }
+      // 视窗固定 3 天：旧偏好里的 120/168 等读数一律归一到 72 根
+      return { zoom, candleLimit: DEFAULT_CANDLE_LIMIT }
     }
   } catch {
     /* 缓存损坏按分时处理 */
@@ -107,7 +96,7 @@ export function SimpleChart({ client, code, quote, tick, allInFx = false }: Simp
       if (Math.abs(wheelAccumRef.current) < 40) return
       const zoomIn = wheelAccumRef.current > 0
       wheelAccumRef.current = 0
-      const { isCandle: candleNow, candleLimit: limitNow } = wheelStateRef.current
+      const { isCandle: candleNow } = wheelStateRef.current
       if (!candleNow) {
         if (!zoomIn) return
         setZoomDir('in')
@@ -118,20 +107,13 @@ export function SimpleChart({ client, code, quote, tick, allInFx = false }: Simp
         window.setTimeout(() => setZooming(false), 900)
         return
       }
-      if (zoomIn && limitNow < MAX_CANDLE_LIMIT) {
-        // 低于默认档（旧偏好可能存过 24/48）先回默认档，再按 48 递增，不产生 96 之类不存在的分级
-        const next = limitNow < DEFAULT_CANDLE_LIMIT ? DEFAULT_CANDLE_LIMIT : Math.min(MAX_CANDLE_LIMIT, limitNow + 48)
-        setCandleLimit(next)
+      if (zoomIn) {
+        // 小时 K 视窗固定最近 3 天：往里滚只回到最新（取消拖动回看），不再有更宽的档位
         setPan(0)
         return
       }
       if (!zoomIn) {
-        // 只有比默认档更"放大"（120/168）时才逐级收；默认档（或旧偏好的 24/48）再往外滚一格直接回分时。
-        if (limitNow > DEFAULT_CANDLE_LIMIT) {
-          setCandleLimit(Math.max(DEFAULT_CANDLE_LIMIT, limitNow - 48))
-          setPan(0)
-          return
-        }
+        // 往外滚一格：回分时（不存在 24/48/120/168 之类的中间分级；更早数据靠拖动回看）
         setZoomDir('out')
         setZooming(true)
         setPan(0)
