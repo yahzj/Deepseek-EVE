@@ -1,4 +1,3 @@
-/** 星球规则原型；参数注入，不依赖玩家入口或现有经济。 */
 export type PlanetSize = 4 | 5 | 6
 export type PlanetTraitKind = 'environment' | 'resource' | 'special'
 export type PlanetResource = 'metal' | 'water' | 'food' | 'research' | 'rare' | 'energy'

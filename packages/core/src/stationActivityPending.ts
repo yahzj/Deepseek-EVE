@@ -22,7 +22,6 @@ export function stationActionKind(action: StationAction): MainActivityKind {
   return action.kind === 'recycle' || action.kind === 'unbox' ? 'refine' : action.kind
 }
 
-/** 只认当前舰采矿/打捞及其停止返航，不把战斗或其他在途活动变成可排队。 */
 export function stationActivityWaitsForReturn(state: GameState): boolean {
   if (state.mining.active && state.mining.beltId) return true
   if (state.salvaging.active && state.salvaging.galaxyId) return true
@@ -30,7 +29,6 @@ export function stationActivityWaitsForReturn(state: GameState): boolean {
   return mainActivityOf(state) === null && !!ret && (ret.reason === 'miningStop' || ret.reason === 'salvageStop')
 }
 
-/** 前置已通过才登记；停机仍走原gate，航程由原返航账本推进。 */
 export function queueStationActivity(state: GameState, ctx: SimContext, action: StationAction): CommandResult | null {
   if (!stationActivityWaitsForReturn(state)) return null
   const previousReturn = state.shipReturns[state.shipId]
@@ -38,7 +36,6 @@ export function queueStationActivity(state: GameState, ctx: SimContext, action: 
   const progress = current?.phase === 'returning' ? current.phaseAccMs : current?.phase === 'outbound' ? current.phaseAccMs * 2 : 0
   const skip = applyActivityGate(state, stationActionKind(action), ctx)
   if (skip) return skip
-  // 真值腿长由引擎修正；新建账保留已走相位，替换待办不触碰既有返航。
   if (!previousReturn && state.shipReturns[state.shipId]) {
     const ret = state.shipReturns[state.shipId]!
     ret.phaseAccMs = Math.max(0, progress)
@@ -54,7 +51,6 @@ export function cancelPendingStationActivity(state: GameState): boolean {
   return true
 }
 
-/** 等待目标与返航进度同源，取消只作用于待办。 */
 export function pendingStationActivityView(state: GameState, ctx: SimContext): ActivityView | null {
   const pending = state.pendingStationActivity
   if (!pending || pending.shipId !== state.shipId || !state.fleet[pending.shipId]) return null
@@ -92,7 +88,6 @@ export function pendingStationActivityView(state: GameState, ctx: SimContext): A
   }
 }
 
-/** 无内容表依赖的严格白名单，目标和权限在到港时重验。 */
 export function cleanPendingStationActivity(raw: unknown): PendingStationActivity | undefined {
   if (!raw || typeof raw !== 'object') return undefined
   const value = raw as Record<string, unknown>

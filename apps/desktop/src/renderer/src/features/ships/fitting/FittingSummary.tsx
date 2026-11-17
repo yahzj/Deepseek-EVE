@@ -4,12 +4,11 @@ import './fittingOverview.css'
 
 const fmt = (value: number): string => value.toLocaleString('zh-CN')
 
-/** 沿用装配台原有名义火力与三系平均抗性承伤读数，不参与战斗结算。 */
 export function FittingSummary({ spec }: { spec: UnitSpec | null }) {
   let weaponDps = 0
   let droneDps = 0
   if (spec) for (const weapon of spec.weapons) {
-    if (weapon.label === '基础舰炮') continue // l10n-keep：既有武器来源判据，不是显示文本
+    if (weapon.label === '基础舰炮') continue
     const damage = weapon.kind === 'gun' ? Object.values(weapon.shotsByType ?? {})[0] ?? 0 : weapon.shotDmg ?? 0
     const dps = damage * (weapon.count ?? 1) / Math.max(0.1, weapon.reloadMs / 1000)
     if (weapon.src === 'drone') droneDps += dps

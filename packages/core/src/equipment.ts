@@ -1,4 +1,3 @@
-/** 旧路径兼容出口；实现按职责归战斗域。 */
 export { effectiveCpu, cpuBudgetOf, cpuOverloadText, cpuUseOf, fittedCpuUsed, droneCpuUsed } from './ships/fitting/cpu'
 export { slotLabel, countModule, ownedModuleCount, addModule, ownedItemCount, removeModule, WEAPON_SLOTS, shipHasWeapon, firstFreeBay } from './ships/fitting/stock'
 export { type StackGroup, stackingOf, pulseStreamOf, fittedPenaltyPartsOf, equipmentPenaltiesOf, equipmentCycleMsOf, curveMult, weightedSum, laserFalloffOf, gapCombine, weightedGap, WEIGHTED_GAP_FLEET_CAP, sameKindCount, fittedBonuses } from './ships/fitting/effects'

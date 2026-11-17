@@ -11,7 +11,6 @@ const profile = (): IndustrialThreatProfile => ({
   minimumThreat: 1,
 })
 
-/** 船长2026-11-01批准先实现后调参；kg、m³和威胁点分别标定。 */
 export const INDUSTRIAL_ENCOUNTER_DEFAULTS: IndustrialEncounterConfig = {
   version: 1,
   threat: { profiles: { mining: profile(), hauling: profile() } },

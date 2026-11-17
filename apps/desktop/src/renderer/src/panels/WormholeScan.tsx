@@ -1,20 +1,3 @@
-/**
- * **「扫描虫洞」页**（2026-09-14 船长：「将扫描虫洞放入出港界面的选项卡内。新增主控活动：'扫描虫洞'。
- * 玩家需要在扫描虫洞界面内开始。…进度条满后。玩家就可以发现一个虫洞。玩家最多可以囤积5个未开始探索的虫洞。」）。
- *
- * 口径（design §三/§五/§六 已确认）：
- * - **主控活动**：开始/停止都只在本页（进度保留，停扫不清零）；与采矿/打捞/远征等互斥；
- * - **窗口 = 12 小时 × 三技能乘算 × 星际奇遇学**（信号分析学/星图测绘学/信号过滤学，与星图扫描同源；
- *   再乘一项虫洞专属的**星际奇遇学**（**每级 −4%、满级 −20%**；2026-09-17 船长由阶跃改线性）；不吃舰船属性）；
- * - 进度满 ⇒ 发现一处虫洞进库存（**上限 5**，满了**停机并提示**）；
- * - 库存每处带**种子 + 内容原型 + 敌族**（起始层**恒 1**：船长 2026-09-14「所有虫洞都是从1层开始探索」）；
- *   卡片只显示「**原型名，发现于 X月X日**」（船长 2026-09-14）；「探索这一处」⇒ 打开准备页选编队进洞（**消耗**该处）；
- * - **自动探索**（批次 3 · 船长逐条定案）：每处一个「自动探索」——自动配置最多 4 条非主控船（**整队一趟
- *   只占 1 枚 AI 核心**，2026-09-26 船长令；可手动改）、**5 分钟**、完成后停止；产出 = **手动一趟期望 × 40%**（**直入仓库**、不保底）；
- *   参与舰**结构/装甲各受损 −40%~−80%** 但**绝不丢船**、任务期间锁定；
- * - **结算**：日志 ＋ 一份**需要确认的报告**（就在本页列出：收益清单 + 损伤读数）——船长允许本页出现"虫洞"字样；
- * - **入口（2026-09-14 上线后）**：本选项卡在星图**常显**（不再依赖调试开关）；未达声望门槛时页内写明还差多少。
- */
 import { useEffect, useState } from 'react'
 import { Panel } from '@whale/ui'
 import { Glyph, ICO_TONES } from '../ui/Glyphs'
@@ -24,7 +7,6 @@ import {
   WORMHOLE_SCAN_BASE_MS,
   WORMHOLE_SCAN_UNLOCK_STANDING,
   wormholeStockMaxOf,
-  // 子页「谜质科技」的读数（标题行右侧 + 面板内都要用）
   matterTechEssenceHeld,
   signalAutoResearchBlock,
 } from '@whale/core'
@@ -33,7 +15,6 @@ import type { GameEngine } from '../game/engine'
 import { WhItemCounts, WhObjectiveProgress } from './WormholeExpedition'
 import type { ToastFn } from '../pages/common'
 import { HintIcon } from '../ui/Hint'
-// ⚠ 原型名走本地化单点（2026-09-26 乙批）——core 的 `WORMHOLE_ARCHETYPE_LABELS` 是纯中文表
 import { aiCoreText, archetypeText } from '../ui/labelsText'
 import { MatterTechTab } from './MatterTechTab'
 import { wormholeIntelLine, wormholeIntelTip } from '../ui/wormholeIntel'
@@ -41,19 +22,11 @@ import { tr, futureTr, cmdText } from '../i18n/locale'
 import { futureWormholeEnabled } from '../game/debugFlag'
 import { fmtDuration } from '../i18n/fmt'
 
-/**
- * **「发现于 9月14日」**（船长 2026-09-14：卡片上不要相对时间，要日期）。
- *
- * 口径：发现时刻 = **开局墙钟**（`character.startedAtWallMs`，建档那一刻）+ **游戏内已过时间**
- * （`foundAtGameMs`；游戏时间与墙钟同速，离线结算也算进 `gameMs`）⇒ 得到玩家真实日历上的月/日。
- * 显示成绝对日期 ⇒ **不再每秒跳动**（旧文案「57秒前」会一直变）。
- */
 function foundDateLabel(state: GameState, foundAtGameMs: number): string {
   const d = new Date((state.character?.startedAtWallMs ?? 0) + Math.max(0, foundAtGameMs))
   return tr("ui.WormholeScan.044", { p1: d.getMonth() + 1, p2: d.getDate() })
 }
 
-/** 库存项的**标准一行**（卡片与放弃弹窗共用同一口径）：族徽 + 「原型名，发现于 X月X日」 */
 function stockLineOf(
   state: GameState,
   item: { family: WormholeFamily; archetype: WormholeArchetype; foundAtGameMs: number },
@@ -72,22 +45,15 @@ export function WormholeScanTab({
   engine: GameEngine
   onToast: ToastFn
   onExplore: (stockId: string) => void
-  /** 「自动探索」⇒ 打开**与主控探索同一个准备页**（`WormholePanel` 的自动模式；船长 2026-09-14） */
   onAutoExplore: (stockId: string) => void
-  /**
-   * **返回虫洞**（船长 2026-09-14：「建议在扫描虫洞内额外给玩家一个返回虫洞的按钮」）：
-   * 手上有一趟探索（临时离开中）时，本页给一个直达入口 —— 与活动栏那条走同一个 `openWormhole()`。
-   */
   onReturn?: () => void
 }) {
   const state = engine.state
-  /** 每秒重算一次读数（进度条/剩余时间跟手；引擎本身按拍推进） */
   const [, setTick] = useState(0)
   useEffect(() => {
     const t = window.setInterval(() => setTick((n) => n + 1), 1000)
     return () => window.clearInterval(t)
   }, [])
-  /** 正在确认「放弃」的那一处（null = 没在确认） */
   const [discardAsk, setDiscardAsk] = useState<string | null>(null)
   const scan = state.wormholeScan ?? { active: false, progressMs: 0 }
   const allStock = engine.wormholeStock()
@@ -101,29 +67,18 @@ export function WormholeScanTab({
   const done = Math.min(windowMs, scan.progressMs)
   const percent = Math.max(0, Math.min(100, Math.round((done / windowMs) * 100)))
   const blocked = engine.wormholeScanBlockReason()
-  /** **当前保存上限**（2026-09-16 船长改判「星图记录学，应该为每级+2，满级+10」⇒ 基础 5 ＋ 每级 2 ⇒ 满级 15） */
   const stockMax = wormholeStockMaxOf(state)
   const full = stock.length >= stockMax
-  /** 手上那趟探索（非空 = 人在洞里 / 临时离开中）；「返回虫洞」按钮与"扫描被挡"的说明都用它 */
   const run = state.wormhole.run
-  /** 解锁门槛（船长 2026-09-14：需要协会声望 40；解锁时会收到一封通讯 + 直接弹窗） */
   const unlocked = engine.wormholeScanUnlocked()
   const standing = engine.wormholeScanStanding()
-  /**
-   * **两个子页**（船长 2026-09-19：「将现有的扫描虫洞分出 2 个子页面：虫洞探索和谜质科技」）：
-   * `explore` = 原页面一字不动；`matter` = 谜质科技树（`MatterTechTab`）。
-   * 子页切换**不落档**（会话内存；默认进「虫洞探索」= 老行为）。
-   */
   const [sec, setSec] = useState<'explore' | 'matter'>('explore')
-  /** 谜质读数（子页标题行右侧换口径用） */
   const essence = matterTechEssenceHeld(state)
 
   return (
     <Panel
       className="is-fill win-fixed-body"
       title={tr("ui.MapPage.007")}
-      /* 常驻说明进标题后的 ⓘ（2026-09-14 船长：「和外面的其他页面一样，添加圆形感叹号用于进行说明」；
-         与同页「残骸打捞」的写法一致，原先那行可见的 `.app-note` 收进提示、不再占版面） */
       hint={
         <HintIcon
           tip={tr("ui.WormholeScan.046", { p1: fmtDuration(WORMHOLE_SCAN_BASE_MS), stockMax: stockMax })}

@@ -1,7 +1,3 @@
-/**
- * @whale/core 对外统一出口。
- * 其他包（data / ui / desktop / 未来服务端）只允许从这里 import。
- */
 
 export { battleWeaponCyclesOf } from './battleWeaponView'
 export { departureView, departureDurationMs } from './departure'
@@ -27,7 +23,7 @@ export type {
   SkillCatalog,
   ItemDef,
   ItemKind,
-  DroneClass, // 2026-09-10 无人机分类（侦察机/战斗机/攻坚机/哨戒机）
+  DroneClass,
   DamageType,
   DamageResists,
   DroneDefense,
@@ -68,28 +64,22 @@ export type {
   BattleBalance,
   FoeTactic,
   DefProfile,
-  // 虫洞内敌方选靶模式（船长 2026-09-13 定；`FoeTargetingMode` + 中文名表见 types.ts）
   FoeTargetingMode,
   FoeShipDef,
   FoeShipSlot,
-  // 敌族字母（`'A'|'B'|…|'H'`）——2026-09-26 势力图鉴批：data 侧登记表与界面都要用它
   FoeFamily,
-  // 敌方挂载件（2026-09-16 船长：把冲锋/受击增程做成"给敌人装配件"）——目录表在 core/foeMounts.ts
   FoeMountDef,
   FoeMountId,
-  FoeDroneDef, // 2026-09-11 敌机机型表（舰载机群；设计稿 foe-drone-system-20260911.md）
-  FoeDroneSlot, // 舰级上的机群登记条目（引用机型 + 架数）
+  FoeDroneDef,
+  FoeDroneSlot,
   FoeReinforceTrigger,
-  /** **支援呼叫装置的两支到场分支**（2026-09-19 船长批；见 `FoeMountDef.supportCall`） */
   FoeSupportBranch,
-  /** **谜质科技树**（2026-09-19 船长批）：效果关键字 / 分支 / 节点定义（表在 `data/src/matterTech.ts`） */
   MatterTechEffect,
   MatterTechBranch,
   MatterTechNodeDef,
   SimContext,
 } from './types'
 
-// 虫洞内敌方选靶模式的中文名（界面/战报/工具读数用；施工期仅调试面板可见）
 export { FOE_TARGETING_LABELS } from './types'
 
 export { moduleAllowedOnShip } from './shipFitting'
@@ -141,21 +131,15 @@ export {
   DEFAULT_START_SHIP_ID,
   addLog,
   createInitialState,
-  // 虫洞锁定判据（洞外开战要避开锁在洞里的锚点船；放 state.ts 避免依赖环）
   shipLockedInWormhole,
   shipLockedReason,
-  // 主控活动位判据（人在洞里 ⇒ 别的活动开不了）
   wormholePilotHoldReason,
-  // 停掉「扫描虫洞」的状态单点（手动停扫与「进洞自动停扫」共用；进度保留）
   wormholeScanHalt,
-  // 同款单点：进洞前自动停掉「开采 / 打捞 / 长途运输」与手动停止共用（船长 2026-09-14）
   miningHalt,
   salvageHalt,
   haulingHalt,
-  /** 2026-10-02 破环搬家：站点进度两枚读数从 station.ts 搬到 state.ts（纯 state 谓词） */
   siteProgress,
   isSiteBuilt,
-  /** 2026-10-02 破环搬家：虫洞空初值从 wormhole.ts 搬到 state.ts（断 state↔wormhole 环） */
   EMPTY_WORMHOLE_STATE,
 } from './state'
 export type {
@@ -196,7 +180,6 @@ export type {
   EventsState,
   GameState,
   DroneLossReport,
-  // 战报改造（2026-09-14 船长定）：结构化战报的类型
   BattleReportRecord,
   BattleReportSource,
   BattleBreakReason,
@@ -206,7 +189,6 @@ export {
   ITEM_KIND_ORDER,
   ITEM_KIND_LABELS,
   itemKindLabel,
-  // 2026-09-10 无人机分类并入「种类」显示（无人机 · 侦察机；市场/仓库/图鉴/手册单点）
   DRONE_CLASS_LABELS,
   itemKindText,
   SHIP_ROLE_LABELS,
@@ -220,16 +202,13 @@ export {
   isMineableItem,
   emptyFitted,
   SLOT_LABELS,
-  // V18 槽类
   RACK_SLOTS,
   RACK_LABELS,
   rackLabel,
   shipSlotsOf,
   rackOf,
-  // 2026-09-27：判"这件走不走高/中/低槽"（插件不走）——装配页候选过滤与装配校验共用
   isRackModule,
   allFittedIds,
-  // 推进器周期口径文案（与 balance.battle 同源；2026-09-14 起支持「按件覆盖」= 微型跃迁引擎 10/60）
   thrusterCycleSeconds,
   thrusterCycleText,
   thrusterCycleFullText,
@@ -247,18 +226,15 @@ export {
   trainingTimeFactor,
   totalTimeToLevel,
   totalQueueTimeMs,
-  /** 2026-09-30 实验室后续内容：突触加速剂（24h ×0.5 · 不可叠用） */
   SYNAPTIC_ACCELERANT_MS,
   SYNAPTIC_ACCELERANT_MUL,
   synapticAccelerantActive,
 } from './training'
-/* 实验室道具的「使用」动作（2026-09-30 船长令「信号发射器和技能加速剂」） */
 export {
   SYNAPTIC_ACCELERANT_ITEM_ID,
   consumableStockOf,
   useSynapticAccelerant,
   synapticAccelerantRemainMs,
-  /* 2026-10-01 船长令：技能加速「自动续用」开关（循环使用 · 离线期间同样生效） */
   SYNAPTIC_ACCELERANT_RENEW_TAIL_MS,
   boostAutoRenewOn,
   setBoostAutoRenew,
@@ -268,11 +244,6 @@ export {
   availableInvasionBeacons,
   INVASION_BEACON_FAMILIES,
   useInvasionBeacon,
-  /* 2026-09-30 船长令（高安点火二次警告 + 扣声望 / 有空间站的地方不能用）：
-     界面与 core 共用同一批判据与常量。
-     🔴 **2026-10-03 船长裁「乙」**：高安判据改看「**玩家选定的目标星系**」⇒ 顺带删掉
-     `playerGalaxyIdOf`（它把"玩家在哪"简化成 `awayGalaxy ?? 母港`，采矿/打捞期间必然错
-     —— 正是"穹顶墓园弹出高安警告、警告里还写着大鲸鱼Ⅳ"那次的根） */
   HIGH_SEC_PENALTY,
   beaconLaunchHighSecOf,
   beaconTargetBlocked,
@@ -309,7 +280,6 @@ export {
 } from './ironman'
 export type { IronmanLike, IronmanState } from './ironman'
 
-/* 2026-09-23 周末入侵活动（M1 骨架：时间轴/占领/进度/遇袭/旗舰/贡献） */
 export {
   WEEKEND_AMBUSH_STRENGTH_MUL,
   WEEKEND_CORE_THREAT,
@@ -319,35 +289,24 @@ export {
   WEEKEND_ENCOUNTER_CAP,
   WEEKEND_ENCOUNTER_P,
   WEEKEND_FAMILIES,
-  /** 2026-09-25 船长令：首场一次性 T0 = 2026-09-25 22:00（此后回到每周五 20:00） */
   WEEKEND_FIRST_T0_WALL_MS,
   WEEKEND_FLAGSHIP_DEADLINE_MS,
   WEEKEND_GAIN_CORE_WIN,
   WEEKEND_DEBUG_WIN_GAIN,
   WEEKEND_GAIN_OFFLINE_REPEL,
   WEEKEND_LOCKED_FAMILY,
-  /** 2026-10-02 船长令「一会8点开启入侵，设置为R族，下周如果没有特意设置，就采用循环敌对势力」——
-   *  循环队 / 循环锚（第 0 期 = 锚点那期）/ 某一期的特意设置 / 本期取族 */
   WEEKEND_FAMILY_ROTATION,
   WEEKEND_FAMILY_ROTATION_ANCHOR_WALL_MS,
   WEEKEND_FAMILY_OVERRIDE,
   weekendFamilyForWindow,
   weekendPeriodIndexOf,
-  /** 2026-10-02 船长令「信号发射器召唤的敌人是随机的（目前只有R和H）」——"做完了的族"唯一登记处
-   *  ＋ 随机抽族（发射器用；`weekendRollOccupation` 的随机兜底同池） */
   WEEKEND_FINISHED_FAMILIES,
   weekendRandomFamilyOf,
-  // **调试档锁定的入侵族**（2026-10-01 船长令「先让本地调试模式必定出新的R族入侵」）
   WEEKEND_DEBUG_FAMILY,
   weekendLockedFamilyOf,
   weekendWinGainOf,
-  /** 2026-09-25 船长令：入侵触发前提 = 协会声望 ≥ 40（调试模式不受限） */
   WEEKEND_MIN_STANDING,
   weekendInvasionAllowedFor,
-  /** 2026-09-28 船长令「击杀BOSS就能获得黑匣，取消之前的复杂判定」：结清标记
-   *  （原爆率表 `weekendBlackBoxChanceOf` / `weekendRollBlackBox` 已整套删除；
-   *  击杀判据 `weekendLastHitByPlayer` 在下面那一组里导出，别再重复列）；同日
-   *  「BOSS输出的贡献占总贡献的60%」⇒ 贡献占比的权重常量。 */
   weekendBlackBoxSettledOf,
   WEEKEND_CONTRIBUTION_BOSS_WEIGHT,
   WEEKEND_GAIN_PERIPHERY_WIN,
@@ -367,26 +326,19 @@ export {
   weekendContributionTier,
   weekendCoreCandidates,
   weekendCoreProgressAt,
-  /* 2026-09-25：章鱼人削血窗口（正常 2h / 调试 10min）——倒计时/削血速率/池子读数/收口四处同源 */
   WEEKEND_DEBUG_FLAGSHIP_WINDOW_MS,
   weekendFlagshipWindowMs,
   weekendDebugOn,
   weekendDrawFoeCardId,
   weekendEncounterChanceAt,
   weekendFlagshipView,
-  // 2026-09-25：入侵敌卡**抽签**（外围 {骚扰, 袭击} · 核心 {袭击, 主力}）＋ 卡池查询
   weekendFoeCardsSelfPriced,
   weekendFoePoolOf,
   weekendGarrisonFoeCardId,
-  // 2026-09-24 第二轮令：旗舰 BOSS 化（跨场累计伤害）——池子读数给界面、每拍推进给引擎
   weekendBossPoolView,
-  /** 2026-09-27 船长令：旗舰占比**玩家优先**口径（玩家允许挤掉章鱼人的输出）——血条读数与措辞同源 */
   weekendFlagshipSharesOf,
-  /** 2026-09-27 整理：旗舰归属判据收口（**留档优先**）——结算快照、结算信与引擎结束日志共用同一个它 */
   weekendFlagshipOutcomeOf,
-  // 2026-09-28：判"是不是玩家完成的最后击杀"的唯一判据（黑匣掷骰与归属显示共用同一把尺）
   weekendLastHitByPlayer,
-  /** 2026-09-27 整理：章鱼人得手的唯一收口（掷黑匣 ＋ 写归属 ＋ 结束本场）——两条到点路径都走它 */
   weekendClaimOctopus,
   weekendTickBoss,
   weekendClockOf,
@@ -402,25 +354,19 @@ export {
   weekendPlayerContribution,
   weekendProgressAt,
   weekendCoreGateView,
-  // 2026-09-25 船长批「乙」：活动栏补"外围进度最高的那一处"读数（随单场胜利增长）
   weekendPeripheryLeadOf,
-  // 同日补正：清"非领先"的外围时最高值不动 ⇒ 再给一个"外围平均"（任何一处前进都响应）
   weekendPeripheryAverageOf,
   weekendReclaimedAt,
   weekendRollOccupation,
   weekendT0Of,
-  /** 2026-10-02 船长令「甲」：**本期击杀过旗舰 ⇒ 本期不再开新场**（判据 = 留档 `flagshipOutcome === 'player'` 且结束在本期 T0 之后） */
   weekendPeriodSealedByKill,
   weekendWindowMsOf,
   weekendWindowOpen,
-  /** 2026-10-02 船长令（100% 后仍可继续刷 · 掉落半量作惩罚）：已夺回的星系 ⇒ 出征残骸折扣 0.5 */
   weekendWreckPenaltyFracOf,
-  /** 2026-10-02（每族一件黑匣批）：有旗舰战的族名单（族 → 黑匣物品 id 的契约读它，内容体检同用） */
   WEEKEND_BOSS_FAMILIES,
 } from './weekendEvent'
 export type { WeekendAmbushPick, WeekendBossPoolView, WeekendEventState, WeekendFlagshipView, WeekendTickResult } from './weekendEvent'
 
-/* 2026-09-23 周末入侵 · 战斗与结算（M1-b） */
 export {
   WEEKEND_ALL_CLEAR_ISK,
   WEEKEND_ASSAULT_REWARD_MUL,
@@ -436,7 +382,6 @@ export {
   weekendSettleAndGrant,
 } from './weekendBattle'
 
-/* 2026-09-23 周末入侵 · 开战入口（旗舰 4 波小队战）；2026-09-25 加战前准备（编队参数化 + 准备视图） */
 export {
   WEEKEND_FLAGSHIP_MAX_SHIPS,
   WEEKEND_PREP_LOW_HULL_FRAC,
@@ -449,15 +394,12 @@ export {
   weekendSanitizeFlagshipSquad,
   weekendFlagshipWavesOf,
   weekendStartFlagshipBattle,
-  /* 2026-09-25：旗舰战的战斗宿主解析（界面"在不在打"的第三个宿主角） */
   weekendFlagshipBattleActive,
   weekendFlagshipBattleViewOf,
 } from './weekendLaunch'
 export type { WeekendBattleKind, WeekendBattleSpec, WeekendOutcome, WeekendResolveResult, WeekendSettlePlan, WeekendSettleGrant } from './weekendBattle'
-/* 旗舰战战前准备（准备视图与缺口标记的类型）＋ 旗舰战战斗视图（战斗窗口第三个宿主） */
 export type { WeekendFlagshipPrepView, WeekendPrepCandidate, WeekendPrepIssue, WeekendFlagshipBattleView } from './weekendLaunch'
 
-/* 2026-09-25 周末入侵 · 两封通讯（实例通讯 · 每场覆盖）＋ 结算面板读的战果快照 */
 export {
   WEEKEND_COMMS_DEPT_ID,
   WEEKEND_COMMS_FACTION_ID,
@@ -473,39 +415,28 @@ export {
 } from './weekendComms'
 export { weekendResultSnapshotOf } from './weekendBattle'
 export type { WeekendResultSnapshot } from './weekendEvent'
-/* 实例通讯的条目/奖励行（界面拼串与类型标注用） */
 export type { CommsInstanceEntry, CommsRewardLine } from './types'
 export { deliverCommsInstance } from './comms'
 
-/* 2026-09-23 周末入侵 · 悬赏替换与遇袭判定（M1-b 第三片） */
 export {
   WEEKEND_BOUNTY_REWARD_MUL,
   WEEKEND_CARD_PREFIX,
   WEEKEND_ASSAULT_SALT_BASE,
   weekendAssaultDrawOf,
-  // 2026-10-02 甲案（船长令「按你推荐」）：界面判"能不能点"与引擎判"准不准打"必须同源 ——
-  // 打着的是**当场重抽的那张卡**（不是板面驻留卡），而冷却按卡 id 记 ⇒ 界面要按前者算。
   weekendAssaultCardIdOfDrawnAt,
   weekendFoeCardIdToFightOf,
   weekendBountyCardsOf,
-  // 2026-09-25 船长裁决「甲」：同一被占星系只出一条入侵悬赏（板面/星图这一层去重）
   weekendBoardRowsOf,
-  // 2026-09-25 修"串星系"：出发归属以界面上那一行为准（同 id 多星系时按 id 反查会串）
   weekendLaunchGalaxyOf,
   weekendNoteAssaultDispatch,
   weekendDerivedCardOf,
   weekendEncounterAllowedIn,
   weekendEncounterRollOf,
   weekendZoneLiveAt,
-  // ⚠ `weekendStandingBountyHeldAt`（收复星系的悬赏押后到活动结束）已随 2026-09-28 船长令
-  //   「入侵期间，赏金任务照常发放（只有势力活跃关闭）」删除 —— 别再往这里加回来。
 } from './weekendBounty'
 export { DEFAULT_BALANCE, RETURN_LEG_MUL } from './balance'
-// 敌方挂载件目录（2026-09-16 船长：把冲锋 / 受击增程做成「给敌人装配件」；表放 core 的理由见该文件头注）
 export { FOE_MOUNTS, FOE_MOUNT_IDS, foeMountOf, resolveFoeMounts } from './foeMounts'
 export { fittedPenaltyPartsOf, equipmentPenaltiesOf, equipmentCycleMsOf } from './equipment'
-// 谜质科技树（2026-09-19 船长批「消耗谜质升级的研究科技树」）：等级 / 费用 / 前置 / 研究 / 增益派生
-// （节点表住在 data/src/matterTech.ts，经 `ctx.matterTech` 供给；本模块按 effect 关键字聚合）
 export {
   matterTechNodes,
   matterTechNodeOf,
@@ -526,7 +457,6 @@ export {
   matterTechWreckYield,
   matterTechWorkEffBonus,
   matterTechWhBuffs,
-  // 2026-09-30 船长令：T5 层首批 ＋ 精炼提速两支
   matterTechVoidRefineCut,
   matterTechVoidOrePerHour,
   matterTechEffectActive,
@@ -541,16 +471,12 @@ export {
   enqueueSkill,
   removeQueueAt,
   moveQueueItem,
-  /** 挪不挪得动（2026-09-30：让队列 ⇈/↑/↓ 说实话，别再"点了没反应"）——与 `moveQueueItem` 同一套判据 */
   queueMovePlan,
   clearSkillQueue,
-  /** 首次进实验室（2026-09-30 船长令：首访发一封黑市通讯）——随档标记的唯一置位点 */
   noteLabOpened,
   HIDDEN_SKILL_IDS,
-  /** 真前置（2026-09-22 船长令）：门槛常数 ＋ 界面置灰与 `enqueueSkill` 共用的那一把尺 */
   PREREQ_MIN_LEVEL,
   skillLockMissing,
-  /** 前置按等级（2026-09-23 船长令）：要求等级 / 一键补齐计划 / 取消级联计划 */
   prereqNeedLevel,
   planPrereqChain,
   skillCancelImpact,
@@ -577,15 +503,12 @@ export {
   MODULE_CARGO_UNIT_M3,
   unloadCargoToWarehouse,
   unloadCargoOfShipToWarehouse,
-  // 2026-09-26 玩家报障：误落进物品仓库的装备（插件装货仓再卸货）搬回装备库（读档时跑、幂等）
   isModuleCargoId,
   repairMisplacedWarehouseModules,
-  /** 2026-09-30 船长令：货仓装不进去的东西（燃料）—— 判据在物品数据上，存量由读档迁移归仓 */
   cargoHoldForbidden,
   repairHoldForbiddenCargo,
   loadWarehouseToCargo,
   loadWarehouseToCargoFit,
-  // 2026-09-13：未上线闸门（给玩家看的物品目录 vs 引擎全目录）
   itemReleased,
   visibleItemDefs,
 } from './inventory'
@@ -594,7 +517,6 @@ export {
   MODULE_SLOTS,
   slotLabel,
   effectiveCpu,
-  // 2026-09-11 协处理器：CPU 预算总额（船体 + 协处理器）与超载预演、换装
   cpuBudgetOf,
   cpuOverloadText,
   swapModuleAt,
@@ -605,37 +527,25 @@ export {
   unfitSlot,
   unfitAt,
   adjustDroneLoad,
-  setAmmoTier, // 2026-09-09 弹药 MK2：出战前选档（装配页按弹族设基础/MK2）
+  setAmmoTier,
   fittedBonuses,
   fittedCpuUsed,
-  // 单件 CPU 占用（含本船特性折算：侦察舰的隐秘行动装置 ×0.5 向上取整）——界面与校验同一把尺
   cpuUseOf,
-  // 2026-09-08 无人机舱大改：装载清单 CPU/体积（装配页预算条、装配校验、战斗装载同源）
   droneCpuUsed,
   droneLoadM3,
-  // 2026-09-26 无人机舱总容量（船体 + 甲板扩展）唯一单点——装配页主表与悬停卡同源
   droneBayTotalM3,
-  // 2026-09-10 船长：卸下甲板扩展等导致机舱变小 → 超出容量的无人机自动卸下并退回仓库
   trimDroneLoadToBay,
-  // 2026-09-20 船长：「战斗结束立刻自动补充，优先货仓，其次是仓库」＋「按本场出发快照补」
   refillDroneLoadTo,
-  // 2026-09-10 船长（G 族专属无人机）：物品持有总数（仓库 + 各船机舱）——「集齐前不重复掉落」判定口径
   ownedItemCount,
   V17_MODULE_MIGRATIONS,
   repairDeprecatedModules,
   repairCivilianFittings,
   migrateDeprecatedAmmo,
-  // V18.1 多件收敛（取消同类唯一后的防超模机制；UI 标签与装配提示用）
   stackingOf,
   stackWeight,
   curveMult,
   gapCombine,
   sameKindCount,
-  /**
-   * **"该件属于哪一路回转冷却"**（2026-09-21 船长令「不同型号就要独立的回转冷却」）：
-   * 力场 / 护盾充能 / 维修三类周期脉冲装置按**型号**拆路；非这三类返回 `null`。
-   * ⚠ 与 `stackingOf` 的**衰减池**是两件事：衰减按全族（换型号绕不开），冷却按型号（各走各的）。
-   */
   pulseStreamOf,
 } from './equipment'
 
@@ -645,7 +555,6 @@ export {
   allocateShipUid,
   changeShip,
   loseShip,
-  // 2026-09-26 整船回收（加固结构插件命中）：把残骸里捞回的船按残骸时刻打折拖回母港入队
   restoreShipFromWreck,
   durabilityOf,
   repairCostIsk,
@@ -659,7 +568,6 @@ export {
   useOneRepairKit,
   renameShip,
   hullLayerCaps,
-  // 舰船仓库（2026-09-14 船长：舰队页「舰船市场」→「舰船仓库」，组装机产出先入仓、可堆叠）
   shipStoredCount,
   shipOwnedCount,
   shipStorable,
@@ -668,7 +576,6 @@ export {
 } from './shipyard'
 export type { FleetRepairPlan, FleetRepairResult } from './shipyard'
 
-// 装配方案（预设）：保存当前装配 / 按方案换装（2026-09-14 船长）
 export {
   FIT_PRESET_MAX,
   FIT_PRESET_NAME_MAX,
@@ -696,7 +603,6 @@ export type {
 
 export { fleetDefOf, shipDisplayName } from './instances'
 
-/** 承伤口径单点（按敌火扣装甲/结构；低安遇袭与战斗撤退共用——见 hullDamage.ts） */
 export {
   HULL_FLOOR_FRAC,
   foeFirepowerDps,
@@ -743,7 +649,6 @@ export {
   acknowledgeScanView,
   advanceScanning,
   SCAN_WINDOW_MS,
-  /** 2026-09-25：危险度**曲线指数**取代旧的线性系数 `SCAN_LOWSEC_PENALTY`（已删） */
   SCAN_CURVE_EXP,
   SEC_FLOOR,
   maxScanWindowMs,
@@ -753,12 +658,9 @@ export {
 
 export {
   refineRate,
-  // 2026-09-30 三号接手批：产出倍率的**真实上限**与**一批产出的逐项读数**（HUD 页不再自造刻度/自己乘）
   refineRateMax,
   REFINE_SKILL_MAX_LEVEL,
   refineBatchOutputOf,
-  /* 2026-09-30 船长令（HUD 悬浮卡）：未起炉时的**基准运转参数**与**残骸单批体积**——
-     悬停卡要显示"每批 X 件 / 每批 Y 秒 / 每批 Z m³"，界面不许自己乘（单点，与起炉共用） */
   refineBaseParamsOf,
   recycleBatchM3Of,
   oreAvailable,
@@ -766,18 +668,15 @@ export {
   refineManualActive,
   startRefineRun,
   startRecycleRun,
-  // F4d：拆解安全货柜（与精炼/回收同一条产线机器；船长 2026-09-13 定案）
   startUnboxRun,
   UNBOX_CYCLE_MS,
   stopRefineRun,
   refineRunViews,
   redeemFragments,
-  // 2026-09-19 玩家报障修：「碎片 → 蓝图」的读数单点（物品页「蓝图碎片」行内兑换用）
   fragmentRedeemRowsOf,
   sellCargoItem,
   sellCargoItemQty,
   sellWareItem,
-  // 2026-09-15 船长：仓库「丢弃」按钮（任意数量；纯销毁、不给钱）
   discardWareQty,
   sellWareItemQty,
   sellAll,
@@ -785,26 +684,21 @@ export {
   buyShip,
 } from './industry'
 export type { RefineRunView, RefineOutputRow, UnboxResultRow, SellResult, FragmentRedeemRow } from './industry'
-/* ═══ 实验室 ＋ 跃迁燃料（**2026-09-29 船长令**：「为工业新增子页面：'实验室'」＋「添加超空间折跃燃料」）═══ */
 export {
   labUnlocked,
   labRecipeUnlocked,
   labTechRequirementOf,
   labMaterialAvailable,
   labAffordableBatches,
-  /** 2026-10-01 船长裁：卡面「×N」读**实际批产**（吃 `LAB_YIELD_SKILLS`），不再读配方基础值 */
   labBatchUnitsOf,
-  /** 2026-10-01 船长令：卡面工期读数与组装机卡同步 ⇒ 也走单点（吃 `LAB_CYCLE_SKILLS` 与核心效率） */
   labCycleMsOf,
   labMissingMaterials,
   labRunViews,
   startLabRun,
   stopLabRun,
   advanceLab,
-  /** 2026-10-01：实验室按组装机那套 ⇒ 一线一批 ＋ 卡片级循环开关 */
   setLabLoop,
   labLoopOf,
-  /** 2026-09-30 上限批：技能乘区表（声明式）＋ 产物封顶判据 ＋ 在产速率读数 */
   LAB_CYCLE_SKILLS,
   LAB_YIELD_SKILLS,
   labOutputCapped,
@@ -823,14 +717,12 @@ export {
   jumpFuelStockOf,
   jumpFuelLegMsOf,
   beginJumpFuelLeg,
-  /** 2026-09-30 上限批：上限 / 仓库量 / 余量（**只算物品仓库**，船长令） */
   jumpFuelCapOf,
   jumpFuelWareOf,
   jumpFuelHeadroomOf,
   jumpFuelWareFull,
 } from './jumpFuel'
 export type { JumpFuelActivity, LabWorker } from './jumpFuel'
-/** 2026-09-30 上限批：燃料补给读数（库存 / 上限 / 在产速率 / 状态）—— 界面取数唯一入口 */
 export { jumpFuelSupplyOf, jumpFuelRecipeOf, jumpFuelRecipesOf } from './fuelSupply'
 export type { JumpFuelSupply, JumpFuelFlowStatus } from './fuelSupply'
 export type { LabRecipeDef } from './types'
@@ -841,7 +733,6 @@ export {
   missingMaterials,
   materialFactor,
   matNeedCount,
-  /** 材料等价组的"报名字用哪个 id"（2026-09-29 船长报障：材料消耗列表要显通用黑匣） */
   materialGroupIdsOf,
   materialDisplayIdOf,
   startManufacturing,
@@ -851,15 +742,12 @@ export {
   manufacturingRunViews,
   manufacturingManualActive,
   findBuildable,
-  // 一次性图纸（2026-09-12 船长）：可用性判定 / 是否一次性 / 蓝图定义 / 开工可行性
   recipeCapability,
   isSingleUseBlueprint,
   blueprintDefOf,
   canStartBlueprint,
   oneTimeBookInUse,
-  // 产物 → 蓝图反查（2026-09-22 船长令：缺料提示指去组装机，而不是市场）
   blueprintProducingItem,
-  // 组装机卡片排序（2026-09-14 船长「一次性图纸应该和原图纸放在一起」⇒ 纯函数单点）
   MANU_KIND_ORDER,
   sortManuRows,
 } from './manufacturing'
@@ -879,14 +767,11 @@ export {
   marketQuote,
   marketHistory,
   marketTrend,
-  // 2026-09-16 船长：价格采样间隔（48 点 = 24 小时）；界面换算时间用同一个常量
   PRICE_SAMPLE_MS,
   goodName,
-  /** AI 核心四档的市场行名 id（渲染层用；2026-09-30 批 5） */
   aiCoreGoodNameId,
   salesTaxRate,
   goodLockedReason,
-  /** 声望门槛锁的"结构化"版本（给渲染层按语言渲染；2026-09-30 批 5） */
   marketLockNote,
   marketLockedReason,
   bmGateLocked,
@@ -897,18 +782,14 @@ export {
   askLineOf,
   placeSellOrder,
   placeBuyOrder,
-  // 2026-09-11 挂买单预扣：能不能挂（原因给界面用）
   buyOrderBlockedReason,
   cancelOrder,
   sellAtMarket,
   buyAtMarket,
-  /** 2026-10-02 破环搬家：`buyBasicAiCore` 从 ai.ts 搬到 market.ts（它是市场交易，不是 AI 指派） */
   buyBasicAiCore,
   shipSellable,
   sellShipAtMarket,
   placeShipSellOrder,
-  // 舰船仓库出售（2026-09-14 船长「舰船仓库是用于方便市场出售舰船的」）；上面三条是舰队实例版
-  // （**自本批起没有界面入口**：舰队出售按钮已撤——保留给老档 escrow 与后续复用）
   sellStoredShipAtMarket,
   placeStoredShipSellOrder,
   learnBlueprint,
@@ -941,7 +822,6 @@ export {
   HOME_GALAXY_ID,
   DSI_FACTION_ID,
   standingOf,
-  // 2026-09-26 声望拆两条账：门槛读 `standingOf`（累计），兑换扣 `spendableStandingOf`（可支配）
   spendableStandingOf,
   noteStandingEarned,
   spendStanding,
@@ -970,19 +850,16 @@ export {
   WRECK_RECOVER_MS,
   WRECK_VOLUME_PER_THREAT,
   wreckItemIdOf,
-  // 2026-09-19 残骸合并（族 × 地区）：卡 → 组、物品 id → 组
   wreckItemIdOfCard,
   wreckGroupOfKey,
   wreckGroupOfCard,
   wreckGroupOfWreckItem,
   wreckGroupKeyOfItemId,
-  // 赏金任务·稀有残骸（窝点战果：必得 + 高级箱额外掉落）
   RARE_WRECK_VOLUME_M3,
   rareWreckItemIdOf,
   rareWreckItemIdOfCard,
   rareWreckItemDefOf,
   isRareWreck,
-  /** 2026-09-25 船长令：H 族（墨潮帮）残骸暂不开放精炼炉回收（打捞与出售不受影响） */
   wreckRecycleClosedOf,
   injectRareWreck,
   rareWreckCountOf,
@@ -995,14 +872,11 @@ export {
   rollRareBoxExtra,
   wreckItemDefOf,
   wreckBaseDensity,
-  // 2026-09-26 船长令（G/H 残骸提价）立的单点：卡的回收档（卡级覆写优先，缺省按星系基础密度）
   wreckCardTierOf,
   wreckDensityOf,
   injectWreckDensity,
-  // 2026-09-10 残骸注入按敌人数加成 / 基础密度按各星系悬赏 20 次 / 遇袭按最强卡 0.5（船长拍板）
   bountyEnemyCount,
   bountyWreckInjection,
-  // 2026-09-25 船长令「冻结残骸经济」：注入口径体量（`wreckThreat` ?? 威胁）与威胁解耦
   wreckInjectThreatOf,
   strongestBountyInjection,
   WRECK_INJECT_ENEMY_BONUS,
@@ -1013,19 +887,14 @@ export {
   RECYCLE_TIER_DIRE,
   advanceWreckDrift,
   salvageRoundPull,
-  // 2026-09-25 玩家报障修复：本轮密度系数**只读**取数口（稀有残骸轮不吃普通池放干）
   salvageRoundMulOf,
-  // **2026-10-02 船长令「甲」**：入侵残骸池按**实际出量**扣、并由池子余额封顶出量（"池子标称多少最多就捞多少"）
   chargeWeekendWreckByVolume,
-  // 2026-09-25 入侵残骸 · 独立池（船长令）：按击败卡威胁注入 · 48h 线性衰减到 0 · 不算当地密度
   WEEKEND_WRECK_DECAY_MS,
   weekendWreckDensityOf,
-  /** 2026-10-03 船长令「按族分账 ＋ 每族一张独立卡」：**每族读数口**（界面卡片与自动判定共用） */
   weekendWreckPoolsOf,
   weekendWreckInjectionOf,
   injectWeekendWreck,
   advanceWeekendWreckDecay,
-  // 2026-09-27 船长令（「主力舰队添加一个稀有残骸掉落」＋「进残骸场」）：箱子的注入与读数
   injectWeekendRareWreck,
   weekendRareWreckCountOf,
   rareStockForTargetOf,
@@ -1053,7 +922,6 @@ export {
   WEEKEND_WRECK_TARGET,
   wreckGroupStocksOf,
 } from './salvage'
-/* ── 2026-09-26 玩家舰船残骸（船长令）：第三本残骸账 · 打捞四级序第 ①★ 档 · 加固结构插件接口 ── */
 export {
   SHIP_WRECK_DECAY_MS,
   SHIP_WRECK_WEIGHT,
@@ -1080,10 +948,6 @@ export {
 } from './shipWrecks'
 export type { WreckLootRow, PlayerWreckSalvage, WreckLogRow } from './shipWrecks'
 export type { WreckLogEntry, WreckLogCause } from './state'
-/**
- * **舰船插件**（2026-09-26 船长令）：装配页只读区（`plugInfoOf`）· 闸门拒因（`plugBlockReasonOf`）·
- * 章鱼人兑换（`exchangePlugBlueprint` / `plugExchangeRowsOf` / `PLUG_BLUEPRINT_COST`）。
- */
 export {
   isPlugOf,
   plugSlotsOf,
@@ -1106,19 +970,14 @@ export {
   exchangeUniversalBlackBox,
 } from './plugs'
 export { plugEffectPartsOf } from './plugEffects'
-/** **拆船回收**（2026-09-27 船长令）：预览 ＋ 执行（唯一取数口：界面两次警告与实际发放同一份算术） */
 export { shipScrapPreviewOf, scrapShip, SHIP_SCRAP_MATERIAL_SHARE } from './scrap'
 export type { ShipScrapPreview } from './scrap'
 export type { ShipPlugBlock, PlugExchangeRow } from './plugs'
-/** **黑匣与插件解锁**（2026-09-26 船长令）：组装机插件档的解锁判据与拒因单点 */
 export { isBlackboxItem, noteBlackboxObtained, blackboxSeenOf, plugCraftUnlockedOf, plugCraftLockReasonOf, PLUG_BLACKBOX_ITEM_ID, BLACKBOX_ITEM_IDS } from './blackbox'
-/** 2026-10-02（每族一件黑匣批）：族 → 该族旗舰黑匣 id 的取数口（发放侧唯一 · 内容体检同用） */
 export { blackBoxItemIdOfFamily, blackBoxItemIdForFamily } from './blackbox'
 export type { PlugCraftLock } from './blackbox'
-/** 玩家舰船残骸的一具记录（2026-09-26）——界面读数卡与工具都要这个形状 */
 export type { ShipWreckRecord } from './state'
 export type { RecycleTier, RecycleProfile } from './salvage'
-/* ── 2026-09-19 残骸合并：13 组定表（族 × 地区）＋ 出量梯度（船长 2026-09-19） ── */
 export {
   WRECK_GROUPS,
   WRECK_GROUP_BY_KEY,
@@ -1140,14 +999,11 @@ export {
   advanceAutoLoopBounty,
   autoLoopWaitLabel,
   autoLoopReopenBlockReason,
-  /* 入侵「重复出击」（2026-09-25 船长令：入侵活动的悬赏允许开自动重复、照常算返回时间） */
   autoLoopInvasionGalaxy,
   autoLoopInvasionPlanOf,
   setAutoLoopInvasion,
   advanceAutoLoopInvasion,
-  // 2026-09-20：战后自动补足机群 ⇒ 门槛只在"货源不够"时拦人；本函数给装配页显示"还差几架"
   autoLoopDroneShortfall,
-  // 2026-09-20：本场机群战损读数（before/after/attrition）——**after 是补货前**的存活架数（安全阀单点）
   droneBattleOutcome,
   bountyCooldownMsFor,
   bountyCooldownRemainingMs,
@@ -1155,15 +1011,9 @@ export {
 } from './expedition'
 export { cancelManufacturing } from './manufacturing'
 export { activityOverview, shipBusyLabel, skillQueueStatus } from './activity'
-// 舰船忙态标签单点（2026-09-27）：档位 → 文案 + id；两处忙态函数与渲染层共用
 export { busyLabel, BUSY_LABEL_ID, BUSY_TEXT } from './busyLabels'
 export type { BusyLabel, BusyLabelId } from './busyLabels'
 export type { ActivityKind, ActivityStopKind, ActivityView } from './activity'
-/**
- * **主控活动切换的单点判据**（**2026-09-21 船长令**：「统一为能够直接切换（自动取消当前活动），
- * 像长途运输这种高收益高周期的才加一个警告」）。
- * 界面用到的是：`ACTIVITY_CONFIRM_ID`（首击警告那句 → 两段确认）与 `haltCurrentActivity`（二击执行）。
- */
 export {
   ACTIVITY_CONFIRM_ID,
   applyActivityHandoff,
@@ -1221,7 +1071,6 @@ export {
   playerAtSite,
 } from './station'
 export type { StationBillRow } from './station'
-/* 通讯收件箱（2026-09-11 船长定：NPC 发消息补充剧情与任务提示） */
 export {
   COMMS_DAY_MS,
   COMMS_REPLIES_ENABLED,
@@ -1229,7 +1078,6 @@ export {
   commsDialogueKey,
   commsGameClock,
   commsInbox,
-  // 2026-09-14 船长：「解锁时发送通讯给玩家（同时也要直接弹窗）」⇒ 弹窗队列两件套
   commsPopupQueue,
   dismissCommsPopup,
   commsTriggerMet,
@@ -1282,20 +1130,15 @@ export {
   battleArcsFor,
   spreadWinChance,
   desiredRangeFor,
-  // 主武器（战术距离口径；船长 2026-09-12 裁定「甲」= 射程最远的武器）——三按钮/发射前战术/界面射程带共用
   mainWeaponOf,
-  // 2026-09-11 船长：目标距离按星系独立保存——单点读写（实战开战 / 胜率预估 / 界面共用）
   desirePrefOf,
   setDesirePrefOf,
   foeDesiredRange,
-  // 敌机有效射程（2026-09-11 船长「受击后大幅提高无人机射程（提高 400%）」）——开火判定与界面同源
   foeDroneRangeOf,
-  // 敌舰炮台有效射程（2026-09-12 船长：D 族静滞卫舰「挨打后射程增加 50%」，仅该型舰）——同上，开火判定与界面同源
   foeGunMaxRangeOf,
   foeGunRangeMulOf,
   mergeResist,
   foeMainDamageType,
-  // 2026-09-10 船长（窝点混伤）：敌方火力构成单点（战斗 / 胜率预估 / 任务卡文案同源）
   foeDamageComposition,
   splitShotByComposition,
   applyFoeShot,
@@ -1312,9 +1155,7 @@ export {
   FOE_ELITE_WORD,
   createPlayerSpec,
   playerAmmoType,
-  // 多舰编队开战（虫洞 D 批 · 船长 2026-09-13「4 艘同时参战」）——既有单船路径并列的第二条入口
   startFleetBattleFor,
-  // 敌方选靶模式（虫洞内专属；单船路径一次随机数都不消费）
   pickMyUnitTarget,
   aliveMyUnits,
   myUnitOutputScore,
@@ -1323,104 +1164,61 @@ export {
   
   BATTLE_STEP_MS,
   BATTLE_MAX_STEPS,
-  // **入场窗口**（船长 2026-09-14「动画没结束不开火」）：界面飞入动画与引擎"不可选中窗口"的
-  // **同一个出处**——界面直接 import 这两个数当 `--arrive-ms`，不许再各写一份。
   BATTLE_ARRIVAL_FLY_MS,
   BATTLE_ARRIVAL_STAGGER_MS,
-  // 机群战损（2026-09-10 船长「无人机可被击落」+ 永久损失制）
   pdEnabledFor,
   settleDroneLosses,
-  // 战报改造（2026-09-14 船长定）：唯一构造点 + 四档判定纯函数
   captureBattleReport,
   battleVerdictOf,
-  // 推进器周期爆发（2026-09-10 船长定）：引擎与战斗界面同源读这一个函数
   thrusterPhase,
   unitThrusterCycle,
   effectiveHitMul,
-  // 敌冲锋（2026-09-14 逐单位）：战斗界面读它渲染「敌冲锋中」标记（只数存活）
   foeChargeCount,
-  // 维修脉冲周期（2026-09-11：内容体检「产物说明契约」按它核对说明里的「每 N 秒」）
   REPAIR_PULSE_MS,
-  // 挂载件「船体修理装置」的威胁归一基准（2026-09-24 船长：k = 该层威胁 ÷ 45）——
-  // 工具/读数按它换算"某层一跳回多少"，引擎侧消费点只有 `createFoeSpecsFromShips`
   FOE_REPAIR_THREAT_REF,
-  // 挂载件「船体修理装置」的脉冲结算入口（逐单位自修；用例与后续读数工具直接调它）
   pulseFoeMountRepair,
-  // 护盾充能脉冲周期（2026-09-14 船长新增件：同上，说明里的「每 30 秒」与它同源）
   SHIELD_PULSE_MS,
   SHIELD_FIELD_COST_PCT,
-  // 损伤管制装置的启动锁定时长（2026-09-27：卡面那行读它，说明不再手写「1 秒」）
   DC_LOCK_MS,
   shieldPulsePctOf,
   shieldFieldOf,
   preloadShieldFieldFor,
   pulseShieldFieldFor,
-  // **逐型号脉冲流**（2026-09-21 船长令「不同型号就要独立的回转冷却」）：读数/工具用逐路入口——
-  // 每路一个型号、各带自己的比例与间隔（衰减仍按全族合并，见 `equipment.stackingOf` 的 kind）
   shieldFieldStreamsOf,
   shieldChargeStreamsOf,
   repairStreamsOf,
-  // 无人机技能每级参数（2026-09-11：内容体检「技能说明契约」按它核对技能说明里的每级值）
   DRONE_SKILL,
-  // 激光"威力随距离"系数（2026-09-11：属性面板「威力衰减」行改由**引擎同一函数**算，
-  // 此前面板用 (1+falloff)/2 自算——旧口径下引擎实际是 ×0.44/×0.48、面板却写 ×0.65/×0.68，属显示值与实战值漂移）
   beamPowerFactor,
-  // 逐舰维修 / 护盾充能（2026-09-16 船长裁定「甲」）：界面与收场方读**逐舰账本**的唯一入口
-  // （单船路径与老档在途战斗 ⇒ 自动退化成"只有主控那一份"）
   repairLedgersOf,
-  // 2026-09-24 玩家报障「进战斗后维修组件显示 0」⇒ 战斗页读数改看"可用池"（与按需取用同源）
   repairKitAvailableOf,
   shieldChargeLedgersOf,
   refundRepairKitsAll,
-  // 弹药取档判定（船长 2026-09-16「甲」新口径：同族取"能装得最多"的那一档）——
-  // 引擎开战预载与装配页弹药档位**共用**（界面如实显示"本场会用哪一档、够不够"）
   resolveAmmoTier,
   ammoLoadTotals,
-  // 洞内战斗倍速时间轴（2026-09-19 谜质科技「时间压缩矩阵」）：界面读生效倍速与折算时刻，
-  // 演出窗口（入场/转场/击杀慢镜）按 `battleShowWindowMs` 等比放大
   battleSpeedOf,
   battleShowWindowMs,
   battleClockNowMs,
-  // 战场远端（距离上限）：2026-09-19 船长裁定「甲」——按当前双方有效射程现算（含增程），只增不减
   battleMaxDistanceM,
-  // 捕获网的两个距离单点（2026-09-26 船长令）：我方投网射程 3800 米 / 敌我通用断开距离 4500 米。
-  // 界面侧（装配页短行、敌舰挂载件效果句）从这里取值，**不硬写数字**（避免引擎改了而文案漂移）
   MY_WEB_RANGE_M,
   WEB_BREAK_DIST_M,
-  // 敌舰射程削减的**最短射程地板**（2026-09-26 船长报障：墨潮电子舱要写明"最短射程 3000m"）
-  // ——界面侧（短行文案）从这里取值，同样不硬写数字
   FOE_RANGE_DEBUFF_FLOOR_M,
-  // **维修装置装上船后的每跳实修值**（**2026-09-29 船长令**：「当装备到船上后，显示实际维修值」）——
-  // 与开战预载 `preloadRepairFor` **同一份算法**（`perPulseRepairUnits`）⇒ 显示值不会与实战值漂移。
-  // 界面（装备卡参数行）只许调本函数，别自己拼那四项乘数与两条例外。
   repairStatsFor,
-  // 同一批：某舰**当前装着的维修装置**（按位序）——界面靠它把"这一件"对到 `repairStatsFor` 的哪一份
   fittedRepairModules,
-  // **多装递减装备的「有效值（原值）」读数**（**2026-09-29 船长令**：「之后所有多装递减的装备，能否采用
-  // 和维修装置类似的 '真实数值（原始数值）' 这样的方式标注参数？」）——折权族给本件那一份
-  // （`原值 × 同族第 n 件权重`）、缺口族给装上后的**合成值**；界面只许调本函数，别自己折权。
   fittedEffectParamsOf,
-  // **敌舰开火单发的两把折减尺**（后勤舰修理折减 + R 族「叠光装置」的伤害 ×0.3）——
-  // 2026-10-01 起对外只读：`corona-devices-20261001` 用例靠它验"折减真的落在每一发单发上"
-  // （引擎侧照旧走同一函数，加导出不改行为）。
   foeRepairDiscountedShot,
 } from './combat'
 export type { WeaponSpec, WeaponSrc, UnitSpec, Hp3, BattleVerdict } from './combat'
 
-// 悬赏胜率蒙特卡洛预估（2026-09-09：玩家可见展示口径；旧稳态 bountyWinPercentGuarded 仅兼容遗留调用）
 export { BOUNTY_MC_RUNS, buildEvalState, estimateBountyWinOn, estimateBountyWinMC } from './winEstimate'
 export type { BountyWinMC } from './winEstimate'
 
 export {
   AI_CORE_ORDER,
-  // 2026-09-23 船长令「使用AI核心时，默认选择当前拥有的最高级核心」——四处选择入口共用这一把尺
   bestAiCoreOf,
   aiCoreName,
-  // 2026-10-02 三号：核心档位名 → 本地化 id（当参数喂模板时挂 `p{n}p{k}Id`；渲染层 labelsText 已改从这里 import）
   AI_CORE_IDS,
   aiEfficiency,
   countAiCore,
-  /** 2026-10-02 代码审查：可用核心下拉的单点（渲染层原抄 8 处 filter ＋ 3 份顺序字面量） */
   usableAiCoresOf,
   gainAiCore,
   aiCoreCap,
@@ -1448,12 +1246,8 @@ export {
   formatDurationMs,
   simulateOffline,
 } from './simulation'
-// 紧凑时长（2026-09-16）：活动栏徽标那类窄格用（只保留两级最大单位）——全量格式仍走 formatDurationMs
 export { formatDurationShort } from './time'
 
-// **金额显示单点**（2026-09-13 船长：「更换金钱单位为信用点」＋「希望考虑到钱位数过多时的处理」）：
-// 单位名 / 万·亿分级 / 精确值提示 —— 玩家可见金额文案一律走这里（引擎内部字段仍叫 `isk`）。
-// ⚠ 2026-09-29 起全部**带可选 `lang`**（缺省 `'zh'` ⇒ 既有调用零变化；`'en'` ⇒ `credits` ＋ M/B 缩写）。
 export {
   MONEY_B_DECIMALS,
   MONEY_B_THRESHOLD,
@@ -1469,7 +1263,6 @@ export {
   moneyExact,
   moneyExactText,
   moneyFitCandidates,
-  // 2026-10-02 船长插入令：钱包移到屏幕顶端 ⇒ 宽度不受限 ⇒ 钱包只用"全额档"（不缩写）
   moneyFullCandidates,
   moneyFormatCandidates,
   moneyText,
@@ -1496,8 +1289,6 @@ export {
 } from './save'
 
 export {
-  /* 序章·苏醒（2026-09-17 教程重做后只剩"演出 + 收尾"；线性七步已退场）
-     ⚠ 2026-09-20 起「寻找人类」不再随序章结束发布 ⇒ 走 `publishFindHumansWhenReady` 闸门 */
   ONB_AWAKEN,
   ONB_DONE,
   TASK_FIND_HUMANS,
@@ -1528,14 +1319,12 @@ export {
   BOUNTY_BOARD_PERIOD_MS,
   bountyDayStartWallMs,
   bountyBoardRemainingMs,
-  /** 派系活跃的 12:00 界碑与倒计时（2026-09-29 船长令：活跃切换时间 24 时 → 12 时） */
   factionNoonWallMs,
   factionSwitchRemainingMs,
   RESOURCE_TASK_LEVEL_MARGIN,
   SPAWN_SUPPLY_CUT,
   SPAWN_SHOCK_STEP,
   refundSpawnShock,
-  /* 任务级别 / 条数 / 快递虚拟货物（2026-09-18 船长批） */
   SIDE_TASK_LEVEL_SCALE,
   SIDE_TASK_BASE_COUNT,
   SIDE_TASK_COUNT_PER_STATION,
@@ -1555,30 +1344,21 @@ export {
   abandonAcceptedCourierTask,
   courierOccupiedM3,
   BOUNTY_TASKS_PER_ROUND,
-  /**
-   * **快递板周期（120 分钟）与到期判据**（2026-09-24 船长令：「快递任务的周期和持续时间都为 120 分钟，
-   * 资源任务不变」）——界面按它算快递的倒计时与"每 N 分钟一轮"文案：**别再写死 20 分钟**
-   * （船长报障：「卡片上和快递任务页面写的还是 20 分钟」）。
-   */
   COURIER_BOARD_PERIOD_MS,
   courierDueAtWindow,
   courierDeadlineMs,
-  // 赏金新板提示（船长 2026-09-14：换板未看 ⇒ 导航徽标；进任务中心即记账）
   sideTasksMarkBountySeen,
 } from './sideTasks'
 export { bountyTaskStandingGain } from './expedition/bountyBoard'
-/* 「第一次」任务系列（2026-09-17 教程重做批 · 阶段②）：13 条任务 + 13 条次数链 + 终身计数 */
 export {
   FIRST_TASKS,
   CHAIN_TIERS,
-  /* 链奖金：第 N 级 = 基准 × N⁵（船长 2026-09-18）；领奖额一律走下面两个函数算 */
   CHAIN_REWARD_ISK_BASE,
   chainLevelRewardIsk,
   chainPendingRewardIsk,
   FIRST_UNLOCKS,
   unlocked,
   unlockNeedTitle,
-  /* 「第一次完成悬赏」的照会战加成（原"试炼步骤"加成改挂任务） */
   isFirstBountyBattle,
   applyFirstBountyBuff,
   FIRST_BOUNTY_HIT_BONUS,
@@ -1586,40 +1366,26 @@ export {
   bumpFirst,
   firstStatOf,
   chainProgressOf,
-  /* 「第一次」任务：**只判不写**（2026-09-21 船长令改成"玩家点「完成」才推进"）——
-     完成动作见下面的 `claimFirstTask`；末段并列批的判定同样走这一个读数函数 */
   claimableFirstTasks,
   isFirstTaskCurrent,
   advanceFirstChains,
   claimChainReward,
   visibleFirstTasks,
-  /* 取"当前语言的"任务标题/正文（2026-09-29 批 1：英文界面残留中文清理 · 渲染层只许从这里取） */
   firstTaskText,
-  /* 末段并列批（2026-09-20 船长第三道令：完成第 11 条后，长途运输/虫洞/寻找人类一起显示） */
   PARALLEL_TAIL_IDS,
   isParallelTail,
   sequentialPrefixDone,
-  /* 「第一次」页头读数：已完成条数 / 总条数（2026-09-20 顺序解锁后新增） */
   firstTaskProgress,
-  /* 里程碑页（2026-09-20 船长：把"完成「第一次」后的里程碑任务链"单开子页面） */
   milestoneBoard,
-  /* 任务中心卡片序列（顺序解锁下恒为"当前这一条"；签名与字段保留给面板与用例） */
   firstTaskBoard,
   totalSkillLevels,
   dsiStanding,
-  /* 导航「任务中心」的推进提醒（船长 2026-09-20：每推进一阶段第一次任务时提醒）——
-     判定与记账的单点，界面只读它 */
   firstTaskNotice,
   firstTasksMarkSeen,
 } from './firstTasks'
-/* 奖励发放（六个口袋：蓝图书/仓库/装备库/机库/核心账本/虫洞库存）——单独一件以避开反向依赖成环 */
 export { grantFirstReward, grantFirstPocket, grantStartRewardsForCurrent, claimFirstTask } from './firstRewards'
 export type { ClaimFirstTaskResult } from './firstRewards'
-/* 「第一次」任务的奖励口袋形状（完成奖励与起手道具共用） */
 export type { FirstReward } from './firstTasks'
-/* 成就徽章（2026-09-20 船长批「继续之前的成就系统」）——**两批都已完成并合入 main**：
- * 第一批 = 徽章框架 63 枚 · 第二批 = 里程碑成就 18 枚（判据 = 终身计数达阈值，六个计数键由
- * `engine.reconcileMilestoneStats` 每拍现算兜底）。本处**不挂未完成记号**（§十一之二）。 */
 export {
   achievementReached,
   advanceAchievements,
@@ -1637,7 +1403,6 @@ export type { SecurityZone } from './securityZone'
 export type { SideTask, SideTasksState, CourierDeliveryState, GameStateV24, MarksState } from './state'
 export { emptyMarks } from './state'
 
-/* 赏金任务 · 敌人窝点（2026-09-10）：档位派生、名称、酬金与稀有残骸件数常量 */
 export {
   FOE_LAIR_TIERS,
   FOE_LAIR_GEAR,
@@ -1655,7 +1420,6 @@ export {
   FACTION_RARE_DROP_COUNT,
   FACTION_RARE_DROP_PITY_ROLLS,
   factionRareDropEffectiveRate,
-  /** 2026-09-24：当前档位的自然概率（含限时倍率与铁人）／实际率读数 —— 卡面与工具共用 */
   factionRareDropChanceOf,
   factionRareDropRateOf,
   factionAnomalyOf,
@@ -1671,10 +1435,7 @@ export {
   lairBaseRewardIsk,
   lairTaskRewardIsk,
   lairAnomalyOf,
-  // 2026-09-10 船长（混伤）：窝点副系与配比常量（内容体检 / 界面 / 测试同源）
   LAIR_SUB_DMG_SHARE,
-  // 2026-09-11 船长「E 族单独调整，包括 E 族赏金任务的伤害比例」：逐族副系份额覆写
-  // ⚠ 2026-09-19 起**空表**（E 族改爆炸 60/动能 40 ⇒ 不再有 5:5 特例），机制保留备将来逐族覆写
   LAIR_SUB_DMG_SHARE_BY_FAMILY,
   FOE_SUB_DMG,
   foeMainDamageTypeOf,
@@ -1682,7 +1443,6 @@ export {
 } from './lairs'
 export type { LairTier } from './lairs'
 
-/* ═══ 终局玩法「虫洞」（2026-09-13 开工；施工期对玩家不可见 —— 见 wormhole.ts 头注释） ═══ */
 export {
   WORMHOLE_ADMISSION_TEXT,
   WORMHOLE_MAX_SHIPS,
@@ -1695,7 +1455,6 @@ export {
   WORMHOLE_TURN_PER_EXTRA_WAVE,
   WORMHOLE_TURN_PER_NODE,
   WORMHOLE_TURN_PER_PICKUP,
-  // 临时空间的格数上限（大件货缓冲）
   WORMHOLE_TEMP_CELLS,
   WORMHOLE_TEMP_COLS,
   WORMHOLE_TEMP_ROWS,
@@ -1708,13 +1467,11 @@ export {
   wormholeStepCost,
   wormholeTurnBudget,
   wormholeUnitsPerSlot,
-  // C 批：副本状态机（层/节点/回合/撤离）与层曲线
   WORMHOLE_THREAT_BASE,
   WORMHOLE_THREAT_PER_LAYER,
   WORMHOLE_REWARD_GROWTH,
   wormholeStartRun,
   wormholeMakeNode,
-  // E 批（界面接线）：入洞 / 拾取 / 背包格现算 / 调试放弃
   wormholeEnter,
   wormholeNodePiles,
   wormholeFleetCargoM3,
@@ -1724,13 +1481,9 @@ export {
   WORMHOLE_PILE_UNITS_BASE,
   wormholeAdvanceNode,
   wormholeDescend,
-  // 2026-09-13 船长：侦察舰/电子舰「虫洞扫码 +1 圈（编队即生效、可叠加）」⇒ 编队加成求和
-  // 2026-09-14 船长：一处虫洞锁一族（丁 · 族徽）——族表 / 取卡 / 色调
   WORMHOLE_FAMILY_ORDER,
   WORMHOLE_FAMILY_CARD,
   WORMHOLE_FAMILY_GLYPH,
-  // 2026-09-16 船长：「扫描虫洞界面…给虫洞卡片添加更多信息（虫洞内是什么敌人，以什么类型伤害为主）」
-  // ⇒ 族称 / 三档中文名 / 伤害中文名 / 敌情摘要单点（卡片一句话 + 悬停列三档）
   WORMHOLE_FAMILY_ETHNIC,
   WORMHOLE_TIER_LABELS,
   DAMAGE_TYPE_LABELS,
@@ -1740,7 +1493,6 @@ export {
   wormholeFamilyOfSeed,
   wormholeCardIdOfFamily,
   wormholeScanBonusOf,
-  // 2026-09-14 船长：事件玄学（原「事件分红学」）——洞内空白地点占比的相对系数（每级 −4% / 满级 −20%）
   EVENTS_BLANK_SHARE_PER_LEVEL,
   blankShareFactorOf,
   wormholeExtract,
@@ -1748,29 +1500,19 @@ export {
   wormholeGridTravel,
   wormholeGridActivate,
   WORMHOLE_PLACE_TEXT,
-  // ⚠ 2026-09-15 撤离战取消 ⇒ `WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH` 已删除（不再有"第几层起要打"）
-  // 逃生门判据（回合走不动了 ⇒ 撤离放行；撤离与界面按钮共用）
   wormholeOutOfTurns,
-  // 进洞门槛与锁定（船长 2026-09-13：主控闲置 / 进洞的船锁定；洞外开战要避开锁定的锚点）
   wormholeEntryBlockReason,
-  // 欠着一场战斗（遗迹守备被惊动 / 踩中埋伏）⇒ 层内动作的拒因单点（2026-09-20：打捞那一口也过它）
   wormholePendingBattleReason,
-  // 船长 2026-09-14：「进洞自动停止」——扫描虫洞 / 开采 / 打捞 三项会在进洞那一刻自动停掉
   wormholeEntryAutoStops,
   wormholeShipEntryBusy,
   shipBusyForWormhole,
-  // 议案 A（船长 2026-09-13 批准）：临时离开 = 活动停止（进度保存）/ 返回要主控空闲 / 忙态判据
   wormholeLeave,
   wormholeResume,
-  // ⟪2026-10-02 船长令⟫ 洞内「禁止打捞普通残骸」开关（UI 落点 = 货仓页；唯一读取点 + setter）
   noCommonWreckSalvageOn,
   setNoCommonWreckSalvage,
   shipActivityBusy,
-  // 沉船扣格：背包超格时按每格价值从低到高丢货（船长 2026-09-13 裁定）
   wormholeTrimBag,
-  // F 批：敌卡按层派生；2026-09-15：一族三档（浅/中/深）+ 出场池 + 分层血量修正
   wormholeFoeThreat,
-  // 2026-09-19「支援呼叫装置」批：本卡实际威胁（含延迟补偿 ×1.1）与互斥支援分支的记账
   wormholeCardThreatMul,
   wormholeCardThreatOf,
   wormholeBranchNaturalHp,
@@ -1788,17 +1530,13 @@ export {
   WORMHOLE_TIER_LABEL,
   WORMHOLE_TIER_UNLOCK_DEPTH,
   WORMHOLE_TIER_THREAT_MUL,
-  // 族定选靶（船长 2026-09-15「选靶按照族限定」）
   WORMHOLE_FAMILY_TARGETING,
   WORMHOLE_FAMILY_TARGETING_CHANCE,
-  // 玩家可见威胁的显示倍率（船长 2026-09-15）
   WORMHOLE_DISPLAY_THREAT_MUL,
   wormholeDisplayThreat,
   WORMHOLE_FOE_CARD_IDS,
   WORMHOLE_BOSS_THREAT_MUL,
-  // ⚠ 2026-09-15 撤离战取消：下面三条撤离战威胁常量与 `wormholeExtractThreat` **退役留档**（只为读老档）
   WORMHOLE_EXTRACT_THREAT_MUL,
-  // 层末守卫的选靶倾向概率（船长 2026-09-14「挨个定为 60%」）
   WORMHOLE_BOSS_TARGETING_CHANCE,
   WORMHOLE_EXTRACT_THREAT_BASE,
   WORMHOLE_EXTRACT_THREAT_PER_LAYER,
@@ -1807,7 +1545,6 @@ export {
   wormholeLayerRewardMul,
   wormholeNodesPerLayer,
 } from './wormhole'
-// 网格探索（F3a · 2026-09-13 船长确认）：几何 / 生成 / 信号遮蔽 / 回合成本
 export {
   HEX_DIRS,
   WORMHOLE_EMPTY_MIN_SHARE,
@@ -1846,26 +1583,17 @@ export {
   wormholeEmptyShareFor,
   wormholeGridRadiusFor,
   wormholeMakeGrid,
-  // 2026-09-16 船长：路径拦截（直线路径上有未清掉的敌人 ⇒ 移动被截断并开战）——界面预览与移动同一把尺
   wormholePathInterceptAt,
   wormholeRuinsFloorFor,
-  // 2026-09-16 船长：「遗迹的保底，改为从3层开始保底。1层没有遗迹」⇒ 保底起效层常量（层 1 禁遗迹 · 层 2 无保底）
   WORMHOLE_RUINS_FLOOR_MIN_DEPTH,
-  // 2026-09-14 船长：内容原型（丙）——五档 + 权重 + 按原型重分配信号权重/遗迹占比/遗迹下限
   WORMHOLE_ARCHETYPES,
   WORMHOLE_ARCHETYPE_WEIGHTS,
   WORMHOLE_ARCHETYPE_LABELS,
-  // 2026-10-02 三号：原型名 → 本地化 id（日志/界面按语言出词；渲染层 labelsText 已改从这里 import）
   WORMHOLE_ARCHETYPE_IDS,
   wormholeArchetypeOf,
   wormholeSignalWeightsFor,
   wormholeRuinsShareFor,
   wormholeRuinsFloorBonusFor,
-  /**
-   * ⚠ **2026-09-20 补导出**：`tools/content-check.ts` 一直在 import 它，但它此前**没进过这道门**
-   * ⇒ 运行时拿到 `undefined` ⇒ 那条「每层保底谜质格数 ≥ 1」的契约**静默失效**（`undefined < 1` 恒假）。
-   * 这是"tools 不在 typecheck 覆盖面内"的一个真实样本（另见 `npm run skill:audit` 那条假技能 id）。
-   */
   WORMHOLE_MATTER_FLOOR,
 } from './wormholeGrid'
 export type {
@@ -1878,9 +1606,7 @@ export type {
   WormholeSignal,
 } from './wormholeGrid'
 
-// F 批：洞内战斗（开战 / 每拍推进收口）——单开模块，避免 state→wormhole→shipyard→hauling→state 的循环初始化
 export { wormholeStartBattle, wormholeActivateAt, wormholeTravelTo, advanceWormhole, wormholeBattleViewOf, battleFoeAnomaly } from './wormholeBattle'
-// F3b：层内产出与打捞（打捞器门槛 / 墓场·遗迹打捞 / 专属掉落 / 舰船信号战果 / 矿脉）
 export {
   WORMHOLE_FAMILIES,
   WORMHOLE_GRAVEYARD_COMMONS_MAX,
@@ -1908,24 +1634,19 @@ export {
   wormholeDeliverRelics,
   wormholeEnsureSalvagePiles,
   wormholeEnsureVeinPiles,
-  // F5（船长 2026-09-13）：到达即铺堆（不用激活）+ 采集器门槛（虚空母矿）——打捞/采集同构
   wormholeEnsureArrivalPiles,
   wormholeMinersOf,
-  // 2026-09-19 准备页读数：按**所选编队**现算（还没入洞也能显示台数）——与本趟口径同一把尺
   wormholeMinersInFleet,
   wormholeCollectOreAt,
   wormholeFamilyPoolGaps,
   wormholeFamilyPoolOf,
-  // 稀释池（2026-09-13 船长：「将新增的一次性蓝图放入虫洞的专属奖池内作为稀释」，70:30 + 按层分档）
   WORMHOLE_DILUTION_SHARE,
   WORMHOLE_DILUTION_MIN_DEPTH,
   wormholeDilutionPoolOf,
-  /** F4d：拆解货柜用的层档（一律最低档） */
   WORMHOLE_DILUTION_MIN_DEPTH_FLOOR,
   wormholeUnboxRoll,
   wormholeFamilyOfBox,
   wormholeLootShares,
-  // 图纸货柜（2026-09-14 船长：遗迹打捞新增 · 占 2 格 · 一次性图纸 + 5% 永久图纸）
   WORMHOLE_BP_BOX_SHALLOW,
   WORMHOLE_BP_BOX_MID,
   WORMHOLE_BP_BOX_DEEP,
@@ -1937,7 +1658,6 @@ export {
   WORMHOLE_PERMANENT_MIN_DEPTH,
   wormholeBpBoxIdOf,
   wormholeBpBoxDepthOf,
-  // AI 核心（2026-09-14 船长：遗迹打捞 10% 掉落 · 60/30/10 权重 · 各占 1 格 · 撤离后入核心账）
   WORMHOLE_CORE_GAMMA,
   WORMHOLE_CORE_BETA,
   WORMHOLE_CORE_ALPHA,
@@ -1949,10 +1669,8 @@ export {
   wormholeCoreTypeOfItemId,
   wormholeRollCore,
   wormholePermanentPoolOf,
-  // 池内一件"一次到手几个"（族专属无人机 ×10；货柜 1）——拆解批与入库共用一份口径
   wormholePoolGrantUnitsOf,
   wormholeGrantShipSpoils,
-  // F4：货仓格（超载 / 装舱 / 抛弃 / 拾取入口）——住在 wormholeSalvage
   wormholeHoldCapacityOf,
   wormholeHoldDiscard,
   wormholeHoldOverloaded,
@@ -1964,7 +1682,6 @@ export {
   wormholeTempBlockReason,
   wormholeActionBlockReason,
   wormholeTakePileAt,
-  // 临时空间（船长 2026-09-13：大件货先进临时空间，让玩家协调 → 2026-09-14：4×8 = 32 格的格子区）
   wormholeTempUsage,
   wormholeTempPending,
   wormholeTempAddShape,
@@ -1976,7 +1693,6 @@ export {
   wormholeNormalizeLegacyTemp,
   wormholeSyncMatterTurns,
   wormholeStowOrTemp,
-  // 散货占格（船长 2026-09-13：「必须是矩形」⇒ 全仓唯一一把尺）
   wormholeCargoCellsOf,
   wormholeCargoSlotsOf,
 
@@ -1985,16 +1701,9 @@ export {
   wormholeRelicBoxIdOf,
   wormholeSalvageAt,
   wormholeSalvagersOf,
-  // 2026-09-19 准备页读数：按**所选编队**现算（理由同上）
   wormholeSalvagersInFleet,
-  /**
-   * 2026-09-19 效率（船长「检查是否有其他丢掉科技的情况」批）：`Σ 各台档位基础效率 ＋ 谜质科技加成`。
-   * `…OfFleet` = 按任意编队现算（准备页预览）、`…Of` = 本趟编队（入洞后读数）——
-   * 与 core 结算"额外堆"共用一段算式（`wormholeSalvage.ts` 内 `workExtraPiles` 的消费口径）。
-   */
   wormholeWorkEfficiencyOfFleet,
   wormholeWorkEfficiencyOf,
-  // 2026-09-15 战利品与经济扩充（谜质折算 · 两个新货柜的拆解台 · 残骸堆掷货柜）
   WORMHOLE_ESSENCE_ITEM_ID,
   WORMHOLE_ESSENCE_PER_DEVICE,
   WORMHOLE_VALUABLES_BOX_ID,
@@ -2009,16 +1718,13 @@ export {
   WORMHOLE_SALVAGE_BOX_MAX,
   wormholeMk3PoolOf,
   wormholeRareBoxThemePoolOf,
-  // 2026-09-30：与上面那个扁平池同族——`content:check` 的洞内高级箱契约要按"生效池"判（甲2/乙案修复的护栏）
   wormholeRareBoxThemeGroupsOf,
   wormholeSalvageBoxClassesOf,
   wormholeRollSalvageBox,
 } from './wormholeSalvage'
-// 虫洞扫描（发现线 · 2026-09-14 船长：主控活动「扫描虫洞」+ 最多囤 5 个未探索虫洞）
 export {
   WORMHOLE_SCAN_BASE_MS,
   WORMHOLE_SCAN_UNLOCK_STANDING,
-  // 2026-09-14 船长：内容原型（丙）+ 敌族锁定（丁）+ 放弃已发现的虫洞
   wormholeStockDiscard,
   wormholeStockMeta,
   WORMHOLE_STOCK_MAX,
@@ -2031,7 +1737,6 @@ export {
   wormholeScanStop,
   wormholeStockOf,
   wormholeStockFull,
-  // 2026-09-14 船长：上限随「星图记录学」满级 +10（基础 5 ⇒ 15）——读"当前上限"一律走这个函数
   wormholeStockMaxOf,
   WORMHOLE_STOCK_MAX_HARD,
   wormholeStockPush,
@@ -2039,8 +1744,6 @@ export {
   advanceWormholeScan,
 } from './wormholeScan'
 export type { WormholeScanState, WormholeStockItem, WormholeArchetype, WormholeFamily } from './state'
-// 限时倍率表（2026-09-15 船长：「允许我快速设置在指定的现实日期之前，给特定数值调整一个倍率」）：
-//   `TUNING_RULES` 是数据表、`tuningMul` 是引擎唯一读取入口、`activeTunings` 供界面显示加成与剩余时间
 export {
   TUNABLE_KNOBS,
   TUNING_RULES,
@@ -2049,7 +1752,6 @@ export {
   ruleActiveAt,
   tuningMul,
   tuningMulAt,
-  // 促销层：一条促销 = 扫描倍率 ＋ 合并展示文案
   PROMOS,
   activePromos,
   promoActiveAt,
@@ -2058,8 +1760,6 @@ export {
   dayWindowEndMs,
 } from './tuning'
 export type { ActivePromo, ActiveTuning, PromoOpenTarget, PromoRule, TunableKey, TuningRule } from './tuning'
-// 自动探索（发现线批次 3 · 2026-09-14 船长：最多 4 条副船各占 1 枚 AI 核心 · 5 分钟 · 绝不丢船；
-// ⚠ 收成口径已随 2026-09-26「真进洞跑一趟」改判：折扣 80%（WORMHOLE_AUTO_SIM_YIELD_MUL），不再是旧的 40%）
 export {
   WORMHOLE_AUTO_DURATION_MS,
   WORMHOLE_AUTO_MAX_SHIPS,
@@ -2068,7 +1768,6 @@ export {
   WORMHOLE_AUTO_DAMAGE_MIN,
   WORMHOLE_AUTO_DAMAGE_MAX,
   WORMHOLE_AUTO_REPORT_MAX,
-  // 2026-09-19 船长甲案：自动探索吃「谜质科技」（不折扣）——系数与结算同一个函数，界面读数即实战
   wormholeAutoTechFactors,
   wormholeAutoTechIsNeutral,
   wormholeAutoRunsOf,
@@ -2098,13 +1797,11 @@ export {
 export type { WormholeAutoRun, WormholeAutoReport } from './state'
 export type { WormholeAutoCandidate, WormholeAutoHandover } from './wormholeAuto'
 export type { WormholeAutoTechFactors } from './wormholeAuto'
-// F4：货仓格管理（船长 2026-09-13：货仓直接代表背包大小 + 背包英雄式格管理）
 export {
   WORMHOLE_HOLD_COLS,
   WORMHOLE_CARGO_BAR_MAX,
   WORMHOLE_SHAPE_CONTAINER,
   WORMHOLE_SHAPE_STACK,
-  // AI 核心（1×1 = 1 格 · 2026-09-14 船长「AI 核心单独占 1 格」）
   WORMHOLE_SHAPE_CORE,
   WORMHOLE_HOLD_SHAPES,
   canPlace,
@@ -2128,11 +1825,9 @@ export {
   wormholeIsShapedItem,
   wormholeShapeOf,
 } from './wormholeHold'
-// F3c：谜质储存器（A 批 = 探索与作业类 7 台；效果一律从货仓现算，随趟消失）
 export {
   WORMHOLE_MATTER_DEVICES,
   WORMHOLE_MATTER_DEVICE_IDS,
-  // 抽取池（已排除退役项；2026-09-15 撤离掩护器退役）
   WORMHOLE_MATTER_DRAW_POOL,
   WORMHOLE_MATTER_BUFFS_NONE,
   wormholeMatterDeviceOf,
@@ -2174,7 +1869,6 @@ export type {
   WormholeAdvanceResult,
 } from './wormhole'
 
-/* 调试模式的「本机门禁」（2026-09-25 船长令：只有本地能用，上传后的版本关闭且隐藏） */
 export { isLocalDebugOrigin } from './debugGate'
 
 /**
@@ -2191,10 +1885,6 @@ export {
   buySkillLicense,
 } from './skillLicense'
 
-/**
- * **槽位单点（含插件扩槽）**（2026-09-27 船长令「修」）：`midSlotsAdd` / `lowSlotsAdd` 生效 ——
- * 装配校验与装配页格数共用同一把尺；`installPlug` 里同步就地补齐位数组。
- */
 export { plugSlotAddsOf, shipSlotsWithPlugsOf } from './plugs'
 export { droneReviveCycleMsOf } from './droneRevive'
 export { wormholePreparationPlan, wormholePreparationFillPlan, wormholeEnterPrepared } from './wormholePreparation'

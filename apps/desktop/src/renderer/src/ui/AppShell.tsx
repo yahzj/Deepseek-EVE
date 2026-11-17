@@ -1,35 +1,9 @@
-/**
- * **应用外壳（app shell）——两套布局 + 设置内切换**（2026-09-25 · ui-redesign-2）
- *
- * 船长令：「**新旧界面能否允许玩家在设置内切换？**」→ 裁定**甲：两套 DOM 并存**。
- *
- * ## 做法（上一轮失败三次换来的）
- * 外壳内联了大量 App 局部状态与回调；上一轮试图「抽 34 个 props ＋ 逐个加 p. 前缀」，
- * 结果 JSX 标签名 / 属性名 / 箭头函数 => 的 > 都被误改。本轮改为：
- *   · **一个结构化 props 对象** ctx，在组件顶部**解构** ⇒ 两套外壳块**原名即用、零改写**；
- *   · pageMain / logDock 由 App 作为 ctx 字段传入（它们属 App，不搬进来）；
- *   · 两套布局**共用同一份 ctx** ⇒ 不会各存一份状态而漂移。
- *
- * ## 两套布局
- * · modern（新）：顶栏 +（**左列**：舰船窗 + 活动栏）+ 主区 → **底部横栏**导航 + 右侧日志浮层
- * · classic（旧，取自 main 分支原文）：顶栏（含存档按钮 ＋ **钱包 ＋ 声望**）+（**左侧竖栏**：
- *   舰船窗 + 导航项）+（活动栏横条 + 主区 + 日志坞），**原样冻结**
- *   —— ⚠ 唯一例外：**2026-09-29 船长令**把钱包从左侧栏移回顶栏、并在其右侧加了声望容器
- *   （两套布局共用 `standingChip`）；左侧栏那条金钱栏已随令撤掉。
- *
- * ⚠ 旧版是**冻结的历史形态**；新版后续新增（副AI活动 / 计时中组 / AI 迷你卡动画…）只在 modern 出现
- * —— 这是船长已知并接受的差异。
- *
- * ⚠ 例外 = **船长点名要两版同步的读数**：顶栏「钱包 ＋ 声望」（2026-09-29 令）走共用件
- * （`standingChip()` 与 `MoneyFit`），两套布局各调一次 —— 别再往单边加。
- */
 import { useLayoutEffect, useRef, type ReactNode } from 'react'
 import type { GameEngine } from '../game/engine'
 import type { ActivePromo, ActiveTuning, GameState } from '@whale/core'
 import { DSI_FACTION_ID, spendableStandingOf, standingOf } from '@whale/core'
 import type { ToastFn } from '../pages/common'
 import { ActivityBar } from '../panels/ActivityBar'
-// 旧版活动栏：从「昨天那版」原样拆出的冻结件（船长令「旧版建议你从昨天的版本中 git 下来进行拆解」）
 import { ActivityBarClassic } from '../panels/ActivityBarClassic'
 import { AnnouncementHub } from '../panels/Announcements'
 import { DebugButton } from '../panels/DebugPanel'
@@ -51,7 +25,6 @@ export type LayoutKind = 'modern' | 'classic' | 'cosmic'
 
 interface ShellNavItem { key: string; label: string; icon: string; onSelect?: () => void }
 
-/** 外壳需要的全部输入（App 提供；外壳只读） */
 export interface ShellCtx {
   state: GameState
   engine: GameEngine
@@ -60,7 +33,6 @@ export interface ShellCtx {
   handleReset: () => void
   setShowSaveManager: (v: boolean) => void
   changeMapTab: (t: MapTab) => void
-  /** 任务中心内层页签定位（活动栏「快递」那档跳过去时要选中「快递任务」；2026-09-27 修） */
   focusTaskTab: (tab: string) => void
   changeShipTab: (t: ShipTab) => void
   showToast: ToastFn
@@ -94,7 +66,6 @@ export interface ShellCtx {
 }
 
 export function AppShell(ctx: ShellCtx): JSX.Element {
-  // 解构 ⇒ 下面两套外壳块里的标识符**原名即用**（本轮避免「改坏」的关键）
   const {
     state,
     engine,
@@ -128,22 +99,12 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
     debugNavItems,
     readDebugEnabled,
     qqGroup,
-    // 两支插槽由 App 传入：`pageMainSlot` = `<main class="app-page-main">` 整块；`logDockSlot` = 右侧日志坞
     pageMain: pageMainSlot,
     logDock: logDockSlot,
   } = ctx
-  /**
-   * ⚠ **两支插槽在两套布局里的落点不同**（2026-09-25 船长报障后修正）：
-   * · 新版：`.app-workspace` = 左列 + 右体；**主区在右体里**（`pageMainSlot`），日志坞是**右侧浮层**（`logDockSlot`）；
-   * · 旧版（main 原文）：`.app-workspace` 三个直接子块 = `nav` + **主列** + **日志坞（流内右栏）**，
-   *   且主列的首个子块是「活动窗口」那条。
-   * ⇒ 旧版里两支插槽**对调**：主列位置放日志坞的 DOM（`app-log-dock`），第三块放 `<main>` 整块。
-   *   React 同一次渲染只会挂其中一个位置，不会重复渲染同一份数据。
-   */
   const NAV_ITEMS = navItems
   const DEBUG_NAV_ITEMS = debugNavItems
   const QQ_GROUP = qqGroup
-  // 导航项文案：外壳块里用的是 `t(...)`（App 里来自 useL10n）⇒ 外壳自取一份，不追加 props
   const { t } = useL10n()
   const classicNav = useClassicNavCollapse(layoutKind === 'classic', mobileLog !== null)
   const classicNavRef = useRef<HTMLElement>(null)
@@ -157,7 +118,6 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
   useLayoutEffect(() => {
     const nav = classicNavRef.current, scroll = classicNavScrollRef.current
     if (layoutKind !== 'classic' || !nav || !scroll) return
-    // 两个区域共用实际滚动条留位，避免底部开关比上方列表宽一截。
     const update = () => {
       const gutter = `${scroll.offsetWidth - scroll.clientWidth}px`
       if (nav.style.getPropertyValue('--classic-nav-scrollbar') !== gutter) nav.style.setProperty('--classic-nav-scrollbar', gutter)
@@ -170,23 +130,6 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
 
   return layoutKind === 'classic' ? renderClassic() : renderModern()
 
-  /**
-   * **顶栏「声望」容器**（**2026-09-29 船长令**：「在钱包的右侧，新增一个容器显示玩家的声望，
-   * 移除其他地方显示的声望」）。
-   *
-   * 两套布局**共用这一个函数**（抽出来的原因：上一轮只加进了 classic 分支，
-   * 船长随后报障「新版界面没有上一轮添加的顶部声望」——两处各写一份必然再次漂移）。
-   *
-   * ⚠ **2026-09-30 船长令**（原话：「游戏窗口顶部的'声望·累计获得'需要修改，直接显示玩家当前 XX 声望」）
-   * ⇒ 改判两条：
-   * - 数值改读**可支配**那本（`spendableStandingOf` = 当前余额，章鱼人兑换会扣它）——与左边的钱包并列，
-   *   都是"手上能花的"；
-   * - 容器标签只写「声望」（不再挂「·累计获得」）；**另一本账改为悬停里交代**
-   *   ⇒ `声望：可支配 N · 累计获得 M`（那句写法与声望商店标题行 `ui.IndustryPage.119` 同源，不另写一句）。
-   *   **门槛依旧一律读累计那本**（2026-09-26 令未变）——所以门槛提示文案同批改称「累计」，免得"当前"
-   *   一词同时指两个数。
-   * - 数值按容器宽度自适应、精确值恒挂 `title`（`MoneyFit`，与钱包同一套实现）。
-   */
   function standingChip(): JSX.Element {
     const spendable = spendableStandingOf(state, DSI_FACTION_ID)
     const earned = standingOf(state, DSI_FACTION_ID)
@@ -212,7 +155,6 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
     </button> : null
   }
 
-  /* ─────────────────── 新版（modern）─────────────────── */
   function renderModern(): JSX.Element {
     return (
       <>
@@ -459,7 +401,6 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
     )
   }
 
-  /* ─────────────────── 旧版（classic · main 原文冻结）─────────────────── */
   function renderClassic(): JSX.Element {
     return (
       <>

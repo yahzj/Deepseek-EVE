@@ -1,11 +1,3 @@
-/**
- * 把 data 包全部内容组装成引擎需要的运行上下文（SimContext）。
- * 桌面层只在启动时构建一次。
- *
- * **语言（2026-09-19 船长令「英语本地化」）**：`locale` 缺省 `'zh'` ⇒ 与改动前**逐字一致**；
- * 传 `'en'` 时在组装完的 ctx 上盖一层英文覆盖表（见 `./l10n`）——只改 `name / description`，
- * id 与数值一字不动。工具 / 测试 / 模拟全走缺省 ⇒ 既有读数不受影响。
- */
 
 import {
   DEFAULT_BALANCE,
@@ -49,19 +41,6 @@ export function buildSimContext(locale: Locale = 'zh'): SimContext {
   const galaxies = buildGalaxyCatalog()
   const anomalies = buildAnomalyCatalog()
   const items = new Map(buildItemCatalog())
-  /**
-   * B3：残骸物品 = **按「来源种族 × 来源地区」的 13 组**注册（2026-09-19 船长定「合并」；见
-   * `core/wreckGroups.ts` 与 `docs/design/wreck-groups-20260919.md`）——不再是"每卡一种"。
-   *
-   * - **普通残骸 13 种**（`wreck-a-hi` … `wreck-g-wh`）；
-   * - **稀有残骸 13 种**（`wreck-rare-<组 key>`）：注册范围 = **全部 13 组**，理由与旧口径一致——
-   *   ① 窝点战利品（`isLairCandidate`，B 族除外）+ ② 洞内墓场/遗迹打捞（`wh-*` 卡）；
-   *   ③ **B 族（武装拾荒者）的 `b-hi` 只为旧档兼容保留登记**（它既无窝点、也不在洞里 ⇒ 不再新增产出，
-   *      但老档里可能存着 B 族两卡的稀有残骸，迁移后落进 `wreck-rare-b-hi`，必须认得出）。
-   *   ⚠ 旧的两个白名单（`RETIRED_LAIR_CARD_IDS` / `WORMHOLE_RARE_WRECK_CARD_IDS`）**已随本次合并退役**：
-   *   它们的唯一职责是"给旧档里已获得的稀有残骸保住物品定义"，而迁移（v27→v28）已把旧 id 折进组 id，
-   *   组注册对 13 组一视同仁 ⇒ 白名单没有存在意义了（卡表本身仍保留，只作内容记录）。
-   */
   for (const g of WRECK_GROUPS) {
     const id = wreckItemIdOf(g.key)
     if (!items.has(id)) items.set(id, wreckItemDefOf(g))
@@ -69,9 +48,6 @@ export function buildSimContext(locale: Locale = 'zh'): SimContext {
     if (!items.has(rareId)) items.set(rareId, rareWreckItemDefOf(g))
   }
   const modules = buildModuleCatalog()
-  // B3：碎片物品按"有逆向配方的装备"生成
-  // ⚠ 语言（2026-09-19 英语本地化）：碎片名是从**装备名**派生的 ⇒ 先把 ctx 过一层语言覆盖，
-  //   再用**覆盖后的**装备名生成碎片（否则英文界面里碎片会留着中文装备名）。
   const base = localizeCtx(
     {
       planetary: buildPlanetCatalog(),
@@ -99,7 +75,6 @@ export function buildSimContext(locale: Locale = 'zh'): SimContext {
     },
     locale,
   )
-  // 碎片追加在**覆盖后的**物品表上（`base.items` 已是英文覆盖版；写回原 `items` 会把覆盖丢掉）
   const formationAnomalies = new Map(base.anomalies)
   for (const [id, card] of base.anomalies) {
     if (!id.startsWith('wh-')) formationAnomalies.set(id, rangeEwFlagshipCard(enemyFormationCard(card, base.balance.battle, ENEMY_FORMATION_PLANS[id] ?? {}, base.foeShips), base.balance.battle))
@@ -111,7 +86,6 @@ export function buildSimContext(locale: Locale = 'zh'): SimContext {
     if (!mod) continue
     const id = fragmentItemIdOf(moduleId)
     if (itemsFinal.has(id)) continue
-    /** ⚠ 英文侧把两份模板喂进去（名字由装备名拼出，故装备名走**覆盖后**的 mod.name）——2026-09-30 批 5 */
     itemsFinal.set(id, fragmentItemDefOf(moduleId, mod.name, locale === 'en' ? EN_FRAGMENT : undefined))
     addedFragment = true
   }

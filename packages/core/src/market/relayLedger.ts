@@ -2,7 +2,6 @@ import type { GameState, NpcMarketOrder } from '../state'
 import { RELAY_MAX_FILLS } from './relayTypes'
 import { relayScopeIsActive } from './relaySession'
 
-/** 队列满时暂停消费外来报价，保留未上报成交，单机 NPC 路径照常。 */
 export function relayTradable(state: GameState, order: NpcMarketOrder, atGameMs = state.gameMs): boolean {
   if (!order.relay) return order.qty > 0 && order.expiresAtGameMs > atGameMs
   const relay = state.market.relay
@@ -19,7 +18,6 @@ export function relayAvailableQty(state: GameState, order: NpcMarketOrder, atGam
   return Math.min(order.qty, state.market.relay!.quotes.find(q => q.quoteId === order.relay!.quoteId)?.remaining ?? 0)
 }
 
-/** 仅真实成交点调用；过期、重铺与簿面清理不能生成报告。 */
 export function recordRelayFill(state: GameState, order: NpcMarketOrder, qty: number): void {
   if (!order.relay || qty <= 0) return
   const relay = state.market.relay!

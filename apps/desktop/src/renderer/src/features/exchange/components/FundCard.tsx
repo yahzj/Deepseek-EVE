@@ -1,11 +1,3 @@
-/**
- * 保底基金（放置型）：本金锁定，按 UTC 自然日收益档计提，随时可赎回。
- *
- * 规则（船长 2026-11-04 定案：「起码 3 倍收益，但是有概率亏，随时可赎」）：
- * - 每日结算档：70% 概率 +0.03%、30% 概率 −0.05%；
- * - 亏损真实发生，不保本；赎回额 = 本金 + 累计收益（可为负）；
- * - 每日结果由服务端决定，前端只负责展示与触发，不参与计算。
- */
 import { useEffect, useRef, useState } from 'react'
 import { isEn } from '../../../i18n/locale'
 import type { ExchangeClient, ExchangeSnapshot, FundPosition } from '../client'
@@ -14,20 +6,12 @@ import { money } from '../format'
 import { T, TF } from '../texts'
 import { progressStyle, useActionProgress } from '../useActionProgress'
 
-/** 高收益档本金上限（与服务端 `savingsPrincipalCap` 同口径）：1 亿以内是最高收益档，超出只有固定低息 */
 const SAVINGS_SWEET_CAP = 100_000_000
-/**
- * 「每日收益摸到上限」所需的本金（与服务端结算同口径）：
- * 赢的一天收益 = 51.43%×min(本金,1亿) + 2.4%×超出部分，正收益每天封顶 9 亿（2026-11-13 船长令：3 亿放开到 9 亿）⇒
- * 本金到 1亿 + (9亿 − 5143万)/2.4% ≈ 363.6 亿时，赢的一天刚好赚满 9 亿；
- * 再多的本金当天不会多赚。「最优」按这个数字算，而不是按 1 亿。
- */
 const FUND_DAILY_CAP = 900_000_000
 const FUND_CAP_PRINCIPAL = Math.ceil(
   SAVINGS_SWEET_CAP + Math.max(0, (FUND_DAILY_CAP - SAVINGS_SWEET_CAP * 0.5143) / 0.024),
 )
 
-/** 持仓刷新间隔：服务端惰性按分钟结算，跟行情一起 10 秒拉一次（船长 2026-11-04 定）。 */
 const POSITION_REFRESH_MS = 10_000
 
 export function FundCard({
@@ -43,7 +27,6 @@ export function FundCard({
 }) {
   const [position, setPosition] = useState<FundPosition | null>(null)
   const [amountText, setAmountText] = useState('100000')
-  /** 玩家手动改过输入框后不再自动填写「钱包最优金额」 */
   const amountDirtyRef = useRef(false)
   const [busy, setBusy] = useState(false)
   const [tipOpen, setTipOpen] = useState(false)
@@ -55,7 +38,6 @@ export function FundCard({
   const hasPosition = principal > 0
   const accrued = position?.accrued ?? 0
 
-  // 首屏拉一次持仓，之后每 10 秒刷新（与行情轮询同节奏，收益才会随分钟跳动）。
   useEffect(() => {
     let alive = true
     const pull = (): void => {
@@ -74,7 +56,6 @@ export function FundCard({
     }
   }, [client])
 
-  // 金额默认值按「钱包最优」：投到每日收益摸到上限所需的本金为止，钱包不够就全投；玩家手动改过后不再覆盖
   useEffect(() => {
     if (amountDirtyRef.current) return
     const gap = FUND_CAP_PRINCIPAL - principal
@@ -111,7 +92,6 @@ export function FundCard({
     setAmountText(String(Math.max(1, target)))
   }
 
-  /** 「1 亿」：把本金补到 1 亿高收益档上限（钱包不够补满时不动作，由「最优」按钱包投） */
   const fillToSweetCap = (): void => {
     if (busy || availableCash <= 0) return
     const gap = SAVINGS_SWEET_CAP - principal
@@ -120,7 +100,6 @@ export function FundCard({
     setAmountText(String(gap))
   }
 
-  /** 「最优」：按钱包与收益上限——投到「每日收益摸到上限」所需的本金为止，钱包不够就全投 */
   const fillOptimal = (): void => {
     if (busy || availableCash <= 0) return
     const gap = FUND_CAP_PRINCIPAL - principal

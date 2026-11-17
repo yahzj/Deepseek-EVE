@@ -84,7 +84,6 @@ function newlyOpened(before: GameState, after: GameState, result: unknown): Batt
   return undefined
 }
 
-/** 原动作只在副本执行；射程变化时仅提交待确认意图，不提交库存、移动或活动切换。 */
 export function withBattleRangeCheck<T extends { ok: boolean }>(state: GameState, intent: BattleRangeIntent, run: (staged: GameState) => T): T {
   if (transactionDepth > 0 || state.wormhole.run?.automaticBattleRanges) return run(state)
   if (state.pendingBattleRange && !confirmations.has(state)) return { ok: false, rangeConfirmation: true } as unknown as T

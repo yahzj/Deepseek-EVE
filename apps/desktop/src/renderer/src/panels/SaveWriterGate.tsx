@@ -5,7 +5,6 @@ import { saveBridge, readStoredWebSave } from '../game/storage'
 import { loadSaveFile } from '@whale/core'
 import { tr } from '../i18n/locale'
 
-/** 第二个页面不启动引擎，只读取持久化摘要；分享调用保持在点击手势内。 */
 export function SaveWriterGate({ children }: { children?: ReactNode }) {
   const [state, setState] = useState(saveWriterState)
   const [text, setText] = useState<string | null>(null)

@@ -1,2 +1,1 @@
-/** 兼容旧引用路径；实现归战斗域。 */
 export { fittedRepairModules, repairStatsFor, preloadRepairFor, repairKitAvailableOf, refundRepairKits, repairLedgersOf, shieldChargeLedgersOf, refundRepairKitsAll, repairUsageText, repairStreamsOf, shieldPulsePctOf, shieldChargeStreamsOf, preloadShieldChargeFor, shieldFieldOf, shieldFieldStreamsOf, preloadShieldFieldFor, pulseShieldFieldFor, pulseShieldChargeFor, pulseRepairsFor, REPAIR_PULSE_MS, SHIELD_FIELD_COST_PCT, SHIELD_PULSE_MS, SHIELD_REGEN_FLOOR_PCT } from './combat/combatRepair'

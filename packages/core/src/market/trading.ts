@@ -45,17 +45,12 @@ export function sellAtMarket(
     if (npc.qty <= 0) buyList.splice(idx, 1)
   }
   const sold = qty - remaining
-  /**
-   * 「第一次挂单销售」的判据（**2026-09-22 船长令**：**直接市价卖出也算完成**）——
-   * 只在真的卖掉了才记（`sold > 0`）；下面那条"余量转挂单"走的是私有 `pushSellOrder`，不重复计。
-   */
   if (sold > 0) bumpFirstMarketTrade(state)
-  const mult = sellStandingMult(state, def) * marketSellSkillMult(state, def.kind) // 声望加成 × 卖出技能加成
-  const gross = ceilFinalQuantity(total * mult) // 毛额
-  const net = netAfterTax(state, ctx, gross) // 税后净入账
+  const mult = sellStandingMult(state, def) * marketSellSkillMult(state, def.kind)
+  const gross = ceilFinalQuantity(total * mult)
+  const net = netAfterTax(state, ctx, gross)
   const tax = gross - net
   state.wallet.isk += net
-  // 市场链（2026-09-18 船长：「挂单按照市场交易收入计数」·「按税后算」）：卖出入账即累计
   bumpFirst(state, 'marketIncome', net)
   state.escrowItems[goodKey] = Math.max(0, (state.escrowItems[goodKey] ?? 0) - sold)
   const pool = mk.pools[goodKey]
@@ -74,20 +69,11 @@ export function sellAtMarket(
       p4: fillPrices.length.toLocaleString('zh-CN'),
     }
     const id = mult > 1 ? 'core.market.038' : 'core.market.040'
-    /**
-     * 尾巴槽（`core.market.040/038` 的 `{p5}`）：`p5Id` 给这一槽的 id、`p5p1` 给槽内参数。
-     *
-     * ⚠ 2026-09-20 实障修正：此前写成 `p1Id: 'core.market.037', p1p1: 税额`——**槽号写错了**
-     * （`p1` 早已是商品名），于是渲染层把税注顶进 `{p1}`、商品名丢失、`{p5}` 漏出未替换。
-     * `core.market.037` 是**尾段**模板（「，贸易税 {p1} 信用点」），要挂在 `{p5}` 这一槽上。
-     * 同理 `core.market.038` 的声望加成已写进模板正文，这里只补贸易税。
-     */
     if (tax > 0) addLog(state, 'trade', text, id, { ...params, p5Id: 'core.market.037', p5p1: tax.toLocaleString('zh-CN') })
     else addLog(state, 'trade', text, id, params)
   }
   if (remaining > 0 && sold > 0) {
     const edge = fillPrices[fillPrices.length - 1]!
-    // 剩余自动按边际价挂限价卖单（货已在 escrow 中，不再重复锁定；挂单不收费）
     pushSellOrder(state, goodKey, edge, remaining)
     addLog(
       state,
@@ -102,16 +88,6 @@ export function sellAtMarket(
   return { sold, total: net, avg: sold > 0 ? Math.round(net / sold) : 0, remaining }
 }
 
-/** 市价买入：立即吃 npcSell 簿；簿吃穿后提示改挂限价单。受声望门槛商品直接拒绝（空手返回）。
- * shipUid：本次成交（kind=ship 商品）最后入队的一艘舰船实例 uid（购买流程"买完即登舰"用；非船商品为 null）
- *
- * **2026-09-11 船长实测反馈修复**：「市场订单有货时点市价买入，报『供应簿只剩 0 件』、无法购买」——
- * 根因是本函数里三条**静默** `break/continue`（钱包不够 / 暗市闸跳单 / 只收不卖）最终都表现为 `bought = 0`，
- * 而界面把 `bought < qty` 一律解释成"没现货"。现补 `blocked` 原因字段：
- *   `'no-stock'`（供应簿确实没有可吃单；含**部分成交**后的吃穿）· `'insufficient-isk'`（钱包连最低一张都不够）
- *   · `'standing'`（声望锁：含 `standingReq` 硬锁与 `bmStanding` 暗市闸——**对玩家一律按声望锁口径措辞**）
- *   · `'not-buyable'`（只收不卖）。
- * `bought > 0` 时调用方应报"成交了多少"，不要再报"无法购买"。 */
 export function buyAtMarket(
   state: GameState,
   ctx: SimContext,
@@ -123,7 +99,6 @@ export function buyAtMarket(
   avg: number
   remaining: number
   shipUid: string | null
-  /** bought < qty 时的原因（bought = qty 时不返回） */
   blocked?: 'no-stock' | 'insufficient-isk' | 'standing' | 'not-buyable'
 } {
   ensureMarket(state, ctx)
@@ -134,9 +109,8 @@ export function buyAtMarket(
     return { bought: 0, total: 0, avg: 0, remaining: qty, shipUid: null, blocked: 'standing' }
   }
   if (def.playerBuyable === false && !(mk.npcSell[goodKey] ?? []).some(o => o.relay && relayTradable(state, o))) {
-    return { bought: 0, total: 0, avg: 0, remaining: qty, shipUid: null, blocked: 'not-buyable' } // 只收不卖（残骸等）
+    return { bought: 0, total: 0, avg: 0, remaining: qty, shipUid: null, blocked: 'not-buyable' }
   }
-  // P2 暗市闸：声望未达时只能吃暗市单（bm 标记），常驻单跳过
   const bmLock = bmGateLocked(state, def)
   let remaining = qty
   let total = 0
@@ -150,14 +124,14 @@ export function buyAtMarket(
     if (remaining <= 0) break
     if (!relayTradable(state, npc) || (!npc.relay && def.playerBuyable === false)) continue
     if (bmLock && (npc.relay || !npc.bm)) {
-      blocked = 'standing' // 单子在、但被声望闸跳过——不能报"没货"
+      blocked = 'standing'
       continue
     }
     const take = Math.min(remaining, relayAvailableQty(state, npc), npc.relay ? Infinity : limitedSupplyAvailable(mk.pools[goodKey], def), def.kind === 'ship' ? 50 : Infinity)
     if (take <= 0) continue
     const value = take * npc.price
     if (state.wallet.isk < value) {
-      blocked = 'insufficient-isk' // 钱不够——同样不能报"没货"
+      blocked = 'insufficient-isk'
       break
     }
     const idx = sellList.indexOf(npc)
@@ -176,7 +150,6 @@ export function buyAtMarket(
     if (npc.qty <= 0) sellList.splice(idx, 1)
   }
   const bought = qty - remaining
-  // 「第一次挂单销售」的判据（**2026-09-22 船长令**：**直接市价买入也算完成**）——真买到才记
   if (bought > 0) bumpFirstMarketTrade(state)
   const pool = mk.pools[goodKey]
   if (pool) {
@@ -207,18 +180,10 @@ export function buyAtMarket(
       )
     }
   }
-  // 部分成交（bought > 0 但没买满）⇒ 原因归"吃穿"；一件没买到 ⇒ 报精准原因
   const reason = bought >= qty ? undefined : bought > 0 ? 'no-stock' : (blocked ?? 'no-stock')
   return { bought, total, avg: bought > 0 ? Math.round(total / bought) : 0, remaining, shipUid, ...(reason ? { blocked: reason } : {}) }
 }
 
-/**
- * **玩家指令：购买基础 AI 核心**（V9：市场供应簿按市价买入；无现货自动挂收购单）。
- *
- * **2026-10-02 破环搬家**：本函数原住 `ai.ts`，是 ai→market 那条运行期环的唯一一条边
- * （ai.ts 为"买核心"借 market 的五个交易函数）；它本质是一笔**市场交易**，搬到 market 侧后
- * ai.ts 不再依赖 market ⇒ 环断开（行为逐字不变，错误 id `core.ai.001/002/009/010` 原样保留）。
- */
 export function buyBasicAiCore(state: GameState, ctx: SimContext): CommandResult {
   const good = marketGoodOf(ctx, 'aicore', 'basic')
   if (!good) return { ok: false, error: '基础 AI 核心暂未在市场流通。', errorId: 'core.ai.001' }
@@ -245,7 +210,6 @@ export function buyBasicAiCore(state: GameState, ctx: SimContext): CommandResult
       return { ok: true }
     }
   }
-  // 供应簿瞬时吃穿：挂收购单（到货自动入核心库）
   const order = placeBuyOrder(state, ctx, good.key, ask, 1)
   if (!order) return { ok: false, error: '挂收购单失败（钱包余额不足或订单无法成立）。', errorId: 'core.ai.002' }
   addLog(

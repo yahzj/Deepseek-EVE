@@ -13,7 +13,6 @@ export function CommandBudget({ engine, ships, special = false }: { engine: Game
   </div>
 }
 
-/** 常驻小队只在停靠且无出勤时编辑，名单直接复用准备偏好保存入口。 */
 export function CombatSquadControl({ engine }: { engine: GameEngine }) {
   const [open, setOpen] = useState(false)
   const titleId = useId()

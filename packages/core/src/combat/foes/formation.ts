@@ -7,7 +7,6 @@ import { compositionOfMix, splitShotByComposition } from '../composition'
 import { foeJudgedThreatOf } from '../foePower'
 import { FOE_REPAIR_THREAT_REF } from './ships'
 
-/** 固定单舰规格不再按新编成总数补偿；强度覆写与旗舰绝对血量仍作用于整队。 */
 export function fixedFormationSpecs(card: AnomalyDef, opts: FoeSpecOpts): UnitSpec[] {
   const formation = card.foeFormation!
   const wave = shipWaveIndexOf(opts.tagPrefix ?? '')
@@ -42,7 +41,6 @@ export function fixedFormationSpecs(card: AnomalyDef, opts: FoeSpecOpts): UnitSp
     if (summon && spec.foeSummonTemplate) {
       const source = formation.units.findIndex(unit => !unit.added && unit.spec.foeShipId === summon.shipId)
       if (source >= 0) {
-        // 模板保留原召唤火力，不继承召唤者厚血或共享池，只消费来源条目的本场倍率。
         const sourceSlot = card.ships![source]!, sourceFixed = formation.units[source]!
         scale(spec.foeSummonTemplate, (sourceSlot.hpMul ?? 1) / sourceFixed.hpMul, (sourceSlot.dmgMul ?? 1) / sourceFixed.dmgMul)
       }

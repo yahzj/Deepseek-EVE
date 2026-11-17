@@ -1,11 +1,3 @@
-/**
- * 网页版启动入口：与桌面 renderer 同一份代码（App / GameEngine / styles 源码直连）。
- *
- * ⚠ **启动序列必须与桌面入口共用**（`game/boot.ts`）：本仓有**两个入口**——
- * 任何"首帧前要做的动作"（布局样式 / 宇宙背景 / 配色）或"启动引擎前要做的事"（存档存储体检）
- * 都写在那个共用模块里，这里只负责调用。2026-09-25 就漏过一次：存档体检只加在桌面入口，
- * 结果**网页版（Safari 玩家走的那条路）等于没体检**，存档丢了也看不到任何提示。
- */
 import { createRoot } from 'react-dom/client'
 import { App } from '../../apps/desktop/src/renderer/src/App'
 import { GameEngine } from '../../apps/desktop/src/renderer/src/game/engine'
@@ -31,7 +23,6 @@ function checkWebEnvironment(): boolean {
     host === 'game.bajibaji.party' ||
     host === '123.207.188.192'
 
-  // 本地离线文件协议 (file://) 或 非官方域名拦截
   if (proto === 'file:' || (!isDev && !isOfficial)) {
     const rootEl = document.getElementById('root')
     const warningHtml = `
@@ -67,11 +58,8 @@ function checkWebEnvironment(): boolean {
   return true
 }
 
-// 执行环境阻断检查：如果不通过，停止启动引擎并终止执行
 if (checkWebEnvironment()) {
-  // 首帧渲染之前的固定动作（布局样式 / 宇宙背景 / 配色）
   prebootRenderer()
-  // 挂机玩家可能几天不刷新页面：定时比对线上入口脚本，有新版只提示、不强制刷新。
   startUpdatePrompt()
 
   const engine = new GameEngine()
@@ -79,7 +67,6 @@ if (checkWebEnvironment()) {
 
   root.render(<div className="app-loading">{tr('ui.main.001')}</div>)
 
-  // 启动引擎（含存档存储体检）
   startGameEngine(engine)
     .then((started) => {
       root.render(

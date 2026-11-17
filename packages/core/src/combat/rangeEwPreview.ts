@@ -29,7 +29,6 @@ export interface RangeEwWeapon {
 }
 export interface RangeEwView extends RangeEwContest { weapons: RangeEwWeapon[] }
 
-/** 只移除本次电子战，其他增程、捕获网和本拍减益保持原值。 */
 export function rangeEwBattleView(state: GameState, ctx: SimContext, battle: BattleState,
   anomaly: AnomalyDef, leader = state.shipId): RangeEwView | undefined {
   if (battle.rangeEwVersion !== 1) return undefined
@@ -38,7 +37,6 @@ export function rangeEwBattleView(state: GameState, ctx: SimContext, battle: Bat
     : battleRangeEwOf(state, ctx, battle, foes, leader)
   const current = { ...battle, rangeEw: contest, meFoeRangeDebuff: contest.foeCut }
   const before = { ...current, rangeEw: { ...contest, meCut: 0, foeCut: 0 }, meFoeRangeDebuff: 0 }
-  // 详情按需生成；分别走引擎建档，保留逐武器增程基准与本拍捕获网，不缓存可变规格。
   const raw = buildMyUnitSpecs(state, ctx, before, leader, anomaly.id, foes).map(spec => playerGravekeeperSpecOf(before, spec, true))
   const rangedActual = buildMyUnitSpecs(state, ctx, current, leader, anomaly.id, foes).map(spec => playerGravekeeperSpecOf(current, spec, true))
   const weapons: RangeEwWeapon[] = []
@@ -73,7 +71,6 @@ export function rangeEwBattleView(state: GameState, ctx: SimContext, battle: Bat
   return { ...contest, weapons }
 }
 
-/** 不开战、不抽签、不写入真实状态；已知目标逐波独立预览，延迟支援不算开场来源。 */
 export function rangeEwPreviewOf(state: GameState, ctx: SimContext, card: AnomalyDef,
   ids: readonly string[] = combatRosterOf(state), wormhole?: NonNullable<BattleState['wormhole']>): Array<{ wave: number; phase: 'opening' | 'inside' | 'outside'; view: RangeEwView }> {
   const local = { ...state, fleet: state.fleet }
@@ -94,7 +91,6 @@ export function rangeEwPreviewOf(state: GameState, ctx: SimContext, card: Anomal
     battle.waveIdx = wave
     battle.myFleet = ordered.map((shipId, i) => ({ tag: i ? `ally-${i}` : 'player', shipId }))
     if (wormhole) battle.wormhole = wormhole
-    // 各波从本波到场时刻独立预览；延迟支援没有运行态，不提前计入。
     for (const foe of foes) {
       const unit = battle.units[foe.tag]
       if (!unit) continue
@@ -112,7 +108,6 @@ export function rangeEwPreviewOf(state: GameState, ctx: SimContext, card: Anomal
   })
 }
 
-/** 层末守卫在玩家已抵达入口后可预览；不推测随机节点、未揭示卡或未来分支。 */
 export function rangeEwSignalTargetOf(state: GameState, ctx: SimContext): {
   card: AnomalyDef; ids: readonly string[]; wormhole: NonNullable<BattleState['wormhole']>
 } | undefined {

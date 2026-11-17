@@ -1,4 +1,3 @@
-/** 功能域职责拆分，保持原计算与顺序。 */
 import type { ReactNode } from 'react'
 import { A_SKIFF, A_CORVETTE, A_RAIDER, A_SNIPER, A_WARLORD, B_SKIFF, B_ARMED } from './piratesScavengers'
 import { C_RIFT_LARVA, C_SC_LARVA, C_SC_ADULT, C_SPORE_HIVE, C_MAW } from './alien'
@@ -8,10 +7,6 @@ import { G_SKIFF, G_ECHO, G_NADIR, G_TENDER, G_EXILE } from './remnant'
 import { H_CORVETTE, H_TORPEDO, H_JAMMER, H_BATTLECRUISER, H_FLAGSHIP } from './ink'
 import { R_GLINT, R_ECHO, R_OVERLAY, R_DUSK, R_NEXUS } from './corona'
 
-/**
- * 键 = `packages/data/src/foe-ships.ts` 的 `id`（35 条一一对应）。
- * 未收录的敌舰 → 回退族形 `FOE_ART[族字母]` → 再回退 role 剪影（链路见 `ShipSprite.tsx`）。
- */
 export const FOE_SHIP_ART: Record<string, ReactNode> = {
   'foe-alien-acid-burster': (
     <>
@@ -47,22 +42,18 @@ export const FOE_SHIP_ART: Record<string, ReactNode> = {
       <path className="shipart-accf" d="M206 40 L231 46 L207 51 Z M207 71 L232 77 L207 82 Z" />
     </>
   ),
-  // A 族 · 海盗
   'foe-pirate-skiff': A_SKIFF,
   'foe-pirate-corvette': A_CORVETTE,
   'foe-pirate-raider': A_RAIDER,
   'foe-pirate-sniper': A_SNIPER,
   'foe-pirate-warlord': A_WARLORD,
-  // B 族 · 拾荒
   'foe-scav-skiff': B_SKIFF,
   'foe-scav-armed': B_ARMED,
-  // C 族 · 异形
   'foe-alien-rift-larva': C_RIFT_LARVA,
   'foe-alien-starcore-larva': C_SC_LARVA,
   'foe-alien-starcore-adult': C_SC_ADULT,
   'foe-alien-spore-hive': C_SPORE_HIVE,
   'foe-alien-maw': C_MAW,
-  // D 族 · 守墓古舰
   'foe-d-ghost': D_GHOST,
   'foe-d-longship': D_LONGSHIP,
   'foe-d-stasis': D_STASIS,
@@ -71,24 +62,20 @@ export const FOE_SHIP_ART: Record<string, ReactNode> = {
   'foe-d-invasion-bastion': D_BASTION,
   'foe-d-invasion-oathkeeper': D_OATHKEEPER,
   'foe-d-invasion-eternal-tomb': D_ETERNAL_TOMB,
-  // E 族 · 泰坦巨构
   'foe-missile-hulk': E_MISSILE,
   'foe-auro-hulk': E_AURO,
   'foe-titan-hulk': E_TITAN,
   'foe-core-section': E_CORE,
-  // G 族 · 鱿鱼亡军
   'foe-g-swarm-skiff': G_SKIFF,
   'foe-g-echo-remnant': G_ECHO,
   'foe-g-nadir-lock': G_NADIR,
   'foe-g-remnant-tender': G_TENDER,
   'foe-g-exile-battleship': G_EXILE,
-  // H 族 · 墨潮帮（v3 几何原样搬入）
   'foe-h-ink-corvette': H_CORVETTE,
   'foe-h-ink-torpedo': H_TORPEDO,
   'foe-h-ink-jammer': H_JAMMER,
   'foe-h-ink-battlecruiser': H_BATTLECRUISER,
   'foe-h-ink-flagship': H_FLAGSHIP,
-  // R 族 · 光环科技（2026-10-03 补：此前五档全部落 role 兜底剪影）
   'foe-r-corona-glint': R_GLINT,
   'foe-r-corona-echo': R_ECHO,
   'foe-r-corona-overlay': R_OVERLAY,

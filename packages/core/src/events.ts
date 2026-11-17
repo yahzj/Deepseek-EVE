@@ -1,20 +1,3 @@
-/**
- * 随机事件系统（V11，设计已确认）：
- *
- * 规则（中文说明）：
- * - 到达式触发：记录 state.events.nextAtGameMs；每次触发后掷下一个间隔
- *   I = minGap + (maxGap-minGap)×u^gapPower（默认 10 + 20×u² 分钟）：
- *   间隔最短 10 分钟、硬上限 30 分钟（到点必触发，即 30 分钟 = 100%）；
- *   间隔越短概率越低（密度随间隔递增），平均约 17 分钟；
- * - 在线每秒 tick 与离线大推进同一条推进路径（advanceEvents），
- *   离线跨多件会循环连续触发并各自掷间隔；rng 序列固定 → 回档重放一致；
- * - 四类事件：宇宙杂讯/奇遇（40）、航行叙事（35）、市场行情突变动（15）、
- *   市场奇货（10，稀有品突现供应单 / 极高价收购单）；权重见 balance.events；
- * - 市场类事件直接写 NPC 订单簿/冲击/池（事件单有寿命，随窗口过期清理）；
- *   商品名一律走 goodName（不引用物品表，兼容任何数据导入）；
- * - 事件日志统一加 "✦ " 前缀（桌面端据此弹小卡）；
- * - 零物品表依赖；存档只新增 events.nextAtGameMs 一个字段（v11）。
- */
 import { ceilFinalQuantity } from './quantity'
 import { addLog } from './state'
 import type { GameState } from './state'
@@ -24,24 +7,15 @@ import { rollLowSecAmbush } from './encounters'
 import { ensureMarket, goodName, levelOf } from './market'
 import { DSI_FACTION_ID, standingOf } from './standing'
 
-/** 事件日志前缀（桌面端用它在新增日志里识别事件弹卡） */
 export const EVENT_TAG = '✦'
 
-/** 纯文本类事件条目（奇遇/航行叙事共用形状） */
 interface FlavorEntry {
   text: string
-  /**
-   * 甲案（2026-09-20）：事件正文是**表数据**（82 条），走"两步渲染"——
-   * `logEvent` 把 `id` 挂成 `p1Id`，渲染层先取译文再喂进 `✦ {p1}{p2}` 外壳。
-   * 中英两版都在唯一表 `packages/data/src/l10n/table.ts` 的 `core.events.*`。
-   */
   id?: string
-  /** 可选小额 ISK 收益区间（不含税，即时入账） */
   iskMin?: number
   iskMax?: number
 }
 
-/* ═══════════ 宇宙杂讯 / 奇遇（35 条） ═══════════ */
 
 const MISC_EVENTS: readonly FlavorEntry[] = [
   { id: 'core.events.003', text: '深空漂流货柜被你的牵引光捕获，里面有一箱完好的电路板。', iskMin: 900, iskMax: 2700 },
@@ -81,7 +55,6 @@ const MISC_EVENTS: readonly FlavorEntry[] = [
   { id: 'core.events.037', text: '一颗彗星刚好从你头顶掠过——据说看到的人会走一整天好运。' },
 ]
 
-/* ═══════════ 航行叙事 / 舰桥日志（35 条） ═══════════ */
 
 const VOYAGE_EVENTS: readonly FlavorEntry[] = [  { text: '跃迁通道里闪过一艘幽灵船的轮廓，三秒后一切如常。' },
   { id: 'core.events.038', text: '舰桥日志：今天只遇到一群迷路的矿工无人机，帮它们指了路。' },
@@ -120,9 +93,7 @@ const VOYAGE_EVENTS: readonly FlavorEntry[] = [  { text: '跃迁通道里闪过�
   { id: 'core.events.071', text: '你给新来的 AI 副船起了个名字，它好像很高兴。' },
 ]
 
-/* ═══════════ 探索发现（V13：扫描探索作业期间专用，12 条） ═══════════ */
 
-/** 导出供测试/文档核对（扫描期间到点事件强制从本池抽取） */
 export const EXPLORE_EVENTS: readonly FlavorEntry[] = [
   { id: 'core.events.072', text: '深空信标里存着一段旧航路日志——协会情报处付了一笔整理费。', iskMin: 1600, iskMax: 4800 },
   { id: 'core.events.073', text: '云层里发现一座废弃的古代观测站，你带回一组完好透镜。', iskMin: 900, iskMax: 2700 },
@@ -138,13 +109,7 @@ export const EXPLORE_EVENTS: readonly FlavorEntry[] = [
   { id: 'core.events.083', text: '一队神秘浮标沿着未知航线排开，你把坐标记进了星图。', iskMin: 600, iskMax: 1800 },
 ]
 
-/* ═══════════ 工具 ═══════════ */
 
-/**
- * 星际奇遇学（galactic-happenings，2026-09-08 船长定：缩短事件间隔）：
- * 在线随机事件来访间隔每级 −8%（满级 ×0.6）。同一因子交给低安遇袭判定——
- * 事件密度上浮时单次遇袭率等比例下调，使"每小时遇袭期望"不随本技能改变。
- */
 export function eventCadenceFactor(state: GameState): number {
   const lv = Math.min(5, state.skills.trained['galactic-happenings'] ?? 0)
   return Math.max(0, 1 - 0.08 * lv)
@@ -157,7 +122,6 @@ function rollGapMs(state: GameState, ctx: SimContext): number {
   return Math.max(0, Math.round(raw * eventCadenceFactor(state)))
 }
 
-/** 时间轴切分前播种，在线小步和离线大步共用首个事件时刻。 */
 export function ensureEventSchedule(state: GameState, ctx: SimContext): void {
   if (ctx.balance.events.enabled !== false && state.events.nextAtGameMs <= 0) state.events.nextAtGameMs = state.gameMs + rollGapMs(state, ctx)
 }
@@ -167,11 +131,6 @@ function clampPrice(ctx: SimContext, def: MarketGoodDef, raw: number): number {
   return ceilFinalQuantity(Math.min(def.basePrice * bal.maxPriceRatio, Math.max(def.basePrice * bal.minPriceRatio, raw)))
 }
 
-/** 日志里统一写事件文本（金额自动附注）。
- *
- * 甲案（2026-09-20）：`✦ ` 前缀与"（+N 信用点）"附注都是**固定外壳** ⇒ 由本函数拼好、
- * 把外壳的 id 一并交给日志（`core.events.001` / `.002`）；事件正文的 `id` 由事件表给
- * （`FlavorEntry.id`，共 82 条，中英都在唯一表 `core.events.*`）⇒ 走两步渲染挂 `p1Id`。 */
 function logEvent(
   state: GameState,
   text: string,
@@ -181,104 +140,52 @@ function logEvent(
 ): void {
   const hasAmount = amount !== undefined && amount > 0
   const amountNote = hasAmount ? `（+${amount.toLocaleString('zh-CN')} 信用点）` : ''
-  // 正文 `id` 一律挂 `p1Id`（渲染层先译为当前语言再喂进外壳，中英各一套都在唯一表里）。
-  //
-  // `text` 是**整句中文**（两步渲染的兜底串）；但市场类事件的模板本身就是**带槽**的
-  // （`core.events.084~.090`：`{p1}` 商品名 / `{p2}` 价格 …）⇒ 调用点必须再用 `params` 把
-  // **槽的实际值**给出来：渲染层拿"表里的 zh"与"槽现值"逐字比对，一致才代入并翻成英文
-  // （见 `locale.tsx` 的"槽位 id 代回"）。不给槽值 ⇒ 英文侧留 `{p1}`（2026-09-20 实障）。
-  // `p2` 恒给（无金额时为空串）：外壳 `{p2}` 槽必须**总有值**，否则 `interpolate` 按"键不存在"跳过 ⇒ 漏出 `{p2}`
   const body: Record<string, string | number> = {
     p1: text,
     p2: '',
     ...(params ?? {}),
     ...(id !== undefined ? { p1Id: id } : {}),
   }
-  /**
-   * 金额附注是**外壳里的第 2 个槽**（`✦ {p1}{p2}`），**不是段链的第 2 段**。
-   *
-   * 2026-09-20 实障修正（船长报「事件日志重复文本、数值显示为 +{p1}」）：此前写成
-   * `{ p2: …, p2Id: 'core.events.002' }`——而 `p2Id` 在渲染层表示"**`{p2}` 这一槽那句话的 id**"
-   * （槽译文），渲染层便把它顶进 `{p1}`（正文被吞）、又照旧当第 2 段渲一遍（**重复**），
-   * 且第 2 段的段内命名空间是 `p2*` ⇒ 它自己的 `{p1}` 无人供给、**原样漏出**。
-   *
-   * 正确形态与 `market.ts`（`p4Id` + `p4`）、`industry.ts`（`p2Id` + `p2p1`）同款：
-   * `pN` 是**中文原串兜底**、`pNId` 是这一槽的 id、`pNp1` 是槽内参数（`{p1}` 取它）。
-   * 外壳把 `{p1}`（正文）与 `{p2}`（附注）拼成整句 ⇒ **无需段链**。
-   */
   addLog(state, 'event', `✦ ${text}${amountNote}`, 'core.events.001', {
     ...body,
     ...(hasAmount ? { p2: amountNote, p2Id: 'core.events.002', p2p1: amount.toLocaleString('zh-CN') } : {}),
   })
 }
 
-/** 事件现金 · 已探索星系加成（2026-09-10 船长：探索越多事件奖金越高；导出供测试） */
 export function exploredRewardMul(state: GameState, ev: { exploreBonusPerGalaxy: number; exploreBonusCap: number }): number {
   return 1 + Math.min(ev.exploreBonusCap, state.exploredGalaxies.length * ev.exploreBonusPerGalaxy)
 }
 
-/**
- * **`offline` = 静默模式**（船长 2026-09-21 裁定「乙案」，原话照抄：
- * 「**乙，甚至行情相关文本都不要给。就正常的离线总结。**」）。
- *
- * 背景（船长报障 + 我实测定位）：离线结算把**整段离线时长一次性**喂给引擎
- * （`simulation.ts` 的单次 `advanceGame(state, deltaMs, …)`），而 `advanceEvents` 是
- * "把到点事件全部补发"的循环（`guard < 200`）⇒ 一次上线最多补发 **200 个**随机事件：
- * ① 事件日志被逐条刷屏；② 订单事件的 `expiresAtGameMs` 锚在触发那一刻的 `state.gameMs`，
- * 而离线时它已一次性跳到结算终点 ⇒ **一批订单同生同灭**；
- * ③ `pools[key].shock/q` 被**线性叠加**（可把某商品行情顶到很夸张）。
- *
- * 现行口径（本批）：**离线期间只推进"事件的到点节奏"，不发生任何副作用** ——
- * 不写日志、不发钱、不建买卖单、不动池子；上线时由既有那条「离线结算完成…」汇总交代。
- * ⚠ **随机数照旧消耗**（各分支的掷骰顺序不变）⇒ 同种子的随机序列不被扰动，老档一致。
- */
 export function fireFlavor(state: GameState, ctx: SimContext, table: readonly FlavorEntry[], offline = false): void {
   const entry = table[nextInt(state.rng, table.length)]!
   let amount: number | undefined
   if (entry.iskMin !== undefined && entry.iskMax !== undefined) {
-    // 事件分红学（event-dividend）：随机事件现金奖励 +15%/级
     const divLv = Math.min(5, state.skills.trained['event-dividend'] ?? 0)
     let raw = entry.iskMin + nextInt(state.rng, entry.iskMax - entry.iskMin + 1)
-    // 已探索星系加成（船长 2026-09-10：×1 + 每星系 +10%，封顶 ×2——星图走得越远，奇遇越值钱）
     raw = ceilFinalQuantity(raw * exploredRewardMul(state, ctx.balance.events))
     amount = divLv > 0 ? ceilFinalQuantity(raw * (1 + 0.15 * divLv)) : raw
     if (!offline) state.wallet.isk += amount
   }
-  // 静默模式：掷骰照旧（上面），但**不写日志、不发钱** —— 离线只用一条汇总交代
   if (offline) return
   logEvent(state, entry.text, amount, entry.id)
 }
 
-/* ═══════════ 市场类事件 ═══════════ */
 
-/** 常驻池商品（行情突变动对象） */
 function poolGoods(ctx: SimContext): MarketGoodDef[] {
   return [...ctx.marketGoods.values()].filter((g) => g.kind === 'item' && g.poolTarget !== undefined && g.poolTarget > 0)
 }
 
-/** 稀有/限定商品（模块/蓝图/船，不含 AI 核心）：市场奇货对象 */
 function rareGoods(ctx: SimContext): MarketGoodDef[] {
   return [...ctx.marketGoods.values()].filter((g) => !g.unreleased && g.kind !== 'aicore' && g.rarity !== 'common' && g.kind !== 'item' &&
     (g.playerBuyable !== false || g.playerSellable !== false))
 }
-/**
- * 市场大类 A：行情突变动（公开导出，测试可直接调用）。
- * 变体：0 协会收购周（+冲击）/ 1 站台倾销潮（−冲击 + 池淤积）/ 2 短波行情（全池微扰）/
- *       3 突现大宗单（大额收购或抛售单，20 分钟有效）。
- */
 export function fireMarketShockEvent(state: GameState, ctx: SimContext, offline = false): void {
-  ensureMarket(state, ctx) // 市场簿/池未开盘时先开盘（事件可能在首个市场窗口前触发）
+  ensureMarket(state, ctx)
   const goods = poolGoods(ctx)
   const variant = goods.length > 0 ? nextInt(state.rng, 4) : 2
   const mk = state.market
   const bal = ctx.balance.market
 
-  /**
-   * **静默模式（离线）**：下面**每个分支只把"改状态 + 写日志"用 `offline` 挡住**，
-   * 掷骰（商品抽取 / 价格 / 数量）全部照旧 ⇒ **随机序列与在线逐位一致**。
-   * 之所以不写"提前 return 再手抄一遍掷骰"，是因为那样极易抄错顺序
-   * （第一版我就漏了 variant 3 的 `nextInt(2)` 与价格抖动），反而破坏同种子一致性。
-   */
   if (variant === 0) {
     const def = goods[nextInt(state.rng, goods.length)]!
     if (!offline) {
@@ -318,20 +225,12 @@ export function fireMarketShockEvent(state: GameState, ctx: SimContext, offline 
   }
 }
 
-/**
- * 市场大类 B：市场奇货（公开导出，测试可直接调用）。
- * 变体：0 黑市溢价现货（2026-09-10 船长定：真·高价应急渠道——稀有/限定商品当场刷一件
- *       供应单，开价 = 行情价 ×1.8~2.0，寿命仅 8 分钟"手慢无"，花钱免蹲货）/
- *       1 神秘买家（以近乎现货价的天价收购稀有/限定商品 ×1，寿命按稀有度）。
- */
-export const BLACK_MARKET_LIFE_MS = 8 * 60_000 // 黑市溢价现货时限（船长：比稀有 9 分钟/奇货 6 小时更短）
-/** 通讯承诺的累计声望门槛，不扣可支配声望，无需另存解锁标记。 */
+export const BLACK_MARKET_LIFE_MS = 8 * 60_000
 export const BLACK_MARKET_STANDING_REQ = 100
 export function fireMarketOrderEvent(state: GameState, ctx: SimContext, offline = false): void {
   ensureMarket(state, ctx)
   const goods = rareGoods(ctx)
   if (goods.length === 0) {
-    // 目录里没有稀有货（测试环境等）：退回奇遇文本，保持事件系统可用
     fireFlavor(state, ctx, MISC_EVENTS, offline)
     return
   }
@@ -340,24 +239,13 @@ export function fireMarketOrderEvent(state: GameState, ctx: SimContext, offline 
   const level = levelOf(state, ctx, def.key)
   const name = goodName(ctx, def.key)
 
-  /**
-   * ⚠ **只收不卖（`playerBuyable: false`）的商品不许被本事件"刷出卖单"**
-   * （船长 2026-09-14 转玩家反馈：「他那边出现了种族专属的陵卫指挥舰的 NPC 卖单（虽然无法交易），
-   * 怀疑是随机事件强行刷出的」——**确认属实**）：`rareGoods` 只挡了 AI 核心与常驻档，
-   * **没挡 `playerBuyable === false`**，而变体 0（黑市溢价现货）会直接往 `npcSell` 里 push ⇒ 强刷出
-   * 一件买不了的现货（种族专属舰船/装备/图纸那批 106 行都在这个池子里）。
-   * 处置：撞上这类商品时**降级走"神秘买家"那一支**——求购正是"只收"的那一半，本来就合法，
-   * 也给专属货留了销路；两支各消耗一次 `nextRandom` ⇒ **随机序列与改前逐位一致**（同种子的老档不受扰动）。
-   */
   const wantsSupply = nextInt(state.rng, 2) === 0
   const canSupply = def.playerBuyable !== false && standingOf(state, DSI_FACTION_ID) >= BLACK_MARKET_STANDING_REQ
   const canBuy = def.playerSellable !== false
-  // Prefer the requested side, falling back only to the other NPC-permitted direction.
   if (canSupply && (wantsSupply || !canBuy)) {
-    // 变体 0：黑市溢价现货——价格 ≈行情价 ×1.8~2.0（高溢价应急渠道），仅存 8 分钟
     const mul = 1.8 + nextRandom(state.rng) * 0.2
     const price = clampPrice(ctx, def, ceilFinalQuantity(level * mul))
-    if (offline) return // 静默模式：掷骰已走完，只挡"建单 + 写日志"
+    if (offline) return
     mk.npcSell[def.key]!.push({ price, qty: 1, expiresAtGameMs: state.gameMs + BLACK_MARKET_LIFE_MS })
     logEvent(
       state,
@@ -369,7 +257,7 @@ export function fireMarketOrderEvent(state: GameState, ctx: SimContext, offline 
   } else if (canBuy) {
     const lifeMs = ctx.balance.market.orderLifeMs[def.rarity]
     const price = clampPrice(ctx, def, ceilFinalQuantity(level * (1.0 + nextRandom(state.rng) * 0.35)))
-    if (offline) return // 静默模式：同上
+    if (offline) return
     mk.npcBuy[def.key]!.push({ price, qty: 1, expiresAtGameMs: state.gameMs + lifeMs })
     logEvent(
       state,
@@ -381,17 +269,12 @@ export function fireMarketOrderEvent(state: GameState, ctx: SimContext, offline 
   }
 }
 
-/** 按类别权重掷一次事件并执行（advanceEvents 与测试通用）。
- *  `offline` = 静默模式（见 `fireFlavor` 头注的船长裁定）：掷骰照旧、副作用全免。 */
 export function fireOneEvent(state: GameState, ctx: SimContext, offline = false): void {
   const b = ctx.balance.events
-  // V13：扫描探索作业进行期间，到点事件强制走「探索发现」池
   if (state.scanning.active) {
     fireFlavor(state, ctx, EXPLORE_EVENTS, offline)
     return
   }
-  // 2026-09-12 审计 B3：改走单点 `pickWeighted`（原手写 `r -= w; r < 0` 链**逐位一致**：同样只抽一次、
-  // 用默认的严格小于边界）。⚠ 四类权重全为 0 时改前会落到最后一个 else（订单事件）⇒ 这里 `undefined` 同样按 3 兜底。
   const weights = [b.miscWeight, b.voyageWeight, b.marketShockWeight, b.marketOrderWeight]
   const kind = pickWeighted(state.rng, [0, 1, 2, 3], (i) => weights[i] ?? 0) ?? 3
   if (kind === 0) {
@@ -405,25 +288,13 @@ export function fireOneEvent(state: GameState, ctx: SimContext, offline = false)
   }
 }
 
-/**
- * 随机事件推进器（引擎在 gameMs 前移后调用）：
- * 未播种则从本次推进起点播种首个触发时刻；随后循环触发所有到期事件。
- *
- * ⚠ **`offline` = 静默模式**（船长 2026-09-21 裁定「乙案」）：离线结算是**一次性大推进**
- * （`simulation.ts` 单次 `advanceGame(state, deltaMs, …)`），本循环会把整段离线里到点的事件
- * **全部补发**（上限 200）⇒ 上线瞬间日志刷屏 + 一批订单同生同灭 + 池子被线性叠加。
- * 静默模式下**节奏照旧推进**（`nextAtGameMs` 正常前移、掷骰照旧消耗），
- * 但**不写日志、不发钱、不建单、不动池子** —— 上线只留那条「离线结算完成…」汇总。
- */
 export function advanceEvents(state: GameState, deltaMs: number, ctx: SimContext, offline = false): void {
   if (deltaMs <= 0) return
-  if (ctx.balance.events.enabled === false) return // 测试等场景可整体关闭事件流
+  if (ctx.balance.events.enabled === false) return
   const ev = state.events
-  // 未播种则从本次推进起点播种首个触发时刻（须在加速之前，避免把 0 当未播种）
   if (ev.nextAtGameMs <= 0) {
     ev.nextAtGameMs = Math.max(0, state.gameMs - deltaMs) + rollGapMs(state, ctx)
   }
-  // V13：扫描探索期间，事件倒计时按 exploreBoost 额外推进（事件来得更快）
   const boost = state.scanning.active ? Math.max(0, ctx.balance.events.exploreBoost) : 0
   if (boost > 0 && ev.nextAtGameMs > 0) {
     ev.nextAtGameMs = Math.max(ev.nextAtGameMs - Math.round(deltaMs * boost), state.gameMs - deltaMs + 1)
@@ -431,8 +302,6 @@ export function advanceEvents(state: GameState, deltaMs: number, ctx: SimContext
   let guard = 0
   while (ev.nextAtGameMs <= state.gameMs && guard < 200) {
     guard++
-    // B1（船长 2026-09-04 定稿）：低安遭遇占用随机事件时机——事件到点先判遇袭；
-    // 命中则本次事件机会被遭遇占用（本段不再抽随机事件）
     if (!rollLowSecAmbush(state, ctx, eventCadenceFactor(state))) {
       fireOneEvent(state, ctx, offline)
     }

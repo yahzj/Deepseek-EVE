@@ -2,13 +2,11 @@ import type { BattleState, GameState } from './state'
 import type { SimContext } from './types'
 import { WORMHOLE_SLOT_M3 } from './wormholeHold'
 
-/** 本趟物资数量账；格板与战斗预载只保存位置，不复制数量。 */
 export interface WormholeSupplyLedger {
   items: Record<string, number>
   carried: Record<string, number>
   consumed: Record<string, number>
   deployed: Record<string, number>
-  /** 战后机体回到本趟货仓的累计量，含超额回收或受机舱/CPU限制的存活机，不计战利品。 */
   recovered: Record<string, number>
   leftBehind: Record<string, number>
   found: Record<string, number>
@@ -17,7 +15,6 @@ export interface WormholeSupplyLedger {
 export function wormholeSupplyForBattle(state: GameState, battle: BattleState | null | undefined): WormholeSupplyLedger | undefined {
   const run = state.wormhole.run
   if (!battle?.wormhole || !run || (run.supplyVersion !== 1 && run.expeditionRules === undefined)) return undefined
-  // 新规则的缺字段异常不能重新打开洞外供货，也不能补造库存。
   return run.supplies ?? (run.supplies = { items: {}, carried: {}, consumed: {}, deployed: {}, recovered: {}, leftBehind: {}, found: {} })
 }
 
@@ -33,7 +30,6 @@ export function takeWormholeSupply(ledger: WormholeSupplyLedger, id: string, cou
   return got
 }
 
-/** 已耗弹药的回收；不允许回收超出已记消耗的数量。 */
 export function restoreWormholeSupply(ledger: WormholeSupplyLedger, id: string, count: number): number {
   if (!Number.isSafeInteger(count) || count <= 0) return 0
   const got = Math.min(ledger.consumed[id] ?? 0, Math.max(0, Math.floor(count)))
@@ -46,7 +42,6 @@ export function restoreWormholeSupply(ledger: WormholeSupplyLedger, id: string, 
   return got
 }
 
-/** 备用机离开货仓进入机舱，记录转移而非当成凭空销毁。 */
 export function deployWormholeSupply(ledger: WormholeSupplyLedger, id: string, count: number): number {
   const got = takeWormholeSupply(ledger, id, count)
   if (got > 0) {
@@ -64,7 +59,6 @@ export function returnWormholeDroneSupply(ledger: WormholeSupplyLedger, id: stri
   ledger.recovered[id] = (ledger.recovered[id] ?? 0) + count
 }
 
-/** 先核销全队复位，包括随后沉没的舰；逐舰战损与独立收口共用。 */
 export function settleWormholeDroneRevives(state: GameState, battle: BattleState): void {
   const supply = wormholeSupplyForBattle(state, battle)
   const ammo = battle.expeditionAmmo
@@ -76,7 +70,6 @@ export function settleWormholeDroneRevives(state: GameState, battle: BattleState
   ammo.revivesSettled = true
 }
 
-/** 可用与预载按同id合并后占格，预载转移本身不腾空间。 */
 export function wormholeSupplyCells(state: GameState, ctx: SimContext): number {
   const run = state.wormhole.run
   if (run?.supplyVersion !== 1 || !run.supplies) return 0

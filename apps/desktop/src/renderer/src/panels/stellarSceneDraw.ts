@@ -15,7 +15,6 @@ function darkSceneColor(color: string): string {
   if (values && values.length >= 3 && color.startsWith('rgb')) return `rgb(${values.slice(0,3).map(value=>Math.round(value*.3)).join(' ')})`
   return color
 }
-/** 场景只读公开坐标/类型；不依赖引擎随机数、资源或勘探真值。 */
 export function drawStellarScene(context: CanvasRenderingContext2D, system: StellarSystem, view: StellarMapView,
   selectedId: string | undefined, width: number, height: number, colors: SceneColors,
   texture?: HTMLImageElement, star?: { image: HTMLImageElement; span: number }, drawStars = true) {
@@ -29,7 +28,6 @@ export function drawStellarScene(context: CanvasRenderingContext2D, system: Stel
     context.drawImage(texture, (width - texture.width * scale) / 2, (height - texture.height * scale) / 2, texture.width * scale, texture.height * scale)
     context.globalAlpha = 1
   }
-  // 固定稀疏星点只作远景，不生成任何可交互天体。
   context.fillStyle = colors.text
   for (let i = 0; i < 74; i++) {
     const x = ((i * 317 + system.seed % 997) % 1009) / 1009 * width
@@ -72,7 +70,6 @@ export function drawStellarScene(context: CanvasRenderingContext2D, system: Stel
       context.save(); context.translate(body.x, body.y)
       const nearest = Math.min(...system.stars.filter(other => other !== body).map(other => Math.hypot(other.x - body.x, other.y - body.y)))
       const radius = Math.min(Math.max(body.radius, (system.kind === 'neutron' ? 10 : 15) * unit), nearest * .42)
-      // 只围绕真实恒星位置画短放射照明，不铺装饰光球。
       context.strokeStyle = colors.star
       for (let ray = 0; ray < 24; ray++) {
         const angle = ray * Math.PI / 12

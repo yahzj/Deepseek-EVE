@@ -1,16 +1,4 @@
 import { isEn } from '../../../i18n/locale'
-/**
- * 极简模式 · 双向多空看涨看跌交易舱（SimpleTrade）。
- *
- * 核心设计：
- * - 全面支持【看涨 · 买多】与【看跌 · 卖空】双向交易；
- * - 两个 Tab 均以【投入资金 ISK】为输入口径，支持 25% / 50% / 75% / 全仓 快捷筹码；
- * - 看跌按 1x 全额融券市价开空（投入多少占用多少，只收手续费），无需持有现货；
- * - 金额换算集中走 `estimateSimpleBet`：就地前馈股数 / 手续费 / 费后实际支出 / 提交后可用；
- * - 提交后进入本回合队列，回合末集合竞价统一成交（船长 2026-11-05 裁定）。
- *   `tif:'IOC'` 只是客户端兼容占位字段，不代表即时成交；服务端按
- *   `docs/design/stock-exchange-round-model-20261103.md:11,14,36` 统一回合末批量撮合。
- */
 import { useEffect, useRef, useState } from 'react'
 import type { ExchangeClient, ExchangeOrder, ExchangeSnapshot } from '../client'
 import type { ToastFn } from '../../../pages/common'
@@ -25,7 +13,6 @@ interface SimpleTradeProps {
   snap: ExchangeSnapshot
   code: string
   onToast: ToastFn
-  /** 全仓快捷筹码：触发 K 线卡片的黄色旋转光效（音效结束时关闭） */
   onAllInFx?: (on: boolean) => void
 }
 
@@ -44,8 +31,6 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
   const quote = snap.stocks.find((s) => s.code === code)
   const currentPrice = quote?.price ?? 1
   const cash = snap.account.cash
-  // 2026-11-08 船长令：买入与卖出各有独立的 10 亿日额度。
-  // 旧服务端没有分方向字段时回退到合计值（保守，不会超用）。
   const dailyUsed =
     tab === 'buy'
       ? (snap.account.dailyBuyUsed ?? snap.account.dailyTradeUsed)
@@ -60,17 +45,12 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
   const feeRate = snap.feeRate ?? 0
   const hasFee = feeRate > 0
   const tradeCapQty = currentPrice > 0 ? Math.floor(dailyTurnoverLeft / currentPrice) : 0
-  /** 单笔数量上限（服务端 /meta 下发，默认 1000 万股；2026-11-14 上限从 100 万股放宽） */
   const maxQtyPerOrder = client.maxOrderQty ?? 10_000_000
   const est = estimateSimpleBet(Math.min(inputCashNum, dailyTurnoverLeft * (1 + feeRate)), currentPrice, feeRate, cash)
-  // 买多与看跌同为 1x 全额换算（看跌融券，投入多少占用多少）
   const estBuyQty = Math.min(est.qty, maxQtyPerOrder)
   const estShortQty = Math.min(est.qty, maxQtyPerOrder)
 
-  // 步进微调资金基数（按 1 股换算所需资金，含手续费；两侧同为全额）
   const stepCash = Math.max(1, Math.ceil(currentPrice * (1 + feeRate)))
-  // 待成交下注只算当前标的：snap.orders 是全市场活跃委托（含卖单与其它股票），
-  // 直接取 length 会把别处的单子算进这里，玩家看到的「下注数量」就对不上。
   const pendingOrders = snap.orders.filter((order) => order.code === code)
 
   const isRatioActive = (r: number) => {
@@ -92,7 +72,6 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
     [],
   )
 
-  /** 全仓下注成功回执后：播放 ALL IN 音效并触发 K 线卡片黄色旋转光效。 */
   const triggerAllInFx = () => {
     allInSeq.current += 1
     const seq = allInSeq.current
@@ -101,16 +80,13 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
       if (allInSeq.current === seq) onAllInFx?.(false)
     }
     const audio = playCue('exchange-allin')
-    // 光效与音效统一 1.2 秒收尾：不等整段音效播完，避免转圈拖沓。
     if (allInTimer.current !== null) window.clearTimeout(allInTimer.current)
     allInTimer.current = window.setTimeout(() => {
       if (audio !== null) {
         try {
           audio.pause()
-          // 提前暂停不会触发 ended，手动派发一次让播放器释放并发槽位，避免下次全仓静音。
           audio.dispatchEvent(new Event('ended'))
         } catch {
-          /* 忽略 */
         }
       }
       stop()
@@ -118,7 +94,6 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
   }
 
   const handleCashChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // 严格过滤非正整数字符，移除多余的前导 0
     const clean = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '')
     setCashAmount(clean)
     setActiveRatio(null)
@@ -141,7 +116,6 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
     setActiveRatio(null)
   }
 
-  // 防呆校验状态判断
   let disableReason: string | null = null
   if (busy) {
     disableReason = tab === 'buy' ? T.submittingBuy : T.submittingShort
@@ -162,7 +136,6 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
   }
   const canSubmit = !busy && disableReason === null
 
-  /** 主按钮保持可点：校验不通过时把焦点带回输入框并就地说明原因，而不是让玩家面对灰按钮猜 */
   const showGuard = (): void => {
     if (disableReason === null) return
     inputRef.current?.focus()
@@ -172,7 +145,6 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
   const handleBuy = async () => {
     if (busy) return
     const allIn = activeRatio === 1
-    // 提交前按最新快照重算；改用限价单，服务端按该价冻结，100% 全仓也不会因价格跳动超冻结。
     const latest = client.getSnapshot(code)
     const latestCash = latest.account.cash
     const latestPrice = latest.quote.price > 0 ? latest.quote.price : currentPrice
@@ -189,7 +161,6 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
     orderSeq.current += 1
     try {
       let order: ExchangeOrder | null = null
-      // 100% 全仓：市价单按最新价算满；若服务端冻结因价格跳动差一点，按差额自动减股重试。
       for (let attempt = 0; attempt < 3; attempt += 1) {
         try {
           order = await client.placeOrder({
@@ -200,7 +171,6 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
             tif: 'IOC',
             qty,
             leverage: 1,
-            // 简单模式：按点击时的现价锁价，回合末未撮合部分由系统兜底，保证成交。
             guaranteed: true,
             expectedPrice: latestPrice,
           })
@@ -215,7 +185,6 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
         }
       }
       if (!order) throw new Error('order retry exhausted')
-      // 成功回执才响动作音（2026-11-06 船长）：全仓换成 ALL IN 音效 + 光效，其余保持下注音。
       if (allIn) triggerAllInFx()
       else notifyUiAction('exchange-bet')
       await buyProgress.finish()
@@ -233,7 +202,6 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
   const handleShort = async () => {
     if (busy) return
     const allIn = activeRatio === 1
-    // 与买多同口径：提交前按最新快照重算，并改用限价单锁定冻结价。
     const latest = client.getSnapshot(code)
     const latestCash = latest.account.cash
     const latestPrice = latest.quote.price > 0 ? latest.quote.price : currentPrice
@@ -250,7 +218,6 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
     orderSeq.current += 1
     try {
       let order: ExchangeOrder | null = null
-      // 与买多同口径：100% 全仓，冻结不足时按差额自动减股重试。
       for (let attempt = 0; attempt < 3; attempt += 1) {
         try {
           order = await client.placeOrder({
@@ -260,12 +227,8 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
             type: 'market',
             tif: 'IOC',
             qty,
-            // 1x 全额：投入多少占用多少，只收卖出档手续费，与看涨对称。
             leverage: 1,
-            // 必须显式标记开空：服务端把「side=sell + 杠杆」默认当平多，缺这个字段会报
-            // 「没有可平的杠杆多头持仓」。
             short: true,
-            // 简单模式：锁价 + 保证成交。
             guaranteed: true,
             expectedPrice: latestPrice,
           })
@@ -280,7 +243,6 @@ export function SimpleTrade({ client, snap, code, onToast, onAllInFx }: SimpleTr
         }
       }
       if (!order) throw new Error('order retry exhausted')
-      // 与买多同口径：服务端确认才响；全仓换成 ALL IN 音效 + 光效。
       if (allIn) triggerAllInFx()
       else notifyUiAction('exchange-bet')
       await shortProgress.finish()

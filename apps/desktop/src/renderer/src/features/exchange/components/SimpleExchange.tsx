@@ -1,19 +1,3 @@
-/**
- * 极简模式 · 投资大厅主视图（SimpleExchange）。
- *
- * 布局：
- * - 左栏（240px）：星际企业榜单（SimpleStockList，4 位代码，持仓角标）；
- * - 中栏（自适应）：
- *   1. 标的概览横幅（紧凑 header：大字现价、今日涨跌、24h 高低与成交）；
- *   2. 平滑流光渐变走势图（SimpleChart，分时/日走势/周线，呼吸微光，辅助刻度线）；
- *   3. 傻瓜多空买卖舱（SimpleTrade，买多/卖空快捷筹码输入与市价执行）；
- * - 右栏（340px）：
- *   1. 一级切换：我的委托 / 理财与基金；
- *   2. 「我的委托」是一整块：我的下注（全部持仓，单行紧凑，可逐笔结算/一键全平）
- *      + 委托列表（全部股票，回合排队 / 已成交 / 未成交 / 已撤，可逐笔与批量撤单）；
- *   3. 「理财与基金」内放 BondCard + FundCard。
- * - 紧凑高度，三栏一屏尽览，杜绝页面滚动。
- */
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Locked } from '@carbon/icons-react'
@@ -33,13 +17,8 @@ import { SimplePosition } from './SimplePosition'
 import { SimpleTutorial } from './SimpleTutorial'
 import { MyOrders } from './MyOrders'
 
-/** 简单界面右栏一级切换：我的下注 / 我的委托 / 理财与基金（2026-11-06 船长令拆开） */
 type SimpleSideTab = 'bets' | 'orders' | 'finance' | 'companies'
 
-/**
- * 企业动态入口开关（2026-11-09 船长要求保留可见）。
- * 公司流水/周报还没数据时，面板会显示“这周还没开张”；数据管道上线后可再评估文案。
- */
 const COMPANIES_TAB_ENABLED = true
 const SIMPLE_SIDE_TABS_ALL = ['bets', 'orders', 'finance', 'companies'] as const
 const SIMPLE_SIDE_TABS_BASE = ['bets', 'orders', 'finance'] as const
@@ -51,22 +30,13 @@ interface SimpleExchangeProps {
   code: string
   onSelectCode: (code: string) => void
   onToast: ToastFn
-  /** 游戏引擎：联机模式下债券走本地存档 ISK + 本地计息 */
   engine: GameEngine
-  /** 已废弃：2026-11-05 移除模拟盘后不再区分数据源，仅为 tools 夹具保留 */
   isServer?: boolean
-  /** 游客态：交易与持仓/理财面板保留但禁用，点击提示登录（船长 2026-11-05） */
   guest?: boolean
-  /** 游客点了被禁用的面板：提示登录并打开设置「账户」页 */
   onRequireLogin?: () => void
-  /** 刷新页面快照（基金结算后） */
   onRefresh: () => void
 }
 
-/**
- * 游客禁用层：面板原样留在下面（变灰、不吃指针事件），整块可点，点了就提示登录。
- * 键盘可达性靠 `inert`：React 18 的类型里没有这个属性，所以由 ref 直接落到 DOM 上。
- */
 function GuestLock({
   locked,
   label,
@@ -79,8 +49,6 @@ function GuestLock({
   children: ReactNode
 }) {
   const bodyRef = useRef<HTMLDivElement | null>(null)
-  // `inert` 浏览器早就支持，但 React 18 的类型里没有这个属性 ⇒ 用 ref 直接落属性：
-  // 否则遮罩只挡鼠标，键盘 Tab 仍能钻进被禁用的表单里。
   useEffect(() => {
     const el = bodyRef.current
     if (!el) return
@@ -111,8 +79,6 @@ export function SimpleExchange({
 }: SimpleExchangeProps) {
   const quote = snap.stocks.find((s) => s.code === code) ?? snap.quote
   const isUp = quote.changePct >= 0
-  // 默认理财与基金；对手盘公开动态统一由快讯第二行显示。
-  // 2026-11-06 船长令：我的下注与我的委托拆成两个 tab，不再堆在同一块里。
   const [sideTab, setSideTab] = useState<SimpleSideTab>(() =>
     readExchangeChoice(EXCH_PREF.simpleSide, SIMPLE_SIDE_TABS, 'finance'),
   )
@@ -125,12 +91,10 @@ export function SimpleExchange({
     writeExchangePref(EXCH_PREF.simpleSide, sideTab)
   }, [sideTab])
 
-  // 重新上线或从别的页面切回：强制把大图与左栏小图的分时线换成最新切片。
   useEffect(() => {
     client.refreshCharts?.()
   }, [client])
 
-  // 外部入口（活动栏「债券/基金」）要求直达理财页时，已挂载的页面跟着切
   useEffect(() => {
     const onPref = (): void => {
       setSideTab(readExchangeChoice(EXCH_PREF.simpleSide, SIMPLE_SIDE_TABS, 'finance'))

@@ -26,7 +26,6 @@ function canonical(value: unknown): unknown {
   }
   return value
 }
-/** 只忽略保存时刻与会话日志，不把角色名或墙钟当成档案身份。 */
 export function sameReconnectProgress(a: string, b: string): boolean {
   const fingerprint = (text: string): string => {
     const state = loadSaveFile(text).state

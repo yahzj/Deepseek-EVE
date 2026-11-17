@@ -20,17 +20,6 @@ import { marketPriceOf, NetIncomeLine } from '../../ui/yieldView'
 import type { PageProps } from '../../pages/common'
 import { tr } from '../../i18n/locale'
 
-/**
- * **一张实验室配方卡**（骨架与类名逐件照 `FurnaceCard`；**材料行**照组装机卡 `BlueprintCard`）。
- *
- * 与精炼炉卡的差异：材料是**多料 BOM**，开工门槛从"够一批单料"变成"够一批全料"（`labAffordableBatches`）。
- *
- * **材料行与组装机卡逐字同款**（**2026-10-01 船长令**：「实验室的卡片还是使用自己的富文本规则，和组装机
- * 不一样（比如卡片标题有个'去弄料'，下方的原材料没有'去精炼''去组装机'然后字体样式也不一致）」）：
- * `.app-bp-mats` ＋ `.app-bp-mat`（普通文字色，不再是 `.app-belt-econ` 那套金色）＋ 缺料 `is-short` 红标
- * ＋ 行尾公共件 `MatSourceLink` 四支跳转；跳转**下沉到每一味料**，卡头原先那颗「去弄料」按钮已删
- * （它只能挑"第一味缺料"，指路不如逐行准）。
- */
 export function LabCard({
   recipe,
   engine,
@@ -44,9 +33,7 @@ export function LabCard({
   engine: GameEngine
   onToast: PageProps['onToast']
   onGotoMarket?: (goodKey: string) => void
-  /** 材料行尾「去精炼 / 去组装机 / 去市场」那条链（见 `LabPanel` 的同名 prop 注释）：入参 = 那一味料的物品 id */
   onNeedMaterial?: (itemId: string) => void
-  /** 材料行尾第①支的落点：声望商店（通用黑匣那条来路，与组装机卡同一处判定） */
   onGotoPlugExchange?: () => void
   runs: LabRunView[]
 }): ReactNode {
@@ -54,22 +41,8 @@ export function LabCard({
   const out = engine.ctx.items.get(recipe.outputItemId)
   const affordable = labAffordableBatches(state, recipe)
   const running = runs.length > 0
-  /**
-   * **本批实际产出单位**（走 core 单点 `labBatchUnitsOf`：基准 × `LAB_YIELD_SKILLS` 收率乘区）——
-   * 卡面那个 `×N` 与下面的净收益读数**共用这一个数**（2026-10-01 船长裁：卡上不许两个口径；
-   * 原先 `×N` 读配方基础值、净收益也按基础值算 ⇒ 收率技能的效果在卡面完全看不见）。
-   */
   const batchUnits = labBatchUnitsOf(state, recipe)
-  /**
-   * **主控亲自那一批的实际周期**（走 core 单点 `labCycleMsOf`：吃 `LAB_CYCLE_SKILLS`；AI 核心另按效率拉长）——
-   * 卡面「主控耗时」读数与净收益读数共用它（2026-10-01 船长令：工期也照组装机卡那套）。
-   */
   const pilotCycleMs = labCycleMsOf(state, engine.ctx, recipe, 'pilot')
-  /**
-   * **原材料列表折叠**（**2026-10-01 船长令**：「**「原材料列表」折叠，超过2个材料就进行折叠**」）：
-   * 味数 > `MATS_COLLAPSE_OVER` ⇒ 材料块只留一行开关，点开才拉开全部行（公共件 `ui/matList.tsx`，
-   * 与组装机／造船厂卡同一份）。状态不落盘：切页/重挂载即回到折叠。
-   */
   const matsListId = useId()
   const [matsOpen, setMatsOpen] = useState(false)
   const matsCollapsible = recipe.materials.length > MATS_COLLAPSE_OVER
@@ -84,23 +57,9 @@ export function LabCard({
   const core = usableCores.includes(coreSel) ? coreSel : (usableCores[0] ?? null)
   const labBlock = stationActivityStartBlockReason(state, engine.ctx, 'lab')
   const manualBusy = manualSlotOf(state) !== null ? tr('ui.hud.212') : labBlock ? cmdText(labBlock) : null
-  /**
-   * **谜质科技门槛**（**2026-09-30 船长令**：T5「解锁新的燃料配方」）——判据与起线拒绝**同一把尺**
-   * （`labRecipeUnlocked`）；锁着时卡片照列（玩家要看得见"有这么张配方、缺哪棵树"），
-   * 但两个开工按钮一起置灰，并把缺哪条科技写在标题与卡片提示行上。
-   */
   const locked = !labRecipeUnlocked(state, engine.ctx, recipe)
   const lockTip = locked ? tr('ui.lab.025', { p1: labTechRequirementOf(engine.ctx, recipe) ?? recipe.name }) : null
-  /**
-   * **循环实验**（**2026-10-01 船长令**：实验室按组装机那套 ⇒ 一线一批，连续生产靠卡片级循环开关）。
-   * 控件与提交口径**照组装机那张卡**（`panels/Industry.tsx` 的 `goalDraft` 那套）：
-   * 打到一半的草稿留在本页，回车/失焦各提交一次。
-   */
   const loop = engine.labLoopOf(recipe.id)
-  /**
-   * **循环目标的防丢草稿套件**（2026-09-17 组装机卡首创；**2026-10-02 模块化**：口径原样搬进
-   * `ui/useLoopGoalDraft.ts`，组装机卡 / 本卡 / HUD 实验室三处共用一份 —— 行为逐字不变）。
-   */
   const { draft: goalDraft, typeDraft, clearDraft, clearTouched } = useLoopGoalDraft((n) =>
     engine.setLabLoopAt(recipe.id, true, n),
   )
@@ -121,8 +80,6 @@ export function LabCard({
     onToast(tr('ui.lab.019', { p1: recipe.name, p2: recipe.outputUnits, who }))
   }
   return (
-    // `is-lab`：本卡唯一的专属样式钩子（`styles.css`：把产物行整行拉回普通文字色，**只有产物名金色**，
-    // 与组装机卡 `is-assembler` 同一口径；⚠ 不复用 `is-assembler`——它还带 content-visibility 与占位高度）
     <div className="app-belt-card is-lab" key={recipe.id}>
       <div className="app-belt-head">
         <span className="app-belt-name">

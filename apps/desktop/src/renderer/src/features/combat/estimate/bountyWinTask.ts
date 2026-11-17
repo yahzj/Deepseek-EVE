@@ -2,7 +2,6 @@ import { BOUNTY_MC_RUNS, estimateBountyWinOn } from '@whale/core'
 import type { SimContext } from '@whale/core'
 import type { BountyWinRequest, BountyWinResponse } from './bountyWinProtocol'
 
-/** 无UI与文件读写的worker任务；每张卡仍跑原三点各10局。 */
 export function createBountyWinTask(context: (locale: 'zh' | 'en') => SimContext, now: () => number) {
   let session: Extract<BountyWinRequest, { kind: 'init' }> | null = null
   let ctx: SimContext | null = null

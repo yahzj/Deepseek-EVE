@@ -1,23 +1,3 @@
-/**
- * Mock 交易所客户端（F0 原型）——**纯前端、不接服务器、不写游戏存档**。
- *
- * 2026-11-03 追加批的三条硬语义：
- * ① **挂机**：1 秒 tick 由本类自己持有（模块单例构造即启动），页面只订阅/退订；
- *    离开页面不暂停，回来按流逝时间补算（单次上限 3600 拍）。
- * ② **持久化**：账户/持仓/委托/策略/债券/行情状态写 `localStorage['whale-idle:exch-mock']`，
- *    刷新不丢；与游戏 v31 存档完全隔离，页面提供「重置模拟账户」。
- * ③ **六周期**：启动铺 `分时/M1/H1/D1/D7/D30` 历史（每周期 400 根，分时按当日分钟数），
- *    之后每拍只更新各周期最新一根。
- *
- * 一拍（1 秒）的固定步序（步序错会出现"螺旋爆仓"或"行情不跟手"）：
- *   事件冲击 → 行情演进 → 做市商重挂五档 → 同步玩家挂单成交 → 条件单 → 量化策略
- *   → 强平 → 债券计息 → 分红。（广播由 `advance()` 在补算结束后统一发一次）
- *
- * 为什么这些顺序：价格先动，挂单才知道自己是否穿价；强平必须在策略之后（策略不能抢先
- * 替玩家躲强平）；分红/计息放最后，避免"刚成交就计一天利息"的奇怪读数。
- *
- * 随机源：全部走 `createRng(seed)`，禁止 `Math.random()`；同种子可复现整条剧情。
- */
 import type {
   BondPosition,
   BondProduct,
@@ -64,37 +44,26 @@ import { buildStockSeries, updateStockSeries, type StockSeries } from './history
 import { OrderBook } from './book'
 import * as M from './margin'
 
-/** 契约版本（与后端 `/api/exchange/meta` 对齐；现为版本 2） */
 const CONTRACT_VERSION = 3
-/** 手续费率（原型统一 5 bp，买/卖/开/平都收） */
 const FEE_RATE = 0.0005
-/** 原型专用虚拟资金：1000 万 ISK，不入存档 */
 const START_CASH = 10_000_000
 const DAILY_TRADE_LIMIT = 5_000_000_000
 const UTC_DAY_MS = 86_400_000
-/** 高息分段的本金上限：前 1 亿按风险档，超出部分按固定低息。 */
 const SAVINGS_PRINCIPAL_CAP = 100_000_000
 const BOND_WIN_DAILY_PPB = 120_000_000
 const BOND_LOSE_DAILY_PPB = -120_000_000
 const BOND_LOW_DAILY_PPB = 12_000_000
 const BOND_DAILY_CAP = 200_000_000
-/** 期望日化：99.8% × 12% + 0.2% × (−12%) = 11.952%。 */
 const BOND_DAILY_RATE = 0.11952
 const FUND_WIN_DAILY_PPB = 514_300_000
 const FUND_LOSE_DAILY_PPB = -400_000_000
 const FUND_WIN_PERCENT = 70
 const FUND_LOW_DAILY_PPB = 24_000_000
 const FUND_DAILY_CAP = 300_000_000
-/** 分红：每 60 秒按现货持仓市值象征性派 0.04%（原型观感值） */
 const DIVIDEND_INTERVAL_TICKS = 60
 const DIVIDEND_RATE = 0.0004
-/**
- * 模拟账户持久化（与游戏 v31 存档**完全隔离**；只存交易所自己的模拟盘状态）。
- * 需求（2026-11-03 双轨数据源批）：刷新不丢账户/持仓/委托，页面可一键重置回 1,000 万。
- */
 const MOCK_SAVE_KEY = 'whale-idle:exch-mock'
 const MOCK_SAVE_VERSION = 2
-/** 离开页面/标签页后台后按流逝时间补算，单次上限 3600 拍（约 1 小时），避免恢复时长时间卡顿 */
 const MAX_CATCHUP_TICKS = 3600
 
 function dailyRatePpb(seed: string, day: number, threshold: number, win: number, loss: number): number {
@@ -166,7 +135,6 @@ function visibleAccrued(accrued: number, remainder: bigint): number {
   const denominator = 86_400_000n * 1_000_000_000n
   return Number((BigInt(accrued) * denominator + remainder) / denominator)
 }
-/** 每 5 拍落一次盘（localStorage 写太频繁会拖慢 1 秒 tick；pagehide 时另会补落一次） */
 const SAVE_EVERY_TICKS = 5
 
 interface StockDef {
@@ -174,24 +142,16 @@ interface StockDef {
   name: string
   sector: string
   anchor: number
-  /** 每秒基准波动率（由设计稿 60 秒口径折算：σ_60s / √60） */
   sigma: number
   mu: number
   theta: number
   floatShares: number
   maxLeverage: number
   shortable: boolean
-  /** 做市商买卖价差（bp） */
   spreadBps: number
-  /** 做市商每档基准数量（股） */
   levelQty: number
 }
 
-/**
- * 8 家标的（大盘、中盘、成长、散户阶梯价格与市值体系，涵盖军工、银行、能源、科技、算力、医疗、物流、材料八大板块）。
- * σ 的取值考虑"10 分钟里要看得见波动、又不至于 1 分钟就崩盘"：
- * 高波动成长/妖股更躁，大盘蓝筹更稳。
- */
 const STOCK_DEFS: StockDef[] = [
   { code: 'XJZG', name: '星舰重工', sector: '军工', anchor: 50_000, sigma: 0.0022, mu: 0.000004, theta: 0.00008, floatShares: 20_000_000, maxLeverage: 50, shortable: true, spreadBps: 30, levelQty: 5_000 },
   { code: 'XGYH', name: '星港银行', sector: '银行', anchor: 25_000, sigma: 0.0010, mu: 0.000002, theta: 0.00010, floatShares: 32_000_000, maxLeverage: 30, shortable: true, spreadBps: 20, levelQty: 10_000 },
@@ -209,7 +169,6 @@ interface StockState {
   def: StockDef
   model: PriceModel
   book: OrderBook
-  /** 六周期 K 线（启动铺 400 根，1 秒 tick 只改最新一根；见 mock/history.ts） */
   series: StockSeries
   price: number
   prevClose: number
@@ -232,16 +191,13 @@ interface PositionState {
   entry: number
   leverage: number
   margin: number
-  /** 连续被强平的拍数：按设计稿分片 3 拍仍未清干净 ⇒ 剩余按标记价一次结算 */
   liqTicks: number
 }
 
-/** 订单内部态：比对外 DTO 多出挂单冻结与簿内 id（界面看不到，也不该看到） */
 interface OrderState extends ExchangeOrder {
   filledValue: number
   frozenCash: number
   frozenShares: number
-  /** 订单簿里的 id；空串 = 没有挂在簿上 */
   bookOrderId: string
 }
 
@@ -255,7 +211,6 @@ interface StrategyState {
   lastError: string
 }
 
-/** 每只标的需要跨刷新延续的最小行情状态（K 线历史不存：启动时按现价重新铺图） */
 interface PersistedStockState {
   code: string
   price: number
@@ -268,7 +223,6 @@ interface PersistedStockState {
   varianceEwma: number
 }
 
-/** `localStorage['whale-idle:exch-mock']` 的形状（版本不符直接忽略，不迁移旧原型数据） */
 interface PersistedMockState {
   v: number
   savedAt: number
@@ -300,7 +254,6 @@ interface PersistedMockState {
     lastError: string
   }>
   bond: BondPosition & { accruedRemainder?: string; settledAt?: number; capDay?: number }
-  /** 保底基金持仓（放置型）；旧存档没有该字段时按空仓处理 */
   fund?: { principal: number; accrued: number; accruedRemainder?: string; capDay?: number; capUsed?: number; settledMinute: number; settledAt?: number; openedAt: number }
   news: NewsItem[]
   seq: { order: number; strategy: number; trade: number; news: number }
@@ -314,11 +267,9 @@ interface EventTemplate {
   body: string
   tone: 'good' | 'bad' | 'warn' | 'info'
   effects: Array<{ code: string; pct: number }>
-  /** 对称事件：可整体反向（如"矿难"↔"新矿脉发现"） */
   flippable?: boolean
 }
 
-/** 板块联动事件（涵盖军工、银行、能源、科技、算力、医疗、物流、材料八大板块），冲击幅度在触发时再抖动 */
 const EVENT_TEMPLATES: EventTemplate[] = [
   {
     title: '边境战事升级',
@@ -422,9 +373,7 @@ export class MockExchangeClient implements ExchangeClient {
   private indexOpen = 1000
   private indexHigh = 1000
   private indexLow = 1000
-  /** 上一次真正推进行情的时间（用于离开页面后的补算） */
   private lastStepWall = Date.now()
-  /** 补算期间静默广播：后台补 3600 拍时不要把强平提示连弹几十条 */
   private silent = false
   private readonly onPageHide = (): void => {
     this.persist()
@@ -432,13 +381,9 @@ export class MockExchangeClient implements ExchangeClient {
   private readonly onVisibilityChange = (): void => {
     if (typeof document !== 'undefined' && document.visibilityState === 'visible') this.catchUp()
   }
-  /** 低风险理财持仓（放置型）：本金 / 累计利息 / 已结算分钟 / 建仓时间 */
   private bond: { principal: number; accrued: number; accruedRemainder: bigint; capDay: number; capUsed: number; settledMinute: number; settledAt: number; openedAt: number } = { principal: 0, accrued: 0, accruedRemainder: 0n, capDay: 0, capUsed: 0, settledMinute: 0, settledAt: 0, openedAt: 0 }
-  /** 债券 nonce 幂等表：nonce → 申购金额（赎回记 0） */
   private readonly bondNonces = new Map<string, number>()
-  /** 保底基金持仓（放置型）：本金 / 累计收益 / 已结算分钟 / 建仓时间 */
   private fund: { principal: number; accrued: number; accruedRemainder: bigint; capDay: number; capUsed: number; settledMinute: number; settledAt: number; openedAt: number } = { principal: 0, accrued: 0, accruedRemainder: 0n, capDay: 0, capUsed: 0, settledMinute: 0, settledAt: 0, openedAt: 0 }
-  /** 基金 nonce 幂等表：nonce → 申购金额（赎回记 0） */
   private readonly fundNonces = new Map<string, number>()
 
   constructor(seed = 20261103) {
@@ -447,7 +392,6 @@ export class MockExchangeClient implements ExchangeClient {
     const saved = this.readPersisted()
     const now = Date.now()
     this.tick = saved?.tick ?? 0
-    // 从持久化的 tick 接着走：订单/流水的 ts 不会因为刷新跳回过去
     this.startTs = now - this.tick * 1000
     this.buildStocks(now, saved)
     if (saved) this.applyPersisted(saved)
@@ -459,33 +403,21 @@ export class MockExchangeClient implements ExchangeClient {
       savedIndex && Number.isFinite(savedIndex.high) ? savedIndex.high : this.indexOpen
     this.indexLow =
       savedIndex && Number.isFinite(savedIndex.low) ? savedIndex.low : this.indexOpen
-    // 首帧就把五档铺出来：否则进页后的第一秒盘口是全空的，像没连上
     this.refreshAllQuotes()
     if (saved) this.restoreRestingOrders()
-    // 模块单例常驻：构造即启动，页面卸载不停（挂机语义见 start/stop 注释）
     this.startEngine()
   }
 
-  /* ═══════════════ 生命周期与广播 ═══════════════ */
 
-  /**
-   * 页面挂载通知：确保引擎在跑，并按真实流逝时间补算离开页面期间漏掉的拍。
-   * 引擎本身由模块单例持有（构造时启动），这里**不会**重复建定时器。
-   */
   start(): void {
     this.startEngine()
     this.catchUp()
   }
 
-  /**
-   * 页面卸载通知。**不停止行情引擎**（2026-11-03 船长要求挂机语义：离开页面行情继续走），
-   * 只顺手落一次盘，让刷新/重进时能接着玩。
-   */
   stop(): void {
     this.persist()
   }
 
-  /** 引擎只建一次定时器；监听器也只挂一次（模块单例，页面反复进出不会叠加） */
   private startEngine(): void {
     if (this.timer !== null) return
     if (typeof window !== 'undefined') {
@@ -502,23 +434,16 @@ export class MockExchangeClient implements ExchangeClient {
     this.persistIfNeeded()
   }
 
-  /**
-   * 按真实流逝时间补算（页面卸载/标签页后台/整机休眠后回来）。
-   * 单次最多补 `MAX_CATCHUP_TICKS` 拍；超过上限的时间**直接丢弃**而不是排队补，
-   * 否则切回页面要同步跑几万拍、界面会卡死（船长要求「避免长时间后台卡顿」）。
-   */
   private catchUp(): void {
     const now = Date.now()
     const elapsed = Math.floor((now - this.lastStepWall) / 1000)
     if (elapsed <= 0) return
     const ticks = Math.min(elapsed, MAX_CATCHUP_TICKS)
     this.lastStepWall = elapsed > MAX_CATCHUP_TICKS ? now : this.lastStepWall + elapsed * 1000
-    // 超过补算上限的时间直接跳过：把跳过的秒数补进 startTs，保证之后 K 线的桶仍落在真实时钟上
     if (elapsed > MAX_CATCHUP_TICKS) this.startTs += (elapsed - MAX_CATCHUP_TICKS) * 1000
     this.advance(ticks)
   }
 
-  /** 连续跑 N 拍，只在最后广播一次 tick（补算时避免 N 次 React 重渲染） */
   private advance(count: number): void {
     if (count <= 0) return
     this.silent = count > 1
@@ -538,7 +463,6 @@ export class MockExchangeClient implements ExchangeClient {
     }
   }
 
-  /** 建 8 只标的的行情模型与六周期历史（有持久化状态时续上价格/模型状态） */
   private buildStocks(now: number, saved: PersistedMockState | null): void {
     this.stocks.clear()
     for (const def of STOCK_DEFS) {
@@ -605,7 +529,6 @@ export class MockExchangeClient implements ExchangeClient {
     })
   }
 
-  /** 刷新后把挂单重新放回簿上（**不撮合**：挂了一夜的单不能按当前盘口立刻成交，否则账对不上） */
   private restoreRestingOrders(): void {
     for (const order of this.orders) {
       if (order.status !== 'open' && order.status !== 'partial') continue
@@ -744,7 +667,6 @@ export class MockExchangeClient implements ExchangeClient {
     try {
       window.localStorage.setItem(MOCK_SAVE_KEY, JSON.stringify(this.toPersisted()))
     } catch {
-      // 存储被禁/配额满：原型不因持久化失败而停摆
     }
   }
 
@@ -753,14 +675,9 @@ export class MockExchangeClient implements ExchangeClient {
     try {
       window.localStorage.removeItem(MOCK_SAVE_KEY)
     } catch {
-      // 同上
     }
   }
 
-  /**
-   * 重置模拟账户（页面「重置模拟账户」按钮）：回到 1,000 万本金、清空持仓/委托/策略/流水，
-   * 行情从锚点重新起跑。与游戏存档无关（数据只在本文件的 localStorage 键里）。
-   */
   resetAccount(): void {
     this.clearPersisted()
     this.rng = createRng(this.seed)
@@ -795,7 +712,6 @@ export class MockExchangeClient implements ExchangeClient {
     this.emitTick()
   }
 
-  /** 六周期图表数据（同步：页面每 tick 取一次，避免整页快照携带 6×400×4 根 K 线） */
   getChartSeries(code: string, period: ChartPeriod): Kline[] {
     const st = this.stocks.get(code)
     if (!st) return []
@@ -810,7 +726,6 @@ export class MockExchangeClient implements ExchangeClient {
   }
 
   subscribe(_codes: string[], _topics: ExchangeTopic[], _throttle?: '1s' | '5s' | '30s'): Unsubscribe {
-    // 原型页用同步快照，不消费 subscription；保留实现只为契约完整（真机换成 WS 帧）
     const cb = (_payload: unknown): void => undefined
     this.subscribers.add(cb)
     return () => {
@@ -828,7 +743,6 @@ export class MockExchangeClient implements ExchangeClient {
   }
 
   private emit(type: ExchangeEventType, payload: unknown): void {
-    // 补算期间不广播：后台一次补 3600 拍时，强平/条件单提示会连弹几十条
     if (this.silent) return
     const set = this.handlers.get(type)
     if (!set) return
@@ -836,7 +750,6 @@ export class MockExchangeClient implements ExchangeClient {
       try {
         cb(payload)
       } catch {
-        // 回调异常不能打断行情引擎（否则整页停摆）
       }
     }
   }
@@ -846,19 +759,16 @@ export class MockExchangeClient implements ExchangeClient {
       try {
         cb()
       } catch {
-        /* 同上 */
       }
     }
     for (const cb of this.subscribers) {
       try {
         cb({ type: 'price', ts: this.ts(), tick: this.tick })
       } catch {
-        /* 同上 */
       }
     }
   }
 
-  /* ═══════════════ 一拍 ═══════════════ */
 
   private ts(): number {
     return this.startTs + this.tick * 1000
@@ -867,7 +777,6 @@ export class MockExchangeClient implements ExchangeClient {
   private step(): void {
     this.tick += 1
     const ts = this.ts()
-    // 事件排在行情之前：本拍就能看到价格跳变，否则玩家会先看到新闻、下一秒才见行情
     this.maybeSpawnEvent(ts)
     for (const st of this.stocks.values()) {
       const price = clampPrice(stepPrice(st.model, this.rng))
@@ -890,7 +799,6 @@ export class MockExchangeClient implements ExchangeClient {
     this.indexLow = Math.min(this.indexLow, index)
   }
 
-  /* ═══════════════ 行情与指数 ═══════════════ */
 
   private quoteOf(st: StockState): StockQuote {
     return {
@@ -912,7 +820,6 @@ export class MockExchangeClient implements ExchangeClient {
     }
   }
 
-  /** 指数：按初始市值权重加权 8 只标的，基点 1000（原型自造，不接服务端指数） */
   private indexValue(): number {
     let num = 0
     let den = 0
@@ -934,11 +841,6 @@ export class MockExchangeClient implements ExchangeClient {
     }
   }
 
-  /**
-   * 某标的被挂单锁定的卖出股数（股票仍在现货持仓里，只是不可再卖）。
-   * 为什么按订单现算而不是维护一个全局计数：全局数分不清是哪只票锁的，
-   * 多标的挂单时会扣错仓——这里订单量很小，扫一遍足够。
-   */
   private lockedSharesOf(code: string): number {
     let locked = 0
     for (const o of this.orders) {
@@ -951,26 +853,13 @@ export class MockExchangeClient implements ExchangeClient {
     return this.stocks.get(code)?.price ?? 0
   }
 
-  /**
-   * 市价单的参考成交价：买看卖一、卖看买一。
-   * 为什么不用中间价：MAX/资金校验若按中间价算，市价买会被价差顶穿几十个基点，
-   * 用「花光可用资金」时现金会小负——玩家会以为平台算错账。
-   */
   private refPriceFor(st: StockState, side: Side): number {
     const snap = st.book.snapshot(this.ts(), 1)
     const level = side === 'buy' ? snap.asks[0] : snap.bids[0]
     return level?.price ?? st.price
   }
 
-  /* ═══════════════ 挂单同步（玩家挂单被做市商/自己穿价成交） ═══════════════ */
 
-  /**
-   * 簿内剩余量与本地订单对账。
-   *
-   * 为什么不用撮合返回的 fills 直接回写：玩家挂单既可能被做市商报价穿价成交，也可能被
-   * 自己另一笔反向单吃掉（原型只有一个账户）。统一以「簿内剩余量」为准，两种路径都不会漏账，
-   * 成交价就是挂单价（maker 价），与撮合规则一致。
-   */
   private syncRestingOrders(): void {
     const ts = this.ts()
     for (const order of this.orders) {
@@ -992,13 +881,11 @@ export class MockExchangeClient implements ExchangeClient {
   private applyRestingFill(order: OrderState, qty: number, price: number, ts: number): void {
     const cost = qty * price
     if (order.side === 'buy') {
-      // 挂单时已把「数量 × 价 × (1+费)」从现金挪进冻结，成交只消耗冻结
       const release = cost * (1 + FEE_RATE)
       this.frozen = Math.max(0, this.frozen - release)
       order.frozenCash = Math.max(0, order.frozenCash - release)
       this.spotAdd(order.code, qty, price)
     } else {
-      // 挂单时股票没动过（只锁可卖额度），成交这一刻才真正扣股
       order.frozenShares = Math.max(0, order.frozenShares - qty)
       this.spotRemove(order.code, qty)
       this.cash += cost * (1 - FEE_RATE)
@@ -1023,16 +910,11 @@ export class MockExchangeClient implements ExchangeClient {
     if (this.myTrades.length > 200) this.myTrades.splice(200)
   }
 
-  /* ═══════════════ 下单 ═══════════════ */
 
   async placeOrder(req: PlaceOrderRequest): Promise<ExchangeOrder> {
     return this.placeOrderInternal(req, 'manual')
   }
 
-  /**
-   * 下单前馈（设计稿 6.2）：界面每次输入都调它，因此必须**不产生副作用**。
-   * 强平价与「最多可开 N 股」都在这里算，避免界面自己复制公式后与撮合口径分叉。
-   */
   previewOrder(req: PlaceOrderRequest): OrderPreview {
     const st = this.stocks.get(req.code)
     if (!st) {
@@ -1048,7 +930,6 @@ export class MockExchangeClient implements ExchangeClient {
       }
     }
     const leverage = Math.max(1, Math.round(req.leverage ?? 1))
-    // 1x + short=true 也是开空（与联机 Go 口径一致），只是不放大盈亏。
     const isLeverage = leverage > 1 || req.short === true
     const posSide: 'long' | 'short' = req.side === 'sell' ? 'short' : 'long'
     const marketPrice = this.refPriceFor(st, req.side)
@@ -1058,9 +939,7 @@ export class MockExchangeClient implements ExchangeClient {
     const notional = safePrice * qty
     const fee = notional * FEE_RATE
     const hold = this.spot.get(req.code)?.qty ?? 0
-    // 挂单卖出只锁"可卖"额度：这里按「持仓 − 已锁」给上限，否则 MAX 会把锁定股再卖一次
     const availableSpot = Math.max(0, hold - this.lockedSharesOf(req.code))
-    // 市价单预留 1% 吃档缓冲，MAX 才不会被逐档成交顶穿现金（同 placeSpot 的校验口径）
     const maxPrice = req.type === 'market' ? safePrice * 1.01 : safePrice
     const maxQty = isLeverage
       ? M.maxOpenQty(this.cash, leverage, maxPrice, FEE_RATE)
@@ -1083,7 +962,6 @@ export class MockExchangeClient implements ExchangeClient {
       blockReason = `${T.leverageUnavailable}（最高 ${st.def.maxLeverage}x）`
     } else if (isLeverage && req.side === 'sell' && !st.def.shortable) blockReason = T.noShort
     else if (isLeverage && req.reduceOnly !== true && existing && existing.leverage !== leverage) {
-      // 同一方向已有仓位且杠杆不同：原型不做逐仓拆分，直接在前馈里说清楚
       blockReason = TF.leverageConflict(`${existing.leverage}x`)
     } else if (!isLeverage && req.side === 'sell' && availableSpot < qty) {
       blockReason = TF.maxSellQty(amount(Math.floor(availableSpot)))
@@ -1166,7 +1044,6 @@ export class MockExchangeClient implements ExchangeClient {
     }
   }
 
-  /** 现货：市价吃簿；限价未成交部分留簿并冻结现金/股票 */
   private placeSpot(
     req: PlaceOrderRequest,
     st: StockState,
@@ -1176,7 +1053,6 @@ export class MockExchangeClient implements ExchangeClient {
   ): OrderState {
     const ts = this.ts()
     const order = this.newOrder(req, 1, market ? null : price, ts, source)
-    // 市价单会逐档吃上去：校验按买一/卖一 +1% 缓冲，避免"MAX 买完现金小负"
     const checkPrice = market ? price * 1.01 : price
     if (req.side === 'buy') {
       const need = req.qty * checkPrice * (1 + FEE_RATE)
@@ -1219,7 +1095,6 @@ export class MockExchangeClient implements ExchangeClient {
       }
       const rest = allowRest ? res.order.qty : 0
       if (rest > 0) {
-        // 挂单卖出只锁"可卖"额度，股票仍留在现货持仓里（否则权益会凭空少一截）
         order.frozenShares = rest
         order.bookOrderId = res.order.id
       }
@@ -1233,11 +1108,6 @@ export class MockExchangeClient implements ExchangeClient {
     return order
   }
 
-  /**
-   * 杠杆：原型按 IOC 处理（吃不满就撤余量）。
-   * 为什么不留簿：逐仓保证金要在成交那一刻锁定，留簿还要冻结保证金、支持改价/撤单，
-   * 原型阶段性价比低；委托列表里看到的是"已成交/已撤销"，不影响强平与权益的可玩性。
-   */
   private placeLeverage(
     req: PlaceOrderRequest,
     st: StockState,
@@ -1339,7 +1209,6 @@ export class MockExchangeClient implements ExchangeClient {
     for (const f of fills) this.recordMyTrade(order, f.qty, f.price, ts)
   }
 
-  /* ═══════════════ 平仓 / 强平 ═══════════════ */
 
   async closePosition(code: string, side: 'long' | 'short', qty?: number): Promise<void> {
     const pos = this.positions.get(`${code}:${side}`)
@@ -1347,10 +1216,6 @@ export class MockExchangeClient implements ExchangeClient {
     this.closeInternal(code, side, qty ?? pos.qty, this.ts(), 'manual')
   }
 
-  /**
-   * 平仓：市价吃簿，吃不满的部分按标记价强制结算（服务端 6.3 接受滑点的口径）。
-   * 返回实际平掉的股数与成交均价，供调用方（条件单/策略/强平）回写订单。
-   */
   private closeInternal(
     code: string,
     side: 'long' | 'short',
@@ -1377,7 +1242,6 @@ export class MockExchangeClient implements ExchangeClient {
     let filledValue = 0
     for (const f of res.fills) filledValue += f.price * f.qty
     if (filledQty < closeQty) {
-      // 盘口不够深：剩余按标记价结算；普通平仓仍消耗日额度。
       const rest = closeQty - filledQty
       const fallbackQty = source === 'liquidation'
         ? rest
@@ -1420,7 +1284,6 @@ export class MockExchangeClient implements ExchangeClient {
       }
       const equityBefore = M.positionEquity(pos.margin, upnl)
       pos.liqTicks += 1
-      // 权益归零 ⇒ 一次清完；否则按 30% 分片，连续 3 拍还没清完就按标记价结算剩余
       const sliceQty =
         equityBefore <= 0 || pos.liqTicks >= 3 ? pos.qty : M.liquidationSliceQty(pos.qty)
       try {
@@ -1434,12 +1297,10 @@ export class MockExchangeClient implements ExchangeClient {
         }
         this.emit('margin_call', payload)
       } catch {
-        // 极端情况（簿空 + 价格异常）跳过本拍，下一拍再判
       }
     }
   }
 
-  /* ═══════════════ 条件单 ═══════════════ */
 
   private runConditionalOrders(ts: number): void {
     for (const order of this.orders) {
@@ -1475,12 +1336,10 @@ export class MockExchangeClient implements ExchangeClient {
         order.qtyRemaining = Math.max(0, order.qty - order.filledQty)
         order.status = order.qtyRemaining === 0 ? 'filled' : 'partial'
       } catch {
-        // 平不掉就保持 pending，下一拍再试（不丢单）
       }
     }
   }
 
-  /* ═══════════════ 量化策略 ═══════════════ */
 
   private runStrategies(ts: number): void {
     for (const s of this.strategies.values()) {
@@ -1649,9 +1508,7 @@ export class MockExchangeClient implements ExchangeClient {
     return [...this.strategies.values()].map((s) => s.spec)
   }
 
-  /* ═══════════════ 债券 / 分红 ═══════════════ */
 
-  /** 债券收益按 UTC 日随机档位计提，部分日按真实时长比例折算。 */
   private settleBond(): void {
     const now = this.ts()
     const nowMinute = Math.floor(now / 60_000)
@@ -1749,7 +1606,6 @@ export class MockExchangeClient implements ExchangeClient {
     return this.bondView()
   }
 
-  /** 基金收益按 UTC 日随机档位计提，部分日按真实时长比例折算。 */
   private settleFund(): void {
     const now = this.ts()
     const nowMinute = Math.floor(now / 60_000)
@@ -1860,7 +1716,6 @@ export class MockExchangeClient implements ExchangeClient {
     if (this.dividends.length > 100) this.dividends.splice(100)
   }
 
-  /* ═══════════════ 事件与快讯 ═══════════════ */
 
   private maybeSpawnEvent(ts: number): void {
     if (this.tick < this.nextEventTick) return
@@ -1894,7 +1749,6 @@ export class MockExchangeClient implements ExchangeClient {
     this.emit('event', news)
   }
 
-  /* ═══════════════ 账户与快照 ═══════════════ */
 
   private spotAdd(code: string, qty: number, price: number): void {
     const hold = this.spot.get(code) ?? { qty: 0, avgCost: 0 }
@@ -2005,14 +1859,12 @@ export class MockExchangeClient implements ExchangeClient {
     }
   }
 
-  /* ═══════════════ 查询 / 资金 / 撤单 ═══════════════ */
 
   async getStocks(): Promise<StockQuote[]> {
     return [...this.stocks.values()].map((s) => this.quoteOf(s))
   }
 
   async getCompanies(): Promise<CompanyInfo[]> {
-    // 演示数据：偏移为 0、无周报（公司账本由联机服务端计算，Mock 只保证界面可渲染）。
     return [...this.stocks.values()].map((st) => ({
       company: st.def.code,
       name: st.def.name,
@@ -2023,7 +1875,6 @@ export class MockExchangeClient implements ExchangeClient {
   }
 
   async submitCompanyFlows(flows: CompanyFlowEntry[]): Promise<CompanyFlowsResult> {
-    // Mock 不落库：公司账本只在联机服务端计算，演示模式直接丢弃。
     return { accepted: 0, ignored: flows.length }
   }
 
@@ -2044,7 +1895,6 @@ export class MockExchangeClient implements ExchangeClient {
     if (!st) throw new ExchangeError('unknown_code', `未知标的：${code}`)
     if (interval === '1m') return st.series.series.m1.slice(-limit)
     if (interval === '1h') return st.series.series.h1.slice(-limit)
-    // 5 分钟线由 M1 现聚合（服务端契约里的 5m 档；原型不单独维护序列）
     const bars = st.series.series.m1
     const out: Kline[] = []
     for (let i = 0; i < bars.length; i += 5) {
@@ -2079,7 +1929,6 @@ export class MockExchangeClient implements ExchangeClient {
 
   async withdraw(amountValue: number, nonce: string): Promise<{ nonce: string; amount: number; fee: number; availableAt: number; receiptHash: string }> {
     if (!(amountValue > 0)) throw new ExchangeError('bad_amount', '出金金额必须大于 0')
-    // 与真实服务器 deductForWithdraw 对齐：出金只校验 cash >= amount，不额外收手续费
     if (amountValue > this.cash) throw new ExchangeError('insufficient_cash', T.toastNoCash)
     this.cash -= amountValue
     return { nonce, amount: amountValue, fee: 0, availableAt: this.ts() + 60_000, receiptHash: `mock-${nonce}` }
@@ -2101,7 +1950,6 @@ export class MockExchangeClient implements ExchangeClient {
         order.frozenCash = 0
       }
     } else if (order.frozenShares > 0) {
-      // 挂单时只锁额度、没动持仓 ⇒ 撤单只需解锁
       order.frozenShares = 0
     }
     order.status = 'cancelled'

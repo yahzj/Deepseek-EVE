@@ -7,7 +7,6 @@ import './repairDroneEffects.css'
 type Flight = { event: BattleFx; elapsed: number; lane: number }
 type Props = { battle: BattleState; anchors: Map<string, { x: number; y: number }>; dims: { W: number; H: number }; paused?: boolean }
 
-/** 纯表现层：跟踪真实修理事件，不参与选靶、扣料或回血。 */
 export function RepairDroneEffects({ battle, anchors, dims, paused = false }: Props) {
   const input = useRef({ battle, anchors, paused })
   input.current = { battle, anchors, paused }
@@ -29,16 +28,13 @@ export function RepairDroneEffects({ battle, anchors, dims, paused = false }: Pr
         const fresh = newRepairDroneEvents(current.battle.fx, seq, current.battle.lastTickGameMs, current.battle.speedX)
         seq = current.battle.fx.at(-1)?.seq ?? seq
         for (const event of fresh) {
-          // 事件已经在真实修理成功后写入；同一拍随后被点防击落也不能抹掉这次修理的表现。
           if (!current.anchors.has(event.tag) || !current.anchors.has(event.to!)) continue
           active.push({ event, elapsed: 0, lane: event.repair!.droneIndex })
           changed = true
         }
       } else {
-        // 最小化、后台或暂停不补播期间的旧脉冲。
         seq = current.battle.fx.at(-1)?.seq ?? seq
       }
-      // 事件已经代表一次真实完成的修理；即使无人机在返航途中被击落，也把这次动画播完。
       const live = active.filter(flight => flight.elapsed < REPAIR_DRONE_LIFE_MS)
       if (live.length !== active.length) changed = true
       active = live.slice(-24)

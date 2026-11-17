@@ -38,7 +38,6 @@ export function staticDocumentIssues(document: unknown, contract: StaticFieldTyp
   return issues
 }
 
-/** 文本与派生字段仍由代码绑定；JSON只提供唯一的静态参数。 */
 export function staticDataGroup<T>(document: DataDocument, group: string, bindings: Record<string, DataRow>): T[] {
   const issues = staticDocumentIssues(document)
   if (issues.length) throw new Error(issues.slice(0, 8).join('；'))

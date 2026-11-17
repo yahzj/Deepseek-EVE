@@ -1,6 +1,5 @@
 import type { GameState } from './state'
 
-/** 只依赖状态形状，供门禁、读档和引擎清理失效出发记录，避免引入航路依赖环。 */
 export function reconcileDeparture(state: GameState): void {
   const leg = state.departure
   if (!leg) return

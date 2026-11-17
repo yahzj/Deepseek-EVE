@@ -1,14 +1,9 @@
-/**
- * @whale/data 对外出口：技能表 + 内容表 + 引擎运行上下文。
- */
 
 export { SKILLS, SKILL_GROUPS, SKILL_BRANCHES, buildSkillCatalog } from './skills'
 export { ORES, MINERALS, ITEMS, DRONES, buildItemCatalog } from './items'
 export { BELTS, buildBeltCatalog } from './belts'
 export { SHIPS, buildShipCatalog } from './ships'
 export { MODULES, buildModuleCatalog } from './modules'
-// 2026-09-11 蓝图价格口径（船长裁决甲 + 同日复核补正：奇货档 ×4，系数即默认值、个例可覆盖）：
-// 系数与算法单点在被导出，供 content:check 契约与重定价工具复用（避免第二份公式）
 export {
   BLUEPRINTS,
   BLUEPRINT_PRICE_STEP,
@@ -21,16 +16,10 @@ export { SHIP_BLUEPRINTS, buildShipBlueprintCatalog } from './shipBlueprints'
 export { GALAXIES, GALAXY_EDGES, buildGalaxyCatalog } from './universe'
 export { PLANET_DEFS, PLANET_TRAITS, PLANET_BUILDINGS, buildPlanetCatalog } from './planets'
 export { ANOMALIES, ANOMALIES_FLAVORED, buildAnomalyCatalog } from './anomalies'
-// 2026-09-19 残骸合并：卡级特色池/主题件表退居**构建依据与体检输入**（运行时一律走 core 的 13 组表）
 export { RECYCLE_FLAVOR, RECYCLE_LOOT_PILOT } from './salvageFlavors'
 export type { RecycleFlavor } from './salvageFlavors'
-// 2026-09-11 退役窝点卡白名单（船长「按方案 2 执行」）：B 族两卡字段退役后，靠显式白名单
-// 保住"旧档里已获得的稀有残骸仍可识别"——详见 `./retiredLairCards.ts` 与 content:check 契约。
 export { RETIRED_LAIR_CARD_IDS } from './retiredLairCards'
-// 2026-09-13 洞内敌卡表（五族各一张 = 按族掉落池的来源）：卡表与轮换顺序对外出口，
-// 供 `content:check` 的三处同序契约与 core 侧的轮换表对齐（少一张/换序会让掉落物取错族）。
 export { WORMHOLE_FOE_CARDS, WORMHOLE_FOE_CARD_IDS, WORMHOLE_RARE_WRECK_CARD_IDS } from './wormholeFoes'
-// 2026-09-11 敌舰配置表（舰级表）：A 族试点——绝对值口径，悬赏卡只写编成与修正
 export {
   FOE_SHIPS,
   FOE_SHIP_PIRATE_SKIFF,
@@ -42,37 +31,22 @@ export {
   FOE_D_INVASION_OATHKEEPER,
   FOE_D_INVASION_ETERNAL_TOMB,
   ALIEN_BEAST_SHIP_IDS,
-  // 2026-09-24 船长「设计每个种族的T5旗舰」：两族的 **T5 旗舰白名单**（旧口径"不配 5 旗舰"随本轮令改写为
-  // "只允许白名单那一条"；C 族新成员落地时补进 ALIEN_FLAGSHIP_SHIP_IDS、G 族补进 G_FLAGSHIP_SHIP_IDS）
   ALIEN_FLAGSHIP_SHIP_IDS,
   G_FLAGSHIP_SHIP_IDS,
-  // 2026-09-24 H 族（墨潮帮）：T5 旗舰白名单 **＋ 旗舰速度破例白名单**（同一张，见其头注）
   H_FLAGSHIP_SHIP_IDS,
-  // 2026-09-24 船长第二轮令（突击舰 ×1.6 / 其他 ×1.3）＋ 裁决「突击舰与战巡都豁免」：
-  // H 族「**族格速带破例**」白名单（突击舰 1.86× 越上限 · 战巡 0.91× 低于下限，见其头注）
   INK_SPEED_EXEMPT_SHIP_IDS,
-  // 2026-10-01 船长令「是新势力：余晖」＋ 族格裁定「甲：新立族格」：R 族 **T5 旗舰白名单**
-  // ＋ **另立的族格速带**（0.70~1.50×，比 A/H 那条更宽更低 —— 光环是"护卫快、主力慢"）
   R_FLAGSHIP_SHIP_IDS,
   CORONA_SPEED_BAND,
-  // 2026-09-16 船长「C族全部添加冲锋，按照级别分别为1.5/2/2.5/3/4」：C 族冲锋倍率的**按档契约基准**
-  // （T1 1.5 · T2 2 · T3 2.5 · T4 3 · T5 4；`content:check` 与用例都按它核对舰级实挂值）
   ALIEN_CHARGE_MUL_BY_TIER,
-  // 2026-09-16 船长「孢群异虫速度削减到300」：C 族「允许慢」白名单（豁免族格速带三条断言）
   ALIEN_SLOW_SHIP_IDS,
-  // 2026-09-15 船长「撞到的契约开白名单」：构成口径由舰级说了算的舰级（D 战列舰 6:4 · E 导弹残段纯爆炸）
   FOE_SHIP_MIX_AUTHORITY_IDS,
-  // 2026-09-16 船长：敌方后勤舰「残军补给舰」（T3 · 备用壳体，暂不进卡；带 repairPct 修理能力）
   FOE_G_REMNANT_TENDER,
 } from './foe-ships'
-// 2026-09-11 敌机机型表（舰载机群）：舰级只登记"用哪个机型、几架"，数值全在机型表（设计稿 foe-drone-system-20260911.md）
 export { FOE_DRONES, FOE_DRONE_E_ALERT, FOE_DRONE_C_SPORE, FOE_DRONE_C_JAWCLAW } from './foe-drones'
 export { ALIEN_INVASION_CHARGE_MUL, ALIEN_FAST_SHIP_IDS } from './foe-ships'
 export { TRAVEL_EVENTS, buildTravelEvents } from './travelEvents'
 export { MARKET_GOODS, WRECK_BUY_GOODS, buildMarketGoodsCatalog } from './marketCatalog'
-// 2026-09-09 数字稀有度表（物品本体属性；市场/图鉴/未来掉落统一查）
 export { RARITY_TIER, rarityTierOf, itemRarityTierOf } from './rarityTier'
-// 2026-09-10 无人机四型定位契约（新增机型受 content:check 与 core 测试双重守卫）
 export {
   DRONE_ROLE_SPECS,
   DRONE_ROLE_ANCHORS,
@@ -81,7 +55,6 @@ export {
   droneRoleLadderIssues,
   type DroneRoleSpec,
 } from './droneRoles'
-// 2026-09-11 舰种表（质量分级·敌我共用）：5 档命名 + 基准速度 + 等效质量落档（本批零行为变化）
 export {
   HULL_CLASS_NAME,
   HULL_CLASS_BASE_SPEED,
@@ -95,7 +68,6 @@ export { STATION_SITES, buildStationCatalog } from './stations'
 export { LAB_RECIPES, buildLabRecipeCatalog } from './labRecipes'
 export { DIALOGUES, buildDialogueCatalog } from './dialogues'
 export { COMMS_MESSAGES, buildCommsCatalog } from './messages'
-// 2026-09-11 通讯 v2：NPC 势力与船内系统档案（协会 8 部门 + 打捞队工会 + 信息库；发件人与立场口径的唯一权威）
 export {
   COMMS_FACTIONS,
   FACTION_OCTOPUS_GLYPH,
@@ -105,21 +77,15 @@ export {
   buildCommsDeptCatalog,
 } from './commsFactions'
 export { FIRST_TASK_MESSAGES } from './firstTaskMessages'
-/** 技能树坐标覆盖表（2026-09-22 船长手调工作流：`npm run skilltree:export` → 改 Excel → 回写本表） */
 export { SKILL_TREE_POSITIONS } from './skillTreePositions'
 export { ANNOUNCEMENTS, buildAnnouncementCatalog, type AnnouncementDef } from './announcements'
 export { buildSimContext } from './context'
-// 2026-09-19 谜质科技树：23 节点数据表（体检「谜质科技契约」逐条校验 id/费用/前置）
 export { MATTER_TECH_NODES, buildMatterTechCatalog } from './matterTech'
-// 势力图鉴的内容登记表（2026-09-26 船长「势力图鉴单独列出」）——单点：收录范围 ＋ 各族专属件/舰/图纸
 export { FACTION_CODEX, FACTION_CODEX_ORDER, FACTION_CODEX_COUNT, buildFactionCards, factionOfExclusive } from './factionCodex'
 export type { FactionCard, FactionEnemy } from './factionCodex'
 export type { FactionCodexEntry } from './factionCodex'
-// 2026-09-20 成就徽章（船长「继续之前的成就系统」· 两批共 81 枚：任务 13 ＋ 链 50 ＋ 里程碑 18）
 export { ACHIEVEMENTS, achievementOf, achievementsOfChain } from './achievements'
-// 2026-09-19 英语本地化（船长令）：**唯一本地化表** `L10N`（id → {zh,en}，一处改全局换语言）
 export { L10N, l10nEntryText, type L10nEntry } from './l10n/table'
-// 2026-09-19 英语本地化（船长令）：按 id 索引的英文覆盖层 + 语言类型（口径见 docs/glossary-en.md）
 export {
   localizeCtx,
   firstChainText,
@@ -138,18 +104,14 @@ export {
   EN_GALAXIES,
   EN_BELTS,
   EN_STATIONS,
-  /** 残骸组的三处文案（组名/稀有组名/成分说明）＋ 按 key 反查 —— 星图打捞页与工业页回收卡要用 */
   EN_WRECK_GROUPS,
   wreckGroupText,
   overlayWreckGroups,
-  /** 建站阶段名（奠基/完善/建成）＋ 那句 unlockDesc —— 嵌在 `tiers[]` 里，`overlayMap` 够不着 */
   EN_STATION_TIERS,
   stationTierText,
   EN_COMMS_FACTIONS,
   EN_TRAVEL_EVENTS,
   EN_MATTER_TECH,
-  // 2026-09-26 三号补（L1）：谜质科技节点**说明**（`note`）的英文表——
-  // `overlayMap` 只覆盖 `name`/`description`，节点的说明字段叫 `note` ⇒ 单列一张按 id 的表
   EN_MATTER_TECH_NOTES,
   overlayCardFoes,
   overlayCardFoesList,

@@ -1,15 +1,3 @@
-/**
- * **铁人模式：存档之外的代次账本**（2026-09-23 船长令）。
- *
- * **为什么账本必须放在存档之外**：代次若只写存档，回滚会把代次一起带回（等于没记）。
- * 账本放 `%APPDATA%` 下、**主 + 影子双写**（读时取 max）⇒ 玩家"外面换文件回滚"也能被看见；
- * **重置档案不清账本**（船长：「玩家重置档案并不会清空这个版本号」）。
- * 位置：与 `save.json` 同目录的 `ironman-ledger.json` / `ironman-ledger.bak.json`。
- *
- * ⚠ **本文件刻意不 import electron**：目录由一个 `dirOf()` 取值函数注入 ⇒ 同一份逻辑
- * 既能跑在 Electron 主进程里（`() => app.getPath('userData')`），也能被
- * `tools/ironman-ledger-check.ts` 直接拉起做实测（那条工具就是 S5 的"账本行为"回归）。
- */
 import { promises as fs } from 'node:fs'
 import { join } from 'node:path'
 import { createSaveQueue } from '../shared/saveQueue'
@@ -19,11 +7,8 @@ export const LEDGER_FILE_NAME = 'ironman-ledger.json'
 export const LEDGER_SHADOW_NAME = 'ironman-ledger.bak.json'
 
 export interface IronmanLedger {
-  /** 见过的最高代次 */
   seq: number
-  /** 最后一次更新墙钟 */
   updatedAtWallMs: number
-  /** 放行过的救援装载次数（只记账，玩家侧不显示——船长令） */
   rescues: number
 }
 
@@ -44,7 +29,6 @@ export function parseLedger(text: string): IronmanLedger | null {
   }
 }
 
-/** 从存档文本里取铁人信息（`{ format, version, savedAtWallMs, state }`） */
 export function ironmanInfoOfSaveText(text: string): { on: boolean; seq: number; savedAtWallMs: number } | null {
   try {
     const raw = JSON.parse(text) as Record<string, unknown>
@@ -63,14 +47,11 @@ export interface IronmanLedgerStore {
   readLedger: () => Promise<IronmanLedger>
   writeLedger: (next: IronmanLedger) => Promise<void>
   bumpLedger: (seq: number, rescue?: boolean) => Promise<IronmanLedger>
-  /** 读备份文件头 4KB 取"存档自己的保存时刻"（救援判龄用；比文件 mtime 更抗"复制/搬动"） */
   savedAtOfBackup: (name: string) => Promise<number>
 }
 
-/** 造一份账本读写器；`dirOf()` 每次调用都重新取目录（Electron 的 userData 就绪前不可缓存） */
 export function ironmanLedgerStore(dirOf: () => string): IronmanLedgerStore {
   const enqueue = createSaveQueue()
-  /** 读账本：主 + 影子各读一次，取 **seq 最大**的那份（影子补"主文件被删/被改"） */
   async function readCurrent(): Promise<IronmanLedger> {
     const dir = dirOf()
     const out = { ...EMPTY_LEDGER }
@@ -82,13 +63,11 @@ export function ironmanLedgerStore(dirOf: () => string): IronmanLedgerStore {
         out.updatedAtWallMs = Math.max(out.updatedAtWallMs, one.updatedAtWallMs)
         out.rescues = Math.max(out.rescues, one.rescues)
       } catch {
-        // 缺文件/坏文件 ⇒ 跳过（另一份可能与它互为备份）
       }
     }
     return out
   }
 
-  /** 写账本（**原子写 + 双写**） */
   async function writeCurrent(next: IronmanLedger): Promise<void> {
     const dir = dirOf()
     const text = JSON.stringify(next)
@@ -98,7 +77,6 @@ export function ironmanLedgerStore(dirOf: () => string): IronmanLedgerStore {
     }
   }
 
-  /** 把账本推到"至少 seq"（只在"更高代次/更高计数"时才落盘） */
   async function bumpCurrent(seq: number, rescue: boolean): Promise<IronmanLedger> {
     const cur = await readCurrent()
     const next: IronmanLedger = {
@@ -110,7 +88,6 @@ export function ironmanLedgerStore(dirOf: () => string): IronmanLedgerStore {
       try {
         await writeCurrent(next)
       } catch (err) {
-        // 账本写失败不阻断游戏（闸门退化为"只看当前档代次"）
         console.warn('铁人账本写入失败，主档保存不回滚，账本保护降级。', err)
       }
     }

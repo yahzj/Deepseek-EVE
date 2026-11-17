@@ -1,6 +1,5 @@
 import type { BattleSceneProps } from './sceneTypes'
 
-/** 战斗界面职责：renderBattleScene，保持原调用顺序。 */
 
 import type { CSSProperties } from 'react'
 import { fleetDefOf } from '@whale/core'
@@ -40,15 +39,6 @@ export function renderBattleScene({
     applyTactic,
   }: BattleSceneProps) {
 return (
-    /**
-     * **战场 = 自己的全屏覆盖层**（2026-09-22 船长令「界面回滚，战斗界面回滚到全屏显示」）。
-     *
-     * 本批之前就是这一版：`.app-battle-screen { position: fixed; inset: 0; z-index: 100 }`，
-     * 关掉它只是收起"观看界面"（战斗在后台照常推进，右上角那枚「⚔ 战斗中」浮动入口可随时点回来）。
-     * 窗口化/嵌入主区那一整套（`ui/WinBox.tsx` 的 `is-battle` 用法、`bare` 模式、虫洞面板内嵌）
-     * 已封存到分支 `archive/window-embed-20260922`，说明见 `docs/design/archived-window-embed-20260922.md`。
-     * ⚠ 保留：慢镜/战报的挂载语义（`App.tsx` 里"打完但战报还没弹"的窗口期必须继续挂着）。
-     */
     <div className={`app-battle-screen${rangeMode ? ' is-fitting-range' : ''}${lay.dense ? ' is-command-dense' : ''}`} ref={screenRef}>
       {/**
        * **装不下就等比缩放**（2026-09-25 船长令 · 方案甲；**2026-09-26 改成只缩战场**）：
@@ -698,9 +688,6 @@ return (
               <div className="app-bts-axisTrack">
                 <div
                   className="app-bts-scale"
-                  /* 无障碍（2026-09-26 I4，2026-09-30 挪位）：尺是纯图形读数 ⇒ 给一个语义标签；
-                   语义标签现在挂在**刻度**上而不是整条尺上——拖动旋钮是叠在刻度上的真控件，
-                   role="img" 若留在外层会把它一起吞掉（读屏不可达）。 */
                   role="img"
                   aria-label={tr("ui.BattleScreen.112", {
                     p1: Math.round(visM).toLocaleString('zh-CN'),
@@ -725,11 +712,6 @@ return (
                   className="app-battle-range app-bts-range app-bts-knob"
                   min={0}
                   max={1000}
-                  /**
-                    * **步长 1**（2026-09-13 船长反馈"一格一格"）：原 `step=5` 只有 201 个落点——
-                    * 在洞内这种 5 千多米的量程上，一格 ≈ 27m，慢拖时肉眼就是"跳格"。
-                    * 1 ⇒ 1001 个落点（约 5m/格），拖动与读数都跟手。
-                    */
                   step={1}
                   disabled={ended || rangeMode}
                   value={Math.min(1000, Math.max(0, sliderV))}

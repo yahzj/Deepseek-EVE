@@ -1,4 +1,3 @@
-/** 战斗界面职责：renderBattleReport，保持原调用顺序。 */
 
 import { battleVerdictOf } from '@whale/core'
 import type { BattleVerdict } from '@whale/core'
@@ -23,23 +22,15 @@ if (stage === 'report') {
     const won = snap?.kind === 'me'
     const durSec = Math.max(1, Math.round((snap?.durMs ?? 0) / 1000))
     const fallback = won ? tr("ui.BattleScreen.007") : tr("ui.BattleScreen.008")
-    /**
-     * **判定四档**（2026-09-14 船长定）：胜且**零沉船、机群无损**才是「大捷」；有损失 ⇒ 「惨胜」；
-     * 负 ⇒ 「失利」；没分出胜负就收场（结构撤退/超时/无法交战/主动撤退）⇒ 「脱离」。
-     * 判定由 core 的纯函数出（`battleVerdictOf` ⇒ 它进得了用例）；这里只管文案与配色。
-     * ⚠ 取不到记录（老档/配对不上）时**回落旧口径**（只看胜负），行为与改造前一致。
-     */
     const verdict: BattleVerdict = br ? battleVerdictOf(br) : won ? 'great' : 'defeat'
     const lostN = br?.shipsLost.length ?? 0
     const titleOf: Record<BattleVerdict, string> = {
       great: tr("ui.BattleScreen.009"),
-      // 「惨胜」沿用**胜色**（金色），只在标题里带上损失数 —— 不新增一档配色（船长 2026-09-14 批准）
       pyrrhic: tr("ui.BattleScreen.078", { lostN: lostN }),
       defeat: tr("ui.BattleScreen.010"),
       break: tr("ui.BattleScreen.011"),
     }
     const isWinSide = verdict === 'great' || verdict === 'pyrrhic'
-    /** 三层残余一行：`长尾鲨 盾 1240/1240 · 甲 860/860 · 结构 420/420`（多舰用「 ｜ 」连） */
     const myUnitsText = br
       ? br.myUnits.map((u) => tr("ui.BattleScreen.079", { p1: u.name, p2: Math.round(u.s), p3: Math.round(u.sMax), p4: Math.round(u.a), p5: Math.round(u.aMax), p6: Math.round(u.h), p7: Math.round(u.hMax) })).join(' ｜ ')
       : ''
@@ -48,7 +39,6 @@ if (stage === 'report') {
         ? tr("ui.BattleScreen.080", { p1: br.foe.total })
         : tr("ui.BattleScreen.081", { p1: br.foe.alive, p2: br.foe.total, p3: Math.round(br.foe.hpFrac * 100) })
       : ''
-    /** 弹药消耗一行：0 的弹种不列；全 0 ⇒ 这一行整行不显示（没开过火就别占版面） */
     const ammoSeg = br
       ? ([
           [tr("ui.BattleScreen.002"), br.ammoUsed.kin],
@@ -60,11 +50,6 @@ if (stage === 'report') {
           .join(' · ')
       : ''
     return (
-      /**
-       * **战报 = 自己的全屏覆盖层**（2026-09-22 船长令「界面回滚，战斗界面回滚到全屏显示」）：
-       * 本批之前它是这个形态（`.app-battle-screen.is-report`，z-index 130），窗口化那套已封存到
-       * `archive/window-embed-20260922`（见 `docs/design/archived-window-embed-20260922.md`）。
-       */
       <div className="app-battle-screen is-report">
         <div className="app-bts-report">
           <div className={`app-bts-report-card${isWinSide ? " is-win" : " is-lose"}`}>

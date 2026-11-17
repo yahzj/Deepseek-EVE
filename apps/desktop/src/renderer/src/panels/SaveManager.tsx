@@ -1,8 +1,3 @@
-/**
- * 存档管理（B5）：备份当前档 / 列出备份 / 一键恢复。
- * ⚠ **2026-09-17 船长**：「**导入或者恢复存档时，不要备份现有存档**」⇒ 恢复与导入**都不再**自动备份原档
- * （桌面主进程、网页分支、导入三条路径一起删）；要留退路只能用「备份当前档」手动备。
- */
 import { useEffect, useState } from 'react'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
@@ -10,12 +5,10 @@ import { HintIcon } from '../ui/Hint'
 import { tr, cmdText } from '../i18n/locale'
 import { localeTag } from '../i18n/fmt'
 
-/** 存档时间戳（按当前语言；原先写死 `zh-CN` ⇒ 英文界面下日期顺序是中文的） */
 function fmtTime(wallMs: number): string {
   return new Date(wallMs).toLocaleString(localeTag(), { hour12: false })
 }
 
-/** 铁人模式读数（S4b）：代次/开关/救援门槛，全部由引擎现取 */
 type IronmanStatus = Awaited<ReturnType<GameEngine['ironmanStatus']>>
 
 export function SaveManager({
@@ -29,15 +22,9 @@ export function SaveManager({
 }) {
   const [backups, setBackups] = useState<SaveBackupInfo[] | null>(null)
   const [busy, setBusy] = useState(false)
-  /** 删除二次确认：记住正在等待确认的备份名（再点一次才真删） */
   const [armDelete, setArmDelete] = useState<string | null>(null)
-  /** 铁人开启的二次确认（同删除那一套：第一次点只进确认态；关闭那条路改走警告弹窗） */
   const [im, setIm] = useState<IronmanStatus | null>(null)
   const [armIron, setArmIron] = useState<'on' | null>(null)
-  /**
-   * **关闭铁人模式的警告弹窗**（**2026-09-24 船长令**：「新增玩家关闭铁人模式时弹出的警告，
-   * 要告诉玩家关闭后无法再开启」）——取代原先"按钮变红再点一次"那套两段确认。
-   */
   const [closeAsk, setCloseAsk] = useState(false)
 
   async function refresh(): Promise<void> {
@@ -76,14 +63,6 @@ export function SaveManager({
     }
   }
 
-  /**
-   * 导入：系统文件选择（桌面/手机网页通用）→ 校验 → 覆盖当前档（⚠ **不备份**原档，2026-09-17 船长）。
-   *
-   * ⚠ **2026-09-30 不再静默**（船长转玩家报障「手机 UC 只能导出、不能导入」后定的处置）：判成"取消"时
-   * 原先直接 `return` ⇒ **"选择器压根没弹出来"与"玩家自己点了取消"在界面上完全一样**（都没动静），
-   * 玩家拿不到任何线索。现在给一条**可操作的**提示：把话说明白（没读到文件）＋给出路
-   * （换系统自带浏览器打开本页再导入）——真取消的玩家只是多看一条提示，比"没反应"强。
-   */
   async function handleImport(): Promise<void> {
     setBusy(true)
     const r = await engine.importSaveFromFile()
@@ -99,7 +78,6 @@ export function SaveManager({
     }
   }
 
-  /** 导出当前档：桌面 = 系统对话框选文件夹/文件名；网页/手机 = 优先系统分享，不支持时触发下载 */
   async function handleExportCurrent(): Promise<void> {
     setBusy(true)
     const r = await engine.exportSaveToFile()
@@ -110,7 +88,6 @@ export function SaveManager({
     else onToast(r.path ? tr("ui.SaveManager.005", { p1: r.path }) : tr("ui.SaveManager.006"))
   }
 
-  /** 导出指定备份：同上（桌面选位置；网页/手机优先分享、回落下载） */
   async function handleExportBackup(name: string): Promise<void> {
     setBusy(true)
     const r = await engine.exportBackupToFile(name)
@@ -121,10 +98,9 @@ export function SaveManager({
     else onToast(r.path ? tr("ui.SaveManager.008", { p1: r.path }) : tr("ui.SaveManager.009"))
   }
 
-  /** 删除备份（两讨伐确认；只删备份文件，不影响当前档） */
   async function handleDeleteBackup(name: string): Promise<void> {
     if (armDelete !== name) {
-      setArmDelete(name) // 第一次点：进入确认态
+      setArmDelete(name)
       return
     }
     setArmDelete(null)
@@ -138,16 +114,13 @@ export function SaveManager({
     }
   }
 
-  /**
-   * 开启（旧档一次性转换）走两段确认；**关闭改走警告弹窗**（2026-09-24 船长令）。
-   */
   async function handleIronman(): Promise<void> {
     if (im === null) return
     if (im.on) {
-      setCloseAsk(true) // 真正的关闭在弹窗里点「确认关闭」之后
+      setCloseAsk(true)
       return
     }
-    if (im.modeChosen) return // 模式选择机会已用掉（新档序章选过 / 模式选择框选过）⇒ 没有入口
+    if (im.modeChosen) return
     if (armIron !== 'on') {
       setArmIron('on')
       return
@@ -163,7 +136,6 @@ export function SaveManager({
     }
   }
 
-  /** 弹窗里点「确认关闭」：真关（单向门，此后无法再开启） */
   async function confirmCloseIronman(): Promise<void> {
     setCloseAsk(false)
     setBusy(true)
@@ -176,7 +148,6 @@ export function SaveManager({
     }
   }
 
-  /** 该备份能不能当救援档：铁人档 ＋ 档龄 ≥ 两天（按档内保存时刻，缺则退回文件时间） */
   function rescueReady(b: SaveBackupInfo): boolean {
     if (im === null || !im.on) return false
     const age = Date.now() - (b.savedAtWallMs ?? b.wallMs)

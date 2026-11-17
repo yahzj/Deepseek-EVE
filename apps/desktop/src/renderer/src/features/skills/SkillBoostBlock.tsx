@@ -11,12 +11,6 @@ export function SkillBoostBlock({ engine, onToast }: { engine: GameEngine; onToa
   const stock = consumableStockOf(state, SYNAPTIC_ACCELERANT_ITEM_ID)
   const def = engine.ctx.items.get(SYNAPTIC_ACCELERANT_ITEM_ID)
   const mul = Math.round(1 / SYNAPTIC_ACCELERANT_MUL)
-  /**
-   * **循环使用开关**（**2026-10-01 船长令**：「给技能加速页面添加一个循环使用的开关。当当前加速效果
-   * 过时时，自动使用相同效果的技能加速消耗品，离线期间也一样」）。
-   * ⚠ 开关的判定与扣料**全在 core**（`consumables.syncBoostRenew`）：这里只读状态、只写状态，
-   * 不自己判"该不该补"、也不自己扣道具。
-   */
   const autoRenew = engine.boostAutoRenewOn()
   return (
     <div className="app-boost-block">

@@ -1,15 +1,3 @@
-/**
- * 星图页「长途运输」标签（2026-09-09 船长：独立出任务中心、置于残骸打捞之后；至少建成一座副空间站解锁。定稿 + 当日改）：
- * - 任意两座「已建成」站点之间的真实航程往返运输（自动循环）；
- * - **不要求停靠在航线端点**：停靠在任意协会站点即可接单，不在端点时引擎先飞"就位段"
- *   到较近端点，再按所选航线循环；
- * - **进行中任务在对应航线卡上显示本段进度条**，卡上可直接停止（停止 = 立即返航出发站）；
- * - 任务中货仓被虚拟货物占满（见货仓页提示）。
- * - **2026-09-14 船长：「长途运输页面需要像其他同级页面那样有个内部的标题页和容器」** ⇒ 与同页
- *   「残骸打捞」「本地矿带开采」同构：外层 `<Panel className="is-fill win-fixed-body" title="长途运输">`
- *   ＋ 标题后 ⓘ（常驻说明按 2026-09-13 船长口径不再占版面）＋ 标题右一句状态读数；正文进 `.app-win-body`
- *   （列表内滚 ⇒ 守住「一级页不滚」红线）。
- */
 import {
   haulFleetLoadOf,
   haulFleetPathOf,
@@ -26,7 +14,6 @@ import {
 } from '@whale/core'
 import { Panel, ProgressBar } from '@whale/ui'
 import { useEffect, useState } from 'react'
-// 公司账本：运输报酬计入星门物流的营收（docs/design/stock-gameplay-integration-20261109.md）。
 import { reportCompanyFlow } from '../features/exchange/companyReporter'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
@@ -42,7 +29,6 @@ interface RouteCard extends HaulingRoute {
   bName: string
   aId: string | null
   bId: string | null
-  /** 端点所在星系（报酬按**有效距离**算：逐跳安全档加权，2026-09-12 船长定） */
   aGalaxyId: string
   bGalaxyId: string
   minutes: number
@@ -62,31 +48,15 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
   const state = engine.state
   const ctx = engine.ctx
   const endpoints = haulEndpoints(state, ctx)
-  /**
-   * ⚠ **2026-09-21 船长令改口径**（「统一为能够直接切换（自动取消当前活动）」）：开工门槛**不再**看
-   * 「开采 / 打捞 / 远征 / 掩护巡逻在跑」——这些由 core 的统一判据裁决（可自动停的会先停掉再开工、
-   * 远征直接拒）。界面只保留**位置**：
-   * ① `awayGalaxy === null`（停在空间站才能接单）；② 已在运输中（要先停本趟）。
-   */
   const haulingActive = state.hauling.active
   const h = state.hauling
-  /**
-   * **中断确认**（**2026-09-20 船长令**）：本页的「停止运输」与活动栏那颗同款两讨伐确认——
-   * 第一下只警告（**本趟报酬到站才结，中断就拿不到**），第二下才真停。
-   */
   const [stopAsk, setStopAsk] = useState(false)
   const [loadAsk, setLoadAsk] = useState<RouteCard | null>(null)
-  /**
-   * 公司账本：运输报酬计入星门物流（物流）的营收。
-   * core 在每趟到站结算时会写一条 `core.industrial.004` 日志（p3 = 报酬），
-   * 这里按日志 id 游标增量扫描并上报；游标存 localStorage，离线段完成后回港打开本页补报。
-   */
   useEffect(() => {
     let cursor = 0
     try {
       cursor = Number(window.localStorage.getItem('exchange.haulLogCursor') ?? '0') || 0
     } catch {
-      /* ignore */
     }
     const pump = (): void => {
       let maxId = cursor
@@ -103,7 +73,6 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
         try {
           window.localStorage.setItem('exchange.haulLogCursor', String(cursor))
         } catch {
-          /* ignore */
         }
       }
     }
@@ -122,7 +91,6 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
   const load = haulFleetLoadOf(state, ctx, ids.filter(id => !!state.fleet[id]), 0)
   const capacity = load.capacityM3
 
-  // 可行航线：任意两端点（跳过同星系零航程与同点）
   const routes: RouteCard[] = []
   for (let i = 0; i < endpoints.length; i += 1) {
     for (let j = i + 1; j < endpoints.length; j += 1) {
@@ -143,7 +111,6 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
     }
   }
 
-  // 进行中任务对应的航线卡（routeA/routeB 为该航线两端）
   const activeKey =
     haulingActive && h.routeA !== undefined && h.routeB !== undefined
       ? `${h.routeA ?? 'home'}<>${h.routeB ?? 'home'}`
@@ -166,7 +133,6 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
     else onToast(state.encounter.active ? tr('ui.industrial.008') : tr('core.hauling.019', { p1: h.fromSiteId ? ctx.stations.get(h.fromSiteId)?.name ?? h.fromSiteId : tr('ui.Expedition.007') }))
   }
 
-  /** 标题右的状态读数（与同级「残骸打捞」同款：一句，不长篇） */
   const haulStateText = haulingActive
     ? tr("ui.Hauling.026", { p1: h.toSiteId === null ? tr("ui.Expedition.007") : ctx.stations.get(h.toSiteId)?.name ?? tr('ui.Hauling.032') })
     : dockedOk

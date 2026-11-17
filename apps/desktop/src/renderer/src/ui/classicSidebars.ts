@@ -17,13 +17,12 @@ export function useClassicNavCollapse(enabled: boolean, mobile: boolean) {
   const [prefs, setPrefs] = useState(readClassicNavPrefs)
   useEffect(() => {
     if (!enabled) return
-    try { localStorage.setItem(CLASSIC_NAV_PREFS_KEY, JSON.stringify(prefs)) } catch { /* 隐私模式仍可在本次启动使用 */ }
+    try { localStorage.setItem(CLASSIC_NAV_PREFS_KEY, JSON.stringify(prefs)) } catch { }
   }, [enabled, prefs])
   const key = mobile ? 'mobile' : 'desktop'
   return { collapsed: prefs[key], toggle: () => setPrefs((old) => ({ ...old, [key]: !old[key] })) }
 }
 
-/** 占位只在淡出结束后切换；取消定时器/帧回调可中断快速反向操作。 */
 export function useClassicLogVisibility(closed: boolean, enabled: boolean) {
   const [phase, setPhase] = useState({ closed, faded: closed })
   const [instant, setInstant] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches || document.body.classList.contains('no-fx'))
@@ -52,7 +51,6 @@ export function useClassicLogVisibility(closed: boolean, enabled: boolean) {
       })
     } else setPhase({ closed: false, faded: false })
     return () => { window.clearTimeout(timer); window.cancelAnimationFrame(frame); window.cancelAnimationFrame(secondFrame) }
-    // phase 是上次已显示的状态，不作为触发器，避免计时途中重启。
   }, [closed, enabled, instant])
   return enabled && !instant ? phase : { closed, faded: closed }
 }

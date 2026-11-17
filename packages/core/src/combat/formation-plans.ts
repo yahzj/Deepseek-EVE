@@ -1,6 +1,5 @@
 import type { EnemyFormationPlan } from './formation'
 
-/** 批准的编成以旧卡槽位为键；属性门槛固定按调整前档位，不随重标再套。 */
 export const ENEMY_FORMATION_PLANS: Readonly<Record<string, EnemyFormationPlan>> = {
   'ano-redring-raiders': { counts: [1, 4] },
   'ano-lantern-saboteurs': { counts: [2, 3] },

@@ -1,11 +1,3 @@
-/**
- * 货仓页（T3）：顶部"查看船"选择条可切换查看舰队任一艘船的货仓。
- * - 每艘船一枚 chip：船名 + （驾驶中）标记 + 出勤徽标（shipBusyLabel）；
- * - 默认查看驾驶船；驾驶船变更后自动跟随；选中船不存在（卖/弃船）自动回驾驶船；
- * - 动作隔离（已确认口径 1甲/2甲/3甲）：装卸与出售只对"当前驾驶船"开放，
- *   副船/作业中的船一律只读查看。
- * - V10：按物品大类分组展示（矿石/矿物/气体/冰矿/弹药/无人机）。
- */
 import { useEffect, useState } from 'react'
 import {
   ITEM_KIND_ORDER,
@@ -36,7 +28,6 @@ import { isk, itemBuyQuote, m3 } from './common'
 import { ItemGlyphGrid, ItemViewBar, RowGlyph, kindExtraNote, useItemView, type ItemGridCell } from '../ui/itemView'
 import { ITEM_DOMAIN_SUBS, ITEM_CARGO_SUBS, SUBS_OF_KIND, SUB_ALL, itemBucketPasses, itemSubPasses, itemCategoryOf, subText, presentSubs } from '../ui/itemSubs'
 import { tr } from '../i18n/locale'
-/* 「使用」按钮的判据 = core 的 id 常量（**单点**，不在页面里写死字面量） */
 import { invasionBeaconTypeOf, SYNAPTIC_ACCELERANT_ITEM_ID } from '@whale/core'
 
 const KIND_EMPTY: Record<string, string> = {
@@ -47,16 +38,11 @@ const KIND_EMPTY: Record<string, string> = {
   ammo: 'ui.CargoPage.014',
   drone: 'ui.CargoPage.015',
 }
-/** 物品领域分类 → 它收录的物品大类；装备域不走本表。
- *  **2026-10-01 分类同步市场**（船长令「以市场为准，三处都改，层级按市场来」）：货仓页与手册
- *  图鉴的**分组键**由「物品大类」换成「市场那 12 档的桶」——同一件东西在两处的归类从此一致。 */
 function kindsOfBucket(bucket: string): string[] {
   return ITEM_KIND_ORDER.filter((k) => itemCategoryOf({ kind: k }) === bucket)
 }
 
-/** 货物组使用泛称空态，其余专类复用对应物品提示。 */
 function bucketEmptyId(bucket: string): string | undefined {
-  // ⟪文案调整 2026-10-04⟫ 货物组包含多种货物，不以原矿的空态代替整个组。
   if (bucket === 'item') return 'ui.CargoPage.010'
   for (const k of kindsOfBucket(bucket)) {
     const id = KIND_EMPTY[k]
@@ -65,19 +51,15 @@ function bucketEmptyId(bucket: string): string | undefined {
   return undefined
 }
 
-/** 桶的引导提示只取该分类自身，不以单一物品说明代替综合桶。 */
 function bucketExtraNote(bucket: string): string | undefined {
-  // 综合桶不以第一种物品的操作说明代表整个组。
   return kindExtraNote(bucket) ?? undefined
 }
 
 export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNavProps) {
   const state = engine.state
-  /** 语言（2026-09-19 船长令「英语本地化」）：界面串走 `t(中文源串)`；缺词条回退中文 */
   const { t } = useL10n()
   const piloted = state.shipId
   const [selId, setSelId] = useState<string>(piloted)
-  // 驾驶船变更 → 查看跟随驾驶船（本页历史职责是"驾驶船货仓"，选副船只是临时查看）
   useEffect(() => {
     setSelId(piloted)
   }, [piloted])
@@ -91,9 +73,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
   const cargo = cargoOfShip(state, targetId)
   const used = cargoUsedM3Of(state, engine.ctx, targetId)
   const cap = cargoCapacityM3Of(state, engine.ctx, targetId)
-  // 2026-09-09 长途运输：驾驶船货仓被虚拟"运输货物"全部占用（不产生真实物品；显示用）
   const haulOcc = state.hauling.active ? haulingOccupiedM3(state, engine.ctx, targetId) : 0
-  // 2026-09-18 快递改虚拟货物：在途快递按体积占用货舱（与长途运输同款语义）
   const courierOcc = isPiloted ? courierOccupiedM3(state) : 0
   const allRows = Object.entries(cargo).filter(([, n]) => n > 0)
   const [category, setCategory] = useState('all')
@@ -108,14 +88,11 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
     if (subMissing) setSub(SUB_ALL)
   }, [categoryMissing, subMissing])
   const rows = allRows.filter(([id]) => itemBucketPasses(engine.ctx, id, category) && itemSubPasses(engine.ctx, id, category, sub))
-  // 2026-09-09（船长口径 A）：装备（模块）也可入货仓携带——单列「船载」组；按 1 m³/件 计入货舱
   const modRows = rows.filter(([id]) => engine.ctx.modules.get(id) !== undefined)
 
-  // 图标/列表切换（手册同款；网格为浏览视图）
   const [view, setView] = useItemView('cargo')
 
   function handleSell(id: string, qty: number): void {
-    // 2026-09-08（船长定）：市场随"协会基地网络"——母港与已建成副站皆可出售（副站不设独立市场，共用全局市场）
     const blocked = shipOperationBlockReason(state, engine.ctx, targetId, 'cargo')
     if (blocked) { onToast(cmdText(blocked), true); return }
     const r = engine.sellCargo(id, qty)
@@ -131,26 +108,16 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
     setPickId(null)
   }
 
-  // 图标模式点选操作（船长 2026-09-05：网格也要能操作）
   const [pickId, setPickId] = useState<string | null>(null)
   const pickDef = pickId ? engine.ctx.items.get(pickId) : undefined
   const pickUnits = pickId ? (cargo[pickId] ?? 0) : 0
   const pickBuy = pickId ? itemBuyQuote(engine, pickId) : undefined
-  /** 同上行：判"能不能卖"看**在不在市场目录**（2026-09-25 修；空簿 ≠ 不在目录） */
   const pickSellable = pickId ? marketGoodOf(engine.ctx, 'item', pickId) !== undefined : false
-  // 2026-09-09：船载装备（模块）点选（与物品点选分开——模块信息/卸回装备库）
   const [pickMod, setPickMod] = useState<string | null>(null)
   const pickModDef = pickMod ? engine.ctx.modules.get(pickMod) : undefined
   const pickModUnits = pickMod ? (cargo[pickMod] ?? 0) : 0
-  /**
-   * **蓝图碎片**（2026-09-19 玩家报障「集齐了 25 个蓝图碎片，找不到在哪换成蓝图」）：
-   * 货仓里也可能躺着碎片（打捞/回收后先落在仓库，玩家装船后就在这儿）⇒ 货仓行与点选弹层
-   * 都给同一个「逆向解锁」按钮（组件单点 `ui/fragmentRedeem`，与物品页共用）。
-   * 判据只认"这件是不是碎片"，按钮状态全部由组件读 core 单点。
-   */
   const fragIds = new Set(engine.fragmentRedeemRows().map((r) => r.fragmentItemId))
 
-  /** 2026-09-09（船长口径 A）：单行卸货——物品 → 物品仓库；模块 → 装备库（引擎分流） */
   function handleUnloadOne(id: string): void {
     const blocked = shipOperationBlockReason(state, engine.ctx, targetId, 'cargo')
     if (blocked) { onToast(cmdText(blocked), true); return }
@@ -167,20 +134,17 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
     setPickId(null)
     setPickMod(null)
   }
-  // 出售数量选择（船长 2026-09-05：支持只卖一部分）
   const [sellId, setSellId] = useState<string | null>(null)
   const sellDef = sellId ? engine.ctx.items.get(sellId) : undefined
   const sellUnits = sellId ? (cargo[sellId] ?? 0) : 0
   const sellBuy = sellId ? itemBuyQuote(engine, sellId) : undefined
 
-  /** 快速查看市场订单（参照舰船市场入口：跳市场页并聚焦该商品；船长 2026-09-05） */
   function goMarket(id: string): void {
     const good = marketGoodOf(engine.ctx, 'item', id)
     if (good) onGotoMarket(good.key)
   }
 
   function handleUnloadAll(): void {
-    // T9：卸货入仓库在任何空间站可用（母港与副站）
     const blocked = shipOperationBlockReason(state, engine.ctx, targetId, 'cargo')
     if (blocked) { onToast(cmdText(blocked), true); return }
     const moved = engine.unloadAllToWarehouse()
@@ -188,7 +152,6 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
     else onToast(t('ui.CargoPage.027', { n: moved.toLocaleString('zh-CN') }))
   }
 
-  /** 2026-09-08（船长定）：非驾驶空闲舰船卸货入仓库 */
   function handleUnloadShip(id: string): void {
     const blocked = shipOperationBlockReason(state, engine.ctx, id, 'cargo')
     if (blocked) { onToast(cmdText(blocked), true); return }

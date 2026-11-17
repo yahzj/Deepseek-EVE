@@ -23,7 +23,6 @@ export interface FleetPreset {
   shipIds: string[]
 }
 
-/** 缺舰引用保留供套用时报错；不把坏数组截成一支不同的编队。 */
 export function cleanFleetPresets(value: unknown): FleetPreset[] {
   if (!Array.isArray(value)) return []
   const out: FleetPreset[] = []
@@ -93,7 +92,6 @@ export function deleteFleetPreset(state: GameState, id: string): CommandResult {
   return { ok: true }
 }
 
-/** 所有拒因先收齐；成功后只走正式换驾驶与编队记忆入口，不动装配或货物。 */
 export function applyFleetPreset(state: GameState, ctx: SimContext, id: string): CommandResult {
   const preset = state.fleetPresets?.find(p => p.id === id)
   if (!preset) return reject('core.fleetPreset.003')

@@ -1,24 +1,9 @@
-/**
- * 隐形性能监测 Hub（2026-09-08 诊断工具，船长批准的"游戏内性能监测"方案）。
- *
- * 采集内容（仅诊断需要，玩家无感知）：
- * - 引擎推进耗时（挂机/战斗分桶）：每次 advanceGame 的实际 CPU 毫秒；
- * - 通知开销（挂机/战斗分桶）：每次 notify（含 React 提交路径）的实际毫秒；
- * - React commit 耗时：诊断激活时由 App 的 <Profiler> 上报 actualDuration；
- * - FPS（rAF 帧计数）、长任务（PerformanceObserver longtask）、JS 堆内存；
- * - 分场景（地图挂机/工业页/市场页/战斗）切片 + 最近 240 条通知时间线。
- *
- * 激活方式（未激活时全部为一次布尔判断，零定时器/观察器/额外开销）：
- * - 调试模式开关（`whale-idle:debug`，**仅本机生效** —— 2026-09-25 船长令：上传后的版本关闭且隐藏）；
- * - 或自动采集模式 window.__AUTOPERF__（Electron 环境变量 WHALE_AUTOPERF，本机跑分用）。
- */
 
 import { tr } from '../i18n/locale'
 import { debugEnabled } from './debugFlag'
 import type { BountyWinDiagnostic } from './bountyWinProtocol'
 export type PerfBucket = 'idle' | 'battle'
 
-/** 一个计量段（全局总量或单个场景切片的形态一致） */
 interface CountBox {
   n: number
   sumMs: number
@@ -48,13 +33,10 @@ interface TimePoint {
 }
 
 class PerfHub {
-  /** 是否正在采集（activation() 成功后为 true） */
   recording = false
 
   private startWall = 0
   private sceneWall = 0
-  // l10n-keep：下列段名（''(开场)''/''(间隔)''/''(续)''）只进**性能报告 console**，不进玩家界面
-  // l10n-keep-start：性能报告段名（console 输出），不进玩家界面
   private segName = ''
   private seg: PerfSegment | null = null
   private totals = this.freshSeg(tr("ui.perf.001"), 0)
@@ -64,7 +46,6 @@ class PerfHub {
   private fpsLast = 0
   private longObserver: PerformanceObserver | null = null
   private heapSamples: number[] = []
-  /** 最近一次引擎推进耗时（给紧邻的 notify 时间线点配对上，方便看"推进+渲染"同拍） */
   private lastAdvMs = 0
 
   private freshSeg(name: string, wallMs: number): PerfSegment {
@@ -88,7 +69,6 @@ class PerfHub {
     if (ms > box.maxMs) box.maxMs = ms
   }
 
-  /** 尝试激活采集（幂等；失败静默返回 false） */
   activate(): boolean {
     if (this.recording) return true
     if (typeof performance === 'undefined' || typeof window === 'undefined') return false
@@ -97,7 +77,6 @@ class PerfHub {
       this.segName = '(开场)'
       this.seg = this.freshSeg(this.segName, 0)
       this.recording = true
-      // 帧率 + 堆采样（500ms 一拍，只在激活期运行）
       this.fpsLast = performance.now()
       const fpsLoop = (): void => {
         if (!this.recording) return
@@ -120,7 +99,6 @@ class PerfHub {
         const mem = (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory
         if (mem) this.heapSamples.push(mem.usedJSHeapSize / (1024 * 1024))
       }, 500)
-      // 长任务观察（Chromium 均有；找不到则跳过）
       if (typeof PerformanceObserver !== 'undefined') {
         try {
           this.longObserver = new PerformanceObserver((list) => {
@@ -137,7 +115,6 @@ class PerfHub {
     }
   }
 
-  /** 标记场景开始（报告里按场景切片；同名的连续 begin 会先自动封段） */
   beginScene(name: string): void {
     if (!this.recording) return
     this.endScene()
@@ -146,7 +123,6 @@ class PerfHub {
     this.seg = this.freshSeg(name, 0)
   }
 
-  /** 封存当前场景段 */
   endScene(): void {
     if (!this.recording || !this.seg) return
     const s = this.seg
@@ -159,7 +135,6 @@ class PerfHub {
     this.segName = '(间隔)'
   }
 
-  /** 引擎推进耗时上报（engine.tick 调用；挂机/战斗分桶） */
   recordAdvance(bucket: PerfBucket, ms: number): void {
     if (!this.recording) return
     this.lastAdvMs = ms
@@ -172,7 +147,6 @@ class PerfHub {
     this.addBox(this.totals.adv[bucket], ms)
   }
 
-  /** 通知开销上报（engine.notify 调用；自动把上一次推进耗时配到同一点上） */
   recordNotify(bucket: PerfBucket, ms: number): void {
     if (!this.recording) return
     const s = this.seg
@@ -191,7 +165,6 @@ class PerfHub {
     if (this.timeline.length > 240) this.timeline.splice(0, this.timeline.length - 240)
   }
 
-  /** React commit 耗时上报（App <Profiler> onRender；紧邻的 notify 点会原地合并） */
   recordCommit(ms: number): void {
     if (!this.recording) return
     const s = this.seg
@@ -214,7 +187,6 @@ class PerfHub {
     this.addBox(this.totals.long, ms)
   }
 
-  /** 主线程派发与后台计算分开记账；后台耗时不是界面长任务。 */
   recordWinPreheat(event: BountyWinDiagnostic): void {
     if (!this.recording) return
     for (const segment of [this.totals, this.seg]) {
@@ -226,22 +198,18 @@ class PerfHub {
     }
   }
 
-  /** 已采集墙钟秒数（HUD 用；未激活返回 0） */
   liveWallMs(): number {
     return this.recording ? performance.now() - this.startWall : 0
   }
 
-  /** 实时累计量引用（HUD 直读；未激活返回 null） */
   liveTotals(): PerfSegment | null {
     return this.recording ? this.totals : null
   }
 
-  /** 生成可导出报告（JSON 化对象；未激活返回 null） */
   report(): Record<string, unknown> | null {
     if (!this.recording) return null
     this.endScene()
     const segs = [...this.segments]
-    // 重新打开一段，避免 endScene 后失去现场（不参与本报告）
     this.segName = '(续)'
     this.seg = this.freshSeg(this.segName, 0)
     const t = this.totals
@@ -266,16 +234,8 @@ class PerfHub {
   }
 }
 
-/** 全局性能 Hub 单例 */
 export const perfHub = new PerfHub()
 
-/**
- * 判断诊断开关是否应激活采集 —— **与调试模式同一把门禁**（2026-09-25 船长令：
- * 只有本地可用，上传后的版本关闭且隐藏）⇒ 走 `game/debugFlag` 的 `debugEnabled()`：
- * 本机判定（`@whale/core` 的 `isLocalDebugOrigin`）∧ 标志位；**发布版恒 false**，
- * 免得发布版里"有人手写一行 localStorage"就悄悄开始采集。
- */
 export function perfAutoEnabled(): boolean {
   return debugEnabled()
 }
-// l10n-keep-end

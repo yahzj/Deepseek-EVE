@@ -1,53 +1,29 @@
-/**
- * 安全桥：界面进程只能通过 window.whale 调用这些能力（读档/存档/备份/恢复），
- * 拿不到 Node.js 权限，防止界面代码出问题影响电脑安全。
- */
 import { contextBridge, ipcRenderer } from 'electron'
 
 contextBridge.exposeInMainWorld('whale', {
-  /** 读取存档文本；从未保存过返回 null */
   load: (): Promise<string | null> => ipcRenderer.invoke('save:load'),
-  /** 写入存档文本，成功返回 true */
   save: (data: string): Promise<boolean> => ipcRenderer.invoke('save:save', data),
-  /** 备份已保存的确切快照；无参数兼容复制当前档 */
   backup: (snapshot?: string): Promise<{ ok: boolean; name?: string; error?: string }> => ipcRenderer.invoke('save:backup', snapshot),
-  /** 列出备份文件（时间倒序） */
   listBackups: (): Promise<{ ok: boolean; backups: Array<{ name: string; size: number; wallMs: number }>; error?: string }> =>
     ipcRenderer.invoke('save:list-backups'),
-  /** 读取某份备份的文本（校验用） */
   readBackup: (name: string): Promise<{ ok: boolean; text?: string; error?: string }> => ipcRenderer.invoke('save:read-backup', name),
-  /** 恢复备份（⚠ 2026-09-17 船长：**不再**为当前档自动备份，直接覆盖） */
   restore: (name: string): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke('save:restore', name),
   ironmanLedger: (): Promise<{ ok: boolean; seq: number; rescues: number; error?: string }> => ipcRenderer.invoke('ironman:ledger'),
   ironmanNoteRescue: (): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke('ironman:note-rescue'),
-  /** 删除某份备份（只删备份文件，不影响当前档） */
   deleteBackup: (name: string): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke('save:delete-backup', name),
-  /** 弹出系统对话框选择外部 .json 存档并读取文本（导入用；取消 → { ok:false, canceled:true }） */
   pickImportSave: (): Promise<{ ok: boolean; text?: string; canceled?: boolean; error?: string }> =>
     ipcRenderer.invoke('save:pick-import'),
-  /** 弹出系统保存对话框，把存档文本写到用户指定位置（导出用；取消 → { ok:false, canceled:true }） */
   exportSaveToFile: (text: string): Promise<{ ok: boolean; path?: string; canceled?: boolean; error?: string }> =>
     ipcRenderer.invoke('save:export-to-file', text),
-  /**
-   * 把当前语言推给主进程（2026-09-20）：窗口标题与"导入/导出"系统对话框在主进程生成，
-   * 而语言偏好存在渲染进程的 `localStorage` ⇒ 主进程读不到，只能由渲染层推。
-   */
   setLocale: (locale: 'zh' | 'en'): Promise<boolean> => ipcRenderer.invoke('l10n:set-locale', locale),
-  /**
-   * 音效台「一键入库」（2026-11-04 调试批）：主进程把入库包写到临时文件，再调仓库根
-   * `tools/audio-install.ts` 校验并写入 assets。仅桌面开发版可用；网页版保留导出 + 命令。
-   */
   audio: {
     installPack: (pack: ArrayBuffer, options?: { dryRun?: boolean }): Promise<{ ok: boolean; code: number | null; output: string }> =>
       ipcRenderer.invoke('audio:install-pack', pack, options),
   },
 })
 
-// 性能自动采集（2026-09-08 诊断工具）：主进程环境变量 WHALE_AUTOPERF 注入场景 JSON；
-// 平时为 null，玩家侧零暴露
 try {
   const spec = process.env.WHALE_AUTOPERF
   if (spec) contextBridge.exposeInMainWorld('__autoperf', spec)
 } catch {
-  // 环境变量不可用时静默跳过（正常游玩路径）
 }

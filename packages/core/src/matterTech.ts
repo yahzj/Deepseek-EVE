@@ -1,22 +1,3 @@
-/**
- * **谜质科技树**（船长 2026-09-19：「先挂起，我打算用制作一个消耗谜质升级的研究科技树。」
- * ＋「消耗谜质和信用点。不消耗时间。主要研究对虫洞内的战斗和探索。另外含部分洞外工业科技。」）。
- *
- * **分工**：节点表（名/层/级数/每级值/费用/前置）住在数据侧 `data/src/matterTech.ts`，经 `ctx.matterTech`
- * 供给本模块；**效果语义与聚合只在 core**——一律**按 `effect` 关键字汇总**（`Σ 等级 × per`），
- * **不认节点 id** ⇒ core 不需要 id 清单，数据侧改名/挪层不影响引擎。
- *
- * **落点**（三处，全部现算、不缓存）：
- * 1. **洞内**：`matterTechWhBuffs(state, ctx)` 产出 `WormholeTechBuffs` ⇒ 传给 `wormholeMatterBuffs(hold, tech)`
- *    （**同一个增益袋、同一套封顶**，威胁/抗性/回避/命中/射程/装填/单发/近盲/回收/维修全走它）；
- *    **最大回合数**（`whTurnMax`）与**货仓格**（`whHoldCells`）也在这只袋子里（`turnBonus` / `holdCells`），
- *    由 `wormhole.ts` 的回合预算与 `wormholeSalvage` 的背包容量分别消费；
- * 2. **洞内倍速**：`matterTechBattleSpeed(state, ctx)`（1 = 未解锁、2、4）由 `combat.ts` 的倍速时间轴消费；
- * 3. **洞外工业三件**：`matterTechUnboxCut` / `matterTechVoidYield` / `matterTechWreckYield` 由 `industry.ts`
- *    的三处挂点消费。
- *
- * **存档**：等级存在 `state.research.levels`（`Record<节点 id, 等级>`）；当前版本缺字段时补空树。
- */
 import { ceilFinalQuantity } from './quantity'
 import { addLog } from './state'
 import type { GameState } from './state'
@@ -26,42 +7,28 @@ import type { MatterTechEffect, MatterTechNodeDef, SimContext } from './types'
 import { WORMHOLE_TECH_BUFFS_NONE } from './wormholeMatter'
 import type { WormholeTechBuffs } from './wormholeMatter'
 
-/**
- * 研究货币 = **虫洞谜质**的物品 id。
- * ⚠ 这里写**字面量**而不是从 `wormholeSalvage.ts` 引（那个模块反过来依赖 `wormhole.ts`，
- * 引进来会形成 `wormhole → matterTech → wormholeSalvage → wormhole` 的环）；
- * 与 `WORMHOLE_ESSENCE_ITEM_ID` 的一致性由用例断言钉住。
- */
 export const MATTER_TECH_ESSENCE_ITEM_ID = 'mat-wh-essence'
 
-/** 全部节点（按数据表顺序；`ctx.matterTech` 缺失 = 空表，引擎零开销） */
 export function matterTechNodes(ctx: SimContext): readonly MatterTechNodeDef[] {
   return ctx.matterTech ? [...ctx.matterTech.values()] : []
 }
 
-/** 认 id 取节点（未注册 ⇒ undefined） */
 export function matterTechNodeOf(ctx: SimContext, id: string): MatterTechNodeDef | undefined {
   return ctx.matterTech?.get(id)
 }
 
-/** **某节点的当前等级**（未研究 = 0；`research` 缺失 = 空树兜底） */
 export function matterTechLevel(state: GameState, id: string): number {
   return state.research?.levels[id] ?? 0
 }
 
-/** 全表等级（界面读数用；`research` 缺失 = 空表） */
 export function matterTechLevels(state: GameState): Readonly<Record<string, number>> {
   return state.research?.levels ?? {}
 }
 
-/** **仓库里的虫洞谜质枚数**（研究货币；`mat-wh-essence`） */
 export function matterTechEssenceHeld(state: GameState): number {
   return countWare(state, MATTER_TECH_ESSENCE_ITEM_ID)
 }
 
-/**
- * **下一级的费用**（`level` = 当前等级，0 起）。费用表按级给（长度可短于 `maxLevel` ⇒ 末项兜底）。
- */
 export function matterTechCostAt(
   node: MatterTechNodeDef,
   level: number,
@@ -72,7 +39,6 @@ export function matterTechCostAt(
   return { essence: ceilFinalQuantity(pick(node.essence)), isk: ceilFinalQuantity(pick(node.isk)) }
 }
 
-/** **前置缺口**（返回缺口描述；空数组 = 前置已满） */
 export function matterTechPrereqMissing(
   state: GameState,
   ctx: SimContext,
@@ -88,8 +54,6 @@ export function matterTechPrereqMissing(
   return out
 }
 
-/** **能不能研究**（只做判据，不扣款）：界面按钮与 `researchMatterTech` 共用同一把尺。
- * 返回形状带 `errorId`/`errorParams`（甲案）：调用方（含渲染层）用 `cmdText(can)` 取当前语言的拒绝原因。 */
 export function matterTechCanResearch(
   state: GameState,
   ctx: SimContext,
@@ -143,10 +107,6 @@ export function matterTechCanResearch(
   return { ok: true, node, cost }
 }
 
-/**
- * **研究一级**（船长：「**不消耗时间**」⇒ 点即生效）：扣谜质（仓库）+ 信用点 ⇒ 等级 +1。
- * 判据全走 `matterTechCanResearch`（同一把尺）；**任何一条不满足都不动账**。
- */
 export function researchMatterTech(
   state: GameState,
   ctx: SimContext,
@@ -160,7 +120,6 @@ export function researchMatterTech(
 } {
   const can = matterTechCanResearch(state, ctx, id)
   if (!can.ok || !can.node || !can.cost) {
-    /** 兜底句（`can` 理论上必带原因，这里防"判据返 ok:false 却不给原因"的将来改动） */
     return {
       ok: false,
       error: can.error ?? '无法研究。',
@@ -177,13 +136,6 @@ export function researchMatterTech(
   state.wallet.isk -= can.cost.isk
   if (!state.research) state.research = { levels: {} }
   state.research.levels[id] = before + 1
-  /**
-   * **里程碑「谜质通晓」的计数点**（成就系统第二批 · 船长 2026-09-20）。
-   *
-   * 记的是**已满级的节点数**（不是"点了几次"）⇒ 用一个**状态量**而不是事件累计：
-   * 改等级上限、加新节点都不会让旧账失真，且**峰值型**（`peakFirst`）= 幂等、只升不降。
-   * 判据 = 每次研究成功后现数一遍全表满级数（24 个节点，遍历成本可忽略）。
-   */
   {
     let maxed = 0
     for (const n of matterTechNodes(ctx)) {
@@ -200,7 +152,6 @@ export function researchMatterTech(
   return { ok: true, level: before + 1 }
 }
 
-/** **按效果关键字汇总**（`Σ 等级 × per`；全表线性叠加——所有节点都是"越点越强"的加量） */
 export function matterTechSum(state: GameState, ctx: SimContext, effect: string): number {
   let sum = 0
   for (const node of matterTechNodes(ctx)) {
@@ -211,11 +162,6 @@ export function matterTechSum(state: GameState, ctx: SimContext, effect: string)
   return sum
 }
 
-/**
- * **洞内战斗倍速**（1 = 未解锁）。
- * ⚠ 这是全表**唯一按乘法**算的效果：`whBattleSpeed` 的 `per` 是**每级倍率**（2）
- * ⇒ `per^级` = 1 级 ×2、2 级 ×4；**不能**套通用的 `Σ 等级 × per`（那会算成 ×3 / ×5，本批修）。
- */
 export function matterTechBattleSpeed(state: GameState, ctx: SimContext): number {
   let mul = 1
   for (const node of matterTechNodes(ctx)) {
@@ -226,10 +172,6 @@ export function matterTechBattleSpeed(state: GameState, ctx: SimContext): number
   return mul
 }
 
-/**
- * **已解锁的倍速档位**（含 1×；1 级 ⇒ [1, 2]、2 级 ⇒ [1, 2, 4]）。
- * 界面按它渲染控件（**只显示已解锁档**，船长 2026-09-19 口径）；引擎按它夹紧传入档位。
- */
 export function matterTechBattleSpeedTiers(state: GameState, ctx: SimContext): number[] {
   const tiers = new Set<number>([1])
   for (const node of matterTechNodes(ctx)) {
@@ -240,34 +182,28 @@ export function matterTechBattleSpeedTiers(state: GameState, ctx: SimContext): n
   return [...tiers].sort((a, b) => a - b)
 }
 
-/** **扫描虫洞间隔削减**（0.05/级 ⇒ 0.25 = −25%；与技能链乘算） */
 export function matterTechScanCut(state: GameState, ctx: SimContext): number {
   return Math.min(0.9, matterTechSum(state, ctx, 'whScanCut'))
 }
 
-/** 未研究为0（不可派队），三级分别60%/70%/80%；与原收益科技乘区独立。 */
 export function matterTechSignalAutoYield(state: GameState, ctx: SimContext): number {
   const bonus = matterTechNodes(ctx).filter(n => n.effect === 'signalAutoYield')
     .reduce((sum, n) => sum + Math.max(0, Math.min(n.maxLevel, Math.floor(matterTechLevel(state, n.id)))) * n.per, 0)
   return bonus > 0 ? Math.min(80, Math.round(50 + bonus * 100)) / 100 : 0
 }
 
-/** **货柜拆解周期削减**（0.25/级 ⇒ 满级 0.75；加法口径） */
 export function matterTechUnboxCut(state: GameState, ctx: SimContext): number {
   return Math.min(0.9, matterTechSum(state, ctx, 'unboxTimeCut'))
 }
 
-/** **虚空晶产出加成**（只作用于「虚空母矿 → 虚空晶」这一支） */
 export function matterTechVoidYield(state: GameState, ctx: SimContext): number {
   return matterTechSum(state, ctx, 'voidCrystalYield')
 }
 
-/** **残骸保底原材料加成** */
 export function matterTechWreckYield(state: GameState, ctx: SimContext): number {
   return matterTechSum(state, ctx, 'wreckMineralYield')
 }
 
-/** **打捞器 / 采集器的效率加成**（`whSalvageEff` / `whCollectEff`；与编队里各台的基础效率相加） */
 export function matterTechWorkEffBonus(
   state: GameState,
   ctx: SimContext,
@@ -276,42 +212,19 @@ export function matterTechWorkEffBonus(
   return matterTechSum(state, ctx, kind === 'salvage' ? 'whSalvageEff' : 'whCollectEff')
 }
 
-/* ───────── 2026-09-30 船长令：T5 层首批 ＋ 精炼提速两支 ───────── */
 
-/**
- * **虚空母矿的精炼周期削减**（`voidRefineSpeed`：−10%/级 ＋ −5%/级，**加法口径**，封顶 0.9）。
- * 消费点 = `industry.ts` 起炉那一刻的周期折算（**只对虚空母矿**那一支生效）。
- */
 export function matterTechVoidRefineCut(state: GameState, ctx: SimContext): number {
   return Math.min(0.9, matterTechSum(state, ctx, 'voidRefineSpeed'))
 }
 
-/** **每小时自动获得的虚空母矿枚数**（`voidOreDrip`；未点 = 0） */
 export function matterTechVoidOrePerHour(state: GameState, ctx: SimContext): number {
   return Math.max(0, matterTechSum(state, ctx, 'voidOreDrip'))
 }
 
-/**
- * **某效果是否已点过一级**（"解锁型"效果的门，如 `fuelRecipeAdvanced`）——
- * 与按数值取用的 `matterTechSum` 并列；**core 不认节点 id**，所以门也按效果关键字判。
- */
 export function matterTechEffectActive(state: GameState, ctx: SimContext, effect: MatterTechEffect): boolean {
   return matterTechSum(state, ctx, effect) > 0
 }
 
-/**
- * **虚空母矿涓流**（T5「虚空母矿汲取」；**引擎每拍调一次**，与 `advanceLab` 并列）。
- *
- * 口径：
- * - **按毫秒累积**（`state.research.oreDrip` 存"还没发货的枚数"，可为小数）⇒ 满 1 枚才入库，
- *   零星 delta 不丢账、离线大步长照算；
- * - 只进**物品仓库**（与燃料/精炼同一把尺），不走货仓；
- * - 未点该节点（rate = 0）⇒ **立刻返回**，老档/未研究者零开销。
- *
- * ⚠ 虚空母矿的物品 id 这里写**字面量**：`wormhole.ts` 已经反向依赖本模块所在的一族
- * （`matterTech → wormholeMatter`），引过去会成环 ⇒ 与 `MATTER_TECH_ESSENCE_ITEM_ID` 同一处置，
- * 一致性由用例断言钉住。
- */
 export const MATTER_TECH_VOID_ORE_ITEM_ID = 'ore-voidmother'
 
 export function advanceMatterOreDrip(state: GameState, ctx: SimContext, deltaMs: number): void {
@@ -325,10 +238,6 @@ export function advanceMatterOreDrip(state: GameState, ctx: SimContext, deltaMs:
   if (whole > 0) addWare(state, MATTER_TECH_VOID_ORE_ITEM_ID, whole)
 }
 
-/**
- * **科技树的洞内增益**（`WormholeTechBuffs`）——交给 `wormholeMatterBuffs(hold, tech)` 与装置合流。
- * 未点任何一级 ⇒ 全零（调用方可无脑传）。
- */
 export function matterTechWhBuffs(state: GameState, ctx: SimContext): WormholeTechBuffs {
   const sum = (e: string): number => matterTechSum(state, ctx, e)
   return {

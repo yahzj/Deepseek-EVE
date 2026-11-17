@@ -1,31 +1,12 @@
-/**
- * 重要任务 · 贯穿（2026-09-05 船长拍板；2026-09-10 补定；**2026-09-17 教程重做后只剩「寻找人类」**）。
- *
- * - **发布时机改判（2026-09-20 船长第三道令）**：「**完成 11 · 第一次指派 AI 副船后，就可以将寻找人类和
- *   第一次长途运输以及 第一次虫洞同时显示给玩家。寻找人类位于顶部。**」——由
- *   `core/onboarding.publishFindHumansWhenReady` 闸门在**「第一次」顺序段（前 11 条）走完**的那一拍发布
- *   （更早那句「只在完成所有第一次任务后才出现」已作废；再早的「序章结束即发布」也早已作废）；
- *   发布本身照旧「正常发布、不告诉做法」（船长 2026-09-05）。
- *   ⚠ **本卡置于「重要任务」页顶部**（`Expedition.tsx` 把它画在 `FirstTasks` 之上，2026-09-20 第三道令）。
- *   未发布时本面板**什么都不画**——「重要任务」页此时仍有当前那条「第一次」卡与副站卡，不会空白。
- *   ⚠ **2026-09-22 船长 Excel 改序**：顺序段仍是 11 条，收尾那条改为「第一条船」⇒ 揭示时点顺延三步。
- * - 「寻找人类」阶段目标（2026-09-10 船长定）：**探索全部星系、寻找人类踪迹**——带进度显示，
- *   全部探索完毕后标为"阶段目标已完成"（任务本身仍进行中，完成方法未知）。
- *
- * ⚠ 2026-09-17 教程重做：原先这里还有两张教程任务卡（补给协议·首批原矿、试炼·演习场驱逐令）——
- * 线性七步教程退场后它们一并撤掉，教程内容改由任务中心的 13 条「第一次」承载（见 `FirstTasks.tsx`）。
- */
 import { TASK_FIND_HUMANS } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import { tr } from '../i18n/locale'
 import { pt } from '../ui/planetText'
 
-/** 只剩「寻找人类」这一条贯穿任务（教程卡随线性教程退场）⇒ 不再需要 onToast（没有可点的动作） */
 export function ImportantTasks({ engine }: { engine: GameEngine }) {
   const state = engine.state
   const findTask = state.importantTasks[TASK_FIND_HUMANS]
   const findHumanOn = findTask !== undefined && findTask.done !== true
-  // 「寻找人类」阶段目标进度：已探索星系 / 全图星系
   const galaxyTotal = engine.ctx.galaxies.size
   const exploredN = [...engine.ctx.galaxies.keys()].filter((g) => state.exploredGalaxies.includes(g)).length
   const allExplored = findTask?.allExplored === true || (galaxyTotal > 0 && exploredN >= galaxyTotal)

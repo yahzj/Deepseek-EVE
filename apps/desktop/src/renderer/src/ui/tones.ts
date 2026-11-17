@@ -1,32 +1,7 @@
-/**
- * **语义色阶单点**（族色 / 物品大类 / 导航 / 图标 / 作业 / 伤害 / 角色）——2026-09-22 界面配色批。
- *
- * 口径：值一律是 **CSS 变量引用**（`rgb(var(--wui-tone-*))`）⇒ 主题切换纯 CSS 生效：
- *   ① 不需要 React 重渲染，也不会"切了主题还有一半图标是旧色"；
- *   ② 色值表在 `packages/ui/src/index.css`（`--wui-tone-*`，深空/亮白各一份）。
- *
- * ⚠ **必须放进 CSS 属性**（`style={{ stroke: tone }}` / 样式表）：SVG **呈现属性**（`fill="…"` / `stroke="…"`）
- *   **不认 `var()`** —— 写进属性会静默失效（渲染成默认黑），这是本批踩过的坑（`ui/Glyphs.tsx` 的 `Glyph` 已改走 style）。
- *
- * 本文件由 `tools/_tone-extract.ts` 从旧色表抽取生成过一次，此后即为**唯一维护点**（改色只改这里 + index.css 两块）。
- */
 
-/**
- * 键 → **完整 CSS 颜色值**。
- * ⚠ 必须包 `rgb(...)`：色板 token 存的是**空格三元组**（`--wui-tone-ore: 94 230 200;`），
- *   裸写 `var(--wui-tone-ore)` 当色值是**非法声明**（整条失效、描边消失）——
- *   2026-09-22 船长报障「各种 svg 图标都失效了」的真因就是这里：本函数第一版少了这层 `rgb()`。
- * ⚠ **2026-09-30 补兜底值**（船长报障「仓库图标模式里道具图标是空的」）：色板里**漏定义**了
- *   `--wui-tone-consumable` ⇒ `rgb(var(--wui-tone-consumable))` 整体非法 ⇒ `stroke` 声明被丢 ⇒
- *   描边回到初始值 `none` ⇒ **图标彻底看不见**（不是"颜色不对"，是"什么都没画"）。
- *   ⇒ 这里统一给一个**灰兜底**：以后任何一条 tone 忘了在色板登记，最坏也只是变灰，不会隐形。
- *   ⚠ 兜底只能兜"看不见"，**兜不了"颜色不对"** ⇒ 真正的护栏是 `npm run ui:theme-check` 里
- *   新增的「每个 `toneVar(键名)` 调用的键，色板必须有对应 `--wui-tone-<键>`」契约。
- */
 export const toneVar = (name: string): string =>
   'rgb(var(--wui-tone-' + name + ', 143 163 184))'
 
-/** TONES（85 条；其中 gain/loss 为 2026-11-03 股市批新增） */
 export const TONES: Record<string, string> = {
   ore: toneVar('ore'),
   mineral: toneVar('mineral'),
@@ -45,11 +20,7 @@ export const TONES: Record<string, string> = {
   essence: toneVar('essence'),
   luxury: toneVar('luxury'),
   aicore: toneVar('aicore'),
-  // 2026-09-26 黑匣独立成档（船长报障「仓库内查看不到」）：色调 = 品红族，与 fragment（紫）/gas（淡紫）可分
   blackbox: toneVar('blackbox'),
-  /** 2026-09-29 道具档（跃迁燃料批）：色调走变量 `--tone-consumable`
-   *  ⚠ 2026-09-30 补：色板里**原先漏定义**这个变量（道具图标因此隐形，船长报障）⇒ 已在
-   *  `packages/ui/src/index.css` 的每个主题块补上（取同块 `--wui-tone-ore` 的薄荷值）。 */
   consumable: toneVar('consumable'),
   'box-relic': toneVar('box-relic'),
   'box-relic-a': toneVar('box-relic-a'),
@@ -104,16 +75,10 @@ export const TONES: Record<string, string> = {
   'drone-tac': toneVar('drone-tac'),
   'drone-relay': toneVar('drone-relay'),
   'drone-launch': toneVar('drone'),
-  /* 2026-09-27 无人机储备甲板（船长令）：**复用无人机通用金** `toneVar('drone')`
-     —— 与 `drone-rack` 同款做法（它的 CSS 值与 `drone` 本就相同）⇒ 不新增 CSS 变量、零主题改动。 */
   'drone-deck': toneVar('drone'),
-  // 2026-09-27 无人机护盾投射仪：**复用护盾族的色调**（与舰船插件复用 target-lock 同款口径——
-  // 不新造 CSS 变量，省掉七套主题各补一份；船长若要独立色相，改这里并补主题变量即可）
   'drone-shield': toneVar('shield'),
   support: toneVar('support'),
   cpu: toneVar('cpu'),
-  /* 2026-09-26 舰船插件（船长令）：复用 `target-lock` 那一档色调 —— 同属"外挂装置"语感，
-     且**不新造 CSS 变量**（主题表里没有 `--wui-tone-plug`，新造要六套主题各补一份，得不偿失）。 */
   plug: toneVar('target-lock'),
   salvager: toneVar('salvager'),
   'target-lock': toneVar('target-lock'),
@@ -122,22 +87,16 @@ export const TONES: Record<string, string> = {
   armored: toneVar('armored'),
   hauler: toneVar('hauler'),
   blueprint: toneVar('blueprint'),
-  // l10n-keep：下面五条是**图形键**（`group-<技能大类中文名>`，与 `Glyphs.tsx` 的 SHAPES 键同源、
-  // 也不是玩家可见文案 —— 图标按键取形/取色，界面上的分类名另走 `labelsText.skillGroupText()`）
   'group-舰船': toneVar('group-ship'),
   'group-工业': toneVar('group-industry'),
   'group-战斗': toneVar('group-combat'),
   'group-工程': toneVar('group-engineering'),
   'group-贸易': toneVar('group-trade'),
-  // 2026-09-27：新大类「矿业」（采矿 + 采矿舰操作从工业独立）——色相取紫晶，与既有五色相都不同
   'group-矿业': toneVar('group-mining'),
-  /* 涨跌语义色（2026-11-03 股市批单点）：国内习惯「红涨绿跌」⇒ gain = 红、loss = 绿。
-     ⚠ 只给交易所与带涨跌语义的读数用；普通「危险/警告」仍走 `--wui-red` / `--wui-amber`。 */
   gain: toneVar('gain'),
   loss: toneVar('loss'),
 }
 
-/** NAV_TONES（18 条） */
 export const NAV_TONES: Record<string, string> = {
   'nav-map': toneVar('nav-map'),
   'nav-ship': toneVar('nav-ship'),
@@ -159,7 +118,6 @@ export const NAV_TONES: Record<string, string> = {
   'nav-wormhole': toneVar('nav-wormhole'),
 }
 
-/** ICO_TONES（17 条） */
 export const ICO_TONES: Record<string, string> = {
   'fam-a': toneVar('fam-a'),
   'fam-c': toneVar('fam-c'),
@@ -167,7 +125,6 @@ export const ICO_TONES: Record<string, string> = {
   'fam-e': toneVar('fam-e'),
   'fam-g': toneVar('fam-g'),
   'fam-h': toneVar('fam-h'),
-  // R 族（光环 · 2026-10-01 建族）：族徽色 = 冷白银青（与 fam-g 的亮青拉开；呼应设定里的冷白舰体）
   'fam-r': toneVar('fam-r'),
   'ico-home': toneVar('ico-home'),
   'ico-lock': toneVar('ico-lock'),
@@ -183,26 +140,11 @@ export const ICO_TONES: Record<string, string> = {
   'ico-tact': toneVar('ico-tact'),
 }
 
-/**
- * **取色调（跨表兜底）**（2026-09-26 修 · 船长报障「**手册内的势力都是一个颜色的**」）。
- *
- * 症状与真因：手册的卡片统一走 `toneOf(glyph)` 取色，而 `toneOf()` **只查 `TONES`**（物品/装备/分组那 83 条）。
- * 图标键落在 `ICO_TONES`（`fam-*` 族徽 / `ico-*`）或 `NAV_TONES`（`nav-*`）的卡片就会**静默取到兜底灰**：
- *   · 势力图鉴七张势力卡的 glyph = 族徽 `fam-a/c/d/e/g/h/r` ⇒ **七张卡同一个灰色**（就是船长看到的那样）；
- *   · 势力详情里的敌人卡 = `ico-tact` ⇒ 同灰；
- *   · 左上角族徽角标的内联色 = `toneOf('fam-x')` ⇒ 也灰（还**压掉**了 `.app-map-famchip.is-fam-X` 的类色）。
- *
- * 本函数按 **TONES → ICO_TONES → NAV_TONES** 顺次查，三张表都没有才回落 `--wui-dim`：
- * 对物品/装备键的行为与 `toneOf()` **逐字一致**（`TONES` 仍是第一顺位），只是不再让另外两张表的键掉进灰兜底。
- * 族色本身仍是单点：`FOE_ACCENT`（见下）＝ `toneVar('A'..'R')`，与星图族标签、战场敌舰同源。
- */
 export function toneOfAny(key: string | undefined): string {
   if (!key) return 'rgb(var(--wui-dim))'
   return TONES[key] ?? ICO_TONES[key] ?? NAV_TONES[key] ?? 'rgb(var(--wui-dim))'
 }
 
-/** FOE_ACCENT（9 条；H = 墨潮帮 · 2026-09-24 新增，**仍是红色系**（船长令）但比 A 族深/暗一档 ·
- *  R = 光环 · 2026-10-01 新增，**青白冷冽**（船长选「甲：照提案」），与 H 族正对照） */
 export const FOE_ACCENT: Record<string, string> = {
   A: toneVar('A'),
   B: toneVar('B'),
@@ -211,13 +153,10 @@ export const FOE_ACCENT: Record<string, string> = {
   E: toneVar('E'),
   F: toneVar('F'),
   G: toneVar('G'),
-  // H 族（墨潮帮）：与 A 同为红（船长「依旧红色色系最好」），靠**更深更沉**区分
   H: toneVar('H'),
-  // R 族（光环）：青白冷冽（能量护盾的意象）—— 与 H 族的深红形成正对照
   R: toneVar('R'),
 }
 
-/** WORK_ACCENT（4 条） */
 export const WORK_ACCENT: Record<string, string> = {
   'work-mine': toneVar('work-mine'),
   'work-salvage': toneVar('work-salvage'),
@@ -225,14 +164,12 @@ export const WORK_ACCENT: Record<string, string> = {
   'work-haul': toneVar('work-haul'),
 }
 
-/** DMG_COLOR（3 条） */
 export const DMG_COLOR: Record<string, string> = {
   kinetic: toneVar('kinetic'),
   explosive: toneVar('explosive'),
   plasma: toneVar('plasma'),
 }
 
-/** ROLE_ACCENT（4 条） */
 export const ROLE_ACCENT: Record<string, string> = {
   industrial: toneVar('industrial'),
   armed: toneVar('armed'),
@@ -240,16 +177,10 @@ export const ROLE_ACCENT: Record<string, string> = {
   hauler: toneVar('hauler'),
 }
 
-/** SCALARS（1 条） */
 export const SCALARS: Record<string, string> = {
   RARE_WRECK_TONE: toneVar('rare-wreck-tone'),
 }
 
-/**
- * **补齐 token**（2026-09-22 第二遍：把 TSX 里剩下的内联色也收进色表）——
- * 战斗画面（血条层次 / 敌舰名 / 残骸灰）、无人机描边、物质科技页页签、谜质紫罗兰档。
- * 与 `packages/ui/src/index.css` 里的同名 `--wui-tone-*` 一一对应（深空/亮白各一份）。
- */
 export const UI_TONES = {
   droneSky: toneVar('drone-sky'),
   dronePeach: toneVar('drone-peach'),

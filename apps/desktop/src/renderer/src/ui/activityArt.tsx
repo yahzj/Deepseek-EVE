@@ -1,66 +1,23 @@
-/**
- * **主控活动窗口 · 演出美术**（2026-09-21 船长：「目前还是过于简陋」「还不如左上角的小窗来的精细，
- * 需要补齐细节（包括我方舰船外形等）可以先参考左上角的小窗」）。
- *
- * 相比第一版的四处补齐（口径对齐 `ui/ShipStatusWin.tsx` 那个小窗，只是画布放大）：
- * ① **舰船用真实矢量外形**：第一版把主控画成一个菱形占位符——这是"不如小窗"的主因。
- *    现在舰体走 `ShipSpriteShape`（**画进同一张 SVG**：25 艘舰各自外形、引擎尾焰按真实喷口、
- *    面板线与发光件沿用 `.shipart-*` 资产类），与全站同源。
- * ② **星空层**：小窗有星点阵，活动窗口原来只有纯色底 ⇒ 按小窗 `STAR_BASE` 的密度口径扩成大画布星野
- *    （同一片星空固定种子生成，不逐帧随机）。
- * ③ **漂浮物与远景**：矿岩 / 残片 / 航标 / 回波 / 远方虫洞候选全部落进 SVG 环境层，
- *    与小窗的 `app-swin-drift` 同一套动画语言（只是尺度放大）。
- * ④ **节拍跟真实进度**：见下方"两层动画"口径。
- *
- * **两层动画口径**（2026-09-21）：
- * - **动感层**（激光闪烁 / 碎屑回流 / 牵引锥呼吸 / 航迹拖尾 / 扫描波外掠）：固定短周期，
- *   负责"在动"——这一层与进度无关，快慢只服从观感。
- * - **进度层**（矿脉高光 / 打捞弧 / 航标进度环 / 扫描雷达环，类名带 `app-act-tick`）：
- *   **相位锁真实作业进度**。舞台上的 `--act-cycle` = 一个作业周期的毫秒数、`--act-delay` = 已走毫秒的
- *   负值（见 `styles.css` 与 `ActivityScreen.tsx`）⇒ **周期完成那一刻正好走到峰值**（产出 / 到站 /
- *   扫完一遍的瞬间亮一下），进度归零时相位也归零。周期过长过短只**夹节拍**（<1.6s 闪成一片 /
- *   >12s 近乎静止），**相位照样按真实进度对齐，读数与进度条不受任何影响**。
- *
- * 坐标口径：SVG 画布 `560×220`（`preserveAspectRatio="xMidYMid meet"` 等比铺满舞台）。
- * 舰体与作业光带、货柜、扫描桅杆**同在一个 `app-act-float` 组里**——同周期同位移地一起轻浮，
- * 激光永远不脱靶（小窗 `app-swin-work` 同款做法）。
- *
- * 性能口径（约定第十四章）：只动 `transform` / `opacity`；不碰 `filter` / `box-shadow` / 宽高；
- * 不新建 rAF；场景组件 `memo`（引擎每 tick 整树重渲染时不再重建这几十个 SVG 节点）。
- */
 import { memo } from 'react'
 import type { ComponentType, ReactNode } from 'react'
 import type { ShipRole } from '@whale/core'
 import { ShipSpriteShape } from './ShipSprite'
 
-/** 画布尺寸（与 `ActivityScreen` 的 `viewBox` 一致） */
 export const ACT_W = 560
 export const ACT_H = 220
 
-/** 主控舰锚点（舰体几何中心；各场景把舰放在这里） */
 export const SHIP_ANCHOR = { x: 196, y: 112 }
 
-/** 主控舰显示宽度（画布单位；舰形资产是 240×110，故高度 = 0.46×此值） */
 const SHIP_W = 164
 
-/**
- * 作业光带 / 牵引锥的**起点**（画布 x）。
- *
- * 取 `SHIP_ANCHOR.x + 34` 而不是"舰首位置"（+82）：各舰的**实际描边范围**并不等于画布宽
- * （舰形资产 240×110 里留了边距，实测最窄的舰描边只到 ±61、最宽到 ±82）——按舰首取点，
- * 窄舰就会露出一截"光带悬浮在舰首外"（2026-09-21 无头实测：打捞舰光带离舰 7 单位）。
- * 固定在锚点内侧 34 单位 ⇒ 对**任何**舰形都从舰体内射出（且舰体是线稿、光带自会透出，与状态窗同观感）。
- */
 const EMITTER_X = SHIP_ANCHOR.x + 34
 
-/** 场景道具位（各场景共用：作业对象在右侧，留出"舰—对象"之间的作业距离） */
 const ROCK = { x: 462, y: 104 }
 const WRECK_A = { x: 452, y: 82 }
 const WRECK_B = { x: 486, y: 146 }
 const GATE = { x: 486, y: 108 }
 const POD = { x: 150, y: 178 }
 
-/** 星野（确定性伪随机：固定种子 ⇒ 每次构建都是同一片星空，不逐帧跳；密度对齐小窗） */
 const STARS: Array<[number, number, number, number]> = (() => {
   let s = 20260921
   const rnd = (): number => (s = (s * 16807) % 2147483647) / 2147483647
@@ -69,7 +26,6 @@ const STARS: Array<[number, number, number, number]> = (() => {
   return out
 })()
 
-/** 星点层（各场景共用；静态不参与动画，低对比不压舰体线稿） */
 function Stars(): JSX.Element {
   return (
     <g className="app-act-stars">
@@ -80,17 +36,6 @@ function Stars(): JSX.Element {
   )
 }
 
-/**
- * 漂浮物落位与动画**分层**（2026-09-21 自查修正）：
- * 落位要靠 `transform="translate(…)"`、漂移动画也要动 `transform`——同一个元素上两处抢一个属性，
- * 结果就是"动画把落位覆盖掉、所有漂浮物全挤在画布左上角"。故：**外层 `<g transform>` 只落纵向、
- * 内层 `.app-act-drift` 负责横向扫掠**，各管一处。
- *
- * ⚠ **横向行程必须"整条右缘外 → 左缘外"**（2026-09-21 船长报障：「漂浮物在飞到窗口一半的位置就消失了」）：
- * 首版把"落位 x"与"短行程（290 单位）"混用，落位又在 x≈404~530 ⇒ 出场在右缘、**消失点落在 x≈274~400**，
- * 也就是画面右半到正中；小窗那套是从右缘一路飞出左缘，所以看不到"半路消失"。
- * 现在落位只管 y，横向行程写死在 keyframes 里（620 → −80，两端都在画框外）⇒ 消失点回到画框外。
- */
 function DriftItem({
   y,
   kind,
@@ -118,7 +63,6 @@ function DriftItem({
   )
 }
 
-/** 浮岩（采掘）：三块大小错相位漂移，与小窗 `app-swin-drift is-rock` 同语言 */
 function DriftRocks(): JSX.Element {
   return (
     <>
@@ -136,7 +80,6 @@ function DriftRocks(): JSX.Element {
   )
 }
 
-/** 浮残片（打捞）：三块碎片翻滚漂移 */
 function DriftDebris(): JSX.Element {
   return (
     <>
@@ -154,7 +97,6 @@ function DriftDebris(): JSX.Element {
   )
 }
 
-/** 浮航标（长途运输）：两个方向标错相位掠过 */
 function DriftGates(): JSX.Element {
   return (
     <>
@@ -169,7 +111,6 @@ function DriftGates(): JSX.Element {
   )
 }
 
-/** 浮信号（扫描）：三粒信号点由远及近漂过 */
 function DriftSignals(): JSX.Element {
   return (
     <>
@@ -189,23 +130,13 @@ function DriftSignals(): JSX.Element {
   )
 }
 
-/** 各场景共享的舰体参数 */
 export interface ShipFx {
-  /** 主控舰 defId（走 `SHIP_ART` 的真实外形；缺 = 回落 role 剪影） */
   shipId?: string
-  /** 回退剪影族别 */
   role?: ShipRole
-  /** 舰体主色（作业色 / 角色色，与状态窗 `WORK_ACCENT` 同源） */
   accent: string
-  /** 是否画引擎尾焰（作业中都在喷；口径同状态窗） */
   engine: boolean
 }
 
-/**
- * 主控舰（真实舰形画进同一张 SVG）+ 随舰作业件。
- * `ShipSpriteShape` 自带"缩放到目标宽度 + 居中到原点"⇒ 这里只把它移到锚点；
- * 外层 `.app-act-float` 让**舰体与随舰件一起**轻浮（同周期同位移 ⇒ 光带不脱靶）。
- */
 function Ship({ fx, children }: { fx: ShipFx; children?: ReactNode }): JSX.Element {
   return (
     <g className="app-act-float" style={{ color: fx.accent }}>
@@ -217,7 +148,6 @@ function Ship({ fx, children }: { fx: ShipFx; children?: ReactNode }): JSX.Eleme
   )
 }
 
-/** 采掘：采掘激光自舰首打到矿岩，矿屑错相位回流货舱；矿脉高光是进度层 */
 const MineSpr = memo(function MineSpr({ fx }: { fx: ShipFx }) {
   return (
     <>
@@ -241,7 +171,6 @@ const MineSpr = memo(function MineSpr({ fx }: { fx: ShipFx }) {
   )
 })
 
-/** 打捞：牵引锥呼吸 + 扫描弧扫过残片，残片碎屑被吸回货舱 */
 const SalvageSpr = memo(function SalvageSpr({ fx }: { fx: ShipFx }) {
   return (
     <>
@@ -271,7 +200,6 @@ const SalvageSpr = memo(function SalvageSpr({ fx }: { fx: ShipFx }) {
   )
 })
 
-/** 长途运输共用：航标 + 航迹（承运段多挂一只货柜） */
 function HaulBase({ fx, loaded }: { fx: ShipFx; loaded: boolean }): JSX.Element {
   return (
     <>
@@ -305,17 +233,14 @@ function HaulBase({ fx, loaded }: { fx: ShipFx; loaded: boolean }): JSX.Element 
   )
 }
 
-/** 长途运输·承运：满载挂柜，货柜随舰体轻晃 */
 const HaulSpr = memo(function HaulSpr({ fx }: { fx: ShipFx }) {
   return <HaulBase fx={fx} loaded />
 })
 
-/** 长途运输·就位：空舱赶路——只有航迹与远方端点，没有货柜 */
 const HaulPosSpr = memo(function HaulPosSpr({ fx }: { fx: ShipFx }) {
   return <HaulBase fx={fx} loaded={false} />
 })
 
-/** 扫描虫洞：展开扫描阵列，扇形扫描波自舰体向外掠过，回波信号点闪回 */
 const ScanSpr = memo(function ScanSpr({ fx }: { fx: ShipFx }) {
   return (
     <>
@@ -344,10 +269,6 @@ const ScanSpr = memo(function ScanSpr({ fx }: { fx: ShipFx }) {
   )
 })
 
-/**
- * 场景表：**背景与道具 + 真实舰体**（舰形由 `ShipSpriteShape` 画进同一张 SVG，见 `Ship`）。
- * 长途运输按航段分两支：`haul` = 承运（挂柜）/ `haul-pos` = 就位（空舱）。
- */
 export type ActSceneId = 'mine' | 'salvage' | 'haul' | 'haul-pos' | 'scan'
 
 export const ACTIVITY_SCENES: Record<ActSceneId, ComponentType<{ fx: ShipFx }>> = {

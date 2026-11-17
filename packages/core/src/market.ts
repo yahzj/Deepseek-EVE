@@ -1,4 +1,3 @@
-/** 旧路径兼容出口；实际实现归市场功能域。 */
 export { PRICE_SAMPLE_MS } from './market/constants'
 export { marketTradingGoods, marketGoodOf, goodLockedReason, marketLockNote, marketLockedReason, bmGateLocked, bmGateReason, bmGateNote } from './market/access'
 export { builtStationCount, builtSellBoost, salesTaxRate, dumpBuyVolumeMul, dumpSellVolumeMul, BUY_TIER, acquisitionFactorOf, buyLineOf, askLineOf, levelOf, marketSellSkillMult } from './market/pricing'

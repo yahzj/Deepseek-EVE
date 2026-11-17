@@ -2,7 +2,6 @@ import type { SkillDef } from '@whale/core'
 
 export const COMBAT_SKILLS: readonly SkillDef[] = [
 
-  // ───────── 战斗（2026-09-05 武器族技能批次：三形态专精乘区，乘算于炮术学之上） ─────────
   {
     id: 'gunnery',
     name: '炮术学',
@@ -17,7 +16,6 @@ export const COMBAT_SKILLS: readonly SkillDef[] = [
     group: '战斗',
     rank: 4,
     branch: 'b-weapon',
-    // 2026-09-27 船长令（R4/R5 上位技能批）：父技能「gunnery」的上位补充，门槛只要父技能 Lv1
     prereq: ['gunnery'],
     description: '舰载武器进阶训练：实时战斗单发伤害每级再 +⟦1.5%⟧（满级再 +⟦7.5%⟧；与炮术学乘算叠加）。',
   },
@@ -36,7 +34,6 @@ export const COMBAT_SKILLS: readonly SkillDef[] = [
     group: '战斗',
     rank: 4,
     branch: 'b-weapon',
-    // 2026-09-27 船长令（R4/R5 上位技能批）：父技能「kinetic-gunnery」的上位补充，门槛只要父技能 Lv1
     prereq: ['kinetic-gunnery'],
     description: '动能射击解算：动能武器单发伤害每级再 +⟦1.5%⟧（满级再 +⟦7.5%⟧；与动能炮术乘算叠加）。',
   },
@@ -55,7 +52,6 @@ export const COMBAT_SKILLS: readonly SkillDef[] = [
     group: '战斗',
     rank: 4,
     branch: 'b-weapon',
-    // 2026-09-27 船长令（R4/R5 上位技能批）：父技能「missile-launching」的上位补充，门槛只要父技能 Lv1
     prereq: ['missile-launching'],
     description: '导弹制导修正：爆破弹药单发伤害每级再 +⟦1.5%⟧（满级再 +⟦7.5%⟧；与导弹发射学乘算叠加）。',
   },
@@ -74,7 +70,6 @@ export const COMBAT_SKILLS: readonly SkillDef[] = [
     group: '战斗',
     rank: 4,
     branch: 'b-weapon',
-    // 2026-09-27 船长令（R4/R5 上位技能批）：父技能「laser-cannon」的上位补充，门槛只要父技能 Lv1
     prereq: ['laser-cannon'],
     description: '光束聚焦整形：能量光束单发伤害每级再 +⟦1.5%⟧（满级再 +⟦7.5%⟧；与激光炮学乘算叠加）。',
   },
@@ -92,7 +87,6 @@ export const COMBAT_SKILLS: readonly SkillDef[] = [
     group: '战斗',
     rank: 5,
     branch: 'b-aim',
-    // 2026-09-27 船长令（R4/R5 上位技能批）：父技能「fire-control」的上位补充，门槛只要父技能 Lv1
     prereq: ['fire-control'],
     description: '火控与索敌统合解算：炮台与导弹架命中率每级再 +⟦1%⟧（满级再 +⟦5%⟧；与火控阵列学乘算叠加）。',
   },
@@ -110,7 +104,6 @@ export const COMBAT_SKILLS: readonly SkillDef[] = [
     group: '战斗',
     rank: 5,
     branch: 'b-aim',
-    // 2026-09-27 船长令（R4/R5 上位技能批）：父技能「reload-drills」的上位补充，门槛只要父技能 Lv1
     prereq: ['reload-drills'],
     description: '速射装填流程：炮台、导弹架与激光炮的装填时间每级再 −⟦1.5%⟧（满级再 −⟦7.5%⟧；与武器装填技术乘算叠加）。',
   },
@@ -144,12 +137,9 @@ export const COMBAT_SKILLS: readonly SkillDef[] = [
     group: '战斗',
     rank: 5,
     branch: 'b-drone',
-    // 2026-09-27 船长令（R4/R5 上位技能批）：父技能「drone-servicing」的上位补充，门槛只要父技能 Lv1
     prereq: ['drone-servicing'],
     description: '无人机甲板整备统合：无人机装填时间每级再 −⟦1.5%⟧（满级再 −⟦7.5%⟧；与无人机整备学乘算叠加）。',
   },
-  /* ───────── 无人机线扩展（2026-09-10 船长拍板：配合"近防炮可 100% 损坏机群 + 战后回收"） ─────────
-   * 五条新技能覆盖"打得更痛 / 更耐打（两档）/ 更难被点中 / 战后捡得回来"；数值接线在 core/combat.ts */
   {
     id: 'drone-strike',
     name: '无人机打击学',

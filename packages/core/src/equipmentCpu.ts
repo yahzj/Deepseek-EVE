@@ -28,7 +28,6 @@ export function droneCpuUsed(load: Record<string, number> | undefined, ctx: SimC
   }, 0)
 }
 
-/** 安装候选与实际装配共用预算，不反向依赖插件安装模块。 */
 export function cpuBudgetOf(state: GameState, ctx: SimContext, shipId: string,
   fittedOverride?: FittedModules | null, plugIds = state.fleet[shipId]?.plugs ?? []): number {
   const fitted = fittedOverride === undefined ? state.fleet[shipId]?.fitted : fittedOverride

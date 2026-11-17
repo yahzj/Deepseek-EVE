@@ -14,7 +14,6 @@ export function createPlanetColony(): PlanetColonyState {
     eventSeq: 0, nextEventMs: 0, eventRngCount: 0 }
 }
 
-/** 分配只改变临时供电读数；不会自动替玩家开启停用建筑。 */
 export function allocatePlanetPower(planet: PlanetState, catalog: PlanetCatalog): void {
   if (!planet.colony || !planetRulesSupported(planet, catalog)) return
   const ready = planet.cells.filter(c => c.building?.status === 'ready' && c.building.enabled !== false
@@ -129,7 +128,6 @@ export function repairPlanetBuilding(planet: PlanetState, catalog: PlanetCatalog
   return { ok: true }
 }
 
-/** 固定量子保留余数，在线小步与离线推进共享同一套产消及保护。 */
 export function tickPlanetColony(planet: PlanetState, catalog: PlanetCatalog, deltaMs: number): void {
   const c = planet.colony
   if (!c || !planetRulesSupported(planet, catalog)) return

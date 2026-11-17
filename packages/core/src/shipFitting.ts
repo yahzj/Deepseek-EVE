@@ -10,7 +10,6 @@ const COMBAT_FIELDS: readonly (keyof ModuleDef)[] = [
   'crisisOverload', 'railCharge',
 ]
 
-/** 按完整能力判定，混合效果件不能借防御/作业槽绕过纯货舰限制。 */
 export function moduleAllowedOnShip(ship: ShipDef | undefined, mod: ModuleDef): boolean {
   if (ship?.civilianFittingOnly !== true) return true
   if (DRONE_SLOTS.has(mod.slot) || mod.slot === 'target-lock') return false
@@ -18,7 +17,6 @@ export function moduleAllowedOnShip(ship: ShipDef | undefined, mod: ModuleDef): 
   if (!work && (mod.slot === 'turret' || mod.slot === 'missile' || mod.slot === 'laser')) return false
   if (mod.reloadMs !== undefined || mod.dmgMult !== undefined || mod.antiDrone !== undefined) return false
   if (COMBAT_FIELDS.some((field) => mod[field] !== undefined)) return false
-  // 普通输出支援件禁用；不可拆插件沿用既有规则，不能恢复武器或机群。
   if (mod.slot !== 'plug' && (
     mod.damageBonusPct !== undefined || mod.damageTypeBonusPct !== undefined ||
     mod.reloadCutPct !== undefined || mod.hitBonusPct !== undefined || mod.rangeTypeBonusPct !== undefined
@@ -26,7 +24,6 @@ export function moduleAllowedOnShip(ship: ShipDef | undefined, mod: ModuleDef): 
   return true
 }
 
-/** 仅供已在途虫洞趟使用的旧船体值，不能给新趟或洞外配装使用。 */
 export const LEGACY_HAULER_STATS: Readonly<Record<string, Partial<ShipDef>>> = {
   'sh-flyingfish': { slots: { high: 1, mid: 2, low: 2 }, cpu: 105, shieldHp: 52, armorHp: 66, hullHp: 189, droneBayM3: 40 },
   'sh-sailfish': { slots: { high: 1, mid: 3, low: 3 }, cpu: 135, shieldHp: 88, armorHp: 119, hullHp: 333, droneBayM3: 50 },

@@ -16,13 +16,11 @@ export function foeAcidRowsOf(battle: BattleState): Array<{ tag: string; name: s
   })
 }
 
-/** 只保存逐层期限；有效抗性从基线重算，触底后到期不会加回过量。 */
 export function acidResistsOf(battle: Pick<AcidState, 'foeAcidLayers' | 'lastTickGameMs'>, tag: string, base: UnitSpec['resists'], nowMs = battle.lastTickGameMs ?? 0): UnitSpec['resists'] {
   const layers = battle.foeAcidLayers?.[tag]?.filter(layer => layer.untilMs > nowMs) ?? []
   const cut = layers.reduce((sum, layer) => sum + layer.cutPct, 0)
   if (cut <= 0) return base
   const resists = { ...base }
-  // 2026-10-09 船长确认：玩家酸蚀只削减目标装甲抗性。
   resists.armor = { ...base.armor }
   for (const type of ['kinetic', 'explosive', 'plasma'] as const) {
     resists.armor[type] = Math.max(RESIST_FLOOR, (base.armor?.[type] ?? 0) - cut)
@@ -49,7 +47,6 @@ export function expireFoeAcidLayers(battle: AcidState, nowMs = battle.lastTickGa
   if (!Object.keys(battle.foeAcidLayers).length) delete battle.foeAcidLayers
 }
 
-/** 速度件全族共用折权排序；推进器收益随点火相位开关，其他槽位收益常驻。 */
 export function battleSpeedBonusOf(spec: Pick<UnitSpec, 'speedBonusModules' | 'thrusterBoost'>, battle: Pick<BattleState, 'startedAtGameMs' | 'lastTickGameMs'>, boosting = true): number {
   if (!spec.speedBonusModules) return boosting ? spec.thrusterBoost ?? 0 : 0
   const elapsed = Math.max(0, battle.lastTickGameMs - battle.startedAtGameMs)

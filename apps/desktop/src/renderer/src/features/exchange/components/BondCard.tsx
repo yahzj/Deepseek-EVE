@@ -1,10 +1,3 @@
-/**
- * 低风险理财卡：交易所现金申购、固定单利、随时赎回。
- *
- * 2026-11-04 船长令：债券不再吃本地存档 ISK——和基金一样走交易所账户现金
- * （`GET /bond`、`POST /bond/open`、`POST /bond/redeem`），利息按真实分钟单利累积，
- * 顶栏的可用现金会同步扣减，玩家能直接看到钱去哪了。
- */
 import { useEffect, useRef, useState } from 'react'
 import type { BondPosition, ExchangeClient, ExchangeSnapshot } from '../client'
 import type { ToastFn } from '../../../pages/common'
@@ -13,14 +6,7 @@ import { money } from '../format'
 import { T } from '../texts'
 import { progressStyle, useActionProgress } from '../useActionProgress'
 
-/** 高收益档本金上限（与服务端 `savingsPrincipalCap` 同口径）：1 亿以内是最高收益档，超出只有固定低息 */
 const SAVINGS_SWEET_CAP = 100_000_000
-/**
- * 「每日收益摸到上限」所需的本金（与服务端结算同口径）：
- * 赢的一天收益 = 12%×min(本金,1亿) + 1.2%×超出部分，正收益每天封顶 2 亿 ⇒
- * 本金到 1亿 + (2亿 − 1200万)/1.2% ≈ 157.7 亿时，赢的一天刚好赚满 2 亿；
- * 再多的本金当天不会多赚。「最优」按这个数字算，而不是按 1 亿。
- */
 const BOND_DAILY_CAP = 200_000_000
 const BOND_CAP_PRINCIPAL = Math.ceil(
   SAVINGS_SWEET_CAP + Math.max(0, (BOND_DAILY_CAP - SAVINGS_SWEET_CAP * 0.12) / 0.012),
@@ -35,11 +21,9 @@ export function BondCard({
   client: ExchangeClient
   snap: ExchangeSnapshot
   onToast: ToastFn
-  /** 申购/赎回后触发上游刷新（顶栏现金、侧栏持仓） */
   onRefresh?: () => void
 }) {
   const [amountText, setAmountText] = useState('100000')
-  /** 玩家手动改过输入框后不再自动填写「钱包最优金额」 */
   const amountDirtyRef = useRef(false)
   const [bond, setBond] = useState<BondPosition>(snap.bonds)
   const [tipOpen, setTipOpen] = useState(false)
@@ -50,16 +34,13 @@ export function BondCard({
   const redeemProgress = useActionProgress(client)
 
   const available = snap.account.cash
-  // 收益跟行情一起刷新（10 秒一次，船长 2026-11-04 定），不做本地插值，避免与结算口径不一致。
   const accruedLive = bond.accrued
   const held = bond.principal + accruedLive
 
-  // 快照更新（行情/账户轮询）时同步服务端持仓
   useEffect(() => {
     setBond(snap.bonds)
   }, [snap.bonds])
 
-  // 金额默认值按「钱包最优」：投到每日收益摸到上限所需的本金为止，钱包不够就全投；玩家手动改过后不再覆盖
   useEffect(() => {
     if (amountDirtyRef.current) return
     const gap = BOND_CAP_PRINCIPAL - bond.principal
@@ -67,7 +48,6 @@ export function BondCard({
     setAmountText(String(Math.floor(Math.min(available, gap))))
   }, [available, bond.principal])
 
-  // 利息按分钟结算：行情轮询（10 秒）已带 loadBond，这里 30 秒兜底，防止上游轮询停摆。
   useEffect(() => {
     let alive = true
     const pull = (): void => {
@@ -85,7 +65,6 @@ export function BondCard({
     }
   }, [client])
 
-  // 利息跳动视觉平滑：已计利息增加时触发一次脉冲
   const prevAccruedRef = useRef(bond.accrued)
   useEffect(() => {
     if (bond.accrued > prevAccruedRef.current) {
@@ -136,7 +115,6 @@ export function BondCard({
     setAmountText(String(Math.max(1, target)))
   }
 
-  /** 「1 亿」：把本金补到 1 亿高收益档上限（钱包不够补满时不动作，由「最优」按钱包投） */
   const fillToSweetCap = (): void => {
     if (busy || available <= 0) return
     const gap = SAVINGS_SWEET_CAP - bond.principal
@@ -145,7 +123,6 @@ export function BondCard({
     setAmountText(String(gap))
   }
 
-  /** 「最优」：按钱包与收益上限——投到「每日收益摸到上限」所需的本金为止，钱包不够就全投 */
   const fillOptimal = (): void => {
     if (busy || available <= 0) return
     const gap = BOND_CAP_PRINCIPAL - bond.principal

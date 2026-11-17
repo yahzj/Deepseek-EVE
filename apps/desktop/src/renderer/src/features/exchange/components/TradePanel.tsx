@@ -1,14 +1,4 @@
 import { isEn, tr } from '../../../i18n/locale'
-/**
- * 统一下单面板（现货 / 杠杆多 / 杠杆空 共用一套控件）。
- *
- * 逐条对齐 `docs/design/stock-exchange-server-20261103.md` 6.2「下单表单防错规格」：
- * - **单列垂直**，标签在控件上方（不用占位符冒充标签）；
- * - 保证金 / 名义 / 手续费 / 强平价 / 距强平**随输入实时重算**（走 `client.previewOrder`，不自己抄公式）；
- * - **失焦即校验**，错误写在字段下方；主按钮**永不置灰**，点击后显式说明不可下单原因；
- * - 强平价旁写人话「跌到 X 会强平，距现价 Y%」；
- * - ≥10x 二次确认，确认框里再显示一次强平价与最大亏损。
- */
 import { useContext, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowDownRight, ArrowUpRight, Checkmark, CheckmarkFilled, Portfolio, SendAlt, WarningAlt } from '@carbon/icons-react'
@@ -22,9 +12,7 @@ import { OrderCtaSlotContext } from '../orderCta'
 type Mode = 'spot' | 'long' | 'short'
 type OrderKind = 'limit' | 'market'
 
-// 1x 即原「现货」：全额保证金、不放大（2026-11-06 船长令：现货并入杠杆，省一段高度）
 const LEVERAGES = [1, 2, 5, 10, 20, 50, 90] as const
-/** 距强平低于这个百分比就转警示色（设计稿 6.1） */
 const DANGER_DISTANCE_PCT = 15
 
 function modeLabel(mode: Mode): string {
@@ -48,7 +36,6 @@ export function TradePanel({
   code: string
   pickedPrice: { value: number; seq: number } | null
   onToast: ToastFn
-  /** 由外层 Tab 固定方向时，不再渲染方向切换段（2026-11-06 船长令） */
   fixedMode?: 'long' | 'short'
 }) {
   const quote = snap.quote
@@ -72,7 +59,6 @@ export function TradePanel({
   const orderSeq = useRef(0)
   const submitProgress = useActionProgress(client)
 
-  // 点盘口档位 → 填入价格（seq 保证连点同一档也能再次生效）
   useEffect(() => {
     if (!pickedPrice) return
     setPriceText(pickedPrice.value.toFixed(2))
@@ -80,12 +66,10 @@ export function TradePanel({
     setPriceTouched(false)
   }, [pickedPrice])
 
-  // 切换标的/模式时清掉上一次的二次确认，避免"确认框还停在上一只票"
   useEffect(() => {
     setConfirm(null)
   }, [code, mode, leverage, kind, qtyText, investmentText, priceText])
 
-  // 换标的必须清空价格/数量：上一只票的价格留给新票会被「偏离现价 20%」拦下，像 bug
   useEffect(() => {
     setPriceText('')
     setQtyText('')
@@ -98,13 +82,11 @@ export function TradePanel({
 
   const lev = mode === 'spot' ? 1 : leverage
   const side: Side = mode === 'short' ? 'sell' : 'buy'
-  // 2026-11-08 船长令：买卖额度各自独立；旧服务端缺分方向字段时回退到合计值（保守）。
   const dailyUsed =
     side === 'sell'
       ? (snap.account.dailySellUsed ?? snap.account.dailyTradeUsed)
       : (snap.account.dailyBuyUsed ?? snap.account.dailyTradeUsed)
   const dailyTurnoverLeft = Math.max(0, snap.account.dailyTradeLimit - dailyUsed)
-  // 市价单按对手盘成交：买吃卖一、卖砸买一，没有档位时退回现价
   const bookPrice =
     side === 'buy' ? (snap.book.asks[0]?.price ?? quote.price) : (snap.book.bids[0]?.price ?? quote.price)
   const priceNum = Number(priceText)
@@ -122,7 +104,6 @@ export function TradePanel({
     ...(kind === 'limit' && priceText.trim() !== '' && Number.isFinite(priceNum) ? { price: priceNum } : {}),
     qty: Number.isFinite(qtyNum) ? Math.min(client.maxOrderQty ?? 10_000_000, Math.max(0, qtyNum)) : 0,
     leverage: lev,
-    // 做空模式必须显式带 short：服务端把「side=sell + 杠杆」默认当平多。
     ...(mode === 'short' ? { short: true } : {}),
   }
   const previewQuery = { ...previewReq, ...(mode !== 'spot' ? { investment: Number.isInteger(investment) && investment > 0 ? investment : 1 } : {}) }
@@ -189,8 +170,6 @@ export function TradePanel({
     try {
         const order = await client.placeOrder(req)
         const filled = order.filledQty ?? 0
-        // 回合制下开仓单提交时 status=queued、filledQty=0，回合末集合竞价才成交。
-        // 保护单不能依赖「本次响应已有成交」，否则会静默不挂；未成交时必须明确提示玩家。
         const pendingFill = filled <= 0 || order.status === 'queued'
         if (protection && mode !== 'spot') {
           if (pendingFill) {
@@ -231,7 +210,6 @@ export function TradePanel({
             }
           }
         }
-        // 回合制委托提交后尚未成交：展示委托数量，避免「已提交 0 股」的误导。
         const shownQty = filled > 0 ? filled : order.qty
         await submitProgress.finish()
         onToast(`${T.toastOrderPlaced}: ${order.code} ${order.side === 'buy' ? T.buy : T.sell} ${amount(shownQty)} ${T.sharesSuffix}`)
@@ -257,7 +235,6 @@ export function TradePanel({
       return
     }
     if (preview.blockReason) {
-      // 主按钮不置灰：把「为什么下不了」说清楚，避免灰按钮死胡同
       onToast(`${TF.unavailable(preview.blockReason)}`, true)
       return
     }

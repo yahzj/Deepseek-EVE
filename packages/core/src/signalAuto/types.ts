@@ -11,7 +11,6 @@ export interface SignalAutoGuardBattle {
 export interface SignalAutoLayerProgress {
   depth: number
   completion: number
-  /** 版本1的解析比值；版本2不再用比值决定能否通过。 */
   combatRatio?: number
   guardBattle?: SignalAutoGuardBattle
   guardPassed: boolean
@@ -30,7 +29,6 @@ export interface SignalAutoReportDetails {
   layers: SignalAutoLayerReport[]
 }
 
-/** 出发时冻结的估算结果；不保存地图、战斗或另一份游戏状态。 */
 export interface SignalAutoEstimate {
   version: 1 | 2
   tech: WormholeAutoTechFactors
@@ -40,6 +38,5 @@ export interface SignalAutoEstimate {
   ordinaryUsedM3: number
   gains: Array<{ itemId: string; units: number }>
   cores: Array<{ type: 'gamma' | 'beta' | 'alpha'; n: number }>
-  /** 新快照的逐层返航报告数据；缺省表示兼容较早的估算快照。 */
   report?: SignalAutoReportDetails
 }

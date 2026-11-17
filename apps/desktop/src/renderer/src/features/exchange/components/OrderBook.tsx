@@ -1,11 +1,3 @@
-/**
- * 五档盘口 + 逐笔成交。
- *
- * 优化（对齐玩家吐槽 3）：
- * - 增加买卖量不平衡条（Depth Imbalance Bar）：实时汇总买卖五档总量，
- *   展示多空买卖压力差比例条与状态标签（多头占优 / 空头占优 / 多空均势），盘口买卖力量一目了然；
- * - 盘口档位可点击直接把价格填入下单面板。
- */
 import type { BookLevel, OrderBookSnapshot, TradeRecord } from '../client'
 import { amount, clock, price } from '../format'
 import { T } from '../texts'
@@ -33,7 +25,6 @@ export function OrderBook({
       ? book.asks[0].price - book.bids[0].price
       : null
 
-  // 计算买卖总量与深度不平衡比例
   const sumAsks = book.asks.reduce((s, l) => s + l.qty, 0)
   const sumBids = book.bids.reduce((s, l) => s + l.qty, 0)
   const totalDepth = sumAsks + sumBids
@@ -135,7 +126,6 @@ export function OrderBook({
   )
 }
 
-/** 逐笔成交：只显示最近 14 笔，方向色块区分主动买/卖 */
 export function TradeTape({ trades }: { trades: TradeRecord[] }) {
   return (
     <section className="ex-panel ex-tape" aria-label={T.tradesTitle}>

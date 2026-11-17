@@ -15,7 +15,6 @@ export function cloudRetryDelay(error: CloudApiError): number {
     ? value : error.code === 'login_locked' ? 600_000 : 60_000
 }
 
-// 取消后即使传输层忽略 abort，也不能提交旧结果。
 export class CloudRequestScope {
   private generation = 0
   private controllers = new Set<AbortController>()
@@ -79,7 +78,6 @@ export function matchesCloudTarget(preview: CloudTarget, server: string, playerI
   return preview.server === server && preview.playerId === playerId
 }
 
-// 仅 renderer 内存，设置分类卸载不会丢失；从不进入偏好、title 或日志。
 const recoveryCodes = new Map<string, Map<number, PendingRecovery>>()
 export function pendingRecoveryCode(server: string, playerId?: number): PendingRecovery | null {
   const codes = recoveryCodes.get(server)

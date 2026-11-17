@@ -1,20 +1,7 @@
-/**
- * 手册 / 图鉴（2026-09-10 船长改版：顶部标签页 → 左侧导航栏；图鉴按类型分组，样式照仓库；加搜索栏）。
- *
- * - 弹层加宽为双栏大窗（左导航 168px + 右内容），导航 7 项：玩法速览 / 航行须知 / 物品 / 装备 / 舰船 / 蓝图 / 技能速查；
- * - 图鉴按类型分组：分组表与市场页「类型子分类」同源（见 ui/itemSubs.ts），每组 = 仓库同款小节
- *   （分类名 + 数量 + 卡片网格），空组隐藏；
- * - 内容区顶栏：搜索 + 图标/列表切换 + 命中计数；搜索按名称/分类/说明过滤（玩法速览与航行须知按词条过滤），
- *   **只过滤当前显示的那一页，但关键词跨页保留**（2026-09-17 船长；关掉手册再打开即清空）；
- * - 数据页支持「图标网格 / 列表」两种视图（默认网格，偏好存 localStorage）；
- * - 图标为统一科幻线性 SVG（Glyphs.tsx），按内容体系映射并带分类色调；
- * - 网格模式下点击卡片 → 弹出详情窗（完整字段）；点击窗口外任意位置关闭；列表视图保留完整字段。
- */
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { shipCategoryKeyOf, visibleItemDefs } from '@whale/core'
 import type { FoeShipDef, ShipRole } from '@whale/core'
-// 稀有度小标签（2026-09-20 船长）：档位走单点 `itemRarityTierOf`（含 AI 核心与舰船的键映射）
 import { buildFactionCards, FACTION_CODEX_ORDER, FOE_SHIPS } from '@whale/data'
 import { Panel } from '@whale/ui'
 import type { GameEngine } from '../game/engine'
@@ -45,107 +32,44 @@ import { RowGlyph } from '../ui/itemView'
 import { itemGlyphName } from '../ui/Glyphs'
 import { combatBadges, InfoHover, ItemHover, ModuleHover, moduleShortEffect, ShipHover } from '../ui/shipInfo'
 import { plainSkillDesc } from '../ui/skillText'
-// 势力图鉴：逐舰级简报复用**悬赏卡悬停那一份**（同源出口，不另写文案）——2026-09-26
 import { foeBriefLinesOfShip } from '../ui/foeBrief'
 import { tr } from '../i18n/locale'
 import { kindTextOfItem, skillGroupText } from '../ui/labelsText'
-/**
- * **族徽判据与可读名单点**（2026-09-27 从本文件迁出到 `ui/labelsText.ts`）——船长报障
- * 「**物品仓库内的势力装备，左上角没有角标，能否将所有功能相同的同类型的图标规则进行统一下**」：
- * 同款图标卡不止图鉴有（物品页仓库 / 货仓走 `ui/itemView.tsx` 的 `ItemGlyphGrid`）⇒ 一份实现两处共用。
- * 为什么必须收窄 `null`、`aria-label` 为什么取势力全称：见 `labelsText.ts` 两个函数的头注。
- */
 import { crestLabelOf } from '../ui/labelsText'
-// 2026-09-26 船长令：舰船图鉴的**图标模式改画舰船 SVG 形象**（与舰队页/装配页/星图同一张资产表）
 import { ShipSprite } from '../ui/ShipSprite'
-// 2026-10-02 批次 4s：详情域（卡片构造器/详情窗/GroupSection/宽类型标签助手）已拆到 ./handbookDetail，本文件借回使用
 import { slotName, roleName, CellDetail, GroupSection, moduleCellOf, shipCellOf, itemCellOf, blueprintCellOf, shipBlueprintCellOf } from './handbookDetail'
 import { handbookContentOrderOf } from '../ui/handbookOrder'
 
 type Tab = 'guide' | 'rules' | 'exchange' | 'items' | 'modules' | 'ships' | 'blueprints' | 'skills' | 'factions'
-/**
- * **详情窗的卡片类型**（= 导航页 `Tab` ＋ `'foe'`）：势力图鉴的敌人卡也走同一条 `CellDetail` 路
- * （2026-09-26 船长令「敌人卡和其他图鉴中一样，可以点开」），但 `foe` 不是导航页
- * ⇒ 那几个 `Record<Tab, …>`（搜索占位 / 计数单位 / 筛选标签）不该被它污染，故单列这一型。
- */
 type DetailTab = Tab | 'foe'
-/** 有图鉴内容的页（＝ `codexCells` 的键；筛选两级的现算都在这几页上做） */
 type CodexTab = 'items' | 'modules' | 'ships' | 'blueprints' | 'skills' | 'factions'
 type ViewMode = 'grid' | 'list'
-/** 详情行数据 */
 export type RawData = Record<string, unknown>
 
-/**
- * **图鉴用的敌舰目录**（2026-09-26 势力图鉴批）：
- * - **已遭遇的舰级**：从**存档卡片**（`engine.ctx.anomalies` 等，已过 l10n 覆盖层）取 ⇒ 舰名与挂载件名
- *   都是**当前语言**，且与悬赏卡悬停**同一份数据**；
- * - **未遭遇的舰级**：从 `FOE_SHIPS` 取 —— 只用来生成「？？？」占位行（不读它的中文名）。
- *
- * 为什么两处合起来：卡片只覆盖"本档出现过的"舰级，而图鉴要**列出该族全部**舰级（未遇的占位）。
- */
-/**
- * **势力图鉴：每族的基准格号**（编号即顺序：族名一条 ＋ 四对「小标题 ＋ 正文」＝ 9 格）
- * —— 第 k 段标题 = 基准 + 1 + 2k、正文 = 基准 + 2 + 2k（k = 0..3）。
- */
-/**
- * **各族「势力档案」四要素的文案基准格**（正文 id = 基准 + 1 + 2k 标题 / + 2 + 2k 正文，共 8 条）。
- *
- * ⚠ **2026-10-02 船长报障修**（「在玩家没有遭遇过 R 族势力前，R 族的手册势力图鉴描述是错误的」）：
- * 本表原先**漏了 R**，而下面读的是 `FACTION_NAME_BASE[family] ?? 326` ⇒ R 族**静默回落到 A 族（海盗）**
- * 的四段文案（R 自己的 `ui.Handbook.382~389` 八条因此成了**孤儿 id**，一直没人引用）。
- * 未遭遇时最显眼：敌人段与装备段那时都写「？？？」/「遭遇后解锁」，**整页只有这四段"言之有物"**。
- * ⇒ 补 `R: 381`（它的族名 `ui.Handbook.381` ⇒ 四要素 382~389，与表里的八条逐一对应）。
- * 护栏 = `content:check` 的「势力图鉴档案契约」（每个 `FACTION_CODEX_ORDER` 的族都必须有基准格，
- * 且那 8 条 id 都在唯一表里 ⇒ 新族漏登记即红）。
- */
 const FACTION_NAME_BASE: Record<string, number> = { A: 326, C: 335, D: 344, E: 353, G: 362, H: 371, R: 381 }
 
-/**
- * **势力图鉴的详情容器**（2026-09-26 船长令：「在势力图鉴内新建一个窗口容器，玩家点击某个势力后，
- * 下方窗口内就显示该势力的介绍和敌人种类，专属装备，舰船等」）。
- *
- * 三块，全部只读：
- *   ① **势力档案** —— 四要素（档案摘要 / 舰体特征 / 交手记录 / 活动星域），文案 id = 基准格 + 1 + 2k；
- *   ② **敌人种类** —— 逐舰级一行（舰种 · 战术 · 武器系 · 主副伤 · 舰载机 · 特殊装置 · 精英档），
- *      与悬赏卡悬停**同一份内容**（`foeBriefLinesOfShip`）；未遭遇的舰级显示「？？？」占位；
- *   ③ **专属装备 / 专属舰船 / 图纸** —— 逐件给名与短效果；未解锁时只给一句"遭遇该势力的敌舰后解锁"。
- */
 function FactionDetailPanel({ engine, family }: { engine: GameEngine; family: string }) {
   const ships = collectFoeShips(engine)
   const card = buildFactionCards(FOE_SHIPS, engine.state.foeShipSeen).find((c) => c.family === family)
   if (!card) return null
   const base = FACTION_NAME_BASE[family] ?? 326
-  /** 本容器自己的详情窗（卡片可点开；与其它图鉴同一条 `CellDetail` 路） */
   const [detail, setDetail] = useState<GridCell | null>(null)
-  /** ② 敌人卡：已遭遇 ⇒ 敌舰 SVG；未遭遇 ⇒ 通用「信号不良」图形 ＋「？？？」 */
   const enemyCells: GridCell[] = card.enemies.map((e) => {
     const ship = e.seen ? ships.get(e.id) : undefined
     const line = ship !== undefined ? foeBriefLinesOfShip(ship) : null
-    // 副行：舰种 · 战术…（一条短句；与悬赏卡悬停同源，截断由卡片自己的换行处理）
     const sub = line !== null ? [line.hull, ...line.bits].filter((x) => x !== '').join(' · ') : tr('ui.codex.010')
     return {
       key: e.id,
       tab: 'foe',
       glyph: e.seen ? 'ico-tact' : 'signal-lost',
-      /* 已遭遇的敌舰卡：**按本势力族色**（同一条船长令）——它们此前走 `toneOf('ico-tact')` 也是灰的；
-         未遭遇的**有意留灰**（配合「信号不良」图形与「？？？」＝"还没见过它"）。 */
       ...(ship !== undefined ? { tone: FOE_ACCENT[family] } : {}),
       name: e.seen ? (ship?.name ?? e.id) : tr('ui.codex.005'),
       sub,
-      /* 副行给两行（船长 2026-09-26 批「3 可以」）——只有敌舰卡带，其它图鉴卡片高度不变 */
       subWrap: true,
       raw: (ship ?? { id: e.id, name: e.id, hullClassTier: 1, split: { s: 0, a: 0, h: 0 } }) as unknown as RawData,
       ...(ship !== undefined ? { shipId: ship.id } : {}),
     }
   })
-  /**
-   * ③ 专属装备 / 舰船 / 图纸：三段都用**图鉴卡片的同一构造**（族徽由 builder 按所属势力加）。
-   *
-   * ⚠ **件型混排**（**2026-09-26 船长报障**：「**H族专属装备内不含无人机**」）：专属装备段收的是
-   * **模块与物品两种件型** —— H 族三件里有一架无人机（`drone-ink-heavy`，`kind: 'drone'` 的**物品**）。
-   * 原先只 `ctx.modules.get(id)` ⇒ 那架机被静默丢掉（小节计数 3 件、只画 2 张卡）。
-   * 现在逐 id 先查模块、再查物品，两件型都进同一网格（计数口径 = `card.modules.length`，与卡片数一致）。
-   */
   const exclusiveModuleCells: GridCell[] = handbookContentOrderOf(card.modules, id => id).flatMap((id) => {
     const mod = engine.ctx.modules.get(id)
     if (mod !== undefined) return [moduleCellOf(mod)]
@@ -166,8 +90,6 @@ function FactionDetailPanel({ engine, family }: { engine: GameEngine; family: st
   return (
     <Panel
       title={`${tr(card.nameId)} · ${tr('ui.codex.003', { p1: card.seenCount, p2: card.totalCount })}`}
-      /* 容器标题后面挂本族**族徽**（族色）——同一处族色单点 `FOE_ACCENT`，让"这块是谁的"在标题行就成立
-         （走 `Panel` 既有的 `hint` 槽：标题文字后面的标记位，不新增 CSS 类、不动面板结构） */
       hint={
         <span style={{ color: FOE_ACCENT[family], marginLeft: 6, verticalAlign: '-2px' }} aria-hidden="true">
           <Glyph name={`fam-${family.toLowerCase()}`} size={13} color="currentColor" />
@@ -248,14 +170,11 @@ function collectFoeShips(engine: GameEngine): Map<string, FoeShipDef> {
     const previous = out.get(s.id)
     out.set(s.id, { ...(previous ?? s), mounts: [...new Set([...(previous?.mounts ?? []), ...(mounts ?? [])])] })
   }
-  // 存档卡片（已过 l10n 覆盖层 ⇒ 舰名与挂载件名都是当前语言；与悬赏卡悬停同一份数据）
   for (const card of engine.ctx.anomalies.values()) for (const slot of card.ships ?? []) put(slot?.ship, slot.mounts ?? slot.ship.mounts)
-  // 未遇的舰级：只借 FOE_SHIPS 补 id 与族（**不读它的中文名**，名字由界面显示为占位）
   for (const s of FOE_SHIPS) if (!out.has(s.id)) put(s)
   return out
 }
 
-/** 左侧导航（顺序即展示顺序） */
 const NAV: Array<{ key: Tab; label: string }> = [
   { key: 'guide', get label() { return tr("ui.Handbook.186") } },
   { key: 'rules', get label() { return tr("ui.Handbook.187") } },
@@ -263,13 +182,10 @@ const NAV: Array<{ key: Tab; label: string }> = [
   { key: 'modules', get label() { return tr("ui.Handbook.254") } },
   { key: 'ships', get label() { return tr("ui.Handbook.189") } },
   { key: 'blueprints', get label() { return tr("ui.Handbook.255") } },
-  // 2026-09-26 船长：「敌族图鉴单独列出吧，放在蓝图图鉴下方，叫『势力图鉴』」
   { key: 'factions', get label() { return tr("ui.codex.001") } },
   { key: 'skills', get label() { return tr("ui.Handbook.124") } },
-  // 2026-11-16 船长令：股市单独一页，放在手册最后
   { key: 'exchange', get label() { return tr("ui.Handbook.424") } },
 ]
-/** 各页搜索框占位词（按当前页给出，玩家一眼知道搜的是哪一页） */
 const SEARCH_PLACEHOLDER: Record<Tab, string> = {
   get guide() { return tr("ui.Handbook.125") },
   get rules() { return tr("ui.Handbook.126") },
@@ -281,7 +197,6 @@ const SEARCH_PLACEHOLDER: Record<Tab, string> = {
   get factions() { return tr("ui.codex.002") },
   get skills() { return tr("ui.Handbook.131") },
 }
-/** 分组计数量词（与仓库「N 种」同款） */
 const COUNT_UNIT: Record<Tab, string> = {
   get guide() { return tr("ui.Handbook.190") },
   get rules() { return tr("ui.Handbook.190") },
@@ -290,24 +205,17 @@ const COUNT_UNIT: Record<Tab, string> = {
   get modules() { return tr("ui.MarketPage.117") },
   get ships() { return tr("ui.MarketPage.116") },
   get blueprints() { return tr("ui.Handbook.017") },
-  get factions() { return tr("ui.Handbook.190") }, // 「条」（与说明类同单位：每张卡 = 一个势力）
+  get factions() { return tr("ui.Handbook.190") },
   get skills() { return tr("ui.Handbook.256") },
 }
 const VIEW_KEY = 'whale-idle:handbook-view'
 
-/** 蓝图门类（手册「蓝图图鉴」主筛选）：判据与分组键同源（有 `shipId` = 舰船蓝图、
- *  有 `itemId` = 消耗品蓝图、其余 = 装备蓝图）。2026-09-20 船长裁定「零件蓝图归到该组」：
- *  有 `itemId` 且**产物是零件**的另立「零件蓝图」门类（此前落进消耗品蓝图那门）。 */
 const BP_MAIN: SubOption[] = [
   { key: 'equip', get label() { return tr("ui.ShipPage.115") } },
   { key: 'ship', get label() { return tr("ui.ShipPage.116") } },
   { key: 'consume', get label() { return tr("ui.ShipPage.114") } },
-  // ⚠ `equip` / `ship` / `consume` 各自**只许出现一次**——2026-09-26 修：原先这表里前三个键各重复一次
-  // （合并残留），React 渲染出两颗同名胶囊（`key={o.key}` 撞 key）⇒ 玩家点第二颗时高亮落在第一颗上、
-  // 观感是「蓝图图鉴的筛选不消失」（船长报障）。护栏 = `npm run ui:subs-check`（挂在 `ui:rot-check` 链上）。
-  { key: 'part', get label() { return tr("ui.Handbook.265") } },  // 2026-09-20 船长裁定：产物是零件的另立「零件蓝图」门类
+  { key: 'part', get label() { return tr("ui.Handbook.265") } },
 ]
-/** 各图鉴筛选行的灰字前缀（同「我的舰队」那套「类别：」「级别：」写法，避免多个「全部」混淆） */
 const FILTER_LABEL: Record<Tab, string> = {
   guide: '',
   rules: '',
@@ -328,13 +236,9 @@ function readView(): ViewMode {
   }
 }
 
-/* ═══════════ 玩法速览 / 航行须知（2026-09-14 船长：按词条分页 + 正文拆段；见 docs/design/handbook-subnav-20260914.md） ═══════════
-   一条解释 = 一个子页：标题 + 2~4 段，每段一行短小标题（小标题为空串 ⇒ 该段是引导句、不加标题）。
-   ⚠ 本批**只做"拆段 + 加段首小标题"**：原句与全部数值一字未改（有一次性脚本逐条比对"去标点后逐字相同"）。 */
 
 interface HandEntry {
   title: string
-  /** 段落：`[小标题, 正文]` */
   paras: Array<[string, string]>
 }
 
@@ -343,15 +247,12 @@ interface HandGroup {
   entries: HandEntry[]
 }
 
-/** 一条词条的命中段数（`0` = 未命中，子栏置灰；搜索作用于**整章**，跨子页）。
- *  标题命中即整条算命中（返回全部段数，免得只因为标题命中就显示成 0）。 */
 function handEntryHits(e: HandEntry, q: string): number {
   if (q === '') return 1
   if (e.title.toLowerCase().includes(q)) return e.paras.length
   return e.paras.filter(([, t]) => t.toLowerCase().includes(q)).length
 }
 
-// ⟪文案调整 2026-10-04⟫ 本批奇货说明随语言切换取词，不缓存模块加载时的译文。
 function guideGroupsOf(): HandGroup[] { return [
   {
     title: tr("ui.Handbook.194"),
@@ -395,7 +296,6 @@ function guideGroupsOf(): HandGroup[] { return [
       {
         title: tr("ui.Handbook.261"),
         paras: [
-          // ⟪文案调整 2026-11-02⟫ 不再宣称出发即开战，改用船长确认的阶段原文。
           [tr("ui.Handbook.018"), `${tr('core.departure.001')} → ${tr('core.departure.002')} → ${tr('ui.invasionActivity.003')}`],
           [tr("ui.Handbook.028"), tr("ui.Handbook.140")],
           [tr("ui.Handbook.262"), tr('core.departure.003')],
@@ -538,10 +438,6 @@ function guideGroupsOf(): HandGroup[] { return [
 
 }
 
-/**
- * **股市手册**（2026-11-16 船长令：「专门新开一个单独介绍股市系统的，详细的限制、玩法都要告诉玩家」）
- * —— 手册左侧一级导航「股市」的内容：只讲怎么用和限制，不写设计原因。
- */
 function exchangeGroupsOf(): HandGroup[] { return [
   {
     title: tr("ui.Handbook.390"),
@@ -636,7 +532,6 @@ function exchangeGroupsOf(): HandGroup[] { return [
   },
 ] }
 
-/** 「小贴士」子页的 key（它不是词条，单独占一页） */
 const TIPS_KEY = '__tips'
 const guideNotesOf = (): string[] => [
   tr("ui.Handbook.164"),
@@ -644,7 +539,6 @@ const guideNotesOf = (): string[] => [
   tr("ui.Handbook.220"),
 ]
 
-/* ═══════════ 航行须知（2026-09-14 船长：同「玩法速览」，按词条分页 + 正文拆段） ═══════════ */
 
 const ruleGroupsOf = (): HandGroup[] => [
   {
@@ -849,75 +743,31 @@ const ruleGroupsOf = (): HandGroup[] => [
   },
 ]
 
-/* ═══════════ 网格渲染 ═══════════ */
 
 export interface GridCell {
   key: string
-  /**
-   * 该卡属于哪一类。**`'foe'` 不是导航页**——它是**势力图鉴里敌人卡的详情类型**
-   * （2026-09-26 船长令「敌人卡可以点开」），只在详情窗里被消费 ⇒ 用 `DetailTab`（= `Tab` ＋ `'foe'`）。
-   */
   tab: DetailTab
   glyph: string
-  /**
-   * **本卡的色调**（**2026-09-26 船长令**：「**手册内的势力都是一个颜色的，按照设定文档进行下染色**」）——
-   * 不传 = 按 `glyph` 走 `toneOfAny()`；传了就用它（势力卡与势力详情里的敌人卡传 `FOE_ACCENT[族]`）。
-   * ⚠ 族色单点是 `ui/tones.ts` 的 `FOE_ACCENT`（＝ `toneVar('A'..'H')`，与星图族标签、战场敌舰同源），
-   * **不新造色板、不写死十六进制**。
-   */
   tone?: string
   name: string
   sub: string
-  /** 完整数据（详情窗用） */
   raw: RawData
-  /**
-   * **稀有度档**（1~5；`undefined` = 不显示标签）。
-   * 2026-09-20 船长：「希望给每个物品的图标模式右上角添加物品稀有度展示的小标签」——
-   * 图鉴网格与仓库/货仓**同一个视觉语言**（`app-hand-cell-rarity`），档位走单点
-   * `itemRarityTierOf()`（含 AI 核心与舰船的键映射）。
-   */
   rarity?: number
-  /** **势力图鉴专用**：该卡的族字母（`faction` 页的卡片用它分组/排序，别的页恒缺省） */
   faction?: string
-  /**
-   * **族徽角标**（**2026-09-26 船长令**：「**给所有位置势力专属的舰船和装备的图标卡片的左上角
-   * 标注势力族徽**」）——值 = 势力族字母（`'A' | 'C' | 'D' | 'E' | 'G' | 'H'`）。
-   * 判据走**单一入口** `factionOfExclusive(id)`（内容体检在守），装备/舰船按自身 id 判、
-   * 蓝图按**产物**判（船长裁定「按照所属势力标」）⇒ 三处图鉴（装备 / 舰船 / 势力详情）同源。
-   * 恒缺省 = 非势力专属件，不标。
-   */
   crest?: string
-  /**
-   * **图标模式改画舰船 SVGer 形象**（**2026-09-26 船长令**：「**手册的舰船图鉴中，图标模式舰船的
-   * 图标使用舰船的SVG形象**」）——只有舰船图鉴的格子带本字段；带它时 `IconGrid` 走
-   * `ShipSpriteShape`（与舰队页/装配页/星图同一个资产表 `SHIP_ART`），不再画类别徽记。
-   */
   shipId?: string
-  /** 同上：画舰影时的回退族别（资产表未命中时按它取剪影） */
   shipRole?: ShipRole
-  /**
-   * **副行给两行**（**2026-09-26 船长批「3 可以」**）：`.app-hand-cell-sub` 默认单行省略号，
-   * 势力图鉴里敌舰那条副行（「护卫舰 · 近战缠斗 · 爆弹为主（80%） · 副 动能」）会被截尾。
-   * 只有敌舰卡带本字段 ⇒ 其余图鉴卡片的高度与观感**一字不动**（改类名会波及全册）。
-   */
   subWrap?: boolean
 }
 
-/** 一个分组（仓库同款小节）：分类名 + 数量 + 卡片 */
 interface CellGroup {
   key: string
   label: string
-  /**
-   * **分组标题的本地化来源**（2026-09-22 补）：分组表的档都带 `id`（`ui/itemSubs.ts` 那几张表），
-   * 标题必须走 `subText` 取当前语言 —— 此前直接渲染表里的中文 `label`，英文界面下整片分组标题是中文
-   * （实测蓝图图鉴「高槽装备蓝图 / T1 护卫舰蓝图…」27 处）。`undefined` = 兜底分组（无档可译）。
-   */
   id?: string
   idParam?: string
   cells: GridCell[]
 }
 
-/** 按分组表切分卡片（表内顺序在前，未收录的键兜底追加，避免新增内容漏出图鉴） */
 function groupCells(
   cells: GridCell[],
   keyOf: (c: GridCell) => string,
@@ -942,14 +792,6 @@ function groupCells(
   return out
 }
 
-/**
- * **「信号不良」通用图形**（**2026-09-26 船长裁定**：势力图鉴里**未遭遇**的敌人
- * 「**不显示剪影，改为类似信号不良的通用图形**」）。
- *
- * 画法沿用全仓视觉铁律（**一律 SVG 线稿 · currentColor · 细描边 · 不用 CSS 拼形状**）：
- * 天线 ＋ 两圈扫描弧 ＋ 一道斜划 ＋ 三点噪点——表达"有回波、认不出是什么"。
- * 尺寸与卡片图标位一致（约 30px 高），颜色由父级 `--tone` 给（未遭遇卡的 tone 取暗淡档）。
- */
 function SignalLostIcon({ size = 30 }: { size?: number }) {
   return (
     <svg viewBox="0 0 32 32" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -970,15 +812,6 @@ function SignalLostIcon({ size = 30 }: { size?: number }) {
   )
 }
 
-/**
- * 卡片网格（图鉴各页共用）。
- *
- * `selectedKey`（2026-09-26 优化批）：**势力图鉴用它标出"当前点开的是哪一张"**——下方窗口容器
- * 显示的是某一张卡的详情，此前格子没有任何选中态，玩家点完看不出"我看的是哪一族"。
- * 做法沿用本文件既有纪律：**内联样式、不新增 CSS 类**（避免动 `ui:layout-css` 生成件链路），
- * 选中态 = 1px 内描边（`inset` 阴影 ⇒ **不占布局、不引起跳动**），描边色就是本卡的 `--tone`。
- * 同时给 `aria-current`（"这组里的当前项"），键盘/读屏也能定位。
- */
 function IconGrid({ cells, onPick, selectedKey }: { cells: GridCell[]; onPick: (c: GridCell) => void; selectedKey?: string }) {
   return (
     <div className="app-hand-grid">
@@ -1077,24 +910,15 @@ export function Handbook({
 }: {
   engine: GameEngine
   onClose: () => void
-  /** 图鉴条目 → 市场（2026-09-14 船长）；由 App 透传与舰船页/物品页/工业页同一个入口 */
   onGotoMarket?: (goodKey: string) => void
 }) {
   const [tab, setTab] = useState<Tab>('guide')
   const [view, setView] = useState<ViewMode>(readView)
   const [detail, setDetail] = useState<GridCell | null>(null)
   const [query, setQuery] = useState('')
-  /* 图鉴筛选（2026-09-13 船长）：一级 `mainKey`，二级 `subKey`；都**不落盘**——关上手册再打开即重置
-     （与市场「切类型即回全部子类」同一哲学）。`SUB_ALL` = 全部 / 全部子类。 */
   const [mainKey, setMainKey] = useState<string>(SUB_ALL)
   const [subKey, setSubKey] = useState<string>(SUB_ALL)
-  /** 说明类（玩法速览 / 航行须知）当前停留的**子页**（= 词条标题；空串 = 默认第一条，`TIPS_KEY` = 小贴士页） */
   const [pageKey, setPageKey] = useState<string>('')
-  /**
-   * **势力图鉴：当前选中的势力**（2026-09-26 船长令：「在势力图鉴内新建一个窗口容器，玩家点击某个势力后，
-   * 下方窗口内就显示该势力的介绍和敌人种类，专属装备，舰船等」）——
-   * 缺省选第一个族；点上方卡片即切换；**详情不再弹二级窗口**，只活在下方容器里。
-   */
   const [factionSel, setFactionSel] = useState<string>(FACTION_CODEX_ORDER[0] ?? 'A')
 
   function changeView(v: ViewMode): void {
@@ -1102,21 +926,8 @@ export function Handbook({
     try {
       localStorage.setItem(VIEW_KEY, v)
     } catch {
-      // 本地存储不可用：忽略
     }
   }
-  /**
-   * 切页：清空**详情与筛选**；**关键词保留**（2026-09-17 船长：「**手册里进行搜索后，切换导航页搜索会重置**」）。
-   *
-   * 口径（当日两答）：① **关键词跨页保留**——搜索框里的词切页后原样留着，并作用于新页
-   * （新页没命中就显示「没有匹配…」提示，导航计数也按该页命中数显示）；② **关掉手册再打开即清空**
-   * （不落 localStorage，与筛选同哲学）。筛选（一级/二级/子页）仍按 2026-09-13 的裁定**切页归零**
-   * （「与市场『切类型即回全部子类』同一哲学」）。
-   *
-   * ⚠ 原先这里还带一句 `setQuery('')`（原注释："各页关键词互不相关，避免换了页却没结果的困惑"）——
-   * 那是经办人自定的口径，不是船长裁定，本日按船长指示删除。**别再往回加**（护栏 = `content:check`
-   * 「手册搜索跨页保留契约」）。
-   */
   function changeTab(t: Tab): void {
     setTab(t)
     setDetail(null)
@@ -1124,7 +935,6 @@ export function Handbook({
     setSubKey(SUB_ALL)
     setPageKey('')
   }
-  /** 选一级分类：二级随之归零（与组装机「换一级标签即回全部子类」同款） */
   function pickMain(k: string): void {
     setMainKey(k)
     setSubKey(SUB_ALL)
@@ -1136,8 +946,6 @@ export function Handbook({
     c.name.toLowerCase().includes(q) ||
     c.sub.toLowerCase().includes(q) ||
     String(c.raw.description ?? '').toLowerCase().includes(q)
-  /* 说明类（玩法速览 / 航行须知）：搜索作用于**整章**（跨子页命中，见 handEntryHits）。
-     `cur` 是当前该显示的**一页**：玩家点的子页；点的那条被关键词滤掉时自动落到第一条命中的（搜索即跳页）。 */
   const guideGroups = guideGroupsOf()
   const RULE_SECTS = ruleGroupsOf()
   const EXCHANGE_SECTS = exchangeGroupsOf()
@@ -1148,8 +956,6 @@ export function Handbook({
   const matched = flat.filter((x) => handEntryHits(x.e, q) > 0)
   const onTips = tab === 'guide' && pageKey === TIPS_KEY
   const cur = onTips ? null : (matched.find((x) => x.e.title === pageKey) ?? matched[0] ?? null)
-  /* 翻页序列（2026-09-14 船长追加：页底「上一条 / 下一条」）：按当前章的**阅读顺序**连续走，跨组不打断；
-     搜索时只在命中项之间走（与"搜索即跳页"同一套口径）。「小贴士」排在「玩法速览」最后一条之后。 */
   const tipsHit = q === '' || guideNotes.some((n) => n.toLowerCase().includes(q))
   const pageSeq: Array<{ key: string; label: string }> = [
     ...matched.map((x) => ({ key: x.e.title, label: x.e.title })),
@@ -1159,14 +965,9 @@ export function Handbook({
   const prevPage = pageIdx > 0 ? pageSeq[pageIdx - 1]! : null
   const nextPage = pageIdx >= 0 && pageIdx < pageSeq.length - 1 ? pageSeq[pageIdx + 1]! : null
 
-  /* ── 网格单元（glyph 名即色调键；raw 带完整数据供详情窗） ──
-   *  ⚠ 物品图鉴走**玩家可见目录**（`visibleItemDefs`）：未上线物品（标 `ItemDef.unreleased`）
-   *  不进图鉴——首版直接遍历 `engine.items` 全目录，未上线矿会连名字带描述一起被搜出来（2026-09-13 实测）。 */
   const orderedItems = handbookContentOrderOf(visibleItemDefs(engine.ctx), item => item.id)
   const orderedModules = handbookContentOrderOf(engine.modules, mod => mod.id)
   const itemCells: GridCell[] = orderedItems.map((item) => itemCellOf(item))
-  /** **道具逐件档的档名解析器**（2026-10-02 船长令：消耗品桶里每件道具自成一档）：档名 = 那件道具
-   *  自己的名字，从物品表单点取（`subText` 的第二个参数），不在分类表里再抄一份名字。 */
   const itemNameOf = (id: string): string | undefined => engine.ctx.items.get(id)?.name
   const moduleCells: GridCell[] = orderedModules.map((mod) => moduleCellOf(mod))
   const shipCells: GridCell[] = engine.ships.map((ship) => shipCellOf(ship))
@@ -1179,47 +980,29 @@ export function Handbook({
     tab: 'skills',
     glyph: `group-${s.group}`,
     name: s.name,
-    // ⚠ 技能分类名本地化：`s.group` 是 data 侧的**中文分类键**（`SKILL_GROUPS`），
-    //   直读会在英文界面漏中文（2026-09-22 手册本地化批）⇒ 走 `skillGroupText` 单点
     sub: tr("ui.Handbook.115", { p1: skillGroupText(s.group), p2: s.rank }),
     raw: s as unknown as RawData,
   }))
 
-  /* ── 分组（顺序表与市场页类型子分类同源；空组隐藏） ── */
   const filtered = (cells: GridCell[]): GridCell[] => cells.filter(hitCell)
   const showCells = (cells: GridCell[], t: Tab): CellGroup[] => groupCells(cells, groupKeyOf, orderOf(t))
-  /** 分组键：物品按大类 / 装备按槽类 / 舰船按舰族 / 蓝图按产物门类（装备蓝图再按产物槽类） / 技能按技能组 */
   function groupKeyOf(c: GridCell): string {
     if (c.tab === 'items') return itemCategoryOf({ kind: String(c.raw.kind ?? '') })
     if (c.tab === 'modules') return moduleSubKeyOf(String(c.raw.slot ?? ''), String(c.raw.id ?? ''))
     if (c.tab === 'ships') return SHIP_DOMAIN_SUBS.find((s) => shipRolePasses(engine.ctx.ships.get(c.key), s.key))?.key ?? 'other'
     if (c.tab === 'blueprints') {
-      // 2026-09-10 船长：装备蓝图按**产物模块的槽类**分高/中/低档（与市场页子分类同源单点）
-      // 2026-09-11 船长：「舰船部分按舰船级别划分」——舰船蓝图由 1 组拆成 T1~T5 五组（键 t<级别>，同表）
       if (c.raw.shipId !== undefined) {
         const ship = engine.ctx.ships.get(String(c.raw.shipId))
         return ship ? `t${ship.tier}` : ''
       }
       if (c.raw.itemId !== undefined) {
-        // 2026-09-20 零件体系（船长裁定「归到该组」）：**产物是零件的**归「零件蓝图」组——
-        // 组键沿用市场那张单点表 `BLUEPRINT_SUBS` 里既有的 `part-advanced` 档（其 label 就是「零件蓝图」，
-        // 市场上只有高级零件有书；图鉴这一组连基础零件的隐式蓝图一起列）。
         return engine.ctx.items.get(String(c.raw.itemId))?.kind === 'part' ? 'part-advanced' : 'supply'
       }
       const mod = engine.ctx.modules.get(String(c.raw.moduleId ?? ''))
-      // 2026-09-26 归属档单点：舰船插件的蓝图归「舰船插件」组（读 `rackOf` 会落进低槽）
       return mod ? rackDimKeyOf(mod) : ''
     }
-    return String(c.raw.group ?? '') // skills
+    return String(c.raw.group ?? '')
   }
-  /**
-   * 分组顺序表（与市场页同源；装备未收录槽位归「其它」）。
-   *
-   * ⚠ **2026-09-22 手册本地化批**：这几行原先把单点表**压成 `{ key, label }`、把 `id` 丢掉了**
-   * ⇒ 分组标题与筛选档只能回落到中文 `label`（英文界面下整片「高槽装备蓝图 / T1 护卫舰蓝图…」）。
-   * 现**原样带上 `id`/`idParam`**，由渲染处的 `subText` 取当前语言；技能分类是 data 侧中文键，
-   * 走 `skillGroupText` 单点映射（无 id 时 `subText` 回落到 `label`，故这里给已译好的 `label`）。
-   */
   function orderOf(t: Tab): readonly { key: string; label: string; id?: string; idParam?: string }[] {
     if (t === 'items') return ITEM_CODEX_SUBS
     if (t === 'modules')
@@ -1241,25 +1024,13 @@ export function Handbook({
           idParam: s.idParam,
         }),
       ).concat([{ key: '', label: tr("ui.Handbook.116") }])
-    return engine.groups.map((g) => ({ key: g, label: skillGroupText(g) })) // skills
+    return engine.groups.map((g) => ({ key: g, label: skillGroupText(g) }))
   }
 
-  /**
-   * **势力图鉴的卡片**（2026-09-26 船长：「敌族图鉴单独列出吧，放在蓝图图鉴下方，叫『势力图鉴』」）：
-   * 值由 data 侧 `buildFactionCards` 装配（单一来源：收录范围 ＋ 各族专属件/舰/图纸 ＋ 遭遇记录），
-   * 这里只把 `FoeShipDef` 目录喂进去、并把搜索文本拼出来。
-   */
   const isFactionPage = tab === 'factions'
-  /**
-   * ⚠ **必须无条件构造**（2026-09-26 船长报障：「势力图鉴，玩家如果不点击，在导航栏的数字显示为 0」）：
-   * 导航计数走 `navCount()` ⇒ `codexCells[t]` —— 若这里按 `isFactionPage` 门控，**在别的页时**
-   * `codexCells.factions` 就是空数组、导航那一格恒显示 0。六张卡本来就不贵（只读 `FOE_SHIPS`＋遭遇记录），
-   * 与搜索词也无关 ⇒ 每次渲染都算。
-   */
   const factionCells: GridCell[] = (() => {
         const ships = collectFoeShips(engine)
         return buildFactionCards(FOE_SHIPS, engine.state.foeShipSeen).map((card) => {
-          // 卡面**始终给族名**（未解锁的族也看得见是哪一支）；「？？？」只用于**内容行**（敌人 / 专属明细）
           const head = tr(card.nameId)
           const enemyText = card.enemies
             .map((e) => (e.seen ? ships.get(e.id)?.name ?? '' : ''))
@@ -1272,12 +1043,6 @@ export function Handbook({
             key: card.family,
             tab,
             glyph: card.glyph,
-            /**
-             * **按族色染色**（**2026-09-26 船长令**：「**手册内的势力都是一个颜色的，按照设定文档
-             * 进行下染色**」）——族色单点 = `FOE_ACCENT`（设定文档各族色：海盗锈红 / 异形磷光绿 /
-             * 守墓磷光冰蓝 / 巨构残铁棕 / 鱿鱼聚落紫 / 墨潮深红），与星图「敌对派系」标签、
-             * 战场敌舰**同源同值**。此前六张卡走 `toneOf('fam-x')` ⇒ 查不到键、全落灰兜底。
-             */
             tone: FOE_ACCENT[card.family],
             name: head,
             sub: tr('ui.codex.003', { p1: card.seenCount, p2: card.totalCount }),
@@ -1298,33 +1063,17 @@ export function Handbook({
   }
   const isCodex = tab === 'items' || tab === 'modules' || tab === 'ships' || tab === 'blueprints' || tab === 'skills' || tab === 'factions'
 
-  /* ── 图鉴筛选（2026-09-13 船长：「对手册中的各个图鉴添加筛选，如果有子分类的，主筛选选择之后出现子分类筛选」；
-        集中提问后定：**只做一级的页签 = 物品 / 技能**（无天然第二层），二级只在装备 / 舰船 / 蓝图三页；
-        控件复用组装机那一套 `app-task-tabs` + `app-tasktab` 胶囊；与搜索取「与」 ── */
 
-  /** 主筛选（一级）**候选表**——与各页的**分组键同一套判据**：装备＝槽类、舰船＝角色、蓝图＝门类 */
   function mainCandidatesOf(t: CodexTab): readonly SubOption[] {
     if (t === 'items') return ITEM_CODEX_SUBS
     if (t === 'modules') return RACK_SUBS
     if (t === 'ships') return SHIP_DOMAIN_SUBS
     if (t === 'blueprints') return BP_MAIN
-    // l10n-keep：`g` 是 data 侧的分类**键**（中文即键），渲染前一律过 `skillGroupText` 取当前语言
     return engine.groups.map((g) => ({ key: g, label: skillGroupText(g) }))
   }
-  /**
-   * **主筛选（一级）可选项 = 候选表里"本页真有卡片"的那些**（2026-09-20 船长「手册的筛选也进行收缩」）——
-   * 「全部」常显；判据与下面的 `mainPasses` 同一把尺（避免出现"选进去必然空"的档）。
-   */
   function mainOptions(t: CodexTab): SubOption[] {
     return presentSubs(mainCandidatesOf(t), (key) => codexCells[t].some((c) => mainPasses(c, t, key)))
   }
-  /** 子筛选（二级）**候选表**——**必须选了主类才出现**（「全部」不带子筛选；2026-09-13 船长口径：
-   *  「如果有子分类的，主筛选选择之后出现子分类筛选」）。2026-09-19 甲组补丁按船长
-   *  「涉及到特定分类的父分类时，将其子分类也放入」补齐：
-   * - 物品图鉴：货柜→四档 · 残骸→档位 · AI 核心→档位（只列有物品形态的）· 蓝图碎片→功能分组；
-   * - 蓝图图鉴：装备→槽类 / 舰船→级别 / **消耗品→产物大类**（原先消耗品整行不出）；
-   * - 装备图鉴：槽类（主）→ 功能分组（子）；舰船图鉴：类别（主）→ 级别（子）。
-   */
   function subCandidatesOf(t: CodexTab, main: string): readonly SubOption[] {
     if (t === 'modules') return MODULE_SUBS
     if (t === 'ships') return SHIP_TIER_SUBS
@@ -1332,8 +1081,7 @@ export function Handbook({
     if (t === 'blueprints') {
       if (main === 'equip') return RACK_SUBS
       if (main === 'ship') return SHIP_TIER_SUBS
-      if (main !== 'consume') return [] // 「零件蓝图」自成一门，暂不细分（基础/高级已在卡片副行与产物名里）
-      /** 消耗品蓝图：按**产物大类**细分（弹药 / 修理组件 / 无人机）——只列真有蓝图的大类 */
+      if (main !== 'consume') return []
       const kinds = new Set<string>()
       for (const b of engine.blueprints) {
         if (b.itemId === undefined) continue
@@ -1344,61 +1092,42 @@ export function Handbook({
     }
     return []
   }
-  /**
-   * **子筛选（二级）可选项 = 候选表里"该主类下真有卡片"的那些**（2026-09-20 船长「手册的筛选也进行收缩」）——
-   * 船长点名的同类问题（精炼炉/组装机/市场已改）在手册里的落点：物品图鉴「蓝图碎片」挂着十组功能、
-   * 实际只有「采集与货舱 / 武器」有卡；装备图鉴「高槽」下挂着护盾/装甲/推进器/协处理器四档恒空；
-   * 舰船图鉴「采矿舰」下挂着 T4/T5 恒空。判据与 `mainPasses × subPassesCell` 同一把尺。
-   * ⚠ 只收**选项**：卡片集合（`codexCells` 与下面的分组）一字未动。
-   */
   function subOptions(t: CodexTab, main: string): SubOption[] {
     if (main === SUB_ALL) return []
     return presentSubs(subCandidatesOf(t, main), (key) =>
       codexCells[t].some((c) => mainPasses(c, t, main) && subPassesCell(c, t, key)),
     )
   }
-  /** 主筛选判定（判据与 `groupKeyOf` 逐条对齐，避免"筛出来的条目和分组标题不一致"） */
   function mainPasses(c: GridCell, t: Tab, main: string): boolean {
     if (main === SUB_ALL) return true
-    /** 物品 / 装备两页走**唯一入口** `itemBucketPasses`（甲组·判定单点，2026-09-19 六条基线之⑥）：
-     *  物品页的 `main` = 真实物品大类；装备页的 `main` = 槽类键（`high/mid/low`）⇒ 拼成桶键 `module-<rack>`。 */
     if (t === 'items') return itemBucketPasses(engine.ctx, c.key, main)
     if (t === 'modules') return itemBucketPasses(engine.ctx, c.key, `module-${main}`)
-    // 舰船图鉴：类别走**唯一入口** `shipRolePasses`（= core `shipCategoryKeyOf`，2026-09-19 乙组）
     if (t === 'ships') return shipRolePasses(engine.ctx.ships.get(c.key), main)
     if (t === 'blueprints') {
       if (c.raw.shipId !== undefined) return main === 'ship'
       if (c.raw.itemId !== undefined) {
-        // 2026-09-20 船长裁定：产物是零件的走「零件蓝图」门类，其余物品蓝图仍是消耗品蓝图
         const kind = engine.ctx.items.get(String(c.raw.itemId))?.kind
         return main === (kind === 'part' ? 'part' : 'consume')
       }
       return main === 'equip'
     }
-    return String(c.raw.group ?? '') === main // skills
+    return String(c.raw.group ?? '') === main
   }
-  /** 子筛选判定（技能页无二级，恒真）——物品 / 装备两页走**唯一入口** `itemSubPasses`（甲组补丁） */
   function subPassesCell(c: GridCell, t: Tab, sub: string): boolean {
     if (sub === SUB_ALL) return true
     if (t === 'items') return itemSubPasses(engine.ctx, c.key, itemCategoryOf({ kind: String(c.raw.kind ?? '') }), sub)
-    // 装备图鉴：走**唯一入口** `itemSubPasses`（bucket = `module`）——2026-09-26 收敛：
-    // 原先这里自己写 `moduleSubKeyOf(slot) === sub`，与市场/碎片那条单点**各写一份**；
-    // 支援件拆三档后两份判定必须有同一把尺，故统一（两者对装备的行为逐字等价）。
     if (t === 'modules') return itemSubPasses(engine.ctx, c.key, 'module', sub)
-    // 舰船图鉴：级别走**唯一入口** `shipTierPasses`（2026-09-19 乙组）
     if (t === 'ships') return shipTierPasses(engine.ctx.ships.get(c.key), sub)
     if (t === 'blueprints') {
       if (c.raw.shipId !== undefined) {
         const ship = engine.ctx.ships.get(String(c.raw.shipId))
         return ship !== undefined && `t${ship.tier}` === sub
       }
-      // 消耗品蓝图：二级 = 产物大类（弹药 / 修理组件）
       if (c.raw.itemId !== undefined) {
         const it = engine.ctx.items.get(String(c.raw.itemId))
         return it !== undefined && it.kind === sub
       }
       const mod = engine.ctx.modules.get(String(c.raw.moduleId ?? ''))
-      // 2026-09-26 归属档单点（同上）：插件蓝图在子筛选里归「舰船插件」档，不再算低槽
       return mod !== undefined && rackDimKeyOf(mod) === sub
     }
     return true
@@ -1406,16 +1135,13 @@ export function Handbook({
 
   const mainOpts = isCodex ? mainOptions(tab) : []
   const subOpts = isCodex ? subOptions(tab, mainKey) : []
-  /** 搜索或筛选任一生效（命中计数与空态文案据此切换措辞） */
   const narrowed = q !== '' || mainKey !== SUB_ALL || subKey !== SUB_ALL
-  /** 势力页的命中判定：与别页同款，但额外搜**已遭遇的舰级名与专属件名**（玩家按"那艘船叫什么"找族） */
   function factionHit(c: GridCell): boolean {
     if (!hitCell(c)) return false
     if (q === '') return true
     const extra = String((c as { hits?: string }).hits ?? '').toLowerCase()
     return extra.includes(q) || c.name.toLowerCase().includes(q)
   }
-  /** 势力页分组：**不做两级筛选**（六族平铺，顺序 = `FACTION_CODEX_ORDER`） */
   const factionEntries: CellGroup[] = isFactionPage
     ? (factionCells.some((c) => factionHit(c))
         ? [{ key: 'factions', label: tr('ui.codex.001'), id: 'ui.codex.001', cells: factionCells.filter(factionHit) }]
@@ -1432,14 +1158,12 @@ export function Handbook({
     ? factionEntries.reduce((n, g) => n + g.cells.length, 0)
     : isCodex ? groups.reduce((n, g) => n + g.cells.length, 0) : 0
 
-  /** 左侧导航计数：图鉴类 = 条目数（搜索时显示命中数；**不含筛选**——筛选是当前页的临时收窄），说明类 = 词条数 */
   function navCount(t: Tab): number {
     if (t === 'guide') return guideGroups.reduce((n, g) => n + g.entries.filter((e) => handEntryHits(e, q) > 0).length, 0)
     if (t === 'rules') return RULE_SECTS.reduce((n, g) => n + g.entries.filter((e) => handEntryHits(e, q) > 0).length, 0)
     if (t === 'exchange') return EXCHANGE_SECTS.reduce((n, g) => n + g.entries.filter((e) => handEntryHits(e, q) > 0).length, 0)
     return codexCells[t].filter(hitCell).length
   }
-  /** 当前页命中计数文案（搜索/筛选态与全量态） */
   const countText = (): string => {
     if (tab === 'guide' || tab === 'rules' || tab === 'exchange') {
       const n = navCount(tab)
@@ -1448,7 +1172,6 @@ export function Handbook({
     return narrowed ? tr("ui.Handbook.183", { codexHit: codexHit, p2: COUNT_UNIT[tab] }) : `${codexHit} ${COUNT_UNIT[tab]}`
   }
 
-  /* ── 列表视图：按分组渲染同一批卡片（沿用原有完整字段行） ── */
   function renderList(g: CellGroup): ReactNode {
     const ids = new Set(g.cells.map((c) => c.key))
     if (tab === 'items') {
@@ -1613,7 +1336,6 @@ export function Handbook({
     )
   }
 
-  /** 页底翻页条（船长 2026-09-14 追加）：连着读完一章更顺；到头的那一侧留空位（保持按钮位置稳定） */
   function renderPager(): ReactNode {
     if (prevPage === null && nextPage === null) return null
     return (
@@ -1636,8 +1358,6 @@ export function Handbook({
     )
   }
 
-  /** 说明类页面：**一条解释 = 一页**（2026-09-14 船长：按词条分页 + 正文拆段，不再挤成一整段）
-   *  上面子栏（`.app-hand-subnav`）选页；正文由 `.app-hand-para`（段首小标题 + 正文）堆成；页底可翻页。 */
   function renderPage(): ReactNode {
     if (onTips) {
       return (
@@ -1742,7 +1462,6 @@ export function Handbook({
                 className="app-head-search"
                 type="search"
                 placeholder={SEARCH_PLACEHOLDER[tab]}
-                /* 无障碍名（2026-09-26 优化批）：占位符在部分读屏里**不算标签**，显式给一个（与占位同文案，不新增 id） */
                 aria-label={SEARCH_PLACEHOLDER[tab]}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}

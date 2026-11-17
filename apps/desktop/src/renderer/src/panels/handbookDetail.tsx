@@ -1,10 +1,3 @@
-/**
- * 手册图鉴 · 详情窗与卡片构造（2026-10-02 从 `panels/Handbook.tsx` 拆出 · 批次 4s · 零行为变化）。
- *
- * 本文件 = 图鉴的**详情域**：卡片构造器（模块/舰船/物品/蓝图/势力同源 `app-hand-cell`）、详情窗
- * （DetailBody / FoeBody / CellDetail）、分组小节 GroupSection 与宽类型标签助手（kindName/slotName/roleName）。
- * `Handbook.tsx` 借回使用（先例：fitted.ts）；GridCell / RawData 从 Handbook 纯类型借入 ⇒ 无运行期回边。
- */
 import { useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { shipCategoryKeyOf } from '@whale/core'
@@ -23,38 +16,15 @@ import { tr } from '../i18n/locale'
 import type { GameEngine } from '../game/engine'
 import type { GridCell, RawData } from './Handbook'
 
-/**
- * 宽类型标签索引（**详情窗数据来自 raw，键是 string**）。
- *
- * ⚠ **2026-09-22 船长令「先进行手册的本地化」改判**：这三个助手原先直接读 core 的**中文**名表
- * （`ITEM_KIND_LABELS` / `SLOT_LABELS` / `SHIP_ROLE_LABELS`）⇒ 手册的卡片副标题、槽位/角色 chip、
- * 详情行与筛选档在**英文界面下整片漏中文**（实测手册页 314 处里的大头）。现一律走本地化单点
- * （`ui/labelsText.ts` 的 `kindText` / `slotText` / `shipRoleText`，可复用的 id 都复用，core 不动）。
- */
 export const kindName = (k: string): string => kindText(k as Parameters<typeof kindText>[0])
 export const slotName = (k: string): string => slotText(k)
 export const roleName = (k: string): string => shipRoleText(k as Parameters<typeof shipRoleText>[0])
 
-/* ═══════════ 详情窗 ═══════════ */
 
-/** 详情窗用：把当前表格单元喂给 {@link handMarketKeyOf}（映射单点在 `ui/marketJump.ts`，
- *  体检那条跨层契约也读同一个函数——**不许在这里另写一份映射**） */
 export function marketKeyOf(engine: GameEngine, cell: GridCell): string | null {
   return handMarketKeyOf(engine.ctx, cell.tab, cell.key)
 }
 
-/**
- * **图鉴卡片的共用构造**（**2026-09-26 船长令**：「**装备和舰船以及蓝图这些应该使用装备图鉴舰船图鉴中的
- * 痛苦卡片**」——即图标卡 `app-hand-cell`）。
- *
- * 为什么抽到模块作用域：同一张卡**两处消费**——① 各图鉴页的 `IconGrid`；② 势力图鉴详情容器里的
- * 「专属装备 / 专属舰船 / 图纸」三段。原先那三段是纯文字列表行（船长：「**专属装备也是过于简陋**」），
- * 若在详情里另写一份卡片构造，两处迟早漂移 ⇒ 这里做**唯一构造点**。
- *
- * **族徽角标**（同一条船长令：「**给所有位置势力专属的舰船和装备的图标卡片的左上角标注势力族徽**」）：
- * 判据走**单一入口** `factionOfExclusive(id)`；装备/舰船按自身 id 判，**蓝图按产物判**
- * （船长裁定「按照所属势力标」）⇒ 三处图鉴（装备 / 舰船 / 势力详情）同源、不各判一套。
- */
 export function moduleCellOf(mod: ModuleDef): GridCell {
   const crest = crestFamOf(mod.id)
   return {
@@ -70,8 +40,6 @@ export function moduleCellOf(mod: ModuleDef): GridCell {
 }
 
 export function shipCellOf(ship: ShipDef): GridCell {
-  // 2026-09-16 船长：类别键走 `shipCategoryKeyOf` —— 装甲线 = `role: 'armored'` **或**武装舰里装甲占比 > 护盾占比
-  // （牛鲨级突击巡洋舰 + E 族专属舰；丙案「只在武装舰里判」）。图标/文字/分组/筛选四处同源这一处。
   const cls = shipCategoryKeyOf(ship)
   const crest = crestFamOf(ship.id)
   return {
@@ -82,29 +50,17 @@ export function shipCellOf(ship: ShipDef): GridCell {
     sub: `${roleName(cls)} · ${shipTierText(ship.tier)} · ${ship.cargoM3.toLocaleString('zh-CN')} m³`,
     raw: ship as unknown as RawData,
     rarity: itemRarityTierOf(ship.id),
-    // 图标模式画舰船 SVG 形象（船长 2026-09-26 令）——资产表命中走独立形，未命中按族别剪影
     shipId: ship.id,
     shipRole: ship.role,
     ...(crest !== undefined ? { crest } : {}),
   }
 }
 
-/**
- * **物品卡**（产物 = `ItemDef`）：副行 = 大类 · 单位体积；族徽按**物品自身 id** 判。
- *
- * 为什么要这件构造点（**2026-09-26 船长报障**：「**H族专属装备内不含无人机**」）：
- * H 族（墨潮帮）三件专属里有一架**无人机**（`drone-ink-heavy`）——它是**物品**（`kind: 'drone'`），
- * 不是模块。势力图鉴的「专属装备」段原先只查 `ctx.modules` ⇒ 那架机被**静默丢掉**
- * （实测：小节计数写「3 件」、卡只画 2 张）。**件型不是归属的判据**，所以这里把物品卡也做成
- * 与装备/舰船/图纸同一份构造（`app-hand-cell`），让"专属三件"能三种件型混排。
- */
 export function itemCellOf(item: ItemDef): GridCell {
   const crest = crestFamOf(item.id)
   return {
     key: item.id,
     tab: 'items',
-    // 2026-09-20 零件两档：glyph 用档位键 ⇒ 图鉴里基础/高级零件分色（形状同一枚 part 线稿）
-    // ⚠ 2026-09-30：其余物品一律走**物品 id 单点映射**（三件道具在图鉴网格里也要各自的线稿）
     glyph: item.kind === 'part' ? partToneKeyOf(item.id) : itemGlyphName(item.id, item.kind),
     name: item.name,
     sub: `${kindName(item.kind)} · ${item.unitM3} m³`,
@@ -114,7 +70,6 @@ export function itemCellOf(item: ItemDef): GridCell {
   }
 }
 
-/** 装备蓝图卡（产物是模块/物品）：副行 = 产物门类 · 产物名；族徽按**产物**判 */
 export function blueprintCellOf(engine: GameEngine, bp: BlueprintDef): GridCell {
   const prodMod = bp.moduleId !== undefined ? engine.ctx.modules.get(bp.moduleId) : undefined
   const crest = crestFamOf(bp.moduleId)
@@ -125,8 +80,7 @@ export function blueprintCellOf(engine: GameEngine, bp: BlueprintDef): GridCell 
     name: bp.name,
     sub:
       bp.itemId !== undefined
-        ? // 产物门类取**产物自己的**大类（2026-09-11 船长：「弹药蓝图改为消耗品蓝图」——
-          // 此前一律写死「弹药」，2 张修理组件蓝图被错标成弹药）
+        ?
           `${kindName(engine.ctx.items.get(bp.itemId)?.kind ?? 'ammo')} · ${engine.ctx.items.get(bp.itemId)?.name ?? bp.itemId}`
         : tr("ui.Handbook.317", { p1: prodMod?.name ?? bp.moduleId ?? '' }),
     raw: bp as unknown as RawData,
@@ -135,7 +89,6 @@ export function blueprintCellOf(engine: GameEngine, bp: BlueprintDef): GridCell 
   }
 }
 
-/** 舰船蓝图卡：副行 = 产物舰名；族徽按**产物舰**判 */
 export function shipBlueprintCellOf(engine: GameEngine, bp: ShipBlueprintDef): GridCell {
   const crest = crestFamOf(bp.shipId)
   return {
@@ -150,31 +103,19 @@ export function shipBlueprintCellOf(engine: GameEngine, bp: ShipBlueprintDef): G
   }
 }
 
-/**
- * **族徽判据与可读名的单点 = `ui/labelsText.ts` 的 `crestFamOf` / `crestLabelOf`**（2026-09-27 迁出）。
- *
- * 迁出原因（**船长 2026-09-27 报障**）：「**物品仓库内的势力装备，左上角没有角标，能否将所有功能
- * 相同的同类型的图标规则进行统一下**」——同款图标卡不止图鉴有，物品页仓库 / 货仓走 `ui/itemView.tsx`
- * 的 `ItemGlyphGrid`，判据与可读名必须**一份实现两处共用**，否则迟早漂（一个标、一个不标）。
- * 源码级护栏 = `tools/ui-attr-check.ts` 的族徽契约（已改为检查**单点文件**）。
- */
 
-/** 详情内容（按页签/数据类型给出完整字段） */
 export function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCell }) {
   const r = cell.raw
   const rows: Array<[string, ReactNode]> = []
-  /** 底部脚注（口径说明类文字；**不再冒充属性行** —— 见 ships 分支的说明） */
   let note: ReactNode = null
 
   if (cell.tab === 'items') {
     const kind = String(r.kind ?? '')
-    // 2026-09-10 船长：无人机把归类子属性并入「种类」（无人机 · 侦察机）——走 core 单点
     rows.push([
       tr("ui.Handbook.005"),
       kindTextOfItem({ kind: kind as ItemKind, droneClass: r.droneClass as DroneClass | undefined }),
     ])
     rows.push([tr("ui.Handbook.006"), `${Number(r.unitM3 ?? 0)} m³`])
-    // V10.5：弹药/无人机补充伤害契约（与其它界面统一由 shipInfo 生成）
     const itemId = String(r.id ?? '')
     const itemDef = itemId ? engine.ctx.items.get(itemId) : undefined
     if (itemDef && (itemDef.kind === 'ammo' || itemDef.kind === 'drone')) {
@@ -193,7 +134,6 @@ export function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCel
     const modId = String(r.id ?? '')
     const modDef = modId ? engine.ctx.modules.get(modId) : undefined
     if (modDef) {
-      // V17：统一行——各家族真实进公式参数（工业加成 / 武器卡 / 容量+缺口抗性 / 加力推进）
       for (const line of moduleInfoLines(modDef)) rows.push([line.k, line.v])
     } else {
       rows.push([tr("ui.Handbook.008"), tr("ui.Handbook.106", { p1: slotName(String(r.slot ?? '')), p2: Math.round(Number(r.bonus ?? 0) * 100) })])
@@ -202,27 +142,9 @@ export function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCel
     const shipId = String(r.id ?? '')
     const shipDef = shipId ? engine.ctx.ships.get(shipId) : undefined
     if (shipDef) {
-      // V10.5：统一行（定位/货舱/采集/动力 + 盾甲结构抗性与槽位）；V17 战斗数值已生效
-      // 2026-09-26 船长报障（第二遍）：「点击舰船图鉴内的舰船，当中的属性还是有动力，而没有机动速度」
-      // ⇒ 本分支与装配页**同一口径**：主属性位报**机动速度**（船体基础值），**动力下沉到间接属性块**。
-      // 上一版我把键写反了（藏了「机动速度」、留了「动力」），此处按报障改正：
-      // ① `shipInfoLines` 的「机动速度」留下（= 船长第二令「图鉴内按照基础属性算」）；
-      // ② 「动力」与「无人机舱」的过滤口径**走单点 `shipCodexBaseLines`**（2026-09-27 收口：
-      //    此前本分支与「舰船蓝图产物」分支各写一遍、`tools/ui-attr-check.ts` 又抄第三份，三份互不相同）：
-      //    滤「动力」（下面的间接属性块会报一次）、**只滤掉无舱船的「无人机舱 = 无」**——
-      //    船长 2026-09-27 报障「**而且还缺少无人机舱属性**」，此前这里是**无条件滤掉**，有舱的船也看不到。
       for (const line of shipCodexBaseLines(shipDef)) rows.push([line.k, line.v])
-      // 2026-09-12 船长：「手册图鉴里的舰船信息可以查看舰船的间接属性」⇒ 追加间接属性行
-      // （动力/跃迁速度/质量/锁定范围/信号半径/扫描分辨率/跃迁充能；与装配页同一数据源）。
-      // ⚠ 行以 `k` 作 React key ⇒ `shipIndirectLines` 的键不得与 `shipInfoLines` 重名（当前无重名）。
       for (const line of shipIndirectLines(shipDef)) rows.push([line.k, line.v])
       rows.push([tr("ui.Handbook.315"), Number(r.priceIsk ?? 0) <= 0 ? tr("ui.Handbook.107") : tr("ui.Handbook.108")])
-      /**
-       * 「已生效战斗数值：抗性按递减方式合成（上限 90%）」是**口径脚注**，不是一项属性 ——
-       * 2026-09-27 船长报障：「有一条**意义不明的「说明」属性**」。
-       * 原先它被塞成一行 `[「说明」, 这句话]`，混在货舱 / 机动速度这些真属性里 ⇒ 看着莫名其妙。
-       * 现改为**脚注**（与舰船悬浮卡 `ShipHover` 同一句话、同一个 `.app-info-note` 类 ⇒ 样式参考同级相似项）。
-       */
       note = tr('ui.Handbook.181')
     } else {
       const cls = shipCategoryKeyOf(r as unknown as { role?: ShipRole; shieldHp?: number; armorHp?: number })
@@ -237,8 +159,6 @@ export function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCel
     const moduleId = r.moduleId !== undefined ? String(r.moduleId) : undefined
     const itemId = r.itemId !== undefined ? String(r.itemId) : undefined
     const shipId = r.shipId !== undefined ? String(r.shipId) : undefined
-    // 产物 + 产物属性行 + 产物介绍（2026-09-08 船长定：蓝图详情须同显产物属性与介绍——
-    // 与图鉴 modules/ships/items 分支同一数据源；弹药蓝图产物此前误落舰船分支，一并修正）
     let productName = ''
     const prodRows: Array<[string, ReactNode]> = []
     if (itemId !== undefined) {
@@ -252,7 +172,6 @@ export function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCel
       const modDef = engine.ctx.modules.get(moduleId)
       productName = tr("ui.Handbook.111", { p1: modDef?.name ?? moduleId })
       if (modDef) {
-        // V17：统一行——各家族真实进公式参数（工业加成 / 武器卡 / 容量+缺口抗性 / 加力推进）
         for (const l of moduleInfoLines(modDef)) prodRows.push([l.k, l.v])
         if (modDef.description) prodRows.push([tr("ui.Handbook.110"), modDef.description])
       }
@@ -260,12 +179,7 @@ export function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCel
       const shipDef = engine.ctx.ships.get(shipId ?? '')
       productName = tr("ui.Handbook.112", { p1: shipDef?.name ?? shipId ?? '' })
       if (shipDef) {
-        // V10.5：统一行（定位/货舱/采集/机动速度 + 盾甲结构抗性与槽位）；V17 战斗数值已生效
-        // 2026-09-26 与「图鉴·舰船」分支同口径：动力走下面的间接属性块，不在主属性里重复一遍
-        // 2026-09-27：口径**收敛到单点 `shipCodexBaseLines`**（含"无人机舱真有舱才显示"）——
-        // 此前本支只滤了「动力」，与档案窗那支并不一致（注释却写着"同口径"）。
         for (const l of shipCodexBaseLines(shipDef)) prodRows.push([l.k, l.v])
-        // 2026-09-12 船长：舰船蓝图详情同样可见间接属性（与图鉴·舰船分支同口径）
         for (const l of shipIndirectLines(shipDef)) prodRows.push([l.k, l.v])
         if (shipDef.description) prodRows.push([tr("ui.Handbook.110"), shipDef.description])
       }
@@ -284,11 +198,6 @@ export function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCel
     ])
     rows.push([tr("ui.Handbook.246"), tr("ui.Handbook.247", { p1: Math.round(Number(r.buildSeconds ?? 0) / 60) })])
   } else if (cell.tab === 'foe') {
-    /**
-     * **敌舰**（2026-09-26 船长令：势力图鉴的敌人卡「和其他图鉴中一样，可以点开」）——
-     * 行内容由 `FoeBody` 单独渲染（三层血占比 / 伤害构成 / 特殊装置，且头部画舰影），
-     * 不走下面这套通用行表。这里提前 return，避免"空行表"。
-     */
     return <FoeBody cell={cell} engine={engine} />
   } else if (cell.tab === 'skills') {
     rows.push([tr("ui.Handbook.132"), String(r.group ?? '')])
@@ -311,18 +220,6 @@ export function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCel
   )
 }
 
-/**
- * **敌舰详情**（**2026-09-26 船长令**：敌人卡「**和其他图鉴中一样，可以点开**」）。
- *
- * 数据全部来自**敌舰自身的定义**（`FoeShipDef`）与既有单点，不在界面里另算一套：
- * - 一句话战术/武器/主副伤/舰载机/精英档 ＋ 特殊装置：`foeBriefLinesOfShip`（与悬赏卡悬停**同一份**）；
- * - 机体数值：三层血占比 `split`、命中 `hitRate`、装填 `reloadMs`、射程带、闪避、基础速度（机动速度）；
- *   ⚠ **不含单发伤害**（船长 2026-09-26：「实际上并没有这个伤害」⇒ 舰级裸值不上面）；
- * - 舰影：`ShipSprite`（敌舰逐舰资产表，与战斗画面同一张；未命中回退族形）。
- *
- * ⚠ 标签复用既有 `ui.*` 词条（舰级 / 护盾 / 装甲 / 结构 / 命中加成 / 回避率 / 射程带 /
- * 装填 / 机动速度 / 特殊装置），**不新造文案、不新取 id**。
- */
 export function FoeBody({ cell, engine }: { cell: GridCell; engine: GameEngine }): ReactNode {
   const def = cell.raw as unknown as FoeShipDef
   const line = foeBriefLinesOfShip(def)
@@ -411,16 +308,10 @@ export function CellDetail({
   engine: GameEngine
   cell: GridCell
   onClose: () => void
-  /** 图鉴 → 市场（2026-09-14 船长）：传该条目在市场的商品键；**缺省 = 不渲染按钮**（无入口时也不假装能跳） */
   onGotoMarket?: (goodKey: string) => void
 }) {
   const tone = cell.tone ?? toneOfAny(cell.glyph)
   const marketKey = onGotoMarket ? marketKeyOf(engine, cell) : null
-  /**
-   * **Esc 关闭**（2026-09-26 优化批）：详情窗是 `role="dialog"` 的覆盖层，此前只有"点窗口外部"
-   * 一条关法 ⇒ 纯键盘走不通（全仓也没有全局 Esc 兜底，只有舰船页改名那处自己处理）。
-   * 挂 window 上的 keydown，卸载即摘；与遮罩点击走**同一个 `onClose`**，不新增第二条关闭路径。
-   */
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') onClose()
@@ -434,8 +325,6 @@ export function CellDetail({
         className="app-detail"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
-        /* 无障碍名 = 条目名（读屏进这条时先报"这是什么"）。`aria-modal` 不写：
-           本窗不抢焦点、也不锁外部交互，写了反而与"点外面即关"的实际行为不符。 */
         aria-label={cell.name}
         style={{ '--tone': tone } as React.CSSProperties}
       >
@@ -475,7 +364,6 @@ export function CellDetail({
   )
 }
 
-/** 一个分组小节（仓库同款：分类名 + 数量 + 卡片/列表） */
 export function GroupSection({
   label,
   unit,

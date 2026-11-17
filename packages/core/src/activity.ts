@@ -1,10 +1,3 @@
-/**
- * 活动总览（T1）：顶部活动窗口的数据源——把当前所有进行中的"活动/作业"聚合成统一只读视图。
- *
- * 扩展约定（未来耗时作业，如"提炼耗时化"）：新增作业种类只需
- * 1) 扩展 ActivityKind 联合类型；2) 在本文件末尾按 kind 追加视图生成；
- * 3) UI 侧登记该 kind 的图标与停止动作。停止动作一律由"分发函数"承接，框架零改动。
- */
 import type { GameState, TrainingItem } from './state'
 import { busyLabel, type BusyLabel } from './busyLabels'
 import { commandShipDeployed } from './combat/command/locks'
@@ -30,16 +23,11 @@ import { weekendFoePoolOf } from './weekendEvent'
 import { pendingStationActivityView } from './stationActivityPending'
 import { departureView } from './departure'
 
-/** 活动种类（UI 据此渲染图标；新增耗时作业在此扩展） */
 export type ActivityKind =
   | 'train'
   | 'mining'
-  /** ⚠ 2026-09-15 起**不再出行**（星系扫描不占主控）：类型与 `stop-scan` 保留，
-   *  供星图页「终止扫描」与界面的顶部扫描条复用；`activityOverview` 不再生成该条目 */
   | 'scan'
-  /** 主控活动「扫描虫洞」（2026-09-14 船长）：界面单独一行（**仍占主控**） */
   | 'whscan'
-  /** 自动探索（2026-09-14 批次 3）：每趟一处虫洞一行（AI 驱动，5 分钟） */
   | 'whauto'
   | 'salvage'
   | 'manufacture'
@@ -54,21 +42,13 @@ export type ActivityKind =
   | 'wormhole'
   | 'courier'
   | 'hauling'
-  /**
-   * **实验室产线**（**2026-10-01 接入活动栏**）：与 `refine` / `manufacture` 同一族（站内产线，
-   * 一行 = 一条在跑的线）—— 主控亲自运转那条出本档；AI 核心驱动那条并入 `'ai'` 一族
-   * （`aiGroup: 'industry'`，与 AI 开炉/开线同一套机制）。
-   */
   | 'lab'
 
-/** 停止动作标识（UI → desktop engine 方法映射；停止参数如副船 id 放 param） */
 export type ActivityStopKind =
   | 'remove-training'
   | 'stop-mining'
   | 'stop-scan'
-  /** 停「扫描虫洞」（2026-09-14）：进度保留，下次接着扫 */
   | 'stop-whscan'
-  /** 召回一趟自动探索（2026-09-14 批次 3）：无收益无损伤，虫洞不退还 */
   | 'stop-whauto'
   | 'stop-salvage'
   | 'cancel-manufacture'
@@ -81,59 +61,33 @@ export type ActivityStopKind =
   | 'stop-loop'
   | 'stop-invasion-loop'
   | 'stop-hauling'
-  /** 停一条实验线（2026-10-01 接入活动栏；`stopParam` = 线号 `LabRunView.id`） */
   | 'stop-lab'
   | 'cancel-station-pending'
 
-/** 一条活动（只读视图；引擎/指令仍是唯一修改入口） */
 export interface ActivityView {
-  /** 展示标识，不入存档；手动出击与循环出击共用。 */
   badge?: 'invasion'
   labelId?: string
   labelParams?: Readonly<Record<string, string | number>>
   subId?: string
   subParams?: Readonly<Record<string, string | number>>
-  /** 稳定 key（AI 任务用副船 id，其余用 kind） */
   id: string
   kind: ActivityKind
   label: string
-  /** 阶段/目标补充说明（可空） */
   sub: string
-  /** 0~100；null = 无进度概念（如 AI 往返中） */
   percent: number | null
-  /** 剩余毫秒（null = 无法精确给出） */
   remainingMs: number | null
-  /** 是否提供终止入口 */
   stopable: boolean
-  /** 不可终止时的原因说明 */
   stopReason?: string
   stopReasonId?: string
-  /**
-   * **这条 AI 活动归哪一枚徽标**（船长 2026-09-13：「活动界面 AI 图标的鼠标悬浮提示改为显示
-   * AI 正在干哪些活动」）：`ship` = AI 副船任务（采矿/远征/打捞/掩护巡逻）· `industry` = 站内
-   * AI 作业（精炼炉/回收炉/制造线）。只对 `kind === 'ai'` 的条目有值 ⇒ 现成 UI 不用去猜 id 前缀。
-   */
   aiGroup?: 'ship' | 'industry'
-  /**
-   * **该 AI 活动对应哪种工作动画**（2026-09-25 船长令：「类似AI指挥中心那样，显示一个小动画，
-   * 正在干什么，和进度条，只需要这三项就足够了，不用取消按钮，玩家点击后跳转到AI指挥中心」）。
-   *
-   * 口径：与 `ui/aiWorkFx.tsx` 的 6 类**同一套字面量**（core 不依赖渲染层 ⇒ 这里只写字符串联合，
-   * 不 import 那边的类型）。判据取自**引擎真值**（`task.kind` / 是否残骸 / 是否制造线），
-   * **不靠解析 label 的文本**（label 是本地化文案，解析它会在换语言时失效）。
-   */
   aiWorkKind?: 'mining' | 'salvage' | 'standby' | 'refine' | 'reclaim' | 'craft'
-  /** 终止动作（stopable=true 时非空） */
   stop: ActivityStopKind | null
-  /** 终止动作参数（cancel-ai 时为副船 id） */
   stopParam?: string
 }
 
-/** 当前全部进行中活动的只读视图（顺序：训练 → 主控作业 → AI） */
 export function activityOverview(state: GameState, ctx: SimContext): ActivityView[] {
   const out: ActivityView[] = []
 
-  // ── 技能训练（队首） ──
   const q = skillQueueStatus(state, ctx.skills)
   if (q.head) {
     out.push({
@@ -148,7 +102,6 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     })
   }
 
-  // ── 主控采矿 ──
   const mv = miningStatus(state, ctx)
   if (mv.active) {
     out.push({
@@ -157,15 +110,12 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       label: mv.beltName,
       sub: mv.phaseLabel,
       percent: mv.percent,
-      // 返航阶段给出精确剩余；采掘阶段只给循环进度（去程已取消并入返航）
       remainingMs: mv.phase !== 'mining' ? mv.remainingMs : null,
       stopable: true,
       stop: 'stop-mining',
     })
   }
 
-  // ── 主控打捞（B3：自动循环作业；2026-09-09 补齐活动栏进度条——出航/返航 = 行程进度，
-  //    打捞中 = 主循环周期进度（最短打捞器周期档），与矿带页 salvageProgressOf 同源） ──
   const svg = state.salvaging
   if (svg.active) {
     const gName = svg.galaxyId ? (ctx.galaxies.get(svg.galaxyId)?.name ?? svg.galaxyId) : ''
@@ -178,7 +128,6 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
         percent = Math.min(100, Math.round((svg.phaseAccMs / leg) * 100))
         remainingMs = Math.max(0, leg - svg.phaseAccMs)
       } else if (svg.phase === 'returning') {
-        // 返航腿 = 满载返航 + 空船去程（去程并入返航）
         const leg = salvageReturnMs(state, ctx, svg.galaxyId)
         percent = Math.min(100, Math.round((svg.phaseAccMs / leg) * 100))
         remainingMs = Math.max(0, leg - svg.phaseAccMs)
@@ -194,13 +143,12 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       label: gName ? `打捞 · ${gName}` : '打捞作业',
       sub: phaseTxt,
       percent,
-      remainingMs: svg.phase === 'salvaging' ? null : remainingMs, // 打捞循环 = 周期条（无总剩余），行程 = 剩余倒计时
+      remainingMs: svg.phase === 'salvaging' ? null : remainingMs,
       stopable: true,
       stop: 'stop-salvage',
     })
   }
 
-  // ── 长途运输（2026-09-09：两站间真实航程往返；到站自动结算续段；停止 = 立即返航出发站） ──
   const hg = state.hauling
   if (hg.active) {
     const leg = Math.max(1, hg.legMs)
@@ -217,24 +165,8 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     })
   }
 
-  /**
-   * ── 星系扫描（`state.scanning`）：**不出行**（船长 2026-09-15）──
-   * 船长原话：「玩家扫描星系将不再占用玩家的主控活动（也不显示在主控活动里，而是在 AI 活动的
-   * 图标右侧显示一个进度条，当扫描完成后这个进度条依旧存在并高亮，直到玩家进入星图界面查看后才移除）」
-   * ⇒ 扫描**不是主控活动**了：这里不再生成 `kind: 'scan'` 条目（`ActivityKind` 与 `stop-scan`
-   * 停止动作保留给星图页的「终止扫描」复用）。顶部那条进度条由界面直接读
-   * `scanStatus` + `scanAwaitingView` 渲染（`panels/ActivityBar.tsx`）。
-   */
 
-  /**
-   * ── 主控活动「扫描虫洞」（2026-09-14 船长）──
-   * 进度条 = 已扫 / 本趟窗口（窗口 = 12 小时 × 三技能乘算 × 星际奇遇学）；**遇袭不中断**（进度不清零）；
-   * 库存满 5 时活动会被 `advanceWormholeScan` 停机，这里就不再出行（与"作业结束即消失"一致）。
-   */
   if (state.wormholeScan?.active === true) {
-    // ⚠ 2026-09-19 报障排查补：进度分母必须与**实际窗口**同尺（`advanceWormholeScan` 用的是带科技削减的
-    // `wormholeScanWindowMs(state, matterTechScanCut(...))`）；否则点了「谐振信号滤波阵列」的玩家
-    // 进度条永远走不满（实际早已扫完）。
     const windowMs = wormholeScanWindowMs(state, matterTechScanCut(state, ctx))
     const done = Math.min(windowMs, state.wormholeScan.progressMs)
     out.push({
@@ -255,7 +187,6 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     })
   }
 
-  // ── 自动探索（2026-09-14 批次 3）：**每趟一行**（一处虫洞一趟）；AI 驱动 ⇒ 与 AI 副船任务同属"AI 徽标"一族 ──
   for (const run of wormholeAutoRunsOf(state)) {
     const span = Math.max(1, run.finishAtGameMs - run.startedAtGameMs)
     const done = Math.max(0, Math.min(span, state.gameMs - run.startedAtGameMs))
@@ -266,12 +197,6 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       labelId: run.expeditionRules === 2 ? 'ui.explorationName.011' : 'ui.explorationName.010',
       subId: run.expeditionRules === undefined ? 'ui.signalAuto.003' : 'ui.explorationName.012',
       subParams: { p1: run.shipIds.length },
-      /**
-       * ⚠ **⟪文案调整 2026-10-01⟫（船长报障）**（原话：「自动探索虫洞的活动栏，还是显示各占一个 AI 核心
-       * （实际上现在总共只占一个，有些多余，建议删除）」）：核心占用早就是**整队一趟 1 枚**
-       * （`wormholeAuto.ts` 的「整队一趟只占 1 枚」＋ `ai.ts` 的 `aiCoreShipUsed` 按趟计），
-       * 只有这句副标题还停在旧口径上 ⇒ 改成「整队占 1 枚」（只派 1 条舰时不必说"整队"）。
-       */
       sub:
         run.expeditionRules === undefined ? `${run.shipIds.length} 条舰` : run.shipIds.length > 1
           ? `${run.shipIds.length} 条舰 · 整队占 1 枚 AI 核心`
@@ -284,9 +209,6 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     })
   }
 
-  // ── 制造（v21 多工位：每条制造线一条活动；逐线可取消；2026-09-08 线带劳动者：主控/AI 核心/旧作业）──
-  // 2026-09-08（船长反馈）：AI 核心驱动的生产线不占"玩家活动"位——并入 ⚙ AI 徽标计数
-  // （kind='ai'）；主控亲自/旧作业仍逐条展示。
   for (const mfv of manufacturingRunViews(state, ctx)) {
     const aiProd = mfv.worker !== null && mfv.worker !== 'pilot'
     const who = mfv.worker === null ? '旧作业' : mfv.worker === 'pilot' ? '主控亲自' : `${mfv.workerLabel}驱动`
@@ -304,14 +226,10 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     })
   }
 
-  // ── 精炼炉运转（v20 多台并行：每个资源/残骸可多台、逐台一条活动；主控/AI 核心驱动）──
-  // 2026-09-08（同制造口径）：AI 核心驱动的炉不占"玩家活动"位——并入 ⚙ AI 徽标计数
   for (const rv of refineRunViews(state, ctx)) {
     const aiProd = rv.worker !== 'pilot'
     const isWreck = rv.itemId ? ctx.items.get(rv.itemId)?.kind === 'wreck' : false
     const remainUnits = rv.itemId ? industryAvailable(state, ctx, rv.itemId) : 0
-    // 2026-09-11（玩家反馈「稀有残骸空了精炼炉还在运转」）：稀有残骸炉的料在**本炉私有料账**里，
-    // 玩家在货仓/仓库看到的永远是 0 —— 活动栏改读料账，免得看着像"炉子在烧空气"。
     const stockNote = rv.claimedUnits !== undefined ? `本炉料余 ×${rv.claimedUnits}` : `仓库余 ×${remainUnits}`
     out.push({
       id: aiProd ? `ai-prod-r:${rv.id}` : `refine:${rv.id}`,
@@ -327,18 +245,6 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     })
   }
 
-  /**
-   * ── 实验室运转（**2026-10-01 接入活动栏**）──
-   *
-   * 为什么补这一条：实验室**自己就是一项主控活动**（`activityGate.MainActivityKind` 的 `'lab'`，
-   * 判据 = `labRuns` 里 `active && worker === 'pilot'`），而活动栏此前只认精炼炉与制造线
-   * ⇒ 玩家在主控亲自运转实验室时，活动窗口里看不到这条活、也没有"停线"入口（门禁已认它、界面还看不见）。
-   *
-   * ⚠ **AI 核心驱动的那条走"AI 开炉 / AI 开线"同一套机制**（**2026-10-01 船长令**：
-   * 「**实验室和工业的其他页面没有本质区别，所以 AI 和活动栏图标都使用一样的机制**」）：
-   * 它不占玩家活动位，改以 `kind: 'ai'` ＋ `aiGroup: 'industry'` 进「副AI活动」组（动画取 `craft`
-   * ——实验室是"投料 → 出产物"的产线，与制造线同族；`aiWorkFx` 那六档里没有专门给实验室画一档）。
-   */
   for (const lv of labRunViews(state, ctx)) {
     const aiProd = lv.worker !== 'pilot'
     out.push({
@@ -346,10 +252,6 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       kind: aiProd ? 'ai' : 'lab',
       ...(aiProd ? { aiGroup: 'industry' as const, aiWorkKind: 'craft' as const } : {}),
       label: `实验室 · ${lv.recipeName}`,
-      /**
-       * **一线一批**（2026-10-01 船长令：实验室按组装机那套）⇒ 副标题写"本批"，
-       * 累计批数改读**循环读数**（`loopProduced`；与组装机那张卡的"本轮合计"同源）。
-       */
       sub:
         `${lv.worker === 'pilot' ? '主控亲自运转' : `${aiCoreName(lv.worker)}驱动`} · 每批 ${lv.batchUnits} 单位` +
         (lv.loopProduced > 0 ? ` · 本轮已出 ${lv.loopProduced} 批` : ''),
@@ -361,7 +263,6 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     })
   }
 
-  // ── 远征（去程/返航/交火；2026-09-06：胜利自动返航不可召回 → 无停止按钮） ──
   const ev = expeditionStatus(state, ctx)
   if (ev.active) {
     const inBattle = ev.phase === 'combat'
@@ -371,8 +272,6 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     const invasion = invasionEvent !== undefined && actualGalaxyId !== undefined && ev.anomalyId !== null
       && (actualGalaxyId === invasionEvent.coreId || invasionEvent.peripheryIds.includes(actualGalaxyId))
       && weekendFoePoolOf(invasionEvent.family, actualGalaxyId === invasionEvent.coreId).includes(ev.anomalyId)
-    // 2026-09-08（船长）：重复清剿中的本趟返航不另开独立活动行——在本次讨伐行内提供
-    // 「停止清剿」（胜利返航原本不可召回，但允许停掉后续自动再出击）
     const loopReturning = state.autoLoopAnomalyId !== null && state.autoLoopAnomalyId === ev.anomalyId && ev.phase === 'back'
     const invasionReturning = autoLoopInvasionGalaxy(state) !== null && state.expedition.foeGalaxyId !== undefined && ev.phase === 'back'
     let sub: string
@@ -413,11 +312,6 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     })
   }
 
-  // ── 虫洞探索（船长 2026-09-13：「进虫洞视作主控的一个活动」＋「活动栏显示」）──
-  // 一行读数：层/节点、回合余量、背包类数、人在洞里还是已离开；**不可终止**（要自己走完：
-  // 在虫洞界面发起「撤离」入港，或全损收场）——终止入口刻意不给，避免误点把整趟丢水里。
-  // ⚠ 2026-09-15 撤离战取消；2026-09-27 又改为**点撤离当拍结算**（渲染层在点下那一刻就走完收口）
-  //   ⇒ `extracting` 在正常路径下几乎见不到，它现在只服务**老档**与**离线/临时离开**那条收口，读数仍作「撤离中」。
   const whRun = state.wormhole.run
   if (whRun) {
     const where = whRun.battle
@@ -444,24 +338,13 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       stop: null,
     })
   }
-  // ── 重复清剿（autoLoop：非出击/非返航的等待/冷却窗口行——2026-09-08 船长：出击/返航期间
-  // 不再显示独立行，停止入口并入上方本次讨伐行） ──
   const loopId = state.autoLoopAnomalyId
   if (loopId !== null) {
     const inFlight = state.expedition.active && state.expedition.anomalyId === loopId
     if (!inFlight) {
       const aName = ctx.anomalies.get(loopId)?.name ?? loopId
       const cdMs = bountyCooldownRemainingMs(state, loopId)
-      /**
-       * **在等哪一类作业**（`null` = 没别的作业挡路）：判据与引擎**同源**（`autoLoopWaitLabel`）。
-       *
-       * ⚠ **2026-09-17 玩家报障修复**：原先这里自己写了一份 `busyOther`（只认 采矿/航行/待命），
-       * 而引擎的等待表是 **5 类**（远征 · 采矿 · **星图扫描** · **残骸打捞** · 航行）——两者漂移的结果：
-       * 星图扫描或打捞在跑时，引擎在等、这行却一路写「即将自动再出击」（扫描能无限期跑 ⇒ 玩家看到"卡死"）。
-       * 现在同一个单点判据 + **点名**在等哪一类。
-       */
       const waitFor = autoLoopWaitLabel(state)
-      // 冷却段给进度条（总时长按当前驾驶船扫描属性估算；等待其它作业结束无确定终点 → 无条）
       let percent: number | null = null
       if (cdMs > 0) {
         const total = Math.max(1, bountyCooldownMsFor(state, ctx))
@@ -497,7 +380,6 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       '战前准备': 'ui.weekend.062',
     }
     out.push({
-      // ⟪文案调整 2026-10-08⟫ 入侵类型交由标题前标签显示，不重复堆词。
       id: 'invasion-loop', kind: 'invasion-loop', badge: 'invasion', label: '重复出击', labelId: 'ui.invasionLoop.001',
       sub: waitFor !== null ? `目标「${name}」；等待${waitFor}结束`
         : invasionPlan.remainingMs > 0 ? `目标「${name}」；正在扫描新敌人` : `目标「${name}」；即将自动出击`,
@@ -509,16 +391,9 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     })
   }
 
-  // ── AI 副船任务（每条） ──
   for (const [shipId, assignment] of Object.entries(state.aiAssignments)) {
     const shipName = shipDisplayName(state, ctx, shipId)
     const task = assignment.task
-    /**
-     * **进度接上现成单点**（2026-09-25 船长令「副船 AI 进度条要在 core 里补算」）：
-     * `aiTaskView()` 就是引擎推进用的那套公式（采掘周期 / 行程腿长 / 打捞周期 / 巡逻倒计时），
-     * 且自带与主控同款的阶段文案 ⇒ **不在这里另写公式、也不另拼阶段中文**，避免两处口径漂移。
-     * 地点名（矿带 / 异常 / 星系）保留，拼成 `地点（阶段）`。
-     */
     const v = aiTaskView(state, ctx, shipId)
     if (task.kind === 'mining') {
       const beltName = ctx.belts.get(task.beltId)?.name ?? task.beltId
@@ -541,7 +416,7 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
         id: `ai-${shipId}`,
         kind: 'ai',
         aiGroup: 'ship',
-        aiWorkKind: 'standby', // 远征复用「掩护巡逻」那类动画，不新造第七种
+        aiWorkKind: 'standby',
         label: `${shipName} · 远征`,
         sub: `${aName}（${v?.label ?? '作业中'}）`,
         percent: v?.percent ?? null,
@@ -551,7 +426,6 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
         stopParam: shipId,
       })
     } else if (task.kind === 'salvage') {
-      // B3 AI 打捞任务
       const gName = ctx.galaxies.get(task.galaxyId)?.name ?? task.galaxyId
       out.push({
         id: `ai-${shipId}`,
@@ -567,7 +441,6 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
         stopParam: shipId,
       })
     } else {
-      // B1.5 AI 掩护巡逻（out 去程给倒计时；stand 驻留中）
       const gName = ctx.galaxies.get(task.galaxyId)?.name ?? task.galaxyId
       out.push({
         id: `ai-${shipId}`,
@@ -575,8 +448,6 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
         aiGroup: 'ship',
         aiWorkKind: 'standby',
         label: `${shipName} · 掩护巡逻`,
-        // 文案保持原样（"留守「星系」"）——测试 standby.test.ts:98 断言了这个词，
-        // 且它是船长既有口径的文案；本次只补算 percent/remainingMs，不动文案。
         sub: task.phase === 'out' ? `前往 ${gName}（去程）` : `留守「${gName}」`,
         percent: v?.percent ?? null,
         remainingMs: v?.remainingMs ?? null,
@@ -587,7 +458,6 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     }
   }
 
-  // ── T4 换船善后：自动返航卸货中的旧船（独立倒计时，不可终止）──
   for (const [shipId, ret] of Object.entries(state.shipReturns)) {
     if (state.pendingStationActivity?.shipId === shipId) {
       const pending = pendingStationActivityView(state, ctx)
@@ -610,7 +480,6 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     })
   }
 
-  // ── T8 显式返航行程（野外 → 空间站，不可终止）／建站交付航线（2026-09-08：真实航程，可随时取消） ──
   const tv = transitStatus(state, ctx)
   if (tv.active) {
     const delivering = tv.trip === 'deliver-to-site' || tv.trip === 'deliver-to-station'
@@ -639,7 +508,6 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     })
   }
 
-  // ── B1.5 主控"前往星系掩护巡逻"（旧"待命"；新指令即时就位，仅旧档去程会显示） ──
   const sbv = standbyStatus(state, ctx)
   if (sbv.active) {
     out.push({
@@ -654,7 +522,6 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     })
   }
 
-  // ── 快递投送（v24 时效任务真实航行；一次一笔，到站自动结算，不可中途取消） ──
   const cd = state.sideTasks.deliver
   if (cd !== null) {
     const totalLeg = Math.max(0, cd.arriveAtGameMs - cd.departAtGameMs)
@@ -691,7 +558,6 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       row.remainingMs = departure.remainingMs
     }
   }
-  // ⟪文案调整 2026-11-02⟫ 船长指定悬赏胜利返港显示补给状态；循环停止权限不变。
   if (state.expedition.active && state.expedition.phase === 'back' && state.expedition.returnReason === 'victory') {
     const row = out.find(item => item.id === 'expedition')
     if (row) { row.sub = ''; row.subId = 'core.departure.003'; delete row.subParams }
@@ -699,20 +565,11 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
   return out
 }
 
-/**
- * T3：某艘船此刻是否在"出勤"（返回简洁中文忙态；null = 空闲）。
- * 判定源单一：驾驶船看主控作业（采矿/扫描/远征），副船看 AI 任务；
- * 制造与技能训练不绑船，不算忙。UI 的货仓页船徽标与以后复用都走这里。
- */
 export function shipBusyLabel(state: GameState, ctx: SimContext, shipId: string): BusyLabel | null {
   if (shipId !== state.shipId && commandShipDeployed(state, shipId)) return busyLabel('expedition')
   if ((state.wormholeAuto ?? []).some(run => run.shipIds.includes(shipId))) return busyLabel('wormhole')
   if ((state.planetary?.deliveries ?? []).some(d => d.shipUid === shipId)) return busyLabel('planetDelivery')
-  // **虫洞锁定**（船长 2026-09-13：「已经进洞的船将被锁定（包括货仓）」）——
-  // 放在最前面：进了洞的船对外一律算"忙"（包括主控自己），于是 AI 指派、换驾驶、入洞门槛
-  // 这些读同一把尺的地方**自动**把它挡在外面（不需要逐处加判断）。
   if ((state.wormhole.run?.fleet ?? []).includes(shipId)) return busyLabel('wormhole')
-  // 人在洞里时，主控本人也算忙（活动位被占）；**临时离开后即释放**（船长 2026-09-13 批准）
   if (state.wormhole.run?.attending === true && shipId === state.shipId) return busyLabel('wormhole')
   if (shipId === state.shipId) {
     const mv = miningStatus(state, ctx)
@@ -720,12 +577,6 @@ export function shipBusyLabel(state: GameState, ctx: SimContext, shipId: string)
       if (state.mining.phase === 'mining') return busyLabel('mining')
       return busyLabel(state.mining.phase === 'outbound' ? 'miningOut' : 'miningBack')
     }
-    /**
-     * ⚠ **2026-09-14 补齐五档**（与 `wormhole.ts` 的 `shipActivityBusy` 同一把尺，判据逐项对齐）：
-     * 船长报障「探索虫洞时主控不能进行其他活动 / 进入虫洞时必须无活动，好像失效了」——
-     * **打捞 / 长途运输 / 扫描虫洞 / 亲自开炉 / 亲自开线**这五档原先两边都没写 ⇒ 主控在干这些时
-     * 洞门照样开着。两函数的一致性由 `tests/wormhole-activity-lock.test.ts` 逐档钉住。
-     */
     if (state.salvaging.active) {
       if (state.salvaging.phase === 'outbound') return busyLabel('salvageOut')
       return busyLabel(state.salvaging.phase === 'returning' ? 'salvageBack' : 'salvage')
@@ -743,20 +594,10 @@ export function shipBusyLabel(state: GameState, ctx: SimContext, shipId: string)
     }
     if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) return busyLabel('refine')
     if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) return busyLabel('manufacture')
-    /**
-     * **实验室**（**2026-10-01 接入**）：主控亲自运转的那条线占主控（AI 核心驱动的**不算**）。
-     * 与 `activityGate.mainActivityOf`、`wormhole.shipActivityBusy` **三处同源**（判据逐项、次序逐项对齐），
-     * 一致性由 `tests/wormhole-activity-lock.test.ts` 的忙态对照与 `tests/activity-lab-20261001.test.ts` 钉住。
-     */
     if ((state.labRuns ?? []).some((r) => r.active && r.worker === 'pilot')) return busyLabel('lab')
-    /**
-     * **建站交付**（2026-09-22 船长令纳入主控活动表）：与 `wormhole.shipActivityBusy`、`activityGate.mainActivityOf`
-     * **三处同源**（进洞门槛/货仓徽标/切换判据都读这一档）——判据含 `delivery` 批次，用来区分"换港返航"。
-     */
     if (state.transit.active && state.transit.delivery !== null) return busyLabel('deliver')
     return null
   }
-  // T4 换船善后：自动返航中的船（优先于 AI 判定；两者互斥，仅顺序防御）
   if (shipInReturn(state, shipId)) return busyLabel('unload')
   const assignment = state.aiAssignments[shipId]
   if (!assignment) return null
@@ -771,9 +612,6 @@ export function shipBusyLabel(state: GameState, ctx: SimContext, shipId: string)
   return busyLabel('aiExpBack')
 }
 
-/** 只读查询：把队列翻译成界面容易直接显示的结构
- * （2026-10-02 从 engine.ts 原样搬来：唯一调用方就是本模块，破 activity→engine 环；
- * 类型 QueueView/HeadTrainingInfo 仍从 engine 借，`import type` 不构成运行期边。） */
 export function skillQueueStatus(state: GameState, catalog: SkillCatalog): QueueView {
   const queue = state.skills.queue
   if (queue.length === 0) return { head: null, pending: [], totalRemainingMs: 0 }
@@ -796,14 +634,12 @@ export function skillQueueStatus(state: GameState, catalog: SkillCatalog): Queue
     remainingMs,
     percent,
   }
-  /** 前缀和游标：进 pending 循环前 = 队首本级剩余 ⇒ 每一项的 `etaMs` 都从它身上取，末项即全队列合计 */
   let cursorMs = remainingMs
   const pending = queue.slice(1).map((p: TrainingItem, i) => {
     const pDef = catalog.get(p.skillId)
     const progress = pDef ? trainingLevelProgress(state, pDef, p.targetLevel, p.progressMs) : null
     const levelMs = progress?.levelTimeMs ?? 0
     const progressMs = progress?.progressMs ?? 0
-    /** 前缀和：累到这一条之前的所有剩余 ⇒ 这条的"轮到还需" */
     const etaMs = cursorMs
     cursorMs += levelMs - progressMs
     return {

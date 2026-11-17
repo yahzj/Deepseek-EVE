@@ -8,7 +8,6 @@ import { commandShipDeployed } from './combat/command/locks'
 
 export type ShipOperation = 'cargo' | 'repair' | 'configure'
 
-/** 只读目标舰账本，不调用库存、位置切换或战斗模块。 */
 function physicalBusy(state: GameState, shipId: string, ctx?: SimContext): CoreBlockReason | null {
   if (state.departure?.shipId === shipId) return { error: 'departure-in-progress', errorId: state.departure.progressMs < state.departure.undockMs ? 'core.departure.001' : 'core.departure.002' }
   if (commandShipDeployed(state, shipId)) return busyLabel('expedition')
@@ -36,7 +35,6 @@ function physicalBusy(state: GameState, shipId: string, ctx?: SimContext): CoreB
   return null
 }
 
-/** 副船空闲即停在基地；主控还须合法基地位置且没有实体出勤。 */
 export function shipActuallyDocked(state: GameState, ctx: SimContext, shipId = state.shipId): boolean {
   if (!state.fleet[shipId] || physicalBusy(state, shipId, ctx)) return false
   if (shipId !== state.shipId) return true
@@ -46,7 +44,6 @@ export function shipActuallyDocked(state: GameState, ctx: SimContext, shipId = s
   return !!site && (state.stationSites[site.id]?.stage ?? 0) >= site.tiers.length
 }
 
-/** 实体操作按目标舰，不把主控在外作业扩大为全队限制。 */
 export function shipOperationBlockReason(state: GameState, ctx: SimContext | undefined, shipId: string, operation: ShipOperation): CoreBlockReason | null {
   if (!state.fleet[shipId]) return { error: '舰队里找不到这艘舰船。', errorId: 'core.plug.003' }
   const busy = physicalBusy(state, shipId, ctx)

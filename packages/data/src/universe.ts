@@ -1,11 +1,3 @@
-/**
- * 星系网络（M3 + 星图拓展 v2）：20 星系节点与 27 条航线。
- * 默认坐标为船长本地布局覆盖（编辑器排版版，2026-09-05 从 %APPDATA% 覆盖数据合入，
- * 与此前合入版不一致处一律以本地为准）并整体左移 14（右缘文字不再贴界、左右留空均衡）。
- * 之后仍可在编辑器里拖拽调整（本地覆盖 + 导出坐标 JSON 回传合入）。
- * 引用/可达性守护：运行 tools/content-validate.ts。
- * 母港星系 id 必须等于 core 的 HOME_GALAXY_ID（'galaxy-hub'）。
- */
 
 import type { GalaxyDef, GalaxyEdgeDef } from '@whale/core'
 
@@ -101,16 +93,8 @@ export const GALAXIES: readonly GalaxyDef[] = [
   {
     id: 'galaxy-cinder',
     name: '烬火星区',
-    // 2026-09-10 船长：往右挪 40（560 → 600）——原位置紧挨「星噬之口」（546,137），
-    // 叠加在其上方的「敌对派系活跃」全称标签会被邻居的名称带压住；右移后整组标记（居中不偏移）
-    // 有了干净空位，且与「虚海边缘」（660,157）仍留 60 单位的间距
     x: 600,
     y: 170,
-    // 2026-09-11 船长（「低安至少要有一个海盗族」+ 「直接将星系互换，安全等级也跟着换」）：
-    // 与「蜃影星系」**互换安全等级**（-0.7 → 0.0，由低安降为中安）。理由见下条与
-    // docs/design/foe-ship-config-pilot-20260911.md §六：
-    // 卡一张不动、名不改（本星系仍是「烬火围攻战 42」，威胁段落在中安顶段 52 之内），
-    // **矿带留在原位**（矿带是独立表、按 galaxyId 挂星系，改 security 不动它）。
     security: 0.0,
     description: '一场百年前的星际火灾遗留的暗色灰烬带。',
   },
@@ -141,21 +125,8 @@ export const GALAXIES: readonly GalaxyDef[] = [
   {
     id: 'galaxy-mirage',
     name: '蜃影星系',
-    // 2026-09-10 船长：微微下移 12（115 → 127）——烬火星区右移后，「碎晶带→烬火星区」这条航线
-    // 正好从蜃影星系的圆点里穿过（圆心垂距仅 1.6，圆点半径 8）；下移 12 后垂距 13.0，视觉上让开星点，
-    // 与最近邻「暗星坟场」仍留 73 的间距，全图其它航线贴线情况不变
     x: 417,
     y: 127,
-    // 2026-09-11 船长（「低安至少要有一个海盗族。目前都处于非低安区」→ 裁决「直接将星系互换，
-    // 安全等级也跟着换」「矿带保留在原位」）：本星系改判为**低安**（0.0 → -0.7）。
-    //
-    // 它持有 A 族「蜃影导航劫持令 48」——A 族六张里威胁最高、且 48 正好贴着低安地板（原最低 42），
-    // 是六个海盗星系里最适合进低安的一个。改判后**三条通道同时点亮**：
-    //   ① 低安可接的海盗悬赏；② 低安伏击遭遇里出现海盗（伏击者取自该星系可见悬赏敌群，
-    //      `encounters.ts`）——且伏击只发生在"停留与就地作业"，**矿带留在原位正是收益所在**：
-    //      在这条矿带上采掘就会招来海盗；③ 星图"敌对派系"标签由悬赏卡推导（`Expedition.tsx`），
-    //      本星系从此显示「海盗」。
-    // 卡 / 卡名 / 星图位置 / 矿带一律未动（与 captain ⑥「先不改数值」一致）。
     security: -0.7,
     description: '强烈引力透镜让群星在这里扭曲成幻景。',
   },
@@ -193,7 +164,6 @@ export const GALAXIES: readonly GalaxyDef[] = [
   },
 ]
 
-/** 航线（无向）：边权 = 单程航程分钟 */
 export const GALAXY_EDGES: readonly GalaxyEdgeDef[] = [
   { from: 'galaxy-hub', to: 'galaxy-harbor', travelMinutes: 2 },
   { from: 'galaxy-hub', to: 'galaxy-kor', travelMinutes: 3 },
@@ -211,7 +181,6 @@ export const GALAXY_EDGES: readonly GalaxyEdgeDef[] = [
   { from: 'galaxy-chasm', to: 'galaxy-maw', travelMinutes: 5 },
   { from: 'galaxy-cinder', to: 'galaxy-maw', travelMinutes: 7 },
   { from: 'galaxy-maw', to: 'galaxy-vault', travelMinutes: 6 },
-  // 船长调整（2026-09-04）：星尘荒原的通路从暗星坟场改为红环航道（玩家布局版本）
   { from: 'galaxy-dust', to: 'galaxy-redring', travelMinutes: 6 },
   { from: 'galaxy-grave', to: 'galaxy-abyss', travelMinutes: 6 },
   { from: 'galaxy-redring', to: 'galaxy-abyss', travelMinutes: 8 },
@@ -225,7 +194,6 @@ export const GALAXY_EDGES: readonly GalaxyEdgeDef[] = [
   { from: 'galaxy-mirage', to: 'galaxy-redring', travelMinutes: 4 },
 ]
 
-/** 构建星系目录 */
 export function buildGalaxyCatalog(): ReadonlyMap<string, GalaxyDef> {
   return new Map(GALAXIES.map((g) => [g.id, g]))
 }

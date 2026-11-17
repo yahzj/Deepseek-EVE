@@ -1,4 +1,3 @@
-/** 功能域职责拆分，保持原计算与顺序。 */
 import type { GameEngine } from '../../game/engine'
 import { type AnomalyDef, calcPower, isFactionBounty, factionAnomalyOf, bountyDamageForecast, bountyWinPercentGuarded, nearestStationGalaxyId, shortestTravelMinutes, travelLegMs, RETURN_LEG_MUL, ceilFinalQuantity, factionBaseRewardIsk, bountyRewardFactor, standingOf, DSI_FACTION_ID, isExplored, shipDisplayName, fleetDefOf, weekendZoneLiveAt, weekendProgressAt, weekendCoreGateView, weekendFoePoolOf, bountyCooldownRemainingMs, weekendFoeCardIdToFightOf, autoLoopReopenBlockReason, travelMinutesEff, foeLayerSplit } from '@whale/core'
 import { type ToastFn, MONEY_GLYPH } from '../../pages/common'
@@ -13,11 +12,7 @@ import { FoeDamageMix, ProfileChip } from '../../ui/shipInfo'
 import { RangeEwPreview } from '../combat/RangeEwPanel'
 import { departureDurationMs } from '@whale/core'
 
-/** 野外应急修理（2026-10-02 批次 4p 随 GalaxyActions 迁到 StarMap.tsx） */
 
-/** 常驻悬赏卡。`showFoeArt` = 舰影列是否渲染（由列表容器实测宽驱动，见 BountyPanel）；
- *  2026-09-13 起未探索星系的卡**不再进入本列表**（船长：「将未探索的悬赏卡隐藏」）——
- *  卡内 `unexplored` 分支保留为防御路径（万一别处复用本卡，行为仍与原口径一致）。 */
 export function AnomalyCard({
   engine,
   anomaly,
@@ -32,27 +27,10 @@ export function AnomalyCard({
   const state = engine.state
   const galaxy = engine.ctx.galaxies.get(anomaly.galaxyId)
   const power = calcPower(state, engine.ctx)
-  // 敌对派系活跃（2026-09-10 船长定）：该星系当天的**全部悬赏**吃 +10% 奖金 / +10% 威胁。
-  // 展示必须与实战一致（展示=到账）：威胁/奖金/胜率都按加成后的卡算；蒙特卡洛缓存按卡 id 建键、
-  // 算的是未加成卡，故派系卡一律走"带伤预警"解析口径（与赏金任务卡同源）。
   const factionHit = isFactionBounty(state, anomaly)
   const shownCard = factionHit ? factionAnomalyOf(anomaly) : anomaly
   const mc = factionHit ? null : engine.winEstimateOf(anomaly.id)
-  /**
-   * 派系活跃卡（2026-09-10 船长：「展示必须与实战一致」）：威胁/奖金都按 +10% 后的卡算，
-   * 而 MC 缓存按**未加成卡**建键 ⇒ 这张卡走带伤预警解析口径（与赏金任务卡同源）。
-   */
   const fc = factionHit ? bountyDamageForecast(state, engine.ctx, shownCard) : null
-  /**
-   * **算出来多少就显示多少；缓存没算完就显示「计算中」**（**2026-09-23 船长报障**：
-   * 「**胜率过于极端，98 胜率打噬口猎杀令连续失败**」）：
-   * ① 旧写法 `Math.min(98, …)` 把"全胜"也显示成 **98%** ⇒ 玩家读成"几乎必胜"，而实战仍会输；
-   *    现上限自然 100%（下限 2% 的"仍有希望"语义保留）。三处胜率显示（常驻悬赏卡 / 派系置顶卡 /
-   *    赏金任务卡）**同一口径**，不再有的地方夹、有的地方不夹。
-   * ② 缓存未就绪时**不再回退另一套尺子**（解析口径自己也夹 98%）⇒ 显示「计算中」，
-   *    预热完成后随 notify 变成实测推演读数（`BOUNTY_MC_RUNS`：三点各 10 局）。
-   * ③ 有实战胜利记录的卡按记录距离算（`state.winRecord`）⇒ 悬停附带**最差距离胜率**。
-   */
   const pending = !factionHit && mc === null
   const armorLoss = mc ? mc.armorLoss : fc?.armorLoss ?? 0
   const hullLoss = mc ? mc.hullLoss : fc?.hullLoss ?? 0
@@ -63,8 +41,6 @@ export function AnomalyCard({
       : Math.max(2, Math.round(bountyWinPercentGuarded(state, engine.ctx, shownCard) * 100))
   const chanceTone = chance === null ? '' : chance >= 70 ? tr("ui.Expedition.318") : chance >= 40 ? tr("ui.Expedition.035") : tr("ui.Expedition.036")
   const combatMs = anomaly.combatSeconds * 1000
-  // 奖励/小时（2026-09-08：胜利自动返航——基准 = 目标星系最近已建成站；本地悬赏（目标=基准）
-  // = 固定返港 120s；异星系 = 单程 × RETURN_LEG_MUL，2026-09-14 起 1×）——每单耗时 = 交火 + 返航
   const retBase = nearestStationGalaxyId(state, engine.ctx, anomaly.galaxyId)
   const localTarget = anomaly.galaxyId === retBase
   const retMins = localTarget ? NaN : shortestTravelMinutes(engine.ctx, retBase, anomaly.galaxyId)
@@ -79,8 +55,7 @@ export function AnomalyCard({
       : Math.round(iskPerHour).toLocaleString('zh-CN')
   const standing = standingOf(state, DSI_FACTION_ID)
   const reqMet = standing >= anomaly.standingReq
-  const unexplored = galaxy ? !isExplored(state, galaxy.id) : false // 星系未探索（2026-09-13 起本列表已不列这类卡，此分支为防御路径）
-  // T4 延后项：采矿中可「转战」（两步确认）；提示当前驾驶船（可能开着战斗船在挖矿）
+  const unexplored = galaxy ? !isExplored(state, galaxy.id) : false
   const [goAsk, setGoAsk] = useState(false)
   const lootText = anomaly.loot
     .map((l) => `${engine.ctx.items.get(l.itemId)?.name ?? l.itemId}×${l.units}`)
@@ -94,32 +69,13 @@ export function AnomalyCard({
   })()
   const inFlightSelf = state.expedition.active && state.expedition.anomalyId === anomaly.id
   const inFlightOther = state.expedition.active && !inFlightSelf
-  /**
-   * **这张卡现在是不是"入侵舰队"**（2026-09-25 船长令「**入侵舰队不应该有赏金**」）：
-   * 被占星系的悬赏位由 `weekendBountyCardsOf` 换成了入侵舰队（`rewardIsk` 已是 0）⇒
-   * 赏金那一栏改显「结算时按进度发放」，"估算奖励/小时"那一栏也整条不显示（没有即时收入可估）。
-   */
   const invadedHere = weekendZoneLiveAt(state, anomaly.galaxyId, Date.now())
-  /**
-   * **该星系是否已夺回**（进度满）——**2026-10-02 船长令**：夺回后照旧能刷（半量残骸作惩罚、
-   * 进度不再增长）⇒ 赏金那一栏与"星系详细"同口径换成 `ui.weekend.116`（见 `StarMap.tsx` 同处）。
-   */
   const reclaimedHere =
     invadedHere && state.weekendEvent !== undefined && weekendProgressAt(state, state.weekendEvent, anomaly.galaxyId, Date.now()) >= 1
-  /**
-   * **核心门禁读数**（船长批「丙」）：只在"这一行就是核心星的入侵卡"时取。
-   * 与「星系详细」那张卡同一取数口（`weekendCoreGateView`）⇒ 两处不会各说各话。
-   */
   const coreGate =
     invadedHere && state.weekendEvent !== undefined && anomaly.galaxyId === state.weekendEvent.coreId
       ? weekendCoreGateView(state, state.weekendEvent, Date.now())
       : null
-  /**
-   * **被占星系里这张卡 = 入侵舰队**（2026-09-25 船长令 · 乙案）：标题与威胁**向"星系详细"那一行对齐**——
-   * 标题统一写「击退入侵舰队」（`ui.weekend.092`，抽到的那支舰队名挪到悬停里）、威胁改写成该区域池的
-   * **区间**（`ui.weekend.093`，与星系详细逐字同源）、赏金继续走「结算时按进度发放」。
-   * 理由：同一场入侵在板面与星系详细两处长得不一样，玩家会以为是两件事。
-   */
   const invadedThreats = invadedHere
     ? weekendFoePoolOf(
         state.weekendEvent?.family ?? 'A',
@@ -130,55 +86,30 @@ export function AnomalyCard({
     : []
   const invadedLo = invadedThreats.length > 0 ? Math.min(...invadedThreats) : 0
   const invadedHi = invadedThreats.length > 0 ? Math.max(...invadedThreats) : 0
-  /** 入侵「重复出击」的循环目标（2026-09-25 船长令）：与常驻悬赏那条环互斥 */
   const invasionLoopOn = invadedHere && state.weekendEvent?.autoLoopGalaxyId === anomaly.galaxyId
-  // 声望仅首胜发放：已首胜过的目标重复完成不再涨声望
   const bountyCleared = state.completedBounties.includes(anomaly.id)
-  // T8：重复冷却 + 重复清剿状态；优化：其它作业（采矿/返航/非本目标的远征）中不可开启
-  // （2026-09-15：星系扫描不再算"别的作业"——无人扫描艇不占主控）
-  /**
-   * T8 重复冷却 —— ⟪甲案 2026-10-02（船长令「按你推荐」）⟫ **按"这一场实际会打的那张卡"判**（与引擎同源）。
-   *
-   * 被占星系的入侵行显示的是**驻留卡**（抽签盐 0），而出发那一刻引擎会 `weekendAssaultDrawOf` **当场重抽**
-   * （盐 = 10000 ＋ `assaultDraws`）；T8 冷却又是**按卡 id** 记的 ⇒ 直接拿板面卡去判会出现两种错：
-   * **该拒没拒**（按钮亮着、点下去才被告知"重抽到的那张冷却中"）与**该放没放**（按钮灰着、其实能打）。
-   * ⚠ 非占领区 / 常驻悬赏那些**没有重抽**的行 ⇒ 单点原样返回 `anomaly.id`（老路径逐字零变化）。
-   */
   const cdRemain = bountyCooldownRemainingMs(state, weekendFoeCardIdToFightOf(state, anomaly.id, anomaly.galaxyId))
-  /** 常驻悬赏那条环（入侵卡上不算：那条环有自己的目标语义，见 `invasionLoopOn`） */
   const looping = !invadedHere && state.autoLoopAnomalyId === anomaly.id
-  /** 本卡按钮要显示"开/停"哪一态 */
   const loopOn = invadedHere ? invasionLoopOn : looping
-  /**
-   * **"别的作业占着主控"⇒ 本卡开关禁用**（船长 2026-09-18 沿用现有忙碌判定）。
-   *
-   * ⚠ 本次改一处：判据由"**环**是不是这个目标"改成"**在飞的是谁**"——
-   * 旧写法下"正在打这个目标但还没开环"会被当成忙碌 ⇒ **进行中根本开不了**（船长报的正是这个）。
-   * 现在：本目标在飞 ⇒ 不忙 ⇒ 未开环可点「重复清剿」开、已开环可点「停止讨伐」关。
-   */
   const busyOther =
     state.mining.active ||
     state.transit.active ||
     (state.expedition.active && state.expedition.anomalyId !== anomaly.id)
-  /** 再开的前置未满足（战损未补 / 装甲或结构 <50%）：只在"要开"的方向挡，关闭一律放行 */
   const reopenBlock = loopOn ? null : autoLoopReopenBlockReason(state)
-  // 出击可点条件：声望/探索/冷却/返港/远征在飞时禁；采矿中放行（转战）
   const goDisabled =
     !reqMet || unexplored || cdRemain > 0 || state.transit.active || inFlightSelf || inFlightOther
 
   function handleGoClick(): void {
     if (miningActive && !goAsk) {
-      setGoAsk(true) // 展开卡片内联警示（替换底部 toast——警示要够明显）
+      setGoAsk(true)
       return
     }
     if (!goAsk) {
-      // 带上"界面上这一行的星系"（2026-09-25 修"串星系"：同 id 多星系按 id 反查会串，见 `foeGalaxyOf`）
       const r = engine.startExpeditionAt(anomaly.id, anomaly.galaxyId)
       if (!r.ok) onToast(cmdText(r) || tr('ui.Expedition.389'), true)
       else onToast(tr("ui.Expedition.270"))
       return
     }
-    // 面板「确认转战」
     setGoAsk(false)
     const r = engine.startExpeditionFromMiningAt(anomaly.id, anomaly.galaxyId)
     if (!r.ok) onToast(cmdText(r) || tr('ui.Expedition.392'), true)
@@ -186,7 +117,6 @@ export function AnomalyCard({
   }
 
   function toggleLoop(): void {
-    // 入侵卡走「重复出击」（目标是**被占星系**：每场重抽一支）；常驻悬赏仍走「重复清剿」
     const r = invadedHere
       ? engine.invasionLoopAt(invasionLoopOn ? null : anomaly.galaxyId)
       : engine.bountyLoopAt(looping ? null : anomaly.id)

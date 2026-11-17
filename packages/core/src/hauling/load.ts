@@ -8,7 +8,6 @@ export interface HaulFleetLoad {
   byShip: { shipId: string; availableM3: number; loadedM3: number }[]
 }
 
-/** 实体货物保留；整数虚拟m³按可用空间比例分配，余量按实例顺序稳定分发。 */
 export function haulFleetLoadOf(state: GameState, ctx: SimContext, ids: readonly string[], requestedM3?: number): HaulFleetLoad {
   const byShip = [...new Set(ids)].map(shipId => {
     if (!state.fleet[shipId]) throw new Error(`hauling-load-missing-ship:${shipId}`)

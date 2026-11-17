@@ -12,7 +12,6 @@ export interface SignalAutoWorker {
   terminate(): void
 }
 
-/** 每次派队独立Worker；取消、超时、出错和成功均终止自建任务。 */
 export function computeSignalAuto(state: GameState, stockId: string, shipIds: readonly string[], signal: AbortSignal | undefined,
   createWorker: () => SignalAutoWorker): Promise<SignalAutoWorkerResult> {
   const failure = (errorId: string): SignalAutoWorkerResult => ({ failure: { ok: false, errorId } })

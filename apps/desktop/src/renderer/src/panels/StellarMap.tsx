@@ -166,7 +166,6 @@ function StellarMapViewport({ system, selectedId, onSelect, bodyStates, motionBl
 
   function rebase(svg: SVGSVGElement, moved: boolean): void {
     const inverse = screenInverse(svg)
-    // pointerup 内的 setState 尚未提交到 SVG；把旧 CTM 转到当前视口再重建手势。
     const currentInverse = inverse ? reframeMapInverse(inverse, renderedBox.current, stellarViewBox(current.current)) : null
     gesture.current = currentInverse && pointers.current.size
       ? beginStellarGesture([...pointers.current.values()], current.current, currentInverse, moved) : null
@@ -180,7 +179,6 @@ function StellarMapViewport({ system, selectedId, onSelect, bodyStates, motionBl
     motion.holds.add('pointer')
     if (!pointers.current.size) {
       handledPointerClick.current = false
-      // 透明命中圆可能重叠；按最近的世界坐标选取，不按 SVG 后绘制者优先。
       const local = event.currentTarget.getCTM()
       const logicalInverse = local ? inverseMapMatrix(local) : null
       const radius = stellarHitRadius(inverse, logicalInverse)
@@ -192,7 +190,6 @@ function StellarMapViewport({ system, selectedId, onSelect, bodyStates, motionBl
     }
     const moved = gesture.current?.moved ?? false
     pointers.current.set(event.pointerId, { id: event.pointerId, x: event.clientX, y: event.clientY })
-    // 捕获从按下开始；单击在 pointerup 内处理，避免捕获改变 click 的目标。
     event.currentTarget.setPointerCapture(event.pointerId)
     rebase(event.currentTarget, moved)
     if (pointers.current.size > 1) {
@@ -223,7 +220,6 @@ function StellarMapViewport({ system, selectedId, onSelect, bodyStates, motionBl
     handledPointerClick.current = true
     pressedBody.current = undefined
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
-    // 减指后以当前视口、剩余手指和新逆矩阵重建起点，不沿用双指的旧距离。
     rebase(event.currentTarget, moved)
     setPanning(pointers.current.size > 0 && moved)
     if (!moved && !pointers.current.size && id) select(id)
@@ -238,7 +234,6 @@ function StellarMapViewport({ system, selectedId, onSelect, bodyStates, motionBl
         const direction = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : -1
         const id = nextStellarBodyId(system.bodies, targetId ?? current.current.selectedId, direction)
         if (id) { select(id); locate(id) }
-        // 焦点留在星图，后续方向键使用刚选中的编号。
         event.currentTarget.focus({ preventScroll: true })
         break
       }
@@ -344,7 +339,6 @@ function StellarMapViewport({ system, selectedId, onSelect, bodyStates, motionBl
   </div>
 }
 
-// 按星系重建手势局部状态；会话视口仍由模块内 Map 保留，卸载面板后也可恢复。
 export function StellarMap(props: StellarMapProps) {
   return <StellarMapViewport key={props.system.id} {...props} />
 }

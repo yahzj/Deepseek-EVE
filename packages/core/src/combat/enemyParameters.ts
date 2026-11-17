@@ -1,4 +1,3 @@
-/** 源数字参数读取；保留调用点原公式，不在此复制战斗派生。 */
 export interface EnemyParameterDocument {
   format: 'whale-static-data'
   version: 1

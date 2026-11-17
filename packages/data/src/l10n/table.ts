@@ -1,24 +1,9 @@
-/**
- * **唯一本地化表**（船长 2026-09-19 定：所有本地化文本一律走 **ID 引用**，一份表即可整体替换语言）。
- *
- * 结构：`id → { zh, en }`。ID 规则 = `<域>.<文件短名>.<序号>`（工具自动生成；`ui.` 段由
- * `t('ui.itemsPage.014')` 引用，`ship./mod./item./skill./ano./gal./bp.` 段由数据层 `localizeCtx` 读，
- * `core.` 段留给 P5 的引擎文案）。
- * 口径：术语与专名以 `docs/glossary-en.md` 为准；英文值禁残留中日韩字符；中英占位符 `{x}` 集合必须一致
- * （两条都由 `npm run l10n:check` 钉住）。
- *
- * ⚠ 本表**只许通过工具/人工改这一处**：源码里不再留中文（缺 id 时界面显示 id 本身，便于定位）。
- */
 export interface L10nEntry {
-  /** 中文原文（中文界面从这里渲染——源码不再内联中文） */
   readonly zh: string
-  /** 英文译文 */
   readonly en: string
-  /** 船长要求英文工作延期，空英文只在待本地化文档登记后放行。 */
   readonly enDeferred?: true
 }
 
-/** 仅已登记待译条目回退中文；现有英文不受影响。 */
 export function l10nEntryText(entry: L10nEntry, locale: 'zh' | 'en'): string {
   return locale === 'en' && entry.enDeferred !== true ? entry.en : entry.zh
 }
@@ -110,7 +95,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'bp.repairDrone.002': { zh: '军用修理无人机图纸', en: '', enDeferred: true },
   'bp.repairDrone.003': { zh: '制造军用修理无人机，开工消耗一张图纸。', en: '', enDeferred: true },
   'bp.repairDrone.004': { zh: '学习后可反复制造军用修理无人机。', en: '', enDeferred: true },
-  // ⟪文案调整 2026-11-07⟫ 船长要求镀膜后的护盾上限为零，转换率不变。
   'mod.factionPlug.008': { zh: '开战时将部分护盾容量转为装甲，护盾上限归零。装甲损伤按总装甲的剩余比例保留。', en: '', enDeferred: true },
   'mod.factionPlug.009': { zh: '扩展货仓与无人机舱，降低最大速度。', en: '', enDeferred: true },
   'ui.factionPlug.008': { zh: '最终护盾的{p1}转为装甲，护盾上限保留{p2}', en: '', enDeferred: true },
@@ -253,7 +237,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'bp.fleetSupport.001': { zh: '护盾投送力场图纸 MK2（一次性）', en: 'Shield Projection Field Blueprint MK2 (Single-use)' },
   'bp.fleetSupport.002': { zh: '护盾投送力场图纸 MK3（一次性）', en: 'Shield Projection Field Blueprint MK3 (Single-use)' },
   'mod.fleetSupport.004': { zh: '引导编队优先攻击敌方首位目标，提高对锁定目标的伤害；本舰与队友共享增伤取较高值，不相加。', en: 'Directs the fleet to prioritize the enemy primary target, increasing damage dealt to locked targets; ship and ally shared damage bonuses take the higher value and do not stack.' },
-  // ⟪文案调整 2026-11-06⟫ 船长要求移除队友共享衰减，全队统一取最高增伤；旧译文保留。
   'mod.fleetSupport.005': { zh: '引导编队优先攻击敌方首位目标，提高全队对锁定目标的伤害；全队使用最高一份增伤，不相加。', en: '', enDeferred: true },
   'ui.fleetSupport.004': { zh: '锁定目标攻击概率{p1} · 全队增伤{p2}', en: '', enDeferred: true },
   'ui.fleetSupport.005': { zh: '本舰多件增伤递减合成，全队取存活提供舰中的最高值，不再衰减或相加。概率取最高、不相加；提供舰被摧毁后，其效果失效。', en: '', enDeferred: true },
@@ -396,7 +379,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ano.equipmentRetune.005': { zh: '酸液喷吐器射程调整为2500米、装填间隔为3.8秒；命中后每层降低目标装甲全抗性5%，持续15秒，加法叠加、独立到期。', en: 'The Acid Sprayer now has a range of 2,500 m and a reload interval of 3.8 seconds. Each hit adds a stack reducing the target’s armor all-resistance by 5% for 15 seconds. Stacks additively; each stack expires independently.' },
   'ano.equipmentRetune.006': { zh: '磁轨蓄能说明明确为按本炮单发伤害附加能量伤害；每次开火后比例+30%、装填间隔+10%，最多5层，加法累计。', en: 'Railgun Charge now explicitly describes bonus energy damage based on this cannon’s damage per shot. After each shot, the ratio increases by 30% and the reload interval by 10%, stacking additively up to five times.' },
   'ano.equipmentRetune.007': { zh: '装备叠加说明按实际规则修正，部分当前战斗提示改用%，近盲说明移除自伤备注。', en: 'Equipment stacking descriptions now reflect the actual rules. Some current combat tooltips use %, and close-range blind spot descriptions no longer include the self-damage remark.' },
-  // ⟪文案调整 2026-10-18⟫ 设置切英文实机漏译修复；保留中文及原有规格。
   'ui.App.176': { zh: '（暂无事件，航线静悄悄）', en: '(No events; the route is quiet.)' },
     'ui.App.177': { zh: '新版 [Beta]', en: 'Sci-Fi Future' },
     'ui.fitKpi.001': { zh: '战术火力', en: 'Tactical Firepower' },
@@ -491,7 +473,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'mod.gravekeeperGear.003': { zh: '危机超载协议', en: 'Crisis Overload Protocol' },
   'mod.gravekeeperGear.004': { zh: '护盾耗尽后提高本舰炮台射程与伤害，缩短无人机出击等待与攻击周期，同时降低战斗移动速度；多件安装效果递减。', en: 'After the shield is depleted, raises this ship’s turret range and damage, shortens drone launch delay and attack cycle, and reduces combat movement speed. Multiple fittings have diminishing returns.' },
   'mod.gravekeeperGear.005': { zh: '磁轨蓄能炮', en: 'Railgun Charge Cannon' },
-  // ⟪文案调整 2026-10-19⟫ 磁轨蓄能明确按单发伤害比例附加能量伤害。
   'mod.gravekeeperGear.006': { zh: '发射动能弹药，并按本炮单发伤害的一定比例附加能量伤害；连续开火逐步提高附伤比例并延长装填间隔。', en: 'Fires kinetic ammunition and adds energy damage as a proportion of this cannon’s damage per shot. Consecutive shots increase that proportion and lengthen the reload interval.' },
   'ui.gravekeeperGear.001': { zh: '苏生维修', en: 'Rebirth Repair' },
   'ui.gravekeeperGear.002': { zh: '损管触发后{p1}秒内恢复最大装甲{p2}%、最大结构{p3}%；不恢复护盾。', en: 'After damage control triggers, restores {p2}% of maximum armor and {p3}% of maximum hull over {p1} seconds. Does not restore shields.' },
@@ -500,7 +481,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ui.gravekeeperGear.005': { zh: '无人机超载', en: 'Drone Overload' },
   'ui.gravekeeperGear.006': { zh: '首次出击时间×{p1}%，攻击周期×{p2}%；不增加机群射程或单发伤害。', en: 'First launch time ×{p1}%, attack cycle ×{p2}%. Does not increase drone swarm range or single-shot damage.' },
   'ui.gravekeeperGear.007': { zh: '磁轨蓄能', en: 'Railgun Charge' },
-  // ⟪文案调整 2026-10-19⟫ 比例基于本炮单发伤害，叠层加法累计。
   'ui.gravekeeperGear.008': { zh: '攻击附加按本炮单发伤害计算的能量伤害。每次开火后能量伤害比例+{p1}%、装填间隔+{p2}%；最多{p3}层，加法累计；跨波保留。', en: 'Attacks add energy damage based on this cannon’s damage per shot. After each shot, the energy-damage ratio increases by {p1}% and the reload interval by {p2}%; up to {p3} stacks, added together and retained between waves.' },
   'ui.gravekeeperGear.009': { zh: '蓄能{p1}层；额外能量伤害{p2}%', en: '{p1} charge stacks; bonus energy damage {p2}%' },
   'ship.gravekeeper.001': { zh: '巡陵级', en: 'Patrol Tomb-class' },
@@ -513,11 +493,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ano.gravekeeper.004': { zh: '守墓者永陵舰队', en: 'Gravekeeper Eternal Tomb Fleet' },
   'ano.gravekeeper.005': { zh: '守墓者入侵舰队。', en: 'A Gravekeeper invasion fleet.' },
   'item.gravekeeper.001': { zh: '守墓者旗舰黑匣', en: 'Gravekeeper Flagship Black Box' },
-  // ⟪文案调整 2026-10-18⟫ 出售对象是黑匣，不是制造出的插件。
   'item.gravekeeper.002': { zh: '守墓者入侵旗舰的记录匣，封存古舰协议与航迹；可用于舰船插件制造或出售。', en: 'A record box from a Gravekeeper invasion flagship, containing ancient fleet protocols and flight paths. Can be used to manufacture ship plugs or sold.' },
   'ui.gravekeeper.001': { zh: '首次受到致命攻击时，结构最低保留1点，并在1秒内维持结构底线；同时在{p1}秒内持续恢复最大装甲与最大结构各{p2}，不恢复护盾。每场每舰一次。', en: 'When first hit by a lethal attack, hull is held at 1 HP for 1 second; over the next {p1} seconds, restores {p2} of maximum armor and hull. Does not restore shields. Once per ship per battle.' },
   'ui.gravekeeper.002': { zh: '装甲与结构获得{p1}全抗性，最大装甲与最大结构各乘{p2}；护盾不变。', en: 'Armor and hull gain {p1} all-resistance; maximum armor and hull are multiplied by {p2}. Shields are unchanged.' },
-  // ⟪文案调整 2026-10-19⟫ 当前抗性叠层改用%，保留加法含义。
   'ui.gravekeeper.003': { zh: '每次实际装甲损失后，装甲全抗性+{p1}%，加法叠加；每层独立持续{p2}秒，最终装甲抗性最高{p3}。', en: 'Each actual armor loss adds {p1}% to armor all-resistance, stacking additively. Stacks expire independently after {p2} seconds; final armor resistance caps at {p3}.' },
   'ui.gravekeeper.004': { zh: '本场首次空盾后永久蓄能，全部武器射程提高{p1}；每次成功攻击后，该武器攻击间隔乘{p2}、伤害乘{p3}，无叠加上限。', en: 'After the first shield depletion in this battle, charge persists and all weapon range increases by {p1}. Each successful attack multiplies that weapon’s interval by {p2} and damage by {p3}, with no stack cap.' },
   'ui.gravekeeper.005': { zh: '{p1} · 苏生协议{p2} · 结构保底剩余{p3}秒 · 维修剩余{p4}秒', en: '{p1} · Rebirth Protocol {p2} · hull floor in {p3} s · repair remaining {p4} s' },
@@ -525,9 +503,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ui.gravekeeper.007': { zh: '{p1} · 蓄能{p2} · 主炮成功攻击{p3}次 · 伤害×{p4} · 攻击间隔×{p5}', en: '{p1} · Charge {p2} · main-gun hits {p3} · damage ×{p4} · attack interval ×{p5}' },
   'ui.gravekeeper.008': { zh: '已启动', en: 'Active' },
   'ui.gravekeeper.009': { zh: '已使用', en: 'Used' },
-  // ⟪文案调整 2026-10-13⟫ 高槽占用且没有攻击武器时的抵达日志，英文仅登记待译。
   'core.expedition.062': { zh: '⚔ 抵达目标（{p1}）：进入交火。高槽已装配装备，基础舰炮已禁用；未装配攻击武器。{p3}', en: "⚔ Arrived at target ({p1}): entering combat. High slots are occupied, so the basic cannon is disabled; no attack weapon is fitted. {p3}",},
-  // ⟪文案调整 2026-10-12⟫ 船长确认黑市开放通讯，英文仅登记待译。
   'ui.commsBlackMarket.001': { zh: '有些货，该给你看看了', en: "Some goods are ready for you to see.",},
   'ui.commsBlackMarket.002': { zh: '嘿，你在协会那边的名声，我听说了。肯替他们办事的人不少，能做到你这份上的，值得谈点别的生意。', en: "I have heard about your reputation with the Association. Plenty of people work for them; someone who has made it this far is worth discussing other business with.",},
   'ui.commsBlackMarket.003': { zh: '到市场页找「黑市」，我把入口留给你了。外面不常见的装备和图纸，这里兴许有。', en: "Look for the Black Market on the Market page. I left the entrance open; uncommon equipment and blueprints may be waiting there.",},
@@ -551,12 +527,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ui.stellarHud.002': { zh: '目标详情', en: "Target Details",},
   'ui.stellarHud.003': { zh: '探测机生产', en: "Probe Production",},
   'mod.alienLoot.001': { zh: '酸蚀弹射器', en: "Acidic Launcher",},
-  // ⟪文案调整 2026-10-09⟫ 船长确认酸液减抗仅作用装甲；英文只登记待译。
   'mod.alienLoot.002': { zh: '发射爆炸酸蚀弹，命中后暂时降低目标的装甲抗性。酸蚀可叠加，每层独立消退。不可制造。', en: "Fires explosive acid rounds that temporarily lower the target armor resistance on impact. Acid stacks and each stack expires independently. Cannot be manufactured.",},
   'mod.alienLoot.003': { zh: '增压加速腔', en: "Pressure Acceleration Chamber",},
   'mod.alienLoot.004': { zh: '提高机动速度，进入战斗后加成逐渐提高，达到峰值后保持。多装递减。不可制造。', en: "Increases movement speed; the bonus grows after entering combat and remains at its peak. Multiple fittings have diminishing returns. Cannot be manufactured.",},
   'ui.alienLoot.001': { zh: '酸蚀', en: "Acid Corrosion",},
-  // ⟪文案调整 2026-10-19⟫ 酸蚀使用%，保留加法叠加与独立到期。
   'ui.alienLoot.002': { zh: '每层装甲全抗性 −{p1}%，持续{p2}秒；加法叠加，独立到期', en: "Armor all-resistance −{p1}% per stack for {p2} s; stacks additively, expires independently",},
   'ui.alienLoot.003': { zh: '渐增机动', en: "Escalating Mobility",},
   'ui.alienLoot.004': { zh: '+{p1}% → +{p2}%，{p3}秒达到峰值', en: "+{p1}% → +{p2}%, reaches peak in {p3} s",},
@@ -566,7 +540,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'mod.launchCalibration.003': { zh: '无人机出击加速器 MK3', en: "Drone Launch Accelerator MK3",},
   'mod.launchCalibration.004': { zh: '激光校准仪 MK2', en: "Laser Calibration Array MK2",},
   'mod.launchCalibration.005': { zh: '激光校准仪 MK3', en: "Laser Calibration Array MK3",},
-  // ⟪文案调整 2026-10-09⟫ 船长要求统一为无人机启动时间。
   'mod.launchCalibration.006': { zh: '缩短本舰无人机启动时间，多装递减。', en: "Shortens this ship's drone launch delay; multiple fittings have diminishing returns.",},
   'mod.launchCalibration.007': { zh: '改善本舰激光武器的远距离威力保留，多装递减。', en: "Improves this ship's long-range laser damage retention; multiple fittings have diminishing returns.",},
   'bp.launchCalibration.001': { zh: '无人机出击加速器 MK1蓝图', en: "Drone Launch Accelerator MK1 Blueprint",},
@@ -579,9 +552,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ui.launchCalibration.003': { zh: '无人机出击加速器', en: "Drone Launch Accelerator",},
   'ui.launchCalibration.004': { zh: '无人机启动时间削减', en: "Drone launch-delay reduction",},
   'ui.launchCalibration.005': { zh: '激光远端保留增量', en: "Laser long-range retention bonus",},
-  // ⟪文案调整 2026-10-09⟫ 船长确认玩家机定名，敌方虫群保留原名。
   'item.jawclaw.001': { zh: '颚钳无人机', en: "Jawclaw Drone",},
-  // ⟪文案调整 2026-10-09⟫ 船长确认颚钳敌我机型改为战斗机。
   'item.jawclaw.002': { zh: '动能战斗无人机，适合中距离交战与持续攻击。', en: "A kinetic combat drone suited to medium-range engagements and sustained attacks.",},
   'bp.factionDrone.001': { zh: '鱿蜂无人机永久蓝图', en: "Squidwasp Drone Permanent Blueprint",},
   'bp.factionDrone.002': { zh: '巢卫攻坚无人机永久蓝图', en: "Hiveguard Siege Drone Permanent Blueprint",},
@@ -593,10 +564,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'bp.factionDrone.008': { zh: '学习后可持续制造构件哨戒无人机。', en: "Learn this blueprint to manufacture Construct Sentry Drones indefinitely.",},
   'bp.factionDrone.009': { zh: '学习后可持续制造墨潮重袭无人机。', en: "Learn this blueprint to manufacture Ink Tide Striker Drones indefinitely.",},
   'bp.factionDrone.010': { zh: '学习后可持续制造颚钳无人机。', en: "Learn this blueprint to manufacture Jawclaw Drones indefinitely.",},
-  // ⟪文案调整 2026-10-09⟫ 船长批准更新续时说明；保留旧ID英文，新ID仅中文、登记待译。
   'item.synaptic.001': { zh: '技能训练加速消耗品，每枚增加24小时有效时间；可重复使用，训练速度倍率不叠加。可在物品、货仓或技能加速窗口使用，自动续用需另行开启。', en: 'A skill-training accelerant. Each dose adds 24 hours of active time; doses can be reused, but their training-speed multiplier does not stack. Use it from Items, Cargo or the Skill Boost panel; auto-renew must be enabled separately.' },
   'ui.boost.012': { zh: '使用：技能加速有效时间增加24小时，倍率不叠加', en: 'Use: adds 24 hours to Skill Boost active time; the multiplier does not stack.' },
-  // ⟪文案调整 2026-10-17⟫ 旧药剂升为MK1名称，效果及延期翻译状态保持。
   'ui.boost.013': { zh: '突触加速剂 MK1已使用：有效时间增加24小时。', en: 'Synaptic Accelerant MK1 used: active time increased by 24 hours.' },
   'core.consumable.017': { zh: '✦ 突触加速剂 MK1已使用：技能加速有效时间增加{p1}小时。', en: '✦ Synaptic Accelerant MK1 used: Skill Boost active time increased by {p1} hours.' },
   'ui.battleAmmo.001': { zh: '弹药预载不足（取用：{source}）：\n{details}\n再次点击同一开战按钮仍可出战。', en: "Not enough ammunition was preloaded (source: {source}):\n{details}\nClick the same battle button again to sortie anyway.",},
@@ -604,7 +573,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ui.battleAmmo.003': { zh: '物品仓库', en: "Warehouse",},
   'ui.battleAmmo.004': { zh: '舰队货仓', en: "Fleet Cargo Hold",},
   'ui.battleAmmo.005': { zh: '本趟物资', en: "This Run's Supplies",},
-  // ⟪文案调整 2026-10-09⟫ 船长确认逐点短句、移除光环段，英文只登记待办。
   'ano.mechanicsBrief.001': { zh: '玩家可在普通星系打捞沉船，整船回收基础成功率为25%。', en: "Players can salvage complete ship hulls in ordinary systems; the base recovery chance is 25%.",},
   'ano.mechanicsBrief.002': { zh: '新增三项舰体打捞与装备保全工程技能，提高整船回收率和装备保全率。', en: "Three new hull-salvage and equipment-preservation engineering skills raise complete-hull recovery and equipment preservation rates.",},
   'ano.mechanicsBrief.003': { zh: '成功回收舰船时，普通装备基础保全率为80%，满级装备保全技能可提高至100%。', en: "When a ship is recovered successfully, ordinary equipment has an 80% base preservation chance; maxed preservation skills can raise it to 100%.",},
@@ -1093,19 +1061,14 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ano.alien.003': { zh: '背巢虫群', en: 'Hiveback Swarm' },
   'ano.alien.004': { zh: '巢母卫群', en: 'Broodmother Guard' },
   'ano.alien.005': { zh: '异形虫群正在向占领区集结。', en: 'Alien swarms are gathering in the occupied systems.' },
-  // ⟪文案调整 2026-10-07⟫ 船长确认腐蚀逐次叠加、允许负抗性；保留爆发基础值。
   'ui.alien.001': { zh: '在{p1}米内攻击并自毁，在{p2}米内被击杀也会爆发；对一艘舰船造成基础{p4}点动能伤害，基础命中{p5}%。每次爆发使玩家全队装甲和结构全抗性降低{p3}个百分点，可叠加，抗性可降至负数；未命中仍施加腐蚀。', en: 'Attacks and self-destructs within {p1} m; also bursts when killed within {p2} m. Deals {p4} base kinetic damage to one ship at {p5}% base accuracy. Each burst reduces all player ships\' armor and hull resistances by {p3} percentage points for this battle. Corrosion stacks, can make resistances negative and applies even on a miss.' },
   'ui.alien.002': { zh: '本舰炮台伤害×{p1}，无人机伤害增加{p2}%，射程增加{p3}%。', en: 'This carrier has ×{p1} gun damage, +{p2}% drone damage and +{p3}% drone range.' },
-  // ⟪文案调整 2026-10-06⟫ 群体补损仍逐架消耗有限储备。
   'ui.alien.003': { zh: '无人机战损后，等待{p1}秒满血补回本波存活舰船损失的机位；本场储备{p2}架，用完或载体被击毁后停止。', en: 'After drone losses, waits {p1} seconds before restoring lost slots of surviving ships in this wave at full health. Has {p2} reserve drones for this battle; stops when reserves run out or the carrier is destroyed.' },
   'ui.alien.004': { zh: '腐蚀：装甲和结构全抗性 −{p1}个百分点', en: 'Corrosion: armor and hull resistances −{p1} percentage points' },
-  // ⟪文案调整 2026-10-09⟫ 装甲限定说明另取ID，既有英文与历史公告不追改。
-  // ⟪文案调整 2026-10-19⟫ 当前腐蚀提示改用%，保留加法叠加。
   'ui.alienArmor.001': { zh: '在{p1}米内攻击并自毁，在{p2}米内被击杀也会爆发；对一艘舰船造成基础{p4}点动能伤害，基础命中{p5}%。每次爆发使玩家全队装甲全抗性降低{p3}%，加法叠加，抗性可降至负数；未命中仍施加腐蚀。', en: "The Acid Burster explodes when it attacks within {p1} m or is killed within {p2} m; it deals {p4} base kinetic damage with {p5}% base hit chance. Each blast subtracts {p3}% from the fleet's armor all-resistance. The effect stacks additively and can drive resistance below zero; a miss still applies corrosion.",},
   'ui.alienArmor.002': { zh: '腐蚀：装甲全抗性 −{p1}%', en: "Corrosion: armor all-resistance −{p1}%",},
   'ui.alien.005': { zh: '孵化储备剩余：{p1}；已补回：{p2}', en: 'Hatchery reserves remaining: {p1}; replacements deployed: {p2}' },
   'ui.alien.006': { zh: '无限', en: 'Unlimited' },
-  // ⟪文案调整 2026-10-08⟫ 船长确认巢母改为召唤成虫，满编不召唤。
   'ui.alien.007': { zh: '无人机战损后，等待{p1}秒满血补回本波存活舰船的全部损失机位，后备无限；每{p2}秒召唤最多{p5}架星髓成虫，满编时不召唤，不超过本波原编制。存活时全队速度每秒增加，{p3}秒达到+{p4}%；被击毁后补机、召唤和加速均停止。', en: 'After drone losses, waits {p1} seconds before restoring all lost slots of surviving ships in this wave at full health, with unlimited reserves. Summons up to {p5} Starcore Adults every {p2} seconds, within this wave\'s original formation limit; no summons when full. While alive, increases fleet speed each second, reaching +{p4}% after {p3} seconds. Drone replacement, summoning and the speed bonus end when destroyed.' },
   // ⟪文案调整 2026-10-09⟫ 独立调整已批准，英文未授权准备。
   'ui.alien.008': { zh: '本舰无人机伤害增加{p1}%，射程增加{p2}%。', en: "This ship's drones deal +{p1}% damage and have +{p2}% range.",},
@@ -1180,10 +1143,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.whExpedition.008": { zh: "战利品余量", en: "Loot Space Available" },
   "ui.whExpedition.009": { zh: "携入", en: "Carry" },
   "ui.whExpedition.010": { zh: "卸回母港", en: "Unload at Home" },
-  // ⟪文案调整 2026-10-06⟫ 船长确认：按已选模板填写清单，不再自动推算备用机。
   "ui.whExpedition.011": { zh: "按模板补齐", en: "Fill from Template" },
   "ui.whExpedition.012": { zh: "保存整备模板", en: "Save Manifest Template" },
-  // ⟪文案调整 2026-10-06⟫ 模板选择与执行分离。
   "ui.whExpedition.013": { zh: "整备模板", en: "Preparation Template" },
   "ui.whExpedition.014": { zh: "确认装载并进入", en: "Load and Enter" },
   "ui.whExpedition.015": { zh: "进入后只能使用携入物资和洞内装入货仓的补给。", en: "After entry, only carried supplies and supplies loaded inside the wormhole are available." },
@@ -1263,7 +1224,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.whExpedition.089": { zh: "巡逻 {p1} · Q{p2} R{p3} · 距离{p4}格 · {p5}次行动后移动", en: "Patrol {p1} · Q{p2} R{p3} · {p4} tiles away · moves after {p5} actions" },
   "ui.whExpedition.090": { zh: "巡逻已取消", en: "Patrol Cancelled" },
   "ui.whExpedition.091": { zh: "巡逻已清除", en: "Patrol Defeated" },
-  // ⟪文案调整 2026-10-06⟫ 撤下目标标签，只保留实际探索计数。
   "ui.whExpedition.092": { zh: "探索记录", en: "Exploration Record" },
   "ui.whExpedition.093": { zh: "最深{p1}层 · 守卫{p2}层 · 遗迹{p3}处 · 事件{p4}处", en: "Depth {p1} · {p2} guards · {p3} ruins · {p4} events" },
   "ui.whExpedition.094": { zh: "揭露{p1}格 · 线索{p2}条 · 精英{p3}支", en: "{p1} tiles revealed · {p2} clues · {p3} elites" },
@@ -1329,7 +1289,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.itemSpecs.009": { zh: "高安目标处罚", en: "High-security target penalty" },
   "ui.itemSpecs.010": { zh: "扣除 {p1} 点可支配协会声望", en: "Deducts {p1} spendable Association standing" },
   "ui.itemSpecs.013": { zh: "结构保护时长", en: "Structure protection duration" },
-  // ⟪文案调整 2026-10-04⟫ mod 说明重写，正文与参数读数分工。
   "mod.copy.001": { zh: "采集工具，提高矿带循环产量；可用于虫洞矿脉采集，效率按型号计算。", en: "A mining tool increasing belt yield per cycle; also used on wormhole ore veins, with efficiency determined by model." },
   "mod.copy.002": { zh: "异星采集工具，提高循环产量与虫洞采集效率。不可制造。", en: "An alien mining tool increasing cycle yield and wormhole mining efficiency. Cannot be manufactured." },
   "mod.copy.003": { zh: "扩展舰船货舱容量，不增加无人机舱或装配算力。", en: "Expands ship cargo capacity, not drone bay capacity or fitting CPU." },
@@ -1356,7 +1315,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "mod.copy.024": { zh: "提高护盾对能量伤害的抗性，不增加护盾容量。", en: "Increases shield resistance to energy damage, not shield capacity." },
   "mod.copy.025": { zh: "增加护盾容量，不改变护盾抗性或充能周期。", en: "Increases shield capacity, not shield resistance or recharge cycles." },
   "mod.copy.026": { zh: "按周期恢复本舰护盾，回复量按护盾上限计算。", en: "Periodically restores this ship's shield, with restoration based on shield capacity." },
-  // ⟪文案调整 2026-10-07⟫ 船长确认：排除自身、按最大护盾支付，数值由详细参数行展示。
   "mod.copy.027": { zh: "周期性消耗本舰护盾，为队内其他舰船恢复护盾；恢复量按本舰最大护盾计算。自身护盾不足时不发动。", en: "Periodically consumes this ship's shield to restore shields on other fleet ships, using this ship's maximum shield capacity as the restoration basis. Does not activate if this ship lacks sufficient shield." },
   "mod.copy.028": { zh: "提高装甲对动能伤害的抗性，不增加装甲容量。", en: "Increases armor resistance to kinetic damage, not armor capacity." },
   "mod.copy.029": { zh: "提高装甲对爆炸伤害的抗性，不增加装甲容量。", en: "Increases armor resistance to explosive damage, not armor capacity." },
@@ -1384,11 +1342,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "mod.copy.051": { zh: "强化货舱隔段，同时增加货舱与装甲容量。", en: "Reinforced cargo partitions increasing both hold and armor capacity." },
   "mod.copy.052": { zh: "生体装甲件，提高装甲各系抗性，交火中周期自修装甲，不消耗组件。", en: "Living armor increasing resistance to all damage types and periodically restoring armor in combat without kits." },
   "mod.copy.053": { zh: "生体结构修复件，提高结构各系抗性，交火中周期自修结构，不消耗组件。", en: "A living structure repair unit increasing resistance to all damage types and periodically restoring structure in combat without kits." },
-  // ⟪文案调整 2026-10-19⟫ 喷吐器复用装甲酸蚀机制，保留必中、无近盲与距离衰减。
   "mod.copy.054": { zh: "近程能量喷吐武器，必中且无近盲，单发伤害高、装填慢；威力随距离衰减，命中后暂时削减目标装甲抗性，酸蚀可叠加、独立到期。", en: "A short-range energy sprayer with heavy shots and slow reloads; always hits, with no blind zone and power falloff at range. Hits temporarily lower the target's armor resistance; acid stacks and expires independently." },
   "mod.copy.055": { zh: "护盾防护阵列，提高护盾对各伤害类型的抗性。", en: "A shield defense array increasing resistance to each damage type." },
   "mod.copy.056": { zh: "远程动能重炮，基础命中高、单发伤害高、装填慢；仍受目标闪避和距离衰减影响。", en: "A long-range kinetic cannon with high base accuracy, heavy shots and slow reloads; still affected by evasion and range falloff." },
-  // ⟪文案调整 2026-10-08⟫ 装备代价逐件累计，负面沿用收益递减。
   "mod.copy.057": { zh: "复合重甲，增加装甲容量并降低战斗机动；多件速度代价相乘。", en: "Composite heavy armor increasing armor capacity and reducing combat speed; speed penalties multiply across modules." },
   "mod.copy.058": { zh: "巨构爆炸重炮，单发伤害高、装填慢；命中低，远端衰减明显。", en: "A megastructure explosive cannon with heavy shots and slow reloads; low accuracy and strong range falloff." },
   "mod.copy.059": { zh: "扩展无人机舱，不增加放飞算力上限。", en: "Expands drone bay capacity, not launch CPU capacity." },
@@ -1398,12 +1354,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "mod.copy.063": { zh: "编队电子战装置，持续压制敌方武器射程，与电子舰压制叠加；低于压制下限的基础射程不受影响。", en: "A squad electronic warfare unit continuously suppressing enemy weapon range and stacking with electronic hull suppression; base ranges below the suppression floor are unaffected." },
   "mod.copy.064": { zh: "周期捕获网，降低一艘敌舰机动，使其推进器熄火、闪避失效；目标击沉、超出断开距离或施网舰击沉后解除。", en: "A cycling capture web reducing one enemy ship's mobility and disabling its thrusters and evasion; ends when the target is sunk, exceeds break range, or the caster is sunk." },
   "mod.copy.065": { zh: "能量光束武器，必中；连续开火逐步缩短装填周期，缩短量有下限。", en: "An always-hit energy beam whose successive shots shorten reload time down to a fixed floor." },
-  // ⟪文案调整 2026-10-08⟫ 玩家朝自身期望交距闪现，船长明确要求实现后合入。
   "mod.copy.066": { zh: "被命中时朝期望交战距离短距跃迁；触发后进入冷却。", en: "Makes a short jump toward the desired engagement range when hit, then enters cooldown." },
   "mod.copy.067": { zh: "能量光束武器，每轮连续射击；必中，威力随距离衰减。", en: "An energy beam firing a burst each cycle; always hits with power falloff at range." },
   "mod.copy.068": { zh: "能量点防光束，必中；可攻击敌方机群，对机群不受对舰距离衰减影响。", en: "Always-hit energy point defense capable of attacking enemy drones without the ship-range damage falloff." },
   "mod.copy.069": { zh: "爆炸破片武器，额外附带动能伤害；命中随距离衰减，额外伤害不改变消耗弹种。", en: "An explosive fragment weapon adding kinetic damage; accuracy falls with range and the additional damage does not change ammunition consumed." },
-  // ⟪文案调整 2026-10-09⟫
   "mod.copy.070": { zh: "扩展无人机舱，并缩短本舰无人机启动时间。", en: "Expands drone bay capacity and reduces the wait between this ship's initial drone launches." },
   "mod.copy.071": { zh: "高推力加力装置，点火时大幅提高战斗机动，同时降低开火命中。", en: "A high-thrust afterburner strongly increasing combat speed during ignition while reducing weapon accuracy." },
   "mod.copy.072": { zh: "折射涂层，提高闪避，同时降低护盾、装甲与结构的各系抗性。", en: "A refraction coating increasing evasion while reducing shield, armor and structure resistances." },
@@ -1434,7 +1388,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "mod.copy.097": { zh: "舰体护盾插件，增加护盾容量。 安装后不可拆换，装有插件的舰船不可入库或出售。", en: "A hull shield plug increasing shield capacity. Cannot be removed or replaced once installed; ships carrying plugs cannot be stored or sold." },
   "mod.copy.098": { zh: "舰体装甲插件，增加装甲容量，同时降低最大速度。 安装后不可拆换，装有插件的舰船不可入库或出售。", en: "A hull armor plug increasing armor capacity while reducing top speed. Cannot be removed or replaced once installed; ships carrying plugs cannot be stored or sold." },
   "mod.copy.099": { zh: "舰体结构插件，增加结构容量。 安装后不可拆换，装有插件的舰船不可入库或出售。", en: "A hull structure plug increasing structure capacity. Cannot be removed or replaced once installed; ships carrying plugs cannot be stored or sold." },
-  // ⟪文案调整 2026-10-08⟫ 船长澄清同类型扩槽限一件，中槽与低槽扩展不互斥。
   "mod.copy.100": { zh: "舰体舱段插件，增加可用中槽，同类型每舰限装一件。安装后不可拆换，装有插件的舰船不可入库或出售。", en: "A hull bay plug adding available mid slots, limited to one plug of this type per ship. Cannot be removed or replaced once installed; ships carrying plugs cannot be stored or sold." },
   "mod.copy.101": { zh: "舰体舱段插件，增加可用低槽，同类型每舰限装一件。安装后不可拆换，装有插件的舰船不可入库或出售。", en: "A hull bay plug adding available low slots, limited to one plug of this type per ship. Cannot be removed or replaced once installed; ships carrying plugs cannot be stored or sold." },
   "mod.copy.102": { zh: "舰体算力插件，增加装配算力上限。 安装后不可拆换，装有插件的舰船不可入库或出售。", en: "A hull computing plug increasing fitting CPU capacity. Cannot be removed or replaced once installed; ships carrying plugs cannot be stored or sold." },
@@ -1445,7 +1398,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "mod.copy.107": { zh: "诱饵信标插件，提高敌方选择本舰作为目标的倾向。 安装后不可拆换，装有插件的舰船不可入库或出售。", en: "A decoy beacon plug making enemies more likely to target this ship. Cannot be removed or replaced once installed; ships carrying plugs cannot be stored or sold." },
   "mod.copy.108": { zh: "信号抑制插件，降低敌方选择本舰作为目标的倾向。 安装后不可拆换，装有插件的舰船不可入库或出售。", en: "A signature suppression plug making enemies less likely to target this ship. Cannot be removed or replaced once installed; ships carrying plugs cannot be stored or sold." },
 
-  // ⟪文案调整 2026-10-04⟫ item 说明重写，正文与参数读数分工。
   "item.copy.001": { zh: "常见原矿，可精炼出钛钢合金和银纹超金属。", en: "Common ore refined into Tritanium Alloy and Silvervein Supermetal." },
   "item.copy.002": { zh: "致密岩质原矿，可精炼出银纹超金属和晶态胶体。", en: "Dense rocky ore refined into Silvervein Supermetal and Crystalline Colloid." },
   "item.copy.003": { zh: "红色星环中的原矿，可精炼出重钨合金和钛钢合金。", en: "Ore from red stellar rings, refined into Heavy Tungsten Alloy and Tritanium Alloy." },
@@ -1590,7 +1542,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.commsDialogue.002": { zh: "红环前哨站 · 并网通报", en: "Redring Outpost · Grid connection" },
   "ui.commsDialogue.003": { zh: "烬火前哨站 · 建站交底", en: "Cinder Outpost · Construction briefing" },
   "ui.commsDialogue.004": { zh: "烬火前哨站 · 并网通报", en: "Cinder Outpost · Grid connection" },
-  // ⟪文案调整 2026-10-04⟫ 教程后通讯整篇重写，角色和机制不变。
   "ui.commsSurvey.001": { zh: "飞行员，测绘处收到你补回的星图资料了。还有没解读的信号，可以沿已知航线往外扫。", en: "Pilot, Survey has received your chart updates. Follow the known routes outward to scan the signals that remain unread." },
   "ui.commsSurvey.002": { zh: "先看目标的扫描时长。安全等级越低，通常越费时间；信号分析、过滤和测绘技能能缩短这段等待。", en: "Check the scan time for each target first. Lower-security systems generally take longer; signal analysis, filtering and cartography skills can shorten the wait." },
   "ui.commsSurvey.003": { zh: "扫开后再看矿带和残骸存量，决定值不值得过去。不必每点亮一处就立刻出港。", en: "After the scan, check its belts and wreck stocks before deciding whether to visit. There is no need to leave port for every newly charted system." },
@@ -1645,7 +1596,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.commsPlug.001": { zh: "飞行员，取得的黑匣可以作为舰船插件的制造材料。工业部已开放插件制造，相关蓝图可在协会声望商店兑换。", en: "Pilot, recovered black boxes can be used to manufacture ship plugs. Industry has opened plug manufacturing. The blueprints can be exchanged at the Association standing shop." },
   "ui.commsPlug.002": { zh: "插件会给舰船增加一项性能，但安装后不能拆下，也不能换成另一种。先看清效果，再决定给哪艘船使用。", en: "A plug adds a performance bonus to a ship, but cannot be removed or replaced with another type once installed. Read its effect before choosing a hull." },
   "ui.commsPlug.003": { zh: "装有插件的舰船不能转入舰船仓库，也不能挂到市场出售。确认用途后，再兑换蓝图和开线制造。", en: "Ships carrying plugs cannot enter Ship Storage or be listed for sale at market. Decide their role before exchanging the blueprint and starting production." },
-  // ⟪文案调整 2026-10-04⟫ 教程整批调整，完成后一次性验收。
   "ui.firstBriefing.001": { zh: "自检结束。装甲与结构受损，乘员生命信号为空，身份档案无法读取。", en: "Self-check complete. Armor and structure are damaged. No crew life signs detected. The identity file cannot be read." },
   "ui.firstBriefing.002": { zh: "恢复清单已列入任务中心。先扫描母港，补回这里的航线与资源资料。每做完一项，回任务中心确认完成，再继续下一项。", en: "The recovery checklist is in the Task Center. Start by scanning the home port to restore its route and resource records. After each task, return to the Task Center to confirm completion before continuing." },
   "ui.firstScan.001": { zh: "母港扫描完成。这里的航线与资源资料已经补入星图，矿带、悬赏和残骸现在都能查看。", en: "The home port scan is complete. Its route and resource records have been added to the star map. Belts, bounties and wreck sites are now available to inspect." },
@@ -1701,10 +1651,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.firstTasks.012": { zh: "运输累计完成一趟；刚出发不算。", en: "Complete one transport trip; departure alone does not count." },
   "ui.firstTasks.013": { zh: "累计获得 40 点协会声望，无需先进入虫洞。", en: "Earn 40 total Association standing; wormhole entry is not required." },
   "ui.firstTasks.014": { zh: "探明一处星系。", en: "Chart one system." },
-  /* ═══════════ core 段（甲案 · 2026-09-20 船长定：core 只产出「文案 id + 参数」）═══════════
-   * id 规则：`core.<文件短名>.<三位序号>`（与 `ui.` 段同一套规则）。
-   * 与界面串的区别：这些是**日志正文**与**指令失败原因**——界面用
-   * `i18n/locale.tsx` 的 `logText(entry)` / `cmdText(r)` 取值（老档/未改造调用点回退中文原串）。 */
   "core.mining.001": { zh: "未知采集点：{p1}。", en: "Unknown mining site: {p1}." },
   "core.mining.002": { zh: "采集点「{p1}」没有对应的可采集资源数据。", en: "Mining site “{p1}” has no mineable resource data." },
   "core.mining.003": { zh: "采集点「{p1}」需要「深空工业协会」声望 {p2}（累计 {p3}）——多完成悬赏任务攒声望。", en: "Mining site “{p1}” requires Deep Space Industry Association reputation {p2} (total earned {p3}) — complete more bounties to build reputation." },
@@ -1756,12 +1702,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.salvaging.015": { zh: "开始打捞：{p1}（残骸密度 {p2}）。{p3} 已抵达目标空域，立即开始持续打捞（{p4} 台打捞器；满载返航约 {p5} 秒，去程时间已并入返航）。{p6}", en: "Salvaging started: {p1} (wreck density {p2}). {p3} has reached the target area and begins salvaging at once ({p4} salvagers; a full-load return takes about {p5} seconds with the outbound leg folded in).{p6}" },
   "core.salvaging.016": { zh: "已停止打捞（{p1}）。本趟共捞约 {p2} m³ 当量{p3}。", en: "Salvaging stopped ({p1}). This trip recovered about {p2} m³ equivalent{p3}." },
   "core.salvaging.017": { zh: "打捞已随换船结束：{p1} 从「{p2}」自动返航空间站{p3}——约 {p4} 秒后到港。", en: "Salvaging ended with the ship change: {p1} is returning from “{p2}” to the station automatically{p3} — docking in about {p4} seconds." },
-  /* ⟪文案调整 2026-10-02⟫（船长令「**允许你对文案进行调整**」）：本片段是**共享尾巴**，被 `.017`
-   * `.019` `.029` `.042` 四条返航日志当 `p3` 用；原文「（到港整仓卸货）」插进去后与句尾的
-   * 「——约 {p4} 秒后到港」**把「到港」说了两遍** ⇒ 去掉重复的半句，只留"这一趟的货会卸下来"。
-   * 「整仓」在玩家可见文案里只有这一处用，改用本族既有用词（`.014` 满仓…卸货 · `.027` 自动返航卸货 ·
-   * `.035` 已返港并卸货）⇒「卸空货仓」。调用点内联的 `text` 字面量同步改（`mining.ts` ×7 ·
-   * `salvaging.ts` ×8）；台账 = 工作文档 `docs/design/return-log-copy-20261002.md`。 */
   "core.salvaging.018": { zh: "（卸空货仓）", en: " (the hold is emptied)" },
   "core.salvaging.019": { zh: "完好舰体！{p1}。", en: "Intact hull! {p1}." },
   "core.salvaging.020": { zh: "找不到当前舰船，打捞作业已停止。", en: "The piloted ship was not found; the salvage run has stopped." },
@@ -1772,22 +1712,16 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.salvaging.025": { zh: "该星系的敌群情报缺失，打捞作业已停止。", en: "The system's hostile intel is missing; the salvage run has stopped." },
   "core.salvaging.026": { zh: "未找到可用的打捞器，打捞作业已停止。", en: "No usable salvager was found; the salvage run has stopped." },
   "core.salvaging.027": { zh: "货仓装不下下一轮打捞（余 {p1} m³ ／ 每轮 {p2} m³）：自动返航卸货（本趟约 {p3} m³，约 {p4} 秒，去程已并入返航）。", en: "The hold cannot take another salvage round ({p1} m³ free / {p2} m³ per round): returning to unload automatically (this trip about {p3} m³; roughly {p4} seconds, outbound leg folded in)." },
-  /* 玩家舰船残骸（2026-09-26 船长令）：一具残骸最高优先 · 逐件掷概率回收 · 没捞到不落普通残骸 */
   "core.salvaging.030": { zh: "打捞舰船残骸：捞回 {p1} ×{p2}。", en: "Salvaging the ship wreck: recovered {p1} ×{p2}." },
   "core.salvaging.031": { zh: "舰船残骸里捞回了一艘还能修的船：{p1}——已拖回母港入队。", en: "A repairable hull was raised from the wreck: {p1} — towed back to the home port and rejoined the fleet." },
-  /* 插件换黑匣（2026-09-26 船长令）：「玩家回收按插件数量直接回收成黑匣」 */
   "core.salvaging.032": { zh: "舰船残骸里的插件换回了 {p1} ×{p2}。", en: "The plugs in the wreck were traded back for {p1} ×{p2}." },
-  /* 「互斥」类共用条目：整句两条（开采 / 打捞各一条）——占位符对齐是要塞，
-     所以「动词」不做参数（参数里塞 id 要两层渲染，得不偿失） */
   "core.state.001": { zh: "长途运输进行中：中断本趟就拿不到本趟报酬（报酬到站才结）。先到活动栏点「停止运输」，再开采。", en: "Long-haul transport is running: interrupting this trip forfeits its pay (the fee settles on arrival); stop it from the activity bar first, before mining." },
   "core.state.005": { zh: "长途运输进行中：中断本趟就拿不到本趟报酬（报酬到站才结）。先到活动栏点「停止运输」，再打捞。", en: "Long-haul transport is running: interrupting this trip forfeits its pay (the fee settles on arrival); stop it from the activity bar first, before salvaging." },
-  /* ── 共用条目（多文件复用；这类"谁都用"的句子统一放 state 命名空间）── */
   "core.state.006": { zh: "舰队里找不到该舰船，无法执行采矿任务。", en: "That ship is not in the fleet, so the mining task cannot be started." },
   "core.state.007": { zh: "目标星系不在已知航路内。", en: "The target system is not on any known route." },
   "core.state.008": { zh: "重复清剿已停止。", en: "Repeat sweeps stopped." },
   "core.state.009": { zh: "重复清剿已停止（返航中切换驾驶）。", en: "Repeat sweeps stopped (ship changed while returning)." },
   "core.state.023": { zh: "；超出上限的 {p1} 未结算", en: "; the {p1} beyond the cap was not settled" },
-  /* ── shipyard.ts（船坞：命名 / 换船 / 弃船 / 维修 / 仓储 / 锁定）── */
   "core.shipyard.001": { zh: "机库里没有这艘船。", en: "That ship is not in the hangar." },
   "core.shipyard.002": { zh: "该船用的就是默认名。", en: "That ship already uses its default name." },
   "core.shipyard.003": { zh: "船名不能为空。", en: "The ship name cannot be empty." },
@@ -1808,7 +1742,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.shipyard.018": { zh: "已切换到驾驶 {p1}。", en: "Now piloting {p1}." },
   "core.shipyard.019": { zh: "采矿已随换船结束：{p1} 从「{p2}」自动返航空间站{p3}——约 {p4} 秒后到港。", en: "Mining ended with the ship change: {p1} is returning from “{p2}” to the station automatically{p3} — docking in about {p4} seconds." },
   "core.shipyard.020": { zh: "{p1}：{p2} 已损毁，船上的货仓与装备一并遗失。", en: "{p1}: {p2} was destroyed, and its hold and modules were lost with it." },
-  /* 玩家舰船残骸（2026-09-26 船长令）：正常星系损毁 ⇒ 在该星系留一具可打捞的残骸（48 小时） */
   "core.shipyard.033": { zh: "{p1} 的残骸留在「{p2}」——48 小时内可打捞回收部分装备。", en: "The wreck of {p1} remains in “{p2}” — salvageable for 48 hours to recover some of its modules." },
   "core.shipyard.034": { zh: "正在驾驶的就是 {p1}。", en: "You are already flying {p1}." },
   "core.shipyard.035": { zh: "机库里没有 {p1}——先到商店购买，或用舰船蓝图制造一艘。", en: "{p1} is not in the hangar — buy one at the store, or build one from a ship blueprint." },
@@ -1834,7 +1767,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.shipyard.021": { zh: "主控在虫洞里战沉——已由同队的 {p1} 在洞内接任主控。", en: "The command ship was lost inside the wormhole — {p1} from the same team takes over as command." },
   "core.shipyard.022": { zh: "驾驶中的舰船正被 AI 执勤占用——已自动改派驾驶 {p1}。", en: "The piloted ship is tied up by an AI task — {p1} was assigned to pilot instead." },
   "core.shipyard.023": { zh: "舰队里找不到正在驾驶的舰船——已自动改派驾驶 {p1}。", en: "The piloted ship could not be found in the fleet — {p1} was assigned to pilot instead." },
-  // ⟪文案调整 2026-09-30⟫ 船长令改名：沙猫级 → 磷虾级（中英同步）
   "core.shipyard.024": { zh: "协会补助：一艘全新的磷虾级采矿艇已停靠机库（保底舰船；其余舰船正被 AI 执勤占用或已全损）。", en: "Association subsidy: a brand-new Krill-class mining corvette is in the hangar (a fallback ship; the rest are tied up by AI tasks or were lost)." },
   "core.shipyard.025": { zh: "已完成 {p1} 的全面维修（{p2} 信用点），结构/装甲恢复至 100%。", en: "Full repairs on {p1} are done ({p2} credits); hull and armour are back to 100%." },
   "core.shipyard.026": { zh: "自动使用修理组件 ×{p1}（{p2}）：{p3} 结构恢复至 {p4}%、装甲 {p5}%。", en: "Repair kits used automatically ×{p1} ({p2}): {p3} hull restored to {p4}%, armour {p5}%." },
@@ -1844,11 +1776,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.shipyard.030": { zh: "{p1} 已移入舰船仓库（自定义名随之清除）：仓库现有 {p2} 艘。", en: "{p1} was moved into ship storage (its custom name is cleared with it): {p2} stored." },
   "core.shipyard.031": { zh: "{p1} 已移入舰船仓库：仓库现有 {p2} 艘。", en: "{p1} was moved into ship storage: {p2} stored." },
   "core.shipyard.032": { zh: "{p1} 已从舰船仓库转入舰队（机库）。", en: "{p1} moved from ship storage into the fleet (hangar)." },
-  /* ── 共用条目（第二批：工业 / 采矿 / 打捞 多处复用的互斥与前置句）── */
   "core.state.011": { zh: "你已亲自运转着一台精炼炉：先停掉它才能再亲自开一台（AI 核心不受此限）。", en: "You are already running a refinery by hand: stop it before opening another by hand (AI cores are not limited by this)." },
   "core.state.012": { zh: "你已亲自开着一条制造线：先取消或等它完成才能亲自开炉（AI 核心不受此限）。", en: "You are already running a production line yourself: cancel it or wait for it to finish before opening a unit by hand (AI cores are not limited by this)." },
-  /* ── industry.ts（工业：精炼 / 回收 / 拆解 / 丢弃 / 买船 / 逆向）── */
-  /* ── ai.ts（AI 核心：指派 / 任务推进 / 召回 / 战报）── */
   "core.ai.001": { zh: "基础 AI 核心暂未在市场流通。", en: "Basic AI cores are not circulating on the market yet." },
   "core.ai.002": { zh: "挂收购单失败（钱包余额不足或订单无法成立）。", en: "Placing the buy order failed (not enough credits in the wallet, or the order cannot stand)." },
   "core.ai.003": { zh: "主控船由你亲自驾驶，不能指派 AI。", en: "The command ship is flown by you in person and cannot be given to an AI." },
@@ -1882,17 +1811,11 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.ai.031": { zh: "[AI·{p1}] 舰船损毁，AI 任务结束（{p2} 已归还）。", en: "[AI·{p1}] The ship was destroyed and the AI task ended ({p2} returned)." },
   "core.ai.032": { zh: "[AI·{p1}] 耐久过低，已自动回港维修至 100%。", en: "[AI·{p1}] Durability ran too low; it returned to port automatically and was repaired to 100%." },
   "core.ai.033": { zh: "[AI·{p1}] 耐久过低但维修费不足，请尽快手动维修。", en: "[AI·{p1}] Durability is too low but there are not enough credits for repairs — repair it by hand soon." },
-  /* ⚠ AI 战报（`aiWinText` / `aiLoseText`）与精炼炉/回收炉的"停炉"日志是**多段拼接**：
-     单个 textId 只能覆盖首句 ⇒ 其余段会从日志里消失（比留中文更糟），故**暂不接**。
-     待"多段文案"形状（如 `textParts: string[]` 逐段）定了再统一处理，见 `ai.ts` 内的甲案待办注释。 */
-  /* ── 小文件一批（marks / comms / simulation / wormholeAuto / events / firstRewards）── */
   "core.marks.001": { zh: "没有可标记的{p1}（{p2}）。", en: "There is no {p1} to mark ({p2})." },
   "core.comms.001": { zh: "[通讯] 收到 {p1} 的一条消息：《{p2}》——导航「通讯」可查看。", en: "[Comms] A message arrived from {p1}: “{p2}” — open Comms in the navigation to read it." },
   "core.comms.002": { zh: "没有这封通讯（可能已被撤销）。", en: "That message does not exist (it may have been withdrawn)." },
   "core.simulation.001": { zh: "离线归来：已离开 {p1}，开始结算……", en: "Back from offline: away for {p1}, settling now…" },
   "core.simulation.002": { zh: "离线结算完成：推进 {p1}{p2}{p5}{p3}，期间发生 {p4} 条事件。", en: "Offline settlement done: advanced {p1}{p2}{p5}{p3}, with {p4} events along the way." },
-  /* 2026-10-01（技能加速自动续用）：离线汇总的**新增那一槽**（`simulation.ts` 挂 `p5Id` + `p5p1`）
-     —— 槽译文自己带 `{p1}`，渲染层按 `p5p1` 取它（同 `core.state.023` 那条的范式）。 */
   "core.simulation.003": { zh: "；自动续用突触加速剂 ×{p1}", en: "; {p1} Synaptic Accelerant(s) auto-renewed" },
   "core.wormholeAuto.001": { zh: "这一趟自动探索已经结束了。", en: "That automated exploration run is already over." },
   "core.wormholeAuto.003": { zh: "这份报告不在了。", en: "That report is gone." },
@@ -1912,23 +1835,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.wormholeAuto.017": { zh: "主控正在虫洞里：先出洞。", en: "The ship you fly is inside a wormhole: leave first." },
   "core.wormholeAuto.018": { zh: "舰队里没有别的空闲船可以接任主控：先收工或添一条船，再把它编进来。", en: "No other idle ship in the fleet can take over as the main pilot: finish the current job or add a ship, then include it." },
   "core.wormholeAuto.019": { zh: "🛰 自动探索队已召回：没有收益、也没有损伤；那条通道就此关闭。", en: "🛰 The exploration team has been recalled: no gains and no damage; that passage closes." },
-  /**
-   * ⟪2026-10-02 批⑫-补 · 列表槽⟫ **自动探索队的出发/返航两条日志**（本文件原先只剩这两条裸中文）。
-   * 中文原串一字未改；`{p3}`（出发名单）与 `{p1}`/`{p3}`（返航战利品/损伤明细）走**列表槽**：
-   * core 传 `p{n}List`（逐项值）＋ `p{n}ItemId`（逐项模板）＋ `p{n}ItemParams`（逐项参数），
-   * 分隔符由渲染层按语言取 `core.state.043` ⇒ 英文侧不再出现中文顿号。
-   */
   "core.wormholeAuto.020": { zh: "🛰 自动探索队出发：{p1} · {p2} 条舰（{p3}）——约 {p4} 分钟后返航（每次自动探索占 1 枚 AI 核心）。", en: "🛰 Exploration team away: {p1} · {p2} ships ({p3}) — it returns in about {p4} minutes (each automated run takes 1 AI core)." },
   "core.wormholeAuto.021": { zh: "🛰 自动探索队返航：带回 {p1}（已入仓库）{p2}；损伤：{p3}。{p4}{p5} 条舰全部安全返航，1 枚 AI 核心已释放（每次自动探索占 1 枚）——报告在「扫描虫洞」页等你确认。", en: "🛰 Exploration team back: brought {p1} (now in the warehouse){p2}; damage: {p3}.{p4} All {p5} ships made it home safely and 1 AI core was released (each automated run takes 1) — the report is waiting for you on the Scan Wormholes page." },
-  /** 逐项模板（战利品）：`{p1}` = 物品名 · `{p2}` = 数量 */
   "core.wormholeAuto.022": { zh: "{p1} ×{p2}", en: "{p1} ×{p2}" },
-  /** 空态：战利品为空时挂 `p1Id`（**不传 `List`** —— 空数组会把该槽渲成空串） */
   "core.wormholeAuto.023": { zh: "空手而归", en: "nothing but empty hands" },
-  /** AI 核心附注（可选槽 `{p2}`）：`{p1}` = 核心档名（另挂 `p2p1Id` ⇒ 按语言出词）· `{p2}` = 数量 */
   "core.wormholeAuto.024": { zh: "，并带回 {p1} ×{p2}（已直接接入核心库）", en: ", plus {p1} ×{p2} (routed straight to the core vault)" },
-  /** 逐项模板（损伤明细）：`{p1}` = 船名 · `{p2}` = 结构损耗% · `{p3}` = 装甲损耗% */
   "core.wormholeAuto.025": { zh: "{p1}（结构 −{p2}% / 装甲 −{p3}%）", en: "{p1} (hull −{p2}% / armour −{p3}%)" },
-  /** 谜质科技段（可选槽 `{p4}`）：三个系数照实报 */
   "core.wormholeAuto.026": { zh: "谜质科技：残骸线 ×{p1} · 母矿线 ×{p2} · 损伤 ×{p3}。", en: " Enigma tech: wreck line ×{p1} · mother-lode line ×{p2} · damage ×{p3}." },
   "core.events.001": { zh: "✦ {p1}{p2}", en: "✦ {p1}{p2}" },
   "core.events.002": { zh: "（+{p1} 信用点）", en: " (+{p1} credits)" },
@@ -2021,7 +1933,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.events.089": { zh: "黑市商人挂出一件「{p1}」：开价 {p2} 信用点（约为行情价 ×{p3} 的溢价现货），仅存 {p4} 分钟，手慢无——急用免蹲货，不差钱可出手。", en: "A black-market dealer listed one “{p1}”: {p2} credits (a premium of about ×{p3} over the market price), available for only {p4} minutes — first come, first served; pay up if you need it now." },
   "core.events.090": { zh: "神秘买家以 {p1} 信用点的天价求购「{p2}」×1——远高于常态收购价，约 {p3} 分钟内有效。", en: "A mysterious buyer is paying a sky-high {p1} credits for one “{p2}” — far above the usual buy price, valid for about {p3} minutes." },
   "core.firstRewards.001": { zh: "◆ 任务奖励已发放：{p1}。", en: "◆ Task rewards granted: {p1}." },
-  /* ── 第六批：onboarding / matterTech / explore（`未知星系` 两文件复用 ⇒ 归 state 命名空间）── */
   "core.state.024": { zh: "未知星系：{p1}。", en: "Unknown system: {p1}." },
   "core.onboarding.001": { zh: "◆ 重要任务发布「寻找人类」：完成方法未知——立足已稳，该往更深处打听了。", en: "◆ Important task posted, “Find humanity”: how to complete it is unknown — now that you are established, it is time to search further out." },
   "core.onboarding.002": { zh: "当前不在序章演出阶段。", en: "The prologue is not at that stage right now." },
@@ -2044,13 +1955,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.explore.007": { zh: "已召回扫描艇：对「{p1}」的扫描尚未产生进度，随时可以重发。", en: "Scan craft recalled: the scan of “{p1}” had made no progress, so it can be sent again at any time." },
   "core.explore.008": { zh: "✦ 扫描完成：「{p1}」的情报已录入星图——航线、矿带与悬赏信息全部解锁（扫描艇已收回）。", en: "✦ Scan complete: intel on “{p1}” is now on the star map — routes, belts and bounty information are all unlocked (the scan craft has been recalled)." },
   "core.explore.009": { zh: "✦ 扫描完成：「{p1}」的补扫完成，没有发现新的信息（扫描艇已收回）。", en: "✦ Scan complete: the follow-up scan of “{p1}” turned up nothing new (the scan craft has been recalled)." },
-  /* ── 第七批：state.ts（开局文案）+ wormholeScan.ts ── */
   "core.state.025": { zh: "舰载系统苏醒：隐秘泊位·母港。", en: "Ship systems come online: hidden berth, home port." },
   "core.state.026": { zh: "自检异常：船体装甲/结构受损（80%），乘员生命信号——无。记忆档案损坏。", en: "Self-check anomaly: hull armour and structure are damaged (80%), no crew life signs, and the memory archive is corrupted." },
-  // ⟪文案调整 2026-09-30⟫ 船长令改名：沙猫级 → 磷虾级（中英同步）
   "core.state.027": { zh: "初始资金 0 信用点：一切从采集第一舱原矿开始。鲣鱼级护卫舰（待修）与磷虾级采矿艇同在机库；装备库与弹药库为空——首门炮台与弹药将在完成协会试炼后解锁。", en: "Starting funds: 0 credits — everything begins with the first hold of ore. A Bonito-class frigate (awaiting repairs) and a Krill-class mining corvette share the hangar; module storage and the ammo store are empty — your first turret and ammunition unlock when the Association trial is done." },
   "core.state.028": { zh: "欢迎加入「深空工业协会」。", en: "Welcome to the Deep Space Industry Association." },
-  // ⟪文案调整 2026-09-30⟫ 船长令改名：沙猫级 → 磷虾级（中英同步）
   "core.state.029": { zh: "初始资金 {p1} 信用点已到账；磷虾级采矿艇已停靠机库，另有鲣鱼级护卫舰待命（装备库含轻型炮台 MK1，仓库配三型通用弹各 60 发，可直接体验远征战斗）。", en: "Starting funds of {p1} credits have landed; a Krill-class mining corvette is in the hangar and a Bonito-class frigate stands by (module storage holds a Light Turret MK1 and the warehouse carries 60 rounds of each of the three general ammo types, so you can try expedition combat right away)." },
   "core.state.030": { zh: "星图迷雾已开启：母港已探明，周边星系等待扫描探索——去悬赏列表接任务，或对星图上的「未知信号」执行扫描。", en: "The star map fog has lifted: the home port is known and nearby systems await scanning — take a job from the bounty list, or scan an Unknown Signal on the star map." },
   "core.wormholeScan.001": { zh: "扫描已经在跑。", en: "A scan is already running." },
@@ -2063,12 +1971,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.wormholeScan.008": { zh: "这一处正在自动探索中：先召回那一趟，再放弃。", en: "That one is on an automated exploration run: recall that run before abandoning it." },
   "core.wormholeScan.009": { zh: "🛰 已放弃一处虫洞：{p1}（那处通道就此关闭）。", en: "🛰 Abandoned a wormhole: {p1} (that passage closes here)." },
   "core.wormholeScan.010": { zh: "🛰 已标记 {p1} 处虫洞坐标（未探索）——到「扫描虫洞」页决定何时探索。", en: "🛰 Marked {p1} wormhole coordinates (unexplored) — decide when to explore them on the Wormhole Scan page." },
-  /* ── 本地化批二（2026-09-27 · 三号）：扫描闸门的四条拒因改走 id（中文措辞照抄，未改文案）── */
   "core.wormholeScan.011": { zh: "扫描虫洞尚未解锁：需要「深空工业协会」声望 {p1}（累计 {p2}）——先去做协会的委托攒声望。", en: "Wormhole scanning is not unlocked yet: it needs Deep Space Industry Association reputation {p1} (total earned {p2}) — take Association commissions to build reputation." },
   "core.wormholeScan.012": { zh: "已经在虫洞里了：先完成或撤离这一趟。", en: "You are already inside a wormhole: finish or withdraw from this run first." },
   "core.wormholeScan.013": { zh: "遭遇战未决：先处理完当前遭遇。", en: "An encounter is unresolved: settle the current encounter first." },
   "core.wormholeScan.014": { zh: "已囤积 {p1} 处未探索的虫洞：先去探索掉一处再扫。", en: "Already {p1} unexplored wormholes stockpiled: explore one before scanning again." },
-  /* ── 第八批：encounters.ts / station.ts ── */
   "core.encounters.001": { zh: "⚠ [AI·{p1}] {p2}——已中止任务召回回港待命（请维修后再派；此状态下无法再派任务）。", en: "⚠ [AI·{p1}] {p2} — the task was aborted and the ship recalled to stand by in port (repair it before assigning more; it cannot take tasks in this state)." },
   "core.encounters.002": { zh: "⚠ 遭遇战后船体结构濒临崩溃（耐久仅剩 5%）——请尽快返港维修。", en: "⚠ After the encounter the hull is on the brink of collapse (durability down to 5%) — return to port for repairs as soon as you can." },
   "core.encounters.003": { zh: "当前没有可应战的遭遇。", en: "There is no encounter to engage." },
@@ -2077,82 +1983,39 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.encounters.006": { zh: "已应战：遭遇战打响（引擎自动推演，战报稍后）。", en: "Engaged: the encounter has begun (the engine resolves it automatically and the report follows)." },
   "core.encounters.007": { zh: "当前没有可脱离的遭遇。", en: "There is no encounter to break away from." },
   "core.encounters.008": { zh: "⚠ 入侵遭遇（{p1}·「{p2}」）：{p3} 遭该编队伏击——可「迎战」或「快速脱离」；60 秒未处置将自动脱离。", en: "⚠ Invasion encounter ({p1} · “{p2}”): {p3} was ambushed by that formation — you can ⚔ Engage or Break away; in 60 seconds it disengages automatically." },
-  // 2026-09-25：旗舰战的"主动脱离"（战斗画面里的撤退按钮）——三条新文案
   "core.encounters.009": { zh: "当前不在交火中，无法脱离。", en: "You are not in a fight right now, so you cannot break away." },
   "core.encounters.010": { zh: "战斗已分出胜负，正在结算——无法脱离。", en: "The fight is already decided and settling — you cannot break away." },
   "core.encounters.011": { zh: "⚔ 主动脱离（{p1}·{p2}）：{p3} 收手退出交火（现 装甲 {p4}% / 结构 {p5}%）{p6}。", en: "⚔ Broke away voluntarily ({p1} · {p2}): {p3} disengaged from the fight (armour {p4}% / hull {p5}%){p6}." },
-  // 2026-09-25 船长令：入侵母舰的「支援舰船召唤装置」——每 60 秒把当前波已阵亡的一艘敌舰满血复活入场
   "core.combat.001": { zh: "⚔ 敌方支援舰船入场：{p1}（第 {p2} 次支援）", en: "⚔ An enemy support ship has arrived: {p1} (support #{p2})" },
-  /* ── 损伤管制装置（2026-09-25 船长令：结构首次被打空时启动，锁定 1 秒，消耗损管修理组件 ×1）── */
   "core.combat.002": { zh: "✦ 损伤管制装置启动：结构锁定在 1 点、持续 1 秒（消耗损管修理组件 ×1）。", en: "✦ Damage Control Unit engaged: structure locked at 1 for 1 second (spent 1 Damage Control Repair Kit)." },
   "core.combat.003": { zh: "⚠ 损伤管制装置未能启动：损管修理组件不足。", en: "⚠ Damage Control Unit could not engage: no Damage Control Repair Kit available." },
-  // ⚠ 战报尾巴那一段（`combat.dcUsageText`）与「船体维修装置」那条同式：报告正文是**拼接串**，
-  //   不走 id 渲染 ⇒ 这里**不再留**废弃 id（原来加过 `core.combat.004`，未接线，已删）。
-  //   ⚠ **2026-09-30 起 `core.combat.004` 重新有主**：墨潮捕获网钉住 **C 族**时那条战报
-  //   （船长令「网钉住 C 族，按族改一句」——C 族冲锋不吃网的「关推进器」，故该句不写"推进器熄火"）。
-  //   槽 3 的减速那句自己带模板：`p3Id` 选 `core.combat.005`（机动减半）/ `core.combat.006`（机动 ×N）。
-  /* ⟪文案调整 2026-10-01⟫ 船长报障「不应该直接用X族」：本句中文原写 **「C 族的冲锋…」**（数据侧族代号），
-     英文却已用正式族名 ⇒ 中英不一致、且族代号进了玩家可见范围。现中文改正式名「异形生物」，
-     英文由 `Aberrant` 改为权威族名表（`WRECK_FAMILY_EN.c` / `core.weekend.021`）的 **`Alien`**。 */
   "core.combat.004": { zh: "{p1} 张开墨潮捕获网，钉住了 {p2}：{p3}、闪避失效，异形生物的冲锋不受网的推进器压制——击沉目标或击沉网手才能解除。", en: "{p1} casts the Ink Tide capture web, pinning {p2}: {p3}, evasion disabled; Alien charges are unaffected by the thruster lockout — sink the target or the caster to break free." },
   "core.combat.005": { zh: "机动减半", en: "speed halved" },
   "core.combat.006": { zh: "机动 ×{p1}", en: "speed ×{p1}" },
-  /**
-   * 加力推进「点火周期」那截（英文残留批 5 · 2026-09-30）：喂给 `ui.FitPage.145` 的 `{p2}` 槽，
-   * 唯一来源 = core 的 `labels.thrusterCycleNote`（`{ text, textId, params }`）。
-   *
-   * ⚠ **2026-09-30 合入时撞号改 id**：本批与二号那批**同一天各写了一条 `core.combat.004`**
-   * （本条 vs 墨潮捕获网战报），两边各自跑绿、文本合并没有冲突，只有 `typecheck` 的 TS1117
-   * 才把它拎出来（`l10n:check` 当时没查重键）。裁决：本条的 id 让给**已进测试与工作文档**的那条
-   * （`web-immunity-20260930.test.ts` 断言 + `economy-audit-20260928.md` 台账都写的是 004），
-   * 本条改用当时空闲的 `core.combat.007`（只被 `labels.ts` 引用一处，无测试断言）。
-   */
   "core.combat.007": { zh: "{p1} 秒点火 / {p2} 秒冷却，开场即点火", en: "{p1} s burn / {p2} s cooldown, ignites as the fight opens" },
   "core.combat.008": { zh: "劫掠捕获网已失效：{p1} 摆脱了束缚（发动者已被击沉）。", en: "The raider snare net has failed: {p1} broke free (the caster was sunk)." },
   "core.combat.009": { zh: "劫掠捕获网已失效：{p1} 摆脱了束缚（距离超过 {p2} 米）。", en: "The raider snare net has failed: {p1} broke free (the range opened past {p2} metres)." },
   "core.combat.010": { zh: "墨潮捕获网已失效：{p1} 挣脱了束缚（网手已被击沉）。", en: "The ink capture web has failed: {p1} tore free (the caster was sunk)." },
   "core.combat.011": { zh: "墨潮捕获网松开：{p1} 已被击沉，{p2} 的网开始冷却。", en: "The ink capture web released: {p1} was sunk, and {p2}’s web goes on cooldown." },
-  // ⟪文案调整 2026-10-07⟫ 导弹与静滞观瞄各用独立提示；增幅读取实际挂载参数。
   "core.combat.012": { zh: "巨构齐射观瞄启动：导弹残段最远射程 +{p1}%", en: "Megastructure Salvo Optics activated: Missile Hulk maximum range +{p1}%" },
   "core.combat.013": { zh: "静滞阵列解除限幅：静滞卫舰炮台射程 +{p1}%", en: "Stasis array limiters released: Stasis Guard Ship gun range +{p1}%" },
-  // 2026-09-25 入侵里程碑入账日志（夺回 / 全部夺回 / 旗舰击沉）；普通进度推进不记（面板有进度条）
-  // ⟪文案调整 2026-09-29⟫ 船长令「夺回奖按投入比例缩水」（乙案 · 全清乘平均参与度）：夺回那一刻算不出
-  //   最终金额（= 全额 × 玩家在该处的最终投入比例）⇒ 两条日志去掉金额与 `p2/p3` 两个参数，只留规格
-  //   （数额到结算面板/结算通讯里逐处列明）。台账见工作文档 reclaim-share-20260929。
   "core.weekend.001": { zh: "✦ 夺回「{p1}」：夺回奖励按玩家在该星系的投入比例结算，活动结束时统一发放。", en: "✦ Reclaimed “{p1}”: the reclaim reward is settled by the player's share of that system and paid out when the invasion ends." },
   "core.weekend.002": { zh: "✦ 全部占领区夺回：「{p1}」是最后一处 —— 夺回奖励与全清额外奖励按玩家的投入比例结算，活动结束时统一发放。", en: "✦ All occupied systems reclaimed: “{p1}” was the last one — the reclaim reward and the all-clear bonus are settled by the player's contribution and paid out when the invasion ends." },
-  // ⟪文案调整 2026-09-27⟫ 船长令「只记录作为判定，根据不同情况改变措辞」：原「✦ 入侵旗舰击沉：母舰血量归零 —— 战利品已存入物品仓库（…）」⇒ 点明"玩家击沉"（见工作文档 invasion-kill-roll / flagship-kill-record 的文案调整台账）
   "core.weekend.003": { zh: "✦ 玩家击沉入侵旗舰：母舰血量归零 —— 旗舰黑匣 ×1 ＋ 稀有残骸 ×{p1} 已存入物品仓库。", en: "✦ Invasion flagship sunk by the player: the mothership is down to zero — flagship black box ×1 + rare wrecks ×{p1} are stored in your item warehouse." },
-  // 2026-09-25 船长令改黑匣爆率（>50% 输出抢到最后一下必爆，否则按占比衰减到 10%；没抢到最后一下 25%×占比）
-  // ⇒ 原来的"击沉必掉黑匣"不再成立，日志/结束语按结果分两条。
-  // ⟪文案调整 2026-09-27⟫ 船长令同上：未爆那一条补「输出占比 {p2}% 未过半」（原句只有"旗舰黑匣未爆"）
   "core.weekend.016": { zh: "✦ 玩家击沉入侵旗舰：母舰血量归零 —— 稀有残骸 ×{p1} 已存入物品仓库；玩家输出占比 {p2}% 未过半，旗舰黑匣未爆。", en: "✦ Invasion flagship sunk by the player: the mothership is down to zero — rare wrecks ×{p1} are stored in your item warehouse; the player's damage share was {p2}%, under half, so no flagship black box dropped." },
-  // 2026-09-26 船长批「甲」：入库失败（战利品未能落地）时留一条 warn —— 台账同时不记「已获得」，账实一致
   "core.weekend.038": { zh: "⚠ 入侵战利品未能入库：本场奖励未发放。", en: "⚠ Invasion spoils could not be stored: this battle's rewards were not granted." },
-  // 2026-09-25 入侵两封通讯（船长给稿 · 经办人按"不出现括号备注"润色；每场覆盖同一 id）
-  // ⚠ 段内不留括号备注：奖励清单是**清单里的一项**（结构化存下、界面按语言拼串后填进 {p3}）
   "core.weekend.010": { zh: "航线警告：{p1}入侵", en: "Route warning: {p1} invasion" },
-  /* ⟪文案调整 2026-10-01⟫ 船长令「你需要对原通讯文也做修改，使其衔接怀疑衔接的更为自然」＋裁定「按 B」
-     ⇒ 实况段改成能接住质问的承接口气（删侦查叙述与「就在刚刚」，战况四件事一件不少）；
-     质问段另起一条 `core.weekend.044`（只在高安点火那场出现在最前面） */
   "core.weekend.011": { zh: "目前，{p1}舰队已进入 {p2} 处星系，核心位于「{p3}」。占领范围已在星图标明。非战斗作业请避开这些星系，原有安全等级不代表入侵期间仍然安全。", en: "At present, {p1} fleets have entered {p2} systems, with their core at “{p3}”. The occupied area is marked on the star map. Keep non-combat work clear of these systems; their usual security rating does not ensure safety during the invasion." },
-  /* 2026-10-01 高安点火那场的怀疑首段（船长口述要点：开头怀疑玩家 · 文中说清扣了声望；措辞由船长改成
-     "只发现舰船信号"式怀疑，不写"登记在你名下"这种确凿证据） */
   "core.weekend.044": { zh: "飞行员，这次入侵与高安空域启动的信号发射器有关。发射前后，附近只检测到你的舰船信号，协会有理由怀疑你参与其中。已按规定扣除 {p4} 点可支配声望，调查仍会继续。", en: "Pilot, this invasion is linked to a Signal Beacon activated in high-security space. Yours was the only ship signal detected nearby around the launch, giving the Association reason to suspect your involvement. As prescribed, {p4} spendable standing has been deducted. The investigation continues." },
   "core.weekend.012": { zh: "清缴行动正在进行。有作战准备的飞行员可以参与，出击前先查看各星系敌情。协会按贡献结算报酬，在本场行动结束后统一发放。", en: "The clearance operation is underway. Pilots prepared for combat may join; check each system's enemy information before dispatching. The Association settles payment by contribution and pays it out when this operation ends." },
   "core.weekend.013": { zh: "航线通报：{p1}入侵结束", en: "Route bulletin: {p1} invasion ended" },
   "core.weekend.014": { zh: "{p1}本场入侵已结束，「{p2}」附近解除占领。你的清缴报酬为 {p3}，已按记录发放；实物在物品仓库，信用点进钱包。各项明细可在结算记录查看。", en: "This {p1} invasion has ended, and the systems near “{p2}” are no longer occupied. Your recorded clearance payment, {p3}, has been issued: items to Item Storage and credits to the wallet. Details are available in the settlement record." },
   "core.weekend.015": { zh: "{p1}本场入侵已结束，「{p2}」附近解除占领。本场没有你的可结算奖励记录，未发放报酬。详细战况可查看结算记录。", en: "This {p1} invasion has ended, and the systems near “{p2}” are no longer occupied. No payable reward is recorded for you in this operation, so no payment was issued. See the settlement record for details." },
-  // 入侵族的**全称**（通讯正文用；族字母是简称；中文口径与残骸族名同源，英文同 WRECK_FAMILY_EN）
   "core.weekend.020": { zh: "海盗", en: "Pirate" },
   "core.weekend.021": { zh: "异形生物", en: "Alien" },
   "core.weekend.022": { zh: "鱿鱼亡军", en: "Deadarmy" },
   "core.weekend.023": { zh: "墨潮帮", en: "Ink Tide" },
-  /* R 族（光环 · Corona Systems · 2026-10-01 船长令建族）—— 名字取自既有定名口径
-     （`l10n.ts` 的 `WRECK_FAMILY_EN.r` ＋ `ui.Handbook.381`），**不另立新名**。 */
   "core.weekend.024": { zh: "光环", en: "Corona Systems" },
-  /* 未知族的**中性兜底**（2026-10-01 实障：R 族进池而族名表漏登记 ⇒ 通讯标题印出内部代号「R 族」）。
-     加族时若忘了登记族名，界面上读到的是这一句，而不是开发字眼。 */
   "core.weekend.025": { zh: "未知势力", en: "Unknown faction" },
   "core.weekend.026": { zh: "守墓者", en: "Gravekeeper" },
   "core.station.001": { zh: "未知建站点：{p1}。", en: "Unknown construction site: {p1}." },
@@ -2168,8 +2031,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.station.011": { zh: "抵达「{p1}」——协会的建站工地就在这里。", en: "Arrived at “{p1}” — the Association's construction site is right here." },
   "core.station.012": { zh: "[通讯] {p1}：{p2}", en: "[Comms] {p1}: {p2}" },
   "core.station.013": { zh: "舰船已抵达「{p1}」——协会的建站工地就在这里。可现场提交建材；也可停靠空间站后一键「前往工地交付」。副站建成前不提供停靠与站内功能，建成后并入基地网络并开放泊位与全部服务。", en: "The ship has reached “{p1}” — the Association's construction site is right here. Materials can be handed in on the spot, or you can dock at a station and use Deliver to Site in one click. Before an outpost is finished it offers no docking or station services; once complete it joins the base network and opens berths and all services." },
-  /* ═══ 跃迁燃料链（**2026-09-29 船长令**）：实验室 · 超空间折跃燃料 ═══
-     解锁门槛 = 首座空间站建成；燃料按"原返航秒数"消耗、返航速度 ×10；开关默认全关。 */
   "core.station.014": { zh: "⌂ 首座空间站并网：工业页「实验室」已解锁 —— 可合成超空间折跃燃料；舰船页「跃迁燃料」页可设置哪些活动使用燃料。", en: "⌂ First station on the grid: the Industry page's Laboratory is unlocked — synthesize Hyperspace Jump Fuel there, and set which activities burn fuel on the Ship page's Jump Fuel tab." },
   "core.jumpFuel.001": { zh: "✦ 跃迁燃料点火：本趟返航 {p1} → {p2}（消耗 {p3} 单位，余 {p4}）。", en: "✦ Jump fuel ignited: this return leg goes from {p1} to {p2} (burned {p3} units, {p4} left)." },
   "core.jumpFuel.002": { zh: "跃迁燃料需在首座空间站建成后使用。", en: "Jump fuel becomes available once the first station is on the grid." },
@@ -2182,24 +2043,16 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.lab.014": { zh: "{p1} 库存不足，无法接入实验室。", en: "Not enough {p1} in store to run the Laboratory." },
   "core.lab.015": { zh: "这条实验线已经停了。", en: "That laboratory line has already stopped." },
   "core.lab.016": { zh: "实验室运转异常：配方记录缺失，该线已停（AI 核心已归还）。", en: "Laboratory malfunction: the recipe record is missing, so the line stopped (AI core returned)." },
-  // ⟪文案调整 2026-09-30⟫ 船长报障「燃料生产并不受上限的影响」⇒ 产物封顶：放不下下一批就停线 / 拒起线
   "core.lab.017": { zh: "实验室停线：{p1} 的仓库余量放不下下一批（{p2} / {p3} 单位，已完成 {p4} 批）。", en: "Laboratory line halted: the store cannot fit another batch of {p1} ({p2} / {p3} units; {p4} batches finished)." },
   "core.lab.018": { zh: "{p1} 的仓库余量放不下下一批（{p2} / {p3} 单位）：先消耗或卖出再开工。", en: "The store cannot fit another batch of {p1} ({p2} / {p3} units) — spend or sell some first." },
-  /* 2026-09-30 船长令（T5「解锁新的燃料配方」）：配方被谜质科技锁着时起线被拒 */
   "core.lab.019": { zh: "「{p1}」需要先在扫描虫洞的谜质科技里研究对应科技。", en: "\"{p1}\" requires the matching Matter Tech research under Wormhole Scanning first." },
-  /**
-   * **实验室改成"组装机型"后的日志与拒绝文案**（**2026-10-01 船长令**：「实验室本质上也是一个组装机，
-   * 建议按照组装机的来」⇒ 一线一批 · 开工整批扣料 · 只吃物品仓库 · 停机退料 · 卡片级循环开关）。
-   */
   "core.lab.020": { zh: "没有找到这张配方卡（记录缺失）。", en: "That recipe card was not found (record missing)." },
   "core.lab.021": { zh: "实验室停线：{p1} 本批的料已退回物品仓库。", en: "Laboratory line stopped: this batch's materials for {p1} went back to item storage." },
   "core.lab.022": { zh: "实验室停线：{p1}（本批没有已扣的料）。", en: "Laboratory line stopped: {p1} (no materials were held for this batch)." },
   "core.lab.023": { zh: "实验室出料：{p1} ×{p2} {p3} 已放入物品仓库。", en: "Laboratory output: {p1} ×{p2} {p3} went into item storage." },
   "core.lab.024": { zh: "循环实验停止：{p1}——{p2}（本配方合计 {p3} 批）。", en: "Repeat runs stopped: {p1} — {p2} ({p3} batches on this recipe)." },
   "ui.labelsText.073": { zh: "道具", en: "Consumables" },
-  // 2026-09-30 船长令（上限批）：技能书「实验室」——四条燃料技能的书名（`b-lab`）
   "ui.labelsText.074": { zh: "实验室", en: "Laboratory" },
-  /* 实验室子页（**2026-09-29 船长令**）：工业页第 5 个子页的卡面文案 */
   "ui.lab.001": { zh: "实验室", en: "Laboratory" },
   "ui.lab.003": { zh: "每批产出", en: "Output per batch" },
   "ui.lab.004": { zh: "每批工期", en: "Batch time" },
@@ -2221,25 +2074,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.lab.021": { zh: "材料不足一批：先集齐投料。", en: "Not enough material for one batch — gather the feedstock first." },
   "ui.lab.022": { zh: "用核心开工", en: "Start with core" },
   "ui.lab.023": { zh: "查看行情", en: "View market" },
-  /* 2026-09-30 船长令（T5「解锁新的燃料配方」）：配方被谜质科技锁着时，卡片提示与按钮标题都用它 */
   "ui.lab.025": { zh: "需先在谜质科技研究「{p1}」", en: "Requires the Matter Tech research \"{p1}\"" },
   "ui.lab.026": { zh: "未解锁", en: "Locked" },
-  /* ⟪文案调整 2026-09-30⟫ 船长报障「两张新配方卡片的说明还是燃料那套」：实验室面板的**通用**说明
-     （原来面板/卡片复用了燃料专用的 `ui.lab.010` / `ui.lab.017`；**每张配方卡片的说明改取产出物自己的 description**） */
   "ui.lab.024": { zh: "实验室：按配方投入材料，到点产出成品（与精炼炉共用主控工作位）", en: "Laboratory: feed a recipe's materials and collect the finished product (shares the pilot work slot with the refinery)" },
-  /* 「去弄料」跳转（**2026-09-30 船长令**：「实验室的卡牌没有参考其他工业页面的卡牌添加跳转吗」）——
-     与组装机卡那颗「缺料」同一条链：有精炼源⇒切精炼炉并高亮矿石卡 · 造得出⇒切组装机 · 都不行⇒市场行情 */
   "ui.lab.028": { zh: "去弄料", en: "Go get materials" },
   "ui.lab.029": { zh: "去弄料：缺 {p1}——跳到能弄到它的地方", en: "Go get materials: {p1} is short — jump to where it comes from" },
   "ui.lab.030": { zh: "去弄料：看看第一味投料从哪来", en: "Go get materials: see where the first ingredient comes from" },
-  /**
-   * **实验室「循环实验」**（**2026-10-01 船长令**：「实验室本质上也是一个组装机，建议按照组装机的来」⇒
-   * 一线一批，连续生产靠卡片级循环开关）。
-   *
-   * ⚠ 与组装机那一套（`ui.Industry.055~063` / `.112` / `.113`）**结构照抄、名词按机器改**：
-   * 通用词（`目标` / `已产` / `已停线：` / `（当前 {p1} 条）` / `关闭后·打开后`）**直接复用**，
-   * 带机器名词的（「制造线」「蓝图」「件」）**另立本组 id**——实验室是配方、单位是**批**。
-   */
   "ui.lab.031": { zh: "循环实验", en: "Repeat runs" },
   "ui.lab.032": {
     zh: "循环实验：本配方全部实验线完成一批后自动续做同一配方（含主控亲自那条；劳动者/核心保持占用）；{p1}本配方在跑的线完成当前批即止",
@@ -2251,9 +2091,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   },
   "ui.lab.034": { zh: "批", en: "batches" },
   "ui.lab.035": { zh: "作用于本配方全部实验线", en: "Applies to every laboratory line on this recipe" },
-  /** 运行行读数：这一批的产出单位数（**2026-10-01**：一线一批后不再显示"线内已完成批数"） */
   "ui.lab.036": { zh: "每批 {p1} 单位", en: "{p1} units per batch" },
-  /* 舰船页「跃迁燃料」子页（**2026-09-29 船长令**）：001~004 = 四个活动名（`JUMP_FUEL_ACTIVITY_TEXT_ID`） */
   "ui.jumpFuel.001": { zh: "采矿返航", en: "Mining returns" },
   "ui.jumpFuel.002": { zh: "打捞返航", en: "Salvage returns" },
   "ui.jumpFuel.003": { zh: "悬赏与远征返航", en: "Bounty and expedition returns" },
@@ -2261,48 +2099,35 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.jumpFuel.010": { zh: "跃迁燃料", en: "Jump Fuel" },
   "ui.jumpFuel.011": { zh: "查看剩余燃料与设置哪些活动使用燃料", en: "Check remaining fuel and pick which activities burn it" },
   "ui.jumpFuel.012": { zh: "剩余燃料", en: "Fuel in store" },
-  // ⟪文案调整 2026-09-30⟫ 删：`ui.jumpFuel.013`（「单位」）——船长报障「'单位'还重复出现」：
-  //   主读数模板 `ui.jumpFuel.019` 已带「单位」，页面又在后面跟了一枚"单位"⇒ 删掉这一条。
   "ui.jumpFuel.014": { zh: "每 1 单位燃料抵扣 1 秒返航时长（按返航本来要飞的时间扣），返航速度提升至十倍；每趟返航开始时扣一次，不足则不加速也不消耗。", en: "Each unit of fuel covers one second of return time (charged against the time the trip would have taken) and raises return speed tenfold. It burns once at the start of each return leg; if there is not enough, the leg simply runs unboosted and nothing is spent." },
   "ui.jumpFuel.015": { zh: "跃迁燃料需在首座空间站建成后使用。", en: "Jump fuel becomes available once the first station is on the grid." },
   "ui.jumpFuel.016": { zh: "该活动返航时使用燃料", en: "burn fuel on this activity's returns" },
   "ui.jumpFuel.017": { zh: "前往实验室", en: "Go to Laboratory" },
   "ui.jumpFuel.018": { zh: "仓库里没有燃料：去实验室合成。", en: "No fuel in store — synthesize it in the Laboratory." },
-  /* ⟪文案调整 2026-09-30⟫ 船长令：读数改成「仓库量 / 上限 单位」，删掉"≈N 趟"与"一趟长途"刻度说明 */
   "ui.jumpFuel.019": { zh: "{p1} / {p2} 单位", en: "{p1} / {p2} units" },
   "ui.jumpFuel.020": { zh: "{p1} 单位/时", en: "{p1} units/h" },
   "ui.jumpFuel.021": { zh: "未开工", en: "Idle" },
   "ui.jumpFuel.022": { zh: "已满", en: "Full" },
-  // ⟪文案调整 2026-09-30⟫ 删：`ui.jumpFuel.023`（「上限 {p1} 单位」）——船长报障「上限 6000 单位出现两次」：
-  //   主读数已经是「仓库量 / 上限 单位」，那枚上限 chip 是第二遍 ⇒ 连 chip 一起删。
   "ui.jumpFuel.024": { zh: "实验室未解锁", en: "Laboratory locked" },
   "ui.jumpFuel.025": { zh: "燃料只存于物品仓库（普通舰船货仓无法装入）", en: "Fuel is stored in the item warehouse only (ordinary holds cannot take it)" },
   "ui.jumpFuel.026": { zh: "在产速率 = 当前在跑的实验线合计产出（单位/时）；仓库放不下下一批时实验室停线。", en: "Production rate is the combined output of the laboratory lines running now (units/h); a line halts when the store cannot fit another batch." },
-  /* 实验室后续内容（**2026-09-30 船长令**「信号发射器和技能加速剂」）：道具「使用」动作的文案 */
   "core.consumable.001": { zh: "仓库里没有突触加速剂 MK1。", en: "There is no Synaptic Accelerant MK1 in store." },
   "core.consumable.002": { zh: "突触加速剂正在生效中（还剩 {p1} 分钟）：同一时间内只能生效一剂。", en: "Synaptic Accelerant MK1 is active ({p1} minutes left): only one dose can be active at a time." },
   "core.consumable.003": { zh: "✦ 突触加速剂生效：未来 {p1} 小时内技能训练时长减半。", en: "✦ Synaptic Accelerant MK1 active: skill-training time is halved for the next {p1} hours." },
-  /* 信号发射器（第 2 批）：可选入侵势力列表 ＋ 使用/拒绝文案 */
-  /* ⟪文案调整 2026-10-01⟫ 船长报障「不应该直接用X族」：原「墨潮帮（H 族）」把数据侧族代号写进了
-     玩家可见名（英文 "family H" 同款），且英文名与权威族名表（`core.weekend.023` = `Ink Tide`）
-     不一致 ⇒ 两侧都只印正式名（这条是信号发射器的可选入侵势力名，界面按本 id 渲染）。 */
   "ui.consumable.002": { zh: "墨潮帮", en: "Ink Tide" },
   "core.consumable.004": { zh: "仓库里没有信号发射器。", en: "There is no Signal Beacon in store." },
   "core.consumable.005": { zh: "已经有一场入侵在进行中：等它结束再用信号发射器。", en: "An invasion is already under way — wait until it ends before using a Signal Beacon." },
   "core.consumable.006": { zh: "未知的入侵势力：{p1}。", en: "Unknown invading faction: {p1}." },
   "core.consumable.007": { zh: "当前没有可入侵的目标星系。", en: "There is no system available to invade right now." },
   "core.consumable.008": { zh: "✦ 信号发射器已启动：入侵舰队正在逼近「{p1}」（第 {p2} 场）。", en: "✦ Signal Beacon lit: an invasion fleet is closing on “{p1}” (event #{p2})." },
-  /* 2026-09-30 船长裁定「选择了星系后是固定」⇒ 指定星系那条路要给"这个星系不合资格"一个玩家可见的理由 */
   "core.consumable.009": {
     zh: "「{p1}」不能作为入侵目标：只有已探索、非高安、且尚未建成副站的星系可以作为目标。",
     en: "“{p1}” cannot be an invasion target: only explored, non-high-sec systems without a completed outpost qualify.",
   },
-  /* 2026-09-30 船长令：「新的限制，信号发射器不可以在有空间站的地方使用。」 */
   "core.consumable.010": {
     zh: "不能在空间站所在地使用信号发射器：先把船开到没有空间站的星系再启动。",
     en: "A Signal Beacon cannot be lit where a station is: fly to a system without one first.",
   },
-  /* 2026-09-30 船长令：在高安使用要二次警告 + 扣声望（「按你推荐来」＝扣可支配 10 点、不足则拒） */
   "core.consumable.011": {
     zh: "在高安启动信号发射器要付 {p1} 点声望：当前可支配声望不够。",
     en: "Lighting a Signal Beacon in high-sec costs {p1} standing, and you do not have enough spendable standing.",
@@ -2311,10 +2136,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
     zh: "⚠ 在「{p1}」启动信号发射器：协会扣了 {p2} 点声望。",
     en: "⚠ Signal Beacon lit at “{p1}”: the Association docked {p2} standing.",
   },
-  /* ── 技能加速「自动续用」（**2026-10-01 船长令**：「给技能加速页面添加一个循环使用的开关。当当前加速
-     效果过时时，自动使用相同效果的技能加速消耗品，离线期间也一样」）──
-     013 = 在线逐枚补用的日志 · 015 = 没料时自动关掉开关的提示 · 016 = 没料时想打开开关的当场拒绝
-     ⚠ **离线汇总那一槽不在这里** —— 它是 `core.simulation.003`（与离线那句同域，见该处注释）。 */
   "core.consumable.013": {
     zh: "✦ 突触加速剂 MK1自动续用：接下来 {p1} 小时训练时长继续减半。",
     en: "✦ Synaptic Accelerant MK1 auto-renewed: skill training time stays halved for another {p1} hours.",
@@ -2329,11 +2150,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   },
   "ui.ItemsPage.057": { zh: "使用：主动诱发一次入侵（目标按入侵默认规则抽取 · 只能在没有入侵时使用 · 消耗 1 枚）", en: "Use: provoke an invasion (the target is drawn by the regular invasion trigger; only while no invasion is running; consumes one)" },
   "ui.ItemsPage.058": { zh: "信号发射器已启动：入侵舰队正在逼近。", en: "Signal Beacon lit: an invasion fleet is closing in." },
-  /* 活动窗口的突触加速剂读数（2026-09-30 船长令：放进活动窗口 · 图标带倍率） */
   "ui.ActivityBar.066": { zh: "技能加速 ×{p1}", en: "Skill boost ×{p1}" },
   "ui.ActivityBar.067": { zh: "突触加速剂 MK1生效中：技能训练时长减半（剩 {p1}）", en: "Synaptic Accelerant MK1 active: skill training time halved ({p1} left)" },
-  /* ═══ 工业 HUD 页（调试专用 · 2026-09-30 船长令）：**少字多图标** ——
-     页面上的文字只做"2~4 字标签/单位"，解释性长句一律进 `title`（悬停）。═══════════════ */
   "ui.hud.001": { zh: "精炼炉", en: "Refinery" },
   "ui.hud.002": { zh: "组装机", en: "Assembler" },
   "ui.hud.003": { zh: "造船厂", en: "Shipyard" },
@@ -2390,7 +2208,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.hud.084": { zh: "停线", en: "Stop the line" },
   "ui.hud.085": { zh: "这条线已经停了。", en: "That line has already stopped." },
   "ui.hud.086": { zh: "燃料按返航本来要飞的时间扣：1 单位抵 1 秒，速度 ×10", en: "Fuel burns by the return time the trip would have taken: 1 unit per second, speed ×10" },
-  /* ── 组装机 / 造船厂 HUD 化（**2026-09-30** 三号接手那批：把两个内嵌旧面板换成 HUD 版）── */
   "ui.hud.087": { zh: "制造队列", en: "Production queue" },
   "ui.hud.088": { zh: "蓝图书架", en: "Blueprint shelf" },
   "ui.hud.089": { zh: "产物", en: "Product" },
@@ -2416,7 +2233,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.hud.113": { zh: "取消建造", en: "Cancel construction" },
   "ui.hud.114": { zh: "在跑的线数", en: "Lines running" },
   "ui.hud.115": { zh: "停掉这条线（已完成批保留）：{p1}", en: "Stop this line (finished batches are kept): {p1}" },
-  /* ── 精炼炉：真值修正 ＋ 产出构成环 ＋ 输入/输出悬停卡 ＋ 三族投料筛选（**2026-09-30** 船长令）── */
   "ui.hud.116": { zh: "输入", en: "Input" },
   "ui.hud.117": { zh: "每批 {p1} 件", en: "{p1} units per batch" },
   "ui.hud.118": { zh: "（可用：{p1} 件）", en: "({p1} available)" },
@@ -2442,67 +2258,39 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.hud.138": { zh: "产出构成：{p1}", en: "Output mix: {p1}" },
   "ui.hud.139": { zh: "本配方 {p1} 件/分 · 同产物最优 {p2} 件/分", en: "This recipe {p1}/min · best for this product {p2}/min" },
   "ui.hud.140": { zh: "本配方 {p1}/分", en: "This recipe {p1}/min" },
-  /* 工位窗口折叠 ＋ 工位号进悬停（**2026-09-30 船长令**：窄屏时工位可最小化成标题栏、编号不再上屏） */
   "ui.hud.141": { zh: "最小化为标题栏：工位表收起，随时可展开", en: "Collapse to the title bar: the station table folds away and can be reopened any time" },
   "ui.hud.142": { zh: "展开工位表", en: "Reopen the station table" },
   "ui.hud.143": { zh: "工位 {p1}", en: "Station {p1}" },
   "ui.hud.144": { zh: "（可用：{p1} m³）", en: "({p1} m³ available)" },
   "ui.hud.145": { zh: "每批 {p1} m³", en: "{p1} m³ per batch" },
-  /* 投料悬停卡的输出列（残骸没有 `refine` 配方 ⇒ 引擎在"未起炉"时给不出每批件数，只列保底原材料名） */
   "ui.hud.146": { zh: "保底原材料", en: "Guaranteed materials" },
-  /* 工位表最左列（动画槽）的列名：表头不显示文字，只给读屏用 */
   "ui.hud.147": { zh: "工位动画", en: "Station animation" },
-  /* 「优先使用的 AI」选择器（**2026-09-30 船长令**：四个工业页签都加、放各页"队列/配方"窗口顶部，
-     左侧加可见标签、右侧显示该核心的剩余数量）。文案依据：`ui-ux-pro-max` Forms·Input Labels（High）
-     「Every input needs a visible label」＋ Accessibility·Contextual Live Badge Updates（High）
-     「announce a meaningful contextual status such as 3 items in cart」「Don't: Announce a bare number」。 */
   "ui.hud.148": { zh: "优先使用的 AI：", en: "Preferred AI:" },
   "ui.hud.149": { zh: "剩余 {p1} 枚", en: "{p1} left" },
-  /* 缺料标记（**2026-09-30 船长令**：「工业生产项如果缺料的话，在悬浮窗内，缺料的项目需换红色字体
-     （或者其他方式标注出来）」＋同日追加「顺手在表格行上也标一处」）。
-     ⚠ 红字只是补充：这行文字才是主载体（Color Only（High）「Use icons/text in addition to color」）。 */
   "ui.hud.150": { zh: "缺 {p1}", en: "{p1} short" },
-  /* 2026-10-01 船长令（书架筛选补齐）：读数两条 —— 筛剩多少 / 未筛选时的总张数 */
   "ui.hud.151": { zh: "筛剩 {p1} 张", en: "{p1} left after filtering" },
   "ui.hud.152": { zh: "共 {p1} 张", en: "{p1} in total" },
-  /* ── 信号发射器 · 星图「星系详细」内的启动容器（**2026-09-30 船长令**：「在星图的星系详细窗口内，
-     新增一项『启动信号发射器』的使用按钮（独立一个容器…），并在其容器内说明使用会产生什么效果」）──
-     ⚠ 落点两条路是船长同日裁定：「**直接使用是随机星系（这个要提醒玩家）。选择了星系后是固定。**」 */
   "ui.beacon.001": { zh: "启动信号发射器", en: "Light the Signal Beacon" },
   "ui.beacon.002": {
     zh: "消耗 1 枚信号发射器：随机的入侵舰队将锁定「{p1}」及其相邻星系。",
     en: "Consumes one Signal Beacon: a randomly drawn invasion fleet locks onto “{p1}” and its neighbouring systems.",
   },
   "ui.beacon.003": { zh: "再点一下确认：发射器将消耗 1 枚，目标锁定「{p1}」", en: "Click again to confirm: one beacon is spent and the target is locked to “{p1}”" },
-  /* 目标不合格（含"该星系有空间站"）的就地说明 —— **2026-09-30 船长令**：提示语由船长逐字给定
-     「该星系信号被压制，无法使用信号发射器。」；原先那条"需要已探索·非高安·尚未建成副站"的长说明
-     按船长「说明有些多余」一并删除（`ui.beacon.004` 作废，按纪律不留死键）。 */
   "ui.beacon.005": {
     zh: "该星系信号被压制，无法使用信号发射器。",
     en: "Signals are jammed in this system — the Signal Beacon cannot be lit here.",
   },
-  /* 高安点火的二次警告（**2026-09-30 船长令**：「且当玩家在高安使用时候，弹出二次警告，警告玩家这么做会被扣声望」） */
   "ui.beacon.006": { zh: "⚠ 在高安启动信号发射器：扣 {p1} 点声望", en: "⚠ Lighting a Signal Beacon in high-sec costs {p1} standing" },
   "ui.beacon.008": { zh: "取消", en: "Cancel" },
   "ui.beacon.009": { zh: "仍然启动", en: "Light it anyway" },
-  /* ── 技能页「技能加速」子窗口（**2026-09-30 船长令**：「在技能页面内新增一个子窗口『技能加速』…」）──
-     顶部＝当前生效与剩余时间（**2026-10-02 船长令**起：**只在加速剂生效时整条出现** —— 原话
-     「因为之后还会获得 3 倍和 4 倍的加速剂，所以抬头需要在使用了加速剂才会出现」），
-     下方＝持有的加速道具清单＋**每行一条该道具的效果说明**（同日船长令，取该道具的物品说明原文） */
   "ui.boost.001": { zh: "技能加速", en: "Skill Boost" },
-  /* ⟪文案调整 2026-10-02⟫ 删 `ui.boost.002`（「未生效」）与 `ui.boost.007`（「效果：使用后 24 小时内
-     技能训练时长减半；同一时间只能生效一剂。」）——两条都只服务"抬头常驻"时的那个"未生效"态：
-     抬头改条件出现后它们**没有落点**了；效果说明改由道具行渲染物品说明原文（**多剂时每剂自带自己的
-     说明**，一条写死突触加速剂的效果句反而会串味）。 */
   "ui.boost.003": { zh: "持有的加速道具", en: "Boost items on hand" },
   "ui.boost.005": { zh: "剩余 {p1}", en: "{p1} left" },
-  /* 2026-10-01 船长令：技能加速「自动续用」开关（循环使用 · 离线期间同样生效） */
   "ui.boost.008": { zh: "自动续用", en: "Auto-renew" },
   "ui.boost.009": {
     zh: "效果不足以练完当前这一级时，自动用掉一枚同效果的加速剂；道具用光时自动关闭。离线期间同样生效。",
     en: "When the active dose can no longer cover the level being trained, another dose of the same boost is used automatically; it switches itself off when you run out. Works while offline too.",
   },
-  /* 2026-10-02 船长报障「自动续用不是开关」：按钮文案随状态显示开/关（原先两态都只印「自动续用」） */
   "ui.boost.010": { zh: "自动续用：开", en: "Auto-renew: on" },
   "ui.boost.011": { zh: "自动续用：关", en: "Auto-renew: off" },
   "ui.boost.006": { zh: "持有 ×{p1}", en: "×{p1} on hand" },
@@ -2511,30 +2299,11 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
     en: "No skill-boost items on hand: the Laboratory on the Industry page produces them by the batch.",
   },
   "ui.hud.101": { zh: "工业 HUD（调试）", en: "Industry HUD (debug)" },
-  /* 舰船页「跃迁燃料」子页（HUD 化 · 2026-09-30）：202~209 为本页规格 chip 与开关行；
-     原 201 / 203 / 210 / 211 见下方 ⟪文案调整⟫（随"趟数"那把界面自造的尺一起删）。 */
   "ui.hud.202": { zh: "实验室", en: "Laboratory" },
-  // ⟪文案调整 2026-09-30⟫ 删：`ui.hud.204/205/206`（「1 单位 = 1 秒」「×10 速度」「每趟扣一次」三枚规格 chip）——
-  //   船长令「这三个可以移除，直接将其悬浮窗内的说明写在外面」⇒ 三枚 chip 删掉，`ui.jumpFuel.014` 整句改为可见正文。
   "ui.hud.207": { zh: "启用活动", en: "Enabled activities" },
   "ui.hud.208": { zh: "已开", en: "On" },
   "ui.hud.209": { zh: "未开", en: "Off" },
-  /**
-   * **手动工作位被占时，工业 HUD 页开工键的置灰理由**（**2026-10-01 船长令**：「建议改成和旧的工业一样，
-   * 主控正在活动时，禁止按钮」——新 HUD 页把旧页那道置灰守卫整档弄丢了，点下去会**静默换线**、
-   * 当前那一批进度丢弃，而且每点一次都能再换一次）。
-   *
-   * 口径与旧页那两句（`ui.IndustryPage.018/.019`、`ui.Industry.025/.026`）是同一件事，只是**不按机器分句**
-   * ——手动工作位（炉 / 回收炉 / 拆解台 / 制造线 / 实验室）全仓只有 **1 个**名额，占它的是哪一台对玩家都一样：
-   * 先把手上那条停掉。旧页那两句仍由旧页自己用着，本页不复制第二份同义串。
-   *
-   * ⚠ 序号取 **212**（不是 210）：`ui.hud.210/211` 是已删条目，**id 一经使用不复用、不改名**（§十一之三）。
-   */
   "ui.hud.212": { zh: "主控正亲自运转着另一条产线：先停掉它，才能亲自开这条（AI 核心不受此限）。", en: "You are already running another line by hand: stop it before starting this one by hand (AI cores are not limited by this)." },
-  // ⟪文案调整 2026-09-30⟫ 删四条：`ui.hud.201`（按 20 分钟返航 ≈1,200 单位计）· `ui.hud.203`（满格 {p1} 单位）·
-  //   `ui.hud.210`（≈{p1} 趟）· `ui.hud.211`（一趟长途 {p1} 单位）——船长令「估算约能跑多少趟没有实际意义」；
-  //   读数改成「仓库量 / 上限 单位」（`ui.jumpFuel.019`），上限由 core 给（`jumpFuelCapOf`），界面不再自造"一趟"。
-  /* ── 第九批：wormholeHold.ts（虫洞货仓：形状件摆放/整理/交换/取回）── */
   "core.wormholeHold.001": { zh: "这件东西是可叠加散货：应该走散货条（holdAddCargo）。", en: "That item is stackable loose cargo: it belongs to the loose-cargo lane (holdAddCargo)." },
   "core.wormholeHold.002": { zh: "货仓格数为 0：放不下任何形状件。", en: "The hold has 0 slots, so no shaped item fits." },
   "core.wormholeHold.003": { zh: "货仓放不下：这件要占 {p1}×{p2} = {p3} 格。", en: "The hold cannot take it: this item needs a {p1}×{p2} = {p3} block." },
@@ -2545,7 +2314,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.wormholeHold.008": { zh: "两件的形状对不上：换过去会互相压住（先把一件挪开，或点「整理」）。", en: "The two shapes do not match: swapping them would overlap (move one aside, or press Tidy up)." },
   "core.wormholeHold.009": { zh: "这里放不下（它周围没有能摆下这块地方的位置）。", en: "It does not fit there (there is no spot around it that can take that block)." },
   "core.wormholeHold.010": { zh: "那边放不下这件东西（先整理或丢弃腾位置）。", en: "That side cannot take this item (tidy up or discard something to free space first)." },
-  /* ── 第十批：engine.ts（训练队列 / 技能升级）── */
   "core.engine.001": { zh: "队列中发现未知技能「{p1}」，已自动移除。", en: "An unknown skill “{p1}” was found in the queue and removed automatically." },
   "core.engine.002": { zh: "训练完成：{p1} 已达 Lv{p2}。", en: "Training finished: {p1} reached Lv{p2}." },
   "core.engine.003": { zh: "{p1} 已是 Lv{p2}（技能上限），队列中该项已自动移除。", en: "{p1} is already Lv{p2} (the skill cap), so that entry was removed from the queue automatically." },
@@ -2567,7 +2335,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.engine.019": { zh: "「{p1}」需要先练：{p2}。", en: "“{p1}” requires {p2} first." },
   "core.engine.020": { zh: "连带取消 {p1} 项依赖训练：{p2}。", en: "Also cancelled {p1} dependent training item(s): {p2}." },
   "core.engine.021": { zh: "「{p1}」需要先购买训练许可（{p2} 信用点）才能训练。", en: "\"{p1}\" requires a Training License ({p2} credits) before it can be trained." },
-  /* 队列调整"挪不动"的两条说明（2026-09-30 船长令：让 ⇈/↑/↓ 说实话，别再"点了没反应"；判据 = core 的 queueMovePlan） */
   "core.engine.022": { zh: "挪不过去：这条会排在它要的前置之前 —— {p1} 需 Lv{p2}，当前只有 Lv{p3}。", en: "Cannot move it there: it would come before its prerequisite — {p1} needs Lv{p2}, only Lv{p3} available." },
   "core.engine.023": { zh: "挪了等于没挪：同一技能在队列里按位置逐级排，这一步与它前一条等价。", en: "This move changes nothing: a skill's queued levels are ordered by position, so this step equals its previous entry." },
   "core.engine.024": { zh: "队列里没有这一条（下标越界）。", en: "No such entry in the queue (index out of range)." },
@@ -2577,7 +2344,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.skillLicense.004": { zh: "「{p1}」已练到 Lv{p2}，无需再买训练许可。", en: "\"{p1}\" is already at Lv{p2}; no Training License needed." },
   "core.skillLicense.005": { zh: "购买「{p1}」的训练许可需要 {p2} 信用点，当前只有 {p3} 信用点。", en: "The Training License for \"{p1}\" costs {p2} credits; you only have {p3} credits." },
   "core.skillLicense.006": { zh: "📘 已购买训练许可「{p1}」（rank{p2} · 耗 {p3} 信用点）——该技能现在可以排入训练队列。", en: "📘 Training License purchased for \"{p1}\" (rank {p2} · {p3} credits) — this skill can now be queued for training." },
-  /* ── 第十一批：fitPresets.ts（装配方案：保存 / 覆盖 / 改名 / 删除 / 一键卸下）── */
   "core.fitPresets.001": { zh: "舰队里找不到该舰船，无法保存装配方案。", en: "That ship is not in the fleet, so the fitting preset cannot be saved." },
   "core.fitPresets.002": { zh: "舰队里找不到该舰船，无法替换装配方案。", en: "That ship is not in the fleet, so the fitting preset cannot be replaced." },
   "core.fitPresets.003": { zh: "舰队里找不到该舰船，无法套用装配方案。", en: "That ship is not in the fleet, so the fitting preset cannot be applied." },
@@ -2591,7 +2357,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.fitPresets.011": { zh: "已删除装配方案「{p1}」。", en: "Fitting preset “{p1}” was deleted." },
   "core.fitPresets.012": { zh: "已卸下全部装备 {p1} 件（放回装备库），甲板扩容器一并卸下。", en: "Removed all {p1} fitted modules (back to module storage), including the deck expander." },
   "core.fitPresets.013": { zh: "已用当前装配覆盖方案「{p1}」（{p2} · {p3}）。", en: "Preset “{p1}” was overwritten with the current fit ({p2} · {p3})." },
-  /* ── 第十二批：sideTasks.ts（快递投送：接单 / 出发 / 上限 / 互斥）── */
   "core.sideTasks.001": { zh: "快递任务需先「出发投送」——货物由出发时从仓库锁定扣出，按真实航程到站后自动结算。", en: "Courier jobs need Start delivery first — the goods are locked and taken from storage on departure, and the job settles automatically on arrival after the real voyage." },
   "core.sideTasks.002": { zh: "该任务已不存在——可能已完成，或已随整板刷新被替换。", en: "That job no longer exists — it may be done already, or it was replaced when the board refreshed." },
   "core.sideTasks.003": { zh: "该任务已到期——新一批任务即将刷新。", en: "That job has expired — a new batch is about to refresh." },
@@ -2611,7 +2376,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.sideTasks.017": { zh: "限时快递要求跃迁速度 ≥ {p1} AU/s（当前舰船 {p2} AU/s）——换船或装跃迁计算机。", en: "A timed delivery requires a warp speed of at least {p1} AU/s (this ship does {p2} AU/s) — switch ships or fit a warp computer." },
   "core.sideTasks.018": { zh: "「{p1}」不在当前可达航路内，无法出发投送。", en: "“{p1}” is not on any currently reachable route, so the delivery cannot set out." },
   "core.sideTasks.020": { zh: "快递出发：舰船先自动返航母港（自「{p1}」），再按母港航线投送。", en: "Delivery started: the ship returns to the home port automatically (from “{p1}”), then flies the home-port route." },
-  /* ── 第十三批：hauling.ts（长途运输：接单 / 换线 / 到站 / 异常终止）── */
   "core.hauling.001": { zh: "长途运输进行中：中断本趟就拿不到本趟报酬（报酬到站才结）。先到顶部活动栏点「停止运输」再换线。", en: "Long-haul transport is running: interrupting this trip forfeits its pay (the fee settles on arrival); stop it from the activity bar at the top first, before switching routes." },
   "core.hauling.002": { zh: "舰船在野外：先返航到空间站再安排长途运输。", en: "The ship is in the field: return to a station before arranging long-haul transport." },
   "core.hauling.003": { zh: "航线端点缺失或尚未建成——请选择两座已建成站点之间的航线。", en: "A route endpoint is missing or unfinished — pick a route between two completed stations." },
@@ -2635,7 +2399,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.hauling.022": { zh: "长途运输已随切换驾驶终止（原航线「… → {p1}」；虚拟货物无残留、无惩罚）。", en: "Long-haul transport ended with the ship change (the route was “… → {p1}”; the virtual freight leaves nothing behind and costs no penalty)." },
   "core.hauling.023": { zh: "长途运输开始：{p1} 承运「{p2} ⇄ {p3}」（货仓 {p4} m³ 满载虚拟货物）——先就位驶往「{p5}」，单段报酬随行情浮动在 {p6} ~ {p7} 信用点（每趟一价，到站结算）{p8}。", en: "Long-haul transport started: {p1} runs “{p2} ⇄ {p3}” (a hold of {p4} m³ filled with virtual freight) — first move into position at “{p5}”; single-leg pay drifts with the market between {p6} and {p7} credits (one price per trip, settled on arrival){p8}." },
   "core.hauling.024": { zh: "长途运输开始：{p1} 承运「{p2} ⇄ {p3}」（货仓 {p4} m³ 满载虚拟货物）——单段航程约 {p5} 分钟，单段报酬随行情浮动在 {p6} ~ {p7} 信用点（每趟一价，到站结算）{p8}。", en: "Long-haul transport started: {p1} runs “{p2} ⇄ {p3}” (a hold of {p4} m³ filled with virtual freight) — a single leg takes about {p5} minutes; single-leg pay drifts with the market between {p6} and {p7} credits (one price per trip, settled on arrival){p8}." },
-  /* ── 第十四批：manufacturing.ts（组装机：开工校验 / 取消 / 完工）── */
   "core.manufacturing.001": { zh: "组装机随协会基地网络运转：需停靠空间站（母港或已建成副站）才能开工制造（AI 核心驱动不受此限）。", en: "The assembly unit runs on the Association base network: it requires docking at a station (home port or a completed outpost) to start manufacturing (AI cores are not limited by this)." },
   "core.manufacturing.002": { zh: "未知蓝图：{p1}。", en: "Unknown blueprint: {p1}." },
   "core.manufacturing.003": { zh: "这张一次性图纸的制造名额已用尽：需要再获得一张同名一次性图纸。", en: "This one-use blueprint has no builds left: you need another copy of the same one-use blueprint." },
@@ -2655,13 +2418,11 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.state.031": { zh: "你已亲自开着一条制造线：先取消或等它完成才能再亲自开一条（AI 核心不受此限）。", en: "You are already running a production line yourself: cancel it or wait for it to finish before starting another by hand (AI cores are not limited by this)." },
   "core.state.032": { zh: "你已亲自运转着一台精炼炉/回收炉：先停掉它才能亲自开制造线（AI 核心不受此限）。", en: "You are running a refinery or recycling unit by hand: stop it before starting a production line by hand (AI cores are not limited by this)." },
   "core.state.033": { zh: "长途运输进行中：中断本趟就拿不到本趟报酬（报酬到站才结）。先到活动栏点「停止运输」，再亲自制造。", en: "Long-haul transport is running: interrupting this trip forfeits its pay (the fee settles on arrival); stop it from the activity bar first, before manufacturing by hand." },
-  /* 工业/制造两文件复用的"作业中"互斥句（措辞与 `core.state.002` 那批不同 ⇒ 各占一条） */
   "core.state.013": { zh: "采矿作业中：先停止开采。", en: "A mining run is under way: stop mining first." },
   "core.state.014": { zh: "打捞作业中：先停止打捞（或等满仓自动返航）。", en: "A salvage run is under way: stop it first (or wait for a full hold to bring the ship home)." },
   "core.state.015": { zh: "远征作业中：先召回或等待结束。", en: "An expedition is under way: recall it or wait for it to end." },
   "core.state.016": { zh: "掩护巡逻进行中：先召回。", en: "An escort patrol is under way: recall it first." },
   "core.state.017": { zh: "返航行程中：先等抵达。", en: "A return trip is under way: wait until it docks." },
-  /* ── 第十五批：wormholeBattle.ts（洞内战斗：节点/守卫/回合/装置/撤离）── */
   "core.wormholeBattle.001": { zh: "不在虫洞内。", en: "You are not inside a wormhole." },
   "core.wormholeBattle.002": { zh: "战斗还没结束。", en: "The fight is not over yet." },
   "core.wormholeBattle.003": { zh: "这里没有可交火的信号。", en: "There is no signal to engage here." },
@@ -2708,15 +2469,11 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.wormholeFoes.013": { zh: "{p1} {p2}%", en: "{p1} {p2}%" },
   "core.wormholeFoes.014": { zh: "{p1}为主", en: "mostly {p1}" },
   "core.wormholeFoes.015": { zh: "{p1} / {p2}并重", en: "{p1} and {p2} in equal measure" },
-  // ⟪文案调整 2026-09-24⟫ 船长报障「类似'武器族''XX族'这样的开发字眼」——本条原先直接印**裸字母代号**
-  //   （"A 族 · 海盗"），那是数据侧 family 键；现只印敌方势力名，字母代号不再进玩家可见范围
   "core.wormholeFoes.016": { zh: "敌：{p1}（{p2}）· {p4}", en: "Enemy: {p1} ({p2}) · {p4}" },
   "core.wormholeFoes.017": { zh: "敌：{p1}（{p2}）——整趟都是这一势力：敌人编成、稀有残骸、遗迹安全货柜与专属装备/图纸都出自这一势力。", en: "Enemy: {p1} ({p2}) — this faction holds the whole run: its order of battle, rare wrecks, ruin safe containers and exclusive equipment/blueprints all come from it." },
   "core.wormholeFoes.018": { zh: "火力构成（会随层数变）：", en: "Firepower mix (changes with depth):" },
   "core.wormholeFoes.019": { zh: " · {p1} {p2}：{p3}", en: " · {p1} {p2}: {p3}" },
   "core.wormholeFoes.020": { zh: "内容原型「{p1}」＝这一处的地点配比口味（威胁与产出随所在层数上升：越深越险、产出越高）。", en: "Content archetype “{p1}” sets the mix of this site (threat and yield both rise with depth: deeper is deadlier and pays more)." },
-  /* ── 第十六批：wormhole.ts（探索主流程：深入 / 撤离 / 扫描 / 前往 / 激活 / 入洞）── */
-  /* ── 舰船忙态标签（2026-09-27 · 三号）：原先两处各写一份裸中文 ⇒ 收成单点 `core/busyLabels.ts` ── */
   "core.busy.001": { zh: "虫洞探索中", en: "Exploring a wormhole" },
   "core.busy.002": { zh: "采矿中", en: "Mining" },
   "core.busy.003": { zh: "采矿·出航中", en: "Mining · outbound" },
@@ -2746,7 +2503,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.busy.027": { zh: "AI 远征·去程中", en: "AI · expedition, outbound" },
   "core.busy.028": { zh: "AI 远征·交火中", en: "AI · expedition, in combat" },
   "core.busy.029": { zh: "AI 远征·返航中", en: "AI · expedition, returning" },
-  /* 实验室（2026-10-01 接入活动栏）：主控亲自运转那一条线占主控 ⇒ 与"亲自开炉/亲自开线"同族 */
   "core.busy.030": { zh: "亲自运转实验室中", en: "Running the laboratory in person" },
   "core.wormhole.001": { zh: "本层已清空：请选择「继续深入」或「撤离」。", en: "This layer is clear: choose Descend or Withdraw." },
   "core.wormhole.002": { zh: "回合不足：只能撤离。", en: "Not enough turns: withdrawal is the only option." },
@@ -2773,35 +2529,21 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.wormhole.026": { zh: "已经在虫洞里了：先撤离或结算本趟。", en: "You are already inside a wormhole: withdraw or settle this run first." },
   "core.wormhole.027": { zh: "🛰 进洞前自动停掉「扫描虫洞」（进度保留：已扫 {p1} 分钟）——回来可以接着扫。", en: "🛰 Wormhole scanning was stopped automatically before entering (progress kept: {p1} minutes scanned) — you can pick it up when you return." },
   "core.wormhole.028": { zh: "🚚 进洞前自动停掉「长途运输」（舰船已即时返港停靠「{p1}」，无惩罚）。", en: "🚚 Long-haul transport was stopped automatically before entering (the ship returned at once and docked at “{p1}”, no penalty)." },
-  /* 漂浮信标新规（船长 2026-09-20：第 1 个标入口 · 后续揭示一处谜质、可穿透星云） */
   "core.wormhole.029": { zh: "🕳 抵达漂浮信标（{p1},{p2}）：信标把下一层入口标在了地图上（Q{p3} · R{p4}）· 剩 {p5} 回合。", en: "🕳 Reached a drifting beacon ({p1},{p2}): it marked the next layer's entrance on the map (Q{p3} · R{p4}) · {p5} turns left." },
   "core.wormhole.030": { zh: "🕳 抵达漂浮信标（{p1},{p2}）：信标标出一处谜质信号（Q{p3} · R{p4}）· 剩 {p5} 回合。", en: "🕳 Reached a drifting beacon ({p1},{p2}): it marked a spot of Enigma (Q{p3} · R{p4}) · {p5} turns left." },
   "core.wormhole.031": { zh: "🕳 抵达漂浮信标（{p1},{p2}）：信标标出一处谜质信号（Q{p3} · R{p4}）——顺带驱散了那里的星云 · 剩 {p5} 回合。", en: "🕳 Reached a drifting beacon ({p1},{p2}): it marked a spot of Enigma (Q{p3} · R{p4}) and dispersed the nebula there · {p5} turns left." },
   "core.wormhole.032": { zh: "🕳 抵达漂浮信标（{p1},{p2}）：这块信标没有新的谜质可标 · 剩 {p3} 回合。", en: "🕳 Reached a drifting beacon ({p1},{p2}): it has no further Enigma to mark · {p3} turns left." },
-  /* ── 本地化批二（2026-09-27 · 三号）：core 侧"返回裸中文"的闸门拒因改走 id（中文措辞照抄，未改文案）── */
   "core.wormhole.033": { zh: "遗迹深处的守备已经惊动：先点「迎战」打完这一场。", en: "The ruins garrison is alerted: press “Engage” and finish this fight first." },
   "core.wormhole.034": { zh: "对方已经发现我们：先点「开战」打完这一场。", en: "They have spotted us: press “Attack” and finish this fight first." },
   "core.wormhole.035": { zh: "战斗中：先打完这一场。", en: "In combat: finish this fight first." },
   "core.wormhole.036": { zh: "临时空间里有 {p1} 件没处理：先到「货仓」页放回货仓或丢弃，再继续。", en: "{p1} item(s) in temporary storage are unresolved: put them back into the hold or discard them on the Cargo page, then continue." },
-  /** 组合句：`{p1}` 由渲染层两步取词喂进（core 侧传 `p1Id` ＝忙态 id；见 `paramText` 约定） */
   "core.wormhole.037": { zh: "主控正在{p1}：先把手上的活收工，才能回到虫洞。", en: "The pilot is {p1} — finish that job before returning to the wormhole." },
-  /* ── 本地化批三（2026-09-27 · 三号）：进洞自动停机的**读数段**（原先裸中文塞进统一日志的 detail）──
-   * 挂法见 `core.activityGate.007` 的 `{p4}` 槽与 `activityGate.logAutoHalt` 头注。 */
   "core.wormhole.038": { zh: "已扫 {p1} 分钟，回来可续扫", en: "{p1} minutes scanned; you can resume when you return" },
   "core.wormhole.039": { zh: "「{p1}」 · 本趟 {p2} 单位{p3}，货物留在船上", en: "“{p1}” · {p2} units of {p3} this run; the cargo stays aboard" },
   "core.wormhole.040": { zh: "{p1} · 本趟约 {p2} m³ 当量，货物留在船上", en: "{p1} · about {p2} m³ equivalent this run; the cargo stays aboard" },
   "core.wormhole.041": { zh: "已即时返港停靠「{p1}」", en: "it docked back at “{p1}” at once" },
-  /**
-   * **两个通用词**（2026-09-27）：它们会出现在上面三句的**参数位**上，而参数值不会被翻译
-   * ⇒ 各配一个 id，由 core 传 `p1Id` 让渲染层先翻好（见 `wormhole.ts` 的 `haltEntryActivityOf`）。
-   * 落法：`p{n}p{k}Id` 与顶层 `p1Id` 同一约定（"该槽第一步先换成这个 id 的当前语言译文"）。
-   *
-   * ⚠ **只收通用词，不收内容专名**：内容名（矿带 / 矿石 / 空间站 / 星系）走 `packages/data/src/l10n.ts`
-   * 的**按 def id 的英文覆盖表**，不在本表里 ⇒ 那几处照旧是中文（已登记进核验基线，**不在 core 里硬造第二套解析**）。
-   */
   "core.wormhole.042": { zh: "母港", en: "Home port" },
   "core.wormhole.043": { zh: "矿带", en: "the belt" },
-  /* ── 第十七批：equipment.ts（装配 / 换装 / 无人机 / 弹药档位 / 卸下）── */
   "core.equipment.001": { zh: "未知装备：{p1}。", en: "Unknown module: {p1}." },
   "core.equipment.002": { zh: "装备库里没有 {p1}，先去组装机造一件。", en: "There is no {p1} in module storage — build one at the assembly unit first." },
   "core.equipment.003": { zh: "舰队里找不到该舰船，无法装配。", en: "That ship is not in the fleet, so nothing can be fitted." },
@@ -2829,7 +2571,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.equipment.025": { zh: "已设{p1}系弹药档位：{p2}（开战按此预载）。", en: "{p1}-type ammo tier set: {p2} (the ship pre-loads it when a fight starts)." },
   "core.equipment.026": { zh: "弹药改版：旧重型弹已按 1:1 并入通用弹（共 {p1} 发），相关挂单已撤销。", en: "Ammo revision: old heavy rounds were merged 1:1 into general rounds ({p1} rounds in total), and the related market orders were withdrawn." },
   "core.equipment.027": { zh: "卸下", en: "Removed" },
-  /* ── 第十八批：market.ts（市场：学习蓝图 / 出售 / 挂单 / 撤单 / 市价单）── */
   "core.market.001": { zh: "未知蓝图：{p1}。", en: "Unknown blueprint: {p1}." },
   "core.market.002": { zh: "「{p1}」是一次性图纸：不能学习，请到组装机直接用掉（只能制造一次）。", en: "“{p1}” is a one-use blueprint: it cannot be learned — use it directly at the assembly unit (it builds once)." },
   "core.market.003": { zh: "没有可学习的蓝图书。", en: "There is no blueprint book to learn from." },
@@ -2865,16 +2606,11 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.market.036": { zh: "挂单成交：{p1}×{p2}，税后入账 {p3} 信用点（含协会声望加成）{p4}。", en: "Order filled: {p1}×{p2} brought in {p3} credits after tax (with the Association reputation bonus){p4}." },
   "core.market.037": { zh: "，贸易税 {p1} 信用点", en: ", trading tax {p1} credits" },
   "core.market.038": { zh: "市价售出 {p1}×{p2}（税后入账 {p3} 信用点，{p4} 笔）（含协会声望加成）{p5}。", en: "Sold {p1}×{p2} at market ({p3} credits after tax, {p4} fills) (with the Association reputation bonus){p5}." },
-  /**
-   * Standing-gate lock label (2026-09-30, English-residual batch 5): the lock chip on the market,
-   * ship warehouse and industry pages. Single source in core = `market.marketLockNote` / `bmGateNote`
-   * (they return `{ text, textId, params }`; the renderer calls `tr(note.textId, note.params)`).
-   */
   "core.market.039": {
     zh: "需「深空工业协会」声望 {p1}（累计 {p2}）",
     en: "Requires Deep Space Industry Association reputation {p1} (total earned {p2})",
   },
-  "core.market.040": { zh: "市价售出 {p1}×{p2}（税后入账 {p3} 信用点，{p4} 笔）{p5}。", en: "Sold {p1}×{p2} at market ({p3} credits after tax, {p4} fills){p5}." },  /* ── 第十九批：expedition.ts（远征 / 悬赏：出击前置 / 撤退 / 召回）── */
+  "core.market.040": { zh: "市价售出 {p1}×{p2}（税后入账 {p3} 信用点，{p4} 笔）{p5}。", en: "Sold {p1}×{p2} at market ({p3} credits after tax, {p4} fills){p5}." },
   "core.market.041": { zh: "价格或数量无效。", en: "The price or quantity is not valid." },
   "core.market.042": { zh: "声望未达", en: "Standing too low" },
   "core.market.043": { zh: "该商品只收不卖，市场不出售现货。", en: "That good is buy-only: the market never sells it as stock." },
@@ -2917,12 +2653,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.expedition.035": { zh: "机群尚未补充（现 {p1} 架 · 停环时 {p2} 架）：需补到 {p3} 架以上才可再开——先在装配页装入无人机。", en: "The drone wing is not resupplied yet ({p1} aboard, {p2} when the loop stopped): bring it above {p3} to restart — load drones on the Fitting page first." },
   "core.expedition.036": { zh: "需要「深空工业协会」声望 {p1}（累计 {p2}），多完成低级目标攒声望。", en: "Needs Deep Space Industry Association standing {p1} (accumulated {p2}) — clear lower-tier targets to build standing." },
   "core.expedition.037": { zh: "「{p1}」冷却中：重复出击需等待约 {p2} 秒。", en: "“{p1}” is cooling down: repeat sorties have to wait about {p2} seconds." },
-  /**
-   * ⟪2026-10-02 批⑨-⑤ · 远征日志⟫ **`expedition.ts` 的 addLog 家族挂 id**（船长「按你推荐」）。
-   * 中文原串一字未改；凡"可选片段"一律走**槽译文**（`p{n}Id` ＋ `p{n}p{k}`），
-   * 凡"两种情况各写一句"的一律**各立一个 id**（不合并成可选段——空段会被整段丢掉的硬规矩）。
-   * `.038`/`.039` 的 `{p1}` 是**途中事件正文**：它的英文由 `l10n.ts` 的 `EN_TRAVEL_EVENTS` 覆盖（`text` 字段）。
-   */
   "core.expedition.038": { zh: "{p1}（+{p2} 信用点）", en: "{p1} (+{p2} credits)" },
   "core.expedition.039": { zh: "{p1}（获得 {p2}×{p3}）", en: "{p1} (gained {p2}×{p3})" },
   "core.expedition.040": { zh: "⚔ 远征开始（{p1}）：{p2} 自「{p3}」起航，立即抵达目标空域进入交火。胜利后自动返航最近空间站（母港或已建成副站，含去返全程，不可召回）；失利/撤退同样自动返航。", en: "⚔ Expedition begun ({p1}): {p2} departs “{p3}” and reaches the target volume at once, entering combat. On victory the fleet flies itself back to the nearest station (home port or a completed outpost, both legs included, no recall); defeat and retreat return the same way." },
@@ -2947,7 +2677,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.expedition.059": { zh: "远征结束，舰队已停靠「{p1}」（副空间站）。{p2}", en: "Expedition over; the fleet has docked at “{p1}” (outpost).{p2}" },
   "core.expedition.060": { zh: "远征结束，舰队已停靠母港。{p1}", en: "Expedition over; the fleet has docked at the home port.{p1}" },
   "core.expedition.061": { zh: "货仓已自动卸入物品仓库（{p1} 单位）。", en: " The hold unloaded into the warehouse automatically ({p1} units)." },
-  /* ── 第二十批：location.ts（返航 / 建站交付 / 转场掩护巡逻）── */
   "core.location.001": { zh: "长途运输进行中：中断本趟就拿不到本趟报酬（报酬到站才结）。请先到活动栏点「停止运输」。", en: "Long-haul transport is running: interrupting this trip forfeits its pay (the fee settles on arrival); stop it from the activity bar first." },
   "core.location.002": { zh: "快递投送途中：舰船正在执行投送航行，到站后再返航。", en: "A courier delivery is under way: the ship is on its delivery voyage, so return once it docks." },
   "core.location.003": { zh: "舰船已停靠空间站，无需返航。", en: "The ship is already docked at a station; no return is needed." },
@@ -2984,7 +2713,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.location.034": { zh: "交付航线异常：工地已不存在，舰船已直接返航母港。", en: "Delivery route error: the site no longer exists, so the ship returned straight to the home port." },
   "core.location.035": { zh: "⚑ 交付航线：舰船已抵达「{p1}」——「{p2}」工地，本趟装载的建材自动清仓交付中。", en: "⚑ Delivery route: the ship has reached “{p1}” — the “{p2}” site — and is handing in this trip's materials automatically." },
   "core.location.036": { zh: "本趟未交付任何建材（工地当前需求与货仓装载不匹配）——自动返航。", en: "Nothing was handed in this trip (the site's current needs did not match what the hold carried) — returning automatically." },
-  /* 返航/交付收尾的「附注」段（`unloadNote` 那条尾巴，与其他附着句共用两步渲染） */
   "core.location.037": { zh: "货仓已自动卸入物品仓库（{p1} 单位）。", en: "The hold was unloaded into item storage automatically ({p1} units)." },
   "core.location.039": { zh: "返航完成：舰船已即时停靠「{p1}」（副空间站）。{p2}", en: "Return complete: the ship docked at “{p1}” at once (outpost).{p2}" },
   "core.location.040": { zh: "返航完成：舰船已即时停靠「{p1}」（自「{p2}」归来）。{p3}", en: "Return complete: the ship docked at “{p1}” at once (coming back from “{p2}”).{p3}" },
@@ -3004,7 +2732,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.location.054": { zh: "交付任务收尾：自动返航「{p1}」（约 {p2} 分钟航程）——到站后如仓库还有建材将自动续趟，可随时取消（= 停止整个循环）。", en: "Delivery run wrapped up: returning automatically to “{p1}” (about {p2} minutes of travel) — on arrival it repeats while the warehouse still holds material, and it can be cancelled at any time (= stop the whole loop)." },
   "core.location.055": { zh: "「{p1}」尚未建成：工地不提供停靠——舰船已转为「{p2}」工地现场停留（交付建材可现场提交）。", en: "“{p1}” is not built yet and a construction site offers no docking — the ship has switched to holding at the “{p2}” site (delivered material can be handed over on site)." },
   "core.location.056": { zh: "停靠的副站已不存在：舰船已返回母港。", en: "The outpost it was docked at no longer exists: the ship has returned to the home port." },
-  /* ── 第二十一批：wormholeSalvage.ts（洞内货仓整理 / 拾取 / 抛货 / 采集 / 打捞 / 战果）── */
   "core.wormholeSalvage.001": { zh: "这件东西不是形状件。", en: "That item is not a shaped item." },
   "core.wormholeSalvage.002": { zh: "临时空间也放不下（{p1}/{p2} 格，这件要 {p3} 格）。", en: "Temporary space cannot take it either ({p1}/{p2} slots, and this needs {p3})." },
   "core.wormholeSalvage.003": { zh: "临时空间是空的。", en: "Temporary space is empty." },
@@ -3043,7 +2770,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.wormholeSalvage.036": { zh: "🕳 战果里有 {p1} 堆装不下：先散落在该地点，可以照打捞规则回收。", en: "🕳 {p1} piles of spoils did not fit: they are left loose at this spot and can be recovered by the usual salvage rules." },
   "core.wormholeSalvage.037": { zh: "🕳 战果入库：{p1} 堆残骸（含稀有）。", en: "🕳 Spoils stored: {p1} piles of wrecks (rare ones included)." },
   "core.wormholeSalvage.038": { zh: "没有这个件。", en: "There is no such piece." },
-  /* ── 第二十二批（压轴）：industry.ts（精炼 / 回收 / 拆解 / 丢弃 / 出售 / 买船 / 逆向）── */
   "core.industry.002": { zh: "未知物品：{p1}。", en: "Unknown item: {p1}." },
   "core.industry.003": { zh: "「{p1}」没有精炼配方（只支持原矿/气体/冰矿）。", en: "“{p1}” has no refining recipe (only ore, gas and ice are supported)." },
   "core.industry.004": { zh: "货仓与仓库里都没有 {p1}。", en: "There is no {p1} in the hold or in storage." },
@@ -3085,8 +2811,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.industry.041": { zh: "{p1} 市场暂无现货——已自动挂收购单 @ {p2} 信用点，到货自动停入机库（可随时撤销）。", en: "{p1} is out of stock on the market — a buy order was placed automatically @ {p2} credits, and it docks into the hangar on arrival (cancel it at any time)." },
   "core.industry.042": { zh: "逆向研究完成：{p1} ×{p2} → 已解锁「{p3}」蓝图（{p4} 可自制备；无需市场购图）。", en: "Reverse engineering done: {p1} ×{p2} → the “{p3}” blueprint is unlocked ({p4} can be built in-house; no market purchase needed)." },
   "core.industry.044": { zh: "{p1}{p2}", en: "{p1}{p2}" },
-  // **R 族残骸回收的 AI 核心**（船长 2026-10-01 令「AI 核心为 R 族残骸回收的特色」）：
-  // 回收炉烧光环残骸每批追加 10% 掷核心，抽中即直接入核心库（不进仓库）并推这一条。
   "core.industry.045": {
     zh: "✦ 额外产出：{p1} ×{p2}。",
     en: "✦ Bonus output: {p1} ×{p2}.",
@@ -3116,7 +2840,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.industry.084": { zh: "精炼炉随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动（AI 核心驱动不受此限）。", en: "The refinery runs on the Association base network: dock at a station, the home port or a completed outpost, to start it — AI-core-driven runs are not affected." },
   "core.industry.085": { zh: "精炼炉的「货柜拆解」随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动（AI 核心驱动不受此限）。", en: "Container breaking at the refinery runs on the Association base network: dock at a station, the home port or a completed outpost, to start it — AI-core-driven runs are not affected." },
   "core.industry.086": { zh: "残骸回收炉随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动（AI 核心驱动不受此限）。", en: "The wreck recycler runs on the Association base network: dock at a station, the home port or a completed outpost, to start it — AI-core-driven runs are not affected." },
-  /* ── 多段文案（甲案配套）：链式 id + 每段参数命名空间 `p{n}p{k}` ── */
   "core.ai.034": { zh: "[AI·{p1}] ⚔ 战报：{p2}·{p3} 大捷（交火 {p4}，开火 {p5} 命中 {p6}）！", en: "[AI·{p1}] ⚔ Battle report: a rout at {p2}·{p3}! (exchange {p4}, {p5} shots fired, {p6} hits)" },
   "core.ai.035": { zh: "船体维修装置{p1}。", en: "Hull repair units {p1}." },
   "core.ai.036": { zh: "奖金 {p1} 信用点{p2}已入仓库", en: "A bounty of {p1} credits{p2} went into storage" },
@@ -3149,20 +2872,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.state.040": { zh: "；AI 核心已归还核心库。", en: "; the AI core went back to the core library." },
   "core.state.041": { zh: "；AI 核心已归还核心库", en: "; the AI core went back to the core library" },
   "core.state.042": { zh: "。", en: "." },
-  /**
-   * ⟪2026-10-02 船长「按你建议来修」⟫ **列表分隔符**：core 不再把中文顿号焊进参数值，
-   * 而是把"逐项值"交给渲染层的列表槽（`p{n}List`），由它按当前语言取本词条拼起来。
-   * 用法与契约见 `packages/core/src/logParts.ts` 的 `logParamsOf` 头注。
-   */
   "core.state.043": { zh: "、", en: ", " },
-  /**
-   * ⚠ **2026-09-27 修复（船长报障「打开游戏显示非法的备份文件名，然后正常进入游戏」）**：
-   * `ui.main.001~004` 是**渲染层启动序列**（`renderer/src/main.tsx`）用的四条，P1b（`004764f7`）引入时的原文见下；
-   * 后来"主进程本地化"批（`afcf3aee`）批量导入时**把这四条覆盖成了主进程导入/备份对话框的文案**
-   * ⇒ 启动占位显示成「非法的备份文件名。」（玩家以为报错了），启动失败提示也串成「选择要导入的存档文件」。
-   * 本次按 **id 一经使用不复用**（§十一之三）**恢复它们的原意**；主进程那套对话框文案本来就有自己的
-   * `ui.main.011~014`（同批登记的），不依赖这四条。**调用点一字未动。**
-   */
   "ui.main.001": { zh: "正在启动星门引擎……", en: "Starting the Stargate engine…" },
   "ui.main.002": { zh: "启动失败：{err}（详见开发者控制台）", en: "Startup failed: {err} (see developer console)" },
   "ui.main.003": { zh: "性能采集模式启动失败", en: "Could not start the performance profiling mode" },
@@ -3176,10 +2886,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.main.011": { zh: "非法的备份文件名。", en: "Invalid backup file name." },
   "ui.main.012": { zh: "选择要导入的存档文件", en: "Choose a save file to import" },
   "ui.main.013": { zh: "导入此存档", en: "Import this save" },
-  /** ⟪文案调整 2026-10-02⟫ 船长令「**直接写成『加载存档文件』**」：本 id = 系统文件对话框里的**类型名**（导入/导出共用），
-   *  「JSON」是文件格式名、玩家不必懂（whale-copy §2 第 4 条）⇒ 改「存档文件」。 */
   "ui.main.014": { zh: "存档文件", en: "Save file" },
-  /** ⟪网页版更新提示 2026-11-09 船长令⟫ 挂机玩家长期不关页面会一直跑旧包；只提示、不强制刷新。 */
   "ui.webUpdate.001": { zh: "检测到新版本，刷新后才会用上最新玩法。", en: "", enDeferred: true },
   "ui.webUpdate.002": { zh: "有更新，点我刷新", en: "", enDeferred: true },
   "ui.Achievements.001": { zh: "尚未获得", en: "Not earned yet" },
@@ -3187,22 +2894,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Achievements.003": { zh: "获得于 {t}", en: "Earned {t} ago" },
   "ui.Achievements.004": { zh: "成就徽章", en: "Achievement badges" },
   "ui.Achievements.005": { zh: "已获得 {n}/{total} 枚", en: "{n}/{total} earned" },
-  /**
-   * ⚠ `ui.Achievements.006 / 007 / 008` 已于 2026-09-20 **删除**（船长令：成就页「不要分系列」）
-   * —— 它们分别是两个分区标题与链进度读数「当前 {lv} 级」，随分区一起取消 ⇒ 全仓再无引用。
-   * 新悬停三行的样式是纯 CSS（`.app-ach-tip-note` / `.app-ach-tip-time`），不需要词条。
-   */
   "ui.Shipyard.001": { zh: "搜索蓝图、产物或材料…", en: "Search blueprints, products or materials…" },
-  /**
-   * 造船厂筛选行与读数（**2026-09-22 补**：船长报障「筛选选项的文案和标签页的文案还有遗漏」）——
-   * 这三行原先写死中文（英文界面下整行漏中文）；「全部」档与读数后缀复用既有条目
-   * （`ui.IndustryPage.001` / `ui.IndustryPage.108` / `ui.Industry.127`），不另造同串条目。
-   *
-   * ⚠ `ui.Shipyard.003 / 004` 已于 2026-09-26 **删除**（船长令：「将造船的一次性蓝图筛选移动到学会的
-   * 筛选内，并将学会的筛选改名为蓝图。删除原先的图纸筛选」）——它们分别是「学会：」与「图纸：」两行的前缀，
-   * 那两行现为**一行**且改名「蓝图：」⇒ 前缀复用组装机那条 `ui.Industry.136`（同串不另造条目）；
-   * 新增的「类别：」行复用舰队页的 `ui.ShipPage.004`。全仓再无引用。
-   */
   "ui.Shipyard.002": { zh: "仓库＋机库", en: "Warehouse + Hangar" },
   "ui.Shipyard.005": { zh: "制造线 {p1} 条 · 舰船 {p2} · 已学会 {p3}", en: "{p1} production lines · {p2} ships · {p3} learned" },
   "ui.Shipyard.006": {
@@ -3268,43 +2960,23 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.ActivityBar.060": { zh: "{p1}：本期限时加成 ×{p2}{p3}\n", en: "{p1}: current limited-time bonus ×{p2}{p3}\n" },
   "ui.ActivityBar.061": { zh: "操作失败。", en: "The action failed." },
 
-  /**
-   * **副AI活动组**（2026-09-25 船长令：「活动页面，可以试着在玩家活动下方新建一个副AI活动，
-   * 将所有AI的进度条和活动类型挨个列出」）⇒ 组标题 + 空态各一条。
-   */
   "ui.ActivityBar.062": { zh: "副AI活动", en: "AI Operations" },
   "ui.ActivityBar.063": { zh: "AI 全部待机——去「舰船 · AI 指挥中心」或「工业」派活。", en: "All AI idle — assign jobs in Ship › AI Command or Industry." },
-  /** 副AI活动 迷你条目的悬浮提示（2026-09-25：条目本身只留动画/在干什么/进度条，详情走悬浮） */
   "ui.ActivityBar.064": { zh: "{p1}\n{p2}\n点击前往「舰船 · AI 指挥中心」", en: "{p1}\n{p2}\nClick to open Ship › AI Command" },
   "ui.ActivityBar.065": { zh: "计时中", en: "Timers" },
 
-  /**
-   * **实验室活动行**（**2026-10-01 接入活动栏**）：活动行「停止」按钮的**提示**与**点了之后的回执**。
-   * 按钮本身的字复用实验室卡片那颗停止键（`ui.hud.084`「停线」）⇒ 这里不另写一份同义短词。
-   * 停机口径 = `stopLabRun`：**已完成批保留**（产物早入库），**当前那一批的进度丢弃**
-   * （BOM 每批到点才扣 ⇒ 材料没被吃掉、仍在仓库/货舱里）。
-   */
   "ui.ActivityBar.068": { zh: "已停线：已完成批保留，当前那一批的进度丢弃。", en: "The line stopped: finished batches are kept; the current batch's progress is lost." },
   "ui.ActivityBar.069": { zh: "停线：已完成批保留，当前那一批的进度丢弃；材料未被扣取，仍在仓库。", en: "Stop the line: finished batches are kept and the current batch's progress is lost; no materials were consumed and they stay in storage." },
-  /* 旧版活动栏「最小化」（**2026-10-02 船长令**：「给旧版界面的活动窗口添加个最小化的按钮，点击后活动窗口高度缩小，只显示标题（写着活动的那一行）」） */
   "ui.ActivityBar.070": { zh: "收起活动栏（只留标题行）", en: "Collapse the activity bar (title row only)" },
   "ui.ActivityBar.071": { zh: "展开活动栏", en: "Expand the activity bar" },
 
-  /** 设置·开发者：调试模式开关（2026-09-25；船长报「已开启调试模式但按钮不可见」后加的免 DevTools 开关） */
   "ui.App.146": { zh: "界面布局", en: "Interface layout" },
   "ui.App.147": { zh: "新版", en: "New" },
   "ui.App.148": { zh: "旧版", en: "Classic" },
   "ui.App.149": { zh: "切换后需要重开游戏生效。", en: "Reopen the game for the change to take effect." },
   "ui.App.150": { zh: "切换界面", en: "Switch interface" },
-  /**
-   * **切布局的两句**（**2026-09-29 船长令**：「切换新版和旧版的现在重启，只对本地有效，
-   * **网页版应该为刷新网页**」）——动作统一成"**重新载入当前页面**"：
-   * 网页版 = 刷新页面，桌面版 = 重载同一个页面（等价于原来那次重开，且不必退出进程）。
-   */
   "ui.App.151": { zh: "界面将在页面重新载入后更换。", en: "The interface changes once the page reloads." },
   "ui.App.152": { zh: "现在刷新", en: "Reload now" },
-  /* 2026-09-26 船长令：「在设置界面切换新版界面出，给新版按钮加个文本'（测试中）'」——
-     **只加在按钮上**（设置行的当前值那处不加：那是"现在用哪套"的读数，不是按钮标签） */
   "ui.App.153": { zh: "（测试中）", en: "(in testing)" },
   "ui.App.141": { zh: "调试模式", en: "Debug mode" },
   "ui.App.142": { zh: "开启", en: "Enable" },
@@ -3330,8 +3002,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Announcements.001": { zh: "游戏更新公告", en: "Game update announcements" },
   "ui.Announcements.002": { zh: "公告", en: "Announcements" },
   "ui.Announcements.003": { zh: "📣 更新公告", en: "📣 Update announcement" },
-  /* ── core「内容名」的本地化落点（2026-09-21 船长报障：子标签与筛选没本地化 · 第二批）──
-     别名表的**大多数**条目复用既有 id（原矿/原材料/无人机…），只有 core 独有的少数几个登记在这里。 */
   "ui.labelsText.001": { zh: "零件", en: "Parts" },
   "ui.labelsText.002": { zh: "蓝图碎片", en: "Blueprint fragments" },
   "ui.labelsText.003": { zh: "侦察机", en: "Scout" },
@@ -3345,14 +3015,11 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.labelsText.011": { zh: "贝塔 AI 核心", en: "Beta AI core" },
   "ui.labelsText.012": { zh: "阿尔法 AI 核心", en: "Alpha AI core" },
   "ui.labelsText.013": { zh: "{p1} · {p2}", en: "{p1} · {p2}" },
-  /* 舰船级别整档模板：Frigate/Destroyer/Cruiser/Battleship/Titan，T5档名与指挥旗舰职务分开。 */
   "ui.labelsText.014": { zh: "T{p1} 护卫舰", en: "T{p1} Frigate" },
   "ui.labelsText.015": { zh: "T{p1} 驱逐舰", en: "T{p1} Destroyer" },
   "ui.labelsText.016": { zh: "T{p1} 巡洋舰", en: "T{p1} Cruiser" },
   "ui.labelsText.017": { zh: "T{p1} 战列舰", en: "T{p1} Battleship" },
-  // ⟪文案调整 2026-10-04⟫ T5分类改为泰坦，指挥职务的旗舰不改。
   "ui.labelsText.018": { zh: "T{p1} 泰坦", en: "T{p1} Titan" },
-  /* 技能分类（`SKILL_GROUPS`：舰船/工业/矿业/战斗/工程/贸易/探索/物流） */
   "ui.labelsText.019": { zh: "舰船", en: "Ships" },
   "ui.labelsText.020": { zh: "工业", en: "Industry" },
   "ui.labelsText.021": { zh: "战斗", en: "Combat" },
@@ -3360,9 +3027,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.labelsText.023": { zh: "贸易", en: "Trade" },
   "ui.labelsText.024": { zh: "物流", en: "Logistics" },
   "ui.labelsText.025": { zh: "探索", en: "Explore" },
-  /* 矿业（2026-09-27 船长令：采矿从工业独立出去，成为第 8 个大类） */
   "ui.labelsText.070": { zh: "矿业", en: "Mining Industry" },
-  /* ── 技能书（2026-09-22 船长令「将现有的技能再进行细分」：技能大类之内再切细的 23 本）── */
   "ui.labelsText.026": { zh: "航行与机动", en: "Flight & Maneuvering" },
   "ui.labelsText.027": { zh: "采矿", en: "Mining" },
   "ui.labelsText.028": { zh: "精炼", en: "Refining" },
@@ -3386,14 +3051,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.labelsText.046": { zh: "市场", en: "Market" },
   "ui.labelsText.047": { zh: "悬赏", en: "Bounties" },
   "ui.labelsText.048": { zh: "物流与货舱", en: "Logistics & Cargo" },
-  /**
-   * ── **模块槽位名**（2026-09-22 · 船长令「先进行手册的本地化」补）──
-   *
-   * 病根：core 的 `SLOT_LABELS` 是**纯中文表**，手册的装备图鉴卡副标题（`.app-hand-cell-sub`）、
-   * 槽位 chip、详情行都直接读它 ⇒ 英文界面下整片漏中文（实测：装备图鉴一页 140 处里的大头）。
-   * 口径同 `ui/labelsText.ts` 的其它映射：**渲染层不显示 core 的中文串**，把槽位键映到 id 再取词；
-   * core 一个字节不动。能复用既有条目的已复用（采集器 / 打捞器 / 推进器 / 目标锁定），其余在此登记。
-   */
   "ui.labelsText.049": { zh: "货舱扩展", en: "Cargo Expander" },
   "ui.labelsText.050": { zh: "炮台", en: "Turret" },
   "ui.labelsText.051": { zh: "导弹架", en: "Missile Bay" },
@@ -3403,42 +3060,20 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.labelsText.055": { zh: "无人机甲板扩展", en: "Drone Bay Extension" },
   "ui.labelsText.056": { zh: "无人机战术", en: "Drone Tactical" },
   "ui.labelsText.057": { zh: "无人机中继", en: "Drone Relay" },
-  // 2026-09-27 船长令：中槽新家族「无人机护盾投射仪」
-  // ⚠ 合并：与「无人机储备甲板」撞号 `.071` ⇒ **后合入的 drone-shield 顺移到 `.072`**。
   "ui.labelsText.072": { zh: "无人机护盾", en: "Drone Shield" },
   "ui.labelsText.058": { zh: "支援系统", en: "Support System" },
   "ui.labelsText.059": { zh: "协处理器", en: "Coprocessor" },
-  /**
-   * ── **舰级蓝图档**（同批补）──
-   *
-   * `ui/itemSubs.ts` 的蓝图子类里，舰船档是**拼接出来的**（``label: `${s.label}蓝图` ``、没有 id）
-   * ⇒ 市场「蓝图」与手册「蓝图图鉴」按舰级分的档在英文下整句中文（静态扫描看不见模板串）。
-   * 这里给 5 条**整档模板**（档号写进译文，与 `ui.labelsText.014~018` 的舰级模板同款），
-   * 由 `itemSubs` 用 `id` + `idParam` 取词。
-   */
   "ui.labelsText.060": { zh: "T{p1} 护卫舰蓝图", en: "T{p1} Frigate Blueprint" },
   "ui.labelsText.061": { zh: "T{p1} 驱逐舰蓝图", en: "T{p1} Destroyer Blueprint" },
   "ui.labelsText.062": { zh: "T{p1} 巡洋舰蓝图", en: "T{p1} Cruiser Blueprint" },
   "ui.labelsText.063": { zh: "T{p1} 战列舰蓝图", en: "T{p1} Battleship Blueprint" },
   "ui.labelsText.064": { zh: "T{p1} 泰坦蓝图", en: "T{p1} Titan Blueprint" },
-  /* ── 2026-09-26 补（船长报障「部分遗漏未本地化的文本（舰船类型，高中低槽位数量的文本）」）──
-     同一族病根：护盾力场**槽位名**与窝点**档名**原先在渲染层直读 core 的纯中文表
-     （`SLOT_LABELS['shield-field']` / `LAIR_TIER_LABELS`）⇒ 英文界面下漏中文。
-     现登记 id，由 `ui/labelsText.ts` 的 `slotText` / `lairTierText` 取词。 */
   "ui.labelsText.065": { zh: "护盾力场", en: "Shield Field" },
-  /* 2026-09-27 无人机储备甲板批：新槽位 `drone-deck` 的家族名（装配页 chip / 手册装备卡副标题共用） */
   "ui.labelsText.071": { zh: "无人机储备甲板", en: "Drone Reserve Deck" },
   "ui.labelsText.066": { zh: "外围", en: "Periphery" },
   "ui.labelsText.067": { zh: "核心", en: "Core" },
   "ui.labelsText.068": { zh: "深层", en: "Deep" },
-  /* 2026-09-26 船长报障「入侵获得的黑匣在仓库内查看不到，需要新增分类」⇒ 黑匣独立成物品种类
-     （core `ItemKind` 的 `blackbox`）；仓库分类 / 货仓分组 / 手册物品图鉴 / 市场一级类型**四处共用这一条**。 */
   "ui.labelsText.069": { zh: "黑匣", en: "Black boxes" },
-  /* ── 2026-09-26 乙批（船长令「可以」继续本地化）：虫洞地点名 / 内容原型名 / 活动名 ──
-     病根同一族：core 的纯中文表（`WORMHOLE_PLACE_TEXT` / `WORMHOLE_ARCHETYPE_LABELS` / `KIND_LABEL`）
-     原被渲染层直读或被当**日志参数**塞进文案（参数不会再被翻译）⇒ 英文界面下漏中文。
-     英文口径取自 `docs/glossary-en.md`（Graveyard / Ruins / Ore Vein / Wormhole Enigma）。
-     ⚠ 活动名那 10 条的 id 表在 core（`ACTIVITY_LABEL_ID`），其中四条复用既有 id（见该表注释）。 */
   "core.wormholePlace.001": { zh: "舰船墓场", en: "Graveyard" },
   "core.wormholePlace.002": { zh: "遗迹", en: "Ruins" },
   "core.wormholePlace.003": { zh: "矿脉", en: "Ore Vein" },
@@ -3454,12 +3089,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.activity.004": { zh: "远征", en: "Expedition" },
   "core.activity.005": { zh: "快递投送", en: "Courier delivery" },
   "core.activity.006": { zh: "建站交付", en: "Outpost delivery" },
-  /**
-   * **取消代价**（2026-09-27 三号核验批）：`activityGate.HALT_COST` 的十条。
-   *
-   * 它们是**参数值**（统一日志 `{p2}` 与警告句 `{p2}`），参数不会被翻译 ⇒ 必须各配一个 id 由
-   * 渲染层按"槽译文"约定先翻好；中文值与 `HALT_COST` **逐字相同**（用例钉住），中英语义对齐。
-   */
   "core.activity.007": { zh: "本趟原矿留在船上，舰船返港", en: "ore from this run stays aboard and the ship returns to port" },
   "core.activity.008": { zh: "本趟残骸留在船上，舰船返港", en: "wrecks from this run stay aboard and the ship returns to port" },
   "core.activity.009": { zh: "本段报酬拿不到（报酬到站才结）", en: "this leg pays nothing (payment settles on arrival)" },
@@ -3470,29 +3099,16 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.activity.014": { zh: "远征无法中断", en: "an expedition cannot be interrupted" },
   "core.activity.015": { zh: "投送不可取消", en: "a delivery cannot be cancelled" },
   "core.activity.016": { zh: "交付循环停止、舰船返港，本趟建材留在船上", en: "the delivery loop stops, the ship returns to port and this run's materials stay aboard" },
-  /* 2026-10-01 船长令「实验室的主控活动并不占用主控，是BUG」⇒ 实验室纳入主控登记表（先警告再切档） */
   "core.activity.017": { zh: "停线——当前那一批的进度丢弃", en: "the line stops — this batch's progress is lost" },
   "core.activity.018": { zh: "实验室", en: "Laboratory" },
-  /**
-   * **推进器周期后缀的本地化版**（2026-09-22 · 手册本地化批）：
-   * core `thrusterCycleFullText()` 是中文整句，被 `ui/shipInfo.tsx` 直接拼进模块说明里 ⇒
-   * 装备图鉴卡副标题在英文下夹中文。现在渲染层只取 core 的**秒数**（`thrusterCycleSeconds`），
-   * 句子由本条目出（core 不动）。
-   */
   "ui.shipInfo.182": { zh: "{p1} 秒点火 / {p2} 秒冷却，开场即点火", en: "{p1}s burn / {p2}s cooldown, ignites at the start" },
   "ui.shipInfo.183": { zh: "点火 {p1} 秒 / 冷却 {p2} 秒", en: "{p1}s burn / {p2}s cooldown" },
-  /* ── 主控活动窗口（2026-09-20 船长令：主控执行采掘/打捞/长途运输/扫描虫洞时的动效窗口）── */
   "ui.ActivityWin.001": { zh: "采掘中", en: "Mining" },
   "ui.ActivityWin.002": { zh: "打捞中", en: "Salvaging" },
   "ui.ActivityWin.003": { zh: "长途运输中", en: "Long-haul transport" },
   "ui.ActivityWin.004": { zh: "母港", en: "Home port" },
   "ui.ActivityWin.005": { zh: "扫描虫洞中", en: "Scanning for wormholes" },
   "ui.ActivityWin.006": { zh: "← 最小化", en: "← Minimize" },
-  /**
-   * 2026-09-21 船长令「将左上角的小窗动画和右下角的最小化相关的按钮合并」：
-   * 活动窗口最小化后不再有右下角浮动标 ⇒ `.007`（那枚标上的「▶ 」前缀）已无引用，按纪律删死键。
-   * `.008` 改口径：它现在是**左上角舰船小窗上的悬停说明**（点整块小窗即展开）。
-   */
   "ui.ActivityWin.008": { zh: "点此展开主控活动窗口：看主控正在做什么", en: "Click to open the command activity window: see what your ship is doing" },
   "ui.ActivityWin.032": { zh: "最小化活动窗口：主控照常作业，可随时点左侧舰船小窗展开", en: "Minimize the activity window: your ship keeps working; click the ship mini-window on the left to bring it back" },
   "ui.ActivityWin.010": { zh: "矿带：", en: "Belt: " },
@@ -3555,7 +3171,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.App.039": { zh: "警告：异常/失利/记录缺失", en: "Warnings: anomalies, losses, missing records" },
   "ui.App.040": { zh: "交易：市场成交与挂单、买船买核心、维修费、远征奖金等一切资金往来", en: "Trade: every money movement — market fills and orders, ships and cores bought, repair bills, expedition payouts" },
   "ui.App.041": { zh: "事件：深空偶发奇遇与市场风云（日志带 ✦，在线时会弹小卡）", en: "Events: chance encounters in deep space and market upheaval (these log lines carry ✦ and pop a small card while you are online)" },
-  // ── 2026-09-26 船长令：事件日志重新分类（新增战斗/工业/舰队/打捞；页签改单选） ──
   "ui.App.154": { zh: "战斗", en: "Combat" },
   "ui.App.155": { zh: "工业", en: "Industry" },
   "ui.App.156": { zh: "舰队", en: "Fleet" },
@@ -3607,10 +3222,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.App.080": { zh: "迎战", en: "Engage" },
   "ui.App.081": { zh: "立即脱离：按文字结算（可能击退缴获 / 受损 / 被抢小部分货）", en: "Disengage now: resolved as text (you may drive them off and take prizes, take damage, or lose a little cargo)" },
   "ui.App.082": { zh: "快速脱离", en: "Quick disengage" },
-  /**
-   * 2026-09-22 回滚（船长令「界面回滚，战斗界面回滚到全屏显示」）：这两条回到**战斗浮动入口**的口径——
-   * `.083` 是那枚按钮的悬停说明、`.084` 是按钮文字（窗口化期间它们曾改为"小窗「⤢」角标"的说法，现已退回）。
-   */
   "ui.App.083": { zh: "进入全屏战场：观察实时战斗，可拖动距离条指挥", en: "Open the full-screen battle: watch the fight live and drag the range bar to command it" },
   "ui.App.084": { zh: "战斗中 · 进入战场", en: "In combat · entering battle" },
   "ui.App.085": { zh: "离线简报", en: "Offline report" },
@@ -3648,14 +3259,11 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.App.117": { zh: "无法应战", en: "Cannot engage" },
   "ui.App.118": { zh: "无法脱离", en: "Cannot disengage" },
   "ui.App.119": { zh: "成就", en: "Achievements" },
-  /* 界面配色（2026-09-22 船长令「添加几套配色，用于让玩家切换（至少有一个是白色皮肤）」）：
-     设置面板的一行 = 行标题 + 三选一按钮 + 说明；配色存本机（不进存档）。 */
   "ui.App.127": { zh: "界面配色", en: "Color scheme" },
   "ui.App.128": { zh: "深空", en: "Deep Space" },
   "ui.App.129": { zh: "亮白", en: "Daylight" },
   "ui.App.130": { zh: "高对比", en: "High contrast" },
   "ui.App.131": { zh: "跟随系统", en: "Match system" },
-  /* ⟪文案调整 2026-09-22⟫ 船长令「继续做剩余的颜色」⇒ 第三套主题（高对比深色）上线，说明文案随之补上它 */
   "ui.App.132": { zh: "深空为经典深色界面，高对比为近黑底加亮字，暖色偏暖且蓝光更少，纯黑夜间底为纯黑、字更柔和，色盲将识别色换为色觉安全色；即时生效，不写入存档。", en: "Deep Space is the original dark interface; High contrast uses a near-black background with brighter text; Warm shifts the palette warm to cut blue light; Night black uses a pure black background with softer text; Color-blind swaps the identity colors for a color-vision-safe set. Applies instantly and is not stored in the save." },
   "ui.App.133": { zh: "亮白配色不铺星图底，故此项在亮白下不可用。", en: "The Daylight scheme does not use the starfield backdrop, so this option is unavailable there." },
   "ui.App.134": { zh: "暖色", en: "Warm" },
@@ -3665,8 +3273,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.App.138": { zh: "从仓库取用", en: "From the warehouse" },
   "ui.App.139": { zh: "从货仓取用", en: "From ship holds" },
   "ui.App.140": { zh: "开启时，所有舰船的弹药与修理组件直接从母港仓库取用；关闭后只从舰队内各舰的货仓取用。", en: "On: every ship draws ammo and repair kits straight from the home-port warehouse. Off: only from the holds of the ships in the fleet." },
-  /* 导航「任务中心」的**「第一次」推进提醒**（**2026-09-20 船长令**：「每推进一阶段第一次任务时，
-     在导航栏的任务中心选项处进行提醒」）——悬停文案，与「赏金任务已更新」那条并列（两条都有时各占一行）。 */
   "ui.App.120": { zh: "有新的「第一次」任务：{p1}（进任务中心即清除）", en: "New First-time task available: {p1} (cleared once you open the Task Center)" },
   "ui.BattleScreen.001": { zh: "无", en: "None" },
   "ui.BattleScreen.002": { zh: "动能", en: "Kinetic" },
@@ -3703,27 +3309,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.BattleScreen.033": { zh: "停机", en: "Stopped" },
   "ui.BattleScreen.034": { zh: "劫掠捕获网：被钉住的舰船机动骤降、推进器熄火、闪避失效、射程缩短——击沉发动者、或把距离拉到 4500 米外才能解除", en: "Raid snare: a pinned ship loses most of its maneuverability, its thrusters cut out, evasion fails and its range shrinks — sinking the ship that launched the snare, or opening the range past 4,500 m, breaks it" },
   "ui.BattleScreen.035": { zh: "敌方全队机库备用机：前线战损后自动满血补位（打光母舰才是解法）", en: "Enemy hangar reserves: they replace losses at full HP (wearing down the carriers is the answer)" },
-  /**
-   * ⚠ **`ui.BattleScreen.036` 已于 2026-09-20 删除**：它是旧裁定（2026-09-13「虫洞中的战斗画面
-   * 不可以退出」）的**禁用理由**文案；船长 2026-09-20 改判「**虫洞内的战斗，允许玩家将战斗窗口
-   * 最小化**」⇒ 洞内那枚按钮不再禁用，该键随之无引用（按纪律删死键，不留悬空文案）。
-   */
-  /**
-   * 战斗屏左上角那枚按钮。它**只关观看界面**，战斗在后台照常推进（悬停说明 `.105` 把这一点写清楚）。
-   *
-   * ⚠ **命名沿革（两改一读，别再反复）**：
-   * - **2026-09-20**：窗口化那阵子写「← 最小化」（船长报障「说是退出战斗其实不准确，应该是最小化
-   *   战斗窗口」）；
-   * - **2026-09-22 退回**：船长令「界面回滚，战斗界面回滚到全屏显示」⇒ 战场回全屏覆盖层，当时判定
-   *   "最小化"是**窗口形态专属**的说法，退回「← 退出战场」；
-   * - **2026-09-26 定回「← 最小化」**：船长令「**将战斗画面的退出战场按钮改为文字最小化**」。
-   *   据以改判的事实（本按钮**在两种形态下的动作完全相同**，全屏也一样成立）：只关**观看界面**，
-   *   战斗在后台照常推进，右下角「战斗中 · 进入战场」随时点回来 ⇒ 对玩家而言就是"把战场收起来"。
-   * 若要再改口径（例如「← 关闭战场」），改这一条即可。
-   */
   "ui.BattleScreen.037": { zh: "← 最小化", en: "← Minimize" },
   "ui.BattleScreen.038": { zh: "副本内战斗没结束无法撤退：打完本节点，层末才能选择撤离", en: "Cannot retreat while the battle is unfinished: clear this node, and withdrawal is offered at the end of the layer" },
-  /** 洞内"本场必须打完"的提示——**2026-09-20 改文案**：去掉了"（战场也不能退出）" */
   "ui.BattleScreen.039": { zh: "洞内：本场必须打完", en: "In the wormhole this fight has to be finished" },
   "ui.BattleScreen.040": { zh: "撤退：轻损脱离战斗并即刻回港", en: "Retreat: disengage with light damage and dock at once" },
   "ui.BattleScreen.041": { zh: "⚑ 撤退", en: "⚑ Retreat" },
@@ -3790,45 +3377,25 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.BattleScreen.102": { zh: "（无弹）", en: "(no ammo)" },
   "ui.BattleScreen.103": { zh: "（回收率 {p1}% · 优先回收高价值）·", en: "(recovery rate {p1}% · high-value drones first) ·" },
   "ui.BattleScreen.104": { zh: "净损失 {p1} 架", en: "net loss: {p1} airframes" },
-  /**
-   * 「← 最小化」（原「← 退出战场」，2026-09-26 船长令改口径）的悬停说明。洞内与洞外**同一句话**：
-   * 都只是关掉观看界面，战斗在后台继续推进。2026-09-22 回滚（船长令「界面回滚，战斗界面回滚到
-   * 全屏显示」）：还原入口回到**右下角那枚「战斗中」浮动入口**（窗口化期间曾改成"左侧舰船小窗"，
-   * 现已退回）。
-   */
   "ui.BattleScreen.105": { zh: "最小化战斗界面：战斗在后台照常推进，可随时点右下角「战斗中」回来", en: "Minimize the battle view: the fight keeps running in the background; click “In battle” at the bottom right to come back" },
   "ui.BattleScreen.106": { zh: "战斗窗口", en: "Battle window" },
-  // 伤害飘字里"没打中"的标记（2026-09-24 船长令：伤害数值动画「包括 MISS」——船长指定就显示 MISS，
-  // 中英同形，属**语言中立**的战斗术语；要改中文口径只需改这一条 zh）
   "ui.BattleScreen.107": { zh: "MISS", en: "MISS" },
-  /* 装填冷却条上的无人机条目（2026-09-26 玩家报障：机群被打光后那一格仍写「就绪」） */
   "ui.BattleScreen.109": { zh: "机群已损失", en: "drones lost" },
   "ui.BattleScreen.110": { zh: "{p1}：机群已全部被击落，不会再开火", en: "{p1}: every airframe has been shot down, it will not fire again" },
   "ui.BattleScreen.111": { zh: "{p1}：存活 {p2}/{p3} 架", en: "{p1}: {p2}/{p3} airframes alive" },
-  /* 距离尺的语义标签（2026-09-26 战斗界面优化批 I4）：尺是纯图形读数 ⇒ 给读屏一个可读口径（视觉零变化） */
   "ui.BattleScreen.112": { zh: "距离尺：当前 {p1} 米 · 远端 {p2} 米 · 近端 {p3} 米", en: "Range ruler: {p1} m now, {p2} m at the far end, {p3} m at the near end" },
-  /**
-   * English-residual batch 5 (2026-09-30): the enemy range-band chip's ship count.
-   * It used to be a raw template literal (` ×${b.count} 艘`) in `panels/BattleScreen.tsx`.
-   */
   "ui.BattleScreen.113": { zh: " ×{p1} 艘", en: " ×{p1} ships" },
-  /* 损伤管制装置同舰唯一（2026-09-25 船长令「损管只能装备一件」）：装配被拒时的原因 id */
   "core.equipment.028": { zh: "损伤管制装置每舰只能装一件（已装 {p1}）。", en: "Only one Damage Control Unit may be fitted per ship (already fitted: {p1})." },
-  // 2026-09-26 报障修复（“可以装多个损管”）：载入归正日志——每舰只留一件，多余的退回装备库
   "core.equipment.029": { zh: "同舰唯一归正：每舰只留一件损伤管制装置，退回装备库 {p1} 件（{p2}）。", en: "Per-ship uniqueness fix-up: one Damage Control Unit kept per ship; {p1} extra unit(s) returned to the module bay ({p2})." },
-  /* 2026-09-27 船长报障「有部分船插会在装备栏显示」：装配入口拒收插件（插件只走插件槽） */
   "core.equipment.030": { zh: "「{p1}」是舰船插件，只能装进插件槽（装上去拆不下来，也不会占高/中/低槽）。", en: "“{p1}” is a ship plug: it can only go into a plug slot (it cannot be removed once fitted, and it never takes a high/mid/low slot)." },
-  /* 2026-09-27 同批：载入归正——把误装在高/中/低槽里的插件搬回插件槽或退回装备库 */
   "core.equipment.031": { zh: "舰船插件归正：装回插件槽 {p1} 件、退回装备库 {p2} 件（{p3}）——插件只占插件槽，不占高/中/低槽。", en: "Ship plug fix-up: {p1} refitted into plug slots and {p2} returned to the module bay ({p3}) — plugs only take plug slots, never high/mid/low ones." },
   "core.equipment.032": { zh: "CPU 超载：合计需 {p1}，预算 {p2}（协处理器只扩容、卸下即收回——先卸下其它装备或无人机）。", en: "CPU overload: {p1} needed against a budget of {p2} — a coprocessor only raises the budget and takes that expansion back when removed, so unfit other modules or drones first." },
-  /* 舰船插件（2026-09-26 船长令）：「是一种类似装备的东西，同样装备在舰船上，但是不可拆卸，不可替换」 */
   "core.plug.001": { zh: "已为 {p1} 装上插件：{p2}。插件装上后无法拆下。", en: "{p1} has been fitted with a plug: {p2}. A plug cannot be removed once fitted." },
   "core.plug.002": { zh: "{p1} 不是舰船插件。", en: "{p1} is not a ship plug." },
   "core.plug.003": { zh: "舰队里找不到这艘舰船。", en: "That ship is not in the fleet." },
   "core.plug.004": { zh: "{p1} 没有舰船插件槽。", en: "{p1} has no ship plug slots." },
   "core.plug.005": { zh: "插件槽已满：本舰 {p1} 格，且插件装上去就拆不下来。", en: "Plug slots are full: this ship has {p1}, and a plug cannot be removed once fitted." },
   "core.plug.006": { zh: "本舰已经装了一件 {p1}。同型插件不能重复装。", en: "This ship already carries {p1}. The same plug cannot be installed twice." },
-  /* 舰船插件：入库/挂卖拒因（2026-09-26 船长令「装有插件的舰船无法放入舰船仓库」） */
   "core.plug.007": { zh: "这艘船装有 {p1} 件舰船插件，插件装上去就拆不下来——不能放入舰船仓库，也不能挂卖。", en: "This ship carries {p1} ship plug(s), and a plug cannot be removed once fitted — it cannot be stored in the ship warehouse or listed for sale." },
   "core.plug.008": { zh: "图纸目录里没有这张舰船插件图纸。", en: "That plug blueprint is not in the blueprint catalog." },
   "core.plug.009": { zh: "已经学过 {p1} 了，不用再兑换一次。", en: "You have already learned {p1}; no need to exchange again." },
@@ -3852,7 +3419,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.CargoPage.007": { zh: "当前驾驶船", en: "Piloted ship" },
   "ui.CargoPage.008": { zh: "查看中 · 可卸货", en: "Viewing · can unload" },
   "ui.CargoPage.009": { zh: "{n} 种", en: "{n} types" },
-  // ⟪文案调整 2026-10-04⟫ 货物空组不等于没有原矿。
   "ui.CargoPage.010": { zh: "货仓里没有货物。", en: "There are no goods in the hold." },
   "ui.CargoPage.011": { zh: "船上没有原材料（精炼产物直接入仓库）。", en: "No refined materials aboard (refined output goes straight to the warehouse)." },
   "ui.CargoPage.012": { zh: "船上没有气体。", en: "No gas aboard." },
@@ -3918,16 +3484,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.CommsPage.010": { zh: "已读", en: "Read" },
   "ui.CommsPage.011": { zh: "未读", en: "Unread" },
   "ui.CommsPage.012": { zh: "标记已读失败。", en: "Could not mark as read." },
-  /**
-   * ── **通讯（发件人 / 主题行 / 送达时间）**（2026-09-22 · 船长令「你继续本地化」）──
-   *
-   * 通讯文案在**数据侧**（`messages.ts` / `firstTaskMessages.ts` 的 `subject`、`commsFactions.ts` 的
-   * 势力与部门 `name`），core 还会把发件人拼成「势力名 · 部门名」⇒ 英文界面下整页中文（实测 49 处）。
-   * 口径：data/core **保持中文兜底不动**，渲染层按稳定键（部门中文名 / 消息 `id`）映射到这里的 id 取词
-   * —— 映射单点 = `apps/desktop/src/renderer/src/ui/commsText.ts`。
-   * 专名一律以游戏既有英文为准：Cinder Sector / Redring Corridor / Auro Waste Ring / Deadarmy / Low-sec。
-   * ⚠ **正文段落（`body`）与部门简介（`brief`）不在本批**（正文约 90 行，另开一遍）。
-   */
   "ui.comms.001": { zh: "深空工业协会", en: "Deep Space Industry Association" },
   "ui.comms.002": { zh: "打捞队工会", en: "Salvage Guild" },
   "ui.comms.003": { zh: "信息库", en: "The Archive" },
@@ -3996,20 +3552,14 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.comms.066": { zh: "想先看看这片星域长什么样？去星图认认路。", en: "Want a look at this stretch of space first? Get your bearings on the Star Map." },
   "ui.comms.067": { zh: "航线通报：第七层起的围剿", en: "Route bulletin: the sweep from layer seven on" },
   "ui.comms.068": { zh: "到「技能」页的「工程」里训练 AI 核心操作学", en: "Train AI Core Operation under Engineering on the Skills page" },
-  // 2026-09-25 周末入侵两封：跳转栏那两句（预警 → 星图；结算 → 弹结算面板）
   "ui.comms.069": { zh: "星图 · 被占星系有红色发光与旗标", en: "Star map · occupied systems carry a red glow and a flag" },
   "ui.comms.070": { zh: "查看详细奖励", en: "View the detailed rewards" },
-  // 2026-09-25 奖励清单的三个连接件（结构化清单 → 一句人话；界面拼串，引擎不拼中文）
   "ui.comms.071": { zh: "{p1} 信用点", en: "{p1} credits" },
   "ui.comms.072": { zh: "{p1} ×{p2}", en: "{p1} ×{p2}" },
   "ui.comms.073": { zh: "、", en: ", " },
-  /* ── 2026-09-30 首访实验室：黑市那封（船长令「来源不能是官方」「口气是黑市商人诱导你」）──
-     074/075 = 新发件方名与部门名（`ui/commsText.ts` 的 `COMMS_NAME_ID`）
-     076 = 主题行 · 077 = 跳转栏那句 · 078 = 立场片「中立」（枚举里本来就有，此前没势力用过） */
   "ui.comms.074": { zh: "黑市", en: "Black Market" },
   "ui.comms.075": { zh: "违禁品柜", en: "Contraband Desk" },
   "ui.comms.076": { zh: "实验室开了？有两样东西值得做", en: "Got laboratory access? Two things worth making" },
-  // ⟪文案调整 2026-10-04⟫ 船长审过三封通讯；正文中英按同一组 id 逐段取词。
   "ui.commsWelcome.001": { zh: "飞行员，你的呼号已登记，协会通讯也已接通。航线通知和各部门来信会发到这个终端，请留意查收。", en: "Pilot, your callsign is registered and your Association comms link is active. Route notices and messages from our departments will arrive at this terminal. Please check them when they come in." },
   "ui.commsWelcome.002": { zh: "初来这片星域，可以先查看常驻悬赏。选目标前核对位置和敌情，不必急着出港。", en: "If you are new to this region, start by checking the standing bounties. Check the location and enemy details before choosing a target. There is no need to rush out of port." },
   "ui.commsSalvage.001": { zh: "飞行员，我是老陈。你已经跑过几个星系了，有空去残骸场看看。我们常年干这行，那里还有不少能收回来的东西。", en: "Pilot, Old Chen here. You have been through a few systems now. Take a look at the wreck fields when you have time. We work them year-round, and there is still plenty worth bringing back." },
@@ -4023,13 +3573,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.commsContraband.005": { zh: "等你在协会的累计声望满 100，我这边还有别的货给你看。在那之前，不用找我，我会留意你的消息。", en: "Once your total earned standing with the Association reaches 100, I will have other goods to show you. Until then, do not come looking for me. I will keep an ear out for news of you." },
   "ui.comms.077": { zh: "工业页的实验室能造这两样。", en: "The Lab on the Industry page builds both of these." },
   "ui.comms.078": { zh: "中立", en: "Neutral" },
-  /* 2026-10-01（三号 · ⟪文案调整 2026-10-01⟫ · 船长报障「本地存档显示的是 '{p1} ×{p2}'」）：
-     **首匣通讯（`msg-blackbox-plug-unlock`）的主题行**单开一条。原先它挂在 `ui.comms.072` 上，
-     而那一条是**奖励清单的模板**（`{p1} ×{p2}`，由 `commsRewardText()` 喂两个参数），
-     主题这头是**无参渲染**（`commsSubjectText()` 只做 `tr(id)`）⇒ 占位符原样漏给玩家。
-     台账见 `docs/design/comms-param-fix-20261001.md`。 */
   "ui.comms.079": { zh: "工业通报：黑匣可以换舰船插件了", en: "Industry notice: the black box can be traded for ship plugs now" },
-  // 2026-09-25 入侵结算面板（点结算通讯的跳转弹出；照虫洞撤离结算的骨相）
   "ui.weekend.030": { zh: "入侵结算", en: "Invasion summary" },
   "ui.weekend.031": { zh: "核心「{p1}」 · {p2} · 第 {p3} 场", en: "Core “{p1}” · {p2} · Run {p3}" },
   "ui.weekend.032": { zh: "旗舰被你击沉", en: "the flagship was sunk by you" },
@@ -4054,8 +3598,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.weekend.051": { zh: "{p1} 档", en: "tier {p1}" },
   "ui.weekend.052": { zh: "无贡献", en: "no contribution" },
   "ui.weekend.053": { zh: "入侵结算 · {p1}", en: "Invasion summary · {p1}" },
-  // 2026-09-25 旗舰战入口 ＋ 战前准备界面（船长令：核心收复后在入侵窗口显示「发现敌方旗舰」，
-  // 星图核心星系的星系详细里也加入口；点开是与虫洞同款的选船准备界面）
   "ui.weekend.060": { zh: "发现敌方旗舰", en: "Enemy flagship detected" },
   "ui.weekend.061": { zh: "{p1}的旗舰停在「{p2}」，派一支小队过去清剿", en: "The {p1} flagship is holding at “{p2}”; send a squad to clear it out" },
   "ui.weekend.062": { zh: "战前准备", en: "Prepare" },
@@ -4078,37 +3620,20 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.weekend.077": { zh: "战力 {p1}", en: "power {p1}" },
   "ui.weekend.079": { zh: "至少要选一艘船。", en: "Pick at least one ship." },
   "ui.weekend.080": { zh: "装甲 {p1}% · 结构 {p2}%", en: "armor {p1}% · hull {p2}%" },
-  // 2026-09-25 船长令：核心收复、旗舰现身时弹一次窗，可从弹窗直接去战前准备
   "ui.weekend.090": { zh: "敌方旗舰现身", en: "The enemy flagship has appeared" },
   "ui.weekend.091": { zh: "核心「{p1}」已收复，{p2}的旗舰停在那一带。派一支小队过去清剿。", en: "The core “{p1}” has been reclaimed, and the {p2} flagship is holding in that area. Send a squad to clear it out." },
-  // 2026-09-25 船长令：入侵期间星系详细里的悬赏只显示「击退入侵舰队」＋威胁范围（不暴露抽签结果）
   "ui.weekend.092": { zh: "击退入侵舰队", en: "Repel the invader fleet" },
   "ui.weekend.093": { zh: "威胁 {p1}~{p2}", en: "threat {p1}–{p2}" },
-  // 2026-09-25：入侵残骸独立池（打捞界面的独立残骸条）· 赏金去向 · 结算面板的进度收入那一格
   "ui.weekend.094": { zh: "入侵残骸 {p1}", en: "Invasion wrecks {p1}" },
-  /* 玩家舰船残骸（2026-09-26 船长令）：打捞面板置顶的读数卡（船名 + 剩余件数 + 倒计时） */
   "ui.weekend.110": { zh: "舰船残骸 {p1} 具（优先打捞）", en: "Ship wrecks {p1} (salvaged first)" },
   "ui.weekend.111": { zh: "{p1} · 还可回收 {p2} 件 · 剩 {p3} 小时", en: "{p1} · {p2} item(s) recoverable · {p3} h left" },  "ui.weekend.095": { zh: "入侵残骸占本星系残骸 {p1}%（独立残骸场：无保底，48 小时衰减到消失）", en: "Invasion wrecks are {p1}% of this system's wrecks (a separate field: no floor, it fades away over 48 hours)" },
   "ui.weekend.096": { zh: "赏金：结算时按进度发放", en: "Bounty: paid at settlement based on progress" },
   "ui.weekend.097": { zh: "进度收入", en: "Progress income" },
   "ui.weekend.098": { zh: "推进 {p1}%", en: "{p1}% pushed" },
-  // 2026-09-25 船长令：章鱼人是**真实削减血量**（共享血条）⇒ 不再显示"章鱼人削减进度"与倒计时。
-  // （原 `ui.weekend.099`「敌方旗舰停驻于此…」已并入下面的 `101`，那条随之删除。）
-  // 2026-09-25 船长令：①「母舰的血量也以进度条的形式显示在星系上方」⇒ 核心节点那根条的悬停读数
-  // （该组 `pointer-events: none` ⇒ 悬停落在条/★ 上时由本组承载）。
-  // ② 同日那条「已收复星系的常驻悬赏押后到活动结束」的状态占位 `ui.weekend.100` **已删除**：
-  // **2026-09-28 船长令**「入侵期间，赏金任务照常发放（只有势力活跃关闭）」把押后判据整条撤了。
   "ui.weekend.101": { zh: "母舰血量剩余 {p1}% · 可从入侵窗口发起旗舰战", en: "Mothership hull remaining: {p1}% · start the flagship battle from the invasion window" },
-  /* 2026-09-25 那条「章鱼人得手也可能爆黑匣（25% × 输出占比）」的结束语 `ui.weekend.102`
-     已随 2026-09-28 船长令（击杀必给、没击杀一定没有）**作废删除**。 */
-  /* ── 2026-09-26 船长令：星系详细的「击退入侵舰队」卡片显示收复进度 ＋ 核心门禁提示 ──
-     ③ 的文案为**船长照抄**（「核心提示写'至少需要夺回一个外围星系'」）；
-     ④ 是 ③ 的**变体**（已夺回部分外围时把话说准），船长可选 */
   "ui.weekend.103": { zh: "收复进度 {p1}%", en: "Reclaim progress {p1}%" },
   "ui.weekend.104": { zh: "核心进度暂不推进：至少需要夺回一个外围星系", en: "Core progress is on hold: at least one peripheral system must be reclaimed first" },
   "ui.weekend.105": { zh: "核心进度暂不推进：还需夺回 {p1} 个外围星系", en: "Core progress is on hold: {p1} more peripheral systems must be reclaimed" },
-  /* ── 2026-09-26 船长令：入侵悬赏卡的**敌舰一句话介绍**（`ui/foeBrief.ts` 从数据推导，
-       这里只放"连接用"的短标签；机制名直接取 `FOE_MOUNTS[..].name` / `.en`） ── */
   "ui.foeIntro.001": { zh: "动能", en: "kinetic" },
   "ui.foeIntro.002": { zh: "爆弹", en: "explosive" },
   "ui.foeIntro.003": { zh: "能量", en: "energy" },
@@ -4124,51 +3649,30 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.foeIntro.051": { zh: "压制敌方射程", en: "suppresses enemy range" },
   "ui.foeIntro.060": { zh: "特殊装置：{p1}", en: "special mounts: {p1}" },
   "ui.foeIntro.070": { zh: "精锐规格", en: "elite grade" },
-  /* 2026-09-26 船长令：「特殊装置的效果最好直接解释」（触发条件 ＋ 效果，逐条对上 foeMounts.ts 的字段） */
-  /* 2026-09-26 船长令：「**不需要括号内的东西**」＋「**除非非常有必要，否则不要用括号进行额外说明**」
-     ⇒ 下列九条**去掉尾部的装置名括号**（挂载件悬停的标签本来就写着装置名，括号里那一份纯属重复）。 */
   "ui.foeIntro.100": { zh: "受击后进入反击模式，机群射程 ×{p1}", en: "when hit, enters counter mode: strike-craft range ×{p1}" },
   "ui.foeIntro.101": { zh: "从它射程之外被命中后，自身炮台射程 ×{p1}", en: "when hit from beyond its range, its guns reach ×{p1}" },
   "ui.foeIntro.102": { zh: "首次开火时钉住一个未被钉住的目标，减速 {p1}%、闪避归零、射程 −{p2} 米，击沉发动者或拉到 {p3} 米外才解除", en: "its first shot pins an un-webbed target: slowed {p1}%, evasion zeroed, range −{p2} m; released by sinking the caster or opening the range past {p3} m" },
   "ui.foeIntro.103": { zh: "开战 {p1} 秒后呼叫增援", en: "calls reinforcements {p1} s into the fight" },
-  // ⟪文案调整 2026-10-08⟫ 手册漏挂载修复，同步墨潮现有两艘与干扰舰优先规则。
   "ui.foeIntro.104": { zh: "每 {p1} 秒满血召回最多 {p2} 艘本波已被击毁的友舰，优先召回墨潮干扰舰，不超过本波原编制", en: "every {p1} s recalls up to {p2} destroyed allies from this wave at full health, prioritizing the Ink Tide Jammer within the original formation limit" },
   "ui.foeIntro.105": { zh: "每 {p1} 秒恢复 {p2} 装甲/结构", en: "every {p1} s restores {p2} armour/hull" },
-  // ⟪文案调整 2026-10-19⟫ 当前战斗增益改用百分号。
   "ui.foeIntro.106": { zh: "闪避 +{p1}%", en: "evasion +{p1}%" },
   "ui.foeIntro.107": { zh: "受击后冲锋：速度 ×{p1}，冷却 {p2} 秒", en: "when hit, charges: speed ×{p1}, {p2} s cooldown" },
-  /* 2026-09-26 补：**射程压制阵列**（H 族墨潮干扰阵列）此前没有效果说明 ⇒ 战斗画面悬停只能显示装置名
-     （船长报障「不应该复读一遍相同的文字」）。与其余八条同款：触发/持续条件 ＋ 效果。 */
   "ui.foeIntro.108": { zh: "交战中持续压制我方武器射程 −{p1}%", en: "suppresses our weapon range by {p1}% while engaged" },
-  /* 2026-09-30 补：**C 族族设定**（船长「给C族添加族设定，他们的冲锋不会被网子解除」；追问取甲
-     = 网「关推进器」对 C 族无效）——接在 `ui.foeIntro.107`（冲锋那句）后面，只给四件虫群冲锋器用
-     （`FoeMountDef.charge.webImmune`，A 族那件不带）。 */
   "ui.foeIntro.109": { zh: "；冲锋不会被网子解除", en: "; webs cannot cancel this charge" },
-    /** R 族（光环）瞬光跃迁仪（2026-10-03 补：此前没接进 `mountEffectText` ⇒ 手册敌舰详情整节"特殊装置"缺失） */
     "ui.foeIntro.110": { zh: "本体被命中时朝期望交距位移，单跳不超过 {p1} m", en: "Displaces toward its desired range when hit; no more than {p1} m per jump" },
-    /** R 族（光环）闪烁过载装置（同上，2026-10-03 补） */
     "ui.foeIntro.111": { zh: "每次闪现后护盾回满，结构 −上限的 {p1}%", en: "Shields refill after each blink; hull −{p1}% of max" },
-    /** R 族（光环）待机护盾阵列（2026-10-02 船长令：「闪现未处于冷却中的时候，护盾拥有全伤害50%的抗性。」） */
-    // ⟪文案调整 2026-10-08⟫ 船长确认垂暮只在冷却满1秒后至冷却结束间获得抗性。
     "ui.foeIntro.112": { zh: "闪现进入冷却{p2}秒后，护盾获得{p1}%全伤害抗性，持续至本次冷却结束。", en: "Once blink has been on cooldown for {p2} s, shields gain {p1}% resistance to all damage until that cooldown ends." },
-    /** R 族（光环）聚焦阵列（2026-10-02 船长令：「武器的远端衰减，随时间提高到1（就是无衰减）。」＋改判「旗舰挂载件的会随波重置」） */
-    // ⟪文案调整 2026-10-08⟫ 补全全队射程与自身衰减、防空增强，不扩大防空增伤作用面。
     "ui.foeIntro.113": { zh: "随本波时间增强，{p1}秒后全队武器最远射程 +{p2}%，自身武器无远端衰减、近防伤害 +{p3}%；随波重置，中枢被击毁后全队射程加成失效。", en: "Strengthens over the current wave. After {p1} s, the fleet gains +{p2}% maximum weapon range, while the Nexus's own weapons have no falloff and its point-defense damage gains +{p3}%. Resets each wave; the fleet range bonus ends when the Nexus is destroyed." },
-    // ⟪文案调整 2026-10-07⟫ 导弹残段独立观瞄说明，不再显示炮台文本。
     "ui.foeIntro.114": { zh: "从自身导弹射程之外被命中后，导弹最远射程 ×{p1}，本场战斗内持续生效。", en: "When hit from beyond its missile range, maximum missile range is multiplied by {p1} for the rest of the battle." },
     "ui.foeIntro.115": { zh: "每次攻击或闪现后，装填间隔缩短{p1}秒，最低{p2}秒；自身全部伤害 ×{p3}。", en: "Each attack or blink reduces the reload interval by {p1} s, down to a minimum of {p2} s. All damage dealt by this ship is multiplied by {p3}." },
     "ui.foeIntro.116": { zh: "每{p1}秒检查一次编队空位，有空位时召唤一艘满血叠光级；在场舰船不超过本波初始编成。", en: "Checks for a vacant formation slot every {p1} s and summons one Corona Overlay at full health if a slot is available. Active ships cannot exceed the wave's initial formation size." },
-  /* ── 入侵「重复出击」（2026-09-25 船长令：「入侵活动的悬赏，允许玩家开启自动重复，照常计算返回时间」）── */
   "ui.weekend.106": { zh: "重复出击", en: "Repeat assault" },
-  // ⟪文案调整 2026-10-08⟫ 入侵循环先外围后核心，收复后切换，不自动挑战旗舰。
   "ui.weekend.107": { zh: "每场重抽入侵舰队，胜利后照常返航；当前星系收复后自动切换，先外围、后核心。全部收复或活动结束时停止，不自动挑战旗舰。", en: "Each sortie draws a fresh invader fleet and returns normally after victory. Reclaimed systems are skipped, clearing the periphery before the core. Stops when all systems are reclaimed or the event ends; never challenges the flagship automatically." },
-  /* 活动栏补的"外围进度"读数（2026-09-25 船长批「乙」：原来三块读数都只在满 100% 时才动，玩家看不到自己在推进） */
   "ui.weekend.108": { zh: "外围进度最高 {p1}%（{p2}）", en: "Highest periphery progress {p1}% ({p2})" },
   "ui.weekend.109": { zh: "外围平均 {p1}%", en: "Periphery average {p1}%" },
   "core.weekend.030": { zh: "入侵活动已结束。", en: "The invasion event has ended." },
   "core.weekend.031": { zh: "该星系当前没有被入侵。", en: "That system is not under invasion right now." },
   "core.weekend.032": { zh: "已停止常驻悬赏的重复清剿——改跑入侵重复出击。", en: "Repeat sweeps for standing bounties stopped — the invasion repeat assault takes over." },
-  // ⟪文案调整 2026-10-08⟫ 收复后切换，不再只描述单星系循环。
   "core.weekend.033": { zh: "重复出击已开启，从「{p1}」开始；收复后自动切换，先外围、后核心，不自动挑战旗舰。", en: "Repeat assault started at “{p1}”. Reclaims the periphery, then the core, switching targets as each system is reclaimed; never challenges the flagship automatically." },
   "core.weekend.034": { zh: "重复出击已停止。", en: "Repeat assault stopped." },
   "core.invasionLoop.001": { zh: "「{p1}」已收复，重复出击目标改为「{p2}」。", en: "“{p1}” reclaimed. Repeat assault now targets “{p2}”." },
@@ -4182,7 +3686,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.invasionLoop.009": { zh: "装甲或结构低于 50%：自动修补需要该船装着船体维修装置（中槽）——装上装置并带够对应组件，或先到空间站付费维修。", en: "Armor or hull is below 50%. Automatic repairs require a fitted hull repair device and its repair kits, or paid repairs at a station." },
   "core.invasionLoop.010": { zh: "装甲或结构低于 50% 且货仓修理组件不足——请先到空间站付费维修（或补充修理组件）再开启。", en: "Armor or hull is below 50% and repair kits are insufficient. Repair at a station or replenish kits before restarting." },
   "core.invasionLoop.011": { zh: "货仓剩余空间不足以装载「{p1}」的缴获——舰船已在母港，请卸货后重新开启讨伐。", en: "The hold cannot take the loot from “{p1}”. Unload at the station before restarting repeat assault." },
-  // ⟪文案调整 2026-10-08⟫ 同行「入侵」标签承担类型，标题只留重复出击。
   "ui.invasionLoop.001": { zh: "重复出击", en: "Repeat assault" },
   "ui.invasionLoop.002": { zh: "目标「{p1}」；等待{p2}结束", en: "Target: “{p1}”; waiting for {p2} to finish" },
   "ui.invasionLoop.003": { zh: "目标「{p1}」；正在扫描新敌人", en: "Target: “{p1}”; scanning for new enemies" },
@@ -4194,37 +3697,20 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.invasionActivity.003": { zh: "交火中", en: "In combat" },
   "ui.invasionActivity.004": { zh: "返航中", en: "Returning" },
   "ui.invasionActivity.005": { zh: "航行中", en: "Traveling" },
-  /* ── 每场入侵战斗的进度反馈（2026-09-25 船长批「甲」：原来主动出击胜利一句日志都没有，玩家报障「重复清缴不加进度条」）── */
   "core.weekend.035": { zh: "✦ {p1}：夺回进度 {p2}% → {p3}%", en: "✦ {p1}: reclaim progress {p2}% → {p3}%" },
   "core.weekend.036": { zh: "✦ {p1}：外围未清完，本次不计夺回进度", en: "✦ {p1}: the periphery is not fully reclaimed — no reclaim progress from this battle" },
-  /* 2026-09-26 船长令：「关于入侵的结算界面和结束通讯处，需要提及玩家获得了多少声望」——
-     结算信追加的那一段（{p4} = 本期按贡献获得的协会声望点数；只在 >0 时追加）。 */
   "core.weekend.037": { zh: "本次入侵按你在清缴行动中的贡献，协会为你记入「深空工业协会」声望 +{p4}。", en: "For your contribution to this sweep the Association has credited you +{p4} Deepspace Industry Association standing." },
-  /* 2026-09-27 那条「旗舰击沉归属出现两处不同记录」的诊断行 `core.weekend.041` 已**作废删除**：
-     2026-09-28 起「留档 ＋ flagshipDown = octopus」是**正常组合**（玩家打爆母舰、章鱼人稍后收尾），
-     不再是两条判据互相矛盾 ⇒ warn 与其文案一并撤掉。 */
-  /* 2026-09-27 船长令：结算信里也留一句"旗舰是谁打沉的"（与快照的 flagsphipPlayerKill 同源） */
   "core.weekend.042": { zh: "你在本期的旗舰战中亲手击沉了入侵旗舰。", en: "You personally sank the invasion flagship in this invasion's flagship battle." },
-  /* 2026-09-27 船长令：主力舰队打赢 ⇒ 往该星系入侵残骸场里放一件稀有残骸（打捞时稀有池优先） */
   "core.weekend.043": { zh: "✦ 击退「{p1}」的入侵舰队：残骸场里留下 {p2} 具稀有残骸 —— 可前往该星系打捞（回站用回收炉解体可得额外战利品）。", en: "✦ Invasion fleet repelled at “{p1}”: {p2} rare wreck(s) left in the debris field — salvage there (recycle back at the station for extra spoils)." },
-  /* ── 2026-09-23 围剿批（第 7 层起逐回合刷怪）：core 侧新增的日志与拒因 ── */
   "core.wormholeSpawn.001": { zh: "🕳 围剿者扑到你所在的位置：先确认，再迎战。", en: "🕳 A sweep ship has pounced on your position: confirm, then engage." },
   "core.wormholeBattle.032": { zh: "围剿战只在网格层成立。", en: "Sweep battles only happen on the grid." },
   "core.wormholeBattle.033": { zh: "这里没有围剿者。", en: "There is no sweep ship here." },
   "core.wormholeSalvage.041": { zh: "🕳 战果里翻出{p1}：已装进货仓。", en: "🕳 {p1} turned up in the spoils: stowed in the hold." },
   "core.wormholeSalvage.042": { zh: "🕳 战果里翻出{p1}：货仓腾不出地方 ⇒ 先放进临时空间（到「货仓」页整理进货仓）。", en: "🕳 {p1} turned up in the spoils: no room in the hold, so it went to temporary space (sort it into the hold from the Hold page)." },
   "core.wormholeSalvage.043": { zh: "🕳 战果里翻出{p1}：货仓与临时空间都放不下 ⇒ 先散落在该地点（腾出空间后回来拾取）。", en: "🕳 {p1} turned up in the spoils: neither the hold nor temporary space can take it, so it was left at the site (come back for it once you have room)." },
-  /**
-   * ⟪2026-10-02 船长令⟫「禁止打捞普通残骸」（开关在**货仓页**）：
-   * `.044` = **一条 id 两处用** —— ① core 的**拒绝原因**（本格只剩普通残骸时，拒绝动作且不扣回合）
-   * ② 货仓页开关打开时的**状态行**（界面 `tr` 渲染它）。中文为船长给的原文。
-   * `.045` = 打捞动作写了"留在原地的普通残骸堆数"（`{p1}` = 本格此刻还剩多少堆普通残骸）。
-   */
   "core.wormholeSalvage.044": { zh: "当前禁止打捞普通残骸。", en: "Common-wreck salvage is currently blocked." },
   "core.wormholeSalvage.045": { zh: "🕳 本次打捞跳过 {p1} 堆普通残骸。", en: "🕳 Skipped {p1} piles of common wrecks in this salvage." },
-  /* ⟪2026-10-03 船长令（开关扩到战果）⟫：战果里的普通残骸被开关跳过时的日志（`.052` 是当批新号） */
   "core.wormholeSalvage.052": { zh: "🕳 战果里的普通残骸按开关跳过（{p1} 堆）——只收稀有残骸。", en: "🕳 Skipped {p1} piles of common wrecks in the spoils (the switch is on) — rare wrecks only." },
-  /* ⟪2026-10-02 合并让号⟫ 与一号「禁止打捞普通残骸」批（main）撞号：本侧 6 条打捞日志由 `.044~.049` 顺延为 `.046~.051`（后合并的一侧让号，他的 `.044/.045` 不动）。 */
   "core.wormholeSalvage.046": { zh: "🕳 放进临时空间：{p1}（占 {p2} 格）——到「货仓」页整理进货仓或丢弃（离开货仓页前必须处理）。", en: "🕳 Moved into temporary space: {p1} (takes {p2} slots) — sort it into the hold or discard it on the Cargo page; it has to be handled before you leave that page." },
   "core.wormholeSalvage.047": { zh: "🕳 装舱：{p1}（占 {p2}×{p3} 格）· 货仓 {p4}/{p5} 格。", en: "🕳 Stowed: {p1} (takes {p2}×{p3} slots) · hold {p4}/{p5} slots." },
   "core.wormholeSalvage.048": { zh: "🕳 抛弃：{p1} ×{p2}（货仓 {p3}/{p4} 格）。", en: "🕳 Discarded: {p1} ×{p2} (hold {p3}/{p4} slots)." },
@@ -4254,9 +3740,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.droneArt.006": { zh: "蜂群机", en: "Swarm" },
   "ui.droneArt.007": { zh: "孢群机", en: "Hiveguard" },
   "ui.droneArt.008": { zh: "未知机型", en: "(unknown model)" },
-  // 三款**族专属无人机**的机型短名（2026-09-26 补登记：此前从未登记 ⇒ 战斗里查不到机型，
-  // 表现为「不开火、不爆炸、只剩灰方块」——船长报障「构件哨戒无人机不会出现在战斗场景中」）。
-  // ⚠ `.005` 英文原为 "Sentry"，与 `.009`（哨戒机档）撞名 ⇒ 一并改 "Construct Alert"（E 族警戒机）。
   "ui.droneArt.009": { zh: "构件哨戒", en: "Construct Sentry" },
   "ui.droneArt.010": { zh: "巢卫攻坚", en: "Hiveguard Siege" },
   "ui.droneArt.011": { zh: "鱿蜂", en: "Squidwasp" },
@@ -4312,7 +3795,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.engine.049": { zh: "读取备份失败。", en: "Could not read the backup." },
   "ui.engine.050": { zh: "写回存档失败。", en: "Could not write the save back." },
   "ui.engine.051": { zh: "这是铁人存档：它的版本号（第 {p1} 代）早于当前进度 —— 铁人档不能回退；若要救档，请选一份两天前或更早的备份。", en: "Iron Man save: its generation ({p1}) is older than your current progress — Iron Man saves cannot be rolled back. To rescue, load a backup from two days ago or earlier." },
-  /** 离线简报：实验室出料批数（**2026-10-01 补**：原先实验室完全不参与离线统计） */
   "ui.engine.052": { zh: "实验室出料 {p1} 批", en: "Laboratory {p1} batches" },
   "ui.Expedition.003": { zh: "数量", en: "Qty" },
   "ui.Expedition.004": { zh: "奖励 ◆", en: "Reward ◆" },
@@ -4460,9 +3942,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Expedition.146": { zh: "打捞作业中", en: "Salvaging" },
   "ui.Expedition.147": { zh: "持续打捞（本趟约 {p1} m³）", en: "Salvaging continuously (about {p1} m³ this trip)" },
   "ui.Expedition.148": { zh: "打捞（需高槽打捞器）", en: "Salvage (needs a salvager in a high slot)" },
-  /* ui.Expedition.149 已删（2026-09-26）：原文「打捞作业进行中（顶部活动栏可停止）」是"别处打捞中 ⇒
-     本按钮禁用"时代的提示；那条禁用正是船长报障的那个 bug（星系详细里打捞中切不了打捞点），
-     拆掉禁用后它成了无引用的死条目 ⇒ 一并清掉（`l10n:check` 会盯死引用）。 */
   "ui.Expedition.150": { zh: "建站交付 ·", en: "Station delivery ·" },
   "ui.Expedition.151": { zh: "已转战：采矿结束（货随船），舰队正从矿带星系出发。", en: "Switched to the hunt: mining has ended (the cargo stays aboard) and the fleet is setting out from the belt system." },
   "ui.Expedition.152": { zh: "战术 {p1}", en: "Tactics {p1}" },
@@ -4506,7 +3985,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Expedition.190": { zh: "星系节点下方显示星系名称（默认）", en: "Show the system name under each node (default)" },
   "ui.Expedition.191": { zh: "星系节点下方显示安全等级数字（−1.0 高危 ~ +1.0 安全），颜色沿用安全色阶", en: "Show the security rating under each system node (−1.0 high risk to +1.0 safe), coloured on the safety scale" },
   "ui.Expedition.192": { zh: "敌对派系", en: "Hostile factions" },
-  // ⟪文案调整 2026-09-24⟫ 船长令「统一为势力」：原「（按敌族配色）」「等{p1}族」⇒「势力」；英文 family ⇒ faction
   "ui.Expedition.193": { zh: "星系节点下方显示该星系的敌对势力标签（按势力配色），星系后方给出该势力的范围光晕", en: "Show that system's hostile faction label under its node (coloured per faction) and an influence halo behind the system" },
   "ui.Expedition.251": { zh: "等{p1}势力", en: "and {p1} factions" },
   "ui.Expedition.194": { zh: "未知", en: "Unknown" },
@@ -4664,12 +4142,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Expedition.349": { zh: " · 扫描进行中", en: " · scanning" },
   "ui.Expedition.350": { zh: " · 剩余 {taskEtaText}（每天 0 点换新）", en: " · {taskEtaText} left (replaced at midnight)" },
   "ui.Expedition.351": { zh: " · 头号目标「{factionName}」", en: " · prime target “{factionName}”" },
-  /**
-   * ⚠ **只改「派系活跃」那一条**（**2026-09-29 船长令**：「敌对势力活跃的切换时间从24时，改为12时
-   * （中午12点）」，口径**乙案 = 只挪活跃**）：
-   * `.352` 是**活跃**那行的尾巴 → 中午 12 点；`.350`（赏金任务行）与 `.234/235/236/233/370/409`
-   * 讲的都是**赏金日板**（仍本地 0 点）⇒ **一字不改**。
-   */
   "ui.Expedition.352": { zh: " · 剩余 {taskEtaText}（每天中午 12 点重选）", en: " · {taskEtaText} left (redrawn at noon)" },
   "ui.Expedition.353": { zh: " · 远征中", en: " · on an expedition" },
   "ui.Expedition.354": { zh: " · 已首胜", en: " · won once" },
@@ -4718,11 +4190,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Expedition.407": { zh: "该星系敌群正在集中活动：当天它的全部悬赏奖金 +10%、敌人威胁 +10%；肃清有概率留下稀有残骸，打捞必得、先带回仓库存放。", en: "Hostile groups in this system are massing: for the rest of the day all its bounties pay +10% and its enemies are +10% more threatening; clearing them has a chance to leave rare wrecks behind, which salvage always recovers — take them back to storage first." },
   "ui.Expedition.408": { zh: "停止剿灭", en: "Stop the sweep" },
   "ui.Expedition.409": { zh: "本日 5 席赏金任务已全部完成——上方的「敌对派系活跃」当天仍然有效（该星系常驻悬赏照常 +10% 奖金与威胁、胜利照常掉稀有残骸）；明天 0 点整板刷新。", en: "All 5 bounty slots for today are done — the Hostile faction active banner above still holds for the rest of the day (this system's standing bounties keep their +10% payout and threat, and victories still drop rare wrecks); the board refreshes at midnight." },
-  /**
-   * **本批新增**（**2026-09-29 船长令**：活跃切换时间 24 时 → **12 时**）：`本日 5 席` 那句的
-   * **派系活跃版**（原 `.409` 是"赏金席位用完"的语境，尾句讲的是**赏金板** 0 点刷新的时点）。
-   * 两件事的时点从此不同（活跃中午 12 点、赏金板 0 点）⇒ 各说各的，别借同一句。
-   */
   "ui.Expedition.447": { zh: "本日 5 席赏金任务已全部完成——上方的「敌对派系活跃」仍然有效（该星系常驻悬赏照常 +10% 奖金与威胁、胜利照常掉稀有残骸）；活跃星系明天中午 12 点重选。", en: "All 5 bounty slots for today are done — the Hostile faction active banner above still holds (this system's standing bounties keep their +10% payout and threat, and victories still drop rare wrecks); the active system is redrawn at noon tomorrow." },
   "ui.Expedition.410": { zh: " 波", en: " waves" },
   "ui.Expedition.411": { zh: "虚拟货物按体积占用货舱（出发时真实货物已自动卸入仓库）。到站自动结算运费；期间舰船不可开矿/远征/扫描/打捞/掩护巡逻/换港返航（投送不可取消）。", en: "The virtual freight takes up hold space by volume (real cargo is unloaded into storage automatically on departure). The fare settles on arrival; while it runs the ship cannot mine, go on expeditions, scan, salvage, patrol as an escort or return to another port (the delivery cannot be cancelled)." },
@@ -4741,7 +4208,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Expedition.424": { zh: "里程碑任务", en: "Milestone tasks" },
   "ui.Expedition.425": { zh: "计算中", en: "Calculating" },
   "ui.Expedition.426": { zh: "按当前船况实测推演（三点距离各取样）：预计损耗装甲 ≈{p1}%、结构 ≈{p2}%；最差距离胜率 {p3}%", en: "Simulated from the ship's current condition (sampled at three ranges): expected armor loss ≈{p1}%, structure ≈{p2}%; win rate at the worst range {p3}%" },
-  /* ── 里程碑任务页（2026-09-20 船长：完成「第一次」后的里程碑链单开一页）── */
   "ui.MilestoneTasks.001": { zh: "◆ 里程碑 ·", en: "◆ Milestones ·" },
   "ui.MilestoneTasks.002": { zh: "条已解锁", en: "unlocked" },
   "ui.MilestoneTasks.003": { zh: " · 完成一条「第一次」任务，就开出它对应的里程碑链", en: " · finish a First-time task to open its milestone chain" },
@@ -4925,7 +4391,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.FitPage.141": { zh: "{base} ← 同类第 {p2} 件：只削剩余缺口（收益递减）", en: "{base} ← same kind #{p2}: trims the remaining gap only (diminishing returns)" },
   "ui.FitPage.142": { zh: "查看 / 套用 / 重命名 / 删除本船型的装配方案（最多 {FIT_PRESET_MAX} 套）；每套可展开「明细」看逐位装了什么", en: "View, apply, rename or delete fitting presets for this hull (up to {FIT_PRESET_MAX}); expand Details on any preset to see what is fitted slot by slot" },
   "ui.FitPage.143": { zh: "{droneBayTotal} m³ · 战斗只放飞下方清单中已装入的无人机", en: "{droneBayTotal} m³ · only the drones loaded into the list below launch in combat" },
-  // ⟪文案调整 2026-10-19⟫ 跃迁、捕获网与唯一装备各用实际规则。
   "ui.FitPage.193": { zh: "{base} ← 同类第 {p2} 件：取跃迁距离最大、同距冷却最短的一件（不叠加）", en: "{base} ← same kind #{p2}: longest jump only; shortest cooldown on a tie (no stacking)" },
   "ui.FitPage.194": { zh: "{base}（同舰仅限一件）", en: "{base} (one per ship)" },
   "ui.FitPage.195": { zh: "{base} ← 同类第 {p2} 件：取最快一台（不叠加）", en: "{base} ← same kind #{p2}: fastest unit only (no stacking)" },
@@ -4939,7 +4404,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.FitPage.151": { zh: "匹配 {p1} 件", en: "{p1} match(es)" },
   "ui.FitPage.152": { zh: "{p1} 件 · 按稀有度排序", en: "{p1} items · sorted by rarity" },
   "ui.FitPage.153": { zh: " · 弹伤 {p1}", en: " · damage per shot {p1}" },
-  // ⟪文案调整 2026-09-24⟫ 三条弹药说明原写「同族」——指的是**同伤害类型的弹药档**，不是敌方势力（船长报障）
   "ui.FitPage.154": { zh: "{baseName}：本船{baseName2}档（未设 = 基础弹；开战时同类型取\"能装得最多\"的一档）", en: "{baseName}: this ship's {baseName2} tier (unset = basic ammo; in combat the tier of that damage type that holds the most is loaded)" },
   "ui.FitPage.155": { zh: "{p1}：单发更高（{p2} vs {p3}）；开战按档预载——同类型里\"能装得最多\"的那一档会被实际装填，装不满也照装。仓库 ×{haveMk2}", en: "{p1}: higher damage per shot ({p2} vs {p3}); preloaded by tier when the fight starts — the tier of that damage type that holds the most is what gets loaded, even if it cannot fill up. Storage ×{haveMk2}" },
   "ui.FitPage.156": { zh: "无人机舱容量：已装 {p1} / {cap} m³（船体 + 甲板扩展）；清单 CPU 占用 {droneCpu}（计入预算）", en: "Drone bay capacity: {p1} / {cap} m³ loaded (hull + deck expansion); the list uses {droneCpu} CPU (counted against the budget)" },
@@ -4960,7 +4424,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.FitPage.172": { zh: "设置失败", en: "Could not change the setting" },
   "ui.FitPage.173": { zh: "所选档", en: "selected tier" },
   "ui.FitPage.174": { zh: "（敌方点防会击落机群，被击落后自清单永久损失；战斗结束会自动从本船货仓、其次物品仓库补足）", en: "(enemy point defense shoots drones down — a downed drone is lost from the list for good; when the fight ends it is topped up automatically, from this ship's hold first and then the item warehouse)" },
-  /** **2026-09-22 补**（船长报障「筛选选项的文案和标签页的文案还有遗漏」）：机群"再开还差几架"整句与它的悬停说明原先写死中文。 */
   "ui.FitPage.175": {
     zh: "重复清剿停环时记下了当时的机群架数，再开要求装载严格超过它。战斗结束时已自动从本船货仓、其次物品仓库补足；还缺 = 两处都没有存货。",
     en: "When repeat sweeps stopped, the drone count at that moment was recorded, and restarting requires loading strictly more than that. Drones are topped up automatically when a fight ends, from this ship's hold first and then the item warehouse; still short means neither has stock.",
@@ -5142,7 +4605,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Handbook.151": { zh: "同时启用的 AI 核心总数受 AI 核心上限技能约束（Lv0 无法启用），AI 副船与站内精炼炉 / 回收炉 / 制造线共用该上限；站内产业可另练「工业自动化」扩容工业专用工位（每级 +2 枚、不占副船名额）。", en: "How many AI cores can run at once is set by the AI core limit skill (at Lv0 none can run), and AI auxiliary ships share that limit with station refineries, recyclers and production lines; station industry can instead train Industrial Automation for industry-only work slots (+2 per level, and they take no auxiliary ship slots)." },
   "ui.Handbook.152": { zh: "建成的副站并入协会基地网络：市场买卖、精炼与残骸回收、组装机制造线、维修补给、换驾驶卸货全部可用——设施与仓库和母港共享（同一市场与仓库）。", en: "A completed outpost joins the Association base network: trading, refining and wreck recycling, assembler lines, repairs and supplies, and unloading when you switch ships all become available — its facilities, market and warehouse are shared with the home port." },
   "ui.Handbook.153": { zh: "建成至少一座副站后，星图「长途运输」页签开放。", en: "Once at least one outpost is built, the Long-haul transport tab opens on the star map." },
-  // ⟪文案调整 2026-10-04⟫ 奇货不译为谜质专名 Enigma。
   "ui.Handbook.154": { zh: "同档之内还有子型号（炮舰、无人机母舰等）与更精贵的奇货版本。", en: "Within a tier there are sub-variants (gunships, drone carriers and so on) and rarer exotic versions." },
   "ui.Handbook.155": { zh: "市场页：常驻供应 / 稀有订单 / 限定奇货三个标签，挂单与市价买卖；卖出成交收贸易税（练贸易技能减免）。", en: "Market page: three tabs — standard supply, rare orders and limited exotic goods — with orders and market buys and sells; sales are taxed (trade skills cut the rate)." },
   "ui.Handbook.156": { zh: "撮合与冲击", en: "Matching and impact" },
@@ -5202,7 +4664,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Handbook.210": { zh: "深空偶发奇遇与市场风云：约 10~30 分钟一件，事件日志带 ✦，在线时弹小卡。", en: "Chance encounters in deep space and market upheaval: roughly one every 10–30 minutes, marked ✦ in the event log and popped up as a small card while you are online." },
   "ui.Handbook.211": { zh: "编队与质量", en: "Formation and mass" },
   "ui.Handbook.212": { zh: "编队", en: "Formation" },
-  // ⟪文案调整 2026-10-04⟫ T5分类名称与舰船筛选一致。
   "ui.Handbook.213": { zh: "最多带 4 艘船，泰坦过重进不去（会压塌虫洞入口）。", en: "Up to 4 ships can go; an overweight Titan cannot enter (it would collapse the wormhole mouth)." },
   "ui.Handbook.214": { zh: "编队总质量越高、可探索的回合数越少——4 艘护卫舰 93 回合，4 艘巡洋舰 53 回合。", en: "The higher the formation's total mass, the fewer turns you can explore — 4 frigates give 93 turns, 4 cruisers 53." },
   "ui.Handbook.215": { zh: "洞内按节点推进（舰船信号 / 墓场与遗迹 / 矿脉 / 谜质 / 漂浮信标）：每层要走到下潜点并打赢层末守卫，才能继续深入。", en: "Inside, progress runs node by node (ship signals, graveyards and ruins, ore veins, Enigma, drifting beacons): each layer needs the descent point reached and the layer's final guard beaten before you can go deeper." },
@@ -5258,7 +4719,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Handbook.265": { zh: "零件蓝图", en: "Part blueprints" },
   "ui.Handbook.266": { zh: "舰船页「AI 指挥中心」可统一指派与取消这些作业。", en: "The AI Command Center on the Ships page is where these jobs are assigned and cancelled in one place." },
   "ui.Handbook.267": { zh: "返航落点", en: "Where the ship returns" },
-  // ⟪文案调整 2026-09-30⟫ 文案审核批：删掉玩家可见文案里的变更日期（"自某日起"是版本语言，玩家读手册不需要它）
   "ui.Handbook.268": { zh: "采矿 / 打捞自动返航、悬赏的胜利返航都会停到最近已建成的站；手动召回仍回母港（星系扫描由无人扫描艇执行，不再牵动舰船与停靠）。", en: "Automatic returns from mining and salvaging, and victorious bounty returns, all dock at the nearest completed station; a manual recall still goes to the home port (system scanning is flown by an unmanned ship and no longer involves a ship or docking)." },
   "ui.Handbook.269": { zh: "解锁", en: "Unlocking" },
   "ui.Handbook.270": { zh: "选一条两站航线即可开始自动往返货运——虚拟货物占满货仓（不影响真实货物），每段按货仓容量 × 航程结算报酬，到站自动续下一段。", en: "Pick a route between two stations to start automatic round-trip hauling — virtual freight fills the hold (without touching real cargo), each leg pays hold capacity × distance, and docking starts the next leg automatically." },
@@ -5266,7 +4726,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Handbook.272": { zh: "舰船按舰体尺寸分五档：护卫舰、驱逐舰、巡洋舰、战列舰、泰坦——档位越高舰体越强，价格与协会声望门槛随之抬高。", en: "Ships come in five classes by hull size: frigate, destroyer, cruiser, battleship and Titan — the higher the class the stronger the hull, and the price and Association reputation gate rise with it." },
   "ui.Handbook.273": { zh: "随机事件", en: "Random events" },
   "ui.Handbook.274": { zh: "节奏", en: "Pacing" },
-  // ⟪文案调整 2026-09-24⟫ 船长令「统一为势力」：原「每处锁定一个敌族」⇒「一个势力」
   "ui.Handbook.275": { zh: "进度满即发现一处虫洞存入库存，最多同时囤 5 处（「星图记录学」满级再 +10 ⇒ 15 处）；每处锁定一个势力、从第 1 层开始探索，进入即消耗该处——", en: "Filling the bar finds one wormhole and stores it, up to 5 held at a time (Star Chart Records adds +10 at max ⇒ 15); each is locked to one faction and explored from layer 1, and entering consumes it —" },
   "ui.Handbook.276": { zh: "随时可以撤离，不消耗回合、不会触发战斗：货仓、货柜与随行战利品一起入港；交火中不能撤。", en: "You can withdraw at any time: it costs no turn and triggers no fight, and the hold, containers and loot come into port with you; withdrawal is not possible mid-engagement." },
   "ui.Handbook.277": { zh: "船被打沉，该船与它带回的货一起丢；整队失联则本趟一无所得。", en: "A sunk ship is lost together with the cargo it was carrying home; losing the whole fleet means the run yields nothing." },
@@ -5316,35 +4775,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Handbook.323": { zh: " · 下一条 ›", en: " · Next ›" },
   "ui.Handbook.324": { zh: " · 耗时 {p}", en: " · takes {p}" },
 
-  /* ── 2026-09-26 敌族图鉴（船长：「之前手册的势力图鉴可以继续完成」；接手 2026-09-25 挂起备忘）──
-     结构 = 新开一节「敌族图鉴」，六族各一条：基调 / 外观 / 战斗风格 / 招牌手段 / 出没之处。
-     收录 A 海盗 · C 异形 · D 守墓 · E 泰坦 · G 亡军 · H 墨潮帮；**B 武装拾荒者与 F 制式巡逻不收**（船长令）。
-     ⚠ H 的「出没之处」按挂起备忘的**甲案**（「行踪不定」）——不把入侵玩法写进手册，等你一句话可换乙案。
-     ⚠ 舰队名（325~372 之外那六条）是可复用词条：放 glossary 块，供手册/别处共用。 */
 
-  /* ── 2026-09-26 敌族图鉴（船长：「之前手册的势力图鉴可以继续完成」；接手 2026-09-25 挂起备忘）──
-     结构（编号即顺序）：325 节名 · 326~336 海盗 · 337~347 异形 · 348~358 守墓 · 359~369 泰坦 ·
-     370~380 亡军 · 381~391 墨潮帮；每族 11 格 = 族名(367~372 六条独立 id) + 五对「标题+正文」
-     （基调 / 外观 / 战斗风格 / 招牌手段 / 出没之处，五对的顺序固定）。
-     收录 A 海盗 · C 异形 · D 守墓 · E 泰坦 · G 亡军 · H 墨潮帮；**B 武装拾荒者与 F 制式巡逻不收**（船长令）。
-     ⚠ H 的「出没之处」按挂起备忘的**甲案**（「行踪不定」）——不把入侵玩法写进手册，等船长一句话可换乙案。 */
 
-  /* ── 2026-09-26 敌族图鉴（船长：「之前手册的势力图鉴可以继续完成」；接手 2026-09-25 挂起备忘）──
-     结构（编号即顺序）：325 节名 · 326~336 海盗 · 337~347 异形 · 348~358 守墓 ·
-     359~369 泰坦 · 370~380 亡军 · 381~391 墨潮帮。每族 11 格 = **族名一条** ＋
-     五对「标题 ＋ 正文」（基调 / 外观 / 战斗风格 / 招牌手段 / 出没之处，顺序固定）。
-     收录 A 海盗 · C 异形 · D 守墓 · E 泰坦 · G 亡军 · H 墨潮帮；**B 武装拾荒者与 F 制式巡逻不收**（船长令）。
-     玩家侧一律正字「**势力**」；D/E 的留白（谁造的 / 为何在此）与 G 的战争起因**照备忘不写**。
-     ⚠ H 的「出没之处」按备忘的**甲案**（「行踪不定」）——不把入侵玩法写进手册，等船长一句话可换乙案。 */
 
-  /* ── 2026-09-26 势力图鉴（船长：「敌族图鉴单独列出吧，放在蓝图图鉴下方，叫『势力图鉴』」；
-     同日判词：「你现有的介绍完全是复述我们当初讨论的开发文档，这部分不能直接给玩家看」）──
-     结构（编号即顺序）：325 节名 · 326~334 海盗 · 335~343 异形 · 344~352 守墓 ·
-     353~361 泰坦 · 362~370 亡军 · 371~379 墨潮帮。每族 **9 格** = 族名一条 ＋ 四对「小标题 ＋ 正文」。
-     小标题 = **in-world 四要素**（档案摘要 / 舰体特征 / 交手记录 / 活动星域）——**不是**设计稿那套
-     基调/外观/战斗风格/招牌手段/出没之处（开发用词，2026-09-26 按船长判词换掉）。
-     收录 A 海盗 · C 异形 · D 守墓 · E 泰坦 · G 亡军 · H 墨潮帮；B 武装拾荒者与 F 制式巡逻不收（船长令）。
-     正文为**玩家向**（协会情报档案口吻）：不写开发叙述、不写机制教学；D/E 的留白与 G 的战争起因照旧不写。 */
   "ui.Handbook.325": { zh: "势力图鉴", en: "Faction codex" },
   "ui.Handbook.326": { zh: "海盗舰系", en: "Pirate fleet line" },
   "ui.Handbook.327": { zh: "档案摘要", en: "Summary" },
@@ -5401,13 +4834,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Handbook.378": { zh: "活动星域", en: "Territory" },
   "ui.Handbook.379": { zh: "行踪不定。", en: "Their whereabouts are never certain." },
   "ui.Handbook.380": { zh: "清空搜索与筛选", en: "Clear search and filters" },
-  /* ── R 族（光环 · Corona Systems · 2026-10-01 船长令建族）：势力图鉴第 7 族 ──
-   * 9 格 = 族名 ＋ 四对「小标题 ＋ 正文」（与 H 族 371~379 同构）。
-   * ⚠ **387 那格 = 船长手改稿逐字照抄**（2026-10-01 草稿审校时，船长只改了「交手记录」这一格：
-   * 「拥有未知折跃能力的无人舰船，使用以激光为主的武器。非常擅长风筝战术。」）—— 其余三格照原稿落。
-   * ⚠ 文案与机制的对齐：激光 = 五档舰级的 `energyForm: 'beam'` · 风筝 = `tactic: 'kite'` ✓ 已落码；
-   * **「折跃能力」对应的「闪现」敌挂载件尚在设计中**（引擎级新机制，P0.5）。
-   * 当前 `WEEKEND_LOCKED_FAMILY` 仍是 `'H'` ⇒ **光环未上线、玩家看不到**，不存在文案与设定不符的可见问题。 */
   "ui.Handbook.381": { zh: "光环", en: "Corona Systems" },
   "ui.Handbook.382": { zh: "档案摘要", en: "Summary" },
   "ui.Handbook.383": { zh: "一支没有舰员的舰队，由计算核心驾驶。", en: "A fleet with no crew aboard, piloted by compute cores." },
@@ -5494,8 +4920,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Handbook.467": { zh: "新手最优解", en: "", enDeferred: true },
   "ui.Handbook.468": { zh: "想稳：债券和基金各投 1 亿拿高息；想练手：股市只放输得起的钱，第一笔小额、少交易、跟着趋势走，别追刚暴涨的股票，亏了别加倍。", en: "", enDeferred: true },
 
-  /* ── 2026-09-26 势力图鉴页（船长：「敌族图鉴单独列出吧，放在蓝图图鉴下方，叫『势力图鉴』」）──
-     图鉴页自己的标签/占位/三块标题；势力名与五段简介**复用** ui.Handbook.326~391（原先那节搬过来）。 */
   "ui.codex.001": { zh: "势力图鉴", en: "Faction codex" },
   "ui.codex.002": { zh: "搜索势力、舰级或专属装备", en: "Search factions, ship classes or exclusive gear" },
   "ui.codex.003": { zh: "已遭遇 {p1}/{p2}", en: "Encountered {p1}/{p2}" },
@@ -5540,14 +4964,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Hauling.026": { zh: "运输中 · 本段驶往「{p1}」", en: "Hauling · this leg heads to “{p1}”" },
   "ui.Hauling.027": { zh: "本段驶往「{p1}」· 剩余约 {p2}", en: "This leg heads to “{p1}” · about {p2} left" },
   "ui.Hauling.029": { zh: "（行情每趟一价 ×5~10）· 往返一趟约 {a} 信用点", en: "(the rate is rolled per trip, ×5–10) · a round trip pays about {a} credits" },
-  /* 时薪单独一行（2026-09-23 船长令）：统一格式 `XXX~XXX 信用点/h`，金色 */
   "ui.Hauling.036": { zh: "信用点/h", en: "credits/h" },
   "ui.Hauling.030": { zh: "无法开始运输。", en: "Cannot start the haul." },
   "ui.Hauling.031": { zh: "停止失败。", en: "Could not stop it." },
   "ui.Hauling.032": { zh: "空间站", en: "Station" },
-  /* 长途运输的**中断警告**（**2026-09-20 船长令**：「当玩家在跑长途运输，要切换其他主控活动打断长途运输时，
-     弹出一个警告，告诉玩家中断当前长途运输将无法获得本趟的报酬之类的」）——四个中断点共用这三条：
-     活动栏「停止运输」· 长途运输页「停止运输」· 舰船页「换驾驶」· 虫洞「开始探索」。 */
   "ui.Hauling.033": { zh: "⚠ 再点一次「停止运输」即中断本趟——这一趟的报酬拿不到。", en: "⚠ Click Stop transport once more to interrupt this trip — its pay is forfeited." },
   "ui.Hauling.034": { zh: "确认中断（拿不到本趟报酬）", en: "Interrupt (forfeit this trip's pay)" },
   "ui.Hauling.035": { zh: "⚠ 中断当前长途运输：本趟报酬拿不到（报酬到站才结）；舰船即时返港，无其它惩罚。", en: "⚠ Interrupting the running haul: this trip's pay is forfeited (the fee settles on arrival); the ship returns to port at once with no other penalty." },
@@ -5659,8 +5079,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Industry.107": { zh: "{lock}——这只影响「在市场买这本书」，不影响组装机开工", en: "{lock} — this only affects buying the book on the market, not starting jobs at the assembler" },
   "ui.Industry.108": { zh: "自己已有的成品数量：{ownedWhere}；已挂单托管的量不计在内（与市场页「持有」同源）", en: "How many finished units you already own: {ownedWhere}; anything escrowed in orders is not counted (the same source as Held on the Market page)" },
   "ui.Industry.109": { zh: "「{matName}」由精炼炉炼出（{p2} 等）——点击跳到精炼炉该资源卡", en: "“{matName}” comes out of the refinery (from {p2} and others) — click to jump to that resource's card in the refinery" },
-  /* ⟪文案调整 2026-09-22⟫ 原句「「{matName}」无法经精炼炉产出——点击到市场购买」含原因解释（§十三.5）；
-     改后只留指针。本条现在只在"既炼不出、也造不出"时才出现（零件与其它可造物品已改走 154/155）。 */
   "ui.Industry.110": { zh: "「{matName}」要到市场购买——点击跳转", en: "“{matName}” is bought on the market — click to jump there" },
   "ui.Industry.111": { zh: "净收益估算：每件产物（市场现货基准价）− 每件材料（站内收价，材料学折扣后），按当前技能单件耗时折算每小时；不随市场收购波动、未计成交税。{p1}", en: "Net income estimate: each unit of product (market stock reference price) − each unit of material (station buy price, after the Materials discount), turned into an hourly figure using your current per-unit build time; it does not follow market buy-price swings and excludes trade tax.{p1}" },
   "ui.Industry.112": { zh: "循环制造：本卡全部制造线完成一件后自动续做同一蓝图（含主控亲自那条；劳动者/核心保持占用）；{p1}本卡在跑的线完成当前件即止", en: "Repeat manufacturing: every line on this card starts the same blueprint again as soon as it finishes a unit (the one you run by hand included; the worker or core stays occupied); {p1}lines already running on this card finish their current unit and stop" },
@@ -5686,12 +5104,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Industry.133": { zh: "开关操作失败", en: "Could not toggle it" },
   "ui.Industry.134": { zh: "门类：", en: "Category:" },
   "ui.Industry.135": { zh: "图纸：", en: "Blueprint:" },
-  /**
-   * ⚠ **2026-09-26 改名**（船长令：「将造船的一次性蓝图筛选移动到学会的筛选内，**并将学会的筛选改名为蓝图**。
-   * 删除原先的图纸筛选」）——这条是组装机第一行「学会：」的前缀，该行现改名「蓝图：」并吃下原第三行
-   * 「图纸」（一次性）的那一轴 ⇒ **id 不变、只改文案**（与 2026-09-16 技能改名同一口径）。
-   * 隔壁「图纸：」那条（`ui.Industry.135`）仍由蓝图书架与章鱼人兑换窗口的「图纸」行使用。
-   */
   "ui.Industry.136": { zh: "蓝图：", en: "Blueprint:" },
   "ui.Industry.137": { zh: "· 剩余约 {p1}", en: " · about {p1} left" },
   "ui.Industry.138": { zh: "到下方组装机点「市场求购蓝图书」→ 跳到市场的该蓝图行情详情，在那里自己下买单；书到架后回到这里点「学习」即可永久学会配方（重复书只能出售）。一次性图纸用掉即无。", en: "At the assembly unit below, click “Buy the blueprint on the market” → jump to that blueprint's market page and place a buy order yourself; once the book reaches the shelf, come back and click “Learn” to master the recipe for good (a duplicate book can only be sold). A single-use blueprint is gone once used." },
@@ -5699,8 +5111,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Industry.140": { zh: "跳到组装机并定位这张图纸的卡片（那里才能开工制造）", en: "Jump to the assembly unit and locate this blueprint's card (only there can manufacturing start)" },
   "ui.Industry.141": { zh: "去造船厂", en: "Go to the shipyard" },
   "ui.Industry.142": { zh: "去组装机", en: "Go to the assembly unit" },
-  // ⟪文案调整 2026-09-30⟫ 文案审核批 E16（船长批「按你推荐来」）：本 id 的中文与 `ui.Industry.157` 完全相同，
-  //   调用点也早已改用 157（此处仅剩注释引用）⇒ 按"一条文本一个 id"的口径删除本 id。
   "ui.Industry.144": { zh: "基础零件：无需图纸学习，组装机直接可造。", en: "Basic parts: no blueprint needed — the assembly unit can build them directly." },
   "ui.Industry.145": { zh: "无需图纸", en: "No blueprint" },
   "ui.Industry.146": { zh: "已学会", en: "Learned" },
@@ -5710,13 +5120,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Industry.151": { zh: "制造线 {p1} 条 · 装备 {p2} · 零件 {p3} · 消耗品 {p4} · 已学会 {p5}", en: "{p1} production lines · equipment {p2} · parts {p3} · consumables {p4} · learned {p5}" },
   "ui.Industry.152": { zh: "{prodName} ×{units} 件", en: "{prodName} ×{units} pcs" },
   "ui.Industry.153": { zh: " ×{units} 件", en: " ×{units} pcs" },
-  /* ⟪文案调整 2026-09-22⟫ 船长报障：「组装机和造船厂需要零件时，提示不是去组装机，而是去市场」⇒
-     「希望提示玩家去组装机生产零件，不要提示去市场」＋「高级零件依旧去相应的组装机」。
-     缺料提示现在三分支：有精炼源 ⇒ 「去精炼」（047）· **能在这台机器上造出来（零件等）⇒ 「去组装机」（154）** ·
-     其余 ⇒ 「去市场」（048）。110 的原句「无法经精炼炉产出」属原因解释（§十三.5 不许）⇒ 一并改写。 */
   "ui.Industry.154": { zh: "🏭 去组装机", en: "🏭 To the assembly machine" },
   "ui.Industry.155": { zh: "「{matName}」由组装机造出（图纸：{p2}）——点击跳到那张零件卡", en: "“{matName}” is made on the assembly machine (blueprint: {p2}) — click to jump to that card" },
-  /** **2026-09-22 补**（船长报障「筛选选项的文案和标签页的文案还有遗漏」）：组装机顶栏读数与取消提示原先写死中文。 */
   "ui.Industry.156": {
     zh: "制造线 {p1} 条 · 装备 {p2} · 零件 {p3} · 消耗品 {p4} · 已学会 {p5}",
     en: "{p1} production lines · {p2} equipment · {p3} parts · {p4} consumables · {p5} learned",
@@ -5725,31 +5130,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
     zh: "已取消该条制造线：材料全额退回物品仓库（AI 核心已归还）；一次性图纸连同制造名额一起退回蓝图书架。其余线不受影响。",
     en: "Production line cancelled: all materials were returned to item storage (AI cores included); a one-use blueprint goes back to the blueprint shelf together with its manufacturing allowance. Other lines are unaffected.",
   },
-  /**
-   * **材料行的"去哪弄"那一支：声望商店**（**2026-09-29 船长报障**：「组装机中，舰船插件材料消耗列表中
-   * 还是显示了墨潮黑匣（应该显示通用黑匣）」同批查出的**指错路**）。
-   *
-   * 「通用黑匣」只有章鱼人声望商店一条来路（市场**只收不卖**、价格表里没有它的卖单）⇒ 它原先落进
-   * "去市场购买"那一支，点过去只会看到一个空行情。判据 = 该材料 id 是通用黑匣（core 单点
-   * `UNIVERSAL_BLACKBOX_ITEM_ID`），不新造机制。
-   */
   "ui.Industry.158": { zh: "「{matName}」在声望商店兑换——点击前往", en: "“{matName}” is exchanged at the standing store — click to go there" },
   "ui.Industry.159": { zh: "🛒 去声望商店", en: "🛒 To the standing store" },
-  /**
-   * **原材料列表折叠**（**2026-10-01 船长令**：「**「原材料列表」折叠，超过2个材料就进行折叠**」）。
-   *
-   * 材料味数 > 2 时，材料块只留一行开关，点开才列出全部 N 行（公共件 `ui/matList.tsx`，
-   * 组装机／造船厂卡与实验室卡共用一份）。`160/161` = 开与收的**可见文案**（也是它的无障碍名），
-   * `162` = 折叠态那枚**缺料提示**（红字，只在未开工时出现 —— 缺料不许因为折叠而看不见），
-   * `163/164` = 悬停说明（只写这一点会做什么，按 §十三 不写原因）。
-   */
   "ui.Industry.160": { zh: "原材料列表 ×{n}", en: "Material list ×{n}" },
   "ui.Industry.161": { zh: "收起原材料列表", en: "Hide material list" },
-  /**
-   * ⟪文案调整 2026-10-02⟫ **船长令**：「工业的卡片内的原材料列表缩略显示的『差X味』改为『缺X项』」
-   * —— 分类量词「味」→「项」（只改缩略那枚红字；旁边的「展开全部 {n} 味原料」是另一条 id，
-   * **本次未动**，是否一并改口径等船长示下）。英文 `{n} short` 不变（占位符集合不变）。
-   */
   "ui.Industry.162": { zh: "缺 {n} 项", en: "{n} short" },
   "ui.Industry.163": { zh: "展开全部 {n} 味原料", en: "Show all {n} ingredients" },
   "ui.Industry.164": { zh: "收起到一行", en: "Collapse back to one line" },
@@ -5862,7 +5246,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.IndustryPage.107": { zh: "当前批进度 {p1}%（{p2}；{p3}）", en: "Current batch progress {p1}% ({p2}; {p3})" },
   "ui.IndustryPage.108": { zh: " · 匹配 {n} 张", en: " · {n} cards match" },
   "ui.IndustryPage.109": { zh: "没有匹配的货柜——换个关键词试试（支持名称与说明）。", en: "No containers match — try another keyword (name and description both work)." },
-  /* 2026-09-21 船长报障「各个子标签页和筛选似乎并没有本地化」：工业页「造船厂」子标签与造船厂面板标题原先写死中文，补 id */
   "ui.IndustryPage.110": { zh: "造船厂", en: "Shipyard" },
   "ui.IndustryPage.114": { zh: "造船厂", en: "Shipyard" },
   "ui.IndustryPage.115": { zh: "舰船蓝图在这里开工：已学会的配方才能建造（一次性图纸有书即用）；你亲自开限 1 条、其余每条由一枚 AI 核心驱动。造好的船先进舰船仓库。蓝图书仍到「蓝图书架」学习。", en: "Ship blueprints start here: only learned recipes can be built (one-use blueprints build straight from the book). You run one line by hand and each AI core drives one more. Finished ships go into ship storage first. Blueprint books are still studied at the Blueprint Shelf." },
@@ -5878,15 +5261,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.ItemsPage.009": { zh: "仓库里没有弹药。", en: "No ammo in the warehouse." },
   "ui.ItemsPage.010": { zh: "仓库里没有无人机。", en: "No drones in the warehouse." },
   "ui.ItemsPage.011": { zh: "仓库里没有该分类物品。", en: "No items of this category in the warehouse." },
-  // ⟪文案调整 2026-10-04⟫ 返回零还可能因锁定/库存，未知拒因不冒称满舱。
   "ui.ItemsPage.012": { zh: "未能装船。请检查舰船是否可操作、库存数量与剩余货仓空间。", en: "Could not load aboard. Check whether the ship is available, the stock quantity and free hold space." },
   "ui.ItemsPage.013": { zh: "已装船 {name}×{n}。", en: "Loaded {name}×{n} aboard." },
-  // ⟪文案调整 2026-10-04⟫ 不承诺不存在的卸货或每件都可出售。
   "ui.ItemsPage.014": { zh: "点击物品或装备卡片查看详情及可用操作。", en: "Select an item or module card to view its details and available actions." },
   "ui.ItemsPage.015": { zh: "搜索仓库…", en: "Search warehouse…" },
   "ui.ItemsPage.016": { zh: "匹配 {n} 种", en: "{n} match(es)" },
   "ui.ItemsPage.017": { zh: "{n} 种 · 无限容量 · 不随船", en: "{n} types · unlimited capacity · stays ashore" },
-  // ⟪文案调整 2026-10-04⟫ 搜索与筛选共同生效，一个全部不清除所有条件。
   "ui.ItemsPage.018": { zh: "没有符合关键词「{kw}」和当前筛选条件的物品或装备。可更换关键词，或将相关筛选设为「全部」。", en: "No items or modules match \"{kw}\" and the current filters. Change the keyword or set the relevant filters to All." },
   "ui.ItemsPage.019": { zh: "当前筛选下没有物品或装备。可切换分类，或将相关筛选设为「全部」。", en: "No items or modules match the current filters. Change the category or set the relevant filters to All." },
   "ui.ItemsPage.020": { zh: "前往市场查看该装备的订单（价格/挂单/买入）", en: "Open this module's orders on the market (price / listings / buy)" },
@@ -5899,8 +5279,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.ItemsPage.029": { zh: "种 · 空间站库存", en: "types · station stock" },
   "ui.ItemsPage.030": { zh: "当前搜索和筛选条件下没有装备。", en: "No modules match the current search and filters." },
   "ui.ItemsPage.031": { zh: "装备库还是空的——在「市场」页购买或在「工业」页制造装备后，装备会先存放于此，再到「装配」页安装上船。", en: "Module Storage is still empty — buy modules on the Market page or build them on the Industry page, and they land here before you fit them to a ship on the Fitting page." },
-  // ⟪文案调整 2026-09-30⟫ 文案审核批 E17（船长批「按你推荐来」）：本 id 与 `ui.ItemsPage.036` 是同一提示的两种写法
-  //   （本条约后半句用「——」串、036 用「（）」括）⇒ 统一保留 036，本 id 删除、调用点已改指 036。
   "ui.ItemsPage.033": { zh: "不在市场流通目录或不可售", en: "Not in the market catalog or not sellable" },
   "ui.ItemsPage.034": { zh: "装备库是空的——购买 / 制造后先存放于此，再到「装配」页安装。", en: "Module Storage is empty — bought or built modules land here first, then you fit them on the Fitting page." },
   "ui.ItemsPage.035": { zh: "装到当前驾驶船的货仓（按单位体积占舱）", en: "Load into the piloted ship's hold (takes up its unit volume)" },
@@ -5922,14 +5300,11 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.ItemsPage.023": { zh: "档位", en: "Tier" },
   "ui.ItemsPage.050": { zh: "丢弃没有任何收益（要变现请用「市价卖出」或精炼炉）", en: "Discarding brings no return (to turn it into credits, use Sell at market or a refinery)" },
   "ui.ItemsPage.051": { zh: "丢弃失败", en: "Discard failed" },
-  // 2026-09-30 船长令：燃料等"普通货仓装不进去"的东西（`ItemDef.holdForbidden`）装船时给专门提示
   "ui.ItemsPage.052": { zh: "{p1} 无法装入舰船货仓（仅存于物品仓库）。", en: "{p1} cannot be loaded into a ship's hold — it is stored in the item warehouse only." },
   "ui.ItemsPage.053": { zh: "普通舰船货仓无法装入（仅存于物品仓库）", en: "Ordinary ship holds cannot take it (item warehouse only)" },
-  /* 实验室后续内容（2026-09-30 船长令「技能加速剂」）：能"用"的道具在物品页给的那颗按钮 */
   "ui.ItemsPage.054": { zh: "使用：24 小时内技能训练时长减半（同一时间内只能生效一剂）", en: "Use: halves skill training time for 24 hours (only one dose can be active at a time)" },
   "ui.ItemsPage.055": { zh: "突触加速剂已生效：24 小时内技能训练时长减半。", en: "Synaptic Accelerant active: skill training time is halved for 24 hours." },
   "ui.ItemsPage.056": { zh: "使用", en: "Use" },
-  /* 仓库一级「货物」档的二级维度（物品大类）前缀（2026-10-01 层级同步市场后新增） */
   "ui.ItemsPage.059": { zh: "分类", en: "Category" },
   "ui.itemSubs.001": { zh: "修理组件", en: "Repair Kit" },
   "ui.itemFilters.001": { zh: "物品", en: "Items" },
@@ -5957,14 +5332,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.itemSubs.035": { zh: "零件蓝图", en: "Part blueprints" },
   "ui.itemSubs.036": { zh: "零件", en: "Parts" },
   "ui.itemSubs.037": { zh: "消耗品", en: "Consumables" },
-  // 支援件的三个同级子类（2026-09-26 船长令：「将装备细分类的支援件筛选拆分成三个同级：
-  // 战斗支援件，辅助支援件，修理装置」）——原「支援件（辅助与维修）」一档由这三条取代
   "ui.itemSubs.038": { zh: "战斗支援件", en: "Combat support" },
   "ui.itemSubs.039": { zh: "辅助支援件", en: "Auxiliary support" },
   "ui.itemSubs.040": { zh: "修理装置", en: "Repair units" },
-  /* 舰船插件与章鱼人兑换（2026-09-26 船长令）：「玩家获取第一个黑匣后，才解锁组装机的插件选项，并且弹出相关通讯」
-     ⟪文案调整 2026-10-02⟫ 116 / 142 两条去掉「墨潮旗舰」这个族名（改为「黑匣」/「各族的旗舰黑匣」）：
-     依据 = 船长 2026-10-02 令「甲」（黑匣一件族一件：H 墨潮 / R 光环，光环那件同样解锁、同样顶料）。 */
   "ui.IndustryPage.116": { zh: "取得第一个黑匣后解锁", en: "Unlocks after you obtain your first black box" },
   "ui.IndustryPage.117": { zh: "插件图纸找章鱼人用声望兑换", en: "Trade standing with the octopus folk for plug blueprints" },
   "ui.IndustryPage.119": { zh: "可支配 {p1} · 累计获得 {p2}", en: "Spendable {p1} · Total earned {p2}" },
@@ -5979,12 +5349,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.IndustryPage.129": { zh: "仅看可造", en: "Buildable only" },
   "ui.IndustryPage.131": { zh: "去书架", en: "Open shelf" },
   "ui.IndustryPage.132": { zh: "切到蓝图书架并定位这一本", en: "Switch to the blueprint shelf and locate this book" },
-  /* ⚠ `ui.IndustryPage.133 / 134` 已于 2026-09-27 **删除**（船长令：「为什么会有'已学会一次性蓝图'，
-     一次性蓝图是无法学会的，删除多余的，将'未学会一次性蓝图'改名为'一次性蓝图'」）——
-     组装机/造船厂那一行现用既有文案 `ui.itemSubs.030`（一次性蓝图 / Single-use blueprint）。 */
   "ui.IndustryPage.126": { zh: "前往声望商店兑换", en: "Exchange at the standing shop" },
-  /* 2026-09-26 船长令（兑换窗口两处）：① 已兑换（= 已学会）的图纸**隐藏**，全换完给空态；
-     ② 兑换前弹**确认**，写明会扣多少声望与扣完还剩多少。 */
   "ui.IndustryPage.137": { zh: "插件图纸都已兑换完毕。", en: "Every plug blueprint has been exchanged." },
   "ui.IndustryPage.138": { zh: "兑换「{p1}」", en: "Exchange “{p1}”" },
   "ui.IndustryPage.139": { zh: "将扣除「深空工业协会」声望 {p1} 点，扣除后剩余 {p2}。", en: "This spends {p1} Deepspace Industry Association standing, leaving {p2}." },
@@ -5994,12 +5359,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.IndustryPage.143": { zh: "已持有", en: "Owned" },
   "ui.IndustryPage.144": { zh: "已换到通用黑匣 ×1，存入物品仓库。", en: "Exchanged: 1 Universal Black Box stored in the item warehouse." },
   "ui.IndustryPage.145": { zh: "兑换", en: "Exchange" },
-  /**
-   * **通用黑匣的兑换前确认**（**2026-09-29 船长报障**：「**声望商店中，购买通用黑匣没有警告**」）。
-   *
-   * 与图纸那两句（`.139` / `.140`）**刻意分开**：图纸换的是"学会配方"，黑匣换的是"一件实物"，
-   * 落款处与去处都不同；但**扣款口径一致**（花声望、不可退）⇒ 两件商品同一套确认层、各用各的措辞。
-   */
   "ui.IndustryPage.146": { zh: "将扣除「深空工业协会」声望 {p1} 点，扣除后剩余 {p2}。", en: "This spends {p1} Deepspace Industry Association standing, leaving {p2}." },
   "ui.IndustryPage.147": { zh: "通用黑匣直接存入物品仓库；声望一旦扣除不会退还。", en: "The Universal Black Box goes straight into item storage; spent standing is not refunded." },
   "ui.IndustryPage.148": { zh: "上一批拆解产物", en: "Previous unboxing output",},
@@ -6011,16 +5370,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Expedition.443": { zh: "插件装上就拆不下来，也不能上市交易。", en: "A plug cannot be removed once fitted, and cannot be traded on the market." },
   "ui.Expedition.444": { zh: "已装 {p1} / {p2}", en: "Fitted {p1} / {p2}" },
   "ui.Expedition.445": { zh: "本舰没有舰船插件槽。", en: "This ship has no plug slots." },
-  /**
-   * **声望商店**（**2026-09-27 船长令**：「我打算将声望商店嵌入常驻悬赏内，作为子页面的存在，
-   * 类似扫描虫洞页面内的虫洞探索和谜质科技」）——**常驻悬赏页那个子页标签**用它。
-   *
-   * ⚠ 与 `ui.Expedition.441`（「章鱼人兑换」）**分开**：那条是**弹层标题**与兑换确认层里的落款，
-   * 口径是"章鱼人给你开的窗口"；这条是**常驻悬赏页里的子页名**，口径是"兑换柜台"
-   * （船长 2026-09-26 改口：「组装机这边不应该是前往章鱼人兑换，而是**前往声望商店**兑换」）。
-   */
   "ui.Expedition.446": { zh: "声望商店", en: "Standing store" },
-  /* 星图缩放（**2026-10-02 船长令**：手机端星系判定范围过小，「建议星图和虫洞探索一样允许放大」） */
   "ui.Expedition.448": { zh: "放大", en: "Zoom in" },
   "ui.Expedition.449": { zh: "缩小", en: "Zoom out" },
   "ui.Expedition.450": { zh: "复位", en: "Reset" },
@@ -6051,9 +5401,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.itemSubs.026": { zh: "中槽装备", en: "Mid-slot modules" },
   "ui.itemSubs.027": { zh: "低槽装备", en: "Low-slot modules" },
   "ui.itemSubs.028": { zh: "{p1}蓝图", en: "{p1} blueprints" },
-  // ⟪文案调整 2026-10-04⟫ 删除无人机过期提示 .001，调用统一使用战后自动补货的 .004；不复用旧 id。
   "ui.itemView.002": { zh: "弹药在战斗中自动消耗：开战时从 仓库/货仓 按需取用（货仓优先）；放仓库同样出战且不随船遗失——货仓里的弹药可随时卸回仓库更安全。", en: "Ammo is spent automatically in combat: it is drawn from storage or the hold as needed from the moment the fight starts (hold first). Ammo left in storage still fights and is never lost with the ship, so unloading it back to storage is the safer option." },
-  // ⟪文案调整 2026-10-04⟫ 碎片重复积累，停掉落看已学习或仓库达到所需数量。
   "ui.itemView.003": { zh: "蓝图碎片可由残骸回收获得。凑够所需数量并停靠空间站后，点击「逆向解锁」兑换永久蓝图；消耗当前驾驶船货仓与物品仓库中的碎片。已学会对应蓝图，或仓库内该类碎片达到所需数量后，不再掉落该类碎片。", en: "Blueprint fragments can be obtained from wreck recycling. Collect the required quantity and dock at a station, then select Reverse-engineer to obtain a permanent blueprint; fragments are consumed from the piloted ship's hold and Warehouse. Fragments of that type stop dropping once its blueprint is learned or the required quantity is held in Warehouse." },
   "ui.itemView.004": { zh: "无人机需先在 装配页「无人机舱」装入清单（舱容 = 船体 + 甲板扩展；与装配共用 CPU），战斗只放飞已装入的；仓库余量不自动出战。战术导控阵列增伤。敌方点防会击落机群——被击落的无人机自清单永久损失，战斗结束会立刻按本场出发编制自动补足（先取本船货仓、再取物品仓库），两处都没存货才需要自己去买。", en: "Drones must first be loaded into the list on the Fitting page's “Drone bay” (bay size = hull + deck expansion, sharing CPU with fitting); combat launches only the loaded ones, and warehouse stock never flies on its own. Tactical control arrays add damage. Enemy point defense shoots drones down — a downed drone is lost from the list for good, and when the fight ends the loadout you started with is topped up at once (from this ship's hold first, then the item warehouse); only when both are empty do you have to buy more." },
   "ui.MapPage.001": { zh: "名称", en: "Name" },
@@ -6173,7 +5521,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.MapPage.115": { zh: "，随即在「", en: ", then at “" },
   "ui.MapPage.116": { zh: " · 安全 {v}", en: " · security {v}" },
   "ui.MapPage.117": { zh: "矿船", en: "Mining ship" },
-  /* 打捞门槛提示的"去装配"行（**2026-09-20 船长令**：「打捞需要打捞器的提示，添加让玩家去装配的提示」） */
   "ui.MapPage.118": { zh: "打捞需要打捞器：先在「装配」页给驾驶船的高槽装一台（MK1/2/3）", en: "Salvaging needs a salvager: fit one (MK1/2/3) into a high slot of the ship you fly on the Fitting page" },
   "ui.MarketPage.002": { zh: "等级", en: "Level" },
   "ui.MarketPage.003": { zh: "装备", en: "Modules" },
@@ -6195,7 +5542,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.MarketPage.019": { zh: "制造", en: "Manufacture" },
   "ui.MarketPage.020": { zh: "基础核心", en: "Basic core" },
   "ui.MarketPage.021": { zh: "效率", en: "Efficiency" },
-  // ⟪文案调整 2026-10-04⟫ 修正奇货译名与库存去处，市场可卖船只来自舰船仓库。
   "ui.MarketPage.022": { zh: "指派 AI 副船任务时使用，任务结束自动归还核心库；更高阶核心通常由高威胁远征缴获或奇货市场流出。", en: "Used when assigning AI auxiliary tasks, and returned to the core library when the task ends; higher-tier cores usually come from high-threat expeditions or the exotic market." },
   "ui.MarketPage.023": { zh: "自己的库存：物品对应物品仓库，装备对应装备库，蓝图对应蓝图书架，AI 核心对应核心库。舰船持有量为舰船仓库与在役舰队同型艘数之和；可卖舰船仅来自舰船仓库。挂单托管中的物品不计入库存。", en: "Your stock comes from Warehouse for items, Module Storage for modules, Blueprint Library for blueprints and the core library for AI cores. Ship holdings include Ship Storage and active ships of the same type; only ships in Ship Storage can be sold. Stock held in order escrow is excluded." },
   "ui.MarketPage.024": { zh: "已掌握该蓝图：可在工业页无限自制", en: "Blueprint learned: unlimited manufacturing on the Industry page" },
@@ -6288,9 +5634,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.MarketPage.111": { zh: "点击左侧商品的「 详情」查看行情", en: "Click a good's Details on the left to see its market" },
   "ui.MarketPage.112": { zh: "从左侧列表选择一件商品，即可查看价格曲线、买卖盘深度与交易面板。", en: "Pick a good from the list on the left to see its price curve, book depth and trading panel." },
   "ui.MarketPage.113": { zh: "我的挂单", en: "My orders" },
-  // ⚠ `ui.MarketPage.114`（余额）与 `ui.MarketPage.115`（信用点 · 托管在售/在途）随 2026-09-22 船长令
-  //   「钱包删除，托管挪到子标签页内的标题里」一并删除：钱包额顶栏本来就常显，页内不再重复一份；
-  //   托管改用下面这条独立文案（不再与钱包共用一句）。
   "ui.MarketPage.116": { zh: "艘", en: "ships" },
   "ui.MarketPage.117": { zh: "件", en: "items" },
   "ui.MarketPage.118": { zh: " · 平", en: " · flat" },
@@ -6353,8 +5696,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.MarketPage.176": { zh: "挂卖单失败。", en: "Could not place the sell order." },
   "ui.MarketPage.177": { zh: "当前没有限定奇货到货——每 10 分钟一轮，稍后再看。", en: "No limited exotic stock has arrived — a new round comes every 10 minutes, so check back later." },
   "ui.MarketPage.178": { zh: "装备", en: "Equipment" },
-  // 「我的挂单」子页面标题行右侧的**托管**读数（2026-09-22 船长：「钱包删除，托管挪到子标签页内的标题里」）；
-  // 尾巴上的「 件」沿用 `ui.MarketPage.135`。
   "ui.MarketPage.179": { zh: "托管在售/在途", en: "escrowed in listings / in transit" },
   "ui.marks.001": { zh: "取消标记", en: "Unmark" },
   "ui.marks.002": { zh: "标记", en: "Mark" },
@@ -6437,19 +5778,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.SaveManager.008": { zh: "已导出：{p1}", en: "Exported: {p1}" },
   "ui.SaveManager.009": { zh: "备份已开始下载（保存在下载目录）。", en: "The backup download has started (saved in your downloads folder)." },
   "ui.SaveManager.010": { zh: "已删除备份：{name}", en: "Backup deleted: {name}" },
-  // ⟪文案调整 2026-09-30⟫ 文案审核批（船长令「对现有所有通讯或者长文本进行下审核」）：删掉玩家可见文案里的
-  //   开发侧日期（英文那列本来就没有这句）——「版本/日期/复核/待定/占位/口径等开发文本留在开发侧，发现残留即清理」（AGENTS.md §5）
   "ui.SaveManager.011": { zh: "备份 = 把当前进度复制成时间戳文件（保存在游戏数据目录），最多 30 份。⚠ 恢复 / 导入不会自动备份原档——想留退路请先点「备份当前档」；删除 = 移除所选备份文件，不影响当前档。导入 = 从任意存档文件恢复，导入时会按文件保存时刻与现在的时间差补齐离线进度；导出 = 把当前进度存成文件（手机网页会优先弹系统分享：选「存储到文件」或发给自己；浏览器不支持分享时才改为下载到下载目录——若内置浏览器拦了下载，请用系统浏览器打开本页）。", en: "Back up = copies the current progress into a timestamped file (kept in the game data folder), up to 30 of them. ⚠ Restoring or importing does not back up the old save automatically — click Back up current save first if you want a fallback. Delete = removes the selected backup file and leaves the current save alone. Import = restores from any save file, catching up offline progress from the gap between when the file was written and now. Export = saves the current progress to a file (mobile web opens the system share sheet first: choose Save to Files or send it to yourself; if the browser cannot share, it downloads to your downloads folder instead — and if an in-app browser blocks the download, open this page in your system browser)." },
   "ui.SaveManager.012": { zh: "备份当前档", en: "Back up current save" },
-  /** ⟪文案调整 2026-10-02⟫ 同上：悬停说明里的 **`.json`** 去掉（⚠ 后半句一字未动）。 */
   "ui.SaveManager.013": { zh: "选择一个存档文件导入（⚠ 不备份原档；按时间差补齐离线进度）", en: "Choose a save file to import (⚠ the old save is not backed up; offline progress is caught up from the time gap)" },
-  /**
-   * ⟪文案调整 2026-10-02⟫ 船长令「玩家表示，打开新游戏的『加载json格式文件』看不懂，**直接写成『加载存档文件』**」。
-   * 本 id = **新游戏页与存档页共用的那个按钮**（`panels/ModeChoice.tsx` ／ `panels/SaveManager.tsx`）⇒ 改表即两处同时生效。
-   */
   "ui.SaveManager.014": { zh: "加载存档文件", en: "Load save file" },
-  // 存档存储体检与告警（2026-09-25 船长令）：修「玩家 · MacBook · Safari 关掉游戏后存档丢失」——
-  // 网页版的存档在浏览器里，浏览器不给写时必须让玩家看见，不许静默丢档。
   "ui.saveGuard.001": { zh: "存储状态", en: "Storage status" },
   "ui.saveGuard.002": { zh: "存档在本机文件里", en: "Save is a local file" },
   "ui.saveGuard.003": { zh: "存档在本浏览器里", en: "Save lives in this browser" },
@@ -6462,7 +5794,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.saveGuard.010": { zh: "旧存档读取失败，已暂停写入，避免覆盖旧档。可在「设置 → 存档」里允许写入，这会另起新档。", en: "The old save could not be read, so writing is paused to avoid overwriting it. Allow saving in Settings → Save to start a new profile." },
   "ui.saveGuard.011": { zh: "允许写入存档", en: "Allow saving" },
   "ui.saveGuard.012": { zh: "已暂停写入（旧档读取失败）", en: "Writing paused (old save unreadable)" },
-  // 网页版「绑定本地存档文件」（2026-09-25 船长令：存档优先保存到本地文件，像本地运行一样）
   "ui.saveGuard.013": { zh: "本地文件", en: "Local file" },
   "ui.saveGuard.014": { zh: "未绑定", en: "Not bound" },
   "ui.saveGuard.015": { zh: "绑定本地存档文件", en: "Bind a local save file" },
@@ -6478,7 +5809,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.saveGuard.025": { zh: "已重新连接本地存档文件：{p1}", en: "Reconnected the local save file: {p1}" },
   "ui.saveGuard.026": { zh: "存档文件", en: "Save file" },
   "ui.saveGuard.027": { zh: "绑定后，每次落盘都会写进这个文件（浏览器里也留一份）。", en: "Once bound, every save is written into this file (a copy stays in the browser too)." },
-  // ⟪游客行情批 2026-11-05⟫ 账户页以登入为主、存档为辅：云存档之后用小标题接本地存档。
   "ui.saveGuard.028": { zh: "本地存档", en: "Local Save" },
   "ui.saveReconnect.001": { zh: "选择存档进度", en: "Choose save progress" },
   "ui.saveReconnect.002": { zh: "本地文件与当前进度不同。载入文件会替换当前进度；保留当前会覆盖文件。", en: "The local file differs from the current progress. Loading the file replaces the current progress; keeping the current progress overwrites the file." },
@@ -6509,36 +5839,14 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.SaveManager.028": { zh: "恢复失败。", en: "Restore failed." },
   "ui.SaveManager.029": { zh: "导入失败。", en: "Import failed." },
   "ui.SaveManager.030": { zh: "导出失败。", en: "Export failed." },
-  /* 导入"没读到文件"的可见提示（2026-09-30：手机 UC 报障"点了没反应"⇒ 取消不再静默；
-     ⚠ 真取消与"选择器没弹出来"无法区分，所以这句要**两种情况都说得通**并给一条出路） */
   "ui.SaveManager.031": { zh: "没有读到存档文件。若刚才没有弹出文件选择器（部分手机浏览器的内置内核不支持），请用系统自带浏览器打开本页再试一次。", en: "No save file was read. If no file picker appeared (some in-app mobile browsers do not support it), open this page in your phone's own browser and try again." },
-  /**
-   * ⟪文案调整 2026-10-02⟫ **甲案**（船长令）：新游戏页导入成功后**先给交代、玩家自己点「进入游戏」** ——
-   * 原先那一刻 `modeChoiceNeeded()` 翻假 ⇒ 整个悬浮窗**无声消失**，玩家看不到任何成功确认（`ui.SaveManager.003`
-   * 那句还写着「先点『备份当前档』」，而**新游戏页根本没有那个按钮**）⇒ 这两条专为该页写。
-   */
   "ui.SaveManager.032": { zh: "已导入存档", en: "Save imported" },
   "ui.SaveManager.033": { zh: "进入游戏", en: "Enter the game" },
-  // 2026-09-25 船长定文案：「事件日志应出现「有入侵舰队出现！」」⇒ 开局那条日志改短句（其余三条待船长定）
   "ui.weekend.001": { zh: "有入侵舰队出现！", en: "Invader fleets have appeared!" },
   "ui.weekend.002": { zh: "入侵核心已被打通：旗舰现身。", en: "The invasion core has been broken through: the flagship has appeared." },
-  // ⟪文案调整 2026-09-28⟫ 船长令「让玩家击杀BOSS就能获得黑匣，取消之前的复杂判定」：
-  // 原「玩家输出占比 {p1}%，但最后一击是章鱼人部队打出的 —— 旗舰黑匣被章鱼人拿走。」
-  // ⇒ 新口径下这一档 = **没击杀**（章鱼人收尾），所以直接说"未获得"（不再讲"谁打的最后一击"）
   "ui.weekend.003": { zh: "入侵结束：玩家输出占比 {p1}%，旗舰由章鱼人部队摧毁 —— 未获得旗舰黑匣。", en: "Invasion over: the player's damage share was {p1}%; the Octopus forces destroyed the flagship — no flagship black box obtained." },
   "ui.weekend.004": { zh: "入侵结束：占领区已恢复。", en: "Invasion over: the occupied systems have been restored." },
-  /* ── 2026-09-28 船长令「让玩家击杀BOSS就能获得黑匣，取消之前的复杂判定」──
-     结束语从六条塌成三条（击杀 ⇒ 115 · 没击杀由章鱼收尾 ⇒ 003 · 窗口到点 ⇒ 117/004），
-     以下三条随之**作废删除**：
-     - `ui.weekend.102`（章鱼抢尾却爆出）：击杀必给 ⇒「章鱼收尾」与「有黑匣」不可能同时成立；
-     - `ui.weekend.116`（亲手击沉却没爆）：同上，这个状态不存在了；
-     - `ui.weekend.118`（亲手击沉却未能入账）：入账路径由结算与补发工具两条兜住。 */
-  /* ── 2026-09-27 船长令：旗舰战留档（玩家亲手击沉）──
-     115 = 玩家击杀（**新规则下这一条就是"击杀必给"的落地语**）· 117 = 窗口到点但本场有旗舰（撤走、未判击沉） */
   "ui.weekend.115": { zh: "入侵结束：玩家亲手击沉了旗舰，旗舰黑匣已存入物品仓库。", en: "Invasion over: the player personally sank the flagship; the flagship black box is in your item warehouse." },
-  /* 2026-10-02 船长令（「我希望的是 100% 后能够继续刷，但是掉落残骸数量需要减半作为惩罚」）：
-     116 = **已夺回**的星系那行改显这句（替掉 `ui.weekend.096` 的"结算时按进度发放"——那一笔对满档
-     星系已经不涨了）。只写规格（半量残骸 / 进度不再增长），不写原因。 */
   "ui.weekend.116": { zh: "该星系已夺回：继续出击只获得半量残骸，收复进度不再增长。", en: "System reclaimed: further sorties yield only half the wreckage, and reclaim progress no longer increases." },
   "ui.weekend.117": { zh: "入侵结束：占领区已恢复；旗舰在窗口结束前撤走，未判定击沉。", en: "Invasion over: the occupied systems have been restored; the flagship withdrew before the window closed, so it was not judged sunk." },
   "ui.weekend.005": { zh: "{p1}入侵", en: "{p1} invasion" },
@@ -6556,15 +5864,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.weekend.017": { zh: "挑战旗舰", en: "Challenge flagship" },
   "ui.weekend.018": { zh: "被入侵舰队占领：悬赏已换成入侵舰队、遇袭更频繁；夺回后恢复", en: "Occupied by invader fleets: bounties are invader fleets and ambushes are frequent; reclaim to restore" },
   "ui.weekend.019": { zh: "点击前往星图", en: "Click to open the star map" },
-  // 2026-09-24 旗舰 BOSS 化（跨场累计伤害）：入侵面板那一条的进度读数
   "ui.weekend.020": { zh: "母舰血条剩余 {p1}%", en: "Mothership bar: {p1}% left" },
-  // 2026-09-26 船长令：「建议将旗舰的大概信息直接显示在卡上，包括BOSS血条剩余血量」
   "ui.weekend.112": { zh: "入侵旗舰编成 · 共 {p1} 艘", en: "Invasion flagship roster · {p1} ships total" },
-  /* 2026-09-26 船长令：入侵结算界面（与结算信同口径）要写明本期按贡献拿到多少协会声望 */
   "ui.weekend.113": { zh: "本期入侵按贡献获得「深空工业协会」声望 +{p1}（可支配 {p2} · 累计 {p3}）", en: "This invasion earned you +{p1} Deepspace Industry Association standing (spendable {p2} · total {p3})" },
-  /* 2026-09-26 船长批「甲」：结算面板的奖励格写明落点（原先只说"已入账"，玩家会去货舱里找） */
   "ui.weekend.114": { zh: "已存入物品仓库", en: "stored in your item warehouse" },
-  // 2026-09-25 结束结算（贡献奖四档入账）：一条有 ISK 的、一条只有残骸的（参与档）、一条零贡献的
   "ui.weekend.022": { zh: "贡献奖已发放：贡献占比 {p1}%，奖励 稀有残骸 ×{p2} ＋ {p3} 信用点。", en: "Contribution reward paid: share {p1}%, reward rare wrecks ×{p2} + {p3} credits." },
   "ui.weekend.023": { zh: "贡献奖已发放：贡献占比 {p1}%，奖励 稀有残骸 ×{p2}。", en: "Contribution reward paid: share {p1}%, reward rare wrecks ×{p2}." },
   "ui.weekend.024": { zh: "本次入侵没有贡献，无贡献奖。", en: "No contribution in this invasion, so there is no contribution reward." },
@@ -6606,8 +5909,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Ironman.041": { zh: "铁人福利同时失效；代次与已获得的徽章保留。", en: "The Iron Man perks end as well; the generation and earned badges are kept." },
   "ui.Ironman.042": { zh: "模式选择", en: "Choose a mode" },
   "ui.Ironman.043": { zh: "本存档仅此一次选择机会。", en: "This save gets one choice only." },
-  /* 2026-09-28 船长令「可以加入一个'导入存档'入口」⇒ 模式选择框上那颗按钮旁边的说明
-     （按钮本体沿用存档页的 `ui.SaveManager.014`，不另造同义文案） */
   "ui.Ironman.044": { zh: "换设备或换浏览器：先导入存档，再选模式。", en: "Switching device or browser: import your save first, then choose a mode." },
   "ui.SellQtyModal.001": { zh: "出售数量 ·", en: "Sell quantity ·" },
   "ui.SellQtyModal.002": { zh: "现有", en: "On hand" },
@@ -6619,9 +5920,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipArt.005": { zh: "巨构", en: "Titan" },
   "ui.shipArt.006": { zh: "巡逻", en: "Patrol" },
   "ui.shipArt.007": { zh: "鱿鱼", en: "Deadarmy" },
-  // H 族（墨潮帮 · 2026-09-24 船长定名「The Ink Tide」）：短名取两字「墨潮」（星图标签位窄）
   "ui.shipArt.008": { zh: "墨潮", en: "Ink Tide" },
-  // R 族（光环 · Corona Systems · 2026-10-01 船长令「是新势力：余晖」）：短名取两字「光环」（与族名同形）
   "ui.shipArt.009": { zh: "光环", en: "Corona Systems" },
   "ui.shipInfo.001": { zh: "（上限 90%）", en: " (cap 90%)" },
   "ui.shipInfo.002": { zh: "军用修理组件", en: "Military Repair Kit" },
@@ -6630,46 +5929,18 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipInfo.005": { zh: "（耗组件）", en: " (uses kits)" },
   "ui.shipInfo.006": { zh: "船体特性", en: "Hull traits" },
   "ui.shipInfo.007": { zh: "火力加成", en: "Firepower bonus" },
-  // ⟪文案调整 2026-09-24⟫ 原「武器族加成」——船长：「文案存在不少类似'武器族''XX族'这样的开发字眼，会给玩家造成误导」
-  //   口径 = 「族」在玩家侧有另一个专属含义（敌方势力），此处指的其实是**伤害类型**（动能/爆破/能量）⇒ 正字「类型」
   "ui.shipInfo.008": { zh: "武器类型加成", en: "Weapon type bonus" },
-  // ⟪文案调整 2026-09-24⟫ 原「本族武器单发 +N%（装别族武器无加成）」⇒ 去掉"族"字，写明是"同伤害类型"
-  // 2026-09-26 打捞对象（船长令「让玩家选择打捞对象……残骸也要分开算」）
   "ui.MapPage.120": { zh: "全部（按威胁加权）", en: "All (threat-weighted)" },
   "ui.MapPage.121": { zh: "入侵残骸", en: "Invasion wrecks" },
-  /* 2026-09-27 船长令：入侵残骸场里可能有箱子（主力舰队打赢掉落）⇒ 卡名上把稀有件数写出来 */
   "ui.MapPage.122": { zh: "入侵残骸 · 稀有 ×{p1}", en: "Invasion wrecks · rare ×{p1}" },
-  // 2026-09-26 墨潮电子舱 / 墨潮捕获网（H 族势力装备 · 高槽支援件）的装配页短行
   "ui.shipInfo.185": { zh: "敌方武器射程 −{p1}，最短 {p2} m", en: "Enemy weapon range −{p1}, floor {p2} m" },
   "ui.shipInfo.186": { zh: "{p2} 米内每 {p1} 秒钉住一艘未被钉住的敌舰", en: "Pins one un-webbed enemy ship every {p1} s within {p2} m" },
-  /**
-   * **墨潮捕获网的三项关键属性**（**2026-09-29 船长令**：「将一些关键属性（比如射程，减速幅度）
-   * 放进属性里」）——行名 + 值两条，与其它装备的参数行同款（值由数据字段渲染，说明不再手写数字）。
-   */
   "ui.shipInfo.238": { zh: "投网射程", en: "Web range" },
   "ui.shipInfo.239": { zh: "断开距离", en: "Break range" },
   "ui.shipInfo.240": { zh: "减速幅度", en: "Slow" },
-  /** 值：`{p1} m`（射程类）与 `−{p1}%（机动 ×{p2}）`（减速类） */
   "ui.shipInfo.241": { zh: "{p1} m", en: "{p1} m" },
   "ui.shipInfo.242": { zh: "−{p1}%（机动 ×{p2}）", en: "−{p1}% (speed ×{p2})" },
-  /**
-   * **「取最快一台（不叠加）」**（**2026-09-29 补**）：`max` 组里**周期型**装置（捕获网）的措辞。
-   *
-   * 为什么单列：`ui.shipInfo.078`「取最长一件（不叠加）」是给**隐秘行动装置**（取最长窗口）写的，
-   * 而捕获网走的是 `{ group: 'max', kind: 'capture-web' }` —— 实现里同舰多件**取最短周期**
-   * （`combat` 的 `webCycleMs` 用 `Math.min`：更快的那台说了算）。
-   * 拿"取最长"去说一件"取最短"的事就是**谎报方向**（船长 2026-09-27 报障过"卡面写着全额叠加、
-   * 实际是加和封顶"那一类）⇒ 按 kind 分岔说。
-   */
-  "ui.shipInfo.243": { zh: "取最快一台（不叠加）", en: "Fastest unit only (no stacking)" },  /* 舰船插件（2026-09-26 船长令）：装配页短行的逐类效果句 ＋ 一句"装上去拆不下来" */
-  /**
-   * **「（不受其它射程效果影响）」**（**2026-09-29 船长令**：「网子需要备注**不受其他射程效果影响**」）
-   * —— 尾注在参数行的**投网射程**那一格（与 `ui.shipInfo.018/026` 同款短注，不另开一行长说明）。
-   *
-   * 为什么要写：卡面同时会出现「射程插件 +20%」这类**武器射程**加成，玩家会顺理成章地以为
-   * 网子也吃。而实现里捕获网射程走的是**自己的字段**（`captureWebRangeM`），
-   * 插件/技能/科技/敌方压制的增程只作用于**武器有效射程**，不进这个值 ⇒ 不写就是默认玩家会误解。
-   */
+  "ui.shipInfo.243": { zh: "取最快一台（不叠加）", en: "Fastest unit only (no stacking)" },
   "ui.shipInfo.244": { zh: "（不受其它射程效果影响）", en: " (unaffected by other range effects)" },
   "ui.shipInfo.187": { zh: "护盾上限 +{p1}", en: "Shield capacity +{p1}" },
   "ui.shipInfo.188": { zh: "装甲上限 +{p1}", en: "Armor capacity +{p1}" },
@@ -6685,25 +5956,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipInfo.198": { zh: "更常被敌方选为目标", en: "Enemies pick this ship more often" },
   "ui.shipInfo.199": { zh: "更少被敌方选为目标", en: "Enemies pick this ship less often" },
   "ui.shipInfo.200": { zh: "装上后无法拆下", en: "Cannot be removed once fitted" },
-  /* 2026-09-26 船长报障：墨潮电子舱原先掉在 `flat` 兜底里、卡面写「全额叠加」（读起来像"可以无限叠"）
-     ⇒ 该件单列一档（当时叫 `sum`），本档写真实机制。
-     ⟪文案调整 2026-09-29⟫ 船长令「这类全队型的效果，能否做全队多装递减，并且效果也是乘法」
-     →「墨潮电子舱就照全队递减的乘法」→（看完"能叠多少"的三案读数）「丙」⇒ 旧口径
-     「同舰多件加和（上限 90%）· 多舰乘法叠加」**作废**（那条下 4 舰各 3 件即 90.8%，把敌人射程压到地板 3,000 m）；
-     现行 = **同舰多件递减 · 多舰乘法叠加 · 合计至多 60%**。台账见 `docs/design/ecm-fleet-decay-20260929.md`。 */
   "ui.shipInfo.201": { zh: "同舰多件递减 · 多舰乘法叠加（合计至多 60%）", en: "Per ship: diminishing · Across ships: multiplicative (60% combined cap)" },
-  /** **机群结构层加成**（2026-09-27 补）：鱿蜂结构层的 `droneHullHpBonusPct` 引擎一直在算
-   *  （`combat.ts:2059` 求和 → `:7663` 放飞时放大结构层），但**卡面原先没有这一行** ⇒ 说明写着效果、卡上查不到。 */
   "ui.shipInfo.202": { zh: "机群结构层 +{p1}", en: "Drone structure layer +{p1}" },
-  /** **损伤管制装置的启动规格**（2026-09-27 补）：说明里的「持续 1 秒 / 每场一次」按 data-map 甲案
-   *  从文案挪到卡面参数行 —— 时长读引擎常量 `DC_LOCK_MS`，不手写。 */
   "ui.shipInfo.203": { zh: "启动锁定", en: "Trigger lock" },
   "ui.shipInfo.204": { zh: "结构锁定 {p1} 秒 · 每场一次", en: "Structure locked for {p1} s · once per battle" },
-  /* 2026-09-27 无人机储备甲板（船长令）：参数行 = 复位周期；秒数由界面按 `droneReviveCycleMs` 现算
-     （**说明文案里不手写数字** —— 本会话定的甲案）。.206 = 行名，.205 = 行值。 */
-  /* ── 多装递减装备的「有效值（原值）」标注（**2026-09-29 船长令**：「之后所有多装递减的装备，能否采用
-     和维修装置类似的 '真实数值（原始数值）' 这样的方式标注参数？」）——
-     数值一律由 core 单点 `fittedEffectParamsOf` 现算（折权族 = 本件那一份；缺口族 = 装上后的合成值）。 ── */
   "ui.shipInfo.218": { zh: "效果", en: "Effect" },
   "ui.shipInfo.220": { zh: "（本件 {p1}）", en: " (this unit {p1})" },
   "ui.shipInfo.221": { zh: "（原 {p1}）", en: " (base {p1})" },
@@ -6723,16 +5979,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipInfo.235": { zh: "装甲动能抗性", en: "Armor kinetic resist" },
   "ui.shipInfo.236": { zh: "装甲高爆抗性", en: "Armor explosive resist" },
   "ui.shipInfo.237": { zh: "装甲能量抗性", en: "Armor energy resist" },
-  /* 2026-09-30 截击舰特性（船长「给拦截舰添加效果，不会被网子选为目标」）——「船体特性」栏那一行，
-     与 `ShipDef.interceptorImmuneToWeb`（数据开关）同源。 */
   "ui.shipInfo.245": { zh: "不会被网子选为目标", en: "Cannot be targeted by webs" },
-  // **R 族势力特色装备**（船长 2026-10-01 令）：叠光激光炮的"装填自加速"与跃迁规避装置的"挨打闪现"
   "ui.shipInfo.246": { zh: "装填 {p1} 秒，每次开火缩短 {p2} 秒，最低 {p3} 秒", en: "Reload {p1}s; each shot cuts {p2}s, down to {p3}s" },
-  // ⟪文案调整 2026-10-08⟫ 单跳上限与冷却读取本件参数，不再写固定拉远。
   "ui.shipInfo.247": { zh: "被命中时朝期望距离闪现，单次最多 {p1} km；冷却 {p2} 秒", en: "When hit, blinks toward the desired engagement range by up to {p1} km; {p2}s cooldown" },
   "ui.shipInfo.248": { zh: "{p1}：盾 {p2} · 甲 {p3} · 结构 {p4}", en: "{p1}: shield {p2} · armor {p3} · hull {p4}" },
 
-  /* ── 沉船记录（2026-09-27 船长令：通讯内新增一个分类，记录玩家损失的舰船与当时的装配）── */  "ui.WreckLog.001": { zh: "沉船记录", en: "Ship Loss Log" },
+  "ui.WreckLog.001": { zh: "沉船记录", en: "Ship Loss Log" },
   "ui.WreckLog.002": { zh: "收件箱", en: "Inbox" },
   "ui.WreckLog.003": { zh: "还没有沉船记录。", en: "No lost ships yet." },
   "ui.WreckLog.004": { zh: "损失原因", en: "Cause" },
@@ -6752,13 +6004,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.WreckLog.018": { zh: "虫洞内被击沉", en: "Sunk inside a wormhole" },
   "ui.WreckLog.019": { zh: "虫洞内整队失联", en: "Fleet lost inside a wormhole" },
   "ui.WreckLog.020": { zh: "船型", en: "Hull" },
-  /* 2026-09-28 玩家报障（旗舰战沉船被撤退复活）⇒ 沉船记录新增一类原因：遭遇战里被打沉 */
   "ui.WreckLog.021": { zh: "遭遇战中被击沉", en: "Sunk in an encounter battle" },
   "ui.shipInfo.205": { zh: "复位周期 {p1} 秒", en: "Reset cycle {p1} s" },
   "ui.shipInfo.206": { zh: "复位周期", en: "Reset cycle" },
-  /* .207 = **属性行的值**（裸秒数）：行名已写了"复位周期"，值里不再重复（同族 drone-rack 同款做法）。 */
   "ui.shipInfo.207": { zh: "{p1} 秒", en: "{p1} s" },
-  /* ⚠ 合并（2026-09-27）：「无人机护盾投射仪」那一族原先也用 `.205/.206` ⇒ **后合入的它顺移到 `.208/.209`**。 */
   "ui.shipInfo.208": { zh: "无人机护盾", en: "Drone shield" },
   "ui.shipInfo.209": { zh: "无人机护盾 +{p1}", en: "Drone shield +{p1}" },
   "ui.shipInfo.184": { zh: "同类型武器单发 +{p1}（装其它伤害类型的武器无加成）", en: "Weapons of the same damage type deal +{p1} per shot (no bonus with other damage types)" },
@@ -6799,7 +6048,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipInfo.044": { zh: "单发伤害", en: "Damage per shot" },
   "ui.shipInfo.045": { zh: "弹头", en: "Warhead" },
   "ui.shipInfo.046": { zh: "弹道特性", en: "Trajectory profile" },
-  // ⟪文案调整 2026-10-19⟫ 近盲不再附自伤解释，机制不变。
   "ui.shipInfo.047": { zh: "近盲 · 命中不随距离衰减", en: "Close-range blind spot · accuracy does not fall off with distance" },
   "ui.shipInfo.048": { zh: "追踪命中", en: "Tracking accuracy" },
   "ui.shipInfo.049": { zh: "弹种", en: "Ammo type" },
@@ -6820,30 +6068,22 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipInfo.064": { zh: "自身占用", en: "Own footprint" },
   "ui.shipInfo.065": { zh: "（纯扩容；卸下即收回扩容）", en: " (pure expansion; removing it takes the extra back)" },
   "ui.shipInfo.066": { zh: "结构容量", en: "Structure capacity" },
-  /**
-   * ⚠ `ui.shipInfo.067`（「（最后一段血量）」）**已于 2026-09-27 撤掉**（船长报障「结构容量为什么要
-   * 备注（最后一段血量）」）——那是**解释**，按 2026-09-17 的硬规矩（说明只放规格）不该在卡面上；
-   * 渲染处已改回只出数值。**id 不复用**（约定：id 一经使用不改名、不回收，只递增）。
-   */
   "ui.shipInfo.068": { zh: "附加伤害", en: "Bonus damage" },
   "ui.shipInfo.069": { zh: "耗弹", en: "Ammo use" },
   "ui.shipInfo.070": { zh: "射程代价", en: "Range cost" },
   "ui.shipInfo.071": { zh: "单发加成", en: "Per-shot bonus" },
   "ui.shipInfo.072": { zh: "装填代价", en: "Reload cost" },
   "ui.shipInfo.073": { zh: "抗性代价", en: "Resistance cost" },
-  // ⟪文案调整 2026-10-09⟫
   "ui.shipInfo.074": { zh: "无人机启动时间", en: "Initial Launch Delay" },
   "ui.shipInfo.075": { zh: "航速", en: "Speed" },
   "ui.shipInfo.076": { zh: "叠加方式", en: "Stacking" },
   "ui.shipInfo.077": { zh: "全额叠加", en: "Full stacking" },
   "ui.shipInfo.078": { zh: "取最长一件（不叠加）", en: "Longest item only (no stacking)" },
-  // ⟪文案调整 2026-10-19⟫ 特殊装备叠加标签与实际算法一致。
   "ui.shipInfo.251": { zh: "取跃迁距离最大、同距冷却最短的一件（不叠加）", en: "Longest jump only; shortest cooldown on a tie (no stacking)" },
   "ui.shipInfo.252": { zh: "同舰仅限一件", en: "One per ship" },
   "ui.shipInfo.253": { zh: "各件独立运作", en: "Each module operates independently" },
   "ui.shipInfo.254": { zh: "乘法叠加", en: "Multiplicative stacking" },
   "ui.shipInfo.255": { zh: "同类型扩槽插件仅限一件", en: "One slot-expansion plug per type" },
-  // ⟪文案调整 2026-11-03⟫ 非推进器速度效果独立于点火周期；保留旧模板和既有英文。
   'ui.shipInfo.256': { zh: '战斗机动 +{p1}', en: 'Combat maneuver +{p1}' },
   'ui.shipInfo.257': { zh: '所属势力', en: 'Faction' },
   'ui.shipInfo.258': { zh: '总估值', en: 'Total value' },
@@ -6893,7 +6133,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipInfo.122": { zh: "{p1} {p2} / {p3} {p4} / {p5} {p6}（复数安装）", en: "{p1} {p2} / {p3} {p4} / {p5} {p6} (multiple fittings allowed)" },
   "ui.shipInfo.123": { zh: "{p1}武器射程 +{p2}%", en: "{p1} weapon range +{p2}%" },
   "ui.shipInfo.124": { zh: "全舰单发伤害 +{p1}%（编队光环，多艘取最高）", en: "Ship-wide damage per shot +{p1}% (formation aura; the highest of several applies)" },
-  // ⟪文案调整 2026-10-17⟫ 侦察舰、电子舰各取最高，两类相加。
   "ui.shipInfo.125": { zh: "空间内扫描范围 +{p1} 圈；同类舰船取最高，侦察舰与电子舰可相加", en: "Scan range inside the space +{p1} rings; only the highest bonus in each ship class applies, and scout and EW bonuses add together" },
   "ui.shipInfo.126": { zh: "装了维修装置时，维修脉冲改修编队中最缺血的舰船（含自己）", en: "With a repair unit fitted, repair pulses go to whichever ship in the formation is lowest on HP (itself included)" },
   "ui.shipInfo.127": { zh: "隐秘行动装置 CPU ×{p1}（向上取整）", en: "Covert ops module CPU ×{p1} (rounded up)" },
@@ -6911,13 +6150,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipInfo.139": { zh: "+{p1}（按机型射程加成）", en: "+{p1} (scales with the model's range bonus)" },
   "ui.shipInfo.140": { zh: "炮台装填间隔 −{p1}", en: "Turret reload interval −{p1}" },
   "ui.shipInfo.141": { zh: "炮台命中 ×{p1}", en: "Turret accuracy ×{p1}" },
-  /**
-   * ⚠ **2026-09-27 船长令**：原先写作「敌命中 ×{p1}（**全船生效**）」——
-   * 船长原话：「**还是听懂，只能装在低槽的装备，为什么还要任意槽位都生效。**」
-   * ⇒ 那句注解在**解释一个玩家在卡上看不见的区别**（卡上并不显示"本件只吃哪个槽"），
-   *   且"全船生效"不是本仓既有词（既有口径＝「全队」舰队级 / 「本舰」船自身）
-   *   ⇒ **删掉括号注解、只留读数**。
-   */
   "ui.shipInfo.142": { zh: "敌命中 ×{p1}", en: "Enemy accuracy ×{p1}" },
   "ui.shipInfo.143": { zh: "全队集火首位，全队伤害 +{p1}", en: "Focuses fleet fire on the lead; fleet damage +{p1}" },
   "ui.shipInfo.144": { zh: "CPU 扩容", en: "CPU expansion" },
@@ -6942,11 +6174,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipInfo.163": { zh: "{p1}射程", en: "{p1} range" },
   "ui.shipInfo.164": { zh: "全部武器单发 +{p1}（只进炮台与光束）", en: "All weapons per shot +{p1} (turrets and beams only)" },
   "ui.shipInfo.165": { zh: "武器装填及战斗主动装置周期 +{p1}；多件代价相乘，负面随收益递减", en: "Weapon reload intervals and active combat cycles +{p1}; penalties multiply and follow the module's diminishing returns" },
-  // ⟪文案调整 2026-10-19⟫ 抗性代价改用%，仍逐件相减。
   "ui.shipInfo.166": { zh: "护盾、装甲、结构各系抗性 −{p1}%；逐件相减，负面随收益递减，可降至负值", en: "Shield, armor and hull resistances each −{p1}%; subtracts per module, with penalties following diminishing returns and allowing negative resistance" },
   "ui.equipmentPenalty.001": { zh: "装后周期", en: "Fitted cycle" },
   "ui.equipmentPenalty.002": { zh: "{p1}秒，原周期{p2}秒", en: "{p1}s, base cycle {p2}s" },
-  // ⟪文案调整 2026-10-09⟫
   "ui.shipInfo.167": { zh: "无人机启动时间 −{p1}", en: "Initial launch delay −{p1}" },
   "ui.shipInfo.168": { zh: "战斗机动 +{p1}（点火期间）", en: "Combat maneuverability +{p1} (while burning)" },
   "ui.shipInfo.169": { zh: "CPU 占用", en: "CPU use" },
@@ -6961,7 +6191,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipInfo.178": { zh: "单件基础回复 {p1} HP（结构/装甲各按层容量增幅，层越厚回得越多）", en: "Base repair {p1} HP per kit (structure and armor each scale with that layer's capacity, so thicker layers restore more)" },
   "ui.shipInfo.179": { zh: " · 多装递减", en: " · stacks with diminishing returns" },
   "ui.shipInfo.180": { zh: "能打敌方机群", en: "Can engage enemy drone swarms" },
-  // ⟪文案调整 2026-10-07⟫ 每路按需支付且排除自身；费用参数读取结算常量。
   "ui.shipInfo.181": { zh: "每 {p1} 秒消耗本舰最大护盾的 {p3}，为队内其他存活舰船各恢复本舰最大护盾的 {p2}；自身护盾不足或队友均无需恢复时不发动", en: "Every {p1} s, consumes {p3} of this ship's maximum shield to restore {p2} of that capacity to each other surviving fleet ship. Does not activate if this ship lacks sufficient shield or no ally needs restoration." },
   'ui.shipPageFleetRepair.001': { zh: '全部修理', en: 'Repair all' },
   'ui.shipPageFleetRepair.002': { zh: '确认全部修理', en: 'Confirm repair all' },
@@ -7175,12 +6404,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.ShipPage.198": { zh: "解锁", en: "Unlock" },
   "ui.ShipPage.199": { zh: "；站内产业另获「工业自动化」扩容 {p1} 枚工业专用工位（仅炉/线可用——工业占用先抵这 {p1} 枚，不占副船名额；超出扩容的部分才占用共用上限）", en: "; in-station industry also gets {p1} industry-only work slots from Industrial Automation (units and lines only — industry use draws on those {p1} slots first and does not take auxiliary slots; only what exceeds the expansion eats into the shared cap)" },
   "ui.ShipPage.200": { zh: "购买失败", en: "Purchase failed" },
-  /**
-   * 出售确认里那句「**预计到手约 {p1}（税后以实际成交计）。**」（**2026-09-29 加** ·
-   * 英文界面残留中文清理批 0）——原先是**源码里的中文字面量**（`预计到手约 ${isk(quote.buy)} 信用点…`），
-   * 英文界面下整句中文 ⇒ 提 id。`{p1}` = **已带单位的金额串**（调用方用 `fmtCredits` 给，
-   * 于是英文侧是「1,234 credits」、中文侧「1,234 信用点」，不必再拼单位词）。
-   */
   "ui.ShipPage.201": {
     zh: " 预计到手约 {p1}（税后以实际成交计）。",
     en: " Roughly {p1} net (final amount depends on the actual fill, after tax).",
@@ -7211,33 +6434,20 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.SkillsPage.040": { zh: "第{n}位 {name}→Lv{lv}", en: "#{n} {name} → Lv{lv}" },
   "ui.SkillsPage.041": { zh: "剩 {d}", en: "{d} left" },
   "ui.SkillsPage.044": { zh: " · 难度 {r} · ", en: " · difficulty {r} · " },
-  /* ── 技能页合并（2026-09-23 船长令）：一并加入前置 / 取消级联确认条 ── */
   "ui.SkillsPage.046": { zh: "一并加入前置", en: "Add prerequisites" },
   "ui.SkillsPage.047": { zh: "已把 {p1} 项排入训练队列（前置练完即接目标本级）。", en: "Queued {p1} item(s): prerequisites first, then the skill's next level." },
   "ui.SkillsPage.048": { zh: "取消这一项会连带取消 {p1} 项依赖它的训练：", en: "Cancelling this also cancels {p1} dependent item(s):" },
   "ui.SkillsPage.049": { zh: "确认取消", en: "Confirm cancel" },
-  /* 训练队列每行的「轮到还需」（2026-09-30 船长令：队列过于单一 ⇒ 补真实读数；口径＝core 的 etaMs 前缀和） */
   "ui.SkillsPage.050": { zh: "轮到还需 ≈ {p1}", en: "Starts in ≈ {p1}" },
-  /* 队列调整的兜底说明（2026-09-30 甲案：计划说能挪、引擎却仍拒绝时的回话——不静默） */
   "ui.SkillsPage.051": { zh: "这次调整没生效：队列要保持「前置在前」的顺序。", en: "That reorder did not take effect: the queue must keep prerequisites ahead." },
-  /* ── 活动卡「产出」读数（2026-09-23 船长令：收入预估换口径）── */
   "ui.Yield.001": { zh: "产出", en: "Output" },
   "ui.Yield.002": { zh: "仓库", en: "in storage" },
   "ui.Yield.003": { zh: "行情", en: "market" },
-  /* 括注整段（产出行的行尾）：仓库已有 + 当前行情价 */
   "ui.Yield.004": { zh: "（仓库 {p1} · 行情 {p2}）", en: "(in storage {p1} · market {p2})" },
-  /* 装备/舰船产物行的利润率（2026-09-23 船长令：行情价后面显示） */
   "ui.Yield.005": { zh: "利润率 {p1}%", en: "margin {p1}%" },
-  /* 一次产多件时的「整批」值（2026-09-24 船长：「也显示整批」）——行情那段仍是每单位 */
   "ui.Yield.006": { zh: "整批 {p1}", en: "batch {p1}" },
-  /* 星系详细悬浮窗 · 重复清剿（2026-09-24 船长令）
-     ⚠ **427~433 已停用**：它们原先只喂"另开的那个重复清剿容器"（`BountyLoopBlock` + `.app-map-loop*` 样式），
-     船长 2026-09-24 指出「在现有悬赏处加个按钮就行，为啥还要单开一个容器」⇒ 容器整块删除、
-     环按钮并入 ④ 悬赏每一行，文案改用卡面既有那套（`ui.Expedition.043/044/154/155` 与 `ui.Handbook.294`）。
-     按 id 制「一经使用不复用、不改名」留档不删；以下两条为并入后**新增**的状态字。 */
   "ui.Expedition.436": { zh: "征战中", en: "In combat" },
   "ui.Expedition.437": { zh: "该星系没有悬赏卡。", en: "No bounty cards in this system." },
-  /* 入侵舰队的悬赏卡（2026-09-26 船长令）：敌人随机抽 ⇒ 不出胜率预估，改一句"敌人未知" ＋ 危险芯片 */
   "ui.Expedition.438": { zh: "遭遇随机入侵舰队，敌人未知", en: "A random invasion fleet: the enemy is unknown" },
   "ui.Expedition.439": { zh: "危险", en: "Danger" },
   "ui.Expedition.440": { zh: "入侵舰队的编成按星系随机抽取，敌人未知，无法预估胜率。", en: "The invasion fleet's make-up is drawn at random per system, so the enemy is unknown and no win chance can be estimated." },
@@ -7248,7 +6458,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Expedition.431": { zh: "该星系暂无可清剿目标。", en: "No repeatable targets in this system." },
   "ui.Expedition.432": { zh: "威胁 {p1} · 胜率 {p2}%", en: "Threat {p1} · win {p2}%" },
   "ui.Expedition.433": { zh: "循环中", en: "Looping" },
-  /* 快递板周期 = 120 分钟（2026-09-24 船长令）——原与资源共用「20 分钟」那套文案，船长报障后两类板各写 */
   "ui.Expedition.434": { zh: "本批快递只存活一轮（{periodMin} 分钟）：到下一个两小时整点整板替换——已接单的不随刷新消失，在途投送不受影响、到站照常结算", en: "This batch of deliveries lasts one round ({periodMin} minutes): the board is replaced at the next two-hour mark — accepted orders survive the refresh, and deliveries under way are unaffected and settle as usual on arrival" },
   "ui.Expedition.435": { zh: "本批暂无待办投送订单——已完成或尚未刷出，下一批随 {periodMin} 分钟整板自动刷新（已接单的不随刷新消失；在途投送不受影响、到站照常结算）。", en: "No delivery orders pending — either finished or not yet rolled; the next batch arrives with the {periodMin}-minute board refresh (accepted orders survive the refresh; deliveries under way are unaffected and settle as usual on arrival)." },
   "ui.spaceBg.001": { zh: "蓝星云", en: "Blue nebula" },
@@ -7275,13 +6484,11 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Wormhole.006": { zh: "⚠ 货仓可能装不下：这一格约 {incomingCells} 格、货仓只剩 {holdFreeCells} 格——装不下的会留在原地。", en: "⚠ The hold may not fit it: this tile holds about {incomingCells} slots and only {holdFreeCells} are free — whatever does not fit stays where it is." },
   "ui.Wormhole.007": { zh: "下一层入口", en: "Next-layer entrance" },
   "ui.Wormhole.008": { zh: "」：", en: "”:" },
-  /** 交火中点「✕ 关闭」时的提示（**交火中不许离开虫洞**：打完这一场）——2026-09-22 随界面回滚恢复引用 */
   "ui.Wormhole.009": { zh: "交火中不能离开虫洞：打完这一场。", en: "Cannot leave the wormhole during an engagement: finish this fight." },
   "ui.Wormhole.010": { zh: "人在洞里 · 离开即暂停（进度保存）", en: "Inside the wormhole · leaving pauses it (progress saved)" },
   "ui.Wormhole.011": { zh: "从「扫描虫洞」页选一处进洞 · 关掉面板即暂停（进度保存）", en: "Pick one under Scan wormhole to go in · closing the panel pauses it (progress saved)" },
   "ui.Wormhole.012": { zh: "交火中不能撤离：打完这一场", en: "Cannot withdraw during an engagement: finish this fight " },
   "ui.Wormhole.013": { zh: "再点一次确认撤离", en: "Click again to confirm withdrawal" },
-  /** 交火中「✕ 关闭」被禁用时的悬停说明（同 `.009` 口径）——2026-09-22 随界面回滚恢复引用 */
   "ui.Wormhole.014": { zh: "交火中不能离开虫洞：打完这一场", en: "Cannot leave the wormhole during an engagement: finish this fight" },
   "ui.Wormhole.015": { zh: "✕ 关闭（离开虫洞）", en: "✕ Close (leave the wormhole)" },
   "ui.Wormhole.016": { zh: "不建副本、不打战斗", en: "No instance, no fighting" },
@@ -7357,7 +6564,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Wormhole.086": { zh: "准备 · 选编队（最多 {WORMHOLE_AUTO_MAX_SHIPS} 条副船）", en: "Preparation · pick a formation (up to {WORMHOLE_AUTO_MAX_SHIPS} auxiliary ships)" },
   "ui.Wormhole.087": { zh: "准备 · 选编队（最多 {WORMHOLE_MAX_SHIPS} 艘）", en: "Preparation · pick a formation (up to {WORMHOLE_MAX_SHIPS} ships)" },
   "ui.Wormhole.088": { zh: "分钟后返航结算；收益 = 手动一趟期望的", en: " minutes before returning to settle; the yield is the expected value of a manual run " },
-  // ⟪文案调整 2026-10-04⟫ T5分类名称改为泰坦，限制不变。
   "ui.Wormhole.089": { zh: "带入舰船按「级别折算质量」压塌虫洞入口：泰坦（T5）进不去，总质量超过", en: "Ships brought along convert to mass by class and can collapse the wormhole mouth: a Titan (T5) cannot enter, and any total mass above " },
   "ui.Wormhole.090": { zh: "匹配 {p1} / 共 {p2} 艘", en: "{p1} of {p2} ships match" },
   "ui.Wormhole.091": { zh: "已编入", en: "Assigned" },
@@ -7585,7 +6791,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Wormhole.316": { zh: "战斗线完成度 {p1}%：损伤 ×{p2}", en: "Combat line {p1}% complete: wear ×{p2}" },
   "ui.Wormhole.317": { zh: "所选编队的打捞器台数：墓场与遗迹每次打捞按台数回收若干堆；0 台 ⇒ 打捞格干不了活。打捞效率 {p1}%：每满 100% 必多捞 1 堆，余数按概率（民用 0 / MK1 20% / MK2 40% / MK3 60% / 异星 80%，谜质科技「引力吊臂」每级 +20%）", en: "Salvagers in the chosen formation: graveyards and ruins recover a number of piles per salvage based on how many are aboard; 0 units means the salvage tiles can do no work. Salvage efficiency {p1}%: every full 100% guarantees one extra pile, and the remainder is a chance (civilian 0 / MK1 20% / MK2 40% / MK3 60% / alien 80%, plus 20% per level of the Enigma tech Gravity Boom)" },
   "ui.Wormhole.318": { zh: "所选编队的采集器台数：矿脉每次采集按台数回收若干堆；0 台 ⇒ 一堆虚空母矿也挖不动。采集效率 {p1}%：每满 100% 必多采 1 堆，余数按概率（民用 0 / MK1 20% / MK2 40% / MK3 60% / 异星 80%，谜质科技「富集钻头」每级 +20%）", en: "Miners in the chosen formation: veins recover a number of piles per mining run based on how many are aboard; 0 units means not even one pile of void motherlode can be worked. Mining efficiency {p1}%: every full 100% guarantees one extra pile, and the remainder is a chance (civilian 0 / MK1 20% / MK2 40% / MK3 60% / alien 80%, plus 20% per level of the Enigma tech Enrichment Drill)" },
-  // ⟪文案调整 2026-10-18⟫ 扫描舰船同类取最高，两类相加；共享入口与现行信号空间提示同步。
   "ui.Wormhole.319": { zh: "本队入洞后的扫描范围：基础 1 圈 ＋ 编队里侦察舰/电子舰的加成；同类舰船取最高，侦察舰与电子舰可相加；洞内捞到的谜质装置「测绘仪」还能再 +圈", en: "The team's scan radius after entering: a base of 1 ring plus bonuses from scout and EW ships in the formation; only the highest bonus in each ship class applies, and scout and EW bonuses add together; the Enigma device Surveyor recovered inside adds one more ring" },
   "ui.Wormhole.320": { zh: "· {p1}{count}：{p4}", en: "· {p1}{count}: {p4}" },
   "ui.Wormhole.321": { zh: " ⇒ 按行价约 {p1} 信用点", en: " ⇒ about {p1} credits at listed prices" },
@@ -7601,8 +6806,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Wormhole.340": { zh: "· {p1} {p2}/{p3} 级：{p4}", en: "· {p1} level {p2}/{p3}: {p4}" },
   "ui.Wormhole.341": { zh: "无法开战。", en: "Cannot start the fight." },
   "ui.Wormhole.342": { zh: " 堆", en: " piles" },
-  // ⟪文案调整 2026-09-30⟫ 文案审核批：这条是接在「…这一格还有 N 堆、约 M 格」后面的**从句**，
-  //   原文少了开括号 ⇒ 玩家看到孤零零一个「）」；补上「（」，中英同步（英文列同缺）
   "ui.Wormhole.343": { zh: "（货仓只剩 {p1} 格）——装不下的会留在原地，先把散货抛掉或腾出货仓格再来，或者直接撤离带货回家。", en: "(the hold has only {p1} left) — whatever does not fit stays where it is, so jettison loose cargo or free up hold slots first, or simply withdraw and take the loot home." },
   "ui.Wormhole.344": { zh: "科技 残骸", en: "Tech wrecks" },
   "ui.Wormhole.345": { zh: "· 母矿", en: "· Motherlode" },
@@ -7639,29 +6842,13 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Wormhole.374": { zh: "枚（", en: " cores (" },
   "ui.Wormhole.375": { zh: "{p1} 格", en: "{p1} slots" },
   "ui.Wormhole.376": { zh: "/ {p1} 格", en: "/ {p1} slots" },
-  /**
-   * 编队未满的软提醒（船长 2026-09-20「选择的舰船不足4艘时，警告玩家」）。
-   * 口径 = 船长三答：① **软提醒**（不拦人，按钮照旧可点）② **方向 = 再加入舰船会更危险**
-   * ③ **自动探索不加**（那侧编队由 AI 核心余量定，已有自己的门槛理由）。
-   * 中文把"为什么更危险"落到**回合**上：编队越大 ⇒ 总质量越高 ⇒ `wormholeTurnBudget` 给的回合越少
-   * ⇒ 本趟越可能没做完就得撤（实测 4×长尾鲨 42 回合 vs 单艘 70 回合）。
-   * ⚠ 不写"必须带满/至少 4 艘"——`WORMHOLE_MAX_SHIPS` 是**上限**不是要求（取舍见 `Wormhole.tsx` 注释）。
-   */
   "ui.Wormhole.377": {
     zh: "当前编队 {p1} 艘：增加舰船会提高总质量、减少本次可用回合，本趟会更危险。",
     en: "Formation is {p1} ships: adding more raises total mass and cuts the turns available for this run, making it more dangerous.",
   },
   "ui.Wormhole.378": { zh: "围剿者 · {p1}：挡路，打掉才能通过；停在这一格即开战", en: "Sweeper · {p1}: blocks the route — destroy it to pass; stopping on this tile starts a fight" },
-  /**
-   * ⟪2026-10-02 船长令⟫ 洞内「禁止打捞普通残骸」开关（**座落在货仓页**，船长指定）。
-   * `.379` = 开关标签（中文为船长给的原文）；「当前禁止打捞普通残骸」= **一条 id 两处用**
-   * （core 拒绝原因 `core.wormholeSalvage.044` ＋ 界面状态行），按"同文并条"口径不另立第二条。
-   */
   "ui.Wormhole.379": { zh: "禁止打捞普通残骸", en: "Block common-wreck salvage" },
-  /* ⟪2026-10-03 船长令（开关扩到战果 · 船长审字通过）⟫ 开关的**悬停说明**：
-     口径 = 打捞动作 ＋ 战斗战果两个来源都管（见 `core/wormhole.ts` 的 `noCommonWreckSalvage` 注释）。 */
   "ui.Wormhole.381": { zh: "打开后洞里不再获得普通残骸：打捞只收稀有残骸，战斗战果里的普通残骸也不再产生；稀有残骸、货柜与虚空母矿不受影响。", en: "With this on, common wrecks are no longer gained in the wormhole: salvage takes rare wrecks only, and combat spoils no longer produce common wrecks. Rare wrecks, containers and Voidmother Ore are unaffected." },
-  /* ⟪2026-10-02 合并让号⟫ 同上批撞号：本侧「丢掉…会少回合」由 `ui.Wormhole.379` 顺延为 `.380`（`.379` 归一号的开关标签）。 */
   "ui.Wormhole.380": { zh: "丢掉「{p1}」会少 {p2} 回合：可能走不到想去的格子（撤离不受影响，任何回合数都能撤）。", en: "Discarding “{p1}” costs {p2} turns: you may not reach the tile you are aiming for — withdrawing is unaffected and works with any number of turns left." },
   "ui.Wormhole.363": { zh: "。", en: "." },
   "ui.Wormhole.364": { zh: "」", en: "”" },
@@ -7713,8 +6900,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.WormholeScan.046": { zh: "主控就地展开扫描阵列找虫洞：进度条走满一处即可开始探索。窗口 = 基准 {p1}，受「信号分析学 / 星图测绘学 / 信号过滤学」缩短（三项乘算），再受「星际奇遇学」缩短（每级 −4%，满级 −20%）。扫描期间遭遇随机事件的概率与星图扫描一致；被打断也不影响进度。未探索的虫洞最多囤 {stockMax} 处（「星图记录学」每级 +2，满级 +10）。", en: "The ship deploys its scan array on the spot to find wormholes: filling the bar once lets you explore one. The window = base {p1}, shortened by Signal Analysis, Star Cartography and Signal Filtering (multiplied together), then by Deep Space Encounters (−4% per level, −20% at max). Random events during a scan follow the same odds as star-map scanning, and interruptions do not cost progress. Up to {stockMax} unexplored wormholes can be stored (Star Chart Records gives +2 per level, +10 at max)." },
   "ui.WormholeScan.047": { zh: "已停扫：进度保留，下次接着扫。", en: "Scan stopped: progress is kept and the next scan resumes." },
   "ui.WormholeScan.048": { zh: "开始扫描虫洞：主控就地展开扫描阵列。", en: "Wormhole scan started: the ship deploys its scan array on the spot." },
-  // ⟪文案调整 2026-09-24⟫ 船长令「统一为势力」——"族"在玩家侧只保留给**敌方势力**这个意思，
-  //   且统一正字为「势力」（原「族徽＝…这一族（上面的敌人就是它）」）
   "ui.WormholeScan.049": { zh: "\n势力徽记＝这一处整趟都是「{famName}」（上面的敌人就是它）。", en: "\nThe faction crest means this whole wormhole belongs to the {famName} (the hostiles shown above are them)." },
   "ui.WormholeScan.050": { zh: "自动派最多 {WORMHOLE_AUTO_MAX_SHIPS} 条船去探（每次自动探索占 1 枚 AI 核心，约 {p2} 分钟）——打开与主控探索同一个准备页选编队", en: "Sends up to {WORMHOLE_AUTO_MAX_SHIPS} ships to explore automatically (each run takes 1 AI core, about {p2} minutes) — it opens the same preparation page as a manual explore, where you pick the formation" },
   "ui.WormholeScan.051": { zh: "已放弃这一处虫洞。", en: "That wormhole was given up." },
@@ -7749,7 +6934,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.SkillTree.013": { zh: "等级", en: "Level" },
   "ui.SkillTree.014": { zh: "状态", en: "Status" },
   "ui.SkillTree.015": { zh: "下一级需", en: "Next level takes" },
-  /* ── 技能树第二版（2026-09-22 船长令：六边形蜂窝 ＋ 技能书导航 ＋ 真前置）── */
   "ui.SkillTree.016": { zh: "技能书", en: "Skill books" },
   "ui.SkillTree.017": { zh: "未解锁", en: "Locked" },
   "ui.SkillTree.018": { zh: "需要先练：{p1}", en: "Requires {p1} first" },
@@ -7761,23 +6945,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.SkillTree.024": { zh: "已购买训练许可（{p1} 信用点）——现在可以把它排入训练队列了。", en: "Training License purchased ({p1} credits) — you can now queue this skill." },
   "ui.SkillTree.025": { zh: "需先购买训练许可（{p1} 信用点）", en: "Requires a Training License ({p1} credits)" },
   "ui.SkillTree.026": { zh: "确认支付 {p1} ISK", en: "Confirm — pay {p1} ISK" },
-  /**
-   * **状态筛选**（**2026-09-27 船长令**：「点节点看说明与训练按钮 / 已满级 / 训练中 / 已排队 / 已练 /
-   * 未学 / 未解锁 / **技能科技树这几个标签允许玩家点击，点击后筛选出对应类型的技能。**」）。
-   *
-   * 七颗标签**复用既有 id**（`ui.SkillTree.004~008` 与 `.017`，文案一字未改），这里只补"筛选态"用到的两句。
-   */
   "ui.SkillTree.027": { zh: "查看全部", en: "Show all" },
   "ui.SkillTree.028": { zh: "本页没有「{p1}」的技能。再点一次那颗标签可看全部。", en: "No skills are “{p1}” on this page. Click that chip again to show all." },
-  /**
-   * **技能页拆成两个平级子页**（**2026-09-30 船长令**：「将技能页的训练队列和技能科技树分做 2 个平级的子页面，
-   * 类似工业里的一样。现在同时存在挤占屏幕太多了」）。
-   *
-   * 沿革：这两块**原先同页上下叠**（队列在上、树在下，2026-09-10 定的"队列固定在上"）——
-   * 树的画布被上面那块挤掉一大截。拆开后两块各占一整屏：`.app-subtabs` 那排签
-   * （与工业页/星图页**同一家族**）切显示，`.app-skilltree-*` 那套内部结构一字未动。
-   * 签名复用既有 id（`ui.SkillsPage.001` / `ui.SkillTree.001`），这里只补两条**副标题**。
-   */
   "ui.SkillTree.029": { zh: "技能与采矿/远征/制造并行 · 取消训练保留本级进度，重排同一级自动续接", en: "Skills run alongside mining, expeditions and manufacturing · cancelling keeps this level's progress, and requeueing the same level resumes it" },
   "ui.SkillTree.030": { zh: "自上而下由浅入深：连线 = 前置；点节点看说明与训练按钮", en: "Shallow to deep, top to bottom: a line means a prerequisite; click a node for its details and the train button" },
   "core.firstTasks.001": { zh: "◆ 任务已达成：「{p1}」——回「任务中心」点「完成」继续下一步。", en: "◆ Task reached: “{p1}” — open the Task Center and click Complete to move on." },
@@ -7807,84 +6976,24 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.mining.039": { zh: "{p1} 已随打捞停止返航到港：残骸已卸入物品仓库（{p2} m³ 当量）。", en: "{p1} has returned to port after salvage stopped: the wrecks were unloaded into the item warehouse ({p2} m³ equivalent)." },
   "core.mining.040": { zh: "{p1} 已随打捞停止返航到港（货仓为空）。", en: "{p1} has returned to port after salvage stopped (empty hold)." },
   "core.mining.041": { zh: "{p1} 已随开采停止返航到港（货仓为空）。", en: "{p1} has returned to port after mining stopped (empty hold)." },
-  /**
-   * **参数行的"行名"与"值"要分成两条**（**2026-09-27 船长报障**：「鱿蜂结构层出现了错误文本：
-   * 机群结构层 +{p1}」）。
-   *
-   * 病根：`ui.shipInfo.202` 是**整句**（`机群结构层 +{p1}`），两处用法只有一处能喂参数 ——
-   * 装备卡参数行的行名栏（`k:`）只放名字、数值另起一栏，于是 `{p1}` 无人供给、原样漏给玩家。
-   * ⇒ 行名另立一条（不带占位符），整句那条继续给"单行文案"用。
-   * ⚠ 判据（新增调用点时照做）：**一条文案里的占位符必须由每一个调用点都喂到**；
-   * 拿整句当"行名"用就是漏喂参数的原形。
-   */
-  /* ⚠ 合并（2026-09-27）：本条的 id 原为 `.205`，与「无人机储备甲板」的 `ui.shipInfo.205`
-     （复位周期）**撞号**（verify 那批写它时主树还没有 `.205`）⇒ **后合入的它顺移到 `.210`**。 */
   "ui.shipInfo.210": { zh: "机群结构层", en: "Drone structure layer" },
-  /**
-   * **对方对机群的命中收窄**（**2026-09-29 船长令**：巨构导控塔「对方对无人机的命中收窄 5%」）——
-   * 卡面参数行**行名 + 值**两条（沿用上面 `.210` 的教训：行名不带占位符，值另起一条带 `{p1}`）。
-   * 行名口径 = 「敌方对机群命中」（船长同日三选一确认的措辞）：说的是**对方打我方机群**时的命中，
-   * 与 `ui.shipInfo.202/.210` 的「机群结构层」（我方机群的属性）分得清。
-   */
   "ui.shipInfo.211": { zh: "敌方对机群命中", en: "Enemy accuracy vs drones" },
   "ui.shipInfo.212": { zh: "−{p1}", en: "−{p1}" },
-  /**
-   * **造船厂产物悬停卡那行括号**（**2026-09-29** · 英文界面残留中文清理）：原先在
-   * `panels/Shipyard.tsx` 里**手写中文整句 ＋ `toLocaleString('zh-CN')`** ⇒ 英文界面下漏中文。
-   */
   "ui.shipInfo.213": { zh: "（货舱 {cargo} m³ · {cycle} 秒 × {perCycle} 单位/循环）", en: "(hold {cargo} m³ · {cycle} s × {perCycle} units/cycle)" },
-  /**
-   * **修理类装备装上船后的"实际维修值"**（**2026-09-29 船长令**：
-   * 「对修理类装备属性进行统一的数值显示……当装备到船上后，显示实际维修值：每 5 秒修复装甲与结构各
-   * XX（10）点。XX 为加成后的修理值；并删除下方'修复量 实际每跳 = …'这个过于长的说明属性」）。
-   *
-   * 四条 = 三种层组合 × 一条替换式：
-   * - `.214` 装到船上：`{p1}` = 引擎实算每跳（`core.repairStatsFor`）、`{p2}` = 装备卡上的基础值；
-   * - `.215/.216/.217` = 供 `.214` 的 `{p1}` 槽用的层组合（§十一之三：**每个调用点都要喂到占位符**）。
-   * ⚠ **行名沿用 `ui.shipInfo.059`「修复量」**——但**那一行原先的长解释 `.060` 已随本批删除**
-   * （船长明确点名删掉；数值由本行如实给出，不再写公式）。
-   */
   "ui.shipInfo.214": { zh: "装到船上：{p1}（{p2}）", en: "Fitted: {p1} ({p2})" },
   "ui.shipInfo.215": { zh: "各 {p1} 点", en: "{p1} each" },
   "ui.shipInfo.216": { zh: "装甲 {p1} 点", en: "armor {p1}" },
   "ui.shipInfo.217": { zh: "结构 {p1} 点", en: "structure {p1}" },
-  /**
-   * **「净收益/h」＝调试模式专属读数**（**2026-09-29 船长令**：「我只想在调试模式下显示」）。
-   *
-   * 沿革：这条读数原在组装机/造船厂/精炼/残骸四类卡上（`ui.Industry.111` 与 `ui.IndustryPage.106`
-   * 是当年的两段长解释），**2026-09-23 船长令**「旧的『≈ ISK/h』毛估彻底拿掉」把界面侧整段删了，
-   * 那两个 id 就此变成**孤儿**（0 调用点，但 l10n:check 不报——它只查"表里的 id 有没有被引用"的反向）。
-   * 现在按船长新令**只放回调试模式**（`game/debugFlag.debugEnabled()`；发布版恒 false）。
-   *
-   * 口径与正式工具 `npm run manufacture:econ` 的「劳动者价值/h」**同式**：
-   * `(整批产物行情值 − 材料行情成本) ÷ 本批耗时 × 3600`——与卡面**利润率**同一把尺（同一份行情、同一个"整批"）。
-   */
   "ui.Yield.007": { zh: "净收益/h", en: "Net income/h" },
   "ui.Yield.008": { zh: "{p1} 信用点/h", en: "{p1} credits/h" },
   "ui.Yield.009": { zh: "调试 · 本批耗时 {p1}", en: "Debug · {p1} per run" },
-  /**
-   * **顶栏声望容器**（**2026-09-29 船长令**：「在钱包的右侧，新增一个容器显示玩家的声望」）。
-   *
-   * 值 = **累计获得的协会声望**（core 单点 `standingOf`）——与"所有声望门槛改读累计声望"
-   * （2026-09-26 船长令）同一本账；卡内小标注写明是哪本账，免得与商店里的**可支配**那本混淆。
-   */
   "ui.App.164": { zh: "声望", en: "Reputation" },
   "ui.App.165": { zh: "累计获得", en: "total earned" },
-  /** 声望容器的悬停全精度读数（与钱包那句 `ui.MoneyFit.001` 同款；**必换**，否则提示会写"信用点"） */
   "ui.App.166": { zh: "{p1}：{p2}", en: "{p1}: {p2}" },
-  /**
-   * **切布局的兜底提示**（**2026-09-29 船长令**：「切换新版和旧版的现在重启，只对本地有效，
-   * **网页版应该为刷新网页**」）——动作改为"重新载入当前页面"（两端同一套），本句只在极端环境下
-   * `location.reload()` 抛错时用（不静默失败）。
-   */
   "ui.App.167": {
     zh: "当前环境无法自动刷新，请手动刷新页面（或重启游戏）。",
     en: "This environment cannot reload automatically — refresh the page (or restart the game) manually."
   },
-  /* **客户端版本行**（**2026-10-02 船长令**：「建议在设置里给游戏添加版本号，否则无法判断玩家当前版本」）
-     —— 三问裁定：值 = 版本号 · 构建 sha · 构建日期 · 运行形态（只显示版本号分辨不出"网页版被浏览器
-     缓存住旧产物"）；命名避开游戏内已有的「版本号」（那是**铁人档世代号**）；放**设置页最上方**；
-     复制成功的提示**复用现成的 `ui.App.044`**（不新造同义串）。注入点见 `tools/build-info.ts`。 */
   "ui.App.168": { zh: "客户端版本", en: "Client version" },
   "ui.App.169": { zh: "{p1} · 构建 {p2} · {p3} · {p4}", en: "{p1} · built {p2} · {p3} · {p4}" },
   "ui.App.170": {
@@ -7910,7 +7019,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ano.hauler.004": { zh: "飞鱼、旗鱼、剑鱼与蝠鲼的防御和物流装配位增加，CPU提高；既有航速保持不变。", en: "The Flyingfish, Sailfish, Swordfish, and Manta gain more defensive and transport fitting slots and higher CPU budgets. Their existing speeds are unchanged." },
   "ano.hauler.005": { zh: "这五型货舰以防御、航运与作业为主，不再支持武器、战斗机群及进攻电子装备。", en: "These five freighter classes focus on defense, transport, and field work, and no longer support weapons, combat drone systems, or offensive electronics." },
   "ano.hauler.006": { zh: "玩家已装的不兼容装备与部署无人机无损退库；正在探索的旧虫洞队伍保持本趟配置至结束。", en: "Players' incompatible fitted modules and deployed drones are returned without loss. Fleets already exploring a wormhole keep their current fittings until that expedition ends." },
-  // ⟪文案调整 2026-10-06⟫ 旧玩法信号空间；原ID保留历史与未来虫洞。
   "ui.signalSpace.001": {"zh":"信号空间货仓占格","en":"Signal Space hold footprint"},
   "mod.signalSpace.001": {"zh":"采集工具，提高矿带循环产量；可用于信号空间矿脉采集，效率按型号计算。","en":"A mining tool increasing belt yield per cycle; also used on Signal Space ore veins, with efficiency determined by model."},
   "mod.signalSpace.002": {"zh":"异星采集工具，提高循环产量与信号空间采集效率。不可制造。","en":"An alien mining tool increasing cycle yield and Signal Space mining efficiency. Cannot be manufactured."},
@@ -8041,7 +7149,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.signalSpace.066": {"zh":"信号空间 · 第 {p1} 层","en":"Signal Space · depth {p1}"},
   "ui.signalSpace.067": {"zh":"信号空间内被击沉","en":"Sunk inside a Signal Space"},
   "ui.signalSpace.068": {"zh":"信号空间内整队失联","en":"Fleet lost inside a Signal Space"},
-  // ⟪文案调整 2026-10-18⟫ 舰船富文本真实映射目标沿用已确认的同类不叠加规则。
   "ui.signalSpace.069": {"zh":"信号空间扫描范围 +{p1} 圈；同类舰船取最高，侦察舰与电子舰可相加","en":"Signal Space scan range +{p1} rings; only the highest bonus in each ship class applies, and scout and EW bonuses add together"},
   "ui.signalSpace.070": {"zh":"交火中不能离开信号空间：打完这一场。","en":"Cannot leave the Signal Space during an engagement: finish this fight."},
   "ui.signalSpace.071": {"zh":"人在空间内 · 离开即暂停（进度保存）","en":"Inside the Signal Space · leaving pauses it (progress saved)"},
@@ -8070,7 +7177,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.signalSpace.094": {"zh":" —— 取回后装进货仓生效（占 2×2 = 4 格，腾不出会先进临时空间），离开信号空间即失效。","en":" — it takes effect once loaded into the hold (2×2 = 4 slots; without 2×2 free it goes into temporary space first) and lapses when you leave the Signal Space."},
   "ui.signalSpace.095": {"zh":"谜质科技（信号空间探索 / 信号空间战斗线 · 已点）：","en":"Enigma tech (Signal Space exploration / Signal Space combat line · researched):"},
   "ui.signalSpace.096": {"zh":"暂时回不到信号空间。","en":"Cannot get back to the Signal Space for now."},
-  // ⟪文案调整 2026-10-18⟫ 队伍扫描提示不再宣称同类舰船加成可叠加。
   "ui.signalSpace.097": {"zh":"本队进入信号空间后的扫描范围：基础 1 圈 ＋ 编队里侦察舰/电子舰的加成；同类舰船取最高，侦察舰与电子舰可相加；空间内捞到的谜质装置「测绘仪」还能再 +圈","en":"The team's scan radius after entering: a base of 1 ring plus bonuses from scout and EW ships in the formation; only the highest bonus in each ship class applies, and scout and EW bonuses add together; the Enigma device Surveyor recovered inside adds one more ring"},
   "ui.signalSpace.098": {"zh":"真进入信号空间跑一趟捡到的，直入仓库；结构/装甲受损但绝不丢船）。","en":"what one real descent brings back, straight into storage; hull and armour take wear but no ship is ever lost)."},
   "ui.signalSpace.099": {"zh":"打开后空间内不再获得普通残骸：打捞只收稀有残骸，战斗战果里的普通残骸也不再产生；稀有残骸、货柜与虚空母矿不受影响。","en":"With this on, common wrecks are no longer gained in the Signal Space: salvage takes rare wrecks only, and combat spoils no longer produce common wrecks. Rare wrecks, containers and Voidmother Ore are unaffected."},
@@ -8267,7 +7373,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ui.sfx.130': { zh: '一键入库仅桌面开发版可用；网页版请用「导出正式入库包」再运行 npm run audio:install。', en: 'One-click import is desktop dev builds only; on the web build, use Export release asset pack and then run npm run audio:install.' },
   // ⟪音效设置补充 2026-11-05⟫ 船长要求设置里加「恢复默认音量」；英文未授权，按约定留空并登记待译。
   'ui.sfx.131': { zh: '恢复默认音量', en: 'Restore default volume' },
-  // ⟪交易所动作音 2026-11-05⟫ 船长提供素材：入金/出金/下注/买入/卖出，按在按钮上替代点击音。
   'ui.sfx.132': { zh: '入金', en: 'Deposit' },
   'ui.sfx.133': { zh: '出金', en: 'Withdraw' },
   'ui.sfx.134': { zh: '下注', en: 'Place bet' },
@@ -8568,7 +7673,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ui.exchangeTexts.269': { zh: '卖出', en: 'Sell' },
   'ui.exchangeTexts.270': { zh: '立即下注', en: 'Place Bet' },
   'ui.exchangeTexts.271': { zh: '分时 · 10秒刷新', en: 'Intraday · 10s Refresh' },
-  // ⟪文案调整 2026-11-05⟫ 船长裁定「回合末集合竞价」：主按钮去掉「立即」并分向；下注舱在中栏，方位纠正。英文侧保留，漂移待英文准备批次统一。
   'ui.exchangeTexts.272': { zh: '提交看涨下注', en: 'Bet Rise' },
   'ui.exchangeTexts.273': { zh: '提交看跌下注', en: 'Bet Fall' },
   'ui.exchangeTexts.274': { zh: '立即下注卖出', en: 'Bet Sell' },
@@ -8759,12 +7863,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ui.exchangeTexts.459': { zh: '贪婪', en: 'Greedy' },
   'ui.exchangeTexts.460': { zh: '恐慌', en: 'Fearful' },
   'ui.exchangeTexts.461': { zh: '狂热', en: 'Euphoric' },
-  // ⟪文案调整 2026-11-05⟫ 简单投资界面整改新增：中文先行，英文待准备（见 docs/l10n-pending.md）。
   'ui.exchangeTexts.462': { zh: '费后实际支出', en: 'Actual cost after fees' },
   'ui.exchangeTexts.463': { zh: '提交后可用', en: 'Available after submission' },
   'ui.exchangeTexts.464': { zh: '去下注舱', en: 'Go to bet panel' },
   'ui.exchangeTexts.465': { zh: '回合末前可在委托里撤销本笔下注', en: 'Cancel this bet in Orders before the round ends' },
-  // ⟪游客行情批 2026-11-05⟫ 模拟盘移除：未登录=游客只读，被禁用的入口点击后提示登录并打开「设置 → 账户」。
   'ui.exchangeTexts.466': { zh: '游客 · 只读', en: 'Guest · Read-only' },
   'ui.exchangeTexts.467': { zh: '已登录', en: 'Logged in' },
   'ui.exchangeTexts.468': { zh: '当前未登录：行情可实时查看，交易、持仓与理财需要登录账号。', en: 'Not logged in: live quotes stay visible; trading, positions and funds require an account.' },

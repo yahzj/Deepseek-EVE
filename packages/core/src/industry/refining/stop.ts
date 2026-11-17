@@ -37,7 +37,6 @@ export function stopRefineRun(state: GameState, ctx: SimContext, runId: number):
         ? { text: `。未用完的 ${refundName} ${refundedTxt} m³ 已退回物品仓库。`, id: 'core.industry.070', params: { p1: refundName, p2: refundedTxt } }
         : { text: '。原料未锁定无需退回，余料仍留在货仓/仓库。', id: 'core.industry.071' },
     ],
-    // 段号从 2 起（段链用专属键空间 seg{n}…，与基础模板的 p1/p2 不同前缀 ⇒ 不会抢号）
   )
   addLog(state, 'industry', composed.text, isRecycle ? 'core.industry.068' : 'core.industry.069', {
     p1: refundName,

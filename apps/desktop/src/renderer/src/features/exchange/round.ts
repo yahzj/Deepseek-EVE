@@ -1,47 +1,19 @@
-/**
- * 回合时钟与本地排队（Go 回合制契约，2026-11-03）。**本批只导出，暂不接 UI。**
- *
- * 为什么单独成层：回合制把「什么时候能下单 / 这一回合还剩多少笔」变成两个跨组件状态，
- * 若直接写进 `ExchangePage.tsx`，页面会被倒计时与队列逻辑绑死，也违反本批「不改 UI」的红线。
- * 这里给出可测试的纯逻辑，下一批接界面时只做挂载与渲染。
- *
- * ── 未来 UI 接入点（下一批照着接，不需要改本文件契约）────────────────────
- * 1. 进入股市页：`const clock = new RoundClock(bundle.client); clock.start()`
- *    - 倒计时读 `clock.getState()?.remainingMs`（`lockInMs` 是「距锁定」）；
- *    - 新回合 / 锁定回调：`onRound` → 重拉全量快照；`onLock(true)` → 禁用下单按钮。
- * 2. 下单表单：不直接 `placeOrder`，先 `queue.add({...})`（本地最多 10 笔、与服务端配额同口径）；
- *    - 队列列表读 `queue.list()`；「提交本回合」按钮调 `await queue.flush(client, state.usedOrders)`；
- *    - 提交成功后 `queue` 自动清空，再 `client.getAccount()` / `getOrders()` 刷新读数。
- * 3. 服务端 WS `round` 帧：`HttpExchangeClient` 已缓存进 `getRoundView()`；等 UI 需要实时推送时，
- *    在页面订阅处调 `clock.handleRoundFrame(view)` 即可（本文件已实现，只是现在没人调用）。
- * 4. 回合内价格不变：不需要为了倒计时去轮询行情；`RoundClock` 只轮询 `/round`（默认 15 秒）
- *    并每秒本地推算，避免每回合打 300 次请求。
- * ────────────────────────────────────────────────────────────────────────
- */
 import type { BatchOrderResult, ExchangeClient, PlaceOrderRequest, RoundInfo } from './client'
 import { ExchangeError } from './errors'
 
-/** 回合长度默认值（秒）：与服务端 `WHALE_EXCH_ROUND_SEC` 默认一致，实际以 `/round` 下发为准 */
 export const DEFAULT_ROUND_SEC = 300
-/** 回合末锁定窗口默认值（秒）：与服务端 `WHALE_EXCH_ROUND_LOCK_SEC` 一致 */
 export const DEFAULT_LOCK_SEC = 10
-/** 每账号每回合委托上限默认值：与服务端 `WHALE_EXCH_ROUND_MAX_ORDERS` 一致 */
 export const MAX_ORDERS_PER_ROUND = 10
 
-/** 计算后的回合状态（`getState()` 的返回值；倒计时字段每次读取都按当前时间重算） */
 export interface RoundClockState {
   roundNo: number
   startedAt: number
   nextRoundAt: number
   roundSec: number
   lockSec: number
-  /** 服务器毫秒时间（最近一次同步时的值） */
   serverTime: number
-  /** 最近一次成功同步的本机时间 */
   syncedAt: number
-  /** 距下一回合（毫秒） */
   remainingMs: number
-  /** 距锁定窗口开始（毫秒）；已锁定时为 0 */
   lockInMs: number
   locked: boolean
   maxOrders: number
@@ -50,23 +22,15 @@ export interface RoundClockState {
 }
 
 export interface RoundClockOptions {
-  /** `/round` 轮询间隔（毫秒），默认 15000；回合内价格不变，不需要更密 */
   pollMs?: number
-  /** 本地倒计时刷新间隔（毫秒），默认 1000 */
   tickMs?: number
-  /** 可注入时钟（探针/测试） */
   now?: () => number
-  /** 每秒回调（UI 倒计时用） */
   onTick?: (state: RoundClockState) => void
-  /** 进入新回合时回调（UI 应重拉全量快照） */
   onRound?: (state: RoundClockState) => void
-  /** 进入/离开锁定窗口时回调（UI 应禁用/恢复下单） */
   onLock?: (locked: boolean, state: RoundClockState) => void
-  /** 同步失败上报（不打断本地倒计时） */
   onError?: (error: unknown) => void
 }
 
-/** 只依赖 `getRound` 的最小客户端面（Mock 无此方法，RoundClock 会回报 not_supported） */
 export interface RoundSource {
   getRound?: () => Promise<RoundInfo>
 }
@@ -78,7 +42,6 @@ export class RoundClock {
   private pollTimer: ReturnType<typeof setInterval> | null = null
   private tickTimer: ReturnType<typeof setInterval> | null = null
   private info: RoundInfo | null = null
-  /** 服务器时间 − 本机时间（毫秒），用于本地倒计时对齐 */
   private skewMs = 0
   private syncedAt = 0
   private syncedRoundNo = -1
@@ -93,7 +56,6 @@ export class RoundClock {
     this.now = options.now ?? (() => Date.now())
   }
 
-  /** 启动：立即同步一次 `/round`，之后按 `pollMs` 轮询、按 `tickMs` 推进本地倒计时 */
   start(): void {
     if (this.pollTimer !== null) return
     this.pollTimer = setInterval(() => void this.sync(), Math.max(1_000, this.options.pollMs ?? 15_000))
@@ -112,14 +74,12 @@ export class RoundClock {
     }
   }
 
-  /** 主动同步回合时钟（进入页面 / 收到回合广播 / 断线重连后调用） */
   async sync(): Promise<RoundClockState | null> {
     const fetchRound = this.source.getRound
     if (typeof fetchRound !== 'function') {
       this.options.onError?.(new ExchangeError('not_supported', '当前客户端未提供回合接口（仅联机模式）'))
       return this.getState()
     }
-    // 同一时刻只允许一个在途请求，避免慢请求乱序覆盖新回合
     if (this.syncing) return this.getState()
     this.syncing = true
     try {
@@ -134,10 +94,6 @@ export class RoundClock {
     }
   }
 
-  /**
-   * 处理服务端 WS `round` 帧（未来 UI 接入点 3）。
-   * 广播是公共视图、不含 `usedOrders`：保留本地配额读数，别被 0 覆盖。
-   */
   handleRoundFrame(view: RoundInfo): void {
     const usedOrders = view.usedOrders
     this.applyServerRound({
@@ -146,7 +102,6 @@ export class RoundClock {
     })
   }
 
-  /** 读当前状态（每次都按本机时间重算倒计时；尚未同步过返回 null） */
   getState(): RoundClockState | null {
     const info = this.info
     if (info === null) return null
@@ -159,7 +114,6 @@ export class RoundClock {
     const remainingMs = Math.max(0, nextRoundAt - serverNow)
     const lockInMs = Math.max(0, remainingMs - lockSec * 1_000)
     const locked = remainingMs <= lockSec * 1_000
-    // 本地跨回合时配额归零（服务端按回合计数，下一次 sync 会给出权威值）
     const usedOrders = roundNo === this.syncedRoundNo ? this.usedOrders : 0
     const maxOrders = Math.max(1, Math.round(info.maxOrders || MAX_ORDERS_PER_ROUND))
     return {
@@ -193,7 +147,6 @@ export class RoundClock {
     this.announce()
   }
 
-  /** 计算状态并派发回调（新回合 / 锁定切换 / 每秒 tick） */
   private announce(): void {
     const state = this.getState()
     if (state === null) return
@@ -209,7 +162,6 @@ export class RoundClock {
   }
 }
 
-/** 本地排队的一笔委托（`id` 即 `clientOrderId`，与请求一一对应） */
 export interface QueuedOrder {
   id: string
   req: PlaceOrderRequest
@@ -217,17 +169,10 @@ export interface QueuedOrder {
 }
 
 export interface OrderQueueOptions {
-  /** 本地上限，默认与服务端每回合配额一致（10 笔） */
   maxOrders?: number
   now?: () => number
 }
 
-/**
- * 本地委托队列：回合内先攒单，点「提交本回合」时一次批量发送。
- *
- * 硬约束：`clientOrderId` 必须由调用方生成（见 `makeClientOrderId`），队列靠它做重复校验；
- * 服务端批量接口是**全成全败**——失败时本队列**不清空**，玩家可修正后重试。
- */
 export class OrderQueue {
   private readonly maxOrders: number
   private readonly now: () => number
@@ -277,7 +222,6 @@ export class OrderQueue {
     this.queue = []
   }
 
-  /** 本回合还剩多少笔可提交（服务端已用配额 + 本地待提交一起扣） */
   remaining(usedOrders = 0): number {
     return Math.max(0, this.maxOrders - Math.max(0, Math.round(usedOrders)) - this.queue.length)
   }
@@ -287,10 +231,6 @@ export class OrderQueue {
     return this.queue.length > 0 && this.queue.length <= allowance
   }
 
-  /**
-   * 批量提交（`client.batchPlaceOrders`）。
-   * 返回服务端结果；**只有成功才清空本地队列**（失败保留，避免丢玩家输入）。
-   */
   async flush(client: Pick<ExchangeClient, 'batchPlaceOrders'>): Promise<BatchOrderResult> {
     if (this.queue.length === 0) {
       throw new ExchangeError('empty_queue', '本地队列为空，没有可提交的委托')
@@ -321,10 +261,6 @@ export class OrderQueue {
   }
 }
 
-/**
- * 生成 `clientOrderId`（1~64 字符，服务端要求）。
- * 优先 `crypto.randomUUID()`（Electron/浏览器都有）；不可用时退回时间戳 + 随机串。
- */
 export function makeClientOrderId(prefix = 'ex'): string {
   const cryptoApi = globalThis.crypto
   if (cryptoApi && typeof cryptoApi.randomUUID === 'function') {

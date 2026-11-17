@@ -14,7 +14,6 @@ export interface PreparationFleetRow {
   dur: number
 }
 
-/** 信号空间与实验虫洞的选舰卡共用规格读数，玩法门槛仍由各入口负责。 */
 export function PreparationFleetCards({ engine, rows, auto, handoverName, togglePick }: {
   engine: GameEngine
   rows: readonly PreparationFleetRow[]

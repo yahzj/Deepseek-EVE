@@ -5,7 +5,6 @@ import { PLANET_RULES, planetEnvironmentFactors, planetRulesSupported } from './
 
 export type PlanetCommandResult = { ok: true } | { ok: false; reason: 'unknown-planet' | 'unknown-galaxy' | 'limit' | 'not-discovered' | 'unsupported' | 'invalid-survey' }
 
-/** 仅供显式调用；不在新档、读取存档或引擎推进中自动创建。 */
 export function discoverPlanet(state: GameState, catalog: PlanetCatalog, id: string): PlanetCommandResult {
   const def = catalog.planets.get(id) ?? state.planetary?.planets[id]
   if (!def) return { ok: false, reason: 'unknown-planet' }
@@ -31,7 +30,6 @@ export function surveyPlanet(state: GameState, catalog: PlanetCatalog, id: strin
 function revealed(id: string, planet: PlanetState, catalog: PlanetCatalog): boolean {
   const trait = catalog.traits.get(id)!
   if (planet.survey === 1) return trait.kind === 'environment' && id !== planet.hiddenTraitId
-  // 生存、成本及资源条件必须在建设前明确，专项只保留非生存特殊信息。
   return planet.survey === 3 || id !== planet.hiddenTraitId || trait.kind !== 'special'
     || (trait.hazard ?? 0) !== 0 || (trait.habitability ?? 0) !== 0 || trait.deposit !== undefined
 }
@@ -47,7 +45,6 @@ export function planetSurveyView(planet: PlanetState, catalog: PlanetCatalog): P
       const exact = planetEnvironmentFactors(field === 'hazard' ? value : 0, field === 'habitability' ? value : 0)[field]
       return { min: exact, max: exact }
     }
-    // 估计只取公开目录可能的修正，不偷读未揭示条目实际值。
     const candidates = [...catalog.traits.values()].filter(t => !known.has(t.id)).map(t => t[field] ?? 0)
     const lo = candidates.filter(n => n < 0).sort((a, b) => a - b).slice(0, unknown).reduce((a, b) => a + b, 0)
     const hi = candidates.filter(n => n > 0).sort((a, b) => b - a).slice(0, unknown).reduce((a, b) => a + b, 0)

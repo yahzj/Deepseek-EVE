@@ -2,14 +2,12 @@ import { memo, type ComponentProps } from 'react'
 import { ShipSprite } from '../../ui/ShipSprite'
 import { mountsOf } from '../../ui/shipMounts'
 
-/** 战斗专用舰影；缺省不加速，非战斗组件保持原样。 */
 export const BattleShipSprite = memo(function BattleShipSprite({ acceleration, ...props }: ComponentProps<typeof ShipSprite> & {
   acceleration?: 'boost' | 'charge'
 }) {
   const size = props.size ?? 150
   const active = props.engine !== false ? acceleration : undefined
   const mounts = active ? mountsOf(props.shipId, props.foeKey) : undefined
-  // 未录挂点沿用舰影的单喷口回退；显式空喷口的有机体不造机械喷焰。
   const engines = mounts?.engines ?? [{ x: 29, y: 51.6 }]
   return (
     <span className="app-bts-ship" data-acceleration={active} style={{ width: size, height: Math.round(size * .46) }}>

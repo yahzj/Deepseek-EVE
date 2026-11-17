@@ -21,7 +21,6 @@ export interface FittingRange {
   results: Record<number, RangeWeaponResult>
 }
 
-/** 只复制当前目标，不复制真实活动；所有库存写入都发生在模拟副本。 */
 export function createFittingRange(source: GameState, ctx: SimContext, uid: string, name: string, distanceM = 5000, layer: RangeLayer = 's'): FittingRange | null {
   const ship = source.fleet[uid]
   const def = fleetDefOf(source, ctx, uid)

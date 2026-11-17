@@ -33,7 +33,6 @@ function syncWarnings(run: WormholeRunState): void {
   for (const p of patrols) {
     if (p.status === 'warning' && (run.alertLevel ?? 0) < p.threshold) p.status = 'cancelled'
   }
-  // 终结实例仍占名额；击败或取消不会刷新阈值。
   run.patrolsSpawned = patrols.length
   run.patrolsCleared = patrols.filter(p => p.status === 'cleared').length
 }
@@ -47,7 +46,6 @@ export function wormholePatrolLayerReset(run: WormholeRunState): void {
   syncWarnings(run)
 }
 
-/** 只由成功的移动/扫描/作业调用，一次动作一拍，不以费用或真实时间代替节拍。 */
 export function wormholePatrolAfterAction(state: GameState, opts?: { deferMovement?: boolean }): WormholePatrolResult {
   const run = state.wormhole.run
   const grid = run?.grid
@@ -99,7 +97,6 @@ export function wormholePatrolAfterAction(state: GameState, opts?: { deferMoveme
   return result
 }
 
-/** 警戒变化不推进巡逻；免费选项/拖货/暂停均不会调用动作节拍。 */
 export function wormholeRaiseAlert(state: GameState, delta: number): void {
   const run = state.wormhole.run
   if (!run || run.expeditionRules !== 2 || !Number.isFinite(delta)) return

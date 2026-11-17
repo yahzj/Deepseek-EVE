@@ -1,9 +1,3 @@
-/**
- * 序章·苏醒（2026-09-05 船长拍板）——新档开场演出：黑屏 → 醒来 → 系统自检 →
- * 自检结论（乘员失踪/船体受损/记忆损坏）→ 回忆系统名称（默认 PRTS）→ 进入采集步骤。
- * 演出阶段引擎时间冻结（step 0）；右上角常驻「跳过」= 直接结束序章（core skipPrologue，无奖励结算）。
- * 阶段转场（2026-09-08 船长定）：换段先淡出旧画面，再切内容由 key 重挂载触发淡入。
- */
 import { useEffect, useRef, useState } from 'react'
 import type { GameEngine } from '../game/engine'
 import { tr, cmdText } from '../i18n/locale'
@@ -12,7 +6,6 @@ type Phase = 'wake' | 'boot' | 'diag' | 'mode' | 'name' | 'open'
 
 type LineKind = 'ok' | 'warn' | 'fail'
 
-/** 自检滚动条目（system：模块名） */
 const checkLinesOf = (): ReadonlyArray<readonly [string, LineKind, string]> => [
   [tr("ui.PrologueScreen.001"), 'ok', tr("ui.PrologueScreen.002")],
   [tr("ui.PrologueScreen.003"), 'warn', tr("ui.PrologueScreen.004")],
@@ -32,18 +25,16 @@ const diagLinesOf = (): ReadonlyArray<readonly [string, string]> => [
 ]
 
 const LINE_MS = 130
-/** 阶段转场：旧画面淡出时长（2026-09-08 船长定：开场动画之间加淡入淡出） */
 const FADE_MS = 220
 
 export function PrologueScreen({ engine }: { engine: GameEngine }) {
   const CHECK_LINES = checkLinesOf()
   const DIAG_LINES = diagLinesOf()
   const [phase, setPhase] = useState<Phase>('wake')
-  const [shown, setShown] = useState(0) // boot 已显示条数
+  const [shown, setShown] = useState(0)
   const [name, setName] = useState('PRTS')
   const [err, setErr] = useState('')
   const timerRef = useRef<number | null>(null)
-  // 淡出中标志 + 待切入阶段（2026-09-08：换段先 .is-fading 淡出 FADE_MS，再切内容触发淡入）
   const [fading, setFading] = useState(false)
   const nextPhaseRef = useRef<Phase | null>(null)
 
@@ -53,7 +44,6 @@ export function PrologueScreen({ engine }: { engine: GameEngine }) {
     }
   }, [])
 
-  /** 阶段切换统一入口：淡出 →（FADE_MS 后）换阶段 → key 重挂载触发淡入 */
   const goto = (p: Phase): void => {
     if (fading) return
     nextPhaseRef.current = p
@@ -65,7 +55,7 @@ export function PrologueScreen({ engine }: { engine: GameEngine }) {
     const t = window.setTimeout(() => {
       const p = nextPhaseRef.current
       nextPhaseRef.current = null
-      if (p === 'boot') setShown(0) // boot 重播时自检行数归零
+      if (p === 'boot') setShown(0)
       if (p) setPhase(p)
       setFading(false)
     }, FADE_MS)
@@ -73,8 +63,6 @@ export function PrologueScreen({ engine }: { engine: GameEngine }) {
     return () => window.clearTimeout(t)
   }, [fading])
 
-  // boot 逐条滚动；全部条目滚完后等待玩家点击确认，再进入自检结论（2026-09-08 船长定：
-  // 不再 1.5s 自动跳转——自检列表需玩家确认后才会弹出后续的警告结论界面）
   useEffect(() => {
     if (phase !== 'boot') return
     if (shown >= CHECK_LINES.length) return
@@ -83,14 +71,8 @@ export function PrologueScreen({ engine }: { engine: GameEngine }) {
     return () => window.clearTimeout(t)
   }, [phase, shown])
 
-  /**
-   * **跳过演出照出模式卡**（**2026-09-23 船长令**：「跳过也弹出模式选择」）。
-   * `skipFlow = true` ⇒ 选完模式不再走「睁眼」动画与起名，直接按 `prologueSkip()` 收尾
-   * （与旧「跳过」同一收尾路径；跳过者不结算演出奖励的口径不变）。
-   */
   const [skipFlow, setSkipFlow] = useState(false)
 
-  /** 跳过收尾：直接结束序章（core `skipPrologue`） */
   const finishSkip = (): void => {
     const r = engine.prologueSkip()
     if (!r.ok) setErr(cmdText(r) || tr('ui.PrologueScreen.041'))
@@ -101,17 +83,12 @@ export function PrologueScreen({ engine }: { engine: GameEngine }) {
     goto('mode')
   }
 
-  /**
-   * 选普通：**先记账再走**（**2026-09-24 船长令**：模式选择＝一次机会 ⇒ 选过就不再弹那张框）
-   * ⇒ 跳过流直接收尾；正常流去起名。
-   */
   const chooseStandard = async (): Promise<void> => {
     await engine.chooseStandardMode()
     if (skipFlow) finishSkip()
     else goto('name')
   }
 
-  /** 选铁人：入模（代次接账本高度）→ 跳过流收尾 / 正常流去起名；即便入模失败也不拦人 */
   const chooseIronman = async (): Promise<void> => {
     const r = await engine.enterIronmanNow()
     if (!r.ok) setErr(cmdText(r) || tr('ui.PrologueScreen.042'))
@@ -121,7 +98,6 @@ export function PrologueScreen({ engine }: { engine: GameEngine }) {
 
   const confirm = (): void => {
     if (phase === 'open') return
-    // “睁眼”转场后再唤醒（引擎写入呼号并结束序章）；光晕消散加长后总时长 1.9s（船长 2026-09-05）
     setPhase('open')
     window.setTimeout(() => {
       const r = engine.prologueAwaken(name)

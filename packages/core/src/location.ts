@@ -1,16 +1,3 @@
-/**
- * T8/T9 位置模型（多空间站版）：
- * - 舰船空闲时的"野外停留" = awayGalaxy；否则停靠空间站 = 母港（dockedSite=null）
- *   或已建成的副空间站（dockedSite = 站点 id）；
- * - 2026-09-08（船长定）：未建成的建站点**不视为任何站点**——不停靠、无泊位、无站内功能，
- *   只作为"工地现场"（野外停留，可现场交付建材）；旧档残留的未建成停靠自动纠正为现场停留；
- * - 一切作业的"出发地" = awayGalaxy ?? 停靠站所在星系；
- * - 空间站清单 = 母港 ⊕ 已建成副站（stage>=3）；"最近空间站"解析供采矿返航/显式返航使用；
- * - 显式"返航最近空间站" = transit 作业（出发锁定；到站后按目标站设置停靠）。
- * - 2026-09-08 建站交付航线：transit.delivery 非空 = 主船从停靠空间站出发，按真实航程驶往
- *   建设工地星系（to-site）→ 到点野外停留自动交付建材 → 自动返航最近空间站（to-station）；
- *   行程随时可取消（无惩罚，取消即立即返航停靠最近已建成站）。
- */
 import { addLog, HOME_GALAXY_ID } from './state'
 import { applyActivityGate, gateMainActivity, type MainActivityKind } from './activityGate'
 import { beginDeparture, cancelDeparture, departureOrigin } from './departure'
@@ -36,7 +23,6 @@ const LOCATION_LOG_IDS = new Set([
   'core.station.011',
 ])
 
-/** 进港卸货附注（2026-09-08 船长定：任何进港时刻自动整仓卸货；返回 >0 单位的附注文本） */
 function dockUnloadNote(state: GameState, ctx: SimContext, shipId: string): { text: string; id?: string; unit?: string } {
   const moved = unloadCargoOfShipToWarehouse(state, ctx, shipId)
   const unit = moved.toLocaleString('zh-CN')
@@ -45,7 +31,6 @@ function dockUnloadNote(state: GameState, ctx: SimContext, shipId: string): { te
     : { text: '' }
 }
 
-/** 已建成的空间站星系清单（母港 + 副站建成者），顺序 = 母港优先 */
 export function stationGalaxyIds(state: GameState, ctx: SimContext): string[] {
   const out = [HOME_GALAXY_ID]
   for (const site of ctx.stations.values()) {
@@ -55,7 +40,6 @@ export function stationGalaxyIds(state: GameState, ctx: SimContext): string[] {
   return out
 }
 
-/** 最近空间站（相对某星系的航线分钟）；返回空间站星系 id */
 export function nearestStationGalaxyId(state: GameState, ctx: SimContext, fromGalaxy: string): string {
   let best = HOME_GALAXY_ID
   let bestMin = shortestTravelMinutes(ctx, fromGalaxy, HOME_GALAXY_ID)
@@ -72,7 +56,6 @@ export function nearestStationGalaxyId(state: GameState, ctx: SimContext, fromGa
   return best
 }
 
-/** 某星系内是否停有"已建成"副站：返回站点 id（2026-09-08 镜像/返航落点用；无则 null） */
 export function builtSiteAtGalaxy(state: GameState, ctx: SimContext, galaxyId: string): string | null {
   for (const site of ctx.stations.values()) {
     if (site.galaxyId !== galaxyId) continue
@@ -82,10 +65,6 @@ export function builtSiteAtGalaxy(state: GameState, ctx: SimContext, galaxyId: s
   return null
 }
 
-/**
- * 采矿"返航/出航基准腿"（与 mining.oneLegMs 同口径的站解析版，供 shipyard 等不引 mining 的场景使用）：
- * = 本地进出港基准 + 矿带星系与"最近空间站"的实际航程。
- */
 export function miningReturnLegMs(state: GameState, ctx: SimContext, beltId: string | null | undefined, shipId = state.shipId): number {
   if (state.debugQuick) return 1000
   const belt = beltId ? ctx.belts.get(beltId) : undefined
@@ -95,30 +74,23 @@ export function miningReturnLegMs(state: GameState, ctx: SimContext, beltId: str
   return Math.max(1, ctx.balance.mining.localLegMs + travel)
 }
 
-/** 当前停靠的空间站（null = 在野外；{siteId:null}=母港） */
 export function dockedStation(state: GameState): { siteId: string | null; galaxyId: string } {
-  if (state.awayGalaxy !== null) return { siteId: null, galaxyId: '' } // 野外（无停靠站）
+  if (state.awayGalaxy !== null) return { siteId: null, galaxyId: '' }
   return { siteId: state.dockedSite, galaxyId: state.dockedSite ? '' : HOME_GALAXY_ID }
 }
 
-/** 船当前是否停靠在空间站（站内才可装卸/维修/换船/补给等） */
 export function isAtStation(state: GameState): boolean {
   return state.awayGalaxy === null
 }
 
-/** 是否在母港（出售/市场/制造等母港专属动作的前提） */
 export function isAtHome(state: GameState): boolean {
   return state.awayGalaxy === null && state.dockedSite === null
 }
 
-/** 是否停靠"协会基地网络"（2026-09-08 船长定：已建成副站 = 母港镜像——母港或已建成副站）：
- * 市场/精炼炉/残骸回收/组装机等站内功能在母港与已建成副站同样可用（设施与仓库全局共享，
- * 空间站只是入口）；野外/航行中/修建中工地不视为基地。 */
 export function isAtHomeLike(state: GameState, ctx: SimContext): boolean {
   return shipActuallyDocked(state, ctx)
 }
 
-/** 按原航程判据解析接续基地，打捞全程以母港为基准。 */
 export function stationActivityReturnSite(state: GameState, ctx: SimContext): string | null {
   const ret = state.shipReturns[state.shipId]
   const salvage = state.salvaging.active || ret?.reason === 'salvageStop' || state.pendingActivityReturn?.kind === 'salvaging'
@@ -133,12 +105,10 @@ export function stationActivityReturnSite(state: GameState, ctx: SimContext): st
   return site && (state.stationSites[site.id]?.stage ?? 0) >= site.tiers.length ? site.id : null
 }
 
-/** 只读投影启动时位置；不修改真实返航账本或提前停靠。 */
 export function stationActivityStartState(state: GameState, next: MainActivityKind, ctx: SimContext): GameState {
   const verdict = gateMainActivity(state, next)
   let projected = state
   if ((verdict.action === 'halt' || verdict.action === 'confirm') && verdict.current) {
-    // 只投影影响停靠的字段，不复制整份存档或执行停机退款。
     if (verdict.current === 'hauling') projected = { ...state, awayGalaxy: null, dockedSite: state.hauling.fromSiteId,
       hauling: { ...state.hauling, active: false } }
     if (verdict.current === 'standby') projected = { ...state, awayGalaxy: null, standby: { ...state.standby, active: false } }
@@ -154,7 +124,6 @@ export function stationActivityStartState(state: GameState, next: MainActivityKi
   return projected
 }
 
-/** 页面和命令同源的只读预检；确认取消仍由原activityGate处理。 */
 export function stationActivityStartBlockReason(state: GameState, ctx: SimContext, next: MainActivityKind): CoreBlockReason | null {
   const verdict = gateMainActivity(state, next)
   if (verdict.action === 'reject') return { error: verdict.message ?? '', errorId: verdict.messageId, errorParams: verdict.messageParams }
@@ -167,30 +136,15 @@ export function stationActivityStartBlockReason(state: GameState, ctx: SimContex
   }
   return null
 }
-/**
- * **站内工业的位置门槛**（2026-09-14 船长报障后收口）：**只有"玩家亲自"这一路**要求人在基地网络内
- * （`worker === 'pilot'` 且不在基地 ⇒ 拦）；**AI 核心驱动不看位置**。
- *
- * 为什么这么分：AI 核心是"留在站内替你干活"的分身——`mining` 的拒因文案就是这么写的
- * （「精炼炉正由你亲自运转：先停炉才能出海（**想自动精炼可改用 AI 核心驱动**）」）。
- * 修前 AI 路吃的是同一道门 ⇒ **跑长途运输 / 远征时**（这两类活动会把 `awayGalaxy` 记成出发星系，
- * 见 `hauling.setLeg`）**整条站内产线都开不了**，而**采矿期间却能开**（`startMining` 会把
- * `awayGalaxy` 清空）——同一类"主控在忙"两个口径，船长 2026-09-14 报障。
- *
- * ⚠ 判据单点：`startRefineRun` / `startRecycleRun` / `startUnboxRun` / `startManufacturing`
- * 四处一律走它，别再各写一份 `isAtHomeLike`（否则又会出现"两台机器两个口径"）。
- */
 export function stationIndustryBlocked(worker: 'pilot' | AiCoreType, state: GameState, ctx: SimContext): boolean {
   return worker === 'pilot' && !isAtHomeLike(state, ctx)
 }
 
-/** 安排到港交付时按自动卸货后的空间预检，不移动任何货物。 */
 export function siteDeliverFreeCargoM3(state: GameState, ctx: SimContext): number {
   const used = stationActivityWaitsForReturn(state) ? 0 : cargoUsedM3Of(state, ctx, state.shipId)
   return Math.max(0, Math.floor(cargoCapacityM3Of(state, ctx, state.shipId) - used))
 }
 
-/** 出发地星系：野外停留点，否则当前停靠站所在星系 */
 export function originGalaxyOf(state: GameState, ctx: SimContext): string {
   if (state.awayGalaxy !== null) return state.awayGalaxy
   if (state.dockedSite !== null) {
@@ -200,13 +154,6 @@ export function originGalaxyOf(state: GameState, ctx: SimContext): string {
   return HOME_GALAXY_ID
 }
 
-/**
- * 野外空闲中（非站内且无任何**船只**在跑的作业）
- *
- * ⚠ 2026-09-17 去掉 `!state.scanning.active`：星系扫描自 2026-09-15 起是**无人扫描艇**
- * （船长：「玩家扫描星系将不再占用玩家的主控活动」「不牵动舰船」）⇒ 它不该参与"船只是在野外闲着"的判定
- * （本条是那批无人化改造漏掉的旧闸之一；本函数唯一调用点 = 「前往」里那句"舰船已在 X 掩护巡逻"的提示）。
- */
 export function isIdleField(state: GameState): boolean {
   return (
     state.awayGalaxy !== null &&
@@ -218,11 +165,6 @@ export function isIdleField(state: GameState): boolean {
   )
 }
 
-/**
- * 玩家指令：从野外返航**最近空间站**（母港或已建成副站）。
- * 前置：在野外且无任何进行中作业。
- * 换港返航即时到站（定稿：去程取消）：下达即停靠目标站（finishAtGameMs = 当前时刻，无航行等待）。
- */
 export function startTransitHome(state: GameState, ctx: SimContext): CommandResult {
   if (state.hauling.active) return { ok: false, error: '长途运输进行中：中断本趟就拿不到本趟报酬（报酬到站才结）。请先到活动栏点「停止运输」。', errorId: 'core.location.001' }
   if (state.sideTasks.deliver !== null) return { ok: false, error: '快递投送途中：舰船正在执行投送航行，到站后再返航。', errorId: 'core.location.002' }
@@ -239,7 +181,6 @@ export function startTransitHome(state: GameState, ctx: SimContext): CommandResu
   const t = state.transit
   const fromName = ctx.galaxies.get(from)?.name ?? from
   const toName = ctx.galaxies.get(target)?.name ?? '空间站'
-  // 换港返航即时到站（去程取消）：不保留行程状态，直接停靠目标站
   t.active = false
   t.fromGalaxy = null
   t.toGalaxy = null
@@ -247,7 +188,6 @@ export function startTransitHome(state: GameState, ctx: SimContext): CommandResu
   t.legMs = 0
   t.delivery = null
   state.awayGalaxy = null
-  // 目标若是已建成副站 → 停靠该站；否则回母港（2026-09-08：到港即自动卸货）
   state.dockedSite = null
   const unloadNote = dockUnloadNote(state, ctx, state.shipId)
   for (const site of ctx.stations.values()) {
@@ -257,12 +197,6 @@ export function startTransitHome(state: GameState, ctx: SimContext): CommandResu
       addLog(state, 'fleet', `返航完成：舰船已即时停靠「${site.name}」（副空间站）。${unloadNote.text}`, 'core.location.039', {
         p1: site.name,
         p2: unloadNote.text,
-        /**
-         * ⚠ **槽内参数必须一起喂**（**2026-10-02 船长转玩家报障**：日志里漏出 `（{p1} 单位）`）：
-         * `core.location.037` 自己带 `{p1}`，而渲染层按「槽号 ＋ 占位符名」取槽内值 ⇒ 本槽是 `p2`
-         * ⇒ 要喂 **`p2p1`**（同族写法见 `events.ts` 的 `p2Id` + `p2p1`）。只喂槽译文不喂槽内参数，
-         * 渲染层取不全时**宁可漏也不改中文** ⇒ 玩家就看到原样的 `{p1}`。
-         */
         ...(unloadNote.id !== undefined && unloadNote.unit !== undefined
           ? { p2Id: unloadNote.id, p2p1: unloadNote.unit }
           : {}),
@@ -274,7 +208,6 @@ export function startTransitHome(state: GameState, ctx: SimContext): CommandResu
       p1: toName,
       p2: fromName,
       p3: unloadNote.text,
-      // 同上：`p3` 槽的槽译文 `core.location.037` 自带 `{p1}` ⇒ 槽内参数 = `p3p1`（2026-10-02 修）
       ...(unloadNote.id !== undefined && unloadNote.unit !== undefined
         ? { p3Id: unloadNote.id, p3p1: unloadNote.unit }
         : {}),
@@ -282,8 +215,6 @@ export function startTransitHome(state: GameState, ctx: SimContext): CommandResu
   return { ok: true }
 }
 
-/** 引擎内部：推进返航/交付航线行程（仅旧档/遗留在途行程与交付航线：finishAt 在未来；
- * 新指令"返航"即时到站不留行程）。交付航线到点分支 = 工地到达自动交付 + 链返程腿。 */
 export function advanceTransit(state: GameState, ctx: SimContext): void {
   const t = state.transit
   if (!t.active) return
@@ -301,7 +232,6 @@ export function advanceTransit(state: GameState, ctx: SimContext): void {
     arriveDeliverSite(state, ctx, d.siteId, d.loaded)
     return
   }
-  // 普通返航 / 交付航线返程腿：到站按目标设置停靠（副站或母港）
   state.awayGalaxy = null
   state.dockedSite = null
   const unloadNote = dockUnloadNote(state, ctx, state.shipId)
@@ -332,7 +262,6 @@ export function advanceTransit(state: GameState, ctx: SimContext): void {
         : {}),
       },
     )
-    // 2026-09-08 v2 自动循环：工地还有缺口且仓库有料 → 同一引擎推进内立即续趟出发
     continueDeliverLoop(state, ctx, d.siteId)
     return
   }
@@ -353,15 +282,7 @@ export function advanceTransit(state: GameState, ctx: SimContext): void {
   )
 }
 
-/* ─────────── 2026-09-08 建站交付航线 v2（船长定稿：物理载货模型 + 自动多趟循环） ─────────── */
 
-/**
- * 出发装载（2026-09-08 船长定：出发时把货仓装满建材，到点清空货仓——不再到点从仓库扣缴，
- * 途中任何仓库变动都不会造成白跑；2026-09-09 逐档材料单版）：
- * - 可装范围 = **当前档 + 后续各档材料单里的同名材料**（同材料跨档连缴不空转；材料单外物品不装）；
- * - 当前档优先；本档缺口能随本趟全部交齐，才用余舱装后续档，缺料时不为后档单独空运；
- * - 保留船上原有货物；返回本次装载明细（空对象 = 无货可装）。
- */
 function loadDeliverCargo(state: GameState, ctx: SimContext, site: StationSiteDef): Record<string, number> {
   const cap = cargoCapacityM3Of(state, ctx, state.shipId)
   const used = cargoUsedM3Of(state, ctx, state.shipId)
@@ -372,7 +293,6 @@ function loadDeliverCargo(state: GameState, ctx: SimContext, site: StationSiteDe
   const ware = state.warehouse.items
   const cargo = cargoOfShip(state, state.shipId)
   const loaded: Record<string, number> = {}
-  // 先备齐本档再带后档，避免后档同名大单挤占本档其他材料，返航后反复空运。
   for (let k = prog.stage; k < site.tiers.length; k += 1) {
     const tier = site.tiers[k]!
     let tierLoaded = true
@@ -397,10 +317,6 @@ function loadDeliverCargo(state: GameState, ctx: SimContext, site: StationSiteDe
   return loaded
 }
 
-/**
- * **仓库里有没有"这一趟装得上的"建材**（只读判据，给 `startSiteDeliverTrip` 的早期拒绝用）：
- * 第一个仍缺料的档位有库存才发船，不只为运送后档暂时不能交付的材料空转。
- */
 function hasLoadableDeliverWare(state: GameState, site: StationSiteDef): boolean {
   const prog = siteProgress(state, site.id)
   for (let k = prog.stage; k < site.tiers.length; k += 1) {
@@ -417,31 +333,17 @@ function hasLoadableDeliverWare(state: GameState, site: StationSiteDef): boolean
   return false
 }
 
-/**
- * 玩家指令：一键「前往工地交付」＝**交付循环**（2026-09-08 船长定）——
- * 出发时装满货仓 → 真实航程 → 到点只清空本趟装载 → 自动返航 → 仓库还有建材就自动续趟，
- * 直到①全部档位建成（就地停靠新站）或②仓库建材耗尽（终止并提示）。
- * 前置：驾驶船空闲且停靠在空间站（母港或已建成副站）；工地未建成且所在星系已探明；
- * 仓库里得有可装载的建材。
- */
 export function startSiteDeliverTrip(state: GameState, ctx: SimContext, siteId: string): CommandResult {
   const site = ctx.stations.get(siteId)
   if (!site) return { ok: false, error: `未知建站点：${siteId}。`, errorId: 'core.location.010', errorParams: { p1: siteId } }
   const prog = state.stationSites[siteId] ?? { stage: 0, delivered: {} }
   if (prog.stage >= site.tiers.length) return { ok: false, error: `「${site.name}」已建成并网，无需再交付建材。`, errorId: 'core.location.011', errorParams: { p1: site.name } }
-  /**
-   * **本入口自己的两道"点了也白点"的前置**——放在统一判据**之前**（顺序纪律：绝不"先停了玩家的活、
-   * 再说开不了"）。两道都与"停不停别的活动"无关：
-   * ① **货仓有没有空位**（`cargoUsedM3Of` 只读、不停机也变不出空位；停机把矿留在船上只会更满）；
-   * ② **仓库里有没有可装载的建材**（停机不动仓库/货仓里的存货）。
-   */
   const capV = cargoCapacityM3Of(state, ctx, state.shipId)
   const usedV = cargoUsedM3Of(state, ctx, state.shipId)
   const freeV = siteDeliverFreeCargoM3(state, ctx)
   if (freeV <= 0) {
     return { ok: false, error: '货仓没有空闲空间：先卸货入仓库腾出位置（物品页「全部卸入仓库」），再安排交付循环。', errorId: 'core.location.020' }
   }
-  // 旧材料视图会补空进度账；预检隔离该写入，失败不改原档。
   const preflight = { ...state, stationSites: { ...state.stationSites } }
   const billNow = stationBillText(preflight, ctx, site)
   if (!hasLoadableDeliverWare(preflight, site)) {
@@ -452,18 +354,8 @@ export function startSiteDeliverTrip(state: GameState, ctx: SimContext, siteId: 
       errorParams: { p1: billNow },
     }
   }
-  /**
-   * **其余主控活动 ⇒ 走统一判据**（**2026-09-22 船长令**：「**建设空间站的运输也加入可以打断其他行为的切换里，
-   * 不需要先暂停其他活动**」）——开采 / 打捞 / 掩护巡逻 / 扫描虫洞 / 亲自开炉·开线会被**自动停掉**（写一条统一
-   * 日志），长途运输先警告，远征 / 快递投送 / 战斗中 / 洞里 / 返航途中一律拒。原先这里散着 7 条硬拒。
-   *
-   * ⚠ **判据排在"位置门槛"之前**：上面的自动停机本身就把舰船即时带回母港/空间站
-   * （`miningHalt` / `salvageHalt` / 掩护巡逻召回 / 建站交付停机全是即时归位）⇒ 下面那条
-   * `awayGalaxy !== null`（"舰船在野外"）正是被这次停机**满足**的（与站内工业、长途运输同款处置）。
-   */
   const dockBlock = stationActivityStartBlockReason(state, ctx, 'siteDeliver')
   if (dockBlock) return { ok: false, ...dockBlock }
-  /** 已有进行中的行程（换港返航/旧档在途）：不是"别的活动"，是同一个槽被占着 ⇒ 照旧拒 */
   if (state.transit.active) return { ok: false, error: '已有进行中的行程（返航/交付航线）。', errorId: 'core.location.014' }
   if (!state.exploredGalaxies.includes(site.galaxyId)) {
     const g = ctx.galaxies.get(site.galaxyId)?.name ?? site.galaxyId
@@ -476,7 +368,6 @@ export function startSiteDeliverTrip(state: GameState, ctx: SimContext, siteId: 
   if (queued) return queued
   const gateSkip = applyActivityGate(state, 'siteDeliver', ctx)
   if (gateSkip) return gateSkip
-  // 出发装载（物理载货模型）：这里真装一次（上面已确认"货仓有位、仓库有料"）
   const loaded = loadDeliverCargo(state, ctx, site)
   const loadedTotal = Object.values(loaded).reduce((s, n) => s + n, 0)
   if (loadedTotal <= 0) {
@@ -491,7 +382,6 @@ export function startSiteDeliverTrip(state: GameState, ctx: SimContext, siteId: 
   const toGalaxyName = ctx.galaxies.get(site.galaxyId)?.name ?? site.galaxyId
   const legMs = travelLegMs(state, ctx, mins)
   const departureMs = beginDeparture(state, ctx, 'siteDeliver', site.galaxyId, departureOrigin(state, ctx))
-  // 出发：驶离泊位进入航线（野外标记 = 出发星系，防航行中误用站内功能）
   state.dockedSite = null
   state.awayGalaxy = from
   const t = state.transit
@@ -520,7 +410,6 @@ export function startSiteDeliverTrip(state: GameState, ctx: SimContext, siteId: 
   return { ok: true }
 }
 
-/** 玩家指令：取消进行中的建站交付航线（无惩罚；取消即立即返航停靠最近已建成空间站） */
 export function cancelSiteDeliverTrip(state: GameState, ctx: SimContext): CommandResult {
   const t = state.transit
   if (!t.active || !t.delivery) return { ok: false, error: '当前没有进行中的建站交付航线。', errorId: 'core.location.022' }
@@ -528,7 +417,6 @@ export function cancelSiteDeliverTrip(state: GameState, ctx: SimContext): Comman
   const stayedAtPort = cancelDeparture(state, 'siteDeliver')
   const phase = t.delivery.phase
   const site = ctx.stations.get(t.delivery.siteId)
-  // 取消落点 = 最近已建成空间站（相对本次航线所在位置）
   const baseFrom = phase === 'to-site' ? (t.fromGalaxy ?? site?.galaxyId ?? HOME_GALAXY_ID) : (t.toGalaxy ?? HOME_GALAXY_ID)
   const base = nearestStationGalaxyId(state, ctx, baseFrom)
   t.active = false
@@ -559,7 +447,6 @@ export function cancelSiteDeliverTrip(state: GameState, ctx: SimContext): Comman
     state,
     'warn',
     `交付航线已取消（无惩罚）：已停止交付循环，舰船立即返航，已停靠「${dockedName ?? (ctx.galaxies.get(base)?.name ?? '母港')}」${dockedName ? '（副空间站）' : ''}${moved > 0 ? `；货仓已自动卸入物品仓库（${moved.toLocaleString('zh-CN')} 单位）。` : '。'}`,
-    /* ⟪文案调整 2026-10-02⟫ 批⑨-②：两种收尾各一个 id（沿用同文件 044/045 的做法） */
     moved > 0 ? 'core.location.051' : 'core.location.050',
     moved > 0
       ? {
@@ -577,8 +464,6 @@ export function cancelSiteDeliverTrip(state: GameState, ctx: SimContext): Comman
   return { ok: true }
 }
 
-/** 自动续趟：返航停靠后，工地还有缺口且仓库能装上建材 → 立即再出发一趟；
- * 装不上（仓库建材耗尽）→ 终止交付循环并写一次性系统提示（渲染层弹窗 + 事件日志）。 */
 function continueDeliverLoop(state: GameState, ctx: SimContext, siteId: string): void {
   const site = ctx.stations.get(siteId)
   if (!site) return
@@ -587,7 +472,7 @@ function continueDeliverLoop(state: GameState, ctx: SimContext, siteId: string):
   const remain = tierRemaining(state, site)
   if (remain <= 0) return
   const r = startSiteDeliverTrip(state, ctx, siteId)
-  if (r.ok) return // 下一趟已出发（循环继续）
+  if (r.ok) return
   const remainTxt = remain.toLocaleString('zh-CN')
   const note =
     r.error && r.error.includes('仓库没有可装载的建材')
@@ -597,11 +482,6 @@ function continueDeliverLoop(state: GameState, ctx: SimContext, siteId: string):
   state.deliveryNotice = note
 }
 
-/**
- * 到达工地星系：野外停留 → **只清空本趟装载**（deliverStationResources cargo-only 逐笔扣缴、
- * 逐档推进）→ 自动返航最近空间站（仓库有料则由 advanceTransit 到站后自动续趟）。
- * loaded 缺省（旧版在途档兼容）：按货仓现存接受建材视为装载，不碰仓库。
- */
 function arriveDeliverSite(
   state: GameState,
   ctx: SimContext,
@@ -626,7 +506,6 @@ function arriveDeliverSite(
       { p1: galaxyName, p2: site.name },
     )
   noteStationSiteAt(state, ctx, site.galaxyId)
-  // 本趟装载账本：新档 = 出发时装载的全部材料；旧版在途档无 loaded → 以货仓现存当前档材料为账本
   const ledger: Record<string, number> = {}
   const cargo = cargoOfShip(state, state.shipId)
   if (loaded && Object.keys(loaded).length > 0) {
@@ -638,7 +517,7 @@ function arriveDeliverSite(
   let guard = 0
   while (guard++ < 80) {
     const rows = stationBillView(state, ctx, site)
-    if (rows.length === 0) break // 已建成或无材料单
+    if (rows.length === 0) break
     let any = false
     for (const row of rows) {
       if (row.remaining <= 0) continue
@@ -658,7 +537,6 @@ function arriveDeliverSite(
   }
   const progAfter = siteProgress(state, site.id)
   if (progAfter.stage >= site.tiers.length) {
-    // 全部档位完成：就地停靠刚建成的新副站（货仓余量随进港自动卸回仓库）
     state.awayGalaxy = null
     state.dockedSite = site.id
     const unloadNote = dockUnloadNote(state, ctx, state.shipId)
@@ -689,7 +567,6 @@ function arriveDeliverSite(
   } else {
     addLog(state, 'fleet', `本趟未交付任何建材（工地当前需求与货仓装载不匹配）——自动返航。`, 'core.location.036')
   }
-  // 自动返航最近空间站（真实航程；最近站随本次建成情况实时解析）
   const baseGal = nearestStationGalaxyId(state, ctx, site.galaxyId)
   const mins = shortestTravelMinutes(ctx, site.galaxyId, baseGal)
   const legMs = Number.isFinite(mins) ? travelLegMs(state, ctx, mins) : 0
@@ -741,15 +618,11 @@ function arriveDeliverSite(
   )
 }
 
-/**
- * 引擎内部：停靠位置一致性纠正（2026-09-08 船长定：未建成的建站点不视为任何站点）。
- * 若停靠目标是不存在/未建成的站点（旧档残留等），一律转为该星系"工地现场"野外停留并记日志。
- */
 export function reconcileDockSanity(state: GameState, ctx: SimContext): void {
   const ds = state.dockedSite
   if (ds === null) return
   const site = ctx.stations.get(ds)
-  if (site && siteProgress(state, ds).stage >= site.tiers.length) return // 已建成副站：合法停靠
+  if (site && siteProgress(state, ds).stage >= site.tiers.length) return
   const galaxyId = site?.galaxyId ?? null
   state.dockedSite = null
   state.awayGalaxy = galaxyId ?? HOME_GALAXY_ID
@@ -765,7 +638,6 @@ export function reconcileDockSanity(state: GameState, ctx: SimContext): void {
   )
 }
 
-/** 返航/交付航线行程只读视图（活动栏/星图页用） */
 export interface TransitView {
   active: boolean
   fromGalaxy: string | null
@@ -774,10 +646,7 @@ export interface TransitView {
   toName: string
   remainingMs: number
   percent: number
-  /** 行程类型（2026-09-08）：dock = 普通返航；deliver-to-site = 交付航线·去程；
-   * deliver-to-station = 交付航线·返程；null = 无行程 */
   trip: 'dock' | 'deliver-to-site' | 'deliver-to-station' | null
-  /** 交付目标工地名（trip 为交付航线时非空，UI 展示用） */
   siteName: string | null
 }
 
@@ -807,18 +676,10 @@ export function transitStatus(state: GameState, ctx: SimContext): TransitView {
   }
 }
 
-/* ═══════════ B1.5 主动"前往星系掩护巡逻"（原"待命"，主控） ═══════════ */
 
-/**
- * 玩家指令：前往指定星系**掩护巡逻**（即时就位：去程已取消，无航行等待；
- * 下达即转场该星系野外停留 awayGalaxy=目标——采矿/悬赏/返航皆可从停留点继续；
- * 低安星系的停留船会进入 B1 遭遇暴露）。
- * 前置：舰船空闲（不在采矿/远征/扫描/返航行程中）；目标星系必须已探索且不在当前停靠点。
- */
 export function goStandbyAt(state: GameState, galaxyId: string, ctx: SimContext): CommandResult {
   const target = ctx.galaxies.get(galaxyId)
   if (!target) return { ok: false, error: `未知星系：${galaxyId}。`, errorId: 'core.location.033', errorParams: { p1: galaxyId } }
-  /** ⚠ `wormholePilotHoldReason` 已撤（2026-09-21 统一批）：扫描虫洞 = 可自动停、人在洞里 = 拒，都归 `activityGate` */
   const pilotBlock = pilotUnavailableReason(state)
   if (pilotBlock) return { ok: false, error: pilotBlock }
   const s = state.standby
@@ -833,20 +694,13 @@ export function goStandbyAt(state: GameState, galaxyId: string, ctx: SimContext)
   }
   const mins = shortestTravelMinutes(ctx, from, galaxyId)
   if (!Number.isFinite(mins)) return { ok: false, error: `「${target.name}」不在已知航路内。`, errorId: 'core.location.031', errorParams: { p1: target.name } }
-  /**
-   * **其余主控活动 ⇒ 走统一判据**（**2026-09-21 船长令**：能直接切就自动取消当前活动，只有长途运输
-   * 那一档先警告；远征/快递/战斗中/洞里/返航途中一律拒）——原先这里散着 7 条硬拒，现已收进
-   * `activityGate.applyActivityGate`。⚠ 放在**本入口自己的前置校验之后**（目标/已探索/航路/同点）。
-   */
   const gateSkip = applyActivityGate(state, 'standby', ctx)
   if (gateSkip) return gateSkip
-  // 去程取消（定稿）：即时就位——到达时刻 = 当前，无去程等待；船即刻转场目标星系留守
   s.active = false
   s.galaxyId = null
   s.finishAtGameMs = 0
   s.legMs = 0
   state.awayGalaxy = galaxyId
-  // 2026-09-06：建站叙事入口改挂掩护巡逻到位（悬赏胜利/扫描完成不再停留）
   noteStationSiteAt(state, ctx, galaxyId)
   addLog(
     state,
@@ -858,7 +712,6 @@ export function goStandbyAt(state: GameState, galaxyId: string, ctx: SimContext)
   return { ok: true }
 }
 
-/** 引擎内部：召回旧主控巡逻去程；巡逻到达日志仍指向当前位置时也自动返航。 */
 export function advanceStandby(state: GameState, ctx: SimContext): void {
   const s = state.standby
   if (s.active) {
@@ -908,7 +761,6 @@ function isLegacyPatrolStay(state: GameState, ctx: SimContext): boolean {
   return loggedGalaxy === galaxyName || lastLocationLog.text.includes(`「${galaxyName}」`)
 }
 
-/** 玩家指令：取消旧的掩护巡逻去程（仅旧档在途状态有意义；召回口径：立即回到母港/空间站，无耗时） */
 export function cancelStandby(state: GameState, ctx: SimContext): CommandResult {
   const s = state.standby
   if (!s.active || s.galaxyId === null) return { ok: false, error: '当前没有进行中的掩护巡逻行程。', errorId: 'core.location.032' }
@@ -917,21 +769,18 @@ export function cancelStandby(state: GameState, ctx: SimContext): CommandResult 
   s.galaxyId = null
   s.finishAtGameMs = 0
   s.legMs = 0
-  state.awayGalaxy = null // 召回口径：回母港（与远征召回一致）
-  // 2026-09-08：召回 = 回母港停靠——进港自动整仓卸货
+  state.awayGalaxy = null
   const moved = unloadCargoOfShipToWarehouse(state, ctx, state.shipId)
   addLog(
     state,
     'warn',
     `掩护巡逻行程已取消：舰船返回母港（未抵达「${name}」）${moved > 0 ? `；货仓已自动卸入物品仓库（${moved.toLocaleString('zh-CN')} 单位）。` : '。'}`,
-    /* ⟪文案调整 2026-10-02⟫ 批⑨-①：两种收尾各一个 id（空段会被整段丢掉，所以不合并成一条带可选段） */
     moved > 0 ? 'core.location.044' : 'core.location.045',
     moved > 0 ? { p1: name, p2: moved.toLocaleString('zh-CN') } : { p1: name },
   )
   return { ok: true }
 }
 
-/** 掩护巡逻（旧"待命"）只读视图（活动栏用；新指令即时就位后为 inactive） */
 export interface StandbyView {
   active: boolean
   galaxyId: string | null
@@ -953,7 +802,6 @@ export function standbyStatus(state: GameState, ctx: SimContext): StandbyView {
   }
 }
 
-/** 星系是否已探明（standby 前置用；避免引 explore 造成环） */
 function isExploredOf(state: GameState, galaxyId: string): boolean {
   return state.exploredGalaxies.includes(galaxyId)
 }

@@ -5,7 +5,6 @@ import { lairNameOf } from '../lairs'
 import { unloadCargoOfShipToWarehouse } from '../inventory'
 import { cancelDeparture } from '../departure'
 
-/** 交火不可召回；允许召回的航程按实际出勤名单一起到港卸货。 */
 export function recallExpedition(state: GameState, ctx: SimContext): CommandResult {
   const exp = state.expedition
   if (!exp.active) return { ok: false, error: '当前没有进行中的远征。', errorId: 'core.expedition.018' }

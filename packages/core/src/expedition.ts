@@ -1,4 +1,3 @@
-/** 旧路径兼容出口；实现按职责归战斗域。 */
 export { calcPower, type BattleTacticChoice, battleTacticDesire, setBattleDesire, abandonChance } from './expedition/tactics'
 export { startExpedition, startExpeditionFromMining, beginBattleAt } from './expedition/launch'
 export { lootFactor, bountyRewardFactor, resolveBattleOutcome } from './expedition/outcome'

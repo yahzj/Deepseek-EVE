@@ -1,9 +1,3 @@
-/**
- * 装配页（V18 槽位制）：给"当前驾驶的船"装配装备。
- * 高/中/低三类物理槽 × 位序（ShipDef.slots 数量，复数安装）；模块按 rack 归槽
- * （高 = 炮台/采集器/无人机装置；中 = 盾系/推进；低 = 甲系/货舱扩展）。
- * 装备随船：换船后看到的是那艘船自己的装配；弃船时装备随船损失。
- */
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import type {
   DamageResists,
@@ -16,11 +10,9 @@ import type {
   UnitSpec,
 } from '@whale/core'
 import {
-  /** 本场预载需求（与开战装载同一函数）＋ 取档判定（船长 2026-09-16「甲」口径的单点） */
   ammoLoadTotals,
   ammoTiersOf,
   resolveAmmoTier,
-  /** 战后自动补足机群（2026-09-20）⇒ 机群门槛只在"货源不够"时拦人；这里把缺额写出来 */
   autoLoopDroneShortfall,
   countModule,
   countWare,
@@ -28,15 +20,12 @@ import {
   cpuUseOf,
   ceilFinalQuantity,
   createPlayerSpec,
-  /** 2026-09-26 船长令：装配页插件槽只读区（core 单点给槽位上限 + 已装清单） */
   plugInfoOf,
   plugEffectsOf,
   cleanShipDamage,
-  /** 2026-09-27 船长报障：装入入口（空槽可点，弹层选装，二次确认，installPlug） */
   installPlug,
   shipOperationBlockReason,
   plugSlotExpansionBlockedOf,
-  /** 2026-09-27 船长令：拆船回收（预览 ＋ 执行；界面两次警告都用预览那一份算术） */
   shipScrapPreviewOf,
   scrapShip,
   droneCpuUsed,
@@ -44,7 +33,6 @@ import {
   fittedCpuUsed,
   fleetDefOf,
   rackOf,
-  // 2026-09-27 船长报障「有部分船插会在装备栏显示」：插件不走高/中/低槽 ⇒ 候选表按单点过滤
   isRackModule,
   sameKindCount,
 
@@ -58,26 +46,21 @@ import {
   stackingOf,
   stackWeight,
   typeLayerMult,
-  // 2026-09-26 无人机舱总容量（船体 + 甲板扩展）唯一单点——主表与舰队页悬停卡同一把尺
   cargoCapacityM3Of,
   droneBayTotalM3,
   moduleAllowedOnShip,
-  // 2026-09-14 跃迁计算机：装配页显示**有效跃迁速度**（含装备加成）与航行时间因子（与引擎同源）
   travelTimeFactor,
   warpBonusMult,
   warpSpeedAus,
 } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { ShipDamageMods } from '../ui/ShipDamageMods'
-// 装备稀有度档位（换装浮层默认"稀有度高的排前面"；2026-09-11 船长定）
 import { rarityTierOf } from '@whale/data'
 import { combatBadges, COMBAT_BASE_KEYS, DmgChip, DMG_LABEL, FIT_MAIN_HIDDEN_KEYS, fitHiddenBaseKeys, fittedDroneBayLine, fittedHoldLine, fittedSpeedLine, InfoTable, itemHoverContent, moduleHoverContent, moduleShortEffect, shipIndirectLines, shipInfoLines } from '../ui/shipInfo'
 import { hoverTipProps } from '../ui/Tooltip'
 import { Glyph, toneOf } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
 import { ShipSprite } from '../ui/ShipSprite'
-// ⚠ 槽类名（高/中/低槽）走本地化单点 `rackText`（2026-09-26 船长报障：英文界面下槽位名漏中文）——
-// core 的 `RACK_LABELS` / `rackLabel` 是纯中文表，**渲染层不得直读**（见 `ui/labelsText.ts` 头注）
 import { rackText, slotText } from '../ui/labelsText'
 import type { PageProps } from './common'
 import { tr, cmdText } from '../i18n/locale'
@@ -87,19 +70,14 @@ import { FittingSummary } from '../features/ships/fitting/FittingSummary'
 import { FitTargetSelect } from '../features/ships/fitting/FitTargetSelect'
 
 
-/** 槽类可装家族简述（空位引导文案；V18.1 支援件：伤害/射速 = 低槽，命中/闪避 = 中槽；
- *  2026-09-11 协处理器 = 低槽 CPU 预算扩容件）
- *  2026-09-14 船长「改回高槽」：采集器 / 打捞器回到高槽组（作业装备不再走低槽） */
 const RACK_FAMILIES: Record<RackSlot, string> = {
   get high() { return tr("ui.FitPage.011") },
   get mid() { return tr("ui.FitPage.012") },
   get low() { return tr("ui.FitPage.013") },
 }
 
-/** 数字千分位 */
 const fmt = (n: number): string => n.toLocaleString('zh-CN')
 
-/** 抗性三系恒显 chips（船长 2026-09-05：0 抗也列出——不做"缺行=0"的隐性省略） */
 function resChipsAll(res: DamageResists | undefined): ReactNode {
   return (['kinetic', 'explosive', 'plasma'] as const).map((t) => {
     const pct = Math.round((res?.[t] ?? 0) * 100)
@@ -113,11 +91,8 @@ function resChipsAll(res: DamageResists | undefined): ReactNode {
   })
 }
 
-/** 换装对比段（装配浮层卡片底部；船长 2026-09-05：显示装后 DPS/属性是否有变化） */
 interface FitSeg {
-  /** 展示文本（如 "火力 +14%" / "盾 960→1032" / "CPU 剩 42→35"） */
   t: string
-  /** 着色：up=绿（升）· down=红（降）· info=中性青（值变化）· none=灰（占位说明） */
   c: 'up' | 'down' | 'info' | 'none'
 }
 
@@ -132,25 +107,20 @@ const TYPE_SN: Record<string, string> = {
   get plasma() { return tr("ui.FitPage.018") },
 }
 
-/** 负数按本仓文案惯例用真减号 U+2212 显示（CPU 剩 −12 而非 -12） */
 function minus(n: number): string {
   return n < 0 ? `−${-n}` : `${n}`
 }
 
-/** 名义火力（全命中、无距离衰减、弹药不断供）：Σ 各武器 单发/装填秒。
- * 仅供"同条件下换装相对比较"——战斗实际 DPS 还乘命中/距离衰减（基础舰炮恒在，剔除避免稀释）。 */
 function rawDpsOf(spec: UnitSpec): number {
   let sum = 0
   for (const w of spec.weapons) {
-    if (w.label === '基础舰炮') continue // l10n-keep：武器形态联合 key（不是文案）
+    if (w.label === '基础舰炮') continue
     const per = w.kind === 'gun' ? Object.values(w.shotsByType ?? {})[0] ?? 0 : (w.shotDmg ?? 0)
     sum += per / Math.max(0.1, w.reloadMs / 1000)
   }
   return sum
 }
 
-/** 整机命中近似（口径：炮台命中率均值 × 开火失稳，再乘索敌乘子；beam 必中计 1）——
- * 供"命中 ≈ ±%"相对变化段（覆盖索敌阵列/失稳惩罚/换炮基础命中差） */
 function meanHitMul(spec: UnitSpec): number | null {
   const ws = spec.weapons.filter((w) => w.kind === 'gun' || w.kind === 'beam')
   if (ws.length === 0) return null
@@ -159,16 +129,6 @@ function meanHitMul(spec: UnitSpec): number | null {
   return (spec.hitMul ?? 1) * (s / ws.length)
 }
 
-/** **整机命中率（含余量）**（船长 2026-09-19 报障「装配界面的舰船属性里，少了命中率属性」，
- *  口径两步定：先选 A（纸面加算口径），再令「**解除上限锁** —— 超出上限的部分能够抵消射程的命中削减」）：
- *  掷命中武器（炮台 / 导弹架）取 `(基础命中 + 船体命中加成) × 索敌件 × 推进失稳`，激光必中计 100%，
- *  **一律不截断** ⇒ 读数可以 >100%，那部分余量正是实战里被射程衰减与敌舰回避消费掉的量。
- *
- *  ⚠ 三个引擎对齐点（都是逐字核过 `combat.hitChance` / 开火分支的）：
- *  ① 船体加成是**加算**在武器基础命中上（`types.ts` 的 `hitBonus` 注释：加到武器命中率上）；
- *  ② 索敌件（`eqHitMul`）与推进失稳（`hitMul`）**只作用于掷命中武器**——激光 `hit = 1` 必中、不吃失稳；
- *  ③ 引擎的 `clamp(0,1,…)` 是**最后一步**（在距离衰减之后）⇒ 本行刻意不截断，把余量留给玩家读。
- *  ⚠ 基础舰炮与无人机是 `kind:'fixed'`（必中）⇒ 不进均值（与 `rawDpsOf` 同一取舍）。 */
 function meanHitRateOf(spec: UnitSpec): { rate: number; hitBonus: number; eqMul: number | null; unstable: number } | null {
   const ws = spec.weapons.filter((w) => w.kind === 'gun' || w.kind === 'beam')
   if (ws.length === 0) return null
@@ -187,7 +147,6 @@ function meanHitRateOf(spec: UnitSpec): { rate: number; hitBonus: number; eqMul:
   return { rate: sum / ws.length, hitBonus, eqMul, unstable }
 }
 
-/** 命中率行的括号明细（只列非缺省项——缺省的 ×1.00 / +0% 不进括号，免得读成"有代价"） */
 function hitDetailText(read: { hitBonus: number; eqMul: number | null; unstable: number }): string {
   const parts: string[] = []
   if (read.hitBonus > 0) parts.push(tr("ui.FitPage.111", { p1: Math.round(read.hitBonus * 100) }))
@@ -196,9 +155,6 @@ function hitDetailText(read: { hitBonus: number; eqMul: number | null; unstable:
   return parts.join(' · ')
 }
 
-/** 装后 − 装前 差异段；数值全部来自 createPlayerSpec 同源合成（与战斗引擎一致），只报真实变化。
- *  `weapon` = 该槽位新旧武器的**弹伤倍率**（可选）：换了炮台/导弹架/激光炮时，
- *  除"火力 ±%"外再明示倍率本身的变化（2026-09-11 船长：只看火力看不到弹药伤害倍率）。 */
 function diffSegs(
   cur: UnitSpec,
   next: UnitSpec,
@@ -213,18 +169,12 @@ function diffSegs(
     segs.push({ t, c })
   }
   const dir = (d: number): 'up' | 'down' => (d > 0 ? 'up' : 'down')
-  // CPU 减法视角（船长 2026-09-05：显示剩余 CPU 的变化）。
-  // 2026-09-11 协处理器：**预算随件走** —— 装/卸协处理器时前后预算不同，两栏各用自己的预算。
-  // 2026-09-12 船长（玩家反馈「超了只显示到 0，看不到差多少、也不变红」）：「按甲来」——
-  // 装后**超载**（剩余 < 0）给**负数 + 「差 N」并标红**；**刚好装满**（= 0，合法、装得进）单列中性文案；
-  // 其余仍只报变化。⚠ 判据是"装后是否超预算"，不是"变化没变化"——已超载的船换同耗件也要照红。
   const remCur = cpuTotal - cpuCur
   const remNext = (cpuTotalNext ?? cpuTotal) - cpuNext
   if (remNext < 0) add(tr("ui.FitPage.114", { p1: minus(remCur), p2: minus(remNext), p3: -remNext }), 'down')
   else if (remNext !== remCur) {
     add(remNext === 0 ? tr("ui.FitPage.115", { p1: minus(remCur) }) : tr("ui.FitPage.116", { p1: minus(remCur), remNext: remNext }), 'info')
   }
-  // 血量层（取变化最大的两层，避免长卡）
   const hpPairs: Array<{ lab: string; c: number; n: number }> = []
   for (const k of ['s', 'a', 'h'] as const) {
     const c = cur.hp[k]
@@ -233,7 +183,6 @@ function diffSegs(
   }
   hpPairs.sort((x, y) => Math.abs(y.n - y.c) - Math.abs(x.n - x.c))
   for (const p of hpPairs.slice(0, 2)) add(`${p.lab} ${fmt(p.c)}→${fmt(p.n)}`, dir(p.n - p.c))
-  // 抗性（盾/甲两层 × 三系；取百分点变化最大的两条）
   const resDiffs: Array<{ t: string; c: number; n: number }> = []
   for (const layer of ['shield', 'armor'] as const) {
     const cb = cur.resists[layer] ?? {}
@@ -246,15 +195,10 @@ function diffSegs(
   }
   resDiffs.sort((a, b) => Math.abs(b.n - b.c) - Math.abs(a.n - a.c))
   for (const d of resDiffs.slice(0, 2)) add(`${d.t} ${d.c}→${d.n}%`, dir(d.n - d.c))
-  // 回避 / 机动速度
   const epp = Math.round((next.evasion - cur.evasion) * 100)
   if (epp !== 0) add(tr("ui.FitPage.118", { p1: Math.round(cur.evasion * 100), p2: Math.round(next.evasion * 100) }), dir(epp))
   const spd = Math.round(next.speedMps - cur.speedMps)
   if (spd !== 0) add(tr("ui.FitPage.119", { p1: Math.round(cur.speedMps), p2: Math.round(next.speedMps) }), dir(spd))
-  // 推进器点火期速度（2026-09-11 船长：「推进器现在有持续时间和冷却时间，这点希望在推进器的说明内讲清」）：
-  // 周期化（2026-09-10）后 `speedMps` **不含**推进器加成（走 `thrusterBoost`、只在点火窗口生效）
-  // ⇒ 换上/换下推进器时上面那段「速度」恒为 0，卡片看起来"速度没变"。这里补报**点火期**速度
-  // （= 基础 ×(1+爆发倍率)），换推进器时玩家才看得到真实机动差。
   const boostCur = cur.thrusterBoost ?? 0
   const boostNext = next.thrusterBoost ?? 0
   if (boostCur !== boostNext) {
@@ -262,7 +206,6 @@ function diffSegs(
     const ignNext = Math.round(next.speedMps * (1 + boostNext))
     add(tr("ui.FitPage.120", { ignCur: ignCur, ignNext: ignNext }), dir(ignNext - ignCur))
   }
-  // 火力（名义口径见 rawDpsOf 注释；数值直接给，不带 ≈ 前缀）
   const cd = rawDpsOf(cur)
   const nd = rawDpsOf(next)
   if (cd <= 0 && nd > 0) add(tr("ui.FitPage.121"), 'up')
@@ -270,26 +213,22 @@ function diffSegs(
   else if (cd > 0 && nd > 0) {
     const pct = (nd / cd - 1) * 100
     if (Math.abs(pct) >= 0.5) {
-      // 绝对值格式化（船长 2026-09-05：避免负值自带符号与前缀符号叠成双负号）
       const absPct = Math.abs(pct)
       const show = absPct >= 10 ? String(Math.round(absPct)) : absPct.toFixed(1)
       add(tr("ui.FitPage.123", { p1: pct > 0 ? '+' : '−', show: show }), pct > 0 ? 'up' : 'down')
     }
   }
-  // 弹伤倍率本身的变化（换炮台时最关心的一个数；弹种变了也点明）
   if (weapon && weapon.curMult !== null && weapon.nextMult !== null && weapon.curMult !== weapon.nextMult) {
     add(tr("ui.FitPage.124", { p1: mulText(weapon.curMult), p2: mulText(weapon.nextMult) }), dir(weapon.nextMult - weapon.curMult))
   }
   if (weapon && weapon.curType !== null && weapon.nextType !== null && weapon.curType !== weapon.nextType) {
     add(tr("ui.FitPage.125", { p1: DMG_LABEL[weapon.curType], p2: DMG_LABEL[weapon.nextType] }), 'info')
   }
-  // 命中近似（整机相对变化；口径见 meanHitMul）
   const ch = meanHitMul(cur)
   const nh = meanHitMul(next)
   if (ch !== null && nh !== null && ch > 0) {
     const hp = (nh / ch - 1) * 100
     if (Math.abs(hp) >= 2) {
-      // 同上：绝对值格式化，符号只由前缀给一次
       const absHp = Math.abs(hp)
       const show = absHp >= 10 ? String(Math.round(absHp)) : absHp.toFixed(1)
       add(tr("ui.FitPage.126", { p1: hp > 0 ? '+' : '−', show: show }), hp > 0 ? 'up' : 'down')
@@ -298,17 +237,14 @@ function diffSegs(
   return segs
 }
 
-/** 武器判定：炮台/导弹架/激光炮（弹种 chip 显示攻击类型，色 = 伤害类型 ↔ 血量层色） */
 const WEAPON_SLOTS = new Set<ModuleSlot>(['turret', 'missile', 'laser'])
 
-/** 武器的**弹种**（与 ammoChipOf 同一口径：炮台取自身伤害类型、导弹固定高爆、激光固定能量） */
 function weaponDamageTypeOf(m: ModuleDef): DamageType {
   if (m.slot === 'turret') return m.damageType ?? 'kinetic'
   if (m.slot === 'missile') return 'explosive'
   return 'plasma'
 }
 
-/** 层位克制短串（如「盾×1.5·甲×0.5」；×1 的层省略）——数值与 `combat.typeLayerMult` 同源，挂在弹种 chip 上 */
 function layerShortOf(t: DamageType): string {
   const name = { shield: tr("ui.FitPage.014"), armor: tr("ui.FitPage.015"), hull: tr("ui.ShipPage.023") } as const
   const parts: string[] = []
@@ -319,12 +255,10 @@ function layerShortOf(t: DamageType): string {
   return parts.join('·')
 }
 
-/** 倍率显示（1.5 → ×1.5；3 → ×3；去尾零） */
 function mulText(v: number): string {
   return `×${Number.isInteger(v) ? String(v) : String(Math.round(v * 100) / 100)}`
 }
 
-/** 武器弹药 chip（船长 2026-09-05：换装卡须明示弹药攻击类型） */
 function ammoChipOf(m: ModuleDef): ReactNode | null {
   if (m.slot === 'turret') {
     const t = m.damageType ?? 'kinetic'
@@ -335,7 +269,6 @@ function ammoChipOf(m: ModuleDef): ReactNode | null {
   return null
 }
 
-/** 射程短文本（换装卡武器行用；min=0 省略近端） */
 function rangeShort(m: ModuleDef): string {
   const max = m.maxRangeM
   if (max === undefined) return '—'
@@ -346,15 +279,10 @@ function rangeShort(m: ModuleDef): string {
   return `${loS} ~ ${hi}`
 }
 
-/** CPU 剩余条（槽位区顶部；装配+放飞共用静态池，超上限拒绝装配；减法显示剩余——船长 2026-09-05）
- *  2026-09-12 船长（玩家反馈「超了只显示到 0，看不到差多少、也不变红」）：「按甲来」——
- *  剩余**允许为负**：负数 = 超载 ⇒ 数字给负数 + 右侧「超 N」+ 危险红（`is-full`）；
- *  **刚好装满**（= 0，合法、装得进）从红里分出来 ⇒ 琥珀 + 「刚好装满」；有余量照旧按百分比分级。 */
 function CpuStrip({ used, total }: { used: number; total: number }): ReactNode {
   const rem = total - used
   const over = rem < 0
   const usedPct = total > 0 ? (over ? 100 : Math.max(0, Math.min(100, (used / total) * 100))) : 0
-  // 醒目分级：未超载且使用率 < 90% 充足青绿 → ≥90% 琥珀告警（含"刚好装满"）→ 超载危险红
   const cls = over ? 'is-full' : (total > 0 && used / total >= 0.9) ? 'is-warn' : 'is-ok'
   return (
     <div
@@ -378,7 +306,6 @@ function CpuStrip({ used, total }: { used: number; total: number }): ReactNode {
 export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fitShipId?: string | null }) {
   const [rangeOpen, setRangeOpen] = useState(false)
   const state = engine.state
-  // 装配目标船（船长 2026-09-05：入口在舰船页舰队卡片——onGotoFit 带入目标船；直接进入默认当前驾驶船）
   const piloted = state.shipId
   const [targetId, setTargetId] = useState<string>(fitShipId && state.fleet[fitShipId] ? fitShipId : piloted)
   useEffect(() => {
@@ -392,20 +319,10 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
   const shipDef = fleetDefOf(state, engine.ctx, effectiveTarget)
   const shipName = shipDisplayName(state, engine.ctx, effectiveTarget)
   const fitted = state.fleet[effectiveTarget]?.fitted
-  /**
-   * 槽位格数 = **船型布局 ＋ 插件扩槽**（**2026-09-27 船长令「修」**）——
-   * 原先读 `shipSlotsOf(shipDef)`（不含插件）⇒ 装上「中层/下层舱段插件」后本页仍画旧格数，
-   * 玩家看不到多出来的格子（引擎侧已经能装，界面却点不到）。
-   */
   const slots = shipDef ? shipSlotsWithPlugsOf(state, engine.ctx, effectiveTarget) : { high: 1, mid: 1, low: 1 }
-  // 装后合成（与战斗引擎同源：血量含容量件、抗性含乘入缺口、速度含加力曲线、回避含陀螺缺口）
   const spec = shipDef ? createPlayerSpec(state, engine.ctx, effectiveTarget) : null
-  // 命中率（2026-09-19 船长：「装配界面的舰船属性里，少了命中率属性」）：整机读数 + 括号明细
-  // （船体加成 / 索敌件 / 推进失稳）——口径见 meanHitRateOf
   const hitRead = spec ? meanHitRateOf(spec) : null
   const hitDetail = hitRead ? hitDetailText(hitRead) : ''
-  // 2026-09-14 跃迁计算机：本船**有效跃迁速度**（船表值 × 装备加成，与引擎 `travel.warpSpeedAus` 同源）
-  // 与**航行时间因子**（`travelTimeFactor`：含跃迁速度与航行技能族）——只影响跨星系航行，不进战斗。
   const effWarp = shipDef
     ? {
         aus: warpSpeedAus(state, engine.ctx, effectiveTarget),
@@ -414,26 +331,20 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
     : undefined
   const warpFactor = travelTimeFactor(state, engine.ctx, effectiveTarget)
 
-  // 装备库按**持有数**筛 ⇒ 走全目录（玩家的东西必须显示得出来，未上线闸门只管"给玩家看的枚举"）
   const bayModules: ModuleDef[] = engine.allModules.filter((m) => countModule(state, m.id) > 0)
-  // CPU 占用（全位合计 + 无人机舱清单预占——2026-09-08 无人机舱大改：装入即占预算）
   const droneLoadOf = state.fleet[effectiveTarget]?.droneLoad
   const cpuUsed = fitted ? fittedCpuUsed(fitted, engine.ctx, shipDef) + droneCpuUsed(droneLoadOf, engine.ctx) : 0
-  // 装配台左右分栏（船长 2026-09-05）：左=船参数，右=装备按槽位图标；装备库列表移到物品页，不再在此显示。
 
-  // ── 舰船形象区自适应（船长 2026-09-09：窗口缩窄优先缩小舰影，图缩到下限仍不够才隐藏间接列；
-  //    实测容器宽度分档，避免间接文字被图形顶出窗口） ──
   const stageRef = useRef<HTMLDivElement | null>(null)
   const [stageFit, setStageFit] = useState({ art: 280, indirect: true })
   useLayoutEffect(() => {
     const el = stageRef.current
     if (!el) return
     const update = (): void => {
-      // stage 有 padding+border：内容可用宽 = clientWidth − 左右装饰
       const avail = el.clientWidth - 22
-      const INDIRECT_MIN = 250 // 间接列表可读最小宽（11px 行 + 折行余量）
+      const INDIRECT_MIN = 250
       const GAP = 12
-      const MIN_ART = 190 // 舰影可读下限（再小就藏间接、图占主位）
+      const MIN_ART = 190
       const MAX_ART = 300
       const keepIndirect = avail >= MIN_ART + GAP + INDIRECT_MIN
       let art = keepIndirect ? Math.min(MAX_ART, Math.max(MIN_ART, avail - GAP - INDIRECT_MIN)) : Math.min(MAX_ART, Math.round(avail * 0.92))
@@ -446,29 +357,19 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
     return () => ro.disconnect()
   }, [])
 
-  /** 卸下（2026-09-11：`unfitAtAt` 改回报 CommandResult——CPU 双向校验下"卸不掉"会带原因） */
   function handleUnfit(rack: RackSlot, index: number): void {
     const r = engine.unfitAtAt(rack, index, effectiveTarget)
     if (r.ok) onToast(tr("ui.FitPage.129"))
     else onToast(cmdText(r) || tr('ui.FitPage.165'), true)
   }
 
-  // ── 装配方案（预设）：保存当前装配 / 套用预设（2026-09-14 船长；入口在「装配目标」栏右侧） ──
-  //    方案按**船型**归口（同型号任意一艘通用），每型最多 FIT_PRESET_MAX 套；
-  //    套用 = 先卸光再装 + 尽力装（缺件/超载逐条报出，见 core `fitPresets.ts`）。
   const [presetOpen, setPresetOpen] = useState(false)
   const [presetRename, setPresetRename] = useState<{ index: number; name: string } | null>(null)
-  /**
-   * **「替换」的两步确认**（船长 2026-09-19：「给方案加个替换按钮，点击后将当前装配覆盖进目标方案，
-   * 覆盖之前需要玩家确认」）——点「替换」进入本状态，行内变成「用当前装配覆盖？覆盖 / 取消」。
-   */
   const [presetReplaceAt, setPresetReplaceAt] = useState<number | null>(null)
-  /** **方案明细行内展开**（船长 2026-09-17：「允许玩家查看装备方案内用了哪些装备」⇒ 行内展开 · 逐位列含空位） */
   const [presetDetailAt, setPresetDetailAt] = useState<number | null>(null)
   const presetDefId = shipDef?.id ?? ''
   const presets = presetDefId.length > 0 ? fitPresetsOf(state, presetDefId) : []
 
-  /** 保存当前装配（满套时把方案列表一并打开，好让玩家先删一套） */
   function handleSavePreset(): void {
     const r = engine.saveFitPresetFor(effectiveTarget)
     if (!r.ok) {
@@ -480,7 +381,6 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
     setPresetOpen(true)
   }
 
-  /** 套用方案（成功后自动关掉浮层；结果小结逐条列出缺件/超载） */
   function handleApplyPreset(index: number): void {
     const r = engine.applyFitPresetAt(effectiveTarget, index)
     if (!r.ok) {
@@ -492,7 +392,6 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
     onToast(r.summary)
   }
 
-  /** 重命名（同名拒绝，原因由 core 给） */
   function handleRenamePreset(): void {
     if (!presetRename) return
     const r = engine.renameFitPresetAt(presetDefId, presetRename.index, presetRename.name)
@@ -504,10 +403,6 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
     setPresetRename(null)
   }
 
-  /**
-   * **用当前装配覆盖这套方案**（替换；已过行内确认）——名称与位置保持原样，只换内容。
-   * 空装配会被 core 拒（提示先装几件）。
-   */
   function handleOverwritePreset(index: number): void {
     const r = engine.overwriteFitPresetAt(effectiveTarget, index)
     setPresetReplaceAt(null)
@@ -515,11 +410,10 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
       onToast(cmdText(r) || tr('ui.FitPage.169'), true)
       return
     }
-    setPresetDetailAt(null) // 内容变了：收起旧明细，下次展开重算
+    setPresetDetailAt(null)
     onToast(tr("ui.FitPage.132"))
   }
 
-  /** 删除方案 */
   function handleDeletePreset(index: number): void {
     const r = engine.deleteFitPresetAt(presetDefId, index)
     if (!r.ok) {
@@ -530,7 +424,6 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
     onToast(tr("ui.FitPage.133"))
   }
 
-  /** 一键卸下全部装备（放回装备库；甲板扩容器一并卸下，超容无人机自动退仓） */
   function handleUnfitAll(): void {
     const r = engine.unfitAllFor(effectiveTarget)
     if (!r.ok) {
@@ -541,23 +434,16 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
     else onToast(tr("ui.FitPage.135"), true)
   }
 
-  // ── 槽位换装浮层（船长 2026-09-05：点槽位 → 浮层选装；覆盖左侧舰船属性） ──
   const [pickBay, setPickBay] = useState<{ rack: RackSlot; index: number } | null>(null)
-  // 换装对比段缓存（每候选一段；打开浮层时按当前装配/库存试算一次）
   const [pickDiffs, setPickDiffs] = useState<Map<string, FitSeg[]> | null>(null)
-  // 浮层内的筛选与搜索（2026-09-11 船长定：「添加装备筛选和搜索功能，参考市场页面的」→
-  // 复刻市场页那套「搜索框 + 分类下拉 + 命中计数」的形态；船长补定：**不要子分类**，只按装备分类，
-  // 且**默认稀有度高的排前面**）。筛选只在浮层内生效，不改候选集本身的算法。
   const [pickKw, setPickKw] = useState('')
   const [pickSlot, setPickSlot] = useState<string>('all')
-  /** 打开/关闭浮层时重置筛选（与市场页切换类型时子分类归零同哲学） */
   const pickQuery = pickKw.trim().toLowerCase()
   function candidatesOf(rack: RackSlot): ModuleDef[] {
     const base = bayModules.filter((m) => isRackModule(m) && rackOf(m) === rack && moduleAllowedOnShip(shipDef, m))
     const hit = (m: ModuleDef): boolean => {
       if (pickSlot !== 'all' && m.slot !== pickSlot) return false
       if (pickQuery.length === 0) return true
-      // 检索口径与物品页 `hitMod` 同源：名称 / 槽位中文名 / 说明文；另加装备 id（便于按唯一键查，约定 §5）
       return (
         m.name.toLowerCase().includes(pickQuery) ||
         m.id.toLowerCase().includes(pickQuery) ||
@@ -565,17 +451,13 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
         (m.description ?? '').toLowerCase().includes(pickQuery)
       )
     }
-    // 默认排序：**稀有度高的排前面**（档位取物品稀有度表 `RARITY_TIER`，键 = 市场商品键 mod-<id>）；
-    // 同档保持原有稳定顺序（`bayModules` 的目录序），避免每次筛选都跳动。
     return base
       .filter(hit)
       .map((m, i) => ({ m, i, tier: rarityTierOf(`mod-${m.id}`) }))
       .sort((a, b) => b.tier - a.tier || a.i - b.i)
       .map((x) => x.m)
   }
-  /** 浮层当前展示的候选（筛选 + 搜索 + 按稀有度排序；浮层关闭时为空数组） */
   const pickShown: ModuleDef[] = pickBay ? candidatesOf(pickBay.rack) : []
-  /** 该槽位可选的全部装备里出现过的装备分类（下拉选项；只列实际存在的槽位） */
   function pickSlotOptions(rack: RackSlot): Array<{ slot: string; label: string; count: number }> {
     const cnt = new Map<string, number>()
     for (const m of bayModules) {
@@ -586,7 +468,6 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
       .map(([slot, count]) => ({ slot, label: slotText(slot), count }))
       .sort((a, b) => a.label.localeCompare(b.label, 'zh-CN'))
   }
-  /** 试算"该位卸旧件→装候选"后的同源合成快照（只读模拟：浅拷贝 fitted 链，不触碰真实状态） */
   function tryFitSpec(
     m: ModuleDef,
     rack: RackSlot,
@@ -608,31 +489,26 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
     return {
       cur: curSpec,
       next: createPlayerSpec(simState, engine.ctx, effectiveTarget),
-      // 2026-09-08：换装对比 CPU 口径同含无人机舱清单占用（清单不变，只反映装配变化）
       cpuNext: fittedCpuUsed(simFitted, engine.ctx, shipDef) + droneCpuUsed(fleet.droneLoad, engine.ctx),
-      // 2026-09-11 协处理器：**装后预算**（装的是协处理器时会变大）——"CPU 剩"两栏各用自己的预算
       cpuTotalNext: cpuBudgetOf(state, engine.ctx, effectiveTarget, simFitted),
     }
   }
   function openPick(rack: RackSlot, index: number): void {
     if (configurationBlock) { onToast(cmdText(configurationBlock), true); return }
-    // 每次打开都从「全部」看起（与市场页切换类型时子分类归零同哲学）
     setPickKw('')
     setPickSlot('all')
     setPickBay({ rack, index })
-    // 2026-09-11 协处理器：预算随件走 —— 对比段的两栏各用自己的预算（装/卸协处理器才显示得对）
     const cpuTotal = cpuBudgetOf(state, engine.ctx, effectiveTarget)
     const segs = new Map<string, FitSeg[]>()
     for (const m of candidatesOf(rack)) {
       const oldId = fitted?.[rack]?.[index] ?? null
       if (oldId === m.id) {
         segs.set(m.id, [])
-        continue // 同件重装无对比意义
+        continue
       }
       const r = tryFitSpec(m, rack, index)
-      // 新旧武器的弹伤倍率/弹种（非武器槽 = null；空位 = 无旧件）
       const oldDef = oldId !== null ? engine.ctx.modules.get(oldId) ?? null : null
-      const isWeaponSlot = WEAPON_SLOTS.has(m.slot) // 三类武器件（高槽）
+      const isWeaponSlot = WEAPON_SLOTS.has(m.slot)
       const weapon = isWeaponSlot
         ? {
             curMult: oldDef?.dmgMult ?? null,
@@ -648,8 +524,6 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
     }
     setPickDiffs(segs)
   }
-  /** 装配/换装（2026-09-11 起走**原子换装**：一次成型、按最终状态校验 CPU ——
-   *  原先的"先卸后装"在 CPU 双向校验下会把「换协处理器」这类最终态合法的换装卡住） */
   function pickModule(m: ModuleDef): void {
     if (!pickBay) return
     const { rack, index } = pickBay
@@ -660,12 +534,6 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
     setPickBay(null)
   }
 
-  /**
-   * **本船特性对隐秘行动装置的标注**（船长 2026-09-16：「侦查舰添加特性，隐秘行动装置所需CPU降低50%，
-   * 且移除推进器失效惩罚」＋四答「甲：特性栏 ＋ 装配页标注」）——只在**本船确有该特性**且**这件是隐秘装置**
-   * 时返回一段尾巴，写清"省了多少"与"推进器不再失效"；其余件、其余船返回空串（一个字不加）。
-   * 数值走 core 的 `cpuUseOf`（装配校验同一函数）⇒ 界面写的数就是引擎算的数。
-   */
   function stealthTraitNote(m: ModuleDef): string {
     if (m.stealthMs === undefined || !shipDef) return ''
     const bits: string[] = []
@@ -676,44 +544,27 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
     return bits.length > 0 ? ` ← ${bits.join(' · ')}` : ''
   }
 
-  /** 空位候选下拉文案：V18.1 收敛件标注"第 N 件衰减"（避免玩家误以为全效线性叠加） */
   function fitOptionLabel(m: ModuleDef): string {
     const base = `${m.name}（×${countModule(state, m.id)} · ${moduleShortEffect(m)}）${stealthTraitNote(m)}`
-    // ⟪文案调整 2026-10-19⟫ 唯一限制与收益递减分开显示，不改叠加算法。
     if (m.unique === true) return tr("ui.FitPage.194", { base })
     if (!fitted) return base
     const st = stackingOf(m)
-    // `flat` = 加算不收敛 ⇒ 不挂"第 N 件衰减"尾注；
-    // ⚠ **2026-09-29 起墨潮电子舱改归 `fleetDecay`（全队折权缺口乘法）** ⇒ 它**会**挂尾注
-    //   （旧 `sum` 组"同舰加和、上限内不打折"已作废——那条不衰减，故当时被排除在外）。
     if (st.group === 'flat') return base
-    // 按属性分别排强弱，双属性件没有统一的“第几件”权重；最终属性预览仍由 core 计算。
     if (st.kind === 'support-damage' || st.kind === 'reload') return base
     const remaining = pickBay ? { ...fitted, [pickBay.rack]: fitted[pickBay.rack].filter((_, i) => i !== pickBay.index) } : fitted
     const n = sameKindCount(remaining, engine.ctx, m)
     if (n === 0) return base
-    // 2026-09-15 隐秘行动装置（`max` 组）：多件**取最长一件**——明说"不叠加"，免得玩家以为能叠到 50 秒
     if (st.group === 'max') return tr(st.kind === 'blink' ? "ui.FitPage.193" : st.kind === 'capture-web' ? "ui.FitPage.195" : "ui.FitPage.139", { base: base, p2: n + 1 })
-    if (st.group === 'curve' || st.group === 'weighted' || st.group === 'fleetDecay') { // 折权加算 / EVE 曲线 / 全队折权缺口乘法同文案：写明第 N 件按权重百分比生效
+    if (st.group === 'curve' || st.group === 'weighted' || st.group === 'fleetDecay') {
       return tr("ui.FitPage.140", { base: base, p2: n + 1, p3: Math.round(stackWeight(n + 1) * 100) })
     }
     return tr("ui.FitPage.141", { base: base, p2: n + 1 })
   }
 
-  // 无人机舱总量（船体 + 已装「甲板扩展」= 清单容量上限；装入入口在低槽组下方无人机舱区——
-  // 2026-09-08 无人机舱大改：只放飞已装入清单，仓库余量不自动出战）
-  // 2026-09-26：求和改用 core 单点 `droneBayTotalM3`（舰队页悬停卡同源，防两处口径漂移）
   const droneBayTotal = droneBayTotalM3(shipDef, fitted, engine.ctx, engine.state.fleet[effectiveTarget]?.plugs)
 
-  /**
-   * **当前（装后）货舱容量**（m³）——core 单点：船体 ×（1 + 货舱扩展件）× 深空物流学 × 货舱管理学 ×（货舰）货舰操作。
-   * 与「货仓」页同源（那边也是逐船调 `cargoCapacityM3Of`）⇒ 装配页读到就是实装后那个数。
-   */
   const holdCapM3 = cargoCapacityM3Of(state, engine.ctx, effectiveTarget)
 
-  // 船体维修装置·运转消耗提示（2026-09-10 船长：消耗的修理组件常被忽略）——
-  // 装了维修装置就列出"每跳吃什么组件、现在有多少"，0 枚直接红字告警；
-  // 无消耗自愈件（异形生体件 repairFree）单列一行：不吃组件、永不停机
   const repairKitRows: { kitId: string; name: string; stock: number; perJumpSecs: number }[] = []
   const freeRepairRows: { name: string; secs: number; armor: number; hull: number }[] = []
   if (fitted) {
@@ -1335,14 +1186,9 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
   )
 }
 
-/* ═══════════════ 弹药档位（2026-09-09 弹药 MK2：出战前选档——装配页按弹族选基础弹/MK2；
-   **取档口径 2026-09-16 船长改判**：开战按"同族取能装得最多的一档"装载、装不满也照装
-   （旧口径「库存不足整族回退基础弹」已作废）；连打/离线同源。未设 = 基础弹；
-   本区显示的"本场预载"走 core `resolveAmmoTier`（与开战装载同一函数）） ═══════════════ */
 
 const AMMO_TYPES: readonly DamageType[] = ['kinetic', 'explosive', 'plasma']
 
-/** 弹药档位区：按真实预载需求显示弹族，不按武器槽位猜弹种。 */
 function AmmoTierSection({
   engine,
   onToast,
@@ -1357,10 +1203,6 @@ function AmmoTierSection({
   const ctx = engine.ctx
   const ship = state.fleet[target]
   const configurationBlock = shipOperationBlockReason(state, ctx, target, 'configure')
-  /**
-   * **本场预载需求**（与引擎开战装载同一函数 `ammoLoadTotals`）——界面要拿它算"这一档够不够装"。
-   * ⚠ 与开战口径同源：同一 `createPlayerSpec` + 同一 `ammoLoadTotals`（技能/装配一变就跟着变）。
-   */
   const spec = ship ? createPlayerSpec(state, ctx, target) : null
   const totals = spec ? ammoLoadTotals(spec, ctx.balance.battle, state) : {}
   const rows = AMMO_TYPES.map((type) => {
@@ -1371,10 +1213,6 @@ function AmmoTierSection({
     const baseName = base?.name ?? DMG_LABEL[type]
     if (tiers.length < 2) return null
     const pref = ship?.ammoPref?.[type]
-    /**
-     * **本场实际会装哪一档**（船长 2026-09-16「甲」口径：同族取"能装得最多"的那一档）——
-     * 走 core 的 `resolveAmmoTier`（**与开战预载同一函数** ⇒ 界面显示 = 实战结果，不各写一套）。
-     */
     const eff = resolveAmmoTier(state, ctx, target, type, need)
     const effName = ctx.items.get(eff.id)?.name ?? eff.id
     const noneLeft = eff.can <= 0 && need > 0
@@ -1448,54 +1286,17 @@ function AmmoTierSection({
   )
 }
 
-/* ═══════════════ 舰船插件槽（2026-09-26 船长令：只读 · 无卸下 · 无替换） ═══════════════ */
 
-/**
- * **舰船插件槽区**（**只读**）。
- *
- * 船长原话（照抄）：「**舰船插件是一种类似装备的东西，同样装备在舰船上，但是不可拆卸，不可替换。
- * 装有插件的舰船无法放入舰船仓库。**」
- *
- * 三条界面口径：
- * - **没有卸下按钮、没有浮层选装**——"不可拆"是 core 侧的结构性保证（`plugs.ts` 里连 `removePlug`
- *   都不存在）；界面这一块只负责**读数**，不给任何"点了能改"的错觉；
- * - 槽位上限与已装清单走 core 单点 `plugInfoOf`（= `plugSlotsOf` ＋ `plugModulesOf`），界面不自己数；
- * - 无普通插件槽且无战损时不显示；战损只占展示格，不进入普通安装数。
- *
- * 满槽时在标题行右侧给一句提示（玩家想知道"还能不能再装"）；未满也报「已装 N/M」。
- *
- * ⚠ **2026-09-26 玩家报障**：「**而且所有舰船的舰船插件都是同一个**」——真因就是这里原先读的是
- * `state.shipId`（**主控船**）而不是本页的**目标船** ⇒ 从舰船页点别的船进装配台时，插件槽整块显示的
- * 是主控船那一套（所有船看起来装的是同一批插件）。现随其它区块一起收 `target`（= `effectiveTarget`）。
- */
 function PluginSlotsSection({ engine, target }: { engine: PageProps['engine']; target: string }) {
   const state = engine.state
   const ctx = engine.ctx
   const { slots, installed } = plugInfoOf(state, ctx, target)
   const damage = cleanShipDamage(state.fleet[target]?.damagePlugs)
-  /**
-   * **装入入口**（**2026-09-27 船长报障**：「**找不到舰船插件安装的入口（装配处无法装入）**」）：
-   * 09-26 那批把这一区做成**只读**、并把装入动作推给"装备库"，而装备库那条入口**从来没做**
-   * （全仓 desktop 侧零个 `installPlug` 调用点）⇒ 插件造得出来却装不上。
-   * 现按船长指定的位置补在这里：**空槽可点** ⇒ 弹层列出装备库里**有货、未装**的插件 ⇒
-   * 选一件**二次确认**（写明装上拆不下来）⇒ `installPlug`（core 单点，六道校验都在）。
-   * 已装的格子仍只读（不给卸下/替换）。
-   */
   const [picking, setPicking] = useState(false)
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
-  /** 上一步成功后的简短反馈（技能 Confirmation Messages：成功不要静默；失败走 err） */
   const [note, setNote] = useState<string | null>(null)
-  /**
-   * **拆船回收**（**2026-09-27 船长令**：「**在舰船插件处加入一个回收按钮，点击后警告玩家，想要回收插件需要
-   * 将舰船拆解回收，确认后弹出二次警告，告诉玩家当前舰船能回收多少材料并且无法回收蓝图（回收材料占比为
-   * 制造材料的50%）。回收后，当前舰船的装备全部拆卸入库，将舰船转化成材料，舰船插件也入库。**」）。
-   *
-   * `scrapStep`：0 = 关 · 1 = 第一次警告（要回收插件就得拆整艘船）· 2 = 二次警告（列材料 ＋ 蓝图书不返还）。
-   * 两次警告里的数字都取 `shipScrapPreviewOf`（与真正发放**同一份算术**，界面不自己算 50%）。
-   */
   const [scrapStep, setScrapStep] = useState<0 | 1 | 2>(0)
-  /** Esc 关闭弹层（技能 Focus States：键盘可达；与 Handbook 的 Esc 口径一致） */
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key !== 'Escape') return
@@ -1509,7 +1310,6 @@ function PluginSlotsSection({ engine, target }: { engine: PageProps['engine']; t
   const configurationBlock = shipOperationBlockReason(state, ctx, target, 'configure')
   if (slots <= 0 && !damage) return null
   const full = slots > 0 && installed.length >= slots
-  /** 普通同型仍可重复；扩槽插件候选与核心按同类型限一件。 */
   const pickable = [...ctx.modules.values()].filter(
     (d) => d.slot === 'plug' && (state.moduleBay[d.id] ?? 0) > 0 && !plugSlotExpansionBlockedOf(state, ctx, target, d),
   )
@@ -1706,9 +1506,7 @@ function PluginSlotsSection({ engine, target }: { engine: PageProps['engine']; t
   )
 }
 
-/* ═══════════════ 无人机舱（2026-09-08 无人机舱大改：低槽下方；容量条 + 一型一卡 ×N + 全部卸下 + 装入弹层） ═══════════════ */
 
-/** 无人机舱区：只放飞已装入清单；装入/卸下经 adjustDroneLoadAt（舱容 + CPU 预占校验） */
 function DroneBaySection({
   engine,
   onToast,
@@ -1725,9 +1523,8 @@ function DroneBaySection({
   const fitted = entry?.fitted
   const load = entry?.droneLoad ?? {}
   const configurationBlock = shipOperationBlockReason(state, ctx, target, 'configure')
-  // 舱上限 = 船体 droneBayM3 + 已装甲板扩展（rack 高槽件）
   const cap = droneBayTotalM3(shipDef, fitted, ctx, entry?.plugs)
-  if (cap <= 0 && Object.keys(load).length === 0) return null // 无舱不显示（与机舱平衡表一致）
+  if (cap <= 0 && Object.keys(load).length === 0) return null
   const droneTypes = [...ctx.items.values()].filter((d) => d.kind === 'drone')
   const usedM3 = droneLoadM3(load, ctx)
   const droneCpu = droneCpuUsed(load, ctx)
@@ -1736,10 +1533,9 @@ function DroneBaySection({
   const [selId, setSelId] = useState<string | null>(null)
   const [selN, setSelN] = useState(1)
   const fittedCpu = fitted ? fittedCpuUsed(fitted, ctx, fleetDefOf(state, ctx, target)) : 0
-  // 2026-09-11 协处理器：预算含扩容（与 core `adjustDroneLoad` 同源，界面不会"能装/装不上"打架）
   const cpuTotal = cpuBudgetOf(state, ctx, target)
-  const cpuLeftRaw = cpuTotal - fittedCpu - droneCpu // 显示用：允许为负（超载时让玩家看见差多少）
-  const cpuLeft = Math.max(0, cpuLeftRaw) // 钳制用：决定"还能装几架"
+  const cpuLeftRaw = cpuTotal - fittedCpu - droneCpu
+  const cpuLeft = Math.max(0, cpuLeftRaw)
 
   function adj(id: string, delta: number): void {
     const r = engine.adjustDroneLoadAt(id, delta, target)
@@ -1748,7 +1544,6 @@ function DroneBaySection({
   function clearAll(): void {
     for (const [id, n] of Object.entries(load)) adj(id, -n)
   }
-  /** 某型还能装几架（仓库 × 舱余 × CPU 余 的最小值） */
   function maxOf(droneId: string): number {
     const d = ctx.items.get(droneId)
     if (!d) return 0
@@ -1765,11 +1560,6 @@ function DroneBaySection({
       const def = ctx.items.get(id)
       return { id, n, def }
     })
-  /**
-   * **机群缺额**（船长 2026-09-20：战斗结束会立刻按本场出发编制自动补足机群，货仓优先、其次仓库）——
-   * 走到"还缺"这一步就说明**货仓与物品仓库都没有存货**了，门槛会拦住重复清剿；
-   * 判据走 core 单点 `autoLoopDroneShortfall`（与 `autoLoopReopenBlockReason` 同一把尺），界面不自算。
-   */
   const droneShort = autoLoopDroneShortfall(state, target)
 
   return (

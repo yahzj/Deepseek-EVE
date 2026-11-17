@@ -1,13 +1,3 @@
-/**
- * **场景音频挂载点**（2026-11-02 追加批）——App 顶层调用一次：
- *
- * - 每帧把「引擎状态 + 战场是否上屏」解析成场景（`scene.ts`），**只在场景变化时**切 BGM/环境；
- * - 装一次生命周期：页面隐藏/最小化暂停 BGM 与环境音、恢复时继续；偏好变更即时调音量；
- * - 首次用户手势后重试被自动播放策略拒绝的 BGM。
- *
- * 放在 App 的 hook 区（无早退分支之后？必须在所有早退之前——App 里它在 `battleOnStage` 定义之后、
- * 后续 effect 之前，且不依赖任何条件返回值）。
- */
 import { useEffect, useRef } from 'react'
 import type { GameState } from '@whale/core'
 import { resolveSfxScene, sceneFlagsFromState } from './scene'
@@ -25,8 +15,6 @@ function installLifecycle(): void {
     if (lifecycleInstalled || typeof document === 'undefined') return
     lifecycleInstalled = true
     installMusicGestureRetry()
-    // 网页首次手势前底噪未建元素（见 gestureGate.ts），BGM 那条由 installMusicGestureRetry 恢复，
-    // 底噪在本层补一次同样的手势恢复；桌面 file:// 不受影响（resumeAmbient 幂等）。
     const onGesture = (): void => {
       document.removeEventListener('pointerdown', onGesture, true)
       document.removeEventListener('keydown', onGesture, true)
@@ -48,7 +36,6 @@ function installLifecycle(): void {
       refreshAmbientVolume()
     })
   } catch {
-    /* 非浏览器环境忽略 */
   }
 }
 
@@ -59,14 +46,8 @@ export function useSceneAudio({ state, battleOnStage }: { state: GameState; batt
     const scene = resolveSfxScene(sceneFlagsFromState(state, battleOnStage))
     if (scene === lastSceneRef.current) return
     lastSceneRef.current = scene
-    // 真实场景交给 sceneSwitch：音效台「场景预演」可强制别的场景声音（只切声音，不动画面）
     reportRealSfxScene(scene)
   })
-  /**
-   * **战斗期间 CRT 降级**（2026-11-12 性能优化）：战场上屏时弹道与爆炸每帧重绘，
-   * 整屏曲面 `backdrop-filter` 会逐帧重算；先撤掉曲面滤镜（扫描线/暗角/黑边照常），
-   * 战场收起或战斗结束自动恢复。
-   */
   useEffect(() => {
     setCrtBusy('battle', battleOnStage)
     return () => setCrtBusy('battle', false)

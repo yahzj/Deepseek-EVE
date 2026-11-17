@@ -22,7 +22,6 @@ export function generatePlanet(def: PlanetDef, saveSeed: number, catalog: Planet
   const seed = hashSeed(`planet:${PLANET_GENERATION_VERSION}:${saveSeed >>> 0}:${def.id}`)
   const rng: RngState = { seed, count: 0 }
   const selected: PlanetTraitDef[] = []
-  // 按稳定编号排序，目录插入顺序不改变已确定的抽签。
   const traits = [...catalog.traits.values()].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
   const choose = (kind: PlanetTraitKind, count: number): void => {
     for (let i = 0; i < count; i++) {

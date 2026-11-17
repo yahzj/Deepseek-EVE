@@ -1,4 +1,3 @@
-/** 信号空间的已审文本ID映射；由tools/signal-space-copy.ts生成。 */
 export const SIGNAL_SPACE_TEXT_IDS: Readonly<Record<string, string>> = {
   "ui.itemSpecs.001": "ui.signalSpace.001",
   "mod.copy.001": "mod.signalSpace.001",

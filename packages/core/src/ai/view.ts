@@ -1,4 +1,3 @@
-/** 功能域职责拆分，保持原计算与顺序。 */
 import type { GameState } from '../state'
 import type { SimContext } from '../types'
 import { aiEfficiency, aiServicingUpgradeMult } from './cores'
@@ -9,28 +8,21 @@ import { scaledReturnMs } from '../trips'
 import { travelLegMs } from '../travel'
 import { salvagerCyclesOf } from '../salvaging'
 
-/** AI 任务进度视图（2026-09-08 船长：AI 展示与主控同款——阶段 + 进度 + 剩余；顶部活动栏维持小图标）。
- * 与 advanceAiMining/Salvage/Standby 同一套公式（同源不漂移）。percent=null 表示无进度概念（驻留等）。 */
 export interface AiTaskView {
   kind: 'mining' | 'salvage' | 'standby' | string
   phase: string
-  /** 阶段文案（与主控行同款：返航卸货/出航/采掘中/打捞中/前往 X 掩护巡逻/驻留中…）
-   *  ⚠ **⟪文案调整 2026-10-02⟫ 批②**：界面**只许读 `labelId`**（按当前语言渲染）；`label` 是中文原串（甲案照写，供工具与回落用）。 */
   label: string
-  /** 阶段文案的 l10n id（`packages/data/src/l10n/table.ts`；界面走 `tr(labelId)`） */
   labelId?: string
   percent: number | null
   remainingMs: number | null
 }
 
-/** 单个 AI 任务的进度视图（主控同款口径；无任务/未知 kind 返回 null） */
 export function aiTaskView(state: GameState, ctx: SimContext, shipId: string): AiTaskView | null {
   const assignment = state.aiAssignments[shipId]
   if (!assignment) return null
   const task = assignment.task
   const eff = aiEfficiency(state, ctx, assignment.coreType)
   const accMs = (): number => (task as { phaseAccMs?: number }).phaseAccMs ?? 0
-  // 腿长口径（卷B2⑥ 与主控一致）：出航腿按效率拉长；返航腿只按货仓占比缩放、不 ÷效率
   const leg = (base: number, effScaled: boolean): { real: number; remain: number; percent: number } => {
     const real = Math.max(1, Math.round(effScaled ? base / eff : base))
     const remain = Math.max(0, real - accMs())
@@ -58,7 +50,6 @@ export function aiTaskView(state: GameState, ctx: SimContext, shipId: string): A
     if (!params)
       return { kind: 'mining', phase: task.phase, label: '采掘中', labelId: 'ui.aiProgress.004', percent: null, remainingMs: null }
     const servLv = Math.min(5, state.skills.trained['ai-servicing'] ?? 0)
-    // 2026-09-27 船长令（R4/R5 上位技能批）：副船统合整备学走单点 aiServicingUpgradeMult（与副船整备学乘算）
     const cycleReal = Math.max(1, Math.ceil((params.cycleMs * (1 - 0.03 * servLv) * aiServicingUpgradeMult(state)) / eff))
     const acc = task.cycleAccMs ?? 0
     return {

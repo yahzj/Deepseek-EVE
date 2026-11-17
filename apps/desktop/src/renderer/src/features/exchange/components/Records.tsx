@@ -1,12 +1,3 @@
-/**
- * 底部二级窗口：我的委托 / 历史成交 / 分红流水（固定高、内部滚动）。
- *
- * 一级页不滚红线：这一块是页面里唯一"整页常驻的第二窗口"，用固定高度 + 内部滚动，
- * 加载更多由滚动完成，不做分页（原型数据量 < 200 条）。
- *
- * 委托页签交给 MyOrders：回合制下要把本回合排队的预操作与已成交/未成交/已撤单放在
- * 同一张表里管理（含逐笔与批量撤单），而快照里的 `snap.orders` 只含活跃单。
- */
 import { useState } from 'react'
 import type { ExchangeClient, ExchangeSnapshot, OrderSource, TradeSource } from '../client'
 import type { ToastFn } from '../../../pages/common'

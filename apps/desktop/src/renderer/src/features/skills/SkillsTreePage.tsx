@@ -3,30 +3,6 @@ import { SkillTreeCanvas } from './SkillTreeCanvas'
 import { SkillDetailModal } from './SkillDetailModal'
 import { SkillLicenseActions } from './SkillLicenseActions'
 import type { Status } from './types'
-/**
- * **技能页（科技树 · 正式页 · 2026-09-22 船长令）**：
- * 「**没问题了，可以将技能科技树替换掉原先的技能目录。**」⇒ 本页从"调试可见的试作页"升为
- * 导航「技能」的正式页；旧版技能目录（`pages/SkillsPage.tsx`）退役删除，其中「训练队列」面板与
- * `SkillDescText` 搬进 `pages/skillShared.tsx` 继续用。
- *
- * **2026-09-20 船长令（试作页起点）**：「**现有页面先保留，新的页面暂时只有调试模式可见（导航栏多出一个技能测试入口）**」。
- *
- * ---
- *
- * **第二版（2026-09-22 船长令 · 参考图 `QQ图片20260922133622.png` 的样式语言）**：
- * - 「**1乙**：将同类效果的技能做成上下级关系」⇒ **真前置**（`SkillDef.prereq`，≥Lv1，`enqueueSkill` 校验）；
- * - 「**2**：将现有的技能再进行细分」＋「**做一个导航用于切换不同类型的技能书**」⇒ **技能书导航**
- *   （7 大类 → 该大类内的技能书，另有「全部」档；**按技能条数多的靠前**）；每本书一张小图；
- * - 「**3乙**」节点 = 图标 ＋ **全名（换行、最多两行）** ＋ `Lv x/5`（**短名先不采用**，船长令）；
- * - 「**4甲**」沿用仓内既有 **5 态色**（满级金 / 在练亮蓝 / 已排队淡蓝 / 已练淡绿 / 未学暗灰）＋ 在练加小角标；
- * - 「**5乙**」未解锁的节点**仍显示真图标、只压暗**（不画参考图那种 ▽ 占位）；
- * - 「**技能不用强行并列同一列。可以按照rank将部分单个技能放在后面（只是没有连线）**」⇒ **垂直位置由 rank
- *   决定**；有前置关系的按连线自上而下生长、占本层靠前位置；**没有连线关系的单个技能按 rank 落在本层靠后、
- *   一个线头都不画**；父与子同 rank 时画一条**层内横向短连线**。
- *
- * ⚠ 视觉红线：**六边形与连线一律 SVG 线稿**（`viewBox` ＋ 细描边 ＋ `currentColor`），**不用 CSS 拼形状**；
- * 筛选控件走既有家族（一级大类 `.app-tasktab` / 二级技能书 `.app-subtab`）。
- */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   MAX_SKILL_LEVEL,
@@ -41,7 +17,6 @@ import type { SkillDef, SkillPrereqGap } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { setSessionPick, sessionPick, useSessionScroll } from '../../ui/sessionView'
 import { QueueBlock, SkillDescText } from './skillShared'
-/** 图标/列表切换：与手册·物品页·货仓页**同一实现**（`ui/itemView.tsx` 是全仓唯一那套） */
 import { ItemViewBar, useItemView } from '../../ui/itemView'
 import { plainSkillDesc } from './text'
 import { layoutBook } from './layout'
@@ -52,11 +27,6 @@ import type { PageProps } from '../../pages/common'
 import { cmdText, tr } from '../../i18n/locale'
 import { fmtDuration } from '../../i18n/fmt'
 
-/**
- * **六颗状态标签**（＝ 图例兼筛选器；`[状态 class, 文案 id]`——文案 id **复用既有那六条，一字未改**）。
- * 顺序 = 船长 2026-09-27 原话里的顺序（已满级 · 训练中 · 已排队 · 已练 · 未学 · 未解锁）。
- * 图例与"筛完为空"那句都读这一张表 ⇒ 两处不会各写一份、也就不会漂。
- */
 const STATE_CHIPS = [
   ['is-max', 'ui.SkillTree.004'],
   ['is-training', 'ui.SkillTree.005'],
@@ -71,12 +41,6 @@ export function SkillsTreePage({
   onToast,
   focusGroup,
 }: PageProps & {
-  /**
-   * **外部定位请求**（**2026-09-24 船长令**：「跳到技能页并自动选中工程」）：
-   * 「第一次学习技能」卡片的跳转按钮与那封情报信的「前往」都带 `{ group:'工程', seq }` 进来
-   * ⇒ 切到该大类；指定 branch 时定位技能书，否则清空技能书。搜索和状态筛选一并清空。
-   * `seq` 每次请求 +1 ⇒ 人在技能页时再点一次也能重新落位（同 `taskFocus` / `mapGoto` 的套路）。
-   */
   focusGroup?: { group: string; branch?: string; seq: number } | null
 }) {
   const state = engine.state
@@ -84,58 +48,20 @@ export function SkillsTreePage({
   const skills = engine.skills
   const [openId, setOpenId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
-  /**
-   * **两个平级子页**（**2026-09-30 船长令**：「将技能页的训练队列和技能科技树分做 2 个平级的子页面，
-   * 类似工业里的一样。现在同时存在挤占屏幕太多了」）。
-   *
-   * ⚠ **同日追加令：「技能科技树的子页面前移」** ⇒ 签名顺序 = **技能科技树在前**，
-   * 且**默认也落在它**（"前移"在子页签这套里就是"它当第一页"；首访落在训练队列就白移了）。
-   *
-   * 与工业页 `industry.sec` **同一套口径**（`ui/sessionView.ts` 的会话级记忆）：
-   * 初值 = 会话记忆 > 默认 `'tree'`；`focusGroup` 在 ⇒ 必然 `'tree'`（那次跳转的目的就是
-   * "去技能页练那门技能"，落在队列页看不到它）。
-   */
   const [sec, setSecState] = useState<'queue' | 'tree' | 'boost'>(
     () => (focusGroup != null ? 'tree' : ((sessionPick('skills.sec') as 'queue' | 'tree' | 'boost' | null) ?? 'tree')),
   )
-  /** 切子页 ＝ 写会话记忆（程序化跳转也走它 ⇒ 记的永远是"玩家最后看到的那个子页"） */
   const setSec = (v: 'queue' | 'tree' | 'boost'): void => {
     setSecState(v)
     setSessionPick('skills.sec', v)
   }
-  /**
-   * **图标 / 列表**（**2026-09-23 船长令**：「旧版技能页面的技能目录，合并到现有的技能树页面内，加一个类似
-   * 其他页面图标/列表的切换按钮」＋口径「**玩家默认是技能树，切换列表显示旧目录**，但是搜索栏依旧在标题上，
-   * 不嵌入旧目录。切换按钮就放搜索边上。」）：`icon`＝科技树（默认）、`list`＝旧目录那种分组行；
-   * 两种形态共用页头搜索与页内「大类 / 技能书」导航、共用同一个详情窗与同一套训练动作。
-   */
   const [skillView, setSkillView] = useItemView('skills')
-  /** 「一并加入前置」的回话（补了几项）——就地显示，不另起 toast 机制 */
   const [prereqNote, setPrereqNote] = useState('')
-  /**
-   * **导航：先选大类，再选技能书（`''` = 该大类全部技能书）** —— 两级都做**会话级记忆**
-   * （2026-09-26 船长令「记住玩家上次选择的子页面」＋裁定「**两级都记，但是不记搜索**」）：
-   * 记忆只在本进程内有效（见 `ui/sessionView.ts`），刷新/重开即回到默认。
-   */
   const [groupTab, setGroupTabState] = useState<string>(() => {
     const v = sessionPick('skills.group')
     return v !== null && groups.includes(v) ? v : groups[0] ?? ''
   })
   const [branchTab, setBranchTabState] = useState<string>(() => sessionPick('skills.branch') ?? '')
-  /**
-   * **视图筛选：按状态筛**（**2026-09-27 船长令**：「点节点看说明与训练按钮 / 已满级 / 训练中 /
-   * 已排队 / 已练 / 未学 / 未解锁 / **技能科技树这几个标签允许玩家点击，点击后筛选出对应类型的技能。**」）。
-   *
-   * `''` = 不筛。取值为**状态 class**（`statusOf` 的 `cls`）：`is-max` / `is-training` /
-   * `is-queued` / `is-has` / `is-none` / `is-locked` —— 与节点染色、图例**同一把尺**，
-   * 不另立判据（免得"点标签筛出来的"与"看到的颜色"对不上）。
-   *
-   * ⚠ 三条口径（船长 2026-09-27「按你推荐来」裁定）：
-   * ① **未学 = 前置已满足且 Lv 0**（`is-none`）；`is-locked`（前置没满足）**归「未解锁」那颗**，
-   *    两者互不重叠 —— 一颗答"还差前置"、一颗答"现在就能开练"；
-   * ② 「已练」（`is-has`）**不含满级**（满级有自己那颗）；
-   * ③ 上面的「训练队列」面板**不参与筛选**（它是"正在发生的事"，与筛选无关）。
-   */
   const [stateTab, setStateTab] = useState<string>('')
   const setGroupTab = (v: string): void => {
     setGroupTabState(v)
@@ -145,30 +71,18 @@ export function SkillsTreePage({
     setBranchTabState(v)
     setSessionPick('skills.branch', v)
   }
-  /**
-   * **滚动位置 · 会话级记忆**（只做"主列表那一条"）：
-   * · 目录 Panel 的 `.wui-panel-body` 就是本页主列表的滚动体（`overflow:auto` 在共用件里）
-   *   ⇒ 走 `Panel` 新开的 `bodyRef` 口拿到它（不传 bodyRef 的面板逐像素不变）；
-   * · 图标视图（树画布）自己那支 `.app-skilltree-canvas` 在页面里，直接接。
-   */
   const catalogScrollRef = useRef<HTMLDivElement | null>(null)
   useSessionScroll('skills.catalog.scroll', catalogScrollRef)
   const canvasScrollRef = useRef<HTMLDivElement | null>(null)
   useSessionScroll('skills.canvas.scroll', canvasScrollRef, skillView === 'grid')
-  /**
-   * **外部定位落位**（见 `focusGroup` 的说明）：只认 `seq` 变化 ⇒ 同一次请求不重复覆盖玩家自己的选择；
-   * 组名不在本档技能表里（改名/老数据）时**什么都不做**，不把页面切成空白。
-   */
   useEffect(() => {
     if (!focusGroup) return
     if (!groups.includes(focusGroup.group)) return
-    // 外部跳转不沿用可能遮住目标技能的筛选或详情弹层。
     setGroupTab(focusGroup.group)
     setBranchTab(skills.some(skill => skill.group === focusGroup.group && skill.branch === focusGroup.branch) ? focusGroup.branch ?? '' : '')
     setQuery('')
     setStateTab('')
     setOpenId(null)
-    /** ⚠ 还要**切到树那个子页**（2026-09-30 拆页）：跳转的目的是"去练那门技能"，落在队列页就白跳了 */
     setSec('tree')
   }, [focusGroup?.seq])
   /**
@@ -210,7 +124,6 @@ export function SkillsTreePage({
     plainSkillDesc(s.description).toLowerCase().includes(q)
   const hitN = q.length > 0 ? skills.filter(isHit).length : skills.length
 
-  /** 状态（与正式技能页同一把尺：等级 / 是否在练 / 是否已排队 ＋ 真前置是否满足） */
   const statusOf = (s: SkillDef): Status => {
     const lv = lvOf(s.id)
     const isTraining = view.head !== null && view.head.skillId === s.id
@@ -232,11 +145,6 @@ export function SkillsTreePage({
     return { lv, isTraining, queued, maxed, locked, cls }
   }
 
-  /**
-   * 本大类下的技能书与各书成员。**顺序 = 技能条数多的靠前**（**2026-09-22 船长令**：
-   * 「**然后调整下子类的顺序，技能数量多的窗口优先靠前。**」）；条数相同则按 `SKILL_BRANCHES`
-   * 的登记顺序兜底（稳定、可复现）。这个顺序同时决定「技能书」那一排与「全部」档里各本小图的先后。
-   */
   const booksOf = (group: string): Array<{ branch: string; defs: SkillDef[] }> => {
     const out: Array<{ branch: string; defs: SkillDef[] }> = []
     for (const s of skills) {
@@ -253,17 +161,9 @@ export function SkillsTreePage({
     return out.sort((a, b) => b.defs.length - a.defs.length || declared(a.branch) - declared(b.branch))
   }
 
-  /**
-   * 前置缺口文案（**按等级**：`X Lv2`）——详情窗与列表行共用一份，界面不自己拼判据。
-   * 2026-09-23 船长令「逻辑按等级实现」：等级取自 `SkillPrereqGap.needLevel`（缺省 Lv1）。
-   */
   const prereqTextOf = (gaps: readonly SkillPrereqGap[]): string =>
     tr('ui.SkillTree.018', { p1: gaps.map((g) => `${g.def.name} Lv${g.needLevel}`).join('、') })
 
-  /**
-   * **一并加入前置**（2026-09-23 船长令；裁定甲「详情窗给按钮，点一下补齐」）：
-   * 计划与入队都在 core / engine 侧（`planPrereqChain` → `enqueueSkill`），这里只负责回话。
-   */
   const addPrereqs = (skillId: string): void => {
     const r = engine.enqueuePrereqChain(skillId)
     setPrereqNote(r.ok ? tr('ui.SkillsPage.047', { p1: r.added }) : (r.error ?? ''))
@@ -271,13 +171,6 @@ export function SkillsTreePage({
 
   const books = useMemo(() => booksOf(groupTab), [skills, groupTab])
   const shown = branchTab === '' ? books : books.filter((b) => b.branch === branchTab)
-  /**
-   * **状态筛选的三件套**（判定与前缀都在这里，两种视图共用；见 `stateTab` 头注）：
-   * ① `statePass` —— 这条技能过不过筛（值域 = 状态 class，与 `statusOf` 同一把尺）；
-   * ② `stateCount` —— 每颗标签的计数：**口径与"筛选后能看到的"完全同源**
-   *    （＝当前大类 ＋ 当前技能书里满足该状态的条数）⇒ 标签上的数就是点下去看到的数；
-   * ③ `stateScope` —— 计数的作用域（当前大类 · 当前技能书那一档），与视图范围一致。
-   */
   const stateScope = shown.flatMap((b) => b.defs)
   const statePass = (s: SkillDef): boolean => stateTab === '' || statusOf(s).cls === stateTab
   const stateCount = (cls: string): number => stateScope.filter((s) => statusOf(s).cls === cls).length

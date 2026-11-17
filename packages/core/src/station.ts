@@ -1,9 +1,3 @@
-/**
- * T9 副空间站引擎：建造进度、资源交付（分档施工；2026-09-08 船长定：功能统一在"建成"档后开放——
- * 未建成不视为任何站点，不提供停靠）、"抵达站点星系"挂点（野外工地现场 + 通讯剧本自动触发）。
- * 2026-09-09（船长定）：各档改为**逐档材料单**（tier.bill = 物品×数量，逐项交齐才升档；
- * 建材为精炼矿物与零件，不含原矿）。
- */
 import { addLog, HOME_GALAXY_ID, isSiteBuilt, siteProgress } from './state'
 import type { GameState, StationSiteProgress } from './state'
 import type { CommandResult } from './engine'
@@ -12,35 +6,26 @@ import { cargoOfShip } from './inventory'
 import { peakFirst } from './firstTasks'
 import { deliverDialogueToComms } from './commsDelivery'
 
-/** 该星系的建站点（一个星系至多一个；缺省 = 无建站点） */
 export function stationSiteAtGalaxy(ctx: SimContext, galaxyId: string): StationSiteDef | undefined {
   for (const s of ctx.stations.values()) if (s.galaxyId === galaxyId) return s
   return undefined
 }
 
-/**
- * 该星系是否已有**已建成**副站（2026-09-10 船长定：敌对派系活跃的抽取要把这类星系排除——
- * 玩家的家不再被派系活跃锁定）。口径 = **已建成**（`stage >= tiers.length`）才算；
- * 在建/未开工的工地不算（仍可被派系活跃选中）。
- */
 export function isGalaxyStationBuilt(state: GameState, ctx: SimContext, galaxyId: string): boolean {
   const site = stationSiteAtGalaxy(ctx, galaxyId)
   return site !== undefined && isSiteBuilt(state, site)
 }
 
-/** 档位材料单（越界 = 空表） */
 export function tierBillOf(site: StationSiteDef, tierIndex: number): ReadonlyArray<{ itemId: string; count: number }> {
   const tier = site.tiers[tierIndex]
   return tier ? tier.bill : []
 }
 
-/** 建筑工程学（station-engineering，2026-09-08 船长定）：需求直减 ×(1 − 8%/级)，满级 −40%，最少 1 单位 */
 function engFactor(state: GameState): number {
   const engLv = Math.min(5, state.skills.trained['station-engineering'] ?? 0)
   return 1 - 0.08 * engLv
 }
 
-/** 某档某材料的实际需求（逐档材料单逐项换算） */
 export function billNeedOf(state: GameState, site: StationSiteDef, tierIndex: number, itemId: string): number {
   const bill = tierBillOf(site, tierIndex)
   const item = bill.find((b) => b.itemId === itemId)
@@ -51,7 +36,6 @@ export function billNeedOf(state: GameState, site: StationSiteDef, tierIndex: nu
   const prog = siteProgress(state, site.id)
   if (!credit || prog.stage !== tierIndex) return baseNeed
 
-  // 旧交付记录保持随档；只将本档已移除材料折入需求，不接触仓库或在途货物。
   let value = 0
   for (const [id, unitValue] of Object.entries(credit.previousUnitValues)) {
     if (bill.some(row => row.itemId === id) || !Number.isFinite(unitValue) || unitValue <= 0) continue
@@ -70,29 +54,21 @@ export function billNeedOf(state: GameState, site: StationSiteDef, tierIndex: nu
   return baseNeed
 }
 
-/** 某档建材总需求（材料单各项合计；兼容旧调用口径） */
 export function tierNeedOf(state: GameState, site: StationSiteDef, tierIndex: number): number {
   let total = 0
   for (const item of tierBillOf(site, tierIndex)) total += billNeedOf(state, site, tierIndex, item.itemId)
   return total
 }
 
-/** 当前档某材料已缴 */
 export function billDeliveredOf(prog: StationSiteProgress, site: StationSiteDef, tierIndex: number, itemId: string): number {
   if (!tierBillOf(site, tierIndex).some((b) => b.itemId === itemId)) return 0
   return prog.delivered[itemId] ?? 0
 }
 
-/** 当前档某材料还差多少（不在材料单 = 0） */
 export function billRemainingOf(state: GameState, site: StationSiteDef, tierIndex: number, itemId: string): number {
   return Math.max(0, billNeedOf(state, site, tierIndex, itemId) - billDeliveredOf(siteProgress(state, site.id), site, tierIndex, itemId))
 }
 
-/** 玩家是否在该建站点"工地现场"（可提交建材，2026-09-06 紧急修复——玩家反馈无法提交）：
- * - 停靠该站（仅已建成的副站可停靠，2026-09-08 起未建成不视为站点）；
- * - 野外停留于站点所在星系（掩护巡逻/作业/交付航线到场即工地现场——未建成时现场即可交付，
- *   不需要停靠；建成前「返航空间站」只去已建成站/母港）；
- * 母港特例：站点若设在母港星系，停靠母港即可（保留历史口径）。 */
 export function playerAtSite(state: GameState, site: StationSiteDef): boolean {
   if (state.awayGalaxy === null) {
     return state.dockedSite === site.id || (state.dockedSite === null && site.galaxyId === HOME_GALAXY_ID)
@@ -100,7 +76,6 @@ export function playerAtSite(state: GameState, site: StationSiteDef): boolean {
   return state.awayGalaxy === site.galaxyId
 }
 
-/** 当前档整体还差多少单位（逐项剩余求和；0 = 本档已满，等待推进结算） */
 export function tierRemaining(state: GameState, site: StationSiteDef): number {
   const prog = siteProgress(state, site.id)
   if (prog.stage >= site.tiers.length) return 0
@@ -111,7 +86,6 @@ export function tierRemaining(state: GameState, site: StationSiteDef): number {
   return total
 }
 
-/** 当前档材料单的只读视图（UI/日志/交付循环共用；含工程学换算后的逐项需求与剩余） */
 export interface StationBillRow {
   itemId: string
   itemName: string
@@ -136,14 +110,12 @@ export function stationBillView(state: GameState, ctx: SimContext, site: Station
   return rows
 }
 
-/** 当前档材料单文案（如「钛钢合金×5000 / 重钨合金×1000」） */
 export function stationBillText(state: GameState, ctx: SimContext, site: StationSiteDef): string {
   return stationBillView(state, ctx, site)
     .map((r) => `${r.itemName}×${r.need.toLocaleString('zh-CN')}`)
     .join('、')
 }
 
-/** 当前档是否已满（逐项全部交齐） */
 export function tierFulfilled(state: GameState, site: StationSiteDef): boolean {
   const prog = siteProgress(state, site.id)
   if (prog.stage >= site.tiers.length) return true
@@ -153,7 +125,6 @@ export function tierFulfilled(state: GameState, site: StationSiteDef): boolean {
   return true
 }
 
-/** 内部：当前档已满 → 升档（delivered 清空重计；返回是否升档） */
 function advanceTierIfFull(state: GameState, ctx: SimContext, site: StationSiteDef, prog: StationSiteProgress): void {
   let guard = 0
   while (prog.stage < site.tiers.length && guard++ < 6 && tierFulfilled(state, site)) {
@@ -161,26 +132,12 @@ function advanceTierIfFull(state: GameState, ctx: SimContext, site: StationSiteD
     prog.stage += 1
     prog.delivered = {}
     if (prog.stage >= site.tiers.length) {
-      /**
-       * **里程碑「副空间站」的计数点**（成就系统第二批 · 船长 2026-09-20）。
-       * 记的是**已建成并入网的站数**（本处是全仓唯一的"升到满档"分支）——
-       * 按**峰值**记（`peakFirst`）：站建成后不会退回，且老档已有建成站的也照旧自愈
-       * （判据是 `stage >= tiers.length`，与 `isAtHomeLike` 同一把尺）。
-       */
       let built = 0
       for (const s of ctx.stations.values()) {
         const p = state.stationSites[s.id]
         if (p && p.stage >= s.tiers.length) built += 1
       }
       peakFirst(state, 'sitesBuilt', built)
-      /**
-       * **首座空间站建成 ⇒ 跃迁燃料链解锁**（**2026-09-29 船长令**：「需要玩家建设第一个空间站后
-       * 才解锁相关内容。第一个空间站的通讯内添加燃料相关内容」）。
-       *
-       * 这里只在"**刚跨过 1 座**"那一刻写一条**系统日志**做提示（解锁本身是**实时判据**
-       * `builtStationCount >= 1`，不落盘标志位 ⇒ 老档/多站档天然一致、零迁移）；
-       * 详细说明写在**该站的并网通报剧本**里（`dialogues.ts` 的 `dlg-*-done` 燃料段）。
-       */
       if (built === 1) {
         addLog(
           state,
@@ -209,12 +166,6 @@ function advanceTierIfFull(state: GameState, ctx: SimContext, site: StationSiteD
   }
 }
 
-/**
- * 玩家指令：在目标副站提交资源（只收**当前档材料单**上的物品；默认从物品仓库 + 驾驶船货仓扣取）。
- * 前置：舰船停靠在该站点（母港/别处仓库无法"跨航区施工"）。
- * 2026-09-08（交付航线 v2）：opts.cargoOnly = true 时只从驾驶船货仓扣（到点清空本趟装载，
- * 不触碰仓库——物理载货模型用；其余校验/推进/日志同口径）。
- */
 export function deliverStationResources(
   state: GameState,
   ctx: SimContext,
@@ -231,7 +182,7 @@ export function deliverStationResources(
   let prog = state.stationSites[siteId]
   if (!prog) {
     prog = { stage: 0, delivered: {} }
-    state.stationSites[siteId] = prog // 落库，避免只改临时默认对象
+    state.stationSites[siteId] = prog
   }
   if (prog.stage >= site.tiers.length) {
     return {
@@ -241,7 +192,6 @@ export function deliverStationResources(
       errorParams: { p1: site.name },
     }
   }
-  // 旧档/旧口径残留：已交材料恰好满足当前档 → 自动结算推进（最多顺推 6 档防御环）
   advanceTierIfFull(state, ctx, site, prog)
   if (prog.stage >= site.tiers.length) {
     return {
@@ -264,7 +214,6 @@ export function deliverStationResources(
   if (!Number.isFinite(want) || want <= 0) {
     return { ok: false, error: '提交数量必须是正整数。', errorId: 'core.station.004' }
   }
-  // 前置：在工地现场（停靠该站或野外停留于站点星系——母港仓库无法"跨航区施工"，但船在现场即可卸料）
   if (!playerAtSite(state, site)) {
     const g = ctx.galaxies.get(site.galaxyId)?.name ?? site.galaxyId
     return {
@@ -284,7 +233,6 @@ export function deliverStationResources(
   }
 
   let took = 0
-  // 1) 物品仓库（cargoOnly 模式跳过：到点只清本趟装载，不补扣仓库）
   if (!cargoOnly) {
     const ware = state.warehouse.items
     const fromWare = Math.min(need, ware[itemId] ?? 0)
@@ -294,7 +242,6 @@ export function deliverStationResources(
       took += fromWare
     }
   }
-  // 2) 驾驶船货仓
   if (took < need) {
     const cargo = cargoOfShip(state, state.shipId)
     const fromCargo = Math.min(need - took, cargo[itemId] ?? 0)
@@ -332,12 +279,6 @@ export function deliverStationResources(
   return { ok: true }
 }
 
-/**
- * 抵达挂点（历史调用方：悬赏胜利停留/扫描完成停留——2026-09-06 起两处均改为自动返航，
- * 本挂点仅由旧路径/历史代码触发；新到站入口 = 掩护巡逻到位 noteStationSiteAt + 手动返航）。
- * 2026-09-08（船长定）：未建成建站点不视为任何站点——星系内有**已建成**副站才停靠，
- * 否则一律作为工地现场野外停留；通讯挂起仅对未建成且介绍剧本未读生效。
- */
 export function onArriveAtGalaxy(state: GameState, ctx: SimContext, galaxyId: string): void {
   const galaxyName = ctx.galaxies.get(galaxyId)?.name ?? galaxyId
   const site = [...ctx.stations.values()].find((s) => s.galaxyId === galaxyId)
@@ -349,34 +290,26 @@ export function onArriveAtGalaxy(state: GameState, ctx: SimContext, galaxyId: st
     state.awayGalaxy = galaxyId
     addLog(state, 'fleet', `抵达「${galaxyName}」——协会的建站工地就在这里。`, 'core.station.011', { p1: galaxyName })
   }
-  // 通讯：未建成 + 介绍剧本未读 → 自动挂起一次
   if (site && !isSiteBuilt(state, site) && site.introDialogueId && !state.dialogueSeen[site.introDialogueId]) {
     state.pendingDialogue = site.introDialogueId
     deliverDialogueToComms(state, ctx, site.introDialogueId)
   }
 }
 
-/** 通讯播放登记（UI 播放时调用）：逐句镜像进事件日志 + 标记已读 + 清待播 */
 export function playDialogue(state: GameState, scriptId: string, ctx: SimContext, lines: readonly { speaker: string; text: string }[]): void {
   for (const line of lines) {
     addLog(state, 'info', `[通讯] ${line.speaker}：${line.text}`, 'core.station.012', { p1: line.speaker, p2: line.text })
   }
   state.dialogueSeen[scriptId] = true
   if (state.pendingDialogue === scriptId) state.pendingDialogue = null
-  // 2026-09-11 通讯系统：剧本同时进收件箱（幂等）——通讯页 = 玩家侧全部 NPC 通信记录
   deliverDialogueToComms(state, ctx, scriptId)
 }
 
-/**
- * 2026-09-06 轻量到位挂点（掩护巡逻即时驻留到建站星系时调用；悬赏胜利/扫描完成已不再停留，
- * 建站叙事入口改由这里承接）：星系有未建成建站点且介绍剧本未读 → 挂起待播通讯。
- * 驻留不自动停靠（工地/副站停靠仍走手动「返航空间站」）。
- */
 export function noteStationSiteAt(state: GameState, ctx: SimContext, galaxyId: string): void {
   const site = [...ctx.stations.values()].find((s) => s.galaxyId === galaxyId)
   if (!site) return
   const prog = siteProgress(state, site.id)
-  if (prog.stage >= site.tiers.length) return // 已建成：停靠走「返航空间站」，无需介绍
+  if (prog.stage >= site.tiers.length) return
   if (site.introDialogueId && !state.dialogueSeen[site.introDialogueId]) {
     state.pendingDialogue = site.introDialogueId
     deliverDialogueToComms(state, ctx, site.introDialogueId)

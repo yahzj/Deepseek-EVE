@@ -101,7 +101,6 @@ function extract(state: GameState, ctx: SimContext): boolean {
   return wormholeConfirmExtraction(state, ctx, plan).ok
 }
 
-/** 只对已抵达且出口已知的守卫预估，独立采样不能读取实际未来随机序列。 */
 export function wormholeGuardRiskPreview(state: GameState, ctx: SimContext): { available: boolean; wins: number; samples: number; safe: boolean } {
   if (state.departure?.kind === 'wormhole') return { available: false, wins: 0, samples: 0, safe: false }
   const run = state.wormhole.run
@@ -118,7 +117,6 @@ export function wormholeGuardRiskPreview(state: GameState, ctx: SimContext): { a
   return { available: true, wins, samples: 3, safe: wins >= 2 }
 }
 
-/** 测试与自动共用；只从已扫描投影选路，旧玩法从不调用此策略。 */
 export function wormholeRunExpeditionPolicy(
   initial: GameState, ctx: SimContext,
   opts?: { maxDepth?: number; policy?: 'deep' | 'recovery'; checkpoint?: (state: GameState) => GameState },
@@ -152,7 +150,6 @@ export function wormholeRunExpeditionPolicy(
         if (state.wormhole.run && (state.wormhole.run.bossCleared ?? 0) === state.wormhole.run.depth) out.layers.push(snapshot(state, ctx, 'guard-after'))
         continue
       }
-      // 已知情报不指向未揭露的真实地点；事件库存只在到达后读。
       loadGround(state, ctx)
       const grid = run.grid!
       const here = gridCellAt(grid, grid.pos)!

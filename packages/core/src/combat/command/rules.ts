@@ -32,7 +32,6 @@ export interface CommandBudgetView {
   errorId?: string
   errorParams?: Record<string, number | string>
 }
-/** 无资源写入；各玩法预检和界面共用，同型实例逐艘计费。 */
 export function commandBudgetOf(state: GameState, ctx: SimContext, shipIds: readonly string[], special = false): CommandBudgetView {
   const result: CommandBudgetView = { ok: false, cost: shipIds.reduce((sum, id) => sum + shipCommandCostOf(fleetDefOf(state, ctx, id)), 0),
     capacity: commandCapacityOf(state), maxShips: combatShipLimit(special), standing: standingOf(state, DSI_FACTION_ID) }

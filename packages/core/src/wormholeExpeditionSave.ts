@@ -31,7 +31,6 @@ export function cleanWormholeEventInstance(raw: unknown): WormholeEventInstance 
   }
 }
 
-/** 随档账不反推新奖励/新地图；未知规则留标记，不能退回旧入口。 */
 export function cleanWormholeExpeditionRun(raw: unknown): Partial<WormholeRunState> {
   const r = record(raw)
   if (r.expeditionRules === undefined) return {}

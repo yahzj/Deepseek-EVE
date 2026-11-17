@@ -32,7 +32,6 @@ export function clampStellarView(view: StellarMapView): StellarMapView {
   if (zoom === STELLAR_ZOOM_MIN) return { zoom, pan: { x: 0, y: 0 } }
   const width = STELLAR_MAP_WIDTH / zoom
   const height = STELLAR_MAP_HEIGHT / zoom
-  // 放大后保留半个视口的边缘余量，最外侧天体也能定位到中央。
   const marginX = Math.min(width / 2, (STELLAR_MAP_WIDTH - width) / 2)
   const marginY = Math.min(height / 2, (STELLAR_MAP_HEIGHT - height) / 2)
   const maxX = (STELLAR_MAP_WIDTH - width) / 2 + marginX

@@ -1,17 +1,4 @@
-/**
- * **舰船忙态标签 · 单点**（2026-09-27 建 · 三号 verify）
- *
- * 为什么单列：忙态文案原先在**两处各写一份裸中文**（`activity.shipBusyLabel` 与
- * `wormhole.shipActivityBusy`/`shipBusyForWormhole`）——两处**刻意重复**是为了避开
- * `state → wormhole → activity` 的循环依赖（见 `wormhole.ts` 那段注释），但代价是：
- * ① 文案要改得改两处；② **英文界面下这些标签直接漏中文**（它们经货仓页徽标 / 进洞拒因上屏）。
- * ⇒ 本文件只承担"**档位 → 文案 + id**"，依赖极轻（不 import 任何业务模块）⇒ 两处都能安全引用、不成环。
- *
- * 口径：文案在 `packages/data/src/l10n/table.ts` 的 `core.busy.*`（zh + en）；本文件的
- * `BUSY_TEXT` 是**中文兜底**（工具、老路径与"查不到 id"时用），与 `CommandResult.error` 同款加法式口径。
- */
 
-/** 忙态档位（键名即语义；新增档位时**必须同时**在 BUSY_TEXT 与 l10n 表补条目） */
 export type BusyLabelId =
   | 'planetDelivery'
   | 'wormhole'
@@ -32,7 +19,6 @@ export type BusyLabelId =
   | 'expBack'
   | 'refine'
   | 'manufacture'
-  /** 实验室（2026-10-01 接入活动栏）：主控亲自运转那一条线占主控 */
   | 'lab'
   | 'deliver'
   | 'unload'
@@ -46,7 +32,6 @@ export type BusyLabelId =
   | 'aiExpCombat'
   | 'aiExpBack'
 
-/** 档位 → l10n id（唯一表 `core.busy.*`） */
 export const BUSY_LABEL_ID: Readonly<Record<BusyLabelId, string>> = {
   planetDelivery: 'core.busy.031',
   wormhole: 'core.busy.001',
@@ -67,7 +52,6 @@ export const BUSY_LABEL_ID: Readonly<Record<BusyLabelId, string>> = {
   expBack: 'core.busy.016',
   refine: 'core.busy.017',
   manufacture: 'core.busy.018',
-  /** ⚠ 序号排在表尾（30）：本档是 2026-10-01 补的，id **一经使用不复用、不改名**（见约定 §十一之三） */
   lab: 'core.busy.030',
   deliver: 'core.busy.019',
   unload: 'core.busy.020',
@@ -82,7 +66,6 @@ export const BUSY_LABEL_ID: Readonly<Record<BusyLabelId, string>> = {
   aiExpBack: 'core.busy.029',
 }
 
-/** 档位 → 中文兜底文案（`patrolTo` 带 `{p1}`＝目标星系名） */
 export const BUSY_TEXT: Readonly<Record<BusyLabelId, string>> = {
   planetDelivery: '星球物资运输中',
   wormhole: '虫洞探索中',
@@ -117,20 +100,12 @@ export const BUSY_TEXT: Readonly<Record<BusyLabelId, string>> = {
   aiExpBack: 'AI 远征·返航中',
 }
 
-/** 忙态（文案 + id + 可选参数）；与 `CommandResult` 同款加法式字段，渲染层用 `cmdText()` 直接消费 */
 export interface BusyLabel {
-  /** 中文原串（照写；`patrolTo` 的 `{p1}` 已就地代入） */
   error: string
-  /** 档位 id（界面按当前语言渲染） */
   errorId: string
-  /** 插值参数（`patrolTo` 传 `{ p1: 目标星系名 }`） */
   errorParams?: Readonly<Record<string, string | number>>
 }
 
-/**
- * 造一个忙态标签。
- * `params` 里给了 `p1` 时，中文兜底也会把 `{p1}` 就地代入（与界面渲染口径一致）。
- */
 export function busyLabel(id: BusyLabelId, params?: Readonly<Record<string, string | number>>): BusyLabel {
   const raw = BUSY_TEXT[id]
   const text = params ? raw.replace(/\{(\w+)\}/g, (m, k: string) => (k in params ? String(params[k]) : m)) : raw
