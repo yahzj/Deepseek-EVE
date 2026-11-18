@@ -21,6 +21,7 @@ import { tr, useL10n } from '../i18n/locale'
 import { SFX_CATEGORIES, SFX_CATEGORY_NAME_ID } from '../game/audio/cues'
 import { useSfxPrefs } from '../game/audio/prefs'
 import { SfxConsole } from './SfxConsole'
+import { FeedbackDialog } from './FeedbackDialog'
 import { BUILD, BUILD_FORM } from '../game/buildInfo'
 import type { GameEngine } from '../game/engine'
 import { CloudSavePanel } from '../features/cloud/CloudSavePanel'
@@ -249,6 +250,8 @@ export function SettingsPanel({
   const [crt, setCrt] = useState<CrtEffect>(() => readCrtEffect())
   /** 「许可与授权」全文弹窗（2026-11-02 船长令：设置最下方一枚按钮 ⇒ 完整授权书） */
   const [licenseOpen, setLicenseOpen] = useState(false)
+  /** 反馈弹窗（2026-11-18：描述 + 粘贴截图 → 服务器代发 GitHub Issue） */
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
   const sfx = useSfxPrefs()
   const [sfxConsoleOpen, setSfxConsoleOpen] = useState(false)
   const [theme, setTheme, effectiveTheme] = useTheme()
@@ -815,6 +818,9 @@ export function SettingsPanel({
         <div className="app-settings-foot">
           <span className="app-dim">{t('ui.App.022')}</span>
           <span className="app-settings-btns">
+            <button className="app-btn is-small" onClick={() => setFeedbackOpen(true)}>
+              {t('ui.feedback.001')}
+            </button>
             <button className="app-btn is-small" onClick={() => setLicenseOpen(true)}>
               {t('ui.App.181')}
             </button>
@@ -848,6 +854,7 @@ export function SettingsPanel({
        * 点击遮罩先 `stopPropagation`，否则会顺带把设置面板一起关掉。
        */}
       {licenseOpen ? <LicenseModal onClose={() => setLicenseOpen(false)} /> : null}
+      {feedbackOpen ? <FeedbackDialog onClose={() => setFeedbackOpen(false)} /> : null}
     </div>
   )
 }
