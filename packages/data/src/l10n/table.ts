@@ -7978,7 +7978,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ui.feedback.004': { zh: '提交', en: '', enDeferred: true },
   'ui.feedback.005': { zh: '关闭', en: '', enDeferred: true },
   'ui.feedback.006': { zh: '提交中…', en: '', enDeferred: true },
-  'ui.feedback.007': { zh: '已收到，谢谢！可以在 GitHub Issues 里跟进处理进度：', en: '', enDeferred: true },
+  'ui.feedback.007': { zh: '已收到，谢谢！问题已记录，我们会尽快处理。', en: '', enDeferred: true },
   'ui.feedback.008': { zh: '提交失败：{p1}', en: '', enDeferred: true },
   'ui.feedback.009': { zh: '请先写下反馈内容。', en: '', enDeferred: true },
   'ui.feedback.010': { zh: '图片只支持 PNG / JPEG / GIF / WebP。', en: '', enDeferred: true },

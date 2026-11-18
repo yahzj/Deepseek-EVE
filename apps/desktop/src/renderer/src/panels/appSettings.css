@@ -336,9 +336,3 @@
   font-weight: 600;
   color: rgb(var(--wui-text));
 }
-
-.app-feedback-link {
-  color: rgb(var(--wui-accent));
-  font-size: var(--wui-fs-2xsd);
-  overflow-wrap: anywhere;
-}

@@ -32,7 +32,7 @@ export function FeedbackDialog({ onClose }: { onClose: () => void }) {
   const [shots, setShots] = useState<Shot[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [doneUrl, setDoneUrl] = useState('')
+  const [done, setDone] = useState(false)
   const seq = useRef(0)
 
   async function addFiles(files: File[]): Promise<void> {
@@ -104,11 +104,11 @@ export function FeedbackDialog({ onClose }: { onClose: () => void }) {
           },
         }),
       })
-      const payload = (await res.json().catch(() => ({}))) as { ok?: boolean; url?: string; message?: string }
+      const payload = (await res.json().catch(() => ({}))) as { ok?: boolean; message?: string }
       if (!res.ok || payload.ok !== true) {
         throw new Error(payload.message ?? `HTTP ${res.status}`)
       }
-      setDoneUrl(payload.url ?? '')
+      setDone(true)
     } catch (err) {
       setError(tr('ui.feedback.008', { p1: err instanceof Error ? err.message : String(err) }))
     } finally {
@@ -131,12 +131,9 @@ export function FeedbackDialog({ onClose }: { onClose: () => void }) {
           </button>
         </div>
         <div className="app-modal-body">
-          {doneUrl !== '' ? (
+          {done ? (
             <div className="app-feedback-done">
               <div className="app-feedback-done-title">{tr('ui.feedback.007')}</div>
-              <a className="app-feedback-link" href={doneUrl} target="_blank" rel="noreferrer">
-                {doneUrl}
-              </a>
             </div>
           ) : (
             <>

@@ -12,7 +12,7 @@
 | `ui.feedback.004` | 提交 | 待本地化 |
 | `ui.feedback.005` | 关闭 | 待本地化 |
 | `ui.feedback.006` | 提交中… | 待本地化 |
-| `ui.feedback.007` | 已收到，谢谢！可以在 GitHub Issues 里跟进处理进度： | 待本地化 |
+| `ui.feedback.007` | 已收到，谢谢！问题已记录，我们会尽快处理。 | 待本地化 |
 | `ui.feedback.008` | 提交失败：{p1} | 待本地化 |
 | `ui.feedback.009` | 请先写下反馈内容。 | 待本地化 |
 | `ui.feedback.010` | 图片只支持 PNG / JPEG / GIF / WebP。 | 待本地化 |
