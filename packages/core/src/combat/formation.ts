@@ -18,7 +18,6 @@ export interface EnemyFormationPlan {
 type FormationCacheEntry = { catalog?: ReadonlyMap<string, FoeShipDef>; card: AnomalyDef }
 const memo = new WeakMap<AnomalyDef, WeakMap<BattleBalance, Map<string, FormationCacheEntry>>>()
 
-/** 旧编成先建档，再复制完整单位；新人数不再参与补偿或整波DPS折扣。 */
 export function enemyFormationCard(
   baseline: AnomalyDef,
   bal: BattleBalance,
@@ -127,7 +126,6 @@ export function enemyFormationCard(
   return card
 }
 
-/** 指定旗舰末波增加完整电子战舰，不重新定价旧单舰或放大原能力节拍。 */
 export function rangeEwFlagshipCard(card: AnomalyDef, bal: BattleBalance): AnomalyDef {
   const shipId = card.id === 'ink-flagship' ? 'foe-h-ink-jammer'
     : card.id === 'gravekeeper-flagship' ? 'foe-d-invasion-bastion' : undefined

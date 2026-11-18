@@ -22,7 +22,6 @@ export function triggerAcidBurst(
   const range = cause === 'attack' ? effect.attackRangeM : effect.deathRangeM
   if (battle.distanceM === undefined || battle.distanceM > range) return false
   const book = battle.acidBursts ?? (battle.acidBursts = {})
-  // 伤害在敌方开火段结算，先记录事件；旧纯状态单位仍立即施加腐蚀。
   book[foe.tag] = { cause, atMs, resolved: !((effect.damage ?? 0) > 0) }
   if (book[foe.tag]!.resolved) battle.alienCorrosion = (battle.alienCorrosion ?? 0) + effect.corrosionPct
   if (cause === 'attack') {
@@ -35,7 +34,6 @@ export function triggerAcidBurst(
 export function applyAlienCorrosion(spec: UnitSpec, pct: number): void {
   const delta = pct - (spec.corrosionAppliedPct ?? 0)
   if (!(delta > 0)) return
-  // 2026-10-09 船长确认：酸液腐蚀只削减装甲抗性。
   const current = spec.resists.armor
   spec.resists.armor = {
     kinetic: Math.max(RESIST_FLOOR, (current?.kinetic ?? 0) - delta),
@@ -51,7 +49,6 @@ export function advanceFoeHatcheries(
   nowMs: number,
 ): void {
   if (battle.ended !== null) return
-  // 同拍无限补损先处理，有限载体随后重读空槽，避免无效扣库存。
   const carriers = foes.filter(foe => foe.foeHatchery).sort((a, b) => Number(b.foeHatchery!.stock === 'unlimited') - Number(a.foeHatchery!.stock === 'unlimited'))
   for (const foe of carriers) {
     const config = foe.foeHatchery
@@ -101,7 +98,6 @@ export function advanceFoeHatcheries(
         if (battle.units[tag]) battle.units[tag]!.weapons[weaponIndex] = 0
       }
     }
-    // 一次周期补齐当时战损，之后等待新战损，不能预积累补损次数。
     delete ledger.nextAtMs
   }
 }
@@ -119,7 +115,6 @@ export function advanceFoeAbilityClocks(battle: BattleState, foes: readonly Unit
   }
 }
 
-/** 只读取当前存活来源，不把加成永久写入舰体规格。 */
 export function foeFleetSpeedMulOf(battle: BattleState, foes: readonly UnitSpec[]): number {
   let bonus = 0
   for (const foe of foes) {

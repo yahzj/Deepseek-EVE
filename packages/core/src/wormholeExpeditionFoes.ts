@@ -17,7 +17,6 @@ import {
 
 export type WormholeExpeditionFoeRole = 'ordinary' | 'elite' | 'guard' | 'patrol' | 'event'
 
-/** 保存派生输入；新趟战斗不向共享 ctx 注册临时卡。 */
 export interface WormholeExpeditionFoeSpec {
   family: WormholeFamily
   depth: number
@@ -26,7 +25,6 @@ export interface WormholeExpeditionFoeSpec {
   guardSupportDisabled?: boolean
 }
 
-/** 数据层可注入未进旧卡的舰级；core 不反向导入 data。 */
 export type WormholeExpeditionFoeContext = SimContext & {
   foeShips?: ReadonlyMap<string, FoeShipDef>
 }
@@ -50,15 +48,12 @@ export interface WormholeExpeditionFoePlan {
   disabledSupport: boolean
   templateId: string
   scale: number
-  /** 未解除支援时的总预算；不是主力之外再附送的预算。 */
   budget: WormholeExpeditionFoeStrength
-  /** 实际会到场的一支，且不把待命备用机当成常驻齐射。 */
   strength: WormholeExpeditionFoeStrength
   pointDefense: {
     threatJudged: number
     unitTags: readonly string[]
   }
-  /** 直接用于 UnitSpec.foeRepairPulse.k，不再读取展示威胁。 */
   repairScale: number
 }
 
@@ -130,7 +125,6 @@ function representativeTemplate(ctx: WormholeExpeditionFoeContext, family: Wormh
     const head = cloneSlot(card.ships![0]!)
     delete head.ship.drones
     delete head.ship.droneReserve
-    // 依据 §16.5：无自修的后勤排在现有自动选靶顺序可先攻击的位置。
     const support: FoeShipSlot = { ship: structuredClone(tender), count: 1, mounts: [] }
     delete support.ship.drones
     delete support.ship.droneReserve
@@ -158,12 +152,10 @@ function sumStrength(specs: readonly UnitSpec[], branch?: FoeSupportBranch, skip
   return { hp, dps, x: Math.sqrt(hp * dps) }
 }
 
-/** 血/名义火力读数沿用真实建档，互斥支援只记一支，备用机只记库存。 */
 export function wormholeExpeditionStrengthOf(card: AnomalyDef, bal: BattleBalance): WormholeExpeditionFoeStrength {
   return sumStrength(rawSpecs(card, bal), undefined, wormholeSkippedBranch(card))
 }
 
-/** 用真实建档反解 dmgMul，兼容单发取整、机炮拆分及既有越线折扣。 */
 function fitDps(card: AnomalyDef, bal: BattleBalance, target: number, branch?: FoeSupportBranch): void {
   const slots = card.ships!.filter((slot) => branch === undefined || slot.enterBranch === branch)
   const starts = slots.map((slot) => ({ dmg: slot.dmgMul ?? 1, anchor: slot.firepowerAnchor }))
@@ -224,15 +216,10 @@ function disableSupport(card: AnomalyDef, family: WormholeFamily, bal: BattleBal
   const afterComp = foeMultiShipCompMul(card)
   if (beforeComp !== afterComp) {
     for (const slot of card.ships!) slot.dmgMul = (slot.dmgMul ?? 1) * beforeComp / afterComp
-    // 判据：删单位还会改变整卡越线折扣；幸存单位保持删除前的真实名义火力。
     fitDps(card, bal, survivingDps)
   }
 }
 
-/**
- * §16.2/16.5：新趟专用独立卡。先分完总预算再解除支援，幸存主力不吃回收的份额。
- * 普通/巡逻/事件固定浅层编成；精英与后层守卫使用已披露的代表机制。
- */
 export function wormholeExpeditionCard(
   ctx: WormholeExpeditionFoeContext,
   family: WormholeFamily,
@@ -245,7 +232,6 @@ export function wormholeExpeditionCard(
   }
   const d = Math.max(1, Math.floor(depth))
   const ordinary = ordinaryTemplate(ctx, family)
-  // 预算按族格前的血/火力比划分，最终加血不被反算抵消。
   const natural = sumStrength(rawSpecs(ordinary, ctx.balance.battle, true), undefined, wormholeSkippedBranch(ordinary), true)
   const ratio = natural.hp / natural.dps
   const baseline = foeHpOfThreat(WORMHOLE_THREAT_BASE, ctx.balance.battle) * WORMHOLE_FOE_BASE_STRENGTH_MUL
@@ -278,10 +264,8 @@ export function wormholeExpeditionCard(
   for (const slot of card.ships!) slot.hpMul = (slot.hpMul ?? 1) * budgetHp / hpNow
   fitDps(card, ctx.balance.battle, budgetDps)
   equalizeSupport(card, ctx.balance.battle)
-  // 支援等量化也会改变整波越线折扣；最终配置再按同一预算求解。
   if (wormholeSkippedBranch(card) !== null) fitDps(card, ctx.balance.battle, budgetDps)
   if (disabledSupport) disableSupport(card, family, ctx.balance.battle)
-  // 依据 §16.2：近防资格按用途/层预告，不由重新定价的展示标签过线。
   const pd = representative && d >= 4
   const threatJudged = pd
     ? ctx.balance.battle.pdThreatFloor
@@ -314,7 +298,6 @@ export function wormholeExpeditionCard(
   }
 }
 
-/** 谜质快照只作用于副本；线性属性尺度、修理与显示威胁在同一出口更新。 */
 export function wormholeExpeditionModifyCard(
   source: WormholeExpeditionFoeCard,
   bal: BattleBalance,
@@ -340,7 +323,6 @@ export function wormholeExpeditionModifyCard(
     if (blindDown > 0) slot.ship.blindDmgMul = Math.max(0, (slot.ship.blindDmgMul ?? 0.3) - blindDown)
   }
   if (mul !== 1) {
-    // 判据：沿用整卡越线折扣，但属性倍率不因跨折扣线而多算一遍。
     fitDps(card, bal, source.expeditionFoe.strength.dps * mul)
     equalizeSupport(card, bal)
     if (wormholeSkippedBranch(card) !== null) fitDps(card, bal, source.expeditionFoe.strength.dps * mul)
@@ -360,7 +342,6 @@ export function wormholeExpeditionModifyCard(
   return card
 }
 
-/** 与公共 createFoeSpecs 使用同一份显式标记，保留既有波次参数。 */
 export function wormholeExpeditionFoeSpecs(
   card: WormholeExpeditionFoeCard,
   bal: BattleBalance,

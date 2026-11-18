@@ -1,4 +1,3 @@
-/** 战斗域职责拆分，保持原计算与顺序。 */
 import { type GameState, addLog } from '../state'
 import type { SimContext } from '../types'
 import type { CommandResult } from '../engine'
@@ -13,7 +12,6 @@ import { weekendClockOf } from '../weekendEvent'
 import { withBattleRangeCheck } from '../battleRangeMemory'
 import { startExpedition } from './launch'
 
-/** 重复清剿开关（落档：重启后自动恢复）；null = 关闭。⚠ **关闭一律放行**；开启过 `autoLoopReopenBlockReason` */
 export function setAutoLoopBounty(state: GameState, ctx: SimContext, anomalyId: string | null): CommandResult {
   if (anomalyId !== null) {
     const block = autoLoopReopenBlockReason(state)
@@ -24,7 +22,7 @@ export function setAutoLoopBounty(state: GameState, ctx: SimContext, anomalyId: 
     state.autoLoopDroneFloor = null
     addLog(state, 'combat', '重复清剿已停止。', 'core.state.008')
   } else {
-    state.autoLoopDroneFloor = null // 重新开环 ⇒ 清掉上一轮的机群前置记账
+    state.autoLoopDroneFloor = null
     const def = ctx.anomalies.get(anomalyId)
     const name = def?.name ?? anomalyId
     addLog(
@@ -38,15 +36,9 @@ export function setAutoLoopBounty(state: GameState, ctx: SimContext, anomalyId: 
   return { ok: true }
 }
 
-/**
- * 重复清剿推进（在线心跳调用；落档开关在重开档后从可出发条件自动恢复）：
- * 忙（远征/采矿/星图扫描/打捞/航行）或冷却中 → 等待；条件不满足 → 停环并记原因。
- * 返回 null = 继续等待/已再出发；否则 = 停止原因。
- */
 export function advanceAutoLoopBounty(state: GameState, ctx: SimContext): string | null {
   const id = state.autoLoopAnomalyId
   if (id === null) return null
-  // 别的作业在跑：等（**判据单点 = `autoLoopWaitLabel`**，与活动栏那行同源）
   if (autoLoopWaitLabel(state) !== null) return null
   const anomaly = ctx.anomalies.get(id)
   if (!anomaly) {
@@ -58,18 +50,16 @@ export function advanceAutoLoopBounty(state: GameState, ctx: SimContext): string
     stopAutoLoopReason(state, block)
     return block
   }
-  if (bountyCooldownRemainingMs(state, id) > 0) return null // 冷却中：等
+  if (bountyCooldownRemainingMs(state, id) > 0) return null
   const fleetShip = state.fleet[state.shipId]
   if (!fleetShip) {
     stopAutoLoopReason(state, '舰队里找不到当前舰船。')
     return '舰队里找不到当前舰船'
   }
-  // 装甲/结构 + 货仓两道门槛（**与入侵「重复出击」共用同一份**，见 `autoLoopPreflight`）
   const lootM3 = anomaly.loot.reduce((sum, row) => {
     const def = ctx.items.get(row.itemId)
     return sum + row.units * (def ? cargoUnitM3(state, def) : 0)
   }, 0)
-  // 出发（内部含声望/冷却/探索/位置全部校验）
   const r = startLoopBattle(state, id, ctx, lootM3)
   if (r.loopBlock) {
     stopAutoLoopReason(state, r.loopBlock.notice)
@@ -83,17 +73,6 @@ export function advanceAutoLoopBounty(state: GameState, ctx: SimContext): string
   return null
 }
 
-/**
- * **循环出发前的两道硬门槛**（装甲/结构 ＋ 货仓）——常驻悬赏的「重复清剿」与入侵的「重复出击」**共用这一份**。
- * 返回 `null` = 通过；否则 **`notice`**（长文案，写日志与在线提示）＋ **`reason`**（短理由，作为函数返回值）。
- * ⚠ 两个字段**都要保留原契约别合并**：既有用例与活动栏都按"返回值 = 短理由"断言
- * （第一版合并成一条 ⇒ `expedition.test.ts` / `t8.test.ts` 三处当场转红）。
- *
- * 口径来源（勿改）：
- * - 耐久（2026-09-08 船长定：装甲或结构 <50% 即自动修补到 60%，为战斗内"结构损失过半自动撤退"留缓冲；
- *   **2026-09-16 船长改判**：改成需要玩家**携带船体维修装置**，消耗的组件类型跟着装置走）；
- * - 货仓（B 甲：无远程入库，回港卸货是玩家的决定；体积按压缩技术折算）。
- */
 export function autoLoopPreflight(
   state: GameState,
   ctx: SimContext,
@@ -139,7 +118,6 @@ export function autoLoopPreflight(
   return null
 }
 
-/** 自动修补与开战同一事务，射程待确认时不提前消耗修理组件。 */
 export interface LoopBattleResult extends CommandResult { loopBlock?: NonNullable<ReturnType<typeof autoLoopPreflight>> }
 
 export function startLoopBattle(state: GameState, cardId: string, ctx: SimContext, lootM3?: number,

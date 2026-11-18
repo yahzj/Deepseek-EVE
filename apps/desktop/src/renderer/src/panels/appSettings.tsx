@@ -18,31 +18,17 @@ import { currentSpaceBg, rerollSpaceBg } from '../ui/spaceBg'
 import type { SpaceBgInfo } from '../ui/spaceBg'
 import type { LayoutKind } from '../ui/AppShell'
 import { tr, useL10n } from '../i18n/locale'
-/** 声音（2026-11-02）：音量偏好 + 本机音效台入口 */
 import { SFX_CATEGORIES, SFX_CATEGORY_NAME_ID } from '../game/audio/cues'
 import { useSfxPrefs } from '../game/audio/prefs'
 import { SfxConsole } from './SfxConsole'
-/** 客户端版本三件套与运行形态（**2026-10-02 船长令**；构建时注入，见 `game/buildInfo.ts`） */
+import { FeedbackDialog } from './FeedbackDialog'
 import { BUILD, BUILD_FORM } from '../game/buildInfo'
 import type { GameEngine } from '../game/engine'
 import { CloudSavePanel } from '../features/cloud/CloudSavePanel'
 import type { SettingsPageId } from '../pages/common'
 import './appSettings.css'
-/**
- * **界面字体**（**2026-11-02 船长令**；2026-11-12 复古档换字后的口径）：
- * · 默认 = 微软雅黑（中文）＋ Oxanium（英文/数字）；
- * · 复古 = 统一只用 Fusion Pixel 12px Mono zh-Hans（中文 + 英文/数字）。
- * 偏好读写/应用收在 `ui/fontChoice.ts`（点选即落盘，下次启动读回）；**启动时应用**在
- * `game/boot.ts` 的 `prebootRenderer()`；`@font-face` 在本文件同目录的 `appSettings.css` 注册，
- * 默认字体栈单点在 `packages/ui/src/index.css`。
- */
 import { FONT_CHOICES, chooseFont, readFontChoice } from '../ui/fontChoice'
 import type { FontChoice } from '../ui/fontChoice'
-/**
- * **CRT 显示器效果**（**2026-11-11 船长令**：「设置加一个 CRT 效果，整体界面像看老式 CRT 显示器那种，
- * 小丑牌那种效果」）：本机偏好、即时生效、不进存档；读写/应用收在 `ui/crtEffect.ts`，
- * 启动时应用在 `game/boot.ts` 的 `prebootRenderer()`，覆层样式在 `styles.css` 的 CRT 一节。
- */
 import { chooseCrtEffect, readCrtEffect } from '../ui/crtEffect'
 import type { CrtEffect } from '../ui/crtEffect'
 /**
@@ -64,10 +50,6 @@ import fusionPixelLicenseText from '../assets/licenses/fusion-pixel-12px-mono-zh
 import oxaniumLicenseText from '../assets/licenses/oxanium-LICENSE.txt?raw'
 import projectLicenseStatement from '../assets/licenses/project-LICENSE-statement.txt?raw'
 import projectLicenseDual from '../assets/licenses/project-LICENSE-dual-licensing.txt?raw'
-/**
- * **界面缩放 / 字号偏好**（2026-11-02 收成单点）：读取、钳制、应用都在 `ui/uiScale.ts`，
- * 启动应用在 `game/boot.ts` 的 `prebootRenderer()`；本面板只负责「面板显示 + 拖动时写一次」。
- */
 import {
   FS_KEY,
   FS_MAX,
@@ -81,7 +63,6 @@ import {
   readZoom,
 } from '../ui/uiScale'
 
-/** 子页 id 与 `pages/common` 的 SettingsPageId 同一口径（账户页 2026-11-05 由「存档」改名并改成登入为主） */
 type SettingsPage = SettingsPageId
 
 const SETTINGS_PAGES: ReadonlyArray<{ id: SettingsPage; labelId: string }> = [
@@ -119,7 +100,6 @@ const OXANIUM_COPYRIGHT =
 const OXANIUM_HOME_URL = 'https://fonts.google.com/specimen/Oxanium'
 const OXANIUM_LICENSE_URL = 'https://scripts.sil.org/OFL'
 
-/** 游戏内时钟（HH:MM，日志前缀用） */
 export function gameClock(gameMs: number): string {
   const totalMin = Math.floor(gameMs / 60_000)
   const h = Math.floor(totalMin / 60)
@@ -127,34 +107,26 @@ export function gameClock(gameMs: number): string {
   return `${h}:${String(m).padStart(2, '0')}`
 }
 
-/* ═══════════════ 日志面板偏好（折叠 + 类型过滤，存 localStorage） ═══════════════ */
 
-/**
- * 日志分类**展示顺序**（2026-09-26 船长令重新分类）：战斗 / 工业 / 舰队 / 打捞四条新线在前，其余沿用。
- * ⚠ `queue` **不进本表**（它已并入 `levelup`；类型里留着只为读老日志，见 `kindOf`）。
- */
 export const LOG_KINDS: readonly LogKind[] = ['combat', 'industry', 'fleet', 'salvage', 'trade', 'levelup', 'event', 'system', 'warn', 'info']
 
-/** 老日志兼容：`queue` 一律按 `levelup`（升级）显示与筛选 */
 export function kindOf(k: LogKind): LogKind {
   return k === 'queue' ? 'levelup' : k
 }
 export const KIND_LABEL: Record<LogKind, string> = {
   get system() { return tr("ui.App.029") },
   get info() { return tr("ui.App.030") },
-  get queue() { return tr("ui.App.027") }, // 老日志兼容（新日志不再写 queue；见 state.LogKind 注释）
+  get queue() { return tr("ui.App.027") },
   get levelup() { return tr("ui.App.031") },
   get warn() { return tr("ui.App.032") },
   get trade() { return tr("ui.App.033") },
   get event() { return tr("ui.App.034") },
-  // 2026-09-26 船长令新增四类
   get combat() { return tr("ui.App.154") },
   get industry() { return tr("ui.App.155") },
   get fleet() { return tr("ui.App.156") },
   get salvage() { return tr("ui.App.157") },
 }
 
-/** 分类语义（T6：与 ui index.css 的 wui-log-* 色值保持同步） */
 export const KIND_DESC: Record<LogKind, string> = {
   get system() { return tr("ui.App.035") },
   get info() { return tr("ui.App.036") },
@@ -163,24 +135,20 @@ export const KIND_DESC: Record<LogKind, string> = {
   get warn() { return tr("ui.App.039") },
   get trade() { return tr("ui.App.040") },
   get event() { return tr("ui.App.041") },
-  // 2026-09-26 船长令新增四类
   get combat() { return tr("ui.App.159") },
   get industry() { return tr("ui.App.160") },
   get fleet() { return tr("ui.App.161") },
   get salvage() { return tr("ui.App.162") },
 }
 
-/** 开关色点（图例）：与 `ui/index.css` 的 `--wui-log-*` 同一批 token（2026-09-22 起不再各写一份色值） */
 export const KIND_DOT: Record<LogKind, string> = {
   system: 'rgb(var(--wui-purple))',
   levelup: 'rgb(var(--wui-log-levelup))',
   warn: 'rgb(var(--wui-log-warn))',
   queue: 'rgb(var(--wui-log-queue))',
   info: 'rgb(var(--wui-log-info))',
-  // 色板里没有 --wui-log-trade（其余六种 log 色都有）⇒ 用既有的「贸易」色调，2026-09-24 由 token 契约抓出
   trade: 'rgb(var(--wui-tone-group-trade))',
   event: 'rgb(var(--wui-log-event))',
-  // 2026-09-26 新增四类的色 token（深/浅两套见 index.css）
   combat: 'rgb(var(--wui-log-combat))',
   industry: 'rgb(var(--wui-log-industry))',
   fleet: 'rgb(var(--wui-log-fleet))',
@@ -189,15 +157,10 @@ export const KIND_DOT: Record<LogKind, string> = {
 
 export const PREFS_KEY = 'whale-idle:log-prefs'
 
-/**
- * **单选取值**（2026-09-26 船长令：「事件日志上方的筛选，玩家点击哪一个筛选就**只显示该筛选的内容**」）
- * —— `'all'` = 全部（默认）。
- */
 export type LogFilter = LogKind | 'all'
 
 export interface LogPrefs {
   collapsed: boolean
-  /** 当前选中的筛选（旧版是"多开关 kinds" ⇒ 读档时迁移成单选，见 `readLogPrefs`） */
   filter: LogFilter
 }
 
@@ -205,14 +168,12 @@ function defaultLogPrefs(): LogPrefs {
   return { collapsed: false, filter: 'all' }
 }
 
-/** 读取本地偏好（容错：坏了就回默认；**兼容旧版多开关** `kinds` ⇒ 迁移成单选） */
 export function readLogPrefs(): LogPrefs {
   const fallback = defaultLogPrefs()
   try {
     const raw = localStorage.getItem(PREFS_KEY)
     if (!raw) return fallback
     const parsed = JSON.parse(raw) as { collapsed?: unknown; filter?: unknown; kinds?: Record<string, boolean> }
-    // 迁移：旧版只有 `kinds`（多开关）⇒ 若恰好只剩一个开着，就沿用那个作为单选；否则回「全部」
     let filter: LogFilter = 'all'
     if (typeof parsed.filter === 'string' && (parsed.filter === 'all' || LOG_KINDS.includes(parsed.filter as LogKind))) {
       filter = parsed.filter as LogFilter
@@ -226,15 +187,7 @@ export function readLogPrefs(): LogPrefs {
   }
 }
 
-/**
- * **界面缩放 / 字号偏好**：读写与应用的单点统一在 `ui/uiScale.ts`（启动时由 `game/boot.ts` 的
- * `prebootRenderer()` 应用，设置面板挂载/拖动时再写一次）。本文件不再自带 `readNum` 与键名常量
- * —— 2026-11-02 之前这里另有一份实现，和启动路径各写各的，正是"字号重启后不生效"的温床。
- */
 
-/** 设置面板（船长 2026-09-05）：界面缩放 = 整窗 zoom；字体大小 = 字号族 CSS 系数 --ui-fs；
- *  宇宙背景（2026-09-10 船长）：铺在界面最底层的无缝星图，可在此换一张；
- *  界面配色（2026-09-22 船长令）：深空/亮白/跟随系统，存本机、即时生效 */
 export function SettingsPanel({
   root,
   onClose: onRequestClose,
@@ -263,34 +216,24 @@ export function SettingsPanel({
   root: RefObject<HTMLDivElement>
   onClose: () => void
   engine: GameEngine
-  /** 2026-09-25 船长令：存档三按钮移入设置 ⇒ 由 App 传入这两个动作 */
   onSave: () => void
   onReset: () => void
   onOpenSaveManager: () => void
-  /** 设置里的「开发者：调试模式」开关（2026-09-25） */
   debugOnState: boolean
   onDebugChange: (on: boolean) => void
-  /** 设置里的「界面布局」开关（2026-09-25 船长令：两套外壳允许在设置内切换） */
   layoutKind: LayoutKind
   onLayoutChange: (k: LayoutKind) => void
-  /** 玩家已点选、但还没重启的布局（null = 没有待应用项）；设置里那个确认弹框据此显示 */
   layoutPending: LayoutKind | null
-  /** 确认重开：写盘 + 存档 + 关游戏（实现在 App 层） */
   onApplyLayoutReload: () => void
-  /** 取消重开：清掉待应用项 */
   onCancelLayout: () => void
-  /** 存档存储状态（2026-09-25 船长令 · 甲/丁）：`paused` = 旧档读不出来、写入已挂起 */
   saveState: 'ok' | 'paused' | 'unavailable'
   storageProbe: SaveStorageProbe | null
-  /** 丁：放行写入（会另起新档） */
   onAllowSave: () => void
-  /** 网页版「本地存档文件」绑定状态（桌面端 ⇒ null；2026-09-25 船长令） */
   saveFileStatus: SaveFileStatus | null
   saveFileBusy: boolean
   onBindSaveFile: () => void
   onReconnectSaveFile: () => void
   onUnbindSaveFile: () => void
-  /** 打开设置时自报一次绑定状态（权限可能被浏览器收回） */
   onRefreshSaveFileStatus: () => void
   initialPage?: SettingsPage
 }) {
@@ -303,55 +246,35 @@ export function SettingsPanel({
   const visibleSettingsPages = SETTINGS_PAGES.filter((page) => page.id !== 'developer' || debugAllowed())
   const [zoom, setZoom] = useState(readZoom)
   const [fs, setFs] = useState(readFontScale)
-  /**
-   * **界面字体**（**2026-11-02 船长令**最终口径）：本机偏好、即时生效、不进存档。
-   * 默认 = 微软雅黑 + Oxanium（英文/数字）；复古 = 统一只用 Fusion Pixel 12px Mono zh-Hans。
-   * 挂载时读一次（`readFontChoice`），切换时写一次（`selectFont` ⇒ `chooseFont` 落盘 + 应用）；
-   * 启动时的应用由 `game/boot.ts` 的 `prebootRenderer()` 统一接线，这里不重复。
-   */
   const [font, setFont] = useState<FontChoice>(() => readFontChoice())
-  /** **CRT 显示器效果**（2026-11-11 船长令）：本机偏好、即时生效、不进存档；挂载时读一次，点选走 chooseCrtEffect */
   const [crt, setCrt] = useState<CrtEffect>(() => readCrtEffect())
   /** 「许可与授权」全文弹窗（2026-11-02 船长令：设置最下方一枚按钮 ⇒ 完整授权书） */
   const [licenseOpen, setLicenseOpen] = useState(false)
-  /** 声音（2026-11-02 船长令）：总音量/静音/分类音量，本机偏好、即时生效、不进存档 */
+  /** 反馈弹窗（2026-11-18：描述 + 粘贴截图 → 服务器代发 GitHub Issue） */
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
   const sfx = useSfxPrefs()
   const [sfxConsoleOpen, setSfxConsoleOpen] = useState(false)
-  /* 界面配色（2026-09-22 船长令「添加几套配色供玩家切换」）：存本机、即时生效、支持跟随系统 */
   const [theme, setTheme, effectiveTheme] = useTheme()
-  /**
-   * **弹药 / 修理组件取用来源**（**2026-09-23 船长令**：「做一个开关，开启时，所有船的弹药和修理组件
-   * 直接从仓库取用。关闭后只从舰队内舰船的货仓取用。」）。
-   * ⚠ 这是**随档**开关（写进 `state` 并落档），不是本机偏好——洞内取料要用它。
-   */
   const [resupply, setResupply] = useState(() => engine.state.resupplyFromWarehouse !== false)
   function toggleResupply(next: boolean): void {
     setResupply(next)
     engine.state.resupplyFromWarehouse = next
     void engine.persist()
   }
-  /** 点选界面字体：先更新面板显示，再走 `ui/fontChoice.ts` 的「落盘 + 即时应用」单点 */
   function selectFont(next: FontChoice): void {
     setFont(next)
     chooseFont(next)
   }
-  /** 点选 CRT 效果：先更新面板显示，再走 `ui/crtEffect.ts` 的「落盘 + 即时应用」单点 */
   function selectCrt(next: CrtEffect): void {
     setCrt(next)
     chooseCrtEffect(next)
   }
 
-  /** 打开设置时自报一次「本地存档文件」绑定状态（浏览器可能已收回权限 ⇒ 界面要如实显示） */
   useEffect(() => {
     onRefreshSaveFileStatus()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-  /** 当前宇宙底图（模块级状态：关闭设置再打开仍是同一张） */
   const [bg, setBg] = useState<SpaceBgInfo | null>(() => currentSpaceBg())
-  /**
-   * **客户端版本行**（**2026-10-02 船长令**「版本号可以落码」）：值与形态由构建时注入，
-   * 这里只负责拼那一行 + 一键复制（复制成功的提示复用 `ui.App.044`，1.8 秒后自己变回来）。
-   */
   const [copiedVersion, setCopiedVersion] = useState(false)
   function clientVersionLine(): string {
     return tr('ui.App.169', {
@@ -366,7 +289,6 @@ export function SettingsPanel({
     try {
       await navigator.clipboard.writeText(text)
     } catch {
-      /** 兜底（与性能 HUD 的「复制报告」同一套：剪贴板 API 不可用时走 execCommand） */
       const ta = document.createElement('textarea')
       ta.value = text
       document.body.appendChild(ta)
@@ -377,11 +299,6 @@ export function SettingsPanel({
     setCopiedVersion(true)
     window.setTimeout(() => setCopiedVersion(false), 1800)
   }
-  /**
-   * 整窗缩放写在 `.app-root` 上；**字号系数 `--ui-fs` 必须落在 `<html>`（`:root`）**——
-   * 2026-11-02 起 `--wui-fs-*` 字阶令牌改成 `calc(Npx * var(--ui-fs, 1))`，变量要在令牌声明处
-   * （`:root`）能解析；写在 `.app-root` 上解析不到，字号滑块会失效。两处写法都收在 `ui/uiScale.ts`。
-   */
   useEffect(() => {
     const el = root.current
     applyFontScale(fs)
@@ -393,7 +310,6 @@ export function SettingsPanel({
       localStorage.setItem(ZOOM_KEY, String(zoom))
       localStorage.setItem(FS_KEY, String(fs))
     } catch {
-      // 忽略
     }
   }
   return (
@@ -902,6 +818,9 @@ export function SettingsPanel({
         <div className="app-settings-foot">
           <span className="app-dim">{t('ui.App.022')}</span>
           <span className="app-settings-btns">
+            <button className="app-btn is-small" onClick={() => setFeedbackOpen(true)}>
+              {t('ui.feedback.001')}
+            </button>
             <button className="app-btn is-small" onClick={() => setLicenseOpen(true)}>
               {t('ui.App.181')}
             </button>
@@ -935,6 +854,7 @@ export function SettingsPanel({
        * 点击遮罩先 `stopPropagation`，否则会顺带把设置面板一起关掉。
        */}
       {licenseOpen ? <LicenseModal onClose={() => setLicenseOpen(false)} /> : null}
+      {feedbackOpen ? <FeedbackDialog onClose={() => setFeedbackOpen(false)} /> : null}
     </div>
   )
 }
@@ -1028,12 +948,7 @@ function LicenseModal({ onClose }: { onClose: () => void }) {
   )
 }
 
-/* ═══════════════ 性能监测（2026-09-08 诊断工具：隐形采集；whale-idle:debug 下顶栏出现 ⏱ 性能 可查看/导出） ═══════════════ */
 
-/**
- * 性能监测下的引擎订阅封装：生产构建中 React <Profiler> 不触发 onRender，
- * 因此在采集激活时用 flushSync 把整树刷新压成同步并实测耗时（正常路径不受影响、仍是异步渲染）。
- */
 export function PerfListener({ engine, force }: { engine: GameEngine; force: () => void }) {
   useEffect(() => {
     return engine.subscribe(() => {
@@ -1050,7 +965,6 @@ export function PerfListener({ engine, force }: { engine: GameEngine; force: () 
   return null
 }
 
-/** 调试悬浮 HUD：当前推进/通知/提交耗时 + 一键复制完整快照 JSON（玩家可按引导导出） */
 export function PerfHud({ onClose }: { onClose: () => void }) {
   const [, bump] = useReducer((n: number) => n + 1, 0)
   const [copied, setCopied] = useState(false)

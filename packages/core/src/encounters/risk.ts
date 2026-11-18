@@ -9,7 +9,6 @@ function finite(value: number, name: string, minimum = 0, exclusive = false): nu
   return value
 }
 
-/** 预览和正式生成共用纯函数，显式0权重有效，不消费随机数。 */
 export function industrialThreatOf(base: number, massKg: number, cargoM3: number, p: IndustrialThreatProfile): IndustrialThreatView {
   finite(base, 'baseThreat', 0, true)
   finite(massKg, 'industrialMassKg')
@@ -28,7 +27,6 @@ export function industrialThreatOf(base: number, massKg: number, cargoM3: number
   return { targetThreat, baseThreat, industrialThreat, cargoThreat }
 }
 
-/** 概率修正与强度参数独立，调货量威胁不会暗改频率。 */
 export function industrialFrequencyOf(massKg: number, combatKg: number, p: IndustrialFrequencyConfig): { industrialMul: number; escortMul: number; multiplier: number } {
   finite(massKg, 'industrialMassKg')
   finite(combatKg, 'combatMassKg')
@@ -46,7 +44,6 @@ export function industrialFrequencyOf(massKg: number, combatKg: number, p: Indus
   return { industrialMul, escortMul, multiplier: industrialMul * escortMul }
 }
 
-/** 调用者必须传正式出勤名单；不从准备队、港内或独立AI补船。 */
 export function industrialFleetSnapshotOf(state: GameState, ctx: SimContext, ids: readonly string[], virtualCargoM3 = 0): IndustrialFleetSnapshot {
   finite(virtualCargoM3, 'virtualCargoM3')
   const result: IndustrialFleetSnapshot = { shipIds: [...new Set(ids)], industrialMassKg: 0, combatMassKg: 0, cargoM3: virtualCargoM3 }
@@ -63,7 +60,6 @@ export function industrialFleetSnapshotOf(state: GameState, ctx: SimContext, ids
   return result
 }
 
-/** 正常常驻目标给地区定标，不把临时窝点、隐藏模板或入侵覆盖当基准。 */
 export function industrialBaseThreatOf(ctx: SimContext, galaxyId: string): number | null {
   const values = [...ctx.anomalies.values()].filter(card => card.galaxyId === galaxyId && !card.hidden && card.region !== 'inv' && !card.id.startsWith('weekend-') && !card.id.startsWith('lair-'))
     .map(card => card.threat).filter(value => Number.isFinite(value) && value > 0).sort((a, b) => a - b)

@@ -87,7 +87,6 @@ function CycleLine({ row, ownerMark, weapon = false }: { row: CycleRow; ownerMar
   </div>
 }
 
-/** 武器弹出列表不参与战场高度分配；装置只消费真实周期，不在页面重算机制。 */
 export function BattleCycles({ weapons, devices }: BattleCyclesProps) {
   const [mode, setMode] = useState<OpenMode>('closed')
   const root = useRef<HTMLDivElement>(null)
@@ -130,7 +129,6 @@ export function BattleCycles({ weapons, devices }: BattleCyclesProps) {
       if (!touch || event.touches.length !== 1) return
       const point = [...event.touches].find(item => item.identifier === touch!.id)
       if (!point) return
-      // 外层旋转后，手指位移还原为逻辑竖轴；不依赖物理屏幕的默认滚动方向。
       const delta = touch.inverse.b * (point.clientX - touch.x) + touch.inverse.d * (point.clientY - touch.y)
       if (Math.abs(delta) < 3) return
       host.scrollTop = touch.top - delta
@@ -174,7 +172,6 @@ export function BattleCycles({ weapons, devices }: BattleCyclesProps) {
     if (!host || !button) return
     const screen = host.closest<HTMLElement>('.app-battle-screen') ?? host.closest<HTMLElement>('.app-root')
     if (!screen) return
-    // offset 尺寸与布局父链均在旋转前逻辑空间中，不读物理视口宽高。
     const topOf = (element: HTMLElement): number => {
       let top = 0
       for (let node: HTMLElement | null = element; node && node !== screen; node = node.offsetParent as HTMLElement | null) top += node.offsetTop

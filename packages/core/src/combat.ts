@@ -1,4 +1,3 @@
-/** 战斗公开兼容出口；域内实现直接引用 combat/ 下的职责文件。 */
 export { type BattleSimulationOptions, type WeaponSrc, type WeaponSpec, type UnitSpec, type FoeOverride } from './combat/model'
 export { BATTLE_STEP_MS, BATTLE_MAX_STEPS } from './combat/constants'
 export { beamPowerFactor, beamPowerVsTargetOf } from './combat/beam'

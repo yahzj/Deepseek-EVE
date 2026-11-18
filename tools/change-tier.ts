@@ -22,7 +22,7 @@ type Tier = 'T0-data' | 'T0-docs' | 'T0-style' | 'T1' | 'T2'
 const RANK: Record<Tier, number> = { 'T0-data': 0, 'T0-docs': 0, 'T0-style': 0, T1: 1, T2: 2 }
 
 // 规则、依赖、检查工具本身改动影响全局，必须走全套
-const T2_FILES = /^(AGENTS\.md|package(?:-lock)?\.json|tsconfig.*\.json|\.gitignore|\.github\/|docs\/development-conventions(?:-changelog)?\.md|docs\/catalog\.md|tools\/(?:change-tier|docs-index|content-check|data-quick-check|l10n-check|ui-rot-check|arch-guard)\.(?:ts|cjs|mjs))/
+const T2_FILES = /^(AGENTS\.md|package(?:-lock)?\.json|tsconfig.*\.json|\.gitignore|\.github\/|docs\/development-conventions(?:-changelog)?\.md|docs\/catalog\.md|tools\/(?:change-tier|docs-index|content-check|data-quick-check|l10n-check|ui-rot-check|arch-guard|crt-guard|loop-channel-check)\.(?:ts|cjs|mjs))/
 const DOC_FILE = /\.(md|mdx|txt)$/i
 const STYLE_FILE = /\.(css|scss|less)$/i
 const STATIC_NUMERIC = /^packages\/data\/src\/static\/(market|items)\.json$/
@@ -80,7 +80,10 @@ const COMMANDS: Record<Tier, string[]> = {
   T1: ['npm run typecheck', 'npm run content:check', 'npm run l10n:check', 'npm run ui:rot-check'],
   T2: ['npm run typecheck', 'npm run content:check', 'npm run l10n:check', 'npm run ui:rot-check', 'npm run arch:guard', 'npm run scope:check'],
 }
-const commands = COMMANDS[tier]
+const commands = [...COMMANDS[tier]]
+if (unique.some((f) => f.startsWith('apps/desktop/src/renderer/src/game/audio/'))) {
+  commands.push('npm run audio:check', 'npm run audio:loop-check')
+}
 const skipped = ['typecheck', 'content:check', 'l10n:check', 'ui:rot-check', 'arch:guard', 'scope:check', 'test -w @whale/core']
   .filter((s) => !commands.some((c) => c.includes(s)))
 

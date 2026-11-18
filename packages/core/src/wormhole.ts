@@ -1,21 +1,8 @@
-/**
- * **终局玩法「虫洞」（搜打撤底层）· 数值与入场口径单点**（2026-09-12 设计稿 · 2026-09-13 开工）。
- *
- * 设计稿：`docs/design/wormhole-extraction-endgame-20260912.md`（§4 质量压塌与回合预算 · §5 背包与战利品）。
- *
- * ✅ **可见性（船长 2026-09-14 解除不可见）**：虫洞**已对玩家开放** —— 玩家入口 = 星图「扫描虫洞」选项卡
- * （常显 · 协会声望 40 解锁）；数据侧的 `unreleased` 闸门与施工期的调试入口同批撤除。
- * 施工期铁律「完成前对玩家不可见」（2026-09-13）**作废留档**，原文见
- * `docs/design/wormhole-extraction-endgame-20260912.md` §「可见性与拍板」。
- *
- * 本模块**只放纯逻辑**（数值换算与校验），不持状态、不碰存档；副本状态机在 C 批另开。
- */
 import { ceilFinalQuantity } from './quantity'
 import { beginDeparture, departureOrigin } from './departure'
 import { bumpFirst, peakFirst } from './firstTasks'
 import { type BusyLabel } from './busyLabels'
 import type { GameState, BattleState, WormholeArchetype, WormholeFamily } from './state'
-// 甲案（本地化批二 · 2026-09-27）：闸门拒因改走结构化（`{ error, errorId, errorParams }`）
 import type { CommandResult, CoreBlockReason } from './engine'
 import { addLog, haltActivityForSwitch, haulingHalt, miningHalt, salvageHalt, wormholeScanHalt } from './state'
 import {
@@ -52,18 +39,14 @@ import {
   isExitCell,
   isNebulaFogged,
   markExitKnown,
-  // 2026-09-20 船长：第 2 个及以后的信标揭示一处谜质信号（可穿透星云）
   revealNearestMatterCell,
   signalOfCell,
   wormholeMakeGrid,
   wormholePathInterceptAt,
 } from './wormholeGrid'
 import type { HexCell, WormholeGridCell, WormholeGridState, WormholePlace, WormholeSignal } from './wormholeGrid'
-// F3c 谜质：装置效果一律从货仓**现算**（扫描半径 / 额外驱散星云走这里；回合类走 `wormholeSyncMatterTurns`）
 import { wormholeMatterBuffs } from './wormholeMatter'
-// 围剿者（2026-09-23 新机制）：扣回合后掷刷怪——`wormholeSpawn` 只吃 state，不反向依赖本文件
 import { wormholeSpawnAfterTurns } from './wormholeSpawn'
-// 谜质科技树（2026-09-19 船长批）：「最大回合数」永久加成在**入场裁定**时并入回合预算
 import { matterTechWhBuffs } from './matterTech'
 import { wormholePatrolAfterAction, wormholePatrolLayerReset } from './wormholePatrol'
 import { commandBudgetOf } from './combat/command/rules'
@@ -72,69 +55,37 @@ import { wormholeStepCost, WORMHOLE_ADMISSION_TEXT, wormholeAdmission } from './
 export { WORMHOLE_MASS_BY_TIER, WORMHOLE_MAX_TIER, WORMHOLE_TOTAL_MASS_CAP, WORMHOLE_MAX_SHIPS, wormholeShipAllowed, wormholeShipMass, WORMHOLE_TURN_BASE, WORMHOLE_TURN_MASS_COEF, wormholeTurnBudget, WORMHOLE_TURN_PER_NODE, WORMHOLE_TURN_PER_EXTRA_WAVE, WORMHOLE_TURN_PER_PICKUP, wormholeStepCost, WORMHOLE_ADMISSION_TEXT, wormholeAdmission } from './wormhole/fleet/admission'
 export type { WormholeAdmission, WormholeAdmissionCode } from './wormhole/fleet/admission'
 
-/* ═══════════ 四、背包格模型（船长 2026-09-12 定：每格 500 m³） ═══════════ */
 
-/** 一格体积（m³）——船长原提案值 */
 export { WORMHOLE_SLOT_M3 } from './wormholeHold'
 
-/**
- * **背包格数 = floor(货仓合计 ÷ 500)**；货仓口径走 `cargoCapacityM3Of`（**含技能与货舱件加成**，船长已确认）。
- * `cargoTotalM3` 由调用方按编队逐船求和（施工期由 B 批的舰队入口算，C 批接副本状态）。
- */
 export function wormholeBagSlots(cargoTotalM3: number): number {
   return Math.max(0, Math.floor(cargoTotalM3 / WORMHOLE_SLOT_M3))
 }
 
-/** 某种物品**每格最多能装多少单位**（格上限 ÷ 单位体积；体积非正 ⇒ 0，防除零） */
 export function wormholeUnitsPerSlot(unitM3: number): number {
   if (!(unitM3 > 0)) return 0
   return Math.floor(WORMHOLE_SLOT_M3 / unitM3)
 }
 
-/**
- * **该物品要吃掉几格**（每格只装一种物品）：
- * `ceil(单位数 ÷ 每格上限)` —— 虚空母矿 500 个/格、虚空晶 50,000 个/格（同理可算）。
- * 返回 `Infinity` 表示"该物品无法入包"（单位体积非法）。
- */
 export function wormholeSlotsUsed(unitM3: number, units: number): number {
   const per = wormholeUnitsPerSlot(unitM3)
   if (per <= 0) return Number.POSITIVE_INFINITY
   return Math.ceil(Math.max(0, units) / per)
 }
 
-/** 背包一格的内容（每格只装一种物品 ⇒ 一个 `BagSlot` 就是一条同物品的记录） */
 export interface WormholeBagSlot {
   itemId: string
   units: number
 }
 
-/**
- * **超格时丢弃货物**（船长 2026-09-13 裁定：「**扣背包格，不足时丢弃货物**」）。
- *
- * 场景 = 有船被打沉 ⇒ 编队合计货仓变小 ⇒ 背包格上限跟着变小（格数由"剩余编队货仓 ÷ 500"现算）
- * ⇒ 手上这包货可能装不下了。口径两条：
- * - **整格丢**（一格 = 一条同物品记录；留半格不释放格位）；无法识别的物品视为最贵（最后才丢）；
- * - **每格价值从低到高丢**（价值 = 单位数 × 基础卖价）⇒ 保住贵的（与既有"优先回收高价值"同一取舍方向）。
- *
- * 返回丢掉的那些格（调用方写日志用），原数组不改（返回新数组）。
- */
 export function wormholeTrimBag(
   ctx: SimContext,
   bag: readonly WormholeBagSlot[],
   capacity: number,
-  /**
-   * **价值解析器**（可选）：返回 `{ tier, iskPerSlot }`——`tier` 小的先丢，同档再比每格价值。
-   * 缺省 = 基础卖价（老行为）。**洞内实战必须传**（`wormholeBattle` 传
-   * `wormholeSalvage.wormholeLootTierOf + wormholeLootValueIsk`）：残骸 `baseSellPriceIsk = 1`，
-   * 只看基础价会把**稀有残骸第一个丢掉**（2026-09-13 F3c 抓到的真问题）。
-   * ⚠ 为什么用参数而不是在这里 import 打捞模块：`wormhole.ts` 被 `state.ts` 顶层引用，
-   * 而打捞模块经 `salvaging` 回头吃 `state` ⇒ 直接 import 会成环（D/F 批两次踩过的坑）。
-   */
   valueOf?: (slot: WormholeBagSlot) => { tier: number; iskPerSlot: number },
 ): { bag: WormholeBagSlot[]; dropped: WormholeBagSlot[] } {
   const slots = bag.map((s) => ({ ...s }))
   const perOf = (itemId: string): number => wormholeUnitsPerSlot(ctx.items.get(itemId)?.unitM3 ?? 0)
-  /** 每格价值（判"先丢谁"用的就是它；认不出的物品 = 无穷大 ⇒ 最后丢） */
   const valuePerSlot = (s: WormholeBagSlot): { tier: number; isk: number } => {
     const def = ctx.items.get(s.itemId)
     const per = perOf(s.itemId)
@@ -155,7 +106,6 @@ export function wormholeTrimBag(
     }
     const slot = slots[pick]!
     const per = perOf(slot.itemId)
-    // **一次丢一格**（不是整条记录连锅端）：满格记录按"每格单位数"扣，零头记录整条丢
     const cut = per > 0 ? Math.min(slot.units, per) : slot.units
     slot.units -= cut
     const same = dropped.find((d) => d.itemId === slot.itemId)
@@ -166,7 +116,6 @@ export function wormholeTrimBag(
   return { bag: slots, dropped }
 }
 
-/** 背包占格汇总：`N / M` 与是否溢出（溢出不入包——拾取前由界面/引擎拦） */
 export function wormholeBagUsage(
   ctx: SimContext,
   slots: readonly WormholeBagSlot[],
@@ -176,124 +125,44 @@ export function wormholeBagUsage(
   for (const s of slots) {
     const def = ctx.items.get(s.itemId)
     const per = wormholeUnitsPerSlot(def?.unitM3 ?? 0)
-    used += per > 0 ? Math.ceil(s.units / per) : capacity + 1 // 无法识别的物品 ⇒ 视为溢出（不静默吞）
+    used += per > 0 ? Math.ceil(s.units / per) : capacity + 1
   }
   return { used, capacity, overflow: used > capacity }
 }
 
-/* ═══════════ 五、副本状态机（C 批：层 / 节点 / 回合 / 撤离） ═══════════ */
 
-/**
- * 副本相位：`idle` 未在洞里（含未出发与已结算）· `inside` 洞里（节点推进中）·
- * `extracting` **已发起撤离、等待收口**（⚠ 2026-09-15 起**不再有撤离战**；**2026-09-27 起渲染层在
- * 点撤离那一刻就当拍走完收口** ⇒ 正常路径见不到这个相位，它留给老档／离线／临时离开那条路，
- * 见 `wormholeExtract`。相位值本身保留——存档里存过它，老档要能读，且撤离战已判负的老档还要走收口）。
- *
- * ⚠ 两条硬约束（船长裁定）：
- * 1. **战斗没结束不能撤** ⇒ `wormholeExtract` 在 `run.battle` 非空时被拒；
- * 2. **回合耗尽只能撤离** ⇒ `turnsLeft` 不够走完当前节点时，推进被拒（`mustExtract`）。
- */
 export type WormholePhase = 'idle' | 'inside' | 'extracting'
 
-/** 层内节点类型（B 批最小集：战斗 / 拾取 / 事件；BOSS 门与撤离战在 D/F 批细化） */
 export type WormholeNodeKind = 'combat' | 'pickup' | 'event'
 
 export interface WormholeNode {
   kind: WormholeNodeKind
-  /** 战斗：本节点波数（≥1；每多一波 +1 回合） */
   waves: number
-  /** 拾取：本节点可捡几堆（每堆 +1 回合） */
   pickups: number
-  /** 事件：事件池键（内容由后续批次接 `travelEvents` 风格的表） */
   eventKey?: string
-  /** 本节点打完/点完要花几回合（= `wormholeStepCost`） */
   cost: number
-  /** 拾取点里**还没捡走**的堆（E 批：捡一堆就从这里删一条；非拾取节点不写该字段） */
   piles?: WormholePile[]
 }
 
 export interface WormholeRunState {
-  /** 仅显式整备入口写入；旧趟缺省不迁移、不改供货。 */
   supplyVersion?: 1
-  /** 缺省是旧探索；未知新规则保留标记，拒绝动作而不降级。 */
   expeditionRules?: number
   supplies?: import('./wormholeSupplies').WormholeSupplyLedger
-  /** 新趟本层地点待装载实物；深入时旧层清除，不随队移动。 */
   groundCargo?: Record<string, import('./wormholeHold').WormholeHoldState>
-  /** 新趟采用纯货舰规则；缺省为已在途旧趟，舰船实例查询保留旧规格直到结算。 */
   haulerFittingVersion?: 1
   phase: WormholePhase
-  /** 当前层（1 起） */
   depth: number
-  /**
-   * **本趟锁定的敌族**（船长 2026-09-14 定案 · 丁）：进洞时从库存项带进来；老档/调试入口没有
-   * ⇒ 按 `run.seed` 现算（`wormholeFamilyOfSeed`）⇒ **零迁移**。整趟所有格都用该族的敌卡。
-   */
   family?: WormholeFamily
-  /** 本趟的内容原型（丙 · 界面读数与结算用；同样可选 ⇒ 按 `run.seed` 现算） */
   archetype?: WormholeArchetype
-  /** 本层已推进到第几个节点（0 起） */
   nodeIndex: number
-  /** 剩余回合 */
   turnsLeft: number
-  /** 出发时锁定的回合预算（读数用）。**谜质「时序核心」的加成不写在这里**（它现算，见 `turnsBase`） */
   turnsTotal: number
-  /**
-   * **入场时的回合预算**（F3c · 船长 2026-09-13 裁定「实时派生 + 夹紧」）：
-   * 本趟上限 = `turnsBase + 装置（时序核心 +10/台）+ 当前科技加成`，由 `wormholeSyncMatterTurns` **幂等**同步；
-   * ⚠ **本字段不含科技那一份**（建趟时 = 入场总预算 − 科技加成）——`want` 求和时必须把科技整份加回来，
-   * 详见 `wormholeSyncMatterTurns` 里 2026-09-19 报障修复的注释。
-   * 老档没有这个字段 ⇒ 首次同步按"当前上限 − 装置 − 科技"反推，**零迁移**、且当前上限逐字不变。
-   */
   turnsBase?: number
-  /**
-   * **入场时已折算的谜质科技回合加成**（2026-09-19 谜质科技批）：
-   * 「时序锚定器」是**永久加成**（+10/级），与货仓里的「时序核心」装置分开相加——
-   * 本趟上限 = `turnsBase（不含科技）+ 10 × 时序核心台数 + 当前科技加成`，由 `wormholeSyncMatterTurns`
-   * **幂等**同步 ⇒ **入洞后再点锚定器，本趟立刻多走几步**（与"捡到时序核心就多走几步"同一套夹紧逻辑）。
-   *
-   * ⚠ **2026-09-19 报障修复后本字段只为"记录 + 老档兼容"**：求和一律用**当前**科技加成
-   * （旧式用"现有 − 本字段"的增量，会在同步时把已折算的那一份整段吞掉）。
-   */
   turnsTechBonus?: number
-  /**
-   * **本趟已花掉的回合（只增不减的账本 · 2026-09-23 玩家报障修复）**。
-   *
-   * 报障原话（船长转述玩家）：「**0 回合拖动谜质时序还是能够刷回合数。**」
-   *
-   * 病根：`wormholeSyncMatterTurns` 的"已花费"是按 `上限 − 剩余` **现推**的 —— 上限因为卸下装置
-   * 掉到 80、而玩家真花掉的是 90 时，那 10 点超支被 `max(0, …)` **抹掉**；再把装置拖回货仓
-   * ⇒ `已花费` 只读到 80 ⇒ 白送 10 回合。0 回合的趟正好卡在这个形状上，**来回拖可无限重复**。
-   *
-   * 现行口径：本字段只增不减（每次同步/装卸先按 `max(本字段, 上限 − 剩余)` 刷新，于是正常花回合
-   * 会让它自然跟上），剩余一律按 `上限 − 本字段` 反推 ⇒ **上限变小不再抹掉超支**
-   * （"不追缴"仍然成立：剩余不为负、撤离永远可用；但**不再"退还"**）。
-   *
-   * 可选字段 ⇒ 老档零迁移（缺失 = 0，首次刷新即按当时的上限−剩余推出来）。
-   */
   turnsSpent?: number
-  /**
-   * **遗迹守备已被惊动、等玩家确认迎战**（F3c 界面批 · 船长 2026-09-13：战斗不该毫无提示地突然发生，
-   * 要先提示玩家惊扰了守卫、玩家确认后再跳转）。为真时**别的动作一律被拦**（见 gridActionBlocked），
-   * 直到玩家点「迎战」（wormholeStartBattle('ruins') 成功即清）。可选字段 ⇒ 老档零迁移。
-   */
   pendingRuinsBattle?: boolean
-  /**
-   * **踩中埋伏、等玩家确认开战**（船长 2026-09-16：「移动途中被敌方拦截或者**进入未扫描地点踩到怪**了，
-   * 都要弹窗提示，玩家确认后进入战斗」）。
-   *
-   * 触发 = 玩家**点了一个还没扫描过的地点**、走到才发现里面是敌人（舰船信号）⇒ 到达那一刻
-   * **先发事件提醒、不直接开打**；为真时**别的层内动作一律被拦**（见 `gridActionBlocked`），
-   * 直到玩家点「开战」（`wormholeStartBattle('node')` 成功即清）。
-   *
-   * ⚠ **只在"出发前未知"时成立**：已知的敌格是自己点上去的（明知故往）⇒ 照旧到达即开打；
-   * **路径拦截**那条也照旧直接开打（玩家在移动前已经确认过"会被拦下并开战"）。
-   * 可选字段 ⇒ 老档零迁移。
-   */
   pendingNodeBattle?: boolean
-  /** 当前地点事件等待玩家选择；第二批只对 expeditionRules=2 生效。 */
   pendingEvent?: { key: import('./wormholeGrid').WormholeEventKey; cellKey: string }
-  /** 本趟已触发的有限巡逻名额与可见警戒。 */
   alertLevel?: number
   patrolsSpawned?: number
   patrolsCleared?: number
@@ -305,222 +174,66 @@ export interface WormholeRunState {
   nextBattleRangeMul?: number
   expeditionGoal?: 'deep' | 'ruins' | 'survey'
   expeditionProgress?: { peakDepth: number; guards: number; ruins: number; events: number; revealed: number; clues: number; elites: number }
-  /** 编队（船型 id；进场时锁定） */
   fleet: readonly string[]
-  /** 折合总质量（进场时锁定） */
   totalMass: number
-  /** 背包（每格只装一种物品 ⇒ 一条记录 = 一格的内容） */
   bag: WormholeBagSlot[]
-  /** 当前待处理节点（`null` = 本层已清空，处于"层末抉择"） */
   pendingNode: WormholeNode | null
-  /** 本层节点数（2~3，船长定） */
   nodesPerLayer: number
-  /**
-   * **进行中的洞内战斗**（F 批 · 2026-09-13；`null`/缺省 = 不在战斗中）。
-   * 非空即"战斗没结束" ⇒ **不能撤离、不能推进/深入**（设计稿冲突 2 / 船长第 8 条）。
-   * 宿主放在副本状态里（而非复用 `expedition.battle`）：洞内战斗**不走远征结算**
-   * （不发赏金、不返航），收口由 `advanceWormhole` 自己做。
-   */
   battle?: BattleState | null
-  /**
-   * **已打通层末 BOSS 的层号**（= 本层 BOSS 已清）。
-   * 设计稿 §3：「层末 BOSS 打完才出现『继续深入 / 撤离』的抉择」⇒
-   * `wormholeDescend` / `wormholeExtract` 都要求 `bossCleared === depth`。
-   */
   bossCleared?: number
-  /**
-   * **玩家此刻是否"人在洞里"**（船长 2026-09-13 批准实行 · 议案 A）。
-   *
-   * 口径（**活动位开关**，与"这趟存不存在"是两件事）：
-   * - `true` = **进虫洞这个活动正在进行** ⇒ 占着主控（采矿/打捞/扫描/巡逻/远征/运输/亲自开炉一律被拒），
-   *   洞内照常推进（战斗实时打）；
-   * - `false` = 玩家**临时离开**（关掉虫洞界面）⇒ **活动停止、主控立刻释放**（可以去做别的），
-   *   **洞内一切冻结**（战斗不推进、不掉血、回合不扣），**进度原样保存**；
-   * - 回来（`wormholeResume`）要求**主控空闲**。
-   *
-   * 存档：`save.ts` 的 `cleanWormhole` 同步清洗（旧档/坏值 ⇒ `false`＝不占主控，安全侧）。
-   */
   attending?: boolean
-  /**
-   * **临时离开的时刻**（state.gameMs；仅 attending === false 时有意义）。
-   * 回来时按 state.gameMs - leftAtGameMs 把**进行中的战斗时钟整体前移**——
-   * 否则 advanceBattleFor 的步进基准（while (state.gameMs > battle.lastTickGameMs)）
-   * 会把"离开的这段时间"一次性当作战时间补算：实测 2×T1 离开 6 秒回来**当场团灭**，
-   * 冻结就白做了。随档保存（离线离开同样适用）。
-   */
   leftAtGameMs?: number
-  /** 历史整趟距离保留兼容，新手动战读取GameState.fleetRange。 */
   desireM?: number
-  /** 自动探索独立快照：使用自动距离，不读写玩家的按卡记忆。 */
   automaticBattleRanges?: true
-  /**
-   * **本层的网格探索状态**（F3a · 2026-09-13 船长确认「探索采用网格地图的形式，整体网格地图呈现圆型」）。
-   * 可选字段：老档没有 = 该层走旧口径（零迁移）；新开层由 wormholeMakeGrid(seed, depth) 生成。
-   * 真相（place）随档保存，**遮蔽靠"未扫描不展示"**（`revealOf`）——不是靠不存。
-   */
   grid?: import('./wormholeGrid').WormholeGridState
-  /**
-   * **本趟的确定性种子**（F3b · 2026-09-13）：层内产出的**生成**（残骸堆、遗迹专属判定、战果）
-   * 都按 `(本趟种子, 层, 格坐标)` 散列 ⇒ 同一趟里反复进出同一格结果不变、随档可复现。
-   * ⚠ 不能借用 `state.rng.seed`：那是全局随机流的活种子，会随游戏进行漂移（同格会生成两次不同结果）。
-   * 可选字段（老档没有 ⇒ 退到全局种子，只影响老档的复现性，零迁移）。
-   */
   seed?: number
-  /**
-   * **随行战利品**（F3b · 2026-09-13）：图纸 / 装备本体这类**不进背包格子**的东西（遗迹专属掉落）。
-   * **撤离成功才入库**（`wormholeSalvage.wormholeDeliverRelics`）——半路全损就一起丢，
-   * 与背包同一条风险线。可选字段（零迁移）。
-   * ⚠ **F4 起被「遗迹安全货柜」取代**（船长 2026-09-13：装备与图纸走中间件、占 4 格货仓）——
-   * 本字段保留为旧档兼容读入口，新趟不再写入。
-   */
   relics?: string[]
-  /**
-   * **货仓格状态**（F4 · 船长 2026-09-13：货仓直接代表背包大小 + 类似背包英雄的格管理）。
-   * 只装**占形状的件**（遗迹安全货柜 2×2 = 4 格）；可叠加散货仍走 `bag`。
-   * 可用格数**不在这里**（= ⌊编队合计货仓 ÷ 500⌋ 现算 ⇒ 沉船后自动变小 ⇒ 超载）。
-   * 可选字段（老档没有 ⇒ 该趟只有散货，零迁移）。
-   */
   hold?: import('./wormholeHold').WormholeHoldState
-  /**
-   * **临时空间（待整理区 · 老档只读字段）**（船长 2026-09-13：「**打捞出了大件货时应该放进一个临时空间
-   * 或者临时背包，让玩家进行协调**」）。
-   *
-   * ⚠ **2026-09-14 起被 `tempGrid` 取代**（船长：「背包格宽度是 8 格，那么可以在背包格右边添加一个用于丢弃和
-   * 调整位置的『小背包』…正式名：临时空间」）：临时空间从"**一种物品一条的列表**"改成
-   * **4 列 × 8 行 = 32 格的格子区**（挂在货仓 8 列右侧），因此账本从本字段迁到 `tempGrid`。
-   * 本字段**保留为老档读入口**：读档后由 `wormholeNormalizeLegacyTemp` 一次性换算进 `tempGrid`，新档不再写入。
-   */
   temp?: WormholeTempSlot[]
-  /**
-   * **临时空间的格子账本**（船长 2026-09-14 定案）。
-   *
-   * 口径：
-   * - **4 列 × 8 行 = 32 格**（`WORMHOLE_TEMP_COLS` / `WORMHOLE_TEMP_ROWS`），与 `hold` **同一个类型**
-   *   （`WormholeHoldState`）⇒ 格几何 / 拖拽落位 / 整理 / 不重叠判据**全部复用 `wormholeHold`**；
-   * - **不占货仓容量、不算超载**（与旧口径一致）：它是缓冲不是仓位；超载时也能用它腾位置；
-   * - **能放形状件**（安全货柜 / 谜质储存器 2×2）**与散货件**（1×1）；
-   * - **离开背包页前必须清空**（船长 2026-09-14：「强制二选一：丢掉 或 放回」，撤离前同样必须先清空）；
-   * - **谜质储存器放进来即失效**（船长 2026-09-14：「谜质储存器拖进小背包会失效」）——增益仍只从
-   *   `run.hold` 现算（`wormholeMatterBuffs(run.hold, matterTechWhBuffs(state, ctx))`），本账本不参与派生；
-   * - 可选字段 ⇒ **零迁移**（老档没有 = 临时空间是空的）。
-   */
   tempGrid?: import('./wormholeHold').WormholeHoldState
 }
 
-/** 临时空间里的一条（**老档只读**：`tempGrid` 之前的口径 = 一种物品一条） */
 export interface WormholeTempSlot {
   itemId: string
   units: number
 }
 
-/** **临时空间的列数**（船长 2026-09-14：4 列） */
 export const WORMHOLE_TEMP_COLS = 4
-/** **临时空间的行数**（船长 2026-09-14：8 行 ⇒ 与货仓 8 列并排等高） */
 export const WORMHOLE_TEMP_ROWS = 8
-/** **临时空间的格数上限** = 4 × 8 = **32 格**（船长 2026-09-14 裁定；旧口径是 8 格列表） */
 export const WORMHOLE_TEMP_CELLS = WORMHOLE_TEMP_COLS * WORMHOLE_TEMP_ROWS
 
-/**
- * **一趟的结算单**（2026-09-13 船长：「玩家撤离后弹出一个结算界面，表示玩家的收益和损失」）。
- *
- * 由 `wormholeBattle` 在收口那一刻写进 `state.wormhole.lastSettle`；界面读它弹结算层，
- * 玩家点「确认」后由 `wormholeAckSettle`（引擎侧）清掉 ⇒ **不会重复弹**。
- * ⚠ 可选字段 ⇒ **零迁移**（老档没有 = 没弹过结算）。
- */
 export interface WormholeSettleRecord {
   suppliesFound?: Record<string, number>
   expeditionGoal?: WormholeRunState['expeditionGoal']
   expeditionProgress?: WormholeRunState['expeditionProgress']
-  /** 新趟未用携入物资与实际消耗独立报账，不计入战利品收益。 */
   suppliesReturned?: Record<string, number>
   suppliesUsed?: Record<string, number>
-  /** 结束方式：撤离成功 / 全损 */
   kind: 'extract' | 'lost'
-  /** 撤离（或全损）时所在的层 */
   depth: number
-  /** 到手：母矿单位数 / 母矿基础价 ISK / 残骸拆解估值 ISK */
   oreUnits: number
   oreIsk: number
   wreckIsk: number
-  /** 到手的货柜（内容物待拆解；只报件数与名称） */
   boxes: string[]
-  /** 到手的随行战利品（装备 / 一次性图纸 / 无人机，显示名） */
   relics: string[]
-  /**
-   * **本趟带回的 AI 核心**（2026-09-14 船长定：结算单另加一格「AI 核心 N 枚」）。
-   * 形如 `{ gamma: 1, beta: 2 }`（键 = 核心账本的 `gamma/beta/alpha`）；缺省 = 没捞到。
-   * ⚠ 与 `boxes`/`relics` 不同：核心**不进仓库**，撤离成功那一刻直接入 `state.aiCores`。
-   */
   cores?: Partial<Record<'gamma' | 'beta' | 'alpha', number>>
-  /**
-   * 本趟带回核心的**行价参考估值**（信用点；= Σ 枚数 × 市场卡行价，唯一出处 `marketCatalog.ts`）。
-   * 只作参考、**不计入结算单的「到手合计」**——核心是账本资源（不拆解），并进去会让"合计"口径变浑。
-   */
   coresIsk?: number
-  /**
-   * **本趟析出的虫洞谜质**（枚；2026-09-15 船长定：「谜质在虫洞结束时不再删除，而是转化成
-   * 虫洞谜质存入仓库」）。撤离成功时按 **1 台谜质装置 = 1 枚**折算、直接进仓库；全损 = 没这回事。
-   * 只收不卖 ⇒ **不计入「到手合计」**（与 `cores` 同理，单独给行价参考）。
-   */
   essences?: number
-  /** 析出谜质的**行价参考估值**（信用点；= 枚数 × 市场卡行价，唯一出处 `marketCatalog.ts`） */
   essenceIsk?: number
-  /** 损失：本趟沉掉的船（显示名） */
   shipsLost: string[]
-  /** **没带回来的收集额**（按基础价 + 拆解估值算；撤离成功 = 0） */
   lostIsk: number
-  /**
-   * ⚠ **退役字段（2026-09-15 撤离战取消）**：旧口径里「第 1 层免撤离战」时为 true，界面据此少写一句
-   * "打了一场"。如今**撤离一律不触发战斗** ⇒ 新结算单**不再写**它；字段保留只为读得懂老档的结算单。
-   */
   skippedExtractBattle?: boolean
 }
 
 export interface WormholeState {
-  /** 进行中的一趟（null = 不在洞里） */
   run: WormholeRunState | null
-  /** 本趟累计：损失船数（结算读数用） */
   lastFleetLost: number
-  /** **最近一趟的结算单**（界面弹层用；玩家确认后清掉） */
   lastSettle?: WormholeSettleRecord
-  /**
-   * **星云机制的一次性提示是否已经给过**（船长 2026-09-13：「这个机制在玩家第一次下到四层时提示玩家」）。
-   *
-   * 为什么随档：**"第一次"是跨趟的**——玩家第一趟下到层 4 看过提示后，第二趟不该再被念一遍。
-   * 可选字段（老档没有 = 还没提示过；若他此刻正停在层 4+，下一次深入会补上一次性事件，不影响存档）。
-   */
   nebulaHintShown?: boolean
-  /**
-   * **首次下到第 7 层已提示过围剿**（**2026-09-23 船长令**：「**当玩家第一次进入七层是，给玩家发一则
-   * 通讯讲清楚敌人开始围剿玩家了，并介绍机制**」）。随档一次性标记 ⇒ 跨趟/跨会话只送一次那封通讯
-   * （触发器 `{ kind: 'wormholeSiege' }` 读它）。可选字段 ⇒ 老档零迁移（老档首次下到 7 层时补送）。
-   */
   siegeHintShown?: boolean
-  /**
-   * **禁止打捞普通残骸**（**2026-10-02 船长令**：原话「**只做甲，坐在货仓背包处**」＋ 文案三条
-   * 「禁止打捞普通残骸／当前禁止打捞普通残骸／本次打捞跳过 N 堆普通残骸」；**2026-10-03 扩到战果**：
-   * 「**我希望那个开关同时能关闭战斗后获取的普通残骸**」）。
-   *
-   * 口径（**洞里不产生普通残骸**，两个来源都管）：
-   * - **打捞动作**（`wormholeSalvage.wormholeSalvageAt`）：一次打捞只收**稀有残骸**，普通残骸**留在原地**
-   *   （不删、不入货仓、不占格）；本格只剩普通残骸时**拒绝动作且不扣回合**；堆里的 5% 货柜掷骰只按
-   *   "实际收走的堆"计（少拿就少掷）。
-   * - **战果**（`wormholeGrantShipSpoils`）：**普通残骸不再产生**（不发、不入包、不落格）；
-   *   **稀有残骸与货柜照旧**。起因 = 玩家报障：战果装不下时散落该格，而散落的普通堆与打捞堆共用同一个
-   *   `cell.piles` ⇒ 开关一开那几堆就再也拿不走（走人即丢），与日志那句"可以照打捞规则回收"自相矛盾。
-   * ⚠ **不影响**：采集（虚空母矿）· **自动探索**（那是收益模拟，不是逐堆打捞）· 掉落与堆生成
-   *   （稀有权重/堆数/体积一律不变）· 背包格与"超格丢货"口径。
-   *
-   * 可选字段（老档没有 = 关，保持既有行为）⇒ **老档零迁移**；开关放在**货仓页**（船长指定落点）。
-   */
   noCommonWreckSalvage?: boolean
 }
 
-/** ⚠ **已删除（2026-09-15）**：`WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH = 2`——撤离战整条退役，不再有"第几层起要打"。 */
 
-/* ── 层曲线（船长 2026-09-13：「深层收益应该比难度曲线要更高」） ──
- * ⚠ 实现已挪到 `wormholeFoes.ts`（引擎侧 `combat.ts` 也要用它做按层派生，不能反向依赖本文件）；
- * 这里**原样再导出**，保持既有的 `from './wormhole'` 引用与用例不变。 */
 export {
   WORMHOLE_THREAT_BASE,
   WORMHOLE_THREAT_GROWTH,
@@ -528,7 +241,6 @@ export {
   WORMHOLE_THREAT_PER_LAYER,
   WORMHOLE_BOSS_THREAT_MUL,
   WORMHOLE_EXTRACT_THREAT_MUL,
-  // 层末守卫的选靶倾向概率（船长 2026-09-14「挨个定为 60%」）
   WORMHOLE_BOSS_TARGETING_CHANCE,
   WORMHOLE_EXTRACT_THREAT_BASE,
   WORMHOLE_EXTRACT_THREAT_PER_LAYER,
@@ -538,7 +250,6 @@ export {
   wormholeNodesPerLayer,
   wormholeFoeThreat,
   wormholeExtractThreat,
-  // 族锁定（丁 · 船长 2026-09-14 定案：一处虫洞一族、整趟同族）
   wormholeCardIdOfFamily,
   wormholeFamilyOfSeed,
   WORMHOLE_FAMILY_ORDER,
@@ -546,12 +257,10 @@ export {
   WORMHOLE_FAMILY_GLYPH,
   wormholeAnomalyOf,
   wormholeNaturalHp,
-  // 「支援呼叫装置」批（2026-09-19）：本卡实际威胁（含延迟补偿）与互斥支援分支的记账
   wormholeCardThreatMul,
   wormholeCardThreatOf,
   wormholeBranchNaturalHp,
   wormholeSkippedBranch,
-  // 一族三档 + 出场池 + 分层血量修正（船长 2026-09-15）
   wormholeCardIdForRun,
   wormholeCardOfTier,
   wormholeTierOfCard,
@@ -564,14 +273,10 @@ export {
   WORMHOLE_TIER_LABEL,
   WORMHOLE_TIER_UNLOCK_DEPTH,
   WORMHOLE_TIER_THREAT_MUL,
-  // 族定选靶（船长 2026-09-15「选靶按照族限定」）
   WORMHOLE_FAMILY_TARGETING,
   WORMHOLE_FAMILY_TARGETING_CHANCE,
-  // 玩家可见威胁的显示倍率（船长 2026-09-15「面板威胁乘以2」；只影响界面读数）
   WORMHOLE_DISPLAY_THREAT_MUL,
   wormholeDisplayThreat,
-  // 2026-09-16 船长：「扫描虫洞界面…给虫洞卡片添加更多信息（虫洞内是什么敌人，以什么类型伤害为主）」
-  // ⇒ 族称 / 三档中文名 / 伤害中文名 / 敌情摘要单点（卡片一句话 + 悬停列三档）
   WORMHOLE_FAMILY_ETHNIC,
   WORMHOLE_TIER_LABELS,
   DAMAGE_TYPE_LABELS,
@@ -581,7 +286,6 @@ export {
 } from './wormholeFoes'
 export type { WormholeCardTier, WormholeFoeKind, WormholeFamilyIntel } from './wormholeFoes'
 
-/** 起一趟：校验编队（复用 B 批的 `wormholeAdmission`）并锁定质量 / 回合预算 / 背包 */
 export interface WormholeStartResult {
   ok: boolean
   error?: string
@@ -594,15 +298,7 @@ export function wormholeStartRun(
   ctx: SimContext,
   shipIds: readonly string[],
   rngSeed: number,
-  /**
-   * **空地点占比系数**（事件玄学：满级 0.8 ⇒ 相对 −20%）。缺省 1 = 旧行为
-   * ——本函数拿不到 `state`（测试与工具直接用它建盘），故由调用方（`wormholeEnter`）传 `blankShareFactorOf(state)`。
-   */
   blankShareFactor = 1,
-  /**
-   * **谜质科技**的「最大回合数」永久加成（`matterTechWhBuffs(state, ctx).turnBonus`；缺省 0 = 旧行为）。
-   * 与 `blankShareFactor` 同款理由：本函数拿不到 `state`，由调用方（`wormholeEnter` / 界面预览）传入。
-   */
   techTurnBonus = 0,
   expeditionRules?: number,
 ): WormholeStartResult {
@@ -623,8 +319,6 @@ export function wormholeStartRun(
       fleet: [...shipIds],
       totalMass: adm.totalMass,
       bag: [],
-      // F3a-2：层内内容**全部**由网格承载（`grid`）；`pendingNode` 是旧线性节点口径的遗留字段，
-      // 新开趟一律为 `null`（老档里已有的 pendingNode 仍能被 `wormholeAdvanceNode` 走完，见该函数注释）。
       pendingNode: null,
       nodesPerLayer: wormholeNodesPerLayer(depth),
       grid: wormholeMakeGrid(rngSeed, depth, wormholeScanBonusOf(ctx, shipIds), blankShareFactor, expeditionRules),
@@ -634,12 +328,6 @@ export function wormholeStartRun(
   }
 }
 
-/**
- * 造一个层内节点（**确定性**：同 `(seed, depth, index)` ⇒ 同结果，便于复现与用例）。
- * 口径：每层**首节点固定战斗**（"进层先打一场"）、其余按 roll 分战斗/拾取/事件；
- * 波数随深度 +1（层 3 起可到 3 波；每多一波 +1 回合）。
- * 拾取节点的**堆**在造节点时一并生成（`piles`）——捡走即从数组里删，随档保存。
- */
 export function wormholeMakeNode(seed: number, depth: number, index: number): WormholeNode {
   const h = Math.abs((seed * 1103515245 + (depth * 97 + index) * 12345) % 2147483647)
   const roll = h % 100
@@ -667,27 +355,17 @@ export function wormholeMakeNode(seed: number, depth: number, index: number): Wo
   }
 }
 
-/** 推进结果（读数为准；界面到 E 批接） */
 export interface WormholeAdvanceResult {
   ok: boolean
   code?: 'cargo-pending' | 'unsupported-rules'
   error?: string
   errorId?: string
   errorParams?: Readonly<Record<string, string | number>>
-  /** 本步花掉几回合 */
   spent?: number
-  /** 是否进入"层末抉择"（`pendingNode === null`） */
   atLayerEnd?: boolean
-  /** 是否因回合耗尽而**只能撤离** */
   mustExtract?: boolean
 }
 
-/**
- * **结算当前节点**并推进到下一个（或进入层末抉择）。
- * - 回合不足 ⇒ **拒绝推进**（只能撤离）——"回合耗尽只能撤离"的落点；
- * - 层内节点走完 ⇒ `pendingNode = null`（层末：可"继续深入"或"撤离"）；
- * - **不自动跨层**：跨层由 `wormholeDescend`（层末抉择）处理。
- */
 export function wormholeAdvanceNode(
   ctx: SimContext,
   run: WormholeRunState,
@@ -710,13 +388,6 @@ export function wormholeAdvanceNode(
   return { ok: true, spent, atLayerEnd: false, mustExtract: run.turnsLeft <= 0 }
 }
 
-/**
- * 深入下一层（**只在层末可用**；回合耗尽时拒绝——只能撤离）。
- *
- * ⚠ **入参从 `run` 改成 `state`**（2026-09-13 星云批）：星云机制要求"**第一次下到层 4 时提示玩家**"，
- * 而那条提示要写进 `state`（一次性事件 + `wormhole.nebulaHintShown`）⇒ 只收 `run` 是写不了的。
- * 调用方（引擎 / 校准工具）本来就手里有 `state`，改动是把 `state.wormhole.run` 传进去即可。
- */
 export function wormholeDescend(
   state: GameState,
   rngSeed: number,
@@ -735,21 +406,10 @@ export function wormholeDescend(
     if (here && hasLiveFoe(here)) return { ok: false, errorId: 'core.wormhole.035' }
   }
   if (run.pendingNode) return { ok: false, error: '本层战斗未结束：不能撤离、也不能深入。', errorId: 'core.wormhole.005' }
-  // 层末 BOSS 是门（设计稿 §3）：没打通本层 BOSS 不许往下走
   if ((run.bossCleared ?? 0) < run.depth) {
     return { ok: false, error: '层末守卫还堵在出口：先迎击本层守卫。', errorId: 'core.wormhole.006' }
   }
   if (run.turnsLeft <= 0) return { ok: false, error: '回合已耗尽：只能撤离。', errorId: 'core.wormhole.007', mustExtract: true }
-  /**
-   * **深入必须在「下一层入口」（下潜点）那一格**（船长 2026-09-18：「**虫洞前往下一层修改为必须在下一层
-   * 入口才可以前往**」）。
-   *
-   * 与守卫战**同一把尺**（`wormholeBattle.ts` 的 boss 分支已要求 `isExitCell`）——本次把同一条口径补到
-   * "深入"这一步：**只认此刻站在入口格**（走开就得走回来）。
-   *
-   * ⚠ **老档线性层没有网格**（`grid === undefined`）⇒ 没有"入口格"可言，**跳过本判据**（照旧放行）。
-   * ⚠ 判据排在**回合耗尽之后**：回合见底时"只能撤离"是更决定性的状态，先报它。
-   */
   if (run.grid && !isExitCell(run.grid, run.grid.pos)) {
     return { ok: false, error: '没站在下一层入口：先走到入口（下潜点）再深入。', errorId: 'core.wormhole.008' }
   }
@@ -760,17 +420,9 @@ export function wormholeDescend(
     delete run.groundCargo
   }
   run.depth += 1
-  /**
-   * **里程碑「深渊层深」的计数点**（成就系统第二批 · 船长 2026-09-20「开始第二批」）。
-   *
-   * 口径三条：① 记的是**峰值**（`peakFirst` ⇒ 只升不降、幂等，反复下潜不重复计数）；
-   * ② **只计手动虫洞**——自动探索走 `wormholeAuto.ts` 的收益模拟、**根本不经过本函数**
-   * （船长裁定「自动不算」）；③ 记在**下潜成功那一刻**（不是"打过守卫"，那是另一个里程碑）。
-   */
   peakFirst(state, 'whMaxDepth', run.depth)
   run.nodeIndex = 0
   run.nodesPerLayer = wormholeNodesPerLayer(run.depth)
-  // 新层 = 新盘（同 seed + 新 depth ⇒ 确定性新盘；入口格重新随机、扫描范围重置）
   run.grid = wormholeMakeGrid(rngSeed, run.depth, scanBonus, blankShareFactorOf(state), run.expeditionRules)
   if (run.expeditionRules === 2) {
     delete run.pendingEvent
@@ -784,21 +436,8 @@ export function wormholeDescend(
   return { ok: true, spent: 0, atLayerEnd: false }
 }
 
-/**
- * 本趟是否已经给过星云提示（**只防同一次会话内重复**；跨会话/跨趟靠 `nebulaHintShown` 随档）。
- * 用 `WeakSet` 挂在 run 对象上：不落档、不新增字段、不改存档结构。
- */
 const nebulaHintedRuns = new WeakSet<object>()
 
-/**
- * **星云机制的一次性提示**（船长 2026-09-13：「这个机制在玩家第一次下到四层时提示玩家」
- * ＋「⑤除了一次性事件，**通讯内也发一条相关的讯息给玩家**」）。
- *
- * 三条一起落：
- * - `state.nebulaHintNotice`：**不落档**的一次性事件 ⇒ 渲染层读取即清并提示（与机群战损同款通道）；
- * - **通讯一条讯息** `wormhole-nebula`：由 `data/comms.ts` 的常驻剧本按 `nebulaHintShown` 送达；
- * - `state.wormhole.nebulaHintShown = true`：**随档**，保证跨趟只提示一次。
- */
 function maybeHintNebula(state: GameState, depth: number): void {
   if (depth < WORMHOLE_NEBULA_MIN_DEPTH) return
   const run = state.wormhole.run
@@ -817,14 +456,6 @@ function maybeHintNebula(state: GameState, depth: number): void {
   )
 }
 
-/**
- * **围剿机制的一次性提示**（**2026-09-23 船长令**：「**当玩家第一次进入七层是，给玩家发一则通讯
- * 讲清楚敌人开始围剿玩家了，并介绍机制**」）。
- *
- * 口径：只置**随档**的一次性标记 `state.wormhole.siegeHintShown = true`；那封通讯由 `wormholeSiege`
- * 触发器按本标记送达（照星云那封的先例）——**不另发画面提示**（船长要的是通讯）。
- * 层 1~6 一个字都不写；老档首次下到 7 层时照常补送。
- */
 function maybeHintSiege(state: GameState, depth: number): void {
   if (state.wormhole.run?.expeditionRules === 2) return
   if (depth < WORMHOLE_SPAWN_MIN_DEPTH) return
@@ -832,39 +463,11 @@ function maybeHintSiege(state: GameState, depth: number): void {
   state.wormhole.siegeHintShown = true
 }
 
-/**
- * **回合是否已经"走不动了"**（逃生门判据 · 2026-09-13 补）。
- *
- * 口径 = 设计稿 §六「**回合耗尽 ⇒ 只能撤离**」：
- * - `turnsLeft <= 0`：连深入都被拒（`wormholeDescend`）⇒ 只能走；
- * - `turnsLeft < 当前节点 cost`：这个节点**付不起**了 ⇒ 也只能走。
- *
- * ⚠ 为什么单独抽出来（**真死局**，2026-09-13 审计抓到）：首版 `wormholeExtract` 硬要求
- * `pendingNode === null && bossCleared >= depth` ⇒ 当"节点付不起"且节点是**拾取/事件**（没有「迎战」
- * 这条路）时，玩家**打不动节点、也撤不走**，面板上只剩施工期的「放弃本趟（调试）」——
- * 上线后就是无路可走。故把判据抽成单点，**撤离与界面按钮共用同一把尺**。
- */
 export function wormholeOutOfTurns(run: WormholeRunState): boolean {
   if (run.turnsLeft <= 0) return true
   return run.pendingNode !== null && run.turnsLeft < run.pendingNode.cost
 }
 
-/**
- * 撤离 —— **无条件可以开始，且不再有撤离战**（2026-09-15 船长：「**虫洞的撤离战取消吧**」）。
- *
- * 现行口径：
- * - **零战斗零风险**：进入 `extracting` 相位后，`advanceWormhole` **下一拍直接结算入港**
- *   （散货 + 随行战利品 + 货柜 + 临时空间全数带回），不再开任何战斗；
- * - **任意层、任意时候**都能撤（第 1 层与深层同待遇）；**不消耗回合**；
- * - 唯一保留的门：**进行中的战斗不能撤**（船长裁定「战斗没结束不能撤」，2026-09-15 复核后**维持不动**）。
- *
- * ⚠ 被本裁定取代的旧条款（2026-09-13「玩家可以无条件开始撤离，但是**依旧需要打撤离战**」＋
- * 「撤离战只从第二层开始生效」＋「撤离战打不赢 = 全损」）**已作废**：`WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH`
- * 已删除、撤离威胁曲线（层 2 = 42、每层 +7）与谜质「撤离掩护器」一并退役；设计稿/词典同日条目标注沿革。
- *
- * ⚠ 老档兼容：存档里**正在打的撤离战**照打完（`advanceWormhole` 的 `run.battle` 分支在前，天然满足），
- * 打完按新口径结算（赢了入港、输了全损），此后不再有下一场。
- */
 export function wormholeExtract(run: WormholeRunState, opts?: { confirmLeaveCargo?: boolean }): WormholeAdvanceResult {
   if (run.expeditionRules !== undefined && run.expeditionRules !== 2) return { ok: false, code: 'unsupported-rules' }
   if (run.battle) return { ok: false, error: '战斗中：战斗没结束不能撤退。', errorId: 'core.wormhole.009' }
@@ -881,109 +484,47 @@ export function wormholeExtract(run: WormholeRunState, opts?: { confirmLeaveCarg
   return { ok: true }
 }
 
-/* ═══════════ 五之二、层内网格探索（F3a-2 · 船长 2026-09-13 口径） ═══════════
- *
- * 船长原话：「探索采用网格地图的形式。整体网格地图呈现圆型。玩家初始随机出现在一个网格地点入口。
- * 前往下一层的入口位于随机位置。玩家需要依靠扫描来获取周围网格地点的信息……玩家扫描需要消耗一回合。
- * 前往其他地点消耗一回合，激活该地点效果也需要一回合……玩家只有到达目标地点后才能知道目标地点的
- * 确切信息并更新地点，否则只会显示一个信号。」
- * 另：「**玩家可以到达任意位置，包括未扫描，但是前往未扫描的地方需要警告玩家即将前往未知地点**」
- * （⇒ 前往**不限邻格、不限距离**，一律 1 回合；未扫描的格要先警告再确认）。
- *
- * 三个动作 = 这一层的全部操作面：**扫描 / 前往 / 激活**，各花 1 回合（`wormholeGrid.ts` 的常量）。
- */
 
-/** 激活一个地点会触发什么（**只回报效果，不在这里开战**——开战是 `wormholeBattle.wormholeActivateAt`） */
 export type WormholeActivateEffect =
-  /** 站在"下一层入口"上：触发层末守卫战（`WORMHOLE_EXIT_KIND`） */
   | { kind: 'exit'; key: string }
-  /** 舰船信号：直接一场战斗（船长：「'舰船信号'地点直接就是一场战斗」） */
   | { kind: 'battle'; key: string }
-  /** 舰船墓场 / 遗迹：打捞（F3b 落收益与"遗迹大概率触发恶战"） */
   | { kind: 'salvage'; key: string; place: 'graveyard' | 'ruins' }
-  /** 矿脉：挖掘虚空母矿（F3b） */
   | { kind: 'excavate'; key: string }
-  /** 虫洞谜质：取回后本趟内为我方提供增强（效果待船长裁定，F3c） */
   | { kind: 'matter'; key: string }
-  /** **遗迹打捞结束的收尾战**（船长：「打捞结束时，大概率会触发一场高难度战斗」⇒ 70% / 本层威胁 ×1.3） */
   | { kind: 'ruinsBattle'; key: string }
 
-/**
- * 网格动作的统一结果（`wormholeGridScan` / `wormholeGridTravel` / `wormholeGridActivate` 共用）。
- *
- * ⚠ **被拒时绝不扣回合**（`spent` 只在 `ok === true` 时有值）：回合是这一层唯一的硬通货，
- * "点了但白扣"是这个玩法最不能忍的失误。
- */
 export interface WormholeGridActionResult {
   ok: boolean
   error?: string
   errorId?: string
   errorParams?: Readonly<Record<string, string | number>>
-  /** 拒绝码：`unknown-target` = 目标格没扫过（界面据此先弹「前往未知地点」的确认）；
-   *  `path-blocked` = **直线路径上有未清掉的敌人**（界面据此先弹「路径上有敌人阻拦」的确认，见 `confirmIntercept`） */
   code?: 'unknown-target' | 'path-blocked' | 'cargo-pending' | 'unsupported-rules'
-  /** 本次花掉几回合 */
   spent?: number
-  /** 本次新揭开的格（扫描；`signal === null` = 空信息地点） */
   revealed?: { key: string; signal: WormholeSignal | null }[]
-  /** 到达后该格的真相（前往） */
   arrived?: {
     key: string
     place: WormholePlace
     signal: WormholeSignal | null
     atExit: boolean
-    /** 到达即开打（舰船信号）——调用方（`wormholeTravelTo`）据此立刻开战 */
     autoBattle?: boolean
-    /**
-     * **踩中埋伏**（船长 2026-09-16）：到达的格在**出发前是未知的**、而里面是敌人 ——
-     * 这一场**先发事件提醒、玩家确认后才开打**（`wormholeTravelTo` 的 `deferAmbush`）。
-     * ⚠ `autoBattle` 与它同时为真（"这里有仗"），两者的差别只在**要不要等玩家确认**。
-     */
     ambush?: true
-    /** 到达即标出下一层入口（漂浮信标） */
     beacon?: boolean
-    /**
-     * **本次移动被"路径拦截"截断**（船长 2026-09-16）：到达的是**拦截点**、不是玩家点的目标格。
-     * · `target` = 玩家原本点的目标格（界面可据此提示"继续前往"）；
-     * · `known` = **拦之前**该格是否已扫/已到过（**甲案**：已知 ⇒ 界面描红并给信号图标；
-     *   未知 ⇒ 只警示路径线、**不指名**，不泄漏未扫描格的内容）。
-     */
     intercepted?: { target: string; known: boolean }
     eventKey?: import('./wormholeGrid').WormholeEventKey
   }
-  /** 激活产生的效果（激活；有它就该接着开战/结算，见 `wormholeActivateAt`） */
   effect?: WormholeActivateEffect
-  /** **本次驱散掉的星云格键**（扫描；船长 2026-09-13 星云机制） */
   dispersed?: string[]
-  /** **本次新揭开、但被星云遮住的格数**（扫描；界面据此提示"再扫一次可驱散"） */
   newlyFogged?: number
-  /**
-   * **本次扫描扫到了"下一层入口"那一格**（船长 2026-09-16 甲案）⇒ 入口已由 `markExitKnown`
-   * 标上地图（`grid.exitKnown = true`）。界面据此可给一句提示；`false`/缺省 = 这一圈里没有入口格。
-   */
   exitScanned?: boolean
-  /** 回合耗尽 ⇒ 只能撤离（与 `wormholeAdvanceNode` 的 `mustExtract` 同口径） */
   mustExtract?: boolean
 }
 
-/** 本层网格 + 副本状态（不在洞里 / 老档没有网格 ⇒ null） */
 function gridRun(state: GameState): { run: WormholeRunState; grid: WormholeGridState } | null {
   const run = state.wormhole.run
   if (!run?.grid) return null
   return { run, grid: run.grid }
 }
 
-/**
- * **欠着一场战斗 ⇒ 层内动作的拒因**（`null` = 不欠）。
- *
- * 两个来源同一套语言：**遗迹守备被惊动**（`pendingRuinsBattle`）与**踩中埋伏**（`pendingNodeBattle`）——
- * 都是"提醒过了、等玩家点「迎战/开战」"的挂起态。
- *
- * ⚠ **单点**：`gridActionBlocked`（扫描/前往/采集/深入…）、`wormholeActivateAt`（打捞/激活这一口）
- * 与界面的动作闸（`wormholeSalvage.wormholeActionBlockReason` 的兜底、见渲染层 `wormholeActionBlocked`）
- * 全读这一份 ⇒ 不会出现"界面拦了、core 没拦"（**2026-09-20 玩家报障**正是这个缺口：
- * 待迎战期间「打捞」按钮仍可点，见 `wormholeBattle.ts` 的遗迹收尾战注释）。
- */
 export function wormholePendingBattleReasonOf(run: WormholeRunState | undefined | null): CoreBlockReason | null {
   if (!run) return null
   if (run.pendingRuinsBattle === true) {
@@ -995,27 +536,18 @@ export function wormholePendingBattleReasonOf(run: WormholeRunState | undefined 
   return null
 }
 
-/** 状态版（界面 / 工具用） */
 export function wormholePendingBattleReason(state: GameState): CoreBlockReason | null {
   return wormholePendingBattleReasonOf(state.wormhole.run)
 }
 
-/** 战斗中不许做任何层内动作（与"战斗没结束不能撤/不能深入"同一把尺） */
 function gridActionBlocked(state: GameState): CoreBlockReason | null {
   if (state.departure?.kind === 'wormhole') return { error: '正在离港', errorId: 'core.departure.001' }
   const run = state.wormhole.run!
   if (run.battle) return { error: '战斗中：先打完这一场。', errorId: 'core.wormhole.035' }
   const here = run.grid ? gridCellAt(run.grid, run.grid.pos) : undefined
   if (run.expeditionRules === 2 && here && hasLiveFoe(here)) return { error: '对方已经发现我们：先点「开战」打完这一场。', errorId: 'core.wormhole.034' }
-  // **遗迹守备已惊动 / 踩中埋伏**：先迎战（船长 2026-09-13：不要让战斗毫无提示地突然发生）
   const pendingBattle = wormholePendingBattleReasonOf(run)
   if (pendingBattle) return pendingBattle
-  /**
-   * **临时空间里还有东西**（船长 2026-09-14：「临时空间内有物品就不允许进行其他操作，
-   * 和之前的超载类似」）：扫描也一并拦下 —— 玩家得先去背包页把它**放回货仓**或**丢弃**。
-   * ⚠ 这里只读 `tempGrid`（不需要 ctx）；超载那一条由 `wormholeSalvage.wormholeActionBlockReason`
-   * 在打捞/采集/开战/拾取/撤离/深入各口把守（`wormhole.ts` 不能反向依赖它，模块方向见文件头）。
-   */
   const pending = run.tempGrid?.placements.length ?? 0
   if (run.supplyVersion !== 1 && pending > 0) {
     return {
@@ -1027,20 +559,6 @@ function gridActionBlocked(state: GameState): CoreBlockReason | null {
   return null
 }
 
-/**
- * **扫描**（1 回合）：揭开"当前格 + 扫描半径内"还没扫过的格，**并把圈里已扫描的星云驱散**。
- *
- * **扫到"下一层入口"那一格 ⇒ 入口标上地图**（船长 2026-09-16 裁定**甲案**：报障「玩家扫描无法直接
- * 扫出下一层入口」）。入口格不参与信号分配、`place` 恒为 `empty` ⇒ 光看信号认不出它，得比格键；
- * 命中就调 `markExitKnown`（与"读到信标"同一个收口）⇒ 地图上标出入口、前往不再要"未知地点"确认。
- *
- * 拒绝口径（都不扣回合）：**既没有新格可揭、也没有星云可驱散** ⇒ 「换个地点再扫」。
- *
- * ⚠ **星云为什么要"再扫一次"**（船长 2026-09-13）：「玩家第一次扫描出一个地点时，有星云的地点，
- * 星云会遮挡该地点的信号。需要玩家再扫描一次才能驱散星云」⇒
- * 第一次扫描**只发现"这儿有星云"**（`revealOf` 给 `{ kind: 'nebula' }`），
- * 第二次扫描（同圈内）才驱散、信号才可读。这就是这条机制的**回合税**：深层每层多花 N 个回合。
- */
 export function wormholeGridScan(state: GameState, ctx?: SimContext): WormholeGridActionResult {
   const hit = gridRun(state)
   if (!hit) return { ok: false, error: '本层没有网格：无法扫描。', errorId: 'core.wormhole.010' }
@@ -1049,14 +567,8 @@ export function wormholeGridScan(state: GameState, ctx?: SimContext): WormholeGr
   const blocked = gridActionBlocked(state)
   if (blocked) return { ok: false, error: blocked.error, errorId: blocked.errorId, errorParams: blocked.errorParams }
   if (ctx) grid.scanRadius = WORMHOLE_SCAN_RADIUS_BASE + wormholeScanBonusOf(ctx, run.fleet)
-  /**
-   * **谜质增益**（F3c · 船长 2026-09-13）：扫描半径 +圈、每次额外驱散若干格星云。
-   * 一律**现算**（装置躺在货仓里就生效，不必再同步状态）。
-   * 科技半径与装置在同一增益袋现算，地图只保存舰船加成，避免重复计算科技。
-   */
   const buffs = wormholeMatterBuffs(run.hold, ctx ? matterTechWhBuffs(state, ctx) : undefined)
   const targets = gridScanTargets(grid, buffs.scanRadius)
-  // 圈里"已扫描但还被星云罩着"的格 ⇒ 这一扫把它们驱散；装置再额外补几格圈外的云
   const nebulaTargets = gridNebulaDisperseTargets(grid, buffs.scanRadius, buffs.nebulaDisperse)
   if (targets.length === 0 && nebulaTargets.length === 0) {
     return { ok: false, error: '周围都扫过了、也没有星云可驱散：换个地点再扫。', errorId: 'core.wormhole.011' }
@@ -1065,14 +577,8 @@ export function wormholeGridScan(state: GameState, ctx?: SimContext): WormholeGr
     return { ok: false, error: '回合不足：只能撤离。', errorId: 'core.wormhole.002', mustExtract: true }
   }
   run.turnsLeft -= WORMHOLE_TURN_PER_SCAN
-  // 围剿者（2026-09-23 新机制）：层 ≥7 时"每消耗 1 回合"掷一次刷怪（本次是扫描的 1 回合）
   wormholeSpawnAfterTurns(state, WORMHOLE_TURN_PER_SCAN)
   const revealed: { key: string; signal: WormholeSignal | null }[] = []
-  /**
-   * **这一扫有没有扫到"下一层入口"那一格**（船长 2026-09-16 裁定**甲案**：「玩家扫描无法直接扫出
-   * 下一层入口」是缺陷 ⇒ 扫到就把入口标上地图）。入口格不参与信号分配、`place` 恒为 `empty`
-   * ⇒ 只靠 `revealed` 的 signal 是认不出它的，得拿格键跟 `grid.exit` 比一比。
-   */
   const exitKey = hexKey(grid.exit.q, grid.exit.r)
   let exitScanned = false
   for (const c of targets) {
@@ -1083,7 +589,6 @@ export function wormholeGridScan(state: GameState, ctx?: SimContext): WormholeGr
     revealed.push({ key: cell.key, signal: signalOfCell(cell) })
   }
   if (run.expeditionRules === 2) {
-    // 首扫只指向导航信标；新规则仍须读取它才获出口位置。
     const beacon = grid.cells.find(c => c.place === 'beacon')
     if (beacon && !grid.scanned.includes(beacon.key)) {
       grid.scanned.push(beacon.key)
@@ -1096,10 +601,6 @@ export function wormholeGridScan(state: GameState, ctx?: SimContext): WormholeGr
   const dispersed = disperseNebulae(grid, nebulaTargets)
   wormholePatrolAfterAction(state)
   const empty = revealed.filter((r) => r.signal === null).length
-  /**
-   * 新揭开的格里**有几格被星云遮住**（= 刚扫出来、但信号还看不到的那些）——
-   * 单独报出来，玩家才知道"这次扫到的东西被云挡着"，而不是以为扫描失灵。
-   */
   const newlyFogged = grid.cells.filter(
     (c) => revealed.some((r) => r.key === c.key) && isNebulaFogged(grid, c),
   ).length
@@ -1124,23 +625,6 @@ export function wormholeGridScan(state: GameState, ctx?: SimContext): WormholeGr
   }
 }
 
-/**
- * **前往**（1 回合，不限距离 —— 船长裁定"可以到达任意位置"）。
- * 未扫描的格：**默认拒绝**并回 `code='unknown-target'`，界面拿它弹「即将前往未知地点」的确认，
- * 玩家确认后带 `confirmUnknown: true` 再来一次（这才是"警告"该有的样子：不会点一下就冲进去）。
- *
- * **到达时立刻发生的事**（船长 2026-09-13 追加两条裁定，都**不需要再点"激活"**）：
- * - **舰船信号 ⇒ 到达即开打**（「战斗节点到达即开打」）⇒ 该格记 `activated`，效果由
- *   `wormholeBattle.wormholeTravelTo` 接着开战（本函数只回报 `arrived.autoBattle`，不能自己开战：
- *   `wormhole.ts` 不许 import `wormholeBattle`（会成环），依赖方向固定为 wormholeBattle → wormhole）；
- * - **漂浮信标 ⇒ 到达即标出下一层入口**（「到达后有一个漂浮信标，会告诉玩家终点位置」）⇒
- *   走 `markExitKnown`：`grid.exitKnown = true`（地图此后一直标着入口），该格同样记 `activated`。
- *   （入口被打出来的另一条途径是**扫描扫到出口格本身**，见 `wormholeGridScan`；两条同一个收口。）
- *
- * **路径拦截**（船长 2026-09-16 新增）：直线路径上挡着**还没清掉的舰船信号格**时，这次移动
- * **截断在那一格**（未扫描的也拦）；未确认（`confirmIntercept`）⇒ 回 `code='path-blocked'`
- * **且不扣回合**，界面先弹「路径上有敌人阻拦」的确认。口径见 `wormholePathInterceptAt`。
- */
 export function wormholeGridTravel(
   state: GameState,
   target: HexCell,
@@ -1160,24 +644,9 @@ export function wormholeGridTravel(
   if (!scanned && !opts?.confirmUnknown) {
     return { ok: false, error: '这个地点还没扫描过：前往未知地点？', errorId: 'core.wormhole.015', code: 'unknown-target' }
   }
-  /**
-   * ⚠ **回合检查排在拦截确认之前**（2026-09-16）：0 回合时先如实说"只能撤离"，
-   * 不该先弹一个**走不成**的拦截确认框（白点一次）；顺序 = 未知地点 → 回合 → 拦截。
-   */
   if (run.turnsLeft < WORMHOLE_TURN_PER_MOVE) {
     return { ok: false, error: '回合不足：只能撤离。', errorId: 'core.wormhole.002', mustExtract: true }
   }
-  /**
-   * ── **路径拦截**（船长 2026-09-16）──
-   *
-   * 直线路径上若**挡着一处还没清掉的舰船信号格**（未扫描的也拦），这次移动就**截断在那一格**：
-   * 位置落到拦截点、移动的 1 回合照扣、**不额外扣回合**，到达即开打（下面那条 `autoBattle` 通道）。
-   * 打赢后该格记 `activated` ⇒ 以后穿越它不再触发；玩家**自己再点一次**继续前往原目标。
-   *
-   * ⚠ 这道闸与界面**同一把尺**（`wormholePathInterceptAt`）：界面先画路径 ＋ 弹确认，
-   * 未确认（`confirmIntercept` 缺省）⇒ 这里**直接拒绝且不扣回合** —— 与 `unknown-target` 同款，
-   * "界面记得拦"不是纪律。
-   */
   const intercept = wormholePathInterceptAt(grid, { q: cell.q, r: cell.r })
   if (intercept && opts?.confirmIntercept !== true) {
     return {
@@ -1186,75 +655,36 @@ export function wormholeGridTravel(
       code: 'path-blocked',
     }
   }
-  /** 本次实际到达的格：被拦 ⇒ 只走到拦截点（不是玩家点的目标格） */
   const dest = intercept ?? cell
-  /**
-   * **拦之前**这一格是否"已知"（甲案：已知 ⇒ 界面描红并给信号图标；未知 ⇒ 只警示路径线、不指名）。
-   * ⚠ 必须在下面把 `dest` 并入 `visited`/`scanned` **之前**取，否则永远算"已知"。
-   */
   const interceptKnown = intercept
     ? grid.scanned.includes(intercept.key) || grid.visited.includes(intercept.key)
     : false
   run.turnsLeft -= WORMHOLE_TURN_PER_MOVE
-  // 围剿者（2026-09-23 新机制）：移动的 1 回合也掷一次（可能在**新落点**触发袭击 ⇒ 置 pendingNodeBattle）
   wormholeSpawnAfterTurns(state, WORMHOLE_TURN_PER_MOVE)
   grid.pos = { q: dest.q, r: dest.r }
   delete run.pendingEvent
-  // 到达 ⇒ 真相揭开（`revealOf` 里 visited 优先于 scanned）；同时并入 scanned，避免后续扫描重复"揭开"它
   if (!grid.visited.includes(dest.key)) grid.visited.push(dest.key)
   if (!grid.scanned.includes(dest.key)) grid.scanned.push(dest.key)
   const signal = signalOfCell(dest)
   const atExit = isExitCell(grid, dest)
-  /**
-   * **踩到入口格 ⇒ 把它标在地图上**（船长 2026-09-18 配套裁定）。
-   *
-   * 新口径要求"必须在入口才能深入" ⇒ 清了守卫后若去捡漏/采集，玩家得走回来；而入口原先只有
-   * "**扫到出口格**"或"**踩到漂浮信标**"才标出（`markExitKnown` 的两条途径）——**人到过却不认**，
-   * 走开就可能找不回去。⇒ 与那两条**同一收口**（它顺便把出口格并入 `scanned`，前往时不再问"未知地点"）。
-   */
   if (atExit) markExitKnown(grid)
-  // ── 到达即触发：舰船信号（开打）/ 漂浮信标（第 1 个标出入口 · 后续揭示谜质） ──
   const first = !grid.activated.includes(dest.key)
   const coveringFoe = hasLiveFoe(dest)
   const autoBattle = (first && dest.place === 'ship' && !dest.combatCleared) || coveringFoe
   const beacon = first && dest.place === 'beacon' && (run.expeditionRules === 2 || !coveringFoe)
   const event = run.expeditionRules === 2 && dest.eventKey !== undefined && dest.eventResolved !== true ? dest.eventKey : undefined
-  /**
-   * **这是第几个信标**（船长 2026-09-20「信标第一次显示下一层入口，后续还激活其他信标则显示谜质位置」）
-   * ——数 `grid.activated` 里已触发过的信标格即可，**不新增存档字段**（本格还没入列 ⇒ +1 = 名次）。
-   */
-  /**
-   * 已激活格里有几处「漂浮信标」（**+1** = 当前这一处）。
-   * ⚠ 2026-09-27 理顺：原写法在 `filter` 里套 `grid.cells.find(...)` —— 每个激活格都重扫一遍全表；
-   * 改为**一次建索引**再查。**读数一字不变**，只是不再 O(n²)（层内格数最多 91，收益在可读性）。
-   */
   const cellByKey = new Map(grid.cells.map((c) => [c.key, c] as const))
   const beaconNo = beacon
     ? grid.activated.filter((k) => cellByKey.get(k)?.place === 'beacon').length + 1
     : 0
-  /**
-   * **踩中埋伏**（船长 2026-09-16）：`!scanned` = 玩家点它时这一格**还没扫描过**（信息闸那一步算好的值）
-   * ⇒ "走进去才发现里面是敌人"。**拦截不算**（那种玩家在移动前已确认过"会被拦下并开战"）。
-   */
   const ambush = autoBattle && !scanned && !intercept
-  // 围剿只是覆盖，不能把未采/未捞的原地点记为完成；新虫洞沿用自己的地点账本。
   if ((autoBattle && (run.expeditionRules === 2 || !coveringFoe)) || beacon) {
     if (!grid.activated.includes(dest.key)) grid.activated.push(dest.key)
   }
   if (event) run.pendingEvent = { key: event, cellKey: dest.key }
-  /** 后续信标揭示到的那一格（`null` = 本层已没有可揭示的谜质） */
   let beaconReveal: { cell: WormholeGridCell; nebulaDispersed: boolean } | null = null
   if (beacon) {
     if (beaconNo <= 1) {
-      /**
-       * **第 1 个信标 = 标出下一层入口**（船长 2026-09-13 口径，未变）。
-       *
-       * 收口在 `markExitKnown`：置 `exitKnown` ＋ 把出口格并入 `scanned`。
-       * 为什么要并入：原先玩家从信标得知终点位置后，点它前往仍会撞上「这个地点还没扫描过：前往未知地点？」
-       * 的确认框 —— 那句话在此时是**误导**（它不是未知地点，它是终点）。并进去之后前往就走正常路径。
-       * ⚠ 读到信标之前玩家不该"凭空知道"出口格是安全可去的 ⇒ 默认不并；
-       * **2026-09-16 甲案**起，**扫描扫到出口格本身**也走同一个收口（见 `markExitKnown` 的注释）。
-       */
       markExitKnown(grid)
       if (run.expeditionRules === 2) {
         const clue = grid.cells.find(c => c.eventKey && c.eventResolved !== true)
@@ -1265,18 +695,9 @@ export function wormholeGridTravel(
         }
       }
     } else {
-      /**
-       * **第 2 个及以后 = 揭示一处谜质信号**（船长 2026-09-20，落地见 `revealNearestMatterCell`）：
-       * 挑离玩家最近、尚未揭示的谜质格 ⇒ 并入 `scanned`，**并被星云遮着时一并驱散**（船长明确可穿透）。
-       * 本层没有可揭示的谜质 ⇒ 什么都不做（日志照写一句），回合不退还（到达那一步已经扣了）。
-       */
       beaconReveal = revealNearestMatterCell(grid, { q: dest.q, r: dest.r })
     }
   }
-  /**
-   * **到达日志**（信标那三条走**本地化 id**：`core.wormhole.029/030/031/032`——2026-09-20 起新写的
-   * 玩家可见文案按约定 §十一之三"先取 id 再写文案"；本调用点其余分支仍是甲案待改造的内联串）。
-   */
   let arrivalText: string
   let arrivalId: string | undefined
   let arrivalParams: Record<string, string | number> | undefined
@@ -1330,18 +751,6 @@ export function wormholeGridTravel(
   }
 }
 
-/**
- * **激活当前地点**（**不消耗回合**；每个地点只算一次）。
- * - 空信息地点 / 已读过的漂浮信标 ⇒ **拒绝**（"什么都没有"，没有可执行的作业）；
- * - 站在下一层入口 ⇒ 层末守卫战（优先于地点自身类型：入口的意义就是"下一层"）；
- * - 舰船信号：新口径下**到达即已开打**（船长 2026-09-13），故这里只在"老档/异常态"下兜底开战；
- * - 其余按地点类型给效果，开战/结算由 `wormholeActivateAt` 接着做。
- *
- * ⚠ **2026-09-15 船长：「移除玩家激活时需要消耗1回合（包括层末守卫）」** ⇒ 本条**不再扣回合**
- * （`spent: 0`）。旧口径（2026-09-13「激活该地点效果也需要一回合（打捞，挖矿，战斗等）」）作废；
- * **打捞/采集**仍各花 1 回合/次动作（`WORMHOLE_TURN_PER_WORK`，= ⌈堆数÷台数⌉），
- * **扫描与前往**照旧各 1 回合。
- */
 export function wormholeGridActivate(state: GameState): WormholeGridActionResult {
   const hit = gridRun(state)
   if (!hit) return { ok: false, error: '本层没有网格：无法激活。', errorId: 'core.wormhole.017' }
@@ -1358,11 +767,6 @@ export function wormholeGridActivate(state: GameState): WormholeGridActionResult
   if (!atExit && (cell.place === 'empty' || cell.place === 'beacon')) {
     return { ok: false, error: '这里什么都没有：没有可执行的作业。', errorId: 'core.wormhole.021' }
   }
-  /**
-   * **资源点与墓场/遗迹不用激活**（船长 2026-09-13：「资源点和墓场遗迹改为不用激活」）：
-   * 走到那一格就铺好产出（`wormholeEnsureArrivalPiles`），玩家直接**采集/打捞**——
-   * 故这三个地点在"激活"这条路上**直接拒绝**。
-   */
   if (!atExit && (cell.place === 'vein' || cell.place === 'graveyard' || cell.place === 'ruins' || cell.place === 'research')) {
     return { ok: false, error: '这个地点不用激活：直接采集/打捞就行。', errorId: 'core.wormhole.022' }
   }
@@ -1375,7 +779,6 @@ export function wormholeGridActivate(state: GameState): WormholeGridActionResult
     : cell.place === 'ship'
       ? { kind: 'battle', key: cell.key }
       : { kind: 'matter', key: cell.key }
-  // ⚠ 产出的铺放已全部改到**到达那一刻**（`wormholeSalvage.wormholeEnsureArrivalPiles`，船长 F5：资源点/墓场遗迹不用激活）
   addLog(
     state,
     'fleet',
@@ -1384,7 +787,7 @@ export function wormholeGridActivate(state: GameState): WormholeGridActionResult
   return { ok: true, spent: 0, effect, mustExtract: run.turnsLeft <= 0 }
 }
 
-/** 地点名（界面与日志共用；**网格地形**用语，与信号名分开） */export const WORMHOLE_PLACE_TEXT: Readonly<Record<WormholePlace, string>> = {
+export const WORMHOLE_PLACE_TEXT: Readonly<Record<WormholePlace, string>> = {
   empty: '空信息地点',
   graveyard: '舰船墓场',
   ruins: '遗迹',
@@ -1394,34 +797,14 @@ export function wormholeGridActivate(state: GameState): WormholeGridActionResult
   matter: '虫洞谜质',
   beacon: '漂浮信标',
 }
-/* ═══════════ 六、E 批：入洞 / 拾取 / 背包（界面接线所需的引擎动作） ═══════════ */
 
-/**
- * 每堆原矿的**基准单位数**。
- *
- * ⚠ **待 F 批收益校准**：本批（E）只落"堆 = 一堆原矿、能拾、能进包、超格会被拦"这套**机制**；
- * 具体数量与层收益曲线的乘子以 F 批 `tools/` 校准读数为准再定稿。当前口径 = 基准 × 层收益系数，
- * 故"越深越值钱"的方向与 §4/§5 一致，只是绝对值未定。
- */
 export const WORMHOLE_PILE_UNITS_BASE = 200
 
-/**
- * 拾取点里的一堆战利品。
- * ⚠ 口径变更（2026-09-13 船长：「**「虫洞内只掉原矿」删除。残骸能进背包。**」）：
- * 原来这里写的是"虫洞内**只掉原矿**"（2026-09-12 定）；现行 = **原矿 + 残骸**——
- * 墓场/遗迹打捞给残骸（`wreck-wh-*`）与稀有残骸（`wreck-rare-wh-*`），矿脉给虚空母矿；
- * 仍**不掉**制成品、不掉永久图纸、不给 ISK/声望（见设计稿 §11.5）。
- */
 export interface WormholePile {
   itemId: string
   units: number
 }
 
-/**
- * 生成第 `depth` 层第 `index` 个节点的拾取堆（**确定性**：同 `(seed, depth, index)` ⇒ 同结果）。
- * 数量 = `基准 × 层收益系数 × (0.8~1.2)`（随机项同样来自确定性散列，便于复现与用例）。
- * ⚠ 绝对值待 F 批校准（见 `WORMHOLE_PILE_UNITS_BASE` 注释）。
- */
 export function wormholeNodePiles(seed: number, depth: number, index: number, count: number, expeditionRules?: number): WormholePile[] {
   const n = Math.max(0, Math.floor(count))
   if (n <= 0) return []
@@ -1429,7 +812,7 @@ export function wormholeNodePiles(seed: number, depth: number, index: number, co
   const out: WormholePile[] = []
   for (let k = 0; k < n; k++) {
     const h = Math.abs((seed * 1103515245 + (depth * 137 + index * 31 + k * 7) * 7919) % 2147483647)
-    const jitter = 0.8 + (h % 41) / 100 // 0.80 ~ 1.20
+    const jitter = 0.8 + (h % 41) / 100
     out.push({
       itemId: WORMHOLE_ORE_ITEM_ID,
       units: Math.max(1, ceilFinalQuantity(WORMHOLE_PILE_UNITS_BASE * mul * jitter)),
@@ -1438,10 +821,8 @@ export function wormholeNodePiles(seed: number, depth: number, index: number, co
   return out
 }
 
-/** 虫洞内唯一的原矿（虚空母矿；`packages/data/src/items.ts`）——由它精炼出虚空晶 */
 export const WORMHOLE_ORE_ITEM_ID = 'ore-voidmother'
 
-/** 编队合计货仓（含技能与货舱件加成；与货仓页数字同源 —— 船长 Q6 口径） */
 export function wormholeFleetCargoM3(
   state: GameState,
   ctx: SimContext,
@@ -1452,7 +833,6 @@ export function wormholeFleetCargoM3(
   return total
 }
 
-/** 编队的背包格数（`floor(合计货仓 ÷ 500)`）——**现算**（技能/装配一变就跟着变，与货仓页一致） */
 export function wormholeBagSlotsOfFleet(
   state: GameState,
   ctx: SimContext,
@@ -1461,13 +841,6 @@ export function wormholeBagSlotsOfFleet(
   return wormholeBagSlots(wormholeFleetCargoM3(state, ctx, shipIds))
 }
 
-/**
- * **把一堆并进背包**（同类并格、否则新增一条；**纯函数**，不判容量、不扣回合、不写日志）。
- *
- * ⚠ 这是全仓**唯一**的"合并"实现：虫洞侧所有"把东西搬上船"的路径（打捞 / 采集 / 舰船战果 /
- * 老档线性层的逐堆拾取）都走它，只是各自的**容量判据与回合口径**由调用方负责
- * （`wormholeSalvage.tryMergeIntoBag` = F5 网格判据 + 放不下整条回滚）。
- */
 export function mergeIntoBag(bag: readonly WormholeBagSlot[], pile: WormholePile): WormholeBagSlot[] {
   const out = bag.map((s) => ({ ...s }))
   const hit = out.find((s) => s.itemId === pile.itemId)
@@ -1479,47 +852,23 @@ export function mergeIntoBag(bag: readonly WormholeBagSlot[], pile: WormholePile
 import { shipBusyForWormhole, shipActivityBusy } from './wormhole/fleet/busy'
 export { shipBusyForWormhole, shipActivityBusy } from './wormhole/fleet/busy'
 
-/**
- * **临时离开虫洞**（关掉虫洞界面；船长 2026-09-13 批准实行）：`attending = false` ⇒
- * **活动停止、主控立刻释放**（可以去做别的），**本趟进度原样保存**
- * （层 / 回合 / 背包 / 待处理节点 / 进行中的战斗都在），且**洞内一切冻结**（见 `advanceWormhole`）。
- */
 export function wormholeLeave(state: GameState): void {
   const run = state.wormhole.run
   if (!run) return
   run.attending = false
-  run.leftAtGameMs = state.gameMs // 记下离开时刻：回来时按这段时长前移战斗时钟（不然会"补算"成战时间）
+  run.leftAtGameMs = state.gameMs
 }
 
-/**
- * **「禁止打捞普通残骸」是否打开**（唯一读取点；语义与影响面见 `WormholeState.noCommonWreckSalvage`）。
- * 界面（货仓页开关）与引擎（`wormholeSalvageAt` 的取材判据）**必须走这一把尺**。
- */
 export function noCommonWreckSalvageOn(state: GameState): boolean {
   return state.wormhole.noCommonWreckSalvage === true
 }
 
-/**
- * **开关：禁止打捞普通残骸**（**2026-10-02 船长令**；UI 落点 = **货仓页**，船长指定）。
- *
- * 关闭时**删字段**（与读档归一里"只在为真时写"同形）⇒ 存档形态稳定、老档零迁移。
- */
 export function setNoCommonWreckSalvage(state: GameState, on: boolean): CommandResult {
   if (on) state.wormhole.noCommonWreckSalvage = true
   else delete state.wormhole.noCommonWreckSalvage
   return { ok: true }
 }
 
-/**
- * **把一场洞内战斗的时钟整体前移 `deltaMs`**（临时离开期间游戏时间照走，但洞内冻结）：
- * 只动"绝对时刻"字段——`startedAtGameMs` / `lastTickGameMs` / `waveClearAt` / `repair.nextPulseAtMs`；
- * 装填与近防炮冷却是**倒计时**（`weapons: number[]` / `pdCd`），无需处理。
- *
- * ⚠ **形参允许空**（2026-09-14 线上事故：`run.battle` 在"洞外/没有战斗"时是 `null`，
- * 调用点当时写了 `run.battle as BattleState` 把类型断言骗过去 ⇒ 玩家「临时离开 →（时间前进）→ 返回虫洞」
- * 时这里抛 `TypeError: Cannot read properties of undefined (reading 'startedAtGameMs')`，
- * 面板整块不渲染 = 玩家看到的"返回虫洞黑屏"）。**没有战斗就直接返回**，别再用 `as` 断言蒙类型系统。
- */
 function shiftBattleClock(battle: BattleState | null | undefined, deltaMs: number): void {
   if (!battle) return
   if (!(deltaMs > 0)) return
@@ -1530,10 +879,6 @@ function shiftBattleClock(battle: BattleState | null | undefined, deltaMs: numbe
   if (nextPulseAtMs !== undefined) battle.repair!.nextPulseAtMs = nextPulseAtMs + deltaMs
 }
 
-/**
- * **返回虫洞**（重新打开虫洞界面）：要求**主控空闲**（船长第四条口径）。
- * 判据只查"别的活动"（`shipActivityBusy`）——**不**把"在洞里"算忙（否则永远回不去）。
- */
 export function wormholeResume(state: GameState, ctx: SimContext): WormholeStartResult {
   void ctx
   const run = state.wormhole.run
@@ -1553,38 +898,15 @@ export function wormholeResume(state: GameState, ctx: SimContext): WormholeStart
   return { ok: true, run }
 }
 
-/**
- * **进洞时会"自动停掉"的活动**（船长 2026-09-14：「**进洞自动停止**」＋「『进洞会自动停掉的那一项活动』
- * **同样落实到采矿/打捞**」＋「**长途运输发出警告**」）。
- *
- * 四项都是"主控亲自在跑"的作业：停法与玩家手点活动栏里的「停止」**完全同一条路径**（状态改动走 `state.ts`
- * 的单点 `wormholeScanHalt` / `miningHalt` / `salvageHalt` / `haulingHalt`），日志照写 ⇒ **不新增损失**
- * （扫描进度保留；开采/打捞未返航的货留在船上；长途运输"终止即瞬时返港停靠出发站、无惩罚"）。
- *
- * `warn: true` = 停它**有可见后果**（长途运输会中止本段航程、船被挪回出发站）⇒ 准备页要**发警告**，
- * 不能只当"顺手停一下"。
- *
- * **远征不在名单里**（船长 2026-09-14：「**远征无法自动停**」）：它是多阶段活动（出航/交火/返航 + 战斗锚点），
- * 没有"无损停掉"的路径 ⇒ **照旧拦住进洞**（人在洞里时也照旧开不了）。其余活动（扫描星系 / 掩护巡逻 /
- * 快递投送 / 亲自开炉开线）同理照旧拦住。
- */
 export interface WormholeEntryAutoStop {
-  /** 判据键（界面/日志用；与 `shipActivityBusy` 的忙态文案一一对应） */
   kind: 'whscan' | 'mining' | 'salvage' | 'hauling' | 'standby' | 'refine' | 'manufacture' | 'siteDeliver' | 'lab'
-  /** 统一单点里的活动名（`activityGate.MainActivityKind`）——停机与统一日志都按它走 */
   mainKind: MainActivityKind
-  /** 忙态文案（`shipActivityBusy` 报的就是它） */
   label: string
-  /** 日志/界面里用的短名（「扫描虫洞」「开采」「打捞」「长途运输」） */
   name: string
-  /** `name` 的**文案 id**（2026-09-26 补：界面按它取当前语言；`name` 只作中文兜底） */
   nameId: string
-  /** 停它有没有可见后果（true ⇒ 准备页发**警告**，而不是轻描淡写地"预告"） */
   warn: boolean
 }
 
-/** "进洞那一刻会被自动停掉"的主控活动 ⇒ 判据键 / 忙态文案 / 是否发警告（长途运输：船会被挪回出发站）
- *  ⚠ 名单随时可增（2026-10-01 补 `lab`）⇒ 这里不写条数，条数以本表本身为准 */
 const ENTRY_STOP_META: Partial<
   Record<MainActivityKind, { kind: WormholeEntryAutoStop['kind']; label: string; warn: boolean }>
 > = {
@@ -1595,23 +917,10 @@ const ENTRY_STOP_META: Partial<
   standby: { kind: 'standby', label: '掩护巡逻中', warn: false },
   refine: { kind: 'refine', label: '亲自开炉中', warn: false },
   manufacturing: { kind: 'manufacture', label: '亲自开线中', warn: false },
-  /** 建站交付（2026-09-22 船长令纳入）：停机无损（返港、本趟建材留在船上）⇒ 不发警告 */
   siteDeliver: { kind: 'siteDeliver', label: '建站交付中', warn: false },
-  /**
-   * **实验室**（**2026-10-01 接入**）：停机只丢当前那一批的进度（BOM 每批到点才扣、材料仍在仓库）
-   * ⇒ 与"亲自开炉/亲自开线"同档，**不发警告**。
-   */
   lab: { kind: 'lab', label: '亲自运转实验室中', warn: false },
 }
 
-/**
- * 当前**会被进洞自动停掉**的活动（0~1 项：作业之间本应互斥）。
- *
- * ⚠ **2026-09-21 统一批**：判据改走 `activityGate`（可自动取消的六项 ＋ 长途运输那一档）——
- * 原先只列"扫描虫洞 / 开采 / 打捞 / 长途运输"四项，**掩护巡逻 / 亲自开炉 / 亲自开线**那三档在
- * `wormholeEntryBlockReason` 里是硬拒；现在与九项入口同一把尺：能直接切就自动停。
- * `warnConfirmed = true`：进洞准备页与那颗按钮**已经做过两段确认**（`Wormhole.tsx` 的 `enterHaulAsk`）。
- */
 export function wormholeEntryAutoStops(state: GameState): WormholeEntryAutoStop[] {
   const v = gateMainActivityHandoff(state, true)
   if (v.action !== 'halt' || v.current === undefined) return []
@@ -1620,13 +929,6 @@ export function wormholeEntryAutoStops(state: GameState): WormholeEntryAutoStop[
   return [{ ...meta, mainKind: v.current, name: KIND_LABEL[v.current], nameId: ACTIVITY_LABEL_ID[v.current] }]
 }
 
-/**
- * **进洞门槛的"逐船忙态"**（门槛与界面的舰船卡共用这一把尺）：
- * 除了**主控那一档会自动停掉的活动**（见 `wormholeEntryAutoStops`）之外，其余一律照 `shipBusyForWormhole` 报忙。
- *
- * ⚠ 2026-09-21：放行判据改走 `activityGate`（原先按忙态文案逐字匹配——掩护巡逻那条是**动态**文案，
- * 逐字匹配根本认不出来）⇒ **只在"主控确实被某项可自动停的主控活动占着"时才放行**（洞内编队/AI 派工照旧报忙）。
- */
 export function wormholeShipEntryBusy(state: GameState, shipId: string): BusyLabel | null {
   const busy = shipBusyForWormhole(state, shipId)
   if (busy === null) return null
@@ -1636,25 +938,12 @@ export function wormholeShipEntryBusy(state: GameState, shipId: string): BusyLab
   return busy
 }
 
-/**
- * **进洞门槛**（船长 2026-09-13：「进洞要求洞外主控处于闲置状态」）：主控必须闲置
- * （采矿/打捞/交付/扫描/掩护巡逻/远征在飞都不行），编队里每艘船也必须先空闲
- *（正在 AI 派工/已在洞里的船编不进来——否则同一艘船会被两处同时占用）。
- *
- * ⚠ **2026-09-14 例外**：扫描虫洞 / 开采 / 打捞三项不再算拦（进洞那一步会**自动停掉**，见 `wormholeEntryAutoStops`）。
- * 返回拒因文案；`null` = 可以进洞。
- */
 export function wormholeEntryBlockReason(
   state: GameState,
   ctx: SimContext,
   shipIds: readonly string[],
 ): string | null {
   void ctx
-  /**
-   * **主控那一档走统一判据**（**2026-09-21 统一批**）：能自动停的照旧放行（进洞那一刻停掉），
-   * **不可中断的（远征 / 快递投送 / 战斗中 / 洞里 / 返航途中）一律拒**，措辞与九项入口共用同一句
-   * （`activityGate`）——原先这里给的是"先把手上的活收工"，说不清为什么不能中断。
-   */
   const verdict = gateMainActivityHandoff(state, true)
   if (verdict.action === 'reject' && verdict.message !== undefined) return verdict.message
   const pilotBusy = wormholeShipEntryBusy(state, state.shipId)
@@ -1666,11 +955,6 @@ export function wormholeEntryBlockReason(
   return null
 }
 
-/**
- * 编队扫描半径加成：侦察舰、电子舰各取最高，再将两类相加（2026-10-17船长确认）。
- * 用途：① `wormholeEnter` 建档时喂给 `wormholeMakeGrid`；② 界面在**深入下一层**时把它传给
- * `wormholeDescend(run, seed, scanBonus)`（该入参默认 0 ⇒ 不传 = 维持旧行为）。
- */
 export function wormholeScanBonusOf(ctx: SimContext, shipIds: readonly string[]): number {
   let scout = 0
   let electronic = 0
@@ -1685,43 +969,13 @@ export function wormholeScanBonusOf(ctx: SimContext, shipIds: readonly string[])
   return scout + electronic
 }
 
-/**
- * **事件玄学（`event-dividend`）· 虫洞空白地点占比的每级系数**（船长 2026-09-14：
- * 「效果添加：降低虫洞内出现空白地点的几率，满级为20%」；四问四答定口径「**相对削减**」）。
- * 线性每级 −4%（rank 5 ⇒ 满级恰 −20%）。本常量与 `packages/data/src/skills.ts` 的技能说明**同源**，
- * 改这里必须同步说明（`content:check` 技能说明契约会按内联表现场复核这个 0.04）。
- */
 export const EVENTS_BLANK_SHARE_PER_LEVEL = 0.04
 
-/** 事件玄学等级 → 空地点占比系数（0 级 = 1 ⇒ 一字不变；满级 5 ⇒ 0.8）。入洞与深入下一层两处建盘都喂它。 */
 export function blankShareFactorOf(state: GameState): number {
   const lv = Math.max(0, Math.min(5, Math.floor(state.skills.trained['event-dividend'] ?? 0)))
   return 1 - EVENTS_BLANK_SHARE_PER_LEVEL * lv
 }
 
-/**
- * **进洞时停掉那一项活动，并取"停机前的读数"**（返给统一日志的 detail 段）。
- *
- * ⚠ **读数必须在停机之前取**（停完字段就清了）；没有可写读数的那几档走 `haltActivityForSwitch`
- * （`state.ts` 的**执行**分派），detail 留空。
- *
- * ⚠ **与 `state.ts` 那张 `haltActivityForSwitch` 的关系（2026-09-27 理顺）**：那张 switch 只负责
- * "按活动种类调各自 `*Halt`"（`state.ts` 拿不到 ctx、也没有这些读数）；本函数是"**执行 ＋ 取读数**"的
- * 虫洞版入口 —— 两份**不是**同一张表的两份拷贝，但**能取读数的四档**（扫描／采矿／打捞／长途运输）
- * 在这里分流 ⇒ **新增"可被进洞自动停掉"的活动种类时，两处都要看一眼**。
- * （原先这段逻辑内联在 `wormholeEnter` 的循环里、与上面的说明隔了十几行，容易被读成"重复表"。）
- *
- * ⚠ **2026-09-27 本地化**（三号核验批）：返回值由"中文串"改成**结构化拒因** `CoreBlockReason`
- * （`error` 中文原串照写 + `errorId` + `errorParams`），交给 `logAutoHalt` 挂到统一日志的空槽上
- * ⇒ 英文界面下这四段读数不再是中文。四个 id 见下表（域 `core.wormhole`）。
- *
- * | 档 | 读数 | id |
- * |---|---|---|
- * | 扫描虫洞 | 已扫分钟数 | `core.wormhole.038` |
- * | 开采 | 矿带名 · 本趟单位数 · 矿石名 | `core.wormhole.039` |
- * | 打捞 | 星系名 · 本趟 m³ 当量 | `core.wormhole.040` |
- * | 长途运输 | 出发站名 | `core.wormhole.041` |
- */
 function haltEntryActivityOf(
   state: GameState,
   ctx: SimContext,
@@ -1747,14 +1001,6 @@ function haltEntryActivityOf(
     return {
       error: `「${beltName}」 · 本趟 ${info.tripUnits} 单位${oreName}，货物留在船上`,
       errorId: 'core.wormhole.039',
-      /**
-       * `p1` / `p3` 是**内容名**（矿带名 / 矿石名）——⚠ **本批只做"句子"的本地化**：
-       * 内容名在英文界面下仍是中文，因为内容名称走的是 `packages/data/src/l10n.ts` 的
-       * **按 def id 的英文覆盖表**（`EN_BELTS` / `EN_ITEMS_ALL`），不在 `L10N` 里、
-       * 现有两步渲染（`paramText` 只认 `core.` 前缀）取不到它。已登记进
-       * `docs/review/arch-guard-baseline-20260927.md` 的"内容专名"那一条，**不在这里硬造第二套解析**。
-       * 只有"矿带"这个**通用兜底词**有词条（`p1Id`）——它在表里查不到矿带时才会出现。
-       */
       errorParams: {
         p1: beltName,
         p2: info.tripUnits,
@@ -1780,11 +1026,6 @@ function haltEntryActivityOf(
     return {
       error: `已即时返港停靠「${originName}」`,
       errorId: 'core.wormhole.041',
-      /**
-       * `p1Id` 只在"没有出发站"这一态上给：那时 `p1` 是**"母港"这个通用词**（不是内容专名）⇒
-       * 表里有词条、能翻。有出发站时 `p1` 是**站名**（内容专名）⇒ 与上面开采档同一条边界，
-       * 本批不翻（理由见那一段注释）。
-       */
       errorParams: {
         p1: originName,
         ...(info.fromSiteId ? {} : { p1Id: 'core.wormhole.042' }),
@@ -1795,19 +1036,11 @@ function haltEntryActivityOf(
   return undefined
 }
 
-/**
- * **入洞**（界面「进入虫洞」的引擎落点）：校验编队 → 建副本 → 写进存档。
- * `seed` 由调用方给（引擎传 `state.rng.seed`），保证节点/拾取堆可复现。
- */
 export function wormholeEnter(
   state: GameState,
   ctx: SimContext,
   shipIds: readonly string[],
   seed: number,
-  /**
-   * **本处的"出生信息"**（可选）：从库存项进洞时把 起始层 / 内容原型 / 敌族 一并带进来
-   * （丙 + 丁 · 船长 2026-09-14）。不传（调试入口/老路径）⇒ 层按老口径、族与原型按 `seed` 现算。
-   */
   origin?: { depth?: number; archetype?: WormholeArchetype; family?: WormholeFamily; expeditionRules?: number; automatic?: true },
 ): WormholeStartResult {
   const departureFrom = departureOrigin(state, ctx)
@@ -1816,14 +1049,6 @@ export function wormholeEnter(
   if (!budget.ok) return budget
   const blocked = wormholeEntryBlockReason(state, ctx, shipIds)
     if (blocked) return { ok: false, error: blocked }
-  /**
-   * **进洞自动停止**（船长 2026-09-14：「**进洞自动停止**」＋「『进洞会自动停掉的那一项活动』
-   * **同样落实到采矿/打捞**」＋「**长途运输发出警告**」；**2026-09-21 统一批**：判据与停机全部改走
-   * `activityGate` 那条单点 ⇒ 名单扩到**七项**，日志口径也统一成 `core.activityGate.001/.007`）。
-   * 停法与玩家手点活动栏「停止」**完全同一条路径**（状态改动走 `state.ts` 的各 `*Halt`）⇒ **不新增损失**
-   * （扫描进度保留；开采/打捞未返航的货留在船上；长途运输"终止即瞬时返港停靠出发站、无惩罚"）。
-   * 其余不可中断的主控活动（**远征 / 快递投送**）仍在门槛那一步拦住（见 `wormholeEntryBlockReason`）。
-   */
   for (const a of wormholeEntryAutoStops(state)) {
     logAutoHalt(state, a.mainKind, haltEntryActivityOf(state, ctx, a.mainKind))
   }
@@ -1831,8 +1056,7 @@ export function wormholeEnter(
   const r = wormholeStartRun(ctx, shipIds, seed, blankShareFactorOf(state), tech.turnBonus, origin?.expeditionRules)
   if (!r.ok || !r.run) return r
   r.run.haulerFittingVersion = 1
-  r.run.attending = true // 进洞即人在洞里：占着主控，直到临时离开或本趟收场
-  // 出生信息（丙/丁）：层夹 1~9；原型与族缺省 ⇒ 按种子现算（与库存列表显示的同源）
+  r.run.attending = true
   if (origin?.depth !== undefined) r.run.depth = Math.max(1, Math.min(9, Math.floor(origin.depth)))
   if (origin?.expeditionRules === 2 && r.run.depth !== 1) r.run.grid = wormholeMakeGrid(seed, r.run.depth, wormholeScanBonusOf(ctx, shipIds), blankShareFactorOf(state), 2)
   r.run.archetype = origin?.archetype ?? wormholeArchetypeOf(seed)
@@ -1840,30 +1064,9 @@ export function wormholeEnter(
   if (origin?.expeditionRules !== undefined) r.run.expeditionRules = origin.expeditionRules
   state.wormhole.run = r.run
   if (!origin?.automatic) beginDeparture(state, ctx, 'wormhole', departureFrom.galaxy, departureFrom)
-  /**
-   * **进新一趟 ⇒ 上一趟的结算单作废**（**2026-09-27 玩家报障修复 · 甲案**，船长批「按你推荐来」）。
-   *
-   * 报障现象：「下虫洞结束后，点击其他虫洞开始探索时，会直接结算」。
-   * 根因链：① `lastSettle` 全仓**只有**结算界面的「确认」按钮会清（`engine.wormholeAckSettle`）；
-   * ② 面板的**关闭键与弹层遮罩**都能绕过「确认」离开（`panels/Wormhole.tsx` 的 `handleClose`
-   * 只拦交火中），③ 它还**随档落盘**（`save.ts` 的清洗器会写回）⇒ 退游戏/刷新也留着；
-   * ④ 而渲染层的判据是「有结算单 ⇒ 整页只显示结算界面」（`panels/Wormhole.tsx`，与"哪一趟"无关）
-   * ⇒ 玩家点另一处库存虫洞「开始探索」时，面板一打开就被**上一趟**的结算占住。
-   *
-   * 这里清掉它（进洞是"新一趟开始"的唯一入口，`wormholeEnter` / `wormholeEnterFromStock` 都走本函数）
-   * ⇒ 旧结算单不会跨趟存活。⚠ **玩家还没看过的结算信息不在这里兜**：面板侧另有一条
-   * 「带库存点进来时，先看完结算再落回准备页」的口径（乙案），两案合起来才盖住整条现象。
-   */
   delete state.wormhole.lastSettle
-  /**
-   * **"第一次下到第 7 层"的围剿通讯标记**（**2026-09-27 补**，船长批「按你推荐来」）：
-   * 原置位点只有 `wormholeDescend`（本文件 `maybeHintSiege` 的唯一调用处）——正常路径下库存项的
-   * 层深**恒 1**（船长 2026-09-14「所有虫洞都是从 1 层开始探索」）⇒ 要上 7 层必然经过 descend，
-   * 提醒不会漏；但**调试档／异常档**可能带 `origin.depth ≥ 7` 直接进洞 ⇒ 那类档收不到 `msg-wh-siege`。
-   * 这里按**同一把判据**补一道（`maybeHintSiege` 自身幂等：置过就不再送）。
-   */
   maybeHintSiege(state, r.run.depth)
-  bumpFirst(state, 'wormholeRuns') // 第一次任务/链：进洞趟数
+  bumpFirst(state, 'wormholeRuns')
   addLog(
     state,
     'fleet',
@@ -1874,11 +1077,6 @@ export function wormholeEnter(
   return r
 }
 
-/**
- * ⚠ **施工期调试用**：放弃本趟探索（背包内容一并作废、`run` 清空）。
- * 正式路径（撤离成功结算 / 全损 / 回合耗尽）在 **F 批**实现；本函数只为"施工期不被卡在洞里"而存在，
- * 拍板前不应出现在玩家可及路径上（入口本身在调试开关后面）。
- */
 export function wormholeDebugReset(state: GameState): void {
   state.wormhole.run = null
 }

@@ -19,10 +19,6 @@ import { fmtDuration } from '../../i18n/fmt'
 import { bpGoodKey } from './blueprintValue'
 import { factionPlugBlueprintKind, isWormholeBlueprint, manualBuildNote } from './blueprintPolicy'
 
-/**
- * 组装机 / 造船厂生产卡。**`memo` + `liveKey`**：父级每次心跳都会重渲染并算出新的 `liveKey`，
- * 只有指纹变了的那几张卡才真正重渲染（其余直接跳过 ⇒ 不重建 DOM、不触发布局）。
- */
 export const BlueprintCard = memo(function BlueprintCard({
   engine,
   onToast,
@@ -37,7 +33,6 @@ export const BlueprintCard = memo(function BlueprintCard({
   productGlyph,
   productTone,
   productRef,
-  /** 一次制造产出件数（利润率按整批算；缺省 1） */
   productUnits,
   countOwned,
   ownedWhere,
@@ -56,73 +51,36 @@ export const BlueprintCard = memo(function BlueprintCard({
   description: string
   materials: readonly MaterialNeed[]
   buildSeconds: number
-  /** 产物标签（如 装备名 或 舰船名+属性） */
   productLabel: string
-  /** 产物名悬浮卡（ModuleHover/ShipHover/ItemHover——查看成品属性的统一入口；无解析 = 纯文本） */
   productNode?: ReactNode
-  /** 产物类别徽标：装备 / 舰船 */
   kindLabel: string
-  /** 产物图标键（与图鉴行同口径：物品/弹药 = 物品 kind、装备 = 槽位、舰船 = 船族；卡名前的 SVG 小图标） */
   productGlyph: string
-  /** 图标色覆盖（2026-09-20 零件两档：基础 = 冷钢蓝 / 高级 = 暖金；缺省 = toneOf(glyph)） */
   productTone?: string
-  /** 产物市场现货基准价（×单次产出数量；0 = 市场无卡不显示估算） */
   productBase: number
-  /** 产物引用（kind + refId）——装备/舰船按船长 2026-09-23 口径改显示**市场当前价格**时按它取行情；
-   *  ⚠ 造船厂那张卡（`Shipyard.tsx`）暂时还没接上（缺产物 id）⇒ 该卡不渲染这一行，等接线 */
   productRef?: { kind: 'module' | 'ship' | 'item'; refId: string }
-  /** **一次制造产出件数**（缺省 1）——利润率按"整批收入 = 单价 × 本值"算（船长 2026-09-24 报障：
-   *  零件每批 10 件、消耗品每批 N 发，而 `materials` 是整批的料；只按一件算会算出大负数） */
   productUnits?: number
-  /** 产物"自己有多少"的取数闭包（2026-09-10 船长：卡面产物行尾要显示"我拥有多少个成品"）
-   *  ⚠ 收闭包而不是收数值：数值随心跳变，收进来会让上面那张 memo 每拍失效（见 `cardLiveKeyOf`） */
   countOwned: () => number
-  /** 上面这个数字从哪儿数来的（仓库 / 装备库 / 机库），写进产物行括注 */
   ownedWhere: string
-  /** 点需求材料：有精炼源 → 跳到精炼炉对应源矿石卡；无源 → 跳市场（2026-09-08 船长定） */
   onNeedMineral?: (itemId: string) => void
-  /** 「市场求购蓝图书」跳市场：传该蓝图的市场商品键，市场页会搜到并展开它的行情详情
-   *  （2026-09-14 船长：组装机只指路、不替玩家下任何单） */
   onGotoMarket?: (goodKey: string) => void
-  /** 「去虫洞（遗迹打捞）」跳星图 · 出港 · 「扫描虫洞」页（船长 2026-09-14：虫洞专属图纸市场买不到，
-   *  改跳虫洞；未达虫洞解锁声望时按钮禁用、不跳） */
   onGotoWormhole?: () => void
-  /** 「前往章鱼人兑换」跳**章鱼人声望商店**（**2026-09-26 船长令**：插件图纸缺书时显示这个按钮，
-   *  替代原先那条「✕ 无市场渠道」死路——插件图纸本来就不在市场卖） */
   onGotoPlugExchange?: () => void
-  /** 「去书架」：切到蓝图书架并高亮这一本（2026-09-26 船长令：优化工业界面 → 优3 反向入口） */
   onGotoShelf?: (blueprintId: string) => void
-  /** 被「蓝图书架 → 去组装机」定位到的那张卡（页面层同一套 `.app-belt-card.is-goto` 高亮） */
   highlighted?: boolean
-  /** 2026-09-20 零件体系：隐式蓝图（基础零件）——无需学习即视为已学会，卡面显示「无需图纸」 */
   learnless?: boolean
-  /** **实时指纹**（`cardLiveKeyOf`）：父级每拍算一次，只有它变了这张卡才重渲染（第 3 步卡顿修复） */
   liveKey?: string
 }) {
   const state = engine.state
-  // 该蓝图的全部制造线（同蓝图可多条；与精炼炉同资源多台运转同构）
   const runs = manufacturingRunViews(state, engine.ctx).filter((v) => v.blueprintId === blueprintId)
   const running = runs.length > 0
   const owned = learnless === true || ownsBlueprint(state, blueprintId)
-  // 制造费已取消（2026-09-08）：耗时/缺口等 spec 计算的费用字段恒置 0
   const spec = { materials, buildSeconds, buildCostIsk: 0 }
   const buildMs = calcBuildDurationMs(state, engine.ctx, spec)
   const bookCount = state.blueprintStock[blueprintId] ?? 0
-  // **一次性图纸**（2026-09-12 船长：「玩家无法学会，只能制造一次」）：
-  // 不学习、每次开工消耗一本同名图纸；已永久学会时这本不消耗也不用（裁定「2乙」）
   const bpDef = engine.ctx.blueprints.get(blueprintId) ?? engine.ctx.shipBlueprints.get(blueprintId)
   const singleUse = bpDef?.singleUse === true
   const cap = recipeCapability(state, blueprintId, singleUse)
-  /**
-   * ⚠ **不能用 `cap.kind === 'ok'` 当"能造"**（2026-09-14 船长报障「组装机原先没有图纸时会跳转到市场
-   * 求购的按钮怎么没了」）：`recipeCapability(..., singleUse=false)` 对**普通图纸恒返回 `ok`**
-   * （core 注释：「普通蓝图恒 ok：只由 `startManufacturing` 的'是否已学会'把关」）⇒
-   * `ownsBlueprint || cap.kind === 'ok'` **恒为真**，未学会的卡也会走上面"手动制造 + AI 工位"那一支，
-   * 于是下面「市场求购蓝图书」的 else 分支**永远轮不到**（181 张图里 123 张普通图纸全被吃掉）。
-   * ⇒ 改用 core 的**单点判定** `canStartBlueprint`（已学会 ⇒ true；一次性图纸另有"书架有书且名额未用尽"）。
-   */
   const canBuild = canStartBlueprint(state, engine.ctx, blueprintId)
-  /** 一次性图纸的缺口提示（`null` = 无需提示） */
   const oneTimeNote = !singleUse
     ? null
     : owned
@@ -133,54 +91,23 @@ export const BlueprintCard = memo(function BlueprintCard({
           ? tr("ui.Industry.030")
           : null
   const short = missingMaterials(state, engine.ctx, spec)
-  /** 产物持有量：本卡渲染时现取（父级每拍算 `liveKey` 时也会取一次，同源口径） */
   const ownedCount = countOwned()
   const goodKey = bpGoodKey(engine, blueprintId)
-  /**
-   * **市场购买门槛**（只作"卡头状态"提示用）。⚠ **2026-09-14 船长：「组装机里，需要声望的才能启动组装机的
-   * 限制删除」** —— 这一条**不再挡任何按钮**：
-   * - 引擎侧本来就不看声望（`startManufacturing` / `canStartBlueprint` 只认"是否已学会 / 一次性图纸是否在书架"）；
-   * - 界面侧原先在 `canBuild` 之后插了一支 `lock ? 「✕ 声望未达标」（disabled）`，它排在
-   *   **「书架有书 ⇒ 就地学习」之前** ⇒ 手里已经拿着书（洞内打捞来的）也点不动、只看到"需要声望"。
-   * 现在只留卡头那枚提示（告诉玩家"市场这条路暂时买不了、还差多少声望"），
-   * **卡片永远给出下一步能做的事**：能造 ⇒ 制造；书架有书 ⇒ 学习；否则 ⇒ 市场求购（点到市场页自己看门槛）。
-   * 市场买书本身的声望门槛**未动**（那是已确认的"声望用途"口径，船长本轮只点了组装机）。
-   */
   const lock = !owned && goodKey ? marketLockedReason(state, engine.ctx, goodKey) : null
-  /**
-   * **这张图能不能在市场买到**（2026-09-14 船长：「虫洞专属的蓝图市场上没有卖，建议改为跳转虫洞。
-   * 如果玩家声望不达标，就无法跳转」）：`playerBuyable === false`（只收不卖那批）＝ 买不到 ⇒
-   * 「市场求购」是条死路（点进去只会看到"只收不卖"），改给「去虫洞」。
-   */
   const bookBuyable = goodKey !== null && engine.ctx.marketGoods.get(goodKey)?.playerBuyable !== false
   const blackMarketBlueprint = !bookBuyable && goodKey !== null && engine.ctx.marketGoods.get(goodKey)?.blackMarketBuyable === true
     && engine.ctx.marketGoods.get(goodKey)?.playerSellable === false
-  // ⟪文案调整 2026-11-07⟫ 势力一次性插件图纸来自信号空间，不走声望兑换。
   const factionPlugKind = factionPlugBlueprintKind(engine.ctx, blueprintId)
   const whBlueprint = isWormholeBlueprint(blueprintId) || factionPlugKind === 'single'
-  /**
-   * **舰船插件图纸**（**2026-09-26 船长令**：「**没有蓝图的舰船插件组装机应该显示去商店兑换，
-   * 点击后跳转到章鱼人声望商店。而不是无市场渠道（本来就不在市场购买）**」）。
-   *
-   * 判据 = 产物模块的 `slot === 'plug'`（与 `bpFilterKeysOf` 归那一档同源）。
-   * 这类图**从来不在市场卖**（`playerBuyable: false`）⇒ 走不到下面的"求购"分支，
-   * 原先会掉进兜底的「✕ 无市场渠道」死路 —— 船长点名的就是它。
-   */
   const plugBlueprint =
     engine.ctx.modules.get(engine.ctx.blueprints.get(blueprintId)?.moduleId ?? '')?.slot === 'plug' && factionPlugKind === null
-  /** 虫洞解锁声望闸（与扫描虫洞页同一本账：**累计**协会声望 ≥ `WORMHOLE_SCAN_UNLOCK_STANDING`；
-   *  2026-09-26 船长令「所有声望门槛改读累计声望」⇒ 走唯一入口 `standingOf`，不直读可支配那本） */
   const whStanding = standingOf(state, DSI_FACTION_ID)
   const whUnlocked = whStanding >= WORMHOLE_SCAN_UNLOCK_STANDING
-  // 每卡独立的 AI 核心选择（一枚核心驱动一条线；核心库存被占用后自动回落可用类型）
   const [coreSel, setCoreSel] = useState<AiCoreType>(() => bestAiCoreOf(state) ?? 'basic')
   const usableCores = usableAiCoresOf(state)
   const core = usableCores.includes(coreSel) ? coreSel : (usableCores[0] ?? null)
   const manualNote = manualBuildNote(state, engine)
 
-  /** 求购 = **只跳转、不下单**（2026-09-14 船长：「组装机求购蓝图应该跳转到市场对应的订单详细。
-   *  而不是直接市场价下订单」）——到市场页会自动搜到该蓝图并展开它的行情详情（与舰船页/物品页
-   *  「去市场」同一个入口 `onGotoMarket`，全仓一处口径）；买不买、按什么价挂单由玩家在详情里自己定。 */
   function handleGotoMarket(): void {
     if (!goodKey) {
       onToast(tr("ui.Industry.100"), true)
@@ -193,11 +120,6 @@ export const BlueprintCard = memo(function BlueprintCard({
     onGotoMarket(goodKey)
   }
 
-  /**
-   * **去虫洞（遗迹打捞）**（船长 2026-09-14）——虫洞专属图纸（`bp-wh-*` / `sbp-wh-*`）市场只收不卖、
-   * 买不到，所以指路"真正能拿到它的地方"：星图 · 出港 · **扫描虫洞**页（进洞 → 遗迹 / 图纸货柜 / 安全货柜）。
-   * **声望不达标 ⇒ 不跳**（按钮本身也置灰；这里再兜一道，防键盘/程序化触发）。
-   */
   function handleGotoWormhole(): void {
     if (!whUnlocked) {
       onToast(tr("ui.Industry.102", { WORMHOLE_SCAN_UNLOCK_STANDING: WORMHOLE_SCAN_UNLOCK_STANDING, whStanding: whStanding }), true)
@@ -210,7 +132,6 @@ export const BlueprintCard = memo(function BlueprintCard({
     onGotoWormhole()
   }
 
-  /** 书已在书架（未学习）：就地学习——与「蓝图书架」的「学习」同一个引擎出口与话术（不花钱、不占制造位） */
   function handleLearnFromShelf(): void {
     const r = engine.learnBlueprintAt(blueprintId)
     if (!r.ok) onToast(cmdText(r) || tr('ui.Industry.130'), true)
@@ -236,27 +157,14 @@ export const BlueprintCard = memo(function BlueprintCard({
     if (!r.ok) onToast(r.error ?? tr('ui.Industry.132'), true)
     else
       onToast(
-        // 2026-09-20 船长：「一次性蓝图的制造取消后返还玩家蓝图」⇒ 本条提示把{tr('ui.Industry.143')}说清（一次性图纸才有）
         tr('ui.Industry.157'),
       )
   }
 
-  // 2026-09-10 船长定：循环制造（开关 + 目标批数）从逐条制造线**上移到整张生产卡**——
-  // 一张卡一个开关，作用于该卡全部制造线（含主控亲自那条），打开后新开的线自动继承；
-  // 目标批数 = 全卡合计；「关→开」= 开一批新循环（合计与停因清零）。判定/计数都在 core。
   const loop = manufacturingLoopOf(state, blueprintId)
-  /**
-   * **循环目标的防丢草稿套件**（2026-09-17 报障修复首创于此；**2026-10-02 模块化**：口径原样
-   * 搬进 `ui/useLoopGoalDraft.ts`，与实验室卡（经典）· 实验室（HUD）三处共用一份 —— 行为逐字不变）。
-   */
   const { draft: goalDraft, typeDraft, clearDraft, clearTouched } = useLoopGoalDraft((n) =>
     engine.setManufacturingLoopAt(blueprintId, true, n),
   )
-  /**
-   * **原材料列表折叠**（**2026-10-01 船长令**：「**「原材料列表」折叠，超过2个材料就进行折叠**」）：
-   * 味数 > `MATS_COLLAPSE_OVER` 时材料块只留一行开关，点开才拉开全部行（公共件 `ui/matList.tsx`）。
-   * 状态**不落盘**（每张卡各自的 `useState`，切页/重挂载即回到折叠）；缺料味数取 `short`（本卡那把尺）。
-   */
   const matsListId = useId()
   const [matsOpen, setMatsOpen] = useState(false)
   const matsCollapsible = materials.length > MATS_COLLAPSE_OVER

@@ -11,7 +11,6 @@ export function parseStellarSeed(raw: string): number | undefined {
   return Number.isSafeInteger(n) && n >= 0 && n <= 0xffffffff ? n : undefined
 }
 
-// v1的生成参数冻结，不跟随当前内容表新增项或运行数值漂移。
 const V1_TRAITS: readonly PlanetTraitDef[] = [
   { id: 'temperate', kind: 'environment', weight: 3, exclusiveGroup: 'temperature', hazard: -10, habitability: 20 },
   { id: 'cold', kind: 'environment', weight: 2, exclusiveGroup: 'temperature', hazard: 10, habitability: -15, obstacle: 'ice' },
@@ -79,7 +78,6 @@ export function generateStellarSystem(seed: number): GeneratedStellarSystem {
   return { system, planets }
 }
 
-/** v1地表算法与选择表一起冻结，新增运行时内容不会改变旧坐标。 */
 function generateSurfaceV1(def: PlanetDef, seed: number, catalog: PlanetCatalog, required: readonly string[]): PlanetState {
   const rng = { seed, count: 0 }
   const traits = [...catalog.traits.values()].sort((a, b) => a.id < b.id ? -1 : 1)
@@ -113,7 +111,6 @@ function generateSurfaceV1(def: PlanetDef, seed: number, catalog: PlanetCatalog,
   return { ...def, generationVersion: 1, seed, traitIds: selected.map(t => t.id), hiddenTraitId: selected[nextInt(rng, selected.length)]!.id, survey: 1, cells }
 }
 
-/** 当前表只解释运行参数，v1随机选择和地表生成不读取它。 */
 export function stellarPlanetCatalog(catalog: PlanetCatalog, planets: readonly import('./planetTypes').PlanetState[]): PlanetCatalog {
   return { ...catalog, planets: new Map([...catalog.planets, ...planets.map(p => [p.id, { id: p.id, galaxyId: p.galaxyId, size: p.size }] as const)]) }
 }

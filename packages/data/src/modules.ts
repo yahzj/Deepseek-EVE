@@ -1,50 +1,3 @@
-/**
- * 装备表（V17.1 + V17.2 + V18 + V18.1：72 件）。
- *
- * 设计（中文说明）：
- * - 工业槽（miner/cargo）：保留加成系数形态（bonus：产量/容量百分比）——生产参数简单直接；
- * - 战斗家族 V17.1 起按"参数进公式"分族（全部经用户审核定稿）：
- *   · 抗性件 = 纯抗性：护盾增强器（护盾槽）与装甲镀层（装甲槽），动能/高爆/能量三系 ×
- *     MK1/2/3；值 = "缺口削减"（实际抗性 = 1 − (1−船体基础) × (1−值)，上限 90%）——
- *     EVE 式乘入：船体基础越高同系收益越低，无基础船面板 = 该值；
- *   · 容量件 = 纯容量：护盾扩展器（护盾槽）与装甲增厚板（装甲槽），MK1/2/3——
- *     与抗性件同槽二选一（本槽只能装一件），无分系；
- *   · 矢量推进器 = 加力推进（战斗速度加成，常驻）＋代价：开火命中 ×(1−hitPenalty)
- *     （MK1 +15%/×0.95、MK2 +30%/×0.88、MK3 +50%/×0.80——低档轻微、高档重）；
- *   · 炮台（V17.2 炮族制；V18 口径取消） = 档位 × 固定弹种：轻型（MK1 速射近程）、
- *     重型（MK2 慢射远程）、攻坚（MK3 超远程重装填）、异星原型；同 MK 三弹种款
- *     性能一致只换伤害类型（动能打盾 ×1.5 / 高爆打甲 ×1.5 / 能量打盾 ×1.25 且单发基数最高）；
- *     蓝图 = 动能款（协会制式）；口径限制已取消——任意船可装任意炮，装配唯一约束 = CPU；
- *   · V18B-1/2 武器形态分家（船长 2026-09-04："按伤害类型设计武器，不应只是换描述"）：
- *     爆炸系已从临时"高爆炮"迁移为导弹架（mod-missile-1/2/3，见下方导弹架段）——
- *     追踪命中不随距离衰减的远程爆破，带近盲安全射距（太近会炸到自己）；
- *     V18B-2：能量系从临时"能量炮/异星原型"迁移为激光炮（mod-laser-1/2/3/proto）——
- *     必中（不掷命中）+ 距离衰减作用于威力（幅度 = 命中衰减的 50%）+ 消耗能量弹药；
- *     动能炮仍为临时填充数据，V18B-3 将改造为质量炮形态（届时再做迁移与改名确认）；
- *   · 弹药：动能弹药（质量炮）、爆破弹药（导弹架专用，爆炸键）、能量弹药（激光炮专用，
- *     原名"等离子弹"，id 不变）——每型单档通用弹（-l），武器按自身固定弹种消耗；
- *     ⚠ 2026-09-16 船长定名批：动能弹 / 爆破导弹 两名统一到《系+弹药》（id 一律不变）；
- *     ⚠ 2026-09-17 船长定批（带括号文案逐类审核 · 第一批裁决）：说明里**不再写槽位标签**——
- *       「（低槽）」「（中槽）」「（高槽）」「（高槽，无伤害）」6 类 29 段一律去掉；槽位由富卡
- *       「槽位 / 类型」行与仓库/装配/市场/手册各处 chip 承担。**「（不可制造）」按约定 §十三 保留**
- *       （"能不能造"是有用信息，中性句写法）；「（上限 90%）」与谜质储存器的尾注经复核**保留**。
- * - CPU 装配资源（V17.1 用户定稿：成倍档位拉开船级差距）：
- *   民用 3（炮台 6）/ MK1 5（炮台 10）/ MK2 15（炮台 28）/ MK3 40（炮台 52）/
- *   异星原型 60（炮台 70）——战斗件与工业件同档；低级船（磷虾 60 CPU）只带得动
- *   低级全套，MK3 顶配套件需要 220+ CPU 的顶级船，无人机放飞余量同池竞争；
- * - 渠道与既有规则一致：MK1 平价 / MK2・MK3 稀有（MK3 无蓝图市场专供）/
- *   proto 奇货（声望 10、无蓝图）；护盾/装甲/推进无蓝图（市场供应为主）；
- * - 存档迁移：mod-shield-1/2/3、mod-armor-1/2/3（通用全系）与 mod-turret-1/2/3
- *   （V17 前混型炮）已下架，载入存档自动按动能款迁移（core/equipment 迁移表）；
- * - V18（C3）槽位制 + V18.1（2026-09-04 船长拍板）支援件与收敛：
- *   · 槽位制：fitted 位数组 + rack 归属（高 = 炮台/采集器/打捞器/无人机装置；中 = 盾系/推进；
- *     低 = 甲系/货舱）；V18.1 支援件再挂 中/低（伤害+射速 = 低；命中+闪避 = 中）；
- *   · V18.1 取消"同类唯一"：全部件可复数安装，防超模靠收敛（core/equipment
- *     stackingOf）：抗性/闪避缺口复合、命中/速度 EVE 曲线、伤害/射速/容量加算；
- *     本表支援件数值（+6/10/15% 等）为暂定初值，进 C4 校准轮复核；
- *   · support 家族效果字段判别：damageTypeBonusPct = 稳定器、reloadCutPct = 射速
- *     计算机、hitBonusPct = 索敌阵列、evasionGapPct = 姿态陀螺。
- */
 
 import staticDocument from './static/modules.json'
 import type { DataDocument } from '../../../tools/data-editor-contract'
@@ -277,7 +230,6 @@ const MODULES_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
       L10N['mod.copy.026']!.zh,
   },
   "mod-shieldfield-2": {
-    // ⟪文案调整 2026-11-01⟫ 船长确认改名与定向投送。
     name: L10N['mod.fleetSupport.001']!.zh,
     description: L10N['mod.fleetSupport.003']!.zh,
   },
@@ -592,7 +544,6 @@ const MODULES_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
       L10N['mod.copy.065']!.zh,
   },
   "mod-lair-blink-r": {
-    // ⟪文案调整 2026-10-19⟫ 船长定名短距离跃迁装置。
     name: '短距离跃迁装置',
     description: L10N['mod.copy.066']!.zh,
   },
@@ -612,7 +563,6 @@ const MODULES_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
   "mod-wh-a-hangar": {
     name: '掠袭机库',
     description:
-      // ⟪文案调整 2026-10-08⟫
       L10N['mod.copy.070']!.zh,
   },
   "mod-wh-a-prop": {
@@ -737,12 +687,6 @@ const MODULES_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
   "mod-wh-g-turret": {
     name: '亡军残炮',
     description:
-      /**
-       * ⚠ **不再点名别的型号、也不写"相对它多少倍"**（**2026-09-30 船长令「按你推荐改」** ·
-       * 跨件读数清理批）：原句是「单发是**攻坚炮台 MK3** 的两倍多，命中只有 0.75…」——
-       * 那种写法 = **本件效果 × 别件的当前基数**，攻坚炮台一动这句就陈旧（判据已并入
-       * `docs/roadmap.md`「待办活面」③，工作文档按 §8 归档删除）。现在只留本件的规格与风味。
-       */
       L10N['mod.copy.095']!.zh,
   },
   "mod-wh-g-prop": {
@@ -753,22 +697,15 @@ const MODULES_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
 }
 
 import type { ModuleDef } from '@whale/core'
-// 2026-09-26 船长令：舰船插件单独一份表（见 ./plugs.ts），在本表末尾**展开并进同一个目录**
 import { SHIP_PLUGS } from './plugs'
 import { L10N } from './l10n/table'
 // ⟪文案调整 2026-10-04⟫ 船长授权整批说明重写，数值与功能不变。
 
-/**
- * 全部装备（含**舰船插件**：2026-09-26 舰船插件批在文末展开 `SHIP_PLUGS`）。
- * 之所以并入同一张表而不是另起一个 `export const`：全仓读的是 `MODULES` 这一个目录键
- * （`ctx.modules` / `content:check` / `overlayList` 都吃它），拆表会让插件从目录里消失。
- */
 export const MODULES: readonly ModuleDef[] = [
   ...staticDataGroup<ModuleDef>(staticDocument as unknown as DataDocument, 'MODULES_0', MODULES_0_TEXT_BINDINGS),
   ...SHIP_PLUGS,
 ]
 
-/** 构建"装备 id → 定义"目录 */
 export function buildModuleCatalog(): ReadonlyMap<string, ModuleDef> {
   return new Map(MODULES.map((m) => [m.id, m]))
 }

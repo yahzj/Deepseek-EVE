@@ -10,14 +10,6 @@ import { queueStationActivity } from '../../stationActivityPending'
 import { industryAvailable, UNBOX_CYCLE_MS } from './params'
 import { encryptedBlueprintGroups, encryptedFamilyOf } from '../../encryptedContainer'
 
-/**
- * 玩家指令：**拆解一件虫洞货柜**（F4d · 船长 2026-09-13 定案；2026-09-14 增图纸货柜）。
- *
- * 口径（船长原话要点）：走**精炼配方口径**（与精炼 / 回收**同一条产线机器**：主控亲自 或 1 枚 AI 核心）·
- * **90 秒/件** · 一箱出 **1 件**。**抽取口径 2026-09-14 起分岔**：安全货柜 = 100% 族专属池；
- * 图纸货柜 = 5% 永久图纸 / 95% 一次性图纸（按该货柜的层档过滤）。
- * 抽取见 `wormholeSalvage.wormholeUnboxRoll`；产出走**与随行战利品同一条入库路径**。
- */
 export function startUnboxRun(
   state: GameState,
   ctx: SimContext,
@@ -39,7 +31,6 @@ export function startUnboxRun(
     if (dockBlock) return { ok: false, ...dockBlock }
     const queued = queueStationActivity(state, ctx, { kind: 'unbox', itemId: boxItemId })
     if (queued) return queued
-    /** 顺序同 `startRefineRun`：判据 → **同档换机器收口（停手上那台 + 统一日志）** → 位置门槛 */
     const gateSkip = applyActivityGate(state, 'refine', ctx)
     if (gateSkip) return gateSkip
     if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
@@ -61,13 +52,10 @@ export function startUnboxRun(
       }
   }
   const eff = worker === 'pilot' ? 1 : aiEfficiency(state, ctx, worker)
-  // 谜质科技「货柜拆解技术」：每级 −25%（加法口径 ⇒ 满级 −75%；船长 2026-09-19）
   const unboxBase = Math.round(UNBOX_CYCLE_MS * (1 - matterTechUnboxCut(state, ctx)))
   let cycleEff = Math.max(1, Math.round(unboxBase / eff))
-  // 产线节拍学（与精炼 / 回收同款）：每级 −5% 周期（手动与 AI 核心驱动同享）
   const autoLv = Math.min(5, state.skills.trained['industrial-automation'] ?? 0)
   if (autoLv > 0) cycleEff = Math.max(1, Math.round(cycleEff * Math.max(0, 1 - 0.05 * autoLv)))
-  // 调试「1 秒化」（2026-10-01 补 · 全仓同款）：固定 1 秒、不吃技能乘区；只影响新起的线
   if (state.debugQuick) cycleEff = 1000
   if (worker !== 'pilot' && !occupyAiCore(state, worker)) {
     return { ok: false, error: `${aiCoreName(worker)} 占用失败（库存异常）。`, errorId: 'core.industry.013', errorParams: { p1: aiCoreName(worker) } }

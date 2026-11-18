@@ -63,7 +63,6 @@ function Bill({ bill, itemName }: { bill?: PlanetBill; itemName: (id: string) =>
 type WheelState = { planetId: string; index: number; sourceId?: string; sourceBuilding?: PlanetState['cells'][number]['building']; sourceFingerprint: string; jobSeq?: number; anchor: { x: number; y: number }; step: 'menu' | 'build' | 'move' | 'demolish'; target?: number }
 
 function planetBuildingFingerprint(building?: PlanetState['cells'][number]['building']): string {
-  // 持续变化的磨损与供电读数不属于操作身份，不能让日常结算打断轮盘。
   return building ? [building.id, building.status, building.staffed, building.enabled].join('|') : ''
 }
 

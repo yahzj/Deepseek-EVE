@@ -17,15 +17,10 @@ import { nextRandom, hashSeed, pickWeighted } from '../rng'
 import { tuningMul } from '../tuning'
 import { ceilFinalQuantity } from '../quantity'
 
-/** 新任务探索与作业参数；既有在途任务按冻结快照结算。 */
 export const SIGNAL_AUTO_ESTIMATE_CONFIG = { reserveTurns: 2, movePerPlace: 1.25, workPerPlace: 1,
   exitRadiusCost: 1.5, ordinaryJitter: .1, relicChecks: 2, maxDepth: 9,
   ordinaryHoldShareMin: .25 } as const
 
-/**
- * 下潜途中普通作业的累计目标，按层深与已用回合放宽；只用于分配作业回合。
- * 终层仍可使用完整货舱，特殊奖励从不占用普通资源容量。
- */
 export function signalAutoOrdinaryHoldShareOf(depth: number, remaining: number, budget: number): number {
   const progress = Math.max(0, Math.min(1, Math.max(
     (depth - 1) / (SIGNAL_AUTO_ESTIMATE_CONFIG.maxDepth - 1),
@@ -58,7 +53,6 @@ export function signalAutoEstimateOf(state: GameState, ctx: SimContext, ids: rea
   const admission = wormholeAdmission(ctx, ids, buffs.turnBonus)
   const miners = wormholeMinersInFleet(state, ctx, ids), salvagers = wormholeSalvagersInFleet(state, ctx, ids)
   const scanRadius = Math.max(1, 1 + wormholeScanBonusOf(ctx, ids) + buffs.scanRadius)
-  // 档位与科技只在作业效率中计一次，台数为每动作的基础堆数。
   const mining = miners > 0 ? miners + wormholeWorkEfficiencyOfFleet(state, ctx, ids, 'miner') : 0
   const salvage = salvagers > 0 ? salvagers + wormholeWorkEfficiencyOfFleet(state, ctx, ids, 'salvager') : 0
   const recover = (throughput: number) => throughput / (1 + throughput)
@@ -95,7 +89,6 @@ export function signalAutoEstimateOf(state: GameState, ctx: SimContext, ids: rea
       * ((WORMHOLE_VEIN_PILES_MIN + WORMHOLE_VEIN_PILES_MAX) / 2 + extra) : 0
     const ordinaryVolume = common + ore * oreM3
     const share = signalAutoOrdinaryHoldShareOf(depth, remaining, budget)
-    // 用未乘设备回收效率的潜在体积排程，升级设备不会反过来增加浅层作业回合。
     const plannedWork = Math.min(1, Math.max(0, holdM3 * share - ordinaryPlannedM3) / Math.max(1, ordinaryVolume))
     const ordinarySites = (salvagers > 0 ? graves : 0) + (miners > 0 ? veins : 0)
     const savedCost = baseSites * Math.min(1, ordinarySites / Math.max(1, sites)) * workCost * (1 - plannedWork)
@@ -104,7 +97,6 @@ export function signalAutoEstimateOf(state: GameState, ctx: SimContext, ids: rea
     const guardWon = guardBattle.outcome === 'victory'
     const descend = depth < SIGNAL_AUTO_ESTIMATE_CONFIG.maxDepth
       && guardWon && remaining >= plannedCost
-    // 不能继续下潜时恢复本层普通作业，不因预留目标而空舱撤离。
     const ordinaryWork = descend ? plannedWork : 1
     const layerCost = descend ? plannedCost : fullCost
     const completion = Math.min(1, remaining / layerCost)
@@ -144,7 +136,6 @@ export function signalAutoEstimateOf(state: GameState, ctx: SimContext, ids: rea
   const jitter = 1 + (stream('ordinary')() * 2 - 1) * SIGNAL_AUTO_ESTIMATE_CONFIG.ordinaryJitter
   const common = expected.wreck * jitter, ore = expected.ore * jitter
   const volume = common + ore * oreM3, scale = Math.min(1, holdM3 / Math.max(1, volume))
-  // 收成系数在实际可装数量之后应用，否则满仓会抹平科技等级差异。
   const wreckN = Math.min(Math.floor(holdM3), ceilFinalQuantity(common * scale * yieldMul))
   const oreN = Math.min(Math.floor(Math.max(0, holdM3 - wreckN) / oreM3), ceilFinalQuantity(ore * scale * yieldMul))
   const wreckByLayer = allocateUnits(wreckN, ordinaryByLayer.map(row => row.wreck))
@@ -154,7 +145,6 @@ export function signalAutoEstimateOf(state: GameState, ctx: SimContext, ids: rea
   add(wreckId, wreckN); add(oreId, oreN)
   wreckByLayer.forEach((units, index) => addLayer(index, wreckId, units))
   oreByLayer.forEach((units, index) => addLayer(index, oreId, units))
-  // 各奖励线独立取整：固定整数机会，只为小数部分多掷一次。
   for (const row of opportunities) {
     const rareId = rareWreckItemIdOf(key)
     const rareCount = round(row.checks * wormholeRelicChanceOf(row.depth) * yieldMul, stream(`rare/${row.depth}`))
@@ -171,7 +161,6 @@ export function signalAutoEstimateOf(state: GameState, ctx: SimContext, ids: rea
   const essenceUnits = round(expected.essence * yieldMul, stream('essence'))
   add(WORMHOLE_ESSENCE_ITEM_ID, essenceUnits)
   allocateUnits(essenceUnits, essenceByLayer).forEach((units, index) => addLayer(index, WORMHOLE_ESSENCE_ITEM_ID, units))
-  // 核心保持独立每趟一次规则；按已完成层加权，不以触达最深层放大全趟。
   const completed = out.layers.reduce((n, layer) => n + layer.completion, 0)
   const weightedDepth = out.layers.reduce((n, layer) => n + layer.depth * layer.completion, 0) / Math.max(1, completed)
   const coreRng = { seed: hashSeed(`signal-auto-core-1/${signal.seed}/${signal.depth}`), count: 0 }

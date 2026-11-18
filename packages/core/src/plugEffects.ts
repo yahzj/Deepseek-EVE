@@ -1,7 +1,6 @@
 import type { ModuleDef, SimContext } from './types'
 import { stackWeight } from './stacking'
 
-/** 插件与普通装备的惩罚池分离；空间压缩整件共用同一份权重。 */
 export function plugStackingKindOf(mod: ModuleDef): string | null {
   if (mod.slot !== 'plug' || mod.plugNonStacking || mod.targetWeightMul !== undefined ||
     mod.cpuBonus !== undefined || mod.midSlotsAdd !== undefined || mod.lowSlotsAdd !== undefined) return null
@@ -33,7 +32,6 @@ function strengthOf(mod: ModuleDef, kind: string): number {
   return mod.cargoCapacityBonusPct ?? mod.droneBayBonusM3 ?? 0
 }
 
-/** 只生成计算用副本，不改变已安装列表、槽数、库存与回收数量。 */
 export function plugEffectPartsOf(ids: readonly string[], ctx: Pick<SimContext, 'modules'>) {
   const seen = new Set<string>()
   const parts = ids.flatMap((id, index) => {

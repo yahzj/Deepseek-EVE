@@ -1,23 +1,9 @@
-/**
- * **「里程碑任务」面板**（**2026-09-20 船长转玩家反馈**：「**已经完成「第一次」任务后的里程碑任务链，
- * 建议单开一个任务中心的子页面「里程碑任务」来装**」）。
- *
- * 口径（船长同日三选）：
- * - 页签**恒显**（未解锁时给提示，与「快递任务」页"未建成副站给建设提示"同一做法）；
- * - 每条**次数链**（里程碑）一张卡：名字 · 当前档位/总档 · 已累计读数 · 可领奖金 · 下一级奖金；
- * - **领奖按钮只在本页**（**2026-09-20 船长第二道令**：「第一次任务内，不要显示里程碑相关内容。建议隐藏」
- *   ⇒ 「第一次」卡上原先那行只读、「可领奖」小标与链奖金行**全部撤掉**，里程碑只在本页出现）。
- *
- * 数据侧全部在 core 的 `milestoneBoard(state)`（含 `unlocked` 判据：对应「第一次」已完成才上本页）；
- * 本面板只渲染，不自己算。
- */
 import { milestoneBoard } from '@whale/core'
 import { firstChainText } from '@whale/data'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { currentLocale, tr } from '../i18n/locale'
 
-/** 链进度的计数单位（**纯显示用**，与 core 的阈值表同源；`tierKey` 缺项 ⇒ 不写单位） */
 const CHAIN_UNITS: Record<string, string> = {
   get scan() { return tr('ui.FirstTasks.004') },
   get mineUnits() { return tr('ui.FirstTasks.005') },
@@ -34,7 +20,6 @@ const CHAIN_UNITS: Record<string, string> = {
   get skills() { return tr('ui.FirstTasks.010') },
 }
 
-/** 链 id → 计数单位键（与 `CHAIN_TIERS` 的 tierKey 同名；这里显式列一次，免得面板再引 core 的阈值表） */
 const UNIT_BY_CHAIN: Record<string, string> = {
   explorer: 'scan',
   digger: 'mineUnits',

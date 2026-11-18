@@ -1,10 +1,3 @@
-/**
- * **环境音层**（2026-11-02 追加批）——场景底噪循环 + 随机点缀。
- *
- * - 底噪：3 条 loop（停靠 / 太空 / 战斗；虫洞与入侵沿用太空），与 BGM 同款交叉淡变（`LoopChannel`）；
- * - 点缀：每 20–90 秒随机播一声（通讯滴答 / 金属声 / 电流杂音），走环境分类音量与节流；
- * - 缺素材 = 静音；隐藏/最小化由 `useSceneAudio` 的 visibility 生命周期暂停与恢复。
- */
 import { SFX_CUES } from './cues'
 import type { SfxCueId } from './cues'
 import { webAwaitingFirstGesture } from './gestureGate'
@@ -51,7 +44,6 @@ function ambientVolumeOf(cueId: SfxCueId): number {
 
 function apply(): void {
   try {
-    // 网页首次手势前不建底噪元素（理由同 music.ts）；手势后 useSceneAudio 的 resumeAmbient 再 apply
     if (webAwaitingFirstGesture()) return
     const ch = ensureChannel()
     if (ch === null) return
@@ -67,7 +59,6 @@ function apply(): void {
     }
     ch.set(url, ambientVolumeOf(cueId))
   } catch {
-    /* 忽略 */
   }
 }
 
@@ -84,7 +75,6 @@ function tick(): void {
     playCue(cueId)
     nextBlipAt = Date.now() + nextDelayMs()
   } catch {
-    /* 忽略 */
   }
 }
 
@@ -101,7 +91,6 @@ function clearScheduler(): void {
   }
 }
 
-/** 场景变化时切底噪（同曲不重启） */
 export function setAmbientScene(scene: SfxScene | null): void {
   currentScene = scene
   apply()
@@ -131,7 +120,6 @@ export function resumeAmbient(): void {
   if (currentScene !== null) ensureScheduler()
 }
 
-/** 当前环境底噪语义 id（调试/音效台展示用） */
 export function currentAmbientCue(): SfxCueId | null {
   return currentScene === null ? null : sceneAmbientOf(currentScene)
 }

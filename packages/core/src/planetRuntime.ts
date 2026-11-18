@@ -9,10 +9,8 @@ import { advancePlanetEvents } from './planetProjects'
 import { hashSeed } from './rng'
 import { advanceStellarSearch } from './stellarSearch'
 
-/** 实验规则只对显式启用的测试世界推进；旧原型档仍冻结。 */
 export function advancePlanetary(state: GameState, deltaMs: number, catalog: PlanetCatalog, startGameMs = state.gameMs): void {
   if (state.planetary?.runtimeVersion !== 1 || !Number.isFinite(deltaMs) || deltaMs <= 0) return
-  // 以整个系统一条余数对齐物流与工程节点，避免长步先到货后补算之前产出。
   const planets = Object.values(state.planetary.planets).filter(p => p.colony && planetRulesSupported(p, catalog)
     && (!p.systemId || state.planetary!.stellar?.systems[p.systemId]?.generationVersion === 1))
   if (planets.length === 0) { advanceStellarSearch(state, deltaMs); return }

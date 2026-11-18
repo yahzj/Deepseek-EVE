@@ -45,7 +45,6 @@ function returnReasonMatches(report: SignalAutoReportDetails): boolean {
   return last.completion < 1 || last.depth < 9 && won && close(report.spentTurns, report.availableTurns)
 }
 
-/** 快照整体有效才保留；损坏结果不能被清洗成另一份可领取的奖励。 */
 export function cleanSignalAutoEstimate(value: unknown): SignalAutoEstimate | undefined {
   const row = record(value), tech = record(row?.tech), cap = record(row?.capability)
   if ((row?.version !== 1 && row?.version !== 2) || !tech || !cap) return undefined
@@ -93,7 +92,6 @@ export function cleanSignalAutoEstimate(value: unknown): SignalAutoEstimate | un
     ...(report ? { report } : {}) }
 }
 
-/** 旧报告不含逐层数据；新字段出现时整体验证，避免显示残缺的伪明细。 */
 export function cleanSignalAutoReportDetails(value: unknown): SignalAutoReportDetails | undefined {
   const row = record(value)
   if (!row || !integer(row.availableTurns) || !finite(row.spentTurns) || row.spentTurns > row.availableTurns + 1e-8

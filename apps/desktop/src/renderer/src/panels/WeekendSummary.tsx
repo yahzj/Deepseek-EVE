@@ -1,25 +1,10 @@
-/**
- * **周末入侵 · 结算面板**（2026-09-25 · 船长令：「通讯的跳转显示详细奖励，点击后弹出**类似虫洞撤离的
- * 结算界面**，显示玩家在各个被入侵星系的贡献和旗舰战的输出，并列出玩家获得的物品，包括旗舰战的掉落物」）。
- *
- * 骨相照 `panels/Wormhole.tsx` 的 `SettleView`（同一套 `app-wh-settle-*` 类名与"逐格淡入"节奏），
- * 按约定第六章：**先复刻同级相似项 UI，再最小差异**，不自造相似新样式。
- *
- * 数据来源 = `state.weekendLastResult`（结束那一刻的快照；下一场开局会把本场台账清掉 ⇒ 只有快照留得住）。
- * 物品名走**游戏既有物品表**（`engine.ctx.items`）⇒ 中英各自成句。
- */
 import type { ReactNode } from 'react'
 import { DSI_FACTION_ID, spendableStandingOf, standingOf, weekendFamilyNameId } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import { tr } from '../i18n/locale'
 
-/** 数值千分位（与虫洞结算同口径） */
 const n = (v: number): string => Math.round(v).toLocaleString()
 
-/**
- * 入侵结算面板（弹层内容；由通讯页/通讯弹窗在 `action === 'weekendSummary'` 时挂载）。
- * 没有快照（老档 / 还没打过入侵）⇒ 不渲染（调用方据此不弹）。
- */
 export function WeekendSummaryView({ engine, onClose }: { engine: GameEngine; onClose: () => void }): ReactNode {
   const snap = engine.state.weekendLastResult
   if (snap === undefined) return null
@@ -35,7 +20,6 @@ export function WeekendSummaryView({ engine, onClose }: { engine: GameEngine; on
   const sharePct = (snap.share * 100).toFixed(0)
   const tierText = snap.tier === 'none' ? tr('ui.weekend.052') : tr('ui.weekend.051', { p1: snap.tier })
 
-  /** 读数格：与虫洞结算同款（`label` + `value` + `sub`；`wide` = 跨两列独占一行） */
   const cells: Array<{ label: string; value: string; sub: string; wide?: boolean }> = [
     { label: tr('ui.weekend.035'), value: `${sharePct}%`, sub: tierText },
     { label: tr('ui.weekend.036'), value: `${reclaimed} / ${snap.galaxies.length}`, sub: tr('ui.weekend.041') },
@@ -53,11 +37,6 @@ export function WeekendSummaryView({ engine, onClose }: { engine: GameEngine; on
       value: `×${n(snap.wreck)}`,
       sub: `${itemNameOf(snap.wreckItemId ?? '')} · ${tr('ui.weekend.114')}`,
     },
-    /**
-     * **进度收入**（2026-09-25 船长令「在结算时候直接按进度获取收入」）：单列一格 ——
-     * 与下面的「信用点」合计并列，玩家能看清"入侵不给赏金，钱是按进度算出来的"。
-     * 老快照没有这一栏（缺省）⇒ 不显示该格。
-     */
     ...(snap.progressIsk !== undefined && snap.progressIsk > 0
       ? [
           {
@@ -68,12 +47,6 @@ export function WeekendSummaryView({ engine, onClose }: { engine: GameEngine; on
         ]
       : []),
     { label: tr('ui.weekend.039'), value: n(snap.isk), sub: '' },
-    /**
-     * **本期按贡献拿到的协会声望**（**2026-09-26 船长令**：「关于入侵的结算界面和结束通讯处，
-     * 需要提及玩家获得了多少声望」）——读数取快照（与实发同源），另带两本账的现值
-     * （可支配 / 累计获得），玩家一眼知道"这 15 点加在哪"。
-     * 老快照没有这一栏（缺省 0）⇒ 不显示该格；独占一行（与黑匣同款 `wide`），免得挤成半格。
-     */
     ...((snap.standing ?? 0) > 0
       ? [
           {

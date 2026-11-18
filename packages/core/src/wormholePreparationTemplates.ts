@@ -17,7 +17,6 @@ function cleanTargets(value: unknown): Record<string, number> {
   return Object.fromEntries(Object.entries(value).filter(([id, n]) => id.length > 0 && id.length <= 128 && Number.isSafeInteger(n) && (n as number) >= 0)) as Record<string, number>
 }
 
-/** 兼容字段缺省为空；坏条目不覆盖同id/同名的合法模板。 */
 export function cleanWormholePreparationTemplates(value: unknown): WormholePreparationTemplate[] {
   if (!Array.isArray(value)) return []
   const result: WormholePreparationTemplate[] = []
@@ -72,7 +71,6 @@ export function wormholeDeletePreparationTemplate(state: GameState, id: string):
   return { ok: true, id }
 }
 
-/** 模板只修改总量清单；已有货超目标保留，显式卸港不被取消，现役机群不参与补齐。 */
 export function wormholeTemplateFillPlan(state: GameState, ctx: SimContext, fleet: readonly string[], request: WormholePreparationRequest, template: WormholePreparationTemplate): WormholePreparationPlan & { excess: Record<string, number> } {
   const onboard = wormholePreparationPlan(state, ctx, fleet, { targets: {}, unload: request.unload })
   const targets = { ...template.targets }

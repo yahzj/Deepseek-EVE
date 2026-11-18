@@ -1,44 +1,16 @@
 /// <reference types="vite/client" />
-/**
- * 宇宙背景（2026-09-10 船长：把 `docs/Small 512x512` 的 32 张宇宙图**平铺**用作游戏背景，
- * 只作界面底、不动舰船图形与战斗背景；同日追加"设置里可更换"）。
- *
- * 口径（船长 2026-09-10 确认）：
- * - 图源与用量：三套星云（蓝/绿/紫）+ 星野，共 32 张 512×512 **无缝贴图**（逐张量过边缘像素差，
- *   1.6~3.2/255，平铺无接缝）；**每次启动随机抽一张**，整场会话固定（同一张才无缝，
- *   混图平铺必然出现接缝——所以"随机"发生在启动/换图时，而不是每屏）；
- * - 设置面板（顶栏「设置」）可**换一张**：立即换成另一张随机底图（本次会话内有效；
- *   下次启动仍走随机——"每次启动随机"是船长选定的默认行为，不写入偏好）；
- * - 落点：整个界面壳层最底层（`.app-root` 的 background 层，见 styles.css）。
- *   战斗画面（自带不透明深色底 + 星野视差层）与序章（纯黑底）都是**不透明**覆盖层，
- *   底图不会透进去；舰船/无人机等 SVG 图形一律不动；
- * - 亮度（船长 2026-09-10 二轮校准，选定「方案A」）：底图之上压一层 **55%** 的深色
- *   （同色系 #060b13），同时把**面板底改为半透明 alpha 0.88**（`packages/ui/src/index.css`）——
- *   第一版只压了 72% 蒙层、面板仍是完全不透明，结果页面上 90% 面积都被面板挡住、玩家几乎看不到底图
- *   （面板底 = 全站主要面积，这才是"太暗"的主因）。实测：面板覆盖区合成亮度 14.9~19.3（正文色 ≈212，
- *   对比充足），无面板处平均 15.5、最亮一张 52.7 → 星云在面板上透出微光、缝隙里清楚可见。
- *   战斗画面不使用 `.wui-panel`（自带不透明底 + 星野视差层），故战斗观感不受影响。
- *
- * 资源：源图是 PNG（7.5 MB），这类照片型图 PNG 编码吃亏——入库时统一转 JPEG(q85) 收进
- * `assets/space/`（合计 0.96 MB）；原 PNG 仍留在 `docs/Small 512x512/` 作为源图，不进包。
- *
- * 检索入口：`grep spaceBg|rerollSpaceBg|--space-bg`。
- */
 import { tr } from '../i18n/locale'
 const TILES = import.meta.glob('../assets/space/*.jpg', { eager: true, query: '?url', import: 'default' }) as Record<
   string,
   string
 >
 
-/** 全部背景图的**源路径键**（按文件名排序，顺序与 URL 表一致；用于推玩家向短名） */
 const TILE_KEYS: readonly string[] = Object.keys(TILES).sort()
 
-/** 全部背景图 URL（构建后为相对资源的 URL 字符串；缺图时为空数组） */
 const TILE_URLS: readonly string[] = TILE_KEYS.map((k) => TILES[k]!).filter(
   (u): u is string => typeof u === 'string' && u.length > 0,
 )
 
-/** 玩家向的短名（设置面板里显示"当前是哪张"）：蓝星云 03 / 星野 04 … */
 const TILE_SETS: ReadonlyArray<{ prefix: string; text: string }> = [
   { prefix: 'nebula-blue', get text() { return tr("ui.spaceBg.001") } },
   { prefix: 'nebula-green', get text() { return tr("ui.spaceBg.002") } },
@@ -54,22 +26,15 @@ function shortNameOf(key: string, index: number): string {
   return tr("ui.spaceBg.005", { p1: index + 1 })
 }
 
-/** 当前底图信息（设置面板显示用） */
 export interface SpaceBgInfo {
-  /** 写进 `--space-bg` 的资源 URL */
   url: string
-  /** 玩家向短名（如「蓝星云 03」） */
   label: string
-  /** 在 32 张里的下标（0 起） */
   index: number
-  /** 总张数 */
   total: number
 }
 
-/** 当前抽中的下标（null = 尚未抽；模块级状态：设置面板关闭再打开仍显示同一张） */
 let currentIndex: number | null = null
 
-/** 抽一个下标；给了 exclude 就保证不会抽到同一张（只有一张时除外） */
 function pickIndex(exclude?: number): number {
   const n = TILE_URLS.length
   if (n <= 1) return 0
@@ -80,17 +45,11 @@ function pickIndex(exclude?: number): number {
       i = Math.floor(Math.random() * n)
       guard++
     }
-    if (i === exclude) i = (exclude + 1) % n // 兜底：真撞上就顺延一张
+    if (i === exclude) i = (exclude + 1) % n
   }
   return i
 }
 
-/** 当前底图（未抽过时返回 null） */
-/**
- * **按下标取底图 URL**（F3c 界面批 · 船长 2026-09-13：「当次虫洞内的背景图需要固定」）：
- * 面板在本趟进洞时把下标钉住，之后即使用户在「设置」里换了全站底图，洞内那张也不跟着变。
- * 下标越界 / 没图 ⇒ null（调用方按"没有底图"处理）。
- */
 export function spaceBgUrlAt(index: number): string | null {
   const i = Math.floor(index)
   return i >= 0 && i < TILE_URLS.length ? TILE_URLS[i]! : null
@@ -106,10 +65,6 @@ export function currentSpaceBg(): SpaceBgInfo | null {
   }
 }
 
-/**
- * 应用底图：不传下标 = 随机抽一张；写入 CSS 变量 `--space-bg`（挂 documentElement，
- * `.app-root` 与手机横屏的旋转盒都能继承）。启动时在首帧渲染前调用，避免闪一下纯色底。
- */
 export function applySpaceBg(index?: number): SpaceBgInfo | null {
   if (TILE_URLS.length === 0) return null
   currentIndex = index ?? pickIndex()
@@ -118,10 +73,6 @@ export function applySpaceBg(index?: number): SpaceBgInfo | null {
   return info
 }
 
-/**
- * 设置里的「换一张」：换成**另一张**随机底图并立即生效（本次会话内有效；下次启动仍随机）。
- * 平铺必须整场用同一张（混铺会出接缝），所以这里换的是"整层底图"，不是局部。
- */
 export function rerollSpaceBg(): SpaceBgInfo | null {
   if (TILE_URLS.length === 0) return null
   return applySpaceBg(pickIndex(currentIndex ?? undefined))

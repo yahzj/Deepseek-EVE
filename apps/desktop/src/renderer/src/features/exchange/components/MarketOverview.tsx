@@ -1,14 +1,6 @@
 import { T } from '../texts'
 import { tr } from '../../../i18n/locale'
 import { isEn } from '../../../i18n/locale'
-/**
- * 市场战况仪表（MarketOverview）。
- *
- * 填充左下角视觉空洞，增强深空证券交易所的专业战况感：
- * - 星深综合指数（SEC Composite）：点位、涨跌幅、最高/最低；
- * - 多空涨跌家数比仪表盘：红绿双色多空横槽，清晰洞察全市场涨跌结构；
- * - 全市场成交量统计与在交易标的总数。
- */
 import type { ExchangeSnapshot } from '../client'
 import { amount, pct, turnover } from '../format'
 

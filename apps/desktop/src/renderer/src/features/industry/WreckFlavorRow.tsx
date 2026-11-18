@@ -4,9 +4,6 @@ import type { GameEngine } from '../../game/engine'
 import '../../styles-unbox-ledger.css'
 import { FlavorTip, recycleFeatureOf } from '../../ui/wreckFlavor'
 
-/** B3.1：残骸回收卡「特色掉落」说明行（2026-09-06 船长：直接告诉玩家具体低出率物；
- *  2026-09-10 船长定"说明精简"：只讲特色（主题件/专属装备具名），其余泛化为系列名；
- *  行内容与星图打捞页星系卡共用 ui/wreckFlavor） */
 export function WreckFlavorRow({ def, engine }: { def: ItemDef; engine: GameEngine }) {
   const ctx = engine.ctx
   const profile = recycleProfileOf(ctx, def.id)

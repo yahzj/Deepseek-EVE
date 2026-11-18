@@ -1,4 +1,3 @@
-// PixelPlanets (c) 2020 Deep-Fold，MIT。完整原层由stellarPixelMaterials生成。
 import type { StellarPlanetKind, StellarSystem } from '@whale/core'
 import type { StellarLighting } from '../panels/stellarMotion'
 import { STELLAR_PIXEL_MATERIALS } from './stellarPixelMaterials'
@@ -41,7 +40,6 @@ float illuminationDistance(){
  return mix(.85,.15,clamp(diffuse,0.,1.));
 }
 `
-// 只提亮背光材质输出，不改变海陆/云层的噪声与透明轮廓。
 const FOOTER = `
 void main(){
  materialColor=vec4(0.);materialMain();
@@ -135,7 +133,6 @@ export function createStellarPlanetRenderer(canvas: HTMLCanvasElement) {
           if(name==='pixels')value=1024*layer.scale
           if(name==='seed')value=Math.max(.01,((Math.trunc(seed)%1000)+1000)%1000/100)
           if(name==='should_dither')value=false
-          // 原纹理速度/层间差异保留；会话时间共享，循环边界不重置原材质。
           if(name==='time')value=Number(original)+(timeMs/(layer.name.toLowerCase().includes('cloud')?50000:40000))*(Number(original)/.17)
           const location=uniforms.get(name)??null,type=types.get(name)
           if(type==='sampler2D'&&value&&typeof value==='object'&&'colors' in value) {
@@ -160,7 +157,6 @@ export function createStellarPlanetRenderer(canvas: HTMLCanvasElement) {
   try {
     if(!buffer)throw Error('WebGL buffer allocation failed')
     gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),gl.STATIC_DRAW)
-    // 初始化完整材质集，任何失败都走现有明确静态降级，不显示部分空白天体。
     for(let index=0;index<STELLAR_PIXEL_MATERIALS.shaders.length;index++)compile(index)
     return { dispose,
       draw(direction: [number,number,number], timeMs: number, seed: number, ocean: boolean) { draw(PRESETS[ocean?'ocean':'rocky']!,{directions:[direction],strengths:[.86],tint:[1,1,1],ambient:.32},timeMs,seed,false) },

@@ -1,6 +1,5 @@
 import type { PlanetDef, PlanetTraitDef, PlanetBuildingDef, PlanetCatalog, PlanetBuildingKind, PlanetOperationDef, PlanetProjectDef } from '@whale/core'
 
-// 隐藏验收目录；完整建设规则已接线，公开入口、物品与市场条目不开放。
 export const PLANET_DEFS: readonly PlanetDef[] = [
   { id: 'planet-prototype-small', galaxyId: 'galaxy-hub', size: 4 },
   { id: 'planet-prototype-medium', galaxyId: 'galaxy-kor', size: 5 },
@@ -46,7 +45,6 @@ export const PLANET_BUILDINGS: readonly PlanetBuildingDef[] = [
   { id: 'logistics', kind: 'logistics', worker: 'automatic', adjacency: [{ target: 'industry', outputAdd: 0.1 }] },
 ]
 
-// 建设账只使用现有物品；运营输入和产出为每小时本地资源，power 正数耗电、负数发电。
 export const PLANET_OPERATIONS: readonly PlanetOperationDef[] = [
   { buildingId: 'base', bill: { items: { 'min-tritanium': 100 }, credits: 3000, durationMs: 120000 }, power: 1, priority: 2 },
   { buildingId: 'cryo', bill: { items: { 'min-tritanium': 150 }, credits: 5000, durationMs: 180000 }, power: 1, priority: 0, cryoCapacity: 6 },

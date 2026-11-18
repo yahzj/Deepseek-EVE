@@ -1,4 +1,3 @@
-/** 尺寸与定位共用逻辑空间；手机旋转后不使用物理视口宽高。 */
 export function tooltipLayout(
   bounds: { bw: number; bh: number; rot: boolean },
   anchor: { x: number; y: number },

@@ -1,10 +1,3 @@
-/**
- * 企业动态（公司账本）：用玩家话展示 8 家公司「生意好不好、前景怎么样」，
- * 不出现财报、营收、毛利这类术语——简单界面面向不懂金融的玩家。
- *
- * 数据来自 `GET /api/exchange/companies`（公开，游客可见）；Mock 返回演示数据。
- * 生意状态来自最近一期周报，前景来自内在价值锚的偏移方向。
- */
 import { useEffect, useState } from 'react'
 import type { CompanyInfo, CompanyReport, ExchangeClient } from '../client'
 import { T } from '../texts'
@@ -12,7 +5,6 @@ import { T } from '../texts'
 type BusinessMood = 'hot' | 'steady' | 'cooling' | 'loss'
 type Outlook = 'up' | 'flat' | 'down'
 
-/** 生意状态：亏损 > 环比下滑 > 环比涨 > 平稳（±2% 内算平稳）。 */
 function businessMood(report: CompanyReport | undefined): BusinessMood | null {
   if (!report) return null
   if (report.gross <= 0) return 'loss'
@@ -87,7 +79,6 @@ export function CompanyPanel({ client }: { client: ExchangeClient }) {
         })
     }
     pull()
-    // 生意状态按周更新，30 秒轮询两趟足够。
     const timer = window.setInterval(pull, 30_000)
     return () => {
       alive = false

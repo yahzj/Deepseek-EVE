@@ -1,41 +1,16 @@
-/**
- * **「第一次」任务系列面板**（船长 2026-09-17 教程重做批 · 阶段③；2026-09-18 按船长两轮实机反馈改版）。
- *
- * 口径（船长）：
- * - **顺序解锁**（**2026-09-20 船长转玩家反馈**：「新手引导的重要任务一次性太多了，建议按顺序排列解锁」
- *   ⇒ 三选**丙案：只显示当前这一条**）——`visibleFirstTasks` 只给"第一条还没完成的"；已完成的**不再占位**，
- *   进度看页头 N/13（`firstTaskProgress`）。文档/注释里旧的「13 条自由选择完成」已作废。
- * - **里程碑（次数）链搬去「里程碑任务」页**（同一条反馈；领奖按钮只在那儿）——**本页不显示里程碑内容**
- *   （**2026-09-20 船长第二道令**：「**第一次任务内，不要显示里程碑相关内容。建议隐藏**」⇒ 原先那行只读、
- *   「可领奖」小标、链条奖金行一并撤掉；卡片只讲这件活本身：怎么做 ＋ 它自己那份一次性奖励）。
- * - 每条完成后由**通讯**送达情报（信件在 `data/src/firstTaskMessages.ts`）＋ 部分条目有实物奖励；
- * - **2026-09-18 第一轮**：卡片改用资源任务那张卡（`app-station-card`）· 每条都有跳转按钮；
- * - **2026-09-18 第二轮**：正文改用任务的 `detail`（一段话讲清怎么做/做成什么样/奖励）；
- * - **2026-09-18 第三轮**：链条目奖金行改写**"完成本级能拿多少"的具体数额**（`nextRewardIsk`）——
- *   该行**自 2026-09-20 起只画在「里程碑任务」页**（见 `MilestoneTasks.tsx`）。
- */
 import { claimableFirstTasks, firstTaskBoard, firstTaskProgress, firstTaskText } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { tr, useL10n } from '../i18n/locale'
 
-/** 一条任务的跳转落点（**按"这件活在哪干"定**，与情报信的"前往"分属两处：信是完成后的回看指引） */
 interface TaskJump {
   page: string
   mapTab?: string
   shipTab?: string
-  /** 工业页内层段（`refine` 精炼炉 / `craft` 组装机 / `shipyard` 造船厂） */
   industrySec?: 'refine' | 'shelf' | 'craft' | 'shipyard'
-  /**
-   * **要练的那门技能 id**（**2026-09-24 船长令**：「跳到技能页并自动选中工程」）：
-   * 落点所属大类**由数据现查**（`ctx.skills.get(id).group`），界面不写死"工程"二字
-   * ——技能挪了分类，这里跟着走。
-   */
   skillId?: string
-  /** 按钮上写的去处（「前往××」） */
   labelId: string
 }
-// ⟪文案调整 2026-10-04⟫ 准备步骤沿现有入口，标签在渲染时取词。
 const FIRST_JUMPS: Record<string, readonly TaskJump[]> = {
   'first-scan': [{ page: 'map', mapTab: 'star', labelId: 'ui.ActivityBar.006' }],
   'first-mine': [
@@ -96,28 +71,19 @@ export function FirstTasks({
 }: {
   engine: GameEngine
   onToast: ToastFn
-  /** 「看情报」：跳到通讯页并选中这条任务的那封情报信 */
   onOpenComms?: (messageId: string) => void
-  /** 跳转按钮：去这件活所在的页面（App 层切换页面/页签，并自带解锁闸门的提示） */
   onJump?: (t: {
     page: string
     mapTab?: string
     shipTab?: string
     industrySec?: 'refine' | 'shelf' | 'craft' | 'shipyard'
-    /** 技能页要落到的**大类**（由 `skillId` 现查得到；2026-09-24 船长令） */
     skillGroup?: string
   }) => void
 }) {
   const state = engine.state
-  /**
-   * **语言**（**2026-09-29 批 1**）：任务标题与正文由 core 的 `firstTaskText` 按语言取
-   * （口径与取舍见 `FirstTaskDef.titleEn` 头注）——渲染层**不许直接读 `def.title` / `def.detail`**。
-   */
   const { locale } = useL10n()
   const loc: 'zh' | 'en' = locale === 'en' ? 'en' : 'zh'
-  /** 卡片序列（顺序解锁下**恒为当前这一条**；判定都在 core 的 `firstTaskBoard`，面板只渲染） */
   const ordered = firstTaskBoard(state)
-  /** 页头进度：**已完成 / 总数**（顺序解锁后"当前第几条"= done + 1，见 core `firstTaskProgress`） */
   const { done: doneN, total: taskTotal } = firstTaskProgress(state)
 
   return (

@@ -1,13 +1,3 @@
-/**
- * 左栏标的列表：双行高密度现代金融行情卡片（代码/名称/板块/现价/涨跌/持仓徽标）。
- *
- * 核心设计：
- * - 废除生硬挤压的 4 列 grid，改为现代紧凑三栏行情卡片；
- * - 左栏：代码（加粗金） + 板块微标签 + 持仓徽标 / 第二行公司全名（单行省略，绝不折行叠字）；
- * - 中栏：十秒分时迷你走势图（Sparkline），消解死黑空洞；
- * - 右栏：现价（加粗等宽） / 第二行涨跌幅微胶囊（涨多绿跌空红）；
- * - 鼠标悬停青蓝微光，选中态左侧高能光条。
- */
 import type { ExchangeClient, ExchangeSnapshot } from '../client'
 import { amount, pct, price } from '../format'
 import { T, stockName, stockSector } from '../texts'
@@ -25,7 +15,6 @@ export function StockList({
   selected: string
   onSelect: (code: string) => void
 }) {
-  // 统计每个标的的持仓明细（现货、做多杠杆、做空杠杆）
   const holdMap = new Map<string, { spotQty: number; longQty: number; shortQty: number }>()
   for (const h of snap.account.holdings) {
     const cur = holdMap.get(h.code) ?? { spotQty: 0, longQty: 0, shortQty: 0 }

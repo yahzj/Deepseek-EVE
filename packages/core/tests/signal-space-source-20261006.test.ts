@@ -25,9 +25,6 @@ import {
 import { createCommandReadyState as createInitialState } from './helpers/command-ready'
 import { finishDeparture } from './helpers/departure-ready'
 
-// 船长 2026-10-06 指定：旧玩法取 verify 的 c5f8be83，不取二号旧版本或零号新模式。
-const SOURCE_COMMIT = 'c5f8be8346e2bde9b1e738e7ddbfd5ca4740d519'
-const SOURCE_BLOB = '98012b1a55ece1473e226f7bb499887b5b628ce5'
 const panelUrl = new URL('../../../apps/desktop/src/renderer/src/panels/SignalSpace.tsx', import.meta.url)
 const source = readFileSync(panelUrl, 'utf8')
 const ast = ts.createSourceFile('SignalSpace.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
@@ -76,9 +73,7 @@ function elementWithClass(name: string): ts.JsxElement {
 }
 
 describe('信号空间 · 旧面板来源与隔离', () => {
-  it('记录固定提交与原始 blob，导出 SignalSpacePanel，相对依赖仍在同级路径', () => {
-    expect(source).toContain(SOURCE_COMMIT)
-    expect(source).toContain(SOURCE_BLOB)
+  it('导出独立 SignalSpacePanel，相对依赖仍在同级路径', () => {
     const exported = declaration(ast, 'SignalSpacePanel')
     expect(exported.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword)).toBe(true)
     expect(collect(ast, ts.isFunctionDeclaration).some((fn) => fn.name?.text === 'WormholePanel')).toBe(false)

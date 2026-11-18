@@ -1,19 +1,3 @@
-/**
- * **本机音效台 / 声音调试台**（2026-11-02 船长令：「留一个后台我可以快速添加音效的入口」；
- * 2026-11-04 调试批：放大成居中大窗 + 页签，增加场景预演 / 实时触发 / 一键入库）。
- *
- * 只在本机调试门禁放行时出现（入口：设置 →「声音」分组，以及调试模式顶栏「♪ 声音」）。
- * 页签：
- * - **素材清单**：列出全部语义事件与当前来源（本机覆盖 / 仓库内置 / 未接入），逐条试听、导入、清除；
- * - **场景预演**：五个场景卡片（BGM / 环境底噪 / 相关事件），可「切到此场景的声音」（只切音频，
- *   不动存档与画面）与「恢复真实场景」；
- * - **实时触发**：滚动显示最近真实触发的语义 id（试听不算），可暂停/继续/清空，边看画面边锚定声音；
- * - **入库**：桌面开发版「一键入库」直接写仓库 assets（成功后自动清掉已入库的本机覆盖），
- *   网页版保留「导出正式入库包」+ 仓库根 `npm run audio:install`。
- *
- * 存储：本机覆盖进 IndexedDB（`game/audio/overrides.ts`），**不进存档、不进 git、不随发布**；
- * 存储不可用时退化为本次会话有效，面板底部会如实标注。
- */
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { SfxCueId } from '../game/audio/cues'
@@ -85,13 +69,11 @@ const TABS = [
 
 type TabKey = (typeof TABS)[number]['key']
 
-/** 入库包文件名（本地时间；只用于下载名，故不进 l10n） */
 function packFileName(now: Date): string {
   const pad = (n: number): string => String(n).padStart(2, '0')
   return `whale-sfx-pack-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.zip`
 }
 
-/** 触发浏览器下载（网页开发版与桌面开发版同一套；打包版不渲染音效台） */
 function downloadPack(bytes: Uint8Array, fileName: string): void {
   const blob = new Blob([bytes.slice().buffer as ArrayBuffer], { type: 'application/zip' })
   const url = URL.createObjectURL(blob)
@@ -102,17 +84,14 @@ function downloadPack(bytes: Uint8Array, fileName: string): void {
   document.body.appendChild(anchor)
   anchor.click()
   anchor.remove()
-  // 立刻 revoke 会让部分浏览器下载失败；留足时间由 GC 兜底
   window.setTimeout(() => {
     try {
       URL.revokeObjectURL(url)
     } catch {
-      /* 忽略 */
     }
   }, 10_000)
 }
 
-/** 安装器 `--json` 输出（`tools/audio-install.ts` 的 InstallReport 子集；面板只读用） */
 interface InstallReportLike {
   written?: string[]
   overwritten?: string[]
@@ -136,7 +115,6 @@ function logTime(atMs: number): string {
   return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }
 
-/** 桌面开发版一键入库桥（网页版没有；由 preload 暴露） */
 function installBridge(): WhaleApi['audio'] {
   try {
     return typeof window !== 'undefined' ? window.whale?.audio : undefined
@@ -214,7 +192,6 @@ export function SfxConsole({ onClose }: { onClose: () => void }) {
     )
   }
 
-  /** 把当前本机覆盖打成正式入库包并下载（只读覆盖层，不改任何本机状态） */
   async function exportPack(): Promise<void> {
     if (exporting) return
     setExporting(true)
@@ -236,7 +213,6 @@ export function SfxConsole({ onClose }: { onClose: () => void }) {
     }
   }
 
-  /** 桌面开发版一键入库：IPC 让主进程调现有安装器写仓库，成功后清掉已入库的本机覆盖 */
   async function installPack(): Promise<void> {
     if (installing) return
     const api = installBridge()
@@ -256,7 +232,6 @@ export function SfxConsole({ onClose }: { onClose: () => void }) {
       const bytes = buildSfxPack(sources, { createdAt: new Date().toISOString() })
       const result = await api.installPack(bytes.slice().buffer as ArrayBuffer)
       let report: InstallReportLike | null = null
-      // 安装器在 --json 模式额外打一行标记 JSON（人读日志照旧保留，失败时可直接显示原因）
       const marker = '@@WHALE_SFX_REPORT@@'
       const reportLine = result.output.split('\n').find((line) => line.startsWith(marker))
       if (reportLine !== undefined) {
@@ -271,7 +246,6 @@ export function SfxConsole({ onClose }: { onClose: () => void }) {
         setInstallResult({ ok: false, message: t('ui.sfx.124', { p1: detail }) })
         return
       }
-      // 已写入仓库 ⇒ 本机覆盖优先会继续盖住新内置素材，自动清掉（船长 2026-11-04 口径）
       for (const override of overrides) await deleteSfxOverride(override.cueId)
       refresh()
       setInstallResult({ ok: true, report, cleared: overrides.length })
@@ -584,7 +558,6 @@ export function SfxConsole({ onClose }: { onClose: () => void }) {
   )
 }
 
-/** 调试模式顶栏「♪ 声音」入口：自带开关与 portal，不改 AppShell 的状态 */
 export function SfxConsoleButton() {
   const { t } = useL10n()
   const [open, setOpen] = useState(false)
@@ -599,7 +572,6 @@ export function SfxConsoleButton() {
   )
 }
 
-/** 语义 id 是否都已登记（音效台自检用；工具侧另有 `audio-check`） */
 export function sfxConsoleCueCount(): number {
   return SFX_CUE_IDS.length
 }

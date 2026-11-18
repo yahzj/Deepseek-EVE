@@ -3,7 +3,6 @@ import type { CSSProperties } from 'react'
 import type { ShipRole } from '@whale/core'
 import type { GameEngine } from '../../game/engine'
 import type { ToastFn } from '../../pages/common'
-/** 场景只读视图和交互接线；不参与战斗结算。 */
 export type BattleSceneProps = {
 rangeMode: boolean
 battle: import('@whale/core').BattleState

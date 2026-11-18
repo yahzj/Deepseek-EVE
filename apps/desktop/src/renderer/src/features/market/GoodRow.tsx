@@ -11,19 +11,7 @@ import { tr } from '../../i18n/locale'
 import { myStockOf, earliestSellRemaining, fmtClock } from './readouts'
 import { kindTextOf } from './filters'
 
-/* ═══════════════ 单个商品行（行情 + 买卖 + 手动挂单） ═══════════════ */
 
-/**
- * **商品行名（按语言）**（**2026-09-30 批 5**）。
- *
- * 为什么不能只调 `goodName`：**AI 核心四档没有"物品行"可查**（走 `state.aiCores` 账本），
- * `goodName` 对它们只能回落中文原串 ⇒ 英文界面下市场那行一直是「基础 AI 核心」。
- * 数据侧给了 `aiCoreGoodNameId(refId)` ⇒ 有 id 就走 `tr`；其余（物品/装备/舰船/蓝图）**逐字仍是 `goodName`**。
- */
-/**
- * 商品行悬停（全站统一富卡皮肤）：装备/物品/舰船/蓝图/AI 核心各自组装
- * 标题 + 参数表 + 描述——与仓库/货仓/手册列表同一悬浮视觉。
- */
 function GoodHover({
   engine,
   good,
@@ -50,16 +38,9 @@ export function GoodRow({
   const state = engine.state
   const quote = marketQuote(state, engine.ctx, good.key)
   const trend = marketTrend(state, good.key)
-  // 2026-09-10 船长：行内不再显示「站内库存」（空间站库存池，玩家看的是自己的货）——
-  // 改显示**玩家自己**这件东西的库存（舰船按机库同型艘数；其余走 core「自然库存」单点）
   const holdings = myStockOf(state, good)
-  /**
-   * 声望门槛锁按语言渲染（2026-09-30 批 5）：`marketLockNote` 给 `{ textId, params }`，
-   * 由 `tr` 出当前语言；中文侧出的句子与 `note.text` 逐字相同（同一个模板）。
-   * 暗市那枚对玩家隐身，共用同一句（`bmGateNote`）。
-   */
   const lockNote = marketLockNote(state, good) ?? bmGateNote(state, good)
-  const lockShow = lockNote !== null ? tr(lockNote.textId, lockNote.params) : null // 玩家侧统一观感：暗市对玩家隐身，仅显示声望锁指引（与顶船同款）
+  const lockShow = lockNote !== null ? tr(lockNote.textId, lockNote.params) : null
   const life = good.rarity !== 'common' ? earliestSellRemaining(engine, good.key) : undefined
   const name = goodDisplayName(engine.ctx, good.key)
   const clickable = onSelect !== undefined

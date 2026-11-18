@@ -1,5 +1,4 @@
 import { battleArcsFor } from '@whale/core'
-/** 战斗界面职责：buildProjectileLayers，保持原调用顺序。 */
 
 import type { CSSProperties } from 'react'
 
@@ -23,14 +22,6 @@ popupClock: number
 boltsRef: import('react').MutableRefObject<BoltV[]>
 flashRef: import('react').MutableRefObject<FlashV[]>
 }) {
-/**
-   * **劫掠捕获网连线**（船长 2026-09-16：「动画效果为一根蓝色的光速连着命中舰船」）：
-   * 与弹道**同一套几何**（锚点 + 夹角 + 长度），但**不发散也不消失**——只要引擎账本里还有这条网就一直画，
-   * 击杀发动者后 `arcs.webLinks` 自然为空、连线当帧消失。样式沿用同级 `.app-bts-bolt` 那套（不新造机制）。
-   * ⚠ 两端语义（船长 2026-09-17 定稿：「**亮端留在被钉舰、羽化端朝敌人**」）：
-   * `from` = 发动者（劫掠电子舰 · 敌人）＝连线元素 0% 端 ⇒ **羽化淡出**；
-   * `to` = 被钉住的我方舰 ＝ 100% 端 ⇒ **最亮 + 外发光**（渐变方向只在 `styles.css` 的 `.app-bts-web-bar`）。
-   */
   const foeAnchorByTag = new Map<string, { x: number; y: number }>()
   rowFxTags.forEach((tag, i) => {
     const a = layFx.foe[i]
@@ -59,12 +50,7 @@ flashRef: import('react').MutableRefObject<FlashV[]>
     ]
   })
 
-  /**
-   * 伤害飘字元素（存活 = 模块级 `POPUP_LIFE`，见 `battleViewCore`；战斗时钟口径 ⇒ 倍速跟着快、暂停冻结）。
-   * ⚠ 常量**不许**写成这里的组件内 `const`：函数前段的清理 `.filter(...)` 会先读到它而崩（详见常量处注释）。
-   */
   const popupEls = popupsRef.current.map((p) => {
-    // `miss` = 本拍该目标**一点伤害都没有**（真未命中）；有伤害就出数字（同拍里夹杂未命中也不影响）
     const miss = p.miss
     return (
       <span
@@ -103,8 +89,6 @@ flashRef: import('react').MutableRefObject<FlashV[]>
       />
     ) : null
     const dm = bv.drone ? droneModelOrFallback(bv.drone) : undefined
-    // 无人机弹道（2026-09-10）：飞行时长按机型系数（哨戒更长、其余提速 DRONE_FLY_MUL）；
-    // 蜂鸟/赤鸢/猎鹰 = 可见小曳光点（--fly = 行程 px）；哨戒 = 仿主舰的**细曳光条**（更细，不发小弹点）
     const flyMs = dm ? Math.max(60, Math.round(look.fly * (dm.bolt.flyMul ?? DRONE_FLY_MUL))) : look.fly
     if (dm && dm.bolt.style === 'beam') {
       return (

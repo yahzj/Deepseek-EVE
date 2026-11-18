@@ -1,37 +1,15 @@
-/**
- * **音效正式入库包（sfx pack）** —— 2026-11-04 批次：把「本机音效台」接到正式素材。
- *
- * 流程：音效台把已导入的本机覆盖按语义 id 打包成 zip（本文件 `buildSfxPack`）→ 下载到本机 →
- * 仓库根运行 `npm run audio:install`（`tools/audio-install.ts`）→ 按包内 manifest 校验后写入
- * `apps/desktop/src/renderer/src/assets/{sfx,bgm,ambient}/`，成为随构建发布的正式素材。
- *
- * 口径：
- * - 一个语义 id 只打一条文件（音效台本来就是每 id 一份覆盖；变体留给手工放素材）；
- * - 包内路径 = `<目录>/<语义id>.<扩展名>`，目录由 `sfxConsoleGroupOf(category)` 决定
- *   （sfx → `sfx/`、music → `bgm/`、ambient → `ambient/`），与 `manifest.ts` 的 glob 收表口径一致；
- * - zip 用 **store（不压缩）**：音频本身已压缩，且自带实现避免给渲染层加依赖；
- * - 本文件是**纯逻辑**（不碰 DOM / Node fs），浏览器导出与 tsx 工具安装共用同一份格式与校验；
- *   下载动作在音效台（`panels/SfxConsole.tsx`），写文件动作在 `tools/audio-install.ts`。
- */
 import { SFX_CUES, sfxConsoleGroupOf } from './cues'
 import type { SfxConsoleGroup, SfxCueId } from './cues'
 
-/** 包格式标识（manifest.format） */
 export const SFX_PACK_FORMAT = 'whale-idle-sfx-pack' as const
-/** 包格式版本（不兼容变更时 +1；安装工具只认当前版本） */
 export const SFX_PACK_VERSION = 1 as const
-/** 包内 manifest 路径 */
 export const SFX_PACK_MANIFEST_PATH = 'manifest.json'
-/** 包内说明文件路径（给船长看的用法，不参与安装校验） */
 export const SFX_PACK_README_PATH = 'README.txt'
-/** 包内素材相对路径的基准（仓库根相对路径，写入目标 = 本路径 + `<目录>/<id>.<ext>`） */
 export const SFX_PACK_ASSETS_ROOT = 'apps/desktop/src/renderer/src/assets'
 
-/** 支持的音频扩展名（与 `rules.ts` 的 `isAudioFileName` 同一口径） */
 export const SFX_PACK_EXTS = ['mp3', 'ogg', 'wav', 'm4a'] as const
 export type SfxPackExt = (typeof SFX_PACK_EXTS)[number]
 
-/** 素材目录名（与 `manifest.ts` 的 glob 目录一致） */
 export type SfxAssetDir = 'sfx' | 'bgm' | 'ambient'
 
 const DIR_BY_GROUP: Record<SfxConsoleGroup, SfxAssetDir> = {
@@ -40,30 +18,24 @@ const DIR_BY_GROUP: Record<SfxConsoleGroup, SfxAssetDir> = {
   ambient: 'ambient',
 }
 
-/** 某个语义 id 的素材该进哪个目录（音效台分组 → assets 子目录） */
 export function sfxPackDirOf(cueId: SfxCueId): SfxAssetDir {
   return DIR_BY_GROUP[sfxConsoleGroupOf(SFX_CUES[cueId].category)]
 }
 
-/** 某个语义 id 的正式素材相对路径（`<目录>/<id>.<扩展名>`，正斜杠） */
 export function sfxPackAssetPath(cueId: SfxCueId, ext: SfxPackExt): string {
   return `${sfxPackDirOf(cueId)}/${cueId}.${ext}`
 }
 
-/** manifest 里的一条素材记录 */
 export interface SfxPackFile {
-  /** `<目录>/<语义id>.<扩展名>` */
   readonly path: string
   readonly dir: SfxAssetDir
   readonly cueId: SfxCueId
-  /** 音效台里的源文件名（留痕用，不参与安装路径） */
   readonly fileName: string
   readonly ext: SfxPackExt
   readonly bytes: number
   readonly updatedAt: number
 }
 
-/** 包内 manifest（`manifest.json` 的解析结果） */
 export interface SfxPackManifest {
   readonly format: typeof SFX_PACK_FORMAT
   readonly version: typeof SFX_PACK_VERSION
@@ -73,7 +45,6 @@ export interface SfxPackManifest {
   readonly files: readonly SfxPackFile[]
 }
 
-/** 打包输入：音效台的一条本机覆盖 */
 export interface SfxPackSourceFile {
   readonly cueId: SfxCueId
   readonly fileName: string
@@ -81,13 +52,11 @@ export interface SfxPackSourceFile {
   readonly data: Uint8Array
 }
 
-/** 解析结果：manifest + 已校验的素材字节 */
 export interface ParsedSfxPack {
   readonly manifest: SfxPackManifest
   readonly files: readonly { readonly file: SfxPackFile; readonly data: Uint8Array }[]
 }
 
-/** 入库包错误（一次性列出全部问题，安装工具逐条打印） */
 export class SfxPackError extends Error {
   readonly errors: readonly string[]
 
@@ -98,12 +67,10 @@ export class SfxPackError extends Error {
   }
 }
 
-/** 泛型守卫：非数组/对象一律拒绝（manifest 来自用户可编辑的 zip） */
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-/** 文件名 → 支持的扩展名（小写）；不是音频返回 null */
 function audioExtOf(fileName: string): SfxPackExt | null {
   const match = /\.([a-z0-9]+)$/i.exec(fileName)
   if (match === null) return null
@@ -111,16 +78,10 @@ function audioExtOf(fileName: string): SfxPackExt | null {
   return (SFX_PACK_EXTS as readonly string[]).includes(ext) ? (ext as SfxPackExt) : null
 }
 
-/* ═══════════ zip（store-only）═══════════ */
 
-/**
- * zip 写入用固定 DOS 时间（1980-01-01 00:00）：让同一批覆盖打出来的包**逐字节确定**，
- * 便于 `audio:check` 做确定性用例，也避免每次导出都只因时间戳变化而被 git 当成新文件。
- */
 const DOS_TIME = 0
 const DOS_DATE = (0 << 9) | (1 << 5) | 1
 
-/** 入库包体积/条目上限（防御损坏或恶意包；33 条语义事件 + 说明文件远小于此） */
 const MAX_PACK_ENTRIES = 128
 const MAX_PACK_BYTES = 256 * 1024 * 1024
 
@@ -165,16 +126,16 @@ function localHeader(nameBytes: Uint8Array, crc: number, size: number): Uint8Arr
   const header = new Uint8Array(30)
   const dv = new DataView(header.buffer)
   dv.setUint32(0, 0x04034b50, true)
-  dv.setUint16(4, 20, true) // version needed
+  dv.setUint16(4, 20, true)
   dv.setUint16(6, ZIP_FLAG_UTF8, true)
-  dv.setUint16(8, 0, true) // method = store
+  dv.setUint16(8, 0, true)
   dv.setUint16(10, DOS_TIME, true)
   dv.setUint16(12, DOS_DATE, true)
   dv.setUint32(14, crc, true)
   dv.setUint32(18, size, true)
   dv.setUint32(22, size, true)
   dv.setUint16(26, nameBytes.length, true)
-  dv.setUint16(28, 0, true) // extra length
+  dv.setUint16(28, 0, true)
   return header
 }
 
@@ -182,21 +143,21 @@ function centralHeader(nameBytes: Uint8Array, crc: number, size: number, localOf
   const header = new Uint8Array(46)
   const dv = new DataView(header.buffer)
   dv.setUint32(0, 0x02014b50, true)
-  dv.setUint16(4, 20, true) // version made by
-  dv.setUint16(6, 20, true) // version needed
+  dv.setUint16(4, 20, true)
+  dv.setUint16(6, 20, true)
   dv.setUint16(8, ZIP_FLAG_UTF8, true)
-  dv.setUint16(10, 0, true) // method = store
+  dv.setUint16(10, 0, true)
   dv.setUint16(12, DOS_TIME, true)
   dv.setUint16(14, DOS_DATE, true)
   dv.setUint32(16, crc, true)
   dv.setUint32(20, size, true)
   dv.setUint32(24, size, true)
   dv.setUint16(28, nameBytes.length, true)
-  dv.setUint16(30, 0, true) // extra length
-  dv.setUint16(32, 0, true) // comment length
-  dv.setUint16(34, 0, true) // disk number
-  dv.setUint16(36, 0, true) // internal attrs
-  dv.setUint32(38, 0, true) // external attrs
+  dv.setUint16(30, 0, true)
+  dv.setUint16(32, 0, true)
+  dv.setUint16(34, 0, true)
+  dv.setUint16(36, 0, true)
+  dv.setUint32(38, 0, true)
   dv.setUint32(42, localOffset, true)
   return header
 }
@@ -205,17 +166,16 @@ function endOfCentralDirectory(entryCount: number, cdSize: number, cdOffset: num
   const footer = new Uint8Array(22)
   const dv = new DataView(footer.buffer)
   dv.setUint32(0, 0x06054b50, true)
-  dv.setUint16(4, 0, true) // disk
-  dv.setUint16(6, 0, true) // cd disk
+  dv.setUint16(4, 0, true)
+  dv.setUint16(6, 0, true)
   dv.setUint16(8, entryCount, true)
   dv.setUint16(10, entryCount, true)
   dv.setUint32(12, cdSize, true)
   dv.setUint32(16, cdOffset, true)
-  dv.setUint16(20, 0, true) // comment length
+  dv.setUint16(20, 0, true)
   return footer
 }
 
-/** 写 zip（store-only；同一批条目 → 同一份字节） */
 export function writeSfxPackZip(entries: readonly ZipEntry[]): Uint8Array {
   const chunks: Uint8Array[] = []
   const central: Uint8Array[] = []
@@ -234,13 +194,11 @@ export function writeSfxPackZip(entries: readonly ZipEntry[]): Uint8Array {
   return concatBytes([...chunks, centralBytes, endOfCentralDirectory(entries.length, centralBytes.length, cdOffset)])
 }
 
-/** 读 zip（只支持本包写出的 store-only 格式；遇到压缩/加密/zip64 一律报错） */
 export function readSfxPackZip(bytes: Uint8Array): ZipEntry[] {
   if (bytes.length < 22) throw new Error('入库包为空或过短，不是合法 zip')
   if (bytes.length > MAX_PACK_BYTES) throw new Error(`入库包超过 ${MAX_PACK_BYTES} 字节上限`)
   const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
 
-  // 从尾部向前找 EOCD（注释最多 65535 字节）
   let eocd = -1
   for (let i = bytes.length - 22; i >= Math.max(0, bytes.length - 22 - 0xffff); i--) {
     if (dv.getUint32(i, true) === 0x06054b50) {
@@ -292,9 +250,7 @@ export function readSfxPackZip(bytes: Uint8Array): ZipEntry[] {
   return entries
 }
 
-/* ═══════════ manifest ═══════════ */
 
-/** 包内说明：给人看的下一步（不参与校验；安装工具忽略它） */
 function packReadme(count: number, createdAt: string): string {
   return `大鲸鱼-深空放置 · 音效正式入库包
 生成时间：${createdAt}
@@ -321,7 +277,6 @@ function utf8(text: string): Uint8Array {
   return UTF8_ENCODER.encode(text)
 }
 
-/** 打包：把音效台覆盖打成入库包字节；不合法输入一次性抛 `SfxPackError` */
 export function buildSfxPack(files: readonly SfxPackSourceFile[], options: { readonly createdAt: string }): Uint8Array {
   const errors: string[] = []
   const seen = new Set<string>()
@@ -399,11 +354,6 @@ function isManifestFile(value: unknown, errors: string[], index: number): value 
   return true
 }
 
-/**
- * 解析并**完整校验**入库包。
- * 校验：zip 结构/CRC → manifest 格式与版本 → 每条素材的语义 id/目录/路径/扩展名/字节数 →
- * 包内没有清单外的条目。任何一项不过都一次性抛 `SfxPackError`（安装工具不会写半个包）。
- */
 export function parseSfxPack(bytes: Uint8Array): ParsedSfxPack {
   let zipEntries: ZipEntry[]
   try {

@@ -1,4 +1,3 @@
-/** 网页同 origin 单写者；锁在页面存活期间持有，不因切后台释放。 */
 export type SaveWriterState = 'pending' | 'writer' | 'busy' | 'unsupported'
 let state: SaveWriterState = 'pending'
 let acquisition: Promise<SaveWriterState> | null = null
@@ -37,7 +36,6 @@ export function acquireSaveWriter(): Promise<SaveWriterState> {
         }
         setState('writer')
         window.addEventListener('pageshow', (event) => {
-          // BFCache 恢复不继承未核验的写入权；重载重新竞争锁并读取最新档。
           if (event.persisted) setState('busy')
         })
         resolve(state)

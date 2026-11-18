@@ -12,17 +12,8 @@ interface SidebarExchangeCardProps {
   onGoPage?: (page: string, mapTab?: string, taskTab?: string) => void
 }
 
-/**
- * 活动栏左侧深空证券交易所快捷监控微卡片
- * - 高密度紧凑排版，彻底解决文字拥挤、折行叠字与被侧栏截断问题；
- * - 实时显示标的代码、当前价位、涨跌幅、持仓盈亏；
- * - 数值统一绑定等宽字体 var(--wui-mono)，盈亏统一规范色彩；
- * - 点击平滑跳转进入深空证券交易所页面，并高亮定位对应标的。
- */
 export function SidebarExchangeCard({ onGoPage }: SidebarExchangeCardProps) {
   const [tick, bumpTick] = useState(0)
-  // 2026-11-05 游客行情批：登录/退出后必须换客户端实例——游客连接是匿名的，
-  // 不换就一直读不到自己的持仓（侧栏持仓永远显示 0）。
   const [authTick, bumpAuth] = useReducer((n: number) => n + 1, 0)
   useEffect(() => {
     const onChange = (): void => bumpAuth()
@@ -31,9 +22,6 @@ export function SidebarExchangeCard({ onGoPage }: SidebarExchangeCardProps) {
   }, [])
   const bundle = useMemo(() => createExchangeClient(), [authTick])
 
-  // 卡片常驻活动栏：自己持有一份生命周期（客户端按引用计数），
-  // 这样即使没开过交易所页签也能拿到行情与持仓；反之离开页签也不会把卡片的数据源一起断掉。
-  // 轻量模式：只拉行情/账户/回合，不预载全套 K 线（那是开页签才需要的）。
   useEffect(() => {
     bundle.client.start(false)
     return () => bundle.client.stop()

@@ -2,7 +2,6 @@ import type { GameState, WormholeStockItem } from '../state'
 import type { SimContext } from '../types'
 import { tuningMul } from '../tuning'
 
-/** 后台推演提交前核对所有能力/产出输入；时钟与无关日志不使计算失效。 */
 export function signalAutoInputKey(state: GameState, ctx: SimContext, ids: readonly string[], signal: WormholeStockItem): string {
   const kitIds = new Set([...ctx.modules.values()].flatMap(mod => mod.repairKit ? [mod.repairKit] : []))
   const supplies = Object.entries(state.warehouse.items).filter(([id]) => {

@@ -1,19 +1,9 @@
-/**
- * 货仓占比返航（2026-09-05 船长拍板：采矿/打捞返航时间与“基础货仓使用比例”相关，
- * 货仓越空返航越快，空仓 ≈ 瞬回；额外货仓(扩展件)不计入容量口径）。
- *
- * 规则：倍率 = 纯占比（货仓已用 m³ ÷ 船体基础容量 cargoM3，钳制 0~1）。
- * 满仓倍率 1（返航时长同现状），空仓趋近 0（保留 ≥1ms 下限）。
- * 适用：采矿作业内返航、打捞作业内返航、换驾驶善后旧船返航（船长拍板范围）；
- * AI 副船采矿/打捞返航同口径（2026-09-08 卷B2⑥ 船长定稿：与玩家一致——按货仓占比缩放后不再 ÷核心效率；效率只加速出航/空船腿与循环周期）。
- */
 import type { GameState, WorkReturnProgress } from './state'
 import type { SimContext } from './types'
 import { cargoUsedM3Of, cargoCapacityM3Of } from './inventory'
 import { fleetDefOf } from './instances'
 import { beginJumpFuelLeg, jumpFuelLegMsOf } from './jumpFuel'
 
-/** 货仓占用率（基础容量口径）：已用 m³ ÷ 船体基础 cargoM3；缺定义时回退到总容量兜底 */
 export function cargoHoldRatio(state: GameState, ctx: SimContext, shipId: string): number {
   const used = Math.max(0, cargoUsedM3Of(state, ctx, shipId))
   const def = fleetDefOf(state, ctx, shipId)
@@ -22,17 +12,11 @@ export function cargoHoldRatio(state: GameState, ctx: SimContext, shipId: string
   return Math.min(1, Math.max(0, used / base))
 }
 
-/** 把“满仓返航时长”按当前货仓占比缩放（纯占比；下限 1ms，避免 0 时长破坏进度条）
- *
- * ⚠ **2026-09-29（跃迁燃料批）加第 5 参** `fuelMul`：本趟返航的**燃料倍率**（1 = 没吃燃料；
- * 10 = 吃了，时长 ÷10）。**扣料不在本函数里**（它每拍都被重算 —— 见 `jumpFuel.ts` 的头注），
- * 调用方在"返航腿开始"那一刻调一次 `beginJumpFuelLeg` 拿到倍率并**存进任务状态**，此后每拍只做折算。 */
 export function scaledReturnMs(fullMs: number, state: GameState, ctx: SimContext, shipId: string, fuelMul = 1): number {
   const base = Math.max(1, Math.round(fullMs * cargoHoldRatio(state, ctx, shipId)))
   return jumpFuelLegMsOf(base, fuelMul)
 }
 
-/** 新航段只点火一次，已开始返航则继承倍率和真实已走时间。 */
 export function workReturnLeg(state: GameState, activity: 'mine' | 'salvage', baseMs: number, progress: WorkReturnProgress): {
   legMs: number; phaseAccMs: number
 } {

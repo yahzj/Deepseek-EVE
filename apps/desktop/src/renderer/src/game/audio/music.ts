@@ -1,17 +1,3 @@
-/**
- * **BGM 层**（2026-11-02 追加批）——按场景循环 + **2.5s 交叉淡入淡出**
- * （2026-11-04 船长令：切场景要自动交叉淡变，否则切歌突兀；同曲调音量走 250ms 短淡变）。
- *
- * 场景来源：`scene.ts`（App 的 `useSceneAudio` 每帧把场景推进来，只在场景变化时才切曲）。
- * 素材：`assets/bgm/<id>.mp3`，本机覆盖（音效台导入）优先；**缺素材 = 静音**（不占位、不报错）。
- * 同一场景可放多份变体（`bgm-battle.mp3` + `bgm-battle.2.mp3`）：切到该场景时随机取一条并缓存，
- * 音量/静音刷新不会重选（否则循环曲会被切来切去）；「重播」与重新进场景会重新随机。
- * **战斗场景额外**：每场新战斗开始时由战斗音效桥调用 `rerollBgmVariant('bgm-battle')` 换一条不同变体
- * （船长 2026-11-05 裁定 B：清剿连打也要重新随机，交叉淡变过去）。
- * 音量：总音量 ×「音乐」分类 × 单曲增益；静音/拖滑条即时生效。
- * 后台：最小化/切标签页由 `index.ts` 的 visibility 生命周期暂停、恢复时从暂停处继续。
- * 网页首次自动播放被拒：由 `installMusicGestureRetry()` 在首次点击/按键后重试当前场景。
- */
 import { SFX_CUES } from './cues'
 import type { SfxCueId } from './cues'
 import { webAwaitingFirstGesture } from './gestureGate'
@@ -26,7 +12,6 @@ import type { SfxScene } from './scene'
 let channel: LoopChannel | null = null
 let currentScene: SfxScene | null = null
 let gestureArmed = false
-/** 当前已选中的 BGM 变体（语义 id + url）：同场景内保持稳定，切换场景/重播才重新随机 */
 let chosenCue: SfxCueId | null = null
 let chosenUrl: string | null = null
 
@@ -40,10 +25,6 @@ function ensureChannel(): LoopChannel | null {
   }
 }
 
-/**
- * 某个语义 id 的有效素材 URL：本机覆盖优先；内置有多个变体时随机取一条并缓存。
- * 缓存必须：`apply()` 也会被音量/静音变化调用，每次重新随机会让正在循环的曲子被换掉。
- */
 function urlOf(cueId: SfxCueId): string | null {
   const override = getSfxOverrideUrl(cueId)
   if (override !== null) {
@@ -67,7 +48,6 @@ function bgmVolumeOf(cueId: SfxCueId): number {
 
 function apply(): void {
   try {
-    // 网页首次手势前不建 BGM 元素（避免首屏就下载数 MB 音频抢带宽）；手势后 resumeMusic 再 apply
     if (webAwaitingFirstGesture()) return
     const ch = ensureChannel()
     if (ch === null) return
@@ -83,17 +63,14 @@ function apply(): void {
     }
     ch.set(url, bgmVolumeOf(cueId))
   } catch {
-    /* 音频层事故不许影响游戏 */
   }
 }
 
-/** 场景变化时调用（只在变化时切；同曲不重启） */
 export function setMusicScene(scene: SfxScene | null): void {
   currentScene = scene
   apply()
 }
 
-/** 音量/静音变化时调用（不切曲，只调音量） */
 export function refreshMusicVolume(): void {
   apply()
 }
@@ -107,12 +84,10 @@ export function resumeMusic(): void {
   channel?.resume()
 }
 
-/** 调试台「重播场景音乐」：销毁通道后按当前场景重新起播（从 0 开始，不是续播；并重新随机一条变体） */
 export function restartMusic(): void {
   try {
     channel?.destroy()
   } catch {
-    /* 忽略 */
   }
   channel = null
   chosenCue = null
@@ -120,12 +95,6 @@ export function restartMusic(): void {
   apply()
 }
 
-/**
- * 同场景重抽 BGM 变体（2026-11-05 船长裁定 B：**每场新战斗也重新随机换曲**）。
- *
- * 由战斗音效桥在一场新战斗开始时调用：若该场景音乐正在播，就换一条**与当前不同**的变体并
- * 交叉淡变过去；若当前场景不是它，只作废变体缓存，下次进场景时重新随机。本机覆盖优先，不参与随机。
- */
 export function rerollBgmVariant(cueId: SfxCueId): void {
   try {
     if (getSfxOverrideUrl(cueId) !== null) return
@@ -136,11 +105,9 @@ export function rerollBgmVariant(cueId: SfxCueId): void {
     chosenUrl = picked
     if (currentScene !== null && sceneBgmOf(currentScene) === cueId) apply()
   } catch {
-    /* 音频层事故不许影响游戏 */
   }
 }
 
-/** 首次用户手势后重试（网页自动播放策略）；只挂一次 */
 export function installMusicGestureRetry(): void {
   if (gestureArmed) return
   gestureArmed = true
@@ -154,11 +121,9 @@ export function installMusicGestureRetry(): void {
     document.addEventListener('pointerdown', onGesture, true)
     document.addEventListener('keydown', onGesture, true)
   } catch {
-    /* 非浏览器环境忽略 */
   }
 }
 
-/** 当前 BGM 语义 id（调试/音效台展示用） */
 export function currentBgmCue(): SfxCueId | null {
   return currentScene === null ? null : sceneBgmOf(currentScene)
 }

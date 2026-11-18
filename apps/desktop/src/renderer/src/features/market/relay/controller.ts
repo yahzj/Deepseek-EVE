@@ -21,7 +21,6 @@ function freezePayload<T>(value: T): T {
   return value
 }
 
-/** 窗口失败后仍记作已尝试；仅下一个市场窗口可重试，调用方负责落盘与状态应用。 */
 export class MarketRelayController {
   private session: MarketRelaySession | null = null
   private generation = 0

@@ -1,13 +1,3 @@
-/**
- * 造船厂面板（2026-09-20 船长「将组装机内容拆分，舰船蓝图部分单独拆除。新增一个组装机同级页面：造船厂」）。
- *
- * 从 `panels/Industry.tsx` 的 ManufacturingPanel 迁出的舰船蓝图渲染：
- * - 复用同一张 `BlueprintCard`（劳动者制 / 开工 / 一次性与永久 / 求购跳市场完全同款）；
- * - 筛选三行（**2026-09-26 船长令**）：「**蓝图**」（原「学会」行；一次性那一轴并入它，原「图纸」行删除）
- *   · 「**类别**」（`SHIP_SUBS`，与手册舰船图鉴、我的舰队同一把尺）· 「**子类**」（舰船级别 T1~T5）
- *   ＋ 搜索栏；
- * - 引擎零改动（`manufacturingRuns` 本就支持舰船蓝图）。
- */
 import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Panel } from '@whale/ui'
@@ -38,16 +28,10 @@ import {
 } from '../ui/itemSubs'
 import { BlueprintCard, bookPriceOf, cardLiveKeyOf, productBaseOf } from './Industry'
 
-/**
- * 造船厂目录条目（2026-09-22 工业页卡顿修复第 3 步）。
- * ⚠ 与组装机同规矩：**只放"目录级"字段**，随心跳变的实时数一律不进模型（否则 `useMemo` 每拍失效、
- * 卡片 `memo` 击穿）；实时数走 `cardLiveKeyOf` 指纹 + 卡片自己现取。
- */
 interface ShipItem {
   id: string
   kindLabel: string
   subKey: string
-  /** 该蓝图产出的船型 id：**类别**与**级别**两维的判据都按它现取船型定义（`shipRolePasses`） */
   shipId: string
   productGlyph: string
   name: string
@@ -57,9 +41,7 @@ interface ShipItem {
   productLabel: string
   productNode: ReactNode
   productBase: number
-  /** 产物引用（2026-09-23 船长令：舰船产物**只显示市场当前价格**） */
   productRef: { kind: 'ship' | 'module' | 'item'; refId: string }
-  /** 舰船"自己有多少"的取数闭包（仓库 ＋ 在役舰队；数值每次现取） */
   countOwned: () => number
   ownedWhere: string
   bookPrice: number
@@ -81,26 +63,13 @@ export function ShipyardPanel({
   onNeedMineral?: (itemId: string) => void
   onGotoMarket?: (goodKey: string) => void
   onGotoWormhole?: () => void
-  /** 蓝图书架「去造船厂」的定位目标（蓝图 id）：先清掉筛选再高亮那张卡 */
   focusBlueprintId?: string | null
 }) {
   const state = engine.state
   const runViews = manufacturingRunViews(state, engine.ctx)
   const { t } = useL10n()
-  /** 「**子类**」维度 = 舰船级别（键 `t<级别>`；与组装机旧「舰船蓝图」子筛选同一张单点表） */
   const [sub, setSub] = useState<string>(SUB_ALL)
-  /**
-   * 「**类别**」维度（**2026-09-26 船长令**：「**将手册舰船图鉴的类别插入造船厂子类上一级**」）：
-   * 键取单一表 `SHIP_SUBS`、判据走唯一入口 `shipRolePasses`（= core `shipCategoryKeyOf`），
-   * 与手册舰船图鉴、我的舰队、虫洞编队同一把尺。
-   * ⚠ 与「子类」**互不重置**：两维各自独立、与其它条件取「与」（2026-09-12 船长在舰队页定的口径）。
-   */
   const [cat, setCat] = useState<string>(SUB_ALL)
-  /**
-   * 「**蓝图**」维度（原「学会」行。**2026-09-26 船长令**：「**将造船的一次性蓝图筛选移动到学会的
-   * 筛选内，并将学会的筛选改名为蓝图。删除原先的图纸筛选**」）：四档把"学没学会"与"是不是一次性"
-   * 两轴合成一条按钮，原第三行「图纸」筛选随之删除（与组装机同一张 `BLUEPRINT_LEARN_TABS`）。
-   */
   const [learn, setLearn] = useState<BlueprintLearnKey>(SUB_ALL)
   const [kw, setKw] = useState('')
   const kq = kw.trim().toLowerCase()
@@ -117,17 +86,7 @@ export function ShipyardPanel({
     for (const sbp of engine.shipBlueprints) {
       const shipDef = engine.ctx.ships.get(sbp.shipId)
       const prodName = shipDef?.name ?? sbp.shipId
-      /**
-       * **2026-09-23 船长令**：「造船厂那，**不要显示舰船的括号内属性**，应该在行情价格后面显示（利润率%）」
-       * ⇒ 产物标签只留船名（旧的「（货舱 N m³ · M 秒 × K 单位/循环）」**不再进产物行**；
-       * 那些参数仍在产物名的悬停卡（`ShipHover`）里可查，信息没丢，只是不占卡面）。
-       */
       const prodLabel = prodName
-      /**
-       * 产物名后的参数（货舱/循环）——**只进悬停卡**（2026-09-23 船长令：卡面上的括号属性去掉）。
-       * ⚠ **2026-09-29 修漏译**：原先这里是手写中文整句 ＋ `toLocaleString('zh-CN')`
-       * ⇒ 英文界面下漏中文（英文扫描读数里 ×37，是船厂页最大的一处）。现在走 id ＋ `fmtInt`。
-       */
       const prodParams = shipDef
         ? t('ui.shipInfo.213', {
             cargo: fmtInt(shipDef.cargoM3),
@@ -135,13 +94,11 @@ export function ShipyardPanel({
             perCycle: shipDef.oreUnitsPerCycle,
           })
         : ''
-      // 产物名一律金色（2026-09-13 船长）
       const prodText = <span className="app-gold">{prodName}</span>
       const shipId = sbp.shipId
       out.push({
         id: sbp.id,
-        kindLabel: '舰船', // l10n-keep：内容层联合 key（渲染处走 Industry 的 kindLabelText）
-        // 舰船蓝图按舰船级别分档（键与 itemSubs.SHIP_TIER_SUBS 同源）
+        kindLabel: '舰船',
         subKey: shipDef ? `t${shipDef.tier}` : '',
         shipId,
         productGlyph: shipDef?.role ?? 'blueprint',
@@ -162,10 +119,9 @@ export function ShipyardPanel({
           </>
         ),
         productBase: shipDef ? (productBaseOf(engine, 'ship', shipId) || shipDef.priceIsk || 0) : 0,
-        /** 造船厂卡的产物读数（2026-09-23 船长令）：舰船 ⇒ **只显示市场当前价格** */
         productRef: { kind: 'ship' as const, refId: shipId },
         countOwned: () => shipOwnedCount(engine.state, shipId),
-        ownedWhere: '仓库＋机库', // l10n-keep：内容层联合 key（渲染处走 Industry 的 ownedWhereText）
+        ownedWhere: '仓库＋机库',
         bookPrice: bookPriceOf(engine, sbp.id, 0),
         productKey: `ship:${shipId}`,
         singleUse: sbp.singleUse === true,
@@ -175,9 +131,7 @@ export function ShipyardPanel({
     return out
   }, [engine.ctx, engine.shipBlueprints])
 
-  /** 2026-09-20 筛选清理（船长「明显不存在的子类筛选隐藏」）：只列真有内容的档 —— 与组装机同一套 `presentSubs` 口径 */
   const tierShown = presentSubs(SHIP_TIER_SUBS, (key) => items.some((it) => it.subKey === key))
-  /** 类别候选（同一套 `presentSubs` 口径；判据 = 唯一入口 `shipRolePasses`，船型定义按 id 现取） */
   const catShown = presentSubs(SHIP_DOMAIN_SUBS, (key) =>
     items.some((it) => shipRolePasses(engine.ctx.ships.get(it.shipId), key)),
   )
@@ -190,22 +144,16 @@ export function ShipyardPanel({
       if ((it.description ?? '').toLowerCase().includes(kq)) return true
       return it.materials.some((m) => (engine.ctx.items.get(m.itemId)?.name ?? m.itemId).toLowerCase().includes(kq))
     })
-    /**
-     * 「**蓝图**」维度（**2026-09-27 船长令收口**：删掉「已学会的一次性图纸」、把「未学会的一次性图纸」
-     * 改名为「一次性蓝图」）：三档各自判 —— 已学会 / 未学会 / 一次性（还没学会 ＋ 是一次性）。
-     * ⚠ 舰船蓝图没有"隐式蓝图"（那是零件体系的事）⇒ 这里不带上组装机那句 `learnless` 判定。
-     */
     .filter((it) => {
       if (learn === SUB_ALL) return true
       const learned = ownsBlueprint(state, it.id)
       if (learn === 'learned') return learned
       if (learn === 'unlearned') return !learned
-      return !learned && it.singleUse // 'single'（一次性蓝图）
+      return !learned && it.singleUse
     })
     .filter((it) => sub === SUB_ALL || it.subKey === sub)
     .filter((it) => shipRolePasses(engine.ctx.ships.get(it.shipId), cat))
   const sorted = pinMarked(state, 'blueprints', sortManuRows(visible), (it) => it.id)
-  /** 每张卡的实时指纹（心跳只让指纹变了的卡重渲染；制造线先按蓝图归并一遍，O(线)） */
   const runSigByBp = new Map<string, string>()
   for (const v of runViews) {
     if (v.blueprintId === null) continue

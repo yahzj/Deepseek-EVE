@@ -1,4 +1,3 @@
-/** 功能域职责拆分，保持原计算与顺序。 */
 import { type FoeShipDef, type AnomalyDef, type FoeShipSlot, enemyParameterOf } from '@whale/core'
 import { FOE_ALIEN_BROODMOTHER, FOE_ALIEN_HIVEBACK, FOE_ALIEN_ACID_BURSTER, FOE_ALIEN_STARCORE_ADULT, FOE_ALIEN_SPORE_HIVE, FOE_ALIEN_BROOD_WORKER, FOE_ALIEN_MAW } from '../../foe-ships'
 import invasionFleetsParameters from '../../static/invasionFleets.json'
@@ -7,7 +6,6 @@ import { WEEKEND_INK_HARASS_CARD, WEEKEND_INK_RAID_CARD, WEEKEND_INK_MAIN_CARD, 
 import { WEEKEND_CORONA_DRIFT_CARD, WEEKEND_CORONA_SPLIT_CARD, WEEKEND_CORONA_CONVERGE_CARD, WEEKEND_CORONA_NEXUS_CARD } from './corona'
 import { WEEKEND_GRAVEKEEPER_DRIFT_CARD, WEEKEND_GRAVEKEEPER_LINE_CARD, WEEKEND_GRAVEKEEPER_MAIN_CARD, WEEKEND_GRAVEKEEPER_FLAGSHIP_CARD } from './gravekeeper'
 
-/** 周末入侵·独立卡清单（`data/context.ts` 把它们并进 `ANOMALIES_FLAVORED` ⇒ 引擎 `ctx.anomalies` 能取到） */
 export function alienInvasionCard(id: string, nameId: string, scale: number, wreckThreat: number, waves: readonly (readonly [FoeShipDef, number][])[]): AnomalyDef {
   const count = waves.reduce((n, wave) => n + wave.reduce((m, [, size]) => m + size, 0), 0)
   const comp = 2 * count / (count + 1)

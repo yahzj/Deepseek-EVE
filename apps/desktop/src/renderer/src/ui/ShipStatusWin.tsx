@@ -1,16 +1,3 @@
-/**
- * 左侧导航「出港」上方的驾驶舰船状态窗（2026-09-10 船长定，背景专项迭代）：
- * - 只展示当前驾驶舰船的独立矢量形（25 舰资产），内部无文字；
- * - 场景 = 活动推导（sceneOfShipwin 独立导出 = 扩展接口：后期战斗/采矿等其它环境要
- *   同步换背景时，消费同一场景类型即可，见 docs/design/shipwin-scenes-20260910.md）；
- * - 背景分层（全部 SVG 物件 + CSS 氛围，主题深蓝青系收敛，不与主题色差过大）：
- *   ① CSS 氛围层 .app-shipwin-bg（每场景独立底色/光带，换场景交叉淡入淡出过渡）；
- *   ② .app-shipwin-sky 内联 SVG（星星点阵 + 机库结构件 + 作业飘浮物，都在舰后 = 远景）；
- *   ③ 舰船双图层（切驾驶交叉过渡）；
- *   ④ 交火炮口火光层（SVG，舰前）；
- * - 星光带方向：玩家舰船头朝右、向右航行 → 背景星带向左流动（修正 2026-09-10）；
- * - 图形风格规则：视觉物件一律 SVG 线稿（conventions 第九章）。
- */
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { ShipRole } from '@whale/core'
@@ -22,30 +9,13 @@ import { mountsOf } from './shipMounts'
 import { toneOf } from './Glyphs'
 import { tr } from '../i18n/locale'
 
-/**
- * 状态窗配色（船长 2026-09-10「作业时整窗统一到工作色」）：
- * - **作业场景（采掘 / 打捞）→ 该工作的颜色**，与 AI 指挥中心的工作动画同源
- *   （ui/aiWorkFx.tsx 的 `.app-inv-fx.is-mining` / `.is-salvage` = #b5e35f / #6fe3f0；
- *   背景氛围与漂移物也在 styles.css 里同步到这两个色）；
- * - **其余场景 → 角色色**（Glyphs 的 TONES 角色槽色：工业绿 / 武装红 / 重装橙 / 航运蓝，
- *   与战场 ROLE_ACCENT、舰队卡族色同值）——舰体与其尾焰（currentColor）一起上色。
- *
- * **导出给主控活动窗口**（`ui/ActivityScreen.tsx`，2026-09-21）：那个大窗口的舰体与作业件同取这张表
- * ⇒ 两个窗口的作业配色同一份事实源，不各写一份（船长口径："参考左上角的小窗"）。
- * ⚠ 2026-09-22 起色值走 `ui/tones.ts`（`var(--wui-tone-*)`）⇒ 随主题切换；改动去那张表。
- */
 import { WORK_ACCENT as WORK_ACCENT_TABLE } from './tones'
 
 export const WORK_ACCENT = WORK_ACCENT_TABLE as Partial<Record<ShipwinScene, string>>
 
-const SWITCH_MS = 520 // 稍长于 CSS 过渡(450ms)，旧层完全结束后再卸载
-const BG_SWITCH_MS = 480 // 背景交叉淡入淡出时长余量
+const SWITCH_MS = 520
+const BG_SWITCH_MS = 480
 
-/** 场景枚举 = 状态窗扩展接口（2026-09-10：后续若战斗/采矿等其它环境要同步背景，
- *  在本类型加值 + sceneOfShipwin 推导 + 对应背景类与远景物件内容即可，不扩散到各处）
- *
- *  2026-09-20 新增 `'work-haul'`（船长令：给主控活动加动画窗口）——长途运输此前落通用 `travel`，
- *  没有"在拉货"的表现；用户裁示**区分就位与承运**（见 `docs/design/main-activity-win-20260920.md`）。 */
 export type ShipwinScene =
   | 'combat'
   | 'travel'
@@ -56,35 +26,16 @@ export type ShipwinScene =
   | 'field'
   | 'docked'
 
-/** 活动 → 场景（纯函数，独立导出：其它消费方（未来的环境背景）可复用同一推导）
- *  ⚠ **2026-09-14 修**：洞内战斗的宿主是 `state.wormhole.run.battle`（不占 `expedition.battle`）——
- *  原先只认远征 ⇒ 洞里打起来时状态窗**不切"交火"场景**（背景/远景物件全是别的场景）。
- *  ⚠ **2026-09-20 补**：① `work-scan` 分支**接回**——它 2026-09-17 随"星系扫描无人化"被删
- *  （当时删得对：星系扫描不再占用主控），但**扫描虫洞**（`state.wormholeScan`）自始至终是
- *  主控亲自在扫（要求停靠空间站、且与其它主控活动互斥，见 `wormholeScanBlockReason`）
- *  ⇒ 少了它，扫虫洞时窗口什么都不显示。
- *  ② 长途运输**全程归 `work-haul`**：就位段（`tripLegsLeft === 1`，空舱赶去航线端点）与承运段
- *  （`tripLegsLeft >= 2`，满载虚拟货物往返）**画面不同、但都算"主控在跑长途运输"** ⇒ 活动窗口
- *  自始至终显示它。2026-09-20 定：船长要"区分就位与承运"，那就得两段都看得见——若就位段仍落
- *  通用 `travel`，窗口会在刚接单时凭空消失、玩家以为任务断了（实测夹具 `wh-layer4` 即此形态）。 */
 export function sceneOfShipwin(state: GameState): ShipwinScene {
   const b = state.expedition.battle
   if (state.wormhole.run?.battle) return 'combat'
-  /**
-   * ⚠ **2026-09-25 补第三个战斗宿主：入侵旗舰战**（编队战 · 承载在遭遇槽）——
-   * 原先只认远征与虫洞 ⇒ 旗舰战打起来时状态窗不切"交火"场景（背景/远景物件全是别的场景），
-   * 与洞内那次（2026-09-14）同一个病根。判据走 core 单点。
-   */
   if (weekendFlagshipBattleActive(state)) return 'combat'
   if (state.encounter.active && state.encounter.battle !== null && state.encounter.shipId === state.shipId) return 'combat'
   if (state.expedition.active && b) return 'combat'
   if (state.hauling.active) return 'work-haul'
   if (state.mining.active) return state.mining.phase === 'returning' ? 'travel' : 'work-mine'
   if (state.salvaging.active) return state.salvaging.phase === 'returning' ? 'travel' : 'work-salvage'
-  // ⚠ 2026-09-17 去掉 `state.scanning` 那一档：星系扫描自 2026-09-15 起是**无人扫描艇**
-  //   （船长：「玩家扫描星系将不再占用玩家的主控活动」「不牵动舰船」）⇒ 本舰并没有在扫描，
-  //   状态窗不该把它画成"本舰作业中"（本条是那批无人化改造漏掉的旧闸之一）。
-  if (state.wormholeScan?.active === true) return 'work-scan' // 扫描虫洞：主控本舰在扫（2026-09-20 接回）
+  if (state.wormholeScan?.active === true) return 'work-scan'
   if (state.expedition.active) return 'travel'
   if (state.transit.active) return 'travel'
   if (state.standby.active) return 'field'
@@ -92,16 +43,9 @@ export function sceneOfShipwin(state: GameState): ShipwinScene {
   return 'docked'
 }
 
-/** 小窗画布 = 卡片实际尺寸（viewBox 1:1 到 CSS 像素） */
 const FX_W = 148
 const FX_H = 66
 
-/**
- * 星星点阵（本地坐标 x,y,半径;2026-09-10 船长批:全画布散布——太空无「下方」概念,
- * 舰体上方/周围/下方都应有星,画在舰后的细点被舰体局部遮挡反而加深景深;
- * 序列按 5 段高度(顶/上中/中/下中/底)交错排列,取前 N 颗的任一前缀都近似覆盖全窗,
- * 不会只亮顶部一条带;docked 机库不显示)
- */
 const STAR_BASE: Array<[number, number, number]> = [
   [8, 14, 0.6], [24, 50, 0.7], [40, 6, 0.9], [56, 62, 0.5], [72, 36, 0.6],
   [88, 4, 0.8], [104, 54, 0.6], [122, 18, 0.9], [140, 60, 0.5], [12, 32, 0.7],
@@ -111,7 +55,7 @@ const STAR_BASE: Array<[number, number, number]> = [
   [134, 14, 0.5], [6, 58, 0.6], [50, 38, 0.8],
 ]
 const STAR_COUNT: Record<ShipwinScene, number> = {
-  docked: 0, // 机库内无星空
+  docked: 0,
   'work-mine': 14,
   'work-salvage': 14,
   'work-scan': 16,
@@ -127,14 +71,7 @@ export function ShipStatusWin({
   onNavigateShip,
 }: {
   engine: GameEngine
-  /**
-   * **有窗口被最小化时的还原入口**（2026-09-21 船长令：与小窗合并）。
-   * `null` = 没有待还原的窗口 ⇒ 点击跳转至机库/舰船页。
-   * 文案（`title`）由 `App.tsx` 按"是哪个窗口"给（本组件只管把它挂上去）。
-   * ⚠ 战斗与活动**同时**最小化时由 `App.tsx` 定优先级（当前：战斗优先——那是正在打的一仗）。
-   */
   restore?: { title: string; onRestore: () => void } | null
-  /** 平时点击小窗快速导航到舰船/机库的回调 */
   onNavigateShip?: () => void
 }) {
   const state = engine.state
@@ -142,10 +79,8 @@ export function ShipStatusWin({
   const cls = sceneOfShipwin(state)
   const engineOn = cls === 'combat' || cls === 'travel' || cls === 'work-mine' || cls === 'work-salvage' || cls === 'work-scan'
   if (!def) return null
-  /** 舰体配色：作业场景用工作色、其余用角色色（见 WORK_ACCENT 注释） */
   const accent = WORK_ACCENT[cls] ?? toneOf(def.role)
 
-  // ── 切换驾驶交叉过渡（旧舰淡出左移 / 新舰滑入淡入） ──
   const prevRef = useRef<{ id: string; role: ShipRole } | null>(null)
   const [leaving, setLeaving] = useState<{ id: string; role: ShipRole } | null>(null)
   useEffect(() => {
@@ -160,7 +95,6 @@ export function ShipStatusWin({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [def?.id])
 
-  // ── 场景背景切换过渡（旧背景保留 ~0.5s 淡出，新背景淡入） ──
   const prevSceneRef = useRef<ShipwinScene | null>(null)
   const [bgPrev, setBgPrev] = useState<ShipwinScene | null>(null)
   useEffect(() => {
@@ -174,13 +108,11 @@ export function ShipStatusWin({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cls])
 
-  // ── 星空 + 远景物件（舰后层；作业场景飘浮物也在这层） ──
   const starN = STAR_COUNT[cls]
   const sky: ReactNode[] = STAR_BASE.slice(0, starN).map(([x, y, r], i) => (
     <circle key={`st${i}`} className="app-swin-star" cx={x} cy={y} r={r} />
   ))
   if (cls === 'docked') {
-    // 机库场景（SVG 线稿：顶棚/墙面/地板停靠格/引导灯，主题青系）
     sky.push(
       <g key="hangar" className="app-swin-hangar">
         <path d="M0 8 H148 M0 46 H148" />
@@ -205,8 +137,6 @@ export function ShipStatusWin({
       <g key="m2" className="app-swin-drift is-rock is-small" style={{ animationDelay: '1.6s', animationDuration: '4.4s' }}>
         <path d="M1 4 L6 1 L9 3 L8 6 L3 7 Z" />
       </g>,
-      /* 2026-09-10 船长：采掘要有"激光打到矿岩上"——与 AI 指挥中心的工作动画同款语言
-         （同色、同形、同节奏；舰首在本地坐标约 x=104，故光束自舰体内侧射出、矿岩落在右侧空档） */
       <g key="mine-fx" className="app-swin-work is-mine">
         <path className="app-swin-wbeam" d="M104 33 H131" />
         <path className="app-swin-wrock" d="M131 27 l5 0 l3 5 l-3 5 l-5 0 l-3 -5 z" />
@@ -225,7 +155,6 @@ export function ShipStatusWin({
       <g key="s2" className="app-swin-drift is-debris is-small" style={{ animationDelay: '1.9s', animationDuration: '4s' }}>
         <path d="M0 3 L5 1 L7 4 L4 6 Z" />
       </g>,
-      /* 2026-09-10 船长：打捞要有"牵引光束 + 扫描弧扫到残片上"——同样沿用 AI 工作动画的设计语言 */
       <g key="salvage-fx" className="app-swin-work is-salvage">
         <path className="app-swin-wcone" d="M104 33 L137 23 L137 43 Z" fill="currentColor" fillOpacity="0.1" />
         <path className="app-swin-wbeam" d="M104 33 H137" />
@@ -261,11 +190,6 @@ export function ShipStatusWin({
   const winTitle = restore?.title ?? tr('ui.App.002')
 
   return (
-    /**
-     * **小窗 = 还原与机库快捷入口**（2026-09-21 船长令与 2026-11-03 工效学优化）：
-     * 有窗口被最小化时（`restore` 非空）：整块小窗右上角出一枚「⤢」角标（脉冲提示），点它还原活动；
-     * 平时无最小化时：作为一等公民的可点击元素，点击快速直达机库/舰船页。
-     */
     <button
       type="button"
       className={`app-shipwin-wrap${restore ? ' is-restore' : ''}`}
@@ -301,7 +225,6 @@ export function ShipStatusWin({
   )
 }
 
-/** 交火火光挂载：muzzles 每口一焰（双相位交替闪烁），空表回退舰艏前缘 */
 function MuzzleFlash({ defId }: { defId: string }) {
   const mounts = mountsOf(defId, undefined)
   const mz = mounts?.muzzles && mounts.muzzles.length > 0 ? mounts.muzzles : [{ x: 215, y: 55 }]

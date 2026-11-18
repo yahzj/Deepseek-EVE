@@ -1,10 +1,3 @@
-/**
- * 物品页（货仓并入物品界面，2026-09-04 船长定）：选项页划分「仓库 / 货仓」。
- * - 仓库 tab：物品仓库（无限容量、不随船、永不遗失）——按大类分组展示矿石/矿物/
- *   气体/冰矿/弹药/无人机，并新增「装备」分组（装备库 moduleBay：制造/购入的装备），
- *   矿石/气体/冰矿可装船或卖出，矿物是制造料；
- * - 货仓 tab：原货仓页（T3 船选择条 / 驾驶船可装卸出售，副船只读）整体并入。
- */
 import { useEffect, useState } from 'react'
 import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, marketGoodOf, SYNAPTIC_ACCELERANT_ITEM_ID, invasionBeaconTypeOf, shipOperationBlockReason, freeCargoM3, cargoUnitM3, MODULE_CARGO_UNIT_M3 } from '@whale/core'
 import { itemRarityTierOf } from '@whale/data'
@@ -31,7 +24,6 @@ import {
   type SubOption } from '../ui/itemSubs'
 import { useL10n, cmdText } from '../i18n/locale'
 import { crestFamOf, kindText, slotText } from '../ui/labelsText'
-/** 装备库展示顺序（单点）：攻击类别 → 档位从低到高（2026-09-24 船长报障后立） */
 import { sortModEntries } from '../ui/modOrder'
 import type { PageProps } from './common'
 import { isk, itemBuyQuote, m3 } from './common'
@@ -40,44 +32,22 @@ import { tr } from '../i18n/locale'
 
 type ItemsTab = 'warehouse' | 'cargo'
 
-/** 物品页附加导航：跳市场页并聚焦某商品订单（船长 2026-09-05：市价卖出旁加"查看市场"） */
 export interface ItemNavProps {
   onGotoMarket: (goodKey: string) => void
 }
 
-/** 仓库主视图（含装备库分组） */
 function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavProps) {
   const state = engine.state
   const cargoBlock = shipOperationBlockReason(state, engine.ctx, state.shipId, 'cargo')
-  /** 语言（2026-09-19 船长令「英语本地化」）：界面串走 `t(中文源串)`；缺词条回退中文 */
   const { t } = useL10n()
-  // 仓库搜索（2026-09-09 船长：标题内搜索栏，按名称/分类/说明过滤仓库物品与装备库）
   const [wareQuery, setWareQuery] = useState('')
-  /* 仓库筛选（2026-09-13 船长：「物品界面的仓库也添加筛选」；2026-09-19 甲组补丁按船长
-     「涉及到特定分类的父分类时，将其子分类也放入」补齐）：
-     一级 = 物品领域分类（货物 / 装备 / 消耗品 / 货柜 / 残骸 / 黑匣 / AI 核心 / 其他）；二级 = `SUBS_OF_KIND`
-     的天然子维度（装备⇒功能分组、货柜/残骸⇒档位、AI 核心⇒档位、货物⇒物品大类）。表与判定全部走单点。
-     与搜索取「与」；**不落盘**，切页/重开即重置（与市场、手册同一哲学）。
-     ⚠ **2026-10-01 船长令**「以市场为准，三处都改，层级按市场来」⇒ 本页原**三级维度（槽类⇒功能分组）
-     已删**：归属档进了**一级**、二级直接是功能分组，与市场两个下拉的层级一致。 */
-  const [wareKind, setWareKind] = useState<string>('all') // 一级「分类」：'all' = 全部（2026-09-19 基线②：一级选择器用 'all'，下级维度才用 SUB_ALL）
+  const [wareKind, setWareKind] = useState<string>('all')
   const [wareSub, setWareSub] = useState<string>(SUB_ALL)
   const [wareRack, setWareRack] = useState(SUB_ALL)
-  /**
-   * 一级筛选中（分类 / 装备）。
-   * ⚠ 键口径（2026-09-19 基线②）：**一级选择器的"全部" = `'all'`**，`SUB_ALL` 只留给下级维度。
-   */
   const kindPicked = wareKind !== 'all'
-  /** 装备是否在展示范围内（「全部」与「装备」都在范围内；选了某个物品大类时装备库整块不显示） */
-  /** 装备是否在展示范围内（「全部」与四个装备档都在范围内；选了物品侧的档时装备库整块不显示） */
   const showMods = wareKind === 'all' || wareKind === 'module'
   const wq = wareQuery.trim().toLowerCase()
   const rows = Object.entries(state.warehouse.items).filter(([, n]) => n > 0)
-  /**
-   * 装备库条目——**按展示顺序排好再渲染**（2026-09-24 船长报障：「装备库排序混乱，希望按武器攻击类别、
-   * rank 从低到高」）。原先直接 `Object.entries(state.moduleBay)` ⇒ 顺序 = 获得/存盘顺序，故看着乱。
-   * 排序单点 = `ui/modOrder.ts`（攻击类别 → 档位；势力/专属件排各类末尾按名义火力；非武器件按槽位分组在后）。
-   */
   const modRows = sortModEntries(
     Object.entries(state.moduleBay).filter(([, n]) => n > 0),
     engine.ctx,
@@ -102,43 +72,23 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
       (def.description ?? '').toLowerCase().includes(wq)
     )
   }
-  /**
-   * **一级 → 二级维度**（只有"有天然子维度"的一级才有；表与标题前缀都取单点表）。
-   * AI 核心：仓库里只有物品形态的 gamma/beta/alpha（`basic` 只有市场商品）⇒ 按目录存在性列档。
-   */
-  /**
-   * 一级「分类」档 = 物品领域表里**仓库真有内容的那些**（`presentSubs` 式）；装备查 `modRows`，物品查 `rows`。
-   * 「同步」= 同类东西同口径，不是硬凑档数：仓库里没有舰船与图纸实物 ⇒ `ship` / `blueprint` 两档自然不出现。
-   */
   const wareKindTabs = presentSubs(ITEM_DOMAIN_SUBS, (key) =>
     key === 'module'
       ? modRows.length > 0
       : rows.some(([id]) => itemCategoryOf(engine.ctx.items.get(id)) === key),
   )
-  /** **道具逐件档的档名解析器**（2026-10-02 船长令：消耗品桶里每件道具自成一档）：档名 = 那件道具
-   *  自己的名字，从物品表单点取（`subText` 的第二个参数），不在分类表里再抄一份名字。 */
   const itemNameOf = (id: string): string | undefined => engine.ctx.items.get(id)?.name
   const subDim: { options: SubOption[]; label: string } | null = (() => {
-    // 2026-09-20 筛选清理（船长「明显不存在的子类筛选隐藏」）：各档**只列仓库里真有内容的档**
-    //（`rows` = 仓库物品条目 · `modRows` = 装备库条目；判定一律走单点 `itemSubPasses`）。
-    // **2026-10-01 同步市场层级**：二级表统一取 `SUBS_OF_KIND[wareKind]`（装备四档 ⇒ 功能分组）；
-    // 原「装备档二级 = 槽类（`RACK_SUBS` / `rackPasses`）」与整条**三级维度**已删（层级按市场来）。
     const options = wareKind === 'module' ? MODULE_SUBS : SUBS_OF_KIND[wareKind]
     if (options === undefined) return null
     const pool = wareKind === 'module' ? modRows : rows
     return {
       options: presentSubs(options, (key) => pool.some(([id]) => itemBucketPasses(engine.ctx, id, wareKind) &&
         (wareKind !== 'module' || rackPasses(engine.ctx, id, wareRack)) && itemSubPasses(engine.ctx, id, wareKind, key))),
-      // ⟪文案调整 2026-10-04⟫ 细分前缀按功能、分类、类型或档位取词。
       label: wareKind === 'module' ? tr('ui.ItemsPage.048') : wareKind === 'item' ? tr('ui.ItemsPage.059') :
         wareKind === 'container' || wareKind === 'consume' ? tr('ui.hintAudit.003') : tr('ui.ItemsPage.023'),
     }
   })()
-  /**
-   * **仓库内容变了 ⇒ 原选择可能已经空档**：`rows` / `modRows` 是**动态**的（卖掉、装船、投炉都会让某档归零）——
-   * 档位一旦从候选里消失，选择若还停在它上面就成了**看不见的筛选**（列表全空、没有任何选中项可点回去）。
-   * 故与蓝图书架同一口径（2026-09-19）：选择不在候选里 ⇒ 回落「全部」；二级回落时三级一并回落。
-   */
   const subMissing = subDim !== null && wareSub !== SUB_ALL && !subDim.options.some((s) => s.key === wareSub)
   const kindMissing = kindPicked && !wareKindTabs.some((s) => s.key === wareKind)
   useEffect(() => {
@@ -148,14 +98,6 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
   const rackOptions = wareKind === 'module' ? presentSubs(RACK_SUBS, (key) => modRows.some(([id]) => rackPasses(engine.ctx, id, key))) : []
   const rackMissing = wareRack !== SUB_ALL && !rackOptions.some((s) => s.key === wareRack)
   useEffect(() => { if (rackMissing) { setWareRack(SUB_ALL); setWareSub(SUB_ALL) } }, [rackMissing])
-  /**
-   * 维度的判定一律走**唯一入口**（甲组·判定单点）：一级 `itemBucketPasses` · 二级 `itemSubPasses`；
-   * 页面**不自写任何判定**。
-   *
-   * ⚠ **2026-09-19 报障修**（船长「仓库内，部分筛选标签无效（比如装备-高槽装备）」）里那套
-   * 「装备档二级 = 槽类 ⇒ 判据 `rackPasses`」的特例，**2026-10-01 已随层级同步一并删除**：
-   * 归属档现在在**一级**（`module-high/mid/low/plug`），二级统一走 `itemSubPasses` 的子键。
-   */
   const subHit = (id: string): boolean => {
     if (!subDim || wareSub === SUB_ALL) return true
     return itemSubPasses(engine.ctx, id, wareKind, wareSub)
@@ -170,11 +112,8 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
   const modHits = showMods ? modRows.filter(([id]) => hitMod(id) && dimHit(id)) : []
   const itemKinds = [...ITEM_KIND_ORDER, 'other']
   const hitTotal = itemHits.length + modHits.length
-  /** 搜索或筛选任一生效（标题计数与空态文案据此换措辞） */
   const wareNarrowed = wq.length > 0 || kindPicked || wareSub !== SUB_ALL
 
-  // 2026-09-09（船长口径 A）：任何仓库物品都可装船携带（引擎按各自体积装；矿物/弹药/无人机亦同）；
-  // 装备（模块）装船见 handleLoadMod（按 1 m³/件 计入货舱）
 
   const KIND_EMPTY: Record<string, string> = {
     ore: t('ui.ItemsPage.005'),
@@ -188,15 +127,10 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
   function handleLoad(id: string): void {
     const def = engine.ctx.items.get(id)
     if (!def) return
-    /**
-     * **普通货仓装不进去的东西**（**2026-09-30 船长令**：「每单位燃料体积为1m³，但是普通舰船的货仓无法装入」）
-     * —— 判据是**物品数据上的字段**（`ItemDef.holdForbidden`），引擎那边同样会拒绝（`loadWarehouseToCargoFit`），
-     * 这里只是把"装不下"换成一句说明白的话。 */
     if (def.holdForbidden === true) {
       onToast(t('ui.ItemsPage.052', { p1: def.name }), true)
       return
     }
-    // ⟪文案调整 2026-10-04⟫ 失败按既有锁定和空间判据提示，不把返回零一律说成满舱。
     const lock = shipOperationBlockReason(state, engine.ctx, state.shipId, 'cargo')
     if (lock) { onToast(cmdText(lock), true); return }
     const loaded = engine.loadWareToCargoFit(id)
@@ -208,13 +142,11 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
     }
   }
 
-  /** 快速查看市场订单（参照舰船市场入口：跳市场页并聚焦该商品；船长 2026-09-05） */
   function goMarket(kind: 'item' | 'module', id: string): void {
     const good = marketGoodOf(engine.ctx, kind, id)
     if (good) onGotoMarket(good.key)
   }
 
-  /** 2026-09-09（船长口径 A）：装备装船 = 携带（按 1 m³/件 计入货舱，从装备库扣）；装配台取料仍只认装备库 */
   function handleLoadMod(id: string): void {
     const def = engine.ctx.modules.get(id)
     const lock = shipOperationBlockReason(state, engine.ctx, state.shipId, 'cargo')
@@ -225,10 +157,8 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
     else onToast(tr("ui.ItemsPage.041", { p1: def?.name ?? id, p2: loaded.toLocaleString('zh-CN') }))
   }
 
-  // 出售数量选择（船长 2026-09-05：支持只卖一部分）
   const [sellItem, setSellItem] = useState<string | null>(null)
   const [sellMod, setSellMod] = useState<string | null>(null)
-  /** 丢弃数量选择（船长 2026-09-15：「仓库添加丢弃按钮，允许玩家丢弃任意数量已有物品」） */
   const [discardItem, setDiscardItem] = useState<string | null>(null)
   function handleSellQtyItem(id: string, qty: number): void {
     const r = engine.sellWare(id, qty)
@@ -252,22 +182,9 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
     setPickMod(null)
   }
 
-  /**
-   * **逆向解锁**（2026-09-19 玩家报障「回收残骸集齐了 25 个蓝图碎片，但是找不到在哪换成蓝图」）：
-   * 蓝图碎片（`frag-<装备 id>`）在仓库里那一行直接兑换——读数与兑命令都收在
-   * `ui/fragmentRedeem.tsx` 的 `RedeemFragmentButton`（core 单点 `fragmentRedeemRowsOf` +
-   * `redeemFragments`；货仓页同一个组件），这里只留"哪些行是碎片"的判据。
-   */
   const fragRows = new Set(engine.fragmentRedeemRows().map((r) => r.fragmentItemId))
 
-  // 图标模式点选操作（船长 2026-09-05：网格也要能操作）
   const [pickItem, setPickItem] = useState<string | null>(null)
-  /**
-   * **点火**（从物品页用发射器 = **默认那条路**：不指定星系、由候选集随机抽 ⇒ 候选集本身排除高安）。
-   * ⚠ **2026-10-03 船长裁「乙」后这里不再有二次警告**：警告的判据是「**玩家选定的目标星系**属高安」，
-   * 而这条路根本没有可选的目标 ⇒ 判据恒 false（原先那道"看玩家所在地"的门已按船长口径删掉，
-   * 起因 = 玩家报障「在穹顶墓园使用却弹高安警告、警告里写大鲸鱼Ⅳ」）。
-   */
   const fireBeacon = (itemId: string): void => {
     const r = engine.useInvasionBeaconNow({ itemId })
     if (!r.ok) onToast(cmdText(r) || tr('ui.ItemsPage.057'), true)
@@ -277,23 +194,15 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
   const pickItemDef = pickItem ? engine.ctx.items.get(pickItem) : undefined
   const pickItemUnits = pickItem ? (state.warehouse.items[pickItem] ?? 0) : 0
   const pickItemBuy = pickItem ? itemBuyQuote(engine, pickItem) : undefined
-  /** 同上：判"能不能卖"看**在不在市场目录**（2026-09-25 修；空簿 ≠ 不在目录） */
   const pickItemSellable = pickItem ? marketGoodOf(engine.ctx, 'item', pickItem) !== undefined : false
   const pickModDef = pickMod ? engine.ctx.modules.get(pickMod) : undefined
   const pickModUnits = pickMod ? (state.moduleBay[pickMod] ?? 0) : 0
 
-  // 图标/列表切换（手册同款；网格为浏览视图）
   const [mode, setMode] = useItemView('items')
-  /**
-   * 装备卡片（图标模式）——`hover` 挂**富卡**（`moduleHoverContent`：名称 + 参数表 + 描述），
-   * 与列表模式的 `ModuleHover` 同一内容（船长 2026-09-19 报障：图标模式原先是纯文本简介）。
-   */
   const modCells: ItemGridCell[] = []
   for (const [id, units] of modHits) {
     const def = engine.ctx.modules.get(id)
     if (!def) continue
-    /** **族徽角标**（**2026-09-27 船长报障**：「物品仓库内的势力装备，左上角没有角标」）——
-     *  判据走单点 `crestFamOf(id)`（与手册图鉴同一把尺：装备按自身 id 判）；非专属件恒不标。 */
     const crest = crestFamOf(id)
     modCells.push({
       key: id,
@@ -302,7 +211,6 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
       sub: `×${units.toLocaleString('zh-CN')}`,
       title: def.description,
       hover: moduleHoverContent(def),
-      // 稀有度小标签（2026-09-20 船长）：装备的市场 refId 本来就是 `mod-<id>` ⇒ 直接传 id
       rarity: itemRarityTierOf(id),
       ...(crest !== undefined ? { crest } : {}),
     })

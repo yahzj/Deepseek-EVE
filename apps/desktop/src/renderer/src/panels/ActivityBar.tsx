@@ -1,13 +1,3 @@
-/**
- * T1 顶部活动窗口：常驻显示「玩家活动」与「技能训练」两个分区（各带待机文案），
- * 提供统一终止入口；AI 活动不逐条显示，用两枚小图标徽标（副船 / 工业，各自跳转）。
- * 布局：垂直排布，固定高度上限，内容多时内部滚动（船长 2026-09-05）。
- *
- * **星系扫描条**（船长 2026-09-15）：「玩家扫描星系将不再占用玩家的主控活动（也不显示在主控活动里，
- * 而是在 AI 活动的图标右侧显示一个进度条，当扫描完成后这个进度条依旧存在并高亮，直到玩家进入星图
- * 界面查看后才移除）」⇒ 扫描不再是"玩家活动"行，改为头部 AI 徽标右侧一条常驻进度条
- * （进行中 = 进度 + 剩余；完成待查看 = 满格金色高亮，进「星图」或点它即收）。
- */
 import { activityOverview, scanAwaitingView, scanStatus, SYNAPTIC_ACCELERANT_MUL } from '@whale/core'
 import type { ActivityView } from '@whale/core'
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
@@ -16,9 +6,7 @@ import type { ToastFn } from '../pages/common'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { AiWorkFx } from '../ui/aiWorkFx'
 import { tr, isEn } from '../i18n/locale'
-// 活动行「点击去哪」的跳转单点（2026-09-27 建：原先两套外壳各一份，快递那档跳到了已删除的星图页签 ⇒ 空白页）
 import { goFor } from '../ui/activityGo'
-// 活动栏「停止/取消」按钮文案 = 单点（两套外壳共用，见文件头注）
 import { stopLabel, doStop } from './activityStopLabel'
 import { fmtDuration } from '../i18n/fmt'
 import { explorationActivityText } from '../ui/explorationActivityText'
@@ -27,7 +15,6 @@ import { jumpExchangePage } from '../features/exchange/viewPrefs'
 import { CLOUD_SESSION_CHANGE_EVENT } from '../features/cloud/preferences'
 import type { BondPosition, FundPosition } from '../features/exchange/client'
 import { money, pct } from '../features/exchange/format'
-// 交易所不可用时整组入口隐藏（一键关闭股票系统，见 features/exchange/availability.ts）。
 import { useExchangeAvailable } from '../features/exchange/availability'
 import '../styles-activity-invasion.css'
 
@@ -46,24 +33,12 @@ const KIND_ICON: Record<string, string> = {
   'invasion-loop': 'ico-loop',
   courier: 'nav-task',
   hauling: 'nav-haul',
-  // 虫洞探索（船长 2026-09-13「活动栏显示」）：图标 = 虫洞专属「空间裂隙」（同日船长定案），
-  // 与星图·行动区的虫洞入口行同一枚，不再借 ico-flag / ico-scan
   wormhole: 'nav-wormhole',
-  /** 主控活动「扫描虫洞」（2026-09-14）：与洞内活动同一个图标，色调用其自身色调 */
   whscan: 'nav-wormhole',
   whauto: 'nav-wormhole',
-  /**
-   * 实验室产线（**2026-10-01 接入**）：与精炼炉/制造线**同一枚 `nav-industry`**
-   * （**船长 2026-10-01 令**：「**实验室和工业的其他页面没有本质区别，所以 AI 和活动栏图标都使用
-   * 一样的机制**」）——它只是工业的又一条产线，不另立视觉符号。
-   */
   lab: 'nav-industry',
 }
 
-/**
- * 待机微面板组件：在 150px 窄列内对待机状态进行结构化展示，
- * 避免长句在破折号和标点处发生难看生硬的字符折断。
- */
 function ActivityBarIdle({
   text,
   onClick,
@@ -97,12 +72,6 @@ function ActivityBarIdle({
   )
 }
 
-/**
- * 进度条平滑补间填充微组件：
- * 当百分比递增时，遵循 CSS 声明的 0.25s linear 硬件加速过渡；
- * 当百分比回退或循环重置时（percent < prevPercent），设置 transition: 'none' 瞬回归零，
- * 避免反向缩回倒放的非物理视觉瑕疵。
- */
 function SmoothFill({
   percent,
   className,
@@ -137,15 +106,6 @@ function SmoothFill({
   )
 }
 
-/**
- * 活动项 → 跳转目标页面（可带星图二级标签）——船长 2026-09-05 点击跳转。
- *
- * 【注意】扩展约定（新增活动时务必同步）：以后若新增活动项目 / 新增页面，
- * 必须在本函数补充对应 `case`（kind → { page, mapTab? }），否则新活动点下去
- * 会回退到默认 `{ page: 'map' }`（星图页），跳转失效。
- * 映射关系建议遵循：采矿→星图·矿带开采；扫描/远征/返航/待命→星图·远征；
- * 制造/精炼→工业；训练→技能页。跳转实现经 App 传入的 onGoPage（setPage + setMapTab）。
- */
 
 export function ActivityBar({
   engine,
@@ -158,36 +118,17 @@ export function ActivityBar({
   onToast: ToastFn
   onAiCenter?: () => void
   onGoPage?: (page: string, mapTab?: string, taskTab?: string) => void
-  /**
-   * **虫洞那条直接开面板**（船长 2026-09-13：「活动栏直接开面板」）：
-   * 光跳星图页不够——星图要**先选中一个星系**才渲染「前往星系 · 行动」区，
-   * 而人已经进洞时星图默认没有选中星系 ⇒ 那一行里的「进入虫洞」可能根本不出现。
-   */
   onOpenWormhole?: () => void
 }) {
   const exchangeAvailable = useExchangeAvailable()
   const state = engine.state
   const all = activityOverview(state, engine.ctx).map(explorationActivityText)
-  // 船长 2026-09-05：活动窗口垂直排布；「玩家活动」「技能训练」两个常驻分区，各自待机文案；AI 用徽标
-  // 2026-09-08：AI 徽标计数 = AI 副船 + AI 核心驱动的生产线/精炼炉（后者不再占用"玩家活动"行）
-  // 2026-09-10 船长：徽标**拆成两枚**——「副船」与「工业」各一枚（图标与配色不同，便于辨识）；
-  //   数字取 core 单点（与 AI 指挥中心标题行同源），不再从活动列表反推
-  /**
-   * **突触加速剂读数**（**2026-09-30 船长令**：「'生效中'倒计时读数放入活动窗口内，和 AI 核心一样，
-   * 用一个图标表示。最好图标能展示技能加速的倍率」）—— 归到「计时中」那一组（与扫描条同组），
-   * 图标 ＋ **倍率**＋ 剩余时间；倍率由 core 的乘区反算（`1 / SYNAPTIC_ACCELERANT_MUL`）⇒ 改数值不会说两套话。
-   */
   const boostRemainMs = engine.synapticAccelerantRemainMs()
   const boostMul = Math.round(1 / SYNAPTIC_ACCELERANT_MUL)
   const playerItems = all.filter((i) => i.kind !== 'ai' && i.kind !== 'train')
   const trainItems = all.filter((i) => i.kind === 'train')
   const aiShipItems = all.filter((i) => i.kind === 'ai' && i.aiGroup === 'ship')
   const aiProdItems = all.filter((i) => i.kind === 'ai' && i.aiGroup === 'industry')
-  /**
-   * 星系扫描条读数（见文件头注释）：**进行中优先**——正在扫就显示这条扫描的进度；
-   * 扫完（且玩家还没看过）才显示"已完成"高亮格。两条都靠 core 单点：
-   * `scanStatus`（进行中）/ `scanAwaitingView`（完成待查看）。
-   */
   const scan = scanStatus(state)
   const scanAck = scanAwaitingView(state)
   const scanBar = scan.active
@@ -196,31 +137,18 @@ export function ActivityBar({
       ? { done: true, galaxyId: scanAck.galaxyId, percent: 100, remainingMs: 0 }
       : null
   const scanName = (id: string | null): string => (id ? (engine.ctx.galaxies.get(id)?.name ?? id) : tr("ui.ActivityBar.015"))
-  // 撤退需二次确认（轻损但有代价）。
-  // 2026-09-11 修复（真 BUG：点「开始教程」后白屏，React #185「Maximum update depth exceeded」）：
-  // 原先写成**渲染期派生状态**（`if (retreatAsk && !playerItems.some(...)) setRetreatAsk(false)`）——
-  // React 只允许"该组件自己触发的、立即收敛的"渲染期更新；撤退活动消失（如委派 AI 后）时这里每次渲染都会
-  // 调一次 setState，生产版在同一提交里累积到阈值就把整棵树卸载（白屏）。搬到 effect：**提交后清理**，语义相同、不参与渲染。
   const [retreatAsk, setRetreatAsk] = useState(false)
   const hasRetreatActivity = playerItems.some((i) => i.stop === 'retreat-battle')
   useEffect(() => {
     if (retreatAsk && !hasRetreatActivity) setRetreatAsk(false)
   }, [retreatAsk, hasRetreatActivity])
-  /**
-   * **长途运输的中断确认**（**2026-09-20 船长令**：「当玩家在跑长途运输，要切换其他主控活动打断长途运输时，
-   * 弹出一个警告，告诉玩家中断当前长途运输将无法获得本趟的报酬之类的」）：
-   * 与撤退同款两讨伐确认——第一下只警告（**本趟报酬到站才结，中断就拿不到**），再点一次才真停。
-   * 活动条目消失（运输已结束）时按同款 effect 复位，避免"状态卡在待确认"。
-   */
   const [haulAsk, setHaulAsk] = useState(false)
   const hasHaulActivity = playerItems.some((i) => i.stop === 'stop-hauling')
   useEffect(() => {
     if (haulAsk && !hasHaulActivity) setHaulAsk(false)
   }, [haulAsk, hasHaulActivity])
 
-  // ── 深空证券交易所监控（副AI活动最下方，船长 2026-11-03 令） ──
   const [exchTick, bumpExchTick] = useState(0)
-  // 2026-11-05 游客行情批：登录/退出后换客户端实例（匿名连接的账户数据永远是空的）。
   const [exchAuthTick, bumpExchAuth] = useReducer((n: number) => n + 1, 0)
   useEffect(() => {
     const onChange = (): void => bumpExchAuth()
@@ -233,9 +161,6 @@ export function ActivityBar({
     return unsub
   }, [exchBundle.client])
 
-  // 保底产品收益常驻刷新：交易所页只在打开时轮询，离开后快照会冻住，
-  // 左侧卡片就会一直显示旧收益。这里独立拉 bond/fund（两个轻量 GET），
-  // 10 秒一次，与交易所页的行情节奏一致（2026-11-04 船长：左侧要能看到收益）。
   const [savingsLive, setSavingsLive] = useState<{ bonds: BondPosition; funds: FundPosition } | null>(null)
   useEffect(() => {
     if (exchBundle.error !== undefined) return undefined
@@ -282,8 +207,6 @@ export function ActivityBar({
       totalCostOrMargin += p.margin
     }
 
-    // 保底产品收益：只有真的申购过（本金 > 0）才展示，空仓隐藏；
-    // 优先用活动栏自己的 10 秒拉取结果，交易所页打开时再回落到页面快照。
     const bonds = savingsLive?.bonds ?? exchSnap.bonds
     const funds = savingsLive?.funds ?? exchSnap.funds
     const savings: { label: string; pnl: number }[] = []
@@ -302,11 +225,6 @@ export function ActivityBar({
     }
   }, [exchSnap, savingsLive])
 
-  /**
-   * 逐只持仓明细（2026-11-06 船长令：「活动栏可以跟右边一样高，可以显示更多内容」）：
-   * 交易所分组原来只有一行汇总，左栏下半截空着；改为汇总行 + 每只现货/杠杆持仓各一行，
-   * 数量与浮动盈亏直接在栏内可读，不必先点进交易所。
-   */
   const stockRows = useMemo(() => {
     const rows: Array<{ key: string; code: string; tag: string; qty: string; pnl: string; up: boolean }> = []
     const priceOf = (code: string): number | null => exchSnap.stocks.find((s) => s.code === code)?.price ?? null
@@ -339,14 +257,12 @@ export function ActivityBar({
   const renderItem = (v: ActivityView) => {
     const target = goFor(v.kind)
     const handleItemClick = (): void => {
-      // 虫洞走"直接开面板"那条（见 props 注释）；其余照旧跳页
       if (v.kind === 'wormhole' && onOpenWormhole) {
         onOpenWormhole()
         return
       }
       if (onGoPage) onGoPage(target.page, target.mapTab, target.taskTab)
     }
-    /** 目的地名直接取跳转单点给的 id（原先按 mapTab 反推，嗅探的正是那个已删除的 'task' ⇒ 空白页） */
     const goText = tr(target.labelId)
     const hasProgress = v.percent !== null
     const hasTime = v.remainingMs !== null && v.remainingMs > 0

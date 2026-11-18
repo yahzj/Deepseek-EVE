@@ -2,7 +2,6 @@ import { useId } from 'react'
 import { tr } from '../i18n/locale'
 import { Glyph } from './Glyphs'
 
-/** 屏幕信号层独立动画，不对整幅立绘做动态滤镜或React换帧。 */
 export function MerchantMonitor({ mood }: { mood: 'idle' | 'pitch' | 'deal' }) {
   const id = useId().replace(/:/g, '')
   const clip = `merchant-screen-${id}`

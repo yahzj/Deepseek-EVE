@@ -1,30 +1,12 @@
-/**
- * 星图航行（V12.1）：飞船跃迁速度 × 航行加速技能族 → 星系间实际耗时。
- * 设计依据（EVE 语义趋同）：data 船表已带 warpSpeedAus（AU/s，2.8~7.4，V10.5b 数据补强时填入）；
- * 实际耗时 = 标称分钟 × 60s × (warpRefAus / 船跃迁) × ∏(1 − cutPerLevel × 技能等级)。
- * - 无跃迁数据的船（测试替身/未知 id）→ 按 warpRefAus 计（因子 1.0，行为与旧版一致，测试不破坏）；
- * - 只缩放"星系际航行"耗时：采矿带内周转基础、交火等固定时长不缩放；
- * - 星图最短路径规划仍用静态边权 travelMinutes（本模块只决定"走完要多久"）；
- * - ⚠ **无下限**（2026-09-12 船长「删除下限」；原 `minFactor 0.35` 已删并作废，详见 `travelTimeFactor`）。
- */
 import type { GameState } from './state'
 import type { SimContext } from './types'
 import { fleetDefOf } from './instances'
 import { allFittedModules, curveMult } from './equipment'
 
-/** 星系间最短航程（分钟；图论静态边权，V12.1 起仅路径规划用，实际耗时见 travelLegMs） */
 export function shortestTravelMinutes(ctx: SimContext, fromGalaxyId: string, toGalaxyId: string): number {
   return shortestTravelPath(ctx, fromGalaxyId, toGalaxyId).minutes
 }
 
-/**
- * 星系间最短航路的**完整跳序列**（供"逐跳加权"类口径使用——长途运输的安全档收益率要按每一跳
- * 的两个端点定档，见 `hauling.haulEffectiveMinutes`）。
- *
- * ⚠ 与 `shortestTravelMinutes` **同源**：同一次 Dijkstra、同一 `dist` 插入顺序、同一「严格小于才替换」
- * 并列取法 ⇒ 返回的 `minutes` 与旧函数逐字一致（并列路径取哪条也不变）；`hopMinutes[i]` 是
- * `galaxies[i] → galaxies[i+1]` 那条边的权（直接取自松弛时用的边权，不必回查）。
- */
 export function shortestTravelPath(
   ctx: SimContext,
   fromGalaxyId: string,
@@ -87,31 +69,15 @@ export function shortestTravelPath(
   return { minutes: dist.get(toGalaxyId) ?? Infinity, galaxies, hopMinutes }
 }
 
-/** 当前有效跃迁速度（AU/s）：取船表 warpSpeedAus，缺省回落到基准（不加速也不减速）× 装备加成 */
 export function warpSpeedAus(state: GameState, ctx: SimContext, shipId?: string | null): number {
   const bal = ctx.balance.travel
-  // v17：shipId 是舰队实例 uid → 经实例查船型数据（defId 兜底兼容直传 defId 的旧调用）
   const def = fleetDefOf(state, ctx, shipId ?? state.shipId) ?? ctx.ships.get(shipId ?? state.shipId)
   const raw = def?.warpSpeedAus
-  // ⚠ **2026-09-14 船长「去掉上限」**：原 `Math.min(12, …)` 的 **12 AU/s 上限已删**（下限 0.5 保留）。
-  //   起因 = 新增「跃迁计算机」：快船（飞鱼 7.4）装 2 件 MK3 就到 13.03 ⇒ 撞顶后**多余件白装**。
-  //   与 2026-09-12「删除下限」（航行时间因子的 0.35）同款思路：倍数链条上不留人为拐点。
   const base =
     typeof raw !== 'number' || !Number.isFinite(raw) || raw <= 0 ? bal.warpRefAus : Math.max(0.5, raw)
-  // 装备加成（跃迁计算机；不装件恒 ×1 ⇒ **旧读数逐字不变**）——对"船表缺省回落"那条同样生效
   return base * warpBonusMult(state, ctx, shipId)
 }
 
-/**
- * **跃迁速度的装备倍率**（2026-09-14 船长新增「跃迁计算机」MK2/MK3：+20% / +35%）。
- *
- * 取该船**已装件**的 `warpSpeedBonusPct`，按 **EVE 曲线**合成（`curveMult`，与"命中/速度"同一条
- * ⇒ 多装递减）：MK2 1/2/3/4 件 = ×1.20 / ×1.41 / ×1.57 / ×1.66；MK3 = ×1.35 / ×1.76 / ×2.11 / ×2.32。
- * **不装件 ⇒ 恒 1**（旧存档/旧读数逐字不变）。
- *
- * ⚠ 只有**舰队实例 uid**（`state.fleet[uid]`）能查到装配；旧调用里直传船型 defId 的那条
- * （测试替身/未知 id）拿不到装配 ⇒ 返回 1（不失真：那条路径本来就只有船表值）。
- */
 export function warpBonusMult(state: GameState, ctx: SimContext, shipId?: string | null): number {
   const fitted = state.fleet[shipId ?? state.shipId]?.fitted
   if (!fitted) return 1
@@ -121,36 +87,25 @@ export function warpBonusMult(state: GameState, ctx: SimContext, shipId?: string
   return bonuses.length > 0 ? curveMult(bonuses) : 1
 }
 
-/** 航行时间因子（<1 = 更快；>1 = 更慢；**无下限**——见下方 `travelTimeFactor` 注释） */
 export function travelTimeFactor(state: GameState, ctx: SimContext, shipId?: string | null): number {
   const bal = ctx.balance.travel
-  // 防御：极旧的自定义 balance 无 travel 段 → 不缩放（因子 1.0）
   if (!bal || typeof bal.warpRefAus !== 'number' || !Array.isArray(bal.skillIds)) return 1
   let f = bal.warpRefAus / warpSpeedAus(state, ctx, shipId)
   for (const skillId of bal.skillIds) {
     const lv = state.skills.trained[skillId] ?? 0
     if (lv > 0) f *= 1 - bal.cutPerLevel * lv
   }
-  // 舰船操控学（spaceship-command，2026-09-04 补全接活）：全船基础操控，每级航行时间再 −2%（与航行技能族乘算）
   const cmdLv = Math.min(5, state.skills.trained['spaceship-command'] ?? 0)
   if (cmdLv > 0) f *= 1 - 0.02 * cmdLv
-  // ⚠ **2026-09-12 船长裁定「删除下限」**：原 `Math.max(bal.minFactor, f)`（下限 0.35）**已删除**。
-  // 起因（真引擎实测）：下限**只卡快船** ⇒ 航行族练到 3 级起，飞鱼级(7.4) 与剑鱼级(6.2) 的单程时间
-  // **完全相同**（都被压到 0.35）；满技能时 剑鱼 ÷ 皇带鱼 的时长差从 2.21× 被削到 1.41×，
-  // 而"快运线"（飞鱼 7.4 / 旗鱼 6.3 / 剑鱼 6.2）在长途运输里反倒**比慢而大的货舰更不赚**
-  // （时薪比 0.86× → 0.55×，技能越高越亏）。删掉后：**船速差永远按比例体现**，
-  // 满技能时最快组合 = 因子约 0.187（约 18.7% 时间），配合长途运输的 ×15 航段倍率仍远大于标称航程 ⇒ 无"压没航程"风险。
   return f
 }
 
-/** 标称分钟 → 实际航行毫秒（星系际航行唯一换算入口；调用点负责"出发时锁定"语义） */
 export function travelLegMs(state: GameState, ctx: SimContext, travelMinutes: number, shipId?: string | null): number {
   if (!Number.isFinite(travelMinutes) || travelMinutes <= 0) return 0
-  if (state.debugQuick) return 1000 // 调试模式：星系际航行固定 1 秒
+  if (state.debugQuick) return 1000
   return Math.max(1, Math.round(travelMinutes * 60_000 * travelTimeFactor(state, ctx, shipId)))
 }
 
-/** 展示用：标称分钟 → 实际分钟（四舍五入；UI 的"单程约 X 分钟"用） */
 export function travelMinutesEff(
   state: GameState,
   ctx: SimContext,
@@ -158,6 +113,6 @@ export function travelMinutesEff(
   shipId?: string | null
 ): number {
   if (!Number.isFinite(travelMinutes) || travelMinutes <= 0) return travelMinutes
-  if (state.debugQuick) return 1 // 调试模式展示：1 分钟
+  if (state.debugQuick) return 1
   return Math.max(1, Math.round(travelMinutes * travelTimeFactor(state, ctx, shipId)))
 }

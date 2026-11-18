@@ -10,7 +10,6 @@ type CommandSpec = UnitSpec & {
   [commandBase]?: { targetWeightMul: number | undefined; weapons: DamageBase[] }
 }
 
-/** 开战体积固定整场；旧战斗只从初装账回退，绝不读战损或当前备机库存。 */
 export function droneCommandVolumeM3Of(battle: BattleState, ctx?: SimContext): number {
   const saved = battle.droneCommandVolumeM3
   if (saved !== undefined && Number.isFinite(saved) && saved >= 0) return saved
@@ -23,7 +22,6 @@ export function droneCommandVolumeM3Of(battle: BattleState, ctx?: SimContext): n
   return volume
 }
 
-/** 返回独立规格；按本舰原伤害倍率取最高存活来源，重入时始终从未加光环的值重算。 */
 export function applyDroneCommandAura(
   specs: readonly UnitSpec[],
   battle?: BattleState,
@@ -37,7 +35,6 @@ export function applyDroneCommandAura(
     if (spec.side !== 'me' || !spec.droneCommand || (battle && !isAlive(battle, spec.tag))) continue
     const value = (spec.droneDamageBonusPct ?? 0) * spec.droneCommand.sharePct
     const order = formation.get(spec.tag) ?? formation.size + index
-    // 并列固定取编队首位，同一来源也不再接收次高者的分享。
     if (Number.isFinite(value) && value > 0 && (value > shared || value === shared && order < sourceOrder)) {
       source = spec
       shared = value

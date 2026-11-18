@@ -58,7 +58,6 @@ function applySelection(state: GameState, ctx: SimContext, request: WormholeExtr
   return true
 }
 
-/** 所有取舍都在副本上预演；关闭确认窗无需退款或恢复货物。 */
 export function wormholeExtractionPlan(state: GameState, ctx: SimContext, request: WormholeExtractionRequest): WormholeExtractionPlan {
   const code = extractionBlocked(state)
   const staged = structuredClone(state)
@@ -90,7 +89,6 @@ export function wormholeExtractionPlan(state: GameState, ctx: SimContext, reques
   }
 }
 
-/** 确认时重验并一次结算，任何拒绝均不落半截放弃清单。 */
 export function wormholeConfirmExtraction(state: GameState, ctx: SimContext, plan: WormholeExtractionPlan): { ok: boolean; code?: 'stale' | 'unavailable' | 'battle-required' | 'invalid-selection' | 'capacity' } {
   if (extractionFingerprint(state, plan.request) !== plan.fingerprint) return { ok: false, code: 'stale' }
   const current = wormholeExtractionPlan(state, ctx, plan.request)

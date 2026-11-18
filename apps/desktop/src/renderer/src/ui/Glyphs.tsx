@@ -1,13 +1,3 @@
-/**
- * 科幻线性图标集（图鉴/界面通用）。
- *
- * 设计（中文说明）：
- * - 全部图标同一语言：24×24 viewBox、1.7px 描边、几何构成（圆环徽/方框徽/盾徽/菱形徽），
- *   统一 stroke 质感 = "整体统一、接近科幻风格"；
- * - 颜色不在图标内写死：stroke 用 currentColor，调用方用 tone（色相变量）上色；
- * - 形状按内容体系分族：物品=圆环徽、装备=方框徽、舰船角色=大形徽、蓝图=图纸矩形、
- *   技能=圆徽；每种形状内部用不同几何区分分类。
- */
 import type { ComponentType, CSSProperties, ReactNode } from 'react'
 import { MessageSquare } from 'lucide-react'
 import { isModernLayout } from './layoutPreference'
@@ -30,9 +20,7 @@ import {
 } from '@carbon/icons-react'
 import { wreckTierOf } from './itemSubs'
 
-/** glyph 名 → 矢量内容（以 <g> 为单位，使用 currentColor 描边） */
 const SHAPES: Record<string, ReactNode> = {
-  /* 地表设施：同一24坐标与线宽，按建筑外形区分，不复用舰船/物品族外框。 */
   'planet-base': <g><path d="M3 20h18M5 20V10h14v10M9 10V6h6v4M12 6V2m0 1h5M8 14h2m4 0h2M10 20v-3h4v3" /></g>,
   'planet-cryo': <g><rect x="6" y="3" width="12" height="18" rx="3" /><path d="M9 7h6M9 17h6M12 10v4m-2-3 4 2m-4 0 4-2" /></g>,
   'planet-power': <g><path d="M3 20h18M5 20V9l4-4h6l4 4v11M13 7l-4 6h4l-2 5 5-7h-4z" /></g>,
@@ -52,7 +40,6 @@ const SHAPES: Record<string, ReactNode> = {
   'planet-ice': <g><path d="M3 20l4-14 5 4 4-7 5 17zM7 6l3 14m2-10 2 10m2-17 2 17M4 16h16" /></g>,
   'planet-corrosion': <g><path d="M12 3c-4 5-6 7-6 10a6 6 0 0 0 12 0c0-3-2-5-6-10zM3 21h5m8 0h5M9 12l6 4m-6 0 6-4" /></g>,
   'planet-rubble': <g><path d="M3 20h18M4 17l2-7 5 2 1 8m2 0 1-9 5 3 1 6M8 7l3-3 4 2-1 4M6 14l3 2m8-2 2 3" /></g>,
-  /* ── 物品（圆环徽：外环 + 内部几何） ── */
   ore: (
     <g>
       <circle cx="12" cy="12" r="8.4" />
@@ -95,7 +82,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M6 6l2.6 2.6M18 6l-2.6 2.6M6 18l2.6-2.6M18 18l-2.6-2.6" />
     </g>
   ),
-  /* ── 残骸 / 修理组件（2026-09-10 补齐：此前这两个种类无图形，列表里落兜底圆环徽） ── */
   wreck: (
     <g>
       <circle cx="12" cy="12" r="8.4" />
@@ -112,7 +98,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M9 15l-1.2 1.2" />
     </g>
   ),
-  /* ── 零件（2026-09-20 零件体系：工业中间件）——芯片意象（外环 + 方芯 + 四向引脚），与 kit/fragment 同语言。 */
   part: (
     <g>
       <circle cx="12" cy="12" r="8.4" />
@@ -128,8 +113,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M8.6 15.4l1.4.8" />
     </g>
   ),
-  /* ── 货柜（2026-09-13 F4 补：遗迹安全货柜 = 带回后拆解的大件）──
-     造型与其它种类同语言（细描边 + currentColor）：一个带锁扣的箱体 + 两道加固梁。 */
   container: (
     <g>
       <circle cx="12" cy="12" r="8.4" />
@@ -138,8 +121,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M11.4 10.2v2" />
     </g>
   ),
-  /* ── 谜质储存器（2026-09-13 F3c 补：本趟虫洞内生效的装置）──
-     造型与货柜同语言但**一眼可分**：圆环里一颗菱形晶体 + 上下两道束缚带（"装起来的谜质"）。 */
   matter: (
     <g>
       <circle cx="12" cy="12" r="8.4" />
@@ -148,9 +129,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M8.6 14.4h6.8" />
     </g>
   ),
-  /* ── 虫洞谜质（精华形态 · 船长 2026-09-15：「谜质在虫洞结束时不再删除，而是转化成虫洞谜质存入仓库…
-     具备研究价值…目前纯粹作为虫洞的金钱收益」）——与装置形（`matter` 圆环+晶体）同语言但**一眼可分**：
-     纯**菱形晶格**（无外环）+ 内辉小点 = "散装可交易的谜质"。 */
   essence: (
     <g>
       <path d="M12 3.4l6.6 5.4-2.7 8.6H8.1L5.4 8.8z" />
@@ -158,7 +136,6 @@ const SHAPES: Record<string, ReactNode> = {
       <circle cx="12" cy="11.4" r="1.1" />
     </g>
   ),
-  /* ── 奢侈品（船长 2026-09-15：贵重品货柜的拆解产物 ·「纯粹用来卖钱」）——礼盒 + 缎带结。 */
   luxury: (
     <g>
       <path d="M5.4 10.6h13.2v8.8H5.4z" />
@@ -166,8 +143,7 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M12 7.4v12" />
       <path d="M12 7.4c-2.7 0-4.1-1.3-3.4-2.7.6-1.2 2.5-.9 3.4 2.7zm0 0c2.7 0 4.1-1.3 3.4-2.7-.6-1.2-2.5-.9-3.4 2.7z" />
     </g>
-  ),  /* ── 遗迹安全货柜（2026-09-13 F3c 补：船长「安全货仓…的SVG图标也需要绘制」）──
-     与通用 `container` 区分：**没有外环**，是一个带加固角 + 挂锁 + 铅封带的箱体。 */
+  ),
   'box-relic': (
     <g>
       <path d="M4.8 9.2h14.4v8.6a1.4 1.4 0 0 1-1.4 1.4H6.2a1.4 1.4 0 0 1-1.4-1.4z" />
@@ -177,9 +153,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M12 16.7v1.3" />
     </g>
   ),
-  /* ── 图纸货柜（2026-09-14 船长：「给虫洞的遗迹打捞新增图纸货柜。占 2 格大小。」）──
-     与安全货柜同为"带回后拆开"的货柜，故沿用同一套箱体语言；靠**扁长比例**（2×1）与
-     **箱盖上的卷轴筒**区分：图纸货柜装的是图纸，不是设备。 */
   'box-bp': (
     <g>
       <path d="M3.6 11.6h16.8v5a1.4 1.4 0 0 1-1.4 1.4H5a1.4 1.4 0 0 1-1.4-1.4z" />
@@ -188,10 +161,6 @@ const SHAPES: Record<string, ReactNode> = {
       <circle cx="12" cy="8" r="1.6" />
     </g>
   ),
-  /* ── 贵重品货柜 / 军用备货柜（船长 2026-09-15：「新增贵重品货柜，2格…」「新增军用备货柜4格…」）──
-     两者与安全 / 图纸货柜**同一套箱体语言**（细描边 + currentColor + 24 号 viewBox），
-     但各给一处"装箱标识"，让玩家在货仓格里一眼分清这三类箱子：
-     · 贵重品柜 = 箱体 + **缎带竖带 + 中央宝石 + 顶部提手**（"装着值钱货的礼箱"）； */
   'box-valuables': (
     <g>
       <path d="M4.6 10.4h14.8v7a1.4 1.4 0 0 1-1.4 1.4H6a1.4 1.4 0 0 1-1.4-1.4z" />
@@ -201,7 +170,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M9.8 7.6a2.2 2.2 0 0 1 4.4 0" />
     </g>
   ),
-  /* · 军用备货柜 = 箱体 + **两道吊扣 + 交叉军械标记**（"制式军械箱"）。 */
   'box-military': (
     <g>
       <path d="M4.4 9.6h15.2v7.8a1.4 1.4 0 0 1-1.4 1.4H5.8a1.4 1.4 0 0 1-1.4-1.4z" />
@@ -210,11 +178,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M9.8 15.2l4.4 2.2M14.2 15.2l-4.4 2.2" />
     </g>
   ),
-  /* ── AI 核心（2026-09-14 船长：「在遗迹的打捞内，添加阿尔法、贝塔、伽马 AI 核心的掉落。
-        AI 核心单独占 1 格」）──
-     它与货柜/谜质都不同类：不是"装东西的箱"，而是**一枚裸核心**。故另起一套语言 ——
-     方正的**载板**（四角螺栓）+ 板心的**运算核心圆**（外环 + 内核点 + 两道引脚）。
-     三档只换色调不换造型（伽马 → 贝塔 → 阿尔法，越稀有越暖越亮），与图纸货柜同款做法。 */
   'ai-core': (
     <g>
       <rect x="6.4" y="6.4" width="11.2" height="11.2" rx="1.6" />
@@ -223,9 +186,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M12 6.4V3.8M12 20.2v-2.6M6.4 12H3.8M20.2 12h-2.6" />
     </g>
   ),
-  /* ── 黑匣（**2026-09-26** 船长报障「入侵获得的黑匣在仓库内查看不到，需要新增分类」⇒ 独立成物品种类）──
-     造型与其它种类同语言（圆环徽 + 细描边 + currentColor）：**记录匣**意象——方形匣体、匣盖分缝、
-     右上角一颗指示灯（"还在记录"），与 `container`（带锁扣的箱）/`kit`（扳手）一眼可分。 */
   blackbox: (
     <g>
       <circle cx="12" cy="12" r="8.4" />
@@ -235,9 +195,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M9.6 13.6h2.4" />
     </g>
   ),
-  /* ── AI 核心（`aicore` = 大类级键；2026-09-14）──
-     与 `ai-core`（具体三种核心的共用造型）同一张线稿：大类级键是"按 kind 兜底"那条路的入口
-     （物品图鉴/列表在拿不到具体 id 键时落到这里），故两处都登记、造型一致。 */
   aicore: (
     <g>
       <rect x="6.4" y="6.4" width="11.2" height="11.2" rx="1.6" />
@@ -246,9 +203,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M12 6.4V3.8M12 20.2v-2.6M6.4 12H3.8M20.2 12h-2.6" />
     </g>
   ),
-  /* ── 道具（`consumable` = 大类级键；2026-09-29 跃迁燃料批）──
-     造型语言与全表一致（圆环徽 + 细描边 + currentColor）：**燃料罐**意象——罐体、加注口、
-     底部三滴燃料，与 `kit`（扳手）/`ammo`（弹体）一眼可分。 */
   consumable: (
     <g>
       <circle cx="12" cy="12" r="8.4" />
@@ -259,10 +213,6 @@ const SHAPES: Record<string, ReactNode> = {
       <circle cx="13.4" cy="14.4" r="0.7" />
     </g>
   ),
-  /* ── 三件道具的**专属线稿**（**2026-09-30 船长报障**：「这三样东西没有配套的图标」）──
-     沿用同一套物品语言（圆环徽 ＋ 细描边 ＋ currentColor），靠**内部纹样**区分：
-     `ico-fuel` 液面波动 · `ico-beacon` 发射塔与信号弧 · `ico-boost` 双箭头加速。
-     取用走下方 `itemGlyphName()`（**按物品 id 的单点映射**），不在各处写死。 */
   'ico-fuel': (
     <g>
       <circle cx="12" cy="12" r="8.4" />
@@ -288,9 +238,7 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M13.6 8.4 17.2 12l-3.6 3.6" />
       <path d="M6.8 12h3.2" />
     </g>
-  ),  /* ── 谜质装置 20 台（2026-09-13 F3c：每台一枚专属线稿）──
-     全部沿用"圆环徽 + 内部几何"这套物品语言，靠**内部纹样**区分用途（远看同族、近看可辨）。 */
-  /* 探索：测绘 / 时序 / 星云 / 扩展 */
+  ),
   'mat-surveyor': (
     <g>
       <circle cx="12" cy="12" r="8.4" />
@@ -320,7 +268,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M6.4 12H4.8M17.6 12h1.6M12 6.4V4.8M12 17.6v1.6" />
     </g>
   ),
-  /* 作业与收益：起重机 / 钻机 / 富集 */
   'mat-crane': (
     <g>
       <circle cx="12" cy="12" r="8.4" />
@@ -344,7 +291,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M12 8.8v2.6" />
     </g>
   ),
-  /* 威胁：压制 / 守卫解析 / 撤离掩护 */
   'mat-suppressor': (
     <g>
       <circle cx="12" cy="12" r="8.4" />
@@ -369,7 +315,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M14.8 9.8L17.2 12l-2.4 2.2" />
     </g>
   ),
-  /* 抗性三片：护盾 / 装甲 / 结构（单层单系） */
   'mat-shield-res': (
     <g>
       <circle cx="12" cy="12" r="8.4" />
@@ -390,7 +335,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M7.2 8l9.6 8M16.8 8l-9.6 8" />
     </g>
   ),
-  /* 命中 / 回避 / 干扰 */
   'mat-tracker': (
     <g>
       <circle cx="12" cy="12" r="8.4" />
@@ -413,7 +357,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M14.4 14.4l3.4 3.4M17.8 14.4l-3.4 3.4" />
     </g>
   ),
-  /* 射程 / 盲区 / 弹药增效 / 装填 */
   'mat-rangefinder': (
     <g>
       <circle cx="12" cy="12" r="8.4" />
@@ -444,7 +387,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M16.6 6.6v2.8h-2.8" />
     </g>
   ),
-  /* ── B2 批：溢火结转 / 弹药回收 / 机群回收网 / 战地维修 ── */
   'mat-volley': (
     <g>
       <circle cx="12" cy="12" r="8.4" />
@@ -477,7 +419,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M8.6 15.2a4.4 4.4 0 0 0 6.8 0" />
     </g>
   ),
-  /* ── 装备（方框徽：外框 + 内部机件） ── */
   miner: (
     <g>
       <rect x="7" y="7" width="10" height="10" rx="1.7" />
@@ -498,7 +439,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M12 7.6v2.3M12 14.1v2.3M7.6 12h2.3M14.1 12h2.3" />
     </g>
   ),
-  /* V18B-1 导弹架（方框徽：导弹弹体斜置） */
   missile: (
     <g>
       <rect x="7" y="7" width="10" height="10" rx="1.7" />
@@ -535,7 +475,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M12 7.4V8.5" />
     </g>
   ),
-  /* V18 无人机装置（方框徽：停机甲板 / 导控阵列） */
   'drone-rack': (
     <g>
       <rect x="7" y="7" width="10" height="10" rx="1.7" />
@@ -550,7 +489,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M8 8l1.8 1.8M16 8l-1.8 1.8M8 16l1.8-1.8M16 16l-1.8-1.8" />
     </g>
   ),
-  /* 2026-09-10 无人机中继天线（方框徽：中继塔 + 信号弧） */
   'drone-relay': (
     <g>
       <rect x="7" y="7" width="10" height="10" rx="1.7" />
@@ -567,7 +505,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M9 14l3-4 3 4M12 10v6M9 9h6" />
     </g>
   ),
-  /* 2026-09-27 无人机储备甲板（方框徽：停机格 + 复位上行箭头 —— "从储备里补回一架"） */
   'drone-deck': (
     <g>
       <rect x="7" y="7" width="10" height="10" rx="1.7" />
@@ -576,7 +513,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M12.9 12.5l1.4-1.4 1.4 1.4" fill="none" />
     </g>
   ),
-  /* 2026-09-27 无人机护盾投射仪（方框徽：盾面 + 投射中轴） */
   'drone-shield': (
     <g>
       <rect x="7" y="7" width="10" height="10" rx="1.7" />
@@ -584,7 +520,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M12 11v3.4" />
     </g>
   ),
-  /* V18B-2 激光炮（方框徽：光束横贯） */
   laser: (
     <g>
       <rect x="7" y="7" width="10" height="10" rx="1.7" />
@@ -592,14 +527,12 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M10.9 8.4h4.7v4.7" />
     </g>
   ),
-  /* V18.1 支援件（方框徽：上升增益箭头） */
   support: (
     <g>
       <rect x="7" y="7" width="10" height="10" rx="1.7" />
       <path d="M12 15.2V9.4M9.8 11.4L12 9l2.2 2.4" />
     </g>
   ),
-  /* 2026-09-11 协处理器（方框徽：算力芯片——内芯 + 四向引脚） */
   cpu: (
     <g>
       <rect x="7" y="7" width="10" height="10" rx="1.7" />
@@ -607,8 +540,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M12 7.4v2.5M12 14.1v2.5M7.4 12h2.5M14.1 12h2.5" />
     </g>
   ),
-  /* 2026-09-26 舰船插件（船长令）：方框徽 + 内嵌插片与两道卡榫——
-     与协处理器那张"芯片"区分开：那张是四向引脚，这张是**从上往下插进槽位**的形态。 */
   plug: (
     <g>
       <rect x="6.6" y="8.4" width="10.8" height="9" rx="1.6" />
@@ -617,7 +548,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M8.4 20v-2.6M15.6 20v-2.6" />
     </g>
   ),
-  /* 打捞器 / 锁定装置（2026-09-10 补齐：此前这两个槽位无图形，列表里落兜底圆环徽） */
   salvager: (
     <g>
       <rect x="7" y="7" width="10" height="10" rx="1.7" />
@@ -633,7 +563,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M12 7.6v1.8M12 14.6v1.8M7.6 12h1.8M14.6 12h1.8" />
     </g>
   ),
-  /* ── 舰船角色（大形徽：双层几何轮廓） ── */
   industrial: (
     <g>
       <path d="M12 3.4l9.2 8.6-9.2 8.6-9.2-8.6z" />
@@ -659,25 +588,18 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M7.4 12h9.2M13.6 9.4l2.6 2.6-2.6 2.6" />
     </g>
   ),
-  /* ── 蓝图（图纸矩形） ── */
   blueprint: (
     <g>
       <rect x="6.2" y="3.8" width="11.6" height="16.4" rx="1.5" />
       <path d="M6.2 8.6h11.6M9.6 11.8h4.8M9.6 14.6h3" />
     </g>
   ),
-  // l10n-keep-start：技能组**形状槽键**（group-舰船 …）——后缀必须跟内容层技能组中文名对齐才查得到图
-  /* ── 技能组（圆徽） ──
-   * ⚠ **键名后缀必须保持中文**（group-舰船 …）：它是**形状槽键**，后缀要跟内容层的
-   * 「技能组」中文组名对齐才查得到图 ⇒ 归 l10n-keep（**不是漏译**：玩家看不到这串）。 */
   'group-舰船': (
     <g>
       <circle cx="12" cy="12" r="8.4" />
       <path d="M7.4 16.6L16.6 7.4M11.6 7.4h5v5" />
     </g>
   ),
-  // l10n-keep-start：下面五条是**图形键**（`group-<技能大类中文名>`，与 `ui/tones.ts` 的色调键同源）。
-  // 它们是"按键取形"的内容键、不是玩家可见文案 —— 界面上的分类名另走 `labelsText.skillGroupText()`。
   'group-工业': (
     <g>
       <circle cx="12" cy="12" r="8.4" />
@@ -704,7 +626,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M12 6.6l3.4 3.4-3.4 3.4-3.4-3.4zM12 13.6l3.4 3.4-3.4 3.4-3.4-3.4z" />
     </g>
   ),
-  // 2026-09-27：新大类「矿业」（采矿 + 采矿舰操作从工业独立）——圆徽 + 镐（斜柄 + 垂直镐头）
   'group-矿业': (
     <g>
       <circle cx="12" cy="12" r="8.4" />
@@ -712,15 +633,11 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M12.2 7l4.8 4.8" />
     </g>
   ),
-  // l10n-keep-end
-  /* ── 界面导航/功能概念（2026-09-05 图标全 SVG 线性化：与物品/装备同语言） ── */
-  /* 星图/出港（2026-09-05 船长：实心四角星——闪星） */
   'nav-map': (
     <g>
       <path fill="currentColor" stroke="none" d="M12 2L14.9 9.1L22 12L14.9 14.9L12 22L9.1 14.9L2 12L9.1 9.1Z" />
     </g>
   ),
-  /* 舰船/舰队（2026-09-05 船长：帆船不像星舰，改火箭造型） */
   'nav-ship': (
     <g>
       <path d="M4.8 16.6c-1.4 1.24-1.9 4.6-1.9 4.6s3.4-.5 4.6-1.9c.65-.77.64-1.96-.08-2.74a2 2 0 0 0-2.62-.06z" />
@@ -764,20 +681,12 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M12 7.6v8.8M7.6 12h8.8" />
     </g>
   ),
-  /* 通讯/收件箱（2026-09-11 船长定：导航新增「通讯」页，图标采用邮件的样式） */
   'nav-mail': (
     <g>
       <rect x="3.4" y="6.4" width="17.2" height="11.4" rx="1.8" />
       <path d="M4.6 7.8l7.4 5.2 7.4-5.2" />
     </g>
   ),
-  /* 官方章鱼人（2026-09-11 船长定：绘制章鱼头代表官方，之后都用于代表官方章鱼人）
-     造型：圆钝外套膜头部（顶部小凸起）+ 两只实心眼 + 六条外扩腕足；与舰船资产同一套线稿语言。
-     ★ 复用规则：所有 NPC 势力的物种都是「章鱼人」(data/src/commsFactions.ts)，头像一律用本图标，
-       不同行会/立场只靠**色调**区分（协会 #9fd8ff / 打捞队工会 #6fe3f0），不要另画新头像。
-     2026-09-11 船长复看：「盒内图形要更大、且线太粗」⇒ 几何按 1.4× 放大（铺满 24 格视框，头像盒尺寸不变），
-     并在本组写死 strokeWidth 0.7 覆盖 Glyph 默认的 1.7（50px 显示下由约 3.5px 降到约 1.46px，
-     与导航图标同视觉粗细：19px 下 1.7 单位 ≈ 1.35px）。 */
   'faction-octopus': (
     <g strokeWidth="0.7">
       <path d="M12 3.56c-3.43 0 -6.16 2.73 -6.16 6.09v4.41c0 1.26 1.01 2.24 2.24 2.24h7.84c1.23 0 2.24 -0.98 2.24 -2.24V9.65c0 -3.36 -2.73 -6.09 -6.16 -6.09Z" />
@@ -792,7 +701,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M15.01 16.3c0.7 1.82 2.03 3.15 3.85 4.27" />
     </g>
   ),
-  /* 矿带开采/采矿（2026-09-05 船长：原工具形似扳手，改矿镐——竖柄+镐头双弯臂） */
   'nav-mine': (
     <g>
       <path d="M12 21V9.6" />
@@ -807,7 +715,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M12 3.2v4.4M12 16.4v4.4M3.2 12h4.4M16.4 12h4.4" />
     </g>
   ),
-  /* 残骸打捞（原 🛰 卫星：中心舱体 + 太阳能翼 + 天线——贴近原图标语义） */
   'nav-salvage': (
     <g>
       <circle cx="12" cy="12.4" r="2.5" />
@@ -836,20 +743,11 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M12 9.4l2.6 2.6-2.6 2.6-2.6-2.6z" />
     </g>
   ),
-  /* ── 虫洞（终局玩法入口 · 2026-09-13 船长：「给虫洞系统绘制一个合适的SVG」）──
-     画法：**一笔旋涡**（2 圈螺旋收进中心）。选型经过：先按「空间裂隙」画了三版（透镜裂口 + 括号弧 /
-     窄缝 + 折向缝心的短弧 / 锯齿裂缝），13px 下分别读成「眼睛」「立着的剑」「打结的藤」⇒ 船长改选旋涡。
-     刻意**不加外圈**（圆环徽＝物品族语汇）、**不带箭头**（圆箭头＝`ico-loop`「重复清剿」），
-     与全仓图标同语言：24×24 · 1.7px 描边 · currentColor · 无填充 · 无渐变。 */
   'nav-wormhole': (
     <g>
       <path d="M12 3.6a8.4 8.4 0 1 1-8.4 8.4 5.6 5.6 0 1 1 5.6 5.6 2.8 2.8 0 1 1 2.8-2.8" />
     </g>
   ),
-  /* ── 虫洞敌族徽（丁 · 2026-09-14 船长定案：一处虫洞锁一族，列表里给玩家看） ──
-     五枚同语言：24×24 · 1.7px 描边 · currentColor · 无填充；外框统一"六边格"（族徽语汇，区别于
-     圆环=物品 / 方框=装备 / 盾=防护），内部各用一处几何点出该族的气质：
-     A 劫掠支队=交叉刃 · C 星髓游猎群=三点群 · D 守墓巡哨=陵柱 · E 巨构残响=菱形残壳 · G 亡军封锁=封锁斜栅 */
   'fam-a': (
     <g>
       <path d="M12 3.2l7.6 4.4v8.8L12 20.8l-7.6-4.4V7.6z" />
@@ -887,9 +785,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M11.2 15.6l4.4-4.4" />
     </g>
   ),
-  /* ── 界面操作概念（批2，2026-09-05：按钮/徽标字符图标 SVG 化） ── */
-    /* H 墨潮帮（2026-09-26 势力图鉴批补）：同族六边形框 + 「墨滴/潮汐」双弧 ——
-     与 A 的交叉双刀、C 的三团簇、D 的陵柱、E 的方格、G 的斜刺并列 */
   'fam-h': (
     <g>
       <path d="M12 3.2l7.6 4.4v8.8L12 20.8l-7.6-4.4V7.6z" />
@@ -930,7 +825,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M6.2 5.2c3.8-2 6.4.6 9.8-.9v7c-3.4 1.5-6-1.1-9.8.9z" />
     </g>
   ),
-  /* 玩家标记（收藏）星标（2026-09-10）：五角星线稿，未标记=空心、已标记=金色实心（填色由 CSS 给） */
   'ico-star': (
     <g>
       <path d="M12 3.6L14.12 9.09L19.99 9.4L15.42 13.11L16.94 18.8L12 15.6L7.06 18.8L8.58 13.11L4.01 9.4L9.88 9.09Z" />
@@ -956,7 +850,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M12 5.4v13.2M5.4 12h13.2" />
     </g>
   ),
-  /* 建站吊车（原 🏗：塔柱 + 吊臂 + 吊钩） */
   'ico-crane': (
     <g>
       <path d="M9 20.4V5" />
@@ -966,7 +859,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M6.2 20.4h5.6" />
     </g>
   ),
-  /* 通讯天线（原 📡：抛物面弧 + 天线杆 + 底座） */
   'ico-antenna': (
     <g>
       <path d="M5.6 14.4a7.8 7.8 0 0 1 12.8 0" />
@@ -975,7 +867,6 @@ const SHAPES: Record<string, ReactNode> = {
       <circle cx="12" cy="10.6" r="1" />
     </g>
   ),
-  /* 战术情报雷达（原 🛰 侦察情报：扫描环 + 扫掠针） */
   'ico-tact': (
     <g>
       <circle cx="12" cy="12" r="5" />
@@ -983,7 +874,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M9.6 8.4a4.4 4.4 0 0 1 2.4-1.2" />
     </g>
   ),
-  /* 长途运输（2026-09-09：货箱 + 右侧运输箭头——两站航线货运） */
   'nav-haul': (
     <g>
       <rect x="4.6" y="10.2" width="9" height="7" rx="1.3" />
@@ -993,9 +883,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M17.4 11.9l1.8 1.8-1.8 1.8" />
     </g>
   ),
-  /* 提示标记（2026-09-13 船长：「将各个界面的说明…隐藏起来，只在标题名字的后面显示一个圆形感叹号图标，
-     当玩家悬停时才显示这些说明」）——**圆环 + 一道竖点**（感叹号）；颜色不写死走 currentColor，
-     由 `.app-hint-ico` 给暗色、悬停提亮（与全仓图标同语言：24×24 · 1.7px · 无填充）。 */
   'ico-hint': (
     <g>
       <circle cx="12" cy="12" r="8.2" />
@@ -1003,14 +890,6 @@ const SHAPES: Record<string, ReactNode> = {
       <circle cx="12" cy="16.3" r="1" />
     </g>
   ),
-  /**
-   * ── 成就徽章（2026-09-20 船长批「继续之前的成就系统」）：**盾徽**语言 ──
-   *
-   * 与物品的圆环徽、装备的方框徽、蓝图矩形同一套 24×24 细描边语言。
-   * 命名 = `ach-<pattern>`；**同一条链的四个档位共用同一枚图案**，靠调用方 tone 上色区分
-   * （船长：「**图案相同，用颜色区分**」）⇒ 这里只画形状，颜色一律由 `color` 传入。
-   * 第二批（里程碑成就 · 2026-09-20 已落码）的六枚图案见本族末尾 `ach-mile-*`。
-   */
   'ach-first': (
     <g>
       {/* 任务纪念徽：盾 + 中央星点 */}
@@ -1118,14 +997,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M12 7.6a3.2 3.2 0 103.2 3.2 2 2 0 10-2 2" />
     </g>
   ),
-  /**
-   * ── **里程碑成就的图案族**（第二批 · 船长 2026-09-20「开始第二批」）──
-   *
-   * 命名 = `ach-mile-<家族>`（与数据侧 `pattern: 'mile-<slot>'` 一一对应）。
-   * ⚠ **与链徽章的分工**：链徽章是"**同图案 · 靠颜色分档**"，里程碑反过来 =
-   * "**同颜色（金）· 靠图案分家族**" ⇒ 两类徽章在同一张网格里一眼可辨。
-   * 每个家族一个形状，族内多档（如深渊 2/3/4/5 层）**共用一枚底纹**。
-   */
   'ach-mile-depth': (
     <g>
       {/* 深渊层深：向下的层叠箭标 */}
@@ -1175,12 +1046,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M12 12.4v2.8" />
     </g>
   ),
-  /**
-   * **铁人**（铁人模式 S4b · 2026-09-23 船长令）：**盾 + 铁砧**。
-   *
-   * 与其余徽章同一枚盾形轮廓；「铁人」与「铁人 · 已关闭」**共用本图案**，靠 tone 区分
-   * （金 `#c9a227` = 铁人进行中；灰 `#8a8f98` = 已关闭）——即船长定的「图案相同，用颜色区分」。
-   */
   'ach-ironman': (
     <g>
       {/* 盾徽底 */}
@@ -1192,8 +1057,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M9.4 13.2h5.2v1.4H9.4z" />
     </g>
   ),
-  /* ── **工业 HUD 页专用图标**（**2026-09-30 船长令**：「现在文字太多了，适量的图标也不能拉下」）──
-     与全表同一套线稿语言（圆环徽 ＋ 细描边 ＋ currentColor）：四座设施 ＋ 四个动作/读数。 */
   'ico-furnace': (
     <g>
       <circle cx="12" cy="12" r="8.4" />
@@ -1254,9 +1117,6 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M8.4 8.4h7.2l-2.6 3.4v4.2l-2 1.6v-5.8z" />
     </g>
   ),
-  /* ⚠ 折叠/展开一对（**2026-09-30 船长令**：工业 HUD 工位窗口在窄屏时可最小化成标题栏）：
-     语义 = 面板正文收进那条**标题栏**里（上横条 + 指向它的箭头），不用通用 chevron——
-     本页的图标语汇是"画动作对象"，而不是"画箭头方向"。 */
   'ico-fold': (
     <g>
       <path d="M5 6.4h14" />
@@ -1279,10 +1139,6 @@ const SHAPES: Record<string, ReactNode> = {
   ),
 }
 
-/** **零件两档的档位键**（2026-09-20 船长：「将普通零件和高级零件用颜色区分」）：
- *  基础零件 = `part-basic`（冷钢蓝）· 高级零件 = `part-advanced`（暖金）——两档**共用同一枚 `part` 造型**，
- *  只靠色调区分（与 `box-relic-*` 按族、`box-bp-*` 按层档、`ai-core-*` 按稀有度同一套做法）。
- *  映射单点 = 本函数；名单与 data 层 `BlueprintDef.partTier` 同口径（高级 = 需学习蓝图的那 7 件）。 */
 const ADVANCED_PART_IDS = new Set([
   'part-drone-neural', 'part-shield-gen', 'part-jet-array', 'part-qchip',
   'part-keel', 'part-fire-control', 'part-grav-comp',
@@ -1295,19 +1151,10 @@ export function partToneKeyOf(itemId: string): string {
 SHAPES['part-basic'] = SHAPES.part
 SHAPES['part-advanced'] = SHAPES.part
 
-/** 调色板：分类色调 —— **2026-09-22 移到 `ui/tones.ts` 单点**（值 = `var(--wui-tone-*)`，随主题切换）。
- *  本文件只做**转出**，不再自己留色值：改色去 `ui/tones.ts` + `packages/ui/src/index.css` 两块。 */
 import { ICO_TONES, NAV_TONES, SCALARS, TONES } from './tones'
 
 export { ICO_TONES, NAV_TONES, TONES }
 
-/**
- * **物品 id → 专属图标的唯一登记处**（**2026-09-30 船长报障**：「这三样东西没有配套的图标」——
- * 原先物品一律按**大类键**取图标（`consumable` 一个罐子）⇒ 燃料 / 信号发射器 / 突触加速剂长得一样）。
- *
- * 口径：**有专属线稿的登记在这里，其余一律回落大类键 `kind`**（老调用点零改动）；
- * 取用一律走 {@link itemGlyphName}，不在页面里写死图标名。
- */
 export const ITEM_GLYPH_OVERRIDES: Readonly<Record<string, string>> = {
   'jump-fuel': 'ico-fuel',
   'invasion-beacon': 'ico-beacon',
@@ -1318,72 +1165,36 @@ export const ITEM_GLYPH_OVERRIDES: Readonly<Record<string, string>> = {
   'synaptic-accelerant': 'ico-boost',
 }
 
-/** 物品该用哪枚图标（专属优先、否则回落 `kind`）；`id` 缺省时直接返回 `kind` */
 export function itemGlyphName(itemId: string | undefined, kind: string): string {
   return itemId !== undefined ? (ITEM_GLYPH_OVERRIDES[itemId] ?? kind) : kind
 }
 
 export const RARE_WRECK_TONE = SCALARS.RARE_WRECK_TONE
 
-/** 取色调（带兜底） */
 export function toneOf(key: string | undefined): string {
   return (key && TONES[key]) || 'rgb(var(--wui-dim))'
 }
 
-/**
- * **物品 → 图标键**（2026-09-13 F3c · 船长：「货仓内物品采用图标而不是纯文字，
- * 安全货仓和谜质的SVG图标也需要绘制」）。
- *
- * 规则（从具体到笼统）：
- * 1. **遗迹安全货柜**（`box-relic-*`）⇒ 共用 `box-relic` 造型，**颜色按族取**（色调表按物品 id 存）；
- * 1b. **图纸货柜**（`box-bp-*`）⇒ 共用 `box-bp` 造型（扁长条 = 2×1），**颜色按层档取**；
- * 1c. **AI 核心**（`ai-core-*`）⇒ 共用 `ai-core` 造型（载板 + 运算核心圆），**颜色按稀有度取**；
- * 2. **谜质装置**（`mat-*`）⇒ **每台一枚专属线稿**（键 = 物品 id）；
- * 3. 其余物品 ⇒ 沿用按 **大类**（`ItemDef.kind`）的既有图标（矿石/残骸/货柜/修理组件…）。
- *
- * 色调一律走 `toneOf(itemId)`：物品 id 优先，回落图标键（这样"同族不同色"与"同键同色"都成立）。
- */
 export function itemIconOf(itemId: string, kind?: string): string {
   if (itemId.startsWith('box-relic-')) return 'box-relic'
   if (itemId.startsWith('box-bp-')) return 'box-bp'
-  // 2026-09-15 两个新货柜各给一枚专属造型（贵重品柜 / 军用备货柜）——它们不带前缀族，故按 id 点名
   if (itemId === 'box-valuables' || itemId === 'box-military') return itemId
   if (itemId.startsWith('ai-core-')) return 'ai-core'
   if (itemId.startsWith('mat-')) return itemId
-  // 2026-09-20 零件两档：图标键 = 档位键（形状同 part、色调分两档）
   if (kind === 'part') return partToneKeyOf(itemId)
   return kind ?? 'fallback'
 }
 
-/** 物品图标色：**物品 id 优先**（安全货柜按族分色），再回落图标键 */
 export function itemToneOf(itemId: string, iconKey: string): string {
   return TONES[itemId] ?? toneOf(iconKey)
 }
 
-/**
- * **稀有残骸＝稀有金**（船长 2026-09-19：「将稀有残骸和普通残骸进行下区分，建议用颜色区分」；
- * 三答：只给**图标**上色 · 取既有「稀有」色阶 · 范围限**货仓页 ＋ 物品页仓库**）。
- *
- * 色值与 `.app-chip.is-rare`（残骸打捞卡 / 星图稀有残骸战果行 / 工业页「稀有」徽标）
- * **同一支色阶**——玩家一眼就是同一套语汇。普通残骸保持旧黄铜（`TONES.wreck`），
- * 两者继续共用同一枚 `wreck` 线稿（与 `box-bp-*` 按层档、`ai-core-*` 按稀有度分色同一套做法）。
- * ⚠ 2026-09-22 起色值走 `ui/tones.ts`（`rgb(var(--wui-tone-rare-wreck-tone))`）。
- */
 
-/**
- * 仓库 / 货仓两页的**物品图标色**：稀有残骸（`wreck-rare-*`）走稀有金，其余照旧按大类取色。
- *
- * ⚠ **只在这两页调用**（船长圈定的范围）：手册图鉴 / 工业页回收炉 / 星图打捞页 / 虫洞散货清单
- * 一律维持原样——它们读的是 `TONES` / `itemToneOf`，本函数**不去改那两条**，正是为了不越界。
- * 判据走 `itemSubs.wreckTierOf`（= core `isRareWreck`，全仓唯一前缀判定）。
- */
 export function inventoryItemTone(itemId: string, kind: string): string {
-  // 2026-09-20 零件两档：基础 = 冷钢蓝 / 高级 = 暖金（按物品 id 取色；其余物品照旧按大类）
   if (kind === 'part') return toneOf(partToneKeyOf(itemId))
   return wreckTierOf(itemId) === 'rare' ? RARE_WRECK_TONE : toneOf(kind)
 }
 
-/** 渲染一个科幻线性图标 */
 const MODERN_NAV_GLYPHS: Record<string, ComponentType<any>> = {
   'nav-ship': CarbonRocket,
   'nav-fit': CarbonChip,
@@ -1415,12 +1226,6 @@ export function Glyph({
   if (name === 'nav-chat' && !isModernLayout()) {
     return <MessageSquare size={size} strokeWidth={1.7} className={className} style={color ? { color } : undefined} aria-hidden="true" />
   }
-  /**
-   * **股市入口 · 双色图标**（2026-11-03 船长令：Carbon `ChartCandlestick`，左半绿、右半红）。
-   * Carbon 图标是单色填充路径，单层 `fill` 无法分半 ⇒ 两层完全叠放，用 `clip-path` 各裁一半；
-   * 颜色必须写进 **style**（SVG 呈现属性不认 `var()`，见 `ui/tones.ts` 顶部记录过的坑）。
-   * 左右语义：左绿 = 跌（loss）、右红 = 涨（gain），与国内「红涨绿跌」同一套 token。
-   */
   if (isModernLayout() && name === 'nav-exchange') {
     const layerStyle = (colorValue: string, clip: string): CSSProperties => ({
       position: 'absolute',
@@ -1468,8 +1273,6 @@ export function Glyph({
       width={size}
       height={size}
       fill="none"
-      /* ⚠ `stroke` 必须走 **style**（不能写呈现属性 `stroke={…}`）：色值现在是 `var(--wui-tone-*)`，
-         而 SVG 呈现属性**不认 var()** ⇒ 写属性会静默失效（渲染成默认黑，白底上直接看不见）。 */
       style={{ stroke: color ?? 'currentColor' }}
       strokeWidth="1.7"
       strokeLinecap="round"

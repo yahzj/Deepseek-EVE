@@ -93,7 +93,6 @@ function newlyOpened(before: GameState, after: GameState, result: unknown): Batt
   return undefined
 }
 
-/** 原动作只在副本执行；射程变化时仅提交待确认意图，不提交库存、移动或活动切换。 */
 export function withBattleRangeCheck<T extends { ok: boolean }>(state: GameState, intent: BattleRangeIntent, run: (staged: GameState) => T): T {
   if (transactionDepth > 0 || state.wormhole.run?.automaticBattleRanges) return run(state)
   if (state.pendingBattleRange && !confirmations.has(state)) return { ok: false, rangeConfirmation: true } as unknown as T
@@ -124,7 +123,6 @@ export function withBattleRangeCheck<T extends { ok: boolean }>(state: GameState
       return { ok: false, rangeConfirmation: true } as unknown as T
     }
     if (accepted) {
-      battle.myDesireM = Math.max(snapshot.minM, Math.min(snapshot.limitM, Math.round(confirmation.desireM)))
       snapshot.desireM = battle.myDesireM
     }
   }
@@ -136,7 +134,6 @@ export function withBattleRangeCheck<T extends { ok: boolean }>(state: GameState
     || (!before.wormhole && state.wormhole.run?.battle) || (typeof result === 'object' && 'battle' in result ? (result as { battle?: BattleState }).battle : undefined)
   if (opened?.rangeMemory) {
     if (consent && consent.cardId === opened.rangeMemory.cardId) {
-      opened.myDesireM = Math.max(opened.rangeMemory.minM, Math.min(opened.rangeMemory.limitM, Math.round(consent.desireM)))
       opened.rangeMemory.desireM = opened.myDesireM
     }
     rememberBattleRange(state, opened.rangeMemory)

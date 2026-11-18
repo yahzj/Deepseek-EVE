@@ -132,7 +132,6 @@ export class MarketRelayRuntime {
     } catch {
       this.activeScope = ''
     }
-    // Session binding never triggers an immediate relay send.
   }
 
   onEngineChange(): void {

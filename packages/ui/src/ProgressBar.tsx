@@ -1,12 +1,6 @@
-/**
- * 进度条：显示训练/作业进度。
- */
 interface ProgressBarProps {
-  /** 进度百分比 0~100（内部会截断到合法范围） */
   value: number
-  /** 条上方的说明文字，可省略 */
   label?: string
-  /** 配色：normal 正常（青绿），warn 警告（琥珀），danger 危险（红） */
   tone?: 'normal' | 'warn' | 'danger'
 }
 

@@ -29,12 +29,10 @@ export function encryptedFamilyOf(boxId: string): EncryptedFamily | null {
   return ENCRYPTED_FAMILIES.find(family => id === `BOX-ENCRYPTED-${family}`) ?? null
 }
 
-/** 开柜和市场期望估值共用的类别等权奖池。 */
 export function encryptedBlueprintPool(family: EncryptedFamily): readonly (readonly string[])[] {
   return [PLUGS[family], WEAPONS[family], SHIPS[family]]
 }
 
-/** 显式登记首批一次性池；未来永久蓝图须单独批准后扩展。 */
 export function encryptedBlueprintGroups(ctx: SimContext, family: EncryptedFamily): readonly (readonly string[])[] | null {
   const groups = encryptedBlueprintPool(family)
   for (const [index, group] of groups.entries()) for (const id of group) {

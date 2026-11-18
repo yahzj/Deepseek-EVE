@@ -1,15 +1,9 @@
-/**
- * 星图页（标签页结构）：本地矿带开采（主控 + AI 副船指派）/ 星图·远征调度 / 常驻悬赏 / 残骸打捞 / 任务中心。
- * 顶部二级标签切换各功能区（配合左侧主菜单「出港」展开选择，见 App）。
- */
 import { useEffect, useRef, useState } from 'react'
 import {
   aiEfficiency,
   aiTaskView,
-  /** 2026-10-02 模块化：可用核心列表走 core 单点（原为本页两处 filter） */
   usableAiCoresOf,
   getMiningParams,
-  // 2026-09-30 船长令（「原矿价值最高的排序已经落后」）：矿带每小时产出与行情产值的唯一实现在 core
   beltYieldRows,
   beltValuePerHour,
   idleAiShipIds,
@@ -25,32 +19,25 @@ import {
   wreckDensityOf,
   WEEKEND_WRECK_TARGET,
   weekendWreckDensityOf,
-  /** 2026-09-27 船长令：入侵残骸场里的箱子（主力舰队掉落）——卡名与置顶分级都要看它 */
   weekendRareWreckCountOf,
   RARE_WRECK_VOLUME_M3,
   wreckGroupOfAnomaly,
-  // 2026-09-26 玩家舰船残骸（船长令）：打捞页置顶卡 —— 船名 / 可回收件数 / 剩余小时
   shipWrecksOf,
   hullRecoveryChanceOf,
   wreckEquipmentRecoveryChanceOf,
   wreckLootRowsOf,
   SHIP_WRECK_DECAY_MS,
-  // 2026-09-26 船长令「所有声望门槛改读累计声望」：矿带卡片的锁定判据走唯一入口
   standingOf,
   DSI_FACTION_ID,
 } from '@whale/core'
-// 2026-09-23 船长令：使用 AI 核心时默认选「当前拥有的最高级核心」
 import { bestAiCoreOf } from '@whale/core'
 import type { AiCoreType, BeltDef, GalaxyDef } from '@whale/core'
-/** 玩家舰船残骸记录（2026-09-26）：打捞页置顶卡的数据形状 */
 import type { ShipWreckRecord } from '@whale/core'
 import { unlocked, WORMHOLE_SCAN_UNLOCK_STANDING } from '@whale/core'
-/** 活动卡「产出」读数（2026-09-23 船长令：收入预估换口径）——全仓唯一实现 */
 import { NetIncomeLinePerHour, YieldLines, yieldLinesOf, marketPriceOf, type YieldRow } from '../ui/yieldView'
 import { Panel } from '@whale/ui'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
-/** AI 核心档位名按语言取（2026-09-30 批 5：core 的 `aiCoreName` 只出中文） */
 import { aiCoreText } from '../ui/labelsText'
 import { FlavorTip, recycleFeatureOf } from '../ui/wreckFlavor'
 import { AiTaskBar } from '../ui/aiProgress'
@@ -60,43 +47,27 @@ import { HaulingPanel } from '../panels/Hauling'
 import type { GameEngine } from '../game/engine'
 import type { PageProps, ToastFn } from './common'
 import { isk, rareWreckRefsOf } from './common'
-// 2026-09-26 船长报障：打捞页卡片序列（纯函数；单独成文件以便工具/用例直接断言这条顺序）
 import { invasionWreckRowsOf, wreckAiHostOf, wreckCardSequenceOf } from './wreckCards'
 import { isEn, tr, cmdText } from '../i18n/locale'
 import { wreckGroupText } from '@whale/data'
 import { fmtDuration } from '../i18n/fmt'
 
-/** 星图页的功能区（「星图·远征」放第一：这里本来就是玩家查看大地图的主入口）；icon = Glyphs 字形名 */
 export type MapTab = 'star' | 'mine' | 'bounty' | 'salvage' | 'haul' | 'whscan'
-/** 跨页跳转目标（2026-09-09 船长定：工业页精炼炉卡「去矿带/去打捞」→ 星图对应卡高亮数秒自清） */
 export interface MapGotoTarget {
   tab: 'mine' | 'salvage'
   ids: string[]
   seq: number
 }
-/**
- * 任务中心**内层**标签定位（2026-09-11 船长：「步骤 2/7 跳转任务中心时，不会切到指定标签页」）。
- * ⚠ **2026-09-14 已迁到 `pages/TaskCenterPage.tsx`**（任务中心搬成独立一级页）；本文件保留**类型再导出**
- * 只为不打断既有 import 路径，新代码请从 `TaskCenterPage` 引。
- */
 export type { TaskFocusTarget } from './TaskCenterPage'
 export const MAP_TABS: Array<{ key: MapTab; label: string; icon: string }> = [
   { key: 'star', get label() { return tr("ui.MapPage.002") }, icon: 'nav-map' },
   { key: 'mine', get label() { return tr("ui.MapPage.003") }, icon: 'nav-mine' },
   { key: 'bounty', get label() { return tr("ui.MapPage.004") }, icon: 'nav-bounty' },
   { key: 'salvage', get label() { return tr("ui.MapPage.005") }, icon: 'nav-salvage' },
-  /* 长途运输（2026-09-09 船长：独立出任务中心、置于残骸打捞之后；至少建成一座副空间站解锁） */
   { key: 'haul', get label() { return tr("ui.MapPage.006") }, icon: 'nav-haul' },
-  /* 任务中心 2026-09-14 已搬成左侧导航的独立一级页（船长：移出星图、放在通讯上方）⇒ 本页不再有该选项卡 */
-  /* 扫描虫洞（2026-09-14 船长：放进「出港界面的选项卡内」）：✅ 同日解除不可见 ⇒ **常驻标签**（解锁门槛在页内：协会声望 ≥ 40） */
   { key: 'whscan', get label() { return tr("ui.MapPage.007") }, icon: 'nav-wormhole' },
 ]
 
-/**
- * **星图页签的「第一次」前置**（2026-09-17 船长定：星图相关的采矿/战斗等**先完成「第一次扫描」**）。
- * 值 = `FIRST_UNLOCKS` 的键；表里没有的页签（星图·远征 / 扫描虫洞）⇒ 开局即可用（虫洞另有声望门槛）。
- * **未解锁 = 页签不显示**（船长选「两者都隐藏」——页面与任务都隐藏）；App 层用同一张表做跳转拦截。
- */
 export const TAB_UNLOCK_KEY: Partial<Record<MapTab, string>> = {
   mine: 'mapMine',
   bounty: 'mapBounty',
@@ -104,13 +75,6 @@ export const TAB_UNLOCK_KEY: Partial<Record<MapTab, string>> = {
   haul: 'mapHaul',
 }
 
-/* 矿带 / 打捞排序（2026-09-09 船长拍板：危险=所在星系安全等级 sec 降序=安全在前，为默认；
- * 选择存本地，键形如 whale-idle:*-sort）。
- * ⚠ **`value` 档口径 2026-09-30 重定**（**船长令**：「**矿带开采的排序，原矿价值最高的排序已经落后**」）：
- * 旧口径「每小时产出 × **基准价**」是 2026-09-09 按"与矿带卡内效率行同口径"定的，而卡面 **2026-09-23**
- * 已改为「物资 ×N/h（仓库 · **行情** P）」⇒ 旧前提失效、排序与卡面数字对不上（17 条矿带全部换位）。
- * 现口径 = **每小时产出 × 当前行情价**（`beltValuePerHour` ＋ `marketPriceOf`，无行情退基准价），
- * 选项文案同批改「**行情产值最高**」（`ui.MapPage.010`）。 */
 type BeltSortKey = 'danger' | 'galaxy' | 'value' | 'name'
 const BELT_SORT_KEY = 'whale-idle:mine-sort'
 const BELT_SORT_LABEL: Record<BeltSortKey, string> = {
@@ -132,26 +96,12 @@ export function MapPage({ engine, onToast, mapTab = 'star', onMapTab, mapGoto = 
   mapTab?: MapTab
   onMapTab?: (tab: MapTab) => void
   mapGoto?: MapGotoTarget | null
-  /** **开虫洞面板**（船长 2026-09-13「活动栏直接开面板」）：面板本体挂在 App 那一层，这里只把入口按钮接上去 */
   onOpenWormhole?: () => void
-  /** 从「扫描虫洞」页选一处库存虫洞开始探索（App 层开面板并带上该库存项） */
   onExploreWormhole?: (stockId: string) => void
-  /** 自动探索：打开**与主控探索同一个准备页**（App 层开面板的自动模式；船长 2026-09-14） */
   onAutoExploreWormhole?: (stockId: string) => void
-  /**
-   * **去「装配」页**（**2026-09-20 船长令**：「打捞需要打捞器的提示，添加让玩家去装配的提示」）：
-   * 打捞页在驾驶船没装打捞器时给一行提示 ＋ 一个直接落到该船装配页的按钮。
-   */
   onGotoFit?: (shipId: string) => void
-  /**
-   * **声望商店定位信号**（**2026-09-27 船长令**：「我打算将声望商店嵌入常驻悬赏内，作为子页面的存在」）：
-   * 三条入口（通讯弹窗/通讯页/组装机）跳过来时自增 ⇒ 常驻悬赏面板据此切到「声望商店」子页。
-   * 与 `craftFocus` / `mapGoto` 同款的"一次性定位信号"（值本身无意义，只认变化）。
-   */
   bountyShopSeq?: number
 }) {
-  // 外部跳转高亮（与组装机「去精炼」同款 is-goto 视觉；多目标 = 全部高亮、滚动定位第一张；
-  // seq 只在跨页跳转时递增，普通切回本页不重放）
   const [hlIds, setHlIds] = useState<string[]>([])
   const lastGotoSeq = useRef(-1)
   useEffect(() => {
@@ -175,7 +125,6 @@ export function MapPage({ engine, onToast, mapTab = 'star', onMapTab, mapGoto = 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapGoto?.seq, mapTab])
 
-  // 长途运输解锁门（2026-09-09 船长）：至少建成一座副空间站（母港之外的第二端点）才有航线
   const builtStationCount = [...engine.ctx.stations.values()].filter((s) => isSiteBuilt(engine.state, s)).length
 
   return (
@@ -244,7 +193,6 @@ export function MapPage({ engine, onToast, mapTab = 'star', onMapTab, mapGoto = 
   )
 }
 
-/* ═══════════════ 标签二：矿带开采（矿带 = 常驻矩形卡片，操作入卡） ═══════════════ */
 
 function MiningTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; onToast: ToastFn; focusIds?: readonly string[] }) {
   const state = engine.state
@@ -264,15 +212,9 @@ function MiningTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; onT
     try {
       localStorage.setItem(BELT_SORT_KEY, next)
     } catch {
-      // 忽略
     }
   }
 
-  /**
-   * 排序行数据 —— **口径 2026-09-30 换过**（**船长令**：「**矿带开采的排序，原矿价值最高的排序已经落后**」）：
-   * 产值 = `beltValuePerHour`（core 单点：逐项每小时产出 × 当前行情价，无行情退基准价），行情取数与
-   * 卡面「×N/h（仓库 · 行情）」**同一把尺**（`marketPriceOf`）。旧口径用的基准价已不用在排序里。
-   */
   const beltRows = engine.belts.map((belt) => {
     const galaxy = belt.galaxyId ? engine.ctx.galaxies.get(belt.galaxyId) : undefined
     const valuePerHour = beltValuePerHour(state, engine.ctx, belt, (id) => marketPriceOf(state, engine.ctx, id))
@@ -282,7 +224,7 @@ function MiningTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; onT
     x.belt.name.localeCompare(y.belt.name, 'zh-Hans-CN') || x.belt.id.localeCompare(y.belt.id)
   const sortedBelts = [...beltRows].sort((x, y) => {
     if (sort === 'danger') {
-      if (x.sec !== y.sec) return y.sec - x.sec // sec 降序 = 安全在前
+      if (x.sec !== y.sec) return y.sec - x.sec
       return byBeltName(x, y)
     }
     if (sort === 'galaxy') {
@@ -300,7 +242,6 @@ function MiningTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; onT
   })
 
   function handleStart(beltId: string): void {
-    // T4 延后项：远征中（确认后）走"取消远征再开采"转场入口
     const r = state.expedition.active ? engine.startMiningFromExpeditionAt(beltId) : engine.startMiningAt(beltId)
     if (!r.ok) onToast(cmdText(r) || tr('ui.Expedition.388'), true)
   }
@@ -394,7 +335,6 @@ function MiningTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; onT
   )
 }
 
-/** 一张矿带卡片：信息 + 主控「开始/停止」与「指派 AI」操作容器 */
 function BeltCard({
   belt,
   engine,
@@ -417,57 +357,34 @@ function BeltCard({
   const state = engine.state
   const oreDef = engine.ctx.items.get(belt.oreId)
   const mv = miningStatus(state, engine.ctx)
-  /**
-   * 协会声望（矿带 `standingReq` 的锁定判据与文案共用）。
-   * ⚠ **2026-09-26 船长令**：「**修改原先的所有声望门槛，改为根据玩家的累计声望**」⇒ 原直读
-   * `state.standings`（可支配那本，章鱼人兑换会扣它）改走唯一入口 `standingOf`（累计获得那本）；
-   * 与 `mining.ts` 命令侧闸、舰船页矿带下拉三处从此同一本账。
-   */
   const standing = standingOf(state, DSI_FACTION_ID)
   const galaxy = belt.galaxyId ? engine.ctx.galaxies.get(belt.galaxyId) : undefined
   const galaxyName = galaxy?.name ?? tr('ui.Expedition.007')
-  // 效率行（试点 2026-09-05）：每循环产量 × 循环时长 → 每小时产出与每小时估价。
-  /**
-   * **产出读数换口径**（**2026-09-23 船长令**：「各个有收益的卡牌上写着的收入预估…会严重误导玩家…
-   * 其他活动只显示每小时能收获多少资源以及产出的物资的市场当前价格」）⇒
-   * 卡面不再出现「≈N ISK/h」这种折算值，改为逐项列「物资 ×N/h（仓库 M · 行情 P）」；
-   * 行文与取数全在 `ui/yieldView.tsx`（唯一实现），本页只交"每小时产什么、产多少"。
-   * ⚠ **2026-09-30**：这段"每小时产出"的算式搬进 core 单点 `beltYieldRows`（排序与卡面原先各写一份，
-   * 排序那份还停在基准价口径 ⇒ 见 `BeltSortKey` 上方注释）；卡面仍按老样子取整显示。
-   */
   const yieldRows: YieldRow[] = []
   let effLine: string | null = null
   const mp = getMiningParams(state, engine.ctx, { beltId: belt.id })
   if (mp) {
     const rows = beltYieldRows(state, engine.ctx, belt) ?? []
-    // 复合矿带：按权重把"每小时总单位数"摊到各产出上（各行相加 = 总产量）
     for (const r of rows) {
       yieldRows.push({ itemId: r.itemId, perHour: Math.round(r.perHour) })
     }
     const sec = Math.round(mp.cycleMs / 1000)
-    // **尾部「≈N 单位/h」已删**（**2026-09-23 船长令**：「可以将后面的这个总数/h删除，和下面产出重复了」）：
-    // 每小时产量由下面的产出清单逐项列出 ⇒ 效率行只留"每循环多少 + 多少秒"。
     effLine = tr("ui.MapPage.085", { p1: mp.unitsPerCycle, sec: sec })
   }
-  // V13：所在星系未探索的矿带不可开采（卡片可见但锁定，提示先扫描）
   const unexplored = belt.galaxyId ? !isExplored(state, belt.galaxyId) : false
   const locked = (belt.standingReq ?? 0) > standing || unexplored
   const good = oreDef ? marketGoodOf(engine.ctx, 'item', oreDef.id) : undefined
   const quote = good ? marketQuote(state, engine.ctx, good.key) : undefined
   const buy = quote?.buy
   const idleShips = idleAiShipIds(state)
-  // 正在此矿带采掘的 AI 副船（右上角徽标计数 + 卡内快速取消）
   const aiWorkers = Object.entries(state.aiAssignments).filter(
     ([, a]) => a.task.kind === 'mining' && a.task.beltId === belt.id,
   ) as Array<[string, { coreType: AiCoreType; task: { kind: 'mining'; beltId: string } }]>
   const aiCount = aiWorkers.length
   const [aiShipId, setAiShipId] = useState('')
   const [aiCoreSel, setAiCoreSel] = useState<AiCoreType>(() => bestAiCoreOf(state) ?? 'basic')
-  // 2026-09-08 紧急修复（玩家反馈"无法用伽马 AI 核心采矿"）：basic 用光只剩伽马时，
-  // 下拉显示与提交类型脱节 → 归一为当前有库存的类型（同工业页炉卡写法）
   const usableCores = usableAiCoresOf(state)
   const effCore = usableCores.includes(aiCoreSel) ? aiCoreSel : (usableCores[usableCores.length - 1] ?? 'basic')
-  // T4 延后项：远征中可「转开采」（两步确认）
   const [mineAsk, setMineAsk] = useState(false)
   const expeditionOn = state.expedition.active
 
@@ -485,7 +402,7 @@ function BeltCard({
       return
     }
     if (!mineAsk) {
-      setMineAsk(true) // 展开卡片内联警示（替代底部 toast——警示要够明显）
+      setMineAsk(true)
       return
     }
     setMineAsk(false)
@@ -599,10 +516,6 @@ function BeltCard({
         ) : null}
         <button
           className={`app-btn is-small${isActiveBelt ? ' is-warn' : expeditionOn && !mineAsk ? ' is-warn' : ' is-primary'}`}
-          /**
-           * **换矿带允许直接切**（**2026-09-21 船长答 2「允许切换」**）：别处正在开采也**照点**——
-           * core 先停旧带那一趟（货留在船上）＋写「已切换矿带」日志，再开新带。这里只剩锁定与两段确认。
-           */
           disabled={locked || mineAsk}
           title={
             locked
@@ -670,15 +583,7 @@ function BeltCard({
   )
 }
 
-/* ═══════════════ 标签三：残骸打捞（矿带页同款卡片网格；B3 采矿式自动循环） ═══════════════ */
 
-/**
- * 打捞速率（当前驾驶船装配/技能 × 当前密度现算；展示用近似）。
- *
- * ⚠ **2026-09-23 船长令：拆解估价（信用点收入）已移除** —— 船长问「残骸打捞为什么还有信用点收入估价？」
- * ⇒ 原 `val`（`≈N 信用点/h 拆解估价`，按来源危险度池粗估）与它背后的一整套粗估（回收炉时/产出率/
- * 池均价/精炼技能）**一并删除**；卡面只留"每小时能捞多少 m³"这一条事实读数。
- */
 function salvageEstimate(
   state: GameEngine['state'],
   engine: GameEngine,
@@ -711,7 +616,6 @@ function SalvageTab({
 }: {
   engine: GameEngine
   onToast: ToastFn
-  /** 「去装配」：跳到驾驶船的装配页（本轮船长令：打捞需要打捞器，得有个去装配的入口） */
   onGotoFit?: (shipId: string) => void
   focusIds?: readonly string[]
 }) {
@@ -731,11 +635,9 @@ function SalvageTab({
     try {
       localStorage.setItem(WRECK_SORT_KEY, next)
     } catch {
-      // 忽略
     }
   }
 
-  // 正在该星系打捞的 AI 副船（名册：快速取消用）
   const aiWorkersBy = new Map<string, Array<{ sid: string; coreType: AiCoreType }>>()
   for (const [sid, a] of Object.entries(state.aiAssignments)) {
     if (a.task.kind === 'salvage') {
@@ -744,7 +646,6 @@ function SalvageTab({
       aiWorkersBy.set(a.task.galaxyId, list)
     }
   }
-  // 2026-09-09 排序（默认危险=sec 降序=安全在前；旧硬排 wreckDensity 降序退役，改为可选「残骸密度最高」）
   const wreckRows = [...engine.ctx.galaxies.values()]
     .filter((g) => isExplored(state, g.id) && engine.anomalies.some((x) => x.galaxyId === g.id))
     .map((g) => ({
@@ -755,20 +656,8 @@ function SalvageTab({
     }))
   const byWreckName = (x: (typeof wreckRows)[number], y: (typeof wreckRows)[number]): number =>
     x.galaxy.name.localeCompare(y.galaxy.name, 'zh-Hans-CN') || x.galaxy.id.localeCompare(y.galaxy.id)
-  /**
-   * **跨星系置顶**（**2026-09-26 船长复问**：「**残骸打捞的相关置顶是不是还没做**」——
-   * 前一轮只做了**卡内**优先级（`wreckCardSequenceOf`：一个星系里"舰船残骸卡 → 入侵残骸卡 → 常规卡"），
-   * 而**星系之间的排序**只看危险度 / 名称 / 密度 ⇒ 有这两种特殊残骸的星系不会整体浮上来）。
-   *
-   * 分级（**同档内仍按玩家选的排序**，所以"置顶"与排序下拉并存、互不改口径）：
-   * - **0 档**：该星系有**玩家舰船残骸**（四级序最高优先；48h 衰减、捞它最划算）；
-   * - **1 档**：该星系有**入侵残骸**（独立残骸场、48h 线性衰减）；
-   * - **2 档**：其余星系。
-   * ⚠ 判据与卡序、与打捞目标判定**同一批函数**（`shipWrecksOf` / `weekendWreckDensityOf`），不另算一套。
-   */
   const pinTierOf = (x: (typeof wreckRows)[number]): number => {
     if (shipWrecksOf(state, x.galaxy.id).length > 0) return 0
-    // ⚠ 2026-09-27：**只剩箱子**（矿物捞干、稀有还在）也算"有入侵残骸"——不然那个星系会掉到 2 档
     if (weekendWreckDensityOf(state, x.galaxy.id) > 0 || weekendRareWreckCountOf(state, x.galaxy.id) > 0) return 1
     return 2
   }
@@ -776,7 +665,7 @@ function SalvageTab({
     const pin = pinTierOf(x) - pinTierOf(y)
     if (pin !== 0) return pin
     if (sort === 'danger') {
-      if (x.sec !== y.sec) return y.sec - x.sec // sec 降序 = 安全在前
+      if (x.sec !== y.sec) return y.sec - x.sec
       return byWreckName(x, y)
     }
     if (sort === 'galaxy' || sort === 'name') return byWreckName(x, y)
@@ -787,11 +676,6 @@ function SalvageTab({
     return byWreckName(x, y)
   })
   const idleShips = idleAiShipIds(state)
-  /**
-   * ⚠ **旧的"作业星系打捞对象"变量已删**（2026-09-26 船长报障「残留的手动选择残骸的卡片」）：
-   * 打捞对象自 2026-09-26 起由 core 自动判定，页面上**每张星图卡自己的只读存量**（下面渲染处的
-   * `engine.salvageTargetsAt(g.id, true)`）就够了 ⇒ 这份"当前作业星系"的重复取数成了死变量。
-   */
 
 
   function startAt(galaxyId: string): void {
@@ -815,7 +699,6 @@ function SalvageTab({
     else onToast(tr("ui.MapPage.077"), true)
   }
 
-  // 循环偏好（与采矿同款：默认自动循环；「本次返航卸货后停止」= 做单趟）
   const autoCycleOn = me.autoCycle !== false
   const stopAfterTripOn = me.stopAfterTrip === true
 
@@ -826,9 +709,6 @@ function SalvageTab({
       hint={
         <HintIcon tip={tr("ui.MapPage.051")} />
       }
-      /**
-       * ⚠ **2026-09-26 船长令**：「**表头右侧那行「?」内的不要修改**」⇒ 表头这一行（「?」＋ 右端这句密度口径）**原样保留**；被裁掉的只有正文里的说明行。
-       */
       right={<span className="app-dim">{tr("ui.MapPage.052")}</span>}
     >
       {/**
@@ -990,7 +870,6 @@ function SalvageTab({
   )
 }
 
-/** 残骸打捞主控作业进度：返航（去程并入）= 行程进度；打捞中 = 主循环周期（最短打捞器周期档）进度 */
 function salvageProgressOf(engine: GameEngine): { percent: number; label: string; travel: boolean } | null {
   const s = engine.state.salvaging
   if (!s.active || s.galaxyId === null) return null
@@ -1001,7 +880,6 @@ function salvageProgressOf(engine: GameEngine): { percent: number; label: string
     return { percent: Math.min(100, Math.round((s.phaseAccMs / leg) * 100)), label: tr("ui.MapPage.056"), travel: true }
   }
   if (s.phase === 'returning') {
-    // 返航腿 = 满载返航 + 空船去程（去程并入返航）
     const leg = salvageReturnMs(state, ctx, s.galaxyId)
     return { percent: Math.min(100, Math.round((s.phaseAccMs / leg) * 100)), label: tr("ui.MapPage.057"), travel: true }
   }
@@ -1014,7 +892,6 @@ function salvageProgressOf(engine: GameEngine): { percent: number; label: string
   }
 }
 
-/** 一张星系残骸卡：密度/效率估价 + 副船名册（快速取消）+ 主控按钮 + AI 指派条 */
 function WreckCard({
   galaxy: g,
   density,
@@ -1036,17 +913,11 @@ function WreckCard({
 }: {
   galaxy: GalaxyDef
   density: number
-  /** **这一张卡是谁的读数**（玩家舰船残骸卡 / 入侵残骸卡 / 星系残骸（全部）卡） */
   densityLabel?: string
-  /** 是否显示 **AI 指派条**（挂"该星系置顶那张卡"：玩家舰船残骸 > 入侵残骸 > 全部；规则见 `wreckAiHostOf`） */
   showAi?: boolean
-  /** 是否显示**各组存量读数**（只归「全部」那张卡：那行说的是"这个星系各组还剩多少"，与 AI 无关） */
   showGroupRows?: boolean
-  /** **各组存量读数**（只读；打捞对象由 core 自动判定 ⇒ 这里只展示，不再提供选择） */
   groupRows?: Array<{ groupKey: string; stockM3: number }>
-  /** 该族独立存量与稀有读数；常驻卡不接入侵池。 */
   invasionPool?: ReturnType<typeof invasionWreckRowsOf>[number]
-  /** **该星系的玩家舰船残骸**（2026-09-26 船长令）：置顶读数 —— 船名 ＋ 可回收件数 ＋ 剩余小时 */
   shipWrecks?: ShipWreckRecord[]
   aiWorkers: Array<{ sid: string; coreType: AiCoreType }>
   isActive: boolean
@@ -1065,13 +936,9 @@ function WreckCard({
   const prog = isActive ? salvageProgressOf(engine) : null
   const [aiShipId, setAiShipId] = useState('')
   const [aiCoreSel, setAiCoreSel] = useState<AiCoreType>(() => bestAiCoreOf(state) ?? 'basic')
-  // 2026-09-08 紧急修复：核心下拉与提交类型脱节（basic 无库存时仍按 basic 提交被拒）
   const usableCores = usableAiCoresOf(state)
   const effCore = usableCores.includes(aiCoreSel) ? aiCoreSel : (usableCores[usableCores.length - 1] ?? 'basic')
   const lowSec = typeof g.security === 'number' && g.security < 0
-  // B3.1：星系卡「回收产出倾向 / 特色掉落」汇总（= 该星系各悬赏敌群**所属的残骸组**；回收卡同款行，去重合并）。
-  // 2026-09-10 船长定"说明精简"：特色掉落只讲特色（主题件具名 + 系列泛化），星图卡不加保底矿物块。
-  // 2026-09-19 残骸合并：卡级特色已退役 ⇒ 改按**组**去重（同族同地区的多张卡只算一份）。
   const notes: string[] = []
   const namedList: string[] = []
   const genericList: string[] = []
@@ -1081,11 +948,6 @@ function WreckCard({
     if (!group || groupKeys.includes(group.key)) continue
     groupKeys.push(group.key)
     if (group.note.length > 0) {
-      /**
-       * ⚠ **说明要按语言取**（**2026-09-29 批 2**）：`group.note` 是 `core/wreckGroups.ts` 的**中文原串**
-       * ⇒ 英文界面下这段成分说明整段是中文（英文扫描里 12 处残留的真凶）。
-       * 走数据层的 `wreckGroupText`（按组 key 反查英文覆盖），中文侧照旧用原串。
-       */
       const note = wreckGroupText(group.key, isEn() ? 'en' : 'zh', 'note') ?? group.note
       if (!notes.includes(note)) notes.push(note)
     }
@@ -1097,11 +959,8 @@ function WreckCard({
     for (const p of feature.generic) if (!genericList.includes(p)) genericList.push(p)
   }
   const flavorNote = notes.slice(0, 3).join('；') + (notes.length > 3 ? tr("ui.MapPage.106", { p1: notes.length }) : '')
-  // 汇总去重后仍限长：具名优先（星图卡是多敌群合并，可能很长）
   const cap = (list: string[]): string[] => list.slice(0, 4).concat(list.length > 4 ? [tr("ui.MapPage.107", { p1: list.length })] : [])
   const flavorLabel = namedList.length > 0 ? tr("ui.MapPage.058") : tr("ui.MapPage.059")
-  // 赏金任务·窝点战果（2026-09-10 船长定）：该星系留下的稀有残骸（打捞必得；回站回收炉开高级箱）
-  // 2026-09-11：口径抽到 `pages/common.rareWreckRefsOf`，与星图「星系行动」弹窗共用一份
   const refs = rareWreckRefsOf(engine, g.id)
   const rareCount = invasionPool ? invasionPool.rare : refs.count
   const rareText = invasionPool ? invasionPool.name ?? tr('ui.MapPage.121') : refs.text

@@ -1,21 +1,3 @@
-/**
- * **敌机机型表**（2026-09-11 船长：「**我记得巨构需要制作敌方无人机系统**」·
- * 设计稿 `docs/design/foe-drone-system-20260911.md`）。
- *
- * ## 口径（与 `foe-ships.ts` 的舰级表**同款纪律**）
- * - 本表每行 = **一个敌机机型**，属性一律**绝对值**；
- * - **舰级只登记"用哪个机型、几架"**（`FoeShipDef.drones`），**卡面不写机群** ⇒ 改一个机型的影响面一眼可见；
- * - **角色骨架沿用我方四型**（`DroneClass`：侦察/战斗/攻坚/哨戒）——阵位与演出形制据此复用；
- *   机体外形与配色是**敌族自己的**（船长 A2 裁定）；
- * - **节奏照我方**（船长 C3 裁定「机群参考我方节奏，架次再定」）：单架装填基准 **4,400ms**、
- *   进入射程即放出、单轮时序 = 放出 0.42s → 到位开火 → 返航 0.46s；
- * - **架数（`FoeDroneSlot.count`）待定** ⇒ 本表先登记机型，架数在落样本卡时随六组标定。
- *
- * ## 玩家怎么反制（船长 A1 / B1 / C1 裁定）
- * 玩家武器**默认打不到**敌机；只有带**防空属性**（`WeaponSpec.canHitDrones`）的武器能打——
- * 玩家侧首件此类武器 = **近防炮**（**真武器**：可打机群、**也可打舰**）。
- * **我方的无人机不带该属性** ⇒ 想打机群就得装防空武器。
- */
 
 import foeDronesParameters from './static/foeDrones.json'
 import { enemyParameterOf } from '@whale/core'
@@ -28,68 +10,25 @@ export const FOE_DRONE_C_JAWCLAW: FoeDroneDef = {
   dmg: enemyParameterOf(foeDronesParameters, "foe-drone-c-jawclaw", "dmg"), damageType: 'kinetic', hitRate: enemyParameterOf(foeDronesParameters, "foe-drone-c-jawclaw", "hitRate"), falloff: enemyParameterOf(foeDronesParameters, "foe-drone-c-jawclaw", "falloff"), maxRangeM: enemyParameterOf(foeDronesParameters, "foe-drone-c-jawclaw", "maxRangeM"), reloadMs: enemyParameterOf(foeDronesParameters, "foe-drone-c-jawclaw", "reloadMs"),
 }
 
-/** E 族「**警戒机**」——巨构自带的警戒机群（＝**巨构的第二套火力**，据点词「警戒机群」的落点）。
- *
- * **族格落点**（`foe-faction-e-titan-20260911.md` §三）：E 族 = **无人的巨构残骸 + 残存自动程序**
- * ——**老化、失准**（既有落点 = 泰坦残骸勘探命中 **0.65**：「远古残骸**老化自动炮台，单发重但失准**」）
- * ⇒ 本机型 **命中取 0.65**（低于我方制式 0.75）· **单发取重** · **中距**（与"中距为主"的族规同源）；
- * **不灵活**（回避低）。
- * ⚠ **「厚重」一条已作废**（2026-09-12 船长「**将警戒机的血量削弱40%**」）：三层血 92 → **55**，
- * 现在**比**我方制式战斗机（80）**更脆**——它靠"数量 + 备用机库"而不是靠单架厚度站住（族格其余各条不动）。
- *
- * ⚠ **数值状态**：命中 / 射程 / 装填 / 角色骨架 = **口径已定**（见上）；
- * 单发与三层血 = **结构先行的初值**，最终值在样本卡（`ano-titan-wreck`）落码时按
- * **A5 火力守恒**（机群火力计入卡的总火力、母舰单发相应让位）+ 六组实测标定。 */
 export const FOE_DRONE_E_ALERT: FoeDroneDef = {
   id: "foe-drone-e-alert",
   name: "警戒机",
   family: "E",
-  role: "combat", // 战斗机档：中近缠斗（与我方同档的 3,000m 对齐）
+  role: "combat",
   defense: {
     shieldHp: enemyParameterOf(foeDronesParameters, "foe-drone-e-alert", "defense_shieldHp"),
     armorHp: enemyParameterOf(foeDronesParameters, "foe-drone-e-alert", "defense_armorHp"),
-    hullHp: enemyParameterOf(foeDronesParameters, "foe-drone-e-alert", "defense_hullHp"), // 三层共 **55**（我方制式战斗机 80 的 69%）——**2026-09-12 船长：「将警戒机的血量削弱40%」**
-    // ⚠ **作废**旧落点「三层共 92（我方制式战斗机 80）——'巨构的东西更厚'」（2026-09-11 血条 ×2 批）。
-    // 现值与取整口径：原 28 / 20 / 44 ×0.6 = 16.8 / 12 / 26.4 ⇒ 取整 **17 / 12 / 26 = 55**（合计 −40.2%，逐层最接近）；
-    // 起因 = 近防炮打机群"一场只开 3~20 炮、一架都打不下来"，船长同日一并裁定「按丁修复（打机群不吃距离衰减）+
-    // 近防炮对无人机伤害加成 + 警戒机削血 40%」。
-    armorResist: { kinetic: enemyParameterOf(foeDronesParameters, "foe-drone-e-alert", "defense_armorResist_kinetic") }, // 厚重装甲层（族格：残骸的老装甲）——**抗性不动**（只削血）
-    evasion: enemyParameterOf(foeDronesParameters, "foe-drone-e-alert", "defense_evasion"), // 不灵活（远低于我方战斗机 0.25）——**不动**（"不灵活"是族格，削的是血量不是灵活性）
+    hullHp: enemyParameterOf(foeDronesParameters, "foe-drone-e-alert", "defense_hullHp"),
+    armorResist: { kinetic: enemyParameterOf(foeDronesParameters, "foe-drone-e-alert", "defense_armorResist_kinetic") },
+    evasion: enemyParameterOf(foeDronesParameters, "foe-drone-e-alert", "defense_evasion"),
   },
-  // **单发（绝对值）**：25 —— 比我方制式最重的哨戒机（雷鸥 20）还重，兑现族格"**单发重但失准**"。
-  // 取值口径：卡上 `dmgMul` 同时缩放母舰与机群（A5）⇒ 样本卡（泰坦残骸勘探）的 `dmgMul` 约 0.32/0.19
-  // （由"总血/单发守恒"反算）⇒ 实收每架 = round(25 × dmgMul) = **8 / 5**，与母舰 96 / 58 配比一致。
   dmg: enemyParameterOf(foeDronesParameters, "foe-drone-e-alert", "dmg"),
-  damageType: "kinetic", // 族格「动能 + 爆炸为主」的主系（爆炸留给日后第二种机型）
-  hitRate: enemyParameterOf(foeDronesParameters, "foe-drone-e-alert", "hitRate"), // **老化失准**（＝族格既有落点的逐字沿用）
-  falloff: enemyParameterOf(foeDronesParameters, "foe-drone-e-alert", "falloff"), // 射程带内命中恒定（我方侦察/战斗/攻坚三型口径）
-  // ⚠ **射程必须长于典型交距，否则机群整场够不着**（S2 实测踩到）：标准装配玩家与威胁 60 卡的
-  // **实际交距约 3,211m**，而我方战斗机档射程只有 3,000m ⇒ 照搬会让机群**全程零开火**。
-  // ⇒ 敌机射程取**族级绝对值**（不与我方四型射程档硬绑定——`role` 只决定阵位与演出形制），
-  // 取 **5,000m**（2026-09-11 船长：「**无人机射程设为 5000**」；原 4,500）：既在玩家标准站位
-  // （3,220m）之外、也在民用炮（4,200）之外——读法 = **警戒幕铺在母舰与玩家之间**，
-  // 玩家想打机群就得走进警戒幕（唯一解 = 近防炮，2,500m）。
-  // ⚠ **本值只是"平时"射程**：E 族母舰被命中后触发**受击增程**（`FoeShipDef.droneRangeMulOnHit: 4`
-  // ⇒ 5,000 → **20,000m**，本场永久、不封顶）——那才是"打炮台射程外的敌人"的长臂。
+  damageType: "kinetic",
+  hitRate: enemyParameterOf(foeDronesParameters, "foe-drone-e-alert", "hitRate"),
+  falloff: enemyParameterOf(foeDronesParameters, "foe-drone-e-alert", "falloff"),
   maxRangeM: enemyParameterOf(foeDronesParameters, "foe-drone-e-alert", "maxRangeM"),
-  reloadMs: enemyParameterOf(foeDronesParameters, "foe-drone-e-alert", "reloadMs"), // 照我方节奏（船长 C3）
+  reloadMs: enemyParameterOf(foeDronesParameters, "foe-drone-e-alert", "reloadMs"),
 };
-/** G 族「**蜂群机**」——鱿鱼亡军的招牌：**一架便宜、一群致命**（服务：G 族三张卡的蜂群承诺）。
- *
- * **族格落点**（`foe-faction-g-exiles-20260911.md`）：G 族 = **乌贼人残兵**，装备哲学 =
- * 「**一架便宜、一群致命**」；火力 = **三系无人机**（以无人机为载体，**动能／爆炸／等离子三系齐备**）
- * ⇒ 本机型**三系各一型**（`-kin` / `-exp` / `-pla`），除伤害系外数值完全一致。
- *
- * **手感**：比我方制式侦察机更**脆**（三层共 26 vs 38）、单发更轻（4 vs 3/6）、
- * 但**装填快一倍**（2,200ms vs 4,400ms）⇒ 靠**数量与频率**堆输出（"一群致命"）。
- * **射程 = 7,000m**（船长 2026-09-12：「**敌方蜂群攻击范围提高到 7000**」）——落点即族格
- * 「**全 orbit：蜂群远距压制**」：2,800m 的旧值（侦察机档"近身护航"）会让蜂群**够不着**
- * 本族卡自己的期望交距（天底静区封锁 ≈ 3,858m）⇒ 上调后蜂群在常驻交距上即可开火。
- * ⚠ 与 E 族警戒机的 **5,000m**（船长 2026-09-11「无人机射程设为 5000」）**是两族各自的口径**，不互相看齐。
- * **接卡状态**：2026-09-12 已挂上——`天底封锁舰`（T3 巡洋舰）常态出击 **2 架**（**kin ×1 + pla ×1**，无后备）。
- * ⚠ **P-20a 收口（2026-09-12 船长选「丙」＝换系）**：两个机位挂不满三系 ⇒ 机群取「动能 + 等离子」，
- * 爆炸系由母舰炮台承担（卡 `dmgMix` 未动）⇒ **爆炸机型 `-exp` 转为「已备未挂」**（三种机型只有两个机位，
- * 任何"换系"路线都会空出一个）；体检汇总行会如实列出未挂机型，不再静默。 */
 const FOE_DRONE_G_BEE = (
   id: string,
   damageType: "kinetic" | "explosive" | "plasma",
@@ -97,30 +36,25 @@ const FOE_DRONE_G_BEE = (
   id,
   name: "蜂群机",
   family: "G",
-  role: "scout", // 侦察机档：轻、快、贴脸（阵位与演出沿用我方四型骨架）
+  role: "scout",
   defense: {
     shieldHp: enemyParameterOf(foeDronesParameters, "g-bee-shared", "defense_shieldHp"),
     armorHp: enemyParameterOf(foeDronesParameters, "g-bee-shared", "defense_armorHp"),
-    hullHp: enemyParameterOf(foeDronesParameters, "g-bee-shared", "defense_hullHp"), // 三层共 26——"一架便宜"（挨几下就没了）
-    evasion: enemyParameterOf(foeDronesParameters, "g-bee-shared", "defense_evasion"), // 机体飘（侦察机档的最高闪避）
+    hullHp: enemyParameterOf(foeDronesParameters, "g-bee-shared", "defense_hullHp"),
+    evasion: enemyParameterOf(foeDronesParameters, "g-bee-shared", "defense_evasion"),
   },
-  dmg: enemyParameterOf(foeDronesParameters, "g-bee-shared", "dmg"), // 轻单发：靠"一群"堆输出，不靠单发
+  dmg: enemyParameterOf(foeDronesParameters, "g-bee-shared", "dmg"),
   damageType,
   hitRate: enemyParameterOf(foeDronesParameters, "g-bee-shared", "hitRate"),
-  falloff: enemyParameterOf(foeDronesParameters, "g-bee-shared", "falloff"), // 射程带内命中恒定
-  maxRangeM: enemyParameterOf(foeDronesParameters, "g-bee-shared", "maxRangeM"), // 船长 2026-09-12「**敌方蜂群攻击范围提高到 7000**」（原 2,800 = 侦察机档近身护航，会让蜂群够不着本族卡的期望交距）
-  reloadMs: enemyParameterOf(foeDronesParameters, "g-bee-shared", "reloadMs"), // **快一倍**（"一群致命"的节奏）
+  falloff: enemyParameterOf(foeDronesParameters, "g-bee-shared", "falloff"),
+  maxRangeM: enemyParameterOf(foeDronesParameters, "g-bee-shared", "maxRangeM"),
+  reloadMs: enemyParameterOf(foeDronesParameters, "g-bee-shared", "reloadMs"),
 });
 
-/** 三系齐备：动能 / 爆炸 / 等离子（同一机体的三种弹种）
- *
- * **挂载现状（2026-09-12 · P-20a 收口）**：`天底封锁舰` 实挂 **kin ×1 + pla ×1**（船长选「丙」＝换系）
- * ⇒ **`-exp` 已备未挂**（体检汇总行列示）；三型的**数值与美术一字未改**。 */
 export const FOE_DRONE_G_BEE_KIN: FoeDroneDef = FOE_DRONE_G_BEE(
   "foe-drone-g-bee-kin",
   "kinetic",
 );
-/** ⚠ **当前未挂**（P-20a 换系后空出的那一个机位）：爆炸系在本卡由**母舰炮台**承担；机型与资产留档待用。 */
 export const FOE_DRONE_G_BEE_EXP: FoeDroneDef = FOE_DRONE_G_BEE(
   "foe-drone-g-bee-exp",
   "explosive",
@@ -130,134 +64,71 @@ export const FOE_DRONE_G_BEE_PLA: FoeDroneDef = FOE_DRONE_G_BEE(
   "plasma",
 );
 
-/** C 族「**孢群机**」——异形巢群的**活体攻坚机**（2026-09-15 船长：「**孢群机主要是装甲和结构，
- *  攻坚机模板，射程6000，需要专门的无人机SVG(属于虫族)**」）。
- *
- * **族格落点**（C 族 = 异形生物：酸液 / 孢子 / 甲壳）：机体是**孢子荚 + 甲壳节**（见渲染层
- * `droneArt.tsx` 的 C 族条目），族色磷光绿 `#9fe6a4`。
- *
- * **口径（照船长原话逐条落）**：
- * - **攻坚机模板**（`role: 'assault'`）⇒ 三型里**最厚、最笨**：三层血合计 **88**（G 蜂群机 26 / E 警戒机 55）、
- *   **闪避最低 0.08**（我方制式攻坚机 0.10）、**命中不随距离衰减**（`falloff: 1`，攻坚机档口径）；
- * - **主要是装甲和结构** ⇒ 三层血比例 **护盾 15 / 装甲 28 / 结构 45**（护盾仅 17%，装甲 32% + 结构 51%），
- *   与 C 族专属**玩家**机型「巢卫攻坚无人机」（50/70/120 ⇒ 21%/29%/50%）同语言；
- * - **射程 6,000m**（夹在 E 5000 与 G 7000 之间；C 族本体打贴脸 ⇒ 机群替它够到中距）；
- * - 单发 **9**（比 G 4 重、比 E 25 轻——"攻坚"的定位在**耐打**不在**单发**）、装填 **4,400ms**（攻坚机节奏）。
- *
- * ⚠ **血量的量级是读数项**（设计稿 §八 风险①登记）：敌机血量**不随按卡归一的缩放**变 ⇒ 3 架 88 血的
- * 机群是"按卡归一"之外的一块硬骨头，直接影响近防炮能否击落；本轮先按攻坚机模板落 88，
- * 读数显示打不动就下调（60~70 区间）并报船长。
- * ⚠ **抗性**：装甲/结构三系 **0.20**（"甲壳厚"，低于我方制式攻坚机的 0.25）、护盾无抗性 ⇒ 与族格一致。 */
 export const FOE_DRONE_C_SPORE: FoeDroneDef = {
   id: "foe-drone-c-spore",
   name: "孢群机",
   family: "C",
-  role: "assault", // 攻坚机档：厚甲重击、闪避最低
+  role: "assault",
   defense: {
     shieldHp: enemyParameterOf(foeDronesParameters, "foe-drone-c-spore", "defense_shieldHp"),
     armorHp: enemyParameterOf(foeDronesParameters, "foe-drone-c-spore", "defense_armorHp"),
-    hullHp: enemyParameterOf(foeDronesParameters, "foe-drone-c-spore", "defense_hullHp"), // 三层共 **88**（护盾 17% / 装甲 32% / 结构 51%）
-    armorResist: { kinetic: enemyParameterOf(foeDronesParameters, "foe-drone-c-spore", "defense_armorResist_kinetic"), explosive: enemyParameterOf(foeDronesParameters, "foe-drone-c-spore", "defense_armorResist_explosive"), plasma: enemyParameterOf(foeDronesParameters, "foe-drone-c-spore", "defense_armorResist_plasma") }, // 甲壳（攻坚机模板）
+    hullHp: enemyParameterOf(foeDronesParameters, "foe-drone-c-spore", "defense_hullHp"),
+    armorResist: { kinetic: enemyParameterOf(foeDronesParameters, "foe-drone-c-spore", "defense_armorResist_kinetic"), explosive: enemyParameterOf(foeDronesParameters, "foe-drone-c-spore", "defense_armorResist_explosive"), plasma: enemyParameterOf(foeDronesParameters, "foe-drone-c-spore", "defense_armorResist_plasma") },
     hullResist: { kinetic: enemyParameterOf(foeDronesParameters, "foe-drone-c-spore", "defense_hullResist_kinetic"), explosive: enemyParameterOf(foeDronesParameters, "foe-drone-c-spore", "defense_hullResist_explosive"), plasma: enemyParameterOf(foeDronesParameters, "foe-drone-c-spore", "defense_hullResist_plasma") },
-    evasion: enemyParameterOf(foeDronesParameters, "foe-drone-c-spore", "defense_evasion"), // 厚而笨（我方制式攻坚机 0.10）
+    evasion: enemyParameterOf(foeDronesParameters, "foe-drone-c-spore", "defense_evasion"),
   },
-  dmg: enemyParameterOf(foeDronesParameters, "foe-drone-c-spore", "dmg"), // 轻单发重甲壳：靠 3 架与耐打站住，不靠单发
-  damageType: "plasma", // C 族签名（酸液/孢子，家族构成 等离子 8 : 爆炸 2 的主系）
-  hitRate: enemyParameterOf(foeDronesParameters, "foe-drone-c-spore", "hitRate"), // 攻坚机档（我方制式 0.75 / C 族专属玩家机 0.78）
-  falloff: enemyParameterOf(foeDronesParameters, "foe-drone-c-spore", "falloff"), // 攻坚机档：命中不随距离衰减
-  maxRangeM: enemyParameterOf(foeDronesParameters, "foe-drone-c-spore", "maxRangeM"), // 船长 2026-09-15 指定
-  reloadMs: enemyParameterOf(foeDronesParameters, "foe-drone-c-spore", "reloadMs"), // 照我方节奏（攻坚机档）
+  dmg: enemyParameterOf(foeDronesParameters, "foe-drone-c-spore", "dmg"),
+  damageType: "plasma",
+  hitRate: enemyParameterOf(foeDronesParameters, "foe-drone-c-spore", "hitRate"),
+  falloff: enemyParameterOf(foeDronesParameters, "foe-drone-c-spore", "falloff"),
+  maxRangeM: enemyParameterOf(foeDronesParameters, "foe-drone-c-spore", "maxRangeM"),
+  reloadMs: enemyParameterOf(foeDronesParameters, "foe-drone-c-spore", "reloadMs"),
 };
 
-/**
- * **H 族「墨潮重袭机」**（船长 2026-09-24：「**还拥有1架攻坚无人机，该船的特点是虽然只有一个无人机，
- * 但是无人机属性极高**」＋「拥有2架…和墨潮战列巡洋舰一样，无人机属性极高」）。
- *
- * 定位 = **少而极强**（与 G 族"一架便宜、一群致命"正相反）：单架就顶得上一个小队的输出。
- * 数值全按"极高"落在既有四型之上（**2026-09-25 船长 Excel 微调后再上一档**）：
- * - **三层血 600**（护盾 125 / 装甲 300 / 结构 175；我方制式攻坚机 194 / C 族孢群机 88 /
- *   E 警戒机 55 / G 蜂群机 26）＋ **抗性更高**（三层三系 0.25）＋ **闪避 0.12**；
- * - **单发 120**（我方制式攻坚机 12 / E 警戒机 25）⇒ 一架当 10 架用，兑现船长的"属性极高"；
- * - **命中 1.3 ＋ 不随距离衰减**、**射程 12,000m**（**2026-09-25 船长令「机群交战距离是12000」**：
- *   原 7,000 落在搭载舰的期望交距之内——战巡 9,500 / 母舰 10,350 ⇒ 机群**永不发火**、界面也永不画机体
- *   （引擎的机群射程门 ＋ "只有出海那一轮才画机体"）；现取 12,000 = 与 H 族导弹线同一档）、装填 **3,600ms**
- *   （比制式 4,400 快 ⇒ 少架数下仍持续输出）；
- * - **伤害系 = 爆炸**（与 H 族"导弹远程攻击"的船体武器同源：鱼雷 / 导弹 / 重袭机一条线）。
- *
- * ⚠ 它是**敌方机群**：我方只有带防空属性的武器（近防炮）能打它 ⇒ 单架 180 血 + 0.12 闪避会让
- * "打不打得掉"成为读数项；若实测偏硬，按 `content:check` 的机群契约调三层血或闪避（改一处即全族生效）。
- */
 export const FOE_DRONE_H_HEAVY: FoeDroneDef = {
   id: 'foe-drone-h-heavy',
   name: '墨潮重袭机',
   family: 'H',
-  role: 'assault', // 攻坚机档：厚甲重击、闪避最低（本机型在"最低"档里仍给了 0.12）
+  role: 'assault',
   defense: {
-    /**
-     * **船长 2026-09-25 Excel 微调批**（"少而极强"再上一档）：
-     * 三层血 **180 → 600**（护盾 45→125 · 装甲 65→300 · 结构 70→175）。
-     */
     shieldHp: enemyParameterOf(foeDronesParameters, "foe-drone-h-heavy", "defense_shieldHp"),
     armorHp: enemyParameterOf(foeDronesParameters, "foe-drone-h-heavy", "defense_armorHp"),
-    hullHp: enemyParameterOf(foeDronesParameters, "foe-drone-h-heavy", "defense_hullHp"), // 三层共 **600**
+    hullHp: enemyParameterOf(foeDronesParameters, "foe-drone-h-heavy", "defense_hullHp"),
     shieldResist: { kinetic: enemyParameterOf(foeDronesParameters, "foe-drone-h-heavy", "defense_shieldResist_kinetic"), explosive: enemyParameterOf(foeDronesParameters, "foe-drone-h-heavy", "defense_shieldResist_explosive"), plasma: enemyParameterOf(foeDronesParameters, "foe-drone-h-heavy", "defense_shieldResist_plasma") },
     armorResist: { kinetic: enemyParameterOf(foeDronesParameters, "foe-drone-h-heavy", "defense_armorResist_kinetic"), explosive: enemyParameterOf(foeDronesParameters, "foe-drone-h-heavy", "defense_armorResist_explosive"), plasma: enemyParameterOf(foeDronesParameters, "foe-drone-h-heavy", "defense_armorResist_plasma") },
     hullResist: { kinetic: enemyParameterOf(foeDronesParameters, "foe-drone-h-heavy", "defense_hullResist_kinetic"), explosive: enemyParameterOf(foeDronesParameters, "foe-drone-h-heavy", "defense_hullResist_explosive"), plasma: enemyParameterOf(foeDronesParameters, "foe-drone-h-heavy", "defense_hullResist_plasma") },
     evasion: enemyParameterOf(foeDronesParameters, "foe-drone-h-heavy", "defense_evasion"),
   },
-  dmg: enemyParameterOf(foeDronesParameters, "foe-drone-h-heavy", "dmg"), // 单发 **60 → 120**（船长同日 Excel 微调；我方制式攻坚机 12 的 10 倍）
-  damageType: 'explosive', // 与 H 族导弹线同源
-  hitRate: enemyParameterOf(foeDronesParameters, "foe-drone-h-heavy", "hitRate"), // 命中 **0.85 → 1.3**（船长 2026-09-25 Excel 微调；>1 按 hitMax 封顶 ⇒ 贴脸必中）
-  falloff: enemyParameterOf(foeDronesParameters, "foe-drone-h-heavy", "falloff"), // 攻坚机档：命中不随距离衰减
-  /**
-   * ⚠ **近盲带口径（不必在本表写字段）**：敌方机群的武器条目由引擎统一建为 `minRangeM: 1`
-   * （见 `combat.createFoeSpecsFromShips` 的 `droneWeapons`）+ **无 `blindDmgMul` ⇒ 走引擎缺省 0.3**
-   * ⇒ 贴到 1 m 也打，但只打三成。**本机型与全游其它机群（E 警戒机 / G 蜂群机 / C 孢群机）同口径**，
-   * 故 2026-09-24 船长选「与 E 族口径统一」时**机群侧零改动**（原报告把它算进"无视近盲"是读错了）。
-   */
-  maxRangeM: enemyParameterOf(foeDronesParameters, "foe-drone-h-heavy", "maxRangeM"), // **机群交战距离 12,000m**（**船长 2026-09-25 令**：原 7,000 与搭载舰的期望交距脱节——
-  // 战巡 9,500 / 母舰 10,350 都在 7,000 之外 ⇒ 机群**永不发火**、界面也永不画机体（`advanceBattleFor` 的
-  // 机群射程门 + "只有出海那一轮才画机体"）。取 12,000 = 与 H 族导弹线（鱼雷舰/母舰 12km）同一档。）
-  reloadMs: enemyParameterOf(foeDronesParameters, "foe-drone-h-heavy", "reloadMs"), // 少架数下仍能持续输出
+  dmg: enemyParameterOf(foeDronesParameters, "foe-drone-h-heavy", "dmg"),
+  damageType: 'explosive',
+  hitRate: enemyParameterOf(foeDronesParameters, "foe-drone-h-heavy", "hitRate"),
+  falloff: enemyParameterOf(foeDronesParameters, "foe-drone-h-heavy", "falloff"),
+  maxRangeM: enemyParameterOf(foeDronesParameters, "foe-drone-h-heavy", "maxRangeM"),
+  reloadMs: enemyParameterOf(foeDronesParameters, "foe-drone-h-heavy", "reloadMs"),
 }
 
-/**
- * **R 族「折光机」**（**2026-10-01 船长令**建族「**光环**」；参考远行星号 Remnants 的
- * 「全无人 AI 舰队」设定）—— 光环**每艘舰都自带机巢**，故本机型是这族的招牌。
- *
- * 定位 = **多而灵**，与 H 族「墨潮重袭机」的**少而极强**正好构成一组对照：
- * - **三层血 120**（护盾 60 / 装甲 30 / 结构 30）—— 对照：我方制式攻坚机 194 · C 族孢群机 88 ·
- *   E 警戒机 55 · G 蜂群机 26 · H 族重袭机 600 ⇒ 落在"轻"这一档；
- * - **闪避 0.35** —— 全游敌机最高（H 族重袭机 0.12 是最低）⇒ 靠"打不中"活，而不是靠血厚；
- * - **单发 30** —— H 族是 120 ⇒ 单架只有它四分之一，靠**架数**补（光环 T1 起就带机巢、旗舰带 4 架）；
- * - **伤害系 = 等离子**，与 R 族船体武器同源（光环是**能量/护盾特化**，对照 H 族的导弹=爆炸线）。
- *
- * ⚠ 它是**敌方机群**：我方只有带防空属性的武器（近防炮）能打它 ⇒ 0.35 闪避会让"打不打得掉"
- * 成为读数项；若实测偏硬，按 `content:check` 的机群契约调三层血或闪避（改一处即全族生效）。
- */
 export const FOE_DRONE_R_PRISM: FoeDroneDef = {
   id: 'foe-drone-r-prism',
   name: '折光机',
   family: 'R',
-  role: 'combat', // 战斗机档（数量型；H 族那架走 assault 档「厚甲重击」，两族正相反）
+  role: 'combat',
   defense: {
     shieldHp: enemyParameterOf(foeDronesParameters, "foe-drone-r-prism", "defense_shieldHp"),
     armorHp: enemyParameterOf(foeDronesParameters, "foe-drone-r-prism", "defense_armorHp"),
-    hullHp: enemyParameterOf(foeDronesParameters, "foe-drone-r-prism", "defense_hullHp"), // 三层共 **120**
+    hullHp: enemyParameterOf(foeDronesParameters, "foe-drone-r-prism", "defense_hullHp"),
     shieldResist: { kinetic: enemyParameterOf(foeDronesParameters, "foe-drone-r-prism", "defense_shieldResist_kinetic"), explosive: enemyParameterOf(foeDronesParameters, "foe-drone-r-prism", "defense_shieldResist_explosive"), plasma: enemyParameterOf(foeDronesParameters, "foe-drone-r-prism", "defense_shieldResist_plasma") },
     armorResist: { kinetic: enemyParameterOf(foeDronesParameters, "foe-drone-r-prism", "defense_armorResist_kinetic"), explosive: enemyParameterOf(foeDronesParameters, "foe-drone-r-prism", "defense_armorResist_explosive"), plasma: enemyParameterOf(foeDronesParameters, "foe-drone-r-prism", "defense_armorResist_plasma") },
     hullResist: { kinetic: enemyParameterOf(foeDronesParameters, "foe-drone-r-prism", "defense_hullResist_kinetic"), explosive: enemyParameterOf(foeDronesParameters, "foe-drone-r-prism", "defense_hullResist_explosive"), plasma: enemyParameterOf(foeDronesParameters, "foe-drone-r-prism", "defense_hullResist_plasma") },
-    evasion: enemyParameterOf(foeDronesParameters, "foe-drone-r-prism", "defense_evasion"), // 全游敌机最高（H 族重袭机 0.12 最低）—— 靠闪避活，不靠血厚
+    evasion: enemyParameterOf(foeDronesParameters, "foe-drone-r-prism", "defense_evasion"),
   },
   dmg: enemyParameterOf(foeDronesParameters, "foe-drone-r-prism", "dmg"),
-  damageType: 'plasma', // 与 R 族船体武器同源
+  damageType: 'plasma',
   hitRate: enemyParameterOf(foeDronesParameters, "foe-drone-r-prism", "hitRate"),
-  falloff: enemyParameterOf(foeDronesParameters, "foe-drone-r-prism", "falloff"), // 战斗机档：命中不随距离衰减（与 H 族重袭机同口径）
-  maxRangeM: enemyParameterOf(foeDronesParameters, "foe-drone-r-prism", "maxRangeM"), // 与全游机群同口径（船长 2026-09-25 令「机群交战距离是 12000」）
-  reloadMs: enemyParameterOf(foeDronesParameters, "foe-drone-r-prism", "reloadMs"), // 我方制式节奏（数量型不需要 H 族那 3,600ms 的高频）
+  falloff: enemyParameterOf(foeDronesParameters, "foe-drone-r-prism", "falloff"),
+  maxRangeM: enemyParameterOf(foeDronesParameters, "foe-drone-r-prism", "maxRangeM"),
+  reloadMs: enemyParameterOf(foeDronesParameters, "foe-drone-r-prism", "reloadMs"),
 }
 
-/** 敌机机型表（按 id 索引；`content:check` 校验舰级引用的机型必须在此） */
 export const FOE_DRONES: readonly FoeDroneDef[] = [
   FOE_DRONE_C_JAWCLAW,
   FOE_DRONE_E_ALERT,
@@ -265,6 +136,6 @@ export const FOE_DRONES: readonly FoeDroneDef[] = [
   FOE_DRONE_G_BEE_EXP,
   FOE_DRONE_G_BEE_PLA,
   FOE_DRONE_C_SPORE,
-  FOE_DRONE_H_HEAVY, // 2026-09-24 船长：H 族「墨潮重袭机」（单架属性极高；战列巡洋舰 ×1 / 入侵母舰 ×2）
-  FOE_DRONE_R_PRISM, // 2026-10-01 船长：R 族「光环」折光机（多而灵；五档壳体逐档带机巢，旗舰 ×4）
+  FOE_DRONE_H_HEAVY,
+  FOE_DRONE_R_PRISM,
 ];

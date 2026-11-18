@@ -222,3 +222,117 @@
   line-height: 1.7;
   color: rgb(var(--wui-text-dim));
 }
+
+/* ── 三、反馈弹窗 ──
+   描述框 + 截图缩略图；弹层族同许可弹窗（z-index 130、渲染在设置弹窗之外）。 */
+.app-feedback-mask {
+  z-index: 130;
+}
+
+.app-modal.app-feedback-modal {
+  width: min(560px, calc(100vw - 40px));
+  max-width: calc(100vw - 40px);
+  height: min(560px, calc(100vh - 80px));
+  display: flex;
+  flex-direction: column;
+}
+
+.app-feedback-modal .app-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wui-sp-8);
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.app-feedback-hint {
+  color: rgb(var(--wui-text-dim));
+  font-size: var(--wui-fs-2xsd);
+  line-height: 1.7;
+}
+
+.app-feedback-textarea {
+  flex: 1 1 auto;
+  min-height: 140px;
+  padding: var(--wui-sp-10) var(--wui-sp-12);
+  border: 1px solid rgb(var(--wui-border));
+  border-radius: 4px;
+  background: rgb(var(--wui-bg-field) / 0.55);
+  color: rgb(var(--wui-text));
+  font: inherit;
+  font-size: var(--wui-fs-s);
+  line-height: 1.7;
+  resize: none;
+}
+
+.app-feedback-textarea:focus-visible {
+  outline: 1px solid rgb(var(--wui-accent) / 0.55);
+  outline-offset: 2px;
+}
+
+.app-feedback-shots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--wui-sp-8);
+}
+
+.app-feedback-shot {
+  position: relative;
+  width: 96px;
+  height: 64px;
+}
+
+.app-feedback-shot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border: 1px solid rgb(var(--wui-border));
+  border-radius: 4px;
+}
+
+.app-feedback-shot-del {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid rgb(var(--wui-border));
+  border-radius: 50%;
+  background: rgb(var(--wui-bg-field));
+  color: rgb(var(--wui-text));
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.app-feedback-shot-del:hover:not(:disabled) {
+  color: rgb(var(--wui-danger));
+}
+
+.app-feedback-error {
+  color: rgb(var(--wui-danger));
+  font-size: var(--wui-fs-2xsd);
+  line-height: 1.6;
+}
+
+.app-feedback-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--wui-sp-8);
+}
+
+.app-feedback-done {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wui-sp-8);
+  padding: var(--wui-sp-12) 0;
+}
+
+.app-feedback-done-title {
+  font-size: var(--wui-fs-s);
+  font-weight: 600;
+  color: rgb(var(--wui-text));
+}

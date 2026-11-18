@@ -1,8 +1,3 @@
-/**
- * 远征途中事件表（M5）：航行途中随机遭遇的文字叙事。
- * 抽取规则：出发时按 travelEventChance 判定遇到与否，再按 weight 抽一种；
- * 效果三类：纯趣闻（none）/ 捞到 信用点 / 捞到矿物。
- */
 
 import type { TravelEventDef } from '@whale/core'
 
@@ -65,7 +60,6 @@ export const TRAVEL_EVENTS: readonly TravelEventDef[] = [
   },
 ]
 
-/** 构建途中事件数组 */
 export function buildTravelEvents(): readonly TravelEventDef[] {
   return TRAVEL_EVENTS
 }

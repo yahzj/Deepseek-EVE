@@ -1,4 +1,3 @@
-/** 功能域职责拆分，保持原计算与顺序。 */
 import type { GameEngine } from '../../game/engine'
 import { type ToastFn, MONEY_GLYPH } from '../../pages/common'
 import { standingOf, DSI_FACTION_ID, type SideTask, factionAnomalyOf, bountyDamageForecast, bountyWinPercentGuarded, factionBaseRewardIsk, isExplored, bountyCooldownRemainingMs, calcPower, factionRareDropChanceOf, FACTION_RARE_DROP_COUNT, lairAnomalyOf, LAIR_RARE_WRECK_GAIN, ceilFinalQuantity, lairBaseRewardIsk, bountyRewardFactor, isLairCandidate, lairLevelOf, bountyTaskStandingGain } from '@whale/core'
@@ -12,23 +11,12 @@ import { FoeDamageMix, ProfileChip } from '../../ui/shipInfo'
 import { Glyph, ICO_TONES } from '../../ui/Glyphs'
 import { RangeEwPreview } from '../combat/RangeEwPanel'
 
-/**
- * 赏金任务区（2026-09-10 船长定）：任务中心第四个子页——临时战斗任务，目标 = 「敌人窝点」。
- * - 每天本地0点刷新，中安2席、低安3席，候选不足少发；
- * - 窝点 = 该星系主题悬赏按档位派生，地图级别封顶，候选允许时三档各保底一条；
- * - 必须亲自出击（AI 不能代劳）；打赢 → 窝点奖金 + 赏金任务酬金入账，并在该星系留下
- *   稀有残骸 ×档位件数（打捞必得，回站精炼炉「残骸回收」当高级箱开）；
- * - 卡片结构与资源/快递卡同族（app-station-card 家族），只多一行窝点情报与档位徽标。
- */
 export function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
   const state = engine.state
   const view = engine.sideTasksView()
   const tasks = view.bounty
   const standing = standingOf(state, DSI_FACTION_ID)
-  // T4 延后项：采矿中可「转战」（卡片内联两步确认，与常驻悬赏卡同口径）
   const [goAsk, setGoAsk] = useState<number | null>(null)
-  // —— 舰影列自适应（2026-09-13 船长：赏金任务窝点卡与派系活跃置顶卡也加敌族舰影）——
-  // 两处共用同一个测量点：本区根容器 .app-sidetasks（宽度 = 面板内容宽，已扣面板体滚动条）。
   const areaRef = useRef<HTMLDivElement | null>(null)
   const showFoeArt = useFoeArtFit(areaRef)
 
@@ -45,10 +33,8 @@ export function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToa
     else onToast(tr("ui.Expedition.285"))
   }
 
-  // 当前剩余席位按实际板统计；候选与分区配额允许时，初始板三档各保底一条。
   const tierCount = (lv: 1 | 2 | 3): number => tasks.filter((t) => (t.lairTier ?? 1) === lv).length
   const tierSummary = tr("ui.Expedition.232", { p1: tasks.length, p2: lairTierText(1), p3: tierCount(1), p4: lairTierText(2), p5: tierCount(2), p6: lairTierText(3), p7: tierCount(3) })
-  // 敌对派系活跃（2026-09-10 船长定：置顶那一条）——目标 = 当日选中星系的**常驻悬赏**（不是窝点）
   const faction = view.faction
   const factionCard = faction?.anomalyId ? engine.ctx.anomalies.get(faction.anomalyId) : undefined
   const factionGalaxy = faction?.galaxyId ? engine.ctx.galaxies.get(faction.galaxyId) : undefined

@@ -25,7 +25,6 @@ export interface BattleWeaponCycleView {
   railEnergyPct?: number
 }
 
-/** 同舰同型共享冷却的武器合并展示；射程直接读当前规格，不改变攻击节拍。 */
 export function battleWeaponCyclesOf(battle: BattleState,
   units: ReadonlyArray<{ spec: UnitSpec; shipId: string; name: string }>, ctx?: SimContext): BattleWeaponCycleView[] {
   const out: BattleWeaponCycleView[] = []

@@ -55,7 +55,6 @@ function instanceOf(ctx: SimContext, hit: NonNullable<ReturnType<typeof currentE
   }
 }
 
-/** 入场/到达时冻结实例库存；预览本身不写状态。 */
 export function wormholeFreezeEvents(state: GameState, ctx: SimContext): void {
   const run = state.wormhole.run
   if (run?.expeditionRules !== 2 || !run.grid) return
@@ -89,7 +88,6 @@ export function wormholeEventPreview(state: GameState, ctx: SimContext, action: 
     if (event.verified) plan.identity = event.identity
     if (action === 'respond') {
       plan.battle = event.verified ? event.identity === 'ambush' ? 'certain' : 'none' : 'possible'
-      // 未核验只展示风险上界，不把冻结的身份当免费情报。
       plan.alertDelta = event.verified && event.identity === 'genuine' ? 0 : 2
     }
   }

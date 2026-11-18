@@ -15,7 +15,6 @@ export function marketGoodDisplayName(ctx: SimContext, key: string): string {
   return id ? tr(id) : goodName(ctx, key)
 }
 
-/** 蓝图悬停沿用市场产物、材料与工期行；两个交易入口共用。 */
 export function blueprintHoverLines(ctx: SimContext, bp: BlueprintDef | ShipBlueprintDef, hidePrices = false): { title: string; lines: InfoLine[]; note: string } {
   const def = bp as BlueprintDef
   const item = 'itemId' in bp ? ctx.items.get(def.itemId!) : undefined
@@ -37,7 +36,6 @@ export function blueprintHoverLines(ctx: SimContext, bp: BlueprintDef | ShipBlue
   }
 }
 
-/** 卡面、悬停与主动详情共用仓库参数；参考价格只在黑市场景关闭。 */
 export function marketGoodInfo(ctx: SimContext, good: MarketGoodDef, hidePrices = false): {
   title: string; lines: InfoLine[]; note: string; glyph: string; category: string; tone: string; crest?: string
 } {
@@ -75,7 +73,6 @@ export function marketGoodInfo(ctx: SimContext, good: MarketGoodDef, hidePrices 
 export function MarketGoodHover({ ctx, good, children, as = 'div', className, hidePrices = false }: {
   ctx: SimContext; good: MarketGoodDef; children: ReactNode; as?: 'div' | 'li'; className?: string; hidePrices?: boolean
 }) {
-  // 普通市场保留舰船血条悬停，黑市的主动详情与悬停统一为同一份参数表。
   const ship = good.kind === 'ship' && !hidePrices ? ctx.ships.get(good.refId) : undefined
   if (ship) return <ShipHover as={as} className={className} ship={ship} note={ship.description}>{children}</ShipHover>
   return <InfoHover as={as} className={className} {...marketGoodInfo(ctx, good, hidePrices)}>{children}</InfoHover>

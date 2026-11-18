@@ -1,4 +1,3 @@
-/** 旧路径兼容出口；实现按职责归战斗域。 */
 export { foeStrengthOf, foeThreatOfAnomaly, type FoeSpecOpts, createFoeSpecs, activeFoeSpecsOf, flagshipBattleLedger } from './combat/foes/catalog'
 export { FOE_REPAIR_THREAT_REF } from './combat/foes/ships'
 export { resolveFoeRevive, foesWithSupport, resolveFoeSummon, resolveReinforcements } from './combat/foes/reinforcements'

@@ -1,14 +1,3 @@
-/**
- * 舰船战斗图形·挂点元数据（三号 2026-09-10 船长确认方案A：尾焰数量/位置与引擎喷口对齐，
- * 开火点挂在真实炮口；转录自 shipArtData.tsx / shipArt.tsx 各舰 240×110 本地图形几何）。
- *
- * 坐标口径：240×110 画布本地坐标（舰艏朝右，不随 flip 翻转——翻转由渲染层整体镜像）。
- * - engines：引擎喷口"口沿"（舰尾每枚喷口开口左缘中点）；尾焰从该点向左喷出；
- *   无引擎数据（异形有机舰等）→ 不画尾焰。
- * - muzzles：原生炮口端（每门炮管口端；导弹箱取发射口前端中点）；多炮口 = 开火轮换；
- *   无原生炮的船（采矿/货运/重装炮塔朝上类）→ 空表，渲染层回退舰艏前缘锚点。
- * 配套验收文档：docs/design/ship-battle-art/mounts-20260910.md（含逐舰坐标依据与推断说明）。
- */
 export interface Pt2 {
   x: number
   y: number
@@ -18,96 +7,72 @@ export interface ShipMounts {
   muzzles: Pt2[]
 }
 
-/** 玩家舰 25 艘挂点（key 与 SHIP_ART 一致） */
 export const SHIP_MOUNTS: Record<string, ShipMounts> = {
-  // ── 掠食者武装族 ──
-  // 马鲛级护卫舰（箭头机身+后掠双翼）：双喷口 M46.. 两枚；中置脊炮 M159 43 L190 44 + 机头炮楔形(206..222)
   'sh-shrike': {
     engines: [{ x: 46, y: 50 }, { x: 46, y: 64 }],
     muzzles: [{ x: 190, y: 44 }, { x: 222, y: 58 }],
   },
-  // 虎鲨级武装护卫舰（宽身+虎斑斜纹）：双喷口 M48..；脊炮 M163 39 L196 41 + 中后炮 M123 39 L144 40
   'sh-tigershark': {
     engines: [{ x: 48, y: 50 }, { x: 48, y: 66 }],
     muzzles: [{ x: 196, y: 41 }, { x: 144, y: 40 }],
   },
-  // 大白鲨级炮舰（流线长身+背鳍）：双喷口 M52..；双联主炮 M210 45 L242 47 / M210 51 L242 53 + 后副炮两门
   'sh-whiteshark': {
     engines: [{ x: 52, y: 51.5 }, { x: 52, y: 65.5 }],
     muzzles: [{ x: 242, y: 47 }, { x: 242, y: 53 }, { x: 196, y: 44 }, { x: 150, y: 44 }],
   },
-  // 梭鱼级无人机护卫（机库格口+放飞口）：双喷口 M46..；无原生炮 → 回退舰艏前缘
   'sh-swarm': {
     engines: [{ x: 46, y: 49.5 }, { x: 46, y: 64.5 }],
     muzzles: [],
   },
-  // 哨戒级（大平甲板哨戒舰）：四喷口 M48..×2 + M60..×2；舰体无前向炮管 → 回退
   'sh-sentinel': {
     engines: [{ x: 48, y: 50.5 }, { x: 48, y: 62.5 }, { x: 60, y: 50.5 }, { x: 60, y: 62.5 }],
     muzzles: [],
   },
-  // 长尾鲨级导弹巡洋舰（背斜导弹箱组）：单喷口 M46..；导弹箱发射口前端(大箱 184~186 / 中箱 152~154 / 前箱 126~128)
   'sh-thresher': {
     engines: [{ x: 46, y: 57 }],
     muzzles: [{ x: 185, y: 30 }, { x: 153, y: 34 }, { x: 127, y: 36 }],
   },
-  // 电鳐级激光巡洋舰（扁宽鳐翼+激光束列）：双喷口 M60..；舰艏激光束列 4 发射头(196→222/226 四线)
   'sh-electricray': {
     engines: [{ x: 60, y: 51.5 }, { x: 60, y: 65.5 }],
     muzzles: [{ x: 222, y: 46 }, { x: 222, y: 52 }, { x: 222, y: 58 }, { x: 222, y: 64 }],
   },
-  // 牛鲨级突击巡洋舰（撞角装甲首+前置大口径炮）：双喷口 M52..；主炮 M195 45 L226 46
   'sh-bullshark': {
     engines: [{ x: 52, y: 52 }, { x: 52, y: 68 }],
     muzzles: [{ x: 226, y: 46 }],
   },
-  // 鲣鱼级护卫舰（机头炮）：单喷口块 M42 50 h10 v10 栅条；机头炮楔形(200..224,57.5~63.5)
   'sh-falconet': {
     engines: [{ x: 42, y: 55 }],
     muzzles: [{ x: 224, y: 60.5 }],
   },
-  // 灰鲭鲨级驱逐舰（低趴长身+脊炮×2+上下双引擎；2026-09-09 方向修正定稿）：喷口突唇 M38.. 两枚；
-  // 前脊炮 M150 42 L194 42 + 后脊炮 M102 43 L122 44
   'sh-mako': {
     engines: [{ x: 38, y: 50 }, { x: 38, y: 64 }],
     muzzles: [{ x: 194, y: 42 }, { x: 122, y: 43.5 }],
   },
-  // 锤头鲨级炮击巡洋舰（锤头装甲首+重炮）：双大喷口 M54..h26 + M62..h26；主炮 M210 51 L246 52 +
-  // 左右副炮 M162 47 L196 48 / M162 63 L196 64
   'sh-hammerhead': {
     engines: [{ x: 54, y: 55 }, { x: 62, y: 55 }],
     muzzles: [{ x: 246, y: 52 }, { x: 196, y: 48 }, { x: 196, y: 64 }],
   },
-  // ── 甲壳重装族（龟形舰，炮塔短管朝上，无前向炮口 → 回退舰艏前缘） ──
-  // 陆龟级（拱壳重装）：单喷口 M60 44 h8 v16
   'sh-tortoise': { engines: [{ x: 60, y: 52 }], muzzles: [] },
-  // 玳瑁级（双拱重装）：双喷口 M56 46/63
   'sh-hawksbill': {
     engines: [{ x: 56, y: 53 }, { x: 56, y: 70 }],
     muzzles: [],
   },
-  // 玄武级（三层拱甲旗舰）：四喷口 M54..×2 + M66..×2
   'sh-xuanwu': {
     engines: [{ x: 54, y: 50 }, { x: 54, y: 66 }, { x: 66, y: 50 }, { x: 66, y: 66 }],
     muzzles: [],
   },
-  // ── 货运族（无原生炮 → 回退舰艏前缘） ──
-  // 飞鱼级（流线快船）：双喷口 M60 44/60
   'sh-flyingfish': {
     engines: [{ x: 60, y: 50 }, { x: 60, y: 66 }],
     muzzles: [],
   },
-  // 旗鱼级（高背鳍快船）：双喷口 M56 44/61
   'sh-sailfish': {
     engines: [{ x: 56, y: 50.5 }, { x: 56, y: 67.5 }],
     muzzles: [],
   },
-  // 剑鱼级（长喙快船）：双喷口 M52 44/61
   'sh-swordfish': {
     engines: [{ x: 52, y: 50.5 }, { x: 52, y: 67.5 }],
     muzzles: [],
   },
-  // 蝠鲼级（扁宽翼舱）：双喷口 M60 46/61
   'sh-bowhead': {
     engines: [{ x: 60, y: 51.5 }, { x: 60, y: 66.5 }],
     muzzles: [],
@@ -116,38 +81,25 @@ export const SHIP_MOUNTS: Record<string, ShipMounts> = {
     engines: [{ x: 49, y: 50.5 }, { x: 49, y: 63.5 }],
     muzzles: [{ x: 204, y: 58 }],
   },
-  // 皇带鱼级（超长多舱货舰）：双喷口 M58 46/62
   'sh-colossal': {
     engines: [{ x: 58, y: 52 }, { x: 58, y: 68 }],
     muzzles: [],
   },
-  // ── 鲸盟采矿族（钻头在舰艏，无炮 → 回退） ──
-  // 磷虾级（单钻）：单喷口 M64 46 h8 v13
   sandcat: { engines: [{ x: 64, y: 52.5 }], muzzles: [] },
-  // 沙鳗级（双钻）：单喷口 M60 44 h9 v16
   burrower: { engines: [{ x: 60, y: 52 }], muzzles: [] },
-  // 鲸吞级（鲸口收集器）：双喷口 M62 44/62
   whale: { engines: [{ x: 62, y: 51 }, { x: 62, y: 69 }], muzzles: [] },
-  // 独角鲸级（三钻横梁）：双喷口 M64 44/61
   pioneer: {
     engines: [{ x: 64, y: 50.5 }, { x: 64, y: 67.5 }],
     muzzles: [],
   },
-  // 座头鲸级（驼背矿舰）：双喷口 M62 44/61
   'sh-humpback': {
     engines: [{ x: 62, y: 50.5 }, { x: 62, y: 67.5 }],
     muzzles: [],
   },
-  // 鲸王级（巨体矿舰）：四喷口 M58..×2 + M70..×2
   'whale-king': {
     engines: [{ x: 58, y: 50 }, { x: 58, y: 66 }, { x: 70, y: 50 }, { x: 70, y: 66 }],
     muzzles: [],
   },
-  /* ══════════ 2026-09-16 补图批（18 艘；坐标逐条取自本批新画的图形几何）══════════
-     ⚠ 与 `shipArtWh.tsx` / `shipArt.tsx` 的形**一一对应**：改形必须同步改这里，
-     否则尾焰会从旧喷口喷出、开火锚指到空处；`content:check`「舰船图形契约」逐艘核两表齐备。 */
-  // ── A 族 · 掠袭（海盗血统）──
-  // 掠袭电子舰：单喷口 M52..；两门斜排炮口端 (121,54) / (143,65)
   'sh-wh-a-frigate': {
     engines: [{ x: 52, y: 55 }],
     muzzles: [
@@ -155,7 +107,6 @@ export const SHIP_MOUNTS: Record<string, ShipMounts> = {
       { x: 144, y: 65 },
     ],
   },
-  // 掠袭炮舰：双喷口 M48..（上下）；三联长管动能炮口端 M146 47 / 59 / 67
   'sh-wh-a-destroyer': {
     engines: [{ x: 48, y: 49.5 }, { x: 48, y: 63.5 }],
     muzzles: [
@@ -164,7 +115,6 @@ export const SHIP_MOUNTS: Record<string, ShipMounts> = {
       { x: 147, y: 67 },
     ],
   },
-  // 掠袭重型突击巡洋舰：双喷口 M42..；三联斜排炮口端 M146 43 / 57 / 67
   'sh-wh-a-cruiser': {
     engines: [{ x: 42, y: 49 }, { x: 42, y: 65 }],
     muzzles: [
@@ -173,17 +123,10 @@ export const SHIP_MOUNTS: Record<string, ShipMounts> = {
       { x: 147, y: 67 },
     ],
   },
-  // ── C 族 · 巢群（有机体：无喷口 ⇒ 不画尾焰；火力自前端口器出）──
-  // 幼虫截击舰：口器端 M216 55
   'sh-wh-c-frigate': { engines: [], muzzles: [{ x: 216, y: 55 }] },
-  // 甲壳截击舰：口器端 M234 55
   'sh-wh-c-destroyer': { engines: [], muzzles: [{ x: 234, y: 55 }] },
-  // 巢群重型突击巡洋舰：口器端 M236 58
   'sh-wh-c-cruiser': { engines: [], muzzles: [{ x: 236, y: 58 }] },
-  // ── D 族 · 陵墓 ──
-  // 哨戒电子舰：单喷口 M48..；无原生炮管（哨戒/电子件）→ 回退舰艏
   'sh-wh-d-frigate': { engines: [{ x: 48, y: 57 }], muzzles: [] },
-  // 陵卫指挥舰：单喷口 M42..；侧舷三炮口端 M107 50 / 60 / 70
   'sh-wh-d-destroyer': {
     engines: [{ x: 42, y: 56 }],
     muzzles: [
@@ -192,7 +135,6 @@ export const SHIP_MOUNTS: Record<string, ShipMounts> = {
       { x: 107, y: 70 },
     ],
   },
-  // 陵寝巡洋舰：双喷口 M38..；主炮塔口 M176 47 + 两座副炮塔 M186 60 / 72
   'sh-wh-d-cruiser': {
     engines: [{ x: 38, y: 51 }, { x: 38, y: 67 }],
     muzzles: [
@@ -201,8 +143,6 @@ export const SHIP_MOUNTS: Record<string, ShipMounts> = {
       { x: 186, y: 72 },
     ],
   },
-  // ── E 族 · 巨构 ──
-  // 构件鱼雷舰：单喷口 M60..；双鱼雷管口端 M170 50 / 61
   'sh-wh-e-frigate': {
     engines: [{ x: 60, y: 59 }],
     muzzles: [
@@ -210,9 +150,7 @@ export const SHIP_MOUNTS: Record<string, ShipMounts> = {
       { x: 170, y: 61 },
     ],
   },
-  // 机库无人机作战舰：单喷口 M48..；放飞口端 M186 58（机群主武器，本舰火力偏辅助）
   'sh-wh-e-destroyer': { engines: [{ x: 48, y: 60 }], muzzles: [{ x: 186, y: 58 }] },
-  // 巨构无人机作战舰：单喷口 M40..；双层放飞口端 M176 49 / 68
   'sh-wh-e-carrier': {
     engines: [{ x: 40, y: 60 }],
     muzzles: [
@@ -220,12 +158,8 @@ export const SHIP_MOUNTS: Record<string, ShipMounts> = {
       { x: 176, y: 68 },
     ],
   },
-  // ── G 族 · 亡军 ──
-  // 幽影侦察舰：单喷口 M52..；探针炮口端 M190 55
   'sh-wh-g-frigate': { engines: [{ x: 52, y: 57 }], muzzles: [{ x: 190, y: 55 }] },
-  // 亡军后勤舰：单喷口 M44..；无原生炮（吊臂/补给）→ 回退舰艏
   'sh-wh-g-destroyer': { engines: [{ x: 44, y: 58 }], muzzles: [] },
-  // 亡军鱼雷舰：双喷口 M40..；三管鱼雷口端 M198 45 / 57 / 65
   'sh-wh-g-cruiser': {
     engines: [{ x: 40, y: 51 }, { x: 40, y: 67 }],
     muzzles: [
@@ -234,8 +168,6 @@ export const SHIP_MOUNTS: Record<string, ShipMounts> = {
       { x: 198, y: 65 },
     ],
   },
-  // ── 2026-09-12 批（同批补图）──
-  // 鹦鹉螺级测绘巡洋舰：双喷口 M40..；舷侧双炮口端 M85 54 / 64
   'sh-nautilus': {
     engines: [{ x: 40, y: 51 }, { x: 40, y: 67 }],
     muzzles: [
@@ -243,22 +175,18 @@ export const SHIP_MOUNTS: Record<string, ShipMounts> = {
       { x: 85, y: 64 },
     ],
   },
-  // 巨齿鲨级战列舰：双喷口 M34..；主炮口端 M208 43
   'sh-megalodon': {
     engines: [{ x: 34, y: 49 }, { x: 34, y: 67 }],
     muzzles: [{ x: 208, y: 43 }],
   },
-  // 虎鲸级指挥舰（2026-09-26 新增）：双喷口 M30..（梭形尾）；主炮口端 M212 50（指挥塔前那门）
   'sh-orca': {
     engines: [{ x: 32, y: 50 }, { x: 32, y: 66 }],
     muzzles: [{ x: 210, y: 48 }],
   },
-  // 旋齿鲨级装甲战列舰（2026-09-26 新增）：双喷口 M34..；主炮口端 M208 44（旋齿锯盘之后）
   'sh-helicoprion': {
     engines: [{ x: 34, y: 48 }, { x: 34, y: 68 }],
     muzzles: [{ x: 206, y: 40 }],
   },
-  // 邓氏鱼级旗舰：双喷口 M28..；双联主炮口端 M216 36 / 50
   'sh-dunkleosteus': {
     engines: [{ x: 28, y: 49 }, { x: 28, y: 65 }],
     muzzles: [
@@ -268,9 +196,7 @@ export const SHIP_MOUNTS: Record<string, ShipMounts> = {
   },
 }
 
-/** 敌族 7 型挂点（key = FOE_FAMILY 族字母，与 FOE_ART 一致） */
 export const FOE_MOUNTS: Record<string, ShipMounts> = {
-  // A 海盗突击舰（角旗+斜排劫掠炮）：单喷口 M44..；劫掠炮 3 门(斜管口端) + 舰艏短炮 2 门
   A: {
     engines: [{ x: 44, y: 53 }],
     muzzles: [
@@ -281,49 +207,29 @@ export const FOE_MOUNTS: Record<string, ShipMounts> = {
       { x: 196, y: 63 },
     ],
   },
-  // B 武装拾荒者：单喷口 M64..；无炮 → 回退
   B: { engines: [{ x: 64, y: 51.5 }], muzzles: [] },
-  // C 异形生物舰（有机体，无喷口无炮 → 无尾焰，回退舰艏前缘）
   C: { engines: [], muzzles: [] },
-  // D 守墓古舰队（穹顶+骨架艉楼+静滞舱列，2026-09-12 重绘）：双喷口 M58..；舰艏**能量长炮**口 M231 49
   D: {
     engines: [{ x: 58, y: 50 }, { x: 58, y: 66 }],
     muzzles: [{ x: 231, y: 49 }],
   },
-  // E 泰坦巨构（三段巨构舱段+断口桁架，2026-09-12 重绘）：双喷口 M58..；舰艏炮座口 M220 50
   E: {
     engines: [{ x: 60, y: 52 }, { x: 60, y: 68 }],
     muzzles: [{ x: 220, y: 50 }],
   },
-  // F 遭遇巡逻舰（制式规整）【已废弃·留档：2026-09-11 并入 A 族，已无卡引用】：双喷口 M62..；舰艏炮楔(206..222)
   F: {
     engines: [{ x: 62, y: 50.5 }, { x: 62, y: 67.5 }],
     muzzles: [{ x: 222, y: 54 }],
   },
-  // G 鱿鱼亡军舰队（蜂窝舱+补丁帆）：单喷口 M62 46 h10 v14；舰艏炮楔(204..220)
   G: { engines: [{ x: 62, y: 53 }], muzzles: [{ x: 220, y: 55 }] },
 }
 
-/**
- * **敌舰逐舰挂点（35 条）** —— 2026-09-26 船长令「旧版敌人按敌舰不同做出些许区分」配套；
- * **2026-10-03 补 R 族五档**（与 `shipArtFoe.tsx` 的 `R_*` 常量配套）。
- *
- * key = `packages/data/src/foe-ships.ts` 的 `id`，与 `ui/shipArtFoe.tsx` 的 `FOE_SHIP_ART` 一一对应。
- * **坐标取证口径**：逐条注明取自 `shipArtFoe.tsx` 里该舰哪条路径的端点——
- * `engines` 取推进器矩形**左缘中点**（尾焰口沿），`muzzles` 取炮管**管口端**（开火轮换点）。
- * ⚠ 改形必须同步改本表；路径端点与本表坐标对不上就是 bug。
- *
- * 未收录舰 → 回退 `FOE_MOUNTS[族字母]`（族级）→ 再回退旧单焰（`ShipSprite` 内的兜底）。
- */
 export const FOE_SHIP_MOUNTS: Record<string, ShipMounts> = {
   'foe-alien-acid-burster': { engines: [], muzzles: [{ x: 198, y: 59 }] },
   'foe-alien-brood-worker': { engines: [], muzzles: [{ x: 218, y: 31 }, { x: 220, y: 94 }, { x: 213, y: 57 }, { x: 213, y: 70 }] },
   'foe-alien-hiveback': { engines: [], muzzles: [{ x: 224, y: 57 }] },
   'foe-alien-broodmother': { engines: [], muzzles: [{ x: 231, y: 46 }, { x: 232, y: 77 }] },
-  // ── A 族 · 海盗 ──
-  // 海盗快艇：nozzle(44,52,8,18) 左缘中点；桅顶族色小旗尖端(74,36)
   'foe-pirate-skiff': { engines: [{ x: 44, y: 61 }], muzzles: [{ x: 74, y: 36 }] },
-  // 劫掠护卫舰：nozzle(40,52,8,16)；三座劫掠炮 turret 管口端 (140,37)/(168,37)/(140,66) + 撞角尖(212,62)
   'foe-pirate-corvette': {
     engines: [{ x: 40, y: 60 }],
     muzzles: [
@@ -333,7 +239,6 @@ export const FOE_SHIP_MOUNTS: Record<string, ShipMounts> = {
       { x: 212, y: 62 },
     ],
   },
-  // 劫掠电子舰：双 nozzle(128,48,8,10)/(128,60,8,10)；碟形天线盘缘最右(196,24)
   'foe-pirate-raider': {
     engines: [
       { x: 128, y: 53 },
@@ -341,9 +246,7 @@ export const FOE_SHIP_MOUNTS: Record<string, ShipMounts> = {
     ],
     muzzles: [{ x: 196, y: 24 }],
   },
-  // 劫掠狙击舰：nozzle(36,48,8,16)；裸管主炮炮口端(224,54)（= 族色菱形尖）
   'foe-pirate-sniper': { engines: [{ x: 36, y: 56 }], muzzles: [{ x: 224, y: 54 }] },
-  // 海盗头目舰：双 nozzle(68,56,8,10)/(68,66,8,10)；两舷炮座 turret 管口端 (134,41)/(134,73)
   'foe-pirate-warlord': {
     engines: [
       { x: 68, y: 61 },
@@ -354,8 +257,6 @@ export const FOE_SHIP_MOUNTS: Record<string, ShipMounts> = {
       { x: 134, y: 73 },
     ],
   },
-  // ── B 族 · 拾荒 ──
-  // 拾荒武装艇：nozzle(28,52,8,16) 左缘中点（在艉部集装箱左侧）；吊臂爪钩(104,58) + 侧挂集装箱角(214,48)
   'foe-scav-skiff': {
     engines: [{ x: 28, y: 60 }],
     muzzles: [
@@ -363,10 +264,7 @@ export const FOE_SHIP_MOUNTS: Record<string, ShipMounts> = {
       { x: 214, y: 48 },
     ],
   },
-  // 拾荒火力舰：nozzle(54,54,8,14)；艏部裸管重炮炮口端菱形尖(240,55)（管线在 214..238）
   'foe-scav-armed': { engines: [{ x: 54, y: 61 }], muzzles: [{ x: 240, y: 55 }] },
-  // ── C 族 · 异形（有机体：无引擎喷口 → 不画尾焰）──
-  // 畸变幼虫：獠牙尖(pod 198,60 右端 202,60) + 两片膜翼端点(34,44)/(30,78)
   'foe-alien-rift-larva': {
     engines: [],
     muzzles: [
@@ -375,7 +273,6 @@ export const FOE_SHIP_MOUNTS: Record<string, ShipMounts> = {
       { x: 30, y: 78 },
     ],
   },
-  // 星髓幼虫：背部晶囊囊口 (112,36)/(138,34)/(162,41) + 体前短螯端(50,44)
   'foe-alien-starcore-larva': {
     engines: [],
     muzzles: [
@@ -385,7 +282,6 @@ export const FOE_SHIP_MOUNTS: Record<string, ShipMounts> = {
       { x: 50, y: 44 },
     ],
   },
-  // 星髓成虫：节缝上三处背囊 (94,38)/(122,34)/(150,39) + 头部甲壳前缘(56,62)
   'foe-alien-starcore-adult': {
     engines: [],
     muzzles: [
@@ -395,7 +291,6 @@ export const FOE_SHIP_MOUNTS: Record<string, ShipMounts> = {
       { x: 56, y: 62 },
     ],
   },
-  // 孢群异虫：口器两瓣尖端 (36,44)/(36,80) + 四枚孢子囊囊口 (112,33)/(140,31)/(112,93)/(140,95)
   'foe-alien-spore-hive': {
     engines: [],
     muzzles: [
@@ -407,7 +302,6 @@ export const FOE_SHIP_MOUNTS: Record<string, ShipMounts> = {
       { x: 140, y: 95 },
     ],
   },
-  // 噬口巨兽：巨口最前缘(212,62) + 背部骨刺三尖 (94,36)/(124,32)/(152,34)
   'foe-alien-maw': {
     engines: [],
     muzzles: [
@@ -417,12 +311,8 @@ export const FOE_SHIP_MOUNTS: Record<string, ShipMounts> = {
       { x: 152, y: 34 },
     ],
   },
-  // ── D 族 · 守墓古舰（光束主炮：细长能量管口端）──
-  // 幽灵舰：艉部推进方块(box 62,52,10,16) 左缘中点；艏端能量长炮管口(236,59)
   'foe-d-ghost': { engines: [{ x: 62, y: 60 }], muzzles: [{ x: 236, y: 59 }] },
-  // 守墓长舰：艉部两片尾鳍端点(88,94)/(110,98) 取其一；艏端方尖碑右端(222,48)
   'foe-d-longship': { engines: [{ x: 88, y: 94 }], muzzles: [{ x: 222, y: 48 }] },
-  // 静滞卫舰：艉部方块([48,56]..[48,72]) 左缘中点；两具静滞环环心 (122,62)/(74,62)
   'foe-d-stasis': {
     engines: [{ x: 48, y: 64 }],
     muzzles: [
@@ -430,19 +320,13 @@ export const FOE_SHIP_MOUNTS: Record<string, ShipMounts> = {
       { x: 74, y: 62 },
     ],
   },
-  // 守墓王座舰：艉部方块(box 64,52,12,18) 左缘中点；艏部重炮楔壳最右尖(226,55)
   'foe-d-throne': { engines: [{ x: 64, y: 61 }], muzzles: [{ x: 226, y: 55 }] },
-  // 新入侵舰挂点与shipArtFoe对应路径端点一致。
   'foe-d-invasion-cruiser': { engines: [{ x: 34, y: 57.5 }], muzzles: [{ x: 228, y: 40 }, { x: 228, y: 72 }] },
   'foe-d-invasion-bastion': { engines: [{ x: 28, y: 58.5 }], muzzles: [{ x: 232, y: 61 }] },
   'foe-d-invasion-oathkeeper': { engines: [{ x: 24, y: 45 }, { x: 24, y: 83 }], muzzles: [{ x: 233, y: 50 }, { x: 233, y: 76 }] },
   'foe-d-invasion-eternal-tomb': { engines: [{ x: 18, y: 55 }, { x: 18, y: 74 }], muzzles: [{ x: 232, y: 62 }] },
-  // ── E 族 · 泰坦巨构 ──
-  // 导弹残段：艉部方块(box 34,52,12,22) 左缘中点；断口内最外一枚导弹巢口(151,49)
   'foe-missile-hulk': { engines: [{ x: 34, y: 63 }], muzzles: [{ x: 151, y: 49 }] },
-  // 奥罗残骸段：艉部楔(24..36) 左缘中点；侧面机库门块右端(174,61)
   'foe-auro-hulk': { engines: [{ x: 24, y: 63 }], muzzles: [{ x: 174, y: 61 }] },
-  // 巨构残段：艉部方块(box 32,50,10,28) 左缘中点；两座巨构炮座管口端 (142,32)/(190,84)
   'foe-titan-hulk': {
     engines: [{ x: 32, y: 64 }],
     muzzles: [
@@ -450,12 +334,8 @@ export const FOE_SHIP_MOUNTS: Record<string, ShipMounts> = {
       { x: 190, y: 84 },
     ],
   },
-  // 核心舱段：艉部方块(box 24,46,12,30) 左缘中点；正面大环形开口右缘(228,60)
   'foe-core-section': { engines: [{ x: 24, y: 61 }], muzzles: [{ x: 228, y: 60 }] },
-  // ── G 族 · 鱿鱼亡军 ──
-  // 围攻残兵舰：nozzle(50,58,8,14)；前部小炮 turret(140,58,10,6,14,61) 管口端(164,61)
   'foe-g-swarm-skiff': { engines: [{ x: 50, y: 65 }], muzzles: [{ x: 164, y: 61 }] },
-  // 残响残舰：双 nozzle(42,58,8,12)/(42,44,8,10)；细长艏炮右端(170,58)
   'foe-g-echo-remnant': {
     engines: [
       { x: 42, y: 64 },
@@ -463,7 +343,6 @@ export const FOE_SHIP_MOUNTS: Record<string, ShipMounts> = {
     ],
     muzzles: [{ x: 170, y: 58 }],
   },
-  // 天底封锁舰：双 nozzle(38,48,8,12)/(38,70,8,12)；重炮 turret(150,44,16,8,22,48) 管口端(188,48)
   'foe-g-nadir-lock': {
     engines: [
       { x: 38, y: 54 },
@@ -471,7 +350,6 @@ export const FOE_SHIP_MOUNTS: Record<string, ShipMounts> = {
     ],
     muzzles: [{ x: 188, y: 48 }],
   },
-  // 残军补给舰：nozzle(34,56,10,18) 左缘中点；舰艏舱段右端(196,64) + 腹下补给舱开口(136,95)
   'foe-g-remnant-tender': {
     engines: [{ x: 34, y: 65 }],
     muzzles: [
@@ -479,7 +357,6 @@ export const FOE_SHIP_MOUNTS: Record<string, ShipMounts> = {
       { x: 136, y: 95 },
     ],
   },
-  // 亡军战列舰：三 nozzle(32,40/60/80,8,14)；两座主炮 turret 管口端(136,28)/(188,28)
   'foe-g-exile-battleship': {
     engines: [
       { x: 32, y: 47 },
@@ -491,8 +368,6 @@ export const FOE_SHIP_MOUNTS: Record<string, ShipMounts> = {
       { x: 188, y: 28 },
     ],
   },
-  // ── H 族 · 墨潮帮（v3 几何搬入，坐标与 shipArtFoe.tsx 的 H_* 常量同源）──
-  // 墨潮突击舰：双 box(52,58,10,6)/(52,66,10,6)；撞角最右端(214,64)
   'foe-h-ink-corvette': {
     engines: [
       { x: 52, y: 61 },
@@ -504,7 +379,6 @@ export const FOE_SHIP_MOUNTS: Record<string, ShipMounts> = {
       { x: 130, y: 57 },
     ],
   },
-  // 墨潮鱼雷舰：艉部 box(62,60,8,8)；6 具外挂鱼雷管管口(146,48)/(148,51)/(146,80)/(148,77) + 艏尖(206,64)
   'foe-h-ink-torpedo': {
     engines: [{ x: 62, y: 64 }],
     muzzles: [
@@ -515,7 +389,6 @@ export const FOE_SHIP_MOUNTS: Record<string, ShipMounts> = {
       { x: 206, y: 64 },
     ],
   },
-  // 墨潮干扰舰：艉部尾舱 box(84,62,12,18) 左缘中点；两座干扰塔顶层顶面(130,19)/(166,19)
   'foe-h-ink-jammer': {
     engines: [{ x: 84, y: 71 }],
     muzzles: [
@@ -523,7 +396,6 @@ export const FOE_SHIP_MOUNTS: Record<string, ShipMounts> = {
       { x: 166, y: 19 },
     ],
   },
-  // 墨潮战列巡洋舰：艉部 box(66,70,8,10) 左缘中点；两座三联主炮塔炮口端(142,30)/(174,30) + 艏尖(222,73)
   'foe-h-ink-battlecruiser': {
     engines: [{ x: 66, y: 75 }],
     muzzles: [
@@ -532,8 +404,6 @@ export const FOE_SHIP_MOUNTS: Record<string, ShipMounts> = {
       { x: 222, y: 73 },
     ],
   },
-  // 墨潮入侵母舰：艉部两具主推进 box(56,58,12,10)/(56,74,12,10)；舰艏 5 管鱼雷阵管口(239,62)/(240,68)/(239,74)
-  //  + 腹部双机库门(132,100)/(178,100) + 舰桥塔顶信标(159,5)
   'foe-h-ink-flagship': {
     engines: [
       { x: 56, y: 63 },
@@ -548,13 +418,10 @@ export const FOE_SHIP_MOUNTS: Record<string, ShipMounts> = {
       { x: 159, y: 5 },
     ],
   },
-  // ── R 族 · 光环科技（2026-10-03 补图配套；坐标取自 shipArtFoe.tsx 的 R_* 常量）──
-  // 粼光级：nozzle(60,58,8,12) 左缘中点；舰艏单透镜 pod(220,64,3.4,2.6) 右端(223,64)
   'foe-r-corona-glint': {
     engines: [{ x: 60, y: 64 }],
     muzzles: [{ x: 223, y: 64 }],
   },
-  // 回响级：双 nozzle(70,54,8,10)/(70,66,8,10) 左缘中点；舰艏单透镜 pod(224,64,3.2,2.4) 右端(227,64)
   'foe-r-corona-echo': {
     engines: [
       { x: 70, y: 59 },
@@ -562,7 +429,6 @@ export const FOE_SHIP_MOUNTS: Record<string, ShipMounts> = {
     ],
     muzzles: [{ x: 227, y: 64 }],
   },
-  // 叠光级：三 nozzle(78,52/62/72,8,10) 左缘中点；前伸发射管口(226,64)
   'foe-r-corona-overlay': {
     engines: [
       { x: 78, y: 57 },
@@ -571,9 +437,6 @@ export const FOE_SHIP_MOUNTS: Record<string, ShipMounts> = {
     ],
     muzzles: [{ x: 226, y: 64 }],
   },
-  // 垂暮级：四 nozzle(52,53/63/73/83,9,9) 左缘中点；舰艏双透镜右端(236,59)/(236,69)
-  // ⚠ **2026-10-03 重画配套**（船长报障「光环中枢和垂暮级太过相似」）：原「背载护盾环」去掉、
-  //   改「背脊护盾阵列」＋**拉长压低** ⇒ 挂点随之改（炮口只剩舰艏双透镜）。
   'foe-r-corona-dusk': {
     engines: [
       { x: 52, y: 57.5 },
@@ -586,8 +449,6 @@ export const FOE_SHIP_MOUNTS: Record<string, ShipMounts> = {
       { x: 236, y: 69 },
     ],
   },
-  // 光环中枢：尾排 **2×2** nozzle(66,52/70,9,13)＋(80,52/70,9,13) 左缘中点；
-  //  **张开三叉戟的三叉尖**(236,53)/(236,66)/(236,79) ＋ 塔顶光环心(156,17)
   'foe-r-corona-nexus': {
     engines: [
       { x: 66, y: 58.5 },
@@ -604,7 +465,6 @@ export const FOE_SHIP_MOUNTS: Record<string, ShipMounts> = {
   },
 }
 
-/** 取舰/敌舰/敌族挂点（逐舰优先；未收录 → undefined，由调用方回退旧单焰） */
 export function mountsOf(shipId: string | null | undefined, foeKey: string | null | undefined): ShipMounts | undefined {
   if (shipId) {
     const own = SHIP_MOUNTS[shipId] ?? FOE_SHIP_MOUNTS[shipId]

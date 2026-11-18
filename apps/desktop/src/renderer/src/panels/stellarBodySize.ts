@@ -3,7 +3,6 @@ import type { PlanetSize, StellarBody } from '@whale/core'
 type Body = Pick<StellarBody, 'planetId' | 'kind' | 'x' | 'y'>
 type Point = { x: number; y: number }
 
-/** 2026-10-10船长确认：半径∝√地表总格数；固态统一压缩，不读资源/开发占用。 */
 export function stellarMapBodyRadii(bodies: readonly Body[], stars: readonly Point[], unit: number,
   sizes: Readonly<Record<string, PlanetSize | undefined>> = {}): Readonly<Record<string, number>> {
   const readableUnit = Number.isFinite(unit) && unit > 0 ? unit : 1

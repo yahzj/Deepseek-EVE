@@ -5,7 +5,6 @@ import type { GameEngine } from '../../game/engine'
 import { cmdText, tr } from '../../i18n/locale'
 import './flagshipFleet.css'
 
-/** 三个旗舰入口共用当前编队和预设切换，不另存旗舰专属选舰状态。 */
 export function FlagshipFleetActions({ engine, onStarted }: { engine: GameEngine; onStarted?: () => void }) {
   const [presetId, setPresetId] = useState('')
   const [message, setMessage] = useState('')

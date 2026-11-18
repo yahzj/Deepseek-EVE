@@ -1,51 +1,25 @@
-/**
- * AI 核心占用显示（2026-09-10 船长：工业页「精炼炉 / 组装机」说明精简为一句话，同时把
- * 「可启动 AI 上限」与「当前 AI 占用数量」直接显示出来）。
- *
- * 口径与 AI 指挥中心（ShipPage · AI 指挥中心标题行「AI 核心启用 used/totalCap（共用 cap + 工业扩容 bonus）」）
- * 以及引擎守卫 @whale/core aiCoreCapBlock(state, ctx, 'industry') 完全同源：
- * - 可启动上限 = 共用上限（aiCoreCap，由「AI 核心操作学」决定）+ 工业专用扩容（industryAiBonus，由「工业自动化」决定）；
- * - 当前占用 = 站内工业占用（aiCoreIndustryUsed = AI 精炼炉/回收炉台数 + AI 制造线条数 + AI 实验室线条数）；
- * - AI 副船任务（aiCoreShipUsed）与站内工业共用总上限，故在提示里一并写出，避免数字对不上。
- *
- * 本文件 = 「AI 核心占用」展示的唯一实现（检索入口：grep `AiSlotText|aiIndustrySlots`），
- * 供工业页精炼炉/组装机两处标题行复用；将来其它需要同款计数的地方直接引用本组件。
- */
 import { aiCoreCap, aiCoreIndustryUsed, aiCoreShipUsed, industryAiBonus } from '@whale/core'
 import type { GameState, SimContext } from '@whale/core'
 import { tr } from '../i18n/locale'
 
-/** 站内工业 AI 工位数字（供标题行与提示共用） */
 export interface IndustryAiSlots {
-  /** 共用上限（AI 核心操作学等级） */
   sharedCap: number
-  /** 工业专用扩容（工业自动化基础 + 工业自动化…：只对炉/线生效） */
   bonus: number
-  /** 工业扩容的逐技能构成（2026-09-11：提示里逐项列出，让玩家看得出这几点从哪来） */
   bonusRows: Array<{ id: string; name: string; level: number; perLevel: number; slots: number }>
-  /** 站内工业可启动上限 = 共用上限 + 工业扩容 */
   cap: number
-  /** 当前站内工业占用（AI 精炼炉/回收炉 + AI 制造线 + AI 实验室线） */
   used: number
-  /** 其中：AI 精炼炉/回收炉台数 */
   refineUsed: number
-  /** 其中：AI 制造线条数 */
   makeUsed: number
-  /** 其中：AI 实验室线条数（**2026-10-01 补**：船长令「实验室和工业的其他页面没有本质区别 ⇒
-   *  AI 和活动栏图标都使用一样的机制」——它同样 `occupyAiCore` 占核心、同样计入站内工业占用） */
   labUsed: number
-  /** AI 副船任务占用（与站内工业共用总上限） */
   shipUsed: number
 }
 
-/** 取站内工业 AI 工位数字（与引擎同口径） */
 export function aiIndustrySlots(state: GameState, ctx: SimContext): IndustryAiSlots {
   const sharedCap = aiCoreCap(state, ctx)
   const bonus = industryAiBonus(state, ctx)
   const refineUsed = state.refineRuns.filter((r) => r.worker !== 'pilot').length
   const makeUsed = state.manufacturingRuns.filter((r) => r.worker !== undefined && r.worker !== 'pilot').length
   const labUsed = (state.labRuns ?? []).filter((r) => r.active && r.worker !== 'pilot').length
-  // 扩容逐技能构成：与引擎同一张表（balance.aiCore.industrySkillSlots），名字取技能目录
   const table = ctx.balance?.aiCore?.industrySkillSlots ?? {}
   const bonusRows = Object.entries(table).map(([id, perLevel]) => {
     const level = state.skills.trained[id] ?? 0
@@ -70,10 +44,8 @@ export function aiIndustrySlots(state: GameState, ctx: SimContext): IndustryAiSl
   }
 }
 
-/** 悬停提示：上限怎么来的、占用算在哪（数字对不上时照这里核对） */
 export function aiSlotTip(slots: IndustryAiSlots): string {
   const { sharedCap, bonus, bonusRows, cap, used, refineUsed, makeUsed, labUsed, shipUsed } = slots
-  // 逐技能写明贡献（未练的技能也列出，便于玩家知道该练什么）
   const detail =
     bonusRows.length > 0
       ? bonusRows.map((r) => tr("ui.aiSlots.001", { p1: r.name, p2: r.level, p3: r.slots })).join(tr("ui.MatterTechTab.017"))
@@ -92,7 +64,6 @@ export function aiSlotTip(slots: IndustryAiSlots): string {
   )
 }
 
-/** 标题行的「AI 核心可启动 3 · 占用 2」计数（数字与 AI 指挥中心同源；悬停看上限构成） */
 export function AiSlotText({ state, ctx }: { state: GameState; ctx: SimContext }) {
   const slots = aiIndustrySlots(state, ctx)
   return (

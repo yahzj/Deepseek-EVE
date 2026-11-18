@@ -2,21 +2,6 @@ import { type ReactNode } from 'react'
 import { tr } from '../../i18n/locale'
 import type { ShareSeg } from './hudTypes'
 
-/**
- * **精炼产出构成环（SVG 多段环）**——**2026-09-30 船长令**：「给圆环添加动画，按照当前所有精炼炉产出
- * 各个资源的占比，将其分配到圆环上并染色，玩家鼠标移动上去时，显示该资源产量」。
- *
- * 为什么改成 SVG（三件事一起解决，且回到合规线）：
- * 1. 原先那个环是 **CSS `conic-gradient` 画的图形**，而船长 2026-09-10 定过「**形状只允许用 SVG 画**，
- *    CSS 只能做背景氛围」⇒ 多段染色＋分段悬停＋过渡这三件都更该走 SVG；
- * 2. **分段悬停**：每段一条 `<circle>`，自己的 `data-tip`（SVG 悬停按全仓规矩只走 `data-tip`）；
- * 3. **动画**：动的是 `stroke-dasharray/dashoffset`（不触发布局的描边属性），并在 `prefers-reduced-motion`
- *    与「关特效」下退化为瞬时。
- *
- * 技能 chart 域「Part-to-Whole」的三条硬口径都在这里落地：**≤5 类**（多出的并进「其他」）·
- * **最大段从 12 点方向起**（分段已按产值降序 + `rotate(-90)`）· **不能只靠颜色**（环旁有同名同值的
- * 构成表，且 svg 带 `aria-label` 逐段念出占比）。
- */
 export function RefineShareRing({ segments, total }: { segments: readonly ShareSeg[]; total: number }): ReactNode {
   const size = 132
   const stroke = 15

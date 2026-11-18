@@ -17,14 +17,11 @@ import { wormholeSalvagersInFleet } from './wormholeSalvage'
 export type WormholePreparedResult = WormholeStartResult & { code?: 'invalid-plan' | 'stale-plan' | 'stock-missing' | 'entry-blocked' }
 
 export interface WormholePreparationRequest {
-  /** 总携入目标，包含所选舰船已有货物。 */
   targets: Record<string, number>
-  /** 明确卸港的舰载物品id；未列出的已有货物默认携入。 */
   unload: readonly string[]
 }
 
 export interface WormholePreparationPlan {
-  /** 自动整备不占主控活动；仅用于预览重验，不是随档字段。 */
   automatic?: true
   request: WormholePreparationRequest
   fingerprint: string
@@ -44,7 +41,6 @@ function validCount(n: unknown): n is number {
   return typeof n === 'number' && Number.isSafeInteger(n) && n >= 0
 }
 
-/** 预览不生成地图、不扣货；确认时以同一算法重验。 */
 export function wormholePreparationPlan(
   state: GameState,
   ctx: SimContext,
@@ -117,7 +113,6 @@ export function wormholePreparationPlan(
     warehouse: state.warehouse.items,
     skills: state.skills.trained,
     stock: state.wormholeStock,
-    // 主控停机和归还舰载货都会使准备预览失效。
     ...(!opts?.automatic ? { mining: state.mining, salvaging: state.salvaging, hauling: state.hauling } : {}),
     automatic: opts?.automatic === true,
     request,
@@ -130,7 +125,6 @@ export function wormholePreparationPlan(
   }
 }
 
-/** 2026-10-05船长确认：未设目标的现役机型补一套备用，明确目标与卸港选择不改。 */
 export function wormholePreparationFillPlan(
   state: GameState, ctx: SimContext, fleet: readonly string[], request: WormholePreparationRequest,
 ): WormholePreparationPlan {
@@ -145,7 +139,6 @@ export function wormholePreparationFillPlan(
   return wormholePreparationPlan(state, ctx, fleet, { targets, unload: [...request.unload] })
 }
 
-/** 首次整备锁定一包上限，按真实武器周期计算，不借用四分钟战斗预载。 */
 export function wormholeSupplyPackageOf(
   state: GameState, ctx: SimContext, fleet: readonly string[], plan: WormholePreparationPlan,
 ): Record<string, number> {
@@ -177,7 +170,6 @@ export function wormholeSupplyPackageOf(
   return pack
 }
 
-/** 本阶段只供显式测试调用；缺省保留第一批有限补给旧探索。 */
 export function wormholeEnterPrepared(
   state: GameState,
   ctx: SimContext,

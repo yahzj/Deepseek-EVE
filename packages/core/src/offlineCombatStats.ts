@@ -18,13 +18,11 @@ export interface OfflineCombatStats {
 interface Collector { stats: OfflineCombatStats; seen: WeakMap<BattleState, { ammo: number; kits: number }>; outcomes: WeakSet<BattleState>; encounters: WeakSet<BattleState> }
 const collectors = new WeakMap<GameState, Collector>()
 
-/** 只在本次离线结算内启用，不修改存档，不保存逐场战斗。 */
 export function beginOfflineCombatStats(state: GameState, stats: OfflineCombatStats): () => void {
   const previous = collectors.get(state)
   collectors.set(state, { stats, seen: new WeakMap(), outcomes: new WeakSet(), encounters: new WeakSet() })
   if (state.encounter.battle) noteOfflineEncounter(state, state.encounter.battle)
   for (const battle of [state.encounter.battle, state.expedition.battle, state.wormhole.run?.battle]) {
-    // 离线前已经消耗的补给不再次计入本次简报。
     if (battle) observeOfflineBattle(state, battle, true)
   }
   return () => { if (previous) collectors.set(state, previous); else collectors.delete(state) }

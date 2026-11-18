@@ -25,7 +25,6 @@ export function cleanShipDamage(raw: unknown): ShipDamageKind[] | undefined {
   return out.length ? out : undefined
 }
 
-/** 战损作用于加成后的最终属性；同种逐件乘算，无玩法上限，不进入普通插件叠加池。 */
 export function shipDamageEffects(
   ids: readonly ShipDamageKind[] | undefined,
   management?: ModuleDef['damageManagement'],
@@ -36,7 +35,6 @@ export function shipDamageEffects(
   return effects
 }
 
-/** 结构抗性按战损插件数量计数；原数组与每件战损的属性惩罚均保留。 */
 export function shipDamageHullResistOf(ids: readonly ShipDamageKind[] | undefined, management?: ModuleDef['damageManagement']): number {
   if (!management) return 0
   const count = Math.min((cleanShipDamage(ids) ?? []).length, Math.max(0, Math.floor(management.maxKinds)))

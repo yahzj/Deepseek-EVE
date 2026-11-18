@@ -13,12 +13,10 @@ export const BLACK_MARKET_MIN_MULTIPLIER = 30
 export const BLACK_MARKET_MAX_MULTIPLIER = 100
 export const BLACK_MARKET_DRONE_LOT_SIZE = 50
 
-/** 新货架按成品物品类型分组，蓝图及无人机装备仍是一件。 */
 export function blackMarketLotQuantity(ctx: SimContext, good: MarketGoodDef): number {
   return good.kind === 'item' && ctx.items.get(good.refId)?.kind === 'drone' ? BLACK_MARKET_DRONE_LOT_SIZE : 1
 }
 
-/** 已锁货架缺省一件；坏数量返回0，供清洗/交易拒绝，绝不偷偷回退单件。 */
 export function blackMarketOfferQuantity(offer: Pick<BlackMarketOffer, 'quantity'>): number {
   return offer.quantity === undefined ? 1 : offer.quantity === 1 || offer.quantity === BLACK_MARKET_DRONE_LOT_SIZE ? offer.quantity : 0
 }
@@ -37,7 +35,6 @@ function resolvable(ctx: SimContext, good: MarketGoodDef): boolean {
   }
 }
 
-/** 大宗原料走普通市场；货号可以不同于物品ID，按实际目录类型判断。 */
 export function isBlackMarketBulkResource(ctx: SimContext, good: MarketGoodDef): boolean {
   if (good.kind !== 'item') return false
   const kind = ctx.items.get(good.refId)?.kind
@@ -64,7 +61,6 @@ export function blackMarketNextRefresh(state: GameState): number {
   return date.getTime()
 }
 
-/** 独立随机源仅由档初始种子与日界派生；不消耗战斗/事件随机流。 */
 export function ensureBlackMarket(state: GameState, ctx: SimContext, now: number): boolean {
   if (!blackMarketUnlocked(state) || !Number.isFinite(now) || now <= 0) return false
   const day = blackMarketDayStart(now)
@@ -90,7 +86,6 @@ export function ensureBlackMarket(state: GameState, ctx: SimContext, now: number
   return true
 }
 
-/** 严格规范化：损坏条目丢弃但保留日界，不能通过损坏/空库存触发同日重抽。 */
 export function normalizeBlackMarket(raw: unknown): BlackMarketState | undefined {
   if (!raw || typeof raw !== 'object') return undefined
   const obj = raw as Record<string, unknown>
@@ -128,11 +123,9 @@ export function blackMarketBuy(state: GameState, ctx: SimContext, goodKey: strin
   const lock = marketLockNote(state, good)
   if (lock) return { ok: false, error: lock.text, errorId: lock.textId, errorParams: lock.params }
   if (!Number.isFinite(state.wallet.isk) || state.wallet.isk < offer.price) return fail('core.blackMarket.006', '信用点不足，未扣款。')
-  // 扣款、入库、售罄在同一次同步命令内完成，重复点击必被sold拒绝。
   state.wallet.isk -= offer.price
   depositGood(state, ctx, goodKey, quantity)
   offer.sold = true
-  // ⟪文案调整 2026-10-06⟫ 新交易记录实际交付数；历史单架日志ID保留不重写。
   addLog(state, 'trade', `黑市购入 ${goodName(ctx, goodKey)}×${quantity}（${offer.price.toLocaleString('zh-CN')} 信用点）。`,
     'core.blackMarket.008', { p1: goodName(ctx, goodKey), p2: offer.price.toLocaleString('zh-CN'), p3: quantity })
   return { ok: true }

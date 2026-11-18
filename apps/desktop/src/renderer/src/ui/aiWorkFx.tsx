@@ -1,39 +1,15 @@
-/**
- * AI 工作动画（2026-09-10 船长定：AI 指挥中心「执行中」列表每行左侧一个**按工作内容差分**的简单动画）。
- * 船长确认口径：范围 = 仅「执行中」列表（AI 副船 + 站内工业）；粒度 = 6 类；风格 = SVG 线稿
- * （与舰船资产同语言：细描边 / currentColor / viewBox；见约定第九章「视觉物件一律 SVG 线稿」）。
- *
- * 性能口径（约定第十四章，2026-09-10 船长问"是否会大幅消耗性能"）：
- * - 每个动画 = 一个小 SVG（56×36，约 6~12 个节点）+ 1~3 条 CSS 动画，**只动 transform/opacity**
- *   两个合成器属性；不碰 filter / box-shadow / 宽高（第十四章第 5 条实测绘制尖峰 50~60ms 的正是那类）；
- * - 不新建 rAF 逐帧循环：动画全交给 CSS，与引擎 10Hz tick 解耦（战斗画面那条 rAF 与本处无关）；
- * - 本组件走 memo：引擎每 tick 触发整树重渲染（App 层订阅），kind 不变即整棵 SVG 子树跳过 diff；
- * - 行数量级 = AI 核心上限（「AI 核心操作学」等级，常见 1~4 艘副船 + 站内工业 1~3 条），个位数；
- *   切走标签页即卸载。整体开销远小于战斗画面，实测复核见 docs/design/archive/ai-work-fx-20260910.md。
- *
- * 检索入口：`AiWorkFx`（唯一实现；判定「哪一行画哪一种」在 ShipPage 的 aiWorkKindOf）。
- */
 import { memo } from 'react'
 
-/** 六类工作（与船长确认的差分粒度一致）；配色见 styles.css `.app-inv-fx.is-*`（与 NAV_TONES 同族语汇） */
 export type AiWorkKind = 'mining' | 'salvage' | 'standby' | 'refine' | 'reclaim' | 'craft'
 
-/**
- * **站内工业那一行画哪一种**：料是残骸 ⇒ 回收炉（`reclaim`），其余（矿 / 气 / 冰 / 货柜）⇒ 精炼炉（`refine`）。
- *
- * ⚠ **单点**（2026-09-30）：这句话原先写死在 `ShipPage`（驱动"精炼炉/回收炉"的**文案**与动画差分），
- * 工业 HUD 页的工位行也要同一差分 ⇒ 抽到这里两处共用，免得同一炉在两页说两种话。
- */
 export function industryWorkKindOf(itemId: string | null, items: ReadonlyMap<string, { kind: string }>): AiWorkKind {
   return itemId !== null && items.get(itemId)?.kind === 'wreck' ? 'reclaim' : 'refine'
 }
 
-/** 各场景共用的舰影线稿（朝右的小镖形；本地坐标同 56×36 画布） */
 function hull(): JSX.Element {
   return <path d="M8 20 L17 15 L26 17.5 L17 22 Z" />
 }
 
-/** 采矿：采掘激光脉动打向矿点，矿石碎屑错相位回流货舱 */
 function MiningFx(): JSX.Element {
   return (
     <>
@@ -47,7 +23,6 @@ function MiningFx(): JSX.Element {
   )
 }
 
-/** 打捞：扇形牵引光束呼吸，残片被吸向舰体 */
 function SalvageFx(): JSX.Element {
   return (
     <>
@@ -62,7 +37,6 @@ function SalvageFx(): JSX.Element {
   )
 }
 
-/** 掩护巡逻：舰影小幅巡航 + 扫描弧扫过 + 远端敌情点闪烁 */
 function StandbyFx(): JSX.Element {
   return (
     <>
@@ -77,7 +51,6 @@ function StandbyFx(): JSX.Element {
   )
 }
 
-/** 炉体（精炼炉与回收炉共用同一工业形象语言） */
 function furnace(): JSX.Element {
   return (
     <>
@@ -88,7 +61,6 @@ function furnace(): JSX.Element {
   )
 }
 
-/** 精炼炉：炉内火焰脉动 + 火星上升 */
 function RefineFx(): JSX.Element {
   return (
     <>
@@ -101,7 +73,6 @@ function RefineFx(): JSX.Element {
   )
 }
 
-/** 回收炉：残骸碎块落入炉口，底部产出料闪动 */
 function ReclaimFx(): JSX.Element {
   return (
     <>
@@ -114,7 +85,6 @@ function ReclaimFx(): JSX.Element {
   )
 }
 
-/** 组装制造：机械臂下压抬起 + 台面工件脉动 + 装配火花 */
 function CraftFx(): JSX.Element {
   return (
     <>
@@ -137,10 +107,6 @@ const SCENES: Record<AiWorkKind, () => JSX.Element> = {
   craft: CraftFx,
 }
 
-/**
- * AI 工作动画槽（固定尺寸 56×36，见 `.app-inv-fx`）——纯展示件，不参与任何交互。
- * memo：props 只有 kind（字符串），引擎 tick 引发的整树重渲染不会重算这个子树。
- */
 export const AiWorkFx = memo(function AiWorkFx({ kind }: { kind: AiWorkKind }) {
   const Scene = SCENES[kind]
   return (

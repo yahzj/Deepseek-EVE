@@ -1,4 +1,3 @@
-/** 功能域职责拆分，保持原计算与顺序。 */
 import type { GameEngine } from '../../game/engine'
 import { type ToastFn, MONEY_GLYPH } from '../../pages/common'
 import { useL10n, tr, cmdText } from '../../i18n/locale'
@@ -6,44 +5,23 @@ import { COURIER_BOARD_PERIOD_MS, type SideTask, type SideTaskBoardView, type Si
 import { fmtDayClock, fmtSideClock } from '../../i18n/fmt'
 import { useState } from 'react'
 
-/** 时效任务排序（2026-10-02 批次 4q 从 Expedition.tsx 迁来） */
 export type SideTaskSort = 'level' | 'value'
 
 export const SIDE_TASK_SORT_KEY = 'whale-idle:sidetask-sort'
 
-/** mm:ss（向上取整到秒；与市场页下次补给同口径）
- * （2026-10-02 批次 4p 迁到 i18n/fmt：StarMap 与 Expedition 共用，留本文件会造回环） */
 
-/** h:mm:ss（日板倒计时：赏金一轮 24 小时，mm:ss 不够看）
- * （2026-10-02 批次 4p 迁到 i18n/fmt） */
 
-/** 时效任务区：资源 = 限时收购（协会收商品，仓库足量直接交付）；快递 = 副站真实航行投送
- *  （需建成一座副站解锁；两步：出发投送 → 到站自动结算） */
 export function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast: ToastFn; kind: 'resource' | 'courier' }) {
   const state = engine.state
   useL10n()
   const view = engine.sideTasksView()
   const isCourier = kind === 'courier'
-  /**
-   * **两族节奏不同，各自算各自的**（**2026-09-24 船长报障**：「快递任务现在是 2 小时刷新周期，但是卡片上和
-   * 快递任务页面写的还是 20 分钟」）：资源仍跟市场「补给刷新」（`orderLifeMs.common`，20 分钟）；
-   * 快递按 `COURIER_BOARD_PERIOD_MS`（120 分钟，2026-09-24 船长令）——**倒计时与"每 N 分钟一轮"文案
-   * 都取本族的常量**，别再拿资源那 20 分钟套在快递头上。
-   */
   const periodMin = Math.max(
     1,
     Math.round((isCourier ? COURIER_BOARD_PERIOD_MS : engine.ctx.balance.market.orderLifeMs.common) / 60_000),
   )
-  /** 本族本批的剩余（快递 = 到下一个 120 分钟整点；资源 = 到下一个 20 分钟整点） */
   const remainMs = isCourier ? view.courierRemainingMs : view.remainingMs
-  /** 倒计时格式：快递一轮两小时 ⇒ 用 h:mm:ss（`mm:ss` 会写出「118:23」那种分钟数） */
   const clock = isCourier ? fmtDayClock : fmtSideClock
-  /**
-   * **任务排序**（船长 2026-09-19：「添加个默认排序（从低到高）和价值排序（从高到低）」；
-   * 追问三答：默认排序 = **按任务级别 L1→L5** · 价值排序 = **按奖励从高到低** ·
-   * **两者只在「资源任务」「快递任务」两个子页出现**（重要/赏金没有 L1~L5，故那一页不渲染本行）。
-   * 选择随档存本地（与悬赏排序同一个 `whale-idle:*` 家族）；默认 = 「默认排序」。
-   */
   const [sort, setSort] = useState<SideTaskSort>(() => {
     try {
       return localStorage.getItem(SIDE_TASK_SORT_KEY) === 'value' ? 'value' : 'level'
@@ -56,19 +34,14 @@ export function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; o
     try {
       localStorage.setItem(SIDE_TASK_SORT_KEY, next)
     } catch {
-      /* 忽略 */
     }
   }
-  // 快递：**已接单的排在前面**（跨刷新保留；出发/放弃才离场），随后是本批板上的订单
-  // ⚠ 排序键只作用于**同一组之内**（已接单组 / 本批板组各自排），免得"已接单"被级别混到后面去
   const bySort = (arr: readonly SideTask[]): SideTask[] =>
     [...arr].sort((a, b) =>
       sort === 'value' ? (b.rewardIsk ?? 0) - (a.rewardIsk ?? 0) : (a.level ?? 0) - (b.level ?? 0),
     )
   const tasks = isCourier ? [...bySort(view.accepted), ...bySort(view.courier)] : bySort(view.resource)
-  // 快递：本批某单是否就是当前在途投送（仍在板上）；整板刷新后原单被换下 → 由顶部横幅继续提示
   const deliverNowId = view.deliver?.taskId ?? null
-  // 在途单不在本批板上（整板刷新后）：横幅 + 本批其余订单都显示
   const inflightOffBoard = isCourier && deliverNowId !== null && !tasks.some((t) => t.id === deliverNowId)
 
   const act = (id: number): void => {
@@ -316,7 +289,6 @@ export function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; o
   )
 }
 
-/** 快递投送在途横幅（2026-09-18 虚拟货物版）：体积/级别/限时与截止倒计时；到站自动结算不可取消 */
 export function CourierInFlightBanner({ view, ctx }: { view: SideTaskBoardView; ctx: SimContext }) {
   const d = view.deliver
   if (!d) return null

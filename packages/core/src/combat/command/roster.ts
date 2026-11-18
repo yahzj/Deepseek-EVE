@@ -14,7 +14,6 @@ export function battleShipIdsOf(battle: BattleState | null | undefined, leader: 
 export function makeCombatSortie(shipIds: readonly string[], leader: string): CombatSortie {
   return { version: 1, leaderShipId: leader, shipIds: [...shipIds] }
 }
-/** 只清洗形状；旧在途队伍不按当前声望/预算缩编。 */
 export function cleanCombatSortie(raw: unknown): CombatSortie | undefined {
   if (!raw || typeof raw !== 'object') return undefined
   const value = raw as Record<string, unknown>

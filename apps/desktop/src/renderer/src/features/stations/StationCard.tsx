@@ -1,4 +1,3 @@
-/** 功能域职责拆分，保持原计算与顺序。 */
 import type { GameEngine } from '../../game/engine'
 import type { ToastFn } from '../../pages/common'
 import { useState } from 'react'
@@ -8,7 +7,6 @@ import { tr, cmdText } from '../../i18n/locale'
 import { secTone, secText } from '../../panels/StarMap'
 import { Communicator } from '../../ui/communicator'
 
-/** 建站族任务卡：状态 / 档位进度 / 提交 / 通讯重看（siteIds 为空数组时不显示任何卡——任务初期不出现） */
 export function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; onToast: ToastFn; siteIds?: string[] }) {
   const state = engine.state
   const [comm, setComm] = useState<string | null>(null)

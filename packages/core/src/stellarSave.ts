@@ -31,7 +31,6 @@ function cleanStellarSystem(raw: unknown, key: string): StellarSystem | undefine
     || !STAR_CLASSES.includes(s.starClass as StellarSystem['starClass'])
     || !finite(s.routeMinutes, 20, 120) || !Array.isArray(s.stars) || s.stars.length > 2
     || !Array.isArray(s.bodies) || s.bodies.length < 2 || s.bodies.length > 8) return undefined
-  // 未来规则的身份格式不可按当前版本重写，也不能由种子重建快照。
   if (s.generationVersion === 1 && key !== `system-v1-${s.seed}`) return undefined
   if (s.generationVersion === 1) {
     const starCount = s.kind === 'rogue' ? 0 : s.kind === 'binary' ? 2 : 1

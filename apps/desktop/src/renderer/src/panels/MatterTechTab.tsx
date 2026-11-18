@@ -1,17 +1,3 @@
-/**
- * **谜质科技**子页（船长 2026-09-19：「消耗谜质和信用点。不消耗时间。主要研究对虫洞内的战斗和探索。
- * 另外含部分洞外工业科技。」＋「研究入口放在扫描虫洞界面内」）。
- *
- * 布局口径（同级相似项 = 工业页「蓝图书架」的功能标签页 + 卡片列表）：
- * - **三线 × 四层**：探索 / 战斗 / 工业三列，列内按层（T1~T4）分组，节点卡片一眼能扫完
- *   （名称 + 等级 `lv/max`）；**点卡片开二级详情窗**（说明 / 每级值 / 下一级费用 / 前置 / 研究按钮）；
- * - **固定尺寸、整页不滚**（一级页不滚红线）：23 个节点排在三列里，卡片紧凑、容器定高；
- * - 状态色沿用本仓既有的"可选 / 已满 / 前置未满"语言：可研究 = 亮框、已满级 = 金色、
- *   前置或货币不足 = 暗灰（悬停给原因，不弹窗）。
- *
- * 文案：界面文案一律走 `useL10n().t('ui.xxx.nnn')`（id 引用，文本只写在唯一表 `packages/data/src/l10n/table.ts`；缺 id ⇒ 显示 id 本身）；
- * 节点名与说明来自数据表 `ctx.matterTech`（英文覆盖层 `EN_MATTER_TECH` 由 l10n 批接入）。
- */
 import { useState } from 'react'
 import { Glyph } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
@@ -29,7 +15,6 @@ import { useL10n, cmdText } from '../i18n/locale'
 import { tr } from '../i18n/locale'
 import { UI_TONES } from '../ui/tones'
 
-/** 三条线（顺序 = 界面上从左到右；与数据表的 branch 值一一对应） */
 const BRANCHES: ReadonlyArray<{ key: MatterTechBranch; label: string; icon: string; tone: string }> = [
   { key: 'explore', get label() { return tr("ui.MatterTechTab.001") }, icon: 'target-lock', tone: UI_TONES.matExplore },
   { key: 'battle', get label() { return tr("ui.MatterTechTab.002") }, icon: 'turret', tone: UI_TONES.matBattle },
@@ -41,13 +26,11 @@ export function MatterTechTab({ engine, onToast }: { engine: GameEngine; onToast
   const state = engine.state
   const ctx = engine.ctx
   const nodes = matterTechNodes(ctx)
-  /** 详情窗（二级窗）：`null` = 没开 */
   const [openId, setOpenId] = useState<string | null>(null)
   const essence = matterTechEssenceHeld(state)
   const spent = nodes.reduce((n, d) => n + matterTechLevel(state, d.id), 0)
   const total = nodes.reduce((n, d) => n + d.maxLevel, 0)
 
-  /** 单节点当前状态：等级 / 能否研究 / 下一级费用 / 不能研究的原因 */
   const infoOf = (def: MatterTechNodeDef) => {
     const level = matterTechLevel(state, def.id)
     const can = matterTechCanResearch(state, ctx, def.id)
