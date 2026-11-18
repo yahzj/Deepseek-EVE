@@ -20,9 +20,19 @@
 
 ## 边界与限流
 
-- 每 IP 10 分钟 1 条、全局每小时 20 条；文本 ≤4000 字；图片 ≤3 张、每张 ≤5MB，仅 png/jpeg/webp/gif（校验 magic bytes）。
+- 每 IP 10 分钟 3 条、全局每小时 30 条（2026-11-18 实测后从 1 条/20 条放宽：同一网络出口的玩家会共享 IP 配额，重试也占额度）；文本 ≤4000 字；图片 ≤3 张、每张 ≤5MB，仅 png/jpeg/webp/gif（校验 magic bytes）。
 - 标题由正文首行截取自动生成，玩家不用填标题。
 
 ## 待裁决
 
 - 无（连通性已实测：服务器到 api.github.com 200 / 0.4s）。
+
+## 服务器部署记录（2026-11-18）
+
+- 后端代码：`src/feedback.ts`（新）、`src/config.ts`、`src/http-api.ts` 已同步到 `/home/ubuntu/whale-server/src/`，`whale-server` 已重启。
+- 环境变量（`/etc/whale/internal.env`）：`GITHUB_ISSUE_TOKEN`、`WHALE_FEEDBACK_IMAGE_DIR=/var/www/whale-idle-6666/feedback-images`。
+- 图片目录：`/var/www/whale-idle-6666/feedback-images`（ubuntu 可写、nginx 可读）。
+- nginx：`/etc/nginx/sites-available/whale-idle-6666` 新增 `location = /api/feedback` 反代 8787，备份 `whale-idle-6666.bak-20261118`。
+- 前端产物：`web/dist` 已部署到 `/var/www/whale-idle-6666/`（index-wewRE9-E.js）。
+- GitHub Pages 入口仍为旧版（index-DDdQazuS.js，无反馈入口），待船长验收后 push 同批同步。
+
