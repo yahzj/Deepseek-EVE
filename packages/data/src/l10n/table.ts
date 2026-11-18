@@ -7973,7 +7973,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ui.exchangeTf.003': { zh: '可用资金不足，无法买入债券', en: 'Insufficient cash to buy bonds' },
   'ui.exchange.029': { zh: '今日股票成交额', en: '', enDeferred: true },
   'ui.feedback.001': { zh: '反馈问题', en: '', enDeferred: true },
-  'ui.feedback.002': { zh: '遇到问题或有想法，直接写在下面。截图可以直接 Ctrl+V 粘贴，或拖进来。', en: '', enDeferred: true },
+  'ui.feedback.002': { zh: '遇到问题或有想法，直接写在下面。截图可以直接 Ctrl+V 粘贴，或拖进来。内容会自动保存，可以放心切出去截图。', en: '', enDeferred: true },
   'ui.feedback.003': { zh: '写下你的问题或建议…', en: '', enDeferred: true },
   'ui.feedback.004': { zh: '提交', en: '', enDeferred: true },
   'ui.feedback.005': { zh: '关闭', en: '', enDeferred: true },

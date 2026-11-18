@@ -4,10 +4,27 @@ import { BUILD, BUILD_FORM } from '../game/buildInfo'
 import { tr } from '../i18n/locale'
 
 const FEEDBACK_ENDPOINT = 'https://game.bajibaji.party:7777/api/feedback'
+const DRAFT_KEY = 'whale-idle:feedback-draft'
 const MAX_IMAGES = 3
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024
 const MAX_TEXT = 4000
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp'])
+
+function readDraft(): string {
+  try {
+    return localStorage.getItem(DRAFT_KEY) ?? ''
+  } catch {
+    return ''
+  }
+}
+
+function writeDraft(text: string): void {
+  try {
+    if (text === '') localStorage.removeItem(DRAFT_KEY)
+    else localStorage.setItem(DRAFT_KEY, text)
+  } catch {
+  }
+}
 
 interface Shot {
   id: number
@@ -28,7 +45,7 @@ async function fileToShot(file: File, id: number): Promise<Shot> {
 
 /** 游戏内反馈弹窗：描述 + Ctrl+V 粘贴截图 → 服务器代发 GitHub Issue。 */
 export function FeedbackDialog({ onClose }: { onClose: () => void }) {
-  const [text, setText] = useState('')
+  const [text, setText] = useState(readDraft)
   const [shots, setShots] = useState<Shot[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -109,6 +126,7 @@ export function FeedbackDialog({ onClose }: { onClose: () => void }) {
         throw new Error(payload.message ?? `HTTP ${res.status}`)
       }
       setDone(true)
+      writeDraft('')
     } catch (err) {
       setError(tr('ui.feedback.008', { p1: err instanceof Error ? err.message : String(err) }))
     } finally {
@@ -143,7 +161,10 @@ export function FeedbackDialog({ onClose }: { onClose: () => void }) {
                 value={text}
                 maxLength={MAX_TEXT}
                 placeholder={tr('ui.feedback.003')}
-                onChange={(e) => setText(e.target.value)}
+                onChange={(e) => {
+                  setText(e.target.value)
+                  writeDraft(e.target.value)
+                }}
                 onPaste={onPaste}
                 disabled={busy}
                 autoFocus
