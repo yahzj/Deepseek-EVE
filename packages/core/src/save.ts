@@ -35,6 +35,7 @@ import { cleanWormholeEventInstance, cleanWormholeExpeditionRun } from './wormho
 import { cleanWormholePreparationTemplates } from './wormholePreparationTemplates'
 import { cleanPreparationSquads } from './preparationSquads'
 import { cleanFleetPresets } from './fleetPresets'
+import { cleanFleetRangeSettings } from './fleetRange'
 import { cleanCommandExpedition, cleanWeekendSquad } from './combat/command/save'
 import { cleanCombatSortie } from './combat/command/roster'
 import { WORMHOLE_FAMILY_ORDER, wormholeFamilyOfSeed } from './wormholeFoes'
@@ -2996,7 +2997,9 @@ for (const [key, value] of Object.entries(licensesRaw)) {
   const departure = cleanDeparture(src.departure)
   const battleRangeByCard = cleanBattleRangeRecords(src.battleRangeByCard)
   const pendingBattleRange = cleanPendingBattleRange(src.pendingBattleRange)
+  const fleetRange = cleanFleetRangeSettings(src.fleetRange)
   const normalized: GameState = {
+    ...(fleetRange ? { fleetRange } : {}),
     ...(departure && departure.shipId === shipId && fleet[departure.shipId] ? { departure } : {}),
     ...(battleRangeByCard ? { battleRangeByCard } : {}),
     ...(pendingBattleRange ? { pendingBattleRange } : {}),

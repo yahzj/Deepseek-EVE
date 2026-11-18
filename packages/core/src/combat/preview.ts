@@ -7,7 +7,7 @@ import { createFoeSpecs } from './foes/catalog'
 import { clamp, SHIP_HP_UPLIFT_MUL, playerWeaponInRange, hitChance, playerBlindDamageMul, typeLayerMult } from './combatMath'
 import { createPlayerSpec } from './player/create'
 import { foeHpOfThreat } from './foePower'
-import { battleCardRangeOf } from './battleRangeMemory'
+import { fleetRangeOf } from '../fleetRange'
 import { meFoeRangeDebuffOf } from './foeRange'
 import { beamPowerFactor } from './beam'
 import { foeDamageComposition } from '../wormholeFoes'
@@ -16,20 +16,14 @@ import { shieldChargeStreamsOf } from './combatRepair'
 import { spreadWinChance } from './combatReport'
 import { passiveShieldBreakSeconds, passiveArmorBreakSeconds } from './passiveRecovery'
 
-/**
- * **某星系的玩家目标距离设定**（船长 2026-09-11：「玩家每个星系设定的目标距离独立保存，
- * 预估胜率的战斗按照那个距离决定。如果没有，采用射程中段距离」）。
- * 返回 null = 该星系没设过（调用方回落到默认档：**星图 = 射程带 0.8、洞内 = 中段 0.5**，
- * 2026-09-15 船长裁定；见 `balance.battle.desireBand*`）。
- * 单点：实战开战（远征/遭遇/AI）、胜率预估（MC 与稳态解析）全走这一处，避免多处各读各的。
- */
+/** 历史星系偏好的兼容读取；新战斗及预估不使用。 */
 export function desirePrefOf(state: GameState, galaxyId: string | null | undefined): number | null {
   if (!galaxyId) return null
   const v = state.expedition.desirePrefByGalaxy?.[galaxyId]
   return typeof v === 'number' && Number.isFinite(v) && v > 0 ? Math.round(v) : null
 }
 
-/** 写入某星系的目标距离（战斗内拖条/战术切换、出发时显式指定共用）；返回写入后的值 */
+/** 历史工具兼容写入；玩家战斗调距不调用。 */
 export function setDesirePrefOf(state: GameState, galaxyId: string, desireM: number): number {
   const v = Math.max(1, Math.round(desireM))
   state.expedition.desirePrefByGalaxy = { ...(state.expedition.desirePrefByGalaxy ?? {}), [galaxyId]: v }
@@ -131,8 +125,8 @@ export function steadyPreview(
     ? shipWaveBuilds.reduce((best, b) => (b.dps > best.dps ? b : best), shipWaveBuilds[0]!).specs
     : foes
   // 距离口径（船长 2026-09-11：「预估胜率的战斗按照那个距离决定，如果没有，采用射程中段距离」）：
-  // 按卡记忆取距；没有记录时保留解析预估原有默认模型。
-  const steadyPref = battleCardRangeOf(state, anomaly.id)?.desireM ?? null
+  // 按编队默认取距；自动档保留解析预估原有默认模型。
+  const steadyPref = fleetRangeOf(state, [shipId])?.desireM ?? null
   const steady =
     steadyPref !== null
       ? clamp(bal.minDistanceM, battleOpenM(me, foes, bal), steadyPref)

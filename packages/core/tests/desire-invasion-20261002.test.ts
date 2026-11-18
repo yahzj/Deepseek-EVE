@@ -1,24 +1,12 @@
-/**
- * 2026-10-21船长改为按实际卡ID记忆；下列原报障沿革不再代表存储键。
- * **入侵的期望距离记忆**（**船长 2026-10-02 报障**：「**在打入侵时，玩家设置的目标距离并不会保存**」）。
- *
- * 真因（探针实测，2026-10-02）：**入侵池卡在数据里写死 `galaxyId: 'galaxy-hub'`**
- * （`ink-harass` / `ink-raid` …，它们本就不属于任何被占星系），而期望距离的写（`setBattleDesire`）与读
- * （`beginBattleAt` → `startBattleFor`）旧口径都取 `anomaly.galaxyId` ⇒ 全落在**母港**那把键上：
- * ① 被占星系一份都没记（= 船长报的"不保存"）；② **母港那份设定被入侵悄悄改掉**。
- *
- * 修后口径：两侧都取 **`exp.foeGalaxyId`（本场实际作战星系）**，没有它时回落卡自带星系
- * ⇒ 普通远征/普通悬赏逐字不变。
- *
- * ⚠ 本文件补的正是**原来没有任何用例守着**的那条：入侵**每场重抽一张卡**，而记忆必须按**星系**稳定。
- */
+/** 入侵连续抽卡回归：各卡读取编队默认，战中选择仅本场生效。 */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import { setBattleDesire, setDesirePrefOf, desirePrefOf } from '../src/index'
 import { startExpeditionArrived as startExpedition } from './helpers/command-arrived'
-import { battleCardRangeOf } from '../src/battleRangeMemory'
-import { setCardDistance } from './helpers/battle-card-memory'
+import { setFleetDistance } from './helpers/fleet-range'
+import { confirmBattleRange } from '../src/battleRangeConfirm'
+import { finishDeparture } from './helpers/departure-ready'
 import { weekendAssaultDrawOf, weekendNoteAssaultDispatch } from '../src/weekendBounty'
 import type { WeekendEventState } from '../src/weekendEvent'
 import type { GameState } from '../src/state'
@@ -26,6 +14,7 @@ import type { GameState } from '../src/state'
 const ctx = buildSimContext()
 /** 被占星系（真正在打的那个） */
 const PER = 'galaxy-redring'
+const NOW = 1794974400000
 
 /** 夹具照抄 `tests/offline-invasion-loop.test.ts`（同一场入侵的最小可跑状态） */
 function world(): GameState {
@@ -37,7 +26,7 @@ function world(): GameState {
   s.warehouse.items['ammo-plasma-l'] = 20_000
   const ev: WeekendEventState = {
     seq: 1,
-    startedAtWallMs: Date.now(),
+    startedAtWallMs: NOW,
     coreId: 'galaxy-abyss',
     peripheryIds: [PER],
     family: 'H',
@@ -49,13 +38,17 @@ function world(): GameState {
 
 /** 打一场入侵并收起场（返回"玩家在战斗里设 5,000"这一步的返回） */
 function fightOneInvasion(s: GameState): { cardId: string; cardGalaxy: string | undefined; ok: boolean } {
-  const dispatch = weekendAssaultDrawOf(s, ctx, PER, Date.now())!
+  const dispatch = weekendAssaultDrawOf(s, ctx, PER, NOW)!
   const card = ctx.anomalies.get(dispatch.cardId)
-  const r = startExpedition(s, dispatch.cardId, ctx, { foeGalaxyId: PER })
+  let r = startExpedition(s, dispatch.cardId, ctx, { foeGalaxyId: PER })
+  if (r.rangeConfirmation) {
+    r = confirmBattleRange(s, ctx, s.fleetRange?.desireM ?? s.pendingBattleRange!.desireM, NOW)
+    if (r.ok) finishDeparture(s, ctx)
+  }
   expect(r.ok, '入侵应能开战').toBe(true)
   const d = setBattleDesire(s, 5_000, ctx)
   expect(d.ok, '入侵战斗里应能设期望距离').toBe(true)
-  /** 收场：清远征槽（偏好表挂在 `expedition.desirePrefByGalaxy` 上，不受影响） */
+  // 清理本场活动，保留编队默认和射程证据。
   s.expedition.active = false
   s.expedition.battle = null
   s.expedition.anomalyId = null
@@ -65,17 +58,18 @@ function fightOneInvasion(s: GameState): { cardId: string; cardGalaxy: string | 
   return { cardId: dispatch.cardId, cardGalaxy: card?.galaxyId, ok: d.ok }
 }
 
-describe('入侵的期望距离记忆（2026-10-02 船长报障）', () => {
-  it('① 连打三场，每张实际抽到的卡分别记下5,000', () => {
+describe('入侵的本场距离与编队默认隔离', () => {
+  it('① 连打三场，战中5,000不会覆盖编队默认', () => {
     const s = world()
+    setFleetDistance(s, ctx, 2500)
     const seenCards: string[] = []
     for (let i = 0; i < 3; i++) {
       const one = fightOneInvasion(s)
       seenCards.push(one.cardId)
       expect(
-        battleCardRangeOf(s, one.cardId)?.desireM,
-        `第${i + 1}场实际卡${one.cardId}应记得5,000`,
-      ).toBe(5_000)
+        s.fleetRange?.desireM,
+        `第${i + 1}场实际卡${one.cardId}不能把本场选择自动存为默认`,
+      ).toBe(2500)
       expect(s.expedition.battle, '本场已收场').toBeNull()
     }
     expect(seenCards.length).toBe(3)
@@ -84,19 +78,23 @@ describe('入侵的期望距离记忆（2026-10-02 船长报障）', () => {
   it('② 不污染母港：入侵不动「母港」那一份设定', () => {
     const s = world()
     setDesirePrefOf(s, 'galaxy-hub', 9_876)
-    const one = fightOneInvasion(s)
+    fightOneInvasion(s)
     expect(desirePrefOf(s, 'galaxy-hub'), '母港那份应逐字不动（旧口径会被入侵改成战斗里设的值）').toBe(9_876)
-    expect(battleCardRangeOf(s, one.cardId)?.desireM, '按实际敌卡保存').toBe(5_000)
+    expect(s.fleetRange?.desireM, '战中选择不保存为默认').toBeUndefined()
   })
 
-  it('③ 下一场开战按记忆站（不再回默认档）＋ 普通远征零变化', () => {
+  it('③ 下一场开战采用编队默认，而非上一场战中选择', () => {
     const s = world()
     fightOneInvasion(s)
-    /** 第二场：开战那一拍就该用 5,000（`beginBattleAt` 显式读本场实际作战星系） */
-    const dispatch = weekendAssaultDrawOf(s, ctx, PER, Date.now())!
-    setCardDistance(s, ctx, dispatch.cardId, 5_000)
-    const r = startExpedition(s, dispatch.cardId, ctx, { foeGalaxyId: PER })
+    // 下一场不继承上一场拖动后的5,000。
+    const dispatch = weekendAssaultDrawOf(s, ctx, PER, NOW)!
+    setFleetDistance(s, ctx, 2500)
+    let r = startExpedition(s, dispatch.cardId, ctx, { foeGalaxyId: PER })
+    if (r.rangeConfirmation) {
+      r = confirmBattleRange(s, ctx, 2500, NOW)
+      if (r.ok) finishDeparture(s, ctx)
+    }
     expect(r.ok).toBe(true)
-    expect(s.expedition.battle?.myDesireM, '开战即按记下的 5,000 站').toBe(5_000)
+    expect(s.expedition.battle?.myDesireM, '开战采用显式设置的编队默认').toBe(2500)
   })
 })

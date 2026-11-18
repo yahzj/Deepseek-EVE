@@ -3,6 +3,7 @@ import type { BattleSceneProps } from './sceneTypes'
 /** 战斗界面职责：renderBattleScene，保持原调用顺序。 */
 
 import type { CSSProperties } from 'react'
+import { Save } from 'lucide-react'
 import { fleetDefOf } from '@whale/core'
 import type { ShipRole } from '@whale/core'
 
@@ -39,6 +40,15 @@ export function renderBattleScene({
     sliderV, pushDragV, scheduleCommit, flushDrag, dragV, sliderToDesire,
     applyTactic,
   }: BattleSceneProps) {
+  const memory = battle.rangeMemory
+  const sourcePreset = memory?.sourceVersion === 1 && memory.shipIds
+    ? engine.state.fleetPresets?.find(preset => preset.id === memory.fleetPresetId
+      && preset.shipIds.length === memory.shipIds!.length
+      && preset.shipIds.every((id, index) => id === memory.shipIds![index]))
+    : undefined
+  const saveDisabled = ended || !sourcePreset
+  const saveTitle = ended ? tr('ui.fleetRange.013') : sourcePreset
+    ? tr('ui.fleetRange.010', { p1: sourcePreset.name }) : tr('ui.fleetRange.011')
 return (
     /**
      * **战场 = 自己的全屏覆盖层**（2026-09-22 船长令「界面回滚，战斗界面回滚到全屏显示」）。
@@ -745,7 +755,7 @@ return (
                   onPointerCancel={flushDrag}
                   onBlur={flushDrag}
                   onKeyUp={flushDrag}
-                  title={tr("ui.BattleScreen.069")}
+                  title={tr('ui.fleetRange.017')}
                 />
               </div>
             </div>
@@ -754,15 +764,21 @@ return (
             </span>}
           </div>
           {!rangeMode && <div className="app-bts-ops">
-            <span className="app-battle-tacs">
+            <span className="app-battle-tacs app-bts-fleet-range-actions">
               <button className="app-btn is-small" disabled={ended} onClick={() => applyTactic('assault')}>{tr("ui.BattleScreen.073")}</button>
               <button className="app-btn is-small" disabled={ended} onClick={() => applyTactic('mid')}>{tr("ui.BattleScreen.074")}</button>
               <button className="app-btn is-small" disabled={ended} onClick={() => applyTactic('kite')}>{tr("ui.BattleScreen.075")}</button>
+              <span className="app-bts-fleet-range-save" title={saveTitle} tabIndex={saveDisabled ? 0 : undefined} aria-label={saveDisabled ? saveTitle : undefined}>
+                <button className="app-btn is-small" disabled={saveDisabled} aria-label={tr('ui.fleetRange.009')} onClick={() => {
+                  const result = engine.battleFleetRangeSave(battle)
+                  onToast(result.ok ? tr('ui.fleetRange.012', { p1: Math.round(battle.myDesireM), p2: sourcePreset!.name }) : cmdText(result), !result.ok)
+                }}><Save size={15} aria-hidden />{tr('ui.fleetRange.009')}</button>
+              </span>
             </span>
             <span className="app-dim app-bts-note">
               {ended
                 ? tr("ui.BattleScreen.076")
-                : tr("ui.BattleScreen.077")}
+                : tr('ui.fleetRange.018')}
             </span>
           </div>}
         </div>

@@ -1,5 +1,5 @@
 import { combatRosterOf, encounterCombatRosterOf } from '@whale/core'
-import { saveFleetPreset, renameFleetPreset, deleteFleetPreset, applyFleetPreset } from '@whale/core'
+import { saveFleetPreset, renameFleetPreset, deleteFleetPreset, applyFleetPreset, fleetRangeOf, setFleetRange, saveBattleFleetRange } from '@whale/core'
 /**
  * 界面侧引擎封装（胶水层）——M1 版。
  *
@@ -903,10 +903,8 @@ export class GameEngine {
 
   /**
    * 战力指纹：驾驶船 + 装配 + 无人机清单 + 技能 + 当前耐久（任一变化 → 全板胜率失效重算）。
-   * **2026-09-24 补三项**（船长令重做预估口径后，这三样都会改变评估结果，漏掉就会吃到过期缓存）：
-   * ① **弹药档位**（`ammoPref`，「弹药采用玩家当前选择弹药」）· ② **取用开关**（`resupplyFromWarehouse`，
-   * 决定评估把补给料放进仓库还是货仓）· ③ **实战胜利记录**（`winRecord`：有记录的卡改用记录距离，
-   * 打完一场回来必须重算）· ④ 窝点档位/派系活跃（`buildEvalState` 会带进快照 ⇒ 同一把尺子）。
+   * 弹药偏好随逐舰快照纳入；取用开关决定补给池，窝点档位/派系活跃也影响评估。
+   * 编队有效距离偏好参与指纹，同船切换不同距离须重算；自动档仍采样三点，不读取旧胜利记录距离。
    */
   private winFingerprint(): string {
     const st = this.state
@@ -915,7 +913,7 @@ export class GameEngine {
     const tr = st.skills.trained
     let sk = ''
     for (const k of Object.keys(tr).sort()) sk += `${k}:${tr[k]};`
-    return `${uid}|${f?.defId}|${JSON.stringify(combatRosterOf(st).map(id => [id, st.fleet[id]]))}|${st.resupplyFromWarehouse !== false ? 1 : 0}|${JSON.stringify(st.winRecord ?? null)}|${st.expedition.lairTier ?? 0}|${st.expedition.factionActive === true ? 1 : 0}|${sk}`
+    return `${uid}|${f?.defId}|${JSON.stringify(combatRosterOf(st).map(id => [id, st.fleet[id]]))}|${st.resupplyFromWarehouse !== false ? 1 : 0}|${JSON.stringify(fleetRangeOf(st) ?? null)}|${st.expedition.lairTier ?? 0}|${st.expedition.factionActive === true ? 1 : 0}|${sk}`
   }
 
   /** 每个空闲心跳只派发一张卡，完整推演由后台执行，主线程不作同步回退。 */
@@ -3193,6 +3191,23 @@ export class GameEngine {
     return result
   }
 
+  fleetRangeSet(desireM: number | null, presetId?: string): CommandResult {
+    const result = setFleetRange(this.state, this.ctx, desireM, presetId)
+    if (result.ok) { this.notify(); void this.persist() }
+    return result
+  }
+
+  battleFleetRangeSave(battle: import('@whale/core').BattleState | null | undefined): CommandResult {
+    // 只接受界面正在显示且仍挂在有效宿主上的原对象，不按当前主控或宿主优先级另选一场。
+    const validHost = !!battle && !battle.ended && (battle === this.state.wormhole.run?.battle
+      || this.state.encounter.active && battle === this.state.encounter.battle
+      || this.state.expedition.active && battle === this.state.expedition.battle)
+    if (!validHost) return { ok: false, errorId: 'core.fleetRange.002' }
+    const result = saveBattleFleetRange(this.state, this.ctx, battle)
+    if (result.ok) { this.notify(); void this.persist() }
+    return result
+  }
+
   wormholePrepareFromTemplate(shipIds: readonly string[], request: WormholePreparationRequest, id: string) {
     const template = this.state.wormholePreparationTemplates?.find(t => t.id === id)
     return template ? wormholeTemplateFillPlan(this.state, this.ctx, shipIds, request, template) : null
@@ -4027,7 +4042,7 @@ export class GameEngine {
   }
 
   /**
-   * 战斗中调整期望距离（距离条拖动/战术按钮；写入并记忆偏好）。
+   * 战斗中调整本场期望距离；长期默认仅由明确保存到出发预设的操作修改。
    *
    * `persist = true` ⇒ 这一次提交**同时落盘**（**2026-10-02 修 · 船长报障「入侵战斗中，我方选择的
    * 期望距离不会保存」**）：由界面在**松手那一次**（拖拽收尾）与**战术按钮**那一次传，拖动过程中的

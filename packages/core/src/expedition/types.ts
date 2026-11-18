@@ -34,7 +34,7 @@ export interface ExpeditionState {
   /** 2026-10-21起仅保留旧星系记录，不供新战斗读取、不猜测迁移到卡ID。 */
   desirePrefByGalaxy?: Record<string, number>
   /** ⚠ 遗留字段（2026-09-11 起不再使用，仅存档兼容占位）：原"全局期望距离偏好"。
-   *  现行口径见 `GameState.battleRangeByCard`；读档时不回填、不回读。 */
+   *  现行口径见 `GameState.fleetRange`；读档时不回填、不回读。 */
   desirePrefM?: number
   /** 赏金任务·窝点档位（2026-09-10 兼容字段）：非空 = 本次远征打的是派生窝点
    *  （威胁/波次/僚机按档位强化，奖金与稀有残骸按窝点口径结算）；旧档与普通悬赏 = 未设 */

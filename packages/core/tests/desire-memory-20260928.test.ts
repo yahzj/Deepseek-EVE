@@ -1,20 +1,4 @@
-/**
- * 2026-10-21按实际卡ID复验，旧星系记录只用于验证不会被新战斗污染；以下为原报障沿革。
- * **期望距离的"记忆"**（**2026-09-28 玩家报障**：「**入侵和旗舰战，并不会记忆玩家选择的期望距离**」）。
- *
- * 口径（**船长 2026-09-11**）：「玩家每个星系设定的目标距离独立保存」——写入端 `setBattleDesire`
- * 战斗内拖条/战术切换 ⇒ `setDesirePrefOf(该星系)`；读取端 = 下次在**同一星系**开战时沿用它。
- *
- * 取证结论（三套宿主逐条实测，探针读数见工作文档）：
- * - **遇袭 / 遭遇**：`fightEncounter` 显式传 `desirePrefOf(state, enc.galaxyId)` ✅ 本来就通；
- * - **远征 / 入侵主动出击**：开战恒传 `undefined`，但 `startBattleFor` 自己会回落
- *   `desirePrefOf(state, anomaly.galaxyId)`，而**目标卡自带被占星系** ⇒ 与写入端同源 ✅ 本来就通
- *   （⚠ 本文件用例②就是防"日后有人在这儿再补一次"的——那会变成两处读同一份偏好）；
- * - **旗舰战**（编队战 · 承载遭遇槽）：原先也传 `undefined` ⇒ 引擎回落按**卡自带星系**读，
- *   而**旗舰卡是隐藏卡、母港是 `galaxy-hub`** ⇒ **永远读不到核心星系那一份** ⇒「不记忆」❌
- *   ⇒ 修法 = `weekendStartFlagshipBattle` **显式**传 `desirePrefOf(state, ev.coreId)`
- *   （与写入端 `state.encounter.galaxyId` 逐字同源）。
- */
+/** 旗舰距离报障回归：现读取编队默认，旧母港偏好仅兼容留存。 */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { createCommandReadyState as createInitialState } from './helpers/command-ready'
@@ -22,8 +6,7 @@ import type { GameState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
 import { setDesirePrefOf, startBattleFor, desiredRangeFor } from '../src/combat'
 import { buildMyUnitSpecs } from '../src/combat/fleetSpecs'
-import { battleCardRangeOf } from '../src/battleRangeMemory'
-import { setCardDistance } from './helpers/battle-card-memory'
+import { setFleetDistance } from './helpers/fleet-range'
 import { weekendStartFlagshipBattle } from '../src/weekendLaunch'
 import {
   WEEKEND_FLAGSHIP_POOL_HP,
@@ -62,8 +45,8 @@ function bossWorld(): { s: GameState; ev: WeekendEventState } {
   return { s, ev }
 }
 
-describe('旧记忆报障回归：现按实际卡ID保存', () => {
-  it('① 旗舰战按自身卡ID记录，下次同卡读取', () => {
+describe('旧记忆报障回归：旗舰战读取编队默认', () => {
+  it('① 旗舰战读取当前编队距离，未设置时仍用默认档', () => {
     const { s } = bossWorld()
     // 两场使用独立的同状态存档，避免上一场的出发门禁干扰距离读取。
     const firstState = structuredClone(s)
@@ -71,9 +54,8 @@ describe('旧记忆报障回归：现按实际卡ID保存', () => {
     expect(first, '第一场开得起来').not.toBeNull()
     expect(first!.myDesireM, '头一场没设过 ⇒ 引擎缺省档').toBe(defaultDesire(firstState, first!))
 
-    /** 写入旗舰卡的距离记录，再用未占用的同状态存档验证读取。 */
-    setCardDistance(s, ctx, 'ink-flagship', PLAYER_DESIRE)
-    expect(battleCardRangeOf(s, 'ink-flagship')?.desireM).toBe(PLAYER_DESIRE)
+    setFleetDistance(s, ctx, PLAYER_DESIRE)
+    expect(s.fleetRange?.desireM).toBe(PLAYER_DESIRE)
 
     const second = weekendStartFlagshipBattle(s, ctx, NOW)
     expect(second, '第二场也开得起来').not.toBeNull()
@@ -89,22 +71,24 @@ describe('旧记忆报障回归：现按实际卡ID保存', () => {
     expect(b, '旧母港偏好不妨碍开场').not.toBeNull()
     expect(b!.myDesireM, '旗舰卡没设过 ⇒ 仍是缺省档').toBe(defaultDesire(firstState, b!))
     /** 同状态存档写入旗舰卡距离，不受上一场的出发门禁影响。 */
-    setCardDistance(s, ctx, 'ink-flagship', PLAYER_DESIRE)
+    setFleetDistance(s, ctx, PLAYER_DESIRE)
     const second = weekendStartFlagshipBattle(s, ctx, NOW)
     expect(second, '记录距离后也开得起来').not.toBeNull()
     expect(second!.myDesireM).toBe(PLAYER_DESIRE)
   })
 
-  it('③ 低层预览读取实际卡ID记录但不写回真实存档', () => {
+  it('③ 低层预览读取编队默认但不写回真实存档', () => {
     const s = createInitialState({ nowWallMs: 0, seed: 7 })
     s.debugQuick = true
     const uid = addShipToFleet(s, 'sh-sentinel')
     s.shipId = uid
     const cardId = 'ink-harass'
-    const card = ctx.anomalies.get(cardId)!
-    setCardDistance(s, ctx, card.id, PLAYER_DESIRE, [uid])
+    setFleetDistance(s, ctx, PLAYER_DESIRE)
+    const before = structuredClone(s)
     const b = startBattleFor(s, ctx, uid, cardId, 0, undefined)
     expect(b, '开得起来').not.toBeNull()
-    expect(b!.myDesireM, '引擎回落读到该星系偏好').toBe(PLAYER_DESIRE)
+    expect(b!.myDesireM, '引擎读取编队默认').toBe(PLAYER_DESIRE)
+    expect(s.fleetRange).toEqual(before.fleetRange)
+    expect(s.fleetPresets).toEqual(before.fleetPresets)
   })
 })

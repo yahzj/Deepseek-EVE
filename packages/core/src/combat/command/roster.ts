@@ -1,6 +1,7 @@
 import type { GameState, BattleState } from '../../state'
 import type { CombatSortie } from './types'
 import { COMBAT_MAX_SHIPS } from './rules'
+import { cleanFleetRangeSettings, sameFleetRangeRoster } from '../../fleetRangeSettings'
 
 export function combatRosterOf(state: GameState, leader = state.shipId): string[] {
   if (leader !== state.shipId) return [leader]
@@ -20,5 +21,7 @@ export function cleanCombatSortie(raw: unknown): CombatSortie | undefined {
   if (value.version !== 1 || typeof value.leaderShipId !== 'string' || !Array.isArray(value.shipIds)) return undefined
   const ids = value.shipIds.filter((id): id is string => typeof id === 'string' && id.length > 0 && id.length <= 128)
   if (!ids.length || ids.length > COMBAT_MAX_SHIPS || new Set(ids).size !== ids.length || !ids.includes(value.leaderShipId)) return undefined
-  return { version: 1, leaderShipId: value.leaderShipId, shipIds: ids }
+  const range = cleanFleetRangeSettings(value.range)
+  return { version: 1, leaderShipId: value.leaderShipId, shipIds: ids,
+    ...(range && sameFleetRangeRoster(range.shipIds, ids) ? { range } : {}) }
 }

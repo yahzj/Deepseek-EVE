@@ -16,7 +16,7 @@ inWormhole: boolean
 retreatAsk: boolean
 setRetreatAsk: import('react').Dispatch<import('react').SetStateAction<boolean>>
 onToast: ToastFn
-engine: Pick<GameEngine, "state" | "ctx" | "wormholeSpeedActive" | "wormholeSpeedOptions" | "setWormholeSpeed" | "battleSetDesireAt" | "retreatNow">
+engine: Pick<GameEngine, "state" | "ctx" | "wormholeSpeedActive" | "wormholeSpeedOptions" | "setWormholeSpeed" | "battleSetDesireAt" | "battleFleetRangeSave" | "retreatNow">
 ended: boolean
 defeat: boolean
 sceneName: string

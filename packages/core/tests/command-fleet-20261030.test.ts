@@ -179,7 +179,7 @@ describe('统一指挥预算', () => {
     expect(back.encounter.battle!.myFleet).toHaveLength(2)
     back.encounter = invite()
     delete back.combatEscort
-    delete back.battleRangeByCard
+    delete back.fleetRange
     expect(fightEncounter(back, ctx).ok).toBe(true)
     expect(back.encounter.battle!.myFleet?.length ?? 1).toBe(1)
   })

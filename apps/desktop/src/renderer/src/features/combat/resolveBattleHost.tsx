@@ -19,9 +19,9 @@ tr: (id: string, params?: Record<string, string | number>) => string
   const wkView = weekendFlagshipBattleViewOf(state, engine.ctx)
   const host = whView ?? wkView
   const view = expeditionStatus(state, engine.ctx)
-  const combatView = view.combat ?? host?.combat ?? null
-  const whBattle = state.wormhole.run?.battle
-  const sceneName = whBattle?.wormhole ? tr(state.wormhole.run?.expeditionRules === 2 ? 'ui.explorationName.015' : 'ui.explorationName.014', { p1: tr(whBattle.wormhole.kind === 'boss' ? 'ui.explorationName.016' : whBattle.wormhole.kind === 'ruins' ? 'ui.explorationName.017' : 'ui.explorationName.005', { p1: whBattle.wormhole.depth }) }) : view.combat ? view.anomalyName : (host?.name ?? '')
+  const combatView = host ? host.combat : view.combat
+  const whBattle = whView?.battle
+  const sceneName = whBattle?.wormhole ? tr(state.wormhole.run?.expeditionRules === 2 ? 'ui.explorationName.015' : 'ui.explorationName.014', { p1: tr(whBattle.wormhole.kind === 'boss' ? 'ui.explorationName.016' : whBattle.wormhole.kind === 'ruins' ? 'ui.explorationName.017' : 'ui.explorationName.005', { p1: whBattle.wormhole.depth }) }) : host ? host.name : view.anomalyName
   /** 本场是不是洞内战斗（洞内**不能中途撤退**——船长第 8 条）；旗舰战**可以**撤退（照记母舰伤害） */
   const inWormhole = !!whView && !!combatView
   /**

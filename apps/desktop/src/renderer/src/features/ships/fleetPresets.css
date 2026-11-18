@@ -6,3 +6,9 @@
 .app-fleet-preset-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 8px 0; border-top: 1px solid rgb(var(--wui-border)); }
 .app-fleet-preset-detail { display: grid; gap: 3px; flex: 1 1 220px; min-width: 0; overflow-wrap: anywhere; font-size: 12px; }
 .app-fleet-preset-confirm { flex: 1 1 100%; overflow-wrap: anywhere; }
+.app-fleet-range { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; min-width: 0; margin: 0; font-size: 12px; }
+.app-fleet-range-mode { display: inline-flex; flex: 0 0 auto; gap: 2px; }
+.app-fleet-range .app-input { width: 112px; min-width: 0; max-width: 100%; height: 30px; box-sizing: border-box; font-size: 12px; }
+.app-fleet-range .app-btn { min-height: 30px; }
+.app-fleet-range-current { flex: 1 1 120px; font-size: 12px; overflow-wrap: anywhere; }
+.app-fleet-range-error { flex: 1 1 100%; overflow-wrap: anywhere; }

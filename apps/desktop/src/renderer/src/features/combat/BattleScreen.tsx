@@ -56,7 +56,7 @@ export function BattleScreen({
   rangeMode = false,
   simulationPaused = false,
 }: {
-  engine: Pick<GameEngine, 'state' | 'ctx' | 'wormholeSpeedActive' | 'wormholeSpeedOptions' | 'setWormholeSpeed' | 'battleSetDesireAt' | 'retreatNow'>
+  engine: Pick<GameEngine, 'state' | 'ctx' | 'wormholeSpeedActive' | 'wormholeSpeedOptions' | 'setWormholeSpeed' | 'battleSetDesireAt' | 'battleFleetRangeSave' | 'retreatNow'>
   onToast: ToastFn
   /**
    * **隐藏观战屏**（2026-09-22）：只把屏收起来，**不动宿主对本组件的挂载** ——
@@ -669,7 +669,7 @@ export function BattleScreen({
     if (!r.ok) onToast(cmdText(r) || tr('ui.FitPage.172'), true)
   }
   /**
-   * 拖动中：**节流提交**（把期望距离写进引擎，远征按星系记忆 / 洞内记在本趟），
+   * 拖动中：**节流提交**本场期望距离，不修改编队长期默认，
    * 但 **`dragV` 一直留到松手**（2026-09-13 船长反馈"一格一格地移动"）——
    * 首版这个定时器顺手 `setDragV(null)`：手指还按着时，滑条会每 160ms 被"回弹到上一次提交值"，
    * 拖起来就是一跳一跳的。提交归提交，**画面跟随归画面跟随**，松手才收。

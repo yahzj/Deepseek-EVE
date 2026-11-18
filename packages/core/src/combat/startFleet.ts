@@ -13,7 +13,8 @@ import { matterTechWhBuffs } from '../matterTech'
 import { createFoeSpecs } from './foes/catalog'
 import { battleOpenM, desiredRangeFor, rFamilyDesireOf, foeDesiredRange, battleMaxDistanceM } from './foes/tactics'
 import { createBattleState, announceStealthStart, announceSupportCallStart, initFoeDronePools, initFoeRepairPulses } from './foes/state'
-import { confirmedBattleDesire, battleCardRangeOf, battleRangeSnapshot } from './battleRangeMemory'
+import { confirmedBattleDesire, battleRangeSnapshot } from './battleRangeMemory'
+import { fleetRangeOf, type FleetRangeSettings } from '../fleetRange'
 import { applyFoeRangeDebuff, applyMeJammerDebuff, foeRangeEwSpecsOf } from './foeRange'
 import { buildDronePoolsFor } from './combatDrones'
 import { initDroneLaunch } from './droneLaunch'
@@ -80,6 +81,7 @@ export function startFleetBattleFor(
   preserveDesire = false,
   /** 校准与旧战斗复现用；正常入口始终使用新规则。 */
   formationVersion: 0 | 1 = 1,
+  departureRange?: FleetRangeSettings,
 ): import('../state').BattleState | null {
   if (!anomalyId || shipIds.length === 0 || shipIds.length > COMBAT_MAX_SHIPS || new Set(shipIds).size !== shipIds.length || shipIds.some(id => !state.fleet[id])) return null
   // 虫洞内的敌卡取**原卡**（不套窝点派生/派系活跃——那是悬赏线的口径），再按层派生
@@ -189,15 +191,16 @@ export function startFleetBattleFor(
   syncRangeEw(state, ctx, ewTemplate, foes, ordered[0]!)
   for (const spec of specs) applyMeJammerDebuff(spec, ewTemplate.rangeEw!.meCut, rangeRefs.get(spec.tag)?.weaponRanges)
   const openM = battleOpenM(me, foeRangeEwSpecsOf(ewTemplate, foes), bal)
-  // 船长2026-10-21：编队手动战同样按卡读取，自动探索传null不采用玩家记录。
+  // 手动战按编队默认读取；自动探索传null，不采用玩家偏好。
   // ⚠ **2026-09-15 船长裁定：星图与洞内同一个默认档**（`desireBandMid` = 射程带 0.8 高位；
   // 当天先落成"星图 0.8 / 洞内 0.5"分档，船长更正「这个是我口误，可以回滚那句」⇒ 取消分档）。
+  const fleetRange = departureRange ?? fleetRangeOf(state, ordered)
   const rawDesire =
     desireM === null
       ? desiredRangeFor(me, 'mid', bal)
       : desireM !== undefined && desireM > 0
         ? Math.round(desireM)
-        : (confirmedBattleDesire(state, anomalyId) ?? battleCardRangeOf(state, anomalyId)?.desireM ?? desiredRangeFor(me, 'mid', bal))
+        : (confirmedBattleDesire(state, anomalyId) ?? fleetRange?.desireM ?? desiredRangeFor(me, 'mid', bal))
   const desire = Math.max(bal.minDistanceM, preserveDesire ? rawDesire : Math.min(openM, rawDesire))
   const battle = createBattleState(me, foes, atGameMs, desire, specs.slice(1))
   if (formationVersion === 1) battle.enemyFormationVersion = 1
@@ -411,6 +414,7 @@ export function startFleetBattleFor(
     }
   }
   // ⚠ **刻意不写 `battle.hullEscapeFrac`**：副本内无"结构过半自动脱离"保险（冲突 2 · 船长裁定）。
-  if (desireM !== null) battle.rangeMemory = battleRangeSnapshot(anomalyId, specs, Math.max(bal.minDistanceM, rawDesire), battleMaxDistanceM(battle, me, foes, bal, specs) * (wormhole?.desireRangeMul ?? 1), bal.minDistanceM)
+  if (desireM !== null) battle.rangeMemory = { ...battleRangeSnapshot(anomalyId, specs, Math.max(bal.minDistanceM, rawDesire), battleMaxDistanceM(battle, me, foes, bal, specs) * (wormhole?.desireRangeMul ?? 1), bal.minDistanceM),
+    sourceVersion: 1, ...(fleetRange?.presetId ? { fleetPresetId: fleetRange.presetId } : {}) }
   return battle
 }

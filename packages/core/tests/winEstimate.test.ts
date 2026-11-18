@@ -3,7 +3,7 @@
  * - 极端场景方向正确（必胜局 = 1、必败局 = 0）；
  * - **三点距离采样**：按主武器的最大 / 最小 / 中距离各跑 N 局（`points` 三条）；
  * - **去种子化但可复现**：同输入逐位一致（预热缓存稳定）· 与存档自身的 rng 无关（不看运气，只看装配指纹）；
- * - **胜利记录取代采样**：该卡有实战胜利记录 ⇒ 只跑记录距离，且**夹回当前射程内**；
+ * - 编队固定距离取代采样，单点局数乘三；旧胜利记录不再决定距离；
  * - 评估不污染真实存档（rng/钱包/真档货仓不动）；快照正确复制战力（装配/技能/耐久/弹药档/开关）。
  */
 import { describe, expect, it } from 'vitest'
@@ -19,6 +19,7 @@ import {
   evalDistancePoints,
 } from '../src/winEstimate'
 import { anomaly, makeTestCtx, moduleDef, ship } from './helpers'
+import { setFleetDistance } from './helpers/fleet-range'
 
 const ctx = makeTestCtx({
   ships: [
@@ -42,7 +43,7 @@ function warriorState(seed = 42): { state: GameState; uid: string } {
 const hard = ctx.anomalies.get('ano-hard')!
 const easy = ctx.anomalies.get('ano-easy')!
 
-describe('winEstimate 蒙特卡洛预估（2026-09-24 重做：三点距离 + 去种子化 + 胜利记录）', () => {
+describe('winEstimate 蒙特卡洛预估：三点自动距离与固定编队距离', () => {
   it('必胜局 winRate = 1，损耗在合法域', () => {
     const { state, uid } = warriorState()
     const r = estimateBountyWinMC(state, ctx, easy, uid, 3)!
@@ -91,26 +92,50 @@ describe('winEstimate 蒙特卡洛预估（2026-09-24 重做：三点距离 + �
     expect(estimateBountyWinMC(a.state, ctx, easy, a.uid, 3)).toEqual(ra)
   })
 
-  it('有胜利记录 ⇒ 取代三点采样，只跑记录距离（局数 ×3），且夹回当前射程内', () => {
+  it('固定编队距离取代三点采样，单点局数乘三，跨卡生效', () => {
     const { state, uid } = warriorState()
+    setFleetDistance(state, ctx, 1234)
     const snap = buildEvalState(state, uid)!
-    const pts = evalDistancePoints(createPlayerSpec(snap.ev, ctx, snap.uid)!, ctx)
-    // ① 记录落在射程内：原样使用
-    snap.ev.winRecord = { 'ano-easy': { desireM: 1234, remainPct: 0.5 } }
+    snap.ev.winRecord = { 'ano-easy': { desireM: 777, remainPct: 0.5 } }
     const r = estimateBountyWinOn(snap.ev, ctx, easy, snap.uid, 3)
     expect(r.recorded).toBe(true)
     expect(r.points).toHaveLength(1)
     expect(r.points[0]!.desireM).toBe(1234)
     expect(r.points[0]!.runs).toBe(9) // 单点 ⇒ 局数 ×3，精度不降
     expect(r.worstWinRate).toBe(r.points[0]!.winRate) // 单点 ⇒ 最差 = 平均
-    // ② 记录超出当前射程（换过更短的武器）：夹到当前射程边界
-    snap.ev.winRecord = { 'ano-easy': { desireM: 999_999, remainPct: 0.5 } }
-    expect(estimateBountyWinOn(snap.ev, ctx, easy, snap.uid, 2).points[0]!.desireM).toBe(pts.max)
-    snap.ev.winRecord = { 'ano-easy': { desireM: 1, remainPct: 0.5 } }
-    expect(estimateBountyWinOn(snap.ev, ctx, easy, snap.uid, 2).points[0]!.desireM).toBe(pts.min)
-    // ③ 记录只按卡生效：换一张卡 ⇒ 回到三点采样
-    snap.ev.winRecord = { 'ano-easy': { desireM: 1234, remainPct: 0.5 } }
-    expect(estimateBountyWinOn(snap.ev, ctx, hard, snap.uid, 2).recorded).toBe(false)
+    const otherCard = estimateBountyWinOn(snap.ev, ctx, hard, snap.uid, 2)
+    expect(otherCard.recorded).toBe(true)
+    expect(otherCard.points.map(p => [p.desireM, p.runs])).toEqual([[1234, 6]])
+  })
+
+  it('自动档忽略旧winRecord的距离，恢复三点采样且不改记录', () => {
+    const { state, uid } = warriorState()
+    state.winRecord = { 'ano-easy': { desireM: 1234, remainPct: .5 } }
+    const before = structuredClone(state)
+    const result = estimateBountyWinMC(state, ctx, easy, uid, 2)!
+    expect(result.recorded).toBe(false)
+    expect(result.points).toHaveLength(3)
+    expect(result.points.map(p => p.runs)).toEqual([2, 2, 2])
+    expect(state).toEqual(before)
+  })
+
+  it('估价uid与真实uid不同时映射编队距离，其他舰船不继承主控默认', () => {
+    const { state } = warriorState()
+    const uid = addShipToFleet(state, 'warrior')
+    state.shipId = uid
+    state.fleet[uid]!.fitted = { high: ['mod-t', 'mod-t', 'mod-t'], mid: [], low: [] }
+    const other = addShipToFleet(state, 'warrior')
+    state.fleet[other]!.fitted = structuredClone(state.fleet[uid]!.fitted)
+    setFleetDistance(state, ctx, 1234)
+    const before = structuredClone(state)
+    const snap = buildEvalState(state, uid)!
+    expect(snap.uid).not.toBe(uid)
+    expect(snap.ev.fleetRange).toMatchObject({ desireM: 1234, shipIds: [snap.uid] })
+    expect(estimateBountyWinOn(snap.ev, ctx, easy, snap.uid, 1).points.map(p => p.desireM)).toEqual([1234])
+    const otherSnap = buildEvalState(state, other)!
+    expect(otherSnap.ev.fleetRange).toBeUndefined()
+    expect(estimateBountyWinOn(otherSnap.ev, ctx, easy, otherSnap.uid, 1).recorded).toBe(false)
+    expect(state).toEqual(before)
   })
 
   it('评估不污染真实存档：rng/钱包/货仓/耐久/胜利记录均不动', () => {

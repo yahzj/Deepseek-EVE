@@ -30,3 +30,11 @@
   bottom: calc(50% + var(--bts-knob-height) / 2 + 4px);
   z-index: 2;
 }
+
+.app-root .app-battle-controls .app-bts-dock { max-width: 100%; min-width: 0; }
+.app-root .app-bts-ops { flex-wrap: wrap; min-width: 0; }
+.app-root .app-bts-ops .app-bts-note { flex: 1 1 260px; min-width: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.app-root .app-bts-fleet-range-actions { flex-wrap: wrap; min-width: 0; }
+.app-root .app-bts-fleet-range-save { display: inline-flex; min-width: 0; max-width: 100%; }
+.app-root .app-bts-fleet-range-save .app-btn { display: inline-flex; align-items: center; justify-content: center; gap: 5px; white-space: normal; }
+.app-root .app-bts-fleet-range-save svg { flex: 0 0 15px; }

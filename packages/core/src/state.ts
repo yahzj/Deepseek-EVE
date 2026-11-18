@@ -911,7 +911,7 @@ export interface GameStateV9 extends Omit<GameStateV8, 'version' | 'blueprints'>
   wormholePreparationTemplates?: import('./wormholePreparationTemplates').WormholePreparationTemplate[]
   /** 各准备界面分别记忆实例与顺序；空数组是玩家明确清空，缺省才走默认。 */
   preparationSquads?: import('./preparationSquads').PreparationSquads
-  /** 我的舰队预设：只保存实例、主控和顺序；旧档缺省无预设。 */
+  /** 我的舰队预设：保存实例、主控、顺序与可选默认距离。 */
   fleetPresets?: import('./fleetPresets').FleetPreset[]
   /** 主控出发作业时锁定的实际护航舰名单；旧在途缺省不临时召来基地舰。 */
   combatEscort?: import('./combat/command/types').CombatSortie
@@ -1917,7 +1917,8 @@ export interface BlackMarketState {
 }
 
 export type GameState = GameStateV31 & {
-  /** 船长2026-10-21确认：真实敌卡的距离及上次参战射程；旧星系偏好不迁移。 */
+  fleetRange?: import('./fleetRange').FleetRangeSettings
+  /** 旧敌卡距离只保留存档兼容；新战斗不再读取或写入。 */
   battleRangeByCard?: Record<string, import('./battleRangeMemory').BattleRangeRecord>
   pendingBattleRange?: import('./battleRangeMemory').PendingBattleRange
   /** 船长2026-10-13批准：单条到港接续待办；老档缺省无待办，不预扣材料。 */

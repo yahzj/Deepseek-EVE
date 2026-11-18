@@ -11,8 +11,10 @@ import { buildMyUnitSpecs } from '../src/combat/fleetSpecs'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { weekendStartFlagshipBattle } from '../src/weekendLaunch'
 import type { GameState } from '../src/state'
-import { battleCardRangeOf } from '../src/battleRangeMemory'
-import { setCardDistance } from './helpers/battle-card-memory'
+import { saveBattleFleetRange } from '../src/fleetRange'
+import { applyFleetPreset, saveFleetPreset } from '../src/fleetPresets'
+import { setFleetDistance } from './helpers/fleet-range'
+import { confirmBattleRange } from '../src/battleRangeConfirm'
 
 const ctx = buildSimContext()
 const NOW = new Date(2026, 9, 9, 20).getTime()
@@ -45,6 +47,7 @@ function idle(state: GameState) {
 describe('入侵目标距离不因首波量程缩小', () => {
   it.each(['alien-escort', 'alien-main', 'ink-raid', 'ink-main'])('同星系同卡%s后波选择在连续开局与读档后保持', cardId => {
     const state = world(cardId.startsWith('alien') ? 'C' : 'H', 'sh-falconet')
+    expect(saveFleetPreset(state, ctx, '入侵队').ok).toBe(true)
     expect(startExpedition(state, cardId, ctx, { foeGalaxyId: CORE }).ok).toBe(true)
     const first = state.expedition.battle!
     const firstMax = battleArcsFor(state, ctx)!.maxM
@@ -53,8 +56,11 @@ describe('入侵目标距离不因首波量程缩小', () => {
     expect(chosen).toBeGreaterThan(firstMax)
     expect(setBattleDesire(state, chosen, ctx).ok).toBe(true)
     expect(first.myDesireM).toBe(chosen)
-    expect(battleCardRangeOf(state, cardId)?.desireM).toBe(chosen)
+    expect(state.fleetRange?.desireM).toBeUndefined()
+    expect(saveBattleFleetRange(state, ctx, first).ok).toBe(true)
+    expect(state.fleetPresets![0]!.range!.desireM).toBe(chosen)
     idle(state)
+    expect(applyFleetPreset(state, ctx, 'fleet-1').ok).toBe(true)
     const loaded = loadSaveFile(serializeSaveFile(state, NOW)).state
     for (const current of [state, loaded]) {
       for (let i = 0; i < 3; i++) {
@@ -66,41 +72,41 @@ describe('入侵目标距离不因首波量程缩小', () => {
         advanceBattleFor(current, ctx, battle, current.shipId, cardId)
         expect(battle.distanceM).toBeLessThanOrEqual(battleArcsFor(current, ctx)!.maxM)
         expect(battle.myDesireM).toBe(chosen)
-        expect(battleCardRangeOf(current, cardId)?.desireM).toBe(chosen)
+        expect(current.fleetRange?.desireM).toBe(chosen)
         idle(current)
       }
     }
   })
 
-  it('循环抽到不同卡读取各自目标，同卡跨星系沿用，不污染母港旧值', () => {
+  it('循环抽到不同卡均读取编队目标，跨星系沿用，不污染母港旧值', () => {
     const state = world()
-    setCardDistance(state, ctx, 'alien-harass', 8250)
-    setCardDistance(state, ctx, 'alien-escort', 7000)
-    setCardDistance(state, ctx, 'alien-main', 6500)
+    setFleetDistance(state, ctx, 8250)
     setDesirePrefOf(state, 'galaxy-hub', 3000)
     expect(setAutoLoopInvasion(state, ctx, PER, NOW).ok).toBe(true)
     const cards = new Set<string>()
     for (let i = 0; i < 12; i++) {
       advanceAutoLoopInvasion(state, ctx, NOW)
+      if (state.pendingBattleRange) expect(confirmBattleRange(state, ctx, 8250, NOW).ok).toBe(true)
       finishDeparture(state, ctx)
       expect(state.expedition.foeGalaxyId).toBe(PER)
-      expect(state.expedition.battle!.myDesireM).toBe(battleCardRangeOf(state, state.expedition.anomalyId!)!.desireM)
+      expect(state.expedition.battle!.myDesireM).toBe(8250)
       cards.add(state.expedition.anomalyId!)
       idle(state)
     }
     expect(cards.size).toBe(2)
     state.weekendEvent!.contributed[PER] = 1
     advanceAutoLoopInvasion(state, ctx, NOW)
+    if (state.pendingBattleRange) expect(confirmBattleRange(state, ctx, 8250, NOW).ok).toBe(true)
     finishDeparture(state, ctx)
     expect(state.expedition.foeGalaxyId).toBe(CORE)
-    expect(state.expedition.battle!.myDesireM).toBe(battleCardRangeOf(state, state.expedition.anomalyId!)!.desireM)
-    expect(battleCardRangeOf(state, 'alien-harass')?.desireM).toBe(8250)
+    expect(state.expedition.battle!.myDesireM).toBe(8250)
+    expect(state.fleetRange?.desireM).toBe(8250)
     expect(desirePrefOf(state, 'galaxy-hub')).toBe(3000)
   })
 
   it('真实换波与在途整档重载不重置目标，也不扩大当前波实际距离上限', () => {
     const state = world()
-    setCardDistance(state, ctx, 'alien-main', 8250)
+    setFleetDistance(state, ctx, 8250)
     startExpedition(state, 'alien-main', ctx, { foeGalaxyId: CORE })
     const battle = state.expedition.battle!
     for (const unit of Object.values(battle.units)) if (unit.side === 'foe') unit.hp = { s: 0, a: 0, h: 0 }
@@ -121,7 +127,7 @@ describe('入侵目标距离不因首波量程缩小', () => {
   it('旗舰首波不压小核心目标，普通单舰/编队及虫洞仍按原上限钳制', () => {
     const state = world()
     state.weekendEvent!.contributed = { [CORE]: 1, [PER]: 1 }
-    setCardDistance(state, ctx, 'alien-broodmother', 20000)
+    setFleetDistance(state, ctx, 20000)
     const flagship = weekendStartFlagshipBattle(state, ctx, NOW, [state.shipId])!
     expect(flagship).not.toBeNull()
     expect(flagship.distanceM).toBeLessThan(20000)
@@ -150,7 +156,7 @@ describe('入侵目标距离不因首波量程缩小', () => {
     const maxM = battleArcsFor(state, ctx)!.maxM
     setBattleDesire(state, maxM + 50000, ctx)
     expect(state.expedition.battle!.myDesireM).toBe(maxM)
-    expect(battleCardRangeOf(state, 'alien-escort')?.desireM).toBe(maxM)
+    expect(state.fleetRange?.desireM).toBeUndefined()
   })
 
   it('战场目标数字显示原目标，滑条图形仍按当前量程钳制', () => {

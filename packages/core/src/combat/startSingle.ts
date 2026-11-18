@@ -10,7 +10,8 @@ import { isFirstBountyBattle, applyFirstBountyBuff } from '../firstTasks'
 import { createFoeSpecs } from './foes/catalog'
 import { battleOpenM, desiredRangeFor, rFamilyDesireOf, battleMaxDistanceM } from './foes/tactics'
 import { createBattleState, announceStealthStart, announceSupportCallStart, initFoeDronePools, initFoeRepairPulses } from './foes/state'
-import { confirmedBattleDesire, battleCardRangeOf, battleRangeSnapshot } from './battleRangeMemory'
+import { confirmedBattleDesire, battleRangeSnapshot } from './battleRangeMemory'
+import { fleetRangeOf, type FleetRangeSettings } from '../fleetRange'
 import { applyFoeRangeDebuff, applyMeJammerDebuff, foeRangeEwSpecsOf } from './foeRange'
 import { ammoLoadTotals, ammoKeyOf, loadAmmoTier, ammoTierFallbackLog } from './combatAmmo'
 import { buildDronePoolsFor } from './combatDrones'
@@ -30,14 +31,14 @@ export function startBattleFor(
   anomalyId: string | null,
   atGameMs: number = state.gameMs,
   /**
-   * 目标距离：`number > 0` = 显式指定；**`null` = 强制"射程中段"、不吃该星系的玩家设定**
-   * （2026-09-11 船长「只有主控吃」⇒ AI 副船走这一档）；`undefined` = 用该星系设定、没设过则射程中段。
+   * 目标距离：正数为本场显式选择；null为独立自动计算；缺省读取出发时的编队默认。
    */
   desireM?: number | null,
   /** **敌群强度覆写**（2026-09-23 入侵用：伏击 39/60；缺省 = 原行为，一字不变） */
   foeOverride?: FoeOverride,
   /** 入侵保留跨场目标；实际距离仍由当前波战场上限约束。 */
   preserveDesire = false,
+  departureRange?: FleetRangeSettings,
 ): import('../state').BattleState | null {
   if (!anomalyId) return null
   const anomaly = applyFoeOverride(battleAnomalyOf(ctx, anomalyId, state.expedition.lairTier, state.expedition.factionActive), foeOverride)
@@ -78,14 +79,15 @@ export function startBattleFor(
   syncRangeEw(state, ctx, rangeTemplate, foes, shipId)
   applyMeJammerDebuff(me, rangeTemplate.rangeEw!.meCut, refs.weaponRanges)
   const openM = battleOpenM(me, foeRangeEwSpecsOf(rangeTemplate, foes), bal)
-  // 船长2026-10-21：显式距离/战前确认 → 实际卡记忆 → 主武器默认档；null为自动距离。
+  // 显式距离/战前确认 → 编队默认 → 主武器默认档；null为独立自动距离。
   // 普通战斗将记忆钳到本次开战距离；入侵保留跨波目标，实际距离仍受逐拍上限约束。
+  const fleetRange = departureRange ?? fleetRangeOf(state, [shipId])
   const rawDesire =
     desireM === null
       ? desiredRangeFor(me, 'mid', bal)
       : desireM !== undefined && desireM > 0
         ? Math.round(desireM)
-        : (confirmedBattleDesire(state, anomalyId) ?? battleCardRangeOf(state, anomalyId)?.desireM ?? desiredRangeFor(me, 'mid', bal))
+        : (confirmedBattleDesire(state, anomalyId) ?? fleetRange?.desireM ?? desiredRangeFor(me, 'mid', bal))
   const desire = Math.max(bal.minDistanceM, preserveDesire ? rawDesire : Math.min(openM, rawDesire))
   /**
    * 🔴 **R 族族格：以"玩家的射程盲区"为期望距离**（**船长 2026-10-01 三次澄清 · 正解**，原话照抄）：
@@ -238,6 +240,7 @@ export function startBattleFor(
     for (const s of shieldField.streams) s.nextPulseAtMs = battle.startedAtGameMs + s.ms
     battle.shieldFieldBy = { [me.tag ?? 'player']: shieldField }
   }
-  if (desireM !== null) battle.rangeMemory = battleRangeSnapshot(anomalyId, [me], Math.max(bal.minDistanceM, rawDesire), battleMaxDistanceM(battle, me, foes, bal), bal.minDistanceM)
+  if (desireM !== null) battle.rangeMemory = { ...battleRangeSnapshot(anomalyId, [me], Math.max(bal.minDistanceM, rawDesire), battleMaxDistanceM(battle, me, foes, bal), bal.minDistanceM),
+    sourceVersion: 1, ...(fleetRange?.presetId ? { fleetPresetId: fleetRange.presetId } : {}) }
   return battle
 }

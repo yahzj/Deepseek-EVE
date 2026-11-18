@@ -349,7 +349,7 @@ export interface WormholeRunState {
    * 冻结就白做了。随档保存（离线离开同样适用）。
    */
   leftAtGameMs?: number
-  /** 历史整趟距离保留兼容，新手动战读取GameState.battleRangeByCard。 */
+  /** 历史整趟距离保留兼容，新手动战读取GameState.fleetRange。 */
   desireM?: number
   /** 自动探索独立快照：使用自动距离，不读写玩家的按卡记忆。 */
   automaticBattleRanges?: true

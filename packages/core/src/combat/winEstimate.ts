@@ -1,28 +1,6 @@
-/**
- * **悬赏胜率预估（蒙特卡洛 · 三点距离采样）** —— 2026-09-24 船长令重做。
- *
- * 船长原话（设计裁定，逐条落地）：
- * - 「**武器的射程 → 期望距离，那就按照武器最大射程，最小射程，中距离各跑数次。不加入新参数。偏移也取消了。**」
- * - 「**去种子化**」·「**有胜利记录时取代**（三点采样）」·「**三点各 10 局就够了**」·
- *   「**『残血』口径按照剩余比例**」·「**③按敌卡。记录残血最多的一次，如果都是满血则不覆盖。夹回当前射程内。**」·
- *   「**如果是编队战斗则按编队算**（本模块只服务星图悬赏卡，实战宿主见 `expedition` 的单舰入口）·
- *   **弹药采用玩家当前选择弹药** · **补给按照完全充足给** · **享受全部战斗加成**」。
- * - 触发时机**不动**（引擎侧仍是"战力指纹 + 预热队列滚动"，见 `game/engine.ts`）。
- *
- * 与旧版的三处实质差别：
- * 1. **去种子化**：旧版是固定种子表（`20260909 + i×常量`）⇒ 所有卡、所有玩家跑的是**同一批时间线**，
- *    等于"同一条路线跑 N 遍"，不是抽样（这正是船长 2026-09-24 报障「100% 胜率却失败」的头号嫌疑）。
- *    现按 `hash(敌卡 id + 装配/技能指纹 + 距离点序号 + 局号)` 派生 ⇒ **同输入可复现**，且**不同卡/不同点
- *    拿到互不相关的序列**。
- * 2. **三点距离**：按该船**主武器的最大射程 / 最小射程 / 中距离**各跑 `BOUNTY_MC_RUNS` 局
- *    （复用引擎自己的 `mainWeaponOf` + `desiredRangeFor`，**不新增参数**）；每局把该点当"期望距离"传进
- *    `startBattleFor` 的第 6 参（与实战同一入口、同一夹紧）。
- * 3. **胜利记录取代采样**：若该敌卡已有实战胜利记录（`state.winRecord[cardId]`），则**只用记录距离**
- *    跑满 `BOUNTY_MC_RUNS × 3` 局（夹回当前射程内）——"打过的卡按打过的距离算"。
- *
- * 输出除胜率外还给 **`worstWinRate`（三点里最低的那个）**：它回答"运气最差的距离上也赢得下来吗"，
- * 比平均值更能防"看着必胜却翻车"。
- */
+/** 悬赏胜率预估：自动档按主武器远/近/中三点采样；编队设有默认距离时只采该距离。
+ * 距离均交实战建档入口夹紧，旧敌卡与胜利记录不参与选距。
+ * 种子由敌卡、装配、技能、距离点和局号稳定派生，补给充足但弹药档位与玩家一致。 */
 import type { FittedModules, GameState } from '../state'
 import { createInitialState } from '../state'
 import type { AnomalyDef, SimContext } from '../types'
@@ -35,6 +13,7 @@ import { startBattleFor } from './startSingle'
 import { waveGapTotalMs } from './combatMath'
 import { combatRosterOf } from './command/roster'
 import { startFleetBattleFor } from './startFleet'
+import { fleetRangeOf } from '../fleetRange'
 
 /** **每个距离点的局数**（2026-09-24 船长：「三点各 10 局就够了」） */
 export const BOUNTY_MC_RUNS = 10
@@ -44,7 +23,7 @@ const AMMO_ITEM_IDS = ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l'] as
 export interface BountyWinMC {
   /** 胜率 0~1（各点合并后的实测平均，无偏） */
   winRate: number
-  /** **最差距离点**的胜率（三点里最低者；走记录距离时 = `winRate`）——"运气最差也赢得下来吗" */
+  /** 最差距离点胜率；固定编队距离时等于winRate。 */
   worstWinRate: number
   /** 平均装甲损耗 0~1（相对本场开局残余；1 = 打空） */
   armorLoss: number
@@ -54,7 +33,7 @@ export interface BountyWinMC {
   runs: number
   /** 逐距离点读数（界面悬停/读数用） */
   points: readonly { desireM: number; winRate: number; runs: number }[]
-  /** 本卡是否走"已证胜利距离"（有记录 ⇒ 不采样） */
+  /** 兼容字段：是否使用固定编队距离而非三点采样。 */
   recorded: boolean
 }
 
@@ -122,7 +101,8 @@ export function buildEvalState(state: GameState, shipId: string): { ev: GameStat
   provisionEvalSupplies(ev, f)
   ev.skills.trained = { ...state.skills.trained }
   ev.skills.queue = []
-  if (state.battleRangeByCard) ev.battleRangeByCard = structuredClone(state.battleRangeByCard)
+  const range = fleetRangeOf(state, combatRosterOf(state, shipId))
+  if (range) ev.fleetRange = { ...range, shipIds: [...squad] }
   // 照会战加成判定（演习场 + 主控 + 「第一次完成悬赏」未完成）——复制任务状态使评估与实战一致
   const fb = state.importantTasks['first-bounty']
   if (fb !== undefined) ev.importantTasks['first-bounty'] = { ...fb }
@@ -178,7 +158,7 @@ export function evalDistancePoints(me: UnitSpec, ctx: SimContext): { max: number
 }
 
 /**
- * 在评估快照上跑 N 局（**三点距离各 10 局**；有胜利记录则只看记录距离）。
+ * 在评估快照上跑 N 局（自动档三点距离各10局；编队默认距离共30局）。
  * `ev` 只应来自 `buildEvalState`。同输入同种子完全可复现。
  */
 export function estimateBountyWinOn(
@@ -196,22 +176,10 @@ export function estimateBountyWinOn(
   // 拿"我方规格"以解析武器射程带：走引擎自己的建档入口（与实战同源）
   const specProbe = createPlayerSpec(ev, ctx, uid)
   const pts = specProbe ? evalDistancePoints(specProbe, ctx) : null
-  const record = ev.winRecord?.[anomalyId]
-  const recorded = record !== undefined && record.desireM > 0
-  /**
-   * **夹回当前射程内**（船长 2026-09-24：「夹回当前射程内」）：记录是**当时那条装配**打出来的距离，
-   * 换过武器后可能落在现射程带之外 ⇒ 用**现主武器的 [最小, 最大] 射程带**夹一道再采样
-   * （换过武器的场次仍能吃到记录，只是按现射程的边界打；解析不出武器时原样使用）。
-   */
-  const recD = ((): number => {
-    if (!record) return 0
-    if (!pts) return record.desireM
-    return Math.min(pts.max, Math.max(pts.min, record.desireM))
-  })()
-
-  /** 本卡这一次要跑的"距离点表"：有记录 ⇒ 只跑记录距离（局数 ×3，精度不降）；否则三点各 runs 局 */
-  const plan: { desireM: number; runs: number; tag: string }[] = recorded
-    ? [{ desireM: recD, runs: runs * 3, tag: 'record' }]
+  const fleetDesire = fleetRangeOf(ev)?.desireM
+  // 默认米数只由实战入口按本场边界夹紧，不按主武器射程另行改写。
+  const plan: { desireM: number; runs: number; tag: string }[] = fleetDesire !== undefined
+    ? [{ desireM: fleetDesire, runs: runs * 3, tag: 'fleet' }]
     : pts
       ? [
           { desireM: pts.max, runs, tag: 'max' },
@@ -273,7 +241,7 @@ export function estimateBountyWinOn(
     hullLoss: 1 - hullLeftSum / done,
     runs: done,
     points,
-    recorded,
+    recorded: fleetDesire !== undefined,
   }
 }
 

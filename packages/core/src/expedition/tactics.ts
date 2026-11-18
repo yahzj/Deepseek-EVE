@@ -4,7 +4,6 @@ import type { SimContext } from '../types'
 import { fleetDefOf } from '../instances'
 import { createPlayerSpec, desiredRangeFor, resolvedBattleAnomaly, activeFoeSpecsOf, battleMaxDistanceM } from '../combat'
 import type { CommandResult } from '../engine'
-import { battleCardRangeOf, battleCardKey } from '../battleRangeMemory'
 
 /**
  * 火力指数（V17 口径：基础 + 炮术学 + 船型加成；仅展示/弃船率叙事用）。
@@ -49,8 +48,9 @@ export function battleTacticDesire(
   return desiredRangeFor(me, tactic, ctx.balance.battle)
 }
 
-/** 玩家选距：三种战斗宿主共用，按实际卡ID写回；旧在途场次不编造入场射程。 */
+/** 玩家选距只更新本场；长期偏好须明确保存到出发编队。 */
 export function setBattleDesire(state: GameState, desireM: number, ctx: SimContext): CommandResult {
+  if (!Number.isFinite(desireM)) return { ok: false, errorId: 'core.fleetRange.001', errorParams: { p1: ctx.balance.battle.minDistanceM } }
   const whRun = state.wormhole.run
   const whBattle = whRun?.battle ?? null
   /** 第三宿主（遭遇槽 —— 旗舰战与普通伏击战都走这里）：只要那场还在打就认 */
@@ -92,14 +92,6 @@ export function setBattleDesire(state: GameState, desireM: number, ctx: SimConte
   battle.myDesireM = clamped
   if (battle.rangeMemory) {
     battle.rangeMemory.desireM = clamped
-    const key = battle.rangeMemory.cardId
-    const previous = battleCardRangeOf(state, key) ?? { maxRangeM: battle.rangeMemory.maxRangeM }
-    state.battleRangeByCard = { ...state.battleRangeByCard, [key]: { ...previous, desireM: clamped } }
-  }
-  // 已在途旧战斗没有入场射程证据，只补距离；下一次真正入场再建立射程记录。
-  if (!battle.rangeMemory && cardId) {
-    const old = battleCardRangeOf(state, cardId)
-    if (!whRun?.automaticBattleRanges) state.battleRangeByCard = { ...state.battleRangeByCard, [battleCardKey(cardId)]: { ...old, desireM: clamped } }
   }
   return { ok: true }
 }

@@ -34,9 +34,8 @@ function world(kind: 'bounty' | 'invasion' | 'manual' | 'manual-invasion') {
   state.wallMs = NOW
   state.weekendEvent = { seq: 1, startedAtWallMs: NOW, family: 'H', coreId: 'galaxy-kor',
     peripheryIds: ['galaxy-redring'], contributed: {} }
-  // 真实规格仍由入口预检，只将这几张卡的历史射程置为旧值。
-  state.battleRangeByCard = Object.fromEntries(['ano-training', 'ink-harass', 'ink-raid'].map(id =>
-    [id, { desireM: 2500, maxRangeM: 1 }]))
+  // 真实规格仍由入口预检，只将当前编队的射程证据置为旧值。
+  state.fleetRange = { desireM: 2500, maxRangeM: 1, shipIds: [uid] }
   if (kind === 'bounty') {
     state.autoLoopAnomalyId = 'ano-training'
     advanceAutoLoopBounty(state, ctx)
@@ -77,6 +76,7 @@ describe('连续战斗距离确认的真实引擎外壳', () => {
     expect(state.expedition.battle).toBeNull()
     finishDeparture(state, ctx)
     expect(state.expedition.battle!.myDesireM).toBe(1700)
+    expect(state.fleetRange!.desireM).toBe(2500)
     if (kind === 'bounty') expect(state.autoLoopAnomalyId).toBe('ano-training')
     else expect(state.weekendEvent!.autoLoopGalaxyId).toBe('galaxy-redring')
   })

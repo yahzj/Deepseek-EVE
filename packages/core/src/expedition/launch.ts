@@ -6,6 +6,8 @@ import { pilotUnavailableReason, haltCurrentActivity, applyActivityGate } from '
 import { standingOf, DSI_FACTION_ID } from '../standing'
 import { commandBudgetOf } from '../combat/command/rules'
 import { combatRosterOf, makeCombatSortie } from '../combat/command/roster'
+import { fleetRangeOf } from '../fleetRange'
+import { confirmedBattleDesire } from '../battleRangeMemory'
 import { combatEscortBlock } from '../combat/command/locks'
 import { detachExpeditionReturn } from '../combat/command/return'
 import { startFleetBattleFor } from '../combat/startFleet'
@@ -139,6 +141,9 @@ export function startExpeditionMutable(state: GameState, anomalyId: string, ctx:
   const exp = state.expedition
   exp.active = true
   exp.sortie = makeCombatSortie(squad, state.shipId)
+  const preference = fleetRangeOf(state, squad)
+  const departureDesire = confirmedBattleDesire(state, anomalyId) ?? opts?.desireM ?? preference?.desireM
+  exp.sortie.range = { ...preference, shipIds: [...squad], ...(departureDesire !== undefined ? { desireM: departureDesire } : {}) }
   exp.anomalyId = anomalyId
   /**
    * **本场远征实际打的是哪个星系**（2026-09-25：周末入侵接线）——只在调用方显式给出时写，
@@ -171,7 +176,6 @@ export function startExpeditionMutable(state: GameState, anomalyId: string, ctx:
   if (!beginBattleAtMutable(preview, ctx, anomalyId, state.shipId, exp.finishAtGameMs, opts?.desireM)) {
     return { ok: false, errorId: 'core.expedition.014' }
   }
-  // 显式距离仅随本次开战记录到实际卡ID，不再改写星系偏好。
   const shipName = shipDisplayName(state, ctx, state.shipId)
   const outName = opts?.lairTier ? lairNameOf(anomaly, opts.lairTier) : anomaly.name
   departureArrivalLog(
@@ -181,7 +185,7 @@ export function startExpeditionMutable(state: GameState, anomalyId: string, ctx:
     'core.expedition.040',
     { p1: outName, p2: shipName, p3: fromName },
   )
-  // 实际到达前不建战斗、不扣预载弹药；到达沿用卡片射程记忆。
+  // 实际到达前不建战斗、不扣预载弹药；到达沿用出发时锁定的距离。
   const result = { ok: true, battle: preview.expedition.battle! }
   return result
 }
@@ -247,7 +251,7 @@ export function startExpeditionFromMiningMutable(state: GameState, anomalyId: st
   return startExpedition(state, anomalyId, ctx, opts)
 }
 
-/** 到港开战：距离由实际敌卡记忆决定；旧在途开战同样经过射程变化门禁。 */
+/** 到港开战：沿用出发快照；旧在途开战仍经过射程变化门禁。 */
 export function beginBattleAt(state: GameState, ctx: SimContext, anomalyId: string, shipId: string, arrivalGameMs: number, desireM?: number): boolean {
   return withBattleRangeCheck(state, { kind: 'expedition-arrival', cardId: anomalyId, shipId }, staged => ({
     ok: beginBattleAtMutable(staged, ctx, anomalyId, shipId, arrivalGameMs, desireM),
@@ -268,8 +272,9 @@ export function beginBattleAtMutable(state: GameState, ctx: SimContext, anomalyI
       : undefined
   // 实际anomalyId已由出发时抽卡锁定，不再以卡自带母港或作战星系取距离。
   const squad = state.expedition.sortie?.shipIds ?? [shipId]
+  const departureRange = state.expedition.sortie?.range
   const battle = squad.length > 1 ? startFleetBattleFor(state, ctx, squad, anomalyId, arrivalGameMs, desireM,
-    undefined, weekendThreat !== undefined ? { threat: weekendThreat } : undefined, weekendAssault !== undefined) : startBattleFor(
+    undefined, weekendThreat !== undefined ? { threat: weekendThreat } : undefined, weekendAssault !== undefined, 1, departureRange) : startBattleFor(
     state,
     ctx,
     shipId,
@@ -278,6 +283,7 @@ export function beginBattleAtMutable(state: GameState, ctx: SimContext, anomalyI
     desireM,
     weekendThreat !== undefined ? { threat: weekendThreat } : undefined,
     weekendAssault !== undefined,
+    departureRange,
   )
   if (!battle) return false
   const exp = state.expedition

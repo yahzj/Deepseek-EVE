@@ -24,7 +24,7 @@ import { WEEKEND_FLAGSHIP_POOL_HP } from '../src/invasion/event/constants'
 import { signalAutoCombatRatio } from '../src/signalAuto/combat'
 import { createPlayerSpec } from '../src/combat/player/create'
 import type { SimContext } from '../src/types'
-import { setCardDistance } from './helpers/battle-card-memory'
+import { setFleetDistance } from './helpers/fleet-range'
 
 const ctx = buildSimContext()
 const now = new Date(2026, 10, 4, 20).getTime()
@@ -224,7 +224,7 @@ describe('解析预估消费敌盾与C自愈', () => {
     const base = ctx.anomalies.get('ink-flagship')!, slot = weekendFlagshipSlotOf(base)!
     const ship = { ...slot.ship, hp: 200, mounts: [], drones: [], split: { s: .2, a: .5, h: .3 }, shotDmg: 10 }
     const card = { ...base, ships: [{ ship }], waves: undefined, foeFormation: undefined }
-    setCardDistance(state, ctx, card.id, 500)
+    setFleetDistance(state, ctx, 500)
     const local = { ...ctx, balance: { ...ctx.balance, battle: { ...bal, shieldRegenPerSec: 0 } } }
     const off = steadyPreview(state, local, card, state.shipId, 1, 1)!
     const on = steadyPreview(state, { ...local, balance: { ...local.balance, battle: bal } }, card, state.shipId, 1, 1)!
