@@ -19,7 +19,7 @@ export function readCrtEffect(): CrtEffect {
     if (stored === 'on') return 'on'
     if (stored === 'off') return 'off'
 
-    return isModern ? 'on' : 'off'
+    return 'off'
   } catch {
     return 'off'
   }
