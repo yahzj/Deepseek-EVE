@@ -172,6 +172,16 @@
         font-size: 12px;
         line-height: 1.6;
       }
+      .boot-splash__slow {
+        margin-top: 10px;
+        color: #fbbf24;
+        font-size: 12px;
+        line-height: 1.6;
+      }
+      .boot-splash__slow a {
+        color: #34d399;
+        text-decoration: underline;
+      }
       @keyframes boot-line {
         to {
           opacity: 1;
@@ -216,6 +226,7 @@
           <div class="boot-splash__line" style="--d: 1.2s">星门同步链路 ................. <span class="boot-splash__ok">OK</span></div>
           <div class="boot-splash__line boot-splash__boot" style="--d: 1.35s"><span id="boot-status-text">正在启动星门引擎</span><span class="boot-splash__cursor"></span></div>
           <div class="boot-splash__track" aria-hidden="true"><div class="boot-splash__track-fill" id="boot-track-fill"></div></div>
+          <div class="boot-splash__slow" id="boot-slow-hint" hidden>线路较慢？<a id="boot-slow-fallback" href="https://game.bajibaji.party:7777/">直接换用备用星门入口</a></div>
           <div class="boot-splash__fail" id="boot-fail" hidden>
             <div class="boot-splash__fail-title" id="boot-fail-title"></div>
             <div class="boot-splash__fail-advice" id="boot-fail-advice"></div>

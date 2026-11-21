@@ -73,6 +73,8 @@ const REQUIRED_IDS = [
   'boot-splash',
   'boot-status-text',
   'boot-track-fill',
+  'boot-slow-hint',
+  'boot-slow-fallback',
   'boot-fail',
   'boot-fail-title',
   'boot-fail-advice',

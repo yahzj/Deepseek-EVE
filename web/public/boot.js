@@ -7,13 +7,19 @@
 
   var FEEDBACK_ENDPOINT = 'https://game.bajibaji.party:7777/api/feedback'
   var SLOW_MS = 15000
-  var FAIL_MS = 45000
+  var FAIL_MS = 75000
+  try {
+    var connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection
+    var effective = connection && connection.effectiveType ? String(connection.effectiveType) : ''
+    if (effective === 'slow-2g' || effective === '2g') FAIL_MS = 150000
+    else if (effective === '3g') FAIL_MS = 110000
+  } catch (err) {}
   var SELF_HOSTS = ['game.bajibaji.party', '123.207.188.192']
 
   var COPY = {
     'SG-01': {
       title: '星门同步链路无响应',
-      advice: '引擎固件没有送到舰桥，通常是网络不稳或被线路拦截。请检查网络后重新自检；一直不行就换用备用星门入口。'
+      advice: '引擎固件包没有按预期送达，常见于静态资源线路被限速或拦截。页面在等待较久时会提前露出备用入口；也可以直接点「换用备用星门入口」。'
     },
     'SG-02': {
       title: '通讯阵列离线',
@@ -37,6 +43,7 @@
   var tickTimer = 0
   var slowTimer = 0
   var failTimer = 0
+  var slowMode = false
 
   function byId(id) {
     return document.getElementById(id)
@@ -73,6 +80,7 @@
       '已等待：' + elapsedSeconds() + ' 秒',
       '平台：web',
       '地址：' + location.origin + location.pathname,
+      '引擎包：' + entryScriptSrc(),
       '联网：' + (navigator.onLine ? '在线' : '离线'),
       '浏览器：' + navigator.userAgent
     ]
@@ -152,6 +160,7 @@
     failed = true
     detailText = detail || ''
     clearTimers()
+    hideSlowHint()
     var splash = byId('boot-splash')
     if (splash) splash.className = 'boot-splash is-failed'
     var box = byId('boot-fail')
@@ -186,6 +195,7 @@
 
   function bundleReady() {
     if (failed) return
+    hideSlowHint()
     clearFirmwareRetry()
     setStatus('引擎包已同步 · 正在接管舰桥……')
     setFill(20)
@@ -195,6 +205,7 @@
 
   function handover() {
     handedOver = true
+    hideSlowHint()
     clearFirmwareRetry()
     clearTimers()
   }
@@ -220,6 +231,16 @@
   function scriptSourceOf(target) {
     if (!target) return ''
     return target.src || target.getAttribute('src') || ''
+  }
+
+  function entryScriptSrc() {
+    var entry = document.querySelector('script[type="module"]')
+    return entry && entry.src ? entry.src : '未找到模块入口'
+  }
+
+  function hideSlowHint() {
+    var hint = byId('boot-slow-hint')
+    if (hint) hint.hidden = true
   }
 
   function describeLoadFailure(src) {
@@ -292,11 +313,28 @@
     if (!handedOver && !failed) fail('SG-03', '脚本执行异常')
   })
 
-  tickTimer = setInterval(function () {
-    if (!handedOver && !failed) setStatus('正在启动星门引擎 · 已等待 ' + elapsedSeconds() + ' 秒')
-  }, 1000)
+  function syncStatus() {
+    if (handedOver || failed) return
+    setStatus(
+      slowMode
+        ? '星门同步链路较慢 · 已等待 ' + elapsedSeconds() + ' 秒，仍在校验固件……可点下方备用入口'
+        : '正在启动星门引擎 · 已等待 ' + elapsedSeconds() + ' 秒',
+    )
+  }
+
+  tickTimer = setInterval(syncStatus, 1000)
   slowTimer = setTimeout(function () {
-    if (!handedOver && !failed) setStatus('星门同步链路较慢 · 已等待 ' + elapsedSeconds() + ' 秒，仍在校验固件……')
+    if (handedOver || failed) return
+    slowMode = true
+    syncStatus()
+    var hint = byId('boot-slow-hint')
+    var slowLink = byId('boot-slow-fallback')
+    var fallback = fallbackEntry()
+    if (hint) hint.hidden = false
+    if (slowLink && fallback) {
+      slowLink.hidden = false
+      slowLink.href = fallback
+    }
   }, SLOW_MS)
   failTimer = setTimeout(function () {
     if (!handedOver && !failed) fail('SG-01')
