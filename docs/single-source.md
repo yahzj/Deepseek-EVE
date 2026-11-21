@@ -92,7 +92,7 @@
 | 激光校准远端威力保留 | `laserFalloffOf` · `equipment.ts`，只在玩家激光建档消费 | 混装折权加算、上限1、其他武器不变专项；`arch:guard` F2/F3 |
 | 敌方族格最终血量倍率 | `foeFamilyHpMulOf()` · `foePower.ts` | C族三层最终+30%、非C不变、舰体/机型独立判定、共享旗舰绝对血覆盖与预算不抵消专项 |
 | 全舰容量提升及敌舰最终倍率 | `SHIP_HP_UPLIFT_MUL` · `combatMath.ts`；`foeShipHpMulOf()` · `foePower.ts` | 玩家舰体/插件1.5、敌舰最终1.5且保留族格、预算和火力不变、无人机排除、共享池绝对覆盖专项 |
-| 守墓装备危机倍率、动态规格与磁轨射后叠层 | `crisisEffectsOf()` / `playerGravekeeperSpecOf()` / `noteRailAttack()` · `gravekeeperGear.ts` | 同件正负同权重、炮台/机群隔离、战斗/视图同源、同型齐射一次叠层与读档续算专项；F2/F3 |
+| 守墓装备危机倍率、动态规格与磁轨射后叠层 | `crisisEffectsOf()` / `playerGravekeeperSpecOf()` / `noteRailAttack()` · `gravekeeperGear.ts` | 危机增伤增程覆盖除无人机外所有武器；机群只缩短出击与攻击周期。同件正负同权重、战斗/视图同源、同型齐射一次叠层与读档续算专项；F2/F3 |
 | 玩家实际承伤与齐射保护 | `applyPlayerUnitDamage()` · `combat.ts` | 层位/抗性/混伤/破盾后按实际掉血限制80%，损管保底后记账，100ms窗口及逐舰隔离专项；F2/F3 |
 | 敌方选择玩家舰船的舰级与插件合成权重 | `playerTargetWeightOf()` · `combat/targeting.ts`；舰级基础值读同域`targeting.json` | 护卫至泰坦1/2/3/4/5、插件相乘、倾向先筛候选、单舰随机数、隐身/阵亡、真实敌炮敌机及读档专项；F2/F3 |
 | 玩家舰载近盲开火与伤害 | `playerWeaponInRange()` / `playerBlindDamageMul()` · `combatMath.ts` | 最大射程内放行、近盲0.3、无人机原规则、近防打机群豁免、连发/逐炮/副段与预估专项 |

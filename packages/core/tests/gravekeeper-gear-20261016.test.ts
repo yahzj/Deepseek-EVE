@@ -249,7 +249,7 @@ describe('危机超载', () => {
     expect(active.speedMps).toBeCloseTo(spec.speedMps*fx.speedMul)
     for(const [i,w] of spec.weapons.entries()) {
       const out=active.weapons[i]!
-      if(w.src==='turret') expect(out.maxRangeM).toBe(Math.round(w.maxRangeM*fx.rangeMul))
+      if(w.src!=='drone') expect(out.maxRangeM).toBe(Math.round(w.maxRangeM*fx.rangeMul))
       else expect(out.maxRangeM).toBe(w.maxRangeM)
       if(w.src==='drone') {
         expect(out.shotDmg).toBe(w.shotDmg)

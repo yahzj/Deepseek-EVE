@@ -202,7 +202,7 @@ export const EN_SHIPS: EnTable = {
 
 export const EN_MODULES: EnTable = {
   'mod-gravekeeper-rebirth': { name: l10nEntryText(L10N['mod.gravekeeperGear.001']!, 'en'), description: l10nEntryText(L10N['mod.gravekeeperGear.002']!, 'en') },
-  'mod-gravekeeper-crisis': { name: l10nEntryText(L10N['mod.gravekeeperGear.003']!, 'en'), description: l10nEntryText(L10N['mod.gravekeeperGear.004']!, 'en') },
+  'mod-gravekeeper-crisis': { name: l10nEntryText(L10N['mod.gravekeeperGear.003']!, 'en'), description: l10nEntryText(L10N['mod.gravekeeperGear.007']!, 'en') },
   'mod-gravekeeper-rail': { name: l10nEntryText(L10N['mod.gravekeeperGear.005']!, 'en'), description: l10nEntryText(L10N['mod.gravekeeperGear.006']!, 'en') },
   'mod-alien-acid-launcher': { name: l10nEntryText(L10N['mod.alienLoot.001']!, 'en'), description: l10nEntryText(L10N['mod.alienLoot.002']!, 'en') },
   'mod-alien-pressure-chamber': { name: l10nEntryText(L10N['mod.alienLoot.003']!, 'en'), description: l10nEntryText(L10N['mod.alienLoot.004']!, 'en') },

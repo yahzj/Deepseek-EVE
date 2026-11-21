@@ -1108,6 +1108,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'mod.gravekeeperGear.004': { zh: '护盾耗尽后提高本舰炮台射程与伤害，缩短无人机出击等待与攻击周期，同时降低战斗移动速度；多件安装效果递减。', en: 'After the shield is depleted, raises this ship’s turret range and damage, shortens drone launch delay and attack cycle, and reduces combat movement speed. Multiple fittings have diminishing returns.' },
   'mod.gravekeeperGear.005': { zh: '磁轨蓄能炮', en: 'Railgun Charge Cannon' },
   'mod.gravekeeperGear.006': { zh: '发射动能弹药，并按本炮单发伤害的一定比例附加能量伤害；连续开火逐步提高附伤比例并延长装填间隔。', en: 'Fires kinetic ammunition and adds energy damage as a proportion of this cannon’s damage per shot. Consecutive shots increase that proportion and lengthen the reload interval.' },
+  // ⟪文案调整 2026-11-21⟫ 新范围只排除无人机，旧词条及其英文保留。
+  'mod.gravekeeperGear.007': { zh: '护盾耗尽后提高本舰除无人机外所有武器的射程与伤害，缩短无人机出击等待与攻击周期，同时降低战斗移动速度；多件安装效果递减。', en: '', enDeferred: true },
   'ui.gravekeeperGear.001': { zh: '苏生维修', en: 'Rebirth Repair' },
   'ui.gravekeeperGear.002': { zh: '损管触发后{p1}秒内恢复最大装甲{p2}%、最大结构{p3}%；不恢复护盾。', en: 'After damage control triggers, restores {p2}% of maximum armor and {p3}% of maximum hull over {p1} seconds. Does not restore shields.' },
   'ui.gravekeeperGear.003': { zh: '危机超载', en: 'Crisis Overload' },
@@ -1117,6 +1119,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ui.gravekeeperGear.007': { zh: '磁轨蓄能', en: 'Railgun Charge' },
   'ui.gravekeeperGear.008': { zh: '攻击附加按本炮单发伤害计算的能量伤害。每次开火后能量伤害比例+{p1}%、装填间隔+{p2}%；最多{p3}层，加法累计；跨波保留。', en: 'Attacks add energy damage based on this cannon’s damage per shot. After each shot, the energy-damage ratio increases by {p1}% and the reload interval by {p2}%; up to {p3} stacks, added together and retained between waves.' },
   'ui.gravekeeperGear.009': { zh: '蓄能{p1}层；额外能量伤害{p2}%', en: '{p1} charge stacks; bonus energy damage {p2}%' },
+  // ⟪文案调整 2026-11-21⟫ 参数行明确加成范围不含无人机。
+  'ui.gravekeeperGear.010': { zh: '本舰空盾后本场持续；除无人机外所有武器射程+{p1}%、伤害+{p2}%，战斗移动速度−{p3}%。', en: '', enDeferred: true },
   'ship.gravekeeper.001': { zh: '巡陵级', en: 'Patrol Tomb-class' },
   'ship.gravekeeper.002': { zh: '碑卫级', en: 'Bastion-class' },
   'ship.gravekeeper.003': { zh: '守誓级', en: 'Oathkeeper-class' },

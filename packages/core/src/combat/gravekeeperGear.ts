@@ -48,7 +48,7 @@ export function playerGravekeeperSpecOf(b: BattleState, spec: UnitSpec, display 
     droneLaunchGapMs: effect ? Math.max(10, Math.round((spec.droneLaunchGapMs ?? 500) * effect.droneInitialMul)) : spec.droneLaunchGapMs,
     weapons: spec.weapons.map((w, i) => {
       const out = { ...w }
-      if (effect && w.src === 'turret') {
+      if (effect && w.src !== 'drone') {
         out.maxRangeM = Math.round(w.maxRangeM * effect.rangeMul)
         if (w.shotsByType) out.shotsByType = Object.fromEntries(Object.entries(w.shotsByType).map(([t, n]) => [t, ceilFinalQuantity(n! * effect.damageMul)]))
         if (w.shotDmg !== undefined) out.shotDmg = ceilFinalQuantity(w.shotDmg * effect.damageMul)

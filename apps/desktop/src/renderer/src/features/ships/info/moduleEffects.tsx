@@ -102,7 +102,7 @@ export function moduleShortEffect(mod: ModuleDef): string {
         body = tr('ui.gravekeeperGear.002', { p1: d.repairMs / 1000, p2: d.armorTotalPct * 100, p3: d.hullTotalPct * 100 })
       } else if (mod.crisisOverload) {
         const d = mod.crisisOverload
-        body = tr('ui.gravekeeperGear.004', { p1: d.rangeBonusPct * 100, p2: d.damageBonusPct * 100, p3: d.speedPenaltyPct * 100 })
+        body = tr('ui.gravekeeperGear.010', { p1: d.rangeBonusPct * 100, p2: d.damageBonusPct * 100, p3: d.speedPenaltyPct * 100 })
       } else if (mod.laserFalloffBonus !== undefined) {
         body = tr('ui.launchCalibration.002', { p1: mod.laserFalloffBonus })
       } else if (dmg && Object.keys(dmg).length > 0) {

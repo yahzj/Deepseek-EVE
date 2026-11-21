@@ -464,6 +464,7 @@ describe('英文覆盖层（P2）', () => {
     const noDesc: string[] = []
     for (const [id] of zh.modules) {
       const other = en.modules.get(id)!
+      if (id === 'mod-gravekeeper-crisis') { expectDeferredText(other.description, 'mod.gravekeeperGear.007'); continue }
       const deferredPlug = deferredPlugDescriptions[id]
       if (deferredPlug) { expectDeferredText(other.description, deferredPlug); continue }
       if (!other.description) {

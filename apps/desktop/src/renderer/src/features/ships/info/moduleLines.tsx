@@ -424,7 +424,7 @@ export function moduleInfoLines(mod: ModuleDef, engine?: GameEngine, shipId?: st
   }) })
   if (mod.crisisOverload) {
     const d = mod.crisisOverload
-    lines.push({ k: tr('ui.gravekeeperGear.003'), v: tr('ui.gravekeeperGear.004', { p1: d.rangeBonusPct * 100, p2: d.damageBonusPct * 100, p3: d.speedPenaltyPct * 100 }) })
+    lines.push({ k: tr('ui.gravekeeperGear.003'), v: tr('ui.gravekeeperGear.010', { p1: d.rangeBonusPct * 100, p2: d.damageBonusPct * 100, p3: d.speedPenaltyPct * 100 }) })
     lines.push({ k: tr('ui.gravekeeperGear.005'), v: tr('ui.gravekeeperGear.006', { p1: (1 - d.droneInitialCutPct) * 100, p2: (1 - d.droneCycleCutPct) * 100 }) })
   }
   if (mod.railCharge) lines.push({ k: tr('ui.gravekeeperGear.007'), v: tr('ui.gravekeeperGear.008', {
