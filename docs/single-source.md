@@ -55,6 +55,8 @@
 
 玩家手动卸货：`unloadShipCargo`（`inventory.ts`）检查目标舰货仓许可后逐项分流入库；`unloadCargoToWarehouse`只转发当前舰。`unloadCargoOfShipToWarehouse`保留为自动到港和其他已校验内部结算，界面不直接调用。
 
+古代休眠站发现归`playerStation/discovery.ts:ancientStationDiscovered`：逐个当前星系ID核对探索，星图、详情和正式宿主共用。正式玩家站资源宿主归`playerStation/gameRuntime.ts:PlayerStationGameRuntime`：站内模块只通过宿主存取原仓库和真实舰队，正式界面不导入tools预览状态。复合随档清洗归`playerStation/gameSave.ts:cleanPlayerStationGame`，保留资源、人口、任务锁与成果交叉检查；护栏为正式宿主、存档、适配器及连续流程专项。
+
 换驾驶：`changeShipBlockReason`（`shipyard.ts`）只读当前舰与目标舰状态，保留采矿、打捞、远征返航和AI召回例外；舰船页、自动探索主控交接与`changeShip`共用，拒绝时不先停运或清仓。
 
 停工位置预检：`stationActivityStartState`（`location.ts`）浅投影现有运输、巡逻、交付的即时停工落点及采矿/打捞真实返航后的基地；站内活动门禁和航路前置共用，不退款、不改原档、不缩短返航。

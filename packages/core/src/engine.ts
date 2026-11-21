@@ -59,6 +59,8 @@ import { advanceMatterOreDrip, matterTechNodes } from './matterTech'
 import { advanceSideTasks } from './sideTasks'
 import { weekendTickBoss } from './weekendEvent'
 import { weekendFlagshipBattleActive } from './weekendLaunch'
+import { PlayerStationGameRuntime, advancePlayerStationGame } from './playerStation/gameRuntime'
+import { trainingLevelProgress } from './skills/training'
 
 /**
  * **我方此刻是否在战斗中**（周末入侵的章鱼人削血要按它暂停）：远征战斗 / 虫洞战斗 / 低安遭遇战
@@ -205,6 +207,16 @@ export function advanceGame(
     resolveActivityReturn(state, ctx)
     advancePendingStationActivity(state, ctx, opts?.onStationActivityStarted)
     let step = left
+    if (state.playerStation?.active) {
+      const station = new PlayerStationGameRuntime(state, ctx)
+      station.advance(0)
+      step = Math.min(step, Math.max(1, station.nextEventMs()))
+      const training = state.skills.queue[0], skill = training && ctx.skills.get(training.skillId)
+      if (training && skill) step = Math.min(step, Math.max(1, Math.ceil(trainingLevelProgress(state, skill, (state.skills.trained[skill.id] ?? 0) + 1, training.progressMs).remainingMs)))
+      for (const run of state.manufacturingRuns) if (run.active) step = Math.min(step, Math.max(1, Math.ceil(run.finishAtGameMs - state.gameMs)))
+      // 原采集/AI作业同样可能向共仓供料；有限分段保证新物资不补此前站内工时。
+      if (state.mining.active || Object.keys(state.aiAssignments).length > 0 || state.refineRuns.some(run => run.active)) step = Math.min(step, 1000)
+    }
     const departing = departureView(state)
     if (departing) step = Math.min(step, Math.max(1, departing.remainingMs))
     const exposedNow = collectExposures(state, ctx, opts?.nowWallMs ?? state.wallMs ?? Date.now()).length > 0
@@ -281,6 +293,8 @@ function advancePendingStationActivity(state: GameState, ctx: SimContext, onStar
 function advanceGameStep(state: GameState, deltaMs: number, ctx: SimContext, opts?: Parameters<typeof advanceGame>[3]): void {
   const d = Math.floor(deltaMs)
   if (!Number.isFinite(d) || d <= 0) return
+  // 本段开始条件先结站内时间，不能用稍后技能/开矿/入库反算此前工时。
+  if (state.playerStation?.active) advancePlayerStationGame(state, ctx, d)
   advanceIndustrialProtection(state, ctx, d, collectExposures(state, ctx).some(row => row.shipId === state.shipId && row.kind !== '扫描'))
   const pausedEncounter = (!!state.encounter.pirate || state.encounter.automatic === true) && state.encounter.active
   state.gameMs += d
@@ -357,6 +371,8 @@ function advanceGameStep(state: GameState, deltaMs: number, ctx: SimContext, opt
    */
   weekendTickBoss(state, opts?.nowWallMs, isPlayerInBattle(state), weekendFlagshipBattleActive(state))
   advanceScanning(state, ctx)
+  // 最后一个扫描刚完成时只发现来源，不补算此前第二阶段时间。
+  if (!state.playerStation?.active) advancePlayerStationGame(state, ctx, 0)
   // 主控活动「扫描虫洞」（2026-09-14）：进度按游戏时刻累计，满一个窗口发现一处（遇袭不清零）
   // 解锁当次：把进度预置成满窗口（船长 2026-09-14「甲」：点扫描第一拍即得一处；只送一次、不额外提示）
   reconcileWormholeScanWelcome(state)

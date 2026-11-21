@@ -9,6 +9,9 @@
 /* 以下为 2026-10-02 批次 4p 从 Expedition.tsx 切接过来的整簇（MAP 常量 ~ StarMap 及 FoeArt/GalaxyActions 族）。 */
 import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent, ReactNode, RefObject } from 'react'
+import { Orbit } from 'lucide-react'
+import { ANCIENT_STATION_GALAXY_ID, ANCIENT_STATION_ID, ancientStationDiscovered } from '../../../../../../packages/core/src/playerStation/discovery'
+import { AncientStationCard } from './AncientStationCard'
 import { cmdText, isEn, tr } from '../i18n/locale'
 import { fmtDayClock, fmtDuration } from '../i18n/fmt'
 import type { GameEngine } from '../game/engine'
@@ -549,12 +552,14 @@ export function StarMap({
   const rare = selected ? rareWreckRefsOf(engine, selected.id) : { count: 0, text: '', refs: [] }
   const view = expeditionStatus(state, engine.ctx)
   const scan = scanStatus(state)
+  const ancientStationKnown = ancientStationDiscovered(state, engine.ctx)
 
   // ── V13 探索迷雾：dev/编辑器模式看全图；正常模式 = 已探索亮 + 一跳剪影 + 其余隐藏 ──
   const devView = devEditor || editing
   const exploredIds: Set<string> = devView
     ? new Set(engine.galaxies.map((g) => g.id))
     : new Set(state.exploredGalaxies)
+  if (ancientStationKnown) exploredIds.add(ANCIENT_STATION_GALAXY_ID)
   const frontierIds: Set<string> = devView ? new Set() : new Set(frontierGalaxyIds(state, engine.ctx))
   const isFrontier = (id: string): boolean => frontierIds.has(id) && !exploredIds.has(id)
   // 悬赏情报例外：无论探索状态都统计（协会共享情报；剪影节点上显示数量徽标）
@@ -1331,6 +1336,14 @@ export function StarMap({
                   }
                 />
               )}
+              {g.id === ANCIENT_STATION_GALAXY_ID && ancientStationKnown ? (
+                <g transform={`translate(${p.x + 27}, ${p.y})`} data-station-id={ANCIENT_STATION_ID}
+                  data-tip={tr('ui.playerStation.009')} aria-label={tr('ui.playerStation.002')}
+                  style={{ color: 'rgb(var(--wui-accent))' }}>
+                  <circle r={8} style={{ fill: 'rgb(var(--wui-bg-panel))', stroke: 'currentColor' }} />
+                  <Orbit x={-5.5} y={-5.5} size={11} aria-hidden="true" style={{ pointerEvents: 'none' }} />
+                </g>
+              ) : null}
             </g>
           )
         })}
@@ -1841,6 +1854,7 @@ export function GalaxyActions({
         />
       ) : null}
       <div className="app-bay-title">{tr("ui.Expedition.083")}</div>
+      {galaxy.id === ANCIENT_STATION_GALAXY_ID ? <AncientStationCard state={state} ctx={ctx} /> : null}
       {/* ⑨ 入侵旗舰（2026-09-25 船长令）：核心星系的星系详细里摆入口 ⇒ 点开战前准备界面。
           ⚠ 同日第二条：「找不到是因为**不明显**，给容器加一个**红色圆边背景**」⇒ 行容器挂
           `app-ga-invasion`（观感照抄入侵框 `.app-weekend-box`：红边 ＋ 圆角 ＋ 红底）。

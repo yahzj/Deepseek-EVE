@@ -387,6 +387,7 @@ import { noteSaveWriteFailed, requestPersistentStorage, saveStorageProbe } from 
 /** **2026-10-03 船长令**（「调试模式允许载入铁人存档」）：本机调试门禁（发布版恒 false）⇒ 铁人闸门放行 */
 import { debugEnabled, futureWormholeEnabled, planetaryEnabled } from './debugFlag'
 import { runPlanetaryCommand } from './planetaryCommands'
+import { PlayerStationGameRuntime } from '../../../../../../packages/core/src/playerStation/gameRuntime'
 import { DEEP_SPACE_SKILL_IDS, probeManufacturingUnlocked } from '@whale/core'
 import { perfHub } from './perf'
 import type { PerfBucket } from './perf'
@@ -679,6 +680,12 @@ function saveWormholeSpeedPick(x: number): void {
 }
 
 export class GameEngine {
+  playerStationGameCommand(domain: string, action: unknown): { ok: boolean; reason?: string } {
+    if (!debugEnabled()) return { ok: false, reason: 'debug-only' }
+    const result = new PlayerStationGameRuntime(this.state, this.ctx).command(domain, action)
+    if (result.ok) { this.notify(); void this.persist() }
+    return result
+  }
   getCtx(): SimContext { return this.ctx }
   planetaryCommand(action: string, args: unknown[]): import('@whale/core').PlanetActionResult {
     const result = runPlanetaryCommand(this.state, this.ctx, action, args)

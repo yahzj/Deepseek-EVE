@@ -12,6 +12,12 @@ import { emptyFitted } from './labels'
 import { RECOVERED_HULL_ARMOR_PCT, RECOVERED_HULL_DURABILITY_PCT, RECOVERED_SHIP_CONDITION } from './shipWrecks'
 import { cleanShipDamage, type ShipDamageKind } from './shipDamage'
 
+/** 主动移出实例前保护持久引用；待命绑定不限制换驾驶或派遣。 */
+export function stationShipRemovalBlock(state: GameState, shipId: string): { error: string; errorId: string } | null {
+  return state.playerStation?.crew.teams.some(team => team.shipId === shipId) || state.playerStation?.population.plan?.shipId === shipId
+    ? { error: '该舰仍被舰员团队或人口运输计划引用：请先改绑、解散团队或停止运输计划。', errorId: 'core.playerStationGame.002' } : null
+}
+
 /** v17：加入一艘"全新"的同型副船（分配新实例 uid 并落账），返回实例 uid */
 export function addShipToFleet(state: GameState, defId: string): string {
   const uid = allocateShipUid(state, defId)

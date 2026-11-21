@@ -26,6 +26,7 @@ import type { SimContext } from './types'
 import { addModule } from './equipment'
 import { addWare, unloadCargoOfShipToWarehouse } from './inventory'
 import { plugModulesOf, plugsOf } from './plugs'
+import { stationShipRemovalBlock } from './fleetBook'
 
 /** **回收材料占比**（船长：「**回收材料占比为制造材料的50%**」） */
 export const SHIP_SCRAP_MATERIAL_SHARE = 0.5
@@ -64,6 +65,8 @@ function scrapBlockReasonOf(state: GameState, shipId: string): { id: string; tex
   if (state.fleet[shipId] === undefined) {
     return { id: 'core.scrap.002', text: '舰队里找不到这艘舰船。' }
   }
+  const binding = stationShipRemovalBlock(state, shipId)
+  if (binding) return { id: binding.errorId, text: binding.error }
   if (state.shipId === shipId) {
     return { id: 'core.scrap.002', text: '正在驾驶的舰船不能回收：先换一艘驾驶再来。' }
   }

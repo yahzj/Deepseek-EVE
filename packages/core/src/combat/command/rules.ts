@@ -2,6 +2,7 @@ import type { GameState } from '../../state'
 import type { ShipDef, SimContext } from '../../types'
 import { standingOf, DSI_FACTION_ID } from '../../standing'
 import { fleetDefOf } from '../../instances'
+import { stationShipTaskBlock } from './locks'
 import config from './config.json'
 
 export const COMMAND_SKILLS = config.skills
@@ -40,6 +41,10 @@ export function commandBudgetOf(state: GameState, ctx: SimContext, shipIds: read
   if (!shipIds.length) return reject('至少选择一艘舰船。', 'core.command.001')
   if (new Set(shipIds).size !== shipIds.length || shipIds.some(id => !state.fleet[id] || !fleetDefOf(state, ctx, id))) return reject('编队包含重复或不存在的舰船。', 'core.command.002')
   if (shipIds.length > result.maxShips) return reject(`编队最多${result.maxShips}艘。`, 'core.command.003', { p1: result.maxShips })
+  for (const id of shipIds) {
+    const station = stationShipTaskBlock(state, id)
+    if (station) return { ...result, ...station }
+  }
   if (!config.enabled || special && legacySpecialSquads() || shipIds.length === 1) return { ...result, ok: true }
   if (result.standing < COMMAND_STANDING_REQUIRED) return reject(`累计协会声望达到${COMMAND_STANDING_REQUIRED}后可指挥多舰。`, 'core.command.004', { p1: COMMAND_STANDING_REQUIRED })
   if (result.cost > result.capacity) return reject(`指挥成本${result.cost}超过容量${result.capacity}。`, 'core.command.005', { p1: result.cost, p2: result.capacity })

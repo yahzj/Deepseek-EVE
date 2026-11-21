@@ -1,6 +1,12 @@
 import type { GameState } from '../../state'
 import type { CoreBlockReason } from '../../engine'
-import { busyLabel } from '../../busyLabels'
+import { busyLabel, type BusyLabel } from '../../busyLabels'
+
+/** 只认实际任务锁；舰员绑定但待命不占船，不反向依赖空间站运行器。 */
+export function stationShipTaskBlock(state: GameState, shipId: string): BusyLabel | null {
+  return state.playerStation?.shipLocks[shipId]
+    ? { error: 'core.playerStationGame.001', errorId: 'core.playerStationGame.001' } : null
+}
 
 /** 只认出发时的实体名单；旧档没有快照时不从基地临时召来僚舰。 */
 export function deployedCombatEscorts(state: GameState): readonly string[] {
@@ -29,6 +35,8 @@ export function commandShipDeployed(state: GameState, shipId: string): boolean {
 /** 随行舰必须在出发前已空闲；活动切换可以沿用原随行舰，但不能征用其他出勤。 */
 export function combatEscortBlock(state: GameState, shipIds: readonly string[]): CoreBlockReason | null {
   for (const id of shipIds) {
+    const station = stationShipTaskBlock(state, id)
+    if (station) return station
     if (id === state.shipId) continue
     if (!state.fleet[id]) return { error: '编队包含重复或不存在的舰船。', errorId: 'core.command.002' }
     if (state.aiAssignments[id]) return busyLabel('aiExpedition')

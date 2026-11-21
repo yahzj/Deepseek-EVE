@@ -4,7 +4,7 @@ import type { SimContext } from '../../types'
 import type { CoreBlockReason } from '../../engine'
 import { busyLabel } from '../../busyLabels'
 import { wormholeAdmission, WORMHOLE_ADMISSION_TEXT } from '../fleet/admission'
-import { commandShipDeployed } from '../../combat/command/locks'
+import { commandShipDeployed, stationShipTaskBlock } from '../../combat/command/locks'
 import { combatShipLimit, commandBudgetOf } from '../../combat/command/rules'
 const WORMHOLE_AUTO_MAX_SHIPS = combatShipLimit(true)
 
@@ -13,6 +13,8 @@ export function wormholeAutoShipBlockReason(
   shipId: string,
   opts?: { mainMayJoin?: boolean },
 ): CoreBlockReason | null {
+  const station = stationShipTaskBlock(state, shipId)
+  if (station) return station
   const ship = state.fleet[shipId]
   if (commandShipDeployed(state, shipId)) return busyLabel('expedition')
   if (state.shipReturns[shipId]) return busyLabel('unload')

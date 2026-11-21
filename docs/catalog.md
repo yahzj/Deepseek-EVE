@@ -36,7 +36,7 @@
 | 独立在线聊天 | `docs/design/online-chat-20261103.md`；独立导航、只显示聊天记录与在线总人数，桌面/网页端本机验证已完成；后端增强在 `H:\大鲸鱼\deepseek-EVE-Background\docs\chat-deploy-handoff-20261103.md`，待玩家验收与服务器部署联调 |
 | 数值与经济 | 开发约定§一、§二，对应设计稿及校准工具 |
 | 玩家文案与公告 | 开发约定§十一、§十二、§十三；公告待审稿未经批准不落库 |
-| 第二阶段空间站 | `docs/design/human-revival-station.md`看既有框架 → `docs/design/human-revival-station-research-20261018.md`看总览摘要与六份主题稿；玩家站仍仅设计，未决方案不能当已实现 |
+| 第二阶段空间站 | `docs/design/player-station-game-integration-20261121.md`看零号正式游戏接线与验证状态；`docs/design/human-revival-station.md`及`docs/design/human-revival-station-research-20261018.md`保留设计框架与分题依据。已实现不等于验收合入，未决方案不能当已实现 |
 | 第三方审查跟进 | `docs/review/guoqing-audit-followup.md`；旧报告需船长点名查阅 |
 | 复现门槛与合成档 | `docs/test-saves/README.md`（现行手册 + 32 份外迁说明索引表）；149 个 .json 夹具原位不动 |
 | 找当前文档 | `npm run docs:index`生成的`docs/INDEX.md`；索引不授予实施或历史阅读权限 |

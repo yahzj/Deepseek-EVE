@@ -18,6 +18,7 @@ import type { WeekendEventState, WeekendResultSnapshot } from './weekendEvent'
 import { emptyFitted } from './labels'
 import type { WormholeState } from './wormhole'
 import type { PlanetaryState } from './planetTypes'
+import type { PlayerStationGame } from './playerStation/gameTypes'
 import { signalSpaceTextId } from './explorationText'
 /**
  * 🔴 **这里绝不能 import `mining` / `salvaging`**（**2026-10-02 实测踩到**）：
@@ -46,7 +47,7 @@ export const INITIAL_STANDING = 0
 export type { FittedModules } from './types'
 
 /** 当前存档结构版本号：结构一变就 +1，并写对应的迁移函数（见 save.ts） */
-export const CURRENT_STATE_VERSION = 31
+export const CURRENT_STATE_VERSION = 32
 /** 母港星系 id（内容层约定；探索系统以它为初始点亮点） */
 export const HOME_GALAXY_ID = 'galaxy-hub'
 /** 技能最高等级（EVE 惯例 5 级） */
@@ -1912,7 +1913,11 @@ export interface BlackMarketState {
   offers: BlackMarketOffer[]
 }
 
-export type GameState = GameStateV31 & {
+export type GameState = Omit<GameStateV31, 'version'> & {
+  /** v31 输入保持类型兼容；新建与读档归一均输出 v32。 */
+  version: 31 | 32
+  /** 正式第二阶段运行账；缺省不生成资产或居民。 */
+  playerStation?: PlayerStationGame
   /** 船长2026-10-21确认：真实敌卡的距离及上次参战射程；旧星系偏好不迁移。 */
   battleRangeByCard?: Record<string, import('./battleRangeMemory').BattleRangeRecord>
   pendingBattleRange?: import('./battleRangeMemory').PendingBattleRange
@@ -2287,6 +2292,7 @@ export type GameStateV24 = Omit<GameStateV23, 'version'> & {
  * 空 = 可以操作。文案统一说明"为什么"与"怎么解"。
  */
 export function shipLockedReason(state: GameState, shipId: string, what = '操作这艘船'): string | null {
+  if (state.playerStation?.shipLocks[shipId]) return '该舰正在执行空间站任务，结束或返航后才能操作。'
   if (commandShipDeployed(state, shipId)) return `该舰正在随编队出勤，返港后才能${what}。`
   if ((state.planetary?.deliveries ?? []).some(d => d.shipUid === shipId)) return '该舰正在运送星球物资，抵达前不能改装或转派。'
   if (shipLockedInWormhole(state, shipId)) {
@@ -2736,7 +2742,7 @@ export function createInitialState(opts?: {
 }): GameState {
   const prologue = opts?.prologue === true
   const nowWall = opts?.nowWallMs ?? Date.now()
-  const state: GameStateV31 = {
+  const state: GameState = {
     // 新档一律按**当前版本**落盘（改版时不必再记得回来改这一行）
     version: CURRENT_STATE_VERSION,
     gameMs: 0,

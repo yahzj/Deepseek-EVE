@@ -3903,6 +3903,12 @@ html[data-locale='en'] body {
 
 .app-nav-side > .app-nav-group.is-right { justify-content: flex-start; }
 
+/* 调试导航增加后允许组内按钮让出空白，图标和完整文字仍作为最小宽度。 */
+.app-root.is-layout-modern .app-nav-side > .app-nav-group > .app-nav-item {
+  flex: 0 1 78px;
+  min-width: max-content;
+}
+
 /* 组内一项都没有时的占位（纯占位、不吃点击） */
 
 .app-nav-ph { flex: 1 1 0; pointer-events: none; }

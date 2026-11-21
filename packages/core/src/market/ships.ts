@@ -2,7 +2,7 @@ import { ceilFinalQuantity } from '../quantity'
 import { addLog, shipLockedReason } from '../state'
 import type { GameState, PlayerOrder } from '../state'
 import type { SimContext } from '../types'
-import { isShipLocked, shipStoredCount } from '../fleetBook'
+import { isShipLocked, shipStoredCount, stationShipRemovalBlock } from '../fleetBook'
 import { shipDisplayName } from '../instances'
 import { uidDefId, allFittedIds } from '../labels'
 import { shipInReturn } from '../mining'
@@ -14,9 +14,11 @@ import { bumpFirstMarketTrade } from './labels'
 import { pushSellOrder } from './orders'
 
 /** 舰船是否可出售：在机库、非驾驶中、无 AI 任务、未锁定、不在换船善后返航中、货仓空、无装配 */
-export function shipSellable(state: GameState, shipId: string): { ok: boolean; reason?: string } {
+export function shipSellable(state: GameState, shipId: string): { ok: boolean; reason?: string; errorId?: string } {
   const fleetShip = state.fleet[shipId]
   if (!fleetShip) return { ok: false, reason: '机库里没有这艘船。' }
+  const binding = stationShipRemovalBlock(state, shipId)
+  if (binding) return { ok: false, reason: binding.error, errorId: binding.errorId }
   if (state.shipId === shipId) return { ok: false, reason: '正在驾驶的船不能出售。' }
   if (state.aiAssignments[shipId]) return { ok: false, reason: 'AI 任务执行中的船不能出售，先取消指派。' }
   if (isShipLocked(state, shipId)) return { ok: false, reason: '该船已锁定（防误操作）：先到舰船页解锁。' }
@@ -42,7 +44,7 @@ export function shipSellable(state: GameState, shipId: string): { ok: boolean; r
  * 若簿瞬时空 → 转为限价挂单（免费；撤单可退回机库）。
  * 返回 total = 税后净入账。
  */
-export function sellShipAtMarket(state: GameState, ctx: SimContext, shipId: string): { ok: boolean; total?: number; reason?: string } {
+export function sellShipAtMarket(state: GameState, ctx: SimContext, shipId: string): { ok: boolean; total?: number; reason?: string; errorId?: string } {
   // **进洞船只所有行为锁定**（船长 2026-09-13：锁，进洞船只所有行为都锁定。包括维修。）
   const lock = shipLockedReason(state, shipId, '卖掉它')
   if (lock) return { ok: false, reason: lock }

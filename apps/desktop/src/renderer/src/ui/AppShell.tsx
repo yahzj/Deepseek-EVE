@@ -75,6 +75,7 @@ export interface ShellCtx {
   page: string
   setShowSettings: (v: boolean) => void
   mobileLog: { open: boolean; onToggle: () => void } | null
+  orientationControl?: ReactNode
   setShowHandbook: (v: boolean) => void
   copyQqGroup: () => void
   qqCopied: boolean
@@ -114,6 +115,7 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
     page,
     setShowSettings,
     mobileLog,
+    orientationControl,
     setShowHandbook,
     copyQqGroup,
     qqCopied,
@@ -332,6 +334,7 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
               <span className="app-ico"><CarbonSettings size={14} fill="currentColor" /></span>
               {t('ui.App.010')}
             </button>
+            {orientationControl}
             {/**
              * ⚠ **顶栏的「保存 / 存档管理 / 重置档案」三个按钮已移入设置弹窗**
              * （2026-09-25 船长令：「将存档管理，重置档案，保存移动到设置内」）
@@ -530,6 +533,7 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
             >
               {t('ui.App.010')}
             </button>
+            {orientationControl}
             {/* **存档三件套已移入设置**（2026-09-25 船长令：「旧版的顶部，可以将保存，存档管理，
                 重置档案按钮移除，设置内采用新版的样式」）——旧版顶栏与新版一致，只留
                 在线时长 / 公告 / QQ群 / 手册 / 设置；三个动作在设置弹层的「存档」一组里。 */}

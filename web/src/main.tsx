@@ -18,6 +18,8 @@ import { startUpdatePrompt } from './updatePrompt'
  * 网页端环境守卫：防范离线扒取、本地双击 (file://) 及未授权的第三方镜像
  */
 function checkWebEnvironment(): boolean {
+  // 船长授权的参赛构建允许本地 HTML 与平台托管；普通网页构建仍走原门禁。
+  if (import.meta.env.WHALE_TOY_BUILD === '1') return true
   if (typeof window === 'undefined') return true
   const proto = window.location.protocol
   const host = window.location.hostname
@@ -65,7 +67,7 @@ if (checkWebEnvironment()) {
   // 首帧渲染之前的固定动作（布局样式 / 宇宙背景 / 配色）
   prebootRenderer()
   // 挂机玩家可能几天不刷新页面：定时比对线上入口脚本，有新版只提示、不强制刷新。
-  startUpdatePrompt()
+  if (import.meta.env.WHALE_TOY_BUILD !== '1') startUpdatePrompt()
 
   const engine = new GameEngine()
   const root = createRoot(document.getElementById('root')!)
@@ -77,7 +79,7 @@ if (checkWebEnvironment()) {
     .then((started) => {
       root.render(
         <L10nProvider>
-          <SaveWriterGate>{started ? <App engine={engine} /> : null}</SaveWriterGate>
+          <SaveWriterGate>{started ? <App engine={engine} embeddedMobileViewport={import.meta.env.WHALE_TOY_BUILD === '1'} /> : null}</SaveWriterGate>
         </L10nProvider>,
       )
     })

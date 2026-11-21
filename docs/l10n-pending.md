@@ -1,5 +1,631 @@
 # 英文本地化记录
 
+## 正式空间站与舰员内容（2026-11-21）
+
+语义键统一通过 `packages/data/src/playerStationText.ts` 映射到数字 ID。仅迁移和新增中文；英文延期，原有英文保持不变。
+
+| ID | 内容 | 状态 |
+|---|---|---|
+| `ui.playerStation.001` | 空间站 | 待本地化 |
+| `ui.playerStation.002` | 古代休眠站 | 待本地化 |
+| `ui.playerStation.003` | 保存着人类休眠舱的古代空间站。 | 待本地化 |
+| `ui.playerStation.004` | 进入空间站 | 待本地化 |
+| `ui.playerStation.005` | 来源总数 {p1} | 待本地化 |
+| `ui.playerStation.006` | 已接收 {p1} | 待本地化 |
+| `ui.playerStation.007` | 待接收 {p1} | 待本地化 |
+| `ui.playerStation.008` | 保护中 {p1} | 待本地化 |
+| `ui.playerStation.009` | 古代休眠站，保存着尚待复苏的人类。 | 待本地化 |
+| `ui.playerStation.010` | 空间站安排已更新 | 待本地化 |
+| `ui.playerStation.011` | 当前条件不满足，无法执行此操作。 | 待本地化 |
+| `ui.playerStation.012` | 完成所有星图探索后可发现空间站。 | 待本地化 |
+| `ui.playerStation.013` | 空间站信号已确认，可启动人类复苏计划。 | 待本地化 |
+| `ui.playerStation.014` | 启动空间站 | 待本地化 |
+| `ui.playerStation.015` | 居民 {p1} / 容量 {p2} | 待本地化 |
+| `ui.playerStation.016` | 建设 | 待本地化 |
+| `ui.playerStation.017` | 人口 | 待本地化 |
+| `ui.playerStation.018` | 生产 | 待本地化 |
+| `ui.playerStation.019` | 科研 | 待本地化 |
+| `ui.playerStation.020` | 舰员 | 待本地化 |
+| `ui.playerStation.021` | 安全 | 待本地化 |
+| `ui.playerStation.022` | 物资运输 | 待本地化 |
+| `ui.playerStation.023` | 运输副船 | 待本地化 |
+| `ui.playerStation.024` | 无可用副船 | 待本地化 |
+| `ui.playerStation.025` | 运送主体建材 | 待本地化 |
+| `ui.playerStation.026` | 运送复苏耗材 | 待本地化 |
+| `ui.playerStation.027` | {p1}正运往{p2} | 待本地化 |
+| `ui.playerStation.028` | 建设站点 | 待本地化 |
+| `ui.playerStation.029` | 古代休眠站 | 待本地化 |
+| `ui.playerStation.030` | 派工居民 | 待本地化 |
+| `ui.playerStation.031` | 无 | 待本地化 |
+| `ui.playerStation.032` | {p1} / 可用 {p2} | 待本地化 |
+| `ui.playerStation.033` | 扩建、升级或维修中 | 待本地化 |
+| `ui.playerStation.034` | 培训中心受训中 | 待本地化 |
+| `ui.playerStation.035` | 站内制造占用 | 待本地化 |
+| `ui.playerStation.036` | 舰员团队：{p1} | 待本地化 |
+| `ui.playerStation.037` | 扩站、升级与维修 | 待本地化 |
+| `ui.playerStation.038` | 当前地块 {p1} · 可用工程师 {p2} | 待本地化 |
+| `ui.playerStation.039` | 首次站体扩容 | 待本地化 |
+| `ui.playerStation.040` | 发电设施首轮升级 | 待本地化 |
+| `ui.playerStation.041` | 生命维持设施升级 | 待本地化 |
+| `ui.playerStation.042` | 基础维修 | 待本地化 |
+| `ui.playerStation.043` | 开工 | 待本地化 |
+| `ui.playerStation.044` | 有效工期 {p1} 分钟 · 工程师 {p2} · 额外电力 {p3} | 待本地化 |
+| `ui.playerStation.045` | 等待工程师或供电 | 待本地化 |
+| `ui.playerStation.046` | 工程师：{p1} | 待本地化 |
+| `ui.playerStation.047` | 取消并回收余料 | 待本地化 |
+| `ui.playerStation.048` | 暂无可安排的扩建或维修 | 待本地化 |
+| `ui.playerStation.049` | 站内制造 | 待本地化 |
+| `ui.playerStation.050` | 尚未建成基础组装机 | 待本地化 |
+| `ui.playerStation.051` | 组装机 | 待本地化 |
+| `ui.playerStation.052` | 零件配方 | 待本地化 |
+| `ui.playerStation.053` | 批数 | 待本地化 |
+| `ui.playerStation.054` | 安排制造 | 待本地化 |
+| `ui.playerStation.055` | 单批 {p1} 秒 | 待本地化 |
+| `ui.playerStation.056` | {p1} / {p2} 批 | 待本地化 |
+| `ui.playerStation.057` | 制造中 | 待本地化 |
+| `ui.playerStation.058` | 停止制造 | 待本地化 |
+| `ui.playerStation.059` | 培训中心课程 | 待本地化 |
+| `ui.playerStation.060` | 尚未建成培训中心 | 待本地化 |
+| `ui.playerStation.061` | 培训中心 | 待本地化 |
+| `ui.playerStation.062` | 退出课程 | 待本地化 |
+| `ui.playerStation.063` | 开课 | 待本地化 |
+| `ui.playerStation.064` | 近域警戒 | 待本地化 |
+| `ui.playerStation.065` | 等待警戒阵列建成并供电 | 待本地化 |
+| `ui.playerStation.066` | 已识别返航信号 | 待本地化 |
+| `ui.playerStation.067` | 近域无返航信号 | 待本地化 |
+| `ui.playerStation.068` | {p1} · 预计 {p2} 秒抵达 | 待本地化 |
+| `ui.playerStation.069` | 舰员团队与培养 | 待本地化 |
+| `ui.playerStation.070` | {p1} · 成员 {p2} · 资格 {p3} | 待本地化 |
+| `ui.playerStation.071` | 普通成长 {p1} / {p2} · 技能点 {p3} / 累计 {p4} | 待本地化 |
+| `ui.playerStation.072` | 团队增量：火力 +{p1}% · 防护 +{p2}% | 待本地化 |
+| `ui.playerStation.073` | 团队培养进度 | 待本地化 |
+| `ui.playerStation.074` | 长期课程 | 待本地化 |
+| `ui.playerStation.075` | 安排模拟训练 | 待本地化 |
+| `ui.playerStation.076` | 转为待命 | 待本地化 |
+| `ui.playerStation.077` | 资格进修 | 待本地化 |
+| `ui.playerStation.078` | 解散{p1}？成员返回待命，团队培养记录将清除。 | 待本地化 |
+| `ui.playerStation.079` | 解散团队 | 待本地化 |
+| `ui.playerStation.080` | 换配舰船 | 待本地化 |
+| `ui.playerStation.081` | 选择换配舰船 | 待本地化 |
+| `ui.playerStation.082` | 换配 | 待本地化 |
+| `ui.playerStation.083` | 学习机会 | 待本地化 |
+| `ui.playerStation.084` | 尚无新的学习机会 | 待本地化 |
+| `ui.playerStation.085` | {p1} 点 | 待本地化 |
+| `ui.playerStation.086` | 学习 | 待本地化 |
+| `ui.playerStation.087` | 已学技能 | 待本地化 |
+| `ui.playerStation.088` | 永久特性 | 待本地化 |
+| `ui.playerStation.089` | 培训席位 {p1} / {p2} | 待本地化 |
+| `ui.playerStation.090` | 团队呼号 | 待本地化 |
+| `ui.playerStation.091` | 第一舰员队 | 待本地化 |
+| `ui.playerStation.092` | 目标舰船 | 待本地化 |
+| `ui.playerStation.093` | 资格 {p1} | 待本地化 |
+| `ui.playerStation.094` | 组建团队 | 待本地化 |
+| `ui.playerStation.095` | 尚未组建舰员团队 | 待本地化 |
+| `ui.playerStation.096` | 等待培训中心或供电 | 待本地化 |
+| `ui.playerStation.097` | 等待培训席位 | 待本地化 |
+| `ui.playerStation.098` | 等待生活保障 | 待本地化 |
+| `ui.playerStation.099` | 已暂停，人员保留 | 待本地化 |
+| `ui.playerStation.100` | 团队正承担任务 | 待本地化 |
+| `ui.playerStation.101` | 外派与区域安全 | 待本地化 |
+| `ui.playerStation.102` | 未知敌对来源 | 待本地化 |
+| `ui.playerStation.103` | 原舰员团队 | 待本地化 |
+| `ui.playerStation.104` | 已清除 {p1} / {p2} | 待本地化 |
+| `ui.playerStation.105` | 部署团队 | 待本地化 |
+| `ui.playerStation.106` | 尚无可部署的舰员团队 | 待本地化 |
+| `ui.playerStation.107` | 敌对来源 | 待本地化 |
+| `ui.playerStation.108` | 清剿来源 | 待本地化 |
+| `ui.playerStation.109` | 安排补给护航 | 待本地化 |
+| `ui.playerStation.110` | 有限巡逻 | 待本地化 |
+| `ui.playerStation.111` | 预留守备编队 | 待本地化 |
+| `ui.playerStation.112` | 外派阶段进度 | 待本地化 |
+| `ui.playerStation.113` | 本阶段剩余 {p1} 秒 | 待本地化 |
+| `ui.playerStation.114` | 停止并返航 | 待本地化 |
+| `ui.playerStation.115` | 专用守备 | 待本地化 |
+| `ui.playerStation.116` | 正在执行防守 | 待本地化 |
+| `ui.playerStation.117` | 守备已暂停，人员与船只保留 | 待本地化 |
+| `ui.playerStation.118` | 守备待命 | 待本地化 |
+| `ui.playerStation.119` | 解除守备 | 待本地化 |
+| `ui.playerStation.120` | 无警戒情报 | 待本地化 |
+| `ui.playerStation.121` | 预警检查剩余 {p1} 分钟 | 待本地化 |
+| `ui.playerStation.122` | 行动报告 | 待本地化 |
+| `ui.playerStation.123` | 暂无行动报告 | 待本地化 |
+| `ui.playerStation.124` | 实际消耗 | 待本地化 |
+| `ui.playerStation.125` | 获得物资 | 待本地化 |
+| `ui.playerStation.126` | 发展目标 | 待本地化 |
+| `ui.playerStation.127` | 安置至少3名居民，生活保障正常 | 待本地化 |
+| `ui.playerStation.128` | 人类精炼和站内制造均有实际产出 | 待本地化 |
+| `ui.playerStation.129` | 掌握全部六项基础科研 | 待本地化 |
+| `ui.playerStation.130` | 完成首次站体扩容及保障升级 | 待本地化 |
+| `ui.playerStation.131` | 至少一支团队完成资格与一次有效训练 | 待本地化 |
+| `ui.playerStation.132` | 完成一次实际外派护航并安全返回 | 待本地化 |
+| `ui.playerStation.133` | 清除三处已知敌对来源 | 待本地化 |
+| `ui.playerStation.134` | 专用守备有效值守30分钟，或实际击退袭扰 | 待本地化 |
+| `ui.playerStation.135` | 自主据点已建立 | 待本地化 |
+| `ui.playerStation.136` | 确认建立自主据点 | 待本地化 |
+| `ui.playerStation.137` | 缺少空闲基础工程师 | 待本地化 |
+| `ui.playerStation.138` | 尚未掌握所需技术 | 待本地化 |
+| `ui.playerStation.139` | 无可用配方 | 待本地化 |
+| `ui.playerStation.140` | 制造批数无效 | 待本地化 |
+| `ui.playerStation.141` | 没有正在安排的作业 | 待本地化 |
+| `ui.playerStation.142` | 没有正在进行的接收计划 | 待本地化 |
+| `ui.playerStation.143` | 接收人数无效 | 待本地化 |
+| `ui.playerStation.144` | 需要先建成空间站主体 | 待本地化 |
+| `ui.playerStation.145` | 当前空间站状态不支持此操作 | 待本地化 |
+| `ui.playerStation.146` | 地块或人员已占用 | 待本地化 |
+| `ui.playerStation.147` | 地块不可用 | 待本地化 |
+| `ui.playerStation.148` | 设施类型无效 | 待本地化 |
+| `ui.playerStation.149` | 尚未发现古代休眠站 | 待本地化 |
+| `ui.playerStation.150` | 尚未启动空间站计划 | 待本地化 |
+| `ui.playerStation.151` | 站点防守 | 待本地化 |
+| `ui.playerStation.152` | 已安全返回 | 待本地化 |
+| `ui.playerStation.153` | 等待空闲培训席位 | 待本地化 |
+| `ui.playerStation.154` | 基础组装机 | 待本地化 |
+| `ui.playerStation.155` | 使用已有零件配方加工材料。 | 待本地化 |
+| `ui.playerStation.156` | 单人单机，按有限批量加工基础零件 | 待本地化 |
+| `ui.playerStation.157` | 基础培训中心 | 待本地化 |
+| `ui.playerStation.158` | 提供独立于服务中心的基础课程席位。 | 待本地化 |
+| `ui.playerStation.159` | 额外1席基础工程或研究课程 | 待本地化 |
+| `ui.playerStation.160` | 警戒阵列 | 待本地化 |
+| `ui.playerStation.161` | 识别本站航线的返航信号并显示预计抵达时间。 | 待本地化 |
+| `ui.playerStation.162` | 显示实际返航船只与剩余航程 | 待本地化 |
+| `ui.playerStation.163` | 尚未掌握对应建设技术 | 待本地化 |
+| `ui.playerStation.164` | 故障停机 | 待本地化 |
+| `ui.playerStation.165` | 已完成首轮升级 | 待本地化 |
+| `ui.playerStation.166` | 研究目标 | 待本地化 |
+| `ui.playerStation.167` | 加入研究计划 | 待本地化 |
+| `ui.playerStation.168` | 上移研究目标 | 待本地化 |
+| `ui.playerStation.169` | 移除研究目标 | 待本地化 |
+| `ui.playerStation.170` | 初次站体扩容 | 待本地化 |
+| `ui.playerStation.171` | 能源系统升级 | 待本地化 |
+| `ui.playerStation.172` | 生命维持扩容 | 待本地化 |
+| `ui.playerStation.173` | 站内制造建设 | 待本地化 |
+| `ui.playerStation.174` | 基础培训设施 | 待本地化 |
+| `ui.playerStation.175` | 近域警戒 | 待本地化 |
+| `ui.playerStation.176` | 开放首次扩站工程；增加空地，原设施保持。 | 待本地化 |
+| `ui.playerStation.177` | 开放发电设施首轮升级。 | 待本地化 |
+| `ui.playerStation.178` | 开放生命维持设施首轮升级。 | 待本地化 |
+| `ui.playerStation.179` | 开放基础组装机建设。 | 待本地化 |
+| `ui.playerStation.180` | 开放基础培训中心建设。 | 待本地化 |
+| `ui.playerStation.181` | 开放警戒阵列建设。 | 待本地化 |
+| `ui.playerStation.182` | 研究目标不存在 | 待本地化 |
+| `ui.playerStation.183` | 目标已在计划中 | 待本地化 |
+| `ui.playerStation.184` | 计划位置无效 | 待本地化 |
+| `ui.playerStation.185` | 空间站科研 | 待本地化 |
+| `ui.playerStation.186` | 初次站体扩容 | 待本地化 |
+| `ui.playerStation.187` | 研究完成后取得扩建资格；扩建仍需另外交料与施工。 | 待本地化 |
+| `ui.playerStation.188` | 项目有效研究进度 | 待本地化 |
+| `ui.playerStation.189` | 有效工时 {p1} / {p2} 分钟 | 待本地化 |
+| `ui.playerStation.190` | 研究室 | 待本地化 |
+| `ui.playerStation.191` | 研究人员 | 待本地化 |
+| `ui.playerStation.192` | 尚未建成初级研究室 | 待本地化 |
+| `ui.playerStation.193` | 无基础研究员 | 待本地化 |
+| `ui.playerStation.194` | 安排研究 | 待本地化 |
+| `ui.playerStation.195` | 撤出人员，保留进度 | 待本地化 |
+| `ui.playerStation.196` | 地块 {p1} 科研占用 | 待本地化 |
+| `ui.playerStation.197` | 研究中 | 待本地化 |
+| `ui.playerStation.198` | 等待派工 | 待本地化 |
+| `ui.playerStation.199` | 技术已掌握 | 待本地化 |
+| `ui.playerStation.200` | 已暂停，人员与进度保留 | 待本地化 |
+| `ui.playerStation.201` | 等待原研究员可用 | 待本地化 |
+| `ui.playerStation.202` | 等待原研究室可用 | 待本地化 |
+| `ui.playerStation.203` | 缺电或生活保障不足 | 待本地化 |
+| `ui.playerStation.204` | 已有研究安排，请先撤出原人员 | 待本地化 |
+| `ui.playerStation.205` | 需要未被占用的基础研究员 | 待本地化 |
+| `ui.playerStation.206` | 需要已建成的初级研究室 | 待本地化 |
+| `ui.playerStation.207` | 这项技术已经掌握 | 待本地化 |
+| `ui.playerStation.208` | 没有可操作的研究安排 | 待本地化 |
+| `ui.playerStation.209` | 科研操作无效 | 待本地化 |
+| `ui.playerStation.210` | 科研安排已更新 | 待本地化 |
+| `ui.playerStation.211` | 人类采矿与返航 | 待本地化 |
+| `ui.playerStation.212` | 采矿任务 {p1} | 待本地化 |
+| `ui.playerStation.213` | 采矿副船 | 待本地化 |
+| `ui.playerStation.214` | 采矿人员 | 待本地化 |
+| `ui.playerStation.215` | 采集点 | 待本地化 |
+| `ui.playerStation.216` | 安排采矿 | 待本地化 |
+| `ui.playerStation.217` | 离港中 | 待本地化 |
+| `ui.playerStation.218` | 采掘中 | 待本地化 |
+| `ui.playerStation.219` | 返航卸货中 | 待本地化 |
+| `ui.playerStation.220` | 已暂停，人员与船只保留 | 待本地化 |
+| `ui.playerStation.221` | 等待原派工人员 | 待本地化 |
+| `ui.playerStation.222` | 等待生活保障与服务中心恢复 | 待本地化 |
+| `ui.playerStation.223` | 本阶段剩余 {p1} 秒 | 待本地化 |
+| `ui.playerStation.224` | 采矿阶段进度 | 待本地化 |
+| `ui.playerStation.225` | 每循环 {p1} 单位 · {p2} 秒 · 已卸货 {p3} 趟 | 待本地化 |
+| `ui.playerStation.226` | 船上货物（尚未入库） | 待本地化 |
+| `ui.playerStation.227` | 船舱为空 | 待本地化 |
+| `ui.playerStation.228` | 本趟到港卸货后停止，人员与船只占用保留。 | 待本地化 |
+| `ui.playerStation.229` | 停止并返航 | 待本地化 |
+| `ui.playerStation.230` | 采矿占用 | 待本地化 |
+| `ui.playerStation.231` | 采矿返航占用 | 待本地化 |
+| `ui.playerStation.232` | 人员未接收或已被其他工作占用 | 待本地化 |
+| `ui.playerStation.233` | 矿船不可用、尚未停靠或已被占用 | 待本地化 |
+| `ui.playerStation.234` | 采集点或矿船参数不可用 | 待本地化 |
+| `ui.playerStation.235` | 生活保障或服务中心未正常运行 | 待本地化 |
+| `ui.playerStation.236` | 人员或船只已有任务，请先完成原安排 | 待本地化 |
+| `ui.playerStation.237` | 没有可操作的采矿任务 | 待本地化 |
+| `ui.playerStation.238` | 采矿操作无效 | 待本地化 |
+| `ui.playerStation.239` | 采矿安排已更新 | 待本地化 |
+| `ui.playerStation.240` | 基础派工与精炼 | 待本地化 |
+| `ui.playerStation.241` | 已建精炼设备 {p1} | 待本地化 |
+| `ui.playerStation.242` | 尚未建成基础精炼设施 | 待本地化 |
+| `ui.playerStation.243` | 精炼设备 | 待本地化 |
+| `ui.playerStation.244` | 精炼人员 | 待本地化 |
+| `ui.playerStation.245` | 精炼原料 | 待本地化 |
+| `ui.playerStation.246` | 无本站居民 | 待本地化 |
+| `ui.playerStation.247` | 已占用 | 待本地化 |
+| `ui.playerStation.248` | 安排精炼 | 待本地化 |
+| `ui.playerStation.249` | 未派工 | 待本地化 |
+| `ui.playerStation.250` | 每批 {p1} 单位 · 周期 {p2} 秒 | 待本地化 |
+| `ui.playerStation.251` | 可用原料 {p1} / 每批 {p2} | 待本地化 |
+| `ui.playerStation.252` | 已完成 {p1} 批 | 待本地化 |
+| `ui.playerStation.253` | 本批精炼进度 | 待本地化 |
+| `ui.playerStation.254` | 本批剩余 {p1} 秒 | 待本地化 |
+| `ui.playerStation.255` | 停止并释放人员 | 待本地化 |
+| `ui.playerStation.256` | 地块 {p1} 精炼占用 | 待本地化 |
+| `ui.playerStation.257` | 作业中 | 待本地化 |
+| `ui.playerStation.258` | 已停止 | 待本地化 |
+| `ui.playerStation.259` | 等待原派工人员 | 待本地化 |
+| `ui.playerStation.260` | 等待设备可用 | 待本地化 |
+| `ui.playerStation.261` | 原料不足一批，保留进度 | 待本地化 |
+| `ui.playerStation.262` | 缺电或保障不足，保留进度 | 待本地化 |
+| `ui.playerStation.263` | 已暂停，人员保留 | 待本地化 |
+| `ui.playerStation.264` | 人员未接收或已被其他工作占用 | 待本地化 |
+| `ui.playerStation.265` | 基础精炼设备不可用 | 待本地化 |
+| `ui.playerStation.266` | 没有可用精炼配方 | 待本地化 |
+| `ui.playerStation.267` | 人员或设备已有安排，请先停止原作业 | 待本地化 |
+| `ui.playerStation.268` | 没有正在安排的精炼作业 | 待本地化 |
+| `ui.playerStation.269` | 精炼操作无效 | 待本地化 |
+| `ui.playerStation.270` | 精炼安排已更新 | 待本地化 |
+| `ui.playerStation.271` | 基础精炼设施 | 待本地化 |
+| `ui.playerStation.272` | 提供站内基础精炼设备与作业位置。 | 待本地化 |
+| `ui.playerStation.273` | 基础精炼设备 | 待本地化 |
+| `ui.playerStation.274` | 初级研究室 | 待本地化 |
+| `ui.playerStation.275` | 提供初级科研设备与研究岗位。 | 待本地化 |
+| `ui.playerStation.276` | 初级科研设备 | 待本地化 |
+| `ui.playerStation.277` | 缺少可用基础工程师或生活保障 | 待本地化 |
+| `ui.playerStation.278` | 工程师或生活保障不可用，施工阻塞 | 待本地化 |
+| `ui.playerStation.279` | 施工工程师 | 待本地化 |
+| `ui.playerStation.280` | 可用工程师 | 待本地化 |
+| `ui.playerStation.281` | 施工工程师 · 单位 {p1} | 待本地化 |
+| `ui.playerStation.282` | 作业总耗电 | 待本地化 |
+| `ui.playerStation.283` | 待机 | 待本地化 |
+| `ui.playerStation.284` | 缺电停机 | 待本地化 |
+| `ui.playerStation.285` | 地块 {p1} 施工占用 | 待本地化 |
+| `ui.playerStation.286` | 基础课程与人员资格 | 待本地化 |
+| `ui.playerStation.287` | 课程席位 {p1} / {p2} | 待本地化 |
+| `ui.playerStation.288` | 普通待命 | 待本地化 |
+| `ui.playerStation.289` | 基础工程师 | 待本地化 |
+| `ui.playerStation.290` | 基础研究员 | 待本地化 |
+| `ui.playerStation.291` | 基础课程 | 待本地化 |
+| `ui.playerStation.292` | 基础工程课程 | 待本地化 |
+| `ui.playerStation.293` | 基础研究课程 | 待本地化 |
+| `ui.playerStation.294` | 加入课程队列 | 待本地化 |
+| `ui.playerStation.295` | 受训中 | 待本地化 |
+| `ui.playerStation.296` | 受训占用 | 待本地化 |
+| `ui.playerStation.297` | 课程暂停，占用保留 | 待本地化 |
+| `ui.playerStation.298` | 基础工程师待命 | 待本地化 |
+| `ui.playerStation.299` | 基础研究员待命 | 待本地化 |
+| `ui.playerStation.300` | 课程进度 | 待本地化 |
+| `ui.playerStation.301` | 待开课队列 · {p1} | 待本地化 |
+| `ui.playerStation.302` | 无排队课程 | 待本地化 |
+| `ui.playerStation.303` | 移除第{p1}项排队课程 | 待本地化 |
+| `ui.playerStation.304` | 等待生命维持与服务中心恢复 | 待本地化 |
+| `ui.playerStation.305` | 等待普通待命居民 | 待本地化 |
+| `ui.playerStation.306` | 课程操作无效 | 待本地化 |
+| `ui.playerStation.307` | 已达到当前人口的课程计划上限 | 待本地化 |
+| `ui.playerStation.308` | 没有正在进行的课程 | 待本地化 |
+| `ui.playerStation.309` | 排队课程不存在 | 待本地化 |
+| `ui.playerStation.310` | 课程计划已更新 | 待本地化 |
+| `ui.playerStation.311` | 人口复苏与转运 | 待本地化 |
+| `ui.playerStation.312` | 每单位复苏材料 | 待本地化 |
+| `ui.playerStation.313` | 来源站待用 | 待本地化 |
+| `ui.playerStation.314` | 玩家站 | 待本地化 |
+| `ui.playerStation.315` | 古代休眠站 | 待本地化 |
+| `ui.playerStation.316` | 其他位置 | 待本地化 |
+| `ui.playerStation.317` | 空闲 | 待本地化 |
+| `ui.playerStation.318` | 任务占用 | 待本地化 |
+| `ui.playerStation.319` | 古代休眠站已发现 | 待本地化 |
+| `ui.playerStation.320` | 尚未发现古代休眠站 | 待本地化 |
+| `ui.playerStation.321` | 本站居民 | 待本地化 |
+| `ui.playerStation.322` | 预留名额 | 待本地化 |
+| `ui.playerStation.323` | 未分配人口 | 待本地化 |
+| `ui.playerStation.324` | 来源保护 | 待本地化 |
+| `ui.playerStation.325` | 人口容量 | 待本地化 |
+| `ui.playerStation.326` | 转运副船 | 待本地化 |
+| `ui.playerStation.327` | 目标人口 | 待本地化 |
+| `ui.playerStation.328` | 安排复苏与接收 | 待本地化 |
+| `ui.playerStation.329` | 停止后续 | 待本地化 |
+| `ui.playerStation.330` | 剩余接收目标 {p1} 单位 | 待本地化 |
+| `ui.playerStation.331` | 本阶段剩余 {p1} 分钟 | 待本地化 |
+| `ui.playerStation.332` | 本趟预留 {p1} 单位运力 · {p2} m³ | 待本地化 |
+| `ui.playerStation.333` | 停止后续新单位，已启动人口继续安全交接。 | 待本地化 |
+| `ui.playerStation.334` | 接收条件中断，当前人口返回来源站保护。 | 待本地化 |
+| `ui.playerStation.335` | 等待来源站可用 | 待本地化 |
+| `ui.playerStation.336` | 等待生命维持与服务中心恢复 | 待本地化 |
+| `ui.playerStation.337` | 等待人口名额 | 待本地化 |
+| `ui.playerStation.338` | 等待可用副船与运力 | 待本地化 |
+| `ui.playerStation.339` | 等待复苏材料 | 待本地化 |
+| `ui.playerStation.340` | 装载与出港 | 待本地化 |
+| `ui.playerStation.341` | 前往古代休眠站 | 待本地化 |
+| `ui.playerStation.342` | 来源站复苏处理 | 待本地化 |
+| `ui.playerStation.343` | 交接装船 | 待本地化 |
+| `ui.playerStation.344` | 返回玩家站 | 待本地化 |
+| `ui.playerStation.345` | 玩家站接收 | 待本地化 |
+| `ui.playerStation.346` | 返回来源站安全安置 | 待本地化 |
+| `ui.playerStation.347` | 空船返回玩家站 | 待本地化 |
+| `ui.playerStation.348` | 人口单位 | 待本地化 |
+| `ui.playerStation.349` | 状态 | 待本地化 |
+| `ui.playerStation.350` | 单位 {p1} | 待本地化 |
+| `ui.playerStation.351` | 未分配休眠 | 待本地化 |
+| `ui.playerStation.352` | 复苏处理中 | 待本地化 |
+| `ui.playerStation.353` | 已复苏待运 | 待本地化 |
+| `ui.playerStation.354` | 船上转运 | 待本地化 |
+| `ui.playerStation.355` | 到站交接中 | 待本地化 |
+| `ui.playerStation.356` | 来源站保护休眠 | 待本地化 |
+| `ui.playerStation.357` | 本站待命 | 待本地化 |
+| `ui.playerStation.358` | 玩家空间站 | 待本地化 |
+| `ui.playerStation.359` | 空间站主体 | 待本地化 |
+| `ui.playerStation.360` | 主体已建成 | 待本地化 |
+| `ui.playerStation.361` | 尚未批准施工 | 待本地化 |
+| `ui.playerStation.362` | 施工中 | 待本地化 |
+| `ui.playerStation.363` | 已暂停 | 待本地化 |
+| `ui.playerStation.364` | 缺电，施工阻塞 | 待本地化 |
+| `ui.playerStation.365` | 等待主体材料到齐 | 待本地化 |
+| `ui.playerStation.366` | 主体材料 | 待本地化 |
+| `ui.playerStation.367` | 设施材料 | 待本地化 |
+| `ui.playerStation.368` | 材料 | 待本地化 |
+| `ui.playerStation.369` | 需求 | 待本地化 |
+| `ui.playerStation.370` | 可用 | 待本地化 |
+| `ui.playerStation.371` | 已到货 | 待本地化 |
+| `ui.playerStation.372` | 缺少 | 待本地化 |
+| `ui.playerStation.373` | 供电 | 待本地化 |
+| `ui.playerStation.374` | 用电 | 待本地化 |
+| `ui.playerStation.375` | 人口容量 | 待本地化 |
+| `ui.playerStation.376` | 3×3地块 | 待本地化 |
+| `ui.playerStation.377` | 地块 {p1} | 待本地化 |
+| `ui.playerStation.378` | 发电设施 | 待本地化 |
+| `ui.playerStation.379` | 为站内设施运行与地块施工提供电力。 | 待本地化 |
+| `ui.playerStation.380` | 生命维持 | 待本地化 |
+| `ui.playerStation.381` | 维持站内空气与水循环，为居民提供生存保障。 | 待本地化 |
+| `ui.playerStation.382` | 服务中心 | 待本地化 |
+| `ui.playerStation.383` | 提供站内公共服务，不增加人口容量。 | 待本地化 |
+| `ui.playerStation.384` | 效果 | 待本地化 |
+| `ui.playerStation.385` | 供电 +{p1} | 待本地化 |
+| `ui.playerStation.386` | 人口容量 +{p1} | 待本地化 |
+| `ui.playerStation.387` | 站内公共服务 | 待本地化 |
+| `ui.playerStation.388` | 占地 | 待本地化 |
+| `ui.playerStation.389` | {p1} 地块 | 待本地化 |
+| `ui.playerStation.390` | 工期 | 待本地化 |
+| `ui.playerStation.391` | {p1} 分钟 | 待本地化 |
+| `ui.playerStation.392` | 施工耗电 | 待本地化 |
+| `ui.playerStation.393` | 运行耗电 | 待本地化 |
+| `ui.playerStation.394` | 施工电力缺口 | 待本地化 |
+| `ui.playerStation.395` | 运行用电 | 待本地化 |
+| `ui.playerStation.396` | 施工供电 / 需求 | 待本地化 |
+| `ui.playerStation.397` | {p1} / {p2} | 待本地化 |
+| `ui.playerStation.398` | 设施详情 | 待本地化 |
+| `ui.playerStation.399` | 关闭建造轮盘 | 待本地化 |
+| `ui.playerStation.400` | 施工列表 · {p1} | 待本地化 |
+| `ui.playerStation.401` | 无施工项目 | 待本地化 |
+| `ui.playerStation.402` | 供电不足，无法开工 | 待本地化 |
+| `ui.playerStation.403` | 主体尚未建成 | 待本地化 |
+| `ui.playerStation.404` | 当前无法开工 | 待本地化 |
+| `ui.playerStation.405` | 设施类型 | 待本地化 |
+| `ui.playerStation.406` | 空地块 | 待本地化 |
+| `ui.playerStation.407` | 可建设 | 待本地化 |
+| `ui.playerStation.408` | 已启用 | 待本地化 |
+| `ui.playerStation.409` | 已停用 | 待本地化 |
+| `ui.playerStation.410` | 启停{p1} | 待本地化 |
+| `ui.playerStation.411` | 建设{p1} | 待本地化 |
+| `ui.playerStation.412` | 地块已占用 | 待本地化 |
+| `ui.playerStation.413` | 仓库材料不足 | 待本地化 |
+| `ui.playerStation.414` | 施工进度 | 待本地化 |
+| `ui.playerStation.415` | {p1} / {p2} 分钟 | 待本地化 |
+| `ui.playerStation.416` | 批准主体施工 | 待本地化 |
+| `ui.playerStation.417` | 运送主体建材 | 待本地化 |
+| `ui.playerStation.418` | 暂停 | 待本地化 |
+| `ui.playerStation.419` | 恢复 | 待本地化 |
+| `ui.playerStation.420` | 取消施工 | 待本地化 |
+| `ui.playerStation.421` | 回收到仓库 | 待本地化 |
+| `ui.playerStation.422` | 待回收材料 | 待本地化 |
+| `ui.playerStation.423` | 无待回收材料 | 待本地化 |
+| `ui.playerStation.424` | 目标判读 | 待本地化 |
+| `ui.playerStation.425` | 辨认目标变化，改进本舰火力分配。 | 待本地化 |
+| `ui.playerStation.426` | 射击解算 | 待本地化 |
+| `ui.playerStation.427` | 统合火控与航向读数，改进本舰火力运用。 | 待本地化 |
+| `ui.playerStation.428` | 避险航线 | 待本地化 |
+| `ui.playerStation.429` | 预留规避路径，增强本舰防护收益。 | 待本地化 |
+| `ui.playerStation.430` | 截击姿态 | 待本地化 |
+| `ui.playerStation.431` | 协调接敌航向，兼顾本舰火力与防护。 | 待本地化 |
+| `ui.playerStation.432` | 舱段值守 | 待本地化 |
+| `ui.playerStation.433` | 保持舱段巡查，增强本舰防护收益。 | 待本地化 |
+| `ui.playerStation.434` | 损管分流 | 待本地化 |
+| `ui.playerStation.435` | 协调损管班次，增强本舰持续防护。 | 待本地化 |
+| `ui.playerStation.436` | 机群观测 | 待本地化 |
+| `ui.playerStation.437` | 统合机群观测记录，改善本舰火力判断。 | 待本地化 |
+| `ui.playerStation.438` | 机群协作 | 待本地化 |
+| `ui.playerStation.439` | 协调机群与舰上班组，兼顾本舰火力和防护。 | 待本地化 |
+| `ui.playerStation.440` | 信号判读 | 待本地化 |
+| `ui.playerStation.441` | 交叉核对战场信号，改善本舰接敌判断。 | 待本地化 |
+| `ui.playerStation.442` | 频谱值守 | 待本地化 |
+| `ui.playerStation.443` | 持续核对频谱变化，增强本舰防护收益。 | 待本地化 |
+| `ui.playerStation.444` | 补给核对 | 待本地化 |
+| `ui.playerStation.445` | 统一补给检查，增强本舰防护收益。 | 待本地化 |
+| `ui.playerStation.446` | 值班接力 | 待本地化 |
+| `ui.playerStation.447` | 衔接各班职责，兼顾本舰火力与防护。 | 待本地化 |
+| `ui.playerStation.448` | 队形判读 | 待本地化 |
+| `ui.playerStation.449` | 从队形变化中判断接敌位置，改善本舰火力。 | 待本地化 |
+| `ui.playerStation.450` | 协同时序 | 待本地化 |
+| `ui.playerStation.451` | 统一接敌时序，兼顾本舰火力和防护。 | 待本地化 |
+| `ui.playerStation.452` | 果断判断 | 待本地化 |
+| `ui.playerStation.453` | 强化火力运用与队形判读带来的团队收益。 | 待本地化 |
+| `ui.playerStation.454` | 交叉核对 | 待本地化 |
+| `ui.playerStation.455` | 强化信号判读与损管带来的团队收益。 | 待本地化 |
+| `ui.playerStation.456` | 稳定值班 | 待本地化 |
+| `ui.playerStation.457` | 强化后勤与损管带来的团队收益。 | 待本地化 |
+| `ui.playerStation.458` | 精确执行 | 待本地化 |
+| `ui.playerStation.459` | 强化火力运用与机群协作带来的团队收益。 | 待本地化 |
+| `ui.playerStation.460` | 机动分工 | 待本地化 |
+| `ui.playerStation.461` | 强化机动与电子类技能带来的团队收益。 | 待本地化 |
+| `ui.playerStation.462` | 审慎接敌 | 待本地化 |
+| `ui.playerStation.463` | 强化机动与损管收益，减弱火力运用的额外收益。 | 待本地化 |
+| `ui.playerStation.464` | 细致整备 | 待本地化 |
+| `ui.playerStation.465` | 强化后勤与电子类技能带来的团队收益。 | 待本地化 |
+| `ui.playerStation.466` | 整备优先 | 待本地化 |
+| `ui.playerStation.467` | 强化损管与后勤收益，减弱火力运用的额外收益。 | 待本地化 |
+| `ui.playerStation.468` | 分布调度 | 待本地化 |
+| `ui.playerStation.469` | 强化机群与电子类技能带来的团队收益。 | 待本地化 |
+| `ui.playerStation.470` | 回收有序 | 待本地化 |
+| `ui.playerStation.471` | 强化机群与后勤技能带来的团队收益。 | 待本地化 |
+| `ui.playerStation.472` | 支援习惯 | 待本地化 |
+| `ui.playerStation.473` | 强化编队与后勤收益，减弱火力运用的额外收益。 | 待本地化 |
+| `ui.playerStation.474` | 交接清楚 | 待本地化 |
+| `ui.playerStation.475` | 强化编队与机动技能带来的团队收益。 | 待本地化 |
+| `ui.playerStation.476` | 临危不乱 | 待本地化 |
+| `ui.playerStation.477` | 强化损管与机动技能带来的团队收益。 | 待本地化 |
+| `ui.playerStation.478` | 共度险境 | 待本地化 |
+| `ui.playerStation.479` | 强化编队与损管技能带来的团队收益。 | 待本地化 |
+| `ui.playerStation.480` | 学以致用 | 待本地化 |
+| `ui.playerStation.481` | 降低学习技能所需的点数，至少仍需一点。 | 待本地化 |
+| `ui.playerStation.482` | 系统思考 | 待本地化 |
+| `ui.playerStation.483` | 强化电子、后勤与编队技能带来的团队收益。 | 待本地化 |
+| `ui.playerStation.484` | 交错航迹 | 待本地化 |
+| `ui.playerStation.485` | 目标穿过多条航迹，火控班整理了识别记录。 | 待本地化 |
+| `ui.playerStation.486` | 解算漂移 | 待本地化 |
+| `ui.playerStation.487` | 连续读数出现偏移，班组找到了交叉验证的方法。 | 待本地化 |
+| `ui.playerStation.488` | 退出航道 | 待本地化 |
+| `ui.playerStation.489` | 接敌航线留出了新的规避余地。 | 待本地化 |
+| `ui.playerStation.490` | 接敌夹角 | 待本地化 |
+| `ui.playerStation.491` | 模拟中的航向变化揭示了更稳妥的截击姿态。 | 待本地化 |
+| `ui.playerStation.492` | 封闭舱段 | 待本地化 |
+| `ui.playerStation.493` | 损管班重新划分了舱段巡查责任。 | 待本地化 |
+| `ui.playerStation.494` | 损管交接 | 待本地化 |
+| `ui.playerStation.495` | 相邻班次整理出一套清楚的损管分流方案。 | 待本地化 |
+| `ui.playerStation.496` | 机群航迹 | 待本地化 |
+| `ui.playerStation.497` | 机群观测记录补上了舰上视野的空白。 | 待本地化 |
+| `ui.playerStation.498` | 共享空域 | 待本地化 |
+| `ui.playerStation.499` | 多组机群共用空域，调度班记录了衔接次序。 | 待本地化 |
+| `ui.playerStation.500` | 回波差异 | 待本地化 |
+| `ui.playerStation.501` | 两份信号记录的差异促成了新的判读办法。 | 待本地化 |
+| `ui.playerStation.502` | 频谱变化 | 待本地化 |
+| `ui.playerStation.503` | 值班人员从频谱变化中辨认出接敌征兆。 | 待本地化 |
+| `ui.playerStation.504` | 补给清单 | 待本地化 |
+| `ui.playerStation.505` | 班组核对补给记录，理清了容易遗漏的交接项。 | 待本地化 |
+| `ui.playerStation.506` | 换班空隙 | 待本地化 |
+| `ui.playerStation.507` | 一次换班暴露了职责空隙，团队补齐了接力次序。 | 待本地化 |
+| `ui.playerStation.508` | 队形空隙 | 待本地化 |
+| `ui.playerStation.509` | 团队从队形间距中辨认出新的接敌位置。 | 待本地化 |
+| `ui.playerStation.510` | 协同时机 | 待本地化 |
+| `ui.playerStation.511` | 各班记录对上了同一个接敌时刻。 | 待本地化 |
+| `ui.playerStation.512` | 判断记录 | 待本地化 |
+| `ui.playerStation.513` | 团队对照接敌记录，统一了临场判断的次序。 | 待本地化 |
+| `ui.playerStation.514` | 独立读数 | 待本地化 |
+| `ui.playerStation.515` | 两组独立读数纠正了同一处误判。 | 待本地化 |
+| `ui.playerStation.516` | 连续值班 | 待本地化 |
+| `ui.playerStation.517` | 班次轮换保持了记录和职责的连续。 | 待本地化 |
+| `ui.playerStation.518` | 指令确认 | 待本地化 |
+| `ui.playerStation.519` | 机群与火控班逐项确认了协作指令。 | 待本地化 |
+| `ui.playerStation.520` | 意外航向 | 待本地化 |
+| `ui.playerStation.521` | 目标突然变向，团队及时调整了配合。 | 待本地化 |
+| `ui.playerStation.522` | 整备记录 | 待本地化 |
+| `ui.playerStation.523` | 整备班把零散检查整理成了可靠的日常习惯。 | 待本地化 |
+| `ui.playerStation.524` | 分区值守 | 待本地化 |
+| `ui.playerStation.525` | 机群班分区核对空域，衔接了各自的观测。 | 待本地化 |
+| `ui.playerStation.526` | 交接记录 | 待本地化 |
+| `ui.playerStation.527` | 简洁明确的交接记录让各班及时接上职责。 | 待本地化 |
+| `ui.playerStation.528` | 高压演练 | 待本地化 |
+| `ui.playerStation.529` | 密集警报中，各班仍维持了清楚的损管次序。 | 待本地化 |
+| `ui.playerStation.530` | 实践所得 | 待本地化 |
+| `ui.playerStation.531` | 团队把复盘所得用进了下一轮协作。 | 待本地化 |
+| `ui.playerStation.532` | 交错指令 | 待本地化 |
+| `ui.playerStation.533` | 火控班希望抢先判断，值班组主张再核对一次。 | 待本地化 |
+| `ui.playerStation.534` | 接敌复盘 | 待本地化 |
+| `ui.playerStation.535` | 团队讨论先练截击姿态，还是先把退出航线留清楚。 | 待本地化 |
+| `ui.playerStation.536` | 值班准则 | 待本地化 |
+| `ui.playerStation.537` | 连续值班后，各班提出了稳定轮换和精确执行两条改进方向。 | 待本地化 |
+| `ui.playerStation.538` | 变向之后 | 待本地化 |
+| `ui.playerStation.539` | 临时变向化解了险情，团队讨论机动分工与审慎接敌。 | 待本地化 |
+| `ui.playerStation.540` | 整备争议 | 待本地化 |
+| `ui.playerStation.541` | 整备班希望细化检查，损管班希望增加交叉检查。 | 待本地化 |
+| `ui.playerStation.542` | 机群调度 | 待本地化 |
+| `ui.playerStation.543` | 机群班提出分区调度和统一回收两种协作侧重。 | 待本地化 |
+| `ui.playerStation.544` | 交接重点 | 待本地化 |
+| `ui.playerStation.545` | 各班讨论形成支援习惯，还是先把职责交接讲清楚。 | 待本地化 |
+| `ui.playerStation.546` | 警报之后 | 待本地化 |
+| `ui.playerStation.547` | 险情结束，团队讨论维持冷静次序与共同承担职责。 | 待本地化 |
+| `ui.playerStation.548` | 学习方法 | 待本地化 |
+| `ui.playerStation.549` | 团队希望尽快实践，也有人提议先梳理各系统的联系。 | 待本地化 |
+| `ui.playerStation.550` | 火控复盘 | 待本地化 |
+| `ui.playerStation.551` | 目标识别和连续解算都暴露了问题，团队等待确定学习方向。 | 待本地化 |
+| `ui.playerStation.552` | 损管复盘 | 待本地化 |
+| `ui.playerStation.553` | 巡查和班次分流各有收获，团队等待确定学习方向。 | 待本地化 |
+| `ui.playerStation.554` | 机群复盘 | 待本地化 |
+| `ui.playerStation.555` | 观测记录和协作时序各有收获，机群班等待确定学习方向。 | 待本地化 |
+| `ui.playerStation.556` | 待命 | 待本地化 |
+| `ui.playerStation.557` | 基础舰员资格 | 待本地化 |
+| `ui.playerStation.558` | 模拟训练 | 待本地化 |
+| `ui.playerStation.559` | 外派中 | 待本地化 |
+| `ui.playerStation.560` | 守备中 | 待本地化 |
+| `ui.playerStation.561` | 火控模拟 | 待本地化 |
+| `ui.playerStation.562` | 损管模拟 | 待本地化 |
+| `ui.playerStation.563` | 机群模拟 | 待本地化 |
+| `ui.playerStation.564` | 火控 | 待本地化 |
+| `ui.playerStation.565` | 操舰 | 待本地化 |
+| `ui.playerStation.566` | 工程 | 待本地化 |
+| `ui.playerStation.567` | 指挥 | 待本地化 |
+| `ui.playerStation.568` | 有限巡逻 | 待本地化 |
+| `ui.playerStation.569` | 来源清剿 | 待本地化 |
+| `ui.playerStation.570` | 补给护航 | 待本地化 |
+| `ui.playerStation.571` | 出发航程 | 待本地化 |
+| `ui.playerStation.572` | 执行任务 | 待本地化 |
+| `ui.playerStation.573` | 安全返航 | 待本地化 |
+| `ui.playerStation.574` | 胜利 | 待本地化 |
+| `ui.playerStation.575` | 失利 | 待本地化 |
+| `ui.playerStation.576` | 已停止 | 待本地化 |
+| `ui.playerStation.577` | 补给不足 | 待本地化 |
+| `ui.playerStation.578` | 人员不可用或已有安排 | 待本地化 |
+| `ui.playerStation.579` | 舰船不可用或已有安排 | 待本地化 |
+| `ui.playerStation.580` | 已有任务安排 | 待本地化 |
+| `ui.playerStation.581` | 设施或资格不足 | 待本地化 |
+| `ui.playerStation.582` | 供电或生活保障不足 | 待本地化 |
+| `ui.playerStation.583` | 发展目标尚未齐备 | 待本地化 |
+| `ui.playerStation.584` | 已完成 | 待本地化 |
+| `ui.playerStation.585` | 所需物资不足 | 待本地化 |
+| `ui.playerStation.586` | 技能点不足 | 待本地化 |
+| `ui.playerStation.587` | 尚无学习机会 | 待本地化 |
+| `ui.playerStation.588` | 属性未达学习要求 | 待本地化 |
+| `ui.playerStation.589` | 操作无效 | 待本地化 |
+| `ui.playerStation.590` | 团队不存在 | 待本地化 |
+| `ui.playerStation.591` | 资格档位不符或已达当前上限 | 待本地化 |
+| `ui.playerStation.592` | 训练舰缺少对应武器、维修或机群配置 | 待本地化 |
+| `ui.playerStation.593` | 技能不存在或已经学会 | 待本地化 |
+| `ui.playerStation.594` | 没有待回复的培养选择 | 待本地化 |
+| `ui.playerStation.595` | 团队呼号无效 | 待本地化 |
+| `ui.playerStation.596` | 所选团队或舰船不可用 | 待本地化 |
+| `ui.playerStation.597` | 敌对来源不可用 | 待本地化 |
+| `ui.playerStation.598` | 来源已经清除 | 待本地化 |
+| `ui.playerStation.599` | 生活保障或服务设施不可用 | 待本地化 |
+| `ui.playerStation.600` | 尚未安排任务 | 待本地化 |
+| `ui.playerStation.601` | 已暂停 | 待本地化 |
+| `ui.playerStation.602` | 受到袭扰，任务暂停 | 待本地化 |
+| `ui.playerStation.603` | 母港仓库 | 待本地化 |
+| `ui.playerStation.604` | 来源站停泊船 | 待本地化 |
+| `ui.playerStation.605` | 返回母港 | 待本地化 |
+| `ui.playerStation.606` | 来源站无停泊船 | 待本地化 |
+| `ui.playerStation.607` | 未绑定 | 待本地化 |
+| `core.playerStationGame.001` | 该舰正在执行空间站任务，结束或返航后才能操作。 | 待本地化 |
+| `core.playerStationGame.002` | 该舰仍被空间站舰员或人口计划引用，请先改绑、解散或停止计划。 | 待本地化 |
+
+## 参赛版画面方向（2026-11-20）
+
+| ID | 内容 | 状态 |
+|---|---|---|
+| `ui.toyOrientation.001` | 自动 | 待本地化 |
+| `ui.toyOrientation.002` | 横屏 | 待本地化 |
+| `ui.toyOrientation.003` | 竖屏 | 待本地化 |
+| `ui.toyOrientation.004` | 当前画面方向p1 | 待本地化 |
+| `ui.toyOrientation.005` | 当前方向p1与下一档p2 | 待本地化 |
+
 ## 股市新手引导 v4（2026-11-09）
 
 | ID | 内容 | 状态 |

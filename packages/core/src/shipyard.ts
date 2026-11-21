@@ -37,7 +37,7 @@ import {
  * 这里**原样再导出**保持既有 `from './shipyard'` 引用不变（先例：fitted.ts / wormhole 层曲线）。
  */
 export { addShipToFleet, allocateShipUid, restoreShipFromWreck, isShipLocked, shipStoredCount } from './fleetBook'
-import { addShipToFleet, isShipLocked, shipStoredCount } from './fleetBook'
+import { addShipToFleet, isShipLocked, shipStoredCount, stationShipRemovalBlock } from './fleetBook'
 
 /** 该实例的船型数据（uid → fleet 条目 → def；fleet 外/记录缺失返回 undefined） */
 export { fleetDefOf } from './instances'
@@ -338,6 +338,15 @@ export function loseShip(
     }
   }
   delete state.fleet[shipId]
+  // 仅真实战沉解除空闲绑定；人员与培养记录保留，实际站内任务锁不在此剪枝。
+  const station = state.playerStation
+  if (station && !station.shipLocks[shipId]) {
+    for (const team of station.crew.teams) if (team.shipId === shipId && (team.activity === 'idle' || team.activity === 'qualifying')) {
+      delete team.shipId
+      team.planned = false
+    }
+    if (station.population.plan?.shipId === shipId && station.population.trip?.shipId !== shipId) delete station.population.plan
+  }
   addLog(state, 'fleet', `${reason}：${display} 已损毁，船上的货仓与装备一并遗失。`, 'core.shipyard.020', {
     p1: reason,
     ...(meta?.reasonId ? { p1Id: meta.reasonId } : {}),
@@ -904,6 +913,8 @@ export function shipStorable(
 } {
   const ship = state.fleet[uid]
   if (!ship) return { ok: false, reason: '机库里没有这艘船。', reasonId: 'core.shipyard.046' }
+  const binding = stationShipRemovalBlock(state, uid)
+  if (binding) return { ok: false, reason: binding.error, reasonId: binding.errorId }
   if (state.shipId === uid) return { ok: false, reason: '正在驾驶的船不能入仓：先换到别的船上。', reasonId: 'core.shipyard.047' }
   if (state.aiAssignments[uid]) return { ok: false, reason: 'AI 任务执行中的船不能入仓，先取消指派。', reasonId: 'core.shipyard.048' }
   if (isShipLocked(state, uid)) return { ok: false, reason: '该船已锁定（防误操作）：先到舰船页解锁。', reasonId: 'core.shipyard.049' }

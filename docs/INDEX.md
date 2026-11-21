@@ -13,12 +13,12 @@
 
 ## 统计
 
-- 非归档文档 **391** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4779** KB · **53821** 行
-- 状态分布：**未标注** 193 · **已确认/已实现** 130 · **进行中** 47 · **待裁定** 20 · **历史留档** 1
-- 孤儿文档（0 引用）**170** 份 · 状态未标注 **193** 份
+- 非归档文档 **395** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4877** KB · **54798** 行
+- 状态分布：**未标注** 196 · **已确认/已实现** 131 · **进行中** 47 · **待裁定** 20 · **历史留档** 1
+- 孤儿文档（0 引用）**172** 份 · 状态未标注 **196** 份
 - 一、常用文档（按任务查阅）：**11** 份
 - 七、评审与体检（review）：**6** 份
-- 三、设计与工作文档（需核实状态）：**363** 份
+- 三、设计与工作文档（需核实状态）：**367** 份
 - 二、其它（docs 根目录）：**2** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
 - 八、测试档说明（test-saves）：**2** 份
@@ -29,16 +29,16 @@
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档） |
 |---|---|---|---|---|---|
 | `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定 | 未标注 | — | 23 KB / 134 行 | 46 |
-| `docs/architecture.md` | 架构文档 | 未标注 | — | 8 KB / 90 行 | 19 |
+| `docs/architecture.md` | 架构文档 | 未标注 | — | 9 KB / 96 行 | 21 |
 | `docs/catalog.md` | 文档目录 | 未标注 | — | 5 KB / 51 行 | 11 |
 | `docs/content-workbench.md` | 内容工作台 | 未标注 | — | 3 KB / 35 行 | 2 |
 | `docs/data-editor.md` | 大鲸鱼数据编辑器 | 未标注 | — | 4 KB / 45 行 | 6 |
 | `docs/data-map.md` | 数据速查页 | 未标注 | — | 3 KB / 38 行 | 5 |
 | `docs/development-conventions.md` | 开发约定 | 未标注 | — | 25 KB / 171 行 | 25 |
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（现行译名表） | — | 46 KB / 810 行 | 17 |
-| `docs/glossary.md` | 术语词典 | 未标注 | — | 23 KB / 204 行 | 65 |
+| `docs/glossary.md` | 术语词典 | 未标注 | — | 24 KB / 206 行 | 65 |
 | `docs/roadmap.md` | 当前待办与实施边界 | 未标注 | — | 9 KB / 78 行 | 62 |
-| `docs/single-source.md` | 单点索引（谁有权算、谁只能读） | 未标注 | — | 44 KB / 303 行 | 21 |
+| `docs/single-source.md` | 单点索引（谁有权算、谁只能读） | 未标注 | — | 45 KB / 305 行 | 21 |
 
 ## 七、评审与体检（review） —— 6 份
 
@@ -51,10 +51,14 @@
 | `docs/review/hull-p2-preview-20260905.md` | 承伤持久化 P2：数值与甲抗/盾抗流派平衡预览（2026-09-05，供船长拍板） | 未标注 | 2026-09-05 | 3 KB / 40 行 | 0 |
 | `docs/review/guoqing-audit-followup.md` | 国庆节审查当前跟进 | 未标注（已复核修复） | — | 3 KB / 22 行 | 4 |
 
-## 三、设计与工作文档（需核实状态） —— 363 份
+## 三、设计与工作文档（需核实状态） —— 367 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档） |
 |---|---|---|---|---|---|
+| `docs/design/player-station-game-integration-20261121.md` | 第二阶段：调试游戏接入 | 已确认/已实现（正式游戏接入已实现、自测通过） | 2026-11-21 | 6 KB / 42 行 | 3 |
+| `docs/design/second-stage-crew-security-20261121.md` | 第二阶段：舰员培养与区域安全 | 未标注（本批非破坏性独立流程实现与自测完成、） | 2026-11-21 | 9 KB / 66 行 | 0 |
+| `docs/design/player-station-preset-completion-20261120.md` | 玩家空间站：独立经营预设交付 | 未标注（站内经营预设实现与独立自测完成、待船） | 2026-11-20 | 8 KB / 62 行 | 1 |
+| `docs/design/human-revival-station-implementation-20261110.md` | 第二阶段空间站：首批实施开工单 | 未标注（A/B1/B2/B3/C1/C2/C） | 2026-11-10 | 31 KB / 171 行 | 0 |
 | `docs/design/signal-auto-guard-simulation-20261110.md` | 自动探索守卫实战推演 | 未标注（实现、专项、T2检查、存档往返及双布） | 2026-11-10 | 5 KB / 30 行 | 3 |
 | `docs/design/web-publish-signal-auto-20261110.md` | 信号自动探索修复网页版发布 | 未标注（已合并推送） | 2026-11-10 | 4 KB / 36 行 | 3 |
 | `docs/design/release-0.1.5-20261109.md` | 0.1.5 推送与部署 | 未标注（网页版已部署并核验） | 2026-11-09 | 4 KB / 37 行 | 1 |
@@ -386,13 +390,13 @@
 | `docs/design/foe-unit-naming-20260909.md` | 敌舰单位显示名（舰种名 × 规格词缀） | 已确认/已实现（已确认·已实现） | 2026-09-09 | 3 KB / 43 行 | 1 |
 | `docs/design/market-rarity-tier-20260909.md` | 市场数字稀有度（隐藏档 · 稀有订单分层）设计稿 | 已确认/已实现（已确认并落地） | 2026-09-09 | 5 KB / 65 行 | 0 |
 | `docs/design/wave-battles-20260909.md` | 多波次敌人设定(低安顶段悬赏)设计稿(2026-09-09;已确认并实现·待验收/待发布) | 未标注 | 2026-09-09 | 12 KB / 131 行 | 3 |
-| `docs/design/assets/stellar-samples-20261009/README.md` | PixelPlanets 三类天体样片 | 未标注（原静态审查样片保留） | — | 2 KB / 29 行 | 29 |
+| `docs/design/assets/stellar-samples-20261009/README.md` | PixelPlanets 三类天体样片 | 未标注（原静态审查样片保留） | — | 2 KB / 29 行 | 31 |
 | `docs/design/b3-flavor-content.md` | B3.1 星系/敌群特色残骸产出 · 数值表（2026-09-08 已确认，收尾归档） | 已确认/已实现（已收尾归档） | — | 7 KB / 82 行 | 0 |
 | `docs/design/b3-salvage.md` | B3 残骸打捞与回收系统（设计总结 · 已实现，2026-09-05 全链落地） | 未标注 | — | 12 KB / 122 行 | 3 |
 | `docs/design/bounty-insurance.md` | 连续作战保险：带伤预警 + 战内自动撤退（已确认 2026-09-08） | 已确认/已实现（已确认并落地） | — | 5 KB / 65 行 | 0 |
 | `docs/design/captain-skill-audit-batch.md` | 船长技能/UX 审核批次（2026-09-08 工作台审阅后问题单）— 全量映射与分批计划 | 进行中（分卷进行中） | — | 46 KB / 452 行 | 1 |
 | `docs/design/deliver-trip-and-station-gating.md` | 建站交付航线 + 市场成交静默 + 市场蓝图标识 + 未建成副站彻底收口（2026-09-08 定稿） | 已确认/已实现（已确认） | — | 5 KB / 69 行 | 0 |
-| `docs/design/human-revival-station.md` | 第二阶段：人类复苏与玩家空间站 | 待裁定（待审） | — | 32 KB / 293 行 | 5 |
+| `docs/design/human-revival-station.md` | 第二阶段：人类复苏与玩家空间站 | 待裁定（待审） | — | 32 KB / 293 行 | 4 |
 | `docs/design/industry-ai-slot-expansion.md` | 工业产能扩容：AI 核心阶梯与工业专用工位（2026-09-08 定稿） | 已确认/已实现（已确认） | — | 5 KB / 62 行 | 1 |
 | `docs/design/manufacture-refine-worker-econ.md` | 工业工位收益体检与展示（组装机 + 精炼炉，2026-09-08 定稿） | 已确认/已实现（已确认） | — | 6 KB / 93 行 | 0 |
 | `docs/design/power-ladder-rework.md` | 战力阶梯拉长：威胁曲线重标 + 装备解锁闸门（设计稿 · 2026-09-06 立稿） | 未标注 | — | 41 KB / 484 行 | 10 |
@@ -424,7 +428,7 @@
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档） |
 |---|---|---|---|---|---|
 | `docs/development-conventions-changelog.md` | 开发约定维护记录 | 未标注 | — | 13 KB / 103 行 | 6 |
-| `docs/l10n-pending.md` | 英文本地化记录 | 未标注 | — | 54 KB / 882 行 | 34 |
+| `docs/l10n-pending.md` | 英文本地化记录 | 未标注 | — | 95 KB / 1508 行 | 34 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -437,7 +441,7 @@
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档） |
 |---|---|---|---|---|---|
 | `docs/test-saves/fleet-presets-20261107.md` | 编队预设验证档 | 未标注 | 2026-11-07 | 1 KB / 13 行 | 1 |
-| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 83 KB / 847 行 | 29 |
+| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 83 KB / 847 行 | 31 |
 
 ## 六、专题：舰船美术（design/ship-battle-art） —— 6 份
 
@@ -448,12 +452,14 @@
 | `docs/design/ship-battle-art/battle-formation-20260911.md` | 敌列「错列雁阵」（敌人不再排成一行，2026-09-11 船长定；状态：已被 2026-09-12「斜向菱形」取代） | 未标注（已被 2026-09-12「斜向菱形） | 2026-09-11 | 10 KB / 115 行 | 3 |
 | `docs/design/ship-battle-art/battle-sprite-tier-20260911.md` | 战斗画面「舰种体积」（舰身大小随舰种档，2026-09-11 船长定；状态：已实现，但按船长裁决暂时关闭 —— 显示还原、系统保留） | 已确认/已实现（已实现） | 2026-09-11 | 14 KB / 177 行 | 4 |
 | `docs/design/ship-battle-art/mounts-20260910.md` | 舰船战斗图形·挂点对齐（引擎喷口 + 真实炮口）2026-09-10 | 已确认/已实现（已确认） | 2026-09-10 | 6 KB / 94 行 | 1 |
-| `docs/design/ship-battle-art/README.md` | 舰船战斗图形重设计(三号 · 样稿阶段,2026-09-09) | 未标注 | — | 8 KB / 87 行 | 29 |
+| `docs/design/ship-battle-art/README.md` | 舰船战斗图形重设计(三号 · 样稿阶段,2026-09-09) | 未标注 | — | 8 KB / 87 行 | 31 |
 
-## 附：孤儿文档（0 引用，170 份）
+## 附：孤儿文档（0 引用，172 份）
 
 > 仅表示没有其他收录文档提到本文件名，不能据此删除、归档或批准阅读历史。
 
+- `docs/design/second-stage-crew-security-20261121.md`（2026-11-21 · 9 KB）—— 第二阶段：舰员培养与区域安全
+- `docs/design/human-revival-station-implementation-20261110.md`（2026-11-10 · 31 KB）—— 第二阶段空间站：首批实施开工单
 - `docs/design/signal-auto-ordinary-quota-20261109.md`（2026-11-09 · 6 KB）—— 信号空间自动探索普通资源额度修复
 - `docs/design/stock-gameplay-integration-20261109.md`（2026-11-09 · 12 KB）—— 证券交易所 · 与整体玩法联动设计（正式版）
 - `docs/design/stock-exchange-bet-orders-fix-20261108.md`（2026-11-08 · 9 KB）—— 交易所下注与委托修复（2026-11-08）
@@ -625,8 +631,11 @@
 - `docs/design/v18.1-support.md`（无日期 · 9 KB）—— V18.1 设计总结：支援装备 + 叠加收敛（取消同类唯一 · 已确认实施）
 - `docs/design/v18b2-lasers.md`（无日期 · 5 KB）—— V18B-2 设计总结：激光炮武器族（能量系形态 · 已确认实施）
 
-## 附：状态未标注（193 份，待补一行 `状态：…`）
+## 附：状态未标注（196 份，待补一行 `状态：…`）
 
+- `docs/design/second-stage-crew-security-20261121.md`（2026-11-21）—— 第二阶段：舰员培养与区域安全
+- `docs/design/player-station-preset-completion-20261120.md`（2026-11-20）—— 玩家空间站：独立经营预设交付
+- `docs/design/human-revival-station-implementation-20261110.md`（2026-11-10）—— 第二阶段空间站：首批实施开工单
 - `docs/design/signal-auto-guard-simulation-20261110.md`（2026-11-10）—— 自动探索守卫实战推演
 - `docs/design/web-publish-signal-auto-20261110.md`（2026-11-10）—— 信号自动探索修复网页版发布
 - `docs/design/release-0.1.5-20261109.md`（2026-11-09）—— 0.1.5 推送与部署

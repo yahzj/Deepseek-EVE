@@ -432,7 +432,7 @@ describe('存档墙钟账：只许前进、不许回退', () => {
   })
 })
 
-describe('存档版本门（仅接受 v31）', () => {
+describe('存档版本门（仅接受 v31/v32，定向升级到 v32）', () => {
   const atVersion = (version: number): string => {
     const state = createInitialState({ nowWallMs: 0, seed: 21 })
     const file = JSON.parse(serializeSaveFile(state, 0)) as { version: number }
@@ -440,13 +440,15 @@ describe('存档版本门（仅接受 v31）', () => {
     return JSON.stringify(file)
   }
 
-  it('当前版本 v31 可以正常读写', () => {
-    const loaded = loadSaveFile(atVersion(MIN_SUPPORTED_SAVE_VERSION))
-    expect(loaded.state.version).toBe(CURRENT_STATE_VERSION)
-    expect(MIN_SUPPORTED_SAVE_VERSION).toBe(CURRENT_STATE_VERSION)
+  it.each([31, 32])('v%s 可以正常读取并输出 v32', version => {
+    const loaded = loadSaveFile(atVersion(version))
+    expect(loaded.state.version).toBe(32)
+    expect(CURRENT_STATE_VERSION).toBe(32)
+    expect(MIN_SUPPORTED_SAVE_VERSION).toBe(31)
+    expect(JSON.parse(serializeSaveFile(loaded.state, 0)).version).toBe(32)
   })
 
-  it.each(Array.from({ length: CURRENT_STATE_VERSION }, (_, version) => version))('旧版本 v%s ⇒ 拒载入：VERSION 错误 + 提示新开存档', (version) => {
+  it.each(Array.from({ length: 31 }, (_, version) => version))('旧版本 v%s ⇒ 拒载入：VERSION 错误 + 提示新开存档', (version) => {
     try {
       loadSaveFile(atVersion(version))
       expect.unreachable(`v${version} 档不该被读进来`)
@@ -462,6 +464,7 @@ describe('存档版本门（仅接受 v31）', () => {
   })
 
   it('非整数版本不能取整后冒充当前版本', () => {
+    expect(() => loadSaveFile(atVersion(31.5))).toThrowError(/必须为整数/)
     expect(() => loadSaveFile(atVersion(CURRENT_STATE_VERSION + 0.5))).toThrowError(/高于当前支持/)
   })
 

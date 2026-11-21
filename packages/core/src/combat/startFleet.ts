@@ -23,6 +23,7 @@ import { foeJudgedThreatOf } from './foePower'
 import { preloadRepairFor, REPAIR_PULSE_MS, preloadShieldChargeFor, preloadShieldFieldFor } from './combatRepair'
 import { equipmentCycleMsOf } from '../equipment'
 import { COMBAT_MAX_SHIPS } from './command/rules'
+import { stationShipTaskBlock } from './command/locks'
 import { isFirstBountyBattle, applyFirstBountyBuff } from '../firstTasks'
 import { syncRangeEw } from './rangeEw'
 import { applyDroneCommandAura, droneCommandVolumeM3Of } from './droneCommand'
@@ -82,6 +83,7 @@ export function startFleetBattleFor(
   formationVersion: 0 | 1 = 1,
 ): import('../state').BattleState | null {
   if (!anomalyId || shipIds.length === 0 || shipIds.length > COMBAT_MAX_SHIPS || new Set(shipIds).size !== shipIds.length || shipIds.some(id => !state.fleet[id])) return null
+  if (shipIds.some(id => stationShipTaskBlock(state, id))) return null
   // 虫洞内的敌卡取**原卡**（不套窝点派生/派系活跃——那是悬赏线的口径），再按层派生
   const baseCard = foeOverride?.generatedCard ?? battleAnomalyOf(ctx, anomalyId, wormhole ? undefined : state.expedition.lairTier, wormhole ? undefined : state.expedition.factionActive, formationVersion)
   // **记下这一场的敌方舰级**（用**原卡**，两处派生之前；船长 2026-09-16）

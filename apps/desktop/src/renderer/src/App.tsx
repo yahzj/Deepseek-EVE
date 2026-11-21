@@ -78,10 +78,13 @@ import { WormholePanel } from './panels/Wormhole'
 import { SignalSpacePanel } from './panels/SignalSpace'
 import { futureWormholeEnabled, planetaryEnabled } from './game/debugFlag'
 import { StellarExplorer } from './panels/StellarExplorer'
+import { PlayerStationGamePage } from './features/stations/PlayerStationGamePage'
 import { TooltipLayer, hideTip } from './ui/Tooltip'
 import { Glyph, NAV_TONES, ICO_TONES } from './ui/Glyphs'
 import { ActivityScreen, activityKindOf } from './ui/ActivityScreen'
 import { AppShell } from './ui/AppShell'
+import { ToyOrientationButton } from './ui/ToyOrientationButton'
+import { readToyOrientation, saveToyOrientation, toyShouldRotate } from './ui/toyOrientation'
 import type { LayoutKind } from './ui/AppShell'
 import { LAYOUT_KEY, LAYOUT_SET_KEY, readLayoutPref } from './ui/layoutPreference'
 import { setSessionPick, sessionPick } from './ui/sessionView'
@@ -131,9 +134,10 @@ const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
  * ✅ **2026-09-22 船长令：「没问题了，可以将技能科技树替换掉原先的技能目录。」** ⇒ 技能科技树
  * （`pages/SkillsTreePage.tsx`）**升为正式「技能」页**，本调试入口随之下线（`ui.App.121` 已删）；
  * 旧技能目录 `pages/SkillsPage.tsx` 退役删除（它的训练队列面板与说明高亮搬进 `pages/skillShared.tsx`）。
- * 本数组保留为空壳，给以后"临时调试页"用（现在没有任何项 ⇒ 调试模式下导航与正式完全一致）。
+ * 空间站替换旧实验星图入口；沿用同一本机调试门禁，普通出港星图不变。
  */
 const DEBUG_NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
+  { key: 'playerStation', label: 'ui.playerStation.001', icon: 'nav-industry' },
   /**
    * **工业 HUD 页**（**2026-09-30 船长令**：「和之前技能树一样，先复制现有工业页面，然后修改后
    * 单独做一个新的工业页面入口放在导航栏，仅调试模式可见」）——与当年技能科技树同一条路：
@@ -149,6 +153,7 @@ export type PageKey =
   | 'market'
   | 'industry'
   | 'industryHud'
+  | 'playerStation'
   | 'skills'
   | 'map'
   | 'task'
@@ -158,7 +163,7 @@ export type PageKey =
   | 'exchange'
 
 /** 已转换"一级页不滚"的页面（每完成一页在此登记；见 docs/design/page-scroll-layout.md 实施清单） */
-const PAGE_NO_SCROLL = new Set<string>(['ship', 'fit', 'market', 'map', 'industry', 'industryHud', 'skills', 'items', 'task', 'achieve', 'comms', 'chat', 'exchange'])
+const PAGE_NO_SCROLL = new Set<string>(['ship', 'fit', 'market', 'map', 'industry', 'industryHud', 'skills', 'items', 'task', 'achieve', 'comms', 'chat', 'exchange', 'playerStation'])
 
 /**
  * 手机自绘下拉面板「最短出现间隔」（毫秒 · 2026-09-13 船长定）。
@@ -198,7 +203,7 @@ const MOB_SIZE_DEAD_PX = 8
 const MOB_BIG_CHANGE_PX = 96
 const MOB_RESIZE_SETTLE_MS = 300
 
-export function App({ engine }: { engine: GameEngine }) {
+export function App({ engine, embeddedMobileViewport = false }: { engine: GameEngine; embeddedMobileViewport?: boolean }) {
   useMarketRelay(engine)
   // 兜底套用界面配色（任何入口都经过 App；桌面/网页版入口另在首帧前各调一次）
   useThemeBootstrap()
@@ -221,6 +226,7 @@ export function App({ engine }: { engine: GameEngine }) {
   //    🔴 2026-10-02 船长令「按你的建议先修」：给**尺寸**加方向不对称的滞回（见 MOB_*_ADOPT_PX），
   //    修玩家报障「手机端的战斗画面会忽大忽小（缩放）」——对齐偏移仍逐拍跟可见区走，只是尺寸不再抖） ──
   const [mobileRot, setMobileRot] = useState(false)
+  const [toyOrientation, setToyOrientation] = useState(() => embeddedMobileViewport ? readToyOrientation() : 'auto' as const)
   const [mobileLayout, setMobileLayout] = useState(false)
   const [mobileLogOpen, setMobileLogOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -233,13 +239,32 @@ export function App({ engine }: { engine: GameEngine }) {
   // 手机横屏下的自绘下拉面板（2026-09-06 船长：原生下拉弹层不受 CSS 旋转影响 → 方向错位）
   const [mobSel, setMobSel] = useState<{ el: HTMLSelectElement; opts: { value: string; label: string }[]; sel: string } | null>(null)
   useEffect(() => {
+    let embeddedSize: { width: number; height: number } | undefined
     const update = (): void => {
       const coarse = window.matchMedia('(pointer: coarse)').matches
-      setMobileLayout(coarse && Math.min(window.screen.width || window.innerWidth, window.screen.height || window.innerHeight) < 900)
-      // 屏幕方向不随软键盘改变；缺少方向 API 时才退回布局视口。
+      // bilibili toy 的 iframe 可能报告鼠标指针、横向 screen.orientation，甚至不暴露触屏信息。
+      // 参赛包以实际可见窗口的宽高比为准，不能把这些宿主能力当成旋转门槛。
+      const vv = window.visualViewport
+      const width = vv?.width ?? window.innerWidth
+      const height = vv?.height ?? window.innerHeight
+      const mobileInput = coarse || navigator.maxTouchPoints > 0 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+      const mobileScreen = Math.min(width, height) < 900
+      setMobileLayout(embeddedMobileViewport ? mobileScreen : mobileInput && mobileScreen)
+      // 普通网页/桌面沿用系统方向；参赛 iframe 只看实际窗口比例。
       const orientation = window.screen.orientation?.type
-      const portrait = orientation ? orientation.startsWith('portrait') : window.innerHeight > window.innerWidth
-      const rot = coarse && portrait && window.innerWidth < 900
+      let portrait = orientation ? orientation.startsWith('portrait') : height > width
+      if (embeddedMobileViewport) {
+        // 内嵌游戏窗口不一定跟系统同方向；软键盘只压缩高度时保留原方向。
+        const focused = document.activeElement
+        const editing = focused instanceof HTMLElement && (focused.isContentEditable || focused.matches('textarea, input:not([type]), input[type="text"], input[type="search"], input[type="number"], input[type="password"], input[type="email"], input[type="tel"], input[type="url"]'))
+        if (!embeddedSize || !editing || width !== embeddedSize.width || height >= embeddedSize.height) {
+          embeddedSize = { width, height }
+        }
+        // 自动档仅在高度达到宽度1.5倍时旋转；手动档覆盖阈值，但不二次旋转横向窗口。
+        portrait = toyShouldRotate(toyOrientation, embeddedSize.width, embeddedSize.height)
+      }
+      // 参赛 iframe 只看宽高比：即使宿主把竖屏 iframe 放大到超过 900 CSS 像素，也仍应旋转。
+      const rot = embeddedMobileViewport ? portrait : mobileInput && portrait && width < 900 && mobileScreen
       setMobileRot(rot)
       const el = rootRef.current
       if (!el) return
@@ -254,9 +279,8 @@ export function App({ engine }: { engine: GameEngine }) {
         return
       }
       // 真实可见区（布局视口内可视区域）：移动端地址栏/工具栏悬浮时 ≠ innerWidth/innerHeight
-      const vv = window.visualViewport
-      const visW = vv ? vv.width : window.innerWidth
-      const visH = vv ? vv.height : window.innerHeight
+      const visW = width
+      const visH = height
       const visX = vv ? vv.offsetLeft : 0
       const visY = vv ? vv.offsetTop : 0
       /**
@@ -344,7 +368,7 @@ export function App({ engine }: { engine: GameEngine }) {
         mobTimerRef.current = 0
       }
     }
-  }, [])
+  }, [embeddedMobileViewport, toyOrientation])
 
   // 手机横屏：拦截原生 select 弹层 → 自绘大号选项面板（仅 is-mobile-rot 生效，桌面不变）
   // ⚠ 2026-09-13 船长：「下拉框…现在出现的太快，玩家会出现误操作」⇒ 弹出时机改**抬手才弹 + 最短 200ms**
@@ -1346,6 +1370,14 @@ async function applyLayoutAndReload(): Promise<void> {
     return () => window.removeEventListener('whale-planetary-open', open)
   }, [])
   useEffect(() => {
+    const open = (): void => { if (readDebugEnabled()) { hideActivityWin(); setPage('playerStation') } }
+    window.addEventListener('whale-open-player-station', open)
+    return () => window.removeEventListener('whale-open-player-station', open)
+  }, [])
+  useEffect(() => {
+    if (page === 'playerStation' && !readDebugEnabled()) setPage('map')
+  }, [page, debugOn])
+  useEffect(() => {
     const onPageChange = (e: Event): void => {
       const ce = e as CustomEvent<{ page: PageKey }>
       if (ce.detail?.page) {
@@ -1375,6 +1407,11 @@ async function applyLayoutAndReload(): Promise<void> {
       {/* ───── 外壳（顶栏 / 工作区 / 底部导航 / 日志坞；两套布局见 ui/AppShell.tsx）───── */}
       <AppShell
         layoutKind={layoutKind}
+        orientationControl={embeddedMobileViewport ? <ToyOrientationButton mode={toyOrientation} onChange={mode => {
+          hideTip()
+          saveToyOrientation(mode)
+          setToyOrientation(mode)
+        }} /> : undefined}
         state={state}
         engine={engine}
         changePage={changePage}
@@ -1406,8 +1443,7 @@ async function applyLayoutAndReload(): Promise<void> {
         tuningsNow={tuningsNow}
         tuningTick={tuningTick}
         navItems={exchangeAvailable ? NAV_ITEMS : NAV_ITEMS.filter((item) => item.key !== 'exchange')}
-        debugNavItems={[...DEBUG_NAV_ITEMS, { key: 'stellar', label: 'ui.stellar.054', icon: 'nav-map',
-          onSelect: () => { if (planetaryEnabled()) { hideActivityWin(); setPlanetOpen(true) } } }]}
+        debugNavItems={DEBUG_NAV_ITEMS}
         readDebugEnabled={readDebugEnabled}
         qqGroup={QQ_GROUP}
         pageMain={(
@@ -1504,6 +1540,7 @@ async function applyLayoutAndReload(): Promise<void> {
               />
             ) : null}
             {page === 'exchange' ? <ExchangePage {...pageProps} /> : null}
+            {page === 'playerStation' && readDebugEnabled() ? <PlayerStationGamePage engine={engine} onToast={showToast} /> : null}
             {page === 'industry' ? (
             <IndustryPage
             {...pageProps}

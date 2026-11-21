@@ -62,6 +62,8 @@ import { cleanPirateEncounter } from './encounters/save'
 import { cleanSignalAutoEstimate, cleanSignalAutoReportDetails } from './signalAuto/save'
 import { cleanMarketRelayState } from './market/relaySave'
 import { applyLegacyCommandCompensation } from './combat/command/compensation'
+import { cleanPlayerStationGame, validatePlayerStationFleet } from './playerStation/gameSave'
+import { commandShipDeployed } from './combat/command/locks'
 
 /** 存档文件格式标识（防止拿别的游戏的 JSON 硬读） */
 export const SAVE_FORMAT = 'whale-idle-save'
@@ -84,8 +86,8 @@ const LOG_KINDS: ReadonlySet<string> = new Set(['system', 'info', 'queue', 'leve
 /** 清洗前的原始对象，各字段由归一化函数校验。 */
 export type RawState = Record<string, unknown>
 
-/** 只接受当前存档结构；旧档保留在磁盘，但不再自动转换。 */
-export const MIN_SUPPORTED_SAVE_VERSION = CURRENT_STATE_VERSION
+/** 仅兼容 v31 到 v32 的结构接线；更早的迁移仍退役。 */
+export const MIN_SUPPORTED_SAVE_VERSION = 31
 
 /** 战斗档清洗整簇（2026-10-02 批次 4m 迁到 saveBattleClean.ts；本文件借回 + 再导出） */
 import { asRaw, cleanAmmoIdMap, cleanBattle, cleanPlugIds, RACK_MAX } from './saveBattleClean'
@@ -2983,7 +2985,14 @@ for (const [key, value] of Object.entries(licensesRaw)) {
   const departure = cleanDeparture(src.departure)
   const battleRangeByCard = cleanBattleRangeRecords(src.battleRangeByCard)
   const pendingBattleRange = cleanPendingBattleRange(src.pendingBattleRange)
+  const playerStation = (() => {
+    try { return cleanPlayerStationGame(src.playerStation) }
+    catch (error) {
+      throw new SaveError('FORMAT', `存档中的第二阶段空间站数据无效，已拒绝读取：${error instanceof Error ? error.message : String(error)}`)
+    }
+  })()
   const normalized: GameState = {
+    ...(playerStation ? { playerStation } : {}),
     ...(departure && departure.shipId === shipId && fleet[departure.shipId] ? { departure } : {}),
     ...(battleRangeByCard ? { battleRangeByCard } : {}),
     ...(pendingBattleRange ? { pendingBattleRange } : {}),
@@ -3144,6 +3153,31 @@ for (const [key, value] of Object.entries(licensesRaw)) {
   reconcileDeparture(normalized)
   normalizeTrainingProgress(normalized)
   applyLegacyCommandCompensation(normalized)
+  if (playerStation) {
+    const foreignBusy = new Set([...Object.keys(normalized.aiAssignments), ...Object.keys(normalized.shipReturns),
+      ...Object.keys(normalized.shipLocks).filter(id => normalized.shipLocks[id]),
+      ...Object.keys(fleet).filter(id => commandShipDeployed(normalized, id)),
+      ...(normalized.wormhole.run?.fleet ?? []), ...(normalized.wormholeAuto ?? []).flatMap(run => run.shipIds),
+      ...(normalized.planetary?.deliveries ?? []).map(run => run.shipUid), ...(normalized.departure ? [normalized.departure.shipId] : []),
+      ...(normalized.expedition.battle?.myFleet ?? []).map(ship => ship.shipId),
+      ...(normalized.encounter.active ? [normalized.encounter.shipId ?? normalized.shipId, ...(normalized.encounter.battle?.myFleet ?? []).map(ship => ship.shipId)] : []),
+      ...(normalized.hauling.active ? normalized.hauling.fleetLeg?.shipIds ?? [] : [])])
+    // 其他旧域会容错剪枝；第二阶段引用不得借剪枝把双重占用洗成空闲。
+    for (const id of [...Object.keys(aiAssignmentsRaw), ...Object.keys(shipReturnsRaw), ...Object.keys(shipLocksRaw).filter(id => shipLocksRaw[id] === true)]) foreignBusy.add(id)
+    const addIds = (value: unknown) => { if (Array.isArray(value)) for (const id of value) if (typeof id === 'string') foreignBusy.add(id) }
+    addIds(asRaw(asRaw(src.wormhole).run).fleet)
+    for (const run of Array.isArray(src.wormholeAuto) ? src.wormholeAuto : []) addIds(asRaw(run).shipIds)
+    const rawDeliveries = asRaw(src.planetary).deliveries
+    for (const run of Array.isArray(rawDeliveries) ? rawDeliveries : []) {
+      const id = asRaw(run).shipUid; if (typeof id === 'string') foreignBusy.add(id)
+    }
+    try {
+      validatePlayerStationFleet(playerStation, asRaw(src.fleet), normalized.shipId, foreignBusy)
+      validatePlayerStationFleet(playerStation, normalized.fleet, normalized.shipId, foreignBusy)
+    } catch (error) {
+      throw new SaveError('FORMAT', `存档中的第二阶段空间站舰船引用或占用冲突，已拒绝读取：${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
   return normalized
 }
 
@@ -3202,6 +3236,7 @@ export function loadSaveFile(text: string): { state: GameState; savedAtWallMs: n
   if (fileVersion > CURRENT_STATE_VERSION) {
     throw new SaveError('VERSION', `存档版本 v${fileVersion} 高于当前支持的 v${CURRENT_STATE_VERSION}，请升级游戏。`)
   }
+  if (!Number.isInteger(fileVersion)) throw new SaveError('VERSION', '存档结构版本必须为整数，只接受 v31 或 v32。')
   const state = normalizeState(file.state)
   // 离线结算以文件头的保存时间为准（而不是状态内部字段，双保险）
   state.savedAtWallMs = savedAtWallMs

@@ -1,6 +1,6 @@
 import type { GameState } from '../../state'
 import { busyLabel, type BusyLabel } from '../../busyLabels'
-import { commandShipDeployed } from '../../combat/command/locks'
+import { commandShipDeployed, stationShipTaskBlock } from '../../combat/command/locks'
 
 /**
  * **某艘船此刻的忙态**（进洞门槛用；`null` = 空闲）。
@@ -33,6 +33,8 @@ export function shipBusyForWormhole(state: GameState, shipId: string): BusyLabel
  * 由 `tests/wormhole-activity-lock.test.ts` 逐档钉住（含与 `shipBusyLabel` 的一致性）。
  */
 export function shipActivityBusy(state: GameState, shipId: string): BusyLabel | null {
+  const station = stationShipTaskBlock(state, shipId)
+  if (station) return station
   if (commandShipDeployed(state, shipId)) return busyLabel('expedition')
   if (state.shipReturns[shipId]) return busyLabel('unload')
   if ((state.planetary?.deliveries ?? []).some(d => d.shipUid === shipId)) return busyLabel('planetDelivery')
