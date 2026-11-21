@@ -5,7 +5,7 @@ import { prebootRenderer, startGameEngine } from './game/boot'
 import { runAutoPerf } from './game/autoPerf'
 import { L10nProvider, tr } from './i18n/locale'
 import { SaveWriterGate } from './panels/SaveWriterGate'
-import { BootGate, bootFail, bootReportStage, bootStopWatch } from './boot/BootGate'
+import { BootGate, bootFail, bootNote, bootReportStage, bootStopWatch } from './boot/BootGate'
 
 prebootRenderer()
 
@@ -15,7 +15,7 @@ const root = createRoot(document.getElementById('root')!)
 bootReportStage('sync')
 root.render(<BootGate />)
 
-startGameEngine(engine, { onStage: bootReportStage })
+startGameEngine(engine, { onStage: bootReportStage, onNote: bootNote })
   .then((started) => {
     bootReportStage('bridge')
     bootStopWatch()

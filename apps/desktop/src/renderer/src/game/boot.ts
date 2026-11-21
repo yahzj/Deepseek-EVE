@@ -13,6 +13,8 @@ import type { BootStageId } from './bootProgress'
 export interface BootRunOptions {
   /** 真实启动工序回调：只在工序真正完成时上报，驱动首屏进度 */
   onStage?: (stage: BootStageId) => void
+  /** 工序内细分位置；超时判失败时用于定位卡点 */
+  onNote?: (note: string) => void
 }
 
 export function prebootRenderer(): void {

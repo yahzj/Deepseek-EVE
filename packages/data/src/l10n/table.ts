@@ -2907,7 +2907,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.boot.103": { zh: "通讯阵列离线", en: "", enDeferred: true },
   "ui.boot.104": { zh: "旗舰当前没有联网，无法同步引擎固件。连上网络后点「重新自检」。", en: "", enDeferred: true },
   "ui.boot.105": { zh: "引擎固件无法解析", en: "", enDeferred: true },
-  "ui.boot.106": { zh: "本地固件与舰桥不兼容，多见于浏览器版本过旧或缓存损坏。请更新浏览器，或强制刷新（Ctrl+F5）后重试。", en: "", enDeferred: true },
+  "ui.boot.106": { zh: "固件包在传输途中中断，常见于线路抖动或页面缓存过期。页面会先自动重新同步一次；仍失败请点「重新自检」，或换用备用星门入口。", en: "", enDeferred: true },
   "ui.boot.107": { zh: "存储晶格离线", en: "", enDeferred: true },
   "ui.boot.108": { zh: "本页无法保存航行记录。请退出隐私/无痕模式，或允许本站使用浏览器存储后重新自检。", en: "", enDeferred: true },
   "ui.boot.109": { zh: "写入舱已被占用", en: "", enDeferred: true },

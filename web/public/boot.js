@@ -21,7 +21,7 @@
     },
     'SG-03': {
       title: '引擎固件无法解析',
-      advice: '本地固件与舰桥不兼容，多见于浏览器版本过旧或缓存损坏。请更新浏览器，或强制刷新（Ctrl+F5）后重试。'
+      advice: '固件包在传输途中中断，常见于线路抖动或页面缓存过期。页面会先自动重新同步一次；仍失败请点「重新自检」，或换用备用星门入口。'
     }
   }
 
@@ -186,6 +186,7 @@
 
   function bundleReady() {
     if (failed) return
+    clearFirmwareRetry()
     setStatus('引擎包已同步 · 正在接管舰桥……')
     setFill(20)
     if (tickTimer) { clearInterval(tickTimer); tickTimer = 0 }
@@ -194,7 +195,69 @@
 
   function handover() {
     handedOver = true
+    clearFirmwareRetry()
     clearTimers()
+  }
+
+  var FW_RETRY_KEY = 'whale:boot:fw-retry'
+  var retrying = false
+  var probing = false
+
+  function clearFirmwareRetry() {
+    try { sessionStorage.removeItem(FW_RETRY_KEY) } catch (err) {}
+  }
+
+  function reloadWithFreshFirmware() {
+    try {
+      var url = new URL(location.href)
+      url.searchParams.set('_fw', String(Date.now()))
+      location.replace(url.toString())
+    } catch (err) {
+      location.reload()
+    }
+  }
+
+  function scriptSourceOf(target) {
+    if (!target) return ''
+    return target.src || target.getAttribute('src') || ''
+  }
+
+  function describeLoadFailure(src) {
+    if (!src) {
+      fail('SG-03', '引擎包脚本加载失败')
+      return
+    }
+    var name = src.replace(/[?#].*$/, '').replace(/^.*\//, '')
+    function done(extra) {
+      fail('SG-03', '引擎包脚本加载失败（' + name + '，' + extra + '，已自动重新同步 1 次）')
+    }
+    try {
+      fetch(src, { method: 'HEAD', cache: 'no-store' }).then(function (res) {
+        done('HTTP ' + res.status)
+      }).catch(function () {
+        done('请求被线路阻断')
+      })
+    } catch (err) {
+      done('请求被线路阻断')
+    }
+  }
+
+  function handleScriptFailure(target) {
+    if (handedOver || failed) return
+    var src = scriptSourceOf(target)
+    var tried = false
+    try { tried = sessionStorage.getItem(FW_RETRY_KEY) === '1' } catch (err) {}
+    if (!tried && !retrying) {
+      retrying = true
+      try { sessionStorage.setItem(FW_RETRY_KEY, '1') } catch (err) {}
+      setStatus('引擎包不完整 · 正在重新同步固件……')
+      setFill(0)
+      reloadWithFreshFirmware()
+      return
+    }
+    if (probing) return
+    probing = true
+    describeLoadFailure(src)
   }
 
   window.__WHALE_BOOT__ = {
@@ -220,7 +283,7 @@
     if (handedOver) return
     var target = event.target
     if (target && target.tagName === 'SCRIPT') {
-      fail('SG-03', '引擎包脚本加载失败')
+      handleScriptFailure(target)
       return
     }
     if (!failed) fail('SG-03', event.message || '')

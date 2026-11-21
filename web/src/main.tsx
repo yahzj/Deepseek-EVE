@@ -5,7 +5,7 @@ import { prebootRenderer, startGameEngine } from '../../apps/desktop/src/rendere
 import { L10nProvider, tr } from '../../apps/desktop/src/renderer/src/i18n/locale'
 import { SaveWriterGate } from '../../apps/desktop/src/renderer/src/panels/SaveWriterGate'
 import { startUpdatePrompt } from './updatePrompt'
-import { BootGate, bootFail, bootReportStage, bootStopWatch } from '../../apps/desktop/src/renderer/src/boot/BootGate'
+import { BootGate, bootFail, bootNote, bootReportStage, bootStopWatch } from '../../apps/desktop/src/renderer/src/boot/BootGate'
 
 /**
  * 网页端环境守卫：防范离线扒取、本地双击 (file://) 及未授权的第三方镜像
@@ -70,7 +70,7 @@ if (checkWebEnvironment()) {
   bootReportStage('sync')
   root.render(<BootGate />)
 
-  startGameEngine(engine, { onStage: bootReportStage })
+  startGameEngine(engine, { onStage: bootReportStage, onNote: bootNote })
     .then((started) => {
       bootReportStage('bridge')
       bootStopWatch()

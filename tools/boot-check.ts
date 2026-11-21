@@ -89,8 +89,20 @@ for (const id of REQUIRED_IDS) {
 }
 const copyOk = ['SG-01', 'SG-02', 'SG-03'].every((code) => bootJs.includes("'" + code + "'"))
 check(copyOk, 'web/public/boot.js 缺少预置阶段 SG-01/02/03 文案')
+check(bootJs.includes('handleScriptFailure') && bootJs.includes("'_fw'") && bootJs.includes('sessionStorage'),
+  'web/public/boot.js 的脚本加载失败必须走自动重载（_fw 缓存刷新 + sessionStorage 防循环），不能直接判死')
+check(bootJs.includes('引擎包脚本加载失败（'), 'web/public/boot.js 报 SG-03 时应在详情里带失败文件名与 HTTP 状态')
 
-// 五、两个入口共用同一份载入层，且不保留重复实现
+// 五、两个入口共用载入层；读取工序要上报细分位置（失败诊断能定位卡点）
+for (const entry of ['web/src/main.tsx', 'apps/desktop/src/renderer/src/main.tsx']) {
+  check(readSource(entry).includes('onNote: bootNote'), entry + ' 未把 onNote: bootNote 透传给启动链（读取超时将无法定位卡点）')
+}
+check(readSource('apps/desktop/src/renderer/src/game/engine.ts').includes("onNote?.('打开本地存档')"),
+  'engine.start 的 read 工序缺少 onNote 分段上报')
+check(readSource('apps/desktop/src/renderer/src/boot/BootGate.tsx').includes('export function bootNote'),
+  'BootGate 缺少 bootNote（分段位置只能写进诊断详情）')
+
+// 六、两个入口共用同一份载入层，且不保留重复实现
 check(readSource('web/src/main.tsx').includes('boot/BootGate'), 'web/src/main.tsx 未接入共享 BootGate')
 check(readSource('apps/desktop/src/renderer/src/main.tsx').includes('boot/BootGate'), '桌面入口未接入共享 BootGate')
 check(!existsSync(join(ROOT, 'web/src/bootScreen.tsx')), 'web/src/bootScreen.tsx 已迁移到共享目录，不应保留重复实现')

@@ -903,8 +903,9 @@ export class GameEngine {
     if (rec) perfHub.recordNotify(bucket, performance.now() - t0)
   }
 
-  async start(options?: { onStage?: (stage: BootStageId) => void }): Promise<void> {
+  async start(options?: { onStage?: (stage: BootStageId) => void; onNote?: (note: string) => void }): Promise<void> {
     const onStage = options?.onStage
+    const onNote = options?.onNote
     this.stopped = false
     this.winCache.reset()
     let lastSavedWall: number | null = null
@@ -913,9 +914,12 @@ export class GameEngine {
     this.saveUnavailable = guard !== null && !guard.ok
     onStage?.('read')
     try {
+      onNote?.('打开本地存档')
       const raw = await saveBridge.load()
       if (raw !== null) {
+        onNote?.('解析存档')
         const parsed = loadSaveFile(raw)
+        onNote?.('校验铁人记录')
         const gate = await this.ironmanLoadCheck(raw, parsed.savedAtWallMs, false)
         if (!gate.ok) {
           this.savePaused = true

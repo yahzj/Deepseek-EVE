@@ -99,9 +99,15 @@ export function bootReportStage(stage: BootStageId): void {
 export function bootFail(code: BootCodeId, detail = ''): void {
   clearTimers()
   const now = performance.now()
-  view = { ...view, code, detail, slow: false, stageElapsedMs: now - stageStartedAt, totalElapsedMs: now - origin() }
+  view = { ...view, code, detail: detail || view.detail, slow: false, stageElapsedMs: now - stageStartedAt, totalElapsedMs: now - origin() }
   emit()
   window.__WHALE_BOOT__?.fail?.(code, detail)
+}
+
+/** 记录当前工序内的细分位置；超时判失败时写入诊断「详情」，用于定位卡点 */
+export function bootNote(detail: string): void {
+  view = { ...view, detail }
+  emit()
 }
 
 export function bootStopWatch(): void {
