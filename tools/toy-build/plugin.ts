@@ -17,6 +17,7 @@ export function inlineToyWorkers(code: string): string {
 /** Vite 处理完资源后，把入口变成 file:// 可加载的普通脚本。 */
 export function localToyHtml(html: string): string {
   return html
+    .replace(/(<script\b[^>]*\bsrc=")\/boot\.js("[^>]*>)/g, '$1./boot.js$2')
     .replace(/content="(default-src[^"]*)"/, (_tag, policy: string) => `content="${policy}; font-src 'self' data:; worker-src blob: data:"`)
     .replace(/<script\b([^>]+)>/g, (_tag, attrs: string) => {
       if (!/\btype="module"/.test(attrs)) return `<script${attrs}>`

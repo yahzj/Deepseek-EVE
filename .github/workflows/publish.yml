@@ -18,6 +18,11 @@ on:
         description: 'Windows必填：已推送且指向相同提交的v版本标签'
         required: false
         type: string
+      full_regression:
+        description: '网页发布是否也跑完整 core 回归；Windows 发布始终运行'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -85,7 +90,13 @@ jobs:
       - run: npm run l10n:check
       - run: npm run l10n:params
       - run: npm run ui:rot-check
+      - run: npm run boot:check
+      - run: npm run arch:guard
+      - run: npm run scope:check
+      - run: npm run docs:index -- --check
+      # 网页小改动默认不跑完整 core 回归；核心改动手动勾选 full_regression，Windows 发布恒跑。
       - name: Full core release regression
+        if: ${{ inputs.full_regression || needs.resolve.outputs.windows == 'true' }}
         run: npm run test -w @whale/core
 
   build-web:

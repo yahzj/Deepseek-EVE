@@ -141,10 +141,32 @@ function readWebLedger(): { ok: boolean; seq: number; rescues: number; error?: s
   }
 }
 
+const BOUND_FILE_READ_MS = 4000
+
+/** 绑定存档文件读取设上限：句柄失效或网络盘无响应时降级用浏览器主档，不把首屏拖死 */
+function withDeadline<T>(task: Promise<T>, ms: number): Promise<T | null> {
+  return new Promise((resolve) => {
+    let settled = false
+    const finish = (value: T | null): void => {
+      if (settled) return
+      settled = true
+      window.clearTimeout(timer)
+      resolve(value)
+    }
+    const timer = window.setTimeout(() => {
+      if (settled) return
+      settled = true
+      console.warn('本地存档文件读取超时，本次改用浏览器主档。')
+      resolve(null)
+    }, ms)
+    task.then((value) => finish(value), () => finish(null))
+  })
+}
+
 const localStorageBridge: WhaleApi = {
   async load(): Promise<string | null> {
     return webOperations(async () => {
-      const fileText = await readFromBoundFile().catch(() => null)
+      const fileText = await withDeadline(readFromBoundFile().catch(() => null), BOUND_FILE_READ_MS)
       const lsText = ls().getItem(SAVE_KEY)
       return newerSaveText(fileText, lsText)
     })

@@ -1,4 +1,5 @@
 import { combatRosterOf, encounterCombatRosterOf } from '@whale/core'
+import type { BootStageId } from './bootProgress'
 import { saveFleetPreset, renameFleetPreset, deleteFleetPreset, applyFleetPreset, fleetRangeOf, setFleetRange, saveBattleFleetRange } from '@whale/core'
 import { blackMarketBuy, ensureBlackMarket } from '@whale/core'
 import { battleAmmoPreloadPlan } from '@whale/core'
@@ -909,17 +910,23 @@ export class GameEngine {
     if (rec) perfHub.recordNotify(bucket, performance.now() - t0)
   }
 
-  async start(): Promise<void> {
+  async start(options?: { onStage?: (stage: BootStageId) => void; onNote?: (note: string) => void }): Promise<void> {
+    const onStage = options?.onStage
+    const onNote = options?.onNote
     this.stopped = false
     this.winCache.reset()
     let lastSavedWall: number | null = null
     let rescued = false
     const guard = saveStorageProbe()
     this.saveUnavailable = guard !== null && !guard.ok
+    onStage?.('read')
     try {
+      onNote?.('打开本地存档')
       const raw = await saveBridge.load()
       if (raw !== null) {
+        onNote?.('解析存档')
         const parsed = loadSaveFile(raw)
+        onNote?.('校验铁人记录')
         const gate = await this.ironmanLoadCheck(raw, parsed.savedAtWallMs, false)
         if (!gate.ok) {
           this.savePaused = true
@@ -948,9 +955,11 @@ export class GameEngine {
       if (!this.saveUnavailable) this.savePaused = true
     }
 
+    onStage?.('verify')
     repairDeprecatedModules(this.state, this.ctx)
     repairMisplacedWarehouseModules(this.state, this.ctx)
     repairHoldForbiddenCargo(this.state, this.ctx)
+    onStage?.('settle')
     const now = Date.now()
     if (lastSavedWall !== null && !this.wormholeTestEnabled()) {
       const before = snapshotBasics(this.state)
@@ -969,6 +978,7 @@ export class GameEngine {
     this.ensurePump()
     if (this.saveWriteState() === 'ok') this.ensureSaveInterval()
 
+    onStage?.('persist')
     const saved = await this.persist()
     if (saved && rescued) await saveBridge.ironmanNoteRescue().catch(() => {})
     this.notify()

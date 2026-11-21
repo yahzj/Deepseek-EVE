@@ -27,6 +27,7 @@
 | 改动判档与验证（提交前） | `npm run tier` 看档位 → `npm run verify` 按档执行；`--tier=T1/T2` 只能升档 |
 | 数据微调（改既有价格 / 下架市场卡） | `AGENTS.md` §2.2 T0-data → `npm run data:quick`；不改 `content-csv/` |
 | 页面、表现与动画 | 开发约定§九、§十四，再读本域实现与对应现行设计稿 |
+| 载入首屏、真实进度与自检代号 | `docs/boot-codes.md`；实现：`web/index.html`、`web/public/boot.js`、`web/src/bootScreen.tsx`、`apps/desktop/src/renderer/src/game/bootProgress.ts` |
 | 深空证券交易所（极简双向/专业重构/标准K线） | `docs/design/deep-space-exchange-pro-refinement-20261103.md`；现行设计稿与视觉/交互规范 |
 | 设置子页面分类 | `docs/design/settings-subpages-20261103.md`；仅重组现有设置项，实施期间为现行工作稿 |
 | 账号与手动云存档设置 | `docs/design/cloud-settings-20261103.md`；本批仅本地合入、不推送；端到端桌面 smoke、全量回归、观感验收未完成，首次注册令牌撤销尚未验证；公网 HTTPS 入口 2026-11-05 起走 8443（见下条） |

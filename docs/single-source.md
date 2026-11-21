@@ -224,6 +224,7 @@
 | BGM/环境底噪交叉淡变时长（换曲 2.5s / 1.5s、同曲调音量 250ms） | `BGM_CROSSFADE_MS` / `AMBIENT_CROSSFADE_MS` / `VOLUME_FADE_MS` · `game/audio/rules.ts` | `npm run audio:check`；`arch:guard` F2/F3 |
 | 场景音频强切（真实场景 + 调试预演；只切声音，不动存档与画面） | `reportRealSfxScene` / `forceSfxScene` / `effectiveSfxScene` · `game/audio/sceneSwitch.ts` | `npm run audio:check`；`arch:guard` F2/F3 |
 | 实时触发日志（环形缓冲 60 条，试听不计） | `recordSfxPlay` / `sfxPlayLog` · `game/audio/playLog.ts` | `npm run audio:check`；`arch:guard` F2/F3 |
+| 网页载入工序、自检代号与诊断文本 | `BOOT_STAGES` / `BOOT_CODES` / `formatBootDiagnostics` · `game/bootProgress.ts`；预置包阶段 SG-01/02/03 文案在 `web/public/boot.js` | `docs/boot-codes.md` 对照表；载入失败冒烟 |
 
 ## 四、工具与文档层（`tools/` · `docs/`）
 

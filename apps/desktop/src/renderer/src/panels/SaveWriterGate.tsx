@@ -5,7 +5,7 @@ import { saveBridge, readStoredWebSave } from '../game/storage'
 import { loadSaveFile } from '@whale/core'
 import { tr } from '../i18n/locale'
 
-export function SaveWriterGate({ children }: { children?: ReactNode }) {
+export function SaveWriterGate({ children, code }: { children?: ReactNode; code?: string }) {
   const [state, setState] = useState(saveWriterState)
   const [text, setText] = useState<string | null>(null)
   const [name, setName] = useState('')
@@ -24,6 +24,7 @@ export function SaveWriterGate({ children }: { children?: ReactNode }) {
   if (state === 'writer') return <>{children}</>
   return <div className="app-loading" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
     <div>{tr(state === 'busy' ? 'ui.saveReconnect.010' : 'ui.saveReconnect.013')}</div>
+    {code !== undefined ? <div className="app-note">{tr('ui.boot.205', { p1: code })}</div> : null}
     <div className="app-note">{tr('ui.saveReconnect.011')}</div>
     {name ? <div>{name}</div> : null}
     <div className="app-save-actions">

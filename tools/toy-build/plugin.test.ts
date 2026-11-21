@@ -20,3 +20,10 @@ test('两个现有 Worker 内嵌，接线漂移时构建失败', () => {
   assert.throws(() => inlineToyWorkers(''), /接线发生变化/)
   assert.throws(() => localToyHtml('<script type="module" src="./changed.js"></script>'), /入口脚本路径不符/)
 })
+
+test('首屏普通脚本转换为本地相邻文件，保留其他脚本地址', () => {
+  const output = localToyHtml('<script src="/boot.js"></script><script src="https://example.test/other.js"></script>')
+  assert.match(output, /src="\.\/boot\.js"/)
+  assert.match(output, /src="https:\/\/example\.test\/other\.js"/)
+  assert(!output.includes('src="/boot.js"'))
+})

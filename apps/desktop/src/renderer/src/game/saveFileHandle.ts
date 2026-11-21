@@ -36,12 +36,31 @@ export function saveFileSupported(): boolean {
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION)
+    let settled = false
+    const settle = (fn: () => void): void => {
+      if (settled) return
+      settled = true
+      window.clearTimeout(timer)
+      fn()
+    }
+    let req: IDBOpenDBRequest
+    try {
+      req = indexedDB.open(DB_NAME, DB_VERSION)
+    } catch (err) {
+      reject(err)
+      return
+    }
+    const timer = window.setTimeout(() => settle(() => reject(new Error('indexedDB open timeout'))), 5000)
     req.onupgradeneeded = () => {
       if (!req.result.objectStoreNames.contains(STORE)) req.result.createObjectStore(STORE)
     }
-    req.onsuccess = () => resolve(req.result)
-    req.onerror = () => reject(req.error ?? new Error('indexedDB open failed'))
+    req.onsuccess = () => settle(() => {
+      const db = req.result
+      db.onversionchange = () => db.close()
+      resolve(db)
+    })
+    req.onerror = () => settle(() => reject(req.error ?? new Error('indexedDB open failed')))
+    req.onblocked = () => settle(() => reject(new Error('indexedDB open blocked')))
   })
 }
 
