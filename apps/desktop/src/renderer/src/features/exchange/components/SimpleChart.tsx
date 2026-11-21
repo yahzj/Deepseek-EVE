@@ -1,11 +1,3 @@
-/**
- * 极简模式 · 行情图（SimpleChart）。
- *
- * 船长 2026-11-04 核心升级：
- * - 【分时】：10 秒时间轴走势线，按真实最新成交价每拍延伸（无成交即平线，不编造涨跌）；
- * - 【M1 / M5 / H1 / 日线 / 周线】：现代标准 K 线蜡烛图（红涨绿跌、实体影线、开高低收完整刻度）；
- * - 【上下轴自适应比例】：平盘基准 1.5% 视窗保护 + 上下各 12% 呼吸安全区，绝不撑满画布贴边。
- */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ChartPeriod, ExchangeClient, StockQuote } from '../client'
 import { INTRADAY_VIEW_POINTS } from '../chartPeriods'
@@ -17,38 +9,32 @@ interface SimpleChartProps {
   code: string
   quote?: StockQuote
   tick: number
-  /** 全仓下注反馈：卡片边缘黄色光效顺时针旋转 */
   allInFx?: boolean
 }
 
 type SimplePeriod = 'intraday' | 'h1'
 
-/** 图表缩放偏好：切页面、重开客户端后仍记得上次停在分时还是小时 K。 */
-const CHART_ZOOM_KEY = 'whale-idle:exch-chart-zoom-v1'
+const CHART_ZOOM_KEY = 'whale-idle:exch-chart-zoom-v2'
+
+const DEFAULT_CANDLE_LIMIT = 72
 
 function readChartZoom(): { zoom: number; candleLimit: number } {
-  if (typeof window === 'undefined') return { zoom: 0, candleLimit: 168 }
+  if (typeof window === 'undefined') return { zoom: 0, candleLimit: DEFAULT_CANDLE_LIMIT }
   try {
     const raw = window.localStorage.getItem(CHART_ZOOM_KEY)
     if (raw !== null) {
       const parsed = JSON.parse(raw) as { zoom?: unknown; candleLimit?: unknown }
       const zoom = parsed.zoom === 1 ? 1 : 0
-      const candleLimit =
-        typeof parsed.candleLimit === 'number'
-          ? Math.max(24, Math.min(168, Math.round(parsed.candleLimit)))
-          : 168
-      return { zoom, candleLimit }
+      return { zoom, candleLimit: DEFAULT_CANDLE_LIMIT }
     }
   } catch {
-    /* 缓存损坏按分时处理 */
   }
-  return { zoom: 0, candleLimit: 168 }
+  return { zoom: 0, candleLimit: DEFAULT_CANDLE_LIMIT }
 }
 
 export function SimpleChart({ client, code, quote, tick, allInFx = false }: SimpleChartProps) {
   const initialZoom = readChartZoom()
   const [zoom, setZoom] = useState(initialZoom.zoom)
-  /** 小时 K 默认直接铺满 7 天（168 根），向上滚逐步放大到 24 根。 */
   const [candleLimit, setCandleLimit] = useState(initialZoom.candleLimit)
   const [pan, setPan] = useState(0)
   const dragRef = useRef<{ startX: number; startPan: number } | null>(null)
@@ -56,15 +42,12 @@ export function SimpleChart({ client, code, quote, tick, allInFx = false }: Simp
   const [zooming, setZooming] = useState(false)
   const [zoomDir, setZoomDir] = useState<'in' | 'out'>('in')
   const wrapRef = useRef<HTMLDivElement | null>(null)
-  /** 滚轮累计增量：触控板的小 delta 先攒够再走一级，避免卡顿和一次跳多级。 */
   const wheelAccumRef = useRef(0)
 
-  // 记住缩放级别：切到别的页面再回来、或重开客户端后恢复
   useEffect(() => {
     try {
       window.localStorage.setItem(CHART_ZOOM_KEY, JSON.stringify({ zoom, candleLimit }))
     } catch {
-      /* ignore */
     }
   }, [zoom, candleLimit])
 
@@ -74,14 +57,11 @@ export function SimpleChart({ client, code, quote, tick, allInFx = false }: Simp
   const barLimit = isCandle ? candleLimit : INTRADAY_VIEW_POINTS
 
 
-  // 切到未缓存的周期时补拉（否则 H1/日线/周线永远空白、M5 预加载失败也不重试）
   useEffect(() => {
     client.ensureChartData?.(code, clientPeriod)
-    // 分时图也需要 h1 全历史来确定上下界
     client.ensureChartData?.(code, 'h1')
   }, [client, code, clientPeriod])
 
-  // 滚轮累计增量触发；监听只绑一次，避免缩放重渲染时反复解绑导致丢事件。
   const wheelStateRef = useRef({ isCandle, candleLimit })
   wheelStateRef.current = { isCandle, candleLimit }
 
@@ -94,33 +74,25 @@ export function SimpleChart({ client, code, quote, tick, allInFx = false }: Simp
       if (Math.abs(wheelAccumRef.current) < 40) return
       const zoomIn = wheelAccumRef.current > 0
       wheelAccumRef.current = 0
-      const { isCandle: candleNow, candleLimit: limitNow } = wheelStateRef.current
+      const { isCandle: candleNow } = wheelStateRef.current
       if (!candleNow) {
         if (!zoomIn) return
         setZoomDir('in')
         setZooming(true)
         setPan(0)
-        setCandleLimit(168)
+        setCandleLimit(DEFAULT_CANDLE_LIMIT)
         setZoom(1)
         window.setTimeout(() => setZooming(false), 900)
         return
       }
-      if (zoomIn && limitNow < 168) {
-        setCandleLimit(Math.min(168, limitNow + 48))
+      if (zoomIn) {
         setPan(0)
         return
       }
       if (!zoomIn) {
-        // 默认 168 或已放大到 24：滚一格直接回分时；只有主动放大过才逐级。
-        if (limitNow < 168 && limitNow > 24) {
-          setCandleLimit(Math.max(24, limitNow - 48))
-          setPan(0)
-          return
-        }
         setZoomDir('out')
         setZooming(true)
         setPan(0)
-        // 先让蜡烛收拢回收盘价，再切回分时，避免瞬间消失。
         window.setTimeout(() => {
           setZoom(0)
           window.setTimeout(() => setZooming(false), 500)
@@ -140,7 +112,6 @@ export function SimpleChart({ client, code, quote, tick, allInFx = false }: Simp
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [client, code, clientPeriod, tick])
 
-  /** 全历史最高/最低：分时和 K 线共用同一个上下界，按历史比例显示。 */
   const historyHiLo = useMemo(() => {
     try {
       const bars = client.getChartSeries(code, 'h1')
@@ -157,15 +128,12 @@ export function SimpleChart({ client, code, quote, tick, allInFx = false }: Simp
     }
   }, [client, code, tick])
 
-  // 拖动查看历史：pan = 从最新一根往前偏移的根数
   const visibleSeries = useMemo(() => {
     const end = Math.max(0, series.length - pan)
     const start = Math.max(0, end - barLimit)
     return series.slice(start, end)
   }, [series, pan, barLimit])
 
-  // 空图时按时间推进进度（0→92%，加载完成即消失）：让玩家看到「行情初始化 42%」而不是干等；
-  // 12 秒仍无数据就停表改「暂无行情」，不再空转定时器（子代理 review 2026-11-04 建议 6）。
   const ready = series.length >= 2
   const [loadPct, setLoadPct] = useState(0)
   const [stalled, setStalled] = useState(false)
@@ -190,17 +158,14 @@ export function SimpleChart({ client, code, quote, tick, allInFx = false }: Simp
     }
   }, [ready, code])
 
-  // SVG 视口尺寸
   const width = 640
   const height = 150
   const padX = 14
   const padY = 14
-  // 右侧留约 4 个背景网格，让最新数据不贴边
   const rightGap = 96
   const usableW = width - padX * 2 - rightGap
   const usableH = height - padY * 2
 
-  // 计算几何与坐标映射（包含平盘保护与 12% 呼吸区自动比例）
   const chartData = useMemo(() => {
     if (series.length === 0) {
       return {
@@ -215,7 +180,6 @@ export function SimpleChart({ client, code, quote, tick, allInFx = false }: Simp
     }
 
     if (isCandle) {
-      // K 线蜡烛图模式（显示最近 40 根）
       const bars = visibleSeries.slice(-barLimit)
       if (bars.length === 0) {
         return { minP: 0, maxP: 0, coords: [], candleBars: [], points: [], pathLine: '', pathArea: '' }
@@ -228,7 +192,6 @@ export function SimpleChart({ client, code, quote, tick, allInFx = false }: Simp
       const variance = values.reduce((s, v) => s + (v - mean) ** 2, 0) / values.length
       const std = Math.sqrt(variance)
       const center = (rawHi + rawLo) / 2
-      // 波动率自适应：至少覆盖 ±3σ，且不低于 0.3% 价格视窗，避免单根极值撑大或压扁
       const baseSpan = Math.max(rawHi - rawLo, std * 6, mean * 0.003, 1)
       const pad = baseSpan * 0.06
       const maxP = center + baseSpan / 2 + pad
@@ -265,7 +228,6 @@ export function SimpleChart({ client, code, quote, tick, allInFx = false }: Simp
       const coords = candleBars.map((c) => [c.cx, c.top] as [number, number])
       return { minP, maxP, coords, candleBars, points: [], pathLine: '', pathArea: '' }
     } else {
-      // 分时折线模式（10 秒高频走势，取最近 INTRADAY_VIEW_POINTS 点 ≈ 20 分钟，与左栏小图同窗口）
       const sample = visibleSeries.slice(-barLimit)
       if (sample.length < 2) {
         return { minP: 0, maxP: 0, coords: [], candleBars: [], points: [], pathLine: '', pathArea: '' }
@@ -284,7 +246,6 @@ export function SimpleChart({ client, code, quote, tick, allInFx = false }: Simp
       const variance = values.reduce((s, v) => s + (v - mean) ** 2, 0) / values.length
       const std = Math.sqrt(variance)
       const center = (rawHi + rawLo) / 2
-      // 波动率自适应：至少覆盖 ±3σ，且不低于 0.3% 价格视窗
       const baseSpan = Math.max(rawHi - rawLo, std * 6, mean * 0.003, 1)
       const pad = baseSpan * 0.12
       const maxP = center + baseSpan / 2 + pad
@@ -307,12 +268,10 @@ export function SimpleChart({ client, code, quote, tick, allInFx = false }: Simp
 
   const { minP, maxP, coords, candleBars, points, pathLine, pathArea } = chartData
 
-  // 悬停数据提取
   const curPrice = quote?.price ?? (series[series.length - 1]?.c ?? 0)
   const isUp = (quote?.changePct ?? 0) >= 0
   const liveY = maxP > minP ? padY + (1 - (curPrice - minP) / (maxP - minP)) * usableH : height / 2
 
-  // 盘口押注比例：买盘/卖盘挂单量占比
   const book = client.getSnapshot(code).book
   const bidVol = book.bids.reduce((sum, level) => sum + level.qty, 0)
   const askVol = book.asks.reduce((sum, level) => sum + level.qty, 0)

@@ -16,7 +16,6 @@ export interface HaulingRoute {
   bGalaxyId: string
 }
 
-/** 输入只留在弹窗；确认时由调用者重新检查出勤和货仓。 */
 export function HaulingLoadModal({ state, ctx, ids, route, capacity, blocked, onConfirm, onClose }: {
   state: GameState; ctx: SimContext; ids: readonly string[]; route: HaulingRoute
   capacity: number; blocked: boolean

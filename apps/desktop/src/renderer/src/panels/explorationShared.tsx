@@ -1,4 +1,3 @@
-/** 新旧探索界面共用的纯表现辅助件，不参与玩法或存档结算。 */
 import { useEffect, useState } from 'react'
 import type { WormholeSignal } from '@whale/core'
 import { itemToneOf, RARE_WRECK_TONE } from '../ui/Glyphs'
@@ -36,7 +35,6 @@ export function useCountUp(value: number, ms = 320): number {
   return shown
 }
 
-/** 保留抓取点在物件内的格偏移，鼠标和触屏落位共用。 */
 export function grabOffsetOf(el: HTMLElement, w: number, h: number, clientX: number, clientY: number): { dx: number; dy: number } {
   const r = el.getBoundingClientRect()
   if (r.width <= 0 || r.height <= 0) return { dx: 0, dy: 0 }

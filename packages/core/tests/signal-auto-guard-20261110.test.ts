@@ -18,7 +18,7 @@ describe('自动探索使用正式守卫战', () => {
   it.each(['A', 'C', 'D', 'E', 'G'] as const)('%s族结果与同条件正式逐拍战斗相同，不改原状态或使用玩家射程记忆', family => {
     const { state, ctx, roster } = signalAutoFixture('mixed', true)
     const depth = 3, seed = 19, cardId = wormholeGuardCardOf(family, depth)
-    state.battleRangeByCard = { [cardId]: { desireM: 1 } }
+    state.fleetRange = { shipIds: [...roster], desireM: 1, maxRangeM: 1 }
     const before = structuredClone(state)
     const result = signalAutoGuardBattleOf(state, ctx, roster, family, depth, seed)
     const sim = structuredClone(before)
@@ -36,7 +36,7 @@ describe('自动探索使用正式守卫战', () => {
     expect(result.durationMs).toBe(battle.lastTickGameMs - battle.startedAtGameMs)
     expect(state).toEqual(before)
     expect(signalAutoGuardBattleOf(state, ctx, roster, family, depth, seed)).toEqual(result)
-    delete state.battleRangeByCard
+    delete state.fleetRange
     expect(signalAutoGuardBattleOf(state, ctx, roster, family, depth, seed)).toEqual(result)
   })
 

@@ -1,36 +1,11 @@
-/**
- * **打捞页卡片序列**（**2026-09-26 船长报障与建议**：「**之前残留的手动选择残骸的卡片还遗留在残骸打捞
- * 页面内**」＋「**建议在残骸打捞页面内，有玩家舰船残骸的卡片置顶，其次是有入侵残骸的**」）。
- *
- * ## 为什么单独一个文件
- * 这条顺序是本次改动的**验收点**，而经办人看不到船长的屏 ⇒ 必须让它**可被工具/用例直接断言**。
- * 但 `pages/MapPage.tsx` 会连带拉进整套 UI（含 `packages/ui` 的 CSS）⇒ `tsx` 里 import 它就崩
- * （`SyntaxError: Unexpected token ':'` on `.css`）。所以把这枚**纯函数**挪到本文件：
- * 无任何 UI 依赖、谁都能 import。
- *
- * ## 三条规则（顺序即优先级）
- * 1. **玩家舰船残骸卡**（该星系有有效残骸才出）——四级序最高优先，压过稀有池与普通池；
- * 2. **入侵残骸卡**（独立残骸场 > 0 才出）——48h 衰减、先捞它最划算；
- * 3. **星系残骸（全部）卡**——恒出，带**各组存量读数**。
- *
- * ⚠ **每组的"手动选择"卡不再出**：打捞对象自 2026-09-26 起由 core 自动判定
- * （船长原话「分组后不要再让玩家手动选择打捞对象了……优先打捞入侵残骸」）⇒
- * 那些卡上的「开始打捞」本来就是同一个动作、纯属残留；各组存量改成"全部"卡上的一行**只读读数**。
- */
 import { weekendWreckPoolsOf, wreckGroupOfCard } from '@whale/core'
 import type { GameState, SimContext } from '@whale/core'
 
 export type WreckCardKind = 'ship-wrecks' | 'invasion' | 'all'
 
-/** 该星系要出哪几张卡、按什么顺序（纯函数；渲染处只消费它的返回值） */
 export function wreckCardSequenceOf(input: {
   shipWreckCount: number
   invasionWreckM3: number
-  /**
-   * **入侵残骸场里的箱子（稀有残骸）件数**（**2026-09-27 加**，可选 ⇒ 老调用方逐字不变）：
-   * 船长 2026-09-27 令「主力舰队添加一个稀有残骸掉落」＋「进残骸场」后，**矿物可能被捞干、箱子还在**
-   * ⇒ 只看 `invasionWreckM3 > 0` 会让那张卡消失、玩家再也看不到场里的箱子。
-   */
   invasionRareCount?: number
 }): WreckCardKind[] {
   const out: WreckCardKind[] = []
@@ -40,26 +15,10 @@ export function wreckCardSequenceOf(input: {
   return out
 }
 
-/**
- * **AI 那一套（指派条 ＋ 右上角徽标 ＋ 副船名册）挂哪一张卡** = **置顶的那张**（＝序列第一张）。
- *
- * 🔴 **船长 2026-10-02 报障**：「**入侵残骸的打捞片无法指派AI**」——起因是这一套原先**只挂
- * 「全部」卡**（当时的口径：AI 任务按"全部"口径、不带打捞对象）⇒ 星系里一旦有入侵残骸，
- * 玩家看到的第一张卡是**入侵残骸卡**，而指派条被压在下面那张「全部」卡上，看起来就是"指派不了"。
- *
- * 改成"置顶那张"的两条理由：
- * 1. **一处入口**：AI 任务是**按星系**的（目标由 core 自动判定、优先入侵残骸 ⇒ 捞的就是置顶那张卡的
- *    那批残骸），挂两处会出现**同一份副船名册画两遍**（＝船长 2026-09-26 报过的"两张重复卡"那种观感）；
- * 2. **离玩家视线最近**：置顶序 = 玩家舰船残骸 > 入侵残骸 > 全部 ⇒ 指派条永远在最先看到的那张卡上。
- *
- * ⚠ **各组存量读数仍归「全部」卡**（那行说的就是"这个星系各组还剩多少"，与 AI 无关）⇒ 两个开关在
- * `MapPage` 里是**分开的两个 prop**，别再合并成一个。
- */
 export function wreckAiHostOf(sequence: readonly WreckCardKind[]): WreckCardKind | undefined {
   return sequence[0]
 }
 
-/** 两个打捞界面共用的族卡读数；不按当前入侵活动猜来源。 */
 export function invasionWreckRowsOf(state: GameState, ctx: SimContext, galaxyId: string) {
   return weekendWreckPoolsOf(state, galaxyId).map((pool) => {
     const card = pool.family === null ? undefined : [...ctx.anomalies.values()]

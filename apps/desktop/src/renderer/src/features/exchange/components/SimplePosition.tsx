@@ -1,16 +1,4 @@
 import { isEn } from '../../../i18n/locale'
-/**
- * 极简模式 · 我的持仓（SimplePosition）。
- *
- * 2026-11-04 船长令：右栏原来的「下注列表」只显示当前选中股票，和「我的委托」重复；
- * 两者整合成一块，并且必须显示所有买过的股票，不随选中标的切换。
- *
- * 核心设计：
- * - 全部持仓（现货多头 / 逐仓多头 / 逐仓空头）逐行汇总，不按 code 过滤；
- * - 每条持仓压成单行（类型徽标 · 代码 · 数量 · 成本 · 浮动盈亏 · 平仓），把高度留给列表本身；
- * - 强平风险不再铺开风险条，只在行尾用警示图标 + 悬停提示，避免窄列被撑高；
- * - 顶部只保留总浮动盈亏与【一键全平】（含 3 秒防误触倒计时）。
- */
 import { useEffect, useRef, useState } from 'react'
 import { Close, WarningAlt } from '@carbon/icons-react'
 import type { ExchangeClient, ExchangeSnapshot } from '../client'
@@ -25,11 +13,9 @@ interface SimplePositionProps {
   onToast: ToastFn
 }
 
-/** 距强平危险警戒阈值（百分比） */
 const LIQ_DANGER_PCT = 15
 const LIQ_CRITICAL_PCT = 5
 
-/** 单行持仓视图模型：现货与逐仓仓位统一成同一种紧凑行 */
 interface HoldingLine {
   key: string
   code: string
@@ -44,7 +30,6 @@ interface HoldingLine {
 }
 
 export function SimplePosition({ client, snap, onToast }: SimplePositionProps) {
-  // 当前正在平仓的目标：'all' | 行 key | null
   const [closingTarget, setClosingTarget] = useState<string | null>(null)
   const [confirmCloseAll, setConfirmCloseAll] = useState(false)
   const [countdown, setCountdown] = useState(3)
@@ -85,7 +70,6 @@ export function SimplePosition({ client, snap, onToast }: SimplePositionProps) {
     lines.push({
       key: p.id || `pos-${p.code}-${p.side}`,
       code: p.code,
-      // 1x 与现货同口径，不再附加「· 1x」后缀；只有真实高杠杆才显示倍数，避免一长一短。
       tag: `${isShort ? T.simpleLeverageShort : T.simpleLeverageLong}${p.leverage > 1 ? ` · ${p.leverage}x` : ''}`,
       tone: isShort ? 'short' : 'long',
       qty: p.qty,
@@ -146,15 +130,15 @@ export function SimplePosition({ client, snap, onToast }: SimplePositionProps) {
 
   const closeSpot = async (code: string, qty: number): Promise<void> => {
     orderSeq.current += 1
+    const cappedQty = Math.min(qty, client.maxOrderQty ?? 10_000_000)
     await client.placeOrder({
       clientOrderId: `simple-close-spot-${code}-${Date.now()}-${orderSeq.current}`,
       code,
       side: 'sell',
       type: 'market',
       tif: 'IOC',
-      qty,
+      qty: cappedQty,
       leverage: 1,
-      // 简单模式结算：按点击时的现价锁价，回合末由系统兜底保证成交。
       guaranteed: true,
       expectedPrice: priceOf(code),
     })
@@ -188,7 +172,6 @@ export function SimplePosition({ client, snap, onToast }: SimplePositionProps) {
         else await client.closePosition(line.code, line.tone, undefined, priceOf(line.code))
       } catch (err) {
         failed += 1
-        // 只报失败笔数会让玩家不知道卡在哪一条；带上首条服务端原因，便于自查。
         if (firstError === '') firstError = err instanceof Error ? err.message : String(err)
       }
     }

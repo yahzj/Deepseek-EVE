@@ -9,7 +9,6 @@ function finiteTree(value: unknown, depth = 0): boolean {
   return value === null || ['string', 'boolean', 'undefined'].includes(typeof value)
 }
 
-/** 仅恢复有固定规格的普通海盗快照；未知或损坏配置不能退回随机抽卡。 */
 export function cleanPirateCard(raw: unknown): AnomalyDef | undefined {
   if (!raw || typeof raw !== 'object') return undefined
   const card = raw as AnomalyDef

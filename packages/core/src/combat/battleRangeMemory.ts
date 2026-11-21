@@ -4,9 +4,11 @@ import type { SimContext } from '../types'
 import type { LairTier } from '../lairs'
 import type { WormholeFoeKind } from '../wormholeFoes'
 import type { WormholeEventAction, WormholeEventPreview } from '../wormholeExpedition'
+import { fleetRangeOf, sameFleetRangeRoster } from '../fleetRange'
+import { combatRosterOf } from './command/roster'
 
 export interface BattleRangeRecord { desireM: number; maxRangeM?: number; shipIds?: string[] }
-export interface BattleRangeSnapshot extends BattleRangeRecord { cardId: string; signature: string; minM: number; limitM: number; maxRangeM: number }
+export interface BattleRangeSnapshot extends BattleRangeRecord { cardId: string; signature: string; minM: number; limitM: number; maxRangeM: number; sourceVersion?: 1; fleetPresetId?: string }
 export type BattleRangeIntent =
   | { kind: 'expedition'; cardId: string; fromMining?: boolean; autoRepair?: boolean; invasionSeq?: number; options?: { desireM?: number; lairTier?: LairTier; foeGalaxyId?: string; rewardIskOverride?: number; confirmActivitySwitch?: boolean } }
   | { kind: 'expedition-arrival'; cardId: string; shipId: string }
@@ -63,8 +65,15 @@ function sameShipRoster(previous: readonly string[], current: readonly string[])
   return left.every((id, index) => id === right[index])
 }
 export function rememberBattleRange(state: GameState, snapshot: BattleRangeSnapshot): void {
-  state.battleRangeByCard = { ...state.battleRangeByCard, [snapshot.cardId]: { desireM: snapshot.desireM, maxRangeM: snapshot.maxRangeM,
-    ...(snapshot.shipIds ? { shipIds: [...snapshot.shipIds] } : {}) } }
+  // 入场只更新射程证据，不保存本场选距，也不再改写历史敌卡记录。
+  if (snapshot.sourceVersion !== 1 || !snapshot.shipIds) return
+  const current = fleetRangeOf(state, snapshot.shipIds)
+  if (sameFleetRangeRoster(combatRosterOf(state), snapshot.shipIds) && current?.presetId === snapshot.fleetPresetId)
+    state.fleetRange = { ...current, shipIds: [...snapshot.shipIds], maxRangeM: snapshot.maxRangeM }
+  if (snapshot.fleetPresetId) {
+    const preset = state.fleetPresets?.find(row => row.id === snapshot.fleetPresetId && sameFleetRangeRoster(row.shipIds, snapshot.shipIds!))
+    if (preset) preset.range = { ...preset.range, maxRangeM: snapshot.maxRangeM }
+  }
 }
 
 let transactionDepth = 0
@@ -84,7 +93,6 @@ function newlyOpened(before: GameState, after: GameState, result: unknown): Batt
   return undefined
 }
 
-/** 原动作只在副本执行；射程变化时仅提交待确认意图，不提交库存、移动或活动切换。 */
 export function withBattleRangeCheck<T extends { ok: boolean }>(state: GameState, intent: BattleRangeIntent, run: (staged: GameState) => T): T {
   if (transactionDepth > 0 || state.wormhole.run?.automaticBattleRanges) return run(state)
   if (state.pendingBattleRange && !confirmations.has(state)) return { ok: false, rangeConfirmation: true } as unknown as T
@@ -97,24 +105,24 @@ export function withBattleRangeCheck<T extends { ok: boolean }>(state: GameState
   const battle = newlyOpened(state, staged, result)
   const snapshot = battle?.rangeMemory
   if (battle && snapshot) {
+    const old = intent.kind === 'expedition-arrival' ? state.expedition.sortie?.range ?? fleetRangeOf(state, snapshot.shipIds) : fleetRangeOf(state, snapshot.shipIds)
     const ids = battle.myFleet?.map(row => row.shipId) ?? [intent.kind === 'encounter' ? (state.encounter.shipId ?? state.shipId) : state.shipId]
     snapshot.signature = JSON.stringify([snapshot.signature, intentKey(intent), ids.map(id => {
       const ship = state.fleet[id]
       return [id, ship?.defId, fittedSignature(ship?.fitted), ship?.droneLoad, ship?.ammoPref, ship?.plugs]
     }), Object.entries(state.skills.trained).filter(([, level]) => level > 0).sort(([a], [b]) => a.localeCompare(b)),
       state.wormhole.run ? [state.wormhole.run.seed, state.wormhole.run.depth, state.wormhole.run.grid?.pos, state.wormhole.run.hold] : null,
-      intent.kind === 'flagship' ? state.weekendEvent?.seq : null])
-    const old = battleCardRangeOf(state, snapshot.cardId)
+      intent.kind === 'flagship' ? state.weekendEvent?.seq : null,
+      [snapshot.sourceVersion, snapshot.fleetPresetId, old?.desireM]])
     const confirmation = confirmations.get(state)
     const accepted = confirmation?.cardId === snapshot.cardId && confirmation.signature === snapshot.signature && confirmation.maxRangeM === snapshot.maxRangeM
-    if (old?.maxRangeM !== undefined && !accepted && (old.maxRangeM !== snapshot.maxRangeM || consent)) {
-      const fleetChanged = !!old.shipIds && !!snapshot.shipIds && !sameShipRoster(old.shipIds, snapshot.shipIds)
-      state.pendingBattleRange = { ...snapshot, desireM: old.desireM, previousRangeM: old.maxRangeM,
-        ...(old.shipIds ? { previousShipIds: [...old.shipIds] } : {}), ...(fleetChanged ? { fleetChanged: true } : {}), intent }
+    const fleetChanged = !!old?.shipIds && !!snapshot.shipIds && !sameShipRoster(old.shipIds, snapshot.shipIds)
+    if (!accepted && (consent || old?.maxRangeM !== undefined && (old.maxRangeM !== snapshot.maxRangeM || fleetChanged))) {
+      state.pendingBattleRange = { ...snapshot, desireM: old?.desireM ?? snapshot.desireM, previousRangeM: old?.maxRangeM ?? snapshot.maxRangeM,
+        ...(old?.shipIds ? { previousShipIds: [...old.shipIds] } : {}), ...(fleetChanged ? { fleetChanged: true } : {}), intent }
       return { ok: false, rangeConfirmation: true } as unknown as T
     }
     if (accepted) {
-      battle.myDesireM = Math.max(snapshot.minM, Math.min(snapshot.limitM, Math.round(confirmation.desireM)))
       snapshot.desireM = battle.myDesireM
     }
   }
@@ -126,10 +134,13 @@ export function withBattleRangeCheck<T extends { ok: boolean }>(state: GameState
     || (!before.wormhole && state.wormhole.run?.battle) || (typeof result === 'object' && 'battle' in result ? (result as { battle?: BattleState }).battle : undefined)
   if (opened?.rangeMemory) {
     if (consent && consent.cardId === opened.rangeMemory.cardId) {
-      opened.myDesireM = Math.max(opened.rangeMemory.minM, Math.min(opened.rangeMemory.limitM, Math.round(consent.desireM)))
       opened.rangeMemory.desireM = opened.myDesireM
     }
     rememberBattleRange(state, opened.rangeMemory)
+    if (intent.kind === 'expedition' && state.expedition.sortie?.range) {
+      state.expedition.sortie.range.maxRangeM = opened.rangeMemory.maxRangeM
+      if (consent) state.expedition.sortie.range.desireM = opened.myDesireM
+    }
   }
   delete state.pendingBattleRange
   return result
@@ -192,6 +203,8 @@ export function cleanBattleRangeSnapshot(value: unknown): BattleRangeSnapshot | 
     || !Number.isFinite(r.minM) || r.minM < 0 || !Number.isFinite(r.limitM) || r.limitM < r.minM) return undefined
   const shipIds = cleanShipIds(r.shipIds)
   return { cardId: battleCardKey(r.cardId), signature: r.signature, desireM: Math.round(r.desireM), maxRangeM: Math.round(r.maxRangeM), minM: r.minM, limitM: r.limitM,
+    ...(r.sourceVersion === 1 ? { sourceVersion: 1 as const } : {}),
+    ...(r.sourceVersion === 1 && typeof r.fleetPresetId === 'string' && r.fleetPresetId.length > 0 && r.fleetPresetId.length <= 64 ? { fleetPresetId: r.fleetPresetId } : {}),
     ...(shipIds ? { shipIds } : {}) }
 }
 

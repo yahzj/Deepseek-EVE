@@ -37,9 +37,9 @@ import type { CoreBlockReason } from '../engine'
  * 以后往 `SKILLS` 里加 rank6 技能即按 1000 万收费，不需要改这里之外的任何代码。
  */
 export const SKILL_LICENSE_PRICES: Readonly<Record<number, number>> = {
-  4: 500_000, // 50 万
-  5: 2_000_000, // 200 万
-  6: 10_000_000, // 1000 万（预留档）
+  4: 500_000,
+  5: 2_000_000,
+  6: 10_000_000,
 }
 
 /** 显式单技能定价优先，其后按rank；null表示免许可，不与0信用点混用。 */
@@ -92,7 +92,6 @@ export function buySkillLicense(
   error?: string
   errorId?: string
   errorParams?: Readonly<Record<string, string | number>>
-  /** 成功时返回实付金额（信用点），供界面回话用 */
   price?: number
 } {
   if (DEEP_SPACE_SKILL_IDS.includes(skillId) && !probeManufacturingUnlocked(state)) return { ok: false, error: '深空搜索尚未解锁。', errorId: 'ui.stellar.059' }

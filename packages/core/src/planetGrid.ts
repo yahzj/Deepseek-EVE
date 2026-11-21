@@ -55,7 +55,6 @@ export function planetAdjacencyOf(planet: PlanetState, index: number, catalog: P
   for (const neighbor of planetNeighborIndices(planet.size, index)) {
     if (!planetBuildingOperational(planet, neighbor, catalog)) continue
     const source = catalog.buildings.get(planet.cells[neighbor]!.building!.id)!
-    // 同一来源对一个目标最多一次；重复配置不放大支援。
     const rules = source.adjacency?.filter(a => a.target === target.kind) ?? []
     const output = Math.max(0, ...rules.map(a => a.outputAdd ?? 0))
     const wear = target.kind === 'maintenance' ? 0 : Math.max(0, ...rules.map(a => a.wearCut ?? 0))
@@ -69,7 +68,6 @@ export function planetAdjacencyOf(planet: PlanetState, index: number, catalog: P
   return result
 }
 
-/** 只读能力倍率，不生产资源，不从仓库扣材料。 */
 export function planetBuildingOutputMul(planet: PlanetState, index: number, catalog: PlanetCatalog): number {
   if (!planetRulesSupported(planet, catalog) || !planetBuildingOperational(planet, index, catalog)) return 0
   const environment = planetEnvironmentOf(planet, catalog)

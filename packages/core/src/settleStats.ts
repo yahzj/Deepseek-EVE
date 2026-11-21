@@ -1,18 +1,3 @@
-/**
- * 离线结算统计（2026-09-08 船长定：离线报告按 AI 核心列出离线作业 + 预估收入）。
- * 只存在于离线结算期间的内存中（不透传/不落盘，正常推进零开销）；
- * 由 advanceGame 的 opts.settleStats 分发给各完成点计数。
- *
- * 计数单位：
- * - AI 采矿：每次满载自动返港并卸货 = 1 趟；
- * - AI 打捞：每趟任务完成卸货 = 1 次；
- * - AI 精炼炉/回收炉：每完成 1 批 = 1 批；
- * - AI 制造线：每条线到点完成 = 1 件；
- * - AI 造船：并入 `makeDone`，**另单列 `shipsDone`**（2026-09-14 船长「补」：组装机产出的
- *   舰船进的是**舰船仓库**（`state.shipStore`），离线简报只有「制造完成 ×N」时会看不出船去了哪）；
- * - income：预估收入（ISK）——资源/矿物按站内收价（baseSellPriceIsk）、装备与舰船按市场
- *   基准价（basePrice）粗估；残骸与蓝图碎片不计（不可直接变现）。
- */
 import { ceilFinalQuantity } from './quantity'
 import type { AiCoreType } from './types'
 
@@ -22,26 +7,17 @@ export interface CoreSettleStats {
   refineBatches: number
   recycleBatches: number
   makeDone: number
-  /** 制造完成的**舰船**件数（与 `makeDone` 并列单列：舰船产出入舰船仓库，离线简报据此写明去处） */
   shipsDone: number
-  /**
-   * 实验室完成的**批数**（**2026-10-01 补** · 普查发现实验室原先完全不参与离线统计
-   * ⇒ 离线简报上看不到 AI 实验室线的产出与收入；`advanceLab` 现在接本统计器）
-   */
   labBatches: number
-  /** 预估收入（ISK，累计） */
   income: number
 }
 
-/** 核心类型 → 该类型核心的离线作业统计（只统计有活动的类型） */
 export type SettleStats = Partial<Record<AiCoreType, CoreSettleStats>> & { combat?: import('./offlineCombatStats').OfflineCombatStats }
 
-/** 结算开始前创建空统计（传给 simulateOffline/advanceGame 的 opts） */
 export function newSettleStats(): SettleStats {
   return {}
 }
 
-/** 取（或创建）某核心类型的统计记录；未启用统计（undefined）时返回 null，调用点无开销 */
 function rec(stats: SettleStats | undefined, type: AiCoreType): CoreSettleStats | null {
   if (!stats) return null
   let s = stats[type]
@@ -71,13 +47,11 @@ export function addAiMakeDone(stats: SettleStats | undefined, type: AiCoreType):
   if (s) s.makeDone += 1
 }
 
-/** 实验室出料一批（**2026-10-01 补**：实验室原先完全不参与离线统计 ⇒ 简报上看不到它的产出与收入） */
 export function addAiLabBatch(stats: SettleStats | undefined, type: AiCoreType): void {
   const s = rec(stats, type)
   if (s) s.labBatches += 1
 }
 
-/** 造船完成单列（2026-09-14 船长「补」：舰船产出入舰船仓库，离线简报要写明去处） */
 export function addAiShipDone(stats: SettleStats | undefined, type: AiCoreType): void {
   const s = rec(stats, type)
   if (s) s.shipsDone += 1

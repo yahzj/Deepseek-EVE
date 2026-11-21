@@ -15,7 +15,6 @@ function cleanSquad(value: readonly unknown[]): string[] {
   return result
 }
 
-/** 空数组表示玩家主动清空；非数组或全坏的非空数组不生成假记忆。 */
 export function cleanPreparationSquads(value: unknown): PreparationSquads | undefined {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined
   const result: PreparationSquads = {}
@@ -28,13 +27,11 @@ export function cleanPreparationSquads(value: unknown): PreparationSquads | unde
   return Object.keys(result).length > 0 ? result : undefined
 }
 
-/** 仅过滤已不在编的船；忙碌、质量或核心门槛由各准备入口判，不自动替换。 */
 export function preparationSquadOf(state: GameState, kind: PreparationSquadKind, fallback: readonly string[] = []): string[] {
   const squad = state.preparationSquads?.[kind] ?? fallback
   return cleanSquad(squad).filter(id => state.fleet[id] !== undefined)
 }
 
-/** 只改偏好，保留显式空；不换主控、不停活动或启动任务。 */
 export function notePreparationSquad(state: GameState, kind: PreparationSquadKind, squad: readonly string[], ctx?: SimContext): boolean {
   if (kind === 'combat' && (state.expedition.active || state.encounter.active || state.awayGalaxy !== null || state.mining.active || state.salvaging.active || state.hauling.active || state.transit.active || state.standby.active || state.sideTasks.deliver !== null)) return false
   const clean = cleanSquad(squad).filter(id => state.fleet[id] !== undefined)
@@ -45,7 +42,6 @@ export function notePreparationSquad(state: GameState, kind: PreparationSquadKin
   return true
 }
 
-/** 成功编队即记忆，后来移出也保留首次提示；旧档当前名单可补记一次。 */
 export function noteIndustrialFleetRisk(state: GameState, ctx: SimContext): void {
   if (state.industrialFleetRiskSeen) return
   const ids = new Set([state.shipId, ...(state.preparationSquads?.combat ?? [])])

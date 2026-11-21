@@ -26,7 +26,6 @@ function galaxy(ctx: SimContext, site: string | null): string {
   return site === null ? HOME_GALAXY_ID : ctx.stations.get(site)?.galaxyId ?? ''
 }
 
-/** 路段采用更危险一端的位置，展示和袭击均读该冻结路径。 */
 export function haulFleetPathOf(state: GameState, ctx: SimContext, ids: readonly string[], from: string, to: string): HaulFleetLeg['path'] {
   const route = shortestTravelPath(ctx, from, to)
   if (route.galaxies.length < 2) return []
@@ -66,7 +65,6 @@ function setFleetLeg(state: GameState, ctx: SimContext, from: string | null, to:
   return true
 }
 
-/** 校验全部完成后才占出勤名单，不自动清空实体货物。 */
 export function startFleetHauling(state: GameState, aSiteId: string | null, bSiteId: string | null, ctx: SimContext, requestedM3?: number): CommandResult {
   if (state.hauling.active) return { ok: false, errorId: 'core.hauling.001', error: 'hauling-active' }
   const endpoints = haulEndpoints(state, ctx)
@@ -116,7 +114,6 @@ export function stopFleetHauling(state: GameState, ctx: SimContext, atArrival = 
   return { ok: true }
 }
 
-/** 记录运输中断请求；当前遭遇正常结算后再即时停靠回运输起点。 */
 export function abortFleetHaulingAfterEncounter(state: GameState): boolean {
   const leg = state.hauling.fleetLeg
   if (!state.hauling.active || !leg || !state.encounter.active) return false
@@ -124,7 +121,6 @@ export function abortFleetHaulingAfterEncounter(state: GameState): boolean {
   return true
 }
 
-/** 战斗完成后兑现停止请求；战损和战报先由遭遇战正常结算。 */
 export function finishFleetHaulingAbortAfterEncounter(state: GameState, ctx: SimContext): boolean {
   if (!state.hauling.fleetLeg?.abortAfterBattle || !state.hauling.active) return false
   const fromSiteId = state.hauling.fromSiteId
@@ -134,7 +130,6 @@ export function finishFleetHaulingAbortAfterEncounter(state: GameState, ctx: Sim
   return true
 }
 
-/** 正常推进只消费本段时间；战斗暂停由引擎共同时间轴保证。 */
 export function advanceFleetHauling(state: GameState, deltaMs: number, ctx: SimContext): void {
   const h = state.hauling, f = h.fleetLeg
   if (!h.active || !f || state.encounter.active) return

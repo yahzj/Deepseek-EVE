@@ -1,6 +1,3 @@
-/**
- * 舰船页：我的舰队（耐久/维修/切换驾驶）+ AI 指挥中心 + 空间站商店。
- */
 import { memo, useEffect, useRef, useState } from 'react'
 import { Check, Plus, Wrench } from '../ui/layoutIcons'
 import { RangeEwFleet } from '../features/combat/RangeEwPanel'
@@ -16,7 +13,6 @@ import {
   aiEfficiency,
   industryAiBonus,
   countAiCore,
-  /** 2026-10-02 模块化：可用核心列表走 core 单点 */
   usableAiCoresOf,
   goodLockedReason,
   idleAiShipIds,
@@ -29,37 +25,27 @@ import {
   changeShipBlockReason,
   ownsBlueprint,
   manufacturingRunViews,
-  // 2026-09-13：站内工业目标只列玩家可见的资源（未上线资源不进 AI 精炼炉下拉）
   visibleItemDefs,
-  // 舰船仓库（2026-09-14 船长）：仓库计数 / 入仓逐档判据（core 单点，与引擎同源）
   shipStoredCount,
   shipStorable,
-  // 2026-09-26 船长：「舰队页面…悬停舰船时，应该显示舰船的当前属性，而不是基础属性」
-  // ⇒ 悬停卡改报装后合成值（与装配页/战斗同源：createPlayerSpec ＋ 机舱合计）
   createPlayerSpec,
   droneBayTotalM3,
   cleanShipDamage,
   plugEffectsOf,
-  // 2026-09-26 船长令「所有声望门槛改读累计声望」：本页矿带下拉的锁定判据走唯一入口
   standingOf,
   DSI_FACTION_ID,
   markedIds,
   commandBudgetOf,
   combatRosterOf,
   shipCommandCostOf,
-  /** 2026-09-29 跃迁燃料批：活动清单与它们的文案 id（开关行的唯一出处） */
   JUMP_FUEL_ACTIVITY_TEXT_ID,
   type JumpFuelActivity,
 } from '@whale/core'
-/** 2026-09-30 船长令「跃迁燃料页先用 skill 优化」：HUD 语汇（图标按钮/图标读数）＋ 深空样式层 */
 import { RowGlyph } from '../ui/itemView'
 import { IconBtn } from '../ui/hud'
-/** AI 核心下拉公共件（2026-10-02 模块化） */
 import { AiCoreSelect } from '../ui/aiCoreSelect'
-/** 2026-09-30 船长令：竖直燃料罐（玻璃外壳 ＋ 液面波动，形状全在 SVG 里画） */
 import { FuelTank } from '../ui/FuelTank'
 import '../ui/layout-css/_hud-industry.css'
-// 2026-09-23 船长令：使用 AI 核心时默认选「当前拥有的最高级核心」
 import { bestAiCoreOf } from '@whale/core'
 import type { AiCoreType, FleetShipState, GameState } from '@whale/core'
 import { durabilityOf, repairCostIsk, shipDisplayName } from '@whale/core'
@@ -67,7 +53,6 @@ import { Panel } from '@whale/ui'
 import { ShipHover } from '../ui/shipInfo'
 import { ShipDamageMods } from '../ui/ShipDamageMods'
 import { useSessionScroll } from '../ui/sessionView'
-// 公司账本：修船支出计入星港维修的营收（docs/design/stock-gameplay-integration-20261109.md）。
 import { reportCompanyFlow } from '../features/exchange/companyReporter'
 import type { GameEngine } from '../game/engine'
 import type { ShipDef } from '@whale/core'
@@ -88,11 +73,9 @@ import {
 import type { PageProps } from './common'
 import { isk } from './common'
 import { tr, cmdText } from '../i18n/locale'
-/** 金额 + 单位（按语言；2026-09-29 批 0：出售确认那句原先是中文字面量拼 `isk()`） */
 import { fmtCredits } from '../i18n/fmt'
 import { aiCoreText, shipRoleText, shipSubClassText } from '../ui/labelsText'
 
-/** 静态舰影不随引擎心跳重绘，卡牌始终保留同样的展示空间。 */
 const FleetArt = memo(function FleetArt({ shipId }: { shipId: string }) {
   return <div className="app-fleet-card-art" aria-hidden="true"><ShipSprite shipId={shipId} size={192} engine={false} /></div>
 })
@@ -109,28 +92,13 @@ function ShipDamageSummary({ engine, uid }: { engine: GameEngine; uid: string })
   </div>
 }
 
-/** 市场稀有度中文标签 */
 function rarityLabel(rarity: 'common' | 'rare' | 'exotic'): string {
   return rarity === 'common' ? tr("ui.MarketPage.010") : rarity === 'rare' ? tr("ui.IndustryPage.035") : tr("ui.MarketPage.028")
 }
 
-/** 舰船页标签（MapPage/IndustryPage 同款 app-subtabs 规范，2026-09-05）
- *  ⚠ 2026-09-14 船长：「先将舰队页面中的舰船市场换成舰船仓库」⇒ 第三档 `'shop'`（舰船市场）**整档换成**
- *  `'store'`（舰船仓库）；**购买入口不丢**——买卖本来就在市场页，仓/库卡片行内保留「去市场查看 / 下单」。 */
 export type ShipTab = 'fleet' | 'ai' | 'store' | 'fuel'
-/** 舰队检索（2026-09-10 船长：筛选 + 搜索，控件样式与仓库/技能目录统一；
- *  2026-09-11 船长：「**移除排序选项，改为按照舰船级别划分的子筛选**」——
- *  排序下拉（默认/名称/耐久/舰族）整条退场，改由**舰船级别**子筛选（`SHIP_TIER_SUBS`，与组装机同一张单点表）收窄；
- *  列表顺序固定为「机库序 + 已标记置顶」（即原「默认排序」口径，收藏置顶规则继续成立）。
- *  ⚠ 2026-09-19 乙组：「状态」维度表已按基线⑤收编到 `ui/itemSubs.ts`（`FLEET_STATE_TABS`），
- *  类别/级别判据也改读那里的唯一入口（`shipRolePasses` / `shipTierPasses`）。 */
 
-/** AI 指挥中心可指派的任务类型（2026-09-10 船长：统一全部 AI 可执行活动）——
- *  副船两类：采矿/打捞；站内工业两类：精炼炉与回收炉/组装机制造。
- *  远征不在其列（引擎软下线，一律拒绝受理）。 */
 type AiAssignMode = 'mining' | 'salvage' | 'refine' | 'craft'
-/** 站内制造线可选的已学会蓝图（含材料单，供缺料判定与提示） */
-// l10n-keep-start：本段的中文全是**联合类型 key / 分组 key**（显示时走 CRAFT_GROUPS 的 id 取词），不是文案
 interface CraftOption {
   id: string
   name: string
@@ -138,39 +106,19 @@ interface CraftOption {
   materials: readonly { itemId: string; count: number }[]
   buildSeconds: number
 }
-/** 组装机下拉的分档顺序与译名 id（`CraftOption.group` 是**字面量联合 key**，显示时才按 id 取译名） */
 const CRAFT_GROUPS: ReadonlyArray<{ key: CraftOption['group']; id: string }> = [
-  { key: '装备蓝图', id: 'ui.ShipPage.115' }, // l10n-keep：联合 key，不是文案（渲染处 tr(id)）
-  { key: '舰船蓝图', id: 'ui.ShipPage.116' }, // l10n-keep
-  { key: '消耗品蓝图', id: 'ui.ShipPage.114' }, // l10n-keep
+  { key: '装备蓝图', id: 'ui.ShipPage.115' },
+  { key: '舰船蓝图', id: 'ui.ShipPage.116' },
+  { key: '消耗品蓝图', id: 'ui.ShipPage.114' },
 ]
 const SHIP_TABS: Array<{ key: ShipTab; label: string; icon: string; title?: string }> = [
   { key: 'fleet', get label() { return tr("ui.ShipPage.001") }, icon: 'nav-ship' },
   { key: 'ai', get label() { return tr("ui.ShipPage.057") }, icon: 'nav-ai', get title() { return tr("ui.ShipPage.120") } },
-  // 2026-09-14 船长：「舰船市场」→「舰船仓库」（图标沿用物品仓库那只箱子，语义 = 存放）
   { key: 'store', get label() { return tr("ui.ShipPage.036") }, icon: 'nav-items', get title() { return tr("ui.ShipPage.121") } },
-  /**
-   * **跃迁燃料**（**2026-09-29 船长令**：「舰船页面内添加新的子页面：跃迁燃料。玩家可以在这个页面内
-   * 查看剩余燃料具体数值和设置哪些活动使用燃料。并能直接从这边跳转到工业的'实验室'页面」）。
-   * ⚠ **门槛后才有这一档**（首座空间站建成 ⇒ `labUnlocked`）：门槛前不渲染（不是灰掉）。
-   */
   { key: 'fuel', get label() { return tr('ui.jumpFuel.010') }, icon: 'nav-items', get title() { return tr('ui.jumpFuel.011') } },
 ]
 
-/** 舰船仓库「拥有」筛选（2026-09-14 船长裁定**乙**：只看**仓库库存**——
- *  仓里有货 = 已拥有；仓里为空 = 未拥有，即使在役舰队有同型）。
- *  ⚠ 2026-09-19 乙组：表已收编到 `ui/itemSubs.ts`（`STORE_OWN_TABS`）。 */
 
-/**
- * **舰队页悬停卡 = 当前属性**（船长 2026-09-26：「我的舰队页面中，玩家鼠标悬停舰船时，
- * 应该显示舰船的当前属性，而不是基础属性」）。
- *
- * 与装配页 / 战斗**同一把尺**：`createPlayerSpec` 合成装后血量·抗性·命中·回避·速度，
- * 机舱走 `droneBayTotalM3`（船体 ＋ 甲板扩展）。
- * ⚠ **不带间接属性块**（船长同日复令：「看了下，不要显示显示间接属性，过于臃肿」）——
- * 完整间接属性看「装配」页；图鉴档案那条路另有船长令要求带上，见 `panels/Handbook.tsx`。
- * 图鉴 / 市场 / 船坞的悬停卡**不传** current ⇒ 仍按船长同日裁定「图鉴内按照基础属性算」报**基础属性**。
- */
 function FleetShipHover({
   uid,
   ship,
@@ -185,7 +133,6 @@ function FleetShipHover({
   block?: boolean
 }): ReactNode {
   const spec = createPlayerSpec(engine.state, engine.ctx, uid)
-  // 船不在编队里（理论上到不了这里）⇒ 退回基础属性卡，不显示半截合成值
   if (!spec) {
     return (
       <ShipHover ship={ship} block={block}>
@@ -208,24 +155,6 @@ function FleetShipHover({
   )
 }
 
-/**
- * **跃迁燃料页**（**2026-09-29 船长令**：「舰船页面内添加新的子页面：跃迁燃料。玩家可以在这个页面内
- * 查看剩余燃料具体数值和设置哪些活动使用燃料。并能直接从这边跳转到工业的'实验室'页面」）。
- *
- * **2026-09-30 船长追令**：「**我的舰队的跃迁燃料页面先用 skill 优化**」＋「**现在文字太多了，
- * 适量的图标也不能拉下**」⇒ 本页按 `ui-ux-pro-max` 的 **HUD / Sci-Fi FUI** 页级覆盖重做：
- * - **图标优先**：库存/规格/活动/动作全部"图标 ＋ 2~4 字"，长句只挂 `title`（悬停）；
- * - **图形读数**：库存 Bullet 条（区间 = 一趟长途返航的量级）＋ 可支撑趟数，代替文字描述；
- * - **开关语义**（技能 UX 提示）：真 `<input type="checkbox">`（键盘/读屏可用）＋ `.hud-sw` 视觉件，
- *   开关状态另有 chip 双保险（不靠颜色单一表达）；
- * - 配色与 `.hud` 命名空间同一套（深空），**不影响舰船页其它子页**（`.hud-embed` 只做局部嵌入）。
- *
- * 内容（按船长点名的三件事）：
- * ① **剩余燃料数值**（仓库 ＋ 驾驶船货仓，与 core `jumpFuelStockOf` 同一把尺）；
- * ② **四个活动开关**（采矿 / 打捞 / 悬赏与远征 / AI 副船作业；**默认全关**，写入 `state.jumpFuel`）；
- * ③ **「前往实验室」**（跳工业页实验室档 —— 那边才是投料与生产的地方）。
- * 规格：**1 单位 = 1 秒原返航时长 · 返航速度 ×10 · 每趟返航开始扣一次**（不足则不加速也不消耗）。
- */
 function JumpFuelPanel({
   engine,
   onToast,
@@ -235,31 +164,8 @@ function JumpFuelPanel({
   onToast: PageProps['onToast']
   onGotoLab?: () => void
 }): ReactNode {
-  /**
-   * **燃料补给读数**（**2026-09-30 船长令**：「只需要显示上限多少（比如本地存档现在是5,200单位，
-   * 那就显示5,200/6000单位），下方实验室按钮边上显示现在燃料大概的生产速度/h」）。
-   *
-   * 全部来自 core 的 `jumpFuelSupplyOf`（仓库量 / 上限 / 在产速率 / 状态）——
-   * 界面**零算法、零自造常量**：原先那套「一趟长途 = 1,200 单位 × 5 = 6,000」是界面自己编的尺，
-   * 船长判「估算约能跑多少趟没有实际意义」⇒ 连同 `TRIP_UNITS`、趟数 chip 与虚线刻度说明一起删除。
-   */
   const supply = engine.jumpFuelSupply()
   const stock = supply.ware
-  /**
-   * **罐身尺寸实测**（**2026-09-30 船长三连报障的定稿做法**）：
-   * ① 「燃料罐高度太低了…让高度自适应（和右侧的总高度一致）」② 窄屏罐子超大 ③ 液面循环不对齐。
-   *
-   * 量两处**取小**：
-   * - **高** = `min(右列内容高, 罐列盒高)` —— 右列（`.hud-fuel-main`）用 `align-self:start` 不参与拉伸
-   *   ⇒ 量到的就是它的**内容自然高**，罐子与右列**等高**；再与罐列盒高取小，
-   *   既不会"越长越高"（罐子一旦高过右列就会把栅格行撑高 ⇒ 越滚越大），窄屏也不会撑破那一列。
-   * - **宽** = `min(罐列宽, 高 × 0.46)` —— 窄屏（媒体查询把罐列钉成 168px 高）罐子自动收到
-   *   ≈77px 宽，不会按屏宽等比放大成巨罐（前一条报障的成因）。
-   *
-   * ⚠ 尺寸必须**由这里量出来再交给组件按 1:1 画**：交给 CSS 铺满（`width/height:100%`）时，
-   * 罐身 0.46 的宽高比会让 SVG 按"等比缩放进框"解析 ⇒ 84px 宽的列最高只能画出 ≈182px 的罐子，
-   * 这正是"高度太低"的真因（详见 `ui/FuelTank.tsx` 的 `width` 注释）。
-   */
   const railRef = useRef<HTMLDivElement | null>(null)
   const mainRef = useRef<HTMLDivElement | null>(null)
   const [tank, setTank] = useState({ w: 84, h: 320 })
@@ -403,28 +309,16 @@ export function ShipPage({
   tab?: ShipTab
   onTab?: (t: ShipTab) => void
   onGotoMarket?: (goodKey: string) => void
-  /** 进入某船的装配页（船长 2026-09-05：舰队卡片按钮直达该船装配） */
   onGotoFit?: (shipId: string) => void
-  /** **「前往实验室」**（**2026-09-29 船长令**：跃迁燃料页要能直接跳到工业页的实验室）——
-   *  与「第一次」卡片的段定位同一套手法（App 切页 ＋ `focusSec: 'lab'`）。 */
   onGotoIndustryLab?: () => void
 }) {
   const state = engine.state
   const ctx = engine.ctx
-  // 标签页（受控可选：App 跳 AI 中心时切到 ai）
   const [localTab, setLocalTab] = useState<ShipTab>('fleet')
   const activeTab = tab ?? localTab
   const setActiveTab = onTab ?? setLocalTab
-  /** 2026-09-14 船长：**移入舰船仓库**替换原先的「市价出售」（出售统一到舰船仓库）。
-   *  `storeConfirmId` = 正在展开"入仓会清掉自定义名"确认的那艘船（有名字时才需要确认）。 */
   const [storeConfirmId, setStoreConfirmId] = useState<string | null>(null)
-  /**
-   * **换驾驶的中断确认**（**2026-09-20 船长令**）：正在跑长途运输时换驾驶会中断本趟
-   * （`shipyard.changeShip` 的 `cancelHaulingOnSwitch`）⇒ 第一次点只警告、再点一次才真换。
-   * 记的是"正在等确认的那艘 uid"。
-   */
   const [switchAskId, setSwitchAskId] = useState<string | null>(null)
-  // 2026-09-09 切换驾驶高亮（船长定：无缝切换易误判）：成功后目标船卡 + 「当前驾驶」行做一次约 0.8 秒脉冲
   const [switchFxUid, setSwitchFxUid] = useState<string | null>(null)
   const switchFxTimer = useRef<number | null>(null)
   useEffect(() => () => {
@@ -435,11 +329,8 @@ export function ShipPage({
     if (switchFxTimer.current !== null) window.clearTimeout(switchFxTimer.current)
     switchFxTimer.current = window.setTimeout(() => setSwitchFxUid(null), 800)
   }
-  // T5-B：正在改名（输入框展开）的船实例 + 草稿
   const [renameId, setRenameId] = useState<string | null>(null)
   const [renameDraft, setRenameDraft] = useState('')
-  // 2026-09-10 舰队检索：搜索词 / 状态筛选；2026-09-11 船长：排序键退场，改「舰船级别」子筛选 +
-  // 「舰船类别」（角色）子筛选；2026-09-12 船长：「将级别和类别筛选对调，玩家先选择类别，再选级别」
   const [fleetQ, setFleetQ] = useState('')
   const [fleetFilter, setFleetFilter] = useState<string>(SUB_ALL)
   const [fleetTier, setFleetTier] = useState<string>(SUB_ALL)
@@ -456,19 +347,12 @@ export function ShipPage({
   const displayedRepairPlanRef = useRef({ plan: repairFleetPlan, balance: repairFleetBalance })
 
   const fleetScrollRef = useRef<HTMLDivElement | null>(null)
-  /**
-   * **舰队列表滚动位置 · 会话级记忆**（2026-09-26 船长令：「记住…滚动条位置」，只做主要列表那一条）。
-   * 卡牌网格继续使用原来的舰队滚动容器。
-   */
   useSessionScroll('ship.fleet.scroll', fleetScrollRef)
-  /** 舰船仓库签的主列表滚动位置（同款记忆；仓库签自带一支容器） */
   const storeScrollRef = useRef<HTMLDivElement | null>(null)
   useSessionScroll('ship.store.scroll', storeScrollRef)
-  /** 编队页签本次打开后的排序快照：历史编队优先，之后只追加新舰，不因点选或状态刷新重排。 */
   const fleetFormationOrderRef = useRef<string[] | null>(null)
   const fleetFormationHistoryRef = useRef<Set<string> | null>(null)
 
-  /** 同型多艘各自成卡，未置顶舰船沿用级别与实例顺序。 */
   const fleetEntries = Object.entries(state.fleet)
     .map(([uid, entry]) => ({ uid, ship: entry, def: ctx.ships.get(entry.defId ?? uid) }))
     .filter((x): x is { uid: string; ship: FleetShipState; def: NonNullable<ReturnType<typeof ctx.ships.get>> } => x.def !== undefined)
@@ -524,14 +408,10 @@ export function ShipPage({
     engine.rememberPreparationSquad('combat', next)
   }
 
-  /** 舰队检索结果（2026-09-10 船长：先按状态/关键词过滤；2026-09-11：叠加**舰船级别**与**类别**；
-   *  2026-09-12 船长：**类别与级别对调顺序**（先类别、后级别），**两维各自独立判定、不再级联**；
-   *  顺序使用本次打开时的历史编队与收藏快照） */
   const fleetTotal = Object.keys(state.fleet).length
   const currentFleetRepairPlan = engine.fleetRepairPlan()
   const repairShortfall = Math.max(0, repairFleetPlan.totalCost - repairFleetBalance)
   const fq = fleetQ.trim().toLowerCase()
-  /** 任一维筛选或搜索词生效（标题行的计数据此在「N 艘 / 匹配 N / 共 M 艘」之间切换） */
   const fleetFiltered = fq.length > 0 || fleetFilter !== SUB_ALL || fleetTier !== SUB_ALL || fleetRole !== SUB_ALL
   const fleetShown = (() => {
     const list = fleetEntries.filter(({ uid, ship }) => {
@@ -552,33 +432,19 @@ export function ShipPage({
               ? isAi
               : fleetFilter === 'idle'
                 ? !isPilot && !isAi
-                : dur < 1 || armor < 1 // damaged：耐久或装甲未满 = 待维修
+                : dur < 1 || armor < 1
         if (!ok) return false
       }
-      // 舰船类别子筛选（2026-09-12 船长：与级别对调顺序 —— 类别为上位、先选）
-      // 键 = **派生类别判据** `shipCategoryKeyOf`（2026-09-16 船长：装甲线 = role 为 armored，
-      // 或武装舰里装甲占比 > 护盾占比「丙案：只在武装舰里判」）——判据走唯一入口 `shipRolePasses`
-      // （2026-09-19 乙组：舰船仓库与市场原先用原始 role，两处已统一到同一把尺）
       const shipDef = ctx.ships.get(ship.defId ?? uid)
       if (!shipRolePasses(shipDef, fleetRole)) return false
-      // 舰船级别子筛选（2026-09-12 船长：为下位、后选）：键 `t<级别>`，与组装机「舰船蓝图」子筛选同一张单点表
-      // ⚠ 各维“与”关系、互不重置；两维都选具体值时可能出现**空组合**（T4/T5 无采矿舰与武装舰等），
-      // 属船长已确认的取舍（船长选「始终出全五档 + 各类别」，不隐藏空档）
       if (!shipTierPasses(shipDef, fleetTier)) return false
       return true
     })
-    // 筛选只取快照的子集，点选和收藏变化都不在本次窗口内重排。
     const rank = new Map(fleetFormationOrder.map((uid, index) => [uid, index]))
     return list.sort((a, b) => (rank.get(a.uid) ?? Number.MAX_SAFE_INTEGER) - (rank.get(b.uid) ?? Number.MAX_SAFE_INTEGER))
   })()
 
   function handleSwitch(id: string): void {
-    // 2026-09-15 起：星系扫描是无人扫描艇（不占主控、不牵动舰船）⇒ 换驾驶不再需要"先终止扫描"的确认
-    /**
-     * **长途运输会因换驾驶而中断**（`shipyard.changeShip` 里 `cancelHaulingOnSwitch`）⇒
-     * **2026-09-20 船长令**：先弹一次警告（**本趟报酬到站才结，中断就拿不到**），再点一次才真换。
-     * 与活动栏「停止运输」/长途运输页那颗按钮同一把尺、同一组文案（`ui.Hauling.033~035`）。
-     */
     if (engine.state.hauling.active && switchAskId !== id) {
       setSwitchAskId(id)
       onToast(tr('ui.Hauling.033'), true)
@@ -633,7 +499,6 @@ export function ShipPage({
       setRepairFleetOpen(false)
       return
     }
-    // 公司账本：修船支出计入星港维修（维修补给）的营收。
     if (result.totalCost > 0) reportCompanyFlow('repair-service', 'buy', result.totalCost)
     setRepairFleetOpen(false)
     onToast(tr('ui.shipPageFleetRepair.011', {
@@ -644,14 +509,12 @@ export function ShipPage({
     }))
   }
 
-  /** T5：锁定/解锁（2026-09-14 起语义 = **防误移入舰船仓库**：舰队出售按钮已撤） */
   function handleToggleLock(id: string, currentlyLocked: boolean): void {
     const r = engine.lockShipAt(id, !currentlyLocked)
     if (!r.ok) onToast(cmdText(r) || tr('ui.Expedition.393'), true)
     else onToast(currentlyLocked ? tr("ui.ShipPage.123") : tr("ui.ShipPage.124"))
   }
 
-  /** 移入舰船仓库（2026-09-14 船长）：有自定义名 ⇒ 先弹确认（入仓会清名），否则直接入仓 */
   function requestStore(id: string, customName: string | null | undefined): void {
     if (customName) {
       setStoreConfirmId(id)
@@ -666,7 +529,6 @@ export function ShipPage({
     else onToast(clearName ? tr("ui.ShipPage.125") : tr("ui.ShipPage.126"))
   }
 
-  /** 开始改名（恢复默认名 = 直接提交 null） */
   function startRename(id: string, currentCustom: string | null | undefined): void {
     setRenameId(id)
     setRenameDraft(currentCustom ?? '')
@@ -679,20 +541,12 @@ export function ShipPage({
     setRenameDraft('')
   }
 
-  /* 2026-09-14 船长：「之后移除我的舰队内舰船的出售按钮」⇒ 原 `sellBlockers`（出售前预检：装备名列表 +
-     货仓单位）随出售按钮一起退场；入仓的逐档拒因改由 core 单点 `shipStorable` 给（界面只显示它的 reason）。 */
 
-  /* ─────────── 舰船仓库（2026-09-14 船长：「先将舰队页面中的舰船市场换成舰船仓库」） ───────────
-   * 口径：仓里的船 = 组装机产出（同型堆叠计数）；可转入舰队；可直接在市场出售（吃簿即时成交 /
-   * 未成交转限价卖单 / 撤单退回仓库）。筛选三维同「我的舰队」，其中「拥有」按船长裁定**只看仓库库存**。 */
   const [storeQ, setStoreQ] = useState('')
   const [storeOwn, setStoreOwn] = useState<string>(SUB_ALL)
   const [storeRole, setStoreRole] = useState<string>(SUB_ALL)
   const [storeTier, setStoreTier] = useState<string>(SUB_ALL)
-  /** 正在展开出售确认的船型 id（同时只展开一个） */
   const [storeSellId, setStoreSellId] = useState<string | null>(null)
-  /** 舰船仓库全部条目：**有市场行的船型**（沿用原「舰船市场」列表）＋ **仓库里已有的任何船型**
-   *  （后者保证洞内定制船这类不上市场的船在仓里也看得见、能提取） */
   const storeAll = engine.ships.filter(
     (def) =>
       shipStoredCount(state, def.id) > 0 ||
@@ -706,8 +560,6 @@ export function ShipPage({
     if (sq.length > 0 && !def.name.toLowerCase().includes(sq) && !def.id.toLowerCase().includes(sq)) return false
     if (storeOwn === 'owned' && stored <= 0) return false
     if (storeOwn === 'unowned' && stored > 0) return false
-    /* 类别 / 级别：走**唯一入口**（2026-09-19 乙组）——原先这里用原始 `def.role`，与舰队/虫洞/手册的
-     * 派生类别键（`shipCategoryKeyOf`）不一致 ⇒ 已统一（同一型船在各页落进同一类别） */
     if (!shipRolePasses(def, storeRole)) return false
     if (!shipTierPasses(def, storeTier)) return false
     return true
@@ -726,7 +578,6 @@ export function ShipPage({
     if (storeRoleMissing) { setStoreRole(SUB_ALL); setStoreTier(SUB_ALL) }
     if (storeTierMissing) setStoreTier(SUB_ALL)
   }, [fleetRoleMissing, fleetTierMissing, storeRoleMissing, storeTierMissing])
-  /** 舰队（机库）里同型艘数——仓库卡上的参考读数（不是筛选判据） */
   function fleetCountOf(defId: string): number {
     return Object.entries(state.fleet).filter(([uid, s]) => (s.defId ?? uid) === defId).length
   }
@@ -1402,18 +1253,12 @@ export function ShipPage({
   )
 }
 
-/* ═══════════════ AI 指挥中心 ═══════════════ */
 
 function AiCommandPanel({ engine, onToast }: PageProps) {
   const state = engine.state
   const cap = aiCoreCap(state, engine.ctx)
-  const industryBonus = industryAiBonus(state, engine.ctx) // 2026-09-08 工业专用扩容（仅站内产业）
+  const industryBonus = industryAiBonus(state, engine.ctx)
   const idleShips = idleAiShipIds(state)
-  // 计数口径同源（2026-09-08 玩家反馈"执行中 N 与实际行数对不上"）：总启用数含 AI 副船 +
-  // AI 核心驱动的精炼/回收炉与制造线（后者在工业页管理）；本页列表只列副船 → 标题拆分展示，
-  // 保证「标题数 = 行数」不被生产条目撑出假差额。
-  // 2026-09-09 玩家反馈修复：副船名额只受共用上限约束——站内工业占用先抵工业扩容工位，
-  // 超出扩容的部分才计入共用名额（与引擎 aiCoreCapBlock 同口径，见 @whale/core aiCoreCapBlock）
   const assignN = aiCoreShipUsed(state)
   const prodN = aiCoreIndustryUsed(state)
   const used = aiCoreUsed(state)
@@ -1421,29 +1266,17 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
 
   const [shipId, setShipId] = useState('')
   const [coreType, setCoreType] = useState<AiCoreType>(() => bestAiCoreOf(state) ?? 'basic')
-  // 任务类型（2026-09-10 船长：AI 指挥中心统一指派「AI 现在能执行的全部活动」）——
-  // 副船三类（采矿/打捞/掩护巡逻）+ 站内工业两类（精炼炉与回收炉/组装机制造）。
-  // 远征保持隐藏（引擎软下线，一律拒绝受理）。
   const [mode, setMode] = useState<AiAssignMode>('mining')
   const [beltId, setBeltId] = useState(engine.belts[0]?.id ?? '')
   const [salvageGalaxyId, setSalvageGalaxyId] = useState('')
   const [refineItemId, setRefineItemId] = useState('')
   const [craftBpId, setCraftBpId] = useState('')
-  // 2026-09-08 紧急修复（玩家反馈"无法用伽马 AI 核心采矿"）：核心下拉只列有库存类型，
-  // 但 state 初值/记忆可能已无库存（如 basic 用光、只剩伽马）→ 提交与实际显示脱节，
-  // 引擎仍按旧类型(basic)指派被拒。归一为"当前有库存的类型"再用于显示与提交
-  // （与工业页炉卡 usableCores 同款写法——2026-10-02 起都走 core 单点 `usableAiCoresOf`）。
   const usableCores = usableAiCoresOf(state)
   const effCore = usableCores.includes(coreType) ? coreType : (usableCores[usableCores.length - 1] ?? 'basic')
-  /** 副船任务须有共用上限（「AI 核心操作学」）；站内工业另可用「工业自动化」扩容工位——
-   *  共用上限为 0 而工业扩容 > 0 时，只允许指派站内工业任务（回落显示制造）。 */
   const shipTasksOk = cap > 0
   const effMode: AiAssignMode =
     shipTasksOk || mode === 'refine' || mode === 'craft' ? mode : 'craft'
 
-  /** 站内工业可指派的目标（与工业页卡片同口径）：
-   *  精炼炉 = 全部带精炼配方的资源（**只列玩家可见的**——未上线资源不进下拉，见 `visibleItemDefs`）；
-   *  回收炉 = 当前有料（货仓或仓库）的残骸；制造线 = 已学会的蓝图。 */
   const allItemDefs = visibleItemDefs(engine.ctx)
   const refineOres = allItemDefs.filter((d) => d.kind !== 'wreck' && (d.refine?.length ?? 0) > 0)
   const refineWrecks = allItemDefs.filter((d) => d.kind === 'wreck' && industryAvailable(state, engine.ctx, d.id) > 0)
@@ -1456,8 +1289,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
       craftAll.push({
         id: bp.id,
         name: `${engine.ctx.items.get(bp.itemId)?.name ?? bp.itemId} ×${units}`,
-        group: '消耗品蓝图', // l10n-keep：`CraftOption.group` 是**字面量联合 key**（不是文案）⇒ 保持中文原样，
-        //   显示译名在渲染处按 id 取（见 `CRAFT_GROUPS`，2026-09-19 本地化）
+        group: '消耗品蓝图',
         materials: bp.materials,
         buildSeconds: bp.buildSeconds,
       })
@@ -1465,7 +1297,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
       craftAll.push({
         id: bp.id,
         name: engine.ctx.modules.get(bp.moduleId ?? '')?.name ?? bp.name,
-        group: '装备蓝图', // l10n-keep
+        group: '装备蓝图',
         materials: bp.materials,
         buildSeconds: bp.buildSeconds,
       })
@@ -1475,7 +1307,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
     craftAll.push({
       id: sbp.id,
       name: engine.ctx.ships.get(sbp.shipId)?.name ?? sbp.name,
-      group: '舰船蓝图', // l10n-keep
+      group: '舰船蓝图',
       materials: sbp.materials,
       buildSeconds: sbp.buildSeconds,
     })
@@ -1485,9 +1317,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
   const selCraft = craftLearned.find((o) => o.id === effCraftId) ?? null
   const selRefine = refineAll.find((d) => d.id === effRefineId) ?? null
 
-  /** 站内工业两类不需要舰船；副船三类需要 */
   const isIndustryTask = effMode === 'refine' || effMode === 'craft'
-  /** 站内制造线缺料（与工业页卡片同口径 missingMaterials；缺料时不开工并给出清单） */
   const craftShort =
     effMode === 'craft' && selCraft
       ? missingMaterials(state, engine.ctx, {
@@ -1497,11 +1327,6 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
         })
       : []
   const refineHave = effMode === 'refine' && effRefineId ? industryAvailable(state, engine.ctx, effRefineId) : 0
-  /** 指派按钮置灰原因（null = 可指派；文案与下方各下拉一一对应）
-   *  ⚠ **站内工业不看玩家位置**（2026-09-14 船长报障修复）：本页指派的都是 **AI 核心**驱动
-   *  （没有"亲自"这一路），而 AI 核心是留在站内替你干活的分身 ⇒ 原来的
-   *  「需停靠空间站（母港或已建成副站）才能开工」那一条**已删**：跑长途运输/远征时照常能开炉开线
-   *  （判据单点 = core `stationIndustryBlocked`，亲自操作那一路仍要求在基地网络内，见工业页）。 */
   const assignBlock: string | null =
     usableCores.length === 0
       ? tr("ui.ShipPage.130")
@@ -1521,7 +1346,6 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
                     ? tr("ui.ShipPage.170", { p1: craftShort.join('；') })
                     : null
 
-  /** 站内工业 AI 名册（只列 AI 核心驱动的：worker 非 'pilot'；老档免占用的旧作业不计） */
   const aiRefineRuns = engine.refineRunViews().filter((v) => v.worker !== 'pilot')
   const aiMakeRuns = manufacturingRunViews(state, engine.ctx).filter((v) => v.worker !== null && v.worker !== 'pilot')
 
@@ -1533,7 +1357,6 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
   }
 
   function handleAssign(): void {
-    // 站内工业两类：不出舰船，直接把一枚 AI 核心接进炉/线（与工业页卡片同一批引擎命令）
     if (effMode === 'craft') {
       if (!effCraftId) {
         onToast(tr("ui.ShipPage.172"), true)
@@ -1573,13 +1396,11 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
     else onToast(tr("ui.ShipPage.176"))
   }
 
-  /** 取消执行中的 AI 任务（船长 2026-09-05：活动栏简略后须在 AI 指挥中心内可直接取消） */
   function handleCancelAi(sid: string): void {
     if (engine.cancelAiTaskAt(sid)) onToast(tr("ui.ShipPage.177"))
     else onToast(tr("ui.MapPage.077"), true)
   }
 
-  /** 停止站内工业 AI（炉/制造线）——与工业页卡片同一批引擎命令，核心自动归还 */
   function handleStopIndustry(runId: number, isMake: boolean): void {
     const r = isMake ? engine.cancelManufacturingAt(runId) : engine.stopRefineRunAt(runId)
     if (!r.ok) onToast(cmdText(r) || tr('ui.ShipPage.197'), true)
@@ -1909,17 +1730,8 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
   )
 }
 
-/**
- * 协会声望（矿带下拉的锁定判据）。
- *
- * ⚠ **2026-09-26 船长令**：「**修改原先的所有声望门槛，改为根据玩家的累计声望**」⇒ 本处原先直读
- * `state.standings`（可支配那本），现改走 core 唯一入口 `standingOf`（累计获得那本）——改前它与
- * `mining.ts` 的命令侧闸（早已读累计）**不是同一本账**：换过插件图纸后，这里会显示成"锁着"而下拉外
- * 却能开工。同一个矿带锁定在星图页、本页、命令侧三处从此同源。
- */
 function standingOfState(state: GameState): number {
   return standingOf(state, DSI_FACTION_ID)
 }
-// l10n-keep-end
 
 

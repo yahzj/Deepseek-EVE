@@ -14,7 +14,6 @@ function Parts({ rows }: { rows: readonly RangeEwPart[] }) {
   </li>)}</ul>
 }
 
-/** 摘要不依赖悬停；详情按需展开，不挤压战场。 */
 export function RangeEwPanel({ view, expected = false, loadDetails }: { view: RangeEwContest; expected?: boolean; loadDetails?: () => RangeEwView | undefined }) {
   const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
@@ -80,7 +79,6 @@ export function RangeEwFleet({ state, ctx, ids }: { state: GameState; ctx: SimCo
     <Parts rows={rows} /></details>
 }
 
-/** 未知目标不建档、不抽敌卡；已知目标仅在点开后生成只读预览。 */
 export function RangeEwPreview({ state, ctx, card, ids, wormhole }: {
   state: GameState; ctx: SimContext; card?: AnomalyDef; ids?: readonly string[]; wormhole?: NonNullable<BattleState['wormhole']>
 }) {

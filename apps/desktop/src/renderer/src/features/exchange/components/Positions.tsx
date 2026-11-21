@@ -1,13 +1,4 @@
 import { isEn } from '../../../i18n/locale'
-/**
- * 右栏下半：持仓 / 委托 Tabs。
- *
- * 优化排版：
- * - 彻底摒弃单行死板 48px 列宽与横向挤压，采用卡片式两行自适应排版；
- * - 首行：标的代码 + 系统预置徽标 + 方向杠杆 + 今日振幅，右侧为浮盈浮亏与一键平仓；
- * - 次行：数量、开仓均价、保证金占用、强平价，以及醒目人话强平缓冲提示；
- * - 保证在任何宽度与高度下零截断、零列错位。
- */
 import { useRef, useState } from 'react'
 import { Close, TrashCan } from '@carbon/icons-react'
 import type { ExchangeClient, ExchangeOrder, ExchangeSnapshot, OrderSource } from '../client'
@@ -18,7 +9,6 @@ import { progressStyle, useActionProgress } from '../useActionProgress'
 
 type Tab = 'positions' | 'orders'
 
-/** 距强平低于这个百分比：整行红描边并高危提示 */
 const DANGER_DISTANCE_PCT = 15
 
 function sourceLabel(source: OrderSource | undefined): string {
@@ -92,9 +82,10 @@ export function Positions({
       onToast(T.toastNoHolding, true)
       return
     }
+    const cappedQty = Math.min(qty, client.maxOrderQty ?? 10_000_000)
     void runAction(`spot-${target}`, () => client
-      .placeOrder({ clientOrderId: nextId(), code: target, side: 'sell', type: 'market', tif: 'IOC', qty, leverage: 1 })
-      .then((o) => onToast(`${TF.positionClosed(o.code, amount(o.filledQty ?? qty))}`))
+      .placeOrder({ clientOrderId: nextId(), code: target, side: 'sell', type: 'market', tif: 'IOC', qty: cappedQty, leverage: 1 })
+      .then((o) => onToast(`${TF.positionClosed(o.code, amount(o.filledQty ?? cappedQty))}`))
     )
   }
   const closeLeverage = (target: string, side: 'long' | 'short'): void => {

@@ -1,24 +1,10 @@
-/**
- * 网页版更新提示（2026-11-09 船长令：页面检测到有新版本时弹「有更新，点我刷新」）。
- *
- * 背景：挂机玩家长期不关页面，浏览器里跑的一直是打开那一刻加载的旧包——
- * 新规则上线后仍然按旧逻辑发请求，玩家却看不出区别，只会觉得「功能没生效」。
- *
- * 做法：定时 + 回到页面时拉一次线上 index.html（带时间戳绕缓存），
- * 比对入口脚本文件名；和当前运行的不一致就弹一条小提示，由玩家自己点刷新，
- * 不在回合中强行刷新，也不打断正在进行的操作。
- * 桌面版是打包加载、开发服务器没有哈希入口，这里都会自动不启用。
- */
 import { tr } from '../../apps/desktop/src/renderer/src/i18n/locale'
 import { isNewerBuild } from './buildFreshness'
 
-/** 后台挂机时的轮询间隔 */
 const CHECK_INTERVAL_MS = 5 * 60_000
-/** 切回页面/获得焦点时的重查节流 */
 const MIN_RECHECK_MS = 60_000
 const BANNER_ID = 'whale-update-banner'
 
-/** 当前页面正在运行的入口脚本地址（构建产物都在 /assets/ 下）。 */
 function runningEntryScript(): string | null {
   const scripts = Array.from(document.querySelectorAll<HTMLScriptElement>('script[src]'))
   for (const script of scripts) {
@@ -94,19 +80,16 @@ export function startUpdatePrompt(): void {
       const res = await fetch(`${indexUrl}?t=${now}`, { cache: 'no-store' })
       if (!res.ok) return
       const html = await res.text()
-      // 已经弹过就不再重复追加；玩家不刷新时也只保留一条提示。
       if (document.getElementById(BANNER_ID)) return
       if (isNewerBuild(currentSrc, html, indexUrl)) {
         showBanner(() => window.location.reload())
       }
     } catch {
-      // 网络失败、离线、跨域限制都只是这一次没查成，下一轮再试。
     } finally {
       checking = false
     }
   }
 
-  // 首帧先让位给启动流程，之后再开始查。
   window.setTimeout(() => void check(), 10_000)
   window.setInterval(() => void check(), CHECK_INTERVAL_MS)
   document.addEventListener('visibilitychange', () => {

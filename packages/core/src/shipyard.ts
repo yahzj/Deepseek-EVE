@@ -1,15 +1,9 @@
-/**
- * 舰队（v7 船坞）：拥有/丢失舰船、切换驾驶、耐久与维修。
- * 每艘船的 货仓/装备/耐久 都存在 fleet[uid] 里，随船生死。
- * v17（T5-B）：fleet 键 = 实例 uid——同型可多艘（第 1 艘 = 船型 id，
- * 第 2 艘起 = `船型id#N`，固定不回收）；条目带 defId/customName。
- */
 import { ceilFinalQuantity } from './quantity'
 import { bumpFirst } from './firstTasks'
 import { addLog, DEFAULT_START_SHIP_ID, shipLockedReason } from './state'
 import { cannotInterruptReason } from './activityGate'
 import { shipOperationBlockReason } from './shipActionPolicy'
-import { detachExpeditionReturn } from './combat/command/return'
+import { detachExpeditionReturn, detachWorkReturn } from './combat/command/return'
 import type { CommandResult, CoreBlockReason } from './engine'
 import type { GameState, WreckLogCause } from './state'
 import { noteWreckLog } from './shipWrecks'
@@ -31,24 +25,13 @@ import {
   reinforceChanceOfFitted,
 } from './shipWrecks'
 
-/**
- * **2026-10-02 破环搬家**：`addShipToFleet` / `allocateShipUid` / `emptyShipState` /
- * `restoreShipFromWreck` 这四件舰队账本操作搬到 `fleetBook.ts`（断 salvaging↔shipyard 环），
- * 这里**原样再导出**保持既有 `from './shipyard'` 引用不变（先例：fitted.ts / wormhole 层曲线）。
- */
 export { addShipToFleet, allocateShipUid, restoreShipFromWreck, isShipLocked, shipStoredCount } from './fleetBook'
 import { addShipToFleet, isShipLocked, shipStoredCount, stationShipRemovalBlock } from './fleetBook'
 
-/** 该实例的船型数据（uid → fleet 条目 → def；fleet 外/记录缺失返回 undefined） */
 export { fleetDefOf } from './instances'
 
-/** 一艘舰船的显示名（全链统一入口，见 instances.ts） */
 export { shipDisplayName } from './instances'
 
-/**
- * v17：自由改名（Q4 甲扩展，船长定稿：免费、上限 10 字、允许重名）。
- * name = null → 恢复默认名（船型名，同型多艘自动带号）。
- */
 export function renameShip(state: GameState, uid: string, name: string | null): CommandResult {
   const entry = state.fleet[uid]
   if (!entry) return { ok: false, error: '机库里没有这艘船。', errorId: 'core.shipyard.001' }
@@ -66,16 +49,13 @@ export function renameShip(state: GameState, uid: string, name: string | null): 
   return { ok: true }
 }
 
-/** 是否拥有该舰船 */
 export function ownsShip(state: GameState, shipId: string): boolean {
   return shipId in state.fleet
 }
 
-/** 换驾驶只读预检；善后与召回只在全部校验通过后执行。 */
 export function changeShipBlockReason(state: GameState, shipId: string, ctx: SimContext): CoreBlockReason | null {
   if (state.departure) return { error: 'departure-in-progress', errorId: state.departure.progressMs < state.departure.undockMs ? 'core.departure.001' : 'core.departure.002' }
   if (state.hauling.active && state.hauling.fleetLeg) return { error: 'hauling-return-required', errorId: 'core.industrial.006' }
-  // **进洞船只所有行为锁定**（船长 2026-09-13：锁，进洞船只所有行为都锁定。包括维修。）
   const lock = shipLockedReason(state, shipId, '换驾驶到它')
   if (lock) return { error: lock }
   if (shipId === state.shipId) {
@@ -92,19 +72,11 @@ export function changeShipBlockReason(state: GameState, shipId: string, ctx: Sim
   }
   const def = fleetDefOf(state, ctx, shipId)
   if (!def) return { error: `未知舰船：${shipId}。`, errorId: 'core.shipyard.036', errorParams: { p1: shipId } }
-  // 既有换驾驶允许召回目标AI船，但不允许接管它的战斗或真实返航。
   const assignments = { ...state.aiAssignments }
   const targetTask = assignments[shipId]?.task
   if (targetTask?.kind !== 'expedition' || targetTask.phase !== 'battle' && targetTask.battle === null) delete assignments[shipId]
   const targetBlock = shipOperationBlockReason({ ...state, aiAssignments: assignments }, ctx, shipId, 'configure')
   if (targetBlock) return targetBlock
-  /**
-   * **锁定态统一判据**（**2026-09-21 船长令**：「**处在战斗中的时候也设置为不可取消**」＋「3 纳入」
-   * ＝ 换驾驶与进洞并入同一条单点）：**战斗中 / 人在洞里 / 换港返航途中** ⇒ 一律拒，措辞与各
-   * `start*` 入口共用 `activityGate.cannotInterruptReason`（原先换驾驶只靠 `shipLockedReason` 挡"换到
-   * 洞内船"，本船在洞/在战斗里照样能换 ⇒ 现在一条判据全收）。
-   * ⚠ 放在所有"停机"副作用之前（与下面那条顺序纪律同一个道理）。
-   */
   const lockReason = cannotInterruptReason(state)
   if (lockReason !== null) {
     const id = lockReason.includes('战斗中')
@@ -114,12 +86,6 @@ export function changeShipBlockReason(state: GameState, shipId: string, ctx: Sim
         : 'core.activityGate.006'
     return { error: lockReason, errorId: id }
   }
-  /**
-   * **顺序纪律（2026-09-20 修）**：能**拒绝**这次换船的校验一律排在"终止长途运输"之前——
-   * 否则玩家点了换驾驶、被别的原因拒掉，本趟运输却已经被杀掉（看到的只是"没换成功"，实际白丢一趟报酬）。
-   * ⇒ 远征（非返航态）与掩护巡逻两条先查；**终止运输居中**（它顺带把 `awayGalaxy`/`dockedSite` 复位，
-   * 是"运输中换船"能过下面那道野外闸的前提）；野外与未建成站两条照旧在后。
-   */
   if (state.expedition.active && state.expedition.phase !== 'back') {
     return {
       error:
@@ -131,26 +97,15 @@ export function changeShipBlockReason(state: GameState, shipId: string, ctx: Sim
     return { error: '舰船正前往掩护巡逻星系途中——到港后再换船。', errorId: 'core.shipyard.006' }
   }
   const returning = state.shipReturns[state.shipId] !== undefined
-  /**
-   * **长途运输：换驾驶 = 立即终止**（2026-09-09 船长定：虚拟货无残留、无惩罚）。
-   * 位置见上面那条顺序纪律：只有"真能换"的调用才会走到这里。
-   * 界面侧另配了同款两讨伐确认（`ui.Hauling.033~035`）：先警告"中断拿不到本趟报酬"，再点一次才换。
-   */
   const projected = state.hauling.active
     ? { ...state, awayGalaxy: null, dockedSite: state.hauling.fromSiteId }
     : returning ? { ...state, awayGalaxy: null, dockedSite: null } : state
-  // 野外停留仍不可切换；已安排独立返航时只投影新驾驶船的港内位置。
   if (projected.awayGalaxy !== null) {
     const where = state.transit.active
       ? state.transit.delivery
         ? '正在交付航线途中'
         : '正在返航空间站途中'
       : `停留在「${ctx.galaxies.get(projected.awayGalaxy)?.name ?? projected.awayGalaxy}」星系（野外）`
-    /**
-     * **⟪文案调整 2026-10-02⟫ 拒因结构化（批① 舰船域）**：三种"在哪"各给一个 id ——
-     * 原先整句里夹着 `where` 这个**中文短语参数**，英文界面会中英混排；拆成三条模板后
-     * 中文输出**逐字不变**（模板渲染结果与原来的 `${where}` 拼接完全一致）。
-     */
     const awayName = ctx.galaxies.get(projected.awayGalaxy)?.name ?? projected.awayGalaxy
     const whereId = state.transit.active ? (state.transit.delivery ? 'core.shipyard.037' : 'core.shipyard.038') : 'core.shipyard.039'
     return {
@@ -159,7 +114,6 @@ export function changeShipBlockReason(state: GameState, shipId: string, ctx: Sim
       errorParams: state.transit.active ? {} : { p1: awayName },
     }
   }
-  // 2026-09-08（船长定）：未建成建站点不视为站点——建成（并入基地网络）后才开放换驾驶
   if (projected.dockedSite !== null) {
     const dockSite = ctx.stations.get(projected.dockedSite)
     const prog = dockSite ? state.stationSites[dockSite.id] : null
@@ -172,7 +126,6 @@ export function changeShipBlockReason(state: GameState, shipId: string, ctx: Sim
       }
     }
   }
-  // 只释放已确认的换驾驶善后，不释放快递、探索、遭遇战或星球运输。
   const handover = {
     ...projected,
     shipReturns: { ...projected.shipReturns },
@@ -181,17 +134,14 @@ export function changeShipBlockReason(state: GameState, shipId: string, ctx: Sim
     hauling: { ...state.hauling, active: false },
     expedition: { ...state.expedition, active: false },
   }
-  // 换驾驶只释放旧船的返航限制，真实航程仍留在原账本，目标舰限制不变。
   if (returning) delete handover.shipReturns[state.shipId]
   return shipOperationBlockReason(handover, ctx, state.shipId, 'cargo')
 }
 
-/** 玩家指令：换驾驶，旧船采矿/打捞/远征返航沿用原善后账本。 */
 export function changeShip(state: GameState, shipId: string, ctx: SimContext): CommandResult {
   const blocked = changeShipBlockReason(state, shipId, ctx)
   if (blocked) return { ok: false, ...blocked }
   if (state.shipReturns[state.shipId]) {
-    // 首拍前的占位返航要在旧船归属下兑现，不能交给下一拍的新驾驶船处理。
     const pending = state.pendingActivityReturn
     if (pending?.kind === 'mining') retireMiningShip(state, ctx, { beltId: pending.id, preserveExisting: true, progress: pending.progress })
     else if (pending?.kind === 'salvaging') retireSalvageShip(state, ctx, { galaxyId: pending.id, preserveExisting: true, progress: pending.progress })
@@ -203,8 +153,6 @@ export function changeShip(state: GameState, shipId: string, ctx: SimContext): C
   delete state.pendingStationActivity
   if (state.hauling.active) cancelHaulingOnSwitch(state, ctx)
   if (state.expedition.active && state.expedition.phase === 'back') {
-    // 2026-09-08（船长定）：返航中允许换船——本次返航转为旧船"远征善后"账本（剩余航程照走、
-    // 到港自动卸货入仓库），并立即停止重复清剿
     const exp = state.expedition
     const oldShip = state.shipId
     const oldName = shipDisplayName(state, ctx, oldShip)
@@ -229,20 +177,16 @@ export function changeShip(state: GameState, shipId: string, ctx: SimContext): C
       { p1: oldName, p2: Math.max(1, Math.round(remainMs / 1000)) },
     )
   }
-  // 采矿作业中：直接切换成功——旧船按其当前阶段自动返航（到港自动卸货入仓库），采矿作业随之结束
   if (state.mining.active) {
     retireMiningShip(state, ctx)
   }
-  // 打捞作业中：直接切换成功——旧船按其打捞阶段自动返航到港卸货，作业结束（2026-09-09 与采矿同构）
   if (state.salvaging.active) {
     retireSalvageShip(state, ctx)
   }
-  // 2026-09-09（修复：切驾驶到 AI 执勤中的副船后核心卡死）：目标船若有 AI 任务，先召回并归还核心——
-  // 否则任务仍挂在该船名下继续占用核心，而船已变驾驶船（AI 面板只列副船），该任务既不可见也无法取消，
-  // 核心随之「消失」（玩家场景：伽玛核心挖矿船被切去跑运输后，伽玛核心不见了）。
   if (shipId in state.aiAssignments) {
     cancelAiTask(state, shipId, ctx)
   }
+  detachWorkReturn(state)
   state.shipId = shipId
   addLog(state, 'fleet', `已切换到驾驶 ${shipDisplayName(state, ctx, shipId)}。`, 'core.shipyard.018', {
     p1: shipDisplayName(state, ctx, shipId),
@@ -251,31 +195,16 @@ export function changeShip(state: GameState, shipId: string, ctx: SimContext): C
 }
 
 
-/**
- * 弃船（损失舰船：连同货仓与装备）。自动补驾驶船：优先另一艘，否则补发初始磷虾。
- *
- * **2026-09-26 加 `wreckGalaxyId`（船长令：「玩家舰船被摧毁后，如果是在**非虫洞的正常星系**内，
- * 在该星系生成一个'<被摧毁的舰船名称>的残骸'」）**：**只有传了它才生成残骸**——
- * 全仓 5 个调用点里**只有那两处"正常星系远征失利遭追击"传**（`expedition` 主控 · `ai` 副船），
- * 虫洞那三处（被击沉 / 失联）不传 ⇒ **结构上不可能误生成**，不靠"看损失原因字符串"这种脆判据。
- *
- * ⚠ **快照必须在 `delete state.fleet[shipId]` 之前抓**：删完再取装配与无人机就什么都没有了。
- */
 export function loseShip(
   state: GameState,
   shipId: string,
   ctx: SimContext,
   reason: string,
   wreckGalaxyId?: string,
-  /** 沉船记录用（**2026-09-27 船长令**）：结构化原因 + 虫洞层数（没有残骸的虫洞损失也要记） */
   meta?: { cause?: WreckLogCause; wormholeDepth?: number; reasonId?: string },
 ): void {
   const display = shipDisplayName(state, ctx, shipId)
   const wasCurrent = state.shipId === shipId
-  /**
-   * **沉船记录**（2026-09-27 船长令）：与残骸快照**同序** —— 必须在删船之前抓装配/插件/无人机。
-   * 记录只留结构化字段（原因枚举 / 星系 id / 虫洞层数 / 时间），文案由界面走 l10n 渲染。
-   */
   {
     const doomed = state.fleet[shipId]
     const defId = doomed?.defId ?? uidDefId(shipId)
@@ -296,10 +225,6 @@ export function loseShip(
       ...(doomed?.droneLoad !== undefined ? { droneLoad: doomed.droneLoad } : {}),
     })
   }
-  /**
-   * **残骸快照**（顺序敏感，见函数头注）：船型、那一刻的显示名（含玩家自定义名）、三层血里的
-   * 结构与装甲、装配与无人机舱、以及"加固结构插件"的整船回收率之和（接口见 `types.ModuleDef.hullRecoveryChance`）。
-   */
   if (wreckGalaxyId !== undefined && wreckGalaxyId.length > 0) {
     const doomed = state.fleet[shipId]
     const defId = doomed?.defId ?? uidDefId(shipId)
@@ -315,22 +240,10 @@ export function loseShip(
         ...(doomed?.armorPct !== undefined ? { armorPct: doomed.armorPct } : {}),
         ...(doomed?.fitted !== undefined ? { fitted: doomed.fitted } : {}),
         ...(doomed?.droneLoad !== undefined ? { droneLoad: doomed.droneLoad } : {}),
-        // 插件快照（船长 2026-09-26：「玩家回收按插件数量直接回收成黑匣」）——与 fitted 是两本账
         ...((doomed?.plugs?.length ?? 0) > 0 ? { plugs: [...(doomed?.plugs ?? [])] } : {}),
-        // 加固结构插件走"插件槽" ⇒ 两处都要算进去（它不在 `fitted` 里）
         reinforceChance: reinforceChanceOfFitted(doomed?.fitted, ctx, doomed?.plugs),
         createdAtWallMs: state.wallMs,
       })
-      /**
-       * ⚠ **档位 = `fleet`**（**2026-09-26 合并时对齐一号的分类**）：本条与上面那条「已损毁，货仓与装备
-       * 一并遗失」（`core.shipyard.020`）是同一件事的两句，「事件日志重新分类」那批把**舰船事件统一归
-       * `fleet`** ⇒ 本条跟着归 `fleet`，不让同一件事的两句落进两个页签。
-       */
-      /**
-       * ⟪文案调整 2026-10-02⟫ 正文与表文（`core.shipyard.033`）对齐：界面按 id 渲染 ⇒ 玩家看到的
-       * 一直是表文那句（带「」与「——…回收部分装备」），而正文此前写成括号＋少半句 ⇒ 按表文改写，
-       * **玩家可见零变化**。见 `docs/design/return-log-copy-20261002.md` §6 的同类普查。
-       */
       addLog(state, 'fleet', `${display} 的残骸留在「${ctx.galaxies.get(wreckGalaxyId)?.name ?? wreckGalaxyId}」——48 小时内可打捞回收部分装备。`, 'core.shipyard.033', {
         p1: display,
         p2: ctx.galaxies.get(wreckGalaxyId)?.name ?? wreckGalaxyId,
@@ -353,10 +266,8 @@ export function loseShip(
     p2: display,
   })
 
-  // 当前驾驶船被弃 → 自动补驾驶（2026-09-09 船长定：只选空闲船；全被 AI 占用或一艘不剩 → 保底磷虾，绝不占用 AI 执勤中的船）
   if (wasCurrent) reconcilePilotShip(state, ctx)
 
-  // 异常守卫：作业引用的船已经没了就强制停下
   if (state.mining.active && !state.fleet[state.shipId]) {
     state.mining.active = false
     state.mining.phase = 'mining'
@@ -375,32 +286,12 @@ export function loseShip(
   }
 }
 
-/** 2026-09-09（船长定）：驾驶船不可用原因——记录缺失 或 正被 AI 执勤占用（弃船补驾驶曾误选 AI 船，造成"驾驶船 = AI 执勤船"双驾驶重叠）。
- *  **2026-10-02 破环搬家**：本判据搬到 `activityGate.ts`（主控活动判据的家）；调用方一律改从
- *  activityGate 读——**不在这里再导出**（再导出会让 mining/salvaging → shipyard 的运行期边原样保留）。 */
 import { pilotUnavailableReason } from './activityGate'
 
-/**
- * 2026-09-09（船长定）：保证存在可驾驶船（幂等自愈，弃船补驾驶与引擎逐 tick 共用）——
- * 驾驶船缺失或被 AI 执勤占用时：优先改派"空闲"（未 AI 占用）舰船；无空闲（全被 AI 占用
- * 或一艘不剩）→ 协会补发保底磷虾，绝不让 AI 执勤中的船兼任驾驶船。修正发生时记一条日志。
- *
- * ⚠ **2026-09-15 船长追加「优先把主控交给洞内船」**：被弃的这艘若是**虫洞那趟的编队成员**
- * （= 它是在洞里战沉的），**先把主控交给同一趟里还活着的编队船**；没有才落回上面的既有口径。
- * 详见函数内注释。
- */
 export function reconcilePilotShip(state: GameState, ctx: SimContext): void {
   const reason = pilotUnavailableReason(state)
   if (reason === null) return
   const wasBusy = state.fleet[state.shipId] !== undefined
-  /**
-   * **洞内优先（船长 2026-09-15：「3 优先把主控交给洞内船」）**：原来一律"站内第一艘空闲船"，
-   * 实测结果是**把主控交给开局那艘磷虾**——而洞里那趟还在继续、活动位也还占着（"人在洞里"），
-   * 于是出现"主控在洞外、却在跑虫洞"的别扭状态。交给洞内幸存船之后语义自洽（它本来就被洞内锁定）。
-   *
-   * 判据 = `run.fleet.includes(state.shipId)`：`loseShip` 里**先 delete 再调本函数**，而 `run.fleet`
-   * 要到收口时才摘沉船 ⇒ 此刻仍认得出"这艘是洞内编队的"。mate 只挑**还在舰队里且未被 AI 占用**的。
-   */
   const run = state.wormhole.run
   if (run && run.fleet.includes(state.shipId)) {
     const mate = run.fleet.find((id) => state.fleet[id] !== undefined && state.aiAssignments[id] === undefined)
@@ -439,15 +330,11 @@ export function reconcilePilotShip(state: GameState, ctx: SimContext): void {
   )
 }
 
-/** 当前船耐久 0~1 */
 export function durabilityOf(state: GameState, shipId: string): number {
   return state.fleet[shipId]?.durability ?? 0
 }
 
-/* ───────── P2 修理数值（2026-09-05 定稿）：组件=固定 HP×容量增幅；港内=按缺失 HP×费率×科技档 ───────── */
 
-/** 舰船科技档权重（低档便宜、高档贵；赠舰按 甲+结构 总量归档）：
- * L1 <200k / 池<200 → ×0.4；L2 <800k / 池<400 → ×0.7；L3 <1.5M / 池<700 → ×1.0；其余（旗舰级）→ ×1.4 */
 function repairTierWeight(def: { priceIsk: number; armorHp?: number; hullHp?: number }): number {
   const price = def.priceIsk ?? 0
   const poolKey = (def.armorHp ?? 0) + (def.hullHp ?? 0)
@@ -458,7 +345,6 @@ function repairTierWeight(def: { priceIsk: number; armorHp?: number; hullHp?: nu
   return 1.4
 }
 
-/** 该船装甲/结构层的“满值（含模块与技能放大）”与“出厂基础”——组件固定回复按 层满值/基础 = 容量增幅 */
 function layerCaps(
   state: GameState,
   ctx: SimContext,
@@ -470,9 +356,6 @@ function layerCaps(
   return { capA: spec.hp.a, capH: spec.hp.h, baseA: def.armorHp ?? 0, baseH: def.hullHp ?? 0 }
 }
 
-/** 装甲/结构层的满值（含模块与技能放大）——对外只读口。
- *  与维修、修理组件同一把尺（`layerCaps`）；低安遇袭「先扣装甲再进结构」按它换算 HP
- *  （2026-09-11 船长定：伤害改为按敌人火力折算，见 `encounters.ts`）。 */
 export function hullLayerCaps(
   state: GameState,
   ctx: SimContext,
@@ -481,8 +364,6 @@ export function hullLayerCaps(
   return layerCaps(state, ctx, shipId)
 }
 
-/** 一枚组件对 甲/结构 各自的实际回复 HP = 基础值 × 层容量增幅 × 舰体快修学（+10%/级）
- *  （技能系数走 `repair.quickRepairFactor`——与船体维修装置每跳共用同一处，见该模块头注释） */
 function kitHealFor(
   state: GameState,
   ctx: SimContext,
@@ -495,10 +376,6 @@ function kitHealFor(
   return { a: Math.max(1, ceilFinalQuantity(baseHp * aMult * skill)), h: Math.max(1, ceilFinalQuantity(baseHp * hMult * skill)) }
 }
 
-/** 维修某艘拥有船的费用（ISK；维修工程学 −10%/级 × 空间站协议学 −5%/级乘算；
- * 2026-09-08 船长定：移除「合计下限 40%」护栏，双满级实付 37.5%）。
- * P2 定稿：费用 =（结构缺失 HP + 装甲缺失 HP）× 每 HP 费率 × 科技档权重——与装甲/结构池同尺，
- * 低档船便宜、旗舰级贵（旧“按货舱计费”已废弃：货舰修不起且与池脱钩）。 */
 export function repairCostIsk(state: GameState, shipId: string, ctx: SimContext): number {
   const fleetShip = state.fleet[shipId]
   const def = fleetDefOf(state, ctx, shipId)
@@ -513,7 +390,6 @@ export function repairCostIsk(state: GameState, shipId: string, ctx: SimContext)
   return Math.ceil(missingHp * ctx.balance.repair.perHpCost * repairTierWeight(def) * disc)
 }
 
-/** 玩家指令：维修某艘拥有船（回满耐久与装甲；钱不够时按比例修复可用部分） */
 export function repairShip(state: GameState, shipId: string, ctx: SimContext): CommandResult {
   const blocked = shipOperationBlockReason(state, ctx, shipId, 'repair')
   if (blocked) return { ok: false, ...blocked }
@@ -536,7 +412,6 @@ export function repairShip(state: GameState, shipId: string, ctx: SimContext): C
   state.wallet.isk -= cost
   fleetShip.durability = 1
   fleetShip.armorPct = 1
-  // 「第一次维修舰船」与「维修技师」链：**港内付费维修**记一次（2026-09-17 教程重做批）
   bumpFirst(state, 'repairs')
   addLog(
     state,
@@ -555,7 +430,6 @@ export interface FleetRepairPlan {
   blockedCount: number
 }
 
-/** 汇总舰队中当前可维修的受损舰船、费用与状态计数；不修改存档。 */
 export function fleetRepairPlan(state: GameState, ctx: SimContext): FleetRepairPlan {
   const repairableShipIds: string[] = []
   let totalCost = 0
@@ -587,7 +461,6 @@ export type FleetRepairResult =
   | { ok: true; repairedCount: number; totalCost: number; fullCount: number; blockedCount: number }
   | CommandResult
 
-/** 全队港内维修：先完整校验当前目标与总费用，再逐船复用单船维修契约。 */
 export function repairFleet(state: GameState, ctx: SimContext): FleetRepairResult {
   const plan = fleetRepairPlan(state, ctx)
   if (plan.repairableShipIds.length === 0) {
@@ -641,36 +514,15 @@ export function repairFleet(state: GameState, ctx: SimContext): FleetRepairResul
   }
 }
 
-/* ───────── T5 船只锁定（防误售，跨会话持久） ───────── */
 
-/** 一次自动修理的结果（供"组件是否够"的判定用） */
 export interface RepairWithKitsResult {
-  /** 消耗的组件枚数 */
   used: number
-  /** 是否修到目标（装甲与结构**都** ≥ target） */
   reachedTarget: boolean
-  /** 是否因**组件耗尽**而中断（未达标且已无件可用）——低安遇袭「断料即返港」判据 */
   outOfKits: boolean
-  /**
-   * **本船是否装着"能吃组件的"船体维修装置**（2026-09-16 船长改判新增）。
-   * `false` ⇒ 自动修补**根本不会发生**（既不消耗组件、也不写日志）——
-   * 调用方据此把"没带装置"与"带了装置但组件耗尽"分开说话（两者的玩家下一步动作不同）。
-   */
   hasDevice: boolean
-  /** 本次**允许消耗**的组件 id（跟着装置走：装配顺序、去重；无装置 = 空表） */
   kitIds: string[]
 }
 
-/**
- * **自动修补可用的修理组件 = 跟着装置走**（2026-09-16 船长原话：
- * 「洞外，原本的损伤严重自动消耗维修组件功能，需要修改。**改成需要玩家携带对应的船体维修装置。
- * 消耗的维修组件类型也跟着装置走**」）。
- *
- * 口径：本船**装配中**的维修装置各自的 `repairKit`（装配顺序、去重）——
- * 民用装置 ⇒ 民用修理组件；MK1/MK2 ⇒ 军用修理组件；两者都装 ⇒ 两种都能吃。
- * ⚠ **无装配装置**（或只有"无组件自愈件"`repairFree`、生体件没有 `repairKit`）⇒ **空表 = 不做自动修补**
- * （旧口径"不看装置、民用优先"**作废**）。
- */
 export function repairKitIdsOf(state: GameState, ctx: SimContext, shipId: string): string[] {
   const ship = state.fleet[shipId]
   if (!ship) return []
@@ -682,16 +534,6 @@ export function repairKitIdsOf(state: GameState, ctx: SimContext, shipId: string
   return out
 }
 
-/**
- * 自动用修理组件的**唯一单点**（T8 P2 定稿；2026-09-12 扩口为逐船 + 可选仓库来源）。
- * - **修哪艘**：`shipId`（2026-09-12 前只修驾驶船；现主控与 AI 副船共用）。
- * - **来源**：`'cargo'`（默认）只读货舱 = **重复清剿的既有口径，行为不变**；
- *   `'cargo+warehouse'` 货舱优先、仓库兜底 = **低安遇袭自动修理**（船长 2026-09-12「用组件，包括仓库组件」，
- *   与战斗预载 `preloadRepairFor` 同序）。
- * - **前置（2026-09-16 船长改判）**：必须**装着船体维修装置**；**取件只认装置指定的那一种组件**
- *   （民用装置吃民用、MK1/MK2 吃军用——旧口径"民用优先"作废）。
- * - 每次回复 = 基础 HP × 层容量增幅 × 舰体快修学（与手动同口径，组件本体数值不变）。
- */
 export function repairWithKitsFor(
   state: GameState,
   ctx: SimContext,
@@ -699,7 +541,6 @@ export function repairWithKitsFor(
   target = 0.5,
   source: 'cargo' | 'cargo+warehouse' = 'cargo',
 ): RepairWithKitsResult {
-  // **进洞船只所有行为锁定**（船长 2026-09-13：锁，进洞船只所有行为都锁定。包括维修。）
   const lock = shipLockedReason(state, shipId, '用维修装置修它')
   if (lock) return { used: 0, reachedTarget: true, outOfKits: false, hasDevice: false, kitIds: [] }
   const fleetShip = state.fleet[shipId]
@@ -707,7 +548,6 @@ export function repairWithKitsFor(
   const caps = layerCaps(state, ctx, shipId)
   const damaged = (): boolean => fleetShip.durability < target || (fleetShip.armorPct ?? 1) < target
   const kitIds = repairKitIdsOf(state, ctx, shipId)
-  /** 没带"能吃组件的维修装置" ⇒ 自动修补不启动（也不改任何状态） */
   if (kitIds.length === 0) {
     return { used: 0, reachedTarget: !damaged(), outOfKits: false, hasDevice: false, kitIds: [] }
   }
@@ -720,7 +560,6 @@ export function repairWithKitsFor(
     if (kitId === null) break
     const def = ctx.items.get(kitId)!
     const heal = kitHealFor(state, ctx, def.repairRestore!, caps)
-    // 「第一次维修舰船」与「维修技师」链：自动修理**每消耗一枚组件记一次**（与手动用组件同口径）
     bumpFirst(state, 'repairs')
     if (caps) {
       fleetShip.durability = Math.min(1, Math.round((fleetShip.durability + heal.h / caps.capH) * 1000) / 1000)
@@ -731,7 +570,6 @@ export function repairWithKitsFor(
     usedByType[kitId] = (usedByType[kitId] ?? 0) + 1
   }
   if (used > 0) {
-    // 组件类型跟着装置走 ⇒ 日志里点名用的是哪一种（玩家据此判断该补哪种组件）
     const kinds = Object.entries(usedByType)
       .map(([id, n]) => `${ctx.items.get(id)?.name ?? id} ×${n}`)
       .join('、')
@@ -753,10 +591,6 @@ export function repairWithKitsFor(
   return { used, reachedTarget: reached, outOfKits: !reached, hasDevice: true, kitIds }
 }
 
-/**
- * 取一枚修理组件并扣账（**只认 `allowed` 里的 id**；`cargo+warehouse` 时货舱优先、仓库兜底）；
- * 无件返回 null。⚠ 2026-09-16 起不再"民用优先/兜底其它组件"——可用种类由**装置**决定。
- */
 function takeRepairKit(
   state: GameState,
   ctx: SimContext,
@@ -782,20 +616,10 @@ function takeRepairKit(
   return null
 }
 
-/**
- * 自动用修理组件修**驾驶船**至 target（重复清剿阈值默认 0.5），或组件耗尽。
- * ⚠ 口径固定为**只读货舱**（2026-09-12 前的唯一口径，重复清剿仍走它，行为一字不变）；
- * ⚠ **2026-09-16 起需要该船装着船体维修装置**（见 `repairWithKitsFor`），返回值带 `hasDevice`
- * 供调用方把"没带装置"与"组件耗尽"分开说话。
- */
 export function repairWithKits(state: GameState, ctx: SimContext, target = 0.5): RepairWithKitsResult {
   return repairWithKitsFor(state, ctx, state.shipId, target, 'cargo')
 }
 
-/**
- * 手动使用一枚修理组件（驾驶船货仓，民用优先；2026-09-05 修理系统，P2 定稿）：
- * 对「结构」与「装甲」各恢复“基础 HP × 层容量增幅 ×（1+10%/级 抢修工程学）”；无组件/未受损返回原因。
- */
 export function useOneRepairKit(state: GameState, ctx: SimContext): CommandResult {
   const fleetShip = state.fleet[state.shipId]
   if (!fleetShip) return { ok: false, error: '舰队里找不到当前舰船。', errorId: 'core.shipyard.007' }
@@ -831,7 +655,6 @@ export function useOneRepairKit(state: GameState, ctx: SimContext): CommandResul
     fleetShip.armorPct = Math.min(1, Math.round(((fleetShip.armorPct ?? 1) + heal.a / caps.capA) * 1000) / 1000)
   }
   const shipName = shipDisplayName(state, ctx, state.shipId)
-  // 「第一次维修舰船」与「维修技师」链：手动用掉一枚修理组件记一次（与港内付费维修同口径）
   bumpFirst(state, 'repairs')
   addLog(
     state,
@@ -848,7 +671,6 @@ export function useOneRepairKit(state: GameState, ctx: SimContext): CommandResul
   return { ok: true }
 }
 
-/** 玩家指令：锁定 / 解锁一艘拥有的船（防误售） */
 export function lockShip(state: GameState, shipId: string, locked: boolean, ctx: SimContext): CommandResult {
   if (!ownsShip(state, shipId)) return { ok: false, error: `机库里没有这艘船。`, errorId: 'core.shipyard.001' }
   const name = shipDisplayName(state, ctx, shipId)
@@ -870,23 +692,7 @@ export function lockShip(state: GameState, shipId: string, locked: boolean, ctx:
   return { ok: true }
 }
 
-/* ═══════════════ 舰船仓库（2026-09-14 船长裁定 · 本会话新批） ═══════════════
- * 船长原话（照抄）：「接下来实现舰船出售，建议先将舰队页面中的舰船市场换成舰船仓库，所有组装机生产的
- * 舰船都放进舰船仓库内，并允许堆叠数量。舰船仓库内添加筛选：全部/已拥有/未拥有。以及和我的舰队页面
- * 相同的类别，级别筛选。玩家可以从舰船仓库中将船转移到我的舰队内。而我的舰队内的无装配满耐久的舰船
- * 也可以转移到舰船仓库。之后移除我的舰队内舰船的出售按钮。」＋「舰船仓库是用于方便市场出售舰船的」。
- *
- * 口径（与本仓 design 稿 `docs/design/ship-warehouse-20260914.md` 同源）：
- * ① 仓库 = **纯计数**（`state.shipStore`：船型 id → 艘数）；仓里的船一律"全新"——
- *    满耐久（结构＋装甲都是 100%）· 无装配 · 货仓空 · 无自定义名；
- * ② 舰队 → 仓库（`storeShip`）：还要**非驾驶中 · 无 AI 任务 · 非返航善后中 · 未锁定 · 不受进洞/自动探索锁**；
- *    有自定义名 ⇒ 报 `named`，由界面弹确认、确认后带 `clearName` 再来（**不静默丢名字**）；
- * ③ 仓库 → 舰队（`unstoreShip`）：即时、免费，`addShipToFleet` 生成全新实例；**舰队不设上限**；
- * ④ 出售走市场挂单（`market.sellStoredShipAtMarket`）：先吃收购簿即时成交，未成交留在簿上，
- *    **撤单退回舰船仓库**（escrow 记 `from: 'store'`）；
- * ⑤ 老档缺省空 ⇒ **零迁移**（`save.ts` 只收正整数）。 */
 
-/** 该船型的**总持有** = 仓库 ＋ 在役舰队（问"我有没有这型船"一律走这里；筛选口径另见设计稿） */
 export function shipOwnedCount(state: GameState, defId: string): number {
   let n = shipStoredCount(state, defId)
   for (const [uid, s] of Object.entries(state.fleet)) {
@@ -895,18 +701,12 @@ export function shipOwnedCount(state: GameState, defId: string): number {
   return n
 }
 
-/**
- * 入仓校验（界面按钮的置灰/拒因与引擎同源）：不满足 ⇒ `{ ok: false, reason }`。
- * `named: true` 是**唯一可以确认放行**的一档（有自定义名）：界面弹「入仓将清除自定义名」，
- * 玩家确认后带 `{ clearName: true }` 再调 `storeShip`。
- */
 export function shipStorable(
   state: GameState,
   uid: string,
 ): {
   ok: boolean
   reason?: string
-  /** 本地化 id（只有"舰船插件"那一条带；界面优先用它取当前语言，缺省回退 `reason` 原文） */
   reasonId?: string
   reasonParams?: Record<string, string | number>
   named?: boolean
@@ -918,14 +718,10 @@ export function shipStorable(
   if (state.shipId === uid) return { ok: false, reason: '正在驾驶的船不能入仓：先换到别的船上。', reasonId: 'core.shipyard.047' }
   if (state.aiAssignments[uid]) return { ok: false, reason: 'AI 任务执行中的船不能入仓，先取消指派。', reasonId: 'core.shipyard.048' }
   if (isShipLocked(state, uid)) return { ok: false, reason: '该船已锁定（防误操作）：先到舰船页解锁。', reasonId: 'core.shipyard.049' }
-  // ⚠ 判据与 `mining.shipInReturn` 同义；**这里直接读 state**（不 import mining：mining → shipyard 已有依赖边，
-  // 反向 import 会成环——与 `state.shipLockedReason` 直读 `state.wormholeAuto` 同款处置）
   if (uid in state.shipReturns) return { ok: false, reason: '该船正在返航卸货（换船善后），到港后才能入仓。', reasonId: 'core.shipyard.050' }
   const cargoUnits = Object.values(ship.cargo).reduce((a, b) => a + b, 0)
   if (cargoUnits > 0) return { ok: false, reason: '货仓里有物品，请先清空。', reasonId: 'core.shipyard.051' }
   if (allFittedIds(ship.fitted).length > 0) return { ok: false, reason: '还装着模块，请先卸下。' }
-  // 舰船插件（船长 2026-09-26：「装有插件的舰船无法放入舰船仓库」）——判据单点 `plugBlockReasonOf`
-  // ⚠ 拒因是**结构化**的（`textId` ＋ 中文原文）：界面按 `textId` 取当前语言，引擎日志用 `text`
   const plugBlock = plugBlockReasonOf(state, uid)
   if (plugBlock) return { ok: false, reason: plugBlock.text, reasonId: plugBlock.textId, reasonParams: plugBlock.params }
   if ((ship.durability ?? 1) < 1 || (ship.armorPct ?? 1) < 1) {
@@ -935,7 +731,6 @@ export function shipStorable(
   return { ok: true }
 }
 
-/** 玩家指令：把机库里的一艘船移入舰船仓库（同型 +1 艘）。`clearName` = 已在确认弹层同意清掉自定义名 */
 export function storeShip(
   state: GameState,
   uid: string,
@@ -952,7 +747,6 @@ export function storeShip(
   const defId = ship.defId ?? uidDefId(uid)
   const name = shipDisplayName(state, ctx, uid)
   delete state.fleet[uid]
-  // 释放这艘船的杂项账本（锁定标记随实例走，船没了就不该留着）
   delete state.shipLocks[uid]
   state.shipStore = state.shipStore ?? {}
   state.shipStore[defId] = shipStoredCount(state, defId) + 1
@@ -968,7 +762,6 @@ export function storeShip(
   return { ok: true }
 }
 
-/** 玩家指令：把舰船仓库里的一艘转入舰队（生成全新实例：满耐久/无装配/无名） */
 export function unstoreShip(state: GameState, defId: string, ctx: SimContext): CommandResult {
   const n = shipStoredCount(state, defId)
   if (n <= 0) return { ok: false, error: '舰船仓库里没有这一型。', errorId: 'core.shipyard.011' }
@@ -977,8 +770,6 @@ export function unstoreShip(state: GameState, defId: string, ctx: SimContext): C
   state.shipStore![defId] = n - 1
   if (state.shipStore![defId] <= 0) delete state.shipStore![defId]
   const uid = addShipToFleet(state, defId)
-  // ⚠ 2026-09-18 修：这一行原先误放在"从舰船仓库转入舰队"这条路径上——**这不是"造出"**，
-  //   「第一次造船」的计数改落在 `manufacturing.ts` 的造船交付处（与 `firstShipBuilt` 同一处）。
   addLog(state, 'fleet', `${shipDisplayName(state, ctx, uid)} 已从舰船仓库转入舰队（机库）。`, 'core.shipyard.032', {
     p1: shipDisplayName(state, ctx, uid),
   })

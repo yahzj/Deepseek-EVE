@@ -14,7 +14,7 @@ import { jumpFuelLegMsOf, jumpFuelStockOf } from '../src/jumpFuel'
 import { miningReturnLegMs } from '../src/location'
 import { advanceMining, advanceShipReturns, getMiningParams, miningStatus, oneLegMs, oneOutboundLegMs, startMining, stopMining } from '../src/mining'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
-import { advanceSalvageOp, legMsFor, outboundLegMsFor, salvageReturnMs, salvagerCyclesOf, startSalvageOp, stopSalvageOp } from '../src/salvaging'
+import { advanceSalvageOp, legMsFor, outboundLegMsFor, salvageReturnMs, salvageFleetCyclesOf, startSalvageOp, stopSalvageOp } from '../src/salvaging'
 import { changeShip, changeShipBlockReason } from '../src/shipyard'
 import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
@@ -257,8 +257,8 @@ describe('打捞真实星图读数', () => {
     const ast = ts.createSourceFile('MapPage.tsx', text, ts.ScriptTarget.ESNext, true, ts.ScriptKind.TSX)
     const fn = ast.statements.find(n => ts.isFunctionDeclaration(n) && n.name?.text === 'salvageProgressOf')!
     const js = ts.transpileModule(fn.getText(ast), { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText
-    const readProgress = new Function('salvageReturnMs', 'outboundLegMsFor', 'salvagerCyclesOf', 'tr', `${js};return salvageProgressOf`)(
-      salvageReturnMs, outboundLegMsFor, salvagerCyclesOf, (id: string) => id,
+    const readProgress = new Function('salvageReturnMs', 'outboundLegMsFor', 'salvageFleetCyclesOf', 'tr', `${js};return salvageProgressOf`)(
+      salvageReturnMs, outboundLegMsFor, salvageFleetCyclesOf, (id: string) => id,
     )
     const w = working('salvaging', 50)
     const actualMs = jumpFuelLegMsOf(baseMs(w, 'salvaging'), 10)

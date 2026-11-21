@@ -3,18 +3,9 @@ import { PRICE_SAMPLE_MS } from '@whale/core'
 import { isk } from '../../pages/common'
 import { tr } from '../../i18n/locale'
 
-/* ═══════════════ 市场详情卡（船长 2026-09-05：参考盘口风格——价格曲线/买卖盘/持有量/交易面板） ═══════════════ */
 
-/** 价格折线（SVG）。
- * 2026-09-08 船长：保留点 24 → 48；显示宽度自适应——容器够宽时整条 48 点直显；
- * 宽度不足（采样点过密）时自动只显示「最新 24 点」（= 最近 12 小时；不做更早段查看入口，船长后定不实现）；
- * 悬停任意采样点可查看该点数值与相对时间。
- * ⚠ **采样节奏 = 30 分钟/点**（船长 2026-09-16「按照原来的30分钟来」）⇒ 48 点 = **24 小时**；
- * 换算时间的分钟数走 core 单点 `PRICE_SAMPLE_MS`，界面不再自己写死一个 30。 */
-/** 采样点最小可视间距（px）：低于该密度判定"宽度不足"，回退显示最新 24 点 */
 const MIN_POINT_SPACING_PX = 12
 
-/** 采样点「约 N 分钟前」标注（样本间隔 = `PRICE_SAMPLE_MS`（30 分钟）；最新样本 = 现在） */
 function sampleAgoLabel(fullLen: number, absIdx: number): string {
   const mins = ((fullLen - 1 - absIdx) * PRICE_SAMPLE_MS) / 60_000
   if (mins <= 0) return tr("ui.MarketPage.036")
@@ -49,14 +40,12 @@ export function PriceChart({ hist }: { hist: readonly number[] }) {
       </div>
     )
   }
-  // 宽度自适应（2026-09-08 船长）：够宽 → 整条保留窗直显；宽度不足 → 自动只显示最新 24 窗
   const tooNarrow = wrapW !== null && wrapW < fullLen * MIN_POINT_SPACING_PX
   const slice = tooNarrow ? hist.slice(-24) : hist
   const offset = tooNarrow ? fullLen - 24 : 0
   const w = 560
   const h = 120
   const pad = 6
-  // y 轴范围：在可见段最高/最低基础上外扩约 15% 并向上/下取整（船长 2026-09-05：不让折线顶死上下边框）
   const dataMn = Math.min(...slice)
   const dataMx = Math.max(...slice)
   const dataRange = Math.max(1, dataMx - dataMn)

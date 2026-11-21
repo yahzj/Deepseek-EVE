@@ -2,7 +2,6 @@ import type { SkillDef } from '@whale/core'
 import { L10N } from '../l10n/table'
 import config from '../../../core/src/combat/command/config.json'
 
-/** 指挥成长与引擎使用同一配置；名称说明只引用本地化表。 */
 const TEXT_IDS = [
   ['skill.command.001', 'skill.command.002'],
   ['skill.command.003', 'skill.command.004'],

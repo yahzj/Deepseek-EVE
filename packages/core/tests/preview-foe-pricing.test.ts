@@ -24,7 +24,7 @@ import type { AnomalyDef, FoeShipDef, ShipDef } from '../src/types'
 import type { GameState } from '../src/state'
 import { bountyDamageForecast } from '../src/combat'
 import { anomaly } from './helpers'
-import { setCardDistance } from './helpers/battle-card-memory'
+import { setFleetDistance } from './helpers/fleet-range'
 
 const ctx = buildSimContext()
 const SHIP: ShipDef['id'] = 'sh-whiteshark'
@@ -61,7 +61,7 @@ function world(): GameState {
 
 const lossSum = (card: AnomalyDef): number => {
   const state = world()
-  setCardDistance(state, ctx, card.id, 1000)
+  setFleetDistance(state, ctx, 1000)
   const f = bountyDamageForecast(state, ctx, card, state.shipId)
   return f.armorLoss + f.hullLoss
 }

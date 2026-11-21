@@ -1,13 +1,3 @@
-/**
- * 专业模式 · 星舰战术交易终端主视图（ProExchange）。
- *
- * 核心升级（2026-11-03 船长令）：
- * - 聚焦核心玩法：重点强化「挂单与杠杆」及「自动量化交易」；
- * - 剔除枯燥繁琐的五档深度数字与逐笔流水，升级为直观醒目的「多空博弈张力槽」；
- * - 移除常驻底部的内滚流水窗，改为中栏二级 Tab 按需展开，K 线图开阔舒展并支持滚轮缩放；
- * - 2026-11-06 船长令重排：K 线图独占中栏上方，下单与自动量化横排在图下，
- *   持仓/委托/流水移到右栏，图面只留悬浮读数。
- */
 import { useEffect, useState } from 'react'
 import { ArrowDownRight, ArrowUpRight, Bot, ChartCandlestick, Receipt } from '@carbon/icons-react'
 import type { ExchangeClient, ExchangeSnapshot } from '../client'
@@ -35,7 +25,6 @@ interface ProExchangeProps {
   onToast: ToastFn
 }
 
-/** 多空博弈张力条：直观展示买卖多空压力差，取代枯燥的五档数字 */
 function MarketSentimentBar({ book }: { book: ExchangeSnapshot['book'] }) {
   const sumAsks = book.asks.reduce((s, l) => s + l.qty, 0)
   const sumBids = book.bids.reduce((s, l) => s + l.qty, 0)
@@ -72,12 +61,10 @@ export function ProExchange({
   onPickPrice,
   onToast,
 }: ProExchangeProps) {
-  // 右栏标签页：当前多空持仓与委托 vs 成交历史流水
   const [ctaSlot, setCtaSlot] = useState<HTMLDivElement | null>(null)
   const [sideTab, setSideTab] = useState<'positions' | 'records'>(() =>
     readExchangeChoice(EXCH_PREF.proSide, ['positions', 'records'] as const, 'positions'),
   )
-  // 中栏下单区：杠杆多 / 杠杆空 / 自动量化折成 Tab（2026-11-06 船长令：现货并入 1x）
   const [orderTab, setOrderTab] = useState<'long' | 'short' | 'auto'>(() =>
     readExchangeChoice(EXCH_PREF.proOrder, ['long', 'short', 'auto'] as const, 'long'),
   )
@@ -91,7 +78,6 @@ export function ProExchange({
   }, [orderTab])
 
   const posCount = snap.account.positions.length + snap.account.holdings.length
-  // 保证金占用 = 已用保证金 / 权益（marginRatio 是权益/保证金）
   const usedRatio = snap.account.marginRatio > 0 ? 100 / snap.account.marginRatio : 0
 
   return (

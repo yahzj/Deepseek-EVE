@@ -9,7 +9,6 @@ import { itemHoverContent, moduleHoverContent } from '../ui/shipInfo'
 import { rackText } from '../ui/labelsText'
 import { ShipDamageMods } from '../ui/ShipDamageMods'
 
-/** 装配卡只读投影，详情按当前目录展示；历史快照不用于重造损毁时的战斗数值。 */
 export function WreckFitPanel({ engine, entry }: { engine: GameEngine; entry: WreckLogEntry }): ReactNode {
   const [picked, setPicked] = useState<{ id: string; drone: boolean } | null>(null)
   const [saving, setSaving] = useState(false)

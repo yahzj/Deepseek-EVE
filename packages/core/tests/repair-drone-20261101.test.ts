@@ -9,6 +9,10 @@ import { advanceBattleFor } from '../src/combat/advance'
 import { pulseRepairDroneFor, repairStatsFor, pulseShieldChargeFor, pulseShieldFieldFor, repairUsageText } from '../src/combat/combatRepair'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { rarityTierOf } from '../../data/src/rarityTier'
+import { resolvePointDefense } from '../src/combat/combatDrones'
+import { createFoeSpecs } from '../src/foeSpecs'
+import { ceilFinalQuantity } from '../src/quantity'
+import { planBattleFx } from '../../../apps/desktop/src/renderer/src/features/combat/battleSfxPlan'
 
 const ctx = buildSimContext()
 const droneId = 'drone-repair-mil'
@@ -42,39 +46,47 @@ function advance(state: ReturnType<typeof world>['state'], ms: number) {
 }
 
 describe('修理无人机与后勤输出', () => {
-  it('军用修理无人机为R2稀有订单成品，价格与维修参数保持不变', () => {
+  it('军用修理无人机仍为R2，修理量与周期同时翻倍，价格不变', () => {
     expect(rarityTierOf(droneId)).toBe(2)
     expect(ctx.marketGoods.get(droneId)).toMatchObject({ kind: 'item', refId: droneId, rarity: 'rare', rarityTier: 2, basePrice: 42000 })
     expect(ctx.marketGoods.get(droneId)!.playerBuyable).not.toBe(false)
-    expect(ctx.items.get(droneId)).toMatchObject({ unitM3: 40, cpuUse: 8, repairArmorHp: 10, repairHullHp: 10, repairIntervalMs: 10000 })
+    expect(ctx.items.get(droneId)).toMatchObject({ unitM3: 40, cpuUse: 8, repairArmorHp: 20, repairHullHp: 20, repairIntervalMs: 20000 })
   })
   it('40m³和8CPU进入正式装载校验，80m³后勤可装2架而不能装3架', () => {
     const { state, lead } = world()
     expect(ctx.ships.get('sh-wh-g-destroyer')!.droneBayM3).toBe(80)
     expect(ctx.ships.get('sh-wh-g-destroyer')!.repairOutputBonusPct).toBe(.5)
     expect(ctx.ships.get('sh-wh-g-destroyer')!.repairPulseTargetsFleet).toBeUndefined()
-    expect(ctx.items.get(droneId)).toMatchObject({ unitM3: 40, cpuUse: 8, repairIntervalMs: 10000 })
+    expect(ctx.items.get(droneId)).toMatchObject({ unitM3: 40, cpuUse: 8, repairIntervalMs: 20000 })
     state.encounter.active = false
     expect(adjustDroneLoad(state, ctx, droneId, 1, lead).ok).toBe(false)
     expect(state.fleet[lead]!.droneLoad![droneId]).toBe(2)
     expect([...ctx.ships.values()].filter(s => s.repairOutputBonusPct).map(s => s.id)).toEqual(['sh-wh-g-destroyer'])
   })
 
-  it('每架独立脉冲、每次扣1组件，后勤甲壳各15，零武器伤害和攻击统计', () => {
+  it('每架独立20秒脉冲、每次扣1组件，后勤甲壳各30，零攻击统计', () => {
     const { state, battle, droneIndexes } = world()
     const target = battle.units['ally-1']!
     target.hp.a -= 100; target.hp.h -= 100
     const before = { ...target.hp }
-    advance(state, 9900)
+    advance(state, 19900)
     expect(state.warehouse.items['repairkit-mil']).toBe(100)
     advance(state, 1200)
-    expect(target.hp.a - before.a).toBe(30)
-    expect(target.hp.h - before.h).toBe(30)
+    expect(target.hp.a - before.a).toBe(60)
+    expect(target.hp.h - before.h).toBe(60)
     expect(state.warehouse.items['repairkit-mil']).toBe(98)
     expect(battle.stats.meShots).toBe(0)
     expect(battle.repairDroneBy!.player!.kitsUsed).toBe(2)
     expect(repairUsageText(battle, ctx)).toContain('×2')
     expect(droneIndexes.every(i => battle.dronePools![`player:${i}`]!.launched)).toBe(true)
+    const events = battle.fx.filter(event => event.repair)
+    expect(events).toHaveLength(2)
+    expect(events.every(event => event.tag === 'player' && event.to === 'ally-1')).toBe(true)
+    for (const event of events) {
+      expect(event.repair).toMatchObject({ armor: 30, hull: 30 })
+      expect(event.dmg).toBeUndefined()
+      expect(planBattleFx(event)).toEqual([])
+    }
   })
 
   it('逐架重新选靶，甲壳满/仅盾伤/尸体/母舰均不消耗组件', () => {
@@ -99,16 +111,16 @@ describe('修理无人机与后勤输出', () => {
     const { state, battle, droneIndexes } = world()
     battle.units['ally-1']!.hp.a -= 100
     for (const i of droneIndexes) battle.dronePools![`player:${i}`]!.alive = false
-    advance(state, 12000)
+    advance(state, 22000)
     expect(state.warehouse.items['repairkit-mil']).toBe(100)
     for (const i of droneIndexes) battle.dronePools![`player:${i}`]!.alive = true
     state.warehouse.items['repairkit-mil'] = 0
     const before = battle.units['ally-1']!.hp.a
-    advance(state, 12000)
+    advance(state, 22000)
     expect(battle.units['ally-1']!.hp.a).toBe(before)
     state.warehouse.items['repairkit-mil'] = 10
     battle.units.player!.hp = { s: 0, a: 0, h: 0 }
-    advance(state, 12000)
+    advance(state, 22000)
     expect(state.warehouse.items['repairkit-mil']).toBe(10)
   })
 
@@ -124,6 +136,89 @@ describe('修理无人机与后勤输出', () => {
     expect(state.warehouse.items['repairkit-mil']).toBe(100)
   })
 
+  it('修理容量倍率取受修舰各层，不取母舰容量，技能与后勤只乘一次', () => {
+    const { state, lead, wing, other, battle, droneIndexes } = world(1)
+    state.skills.trained['hull-quick-repair'] = 5
+    state.skills.trained['repair-engineering'] = 5
+    state.fleet[lead]!.fitted.low = ['mod-armor-plate-3', 'mod-armor-plate-3']
+    state.fleet[wing]!.fitted.low = ['mod-armor-plate-3', 'mod-lair-frame-e']
+    state.fleet[wing]!.plugs = ['plug-hull-plate']
+    const specs = [lead, wing, other].map((id, i) => ({ ...createPlayerSpec(state, ctx, id)!, tag: i ? `ally-${i}` : 'player' }))
+    const target = specs[1]!, base = ctx.ships.get('sh-hammerhead')!
+    expect(target.repairCapacityMul!.a).toBeCloseTo(target.hp.a / base.armorHp!, 12)
+    expect(target.repairCapacityMul!.h).toBeCloseTo(target.hp.h / base.hullHp!, 12)
+    const rt = battle.units[target.tag]!
+    rt.hpMax = { ...target.hp }
+    rt.hp = { s: 0, a: 1, h: 1 }
+    const repair = specs[0]!.weapons.find(w => w.repairDrone)!.repairDrone!
+    const expectedA = ceilFinalQuantity(20 * 1.5 * 1.5 * target.repairCapacityMul!.a)
+    const expectedH = ceilFinalQuantity(20 * 1.5 * 1.5 * target.repairCapacityMul!.h)
+    const before = { ...rt.hp }
+    pulseRepairDroneFor(state, battle, specs, specs[0]!, repair, { artId: droneId, index: droneIndexes[0]! })
+    expect(rt.hp.a - before.a).toBe(expectedA)
+    expect(rt.hp.h - before.h).toBe(expectedH)
+    expect(state.warehouse.items['repairkit-mil']).toBe(99)
+    const event = battle.fx.at(-1)!
+    expect(event).toMatchObject({ tag: 'player', to: target.tag, artId: droneId, repair: { armor: expectedA, hull: expectedH } })
+    const restored = loadSaveFile(serializeSaveFile(state, 0)).state.encounter.battle!
+    expect(restored.fx.at(-1)!.repair).toEqual(event.repair)
+    expect(restored.repairDroneBy).toEqual(battle.repairDroneBy)
+  })
+
+  it('受修舰普通维修装置与修理机使用相同容量倍率，残血不降低额度', () => {
+    const { state, lead, wing, other, battle } = world(1)
+    state.fleet[wing]!.fitted.mid = ['mod-hullrep-1']
+    state.fleet[wing]!.fitted.low = ['mod-armor-plate-3', 'mod-lair-frame-e']
+    const specs = [lead, wing, other].map((id, i) => ({ ...createPlayerSpec(state, ctx, id)!, tag: i ? `ally-${i}` : 'player' }))
+    const rt = battle.units['ally-1']!
+    rt.hpMax = { ...specs[1]!.hp }
+    rt.hp = { s: 0, a: 1, h: 1 }
+    const repair = { armor: 10, hull: 10, kitId: 'repairkit-mil' }
+    const device = repairStatsFor(state, ctx, wing)!.units[0]!
+    pulseRepairDroneFor(state, battle, specs, specs[0]!, repair)
+    expect(rt.hp.a - 1).toBe(device.armorPerPulse)
+    expect(rt.hp.h - 1).toBe(device.hullPerPulse)
+  })
+
+  it.each([2499, 2500, 2501, 9000])('交战距离%s米时修理机仅在2500米内可受击，反击令牌不能越界', distance => {
+    for (const token of [false, true]) {
+      const { state, battle, droneIndexes } = world(1)
+      const key = `player:${droneIndexes[0]}`
+      const pool = battle.dronePools![key]!
+      pool.launched = true
+      pool.evasion = 0
+      const before = pool.s + pool.a + pool.h
+      battle.distanceM = distance
+      battle.pdCd = [0]
+      battle.lastTickGameMs = 1000
+      if (token) battle.droneHitAt = { foe: 1000 }
+      const foe = createFoeSpecs(ctx.anomalies.get(cardId)!, ctx.balance.battle)[0]!
+      const bal = { ...ctx.balance.battle, pdAcc: 1, pdDmg: 5 }
+      resolvePointDefense(state, battle, [foe], bal, 100)
+      expect(pool.s + pool.a + pool.h < before).toBe(distance <= 2500)
+      expect(pool.alive).toBe(true)
+    }
+  })
+
+  it('混合机群远距仍可反击攻击机，不能选中修理机，也不沿用越界锁定', () => {
+    const { state, battle, droneIndexes } = world(1)
+    const key = `player:${droneIndexes[0]}`
+    const repair = battle.dronePools![key]!
+    repair.launched = true
+    const before = structuredClone(repair)
+    battle.dronePools!['ally-1:99'] = { ...repair, owner: 'ally-1', artId: 'drone-scout', evasion: 0 }
+    battle.distanceM = 2501
+    battle.pdCd = [0]
+    battle.pdFocus = [key]
+    battle.lastTickGameMs = 1000
+    battle.droneHitAt = { foe: 1000 }
+    const foe = createFoeSpecs(ctx.anomalies.get(cardId)!, ctx.balance.battle)[0]!
+    resolvePointDefense(state, battle, [foe], { ...ctx.balance.battle, pdAcc: 1 }, 100)
+    expect(repair).toEqual(before)
+    expect(battle.pdFocus![0]).toBe('ally-1:99')
+    expect(battle.dronePools!['ally-1:99']!.s).toBeLessThan(before.s)
+  })
+
   it('维修技能与后勤加成乘算，攻击伤害技能不增加修理量', () => {
     const { state, lead } = world(1)
     state.skills.trained['hull-quick-repair'] = 5
@@ -131,8 +226,8 @@ describe('修理无人机与后勤输出', () => {
     state.skills.trained['drone-warfare'] = 5
     state.skills.trained['drone-strike'] = 5
     const drone = createPlayerSpec(state, ctx, lead)!.weapons.find(w => w.repairDrone)!
-    expect(drone.repairDrone).toMatchObject({ armor: 23, hull: 23 })
-    expect(drone.reloadMs).toBe(10000)
+    expect(drone.repairDrone).toMatchObject({ armor: 45, hull: 45 })
+    expect(drone.reloadMs).toBe(20000)
     expect(drone.shotDmg).toBe(0)
   })
 
@@ -155,7 +250,7 @@ describe('修理无人机与后勤输出', () => {
   it('战中回读保留机体、冷却和组件账，在线分步与离线预算续算一致', () => {
     const { state } = world()
     state.encounter.battle!.units['ally-1']!.hp.a -= 100
-    advance(state, 11500)
+    advance(state, 21500)
     const restored = loadSaveFile(serializeSaveFile(state)).state
     expect(restored.encounter.battle!.repairDroneBy).toEqual(state.encounter.battle!.repairDroneBy)
     expect(restored.encounter.battle!.dronePools).toEqual(state.encounter.battle!.dronePools)

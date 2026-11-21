@@ -11,7 +11,6 @@ import { shipDisplayName } from '../../instances'
 import { droneRevivedOf } from '../../droneRevive'
 import { takeDroneUnit } from '../../equipment'
 
-/** 同队幸存者优先；全损只选港内空闲舰，不能接管其他任务中的船。 */
 export function prepareCommandPilotAfterLoss(state: GameState, ctx: SimContext, sunk: readonly string[], battle: BattleState | null): void {
   if (!sunk.includes(state.shipId)) return
   const survivor = battle?.myFleet?.find(row => !sunk.includes(row.shipId) && state.fleet[row.shipId])?.shipId
@@ -38,7 +37,6 @@ export function settleCommandFleet(state: GameState, ctx: SimContext, battle: Ba
   const reports: DroneLossReport[] = []
   let survivors = 0
   state.droneLossReport = null
-  // 先结清整队战中复位的实物，才允许任何一舰战后自动补货。
   for (const row of battle.myFleet ?? []) {
     if (battle.droneRevive?.[row.tag]?.printing) continue
     const lost = battle.droneLostBy ? battle.droneLostBy[row.tag] : row.tag === 'player' ? battle.droneLost : undefined
@@ -74,7 +72,6 @@ export function settleCommandFleet(state: GameState, ctx: SimContext, battle: Ba
   }
   return text.join('、')
 }
-/** 战报落盘之后处理沉船，原名单继续锁定存活舰直到返航。 */
 export function loseCommandSunkShips(state: GameState, ctx: SimContext, battle: BattleState, galaxyId: string): void {
   const sunk = sunkShipIdsOfBattle(battle, state.shipId)
   if (sunk.length) {
@@ -82,7 +79,6 @@ export function loseCommandSunkShips(state: GameState, ctx: SimContext, battle: 
     if (state.weekendEvent) delete state.weekendEvent.autoLoopGalaxyId
   }
   prepareCommandPilotAfterLoss(state, ctx, sunk, battle)
-  // 驾驶舰最后移除，避免自动补驾驶反复选到同场已沉舰。
   sunk.sort((a, b) => Number(a === state.shipId) - Number(b === state.shipId))
   for (const id of sunk) {
     if (state.fleet[id]) loseShip(state, id, ctx, '战斗中被击沉', galaxyId, { cause: 'expedition-lost' })

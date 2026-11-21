@@ -6,7 +6,6 @@ import { weightedGap } from '../equipment'
 export const DRONE_LAUNCH_GAP_MS = 500
 export const DRONE_LAUNCH_MIN_GAP_MS = 10
 
-/** 船体独立、新加速器折权乘算、旧机库逐件乘算；复活只用旧机库，不改攻击装填。 */
 export function droneLaunchGapMsOf(modules: readonly ModuleDef[], hullCut = 0, revived = false): number {
   const mul = modules.reduce((n, m) => n * (1 - Math.min(.9, Math.max(0, m.droneCycleCutPct ?? 0))), 1)
   const initial = revived ? 1 : (1 - Math.min(.9, Math.max(0, hullCut))) * (1 - weightedGap(modules.map(m => m.droneLaunchCutPct ?? 0)))
@@ -24,7 +23,6 @@ export function initDroneLaunch(b: BattleState, specs: readonly UnitSpec[]): voi
   }
 }
 
-/** 只在实际能开火时调用；队头阻塞时不追赶补发，旧档已在场机体直接放行。 */
 export function releaseDroneLaunch(b: BattleState, spec: UnitSpec, wi: number): boolean {
   const key = `${spec.tag}:${wi}`
   const pool = b.dronePools?.[key]
@@ -70,7 +68,6 @@ export function requeueDroneLaunch(b: BattleState, key: string): void {
   if (book) {
     const wasEmpty = book.q.length === 0
     book.q = book.q.filter(k => k !== key)
-    // 空队列随后补入复活机时，将上一发后留下的首发间隔换回旧间隔，余额不清零。
     if (wasEmpty) book.nextAtMs = Math.max(book.nextAtMs, book.nextAtMs - book.gapMs + (book.reviveGapMs ?? book.gapMs))
     book.q.push(key)
   }

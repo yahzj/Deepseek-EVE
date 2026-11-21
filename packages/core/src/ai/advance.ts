@@ -1,4 +1,3 @@
-/** 功能域职责拆分，保持原计算与顺序。 */
 import { type GameState, addLog } from '../state'
 import type { SimContext } from '../types'
 import type { SettleStats } from '../settleStats'
@@ -8,13 +7,11 @@ import { advanceAiMining } from './mining'
 import { advanceAiSalvage } from './salvage'
 import { advanceAiExpedition } from './expedition'
 
-/** 引擎内部：推进所有 AI 副船任务（stats = 离线结算统计器，可选；见 settleStats.ts） */
 export function advanceAi(state: GameState, deltaMs: number, ctx: SimContext, stats?: SettleStats): void {
   if (deltaMs <= 0) return
   for (const shipId of Object.keys(state.aiAssignments)) {
     const assignment = state.aiAssignments[shipId]
     if (!assignment) continue
-    // 船没了（弃船等）→ 清理任务并归还核心
     if (!state.fleet[shipId]) {
       delete state.aiAssignments[shipId]
       gainAiCore(state, assignment.coreType)
@@ -24,9 +21,6 @@ export function advanceAi(state: GameState, deltaMs: number, ctx: SimContext, st
       })
       continue
     }
-    // 2026-09-09（修复自愈）：作业船已被切换为驾驶船（换船入口漏召回的历史坏态/竞态残留）——
-    // AI 面板只列副船、该任务不可见也无法取消，核心会被永久占用（玩家反馈"伽玛核心不见了"）。
-    // 引擎每拍检测并召回：任务终止、核心归还核心库（与"船没了/矿带缺失"同级清理）。
     if (shipId === state.shipId) {
       delete state.aiAssignments[shipId]
       gainAiCore(state, assignment.coreType)

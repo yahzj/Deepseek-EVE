@@ -2,7 +2,6 @@ import type { PlanetCatalog, PlanetSurveyView } from '@whale/core'
 import { pt } from './planetText'
 import { fmtNum } from '../i18n/fmt'
 
-/** 只接公开勘探视图，单特性增减与整星环境倍率分开。 */
 export function planetTraitDetails(view: PlanetSurveyView, id: string, catalog: PlanetCatalog) {
   if (!view.traitIds.includes(id)) return undefined
   const trait = catalog.traits.get(id)

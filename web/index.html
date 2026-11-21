@@ -9,9 +9,114 @@
       content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self' https: https://game.bajibaji.party wss://game.bajibaji.party https://game.bajibaji.party:8443 wss://game.bajibaji.party:8443 http://123.207.188.192 http://localhost:* http://127.0.0.1:* http://[::1]:* ws://localhost:* ws://127.0.0.1:* ws://[::1]:*"
     />
     <title>大鲸鱼-深空放置（网页版）</title>
+    <style>
+      /* 首屏启动画面：主包（约 2M gzip）下载解析期间先显示，React 首次渲染会覆盖 #root 内内容即自动消失。
+         复古开机自检风：逐行浮现 + 闪烁光标 + CRT 扫描线，纯 CSS，不依赖 JS。 */
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        background: #04060a;
+      }
+      #root {
+        height: 100%;
+      }
+      .boot-splash {
+        position: relative;
+        overflow: hidden;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #04060a;
+        color: #6ee7a8;
+        font-family: ui-monospace, SFMono-Regular, Consolas, "Courier New", monospace;
+        font-size: 13px;
+        line-height: 2;
+        text-shadow: 0 0 6px rgba(110, 231, 168, 0.35);
+      }
+      /* CRT 扫描线 */
+      .boot-splash::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.22) 0 1px, transparent 1px 3px);
+      }
+      .boot-splash__panel {
+        width: calc(100% - 48px);
+        max-width: 460px;
+      }
+      .boot-splash__line {
+        opacity: 0;
+        white-space: pre-wrap;
+        animation: boot-line 0.01s linear forwards;
+        animation-delay: var(--d, 0s);
+      }
+      .boot-splash__rule {
+        color: #1f4d38;
+        text-shadow: none;
+      }
+      .boot-splash__ok {
+        color: #a7f3d0;
+      }
+      .boot-splash__boot {
+        margin-top: 10px;
+        color: #d1fae5;
+      }
+      .boot-splash__cursor {
+        display: inline-block;
+        width: 0.6em;
+        height: 1em;
+        margin-left: 3px;
+        background: #6ee7a8;
+        vertical-align: text-bottom;
+        animation: boot-blink 1s steps(2) infinite;
+      }
+      @keyframes boot-line {
+        to {
+          opacity: 1;
+        }
+      }
+      @keyframes boot-blink {
+        50% {
+          opacity: 0;
+        }
+      }
+      @media (max-width: 480px) {
+        .boot-splash {
+          font-size: 11px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .boot-splash__line {
+          opacity: 1;
+          animation: none;
+        }
+        .boot-splash__cursor {
+          animation: none;
+        }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="boot-splash">
+        <div class="boot-splash__panel">
+          <div class="boot-splash__line" style="--d: 0s">大鲸鱼级深空船坞 · 固件自检 v2.6</div>
+          <div class="boot-splash__line boot-splash__rule" style="--d: 0.15s">────────────────────────────</div>
+          <div class="boot-splash__line" style="--d: 0.3s">舰桥主控处理器 ............... <span class="boot-splash__ok">OK</span></div>
+          <div class="boot-splash__line" style="--d: 0.45s">生命维持记忆体 64G ........... <span class="boot-splash__ok">OK</span></div>
+          <div class="boot-splash__line" style="--d: 0.6s">惯性导航陀螺阵 ............... <span class="boot-splash__ok">OK</span></div>
+          <div class="boot-splash__line" style="--d: 0.75s">护盾发生器阵列 ............... <span class="boot-splash__ok">OK</span></div>
+          <div class="boot-splash__line" style="--d: 0.9s">武器火控总线 ................. <span class="boot-splash__ok">OK</span></div>
+          <div class="boot-splash__line" style="--d: 1.05s">跃迁引擎冷却回路 ............. <span class="boot-splash__ok">OK</span></div>
+          <div class="boot-splash__line" style="--d: 1.2s">星门同步链路 ................. <span class="boot-splash__ok">OK</span></div>
+          <div class="boot-splash__line" style="--d: 1.35s">通讯阵列校准 ................. <span class="boot-splash__ok">OK</span></div>
+          <div class="boot-splash__line boot-splash__boot" style="--d: 1.6s">正在启动星门引擎<span class="boot-splash__cursor"></span></div>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

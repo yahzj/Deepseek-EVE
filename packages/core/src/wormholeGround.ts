@@ -8,7 +8,6 @@ export function wormholeGroundKey(run: WormholeRunState): string | undefined {
   return pos ? `${pos.q},${pos.r}` : undefined
 }
 
-/** 新趟每个地点独立记实物，不建立随行临时货仓或第二份数量账。 */
 export function wormholeGroundBoard(run: WormholeRunState, create = false): WormholeHoldState | undefined {
   if (run.supplyVersion !== 1) return undefined
   const key = wormholeGroundKey(run)
@@ -22,7 +21,6 @@ export function wormholeGroundPending(run: WormholeRunState): boolean {
   return (wormholeGroundBoard(run)?.placements.length ?? 0) > 0
 }
 
-/** 展示格板可以分段显示，32格不是地点实物上限。 */
 export function wormholeGroundAddShape(run: WormholeRunState, itemId: string): boolean {
   const board = wormholeGroundBoard(run, true)
   if (!board) return false

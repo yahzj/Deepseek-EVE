@@ -7,7 +7,6 @@ const KINDS: readonly PlanetBuildingKind[] = ['base', 'cryo', 'power', 'water', 
 const idValid = (id: string): boolean => typeof id === 'string' && /^[a-z][a-z0-9-]{0,127}$/.test(id) && !['constructor', 'prototype'].includes(id)
 const finite = (n: unknown, min: number, max: number): boolean => typeof n === 'number' && Number.isFinite(n) && n >= min && n <= max
 
-/** 核心生成入口与内容工具共用，拒绝不完整的注入目录。 */
 export function planetCatalogIssues(catalog: PlanetCatalog): string[] {
   const issues: string[] = []
   if (catalog.planets.size > PLANET_RULES.maxPlanets) issues.push('planet-count')

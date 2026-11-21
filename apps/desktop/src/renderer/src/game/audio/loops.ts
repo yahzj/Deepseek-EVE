@@ -1,21 +1,9 @@
-/**
- * **循环音频通道（BGM / 环境底噪共用的交叉淡变引擎）** —— 2026-11-02 追加批；
- * 2026-11-04 调试批：换曲淡变时长可配（BGM 2.5s / 环境底噪 1.5s），同曲调音量改走短淡变（250ms）。
- *
- * 做法：同一通道最多两个 `HTMLAudioElement`（`loop=true`）——旧曲淡出、新曲淡入（`fadeMs`），
- * 用 40ms 定时器线性推音量；同一 URL 再设置只调音量、不重启（切场景来回不打断）。
- * 不用 Web Audio：桌面打包后页面是 `file://`，`decodeAudioData` 取不到字节；`<audio>` 两端同款。
- *
- * 自动播放被拒（网页首次无手势）：`play()` 的 promise 会被吞掉，由上层 `music.ts` 挂一次性手势重试；
- * 本类不抛错（与 `player.ts` 同一纪律：音频层事故不许影响游戏）。
- */
 interface Slot {
   el: HTMLAudioElement
   url: string
   level: number
   target: number
   dying: boolean
-  /** 每 tick 的音量步长（换曲 = 长淡变，同曲调音量 = 短淡变） */
   step: number
 }
 
@@ -31,13 +19,11 @@ export class LoopChannel {
     private readonly volumeFadeMs = 250,
   ) {}
 
-  /** 当前正在（或正在淡入）的 URL */
   get currentUrl(): string | null {
     const live = this.slots.find((s) => !s.dying)
     return live?.url ?? null
   }
 
-  /** 切到某个 URL（null = 淡出停止），并设目标音量 0–1 */
   set(url: string | null, volume: number): void {
     try {
       this.paused = false
@@ -59,12 +45,24 @@ export class LoopChannel {
         this.ensureTimer()
         return
       }
-      // 旧的全部淡出，新的从 0 淡入
-      for (const existing of this.slots) {
-        if (existing !== current) continue
-        existing.dying = true
-        existing.target = 0
-        existing.step = fadeStep
+      const dyingSame = this.slots.find((s) => s.dying && s.url === url)
+      for (const slot of [...this.slots]) {
+        if (slot.dying && slot !== dyingSame) this.dropSlot(slot)
+      }
+      if (current !== undefined) {
+        current.dying = true
+        current.target = 0
+        current.step = fadeStep
+      }
+      if (dyingSame !== undefined) {
+        dyingSame.dying = false
+        dyingSame.target = vol
+        dyingSame.level = Math.min(1, Math.max(0, dyingSame.el.volume))
+        dyingSame.step = this.stepFor(this.volumeFadeMs)
+        const p = dyingSame.el.play()
+        if (p !== undefined && typeof p.catch === 'function') p.catch(() => undefined)
+        this.ensureTimer()
+        return
       }
       const el = new Audio(url)
       el.loop = true
@@ -76,11 +74,19 @@ export class LoopChannel {
       if (p !== undefined && typeof p.catch === 'function') p.catch(() => undefined)
       this.ensureTimer()
     } catch {
-      /* 忽略：音频层不打断游戏 */
     }
   }
 
-  /** 只调音量（设置拖动时；不重启播放，走短淡变） */
+  private dropSlot(slot: Slot): void {
+    try {
+      slot.el.pause()
+      slot.el.src = ''
+    } catch {
+    }
+    const i = this.slots.indexOf(slot)
+    if (i >= 0) this.slots.splice(i, 1)
+  }
+
   setVolume(volume: number): void {
     const live = this.slots.find((s) => !s.dying)
     if (live === undefined) return
@@ -89,7 +95,6 @@ export class LoopChannel {
     this.ensureTimer()
   }
 
-  /** 隐藏/最小化暂停（保留播放位置，恢复时接着放） */
   pause(): void {
     this.paused = true
     this.clearTimer()
@@ -97,26 +102,26 @@ export class LoopChannel {
       try {
         slot.el.pause()
       } catch {
-        /* 忽略 */
       }
     }
   }
 
-  /** 恢复播放（浏览器拒绝时静默；上层会挂手势重试） */
   resume(): void {
     this.paused = false
-    for (const slot of this.slots) {
+    for (const slot of [...this.slots]) {
+      if (slot.dying) {
+        this.dropSlot(slot)
+        continue
+      }
       try {
         const p = slot.el.play()
         if (p !== undefined && typeof p.catch === 'function') p.catch(() => undefined)
       } catch {
-        /* 忽略 */
       }
     }
     this.ensureTimer()
   }
 
-  /** 立即销毁（测试/卸载用） */
   destroy(): void {
     this.clearTimer()
     for (const slot of this.slots) {
@@ -124,19 +129,16 @@ export class LoopChannel {
         slot.el.pause()
         slot.el.src = ''
       } catch {
-        /* 忽略 */
       }
     }
     this.slots = []
   }
 
-  /** 同曲调音量：把 level 拉回当前实际音量，避免从错误起点插值；并改用短淡变步长 */
   private resetFade(slot: Slot): void {
     slot.level = Math.min(1, Math.max(0, slot.el.volume))
     slot.step = this.stepFor(this.volumeFadeMs)
   }
 
-  /** 某个时长（毫秒）对应的每 tick 步长（至少 1 tick 完成） */
   private stepFor(ms: number): number {
     return 1 / Math.max(1, ms / TICK_MS)
   }
@@ -162,19 +164,15 @@ export class LoopChannel {
       try {
         slot.el.volume = Math.min(1, Math.max(0, slot.level))
       } catch {
-        /* 忽略 */
       }
-      // 淡出中的实例要继续 tick 到归零才能清理；淡入/稳态只看是否还在变
       if (slot.dying) busy = true
       else if (Math.abs(slot.target - slot.level) > 0.001) busy = true
     }
-    // 清的清、撤的撤
     for (const slot of this.slots.filter((s) => s.dying && s.level <= 0.001)) {
       try {
         slot.el.pause()
         slot.el.src = ''
       } catch {
-        /* 忽略 */
       }
     }
     this.slots = this.slots.filter((s) => !(s.dying && s.level <= 0.001))

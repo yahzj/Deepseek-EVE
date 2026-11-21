@@ -70,7 +70,6 @@ export function useCloudAccount(engine: GameEngine) {
     mounted.current = true
     return () => { mounted.current = false; cancel() }
   }, [cancel])
-  // 只跟随已应用的 server/token；更新资料对象不会再次触发核验。
   useEffect(() => {
     if (!server || !token || verifiedIdentity.current === `${server}\n${token}`) return
     const ticket = scope.current.begin()
@@ -178,7 +177,6 @@ export function useCloudAccount(engine: GameEngine) {
       if (!ticket.current() || !mounted.current) return
       let noticeId = 'ui.cloud.131'
       try {
-        // 同一API实例仍持有退出前token；兼容后端旧令牌回退，不凭logout成功宣称撤销。
         await api.profile(ticket.signal)
       } catch (error) {
         noticeId = error instanceof CloudApiError && error.status === 401 ? 'ui.cloud.121' : 'ui.cloud.122'
@@ -240,7 +238,6 @@ export function useCloudAccount(engine: GameEngine) {
     if (!candidate || !profile || !matchesCloudTarget(candidate, server, profile.playerId) || engine.saveWriteState() !== 'ok') return
     setDownloadCandidate(null)
     void run(async (api, ticket) => {
-      // 预览后 token 可能过期；网络阶段取消绝不进入旧读档链。
       const verified = await api.profile(ticket.signal)
       if (!ticket.current() || !mounted.current || !matchesCloudTarget(candidate, server, verified.playerId) || engine.saveWriteState() !== 'ok') return
       applyingRef.current = true

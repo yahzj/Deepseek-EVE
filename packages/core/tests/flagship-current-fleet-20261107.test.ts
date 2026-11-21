@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { buildSimContext, L10N, l10nEntryText } from '@whale/data'
 import * as core from '../src/index'
 import { gameSaveMethods } from './helpers/save-shell'
+import { finishDeparture } from './helpers/departure-ready'
 
 type Node = { type: string; props: Record<string, any>; children: unknown[] }
 const file = '../../../apps/desktop/src/renderer/src/features/combat/FlagshipFleetActions.tsx'
@@ -20,7 +21,7 @@ function nodes(value: unknown): Node[] {
 function view() {
   const ctx = buildSimContext(), state = core.createInitialState({ nowWallMs: 0 })
   state.fleetPresets = [{ id: 'fleet-1', name: 'Alpha', leaderShipId: state.shipId, shipIds: [state.shipId] }]
-  const engine = { state, ctx, fleetPresetApply: vi.fn(() => ({ ok: true } as core.CommandResult)),
+  const engine = { state, ctx, fleetPresetApply: vi.fn((_id: string) => ({ ok: true } as core.CommandResult)),
     challengeWeekendFlagship: vi.fn(() => ({ ok: true } as core.CommandResult)) }
   const values: unknown[] = []
   let cursor = 0
@@ -98,5 +99,51 @@ describe('旗舰当前编队与预设切换入口', () => {
     consent!()
     expect(ready).toHaveBeenCalledWith(['current', 'wing'])
     expect(preview.mock.calls[0]![3]).toEqual(['current', 'wing'])
+  })
+
+  it('核心收复通知中的预设切换使用真实命令，返航旧队不占新旗舰阵容', () => {
+    const ui = view(), { state, ctx } = ui.engine
+    const now = 1794974400000
+    state.fleet = {}
+    const old = [core.addShipToFleet(state, 'sh-shrike'), core.addShipToFleet(state, 'sh-shrike')]
+    const next = [core.addShipToFleet(state, 'sh-falconet'), core.addShipToFleet(state, 'sh-falconet')]
+    state.shipId = old[0]!
+    state.modeChosen = true
+    state.standingsEarned = { dsi: 100 }
+    state.skills.trained = { 'fleet-command-basic': 5, 'fleet-command-coordination': 5, 'fleet-command-integration': 5 }
+    state.exploredGalaxies = [...ctx.galaxies.keys()]
+    state.importantTasks['first-bounty'] = { done: true, delivered: 0 }
+    state.preparationSquads = { combat: [...old] }
+    state.fleetPresets = [{ id: 'fleet-1', name: '接替队', leaderShipId: next[0]!, shipIds: [...next] }]
+    expect(core.startExpedition(state, 'ano-training', ctx).ok).toBe(true)
+    finishDeparture(state, ctx)
+    state.expedition.battle!.ended = 'me'
+    core.resolveBattleOutcome(state, ctx)
+    expect(state.expedition.phase).toBe('back')
+    state.weekendEvent = { seq: 7, startedAtWallMs: now, coreId: 'galaxy-kor', peripheryIds: ['galaxy-redring'], family: 'H', contributed: {} }
+    core.weekendNoteContribution(state.weekendEvent, 'galaxy-redring', 1)
+    core.weekendNoteContribution(state.weekendEvent, 'galaxy-kor', 1)
+    expect(core.weekendTick(state, ctx, now, now).flagshipAnchored).toBe(true)
+    ui.engine.fleetPresetApply.mockImplementation(id => core.applyFleetPreset(state, ctx, id))
+    const ready = vi.fn((squad: string[]) => {
+      const battle = core.weekendStartFlagshipBattle(state, ctx, now, squad)
+      expect(battle?.myFleet?.map(row => row.shipId)).toEqual(next)
+      return { ok: !!battle }
+    })
+    const methods = gameSaveMethods(['challengeWeekendFlagship'], { combatRosterOf: core.combatRosterOf,
+      weekendStartFlagshipBattle: core.weekendStartFlagshipBattle, Date: { now: () => now } })
+    Object.assign(methods, { state, ctx, challengeWeekendFlagshipReady: ready,
+      withBattleAmmoWarning: (_key: string, _ids: string[], launch: () => core.CommandResult) => launch() })
+    ui.engine.challengeWeekendFlagship.mockImplementation(() => (methods.challengeWeekendFlagship as () => core.CommandResult)())
+    ui.render().find(node => node.type === 'select')!.props.onChange({ target: { value: 'fleet-1' } })
+    ui.render().find(node => node.type === 'button' && node.children.includes(L10N['ui.flagshipFleet.003']!.zh))!.props.onClick()
+    expect(core.combatRosterOf(state)).toEqual(next)
+    expect(ui.render().some(node => node.props.role === 'status')).toBe(true)
+    const returns = structuredClone(state.shipReturns)
+    for (const id of old) expect(returns[id]).toBeDefined()
+    ui.render().find(node => node.type === 'button' && node.children.includes(L10N['ui.weekend.074']!.zh))!.props.onClick()
+    expect(ready).toHaveBeenCalledWith(next)
+    expect(ui.onStarted).toHaveBeenCalledOnce()
+    expect(state.shipReturns).toEqual(returns)
   })
 })

@@ -1,21 +1,3 @@
-/**
- * **旧版（classic）活动栏 —— 从「昨天那版」原样拆出**（2026-09-25 · ui-redesign-2）
- *
- * 船长令：「旧版建议你从昨天的版本中 git 下来进行拆解」（另：「不能将各个窗口模块化吗」
- * ⇒ 裁定甲：**只把窗口模块化，两套外壳先保留**）。
- *
- * 来源：`git show 99eeb93e:apps/desktop/src/renderer/src/panels/ActivityBar.tsx`
- * （昨天 09-24 与合并前 main 的这份**完全相同**；只有"组件名"改成了 `ActivityBarClassic`）。
- *
- * 与新版 `ActivityBar.tsx` 的差异（**这就是船长要的"旧版活动窗口"**）：
- *   · 有标题栏（「活动」+ 副船/工业两枚 AI 徽标）；
- *   · 只有「玩家活动」「技能训练」两组（**没有**新版的「计时中」组）；
- *   · 每行右侧带操作按钮（停扫 / 移除 …）；
- *   · **不显示副AI活动迷你卡**（AI 只用徽标计数）。
- *
- * ⚠ 这是一份**冻结件**：除"跟随 core 接口的必要改动"外**不要美化/重构**它 ——
- *   它的价值就是"和昨天一模一样"。新版活动栏请改 `ActivityBar.tsx`。
- */
 import { activityOverview, activePromos, activeTunings, aiCoreIndustryUsed, aiCoreShipUsed, scanAwaitingView, scanStatus, SYNAPTIC_ACCELERANT_MUL } from '@whale/core'
 import type { ActivityView } from '@whale/core'
 import { useEffect, useState } from 'react'
@@ -23,14 +5,9 @@ import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { aiIndustrySlots, aiSlotTip } from '../ui/aiSlots'
-// ⚠ 本文件是**冻结件**（见头注）；此处是 2026-09-27 三号做「取数与派生纪律」单点收口时的一处**必要改动**：
-//   原先本文件与 `ActivityBar.tsx` 各抄了一份逐字相同的 `stopLabel()`（12 个 tr id 全同，见
-//   `docs/review/arch-guard-baseline-20260927.md` A1）⇒ 改为共用单点。**文案一字未改、DOM 与行为零变化**
-//   （冻结件要的"和昨天一模一样"在**观感与文本**上仍然成立；要回退只需把单点里的 switch 复制回本文件）。
 import { stopLabel, doStop } from './activityStopLabel'
 import { tr } from '../i18n/locale'
 import { explorationActivityText } from '../ui/explorationActivityText'
-// 活动行「点击去哪」的跳转单点（2026-09-27 建：原先两套外壳各一份，快递那档跳到了已删除的星图页签 ⇒ 空白页）
 import { goFor } from '../ui/activityGo'
 import { fmtDate, fmtDuration, fmtDurationShort } from '../i18n/fmt'
 import '../styles-activity-invasion.css'
@@ -50,27 +27,13 @@ const KIND_ICON: Record<string, string> = {
   'invasion-loop': 'ico-loop',
   courier: 'nav-task',
   hauling: 'nav-haul',
-  // 虫洞探索（船长 2026-09-13「活动栏显示」）：图标 = 虫洞专属「空间裂隙」（同日船长定案），
-  // 与星图·行动区的虫洞入口行同一枚，不再借 ico-flag / ico-scan
   wormhole: 'nav-wormhole',
-  /** 主控活动「扫描虫洞」（2026-09-14）：与洞内活动同一个图标，色调用其自身色调 */
   whscan: 'nav-wormhole',
   whauto: 'nav-wormhole',
-  /** 实验室产线（2026-10-01 接入；本文件是冻结件，这里只跟随 core 新增的 kind 补一档）
-   *  图标与精炼炉/制造线同一枚（船长令：实验室与工业其他页面没有本质区别 ⇒ 用一样的机制） */
   lab: 'nav-industry',
 }
 
 
-/**
- * 活动项 → 跳转目标页面（可带星图二级标签）——船长 2026-09-05 点击跳转。
- *
- * ⚠️ 扩展约定（新增活动时务必同步）：以后若新增活动项目 / 新增页面，
- * 必须在本函数补充对应 `case`（kind → { page, mapTab? }），否则新活动点下去
- * 会回退到默认 `{ page: 'map' }`（星图页），跳转失效。
- * 映射关系建议遵循：采矿→星图·矿带开采；扫描/远征/返航/待命→星图·远征；
- * 制造/精炼→工业；训练→技能页。跳转实现经 App 传入的 onGoPage（setPage + setMapTab）。
- */
 
 export function ActivityBarClassic({
   engine,
@@ -83,32 +46,15 @@ export function ActivityBarClassic({
   onToast: ToastFn
   onAiCenter?: () => void
   onGoPage?: (page: string, mapTab?: string, taskTab?: string) => void
-  /**
-   * **虫洞那条直接开面板**（船长 2026-09-13：「活动栏直接开面板」）：
-   * 光跳星图页不够——星图要**先选中一个星系**才渲染「前往星系 · 行动」区，
-   * 而人已经进洞时星图默认没有选中星系 ⇒ 那一行里的「进入虫洞」可能根本不出现。
-   */
   onOpenWormhole?: () => void
 }) {
   const state = engine.state
   const all = activityOverview(state, engine.ctx).map(explorationActivityText)
-  // 船长 2026-09-05：活动窗口垂直排布；「玩家活动」「技能训练」两个常驻分区，各自待机文案；AI 用徽标
-  // 2026-09-08：AI 徽标计数 = AI 副船 + AI 核心驱动的生产线/精炼炉（后者不再占用"玩家活动"行）
-  // 2026-09-10 船长：徽标**拆成两枚**——「副船」与「工业」各一枚（图标与配色不同，便于辨识）；
-  //   数字取 core 单点（与 AI 指挥中心标题行同源），不再从活动列表反推
   const aiShips = aiCoreShipUsed(state)
   const aiProd = aiCoreIndustryUsed(state)
-  /** AI 核心占用说明（与 AI 指挥中心/工业页同源的单点文案，挂在两枚徽标的悬停里） */
   const aiSlotsNote = aiSlotTip(aiIndustrySlots(state, engine.ctx))
   const playerItems = all.filter((i) => i.kind !== 'ai' && i.kind !== 'train')
   const trainItems = all.filter((i) => i.kind === 'train')
-  /**
-   * **AI 正在干哪些活动**（船长 2026-09-13：「活动界面AI图标的鼠标悬浮提示改为显示AI正在干哪些活动」）：
-   * 原先两枚徽标的悬停只写死一句"正在执行采矿 / 打捞 / 掩护巡逻"——玩家看不到**具体在干什么**。
-   * 现在直接取 `activityOverview` 里 `kind==='ai'` 的条目（core 已按 `aiGroup` 分好副船 / 工业两组）：
-   * 一条一行「· 谁 · 干什么——在哪/什么阶段（还剩多久）」，超过 8 条折成"另有 N 条"。
-   * ⚠ 只改悬停文案：**徽标计数、点击去处、渲染结构一律不动**。
-   */
   const aiLinesOf = (items: ActivityView[]): string => {
     if (items.length === 0) return tr("ui.ActivityBar.033")
     const lines = items.slice(0, 8).map((v) => {
@@ -125,11 +71,6 @@ export function ActivityBarClassic({
   }
   const aiShipItems = all.filter((i) => i.kind === 'ai' && i.aiGroup === 'ship')
   const aiProdItems = all.filter((i) => i.kind === 'ai' && i.aiGroup === 'industry')
-  /**
-   * 星系扫描条读数（见文件头注释）：**进行中优先**——正在扫就显示这条扫描的进度；
-   * 扫完（且玩家还没看过）才显示"已完成"高亮格。两条都靠 core 单点：
-   * `scanStatus`（进行中）/ `scanAwaitingView`（完成待查看）。
-   */
   const scan = scanStatus(state)
   const scanAck = scanAwaitingView(state)
   const scanBar = scan.active
@@ -138,49 +79,20 @@ export function ActivityBarClassic({
       ? { done: true, galaxyId: scanAck.galaxyId, percent: 100, remainingMs: 0 }
       : null
   const scanName = (id: string | null): string => (id ? (engine.ctx.galaxies.get(id)?.name ?? id) : tr("ui.ActivityBar.015"))
-  /**
-   * **限时加成徽标**（2026-09-15 船长：「同时拥有限时加成时，还会在活动无人机的右侧
-   * （扫描进度条的右侧）显示当前加成项是什么和剩余时间」）。
-   *
-   * 口径：数据表 `TUNING_RULES`（`packages/core/src/tuning.ts`）× **现实墙钟**；到期自动消失。
-   * 剩余时间按**本地日界**算（规则以"当天整天生效"为准）⇒ 这里显示"还剩 N 天 N 小时"。
-   * 无加成时**不渲染**（不占位、防头部跳动）。
-   *
-   * **2026-09-16 促销合并**（船长：「5和虫洞限时缩短写在一起，但是要润色成虫洞大量生成之类的」）：
-   * `PROMOS` 里的一条促销（扫描倍率 ＋ 一次性赠送）在这里显示成**一枚**徽标（游戏内说法 + 剩余时间），
-   * 被它 `claims` 认领的倍率键（如 `wormholeScanMs`）**不再单列** —— 同一件事不显示两遍。
-   */
   const [tuningTick, setTuningTick] = useState(() => Date.now())
   useEffect(() => {
-    const t = window.setInterval(() => setTuningTick(Date.now()), 60_000) // 每分钟刷新剩余时间
+    const t = window.setInterval(() => setTuningTick(Date.now()), 60_000)
     return () => window.clearInterval(t)
   }, [])
   const promos = activePromos(tuningTick)
   const promoClaimedKeys = new Set<string>(promos.flatMap((p) => [...p.claims]))
   const tunings = activeTunings(tuningTick).filter((t) => !promoClaimedKeys.has(t.key))
-  // 撤退需二次确认（轻损但有代价）。
-  // 2026-09-11 修复（真 BUG：点「开始教程」后白屏，React #185「Maximum update depth exceeded」）：
-  // 原先写成**渲染期派生状态**（`if (retreatAsk && !playerItems.some(...)) setRetreatAsk(false)`）——
-  // React 只允许"该组件自己触发的、立即收敛的"渲染期更新；撤退活动消失（如委派 AI 后）时这里每次渲染都会
-  // 调一次 setState，生产版在同一提交里累积到阈值就把整棵树卸载（白屏）。搬到 effect：**提交后清理**，语义相同、不参与渲染。
   const [retreatAsk, setRetreatAsk] = useState(false)
-  /**
-   * **最小化**（**2026-10-02 船长令**：「给旧版界面的活动窗口添加个最小化的按钮，点击后活动窗口
-   * 高度缩小，只显示标题（写着活动的那一行）」）——收起后只渲染标题行那一行，
-   * 下面两组整块**不渲染**（能不给就不给，界面不藏内容）⇒ 盒子自然只剩一行高。
-   * ⚠ **状态不落盘**（船长取"不记"）：每次进游戏/重开都是展开的。
-   */
   const [collapsed, setCollapsed] = useState(false)
   const hasRetreatActivity = playerItems.some((i) => i.stop === 'retreat-battle')
   useEffect(() => {
     if (retreatAsk && !hasRetreatActivity) setRetreatAsk(false)
   }, [retreatAsk, hasRetreatActivity])
-  /**
-   * **长途运输的中断确认**（**2026-09-20 船长令**：「当玩家在跑长途运输，要切换其他主控活动打断长途运输时，
-   * 弹出一个警告，告诉玩家中断当前长途运输将无法获得本趟的报酬之类的」）：
-   * 与撤退同款两讨伐确认——第一下只警告（**本趟报酬到站才结，中断就拿不到**），再点一次才真停。
-   * 活动条目消失（运输已结束）时按同款 effect 复位，避免"状态卡在待确认"。
-   */
   const [haulAsk, setHaulAsk] = useState(false)
   const hasHaulActivity = playerItems.some((i) => i.stop === 'stop-hauling')
   useEffect(() => {
@@ -190,14 +102,12 @@ export function ActivityBarClassic({
   const renderItem = (v: ActivityView) => {
     const target = goFor(v.kind)
     const handleItemClick = (): void => {
-      // 虫洞走"直接开面板"那条（见 props 注释）；其余照旧跳页
       if (v.kind === 'wormhole' && onOpenWormhole) {
         onOpenWormhole()
         return
       }
       if (onGoPage) onGoPage(target.page, target.mapTab, target.taskTab)
     }
-    /** 目的地名直接取跳转单点给的 id（原先按 mapTab 反推，嗅探的正是那个已删除的 'task' ⇒ 空白页） */
     const goText = tr(target.labelId)
     return (
     <div

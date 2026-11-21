@@ -1,4 +1,3 @@
-/** 星球文案编号登记；文字只在data本地化唯一表。 */
 export const PLANET_TEXT_IDS: Readonly<Record<string, string>> = {
   "trait.managed-ecology": "ui.planet.281",
   "project.ecology-management": "ui.planet.282",

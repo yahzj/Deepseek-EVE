@@ -11,9 +11,7 @@ import { BLUEPRINT_USE_TABS, MANU_TABS, SUB_ALL, bpFilterKeysOf, manuSubsOf, typ
 import { tr } from '../../i18n/locale'
 import { bpGoodKey } from './blueprintValue'
 
-/* ═══════════════ 蓝图书架（紧凑小卡网格：书+数量+状态+学习/出售；船长 2026-09-05 定形态） ═══════════════ */
 
-/** 蓝图书架：持有的蓝图书（学习 → 永久学会；多余的书市价出售） */
 export function BlueprintShelfPanel({
   engine,
   onToast,
@@ -23,47 +21,22 @@ export function BlueprintShelfPanel({
 }: {
   engine: GameEngine
   onToast: ToastFn
-  /** 「去组装机」：切到组装机标签并定位那张蓝图卡（船长 2026-09-14：「蓝图书架内，玩家可以通过蓝图
-   *  直接跳转对应组装机」）——由工业页透传（跳转时会**清掉组装机的三级筛选**，否则目标卡可能被筛掉） */
   onGotoCraft?: (blueprintId: string) => void
-  /** 打开该蓝图市场详情；这里只导航，不出售或扣书。 */
   onGotoMarket?: (goodKey: string) => void
-  /** **反向定位**（**2026-09-26 船长令**：「优化工业界面」→ 采纳"优3"）：组装机那边点「去书架」
-   *  跳过来时，这一本要高亮（页面层同一套 `.app-belt-card.is-goto` ＋ 居中滚动）。 */
   focusBookId?: string | null
 }) {
   const state = engine.state
   useL10n()
   const entries = Object.entries(state.blueprintStock).filter(([, n]) => n > 0)
-  /**
-   * **与组装机同样的筛选**（船长 2026-09-14：「蓝图书架也加入组装机同样的筛选」）：
-   * 一级类别（`MANU_TABS`）/ 二级子类（`manuSubsOf`）/ 三级一次性-永久（`BLUEPRINT_USE_TABS`），
-   * 三项都走 `bpFilterKeysOf` 同一个单点；三级同样**只在选了子类后才出现**（与组装机逐字同款口径）。
-   */
   const [kind, setKind] = useState<ManuTabKey>('all')
   const [sub, setSub] = useState<string>(SUB_ALL)
   const [useKind, setUseKind] = useState<BlueprintUseKey>(SUB_ALL)
-  /** 蓝图书卡（未筛选）：书架 = **手上还没学的书** */
   const bookCards = entries.map(([id, n]) => ({ id, n, keys: bpFilterKeysOf(engine.ctx, id) }))
-  /**
-   * **碎片逆向卡（2026-09-19 船长：「蓝图书架内确实没有显示可以合并的蓝图碎片。是否忘记添加到蓝图书架了？」）**：
-   * 书架原先**只列"手上持有的蓝图书"**，而碎片是"还没有书"的那条路 ⇒ 玩家在这里看不到任何可合并的碎片。
-   * 现补一类卡：**碎片进度 > 0 且尚未掌握、且手上没有这本书**的逆向蓝图，卡上直接给「逆向解锁 N/M」。
-   * 读数走 core 单点 `fragmentRedeemRows()`（与兑命令同源）；门类归属走 `bpFilterKeysOf`（与蓝图书同一把尺）。
-   */
   const fragCards = engine
     .fragmentRedeemRows()
     .filter((r) => !r.learned && r.have > 0 && (state.blueprintStock?.[r.blueprintId] ?? 0) <= 0)
     .map((r) => ({ r, keys: bpFilterKeysOf(engine.ctx, r.blueprintId) }))
   const cards = [...bookCards, ...fragCards]
-  /**
-   * **筛选项按"书架上真有卡片"出**（2026-09-19 报障修复 · 船长：「如果选择舰船蓝图或者消耗品蓝图，
-   * 卡片列表会变空」）：书架只列"还没学的书"＋"可逆向的碎片卡"，而**学习一本吃一本书**
-   * （`market.learnBlueprint`）⇒ 把某一门类学完的档，书架上那一门类就是空的。
-   * 旧口径把三个标签**静态全列** ⇒ 选「舰船蓝图」/「消耗品蓝图」必然一张卡都不剩，
-   * 正是 2026-09-14 那条「避免看不见的筛选」要防的坑。现改为**只列真有卡片的档**：
-   * 「全部 / 全部子类 / 全部图纸」三项**常显**，其余按现有卡片现算（键与顺序仍取既有单点表）。
-   */
   const tabsShown = MANU_TABS.filter((tb) => tb.key === 'all' || cards.some((c) => c.keys.tab === tb.key))
   const subsShown = manuSubsOf(kind).filter((s) => cards.some((c) => c.keys.tab === kind && c.keys.subKey === s.key))
   const usesShown = BLUEPRINT_USE_TABS.filter((u) =>
@@ -76,10 +49,6 @@ export function BlueprintShelfPanel({
             (u.key === 'single' ? c.keys.singleUse : !c.keys.singleUse),
         ),
   )
-  /**
-   * **卡片集合变了 ⇒ 原选择可能已经无卡**（学掉最后一张该类书 / 逆向解锁 / 新书到架）：
-   * 回落到「全部」，别让玩家卡在永远空的档（与"不出空标签"同一目的）。
-   */
   const kindMissing = kind !== 'all' && !tabsShown.some((x) => x.key === kind)
   const subMissing = !kindMissing && sub !== SUB_ALL && !subsShown.some((x) => x.key === sub)
   useEffect(() => {
@@ -94,18 +63,12 @@ export function BlueprintShelfPanel({
       setUseKind(SUB_ALL)
     }
   }, [kindMissing, subMissing])
-  /** 三级筛选判定（与上面两张"现算表"同一把尺） */
   const passKeys = (k: { tab: ManuTabKey; subKey: string; singleUse: boolean }): boolean =>
     (kind === 'all' || k.tab === kind) &&
     (sub === SUB_ALL || k.subKey === sub) &&
     (useKind === SUB_ALL || (useKind === 'single' ? k.singleUse : !k.singleUse))
   const shown = bookCards.filter((c) => passKeys(c.keys))
   const fragShown = fragCards.filter((c) => passKeys(c.keys))
-  /**
-   * **可逆向解锁的碎片卡置顶**（船长 2026-09-19：「蓝图书架内，已经可以逆向解析的蓝图置顶」）：
-   * 「已集齐」判据 = `have >= need`（与卡面进度、`RedeemFragmentButton` 的可点判定同源）⇒ 排到书架**最前**；
-   * 未集齐的碎片卡留在蓝图书之后（原位置不动）。
-   */
   const fragReady = fragShown.filter((c) => c.r.have >= c.r.need)
   const fragRest = fragShown.filter((c) => c.r.have < c.r.need)
 
@@ -126,16 +89,6 @@ export function BlueprintShelfPanel({
     else onToast(tr("ui.Industry.097"))
   }
 
-  /**
-   * **碎片逆向卡**（2026-09-19 船长：「蓝图书架内确实没有显示可以合并的蓝图碎片。是否忘记添加到蓝图书架了？」）
-   * ——与蓝图书**同网格**（同一份 JSX 供"置顶区"与"常规区"共用），卡面标明碎片来源与进度，
-   * 动作 = 「逆向解锁 N/M」（`RedeemFragmentButton` 与物品详情弹层共用同一个出口）。
-   *
-   * ⚠ **卡头不挂数量标签**（船长 2026-09-19 追问「为什么在蓝图名称右边加一个碎片数量的标签」）：
-   * 片数在**按钮**（`逆向解锁 N/M`）与**说明行**（还差 N 片 / 已集齐）里已经有了，卡头再挂一颗
-   * 「碎片 N/M」= 同一信息第三次出现；原先那颗是照蓝图书卡的「×N」抄的版式，而书卡的 ×N 是
-   * **重复本数**（决定"学习还是出售"）、碎片没有对应的"本数"概念 ⇒ 版式不必对齐，已删。
-   */
   function fragCard(r: ReturnType<GameEngine['fragmentRedeemRows']>[number]): ReactNode {
     return (
       <div key={`frag-${r.fragmentItemId}`} className="app-belt-card app-shelf-card is-frag">

@@ -1,13 +1,3 @@
-/**
- * 舰船战斗图形资产（三号，2026-09-09 起）：每舰独立 SVG 矢量形（240×110 本地坐标，舰首朝右）。
- *
- * 风格契约（与 docs/design/ship-battle-art/README.md 一致）：
- * - 元素类（CSS 在 styles.css，.shipart-*）：无类 = 主轮廓（继承 currentColor 2.2 描边）；
- *   shipart-panel = 装甲面板线（1px/40%）；shipart-acc = 族色细线；shipart-accf = 族色实心点；
- *   shipart-volt = 能量青放电纹（电鳐/敌族发光件）；
- * - 引擎口在舰体左端（尾焰由 ShipSprite 统一绘制，锚点 ~x28 y55）；
- * - 数据逐舰补录中：已录 defId 走独立形；未录 defId 回退 role 旧形（组件内放大适配）。
- */
 import type { ReactNode } from 'react'
 import { FOE_ART_EXTRA, SHIP_ART_EXTRA } from './shipArtData'
 import { SHIP_ART_WH } from './shipArtWh'
@@ -17,10 +7,7 @@ import { tr } from '../i18n/locale'
 export const SHIP_ART: Record<string, ReactNode> = {
   ...SHIP_ART_EXTRA,
   ...SHIP_ART_WH,
-  // 敌舰逐舰形（30 条）也并进这张总表：对外仍是「一张资产表、按 id 取形」，
-  // 且洞内/市场等按 defId 取形的地方无需知道"这是玩家舰还是敌舰"。
   ...FOE_SHIP_ART,
-  /* ── 鲣鱼级护卫舰（箭头机身 + 后掠双翼 + 机头炮） ── */
   'sh-falconet': (
     <g>
       <path d="M204 55 L150 38 L76 38 L44 46 L36 55 L44 64 L76 72 L150 72 Z" />
@@ -35,9 +22,6 @@ export const SHIP_ART: Record<string, ReactNode> = {
       <circle className="shipart-accf" cx="86" cy="55" r="1.4" />
     </g>
   ),
-  /* ── 灰鲭鲨级驱逐舰（低趴长身 + 脊炮 ×2 + 上下双引擎 + 前掠翼；2026-09-09 方向可读性修正
-        v3 定稿：舰艏单点流线锐锥 x236 + 尾端平切喷口面 + 前掠翼恢复(船长确认)——尖头平尾,
-        方向一眼可辨） ── */
   'sh-mako': (
     <g>
       <path d="M236 56 L198 36 L118 36 C86 36 66 44 58 50 L52 50 L52 62 L58 66 C66 72 86 76 118 76 L190 76 Z" />
@@ -57,7 +41,6 @@ export const SHIP_ART: Record<string, ReactNode> = {
       <circle className="shipart-accf" cx="150" cy="66" r="1" />
     </g>
   ),
-  /* ── 锤头鲨级炮击巡洋舰（粗壮舰体 + 锤头装甲首 + 三联主炮） ── */
   'sh-hammerhead': (
     <g>
       <path d="M206 58 L182 36 L128 30 L92 30 C70 33 56 42 50 52 L45 60 L50 70 C58 78 76 84 100 85 L160 85 L196 78 L212 66 Z" />
@@ -82,11 +65,7 @@ export const SHIP_ART: Record<string, ReactNode> = {
       <circle className="shipart-accf" cx="92" cy="40" r="1.2" />
     </g>
   ),
-  /* ── 2026-09-16 补图批（船长：「新增的舰船没有SVG图形，按照之前的规则每艘需要单独的SVG图形」）：
-        下面 3 艘是 2026-09-12「T4/T5 模子 + 鹦鹉螺」那批，此前一直回退 role 兜底剪影。
-        虫洞族专属 15 艘在 `shipArtWh.tsx`（同批补）。 ── */
 
-  /* 鹦鹉螺级测绘巡洋舰（T3 · 掠食者武装）—— 分段螺旋装甲环（鹦鹉螺壳意象）+ 测绘桅杆天线阵 + 舷侧扫描窗 */
   'sh-nautilus': (
     <g>
       <path d="M206 58 L180 38 L124 32 C96 32 68 38 52 48 L40 58 L48 68 C64 78 94 84 126 84 L178 82 L202 68 Z" />
@@ -106,7 +85,6 @@ export const SHIP_ART: Record<string, ReactNode> = {
     </g>
   ),
 
-  /* 巨齿鲨级战列舰（T4 · 掠食者武装）—— 厚重舰体 + 舰首巨齿獠牙（史前巨齿意象）+ 三联主炮 + 舷侧副炮列 */
   'sh-megalodon': (
     <g>
       <path d="M212 58 L190 34 L128 28 C96 28 66 34 48 44 L34 56 L44 70 C60 82 92 88 128 88 L184 86 L206 70 Z" />
@@ -124,7 +102,6 @@ export const SHIP_ART: Record<string, ReactNode> = {
     </g>
   ),
 
-  /* 虎鲸级指挥舰（T4 · 战巡口径 · 指挥）—— 流线梭形舰体（为速度让位）+ 高耸指挥塔与双环相控阵 + 四联舷炮列 */
   'sh-orca': (
     <g>
       <path d="M216 58 L198 40 L140 32 C104 32 70 38 50 48 L30 58 L48 70 C70 80 104 86 140 86 L196 78 L214 62 Z" />
@@ -145,7 +122,6 @@ export const SHIP_ART: Record<string, ReactNode> = {
     </g>
   ),
 
-  /* 旋齿鲨级装甲战列舰（T4 · 装甲线）—— 厚甲楔形舰体 + 舰首旋齿锯盘（史前旋齿鲨意象）+ 双联主炮 + 三层甲板线 */
   'sh-helicoprion': (
     <g>
       <path d="M214 58 L192 32 L126 26 C92 26 62 34 46 46 L32 58 L46 70 C62 82 92 90 126 90 L190 84 L210 70 Z" />
@@ -162,7 +138,6 @@ export const SHIP_ART: Record<string, ReactNode> = {
     </g>
   ),
 
-  /* 邓氏鱼级旗舰（T5 · 掠食者武装）—— 头部装甲盾板（邓氏鱼头盾意象）+ 极厚舰体 + 四联舷炮 + 双联主炮 */
   'sh-dunkleosteus': (
     <g>
       <path d="M216 58 L196 30 L132 22 C96 22 62 30 44 42 L28 56 L40 72 C58 86 94 92 132 92 L190 90 L212 72 Z" />
@@ -183,11 +158,8 @@ export const SHIP_ART: Record<string, ReactNode> = {
   ),
 }
 
-/** 敌舰族群形（键 = FOE_FAMILY 中的族字母；未录族 → **A 形**兜底——2026-09-11 船长：F 族废弃并入 A 族，
- *  兜底点同步改指 A、仅作防崩；正常路径由「敌族显式登记契约」保证每张敌军卡都显式登记族） */
 export const FOE_ART: Record<string, ReactNode> = {
   ...FOE_ART_EXTRA,
-  /* A 海盗突击舰（粗短破旧 + 角旗 + 斜排劫掠炮） */
   A: (
     <g>
       <path d="M200 52 L206 56 L200 60 L192 66 L150 70 L86 70 C64 70 52 64 44 58 L38 53 L44 48 C52 42 66 40 92 40 L166 40 L188 44 Z" />
@@ -204,8 +176,6 @@ export const FOE_ART: Record<string, ReactNode> = {
       <circle className="shipart-accf" cx="176" cy="60" r="1.6" />
     </g>
   ),
-  /* F 遭遇巡逻舰（制式规整 + 舷灯条）【已废弃·留档：2026-09-11 船长「废弃F族，将F族融合进A族」——
-     'F' 字母位保留为空位，此形已无卡引用；保留仅为旧内容表/旧导出带 'F' 时仍可渲染，不再作为未录族兜底】 */
   F: (
     <g>
       <path d="M206 55 L180 40 L112 40 C92 40 76 45 66 51 L56 56 L62 64 C72 71 92 75 116 75 L168 73 Z" />
@@ -222,38 +192,14 @@ export const FOE_ART: Record<string, ReactNode> = {
   ),
 }
 
-/** 敌族轮廓浊色（敌我区分用；继承 currentColor 的元素 = 主轮廓 / .shipart-acc / .shipart-accf；
- *  发光件 .shipart-volt-g/-i/.fill-g/-i 为资产内固定族色不随此表；主舰与僚机同族同色，
- *  靠体量(LAY.MAIN/ESC)与名称后缀区分）
- *  ⚠ 2026-09-22 起色值走 `ui/tones.ts`（`var(--wui-tone-*)`）⇒ 随主题切换；改动去那张表。 */
 import { FOE_ACCENT } from './tones'
 
 export { FOE_ACCENT }
 
-/**
- * 敌族形状/配色一律按**数据侧** `AnomalyDef.foeFamily` 推导（2026-09-11 船长定案）。
- *
- * 旧口径的隐患（本批修掉）：这里曾有一张 **22 行硬编码的 `FOE_FAMILY` 映射**（按 anomaly id 查），
- * 与数据侧 `foeFamily` 字段**各写各的**且无一致性校验——结果**演习场那张卡**在美术侧是 B、
- * 在数据侧为空（落进兜底形），两处真相源长期不一致。
- *
- * **兜底点（2026-09-11 船长改判）**：缺族兜底由 `'F'`（制式巡逻形）**改指 `'A'`（海盗形）**——
- * F 族废弃并入 A 族；本函数是**全仓唯一缺省点**，正常路径下由「敌族显式登记契约」（`content:check`）
- * 保证每张敌军卡都显式登记族，故此兜底**仅作防崩保护**。
- */
 export function foeFamilyOf(anomaly: { foeFamily?: string } | null | undefined): string {
   return anomaly?.foeFamily ?? 'A'
 }
 
-/**
- * 敌舰**逐舰**形取形单点（2026-09-26 船长令「旧版敌人按敌舰不同做出些许区分」）。
- *
- * 三级回退，本函数负责第 ①、② 级，第 ③ 级（role 剪影）在 `ShipSprite` 里：
- *   ① `FOE_SHIP_ART[shipId]` —— 逐舰形（30 条，`ui/shipArtFoe.tsx`）
- *   ② `FOE_ART[族字母]`       —— 族形兜底（旧内容表 / 未录舰 / 异常档）
- * 传入的是**舰级 id**（`FoeShipDef.id`，形如 `foe-pirate-skiff`），**不是编队 uid**（形如 `foe-0#2`）——
- * 传错只会静默落进族形，故调用点一律用 core 的舰级反查取 id，不在界面层拼字符串。
- */
 export function foeShipArtOf(
   shipId: string | null | undefined,
   foeKey: string | null | undefined,
@@ -265,21 +211,14 @@ export function foeShipArtOf(
   return foeKey ? FOE_ART[foeKey] : undefined
 }
 
-/**
- * 敌族**短名**（2026-09-11 船长：「星图显示敌对派系时文字颜色按敌族划分、标签化展示」）——
- * 用于星图节点下方的族标签（位置窄，取 2 字短写；词典里的全称是
- * 「海盗舰系 / 异形生物 / 守墓古舰 / 泰坦巨构 / 鱿鱼亡军」）。
- */
 export const FOE_FAMILY_LABEL: Record<string, string> = {
   get A() { return tr("ui.shipArt.001") },
   get B() { return tr("ui.shipArt.002") },
   get C() { return tr("ui.shipArt.003") },
   get D() { return tr("ui.shipArt.004") },
   get E() { return tr("ui.shipArt.005") },
-  get F() { return tr("ui.shipArt.006") }, // 已废弃·留档（F 族并入 A 族；仅防旧数据带 'F' 时无标签可显示）
+  get F() { return tr("ui.shipArt.006") },
   get G() { return tr("ui.shipArt.007") },
-  // H 族（墨潮帮 · The Ink Tide · 2026-09-24 船长定名）：A 族海盗的变种/叛出分支 —— 短名取两字「墨潮」
   get H() { return tr("ui.shipArt.008") },
-  // R 族（光环 · Corona Systems · 2026-10-01 船长令「是新势力：余晖」）：全无人 AI 舰队残余 —— 短名取两字「光环」
   get R() { return tr("ui.shipArt.009") },
 }

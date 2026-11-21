@@ -86,7 +86,8 @@
     "ui:probe": "tsx tools/ui-probe.ts",
     "ui:overflow": "tsx tools/ui-overflow.ts",
     "ui:geom": "tsx tools/ui-geom.ts",
-    "ui:rot-check": "tsx tools/ui-rot-check.ts && tsx tools/ui-tdz-check.ts && tsx tools/ui-subs-check.ts && tsx tools/ui-attr-check.ts",
+    "ui:rot-check": "tsx tools/ui-rot-check.ts && tsx tools/ui-tdz-check.ts && tsx tools/ui-subs-check.ts && tsx tools/ui-attr-check.ts && tsx tools/crt-guard.ts && tsx tools/layout-css-split.ts --check",
+    "crt:guard": "tsx tools/crt-guard.ts",
     "ui:attr-check": "tsx tools/ui-attr-check.ts",
     "ui:battle-fit": "tsx tools/ui-battle-fit.ts",
     "save:guard-check": "tsx tools/save-guard-check.ts",
@@ -142,6 +143,7 @@
     "l10n:core-zh": "tsx tools/l10n-core-zh-audit.ts",
     "l10n:params": "tsx tools/param-miss-check.ts",
     "audio:check": "tsx tools/audio-check.ts",
+    "audio:loop-check": "tsx tools/loop-channel-check.ts",
     "audio:smoke": "node tools/audio-smoke.mjs",
     "audio:smoke:desktop": "electron tools/audio-desktop-smoke.cjs",
     "audio:install": "tsx tools/audio-install.ts"

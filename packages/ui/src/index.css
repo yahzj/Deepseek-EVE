@@ -764,8 +764,9 @@
    * 历程：
    * ① 船长报障「UI 上还有别的字体、全局字体应该统一」⇒ 先统一成系统雅黑栈（中文回落宋体根因见下）；
    * ② 之后反复试排英文/数字字体（unscii-16 → unscii-8-tall → Oxanium），最终口径：
-   *    **「默认」= 微软雅黑（中文）＋ Oxanium（英文/数字）**；「复古」= GNU Unifont（中文）＋
-   *    Eunomia Bold（英文/数字），复古档由 `ui/fontChoice.ts` 在 `<html data-ui-font="retro">`
+   *    **「默认」= 微软雅黑（中文）＋ Oxanium（英文/数字）**；「复古」= 统一只用
+   *    Fusion Pixel 12px Mono zh-Hans（2026-11-12 起，替换 GNU Unifont），复古档由
+   *    `ui/fontChoice.ts` 在 `<html data-ui-font="retro">`
    *    时用 `--ui-font` 覆盖（见 `panels/appSettings.css`）。
    *
    * 字形分工（CSS 字体栈逐字符回退的原生行为）：

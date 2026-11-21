@@ -313,7 +313,7 @@ describe('虫洞 · 并行战斗与忙态口径（船长 2026-09-13）', () => {
     expect(row2.sub).toContain('已离开')
   })
 
-  it('洞内距离可调，同卡沿用且不污染旧星系偏好', () => {
+  it('洞内距离可调但仅本场生效，不污染编队或旧星系偏好', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 7 })
     const a = addShipToFleet(state, T1)
     const b = addShipToFleet(state, T1)
@@ -325,18 +325,19 @@ describe('虫洞 · 并行战斗与忙态口径（船长 2026-09-13）', () => {
     // 首版这条路只认远征 ⇒ 洞内拖距离条被拒（看着像"锁死"）
     const card = ctx.anomalies.get('ano-training')!
     const prefBefore = desirePrefOf(state, card.galaxyId)
+    const rangeBefore = structuredClone(state.fleetRange)
+    const defaultDesire = run.battle!.myDesireM
     const want = ctx.balance.battle.minDistanceM // 拉到最近：与默认中距明显不同
     const r = setBattleDesire(state, want, ctx)
     expect(r.ok, `洞内拖距离被拒：${r.error ?? ''}`).toBe(true)
     expect(run.battle!.myDesireM).toBeGreaterThanOrEqual(ctx.balance.battle.minDistanceM)
-    expect(state.battleRangeByCard?.[run.battle!.wormhole!.cardId]?.desireM).toBe(run.battle!.myDesireM)
+    expect(state.fleetRange).toEqual(rangeBefore)
     // **不污染星系偏好**（虫洞不属于任何星系）
     expect(desirePrefOf(state, card.galaxyId)).toBe(prefBefore)
-    // 本趟后续节点沿用：重开一场（同节点）应直接吃本趟偏好
-    const want2 = run.battle!.myDesireM
+    // 未显式保存的战中调整不带到后续节点。
     run.battle = null
     expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
-    expect(run.battle!.myDesireM).toBe(want2)
+    expect(run.battle!.myDesireM).toBe(defaultDesire)
   })
 
   it('**洞内战斗进行中，洞外照常能开新战斗**（船长 2026-09-13）：走"遭遇"这条不受活动位限制的路', () => {

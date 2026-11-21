@@ -18,7 +18,6 @@ export function haulRiskPreviewOf(state: GameState, ctx: SimContext, ids: readon
     ratios.push(threat / base)
     return [threat]
   })
-  // 沿途最强相对威胁只展示整数宽档，不泄露精确威胁或把降频当成减伤。
   const coefficient = !unknown && ratios.length ? Math.floor(Math.max(...ratios)) : null
   return { exposed: path.some(row => (ctx.galaxies.get(row.galaxyId)?.security ?? 1) <= ctx.balance.encounter.lowSecMax),
     threatMin: threats.length ? Math.min(...threats) : null, threatMax: threats.length ? Math.max(...threats) : null,

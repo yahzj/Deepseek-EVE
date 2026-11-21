@@ -1,58 +1,21 @@
-/**
- * **势力图鉴的内容登记表（单一来源）**（2026-09-26 船长：「**敌族图鉴单独列出吧，放在蓝图图鉴下方，
- * 叫『势力图鉴』**……**玩家能在敌族图鉴里查看该势力的专属装备和舰船**」）。
- *
- * 这里回答三个问题，界面只读这一份：
- *  1. **收录哪些势力** —— A 海盗 · C 异形 · D 守墓 · E 泰坦 · G 亡军 · H 墨潮帮
- *     （**B 武装拾荒者不收**：船长 2026-09-25 明示；F 制式巡逻**已废弃**，WORMHOLE_FAMILY_ETHNIC 里也没有）；
- *  2. **每族的专属内容**是哪几件（装备 / 舰船 / 图纸）——**逐条注明依据**，见各族行的注释；
- *  3. **每族的敌人**舰级从哪来 —— `foe-ships.ts` 的 `FOE_SHIPS` 按 `FoeShipDef.family` **现算**，
- *     本表**不重列**（避免两处清单漂移）。
- *
- * ⚠ **两张来源不同的清单**（别混）：
- *  - **窝点专属件**（`mod-lair-*` / `drone-exile-bee` / `bp-lair-g-drone`）的族归属在 **core `FOE_LAIR_GEAR`**
- *    有权威表（`Record<FoeFamily, readonly string[]>`）⇒ `buildFactionCards`按件型合并它，不另抄清单；
- *  - **虫洞专属件与专属舰**（`mod-wh-*` / `sh-wh-*`）在数据侧**没有族字段**（只有 id 前缀与段落注释）
- *    ⇒ 本表就是它们的**族归属登记处**；判据 = id 前缀 ＋ `modules.ts` / `ships.ts` 的段落注释。
- *    护栏 = `content:check` 的「势力专属登记契约」（每个 `mod-wh-*` / `sh-wh-*` 必须**恰好**落在一族里，
- *    未登记 / 重复登记一律报红）。
- *
- * ⚠ **图纸**（船长 2026-09-26 选定「甲：列出来并标注『图纸』类别」）：本表把族专属图纸一并登记
- *   ——装备图纸 = 一次性 `bp-wh-*` / `bp-lair-*`（`singleUse: true`，与 `mod-wh-*` 同名同族）；
- *  舰船图纸 = `sbp-wh-*`（与 `sh-wh-*` 同名同族）。界面按 `bp-` / `sbp-` 前缀渲染「图纸」徽标。
- */
 import type { FoeFamily } from '@whale/core'
 import { FOE_LAIR_GEAR } from '@whale/core'
 
-/** 图鉴里的势力条目 */
 export interface FactionCodexEntry {
-  /** 族字母（＝ `FoeShipDef.family` 的取值域，界面取敌人与进度都用它） */
   family: FoeFamily
-  /** 势力名（玩家可见全称）的文案 id —— 复用 `ui.Handbook.326/337/348/359/370/381`（手册本就有） */
   nameId: string
-  /** 徽记（`ui/Glyphs.tsx` 的图标名；族徽与敌情悬停同一套 `fam-*`） */
   glyph: string
-  /** 显式登记的专属模块/物品；窝点池由buildFactionCards合并。 */
   modules: readonly string[]
-  /** **专属舰船**（我方舰；`sh-wh-<族>-*`） */
   ships: readonly string[]
-  /** **族专属图纸**（装备一次性图纸 `bp-wh-*` / `bp-lair-*` ＋ 舰船图纸 `sbp-wh-*`） */
   blueprints: readonly string[]
 }
 
-/**
- * 势力图鉴的**收录顺序**（＝界面卡片顺序；与敌情悬停的 `WORMHOLE_FAMILY_ORDER`（A/C/D/E/G）一致，
- * H 排在末尾 —— 它是 2026-09-24 起新接入的第六个势力）。
- */
 export const FACTION_CODEX_ORDER: readonly FoeFamily[] = ['A', 'C', 'D', 'E', 'G', 'H', 'R']
 
 export const FACTION_CODEX: Record<string, FactionCodexEntry> = {
-  /* ── A 海盗（Pirate）──
-     依据：`modules.ts` 段注释「A 族（海盗 · 掠夺：大货舱 / 快 / 中近程）」下的六件；
-     窝点三件见 core `FOE_LAIR_GEAR.A`；舰船 = `sh-wh-a-*` 三艘（掠袭电子舰 / 掠袭炮舰 / 掠袭重型突击巡洋舰） */
   A: {
     family: 'A',
-    nameId: 'ui.Handbook.326', // 海盗舰系（每族 9 格的起始格）
+    nameId: 'ui.Handbook.326',
     glyph: 'fam-a',
     modules: ['mod-wh-a-coat', 'mod-wh-a-frag', 'mod-wh-a-hangar', 'mod-wh-a-prop', 'mod-wh-a-scan', 'mod-wh-a-shield', 'plug-pirate-raider', 'plug-pirate-damage-management'],
     ships: ['sh-wh-a-frigate', 'sh-wh-a-destroyer', 'sh-wh-a-cruiser'],
@@ -60,26 +23,19 @@ export const FACTION_CODEX: Record<string, FactionCodexEntry> = {
       'sbp-wh-a-frigate', 'sbp-wh-a-destroyer', 'sbp-wh-a-cruiser', 'bp-plug-pirate-raider', 'bp-once-plug-pirate-raider',
       'bp-plug-pirate-damage-management', 'bp-once-plug-pirate-damage-management'],
   },
-  /* ── C 异形生物（Aberrant）──
-     依据：`modules.ts`「C 族」段五件（生体棱镜束 / 骨架 / 导弹 / 脉冲 / 激光）；窝点三件见 `FOE_LAIR_GEAR.C`；
-     另有一次性的**巢卫攻坚无人机图纸** `bp-wh-c-drone`（产物 `drone-wh-c-heavy`，属 C 族专属无人机） */
   C: {
     family: 'C',
-    nameId: 'ui.Handbook.335', // 异形生物
+    nameId: 'ui.Handbook.335',
     glyph: 'fam-c',
-    // `drone-wh-c-heavy` = 巢卫攻坚无人机（C 族专属消耗品；一次性图纸 `bp-wh-c-drone` 见 blueprints）
     modules: ['mod-wh-c-frame', 'mod-wh-c-laser', 'mod-wh-c-missile', 'mod-wh-c-prism', 'mod-wh-c-pulse', 'drone-wh-c-heavy', 'drone-jawclaw', 'mod-alien-acid-launcher', 'mod-alien-pressure-chamber', 'plug-alien-shield-coating', 'plug-alien-nanobiomass'],
     ships: ['sh-wh-c-frigate', 'sh-wh-c-destroyer', 'sh-wh-c-cruiser'],
     blueprints: ['bp-wh-c-frame', 'bp-wh-c-laser', 'bp-wh-c-missile', 'bp-wh-c-prism', 'bp-wh-c-pulse', 'bp-wh-c-drone',
       'sbp-wh-c-frigate', 'sbp-wh-c-destroyer', 'sbp-wh-c-cruiser', 'bp-faction-drone-hiveguard', 'bp-faction-drone-jawclaw', 'bp-plug-alien-shield-coating', 'bp-once-plug-alien-shield-coating',
       'bp-plug-alien-nanobiomass', 'bp-once-plug-alien-nanobiomass'],
   },
-  /* ── D 守墓古舰（Gravekeeper）──
-     依据：`modules.ts`「D 族」段六件（陵卫连装炮 / 陵墓护盾芯 / 守墓者丧钟 / 陵寝棱镜炮 /
-     守墓者速装填机 / 陵墓弹道铭文）；窝点三件见 `FOE_LAIR_GEAR.D`（**最强敌族**） */
   D: {
     family: 'D',
-    nameId: 'ui.Handbook.344', // 守墓古舰
+    nameId: 'ui.Handbook.344',
     glyph: 'fam-d',
     modules: ['mod-wh-d-laser', 'mod-wh-d-loader', 'mod-wh-d-lock', 'mod-wh-d-shield', 'mod-wh-d-steady', 'mod-wh-d-turret', 'mod-gravekeeper-rebirth', 'mod-gravekeeper-crisis', 'mod-gravekeeper-rail', 'plug-gravekeeper-capacitor', 'plug-gravekeeper-charge'],
     ships: ['sh-wh-d-frigate', 'sh-wh-d-destroyer', 'sh-wh-d-cruiser'],
@@ -87,108 +43,65 @@ export const FACTION_CODEX: Record<string, FactionCodexEntry> = {
       'sbp-wh-d-frigate', 'sbp-wh-d-destroyer', 'sbp-wh-d-cruiser', 'bp-plug-gravekeeper-capacitor', 'bp-once-plug-gravekeeper-capacitor',
       'bp-plug-gravekeeper-charge', 'bp-once-plug-gravekeeper-charge'],
   },
-  /* ── E 泰坦巨构（Titan）──
-     依据：`modules.ts`「E 族」段五件（巨构损管阵列 / 导控塔 / 协处理器 / 近防阵列 / 护盾矩阵）；
-     窝点三件见 `FOE_LAIR_GEAR.E`（巨构残骸炮 / 深层机库 / 巨构骨架）；
-     另有一次性的**构件哨戒无人机图纸** `bp-wh-e-drone`（产物 `drone-wh-e-sentry`） */
   E: {
     family: 'E',
-    nameId: 'ui.Handbook.353', // 泰坦巨构
+    nameId: 'ui.Handbook.353',
     glyph: 'fam-e',
-    // `drone-wh-e-sentry` = 构件哨戒无人机（E 族专属消耗品；一次性图纸 `bp-wh-e-drone` 见 blueprints）
     modules: ['mod-wh-e-cpu', 'mod-wh-e-dc', 'mod-wh-e-pd', 'mod-wh-e-shield', 'mod-wh-e-tac', 'drone-wh-e-sentry', 'plug-titan-compression', 'plug-titan-drone-command'],
     ships: ['sh-wh-e-frigate', 'sh-wh-e-destroyer', 'sh-wh-e-carrier'],
     blueprints: ['bp-wh-e-cpu', 'bp-wh-e-dc', 'bp-wh-e-pd', 'bp-wh-e-shield', 'bp-wh-e-tac', 'bp-wh-e-drone', 'bp-faction-drone-construct',
       'sbp-wh-e-frigate', 'sbp-wh-e-destroyer', 'sbp-wh-e-carrier', 'bp-plug-titan-compression', 'bp-once-plug-titan-compression',
       'bp-plug-titan-drone-command', 'bp-once-plug-titan-drone-command'],
   },
-  /* ── G 鱿鱼亡军（Deadarmy）──
-     依据：`modules.ts`「G 族」段六件（幽灵弹道校正器 / 亡军火控 / 亡军蜂巢坞 / 鱿蜂结构层 /
-     亡军残炮 / 幽灵推进器）；窝点三件见 `FOE_LAIR_GEAR.G`（含**鱿蜂无人机** `drone-exile-bee`
-     与其一次性图纸 `bp-lair-g-drone`——已登记在该表里，故此处不重列 `bp-lair-g-drone`） */
   G: {
     family: 'G',
-    nameId: 'ui.Handbook.362', // 鱿鱼亡军
+    nameId: 'ui.Handbook.362',
     glyph: 'fam-g',
-    // `drone-exile-bee` = 鱿蜂无人机（G 族窝点链产物；一次性图纸 `bp-lair-g-drone` 在 core `FOE_LAIR_GEAR.G` 名下单列）
     modules: ['mod-wh-g-ballistic', 'mod-wh-g-fcs', 'mod-wh-g-hangar', 'mod-wh-g-hull', 'mod-wh-g-prop', 'mod-wh-g-turret', 'drone-exile-bee', 'plug-deadarmy-printing', 'plug-deadarmy-reinforced-hull'],
     ships: ['sh-wh-g-frigate', 'sh-wh-g-destroyer', 'sh-wh-g-cruiser'],
     blueprints: ['bp-wh-g-ballistic', 'bp-wh-g-fcs', 'bp-wh-g-hangar', 'bp-wh-g-hull', 'bp-wh-g-prop', 'bp-wh-g-turret', 'bp-faction-drone-bee',
       'sbp-wh-g-frigate', 'sbp-wh-g-destroyer', 'sbp-wh-g-cruiser', 'bp-plug-deadarmy-printing', 'bp-once-plug-deadarmy-printing',
       'bp-plug-deadarmy-reinforced-hull', 'bp-once-plug-deadarmy-reinforced-hull'],
   },
-  /* ── H 墨潮帮（Ink Tide）──
-     依据：2026-09-26 势力装备批 —— **两件模块**（墨潮电子舱 `mod-lair-ecm-h` / 墨潮捕获网 `mod-lair-web-h`，
-     均在 core `FOE_LAIR_GEAR.H`）＋ **专属无人机**（墨潮重袭无人机 `drone-ink-heavy`，`exclusive: true`）。
-     ⚠ **H 没有专属舰船**（数据侧无 `sh-wh-h-*`）⇒ 界面按船长 2026-09-26 选定（甲案）在该栏明写「暂无专属舰船」。
-     2026-10-09船长确认墨潮重袭新增黑市永久图纸；两件模块和原成品掉落链不改。 */
   H: {
     family: 'H',
-    nameId: 'ui.Handbook.371', // 墨潮帮
+    nameId: 'ui.Handbook.371',
     glyph: 'fam-h',
-    // `drone-ink-heavy` = 墨潮重袭无人机（H 族专属消耗品，残骸链一次 ×10 架）
     modules: ['mod-lair-ecm-h', 'mod-lair-web-h', 'drone-ink-heavy'],
     ships: [],
     blueprints: ['bp-faction-drone-ink'],
   },
-  /* ── R 光环（Corona Systems）──
-     依据：**2026-10-01 船长令建族**（「是新势力：余晖，你可以查阅下远行星号中的无人机敌对势力余晖，
-     我们参考那个做」；族格裁定「甲：新立族格」· 舰名配色「甲：照提案」）。
-     ⚠ **2026-10-03 船长报障修**（「**我发现手册中的光环势力描述不正确。舰船也对不上。**」）：
-     旧注释写「**P0 阶段没有专属内容**……三栏都为空」——那是**建族当时**的状态，**P0 落码后没回头同步**
-     ⇒ 手册里 R 族装备栏一直是空的，而实际早有**势力装备**（照 H 族同款填法，见其头注）。⟪2026-10-02 订正⟫ 当时是两件（叠光激光炮 / 跃迁规避装置）；后追加 三叉戟光束炮（mod-lair-beam-r）与 PD激光（mod-lair-pd-r）⇒ FOE_LAIR_GEAR.R 现为**四件**。
-     ⚠ **R 族没有专属舰船**（玩家侧无 `sh-wh-r-*`）—— 与 H 族一样它是**入侵族**，
-     出场的是敌舰级（`foe-r-corona-*` 五个：glint / echo / overlay / dusk / nexus），不是可拥有的船
-     ⇒ `ships` 与 `blueprints` 两栏**保持为空**（界面按 H 族同款明写「暂无专属舰船」）。 */
   R: {
     family: 'R',
-    nameId: 'ui.Handbook.381', // 光环
+    nameId: 'ui.Handbook.381',
     glyph: 'fam-r',
-    /* 四件势力装备都是 R 族**残骸回收**链产物（2026-10-01 船长令那批：AI 核心 ＋ 叠光激光炮 ＋ 跃迁规避装置；⟪2026-10-02⟫ 再加 三叉戟光束炮 ＋ PD激光）
-       —— 与 H 族那两件同为窝点/残骸链产物、**无蓝图**（不上市场）⇒ 图纸一栏照旧为空。 */
     modules: ['mod-lair-laser-r', 'mod-lair-blink-r', 'mod-lair-beam-r', 'mod-lair-pd-r'],
     ships: [],
     blueprints: [],
   },
 }
 
-/** 图鉴收录的势力数（界面副行「已遭遇 N/M」的分母按**族**算；见 `factionSeenCounts`） */
 export const FACTION_CODEX_COUNT = FACTION_CODEX_ORDER.length
 
-/* ═══════════ 界面值（单一来源：界面只读这里，不再自己算） ═══════════ */
 
-/** 图鉴里该族的一条敌人（未遭遇的只带 `seen:false`，**名字由界面按占位规则决定**） */
 export interface FactionEnemy {
   id: string
-  /** 是否遭遇过（＝ `state.foeShipSeen[id] === true`；2026-09-26 起由开战那一刻记账） */
   seen: boolean
 }
 
-/** 图鉴卡片的完整值（界面 `GridCell.raw` 就存它） */
 export interface FactionCard {
   family: FoeFamily
-  /** 势力名文案 id（`ui.Handbook.*`；界面按当前语言取词） */
   nameId: string
   glyph: string
-  /** 该族**是否已解锁**（＝该族任一舰级遇过；船长 2026-09-26 裁定②：遇过任一舰 ⇒ 该族专属全开） */
   unlocked: boolean
-  /** 已遭遇的舰级数 / 该族舰级总数 */
   seenCount: number
   totalCount: number
-  /** 该族敌人（顺序 = `FOE_SHIPS` 表内顺序，稳定） */
   enemies: FactionEnemy[]
-  /** 该族专属内容（已解锁时可展示；未解锁时界面不展示明细） */
   modules: readonly string[]
   ships: readonly string[]
   blueprints: readonly string[]
 }
 
-/**
- * 按当前档的遭遇记录装配势力卡片（界面唯一入口）。
- *
- * `foeShipSeen` 的键就是敌舰**舰级 id**（`combat.noteFoeShipsSeen` 写入）⇒ 与 `FOE_SHIPS` 的 id 同域，
- * 直接查表即可；**老档没有该字段 ⇒ 全部未遇**（零迁移，符合"新图鉴从零解锁"的预期）。
- */
 export function buildFactionCards(
   foeShips: readonly { id: string; family: FoeFamily }[],
   foeShipSeen: Readonly<Record<string, true>> | undefined,
@@ -196,7 +109,6 @@ export function buildFactionCards(
   return FACTION_CODEX_ORDER.map((family) => {
     const entry = FACTION_CODEX[family]!
     const lairGear = FOE_LAIR_GEAR[family]
-    // 窝点池混有模块、无人机和图纸；分栏合并并去重，不能只补族徽反查而漏掉展示。
     const modules = [...new Set([...entry.modules, ...lairGear.filter(id => !id.startsWith('bp-') && !id.startsWith('sbp-'))])]
     const blueprints = [...new Set([...entry.blueprints, ...lairGear.filter(id => id.startsWith('bp-') || id.startsWith('sbp-'))])]
     const enemies: FactionEnemy[] = foeShips
@@ -218,18 +130,6 @@ export function buildFactionCards(
   })
 }
 
-/**
- * 反查：某件族专属物品（装备/舰/图纸 id）属于哪一族 —— 契约与界面共用。
- *
- * ⚠ **2026-09-27 修（船长报障）**：「**物品仓库内的势力装备，左上角没有角标**」——
- * 真因就在本函数：它只翻本表的 `modules`/`ships`/`blueprints` 三栏，而**老窝点件**
- * （`mod-lair-*`，A/C/D/E/G 五族那 15 件，2026-09-10 那批）**从来只登记在 core 的权威表
- * `FOE_LAIR_GEAR` 里、本表没重列**（本表头注写着"引用它，不另写一份"）⇒ 那些件一律反查为 `null`
- * ⇒ 角标判据落空 ⇒ 仓库里的「守墓者长炮」「生体甲壳板」等**一件都不带族徽**（H 族三件因为
- * 是 2026-09-26 才登记进本表，反倒是全仓唯一带角标的那批）。
- * ⇒ 现在**先查本表登记的三栏、再查 core 的 `FOE_LAIR_GEAR`**（后者是窝点掉落池的权威表，
- * 按族给 id 清单）——两处合起来才等于"族专属件"的全集；`FOE_LAIR_GEAR` 里 B/F 两族恒空。
- */
 export function factionOfExclusive(id: string): FoeFamily | null {
   const box = /^box-encrypted-([acdeg])$/.exec(id)
   if (box) return box[1]!.toUpperCase() as FoeFamily
@@ -238,7 +138,6 @@ export function factionOfExclusive(id: string): FoeFamily | null {
     const e = FACTION_CODEX[family]!
     if (e.modules.includes(actualId) || e.ships.includes(actualId) || e.blueprints.includes(actualId)) return family
   }
-  /** 老窝点件（`mod-lair-*` / 专属无人机 / 其一次性图纸）：权威表在 core，本表不重列 */
   for (const family of FACTION_CODEX_ORDER) {
     if (FOE_LAIR_GEAR[family]?.includes(id) === true) return family
   }

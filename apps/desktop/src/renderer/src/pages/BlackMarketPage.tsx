@@ -15,7 +15,6 @@ import { isk } from './common'
 export function BlackMarketPage({ engine, onToast, onBack }: PageProps & { onBack: () => void }) {
   useL10n()
   const board = engine.state.blackMarket
-  // 旧当天货架只隐藏原料，不改原记录、锁价、售罄状态或日界，不补抽。
   const offers = (board?.offers ?? []).filter(o => {
     const good = engine.ctx.marketGoods.get(o.goodKey)
     return good !== undefined && !isBlackMarketBulkResource(engine.ctx, good)

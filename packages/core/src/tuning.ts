@@ -1,36 +1,6 @@
-/**
- * **限时倍率表（tuning schedule）** —— 船长 2026-09-15 定的新功能：
- * 「允许我快速设置在指定的现实日期之前，给特定数值调整一个倍率（比如残骸量，虫洞扫描周期等）」。
- *
- * 口径（六问六答 · 全按船长裁定）：
- * - **全员生效**：本表是**正式数据**（随代码上线），不是本地调试开关；
- * - **白名单**：只有 `TUNABLE_KNOBS` 里登记过的目标能被调（每条有 id / 中文名 / 乘在哪 / 边界）；
- * - **时间**：每条规则 `{ key, mul, from?, until, note? }`，以**本地墙钟**判定；
- *   `from`（可省）= 当地 **00:00** 起生效（含）；`until` = **当天整天仍生效**，次日 00:00 失效；
- * - **叠加**：同一目标多条命中 ⇒ **相乘**；未命中 ⇒ **1**；
- * - **界面**：生效期间由 `activeTunings()` 供活动栏显示"加成项 + 剩余时间"。
- *
- * ⚠ **为什么不用 `Date.now()` 直接读**：倍率必须**可复现**——引擎每拍把现实墙钟写进
- * `state.wallMs`（`advanceGame` 的 `nowWallMs`），读取点一律走 `tuningMul(state, key)`。
- * **工具与用例都不设 `state.wallMs` ⇒ 恒为 1×** ⇒ 标定读数（`battle:calibrate` / `wormhole:econ` /
- * `balance`）**不会被日历污染**，这在"读数当验收证据"的流程里是硬要求。
- *
- * ⚠ **不落存档生效状态**：命中与否现算 ⇒ 活动结束**无需回收、无需迁移**。
- * 例：`wreckDensity` 只乘**读取值**，不改已存 `state.wreckDensity` / 盘面 ⇒ 到期自动回落。
- *
- * **2026-09-16 新增「促销（promo）」一层**（扫描周期倍率与活动文案合并展示）：
- * `PROMOS` 一行同时决定扫描倍率与玩家可见文案，到期一起失效；
- * 被促销 `claims` 认领的倍率键在活动栏**不再单列徽标**（同一件事不显示两遍）。
- * 促销与 `TUNING_RULES` **共用同一套日期判据**（`dayWindowActiveAt` / `dayWindowEndMs`）。
- */
 import type { GameState } from './state'
 import { ironmanRareDropMul, ironmanRewardMul } from './ironman'
 
-/**
- * **可调目标清单（白名单）**。新增一项 = 在这里登记一行 + 在读取点乘 `tuningMul` + 补一条用例。
- *
- * `dir`：倍率的直观方向（写给界面与文档看；引擎只认数值）。
- */
 export const TUNABLE_KNOBS = {
   wreckDensity: {
     name: '星系残骸密度（打捞产出量）',
@@ -76,78 +46,31 @@ export const TUNABLE_KNOBS = {
 
 export type TunableKey = keyof typeof TUNABLE_KNOBS
 
-/** 一条限时规则（日期一律 `YYYY-MM-DD`，按**本地时区**解析） */
 export interface TuningRule {
-  /** 白名单里的开关 id */
   key: TunableKey
-  /** 倍率（> 0；1 = 不生效，写 1 只作留档） */
   mul: number
-  /** 起始日期（可省 = 立即生效）；当地 00:00 起（含） */
   from?: string
-  /** 截止日期；**当天整天仍生效**，次日 00:00 失效 */
   until: string
-  /** 备注（写给日后看的"这次活动是什么"，不进玩家可见文案） */
   note?: string
 }
 
-/**
- * **规则表**（按需往里加；空表 = 无任何加成）。
- *
- * 写法示例（照抄改数即可）：
- * ```ts
- * export const TUNING_RULES: readonly TuningRule[] = [
- *   { key: 'wreckDensity', mul: 2, from: '2026-09-20', until: '2026-09-22', note: '周末双倍残骸' },
- *   { key: 'wormholeScanMs', mul: 0.5, until: '2026-09-30', note: '虫洞扫描加速（无起始日 ⇒ 立即）' },
- * ]
- * ```
- */
 export const TUNING_RULES: readonly TuningRule[] = []
 
-/**
- * **促销（限时活动）表**；活动过期后从规则表移除。
- *
- * 一条促销 = **两项同源**（同一行决定，不会各写各的）：
- * - `scanMul`：虫洞扫描周期倍率（读点 `wormholeScanWindowMs`，与 `TUNING_RULES` 相乘）；
- * - `label` / `detail`：活动栏徽标与悬停说明的**玩家可见文案**（游戏内说法，禁开发语）。
- *
- * 日期口径与 `TuningRule` **完全一致**（本地时区 · `from` 含当日 00:00 · `until` 当天整天有效、
- * 次日 00:00 失效）。
- */
 export interface PromoRule {
-  /** 促销 id（稳定标识） */
   id: string
-  /** 玩家可见名（活动栏徽标那行字；游戏内说法） */
   label: string
-  /** 悬停明细（玩家可见；`\n` 分段） */
   detail: string
-  /** 起始日期（可省 = 立即生效）；当地 00:00 起（含） */
   from?: string
-  /** 截止日期；**当天整天仍生效**，次日 00:00 失效 */
   until: string
-  /** 虫洞扫描周期倍率（不写 = 1；**×0.25 = 快四倍**） */
   scanMul?: number
-  /** 本促销"认领"的限时倍率开关：这些键的**单独徽标会被并购进本促销**，避免同一件事显示两遍 */
   claims?: readonly TunableKey[]
-  /**
-   * **点击徽标的去向**（2026-09-16 船长：「点击后，不会跳转扫描虫洞界面」）。
-   * - `'wormhole-scan'` ⇒ 星图页的「扫描虫洞」选项卡（`WormholeScanTab`：进度条与库存列表那一页）；
-   * - 不写 ⇒ 与限时加成徽标同款（星图页的「星图」选项卡）。
-   */
   open?: PromoOpenTarget
 }
 
-/** 促销徽标的**去向**（写错 = 点进去找不到东西；`content:check` 的促销契约会拦未知值） */
 export type PromoOpenTarget = 'wormhole-scan'
 
-/**
- * **促销规则表**（按需往里加；空表 = 无任何活动）。
- *
- * ⚠ **只写给玩家看得懂的活动**：`label` / `detail` 是玩家可见文案（游戏内说法），
- * 开发/验收话语（日期、口径、倍率算式）一律不进——数值解释放注释或 `note`。
- */
 export const PROMOS: readonly PromoRule[] = []
 
-/** `YYYY-MM-DD` → 当地 00:00 的毫秒（非法日期返回 null，调用方按"不生效"处理） */
 export function localDayStartMs(day: string): number | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day.trim())
   if (!m) return null
@@ -155,19 +78,11 @@ export function localDayStartMs(day: string): number | null {
   const mo = Number(m[2])
   const d = Number(m[3])
   const t = new Date(y, mo - 1, d, 0, 0, 0, 0).getTime()
-  // 反查一遍：`2026-02-31` 这类会被 Date 顺延 ⇒ 视为非法
   const back = new Date(t)
   if (back.getFullYear() !== y || back.getMonth() !== mo - 1 || back.getDate() !== d) return null
   return t
 }
 
-/**
- * **日期窗口是否命中**（`TuningRule` 与 `PromoRule` 共用的**唯一判据**——两套表的口径必须一致，
- * 免得"倍率没了赠送还在"）。
- *
- * - `nowMs` 非法 / 缺省 ⇒ 不命中（工具与用例天然免疫）；
- * - `from` 可省 = 立即生效（当地 00:00 含）；`until` = **当天整天仍生效**，次日 00:00 失效（开区间）。
- */
 function dayWindowActiveAt(
   from: string | undefined,
   until: string,
@@ -184,7 +99,6 @@ function dayWindowActiveAt(
   return true
 }
 
-/** 截止日的**失效时刻**（= 次日当地 00:00；非法日期 ⇒ null）。界面算"剩余时间"也用它 */
 export function dayWindowEndMs(until: string): number | null {
   const untilStart = localDayStartMs(until)
   if (untilStart === null) return null
@@ -193,13 +107,11 @@ export function dayWindowEndMs(until: string): number | null {
   return end.getTime()
 }
 
-/** 规则是否命中（`nowMs` = 现实墙钟毫秒；`null`/`undefined` ⇒ 一律不命中） */
 export function ruleActiveAt(rule: TuningRule, nowMs: number | null | undefined): boolean {
   if (!(rule.mul > 0)) return false
   return dayWindowActiveAt(rule.from, rule.until, nowMs)
 }
 
-/** **某开关当前的倍率**（命中规则相乘；未命中 = 1）。读取点唯一的入口。 */
 export function tuningMulAt(key: TunableKey, nowMs: number | null | undefined): number {
   let mul = 1
   for (const r of TUNING_RULES) {
@@ -210,39 +122,26 @@ export function tuningMulAt(key: TunableKey, nowMs: number | null | undefined): 
   return mul > 0 && Number.isFinite(mul) ? mul : 1
 }
 
-/** **引擎/界面统一入口**：读 `state.wallMs`（未设 ⇒ 1×，工具与用例天然免疫） */
 export function tuningMul(state: Pick<GameState, 'wallMs'> | null | undefined, key: TunableKey): number {
   return tuningMulAt(key, state?.wallMs ?? null)
 }
 
-/**
- * **奖励类读取点的唯一入口** ＝ 限时倍率 × **铁人福利 C**（悬赏/任务奖励 +10%，2026-09-23 船长令）。
- *
- * 为什么在这里收口：奖励倍率有两个来源（限时表 + 模式福利），散在 5 处各乘一次迟早会漏一处；
- * 而 `tuningMul(state, 'rewardIsk')` 这句字面量留在本文件里 ⇒ `content:check` 的「限时倍率契约」
- * 第 ④ 条（每个开关都必须被引擎真正消费）照旧成立。
- * 非铁人档 ⇒ 铁人那一项恒 1× ⇒ 既有读数逐字不变。
- */
 export function rewardMulOf(state: Pick<GameState, 'wallMs' | 'ironman'> | null | undefined): number {
   return tuningMul(state, 'rewardIsk') * ironmanRewardMul(state)
 }
 
-/** **稀有残骸掉率读取点的唯一入口** ＝ 限时倍率 × **铁人福利 C**（掉率 30% → 36%） */
 export function rareDropRateMulOf(state: Pick<GameState, 'wallMs' | 'ironman'> | null | undefined): number {
   return tuningMul(state, 'rareWreckRate') * ironmanRareDropMul(state)
 }
 
-/** 生效中的加成（界面读数用：按规则顺序，带剩余时间与倍率） */
 export interface ActiveTuning {
   key: TunableKey
   name: string
   mul: number
-  /** 截止时刻（毫秒；界面据此算剩余时间） */
   untilMs: number
   note?: string
 }
 
-/** 当前生效的加成列表（`nowMs` 缺省 ⇒ 空数组；界面传 `Date.now()`） */
 export function activeTunings(nowMs: number | null | undefined): ActiveTuning[] {
   const out: ActiveTuning[] = []
   for (const r of TUNING_RULES) {
@@ -260,31 +159,21 @@ export function activeTunings(nowMs: number | null | undefined): ActiveTuning[] 
   return out
 }
 
-/* ═══════════ 促销（限时活动）：扫描倍率 ＋ 一次性赠送 ＋ 合并展示（2026-09-16） ═══════════ */
 
-/** 一条生效中的促销（界面徽标与引擎发放共用同一份读数） */
 export interface ActivePromo {
   id: string
-  /** 玩家可见名（活动栏徽标那行字） */
   label: string
-  /** 悬停明细（玩家可见；`\n` 分段） */
   detail: string
-  /** 截止时刻（毫秒；界面据此算剩余时间） */
   untilMs: number
-  /** 虫洞扫描周期倍率（未写 = 1） */
   scanMul: number
-  /** 本促销认领的限时倍率键（这些键的单独徽标要隐藏，见活动栏） */
   claims: readonly TunableKey[]
-  /** 点击徽标的去向（不写 = 星图页「星图」选项卡；见 `PromoRule.open`） */
   open?: PromoOpenTarget
 }
 
-/** 促销是否命中（判据与 `ruleActiveAt` 同源 ⇒ 两套表的日期口径绝不会漂） */
 export function promoActiveAt(promo: PromoRule, nowMs: number | null | undefined): boolean {
   return dayWindowActiveAt(promo.from, promo.until, nowMs)
 }
 
-/** **当前生效的促销列表**（界面徽标用；`nowMs` 非法 / 缺省 ⇒ 空数组） */
 export function activePromos(nowMs: number | null | undefined): ActivePromo[] {
   const out: ActivePromo[] = []
   for (const p of PROMOS) {
@@ -304,14 +193,12 @@ export function activePromos(nowMs: number | null | undefined): ActivePromo[] {
   return out
 }
 
-/** **促销带来的虫洞扫描周期倍率**（命中相乘；未命中 = 1）——`wormholeScanWindowMs` 的唯一读取点 */
 export function promoScanMulAt(nowMs: number | null | undefined): number {
   let mul = 1
   for (const p of activePromos(nowMs)) mul *= p.scanMul
   return mul > 0 && Number.isFinite(mul) ? mul : 1
 }
 
-/** 引擎/界面统一入口（读 `state.wallMs`；未设 ⇒ 1×） */
 export function promoScanMul(state: Pick<GameState, 'wallMs'> | null | undefined): number {
   return promoScanMulAt(state?.wallMs ?? null)
 }

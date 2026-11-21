@@ -1,7 +1,3 @@
-/**
- * **技能书**（技能树页的分支，2026-09-22 船长令「将现有的技能再进行细分」）——
- * 顺序即树页「技能书」导航的显示顺序；名字走 l10n（`ui.labelsText.026~048`，中英齐），本表只登记 id 与所属大类。
- */
 export const SKILL_BRANCHES: readonly { readonly id: string; readonly group: string }[] = [
   { id: 'b-fly', group: '舰船' },
   { id: 'b-warship', group: '舰船' },
@@ -13,7 +9,6 @@ export const SKILL_BRANCHES: readonly { readonly id: string; readonly group: str
   { id: 'b-salvage', group: '工业' },
   { id: 'b-auto', group: '工业' },
   { id: 'b-build', group: '工业' },
-  // 2026-09-30 船长令：燃料上限/节拍/收率四条技能进「实验室」书（工业大类下的子标签）
   { id: 'b-lab', group: '工业' },
   { id: 'b-indship', group: '矿业' },
   { id: 'b-weapon', group: '战斗' },

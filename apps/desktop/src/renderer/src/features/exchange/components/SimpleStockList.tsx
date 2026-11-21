@@ -1,10 +1,3 @@
-/**
- * 极简模式 · 左栏星际企业榜（约 250px）。
- *
- * 紧凑卡片式展示 4 位代码股票（XJZG、XJKY、XMWL、LTGF）：
- * - 4 位代码 + 公司名 + 现价大字 + 今日涨跌 + 名字右侧 Sparkline 小走势（2026-11-04 船长：必须保留）；
- * - 若持有该公司股票，卡片顶部右侧与板块微标并列展示精致持仓微标（遵循 Wiki/Tidwell 设计规范：流式排布，零重叠，消灭右下角走势遮挡）。
- */
 import type { ExchangeClient, ExchangeSnapshot } from '../client'
 import { amount, pct, price } from '../format'
 import { T, stockName, stockSector } from '../texts'
@@ -19,7 +12,6 @@ interface SimpleStockListProps {
 }
 
 export function SimpleStockList({ client, snap, selected, onSelect }: SimpleStockListProps) {
-  // 统计每只股票的持仓明细（现货、做多杠杆、做空杠杆）
   const holdMap = new Map<string, { spotQty: number; longQty: number; shortQty: number }>()
   for (const h of snap.account.holdings) {
     const cur = holdMap.get(h.code) ?? { spotQty: 0, longQty: 0, shortQty: 0 }

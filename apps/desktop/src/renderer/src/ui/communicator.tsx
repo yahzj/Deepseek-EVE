@@ -1,9 +1,3 @@
-/**
- * **通讯弹层**（2026-10-02 从 `panels/Expedition.tsx` 拆出 · 批次 4o · 零行为变化）。
- *
- * 本文件 = 通讯剧本弹层组件（标题 + 逐条发言 + 关闭按钮）——只依赖 `i18n/locale` 的 `tr`。
- * `Expedition.tsx` 原样再导出（先例：fitted.ts），App.tsx 的既有引用零改动。
- */
 import { tr } from '../i18n/locale'
 import { commsDialogueText } from './commsText'
 

@@ -1,17 +1,3 @@
-/**
- * 委托管理列表（MyOrders）· 回合制的「我的所有单」。
- *
- * 为什么单独成件：回合制下玩家的预操作（本回合排队等集合竞价）和已操作（成交 / 未成交 /
- * 撤单 / 被拒）必须在一个地方看全，否则只能靠记忆判断「这回合下过什么、还剩几单」。
- *
- * 两种布局共用一个组件：
- * - `table`：专业模式「成交与流水」的委托页签，网格列对齐；
- * - `compact`：极简模式右栏「我的委托」页签，窄列分两层，不硬挤表格。
- *
- * 数据来源：`client.getOrders()` 返回最近 200 笔（Go 端上限），不塞进快照，
- * 避免改变 `snap.orders` 只含活跃委托的既有语义。
- * 撤单契约：仅 `queued` 可撤，且只在回合开放期；锁定窗口按钮置灰，撤单不返还本回合配额。
- */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ExchangeClient, ExchangeOrder, OrderSource, RoundInfo } from '../client'
 import type { ToastFn } from '../../../pages/common'
@@ -28,7 +14,6 @@ interface MyOrdersProps {
   variant: Variant
 }
 
-/** 待成交状态：`queued` 是回合制核心，其余为模拟盘旧状态与条件单 */
 const PENDING_STATUSES: ReadonlySet<ExchangeOrder['status']> = new Set<ExchangeOrder['status']>([
   'queued',
   'open',
@@ -36,11 +21,8 @@ const PENDING_STATUSES: ReadonlySet<ExchangeOrder['status']> = new Set<ExchangeO
   'trigger_pending',
 ])
 
-/** 列表刷新间隔：与行情 / 账户刷新同频，回合末广播后不落后太多 */
 const REFRESH_MS = 10_000
-/** 回合锁定检查间隔 */
 const ROUND_POLL_MS = 5_000
-/** 批量撤单二次确认的有效窗口 */
 const CONFIRM_MS = 3_000
 
 function statusLabel(order: ExchangeOrder): string {
@@ -78,7 +60,6 @@ function sourceLabel(source: OrderSource | undefined): string {
   return T.orderSourceManual
 }
 
-/** 方向：开空与卖出都是 side=sell，必须靠 short 标记区分 */
 function sideLabel(order: ExchangeOrder): string {
   if (order.short) return T.orderSideShort
   return order.side === 'buy' ? T.buy : T.sell
@@ -91,7 +72,6 @@ function sideTone(order: ExchangeOrder): 'buy' | 'sell' | 'short' {
 
 export function MyOrders({ client, onToast, variant }: MyOrdersProps) {
   const [orders, setOrders] = useState<ExchangeOrder[]>([])
-  // 简单界面进入时先看待提交；专业流水仍可查看全部结果。
   const [filter, setFilter] = useState<Filter>(variant === 'compact' ? 'pending' : 'all')
   const [loading, setLoading] = useState(true)
   const [locked, setLocked] = useState(false)
@@ -107,7 +87,6 @@ export function MyOrders({ client, onToast, variant }: MyOrdersProps) {
       if (!aliveRef.current) return
       setOrders([...list].sort((a, b) => b.createdAt - a.createdAt))
     } catch {
-      // 网络抖动保留上一份读数：回合末不该把列表清空
     } finally {
       if (aliveRef.current) setLoading(false)
     }
@@ -126,7 +105,6 @@ export function MyOrders({ client, onToast, variant }: MyOrdersProps) {
     }
   }, [refresh])
 
-  // 交易完成释放快照后立即刷新列表，不让委托比可用资金晚一个轮询周期。
   useEffect(() => {
     let timer: number | null = null
     const unsub = client.onTick(() => {
@@ -142,7 +120,6 @@ export function MyOrders({ client, onToast, variant }: MyOrdersProps) {
     }
   }, [client, refresh])
 
-  // 回合锁定窗口：撤单按钮置灰，避免玩家点了才吃到 409
   useEffect(() => {
     const getRound = client.getRound
     if (typeof getRound !== 'function') return
@@ -154,12 +131,10 @@ export function MyOrders({ client, onToast, variant }: MyOrdersProps) {
         .then((info: RoundInfo) => {
           if (!alive) return
           if (offset === null) offset = info.serverTime - Date.now()
-          // `locked` 与服务端各自可能略有先后，用剩余时间再兜一次底
           const remaining = info.nextRoundAt - (Date.now() + offset)
           setLocked(info.locked || remaining <= info.lockSec * 1_000)
         })
         .catch(() => {
-          // 轮询失败沿用上一状态，不打断列表使用
         })
     }
     poll()
@@ -184,7 +159,6 @@ export function MyOrders({ client, onToast, variant }: MyOrdersProps) {
     }
   }
 
-  /** 本回合排队中的单：只有 queued；锁定窗口内按钮置灰但保留入口，避免玩家找不到撤单 */
   const queuedOrders = orders.filter((order) => order.status === 'queued')
   const cancellable = locked ? [] : queuedOrders
 

@@ -6,6 +6,34 @@ import { applyFleetPreset, cleanFleetPresets, defaultFleetPresetName, deleteFlee
 import { combatRosterOf } from '../src/combat/command/roster'
 import { COMMAND_SKILLS } from '../src/combat/command/rules'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
+import { startExpedition } from '../src/expedition/launch'
+import { resolveBattleOutcome } from '../src/expedition/outcome'
+import { advanceGame } from '../src/engine'
+import { shipOperationBlockReason } from '../src/shipActionPolicy'
+import { finishDeparture } from './helpers/departure-ready'
+
+function returningWorld() {
+  const state = createInitialState({ nowWallMs: 0, seed: 1118 })
+  state.modeChosen = true
+  state.fleet = {}
+  const old = Array.from({ length: 2 }, () => addShipToFleet(state, 'sh-shrike'))
+  const next = Array.from({ length: 2 }, () => addShipToFleet(state, 'sh-falconet'))
+  state.shipId = old[0]!
+  state.standingsEarned = { dsi: 100 }
+  state.exploredGalaxies = [...ctx.galaxies.keys()]
+  state.importantTasks['first-bounty'] = { done: true, delivered: 0 }
+  for (const skill of COMMAND_SKILLS) state.skills.trained[skill.id] = 5
+  state.preparationSquads = { combat: [...old] }
+  state.fleetPresets = [{ id: 'relief', name: '接替队', leaderShipId: next[0]!, shipIds: [...next] }]
+  expect(startExpedition(state, 'ano-training', ctx).ok).toBe(true)
+  finishDeparture(state, ctx)
+  state.expedition.battle!.ended = 'me'
+  resolveBattleOutcome(state, ctx)
+  expect(state.expedition.phase).toBe('back')
+  for (const [index, id] of old.entries()) state.fleet[id]!.cargo = { 'min-tritanium': index + 3 }
+  state.fleet[next[0]!]!.cargo = { 'min-pyerite': 9 }
+  return { state, old, next, finishAt: state.expedition.finishAtGameMs }
+}
 
 const ctx = buildSimContext()
 function world() {
@@ -85,6 +113,65 @@ describe('我的舰队多套预设', () => {
     const before = structuredClone(state)
     expect(saveFleetPreset(state, ctx, 'two').ok).toBe(false)
     expect(saveFleetPreset(state, ctx, 'one', 'fleet-1').ok).toBe(false)
+    expect(state).toEqual(before)
+  })
+
+  it.each(['expedition', 'independent'] as const)('%s返航时可套用港内空闲编队，旧队到港前不卸货、不解锁', phase => {
+    const { state, old, next, finishAt } = returningWorld()
+    if (phase === 'independent') {
+      for (const id of old) state.shipReturns[id] = { beltId: null, legMs: finishAt - state.gameMs, phaseAccMs: 0, reason: 'expedition' }
+      state.expedition.active = false
+      state.expedition.anomalyId = null
+      state.expedition.phase = 'out'
+      delete state.expedition.sortie
+      state.awayGalaxy = 'galaxy-kor'
+    }
+    const fleet = structuredClone(state.fleet), warehouse = structuredClone(state.warehouse), wallet = structuredClone(state.wallet)
+    expect(applyFleetPreset(state, ctx, 'relief').ok).toBe(true)
+    expect(state.shipId).toBe(next[0])
+    expect(combatRosterOf(state)).toEqual(next)
+    expect(state.expedition.active).toBe(false)
+    expect(state.expedition.sortie).toBeUndefined()
+    expect(state.fleet).toEqual(fleet)
+    expect(state.warehouse).toEqual(warehouse)
+    expect(state.wallet).toEqual(wallet)
+    for (const id of old) {
+      expect(state.shipReturns[id]).toMatchObject({ reason: 'expedition', legMs: finishAt - state.gameMs, phaseAccMs: 0 })
+      expect(shipOperationBlockReason(state, ctx, id, 'configure')).not.toBeNull()
+    }
+    const loaded = loadSaveFile(serializeSaveFile(state, 0)).state
+    expect(combatRosterOf(loaded)).toEqual(next)
+    const returns = structuredClone(loaded.shipReturns)
+    expect(startExpedition(loaded, 'ano-abandoned-platform', ctx).ok).toBe(true)
+    expect(loaded.expedition.sortie?.shipIds).toEqual(next)
+    expect(loaded.shipReturns).toEqual(returns)
+    const remaining = loaded.shipReturns[old[0]!]!.legMs
+    advanceGame(loaded, remaining - 1, ctx, { freezeBattle: true })
+    for (const id of old) expect(loaded.shipReturns[id]).toBeDefined()
+    advanceGame(loaded, 1, ctx, { freezeBattle: true })
+    for (const id of old) {
+      expect(loaded.shipReturns[id]).toBeUndefined()
+      expect(loaded.fleet[id]!.cargo).toEqual({})
+    }
+    expect(loaded.warehouse.items['min-tritanium']).toBe((warehouse.items['min-tritanium'] ?? 0) + 7)
+    expect(loaded.fleet[next[0]!]!.cargo).toEqual(fleet[next[0]!]!.cargo)
+    expect(loaded.expedition.sortie?.shipIds).toEqual(next)
+  })
+
+  it.each(['old-member', 'same-leader', 'missing', 'ai', 'returning', 'budget', 'standing', 'battle', 'outbound', 'departure'] as const)('返航换编队%s拒绝时不发生部分交接', reason => {
+    const { state, old, next } = returningWorld()
+    const preset = state.fleetPresets![0]!
+    if (reason === 'old-member') preset.shipIds.push(old[1]!)
+    if (reason === 'same-leader') { preset.leaderShipId = old[0]!; preset.shipIds = [old[0]!, ...next] }
+    if (reason === 'missing') delete state.fleet[next[1]!]
+    if (reason === 'ai') state.aiAssignments[next[1]!] = { coreType: 'basic', startedAtGameMs: 0, task: { kind: 'standby', galaxyId: 'galaxy-hub', phase: 'stand', finishAtGameMs: 0, outMs: 1 } }
+    if (reason === 'returning') state.shipReturns[next[1]!] = { beltId: null, legMs: 1000, phaseAccMs: 0, reason: 'expedition' }
+    if (reason === 'budget') { state.skills.trained = {}; for (const id of next) state.fleet[id]!.defId = 'sh-megalodon' }
+    if (reason === 'standing') { state.standings.dsi = 0; state.standingsEarned = {} }
+    if (reason === 'battle' || reason === 'outbound') state.expedition.phase = reason === 'battle' ? 'battle' : 'out'
+    if (reason === 'departure') state.departure = { shipId: old[0]!, undockMs: 1000, progressMs: 0 } as NonNullable<typeof state.departure>
+    const before = structuredClone(state)
+    expect(applyFleetPreset(state, ctx, 'relief').ok).toBe(false)
     expect(state).toEqual(before)
   })
 

@@ -11,7 +11,6 @@ import { weekendZoneLiveAt } from '../weekendEvent'
 import { wormholeActivateAt, wormholeStartBattle, wormholeTravelTo } from '../wormholeBattle'
 import { wormholeResolveEvent } from '../wormholeExpedition'
 
-/** 确认只重放待办中的原指令；真实入口再次校验卡、编队、补给、冷却及射程。 */
 export function confirmBattleRange(state: GameState, ctx: SimContext, desireM: number, nowWallMs = Date.now()): CommandResult {
   const pending = state.pendingBattleRange
   if (!pending || !Number.isFinite(desireM) || desireM < ctx.balance.battle.minDistanceM) return { ok: false }

@@ -53,7 +53,6 @@ export function planetProjectCheck(planet: PlanetState, projectId: string, catal
 }
 
 export function completePlanetProject(planet: PlanetState, projectId: string, catalog: PlanetCatalog): PlanetActionResult {
-  // 施工在开工时扣取研究与材料；完成只复核仍有效的特性条件。
   const check = checkProject(planet, projectId, catalog, false)
   if (!check.ok) return check
   const project = catalog.projects!.get(projectId)!
@@ -84,7 +83,6 @@ export function advancePlanetEvents(planet: PlanetState, catalog: PlanetCatalog,
     || colony.pauseEvents || colony.event) return
   const rng = { seed: hashSeed(`planet-events:${planet.generationVersion}:${planet.seed}:${planet.id}`), count: colony.eventRngCount }
   const interval = (): number => EVENT_MIN_MS + nextInt(rng, EVENT_MAX_MS - EVENT_MIN_MS + 1)
-  // clockMs 由主推进器更新；首次排期从本段起点算，不再累计一次 deltaMs。
   if (colony.nextEventMs === 0) colony.nextEventMs = Math.max(0, colony.clockMs - deltaMs) + interval()
   if (colony.clockMs >= colony.nextEventMs) {
     const atMs = colony.nextEventMs
@@ -123,7 +121,6 @@ export function resolvePlanetEvent(planet: PlanetState, catalog: PlanetCatalog, 
   } else if (choice === 'shelter') {
     colony.pauseEvents = true
   }
-  // 待处理期间不积压连发事件，保留抽定间隔，从本次处理完成时重新计时。
   const interval = Math.max(EVENT_MIN_MS, Math.min(EVENT_MAX_MS, colony.nextEventMs - event.atMs))
   colony.nextEventMs = colony.clockMs + interval
   delete colony.event

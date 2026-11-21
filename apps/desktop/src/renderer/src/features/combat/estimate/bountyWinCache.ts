@@ -10,7 +10,6 @@ export interface BountyWinSource {
   ids: readonly string[]
 }
 
-/** 只负责后台任务生命周期；战斗采样仍在core的唯一评估入口。 */
 export class BountyWinCache {
   private source: BountyWinSource | null = null
   private board = ''

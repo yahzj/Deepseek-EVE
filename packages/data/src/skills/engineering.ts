@@ -2,7 +2,6 @@ import type { SkillDef } from '@whale/core'
 
 export const ENGINEERING_SKILLS: readonly SkillDef[] = [
 
-  // ───────── 工程 ─────────
   {
     id: 'hull-salvage-engineering',
     name: '舰体打捞工程学',
@@ -29,8 +28,6 @@ export const ENGINEERING_SKILLS: readonly SkillDef[] = [
     prereq: ['hull-salvage-engineering'],
     description: '成功回收玩家舰船时，普通装备的保全率每级提高 ⟦4⟧ 个百分点，基础 ⟦80%⟧，满级 ⟦100%⟧；无人机不受影响。',
   },
-  // 说明：护盾操作学 / 能量管理学 / 船体加固理论原为战斗线预留条目（曾由 HIDDEN_SKILL_IDS 隐藏），
-  // 批次三起已全部开放并入战斗数值；批次五追加护盾调谐学 / 装甲调谐学（减伤缺口收窄）。
   {
     id: 'shield-operation',
     name: '护盾操作学',
@@ -91,9 +88,6 @@ export const ENGINEERING_SKILLS: readonly SkillDef[] = [
   },
   {
     id: 'station-protocol',
-    // 2026-09-22 船长（Excel 工作台回稿）：「空间站协议学」⇒ **空间站维修协议**，且 **rank 1 → 4**；
-    //   rank 一动，它与「维修工程学」（rank 3）的上下级方向就反了 ⇒ 前置改为挂在维修工程学之下
-    //   （两者仍是同一乘区：停站维修费，双方说明里互相点名 ⇒ 符合船长「同类效果做上下级」的口径）
     name: '空间站维修协议',
     group: '工程',
     rank: 4,
@@ -103,7 +97,7 @@ export const ENGINEERING_SKILLS: readonly SkillDef[] = [
   },
   {
     id: 'ai-expert',
-    name: 'AI 核心操作学', // 2026-09-08 船长定：原名"人工智能专家"（rank4）；降为 rank2 入门 + 更名，与 rank5「AI 核心调度学」成阶梯
+    name: 'AI 核心操作学',
     group: '工程',
     rank: 2,
     branch: 'b-ai',
@@ -141,8 +135,6 @@ export const ENGINEERING_SKILLS: readonly SkillDef[] = [
     rank: 4,
     branch: 'b-ai',
     prereq: ['offline-ops'],
-    // 2026-09-20 船长定：「新增离线作业管理学的上位技能：效果为离线结算时长每级 +40%.技能rank4」
-    // 与「离线作业管理学」并存叠加（加算）：双满级 = 8h × (1+1.0+2.0) = 32 小时。
     description: '无人值守的作业统筹：离线结算时长每级 +⟦40%⟧（基础 8 小时，满级 24 小时；与「离线作业管理学」叠加计算）。',
   },
 ]

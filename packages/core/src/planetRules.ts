@@ -44,7 +44,6 @@ export function planetEnvironmentOf(planet: Pick<PlanetState, 'traitIds'>, catal
   return planetEnvironmentFactors(hazard, habitability)
 }
 
-/** 未知内容或未来生成规则不回落到另一个随机世界。 */
 export function planetRulesSupported(planet: PlanetState, catalog: PlanetCatalog): boolean {
   return planet.generationVersion === PLANET_GENERATION_VERSION
     && [4, 5, 6].includes(planet.size)

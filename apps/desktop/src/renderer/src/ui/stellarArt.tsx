@@ -5,7 +5,6 @@ import { STELLAR_PLANET_ASSETS } from './stellarAssets'
 export const STELLAR_KIND_IDS = { single: 'ui.stellar.024', binary: 'ui.stellar.025', 'white-dwarf': 'ui.stellar.026', neutron: 'ui.stellar.027', 'black-hole': 'ui.stellar.028', rogue: 'ui.stellar.029' } as const
 export const STELLAR_PLANET_KIND_IDS = { rocky: 'ui.stellar.030', desert: 'ui.stellar.031', ice: 'ui.stellar.032', ocean: 'ui.stellar.033', lava: 'ui.stellar.034', temperate: 'ui.stellar.035', gas: 'ui.stellar.036' } as const
 
-/** 图案只使用已公开类型，不能根据隐藏资源或特性改变外形。 */
 function StellarPlanetFallback({ kind }: { kind: StellarPlanetKind }) {
   return <g className={`app-stellar-planet-art is-${kind}`} aria-hidden="true">
     <circle className="planet-disc" r="10" />

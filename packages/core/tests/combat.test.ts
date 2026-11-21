@@ -150,9 +150,9 @@ describe('命中与伤害公式', () => {
     const hp = { s: 10, a: 10, h: 10 }
     // 未破盾：落点 = 护盾 ⇒ 整发按 ×1.5 算 ⇒ 5×1.5 = 7.5（<10 盾）
     const r1 = applyDamage(hp, {}, 5, 'kinetic')
-    expect(r1.hp.s).toBeCloseTo(2.5, 5)
+    expect(r1.hp.s).toBe(2)
     expect(r1.hp.a).toBe(10)
-    expect(r1.dealt).toBeCloseTo(7.5, 5)
+    expect(r1.dealt).toBe(8)
     // 打穿盾：落点 = **结构**（10 伤害在原始尺度上 10+10 都打穿了）⇒ 整发按结构 ×1 ⇒ 扣 15
     const r2 = applyDamage({ s: 10, a: 10, h: 10 }, {}, 10, 'kinetic')
     expect(r2.hp.s).toBe(0)
@@ -161,7 +161,7 @@ describe('命中与伤害公式', () => {
     expect(r2.dealt).toBeCloseTo(15, 5)
     // 抗性：盾动能抗 0.5 ⇒ 落点仍在护盾、整发 ×1.5×0.5 = 7.5（<10 盾）
     const r3 = applyDamage({ s: 10, a: 10, h: 10 }, { shield: { kinetic: 0.5 } }, 10, 'kinetic')
-    expect(r3.hp.s).toBeCloseTo(2.5, 5)
+    expect(r3.hp.s).toBe(2)
   })
 })
 

@@ -15,7 +15,6 @@ export interface PirateFormation {
   unusedStrength: number
 }
 
-/** 只认威胁和确定种子，不读玩家队伍、货量或活动类型。 */
 export function pirateFormationOf(targetThreat: number, seed: number, config: PirateFormationConfig, catalog: ReadonlyMap<string, FoeShipDef>, bal: BattleBalance): PirateFormation | null {
   if (!Number.isSafeInteger(targetThreat) || targetThreat < 1 || !Number.isSafeInteger(seed)) throw new Error('pirate-formation-invalid-input')
   if (!Number.isSafeInteger(config.maxShips) || config.maxShips < 1 || config.maxShips > 12 || !Number.isSafeInteger(config.maxWaves) || config.maxWaves < 1 || config.maxWaves > 3 || !Number.isFinite(config.maxStatMultiplier) || config.maxStatMultiplier < 1 || config.maxStatMultiplier > 2 || !Number.isFinite(config.designStrengthMul) || config.designStrengthMul <= 0) throw new Error('pirate-formation-invalid-config')
@@ -63,7 +62,6 @@ export function pirateFormationOf(targetThreat: number, seed: number, config: Pi
   }
   if (!slots.length) return null
   const baseCard = assemble()
-  // 只改血和武器伤害，保持挂载、射程、命中及节拍；固定规格与倍率分母同步，避免重复增幅。
   const amplify = (multiplier: number): AnomalyDef => {
     const layout = slots.map(slot => ({ ...slot, hpMul: multiplier, dmgMul: multiplier }))
     const scaledSpec = (source: UnitSpec): UnitSpec => {
@@ -89,7 +87,6 @@ export function pirateFormationOf(targetThreat: number, seed: number, config: Pi
   const strength = foeStrengthOf(card, bal)
   const realizedThreat = foeThreatRatingOf(strength.x, config.designStrengthMul, bal)
   card.threat = realizedThreat
-  // 挂载资格已按本次目标威胁冻结；标签重标不得再次改变建档判据。
   card.threatJudged = targetThreat
   return { card, targetThreat, realizedThreat, unusedStrength: Math.max(0, budget - strength.x) }
 }

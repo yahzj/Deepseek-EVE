@@ -1,14 +1,3 @@
-/**
- * 专业行情图（2026-11-05 船长令：接 klinecharts 替换自绘 SVG，不留旧图回退开关）。
- *
- * 为什么换库：自绘 SVG 缺缩放/拖拽之外的指标面板、精确刻度与十字光标联动，专业终端需要这些能力。
- * 换库后数据契约不变（仍从 `client.getChartSeries(code, period)` 取 `Kline[]`），
- * 主题色从 `--wui-*` 变量读，切主题不必改代码。
- *
- * 指标：MA5 / MA20 叠在主图，VOL / RSI(14) 各自副图；开关即重建指标，缩放平移由库接管。
- * 数据：klinecharts 10 用 DataLoader 取数——`getBars` 整批（进页/换标的/换周期），
- * `subscribeBar` 拿到回调后由 tick 推最新一根，避免整批替换打断用户的缩放与平移。
- */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { dispose, init, type Chart as KChart, type KLineData, type PaneOptions, type Period } from 'klinecharts'
 import type { ChartPeriod, ExchangeClient, Kline, StockQuote } from '../../client'
@@ -19,7 +8,6 @@ import { isEn } from '../../../../i18n/locale'
 import { bollinger, rsi } from './indicators'
 import { EXCH_PREF, readExchangeChoice, readExchangeToggles, writeExchangePref, writeExchangeToggles } from '../../viewPrefs'
 
-/** 切页返回后保持周期（与旧图相同的空间记忆） */
 let rememberedPeriod: ChartPeriod = readExchangeChoice(
   EXCH_PREF.chartPeriod,
   PRO_CHART_PERIODS.map((spec) => spec.id),
@@ -34,20 +22,17 @@ let rememberedToggles: ChartToggles = readExchangeToggles<ChartToggles>({
 
 type ToggleKey = keyof typeof rememberedToggles
 
-/** DOM 上的主题变量是「r g b」三元组，这里拼回 rgb()；变量缺失时用兜底色，避免主题未加载时白屏 */
 function themeColor(name: string, fallback: string): string {
   if (typeof window === 'undefined') return fallback
   const raw = window.getComputedStyle(document.documentElement).getPropertyValue(name).trim()
   return raw === '' ? fallback : `rgb(${raw})`
 }
 
-/** getPaneOptions 无参时返回数组，单参时返回单个 pane；这里只取列表形态 */
 function paneList(chart: KChart): PaneOptions[] {
   const panes = chart.getPaneOptions()
   return Array.isArray(panes) ? panes : []
 }
 
-/** 本仓周期 → klinecharts 周期；v10 不设周期与标的不触发 DataLoader */
 function toKPeriod(period: ChartPeriod): Period {
   switch (period) {
     case 'm1':
@@ -74,7 +59,17 @@ function toKPeriod(period: ChartPeriod): Period {
   }
 }
 
-/** 悬浮读数小卡：只讲当前这根蜡烛，图面不常驻文字 */
+const DEFAULT_VIEW_MS = 3 * 86_400_000
+function defaultViewBars(period: ChartPeriod): number {
+  return Math.max(2, Math.ceil(DEFAULT_VIEW_MS / chartPeriodSpec(period).bucketMs))
+}
+
+function defaultBarSpace(plotWidth: number, period: ChartPeriod, barCount: number): number {
+  const want = Math.min(defaultViewBars(period), Math.max(2, barCount))
+  const width = Math.max(240, plotWidth)
+  return Math.min(12, Math.max(1, width / want))
+}
+
 function BarTooltip({
   bar,
   period,
@@ -98,8 +93,6 @@ function BarTooltip({
 
   const tipWidth = 150
   const tipHeight = 108
-  // 读数卡跟着鼠标走，但夹在画布内：旧实现靠近右边界会翻到鼠标左侧，
-  // 卡片从准星旁边跳到远处（14:30 那格看起来像读错了行）。
   const left = Math.max(4, Math.min(x + 16, Math.max(4, width - tipWidth - 4)))
   const top = Math.min(Math.max(4, y - tipHeight / 2), Math.max(4, height - tipHeight - 4))
 
@@ -132,10 +125,6 @@ function BarTooltip({
   )
 }
 
-/**
- * 空间分配：v10 的 pane 高度是「期望值」，总高不够时副图会被压到 0。
- * 这里按容器实际高度反算主图，副图固定窄条，保证蜡烛始终是画面主体。
- */
 function layoutPanes(chart: KChart, containerHeight: number): void {
   const panes = paneList(chart)
   const subs = panes.filter((p) => p.id.startsWith('indicator_pane_'))
@@ -167,9 +156,7 @@ export function ProChart({
   client: ExchangeClient
   code: string
   quote: StockQuote
-  /** 行情拍号：即使现价恰好没变，也要让图表重新取最新一根 */
   tick: number
-  /** 可选：初始周期（验收/测试用；页面不传，走空间记忆） */
   initialPeriod?: ChartPeriod
 }) {
   const [period, setPeriod] = useState<ChartPeriod>(() => {
@@ -178,23 +165,17 @@ export function ProChart({
   })
   const [toggles, setToggles] = useState(() => ({ ...rememberedToggles }))
   const [ready, setReady] = useState(0)
-  /** 自绘读数卡：库内 tooltip 已全关，只跟随鼠标显示当前这根蜡烛（船长 2026-11-06） */
   const [hover, setHover] = useState<{ x: number; y: number; bar: KLineData } | null>(null)
-  /** getBars 交出去的那批数据，鼠标坐标换算成 timestamp 后要回来找这一根 */
   const barsRef = useRef<KLineData[]>([])
   const hostRef = useRef<HTMLDivElement | null>(null)
   const chartRef = useRef<KChart | null>(null)
   const indicatorIds = useRef<string[]>([])
   const consumedKeyRef = useRef('')
-  /** 已告知库的标的+周期；变化时先 setSymbol/setPeriod，库才会重新走 DataLoader */
   const symbolKeyRef = useRef('')
-  /** DataLoader 拿到的最新一根推送回调；tick 只推一根，不动整批视图 */
   const barSinkRef = useRef<((bar: KLineData) => void) | null>(null)
-  /** DataLoader 的取数闭包必须读到当前标的/周期，不能闭包在 init 那一刻 */
   const queryRef = useRef({ client, code, period })
   queryRef.current = { client, code, period }
 
-  // 数据抓取节拍：进页拉一次 + 每 10 秒补拉（与旧图一致，接口有缓存，重复调用不重发）
   useEffect(() => {
     const load = (): void => client.ensureChartData?.(code, period)
     load()
@@ -202,7 +183,6 @@ export function ProChart({
     return () => window.clearInterval(timer)
   }, [client, code, period])
 
-  // 建图（只建一次；主题切换由 CSS 变量驱动，库内颜色在挂载时读取）
   useLayoutEffect(() => {
     const el = hostRef.current
     if (el === null) return
@@ -220,12 +200,10 @@ export function ProChart({
     chart.setStyles({
       grid: {
         show: true,
-        // 极弱化辅助网格：降低对蜡烛与折线的视觉压迫，增加图面通透呼吸感
         horizontal: { show: true, color: 'rgba(255, 255, 255, 0.04)', size: 1, style: 'dashed', dashedValue: [4, 4] },
         vertical: { show: true, color: 'rgba(255, 255, 255, 0.025)', size: 1, style: 'dashed', dashedValue: [4, 4] },
       },
       candle: {
-        // 遵循权威金融与大鲸鱼规范：阳线中空镂空、阴线饱满实心
         type: 'candle_up_stroke',
         bar: {
           upColor: gain,
@@ -240,7 +218,6 @@ export function ProChart({
         },
         priceMark: {
           show: true,
-          // 极值自动标线：微弱提示当前视口高低阻力支撑
           high: {
             show: true,
             color: 'rgba(228, 132, 132, 0.75)',
@@ -273,13 +250,11 @@ export function ProChart({
             },
           },
         },
-        // 库内 tooltip 全关：读数由顶部自绘制 HUD 仪表条承担，鼠标滑动即时联动
         tooltip: { showRule: 'none' },
       },
       indicator: {
         tooltip: { showRule: 'none' },
         lastValueMark: { show: false },
-        // 指标配色专属定制：BOLL 上轨金色 / 中轨冰青 / 下轨暖紫
         lines: [
           { style: 'solid', smooth: true, size: 1.2, color: gold },
           { style: 'solid', smooth: true, size: 1.2, color: cyan },
@@ -326,12 +301,11 @@ export function ProChart({
       },
     })
 
-    // klinecharts 10 的数据入口：整批取数与最新一根推送
     chart.setDataLoader({
       getBars: ({ callback }) => {
         const { client: c, code: k, period: p } = queryRef.current
-        // 只交最近 320 根：全量（M1 有 2016 根）塞进 628px 会把蜡烛压成一条线
-        const data = toKLineData(c.getChartSeries(k, p)).slice(-320)
+        const keep = Math.max(320, defaultViewBars(p))
+        const data = toKLineData(c.getChartSeries(k, p)).slice(-keep)
         barsRef.current = data
         callback(data, { backward: false, forward: false })
       },
@@ -347,7 +321,6 @@ export function ProChart({
     setReady((n) => n + 1)
 
 
-    // 首次挂载时父级 flex 还没分到高度，init 会按 0 建画布；下一帧再量一次把主图撑开。
     let raf2 = 0
     const raf1 = requestAnimationFrame(() => {
       chart.resize()
@@ -373,7 +346,6 @@ export function ProChart({
     }
   }, [])
 
-  // 指标开关：先清掉上一批自己建的指标，再按开关重建（本图不开放其它指标入口，不会误删用户自建指标）
   useEffect(() => {
     const chart = chartRef.current
     if (chart === null || ready === 0) return
@@ -384,22 +356,17 @@ export function ProChart({
       const id = chart.createIndicator(value, stack)
       if (id === null) return
       indicatorIds.current.push(id)
-      // 副图默认按 100px 分走高度、把主图挤到 0；新建的 pane 固定成窄条。
-      // 注意 createIndicator 返回的是指标 id，不是 pane id，只能按前后差集找新 pane。
       if (!stack) {
         const created = paneList(chart).find((p) => !before.has(p.id))
         if (created !== undefined) chart.setPaneOptions({ id: created.id, height: 44, minHeight: 32 })
       }
     }
-    // 布林带必须显式落回主图：v10 的 isStack 在空主图时会各建一个指标 pane
     if (toggles.boll) add({ name: 'BOLL', calcParams: [20, 2], paneId: 'candle_pane' }, true)
     if (toggles.vol) add('VOL', false)
     if (toggles.rsi) add({ name: 'RSI', calcParams: [21] }, false)
     layoutPanes(chart, hostRef.current?.clientHeight ?? 0)
   }, [ready, toggles])
 
-  // 数据衔接：换标的/换周期时先告诉库看哪只标的、哪个周期（v10 不设就不拉数），
-  // 之后再整批重置；同一标的下 tick 只推最新一根。
   useEffect(() => {
     const chart = chartRef.current
     if (chart === null || ready === 0) return
@@ -417,8 +384,7 @@ export function ProChart({
     if (key !== consumedKeyRef.current) {
       consumedKeyRef.current = key
       chart.resetData()
-      // 默认把蜡烛压到 4px/根：628px 宽约看 150 根，比 fit 全量可读
-      chart.setBarSpace(4)
+      chart.setBarSpace(defaultBarSpace(hostRef.current?.clientWidth ?? 628, period, data.length))
       chart.scrollToRealTime()
       return
     }

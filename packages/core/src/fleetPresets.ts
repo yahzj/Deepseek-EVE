@@ -7,6 +7,7 @@ import { changeShip, changeShipBlockReason } from './shipyard'
 import { commandBudgetOf, COMBAT_MAX_SHIPS } from './combat/command/rules'
 import { combatRosterOf } from './combat/command/roster'
 import { notePreparationSquad } from './preparationSquads'
+import { cleanFleetRangePreference, fleetRangeOf } from './fleetRange'
 
 export const FLEET_PRESET_MAX = 10
 export const FLEET_PRESET_NAME_MAX = 32
@@ -21,9 +22,9 @@ export interface FleetPreset {
   name: string
   leaderShipId: string
   shipIds: string[]
+  range?: import('./fleetRange').FleetRangePreference
 }
 
-/** 缺舰引用保留供套用时报错；不把坏数组截成一支不同的编队。 */
 export function cleanFleetPresets(value: unknown): FleetPreset[] {
   if (!Array.isArray(value)) return []
   const out: FleetPreset[] = []
@@ -37,7 +38,8 @@ export function cleanFleetPresets(value: unknown): FleetPreset[] {
     const ids = row.shipIds
     if (!ids.length || ids.length > COMBAT_MAX_SHIPS || ids.some(id => typeof id !== 'string' || !id.length || id.length > 128)
       || new Set(ids).size !== ids.length || ids[0] !== row.leaderShipId) continue
-    out.push({ id, name, leaderShipId: row.leaderShipId, shipIds: [...ids] as string[] })
+    const range = cleanFleetRangePreference(row.range)
+    out.push({ id, name, leaderShipId: row.leaderShipId, shipIds: [...ids] as string[], ...(range ? { range } : {}) })
     if (out.length === FLEET_PRESET_MAX) break
   }
   return out
@@ -68,9 +70,16 @@ export function saveFleetPreset(state: GameState, ctx: SimContext, name: string,
   const budget = commandBudgetOf(state, ctx, ids)
   if (!budget.ok) return { ...budget, ok: false }
   let seq = 1
-  while (list.some(p => p.id === `fleet-${seq}`)) seq++
-  const preset: FleetPreset = { id: replaceId ?? `fleet-${seq}`, name: finalName, leaderShipId: state.shipId, shipIds: [...ids] }
+  // 删除后的在途预设编号仍保留，避免旧战斗保存到同号新预设。
+  const reservedIds = new Set([state.expedition.battle?.rangeMemory?.fleetPresetId,
+    state.encounter.battle?.rangeMemory?.fleetPresetId, state.wormhole.run?.battle?.rangeMemory?.fleetPresetId,
+    state.expedition.sortie?.range?.presetId, state.pendingBattleRange?.fleetPresetId])
+  while (list.some(p => p.id === `fleet-${seq}`) || reservedIds.has(`fleet-${seq}`)) seq++
+  const distance = fleetRangeOf(state, ids)
+  const range = cleanFleetRangePreference(distance)
+  const preset: FleetPreset = { id: replaceId ?? `fleet-${seq}`, name: finalName, leaderShipId: state.shipId, shipIds: [...ids], ...(range ? { range } : {}) }
   state.fleetPresets = replaceId ? list.map(p => p.id === replaceId ? preset : p) : [...list, preset]
+  state.fleetRange = { ...range, shipIds: [...ids], presetId: preset.id }
   return { ok: true }
 }
 
@@ -90,15 +99,19 @@ export function deleteFleetPreset(state: GameState, id: string): CommandResult {
   const next = list.filter(p => p.id !== id)
   if (next.length) state.fleetPresets = next
   else delete state.fleetPresets
+  if (state.fleetRange?.presetId === id) delete state.fleetRange.presetId
   return { ok: true }
 }
 
-/** 所有拒因先收齐；成功后只走正式换驾驶与编队记忆入口，不动装配或货物。 */
 export function applyFleetPreset(state: GameState, ctx: SimContext, id: string): CommandResult {
   const preset = state.fleetPresets?.find(p => p.id === id)
   if (!preset) return reject('core.fleetPreset.003')
-  const idle = fleetIdle(state, ctx)
-  if (!idle.ok) return idle
+  const returnHandover = preset.leaderShipId !== state.shipId
+    && (state.expedition.active && state.expedition.phase === 'back' || state.shipReturns[state.shipId] !== undefined)
+  if (!returnHandover) {
+    const idle = fleetIdle(state, ctx)
+    if (!idle.ok) return idle
+  }
   const issues: string[] = []
   for (const uid of preset.shipIds) {
     if (!state.fleet[uid]) { issues.push(uid); continue }
@@ -111,9 +124,18 @@ export function applyFleetPreset(state: GameState, ctx: SimContext, id: string):
   if (preset.leaderShipId !== state.shipId) {
     const blocked = changeShipBlockReason(state, preset.leaderShipId, ctx)
     if (blocked) return { ok: false, ...blocked }
+    if (returnHandover) {
+      // 用正式交接预演港内新主控状态；不能先换驾驶，再因编队门禁失败留下半次切换。
+      const staged = structuredClone(state)
+      const switched = changeShip(staged, preset.leaderShipId, ctx)
+      if (!switched.ok) return switched
+      const idle = fleetIdle(staged, ctx)
+      if (!idle.ok) return idle
+    }
     const result = changeShip(state, preset.leaderShipId, ctx)
     if (!result.ok) return result
   }
   notePreparationSquad(state, 'combat', preset.shipIds, ctx)
+  state.fleetRange = { ...preset.range, shipIds: [...preset.shipIds], presetId: preset.id }
   return { ok: true }
 }

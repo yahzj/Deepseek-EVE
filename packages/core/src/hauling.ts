@@ -1,4 +1,3 @@
-/** 运输公共入口；费率、全队装载和推进分别归域内单点。 */
 import { addLog, HOME_GALAXY_ID, haulingHalt } from './state'
 import type { GameState } from './state'
 import type { SimContext } from './types'

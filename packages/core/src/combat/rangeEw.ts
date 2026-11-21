@@ -67,7 +67,6 @@ export function rangeEwContestOf(me: RangeEwPart[], foe: RangeEwPart[]): RangeEw
   return { me, foe, meStrength, foeStrength, net, meCut: rangeEwCutOf(-net), foeCut: rangeEwCutOf(net) }
 }
 
-/** 仅实际在场存活舰体计入；无运行态单位的未来波与支援不提前贡献。 */
 export function battleRangeEwOf(state: GameState, ctx: SimContext, battle: BattleState,
   foes: readonly UnitSpec[], leader = state.shipId): RangeEwContest {
   const alive = (tag: string) => {

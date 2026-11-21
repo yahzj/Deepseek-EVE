@@ -1,21 +1,9 @@
-/**
- * V15 调试面板（开发工具，**只有本机可用**）。
- * 进入方式：设置 →「调试模式」开关（`panels/DebugPanel` 的 `setDebugEnabled`），
- * 或在 DevTools 里执行 `localStorage.setItem('whale-idle:debug','1')` 后刷新 → 顶栏出现 ⇄ 调试。
- * 功能：1 秒化总开关（所有作业按 1 秒完成，随存档 debugQuick 记录）；离线快进（复用离线结算，8 小时上限）。
- *
- * ⚠ **发布版一律关闭且隐藏**（2026-09-25 船长令：「只有本地开启，上传后的版本都是关闭隐藏的」）：
- * 门禁实现在 `game/debugFlag.ts`（本机判定走 `@whale/core` 的 `isLocalDebugOrigin`）——
- * 公网域名与桌面打包版的 `file:` 协议下，`debugEnabled()` 恒为 false（手动置标志也不生效），
- * 设置里那一行也不渲染。本文件只做**转发**，方便既有调用点（`Expedition` 等）不改 import。
- */
 import { useState } from 'react'
 import type { GameEngine } from '../game/engine'
 import { tr } from '../i18n/locale'
 
 export { debugAllowed, debugEnabled, setDebugEnabled } from '../game/debugFlag'
 
-/** 顶栏调试按钮 + 面板 */
 export function DebugButton({
   engine,
   onFastForwarded,

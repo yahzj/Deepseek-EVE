@@ -1,28 +1,3 @@
-/**
- * **「章鱼人兑换」窗口**（**2026-09-26 船长令**，设计稿 `docs/design/ship-plug-20260926.md`）。
- *
- * 船长原话（照抄）：「**找章鱼人用声望兑换，玩家完成入侵后根据贡献获得一定量声望。**」
- * ＋「**声望真扣（就是意味着玩家一开始其实可以买5张）**」＋「**通讯内跳转**」
- * ＋（优化令）「**兑换商店过于简陋，你可以使用skill进行优化下**」。
- *
- * ## 版式口径（**整段沿用全仓既有的卡面词汇，不自造样式** —— 约定 §六）
- * - 弹层：`.app-modal` / `.app-modal-wide`（640px）/ `.app-modal-head` / `.app-modal-body`（自带内滚）；
- * - 卡片网格：`.app-belt-grid`（`minmax(240px, 1fr)` 自适应列）；
- * - 卡面：`.app-belt-card`（全仓卡面主族）＋ 卡头 `.app-belt-head` / `.app-belt-head-right`、
- *   说明 `.app-belt-desc`、产物行 `.app-belt-ore`、材料清单 `.app-bp-mats`（学组装机那张卡的版式）；
- * - 徽标：`.app-chip`（＋ `.is-rare` / `.is-exotic`）；按钮 `.app-btn.is-small`（主行动 `.is-primary`）。
- *
- * ⚠ **上一版为什么"简陋"**：我用了一套**根本不存在**的类名（`app-card` / `app-card-grid` /
- * `app-card-name` / `app-card-foot` —— styles.css 里只有 `.app-card-progress`）⇒ 12 张卡退化成
- * 无边框、无内边距、无间距的裸块。这一版逐条改成上面那份真实词汇表。
- * ⚠ **徽标不换行**（skill 的 UX 指引：紧凑标签整行显示、不许折行）⇒ 价格徽标取 `nowrap` 短值。
- *
- * ## 卡面给什么（船长嫌简陋的实质 = 信息量不足）
- * 上一版每张卡只有「图纸名 + 价格 + 按钮」三样。现在按组装机那张卡的**同一套信息层级**补齐：
- * ① 产物名（玩家真正换的东西是插件，不是"图纸"）；② **这枚插件在游戏里的实际效果**
- * （复用装配页同一把尺 `moduleShortEffect`）；③ 制造材料清单 ＋ 每项"现有 ×N"（换之前就知道造得起造不起）；
- * ④ 已学会 / 未学会状态徽标；⑤ 主行动按钮与不可换原因（声望还差多少）。
- */
 import { useState } from 'react'
 import {
   DSI_FACTION_ID,
@@ -32,7 +7,6 @@ import {
   countModule,
   countWare,
   matNeedCount,
-  /** 材料等价组（2026-09-29 船长报障同批）：材料行的名字与"现有"读数与组装机同一把尺 */
   materialDisplayIdOf,
   materialGroupIdsOf,
   plugExchangeRowsOf,
@@ -45,38 +19,12 @@ import { Glyph } from '../ui/Glyphs'
 import { toneOfAny } from '../ui/tones'
 import { moduleShortEffect } from '../ui/shipInfo'
 
-/**
- * **「声望商店」的内容体**（**2026-09-27 拆出**）：
- * 通用黑匣卡 ＋ 插件图纸卡 ＋ 兑换确认层 —— **一处实现、两处消费**：
- * ① 旧弹层外壳 `PlugExchangeModal`（保留，但已无入口，见其头注）；
- * ② **常驻悬赏页的「声望商店」子页**（**船长 2026-09-27 令**：「**我打算将声望商店嵌入常驻悬赏内，
- *    作为子页面的存在，类似扫描虫洞页面内的虫洞探索和谜质科技**」）。
- *
- * 拆分的唯一动机就是"别写第二份"：卡面版式、兑换命令、确认弹层、空态全在这里，
- * 两种外壳只决定"外面套 .app-modal 还是套子页容器"。
- */
 export function PlugExchangeBody({ engine, onToast }: { engine: GameEngine; onToast: (text: string) => void }): React.JSX.Element {
-  /** 本地重算计数：兑换只改 state 两本账与图书架，窗口自身要跟着重画 */
   const [, setTick] = useState(0)
-  /**
-   * **已兑换（= 已学会）的图纸不再列出**（**2026-09-26 船长令**：「**章鱼人的声望界面，兑换过的图纸
-   * 就进行隐藏**」）。判据仍走行模型自带的 `learned`（`plugExchangeRowsOf` 单点：`learnedRecipes`
-   * 含该图纸 id）⇒ 界面只做过滤，不新造判定。
-   */
   const rows = plugExchangeRowsOf(engine.state, engine.ctx).filter((r) => !r.learned)
   const spendable = spendableStandingOf(engine.state, DSI_FACTION_ID)
   const earned = standingOf(engine.state, DSI_FACTION_ID)
-  /**
-   * **兑换前确认**（**2026-09-26 船长令**：「**玩家兑换时弹出一个确认，告诉玩家会扣除声望**」）：
-   * 待确认的那一项（null = 没在确认）。确认层沿用全仓既有的 `.app-mkt-confirm*` 一族（不新造样式）。
-   *
-   * ⚠ **2026-09-29 扩到"通用黑匣"**（**船长报障**：「**声望商店中，购买通用黑匣没有警告**」）：
-   * 原本只有图纸走确认，黑匣那条是**一步直扣** —— 而它同样是花声望（30 点/枚）、同样不可退，
-   * 按"会扣声望就得先讲清"的既定口径，两件商品必须同一套。`kind` 只决定确认层那两句话，
-   * 扣款仍各走各的 core 命令。
-   */
   const [ask, setAsk] = useState<{ kind: 'box' | 'blueprint'; moduleId?: string; name: string } | null>(null)
-  /** **通用黑匣卡**（2026-09-27 船长令）：声望换制造料 —— 价格与持有数都走 core 单点，界面不自算 */
   const boxPrice = UNIVERSAL_BLACKBOX_COST
   const boxOwned = countWare(engine.state, UNIVERSAL_BLACKBOX_ITEM_ID)
   const buyBox = (): void => {
@@ -87,7 +35,6 @@ export function PlugExchangeBody({ engine, onToast }: { engine: GameEngine; onTo
   }
 
   const exchange = (moduleId: string): void => {
-    /** 走引擎命令（成功才落盘 ＋ 广播刷新；与 `learnBlueprintAt` 同款） */
     const r = engine.exchangePlugBlueprintAt(moduleId)
     onToast(r.ok ? tr('ui.IndustryPage.123') : (cmdText(r) || tr('ui.IndustryPage.121', { p1: PLUG_BLUEPRINT_COST })))
     setAsk(null)
@@ -291,17 +238,6 @@ export function PlugExchangeBody({ engine, onToast }: { engine: GameEngine; onTo
   )
 }
 
-/**
- * **旧「章鱼人兑换」弹层外壳**（**保留、但已无入口** —— 船长 2026-09-27 选定甲案）。
- *
- * 船长 2026-09-27 令：「**我打算将声望商店嵌入常驻悬赏内，作为子页面的存在，类似扫描虫洞页面内的
- * 虫洞探索和谜质科技**」；同轮裁定**甲案**：弹层**先保留不删**，三条入口一律改跳子页
- * （`常驻悬赏 · 声望商店`）⇒ 本外壳暂时没有任何调用点。
- *
- * 为什么留着：① 船长要先看子页观感，确认后再删（与"活动栏冻结件先保留"同款处置）；
- * ② 它就是 `PlugExchangeBody` ＋ 一层 `.app-modal-*`（内容零重复）⇒ 留着不产生"第二份实现"的成本。
- * 删除时机：船长点头后，本组件与 `App.tsx` 的 `plugExchangeOpen/Seq` 那套状态一起删。
- */
 export function PlugExchangeModal({
   engine,
   onToast,

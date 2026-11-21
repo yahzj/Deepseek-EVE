@@ -28,7 +28,6 @@ function bucketOf(value: unknown): WeekendWreckBucket | undefined {
   return { density, decayAccMs: raw.decayAccMs, ...(rare > 0 ? { rare } : {}), ...(Object.keys(rareBy).length > 0 ? { rareBy } : {}) }
 }
 
-/** 读档与运行时边界共用：旧单桶折入来源族，未知来源绝不借用当前活动族。 */
 export function normalizeWeekendWreckRecord(value: unknown): WeekendWreckRecord {
   const raw = recordOf(value)
   const byFamily: Record<string, WeekendWreckBucket> = {}

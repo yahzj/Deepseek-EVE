@@ -42,7 +42,6 @@ function percent(value: number): number {
   return Math.max(0, Math.min(100, value))
 }
 
-/** 窗口和周期的到点时刻只读账本；缺失时不排首跳，也不补迁移字段。 */
 export function battleDeviceCyclesOf(
   state: GameState,
   ctx: SimContext,
@@ -60,7 +59,6 @@ export function battleDeviceCyclesOf(
     const fitted = state.fleet[shipId]?.fitted
     const validFitted = fitted && Array.isArray(fitted.high) && Array.isArray(fitted.mid) && Array.isArray(fitted.low)
     const hull = fleetDefOf(state, ctx, shipId)
-    // 坏旧档的缺槽按空槽读取，不往原装配上填数组。
     const defs = fitted ? allFittedModules({
       high: Array.isArray(fitted.high) ? fitted.high : [],
       mid: Array.isArray(fitted.mid) ? fitted.mid : [],
@@ -95,7 +93,6 @@ export function battleDeviceCyclesOf(
 
     function kitAvailable(id: string, damageControl = false): number {
       const run = state.wormhole?.run
-      // 不能调用会给缺物资账旧档补字段的 wormholeSupplyForBattle。
       if (battle.wormhole && run && (run.supplyVersion === 1 || run.expeditionRules !== undefined)) {
         return positive(run.supplies?.items?.[id])
       }
@@ -163,7 +160,6 @@ export function battleDeviceCyclesOf(
         const live = current.find(s => s.modelId === stream.modelId)
         const effectPct = live?.pct ?? (stream.modelId === '' && current.length > 0
           ? current.reduce((sum, s) => sum + s.pct, 0) : stream.pct)
-        // 旧档合并流的空型号与引擎同口径：用现行最短间隔，但不拆它的单路计时。
         const cycle = positive(live?.ms ?? (stream.modelId === '' && current.length > 0
           ? Math.min(...current.map(s => s.ms)) : stream.ms))
         const at = 'nextPulseAtMs' in stream && finite(stream.nextPulseAtMs) ? stream.nextPulseAtMs : undefined
@@ -195,7 +191,6 @@ export function battleDeviceCyclesOf(
         !web || positive(web.cycleMs) === 0 ? 'stopped' : active ? 'active' : cooldown ? 'cooldown' : 'waiting', {
           ...(active ? { targetTag, targetName: battle.units[targetTag!]!.name ?? targetTag } : {}),
           ...(finite(slow) ? { effectPct: (1 - slow) * 100 } : {}),
-          // 捕获期间没有到期时刻，不把它绘成循环装填。
           ...(active ? { percent: 0 } : {}),
         })
     }

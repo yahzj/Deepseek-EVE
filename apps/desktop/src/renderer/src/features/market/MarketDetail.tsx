@@ -10,49 +10,24 @@ import { HintIcon } from '../../ui/Hint'
 import { tr, cmdText } from '../../i18n/locale'
 import { fleetCountOf, placeOrderToast, taxTipText } from './readouts'
 import { PriceChart } from './PriceChart'
-// 公司账本：市场即时成交会记入对应公司的营收/采购（docs/design/stock-gameplay-integration-20261109.md）。
 import { reportCompanyFlow } from '../exchange/companyReporter'
 
-/**
- * 买卖盘显示档数：**上限 12**、下限 5。
- *
- * - **下限 5**（船长 2026-09-14：「窗口高度不足时可以隐藏部分订单，最少显示 5 个」）——不变。
- * - **上限 2026-09-22 由 8 放宽到 12**（船长：「既然我的订单已经移走了，那么关于买卖订单的最大显示数量
- *   是不是可以放宽？在保证不会过多的情况下？」）。依据是当天实测（`docs/design/archive/market-book-rows-20260922.md`）：
- *   ① 「我的挂单」搬走后右栏只剩详情卡 ⇒ 买卖盘可用高度大增：按本组件自己那套公式现算，
- *      窗口高 800/900/1080/1440 分别**放得下 16/22/33/55 档** ⇒ 原来的 8 档上限成了唯一瓶颈；
- *   ② 全部真实档位**最深 11 档**（两份后期档：买侧最大 11、卖侧最大 10，**没有任何商品超过 12 档**；
- *      466 个有簿面的商品里 230 个超过 8 档）⇒ **12 就是"全覆盖且不过多"的那个数**，
- *      再往上加也不会多显示一行（数据里没有那么多档）。
- * - 自适应机制（下面 `useLayoutEffect` 量可用高度反推行数）**一字未改**：窗口矮时照旧只渲染放得下的
- *   **整行**、绝不裁半行；档数超过上限时按价差取前 N 档。
- */
 const BOOK_ROWS_MAX = 12
 
 const BOOK_ROWS_MIN = 5
 
-/** 市场详情卡：价格曲线 + 买卖盘深度 + 持有量 + 交易面板（买/卖 tab：市价或挂单） */
 export function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; onToast: PageProps['onToast']; good: MarketGoodDef }) {
   const state = engine.state
   const quote = marketQuote(state, engine.ctx, good.key)
   const hist = marketHistory(state, good.key)
   const trend = marketTrend(state, good.key)
   const holdings = good.kind === 'ship' ? shipStoredCount(state, good.refId) : naturalHoldings(state, good)
-  /** 舰船的量词是「艘」（其余商品是「件」）；舰队同型艘数用于"可卖量从哪来"的提示 */
   const unit = good.kind === 'ship' ? tr("ui.MarketPage.116") : tr("ui.MarketPage.117")
   const shipInFleet = good.kind === 'ship' ? fleetCountOf(state, good.refId) : 0
-  /** 声望门槛锁（按语言出；同文件上面对话框那处用的是同一个 `marketLockNote`） */
   const lockNote = marketLockNote(state, good)
   const lock = lockNote !== null ? tr(lockNote.textId, lockNote.params) : null
-  /**
-   * 买卖盘显示几档：**随这块自己的实测高度自适应**（船长 2026-09-14：「当窗口高度不足时，可以隐藏部分订单
-   * （最少显示5个订单）」）。做法 = 让买卖盘那块可被压缩（`styles.css` 的 flex/ min-height 105px = 5 档下限），
-   * 量它的实测高度反推行数 ⇒ **只渲染放得下的整行**（绝不裁半行）；紧到 5 档都放不下时由面板体出内滚。
-   * 行高/标题高从 DOM 实测（拿不到就退回样式表里的标称值），避免两处硬编码漂移。
-   */
   const [bookRows, setBookRows] = useState(BOOK_ROWS_MAX)
   const booksRef = useRef<HTMLDivElement | null>(null)
-  // 按价格档聚合成交量（2026-09-05 船长：同价订单不应拆成多行——盘口按档合并），再取前 N 档（N 见 bookRows）
   const agg = (orders: Array<{ price: number; qty: number }>, desc: boolean): Array<{ price: number; qty: number }> => {
     const m = new Map<number, number>()
     for (const o of orders) m.set(o.price, (m.get(o.price) ?? 0) + o.qty)
@@ -81,25 +56,11 @@ export function MarketDetail({ engine, onToast, good }: { engine: PageProps['eng
     leftover: number
   } | null>(null)
 
-  // 打开详情时按初始页签预填一次默认价/数量（此后切换页签保留手填值，2026-09-08 船长定）
   useEffect(() => {
     setPrice(Math.max(1, quote.sell ?? askLineOf(state, engine.ctx, good.key)))
     setQty(1)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [good.key])
-  /**
-   * 买卖盘显示几档：**随面板可用高度自适应**（船长 2026-09-14：「当窗口高度不足时，可以隐藏部分订单
-   * （最少显示5个订单）」）。做法 = 让买卖盘那块可被压缩（`styles.css`：flex + min-height 105px = 5 档下限），
-   * 这里量「面板体还能给它多少」反推行数 ⇒ **只渲染放得下的整行**（绝不裁半行）；紧到 5 档都放不下时
-   * 由面板体出内滚。可用高度 = 面板体内高 − 上下内边距 − 除买卖盘外各块 − 块间距，其中折线图**按它的
-   * 下限（min-height 64px）计入**，差额补给买卖盘。
-   * ⚠ 不能量买卖盘自己的高度反推（第一版正是如此）：它被压到 5 档后尺寸不再变化 ⇒ ResizeObserver
-   * 不再触发 ⇒ 卡死在 5 档。改看**面板体**（尺寸由窗口/布局决定，是稳定触发源）。
-   * ⚠ **2026-09-15 起**右栏分配改判（详情按内容高封顶、富余归「我的挂单」，见 `styles.css` 的
-   * `market right column stretch` 段）：窗口够高时详情面板不再被拉长 ⇒ 面板体高度由内容决定，
-   * 本函数量出来的档数会**逐步升到上限 8**（`fit(rows) ≥ rows+1` ⇒ 不会反向层层下探），
-   * 窗口矮时详情被压、面板体高度由 flex 决定 ⇒ 与改判前一样稳定。
-   */
   useLayoutEffect(() => {
     const el = booksRef.current
     if (!el) return
@@ -109,14 +70,9 @@ export function MarketDetail({ engine, onToast, good }: { engine: PageProps['eng
     const measure = (): void => {
       const titleEl = el.querySelector('.app-mkt-book-title')
       const rowEl = el.querySelector('.app-mkt-depth')
-      // ⚠ 实测值必须**夹到合理区间**：手机旋转模式（`is-mobile-rot`）下首次测量可能落在布局未定型的瞬间
-      // ——实测到过「一行 166px」，写进 `min-height` 后把卡片顶出 ~780px 空白，且此后尺寸不再变、
-      // ResizeObserver 也不再触发 ⇒ 永久卡死。行高/标题高的正常区间是 10~40px，越界就用标称值。
       const clampPx = (v: number, fallback: number): number => (v >= 10 && v <= 40 ? v : fallback)
-      const titleH = clampPx(titleEl ? titleEl.getBoundingClientRect().height : 16.5, 16.5) + 3 // 标题行高 + 下边距 3px
+      const titleH = clampPx(titleEl ? titleEl.getBoundingClientRect().height : 16.5, 16.5) + 3
       const rowH = clampPx(rowEl ? rowEl.getBoundingClientRect().height : 16.5, 16.5)
-      // 5 档下限：**只在数据确实有 ≥5 档时**才把这块撑到 5 档高（数据本来不足 5 档就按内容高 ——
-      // 否则白占近 20px，紧窗口里正好把面板顶出一条内滚，实测 15/123 就是这么来的）
       const levels = (rows: Array<{ price: number }>): number => new Set(rows.map((o) => o.price)).size
       const maxLevels = Math.max(
         levels(state.market.npcBuy[good.key] ?? []),
@@ -138,27 +94,22 @@ export function MarketDetail({ engine, onToast, good }: { engine: PageProps['eng
         const h = child.getBoundingClientRect().height
         others += charts && child.contains(charts) ? h - chartNow + chartFloor : h
       }
-      const avail = body.clientHeight - padY - others - gap * Math.max(0, count - 1) - 16 // 16px 余量：各块高度取整/小数累计的零头（余量给小了，残差会顶出一条 1~3px 的内滚）
+      const avail = body.clientHeight - padY - others - gap * Math.max(0, count - 1) - 16
       const fit = Math.floor((avail - titleH) / rowH)
       const next = Math.max(BOOK_ROWS_MIN, Math.min(BOOK_ROWS_MAX, fit))
-      setBookRows((prev) => (prev === next ? prev : next)) // 值守卫：不触发多余重渲染
+      setBookRows((prev) => (prev === next ? prev : next))
     }
     measure()
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null
     ro?.observe(body)
-    // 各兄弟块也看一眼：交易面板/提示行会随换页签、预填价、文案折行改高（只观察不改高度的话，
-    // 行数会停在按旧高度算的值上，紧窗口里就可能多出一行的内滚）
     for (const child of Array.from(detail.children)) ro?.observe(child)
     window.addEventListener('resize', measure)
-    // 兄弟块的最终高度可能在这一帧之后才定（例如下方「我的挂单」被对齐到整行后会改本面板的高度）
-    // ⇒ 下一帧再量一次，避免按旧高度算出行数、把买卖盘裁掉半行
     const raf = requestAnimationFrame(measure)
     return () => {
       cancelAnimationFrame(raf)
       ro?.disconnect()
       window.removeEventListener('resize', measure)
     }
-    // 换商品 / 切买·卖页签都会改交易面板与提示行的高度 ⇒ 各重算一次
   }, [good.key, tab])
   function doBuy(): void {
     if (lock) {
@@ -170,7 +121,6 @@ export function MarketDetail({ engine, onToast, good }: { engine: PageProps['eng
     const r = engine.buyGoodAt(good.key, n)
     if (!r.ok) onToast(cmdText(r) || tr('ui.MarketPage.173'), true)
     else {
-      // 买入金额 = 玩家支付给公司的营收（钱包差值为准，含部分成交）。
       reportCompanyFlow(good.key, 'buy', iskBefore - engine.state.wallet.isk)
       onToast(tr("ui.MarketPage.148", { name: name, p2: n.toLocaleString('zh-CN') }))
     }
@@ -185,12 +135,10 @@ export function MarketDetail({ engine, onToast, good }: { engine: PageProps['eng
     const r = engine.sellHoldingAt(good.key, n)
     if (!r.ok) onToast(cmdText(r) || tr('ui.MarketPage.174'), true)
     else {
-      // 卖出到账 = 公司支付的采购支出（净到账口径，含即时成交部分）。
       const net = engine.state.wallet.isk - iskBefore
       reportCompanyFlow(good.key, 'sell', net)
       reportMarketTax(engine, net)
       if (good.kind === 'ship') {
-        // 舰船：即时成交的部分吃收购簿，其余**留簿挂着**（可撤销退回舰船仓库）——回执把两段都说清
         const filled = r.sold ?? 0
         const rest = r.remaining ?? 0
         onToast(
@@ -201,7 +149,6 @@ export function MarketDetail({ engine, onToast, good }: { engine: PageProps['eng
       } else onToast(tr("ui.MarketPage.151", { name: name, p2: n.toLocaleString('zh-CN') }))
     }
   }
-  /** 卖出交易税上报：税 = 净额 × 税率/(1−税率)，进星港银行（公司账本）。 */
   function reportMarketTax(eng: PageProps['engine'], net: number): void {
     if (net <= 0) return
     const rate = salesTaxRate(eng.state, eng.ctx)
@@ -209,7 +156,6 @@ export function MarketDetail({ engine, onToast, good }: { engine: PageProps['eng
     const tax = Math.round((net * rate) / (1 - rate))
     if (tax > 0) reportCompanyFlow('market-tax', 'buy', tax)
   }
-  /** 全部卖出：先预览（可成交件数/毛额/税/净到账）再弹确认——不直接执行（船长 2026-09-05） */
   function askSellAll(): void {
     if (holdings <= 0) {
       onToast(good.kind === 'ship' ? tr("ui.MarketPage.041") : tr("ui.MarketPage.042"), true)
@@ -228,7 +174,6 @@ export function MarketDetail({ engine, onToast, good }: { engine: PageProps['eng
     const r = engine.sellHoldingAt(good.key, holdings)
     if (!r.ok) onToast(cmdText(r) || tr('ui.MarketPage.174'), true)
     else {
-      // 卖出到账 = 公司支付的采购支出（净到账口径，含即时成交部分）。
       const net = engine.state.wallet.isk - iskBefore
       reportCompanyFlow(good.key, 'sell', net)
       reportMarketTax(engine, net)
@@ -247,8 +192,6 @@ export function MarketDetail({ engine, onToast, good }: { engine: PageProps['eng
     const n = Math.max(1, Math.floor(qty || 1))
     const p = Math.max(1, ceilFinalQuantity(price || 1))
     if (tab === 'buy') {
-      // 2026-09-08（船长反馈）：声望不足等门槛原因要明示，不再笼统报"价格或数量无效"。
-      // 2026-09-11（预扣冻结）：余额不足同样明示（core 单点口径：挂 1 件需预扣多少、钱包多少）
       const gate = engine.buyOrderBlocked(good.key, p, n)
       if (gate) {
         onToast(tr("ui.MarketPage.154", { gate: cmdText(gate) }), true)
@@ -257,26 +200,20 @@ export function MarketDetail({ engine, onToast, good }: { engine: PageProps['eng
       const res = engine.placeBuyOrderAt(good.key, p, n)
       if (res === null) onToast(tr("ui.MarketPage.155"), true)
       else {
-        // 2026-09-10：挂单瞬间会先与现有卖单簿面对冲成交 → 回执写明即时成交部分
         const exoNote =
           good.rarity === 'exotic' && p < askLineOf(state, engine.ctx, good.key)
             ? tr("ui.MarketPage.156", { p1: isk(askLineOf(state, engine.ctx, good.key)) })
             : ''
-        // 2026-09-11：预扣口径写进回执（实际挂量可能因余额缩量；预扣撤单即退回）
         const shrinkNote = res.placed < n ? tr("ui.MarketPage.157", { p1: n.toLocaleString('zh-CN'), p2: res.placed.toLocaleString('zh-CN') }) : ''
         const escrowNote = res.escrow > 0 ? tr("ui.MarketPage.158", { p1: isk(res.escrow) }) : ''
-        onToast(`${placeOrderToast('买' /* l10n-keep：side 是字面量联合 key */, name, res.placed, p, res.filled, res.resting)}${shrinkNote}${escrowNote}${exoNote}。`)
+        onToast(`${placeOrderToast('买', name, res.placed, p, res.filled, res.resting)}${shrinkNote}${escrowNote}${exoNote}。`)
       }
     } else {
       const r = engine.placeSellOrderAt(good.key, p, n)
       if (!r.ok) onToast(cmdText(r) || tr('ui.MarketPage.176'), true)
-      else onToast(`${placeOrderToast('卖' /* l10n-keep：同上 */, name, n, p, r.filled ?? 0, r.resting ?? n, unit)}。`)
+      else onToast(`${placeOrderToast('卖', name, n, p, r.filled ?? 0, r.resting ?? n, unit)}。`)
     }
   }
-  /**
-   * 点盘口行快速就位（2026-09-08 船长）：买盘（收你的货）行 → 切「卖出」并预填该档价格/数量，
-   * 卖盘（卖给你的货）行 → 切「买入」并预填该档价格/数量——填好后可直接微调挂单或走市价按钮。
-   */
   function fillFromBook(side: 'buy' | 'sell', rowPrice: number, rowQty: number): void {
     setTab(side)
     setPrice(rowPrice)

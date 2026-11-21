@@ -1,15 +1,3 @@
-/**
- * **双模自适应界面图标（科幻未来 Carbon vs 旧版 Lucide 冻结）**
- *
- * 船长令（2026-11-02）：
- * 1. 「路线 A 吧 IBM Carbon Icons很不错，但是我们只做做到设计里“科幻未来”的界面布局的里头，不动旧版的UI」
- * 2. 「颜色和替换的形状还有抽象化的功能也要一致」
- *
- * 机制：
- * - 当布局为「科幻未来」（modern）时：渲染方正硬朗、零圆角、工控终端级别的 IBM Carbon Icons；
- * - 当布局为「旧版」（classic）时：原样冻结渲染既有 Lucide 图标，零改动、零破坏；
- * - 颜色（`currentColor` / `color` prop）、尺寸（`size`）与无障碍属性 1:1 严格对齐。
- */
 import React from 'react'
 import {
   X as LucideX,

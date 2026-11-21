@@ -15,7 +15,6 @@ const LOCAL_INPUTS: Readonly<Record<string, { resource: 'food' | 'water' | 'medi
   'min-tritanium': { resource: 'parts', units: 0.1 },
 }
 
-/** 原料实体先到星球库，再由命令转换为明确的本地补给，不隔空借仓库。 */
 export function convertPlanetSupplies(state: GameState, planetId: string, itemId: string, count: number): PlanetActionResult {
   const c = state.planetary?.planets[planetId]?.colony
   if (!c || !Number.isSafeInteger(count) || count < 1 || (c.items[itemId] ?? 0) < count) return { ok: false, reason: 'materials' }

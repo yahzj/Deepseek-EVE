@@ -1,4 +1,3 @@
-/** 旧路径兼容出口；实际实现归工业功能域。 */
 export { findBuildable, oneTimeBookInUse, recipeCapability, ownsBlueprint, blueprintDefOf, blueprintProducingItem, isSingleUseBlueprint, canStartBlueprint } from './industry/manufacturing/blueprints'
 export { materialFactor, matNeedCount, MATERIAL_GROUPS, materialGroupIdsOf, materialDisplayIdOf, missingMaterials } from './industry/manufacturing/materials'
 export { calcBuildDurationMs } from './industry/manufacturing/duration'

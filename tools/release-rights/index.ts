@@ -23,16 +23,18 @@ export function releaseRightsAssets(dependencyRoot: string): Record<string, stri
   })
   const pixelLicense = readFileSync(join(ROOT, 'apps/desktop/src/renderer/src/assets/stellar/LICENSE-PixelPlanets.txt'), 'utf8')
   /**
-   * **内嵌字体许可**（2026-11-02 船长令：把 GNU Unifont 18.0.01 / Oxanium 嵌进项目做可选界面字体）：
-   * 两枚字体文件随渲染包分发（`assets/fonts/unifont-18.0.01.otf` / `oxanium-variable.ttf`）⇒
-   * 第三方许可清单必须收录其授权原文。
-   * - Unifont：官方 <https://unifoundry.com/LICENSE.txt>（双许可：SIL OFL 1.1 ＋ GPLv2+ 附字体嵌入例外）；
+   * **内嵌字体许可**（2026-11-02 船长令嵌入可选界面字体；2026-11-12 复古档由 GNU Unifont 换成
+   * Fusion Pixel 12px Mono zh-Hans）：
+   * 两枚字体文件随渲染包分发（`assets/fonts/fusion-pixel-12px-mono-zh-hans.otf` /
+   * `oxanium-variable.ttf`）⇒ 第三方许可清单必须收录其授权原文。
+   * - Fusion Pixel：SIL Open Font License 1.1（版权 2022 TakWolf），
+   *   来源 <https://github.com/TakWolf/fusion-pixel-font>（LICENSE-OFL）；
    * - Oxanium：SIL Open Font License 1.1（版权 2019 The Oxanium Project Authors），
    *   来源 <https://fonts.google.com/specimen/Oxanium> / <https://github.com/sevmeyer/oxanium>。
    * 设置面板最下方「许可与授权」弹窗展示的是同一批文本（`assets/licenses/*.txt`）。
    */
-  const unifontLicense = readFileSync(
-    join(ROOT, 'apps/desktop/src/renderer/src/assets/licenses/unifont-18.0.01-LICENSE.txt'),
+  const fusionPixelLicense = readFileSync(
+    join(ROOT, 'apps/desktop/src/renderer/src/assets/licenses/fusion-pixel-12px-mono-zh-hans-LICENSE.txt'),
     'utf8',
   )
   const oxaniumLicense = readFileSync(
@@ -40,10 +42,10 @@ export function releaseRightsAssets(dependencyRoot: string): Record<string, stri
     'utf8',
   )
   const thirdParty = [
-    '第三方许可声明\n\n本文件覆盖当前渲染包的 React、React DOM、Scheduler、Lucide、Carbon 图标、PixelPlanets 素材、GNU Unifont 字体与 Oxanium 字体的许可。\n桌面运行时另带的 Electron/Chromium 许可文件仍须保留；本声明不替代这些文件。',
+    '第三方许可声明\n\n本文件覆盖当前渲染包的 React、React DOM、Scheduler、Lucide、Carbon 图标、PixelPlanets 素材、Fusion Pixel 字体与 Oxanium 字体的许可。\n桌面运行时另带的 Electron/Chromium 许可文件仍须保留；本声明不替代这些文件。',
     ...notices,
     `===== PixelPlanets / Deep-Fold =====\n\n${pixelLicense}`,
-    `===== GNU Unifont 18.0.01 =====\n\nCopyright © 1998-2026 Roman Czyborra, Paul Hardy, Qianqian Fang, Andrew Miller, Johnnie Weaver, David Corbett, Ælla Chiana Moskopp, Rebecca Bettencourt, Ho-Seok Ee, et al.\n字体放在 SIL Open Font License 1.1 与 GNU GPL v2 或更高版本（附 GNU 字体嵌入例外）双许可下分发。授权原文如下（取自 https://unifoundry.com/LICENSE.txt）：\n\n${unifontLicense}`,
+    `===== Fusion Pixel 12px Mono zh-Hans / TakWolf =====\n\nCopyright (c) 2022, TakWolf (https://takwolf.com)\n字体放在 SIL Open Font License 1.1 下分发。授权原文如下（取自 https://github.com/TakWolf/fusion-pixel-font/blob/master/LICENSE-OFL）：\n\n${fusionPixelLicense}`,
     `===== Oxanium / The Oxanium Project Authors =====\n\n${oxaniumLicense}`,
   ].join('\n\n') + '\n'
   const html = `<!doctype html>

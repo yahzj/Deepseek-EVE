@@ -1,30 +1,12 @@
-/**
- * 无人机四型定位契约（2026-09-10 船长拍板，已确认）——
- * 四型各有明确 role，**新增无人机必须落在本契约区间内**（content:check 与 core 测试双重守卫，
- * 改数据即被拦下，不必靠人记）。
- *
- *   侦察机（scout）  ：闪避最高、装甲最薄——生存靠机动
- *   战斗机（combat） ：全属性平均——机群主力
- *   攻坚机（assault）：血量最厚、单发高、闪避最低——贴脸重击
- *   哨戒机（sentry） ：射程最远、单发最高（狙击）；血量与侦察机相仿、闪避次低——靠距离活命
- *
- * 火力梯子（以侦察机单发为 1×）：1 / 2 / 4 / 6.7；命中口径：侦察·战斗·攻坚三型 75% 且
- * **不随距离衰减**（falloff 1），哨戒 110% 且**保留衰减**（falloff 0.35）。
- * 现行四型（蜂鸟 / 赤鸢 / 猎鹰 / 雷鸥）即本契约的锚点机型。
- */
 import type { DroneClass, ItemDef } from '@whale/core'
 
 export interface DroneRoleSpec {
   label: string
-  /** 闪避区间（跨类必须严格递减：侦察 > 战斗 > 哨戒 > 攻坚） */
   evasion: readonly [number, number]
-  /** 三层血量合计区间 */
   totalHp: readonly [number, number]
-  /** 单发相对侦察机基准的倍数区间 */
   dmgShare: readonly [number, number]
   rangeM: readonly [number, number]
   hitRate: readonly [number, number]
-  /** true = falloff 必须为 1（命中不随距离衰减） */
   noFalloff: boolean
 }
 
@@ -32,9 +14,9 @@ export const DRONE_ROLE_SPECS: Record<DroneClass, DroneRoleSpec> = {
   scout: {
     label: '侦察机',
     evasion: [0.42, 0.55],
-    totalHp: [30, 50], // 2026-09-11 船长：血条 ×2 ⇒ 定位档同步 ×2
+    totalHp: [30, 50],
     dmgShare: [1, 1.4],
-    rangeM: [5700, 6000], // 2026-09-27 船长令「无人机射程重排」：侦察改**次远**、上限压在哨戒机之下（原 3500~4300）
+    rangeM: [5700, 6000],
     hitRate: [0.7, 0.8],
     noFalloff: true,
   },
@@ -43,7 +25,7 @@ export const DRONE_ROLE_SPECS: Record<DroneClass, DroneRoleSpec> = {
     evasion: [0.2, 0.3],
     totalHp: [70, 100],
     dmgShare: [1.8, 2.4],
-    rangeM: [4800, 5200], // **2026-09-28 船长令「战斗机 5000」**（区间按新基值 ±200；原 4000~4400）
+    rangeM: [4800, 5200],
     hitRate: [0.7, 0.8],
     noFalloff: true,
   },
@@ -52,7 +34,7 @@ export const DRONE_ROLE_SPECS: Record<DroneClass, DroneRoleSpec> = {
     evasion: [0.08, 0.14],
     totalHp: [180, 240],
     dmgShare: [3.4, 4.6],
-    rangeM: [3800, 4200], // **2026-09-28 船长令「攻坚机 4000」**（区间按新基值 ±200；原 2800~3200）
+    rangeM: [3800, 4200],
     hitRate: [0.7, 0.8],
     noFalloff: true,
   },
@@ -61,7 +43,7 @@ export const DRONE_ROLE_SPECS: Record<DroneClass, DroneRoleSpec> = {
     evasion: [0.15, 0.22],
     totalHp: [36, 60],
     dmgShare: [6, 7.5],
-    rangeM: [6000, 7500], // 2026-09-14 +1500（原 4500~6000）
+    rangeM: [6000, 7500],
     hitRate: [1, 1.2],
     noFalloff: false,
   },
@@ -70,16 +52,11 @@ export const DRONE_ROLE_SPECS: Record<DroneClass, DroneRoleSpec> = {
   },
 }
 
-/** 无人机三层血量合计（生存包契约口径） */
 export function droneTotalHp(def: ItemDef): number {
   const d = def.defense
   return (d?.shieldHp ?? 0) + (d?.armorHp ?? 0) + (d?.hullHp ?? 0)
 }
 
-/**
- * **锚点机型**（2026-09-10 船长：专属无人机引出）：四型各有唯一"制式锚点"，
- * 区间校验的基准与阶梯比较**只认锚点**——于是新增同类型号（专属强化型）不会打乱四型阶梯。
- */
 export const DRONE_ROLE_ANCHORS: Record<DroneClass, string> = {
   scout: 'drone-scout',
   combat: 'drone-assault',
@@ -88,7 +65,6 @@ export const DRONE_ROLE_ANCHORS: Record<DroneClass, string> = {
   repair: 'drone-repair-mil',
 }
 
-/** 专属强化型的硬边界（豁免区间校验后仍不得越界——防止数据手滑写出荒谬值） */
 const HARD_BOUNDS = {
   evasion: [0, 0.9],
   dmg: [1, 200],
@@ -97,7 +73,6 @@ const HARD_BOUNDS = {
   hitRate: [0.2, 2],
 } as const
 
-/** 专属强化型单机硬边界校验（返回违规说明；空数组 = 合规） */
 function exclusiveHardBoundIssues(def: ItemDef): string[] {
   const out: string[] = []
   const ev = def.defense?.evasion
@@ -128,9 +103,6 @@ function inBand(v: number, band: readonly [number, number]): boolean {
   return v >= band[0] && v <= band[1]
 }
 
-/** 单机定位校验：类档位区间（返回违规说明；空数组 = 合规）。
- * **专属强化型**（`def.exclusive`：2026-09-10 船长裁决）豁免区间校验，只受硬边界约束——
- * 于是「专属强化侦察机」可以火力高于制式战斗机，而不算破坏四型定位。 */
 export function droneRoleIssues(def: ItemDef, scoutDmg: number): string[] {
   const cls = def.droneClass
   if (!cls) return [`${def.id} 缺少 droneClass（四型定位契约必填）`]
@@ -171,15 +143,6 @@ export function droneRoleIssues(def: ItemDef, scoutDmg: number): string[] {
   return out
 }
 
-/**
- * 全局阶梯校验：跨四类的单调关系（返回违规说明；空数组 = 合规）。
- * ① 闪避：侦察 > 战斗 > 哨戒 > 攻坚（严格）
- * ② 血量：攻坚 > 战斗 > 侦察，且哨戒 ≤ 侦察 ×1.6（"血量与侦察机相仿"）且 < 战斗
- * ③ 单发：侦察 < 战斗 < 攻坚 < 哨戒
- * **只比较锚点机型**（DRONE_ROLE_ANCHORS，2026-09-10：专属强化型不参与阶梯——
- * 否则一台火力拉满的专属侦察机会把"侦察机火力最低"的阶梯判成违规）。
- * 缺失某一类时不报错（允许尚未实装的机型缺席），但已存在的类之间必须成立。
- */
 export function droneRoleLadderIssues(drones: readonly ItemDef[]): string[] {
   const out: string[] = []
   const byClass = new Map<DroneClass, ItemDef>()

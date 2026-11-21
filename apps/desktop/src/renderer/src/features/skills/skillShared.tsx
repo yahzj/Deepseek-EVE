@@ -1,16 +1,3 @@
-/**
- * **技能页两版共用的小件**（**2026-09-22**：技能科技树升为正式「技能」页 ⇒ 原先塞在
- * `SkillsPage.tsx` 里的这两件搬到这里，旧页退役）。
- *
- * - `SkillDescText`：把说明里的 `⟦效果数值⟧` 渲染成高亮段（符号本身不显示）——树页详情窗与旧页卡片同源；
- * - `QueueBlock`：**训练队列面板**（"正在发生的事"，2026-09-10 船长定：它固定在上、不塞进树里）——
- *   显示排队中条目 ＋ 队首剩余，可上移/下移/顶到最前/取消（与 `engine.moveQueueAt/dequeueAt` 同源）。
- *   **2026-09-30 船长令**（「训练项右侧顶到窗口」＋「训练队列过于单一」）⇒ 每行补真实读数：
- *   行首六边形徽（技能树同款）· 技能书名 · 队首进度条与百分比 · 排队项「练这一级需 X」与「轮到还需 ≈X」。
- *   **同日船长报障**（「部分技能在队列中置顶无效」）⇒ 三个箭头改走 core 的 `queueMovePlan`：
- *   挪不动的（会排到前置之前 / 同技能按位置逐级排 ⇒ 挪了等于没挪）**置灰 ＋ 悬停说明原因**，
- *   点了也会就地讲清楚 —— 不再"点了没反应"。
- */
 import { queueMovePlan, skillQueueStatus } from '@whale/core'
 import type { PageProps } from '../../pages/common'
 import { cmdText, tr } from '../../i18n/locale'
@@ -21,7 +8,6 @@ import { skillBranchText, skillGroupText } from '../../ui/labelsText'
 import { hoverTipProps } from '../../ui/Tooltip'
 import { hexPathAt } from './layout'
 
-/** 把技能说明里的 ⟦效果数值⟧ 渲染成高亮段（符号本身不显示） */
 export function SkillDescText({ text }: { text: string }) {
   const parts = text.split(/(⟦[^⟧]*⟧)/g).filter((p) => p.length > 0)
   return (
@@ -39,13 +25,6 @@ export function SkillDescText({ text }: { text: string }) {
   )
 }
 
-/**
- * **队列行首的六边形徽**（**2026-09-30 船长令**：「使用技能树内图标模式的菱形卡片」）——
- * 形状走 SVG：与技能树节点**同一个平顶六边形算法**（`ui/skillTreeLayout.ts` 的 `hexPathAt`，
- * 树上的 `hexPath` 也是它）＋ 同一个大类字形（`group-<大类>`，技能树 385/531/584 行就是这么用的）。
- * 色调取 `toneOf('group-…')` ＝ 技能树用的那套，**不新造配色**（§6 复刻同级相似项）。
- * ⚠ 大类不只靠颜色：字形形状本身按大类区分，另有 `title` 给出大类名。
- */
 function QueueHexBadge({ group }: { group: string }) {
   return (
     <span className="app-train-hex-wrap" style={{ color: toneOf(`group-${group}`) }} title={skillGroupText(group)}>
@@ -59,7 +38,6 @@ function QueueHexBadge({ group }: { group: string }) {
   )
 }
 
-/** 队列技能的完整说明，复用技能详情弹窗的说明渲染与统一悬停层。 */
 function queueSkillTip(def: { name: string; description: string; group: string; branch?: string }, targetLevel: number) {
   return (
     <>
@@ -74,27 +52,14 @@ function queueSkillTip(def: { name: string; description: string; group: string; 
   )
 }
 
-/** 技能训练队列面板（顶部那条；与技能树同页共存） */
 export function QueueBlock({ engine }: { engine: PageProps['engine'] }) {
   const state = engine.state
   const view = skillQueueStatus(state, engine.ctx.skills)
-  // 船长 2026-09-05：正在训练的那条由顶部活动窗口「技能训练」区展示；这里只显示"排队中"的技能。
-  // 2026-09-08（船长）：队列总时长 + 顺序调整——前移到顶 = 交换式顶替当前训练（原训练退位保留进度）
-  // 2026-09-30（船长）：「训练项右侧顶到窗口」＋「训练队列过于单一」⇒ 修溢出/对齐，并按行补真实读数：
-  //   总时长与"轮到还需"都取自 core 的 `skillQueueStatus`（前缀和单点，界面不再各算一遍）。
   const totalMs = view.totalRemainingMs
   const lastIndex = state.skills.queue.length - 1
-  /** 正在等确认的级联取消（null = 没弹确认条）；计划每次渲染现算（纯函数、无副作用） */
   const [askCancel, setAskCancel] = useState<number | null>(null)
-  /**
-   * **"这一步挪不动"的就地说明**（**2026-09-30 船长裁定甲**：不能让玩家"点了没反应"）。
-   * 三个箭头都先问 core 的 `queueMovePlan`：不能挪 ⇒ 按钮置灰 ＋ `title` 写明原因；
-   * 真点了 ⇒ 在**那一行自己的底下**把原因摆出来（⚠ 不放在列表末尾：17 条的队列里那条会落在屏幕外，
-   * 等于没说 —— 与技能树页"一并加入前置"的回话同一手法：就地显示，不另起 toast）。
-   */
   const [moveNote, setMoveNote] = useState<{ index: number; text: string } | null>(null)
   const cancelImpact = askCancel !== null ? engine.skillCancelImpactAt(askCancel) : null
-  /** 挪一步：不可挪就把原因写在那一行下面，绝不静默 */
   const tryMove = (from: number, to: number): void => {
     const plan = queueMovePlan(state, from, to, engine.ctx.skills)
     if (!plan.ok) {
@@ -102,19 +67,16 @@ export function QueueBlock({ engine }: { engine: PageProps['engine'] }) {
       return
     }
     if (!engine.moveQueueAt(from, to)) {
-      // 计划说能挪、引擎却拒绝 ⇒ 只可能是状态在两次判断之间变了；给一条兜底说明（不静默）
       setMoveNote({ index: from, text: tr('ui.SkillsPage.051') })
       return
     }
     setMoveNote(null)
   }
   const skillNameOf = (id: string): string => engine.ctx.skills.get(id)?.name ?? id
-  /** 技能定义（拿大类/技能书；查不到时两个空白，行内自然少两段，不静默报错） */
   const defOf = (id: string): { group: string; branch: string } => {
     const def = engine.ctx.skills.get(id)
     return { group: def?.group ?? '', branch: def?.branch ?? '' }
   }
-  /** 进度条：队首常显；排队项只在"已练了一部分"（承接进度）时显——其余保持清爽 */
   const barOf = (progressMs: number, levelMs: number): number | null =>
     levelMs > 0 && progressMs > 0 ? Math.min(100, Math.max(0, (progressMs / levelMs) * 100)) : null
   return (

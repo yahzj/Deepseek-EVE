@@ -5,7 +5,6 @@ export interface UnboxBatchRecord {
   readonly outputs: readonly { itemId: string; units: number }[]
 }
 
-/** 只绑定当前内存档；换档或重启后不恢复上一批记录。 */
 export class UnboxSessionLedger {
   private state: GameState | null = null
   private batches = new Map<string, UnboxBatchRecord>()

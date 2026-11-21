@@ -1,13 +1,4 @@
 import { isEn, tr } from '../../../../i18n/locale'
-/**
- * 自动量化交易机器人面板（网格 / 定投 / 移动止盈）。
- *
- * 包含：
- * 1. 网格区间与市价位置可视化（下限、市价游标、上限、套利密度刻度线）；
- * 2. 策略表单前置拦截（价格逻辑、格数 2~50、资金充足性、失焦即时红框提示）；
- * 3. 启停按钮语义与科技紫微光动效，终止并撤单二次确认机制；
- * 4. 运行中策略状态卡片（呼吸灯、套利次数、已实现利润、年化收益率与等宽数字）。
- */
 import { useEffect, useId, useMemo, useState } from 'react'
 import {
   Add,
@@ -48,7 +39,6 @@ function templateLabel(template: StrategySpec['template']): string {
   return template
 }
 
-/** 格式化货币或价格 */
 function formatNum(val: number, decimals = 0): string {
   if (!Number.isFinite(val)) return '0'
   return val.toLocaleString('en-US', {
@@ -57,7 +47,6 @@ function formatNum(val: number, decimals = 0): string {
   })
 }
 
-/** 网格区间与市价位置可视化组件 */
 function GridVisualizer({
   lowerPrice,
   upperPrice,
@@ -72,22 +61,18 @@ function GridVisualizer({
   const isValidRange = Number.isFinite(lowerPrice) && Number.isFinite(upperPrice) && upperPrice > lowerPrice && lowerPrice > 0
   const cur = currentPrice > 0 ? currentPrice : lowerPrice
 
-  // 计算市价在网格区间的百分比位置
   const span = isValidRange ? upperPrice - lowerPrice : 1
   const rawPos = isValidRange ? ((cur - lowerPrice) / span) * 100 : 50
   const clampedPos = Math.max(0, Math.min(100, rawPos))
   const isBelow = cur < lowerPrice
   const isAbove = cur > upperPrice
 
-  // 与现价的偏离百分比
   const lowerDiffPct = cur > 0 ? ((lowerPrice - cur) / cur) * 100 : 0
   const upperDiffPct = cur > 0 ? ((upperPrice - cur) / cur) * 100 : 0
 
-  // 单格间距与单格理论利润
   const validGrids = Math.max(2, Math.min(50, Math.round(grids) || 4))
   const stepPrice = span / validGrids
 
-  // 生成网格线分布 (显示密度感，最多渲染 30 根以防视觉过密)
   const lineCount = Math.min(validGrids, 30)
   const gridLines = useMemo(() => {
     const lines: number[] = []
@@ -162,7 +147,6 @@ function GridVisualizer({
   )
 }
 
-/** 运行中策略状态卡片组件 */
 function StrategyCardItem({
   spec,
   currentPrice,
@@ -177,14 +161,12 @@ function StrategyCardItem({
   const [confirmStop, setConfirmStop] = useState(false)
   const p = spec.params
 
-  // 3.5秒自动解除二次确认警示状态
   useEffect(() => {
     if (!confirmStop) return
     const timer = setTimeout(() => setConfirmStop(false), 3500)
     return () => clearTimeout(timer)
   }, [confirmStop])
 
-  // 提取网格参数与估算指标
   const isGrid = spec.template === 'grid'
   const isDca = spec.template === 'dca'
   const isTp = spec.template === 'trailing_tp'
@@ -308,7 +290,6 @@ function StrategyCardItem({
   )
 }
 
-/** 核心自动量化交易机器人主面板 */
 export function BotPanel({
   client,
   snap,
@@ -327,30 +308,24 @@ export function BotPanel({
     return () => window.clearInterval(timer)
   }, [client])
 
-  // 标的信息与当前市价
   const stock = snap.stocks.find((s) => s.code === code)
   const currentPrice = stock?.price ?? 100
   const availableCash = snap.account?.cash ?? 0
 
-  // 网格输入字段状态
   const [lowerPriceText, setLowerPriceText] = useState(() => String(Math.round(currentPrice * 0.94)))
   const [upperPriceText, setUpperPriceText] = useState(() => String(Math.round(currentPrice * 1.06)))
   const [gridsText, setGridsText] = useState('6')
   const [qtyText, setQtyText] = useState('100')
 
-  // 定投输入字段状态
   const [dcaAmountText, setDcaAmountText] = useState('50000')
   const [dcaIntervalText, setDcaIntervalText] = useState('20')
 
-  // 移动止盈输入字段状态
   const [tpActivateText, setTpActivateText] = useState('5')
   const [tpTrailText, setTpTrailText] = useState('2')
   const [tpQtyText, setTpQtyText] = useState('100')
 
-  // 用户失焦标记字典 (touched)
   const [touched, setTouched] = useState<Record<string, boolean>>({})
 
-  // 当标的切换时，如果下限/上限尚未被人工修改，自动平滑调整为当前标的的默认参考区间
   useEffect(() => {
     if (!touched.lowerPrice && !touched.upperPrice && currentPrice > 0) {
       setLowerPriceText(String(Math.round(currentPrice * 0.94)))
@@ -362,17 +337,14 @@ export function BotPanel({
     setTouched((prev) => ({ ...prev, [field]: true }))
   }
 
-  // 校验解析计算
   const numLower = Number(lowerPriceText)
   const numUpper = Number(upperPriceText)
   const numGrids = Number(gridsText)
   const numQty = Number(qtyText)
 
-  // 网格单格金额与预估总投入资金
   const singleGridAmount = (currentPrice > 0 ? currentPrice : numLower) * numQty
   const estTotalGridInvestment = singleGridAmount
 
-  // 前置拦截校验字典
   const errors = useMemo(() => {
     const errs: Record<string, string> = {}
     if (template === 'grid') {
@@ -436,7 +408,6 @@ export function BotPanel({
     tpQtyText,
   ])
 
-  // 构建向后兼容的后端策略参数
   const buildSpec = (): StrategySpec => {
     const params: Record<string, number> = {}
     if (template === 'grid') {
@@ -462,10 +433,8 @@ export function BotPanel({
     return { template, code, params, enabled: true }
   }
 
-  // 部署策略
   const handleDeploy = (): void => {
     if (busy) return
-    // 标记全部字段为 touched 以便即时展示红框与错误
     setTouched({
       lowerPrice: true,
       upperPrice: true,

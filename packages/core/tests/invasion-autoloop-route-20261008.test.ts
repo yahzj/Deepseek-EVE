@@ -10,6 +10,7 @@ import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { weekendProgressAt, weekendWreckPenaltyFracOf, weekendGarrisonFoeCardId } from '../src/weekendEvent'
 import { shortestTravelMinutes, travelLegMs } from '../src/travel'
 import { finishDeparture } from './helpers/departure-ready'
+import { confirmBattleRange } from '../src/battleRangeConfirm'
 
 const NOW = new Date(2026, 9, 9, 20).getTime()
 const A = 'galaxy-redring', B = 'galaxy-grave', C = 'galaxy-kor'
@@ -50,10 +51,12 @@ describe('入侵循环路线与安全边界', () => {
     expect(ev.assaultDraws).toBe(1)
     idle(state); ev.contributed[B] = 1
     expect(advanceAutoLoopInvasion(state, ctx, NOW)).toBeNull()
+    if (state.pendingBattleRange) expect(confirmBattleRange(state, ctx, state.pendingBattleRange.desireM, NOW).ok).toBe(true)
     expect(autoLoopInvasionGalaxy(state)).toBe(A)
     expect(state.expedition.foeGalaxyId).toBe(A)
     idle(state); ev.contributed[A] = 1
     expect(advanceAutoLoopInvasion(state, ctx, NOW)).toBeNull()
+    if (state.pendingBattleRange) expect(confirmBattleRange(state, ctx, state.pendingBattleRange.desireM, NOW).ok).toBe(true)
     expect(state.expedition.foeGalaxyId).toBe(C)
     expect(state.expedition.anomalyId).not.toBe('alien-broodmother')
     idle(state); ev.contributed[C] = 1
@@ -106,6 +109,7 @@ describe('入侵循环路线与安全边界', () => {
     expect(ev.assaultDraws).toBe(1)
     idle(state)
     expect(advanceAutoLoopInvasion(state, ctx, NOW)).toBeNull()
+    if (state.pendingBattleRange) expect(confirmBattleRange(state, ctx, state.pendingBattleRange.desireM, NOW).ok).toBe(true)
     expect(state.expedition.foeGalaxyId).toBe(B)
   })
   it('未探索的下一目标暂停，不自动探索、不消费出击次数', () => {

@@ -1,4 +1,3 @@
-/** 战前只读弹药预览：复用实战规格与装载，不反向引入到combat。 */
 import type { GameState } from '../state'
 import type { DamageType, SimContext } from '../types'
 import { applyMatterPlayerBuffs } from './fleetSpecs'
@@ -20,7 +19,6 @@ export interface BattleAmmoPreloadPlan {
   rows: BattleAmmoPreloadRow[]
 }
 
-/** 有限趟同一库存快照选档；普通场次按主控优先逐船装载，不能多算共享库存。 */
 export function battleAmmoPreloadPlan(
   state: GameState, ctx: SimContext, shipIds: readonly string[],
   supplies?: Readonly<Record<string, number>>, inWormhole = false,

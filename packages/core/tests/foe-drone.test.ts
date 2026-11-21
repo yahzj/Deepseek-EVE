@@ -376,7 +376,7 @@ describe("E 族近防炮：装备 → 防空属性 → 真能打机群", () => {
  *
  * `pd-damage-ladder.test.ts` 只锁"装备表写了 ×2、且带进了武器条目"；本组锁**引擎真的乘上去了**：
  * 用**合成对照件**（复制真近防炮、只把 `antiDroneDmgMul` 摘掉）跑同种子同卡——
- * ① 机群掉血**恰好 ×2**；② **敌舰掉血逐字相同**（加成不许漏进对舰那一支）。
+ * ① 机群原伤×2后逐发取整，累计尾差不超过命中次数；②敌舰掉血逐字相同。
  * 机群血量故意设成巨值（10 万）⇒ 整场零击落、无补位 ⇒ 两次跑的事件序列完全一致，对照是干净的。
  * ══════════════════════════════════════════════════════════════════════════ */
 describe("对无人机伤害加成 ×2（船长 2026-09-12）", () => {
@@ -403,7 +403,7 @@ describe("对无人机伤害加成 ×2（船长 2026-09-12）", () => {
   /** 跑一场：同卡同种子，只换装配里那件近防炮 */
   function runWith(
     moduleId: string,
-  ): { droneHurt: number; shipHurt: number } {
+  ): { droneHurt: number; shipHurt: number; hits: number } {
     const drone = fatDrone();
     const card = testCard(testShip([{ drone, count: 3 }], 1));
     const c: SimContext = {
@@ -433,14 +433,19 @@ describe("对无人机伤害加成 ×2（船长 2026-09-12）", () => {
       .reduce((s, u) => s + u.hp.s + u.hp.a + u.hp.h, 0);
     // 零击落的前提核对（有击落说明血量没设够，对照就不干净了）
     expect(Object.values(battle.foeDronePools ?? {}).flat().every((p) => p.alive)).toBe(true);
-    return { droneHurt: droneHpStart - droneHpEnd, shipHurt: shipHpStart - shipHpEnd };
+    return { droneHurt: droneHpStart - droneHpEnd, shipHurt: shipHpStart - shipHpEnd, hits: battle.stats.meHits };
   }
 
-  it("带加成 ⇒ 机群掉血恰好翻倍；对舰掉血逐字相同（加成不许漏进对舰那一支）", () => {
+  it("带加成的机群原伤翻倍后逐发取整；对舰掉血逐字相同", () => {
     const withBonus = runWith("mod-pd-e-3");
     const without = runWith("test-pd-nobonus");
     expect(without.droneHurt).toBeGreaterThan(0); // 对照组确实打到了机群
-    expect(withBonus.droneHurt).toBe(without.droneHurt * 2);
+    expect(withBonus.hits).toBe(without.hits);
+    expect(Number.isInteger(withBonus.droneHurt)).toBe(true);
+    expect(withBonus.droneHurt).toBeGreaterThan(without.droneHurt);
+    // ceil(2x)与2ceil(x)每次命中至多相差1，不能把倍率失效或异常放大当成取整误差。
+    expect(without.droneHurt * 2 - withBonus.droneHurt).toBeGreaterThanOrEqual(0);
+    expect(without.droneHurt * 2 - withBonus.droneHurt).toBeLessThanOrEqual(without.hits);
     expect(withBonus.shipHurt).toBe(without.shipHurt); // 对舰不但"没加成"，而是**完全一致**
   });
 });

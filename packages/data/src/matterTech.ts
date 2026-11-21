@@ -1,29 +1,7 @@
-/**
- * **谜质科技树节点表**（船长 2026-09-19：「先挂起，我打算用制作一个消耗谜质升级的研究科技树。」
- * ＋「消耗谜质和信用点。不消耗时间。主要研究对虫洞内的战斗和探索。另外含部分洞外工业科技。
- * 谜质单价提高到70W。研究入口放在扫描虫洞界面内。将现有的扫描虫洞分出2个子页面：虫洞探索和谜质科技」）。
- *
- * **三线 · 4 层 · 24 节点**（逐线讨论后的定稿，数值全部经船长点头；逐条沿革见工作文档
- * `docs/design/matter-tech-20260919.md`（该工作文档已于 2026-09-20 按约定 §十五**归档删除** ⇒
- * 现行口径见 `docs/glossary.md` §十一「谜质科技树」，过程细节用 `git log -S` 兜底）：
- * - **A 探索线 6**：时序锚定器（T1·10 级·最大回合数 +10/级）· 引力吊臂（T2·打捞器效率 +20%/级）·
- *   富集钻头（T2·采集器效率 +20%/级）· 折叠货舱（T2·货仓格 +4/级）· 谐振信号滤波阵列
- *   （T3·扫描虫洞间隔 −5%/级·5 级）· 时间压缩矩阵（T4·2 级·洞内战斗 ×2 / ×4）；
- * - **B 战斗线 14**：三层抗性缺口 +0.05/级（T1/T1/T2）· 命中 +1%/级 · 回避 +1%/级 · 敌命中 −1%/级 ·
- *   射程 +4%/级 · 装填 −3%/级 · 单发 +3%/级 · 近盲削减 +0.05/级 · 节点威胁 −3%/级 · 守卫威胁 −3%/级 ·
- *   机群回收 +5%/级 · 战地自修（T4·2 级·战后回复 +10%/级）；
- * - **C 工业线 4**：货柜拆解技术（T2·拆解周期 −25%/级）· 虚空精炼技术（T3·虚空晶回收 +10%/级）·
- *   残骸解析技术（T3·残骸保底原材料 +5%/级）· **工业多核调度（T4·5 级·站内工业 AI 工位上限 +1/级）**。
- *
- * ⚠ **本表只描述"是什么"**：效果语义与聚合在 `core/matterTech.ts`（按 `effect` 关键字汇总，**不认 id**）；
- * 这里写错 `effect` ⇒ 体检判红 + 引擎忽略。费用单位 = 谜质 **枚** / 信用点 **ISK**，逐级给出。
- * ⚠ 费用随层单调上升由体检契约守（T1 `2·4·6` / T2 `5·10·15` / T3 `10·20·30` / T4 `30·60`）。
- */
 import type { MatterTechNodeDef } from '@whale/core'
 import { L10N } from './l10n/table'
 
 export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
-  /* ══════════════ A 虫洞探索线（6） ══════════════ */
   {
     id: 'mt-explore-turn',
     name: '时序锚定器',
@@ -37,7 +15,6 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
       3_000_000, 3_000_000, 3_000_000, 3_000_000, 3_000_000,
       3_000_000, 3_000_000, 3_000_000, 3_000_000, 3_000_000,
     ],
-    // ⟪文案调整2026-10-06⟫ 回合加成为新旧探索共享效果。
     note: '每级提高空间内探索的最大回合数 10（永久加成；与本趟带出的「时序核心」各自相加）。',
   },
   {
@@ -77,7 +54,6 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     essence: [5, 10, 15],
     isk: [6_000_000, 12_000_000, 18_000_000],
     prereq: { 'mt-explore-turn': 1 },
-    // ⟪文案调整2026-10-06⟫ 货仓加成为新旧探索共享效果。
     note: '每级提高空间内货仓有效格 4。',
   },
   {
@@ -91,7 +67,6 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     essence: [10, 20, 30, 40, 50],
     isk: [10_000_000, 20_000_000, 30_000_000, 40_000_000, 50_000_000],
     prereq: { 'mt-explore-turn': 2 },
-    // ⟪文案调整2026-10-06⟫ 旧扫描入口改名信号空间。
     note: '每级缩短「扫描信号空间」的扫描间隔 5%（与技能链相乘）。',
   },
   {
@@ -130,7 +105,6 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     essence: [30, 60],
     isk: [120_000_000, 240_000_000],
     prereq: { 'mt-explore-scan': 1 },
-    // ⟪文案调整2026-10-06⟫ 战斗倍速为新旧探索共享效果。
     note: '解锁空间内战斗的倍速：1 级 ×2、2 级 ×4（战斗中可随时切回 ×1）。',
   },
   {
@@ -147,14 +121,6 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     note: '提高信号空间扫描范围 1 圈。',
   },
 
-  /* ══════════════ B 虫洞战斗线（14） ══════════════
-   * ⟪文案调整 2026-09-19⟫ 12 条说明尾部补「（仅洞内战斗生效）」——船长：「**虫洞战斗的科技说明需要
-   *   提及仅针对虫洞内敌人**」。技术核对（本批复核过）：本线效果**确实只在虫洞内的战斗里生效**——
-   *   我方增益走 `applyMatterPlayerBuffs`（三个调用点全在 `battle.wormhole` 路径上）、
-   *   威胁/敌命中/近盲走 `wormholeMatterBattleModsOf`（非洞内恒返回 `null`）、
-   *   无人机回收与战后回复走 `wormholeBattle` 的洞内结算。
-   *   两条威胁说明**原文已写明"洞内"**（洞内节点战 / 洞内层末守卫）⇒ 不重复加尾注。
-   *   ⚠ 英文覆盖层 `EN_MATTER_TECH` 目前只有 `name`（无说明）⇒ 本次改动不造成英文漂移。 */
   {
     id: 'mt-battle-shield',
     name: '谐振护盾阵列',
@@ -165,7 +131,6 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     maxLevel: 3,
     essence: [2, 4, 6],
     isk: [3_000_000, 6_000_000, 9_000_000],
-    // ⟪文案调整2026-10-06⟫ 空间内战斗为新旧探索共享范围。
     note: '每级降低护盾层对敌方主用伤害系的抗性缺口 5%（仅空间内战斗生效）。',
   },
   {
@@ -178,7 +143,6 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     maxLevel: 3,
     essence: [2, 4, 6],
     isk: [3_000_000, 6_000_000, 9_000_000],
-    // ⟪文案调整2026-10-06⟫ 空间内战斗为新旧探索共享范围。
     note: '每级降低装甲层对敌方主用伤害系的抗性缺口 5%（仅空间内战斗生效）。',
   },
   {
@@ -192,7 +156,6 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     essence: [5, 10, 15],
     isk: [6_000_000, 12_000_000, 18_000_000],
     prereq: { 'mt-battle-shield': 1, 'mt-battle-armor': 1 },
-    // ⟪文案调整2026-10-06⟫ 空间内战斗为新旧探索共享范围。
     note: '每级降低结构层对敌方主用伤害系的抗性缺口 5%（仅空间内战斗生效；前置：谐振护盾阵列与装甲重排各 1 级）。',
   },
   {
@@ -205,7 +168,6 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     maxLevel: 3,
     essence: [2, 4, 6],
     isk: [3_000_000, 6_000_000, 9_000_000],
-    // ⟪文案调整2026-10-06⟫ 空间内战斗为新旧探索共享范围。
     note: '每级提高我方命中 1%（仅空间内战斗生效）。',
   },
   {
@@ -219,7 +181,6 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     essence: [5, 10, 15],
     isk: [6_000_000, 12_000_000, 18_000_000],
     prereq: { 'mt-battle-hit': 1 },
-    // ⟪文案调整2026-10-06⟫ 空间内战斗为新旧探索共享范围。
     note: '每级提高我方回避 1%（仅空间内战斗生效）。',
   },
   {
@@ -233,7 +194,6 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     essence: [5, 10, 15],
     isk: [6_000_000, 12_000_000, 18_000_000],
     prereq: { 'mt-battle-hit': 1 },
-    // ⟪文案调整2026-10-06⟫ 空间内战斗为新旧探索共享范围。
     note: '每级降低敌方命中 1%（仅空间内战斗生效）。',
   },
   {
@@ -247,7 +207,6 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     essence: [5, 10, 15],
     isk: [6_000_000, 12_000_000, 18_000_000],
     prereq: { 'mt-battle-hit': 1 },
-    // ⟪文案调整2026-10-06⟫ 空间内战斗为新旧探索共享范围。
     note: '每级提高我方全武器射程 4%（仅空间内战斗生效）。',
   },
   {
@@ -261,7 +220,6 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     essence: [10, 20, 30],
     isk: [10_000_000, 20_000_000, 30_000_000],
     prereq: { 'mt-battle-range': 1 },
-    // ⟪文案调整2026-10-06⟫ 空间内战斗为新旧探索共享范围。
     note: '每级缩短我方武器装填周期 3%（仅空间内战斗生效）。',
   },
   {
@@ -275,7 +233,6 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     essence: [10, 20, 30],
     isk: [10_000_000, 20_000_000, 30_000_000],
     prereq: { 'mt-battle-range': 1 },
-    // ⟪文案调整2026-10-06⟫ 空间内战斗为新旧探索共享范围。
     note: '每级提高我方单发伤害 3%（仅空间内战斗生效）。',
   },
   {
@@ -289,7 +246,6 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     essence: [10, 20, 30],
     isk: [10_000_000, 20_000_000, 30_000_000],
     prereq: { 'mt-battle-range': 1 },
-    // ⟪文案调整2026-10-06⟫ 空间内战斗为新旧探索共享范围。
     note: '每级降低敌方在近盲带内的伤害比例 5%（仅空间内战斗生效）。',
   },
   {
@@ -303,7 +259,6 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     essence: [10, 20, 30],
     isk: [10_000_000, 20_000_000, 30_000_000],
     prereq: { 'mt-battle-noise': 1 },
-    // ⟪文案调整2026-10-06⟫ 节点战加成为新旧探索共享效果。
     note: '每级降低空间内节点战的敌方威胁 3%。',
   },
   {
@@ -317,7 +272,6 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     essence: [10, 20, 30],
     isk: [10_000_000, 20_000_000, 30_000_000],
     prereq: { 'mt-battle-noise': 1 },
-    // ⟪文案调整2026-10-06⟫ 守卫加成为新旧探索共享效果。
     note: '每级降低空间内层末守卫的威胁 3%。',
   },
   {
@@ -331,7 +285,6 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     essence: [10, 20, 30],
     isk: [10_000_000, 20_000_000, 30_000_000],
     prereq: { 'mt-battle-evasion': 1 },
-    // ⟪文案调整2026-10-06⟫ 空间内战斗为新旧探索共享范围。
     note: '每级提高被击落无人机的回收率 5%（仅空间内战斗生效）。',
   },
   {
@@ -345,11 +298,9 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     essence: [30, 60],
     isk: [120_000_000, 240_000_000],
     prereq: { 'mt-battle-drone': 1 },
-    // ⟪文案调整2026-10-06⟫ 空间内战斗为新旧探索共享范围。
     note: '每级让战斗结束后的装甲与结构回复 10%（仅空间内战斗生效）。',
   },
 
-  /* ══════════════ C 洞外工业线（3 · 船长 2026-09-19 重做） ══════════════ */
   {
     id: 'mt-industry-unbox',
     name: '货柜拆解技术',
@@ -387,14 +338,6 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     note: '每级提高残骸回收的保底原材料产出 5%。',
   },
   {
-    /**
-     * **T4 · 工业 AI 工位上限**（**2026-09-20 船长**：「**谜质研究的洞外工业，添加T4科技，
-     * 增加工业AI上限，每级+1，最高5级**」）。
-     *
-     * 与技能那两支（「工业自动化基础」+1/级 · 「工业自动化」+2/级，见 `balance.aiCore.industrySkillSlots`）
-     * **相加**：满树后站内工位 = 共用 5（AI 核心操作学）+ 13（两支技能）+ 5（本节点）= **23**。
-     * 效果关键字 `industryAiSlots` 的消费点 = `core/ai.ts` 的 `industryAiBonus`（内容体检会查"登记了没接线"）。
-     */
     id: 'mt-industry-ai',
     name: '工业多核调度',
     branch: 'industry',
@@ -408,14 +351,6 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     note: '每级提高站内工业的 AI 专用工位上限 1 个（满级 +5；每个工位仍占一枚实体核心）。',
   },
 
-  /* ══════════ 2026-09-30 船长令：精炼提速两支 ＋ T5 层首批 ══════════
-   * 船长原话：「给扫描虫洞的谜质科技，添加新的洞外工业科技：2个缩短虚空晶的精炼周期的技能，
-   * 效果分别为每级10%和每级5%（更高级的），满级3级。再添加一个新的科技，每小时自动获得少了的
-   * 虚空母矿，这个要T5。再添加一个T5是解锁新的燃料配方。新配方比旧配方更贵，但是消耗虚空晶更少。」
-   * ＋修正两条：「每小时虚空母矿产量建议满级300虚空母矿」·「新配方将同位聚晶换成冷却导管」
-   * ＋「其他按你推荐来」（= −5% 那条放 T4；新配方数字照提案）。
-   * ⚠ **T5 是本表第一次出现的层**：体检契约要求"本层首级费用 > 上一层最高"，而 T4 最高 =
-   * 谜质 150 枚 / 6 亿 ISK ⇒ T5 首级必须 > 150 枚、> 6 亿 ISK（下面两条即按此下限配）。 */
   {
     id: 'mt-industry-refine-speed',
     name: '虚空精炼加速',
@@ -448,7 +383,6 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     branch: 'industry',
     tier: 5,
     effect: 'voidOreDrip',
-    // 2026-09-30 船长令二次调整：「虚空母矿汲取效果上调到200枚每小时」⇒ 100 → 200 枚/级（满级 600）
     per: 200,
     maxLevel: 3,
     essence: [160, 320, 480],
@@ -465,15 +399,12 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     per: 1,
     maxLevel: 1,
     essence: [200],
-    // 2026-09-30 船长令：「燃料配方改为2亿」（先令「下调和 T4 一致」= 1.2 亿 ⇒ 会撞体检契约
-    // 「本层首级 > 上一层最高」，因为 T4 首级正好也是 1.2 亿；改 2 亿则 2 > 1.2 ✓ 契约不动）
     isk: [200_000_000],
     prereq: { 'mt-industry-void': 1 },
     note: '解锁实验室配方「浓缩折跃燃料」：每批 600 单位，虚空晶消耗更低、总料价更高。',
   },
 ]
 
-/** 按 id 索引（`ctx.matterTech` 用它；体检校验 id 唯一与前置可解析） */
 export function buildMatterTechCatalog(): ReadonlyMap<string, MatterTechNodeDef> {
   const map = new Map<string, MatterTechNodeDef>()
   for (const node of MATTER_TECH_NODES) map.set(node.id, node)

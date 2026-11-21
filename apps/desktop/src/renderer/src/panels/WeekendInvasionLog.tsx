@@ -1,12 +1,3 @@
-/**
- * **周末入侵 · 事件日志里的活动行**（2026-09-23 船长令：「干脆放在事件日志的底部，和现有事件日志同级。
- * 点击后自动跳转到星图界面」）。
- *
- * 形态：作为日志列表里的**最后一条**（与 `wui-log-item` 同级同款：走 `LogList` 的 `footer`），
- * 单行摘要 + 悬停详情；**点击 → 跳星图**（由 App 传入 `onGoto`）。只在活动存在时渲染。
- * ✅ **2026-09-25 船长解除"仅调试模式可见"**（`WEEKEND_DEBUG_ONLY = false`）⇒ 正常模式也会有这一行；
- * 调试档的限制由 `WEEKEND_DEBUG_ONLY` 单点判据决定（改回 true 即恢复"只在调试模式显示"）。
- */
 import { useEffect, useState } from 'react'
 import type { GameEngine } from '../game/engine'
 import {
@@ -27,10 +18,6 @@ import { FlagshipFleetActions } from '../features/combat/FlagshipFleetActions'
 
 export function WeekendInvasionLogRow({ engine, onGoto }: { engine: GameEngine; onGoto: () => void }) {
   const [, force] = useState(0)
-  /**
-   * 血条/进度每秒都在动（章鱼人也在削）⇒ 自己开一个 1 秒心跳刷新读数（卸载即清）。
-   * ⚠ 原先这条心跳是给"旗舰倒计时"走的；倒计时撤了，但**入侵进度条**同样需要它。
-   */
   useEffect(() => {
     const t = window.setInterval(() => force((v) => v + 1), 1000)
     return () => window.clearInterval(t)
@@ -48,28 +35,12 @@ export function WeekendInvasionLogRow({ engine, onGoto }: { engine: GameEngine; 
   const perDone = ev.peripheryIds.filter((id) => weekendProgressAt(state, ev, id, now) >= 1).length
   const corePct = Math.round(weekendCoreProgressAt(state, ev, now) * 100)
   const coreName = engine.ctx.galaxies.get(ev.coreId)?.name ?? ev.coreId
-  /**
-   * **外围进度最高的一处**（**2026-09-25 船长批「乙」**）：上面那两块读数（外围夺回 X/Y · 核心 %）
-   * 都是"满 100% 才 +1"的计数、核心那格还被门禁锁死 ⇒ 玩家连清同一处时**一个会动的数都没有**
-   * （真档实测：暗星坟场 23% → 33% → 43% → 53%，这一行三块一动不动）⇒ 补上这条随单场胜利增长的读数。
-   */
   const lead = weekendPeripheryLeadOf(state, ev, now)
   const leadName = lead === null ? '' : engine.ctx.galaxies.get(lead.galaxyId)?.name ?? lead.galaxyId
   const flagship = weekendFlagshipView(state, ev, now, now)
-  /**
-   * **母舰血条读数**（2026-09-25 船长令：「**章鱼人 = 真实削减血量所以并不需要显示章鱼人削减进度和
-   * 倒计时。（因为削到 0% 就代表母舰被章鱼人摧毁。）**」）。
-   *
-   * ⇒ 玩家那份与章鱼那份**加在同一条血上**，界面只报"这条血还剩多少"：
-   * `pool.hpLeft / pool.hpMax`。**不再分两行报**（原先那行"旗舰已磨掉 N% · 章鱼人已削 M%"已撤）。
-   */
   const pool = weekendBossPoolView(state, ev)
   const bossText =
     pool === null ? '' : tr('ui.weekend.020', { p1: String(Math.round((pool.hpLeft / pool.hpMax) * 100)) })
-  /**
-   * ⚠ **倒计时随章鱼进度一起撤**（同上一条船长令）：旗舰现身时只报状态，
-   * 不再显示"还剩多久被削空"（血条本身就是那个读数）。
-   */
   const tail = flagship.down
     ? tr('ui.weekend.009')
     : flagship.shown

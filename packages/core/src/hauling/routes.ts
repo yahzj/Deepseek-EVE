@@ -1,4 +1,3 @@
-/** 运输航线和费率单点，不依赖运输推进模块。 */
 import { ceilFinalQuantity } from '../quantity'
 import { HOME_GALAXY_ID, siteProgress } from '../state'
 import type { GameState } from '../state'
@@ -23,7 +22,6 @@ export function haulExposureAt(ctx: SimContext, galaxyId: string): boolean {
   return securityZoneOf(ctx, galaxyId) === '低安'
 }
 
-/** 逐跳危险档加权距离，收益指数与既有锚定费率不变。 */
 export function haulEffectiveMinutes(ctx: SimContext, fromGalaxyId: string, toGalaxyId: string): number {
   const path = shortestTravelPath(ctx, fromGalaxyId, toGalaxyId)
   let sum = 0
@@ -40,7 +38,6 @@ export function haulBaseReward(ctx: SimContext, capacityM3: number, effectiveMin
   return ceilFinalQuantity(capacityM3 * HAUL_RATE_PER_M3_MIN * bal.anchorNominalMinutes * shape)
 }
 
-/** 单位费率保留小数，不将1m³当成独立订单逐次向上取整。 */
 export function haulUnitRewardRange(ctx: SimContext, effectiveMinutes: number): { min: number; max: number } {
   const bal = ctx.balance.haul
   if (!(effectiveMinutes > 0) || !(bal.anchorEffectiveMinutes > 0)) return { min: 0, max: 0 }

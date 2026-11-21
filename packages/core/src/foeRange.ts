@@ -1,2 +1,1 @@
-/** 兼容旧引用路径；实现归战斗域。 */
 export { foeDroneRangeOf, fittedEffectParamsOf, meFoeRangeDebuffOf, applyFoeRangeDebuff, foeRangeWithDebuff, foeJammerCountOf, foeUnitDeadOf, foeRangeDebuffOf, meJammerNetOf, meRangeMulOf, meRangeMulForBonus, applyMeJammerDebuff, markFoeDroneRangeBuff, foeGunRangeMulOf, foeGunMaxRangeOf, foeGunPowerFactorOf, markFoeGunRangeBuff, announceFoeGunRangeBuff, FOE_RANGE_DEBUFF_FLOOR_M } from './combat/foeRange'

@@ -29,7 +29,6 @@ export function StellarMotionLayer({ system, view, selectedId, svg, radiiOf, uni
     const restored = () => { renderer = createStellarPlanetRenderer(tile); ready() }
     tile.addEventListener('webglcontextlost', lost); tile.addEventListener('webglcontextrestored', restored)
     const wake = () => { dirty = true; last = performance.now(); if (document.hidden) cancelAnimationFrame(frame); else { cancelAnimationFrame(frame); frame = requestAnimationFrame(tick) } }
-    // 暂停/拖动时世界相位不变，只重新投影缓存帧，不重复GPU纹理计算。
     const texture = (key: string, pixels: number, render: (pixels:number) => void): HTMLCanvasElement => {
       let entry = textures.get(key)
       if (!entry) {
@@ -37,7 +36,6 @@ export function StellarMotionLayer({ system, view, selectedId, svg, radiiOf, uni
         entry = { time: -1, image }; textures.set(key, entry)
       }
       if (entry.time !== session.elapsedMs || entry.image.width !== pixels) {
-        // 共享WebGL缓冲仅扩容，每颗只绘制所需小视口，避免轮换尺寸反复分配。
         if (tile.width < pixels || tile.height < pixels) { tile.width = pixels; tile.height = pixels }
         render(pixels)
         if(entry.image.width!==pixels||entry.image.height!==pixels){entry.image.width = pixels; entry.image.height = pixels}

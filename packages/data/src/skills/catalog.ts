@@ -15,10 +15,8 @@ export const SKILLS: readonly SkillDef[] = [
   ...TRADE_EXPLORATION_LOGISTICS_SKILLS,
 ]
 
-/** 技能组清单（按此顺序分组展示） */
 export const SKILL_GROUPS: readonly string[] = ['舰船', '工业', '矿业', '战斗', '工程', '贸易', '探索', '物流']
 
-/** 把技能表建成引擎用的"按 id 快速查找"目录 */
 export function buildSkillCatalog(): ReadonlyMap<string, SkillDef> {
   return new Map(SKILLS.map((s) => [s.id, s]))
 }

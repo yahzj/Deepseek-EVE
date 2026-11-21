@@ -1,13 +1,3 @@
-/**
- * 证券交易所 · 一级页（**深空证券交易所 DSSE · 双模式**）。
- *
- * 核心升级：
- * - 极简 / 专业 双模式 Segmented Tabs 一览无遗，一键切换（持久化到 `localStorage['whale-idle:exch-view-mode']`）；
- * - 纯净硬核科幻 HUD 视觉，彻底去除 emoji；
- * - 极简模式：三栏布局，4 位代码股票，面积走势图，看涨/看跌下注舱，我的下注与委托，零门槛；
- * - 专业模式：三栏 HUD PRO，逐仓杠杆，多空张力槽，K 线、持仓与流水双 Tab，双核战术交易舱；
- * - 共享同一个 Client 单例与快照，切换模式零延迟、状态零丢失。
- */
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { Analytics, Portfolio } from '@carbon/icons-react'
 import type { PageProps } from '../../pages/common'
@@ -25,6 +15,7 @@ import {
   subscribeExchangeSelectedCode,
 } from './selectedCode'
 import { NewsTicker } from './components/NewsTicker'
+import { setCrtBusy } from '../../ui/crtEffect'
 import { SimpleExchange } from './components/SimpleExchange'
 import { ProExchange } from './components/ProExchange'
 import { RoundBadge } from './components/RoundBadge'
@@ -32,12 +23,13 @@ import './exchange.css'
 
 const VIEW_MODE_KEY = EXCH_PREF.viewMode
 
-/** 生产包暂时关闭专业投资入口；本地 `npm run dev` 保留，便于调试。 */
 const PRO_MODE_ENABLED = import.meta.env.DEV
 
 export function ExchangePage({ engine, onToast, onOpenSettings }: PageProps) {
-  // 2026-11-05 游客行情批：登录/退出后必须换客户端实例——游客连接是匿名的（不带 token），
-  // 登录后要换成带令牌的那条；不换就会一直用匿名连接看自己的空白账户。
+  useEffect(() => {
+    setCrtBusy('exchange', true)
+    return () => setCrtBusy('exchange', false)
+  }, [])
   const [authTick, bumpAuth] = useReducer((n: number) => n + 1, 0)
   useEffect(() => {
     const onChange = (): void => bumpAuth()
@@ -57,10 +49,6 @@ export function ExchangePage({ engine, onToast, onOpenSettings }: PageProps) {
   )
 }
 
-/**
- * 数据源徽标（已登录 / 游客只读）。
- * 2026-11-05 起没有「模拟盘」：未登录也连真实服务器看公开行情，只是不能交易。
- */
 function SourceBadge({ source }: { source: ExchangeSourceInfo }) {
   const guest = source.auth === 'guest'
   return (
@@ -73,7 +61,6 @@ function SourceBadge({ source }: { source: ExchangeSourceInfo }) {
   )
 }
 
-/** HTTP 模式但没服务器/传输层：引导态 */
 function ExchangeGuide({ bundle }: { bundle: ExchangeClientBundle }) {
   return (
     <div className="page-stack page-fill ex-page ex-guide-page">
@@ -107,12 +94,7 @@ function ExchangeBody({
   onOpenSettings?: PageProps['onOpenSettings']
 }) {
   const client = bundle.client
-  /** 未登录：只能看公开行情（账户/委托/回合/理财都不拉，见 HttpExchangeClient 的 guest 分支） */
   const guest = bundle.source.auth === 'guest'
-  /**
-   * 未登录玩家点了需要账号的操作（船长 2026-11-05：「用户操作了就提醒他要登入，弹到设置的
-   * 存档那个界面给他，那边有登入入口」）⇒ 提示 + 直接把设置停在「账户」子页。
-   */
   const requireLogin = (): void => {
     onToast(T.guestNeedLogin, true)
     onOpenSettings?.('account')
@@ -123,17 +105,14 @@ function ExchangeBody({
   codeRef.current = code
   const [pickedPrice, setPickedPrice] = useState<{ value: number; seq: number } | null>(null)
 
-  // 响应外部（如活动栏快捷监控微卡片）的标的高亮切换
   useEffect(() => {
     return subscribeExchangeSelectedCode((nextCode) => {
       setCode(nextCode)
       setPickedPrice(null)
     })
   }, [])
-  // 入金 / 出金弹窗：null = 关闭
   const [cashier, setCashier] = useState<'deposit' | 'withdraw' | null>(null)
 
-  // 极简 / 专业 双模式状态（默认极简）
   const [viewMode, setViewMode] = useState<'simple' | 'pro'>(() => {
     if (!PRO_MODE_ENABLED) return 'simple'
     try {
@@ -144,7 +123,6 @@ function ExchangeBody({
     }
   })
 
-  // 外部入口（活动栏「债券/基金」）改了模式偏好时，已挂载的页面要跟着切
   useEffect(() => {
     const onPref = (): void => {
       if (!PRO_MODE_ENABLED) {
@@ -155,7 +133,6 @@ function ExchangeBody({
         const saved = localStorage.getItem(VIEW_MODE_KEY)
         setViewMode(saved === 'pro' ? 'pro' : 'simple')
       } catch {
-        // ignore
       }
     }
     window.addEventListener(EXCHANGE_PREF_EVENT, onPref)
@@ -163,9 +140,7 @@ function ExchangeBody({
   }, [])
 
   const switchViewMode = (mode: 'simple' | 'pro') => {
-    // 生产包暂时关闭专业投资入口；本地开发保留（船长 2026-11-07）
     if (mode === 'pro' && !PRO_MODE_ENABLED) return
-    // 未登录不能进专业投资（船长 2026-11-05：「不能进入专业投资的界面里」）
     if (mode === 'pro' && guest) {
       requireLogin()
       return
@@ -175,11 +150,9 @@ function ExchangeBody({
     try {
       localStorage.setItem(VIEW_MODE_KEY, mode)
     } catch {
-      // ignore
     }
   }
 
-  /** 实际渲染的模式：游客与生产包只保留极简模式（存档里的 pro 偏好不生效，但不清除） */
   const shownMode: 'simple' | 'pro' = guest || !PRO_MODE_ENABLED ? 'simple' : viewMode
   const proLocked = guest || !PRO_MODE_ENABLED
 
@@ -193,16 +166,13 @@ function ExchangeBody({
       const side = call.side === 'long' ? T.posSideLong : T.posSideShort
       toastRef.current(TF.marginCalled(call.code, side, amount(call.qty)), true)
     })
-    // 数据链路错误可见化：bootstrap/WS 失败时明确弹提示，避免页面只剩「没数据」看不出原因。
     const stopError = client.on('error', (payload) => {
       toastRef.current(TF.dataLoadFailed(payload instanceof Error ? payload.message : String(payload)), true)
       window.setTimeout(() => client.retryBootstrap?.(), 1200)
     })
-    // 行情看门狗：HMR 半更新/首拉失败时页面会停在空数据，自动重试而不是等玩家重启客户端。
     const watchdog = window.setInterval(() => {
       if (client.getSnapshot(codeRef.current).stocks.length === 0) client.retryBootstrap?.()
     }, 3000)
-    // 行情 10 秒刷新一次（2026-11-04 船长：玩家要能看到 10 秒级数据变动）；回合仍 5 分钟、每回合 10 手。
     const marketRefresh = window.setInterval(() => {
       void client.refreshMarketData?.(codeRef.current)
     }, 10_000)
@@ -219,7 +189,6 @@ function ExchangeBody({
 
   const snap = useMemo(() => client.getSnapshot(code), [client, code, tick])
 
-  // 行情空数据兜底：首拉失败/HMR 半更新时 4 秒后显示提示与手动重试（看门狗同时自动重试）。
   const [dataStale, setDataStale] = useState(false)
   useEffect(() => {
     if (snap.stocks.length > 0) {
@@ -230,7 +199,6 @@ function ExchangeBody({
     return () => window.clearTimeout(timer)
   }, [snap.stocks.length])
 
-  // 切换标的补拉图表/盘口：联机模式 bootstrap 只拉了首只标的，其余切过去会一直「行情初始化中…」。
   useEffect(() => {
     if (snap.stocks.length === 0) return
     const hasChart = client.getChartSeries(code, 'm1').length > 0
@@ -244,7 +212,6 @@ function ExchangeBody({
   const bondTotal = snap.bonds.principal + snap.bonds.accrued
   const up = snap.index.changePct >= 0
 
-  // 极简模式下计算总浮动盈亏（现货 + 杠杆仓总和）
   const totalUnrealizedPnl = useMemo(() => {
     let sum = 0
     for (const h of snap.account.holdings) {
@@ -259,7 +226,6 @@ function ExchangeBody({
 
   const pnlUp = totalUnrealizedPnl >= 0
 
-  // 现货持仓市值：总资产已在游戏左上角显示，顶栏改为看「钱变成了多少股票」
   const holdingsValue = useMemo(() => {
     let sum = 0
     for (const h of snap.account.holdings) {

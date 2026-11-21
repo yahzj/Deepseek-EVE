@@ -1,4 +1,3 @@
-/** 旧路径兼容出口；实际实现归工业功能域。 */
 export { refineRate, REFINE_SKILL_MAX_LEVEL, refineRateMax, refineBatchOutputOf, oreAvailable, industryAvailable, refineBaseParamsOf, recycleBatchM3Of, RARE_UNIT_M3, UNBOX_CYCLE_MS } from './industry/refining/params'
 export { refineRunActive, refineManualActive, refineRunViews } from './industry/refining/view'
 export { startRefineRun } from './industry/refining/start'

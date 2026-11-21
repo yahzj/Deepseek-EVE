@@ -22,7 +22,6 @@ export function industrialActivityOf(state: GameState): IndustrialActivity {
   return state.hauling.active || state.sideTasks.deliver !== null ? 'hauling' : 'mining'
 }
 
-/** 只有主控实际出勤进入新海盗路径，敌人完整配置同时写入战斗覆写。 */
 export function spawnIndustrialEncounter(state: GameState, ctx: SimContext, exp: Exposure): boolean {
   if (state.sideTasks.deliver !== null) return false
   const base = industrialBaseThreatOf(ctx, exp.galaxyId)
@@ -53,7 +52,6 @@ export function spawnIndustrialEncounter(state: GameState, ctx: SimContext, exp:
   return true
 }
 
-/** 额度跨星系/活动保留；只有连续停靠整备恢复，在线离线同源。 */
 export function advanceIndustrialProtection(state: GameState, ctx: SimContext, deltaMs: number, dangerous: boolean): void {
   const config = ctx.balance.encounter.industrial
   const elapsed = state.awayGalaxy ? state.gameMs - (state.lowSecPresence[state.awayGalaxy] ?? -Infinity) : 0

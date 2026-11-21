@@ -12,7 +12,6 @@ export const BOUNTY_TASKS_PER_ROUND = BOUNTY_ZONE_PLAN.reduce((sum, plan) => sum
 
 const BOUNTY_STANDING: Readonly<Record<LairTier, number>> = { 1: 1, 2: 2, 3: 3 }
 
-/** 每日任务的额外声望，独立于目标卡首胜奖励。 */
 export function bountyTaskStandingGain(tier: LairTier): number {
   return BOUNTY_STANDING[tier]
 }
@@ -26,7 +25,6 @@ export interface BountyBoardPick {
   tier: LairTier
 }
 
-/** 合法地点优先匹配三档保底，余席随机；不越地图上限、不跨安全分区补位。 */
 export function rollBountyBoard(state: GameState, ctx: SimContext, excludedGalaxyId: string | null): BountyBoardPick[] {
   const places = new Map<string, BountyPlace>()
   for (const card of ctx.anomalies.values()) {
@@ -46,7 +44,6 @@ export function rollBountyBoard(state: GameState, ctx: SimContext, excludedGalax
   }
   const remaining = new Map(BOUNTY_ZONE_PLAN.map(plan => [plan.zone, plan.count]))
   const assigned = new Map<BountyPlace, LairTier>()
-  // 只有三档，有限回溯同时满足不同地点和分区配额；同覆盖数优先保留低档。
   const plans: readonly (readonly LairTier[])[] = [[3, 2, 1], [2, 1], [3, 1], [3, 2], [1], [2], [3], []]
   const match = (tiers: readonly LairTier[], at = 0): boolean => {
     if (at === tiers.length) return true

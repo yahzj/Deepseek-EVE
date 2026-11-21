@@ -16,7 +16,6 @@ import { matterTechWhBuffs } from '../matterTech'
 import { wormholeMatterBuffs, wormholeMatterThreatMul } from '../wormholeMatter'
 import { foeMainDamageType, wormholeGuardCardOf, wormholeSkippedBranch } from '../wormholeFoes'
 
-/** 只作有限参考交战的解析估计，不运行战斗状态机。 */
 export const SIGNAL_AUTO_COMBAT = { referenceSeconds: 60, supportCap: .5, incomingFloor: .25,
   distances: [500, 1500, 3000, 6000], guardRatio: 1.15, minimumDpsRatio: .1 } as const
 const types: DamageType[] = ['kinetic', 'explosive', 'plasma']
@@ -24,7 +23,6 @@ const types: DamageType[] = ['kinetic', 'explosive', 'plasma']
 function shots(w: WeaponSpec): Array<{ type: DamageType; value: number }> {
   const main = w.shotsByType ? Object.entries(w.shotsByType).map(([type, value]) => ({ type: type as DamageType, value: value ?? 0 }))
     : [{ type: w.fixedType ?? 'kinetic', value: w.shotDmg ?? 0 }]
-  // 玩家合并武器的单发已经含门数，不再乘count。
   if (w.secondaryDamagePct) main.push({ type: w.secondaryDamageType ?? 'kinetic', value: main.reduce((n, row) => n + row.value, 0) * w.secondaryDamagePct })
   return main
 }
@@ -73,7 +71,6 @@ function supportHp(state: GameState, ctx: SimContext, units: UnitSpec[]): number
   let total = 0
   for (const unit of units) {
     const uid = unit.shipId!, output = 1 + (unit.repairOutputBonusPct ?? 0)
-    // 回盾按半盾参考状态估计；破盾停充与实际缺损由全队支援上限约束。
     total += passiveShieldRateOf(unit.hp.s * .5, unit.hp.s, ctx.balance.battle.shieldRegenPerSec,
       (1 + (unit.shieldPassiveBonusPct ?? 0)) * output) * seconds
     total += Math.min(unit.hp.a, unit.hp.a * Math.max(0, unit.armorRegenPerSec ?? 0) * seconds)
@@ -142,7 +139,6 @@ export function signalAutoCombatRatio(state: GameState, ctx: SimContext, ids: re
           nominal[shot.type] += shot.value * rate(w)
         }
         for (const type of types) {
-          // 避免把站在射程外当成可以永久无伤；突进、闪现等动态能力只作有界保守修正。
           damage[type] += Math.max(out[type], nominal[type] * SIGNAL_AUTO_COMBAT.incomingFloor)
         }
       }

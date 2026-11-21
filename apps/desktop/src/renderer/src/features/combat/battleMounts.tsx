@@ -4,7 +4,6 @@ import { UI_TONES } from '../../ui/tones'
 import { tr } from '../../i18n/locale'
 import type { GravekeeperStatus } from '@whale/core'
 
-/** 名称与效果分开渲染，同一件独立成行；两处战斗富详情共用。 */
 export function BattleMountLines({ names, pairs, statuses }: { names: readonly string[]; pairs?: ReadonlyArray<readonly [string, string]>; statuses?: readonly GravekeeperStatus[] }) {
   const shown = mountNamesTextOf(names, pairs)
   return <div className="app-battle-mount-lines">

@@ -53,7 +53,6 @@ function record(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
 
-// 由 App 持有；页面导航只消费快照，应用 hook 卸载才释放传输。
 class ChatRuntime {
   preferences = readCloudPreferences()
   channel: Channel
@@ -180,7 +179,6 @@ class ChatRuntime {
   private unauthorized(scope: number, error: unknown): boolean {
     if (!this.current(scope)) return true
     if (!(error instanceof CloudApiError) || error.status !== 401) return false
-    // 事件回调同步切换身份；旧请求不能删除刚写入的新账号会话。
     if (identity(readCloudPreferences()) !== identity(this.preferences)) { this.readPreferences(); return true }
     saveCloudSession(this.preferences.server, null)
     this.readPreferences()
@@ -240,7 +238,6 @@ class ChatRuntime {
             this.onlineCount = Number.isSafeInteger(frame.onlineCount) && Number(frame.onlineCount) >= 0
               ? Number(frame.onlineCount) : new Set(frame.online).size
             this.queue.resume(3000)
-            // 只有持续稳定的连接才重置退避，短连接的 hello 不重置。
             this.later(() => { this.retries = 0 }, HEARTBEAT_MS)
             this.scheduleHeartbeat()
             for (const target of CHANNELS) void this.loadHistory(target)
@@ -285,7 +282,6 @@ class ChatRuntime {
       this.probeTimer = null
       this.finishProbe = null
       this.probeRequest = null
-      // 同一 TCP 流中 pong 排在此前批次响应后；仍无回执者只标未确认，不重放。
       if (this.echoOverdue) {
         this.setDelivery(this.queue.takeUncertain(), 'uncertain')
         this.echoOverdue = false
@@ -314,7 +310,6 @@ class ChatRuntime {
     if (document.visibilityState !== 'hidden') { this.foreground(); return }
     this.cancel(this.heartbeat)
     this.heartbeat = null
-    // 后台挂起不作为网络故障；恢复时重新探活。
     this.cancel(this.probeTimer)
     this.probeTimer = null
     this.finishProbe = null
@@ -330,7 +325,6 @@ class ChatRuntime {
       try {
         this.socket.send(JSON.stringify({ type: 'batch', channel, messages: batch.map(item => item.text), clientMessageIds: batch.map(item => item.id) }))
       } catch {
-        // send 抛出后也不重放：保守视为结果不明，离开当前发送栈后统一清理。
         void Promise.resolve().then(() => { if (this.current(scope)) this.fail() })
       }
       this.setDelivery(batch, 'sent')
@@ -420,7 +414,6 @@ class ChatRuntime {
     const state = this.channels[target]
     if (older && (state.before === null || state.before === undefined)) return Promise.resolve()
     const scope = this.generation
-    // 只推进完整补齐后的锚点；部分页面成功、后续失败时仍须回补原缺口。
     const anchor = state.historyAnchor
     const initial = !state.historyLoaded
     let before = older ? state.before! : undefined

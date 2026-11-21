@@ -7,17 +7,7 @@ export interface CloudPreferences {
 
 const SERVER_KEY = 'whale.cloud.server'
 export const CLOUD_SESSION_CHANGE_EVENT = 'whale-cloud-session-change'
-/**
- * 默认入口（2026-11-05 起走 8443）：`https://game.bajibaji.party:8443` 直连源站 nginx
- * （Let's Encrypt 正式证书，不经 Cloudflare），全程 HTTPS 加密。
- * 原因：腾讯云对未备案域名拦截 80/443（80 返回备案 302，443 带 SNI 的 TLS 收到 RST），
- * 8443 未被拦截；详见 docs/design/cloud-8443-20261105.md。
- */
 export const DEFAULT_CLOUD_SERVER = 'https://game.bajibaji.party:8443'
-/**
- * 兜底入口（源站 IP 明文 HTTP，经 nginx 80 反代）：仅在**请求遇到网络层失败**时用一次，
- * 不写回偏好、不替换 `DEFAULT_CLOUD_SERVER`，所以玩家可见的「服务器」始终是默认地址。
- */
 export const FALLBACK_CLOUD_SERVER = 'http://123.207.188.192'
 const SESSION_PREFIX = 'whale.cloud.session:'
 let memoryServer: string | undefined
@@ -28,7 +18,6 @@ function notifyPreferencesChanged(): void {
     const events = globalThis as typeof globalThis & { dispatchEvent?: (event: Event) => boolean }
     events.dispatchEvent?.(new Event(CLOUD_SESSION_CHANGE_EVENT))
   } catch {
-    // 无事件能力的测试或运行环境仍保留内存中的最新会话。
   }
 }
 
@@ -89,7 +78,6 @@ export function readCloudPreferences(): CloudPreferences {
   return { server, session: readSession(server, store) }
 }
 
-/** 只在跨窗口存储事件中清理对应缓存，本窗口的只读存储回退仍以内存为准。 */
 export function refreshCloudPreferences(storageKey?: string | null): CloudPreferences {
   if (storageKey == null) {
     memoryServer = undefined
@@ -117,7 +105,6 @@ export function saveCloudSession(server: string, session: CloudAuthResponse | nu
       if (persistentSession) store.setItem(sessionKey(server), JSON.stringify(persistentSession))
       else store.removeItem(sessionKey(server))
     } catch {
-      // 写入或删除失败时，内存覆盖仍优先，防止重新读出旧凭据。
     }
   }
   notifyPreferencesChanged()
@@ -130,7 +117,6 @@ export function saveCloudServer(server: string): void {
     try {
       store.setItem(SERVER_KEY, server)
     } catch {
-      // 当前进程继续使用刚选定的服务器，不回读旧地址。
     }
   }
   notifyPreferencesChanged()

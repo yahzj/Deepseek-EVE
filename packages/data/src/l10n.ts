@@ -1,20 +1,4 @@
-/**
- * **英文覆盖层（P2）** · 2026-09-19 船长令「希望对游戏进行英语本地化处理」。
- *
- * 口径：`docs/glossary-en.md`（术语与专名权威；本文件只放**已冻结**的译名，不即兴造词）。
- * 做法：**按 id 索引的覆盖表 + `localizeCtx(ctx, locale)`** —— 只覆盖 `name / description`，
- * **id 与一切数值一字不动**；`locale === 'zh'` 时**原样返回同一个 ctx**（零拷贝 ⇒ 工具 / 测试 /
- * 模拟的既有读数逐字不变）。
- *
- * 为什么不在调用点翻译：界面取名字基本都读 `ctx.<表>.get(id)!.name`（上千处），覆盖层让这些点
- * **一行都不用改**——架构取舍见 `docs/design/l10n-en-20260919.md`。
- *
- * 分批：本批 = **舰船 43 条（名称）**；装备 / 物品 / 技能 / 蓝图 / 异常点 / 敌舰的名字与短说明按
- * P2 后续批次追加（`localizeCtx` 里没登记的目录 ⇒ 原样中文）。
- * ⚠ 覆盖表里的 id 必须真实存在于内容表 —— `packages/core/tests/l10n-overlay.test.ts` 钉住这条。
- */
 import type { AchievementDef, FoeMountId, MatterTechNodeDef, SimContext, StationSiteDef, TravelEventDef } from '@whale/core'
-// 2026-09-26：残骸英文区名改读组表（`wreckGroupOfItemId` ⇒ `region`），不再按 id 后缀解
 import { FIRST_TASKS, firstTaskText, WRECK_GROUPS, resolveFoeMounts, wreckGroupOfItemId } from '@whale/core'
 import { BLUEPRINTS } from './blueprints'
 import { SHIP_BLUEPRINTS } from './shipBlueprints'
@@ -22,7 +6,6 @@ import { L10N, l10nEntryText } from './l10n/table'
 
 export type Locale = 'zh' | 'en'
 
-/** 一条覆盖：只许覆盖这两个字段（name / description），其余字段不许在此出现 */
 export interface EnText {
   readonly name?: string
   readonly description?: string
@@ -30,16 +13,12 @@ export interface EnText {
 
 export type EnTable = Readonly<Record<string, EnText>>
 
-/** 舰船（43 · `docs/glossary-en.md` §四；**名称 + 说明**。说明逐条译自中文原文，括号里的规格照留） */
 export const EN_SHIPS: EnTable = {
-  // ── 采矿 / 工业 / 货运
   sandcat: {
-    // ⟪文案调整 2026-09-30⟫ 与 zh 同步改名（原名「Sandcat-class」，中文原「沙猫级」）
     name: 'Krill-class Mining Corvette',
     description: 'The starter mining boat: basic hold and a single mining laser. Your first ship — and, for now, your only one.',
   },
   burrower: {
-    // ⟪文案调整 2026-09-30⟫ 与 zh 同步改名（原名「Burrower-class」，中文原「掘洞级」）
     name: 'Sandeel-class Mining Corvette',
     description: 'A larger hold and twin mining lasers — nearly double the output. The mark of graduating from the starter grounds.',
   },
@@ -48,18 +27,15 @@ export const EN_SHIPS: EnTable = {
     description: 'A deep-space industrial beast: four mining lasers strip half an asteroid in one pass. The name fits.',
   },
   pioneer: {
-    // ⟪文案调整 2026-09-30⟫ 与 zh 同步改名（原名「Pioneer-class」，中文原「开拓级」）
     name: 'Narwhal-class Mining Corvette',
     description: "The Association shipyard's custom boat: not for sale — build it on your own pad from raw materials. A step faster than the Whaleswallow-class.",
   },
   'whale-king': {
     name: 'Whaleking-class Mining Corvette',
-    // ⟪文案调整 2026-09-30⟫ 与 zh 同步补定位句（船长令「鲸王添加适合路途短的挖掘」）
     description: 'The peak of deep-space industry: double the Whaleswallow-class output. A heavy-tungsten devourer, and the longest-term material goal in the game; a tight hold and a fast fill, built for short-haul belts.',
   },
   'sh-humpback': {
     name: 'Humpback-class Mining Ship',
-    // ⟪文案调整 2026-09-30⟫ 与 zh 同步补定位句（船长令「给座头鲸添加说明，适合遥远星系挖掘」）
     description: 'The third-generation Leviathan mining ship: a freighter-grade hold with another step up in output; built for belts in distant systems.',
   },
   'sh-bowhead': {
@@ -86,7 +62,6 @@ export const EN_SHIPS: EnTable = {
     name: 'Swordfish-class Heavy Freighter',
     description: "Mirage Shipping's flagship freighter: 14,000 m³ of capacity — the trader's ultimate dream.",
   },
-  // ── 武装舰
   'sh-falconet': {
     name: 'Skipjack-class Frigate',
     description: 'The Association training gunship: poor at mining but startlingly quick — already a nimble ride for low-risk expeditions.',
@@ -133,10 +108,8 @@ export const EN_SHIPS: EnTable = {
   },
   'sh-nautilus': {
     name: 'Nautilus-class Survey Cruiser',
-    // ⟪文案调整2026-10-06⟫ 扫描半径为新旧探索共享效果。
     description: 'An Association survey cruiser: joining an exploration fleet widens scan range inside the space.',
   },
-  // ── 重装 / 旗舰
   'sh-tortoise': {
     name: 'Tortoise-class Heavy Corvette',
     description: 'A slow, steady armored transport: a big hold and a thick hide.',
@@ -153,7 +126,6 @@ export const EN_SHIPS: EnTable = {
     name: 'Megalodon-class Battleship',
     description: 'A battleship named for a prehistoric giant: a front-line damage sponge and fire platform. Three thick HP layers and generous fitting space let it stand at the head of the formation — at the cost of slow turns and slow starts.',
   },
-  // 2026-09-26 新增两艘官方战列舰（船长令）——虎鲸级 = 设定里的"战列巡洋舰"（不可见说法）
   'sh-orca': {
     name: 'Orca-class Command Ship',
     description: 'A command ship: the hull that pulls a formation into one fist. Speed is what it lives on; fitting space, HP and hold all sit one notch below a battleship.',
@@ -166,10 +138,8 @@ export const EN_SHIPS: EnTable = {
     name: 'Dunkleosteus-class Flagship',
     description: "The fleet's apex: damage soaking, firepower and fitting space all above its generation — as are its price and build time. It sets the pace of the whole formation: when it is slow, everyone waits.",
   },
-  // ── 虫洞族舰（敌舰模板名，不带 -class）
   'sh-wh-a-frigate': {
     name: 'Raider EW Frigate',
-    // ⟪文案调整2026-10-06⟫ 扫描半径为新旧探索共享效果。
     description: 'A pirate electronic-warfare boat: strong in fire control and evasion — it locks first, hits first, and is harder to pin. Joining an exploration fleet widens scan range inside the space.',
   },
   'sh-wh-a-destroyer': {
@@ -194,7 +164,6 @@ export const EN_SHIPS: EnTable = {
   },
   'sh-wh-d-frigate': {
     name: 'Sentry EW Frigate',
-    // ⟪文案调整2026-10-06⟫ 扫描半径为新旧探索共享效果。
     description: 'A mausoleum electronic sentry: thick shields over thin armor, with fire control and evasion both raised to open fire before the fleet. Joining an exploration fleet widens scan range inside the space.',
   },
   'sh-wh-d-destroyer': {
@@ -219,7 +188,6 @@ export const EN_SHIPS: EnTable = {
   },
   'sh-wh-g-frigate': {
     name: 'Wraith Scout Frigate',
-    // ⟪文案调整2026-10-06⟫ 扫描半径为新旧探索共享效果。
     description: 'A deadarmy scout: very high evasion with solid fire control. Joining an exploration fleet widens scan range inside the space — it is the one that sees the others first.',
   },
   'sh-wh-g-destroyer': {
@@ -232,11 +200,6 @@ export const EN_SHIPS: EnTable = {
   },
 }
 
-/**
- * 装备（142 · `docs/glossary-en.md` §十二）—— **名称 + 说明**（说明逐条译自中文原文）。
- * 术语对齐：抗性上限 = `cap 90%` · 单发 = `single-shot` · 必中 = `always hits` · 近盲 = `blind zone` ·
- * 多装递减 = `stacks with diminishing returns` · 窝点/族专属 = `Lair-exclusive` / family-exclusive。
- */
 export const EN_MODULES: EnTable = {
   'mod-gravekeeper-rebirth': { name: l10nEntryText(L10N['mod.gravekeeperGear.001']!, 'en'), description: l10nEntryText(L10N['mod.gravekeeperGear.002']!, 'en') },
   'mod-gravekeeper-crisis': { name: l10nEntryText(L10N['mod.gravekeeperGear.003']!, 'en'), description: l10nEntryText(L10N['mod.gravekeeperGear.004']!, 'en') },
@@ -248,8 +211,6 @@ export const EN_MODULES: EnTable = {
   'mod-drone-launch-3': { name: l10nEntryText(L10N['mod.launchCalibration.003']!, 'en'), description: l10nEntryText(L10N['mod.launchCalibration.006']!, 'en') },
   'mod-laser-calibration-2': { name: l10nEntryText(L10N['mod.launchCalibration.004']!, 'en'), description: l10nEntryText(L10N['mod.launchCalibration.007']!, 'en') },
   'mod-laser-calibration-3': { name: l10nEntryText(L10N['mod.launchCalibration.005']!, 'en'), description: l10nEntryText(L10N['mod.launchCalibration.007']!, 'en') },
-  /* 舰船插件（2026-09-26 船长令）：装上去拆不下来的固定件，走独立插件槽。
-     ⚠ 英文名要与 `docs/glossary-en.md` 的命名规则一致（直译优先、档位照抄）；本批为初稿。 */
   'plug-shield-plate': { name: 'Shield Reinforcement Plate', description: L10N['mod.copy.097']!.en },
   'plug-armor-plate': { name: 'Armor Reinforcement Plate', description: L10N['mod.copy.098']!.en },
   'plug-hull-plate': { name: 'Hull Reinforcement Plate', description: L10N['mod.copy.099']!.en },
@@ -273,13 +234,9 @@ export const EN_MODULES: EnTable = {
   'plug-titan-drone-command': { name: l10nEntryText(L10N['mod.factionPlug.016']!, 'en'), description: l10nEntryText(L10N['mod.factionPlug.017']!, 'en') },
   'plug-deadarmy-reinforced-hull': { name: l10nEntryText(L10N['mod.factionPlug.018']!, 'en'), description: l10nEntryText(L10N['mod.factionPlug.019']!, 'en') },
 
-  /* 损伤管制装置线（2026-09-25 船长令：低槽 · 结构三系减伤 +30/40/50 ＋ 每场一次"结构锁定 1 秒"）
-     ⚠ 模块英文必须写在本表（`EN_MODULES`）——写进 `EN_ITEMS` 的话覆盖层查不到（`l10n-overlay` 用例会红）。 */
   'mod-dc-1': { name: 'Damage Control Unit MK1', description: L10N['mod.copy.031']!.en },
   'mod-dc-2': { name: 'Damage Control Unit MK2', description: L10N['mod.copy.031']!.en },
   'mod-dc-3': { name: 'Damage Control Unit MK3', description: L10N['mod.copy.031']!.en },
-  // 采集 / 货舱
-  // ⟪文案调整2026-10-06⟫ 旧来源说明取新表项，不重写历史正文。
   'mod-miner-civ': { name: 'Civilian Mining Laser', description: L10N['mod.signalSpace.001']!.en },
   'mod-miner-1': { name: 'Reinforced Mining Laser MK1', description: L10N['mod.signalSpace.001']!.en },
   'mod-miner-2': { name: 'Reinforced Mining Laser MK2', description: L10N['mod.signalSpace.001']!.en },
@@ -290,7 +247,6 @@ export const EN_MODULES: EnTable = {
   'mod-cargo-2': { name: 'Cargo Expander MK2', description: L10N['mod.copy.003']!.en },
   'mod-cargo-3': { name: 'Folding Cargo Expander MK3', description: L10N['mod.copy.003']!.en },
   'mod-cargo-proto': { name: 'Alien Prototype Cargo Hold', description: L10N['mod.copy.004']!.en },
-  // 武器
   'mod-turret-civ': { name: 'Civilian Cannon', description: L10N['mod.copy.005']!.en },
   'mod-turret-kin-1': { name: 'Light Turret MK1 · Kinetic', description: L10N['mod.copy.006']!.en },
   'mod-turret-kin-2': { name: 'Heavy Turret MK2 · Kinetic', description: L10N['mod.copy.007']!.en },
@@ -305,7 +261,6 @@ export const EN_MODULES: EnTable = {
   'mod-missile-1': { name: 'Light Missile Launcher MK1', description: L10N['mod.copy.014']!.en },
   'mod-missile-2': { name: 'Heavy Missile Launcher MK2', description: L10N['mod.copy.015']!.en },
   'mod-missile-3': { name: 'Cruise Missile Launcher MK3', description: L10N['mod.copy.016']!.en },
-  // 无人机件
   'mod-drone-rack-1': { name: 'Drone Deck Expansion MK1', description: L10N['mod.copy.017']!.en },
   'mod-drone-rack-2': { name: 'Drone Deck Expansion MK2', description: L10N['mod.copy.017']!.en },
   'mod-drone-rack-3': { name: 'Drone Deck Expansion MK3', description: L10N['mod.copy.017']!.en },
@@ -315,13 +270,11 @@ export const EN_MODULES: EnTable = {
   'mod-drone-relay-1': { name: 'Drone Relay Antenna MK1', description: L10N['mod.copy.019']!.en },
   'mod-drone-relay-2': { name: 'Drone Relay Antenna MK2', description: L10N['mod.copy.019']!.en },
   'mod-drone-relay-3': { name: 'Drone Relay Antenna MK3', description: L10N['mod.copy.019']!.en },
-  // 无人机储备甲板（2026-09-27 船长令）：说明文案不手写周期数字（数值由界面参数行给）
   'mod-drone-deck-1': { name: 'Drone Reserve Deck MK1', description: L10N['mod.copy.021']!.en },
   'mod-drone-deck-2': { name: 'Drone Reserve Deck MK2', description: L10N['mod.copy.021']!.en },
   'mod-drone-deck-3': { name: 'Drone Reserve Deck MK3', description: L10N['mod.copy.021']!.en },
   'mod-drone-shield-2': { name: 'Drone Shield Projector MK2', description: L10N['mod.copy.020']!.en },
   'mod-drone-shield-3': { name: 'Drone Shield Projector MK3', description: L10N['mod.copy.020']!.en },
-  // 护盾 / 装甲
   'mod-shield-kin-1': { name: 'Shield Amplifier MK1 · Kinetic', description: L10N['mod.copy.022']!.en },
   'mod-shield-exp-1': { name: 'Shield Amplifier MK1 · Explosive', description: L10N['mod.copy.023']!.en },
   'mod-shield-pla-1': { name: 'Shield Amplifier MK1 · Energy', description: L10N['mod.copy.024']!.en },
@@ -337,9 +290,6 @@ export const EN_MODULES: EnTable = {
   'mod-shieldchg-1': { name: 'Shield Recharger MK1', description: L10N['mod.copy.026']!.en },
   'mod-shieldchg-2': { name: 'Shield Recharger MK2', description: L10N['mod.copy.026']!.en },
   'mod-shieldchg-3': { name: 'Shield Recharger MK3', description: L10N['mod.copy.026']!.en },
-  /* 护盾充能力场装置（2026-09-20 船长）：高槽 · 护盾族 —— 与上一条中槽「Shield Recharger」区分开：
-     2026-10-07：本件只治其他舰船、按需消耗自身护盾，冷却按件自带。
-     ⟪2026-09-25 船长令⟫ 恢复量改按**本舰（装件舰）的护盾量**算（旧 "each ship's max shield" 作废）。 */
   'mod-shieldfield-2': { name: l10nEntryText(L10N['mod.fleetSupport.001']!, 'en'), description: l10nEntryText(L10N['mod.fleetSupport.003']!, 'en') },
   'mod-shieldfield-3': { name: l10nEntryText(L10N['mod.fleetSupport.002']!, 'en'), description: l10nEntryText(L10N['mod.fleetSupport.003']!, 'en') },
   'mod-armor-kin-1': { name: 'Armor Plating MK1 · Kinetic', description: L10N['mod.copy.028']!.en },
@@ -354,7 +304,6 @@ export const EN_MODULES: EnTable = {
   'mod-armor-plate-1': { name: 'Armor Thickening Plate MK1', description: L10N['mod.copy.032']!.en },
   'mod-armor-plate-2': { name: 'Armor Thickening Plate MK2', description: L10N['mod.copy.032']!.en },
   'mod-armor-plate-3': { name: 'Armor Thickening Plate MK3', description: L10N['mod.copy.032']!.en },
-  // 推进 / 支援 / 维修 / 隐秘
   'mod-prop-1': { name: 'Vector Thruster MK1', description: L10N['mod.copy.033']!.en },
   'mod-prop-2': { name: 'Vector Thruster MK2', description: L10N['mod.copy.033']!.en },
   'mod-prop-3': { name: 'Vector Thruster MK3', description: L10N['mod.copy.033']!.en },
@@ -384,7 +333,6 @@ export const EN_MODULES: EnTable = {
   'mod-cpu-1': { name: 'Coprocessor MK1', description: L10N['mod.copy.042']!.en },
   'mod-cpu-2': { name: 'Coprocessor MK2', description: L10N['mod.copy.042']!.en },
   'mod-cpu-3': { name: 'Coprocessor MK3', description: L10N['mod.copy.043']!.en },
-  // ⟪文案调整2026-10-06⟫ 旧来源说明取新表项，不重写历史正文。
   'mod-salvager-1': { name: 'Salvager MK1', description: L10N['mod.signalSpace.003']!.en },
   'mod-salvager-2': { name: 'Salvager MK2', description: L10N['mod.signalSpace.003']!.en },
   'mod-salvager-3': { name: 'Salvager MK3', description: L10N['mod.signalSpace.003']!.en },
@@ -396,7 +344,6 @@ export const EN_MODULES: EnTable = {
   'mod-lock-3': { name: 'Target Lock Array MK3', description: l10nEntryText(L10N['mod.fleetSupport.005']!, 'en') },
   'mod-stealth-2': { name: 'Stealth Module MK2', description: L10N['mod.copy.048']!.en },
   'mod-stealth-3': { name: 'Stealth Module MK3', description: L10N['mod.copy.048']!.en },
-  // 窝点专属（lair）
   'mod-lair-turret-a': { name: 'Raider Gatling Cannon', description: L10N['mod.copy.049']!.en },
   'mod-lair-missile-a': { name: 'Raider Missile Nest', description: L10N['mod.copy.050']!.en },
   'mod-lair-cargo-a': { name: 'Spoils Reinforcement Bay', description: L10N['mod.copy.051']!.en },
@@ -411,16 +358,12 @@ export const EN_MODULES: EnTable = {
   'mod-lair-frame-e': { name: 'Megastructure Frame', description: L10N['mod.copy.060']!.en },
   'mod-lair-drone-tac-g': { name: 'Squidwasp Swarm Control', description: L10N['mod.copy.061']!.en },
   'mod-lair-drone-relay-g': { name: 'Exile Relay Mast', description: L10N['mod.copy.062']!.en },
-  // H 族（墨潮帮）势力装备（2026-09-26 船长定：射程压制 · 捕获网 · 重袭机）
   'mod-lair-ecm-h': { name: 'Ink Tide EW Pod', description: L10N['mod.copy.063']!.en },
   'mod-lair-web-h': { name: 'Ink Tide Capture Web', description: L10N['mod.copy.064']!.en },
-  // **R 族（光环）势力特色装备**（船长 2026-10-01 令）：叠光激光炮 + 跃迁规避装置；⟪2026-10-02⟫ 再加 三叉戟光束炮（Trident Beam Cannon）+ PD激光（PD Laser）—— **四件**同出「光环稀有残骸的高级箱专属池」（与 AI 核心同一个池子）。
   'mod-lair-laser-r': { name: 'Overlay Laser Cannon', description: L10N['mod.copy.065']!.en },
-  // ⟪文案调整 2026-10-19⟫ 与短距离跃迁装置成对定名。
   'mod-lair-blink-r': { name: 'Short-Range Warp Device', description: L10N['mod.copy.066']!.en },
   'mod-lair-beam-r': { name: 'Trident Beam Cannon', description: L10N['mod.copy.067']!.en },
   'mod-lair-pd-r': { name: 'PD Laser', description: L10N['mod.copy.068']!.en },
-  // 虫洞族专属（mod-wh-*）
   'mod-wh-a-frag': { name: 'Raider Fragment Cannon', description: L10N['mod.copy.069']!.en },
   'mod-wh-a-hangar': { name: 'Raider Hangar', description: L10N['mod.copy.070']!.en },
   'mod-wh-a-prop': { name: 'Raider Afterburner', description: L10N['mod.copy.071']!.en },
@@ -451,9 +394,6 @@ export const EN_MODULES: EnTable = {
   'mod-wh-g-prop': { name: 'Wraith Thruster', description: L10N['mod.copy.096']!.en },
 }
 
-/**
- * 物品英文名称保持冻结译名；说明与中文共用唯一表 id。
- */
 export const EN_ITEMS: EnTable = {
   'box-encrypted-a': { name: l10nEntryText(L10N['item.encrypted.001']!, 'en'), description: l10nEntryText(L10N['item.encrypted.006']!, 'en') },
   'box-encrypted-c': { name: l10nEntryText(L10N['item.encrypted.002']!, 'en'), description: l10nEntryText(L10N['item.encrypted.006']!, 'en') },
@@ -464,7 +404,6 @@ export const EN_ITEMS: EnTable = {
     name: l10nEntryText(L10N['item.jawclaw.001']!, 'en'),
     description: l10nEntryText(L10N['item.jawclaw.002']!, 'en'),
   },
-  // 原矿
   'ore-veldspar': { name: 'Peridotite', description: L10N['item.copy.001']!.en },
   'ore-scorched': { name: 'Gabbro', description: L10N['item.copy.002']!.en },
   'ore-hemorphite': { name: 'Redring Ore', description: L10N['item.copy.003']!.en },
@@ -472,9 +411,7 @@ export const EN_ITEMS: EnTable = {
   'ore-sunshard': { name: 'Dawnshard Crystal', description: L10N['item.copy.005']!.en },
   'ore-voidshard': { name: 'Voidcrystal', description: L10N['item.copy.006']!.en },
   'ore-nebulite': { name: 'Starwraith Ore', description: L10N['item.copy.007']!.en },
-  // ⟪文案调整2026-10-06⟫ 旧来源说明取新表项，不重写历史正文。
   'ore-voidmother': { name: 'Voidmother Ore', description: L10N['item.signalSpace.001']!.en },
-  // 精炼产物
   'min-tritanium': { name: 'Tritanium Alloy', description: L10N['item.copy.009']!.en },
   'min-pyerite': { name: 'Silvervein Supermetal', description: L10N['item.copy.010']!.en },
   'min-mexallon': { name: 'Crystalline Colloid', description: L10N['item.copy.011']!.en },
@@ -483,11 +420,9 @@ export const EN_ITEMS: EnTable = {
   'min-starcore': { name: 'Starcore Crystal', description: L10N['item.copy.014']!.en },
   'min-darkiron': { name: 'Darkiron Alloy', description: L10N['item.copy.015']!.en },
   'min-voidcrystal': { name: 'Void Crystal', description: L10N['item.copy.016']!.en },
-  // 跃迁燃料链三件套（2026-09-29 船长令）：星云 → 折跃等离子 · 冰 → 低温跃迁浆 · 高阶气/冰 → 曲率凝析物
   'min-jumplasma': { name: 'Jump Plasma', description: L10N['item.copy.017']!.en },
   'min-cryoslurry': { name: 'Cryo Jump Slurry', description: L10N['item.copy.018']!.en },
   'min-curvature': { name: 'Curvature Condensate', description: L10N['item.copy.019']!.en },
-  // 气体 / 冰矿
   'gas-neon': { name: 'Neon Cloud Gas', description: L10N['item.copy.034']!.en },
   'gas-phosphor': { name: 'Phosphor Haze', description: L10N['item.copy.035']!.en },
   'gas-ionstorm': { name: 'Ionstorm Cloud', description: L10N['item.copy.036']!.en },
@@ -495,7 +430,6 @@ export const EN_ITEMS: EnTable = {
   'ice-frost': { name: 'Bluefrost Ice', description: L10N['item.copy.038']!.en },
   'ice-marrow': { name: 'Frostmarrow Ice', description: L10N['item.copy.039']!.en },
   'ice-darkstar': { name: 'Darkstar Ice', description: L10N['item.copy.040']!.en },
-  // 弹药
   'ammo-kinetic-l': { name: 'Kinetic Ammo', description: L10N['item.copy.041']!.en },
   'ammo-explosive-l': { name: 'Explosive Ammo', description: L10N['item.copy.042']!.en },
   'ammo-plasma-l': { name: 'Energy Ammo', description: L10N['item.copy.043']!.en },
@@ -505,7 +439,6 @@ export const EN_ITEMS: EnTable = {
   'ammo-kinetic-3': { name: 'Kinetic Ammo MK3', description: L10N['item.ammoMk3.001']!.en },
   'ammo-explosive-3': { name: 'Explosive Ammo MK3', description: L10N['item.ammoMk3.002']!.en },
   'ammo-plasma-3': { name: 'Energy Ammo MK3', description: L10N['item.ammoMk3.003']!.en },
-  // 无人机
   'drone-repair-mil': { name: l10nEntryText(L10N['item.repairDrone.001']!, 'en'), description: l10nEntryText(L10N['item.repairDrone.002']!, 'en') },
   'drone-scout': { name: 'Hummingbird Scout Drone', description: L10N['item.copy.047']!.en },
   'drone-assault': { name: 'Redkite Combat Drone', description: L10N['item.copy.048']!.en },
@@ -514,25 +447,16 @@ export const EN_ITEMS: EnTable = {
   'drone-exile-bee': { name: 'Squidwasp Drone', description: L10N['item.copy.051']!.en },
   'drone-wh-c-heavy': { name: 'Hiveguard Siege Drone', description: L10N['item.copy.052']!.en },
   'drone-wh-e-sentry': { name: 'Construct Sentry Drone', description: L10N['item.copy.053']!.en },
-  // H 族（墨潮帮）专属机型（2026-09-26 船长定：重袭机 = 攻坚机）
   'drone-ink-heavy': { name: 'Ink Tide Striker Drone', description: L10N['item.copy.054']!.en },
-  // 修理组件
   'repairkit-civ': { name: 'Civilian Repair Kit', description: L10N['item.copy.055']!.en },
-  // 道具（2026-09-29 跃迁燃料批）：超空间折跃燃料 —— 实验室合成、按原返航秒数消耗
-  // 2026-09-30 船长令：体积 1 m³/单位 ＋ 普通舰船货仓无法装入（说明同步补规格）
   'jump-fuel': { name: 'Hyperspace Jump Fuel', description: L10N['item.copy.109']!.en },
-  // 实验室后续内容（2026-09-30 船长令「信号发射器和技能加速剂」）：施工期 unreleased，英文先就位
-  // ⟪文案调整 2026-09-30⟫ 与中文同步补两条真规则：母港/已建成副站点不着 · 高安启动付 10 点声望
   'invasion-beacon': { name: 'Signal Beacon', description: L10N['item.copy.110']!.en },
-  // ⟪文案调整 2026-10-02⟫ 与中文同批：使用去处补上技能页「技能加速」（三处同源；`Skill Boost` 取 `ui.boost.001` 的冻结译名）
-  // ⟪文案调整 2026-10-09⟫ 新说明待译时走共享回退，不继续显示旧英文禁用规则。
   'synaptic-accelerant': { name: L10N['item.factionBeacon.009']!.en, description: l10nEntryText(L10N['item.synaptic.001']!, 'en') },
   'invasion-beacon-r': { name: L10N['item.factionBeacon.001']!.en, description: L10N['item.factionBeacon.002']!.en },
   'invasion-beacon-c': { name: L10N['item.factionBeacon.003']!.en, description: L10N['item.factionBeacon.004']!.en },
   'invasion-beacon-h': { name: L10N['item.factionBeacon.005']!.en, description: L10N['item.factionBeacon.006']!.en },
   'invasion-beacon-d': { name: L10N['item.factionBeacon.007']!.en, description: L10N['item.factionBeacon.008']!.en },
   'deep-space-probe': { name: L10N['ui.stellar.001']!.en, description: L10N['ui.stellar.002']!.en },
-  // 零件（2026-09-20 零件体系：基础 7 直接可造 / 高级 7 需蓝图）
   'part-circuit': { name: 'Circuit Board', description: L10N['item.copy.020']!.en },
   'part-armor-plate': { name: 'Armor Plate', description: L10N['item.copy.021']!.en },
   'part-frame': { name: 'Structural Frame', description: L10N['item.copy.022']!.en },
@@ -548,10 +472,7 @@ export const EN_ITEMS: EnTable = {
   'part-fire-control': { name: 'Military Fire-Control Computer', description: L10N['item.copy.032']!.en },
   'part-grav-comp': { name: 'Graviton Compensator', description: L10N['item.copy.033']!.en },
   'repairkit-mil': { name: 'Military Repair Kit', description: L10N['item.copy.056']!.en },
-  /* 损管修理组件（2026-09-25 船长令：损伤管制装置启动时消耗的那一种，与民用/军用修理组件同族） */
   'repairkit-dc': { name: 'Damage Control Repair Kit', description: L10N['item.copy.057']!.en },
-  // 谜质装置（Enigma Device）—— 尾句统一复用 T_WORM
-  // ⟪文案调整2026-10-06⟫ 析出产物改名信号谜质，说明仍读唯一表。
   'mat-surveyor': { name: 'Deepspace Surveyor', description: L10N['item.signalSpace.002']!.en },
   'mat-chrono': { name: 'Chrono Core', description: L10N['item.signalSpace.003']!.en },
   'mat-crane': { name: 'Salvage Crane', description: L10N['item.signalSpace.004']!.en },
@@ -576,16 +497,12 @@ export const EN_ITEMS: EnTable = {
   'mat-ammo-back': { name: 'Ammo Recovery Unit', description: L10N['item.signalSpace.023']!.en },
   'mat-drone-net': { name: 'Drone Recovery Net', description: L10N['item.signalSpace.024']!.en },
   'mat-field-repair': { name: 'Field Repair Unit', description: L10N['item.signalSpace.025']!.en },
-  // ⟪文案调整2026-10-06⟫ 仅改既有资产译名，物品标识不动。
   'mat-wh-essence': { name: 'Signal Enigma', description: L10N['item.copy.090']!.en },
-  // 入侵旗舰黑匣（2026-09-25 船长「先做壳」）：只做壳 ⇒ 可存/可回收/可售，用途留待改装件那批
   'blackbox-universal': { name: 'Universal Black Box', description: L10N['item.copy.108']!.en },
   'blackbox-h': { name: 'Ink Tide Flagship Black Box', description: L10N['item.copy.106']!.en },
-  // 光环旗舰黑匣（2026-10-02 船长令「甲」：一件族一件匣）——与墨潮那件同构，只换族名与外壳
   'blackbox-r': { name: 'Corona Flagship Black Box', description: L10N['item.copy.107']!.en },
   'blackbox-d': { name: l10nEntryText(L10N['item.gravekeeper.001']!, 'en'), description: l10nEntryText(L10N['item.gravekeeper.002']!, 'en') },
   'blackbox-c': { name: L10N['item.alien.002']!.en, description: L10N['item.alien.003']!.en },
-  // 货柜
   'box-relic-a': { name: 'Ruins Safe Container (Pirate)', description: L10N['item.copy.058']!.en },
   'box-relic-c': { name: 'Ruins Safe Container (Alien)', description: L10N['item.copy.059']!.en },
   'box-relic-d': { name: 'Ruins Safe Container (Gravekeeper)', description: L10N['item.copy.060']!.en },
@@ -596,7 +513,6 @@ export const EN_ITEMS: EnTable = {
   'box-bp-deep': { name: 'Blueprint Container (Deep)', description: L10N['item.copy.065']!.en },
   'box-valuables': { name: 'Valuables Container', description: L10N['item.copy.101']!.en },
   'box-military': { name: 'Military Supply Container', description: L10N['item.copy.102']!.en },
-  // 奢侈品
   'lux-1': { name: 'Starport Vintage', description: L10N['item.copy.091']!.en },
   'lux-2': { name: 'Noble Spice', description: L10N['item.copy.092']!.en },
   'lux-3': { name: 'Lost Artwork', description: L10N['item.copy.093']!.en },
@@ -607,13 +523,11 @@ export const EN_ITEMS: EnTable = {
   'lux-8': { name: 'Ancient Balm', description: L10N['item.copy.098']!.en },
   'lux-9': { name: 'Original Star Chart', description: L10N['item.copy.099']!.en },
   'lux-10': { name: 'Crown Diamond', description: L10N['item.copy.100']!.en },
-  // AI 核心
   'ai-core-gamma': { name: 'Gamma AI Core', description: L10N['item.copy.103']!.en },
   'ai-core-beta': { name: 'Beta AI Core', description: L10N['item.copy.104']!.en },
   'ai-core-alpha': { name: 'Alpha AI Core', description: L10N['item.copy.105']!.en },
 }
 
-/** 技能（79 · `docs/glossary-en.md` §九）—— **名称 + 说明**（说明逐条译自中文原文；`⟦⟧` 高亮标记照留） */
 export const EN_SKILLS: EnTable = {
   'deep-space-probing': { name: 'Deep Space Probing', description: 'Reduces the stellar system search cycle by ⟦6%⟧ per level, additive with Advanced Deep Space Probing.' },
   'advanced-deep-space-probing': { name: 'Advanced Deep Space Probing', description: 'Further reduces the stellar system search cycle by ⟦4%⟧ per level, additive with Deep Space Probing.' },
@@ -643,7 +557,6 @@ export const EN_SKILLS: EnTable = {
   industry: { name: 'Industry', description: 'Core manufacturing theory: each level shortens blueprint build time by ⟦4%⟧ (multiplies with Batch Production).' },
   materials: { name: 'Materials', description: 'Refined manufacturing: each level cuts blueprint material cost by ⟦1.5%⟧ (max −⟦7.5%⟧; multiplies with Component Standardization).' },
   'industrial-automation': { name: 'Production Cadence', description: 'Line cadence optimization: refinery, assembler and laboratory cycles shorten by ⟦5%⟧ per level (max −⟦25%⟧; applies to manual and AI-core operation alike, and multiplies with Core Smelting and Batch Production).' },
-  // 2026-09-30 船长令（上限批）：实验室书四条 —— 燃料上限 ×2 · 燃料节拍 ×1 · 燃料收率 ×1
   'fuel-tank-structure': { name: 'Fuel Tank Structure', description: 'Fuel tank structural rework: fuel warehouse capacity +⟦10%⟧ per level (max +⟦50%⟧).' },
   'orbital-fuel-depot': { name: 'Orbital Fuel Depot', description: 'Orbital depot expansion: fuel warehouse capacity rises by a further +⟦10%⟧ per level (a further +⟦50%⟧ at max; multiplies with Fuel Tank Structure).' },
   'fuel-catalytic-cracking': { name: 'Catalytic Cracking', description: 'Catalytic cracking process: fuel synthesis cycles shorten by ⟦4%⟧ per level (max −⟦20%⟧; multiplies with Production Cadence and applies to fuel recipes only).' },
@@ -657,7 +570,6 @@ export const EN_SKILLS: EnTable = {
   'core-smelting': { name: 'Core Smelting', description: 'Refinery temperature control and stirring: each level shortens a refining batch cycle by ⟦4%⟧ (applies to manual and AI-core operation alike).' },
   'furnace-pressure': { name: 'Furnace Pressure Regulation', description: 'Refinery pressure regulation: each level shortens a refinery batch cycle by a further ⟦4%⟧ (a further −⟦20%⟧ at max; applies to manual and AI-core operation alike, and multiplies with Core Smelting, Furnace Precision and Production Cadence).' },
   'furnace-expansion': { name: 'Furnace Expansion', description: 'Refinery chamber rework: +⟦6%⟧ refining batch size per level (applies to manual and AI-core operation alike).' },
-  // 2026-09-22 船长令新增六条（精炼 T4 / 制造 T5 / 舰种操作 T4-T5）
   'furnace-precision': { name: 'Furnace Precision', description: 'Furnace temperature trimming and thermal control: each level shortens a refinery batch cycle by a further ⟦3%⟧ (max −⟦15%⟧; applies to manual and AI-core operation alike, and multiplies with Core Smelting, Furnace Pressure Regulation and Production Cadence).' },
   'parts-line': { name: 'Parts Line', description: 'Dedicated parts line scheduling: each level shortens the build time of part blueprints by a further ⟦4%⟧ (max −⟦20%⟧; multiplies with Industry and Batch Production; other blueprints are unaffected).' },
   'frigate-ops': { name: 'Frigate Operation', description: 'Frigate specialization: while piloting a frigate, evasion rises by ⟦2⟧ percentage points per level (max +⟦10⟧ points; multiplies with Evasive Maneuvering and attitude gyros).' },
@@ -708,7 +620,6 @@ export const EN_SKILLS: EnTable = {
   marketing: { name: 'Marketing', description: 'Cargo presentation and channel sales: +⟦1.2%⟧ market sale settlement price per level (max +⟦6%⟧, multiplied with Association standing bonuses).' },
   'source-sweeping': { name: 'Source Sweeping', description: 'Supply-chain intelligence network: rare and limited market orders refresh ×⟦1.1⟧ per level (about ×⟦1.5⟧ maxed).' },
   'secondhand-market': { name: 'Secondhand Market', description: 'Secondhand market channels: −⟦2%⟧ supply price of rare market goods per level (max −⟦10%⟧).' },
-  // ⟪文案调整2026-10-06⟫ 扫描、空白地点与坐标库存同步中文；技能名与数字不动。
   'signal-analysis': { name: 'Signal Analysis', description: 'Unknown signal interpretation and locking: −⟦8%⟧ local and Signal Space scan window per level (max −⟦40%⟧).' },
   cartography: { name: 'Cartography', description: 'Route calibration and jump window optimization: −⟦6%⟧ local and Signal Space scan window per level (max −⟦30%⟧; stacks multiplicatively with Signal Analysis and Signal Filtering).' },
   'signal-filtering': { name: 'Signal Filtering', description: 'Interference suppression and signal purification: a further −⟦6%⟧ local and Signal Space scan window per level (stacks multiplicatively with Signal Analysis).' },
@@ -722,7 +633,6 @@ export const EN_SKILLS: EnTable = {
   'hauler-ops': { name: 'Hauler Operations', description: 'Specialized piloting of the hauler family: +⟦5%⟧ cargo capacity per level while flying a hauler.' },
   compression: { name: 'Compression', description: 'Raw material compression: −⟦6%⟧ hold volume for ore, gas and ice per level (max −⟦30%⟧).' },
   'hold-management': { name: 'Hold Management', description: 'Hold planning and stowage: a further +⟦3%⟧ fleet-wide cargo capacity per level (stacks multiplicatively with Deep Space Logistics).' },
-  /* ── 2026-09-27 船长令（R4/R5 上位技能批）：18 条上位的英文（⟦⟧ 数量与中文一致）── */
   'furnace-amplification': { name: 'Further rework of the refinery chamber', description: '+⟦4%⟧ refining batch size per level (a further +⟦20%⟧ at max; multiplies with Furnace Expansion).' },
   'furnace-reconfiguration': { name: 'Refinery chamber reconfiguration', description: '+⟦2%⟧ refining batch size per level (a further +⟦10%⟧ at max; multiplies with Furnace Expansion and the further chamber rework).' },
   'furnace-thermal-control': { name: 'Constant-temperature furnace control', description: '−⟦1.5%⟧ refining batch cycle per level (a further −⟦7.5%⟧ at max; multiplies with Furnace Precision).' },
@@ -743,17 +653,6 @@ export const EN_SKILLS: EnTable = {
   'drone-servicing-integration': { name: 'Integrated deck servicing', description: '−⟦1.5%⟧ drone reload time per level (a further −⟦7.5%⟧ at max; multiplies with Drone Servicing).' },
 }
 
-/**
- * 残骸（26 = 13 组 × 普通/稀有 · `packages/core/src/wreckGroups.ts` 的组名派生）：
- * 中文侧名 = `组名` / `组名（稀有版）`，id = `wreck-<组key>` / `wreck-rare-<组key>`。
- * 英文按「<族> Wreck / Rare Wreck（<区>）」——区 = High-sec / Low-sec / Wormhole（与 §九 技能 `Low-sec Survival` 同口径）。
- */
-/**
- * 残骸（26 = 13 组 × 普通/稀有 · `packages/core/src/wreckGroups.ts` 的组名派生）。
- * 中文侧完全同构 ⇒ **名称与说明都按模板派生**（族名 + 区名两张小表，26 段不重复录入）：
- * - 普通：`<族>（<区>）编队的舰体残骸（按 m³ 计舱）：…出售应急，或经精炼炉「残骸回收」拆解…`
- * - 稀有：`<族>（<区>）窝点核心舱段的完好残骸（单件 30 m³）：…必给一件该敌族专属装备或特色装备…`
- */
 const WRECK_FAMILY_EN: Readonly<Record<string, string>> = {
   a: 'Pirate',
   b: 'Armed Scavenger',
@@ -761,31 +660,16 @@ const WRECK_FAMILY_EN: Readonly<Record<string, string>> = {
   d: 'Gravekeeper',
   e: 'Titan Megastructure',
   g: 'Deadarmy',
-  // H 族（墨潮帮 · 2026-09-24 船长定名「The Ink Tide」）：A 族海盗的变种/叛出分支
   h: 'Ink Tide',
-  // R 族（光环 · 2026-10-01 船长令「是新势力：余晖」）：参考远行星号 Remnants 的全无人 AI 舰队残余。
-  // 英文名 = **Corona Systems**（Corona = 日冕/"光环"的天文学对应词）。
-  // 🔴 **2026-10-01 船长改判**：「**这个势力不能真叫余晖（有侵权嫌疑），改名叫光环科技。**」
-  // ⇒ 中文族名/短名/舰名/卡名/残骸名一律改「光环」；英文由原提案 Afterglow 改为 **Corona Systems**
-  //   （不取 Halo：Halo 是微软的著名游戏 IP，避嫌要避彻底）。
   r: 'Corona Systems',
 }
 const WRECK_AREA_EN: Readonly<Record<string, string>> = {
   hi: 'High-sec',
   lo: 'Low-sec',
-  // ⟪文案调整2026-10-06⟫ 动态残骸名称与说明共用新来源名。
   wh: 'Signal Space',
-  // 2026-09-26 船长令「H族残骸不分高安低安，统一为入侵残骸（新增一个类别）」⇒ 区名多一档
   inv: 'Invasion',
 }
 
-/**
- * 残骸 id → { name, description }（组名/区分/稀有与否全从 id 解出，与中文表同构）。
- *
- * ⚠ **2026-09-26 起区名读组表**：原先按 id 后缀 `(hi|lo|wh)` 解区名，而船长同日把 H 组的地区改成
- * 新类别 `inv`（组 key 故意仍为 `h-hi`——物品 id 已进玩家档，不改）⇒ 后缀不再是区名的可靠来源。
- * 改成反查 `WRECK_GROUP_BY_KEY` 的 `region`（与中文侧 `wreckItemDefOf(组)` 同源）。
- */
 function wreckEnText(id: string): EnText {
   const m = /^wreck-(rare-)?(.+)$/.exec(id)
   if (!m) throw new Error(`残骸 id 形态不符：${id}`)
@@ -830,13 +714,8 @@ const WRECK_IDS = [
   'wreck-rare-e-wh',
   'wreck-g-wh',
   'wreck-rare-g-wh',
-  // H 族（墨潮帮）第 14 组（2026-09-26 船长令「统一为入侵残骸（新增一个类别）」）：'h-hi' —— 入侵族的**入侵类**残骸组
-  // （组 key 故意保留 `h-hi`：物品 id `wreck-h-hi` 已进玩家档；英文区名走 `WRECK_AREA_EN.inv = 'Invasion'`）
-  // （旧 'h-wh' 已退役：它此前没有任何产出路径，任何存档都不可能持有 ⇒ 改名零迁移）
   'wreck-h-hi',
   'wreck-rare-h-hi',
-  // R 族（光环）第 15 组（2026-10-01 船长令「是新势力：余晖」）：'r-inv' —— 第二个**入侵类**残骸组
-  // （与 H 族同构：一次到位、无历史包袱 ⇒ 组 key 就叫 `r-inv`，不像 H 那样保留旧的 `h-hi`）
   'wreck-r-inv',
   'wreck-rare-r-inv',
   'wreck-d-inv',
@@ -845,33 +724,12 @@ const WRECK_IDS = [
 
 export const EN_WRECKS: EnTable = Object.fromEntries(WRECK_IDS.map((id) => [id, wreckEnText(id)]))
 
-/**
- * **蓝图碎片**（**2026-09-30 加** · 英文界面残留批 5）。
- *
- * 为什么单列：碎片物品**不在静态物品表里**——它由 `core/salvage.ts` 的 `fragmentItemDefOf(moduleId, moduleName)`
- * **按目标装备现场生成**（`frag-<装备 id>`）。名字是**拼**出来的（`${moduleName}蓝图碎片`），
- * 所以 `EN_ITEMS` 那种按 id 覆盖的写法够不着 ⇒ 落成"两句模板 + 调用方喂已本地化的装备名"。
- * ⚠ 装备名由 `context.ts` 传**覆盖后**的那份（英文界面下就是英文名）⇒ 拼出来整句同语言。
- */
 export const EN_FRAGMENT: Readonly<{ name: string; description: string }> = {
   name: '{p1} Blueprint Fragment',
   description:
     'A blueprint fragment recovered by reverse-engineering wrecks: collect {p1} of them, then hit "Reverse-engineer" in the Blueprint Fragments group on the Items page to turn them into a permanent blueprint for that module (docking at a station required). The same blueprint will not drop fragments twice before it is complete — once you own the blueprint they stop appearing.',
 }
 
-/**
- * **残骸组的三处文案**（**2026-09-29 加** · 英文界面残留中文清理批 2）：
- * `WRECK_GROUPS` 的 `name` / `rareName` / `note` —— 星图「残骸打捞」页那几行
- * （`武装拾荒者残骸（高安）：钛钢结构料为主…`）走的就是它们，此前**整段中文**。
- *
- * ⚠ **族名与区名复用残骸物品那两张小表**（`WRECK_FAMILY_EN` / `WRECK_AREA_EN`）——
- * 同一个族/区在"残骸物品名"与"残骸组名"里**必须同一个词**，各写一张迟早漂
- * （物品那边已经是 `Pirate Wreck (High-sec)` 这套）。
- * `note` 与 `name` 不同：它是一句**成分说明**，按组逐条写（8 族 × 成分不同）。
- *
- * `name` / `rareName` 由 `wreckGroupEnName()` 按 `<族> Wreck (<区>)` / `<族> Rare Wreck (<区>)` 派生
- * —— 与 `wreckEnText` 的普通/稀有**同一套模板**，两处不会说出两种残骸名。
- */
 const WRECK_GROUP_NOTE_EN: Readonly<Record<string, string>> = {
   'a-hi': 'Tritanium structure stock, with Silvervein armour plate and Crystalline Colloid',
   'b-hi': 'Tritanium structure stock, with Silvervein and Crystalline Colloid',
@@ -889,11 +747,9 @@ const WRECK_GROUP_NOTE_EN: Readonly<Record<string, string>> = {
   'g-wh': 'Mostly Darkiron Alloy and Isotope Polycrystal, with Crystalline Colloid',
   'c-inv': 'Mostly Starcore Crystal and Heavy Tungsten Alloy, with structure stock',
   'd-inv': 'Mostly Starcore Crystal and Heavy Tungsten Alloy, with structure stock',
-  // R 族（光环 · 2026-10-01）：与 H 族同池同价位（组池 = D 高安组那套：钛钢 40 · 星髓晶 34 · 重钨合金 26）
   'r-inv': 'Mostly Starcore Crystal and Heavy Tungsten Alloy, with structure stock',
 }
 
-/** 组名（普通 / 稀有）按族名 + 区名派生 —— 与 `wreckEnText` 同源 */
 function wreckGroupEnName(key: string, rare: boolean): string {
   const group = WRECK_GROUPS.find((g) => g.key === key)
   if (!group) throw new Error(`残骸组 key 不存在：${key}`)
@@ -916,28 +772,15 @@ export const EN_WRECK_GROUPS: Readonly<Record<string, { name: string; rareName: 
     ]),
   )
 
-/**
- * **按"组 key"取当前语言的那三处文案**（渲染层直接用）。
- *
- * 为什么按 key 而不是按对象：`group.note` 会被 core 的 `recycleProfileOf` **拷进 profile**
- * （`salvage.ts`），于是工业页/星图两处渲染点手里都有的是**中文原串** —— 按 key 反查最省事，
- * 也不必让 core 认识语言。
- *
- * ⚠ 与 `EN_WRECK_GROUPS` **同一个真相源**（两处各写一份必然漂）；查不到组或没配英文 ⇒ 返回 undefined。
- */
 export function wreckGroupText(
   key: string,
   locale: Locale,
   field: 'name' | 'rareName' | 'note',
 ): string | undefined {
-  if (locale === 'zh') return undefined // 中文侧就叫调用方用原串（零拷贝、逐字不变）
+  if (locale === 'zh') return undefined
   return EN_WRECK_GROUPS[key]?.[field]
 }
 
-/**
- * **残骸组的嵌套覆盖**（`name` / `rareName` / `note` 三处，`overlayMap` 够不着后两个）。
- * 一条都没命中时返回**原数组**（与 `overlayList` 同款：省一次拷贝，也让"没翻译"可分辨）。
- */
 export function overlayWreckGroups<T extends { key: string; name: string; rareName: string; note: string }>(
   src: readonly T[],
   locale: Locale,
@@ -954,7 +797,6 @@ export function overlayWreckGroups<T extends { key: string; name: string; rareNa
   return out ?? src
 }
 
-/** 异常点 / 敌卡（42 · `docs/glossary-en.md` §十/§十一）—— **名称 + 说明** */
 export const EN_ANOMALIES: EnTable = {
   'alien-vanguard': { name: L10N['ano.alien.001']!.en, description: L10N['ano.alien.005']!.en },
   'alien-escort': { name: L10N['ano.alien.002']!.en, description: L10N['ano.alien.005']!.en },
@@ -1072,8 +914,6 @@ export const EN_ANOMALIES: EnTable = {
     name: 'Deepspace Butcher Fleet',
     description: 'Low-sec encounter template: a high-risk butcher fleet (hidden).',
   },
-  // 虫洞敌卡（15，hidden ⇒ 不进悬赏目录，但战斗/虫洞页会显示）
-  // ⟪文案调整2026-10-06⟫ 新实验趟也克隆这些说明，来源泛称空间内探索。
   'wh-pirate-scout': {
     name: 'Raider Detachment',
     description: 'Encounter inside the space: a small raiding detachment (hidden card, encountered during space exploration only).',
@@ -1134,7 +974,6 @@ export const EN_ANOMALIES: EnTable = {
     name: 'Remnant Battle Line',
     description: "Encounter inside the space: the deadarmy's last battle line with its swarm escort (hidden card, encountered during space exploration only).",
   },
-  // H 族（墨潮帮）· 周末入侵的四张独立敌卡（2026-09-24 船长逐条给定编成）
   'ink-harass': {
     name: 'Ink Tide Harassment Fleet',
     description: 'Weekend incursion: a harassment fleet of the Ink Tide (hidden card, spawned by the incursion event only).',
@@ -1151,7 +990,6 @@ export const EN_ANOMALIES: EnTable = {
     name: 'Ink Tide Flagship Group',
     description: 'Weekend incursion: the Ink Tide flagship group (hidden card, spawned by the incursion event only).',
   },
-  // R 族（光环）· 周末入侵的四张独立敌卡（2026-10-01 船长令建族 · 编成与 H 族同构）
   'corona-drift': {
     name: 'Corona Drift Swarm',
     description: 'Weekend incursion: a drifting swarm of Corona Systems (hidden card, spawned by the incursion event only).',
@@ -1170,10 +1008,6 @@ export const EN_ANOMALIES: EnTable = {
   },
 }
 
-/**
- * 覆盖一层 **数组**目录（界面枚举用：`engine.ships` / `engine.modules` … 都是"原始数组过滤后"的只读表）。
- * 与 `overlayMap` 同口径：只改 `name` / `description`；一条都没命中时返回**原数组**。
- */
 export function overlayList<T extends { id: string; name: string; description?: string }>(
   src: readonly T[],
   en: EnTable,
@@ -1195,11 +1029,6 @@ export function overlayList<T extends { id: string; name: string; description?: 
   return out ?? src
 }
 
-/**
- * 覆盖一层 Map 目录：**只改 `name` / `description`，其余字段与 id 一字不动**；
- * 表里查不到的 id 原样保留（写错的 id 由用例点名，不在这里静默吞掉）。
- * 一条都没命中时返回**原对象**（省一次拷贝，也让"没翻译"和"翻过"在引用上可分辨）。
- */
 export function overlayMap<T extends { name: string; description?: string }>(
   src: ReadonlyMap<string, T>,
   en: EnTable,
@@ -1220,40 +1049,14 @@ export function overlayMap<T extends { name: string; description?: string }>(
   return out ?? src
 }
 
-/**
- * 按语言覆盖运行上下文。
- * - `locale === 'zh'` ⇒ **原样返回同一个 ctx**（零拷贝、零行为变化：工具 / 测试 / 模拟读数逐字不变）；
- * - `locale === 'en'` ⇒ 逐表覆盖（本批只有舰船；后续批次在此追加 `modules / items / skills / …`）。
- */
-/**
- * 物品目录的**合并覆盖表**：静态物品（86）＋ 派生残骸（26）。
- * 合成一次即可——`localizeCtx` 用同一张表覆盖 `ctx.items`（残骸在 `context.ts` 里是先登记、后覆盖的）。
- */
 export const EN_ITEMS_ALL: EnTable = { ...EN_ITEMS, ...EN_WRECKS }
 
-/**
- * 从舰船英文名取**舰级段**：含 `-class` 时取到该词为止（`Narwhal-class Mining Corvette` → `Narwhal-class`）；
- * 虫洞族舰名没有 `-class`（它们是敌舰模板名）⇒ 用整名。
- */
 function shipClassSegment(enName: string): string {
   const parts = enName.split(' ')
   const i = parts.findIndex((p) => p.includes('-class'))
   return i >= 0 ? parts.slice(0, i + 1).join(' ') : enName
 }
 
-/**
- * **装备 / 物品蓝图**（派生，不另立表）：`<产物英文名> Blueprint`。
- * 依据：`BlueprintDef` 自带 `moduleId` / `itemId` ⇒ 直接取产物的英文名拼后缀，
- * 比逐条翻中文蓝图串更准（中文侧写的是「轻型炮台 MK1（动能）蓝图」，英文侧统一成 `Light Turret MK1 · Kinetic Blueprint`）。
- */
-/**
- * **蓝图说明**（135 条 · 中文侧逐条手写、无模板 ⇒ 逐条译；名称仍按产物派生）。
- * 与中文同一条口径：说明只讲"这张图造什么、吃什么料/什么特性"，不写原因解释。
- *
- * ⟪文案调整 2026-10-02⟫ 12 张 `bp-plug-*`（舰船插件图纸）：`requires an Ink Tide flagship black box.`
- * → `requires any black box.` —— 依据 = **船长 2026-10-02 令「甲」**（一件族一件匣）＋ 2026-09-27 原话
- * 「现有的舰船插件蓝图都只要使用任意类型黑匣就可以制作」。中文侧同批改（`blueprints.ts`）。
- */
 const BP_DESC_EN: Readonly<Record<string, string>> = {
   'bp-deep-space-probe': L10N['ui.stellar.004']!.en,
   'bp-miner-1': 'A starter blueprint: assemble your first mining laser from Tritanium Alloy and Silvervein Supermetal.',
@@ -1286,7 +1089,6 @@ const BP_DESC_EN: Readonly<Record<string, string>> = {
   'bp-dc-1': 'Damage control plans: a resistance lining and an emergency lock valve that holds a ship together the first time its structure runs out.',
   'bp-dc-2': 'Damage control plans: a thicker resistance lining and twin emergency lock valves.',
   'bp-dc-3': 'Damage control plans: fortress-grade resistance lining and a full-ship emergency lock manifold.',
-  // 制式无人机永久图纸（2026-09-26 船长令）：四条永久 · 100 架/批（机型译名与 `EN_ITEMS` 的无人机条目同源）
   'bp-drone-scout': 'Hummingbird Scout Drone plans: 100 drones per batch; kinetic bursts, the highest evasion and the thinnest armor.',
   'bp-drone-assault': 'Redkite Combat Drone plans: 100 drones per batch; explosive strikes, the balanced workhorse of the swarm.',
   'bp-drone-heavy': 'Falcon Siege Drone plans: 100 drones per batch; energy pulses, the most HP and the lowest evasion.',
@@ -1326,7 +1128,6 @@ const BP_DESC_EN: Readonly<Record<string, string>> = {
   'bp-shieldchg-1': 'Shield recharge circuit plans: rebuild the generator bank into a time-shared bus that can force a recharge cycle.',
   'bp-shieldchg-2': 'High-power shield recharge circuit plans: a dedicated recharge bus that doubles the shield restored per tick.',
   'bp-shieldchg-3': 'Capital-grade shield recharge circuit plans: one tick brings an empty shield back to fighting strength.',
-  // ⟪文案调整 2026-10-07⟫ 图纸英文与产物机制说明共用唯一表。
   'bp-shieldfield-2': L10N['mod.copy.027']!.en,
   'bp-shieldfield-3': L10N['mod.copy.027']!.en,
   'bp-armor-kin-1': 'Kinetic-resistant armor plating: layered ceramic sandwiches break up armor-piercing warheads.',
@@ -1381,7 +1182,6 @@ const BP_DESC_EN: Readonly<Record<string, string>> = {
   'bp-stealth-2': "Presses the whole hull's signature below background noise; the materials are easy to find — the masking procedure is the hard part.",
   'bp-stealth-3': "The top-grade masking procedure: long enough to cross a whole stretch under the enemy's nose, at the cost of nearly all your compute.",
   'bp-wh-a-frag': 'Raider fragment cannon: explosive main segment, kinetic secondary, 20 rounds per cycle.',
-  // ⟪文案调整 2026-10-08⟫
   'bp-wh-a-hangar': 'Raider hangar: enlarges the drone bay and reduces initial launch delays.',
   'bp-wh-a-prop': 'Raider afterburner: a big speed boost at the cost of accuracy.',
   'bp-wh-a-coat': 'Raider refraction coating: opens up the evasion gap at the cost of all resistances.',
@@ -1411,7 +1211,6 @@ const BP_DESC_EN: Readonly<Record<string, string>> = {
   'bp-wh-g-prop': 'Wraith thruster: a large speed boost.',
   'bp-lair-g-drone': 'One batch yields 50 Squidwasp drones: twice the punch of a standard scout, and the flightiest airframe.',
   'bp-wh-c-drone': 'One batch yields 50 Hiveguard siege drones: spore-burst warheads crack armor, and their three-layer HP is thicker than a standard siege drone.',
-  // 2026-09-20 零件体系（并入 main）：零件蓝图说明（基础/高级两档各一句，同档逐条同文）
   'bp-part-circuit': 'Basic part: buildable at the assembly unit right away, no blueprint needed.',
   'bp-part-armor-plate': 'Basic part: buildable at the assembly unit right away, no blueprint needed.',
   'bp-part-frame': 'Basic part: buildable at the assembly unit right away, no blueprint needed.',
@@ -1427,7 +1226,6 @@ const BP_DESC_EN: Readonly<Record<string, string>> = {
   'bp-part-fire-control': 'Advanced part: learn this blueprint first, then build it at the assembly unit.',
   'bp-part-grav-comp': 'Advanced part: learn this blueprint first, then build it at the assembly unit.',
   'bp-wh-e-drone': 'One batch yields 50 Construct sentry drones: kinetic needles break shields, with longer reach and better accuracy than a standard sentry.',
-  /* 舰船插件图纸 12 张（2026-09-26 船长令）：说明同款，只差产物名（名称由 `EN_MODULES` 派生） */
   'bp-plug-shield-plate': 'Ship plug blueprint: requires any black box.',
   'bp-plug-armor-plate': 'Ship plug blueprint: requires any black box.',
   'bp-plug-hull-plate': 'Ship plug blueprint: requires any black box.',
@@ -1448,7 +1246,6 @@ const BP_DESC_EN: Readonly<Record<string, string>> = {
 }
 
 export const EN_BLUEPRINTS: EnTable = (() => {
-  // 船长2026-10-09确认中文名称/说明，英文未准备时回退中文，不自动生成新译名。
   const out: Record<string, EnText> = {
     ...Object.fromEntries(BLUEPRINTS.filter(bp => bp.id.startsWith('bp-once-plug-')).map(bp => {
       return [bp.id, { name: bp.name, description: l10nEntryText(L10N['bp.encrypted.002']!, 'en') }]
@@ -1483,10 +1280,6 @@ export const EN_BLUEPRINTS: EnTable = (() => {
   return out
 })()
 
-/**
- * **舰船蓝图说明**（45 条手译 + `sbp-once-*` 12 条按本体派生——中文侧一次性图纸与普通图纸**逐字同说明**）。
- * 数值（货舱/循环/产量）照抄中文原文，不做本地化换算（单位与千分位与英文侧一致）。
- */
 const SBP_DESC_EN: Readonly<Record<string, string>> = {
   'sbp-manatee': 'A Leviathan freighter with a large cargo hold and fittings for defense and field work, suited to bulk transport.',
   'sbp-pioneer': 'Mining corvette; 5,200 m³ hold, 38 units per 9 s cycle — a fifth more output than the Whaleswallow-class.',
@@ -1516,7 +1309,6 @@ const SBP_DESC_EN: Readonly<Record<string, string>> = {
   'sbp-sailfish': 'Fast freighter; 8,500 m³ hold, 18 units per 11 s cycle.',
   'sbp-swordfish': 'Heavy freighter; 14,000 m³ hold, 16 units per 12 s cycle.',
   'sbp-megalodon': 'Battleship; 4,000 m³ hold — a fire platform that dares to stand at the head of the formation.',
-  // 2026-09-26 新增两艘（虎鲸级 = 战巡 / 旋齿鲨级 = 装甲战列舰）
   'sbp-orca': 'Command ship; 4,700 m³ hold — speed is what it lives on.',
   'sbp-helicoprion': 'Armored battleship; 3,600 m³ hold, with armor thick enough to eat the first salvo.',
   'sbp-wh-a-frigate': 'Raider EW frigate; locking and resolution top its tier — it sees first and locks first.',
@@ -1536,7 +1328,6 @@ const SBP_DESC_EN: Readonly<Record<string, string>> = {
   'sbp-wh-g-cruiser': 'Deadarmy torpedo cruiser; explosive warheads with solid accuracy, aimed at the armor of big targets.',
 }
 
-/** **舰船蓝图**（名称派生：`<舰级段> Blueprint`；说明查 `SBP_DESC_EN`，`sbp-once-*` 取本体同说明） */
 export const EN_SHIP_BLUEPRINTS: EnTable = (() => {
   const out: Record<string, EnText> = {}
   for (const bp of SHIP_BLUEPRINTS) {
@@ -1549,7 +1340,6 @@ export const EN_SHIP_BLUEPRINTS: EnTable = (() => {
   return out
 })()
 
-/** 敌舰（25 · `docs/glossary-en.md` §十一；卡片把它**内嵌**在 `anomaly.ships[].ship` 里 ⇒ 见 `overlayCardFoes`） */
 export const EN_FOE_SHIPS: EnTable = {
   'foe-alien-acid-burster': { name: L10N['ship.alien.001']!.en },
   'foe-alien-brood-worker': { name: L10N['ship.alien.002']!.en },
@@ -1584,14 +1374,11 @@ export const EN_FOE_SHIPS: EnTable = {
   'foe-g-nadir-lock': { name: 'Nadir Blockade Ship' },
   'foe-g-exile-battleship': { name: 'Deadarmy Battleship' },
   'foe-g-remnant-tender': { name: 'Remnant Tender' },
-  // H 族（墨潮帮 · The Ink Tide · 2026-09-24 船长定名）：五档壳体 —— 船长当日细化后的现行名
   'foe-h-ink-jammer': { name: 'Ink Tide Jammer' },
   'foe-h-ink-corvette': { name: 'Ink Tide Assault Ship' },
   'foe-h-ink-torpedo': { name: 'Ink Tide Torpedo Ship' },
   'foe-h-ink-battlecruiser': { name: 'Ink Tide Battlecruiser' },
   'foe-h-ink-flagship': { name: 'Ink Tide Invasion Carrier' },
-  // R 族（光环 · Corona Systems · 2026-10-01 船长令建族 · 船长选「甲：照提案」批定自创舰名）
-  // 舰名一律**自创**（"光现象/残响"意象）—— 参考对象的舰名不照抄；英文 = 族名 + 光现象词
   'foe-r-corona-glint': { name: 'Corona Glint' },
   'foe-r-corona-echo': { name: 'Corona Echo' },
   'foe-r-corona-overlay': { name: 'Corona Overlay' },
@@ -1599,11 +1386,6 @@ export const EN_FOE_SHIPS: EnTable = {
   'foe-r-corona-nexus': { name: 'Corona Nexus' },
 }
 
-/**
- * **卡片内嵌敌舰**的嵌套覆盖：`AnomalyDef.ships[].ship.name` 是**嵌在卡里**的（不是 ctx 的独立表），
- * 所以普通 `overlayMap` 够不着 ⇒ 单独走这一层。只改 `ship.name`，其余字段（血量倍率/波次/编成）一字不动。
- */
-/** 单张卡片的敌舰覆盖：只改 `ship.name`；没命中返回 null（调用方据此决定是否新建容器） */
 function cardFoesOf<T extends { ships?: readonly { ship: { id: string; name: string } }[] }>(
   def: T,
   en: EnTable,
@@ -1622,19 +1404,6 @@ function cardFoesOf<T extends { ships?: readonly { ship: { id: string; name: str
   return changed ? { ...def, ships: mapped } : null
 }
 
-/**
- * **卡片条目上的「敌方挂载件」名按语言覆盖**（2026-09-24 加 · 船长「给G族添加挂载件：船体修理装置」批）。
- *
- * 为什么要单开一层：挂载件的**目录表在 core**（`FOE_MOUNTS`，因为建档路径拿不到 `ctx`，见 `core/foeMounts.ts`
- * 头注），拿不到 data 包的译名表；但 `Id` 与**双语名对**（`resolveFoeMounts(...).namePairs`）
- * 都在 core 里现成 ⇒ 这里按 `slot.mounts ?? ship.mounts`（**与引擎同一条优先级**）把该条目的
- * `mounts` **换成那一侧的名字数组**。
- *
- * ⚠ **只换"名字数组"、不动 `mounts` 的判据**：引擎侧读的是**卡定义本身**
- * （`createFoeSpecsFromShips` 用 `u.slot.mounts ?? ship.mounts`），本层产出的是**界面用的副本**
- * （`localizeCtx` 的 `anomalies` 覆盖）⇒ 改语言不会改战斗行为（与 `cardFoesOf` 同款）。
- * ⚠ 没有英文名的件**回退中文名**（core 目录里 `en` 缺省 ⇒ 两项都是中文）——既有八件现状，待补。
- */
 function cardFoeMountsOf<T extends { ships?: readonly { ship: { mounts?: readonly FoeMountId[] }; mounts?: readonly FoeMountId[] }[] }>(
   def: T,
   locale: Locale,
@@ -1644,18 +1413,14 @@ function cardFoeMountsOf<T extends { ships?: readonly { ship: { mounts?: readonl
   if (!slots || slots.length === 0) return null
   let changed = false
   const mapped = slots.map((slot) => {
-    // **与引擎同一条优先级**：条目 `mounts` ?? 舰级 `ship.mounts`（条目**替换**舰级，不是叠加）
     const ids = slot.mounts ?? slot.ship.mounts
     if (!ids || ids.length === 0) return slot
-    // ⚠ **不改 `mounts`**：引擎在建档时读它（`createFoeSpecsFromShips`）且只认 id；
-    // 这里只**附一份双语名对**（与 `mounts` 下标对齐），显示层按语言挑一列 ⇒ 语言切换不动战斗行为。
     changed = true
     return { ...slot, foeMountNamePairs: resolveFoeMounts(ids).namePairs }
   })
   return changed ? { ...def, ships: mapped } : null
 }
 
-/** Map 版（`ctx.anomalies` 一类）：逐卡嵌套覆盖 */
 export function overlayCardFoes<T extends { ships?: readonly { ship: { id: string; name: string; mounts?: readonly FoeMountId[] }; mounts?: readonly FoeMountId[] }[] }>(
   cards: ReadonlyMap<string, T>,
   en: EnTable,
@@ -1664,7 +1429,6 @@ export function overlayCardFoes<T extends { ships?: readonly { ship: { id: strin
   if (locale === 'zh') return cards
   let out: Map<string, T> | null = null
   for (const [id, def] of cards) {
-    // 两层叠加：先换舰名（英文表），再换该条目上的**挂载件名**（core 目录的双语名对）
     const named = cardFoesOf(def, en) ?? def
     const next = cardFoeMountsOf(named, locale) ?? (named === def ? null : named)
     if (!next) continue
@@ -1674,7 +1438,6 @@ export function overlayCardFoes<T extends { ships?: readonly { ship: { id: strin
   return out ?? cards
 }
 
-/** 数组版（引擎目录 `ANOMALIES_FLAVORED` 一类）：逐卡嵌套覆盖 */
 export function overlayCardFoesList<T extends { ships?: readonly { ship: { id: string; name: string; mounts?: readonly FoeMountId[] }; mounts?: readonly FoeMountId[] }[] }>(
   list: readonly T[],
   en: EnTable,
@@ -1693,7 +1456,6 @@ export function overlayCardFoesList<T extends { ships?: readonly { ship: { id: s
   return out ?? list
 }
 
-/** 星系（20 · `docs/glossary-en.md` §五）—— **名称 + 说明**。星图节点进 `ctx.galaxies`，矿带名进 `ctx.belts`，两张表分开。 */
 export const EN_GALAXIES: EnTable = {
   'galaxy-hub': { name: 'Leviathan IV', description: 'Home system: headquarters of the Deep Space Industry Association, and where every route begins.' },
   'galaxy-kor': { name: 'Kor Frontier', description: 'Remains of an early colony, where pirates often lie in ambush.' },
@@ -1717,7 +1479,6 @@ export const EN_GALAXIES: EnTable = {
   'galaxy-voidedge': { name: 'Voidsea Edge', description: 'Where navigable space meets the Voidsea — the end is right behind you.' },
 }
 
-/** 矿带（17 · §五；**key 是矿带自己的 id**（`belt-*`），不是星系 id——星系名另见 `EN_GALAXIES`） */
 export const EN_BELTS: EnTable = {
   'belt-fortune': { name: 'Ring of Plenty', description: "The starter belt on the station's outer ring: safe, plentiful and never exhausted." },
   'belt-scorched': { name: 'Scorched Rift', description: 'A rift left by a shattered volcanic body, rich in Gabbro.' },
@@ -1738,7 +1499,6 @@ export const EN_BELTS: EnTable = {
   'belt-gas-aurora': { name: 'Aurora Cloud Field', description: 'Aurora particle clouds above the Vault Necropolis — the highest-threshold mining site in the universe (requires standing 13).' },
 }
 
-/** 站点（2 · 建站点；阶段名「奠基/完善/建成」嵌在站点定义里，用嵌套覆盖另处理） */
 export const EN_STATIONS: EnTable = {
   'site-redring': {
     name: 'Redring Outpost',
@@ -1750,23 +1510,12 @@ export const EN_STATIONS: EnTable = {
   },
 }
 
-/**
- * **建站阶段名**（**2026-09-29 加** · 英文界面残留中文清理批 1）。
- *
- * 为什么单列一张按 zh 名查的表：阶段名**嵌在站点定义的 `tiers[].name` 里**（`stations.ts` 每档一个
- * `奠基/完善/建成`），而 `overlayMap` 只认顶层的 `name` / `description` —— 够不着嵌在数组里的那层
- * （同一个原因见 `overlayMatterTech` 的头注）。`unlockDesc` 同理（那也是一句玩家可见说明）。
- */
 export const EN_STATION_TIERS: Readonly<Record<string, { name: string; unlockDesc?: string }>> = {
   奠基: { name: 'Foundation', unlockDesc: 'Construction underway: groundwork and main frame (station services open once it is fully built)' },
   完善: { name: 'Fitting-out', unlockDesc: 'Construction underway: equipment installation and system checks (station services open once it is fully built)' },
   建成: { name: 'Commissioning', unlockDesc: 'Outpost complete: joins the station network — berths, unloading, repair, resupply, ship switching and all in-station services open' },
 }
 
-/**
- * 按期号取**当前语言的阶段名**（渲染层直接用；查不到英文覆盖就保留中文）。
- * ⚠ 与 `localizeCtx` 的那份覆盖**同一个真相源**（`EN_STATION_TIERS`）——两处各写一份必然漂。
- */
 export function stationTierText(
   tier: { name: string },
   locale: Locale,
@@ -1778,10 +1527,6 @@ export function stationTierText(
   return field === 'name' ? hit.name : hit.unlockDesc
 }
 
-/**
- * **建站点的嵌套覆盖**：顶层走 `overlayMap` 那套，`tiers[].name` / `tiers[].unlockDesc` 另外接一层。
- * 一条都没命中时返回**原对象**（与 `overlayMap` 同款：省一次拷贝，也让"没翻译"可分辨）。
- */
 function overlayStations(
   src: ReadonlyMap<string, StationSiteDef>,
   en: EnTable,
@@ -1812,7 +1557,6 @@ function overlayStations(
   return out ?? src
 }
 
-/** 势力与部门（13 · §六；通讯页的发件人/署名会用） */
 export const EN_COMMS_FACTIONS: EnTable = {
   dshi: { name: 'Deep Space Industry Association' },
   'salvage-guild': { name: 'Salvage Guild' },
@@ -1827,17 +1571,10 @@ export const EN_COMMS_FACTIONS: EnTable = {
   'dept-route-safety': { name: 'Route Safety' },
   'dept-recall': { name: 'Recall & Restart' },
   'dept-salvage-crew': { name: "Chen's Crew No.1" },
-  // 2026-09-30 船长令：实验室首访通讯的发件方（非官方 · 黑市）
   'black-market': { name: 'Black Market' },
   'dept-contraband': { name: 'Contraband Desk' },
 }
 
-/**
- * 旅行事件（8 · 译名表 §十三；`ctx.travelEvents` 是**数组** ⇒ 用 `overlayTravelEvents`）。
- *
- * **2026-10-02 补 `text`**（远征批）：正文原先只有中文 ⇒ 英文界面下事件日志整句中文。
- * 中文原串一字未改（`travelEvents.ts`），这里只补英文正文。
- */
 export const EN_TRAVEL_EVENTS: Readonly<Record<string, { name: string; text: string }>> = {
   'ev-derelict': {
     name: 'Drifting Container',
@@ -1873,7 +1610,6 @@ export const EN_TRAVEL_EVENTS: Readonly<Record<string, { name: string; text: str
   },
 }
 
-/** 谜质科技（23 · 译名表 §十四；沿用既有术语：拆解 = Unbox · 残骸 = Wreck · 谐振 = Resonant） */
 export const EN_MATTER_TECH: EnTable = {
   'mt-explore-turn': { name: 'Chrono Anchor' },
   'mt-explore-salvage': { name: 'Gravitic Crane' },
@@ -1901,31 +1637,16 @@ export const EN_MATTER_TECH: EnTable = {
   'mt-industry-void': { name: 'Void Refining' },
   'mt-industry-wreck': { name: 'Wreck Analysis' },
   'mt-industry-ai': { name: 'Industrial Multi-core Dispatch' },
-  // 2026-09-30 船长令：精炼提速两支 ＋ T5 层首批
   'mt-industry-refine-speed': { name: 'Void Refining Acceleration' },
   'mt-industry-refine-integration': { name: 'Void Refining Integration' },
   'mt-industry-void-drip': { name: 'Void Ore Siphon' },
   'mt-industry-fuel-advanced': { name: 'High-density Fuel Recipe' },
 }
 
-/**
- * **谜质科技 · 节点说明（`note`）的英文**（2026-09-26 三号补 · roadmap 交接项 L1）。
- *
- * ⚠ **为什么另起一张表**：`overlayMap` 只覆盖 `name` / `description`（见其头注），
- * 而谜质节点的说明字段叫 **`note`** ⇒ 原先 `EN_MATTER_TECH` 只有名字、说明在英文界面下一直是中文
- * （既有缺口，非新增）。这里按节点 **id** 逐条补 `note`，由 `overlayMatterTech()` 应用
- * —— 即 roadmap L1 推荐的那条路（id 映射，与 §十一之三 对齐），数据侧 `MatterTechNodeDef` 一字不动。
- *
- * 口径：① 逐条译自中文原文，**数字与百分比照抄**（5% / 20% / 500 米这类规格不许改写）；
- * ② 术语走 `docs/glossary-en.md`（虫洞 = Wormhole · 打捞器 = Salvager · 采集器 = Mining Laser ·
- * 时序核心 = Chrono Core · 虚空母矿 = Void Ore）；③ 不写原因解释。
- */
 export const EN_MATTER_TECH_NOTES: Readonly<Record<string, string>> = {
-  // ⟪文案调整2026-10-06⟫ 共享探索与战斗效果泛称空间内；旧扫描入口单独改名。
   'mt-explore-turn': 'Each level raises the maximum turn count for exploration inside the space by 10 (a permanent bonus; it adds to any Chrono Core carried into the run).',
   'mt-explore-salvage': 'Each level raises salvager efficiency by 20%: every salvage run pulls extra piles in proportion (each full 100% is one guaranteed extra pile, the remainder by chance).',
   'mt-explore-collect': 'Each level raises mining laser efficiency by 20%: every mining cycle takes extra piles in proportion (each full 100% is one guaranteed extra pile, the remainder by chance).',
-  // ⟪文案调整2026-10-06⟫ 新旧共享说明同步中文，不限定为仅信号空间有效。
   'mt-explore-hold': 'Each level adds 4 effective slots to the hold inside the space.',
   'mt-explore-scan': 'Each level shortens the scan interval of “Scan for Signal Spaces” by 5% (multiplied with the skill chain).',
   'mt-explore-speed': 'Unlocks battle speed multiplier inside the space: level 1 ×2, level 2 ×4 (switch back to ×1 at any time during a fight).',
@@ -1949,24 +1670,12 @@ export const EN_MATTER_TECH_NOTES: Readonly<Record<string, string>> = {
   'mt-industry-void': 'Each level raises the Void Crystal yield from refining Void Ore by 10%.',
   'mt-industry-wreck': 'Each level raises the guaranteed raw material output of wreck recovery by 5%.',
   'mt-industry-ai': 'Each level raises the AI-only berth cap for on-station industry by 1 (up to +5 at max level; each berth still occupies one physical core).',
-  // 2026-09-30 船长令：精炼提速两支 ＋ T5 层首批
   'mt-industry-refine-speed': 'Each level shortens the refining cycle of Void Ore by 10%.',
   'mt-industry-refine-integration': 'Each level shortens the refining cycle of Void Ore by a further 5%.',
   'mt-industry-void-drip': 'Each level grants 200 Void Ore per hour automatically (600 per hour at max level; offline time counts).',
   'mt-industry-fuel-advanced': 'Unlocks the laboratory recipe "Condensed Jump Fuel": 600 units per batch, less Void Crystal and a higher total material cost.',
 }
 
-/**
- * **谜质科技节点的英文覆盖**：`name` 走 `EN_MATTER_TECH`（译名表 §十四），
- * **`note` 走 `EN_MATTER_TECH_NOTES`**（2026-09-26 补 · L1）。
- *
- * 为什么不能顺手用 `overlayMap`：它只认 `name` / `description` 两个字段（见其头注），
- * 而节点的说明字段是 `note` ⇒ 直接调 `overlayMap` 会让说明在英文界面下仍是中文。
- * 两者都走**按 id 查表**，查不到的一律保留原文（新增节点漏登记时看得见中文，不会静默变空）。
- *
- * ⚠ `ctx.matterTech` 的类型是 `ReadonlyMap`（见 `SimContext`）⇒ 按 Map 覆盖；
- * 一条都没命中时返回**原对象**（与 `overlayMap` 同款：省一次拷贝，也让"没翻译"可分辨）。
- */
 function overlayMatterTech(
   src: ReadonlyMap<string, MatterTechNodeDef>,
   en: EnTable,
@@ -1994,14 +1703,6 @@ function overlayMatterTech(
   return out ?? src
 }
 
-/**
- * **途中事件（远征）的英文覆盖**（**2026-10-02 加** · 远征批）。
- *
- * 为什么不能用 `overlayList`：它只认 `name` / `description`，而事件的**正文**字段是 `text`
- * （`TravelEventDef.text`，触发后写进日志的那句话）⇒ 直接调 `overlayList` 会让英文界面下的
- * 事件日志整句仍是中文（实测：`core.expedition.038/039` 的 `{p1}` 就是它）。
- * 与 `overlayMatterTech` 同款：按 id 查表，查不到的**保留原文**（漏登记时看得见中文，不会静默变空）。
- */
 function overlayTravelEvents(
   src: readonly TravelEventDef[],
   en: Readonly<Record<string, { name?: string; text?: string }>>,
@@ -2023,7 +1724,6 @@ function overlayTravelEvents(
   return out ?? src
 }
 
-/** 次数链名按链 id 取词；中文仍由首任务表提供，避免改变核心展示与日志。 */
 const FIRST_CHAIN_TEXT_IDS: Readonly<Record<string, { name: string; profession: string }>> = {
   explorer: { name: 'ui.chainName.001', profession: 'ui.achievementProfession.001' },
   digger: { name: 'ui.chainName.002', profession: 'ui.achievementProfession.002' },
@@ -2119,10 +1819,7 @@ export function localizeCtx(ctx: SimContext, locale: Locale): SimContext {
     belts: overlayMap(ctx.belts, EN_BELTS, locale),
     stations: overlayStations(ctx.stations, EN_STATIONS, locale),
     commsFactions: overlayMap(ctx.commsFactions, EN_COMMS_FACTIONS, locale),
-    // matterTech 在 SimContext 里是可选字段（缺省 = 该档内容没装）⇒ 有才覆盖
-    // ⚠ 不用 `overlayMap`：节点的说明字段是 `note`（不是 `description`）⇒ 走专用覆盖
     ...(ctx.matterTech ? { matterTech: overlayMatterTech(ctx.matterTech, EN_MATTER_TECH, EN_MATTER_TECH_NOTES, locale) } : {}),
-    // ⚠ 不用 `overlayList`：事件的**正文**字段是 `text`（不是 `description`）⇒ 走专用覆盖
     travelEvents: overlayTravelEvents(ctx.travelEvents, EN_TRAVEL_EVENTS, locale),
   }
 }

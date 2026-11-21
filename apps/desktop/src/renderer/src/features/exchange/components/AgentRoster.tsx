@@ -1,16 +1,8 @@
-/**
- * 六人格对手盘（AgentRoster）。
- *
- * 数据来自 WS `agents` 帧（回合末广播一次，`{roundNo, agents[]}`）：人格的现金、权益、
- * 持仓与最近动作本来就对玩家公开，这里只是把它显示出来，让玩家能读出「谁在场、谁在动」。
- * 面板只读，不参与下单，也不改写任何状态。
- */
 import type { AgentView } from '../client'
 import { amount, money } from '../format'
 import { periodIndex } from '../format'
 import { T, TF } from '../texts'
 
-/** 人格角色代码 → 中文文案（Go `roleMaker` 等常量）。 */
 const ROLE_KEY: Record<string, keyof typeof T> = {
   market_maker: 'agentRoleMaker',
   momentum: 'agentRoleMomentum',
@@ -20,7 +12,6 @@ const ROLE_KEY: Record<string, keyof typeof T> = {
   whale: 'agentRoleWhale',
 }
 
-/** 情绪代码 → 中文文案（Go `moodCalm` 等常量）。 */
 const MOOD_KEY: Record<string, keyof typeof T> = {
   calm: 'agentMoodCalm',
   greedy: 'agentMoodGreedy',

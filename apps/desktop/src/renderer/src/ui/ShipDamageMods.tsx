@@ -8,7 +8,6 @@ import { hideTip, hoverTipProps } from './Tooltip'
 import { infoCardContent } from './shipInfo'
 import '../styles-ship-damage.css'
 
-/** 船长 2026-10-07 确认：战损与普通插件同格展示，详情沿用富卡及弹层。 */
 export function ShipDamageMods({ ids, management }: { ids?: readonly ShipDamageKind[]; management?: ModuleDef['damageManagement'] }) {
   const [picked, setPicked] = useState<string | null>(null)
   const modal = useRef<HTMLDivElement>(null)

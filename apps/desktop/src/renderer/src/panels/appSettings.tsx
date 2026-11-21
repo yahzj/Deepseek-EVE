@@ -18,30 +18,25 @@ import { currentSpaceBg, rerollSpaceBg } from '../ui/spaceBg'
 import type { SpaceBgInfo } from '../ui/spaceBg'
 import type { LayoutKind } from '../ui/AppShell'
 import { tr, useL10n } from '../i18n/locale'
-/** 声音（2026-11-02）：音量偏好 + 本机音效台入口 */
 import { SFX_CATEGORIES, SFX_CATEGORY_NAME_ID } from '../game/audio/cues'
 import { useSfxPrefs } from '../game/audio/prefs'
 import { SfxConsole } from './SfxConsole'
-/** 客户端版本三件套与运行形态（**2026-10-02 船长令**；构建时注入，见 `game/buildInfo.ts`） */
+import { FeedbackDialog } from './FeedbackDialog'
 import { BUILD, BUILD_FORM } from '../game/buildInfo'
 import type { GameEngine } from '../game/engine'
 import { CloudSavePanel } from '../features/cloud/CloudSavePanel'
 import type { SettingsPageId } from '../pages/common'
 import './appSettings.css'
-/**
- * **界面字体**（**2026-11-02 船长令**，多轮迭代后的最终口径）：
- * · 默认 = 微软雅黑（中文）＋ Oxanium（英文/数字）；
- * · 复古 = 统一只用 GNU Unifont（中文 + 英文/数字）。
- * 偏好读写/应用收在 `ui/fontChoice.ts`（点选即落盘，下次启动读回）；**启动时应用**在
- * `game/boot.ts` 的 `prebootRenderer()`；`@font-face` 在本文件同目录的 `appSettings.css` 注册，
- * 默认字体栈单点在 `packages/ui/src/index.css`。
- */
 import { FONT_CHOICES, chooseFont, readFontChoice } from '../ui/fontChoice'
 import type { FontChoice } from '../ui/fontChoice'
+import { chooseCrtEffect, readCrtEffect } from '../ui/crtEffect'
+import type { CrtEffect } from '../ui/crtEffect'
 /**
  * **许可与授权全文**（**2026-11-02 船长令**：「这个字体是GNU授权，记得在设置的最最下方增加一个许可按钮
  * 把这些授权书内容统统都写进入」）：`?raw` 由 Vite 内联（桌面/网页两入口同一套），正文照录原文、不译不改。
- * - GNU Unifont 18.0.01 官方授权原文（2026-11-02 取自 <https://unifoundry.com/LICENSE.txt>）；
+ * - Fusion Pixel 12px Mono zh-Hans 官方授权原文（SIL OFL 1.1；版权 2022 TakWolf；
+ *   取自 <https://github.com/TakWolf/fusion-pixel-font/blob/master/LICENSE-OFL>，
+ *   全文见 `assets/licenses/fusion-pixel-12px-mono-zh-hans-LICENSE.txt`）；
  * - Oxanium 官方授权全文（SIL Open Font License 1.1；版权 2019 The Oxanium Project Authors，
  *   取自字体 name 表与 Google Fonts / 上游仓库；全文见 `assets/licenses/oxanium-LICENSE.txt`）；
  * - 根目录 `LICENSE.txt`（项目版权与授权声明）与 `LICENSE`（双许可与商业使用条款，含 AGPLv3 全文）。
@@ -51,14 +46,10 @@ import type { FontChoice } from '../ui/fontChoice'
  * ⚠ 同一批船长裁定（2026-11-02）：个人主页署名链接**保留**；声明里「请通过原项目联系作者」因链接
  * 删除而指代悬空 ⇒ 游戏内副本改为「请联系作者」（仍只改副本，根目录原文不动）。
  */
-import unifontLicenseText from '../assets/licenses/unifont-18.0.01-LICENSE.txt?raw'
+import fusionPixelLicenseText from '../assets/licenses/fusion-pixel-12px-mono-zh-hans-LICENSE.txt?raw'
 import oxaniumLicenseText from '../assets/licenses/oxanium-LICENSE.txt?raw'
 import projectLicenseStatement from '../assets/licenses/project-LICENSE-statement.txt?raw'
 import projectLicenseDual from '../assets/licenses/project-LICENSE-dual-licensing.txt?raw'
-/**
- * **界面缩放 / 字号偏好**（2026-11-02 收成单点）：读取、钳制、应用都在 `ui/uiScale.ts`，
- * 启动应用在 `game/boot.ts` 的 `prebootRenderer()`；本面板只负责「面板显示 + 拖动时写一次」。
- */
 import {
   FS_KEY,
   FS_MAX,
@@ -72,7 +63,6 @@ import {
   readZoom,
 } from '../ui/uiScale'
 
-/** 子页 id 与 `pages/common` 的 SettingsPageId 同一口径（账户页 2026-11-05 由「存档」改名并改成登入为主） */
 type SettingsPage = SettingsPageId
 
 const SETTINGS_PAGES: ReadonlyArray<{ id: SettingsPage; labelId: string }> = [
@@ -83,19 +73,20 @@ const SETTINGS_PAGES: ReadonlyArray<{ id: SettingsPage; labelId: string }> = [
   { id: 'developer', labelId: 'ui.settingsTab.005' },
 ]
 
-/* ═══════════ GNU Unifont 18.0.01 的元信息（2026-11-02 核对） ═══════════
-   口径来源：官方发布页 <https://unifoundry.com/unifont/>（18.0.01 / 2026-09-16 发布）与
-   字体文件自身的 name 表（版权、许可描述、许可 URL）。下面三条英文**照录字体文件内嵌原文**：
-   版权与许可是法律文字，不译、不改写、不缩写（与授权书正文同一条纪律）。 */
-const UNIFONT_VERSION = '18.0.01'
-const UNIFONT_FONT_FILE = 'unifont-18.0.01.otf'
-const UNIFONT_HOME_URL = 'https://unifoundry.com/unifont/'
-const UNIFONT_LICENSE_URL = 'https://unifoundry.com/LICENSE.txt'
-const UNIFONT_COPYRIGHT =
-  'Copyright © 1998-2026 Roman Czyborra, Paul Hardy, Qianqian Fang, Andrew Miller, Johnnie Weaver, David Corbett, Ælla Chiana Moskopp, Rebecca Bettencourt, Ho-Seok Ee, et al.'
-const UNIFONT_EMBEDDED_LICENSE =
-  'Dual license: SIL Open Font License version 1.1, and GNU GPL version 2 or later with the GNU Font Embedding Exception.'
-const UNIFONT_LICENSE_URLS = 'https://gnu.org/licenses/gpl.html, https://scripts.sil.org/OFL'
+/* ═══════════ Fusion Pixel 12px Mono zh-Hans 的元信息（2026-11-12 船长令换字时核对） ═══════════
+   口径来源：字体文件自身 name 表（版权、版本、许可描述、许可 URL）与上游仓库
+   <https://github.com/TakWolf/fusion-pixel-font>、官方站 <https://fusion-pixel-font.takwolf.com>。
+   下面几条英文**照录字体文件内嵌原文**：版权与许可是法律文字，不译、不改写、不缩写
+   （与授权书正文同一条纪律）。 */
+const FUSION_PIXEL_VERSION = '2026.11.10'
+const FUSION_PIXEL_FONT_FILE = 'fusion-pixel-12px-mono-zh-hans.otf'
+const FUSION_PIXEL_HOME_URL = 'https://fusion-pixel-font.takwolf.com'
+const FUSION_PIXEL_LICENSE_URL =
+  'https://github.com/TakWolf/fusion-pixel-font/blob/master/LICENSE-OFL'
+const FUSION_PIXEL_COPYRIGHT = 'Copyright (c) 2022, TakWolf (https://takwolf.com)'
+const FUSION_PIXEL_EMBEDDED_LICENSE =
+  'This Font Software is licensed under the SIL Open Font License, Version 1.1.'
+const FUSION_PIXEL_LICENSE_URLS = 'https://github.com/TakWolf/fusion-pixel-font/blob/master/LICENSE-OFL'
 
 /* ═══════════ Oxanium 的元信息（2026-11-02 核对；船长令：英文/数字用该字体） ═══════════
    口径来源：字体文件自身 name 表（nameID 0 版权 / 5 版本 / 13 许可描述 / 14 许可 URL）与
@@ -109,7 +100,6 @@ const OXANIUM_COPYRIGHT =
 const OXANIUM_HOME_URL = 'https://fonts.google.com/specimen/Oxanium'
 const OXANIUM_LICENSE_URL = 'https://scripts.sil.org/OFL'
 
-/** 游戏内时钟（HH:MM，日志前缀用） */
 export function gameClock(gameMs: number): string {
   const totalMin = Math.floor(gameMs / 60_000)
   const h = Math.floor(totalMin / 60)
@@ -117,34 +107,26 @@ export function gameClock(gameMs: number): string {
   return `${h}:${String(m).padStart(2, '0')}`
 }
 
-/* ═══════════════ 日志面板偏好（折叠 + 类型过滤，存 localStorage） ═══════════════ */
 
-/**
- * 日志分类**展示顺序**（2026-09-26 船长令重新分类）：战斗 / 工业 / 舰队 / 打捞四条新线在前，其余沿用。
- * ⚠ `queue` **不进本表**（它已并入 `levelup`；类型里留着只为读老日志，见 `kindOf`）。
- */
 export const LOG_KINDS: readonly LogKind[] = ['combat', 'industry', 'fleet', 'salvage', 'trade', 'levelup', 'event', 'system', 'warn', 'info']
 
-/** 老日志兼容：`queue` 一律按 `levelup`（升级）显示与筛选 */
 export function kindOf(k: LogKind): LogKind {
   return k === 'queue' ? 'levelup' : k
 }
 export const KIND_LABEL: Record<LogKind, string> = {
   get system() { return tr("ui.App.029") },
   get info() { return tr("ui.App.030") },
-  get queue() { return tr("ui.App.027") }, // 老日志兼容（新日志不再写 queue；见 state.LogKind 注释）
+  get queue() { return tr("ui.App.027") },
   get levelup() { return tr("ui.App.031") },
   get warn() { return tr("ui.App.032") },
   get trade() { return tr("ui.App.033") },
   get event() { return tr("ui.App.034") },
-  // 2026-09-26 船长令新增四类
   get combat() { return tr("ui.App.154") },
   get industry() { return tr("ui.App.155") },
   get fleet() { return tr("ui.App.156") },
   get salvage() { return tr("ui.App.157") },
 }
 
-/** 分类语义（T6：与 ui index.css 的 wui-log-* 色值保持同步） */
 export const KIND_DESC: Record<LogKind, string> = {
   get system() { return tr("ui.App.035") },
   get info() { return tr("ui.App.036") },
@@ -153,24 +135,20 @@ export const KIND_DESC: Record<LogKind, string> = {
   get warn() { return tr("ui.App.039") },
   get trade() { return tr("ui.App.040") },
   get event() { return tr("ui.App.041") },
-  // 2026-09-26 船长令新增四类
   get combat() { return tr("ui.App.159") },
   get industry() { return tr("ui.App.160") },
   get fleet() { return tr("ui.App.161") },
   get salvage() { return tr("ui.App.162") },
 }
 
-/** 开关色点（图例）：与 `ui/index.css` 的 `--wui-log-*` 同一批 token（2026-09-22 起不再各写一份色值） */
 export const KIND_DOT: Record<LogKind, string> = {
   system: 'rgb(var(--wui-purple))',
   levelup: 'rgb(var(--wui-log-levelup))',
   warn: 'rgb(var(--wui-log-warn))',
   queue: 'rgb(var(--wui-log-queue))',
   info: 'rgb(var(--wui-log-info))',
-  // 色板里没有 --wui-log-trade（其余六种 log 色都有）⇒ 用既有的「贸易」色调，2026-09-24 由 token 契约抓出
   trade: 'rgb(var(--wui-tone-group-trade))',
   event: 'rgb(var(--wui-log-event))',
-  // 2026-09-26 新增四类的色 token（深/浅两套见 index.css）
   combat: 'rgb(var(--wui-log-combat))',
   industry: 'rgb(var(--wui-log-industry))',
   fleet: 'rgb(var(--wui-log-fleet))',
@@ -179,15 +157,10 @@ export const KIND_DOT: Record<LogKind, string> = {
 
 export const PREFS_KEY = 'whale-idle:log-prefs'
 
-/**
- * **单选取值**（2026-09-26 船长令：「事件日志上方的筛选，玩家点击哪一个筛选就**只显示该筛选的内容**」）
- * —— `'all'` = 全部（默认）。
- */
 export type LogFilter = LogKind | 'all'
 
 export interface LogPrefs {
   collapsed: boolean
-  /** 当前选中的筛选（旧版是"多开关 kinds" ⇒ 读档时迁移成单选，见 `readLogPrefs`） */
   filter: LogFilter
 }
 
@@ -195,14 +168,12 @@ function defaultLogPrefs(): LogPrefs {
   return { collapsed: false, filter: 'all' }
 }
 
-/** 读取本地偏好（容错：坏了就回默认；**兼容旧版多开关** `kinds` ⇒ 迁移成单选） */
 export function readLogPrefs(): LogPrefs {
   const fallback = defaultLogPrefs()
   try {
     const raw = localStorage.getItem(PREFS_KEY)
     if (!raw) return fallback
     const parsed = JSON.parse(raw) as { collapsed?: unknown; filter?: unknown; kinds?: Record<string, boolean> }
-    // 迁移：旧版只有 `kinds`（多开关）⇒ 若恰好只剩一个开着，就沿用那个作为单选；否则回「全部」
     let filter: LogFilter = 'all'
     if (typeof parsed.filter === 'string' && (parsed.filter === 'all' || LOG_KINDS.includes(parsed.filter as LogKind))) {
       filter = parsed.filter as LogFilter
@@ -216,15 +187,7 @@ export function readLogPrefs(): LogPrefs {
   }
 }
 
-/**
- * **界面缩放 / 字号偏好**：读写与应用的单点统一在 `ui/uiScale.ts`（启动时由 `game/boot.ts` 的
- * `prebootRenderer()` 应用，设置面板挂载/拖动时再写一次）。本文件不再自带 `readNum` 与键名常量
- * —— 2026-11-02 之前这里另有一份实现，和启动路径各写各的，正是"字号重启后不生效"的温床。
- */
 
-/** 设置面板（船长 2026-09-05）：界面缩放 = 整窗 zoom；字体大小 = 字号族 CSS 系数 --ui-fs；
- *  宇宙背景（2026-09-10 船长）：铺在界面最底层的无缝星图，可在此换一张；
- *  界面配色（2026-09-22 船长令）：深空/亮白/跟随系统，存本机、即时生效 */
 export function SettingsPanel({
   root,
   onClose: onRequestClose,
@@ -253,34 +216,24 @@ export function SettingsPanel({
   root: RefObject<HTMLDivElement>
   onClose: () => void
   engine: GameEngine
-  /** 2026-09-25 船长令：存档三按钮移入设置 ⇒ 由 App 传入这两个动作 */
   onSave: () => void
   onReset: () => void
   onOpenSaveManager: () => void
-  /** 设置里的「开发者：调试模式」开关（2026-09-25） */
   debugOnState: boolean
   onDebugChange: (on: boolean) => void
-  /** 设置里的「界面布局」开关（2026-09-25 船长令：两套外壳允许在设置内切换） */
   layoutKind: LayoutKind
   onLayoutChange: (k: LayoutKind) => void
-  /** 玩家已点选、但还没重启的布局（null = 没有待应用项）；设置里那个确认弹框据此显示 */
   layoutPending: LayoutKind | null
-  /** 确认重开：写盘 + 存档 + 关游戏（实现在 App 层） */
   onApplyLayoutReload: () => void
-  /** 取消重开：清掉待应用项 */
   onCancelLayout: () => void
-  /** 存档存储状态（2026-09-25 船长令 · 甲/丁）：`paused` = 旧档读不出来、写入已挂起 */
   saveState: 'ok' | 'paused' | 'unavailable'
   storageProbe: SaveStorageProbe | null
-  /** 丁：放行写入（会另起新档） */
   onAllowSave: () => void
-  /** 网页版「本地存档文件」绑定状态（桌面端 ⇒ null；2026-09-25 船长令） */
   saveFileStatus: SaveFileStatus | null
   saveFileBusy: boolean
   onBindSaveFile: () => void
   onReconnectSaveFile: () => void
   onUnbindSaveFile: () => void
-  /** 打开设置时自报一次绑定状态（权限可能被浏览器收回） */
   onRefreshSaveFileStatus: () => void
   initialPage?: SettingsPage
 }) {
@@ -293,48 +246,35 @@ export function SettingsPanel({
   const visibleSettingsPages = SETTINGS_PAGES.filter((page) => page.id !== 'developer' || debugAllowed())
   const [zoom, setZoom] = useState(readZoom)
   const [fs, setFs] = useState(readFontScale)
-  /**
-   * **界面字体**（**2026-11-02 船长令**最终口径）：本机偏好、即时生效、不进存档。
-   * 默认 = 微软雅黑 + Oxanium（英文/数字）；复古 = 统一只用 GNU Unifont。
-   * 挂载时读一次（`readFontChoice`），切换时写一次（`selectFont` ⇒ `chooseFont` 落盘 + 应用）；
-   * 启动时的应用由 `game/boot.ts` 的 `prebootRenderer()` 统一接线，这里不重复。
-   */
   const [font, setFont] = useState<FontChoice>(() => readFontChoice())
+  const [crt, setCrt] = useState<CrtEffect>(() => readCrtEffect())
   /** 「许可与授权」全文弹窗（2026-11-02 船长令：设置最下方一枚按钮 ⇒ 完整授权书） */
   const [licenseOpen, setLicenseOpen] = useState(false)
-  /** 声音（2026-11-02 船长令）：总音量/静音/分类音量，本机偏好、即时生效、不进存档 */
+  /** 反馈弹窗（2026-11-18：描述 + 粘贴截图 → 服务器代发 GitHub Issue） */
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
   const sfx = useSfxPrefs()
   const [sfxConsoleOpen, setSfxConsoleOpen] = useState(false)
-  /* 界面配色（2026-09-22 船长令「添加几套配色供玩家切换」）：存本机、即时生效、支持跟随系统 */
   const [theme, setTheme, effectiveTheme] = useTheme()
-  /**
-   * **弹药 / 修理组件取用来源**（**2026-09-23 船长令**：「做一个开关，开启时，所有船的弹药和修理组件
-   * 直接从仓库取用。关闭后只从舰队内舰船的货仓取用。」）。
-   * ⚠ 这是**随档**开关（写进 `state` 并落档），不是本机偏好——洞内取料要用它。
-   */
   const [resupply, setResupply] = useState(() => engine.state.resupplyFromWarehouse !== false)
   function toggleResupply(next: boolean): void {
     setResupply(next)
     engine.state.resupplyFromWarehouse = next
     void engine.persist()
   }
-  /** 点选界面字体：先更新面板显示，再走 `ui/fontChoice.ts` 的「落盘 + 即时应用」单点 */
   function selectFont(next: FontChoice): void {
     setFont(next)
     chooseFont(next)
   }
+  function selectCrt(next: CrtEffect): void {
+    setCrt(next)
+    chooseCrtEffect(next)
+  }
 
-  /** 打开设置时自报一次「本地存档文件」绑定状态（浏览器可能已收回权限 ⇒ 界面要如实显示） */
   useEffect(() => {
     onRefreshSaveFileStatus()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-  /** 当前宇宙底图（模块级状态：关闭设置再打开仍是同一张） */
   const [bg, setBg] = useState<SpaceBgInfo | null>(() => currentSpaceBg())
-  /**
-   * **客户端版本行**（**2026-10-02 船长令**「版本号可以落码」）：值与形态由构建时注入，
-   * 这里只负责拼那一行 + 一键复制（复制成功的提示复用 `ui.App.044`，1.8 秒后自己变回来）。
-   */
   const [copiedVersion, setCopiedVersion] = useState(false)
   function clientVersionLine(): string {
     return tr('ui.App.169', {
@@ -349,7 +289,6 @@ export function SettingsPanel({
     try {
       await navigator.clipboard.writeText(text)
     } catch {
-      /** 兜底（与性能 HUD 的「复制报告」同一套：剪贴板 API 不可用时走 execCommand） */
       const ta = document.createElement('textarea')
       ta.value = text
       document.body.appendChild(ta)
@@ -360,11 +299,6 @@ export function SettingsPanel({
     setCopiedVersion(true)
     window.setTimeout(() => setCopiedVersion(false), 1800)
   }
-  /**
-   * 整窗缩放写在 `.app-root` 上；**字号系数 `--ui-fs` 必须落在 `<html>`（`:root`）**——
-   * 2026-11-02 起 `--wui-fs-*` 字阶令牌改成 `calc(Npx * var(--ui-fs, 1))`，变量要在令牌声明处
-   * （`:root`）能解析；写在 `.app-root` 上解析不到，字号滑块会失效。两处写法都收在 `ui/uiScale.ts`。
-   */
   useEffect(() => {
     const el = root.current
     applyFontScale(fs)
@@ -376,7 +310,6 @@ export function SettingsPanel({
       localStorage.setItem(ZOOM_KEY, String(zoom))
       localStorage.setItem(FS_KEY, String(fs))
     } catch {
-      // 忽略
     }
   }
   return (
@@ -502,7 +435,7 @@ export function SettingsPanel({
           {/**
            * **界面字体**（**2026-11-02 船长令**最终口径）：「字体大小」正下方，交互与同页「语言 / 界面布局 /
            * 界面配色」三行一致（`app-settings-row` ＋ `app-btn is-small`，选中项 `is-primary`）。
-           * 两项：默认（中文 = 微软雅黑，英文/数字 = Oxanium）／复古（统一只用 GNU Unifont）。
+           * 两项：默认（中文 = 微软雅黑，英文/数字 = Oxanium）／复古（统一只用 Fusion Pixel 12px Mono zh-Hans）。
            * 授权全文见本页最下方「许可与授权」；本机偏好、即时生效、不进存档（点选即保存，下次启动读回）。
            */}
           <div className="app-settings-row">
@@ -522,6 +455,32 @@ export function SettingsPanel({
               ))}
             </div>
             <div className="app-settings-desc">{t('ui.App.180')}</div>
+          </div>
+          {/**
+           * **CRT 显示器效果**（**2026-11-11 船长令**「整体界面像看老式 CRT 显示器那种，小丑牌那种效果」）：
+           * 交互与同页按钮组一致；覆层是纯 CSS 双层伪元素（扫描线/暗角/反光/荧光带），
+           * 开关写 `<html data-ui-crt>`，本机偏好、即时生效、不进存档（见 `ui/crtEffect.ts`）。
+           */}
+          <div className="app-settings-row">
+            <div className="app-settings-head">
+              <span className="app-settings-label">{t('ui.App.196')}</span>
+              <span className="app-settings-val">{crt === 'on' ? t('ui.App.198') : t('ui.App.197')}</span>
+            </div>
+            <div className="app-settings-btns">
+              <button
+                className={`app-btn is-small${crt === 'off' ? ' is-primary' : ''}`}
+                onClick={() => selectCrt('off')}
+              >
+                {t('ui.App.197')}
+              </button>
+              <button
+                className={`app-btn is-small${crt === 'on' ? ' is-primary' : ''}`}
+                onClick={() => selectCrt('on')}
+              >
+                {t('ui.App.198')}
+              </button>
+            </div>
+            <div className="app-settings-desc">{t('ui.App.199')}</div>
           </div>
           {/* 界面配色（2026-09-22 船长令）：与上一行「语言」同款按钮组；三套主题见 ui/theme.ts */}
           <div className="app-settings-row">
@@ -859,6 +818,9 @@ export function SettingsPanel({
         <div className="app-settings-foot">
           <span className="app-dim">{t('ui.App.022')}</span>
           <span className="app-settings-btns">
+            <button className="app-btn is-small" onClick={() => setFeedbackOpen(true)}>
+              {t('ui.feedback.001')}
+            </button>
             <button className="app-btn is-small" onClick={() => setLicenseOpen(true)}>
               {t('ui.App.181')}
             </button>
@@ -892,6 +854,7 @@ export function SettingsPanel({
        * 点击遮罩先 `stopPropagation`，否则会顺带把设置面板一起关掉。
        */}
       {licenseOpen ? <LicenseModal onClose={() => setLicenseOpen(false)} /> : null}
+      {feedbackOpen ? <FeedbackDialog onClose={() => setFeedbackOpen(false)} /> : null}
     </div>
   )
 }
@@ -904,12 +867,13 @@ export function SettingsPanel({
  * 船长原话：「这个字体是GNU授权，记得在设置的最最下方增加一个许可按钮把这些授权书内容统统都写进入」。
  * 正文**照录原文**（法律文字不译、不改写、不缩写）；中文只用于小节标题与「版本 / 来源 URL / 日期」。
  *
- * 采用的授权口径（2026-11-02 核实）：
- * ① **GNU Unifont 18.0.01**（内嵌 `unifont-18.0.01.otf`）——编译字体为**双许可**：
- *    SIL Open Font License 1.1 ＋ GNU GPL 第 2 版或更高版本（附 GNU 字体嵌入例外）。
- *    依据：官方发布页 <https://unifoundry.com/unifont/> 与官方授权原文
- *    <https://unifoundry.com/LICENSE.txt>（该文件同时收录 GPLv2 全文、字体嵌入例外与 OFL 1.1 全文，
- *    本弹窗整份照录）；字体文件 name 表内嵌的版权与许可描述也一并在弹窗里给出（见常量）。
+ * 采用的授权口径（2026-11-12 换字后核实）：
+ * ① **Fusion Pixel 12px Mono zh-Hans**（内嵌 `fusion-pixel-12px-mono-zh-hans.otf`，2026.11.10 版）——
+ *    SIL Open Font License 1.1（版权 2022 TakWolf）。
+ *    依据：上游仓库 <https://github.com/TakWolf/fusion-pixel-font> 与授权原文
+ *    <https://github.com/TakWolf/fusion-pixel-font/blob/master/LICENSE-OFL>（整份照录）；
+ *    字体文件 name 表内嵌的版权与许可描述也一并在弹窗里给出（见常量）。
+ *    （2026-11-12 船长令：复古档由 GNU Unifont 换成此字体，unifont 文件与授权已随批移除。）
  * ② **本项目自身**：根目录 `LICENSE.txt`（版权与授权声明）与根目录 `LICENSE`
  *    （双许可与商业使用条款：AGPLv3 开源 ＋ 商业许可，含 AGPLv3 全文）。
  *    ⚠ 按船长 2026-11-02 追加要求，游戏内这两份声明的**副本**不展示「原项目 / 原站」外部链接
@@ -942,17 +906,17 @@ function LicenseModal({ onClose }: { onClose: () => void }) {
             <h3 className="app-license-h">{t('ui.App.184')}</h3>
             <div className="app-license-meta">
               {t('ui.App.185', {
-                p1: UNIFONT_VERSION,
-                p2: UNIFONT_FONT_FILE,
-                p3: UNIFONT_COPYRIGHT,
-                p4: UNIFONT_HOME_URL,
-                p5: UNIFONT_LICENSE_URL,
+                p1: FUSION_PIXEL_VERSION,
+                p2: FUSION_PIXEL_FONT_FILE,
+                p3: FUSION_PIXEL_COPYRIGHT,
+                p4: FUSION_PIXEL_HOME_URL,
+                p5: FUSION_PIXEL_LICENSE_URL,
               })}
             </div>
             <h4 className="app-license-subh">{t('ui.App.186')}</h4>
-            <pre className="app-license-pre">{`${UNIFONT_EMBEDDED_LICENSE}\n${UNIFONT_LICENSE_URLS}`}</pre>
+            <pre className="app-license-pre">{`${FUSION_PIXEL_EMBEDDED_LICENSE}\n${FUSION_PIXEL_LICENSE_URLS}`}</pre>
             <h4 className="app-license-subh">{t('ui.App.187')}</h4>
-            <pre className="app-license-pre">{unifontLicenseText}</pre>
+            <pre className="app-license-pre">{fusionPixelLicenseText}</pre>
           </section>
           {/** Oxanium（船长 2026-11-02 追加：默认档英文/数字用该字体）—— 独立小节，口径与 Unifont 同：
               上游说明原文照录，中文只作小节标题与元信息。 */}
@@ -984,12 +948,7 @@ function LicenseModal({ onClose }: { onClose: () => void }) {
   )
 }
 
-/* ═══════════════ 性能监测（2026-09-08 诊断工具：隐形采集；whale-idle:debug 下顶栏出现 ⏱ 性能 可查看/导出） ═══════════════ */
 
-/**
- * 性能监测下的引擎订阅封装：生产构建中 React <Profiler> 不触发 onRender，
- * 因此在采集激活时用 flushSync 把整树刷新压成同步并实测耗时（正常路径不受影响、仍是异步渲染）。
- */
 export function PerfListener({ engine, force }: { engine: GameEngine; force: () => void }) {
   useEffect(() => {
     return engine.subscribe(() => {
@@ -1006,7 +965,6 @@ export function PerfListener({ engine, force }: { engine: GameEngine; force: () 
   return null
 }
 
-/** 调试悬浮 HUD：当前推进/通知/提交耗时 + 一键复制完整快照 JSON（玩家可按引导导出） */
 export function PerfHud({ onClose }: { onClose: () => void }) {
   const [, bump] = useReducer((n: number) => n + 1, 0)
   const [copied, setCopied] = useState(false)

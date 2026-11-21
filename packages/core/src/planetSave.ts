@@ -24,7 +24,6 @@ const OBSTACLES: readonly PlanetObstacle[] = ['rough', 'ice', 'corrosion', 'rubb
 const JOB_KINDS: readonly PlanetJob['kind'][] = ['build', 'clear', 'move', 'project']
 const EVENT_KINDS: readonly PlanetEvent['kind'][] = ['equipment', 'weather', 'resources', 'health', 'ruins']
 const MAX_DURATION_MS = 7 * 24 * 60 * 60 * 1000
-// 版本 1 的时钟余数是固定 10 秒量子；累计时钟不受单次工期的七天上限限制。
 const TICK_MS = 10_000
 
 function finite(raw: unknown, min = 0, max = Number.MAX_SAFE_INTEGER): raw is number {
@@ -40,7 +39,6 @@ function items(raw: unknown, positive = false): Record<string, number> {
   return Object.fromEntries(Object.entries(record(raw)).filter(([, value]) => integer(value, positive ? 1 : 0))) as Record<string, number>
 }
 function checkRuntimeVersion(raw: unknown): void {
-  // 不抹掉未知版本再让运行器按旧规则推进；由读档入口显式拒绝。
   if (raw !== undefined && raw !== 1) throw new Error('unsupported-planet-runtime-version')
 }
 
@@ -134,7 +132,6 @@ export function cleanPlanetaryState(raw: unknown): PlanetaryState | undefined {
   for (const [key, value] of Object.entries(source)) {
     const p = record(value)
     const body = p.systemId !== undefined ? bodies.get(key) : undefined
-    // 旧记录仍只读取前六十四条；新星球必须属于已清洗的星系，不能靠伪造归属绕过上限。
     if (p.systemId === undefined) {
       if (++legacyCount > PLANET_RULES.maxPlanets) continue
     } else if (!id(p.systemId) || !body || body.systemId !== p.systemId) continue
@@ -150,7 +147,6 @@ export function cleanPlanetaryState(raw: unknown): PlanetaryState | undefined {
     let invalid = false
     for (let index = 0; index < rawCells.length; index++) {
       const c = record(rawCells[index])
-      // 不补空地或重生成，避免损坏地图被清洗成可免费建设的地图。
       if (c.index !== index || (c.obstacle !== undefined && !OBSTACLES.includes(c.obstacle as PlanetObstacle))) { invalid = true; break }
       const cell: PlanetGridCell = { index }
       if (c.obstacle !== undefined) cell.obstacle = c.obstacle as PlanetObstacle
@@ -171,7 +167,6 @@ export function cleanPlanetaryState(raw: unknown): PlanetaryState | undefined {
     }
     if (invalid) continue
     const colony = cleanPlanetColonyState(p.colony, rawCells.length)
-    // 坏殖民记录不能退成可重新初始化的空基地。
     if (p.colony !== undefined && !colony) continue
     planets[key] = {
       id: key, galaxyId: p.galaxyId, size: p.size, seed: p.seed as number,

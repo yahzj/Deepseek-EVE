@@ -1,11 +1,3 @@
-/**
- * T9 副空间站建站点（内容层）。
- * 位置：红环航道（galaxy-redring）、烬火星区（galaxy-cinder）。
- * 船长2026-10-18确认：大宗钛钢保留，其余直接建材改为基础零件；分档交付，排除原矿。
- * 钛钢与红环/烬火施工档的错位保持；具体价值目标由专项测试和工具核验。
- * 2026-09-08（船长定）：建成前不视为任何站点——不停靠、不提供任何站内功能；
- * 全部档位完成（建成）后一次性并入空间站网络并开放全部功能。
- */
 import type { StationSiteDef, StationTierDef } from '@whale/core'
 import { ITEMS } from './items'
 
@@ -26,7 +18,6 @@ function stationTier(
   }
 }
 
-/** 全量建站点（顺序即任务中心展示顺序） */
 export const STATION_SITES: readonly StationSiteDef[] = [
   {
     id: 'site-redring',
@@ -101,7 +92,6 @@ export const STATION_SITES: readonly StationSiteDef[] = [
   },
 ]
 
-/** 建站点目录（引擎用） */
 export function buildStationCatalog(): ReadonlyMap<string, StationSiteDef> {
   return new Map(STATION_SITES.map((s) => [s.id, s]))
 }

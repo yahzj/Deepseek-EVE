@@ -1,20 +1,3 @@
-/**
- * 通讯「阅读器」公共件（2026-09-14 船长：「**将所有的通讯弹窗的外形，改成和通讯界面内的右侧界面的相同**」）。
- *
- * 为什么抽出来：同一块版式现在有**两个使用方**——
- * ① 通讯页右栏（机身 SVG + 内嵌屏幕 + 下檐口）；② 送达时的弹窗卡（**无机身**：屏幕 + 下檐口 + 「知道了」）。
- * 两处各写一份必然漂移 ⇒ 类名与结构收在这里**单点**（按约定第六章：先复刻同级既有结构/类名，
- * 不自造相似新样式）。改这里 = 通讯页与弹窗同时变。
- *
- * 版式（沿用通讯页既有语言，不是新造）：
- * - **屏幕**（`.app-comms-screen`）：圆角框 + `outline` 线段描边，自身滚动；内含
- *   第一层「发件方头像 + 标题 + 内容类型小片」、第二层「发件人 + 立场小片 + 送达时间」、第三层正文；
- * - **下檐口**（`.app-comms-eave`）：在滚动区外——上面一行 = 消息自带动作（只有序章简报有），
- *   下面一行 = 通栏「前往」；弹窗再把「知道了」追加在同一檐口里（`extra`）。
- * - `highlight` 命中的段落加**既有强调样式** `.app-report-highlight`（暗底 + 左侧强调竖条）。
- *
- * ⚠ 机身 SVG（`CommsDeviceFrame`）**只给通讯页**用：弹窗没有机身，船长要的那半就是"屏幕"。
- */
 import type { ReactNode } from 'react'
 import { COMMS_REPLIES_ENABLED } from '@whale/core'
 import type { CommsEntryView } from '@whale/core'
@@ -22,16 +5,8 @@ import { Glyph } from '../ui/Glyphs'
 import { tr } from '../i18n/locale'
 import { commsAlignText, commsBriefText, commsClockText, commsEntryBodyText, commsEntrySubjectText, commsHintText, commsKindText, commsSenderText } from '../ui/commsText'
 
-/** 物品名回落（调用方给了物品表就按语言取名，没给就原样显示 id —— 不会静默变空） */
 const idAsName = (id: string): string => id
 
-/**
- * 通讯器机身：**大圆角机身外框** + 左侧两颗实体键（SVG 线稿，恒定细描边）。
- *
- * 只画机身：**内嵌屏幕的框由屏幕容器自己画**（`.app-comms-screen` 的圆角框 + CSS `outline` 描边）——
- * 这样"文字容器"与"圆角框"是同一圈，窗口不管多高多窄都不会错位（按百分比拉伸的内框会错位：
- * 机身 900px 高时内框在 39px 处、而屏幕容器内边距固定 20px，屏幕框整圈落在内框外面 ⇒ 文字看着在框外）。
- */
 export function CommsDeviceFrame(): ReactNode {
   return (
     <svg className="app-comms-frame" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">
@@ -56,13 +31,11 @@ export function CommsDeviceFrame(): ReactNode {
   )
 }
 
-/** 内嵌屏幕（正文区，自身滚动）：头像 + 标题 + 内容类型小片 / 发件人 + 立场 + 送达时间 / 正文段落 */
 export function CommsScreen({
   entry,
   itemNameOf = idAsName,
 }: {
   entry: CommsEntryView
-  /** 物品名取词（实例通讯的奖励清单要它按语言拼串；缺省 = 原样显示 id） */
   itemNameOf?: (itemId: string) => string
 }): ReactNode {
   return (
@@ -133,14 +106,6 @@ export function CommsScreen({
   )
 }
 
-/**
- * 机身下檐口（2026-09-11 船长定「乙」）：**通栏「前往」一行**，常驻且落在滚动区外——
- * 原先跳转按钮在屏幕滚动内容末尾，长信不往下翻就看不见（船长实测反馈）。
- * 下檐口由自然高度撑起，屏幕（flex:1）自动让位。
- *
- * `extra`：调用方追加的一行（弹窗放「知道了」）。
- * （2026-09-17 教程重做：消息「自带动作」机制整体退场，原先在这一行的动作按钮与 `onAction` 一并删除。）
- */
 export function CommsEave({
   entry,
   onGoto,
@@ -148,15 +113,8 @@ export function CommsEave({
   extra,
 }: {
   entry: CommsEntryView
-  /** 跳转出口（可带星图标签 `tab`、任务中心内层标签 `taskTab`、舰船标签 `shipTab`） */
   onGoto: (page: string, tab?: string, shipTab?: string, taskTab?: string, skillBranch?: string) => void
-  /**
-   * **弹面板出口**（2026-09-25 加）：实例通讯可以只带 `action`（点开一个面板而不跳页）——
-   * 例：周末入侵的结算信「查看详细奖励」⇒ `action: 'weekendSummary'`。
-   * 没给这一项时，带 `action` 的信不渲染按钮（宁可少个按钮，也不做点了没反应的死键）。
-   */
   onAction?: (action: string) => void
-  /** 追加行（弹窗的「知道了」） */
   extra?: ReactNode
 }): ReactNode {
   if (!entry.hint && !extra) return null

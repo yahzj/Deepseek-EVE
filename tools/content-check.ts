@@ -2566,7 +2566,7 @@ const exclusiveRangeNotes: string[] = []
 for (const d of drones) {
   if (d.repairDrone === true) {
     check(d.droneClass === 'repair' && d.unitM3 === 40 && d.cpuUse === 8, `修理无人机${d.id}装载字段不符`)
-    check(d.repairArmorHp === 10 && d.repairHullHp === 10 && d.repairIntervalMs === 10000 && d.repairKit === 'repairkit-mil', `修理无人机${d.id}维修参数不符`)
+    check(d.repairArmorHp === 20 && d.repairHullHp === 20 && d.repairIntervalMs === 20000 && d.repairKit === 'repairkit-mil', `修理无人机${d.id}维修参数不符`)
     check(!d.dmg && d.defense !== undefined && droneTotalHp(d) > 0, `修理无人机${d.id}不应有攻击力且必须具备生存池`)
     continue
   }

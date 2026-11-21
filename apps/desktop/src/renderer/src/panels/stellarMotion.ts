@@ -7,7 +7,6 @@ export const stellarDynamicBody = (_system: StellarSystem, _body: StellarBody): 
 export const STELLAR_BINARY_ORBIT_MS = 120000
 export const STELLAR_LIGHT_DISTANCE = 175
 
-/** 公转仅表现，原坐标是初相位；相同会话时间给绘制/命中/详情同一个答案。 */
 export function stellarMotionBodies(system: StellarSystem, elapsedMs: number): StellarBody[] {
   const orbits = system.bodies.map(body => body.orbit)
   const min = Math.min(...orbits), max = Math.max(...orbits)

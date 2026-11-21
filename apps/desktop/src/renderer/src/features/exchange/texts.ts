@@ -1,18 +1,9 @@
-/**
- * 交易所原型 · 中英文文案集中处。
- *
- * 遵循 isEn() 双语切换：
- * - 英文模式返回 EN_T / 英文版 TF
- * - 中文模式返回 ZH_T / 中文版 TF
- */
 import { isEn, tr } from '../../i18n/locale'
 import { L10N } from '@whale/data'
 
-/** 唯一本地化表取词：源码不再内联中英文字面量。 */
 const zh = (id: string): string => L10N[id]?.zh ?? id
 const en = (id: string): string => L10N[id]?.en || L10N[id]?.zh || id
 
-/** 中文静态文案 */
 export const ZH_T = {
   "pageTitle": zh("ui.exchangeTexts.001"),
   "prototypeBadge": zh("ui.exchangeTexts.002"),
@@ -23,7 +14,6 @@ export const ZH_T = {
   "marginUsed": zh("ui.exchangeTexts.007"),
   "marginRatio": zh("ui.exchangeTexts.008"),
   "bondValue": zh("ui.exchangeTexts.009"),
-  // ⟪文案调整 2026-11-05⟫ 船长报障「文案千奇百怪」、验收「顶栏指数名观感不好」：统一指数名并改用短名，清除原型语境与开发话术。
   "indexName": zh("ui.exchangeTexts.010"),
   "stockListTitle": zh("ui.exchangeTexts.011"),
   "stockListHint": zh("ui.exchangeTexts.012"),
@@ -49,7 +39,6 @@ export const ZH_T = {
   "chartToggles": zh("ui.exchangeTexts.032"),
   "chartSampled": zh("ui.exchangeTexts.033"),
   "chartBar": zh("ui.exchangeTexts.034"),
-  // ⟪游客行情批 2026-11-05⟫ 模拟盘移除：未登录即游客只读，徽标只区分「已登录 / 游客」。
   "sourceGuest": zh("ui.exchangeTexts.466"),
   "sourceAccount": zh("ui.exchangeTexts.467"),
   "sourceBadgeHint": zh("ui.exchangeTexts.037"),
@@ -227,6 +216,11 @@ export const ZH_T = {
   "fundTipHighValue": zh("ui.exchangeTexts.481"),
   "fundTipLowValue": zh("ui.exchangeTexts.482"),
   "fundTipCapValue": zh("ui.exchangeTexts.483"),
+  "savingsNote": zh("ui.exchangeTexts.544"),
+  "savingsOneCap": zh("ui.exchangeTexts.545"),
+  "savingsFillCapTip": zh("ui.exchangeTexts.546"),
+  "savingsOptimal": zh("ui.exchangeTexts.547"),
+  "savingsOptimalTip": zh("ui.exchangeTexts.548"),
   "bondBuy": zh("ui.exchangeTexts.168"),
   "bondBuyBtn": zh("ui.exchangeTexts.169"),
   "bondRedeem": zh("ui.exchangeTexts.170"),
@@ -283,7 +277,6 @@ export const ZH_T = {
   "recordsDividends": zh("ui.exchangeTexts.219"),
   "recordsEmptyOrders": zh("ui.exchangeTexts.220"),
   "recordsEmptyTrades": zh("ui.exchangeTexts.221"),
-  // ⟪文案调整 2026-11-05⟫ 清除「象征性结算」原型话术与重复读数。
   "recordsEmptyDividends": zh("ui.exchangeTexts.222"),
   "recordsTime": zh("ui.exchangeTexts.223"),
   "recordsCode": zh("ui.exchangeTexts.224"),
@@ -341,7 +334,6 @@ export const ZH_T = {
   "simpleBuyAction": zh("ui.exchangeTexts.272"),
   "simpleShortAction": zh("ui.exchangeTexts.273"),
   "simpleSellAction": zh("ui.exchangeTexts.274"),
-  // ⟪文案调整 2026-11-05⟫ 船长裁定「保留下注、两域隔离」：去掉推销断言与结算机制说明。
   "simpleBuyHint": zh("ui.exchangeTexts.275"),
   "simpleShortHint": zh("ui.exchangeTexts.276"),
   "simpleSpotHolding": zh("ui.exchangeTexts.277"),
@@ -386,7 +378,6 @@ export const ZH_T = {
   "newsBull": zh("ui.exchangeTexts.316"),
   "newsBear": zh("ui.exchangeTexts.317"),
   "newsNeutral": zh("ui.exchangeTexts.318"),
-  // ⟪文案调整 2026-11-05⟫ 船长要求明确公开快讯归属。
   get newsAgentTag() { return tr('ui.exchange.001') },
   "bookImbalance": zh("ui.exchangeTexts.319"),
   "imbalanceBuyAdv": zh("ui.exchangeTexts.320"),
@@ -403,7 +394,6 @@ export const ZH_T = {
   "posVolLow": zh("ui.exchangeTexts.331"),
   "posAmplitude": zh("ui.exchangeTexts.332"),
   "posLiqSafe": zh("ui.exchangeTexts.333"),
-  // ⟪文案调整 2026-11-05⟫ 清除「演练/测试功能」开发语境与存档/记账实现细节。
   "systemPresetTag": zh("ui.exchangeTexts.334"),
   "systemPresetTip": zh("ui.exchangeTexts.335"),
   "deposit": zh("ui.exchangeTexts.336"),
@@ -552,7 +542,6 @@ export const ZH_T = {
   "companyReasonLess": zh("ui.exchangeTexts.536")
 } as const
 
-/** 英文静态文案 */
 export const EN_T: Record<keyof typeof ZH_T, string> = {
   "pageTitle": en("ui.exchangeTexts.001"),
   "prototypeBadge": en("ui.exchangeTexts.002"),
@@ -765,6 +754,11 @@ export const EN_T: Record<keyof typeof ZH_T, string> = {
   "fundTipHighValue": en("ui.exchangeTexts.481"),
   "fundTipLowValue": en("ui.exchangeTexts.482"),
   "fundTipCapValue": en("ui.exchangeTexts.483"),
+  "savingsNote": en("ui.exchangeTexts.544"),
+  "savingsOneCap": en("ui.exchangeTexts.545"),
+  "savingsFillCapTip": en("ui.exchangeTexts.546"),
+  "savingsOptimal": en("ui.exchangeTexts.547"),
+  "savingsOptimalTip": en("ui.exchangeTexts.548"),
   "bondBuy": en("ui.exchangeTexts.168"),
   "bondBuyBtn": en("ui.exchangeTexts.169"),
   "bondRedeem": en("ui.exchangeTexts.170"),
@@ -1086,7 +1080,6 @@ export const EN_T: Record<keyof typeof ZH_T, string> = {
   "companyReasonLess": en("ui.exchangeTexts.536")
 }
 
-/** 静态文案代理：依据当前语言自动在中英文之间切换 */
 export const T: typeof ZH_T = new Proxy(ZH_T, {
   get(target, prop: string) {
     if (prop === 'newsAgentTag') return tr('ui.exchange.001')
@@ -1098,7 +1091,6 @@ export const T: typeof ZH_T = new Proxy(ZH_T, {
   },
 })
 
-/** 带参数文案（集中在一处，组件只拼函数） */
 export const TF = {
   dataLoadFailed: (reason: string) => (isEn() ? `Market data failed: ${reason}` : `行情数据加载失败：${reason}`),
   changePct: (v: string) => `${v}`,
@@ -1165,7 +1157,6 @@ export const TF = {
     isEn()
       ? `Closed spot: ${code} ${qty} shs, settled at round end`
       : `已提交现货平仓：${code} ${qty} 股，回合末成交`,
-  // ⟪文案调整 2026-11-05⟫ 船长验收「我的下注里没看到平仓」：极简域结算回执改回下注口径。
   closePosDone: (code: string, side: string, qty: string) =>
     isEn()
       ? `Closed ${side}: ${code} ${qty} shs, settled at round end`
@@ -1188,7 +1179,6 @@ export const TF = {
     isEn() ? `Withdrawal of ${v} Credits requested` : `出金 ${v} 信用点已受理，到账以服务器结算为准`,
   roundQuota: (used: number, max: number) =>
     isEn() ? `Orders ${used}/${max}` : `委托 ${used}/${max}`,
-  // 玩家可见的期号：服务端回合号是七位数天文数字，界面只显示「当日第几期」（2026-11-04 船长令）
   myOrdersRound: (n: number) => (isEn() ? `Period ${n}` : `第 ${n} 期`),
   myOrdersCancelled: (n: number) => (isEn() ? `Cancelled ${n} order(s)` : `已撤销 ${n} 笔委托`),
   myOrdersCount: (n: number) => (isEn() ? `${n} order(s)` : `${n} 笔`),
@@ -1232,7 +1222,6 @@ const ZH_STOCK_NAMES: Record<string, string> = {
   NMCL: zh("ui.exchangeStock.008"),
 }
 
-/** 股票名称多语言映射 */
 export function stockName(code: string, fallbackName?: string): string {
   if (isEn()) {
     return EN_STOCK_NAMES[code] ?? fallbackName ?? code
@@ -1267,7 +1256,6 @@ const SECTOR_EN_MAP: Record<string, string> = {
   材料: en("ui.exchangeSector.009"),
 }
 
-/** 股票板块多语言映射 */
 export function stockSector(sector: string): string {
   const norm = sector.trim()
   const lower = norm.toLowerCase()

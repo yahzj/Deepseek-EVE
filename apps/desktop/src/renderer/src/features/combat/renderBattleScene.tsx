@@ -1,8 +1,8 @@
 import type { BattleSceneProps } from './sceneTypes'
 
-/** 战斗界面职责：renderBattleScene，保持原调用顺序。 */
 
 import type { CSSProperties } from 'react'
+import { Save } from 'lucide-react'
 import { fleetDefOf } from '@whale/core'
 import type { ShipRole } from '@whale/core'
 
@@ -18,11 +18,12 @@ import { DRONE_DOWN_FREEZE_MS } from './battleDrones'
 import { BattleMountLines } from './battleMounts'
 import { BattleCycles } from './BattleCycles'
 import { RangeEwPanel } from './RangeEwPanel'
+import { RepairDroneEffects } from './RepairDroneEffects'
 import './commandBattle.css'
 import './battleDistanceAxis.css'
 
 export function renderBattleScene({
-    rangeMode, screenRef, stage, onClose, tr, inWormhole,
+    rangeMode, battle, simulationPaused, screenRef, stage, onClose, tr, inWormhole,
     retreatAsk, setRetreatAsk, onToast, engine, ended, defeat,
     sceneName, secs, meStats, speedOptions, speedActive, arcs,
     foeCharging, ammoChips, repairLedgers, repairRunning, repairDetail, repairTotal,
@@ -38,16 +39,16 @@ export function renderBattleScene({
     sliderV, pushDragV, scheduleCommit, flushDrag, dragV, sliderToDesire,
     applyTactic,
   }: BattleSceneProps) {
+  const memory = battle.rangeMemory
+  const sourcePreset = memory?.sourceVersion === 1 && memory.shipIds
+    ? engine.state.fleetPresets?.find(preset => preset.id === memory.fleetPresetId
+      && preset.shipIds.length === memory.shipIds!.length
+      && preset.shipIds.every((id, index) => id === memory.shipIds![index]))
+    : undefined
+  const saveDisabled = ended || !sourcePreset
+  const saveTitle = ended ? tr('ui.fleetRange.013') : sourcePreset
+    ? tr('ui.fleetRange.010', { p1: sourcePreset.name }) : tr('ui.fleetRange.011')
 return (
-    /**
-     * **战场 = 自己的全屏覆盖层**（2026-09-22 船长令「界面回滚，战斗界面回滚到全屏显示」）。
-     *
-     * 本批之前就是这一版：`.app-battle-screen { position: fixed; inset: 0; z-index: 100 }`，
-     * 关掉它只是收起"观看界面"（战斗在后台照常推进，右上角那枚「⚔ 战斗中」浮动入口可随时点回来）。
-     * 窗口化/嵌入主区那一整套（`ui/WinBox.tsx` 的 `is-battle` 用法、`bare` 模式、虫洞面板内嵌）
-     * 已封存到分支 `archive/window-embed-20260922`，说明见 `docs/design/archived-window-embed-20260922.md`。
-     * ⚠ 保留：慢镜/战报的挂载语义（`App.tsx` 里"打完但战报还没弹"的窗口期必须继续挂着）。
-     */
     <div className={`app-battle-screen${rangeMode ? ' is-fitting-range' : ''}${lay.dense ? ' is-command-dense' : ''}`} ref={screenRef}>
       {/**
        * **装不下就等比缩放**（2026-09-25 船长令 · 方案甲；**2026-09-26 改成只缩战场**）：
@@ -643,6 +644,7 @@ return (
           {/* 开火闪光 + 弹道 + 撞点特效（最上层） */}
           {muzzleEls}
           {boltEls}
+          <RepairDroneEffects battle={battle} anchors={meAnchorByTag} dims={dims} paused={simulationPaused} />
           <div className="app-bts-acid-layer" aria-hidden="true">
             {acidFxRef.current.map(effect => {
               const anchor = effect.kind === 'burst' ? effect : meAnchorByTag.get(effect.tag) ?? layFx.me
@@ -696,9 +698,6 @@ return (
               <div className="app-bts-axisTrack">
                 <div
                   className="app-bts-scale"
-                  /* 无障碍（2026-09-26 I4，2026-09-30 挪位）：尺是纯图形读数 ⇒ 给一个语义标签；
-                   语义标签现在挂在**刻度**上而不是整条尺上——拖动旋钮是叠在刻度上的真控件，
-                   role="img" 若留在外层会把它一起吞掉（读屏不可达）。 */
                   role="img"
                   aria-label={tr("ui.BattleScreen.112", {
                     p1: Math.round(visM).toLocaleString('zh-CN'),
@@ -723,11 +722,6 @@ return (
                   className="app-battle-range app-bts-range app-bts-knob"
                   min={0}
                   max={1000}
-                  /**
-                    * **步长 1**（2026-09-13 船长反馈"一格一格"）：原 `step=5` 只有 201 个落点——
-                    * 在洞内这种 5 千多米的量程上，一格 ≈ 27m，慢拖时肉眼就是"跳格"。
-                    * 1 ⇒ 1001 个落点（约 5m/格），拖动与读数都跟手。
-                    */
                   step={1}
                   disabled={ended || rangeMode}
                   value={Math.min(1000, Math.max(0, sliderV))}
@@ -743,7 +737,7 @@ return (
                   onPointerCancel={flushDrag}
                   onBlur={flushDrag}
                   onKeyUp={flushDrag}
-                  title={tr("ui.BattleScreen.069")}
+                  title={tr('ui.fleetRange.017')}
                 />
               </div>
             </div>
@@ -752,15 +746,21 @@ return (
             </span>}
           </div>
           {!rangeMode && <div className="app-bts-ops">
-            <span className="app-battle-tacs">
+            <span className="app-battle-tacs app-bts-fleet-range-actions">
               <button className="app-btn is-small" disabled={ended} onClick={() => applyTactic('assault')}>{tr("ui.BattleScreen.073")}</button>
               <button className="app-btn is-small" disabled={ended} onClick={() => applyTactic('mid')}>{tr("ui.BattleScreen.074")}</button>
               <button className="app-btn is-small" disabled={ended} onClick={() => applyTactic('kite')}>{tr("ui.BattleScreen.075")}</button>
+              <span className="app-bts-fleet-range-save" title={saveTitle} tabIndex={saveDisabled ? 0 : undefined} aria-label={saveDisabled ? saveTitle : undefined}>
+                <button className="app-btn is-small" disabled={saveDisabled} aria-label={tr('ui.fleetRange.009')} onClick={() => {
+                  const result = engine.battleFleetRangeSave(battle)
+                  onToast(result.ok ? tr('ui.fleetRange.012', { p1: Math.round(battle.myDesireM), p2: sourcePreset!.name }) : cmdText(result), !result.ok)
+                }}><Save size={15} aria-hidden />{tr('ui.fleetRange.009')}</button>
+              </span>
             </span>
             <span className="app-dim app-bts-note">
               {ended
                 ? tr("ui.BattleScreen.076")
-                : tr("ui.BattleScreen.077")}
+                : tr('ui.fleetRange.018')}
             </span>
           </div>}
         </div>

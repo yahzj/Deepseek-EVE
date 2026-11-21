@@ -5,7 +5,6 @@ import { SHIP_BLUEPRINTS } from '../shipBlueprints'
 import { ITEMS } from '../items'
 import { SHIP_PLUGS, isFactionPlugId } from '../plugs'
 
-/** 玩家独占产物参考基价；不新增NPC供应或收购。 */
 export const PLAYER_ONLY_GOODS: readonly MarketGoodDef[] = (() => {
   const plugs = SHIP_PLUGS.filter(mod => !mod.unreleased)
   const plugIds = new Set(plugs.map(mod => mod.id))

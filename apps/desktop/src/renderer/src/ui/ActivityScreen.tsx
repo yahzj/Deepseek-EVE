@@ -1,27 +1,3 @@
-/**
- * **主控活动窗口（2026-09-20 船长令）**：主控亲自执行「采掘 / 打捞 / 长途运输 / 扫描虫洞」时，
- * 弹出一个与**战斗窗口同款**的窗口，播放主控正在干的事；可最小化（最小化后右下角浮动还原标）。
- *
- * 船长原话（照抄）：
- * 「我打算给主控执行挖矿/打捞/长途运输/扫描虫洞时，添加一个主控动画窗口播放主控正在执行的活动。
- *   可以参考之前给AI做的小SVG动画。」「是类似战斗场景那样弹出一个窗口，可以进行最小化。」
- * 「1.保留。2.可以给读数。3.进度条也显示。」
- *
- * 三条口径落地：
- * - **窗口形态**：走公共壳 `ui/WinBox.tsx`（战斗窗口同源）——居中窗口、顶栏最小化、浮动还原标；
- * - **读数**：顶栏活动名 + 底栏关键读数（矿带 / 本趟产出 / 航线 / 扫描进度）；
- * - **进度条**：采掘循环 / 打捞循环 / 运输航段 / 扫描窗口各一条。
- * - **旧小窗保留**（`ui/ShipStatusWin.tsx`，左导航「出港」上方）：与本窗口并存，两者都消费
- *   同一个场景推导 `sceneOfShipwin`（唯一事实源，不各写一份判定）。
- *
- * 性能口径（沿用约定第十四章 · 与 `ui/aiWorkFx.tsx` 一致）：整幅演出 = 一张 SVG
- * （星野 / 漂浮物 / 作业件 / **真实舰形**）+ 若干条 CSS 动画，**只动 `transform` / `opacity`**；
- * 不碰 `filter` / `box-shadow` / 宽高；不新建 rAF；引擎每 tick 整树重渲染由 `memo` 挡住
- * （见 `ActArt`：活动与舰体不变即不重建节点）。
- *
- * 视觉口径：物件一律 **SVG 线稿**（细描边 / `currentColor` / viewBox，约定第九章），
- * 配色与 `ui/ShipStatusWin.tsx` 的 `WORK_ACCENT` 同源（采掘绿 / 打捞青 / 扫描蓝 / 航运蓝）。
- */
 import { memo } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import { fleetDefOf, getMiningParams, matterTechScanCut, salvagerCyclesOf, wormholeScanWindowMs } from '@whale/core'
@@ -34,26 +10,11 @@ import { ACTIVITY_SCENES, ACT_H, ACT_W } from './activityArt'
 import type { ActSceneId } from './activityArt'
 import { WinBox } from './WinBox'
 
-/**
- * ⚠ **本窗口已对玩家开放**（船长 2026-09-22 令：「**不用设缩放下限，可以对玩家开放了**」）。
- *
- * 沿革（照抄，别把已作废的口径写回来）：
- * - 2026-09-20 船长：「建议先做一个开关，**只有开启调试模式才能看到**」⇒ 当时复用调试入口
- *   `panels/DebugPanel.tsx` 的 `debugEnabled()`（`localStorage['whale-idle:debug'] === '1'`）把关，
- *   玩家侧零变化、船长开调试即可验收。
- * - **2026-09-22 解闸**（本条）：那道开关**整条撤掉**——判定只剩"主控在不在做本窗口认得的活动"
- *   （`activityKindOf`），所有玩家都看得到；船长另定**窄屏不设缩放下限**（窗口照现状等比缩放）。
- * - 因此不再有 `activityWinEnabled()`：`App.tsx` 与本文件都以 `activityKindOf` 为唯一判据
- *   （窗口"顶掉那一页"的让位判定也必须同源，见 `App.tsx` 的 `activityWinOn`）。
- */
 
-/** 本窗口认得的活动（= `sceneOfShipwin` 的作业态子集；其余场景窗口不弹） */
 export type ActivityKind = 'mine' | 'salvage' | 'haul' | 'scan'
 
-/** 一小时的毫秒数（扫描档的读数按小时给，见 `readoutOf` 的 scan 分支） */
 const HOUR = 3_600_000
 
-/** 场景 → 本窗口的活动种类；不属于本窗口的场景返回 null */
 function activityOf(scene: ShipwinScene): ActivityKind | null {
   switch (scene) {
     case 'work-mine':
@@ -69,29 +30,16 @@ function activityOf(scene: ShipwinScene): ActivityKind | null {
   }
 }
 
-/** 主控是否正在做本窗口负责的活动（供 `App.tsx` 决定弹不弹） */
 export function activityKindOf(state: GameState): ActivityKind | null {
   return activityOf(sceneOfShipwin(state))
 }
 
-/* ═══════════ 演出：布景与道具 + 真实舰体都在 activityArt 里画进同一张 SVG ═══════════
- *
- * 2026-09-21 船长：「目前还是过于简陋」+「还不如左上角的小窗来的精细，需要补齐细节
- * （包括我方舰船外形等）可以先参考左上角的小窗」。
- * ⇒ 本文件不再自画舰体（第一版是个菱形占位符），改为：
- *    ① 背景、漂浮物、作业件、**舰体** = `./activityArt` 的场景组件（内部走 `ShipSpriteShape`，
- *       与全站同源：25 舰各自外形、引擎尾焰按真实喷口、面板线与发光件沿用 `.shipart-*` 资产类）；
- *    ② 本文件只管：窗口壳 / 底栏读数与进度条 / 动画节拍（`--act-cycle` 与 `--act-delay`）。
- *    舰体与作业光带同在一个 `app-act-float` 组里轻浮 ⇒ 光带不脱靶（小窗 `app-swin-work` 同款）。
- */
 
-/** 活动 → 布景 id（长途运输按航段分两支：就位 / 承运） */
 function sceneIdOf(kind: ActivityKind, state: GameState): ActSceneId {
   if (kind === 'haul') return (state.hauling.fleetLeg ? state.hauling.fleetLeg.positioning || state.hauling.fleetLeg.returning : state.hauling.tripLegsLeft <= 1) ? 'haul-pos' : 'haul'
   return kind
 }
 
-/** 活动 → 底色氛围类（复用状态窗那套 `.bg-<scene>`，同源配色） */
 const SCENE_CLASS: Record<ActivityKind, ShipwinScene> = {
   mine: 'work-mine',
   salvage: 'work-salvage',
@@ -99,30 +47,15 @@ const SCENE_CLASS: Record<ActivityKind, ShipwinScene> = {
   scan: 'work-scan',
 }
 
-/**
- * **动画节拍**（2026-09-21 船长：「跟真实进度挂钩」）：
- * `--act-cycle` = 一个作业周期的毫秒数、`--act-delay` = 已走毫秒取负 ⇒ 进度层动画（`app-act-tick`）
- * 的**相位锁真实进度**：周期完成那一刻正好是峰值（出货 / 到站 / 扫完一遍的瞬间亮一下）。
- *
- * 这里只夹**节拍快慢**：周期短于 1.6s 会闪成一片、长于 12s 会近乎静止（扫描虫洞的"小时带"就是
- * 3.6e6ms），故夹到 [1.6s, 12s] —— **相位照样按真实进度对齐，读数与进度条不受任何影响**
- * （真相由底栏读数与进度条负责，动画只负责动感）。
- */
 const BEAT_MIN_MS = 1_600
 const BEAT_MAX_MS = 12_000
 
-/** 节拍 → 舞台上的 CSS 变量（无周期/无进度 ⇒ 不挂钩，动画走 CSS 里的缺省值） */
 function beatStyle(cycleMs: number | null, progress: number | null): CSSProperties | undefined {
   if (cycleMs === null || progress === null || cycleMs <= 0) return undefined
   const cycle = Math.min(BEAT_MAX_MS, Math.max(BEAT_MIN_MS, cycleMs))
   return { '--act-cycle': `${Math.round(cycle)}ms`, '--act-delay': `-${Math.round(cycle * progress)}ms` } as CSSProperties
 }
 
-/**
- * 演出层（`memo`：引擎每 tick 整树重渲染时，只要活动与舰体没变就不重建这上百个 SVG 节点——
- * 星野 96 点 + 漂浮物 + 作业件 + 舰形资产，约 200 个节点，10Hz 白重建是纯浪费）。
- * 节拍变量挂在外层舞台上，不进来 ⇒ 进度每 tick 变化不会击穿这层 memo。
- */
 const ActArt = memo(function ActArt({
   sceneId,
   shipId,
@@ -138,19 +71,15 @@ const ActArt = memo(function ActArt({
   return <Scene fx={{ shipId, role, accent, engine: true }} />
 })
 
-/* ═══════════ 读数与进度 ═══════════ */
 
 interface Readout {
   title: string
   lines: string[]
-  /** 进度 0~1；null = 本活动没有可算的进度 */
   progress: number | null
   progressLabel: string
-  /** 一个作业周期的毫秒数（进度条的**分母**＝动画节拍的挂钩点）；null = 本活动算不出周期 */
   cycleMs: number | null
 }
 
-/** 取一条活动的读数与进度（纯读状态，不改任何东西） */
 function readoutOf(kind: ActivityKind, state: GameState, ctx: SimContext): Readout {
   if (kind === 'mine') {
     const m = state.mining
@@ -171,11 +100,6 @@ function readoutOf(kind: ActivityKind, state: GameState, ctx: SimContext): Reado
   }
   if (kind === 'salvage') {
     const s = state.salvaging
-    /**
-     * 打捞进度：作业以**最短打捞器周期**为统一推进步（`salvaging.ts`：多台各自维护相位），
-     * 故进度 = `cycleAccMs / 最短周期`——满一格 = 有一台打捞器完成一轮、捞上一次。
-     * 出航/返航段（`phase !== 'salvaging'`）不显示循环进度（那两段是航行，读的是航段进度）。
-     */
     const cycles = salvagerCyclesOf(state, ctx, state.shipId)
     const stepMs = cycles.length > 0 ? Math.min(...cycles) : 0
     const working = s.phase === 'salvaging'
@@ -196,7 +120,6 @@ function readoutOf(kind: ActivityKind, state: GameState, ctx: SimContext): Reado
     const a = h.routeA === null ? tr('ui.ActivityWin.004') : (ctx.stations.get(h.routeA)?.name ?? h.routeA)
     const b = h.routeB === null ? tr('ui.ActivityWin.004') : (ctx.stations.get(h.routeB)?.name ?? h.routeB)
     const to = h.toSiteId === null ? tr('ui.ActivityWin.004') : (ctx.stations.get(h.toSiteId)?.name ?? h.toSiteId)
-    // 就位段（`tripLegsLeft === 1`）= 空舱赶去航线端点，与承运段画面/标题都不同（船长要"区分就位与承运"）
     const positioning = h.fleetLeg ? h.fleetLeg.positioning : h.tripLegsLeft <= 1
     const returning = h.fleetLeg?.returning === true
     return {
@@ -212,22 +135,7 @@ function readoutOf(kind: ActivityKind, state: GameState, ctx: SimContext): Reado
     }
   }
   const sc = state.wormholeScan ?? { active: false, progressMs: 0 }
-  /**
-   * ⚠ **窗口必须与引擎同一把尺**（2026-09-22 船长报障：「活动窗口是 3.6 小时，扫描虫洞界面是 2 小时 57 分」）：
-   * `wormholeScanWindowMs(state)` **漏了谜质科技「谐振信号滤波阵列」的削减**，而扫描虫洞页走的是
-   * `engine.wormholeScanWindow()` = `wormholeScanWindowMs(state, matterTechScanCut(state, ctx))`
-   * ⇒ 活动窗口显示偏长（引擎侧注释记载：2026-09-19 修过同类"显示偏长"）。
-   */
   const win = wormholeScanWindowMs(state, matterTechScanCut(state, ctx))
-  /**
-   * 扫描进度条（**2026-09-22 与扫描虫洞页统一**）：
-   *
-   * 原先这里按"当前这一小时"走（`progressMs % 1h ÷ 1h`），2026-09-20 的自查理由是要让条子看得见在动；
-   * 但船长报障「两个进度条不一致」——扫描虫洞页的条子是**整窗进度**（`progressMs ÷ win`），
-   * 而两处的**数字**（`x.x h / y.y h（z%）`）本来就是同一把尺。⇒ 条子改回**整窗进度**，两处一致。
-   * 画面本身的动感不受影响：窗口里的演出由节拍（`--act-cycle` / `--act-delay`）驱动，不靠条子。
-   * 代价：12 小时窗口下条子走得很慢（约 7 分钟 1%）——数字那两行如实给出绝对进度与剩余。
-   */
   const totalH = win / HOUR
   const doneH = sc.progressMs / HOUR
   const pct = win > 0 ? Math.min(100, Math.floor((sc.progressMs / win) * 100)) : 0
@@ -239,12 +147,10 @@ function readoutOf(kind: ActivityKind, state: GameState, ctx: SimContext): Reado
     ],
     progress: win > 0 ? Math.min(1, sc.progressMs / win) : null,
     progressLabel: tr('ui.ActivityWin.022'),
-    // 节拍挂钩点＝整窗时长（相位峰值落在"扫满一窗"那刻；节拍再长也只夹快慢，见 beatStyle）
     cycleMs: win > 0 ? win : null,
   }
 }
 
-/* ═══════════ 组件 ═══════════ */
 
 export function ActivityScreen({
   state,
@@ -257,11 +163,9 @@ export function ActivityScreen({
   open: boolean
   onMinimize: () => void
 }): ReactNode {
-  // 主控没在做本窗口认得的活动 ⇒ 本窗口不存在（不弹窗、也不出还原入口）
   const kind = activityKindOf(state)
   if (kind === null) return null
   const r = readoutOf(kind, state, ctx)
-  // 主控舰真实外形（与状态窗同一把尺：`fleetDefOf` 取 defId、配色取 `WORK_ACCENT`、缺 def 回角色色）
   const def = fleetDefOf(state, ctx, state.shipId)
   const accent = WORK_ACCENT[SCENE_CLASS[kind]] ?? toneOf(def?.role)
   return (

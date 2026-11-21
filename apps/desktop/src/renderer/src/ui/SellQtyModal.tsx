@@ -1,9 +1,3 @@
-/**
- * 出售数量选择浮层（2026-09-05 船长：出售要支持"只卖一部分"）。
- * 输入 1..max（默认全量），附当前单价/预计行与「确认卖出」；复用 app-fit-overlay/modal 视觉族。
- * ⚠ 2026-09-15 起**同一层也服务仓库「丢弃」**（船长：「仓库添加丢弃按钮，允许玩家丢弃任意数量已有物品」）
- *   ⇒ 确认按钮前缀由 `confirmLabel` 传入（丢弃 = 「丢弃」），单价行由 `priceText` 传入（丢弃 = 无收益提示）。
- */
 import { useState, type ReactNode } from 'react'
 import { Glyph } from './Glyphs'
 import { tr } from '../i18n/locale'
@@ -21,13 +15,10 @@ export function SellQtyModal({
 }: {
   name: string
   glyph: string
-  /** 可卖数量上限 */
   max: number
-  /** 单位标签（如 "单位"/"m³"/"件"） */
   unit: string
   priceText?: ReactNode
   note?: ReactNode
-  /** 确认按钮前缀（缺省「按市价卖出」；仓库「丢弃」传「丢弃」）——2026-09-15 船长加丢弃口 */
   confirmLabel?: string
   onConfirm: (qty: number) => void
   onClose: () => void

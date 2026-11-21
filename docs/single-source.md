@@ -40,12 +40,17 @@
 
 编队实体出勤锁归`combat/command/locks.ts:commandShipDeployed`，随行舰预检归同文件`combatEscortBlock`；敌方在场空位归`combat/foes/capacity.ts:enemyFleetRoom`；逐弹药ID退款归`combat/combatAmmo.ts:refundBattleAmmo`。
 远征返航换驾驶交接归`combat/command/return.ts:detachExpeditionReturn`：以旧主舰的剩余返航账为准，给存活僚舰建立独立同进度返航记录后释放远征槽；换驾驶、旧档出击和推进兼容共用，不提前卸货或重发战果。
+
+采矿/打捞自动与停止返航卸货归`inventory.ts:unloadWorkFleetToWarehouse`：按实际随行快照逐舰分流入库，不读准备名单；无快照旧档只卸主舰。换驾驶时由`combat/command/return.ts:detachWorkReturn`将旧队转为现有逐舰返航账本，到港才卸货，不被新主控的活动快照覆盖。
+实际作业名单及全队返航腿归`workFleet.ts:workFleetShipIds/workFleetReturnMs`，仅预览读取准备名单；逐舰采集参数仍归`getMiningParams`，采集效率总量归`beltYieldRows`；全队实际打捞设备周期归`salvaging.ts:salvageFleetCyclesOf`，沿用`salvagerCyclesOf`逐舰计算，不复制主驾装配。
 实际随行名单由`combat/command/locks.ts:deployedCombatEscorts`读取出发快照；旧在途无快照时不补入基地舰船。
 遭遇战开战与缺弹预警均调用同文件`encounterCombatRosterOf`，不拿基地意向名单代替实际随行舰。
 
 双布局偏好归 `ui/layoutPreference.ts:readLayoutPref` 与同文件存储键；双活动栏停止命令归 `panels/activityStopLabel.ts:doStop`。新旧探索纯表现辅助归 `panels/explorationShared.tsx` 的 `holdTone`、`hexRingOf`、`explorationNumber`、`useCountUp`、`grabOffsetOf`、`WhGlyph`、`WhNebulaGlyph`；事件闭包、扫描和新旧玩法规则仍由各面板维护。以上登记 F2/F3，并以清理等价性专项核对旧实现。
 
 最终整数数量：`ceilFinalQuantity`（`quantity.ts`）统一向上取整，只在最终HP/单发/离散脉冲/产物/材料/收支/报价落地时调用；比例、倍率、持续累计、可装上限和分摊余数不调用。极小浮点整数邻域归一由单点处理；专项保护真实小数与守恒。
+
+抗性后实伤：`combat/combatMath.ts:applyDamageExact`保留混伤、附伤及跨层中间精度，`finalizeHitDamage`对单次命中总实伤向上取整且不超剩余血量；`applyDamage`为单系入口，`applyFoeShot`和`applyFoeUnitDamage`统一合并分量。玩家承伤仍先遵守80%齐射上限、损管保底后记账；持续恢复不取整。普通自动探索产出与稀有堆在生成末端取整，AI富矿最终装舱按可装整件封顶，原概率、搬运及在途冻结收益不重算。
 
 信号空间层深额外资源堆数：`signalSpaceResourcePileBonus`（`wormholeFoes.ts`）；矿脉、墓场普通残骸及自动探索共用，新虫洞实验规则不增加；稀有判定只读基础堆数。
 
@@ -97,7 +102,7 @@
 | 静态JSON参数与文本/派生绑定、数值编辑计划 | `staticDataGroup()` · `packages/data/src/staticData.ts`；`planDocuments()` · `tools/data-editor-schema.ts` | 固定基线目录等价、编辑事务与字段校验；JSON权威静态参数，公式/文本留代码 |
 |---|---|---|
 | 战前各舰实际预载与补给缺口 | `battleAmmoPreloadPlan()` · `battleAmmoPreflight.ts`，沿用实际选档/装弹顺序 | 预警与实际开战比对；首次不改状态、二次确认回归；`arch:guard` F2/F3 |
-| 按卡距离与战前射程变化确认 | `battleCardRangeOf()` / `playerFleetMaxRangeOf()` / `withBattleRangeCheck()` / `pendingBattleRangeView()` / `sameShipRoster()` · `battleRangeMemory.ts` | 实际卡、全队有效射程、参战名单差异说明、待办落盘、配置重验及自动探索隔离专项；F2/F3 |
+| 编队默认距离与战前配置变化确认 | `fleetRangeOf()` / `setFleetRange()` / `saveBattleFleetRange()` · `fleetRange.ts`；`withBattleRangeCheck()` · `battleRangeMemory.ts` | 预设切换、出发归属快照、本场显式保存、配置重验与自动探索隔离；旧敌卡数据仅兼容保留 |
 | 技能工作量、倍率切换与旧进度兼容 | `trainingLevelProgress()` / `normalizeTrainingProgress()` · `skills/training.ts`；技能时点推进在`skills/queue.ts` | 技能加速/离线专项、存档往返；`arch:guard` F2/F3 |
 | 武器齐射整数扣弹与预付余额 | `battleWeaponAmmoCost()` · `combatAmmo.ts` | 半发不跨舰／组／弹种、读档不断额度、整数弹库存守恒 |
 | 首次无人机出击间隔 | `droneLaunchGapMsOf()` · `droneLaunch.ts` | 每舰500毫秒、掠袭机库逐件缩短、复活重排、旧档续战；队列专项 |
@@ -115,6 +120,7 @@
 | 舰级与船体武器射程加成 | `shipWeaponRangeBonusesOf()` · `ships/range.ts` | T1～T5额外0/5/10/15/20%，与原船体特性加算；战前武器规格与舰船信息共用，不影响无人机和基础炮 |
 | 制造卡势力插件图纸获取与隐藏 | `factionPlugBlueprintKind()` / `manufacturingBlueprintVisible()` · `features/industry/blueprintPolicy.tsx` | 一次性指向信号空间，永久未投放默认隐藏，已有配方/图纸/在制线保留；两套工业页共用 |
 | 护盾力场排除自身、有效目标与最大护盾代价 | `pulseShieldFieldFor()` / `SHIELD_FIELD_COST_PCT` · `combatRepair.ts` | 力场专项：费用与目标数无关、足量/不足/无目标、周期/混装/读档；详情费用读取同一常量；`arch:guard` F2/F3 |
+| 维修目标的装甲与结构容量倍率 | `repairCapacityMulOf()` · `repair.ts` | 普通维修与修理无人机共用；目标加成后最大值分别除以船型基础值，不按残血量计算 |
 | 双方护盾自然回复与旗舰速率映射 | `passiveShieldRateOf()` · `combat/passiveRecovery.ts` | 当前盾比例、满盾托底、零盾不回；旗舰卡面速率基准与共享容量分离；战斗推进和估算共用 |
 | 恒定承伤下护盾回复与装甲自愈的破层时间 | `passiveShieldBreakSeconds()` / `passiveArmorBreakSeconds()` · `combat/passiveRecovery.ts` | 解析估算共用回复规则；无法破层返回无限时长，装甲自愈独立于修复输出加成 |
 | 无人机指挥共享增幅与全队已装载体积快照 | `applyDroneCommandAura()` / `droneCommandVolumeM3Of()` · `combat/droneCommand.ts` | 活友舰只取最高来源一次、不递归且排除本舰；全舰队已装载体积在开战时建档，来源目标权重无上限 |
@@ -126,7 +132,7 @@
 | 星球注入目录参数和引用校验 | `planetCatalogIssues()` · `planetCatalog.ts` | 生成入口与内容检查共用；非法参数、冲突引用、重复相邻规则专项 |
 | 星球生成、勘探、环境、四向相邻、建设校验与存档 | `generatePlanet()` · `planetGeneration.ts`；`planetEnvironmentOf()` · `planetRules.ts`；`planetSurveyView()` · `planetSurvey.ts`；`planetAdjacencyOf()` / `planetConstructionCheck()` · `planetGrid.ts`；`cleanPlanetaryState()` · `planetSave.ts` | 独立种子、未知信息隔离、互斥、相邻封顶／断电与存档往返专项；`arch:guard` F2/F3 |
 | 玩家整船回收/装备保全与战损插件 | `hullRecoveryChanceOf()` / `wreckEquipmentRecoveryChanceOf()` · `shipWrecks.ts`；`shipDamageEffects()` / `rollShipDamage()` · `shipDamage.ts` | 工程技能加算、首次判定/往返不重掷、六类最终属性及普通插件隔离；旧残骸规则兼容 |
-| 战损管理按不同类型贡献动能与能量抗性 | `shipDamageHullResistOf()` · `shipDamage.ts` | 抗性按战损类型去重并受类型数上限约束；战损数组和每件属性惩罚仍保留 |
+| 战损管理按插件数量贡献动能与能量抗性 | `shipDamageHullResistOf()` · `shipDamage.ts` | 抗性按清洗后的战损数组数量计数并受数量上限约束；重复类型也各算一件，属性惩罚仍逐件计算 |
 | 爆虫触发、本场腐蚀、全队孵化与巢母加速 | `triggerAcidBurst()` / `applyAlienCorrosion()` / `advanceFoeHatcheries()` / `advanceFoeAbilityClocks()` / `foeFleetSpeedMulOf()` · `alienCombat.ts` | 异形入侵专项：距离边界、伤害顺序、死亡去重、随档、有限/无限额度、多载体去重、有效时长与死亡解除；`arch:guard` F2/F3 |
 | 限额慢补货：配置判据、初始化、周期进度、余额与统一核销 | `hasLimitedSupply()` / `ensureLimitedSupply()` / `advanceLimitedSupply()` / `limitedSupplyAvailable()` / `consumeLimitedSupply()` · `marketLimitedSupply.ts`；价格分档在`market/supply.ts:refreshLimitedSupplyBook()` | 市场限额专项、存档往返；`arch:guard` F2/F3；`content:check` 配置合法性 |
 | 武器组炮数与逐炮守恒分摊 | `volleyGunCountOf()` / `volleyDamageShareOf()` · `combatVolley.ts` | 逐炮齐射专项；`arch:guard` F2/F3 |
@@ -252,6 +258,9 @@ _条目增删随代码走；规则变更仍按开发约定的工作文档与归�
 | `laserFalloffOf` | `packages/core/src/ships/fitting/effects.ts` |
 | `battleAmmoPreloadPlan` | `packages/core/src/combat/battleAmmoPreflight.ts` |
 | `battleCardRangeOf` | `packages/core/src/combat/battleRangeMemory.ts` |
+| `fleetRangeOf` | `packages/core/src/fleetRange.ts` |
+| `setFleetRange` | `packages/core/src/fleetRange.ts` |
+| `saveBattleFleetRange` | `packages/core/src/fleetRange.ts` |
 | `playerFleetMaxRangeOf` | `packages/core/src/combat/battleRangeMemory.ts` |
 | `withBattleRangeCheck` | `packages/core/src/combat/battleRangeMemory.ts` |
 | `pendingBattleRangeView` | `packages/core/src/combat/battleRangeMemory.ts` |

@@ -1,32 +1,9 @@
-/**
- * **虫洞 · 自动探索**（船长 2026-09-14 逐条定案 · 确认稿 §六 · 批次 3）。
- *
- * 船长原话（照抄）：
- * 「并且'扫描虫洞'界面内允许玩家自动配置舰队探索虫洞（占据4个副船AI）。自动探索需要较长时间，
- *  且收益不确定，并且也会承受严重损失，但是不会丢船。」→「自动探索时间缩短至5分钟。其他没问题了。」
- * 追加四答（2026-09-14 晚）：「收益进仓库」·「按'手动一趟的期望 × 40%'」·「损伤口径两项都报」·
- * 「结算通讯消息的载体采用日志+需要确认的报告（显示在扫描虫洞页面里）。允许出现虫洞字样。」
- *
- * 口径：
- * - **每处虫洞一个「自动探索」**：界面**自动配置**参与舰（最多 4 条非主控船，可手动改）；不满 4 条也能跑。
- * - 信号空间按T3科技解锁，不占AI名额；未来实验自动队维持原每趟一枚规则。
- * - **时长 = 5 分钟**；按 `state.gameMs` 推进 ⇒ **离线照算**（与 AI 副船任务同口径）。
- * - **完成后停止**（不自动接下一个）：参与舰与 AI 名额届时释放，**该处虫洞被消耗**。
- * - 信号空间按实际模拟收成的60/70/80%入库，比例出发锁定；旧趟缺省80%。
- * - **损伤**：每舰**结构 / 装甲各掷一次 −40%~−80%**，结构保底 `WORMHOLE_AUTO_HULL_FLOOR` ⇒ **绝不丢船**。
- * - **参与舰任务期间锁定**（驾驶/出击/别的 AI 任务全拒），返航解锁。
- * - **结算**：一条**日志** ＋ 一份**需要确认的报告**（显示在「扫描虫洞」页；船长：允许出现虫洞字样）。
- *
- * ⚠ 本模块**不碰** `wormholeEnter` 的副本状态机：自动探索是"抽象的一趟"（不建网格、不打战斗），
- * 产出按手动期望折算 —— 这是船长对"收益不确定 + 绝不丢船"的取舍，实现上必须与真副本解耦。
- */
 import { ceilFinalQuantity } from './quantity'
 import type { CoreBlockReason } from './engine'
 import { AI_CORE_IDS } from './aiCores'
 import { tuningMul } from './tuning'
 import type { GameState, WormholeArchetype, WormholeAutoReport, WormholeAutoRun, WormholeFamily, WormholeStockItem } from './state'
 import { addLog, createInitialState, shipLockedInWormhole, wormholeAutoRunsOf } from './state'
-// 再导出：index 与既有引用照旧从本模块读（单向边，不成环）
 export { wormholeAutoRunsOf } from './state'
 import type { SimContext } from './types'
 import type { CommandResult } from './engine'
@@ -62,18 +39,8 @@ import { cleanSignalAutoEstimate } from './signalAuto/save'
 import { signalAutoInputKey } from './signalAuto/input'
 import type { SignalAutoEstimate } from './signalAuto/types'
 
-/** 货舱**每格**折合多少 m³（自动探索的"装得下多少"用；量级与货舱页的格位口径一致） */
 export const WORMHOLE_AUTO_HOLD_M3_PER_CELL = 50
 
-/**
- * 编队战力（**快速对判**用：只比"DPS × 有效血量"的期望，不逐帧跑战斗、不掷单发）。
- *
- * ⚠ **量纲必须与对手同尺**：对手用游戏真值 `wormholeLayerThreat(depth)`（层 1 = 45，每层 ×1.12
- * —— 现行 `WORMHOLE_THREAT_GROWTH = 0.12`，2026-09-23 由 0.10 上调；见 `docs/design/wh-spawn-layer7-20260923.md`）。
- * 本函数第一版写成 `20 + 14×层`（层 8 = 132，比真值 96 高一大截）⇒ 4×T1 的自动探索
- * **连层 2 的守卫都过不去**，卡在层 2 一辈子（读数：层深恒 2.0、一次"回合尽"都没有）。
- * 现在按"武装数 × 一个护卫档的威胁量级"给玩家侧读数，两边才算可比。
- */
 function fleetPowerOf(state: GameState, ctx: SimContext, shipIds: readonly string[]): WormholeAutoPower {
   let guns = 0
   let ehp = 0
@@ -93,14 +60,9 @@ function fleetPowerOf(state: GameState, ctx: SimContext, shipIds: readonly strin
     guns += own
     ehp += tier * 10 * Math.max(0.1, ship.durability ?? 1)
   }
-  // 一把武装 ≈ 8 点威胁量级（与 `wormholeLayerThreat` 的层 1 = 45 同一把尺：4×3 门 ≈ 96）
   return { dps: Math.max(1, guns * 8), ehp: Math.max(1, ehp) }
 }
 
-/**
- * 某层守卫的战力（快速对判的对手）：**直接用游戏真值** `wormholeLayerThreat(depth)`
- * （层 1 = 45，每层 ×1.12 ⇒ 层 9 ≈ 111；2026-09-23 由 0.10 上调）。
- */
 function guardPowerOf(ctx: SimContext, family: WormholeFamily, depth: number): WormholeAutoPower {
   void ctx
   void family
@@ -108,62 +70,21 @@ function guardPowerOf(ctx: SimContext, family: WormholeFamily, depth: number): W
   return { dps: threat, ehp: threat * 6 }
 }
 
-/** **一趟自动探索的时长**（船长：「自动探索时间缩短至5分钟」） */
 export const WORMHOLE_AUTO_DURATION_MS = 5 * 60_000
 
-/** **参与舰上限**（船长：「占据4个副船AI」⇒ 最多 4 条；不满也能跑）。
- * ⚠ 写成字面量而**不**在模块初始化时读 `WORMHOLE_MAX_SHIPS`：本模块与 `wormhole.ts` 之间存在
- * `activity → wormholeAuto → wormhole` 的模块环，初始化期读对方的常量会踩 TDZ（本仓有过先例）。 */
 export const WORMHOLE_AUTO_MAX_SHIPS = combatShipLimit(true)
 
-/**
- * **手动一趟的期望**（"手动一趟值多少钱"的**唯一账本**；工具与用例都读它，改口径只改这里）。
- * 数的来源（都在代码里，可复核）：
- * - **普通残骸堆**：墓场 `WORMHOLE_GRAVEYARD_COMMONS_MIN~MAX`(3~10，均值 6.5) ＋ 舰船信号 `WORMHOLE_SHIP_SPOIL_COMMONS`(2) ≈ **8.5 堆/趟**；
- * - **稀有残骸**：`tools/wormhole-econ.ts --runs=40` 实测 **≈1.25 件/趟**（专属装备的唯一来源）；
- * - **虚空母矿**：矿脉每格铺 1~3 堆（均值 **2 堆**）× `WORMHOLE_PILE_UNITS_BASE`(200) 单位；
- * - **遗迹安全货柜**：同一次实测 **≈0.23 件/趟**（层 2 起才出）。
- *
- * ⚠ **2026-09-27 删除旧"产出系数"常量（船长批「按你推荐来」）**：这里原有一行
- * `WORMHOLE_AUTO_YIELD_MUL = 0.4`（"产出系数 = 手动一趟的期望 × 40%"，船长 2026-09-14 令）——
- * 那是自动探索还是**抽象模拟**时的口径；`81615180` 起改成「**真进洞跑一趟**」（`wormholeAutoSim.ts`），
- * 收成折扣另立于 `WORMHOLE_AUTO_SIM_YIELD_MUL = 0.8`，核心产出走本文件的 `coreChance`
- * （层 1 = 10%、每层 +15%）⇒ 那个常量在生产代码里**早已零引用**，只剩导出与两条测试引用（伪护栏）。
- * 沿革与核实见 `docs/design/wh-reenter-settle-20260927.md` 第九节。
- */
 export const WORMHOLE_AUTO_MANUAL = {
-  /** 普通残骸堆数/趟 */
   commons: 8.5,
-  /** 稀有残骸件数/趟（econ 实测） */
   rares: 1.25,
-  /** 虚空母矿堆数/趟（矿脉 1~3 堆，均值 2） */
   orePiles: 2,
-  /** 遗迹安全货柜件数/趟（econ 实测；层 2 起） */
-  /** 遗迹安全货柜**命中率**（econ 实测；层 2 起。⚠ 2026-09-14 一号改名：原 `boxes` ⇒ `boxChance`） */
   boxChance: 0.23,
-  /**
-   * **AI 核心枚数/趟**（2026-09-14 船长新增遗迹掉落；同日第四答「自动探索也吃，按同口径折算
-   * **4%/趟**」）。取 **0.10** = 「每趟 1 次遗迹打捞 × `WORMHOLE_CORE_SHARE`(10%)」——
-   * 与船长批准的那条口径逐字对应；**层 1 起就出**（与货柜那条层 2 起不同）。
-   *
-   * ⚠ **实测复核（2026-09-14 晚 · `npm run wormhole:econ -- --runs=100`）：0.090 枚/趟**
-   * （100 趟共 9 枚 —— 层 1 三趟、层 2 六趟）⇒ 与本处取值的 0.10 在抽样噪声内一致
-   * （泊松 λ=0.1 时 100 趟的 σ≈0.03）⇒ **取值不动**。
-   * 早前那版注释写"取不到样本"，是因为当时政策 20 趟里 0 次遗迹打捞（一号的「内容原型」批次
-   * 落进 main 之后盘面遗迹格才稳定够用）——那条注记已作废。
-   */
   cores: 0.1,
 } as const
 
-/** **结构保底**（绝不丢船：结构低于它就不再扣） */
 export const WORMHOLE_AUTO_HULL_FLOOR = 0.1
 
-/* ═══════════ 内容原型 → 自动探索的产出口味（丙 · 船长 2026-09-14：原型也影响自动探索） ═══════════ */
 
-/**
- * 原型抽取权重（**与 `wormholeGrid.WORMHOLE_ARCHETYPE_WEIGHTS` 同值** —— `content:check` 有契约盯同值）。
- * ⚠ 这里写字面量而不是读那个常量：本模块与 `wormholeGrid` 之间存在模块环，初始化期读对方常量会踩 TDZ。
- */
 export const WORMHOLE_AUTO_ARCHETYPE_WEIGHTS: Readonly<Record<WormholeArchetype, number>> = {
   balanced: 40,
   wreck: 20,
@@ -172,7 +93,6 @@ export const WORMHOLE_AUTO_ARCHETYPE_WEIGHTS: Readonly<Record<WormholeArchetype,
   combat: 10,
 }
 
-/** 各原型的**原始口味倍数**（在四条产出线上重新分配；下面按抽取权重归一化回 ≈1 ⇒ 总期望不变） */
 const ARCHETYPE_RAW: Readonly<Record<WormholeArchetype, { commons: number; rares: number; ore: number; box: number }>> = {
   balanced: { commons: 1, rares: 1, ore: 1, box: 1 },
   wreck: { commons: 1.6, rares: 1.1, ore: 0.8, box: 1 },
@@ -181,10 +101,6 @@ const ARCHETYPE_RAW: Readonly<Record<WormholeArchetype, { commons: number; rares
   combat: { commons: 1.5, rares: 1.3, ore: 0.7, box: 0.9 },
 }
 
-/**
- * **归一化后的口味倍数**：按抽取权重求加权平均，再逐线除掉它 ⇒
- * 「同一条 40% 的期望线」不变，只是**在原型之间重新分配**（某原型多出的，别的原型少回去）。
- */
 const ARCHETYPE_MUL: Readonly<Record<WormholeArchetype, { commons: number; rares: number; ore: number; box: number }>> = (() => {
   const keys: WormholeArchetype[] = ['balanced', 'wreck', 'ruins', 'vein', 'combat']
   const totalP = keys.reduce((s, k) => s + WORMHOLE_AUTO_ARCHETYPE_WEIGHTS[k], 0)
@@ -210,7 +126,6 @@ const ARCHETYPE_MUL: Readonly<Record<WormholeArchetype, { commons: number; rares
   return out
 })()
 
-/** 某原型的产出口味倍数（界面/报告读数用） */
 export function wormholeAutoArchetypeMul(archetype: WormholeArchetype): {
   commons: number
   rares: number
@@ -220,79 +135,31 @@ export function wormholeAutoArchetypeMul(archetype: WormholeArchetype): {
   return ARCHETYPE_MUL[archetype]
 }
 
-/** 损伤区间（船长：「结构/装甲大幅受损（−40%~−80% 随机）」） */
 export const WORMHOLE_AUTO_DAMAGE_MIN = 0.4
 export const WORMHOLE_AUTO_DAMAGE_MAX = 0.8
 
-/** 报告保留条数（超出的丢最旧；避免随档无限增长） */
 export const WORMHOLE_AUTO_REPORT_MAX = 10
 
-/* ═══════════ 谜质科技 → 自动探索（船长 2026-09-19 四条裁定） ═══════════
- *
- * 船长原话（照抄）：「**自动探索不折扣，因为自动探索本身已经是产出\*0.4的情况了，那么过程就不应该折扣**」
- * ＋逐条：「**1，用实际回合。2，按「完成度 ⇒ 损伤最多减半」。3货仓接。AI核心吃。**」
- *
- * 每条科技都接到它在**手动**里的对应物上、**面值生效不再打折**：
- * - **时序锚定器**（最大回合 +10/级）⇒ 总量 ×`1 + 加成 ÷ 该队实际基础回合`
- *   （基础回合 = `wormholeAdmission(ctx, shipIds).turnBudget`，即**不含科技**的那一份——船长选"实际回合"）；
- * - **折叠货舱**（+4 格/级）⇒ 总量 ×`1 + 加成 ÷ 该队基础货仓格`（船长裁「货仓接」）；
- * - **引力吊臂 / 富集钻头**（各 +20%/级）⇒ 残骸线（普通残骸 / 稀有残骸 / 遗迹货柜 / AI 核心）×`1 + 打捞加成`、
- *   虚空母矿线 ×`1 + 采集加成`（船长裁「AI核心吃」⇒ 核心跟残骸线同系数）；
- * - **战斗线 14 节点** ⇒ 损伤 ×`1 − 50% × 战斗线完成度`（船长裁「按完成度 ⇒ 损伤最多减半」）；
- * - **不接**：谐振信号滤波阵列（管「扫描虫洞」的**间隔**——那是发现虫洞的活动，不是探索本身）、
- *   时间压缩矩阵（管洞内战斗的**播放**速度；也不动船长定的 5 分钟）、洞外工业三件（洞外生效）。
- *
- * ⚠ **只算科技那一份**：舰上打捞器/采集器的档位效率**不进**自动探索
- * （`matterTechWorkEffBonus` 而不是 `wormholeWorkEfficiencyOfFleet`）——自动探索的产出基准
- * `WORMHOLE_AUTO_MANUAL` 本来就不看编队装配，接档位效率等于顺手改了一条船长没裁的口径（已知边界，见工作文档）。
- *
- * ⚠ **一级未点 ⇒ 每个系数恒 1** ⇒ 未点科技的玩家读数与报告**一字不变**（用例钉住）。
- */
 export interface WormholeAutoTechFactors {
-  /**
-   * **总量系数**（回合 × 货仓；未点科技 = 1）。
-   *
-   * ⚠ **2026-09-27 起不再参与结算**——只留作**读数**（它的两个因子各自已有物理通道，见下）。
-   * 旧口径是"手动期望 × `total`"一笔算完，`total` 是科技进产出的**唯一**通道；09-26 改成
-   * "真进洞跑一趟"之后，**回合**由 `techTurnBonus` 真给（本趟多打若干回合）、**货仓**由 `holdM3`
-   * 真给（多装若干 m³）⇒ 再把 `total` 乘到产出与货仓上就是**同一份科技算了两遍**。
-   * 实测满科技档：货仓被放大 **5.41 倍** ⇒「留手额度」永远够不着 ⇒ 回合全耗在浅层打工，
-   * 反而**少下 0.41 层、少拿 11~13% 的稀有/货柜/谜质**（等于倒扣科技玩家）。
-   * 船长 2026-09-27 选**甲**：两处都摘掉 `total`。
-   */
   total: number
-  /** **残骸线系数** = `1 + 打捞效率加成`（管普通残骸 / 稀有残骸 / 遗迹货柜 / AI 核心；未点 = 1） */
   wreck: number
-  /** **虚空母矿线系数** = `1 + 采集效率加成`（未点 = 1） */
   ore: number
-  /** **损伤系数**（1 = 原区间；战斗线点满 = 0.5 ⇒ 损伤减半） */
   damage: number
-  /** 细账（读数悬停与结算日志用）：回合系数 / 货仓系数 / 打捞加成 / 采集加成 / 战斗线完成度 */
   turnMul: number
   holdMul: number
   salvageEff: number
   collectEff: number
   battleProgress: number
-  /** 本队**不含科技**的基础回合与基础货仓格（界面要写清"除以多少"） */
   baseTurns: number
   baseHold: number
 }
 
-/**
- * **算一趟自动探索吃到的科技系数**（纯函数；界面读数与结算**共用同一个函数** ⇒ 读数即实战）。
- * `shipIds` = 参与舰的**舰队实例 uid**（与 `wormholeAdmission` / `wormholeBagSlotsOfFleet` 同口径）。
- */
 export function wormholeAutoTechFactors(
   state: GameState,
   ctx: SimContext,
   shipIds: readonly string[],
 ): WormholeAutoTechFactors {
   const tech = matterTechWhBuffs(state, ctx)
-  /**
-   * ⚠ **编队不成立（没选船 / 超重 / 含无法识别的船型 / 超艘数）⇒ 一律返回中性系数**：
-   * 基础回合与基础货仓格都要拿编队去算，编队不成立时它们会退化成 0/1，
-   * 于是"除以 1"会把系数放大成几十倍，读数就成了胡说（派队本来也会被 `wormholeAutoBlockReason` 拦下）。
-   */
   const adm = wormholeAdmission(ctx, shipIds)
   const baseHold0 = adm.ok ? wormholeBagSlotsOfFleet(state, ctx, shipIds) : 0
   const neutral: WormholeAutoTechFactors = {
@@ -309,16 +176,13 @@ export function wormholeAutoTechFactors(
     baseHold: Math.max(1, baseHold0),
   }
   if (!adm.ok) return neutral
-  /** 该队**不含科技**的基础回合（`wormholeAdmission` 缺省 `techTurnBonus = 0` ⇒ 拿到的就是基础那一份） */
   const baseTurns = Math.max(1, adm.turnBudget)
-  /** 该队**不含科技**的基础货仓格（`wormholeBagSlotsOfFleet` 只算货仓 ⇒ 科技那 4 格/级不在内） */
   const baseHold = Math.max(1, baseHold0)
   const turnMul = 1 + tech.turnBonus / baseTurns
   const holdMul = 1 + tech.holdCells / baseHold
   const total = turnMul * holdMul
   const salvageEff = matterTechWorkEffBonus(state, ctx, 'salvage')
   const collectEff = matterTechWorkEffBonus(state, ctx, 'collect')
-  /** 战斗线完成度 = 已点级数 ÷ 该线总级数（0~1；线内没有节点 ⇒ 0） */
   let got = 0
   let max = 0
   for (const node of matterTechNodes(ctx)) {
@@ -329,7 +193,6 @@ export function wormholeAutoTechFactors(
   const battleProgress = max > 0 ? got / max : 0
   return {
     total,
-    // ⚠ 两条线**只吃各自的效率加成**，不再乘 `total`（2026-09-27 船长甲案：摘掉重复计入）
     wreck: 1 + salvageEff,
     ore: 1 + collectEff,
     damage: 1 - 0.5 * battleProgress,
@@ -343,82 +206,42 @@ export function wormholeAutoTechFactors(
   }
 }
 
-/** 这组系数是否"什么都没吃"（未点科技 ⇒ 界面不出现科技读数、日志不加那段） */
 export function wormholeAutoTechIsNeutral(f: WormholeAutoTechFactors): boolean {
   return f.wreck === 1 && f.ore === 1 && f.damage === 1
 }
 
-/**
- * **本趟自动探索的货仓容量（m³）** = 该队**实有格数** × `WORMHOLE_AUTO_HOLD_M3_PER_CELL`。
- *
- * 实有格数 = `baseHold`（不含科技）× `holdMul`（折叠货舱 +4 格/级）= 与手动同一个口径。
- *
- * ⚠ **2026-09-27 船长甲案**：此处原先还乘了一个 `tf.total`（= 回合 × 货仓）——
- * `holdMul` 被算了**两遍**，且**回合系数被混进了货仓容量**（回合多 ≠ 船舱大）。实测满科技档
- * 把货仓放大 **5.41 倍** ⇒ 留手额度 `holdCapThisLayer = holdM3 × 0.25` 永远够不着
- * ⇒ 回合全耗在浅层打工（残骸 +33%），反而**少下 0.41 层、少拿 11~13% 的稀有/货柜/谜质**。
- *
- * 抽成单点是为了**它能被用例直接钉住**（留在 `settleRun` 里则护栏够不着）。
- */
 export function wormholeAutoHoldM3Of(f: WormholeAutoTechFactors): number {
   return Math.max(1, Math.round(f.baseHold * f.holdMul)) * WORMHOLE_AUTO_HOLD_M3_PER_CELL
 }
 
-/** 报告队列（新的在前） */
 export function wormholeAutoReportsOf(state: GameState): WormholeAutoReport[] {
   return state.wormholeAutoReports ?? []
 }
 
-/** **待确认的报告条数**（界面角标用） */
 export function wormholeAutoUnconfirmedCount(state: GameState): number {
   return wormholeAutoReportsOf(state).filter((r) => !r.confirmed).length
 }
 
-/** 某舰是否正在自动探索（任务期间锁定） */
 export function shipInWormholeAuto(state: GameState, shipId: string): boolean {
   return wormholeAutoRunsOf(state).some((r) => r.shipIds.includes(shipId))
 }
 
-/** 该处虫洞是否已在自动探索中 */
 export function wormholeAutoRunOfStock(state: GameState, stockId: string): WormholeAutoRun | undefined {
   return wormholeAutoRunsOf(state).find((r) => r.stockId === stockId)
 }
 
-/* ═══════════ 一、参与舰的自动配置 ═══════════ */
 
-/**
- * **能不能派这艘船**（自动配置与手动改选共用同一把尺）：null = 可以，否则给拒因。
- * 排除：主控船 · 在虫洞里的船 · 已在别的 AI 副船任务里 · 已在别的自动探索里 · 不在舰队里。
- *
- * `opts.mainMayJoin`（2026-09-14 船长裁定「**如果选择了主控船，就将主控换到其他船上**」）：
- * 为真 ⇒ **放行主控船**（调用方已先确认"能交接"：主控空闲且存在接任的新主控，
- * 见 `wormholeAutoMainHandover`）。
- */
 import { wormholeAutoShipBlockReason, wormholeAutoScore, wormholeAutoDefaultShips, shipNameOf } from './wormhole/auto/fleet'
 export { wormholeAutoShipBlockReason, wormholeAutoCandidates, wormholeAutoDefaultShips, shipNameOf } from './wormhole/auto/fleet'
 export type { WormholeAutoCandidate } from './wormhole/auto/fleet'
 
-/**
- * **当前可派的核心数** = 共用上限 − 副船/自动探索已占 −（站内工业超出「工业自动化」扩容的部分）。
- * ⚠ 自动探索那部分按 **每趟 1 枚** 计（见 `ai.ts` 的 `aiCoreShipUsed`）。
- * **编队规模不再按它收口**（2026-09-26 船长令：整队一趟只占 1 枚）——本函数现在只用于
- * "还能不能再开一趟"的读数与守卫。
- */
 export function wormholeAutoFreeCores(state: GameState, ctx: SimContext): number {
   const cap = aiCoreCap(state, ctx)
   const indOnShared = Math.max(0, aiCoreIndustryUsed(state) - industryAiBonus(state, ctx))
   return Math.max(0, cap - aiCoreShipUsed(state) - indOnShared)
 }
 
-/* ═══════════ 二、AI 核心账（与副船任务共用） ═══════════ */
 
-/**
- * **AI 核心够不够**（自动探索要占 `need` 枚）：null = 够，否则给拒因。
- *
- * ⚠ **口径 2026-09-26 改**（船长令「整队一趟只占 1 枚」）：`need` 现在恒为 **1**（一趟一枚），
- * 与派几条船无关。改前 `need = 队伍条数`，于是"核心剩 2 枚"会拒绝 4 条编队。
- * 站内工业先抵「工业自动化」扩容、超出的部分才挤共同名额 —— 这一段与 `ai.ts` 同源，未变。
- */
 export function wormholeAutoCoreBlock(state: GameState, ctx: SimContext, need: number): CoreBlockReason | null {
   const cap = aiCoreCap(state, ctx)
   if (cap <= 0) {
@@ -440,20 +263,13 @@ export function wormholeAutoCoreBlock(state: GameState, ctx: SimContext, need: n
   return null
 }
 
-/** 入口与派队命令同源；信号空间只要求研究，不要求AI技能或库存。 */
 export function signalAutoResearchBlock(state: GameState, ctx: SimContext): CoreBlockReason | null {
   return matterTechSignalAutoYield(state, ctx) > 0 ? null : {
     error: '请前往「谜质科技」，研究T3「信号空间探索」后解锁自动探索。', errorId: 'core.signalAuto.001',
   }
 }
 
-/* ═══════════ 三、开始 / 中止 ═══════════ */
 
-/**
- * **能不能开自动探索**（界面按钮的置灰理由；也是命令层的守卫）：null = 可以。
- * 船长口径里**没有**"主控必须空闲"的限制 —— 自动探索吃的是**副船 + AI 名额**，
- * 主控在扫描/远征期间照旧可以派队。
- */
 export function wormholeAutoBlockReason(
   state: GameState,
   ctx: SimContext,
@@ -461,7 +277,6 @@ export function wormholeAutoBlockReason(
   shipIds?: readonly string[],
   opts?: { mainMayJoin?: boolean; prepared?: boolean },
 ): CoreBlockReason | null {
-  // 先看"是不是已经派出去了"：开始时库存项即被消耗 ⇒ 先查在跑的趟，理由才说得清
   if (wormholeAutoRunOfStock(state, stockId)) return { error: '这一处已经在自动探索中。', errorId: 'core.wormholeAuto.011' }
   const item = wormholeStockOf(state).find((x) => x.id === stockId)
   if (!item) return { error: '这处虫洞不在了（可能已经探索过）。', errorId: 'core.wormholeAuto.012' }
@@ -480,7 +295,6 @@ export function wormholeAutoBlockReason(
   for (const shipId of pool) {
     const blocked = wormholeAutoShipBlockReason(state, shipId, opts)
     if (blocked) {
-      /* ⟪文案调整 2026-10-02⟫ 批⑫：把「哪条船 + 拒因」合成为一条 —— 内层拒因走 p2Id 三键挂法 */
       const shipName = shipNameOf(state, ctx, shipId)
       return {
         error: `${shipName}：${blocked.error}`,
@@ -497,32 +311,15 @@ export function wormholeAutoBlockReason(
     }
   }
   const admission = wormholeAdmission(ctx, pool)
-  // 与手动入场同源；整队拒因不能套用需要舰船名参数的单舰模板。
   if (!admission.ok) return { error: WORMHOLE_ADMISSION_TEXT[admission.code] }
   return signal ? null : wormholeAutoCoreBlock(state, ctx, 1)
 }
 
-/**
- * **主控交接**（船长 2026-09-14：「**如果选择了主控船，就将主控换到其他船上。**」）。
- *
- * 口径：
- * - 队里**没有**主控 ⇒ `needed: false`（什么也不做）；
- * - 队里有主控 ⇒ **先看主控忙不忙**：船长裁定「**忙时直接不允许**」（不走"采矿中换驾驶 = 旧船返航"
- *   那条善后链）⇒ 主控手上有活/在洞里一律给 `reason`；
- * - 接任的新主控 = **不在本队、不在别的 AI 任务/虫洞里、空闲**的船里，按自动配置同一套评分
- *   （能打 → 耐打 → 船型档位）挑最好的一条；一条都没有 ⇒ 给 `reason`。
- *
- * 界面据此写确认弹窗（「主控将由 X 换到 Y」）并把卡片置灰；命令层照它落（真正换船走 `changeShip`）。
- */
 export interface WormholeAutoHandover {
-  /** 队里有没有主控（有 ⇒ 需要交接） */
   needed: boolean
-  /** 接任的新主控（`needed` 且没有 `reason` 时才有值） */
   toId?: string
   toName?: string
-  /** 不能交接的原因（`needed` 时才有值） */
   reason?: string
-  /** 本地化 id / 参数（界面优先用它取当前语言，缺省回退 `reason` 原文） */
   reasonId?: string
   reasonParams?: Record<string, string | number>
 }
@@ -536,11 +333,6 @@ export function wormholeAutoMainHandover(
   if (!team.has(state.shipId)) return { needed: false }
   const busy = shipBusyLabel(state, ctx, state.shipId)
   if (busy) {
-    /**
-     * ⟪文案调整 2026-10-02⟫ 批⑫：忙态本身已是结构化标签（`busyLabels.ts` 的 `BusyLabel`）⇒
-     * 走**槽译文三键挂法**（`p1` 中文原串 · `p1Id` 忙态 id · `p1p{k}` 忙态自己的参数）——
-     * 界面按当前语言把「主控正在…」那句话整句渲染出来。
-     */
     return {
       needed: true,
       reason: `主控正在${busy.error}：先把手上的活收工，才能把它编进自动探索队。`,
@@ -576,15 +368,6 @@ export function wormholeAutoMainHandover(
   return { needed: true, toId, toName: shipNameOf(state, ctx, toId) }
 }
 
-/**
- * **开始自动探索**（一处虫洞一趟；不满 4 条也能跑）。
- * 成功消耗该处库存，信号空间锁定科技收益但不占核心；参与舰锁定到返航。
- *
- * ⚠ **主控在队里**（船长 2026-09-14：「如果选择了主控船，就将主控换到其他船上」）：先按
- * `wormholeAutoMainHandover` 读一次口径（主控忙/在洞里/没有接任船 ⇒ 直接拒绝），
- * 校验放行主控（`mainMayJoin`）通过后**真正换船走 `changeShip`**（守卫/日志/善后单一出处），
- * 再照常派队 —— 于是主控船以"普通副船"的身份随队出发。
- */
 export function wormholeAutoStart(state: GameState, ctx: SimContext, stockId: string, shipIds?: readonly string[], opts?: { prepared: WormholePreparationPlan; confirmLossRisk: true; goal?: import('./wormhole').WormholeRunState['expeditionGoal'] }, computed?: { inputKey: string; estimate: SignalAutoEstimate }): CommandResult {
   if (opts) return startPreparedAuto(state, ctx, stockId, shipIds ?? [], opts)
   const pool = shipIds ?? wormholeAutoDefaultShips(state, ctx)
@@ -597,12 +380,10 @@ export function wormholeAutoStart(state: GameState, ctx: SimContext, stockId: st
   const picked = [...pool]
   const tech = wormholeAutoTechFactors(state, ctx, picked)
   const yieldMul = matterTechSignalAutoYield(state, ctx)
-  if (computed && (computed.inputKey !== signalAutoInputKey(state, ctx, picked, item)
-    || computed.estimate.version !== 2 || !cleanSignalAutoEstimate(computed.estimate))) return { ok: false }
-  // 先冻结计算结果，成功后才交接主控和消耗信号，异常不能留下半次出发。
+  if (computed && computed.inputKey !== signalAutoInputKey(state, ctx, picked, item)) return { ok: false, errorId: 'core.signalDispatch.010' }
+  if (computed && (computed.estimate.version !== 2 || !cleanSignalAutoEstimate(computed.estimate))) return { ok: false, errorId: 'core.signalDispatch.004' }
   const estimate = computed?.estimate ?? signalAutoEstimateOf(state, ctx, picked, { seed: item.seed, depth: Math.max(1, Math.min(9, item.depth)),
     ...wormholeRunMeta(item) }, yieldMul, tech, wormholeAutoHoldM3Of(tech))
-  /** 交接：换船在**校验之后**才落（校验不过就一行状态都不动） */
   if (handover.needed && handover.toId) {
     const sw = changeShip(state, handover.toId, ctx)
     if (!sw.ok) return sw
@@ -617,10 +398,6 @@ export function wormholeAutoStart(state: GameState, ctx: SimContext, stockId: st
     stockId,
     seed: item.seed,
     depth: Math.max(1, Math.min(9, item.depth)),
-    /**
-     * 丙/丁（2026-09-14）：把该处的**内容原型 + 敌族**带进这趟自动探索 ——
-     * 产出池与"它真进去打"时同族，口味按原型重新分配（总期望仍是那条 40% 线）。
-     */
     archetype: item.archetype ?? wormholeArchetypeOf(item.seed),
     family: item.family ?? wormholeFamilyOfSeed(item.seed),
     shipIds: picked,
@@ -628,13 +405,6 @@ export function wormholeAutoStart(state: GameState, ctx: SimContext, stockId: st
     finishAtGameMs: state.gameMs + WORMHOLE_AUTO_DURATION_MS,
   }
   state.wormholeAuto = [...wormholeAutoRunsOf(state), run]
-  /**
-   * **出发日志**（**2026-10-02 批⑫-补 · 走新落地的「列表槽」机制**）：
-   * 中文原串一字未改；槽位与 id 的对应见 `table.ts` 的 `core.wormholeAuto.020`。
-   * - `{p1}` 原型名（内容概念 ⇒ 挂 `p1Id`，英文按语言出词；表 = core 的 `WORMHOLE_ARCHETYPE_IDS`）
-   * - `{p2}` 条数 · `{p4}` 分钟数
-   * - `{p3}` **名单**：走列表槽（`p3List` ＋ 分隔符由渲染层按语言取）⇒ 英文侧不再出中文顿号
-   */
   const arch = wormholeRunMeta(run).archetype
   const roster = picked.map((id) => shipNameOf(state, ctx, id))
   addLog(
@@ -655,7 +425,6 @@ export function wormholeAutoStart(state: GameState, ctx: SimContext, stockId: st
   return { ok: true }
 }
 
-/** 一趟（或一处）的原型与族：字段缺省一律按 `seed` 现算 ⇒ 老档与新建同口径 */
 function startPreparedAuto(
   state: GameState, ctx: SimContext, stockId: string, ships: readonly string[],
   opts: { prepared: WormholePreparationPlan; confirmLossRisk: true; goal?: import('./wormhole').WormholeRunState['expeditionGoal'] },
@@ -771,10 +540,6 @@ export function wormholeRunMeta(run: { seed: number; archetype?: WormholeArchety
   }
 }
 
-/**
- * **中止**一趟自动探索（无收益、无损伤；参与舰与 AI 名额当场释放）。
- * ⚠ **该处虫洞不退还**（队伍已经进去了）——界面在按钮旁写明这条。
- */
 export function wormholeAutoStop(state: GameState, runId: string, ctx?: SimContext): CommandResult {
   const runs = wormholeAutoRunsOf(state)
   const run = runs.find((r) => r.id === runId)
@@ -797,16 +562,13 @@ export function wormholeAutoStop(state: GameState, runId: string, ctx?: SimConte
   return { ok: true }
 }
 
-/** 按参与舰 id 中止（活动栏那一行用） */
 export function wormholeAutoStopByShip(state: GameState, shipId: string, ctx?: SimContext): CommandResult {
   const run = wormholeAutoRunsOf(state).find((r) => r.shipIds.includes(shipId))
   if (!run) return { ok: false, error: '这一趟自动探索已经结束了。', errorId: 'core.wormholeAuto.001' }
   return wormholeAutoStop(state, run.id, ctx)
 }
 
-/* ═══════════ 四、推进与结算 ═══════════ */
 
-/** 确定性随机流（同 `(seed, salt)` 必得同结果；与 `wormholeScan` 同一套写法） */
 function autoRng(seed: number, salt: number): () => number {
   let count = 0
   return () => {
@@ -821,13 +583,8 @@ function autoRng(seed: number, salt: number): () => number {
   }
 }
 
-/** 报告 id 序号（同一毫秒内多趟也只增不减） */
 let reportSeq = 0
 
-/**
- * **推进自动探索**（`advanceGame` 每拍调）：到点即结算。
- * 离线大步长同样适用（`state.gameMs` 一次跨过 finishAt ⇒ 当拍结算，收益与在线一致）。
- */
 export function advanceWormholeAuto(state: GameState, ctx: SimContext): void {
   const runs = wormholeAutoRunsOf(state)
   if (runs.length === 0) return
@@ -849,14 +606,12 @@ export function advanceWormholeAuto(state: GameState, ctx: SimContext): void {
       finishPreparedAuto(staged, ctx, run, before, result.state)
       staged.wormholeAuto = wormholeAutoRunsOf(staged).filter(r => r.id !== run.id)
       Object.assign(state, staged)
-    } catch { /* 封存异常保留锁船，不降回旧无损模拟。 */ }
+    } catch { }
   }
   const legacyDue = due.filter(r => r.expeditionRules === undefined)
   const dueIds = new Set(legacyDue.map((r) => r.id))
-  // 先出队（AI 名额当场释放），再结算
   state.wormholeAuto = wormholeAutoRunsOf(state).filter((r) => !dueIds.has(r.id))
   for (const run of legacyDue) {
-    // 本趟已出队；结算仍用旧趟的船体目录，完成后再整理存活船的配装。
     let runCtx = ctx
     if (run.haulerFittingVersion !== 1) {
       const ships = new Map(ctx.ships)
@@ -873,25 +628,14 @@ export function advanceWormholeAuto(state: GameState, ctx: SimContext): void {
   repairCivilianFittings(state, ctx)
 }
 
-/** 结算一趟：算收益（手动期望 × 40%）、掷损伤、入仓库、出报告 + 日志 */
 function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): void {
   const rng = autoRng(run.seed, run.depth * 977)
-  /** 损伤专用的独立流（同 seed 同序列；与走法消耗无关，见下面 `damage` 处的说明） */
   const damageRng = autoRng(run.seed, run.depth * 31 + 7)
-  /**
-   * 丙/丁（2026-09-14）：敌卡 = **本处锁定的族**（整趟同族）；产出口味按**内容原型**在四条线上重分配
-   * （`ARCHETYPE_MUL` 已归一化 ⇒ 总期望仍是那条 40% 线）。
-   */
   const meta = wormholeRunMeta(run)
   const cardId = wormholeCardIdOfFamily(meta.family, run.seed)
   const family = String(ctx.anomalies.get(cardId)?.foeFamily ?? meta.family)
-  /**
-   * **谜质科技**（2026-09-19 船长甲案）：`total` 进四条产出线、`wreck`/`ore` 各再管一条线、`damage` 管损伤。
-   * 未点科技 ⇒ 全 1（逐字零变化）。
-   */
   const tf = run.estimateRules === 1 ? run.estimate!.tech : wormholeAutoTechFactors(state, ctx, run.shipIds)
   const gains: Array<{ itemId: string; units: number }> = []
-  /** 本趟自动探索捞到的 AI 核心（**不入仓库** ⇒ 不能进 `gains`；报告里单列一行） */
   let coresGained: { type: 'gamma' | 'beta' | 'alpha'; n: number } | null = null
 
   if (run.estimateRules === 1 && run.estimate) {
@@ -900,13 +644,6 @@ function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): voi
     coresGained = run.estimate.cores[0] ? { ...run.estimate.cores[0] } : null
   } else {
 
-  /**
-   * **真跑一趟**（2026-09-26 船长令「优化自动探索舰船进入洞后获得的收益逻辑」）。
-   *
-   * 改前：收益 = `手动期望 × 40%` 一笔算出（不进网格、不耗回合、不看货舱）——那正是"收益太低"的根子。
-   * 现在：按手动进洞的规则**走一遍**（网格 / 回合 / 层 / 层末守卫 / 货舱），捡到什么算什么。
-   * 策略与口径全在 `wormholeAutoSim.ts` 的模块头注里；本处只负责"把编队与科技的读数喂进去"。
-   */
   const adm = wormholeAdmission(ctx, run.shipIds)
   const descend = wormholeAutoDescend({
     yieldMul: run.yieldMul ?? WORMHOLE_AUTO_SIM_YIELD_MUL,
@@ -918,53 +655,32 @@ function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): voi
     miners: wormholeMinersInFleet(state, ctx, run.shipIds),
     salvagers: wormholeSalvagersInFleet(state, ctx, run.shipIds),
     power: fleetPowerOf(state, ctx, run.shipIds),
-    // 舰船同类取最高，科技另行相加；与手动扫描同源。
     scanRadius: 1 + wormholeScanBonusOf(ctx, run.shipIds) + matterTechWhBuffs(state, ctx).scanRadius,
-    /**
-     * **事件玄学的空白占比系数**（2026-09-27 补）：与手动建盘同一把尺（`wormholeMakeGrid` 第 4 参）——
-     * 漏了它，自动线在高等级事件玄学下会比手动多出两成空白格。
-     */
     blankShareFactor: blankShareFactorOf(state),
     guardPowerOf: (d) => guardPowerOf(ctx, meta.family, d),
-    // 谜质科技：回合加成由 `tf` 反推（`baseTurns × turnMul − baseTurns`）
     techTurnBonus: Math.max(0, Math.round(tf.baseTurns * tf.turnMul) - tf.baseTurns),
     tech: { wreck: tf.wreck, ore: tf.ore },
   })
 
-  // ① 普通残骸：模拟器真捡到的 m³（`wormholeAutoSim` 按层收益 × 抖动 × 残骸线科技逐堆算出）
   const group = wreckGroupOfCard(cardId, ctx)
-  // `wormholeCardIdOfFamily` 只给真卡 ⇒ 组必然查得到；兜底回落旧 id 只为合成夹具不炸（生产不可达）
   const wreckKey = group?.key ?? cardId
   if (descend.wreckM3 > 0) gains.push({ itemId: wreckItemIdOf(wreckKey), units: descend.wreckM3 })
 
-  // ② 稀有残骸：模拟器在遗迹格命中几件就给几件（**8 折后是小数 ⇒ 小数部分掷一次取整**，可复现）
   const rareBase = Math.floor(descend.rareItems)
   const rareN = rareBase + (rng() < descend.rareItems - rareBase ? 1 : 0)
   if (rareN > 0) {
     gains.push({ itemId: rareWreckItemIdOf(wreckKey), units: rareN * RARE_WRECK_VOLUME_M3 * tuningMul(state, 'rareWreckVolume') })
   }
 
-  // ③ 虚空母矿：模拟器在矿脉格真采到的单位数
   if (descend.oreUnits > 0) gains.push({ itemId: WORMHOLE_ORE_ITEM_ID, units: descend.oreUnits })
 
-  // ④ 遗迹安全货柜：模拟器在遗迹格命中几次就给几件（同样按小数部分掷一次取整）
   const boxBase = Math.floor(descend.relicBoxes)
   const boxN = boxBase + (rng() < descend.relicBoxes - boxBase ? 1 : 0)
-  /**
-   * ⚠ **2026-09-27 玩家报障修复**：这里原先**写死** `wormholeRelicBoxIdOf(family)`（只有本族安全货柜），
-   * 而手动路径早已改成"全货柜池"（贵重品柜 ＋ 安全柜 ＋ 图纸货柜档 ＋ 军用备货柜）⇒ 自动探索带出的
-   * 全是安全货柜、一件图纸货柜都没有。现在**逐件调用同一条种类抽取单点**（船长选**甲**：与手动同池）。
-   * 层取 `descend.depthReached`（真正下到的层，与 ⑤ 的 AI 核心同口径）。
-   */
   for (let i = 0; i < boxN; i++) {
     const boxId = wormholeRollRelicBoxKind(rng, ctx, descend.depthReached, family)
     if (boxId !== undefined) gains.push({ itemId: boxId, units: 1 })
   }
 
-  /**
-   * ⑤ **AI 核心**：命中率随**真正下到的层**抬升（层 1 起，与手动"层 1 也给"一致）。
-   * 命中后按**与手动同一条权重**（60/30/10）抽一种；**不入仓库** ⇒ 直接 `gainAiCore`，报告里单列一行。
-   */
   const coreChance = Math.min(0.95, WORMHOLE_AUTO_MANUAL.cores * (1 + 0.15 * Math.max(0, descend.depthReached - 1)) * tf.wreck)
   if (rng() < coreChance) {
     const total = WORMHOLE_CORE_WEIGHTS.gamma + WORMHOLE_CORE_WEIGHTS.beta + WORMHOLE_CORE_WEIGHTS.alpha
@@ -981,44 +697,20 @@ function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): voi
     coresGained = { type: got, n: 1 }
   }
 
-  /**
-   * ⑥ **虫洞谜质**（2026-09-27 玩家报障修复 · 船长选**甲**）。
-   *
-   * 报障原话（船长转述）：「**而且自动探索不给谜质**」。根因在 `wormholeAutoSim` 的目标格白名单
-   * （只有矿脉/坟场/遗迹/舰船，`matter` 不在内）⇒ 整趟都不去谜质格，谜质恒为 0。
-   *
-   * **为什么折成"虫洞谜质"而不是给装置**：谜质储存器是**本趟限定**装置（占货仓 2×2、离开虫洞即失效），
-   * 而自动线没有 `run`、没有本趟货仓 ⇒ 只能按手动的**撤离成功**那一步折算：**1 台 = 1 枚**
-   * （`wormholeBattle.ts` 的 `deliverExtraction` 同一口径），直接进仓库。
-   * 台数已在模拟器里随其他产出打过 8 折 ⇒ 这里只做"小数部分掷一次取整"（与 ②④ 同一套写法）。
-   *
-   * ⚠ 本段**排在 ⑤ 之后**是刻意的：`rng` 是共享流，插在中间会改掉既有各线的随机数序列。
-   */
   const essenceBase = Math.floor(descend.matterDevices)
   const essenceN = essenceBase + (rng() < descend.matterDevices - essenceBase ? 1 : 0)
   if (essenceN > 0) gains.push({ itemId: WORMHOLE_ESSENCE_ITEM_ID, units: essenceN })
   }
 
-  // 入仓库（船长：「收益进仓库」）
   for (const g of gains) {
     g.units = ceilFinalQuantity(g.units)
     state.warehouse.items[g.itemId] = (state.warehouse.items[g.itemId] ?? 0) + g.units
   }
 
-  /**
-   * 损伤：结构 / 装甲各掷一次（−40%~−80%）；结构保底 ⇒ 绝不丢船。
-   * ⚠ 2026-09-19：**战斗线**按完成度把两次损耗乘 `tf.damage`（点满 ⇒ 减半：−40%~−80% 变 −20%~−40%）——
-   * 乘在"掷出的损耗"上、**在保底之前** ⇒ `WORMHOLE_AUTO_HULL_FLOOR` 与"绝不丢船"一字不动。
-   */
   const damage = run.shipIds.map((shipId) => {
     const ship = state.fleet[shipId]
     const dura = ship?.durability ?? 1
     const armor = ship?.armorPct ?? 1
-    /**
-     * ⚠ **损伤用独立随机流**（2026-09-26）：主 `rng` 现在会被"真跑一趟"按**走法**消耗不定次数，
-     * 于是同一颗种子在两套科技档下会拿到不同的损伤序列（用例里表现为"科技档损伤反而更大"）。
-     * 损伤与走法无关 ⇒ 单独一条流（同 seed 同序列），"科技减伤"这条口径才可复现。
-     */
     const dLoss = (WORMHOLE_AUTO_DAMAGE_MIN + damageRng() * (WORMHOLE_AUTO_DAMAGE_MAX - WORMHOLE_AUTO_DAMAGE_MIN)) * tf.damage
     const aLoss = (WORMHOLE_AUTO_DAMAGE_MIN + damageRng() * (WORMHOLE_AUTO_DAMAGE_MAX - WORMHOLE_AUTO_DAMAGE_MIN)) * tf.damage
     const nextDura = Math.max(WORMHOLE_AUTO_HULL_FLOOR, dura * (1 - dLoss))
@@ -1054,21 +746,11 @@ function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): voi
   state.wormholeAutoReports = [report, ...wormholeAutoReportsOf(state)].slice(0, WORMHOLE_AUTO_REPORT_MAX)
 
   const gainText = gains.length > 0 ? gains.map((g) => `${itemNameOf(ctx, g.itemId)} ×${g.units}`).join('、') : '空手而归'
-  /** AI 核心单列（不入仓库，故不在 `gains` 里） */
   const coreText = coresGained ? `，并带回 ${aiCoreName(coresGained.type)} ×${coresGained.n}（已直接接入核心库）` : ''
   const dmgText = damage.map((d) => `${d.name}（结构 −${d.durabilityLossPct}% / 装甲 −${d.armorLossPct}%）`).join('、')
-  /**
-   * **谜质科技那一段**（船长 2026-09-19「过程不折扣」）：只在真吃到科技（`tf` 非中性）时写进日志，
-   * 未点科技的玩家日志**一字不变**。系数与结算同一个来源（`wormholeAutoTechFactors`）⇒ 报出来的就是实际生效的。
-   */
   const techText = wormholeAutoTechIsNeutral(tf)
     ? ''
     : `谜质科技：残骸线 ×${tf.wreck.toFixed(2)} · 母矿线 ×${tf.ore.toFixed(2)} · 损伤 ×${tf.damage.toFixed(2)}。`
-  /**
-   * **返航日志**（**2026-10-02 批⑫-补 · 列表槽**）：中文原串一字未改；id 对应见 `core.wormholeAuto.021`。
-   * 三个列表槽（战利品／损伤明细）都走 `p{n}List` ⇒ 英文侧的分隔符与逐项句式都由表决定；
-   * **空战利品**不传 `List`（传空数组会把该槽渲成空串）⇒ 改挂槽译文 `p1Id`「空手而归」。
-   */
   addLog(
     state,
     'fleet',
@@ -1102,10 +784,6 @@ function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): voi
             p3ItemParams: damage.map((d) => ({ p2: d.durabilityLossPct, p3: d.armorLossPct })),
           }
         : {}),
-      /**
-       * ⚠ 谜质科技那槽**恒传**（空串也要传）：基础模板里 `{p4}` 是硬槽，缺键会**原样漏 `{p4}`**
-       * （渲染层的既定行为：宁可漏出来让人看见，也不悄悄改中文）——这条与 `p2: ''` 同一个道理。
-       */
       p4: techText,
       ...(techText !== ''
         ? {
@@ -1119,7 +797,6 @@ function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): voi
   )
 }
 
-/** 报告确认（界面「确认」按钮；确认后不再计入待确认数） */
 export function wormholeAutoConfirmReport(state: GameState, reportId: string): CommandResult {
   const list = wormholeAutoReportsOf(state)
   const report = list.find((r) => r.id === reportId)
@@ -1130,7 +807,6 @@ export function wormholeAutoConfirmReport(state: GameState, reportId: string): C
   return { ok: true }
 }
 
-/** 全部确认（界面「全部标为已读」）；返回本次确认了几条 */
 export function wormholeAutoConfirmAll(state: GameState): number {
   const list = wormholeAutoReportsOf(state)
   let n = 0
@@ -1144,12 +820,10 @@ export function wormholeAutoConfirmAll(state: GameState): number {
   return n
 }
 
-/** 物品中文名（报告/日志用；查不到就用 id） */
 export function itemNameOf(ctx: SimContext, itemId: string): string {
   return ctx.items.get(itemId)?.name ?? itemId
 }
 
-/** 库存项（界面用；避免界面重复 import 扫描模块） */
 export function wormholeAutoStockOf(state: GameState): WormholeStockItem[] {
   return wormholeStockOf(state)
 }

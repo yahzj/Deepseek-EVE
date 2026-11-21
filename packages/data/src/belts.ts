@@ -1,14 +1,7 @@
-/**
- * 采集点表（V16 空间分层 + 复合产出池）：
- * - 难度按星图空间（X 纵深 + 环心/死路/辐射结构）排布，声望门槛随层递增；
- * - 复合带用 outputs（权重池，每循环掷一次；长期平均 = 权重），单产带省略 outputs；
- * - 删除的三种矿石（克洛基石/熔辉石/赤曜石）由同层保留矿的混合带取代（老档折算见 v16 迁移）。
- */
 
 import type { BeltDef } from '@whale/core'
 
 export const BELTS: readonly BeltDef[] = [
-  // ── L1 浅层（母港门口，无门槛 ~ R2） ──
   {
     id: 'belt-fortune',
     galaxyId: 'galaxy-hub',
@@ -52,7 +45,6 @@ export const BELTS: readonly BeltDef[] = [
     description: '低重力气田群，首处可采集气体的地点（需声望 2）。',
   },
 
-  // ── L2 环心（新港-灰霾-灯塔闭环中心提级） ──
   {
     id: 'belt-glowstone',
     galaxyId: 'galaxy-haze',
@@ -66,7 +58,6 @@ export const BELTS: readonly BeltDef[] = [
     description: '闭环中心的富矿脉：辉云岩高纯区，偶见曦棱晶伴生（需声望 3）。',
   },
 
-  // ── L3 中段（红环枢纽 / 蜃影 / 碎晶） ──
   {
     id: 'belt-hemorphite',
     galaxyId: 'galaxy-redring',
@@ -100,7 +91,6 @@ export const BELTS: readonly BeltDef[] = [
     description: '髓质纹理的古冰环，星髓晶的重要来源（需声望 5）。',
   },
 
-  // ── L4 深层（星髓迷宫 / 裂谷 / 天底侧） ──
   {
     id: 'belt-fluxite',
     galaxyId: 'galaxy-starcore',
@@ -122,7 +112,6 @@ export const BELTS: readonly BeltDef[] = [
     description: '深空裂隙带的黑色玄晶层（需声望 7）。',
   },
 
-  // ── L5 渊层（烬火 / 深渊 / 星噬 / 虚海） ──
   {
     id: 'belt-ice-frost',
     galaxyId: 'galaxy-cinder',
@@ -156,7 +145,6 @@ export const BELTS: readonly BeltDef[] = [
     description: '吸收光线的黑色冰环，全宇宙最挑剔的采集点（需声望 11）。',
   },
 
-  // ── L6 极渊（暗星坟场 / 穹顶墓园） ──
   {
     id: 'belt-gas-phosphor',
     galaxyId: 'galaxy-grave',
@@ -175,7 +163,6 @@ export const BELTS: readonly BeltDef[] = [
   },
 ]
 
-/** 构建"采集点 id → 定义"目录 */
 export function buildBeltCatalog(): ReadonlyMap<string, BeltDef> {
   return new Map(BELTS.map((belt) => [belt.id, belt]))
 }

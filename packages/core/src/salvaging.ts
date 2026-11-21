@@ -1,19 +1,3 @@
-/**
- * 打捞作业（B3，2026-09-05 船长定稿：采矿式作业；docs/design/b3-salvage.md）。
- *
- * 模型：
- * - 采矿式**自动循环**（2026-09-09 船长定稿，玩家反馈"打捞只一趟"）：下达即视为已抵达目标星系，
- *   立即自动持续打捞（去程已取消）（船内每台打捞器按各自周期结算，每轮按 salvageRoundPull 的
- *   "体积当量系数"捞取该星系敌群型号池随机一只残骸入货仓）→ **满仓自动返航** → 到港整仓卸入
- *   物品仓库 → autoCycle（默认开）时同星系自动续捞（去程时间并入返航腿，总行程时间不变）；
- *   勾 stopAfterTrip / 关闭自动循环 = 卸货后收工；手动停止任何时刻可停（偏好跨趟保留，同采矿）；
- * - 满仓判定 = 货仓放不下下一轮捞取量时转返航（残骸 = 重货）；
- * - 打捞期间该星系密度漂移**双向挂起**（engine 每拍把正在打捞的星系传给
- *   advanceWreckDrift）；低安星系打捞"作业中"暴露（出航/返航移动段不暴露，
- *   见 encounters.collectExposures；2026-09-06 船长口径：移动不暴露）；
- * - 工作位守卫：与采矿/远征/扫描/待命/返航/主控精炼互斥（入口拒绝）；
- * - 出发要求：船上装有 ≥1 台打捞器（slot='salvager'）。
- */
 import { ceilFinalQuantity } from './quantity'
 import { tuningMul } from './tuning'
 import { addLog, HOME_GALAXY_ID, salvageHalt } from './state'
@@ -22,7 +6,8 @@ import { beginDeparture, consumeDeparture, cancelDeparture, departureOrigin, dep
 import type { CommandResult } from './engine'
 import type { GameState, WorkReturnProgress } from './state'
 import type { SimContext } from './types'
-import { addItem, addWare, freeCargoM3, unloadCargoOfShipToWarehouse } from './inventory'
+import { addItem, addWare, freeCargoM3Of, unloadWorkFleetToWarehouse } from './inventory'
+import { workFleetShipIds, workFleetReturnMs } from './workFleet'
 import { shortestTravelMinutes, travelLegMs } from './travel'
 import { actionBlockReason, markExplored } from './explore'
 import { bumpFirst } from './firstTasks'
@@ -47,22 +32,17 @@ import {
   wreckGroupOfCard,
   wreckItemIdOf,
   wreckYieldMultiplierOf,
-  // 2026-09-26（玩家报障）：残骸场带来源族 ⇒ 有场就并入那一族的独立入侵卡
   weekendWreckDensityOf,
   weekendWreckPoolsOf,
   weekendRareWreckCountOf,
-  /** **2026-10-02 船长令「甲」**：入侵池按**实际出量**扣（并由池子余额封顶出量）；
-   *  同一令下"从入侵池出的那一轮"改用上面的 `salvageRoundMulOf` 只读取数（不扣池）。 */
   chargeWeekendWreckByVolume,
-  // 2026-09-26（船长令）：打捞对象（选组 / 选入侵残骸）与分组存量
   WEEKEND_WRECK_TARGET,
   wreckGroupStockOf,
   wreckGroupStocksOf,
 } from './salvage'
-import { scaledReturnMs, workReturnLeg } from './trips'
+import { workReturnLeg } from './trips'
 import { beginJumpFuelLeg, jumpFuelLegMsOf } from './jumpFuel'
 
-/** 出航/返航共用腿（星系航程）：进出港基准（同采矿 localLegMs）+ 星系间航程（按船速换算） */
 export function legMsFor(state: GameState, ctx: SimContext, galaxyId: string, shipId?: string): number {
   if (state.debugQuick) return 1000
   const mins = shortestTravelMinutes(ctx, HOME_GALAXY_ID, galaxyId)
@@ -70,25 +50,19 @@ export function legMsFor(state: GameState, ctx: SimContext, galaxyId: string, sh
   return Math.max(1, ctx.balance.mining.localLegMs + travelLegMs(state, ctx, travel, shipId))
 }
 
-/** 出航腿（空船出门跃迁×2 → 约返航一半；调试模式固定 1 秒） */
 export function outboundLegMsFor(state: GameState, ctx: SimContext, galaxyId: string, shipId?: string): number {
   if (state.debugQuick) return 1000
   return Math.max(1, Math.round(legMsFor(state, ctx, galaxyId, shipId) / 2))
 }
 
-/** 主控打捞返航真实时长：引擎与活动栏、星图页共用，展示时不点火扣料。 */
 export function salvageReturnMs(state: GameState, ctx: SimContext, galaxyId: string, fuelMul = state.salvaging.fuelMul ?? 1): number {
-  return scaledReturnMs(legMsFor(state, ctx, galaxyId) + outboundLegMsFor(state, ctx, galaxyId), state, ctx, state.shipId, fuelMul)
+  return workFleetReturnMs(state, ctx, id => legMsFor(state, ctx, galaxyId, id) + outboundLegMsFor(state, ctx, galaxyId, id), fuelMul)
 }
 
-/** 该船装配的打捞器周期表（每台周期毫秒；无打捞器 = 空表）。
- * 打捞装置整备学（salvage-rigging）：单轮周期每级 −3%（2026-09-08 船长定：移除「最多 −40%」
- * 护栏；主控与 AI 同源——主控作业与 AI 任务都经本函数取周期）。 */
 export function salvagerCyclesOf(state: GameState, ctx: SimContext, shipId: string): number[] {
   const fleetShip = state.fleet[shipId]
   if (!fleetShip) return []
   const rigLv = Math.min(5, state.skills.trained['salvage-rigging'] ?? 0)
-  // 2026-09-27 船长令（R4/R5 上位技能批）：打捞器超频学 −1%/级（与打捞装置整备学乘算叠加）
   const rigUpLv = Math.min(5, state.skills.trained['salvager-overclock'] ?? 0)
   const rigFactor = (rigLv > 0 ? Math.max(0, 1 - 0.03 * rigLv) : 1) * (rigUpLv > 0 ? Math.max(0, 1 - 0.01 * rigUpLv) : 1)
   const cycles: number[] = []
@@ -98,42 +72,25 @@ export function salvagerCyclesOf(state: GameState, ctx: SimContext, shipId: stri
   return cycles
 }
 
-/**
- * 目标星系可打捞的敌群型号池（该星系悬赏群；2026-09-09 修复：按威胁加权抽型号）。
- * B1 低安遭遇模板（hidden: true，galaxyId 仅占位）**不入池**——遭遇群残骸只在击杀发生星系
- * 按注入路径成立；抽池与悬赏目录/打捞列表同口径（此前把 enc-pirate 模板算进母港池，
- * 导致在母港能捞出从未在母港出现的「狂徒巡逻编队/深空屠夫舰队」残骸）。
- *
- * 入侵型号由真实残骸桶供给，活动占领本身不产残骸；已收场的残留桶也能供给自己的型号。
- */
+export function salvageFleetCyclesOf(state: GameState, ctx: SimContext, preview = false): number[] {
+  return workFleetShipIds(state, preview).flatMap(id => salvagerCyclesOf(state, ctx, id))
+}
+
 function wreckPoolOf(
   ctx: SimContext,
   galaxyId: string,
   state?: GameState,
   nowWallMs?: number,
-  /** **打捞对象**（2026-09-26 船长令）：缺省 = 全部 · 组 key = 只留该组 · `WEEKEND_WRECK_TARGET` = 只留入侵独立卡 */
   target?: string,
 ): Array<{ anomalyId: string; threat: number }> {
   const pool: Array<{ anomalyId: string; threat: number }> = []
   const seen = new Set<string>()
   for (const a of ctx.anomalies.values()) {
-    if (a.hidden) continue // B1 遭遇模板不进打捞池（悬赏目录同口径）
+    if (a.hidden) continue
     if (a.galaxyId !== galaxyId) continue
     pool.push({ anomalyId: a.id, threat: Math.max(1, a.threat) })
     seen.add(a.id)
   }
-  /**
-   * 🔴 **2026-09-26 补的第二刀（玩家报障：「打捞残骸捞不到 H 族残骸，只能捞到该星系默认的」）**。
-   *
-   * 病根：**残骸场比"占领"活得久** —— 入侵残骸 48 小时自然衰减、活动结束也不清空；而上面那一刀只在
-   * 「此刻仍在占领名单里」时才并入入侵舰队 ⇒ 下面三种星系会「残骸条写着入侵残骸、捞出来全是默认残骸」：
-   * ① **旗舰期的核心**（核心夺回后旗舰才现身，玩家正是在这里打旗舰、注入最大的一笔残骸）；
-   * ② **夺回后的外围**（打赢即夺回，残骸留在那儿慢慢衰减）；③ **上一场的遗留场**。
-   *
-   * 修法：**只要该星系还有入侵残骸场（有效密度 > 0），就把来源族的独立入侵卡并进池** ——
-   * 来源取 `weekendWreckPoolsOf`；未知桶并入已登记入侵卡，不借用新活动族。
-   * 池子只决定"能捞出什么型号"，**不额外造残骸**：能捞的总量仍是残骸场那一份（扣减口径一字未改）。
-   */
   if (state && nowWallMs !== undefined) {
     for (const bucket of weekendWreckPoolsOf(state, galaxyId).filter((p) => p.density > 0)) {
       for (const a of ctx.anomalies.values()) {
@@ -145,12 +102,6 @@ function wreckPoolOf(
       }
     }
   }
-  /**
-   * **按打捞对象过滤**（**2026-09-26 船长令**：「让玩家选择打捞对象，包括多族悬赏混合的星系」）：
-   * - 缺省 = 全部（现状：按威胁加权抽，池子一个字不变）；
-   * - 组 key ⇒ 只留该组的卡（选什么捞什么）；
-   * - `WEEKEND_WRECK_TARGET` ⇒ 只留**入侵独立卡**（`hidden` 的那些）。
-   */
   if (target === undefined) return pool
   return pool.filter((p) => {
     if (target === WEEKEND_WRECK_TARGET) return ctx.anomalies.get(p.anomalyId)?.hidden === true
@@ -158,7 +109,6 @@ function wreckPoolOf(
   })
 }
 
-/** 基础状态的普通打捞：等量组先抽组，再在组内按威胁抽型号，与自动取池同源。 */
 function ordinaryBaseVolumeM3Of(ctx: SimContext, galaxyId: string): number {
   const groups = new Map<string, Array<{ anomalyId: string; threat: number }>>()
   const pool = wreckPoolOf(ctx, galaxyId)
@@ -181,32 +131,13 @@ function ordinaryCardVolumeM3Of(threat: number): number {
   return Math.max(0.1, Math.round(Math.max(1, threat) * WRECK_VOLUME_PER_THREAT * 100) / 100)
 }
 
-/**
- * **自动判定本轮打捞对象**（**2026-09-26 船长令**：「**分组后不要再让玩家手动选择打捞对象了，
- * 这有些太过繁琐。改为自动判断：优先打捞入侵残骸，没有入侵残骸则是根据两种残骸的数量比同步打捞。**」）。
- *
- * 三条（按序判定；`target` 有值 = 旧的手选口径，核心能力与用例保留、**界面已无入口**）：
- * 1. **入侵残骸有存量 ⇒ 只从入侵独立卡里抽**（"同池内，入侵残骸优先"——普通池内部的第一档）；
- * 2. 否则 ⇒ **按各组存量的数量比**先抽组、再在该组内按威胁加权抽卡（"同步捞" = 按比例分摊，
- *    不偏向任何一组；扣减也按同一比例回调，见 `salvage.salvageRoundPull`）；
- * 3. 没有分组账（老档 / 池底来自安全等级）⇒ 返回 `null`（调用方回落改前的"整池按威胁加权"）。
- *
- * ⚠ 本函数只管**普通池内部**；**稀有池在它之前**（`pullOneWreck` 第 1 支，捞完为止、不参与组比）——
- * 三级序全文见 `pullOneWreck` 的头注（来源 = 2026-09-26 船长裁定原话）。
- */
 function autoTargetPickOf(
   state: GameState,
   ctx: SimContext,
   galaxyId: string,
   pool: ReadonlyArray<{ anomalyId: string; threat: number }>,
 ): { anomalyId: string; threat: number; bucketKey?: string } | null {
-  /**
-   * ⓪ **玩家舰船残骸（四级序第 ①★ 档）**：**2026-09-26 船长令**「**玩家如果在该星系打捞，优先打捞该残骸
-   * （比稀有残骸优先级还高）**」⇒ 它比下面三条**都**高：本函数直接返回 `null`，
-   * 由 `pullOneWreck` 那一支去掷逐件回收（**不消耗型号池、也不落普通残骸**）。
-   */
   if (hasSalvageableShipWreck(state, galaxyId)) return null
-  // ① 入侵残骸优先
   if (weekendWreckDensityOf(state, galaxyId) > 0) {
     const candidates = weekendWreckPoolsOf(state, galaxyId).filter((bucket) => bucket.density > 0).map((bucket) => ({
       ...bucket,
@@ -221,7 +152,6 @@ function autoTargetPickOf(
       return { ...chosen, bucketKey: bucket.key }
     }
   }
-  // ② 按各组存量的数量比抽组
   const shares = wreckGroupStocksOf(state, ctx, galaxyId).filter(
     (r) => r.groupKey !== WEEKEND_WRECK_TARGET && r.stockM3 > 0,
   )
@@ -232,27 +162,11 @@ function autoTargetPickOf(
   return pickWeighted(state.rng, inGroup, (p) => p.threat, { bound: 'lte' }) ?? inGroup[0]!
 }
 
-/**
- * **这一轮打捞"入舱几件"**（残骸计数 = 体积 m³；主控作业与 AI 副船**共用同一个取整口**）。
- *
- * 🔴 **2026-10-02 船长令「按你推荐」**（起因 = 玩家报障「**入侵的残骸打捞后数字不变也打捞不到**」）：
- * 同日更早那批「甲」（入侵池按余额封顶出量）之后，**"一轮不足 1 m³"成了常态** —— 而入库那一步是
- * **向下取整**（`inventory.addItem` 的 `Math.floor`）⇒ 0.6 m³ 的那一轮：**池子扣光了、货舱一件没多**
- * （探针读数：`池 0.60 → 0.00 · 到手 0 → 0`）⇒ 玩家体感就是「打捞照跑、数字一动不动、什么都捞不上来」。
- *
- * 原口径（船长选「甲」）：真出了量至少入舱1件；2026-10-18按最终整数数量统一向上取整。
- * **池子仍按实际出的 m³ 扣**（"标称多少最多就捞多少"一字未改）——代价只有"不足 1 m³ 的那一轮多给
- * 不到 1 件"，换来**永远不再出现"捞了等于没捞"**。
- */
 export function wreckUnitsOf(volumeM3: number): number {
   if (!(volumeM3 > 0)) return 0
   return Math.max(1, ceilFinalQuantity(volumeM3))
 }
 
-/**
- * **该对象在这个星系是否可用**（有存量才算）：`undefined`（全部）恒真；`WEEKEND_WRECK_TARGET` 看入侵残骸；
- * 组 key 看该组份额。给的对象不可用 ⇒ 回落"全部"（不拒开工）。
- */
 function salvageTargetOkOf(
   state: GameState,
   ctx: SimContext,
@@ -263,10 +177,6 @@ function salvageTargetOkOf(
   return wreckGroupStockOf(state, ctx, galaxyId, target) > 0.05
 }
 
-/**
- * **该星系当前可选的打捞对象与存量**（界面下拉与用例共用）：星系池各组 ＋（若有）入侵残骸那一行。
- * ⚠ 只在作业星系上调用（读的是该星系的账）。
- */
 export function wreckTargetsOf(
   state: GameState,
   ctx: SimContext,
@@ -275,10 +185,6 @@ export function wreckTargetsOf(
   return wreckGroupStocksOf(state, ctx, galaxyId)
 }
 
-/**
- * **中途换打捞对象**（**2026-09-26 船长令**）：作业不停、只换对象；给的对象不可用 ⇒ 回落"全部"。
- * 返回真正生效的对象（`undefined` = 全部），供界面回显。
- */
 export function setSalvageTarget(
   state: GameState,
   ctx: SimContext,
@@ -290,13 +196,6 @@ export function setSalvageTarget(
   return s.targetGroup
 }
 
-/**
- * 玩家指令：开始打捞作业（目标星系需可达、已探索、有敌群型号池；船需装打捞器）。
- *
- * ⚠ **2026-09-26 船长令加 `targetGroup`**：「**玩家打捞时，让玩家选择打捞对象，包括多族悬赏混合的星系，
- * 之后残骸也要分开算。**」——`undefined` = 全部（现状）· 组 key = 只捞该组 · `WEEKEND_WRECK_TARGET` = 只捞入侵残骸。
- * 给的对象在该星系**没有存量**（或不是合法对象）⇒ **回落"全部"**（不拒开工：老档/AI 调用零影响）。
- */
 export function startSalvageOp(
   state: GameState,
   galaxyId: string,
@@ -308,11 +207,6 @@ export function startSalvageOp(
   const departureFrom = departureOrigin(state, ctx)
   const galaxy = ctx.galaxies.get(galaxyId)
   if (!galaxy) return { ok: false, error: `未知星系：${galaxyId}。`, errorId: 'core.salvaging.001', errorParams: { p1: galaxyId } }
-  /**
-   * **换星系打捞 = 允许直接切**（与「换矿带」同款；船长 2026-09-21 答 2「**允许切换**」的同一把尺）：
-   * 先把本趟停掉（`salvageHalt` 单点——本趟残骸留在船上），再按新星系开工。
-   * ⚠ 原先这里是硬拒（「打捞作业进行中：请先停止当前打捞」）。
-   */
   if (state.salvaging.active) {
     const prevGalaxy = state.salvaging.galaxyId ? ctx.galaxies.get(state.salvaging.galaxyId) : undefined
     const prevName = prevGalaxy?.name ?? '原星系'
@@ -321,31 +215,17 @@ export function startSalvageOp(
       state,
       'warn',
       `已切换打捞点：停掉「${prevName}」的打捞（本趟约 ${Math.round((info?.tripM3 ?? 0) * 100) / 100} m³ 当量留在船上），改去「${galaxy.name}」。`,
-      /**
-       * ⟪文案调整 2026-10-02⟫ 本行原挂 `core.salvaging.020`（= **「找不到当前舰船，打捞作业已停止。」**）
-       * ——与正文**根本不是一句话**，而界面按 id 优先渲染 ⇒ **玩家看到的是错的句子**（实际发生的是换点）。
-       * 正文与表里的 `core.salvaging.028` 逐字对应（`p1/p2/p3` 也正好对上）⇒ 改挂 `.028`。
-       * 台账 = `docs/design/return-log-copy-20261002.md` §3 ④。
-       */
       'core.salvaging.028',
       { p1: prevName, p2: galaxy.name, p3: Math.round((info?.tripM3 ?? 0) * 100) / 100 },
     )
   }
-  /** ⚠ `wormholePilotHoldReason` 已撤（2026-09-21 统一批）：扫描虫洞 = 可自动停、人在洞里 = 拒，都归 `activityGate` */
   const pilotBlock = pilotUnavailableReason(state)
   if (pilotBlock) return { ok: false, error: pilotBlock }
-  if (salvagerCyclesOf(state, ctx, state.shipId).length === 0) {
-    // 2026-09-20 船长令：提示里要**指明去处**（「添加让玩家去装配的提示」）⇒ 文案点到「装配」页
+  if (salvageFleetCyclesOf(state, ctx, true).length === 0) {
     return { ok: false, error: '打捞需要打捞器：先到「装配」页给驾驶船的高槽装一台（MK1/2/3）再出发。', errorId: 'core.salvaging.003' }
   }
-  /**
-   * V13 探索封锁：**目标星系未点亮 ⇒ 拒绝开工**。
-   * ⚠ **2026-09-17 船长改口径**（与采集同批）：原先这条只作用于**非母港**（母港当时恒为已探索），
-   * 现对**所有**星系生效——「初始将母港星系设置为和其他星系一样的未知状态，需要扫描才有悬赏和挖矿」。
-   */
   const exploreBlock = actionBlockReason(state, galaxyId)
   if (exploreBlock) return { ok: false, error: exploreBlock }
-  // 外系星系还必须能从母港到达（无航路 → 拒绝）
   if (galaxyId !== HOME_GALAXY_ID) {
     const travel = shortestTravelMinutes(ctx, HOME_GALAXY_ID, galaxyId)
     if (!Number.isFinite(travel)) {
@@ -365,11 +245,6 @@ export function startSalvageOp(
       errorParams: { p1: galaxy.name },
     }
   }
-  /**
-   * **其余主控活动 ⇒ 走统一判据**（**2026-09-21 船长令**：能直接切就自动取消当前活动，只有长途运输
-   * 那一档先警告；远征/快递/战斗中/洞里/返航途中一律拒）——原先这里散着 8 条硬拒，现已收进
-   * `activityGate.applyActivityGate`。⚠ 放在**本入口自己的前置校验之后**（打捞器/探索/航路/残骸池）。
-   */
   const oldReturn = state.shipReturns[state.shipId]
   const restartingReturn = !state.mining.active && !state.salvaging.active &&
     (oldReturn?.reason === 'miningStop' || oldReturn?.reason === 'salvageStop')
@@ -381,14 +256,7 @@ export function startSalvageOp(
     state.haltedBySwitch = null
   }
   if (restartingReturn) { state.pendingActivityReturn = null; state.haltedBySwitch = null }
-  /**
-   * **新指令取消"停止返航"**（**船长 2026-10-02** 报障的连带，与 `mining.startMining` 同款）——
-   * 上一拍刚「停止打捞」留下了返航账本（船正飞回港卸货）；玩家又下新打捞指令 ⇒ **就地开工**。
-   * ⚠ 不清账的后果同采矿：`advanceShipReturns` 到港即整仓卸货 ⇒ 新捞的残骸被它当拍搬进仓库
-   * （船上恒 0、仓库涨），看着"没产出"。只清**本船**那一条。
-   */
   if (state.haltedBySwitch?.kind === 'salvaging') {
-  /** 上一拍是"切活动自动停" ⇒ **跳过**这次清账：那条账本该留着（船要返航），见 `haltedBySwitch` 头注 */
   state.haltedBySwitch = null
 } else {
   delete state.shipReturns[state.shipId]
@@ -397,21 +265,20 @@ export function startSalvageOp(
   const s = state.salvaging
   s.active = true
   s.galaxyId = galaxyId
-  s.phase = 'salvaging' // 去程取消：指令即视为已抵达，立即开始打捞
+  s.phase = 'salvaging'
   delete s.fuelMul
   s.phaseAccMs = 0
   s.cycleAccMs = 0
   s.tripM3 = 0
   s.deviceAccMs = {}
-  /** **打捞对象**（2026-09-26）：非法/无存量的对象一律回落"全部"（不拒开工） */
+  s.deviceClockVersion = 2
   s.targetGroup = salvageTargetOkOf(state, ctx, galaxyId, targetGroup) ? targetGroup : undefined
-  s.autoCycle = s.autoCycle !== false // 偏好持久：默认开，除非玩家关过（旧档缺省 = 开）
+  s.autoCycle = s.autoCycle !== false
   s.stopAfterTrip = s.stopAfterTrip === true
-  // 船即时到目标星系：点亮探索（与采矿同口径；目标本就要求已探索，此处兜底）
   beginDeparture(state, ctx, 'salvaging', galaxyId, departureFrom)
   const shipName = shipDisplayName(state, ctx, state.shipId)
   const density = wreckDensityOf(state, galaxyId, ctx)
-  const salvagers = salvagerCyclesOf(state, ctx, state.shipId).length
+  const salvagers = salvageFleetCyclesOf(state, ctx).length
   const outSec = Math.max(1, Math.round(outboundLegMsFor(state, ctx, galaxyId) / 1000))
   const retSec = Math.max(1, Math.round(legMsFor(state, ctx, galaxyId) / 1000))
   const loopNote = s.stopAfterTrip
@@ -420,10 +287,6 @@ export function startSalvageOp(
       ? ' 已启用自动循环：满舱自动返航卸货，卸完自动开始下一趟（可随时手动停止）。'
       : ' 自动循环已关闭：卸完这一趟即收工。'
   const loopNoteId = s.stopAfterTrip ? 'core.salvaging.012' : s.autoCycle ? 'core.salvaging.013' : 'core.salvaging.014'
-  /**
-   * 甲案·两步渲染：`loopNote` 是"自带 id 的派生串"⇒ 用 `p6Id` 把它的 id 一并交给渲染层
-   * （`logText` 会先渲染 `p6Id` 再喂进外层文案的 `{p6}`）；`p6` 照传中文，作未改造路径的兜底。
-   */
   departureArrivalLog(
     state,
     'salvage',
@@ -440,17 +303,10 @@ export function startSalvageOp(
       p6Id: loopNoteId,
     },
   )
-  /**
-   * 甲案：`loopNote` 自带 id（三条互斥）⇒ 它**作为参数**喂给外层文案的 `{p6}`。
-   * ⚠ 目前参数里塞的是**中文原串**（渲染层对参数不会再翻）⇒ 英文界面下这一小段仍是中文，
-   * 这是**已知的过渡态**：等渲染层的 `cmdText/logText` 支持"参数里塞 id 再解析一次"后统一收口
-   * （届时只需把这里换成 id，不动文案）。
-   */
   void loopNoteId
   return { ok: true }
 }
 
-/** 打捞循环偏好 setter（UI 复选框用；联动与采矿同款） */
 export function setSalvageAutoCycle(state: GameState, autoCycle: boolean): void {
   state.salvaging.autoCycle = autoCycle
   if (!autoCycle) state.salvaging.stopAfterTrip = false
@@ -461,16 +317,6 @@ export function setSalvageStopAfterTrip(state: GameState, stopAfterTrip: boolean
   if (stopAfterTrip) state.salvaging.autoCycle = true
 }
 
-/**
- * **安排"停止打捞后的返航"**（**船长 2026-10-02 报障 / 裁定「真实返航航程」**）——
- * 建"善后返航账本"（`state.shipReturns`，与换船善后 `retireSalvageShip` **同一条链**）：
- * 由 `advanceShipReturns` 每拍推进，**到港自动整仓卸入物品仓库并清账**。
- *
- * 腿长口径与 `advanceSalvageOp` 的返航段**逐字一致**：`返航腿 + 出航腿`（去程并入返航），
- * 再按货仓占比缩放（空仓快、满仓 = 原时长）。旧档遗留的出航相位按"空船半程"折半折算。
- *
- * @returns 约几秒后到港；**不需要返航**（舰船已不在或已在港）⇒ `null`
- */
 function armReturnLeg(
   state: GameState,
   ctx: SimContext,
@@ -484,10 +330,8 @@ function armReturnLeg(
   return Math.max(0, Math.round((leg.legMs - leg.phaseAccMs) / 1000))
 }
 
-/** 手动停止（任何阶段；未返航的货物留在船上） */
 export function stopSalvageOp(state: GameState, ctx: SimContext): boolean {
   const stayedAtPort = cancelDeparture(state, 'salvaging')
-  /** 状态改动走 `state.ts` 的单点 `salvageHalt`（**进洞前自动停捞**也用它）⇒ 两条停捞路径不会各写一份 */
   const info = salvageHalt(state)
   if (info === null) return false
   const galaxy = info.galaxyId ? ctx.galaxies.get(info.galaxyId) : undefined
@@ -495,14 +339,6 @@ export function stopSalvageOp(state: GameState, ctx: SimContext): boolean {
     info.phase === 'returning' ? '（返航途中，货物留在船上）' : info.phase === 'outbound' ? '（出航途中）' : ''
   const phaseNoteId =
     info.phase === 'returning' ? 'core.mining.019' : info.phase === 'outbound' ? 'core.mining.020' : undefined
-  /**
-   * 🔴 **安排真实返航**（**船长 2026-10-02**：报障「终止残骸打捞后舰船并不会返港」⇒ 裁定「真实返航航程」
-   * ＋「到港自动卸入仓库」）——
-   * 这是本函数**原来漏掉的一步**：旧实现只 `salvageHalt` 清了作业态，**没有任何返港动作**
-   * （舰船"位置"本来由作业态承载 ⇒ 作业一停，船就凭空消失在原地，既不飞回来也不卸货）。
-   * 现在建返航账本 ⇒ 与换船善后同链：飞回来、到港整仓卸货、写「已随打捞善后返航到港」日志。
-   * ⚠ `tripM3` 归零（同旧行为）：它已被下面那条日志消费过了。
-   */
   const remainSec = info.galaxyId === null || stayedAtPort ? null : armReturnLeg(state, ctx, info.galaxyId, info)
   state.salvaging.tripM3 = 0
   addLog(
@@ -520,8 +356,6 @@ export function stopSalvageOp(state: GameState, ctx: SimContext): boolean {
   if (remainSec !== null) {
     const shipName = shipDisplayName(state, ctx, state.shipId)
     const haveCargo = info.tripM3 > 0
-    // ⟪文案调整 2026-10-02⟫ p3 片段「（到港整仓卸货）」→「（卸空货仓）」——原句与句尾「约 N 秒后到港」
-    // 把「到港」说了两遍；该片段是四条返航日志共用的尾巴（见 `table.ts` 的 `core.salvaging.018`）。
     addLog(
       state,
       'salvage',
@@ -539,20 +373,9 @@ export function stopSalvageOp(state: GameState, ctx: SimContext): boolean {
   return true
 }
 
-/** 打捞善后（换驾驶时引擎内部调用，2026-09-09 与采矿 retireMiningShip 同构）：
- * 把当前驾驶船正在进行的打捞转成"自动返航账本"（shipReturns，reason='salvageStop'）——
- * 打捞中 = 按货仓占比缩放的满载返航全长（去程并入）；返航中 = 继续剩余；
- * 旧档遗留出航相位按空船腿折算折返。到港由 advanceShipReturns 自动整仓卸货，
- * 打捞作业随之结束（autoCycle/stopAfterTrip 偏好跨趟保留，同采矿）。 */
 export function retireSalvageShip(
   state: GameState,
   ctx: SimContext,
-  /**
-   * **重入/无状态调用**（**2026-10-02 加**，为 `haltActivityForSwitch` 那条路服务）：
-   * - `galaxyId`：作业态**已被清掉**时的星系（自动停机路径先清状态、再调本函数）——不传就读 `state.salvaging`；
-   * - `preserveExisting`：该船**已经在返航账本里** ⇒ 只**修正腿长与日志**、**保留已走相位**
-   *   （账本那份是 `state.haltActivityForSwitch` 建的**占位**：腿长按相位粗估、日志没船名没秒数）。
-   */
   opts?: { galaxyId?: string; preserveExisting?: boolean; fallbackLegMs?: number; progress?: WorkReturnProgress },
 ): boolean {
   const s = state.salvaging
@@ -560,13 +383,7 @@ export function retireSalvageShip(
   const snapshot = opts?.progress ?? (opts?.galaxyId ? state.pendingActivityReturn?.progress : undefined)
   const progress = snapshot ?? s
   if (!galaxyId) return false
-  /** 已在返航中（换船善后/手动停止已建过账本）⇒ 只结束作业，别覆盖进度 */
   if (opts?.preserveExisting === true && state.shipId in state.shipReturns) {
-    /**
-     * **占位账本 ⇒ 用真值修正**（**2026-10-02**）：`state.haltActivityForSwitch` 先建了一份
-     * "腿长靠相位估"的占位（它不能 import 本模块），这里用 `ctx` 算出真实腿长补上，
-     * 并写下**带船名与真实秒数**的那条日志（这一刻作业态还在，ctx 也读得到名字）。
-     */
     const retFix = state.shipReturns[state.shipId]!
     const leg = workReturnLeg(state, 'salvage', salvageReturnMs(state, ctx, galaxyId, 1), progress)
     retFix.legMs = leg.legMs
@@ -576,7 +393,6 @@ export function retireSalvageShip(
     const shipFix = state.fleet[state.shipId]
     const haveCargoFix = shipFix ? Object.keys(shipFix.cargo).some((k) => (shipFix.cargo[k] ?? 0) > 0) : false
     const remainSecFix = Math.max(0, Math.round((retFix.legMs - retFix.phaseAccMs) / 1000))
-    // ⟪文案调整 2026-10-02⟫ p3 片段「（到港整仓卸货）」→「（卸空货仓）」（同上，见 `core.salvaging.018`）。
     addLog(
       state,
       'salvage',
@@ -595,10 +411,7 @@ export function retireSalvageShip(
   }
   if (opts?.galaxyId === undefined && (!s.active || !s.galaxyId)) return false
   const galaxyName = ctx.galaxies.get(galaxyId)?.name ?? galaxyId
-  // 打捞返航腿 = 满载返航 + 空船去程（去程并入返航，与 advanceSalvageOp 返航腿同口径）
-  const fullLeg = legMsFor(state, ctx, galaxyId) + outboundLegMsFor(state, ctx, galaxyId)
-  /** ⚠ allbackLegMs：调用方（state.haltActivityForSwitch，不能 import 本模块）给的兜底腿长 */
-  const baseMs = opts?.fallbackLegMs !== undefined ? Math.max(1, Math.round(opts.fallbackLegMs)) : scaledReturnMs(fullLeg, state, ctx, state.shipId)
+  const baseMs = opts?.fallbackLegMs !== undefined ? Math.max(1, Math.round(opts.fallbackLegMs)) : salvageReturnMs(state, ctx, galaxyId, 1)
   const { legMs, phaseAccMs } = workReturnLeg(state, 'salvage', baseMs, progress)
   const oldShip = state.fleet[state.shipId]
   const haveCargo = oldShip ? Object.keys(oldShip.cargo).some((k) => (oldShip.cargo[k] ?? 0) > 0) : false
@@ -606,27 +419,13 @@ export function retireSalvageShip(
     beltId: null,
     legMs: Math.max(1, legMs),
     phaseAccMs: Math.min(legMs, Math.max(0, phaseAccMs)),
-    /** ⚠ 与手动停止同 reason（`'salvageStop'`）：到港日志才能说"打捞停止返航到港"而不是笼统的"善后" */
     reason: 'salvageStop',
   }
   const shipName = shipDisplayName(state, ctx, state.shipId)
   const remainSec = Math.max(0, Math.round((legMs - phaseAccMs) / 1000))
-  // 结束作业（偏好字段 autoCycle/stopAfterTrip 保留，供下次作业沿用）
   resetOp(state)
-  /**
-   * 日志：**两条路分开说**（2026-10-02）——玩家手点停止/换船 ⇒「已随换船结束」；
-   * 被别的活动挤掉（`haltActivityForSwitch` 传了 `opts.galaxyId`）⇒ 复用「打捞已停止：…返航空间站」。
-   * ⟪文案调整 2026-10-02⟫ ① `p3` 片段「（到港整仓卸货）」→「（卸空货仓）」（见 `core.salvaging.018`）。
-   * ② **`else`（换船）分支的内联正文与 id 口径统一**（船长令「按你推荐」⇒ **甲案**）：该分支原正文写
-   * 「打捞已**停止**：…返航空间站…」，却挂 id `core.salvaging.017`（表文 = **打捞已随换船结束**）
-   * ⇒ 存档正文与界面显示的句子不是同一句（界面按 id 渲染）。三处凭据（017 表文 · 本注释 ·
-   * 采矿同族 `core.shipyard.019`）支持换船口径，故正文改回「已随换船结束：…**自动**返航空间站…」，
-   * 用例 `tests/salvaging.test.ts` 的断言随之改回。**玩家可见零变化**（界面一直显示这句）。
-   * 台账 = `docs/design/return-log-copy-20261002.md` §5。
-   */
   const auto = opts?.galaxyId !== undefined
   if (auto) {
-    // ⟪文案调整 2026-10-02⟫ p3 片段「（到港整仓卸货）」→「（卸空货仓）」（同上）。
     addLog(
       state,
       'salvage',
@@ -658,47 +457,11 @@ export function retireSalvageShip(
   return true
 }
 
-/**
- * 完好舰体命中率（卷B3⑨，2026-09-08 船长定稿：概率按"该打捞轮占用的分钟数"换算——
- * 与富矿脉⑥同哲学：以分钟为纲，掷点节奏不受打捞器数量/周期与 AI 效率影响）：
- * p = min(1, 轮占分钟 × balance.intactHullRatePerMin × 1.2^级)。
- * 命中 = 当场直发敌群回收彩头（rollIntactHullLoot；旧"当轮体积 ×2"已移除）。
- * 0 = 禁用（测试用它关完好舰体保 rng 时序）。
- */
 export function assayChanceOf(state: GameState, ctx: SimContext, cycleMsReal: number): number {
   const lv = Math.min(5, state.skills.trained['wreck-assaying'] ?? 0)
   return Math.min(1, (Math.max(0, cycleMsReal) / 60_000) * ctx.balance.intactHullRatePerMin * Math.pow(1.2, lv))
 }
 
-/**
- * **打捞一轮出什么**：抽该星系敌群型号池一只（威胁加权）→ 体积当量系数（含放干扣减）
- * → 返回 `{ itemId, volumeM3 }`；星系无型号池返回 null。放货入舱由调用方按剩余舱容裁决
- * （放不下 = 满仓返航）。`cycleMsReal`：该台打捞器本轮真实周期毫秒（完好舰体命中率按分钟语义换算用）。
- * 主控作业与 AI 任务共用本函数。
- *
- * **优先级 = 三级序**（**2026-09-26 船长裁定原话**：「**优先捞稀有池，稀有池捞完后开始普通池。
- * 同池内，入侵残骸优先。**」）：
- *
- * 1. **稀有池**（`state.galaxyWrecks[星系].rare / rareBy`）：有存量 ⇒ **本轮必出一件稀有残骸**
- *    （固定 `RARE_WRECK_VOLUME_M3` = 30 m³ × 倍率，**不吃 `mul`**，且**两池一个都不扣**——见下面那支的长注）；
- * 2. **普通池**（星系密度 `density` ＋ 入侵残骸场 `weekendWrecks`）：
- *    ⓐ **同池内入侵残骸优先** —— 入侵残骸场有效密度 > 0 ⇒ 只从**入侵独立卡**（`hidden` 的那批）里抽
- *      （`autoTargetPickOf` 第 ① 条；"入侵残骸"= 夺回奖励/旗舰战利品落在该星系的那本账，48h 线性衰减）；
- *    ⓑ 否则 ⇒ **按各组存量的数量比同步抽** —— 先按 `byGroup` 份额抽组、再在该组内按威胁加权抽卡
- *      （`autoTargetPickOf` 第 ② 条；无分组账的老档 ⇒ 回落整池按威胁加权）；
- * 3. 两池皆空 ⇒ 本轮**不出货**（作业空转，不报错）。
- *
- * ⚠ **"入侵残骸"有两个同名不同物的概念，别串**（2026-09-26 记）：
- * - **本文所说的"入侵残骸"= 入侵残骸场那本账**（`state.weekendWrecks`，夺回奖励与旗舰战利品落在该星系，
- *   48h 线性衰减，池内 = `hidden` 的入侵独立卡）⇒ 有存量时**优先、且不参与组比**；
- * - **另一个是残骸的「入侵」地区类别**（`WreckRegion` 的 `inv`，2026-09-26 船长令「H 族残骸不分高安低安，
- *   统一为入侵残骸」）⇒ 那是**组的一个地区档**，走**本函数第 ⓑ 条**（按各组数量比），与上面那本账无关。
- *
- * ⚠ **稀有池不参与"组比"**：它是"捞完为止"的**必得池**，不是按比例分摊的一档——这正是船长这条裁定的要点
- * （改前那版曾把稀有残骸当成"跟着打捞对象走"的一档，现口径以本条为准）。
- * ⚠ **船长的三级序与实现逐字相同**（本轮只做口径注释 ＋ 用例名对齐，**零行为改动**）；
- * 日后若有人要动这里，先读本段。
- */
 export function pullOneWreck(
   state: GameState,
   ctx: SimContext,
@@ -706,21 +469,7 @@ export function pullOneWreck(
   cycleMsReal: number,
   cargoFreeM3?: number,
 ): { itemId: string; mul: number; volumeM3: number } | null {
-  /**
-   * **打捞对象**（**2026-09-26 船长令**）：作业上带着它（`SalvageOpState.targetGroup`）。
-   *
-   * 🔴 **2026-10-02 船长令「按你推荐」改口径**（起因 = 玩家报障「**入侵的残骸打捞后数字不变也捞不到**」）：
-   * 原口径是「选了某一组而该组已捞干 ⇒ **本轮不出**（不自动换组）」——那是"手选"时代的语义，而
-   * **手选入口当天就被船长撤掉了**（同日令「不要再让玩家手动选择打捞对象了…改为自动判断」）⇒
-   * 这个字段如今只剩**老档残留**与 AI/用例在用。残留值一旦是**上一族那套键**（例如 H 族的 `h-hi`），
-   * 遇上新一族的残骸就会**每轮返回"什么都不产出"**（探针读数：`对象=h-hi · 池 120.00 → 120.00 · pick=null`）
-   * —— 主控作业与 AI 副船拿到 `null` 都会**直接终止任务**（日志还会说成"敌群情报缺失"，误导）。
-   *
-   * 现口径（与 `startSalvageOp` / `setSalvageTarget` 那句「给的对象不可用 ⇒ 回落全部」**完全一致**）：
-   * **对象已捞干 / 只剩箱子也没有 ⇒ 就地清掉它、本轮按「全部」出**（自愈，不再空转）。
-   */
   let target = state.salvaging.targetGroup
-  // 手选入口已撤；有入侵库存时，旧档常驻筛选不能覆盖自动优先规则。
   if (target !== undefined && target !== WEEKEND_WRECK_TARGET &&
     (weekendWreckDensityOf(state, galaxyId) > 0 || weekendRareWreckCountOf(state, galaxyId) > 0)) {
     state.salvaging.targetGroup = undefined
@@ -734,17 +483,6 @@ export function pullOneWreck(
     state.salvaging.targetGroup = undefined
     target = undefined
   }
-  /**
-   * ⓪★ **玩家舰船残骸独占最高优先**（**2026-09-26 船长令**：「**玩家如果在该星系打捞，优先打捞该残骸
-   * （比稀有残骸优先级还高）。打捞后玩家按照一定概率和比例回收被摧毁舰船的部分装备。除此以外没有其他资源。**」）。
-   *
-   * 三条要点：
-   * - **在稀有池之前**（本支在下面那一支之上）；有它就**独占本轮的产出**，不碰稀有池、不碰普通池；
-   * - ⚠ **也在"手选对象的存量闸"之前**：残骸里的件与任何型号池的存量**无关**（它自己就是一本账）
-   *   ⇒ 手选了一个已捞干的组、也不能因此把玩家残骸跳过去（船长那条"最高优先"是绝对的）；
-   * - **不吃体积/放干**：捞回的是一件**装备**（模块进装备库、无人机进仓库），没有 m³ 当量、
-   *   不扣星系密度、不写 `galaxyWrecks`；**没捞到也别落普通残骸**（残骸还立着，玩家下次接着捞）。
-   */
   if (state.shipWrecks && hasSalvageableShipWreck(state, galaxyId)) {
     const salvage = trySalvagePlayerWreckOf(state, ctx, galaxyId)
     if (salvage.kind === 'item') {
@@ -756,8 +494,6 @@ export function pullOneWreck(
       const itemName = salvage.isModule
         ? (ctx.modules.get(salvage.itemId)?.name ?? salvage.itemId)
         : (ctx.items.get(salvage.itemId)?.name ?? salvage.itemId)
-      /** ⚠ **级别 = `warn`**（**2026-09-26 船长令**：「**回收玩家自己残骸的事件日志不醒目，应该划分到警告**」）
-       *  ——`info` 在事件日志里与日常噪声同级；捞回自己的东西是"该被看见"的一条，提到警告档。 */
       addLog(state, 'warn', `打捞舰船残骸：捞回 ${itemName} ×${salvage.units}。`, 'core.salvaging.030', {
         p1: itemName,
         p2: salvage.units,
@@ -765,12 +501,6 @@ export function pullOneWreck(
       return { itemId: salvage.itemId, mul: 1, volumeM3: 0 }
     }
     if (salvage.kind === 'plugs') {
-      /**
-       * **插件换黑匣**（**2026-09-26 船长令**：「**玩家回收按插件数量直接回收成黑匣**」）。
-       *
-       * 一件事拆成两句日志（与下面的"打捞 + 整船回收"同款）：黑匣入账一条、打捞读数一条；
-       * 两句都归 `warn`（与同族两条回收日志同档，见 `core.salvaging.030/031`）。
-       */
       addWare(state, PLUG_BLACKBOX_ITEM_ID, salvage.blackBoxes)
       const name = ctx.items.get(PLUG_BLACKBOX_ITEM_ID)?.name ?? PLUG_BLACKBOX_ITEM_ID
       addLog(state, 'warn', `舰船残骸里的插件换回了 ${name} ×${salvage.blackBoxes}。`, 'core.salvaging.032', {
@@ -784,10 +514,6 @@ export function pullOneWreck(
       return { itemId: PLUG_BLACKBOX_ITEM_ID, mul: 1, volumeM3: 0 }
     }
     if (salvage.kind === 'ship') {
-      /**
-       * 新规则先恢复舰体/正常插件，再按原位及CPU预算装回保全装备，不能安装的退库。
-       * 不切主控、不恢复作业和货载；只有整船失败时普通插件才换黑匣，战损不产物品。
-       */
       if (salvage.defId !== undefined) {
         const restoredId = restoreShipFromWreck(state, {
           defId: salvage.defId,
@@ -823,7 +549,6 @@ export function pullOneWreck(
           }
         }
       }
-      /** 同批把"整船回收"也提到 `warn`（2026-09-26 船长令：回收自己残骸的日志要醒目） */
       addLog(state, 'warn', `舰船残骸里捞回了一艘还能修的船：${salvage.wreckName}——已拖回母港入队。`, 'core.salvaging.031', {
         p1: salvage.wreckName,
       })
@@ -831,82 +556,33 @@ export function pullOneWreck(
     }
     return { itemId: '', mul: 1, volumeM3: 0 }
   }
-  /**
-   * **打捞对象**（**2026-09-26 船长令**）——**存量闸已在函数开头判过**（对象不可用就地清掉、回落「全部」，
-   * 见那里那段长注）：原先是"到这里判、不可用就 `return null`"，2026-10-02 起改为自愈式回落。
-   * ⚠ 那条闸的**位置**仍在玩家残骸那一支**之前**（自愈只清字段、不跳支）⇒ 船长 2026-09-26 定的
-   * 「玩家残骸最高优先、与任何池的存量无关」一字未改。
-   */
-  // ① **稀有池优先**（三级序第 1 档；2026-09-10 船长定"窝点战利品必捞"· 2026-09-26 复述
-  //    「优先捞稀有池，稀有池捞完后开始普通池」）：稀有池有存量 ⇒ 本轮必出稀有，**捞干后**才轮到普通池。
-  //    ⚠ **打捞对象只管普通池内部**（手选组 / 手选入侵都不影响稀有池——稀有残骸是窝点与派系活跃的战利品，
-  //    与所选组无关；该分支里的 `target` 只为"按组归族"取像，不改变"稀有必出"）。
   const rareVolumeM3 = RARE_WRECK_VOLUME_M3 * tuningMul(state, 'rareWreckVolume')
   const rareId = pullRareWreck(state, galaxyId, ctx, target,
     cargoFreeM3 === undefined || wreckUnitsOf(rareVolumeM3) <= cargoFreeM3)
   if (rareId) {
-    /**
-     * **稀有轮不吃普通池放干**（**2026-09-25 玩家报障修复**）。
-     *
-     * 船长转述：「**当星系的残骸里有稀有残骸时，打捞稀有残骸会同时消耗普通残骸，
-     * 但是没有回收普通残骸**」——原实现这一支照样调了 `salvageRoundPull`：它按"本轮出普通残骸"
-     * 的口径扣了 2% 放干（并顺带扣了入侵池），可这一轮的产出被替换成稀有残骸（固定 30 m³ × 倍率，
-     * 不吃 mul）⇒ **扣了不给**，普通池白掉一截。
-     *
-     * 现按**甲案**修：稀有轮只取读数（`salvageRoundMulOf`，纯读），**两池一个都不扣**；
-     * 稀有捞完、回常规池的那一轮起，放干照旧（口径见 `salvage.salvageRoundPull`）。
-     */
     const mulRare = salvageRoundMulOf(state, ctx, galaxyId)
     return { itemId: rareId, mul: mulRare, volumeM3: rareVolumeM3 }
   }
-  const pool = wreckPoolOf(ctx, galaxyId, state, Date.now(), target) // 同源池 ＋ **按打捞对象过滤**（2026-09-26）
+  const pool = wreckPoolOf(ctx, galaxyId, state, Date.now(), target)
   if (pool.length === 0) return null
-  // 2026-09-12 审计 B3：改走单点 `pickWeighted`（按威胁加权；原累加循环 `roll <= acc` 即 `lte` 口径）；
-  // 无中选兜底 = 池首（与改前 `chosen = pool[0]` 初值一致）
-  /** **自动判定对象**（2026-09-26 船长令）：手选入口已撤，缺省这一支就是主路径 */
   const chosen: { anomalyId: string; threat: number; bucketKey?: string } =
     (target === undefined || target === WEEKEND_WRECK_TARGET ? autoTargetPickOf(state, ctx, galaxyId, pool) : null) ??
     pickWeighted(state.rng, pool, (p) => p.threat, { bound: 'lte' }) ??
     pool[0]!
-  // 2026-09-19 合并：产出物 = 该卡**所属组**的残骸（`wreck-<组 key>`）；组查不到 = 未知卡 ⇒ 不产出
   const group = wreckGroupOfCard(chosen.anomalyId, ctx)
   if (!group) return null
-  /**
-   * 🔴 **本轮产出是不是"入侵残骸"（池账那本）**（**2026-10-02 船长令「甲」**）——
-   * 判据 = **这一抽抽中的那张卡是不是入侵独立卡**（`hidden` 的那批；`wreckPoolOf` 只从
-   * `weekendBountyCardsOf` 并入它们）。用它而不是"池里有没有存量"：三级序下的兜底路
-   * （`autoTargetPickOf` 抽不到时会回落到按组/加权抽）也就能被正确区分。
-   */
   const fromWeekend = ctx.anomalies.get(chosen.anomalyId)?.hidden === true
   const bucketKey = chosen.bucketKey ?? (fromWeekend ? weekendWreckPoolsOf(state, galaxyId)
     .find((p) => p.density > 0 && (p.family === null || p.family === group.family))?.key : undefined)
-  /**
-   * 2026-10-04：入侵mul取当地基础密度、普通mul仍取当前池量；扣账与取数分离。
-   * - 入侵轮 ⇒ `salvageRoundMulOf`（**只读**！池子扣减改由下面的 `chargeWeekendWreckByVolume`
-   *   按**本轮实际出量**做，星系池也一分不扣）；
-   * - 其余 ⇒ `salvageRoundPull`（照旧放干星系池）。
-   */
   if (fromWeekend && bucketKey === undefined) return null
   const mul = salvageRoundMulOf(state, ctx, galaxyId, target, fromWeekend ? bucketKey : undefined)
   const wreckId = wreckItemIdOf(group.key)
-  // 乙案（2026-09-05）：残骸计数 = 体积（m³）——型号威胁决定单份体积量级（威胁×0.06），
-  // 本轮入舱 m³ = 单份 × 密度系数；item unitM3 = 1，数量即体积。
-  // 2026-10-04：入侵型号仅决定来源，单轮体量取当地普通基线，不受入侵敌卡强度影响。
   const baseM3 = fromWeekend ? ordinaryBaseVolumeM3Of(ctx, galaxyId) : ordinaryCardVolumeM3Of(chosen.threat)
-  // 残骸富集识别学（wreck-assaying，卷B3⑨）：完好舰体命中 → 当场直发该**组**回收彩头
-  // （不再折算体积）；判定恒消耗一次随机数保 rng 时序（rate=0 时也掷）
-  // 漂流物打捞学（salvage-diving，2026-09-05）：残骸打捞量每级 +12%（主控与 AI 同享）
   const diveLv = Math.min(5, state.skills.trained['salvage-diving'] ?? 0)
-  /**
-   * 2026-09-19 船长：「为了平衡价值，可以提高更危险地区的残骸出量。」
-   * ⇒ **出量梯度**按**打捞星系的回收档**乘（不是按残骸身份）——合并把同组各卡的每 m³ 价值拉平后，
-   * 危险度差异由"每轮捞多少 m³"承担（常量 `WRECK_YIELD_TIER_MUL`：常 1.00 / 险 1.15 / 危 1.20）。
-   */
   const yieldMul = wreckYieldMultiplierOf(recycleTierOf(wreckBaseDensity(galaxyId, ctx)))
   let volumeM3 = baseM3 * mul * (1 + 0.12 * diveLv) * yieldMul
   if (fromWeekend) {
     const left = weekendWreckPoolsOf(state, galaxyId).find((p) => p.key === bucketKey)?.density ?? 0
-    // 入舱和池扣量共用整数数量；不足一件的尾轮保留原有兜底。
     volumeM3 = Math.min(wreckUnitsOf(volumeM3), left)
   }
   if (cargoFreeM3 !== undefined && wreckUnitsOf(volumeM3) > cargoFreeM3) {
@@ -918,29 +594,11 @@ export function pullOneWreck(
     const gains = rollIntactHullLoot(state, ctx, chosen.anomalyId)
     if (gains) addLog(state, 'salvage', `完好舰体！${gains}。`, 'core.salvaging.019', { p1: gains })
   }
-  /**
-   * 🔴 **从入侵池出的那一轮：池子结算走单点 `chargeWeekendWreckByVolume`**。
-   *
-   * **2026-10-02 船长令「甲」**（原话「**我发现入侵残骸哪怕数量很少也能一次性捞出很多。**」）：
-   * 历史取数现已改为当地基础吞吐；当时出量系数只看入侵池自己（改前富星系里只有10 m³
-   * 的入侵池 40 轮能吐 **2951 m³**，实测见 `tools/_ui-artifacts/invasion-wreck-yield.log`），
-   * 池子**按本轮实际出量等量扣**、**出量按余额封顶** ⇒ 入舱 = `min(算出来的量, 池子余额)`，
-   * 「池子标称多少，最多就只能捞多少」。
-   *
-   * 🔴 **2026-10-03 船长回滚令**（原话照抄）：「**将打捞获取量进行回滚，回滚到 2026-10-02 那条「甲」**」
-   * —— 当天早些时候按「恢复渐近缓释」改的那版（池子每轮只放干 2%×超出量）**已按本令作废**
-   * （它与"出量按池量算系数"相乘会把总获取量放大 54~157 倍；读数见
-   * `docs/design/wreck-groups-20260919.md`；详细读数保留在Git历史）。
-   */
   if (fromWeekend) volumeM3 = chargeWeekendWreckByVolume(state, galaxyId, volumeM3, bucketKey)
   else salvageRoundPull(state, ctx, galaxyId, target)
   return { itemId: wreckId, mul, volumeM3 }
 }
 
-/**
- * 引擎内部：按流逝时间推进打捞状态机（即时打捞 → 满仓返航（去程并入）→ 到港卸货结束）。
- * 剩余时间管理器与采矿同构：时间按阶段逐段消费，一次大推进可完整穿越全程。
- */
 export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimContext): void {
   const s = state.salvaging
   if (!s.active || deltaMs <= 0) return
@@ -954,14 +612,13 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
   while (s.active && remaining > 0) {
     remaining = consumeDeparture(state, 'salvaging', remaining)
     if (remaining <= 0) break
-    if (++guard > 100_000) break // 防失控（离线大步长多循环）
+    if (++guard > 100_000) break
     const galaxyId = s.galaxyId
     if (!galaxyId) {
       resetOp(state)
       addLog(state, 'warn', '找不到打捞目标星系，作业已停止。', 'core.salvaging.021')
       return
     }
-    // ── 返航阶段（去程并入返航；返航腿按货仓占比缩放——空仓快、满仓=原时长，船长 2026-09-05）──
     if (s.phase === 'outbound' || s.phase === 'returning') {
       const outFull = outboundLegMsFor(state, ctx, galaxyId)
       const leg =
@@ -977,7 +634,7 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
       remaining -= need
       s.phaseAccMs = 0
       if (s.phase === 'returning') {
-        const moved = unloadCargoOfShipToWarehouse(state, ctx, state.shipId)
+        const moved = unloadWorkFleetToWarehouse(state, ctx)
         const galaxyName = ctx.galaxies.get(galaxyId)?.name ?? galaxyId
         addLog(
           state,
@@ -986,7 +643,6 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
           'core.salvaging.022',
           { p1: galaxyName, p2: moved.toLocaleString('zh-CN') },
         )
-        // 按设定收工（勾了「本次返航卸货后停止」/ 关闭自动循环）；否则卸完直接同星系续捞
         if (s.stopAfterTrip || s.autoCycle === false) {
           addLog(
             state,
@@ -997,68 +653,67 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
           resetOp(state)
           break
         }
-        // 自动循环：去程已并入刚完成的返航腿 → 卸完直接恢复打捞（无出航相位，与采矿同构）
         s.phase = 'salvaging'
         s.cycleAccMs = 0
         s.tripM3 = 0
         s.deviceAccMs = {}
+        s.deviceClockVersion = 2
         delete s.fuelMul
         beginDeparture(state, ctx, 'salvaging', galaxyId, { galaxy: HOME_GALAXY_ID, site: null, docked: true })
         continue
       }
-      // 旧档遗留的出航相位到点：抵达目标星系（点亮探索）后直接打捞
       markExplored(state, galaxyId)
       s.phase = 'salvaging'
       s.cycleAccMs = 0
       continue
     }
 
-    // ── 打捞阶段：逐台打捞器按各自周期结算 ──
     if (wreckPoolOf(ctx, galaxyId, state, Date.now()).length === 0) {
       resetOp(state)
       addLog(state, 'warn', '该星系的敌群情报缺失，打捞作业已停止。', 'core.salvaging.025')
       return
     }
-    const cycles = salvagerCyclesOf(state, ctx, state.shipId)
-    if (cycles.length === 0) {
+    const devices = workFleetShipIds(state).flatMap(shipId => salvagerCyclesOf(state, ctx, shipId)
+      .map((cycleMs, index) => ({ shipId, cycleMs, key: JSON.stringify([shipId, index, cycleMs]) })))
+    if (devices.length === 0) {
       resetOp(state)
       addLog(state, 'warn', '未找到可用的打捞器，打捞作业已停止。', 'core.salvaging.026')
       return
     }
-    // 最短周期为统一推进步（多台各自维护相位）
-    const stepMs = Math.min(...cycles)
-    if (s.cycleAccMs < stepMs) {
-      const need = stepMs - s.cycleAccMs
-      const take = Math.min(remaining, need)
-      s.cycleAccMs += take
-      remaining -= take
-      if (s.cycleAccMs < stepMs) break
+    if (s.deviceClockVersion !== 2) {
+      const legacy = s.deviceAccMs
+      s.deviceAccMs = {}
+      for (const device of devices) {
+        s.deviceAccMs[device.key] = device.shipId === state.shipId
+          ? (legacy[String(device.cycleMs)] ?? 0) + s.cycleAccMs : 0
+      }
+      s.deviceClockVersion = 2
     }
-    s.cycleAccMs = 0
-    for (const cycleMs of cycles) {
-      const key = String(cycleMs)
-      s.deviceAccMs[key] = (s.deviceAccMs[key] ?? 0) + stepMs
+    const deviceKeys = new Set(devices.map(row => row.key))
+    for (const key of Object.keys(s.deviceAccMs)) if (!deviceKeys.has(key)) delete s.deviceAccMs[key]
+    for (const { key, cycleMs } of devices) s.deviceAccMs[key] = Math.min(cycleMs, Math.max(0, s.deviceAccMs[key] ?? 0))
+    const need = Math.min(...devices.map(({ key, cycleMs }) => Math.max(0, cycleMs - (s.deviceAccMs[key] ?? 0))))
+    const take = Math.min(remaining, need)
+    for (const { key } of devices) s.deviceAccMs[key] = (s.deviceAccMs[key] ?? 0) + take
+    remaining -= take
+    const stepMs = Math.min(...devices.map(row => row.cycleMs))
+    s.cycleAccMs = Math.min(...devices.filter(row => row.cycleMs === stepMs).map(row => s.deviceAccMs[row.key] ?? 0))
+    if (take < need) break
+    for (const { shipId, cycleMs, key } of devices) {
       while ((s.deviceAccMs[key] ?? 0) >= cycleMs) {
         s.deviceAccMs[key] = (s.deviceAccMs[key] ?? 0) - cycleMs
-        const freeM3 = freeCargoM3(state, ctx)
+        const freeM3 = freeCargoM3Of(state, ctx, shipId)
         const pulled = pullOneWreck(state, ctx, galaxyId, cycleMs, freeM3)
-        if (pulled) bumpFirst(state, 'salvageRuns') // 第一次任务/链：打捞次数
+        if (pulled) bumpFirst(state, 'salvageRuns')
         if (!pulled) {
           resetOp(state)
           addLog(state, 'warn', '该星系的敌群情报缺失，打捞作业已停止。', 'core.salvaging.025')
           return
         }
-        /**
-         * **玩家舰船残骸那一支没有 m³ 当量**（2026-09-26）：它捞回的是**装备**（模块进装备库、无人机进仓库），
-         * 不占货舱、也不触发"满仓返航"（`volumeM3 = 0` ⇒ 下面 `freeM3` 判定天然放行）。
-         * ⚠ 与 `kind: 'none'` 同款早退：那一轮**什么都不落**（残骸还立着，下次接着捞）。
-         */
         if (pulled.volumeM3 <= 0) continue
         if (wreckUnitsOf(pulled.volumeM3) > freeM3) {
-          // 满仓（下一轮放不下）：自动返航（去程并入返航，总行程时间不变）
           s.phase = 'returning'
           s.phaseAccMs = 0
-          /** 燃料：**原返航时长**（不含燃料）按秒扣料，本趟倍率存进 `s.fuelMul`（见 `jumpFuel`） */
           const baseMs = salvageReturnMs(state, ctx, galaxyId, 1)
           s.fuelMul = beginJumpFuelLeg(state, 'salvage', baseMs)
           const mergedSec = Math.round(jumpFuelLegMsOf(baseMs, s.fuelMul) / 1000)
@@ -1076,17 +731,12 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
           )
           break
         }
-        /**
-         * **入舱件数走单点 `wreckUnitsOf`**（**2026-10-02 船长令「按你推荐」**）：
-         * 计数 = 体积（m³），但**不足 1 m³ 的那一轮至少给 1 件** —— 改前直接 `addItem(…, volumeM3)`
-         * 会被 `Math.floor` 抹成 0 ⇒ 池子扣光、货舱一件没多（玩家报障「数字不变也打捞不到」）。
-         * ⚠ `s.tripM3` 记的仍是**实际出的 m³**（池子与行程账不吃这个保底）。
-         */
-        addItem(state, pulled.itemId, wreckUnitsOf(pulled.volumeM3))
+        addItem(state, pulled.itemId, wreckUnitsOf(pulled.volumeM3), shipId)
         s.tripM3 += pulled.volumeM3
       }
       if (s.phase === 'returning') break
     }
+    if (s.phase === 'salvaging') s.cycleAccMs = Math.min(...devices.filter(row => row.cycleMs === stepMs).map(row => s.deviceAccMs[row.key] ?? 0))
   }
 }
 
@@ -1099,6 +749,7 @@ function resetOp(state: GameState): void {
   s.cycleAccMs = 0
   s.tripM3 = 0
   s.deviceAccMs = {}
+  delete s.deviceClockVersion
   s.targetGroup = undefined
   delete s.fuelMul
 }

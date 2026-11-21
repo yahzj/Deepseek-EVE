@@ -5,7 +5,6 @@ import type { ModuleDef } from '../types'
 import { stackWeight } from '../equipment'
 import { healArmorHp } from './combatMath'
 
-/** 同件正负效果同权重，全部乘数从原件重算，不逐拍累乘。 */
 export function crisisEffectsOf(modules: readonly ModuleDef[]): UnitSpec['crisisOverload'] {
   const devices = modules.flatMap(m => m.crisisOverload ? [m.crisisOverload] : [])
   if (!devices.length) return undefined
@@ -20,7 +19,6 @@ export function crisisEffectsOf(modules: readonly ModuleDef[]): UnitSpec['crisis
   }, { rangeMul: 1, damageMul: 1, speedMul: 1, droneInitialMul: 1, droneCycleMul: 1 })
 }
 
-/** 只缩放尚在运行的本舰无人机计时，已完成首次放飞不追溯。 */
 export function syncPlayerCrisis(b: BattleState, specs: readonly UnitSpec[]): void {
   for (const spec of specs) {
     const rt = b.units[spec.tag], effect = spec.crisisOverload
@@ -43,7 +41,6 @@ export function syncPlayerCrisis(b: BattleState, specs: readonly UnitSpec[]): vo
   }
 }
 
-/** 返回独立动态规格，供战斗与视图同源读取，绝不污染每拍基础规格。 */
 export function playerGravekeeperSpecOf(b: BattleState, spec: UnitSpec, display = false): UnitSpec {
   const effect = b.meCrisisActive?.[spec.tag] ? spec.crisisOverload : undefined
   if (!effect && !spec.weapons.some(w => w.railCharge)) return spec
@@ -51,7 +48,6 @@ export function playerGravekeeperSpecOf(b: BattleState, spec: UnitSpec, display 
     droneLaunchGapMs: effect ? Math.max(10, Math.round((spec.droneLaunchGapMs ?? 500) * effect.droneInitialMul)) : spec.droneLaunchGapMs,
     weapons: spec.weapons.map((w, i) => {
       const out = { ...w }
-      // 炮台家族，不扩展到导弹、激光、基础炮或机群。
       if (effect && w.src === 'turret') {
         out.maxRangeM = Math.round(w.maxRangeM * effect.rangeMul)
         if (w.shotsByType) out.shotsByType = Object.fromEntries(Object.entries(w.shotsByType).map(([t, n]) => [t, ceilFinalQuantity(n! * effect.damageMul)]))
@@ -78,7 +74,6 @@ export function noteRailAttack(b: BattleState, spec: UnitSpec, index: number, re
   return Math.round(reloadMs * (1 + n * device.reloadStepPct))
 }
 
-/** 苏生按最大容量发放本段额度，满层溢出丢弃，不复活死舰。 */
 export function advancePlayerRebirth(b: BattleState, spec: UnitSpec, nowMs: number): void {
   const ledger = b.meRebirths?.[spec.tag], protocol = spec.rebirthRepair, rt = b.units[spec.tag]
   if (!ledger || !protocol || !rt || rt.hp.s + rt.hp.a + rt.hp.h <= 0) return

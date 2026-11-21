@@ -1,12 +1,3 @@
-/**
- * 主界面壳（V14.1 UI 版）：
- * - 顶栏：游戏名 / 飞行员 / 信用点 / 在线时长 / 保存 / 重置
- * - 顶部总菜单（原在窗口底部，移至顶部）：舰船 · 装配 · 物品 · 市场 · 工业 · 技能 · 星图
- *   （货仓已并入「物品」页的 仓库/货仓 子标签）；
- *   星图页内以标签切换三个功能区（矿带开采 / 星图·远征 / 悬赏情报）
- * - 中部：左侧为主窗口（按顶部菜单切换页面），右侧事件日志
- *   （可向右滑出隐藏 + 按日志类型过滤，偏好存 localStorage）
- */
 import { useEffect, useLayoutEffect, useReducer, useRef, useState, type CSSProperties } from 'react'
 import { useL10n } from './i18n/locale'
 import {
@@ -17,18 +8,14 @@ import {
   unlocked,
   unlockNeedTitle,
   ONB_AWAKEN,
-  // 旗舰战（main 侧新增）：战斗宿主判定与族名文案
   weekendFamilyNameId,
   weekendFlagshipBattleActive,
-  /** 结算信的固定 id（2026-09-25：庆祝烟火按它认"该放烟火的这一封"） */
   WEEKEND_COMMS_SETTLE_ID,
 } from '@whale/core'
 import { LogList, Panel } from '@whale/ui'
 import { perfHub, perfAutoEnabled } from './game/perf'
-/** 存档存储体检与告警（2026-09-25 船长令：修「MacBook · Safari 关掉游戏后存档丢失」） */
 import { saveStorageProbe, subscribeSaveAlert } from './game/saveGuard'
 import type { SaveStorageProbe } from './game/saveGuard'
-/** 存档桥（网页版 = localStorage ＋ 可绑定的本地文件；桌面端 = 本机文件） */
 import { saveBridge } from './game/storage'
 import { useThemeBootstrap } from './ui/theme'
 import { Communicator } from './panels/Expedition'
@@ -40,10 +27,6 @@ import { WeekendSummaryView } from './panels/WeekendSummary'
 import { PlugExchangeModal } from './panels/PlugExchange'
 import { InvasionAlarm, InvasionFireworks, ALARM_TOTAL_MS, FIREWORKS_MS } from './panels/InvasionFx'
 import { playSfx } from './game/sfx'
-/**
- * 场景音频（2026-11-02 追加批）：引擎状态 + 战场是否上屏 → BGM/环境场景。
- * 挂在 `battleOnStage` 定义之后（该行之上不能有早退分支，本 hook 无条件调用）。
- */
 import { notifyUiError } from './game/audio/uiFeedback'
 import { useSceneAudio } from './game/audio/useSceneAudio'
 import { FitPage } from './pages/FitPage'
@@ -51,7 +34,6 @@ import { ShipPage, type ShipTab } from './pages/ShipPage'
 import { ItemsPage } from './pages/ItemsPage'
 import { MarketPage } from './pages/MarketPage'
 import { IndustryPage } from './pages/IndustryPage'
-// 交易所不可用（服务器下线/故障）时隐藏导航入口——「一键关闭股票系统」。
 import { useExchangeAvailable } from './features/exchange/availability'
 import { IndustryHudPage } from './pages/IndustryHudPage'
 import { SkillsTreePage } from './pages/SkillsTreePage'
@@ -90,12 +72,10 @@ import { LAYOUT_KEY, LAYOUT_SET_KEY, readLayoutPref } from './ui/layoutPreferenc
 import { setSessionPick, sessionPick } from './ui/sessionView'
 import { cmdText, logText, tr } from './i18n/locale'
 import { fmtDuration } from './i18n/fmt'
-// 2026-10-02 批次 4t：设置/日志偏好/性能浮层域已拆到 ./panels/appSettings，本文件借回使用
 import { gameClock, kindOf, LOG_KINDS, KIND_LABEL, KIND_DESC, KIND_DOT, PREFS_KEY, readLogPrefs, SettingsPanel, PerfListener, PerfHud } from './panels/appSettings'
 import type { LogFilter } from './panels/appSettings'
 import { CLASSIC_LOG_FADE_MS, useClassicLogVisibility } from './ui/classicSidebars'
 
-/** 左侧导航项（出港 = 星图主入口，为首并放大描边；船长 2026-09-05：文案「点击 出港」+强调配色避免被误认作栏目装饰） */
 const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
   { key: 'map', label: 'ui.App.001', icon: 'nav-map' },
   { key: 'ship', label: 'ui.App.002', icon: 'nav-ship' },
@@ -105,44 +85,14 @@ const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
   { key: 'industry', label: 'ui.App.006', icon: 'nav-industry' },
   { key: 'skills', label: 'ui.App.007', icon: 'nav-skills' },
   { key: 'task', label: 'ui.App.008', icon: 'nav-task' },
-  /**
-   * **成就**（2026-09-20 船长：「一级页，但是内部再加一个二级子窗口容器」）：
-   * 徽章全由任务与次数链产出 ⇒ 放在任务中心下方；页内是固定头 + 内容内滚的子窗口容器，
-   * 页面本体不滚（一级页不滚红线），见 `pages/AchievementsPage.tsx`。
-   */
   { key: 'achieve', label: 'ui.App.119', icon: 'ach-first' },
-  // 2026-09-11 船长定：新增「通讯」页（NPC 消息 = 剧情与任务提示；邮件形图标，未读时闪烁 + 计数）
   { key: 'comms', label: 'ui.App.009', icon: 'nav-mail' },
   { key: 'chat', label: 'ui.chat.019', icon: 'nav-chat' },
-  /**
-   * **证券交易所（F0 可点击原型）·「股市」**（2026-11-03 船长：「先做可点击原型」；
-   * 同日追加反馈：「看不到股市入口」——原先放在 `DEBUG_NAV_ITEMS` 里，而调试模式在打包版/公网
-   * 域名下恒禁用（`debugAllowed()` 只放行 localhost/内网）⇒ 玩家永远看不见）。
-   * **原型期临时上正式导航**（本数组末位 = 现代布局右下角最右），验收后再决定是否加解锁门禁、
-   * 转正或替换；`unlocked()` 对表外 key 恒真（`packages/core/src/firstTasks.ts`）⇒ 开局即可见。
-   * label 仍用中文原文：`AppShell` 的 `t()` 查不到词条时原样返回（见 `i18n/locale.tsx`），
-   * 转正登记 `ui.exchange.*` 后再换 id。图标 = Carbon `ChartCandlestick`（`nav-exchange`）。
-   * **两套布局都显示**：旧版左侧导航与现代版主导航共用该项。
-   */
   { key: 'exchange', label: '股市', icon: 'nav-exchange' },
 ]
 
-/**
- * **调试专用导航项**（**2026-09-20 船长令**：「**现有页面先保留，新的页面暂时只有调试模式可见
- * （导航栏多出一个技能测试入口）**」）。
- *
- * ✅ **2026-09-22 船长令：「没问题了，可以将技能科技树替换掉原先的技能目录。」** ⇒ 技能科技树
- * （`pages/SkillsTreePage.tsx`）**升为正式「技能」页**，本调试入口随之下线（`ui.App.121` 已删）；
- * 旧技能目录 `pages/SkillsPage.tsx` 退役删除（它的训练队列面板与说明高亮搬进 `pages/skillShared.tsx`）。
- * 空间站替换旧实验星图入口；沿用同一本机调试门禁，普通出港星图不变。
- */
 const DEBUG_NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
   { key: 'playerStation', label: 'ui.playerStation.001', icon: 'nav-industry' },
-  /**
-   * **工业 HUD 页**（**2026-09-30 船长令**：「和之前技能树一样，先复制现有工业页面，然后修改后
-   * 单独做一个新的工业页面入口放在导航栏，仅调试模式可见」）——与当年技能科技树同一条路：
-   * 先进 `DEBUG_NAV_ITEMS`（只有调试模式看得见），验收通过再决定要不要转正/替换。
-   */
   { key: 'industryHud', label: 'ui.hud.101', icon: 'nav-industry' },
 ]
 
@@ -162,50 +112,18 @@ export type PageKey =
   | 'chat'
   | 'exchange'
 
-/** 已转换"一级页不滚"的页面（每完成一页在此登记；见 docs/design/page-scroll-layout.md 实施清单） */
 const PAGE_NO_SCROLL = new Set<string>(['ship', 'fit', 'market', 'map', 'industry', 'industryHud', 'skills', 'items', 'task', 'achieve', 'comms', 'chat', 'exchange', 'playerStation'])
 
-/**
- * 手机自绘下拉面板「最短出现间隔」（毫秒 · 2026-09-13 船长定）。
- * 船长原话：「手机浏览器的下拉框选项我记得是优化过的？不过现在出现的太快，玩家会出现误操作，
- * 建议加入出现延迟，保证玩家手指能即时离开屏幕」；集中提问后选定 **抬手才弹 ＋ 最短 200ms**。
- * 为什么"抬手才弹"是必须的：面板原先在 `pointerdown` 那一刻就插入 DOM，选项正好落在手指底下——
- * 抬手那一下的 click 直接命中某个选项（这就是误操作的来源）。现在按下只记录，手指离开屏幕才出现。
- */
 const MOB_SEL_MIN_OPEN_MS = 200
 
-/** 按下→抬起之间手指移动超过这个距离（px）视为"滑动/拖拽"，不弹面板（旋钮） */
 const MOB_SEL_MOVE_TOLERANCE_PX = 24
 
-/**
- * **手机旋转层「尺寸滞回」三个常量**（**2026-10-02 船长令「按你的建议先修」**·
- * 修玩家报障「手机端的战斗画面会忽大忽小（缩放）」）。
- *
- * 病根（读数见 `docs/design/archive/mobile-battle-zoom-20261002.md`）：旋转层的 `--mob-scale / --mob-h` 与
- * 战场层的 `k = min(1, 舞台可用高/内容自然高)` **都挂在手机浏览器的"可见视口高"上** ——
- * 地址栏收起/展开这一件小事（实测 844↔760）就能让物理内容缩放摆动 **8.7%**，且战场 k 会在
- * **0.83 ↔ 1.00** 之间跳（"缩了"↔"没缩"，是突变）；更糟的是地址栏**滑进滑出那 200~300ms 里
- * 视口高逐帧在变**，旧实现逐帧照单重排 ⇒ 玩家看到的是**一段连续的缩放动画**（"忽大忽小"）。
- *
- * ⇒ 改成**只跟"稳定下来的可见区"走**：
- * - **|Δ高| < `MOB_SIZE_DEAD_PX`** ⇒ 当噪声，一个字节都不改（只更新对齐偏移）；
- * - **|Δ高| ≥ `MOB_BIG_CHANGE_PX`** ⇒ **立刻采纳**（转屏、键盘收起、换设备这类"真的换了一种视口"）；
- * - **其余（小变化）** ⇒ 必须**连续 `MOB_RESIZE_SETTLE_MS` 保持同一个高**才采纳 ⇒
- *   地址栏滑进滑出那段中间值全都过不了这道门，**只在滑完之后干净地重排一次**；
- * - **宽度变化（>1px）** ⇒ 立刻采纳（宽变基本只可能是转屏/换设备）；
- * - **捏合（`visualViewport.scale > 1`）进行中** ⇒ **尺寸冻结**（只跟对齐偏移），否则"边捏边重排"。
- *
- * ⚠ 口径边界（刻意保留 2026-09-06「可见区铺满、不被地址栏遮」那条诉求）：**最终仍以可见区为准**
- * —— 稳定之后该缩就缩、该涨就涨，只是不再逐帧追动画。要"干脆不跟着涨"（把多出来的可见高留成
- * 底部留白）是另一种口径，等船长看过观感再定。
- */
 const MOB_SIZE_DEAD_PX = 8
 const MOB_BIG_CHANGE_PX = 96
 const MOB_RESIZE_SETTLE_MS = 300
 
 export function App({ engine, embeddedMobileViewport = false }: { engine: GameEngine; embeddedMobileViewport?: boolean }) {
   useMarketRelay(engine)
-  // 兜底套用界面配色（任何入口都经过 App；桌面/网页版入口另在首帧前各调一次）
   useThemeBootstrap()
 
   const [, force] = useReducer((n: number) => n + 1, 0)
@@ -214,29 +132,20 @@ export function App({ engine, embeddedMobileViewport = false }: { engine: GameEn
     window.addEventListener('whale-future-wormhole-change', changed)
     return () => window.removeEventListener('whale-future-wormhole-change', changed)
   }, [])
-  /** 语言（2026-09-19 船长令「英语本地化」）：界面文案走 `t(中文源串)`；缺词条回退中文 */
   const { locale } = useL10n()
-  /** 切语言 ⇒ 让引擎按语言重建 ctx 与目录表（只换文案，id/数值不动），引擎 `notify()` 后界面整体刷新 */
   useEffect(() => {
     engine.setLocale(locale)
   }, [engine, locale])
 
-  // ── 手机竖屏自动横屏（船长 2026-09-05；2026-09-06 改：按 visualViewport 真实可见区铺满对齐，
-  //    修复 Edge/Chrome 移动端地址栏悬浮导致左右/上下被遮——不再依赖"布局视口 50% 居中"；
-  //    🔴 2026-10-02 船长令「按你的建议先修」：给**尺寸**加方向不对称的滞回（见 MOB_*_ADOPT_PX），
-  //    修玩家报障「手机端的战斗画面会忽大忽小（缩放）」——对齐偏移仍逐拍跟可见区走，只是尺寸不再抖） ──
   const [mobileRot, setMobileRot] = useState(false)
   const [toyOrientation, setToyOrientation] = useState(() => embeddedMobileViewport ? readToyOrientation() : 'auto' as const)
+  const [mobileLand, setMobileLand] = useState(false)
   const [mobileLayout, setMobileLayout] = useState(false)
   const [mobileLogOpen, setMobileLogOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
-  /** 当前**已采纳**的旋转层尺寸（null = 还没量过 ⇒ 首次直接采纳） */
   const mobSizeRef = useRef<{ w: number; h: number } | null>(null)
-  /** "待采纳"的候选：同一个高连续稳定到 `MOB_RESIZE_SETTLE_MS` 才采纳（地址栏滑进滑出被吃掉） */
   const mobPendRef = useRef<{ h: number; since: number } | null>(null)
-  /** 稳定判定的定时器（进候选态时挂一次；收尾必清） */
   const mobTimerRef = useRef(0)
-  // 手机横屏下的自绘下拉面板（2026-09-06 船长：原生下拉弹层不受 CSS 旋转影响 → 方向错位）
   const [mobSel, setMobSel] = useState<{ el: HTMLSelectElement; opts: { value: string; label: string }[]; sel: string } | null>(null)
   useEffect(() => {
     let embeddedSize: { width: number; height: number } | undefined
@@ -265,10 +174,12 @@ export function App({ engine, embeddedMobileViewport = false }: { engine: GameEn
       }
       // 参赛 iframe 只看宽高比：即使宿主把竖屏 iframe 放大到超过 900 CSS 像素，也仍应旋转。
       const rot = embeddedMobileViewport ? portrait : mobileInput && portrait && width < 900 && mobileScreen
+      const land = !embeddedMobileViewport && mobileInput && !portrait && width < 1000 && height < 520
       setMobileRot(rot)
+      setMobileLand(land)
       const el = rootRef.current
       if (!el) return
-      if (!rot) {
+      if (!rot && !land) {
         el.style.removeProperty('--mob-w')
         el.style.removeProperty('--mob-h')
         el.style.removeProperty('--mob-scale')
@@ -278,49 +189,29 @@ export function App({ engine, embeddedMobileViewport = false }: { engine: GameEn
         mobPendRef.current = null
         return
       }
-      // 真实可见区（布局视口内可视区域）：移动端地址栏/工具栏悬浮时 ≠ innerWidth/innerHeight
       const visW = width
       const visH = height
       const visX = vv ? vv.offsetLeft : 0
       const visY = vv ? vv.offsetTop : 0
-      /**
-       * **捏合（页面缩放）进行中不重排**：`visualViewport.scale > 1` 时宽高成比例变小，
-       * 若照单采纳就会"边捏边重排版式"（外观与本次要修的"忽大忽小"同款）。⇒ 捏合期间只更新
-       * 对齐偏移、**尺寸冻结**；等玩家捏回去（scale 回 1）尺寸自然又对上了。
-       * ⚠ 双击放大已由 CSS 的 `touch-action: manipulation` 关掉（甲案），这里是双指缩放的兜底。
-       */
       const zoomed = (vv?.scale ?? 1) > 1.05
       const cur = mobSizeRef.current
-      /** 本拍**要用的**尺寸：先取已采纳的那份（没量过 = 当前可见区，下面再按规则换） */
       let size = cur ?? { w: visW, h: visH }
       const widthChanged = cur !== null && Math.abs(cur.w - visW) > 1
       if (cur === null || (widthChanged && !zoomed)) {
-        // 首次 / 宽度变了（转屏·换设备）⇒ 立刻采纳并清掉候选
         size = { w: visW, h: visH }
         mobPendRef.current = null
       } else if (!zoomed) {
         const dh = visH - cur.h
         if (Math.abs(dh) >= MOB_BIG_CHANGE_PX) {
-          // 大变化（转屏/键盘/换设备）⇒ 立刻采纳，不等稳定门
           size = { w: visW, h: visH }
           mobPendRef.current = null
         } else if (Math.abs(dh) >= MOB_SIZE_DEAD_PX) {
-          /**
-           * 小变化 ⇒ **等它稳定**：同一个高连续 `MOB_RESIZE_SETTLE_MS` 不变才采纳。
-           * 地址栏滑进滑出那 200~300ms 里视口高逐帧在变 ⇒ 候选时间戳每帧被重置 ⇒
-           * **期间一次都不重排**，滑完停住之后才干净地重排一次。
-           */
           const p = mobPendRef.current
           if (p === null || Math.abs(p.h - visH) > 0.5) mobPendRef.current = { h: visH, since: Date.now() }
           else if (Date.now() - p.since >= MOB_RESIZE_SETTLE_MS) {
             size = { w: visW, h: visH }
             mobPendRef.current = null
           }
-          /**
-           * ⚠ **无论如何都保证"还有一个定时器在等着复核"**：事件会在视口停住之后就不再来了，
-           * 光靠事件驱动的 `update()` 会让候选态**永远停在候选**（第一版就踩了这个坑：定时器只在
-           * 进候选那一刻挂一次，复核时若还差几毫秒没到点，就再也没人叫下一拍）。
-           */
           if (mobPendRef.current !== null && mobTimerRef.current === 0) {
             mobTimerRef.current = window.setTimeout(() => {
               mobTimerRef.current = 0
@@ -328,30 +219,24 @@ export function App({ engine, embeddedMobileViewport = false }: { engine: GameEn
             }, MOB_RESIZE_SETTLE_MS + 20)
           }
         } else {
-          mobPendRef.current = null // 落在死区（<8px）⇒ 维持现状，只跟对齐偏移
+          mobPendRef.current = null
         }
       }
       mobSizeRef.current = size
-      // 虚拟横屏设计宽度：越大画面整体越小、看到越多（船长 2026-09-05：横屏后偏大，改 1200 放宽）
       const designW = 1200
-      const scale = size.h / designW
-      const vh = designW * size.w / size.h
-      // 布局坐标对齐：旋转(绕原点 -90°)后，元素的"右下"恰好落在可见区右下
-      // 映射：物理 x = L + s·y，物理 y = T − s·x ⇒ 取 L=visX、T=visY+size.h 即铺满；
-      // ⚠ 用 `visY + size.h`（而不是 `visY + visH`）：尺寸与可见区不一致的那一小段里**顶部对齐**
-      //   ⇒ 已采纳的内容一个像素都不动，差量留在底部（不再"长大一下又缩回去"）。
+      const scale = land ? size.w / designW : size.h / designW
+      const vh = land ? size.h / scale : designW * size.w / size.h
       el.style.setProperty('--mob-w', `${designW}px`)
       el.style.setProperty('--mob-h', `${vh}px`)
       el.style.setProperty('--mob-scale', String(scale))
       el.style.setProperty('--mob-x', `${visX}px`)
-      el.style.setProperty('--mob-y', `${visY + size.h}px`)
+      el.style.setProperty('--mob-y', land ? `${visY}px` : `${visY + size.h}px`)
     }
     update()
     window.addEventListener('resize', update)
     window.addEventListener('orientationchange', update)
     const vv = window.visualViewport
     if (vv) {
-      // 地址栏展开/收起、键盘弹出等只会改 visualViewport 尺寸/偏移的场合也要重算
       vv.addEventListener('resize', update)
       vv.addEventListener('scroll', update)
     }
@@ -370,15 +255,11 @@ export function App({ engine, embeddedMobileViewport = false }: { engine: GameEn
     }
   }, [embeddedMobileViewport, toyOrientation])
 
-  // 手机横屏：拦截原生 select 弹层 → 自绘大号选项面板（仅 is-mobile-rot 生效，桌面不变）
-  // ⚠ 2026-09-13 船长：「下拉框…现在出现的太快，玩家会出现误操作」⇒ 弹出时机改**抬手才弹 + 最短 200ms**
-  //   （原先是 pointerdown 即弹 ⇒ 选项落在手指底下、抬手就误选；常量见文件头 MOB_SEL_MIN_OPEN_MS）。
   useEffect(() => {
     if (!mobileRot) {
       setMobSel(null)
       return
     }
-    /** 已按下、等抬手的下拉（含按下时刻与按下点，用于"最短间隔"与"滑动取消"） */
     let pending: { el: HTMLSelectElement; at: number; x: number; y: number } | null = null
     let timer = 0
     let raf = 0
@@ -393,7 +274,6 @@ export function App({ engine, embeddedMobileViewport = false }: { engine: GameEn
         raf = 0
       }
     }
-    /** 真正弹出：**推到下一帧**——防"抬手那一瞬的 click 落在刚出现的选项上"（同帧插入面板会被它命中） */
     const fire = (el: HTMLSelectElement): void => {
       if (raf !== 0) return
       raf = window.requestAnimationFrame(() => {
@@ -408,12 +288,11 @@ export function App({ engine, embeddedMobileViewport = false }: { engine: GameEn
     }
     const onPointerDown = (e: PointerEvent): void => {
       const t = e.target as HTMLElement | null
-      if (t?.closest?.('.app-mob-sel-mask')) return // 面板自身（点遮罩由 onClick 关闭）
+      if (t?.closest?.('.app-mob-sel-mask')) return
       const sel = t?.closest?.('select') as HTMLSelectElement | null
       if (!sel || sel.disabled || sel.options.length === 0) return
       e.preventDefault()
       e.stopPropagation()
-      // 只**记录**，不弹（口径①：抬手才弹）；照旧 preventDefault 挡住原生选择器
       clearPending()
       pending = { el: sel, at: Date.now(), x: e.clientX, y: e.clientY }
     }
@@ -421,14 +300,12 @@ export function App({ engine, embeddedMobileViewport = false }: { engine: GameEn
       const p = pending
       if (!p) return
       pending = null
-      // 手指拖走了（滑动/拖拽意图）⇒ 不弹
       if (
         Math.abs(e.clientX - p.x) > MOB_SEL_MOVE_TOLERANCE_PX ||
         Math.abs(e.clientY - p.y) > MOB_SEL_MOVE_TOLERANCE_PX
       ) {
         return
       }
-      // 口径②：从按下算起不早于 MOB_SEL_MIN_OPEN_MS（快点的剩余时间补齐；慢点已满则立即）
       const wait = MOB_SEL_MIN_OPEN_MS - (Date.now() - p.at)
       if (wait <= 0) fire(p.el)
       else timer = window.setTimeout(() => {
@@ -447,8 +324,6 @@ export function App({ engine, embeddedMobileViewport = false }: { engine: GameEn
     }
   }, [mobileRot])
 
-  // 全局：点击被禁用的按钮时，把按钮禁用原因（title / data-disabled-reason）以警告提示弹出，
-  // 没有写明原因的统一回退文案——避免"点了没反应"
   useEffect(() => {
     const onPointerDown = (e: PointerEvent): void => {
       const el = e.target as HTMLElement | null
@@ -461,7 +336,6 @@ export function App({ engine, embeddedMobileViewport = false }: { engine: GameEn
     return () => window.removeEventListener('pointerdown', onPointerDown, true)
   }, [])
 
-  // T9：待播通讯（首次抵达建站点等）→ 自动播放一次（镜像日志+已读由 wrapper.openDialogue 完成）
   const [pendingOpen, setPendingOpen] = useState<string | null>(null)
   const pd = engine.state.pendingDialogue
   useEffect(() => {
@@ -472,96 +346,41 @@ export function App({ engine, embeddedMobileViewport = false }: { engine: GameEn
   }, [pd, pendingOpen])
 
   const state = engine.state
-  // 通讯未读（2026-09-11 船长定）：导航图标闪烁 + 数字徽标；逐条已读，点开即读
   const commsUnread = engine.commsUnread()
   const [page, setPage] = useState<PageKey>('map')
   const exchangeAvailable = useExchangeAvailable()
-  /**
-   * **点导航的"这一下"**（船长 2026-09-14：「点击左边侧边栏的时候，中间主窗口进行切换时最好给予玩家一个反馈，
-   * 哪怕点的是当前窗口」）：只在**点当前页**时用（换页由内容区重挂载的入场淡入负责）——
-   * 内容区与该项图标各播一次 220ms 脉冲；计时器落下来摘掉 class，于是连点也能一次次重播
-   * （CSS 动画不会因为 class 没变化而自行重放）。样式见 `styles.css` 的「侧边栏点击 / 一级页切换反馈」段。
-   */
   const [navBeat, setNavBeat] = useState<{ key: PageKey; seq: number } | null>(null)
   const navBeatTimer = useRef<number | null>(null)
-  /**
-   * **赏金新板提示**（船长 2026-09-14：「当任务中心有新的赏金任务时，提示玩家，**玩家进入后消除提示**」）：
-   * 判定 = **换板未看**（core `sideTaskBoard().bountyNewCount`，单点）——赏金日板每天本地 0 点整板替换。
-   * 徽标在**任务中心页内恒为 0**（进入即消，不必等下一拍）；记账写在下面那个 effect 里。
-   * ⚠ 记账**必须挂在 `page` 上**（而不是导航按钮的 onClick）：点导航、通讯「前往」、教程跳转
-   * 三条入口都会走到这里，挂在按钮上会漏掉后两条 ⇒ "进了任务中心徽标还在"。
-   */
   const bountyNew = page === 'task' ? 0 : engine.bountyNewCount()
   useEffect(() => {
     if (page === 'task') engine.markBountyBoardSeen()
   }, [engine, page])
-  /**
-   * **「第一次」推进提醒**（**2026-09-20 船长令**：「**每推进一阶段第一次任务时，在导航栏的任务中心
-   * 选项处进行提醒**」）：口径与上面赏金那条**逐字同款**——当前那一条 ≠ 玩家看过的这一条 ⇒ 亮；
-   * 进「任务中心」页即记账（下面那个 effect）⇒ 灭；页内恒为 null（进入即消，不必等下一拍）。
-   */
   const firstTaskNew = page === 'task' ? null : engine.firstTaskNotice()
   useEffect(() => {
     if (page === 'task') engine.markFirstTaskSeen()
   }, [engine, page])
-  // 星图页功能区（页内标签状态；常驻 App，跨页保留；默认「星图·远征」= 玩家查看大地图的主入口）
   const [mapTab, setMapTab] = useState<MapTab>('star')
   const [shipTab, setShipTab] = useState<ShipTab>(() => (sessionPick('ship.tab') as ShipTab | null) ?? 'fleet')
-  // 舰船页"去市场"→ 市场页聚焦该船订单（seq 递增触发一次）
   const [mktFocus, setMktFocus] = useState<{ key: string; seq: number } | null>(null)
-  // 舰船页卡片"装配"→ 装配页默认目标船（船长 2026-09-05：入口在舰队卡片；离开装配页即清，再次直进默认当前驾驶船）
   const [fitShipId, setFitShipId] = useState<string | null>(null)
-  /**
-   * 工业页的**内层段定位**（精炼炉 / 组装机）——「第一次」卡片上的跳转按钮要落到"这件活"那一档
-   * （船长 2026-09-18）。一次性：页在切走时重挂载（`key={page}`），故只需给初值。
-   */
   const [indFocus, setIndFocus] = useState<'refine' | 'shelf' | 'craft' | 'shipyard' | 'lab' | null>(null)
-  // 工业页精炼炉卡「去矿带/去打捞」→ 星图对应卡高亮（seq 递增触发一次；2026-09-09 船长定，与「去市场」同款 seq 机制）
   const [mapGoto, setMapGoto] = useState<MapGotoTarget | null>(null)
-  /** 任务中心内层标签定位请求（通讯「前往」与开场信都落在「重要任务」） */
   const [taskFocus, setTaskFocus] = useState<TaskFocusTarget | null>(null)
-  /** 通讯页定位：任务中心「第一次」卡片上的「看情报」→ 切到通讯页并选中那封情报信 */
   const [commsFocus, setCommsFocus] = useState<{ id: string; seq: number } | null>(null)
-  /**
-   * **技能页大类定位请求**（**2026-09-24 船长令**：「跳到技能页并自动选中工程」）：
-   * 「第一次学习技能」的跳转按钮与那封情报信的「前往」都落到「技能 · 工程」——
-   * 口径同 `taskFocus`：`seq` 变化即应用一次（人已经在技能页时再点一次也能重新落位）。
-   */
   const [skillsFocus, setSkillsFocus] = useState<{ group: string; branch?: string; seq: number } | null>(null)
-  /**
-   * **虫洞面板**（终局玩法 · ✅ 2026-09-14 已上线：入口常驻，玩家侧门槛 = 协会声望 ≥ 40）：
-   * 面板挂在 App 这一层、**不依赖星图选中哪个星系**——原先只挂在星图行动区的入口行里，
-   * 而行动区要先选中星系才渲染 ⇒ 人在洞里时可能回不到面板（船长 2026-09-13：「活动栏直接开面板」）。
-   */
   const [whOpen, setWhOpen] = useState(false)
-  /** 从库存进洞：选中的那处（null = 调试入口，直接用游戏随机种子开一趟） */
   const [whStockPick, setWhStockPick] = useState<string | null>(null)
-  /** **自动探索模式**要派的那一处库存（2026-09-14 船长：自动探索走同一个准备页） */
   const [whAutoPick, setWhAutoPick] = useState<string | null>(null)
   const selectedRun = state.wormhole.run
   const selectedStock = state.wormholeStock?.find(s => s.id === (whAutoPick ?? whStockPick))
   const futurePanel = whAutoPick !== null ? futureWormholeEnabled() && selectedStock?.expeditionRules === 2 : selectedRun ? selectedRun.expeditionRules === 2 || selectedRun.supplyVersion === 1 : state.wormhole.lastSettle?.expeditionProgress !== undefined || state.wormhole.lastSettle?.suppliesReturned !== undefined || futureWormholeEnabled() && selectedStock?.expeditionRules === 2
   const ExplorationPanel = futurePanel ? WormholePanel : SignalSpacePanel
-  /**
-   * 打开虫洞面板（stockId 给了 = 从「扫描虫洞」页选中的那处库存虫洞开始探索）。
-   *
-   * ⚠ **不许顺手改星图的标签页**（2026-09-19 船长报障：「关闭虫洞准备界面后，为什么界面会停留在
-   * 星图远征界面」）：面板挂在 **App 层**（见本文件底部 `{whOpen ? <WormholePanel …/> : null}`）
-   * ⇒ 它**不依赖**底下是哪一页哪一签；这里原先是 `changePage('map') + changeMapTab('star')`，
-   * 那句切标签是**面板还住在星图标签里时的遗留**（`f08c76a8` 把面板搬到 App 层后就不需要了）：
-   * 从「扫描虫洞」点「返回虫洞 / 探索 / 自动探索」会把标签偷偷切到「星图」⇒ 关掉面板后人被丢在
-   * **星图远征页**，回不到刚才那一页。
-   * ⇒ 现在**只切页、不动标签**：关掉面板即回到进来时那一页（船长要的"从哪来回哪去"）。
-   * 附带修好一条副作用：`page==='map' && mapTab==='star'` 那条「扫描完成高亮 · 看过即收」，
-   * 原先会被"开一下虫洞面板"顺手触发——等于玩家没看星图就把高亮收掉了。
-   */
   const openWormhole = (stockId?: string): void => {
     setWhStockPick(stockId ?? null)
     setWhAutoPick(null)
     changePage('map')
     setWhOpen(true)
   }
-  /** 打开虫洞面板的**自动探索模式**（同一个准备页；按钮写「派队自动探索」）——同样**不动星图标签** */
   const openWormholeAuto = (stockId: string): void => {
     setWhStockPick(null)
     setWhAutoPick(stockId)
@@ -569,11 +388,8 @@ export function App({ engine, embeddedMobileViewport = false }: { engine: GameEn
     setWhOpen(true)
   }
   useEffect(() => {
-    // 保持 fitShipId 的会话记忆（2026-11-02 优化）：离开装配页采购配件再回，不强行重置为旗舰
-    // 页面切换时隐藏残留悬停浮层（卸载不会触发 hover leave；如舰队卡 hover 中点「装配」跳转后悬浮窗残留）
     hideTip()
   }, [page])
-  // B1：首次进入低安的一次性醒目提示（规则全文在手册「航行须知」）
   const lowSecPrev = useRef(state.lowSecNotified)
   useEffect(() => {
     if (state.lowSecNotified && !lowSecPrev.current) {
@@ -582,65 +398,15 @@ export function App({ engine, embeddedMobileViewport = false }: { engine: GameEn
     lowSecPrev.current = state.lowSecNotified
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.lowSecNotified])
-  // V15 调试模式入口（开发工具：localStorage 标志启用后才显示）
-  /**
-   * 调试模式开关（2026-09-25 改为**可变**）：原先 `useState(readDebugEnabled)` 只在启动读一次 ⇒
-   * 在设置里打开后必须重开才生效（船长踩过：以为没生效）。现改为可变状态，点了立刻出按钮。
-   */
   const [debugOn, setDebugOn] = useState<boolean>(readDebugEnabled)
 
-/**
- * **布局偏好**（2026-09-25 船长令）：「新旧界面能否允许玩家在设置内切换？」⇒ 裁定甲（两套 DOM 并存）；
- * 随后二次裁定：**「默认旧档采用旧界面，新界面需要去设置切换」**＋「**一律默认旧版**」
- * ＋「**一旦点过就永远按他点的来，换档也不变**」；三次裁定：**「可以切换了，但是需要重启…
- * 建议在玩家切换时，弹出警告，让玩家重启游戏，玩家确认后关闭游戏。」**
- *
- * 故用**两个键**（职责分开，才分得清"没选过"与"选过"）：
- *   · `whale-idle:layout`      = 选中的布局（`modern` | `classic`）——**仅作记录**；
- *   · `whale-idle:layout-set`  = 玩家是否**在设置里明确选过**（`1` = 选过）。
- * 判据：**没选过 ⇒ 一律 classic（旧界面）**；选过 ⇒ 永远按他选的（与存档无关，换档/清档都不变）。
- *
- * ⚠ 迁移：本功能第一版缺省是 modern，只要跑过一次就会写下 `whale-idle:layout`，
- * 而第二版又从没写过 `layout-set` ⇒ **凡是没有 `layout-set` 的机器一律回落到 classic**，
- * 正是船长要的默认。两个键都进 `localStorage`（本机偏好、不进存档）。
- * ⚠ 读写全包 try/catch：桌面端存储被禁时不能让整树崩掉（读失败 ⇒ 用默认）。
- */
-/**
- * **送达弹窗的"上膛"延时**（2026-09-25 船长报障「战斗胜利后，结算通讯并不会弹出」的配套）：
- * 弹窗刚挂上来的头这么多毫秒里，**遮罩点击不生效**——遮罩满屏（`inset: 0`，点哪都算"点外面"），
- * 而这张卡挂上来的时机常常正好是"玩家刚点完战场 / 刚在别处点过一下"⇒ 不设防就会一挂上就被点掉。
- */
 const POPUP_ARM_MS = 450
 const [layoutKind] = useState<LayoutKind>(readLayoutPref)
-/** 玩家已点选、但**还没重启**的布局（null = 没有待应用项）—— 弹框问过之后才写盘并关游戏 */
 const [layoutPending, setLayoutPending] = useState<LayoutKind | null>(null)
-/**
- * **切换界面布局**（2026-09-25 船长令：「弹出警告，让玩家重启游戏，玩家确认后关闭游戏」；
- * 船长另有一句「**如果不重启，结构排版有问题**」）：
- * ⚠ **不就地换**。两套外壳共用同一批类名，换布局要连样式表一起换，当场切会出现排版错乱
- *   （船长实测）⇒ 这里只记下"待应用"，弹框让玩家自己决定什么时候重启。
- */
 function chooseLayout(k: LayoutKind): void {
   if (k === layoutKind) return
   setLayoutPending(k)
 }
-/**
- * **应用布局偏好：写盘 → 存档 → 重新载入文档**
- *
- * **2026-09-29 船长令**：「切换新版和旧版的现在重启，只对本地有效，**网页版应该为刷新网页**」。
- *
- * 原实现是 `window.close()`（桌面端：关窗即退出，主进程 `window-all-closed → app.quit()`）
- * —— 桌面端有效，但**网页版的 `window.close()` 对非脚本打开的页签是空操作**（浏览器安全策略）
- * ⇒ 网页版点「现在重开」什么都不会发生、布局永远切不过去。
- *
- * 改成 `location.reload()` 后**两端同一套动作**：整页重新载入 ⇒ 重新执行 bundle ⇒
- * 重新读 `readLayoutPref()` 与对应的样式表（这正是"要重载而不能就地切"的原因：
- * 两套外壳共用类名，样式表必须跟着换；船长原话「如果不重启，结构排版有问题」）。
- * 桌面端等价性：桌面端载入的就是同一个页面 ⇒ 重载同样回到启动态，**且不必退出进程**。
- *
- * ⚠ 存档失败**不重载**：让玩家先把档处理好（自动保存是定时的，这里补一次更稳）。
- * ⚠ `location.reload()` 失败（桌面端极端受限环境）⇒ 提示玩家手动重启，不静默失败。
- */
 async function applyLayoutAndReload(): Promise<void> {
   const k = layoutPending
   if (k === null) return
@@ -648,7 +414,6 @@ async function applyLayoutAndReload(): Promise<void> {
     localStorage.setItem(LAYOUT_KEY, k)
     localStorage.setItem(LAYOUT_SET_KEY, '1')
   } catch {
-    /* 存储被禁：忽略（下次启动会回落到默认） */
   }
   const ok = await engine.persist()
   if (!ok) {
@@ -661,46 +426,29 @@ async function applyLayoutAndReload(): Promise<void> {
     showToast(tr('ui.App.167'), true)
   }
 }
-  // 性能监测（2026-09-08 诊断工具）：debug 开关在首帧前激活隐形采集；自动采集模式由 main.tsx 预激活
   useState(() => {
     if (perfAutoEnabled()) perfHub.activate()
     return false
   })
   const [perfOpen, setPerfOpen] = useState(false)
 
-  /**
-   * **限时活动 / 加成的剩余时间**（2026-09-25 移入顶栏）：每分钟走一次，与活动栏原来那份同款。
-   * 数据同源：core 的 `activePromos` / `activeTunings`（按现实墙钟算，到期自动消失）。
-   */
   const [tuningTick, setTuningTick] = useState(() => Date.now())
   useEffect(() => {
     const id = window.setInterval(() => setTuningTick(Date.now()), 60_000)
     return () => window.clearInterval(id)
   }, [])
   const promosNow = activePromos(tuningTick)
-  // 被促销 `claims` 认领的倍率键不再单列（与活动栏原口径一致：同一件事不显示两遍）
   const promoClaimedKeys = new Set<string>(promosNow.flatMap((p) => [...p.claims]))
   const tuningsNow = activeTunings(tuningTick).filter((tn) => !promoClaimedKeys.has(tn.key))
   const [toast, setToast] = useState<{ text: string; warn: boolean } | null>(null)
   const toastTimer = useRef<number | null>(null)
   const showToast: ToastFn = (text, warn = false) => {
-    /**
-     * **界面错误提示 → `ui-error`**（2026-11-05 船长要求扩大覆盖）：通用 toast 是**所有**命令被拒
-     * 与保存/连接错误的统一出口；只靠 `LOG_CUE_RULES` 的 6 条日志白名单会漏掉绝大多数拒绝。
-     * 节流在播放层（`minGapMs` / `maxConcurrent`），这里只做「错误提示就响一声」的语义。
-     */
     if (warn) notifyUiError()
     if (toastTimer.current !== null) window.clearTimeout(toastTimer.current)
     setToast({ text, warn })
     toastTimer.current = window.setTimeout(() => setToast(null), warn && text.includes('\n') ? 15_000 : 3200)
   }
   const onlineChat = useOnlineChat(locale, showToast)
-  /**
-   * **点击底部提示条立即关闭**（2026-09-13 船长：「屏幕下方的错误提示，允许玩家通过点击快速关闭。」）——
-   * 两种底部提示（操作提示 `.app-toast` 与随机事件小弹卡 `.app-event-toast`）**整条可点**：
-   * 点一下即消失，并**同时清掉自动隐藏计时器**（否则点掉后旧定时器仍会到点置空一次，无害但语义脏）。
-   * **自动隐藏口径不变**（操作 3.2s / 事件 6s）；点击只做关闭，不触发任何其它动作。
-   */
   const dismissToast = (): void => {
     if (toastTimer.current !== null) {
       window.clearTimeout(toastTimer.current)
@@ -709,7 +457,6 @@ async function applyLayoutAndReload(): Promise<void> {
     setToast(null)
   }
 
-  // 2026-09-08 引擎系统通知（交付循环终止弹窗）：engine 心跳/离线结算后调用
   useEffect(() => {
     engine.onSystemNotice = (msg) => showToast(msg, true)
     return () => {
@@ -717,18 +464,10 @@ async function applyLayoutAndReload(): Promise<void> {
     }
   }, [engine])
 
-  /* ───────── 存档存储：状态显示 ＋ 告警 ＋ 关页补落盘（2026-09-25 船长令 · 甲/丙/丁） ───────── */
 
-  /** 设置里显示的状态（甲/丁）：`unavailable` = 这台机器写不了存储；`paused` = 旧档读不出来、写入已挂起 */
   const [saveState, setSaveState] = useState<'ok' | 'paused' | 'unavailable'>(() => engine.saveWriteState())
-  /** 启动体检读数（main.tsx 在引擎启动前已量过 ⇒ 这里同步就有值） */
   const [storageProbe] = useState<SaveStorageProbe | null>(() => saveStorageProbe())
 
-  /**
-   * **甲 · 启动两种状态各提示一次**：体检不通（浏览器不给写存储）／旧档读取失败（写入已挂起）。
-   * ⚠ 提示放在这里而**不是**引擎 `start()` 里：App 挂载晚于引擎启动，引擎那时发的事件没人听。
-   * 之后运行期的写入失败由 `subscribeSaveAlert` 送来（每类每局只来一次）。
-   */
   useEffect(() => {
     const st = engine.saveWriteState()
     setSaveState(st)
@@ -738,11 +477,6 @@ async function applyLayoutAndReload(): Promise<void> {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [engine])
 
-  /**
-   * **丙 · 关页/切后台前补一次落盘**：自动落盘是一分钟一拍（`SAVE_INTERVAL_MS`），
-   * 玩家关窗时最后这一段本来会丢。`pagehide` 覆盖关窗/刷新/前进后退；
-   * `visibilitychange → hidden` 覆盖切标签页与手机切后台。
-   */
   useEffect(() => {
     const flush = (): void => {
       void engine.persist()
@@ -758,7 +492,6 @@ async function applyLayoutAndReload(): Promise<void> {
     }
   }, [engine])
 
-  /** **丁 · 放行写入**（设置 → 存储状态 →「允许写入存档」）：会另起新档，故按手动存档同款回报成败 */
   const allowSaveNow = (): void => {
     void engine.allowSaveAfterLoadError().then((ok) => {
       setSaveState(engine.saveWriteState())
@@ -766,10 +499,7 @@ async function applyLayoutAndReload(): Promise<void> {
     })
   }
 
-  /* ───────── 网页版「本地存档文件」（2026-09-25 船长令：存档优先保存到本地文件） ───────── */
 
-  /** 绑定状态（桌面端 ⇒ null，界面走"本机文件"那支）。取 `saveBridge` 而不是 `window.whale`：
-   *  网页版根本没有 `window.whale`，桥就是 `storage.ts` 里选出来的那个。 */
   const [saveFile, setSaveFile] = useState<SaveFileStatus | null>(null)
   const [reconnectChoice, setReconnectChoice] = useState<ReconnectChoice | null>(null)
   const [fileBusy, setFileBusy] = useState(false)
@@ -784,10 +514,7 @@ async function applyLayoutAndReload(): Promise<void> {
       .then(setSaveFile)
       .catch(() => setSaveFile(null))
   }
-  // ⚠ 不在 App 层按 `showSettings` 刷新（那会用到后面才声明的状态）：改成设置面板挂载时自报一次
-  // （`SettingsPanel` 是 `showSettings ? <…/> : null` ⇒ 每次打开都会重新挂载）。
 
-  /** 绑定（必须由玩家手势触发）：成功 ⇒ 立刻再落一次盘，把当前进度写进新文件 */
   const bindSaveFileNow = (): void => {
     const api = saveBridge.saveFile
     if (!api || fileBusy || reconnectChoice) return
@@ -821,22 +548,13 @@ async function applyLayoutAndReload(): Promise<void> {
     }).catch((err) => showToast(String(err), true)).finally(() => setFileBusy(false))
   }
 
-  // ── 弹层：存档管理 / 手册图鉴 / 全屏战斗 ──
   const [showSaveManager, setShowSaveManager] = useState(false)
-  /**
-   * ⟪**2026-10-02 甲案**（船长令）⟫ **模式选择框的"导入收尾"保持位**：
-   * 在新游戏页导入一份**已选过模式**的档时，`modeChoiceNeeded()` 会当场翻假 —— 照旧挂载判据卸框，
-   * 玩家就**只看到悬浮窗无声消失**（没有成功确认，还会怀疑旧档是不是被覆盖了）。
-   * ⇒ 导入成功那一刻本位置真，**等玩家点「进入游戏」**再放行卸载（`ModeChoice` 里的 `finishing` 态）。
-   */
   const [modeChoiceImportHold, setModeChoiceImportHold] = useState(false)
   const [showHandbook, setShowHandbook] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [settingsInitialPage, setSettingsInitialPage] = useState<SettingsPageId>('interface')
   const [battleOpen, setBattleOpen] = useState(false)
-  /** 新档模式选择（铁人 S4b）：重置档案确认后弹一次，选普通/铁人再开局 */
 
-  // 顶栏「讨论 QQ 群」：点击复制群号（2026-09-08 船长指示）
   const [qqCopied, setQqCopied] = useState(false)
   const QQ_GROUP = '621172698'
   const copyQqGroup = (): void => {
@@ -849,34 +567,11 @@ async function applyLayoutAndReload(): Promise<void> {
       .catch(() => undefined)
   }
 
-  // 交火中（主动进入全屏战斗页；不自动切换页面）
-  // 交火中 = 主控远征战斗 **或** 虫洞内的洞内战斗（F2：洞内战斗同样要能进战场观看）
-  /**
-   * ⚠ **2026-09-25 加第三个宿主：入侵旗舰战**（船长报障「旗舰战无法进入战斗画面」）——
-   * 它是**编队战**、承载在**遭遇槽**（`state.encounter.battle`），既不占 `expedition` 也不进虫洞
-   * ⇒ 上面那两口径都不认它：战斗屏不挂载、不自动上屏、也没有「⚔ 战斗中」浮动入口，
-   * 玩家只看到遭遇横幅的"交火中"（战斗在后台照常推完、战报照常出）。
-   * 判据走 core 单点 `weekendFlagshipBattleActive`（界面不许自己认宿主）。
-   */
   const inBattle =
     (state.expedition.active && state.expedition.phase === 'battle') ||
     !!state.wormhole.run?.battle ||
     weekendFlagshipBattleActive(state) || !!(state.encounter.active && state.encounter.battle && (state.encounter.pirate || state.encounter.automatic))
 
-  /**
-   * ── 观战屏：**挂载**与**上屏**是两件事（2026-09-22 回归修复）──
-   *
-   * - **挂载** `battleMounted`：这一场的观战屏**还欠一个收尾**（击杀慢镜 / 战后战报，二者都在引擎结算
-   *   **之后**才渲染）⇒ 由**开战上升沿**置真、由**子组件说"我完成了"**（`onDone`）置假。
-   *   ⚠ **不能**写成 `inBattle || battleOpen`：引擎结算与 `inBattle` 变假发生在**同一拍**，
-   *   那一拍就会把子组件卸载 ⇒ 战报**根本没机会渲染**（2026-09-22 无头读数实测踩到：
-   *   战斗中点过「← 最小化」（原「← 退出战场」）的玩家整场战报都收不到）。挂载条件必须**先于**结算成立、
-   *   且只由子组件的收尾回调撤销。
-   * - **上屏** `battleOpen`：玩家自己的开关 —— 开战自动开一次、点「← 最小化」关上（战斗照常在后台
-   *   推进）、浮动入口「⚔ 战斗中」再打开。子组件按 `visible` 决定渲不渲染（见 `BattleScreen`）。
-   * - **战报保护** `battleWatchedRef`：这一场玩家**看过**（自动弹过或自己进过战场）⇒ 战报到达时
-   *   把屏叫回来（战斗中退出过也不会漏战报）；**优化清剿那种"默认不弹"的自动战斗不打扰玩家**。
-   */
   const [battleMounted, setBattleMounted] = useState(false)
   const prevInBattleRef = useRef(false)
   const battleWatchedRef = useRef(false)
@@ -884,90 +579,39 @@ async function applyLayoutAndReload(): Promise<void> {
     if (inBattle && !prevInBattleRef.current) {
       setBattleMounted(true)
       battleWatchedRef.current = false
-      // 新场绘制前设置显隐，连续出击不能继承上一场的展开状态。
       setBattleOpen(!engine.autoSortieNow() && !state.encounter.pirate && !state.encounter.automatic)
     }
     prevInBattleRef.current = inBattle
   }, [inBattle])
-  /** 玩家这一场看过屏（自动弹出的那一次也算）——战报到达时据此决定要不要把屏叫回来 */
   if (inBattle && battleOpen) battleWatchedRef.current = true
 
-  /**
-   * ── 主控活动窗口（2026-09-20 船长令）──
-   * 与战斗窗口同一套机制：**活动开始的上升沿自动弹出一次**；玩家手动最小化后不再自动弹回
-   * （还原入口见下方 `windowRestore`）。互斥关系由 core 的场景推导统一给出（`activityKindOf`，
-   * 单一事实源 = `sceneOfShipwin`），本层不各自重写判定。
-   */
   const activityKind = activityKindOf(state)
   const [activityOpen, setActivityOpen] = useState(false)
   const prevActivityRef = useRef<string | null>(null)
   useEffect(() => {
     const prev = prevActivityRef.current
     prevActivityRef.current = activityKind
-    // **活动结束 ⇒ 自动收起**（2026-09-21 船长令：「切换导航栏**之类**的时候就隐藏并最小化」的那一类）：
-    // 顺手把状态归零，免得留下"窗口开着但没活动"的幽灵态（下次活动开始的上升沿照样会自动弹出）。
     if (activityKind === null) {
       setActivityOpen(false)
       return
     }
-    // 交火时不抢战斗窗口（战斗优先）：只记录，不弹出
     if (prev === null && !inBattle) setActivityOpen(true)
   }, [activityKind, inBattle])
 
-  /**
-   * ── **收起两个窗口**（2026-09-21 船长令）──
-   *
-   * 船长原话：「玩家如果点击**最小化**或者**切换导航栏之类**的时候就隐藏并最小化。」
-   * ⇒ 触发点全部走这一个函数：
-   * ① 点窗口顶栏「← 最小化」（窗口自己调 `onMinimize`）；
-   * ② **切页**（`changePage`：导航项 / 活动栏跳转 / 星图里的跳转都算）；
-   * ③ **打开弹层**（手册 / 设置 / 公告）；
-   * ④ **活动结束**（见上面那个 effect）。
-   *
-   * ⚠ **只管活动窗口**（2026-09-22 船长令「界面回滚，战斗界面回滚到全屏显示」）：战斗屏已回到自己的
-   * 全屏覆盖层，它的开关只由「⚔ 战斗中」浮动入口与战场内那枚按钮决定 —— 切导航、开弹层都不该把它收掉
-   * （全屏战场本来就盖着主区，玩家够不着导航）。
-   */
   const hideActivityWin = (): void => {
     setActivityOpen(false)
     setMobileLogOpen(false)
   }
 
-  /**
-   * ── **挂载 ≠ 上屏**（2026-09-21 定；2026-09-22 起只剩活动窗口用）──
-   *
-   * - **战斗屏**：挂载看 `battleMounted`、上屏看 `battleOpen`（两个状态的分工与理由见上面那段注释）
-   *   —— 慢镜与战后战报都在引擎结算**之后**才渲染，挂载必须活过结算那一拍。
-   * - **活动窗口**：`activityOnStage` 为真才上屏（嵌入主区、顶掉那一页）。
-   */
-  /**
-   * ⚠ **判定只有"主控在不在做活动"这一条**（2026-09-22 船长令「可以对玩家开放了」）：
-   * 原先那把"只有开调试模式才可见"的开关（`activityWinEnabled()`，2026-09-20 立）已**整条撤掉**，
-   * 所有玩家都看得到本窗口。
-   *
-   * 页面让位仍必须与之一致（`is-win-hidden`）：窗口上屏 = 页面让位，判据不同源就会出现
-   * **窗口不渲染、页面却已经被让位 ⇒ 主区一片空白**（2026-09-21 自查抓到过）——所以这里仍用
-   * `activityKindOf` 同一个函数，不另写一份"有没有活动"的判定。
-   */
   const activityWinOn = activityKind !== null
   const activityOnStage = activityWinOn && activityOpen
   const winOnStage = activityOnStage
 
-  /**
-   * ── **最小化后的还原入口**（2026-09-21 船长令：「将左上角的小窗动画和右下角的最小化相关的按钮合并」）──
-   *
-   * 右下角那枚浮动还原标已撤（`.app-float-chip` 连样式一起删掉），改为**左上角舰船小窗本身即还原按钮**：
-   * 有窗口被最小化时，小窗包一层 `<button>` 并出「⤢」角标，点它把那个窗口展开回来。
-   *
-   * ⚠ 战斗屏已回滚成全屏覆盖层（2026-09-22）⇒ 它有自己的「⚔ 战斗中」浮动入口、**不走这枚角标**
-   * （否则"收起战场"会变成两套入口）。
-   */
   const windowRestore: { title: string; onRestore: () => void } | null =
     activityWinOn && !activityOpen
       ? { title: tr('ui.ActivityWin.008'), onRestore: () => setActivityOpen(true) }
       : null
 
-  // ── 日志偏好：折叠状态 + **单选筛选**（本地持久化；2026-09-26 船长令由"多开关"改单选） ──
   const [logCollapsed, setLogCollapsed] = useState<boolean>(() => readLogPrefs().collapsed)
   const [logFilter, setLogFilter] = useState<LogFilter>(() => readLogPrefs().filter)
   const logDrawerRef = useRef<HTMLElement>(null)
@@ -1010,25 +654,16 @@ async function applyLayoutAndReload(): Promise<void> {
     try {
       localStorage.setItem(PREFS_KEY, JSON.stringify({ collapsed: logCollapsed, filter: logFilter }))
     } catch {
-      // 本地存储不可用（隐私模式等）：忽略，不影响游戏
     }
   }, [logCollapsed, logFilter])
 
-  /** 选中哪一类就**只显示**那一类（`all` = 全部）；老日志的 `queue` 按升级显示 */
   const visibleLogs = state.logs.filter((l) => logFilter === 'all' || kindOf(l.kind) === logFilter)
   const hiddenAll = visibleLogs.length === 0 && state.logs.length > 0
 
-  // ── 离线简报卡（本次启动一次性，手动关闭） ──
   const [reportDismissed, setReportDismissed] = useState(false)
   const offlineReport = engine.offlineReport
   const showOfflineReport = offlineReport !== null && !reportDismissed
 
-  /**
-   * **通讯「前往」的统一跳转出口**（2026-09-14 抽单点）：通讯页右栏与送达弹窗共用同一套落点规则
-   * ——可带星图标签、任务中心内层标签、舰船标签；老数据里 `{page:'map', tab:'task'}` 一并改道任务中心页。
-   * **2026-09-24 船长令**：再加一档 `{page:'skills', tab:'工程'}` ⇒ 技能页自动选中该大类
-   * （「第一次学习技能」那封信的「前往」直接落在「工程」）。
-   */
   function gotoFromComms(p: string, tab?: string, shipTab?: string, taskTab?: string, skillBranch?: string): void {
     if (p === 'map' && tab) changeMapTab(tab as MapTab)
     if ((p === 'task' || (p === 'map' && tab === 'task')) && taskTab) focusTaskTab(taskTab)
@@ -1037,42 +672,10 @@ async function applyLayoutAndReload(): Promise<void> {
     changePage(p as PageKey)
   }
 
-  /**
-   * **需要弹窗的通讯**（船长 2026-09-14 两次裁定）：①「解锁时发送通讯给玩家（**同时也要直接弹窗**）」；
-   * ② 同日扩为「**所有除新手教程外的讯息也弹窗**」⇒ 是否弹由 core 的 `advanceComms` 单点决定
-   * （`popup ?? kind !== '教程'`），这里只负责渲染**队首那一封**：同一拍送达多封也只弹一张、
-   * 点「知道了」换下一张（**不会叠出多窗口**）；离线简报优先，避免两张卡叠着。
-   * 弹窗外形 = 通讯页右栏那块屏（同源公共件 `panels/CommsReader.tsx`）。
-   *
-   * ⚠⚠ **2026-09-25 船长报障「战斗胜利后，结算通讯并不会弹出」⇒ 加"战场让位"**：
-   * 战场是全屏覆盖层且 `z-index: 100`，而送达弹窗的遮罩是 `z-index: 88`
-   * ⇒ 结算信在**击杀那一拍**就送达并入了队（`deliverCommsInstance` 会 push `commsPopups`），
-   * 但弹窗是**在战场底下**挂起来的：玩家看不见；等战场收起来时，玩家随手一点（遮罩是满屏
-   * `inset: 0`，点哪都算"点外面"）就把它**静默点掉**了 —— 真档实证：`commsRead` 里
-   * `msg-weekend-settle` 已是 `true`、`commsPopups` 已空，而玩家从没看见过那张卡。
-   * ⇒ 与"离线简报优先"同一套**排队让位**：战场在台上（`battleMounted && battleOpen`）时这里不渲染，
-   * 队首那封仍在 `commsPopups` 里等着，战场一收起它才上台；再配下面的"上膛延时"防误点。
-   */
   const popupId = engine.commsPopups()[0] ?? null
-  /** 战场是否正盖在界面上（挂载 ≠ 上屏：`battleOpen` 为假时战场什么都不渲染，不算盖着） */
   const battleOnStage = battleMounted && battleOpen
-  /** BGM / 环境音（2026-11-02 追加批）：场景变化才切曲；隐藏/最小化由内部生命周期暂停 */
   useSceneAudio({ state: engine.state, battleOnStage })
-  /**
-   * **入侵警报演出**（**船长 2026-09-25 令**：「当入侵发生时，游戏屏幕的正上方和正下方出现警告式的红灯
-   * 闪烁……**警告灯闪烁数次后，再弹出通讯**」＋ 同日补定「**开局 ＋ 旗舰现身各闪一次**」）。
-   *
-   * 引擎在**那一拍**立一次性待办（`takeInvasionAlarm()`：`'start'` = 入侵开局 · `'flagship'` = 旗舰现身），
-   * 这里**读一次即消费** ⇒ 放红灯 ＋ 调声效接口（本批空实现）；`ALARM_TOTAL_MS` 后自熄。
-   * ⚠ 演出期间**压住通讯弹窗**（见 `popupMsg` 判据）：信照常进收件箱，只是弹窗等警报演完再上台
-   * —— 与"战场让位"同一套排队思路，不会漏信。
-   */
   const [alarmKind, setAlarmKind] = useState<'start' | 'flagship' | null>(null)
-  /**
-   * ⚠ **消费与自熄拆成两个 effect**（写法上必须这样）：消费那个**没有依赖数组**（引擎每拍
-   * `notify()` ⇒ 每拍跑一次，靠 `takeInvasionAlarm()` 自己保证只消费一次）；自熄那个**只依赖
-   * `alarmKind`**。若把计时器写在消费那个里，它每拍都会被 cleanup 掉重来 ⇒ 警报永远不熄。
-   */
   useEffect(() => {
     const kind = engine.takeInvasionAlarm()
     if (kind === null) return
@@ -1084,12 +687,6 @@ async function applyLayoutAndReload(): Promise<void> {
     const t = window.setTimeout(() => setAlarmKind(null), ALARM_TOTAL_MS)
     return () => window.clearTimeout(t)
   }, [alarmKind])
-  /**
-   * **结算信的庆祝烟火**（船长同日令：「入侵结束后的通讯发送给玩家时，屏幕上出现类似庆祝的烟火动画」）：
-   * 触发点 = **结算弹窗上台那一刻**（战斗中/离线简报期间弹窗本来就延后 ⇒ 烟火跟着延后，保证看得见）。
-   * ⚠ **每场只放一次**：按该封信的 `seq` 记账（下一场换了 seq 才会再放）；
-   * ⚠ 同样拆成"认信放烟花"＋"自熄"两个 effect（理由同警报那处）。
-   */
   const popupMsg =
     popupId !== null && !showOfflineReport && !battleOnStage && alarmKind === null
       ? (engine.commsInboxView().find((e) => e.id === popupId) ?? null)
@@ -1109,58 +706,21 @@ async function applyLayoutAndReload(): Promise<void> {
     const t = window.setTimeout(() => setFireworksOn(false), FIREWORKS_MS)
     return () => window.clearTimeout(t)
   }, [fireworksOn])
-  /**
-   * **通讯送达提示音**（2026-11-02 声音系统）：弹窗**真正上台**那一刻播一次
-   * —— 与上面"战场让位 / 离线简报优先 / 警报期间压住弹窗"同一套排队，等它上台再响。
-   */
   useEffect(() => {
     if (popupMsg === null) return
     playSfx('comms-received')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [popupMsg?.id])
-  /** 结算面板（弹窗里的「查看详细奖励」**直接弹它**；通讯页那一处入口照旧） */
   const [sumOpen, setSumOpen] = useState(false)
-  /**
-   * **声望商店的落点 = 星图页 · 常驻悬赏 · 「声望商店」子页**（**2026-09-27 船长令**：
-   * 「**我打算将声望商店嵌入常驻悬赏内，作为子页面的存在，类似扫描虫洞页面内的虫洞探索和谜质科技**」，
-   * 同轮裁定**甲案**：旧弹层保留但不再有入口）。
-   *
-   * `bountyShopSeq` = **定位信号**（开商店时自增；变化即切子页，与 `craftFocus`/`mapGoto` 同款）；
-   * 离开常驻悬赏时由 `changeMapTab` 清零 ⇒ 请求是**一次性**的，不会把下次"自己点进来"也拽到商店。
-   */
   const [bountyShopSeq, setBountyShopSeq] = useState(0)
-  /**
-   * **旧「章鱼人兑换」弹层**（**2026-09-26 船长令**立、**2026-09-27 甲案**撤入口）：
-   * 状态与组件都还留着（船长要先看子页观感），**但没有任何入口再打开它** ——
-   * 三条入口一律走 `openPlugExchange()` 跳到常驻悬赏的商店子页。删除时机 = 船长点头后，
-   * 与 `panels/PlugExchange.tsx` 的 `PlugExchangeModal` 一起删。
-   */
   const [plugExchangeOpen, setPlugExchangeOpen] = useState(false)
-  /**
-   * **兑换窗口的开窗计数**（**2026-09-26 船长令**：「**而且也不会跳转到舰船插件的筛选内**」）——
-   * 组装机读到变化就自动切到「舰船插件」档（与 `craftFocus` 同一套"定位信号"手法）。
-   * ⚠ 现在它只服务**组装机**那一路：三条入口都先跳到常驻悬赏的商店子页，再顺手喂它。
-   */
   const [plugExchangeSeq, setPlugExchangeSeq] = useState(0)
-  /**
-   * **去声望商店的唯一入口**（三条路都走它）：① 切到星图页 ② 切到「常驻悬赏」页签
-   * ③ 自增定位信号（面板据此切「声望商店」子页）④ 顺手喂 `plugExchangeSeq`（组装机据此切插件档）。
-   */
   const openPlugExchange = (): void => {
     setPage('map')
-    /**
-     * ⚠ 走 `changeMapTab` 而**不是** `setMapTab`：它带「第一次」前置拦截
-     * （未解锁时给 toast 提示，而不是静默停在星图·远征什么都不说）——与 `mapGoto` 那条程序化跳转同款。
-     */
     changeMapTab('bounty')
     setBountyShopSeq((n) => n + 1)
     setPlugExchangeSeq((n) => n + 1)
   }
-  /**
-   * **送达弹窗的"上膛"延时**（同上那条报障的配套）：刚挂上来的头 `POPUP_ARM_MS` 毫秒内**忽略遮罩点击**
-   * ——遮罩是满屏的（`inset: 0`，点哪都算点外面），而这张卡挂上来的时机恰好是"玩家刚点完战场/刚点过别处"
-   * ⇒ 不设防就会**一挂上就被下一次点击静默点掉**（玩家只看到一闪）。卡内按钮不受影响（点它是明确动作）。
-   */
   const [popupArmed, setPopupArmed] = useState(false)
   useEffect(() => {
     if (popupMsg === null) {
@@ -1172,34 +732,26 @@ async function applyLayoutAndReload(): Promise<void> {
     return () => window.clearTimeout(t)
   }, [popupMsg?.id])
 
-  // ── 随机事件小弹卡（在线触发时展示 6 秒；离线触发的不弹，避免启动刷屏） ──
   const [eventToast, setEventToast] = useState<{ id: number; text: string } | null>(null)
   const lastSeenLogId = useRef<number>(state.logs[state.logs.length - 1]?.id ?? 0)
   const eventTimer = useRef<number | null>(null)
-  /**
-   * ⚠ **effect 依赖 = 日志尾号（单调递增），不能写 `[state.logs]`**（2026-09-13 三号修既有缺陷）：
-   * `core.state.addLog` 是**原地 `push` / `splice`**（数组引用永不变）⇒ 依赖数组本身的 effect
-   * **挂载后再也不会重跑** ⇒ 小弹卡此前**从不弹出**。真机实测：日志面板里已有「✦ 扫描完成：…」，
-   * 而页面全程不存在 `.app-event-toast`。改用尾号做依赖后语义不变（只认"挂载之后新增"的日志）。
-   */
   const logTailId = state.logs[state.logs.length - 1]?.id ?? 0
   useEffect(() => {
     const logs = state.logs
     for (let i = logs.length - 1; i >= 0; i--) {
       const l = logs[i]!
-      if (l.id <= lastSeenLogId.current) break // 只检查新增日志（id 单调递增）
-      if (l.kind === 'event' || l.text.startsWith('✦')) { // 随机事件按类型认；其余「✦ 扫描完成/彩头/高级箱」照旧按前缀认
-        setEventToast({ id: l.id, text: logText(l) }) // 甲案：有 textId ⇒ 按当前语言（无 ⇒ 中文正文）
+      if (l.id <= lastSeenLogId.current) break
+      if (l.kind === 'event' || l.text.startsWith('✦')) {
+        setEventToast({ id: l.id, text: logText(l) })
         if (eventTimer.current !== null) window.clearTimeout(eventTimer.current)
         eventTimer.current = window.setTimeout(() => setEventToast(null), 6000)
-        break // 每次最多弹最新一条
+        break
       }
     }
     const tail = logs[logs.length - 1]
     if (tail) lastSeenLogId.current = tail.id
   }, [logTailId])
 
-  /** 随机事件小弹卡的「点击关闭」（口径同 `dismissToast`；本卡自动隐藏为 6 秒） */
   const dismissEventToast = (): void => {
     if (eventTimer.current !== null) {
       window.clearTimeout(eventTimer.current)
@@ -1213,22 +765,12 @@ async function applyLayoutAndReload(): Promise<void> {
     showToast(ok ? tr("ui.App.054") : tr("ui.App.055"), !ok)
   }
 
-  /**
-   * 重置档案（开新档）：**模式选择挪到序章演出结束后出两张卡**（**2026-09-23 船长定**：
-   * 「玩家选择普通模式还是铁人模式的时机应该在过完初始动画后」）⇒ 这里只管重置；
-   * 新档与重置共用序章那一处选择，不再另弹窗。
-   * 旧档（现有存档）仍走存档页的「开启铁人模式」一次性转换。
-   */
   function handleReset(): void {
     if (!window.confirm(tr("ui.App.108"))) return
     void engine.resetGame()
     showToast(tr("ui.App.109"))
   }
 
-  /**
-   * **设置子页直达**（2026-11-05 股市游客批）：页面里遇到「需要登录」的操作时，直接把设置面板
-   * 停在「账户」子页（登入入口在那里），而不是只弹一句提示让玩家自己找。
-   */
   const openSettingsPage = (page: SettingsPageId = 'interface'): void => {
     setSettingsInitialPage(page)
     setShowSettings(true)
@@ -1236,31 +778,17 @@ async function applyLayoutAndReload(): Promise<void> {
 
   const pageProps = { engine, onToast: showToast, onOpenSettings: openSettingsPage }
 
-  /**
-   * **序章·苏醒只剩"演出"**（2026-09-17 教程重做）：线性七步（采集→交付→出售→修复→试炼→技能→分身）、
-   * 步骤白名单锁定、顶部引导条与收尾演出**全部退场**——教程内容改由任务中心的 13 条「第一次」承载，
-   * 玩家自由选择；页面/页签的门改由下面的「第一次」前置表（core `FIRST_UNLOCKS`）把守。
-   */
   const tutStep = engine.state.onboarding.step
-  /**
-   * **「第一次」前置锁定**（2026-09-17 教程重做批 · 数据驱动；表在 core 的 `FIRST_UNLOCKS`）：
-   * 工业页 ← 第一次采集原矿 · 市场页 ← 第一次生产 · 星图四个页签 ← 第一次扫描。
-   * 口径（船长）：「**未解锁的页面与任务都隐藏**」⇒ 导航项与页签直接不渲染；
-   * 程序化跳转（活动栏 / 跨页按钮）另在 `changePage` / `changeMapTab` 里拦一道，给一句"先做什么"。
-   */
   const tabLocked = (t: MapTab): boolean => {
     const k = TAB_UNLOCK_KEY[t]
     return k !== undefined && !unlocked(state, k)
   }
-  /** 页签解锁状态签名（effect 依赖用：解锁只从无到有 ⇒ 签名变了才需要归位一次） */
   const tabLockSig = MAP_TABS.map((t) => (tabLocked(t.key) ? '0' : '1')).join('')
-  // 锁上的页签不能停着不动（读档落在其上 / 跳转落点被锁）：退回「星图·远征」
   useEffect(() => {
     if (tabLocked(mapTab)) setMapTab('star')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapTab, tabLockSig])
 
-  /** 播一次"点到了"的脉冲（内容区 + 该导航项图标；220ms 后自动落下）——同页重复点击也照样重播 */
   const pulseNav = (key: PageKey): void => {
     if (navBeatTimer.current !== null) window.clearTimeout(navBeatTimer.current)
     setNavBeat((b) => ({ key, seq: (b?.seq ?? 0) + 1 }))
@@ -1269,7 +797,6 @@ async function applyLayoutAndReload(): Promise<void> {
       navBeatTimer.current = null
     }, 220)
   }
-  // 卸载时收掉未落下的计时器（不给已卸载的组件 setState）
   useEffect(
     () => () => {
       if (navBeatTimer.current !== null) window.clearTimeout(navBeatTimer.current)
@@ -1278,90 +805,44 @@ async function applyLayoutAndReload(): Promise<void> {
   )
   const changePage = (p: PageKey): void => {
 
-    // 「第一次」前置（工业/市场）：导航项此时不显示，这里拦的是程序化跳转
     if (!unlocked(state, p)) {
       showToast(tr("ui.App.110", { p1: unlockNeedTitle(p) ?? tr('ui.App.116') }), true)
       return
     }
-    /**
-     * **点导航的"这一下"必须有反馈**（船长 2026-09-14：「点击左边侧边栏的时候，中间主窗口进行切换时最好
-     * 给予玩家一个反馈，**哪怕点的是当前窗口**」）：
-     * - **换页**：内容区随 `key={page}` 重挂载后立即显示，反馈由导航选中态提供；
-     * - **点当前页**：**不重挂载**（页面里的检索词 / 滚动位置 / 弹层状态一律不受打扰），改播一次 220ms 脉冲
-     *   （内容区明暗脉冲 + 该导航项图标缩放脉冲）；计时器到点摘掉 class ⇒ 连点也能一次次重播。
-     */
     if (p === page) pulseNav(p)
     else setNavBeat(null)
-    /**
-     * **切页 ⇒ 收起嵌入的「主控活动窗口」**（2026-09-21 船长令：「切换导航栏之类的时候就隐藏并最小化」）。
-     * 放在这里而不是导航按钮上：导航项、活动栏跳转、星图里的跳转全都走 `changePage`
-     * ⇒ 一处覆盖全部"换页"路径（漏一处就是"某个入口切了页窗口还杵着"的隐性 bug）。
-     * ⚠ 战斗屏不在其列（它已回全屏覆盖层，开关只由「⚔ 战斗中」浮动入口与战场内那枚按钮决定）。
-     */
     hideActivityWin()
-    /**
-     * **技能页的大类定位请求是一次性的**（2026-09-24）：技能页在切走时重挂载（`key={page}`）、
-     * 大类状态随之归零，若把请求留着，之后每次进技能页都会被它拽回「工程」。
-     * ⇒ 离开技能页就清掉，只有"跳转那一下"生效。
-     */
     if (p !== 'skills') setSkillsFocus(null)
     setPage(p)
   }
   const changeMapTab = (t: MapTab): void => {
 
-    // 「第一次」前置（星图四项：先完成第一次扫描）——页签此时不显示，这里拦的是程序化跳转
     if (tabLocked(t)) {
       const k = TAB_UNLOCK_KEY[t]
       showToast(tr("ui.App.110", { p1: (k ? unlockNeedTitle(k) : undefined) ?? tr('ui.App.116') }), true)
       return
     }
-    /**
-     * **离开常驻悬赏 ⇒ 清掉"声望商店"定位请求**（**2026-09-27**，与技能页那条同款理由）：
-     * 请求是一次性的（`bountyShopSeq > 0` = 有请求）⇒ 留着的话，玩家下次**自己**点进常驻悬赏
-     * 也会被它拽回「声望商店」子页。
-     */
     if (t !== 'bounty') setBountyShopSeq(0)
     setMapTab(t)
   }
-  /**
-   * **扫描完成的高亮"看过即收"**（船长 2026-09-15：完成后进度条依旧存在并高亮，直到玩家进入星图
-   * 界面查看后才移除）：进/留在「星图」页的「星图」标签 = 看过了 ⇒ 收掉高亮。
-   * ⚠ 依赖只有 `[page, mapTab]`：完成时人**已经**停在星图页的话，这一拍不会触发 ⇒ 高亮留着，
-   * 等他离开再回来（或点一下顶部那条）才收——免得"新点亮的星系还没看见，条就没了"。
-   */
   useEffect(() => {
     if (page === 'map' && mapTab === 'star') engine.ackScanView()
   }, [page, mapTab])
-  // 工业页 → 星图定位（2026-09-09 船长定）：切页 + 目标标签页 + 卡高亮 seq（MapPage 一次性应用；
-  // 标签页切换走 changeMapTab 尊重「第一次」前置锁——被锁时只切页不切签，高亮不触发）
   const gotoMapTab = (tab: 'mine' | 'salvage', ids: string[]): void => {
     changePage('map')
     changeMapTab(tab)
     setMapGoto((p) => ({ tab, ids, seq: (p?.seq ?? 0) + 1 }))
   }
-  /**
-   * 任务中心**内层**标签定位（2026-09-11 船长：「步骤 2/7 跳转任务中心时，不会切到指定标签页」）：
-   * 内层标签会记住玩家上次的选择，故跳转要显式发一次请求；seq 变化即应用（同 mapGoto/commsFocus 套路）。
-   */
   const focusTaskTab = (tab: string): void => {
     setTaskFocus((p) => ({ tab, seq: (p?.seq ?? 0) + 1 }))
   }
-  /**
-   * **技能页大类定位**（**2026-09-24 船长令**：「跳到技能页并自动选中工程」）：与 `focusTaskTab` 同款
-   * ——技能页的大类是页内状态（会记住玩家上次选的），跳转必须显式发一次请求，`seq` 变化才应用。
-   */
   const focusSkillGroup = (group: string, branch?: string): void => {
     setSkillsFocus((p) => ({ group, branch, seq: (p?.seq ?? 0) + 1 }))
   }
   const changeShipTab = (t: ShipTab): void => {
     setShipTab(t)
-    // 会话级记忆（2026-09-26 船长令）：切走再回来仍是这一签；不入存档、不写 localStorage
     setSessionPick('ship.tab', t)
   }
-  /**
-   * **序章演出结束 ⇒ 落到任务中心「重要任务」**（原收尾演出的落点，2026-09-17 教程重做后由"演出一结束"承接）：
-   * 待办清单与开场信都指向这里——先看清单，再决定做哪一件。
-   */
   const prevObStep = useRef(engine.state.onboarding.step)
   const [planetOpen, setPlanetOpen] = useState(false)
   useEffect(() => {
@@ -1390,8 +871,6 @@ async function applyLayoutAndReload(): Promise<void> {
   useEffect(() => {
     const s = engine.state.onboarding.step
     if (prevObStep.current === ONB_AWAKEN && s !== ONB_AWAKEN) {
-      // 序章收尾落「任务中心 · 重要任务」：写会话级记忆（原写 localStorage 的跨启动记忆，
-      // 2026-09-26 船长令改会话制 ⇒ 与任务面板自己的读写同一把尺，见 ui/sessionView.ts）
       setSessionPick('task.tab', 'important')
       setPage('task')
     }
@@ -1400,7 +879,7 @@ async function applyLayoutAndReload(): Promise<void> {
   }, [tutStep])
 
   return (
-    <div ref={rootRef} className={`app-root${mobileRot ? ' is-mobile-rot' : ''}${mobileLayout ? ' is-mobile-layout' : ''} is-layout-${layoutKind}`}>
+    <div ref={rootRef} className={`app-root${mobileRot ? ' is-mobile-rot' : ''}${mobileLand ? ' is-mobile-land' : ''}${mobileLayout ? ' is-mobile-layout' : ''} is-layout-${layoutKind}`}>
       {/* 引擎订阅：正常异步渲染；性能监测激活时改 flushSync 同步刷新并实测整树提交耗时 */}
       <PerfListener engine={engine} force={force} />
       {/* ───── 顶栏 ───── */}

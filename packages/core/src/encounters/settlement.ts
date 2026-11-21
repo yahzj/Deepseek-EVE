@@ -11,7 +11,6 @@ import { shortestTravelMinutes, travelLegMs } from '../travel'
 import { noteOfflineEncounterOutcome, noteOfflineTransportStop, noteOfflineRepairKits } from '../offlineCombatStats'
 import { finishFleetHaulingAbortAfterEncounter } from '../hauling/fleet'
 
-/** 新普通海盗只结算真实战斗一次，旧文字/入侵结算路径不受影响。 */
 export function settleIndustrialEncounter(state: GameState, ctx: SimContext, helpers: {
   settleBattleDroneLosses: (state: GameState, ctx: SimContext, shipId: string, battle: GameState['encounter']['battle']) => void
   persistBattleDamage: (state: GameState, ctx: SimContext, shipId: string, battle: GameState['encounter']['battle']) => void

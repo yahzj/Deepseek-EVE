@@ -67,7 +67,7 @@
    */
   --hud-short: rgb(var(--wui-danger-strong));
   /* 业务读数走等宽，但**与全站默认字体同族**（2026-11-02 船长令：默认档 = 微软雅黑 + Oxanium 英文/数字；
-     复古档由 `panels/appSettings.css` 的 `[data-ui-font='retro'] .hud` 覆盖成 GNU Unifont；
+     复古档由 `panels/appSettings.css` 的 `[data-ui-font='retro'] .hud` 覆盖成 Fusion Pixel 12px；
      此前遇到过中文落宋体的问题，故栈内保留中文兜底）。 */
   --hud-mono: 'Oxanium', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans SC', 'Fira Code', ui-monospace, Consolas, monospace;
 }

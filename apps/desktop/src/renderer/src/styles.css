@@ -181,6 +181,22 @@ html[data-locale='en'] body {
 
 }
 
+/* ── 手机物理横握（2026-11-12 船长报「iOS 横屏显示错位」）──
+   横屏时 `is-mobile-rot` 不成立，界面只能按 844×390 的窄矮窗口排 ⇒ 底栏被挤出、选择卡纵向溢出。
+   这里套同款「1200 逻辑宽」缩放，但**不旋转**：布局拿到 ≈1200×555 的空间（与桌面 1200 宽窗口
+   同构），scale 后正好铺满横屏可见区。--mob-* 变量由 App.tsx 同一套数字逻辑写入。 */
+.app-root.is-mobile-land {
+  --mob-w: 1200px;
+  position: fixed;
+  left: var(--mob-x, 0px);
+  top: var(--mob-y, 0px);
+  width: var(--mob-w);
+  height: var(--mob-h, 100vw);
+  transform-origin: 0 0;
+  transform: scale(var(--mob-scale, 1));
+  overflow: hidden;
+}
+
 /* 旋转后物理视口宽仍是竖屏宽(<1180)，会误触发 max-width:1180px 折叠——旋转时维持桌面横排布局 */
 
 .app-root.is-mobile-rot .app-mkt-split {
@@ -11397,6 +11413,10 @@ html[data-locale='en'] body {
 .app-pro-mode-title { font-size: var(--wui-fs-4xlc); font-weight: 800; }
 .app-pro-mode-li { font-size: var(--wui-fs-base); line-height: 1.5; color: rgb(var(--wui-x76)); }
 
+/* 横握缩放层（2026-11-12）：序章容器内容宽 675，两卡 330×2 + 18 间距 = 678 差 3px 会换行
+   ⇒ 纵向溢出矮视口（铁人模式卡被裁在屏外）。收紧间距让两张卡并排。 */
+.app-root.is-mobile-land .app-pro-mode { gap: var(--wui-sp-10); }
+
 @keyframes app-pro-breathe { 0%,100% { opacity: .55; transform: scale(.99); } 50% { opacity: 1; transform: scale(1.02); } }
 
 .app-pro-term { font-family: var(--wui-mono); font-size: var(--wui-fs-base); line-height: 1.9; }
@@ -11452,7 +11472,9 @@ html[data-locale='en'] body {
 
 .app-pro-err { color: rgb(var(--wui-x09)); font-size: var(--wui-fs-base); margin-top: var(--wui-sp-8); }
 
-.app-pro-skip { position: fixed; top: 12px; right: 14px; z-index: 91; font-size: var(--wui-fs-s); color: rgb(var(--wui-pro-text)); background: rgb(var(--wui-x01) / 0.04); border: 1px solid rgb(var(--wui-x243)); border-radius: var(--wui-sp-5); padding: var(--wui-sp-5) var(--wui-sp-12); cursor: pointer; }
+/* 「跳过演出」常驻屏幕右上角。position 必须 !important：新版布局有一条通用按钮重置
+   （.app-root.is-layout-modern button…）把它改成 relative，会把按钮摆到序章内容旁边（2026-11-12 船长报障）。 */
+.app-pro-skip { position: fixed !important; top: 12px; right: 14px; z-index: 91; font-size: var(--wui-fs-s); color: rgb(var(--wui-pro-text)); background: rgb(var(--wui-x01) / 0.04); border: 1px solid rgb(var(--wui-x243)); border-radius: var(--wui-sp-5); padding: var(--wui-sp-5) var(--wui-sp-12); cursor: pointer; }
 
 .app-pro-skip:hover { color: rgb(var(--wui-x49)); border-color: rgb(var(--wui-x91)); }
 
@@ -13399,8 +13421,9 @@ input.app-wh-template-name { min-height: 36px; padding: var(--wui-sp-6) var(--wu
   .app-root select { font-size: max(16px, var(--wui-fs-base)); }
 }
 
-/* 手机专用外壳：桌面布局与冻结基准不变；抽屉不参与主区分配。 */
-.app-root.is-mobile-layout:not(.is-mobile-rot) { position: relative; width: 100%; overflow: hidden; }
+/* 手机专用外壳：桌面布局与冻结基准不变；抽屉不参与主区分配。
+   横握缩放层（is-mobile-land）自带 fixed/尺寸，交给它 ⇒ 这里排除。 */
+.app-root.is-mobile-layout:not(.is-mobile-rot):not(.is-mobile-land) { position: relative; width: 100%; overflow: hidden; }
 .app-root.is-mobile-layout .app-header {
   display: flex; flex-direction: column; align-items: stretch; gap: 4px;
   padding: 4px 8px; min-width: 0; box-sizing: border-box;
@@ -13411,6 +13434,22 @@ input.app-wh-template-name { min-height: 36px; padding: var(--wui-sp-6) var(--wu
 }
 .app-root.is-mobile-layout .app-header-left > *,
 .app-root.is-mobile-layout .app-header-right > * { flex-shrink: 0; }
+
+/* 横握缩放层（2026-11-12 船长：「顶栏要做成一行不是两行」）：
+   手机布局默认把顶栏拆成上下两排（竖持窄屏省宽），但横握的 1200 逻辑宽放得下一行
+   ⇒ 恢复左右两块横排，超出时各自横向滚动。 */
+.app-root.is-mobile-layout.is-mobile-land .app-header {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+}
+.app-root.is-mobile-layout.is-mobile-land .app-header-left,
+.app-root.is-mobile-layout.is-mobile-land .app-header-right {
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+.app-root.is-mobile-layout.is-mobile-land .app-header-right { margin-left: auto; }
 .app-root.is-mobile-layout .app-logo { font-size: 14px; letter-spacing: 0; }
 .app-root.is-mobile-layout .app-header-right .app-btn { min-height: 32px; }
 .app-root.is-mobile-layout .app-workspace { min-width: 0; min-height: 0; padding: 4px; gap: 6px; }
@@ -15497,4 +15536,120 @@ body.no-fx .app-root.is-layout-modern .app-skill-hex.is-training polygon {
   .app-online-chat-message { max-width: 94%; }
   .app-online-chat-history { padding-inline: var(--wui-sp-3); }
   .app-online-chat-input { min-height: 56px; }
+}
+
+/* ═══════════ CRT 显示器效果（2026-11-11 船长令：「整体界面像看老式 CRT 显示器那种，小丑牌那种效果」） ═══════════
+   开关：`<html data-ui-crt="on">`（ui/crtEffect.ts；设置 · 界面页切换，本机偏好、不进存档）。
+   四层叠加（做法参考开源实现：microduck-simulator 的 CrtOverlay 扫描线/噪点/暗角，
+   ChromaticBlur 的孔径栅格与玻璃柔化）：
+   · html::before   显像管曲面：整屏内容经 SVG 滤镜做桶形位移（backdrop-filter；非 Chromium 退化为透明层）；
+   · html::after    RGB 孔径栅格（竖向三色细纹，模拟荫罩）＋ 颗粒噪点（feTurbulence 贴图，steps 抖动）；
+   · body::before   滚动荧光带 ＋ 整屏呼吸闪烁；
+   · body::after    行扫描线 ＋ 玻璃反光斜带 ＋ 暗角 ＋ 内阴影黑边。
+   性能：动画只动 transform/背景位置与透明度，噪点 steps(1) 低频切帧；扫描线/栅格/暗角为静态渐变；
+   pointer-events 全关，不拦任何点击。 */
+html[data-ui-crt='on']::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 2147483097;
+  pointer-events: none;
+  /* 显像管曲面：整屏内容经 SVG 滤镜做低频位移（曲率/起伏），滤镜定义见 ui/crtEffect.ts。
+     url() 只在 Chromium 渲染；其他浏览器该层退化为透明层，扫描线/噪点/暗角照常。 */
+  -webkit-backdrop-filter: url(#whale-crt-warp);
+  backdrop-filter: url(#whale-crt-warp);
+  /* 降级时先淡出（透明 = 滤镜结果与未滤镜画面混合，看不出跳变），淡完再彻底撤掉滤镜 */
+  opacity: 1;
+  transition: opacity 180ms ease;
+}
+html[data-ui-crt='on']::after {
+  content: '';
+  position: fixed;
+  inset: -80px;
+  z-index: 2147483098;
+  pointer-events: none;
+  background-image:
+    url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='matrix' values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.12 0'/></filter><rect width='160' height='160' filter='url(%23n)'/></svg>"),
+    repeating-linear-gradient(90deg,
+      rgba(255, 70, 60, 0.08) 0 1px,
+      rgba(70, 255, 90, 0.05) 1px 2px,
+      rgba(70, 110, 255, 0.08) 2px 3px);
+  background-size: 160px 160px, auto;
+  opacity: 0.45;
+  animation: crt-noise 0.6s steps(1) infinite;
+}
+html[data-ui-crt='on'] body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 2147483100;
+  pointer-events: none;
+  /* 增色与微对比度已合并进曲面滤镜的 feColorMatrix，这里不再叠第二层整屏 backdrop-filter
+     （2026-11-12 性能优化：两层整屏滤镜 = 两次全屏合成，去掉后滚动/动画场景少一次整屏负担）。 */
+  background:
+    /* 水平行扫描线（Scanlines） */
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.18) 0 1px, transparent 1px 3px),
+    /* 显像管左上弧形玻璃厚度反光（Curved Glass Sheen） */
+    linear-gradient(125deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.018) 18%, transparent 36%),
+    /* 显像管物理球面暗角（Barrel Vignette）：中央 50% 极其通透保证文字可读，四角平滑收敛至黑边 */
+    radial-gradient(ellipse 100% 100% at 50% 50%,
+      transparent 50%,
+      rgba(0, 0, 0, 0.15) 68%,
+      rgba(0, 0, 0, 0.58) 84%,
+      rgba(0, 0, 0, 0.92) 96%,
+      #000000 100%
+    );
+  /* 显像管物理外壳边框内阴影（Bezel Inner Shadow）与边缘微光 */
+  box-shadow:
+    inset 0 0 140px rgba(0, 0, 0, 0.82),
+    inset 0 0 45px rgba(0, 0, 0, 0.92),
+    inset 0 0 2px rgba(255, 255, 255, 0.08);
+}
+html[data-ui-crt='on'] body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 2147483099;
+  pointer-events: none;
+  /* 幽灵级微弱光束（Rolling Beam）：宽度压细至 36px，峰值不透明度降至 0.007 极限微阶，似有若无、绝不刺眼。
+     位移动画走 transform（合成器层），不用 background-position —— 后者每帧重绘整屏图层。 */
+  background: linear-gradient(180deg, transparent 0%, rgba(200, 240, 220, 0.007) 50%, transparent 100%);
+  background-size: 100% 36px;
+  background-repeat: no-repeat;
+  animation: crt-roll 18s linear infinite;
+  will-change: transform;
+}
+@keyframes crt-roll {
+  from { transform: translateY(-36px); }
+  to { transform: translateY(100vh); }
+}
+/* ═══════════ 滚动 / 战斗 / 交易所期间降级（2026-11-12：滚动卡顿报障 + CRT 性能优化） ═══════════
+   原因：`backdrop-filter`（曲面位移）在背后内容每帧变化时整屏重算——滚动、战斗弹道、行情刷新都属此类；
+   这些时段先让曲面层**淡出**（180ms），淡完再彻底撤掉滤镜把成本归零；结束后先恢复滤镜、下一帧
+   再淡入——两个方向都不会出现「曲率突然消失/出现」的跳变。扫描线/噪点/暗角全程照常，动画不暂停
+   （实测全屏动画在合成器里是免费的）。标记由 ui/crtEffect.ts 维护：滚动自动检测，
+   战斗与交易所页由各自组件传入。 */
+html[data-ui-crt='on'][data-ui-crt-scroll='1']::before {
+  opacity: 0;
+}
+/* 透明度归零后仍可能被合成器采样 ⇒ 淡出完成后再真正撤掉整屏滤镜（这一步肉眼不可见） */
+html[data-ui-crt='on'][data-ui-crt-warp-off='1']::before {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+/* 颗粒噪点：整层 160px 贴图按帧错位（吸附到 steps(1)，只在帧边界跳一次） */
+@keyframes crt-noise {
+  0% { background-position: 0 0, 0 0; }
+  25% { background-position: -45px 30px, 0 0; }
+  50% { background-position: 25px -55px, 0 0; }
+  75% { background-position: -30px -15px, 0 0; }
+  100% { background-position: 0 0, 0 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-ui-crt='on']::after {
+    animation: none;
+  }
+  html[data-ui-crt='on'] body::before {
+    animation: none;
+  }
 }

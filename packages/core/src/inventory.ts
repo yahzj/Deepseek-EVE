@@ -1,15 +1,3 @@
-/**
- * 存储层（v7）：当前驾驶船的"货仓"与全局"物品仓库"两个独立存储。
- *
- * 语义（中文说明）：
- * - 货仓（cargo）：属于当前驾驶的船；挖矿/战利品入货仓，占船容量，弃船即遗失；
- * - 物品仓库（warehouse）：属于飞行员/空间站，无限容量、永不遗失；
- *   精炼产物入仓库，制造材料从仓库扣除；
- * - 2026-09-09（船长口径 A）：货仓 = 可携带物都可装船——仓库物品（含矿物/弹药/无人机）全放开，
- *   装备（模块）也可装入（占位体积 MODULE_CARGO_UNIT_M3），纯搬运携带、消费链路不变；
- *   卸货按 id 分流：模块回 moduleBay（装备库）、其余回 warehouse.items；
- * - 船在 data 缺失或弃船瞬间 fleet 条目会短暂为空：所有辅助函数都做容错（按空处理）。
- */
 import { ceilFinalQuantity } from './quantity'
 import type { FleetShipState, GameState } from './state'
 import { shipDamageEffects } from './shipDamage'
@@ -17,108 +5,59 @@ import type { ItemDef, SimContext } from './types'
 import { fleetDefOf } from './instances'
 import { shipLockedReason } from './state'
 import { shipOperationBlockReason } from './shipActionPolicy'
+import { deployedCombatEscorts } from './combat/command/locks'
 import { familyModules } from './fitted'
 import { plugEffectPartsOf } from './plugEffects'
-// ⚠ 依赖方向：`blackbox.ts` 只依赖 `state` / `plugs`，**不引 inventory** ⇒ 这边引它不成环
 import { isBlackboxItem, noteBlackboxObtained } from './blackbox'
 
-/** 模块装船的占位体积（m³/件，2026-09-09 船长定：装备无体积字段，携带占用 1 m³；不影响装配/战斗） */
 export const MODULE_CARGO_UNIT_M3 = 1
 
-/**
- * **这个货仓 id 是不是"装备"**（货仓装卸分流的**唯一判据**）。
- *
- * ⚠ **2026-09-26 玩家报障**：「**玩家将插件放到货仓再卸进仓库后插件不见了**」——真因就是本函数原先写的是
- * **id 前缀判定**（`id.startsWith('mod-')`）：舰船插件的 id 是 `plug-shield-plate` 一类
- * （见 `data/plugs.ts` 的 `PLUG_IDS`），**不以 `mod-` 开头** ⇒ 卸货时被分流进 `warehouse.items`
- * （物品仓库），而物品页只列**物品目录**（`ctx.items`）里的东西 ⇒ 一个模块 id 躺在物品仓库里
- * **哪个界面都看不见**（东西其实还在存档里，只是没有任何入口；`countWare` 那类材料口径也照数它）。
- *
- * 现改为**查装备目录**（`ctx.modules`）——**不看 id 命名**，日后任何新 id 空间的装备自动命中。
- */
 export function isModuleCargoId(ctx: SimContext, id: string): boolean {
   return ctx.modules.has(id)
 }
 
-/* ───────── 未上线闸门（施工期：给玩家看的目录 vs 引擎全目录） ───────── */
 
-/**
- * **该物品能不能给玩家看**（2026-09-13 补：把船长铁律「数据走 `unreleased` 闸门」落到物品目录级）。
- *
- * 为什么需要它：市场闸门 `MarketGoodDef.unreleased` 只挡 `ctx.marketGoods`，而**工业页「可精炼资源」
- * 网格 / 舰船页 AI 精炼炉下拉 / 组装机材料提示 / 手册物品图鉴**都是直接扫 `ctx.items` 全目录的
- * （判据 = 有没有精炼配方）。首版只标了市场卡 ⇒ 实测**虚空母矿连卡带"虫洞"描述一起挂在工业页上**。
- *
- * 口径：**给玩家看的枚举一律走 `visibleItemDefs` / `itemReleased`**；
- * **引擎内部逻辑照用 `ctx.items` 全目录**（虫洞背包按体积换算、精炼扣料、掉落等都不受闸门影响）。
- */
 export function itemReleased(def: { unreleased?: boolean } | undefined | null): boolean {
   return !!def && def.unreleased !== true
 }
 
-/** 玩家可见的物品目录（`ctx.items` 全目录里"能给玩家看"的那部分；顺序与目录一致） */
 export function visibleItemDefs(ctx: SimContext): ItemDef[] {
   const out: ItemDef[] = []
   for (const def of ctx.items.values()) if (itemReleased(def)) out.push(def)
   return out
 }
 
-/**
- * **这个物品能不能装进舰船货仓**（**唯一判据 = 数据表 `ItemDef.holdForbidden`**；缺省可装）。
- *
- * 2026-09-30 船长令：「每单位燃料体积为1m³，但是普通舰船的货仓无法装入」——
- * 判据放在**物品数据**上（不是 core 里写一份 id 名单），日后任何"只能存仓库"的东西在数据表加一个字段即可。
- */
 export function cargoHoldForbidden(ctx: SimContext, itemId: string): boolean {
   return ctx.items.get(itemId)?.holdForbidden === true
 }
 
-/* ───────── 基础访问（容错） ───────── */
 
-/** 当前驾驶船的舰队条目（异常时返回 null，调用方按空处理） */
 export function currentShipState(state: GameState): FleetShipState | null {
   return state.fleet[state.shipId] ?? null
 }
 
-/* ───────── 货仓（驾驶船 + T3 按船只读查询） ───────── */
 
-/** 指定舰队船的货仓内容（驾驶船或副船皆可；船不存在/条目缺失按空处理） */
 export function cargoOfShip(state: GameState, shipId: string): Record<string, number> {
   return state.fleet[shipId]?.cargo ?? {}
 }
 
-/** 当前驾驶船的货仓（写操作与旧有调用一律只走这里） */
 export function cargoItemsOf(state: GameState): Record<string, number> {
   return cargoOfShip(state, state.shipId)
 }
 
-/** 查询当前船货仓某物品数量 */
 export function countItem(state: GameState, itemId: string): number {
   return cargoItemsOf(state)[itemId] ?? 0
 }
 
-/** 当前船货仓入库；**返回"是否真的写进去了"**（见下方 ⚠） */
-export function addItem(state: GameState, itemId: string, units: number): boolean {
+export function addItem(state: GameState, itemId: string, units: number, shipId = state.shipId): boolean {
   if (!Number.isFinite(units) || units <= 0) return false
-  /**
-   * ⚠ **2026-09-26 修（船长报障「报告显示拿到黑匣、玩家手里却没有」）**：
-   * 原实现走 `cargoItemsOf` ⇒ 当前驾驶船**不在舰队里**时它返回一个**临时空对象**
-   * （`cargoOfShip` 的容错分支）⇒ 写进去就随临时对象一起丢掉，而调用方照旧把"已入账"记进台账
-   * ⇒ 账实分离（报告有、实物无）。现在三条口径：
-   * ① 船不在（或货仓被冻结）⇒ **兜底入物品仓库**，绝不让奖励凭空消失；
-   * ② **返回真实结果**，调用方按它记账（不再"无条件当成功"）；
-   * ③ 「见过黑匣」只在**确实入库**之后置位（原先丢弃也置位 ⇒ 兑换商店 / 组装机「舰船插件」
-   *    档被白解锁）。
-   */
-  const cargo = currentShipState(state)?.cargo
+  const cargo = state.fleet[shipId]?.cargo
   if (cargo === undefined || Object.isFrozen(cargo)) return addWare(state, itemId, units)
   cargo[itemId] = (cargo[itemId] ?? 0) + ceilFinalQuantity(units)
-  // 黑匣入库 ⇒ 置位「见过黑匣」（**唯一置位点**；见 `blackbox.ts` 的口径）
   if (isBlackboxItem(itemId)) noteBlackboxObtained(state)
   return true
 }
 
-/** 当前船货仓出库；数量不足返回 false */
 export function removeItem(state: GameState, itemId: string, units: number): boolean {
   const cargo = cargoItemsOf(state)
   const need = ceilFinalQuantity(units)
@@ -131,25 +70,18 @@ export function removeItem(state: GameState, itemId: string, units: number): boo
   return true
 }
 
-/* ───────── 物品仓库（全局） ───────── */
 
-/** 仓库某物品数量 */
 export function countWare(state: GameState, itemId: string): number {
   return state.warehouse.items[itemId] ?? 0
 }
 
-/**
- * 仓库入库；**返回"是否真的写进去了"**（与 `addItem` 同口径，供调用方记账用 —— 见 `addItem` 的 ⚠）
- */
 export function addWare(state: GameState, itemId: string, units: number): boolean {
   if (!Number.isFinite(units) || units <= 0) return false
   state.warehouse.items[itemId] = (state.warehouse.items[itemId] ?? 0) + ceilFinalQuantity(units)
-  // 黑匣入库 ⇒ 置位「见过黑匣」（**唯一置位点**；见 `blackbox.ts` 的口径）
   if (isBlackboxItem(itemId)) noteBlackboxObtained(state)
   return true
 }
 
-/** 仓库出库；数量不足返回 false */
 export function removeWare(state: GameState, itemId: string, units: number): boolean {
   const need = ceilFinalQuantity(units)
   if (!Number.isFinite(need) || need <= 0) return false
@@ -161,9 +93,7 @@ export function removeWare(state: GameState, itemId: string, units: number): boo
   return true
 }
 
-/* ───────── 货仓体积（可指定船，含该船货舱槽装备加成） ───────── */
 
-/** 指定船货仓已占用体积（m³；矿石/气体/冰矿按压缩技术折算体积；模块 = 占位体积 1 m³/件） */
 export function cargoUsedM3Of(state: GameState, ctx: SimContext, shipId: string): number {
   let used = 0
   for (const [itemId, units] of Object.entries(cargoOfShip(state, shipId))) {
@@ -174,7 +104,6 @@ export function cargoUsedM3Of(state: GameState, ctx: SimContext, shipId: string)
   return used
 }
 
-/** 压缩技术（compression）：矿石/气体/冰矿的货仓占用体积每级 −6%（满级 −30%）——舱容/满舱判定同源 */
 export function cargoUnitM3(state: GameState, item: import('./types').ItemDef | undefined): number {
   const raw = item?.unitM3 ?? 0
   if (raw <= 0) return raw
@@ -185,8 +114,6 @@ export function cargoUnitM3(state: GameState, item: import('./types').ItemDef | 
   return raw
 }
 
-/** 指定船货仓容量（m³；舰船基础 + 货舱扩展件（复数 Σ）+ 深空物流学 +4%/级 × 货舱管理学 +3%/级；
- *  货舰操作（航运族专精）+5%/级） */
 export function cargoCapacityM3Of(state: GameState, ctx: SimContext, shipId: string): number {
   const ship = fleetDefOf(state, ctx, shipId)
   if (!ship) return 0
@@ -210,42 +137,24 @@ export function cargoCapacityM3Of(state: GameState, ctx: SimContext, shipId: str
   return ceilFinalQuantity(ship.cargoM3 * (1 + bonus) * capMult * damage.cargo)
 }
 
-/** 当前驾驶船货仓已占用体积（m³） */
 export function cargoUsedM3(state: GameState, ctx: SimContext): number {
   return cargoUsedM3Of(state, ctx, state.shipId)
 }
 
-/** 当前驾驶船货仓容量（m³，含货舱槽装备加成） */
 export function cargoCapacityM3(state: GameState, ctx: SimContext): number {
   return cargoCapacityM3Of(state, ctx, state.shipId)
 }
 
-/**
- * 指定船货仓剩余空间（m³），不小于 0 —— **满舱判定的唯一口径**。
- * 2026-09-12（P0 玩家反馈「采矿船货仓没满就返航」）：`ai.ts` 原先自带一份手写副本
- * `freeCargoFor`，只算 `船体 cargoM3 ×(1+货舱件加成)`，**漏掉三条货舱类技能乘链**
- * （深空物流学 / 货舱管理学 / 货舰操作）⇒ 玩家技能越练、AI 副船越早"喊满"返航
- * （实测皇带鱼级货舰三技能满级时只装到真容量的 57.96%）。现统一走本函数。
- */
 export function freeCargoM3Of(state: GameState, ctx: SimContext, shipId: string): number {
   return Math.max(0, cargoCapacityM3Of(state, ctx, shipId) - cargoUsedM3Of(state, ctx, shipId))
 }
 
-/** 当前船货仓剩余空间（m³），不小于 0 */
 export function freeCargoM3(state: GameState, ctx: SimContext): number {
   return freeCargoM3Of(state, ctx, state.shipId)
 }
 
-/* ───────── 跨仓搬运（装卸） ───────── */
 
-/**
- * 指定船货仓 → 仓库（卸货分流：**装备回 `moduleBay`**、其余回物品仓库 `warehouse.items`）。
- * 返回搬入的单位数。（T4 换船善后：旧船自动返航到港后整仓卸入；写操作只经它，防"换船洗仓"。）
- *
- * ⚠ 分流判据 = {@link isModuleCargoId}（**查装备目录**，不是 id 前缀）——2026-09-26 插件丢失报障的落点。
- */
 export function unloadCargoOfShipToWarehouse(state: GameState, ctx: SimContext, shipId: string): number {
-  // **进洞船只所有行为锁定**（船长 2026-09-13：锁，进洞船只所有行为都锁定。包括维修。）
   const lock = shipLockedReason(state, shipId, '从它货仓卸货')
   if (lock) return 0
   const cargo = cargoOfShip(state, shipId)
@@ -260,12 +169,17 @@ export function unloadCargoOfShipToWarehouse(state: GameState, ctx: SimContext, 
   return moved
 }
 
-/** 货仓 → 仓库（卸货分流：装备回 moduleBay、其余回 warehouse.items）；返回搬入仓库的单位数 */
+export function unloadWorkFleetToWarehouse(state: GameState, ctx: SimContext, leader = state.shipId): number {
+  const escort = state.combatEscort
+  const ids = escort?.leaderShipId === leader ? deployedCombatEscorts(state) : []
+  const arrived = ids.length ? { ...state, combatEscort: undefined } : state
+  return [...new Set([leader, ...ids])].reduce((sum, id) => sum + unloadCargoOfShipToWarehouse(arrived, ctx, id), 0)
+}
+
 export function unloadCargoToWarehouse(state: GameState, ctx: SimContext, itemId?: string): number {
   return unloadShipCargo(state, ctx, state.shipId, itemId)
 }
 
-/** 手动卸货单点，与自动到港卸货的内部入口分离。 */
 export function unloadShipCargo(state: GameState, ctx: SimContext, shipId: string, itemId?: string): number {
   if (shipOperationBlockReason(state, ctx, shipId, 'cargo')) return 0
   const cargo = cargoOfShip(state, shipId)
@@ -282,15 +196,6 @@ export function unloadShipCargo(state: GameState, ctx: SimContext, shipId: strin
   return moved
 }
 
-/**
- * **把"误落进物品仓库的装备"搬回装备库**（**2026-09-26 玩家报障的存量修复**；每次读档跑一次、幂等）。
- *
- * 为什么需要：插件丢失那条链（`unloadCargo*` 的前缀判定）已经把一部分玩家的插件写进了
- * `warehouse.items` ——修好分流只防未来，**存量那份得搬回来**（东西一直在存档里，只是没有入口）。
- * 判据同样是"查装备目录"，所以它只搬**确实在装备目录里**的 id，物品一件不动。
- *
- * @returns 搬回去的件数（>0 时调用方可记日志）
- */
 export function repairMisplacedWarehouseModules(state: GameState, ctx: SimContext): number {
   let moved = 0
   for (const [id, units] of Object.entries(state.warehouse.items)) {
@@ -303,15 +208,6 @@ export function repairMisplacedWarehouseModules(state: GameState, ctx: SimContex
   return moved
 }
 
-/**
- * **把"装不进货仓"的东西从各船货仓搬回物品仓库**（**2026-09-30 船长令**：
- * 「每单位燃料体积为1m³，但是普通舰船的货仓无法装入」的**存量修复**）。
- *
- * 口径与 `repairMisplacedWarehouseModules` 同款：**每次读档跑一次、幂等、不销毁任何东西**
- * （老档里躺在货仓的燃料照搬进仓库；新档本来就装不进去 ⇒ 恒为 0）。
- *
- * @returns 搬回仓库的单位数（>0 时调用方可记日志）
- */
 export function repairHoldForbiddenCargo(state: GameState, ctx: SimContext): number {
   let moved = 0
   for (const ship of Object.values(state.fleet)) {
@@ -328,9 +224,8 @@ export function repairHoldForbiddenCargo(state: GameState, ctx: SimContext): num
   return moved
 }
 
-/** 仓库 → 货仓手动装船；返回实际装船单位数。 */export function loadWarehouseToCargo(state: GameState, itemId: string, units: number, ctx: SimContext): number {
+export function loadWarehouseToCargo(state: GameState, itemId: string, units: number, ctx: SimContext): number {
   if (shipOperationBlockReason(state, ctx, state.shipId, 'cargo')) return 0
-  // **进洞船只所有行为锁定**（船长 2026-09-13：锁，进洞船只所有行为都锁定。包括维修。）
   const lock = shipLockedReason(state, state.shipId, '往它货仓装货')
   if (lock) return 0
   const available = countWare(state, itemId)
@@ -343,17 +238,10 @@ export function repairHoldForbiddenCargo(state: GameState, ctx: SimContext): num
   return 0
 }
 
-/**
- * 仓库 → 货仓（按当前船的剩余空间尽量装，物品/模块通用）；返回实际装船单位数。
- * 物品按各自单位体积（矿物/弹药等 0.01~1.5 m³）；模块 = 占位体积 MODULE_CARGO_UNIT_M3（1 m³/件），
- * 从 moduleBay（装备库）扣取。2026-09-09 船长口径 A：仓库可携带物（除舰船）都可装船。
- */
 export function loadWarehouseToCargoFit(state: GameState, itemId: string, ctx: SimContext): number {
   if (shipOperationBlockReason(state, ctx, state.shipId, 'cargo')) return 0
-  // **进洞船只所有行为锁定**（船长 2026-09-13：锁，进洞船只所有行为都锁定。包括维修。）
   const lock = shipLockedReason(state, state.shipId, '往它货仓装货')
   if (lock) return 0
-  /** **货仓装不进去的东西直接拒绝**（数据表判据；界面另有专门提示，见 `ItemsPage.handleLoad`） */
   if (cargoHoldForbidden(ctx, itemId)) return 0
   const def = ctx.items.get(itemId)
   const mod = def ? undefined : ctx.modules.get(itemId)
@@ -374,8 +262,6 @@ export function loadWarehouseToCargoFit(state: GameState, itemId: string, ctx: S
   return amount
 }
 
-/** 从**指定船**的货舱扣件（返回实际扣到的数量；船不存在/冻结货舱/数量不足 ⇒ 按现有扣，可能为 0）
- * （2026-10-02 批次 4h 从 combat.ts 迁来：combat 与 combatRepair 共用，货舱操作回货舱的家） */
 export function removeCargoOfShip(state: GameState, shipId: string, itemId: string, units: number): number {
   const cargo = cargoOfShip(state, shipId)
   if (!cargo || Object.isFrozen(cargo)) return 0

@@ -46,7 +46,8 @@ export function FittingRange({ engine, shipId, onClose }: { engine: GameEngine; 
     state: range.state, ctx: range.ctx,
     wormholeSpeedActive: () => 1, wormholeSpeedOptions: () => [], setWormholeSpeed: () => {},
     battleSetDesireAt: () => ({ ok: true }), retreatNow: () => ({ ok: true }),
-  } satisfies Pick<GameEngine, 'state' | 'ctx' | 'wormholeSpeedActive' | 'wormholeSpeedOptions' | 'setWormholeSpeed' | 'battleSetDesireAt' | 'retreatNow'> : null
+    battleFleetRangeSave: () => ({ ok: false, errorId: 'core.fleetRange.002' }),
+  } satisfies Pick<GameEngine, 'state' | 'ctx' | 'wormholeSpeedActive' | 'wormholeSpeedOptions' | 'setWormholeSpeed' | 'battleSetDesireAt' | 'battleFleetRangeSave' | 'retreatNow'> : null
   function reset() {
     setRange(createFittingRange(engine.state, engine.ctx, shipId, tr('ui.fittingRange.002'), distance, layer))
     setGeneration(n => n + 1)

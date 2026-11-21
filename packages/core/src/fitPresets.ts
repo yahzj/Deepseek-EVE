@@ -1,28 +1,3 @@
-/**
- * **装配方案（预设）**：保存当前装配 / 按方案一键换装
- * （2026-09-14 船长拍板；入口在装配页「装配目标」栏右侧）。
- *
- * 口径（船长四问四答 + 一处追加；**上限 2026-09-17 船长：「舰船的装配方案数量上限拓展到10套」**）：
- * ① **按船型归口**（`defId`）——同型号任意一艘（含以后新建的）都能套用；
- * ② **每个船型最多 10 套**（`FIT_PRESET_MAX`；原 3 套），名称玩家自定（默认「方案 N」，见 `FIT_PRESET_NAME_MAX`）；
- * ③ 存三类槽位装备＋无人机，插件只保留参考清单、不自动安装；不存弹药档位；
- * ④ 套用 = **先卸光再装**——目标船现有装备全卸回装备库、无人机退回仓库，再按方案装；
- * ⑤ 装备库不足 / CPU 超预算 / 机舱不足时 **尽力装 + 逐条提示**（装上的保留，未装的逐条写进结果与日志）。
- * ⑥ **方案明细可查**（船长 2026-09-17：「**允许玩家查看装备方案内用了哪些装备**」）⇒ 单点
- *   `fitPresetDetailOf(preset, ctx, ship)` 出「三类槽位逐位（含空位）＋ 无人机舱装载」，
- *   界面（装配页方案浮层）只负责渲染，不自己拼名字。
- *
- * ⚠ **取舍（如实登记，2026-09-14 船长选定的语义）**：先卸光 + 尽力装 ⇒ **方案凑不齐时，
- * 套用后可能比套用前更差**（旧装配已回库）。结果小结与日志会逐条列出缺什么、哪几件未装。
- *
- * **装配顺序**（结果可复现，且避免"假超载"）：**扩容件（`cpuBonus > 0`）→ 高 → 中 → 低 → 无人机**。
- * 理由：协处理器给 CPU 预算，先装才不会让后面的件被误判超载；`fitModule` 自带四道校验
- * （进洞锁定 / 装备库有货 / 位可用 / CPU 预算）⇒ 逐件调用即"中间态永不超载"。
- *
- * **存档**：`GameState.fitPresets?: Record<defId, ShipFitPreset[]>`（兼容字段，老档缺省 = 空）。
- * 规范化在 `save.ts`（条目/名称/位数组安全上限、无人机正整数、插件参考；实际槽数仍由船型与插件校验）；
- * **下架或未知的装备 id 不在这里丢**——套用时计入"未装"清单逐条报出（规范化层拿不到内容表）。
- */
 import { addLog, shipLockedReason } from './state'
 import { shipOperationBlockReason } from './shipActionPolicy'
 import type { CommandResult } from './engine'
@@ -34,19 +9,14 @@ import { addModule, adjustDroneLoad, countModule, fitModule, trimDroneLoadToBay 
 import { addWare } from './inventory'
 import { fleetDefOf } from './instances'
 
-/** 每个船型最多存几套（船长 2026-09-14：3 套 ⇒ **2026-09-17「上限拓展到10套」**） */
 export const FIT_PRESET_MAX = 10
-/** 方案名长度上限（玩家自定；超长截断） */
 export const FIT_PRESET_NAME_MAX = 12
-/** 槽类顺序（卸下 / 装配 / 展示统一走它：高 → 中 → 低） */
 const RACK_ORDER: readonly RackSlot[] = ['high', 'mid', 'low']
 
-/** 某船型的方案列表（无 = 空数组；调用方不要直接改返回值） */
 export function fitPresetsOf(state: GameState, defId: string): readonly ShipFitPreset[] {
   return state.fitPresets?.[defId] ?? []
 }
 
-/** 方案摘要（界面列表用）：「装备 8 件（高 4 / 中 2 / 低 2）· 无人机 2 型 5 架」 */
 export function fitPresetBrief(preset: ShipFitPreset): string {
   const count = (a: Array<string | null> | undefined): number => (a ?? []).filter((x) => x !== null && x !== '').length
   const high = count(preset.fitted.high)
@@ -59,30 +29,11 @@ export function fitPresetBrief(preset: ShipFitPreset): string {
   return parts.join(' · ')
 }
 
-/**
- * **方案明细（界面「明细」展开用）**：逐位列出三类槽位装了什么 ＋ 无人机舱装载
- * （船长 2026-09-17：「**允许玩家查看装备方案内用了哪些装备**」；两问两答取甲：
- * 行内展开 · 逐位列含空位）。
- *
- * 口径：
- * - **按目标船的槽位布局铺满**（**实际可用槽位**：调用方传 `plugs.shipSlotsWithPlugsOf` 的结果；
- *   不传则退回船型基础布局）⇒ 空位显示为「空」（`name: '空'`、`id: null`），
- *   玩家能一眼看出"这位没装"；方案数组比船位少的那几位也照样铺成空位。
- * - **未知 / 已下架的件不隐藏**：`missing: true` ＋ `name` 回落成 id —— 与套用时"逐条报未装"同一口径
- *   （悄悄吞掉会让玩家以为方案里没有它）。
- * - **超出本船槽位的方案位**（船型槽位被改小过）单独计数 `overflow`：套用时按 `Math.min` 忽略，
- *   这里如实报出来。
- * - 无人机按「机型 × 架」列出（机型名走 `ctx.items`，未知机型同样标 `missing`）。
- */
 export interface FitPresetSlotLine {
   rack: RackSlot
-  /** 位次（**1 起**，界面直接显示「高 1」） */
   index: number
-  /** 件 id（空位 = null） */
   id: string | null
-  /** 件名（空位 = 「空」；未知/下架件回落成 id） */
   name: string
-  /** 未知 / 已下架的件（界面据此染色提示） */
   missing: boolean
 }
 export interface FitPresetDroneLine {
@@ -95,7 +46,6 @@ export interface FitPresetDetail {
   slots: FitPresetSlotLine[]
   drones: FitPresetDroneLine[]
   plugs: Array<{ id: string; name: string; missing: boolean }>
-  /** 超出本船槽位、套用时会忽略的方案位数 */
   overflow: number
 }
 
@@ -103,11 +53,6 @@ export function fitPresetDetailOf(
   preset: ShipFitPreset,
   ctx: SimContext,
   ship: { slots?: import('./types').ShipSlots },
-  /**
-   * **该船实际可用槽位**（含插件扩槽）——调用方传 `plugs.shipSlotsWithPlugsOf` 的结果。
-   * 缺省 ⇒ 退回船型基础布局（老调用点/用例的兼容口径）。
-   * ⚠ 2026-09-28 加：不传它的话，装了扩槽插件的船会把"扩出来的那一格"当成 `overflow` 报出去。
-   */
   effSlots?: import('./types').ShipSlots,
 ): FitPresetDetail {
   const bays = effSlots ?? shipSlotsOf(ship)
@@ -143,7 +88,6 @@ export function fitPresetDetailOf(
   return { slots, drones, plugs, overflow }
 }
 
-/** 沉船展示逐位铺满快照/当前船型槽数，重复扩槽插件按原列表累加；未知型号仍保留快照。 */
 export function wreckFitDetailOf(ctx: SimContext, entry: WreckLogEntry): FitPresetDetail {
   const ship = ctx.ships.get(entry.defId ?? '')
   const base = shipSlotsOf(ship ?? {})
@@ -155,7 +99,6 @@ export function wreckFitDetailOf(ctx: SimContext, entry: WreckLogEntry): FitPres
   return fitPresetDetailOf({ name: '', fitted, droneLoad: entry.droneLoad, plugs: entry.plugs }, ctx, ship ?? {}, slots)
 }
 
-/** 裁掉位数组尾部的空位（方案存"紧凑形状"，套用时按目标船槽位布局对齐） */
 function trimFitted(fitted: { high: Array<string | null>; mid: Array<string | null>; low: Array<string | null> }): ShipFitPreset['fitted'] {
   const trim = (a: Array<string | null>): Array<string | null> => {
     const out = [...a]
@@ -165,7 +108,6 @@ function trimFitted(fitted: { high: Array<string | null>; mid: Array<string | nu
   return { high: trim(fitted.high), mid: trim(fitted.mid), low: trim(fitted.low) }
 }
 
-/** 默认方案名：第一个没被占用的「方案 N」 */
 function defaultName(list: readonly ShipFitPreset[]): string {
   const taken = new Set(list.map((p) => p.name))
   for (let i = 1; i <= FIT_PRESET_MAX + 1; i++) {
@@ -175,10 +117,6 @@ function defaultName(list: readonly ShipFitPreset[]): string {
   return `方案 ${list.length + 1}`
 }
 
-/**
- * **采集"当前装配"**（保存与替换共用）：`shipId` 那艘船的实装 = 三类槽位 ＋ 无人机舱装载。
- * 装配、机舱与插件参考均空才拒绝，与读档清洗对齐。
- */
 function captureFit(
   state: GameState,
   ctx: SimContext,
@@ -212,7 +150,6 @@ function captureFit(
   return { ok: true, fitted, droneLoad, plugs }
 }
 
-/** 保存源可以是舰队或沉船；名称/上限/入账沿用一套规则，历史来源覆盖须核对确认快照。 */
 function storeFitPreset(state: GameState, ctx: SimContext, defId: string, source: Omit<ShipFitPreset, 'name'>, name?: string,
   confirm?: { expected?: ShipFitPreset }): WreckFitSaveResult {
   const ship = ctx.ships.get(defId)!
@@ -242,7 +179,6 @@ function storeFitPreset(state: GameState, ctx: SimContext, defId: string, source
 
 export type WreckFitSaveResult = CommandResult & { overwrite?: ShipFitPreset }
 
-/** 只读取指定沉船快照；不依赖存活舰船、不访问装备库存，插件仅保存为参考。 */
 export function saveWreckFitPreset(state: GameState, ctx: SimContext, seq: number, name?: string, expectedOverwrite?: ShipFitPreset): WreckFitSaveResult {
   const entry = state.wreckLog?.find(row => row.seq === seq)
   if (!entry) return { ok: false, errorId: 'core.wreckFit.001', error: '沉船记录已不存在。' }
@@ -257,10 +193,6 @@ export function saveWreckFitPreset(state: GameState, ctx: SimContext, seq: numbe
     ...(plugs.length ? { plugs } : {}) }, name, { expected: expectedOverwrite })
 }
 
-/**
- * 玩家指令：**保存当前装配为方案**（`shipId` 那艘船的实装 = 三类槽位 + 无人机舱装载）。
- * `name` 缺省 = 「方案 N」；同名 = **覆盖**（满套时仍可覆盖同名，不必先删）。
- */
 export function saveFitPreset(state: GameState, ctx: SimContext, shipId: string, name?: string): CommandResult {
   const shipDef = fleetDefOf(state, ctx, shipId)
   if (!shipDef) {
@@ -287,14 +219,6 @@ export function saveFitPreset(state: GameState, ctx: SimContext, shipId: string,
   }, finalName)
 }
 
-/**
- * 玩家指令：**用当前装配覆盖指定的那套方案**（船长 2026-09-19：「给方案加个替换按钮，点击后将当前装配
- * 覆盖进目标方案，覆盖之前需要玩家确认」）。
- *
- * 与 `saveFitPreset` 的区别：**不新建、不改名、不改位置**——只把 `index` 那套的"内容"换成本船的实装；
- * 方案名原样保留（玩家点的是哪一套就更新哪一套）。空装配同样拒绝（沿用 `captureFit` 的判据）。
- * ⚠ 界面侧负责"覆盖前确认"（两步/弹窗），core 这层只做覆盖本身。
- */
 export function overwriteFitPreset(state: GameState, ctx: SimContext, shipId: string, index: number): CommandResult {
   const shipDef = fleetDefOf(state, ctx, shipId)
   if (!shipDef) {
@@ -306,7 +230,7 @@ export function overwriteFitPreset(state: GameState, ctx: SimContext, shipId: st
   const cap = captureFit(state, ctx, shipId, '保存它的装配方案')
   if (!cap.ok) return { ok: false, error: cap.error }
   const preset: ShipFitPreset = {
-    name: target.name, // 名称与位置都保持原样
+    name: target.name,
     fitted: cap.fitted,
     ...(Object.keys(cap.droneLoad).length > 0 ? { droneLoad: cap.droneLoad } : {}),
     ...(cap.plugs.length ? { plugs: cap.plugs } : {}),
@@ -323,7 +247,6 @@ export function overwriteFitPreset(state: GameState, ctx: SimContext, shipId: st
   return { ok: true }
 }
 
-/** 玩家指令：重命名某船型的第 `index` 套方案（同名拒绝；空白拒绝） */
 export function renameFitPreset(state: GameState, defId: string, index: number, name: string): CommandResult {
   const list = [...fitPresetsOf(state, defId)]
   const preset = list[index]
@@ -345,7 +268,6 @@ export function renameFitPreset(state: GameState, defId: string, index: number, 
   return { ok: true }
 }
 
-/** 玩家指令：删除某船型的第 `index` 套方案（删空则连键一起清掉） */
 export function deleteFitPreset(state: GameState, defId: string, index: number): CommandResult {
   const list = [...fitPresetsOf(state, defId)]
   const preset = list[index]
@@ -354,13 +276,11 @@ export function deleteFitPreset(state: GameState, defId: string, index: number):
   const next = { ...(state.fitPresets ?? {}) }
   if (list.length > 0) next[defId] = list
   else delete next[defId]
-  // 删空 ⇒ **连字段一起清掉**（回到"老档形状"：存盘里不出现空表，老档往返逐字一致）
   state.fitPresets = Object.keys(next).length > 0 ? next : undefined
   addLog(state, 'fleet', `已删除装配方案「${preset.name}」。`, 'core.fitPresets.011', { p1: preset.name })
   return { ok: true }
 }
 
-/** 「一键卸下全部装备」的结果（`removed` = 实际卸下件数） */
 export interface UnfitAllResult {
   ok: boolean
   error?: string
@@ -369,15 +289,6 @@ export interface UnfitAllResult {
   removed: number
 }
 
-/**
- * 玩家指令：**卸下目标船的全部装备**（放回装备库），并顺手按机舱容量整理无人机装载。
- * `quiet` = 不写"已卸下 N 件"日志（套用方案时由套用小结统一写）。
- *
- * ⚠ 不走 `unfitAt`：那条命令会为防 CPU 套利拒绝"卸下后超载"的单件操作（卸协处理器时会发生），
- * 而**全卸**的终态是 0 占用、不可能超载 ⇒ 这里直接清位 + 回库。
- * ⚠ **锁判定放在函数内**（不只靠 `applyFitPreset` 的入口判定）：装配页的「一键卸下全部装备」
- * 按钮直接调本函数（船长 2026-09-13：进洞船只所有行为都锁定，包括维修）。
- */
 export function unfitAllModules(state: GameState, ctx: SimContext, shipId: string, quiet = false): UnfitAllResult {
   const blocked = shipOperationBlockReason(state, ctx, shipId, 'configure')
   if (blocked) return { ok: false, ...blocked, removed: 0 }
@@ -398,7 +309,6 @@ export function unfitAllModules(state: GameState, ctx: SimContext, shipId: strin
     }
   }
   if (removed > 0) {
-    // 槽位变少/舱容变小 ⇒ 超出的无人机自动退回仓库（与 repair 链同口径）
     trimDroneLoadToBay(state, ctx, shipId)
     if (!quiet) {
       addLog(
@@ -413,7 +323,6 @@ export function unfitAllModules(state: GameState, ctx: SimContext, shipId: strin
   return { ok: true, removed }
 }
 
-/** 玩家指令：把目标船无人机舱里的无人机全部退回仓库；返回退回的架数 */
 export function clearDroneLoad(state: GameState, ctx: SimContext, shipId: string): number {
   if (shipOperationBlockReason(state, ctx, shipId, 'configure')) return 0
   const fleet = state.fleet[shipId]
@@ -429,21 +338,14 @@ export function clearDroneLoad(state: GameState, ctx: SimContext, shipId: string
   return out
 }
 
-/** 套用方案的结果（`summary` 直接给界面弹提示用） */
 export interface FitPresetApplyResult {
   ok: boolean
   error?: string
   errorId?: string
   errorParams?: Readonly<Record<string, string | number>>
-  /** 玩家可见一行小结（成功时一定有） */
   summary: string
 }
 
-/**
- * 玩家指令：**套用方案**（先卸光再装；尽力装 + 逐条提示）。
- * 目标是**同型号**的任意一艘（方案按 `defId` 归口；本船的槽位布局与方案对齐：
- * 方案超出的位丢弃、方案不足的位留空）。
- */
 export function applyFitPreset(state: GameState, ctx: SimContext, shipId: string, index: number): FitPresetApplyResult {
   const operationBlock = shipOperationBlockReason(state, ctx, shipId, 'configure')
   if (operationBlock) return { ok: false, ...operationBlock, summary: '' }
@@ -456,19 +358,9 @@ export function applyFitPreset(state: GameState, ctx: SimContext, shipId: string
     return { ok: false, error: '找不到这套装配方案（可能已被删除）。', errorId: 'core.fitPresets.006', summary: '' }
   }
 
-  // ① 先卸光（装备回库 + 无人机退仓）
   const removed = unfitAllModules(state, ctx, shipId, true).removed
   const dronesOut = clearDroneLoad(state, ctx, shipId)
 
-  /**
-   * ② 装配清单：按目标船**实际可用槽位**对齐 + 扩容件优先 + 高→中→低 位序
-   *
-   * ⚠ **2026-09-28 玩家报障修**：这里原先取 `shipSlotsOf(shipDef)`（**船型基础布局**，不含插件扩槽）
-   * ⇒ 装了「中层舱段 / 下层舱段」插件的船**套用方案时**，方案里落在扩出来那几位的装备被
-   * `Math.min(src.length, slots[rack])` 直接丢掉、一件都装不上（与读档截断同一个病根）。
-   * ⇒ 改走**槽位单点** `plugs.shipSlotsWithPlugsOf`。
-   * ⚠ 槽位在 `unfitAllModules` **之后**取：插件不在三数组里（它们在 `fleet[uid].plugs`）⇒ 卸光不影响扩槽。
-   */
   const slots = shipSlotsWithPlugsOf(state, ctx, shipId)
   const jobs: Array<{ rack: RackSlot; index: number; moduleId: string }> = []
   for (const rack of RACK_ORDER) {
@@ -500,13 +392,11 @@ export function applyFitPreset(state: GameState, ctx: SimContext, shipId: string
       missing.push(def.name)
       continue
     }
-    // 位可用 + 装备库有货都先过了 ⇒ 这里失败基本只剩 CPU 预算（直接把原因抄给玩家）
     const res = fitModule(state, j.moduleId, ctx, { rack: j.rack, index: j.index, shipId })
     if (res.ok) installed += 1
     else blocked.push(`${def.name}：${res.error ?? '未能装上'}`)
   }
 
-  // ③ 无人机按方案装载（仓库数量 / 机舱容量 / CPU 预算三重校验在 adjustDroneLoad 内）
   let dronesIn = 0
   const droneFail: string[] = []
   for (const [droneId, n] of Object.entries(preset.droneLoad ?? {})) {

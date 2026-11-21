@@ -1,123 +1,48 @@
-/**
- * **终局玩法「虫洞」· 谜质储存器**（F3c 批 · 船长 2026-09-13 逐条裁定，分批落码）。
- *
- * 船长原话（照抄）：
- * - 「**现在做，谜质玩家采集后，在货仓内显示为4格的『谜质储存器』，在本次虫洞探索中提供临时增益**」
- * - 「多种效果，除去战斗上的增益（如果增益抗性，为盾甲结构的单抗性），包括探索上的增益：扫描+1.回合数+10.
- *    威胁-5%。每个装置额外打捞/采集等。你可以继续丰富，然后列出让我审查」
- * - 「战斗相关可以根据现有的机制和属性继续扩充」
- * - 「**威胁类,抗性，回避，敌方命中削减进行封顶**」（其余一律不封顶，**回合数也不封顶**）
- * - 「**实时派生 + 夹紧 + 丢弃提醒**」（回合类装置的口径）·「**每层保底 1 个谜质格**」
- * - 「近盲带抑制器好像对我方没有效果吧？」（**对**：`blindDmgMul` 只作用于敌方 ⇒ 改防御向「盲区压制器」）
- * - 「齐射协调仪改为溢出火力会转移到其他敌舰」（新机制，B2 批）·「战地维修单元同时修复护甲」（B2 批）
- *
- * 三条共同口径：
- * 1. **一台 = 2×2 = 4 格**形状件（走 `run.hold`，与「遗迹安全货柜」同一套放置 / 拖拽 / 抛弃）；
- * 2. **放在货仓里就生效**——效果一律**现算派生**（本文件不写任何存档字段 ⇒ 零迁移）；
- * 3. **本趟结束随趟消失**（不进仓库、不拆解）。
- *
- * 分批：
- * - **A 批（已落）**：探索与作业类 **7 台**；
- * - **B1 批（已落）**：威胁类 3 台 ＋ 战斗类 10 台（静态增益：抗性 / 命中 / 回避 / 干扰 / 射程 / 盲区 /
- *   弹药增效 / 装填）；
- * - **B2 批（未落）**：齐射溢出转移（新机制）· 弹药退款 · 机群回收网 · 战地维修（装甲＋结构）。
- *
- * ⚠ 本模块**不 import `wormhole.ts` / `combat.ts`**（那边要引本文件的派生函数，反向引会成环）：
- * 入参一律取**货仓**（`WormholeHoldState`）或普通字段，不取整趟状态。
- */
 import type { WormholeHoldState } from './wormholeHold'
 import type { CoreBlockReason } from './engine'
 
-/** 装置的效果类别 */
 export type WormholeMatterEffectKind =
-  /** 扫描半径 +N 圈 */
   | 'scanRadius'
-  /** 回合上限 +N（**实时派生 + 夹紧**：装上就加、卸下就减并把剩余夹到新上限） */
   | 'turnBudget'
-  /** 每次打捞 +N 堆（与打捞器台数同链相加） */
   | 'salvagePiles'
-  /** 每次采集 +N 堆（与采集器台数同链相加） */
   | 'collectPiles'
-  /** 每次扫描**额外**驱散 N 格星云（就近，不额外花回合） */
   | 'nebulaDisperse'
-  /** 母矿堆产量 +N%（`per` 写成小数：0.25 = +25%） */
   | 'oreYieldPct'
-  /** 货仓有效格数 +N（物理上不超过货仓真实容量） */
   | 'holdCells'
-  /* ── B1：威胁类（船长：「威胁类,抗性，回避，敌方命中削减进行封顶」）── */
-  /** 本层威胁 −N%（节点 / 守卫 / 撤离**三处同源**；与下面两条合计 **−50% 封顶**） */
   | 'threatAll'
-  /** **层末守卫**威胁额外 −N%（只作用于 `kind === 'boss'`，计入同一个 −50% 合计） */
   | 'threatBoss'
-  /** ⚠ **已退役（2026-09-15 撤离战取消）**：撤离战威胁额外 −N%（旧口径只作用于 `kind === 'extract'`） */
   | 'threatExtract'
-  /* ── B1：战斗类（现算：开战时按货仓里的台数算好）── */
-  /** 护盾层对**敌队主伤害系**的缺口 +N（走既有"缺口削减"合成，三层上限 0.9 不变） */
   | 'resistShield'
-  /** 装甲层同上 */
   | 'resistArmor'
-  /** 结构层同上 */
   | 'resistHull'
-  /** 我方命中加成 +N（不封顶） */
   | 'hitBonus'
-  /** 我方回避 +N（**合计 +0.25 封顶**） */
   | 'evasion'
-  /** 敌方命中加成 −N（**合计 −0.25 封顶**） */
   | 'enemyHitDown'
-  /** 全武器射程 +N%（不封顶） */
   | 'weaponRangePct'
-  /** 敌方**近盲带伤害比例** −N/台（下限 0：贴脸缠斗时敌人打得更轻） */
   | 'blindReduce'
-  /** 我方单发伤害 +N%（不封顶） */
   | 'damagePct'
-  /** 武器装填周期 −N%（不封顶；物理上周期 > 0） */
   | 'reloadPct'
-  /* ── B2：战后收口与新机制 ── */
-  /** **齐射溢出转移**（1 台即生效，多台不叠加）：打死后多余的那一截火力转给下一艘存活敌舰 */
   | 'volleyOverflow'
-  /** 战后**弹药退款** +N%（按本场打出去的弹药折算；物理上限 100%） */
   | 'ammoRefundPct'
-  /** **机群回收率** +N 个百分点（物理上限 100%） */
   | 'droneRecoveryPct'
-  /** 战后**战地维修**：装甲与结构各 +N%（物理上限 100%） */
   | 'fieldRepairPct'
 
-/** 一台谜质储存器的定义 */
 export interface WormholeMatterDevice {
-  /** 物品 id（与 `packages/data/src/items.ts` 的登记逐字一致） */
   id: string
-  /** 玩家可见名（与物品卡同名） */
   name: string
-  /** **货仓格里的短标签**（2 字；格子里只有图标 + 它，悬停才给全名与效果） */
   short: string
   effect: WormholeMatterEffectKind
-  /** 每枚的数值（百分比类写小数：0.25 = +25%） */
   per: number
-  /** 一句话作用（玩家向：货仓读数行与卡片用；**不写开发口径**） */
   text: string
-  /**
-   * ⚠ **退役留档**（2026-09-15 起）：为 true 的装置**不再从谜质里抽出**（见 `WORMHOLE_MATTER_DRAW_POOL`），
-   * 但**条目与物品卡保留**（老档货仓里可能正带着它；`content:check` 的谜质契约也要求 core 表与 data 表一致）。
-   * 首个退役项 = 撤离掩护器（撤离战取消）。
-   */
   retired?: boolean
 }
 
-/** 四类封顶里的"威胁"档（船长 2026-09-13 点名的四类；其余一律不封顶） */
 export const WORMHOLE_MATTER_THREAT_FLOOR_MUL = 0.5
-/** 我方回避的**加成**上限 */
 export const WORMHOLE_MATTER_EVASION_CAP = 0.25
-/** 敌方命中**削减**上限 */
 export const WORMHOLE_MATTER_ENEMY_HIT_DOWN_CAP = 0.25
-/** 抗性沿用既有上限（每层每系 0.9；不新增旋钮） */
 export const WORMHOLE_MATTER_RESIST_CAP = 0.9
 
-/**
- * 装置表（A 批 7 台 ＋ B1 批 13 台）。
- * ⚠ 效果数值一律**每枚**，多枚按台数线性相加；四类封顶在 `wormholeMatterBuffs` 里统一夹。
- */
 export const WORMHOLE_MATTER_DEVICES: readonly WormholeMatterDevice[] = [
-  /* ── A 批：探索与作业 ── */
   {
     id: 'mat-surveyor',
     short: '测绘',
@@ -174,7 +99,6 @@ export const WORMHOLE_MATTER_DEVICES: readonly WormholeMatterDevice[] = [
     per: 8,
     text: '货仓有效格数 +8',
   },
-  /* ── B1 批：威胁类（两档合计 −50% 封顶）── */
   {
     id: 'mat-suppressor',
     short: '压制',
@@ -192,14 +116,6 @@ export const WORMHOLE_MATTER_DEVICES: readonly WormholeMatterDevice[] = [
     text: '层末守卫威胁 −10%',
   },
   {
-    /**
-     * ⚠ **已退役（2026-09-15 船长「虫洞的撤离战取消吧」）**：撤离战整条退役 ⇒ 本装置**不再从谜质里抽出**
-     * （`WORMHOLE_MATTER_DRAW_POOL` 已排除退役项）。
-     *
-     * 条目与物品卡**保留不删**，两个理由：① 老档货仓里可能正带着它（谜质是本趟限定物），删了会变成
-     * "读不懂的东西"；② `content:check` 的「谜质契约」要求 core 装置表与 data 物品表（`kind: 'matter'`）
-     * 逐字一致。⇒ 保留 = **退役留档**（照 B 族/F 族与退役窝点卡的先例），其效果列已无消费者。
-     */
     id: 'mat-extract-cover',
     short: '掩护',
     name: '撤离掩护器',
@@ -208,7 +124,6 @@ export const WORMHOLE_MATTER_DEVICES: readonly WormholeMatterDevice[] = [
     text: '谜质凝成的一层薄壳：已不再提供增益',
     retired: true,
   },
-  /* ── B1 批：战斗类 ── */
   {
     id: 'mat-shield-res',
     short: '盾谐',
@@ -289,7 +204,6 @@ export const WORMHOLE_MATTER_DEVICES: readonly WormholeMatterDevice[] = [
     per: 0.08,
     text: '武器装填周期 −8%',
   },
-  /* ── B2 批：战后收口与新机制 ── */
   {
     id: 'mat-volley',
     short: '齐射',
@@ -324,32 +238,22 @@ export const WORMHOLE_MATTER_DEVICES: readonly WormholeMatterDevice[] = [
   },
 ]
 
-/** 全部装置 id（形状表、闸门契约与用例共用一份） */
 export const WORMHOLE_MATTER_DEVICE_IDS: readonly string[] = WORMHOLE_MATTER_DEVICES.map((d) => d.id)
 
-/**
- * **抽取池**（= 出谜质时按散列取哪一台的来源）：**排除退役项**。
- *
- * ⚠ 2026-09-15：撤离掩护器退役 ⇒ 它仍在 `WORMHOLE_MATTER_DEVICES`（老档要读得懂、契约要求两表一致），
- * 但**不再会掉出来**。新增退役项只需在表里标 `retired: true`，池子自动跟随。
- */
 export const WORMHOLE_MATTER_DRAW_POOL: readonly WormholeMatterDevice[] = WORMHOLE_MATTER_DEVICES.filter(
   (d) => d.retired !== true,
 )
 
 const BY_ID: ReadonlyMap<string, WormholeMatterDevice> = new Map(WORMHOLE_MATTER_DEVICES.map((d) => [d.id, d]))
 
-/** 认 id 取定义（不是装置 ⇒ undefined） */
 export function wormholeMatterDeviceOf(itemId: string): WormholeMatterDevice | undefined {
   return BY_ID.get(itemId)
 }
 
-/** 这件东西是不是谜质储存器 */
 export function wormholeIsMatterDevice(itemId: string): boolean {
   return BY_ID.has(itemId)
 }
 
-/** 逐台台数（按装置表顺序；界面读数行与用例共用） */
 export function wormholeMatterCounts(
   hold: WormholeHoldState | null | undefined,
 ): ReadonlyArray<{ device: WormholeMatterDevice; count: number }> {
@@ -363,64 +267,35 @@ export function wormholeMatterCounts(
   }))
 }
 
-/** 派生出的本趟增益（**全部现算**；缺省 = 无装置时的零值） */
 export interface WormholeMatterBuffs {
-  /** 装置总台数 */
   devices: number
-  /** 扫描半径加成（格） */
   scanRadius: number
-  /** 回合上限加成（回合） */
   turnBonus: number
-  /** 每次打捞 +堆 */
   salvagePiles: number
-  /** 每次采集 +堆 */
   collectPiles: number
-  /** 每次扫描额外驱散星云格数 */
   nebulaDisperse: number
-  /** 母矿堆产量倍率（1 = 不变） */
   oreYieldMul: number
-  /** 货仓有效格数加成 */
   holdCells: number
-  /* ── B1：威胁（按用途分档；`node` = 层内节点战，`boss` = 层末守卫）── */
-  /** 压制力场那部分（两档同源；1 = 不减） */
   threatNodeMul: number
-  /** 守卫那部分（只作用 boss 档） */
   threatBossMul: number
-  /** ⚠ **已退役（2026-09-15 撤离战取消）**：撤离那部分（旧口径只作用 extract 档）——无消费者 */
   threatExtractMul: number
-  /* ── B1：战斗静态增益 ── */
-  /** 三层对"敌队主伤害系"的缺口（各自 0.9 封顶；合成走既有"缺口削减"） */
   resistShield: number
   resistArmor: number
   resistHull: number
-  /** 我方命中加成（不封顶） */
   hitBonus: number
-  /** 我方回避加成（**+0.25 封顶**） */
   evasion: number
-  /** 敌方命中削减（**−0.25 封顶**） */
   enemyHitDown: number
-  /** 全武器射程加成（不封顶） */
   weaponRangePct: number
-  /** 敌方近盲带伤害比例削减（**总量**，下限 0） */
   blindReduce: number
-  /** 我方单发伤害加成（不封顶） */
   damagePct: number
-  /** 武器装填周期削减（不封顶；物理上周期仍 > 0） */
   reloadPct: number
-  /* ── B2：战后收口与新机制 ── */
-  /** **齐射溢出转移**是否生效（1 台即开；多台不叠加） */
   volleyOverflow: boolean
-  /** 战后弹药退款比例（0~1；物理上限 100%） */
   ammoRefundPct: number
-  /** 机群回收率加成（0~1；物理上限 100%） */
   droneRecoveryPct: number
-  /** 战地维修：装甲 / 结构各回复比例（0~1；物理上限 100%） */
   fieldRepairPct: number
-  /** 逐台明细（界面读数行） */
   list: ReadonlyArray<{ device: WormholeMatterDevice; count: number }>
 }
 
-/** 无装置时的零值（调用方不必判空） */
 export const WORMHOLE_MATTER_BUFFS_NONE: WormholeMatterBuffs = {
   devices: 0,
   scanRadius: 0,
@@ -450,32 +325,15 @@ export const WORMHOLE_MATTER_BUFFS_NONE: WormholeMatterBuffs = {
   list: [],
 }
 
-/**
- * 某用途的**威胁倍率**（各档独立算、**各自 −50% 封顶**）：
- * 「压制力场」两档同源（节点 / 守卫），「守卫解析仪」只加在 boss 档。
- *
- * ⚠ 2026-09-15：`'extract'` 档随撤离战**一并退役** —— 形参保留只为兼容老档调用点，
- * `threatExtractMul` 已无产出源（撤离掩护器退役）。单位口径 = **乘数**（0.5 = 威胁减半），
- * 调用方 `Math.round(基础威胁 × mul)`。
- */
 export function wormholeMatterThreatMul(buffs: WormholeMatterBuffs, kind: 'node' | 'boss' | 'extract'): number {
   const extra = kind === 'boss' ? buffs.threatBossMul : kind === 'extract' ? buffs.threatExtractMul : 1
   const mul = buffs.threatNodeMul * extra
   return Math.max(WORMHOLE_MATTER_THREAT_FLOOR_MUL, Math.min(1, mul))
 }
 
-/**
- * **谜质科技树的增益贡献**（2026-09-19 船长「消耗谜质升级的研究科技树」批）——
- * 形状刻意与 `WormholeMatterBuffs` 的**同类字段同名**，但语义是"**加多少**"：
- * 威胁两项给的是**削减量**（0.09 = −9%），与装置的"减威胁"同轴，最后一起合成并夹同一个封顶。
- * 产出点 = `core/matterTech.ts` 的 `matterTechWhBuffs`（按 `effect` 关键字汇总）。
- */
 export interface WormholeTechBuffs {
-  /** 信号空间扫描半径加成（圈）。 */
   scanRadius: number
-  /** 洞内**最大回合数**（永久加成；与本趟装置分开相加） */
   turnBonus: number
-  /** 洞内货仓有效格 */
   holdCells: number
   resistShield: number
   resistArmor: number
@@ -487,15 +345,12 @@ export interface WormholeTechBuffs {
   reloadPct: number
   damagePct: number
   blindReduce: number
-  /** 节点战威胁**削减量** */
   threatNode: number
-  /** 层末守卫威胁**削减量** */
   threatBoss: number
   droneRecoveryPct: number
   fieldRepairPct: number
 }
 
-/** 无科技时的零值 */
 export const WORMHOLE_TECH_BUFFS_NONE: WormholeTechBuffs = {
   scanRadius: 0,
   turnBonus: 0,
@@ -516,9 +371,6 @@ export const WORMHOLE_TECH_BUFFS_NONE: WormholeTechBuffs = {
   fieldRepairPct: 0,
 }
 
-/** 按类别把台数 × 每枚值汇成增益（**唯一派生点**：改口径只动这里；四类封顶也在这里夹）。
- *  `tech` = **谜质科技树**的贡献（2026-09-19 批）——在合成威胁与夹紧**之前**并入 ⇒ 与装置
- *  **同一个增益袋、同一套封顶**，不必再写第二份夹紧逻辑。 */
 export function wormholeMatterBuffs(
   hold: WormholeHoldState | null | undefined,
   tech?: WormholeTechBuffs,
@@ -526,7 +378,6 @@ export function wormholeMatterBuffs(
   const list = wormholeMatterCounts(hold)
   if (list.length === 0 && tech === undefined) return WORMHOLE_MATTER_BUFFS_NONE
   const out: WormholeMatterBuffs = { ...WORMHOLE_MATTER_BUFFS_NONE, list }
-  /** 三条威胁类各自的"减威胁"总量（先累加，最后按档合成并夹 −50%） */
   let threatAll = 0
   let threatBoss = 0
   let threatExtract = 0
@@ -581,7 +432,6 @@ export function wormholeMatterBuffs(
         threatBoss += v
         break
       case 'threatExtract':
-        // ⚠ 已退役（2026-09-15 撤离战取消）：保留累加只为读得懂老档的装置账，无消费者
         threatExtract += v
         break
       case 'resistShield':
@@ -628,7 +478,6 @@ export function wormholeMatterBuffs(
         break
     }
   }
-  // ── 四类封顶（船长点名的那四类；其余不封顶）──
   out.threatNodeMul = 1 - threatAll
   out.threatBossMul = 1 - threatBoss
   out.threatExtractMul = 1 - threatExtract
@@ -637,49 +486,24 @@ export function wormholeMatterBuffs(
   out.resistHull = Math.min(WORMHOLE_MATTER_RESIST_CAP, out.resistHull)
   out.evasion = Math.min(WORMHOLE_MATTER_EVASION_CAP, out.evasion)
   out.enemyHitDown = Math.min(WORMHOLE_MATTER_ENEMY_HIT_DOWN_CAP, out.enemyHitDown)
-  // 近盲带比例不能被压到负数（物理边界：它本身是个倍率）
   out.blindReduce = Math.max(0, out.blindReduce)
-  // 战后收口三项：**物理上限 100%**（不是平衡封顶——比例类不可能超过 1）
   out.ammoRefundPct = Math.min(1, out.ammoRefundPct)
   out.droneRecoveryPct = Math.min(1, out.droneRecoveryPct)
   out.fieldRepairPct = Math.min(1, out.fieldRepairPct)
   return out
 }
 
-/**
- * **某一格的谜质是哪一台**（层内每格恒定、可复现；不写存档 ⇒ 读档后仍然是同一台）。
- * 散列只用 (种子, 层, 格 key)：同格的装置跨存档 / 跨会话一致。
- *
- * ⚠ 取的是 **`WORMHOLE_MATTER_DRAW_POOL`（已排除退役项）**：2026-09-15 起撤离掩护器不再掉出。
- */
 export function wormholeMatterDeviceAt(seed: number, depth: number, cellKey: string): WormholeMatterDevice {
   let h = (Math.imul(seed | 0, 2654435761) ^ Math.imul(depth | 0, 40503)) >>> 0
   for (let i = 0; i < cellKey.length; i++) h = Math.imul(h ^ cellKey.charCodeAt(i), 16777619) >>> 0
   return WORMHOLE_MATTER_DRAW_POOL[h % WORMHOLE_MATTER_DRAW_POOL.length]!
 }
 
-/** 回合类装置：装上一台 = +N 回合；卸下一台 = −N 回合（`per` 已按台数折算） */
 export function wormholeMatterTurnDeltaOf(itemId: string): number {
   const d = wormholeMatterDeviceOf(itemId)
   return d && d.effect === 'turnBudget' ? d.per : 0
 }
 
-/**
- * **实时派生 + 夹紧**（船长 2026-09-13 裁定）：把一台回合类装置装上 / 卸下时改本趟回合预算。
- *
- * ⚠ **2026-09-23 玩家报障后改口径**（船长转述玩家：「**0 回合拖动谜质时序还是能够刷回合数。**」）：
- * 旧写法"装上：上限与剩余**各 +N**；卸下：上限 **−N**、剩余`min(剩余, 新上限)`"**把超支抹掉** ——
- * 0 回合时（上限 90、真花掉 90）卸下后记成"花掉 80"，再装上就白送 10 回合，可无限重复。
- *
- * 现行口径 = 与 `wormholeSyncMatterTurns` **同一本只增不减的账本** `turnsSpent`：
- * `剩余 = 上限 − 已花费`（夹在 `[0, 上限]`）⇒
- * - 装上（`sign = 1`）：上限 +N、剩余**跟着 +N**（真多走几步，口径不变）；
- * - 卸下（`sign = −1`）：上限 −N、剩余跟着减，**永不为负**、**不追缴**，但**不退还**；
- * - 来回拖 = **净零**（0 回合的趟拖一万次也还是 0）。
- *
- * ⚠ **本函数目前只有用例在调**（界面侧的拖动走 `wormholeSyncMatterTurns`）——两处口径必须一致，
- * 故一并收严，免得日后接线时把同一个洞再开一次。非回合类装置 ⇒ 原样返回（调用方可无脑调）。
- */
 export function wormholeMatterApplyTurnDelta(
   run: { turnsLeft: number; turnsTotal: number; turnsSpent?: number },
   itemId: string,
@@ -693,10 +517,6 @@ export function wormholeMatterApplyTurnDelta(
   run.turnsLeft = Math.min(run.turnsTotal, Math.max(0, run.turnsTotal - spent))
 }
 
-/**
- * **丢弃前的提醒**（船长：「如果玩家丢弃回合相关谜质导致回合数不够，需要提醒玩家」）：
- * 只对回合类装置返回一句话（其余装置返回 null ⇒ 界面照旧直接抛）。
- */
 export function wormholeMatterDiscardHint(itemId: string): CoreBlockReason | null {
   const delta = wormholeMatterTurnDeltaOf(itemId)
   if (delta === 0) return null

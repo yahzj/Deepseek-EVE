@@ -1,12 +1,4 @@
-/**
- * **星图面板**（2026-10-02 从 `panels/Expedition.tsx` 拆出 · 批次 4p · 零行为变化）。
- *
- * 本文件 = 远征中心的**星图域**：SVG 星图（可点选）、布局持久化与自动避线（模拟退火）、
- * 星系标签/族徽章——只依赖 ui 公共件 / i18n / @whale/core 与 react。
- * `Expedition.tsx` 借回使用（先例：fitted.ts），既有引用零改动。
- */
 
-/* 以下为 2026-10-02 批次 4p 从 Expedition.tsx 切接过来的整簇（MAP 常量 ~ StarMap 及 FoeArt/GalaxyActions 族）。 */
 import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent, ReactNode, RefObject } from 'react'
 import { Orbit } from 'lucide-react'
@@ -71,77 +63,35 @@ import {
   weekendFoeCardOf,
   weekendFoePoolOf,
   weekendProgressAt,
-  /** 2026-10-02：这一格还算不算"可打的入侵占点"（含已夺回）——取代原先在这里自判 `progress < 1` */
   weekendZoneLiveAt,
   wreckDensityOf,
   wreckLootRowsOf,
 } from '@whale/core'
 
-/* ─────────── 星图（SVG：名称在图标正下方 + 布局拖拽编辑器） ─────────── */
 
 const MAP_W = 700
 const MAP_H = 300
-/**
- * 画布边缘留白（2026-09-10 船长：星图边缘要挪出足够位置）。
- * 节点上方要叠「徽标 + 倒计时」两层（最高到节点中心上方约 33 单位），贴顶星系会顶出画布被裁；
- * 这里把可视范围向上扩 PAD_TOP、左右各扩 PAD_X——**内容坐标仍按 (0,0)-(700,300) 记账**
- * （布局数据 / 本地覆盖 / 编辑器坐标一律不变，只改 viewBox 的可视范围）。
- */
 const MAP_PAD_TOP = 20
 const MAP_PAD_X = 8
-/**
- * **母港节点圆点半径**（2026-11-02 船长：「红框标注的母港的圆要比所有人都大一号」）——
- * 原为 11（比普通节点 r=8 / 未探索 r=7 已大 3），再加一级 ⇒ **13**：星图按容器整体缩放到约
- * 2.3 倍显示，实际观感直径约 +4.6px，保证"母港比所有星系都显眼"仍成立。
- * ⚠ `FACTION_BOX_M`（34）按它的倍数留边：方框半边长 17 > 13，仍框得住.
- */
 const HUB_DOT_R = 17
-/** 敌对派系活跃"选中方框"边长（2026-09-10 船长：用方框选中目标星系）——34 足以框住最大 r=13 的母港形节点 */
 const FACTION_BOX_M = 34
-/** viewBox 与实际内容尺寸（拖拽换算用；getBoundingClientRect 覆盖的是含留白的可视范围） */
 const MAP_VB_W = MAP_W + MAP_PAD_X * 2
 const MAP_VB_H = MAP_H + MAP_PAD_TOP
-/**
- * **星图缩放**（**2026-10-02 船长令**，转玩家反馈：「手机端，星图界面各个星系判定范围过小（尤其是未探索的
- * 星系），几乎点不中/点了没反应。建议星图和虫洞探索一样允许放大」）—— 手感与虫洞探索地图同一套：
- * 适应 = 100% · 每档 25% · 上限 300%（比虫洞的 2.5 高：`galaxy-vault` 与 `galaxy-nadir` 只相距 10.2 单位，
- * 圆点半径各 8、本来就压在一起，要把它俩分开得放到 3 倍上下）。
- */
 const MAP_ZOOM_FIT = 1
 const MAP_ZOOM_STEP = 0.25
 const MAP_ZOOM_MAX = 3
-/** 起拖阈值（像素）：与虫洞地图 `WORMHOLE_MAP_DRAG_THRESHOLD_PX` 同一个手感值（都回答"多小算点击"） */
 const MAP_DRAG_THRESHOLD_PX = 4
-/**
- * **节点判定圆半径**（viewBox 单位；见下面 `app-map-hit` 那条样式与节点里的用法）——
- * 16 是**实测安全上限**：20 个星系里除 `galaxy-vault`/`galaxy-nadir`（相距 10.2）之外最近的是 33.5，
- * 而 16+16 = 32 < 33.5 ⇒ 判定圆两两不重叠。
- */
 const MAP_HIT_R = 20
-/**
- * 布局本地覆盖键（v2，2026-09-05）：船长本地排版坐标已合入内置默认（universe.ts，并整体左移 14），
- * 旧键 v1（whale-idle:starmap-layout，09-04 编辑器排版本）一律不再读取——
- * 旧本地覆盖会遮蔽新默认（此前改内置坐标看不到变化即此因）；今后编辑器排完版「保存并复制 JSON」合入默认即可。
- */
 const LAYOUT_KEY = 'whale-idle:starmap-layout-v2'
-/** v1 旧键（whale-idle:starmap-layout）已作废且不再读取：启动时顺手删除本地残留数据 */
 const LEGACY_LAYOUT_KEY = 'whale-idle:starmap-layout'
 try {
   localStorage.removeItem(LEGACY_LAYOUT_KEY)
 } catch {
-  // 存储不可用时忽略（布局编辑器本就依赖 localStorage，读不到也无碍）
 }
-/**
- * 开发模式开关：星图布局编辑器（拖拽/交叉检测/自动整理/导出 JSON）默认对玩家隐藏；
- * 需要调整布局时在 DevTools 执行 localStorage.setItem('whale-idle:dev-layout','1') 后刷新页面即可显示入口。
- */
 const DEV_EDITOR_KEY = 'whale-idle:dev-layout'
 
-/* ── 星图显示模式（2026-09-11 船长：名称 / 安全等级 / 敌对派系 三态互斥） ── */
 
-/** 三种显示模式：星系名称（默认）/ 安全等级数字 / 敌对派系标签 */
 type LabelMode = 'name' | 'sec' | 'faction'
-/** 本地记忆键（与其它星图偏好同前缀） */
 const LABEL_KEY = 'whale-idle:starmap-label'
 const LABEL_MODES: ReadonlyArray<{ key: LabelMode; label: string; tip: string }> = [
   { key: 'name', get label() { return tr("ui.MapPage.001") }, get tip() { return tr("ui.Expedition.190") } },
@@ -158,15 +108,12 @@ function readLabelMode(): LabelMode {
   }
 }
 
-/** 族标签字宽估算（SVG 里量不了 DOM：按字号 + 内边距估；几何自检探针用同一公式）。
- *  **2026-09-11 修**：文字字号与星系名一致 = 11px（styles.css `.app-map-famchip-text`），
- *  中文全角字宽 ≈ 字号 → 每字 11、左右各留 5；初版按 9.5 且未给字号，实机撑出标签框（船长发现）。 */
 const FAM_CHIP_CHAR_W = 11
 const FAM_CHIP_PAD_X = 5
 const FAM_CHIP_GAP = 3
 const FAM_CHIP_H = 14
-const FAM_CHIP_Y = 14.5 // 标签顶边相对星系中心的高度（文字基线 ≈ 中心 +25，与名称基线 +23 同带）
-const FAM_CHIP_BASE = 10.5 // 文字基线相对标签顶边（11px 字在 14 高里的垂直居中）
+const FAM_CHIP_Y = 14.5
+const FAM_CHIP_BASE = 10.5
 const famChipW = (text: string): number => text.length * FAM_CHIP_CHAR_W + FAM_CHIP_PAD_X * 2
 
 type LayoutMap = Record<string, { x: number; y: number }>
@@ -182,7 +129,6 @@ function readLayoutOverride(): LayoutMap {
   }
 }
 
-/** 名称放在图标正下方（恒为两节点下方，同航道已按名宽留距） */
 function NodeLabel({ name, x, y, cls, dy = 23 }: { name: string; x: number; y: number; cls?: string; dy?: number }) {
   return (
     <text x={x} y={y + dy} textAnchor="middle" className={`app-map-label${cls ?? ''}`}>
@@ -191,12 +137,6 @@ function NodeLabel({ name, x, y, cls, dy = 23 }: { name: string; x: number; y: n
   )
 }
 
-/**
- * 敌对派系标签行（2026-09-11 船长：「文字的颜色以敌族进行划分并采用标签化展示，
- * 以和安全等级明显区分」）——每枚 = SVG 圆角矩形 + 文字，颜色统一取该族色
- * （`FOE_ACCENT`，与战场敌舰同源；见 styles.css 的 `.app-map-famchip.is-fam-*`）；
- * 整行以星系圆点为中轴居中，取代名称位置。未探索 = 灰「未知」、无敌情 = 灰「无敌情」。
- */
 function FamChips({
   chips,
   rowW,
@@ -230,15 +170,12 @@ function FamChips({
   )
 }
 
-/* ── V16.1 安全等级（EVE 式 −1.0 ~ +1.0）：文字色阶与展示 ── */
 
-/** 安全等级显示文本（+0.6 / 0.0 / −0.5） */
 export function secText(v: number | undefined): string {
   if (v === undefined) return ''
   return v > 0 ? `+${v.toFixed(1)}` : v.toFixed(1)
 }
 
-/** 色阶类后缀（V16.2：≥0 安全向绿/黄；低于 0 即红，越近 −1 越偏紫） */
 export function secTone(v: number | undefined): string {
   if (v === undefined) return ''
   if (v >= 0.5) return '1'
@@ -248,13 +185,11 @@ export function secTone(v: number | undefined): string {
   return '5'
 }
 
-/** 名称着色追加类（hub 保持金色徽标不参与） */
 export function secCls(v: number | undefined): string {
   const t = secTone(v)
   return t ? ` app-sec-${t}` : ''
 }
 
-/* ─────────── 通路交叉检测与整理（布局编辑器辅助） ─────────── */
 
 interface Pt {
   x: number
@@ -278,21 +213,19 @@ function onSeg(p: Pt, q: Pt, r: Pt): boolean {
 
 const closePt = (u: Pt, v: Pt): boolean => Math.abs(u.x - v.x) < 1e-6 && Math.abs(u.y - v.y) < 1e-6
 
-/** 两线段是否在内部交叉（共享端点不算——端点按坐标比较，因为线段对象每次渲染都会重建；退化/共线不算） */
 function segsCross(s1: Seg, s2: Seg): boolean {
   if (closePt(s1.a, s2.a) || closePt(s1.a, s2.b) || closePt(s1.b, s2.a) || closePt(s1.b, s2.b)) return false
   const o1 = orient(s1.a, s1.b, s2.a)
   const o2 = orient(s1.a, s1.b, s2.b)
   const o3 = orient(s2.a, s2.b, s1.a)
   const o4 = orient(s2.a, s2.b, s1.b)
-  if (o1 === 0 && onSeg(s1.a, s1.b, s2.a)) return false // 共线重叠不算（罕见）
+  if (o1 === 0 && onSeg(s1.a, s1.b, s2.a)) return false
   if (o2 === 0 && onSeg(s1.a, s1.b, s2.b)) return false
   if (o3 === 0 && onSeg(s2.a, s2.b, s1.a)) return false
   if (o4 === 0 && onSeg(s2.a, s2.b, s1.b)) return false
   return o1 * o2 < 0 && o3 * o4 < 0
 }
 
-/** 求两线段交点（segsCross 保证存在） */
 function segIntersectPt(s1: Seg, s2: Seg): Pt {
   const a1 = s1.a
   const b1 = s1.b
@@ -306,7 +239,6 @@ function segIntersectPt(s1: Seg, s2: Seg): Pt {
 
 const dist = (a: Pt, b: Pt): number => Math.hypot(a.x - b.x, a.y - b.y)
 
-/** 计算互相交叉的边对（返回边索引对） */
 function findCrossings(segs: Seg[]): Array<[number, number]> {
   const out: Array<[number, number]> = []
   for (let i = 0; i < segs.length; i++) {
@@ -317,9 +249,7 @@ function findCrossings(segs: Seg[]): Array<[number, number]> {
   return out
 }
 
-/* ── 自动整理：确定性模拟退火最小化通路交叉 ── */
 
-/** mulberry32 确定性随机数（同样输入 → 同样结果，便于撤销/复现） */
 function mulberry32(seed: number): () => number {
   let a = seed >>> 0
   return () => {
@@ -355,10 +285,6 @@ interface TidyOpts {
   moveW: number
 }
 
-/**
- * 退火一轮：以 origPos 为锚点随机游走，代价 = 交叉数×crossW + 节点位移×moveW + 过近惩罚；
- * 始终返回过程中遇到的最优（最少交叉）布局快照。
- */
 function annealUncross(
   segNodes: Array<[string, string]>,
   origPos: Map<string, Pt>,
@@ -423,11 +349,6 @@ function annealUncross(
   return { best, pos: bestPos }
 }
 
-/**
- * 自动整理：第一轮全局退火（动得稍大），随后至多两轮"锚定上一轮结果"的本地抛光；
- * 交叉数不再下降即停止；返回整理后的坐标表（id → 四舍五入坐标），不修改入参。
- * 同一输入布局结果可复现。
- */
 function autoTidy(posMap: Map<string, Pt>, segNodes: Array<[string, string]>): Record<string, Pt> {
   if (posMap.size < 2 || segNodes.length === 0) {
     const outEmpty: Record<string, Pt> = {}
@@ -444,7 +365,7 @@ function autoTidy(posMap: Map<string, Pt>, segNodes: Array<[string, string]>): R
     const before = countCrossings(anchor, segNodes)
     if (before === 0) break
     const res = annealUncross(segNodes, anchor, p.seed, p)
-    if (res.best >= before) break // 无改进：保留当前
+    if (res.best >= before) break
     anchor = res.pos
     if (res.best === 0) break
   }
@@ -460,21 +381,15 @@ export function StarMap({
 }: {
   engine: GameEngine
   onToast: ToastFn
-  /** 开虫洞面板（一路传到行动区的入口行；面板本体挂在 App 层） */
   onOpenWormhole?: () => void
 }) {
   const state = engine.state
   const [editing, setEditing] = useState(false)
-  /**
-   * 星图显示模式（2026-09-11 船长：「在星图上添加切换按钮，让玩家可以快速在：显示星系名称、
-   * 显示安全等级、显示敌对派系 之间切换」）——**三态互斥**，选择存本地、重启保留。
-   */
   const [labelMode, setLabelMode] = useState<LabelMode>(readLabelMode)
   useEffect(() => {
     try {
       localStorage.setItem(LABEL_KEY, labelMode)
     } catch {
-      // 存储不可用：本次会话内仍生效，只是不记忆
     }
   }, [labelMode])
   const [devEditor] = useState<boolean>(() => {
@@ -486,25 +401,12 @@ export function StarMap({
   })
   const [override, setOverride] = useState<LayoutMap>(readLayoutOverride)
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  /**
-   * **星图缩放与平移**（2026-10-02 船长令「建议星图和虫洞探索一样允许放大」）。
-   * 实现走**改 `viewBox`**（不是给内容套一层 transform）：坐标系整体缩放 ⇒ 节点 / 标签 / 连线 /
-   * 新增的**判定圆**全都跟着一起变大，而且**一行 DOM 结构都不用动**。
-   * ⚠ 编辑模式（开发工具的布局编辑器）下强制回到适应态：它按 `MAP_VB_W/H` 常量换算拖拽坐标
-   * （见 `toViewBox`），叠上缩放会算错。
-   */
   const [mapZoom, setMapZoom] = useState(MAP_ZOOM_FIT)
   const [mapPan, setMapPan] = useState({ x: 0, y: 0 })
   const [mapPanning, setMapPanning] = useState(false)
-  /** 拖图状态（与虫洞地图同款：越过阈值才算拖、拖过就吃掉紧随的那次 click） */
   const mapDragRef = useRef<{ id: number; sx: number; sy: number; panX: number; panY: number; inv: DOMMatrix; moved: boolean } | null>(null)
   const mapAteClickRef = useRef(false)
   const mapSvgRef = useRef<SVGSVGElement | null>(null)
-  /**
-   * **滚轮缩放**（桌面）：照虫洞地图的做法 —— React 把 `onWheel` 挂成**被动监听**（passive），
-   * 里面 `preventDefault()` 不生效（控制台还会警告）⇒ 自己 `addEventListener` 且 `{ passive: false }`。
-   * 锚点与按钮一致（选中星系 / 图心），不做"跟随光标"那套，免得两种缩放手感打架。
-   */
   useEffect(() => {
     const el = mapSvgRef.current
     if (el === null) return
@@ -519,16 +421,7 @@ export function StarMap({
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
   }, [editing])
-  /** 2026-09-08 船长：点星系行动改弹窗——星图不再被长详情纵向挤压 */
   const [modalId, setModalId] = useState<string | null>(null)
-  /**
-   * **「点了扫描就关窗」的防误触闸门**（船长 2026-09-18：「点下『扫描探索』的那一刻就关。
-   * 但是要注意不要出现关闭窗口太快导致误触的情况」）。三道闸：
-   * ① 关窗**延后 260ms**：让这一次点击彻底结束、按钮的按下态走完，窗口不会在指针还压着时凭空消失；
-   * ② 关窗后 **420ms 内忽略星系节点的点击**：连点两下时，第二下不会顺手点开另一个星系的弹窗；
-   * ③ 延后期间窗口照常显示（按钮已置灰），玩家看得见"已经点上了"。
-   * 失败时（例如已有一处扫描在跑）**不关窗**——错误提示要留在弹窗里让他看见。
-   */
   const nodeClickGuardUntilRef = useRef(0)
   const closeTimerRef = useRef<number | null>(null)
   const closeModalSoon = (): void => {
@@ -548,13 +441,11 @@ export function StarMap({
   const dragRef = useRef<{ id: string } | null>(null)
   const hubName = engine.ctx.galaxies.get('galaxy-hub')?.name ?? ''
   const selected: GalaxyDef | null = engine.ctx.galaxies.get(selectedId ?? '') ?? null
-  /** 该星系已到手的稀有残骸（窝点战果）：与「残骸打捞」卡**同一份口径**（`pages/common.rareWreckRefsOf`） */
   const rare = selected ? rareWreckRefsOf(engine, selected.id) : { count: 0, text: '', refs: [] }
   const view = expeditionStatus(state, engine.ctx)
   const scan = scanStatus(state)
   const ancientStationKnown = ancientStationDiscovered(state, engine.ctx)
 
-  // ── V13 探索迷雾：dev/编辑器模式看全图；正常模式 = 已探索亮 + 一跳剪影 + 其余隐藏 ──
   const devView = devEditor || editing
   const exploredIds: Set<string> = devView
     ? new Set(engine.galaxies.map((g) => g.id))
@@ -562,22 +453,11 @@ export function StarMap({
   if (ancientStationKnown) exploredIds.add(ANCIENT_STATION_GALAXY_ID)
   const frontierIds: Set<string> = devView ? new Set() : new Set(frontierGalaxyIds(state, engine.ctx))
   const isFrontier = (id: string): boolean => frontierIds.has(id) && !exploredIds.has(id)
-  // 悬赏情报例外：无论探索状态都统计（协会共享情报；剪影节点上显示数量徽标）
   const bountyByGalaxy = new Map<string, number>()
   for (const a of engine.anomalies) {
     bountyByGalaxy.set(a.galaxyId, (bountyByGalaxy.get(a.galaxyId) ?? 0) + 1)
   }
 
-  /**
-   * **周末入侵的占领区**（2026-09-23 船长令「继续补」；**2026-09-25 船长两次改版**：
-   * ① 红圈 → **身后红色发光**；② **已夺回的外围不再发光** ＋ 旗子换成**节点上方的进度条**）。
-   *
-   * 于是这里出两张表：
-   * - `invasionProgress`：**仍被占**（进度 < 1）的星系 → 进度 0~1 ⇒ 画发光与其上方的进度条；
-   * - `invasionReclaimed`：**已夺回**的星系 → 只记 id（不发光、不画进度条，避免"打下来了还红着"的误导）。
-   * 只在活动存在时收集（可见性由 core 的 `WEEKEND_DEBUG_ONLY` 单点判据决定：
-   * **2026-09-25 船长已解除** ⇒ 正常模式照常有活动、这组标记照常画）。
-   */
   const invasionProgress: Map<string, number> = (() => {
     const ev = state.weekendEvent
     if (!ev || ev.endedAtWallMs !== undefined) return new Map<string, number>()
@@ -589,46 +469,25 @@ export function StarMap({
     }
     return out
   })()
-  /** 核心：仍在入侵中（未结束）**且仍被占**才算 —— 已夺回的核心不再点亮 ★ */
   const invasionCoreId: string | undefined = (() => {
     const ev = state.weekendEvent
     if (!ev || ev.endedAtWallMs !== undefined) return undefined
     return invasionProgress.has(ev.coreId) ? ev.coreId : undefined
   })()
-  /**
-   * **核心的"旗舰期红光"**（船长 2026-09-25：「**入侵母舰没摧毁前，敌方核心星系需要依旧有红光。**」）：
-   * 核心被夺回（进度 = 1）之后它就从 `invasionProgress`（= "仍被占"那张表）里掉出去了，
-   * 可母舰还停在那一片 ⇒ 核心**要继续发红光**，只是**不再画那根进度条**（那根条画的是"夺回进度"，
-   * 已经 100% 了）。
-   * 判据走 core 的 `weekendFlagshipView`（与「发现敌方旗舰 → 战前准备」入口同一份）：**现身着且未落定局**。
-   * 母舰被摧毁 ⇒ 活动收场（`endedAtWallMs`）⇒ 红光与 ★ 一起消失（上面两道判据都先查它）。
-   */
   const invasionCoreHeld: string | undefined = (() => {
     const ev = state.weekendEvent
     if (!ev || ev.endedAtWallMs !== undefined) return undefined
-    if (invasionProgress.has(ev.coreId)) return undefined // 还没夺回 ⇒ 上面那张表已经画了
+    if (invasionProgress.has(ev.coreId)) return undefined
     const nowMs = Date.now()
     const v = weekendFlagshipView(state, ev, nowMs, nowMs)
     return v.shown && v.down === undefined ? ev.coreId : undefined
   })()
-  /**
-   * **母舰血量读数**（**船长 2026-09-25 令**：「**母舰的血量也以进度条的形式显示在星系上方吧。**」）——
-   * 供核心节点上方那根条用。与事件日志那条**同源**（`weekendBossPoolView`：剩余 = 池子总量 −
-   * （玩家已造成 ＋ 章鱼已削）；船长 2026-09-25 已定"章鱼人 = 真实削血"，故只报这一条血）。
-   *
-   * ⚠ 池子在**首次接战**才锁定（`flagshipHpMax` 那一刻才落盘）⇒ 未接战按**满血**画：
-   * 池子总量是**固定常量**（15 万），满血不是假数，也让这根条"旗舰一现身就在"而不是打一场才冒出来。
-   */
   const mothershipFrac: number = (() => {
     const ev = state.weekendEvent
     if (!ev) return 1
     const pool = weekendBossPoolView(state, ev)
     return pool === null ? 1 : Math.max(0, Math.min(1, pool.hpLeft / pool.hpMax))
   })()
-  /* 赏金任务（当日板）按星系归组（2026-09-10 船长：普通赏金任务也要在星图上显示——
-     样式与"未探索剪影上的悬赏情报徽标"同款，并在对应星系上给出剩余时间）。
-     任务自带 galaxyId（刷出时绑定窝点所在星系）；倒计时 = 当日板剩余（每天本地 0 点整板替换，
-     口径与任务中心那行「距下批刷新」完全同源）。 */
   const board = engine.sideTasksView()
   const tasksByGalaxy = new Map<string, SideTask[]>()
   for (const t of board.bounty) {
@@ -637,19 +496,8 @@ export function StarMap({
     if (arr) arr.push(t)
     else tasksByGalaxy.set(t.galaxyId, [t])
   }
-  // 弹窗里的完整倒计时（h:mm:ss，逐秒刷新；节点上不再显示倒计时，见下方节点注释）
   const taskEtaText = board.bountyOpened ? fmtDayClock(board.bountyRemainingMs) : ''
-  /**
-   * **派系活跃的倒计时单独算**（**2026-09-29 船长令**：活跃切换时间 24 时 → **12 时（中午 12 点）**，
-   * 口径「只挪活跃」）——它与赏金板那条 0 点界碑**不再是同一时刻** ⇒ 星图那条活跃行不能再借
-   * `taskEtaText`（否则显示的是赏金板换板时间，与实际换活跃的时刻差最多 12 小时）。
-   */
   const factionEtaText = fmtDayClock(board.factionRemainingMs)
-  /**
-   * 敌对派系归属（2026-09-11 船长：「显示敌对派系」）——由该星系的悬赏卡推导
-   * （**2026-09-11 起改为读数据侧 `AnomalyDef.foeFamily`**，不再走 `ui/shipArt` 的硬编码族表）
-   * 排序 = 卡数降序 → 最高威胁降序 → 族字母（稳定）；首位 = **主族**（决定该星系"势力范围"光晕的颜色）。
-   */
   const familyByGalaxy = new Map<string, Array<{ fam: string; count: number; maxThreat: number }>>()
   for (const a of engine.anomalies) {
     const fam = foeFamilyOf(a)
@@ -666,7 +514,6 @@ export function StarMap({
   for (const arr of familyByGalaxy.values()) {
     arr.sort((x, y) => y.count - x.count || y.maxThreat - x.maxThreat || x.fam.localeCompare(y.fam))
   }
-  /** 节点下方的族标签（最多 2 枚，超出写「等 N 族」；未探索 = 灰「未知」；已探索但无敌情 = 灰「无敌情」） */
   const familyChipsOf = (gid: string, explored: boolean): Array<{ text: string; fam: string; dim?: boolean }> => {
     if (!explored) return [{ text: tr("ui.Expedition.194"), fam: '', dim: true }]
     const arr = familyByGalaxy.get(gid) ?? []
@@ -675,15 +522,11 @@ export function StarMap({
     if (arr.length > 2) chips[1] = { text: tr("ui.Expedition.251", { p1: arr.length }), fam: arr[0]!.fam }
     return chips
   }
-  /** 主族（势力范围光晕的颜色）：该星系卡数最多的族 */
   const primaryFamilyOf = (gid: string): string | undefined => familyByGalaxy.get(gid)?.[0]?.fam
-  /** 族标签行的总宽 / 半宽（几何避让用：标签带比名称带更宽时要一起放进去算） */
   const famRowWidth = (gid: string, explored: boolean): number => {
     const chips = familyChipsOf(gid, explored)
     return chips.reduce((s, c) => s + famChipW(c.text), 0) + FAM_CHIP_GAP * Math.max(0, chips.length - 1)
   }
-  /** 名称/标签带的半宽（节点下方那条信息带）：名称与安全等级 = 现状 23；
-   *  敌对派系 = 该模式下**最宽**的族标签行的一半（不够 23 就仍按 23 保守取） */
   const labelBandHalfW =
     labelMode === 'faction'
       ? Math.max(
@@ -696,16 +539,7 @@ export function StarMap({
           ),
         )
       : 23
-  /**
-   * 徽标栈（节点上方两层：符号徽标 + 短倒计时）的避让偏移（2026-09-10 船长：缩短格式 + 边缘挪位）。
-   * 星图节点是固定坐标系（布局数据/本地覆盖都是 (0,0)-(700,300)），故不靠 DOM 测量、直接按坐标算：
-   * 依次尝试 0 / ±15 / ±26 / ±36 的横向偏移，取第一个"不与邻居冲突"的位置——
-   * 冲突判定 = 与**别的节点**的圆点带（±9）或名称带（±23 × [中心+12, 中心+38]）相交；
-   * 都不行就用 0（居中保底）。徽标与倒计时整体平移，保持两层对齐、信息不丢。
-   */
   const STACK_DX_TRIES = [0, 15, -15, 26, -26, 36, -36] as const
-  /** 与其它节点的圆点带（±9）/名称带（±labelHalfW × [中心+12, 中心+38]）是否相交——徽标避让的公共判定。
-   *  2026-09-11：名称带半宽改为参数（「敌对派系」模式的族标签行比名称更宽，避让要按实际宽度算）。 */
   const bandClear = (g: GalaxyDef, ax1: number, ax2: number, ay1: number, ay2: number, labelHalfW = 23): boolean => {
     for (const other of engine.galaxies) {
       if (other.id === g.id) continue
@@ -726,37 +560,20 @@ export function StarMap({
     }
     return 0
   }
-  /**
-   * 敌对派系活跃标记（✦ + 「敌对派系活跃」全称）的**纵向**避让（2026-09-10 船长：要与星系按钮对齐）。
-   * 原来这组标记沿用徽标栈的**左右平移**（stackDx）躲邻居 → 整组会偏到星系旁边，看着不像"选中这个星系"；
-   * 船长定：**横向永远居中在星系圆点正上方**，遇到邻居节点冲突改为整组**上抬** 12 / 24 单位
-   * （上抬不破坏对齐感；星图顶部另有 MAP_PAD_TOP 留白，抬到会被裁切就不采用）。
-   */
-  const FACTION_HALF_W = 27 // 「敌对派系活跃」6 字 × (8.5px + 0.5 字距) ≈ 54 → 半宽 27
-  // 标记组顶端相对星系中心的高度。⚠ 2026-09-20 图标与文字互换后，**顶端改由 ✦（11px 基线 y−34）决定**
-  //   （✦ 顶边 ≈ 中心 −34 −8 = −42 ⇒ 取 41；原为 8.5px 全称标签的顶边）——数值恰好不变。
+  const FACTION_HALF_W = 27
   const FACTION_MARK_TOP = 41
   const FACTION_DY_TRIES = [0, -12, -24] as const
   const factionDy = (g: GalaxyDef): number => {
     const p = posOf(g)
     for (const dy of FACTION_DY_TRIES) {
-      if (p.y + dy - FACTION_MARK_TOP < -MAP_PAD_TOP) continue // 抬出画布：不采用（宁可让位也不裁切）
+      if (p.y + dy - FACTION_MARK_TOP < -MAP_PAD_TOP) continue
       if (bandClear(g, p.x - FACTION_HALF_W, p.x + FACTION_HALF_W, p.y + dy - 40, p.y + dy - 16, labelBandHalfW)) return dy
     }
-    return 0 // 兜底：保持居中（对齐优先，宁可压住邻居）
+    return 0
   }
-  /* 敌对派系活跃（2026-09-10 船长：对应星系上要显示剩余时间）——当日选中的中安/低安星系，
-     该星系常驻悬赏 +10% 奖金/+10% 威胁、胜利概率掉稀有残骸。
-     **2026-09-29 船长令**：换新界碑由本地 0 点改为**本地 12:00**（口径「只挪活跃」）⇒
-     倒计时与赏金板**不再是同一时刻**，走 `board.factionRemainingMs`。
-     判定走 core 单点 `factionGalaxyId`（与战斗、任务中心同一个口径）。 */
   const factionGalaxy = factionGalaxyId(state)
   const factionName = state.sideTasks.faction?.factionAnomalyName ?? ''
 
-  /**
-   * **目标星系的扫描窗口文案**（2026-09-18 修）：原先这里恒写「约 10 分钟」（只读基准常量），
-   * 而母港的窗口已被船长裁定改成 **10 秒** ⇒ 改成按目标星系实算，短于 1 分钟就按秒显示。
-   */
   const scanWindowTextOf = (galaxyId: string): string => {
     const ms = scanWindowMsFor(state, engine.ctx, galaxyId)
     return ms < 60_000 ? tr("ui.Expedition.252", { p1: Math.max(1, Math.round(ms / 1000)) }) : tr("ui.Expedition.253", { p1: Math.max(1, Math.round(ms / 60_000)) })
@@ -766,10 +583,10 @@ export function StarMap({
     const r = engine.startScanAt(g.id)
     if (!r.ok) {
       onToast(cmdText(r) || tr('ui.Expedition.382'), true)
-      return // 失败不关窗：错误提示留在弹窗里
+      return
     }
     onToast(tr("ui.Expedition.135"))
-    closeModalSoon() // 成功 ⇒ 点下这一刻就关（带防误触闸门，见 closeModalSoon 的注释）
+    closeModalSoon()
   }
 
   const posOf = (g: GalaxyDef): { x: number; y: number } => {
@@ -777,7 +594,6 @@ export function StarMap({
     return o ? { x: o.x, y: o.y } : { x: g.x, y: g.y }
   }
 
-  // ── 通路几何：按当前坐标重建线段，逐帧检测交叉（拖动时会实时更新） ──
   const mapEdges: Array<{ from: GalaxyDef; to: GalaxyDef; travelMinutes: number }> = []
   for (const edge of engine.galaxyEdges) {
     const a = engine.ctx.galaxies.get(edge.from)
@@ -794,7 +610,6 @@ export function StarMap({
     crossedEdge.add(j)
   }
 
-  // 「撤销整理」快照：记录最近一次点「自动整理」前的全部坐标
   const preTidyRef = useRef<LayoutMap | null>(null)
   function snapshotLayout(): LayoutMap {
     const out: LayoutMap = {}
@@ -817,7 +632,6 @@ export function StarMap({
     try {
       localStorage.setItem(LAYOUT_KEY, JSON.stringify(override))
     } catch {
-      // 忽略存储失败
     }
   }
 
@@ -826,7 +640,6 @@ export function StarMap({
     try {
       localStorage.removeItem(LAYOUT_KEY)
     } catch {
-      // 忽略
     }
   }
 
@@ -837,11 +650,9 @@ export function StarMap({
     try {
       await navigator.clipboard.writeText(JSON.stringify(out))
     } catch {
-      // 剪贴板不可用（Electron 环境一般可用）
     }
   }
 
-  // 拖拽：换算到 viewBox 坐标（可视范围含边缘留白 → 先减留白再换算）
   function toViewBox(e: { clientX: number; clientY: number }, svg: SVGSVGElement): { x: number; y: number } {
     const r = svg.getBoundingClientRect()
     return {
@@ -872,16 +683,12 @@ export function StarMap({
     window.addEventListener('pointerup', up)
   }
 
-  /* ── 缩放后的可视窗口（**改 viewBox**，不动 DOM）────────────────────────────────
-     锚点 = **当前选中星系**（没选中就取图心）——与虫洞地图「以玩家所在格为锚点」同一套口径：
-     放大时"我关心的那一颗"原地不动、四周围着它长开。平移量单位是 viewBox 单位。 */
   const effZoom = editing ? MAP_ZOOM_FIT : mapZoom
   const effPan = editing ? { x: 0, y: 0 } : mapPan
   const vbW = MAP_VB_W / effZoom
   const vbH = MAP_VB_H / effZoom
   const anchorGal = selectedId !== null ? engine.ctx.galaxies.get(selectedId) : undefined
   const anchorPt = anchorGal !== undefined ? posOf(anchorGal) : { x: -MAP_PAD_X + MAP_VB_W / 2, y: -MAP_PAD_TOP + MAP_VB_H / 2 }
-  /** 夹取：可视窗口不许跑出基准视图（适应态下夹取结果就是原来的 viewBox） */
   const clampVb = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v))
   const vbX = clampVb(anchorPt.x - vbW / 2 + effPan.x, -MAP_PAD_X, -MAP_PAD_X + MAP_VB_W - vbW)
   const vbY = clampVb(anchorPt.y - vbH / 2 + effPan.y, -MAP_PAD_TOP, -MAP_PAD_TOP + MAP_VB_H - vbH)
@@ -947,13 +754,6 @@ export function StarMap({
         className={`app-starmap${editing ? ' is-editing' : ''}${!editing && effZoom > MAP_ZOOM_FIT ? ' is-zoomed' : ''}${mapPanning ? ' is-panning' : ''}`}
         role="img"
         aria-label={tr('ui.ActivityBar.006')}
-        /**
-         * **拖动平移**（2026-10-02 船长令「建议星图和虫洞探索一样允许放大」）——
-         * 与虫洞地图同一套做法：① 按下只记起点与换算系数（viewBox ÷ 元素像素）；
-         * ② 超过阈值（`MAP_DRAG_THRESHOLD_PX`）才算"拖"并把指针捕获下来（低于阈值当点击，交给节点）；
-         * ③ 抬起收尾，拖过就吃掉紧随的那次 click（见 `mapAteClickRef` 与节点 `onClick` 的闸门）。
-         * `z = 1`（适应）时没有可拖的余地 ⇒ 直接不接（指针行为与改造前一致）。
-         */
         onPointerDown={(e) => {
           mapAteClickRef.current = false
           if (editing || effZoom <= MAP_ZOOM_FIT) return
@@ -1513,31 +1313,10 @@ export function StarMap({
   )
 }
 
-/* ─────────── 敌舰影列（2026-09-13 船长：「在常驻悬赏内，将悬赏敌族的舰船 SVG 图形，
- * 像我的舰队里的我方舰船那样，放入悬赏的最左侧」——同批扩到任务中心两处敌族卡） ───────────
- * 口径与舰队卡（ShipPage.FleetArt / .app-ship-card.is-fleet）**逐条同款**：列宽固定、置卡片最左侧、
- * 容器实测宽不足时整列不渲染（不留空位）；图形取**敌族形**（`FOE_ART` 的 A~G 族字母），
- * 配色取敌族色 `FOE_ACCENT`——与战斗画面 `BattleScreen` 同一取形/取色口径，不新增美术资产。
- * 族来源一律是**数据侧** `AnomalyDef.foeFamily`（`foeFamilyOf`，全仓唯一缺省点），不另建映射表。 */
-/** 舰影列宽（与 ShipPage.FLEET_ART_W 同值：三处悬赏卡与舰队卡观感一致） */
 const FOE_ART_W = 132
-/** 舰影列与右侧信息列的间距（与 CSS .is-foe-art 的 gap 保持一致） */
 const FOE_ART_GAP = 10
-/** 右侧信息列可读下限（再窄就藏舰影；与 ShipPage.FLEET_MAIN_MIN 同值） */
 const FOE_ART_MAIN_MIN = 560
 
-/**
- * **悬赏敌舰影（置卡片最左侧）**。
- *
- * 2026-09-26 船长令「旧版敌人按敌舰不同做出些许区分」——舰影由**族形**改为**逐舰形**：
- * `shipId` = 该卡的代表舰级 id（30 条敌舰各画各的），未给/未录 → 按 `fam` 落族形兜底。
- * 代表舰 = **本卡最高档那一条**（同档优先头目档）——玩家一眼看到的是本卡最危险的那型，
- * 档位来自 core `foeShipTierOf`/`foeShipEliteOf`（与体积、舰名同一次反查，不另推一套）。
- *
- * memo：引擎每 tick 触发整树重渲染（App 层订阅 force），舰影 props（族字母 + 舰级 id）恒定即整棵 SVG 子树跳过 diff。
- * 不带尾焰（engine={false}）——列表里的静止展示件，与舰队卡同款；不翻转（船头朝右、面向右侧信息）。
- * 悬浮提示用词典既有族短名表（星图「敌对派系」模式同一张表），不新造称呼。
- */
 export const FoeArt = memo(function FoeArt({ fam, shipId }: { fam: string; shipId?: string }) {
   return (
     <div className="app-ship-art" title={tr("ui.Expedition.186", { p1: FOE_FAMILY_LABEL[fam] ?? fam })}>
@@ -1555,35 +1334,12 @@ export const FoeArt = memo(function FoeArt({ fam, shipId }: { fam: string; shipI
   )
 })
 
-/** 卡片代表舰（本卡最强那型；口径与编成枚举同在 core `foeCardShipIdOf`，界面不另推档位） */
 export function foeCardShipIdOf(a: AnomalyDef): string | undefined {
   return coreFoeCardShipIdOf(a) ?? undefined
 }
 
-/**
- * 舰种档名「旗舰」（与 `ui/foeBrief.ts` 的 `HULL_CN/HULL_EN[5]` 同值，中英各一份）——
- * 只用于"卡上编成单把**主舰排头**"这一处排序，不参与任何显示。
- */
 const FLAGSHIP_HULL_TEXT = isEn() ? 'flagship' : '旗舰'
 
-/**
- * **敌舰一览富内容**（2026-09-26 船长令：「**敌人舰船的名称和特殊装置染色**」＋
- * 「**因为入侵卡是随机抽取的，你应该显示所有抽取的卡可能出现的敌人**」）。
- *
- * 一个构造点、两处消费：星系详细的**入侵卡**（击退入侵舰队）与**旗舰入口**（发现敌方旗舰）——
- * **2026-09-26 船长报障**：「**入侵的星系详细里，发现敌方旗舰卡牌并没有介绍入侵旗舰的信息，
- * 建议先参考其他入侵卡牌**」⇒ 旗舰那行改为复用这份渲染，不再让两张卡各长一样。
- *
- * 版式（**2026-09-26 船长令**：「**舰船的特殊装置单独起一行，不同舰船之间需要空一行**」）：
- * 每型舰 = **一格**（`.app-ano-foebrief-row`，块级）内两行 ——
- *   ① 舰名（舰种 ×数量）：战术/武器/伤害构成…；
- *   ② **特殊装置另起一行**（`style={{ display: 'block' }}`，避免为一行字新造 CSS 类）；
- * 舰与舰之间 = 一行**空行**（`.app-ano-foebrief-gap`，纯 `height` 占位，不取新类名样式）。
- *
- * · 范围 = 该族该区域**整池**（`weekendFoePoolOf` 与抽取同源）∪ 本卡编成；
- * · 染色走**富内容悬停**（`hoverTipProps`）：舰名用战场同款 `UI_TONES.foeName`（主舰 `foeNameMain`）、
- *   「特殊装置」那四个字用 `UI_TONES.matBattle`——与战斗画面的敌舰名同一套色，不自造颜色。
- */
 export function FoeBriefTip({ lines }: { lines: FoeBriefLine[] }): ReactNode {
   if (lines.length === 0) return null
   return (
@@ -1627,11 +1383,6 @@ export function FoeBriefTip({ lines }: { lines: FoeBriefLine[] }): ReactNode {
   )
 }
 
-/**
- * 舰影列自适应：容器实测宽 ≥ 舰影列 + 间距 + 信息列下限 ⇒ 显示舰影。
- * 判定取容器的 clientWidth（已扣滚动条），不用窗口宽猜——与 `ShipPage` 舰队页同一套做法与常量
- * （卡片高由右侧信息列决定、舰影更矮，故显隐不会反过来改变容器宽，无振荡）。
- */
 export function useFoeArtFit(ref: RefObject<HTMLElement | null>): boolean {
   const [show, setShow] = useState(false)
   useLayoutEffect(() => {
@@ -1641,7 +1392,7 @@ export function useFoeArtFit(ref: RefObject<HTMLElement | null>): boolean {
       const next = el.clientWidth >= FOE_ART_W + FOE_ART_GAP + FOE_ART_MAIN_MIN
       setShow((old) => (old === next ? old : next))
     }
-    update() // 首帧先量一次（布局阶段、绘制前，无闪烁）
+    update()
     const ro = new ResizeObserver(update)
     ro.observe(el)
     return () => ro.disconnect()
@@ -1649,7 +1400,6 @@ export function useFoeArtFit(ref: RefObject<HTMLElement | null>): boolean {
   return show
 }
 
-/* ─────────── B1.5 星图「前往星系」动作区（掩护巡逻/矿带/悬赏 + 简介） ─────────── */
 
 export function GalaxyActions({
   engine,
@@ -1663,53 +1413,11 @@ export function GalaxyActions({
 }) {
   const state = engine.state
   const ctx = engine.ctx
-  /**
-   * **旧版虫洞入口已于 2026-09-26 删除**（船长令：「将调试模式的旧版虫洞入口删除」）。
-   *
-   * 沿革：该行曾是施工期的**调试入口**（`debugEnabled()` 把关，点开面板后走 `wormholeEnter(picked)`
-   * ——**不消耗库存虫洞、直接用游戏种子开一趟**）；玩家侧在 2026-09-14 就关了这道门
-   * （它会绕过「协会声望 ≥ 40」门槛、跳过"扫描发现"整条链），只留调试可见。
-   *
-   * **玩家入口唯一 = 星图「出港 · 扫描虫洞」页**：选一处库存虫洞 ⇒ `wormholeEnterFromStock`（消耗该处）。
-   * 验收也不再需要这个后门：扫描页本身就能造库存、开趟。
-   *
-   * ⚠ 面板本体仍挂在 App 那一层（`onOpenWormhole`）——原先挂在这里，而本组件要"星图选中星系"才渲染
-   * ⇒ 人在洞里时可能回不到面板（船长 2026-09-13：「活动栏直接开面板」）；活动栏那行只在已有本趟时出现。
-   * 该回调**仍然需要**（活动栏的"进洞"跳转、星图「出港」里 → 扫描页的返回），故 prop 保留。
-   */
-  /**
-   * **入侵旗舰入口**（2026-09-25 船长令：「星图核心星系的**星系详细**里要添加入口」）：
-   * 判据全在 core（`weekendFlagshipPrep()` 非空 = 旗舰已现身、未落定局、本族是 BOSS 族），
-   * 这里再要求**选中的正是本场核心星系** —— 外围星系不摆这个按钮，免得玩家以为哪儿都能打。
-   */
   const flagshipPrep = state.weekendEvent?.coreId === galaxy.id ? engine.weekendFlagshipPrep() : null
-  /**
-   * **旗舰编成一览**（**2026-09-26 船长报障**：「**入侵的星系详细里，发现敌方旗舰卡牌并没有介绍
-   * 入侵旗舰的信息，建议先参考其他入侵卡牌**」）。
-   *
-   * 与入侵卡**同一取数口、同一份渲染**：本族旗舰卡（`weekendFoeCardOf(family, 'flagship')`，
-   * 与开战 `weekendFlagshipSpecOf` 同源）的**全池编成** —— H 族实测 5 型 9 艘：墨潮入侵母舰（旗舰）
-   * ×1、战列巡洋舰 ×3、干扰舰 ×3（首次开火撒网：减速 90%、闪避归零、射程 −500 米）、
-   * 鱼雷舰 ×4、突击舰 ×4（受击后冲锋：速度 ×1.6，冷却 30 秒）。玩家在**进战前准备之前**就能看到
-   * 要打的是什么，不必先点进去再退出来。
-   */
   const flagshipFoeLines =
     flagshipPrep !== null && state.weekendEvent
       ? briefsOfPool(engine.ctx.anomalies, weekendFoePoolOf(state.weekendEvent.family, true), engine.ctx.anomalies.get(weekendFoeCardOf(state.weekendEvent.family, 'flagship')))
       : []
-  /**
-   * **卡上直显：编成单 ＋ 母舰血条**（**船长 2026-09-26 令**：「**建议将旗舰的大概信息直接显示在卡上，
-   * 包括BOSS血条剩余血量**」）。
-   *
-   * · 编成单：**只报本族旗舰卡自己的编成**（`briefShipsOf(flagshipCard)`）——与开战
-   *   `weekendFlagshipSpecOf` 的 `cardId` **同一个 id** ⇒ 卡上数字 = 真进场的那份。
-   *   ⚠ 别用 `briefsOfPool`（那是给悬停"可能出现哪些敌人"用的整池并集）：实测 H 族整池会累成
-   *   **17 艘**，而本卡编成（4 波）只有 **15 艘** —— 卡上写 17 是假数。
-   * · 主舰（`hull === FLAGSHIP_HULL_TEXT`）排头，其余按数量降序。
-   * · 血条：与入侵窗口那条**同源**（`weekendBossPoolView`：剩余 = 池子总量 − 玩家已造成 − 章鱼已削；
-   *   首次接战前按满血画，池子是固定常量 15 万）⇒ 文案复用 `ui.weekend.020`，进度条复用
-   *   `.app-card-progress.is-invasion`（与上面的收复进度、MapPage 入侵框同款，不新造视觉）。
-   */
   const flagshipCard = state.weekendEvent ? engine.ctx.anomalies.get(weekendFoeCardOf(state.weekendEvent.family, 'flagship')) : undefined
   const flagshipRoster =
     flagshipCard === undefined
@@ -1720,51 +1428,22 @@ export function GalaxyActions({
   const flagshipShipCount = flagshipRoster.reduce((n, l) => n + l.count, 0)
   const flagshipPool = state.weekendEvent ? weekendBossPoolView(state, state.weekendEvent) : null
   const flagshipPoolPct = flagshipPool === null ? 100 : Math.max(0, Math.min(100, Math.round((flagshipPool.hpLeft / flagshipPool.hpMax) * 100)))
-  /**
-   * **这一格是否正被入侵占领**（2026-09-25 船长令）：占领中 ⇒ 星系详细里的悬赏整行换成「击退入侵舰队」
-   * ＋威胁范围（不逐张列被替换的卡）。
-   *
-   * ⚠ **2026-10-02 起"夺回"不再关这扇门**（船长令：「我希望的是 100% 后能够继续刷，但是掉落残骸数量
-   * 需要减半作为惩罚」）⇒ 判据改走 core 单点 `weekendZoneLiveAt`（**不再自己判 `progress < 1`**——
-   * 原先这里与 core 各写一份，本批统一到一把尺）。已夺回的星系照旧显示这一行，直到活动结束；
-   * 那一行会给一句"只给半量残骸"的悬停说明（`ui.weekend.1xx`）。
-   */
   const invadedHere = (() => {
     const ev = state.weekendEvent
     if (!ev || ev.endedAtWallMs !== undefined) return null
     return weekendZoneLiveAt(state, galaxy.id, Date.now()) ? ev : null
   })()
-  /**
-   * **该星系是否已夺回**（进度满）——**2026-10-02 船长令**：夺回后照旧能刷，但**只给半量残骸**、
-   * 进度不再增长 ⇒ 那一行的说明句从「赏金：结算时按进度发放」（对满档星系已经不涨了）
-   * 换成 `ui.weekend.116`（半量口径），免得玩家以为还有进度收入。
-   */
   const reclaimedHere =
     invadedHere !== null && weekendProgressAt(state, invadedHere, galaxy.id, Date.now()) >= 1
-  /**
-   * **「悬赏（N）」里的 N = 这一格实际列出的行数**（**船长 2026-09-25 报障**：「**被入侵的星系，
-   * 星系详细界面，悬赏的标题显示"悬赏（2）"而实际上这时候只显示了"击退入侵舰队"这一个**」）。
-   *
-   * - 仍被占（`invadedHere`）⇒ 整池换成**一行**「击退入侵舰队」⇒ **1**（原先报的是被替换掉的那 2 张卡）；
-   * - 平常（含**已收复**的占领星系）⇒ 该星系拥有的卡数（**声望不足时的空态照旧**：那时列出 0 张但
-   *   "这里有几张悬赏"本身是给玩家的信息，另有 `ui.Expedition.264` 明说原因，故这一档保持原口径）。
-   *   ⚠ **2026-09-28 船长令**后"已收复押后 ⇒ 0"那一档没了（押后判据已删，见文件上部那条注）。
-   */
   const bountyRowCount =
     invadedHere !== null ? 1 : engine.anomalies.filter((a) => a.galaxyId === galaxy.id).length
 
-  // —— 该星系矿带 ——
   const belts = engine.belts.filter(
     (b) => b.galaxyId === galaxy.id || (galaxy.id === 'galaxy-hub' && !b.galaxyId),
   )
   const expOn = state.expedition.active
   const [mineAskBelt, setMineAskBelt] = useState<string | null>(null)
   function handleMineStart(beltId: string): void {
-    /**
-     * ⚠ **2026-09-21 船长答 2「允许切换」**：原先"正在开采 ⇒ 直接 toast 拦住"那条已删——
-     * 换矿带现在**直接切**（core 先停旧带那一趟、货留在船上、写「已切换矿带」日志）。
-     * 远征在飞时那条"转战"两段确认照旧（`startMiningFromExpeditionAt`）。
-     */
     if (expOn && !mineAskBelt) {
       setMineAskBelt(beltId)
       onToast(
@@ -1780,7 +1459,6 @@ export function GalaxyActions({
     if (!r.ok) onToast(cmdText(r) || tr('ui.Expedition.388'), true)
   }
 
-  // —— 该星系悬赏（只列当前可接；已首胜标黄不隐藏） ——
   const pilotName = shipDisplayName(state, ctx, state.shipId)
   const pilotRoleLabel = (() => {
     const role = fleetDefOf(state, ctx, state.shipId)?.role
@@ -1788,34 +1466,25 @@ export function GalaxyActions({
   })()
   const miningActive = state.mining.active
   const [goAskAno, setGoAskAno] = useState<string | null>(null)
-  /** 信号发射器的**二次确认**（哪个星系正处于"再点一下"的状态；null = 没有）——与 `goAskAno` 同款内联警示 */
   const [beaconAsk, setBeaconAsk] = useState<string | null>(null)
-  /** 持有几枚信号发射器（**货仓优先 + 仓库**，core 单点）—— 0 枚时整个容器不渲染 */
   const beacons = availableInvasionBeacons(state)
   const [beaconPick, setBeaconPick] = useState(INVASION_BEACON_ITEM_ID)
   const beaconItemId = beacons.some(row => row.itemId === beaconPick) ? beaconPick : (beacons[0]?.itemId ?? '')
   const beaconStock = beacons.reduce((sum, row) => sum + row.units, 0)
-  /** 指定目标有空间站时信号被压制；已探索/非高安属于随机候选规则，玩家所在地不参与判定。 */
   const beaconBlocked = beaconTargetBlocked(state, ctx, galaxy.id)
   const beaconStandingMet = weekendInvasionAllowedFor(state)
   const beaconStandingNote = tr('core.market.039', { p1: WEEKEND_MIN_STANDING, p2: standingOf(state, DSI_FACTION_ID) })
-  /** 玩家位置**不判**（2026-09-30 船长报障：不该要求玩家先离开自己的空间站）；「不允许在空间站使用」
-   *  指的是**目标星系**不能有空间站 ⇒ 由 `!beaconBlocked`（候选资格）管，就地提示走 `ui.beacon.005`。 */
-  /** **玩家选定的目标星系属高安 ⇒ 二次警告 + 扣声望**（**2026-10-03 船长裁「乙」**：判据 = **目标星系**，
-   *  不再看玩家所在地）——判据单点在 core（`beaconLaunchHighSecOf(ctx, 目标 id)`） */
   const beaconHighSec = beaconLaunchHighSecOf(ctx, galaxy.id)
   const [beaconWarn, setBeaconWarn] = useState(false)
   useEffect(() => {
     setBeaconAsk(null)
     setBeaconWarn(false)
   }, [beaconItemId, galaxy.id])
-  /** 统一的"点火"动作（指定星系那条；成功/失败都给回执） */
   const launchBeaconHere = (): void => {
     const r = engine.useInvasionBeaconNow({ galaxyId: galaxy.id, itemId: beaconItemId })
     if (!r.ok) onToast(cmdText(r) || tr('ui.beacon.001'), true)
     else onToast(tr('ui.ItemsPage.058'))
   }
-  /** 待确认"顶替环目标"的那张卡（null = 没有待确认）——**内联警示**，照抄 `goAskAno` 的写法，不新增弹窗机制 */
   const [loopAskAno, setLoopAskAno] = useState<string | null>(null)
   function handleAnoGo(ano: AnomalyDef): void {
     if (miningActive && goAskAno !== ano.id) {
@@ -1828,10 +1497,6 @@ export function GalaxyActions({
       return
     }
     setGoAskAno(null)
-    /**
-     * **出击要把"界面上这一行的星系"带上**（2026-09-25 修"串星系"）：H 族多个被占星系会抽到
-     * **同一张独立卡**（同 id）⇒ 引擎按 id 反查只能命中列表第一个 ⇒ 进度/威胁/残骸全串到别处。
-     */
     const r = miningActive
       ? engine.startExpeditionFromMiningAt(ano.id, ano.galaxyId)
       : engine.startExpeditionAt(ano.id, ano.galaxyId)
@@ -2418,20 +2083,13 @@ export function GalaxyActions({
   )
 }
 
-/* ─────────── 悬赏任务卡 ─────────── */
 
-/**
- * 敌方战术 → 打法提示（C4 第二批收口·#3 丙，2026-09-05 船长确认"甲+丙"）：
- * 威胁数字是强度刻度、战术决定"哪种装配吃瘪"——kite 卡专治短程，光看威胁会误判。
- */
 export const FOE_TACTIC_HINTS: Record<string, string> = {
   get brawl() { return tr("ui.Expedition.268") },
   get orbit() { return tr("ui.Expedition.269") },
   get kite() { return tr("ui.Expedition.317") },
 }
 
-/* ─────────── 野外应急修理（修理系统 2026-09-05：驾驶船停留本星系时的手动组件入口） ───────────
- * （2026-10-02 批次 4p 从 Expedition.tsx 迁来：唯一消费方 GalaxyActions 在本文件） */
 export function FieldKitRepair({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
   const state = engine.state
   const ship = state.fleet[state.shipId]

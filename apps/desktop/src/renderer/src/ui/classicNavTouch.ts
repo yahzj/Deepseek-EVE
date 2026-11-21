@@ -1,4 +1,3 @@
-/** 旧版触屏导航：只管单指滚动，尺寸/排列仍使用网页版规则。 */
 export function bindClassicNavTouchScroll(scroll: HTMLElement): () => void {
   const host = scroll.ownerDocument.defaultView!
   const pointers = new Set<number>()
@@ -33,7 +32,6 @@ export function bindClassicNavTouchScroll(scroll: HTMLElement): () => void {
   }
   const move = (event: PointerEvent) => {
     if (!drag || drag.id !== event.pointerId || pointers.size !== 1) return
-    // 逆矩阵只换算位移，不受旋转层对齐偏移影响；阈值使用物理像素。
     const delta = drag.b * (event.clientX - drag.x) + drag.d * (event.clientY - drag.y)
     if (!drag.moved && Math.abs(delta) * drag.scale < 8) return
     if (!drag.moved) { drag.moved = true; scroll.setPointerCapture(event.pointerId) }

@@ -3,13 +3,10 @@ import type { SimContext } from './types'
 import { shortestTravelMinutes } from './travel'
 export { reconcileDeparture } from './departureReconcile'
 
-/** 主控离港演出/等待时长。船长 2026-11-05 由 10 秒下调为 5 秒；读档夹取与旗舰战开战偏移共用此值。 */
 export const UNDOCK_MS = 5_000
-/** 协会跃迁星门等待：同星系基数、每标称航程分钟增量、总上限。读档夹取共用 GATE_MAX_MS。 */
 export const GATE_BASE_MS = 2_500
 export const GATE_STEP_MS = 500
 export const GATE_MAX_MS = 10_000
-/** 临时开关：船长 2026-11-05 令「先暂时关闭星门相关的读条」。改回 true 即恢复原 2.5–10 秒，公式与常量原样保留。 */
 export const GATE_ENABLED = false
 const SAVED_UNDOCK_MAX_MS = 10_000
 const SAVED_GATE_MAX_MS = 20_000
@@ -27,17 +24,12 @@ export interface DepartureState {
   arrivalLog?: Pick<LogEntry, 'kind' | 'text' | 'textId' | 'textParams'>
 }
 
-/**
- * 船长确认（2026-11-02）：同星系 5 秒，每标称航程分钟增加 1 秒，上限 20 秒。
- * 船长 2026-11-05 令整体下调 50% ⇒ 同星系 2.5 秒，每标称航程分钟增加 0.5 秒，上限 10 秒。
- */
 export function associationGateMs(ctx: SimContext, from: string, to: string): number {
   const minutes = shortestTravelMinutes(ctx, from, to)
   const steps = Math.min(15, Math.max(0, Number.isFinite(minutes) ? minutes : 15))
   return Math.min(GATE_MAX_MS, Math.round(GATE_BASE_MS + steps * GATE_STEP_MS))
 }
 
-/** 在入口尚未清位置前取快照；作业或停止返航中不虚构停靠。 */
 export function departureOrigin(state: GameState, ctx: SimContext): { galaxy: string; site: string | null; docked: boolean } {
   const m = state.mining, s = state.salvaging
   const galaxy = m.active && m.beltId ? ctx.belts.get(m.beltId)?.galaxyId
@@ -64,7 +56,6 @@ export function departureDurationMs(ctx: SimContext, kind: DepartureKind, from: 
   return { undockMs, gateMs, totalMs: undockMs + gateMs }
 }
 
-/** 只消费本活动的等待时间；允许同次大推进继续使用余量。 */
 export function consumeDeparture(state: GameState, kind: DepartureKind, deltaMs: number): number {
   const leg = state.departure
   if (!leg || leg.kind !== kind) return deltaMs
@@ -78,7 +69,6 @@ export function consumeDeparture(state: GameState, kind: DepartureKind, deltaMs:
   return deltaMs - take
 }
 
-/** 抵达类日志随出发行程保存，取消不播报，真实到达后只播报一次。 */
 export function departureArrivalLog(state: GameState, kind: LogKind, text: string, textId: string, textParams: LogParams): void {
   if (state.departure) state.departure.arrivalLog = { kind, text, textId, textParams }
   else addLog(state, kind, text, textId, textParams)
@@ -95,7 +85,6 @@ export function departureView(state: GameState) {
     remainingMs: Math.max(0, totalMs - elapsed), percent: Math.min(100, Math.max(0, elapsed / Math.max(1, totalMs) * 100)) }
 }
 
-/** 取消尚未离港的可取消活动时恢复原泊位；已离港交回各活动原召回规则。 */
 export function cancelDeparture(state: GameState, kind: DepartureKind): boolean {
   const leg = state.departure
   if (!leg || leg.kind !== kind) return false
@@ -112,7 +101,6 @@ export function cleanDeparture(raw: unknown): DepartureState | undefined {
   if (typeof r.shipId !== 'string' || !r.shipId || typeof r.fromGalaxy !== 'string' || !r.fromGalaxy
     || typeof r.toGalaxy !== 'string' || !r.toGalaxy || !(r.fromSite === null || typeof r.fromSite === 'string')) return undefined
   if (![r.undockMs, r.gateMs, r.progressMs].every(v => typeof v === 'number' && Number.isFinite(v) && v >= 0)) return undefined
-  // 已登记的行程与所属活动共用绝对到达时刻，不能按新规则改写在途阶段。
   const undockMs = Math.min(SAVED_UNDOCK_MAX_MS, Math.floor(r.undockMs as number))
   const gateMs = Math.min(SAVED_GATE_MAX_MS, Math.floor(r.gateMs as number))
   if (undockMs + gateMs <= 0) return undefined

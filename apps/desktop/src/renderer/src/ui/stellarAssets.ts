@@ -15,7 +15,6 @@ import license from '../assets/stellar/LICENSE-PixelPlanets.txt?url'
 
 export const STELLAR_ASSET_LICENSE_URL = license
 
-// 外框/本体比来自原生导出像素；带环图不能按外框当本体尺寸。
 export const STELLAR_PLANET_ASSETS: Record<StellarPlanetKind, { url: string; span: number }> = {
   rocky: { url: rocky, span: 288 / 256 }, desert: { url: desert, span: 288 / 256 },
   ice: { url: ice, span: 288 / 256 }, ocean: { url: ocean, span: 288 / 256 },
