@@ -5,6 +5,7 @@ import { prebootRenderer, startGameEngine } from '../../apps/desktop/src/rendere
 import { L10nProvider, tr } from '../../apps/desktop/src/renderer/src/i18n/locale'
 import { SaveWriterGate } from '../../apps/desktop/src/renderer/src/panels/SaveWriterGate'
 import { startUpdatePrompt } from './updatePrompt'
+import { BootGate, bootFail, bootReportStage, bootStopWatch } from '../../apps/desktop/src/renderer/src/boot/BootGate'
 
 /**
  * 网页端环境守卫：防范离线扒取、本地双击 (file://) 及未授权的第三方镜像
@@ -61,22 +62,27 @@ function checkWebEnvironment(): boolean {
 if (checkWebEnvironment()) {
   prebootRenderer()
   startUpdatePrompt()
+  window.__WHALE_BOOT__?.bundleReady?.()
 
   const engine = new GameEngine()
   const root = createRoot(document.getElementById('root')!)
 
-  root.render(<div className="app-loading">{tr('ui.main.001')}</div>)
+  bootReportStage('sync')
+  root.render(<BootGate />)
 
-  startGameEngine(engine)
+  startGameEngine(engine, { onStage: bootReportStage })
     .then((started) => {
+      bootReportStage('bridge')
+      bootStopWatch()
+      window.__WHALE_BOOT__?.handover?.()
       root.render(
         <L10nProvider>
-          <SaveWriterGate>{started ? <App engine={engine} /> : null}</SaveWriterGate>
+          <SaveWriterGate code={started ? undefined : 'SG-05'}>{started ? <App engine={engine} /> : null}</SaveWriterGate>
         </L10nProvider>,
       )
     })
     .catch((err: unknown) => {
       console.error(tr('ui.main.004'), err)
-      root.render(<div className="app-loading">{tr('ui.main.002', { err: String(err) })}</div>)
+      bootFail('SG-FF', err instanceof Error ? err.message : String(err))
     })
 }

@@ -5,19 +5,24 @@ import { prebootRenderer, startGameEngine } from './game/boot'
 import { runAutoPerf } from './game/autoPerf'
 import { L10nProvider, tr } from './i18n/locale'
 import { SaveWriterGate } from './panels/SaveWriterGate'
+import { BootGate, bootFail, bootReportStage, bootStopWatch } from './boot/BootGate'
 
 prebootRenderer()
 
 const engine = new GameEngine()
 const root = createRoot(document.getElementById('root')!)
 
-root.render(
-  <div className="app-loading">{tr('ui.main.001')}</div>,
-)
+bootReportStage('sync')
+root.render(<BootGate />)
 
-startGameEngine(engine)
+startGameEngine(engine, { onStage: bootReportStage })
   .then((started) => {
-    if (!started) { root.render(<L10nProvider><SaveWriterGate /></L10nProvider>); return }
+    bootReportStage('bridge')
+    bootStopWatch()
+    if (!started) {
+      root.render(<L10nProvider><SaveWriterGate code="SG-05" /></L10nProvider>)
+      return
+    }
     const perfJson = window.__autoperf
     if (perfJson) {
       try {
@@ -44,7 +49,5 @@ startGameEngine(engine)
   })
   .catch((err: unknown) => {
     console.error(tr("ui.main.004"), err)
-    root.render(
-      <div className="app-loading">{tr('ui.main.002', { err: String(err) })}</div>,
-    )
+    bootFail('SG-FF', err instanceof Error ? err.message : String(err))
   })

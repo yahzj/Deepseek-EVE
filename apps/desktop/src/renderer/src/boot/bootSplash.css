@@ -1,0 +1,175 @@
+/* 启动画面（网页首屏的静态版在 web/index.html 内联；这里是 React 载入层与桌面端共用的样式） */
+.boot-splash {
+  position: relative;
+  overflow: hidden;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #04060a;
+  color: #6ee7a8;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Courier New", monospace;
+  font-size: 13px;
+  line-height: 2;
+  text-shadow: 0 0 6px rgba(110, 231, 168, 0.35);
+}
+.boot-splash::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.22) 0 1px, transparent 1px 3px);
+}
+.boot-splash__panel {
+  position: relative;
+  z-index: 1;
+  width: calc(100% - 48px);
+  max-width: 460px;
+}
+.boot-splash__line {
+  opacity: 0;
+  white-space: pre-wrap;
+  animation: boot-line 0.01s linear forwards;
+  animation-delay: var(--d, 0s);
+}
+.boot-splash__rule {
+  color: #1f4d38;
+  text-shadow: none;
+}
+.boot-splash__ok {
+  color: #a7f3d0;
+}
+.boot-splash__boot {
+  margin-top: 10px;
+  color: #d1fae5;
+}
+.boot-splash__cursor {
+  display: inline-block;
+  width: 0.6em;
+  height: 1em;
+  margin-left: 3px;
+  background: #6ee7a8;
+  vertical-align: text-bottom;
+  animation: boot-blink 1s steps(2) infinite;
+}
+.boot-splash--live .boot-splash__line {
+  opacity: 1;
+  animation: none;
+}
+.boot-splash__head {
+  color: #6ee7a8;
+}
+.boot-splash__stage {
+  color: #a7f3d0;
+}
+.boot-splash__dim {
+  color: #2f5a46;
+}
+.boot-splash__warn {
+  color: #fbbf24;
+}
+.boot-splash__meta {
+  color: #4b7a63;
+  letter-spacing: 0;
+  font-size: 12px;
+}
+.boot-splash__track {
+  margin-top: 12px;
+  height: 6px;
+  border: 1px solid #1f4d38;
+  border-radius: 3px;
+  overflow: hidden;
+  background: #071009;
+}
+.boot-splash__track-fill {
+  width: 4%;
+  height: 100%;
+  background: linear-gradient(90deg, #34d399, #6ee7a8);
+  transition: width 0.3s ease;
+}
+.boot-splash.is-failed .boot-splash__line {
+  display: none;
+}
+.boot-splash.is-failed .boot-splash__head {
+  display: block;
+}
+.boot-splash.is-failed .boot-splash__rule {
+  display: block;
+}
+.boot-splash__fail {
+  margin-top: 8px;
+  letter-spacing: 0;
+}
+.boot-splash__fail-title {
+  color: #fca5a5;
+  font-size: 15px;
+}
+.boot-splash__fail-advice {
+  margin-top: 6px;
+  color: #cbd5e1;
+  line-height: 1.7;
+}
+.boot-splash__fail-code {
+  margin-top: 12px;
+  color: #fbbf24;
+}
+.boot-splash__fail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+.boot-splash__btn {
+  display: inline-block;
+  padding: 6px 14px;
+  border: 1px solid #1f4d38;
+  border-radius: 4px;
+  background: #0b1a12;
+  color: #a7f3d0;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+  text-decoration: none;
+  cursor: pointer;
+}
+.boot-splash__btn:hover {
+  border-color: #34d399;
+}
+.boot-splash__btn.is-primary {
+  border-color: #34d399;
+  background: #10362a;
+  color: #d1fae5;
+}
+.boot-splash__fail-note {
+  margin-top: 12px;
+  color: #4b7a63;
+  font-size: 12px;
+  line-height: 1.6;
+}
+@keyframes boot-line {
+  to {
+    opacity: 1;
+  }
+}
+@keyframes boot-blink {
+  50% {
+    opacity: 0;
+  }
+}
+@media (max-width: 480px) {
+  .boot-splash {
+    font-size: 11px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .boot-splash__line {
+    opacity: 1;
+    animation: none;
+  }
+  .boot-splash__cursor {
+    animation: none;
+  }
+  .boot-splash__track-fill {
+    transition: none;
+  }
+}

@@ -13,13 +13,13 @@
 
 ## 统计
 
-- 非归档文档 **398** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4813** KB · **54266** 行
-- 状态分布：**未标注** 199 · **已确认/已实现** 131 · **进行中** 47 · **待裁定** 20 · **历史留档** 1
-- 孤儿文档（0 引用）**175** 份 · 状态未标注 **199** 份
+- 非归档文档 **399** 份（docs下排除archive目录及本索引，另含根AGENTS.md）· 合计 **4821** KB · **54364** 行
+- 状态分布：**未标注** 200 · **已确认/已实现** 131 · **进行中** 47 · **待裁定** 20 · **历史留档** 1
+- 孤儿文档（0 引用）**175** 份 · 状态未标注 **200** 份
 - 一、常用文档（按任务查阅）：**11** 份
 - 七、评审与体检（review）：**6** 份
 - 三、设计与工作文档（需核实状态）：**370** 份
-- 二、其它（docs 根目录）：**2** 份
+- 二、其它（docs 根目录）：**3** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
 - 八、测试档说明（test-saves）：**2** 份
 - 六、专题：舰船美术（design/ship-battle-art）：**6** 份
@@ -30,7 +30,7 @@
 |---|---|---|---|---|---|
 | `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定 | 未标注 | — | 13 KB / 135 行 | 56 |
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 8 KB / 91 行 | 19 |
-| `docs/catalog.md` | 文档目录 | 未标注 | — | 5 KB / 51 行 | 11 |
+| `docs/catalog.md` | 文档目录 | 未标注 | — | 5 KB / 52 行 | 11 |
 | `docs/content-workbench.md` | 内容工作台 | 未标注 | — | 3 KB / 35 行 | 2 |
 | `docs/data-editor.md` | 大鲸鱼数据编辑器 | 未标注 | — | 4 KB / 45 行 | 6 |
 | `docs/data-map.md` | 数据速查页 | 未标注 | — | 3 KB / 38 行 | 5 |
@@ -38,7 +38,7 @@
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（现行译名表） | — | 46 KB / 810 行 | 17 |
 | `docs/glossary.md` | 术语词典 | 未标注 | — | 23 KB / 204 行 | 65 |
 | `docs/roadmap.md` | 当前待办与实施边界 | 未标注 | — | 9 KB / 79 行 | 62 |
-| `docs/single-source.md` | 单点索引（谁有权算、谁只能读） | 未标注 | — | 46 KB / 312 行 | 21 |
+| `docs/single-source.md` | 单点索引（谁有权算、谁只能读） | 未标注 | — | 46 KB / 313 行 | 21 |
 
 ## 七、评审与体检（review） —— 6 份
 
@@ -426,12 +426,13 @@
 | `docs/design/v9-market.md` | V9 设计：市场系统（已实现） | 未标注 | — | 22 KB / 201 行 | 1 |
 | `docs/design/weekend-invasion.md` | 周末入侵活动（常设设计） | 未标注 | — | 71 KB / 484 行 | 16 |
 
-## 二、其它（docs 根目录） —— 2 份
+## 二、其它（docs 根目录） —— 3 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档） |
 |---|---|---|---|---|---|
+| `docs/boot-codes.md` | 载入自检代号 | 未标注 | — | 5 KB / 47 行 | 3 |
 | `docs/development-conventions-changelog.md` | 开发约定维护记录 | 未标注 | — | 20 KB / 150 行 | 6 |
-| `docs/l10n-pending.md` | 英文本地化记录 | 未标注 | — | 66 KB / 1057 行 | 34 |
+| `docs/l10n-pending.md` | 英文本地化记录 | 未标注 | — | 69 KB / 1106 行 | 35 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -637,7 +638,7 @@
 - `docs/design/v18.1-support.md`（无日期 · 9 KB）—— V18.1 设计总结：支援装备 + 叠加收敛（取消同类唯一 · 已确认实施）
 - `docs/design/v18b2-lasers.md`（无日期 · 5 KB）—— V18B-2 设计总结：激光炮武器族（能量系形态 · 已确认实施）
 
-## 附：状态未标注（199 份，待补一行 `状态：…`）
+## 附：状态未标注（200 份，待补一行 `状态：…`）
 
 - `docs/design/feedback-entry-20261118.md`（2026-11-18）—— 游戏内反馈入口（反馈 → 自建服务器代发 GitHub Issue）
 - `docs/design/fleet-distance-20261118.md`（2026-11-18）—— 编队预设交战距离
@@ -816,6 +817,7 @@
 - `docs/review/hull-p2-preview-20260905.md`（2026-09-05）—— 承伤持久化 P2：数值与甲抗/盾抗流派平衡预览（2026-09-05，供船长拍板）
 - `AGENTS.md`（无日期）—— AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定
 - `docs/architecture.md`（无日期）—— 架构文档
+- `docs/boot-codes.md`（无日期）—— 载入自检代号
 - `docs/catalog.md`（无日期）—— 文档目录
 - `docs/content-workbench.md`（无日期）—— 内容工作台
 - `docs/data-editor.md`（无日期）—— 大鲸鱼数据编辑器

@@ -44,8 +44,14 @@ async function fileToShot(file: File, id: number): Promise<Shot> {
 }
 
 /** 游戏内反馈弹窗：描述 + Ctrl+V 粘贴截图 → 服务器代发 GitHub Issue。 */
-export function FeedbackDialog({ onClose }: { onClose: () => void }) {
-  const [text, setText] = useState(readDraft)
+export function FeedbackDialog({ onClose, initialText, bootCode }: {
+  onClose: () => void
+  /** 载入失败时预填的诊断文本：玩家不用打字就能提交 */
+  initialText?: string
+  /** 载入失败的自检代号，随请求一起提交，便于后台对表 */
+  bootCode?: string
+}) {
+  const [text, setText] = useState(() => initialText ?? readDraft())
   const [shots, setShots] = useState<Shot[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -118,6 +124,7 @@ export function FeedbackDialog({ onClose }: { onClose: () => void }) {
             version: BUILD.version,
             platform: BUILD_FORM === 'web' ? 'web' : 'desktop',
             ua: navigator.userAgent,
+            ...(bootCode !== undefined ? { bootCode } : {}),
           },
         }),
       })

@@ -10,8 +10,9 @@
     />
     <title>大鲸鱼-深空放置（网页版）</title>
     <style>
-      /* 首屏启动画面：主包（约 2M gzip）下载解析期间先显示，React 首次渲染会覆盖 #root 内内容即自动消失。
-         复古开机自检风：逐行浮现 + 闪烁光标 + CRT 扫描线，纯 CSS，不依赖 JS。 */
+      /* 首屏启动画面：主包下载解析期间先显示，React 首次渲染会覆盖 #root 内内容即自动消失。
+         复古开机自检风：逐行浮现 + 闪烁光标 + CRT 扫描线，纯 CSS，不依赖 JS。
+         boot.js（同源小脚本）负责真实等待秒数、断网/脚本失败代号与一键反馈；React 接管后显示真实工序进度。 */
       html,
       body {
         height: 100%;
@@ -44,6 +45,8 @@
         background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.22) 0 1px, transparent 1px 3px);
       }
       .boot-splash__panel {
+        position: relative;
+        z-index: 1;
         width: calc(100% - 48px);
         max-width: 460px;
       }
@@ -73,6 +76,102 @@
         vertical-align: text-bottom;
         animation: boot-blink 1s steps(2) infinite;
       }
+      /* React 接管后的实时进度画面：不再做逐行浮现 */
+      .boot-splash--live .boot-splash__line {
+        opacity: 1;
+        animation: none;
+      }
+      .boot-splash__head {
+        color: #6ee7a8;
+      }
+      .boot-splash__stage {
+        color: #a7f3d0;
+      }
+      .boot-splash__dim {
+        color: #2f5a46;
+      }
+      .boot-splash__warn {
+        color: #fbbf24;
+      }
+      .boot-splash__meta {
+        color: #4b7a63;
+        letter-spacing: 0;
+        font-size: 12px;
+      }
+      .boot-splash__track {
+        margin-top: 12px;
+        height: 6px;
+        border: 1px solid #1f4d38;
+        border-radius: 3px;
+        overflow: hidden;
+        background: #071009;
+      }
+      .boot-splash__track-fill {
+        width: 4%;
+        height: 100%;
+        background: linear-gradient(90deg, #34d399, #6ee7a8);
+        transition: width 0.3s ease;
+      }
+      /* 失败面板：保留开机自检的外形，但切到故障播报 */
+      .boot-splash.is-failed .boot-splash__line {
+        display: none;
+      }
+      .boot-splash.is-failed .boot-splash__head {
+        display: block;
+      }
+      .boot-splash.is-failed .boot-splash__rule {
+        display: block;
+      }
+      .boot-splash__fail {
+        margin-top: 8px;
+        letter-spacing: 0;
+      }
+      .boot-splash__fail-title {
+        color: #fca5a5;
+        font-size: 15px;
+      }
+      .boot-splash__fail-advice {
+        margin-top: 6px;
+        color: #cbd5e1;
+        line-height: 1.7;
+      }
+      .boot-splash__fail-code {
+        margin-top: 12px;
+        color: #fbbf24;
+      }
+      .boot-splash__fail-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 14px;
+      }
+      .boot-splash__btn {
+        display: inline-block;
+        padding: 6px 14px;
+        border: 1px solid #1f4d38;
+        border-radius: 4px;
+        background: #0b1a12;
+        color: #a7f3d0;
+        font-family: inherit;
+        font-size: 13px;
+        line-height: 1.6;
+        text-decoration: none;
+        cursor: pointer;
+      }
+      .boot-splash__btn:hover {
+        border-color: #34d399;
+      }
+      .boot-splash__btn.is-primary {
+        border-color: #34d399;
+        background: #10362a;
+        color: #d1fae5;
+      }
+      .boot-splash__fail-note {
+        margin-top: 12px;
+        color: #4b7a63;
+        font-size: 12px;
+        line-height: 1.6;
+      }
       @keyframes boot-line {
         to {
           opacity: 1;
@@ -96,14 +195,17 @@
         .boot-splash__cursor {
           animation: none;
         }
+        .boot-splash__track-fill {
+          transition: none;
+        }
       }
     </style>
   </head>
   <body>
     <div id="root">
-      <div class="boot-splash">
+      <div class="boot-splash" id="boot-splash">
         <div class="boot-splash__panel">
-          <div class="boot-splash__line" style="--d: 0s">大鲸鱼级深空船坞 · 固件自检 v2.6</div>
+          <div class="boot-splash__line boot-splash__head" style="--d: 0s">大鲸鱼级深空机库 · 固件自检 v2.6</div>
           <div class="boot-splash__line boot-splash__rule" style="--d: 0.15s">────────────────────────────</div>
           <div class="boot-splash__line" style="--d: 0.3s">舰桥主控处理器 ............... <span class="boot-splash__ok">OK</span></div>
           <div class="boot-splash__line" style="--d: 0.45s">生命维持记忆体 64G ........... <span class="boot-splash__ok">OK</span></div>
@@ -112,11 +214,29 @@
           <div class="boot-splash__line" style="--d: 0.9s">武器火控总线 ................. <span class="boot-splash__ok">OK</span></div>
           <div class="boot-splash__line" style="--d: 1.05s">跃迁引擎冷却回路 ............. <span class="boot-splash__ok">OK</span></div>
           <div class="boot-splash__line" style="--d: 1.2s">星门同步链路 ................. <span class="boot-splash__ok">OK</span></div>
-          <div class="boot-splash__line" style="--d: 1.35s">通讯阵列校准 ................. <span class="boot-splash__ok">OK</span></div>
-          <div class="boot-splash__line boot-splash__boot" style="--d: 1.6s">正在启动星门引擎<span class="boot-splash__cursor"></span></div>
+          <div class="boot-splash__line boot-splash__boot" style="--d: 1.35s"><span id="boot-status-text">正在启动星门引擎</span><span class="boot-splash__cursor"></span></div>
+          <div class="boot-splash__track" aria-hidden="true"><div class="boot-splash__track-fill" id="boot-track-fill"></div></div>
+          <div class="boot-splash__fail" id="boot-fail" hidden>
+            <div class="boot-splash__fail-title" id="boot-fail-title"></div>
+            <div class="boot-splash__fail-advice" id="boot-fail-advice"></div>
+            <div class="boot-splash__fail-code" id="boot-fail-code"></div>
+            <div class="boot-splash__fail-actions">
+              <button type="button" class="boot-splash__btn" id="boot-retry">重新自检</button>
+              <button type="button" class="boot-splash__btn is-primary" id="boot-report">反馈问题</button>
+              <button type="button" class="boot-splash__btn" id="boot-copy">复制诊断</button>
+              <a class="boot-splash__btn" id="boot-fallback" href="https://game.bajibaji.party:7777/" hidden>换用备用星门入口</a>
+            </div>
+            <div class="boot-splash__fail-note" id="boot-fail-note"></div>
+          </div>
         </div>
       </div>
+      <noscript>
+        <div style="padding: 24px; color: #cbd5e1; font-family: sans-serif; line-height: 1.8">
+          本舰桥需要启用 JavaScript 才能启动引擎。请在浏览器设置里允许本页运行脚本后重新载入。
+        </div>
+      </noscript>
     </div>
     <script type="module" src="/src/main.tsx"></script>
+    <script src="/boot.js"></script>
   </body>
 </html>

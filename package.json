@@ -26,6 +26,7 @@
     "mining:curve": "tsx tools/mining-curve.ts",
     "salvage:econ": "tsx tools/salvage-econ.ts",
     "content:check": "tsx tools/content-check.ts",
+    "boot:check": "tsx tools/boot-check.ts",
     "arch:guard": "tsx tools/arch-guard.ts",
     "scope:check": "tsx tools/domain-scope-check.ts",
     "skilltree:layout-check": "tsx tools/skilltree-layout-check.ts",
