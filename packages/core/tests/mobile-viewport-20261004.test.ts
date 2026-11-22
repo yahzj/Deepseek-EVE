@@ -25,6 +25,7 @@ function viewport() {
   let landscape = false
   const size = { current: null as { w: number; h: number } | null }
   const bindings = { window, Date, screen: { orientation: { type: 'portrait-primary' } },
+    navigator: { maxTouchPoints: 0, userAgent: 'synthetic' }, embeddedMobileViewport: false,
     setMobileRot: (next: boolean) => { rotated = next }, rootRef: { current: { style: {
       setProperty: (key: string, value: string) => { values.set(key, value) }, removeProperty: (key: string) => { values.delete(key) },
     } } }, mobSizeRef: size, mobPendRef: { current: null }, mobTimerRef: { current: 0 },
@@ -65,13 +66,13 @@ describe('手机旋转视口稳定性', () => {
   it('手机横屏仍使用手机外壳，键盘缩小可见高度不改变设备判断', () => {
     const p = viewport()
     p.window.screen.orientation.type = 'landscape-primary'
-    p.window.innerWidth = 844
-    p.window.innerHeight = 390
+    p.window.innerWidth = p.window.visualViewport.width = 844
+    p.window.innerHeight = p.window.visualViewport.height = 390
     p.run()
     expect(p.mobile()).toBe(true)
     expect(p.rotated()).toBe(false)
     expect(p.landscape()).toBe(true)
-    p.window.innerHeight = 200
+    p.window.innerHeight = p.window.visualViewport.height = 200
     p.run()
     expect(p.mobile()).toBe(true)
   })
@@ -83,6 +84,8 @@ describe('手机旋转视口稳定性', () => {
     p.window.matchMedia = () => ({ matches: true })
     p.window.screen.width = 1920
     p.window.screen.height = 1080
+    p.window.innerWidth = p.window.visualViewport.width = 1920
+    p.window.innerHeight = p.window.visualViewport.height = 1080
     p.run()
     expect(p.mobile()).toBe(false)
   })

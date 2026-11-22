@@ -122,6 +122,7 @@ export function startFleetBattleFor(
     const buffs = wormholeMatterBuffs(state.wormhole.run?.hold, matterTechWhBuffs(state, ctx))
     for (const spec of specs) applyMatterPlayerBuffs(spec, buffs, matterMods.foeMainType)
   }
+  const rangeSpecs = specs.map(spec => ({ ...spec }))
   const me = specs[0]!
   const waves = anomaly.waves && anomaly.waves.length > 0 ? anomaly.waves : null
   const foes = waves
@@ -271,7 +272,7 @@ export function startFleetBattleFor(
         : {}),
     }
   }
-  if (desireM !== null) battle.rangeMemory = { ...battleRangeSnapshot(anomalyId, specs, Math.max(bal.minDistanceM, rawDesire), battleMaxDistanceM(battle, me, foes, bal, specs) * (wormhole?.desireRangeMul ?? 1), bal.minDistanceM),
+  if (desireM !== null) battle.rangeMemory = { ...battleRangeSnapshot(anomalyId, rangeSpecs, Math.max(bal.minDistanceM, rawDesire), battleMaxDistanceM(battle, me, foes, bal, specs) * (wormhole?.desireRangeMul ?? 1), bal.minDistanceM),
     sourceVersion: 1, ...(fleetRange?.presetId ? { fleetPresetId: fleetRange.presetId } : {}) }
   return battle
 }

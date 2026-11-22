@@ -43,7 +43,7 @@ function fileShell() {
     removeItem: (k: string) => { marks.delete(k) }, getItem: (k: string) => marks.get(k) ?? null }
   const makeApi = () => runSaveModule<FileApi>('apps/desktop/src/renderer/src/game/saveFileHandle.ts', {
     '../i18n/locale': { tr: (id: string) => id },
-  }, { indexedDB, window: { showSaveFilePicker: async () => handle,
+  }, { indexedDB, window: { showSaveFilePicker: async () => handle, setTimeout: () => 1, clearTimeout: () => {},
     localStorage: storage } })
   return { api: makeApi(), handle, text: () => text, change: (next: string) => { text = next },
     reload: makeApi, grant: () => { permission = 'granted' } }

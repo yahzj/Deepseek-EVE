@@ -12,6 +12,7 @@ import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { weekendStartFlagshipBattle } from '../src/weekendLaunch'
 import type { GameState } from '../src/state'
 import { saveBattleFleetRange } from '../src/fleetRange'
+import { playerFleetMaxRangeOf } from '../src/battleRangeMemory'
 import { applyFleetPreset, saveFleetPreset } from '../src/fleetPresets'
 import { setFleetDistance } from './helpers/fleet-range'
 import { confirmBattleRange } from '../src/battleRangeConfirm'
@@ -45,6 +46,47 @@ function idle(state: GameState) {
 }
 
 describe('入侵目标距离不因首波量程缩小', () => {
+  it.each([false, true])('编队模式%s：敌方电子战变化不触发重新选距，核心与旗舰沿用编队默认', fleet => {
+    const state = world('H')
+    const roster = [state.shipId]
+    if (fleet) {
+      const ally = addShipToFleet(state, 'sh-shrike')
+      state.fleet[ally]!.fitted = { high: ['mod-laser-1'], mid: [], low: [] }
+      roster.push(ally)
+    }
+    state.preparationSquads = { combat: roster }
+    state.skills.trained['fleet-command-basic'] = 5
+    state.skills.trained['fleet-command-coordination'] = 5
+    state.skills.trained['fleet-command-integration'] = 5
+    setFleetDistance(state, ctx, 2500)
+    expect(saveFleetPreset(state, ctx, '入侵队').ok).toBe(true)
+    const unjammed = playerFleetMaxRangeOf(roster.map(id => createPlayerSpec(state, ctx, id)!))
+    let jammed = false
+    for (const cardId of ['ink-harass', 'ink-main', 'ink-raid', 'ink-main']) {
+      expect(startExpedition(state, cardId, ctx, { foeGalaxyId: CORE }).ok, cardId).toBe(true)
+      expect(state.pendingBattleRange).toBeUndefined()
+      expect(state.expedition.battle!.myDesireM).toBe(2500)
+      const battle = state.expedition.battle!
+      if ((battle.rangeEw?.meCut ?? 0) > 0) {
+        const effective = buildMyUnitSpecs(state, ctx, battle, state.shipId, cardId)
+        expect(playerFleetMaxRangeOf(effective)).toBeLessThan(unjammed)
+        jammed = true
+      }
+      expect(battle.rangeMemory!.maxRangeM).toBe(unjammed)
+      expect(state.fleetRange!.maxRangeM).toBe(unjammed)
+      idle(state)
+    }
+    expect(jammed).toBe(true)
+    state.weekendEvent!.contributed = { [CORE]: 1, [PER]: 1 }
+    const battle = weekendStartFlagshipBattle(state, ctx, NOW, roster)
+    expect(battle).not.toBeNull()
+    expect(state.pendingBattleRange).toBeUndefined()
+    expect(battle!.myDesireM).toBe(2500)
+    expect(battle!.rangeMemory!.maxRangeM).toBe(unjammed)
+    expect(state.fleetRange!.maxRangeM).toBe(unjammed)
+    expect(state.fleetPresets![0]!.range!.maxRangeM).toBe(unjammed)
+  })
+
   it.each(['alien-escort', 'alien-main', 'ink-raid', 'ink-main'])('同星系同卡%s后波选择在连续开局与读档后保持', cardId => {
     const state = world(cardId.startsWith('alien') ? 'C' : 'H', 'sh-falconet')
     expect(saveFleetPreset(state, ctx, '入侵队').ok).toBe(true)

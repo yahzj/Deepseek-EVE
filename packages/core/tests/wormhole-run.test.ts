@@ -855,11 +855,10 @@ describe('信号空间 · 堆数与单堆层曲线', () => {
   })
 })
 
-describe('虫洞 · v31 存档', () => {
+describe('虫洞 · 当前版本存档', () => {
   it('新档带空虫洞状态；版本等于当前结构版本', () => {
-    expect(CURRENT_STATE_VERSION).toBe(31)
     const s = createInitialState({ nowWallMs: 0, seed: 1 })
-    expect(s.version).toBe(31)
+    expect(s.version).toBe(CURRENT_STATE_VERSION)
     expect(s.wormhole).toEqual({ run: null, lastFleetLost: 0 })
   })
 

@@ -51,6 +51,7 @@ export function startBattleFor(
     me.hp.h = Math.max(0, ceilFinalQuantity(me.hp.h * hullMul))
   }
   if (isFirstBountyBattle(state, anomalyId, shipId)) applyFirstBountyBuff(me)
+  const rangeSpec = { ...me }
   const waves = anomaly.waves && anomaly.waves.length > 0 ? anomaly.waves : null
   const foes = waves
     ? createFoeSpecs(anomaly, bal, { units: waves[0]!.units, hpShare: waves[0]!.hpShare })
@@ -143,7 +144,7 @@ export function startBattleFor(
     for (const s of shieldField.streams) s.nextPulseAtMs = battle.startedAtGameMs + s.ms
     battle.shieldFieldBy = { [me.tag ?? 'player']: shieldField }
   }
-  if (desireM !== null) battle.rangeMemory = { ...battleRangeSnapshot(anomalyId, [me], Math.max(bal.minDistanceM, rawDesire), battleMaxDistanceM(battle, me, foes, bal), bal.minDistanceM),
+  if (desireM !== null) battle.rangeMemory = { ...battleRangeSnapshot(anomalyId, [rangeSpec], Math.max(bal.minDistanceM, rawDesire), battleMaxDistanceM(battle, me, foes, bal), bal.minDistanceM),
     sourceVersion: 1, ...(fleetRange?.presetId ? { fleetPresetId: fleetRange.presetId } : {}) }
   return battle
 }

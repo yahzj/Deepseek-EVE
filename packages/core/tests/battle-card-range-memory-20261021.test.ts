@@ -107,7 +107,7 @@ describe('编队距离与射程变化确认（保留旧敌卡专项文件名）'
     expect(confirmBattleRange(state, ctx, 1700, NOW).ok).toBe(true)
     expect(state.pendingBattleRange).toBeUndefined()
     expect(state.expedition.battle!.myDesireM).toBe(1700)
-    const specs = buildMyUnitSpecs(state, ctx, state.expedition.battle!, state.shipId, 'ink-harass')
+    const specs = [createPlayerSpec(state, ctx, state.shipId)!]
     expect(state.fleetRange).toEqual({ desireM: 2500, maxRangeM: playerFleetMaxRangeOf(specs), shipIds: [state.shipId] })
     idle(state)
     expect(startExpedition(state, 'ink-harass', ctx).ok).toBe(true)
@@ -301,17 +301,34 @@ describe('编队距离与射程变化确认（保留旧敌卡专项文件名）'
     expect(saved.fleetRange!.maxRangeM).toBeGreaterThan(0)
     expect(saved.fleetRange!.desireM).toBeUndefined()
   })
-  it('仅有编队距离时首次入场补齐电子战射程，之后真实换装仍需确认', () => {
+  it('仅有编队距离时首次入场补齐配置射程，之后真实换装仍需确认', () => {
     const state = world()
     setFleetDistance(state, ctx, 2300)
     expect(startExpedition(state, 'ink-harass', ctx).ok).toBe(true)
     expect(state.pendingBattleRange).toBeUndefined()
     expect(state.expedition.battle!.myDesireM).toBe(2300)
-    const specs = buildMyUnitSpecs(state, ctx, state.expedition.battle!, state.shipId, 'ink-harass')
+    const specs = [createPlayerSpec(state, ctx, state.shipId)!]
     expect(state.fleetRange).toEqual({ desireM: 2300, maxRangeM: playerFleetMaxRangeOf(specs), shipIds: [state.shipId] })
     idle(state)
     changeRange(state)
     expect(startExpedition(state, 'ink-harass', ctx).rangeConfirmation).toBe(true)
+  })
+  it('旧受压射程确认一次后更新为配置射程，切换入侵舰队不再重复确认', () => {
+    const state = world()
+    setFleetDistance(state, ctx, 2500)
+    const old = startBattleFor(structuredClone(state), ctx, state.shipId, 'ink-harass')!
+    expect(old.rangeEw!.meCut).toBeGreaterThan(0)
+    const rawRange = playerFleetMaxRangeOf([createPlayerSpec(state, ctx, state.shipId)!])
+    state.fleetRange!.maxRangeM = playerFleetMaxRangeOf(buildMyUnitSpecs(state, ctx, old, state.shipId, 'ink-harass'))
+    expect(state.fleetRange!.maxRangeM).toBeLessThan(rawRange)
+    expect(startExpedition(state, 'ink-main', ctx).rangeConfirmation).toBe(true)
+    expect(confirmBattleRange(state, ctx, 2500, NOW).ok).toBe(true)
+    expect(state.fleetRange!.maxRangeM).toBe(rawRange)
+    expect(state.fleetRange!.desireM).toBe(2500)
+    idle(state)
+    expect(startExpedition(state, 'ink-harass', ctx).ok).toBe(true)
+    expect(state.pendingBattleRange).toBeUndefined()
+    expect(state.expedition.battle!.myDesireM).toBe(2500)
   })
   it('坏记忆值被清洗且原型键不污染记录', () => {
     const state = world()

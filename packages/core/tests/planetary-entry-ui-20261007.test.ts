@@ -33,11 +33,13 @@ describe('星球本机门禁与界面双语', () => {
     expect(scope.exports.runPlanetaryCommand(state, buildSimContext(), 'discover', ['planet-prototype-small'])).toEqual({ ok: false, reason: 'entry-blocked' })
     expect(state).toEqual(before)
   })
-  it('两套调试导航复用星系窗口，不创建或跳转虚假一级页', () => {
+  it('星系窗口由本机事件打开，不创建或跳转虚假一级页', () => {
     const app = readFileSync(resolve(ROOT, 'apps/desktop/src/renderer/src/App.tsx'), 'utf8')
     const shell = readFileSync(resolve(ROOT, 'apps/desktop/src/renderer/src/ui/AppShell.tsx'), 'utf8')
-    expect(app).toMatch(/debugNavItems=\{\[\.\.\.DEBUG_NAV_ITEMS, \{ key: 'stellar', label: 'ui\.stellar\.054', icon: 'nav-map'/)
-    expect(app).toContain('if (planetaryEnabled()) { hideActivityWin(); setPlanetOpen(true) }')
+    expect(app).toContain('debugNavItems={DEBUG_NAV_ITEMS}')
+    expect(app).toContain("window.addEventListener('whale-planetary-open', open)")
+    expect(app).toContain("window.removeEventListener('whale-planetary-open', open)")
+    expect(app).toContain('if (planetaryEnabled()) setPlanetOpen(true)')
     expect(shell.match(/onClick=\{\(\) => item\.onSelect \? item\.onSelect\(\) : changePage\(item\.key as PageKey\)\}/g)).toHaveLength(2)
     expect(shell).toContain("readDebugEnabled() ? DEBUG_NAV_ITEMS : []")
     expect(app).not.toContain("| 'stellar'")

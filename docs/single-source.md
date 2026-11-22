@@ -102,7 +102,7 @@
 | 静态JSON参数与文本/派生绑定、数值编辑计划 | `staticDataGroup()` · `packages/data/src/staticData.ts`；`planDocuments()` · `tools/data-editor-schema.ts` | 固定基线目录等价、编辑事务与字段校验；JSON权威静态参数，公式/文本留代码 |
 |---|---|---|
 | 战前各舰实际预载与补给缺口 | `battleAmmoPreloadPlan()` · `battleAmmoPreflight.ts`，沿用实际选档/装弹顺序 | 预警与实际开战比对；首次不改状态、二次确认回归；`arch:guard` F2/F3 |
-| 编队默认距离与战前配置变化确认 | `fleetRangeOf()` / `setFleetRange()` / `saveBattleFleetRange()` · `fleetRange.ts`；`withBattleRangeCheck()` · `battleRangeMemory.ts` | 预设切换、出发归属快照、本场显式保存、配置重验与自动探索隔离；旧敌卡数据仅兼容保留 |
+| 编队默认距离与战前配置变化确认 | `fleetRangeOf()` / `setFleetRange()` / `saveBattleFleetRange()` · `fleetRange.ts`；`withBattleRangeCheck()` · `battleRangeMemory.ts` | 预设切换、出发归属快照、本场显式保存、配置重验与自动探索隔离；射程证据取敌方压制前的己方配置，实际射程仍受本场电子战影响；旧敌卡数据仅兼容保留 |
 | 技能工作量、倍率切换与旧进度兼容 | `trainingLevelProgress()` / `normalizeTrainingProgress()` · `skills/training.ts`；技能时点推进在`skills/queue.ts` | 技能加速/离线专项、存档往返；`arch:guard` F2/F3 |
 | 武器齐射整数扣弹与预付余额 | `battleWeaponAmmoCost()` · `combatAmmo.ts` | 半发不跨舰／组／弹种、读档不断额度、整数弹库存守恒 |
 | 首次无人机出击间隔 | `droneLaunchGapMsOf()` · `droneLaunch.ts` | 每舰500毫秒、掠袭机库逐件缩短、复活重排、旧档续战；队列专项 |
