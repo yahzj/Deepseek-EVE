@@ -33,7 +33,7 @@ export function rangeEwBattleView(state: GameState, ctx: SimContext, battle: Bat
   anomaly: AnomalyDef, leader = state.shipId): RangeEwView | undefined {
   if (battle.rangeEwVersion !== 1) return undefined
   const foes = foesWithSupport(battle, activeFoeSpecsOf(anomaly, ctx.balance.battle, battle.waveIdx))
-  const contest = battle.rangeEw ? rangeEwContestOf(battle.rangeEw.me, battle.rangeEw.foe)
+  const contest = battle.rangeEw ? rangeEwContestOf(battle.rangeEw.me, battle.rangeEw.foe, battle.rangeEw.simulationTotals)
     : battleRangeEwOf(state, ctx, battle, foes, leader)
   const current = { ...battle, rangeEw: contest, meFoeRangeDebuff: contest.foeCut }
   const before = { ...current, rangeEw: { ...contest, meCut: 0, foeCut: 0 }, meFoeRangeDebuff: 0 }

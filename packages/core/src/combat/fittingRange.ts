@@ -4,10 +4,19 @@ import { createInitialState } from '../state'
 import { advanceBattleFor } from './advance'
 import { startBattleFor } from './startSingle'
 import { fleetDefOf } from '../instances'
+import { COMBAT_MAX_SHIPS } from './command/rules'
+import { setRangeEwSimulationTotals } from './rangeEw'
 
 export const RANGE_CARD_ID = 'fitting-range-target'
 export const RANGE_DURATION_MS = 60000
 export const RANGE_MAX_DISTANCE_M = 50000
+export const FITTING_RANGE_LIMITS = { targets: COMBAT_MAX_SHIPS, minSeconds: 10, maxSeconds: 600, maxStrength: 2000 } as const
+export interface FittingRangeOptions {
+  targetCount?: number
+  durationSeconds?: number
+  meStrength?: number
+  foeStrength?: number
+}
 export type RangeLayer = 's' | 'a' | 'h'
 export interface RangeWeaponResult { index: number; moduleId?: string; artId?: string; label: string; src?: string; shots: number; hits: number; damage: number }
 export interface FittingRange {
@@ -18,13 +27,20 @@ export interface FittingRange {
   distanceM: number
   layer: RangeLayer
   paused: boolean
+  durationMs: number
   results: Record<number, RangeWeaponResult>
 }
 
-export function createFittingRange(source: GameState, ctx: SimContext, uid: string, name: string, distanceM = 5000, layer: RangeLayer = 's'): FittingRange | null {
+export function createFittingRange(source: GameState, ctx: SimContext, uid: string, name: string, distanceM = 5000, layer: RangeLayer = 's', options: FittingRangeOptions = {}): FittingRange | null {
   const ship = source.fleet[uid]
   const def = fleetDefOf(source, ctx, uid)
   if (!ship || !def) return null
+  const { targetCount = 1, durationSeconds = RANGE_DURATION_MS / 1000, meStrength, foeStrength } = options
+  const { targets, minSeconds, maxSeconds, maxStrength } = FITTING_RANGE_LIMITS
+  if (!Number.isInteger(targetCount) || targetCount < 1 || targetCount > targets
+    || !Number.isInteger(durationSeconds) || durationSeconds < minSeconds || durationSeconds > maxSeconds
+    || [meStrength, foeStrength].some(value => value !== undefined && (!Number.isFinite(value) || value < 0 || value > maxStrength))) return null
+  const durationMs = durationSeconds * 1000
   const state = createInitialState({ nowWallMs: 0, seed: 20261009 })
   state.fleet = { [uid]: structuredClone(ship) }
   state.fleet[uid]!.defId = def.id
@@ -44,8 +60,9 @@ export function createFittingRange(source: GameState, ctx: SimContext, uid: stri
     rangeMinM: 0, rangeMaxM: RANGE_MAX_DISTANCE_M, falloff: 1, reloadMs: 1e9,
     dmgMix: { kinetic: 1 }, tactic: 'orbit', desireRangeM: distanceM,
   }
-  const card: AnomalyDef = { id: RANGE_CARD_ID, name, description: '', galaxyId: 'galaxy-hub', threat: 1, standingReq: 0, standingGain: 0, rewardIsk: 0, loot: [], combatSeconds: 60, ships: [{ ship: target }] }
+  const card: AnomalyDef = { id: RANGE_CARD_ID, name, description: '', galaxyId: 'galaxy-hub', threat: 1, standingReq: 0, standingGain: 0, rewardIsk: 0, loot: [], combatSeconds: durationSeconds, ships: [{ ship: target, count: targetCount }] }
   const local = { ...ctx, anomalies: new Map([[card.id, card]]), balance: { ...ctx.balance, battle: { ...ctx.balance.battle, maxBattleMs: 1e9, cannotEngageMs: 0, shieldRegenPerSec: 0 } } }
+  if (meStrength !== undefined || foeStrength !== undefined) setRangeEwSimulationTotals(local, { me: meStrength, foe: foeStrength })
   const battle = startBattleFor(state, local, uid, card.id, 0, distanceM)
   if (!battle) return null
   battle.distanceM = Math.max(0, Math.min(RANGE_MAX_DISTANCE_M, distanceM))
@@ -55,16 +72,16 @@ export function createFittingRange(source: GameState, ctx: SimContext, uid: stri
     rt.hp = { s: layer === 's' ? 10000 : 0, a: layer === 'a' ? 10000 : 0, h: layer === 'h' ? 10000 : 0 }
   }
   state.expedition = { ...state.expedition, active: true, phase: 'battle', anomalyId: card.id, battle, finishAtGameMs: 1e9 }
-  return { state, ctx: local, uid, battle, distanceM: battle.distanceM, layer, paused: false, results: {} }
+  return { state, ctx: local, uid, battle, distanceM: battle.distanceM, layer, paused: false, durationMs, results: {} }
 }
 
 export function advanceFittingRange(range: FittingRange, dtMs: number): void {
   if (range.paused || !Number.isFinite(dtMs) || dtMs <= 0) return
-  const remaining = RANGE_DURATION_MS - range.battle.lastTickGameMs
+  const remaining = range.durationMs - range.state.gameMs
   if (remaining <= 0) { range.paused = true; return }
   const distanceM = Math.max(0, Math.min(RANGE_MAX_DISTANCE_M, Number.isFinite(range.distanceM) ? range.distanceM : 5000))
   range.distanceM = distanceM
-  range.state.gameMs += Math.min(remaining, dtMs)
+  range.state.gameMs = Math.min(range.durationMs, range.state.gameMs + dtMs)
   range.battle.ammo = { kin: 1e9, exp: 1e9, pla: 1e9 }
   advanceBattleFor(range.state, range.ctx, range.battle, range.uid, RANGE_CARD_ID, null, undefined, undefined, {
     simulation: { distanceM, layer: range.layer, onShot: ({ index, weapon, hit, damage }) => {
@@ -74,7 +91,7 @@ export function advanceFittingRange(range: FittingRange, dtMs: number): void {
       row.damage += damage
     } },
   })
-  if (range.battle.lastTickGameMs >= RANGE_DURATION_MS) range.paused = true
+  if (range.battle.lastTickGameMs >= range.durationMs || range.battle.ended) range.paused = true
 }
 
 export function fittingRangeStats(range: FittingRange) {

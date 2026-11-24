@@ -23,6 +23,7 @@ export interface RangeEwContest {
   net: number
   meCut: number
   foeCut: number
+  simulationTotals?: Readonly<{ me?: number; foe?: number }>
 }
 export function rangeEwBattleSummaryOf(battle: BattleState): RangeEwContest | undefined {
   if (battle.rangeEwVersion !== 1 || !battle.rangeEw) return undefined
@@ -60,11 +61,17 @@ export function foeRangeEwOf(spec: UnitSpec): RangeEwPart {
     total: base + extra + equipment * equipmentMul }
 }
 
-export function rangeEwContestOf(me: RangeEwPart[], foe: RangeEwPart[]): RangeEwContest {
-  const meStrength = me.reduce((sum, row) => sum + row.total, 0)
-  const foeStrength = foe.reduce((sum, row) => sum + row.total, 0)
+export function rangeEwContestOf(me: RangeEwPart[], foe: RangeEwPart[], simulationTotals?: RangeEwContest['simulationTotals']): RangeEwContest {
+  const meStrength = me.length && simulationTotals?.me !== undefined ? simulationTotals.me : me.reduce((sum, row) => sum + row.total, 0)
+  const foeStrength = foe.length && simulationTotals?.foe !== undefined ? simulationTotals.foe : foe.reduce((sum, row) => sum + row.total, 0)
   const net = meStrength - foeStrength
-  return { me, foe, meStrength, foeStrength, net, meCut: rangeEwCutOf(-net), foeCut: rangeEwCutOf(net) }
+  return { me, foe, meStrength, foeStrength, net, meCut: rangeEwCutOf(-net), foeCut: rangeEwCutOf(net), ...(simulationTotals ? { simulationTotals } : {}) }
+}
+
+const simulationTotals = new WeakMap<SimContext, { me?: number; foe?: number }>()
+
+export function setRangeEwSimulationTotals(ctx: SimContext, totals: { me?: number; foe?: number }): void {
+  simulationTotals.set(ctx, { ...totals })
 }
 
 export function battleRangeEwOf(state: GameState, ctx: SimContext, battle: BattleState,
@@ -75,8 +82,10 @@ export function battleRangeEwOf(state: GameState, ctx: SimContext, battle: Battl
       && (unit.enteredAtMs === undefined || unit.enteredAtMs <= battle.lastTickGameMs)
   }
   const roster = battle.myFleet ?? [{ tag: 'player', shipId: leader }]
-  return rangeEwContestOf(playerRangeEwOf(state, ctx, roster.filter(row => alive(row.tag)).map(row => row.shipId)),
-    foes.filter(row => alive(row.tag)).map(foeRangeEwOf))
+  return rangeEwContestOf(
+    playerRangeEwOf(state, ctx, roster.filter(row => alive(row.tag)).map(row => row.shipId)),
+    foes.filter(row => alive(row.tag)).map(foeRangeEwOf), simulationTotals.get(ctx),
+  )
 }
 
 const rangeEwCache = new WeakMap<BattleState, { signature: string; view: RangeEwContest }>()
@@ -89,7 +98,7 @@ export function syncRangeEw(state: GameState, ctx: SimContext, battle: BattleSta
       shipDisplayName(state, ctx, row.shipId), state.fleet[row.shipId]?.fitted,
       battle.units[row.tag]?.enteredAtMs, battle.units[row.tag] ? isAlive(battle, row.tag) : false]
   }), foes.map(row => [row.tag, row.hullClassTier, row.rangeEwBonus, row.rangeEwEquipmentBonusPct, row.rangeEwStrength,
-    battle.units[row.tag]?.enteredAtMs, battle.units[row.tag] ? isAlive(battle, row.tag) : false])])
+    battle.units[row.tag]?.enteredAtMs, battle.units[row.tag] ? isAlive(battle, row.tag) : false]), simulationTotals.get(ctx)])
   const cached = rangeEwCache.get(battle)
   if (cached?.signature === signature) return cached.view
   const view = battleRangeEwOf(state, ctx, battle, foes, leader)

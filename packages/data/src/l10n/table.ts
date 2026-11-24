@@ -1161,6 +1161,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ui.fittingRange.007': { zh: '命中 / 发射', en: "Hits / Shots",},
   'ui.fittingRange.008': { zh: '虚拟供给', en: "Virtual Supplies",},
   'ui.fittingRange.010': { zh: '重置测试', en: "Reset Test",},
+  'ui.fittingRange.011': { zh: '靶机数量', en: '', enDeferred: true },
+  'ui.fittingRange.012': { zh: '测试时长', en: '', enDeferred: true },
   'ui.stellarHud.001': { zh: '探索任务', en: "Exploration Task",},
   'ui.stellarHud.002': { zh: '目标详情', en: "Target Details",},
   'ui.stellarHud.003': { zh: '探测机生产', en: "Probe Production",},

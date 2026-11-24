@@ -1,1 +1,1 @@
-export { createFittingRange, advanceFittingRange, fittingRangeStats, RANGE_CARD_ID, RANGE_DURATION_MS, RANGE_MAX_DISTANCE_M, type RangeLayer, type RangeWeaponResult, type FittingRange } from './combat/fittingRange'
+export { createFittingRange, advanceFittingRange, fittingRangeStats, RANGE_CARD_ID, RANGE_DURATION_MS, RANGE_MAX_DISTANCE_M, FITTING_RANGE_LIMITS, type RangeLayer, type RangeWeaponResult, type FittingRange } from './combat/fittingRange'

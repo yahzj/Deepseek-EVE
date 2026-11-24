@@ -4,7 +4,8 @@ import { createInitialState } from '../src/state'
 import { addShipToFleet } from '../src/fleetBook'
 import { fitModule } from '../src/equipment'
 import { advanceBattleFor, applyDamage, beamPowerFactor, createPlayerSpec } from '../src/combat'
-import { advanceFittingRange, createFittingRange, fittingRangeStats, RANGE_DURATION_MS } from '../src/fittingRange'
+import { advanceFittingRange, createFittingRange, fittingRangeStats, RANGE_CARD_ID, RANGE_DURATION_MS } from '../src/fittingRange'
+import { rangeEwBattleView } from '../src/combat/rangeEwPreview'
 
 const ctx = buildSimContext()
 function fixture(high = ['mod-laser-3'], drones = false) {
@@ -147,5 +148,77 @@ describe('隔离装配靶场', () => {
     advanceBattleFor(range.state, range.ctx, range.battle, range.uid, 'fitting-range-target')
     expect(range.battle.units['foe-0']!.hp.s).toBeLessThan(10000)
     expect(range.results).toEqual({})
+  })
+
+  it('12 艘靶机同时入场，自动强度按在场舰船求和，不反击或脱离测试层', () => {
+    const { state, uid, range: baseline } = fixture()
+    const before = structuredClone(state)
+    const range = createFittingRange(state, ctx, uid, '靶机', 5000, 'a', { targetCount: 12, durationSeconds: 10 })!
+    const targets = () => Object.values(range.battle.units).filter(unit => unit.side === 'foe')
+    expect(targets()).toHaveLength(12)
+    expect(range.battle.rangeEw!.foeStrength).toBe(baseline.battle.rangeEw!.foeStrength * 12)
+    run(range, 15000)
+    expect(targets()).toHaveLength(12)
+    expect(targets().every(unit => unit.hp.s === 0 && unit.hp.a === 10000 && unit.hp.h === 0)).toBe(true)
+    expect(range.battle.stats.foeShots).toBe(0)
+    expect(range.battle.ended).toBeNull()
+    expect(state).toEqual(before)
+  })
+
+  it('手填总强度只覆盖对应一方，0 有效、敌方总值不乘舰数，详情和实际射程同源', () => {
+    const { state, uid, range: automatic } = fixture()
+    const create = (meStrength?: number, foeStrength?: number) =>
+      createFittingRange(state, ctx, uid, '靶机', 5000, 's', { targetCount: 3, meStrength, foeStrength })!
+    const oneSide = create(undefined, 0)
+    expect(oneSide.battle.rangeEw).toMatchObject({ meStrength: automatic.battle.rangeEw!.meStrength, foeStrength: 0 })
+    expect(create(0).battle.rangeEw).toMatchObject({ meStrength: 0, foeStrength: automatic.battle.rangeEw!.foeStrength * 3 })
+    const friendly = create(120, 0)
+    expect(friendly.battle.rangeEw).toMatchObject({ net: 120, meCut: 0, foeCut: .3 })
+    const equal = create(120, 120)
+    expect(equal.battle.rangeEw).toMatchObject({ net: 0, meCut: 0, foeCut: 0 })
+    const opposed = create(0, 120)
+    const viewOf = (range: typeof opposed) => rangeEwBattleView(range.state, range.ctx, range.battle, range.ctx.anomalies.get(RANGE_CARD_ID)!)!
+    for (const range of [equal, opposed]) {
+      const laser = viewOf(range).weapons.find(weapon => weapon.id.endsWith('mod-laser-3'))!
+      range.distanceM = laser.beforeM - 1
+      run(range, 10000)
+    }
+    const view = viewOf(opposed)
+    expect(view).toMatchObject({ meStrength: 0, foeStrength: 120, meCut: .3, foeCut: 0 })
+    const refs = { weaponRanges: [] as Array<{ baseM: number; bonusMul: number }> }
+    const spec = createPlayerSpec(opposed.state, opposed.ctx, uid, opposed.battle.ammoIds, refs)!
+    const laserIndex = spec.weapons.findIndex(weapon => weapon.moduleId === 'mod-laser-3')
+    const laser = view.weapons.find(weapon => weapon.id.endsWith('mod-laser-3'))!
+    const rawRange = spec.weapons[laserIndex]!.maxRangeM
+    expect(laser.beforeM).toBe(rawRange)
+    expect(laser.currentM).toBe(Math.round(rawRange * (1 - .3 / refs.weaponRanges[laserIndex]!.bonusMul)))
+    expect(opposed.battle.stats.meShots).toBe(0)
+    expect(equal.battle.stats.meShots).toBeGreaterThan(0)
+    expect(createFittingRange(state, ctx, uid, '靶机')!.battle.rangeEw).toEqual(automatic.battle.rangeEw)
+  })
+
+  it.each([10, 600])('设置 %i 秒，超步长恰好停止并保留统计，重建归零', seconds => {
+    const { state, uid } = fixture()
+    const create = () => createFittingRange(state, ctx, uid, '靶机', 5000, 's', { durationSeconds: seconds })!
+    const range = create()
+    advanceFittingRange(range, seconds * 1000 - 0.75)
+    advanceFittingRange(range, 1000)
+    const stats = fittingRangeStats(range)
+    expect(stats.elapsedMs).toBe(seconds * 1000)
+    expect(range.paused).toBe(true)
+    expect(stats.damage).toBeGreaterThan(0)
+    expect(stats.dps).toBeCloseTo(stats.damage / seconds)
+    advanceFittingRange(range, 2000)
+    expect(fittingRangeStats(range)).toEqual(stats)
+    expect(fittingRangeStats(create())).toMatchObject({ elapsedMs: 0, damage: 0, shots: 0 })
+  })
+
+  it('拒绝超范围、非有限及无效整数参数', () => {
+    const { state, uid } = fixture()
+    const invalid = [{ targetCount: 0 }, { targetCount: 13 }, { targetCount: 1.5 },
+      { durationSeconds: 9 }, { durationSeconds: 601 }, { durationSeconds: 10.5 },
+      { meStrength: -1 }, { foeStrength: 2001 }, { meStrength: NaN }, { foeStrength: Infinity }]
+    for (const opts of invalid) expect(createFittingRange(state, ctx, uid, '靶机', 5000, 's', opts)).toBeNull()
+    expect(createFittingRange(state, ctx, uid, '靶机', 5000, 's', { meStrength: 2000, foeStrength: 0 })!.battle.rangeEw!.meStrength).toBe(2000)
   })
 })

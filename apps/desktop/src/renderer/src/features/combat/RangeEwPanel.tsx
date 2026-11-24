@@ -65,8 +65,8 @@ export function RangeEwBattleDetail({ id, view, loadDetails, expected = false }:
   }, [expected])
   const full = loadDetails?.() ?? { ...view, weapons: [] }
   return <div ref={panel} id={id} className="app-ew-detail" role="region" tabIndex={0} aria-label={tr('ui.rangeEw.001')}>
-      <div className="app-ew-sides"><section><b>{tr('ui.rangeEw.002')} {n(full.meStrength)}</b><Parts rows={full.me} /></section>
-        <section><b>{tr('ui.rangeEw.003')} {n(full.foeStrength)}</b><Parts rows={full.foe} /></section></div>
+      <div className="app-ew-sides"><section><b>{tr('ui.rangeEw.002')} {n(full.meStrength)}</b>{full.simulationTotals?.me === undefined ? <Parts rows={full.me} /> : null}</section>
+        <section><b>{tr('ui.rangeEw.003')} {n(full.foeStrength)}</b>{full.simulationTotals?.foe === undefined ? <Parts rows={full.foe} /> : null}</section></div>
       <div className="app-ew-ranges"><span>{tr('ui.rangeEw.014')} → {tr(expected ? 'ui.rangeEw.016' : 'ui.rangeEw.015')}</span>
         {full.weapons.map(row => <div key={`${row.side}:${row.id}:${row.beforeM}:${row.currentM}`}><span>{row.owner} · {row.label}{row.count > 1 ? ` ×${row.count}` : ''}</span>
           <span>{n(row.beforeM)} → {n(row.currentM)} m · -{n(row.reduction * 100)}%{row.floorLimited ? ` · ${tr('ui.rangeEw.020')}` : ''}</span></div>)}</div>
